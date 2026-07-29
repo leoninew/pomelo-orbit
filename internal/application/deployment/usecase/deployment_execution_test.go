@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 	"testing"
 
@@ -17,8 +18,8 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
-func testVersionID() string { return "ver-1" }
-func testProjectID() string { return "proj-1" }
+func testVersionId() string { return "ver-1" }
+func testProjectId() string { return "proj-1" }
 
 func stringPtr(value string) *string { return &value }
 
@@ -36,26 +37,26 @@ func newTestExecutionService(store deploymentport.ExecutionStore, logger *slog.L
 
 func deployStore(t *testing.T) *fakeDeploymentExecutionStore {
 	t.Helper()
-	versionID := testVersionID()
-	projectID := testProjectID()
+	versionId := testVersionId()
+	projectId := testProjectId()
 	optionsJSON := `{"instance_key":"default"}`
 	return &fakeDeploymentExecutionStore{
-		app: model.Application{Id: "app-1", ProjectId: &projectID, Code: "demo", Kind: status.ApplicationKindStandard, ImagePullPolicy: "missing"},
+		app: model.Application{Id: "app-1", ProjectId: &projectId, Code: "demo", Kind: status.ApplicationKindStandard, ImagePullPolicy: "missing"},
 		deployment: model.Deployment{
 			Id:          "deploy-1",
-			VersionId:   &versionID,
+			VersionId:   &versionId,
 			ServiceId:   stringPtr("svc-1"),
 			OptionsJSON: &optionsJSON,
 		},
-		version: model.Version{Id: versionID, ApplicationId: "app-1", Label: "v1", Status: status.VersionStatusUnpublished},
+		version: model.Version{Id: versionId, ApplicationId: "app-1", Label: "v1", Status: status.VersionStatusUnpublished},
 		components: []model.VersionComponent{
-			{Id: "c1", VersionId: versionID, Name: "web", Image: "nginx"},
+			{Id: "c1", VersionId: versionId, Name: "web", Image: "nginx"},
 		},
 		service: model.Service{
 			Id:            "svc-1",
 			ApplicationId: "app-1",
 			InstanceKey:   "default",
-			VersionId:     versionID,
+			VersionId:     versionId,
 			Status:        status.ServiceStatusRunning,
 		},
 	}
@@ -80,7 +81,8 @@ func TestExecuteApplicationRestartRestartsApplication(t *testing.T) {
 func TestExecuteApplicationStopStopsApplication(t *testing.T) {
 	store := deployStore(t)
 	runner := &recordingCommandRunner{}
-	service := newTestExecutionService(store, slog.Default(), testWorkspace(t.TempDir()), runner, executionlog.Store{})
+	workspace := testWorkspace(t.TempDir())
+	service := newTestExecutionService(store, slog.Default(), workspace, runner, executionlog.Store{})
 
 	err := service.ExecuteApplicationStop(context.Background(), "app-1", "deploy-1", true)
 	if err != nil {
@@ -94,6 +96,13 @@ func TestExecuteApplicationStopStopsApplication(t *testing.T) {
 	}
 	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-default -f docker-compose.yml down -v" {
 		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
+	}
+	log := readDeploymentLog(t, workspace, "deploy-1")
+	assertLogContainsOnce(t, log, "Working directory: "+workspace.ServiceDir("demo", "default"))
+	for _, step := range []string{"Preparing service shutdown", "Stopping services and removing volumes"} {
+		if !strings.Contains(log, step) {
+			t.Fatalf("expected log step %q, got:\n%s", step, log)
+		}
 	}
 }
 
@@ -135,7 +144,8 @@ func TestExecuteApplicationDeployMarksDeploymentFaultedOnRunnerError(t *testing.
 func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
 	store := deployStore(t)
 	runner := &recordingCommandRunner{}
-	service := newTestExecutionService(store, slog.Default(), testWorkspace(t.TempDir()), runner, executionlog.Store{})
+	workspace := testWorkspace(t.TempDir())
+	service := newTestExecutionService(store, slog.Default(), workspace, runner, executionlog.Store{})
 
 	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
 	if err != nil {
@@ -149,6 +159,18 @@ func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
 	}
 	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-default -f docker-compose.yml up -d --remove-orphans --pull missing" {
 		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
+	}
+	log := readDeploymentLog(t, workspace, "deploy-1")
+	assertLogContainsOnce(t, log, "Working directory: "+workspace.ServiceDir("demo", "default"))
+	for _, step := range []string{
+		"Preparing deployment",
+		"Rendering version v1 (ver-1) with 1 component(s) into instance default",
+		"Writing deployment configuration",
+		"Starting services",
+	} {
+		if !strings.Contains(log, step) {
+			t.Fatalf("expected log step %q, got:\n%s", step, log)
+		}
 	}
 }
 
@@ -180,7 +202,7 @@ func TestExecuteApplicationDeployForceRecreatesApplication(t *testing.T) {
 	}
 }
 
-func TestExecuteApplicationDeployRequiresVersionID(t *testing.T) {
+func TestExecuteApplicationDeployRequiresVersionId(t *testing.T) {
 	store := deployStore(t)
 	store.deployment.VersionId = nil
 	service := newTestExecutionService(store, slog.Default(), testWorkspace(t.TempDir()), fakeCommandRunner{}, executionlog.Store{})
@@ -249,11 +271,8 @@ func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 	if !strings.Contains(preview, wantRule) {
 		t.Fatalf("expected derived host rule %q, got:\n%s", wantRule, preview)
 	}
-	if !strings.Contains(preview, "pomelo.orbit.version-id="+store.version.Id) {
-		t.Fatalf("expected version ID label, got:\n%s", preview)
-	}
-	if !strings.Contains(preview, "pomelo.orbit.version-label="+store.version.Label) {
-		t.Fatalf("expected version label, got:\n%s", preview)
+	if strings.Contains(preview, "pomelo.orbit.version-") {
+		t.Fatalf("version labels must not be injected into compose services, got:\n%s", preview)
 	}
 }
 
@@ -402,4 +421,21 @@ type failingCommandRunner struct{}
 
 func (failingCommandRunner) Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error {
 	return errors.New("boom")
+}
+
+func readDeploymentLog(t *testing.T, workspace *workspaceFake, deploymentId string) string {
+	t.Helper()
+	path := workspace.DeploymentLogPath("demo", "default", deploymentId)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read deployment log %s: %v", path, err)
+	}
+	return string(content)
+}
+
+func assertLogContainsOnce(t *testing.T, log string, text string) {
+	t.Helper()
+	if count := strings.Count(log, text); count != 1 {
+		t.Fatalf("expected %q once, found %d time(s) in:\n%s", text, count, log)
+	}
 }

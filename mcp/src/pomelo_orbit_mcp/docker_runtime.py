@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import shlex
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,8 @@ class CommandResult:
 
 CommandRunner = Callable[[Sequence[str], Path | None], Awaitable[CommandResult]]
 
+_NETWORK_NAME_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
+
 
 class DockerRuntime:
     """Executes restricted Docker diagnostics and fixed HTTP probes."""
@@ -45,6 +48,7 @@ class DockerRuntime:
         target: RuntimeTarget | None = None,
         *,
         expected_external_networks: Sequence[str] = (),
+        external_network_name: str | None = None,
     ) -> dict[str, Any]:
         context = await self._run(["docker", "context", "show"], None)
         compose = await self._run(["docker", "compose", "version"], None)
@@ -60,6 +64,11 @@ class DockerRuntime:
             issues.append(f"deployment workspace does not exist: {target.working_directory}")
         external_networks: list[str] = []
         external_network_details: list[dict[str, str]] = []
+        if external_network_name is not None:
+            detail = await self._check_external_network(external_network_name, issues)
+            if detail is not None:
+                external_networks.append(detail["name"])
+                external_network_details.append(detail)
         for network_name in expected_external_networks:
             if target is None:
                 issues.append(f"external network {network_name} requires a managed target")
@@ -100,6 +109,12 @@ class DockerRuntime:
             "containers": _parse_compose_ps(result.stdout),
             "stderr": result.stderr,
         }
+
+    async def external_network_inspect(self, network_name: str) -> dict[str, str]:
+        """Return a fixed external network summary without exposing raw Docker inspect data."""
+        normalized_name = _external_network_name(network_name)
+        result = await self._run(["docker", "network", "inspect", normalized_name], None)
+        return _external_network_detail(normalized_name, {"inspect": _parse_inspect(result.stdout)})
 
     async def compose_logs(
         self,
@@ -157,6 +172,18 @@ class DockerRuntime:
             raise DockerRuntimeError("network was not derived from the resolved Compose project")
         result = await self._run(["docker", "network", "inspect", network_name], None)
         return {"command": result.rendered_command, "inspect": _parse_inspect(result.stdout), "stderr": result.stderr}
+
+    async def _check_external_network(self, network_name: str, issues: list[str]) -> dict[str, str] | None:
+        normalized_name = _external_network_name(network_name)
+        try:
+            detail = await self.external_network_inspect(normalized_name)
+        except DockerRuntimeError:
+            issues.append(f"external network {normalized_name} is unavailable")
+            return None
+        if detail["driver"] != "bridge":
+            issues.append(f"external network {normalized_name} has unsupported driver")
+            return None
+        return detail
 
     async def http_probe(
         self, target: RuntimeTarget, component_name: str, port: int, path: str = "/"
@@ -262,6 +289,77 @@ def _external_network_detail(network_name: str, result: dict[str, Any]) -> dict[
     if not driver or not scope:
         raise DockerRuntimeError("docker network inspect did not include driver and scope")
     return {"name": network_name, "driver": driver, "scope": scope}
+
+
+def compose_container_summaries(
+    containers: Sequence[dict[str, Any]],
+    inspections: Mapping[str, dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Project Compose state into the stable fields used by default MCP responses."""
+    summaries: list[dict[str, Any]] = []
+    for container in containers:
+        container_id = _container_id(container)
+        inspected = (inspections or {}).get(container_id, {})
+        state_value = inspected.get("State")
+        state = state_value if isinstance(state_value, dict) else {}
+        health_value = state.get("Health")
+        health_state = health_value if isinstance(health_value, dict) else {}
+        summaries.append(
+            {
+                "container_id": container_id or None,
+                "service": _string_or_none(container.get("Service")),
+                "state": _string_or_none(state.get("Status")) or _string_or_none(container.get("State")),
+                "health": _string_or_none(health_state.get("Status")) or _string_or_none(container.get("Health")),
+                "restart_count": _restart_count(inspected.get("RestartCount"), container.get("RestartCount")),
+                "ports": _published_ports(container.get("Publishers")),
+            }
+        )
+    return summaries
+
+
+def _external_network_name(network_name: str) -> str:
+    normalized_name = str(network_name).strip()
+    if not _NETWORK_NAME_PATTERN.fullmatch(normalized_name):
+        raise DockerRuntimeError("network name is invalid")
+    return normalized_name
+
+
+def _string_or_none(value: Any) -> str | None:
+    if isinstance(value, str):
+        normalized = value.strip()
+        return normalized or None
+    return None
+
+
+def _restart_count(*values: Any) -> int | None:
+    for value in values:
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+            return value
+        if isinstance(value, str) and value.isdecimal():
+            return int(value)
+    return None
+
+
+def _published_ports(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    ports: list[dict[str, Any]] = []
+    for publisher in value:
+        if not isinstance(publisher, dict):
+            continue
+        host_port = _restart_count(publisher.get("PublishedPort"))
+        container_port = _restart_count(publisher.get("TargetPort"))
+        if host_port is None or container_port is None:
+            continue
+        ports.append(
+            {
+                "host_ip": _string_or_none(publisher.get("URL")),
+                "host_port": host_port,
+                "container_port": container_port,
+                "protocol": _string_or_none(publisher.get("Protocol")) or "tcp",
+            }
+        )
+    return ports
 
 
 def _container_id(container: dict[str, Any]) -> str:

@@ -285,6 +285,7 @@
           <ComboboxSelect
             :model-value="createForm.application_id"
             :options="applicationSelectOptions"
+            :placeholder="t('service.create.selectApplication')"
             width-class="w-full"
             @update:model-value="handleCreateApplicationChange"
           />
@@ -294,6 +295,8 @@
           <ComboboxSelect
             :model-value="createForm.version_id"
             :options="createVersionSelectOptions"
+            :placeholder="t('service.create.selectVersion')"
+            :disabled="!createForm.application_id"
             width-class="w-full"
             @update:model-value="createForm.version_id = String($event || '')"
           />
@@ -337,7 +340,7 @@
           {{ t('common.cancel') }}
         </button>
         <button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
-          {{ t('common.create') }}
+          {{ t('service.actions.create') }}
         </button>
       </template>
     </AppDialog>
@@ -531,16 +534,14 @@
     try {
       const page = await applicationApi.list({ project_id: projectId, per_page: 100 });
       applications.value = page.items ?? [];
+      versions.value = [];
       Object.assign(createForm, {
-        application_id: applications.value[0]?.id ?? '',
+        application_id: '',
         version_id: '',
         instance_key: 'default',
         runtime_config: [],
       });
       createError.value = '';
-      if (createForm.application_id) {
-        await handleCreateApplicationChange(createForm.application_id);
-      }
       isCreateDialogOpen.value = true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('service.toast.loadFailed'));

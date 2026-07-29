@@ -26,7 +26,6 @@ export interface ApplicationImportReq {
   code: string;
   image_pull_policy: string;
   version_label: string;
-  version_env_json?: string | undefined;
   version_note?: string | undefined;
   components: VersionComponentReq[];
   exposes: VersionExposeReq[];

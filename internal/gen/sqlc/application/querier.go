@@ -24,13 +24,10 @@ type Querier interface {
 	DeleteServicesByApplication(ctx context.Context, applicationID string) error
 	DeleteVersion(ctx context.Context, id string) error
 	DeleteVersionComponent(ctx context.Context, id string) error
-	DeleteVersionComponentArguments(ctx context.Context, componentID string) error
 	DeleteVersionComponentDependencies(ctx context.Context, componentID string) error
 	DeleteVersionComponentEnv(ctx context.Context, componentID string) error
 	DeleteVersionComponentHealthcheck(ctx context.Context, componentID string) error
-	DeleteVersionComponentHealthcheckArgs(ctx context.Context, componentID string) error
 	DeleteVersionComponentMounts(ctx context.Context, componentID string) error
-	DeleteVersionComponentNetworks(ctx context.Context, componentID string) error
 	DeleteVersionComponentPorts(ctx context.Context, componentID string) error
 	DeleteVersionComponentResource(ctx context.Context, componentID string) error
 	DeleteVersionComponentTmpfs(ctx context.Context, componentID string) error
@@ -41,13 +38,10 @@ type Querier interface {
 	DetachDeploymentServiceRefsByApplication(ctx context.Context, applicationID string) error
 	DetachDeploymentVersionRefsByApplication(ctx context.Context, applicationID string) error
 	InsertVersionComponent(ctx context.Context, arg InsertVersionComponentParams) error
-	InsertVersionComponentArgument(ctx context.Context, arg InsertVersionComponentArgumentParams) error
 	InsertVersionComponentDependency(ctx context.Context, arg InsertVersionComponentDependencyParams) error
 	InsertVersionComponentEnv(ctx context.Context, arg InsertVersionComponentEnvParams) error
 	InsertVersionComponentHealthcheck(ctx context.Context, arg InsertVersionComponentHealthcheckParams) error
-	InsertVersionComponentHealthcheckArg(ctx context.Context, arg InsertVersionComponentHealthcheckArgParams) error
 	InsertVersionComponentMount(ctx context.Context, arg InsertVersionComponentMountParams) error
-	InsertVersionComponentNetwork(ctx context.Context, arg InsertVersionComponentNetworkParams) error
 	InsertVersionComponentPort(ctx context.Context, arg InsertVersionComponentPortParams) error
 	InsertVersionComponentResource(ctx context.Context, arg InsertVersionComponentResourceParams) error
 	InsertVersionComponentTmpfs(ctx context.Context, arg InsertVersionComponentTmpfsParams) error
@@ -58,19 +52,18 @@ type Querier interface {
 	ListVersionsPage(ctx context.Context, arg ListVersionsPageParams) ([]Version, error)
 	RenameVersionComponentDependencies(ctx context.Context, arg RenameVersionComponentDependenciesParams) error
 	RenameVersionComponentExposes(ctx context.Context, arg RenameVersionComponentExposesParams) error
+	TouchVersionComponent(ctx context.Context, arg TouchVersionComponentParams) error
 	UpdateApplication(ctx context.Context, arg UpdateApplicationParams) error
 	UpdateVersion(ctx context.Context, arg UpdateVersionParams) error
-	UpdateVersionComponent(ctx context.Context, arg UpdateVersionComponentParams) error
+	UpdateVersionComponentBasic(ctx context.Context, arg UpdateVersionComponentBasicParams) error
+	UpdateVersionComponentCommand(ctx context.Context, arg UpdateVersionComponentCommandParams) error
 	UpdateVersionComponentSummary(ctx context.Context, arg UpdateVersionComponentSummaryParams) error
 	VersionByID(ctx context.Context, id string) (Version, error)
-	VersionComponentArgumentsByComponent(ctx context.Context, componentID string) ([]VersionComponentArgument, error)
 	VersionComponentByID(ctx context.Context, id string) (VersionComponent, error)
 	VersionComponentDependenciesByComponent(ctx context.Context, componentID string) ([]VersionComponentDependency, error)
 	VersionComponentEnvByComponent(ctx context.Context, componentID string) ([]VersionComponentEnv, error)
-	VersionComponentHealthcheckArgsByComponent(ctx context.Context, componentID string) ([]VersionComponentHealthcheckArg, error)
 	VersionComponentHealthcheckByComponent(ctx context.Context, componentID string) (VersionComponentHealthcheck, error)
 	VersionComponentMountsByComponent(ctx context.Context, componentID string) ([]VersionComponentMount, error)
-	VersionComponentNetworksByComponent(ctx context.Context, componentID string) ([]VersionComponentNetwork, error)
 	VersionComponentPortsByComponent(ctx context.Context, componentID string) ([]VersionComponentPort, error)
 	VersionComponentResourceByComponent(ctx context.Context, componentID string) (VersionComponentResource, error)
 	VersionComponentTmpfsByComponent(ctx context.Context, componentID string) ([]VersionComponentTmpf, error)

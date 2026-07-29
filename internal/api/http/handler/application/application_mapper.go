@@ -8,13 +8,13 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-func applicationCreateInput(projectID string, req *applicationv1.ApplicationCreateReq) applicationdto.ApplicationCreateInput {
+func applicationCreateInput(projectId string, req *applicationv1.ApplicationCreateReq) applicationdto.ApplicationCreateInput {
 	kind := ""
 	if req.Kind != nil {
 		kind = *req.Kind
 	}
 	return applicationdto.ApplicationCreateInput{
-		ProjectId:       projectID,
+		ProjectId:       projectId,
 		Name:            req.Name,
 		Code:            req.Code,
 		Kind:            kind,

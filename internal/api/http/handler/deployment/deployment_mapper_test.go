@@ -10,15 +10,16 @@ import (
 
 func TestApplicationStatusResponse(t *testing.T) {
 	response := applicationStatusResponse([]deploymentdto.RuntimeContainer{{
-		ID:           "container-1",
+		Id:           "container-1",
 		Name:         "demo-web-1",
 		Service:      "web",
 		State:        "running",
 		Status:       "Up 1 minute",
 		Health:       "healthy",
 		Image:        "nginx:latest",
-		VersionID:    "version-1",
+		VersionId:    "version-1",
 		VersionLabel: "2026.07.28",
+		ComponentId:  "component-1",
 	}})
 
 	if len(response.Containers) != 1 {
@@ -33,6 +34,9 @@ func TestApplicationStatusResponse(t *testing.T) {
 	}
 	if container.VersionId != "version-1" || container.VersionLabel != "2026.07.28" {
 		t.Fatalf("version fields: got %+v", container)
+	}
+	if container.ComponentId != "component-1" {
+		t.Fatalf("component ID: got %+v", container)
 	}
 
 	encoded, err := protojson.Marshal(response)

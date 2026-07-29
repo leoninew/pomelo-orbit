@@ -304,7 +304,6 @@ type Version struct {
 	ApplicationID        string         `db:"application_id"`
 	Label                string         `db:"label"`
 	Status               string         `db:"status"`
-	EnvJson              sql.NullString `db:"env_json"`
 	CreatedFromVersionID sql.NullString `db:"created_from_version_id"`
 	Note                 sql.NullString `db:"note"`
 	ComponentSummary     string         `db:"component_summary"`
@@ -317,17 +316,11 @@ type VersionComponent struct {
 	VersionID     string         `db:"version_id"`
 	Name          string         `db:"name"`
 	Image         string         `db:"image"`
+	CommandJson   string         `db:"command_json"`
 	PullPolicy    sql.NullString `db:"pull_policy"`
 	RestartPolicy sql.NullString `db:"restart_policy"`
 	CreatedAt     time.Time      `db:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at"`
-}
-
-type VersionComponentArgument struct {
-	ComponentID string `db:"component_id"`
-	Kind        string `db:"kind"`
-	Position    int64  `db:"position"`
-	Value       string `db:"value"`
 }
 
 type VersionComponentDependency struct {
@@ -347,6 +340,7 @@ type VersionComponentEnv struct {
 type VersionComponentHealthcheck struct {
 	ComponentID   string         `db:"component_id"`
 	TestMode      sql.NullString `db:"test_mode"`
+	Test          string         `db:"test"`
 	Interval      sql.NullString `db:"interval"`
 	Timeout       sql.NullString `db:"timeout"`
 	Retries       sql.NullInt64  `db:"retries"`
@@ -355,27 +349,17 @@ type VersionComponentHealthcheck struct {
 	Disabled      int64          `db:"disabled"`
 }
 
-type VersionComponentHealthcheckArg struct {
-	ComponentID string `db:"component_id"`
-	Position    int64  `db:"position"`
-	Value       string `db:"value"`
-}
-
 type VersionComponentMount struct {
-	ComponentID string         `db:"component_id"`
-	SourceType  string         `db:"source_type"`
-	Source      string         `db:"source"`
-	Target      string         `db:"target"`
-	ReadOnly    int64          `db:"read_only"`
-	Content     sql.NullString `db:"content"`
-	ContentMode sql.NullString `db:"content_mode"`
-	Position    int64          `db:"position"`
-}
-
-type VersionComponentNetwork struct {
-	ComponentID string `db:"component_id"`
-	Name        string `db:"name"`
-	Position    int64  `db:"position"`
+	ComponentID      string         `db:"component_id"`
+	SourceType       string         `db:"source_type"`
+	Source           string         `db:"source"`
+	Target           string         `db:"target"`
+	ReadOnly         int64          `db:"read_only"`
+	SourceIsHostPath int64          `db:"source_is_host_path"`
+	Content          sql.NullString `db:"content"`
+	Mode             string         `db:"mode"`
+	IgnoreIfExists   int64          `db:"ignore_if_exists"`
+	Position         int64          `db:"position"`
 }
 
 type VersionComponentPort struct {

@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	serviceTestUserID    = "01KKX2YNPF6VJ9N7QYCWG61KVK"
-	serviceTestProjectID = "01KRRKK0K3T519ZQZES3M4QA9Z"
+	serviceTestUserId    = "01KKX2YNPF6VJ9N7QYCWG61KVK"
+	serviceTestProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"
 )
 
 func TestServiceRuntimeBindingQueries(t *testing.T) {
@@ -46,7 +46,7 @@ func TestServiceRuntimeBindingQueries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	page, err := service.ListServices(ctx, serviceTestUserID, servicedto.ServiceListInput{ProjectId: serviceTestProjectID, ApplicationId: app.Id})
+	page, err := service.ListServices(ctx, serviceTestUserId, servicedto.ServiceListInput{ProjectId: serviceTestProjectId, ApplicationId: app.Id})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,14 +59,14 @@ func TestServiceRuntimeBindingQueries(t *testing.T) {
 		}
 	}
 
-	bindings, err := service.ListServicesByApplication(ctx, serviceTestUserID, app.Id)
+	bindings, err := service.ListServicesByApplication(ctx, serviceTestUserId, app.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(bindings) != 2 {
 		t.Fatalf("got %d application services, want 2", len(bindings))
 	}
-	primary, err := service.PrimaryServiceByApplication(ctx, serviceTestUserID, app.Id)
+	primary, err := service.PrimaryServiceByApplication(ctx, serviceTestUserId, app.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,14 +74,14 @@ func TestServiceRuntimeBindingQueries(t *testing.T) {
 		t.Fatalf("unexpected primary service: %+v", primary)
 	}
 
-	resolved, err := service.ResolveServiceTarget(ctx, serviceTestUserID, app.Id, servicedto.ServiceTargetInput{ServiceId: canaryService.Id})
+	resolved, err := service.ResolveServiceTarget(ctx, serviceTestUserId, app.Id, servicedto.ServiceTargetInput{ServiceId: canaryService.Id})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if resolved.Id != canaryService.Id {
 		t.Fatalf("resolved service = %s, want %s", resolved.Id, canaryService.Id)
 	}
-	_, err = service.ResolveServiceTarget(ctx, serviceTestUserID, app.Id, servicedto.ServiceTargetInput{})
+	_, err = service.ResolveServiceTarget(ctx, serviceTestUserId, app.Id, servicedto.ServiceTargetInput{})
 	if apperror.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("expected ambiguous target validation error, got %v", err)
 	}
@@ -103,7 +103,7 @@ func TestResolveServiceTargetRejectsServiceFromAnotherApplication(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	_, err := service.ResolveServiceTarget(ctx, serviceTestUserID, firstApp.Id, servicedto.ServiceTargetInput{ServiceId: secondBinding.Id})
+	_, err := service.ResolveServiceTarget(ctx, serviceTestUserId, firstApp.Id, servicedto.ServiceTargetInput{ServiceId: secondBinding.Id})
 	if apperror.StatusCode(err) != http.StatusNotFound {
 		t.Fatalf("expected cross-application service to be hidden, got %v", err)
 	}
@@ -120,14 +120,14 @@ func TestServiceRuntimeConfigPersistsIndependentlyOfDeployment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	view, err := service.RuntimeConfig(ctx, serviceTestUserID, binding.Id)
+	view, err := service.RuntimeConfig(ctx, serviceTestUserId, binding.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if view.RuntimeConfig["API_TOKEN"] != "service-value" {
 		t.Fatalf("runtime config = %+v", view.RuntimeConfig)
 	}
-	updated, err := service.UpdateRuntimeConfig(ctx, serviceTestUserID, binding.Id, map[string]string{"API_TOKEN": "next-value"})
+	updated, err := service.UpdateRuntimeConfig(ctx, serviceTestUserId, binding.Id, map[string]string{"API_TOKEN": "next-value"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,9 +156,9 @@ func newServiceIntegrationService(t *testing.T) (Service, *sql.DB, applicationre
 func createServiceTestApplication(t *testing.T, applicationStore applicationrepo.Repository, code string) (model.Application, model.Version) {
 	t.Helper()
 	ctx := context.Background()
-	projectID := serviceTestProjectID
+	projectId := serviceTestProjectId
 	app := model.Application{
-		Id: idutil.NewId(), ProjectId: &projectID, Name: code, Code: code, Kind: "application", ImagePullPolicy: "missing",
+		Id: idutil.NewId(), ProjectId: &projectId, Name: code, Code: code, Kind: "application", ImagePullPolicy: "missing",
 	}
 	if err := applicationStore.CreateApplication(ctx, app); err != nil {
 		t.Fatal(err)

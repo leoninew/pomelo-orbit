@@ -6,12 +6,13 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
 	applicationv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application"
 	servicev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-func applicationImportInput(projectID string, req *applicationv1.ApplicationImportReq) applicationdto.ApplicationImportInput {
+func applicationImportInput(projectId string, req *applicationv1.ApplicationImportReq) applicationdto.ApplicationImportInput {
 	components := make([]applicationdto.VersionComponentInput, 0, len(req.Components))
 	for _, item := range req.Components {
 		components = append(components, versionComponentInput(item))
@@ -25,13 +26,12 @@ func applicationImportInput(projectID string, req *applicationv1.ApplicationImpo
 		kind = *req.Kind
 	}
 	return applicationdto.ApplicationImportInput{
-		ProjectId:       projectID,
+		ProjectId:       projectId,
 		Name:            req.Name,
 		Code:            req.Code,
 		Kind:            kind,
 		ImagePullPolicy: req.ImagePullPolicy,
 		VersionLabel:    req.VersionLabel,
-		VersionEnvJSON:  req.VersionEnvJson,
 		VersionNote:     req.VersionNote,
 		Components:      components,
 		Exposes:         exposes,
@@ -63,11 +63,45 @@ func applicationExportResponse(exported applicationdto.ApplicationExport) *appli
 func versionComponentInput(req *applicationv1.VersionComponentReq) applicationdto.VersionComponentInput {
 	return applicationdto.VersionComponentInput{
 		Name: req.Name, Image: req.Image,
-		Command: append([]string(nil), req.Command...), Args: append([]string(nil), req.Args...),
-		Env: componentEnvInput(req.Env), Ports: componentPortInput(req.Ports), Mounts: componentMountInput(req.Mounts),
-		Networks: append([]string(nil), req.Networks...), Dependencies: componentDependencyInput(req.Dependencies),
-		Healthcheck: componentHealthcheckInput(req.Healthcheck), Resources: componentResourcesInput(req.Resources),
+		Command: req.Command,
+		Env:     componentEnvInput(req.Env), Ports: componentPortInput(req.Ports), Mounts: componentMountInput(req.Mounts),
+		Dependencies: componentDependencyInput(req.Dependencies),
+		Healthcheck:  componentHealthcheckInput(req.Healthcheck), Resources: componentResourcesInput(req.Resources),
 		PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, Tmpfs: componentTmpfsInput(req.Tmpfs), Ulimits: componentUlimitInput(req.Ulimits),
+	}
+}
+
+func versionComponentBasicUpdateInput(req *applicationv1.VersionComponentBasicUpdateReq) applicationdto.VersionComponentBasicUpdateInput {
+	return applicationdto.VersionComponentBasicUpdateInput{
+		Name: req.Name, Image: req.Image, Command: req.Command, PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy,
+	}
+}
+
+func versionComponentRuntimeUpdateInput(req *applicationv1.VersionComponentRuntimeUpdateReq) applicationdto.VersionComponentRuntimeUpdateInput {
+	return applicationdto.VersionComponentRuntimeUpdateInput{
+		Healthcheck: componentHealthcheckInput(req.Healthcheck),
+	}
+}
+
+func versionComponentPortsUpdateInput(req *applicationv1.VersionComponentPortsUpdateReq) applicationdto.VersionComponentPortsUpdateInput {
+	return applicationdto.VersionComponentPortsUpdateInput{Ports: componentPortInput(req.Ports)}
+}
+
+func versionComponentEnvUpdateInput(req *applicationv1.VersionComponentEnvUpdateReq) applicationdto.VersionComponentEnvUpdateInput {
+	return applicationdto.VersionComponentEnvUpdateInput{Env: componentEnvInput(req.Env)}
+}
+
+func versionComponentMountsUpdateInput(req *applicationv1.VersionComponentMountsUpdateReq) applicationdto.VersionComponentMountsUpdateInput {
+	return applicationdto.VersionComponentMountsUpdateInput{Mounts: componentMountInput(req.Mounts)}
+}
+
+func versionComponentDependenciesUpdateInput(req *applicationv1.VersionComponentDependenciesUpdateReq) applicationdto.VersionComponentDependenciesUpdateInput {
+	return applicationdto.VersionComponentDependenciesUpdateInput{Dependencies: componentDependencyInput(req.Dependencies)}
+}
+
+func versionComponentAdvancedUpdateInput(req *applicationv1.VersionComponentAdvancedUpdateReq) applicationdto.VersionComponentAdvancedUpdateInput {
+	return applicationdto.VersionComponentAdvancedUpdateInput{
+		Resources: componentResourcesInput(req.Resources), Tmpfs: componentTmpfsInput(req.Tmpfs), Ulimits: componentUlimitInput(req.Ulimits),
 	}
 }
 
@@ -97,7 +131,8 @@ func componentMountInput(items []*applicationv1.ComponentMount) []model.VersionC
 		if item != nil {
 			result = append(result, model.VersionComponentMount{
 				SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly,
-				Content: stringValue(item.Content), ContentMode: stringValue(item.ContentMode),
+				SourceIsHostPath: item.SourceIsHostPath, Content: stringValue(item.Content),
+				Mode: item.Mode, IgnoreIfExists: item.IgnoreIfExists,
 			})
 		}
 	}
@@ -114,12 +149,12 @@ func componentDependencyInput(items []*applicationv1.ComponentDependency) []mode
 	return result
 }
 
-func componentHealthcheckInput(input *applicationv1.ComponentHealthcheck) *model.VersionComponentHealthcheck {
+func componentHealthcheckInput(input *applicationv1.ComponentHealthcheck) *applicationdto.VersionComponentHealthcheckInput {
 	if input == nil {
 		return nil
 	}
-	return &model.VersionComponentHealthcheck{
-		TestMode: input.TestMode, Test: append([]string(nil), input.Test...), Interval: input.Interval, Timeout: input.Timeout,
+	return &applicationdto.VersionComponentHealthcheckInput{
+		TestMode: input.TestMode, Test: input.Test, Interval: input.Interval, Timeout: input.Timeout,
 		Retries: intValue(input.Retries), StartPeriod: input.StartPeriod, StartInterval: input.StartInterval, Disabled: input.Disabled,
 	}
 }
@@ -182,7 +217,6 @@ func versionCreateInput(req *applicationv1.VersionCreateReq) applicationdto.Vers
 	return applicationdto.VersionCreateInput{
 		ApplicationId: req.ApplicationId,
 		Label:         req.Label,
-		EnvJSON:       req.EnvJson,
 		Note:          req.Note,
 		Components:    components,
 		Exposes:       exposes,
@@ -200,9 +234,8 @@ func versionUpdateInputFromJSON(data []byte) (applicationdto.VersionUpdateInput,
 		return applicationdto.VersionUpdateInput{}, err
 	}
 	input := applicationdto.VersionUpdateInput{
-		Label:   req.Label,
-		EnvJSON: req.EnvJson,
-		Note:    req.Note,
+		Label: req.Label,
+		Note:  req.Note,
 	}
 	if _, ok := present["exposes"]; ok {
 		exposes := make([]applicationdto.VersionExposeInput, 0, len(req.Exposes))
@@ -241,7 +274,6 @@ func versionResponse(view applicationdto.VersionView) applicationv1.VersionResp 
 		ApplicationId:        view.Version.ApplicationId,
 		Label:                view.Version.Label,
 		Status:               view.Version.Status,
-		EnvJson:              view.Version.EnvJSON,
 		CreatedFromVersionId: view.Version.CreatedFromVersionId,
 		Note:                 view.Version.Note,
 		ComponentSummary:     view.Version.ComponentSummary,
@@ -255,10 +287,10 @@ func versionResponse(view applicationdto.VersionView) applicationv1.VersionResp 
 func versionComponentResponse(component model.VersionComponent) applicationv1.VersionComponentResp {
 	return applicationv1.VersionComponentResp{
 		Id: component.Id, VersionId: component.VersionId, Name: component.Name, Image: component.Image,
-		Command: append([]string(nil), component.Command...), Args: append([]string(nil), component.Args...),
-		Env: componentEnvResponse(component.Env), Ports: componentPortResponse(component.Ports), Mounts: componentMountResponse(component.Mounts),
-		Networks: append([]string(nil), component.Networks...), Dependencies: componentDependencyResponse(component.Dependencies),
-		Healthcheck: componentHealthcheckResponse(component.Healthcheck), Resources: componentResourcesResponse(component.Resources),
+		Command: commandline.Format(component.Command),
+		Env:     componentEnvResponse(component.Env), Ports: componentPortResponse(component.Ports), Mounts: componentMountResponse(component.Mounts),
+		Dependencies: componentDependencyResponse(component.Dependencies),
+		Healthcheck:  componentHealthcheckResponse(component.Healthcheck), Resources: componentResourcesResponse(component.Resources),
 		PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: componentTmpfsResponse(component.Tmpfs), Ulimits: componentUlimitResponse(component.Ulimits),
 		CreatedAt: transportresponse.FormatTime(component.CreatedAt), UpdatedAt: transportresponse.FormatTime(component.UpdatedAt),
 	}
@@ -285,7 +317,8 @@ func componentMountResponse(items []model.VersionComponentMount) []*applicationv
 	for _, item := range items {
 		result = append(result, &applicationv1.ComponentMount{
 			SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly,
-			Content: optionalString(item.Content), ContentMode: optionalString(item.ContentMode),
+			SourceIsHostPath: item.SourceIsHostPath, Content: optionalString(item.Content),
+			Mode: item.Mode, IgnoreIfExists: item.IgnoreIfExists,
 		})
 	}
 	return result
@@ -304,7 +337,7 @@ func componentHealthcheckResponse(input *model.VersionComponentHealthcheck) *app
 		return nil
 	}
 	return &applicationv1.ComponentHealthcheck{
-		TestMode: input.TestMode, Test: append([]string(nil), input.Test...), Interval: input.Interval, Timeout: input.Timeout,
+		TestMode: input.TestMode, Test: input.Test, Interval: input.Interval, Timeout: input.Timeout,
 		Retries: int32Value(input.Retries), StartPeriod: input.StartPeriod, StartInterval: input.StartInterval, Disabled: input.Disabled,
 	}
 }

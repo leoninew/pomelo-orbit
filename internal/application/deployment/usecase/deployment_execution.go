@@ -174,7 +174,17 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 	}
 	defer func() { _ = logWriter.Close() }()
 
+	if _, err := fmt.Fprintln(logWriter, "Preparing service shutdown"); err != nil {
+		return err
+	}
 	if err := writeWorkingDirectory(logWriter, serviceDir); err != nil {
+		return err
+	}
+	if removeVolumes {
+		if _, err := fmt.Fprintln(logWriter, "Stopping services and removing volumes"); err != nil {
+			return err
+		}
+	} else if _, err := fmt.Fprintln(logWriter, "Stopping services"); err != nil {
 		return err
 	}
 	projectName := composeProjectName(app.Code, svc.InstanceKey)
@@ -228,22 +238,6 @@ func (s Service) renderAndDeployWithOptions(
 	forceRecreate bool,
 	runtimeConfig map[string]string,
 ) error {
-	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, svc.InstanceKey)
-	if err != nil {
-		return err
-	}
-	resolvedRuntimeConfig, extraKeys, err := runtimeconfig.Resolve(runtimeConfig, version.EnvJSON, components)
-	if err != nil {
-		return err
-	}
-	result, err := s.RenderComposeDetailed(ctx, RenderInput{
-		App: app, Version: version, Components: components, Exposes: exposes,
-		Service: svc, Gateway: gateway, RuntimeConfig: resolvedRuntimeConfig, PhysicalSvcDir: physicalDir,
-	})
-	if err != nil {
-		return err
-	}
-
 	serviceDir := s.workspace.ServiceDir(app.Code, svc.InstanceKey)
 	logPath := s.workspace.DeploymentLogPath(app.Code, svc.InstanceKey, deploymentId)
 	logWriter, err := s.executionLogStore.Writer(logPath)
@@ -251,7 +245,19 @@ func (s Service) renderAndDeployWithOptions(
 		return err
 	}
 	defer func() { _ = logWriter.Close() }()
+	if _, err := fmt.Fprintln(logWriter, "Preparing deployment"); err != nil {
+		return err
+	}
 	if err := writeWorkingDirectory(logWriter, serviceDir); err != nil {
+		return err
+	}
+
+	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, svc.InstanceKey)
+	if err != nil {
+		return err
+	}
+	resolvedRuntimeConfig, extraKeys, err := runtimeconfig.Resolve(runtimeConfig, components)
+	if err != nil {
 		return err
 	}
 	if len(extraKeys) > 0 {
@@ -263,19 +269,32 @@ func (s Service) renderAndDeployWithOptions(
 		version.Label, version.Id, len(components), svc.InstanceKey); err != nil {
 		return err
 	}
-	if len(result.ResolvedMounts) > 0 {
-		if _, err := fmt.Fprintf(logWriter, "Materializing %d logical mount source(s)\n", countLogicalMounts(result.ResolvedMounts)); err != nil {
+	result, err := s.RenderComposeDetailed(ctx, RenderInput{
+		App: app, Version: version, Components: components, Exposes: exposes,
+		Service: svc, Gateway: gateway, RuntimeConfig: resolvedRuntimeConfig, PhysicalSvcDir: physicalDir,
+	})
+	if err != nil {
+		return err
+	}
+	if logicalMounts := countLogicalMounts(result.ResolvedMounts); logicalMounts > 0 {
+		if _, err := fmt.Fprintf(logWriter, "Materializing %d logical mount source(s)\n", logicalMounts); err != nil {
 			return err
 		}
 		if err := MaterializeLogicalMountSources(result.ResolvedMounts); err != nil {
 			return err
 		}
 	}
+	if _, err := fmt.Fprintln(logWriter, "Writing deployment configuration"); err != nil {
+		return err
+	}
 	if err := s.workspace.WriteConfig(app.Code, svc.InstanceKey, "docker-compose.yml", result.Compose); err != nil {
 		return err
 	}
 	projectName := composeProjectName(app.Code, svc.InstanceKey)
 	command := deployComposeCommand(projectName, app.ImagePullPolicy, forceRecreate)
+	if _, err := fmt.Fprintln(logWriter, "Starting services"); err != nil {
+		return err
+	}
 	if err := s.runner.Run(ctx, serviceDir, logWriter, command.Name, command.Args...); err != nil {
 		return err
 	}
@@ -396,8 +415,8 @@ func (s Service) deployGatewayInPlace(ctx context.Context, gateway *model.Gatewa
 	if err := s.store.UpsertService(ctx, *active); err != nil {
 		return err
 	}
-	logID := parentDeploymentId + "-gw"
-	if err := s.renderAndDeployWithOptions(ctx, gwApp, version, components, exposes, *active, gateway, logID, true, cloneRuntimeConfig(active.RuntimeConfig)); err != nil {
+	logId := parentDeploymentId + "-gw"
+	if err := s.renderAndDeployWithOptions(ctx, gwApp, version, components, exposes, *active, gateway, logId, true, cloneRuntimeConfig(active.RuntimeConfig)); err != nil {
 		_ = s.store.UpdateServiceAfterDeploy(ctx, active.Id, status.ServiceStatusFaulted, version.Id)
 		return fmt.Errorf("gateway reconcile deploy failed (business deploy aborted): %w", err)
 	}

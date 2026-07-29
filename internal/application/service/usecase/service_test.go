@@ -17,8 +17,8 @@ func TestDeleteServiceDeletesStoppedService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeleteService returned error: %v", err)
 	}
-	if store.deletedID != "service-1" {
-		t.Fatalf("deleted service id = %q, want service-1", store.deletedID)
+	if store.deletedId != "service-1" {
+		t.Fatalf("deleted service id = %q, want service-1", store.deletedId)
 	}
 }
 
@@ -29,19 +29,19 @@ func TestDeleteServiceRejectsNonStoppedService(t *testing.T) {
 	if apperror.StatusCode(err) != 400 {
 		t.Fatalf("DeleteService error status = %d, want 400; error=%v", apperror.StatusCode(err), err)
 	}
-	if store.deletedID != "" {
-		t.Fatalf("service must not be deleted while running: %q", store.deletedID)
+	if store.deletedId != "" {
+		t.Fatalf("service must not be deleted while running: %q", store.deletedId)
 	}
 }
 
 func newDeleteServiceTestService(serviceStatus string) (Service, *deleteServiceStoreFake) {
-	projectID := "project-1"
+	projectId := "project-1"
 	store := &deleteServiceStoreFake{item: model.ServiceListItem{
 		Id: "service-1", ApplicationId: "application-1", InstanceKey: "default", VersionId: "version-1", Status: serviceStatus,
 	}}
 	return New(
 		deleteServiceProjectFake{},
-		deleteServiceApplicationFake{application: model.Application{Id: "application-1", ProjectId: &projectID}},
+		deleteServiceApplicationFake{application: model.Application{Id: "application-1", ProjectId: &projectId}},
 		store,
 	), store
 }
@@ -74,7 +74,7 @@ func (deleteServiceApplicationFake) VersionComponentsByVersion(_ context.Context
 
 type deleteServiceStoreFake struct {
 	item      model.ServiceListItem
-	deletedID string
+	deletedId string
 }
 
 func (f *deleteServiceStoreFake) ListServicesByApplication(_ context.Context, _ string) ([]model.Service, error) {
@@ -98,7 +98,7 @@ func (f *deleteServiceStoreFake) Service(_ context.Context, _ string) (model.Ser
 }
 
 func (f *deleteServiceStoreFake) DeleteService(_ context.Context, id string) error {
-	f.deletedID = id
+	f.deletedId = id
 	return nil
 }
 

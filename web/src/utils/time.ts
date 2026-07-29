@@ -73,11 +73,11 @@ export function delayAsync(ms: number, signal?: AbortSignal): Promise<void> {
  * 计算耗时 - 返回人类可读的耗时字符串
  * @param startTime 开始时间 (UTC ISO 8601)
  * @param endTime 结束时间 (UTC ISO 8601)
- * @returns 耗时字符串，如 "2分30秒"、"1小时5分"、"—"
+ * @returns 耗时字符串，如 "2分30秒"、"1小时5分"；无有效时间范围时返回空字符串
  */
 export function formatDuration(startTime?: string | null, endTime?: string | null): string {
   if (!startTime || !endTime) {
-    return '—';
+    return '';
   }
 
   const start = dayjs.utc(startTime);
@@ -85,7 +85,7 @@ export function formatDuration(startTime?: string | null, endTime?: string | nul
   const diffMs = end.diff(start);
 
   if (diffMs < 0) {
-    return '—';
+    return '';
   }
 
   const seconds = Math.floor(diffMs / 1000);

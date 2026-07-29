@@ -17,14 +17,14 @@ import (
 func TestDeployApplicationCreatesAndDispatchesDeployment(t *testing.T) {
 	service, store, dispatcher := newCommandTestService()
 
-	deploymentID, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
+	deploymentId, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
 		VersionId: "version-1", InstanceKey: "default", ForceRecreate: true,
 	})
 	if err != nil {
 		t.Fatalf("DeployApplication returned error: %v", err)
 	}
-	if deploymentID == "" || len(store.deployments) != 1 {
-		t.Fatalf("expected one deployment, id=%q deployments=%d", deploymentID, len(store.deployments))
+	if deploymentId == "" || len(store.deployments) != 1 {
+		t.Fatalf("expected one deployment, id=%q deployments=%d", deploymentId, len(store.deployments))
 	}
 	deployment := store.deployments[0]
 	if deployment.OperationType != "deploy" || deployment.Status != "waiting_to_run" {
@@ -36,7 +36,7 @@ func TestDeployApplicationCreatesAndDispatchesDeployment(t *testing.T) {
 	if store.service.Status != status.ServiceStatusDeploying || store.service.VersionId != "version-1" {
 		t.Fatalf("service was not prepared for deployment: %+v", store.service)
 	}
-	if dispatcher.deploy.DeploymentID != deploymentID || !dispatcher.deploy.ForceRecreate {
+	if dispatcher.deploy.DeploymentId != deploymentId || !dispatcher.deploy.ForceRecreate {
 		t.Fatalf("unexpected dispatch input: %+v", dispatcher.deploy)
 	}
 	var options deploymentdto.DeployOptionsJSON
@@ -55,7 +55,7 @@ func TestDeployApplicationCreatesDefaultServiceBeforeFirstDeployment(t *testing.
 	service, store, _ := newCommandTestService()
 	store.service = model.Service{}
 
-	deploymentID, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
+	deploymentId, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
 		VersionId: "version-1", InstanceKey: "default",
 	})
 	if err != nil {
@@ -71,7 +71,7 @@ func TestDeployApplicationCreatesDefaultServiceBeforeFirstDeployment(t *testing.
 		t.Fatalf("unexpected prepared service: %+v", store.service)
 	}
 	deployment := store.deployments[0]
-	if deployment.Id != deploymentID || deployment.ServiceId == nil || *deployment.ServiceId != store.service.Id {
+	if deployment.Id != deploymentId || deployment.ServiceId == nil || *deployment.ServiceId != store.service.Id {
 		t.Fatalf("deployment must reference the created service: %+v", deployment)
 	}
 }
@@ -103,7 +103,7 @@ func TestDeployApplicationRejectsVersionWithoutComponents(t *testing.T) {
 	if len(store.deployments) != 0 || len(store.operations) != 0 {
 		t.Fatalf("deployment must not be persisted when the version has no components: deployments=%+v operations=%v", store.deployments, store.operations)
 	}
-	if dispatcher.deploy.DeploymentID != "" {
+	if dispatcher.deploy.DeploymentId != "" {
 		t.Fatalf("deployment must not be dispatched when the version has no components: %+v", dispatcher.deploy)
 	}
 }
@@ -111,11 +111,11 @@ func TestDeployApplicationRejectsVersionWithoutComponents(t *testing.T) {
 func TestRestartApplicationCreatesAndDispatchesDeployment(t *testing.T) {
 	service, store, dispatcher := newCommandTestService()
 
-	deploymentID, err := service.RestartApplication(context.Background(), "user-1", "app-1", deploymentdto.ServiceTargetInput{ServiceId: "service-1"})
+	deploymentId, err := service.RestartApplication(context.Background(), "user-1", "app-1", deploymentdto.ServiceTargetInput{ServiceId: "service-1"})
 	if err != nil {
 		t.Fatalf("RestartApplication returned error: %v", err)
 	}
-	if store.deployments[0].OperationType != "restart" || dispatcher.restart.DeploymentID != deploymentID {
+	if store.deployments[0].OperationType != "restart" || dispatcher.restart.DeploymentId != deploymentId {
 		t.Fatalf("unexpected restart command: deployment=%+v dispatch=%+v", store.deployments[0], dispatcher.restart)
 	}
 	var options deploymentdto.DeployOptionsJSON
@@ -129,15 +129,14 @@ func TestRestartApplicationCreatesAndDispatchesDeployment(t *testing.T) {
 
 func TestRestartApplicationRejectsMissingRuntimeConfig(t *testing.T) {
 	service, store, dispatcher := newCommandTestService()
-	required := `[{"key":"API_TOKEN","value":"${API_TOKEN}"}]`
-	store.version.EnvJSON = &required
+	store.components[0].Env = []model.VersionComponentEnv{{Key: "API_TOKEN", Value: "${API_TOKEN}"}}
 	store.service.RuntimeConfig = map[string]string{}
 
 	_, err := service.RestartApplication(context.Background(), "user-1", "app-1", deploymentdto.ServiceTargetInput{ServiceId: "service-1"})
 	if err == nil {
 		t.Fatal("expected restart runtime config validation error")
 	}
-	if len(store.deployments) != 0 || dispatcher.restart.DeploymentID != "" {
+	if len(store.deployments) != 0 || dispatcher.restart.DeploymentId != "" {
 		t.Fatalf("restart must not be persisted or dispatched with missing config: deployments=%+v dispatch=%+v", store.deployments, dispatcher.restart)
 	}
 }
@@ -145,11 +144,11 @@ func TestRestartApplicationRejectsMissingRuntimeConfig(t *testing.T) {
 func TestStopApplicationCreatesAndDispatchesDeployment(t *testing.T) {
 	service, store, dispatcher := newCommandTestService()
 
-	deploymentID, err := service.StopApplication(context.Background(), "user-1", "app-1", deploymentdto.ServiceTargetInput{ServiceId: "service-1", RemoveVolumes: true})
+	deploymentId, err := service.StopApplication(context.Background(), "user-1", "app-1", deploymentdto.ServiceTargetInput{ServiceId: "service-1", RemoveVolumes: true})
 	if err != nil {
 		t.Fatalf("StopApplication returned error: %v", err)
 	}
-	if store.deployments[0].OperationType != "stop" || dispatcher.stop.DeploymentID != deploymentID || !dispatcher.stop.RemoveVolumes {
+	if store.deployments[0].OperationType != "stop" || dispatcher.stop.DeploymentId != deploymentId || !dispatcher.stop.RemoveVolumes {
 		t.Fatalf("unexpected stop command: deployment=%+v dispatch=%+v", store.deployments[0], dispatcher.stop)
 	}
 }
@@ -173,9 +172,9 @@ func TestDeployApplicationRejectsMissingDispatcherBeforePersisting(t *testing.T)
 }
 
 func newCommandTestService() (Service, *commandStoreFake, *commandDispatcherFake) {
-	projectID := "project-1"
+	projectId := "project-1"
 	store := &commandStoreFake{
-		application: model.Application{Id: "app-1", ProjectId: &projectID, Code: "demo", Name: "Demo", ImagePullPolicy: "missing"},
+		application: model.Application{Id: "app-1", ProjectId: &projectId, Code: "demo", Name: "Demo", ImagePullPolicy: "missing"},
 		version:     model.Version{Id: "version-1", ApplicationId: "app-1", Label: "v1"},
 		components:  []model.VersionComponent{{Id: "component-1", VersionId: "version-1", Name: "web", Image: "nginx"}},
 		service: model.Service{
@@ -224,13 +223,13 @@ func TestDeployApplicationRejectsMissingInstanceKey(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected instance key validation error")
 	}
-	if len(store.deployments) != 0 || len(store.operations) != 0 || dispatcher.deploy.DeploymentID != "" {
+	if len(store.deployments) != 0 || len(store.operations) != 0 || dispatcher.deploy.DeploymentId != "" {
 		t.Fatalf("missing instance key must not persist or dispatch: deployments=%+v operations=%v dispatch=%+v", store.deployments, store.operations, dispatcher.deploy)
 	}
 }
 
-func (s *commandStoreFake) ServiceByKey(_ context.Context, applicationID string, instanceKey string) (model.Service, error) {
-	if s.service.Id == "" || s.service.ApplicationId != applicationID || s.service.InstanceKey != instanceKey {
+func (s *commandStoreFake) ServiceByKey(_ context.Context, applicationId string, instanceKey string) (model.Service, error) {
+	if s.service.Id == "" || s.service.ApplicationId != applicationId || s.service.InstanceKey != instanceKey {
 		return model.Service{}, repository.ErrNotFound
 	}
 	return s.service, nil
@@ -292,7 +291,7 @@ func TestDeployApplicationRejectsUndeployedGatewayBeforePersisting(t *testing.T)
 	if err == nil || !strings.Contains(err.Error(), "gateway traefik is configured but not running") {
 		t.Fatalf("expected gateway readiness error, got %v", err)
 	}
-	if len(store.deployments) != 0 || dispatcher.deploy.DeploymentID != "" {
+	if len(store.deployments) != 0 || dispatcher.deploy.DeploymentId != "" {
 		t.Fatalf("gateway preflight must reject before persistence: deployments=%+v dispatch=%+v", store.deployments, dispatcher.deploy)
 	}
 }

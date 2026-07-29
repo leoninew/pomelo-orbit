@@ -30,13 +30,13 @@ func TestBuildManagedGatewayMountsRemainValid(t *testing.T) {
 	if len(mounts) != 3 {
 		t.Fatalf("managed mount count = %d, want 3", len(mounts))
 	}
-	if mounts[0].SourceType != mountSourceSpecial || mounts[0].Source != specialDockerSock || !mounts[0].ReadOnly {
+	if mounts[0].SourceType != mountSourceFile || !mounts[0].SourceIsHostPath || mounts[0].Source != gatewayDockerSocketPath || !mounts[0].ReadOnly {
 		t.Fatalf("docker socket mount = %+v", mounts[0])
 	}
-	if mounts[1].ContentMode != contentModeSync || !strings.Contains(mounts[1].Content, "providers:") {
+	if mounts[1].SourceType != mountSourceControlledFile || mounts[1].Mode != "0644" || mounts[1].IgnoreIfExists || !strings.Contains(mounts[1].Content, "providers:") {
 		t.Fatalf("traefik config mount = %+v", mounts[1])
 	}
-	if mounts[2].ContentMode != contentModeSeed {
+	if mounts[2].SourceType != mountSourceControlledFile || mounts[2].Mode != "0600" || !mounts[2].IgnoreIfExists {
 		t.Fatalf("acme mount = %+v", mounts[2])
 	}
 }
@@ -46,7 +46,7 @@ func TestBuildManagedGatewayComponentPreservesCustomMounts(t *testing.T) {
 	component, err := buildManagedGatewayComponent(model.GatewayConfig{Image: &image}, []model.VersionComponent{{
 		Name: gatewayManagedComponentName,
 		Mounts: []model.VersionComponentMount{{
-			SourceType: mountSourceFile, Source: "custom.conf", Target: "/etc/custom.conf", Content: "x", ContentMode: contentModeSeed,
+			SourceType: mountSourceControlledFile, Source: "custom.conf", Target: "/etc/custom.conf", Content: "x", Mode: "0644",
 		}},
 	}}, []int{6379})
 	if err != nil {

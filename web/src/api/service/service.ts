@@ -31,10 +31,13 @@ export const serviceApi = {
   },
 
   getRuntimeConfig(id: string): Promise<ServiceRuntimeConfigResp> {
-	return request.get(`/api/service/${id}/runtime-config`);
+    return request.get(`/api/service/${id}/runtime-config`);
   },
 
-  updateRuntimeConfig(id: string, runtime_config: Record<string, string>): Promise<ServiceRuntimeConfigResp> {
-	return request.put(`/api/service/${id}/runtime-config`, { runtime_config });
+  updateRuntimeConfig(
+    id: string,
+    runtime_config: Record<string, string>
+  ): Promise<ServiceRuntimeConfigResp> {
+    return request.put(`/api/service/${id}/runtime-config`, { runtime_config });
   },
 };

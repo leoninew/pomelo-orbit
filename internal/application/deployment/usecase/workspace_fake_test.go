@@ -36,8 +36,8 @@ func (w *workspaceFake) ServiceDir(appCode string, instanceKey string) string {
 	return filepath.Join(w.AppDir(appCode), instanceKey)
 }
 
-func (w *workspaceFake) DeploymentLogPath(appCode string, instanceKey string, deploymentID string) string {
-	return filepath.Join(w.ServiceDir(appCode, instanceKey), "deployments", deploymentID+".log")
+func (w *workspaceFake) DeploymentLogPath(appCode string, instanceKey string, deploymentId string) string {
+	return filepath.Join(w.ServiceDir(appCode, instanceKey), "deployments", deploymentId+".log")
 }
 
 func (w *workspaceFake) PhysicalDir(context.Context) (string, error) {

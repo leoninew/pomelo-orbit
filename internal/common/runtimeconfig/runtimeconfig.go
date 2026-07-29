@@ -1,7 +1,6 @@
 package runtimeconfig
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -9,35 +8,21 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-type envVar struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
 type Requirement struct {
 	Required   bool
 	HasDefault bool
 	Default    string
 }
 
-// Requirements returns the K/V names consumed by the Version environment fields.
-func Requirements(versionEnv *string, components []model.VersionComponent) (map[string]Requirement, error) {
+// Requirements returns the K/V names consumed by component environment fields.
+func Requirements(components []model.VersionComponent) map[string]Requirement {
 	requirements := map[string]Requirement{}
-	if versionEnv != nil && strings.TrimSpace(*versionEnv) != "" {
-		var vars []envVar
-		if err := json.Unmarshal([]byte(*versionEnv), &vars); err != nil {
-			return nil, fmt.Errorf("env_json must be an array of key/value entries: %w", err)
-		}
-		for _, variable := range vars {
-			addRequirement(requirements, variable.Value)
-		}
-	}
 	for _, component := range components {
 		for _, variable := range component.Env {
 			addRequirement(requirements, variable.Value)
 		}
 	}
-	return requirements, nil
+	return requirements
 }
 
 func addRequirement(requirements map[string]Requirement, value string) {
@@ -55,11 +40,8 @@ func addRequirement(requirements map[string]Requirement, value string) {
 	}
 }
 
-func Validate(values map[string]string, versionEnv *string, components []model.VersionComponent) (missing []string, extra []string, err error) {
-	requirements, err := Requirements(versionEnv, components)
-	if err != nil {
-		return nil, nil, err
-	}
+func Validate(values map[string]string, components []model.VersionComponent) (missing []string, extra []string) {
+	requirements := Requirements(components)
 	for key, requirement := range requirements {
 		if requirement.Required {
 			if _, exists := values[key]; !exists {
@@ -74,14 +56,11 @@ func Validate(values map[string]string, versionEnv *string, components []model.V
 	}
 	sort.Strings(missing)
 	sort.Strings(extra)
-	return missing, extra, nil
+	return missing, extra
 }
 
-func Resolve(values map[string]string, versionEnv *string, components []model.VersionComponent) (map[string]string, []string, error) {
-	requirements, err := Requirements(versionEnv, components)
-	if err != nil {
-		return nil, nil, err
-	}
+func Resolve(values map[string]string, components []model.VersionComponent) (map[string]string, []string, error) {
+	requirements := Requirements(components)
 	resolved := make(map[string]string, len(requirements))
 	missing := make([]string, 0)
 	for key, requirement := range requirements {

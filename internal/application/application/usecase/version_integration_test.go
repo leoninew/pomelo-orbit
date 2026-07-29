@@ -115,8 +115,8 @@ func TestUpdateVersionRejectsMissingRuntimeConfigForBoundService(t *testing.T) {
 		t.Fatal(err)
 	}
 	service := New(projectrepo.NewRepository(database), applicationStore, serviceStore)
-	_, err := service.UpdateVersionComponent(ctx, versionTestUserId, version.Id, component.Id, applicationdto.VersionComponentInput{
-		Name: "web", Image: "nginx", Env: []model.VersionComponentEnv{{Key: "API_TOKEN", Value: "${API_TOKEN}"}},
+	_, err := service.UpdateVersionComponentEnv(ctx, versionTestUserId, version.Id, component.Id, applicationdto.VersionComponentEnvUpdateInput{
+		Env: []model.VersionComponentEnv{{Key: "API_TOKEN", Value: "${API_TOKEN}"}},
 	})
 	if apperror.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("expected missing runtime config to reject version update, got %v", err)
@@ -149,8 +149,13 @@ func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *te
 	if err != nil {
 		t.Fatalf("create version: %v", err)
 	}
-	if got, want := created.Version.ComponentSummary, "nginx:1.27, busybox:1.36"; got != want {
+	if got, want := created.Version.ComponentSummary, "api, worker"; got != want {
 		t.Fatalf("component summary = %q, want %q", got, want)
+	}
+	for _, component := range created.Components {
+		if component.PullPolicy == nil || *component.PullPolicy != "missing" {
+			t.Fatalf("component %s pull policy = %v, want missing", component.Name, component.PullPolicy)
+		}
 	}
 
 	page, err := service.ListVersionsPage(ctx, versionTestUserId, app.Id, 1, 10, "")
@@ -168,13 +173,13 @@ func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *te
 		t.Fatalf("version list unexpectedly loaded details: %+v", item)
 	}
 
-	var apiID string
+	var apiId string
 	for _, component := range created.Components {
 		if component.Name == "api" {
-			apiID = component.Id
+			apiId = component.Id
 		}
 	}
-	updatedComponent, err := service.UpdateVersionComponent(ctx, versionTestUserId, created.Version.Id, apiID, applicationdto.VersionComponentInput{Name: "api", Image: "caddy:2.8"})
+	updatedComponent, err := service.UpdateVersionComponentBasic(ctx, versionTestUserId, created.Version.Id, apiId, applicationdto.VersionComponentBasicUpdateInput{Name: "api", Image: "caddy:2.8", Command: ""})
 	if err != nil {
 		t.Fatalf("update version components: %v", err)
 	}
@@ -185,7 +190,7 @@ func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := updated.Version.ComponentSummary, "caddy:2.8, busybox:1.36"; got != want {
+	if got, want := updated.Version.ComponentSummary, "api, worker"; got != want {
 		t.Fatalf("updated component summary = %q, want %q", got, want)
 	}
 	persisted, err := applicationStore.Version(ctx, created.Version.Id)
@@ -240,15 +245,14 @@ func TestVersionComponentRenamePreservesValuesAndUpdatesReferences(t *testing.T)
 		t.Fatalf("version text was changed: %+v", created.Version)
 	}
 
-	var apiID string
+	var apiId string
 	for _, item := range created.Components {
 		if item.Name == "api" {
-			apiID = item.Id
+			apiId = item.Id
 		}
 	}
-	updated, err := service.UpdateVersionComponent(ctx, versionTestUserId, created.Version.Id, apiID, applicationdto.VersionComponentInput{
-		Name: "backend", Image: "nginx:1.27",
-		Env: []model.VersionComponentEnv{{Key: "TOKEN", Value: "  ${TOKEN}  "}},
+	updated, err := service.UpdateVersionComponentBasic(ctx, versionTestUserId, created.Version.Id, apiId, applicationdto.VersionComponentBasicUpdateInput{
+		Name: "backend", Image: "nginx:1.27", Command: "",
 	})
 	if err != nil {
 		t.Fatalf("rename component: %v", err)
@@ -269,8 +273,114 @@ func TestVersionComponentRenamePreservesValuesAndUpdatesReferences(t *testing.T)
 			t.Fatalf("worker dependency = %q, want backend", item.Dependencies[0].Name)
 		}
 	}
-	if err := service.DeleteVersionComponent(ctx, versionTestUserId, created.Version.Id, apiID); apperror.StatusCode(err) != http.StatusBadRequest {
+	if err := service.DeleteVersionComponent(ctx, versionTestUserId, created.Version.Id, apiId); apperror.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("expected referenced component delete to fail, got %v", err)
+	}
+}
+
+func TestVersionComponentGroupUpdatesPreserveOtherConfiguration(t *testing.T) {
+	service, database, applicationStore := newVersionIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	app := model.Application{
+		Id:              idutil.NewId(),
+		Name:            "component-groups-" + idutil.NewId(),
+		Code:            "component-groups-" + idutil.NewId(),
+		Kind:            status.ApplicationKindStandard,
+		ImagePullPolicy: "missing",
+	}
+	if err := applicationStore.CreateApplication(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	created, err := service.CreateVersion(ctx, versionTestUserId, applicationdto.VersionCreateInput{
+		ApplicationId: app.Id,
+		Label:         "v1",
+		Components: []applicationdto.VersionComponentInput{{
+			Name: "api", Image: "nginx:1.27", Command: "nginx",
+			Env:       []model.VersionComponentEnv{{Key: "TOKEN", Value: "before"}},
+			Ports:     []model.VersionComponentPort{{HostPort: 8080, ContainerPort: 80}},
+			Resources: &model.VersionComponentResources{LimitMemory: ptr("128m")},
+			Tmpfs:     []model.VersionComponentTmpfs{{Target: "/run", SizeBytes: 1048576, Mode: "1777"}},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("create version: %v", err)
+	}
+	componentId := created.Components[0].Id
+
+	runtime, err := service.UpdateVersionComponentRuntime(ctx, versionTestUserId, created.Version.Id, componentId, applicationdto.VersionComponentRuntimeUpdateInput{})
+	if err != nil {
+		t.Fatalf("update runtime group: %v", err)
+	}
+	if got := runtime.Env[0].Value; got != "before" {
+		t.Fatalf("runtime group replaced env = %q", got)
+	}
+	if got := runtime.Tmpfs[0].Target; got != "/run" {
+		t.Fatalf("runtime group replaced tmpfs = %q", got)
+	}
+	if got := *runtime.Resources.LimitMemory; got != "128m" {
+		t.Fatalf("runtime group replaced resources = %q", got)
+	}
+
+	ports, err := service.UpdateVersionComponentPorts(ctx, versionTestUserId, created.Version.Id, componentId, applicationdto.VersionComponentPortsUpdateInput{
+		Ports: []model.VersionComponentPort{{HostPort: 9090, ContainerPort: 80}},
+	})
+	if err != nil {
+		t.Fatalf("update ports group: %v", err)
+	}
+	if got := ports.Command[0]; got != "nginx" {
+		t.Fatalf("ports group replaced command = %q", got)
+	}
+	if got := ports.Env[0].Value; got != "before" {
+		t.Fatalf("ports group replaced env = %q", got)
+	}
+
+	environment, err := service.UpdateVersionComponentEnv(ctx, versionTestUserId, created.Version.Id, componentId, applicationdto.VersionComponentEnvUpdateInput{
+		Env: []model.VersionComponentEnv{{Key: "TOKEN", Value: "after"}},
+	})
+	if err != nil {
+		t.Fatalf("update env group: %v", err)
+	}
+	if got := environment.Ports[0].HostPort; got != 9090 {
+		t.Fatalf("env group replaced ports = %d", got)
+	}
+	if got := environment.Tmpfs[0].Target; got != "/run" {
+		t.Fatalf("env group replaced tmpfs = %q", got)
+	}
+
+	advanced, err := service.UpdateVersionComponentAdvanced(ctx, versionTestUserId, created.Version.Id, componentId, applicationdto.VersionComponentAdvancedUpdateInput{
+		Resources: &model.VersionComponentResources{LimitMemory: ptr("256m")},
+		Tmpfs:     []model.VersionComponentTmpfs{{Target: "/cache", SizeBytes: 2097152, Mode: "1777"}},
+	})
+	if err != nil {
+		t.Fatalf("update advanced group: %v", err)
+	}
+	if got := advanced.Command[0]; got != "nginx" {
+		t.Fatalf("advanced group replaced command = %q", got)
+	}
+	if got := advanced.Env[0].Value; got != "after" {
+		t.Fatalf("advanced group replaced env = %q", got)
+	}
+	if got := *advanced.Resources.LimitMemory; got != "256m" {
+		t.Fatalf("advanced group did not update resources = %q", got)
+	}
+
+	basic, err := service.UpdateVersionComponentBasic(ctx, versionTestUserId, created.Version.Id, componentId, applicationdto.VersionComponentBasicUpdateInput{
+		Name: "backend", Image: "caddy:2.8", Command: "caddy run",
+	})
+	if err != nil {
+		t.Fatalf("update basic group: %v", err)
+	}
+	if basic.Name != "backend" || basic.Image != "caddy:2.8" || basic.Command[0] != "caddy" || basic.Env[0].Value != "after" {
+		t.Fatalf("basic group replaced configuration: %+v", basic)
+	}
+	view, err := service.VersionForUser(ctx, versionTestUserId, created.Version.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := view.Version.ComponentSummary, "backend"; got != want {
+		t.Fatalf("component summary = %q, want %q", got, want)
 	}
 }
 
@@ -295,10 +405,10 @@ func newVersionIntegrationService(t *testing.T) (Service, *sql.DB, applicationre
 
 func createPublishedVersion(t *testing.T, ctx context.Context, applicationStore applicationrepo.Repository, code string) (model.Application, model.Version) {
 	t.Helper()
-	projectID := versionTestProjectId
+	projectId := versionTestProjectId
 	app := model.Application{
 		Id:              idutil.NewId(),
-		ProjectId:       &projectID,
+		ProjectId:       &projectId,
 		Name:            code,
 		Code:            code,
 		Kind:            status.ApplicationKindStandard,

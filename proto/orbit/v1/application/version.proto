@@ -5,12 +5,11 @@ package orbit.v1.application;
 message VersionComponentReq {
   string name = 1;
   string image = 2;
-  repeated string command = 3;
-  repeated string args = 4;
+  string command = 3;
+  reserved 4;
   repeated ComponentEnv env = 5;
   repeated ComponentPort ports = 6;
   repeated ComponentMount mounts = 7;
-  repeated string networks = 8;
   repeated ComponentDependency dependencies = 9;
   ComponentHealthcheck healthcheck = 10;
   ComponentResources resources = 11;
@@ -20,17 +19,53 @@ message VersionComponentReq {
   repeated ComponentUlimit ulimits = 15;
 }
 
+message VersionComponentBasicUpdateReq {
+  string name = 1;
+  string image = 2;
+  optional string pull_policy = 3;
+  optional string restart_policy = 4;
+  string command = 5;
+}
+
+message VersionComponentRuntimeUpdateReq {
+  reserved 1;
+  reserved 2;
+  ComponentHealthcheck healthcheck = 3;
+  reserved 4;
+}
+
+message VersionComponentPortsUpdateReq {
+  repeated ComponentPort ports = 1;
+}
+
+message VersionComponentEnvUpdateReq {
+  repeated ComponentEnv env = 1;
+}
+
+message VersionComponentMountsUpdateReq {
+  repeated ComponentMount mounts = 1;
+}
+
+message VersionComponentDependenciesUpdateReq {
+  repeated ComponentDependency dependencies = 1;
+}
+
+message VersionComponentAdvancedUpdateReq {
+  repeated ComponentTmpfs tmpfs = 1;
+  repeated ComponentUlimit ulimits = 2;
+  ComponentResources resources = 3;
+}
+
 message VersionComponentResp {
   string id = 1;
   string version_id = 2;
   string name = 3;
   string image = 4;
-  repeated string command = 5;
-  repeated string args = 6;
+  string command = 5;
+  reserved 6;
   repeated ComponentEnv env = 7;
   repeated ComponentPort ports = 8;
   repeated ComponentMount mounts = 9;
-  repeated string networks = 10;
   repeated ComponentDependency dependencies = 11;
   ComponentHealthcheck healthcheck = 12;
   ComponentResources resources = 13;
@@ -58,7 +93,10 @@ message ComponentMount {
   string target = 3;
   bool read_only = 4;
   optional string content = 5;
-  optional string content_mode = 6;
+  bool source_is_host_path = 6;
+  reserved 7;
+  bool ignore_if_exists = 8;
+  string mode = 9;
 }
 
 message ComponentDependency {
@@ -68,7 +106,7 @@ message ComponentDependency {
 
 message ComponentHealthcheck {
   string test_mode = 1;
-  repeated string test = 2;
+  string test = 2;
   optional string interval = 3;
   optional string timeout = 4;
   optional int32 retries = 5;
@@ -123,7 +161,7 @@ message VersionExposeResp {
 message VersionCreateReq {
   string application_id = 1;
   string label = 2;
-  optional string env_json = 3;
+  reserved 3;
   optional string note = 4;
   repeated VersionComponentReq components = 5;
   repeated VersionExposeReq exposes = 6;
@@ -131,7 +169,7 @@ message VersionCreateReq {
 
 message VersionUpdateReq {
   optional string label = 1;
-  optional string env_json = 2;
+  reserved 2;
   optional string note = 3;
   reserved 4;
   repeated VersionExposeReq exposes = 5;
@@ -146,7 +184,7 @@ message VersionResp {
   string application_id = 2;
   string label = 3;
   string status = 4;
-  optional string env_json = 5;
+  reserved 5;
   optional string created_from_version_id = 6;
   optional string note = 7;
   string created_at = 8;

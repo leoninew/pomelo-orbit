@@ -4,16 +4,24 @@ import json
 
 import pytest
 
-from pomelo_orbit_mcp.docker_runtime import CommandResult, DockerRuntime, DockerRuntimeError
+from pomelo_orbit_mcp.docker_runtime import (
+    CommandResult,
+    DockerRuntime,
+    DockerRuntimeError,
+    compose_container_summaries,
+)
 from pomelo_orbit_mcp.workspace import RuntimeTarget
 
 from .conftest import make_settings
 
 
 class FakeRunner:
-    def __init__(self, *, network_name: str = "demo_default", probe_return_code: int = 0) -> None:
+    def __init__(
+        self, *, network_name: str = "demo_default", network_driver: str = "bridge", probe_return_code: int = 0
+    ) -> None:
         self.calls: list[tuple[list[str], object]] = []
         self.network_name = network_name
+        self.network_driver = network_driver
         self.probe_return_code = probe_return_code
 
     async def __call__(self, args, cwd):
@@ -26,7 +34,7 @@ class FakeRunner:
         if values[:3] == ["docker", "network", "inspect"]:
             return CommandResult(
                 tuple(values),
-                json.dumps([{"Name": values[-1], "Driver": "bridge", "Scope": "local"}]),
+                json.dumps([{"Name": values[-1], "Driver": self.network_driver, "Scope": "local"}]),
                 "",
                 0,
             )
@@ -130,6 +138,65 @@ async def test_runtime_doctor_reports_missing_derived_traefik_network(tmp_path) 
     assert result["healthy"] is False
     assert result["external_networks"] == []
     assert result["issues"] == ["external network traefik is unavailable from the managed target"]
+
+
+@pytest.mark.asyncio
+async def test_runtime_doctor_checks_traefik_without_a_managed_target(tmp_path) -> None:
+    runner = FakeRunner()
+    runtime = DockerRuntime(make_settings(tmp_path), runner)
+
+    result = await runtime.doctor(external_network_name="traefik")
+
+    assert result["healthy"] is True
+    assert result["working_directory"] is None
+    assert result["external_network_details"] == [{"name": "traefik", "driver": "bridge", "scope": "local"}]
+    assert ["docker", "network", "inspect", "traefik"] in [call[0] for call in runner.calls]
+
+
+@pytest.mark.asyncio
+async def test_runtime_doctor_marks_non_bridge_external_network_unhealthy(tmp_path) -> None:
+    runtime = DockerRuntime(make_settings(tmp_path), FakeRunner(network_driver="overlay"))
+
+    result = await runtime.doctor(external_network_name="traefik")
+
+    assert result["healthy"] is False
+    assert result["external_networks"] == []
+    assert result["issues"] == ["external network traefik has unsupported driver"]
+
+
+@pytest.mark.asyncio
+async def test_external_network_inspect_rejects_invalid_network_name(tmp_path) -> None:
+    runtime = DockerRuntime(make_settings(tmp_path), FakeRunner())
+
+    with pytest.raises(DockerRuntimeError, match="network name is invalid"):
+        await runtime.external_network_inspect("traefik; docker ps")
+
+
+def test_compose_container_summaries_hide_raw_compose_fields() -> None:
+    summaries = compose_container_summaries(
+        [
+            {
+                "ID": "container-1",
+                "Service": "web",
+                "State": "running",
+                "Health": "healthy",
+                "Command": "secret-command",
+                "Labels": {"secret": "value"},
+                "Publishers": [{"URL": "127.0.0.1", "PublishedPort": 8080, "TargetPort": 80, "Protocol": "tcp"}],
+            }
+        ]
+    )
+
+    assert summaries == [
+        {
+            "container_id": "container-1",
+            "service": "web",
+            "state": "running",
+            "health": "healthy",
+            "restart_count": None,
+            "ports": [{"host_ip": "127.0.0.1", "host_port": 8080, "container_port": 80, "protocol": "tcp"}],
+        }
+    ]
 
 
 @pytest.mark.asyncio

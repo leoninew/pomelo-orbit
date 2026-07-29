@@ -59,9 +59,3 @@ func containerLogsTailCommand(projectName string, tail string, serviceNames ...s
 func containerPsCommand(projectName string) composeCommand {
 	return composeCommand{Name: "docker", Args: []string{"compose", "-p", projectName, "-f", "docker-compose.yml", "ps", "--format", "json"}}
 }
-
-func containerLabelsCommand(containerIDs []string) composeCommand {
-	args := []string{"inspect", "--format", "{{.Id}} {{json .Config.Labels}}"}
-	args = append(args, containerIDs...)
-	return composeCommand{Name: "docker", Args: args}
-}

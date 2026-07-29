@@ -1,5 +1,5 @@
 -- name: ListVersions :many
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
+SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
 ORDER BY created_at DESC, id;
@@ -11,7 +11,7 @@ WHERE application_id = ?
   AND (? = '' OR label LIKE ? OR note LIKE ?);
 
 -- name: ListVersionsPage :many
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
+SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
   AND (? = '' OR label LIKE ? OR note LIKE ?)
@@ -19,17 +19,17 @@ ORDER BY created_at DESC, id
 LIMIT ? OFFSET ?;
 
 -- name: VersionByID :one
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
+SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE id = ?;
 
 -- name: CreateVersion :exec
-INSERT INTO version (id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO version (id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateVersion :exec
 UPDATE version
-SET label = ?, status = ?, env_json = ?, note = ?, component_summary = ?, updated_at = ?
+SET label = ?, status = ?, note = ?, component_summary = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: UpdateVersionComponentSummary :exec
@@ -61,13 +61,13 @@ DELETE FROM version
 WHERE id = ?;
 
 -- name: VersionComponentsByVersion :many
-SELECT id, version_id, name, image, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE version_id = ?
 ORDER BY name;
 
 -- name: VersionComponentByID :one
-SELECT id, version_id, name, image, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE id = ?;
 
@@ -79,31 +79,27 @@ ORDER BY component_name, protocol, container_port;
 
 -- name: InsertVersionComponent :exec
 INSERT INTO version_component (
-  id, version_id, name, image, pull_policy, restart_policy, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+  id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
--- name: UpdateVersionComponent :exec
+-- name: UpdateVersionComponentBasic :exec
 UPDATE version_component
 SET name = ?, image = ?, pull_policy = ?, restart_policy = ?, updated_at = ?
+WHERE id = ?;
+
+-- name: TouchVersionComponent :exec
+UPDATE version_component
+SET updated_at = ?
 WHERE id = ?;
 
 -- name: DeleteVersionComponent :exec
 DELETE FROM version_component
 WHERE id = ?;
 
--- name: InsertVersionComponentArgument :exec
-INSERT INTO version_component_argument (component_id, kind, position, value)
-VALUES (?, ?, ?, ?);
-
--- name: VersionComponentArgumentsByComponent :many
-SELECT component_id, kind, position, value
-FROM version_component_argument
-WHERE component_id = ?
-ORDER BY kind, position;
-
--- name: DeleteVersionComponentArguments :exec
-DELETE FROM version_component_argument
-WHERE component_id = ?;
+-- name: UpdateVersionComponentCommand :exec
+UPDATE version_component
+SET command_json = ?, updated_at = ?
+WHERE id = ?;
 
 -- name: InsertVersionComponentEnv :exec
 INSERT INTO version_component_env (component_id, env_key, value, position)
@@ -135,31 +131,17 @@ WHERE component_id = ?;
 
 -- name: InsertVersionComponentMount :exec
 INSERT INTO version_component_mount (
-  component_id, source_type, source, target, read_only, content, content_mode, position
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+  component_id, source_type, source, target, read_only, source_is_host_path, content, mode, ignore_if_exists, position
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: VersionComponentMountsByComponent :many
-SELECT component_id, source_type, source, target, read_only, content, content_mode, position
+SELECT component_id, source_type, source, target, read_only, source_is_host_path, content, mode, ignore_if_exists, position
 FROM version_component_mount
 WHERE component_id = ?
 ORDER BY position;
 
 -- name: DeleteVersionComponentMounts :exec
 DELETE FROM version_component_mount
-WHERE component_id = ?;
-
--- name: InsertVersionComponentNetwork :exec
-INSERT INTO version_component_network (component_id, name, position)
-VALUES (?, ?, ?);
-
--- name: VersionComponentNetworksByComponent :many
-SELECT component_id, name, position
-FROM version_component_network
-WHERE component_id = ?
-ORDER BY position;
-
--- name: DeleteVersionComponentNetworks :exec
-DELETE FROM version_component_network
 WHERE component_id = ?;
 
 -- name: InsertVersionComponentDependency :exec
@@ -178,30 +160,16 @@ WHERE component_id = ?;
 
 -- name: InsertVersionComponentHealthcheck :exec
 INSERT INTO version_component_healthcheck (
-  component_id, test_mode, interval, timeout, retries, start_period, start_interval, disabled
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+  component_id, test_mode, test, interval, timeout, retries, start_period, start_interval, disabled
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: VersionComponentHealthcheckByComponent :one
-SELECT component_id, test_mode, interval, timeout, retries, start_period, start_interval, disabled
+SELECT component_id, test_mode, test, interval, timeout, retries, start_period, start_interval, disabled
 FROM version_component_healthcheck
 WHERE component_id = ?;
 
 -- name: DeleteVersionComponentHealthcheck :exec
 DELETE FROM version_component_healthcheck
-WHERE component_id = ?;
-
--- name: InsertVersionComponentHealthcheckArg :exec
-INSERT INTO version_component_healthcheck_arg (component_id, position, value)
-VALUES (?, ?, ?);
-
--- name: VersionComponentHealthcheckArgsByComponent :many
-SELECT component_id, position, value
-FROM version_component_healthcheck_arg
-WHERE component_id = ?
-ORDER BY position;
-
--- name: DeleteVersionComponentHealthcheckArgs :exec
-DELETE FROM version_component_healthcheck_arg
 WHERE component_id = ?;
 
 -- name: InsertVersionComponentResource :exec

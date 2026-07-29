@@ -15,7 +15,7 @@ func (h Handler) GetPipelineSnapshot(c *gin.Context) {
 	}
 	snapshot, err := h.service.PipelineSnapshotForUser(c.Request.Context(), current.Id, c.Param("snapshot_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := pipelineSnapshotResponse(snapshot)

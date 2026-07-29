@@ -15,7 +15,7 @@ import (
 const (
 	gatewayManagedComponentName  = "traefik"
 	gatewayCompileVersionLabel   = "managed"
-	gatewayMountTargetDockerSock = "/var/run/docker.sock"
+	gatewayDockerSocketPath      = "/var/run/docker.sock"
 	gatewayMountTargetTraefikYml = "/etc/traefik/traefik.yml"
 	gatewayMountTargetAcmeJSON   = "/letsencrypt/acme.json"
 )
@@ -104,15 +104,15 @@ func buildManagedGatewayComponent(cfg model.GatewayConfig, existing []model.Vers
 
 func buildManagedGatewayMounts(cfg model.GatewayConfig, tcpListens []int) []model.VersionComponentMount {
 	return []model.VersionComponentMount{
-		{SourceType: mountSourceSpecial, Source: specialDockerSock, Target: gatewayMountTargetDockerSock, ReadOnly: true},
-		{SourceType: mountSourceFile, Source: "traefik.yml", Target: gatewayMountTargetTraefikYml, Content: buildTraefikStaticConfig(cfg, tcpListens), ContentMode: contentModeSync},
-		{SourceType: mountSourceFile, Source: "acme.json", Target: gatewayMountTargetAcmeJSON, Content: "{}", ContentMode: contentModeSeed},
+		{SourceType: mountSourceFile, Source: gatewayDockerSocketPath, SourceIsHostPath: true, Target: gatewayDockerSocketPath, ReadOnly: true},
+		{SourceType: mountSourceControlledFile, Source: "traefik.yml", Target: gatewayMountTargetTraefikYml, Content: buildTraefikStaticConfig(cfg, tcpListens), Mode: "0644"},
+		{SourceType: mountSourceControlledFile, Source: "acme.json", Target: gatewayMountTargetAcmeJSON, Content: "{}", Mode: "0600", IgnoreIfExists: true},
 	}
 }
 
 func mergeManagedGatewayMounts(existing []model.VersionComponentMount, managed []model.VersionComponentMount) []model.VersionComponentMount {
 	managedTargets := map[string]struct{}{
-		gatewayMountTargetDockerSock: {}, gatewayMountTargetTraefikYml: {}, gatewayMountTargetAcmeJSON: {},
+		gatewayDockerSocketPath: {}, gatewayMountTargetTraefikYml: {}, gatewayMountTargetAcmeJSON: {},
 	}
 	out := make([]model.VersionComponentMount, 0, len(existing)+len(managed))
 	for _, mount := range existing {

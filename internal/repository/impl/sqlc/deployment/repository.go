@@ -27,7 +27,7 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r Repository) q(ctx context.Context) *deploymentsqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *deploymentsqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *deploymentsqlc.Queries {
 		return deploymentsqlc.New(dbtx)
 	})
 }
@@ -181,19 +181,19 @@ func (r Repository) MarkDeploymentRunning(ctx context.Context, id string) error 
 }
 
 func deploymentFrom(
-	id string, projectID, applicationID sql.NullString, applicationName string,
-	versionID, serviceID, optionsJSON sql.NullString,
+	id string, projectId, applicationId sql.NullString, applicationName string,
+	versionId, serviceId, optionsJSON sql.NullString,
 	operationType, triggerType, commandText, deployStatus string,
 	startedAt time.Time, finishedAt sql.NullTime, durationMs sql.NullInt64,
 	logText, errorMessage sql.NullString, isRollback int64, rollbackFrom sql.NullString,
 ) model.Deployment {
 	return model.Deployment{
 		Id:                       id,
-		ProjectId:                dbmodel.StringPtr(projectID),
-		ApplicationId:            dbmodel.StringPtr(applicationID),
+		ProjectId:                dbmodel.StringPtr(projectId),
+		ApplicationId:            dbmodel.StringPtr(applicationId),
 		ApplicationName:          applicationName,
-		VersionId:                dbmodel.StringPtr(versionID),
-		ServiceId:                dbmodel.StringPtr(serviceID),
+		VersionId:                dbmodel.StringPtr(versionId),
+		ServiceId:                dbmodel.StringPtr(serviceId),
 		OptionsJSON:              dbmodel.StringPtr(optionsJSON),
 		OperationType:            operationType,
 		TriggerType:              triggerType,

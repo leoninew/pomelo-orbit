@@ -9,7 +9,7 @@ from typing import Any, cast
 
 import yaml
 
-from .docker_runtime import DockerRuntime, DockerRuntimeError
+from .docker_runtime import DockerRuntime, DockerRuntimeError, compose_container_summaries
 from .orbit_client import OrbitClient
 from .settings import Settings
 from .workspace import RuntimeTarget, RuntimeTargetError, build_runtime_target
@@ -21,12 +21,16 @@ class VerificationResult:
     evidence: dict[str, Any] = field(default_factory=dict)
     differences: list[str] = field(default_factory=list)
 
-    def as_dict(self) -> dict[str, Any]:
-        return {
+    def as_dict(self, *, detail: bool = False) -> dict[str, Any]:
+        result: dict[str, Any] = {
             "conclusion": self.conclusion,
-            "evidence": self.evidence,
             "differences": self.differences,
         }
+        if detail:
+            result["evidence"] = self.evidence
+        else:
+            result.update(_verification_summary(self.evidence, self.differences))
+        return result
 
 
 async def resolve_runtime_target(
@@ -335,3 +339,50 @@ def _mapping(value: Any) -> Mapping[str, Any]:
 
 def _nonempty_string(value: Any) -> str | None:
     return value if isinstance(value, str) and value else None
+
+
+def _verification_summary(evidence: Mapping[str, Any], differences: list[str]) -> dict[str, Any]:
+    containers = evidence.get("containers")
+    inspections = evidence.get("inspections")
+    checked = isinstance(containers, list) and isinstance(inspections, Mapping)
+    container_items = (
+        [container for container in containers if isinstance(container, dict)] if isinstance(containers, list) else []
+    )
+    inspection_items = (
+        {
+            str(container_id): inspection
+            for container_id, inspection in inspections.items()
+            if isinstance(container_id, str) and isinstance(inspection, dict)
+        }
+        if isinstance(inspections, Mapping)
+        else {}
+    )
+    stability = evidence.get("stability")
+    stability_issues = stability.get("issues") if isinstance(stability, Mapping) else []
+    stability_summary = (
+        {
+            "state": _nonempty_string(stability.get("state")),
+            "issues": [issue for issue in stability_issues if isinstance(issue, str)]
+            if isinstance(stability_issues, list)
+            else [],
+        }
+        if isinstance(stability, Mapping)
+        else None
+    )
+    return {
+        "components": compose_container_summaries(container_items, inspection_items),
+        "port_constraints": _constraint_summary(differences, "port", checked),
+        "network_constraints": _constraint_summary(differences, "network", checked),
+        "stability": stability_summary,
+    }
+
+
+def _constraint_summary(differences: list[str], keyword: str, checked: bool) -> dict[str, Any]:
+    issues = [difference for difference in differences if keyword in difference.lower()]
+    if issues:
+        status = "failed"
+    elif checked:
+        status = "passed"
+    else:
+        status = "not_checked"
+    return {"status": status, "issues": issues}

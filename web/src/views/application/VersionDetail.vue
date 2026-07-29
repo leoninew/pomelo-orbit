@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+        <h1 class="app-detail-page-title min-w-0 break-words">
           {{ version?.label || t('application.versionDetail.title') }}
         </h1>
         <DetailHeaderMeta v-if="version">
@@ -64,9 +64,9 @@
 
     <template v-else-if="version">
       <!-- 基本信息 -->
-      <div class="app-surface">
-        <div class="app-section-header flex items-center justify-between">
-          <h2 class="font-semibold text-foreground">
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
             {{ t('application.detail.sections.basicInfo') }}
           </h2>
           <button v-if="isEditable" class="app-button h-9 px-3" @click="openBasicModal">
@@ -74,15 +74,15 @@
             {{ t('common.edit') }}
           </button>
         </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+            <dt class="whitespace-nowrap">
               {{ t('application.detail.fields.versionLabel') }}
             </dt>
             <dd class="text-foreground">{{ version.label }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+            <dt class="whitespace-nowrap">
               {{ t('common.status') }}
             </dt>
             <dd>
@@ -91,36 +91,25 @@
               </AppBadge>
             </dd>
           </div>
-          <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+          <div v-if="version.note" class="flex gap-2">
+            <dt class="whitespace-nowrap">
               {{ t('application.detail.fields.note') }}
             </dt>
-            <dd class="text-foreground">{{ version.note === undefined ? '—' : version.note }}</dd>
+            <dd class="text-foreground">{{ version.note }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+            <dt class="whitespace-nowrap">
               {{ t('common.createdAt') }}
             </dt>
             <dd class="text-muted-foreground">{{ formatTime(version.created_at) }}</dd>
-          </div>
-          <div class="flex gap-2 sm:col-span-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
-              {{ t('application.detail.fields.envVars') }}
-            </dt>
-            <dd class="min-w-0 flex-1">
-              <div v-if="envRows.length === 0" class="text-muted-foreground">—</div>
-              <div v-else class="space-y-1 text-xs text-foreground">
-                <div v-for="row in envRows" :key="row.key">{{ row.key }}={{ row.value }}</div>
-              </div>
-            </dd>
           </div>
         </dl>
       </div>
 
       <!-- 组件 -->
-      <div class="app-surface">
-        <div class="app-section-header flex items-center justify-between">
-          <h2 class="font-semibold text-foreground">
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
             {{ t('application.detail.fields.components') }}
           </h2>
           <button v-if="isEditable" class="app-button h-9 px-3" @click="openComponentPage()">
@@ -129,36 +118,67 @@
           </button>
         </div>
         <AppEmptyState v-if="(version.components ?? []).length === 0" size="compact" />
-        <div v-else class="overflow-x-auto">
-          <table class="app-table-detail min-w-[640px]">
-            <thead>
-              <tr>
-                <th>{{ t('application.detail.fields.component') }}</th>
-                <th>{{ t('application.detail.fields.image') }}</th>
-                <th class="w-28">{{ t('common.operation') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="comp in version.components" :key="comp.id">
-                <td class="text-foreground">{{ comp.name }}</td>
-                <td class="max-w-xs truncate text-xs text-muted-foreground" :title="comp.image">
-                  {{ comp.image }}
-                </td>
-                <td>
-                  <button class="app-link" @click="openComponentPage(comp.id)">
-                    {{ t('application.view') }}
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <TabsRoot v-else v-model="activeComponentId" class="flex min-w-0 flex-col">
+          <div class="overflow-x-auto border-b border-border px-5">
+            <TabsList
+              :aria-label="t('application.detail.fields.components')"
+              class="flex min-w-max gap-1"
+            >
+              <TabsTrigger
+                v-for="component in version.components"
+                :key="component.id"
+                :value="component.id"
+                class="border-b-2 border-transparent px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground"
+              >
+                {{ component.name }}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent
+            v-for="component in version.components"
+            :key="component.id"
+            :value="component.id"
+            class="outline-none"
+          >
+            <dl class="app-detail-info-grid">
+              <div class="flex gap-2 sm:col-span-2">
+                <dt class="whitespace-nowrap">
+                  {{ t('application.detail.fields.image') }}
+                </dt>
+                <dd class="min-w-0 break-all text-foreground">{{ component.image }}</dd>
+              </div>
+              <div class="flex gap-2">
+                <dt class="whitespace-nowrap">
+                  {{ t('application.componentDetail.fields.pullPolicy') }}
+                </dt>
+                <dd class="text-foreground">{{ component.pull_policy }}</dd>
+              </div>
+              <div class="flex gap-2">
+                <dt class="whitespace-nowrap">
+                  {{ t('application.componentDetail.fields.restartPolicy') }}
+                </dt>
+                <dd class="text-foreground">{{ component.restart_policy }}</dd>
+              </div>
+              <div class="flex gap-2 sm:col-span-2">
+                <dt class="whitespace-nowrap">
+                  {{ t('application.componentDetail.fields.command') }}
+                </dt>
+                <dd class="min-w-0 break-all text-foreground">{{ component.command }}</dd>
+              </div>
+            </dl>
+            <div class="border-t border-border px-5 py-3 text-sm">
+              <button class="app-link" @click="openComponentPage(component.id)">
+                {{ t('application.view') }}
+              </button>
+            </div>
+          </TabsContent>
+        </TabsRoot>
       </div>
 
       <!-- 暴露 -->
-      <div class="app-surface">
-        <div class="app-section-header flex items-center justify-between">
-          <h2 class="font-semibold text-foreground">
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
             {{ t('application.detail.fields.exposes') }}
           </h2>
           <button
@@ -173,7 +193,7 @@
         </div>
         <AppEmptyState v-if="(version.exposes ?? []).length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
-          <table class="app-table-detail min-w-[720px]">
+          <table class="app-data-table min-w-[720px]">
             <thead>
               <tr>
                 <th>{{ t('application.detail.fields.component') }}</th>
@@ -248,38 +268,6 @@
             :placeholder="t('application.detail.placeholders.note')"
           />
         </div>
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <label class="app-field-label">{{ t('application.detail.fields.envVars') }}</label>
-            <button
-              type="button"
-              class="app-link text-sm"
-              @click="basicForm.env.push({ key: '', value: '' })"
-            >
-              {{ t('application.detail.actions.addEnv') }}
-            </button>
-          </div>
-          <div
-            v-for="(envRow, envIndex) in basicForm.env"
-            :key="'venv-' + envIndex"
-            class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.2fr_auto]"
-          >
-            <input v-model="envRow.key" type="text" class="app-input text-xs" placeholder="KEY" />
-            <input
-              v-model="envRow.value"
-              type="text"
-              class="app-input text-xs"
-              :placeholder="t('application.detail.placeholders.envValue')"
-            />
-            <button
-              type="button"
-              class="app-link-danger"
-              @click="basicForm.env.splice(envIndex, 1)"
-            >
-              {{ t('common.delete') }}
-            </button>
-          </div>
-        </div>
       </div>
       <template #footer>
         <button class="app-button" @click="isBasicDialogOpen = false">
@@ -308,6 +296,7 @@
             <span class="text-destructive">*</span>
           </label>
           <RawValueSelect
+            :key="`expose-component-${exposeFormSession}`"
             v-model="exposeForm.component_name"
             :values="componentNameValues"
             :placeholder="t('application.detail.placeholders.exposeComponent')"
@@ -319,6 +308,7 @@
               {{ t('application.detail.placeholders.exposeProtocol') }}
             </label>
             <RawValueSelect
+              :key="`expose-protocol-${exposeFormSession}`"
               v-model="exposeForm.protocol"
               :values="exposeProtocolValues"
               :placeholder="t('application.detail.placeholders.exposeProtocol')"
@@ -329,6 +319,7 @@
               {{ t('application.detail.placeholders.exposeAccess') }}
             </label>
             <RawValueSelect
+              :key="`expose-access-${exposeFormSession}`"
               v-model="exposeForm.access"
               :values="exposeAccessValues"
               :placeholder="t('application.detail.placeholders.exposeAccess')"
@@ -354,11 +345,12 @@
               {{ t('application.detail.placeholders.listenPort') }}
             </label>
             <input
-              v-model.number="exposeForm.listen_port"
+              v-model="exposeForm.listen_port"
               type="number"
-              min="0"
+              min="1"
               max="65535"
               class="app-input"
+              :placeholder="t('application.detail.placeholders.listenPort')"
             />
           </div>
         </div>
@@ -511,6 +503,7 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
+  import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
   import { applicationApi } from '@/api/application/application';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
@@ -525,11 +518,6 @@
   import type { VersionExposeReq, VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import { versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
-  import {
-    parseVersionEnvJson,
-    serializeVersionEnvRows,
-    type VersionEnvFormRow,
-  } from '@/utils/versionEnvForm';
 
   const route = useRoute();
   const router = useRouter();
@@ -556,6 +544,7 @@
   const forkLabelError = ref('');
   const basicFormError = ref('');
   const exposeFormError = ref('');
+  const exposeFormSession = ref(0);
   const deployError = ref('');
   const deployForm = reactive({
     instance_key: 'default',
@@ -565,14 +554,13 @@
   const basicForm = reactive({
     label: '',
     note: '',
-    env: [] as VersionEnvFormRow[],
   });
   const exposeForm = reactive({
     component_name: '',
     protocol: '',
-    container_port: 0,
+    container_port: 80,
     access: '',
-    listen_port: 0,
+    listen_port: '',
   });
 
   const exposeProtocolValues = ['http', 'tcp'];
@@ -581,8 +569,8 @@
   const isPublished = computed(() => version.value?.status === 'published');
   const isDeployable = computed(() => Boolean(version.value));
   const hasComponents = computed(() => (version.value?.components ?? []).length > 0);
-  const envRows = computed(() => parseVersionEnvJson(version.value?.env_json));
   const componentNameValues = computed(() => (version.value?.components ?? []).map((c) => c.name));
+  const activeComponentId = ref('');
 
   function exposesPayload(): VersionExposeReq[] {
     return (version.value?.exposes ?? []).map((item) => ({
@@ -599,6 +587,12 @@
     try {
       await execute(async () => {
         version.value = await applicationApi.getVersion(versionId);
+        const firstComponentId = version.value.components[0]?.id ?? '';
+        if (
+          !version.value.components.some((component) => component.id === activeComponentId.value)
+        ) {
+          activeComponentId.value = firstComponentId;
+        }
       });
     } catch {
       toast.error(t('application.toast.loadVersionsFailed'));
@@ -621,12 +615,6 @@
     }
     basicForm.label = version.value.label;
     basicForm.note = version.value.note === undefined ? '' : version.value.note;
-    try {
-      basicForm.env = parseVersionEnvJson(version.value.env_json);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-      return;
-    }
     basicFormError.value = '';
     isBasicDialogOpen.value = true;
   }
@@ -642,7 +630,6 @@
         version.value = await applicationApi.updateVersion(versionId, {
           label: basicForm.label,
           note: basicForm.note,
-          env_json: serializeVersionEnvRows(basicForm.env),
           exposes: exposesPayload(),
         });
         toast.success(t('application.toast.updateSuccess'));
@@ -667,17 +654,18 @@
     if (index === undefined || !version.value?.exposes?.[index]) {
       exposeForm.component_name = '';
       exposeForm.protocol = '';
-      exposeForm.container_port = 0;
+      exposeForm.container_port = 80;
       exposeForm.access = '';
-      exposeForm.listen_port = 0;
+      exposeForm.listen_port = '';
     } else {
       const row = version.value.exposes[index];
       exposeForm.component_name = row.component_name;
       exposeForm.protocol = row.protocol;
       exposeForm.container_port = row.container_port;
       exposeForm.access = row.access;
-      exposeForm.listen_port = row.listen_port === undefined ? 0 : row.listen_port;
+      exposeForm.listen_port = row.listen_port ? String(row.listen_port) : '';
     }
+    exposeFormSession.value += 1;
     isExposeDialogOpen.value = true;
   }
 
@@ -703,17 +691,21 @@
       exposeFormError.value = t('application.validation.portRange');
       return;
     }
-    const listen = Number(exposeForm.listen_port);
-    if (!Number.isInteger(listen) || (listen !== 0 && (listen < 1 || listen > 65535))) {
-      exposeFormError.value = t('application.validation.portRange');
-      return;
+    const listenText = exposeForm.listen_port.trim();
+    let listenPort: number | undefined;
+    if (listenText) {
+      listenPort = Number(listenText);
+      if (!Number.isInteger(listenPort) || listenPort < 1 || listenPort > 65535) {
+        exposeFormError.value = t('application.validation.portRange');
+        return;
+      }
     }
     const req: VersionExposeReq = {
       component_name: componentName,
       protocol: exposeForm.protocol,
       container_port: containerPort,
       access: exposeForm.access,
-      listen_port: listen > 0 ? listen : undefined,
+      listen_port: listenPort,
     };
     const next = exposesPayload();
     if (editingExposeIndex.value === null) {

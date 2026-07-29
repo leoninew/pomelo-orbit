@@ -9,47 +9,67 @@ import (
 )
 
 const (
-	mountSourceDirectory   = "directory"
-	mountSourceFile        = "file"
-	mountSourceNamedVolume = "named_volume"
-	mountSourceSpecial     = "special"
-	specialDockerSock      = "docker.sock"
-	contentModeSeed        = "seed"
-	contentModeSync        = "sync"
-	maxMountContent        = 256 * 1024
+	mountSourceDirectory      = "directory"
+	mountSourceFile           = "file"
+	mountSourceNamedVolume    = "named_volume"
+	mountSourceControlledFile = "controlled_file"
+	maxMountContent           = 256 * 1024
 )
 
 func validateMountSpec(mount model.VersionComponentMount) error {
-	if mount.SourceType == "" || mount.Source == "" || mount.Target == "" || !strings.HasPrefix(mount.Target, "/") {
-		return fmt.Errorf("source_type, source and absolute target are required")
+	if mount.SourceType == "" || mount.Source == "" || mount.Target == "" {
+		return fmt.Errorf("source_type, source and target are required")
 	}
-	switch mount.SourceType {
-	case mountSourceDirectory, mountSourceFile:
+	if mount.SourceIsHostPath {
+		if mount.SourceType != mountSourceDirectory && mount.SourceType != mountSourceFile {
+			return fmt.Errorf("source_is_host_path is only allowed for directory or file mounts")
+		}
+		if !isAbsoluteMountSource(mount.Source) {
+			return fmt.Errorf("host path source must be an absolute path")
+		}
+	} else if mount.SourceType == mountSourceDirectory || mount.SourceType == mountSourceFile || mount.SourceType == mountSourceControlledFile {
 		if isAbsoluteMountSource(mount.Source) || hasParentMountSegment(mount.Source) {
 			return fmt.Errorf("source must be a relative path without parent directory segments")
 		}
-		if mount.SourceType == mountSourceFile {
-			if mount.ContentMode != contentModeSeed && mount.ContentMode != contentModeSync {
-				return fmt.Errorf("file mount content_mode must be seed or sync")
-			}
-			if len(mount.Content) > maxMountContent {
-				return fmt.Errorf("content exceeds %d bytes", maxMountContent)
-			}
-		} else if mount.Content != "" || mount.ContentMode != "" {
-			return fmt.Errorf("content is only allowed on file mounts")
+	}
+	switch mount.SourceType {
+	case mountSourceDirectory, mountSourceFile:
+		if mount.Content != "" || mount.Mode != "" || mount.IgnoreIfExists {
+			return fmt.Errorf("content options are only allowed on controlled_file mounts")
 		}
 	case mountSourceNamedVolume:
 		if strings.ContainsAny(mount.Source, `/\\`) {
 			return fmt.Errorf("named_volume source must be a volume name")
 		}
-	case mountSourceSpecial:
-		if mount.Source != specialDockerSock || !mount.ReadOnly {
-			return fmt.Errorf("only read-only docker.sock is supported as a special mount")
+		if mount.SourceIsHostPath || mount.Content != "" || mount.Mode != "" || mount.IgnoreIfExists {
+			return fmt.Errorf("named_volume does not support file source options")
+		}
+	case mountSourceControlledFile:
+		if mount.SourceIsHostPath {
+			return fmt.Errorf("controlled_file source must be platform-relative")
+		}
+		if len(mount.Content) > maxMountContent {
+			return fmt.Errorf("content exceeds %d bytes", maxMountContent)
+		}
+		if !validUnixFileMode(mount.Mode) {
+			return fmt.Errorf("controlled_file mode must be a four-digit Unix octal mode")
 		}
 	default:
 		return fmt.Errorf("unsupported source_type %q", mount.SourceType)
 	}
 	return nil
+}
+
+func validUnixFileMode(mode string) bool {
+	if len(mode) != 4 || mode[0] != '0' {
+		return false
+	}
+	for _, value := range mode[1:] {
+		if value < '0' || value > '7' {
+			return false
+		}
+	}
+	return true
 }
 
 func isAbsoluteMountSource(source string) bool {

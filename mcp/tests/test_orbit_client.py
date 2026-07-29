@@ -185,3 +185,61 @@ async def test_client_maps_gateway_read_and_create_routes(tmp_path) -> None:
             "rest_api_url": "http://localhost:8080",
         }
     assert [request.method for request in requests] == ["GET", "POST", "PUT"]
+
+
+@pytest.mark.asyncio
+async def test_client_maps_component_update_sections(tmp_path) -> None:
+    token = make_jwt()
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.headers["Authorization"] == f"Bearer {token}"
+        return httpx.Response(200, json={"id": "component-1"})
+
+    settings = make_settings(tmp_path, jwt_from_environment=token)
+    async with httpx.AsyncClient(base_url=settings.orbit_url, transport=httpx.MockTransport(handler)) as http_client:
+        client = OrbitClient(settings, http_client)
+        assert await client.get_version_component("version-1", "component-1") == {"id": "component-1"}
+        assert await client.update_version_component_basic(
+            "version-1", "component-1", {"name": "web", "image": "nginx:1.27", "command": "nginx -g 'daemon off;'"}
+        ) == {"id": "component-1"}
+        assert await client.update_version_component_runtime("version-1", "component-1", {"healthcheck": None}) == {
+            "id": "component-1"
+        }
+        assert await client.update_version_component_ports(
+            "version-1", "component-1", {"ports": [{"host_port": 8080, "container_port": 80}]}
+        ) == {"id": "component-1"}
+        assert await client.update_version_component_env(
+            "version-1", "component-1", {"env": [{"key": "MODE", "value": "production"}]}
+        ) == {"id": "component-1"}
+        assert await client.update_version_component_mounts(
+            "version-1", "component-1", {"mounts": [{"source_type": "directory", "source": "data", "target": "/data"}]}
+        ) == {"id": "component-1"}
+        assert await client.update_version_component_dependencies(
+            "version-1", "component-1", {"dependencies": [{"name": "database", "condition": "service_healthy"}]}
+        ) == {"id": "component-1"}
+        assert await client.update_version_component_advanced(
+            "version-1", "component-1", {"resources": {"limit_memory": "512m"}, "tmpfs": [], "ulimits": []}
+        ) == {"id": "component-1"}
+
+    assert [(request.method, request.url.path) for request in requests] == [
+        ("GET", "/api/version/version-1/component/component-1"),
+        ("PUT", "/api/version/version-1/component/component-1/basic"),
+        ("PUT", "/api/version/version-1/component/component-1/runtime"),
+        ("PUT", "/api/version/version-1/component/component-1/ports"),
+        ("PUT", "/api/version/version-1/component/component-1/env"),
+        ("PUT", "/api/version/version-1/component/component-1/mounts"),
+        ("PUT", "/api/version/version-1/component/component-1/dependencies"),
+        ("PUT", "/api/version/version-1/component/component-1/advanced"),
+    ]
+    assert [json.loads(request.content) if request.content else None for request in requests] == [
+        None,
+        {"name": "web", "image": "nginx:1.27", "command": "nginx -g 'daemon off;'"},
+        {"healthcheck": None},
+        {"ports": [{"host_port": 8080, "container_port": 80}]},
+        {"env": [{"key": "MODE", "value": "production"}]},
+        {"mounts": [{"source_type": "directory", "source": "data", "target": "/data"}]},
+        {"dependencies": [{"name": "database", "condition": "service_healthy"}]},
+        {"resources": {"limit_memory": "512m"}, "tmpfs": [], "ulimits": []},
+    ]

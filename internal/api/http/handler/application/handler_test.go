@@ -3,8 +3,6 @@ package applicationhandler
 import (
 	"encoding/json"
 	"errors"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,11 +16,10 @@ import (
 
 func TestWriteErrorMapsRuntimeCredentialReadFailureToSafeContract(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := Handler{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
 	router := gin.New()
 	router.Use(transportmiddleware.RequestId())
 	router.GET("/", func(c *gin.Context) {
-		handler.writeError(c, apperror.Wrap(apperror.KindInternal, "Failed to read deployment configuration", errors.New("invalid configuration")))
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "Failed to read deployment configuration", errors.New("invalid configuration")))
 	})
 
 	requestId := "01J1VY6M3R92K1WSPJ4AK84NQZ"

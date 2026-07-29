@@ -32,7 +32,13 @@ type ApplicationStore interface {
 	VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error)
 	ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error
 	CreateVersionComponent(ctx context.Context, component model.VersionComponent) error
-	UpdateVersionComponent(ctx context.Context, component model.VersionComponent, oldName string) error
+	UpdateVersionComponentBasic(ctx context.Context, component model.VersionComponent, oldName string) error
+	UpdateVersionComponentRuntime(ctx context.Context, component model.VersionComponent) error
+	UpdateVersionComponentPorts(ctx context.Context, component model.VersionComponent) error
+	UpdateVersionComponentEnv(ctx context.Context, component model.VersionComponent) error
+	UpdateVersionComponentMounts(ctx context.Context, component model.VersionComponent) error
+	UpdateVersionComponentDependencies(ctx context.Context, component model.VersionComponent) error
+	UpdateVersionComponentAdvanced(ctx context.Context, component model.VersionComponent) error
 	DeleteVersionComponent(ctx context.Context, component model.VersionComponent) error
 	ReplaceVersionExposes(ctx context.Context, versionId string, exposes []model.VersionExpose) error
 	CreateVersionWithVersionComponentsAndExposes(ctx context.Context, version model.Version, components []model.VersionComponent, exposes []model.VersionExpose) error

@@ -30,25 +30,25 @@ func New(project repository.ProjectReader, application repository.ApplicationSto
 	return Service{store: store}
 }
 
-func (s Service) ListApplications(ctx context.Context, userID string, projectID *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
-	if projectID != nil {
-		if err := s.ensureProjectMembership(ctx, *projectID, userID); err != nil {
+func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
+	if projectId != nil {
+		if err := s.ensureProjectMembership(ctx, *projectId, userId); err != nil {
 			return repository.Page[model.Application]{}, err
 		}
 	}
-	items, err := s.store.ListApplications(ctx, projectID, page, perPage, search, strings.TrimSpace(kind))
+	items, err := s.store.ListApplications(ctx, projectId, page, perPage, search, strings.TrimSpace(kind))
 	if err != nil {
 		return repository.Page[model.Application]{}, apperror.Wrap(apperror.KindInternal, "Failed to list applications", err)
 	}
 	return items, nil
 }
 
-func (s Service) CreateApplication(ctx context.Context, userID string, input applicationdto.ApplicationCreateInput) (model.Application, error) {
-	projectID := strings.TrimSpace(input.ProjectId)
-	if projectID == "" {
+func (s Service) CreateApplication(ctx context.Context, userId string, input applicationdto.ApplicationCreateInput) (model.Application, error) {
+	projectId := strings.TrimSpace(input.ProjectId)
+	if projectId == "" {
 		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Application{}, err
 	}
 	name, code, kind, imagePullPolicy, err := normalizeApplicationCreateInput(input)
@@ -58,7 +58,7 @@ func (s Service) CreateApplication(ctx context.Context, userID string, input app
 	if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
 		return model.Application{}, err
 	}
-	app := model.Application{Id: idutil.NewId(), ProjectId: &projectID, Name: name, Code: code, Kind: kind, ImagePullPolicy: imagePullPolicy}
+	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: kind, ImagePullPolicy: imagePullPolicy}
 	if err := s.store.CreateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to create application", err)
 	}
@@ -74,12 +74,12 @@ func (s Service) CreateApplication(ctx context.Context, userID string, input app
 	return created, nil
 }
 
-func (s Service) ApplicationForUser(ctx context.Context, userID string, applicationID string) (model.Application, error) {
-	return s.loadApplicationForUser(ctx, userID, applicationID)
+func (s Service) ApplicationForUser(ctx context.Context, userId string, applicationId string) (model.Application, error) {
+	return s.loadApplicationForUser(ctx, userId, applicationId)
 }
 
-func (s Service) UpdateApplication(ctx context.Context, userID string, applicationID string, input applicationdto.ApplicationUpdateInput) (model.Application, error) {
-	app, err := s.loadApplicationForUser(ctx, userID, applicationID)
+func (s Service) UpdateApplication(ctx context.Context, userId string, applicationId string, input applicationdto.ApplicationUpdateInput) (model.Application, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
 		return model.Application{}, err
 	}
@@ -114,31 +114,31 @@ func (s Service) UpdateApplication(ctx context.Context, userID string, applicati
 	return updated, nil
 }
 
-func (s Service) loadApplicationForUser(ctx context.Context, userID string, applicationID string) (model.Application, error) {
-	applicationID = strings.TrimSpace(applicationID)
-	app, err := s.store.Application(ctx, applicationID)
+func (s Service) loadApplicationForUser(ctx context.Context, userId string, applicationId string) (model.Application, error) {
+	applicationId = strings.TrimSpace(applicationId)
+	app, err := s.store.Application(ctx, applicationId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return model.Application{}, apperror.New(apperror.KindNotFound, "Application "+applicationID+" not found")
+			return model.Application{}, apperror.New(apperror.KindNotFound, "Application "+applicationId+" not found")
 		}
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
 	if app.ProjectId != nil {
-		if err := s.ensureProjectMembership(ctx, *app.ProjectId, userID); err != nil {
+		if err := s.ensureProjectMembership(ctx, *app.ProjectId, userId); err != nil {
 			return model.Application{}, err
 		}
 	}
 	return app, nil
 }
 
-func (s Service) ensureProjectMembership(ctx context.Context, projectID string, userID string) error {
-	if _, err := s.store.Project(ctx, projectID); err != nil {
+func (s Service) ensureProjectMembership(ctx context.Context, projectId string, userId string) error {
+	if _, err := s.store.Project(ctx, projectId); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return apperror.New(apperror.KindNotFound, "Project "+projectID+" not found")
+			return apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
 	}
-	member, err := s.store.IsProjectMember(ctx, projectID, userID)
+	member, err := s.store.IsProjectMember(ctx, projectId, userId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check project member", err)
 	}

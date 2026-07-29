@@ -20,7 +20,7 @@ func (h Handler) ListArtifacts(c *gin.Context) {
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 20)
 	items, err := h.service.ListArtifacts(c.Request.Context(), current.Id, pipelinerundto.ArtifactListInput{ProjectId: c.Request.URL.Query().Get("project_id"), RepositoryId: c.Request.URL.Query().Get("repository_id"), TemplateId: c.Request.URL.Query().Get("template_id"), Search: c.Request.URL.Query().Get("search"), Page: page, PerPage: perPage})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := make([]pipelinerunv1.ArtifactResp, 0, len(items.Items))

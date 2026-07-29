@@ -8,18 +8,17 @@ import (
 )
 
 func TestValidateAndResolveRuntimeConfig(t *testing.T) {
-	versionEnv := `[{"key":"REQUIRED","value":"${API_TOKEN}"},{"key":"DEFAULTED","value":"${TIMEOUT:-30}"}]`
-	components := []model.VersionComponent{{Env: []model.VersionComponentEnv{{Key: "COPY", Value: "${API_TOKEN}"}}}}
+	components := []model.VersionComponent{{Env: []model.VersionComponentEnv{
+		{Key: "COPY", Value: "${API_TOKEN}"},
+		{Key: "TIMEOUT", Value: "${TIMEOUT:-30}"},
+	}}}
 
-	missing, extra, err := Validate(map[string]string{"UNUSED": "x"}, &versionEnv, components)
-	if err != nil {
-		t.Fatal(err)
-	}
+	missing, extra := Validate(map[string]string{"UNUSED": "x"}, components)
 	if !reflect.DeepEqual(missing, []string{"API_TOKEN"}) || !reflect.DeepEqual(extra, []string{"UNUSED"}) {
 		t.Fatalf("unexpected validation result: missing=%v extra=%v", missing, extra)
 	}
 
-	resolved, extra, err := Resolve(map[string]string{"API_TOKEN": "token", "UNUSED": "x"}, &versionEnv, components)
+	resolved, extra, err := Resolve(map[string]string{"API_TOKEN": "token", "UNUSED": "x"}, components)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,5 +29,3 @@ func TestValidateAndResolveRuntimeConfig(t *testing.T) {
 		t.Fatalf("unexpected extra config: %+v", extra)
 	}
 }
-
-func ptr(value string) *string { return &value }

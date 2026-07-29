@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-4">
     <div v-if="!versionsOnly" class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+        <h1 class="app-detail-page-title min-w-0 break-words">
           {{ application?.name || t('application.detail.title') }}
         </h1>
         <DetailHeaderMeta v-if="application">
@@ -38,27 +38,27 @@
 
     <div v-else-if="application" class="flex flex-col gap-4">
       <!-- 基本信息 -->
-      <div v-if="!versionsOnly" class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">
+      <div v-if="!versionsOnly" class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
             {{ t('application.detail.sections.basicInfo') }}
           </h2>
         </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+            <dt class="whitespace-nowrap">
               {{ t('application.name') }}
             </dt>
             <dd class="text-foreground">{{ application.name }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+            <dt class="whitespace-nowrap">
               {{ t('application.code') }}
             </dt>
             <dd class="text-foreground">{{ application.code }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+            <dt class="whitespace-nowrap">
               {{ t('application.kind') }}
             </dt>
             <dd>
@@ -68,7 +68,7 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+            <dt class="whitespace-nowrap">
               {{ t('application.imagePullPolicy') }}
             </dt>
             <dd class="text-foreground">
@@ -76,13 +76,13 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+            <dt class="whitespace-nowrap">
               {{ t('common.createdAt') }}
             </dt>
             <dd class="text-muted-foreground">{{ formatTime(application.created_at) }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+            <dt class="whitespace-nowrap">
               {{ t('common.updatedAt') }}
             </dt>
             <dd class="text-muted-foreground">{{ formatTime(application.updated_at) }}</dd>
@@ -91,9 +91,9 @@
       </div>
 
       <!-- 版本 -->
-      <div class="app-surface">
-        <div class="app-section-header flex items-center justify-between">
-          <h2 class="text-base font-semibold text-foreground">
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
             {{ t('application.detail.sections.versions') }}
           </h2>
           <button class="app-button-primary h-9 px-3" @click="openCreateVersionModal">
@@ -103,16 +103,111 @@
         </div>
         <AppSpinner v-if="versionListLoading" class="py-8" />
         <AppEmptyState v-else-if="versions.length === 0" size="compact" />
+        <AccordionRoot
+          v-else-if="!versionsOnly"
+          :default-value="versions[0] ? [versions[0].id] : []"
+          type="multiple"
+          class="divide-y divide-border"
+        >
+          <AccordionItem v-for="version in versions" :key="version.id" :value="version.id">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+              <AccordionHeader class="min-w-0 flex-1">
+                <AccordionTrigger
+                  class="group flex w-full items-center justify-between gap-3 text-left hover:text-foreground"
+                  @click="loadVersionComponents(version.id)"
+                >
+                  <ChevronDown
+                    class="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
+                  />
+                  <span
+                    class="grid min-w-0 flex-1 gap-x-6 gap-y-1 sm:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_minmax(10rem,0.8fr)] sm:items-center"
+                  >
+                    <span class="flex min-w-0 items-center gap-2">
+                      <span class="break-words text-sm text-foreground">
+                        {{ version.label }}
+                      </span>
+                      <AppBadge variant="pill" :tone="versionStatusTone(version.status)">
+                        {{ version.status }}
+                      </AppBadge>
+                    </span>
+                    <span
+                      v-if="version.component_summary"
+                      class="break-words text-sm text-muted-foreground"
+                    >
+                      {{ version.component_summary }}
+                    </span>
+                    <span v-if="version.note" class="break-words text-sm text-muted-foreground">
+                      {{ version.note }}
+                    </span>
+                  </span>
+                </AccordionTrigger>
+              </AccordionHeader>
+              <div class="flex shrink-0 flex-wrap items-center gap-3 text-sm">
+                <router-link :to="`/version/${version.id}`" class="app-link">
+                  {{ t('application.view') }}
+                </router-link>
+                <button class="app-link" @click="openPreview(version.id)">
+                  {{ t('application.detail.actions.preview') }}
+                </button>
+                <button class="app-link" @click="openForkModal(version)">
+                  {{ t('application.detail.actions.fork') }}
+                </button>
+              </div>
+            </div>
+            <AccordionContent class="border-t border-border px-5 py-4">
+              <AppSpinner v-if="versionComponentLoadState[version.id] === 'loading'" class="py-4" />
+              <p
+                v-else-if="versionComponentLoadState[version.id] === 'error'"
+                class="py-2 text-sm text-destructive"
+              >
+                {{ t('application.versionDetail.componentsLoadFailed') }}
+              </p>
+              <AppEmptyState
+                v-else-if="versionComponents[version.id]?.length === 0"
+                size="compact"
+              />
+              <div v-else-if="versionComponents[version.id]" class="overflow-x-auto">
+                <table class="app-data-table min-w-[840px]">
+                  <thead>
+                    <tr>
+                      <th>{{ t('application.detail.fields.component') }}</th>
+                      <th>{{ t('application.detail.fields.image') }}</th>
+                      <th>{{ t('application.componentDetail.fields.pullPolicy') }}</th>
+                      <th>{{ t('application.componentDetail.fields.restartPolicy') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="component in versionComponents[version.id]" :key="component.id">
+                      <td>
+                        <router-link
+                          :to="`/version/${version.id}/component/${component.id}`"
+                          class="app-link"
+                        >
+                          {{ component.name }}
+                        </router-link>
+                      </td>
+                      <td class="max-w-md whitespace-normal break-all text-muted-foreground">
+                        {{ component.image }}
+                      </td>
+                      <td class="text-muted-foreground">{{ component.pull_policy }}</td>
+                      <td class="text-muted-foreground">{{ component.restart_policy }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </AccordionRoot>
         <div v-else class="overflow-x-auto">
-          <table class="app-table-detail min-w-[880px]">
+          <table class="app-data-table min-w-[880px]">
             <thead>
               <tr>
-                <th class="font-normal">{{ t('application.detail.fields.versionLabel') }}</th>
-                <th class="font-normal">{{ t('common.status') }}</th>
-                <th class="font-normal">{{ t('application.detail.fields.components') }}</th>
-                <th class="font-normal">{{ t('application.detail.fields.note') }}</th>
-                <th class="font-normal">{{ t('common.createdAt') }}</th>
-                <th class="font-normal">{{ t('common.operation') }}</th>
+                <th>{{ t('application.detail.fields.versionLabel') }}</th>
+                <th>{{ t('common.status') }}</th>
+                <th>{{ t('application.detail.fields.components') }}</th>
+                <th>{{ t('application.detail.fields.note') }}</th>
+                <th>{{ t('common.createdAt') }}</th>
+                <th>{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -131,10 +226,10 @@
                   class="max-w-xs truncate text-muted-foreground"
                   :title="version.component_summary || ''"
                 >
-                  {{ version.component_summary || '—' }}
+                  {{ version.component_summary }}
                 </td>
                 <td class="max-w-xs truncate text-muted-foreground" :title="version.note || ''">
-                  {{ version.note || '—' }}
+                  {{ version.note }}
                 </td>
                 <td class="text-muted-foreground">{{ formatTime(version.created_at) }}</td>
                 <td>
@@ -393,10 +488,17 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Download, Pencil, Plus, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, ChevronDown, Download, Pencil, Plus, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
+  import {
+    AccordionContent,
+    AccordionHeader,
+    AccordionItem,
+    AccordionRoot,
+    AccordionTrigger,
+  } from 'reka-ui';
   import { applicationApi } from '@/api/application/application';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
@@ -410,7 +512,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
-  import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
+  import type { VersionComponentResp, VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import { applicationKindTone, versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
 
@@ -437,6 +539,8 @@
 
   const application = ref<ApplicationResp>();
   const versions = ref<VersionResp[]>([]);
+  const versionComponents = reactive<Record<string, VersionComponentResp[]>>({});
+  const versionComponentLoadState = reactive<Record<string, 'loading' | 'loaded' | 'error'>>({});
   const versionPagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const versionTotalPages = computed(() =>
     Math.ceil(versionPagination.total / versionPagination.pageSize)
@@ -502,8 +606,27 @@
           versionPagination.pageSize = resp.per_page;
         }
       });
+      if (!versionsOnly && versions.value[0]) {
+        void loadVersionComponents(versions.value[0].id);
+      }
     } catch {
       toast.error(t('application.toast.loadVersionsFailed'));
+    }
+  }
+
+  async function loadVersionComponents(versionId: string) {
+    const state = versionComponentLoadState[versionId];
+    if (state === 'loading' || state === 'loaded') {
+      return;
+    }
+    versionComponentLoadState[versionId] = 'loading';
+    try {
+      const version = await applicationApi.getVersion(versionId);
+      versionComponents[versionId] = version.components ?? [];
+      versionComponentLoadState[versionId] = 'loaded';
+    } catch {
+      versionComponentLoadState[versionId] = 'error';
+      toast.error(t('application.versionDetail.componentsLoadFailed'));
     }
   }
 
@@ -586,19 +709,10 @@
   }
 
   function openCreateVersionModal() {
-    versionForm.label = suggestNextLabel();
+    versionForm.label = '';
     versionForm.note = '';
     versionFormErrors.label = '';
     isVersionDialogOpen.value = true;
-  }
-
-  function suggestNextLabel() {
-    const labels = versions.value.map((v) => v.label);
-    let n = versions.value.length + 1;
-    while (labels.includes(`v${n}`)) {
-      n += 1;
-    }
-    return `v${n}`;
   }
 
   async function handleVersionCreate() {

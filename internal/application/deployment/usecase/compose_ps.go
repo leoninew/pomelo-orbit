@@ -12,7 +12,7 @@ import (
 // composePsRow is the docker compose ps --format json record schema used by
 // the runtime command.
 type composePsRow struct {
-	ID      string `json:"ID"`
+	Id      string `json:"ID"`
 	Name    string `json:"Name"`
 	Service string `json:"Service"`
 	State   string `json:"State"`
@@ -43,7 +43,7 @@ func parseComposePsOutput(raw string) ([]deploymentdto.RuntimeContainer, error) 
 	containers := make([]deploymentdto.RuntimeContainer, 0, len(rows))
 	for _, row := range rows {
 		containers = append(containers, deploymentdto.RuntimeContainer{
-			ID:      row.ID,
+			Id:      row.Id,
 			Name:    row.Name,
 			Service: row.Service,
 			State:   row.State,

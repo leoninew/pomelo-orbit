@@ -14,6 +14,7 @@ const (
 	KindNotFound         Kind = "not_found"
 	KindConflict         Kind = "conflict"
 	KindMethodNotAllowed Kind = "method_not_allowed"
+	KindRateLimited      Kind = "rate_limited" // use only when the product has 429 semantics
 	KindUnavailable      Kind = "unavailable"
 	KindInternal         Kind = "internal"
 )
@@ -118,6 +119,8 @@ func classificationForKind(kind Kind, message string) Classification {
 		classification = Classification{StatusCode: http.StatusConflict, Code: "conflict", Message: "Conflict."}
 	case KindMethodNotAllowed:
 		classification = Classification{StatusCode: http.StatusMethodNotAllowed, Code: "method_not_allowed", Message: "Method not allowed."}
+	case KindRateLimited:
+		classification = Classification{StatusCode: http.StatusTooManyRequests, Code: "rate_limited", Message: "Too many requests."}
 	case KindUnavailable:
 		classification = Classification{StatusCode: http.StatusServiceUnavailable, Code: "service_unavailable", Message: "Service unavailable."}
 	default:
@@ -143,6 +146,8 @@ func kindForHTTPStatus(status int) Kind {
 		return KindConflict
 	case http.StatusMethodNotAllowed:
 		return KindMethodNotAllowed
+	case http.StatusTooManyRequests:
+		return KindRateLimited
 	case http.StatusServiceUnavailable:
 		return KindUnavailable
 	default:
@@ -165,7 +170,8 @@ func validCode(code string) bool {
 
 func isPublicKind(kind Kind) bool {
 	switch kind {
-	case KindValidation, KindUnauthorized, KindForbidden, KindNotFound, KindConflict, KindMethodNotAllowed, KindUnavailable:
+	case KindValidation, KindUnauthorized, KindForbidden, KindNotFound, KindConflict,
+		KindMethodNotAllowed, KindRateLimited, KindUnavailable:
 		return true
 	default:
 		return false

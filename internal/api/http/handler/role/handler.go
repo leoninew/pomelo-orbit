@@ -66,7 +66,7 @@ func (h Handler) GetRole(c *gin.Context) {
 	}
 	detail, err := h.service.Detail(c.Request.Context(), roleId(c))
 	if err != nil {
-		h.writeServiceError(c, err, "Failed to load role")
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := roleDetailResponse(detail)
@@ -84,7 +84,7 @@ func (h Handler) CreateRole(c *gin.Context) {
 	}
 	role, err := h.service.Create(c.Request.Context(), roleCreateInput(&req))
 	if err != nil {
-		h.writeServiceError(c, err, "Failed to create role")
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := roleResponse(role, req.PermissionCodes)
@@ -102,7 +102,7 @@ func (h Handler) UpdateRole(c *gin.Context) {
 	}
 	detail, err := h.service.UpdateById(c.Request.Context(), roleId(c), roleUpdateInput(&req))
 	if err != nil {
-		h.writeServiceError(c, err, "Failed to update role")
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := roleDetailResponse(detail)
@@ -114,18 +114,12 @@ func (h Handler) DeleteRole(c *gin.Context) {
 		return
 	}
 	if err := h.service.Delete(c.Request.Context(), roleId(c)); err != nil {
-		h.writeServiceError(c, err, "Failed to delete role")
+		transportresponse.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) writeServiceError(c *gin.Context, err error, internalDetail string) {
-	if apperror.Classify(err).StatusCode >= http.StatusInternalServerError {
-		h.logger.Error(internalDetail, "error", err)
-	}
-	transportresponse.WriteError(c, err)
-}
 
 func roleId(c *gin.Context) string {
 	return strings.TrimSpace(c.Param("role_id"))

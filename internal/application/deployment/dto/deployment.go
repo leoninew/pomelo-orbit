@@ -33,19 +33,19 @@ type DeployOptionsJSON struct {
 }
 
 type DeployDispatchInput struct {
-	ApplicationID string
-	DeploymentID  string
+	ApplicationId string
+	DeploymentId  string
 	ForceRecreate bool
 }
 
 type RestartDispatchInput struct {
-	ApplicationID string
-	DeploymentID  string
+	ApplicationId string
+	DeploymentId  string
 }
 
 type StopDispatchInput struct {
-	ApplicationID string
-	DeploymentID  string
+	ApplicationId string
+	DeploymentId  string
 	RemoveVolumes bool
 }
 
@@ -64,13 +64,14 @@ type DeploymentContainerLog struct {
 
 // RuntimeContainer is a normalized docker compose ps record for one container.
 type RuntimeContainer struct {
-	ID           string
+	Id           string
 	Name         string
 	Service      string
 	State        string
 	Status       string
 	Health       string
 	Image        string
-	VersionID    string
+	VersionId    string
 	VersionLabel string
+	ComponentId  string
 }

@@ -23,7 +23,7 @@ HTTP Deploy/Stop/Restart
 - Service 的 `runtime_config_json` 是运行时 K/V 的唯一业务 SoT，普通明文保存并通过 Service 项目权限读取和更新。
 - 保存配置不触发 Docker 操作；只有后续 Deploy 或 Restart 的任务会使用新值。
 - Deploy/Restart 创建时复制完整 K/V 到 `Deployment.options_json.runtime_config`。任务排队后修改 Service 配置不能改变该任务的 render 结果。
-- Version 的 `env_json` 可用 `${KEY}` 表示必需配置，`${KEY:-default}` 表示带默认值的可选配置。修改关联 Version 或发起部署时缺少必需 key 会被拒绝；多余 key 被保留，worker 在 Deployment 日志写 warning 并忽略它们。
+- Component 的 `environment` 值可用 `${KEY}` 表示必需配置，`${KEY:-default}` 表示带默认值的可选配置。修改关联 Version 的组件或发起部署时缺少必需 key 会被拒绝；多余 key 被保留，worker 在 Deployment 日志写 warning 并忽略它们。
 - Credential、解密、组件级 `secret_env_refs`、`.runtime/*.env` 和 compose `env_file` 均不参与此路径。
 
 ## Render

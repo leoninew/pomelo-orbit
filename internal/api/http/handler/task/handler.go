@@ -13,7 +13,6 @@ import (
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 )
 
@@ -35,7 +34,7 @@ func (h Handler) CreateTask(c *gin.Context) {
 
 	item, err := h.service.Create(c.Request.Context(), taskCreateInput(&req))
 	if err != nil {
-		h.writeServiceError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := taskResponse(item)
@@ -104,7 +103,7 @@ func (h Handler) EnqueueDeploymentStop(c *gin.Context) {
 func (h Handler) enqueueTypedTask(c *gin.Context, taskType string, payload any) {
 	item, err := h.service.EnqueueTyped(c.Request.Context(), taskType, payload)
 	if err != nil {
-		h.writeServiceError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := taskResponse(item)
@@ -121,9 +120,3 @@ func (h Handler) GetTask(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) writeServiceError(c *gin.Context, err error) {
-	if apperror.Classify(err).StatusCode >= http.StatusInternalServerError {
-		h.logger.Error("task service failed", "error", err)
-	}
-	transportresponse.WriteError(c, err)
-}

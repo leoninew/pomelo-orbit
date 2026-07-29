@@ -56,7 +56,7 @@ func (h Handler) CreateProject(c *gin.Context) {
 	}
 	project, err := h.service.Create(c.Request.Context(), current.Id, projectSaveInput(&req))
 	if err != nil {
-		h.writeServiceError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := projectResponse(project)
@@ -84,7 +84,7 @@ func (h Handler) UpdateProject(c *gin.Context) {
 	}
 	updated, err := h.service.Update(c.Request.Context(), project, projectSaveInput(&req))
 	if err != nil {
-		h.writeServiceError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := projectResponse(updated)
@@ -106,7 +106,7 @@ func (h Handler) DeprecateProject(c *gin.Context) {
 		return
 	}
 	if err := h.service.Deprecate(c.Request.Context(), project, current.Id); err != nil {
-		h.writeServiceError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -132,7 +132,7 @@ func (h Handler) AddProjectMember(c *gin.Context) {
 	}
 	members, err := h.service.AddMember(c.Request.Context(), project.Id, req.UserId)
 	if err != nil {
-		h.writeServiceError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &projectv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
@@ -145,7 +145,7 @@ func (h Handler) RemoveProjectMember(c *gin.Context) {
 	}
 	members, err := h.service.RemoveMember(c.Request.Context(), project.Id, c.Param("user_id"))
 	if err != nil {
-		h.writeServiceError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &projectv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
@@ -173,15 +173,9 @@ func (h Handler) loadProjectForUser(c *gin.Context, userId string) (model.Projec
 	projectId := strings.TrimSpace(c.Param("project_id"))
 	project, err := h.service.LoadForUser(c.Request.Context(), projectId, userId)
 	if err != nil {
-		h.writeServiceError(c, err)
+		transportresponse.WriteError(c, err)
 		return model.Project{}, false
 	}
 	return project, true
 }
 
-func (h Handler) writeServiceError(c *gin.Context, err error) {
-	if apperror.StatusCode(err) == http.StatusInternalServerError {
-		h.logger.Error("project request failed", "error", err)
-	}
-	transportresponse.WriteError(c, err)
-}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -120,16 +121,6 @@ func validateComponentFields(component model.VersionComponent) error {
 		}
 		mountTargets[item.Target] = struct{}{}
 	}
-	networks := make(map[string]struct{}, len(component.Networks))
-	for _, name := range component.Networks {
-		if name == "" {
-			return fmt.Errorf("component %s has an empty network", component.Name)
-		}
-		if _, exists := networks[name]; exists {
-			return fmt.Errorf("component %s has duplicate network %s", component.Name, name)
-		}
-		networks[name] = struct{}{}
-	}
 	if err := validateComponentHealthcheck(component.Name, component.Healthcheck); err != nil {
 		return err
 	}
@@ -137,42 +128,59 @@ func validateComponentFields(component model.VersionComponent) error {
 }
 
 func validateComponentMount(mount model.VersionComponentMount) error {
-	if mount.Source == "" || mount.Target == "" || !strings.HasPrefix(mount.Target, "/") {
-		return fmt.Errorf("source and absolute target are required")
+	if mount.Source == "" || mount.Target == "" {
+		return fmt.Errorf("source and target are required")
+	}
+	if mount.SourceIsHostPath {
+		if mount.SourceType != "directory" && mount.SourceType != "file" {
+			return fmt.Errorf("source_is_host_path is only allowed for directory or file mounts")
+		}
+		if !isAbsoluteMountSource(mount.Source) {
+			return fmt.Errorf("host path source must be an absolute path")
+		}
+	} else if mount.SourceType == "directory" || mount.SourceType == "file" || mount.SourceType == "controlled_file" {
+		if isAbsoluteMountSource(mount.Source) || strings.Contains(mount.Source, "\\") || hasParentDirectory(mount.Source) {
+			return fmt.Errorf("source must be a relative path without parent segments")
+		}
 	}
 	switch mount.SourceType {
 	case "directory", "file":
-		if strings.HasPrefix(mount.Source, "/") || strings.Contains(mount.Source, "\\") || hasParentDirectory(mount.Source) {
-			return fmt.Errorf("source must be a relative path without parent segments")
-		}
-		if mount.SourceType == "file" {
-			if mount.ContentMode != "seed" && mount.ContentMode != "sync" {
-				return fmt.Errorf("file mount content_mode must be seed or sync")
-			}
-			if len(mount.Content) > maxMountContent {
-				return fmt.Errorf("file mount content exceeds %d bytes", maxMountContent)
-			}
-		} else if mount.Content != "" || mount.ContentMode != "" {
-			return fmt.Errorf("content is only allowed on file mounts")
+		if mount.Content != "" || mount.Mode != "" || mount.IgnoreIfExists {
+			return fmt.Errorf("content options are only allowed on controlled_file mounts")
 		}
 	case "named_volume":
 		if strings.ContainsAny(mount.Source, `/\\`) {
 			return fmt.Errorf("named_volume source must be a volume name")
 		}
-		if mount.Content != "" || mount.ContentMode != "" {
-			return fmt.Errorf("content is only allowed on file mounts")
+		if mount.SourceIsHostPath || mount.Content != "" || mount.Mode != "" || mount.IgnoreIfExists {
+			return fmt.Errorf("named_volume does not support file source options")
 		}
-	case "special":
-		if mount.Source != "docker.sock" || !mount.ReadOnly {
-			return fmt.Errorf("only read-only docker.sock is supported as a special mount")
+	case "controlled_file":
+		if mount.SourceIsHostPath {
+			return fmt.Errorf("controlled_file source must be platform-relative")
 		}
-		if mount.Content != "" || mount.ContentMode != "" {
-			return fmt.Errorf("content is only allowed on file mounts")
+		if len(mount.Content) > maxMountContent {
+			return fmt.Errorf("controlled_file content exceeds %d bytes", maxMountContent)
+		}
+		if !validUnixFileMode(mount.Mode) {
+			return fmt.Errorf("controlled_file mode must be a four-digit Unix octal mode")
 		}
 	default:
 		return fmt.Errorf("unsupported source_type %s", mount.SourceType)
 	}
 	return nil
+}
+
+func validUnixFileMode(mode string) bool {
+	if len(mode) != 4 || mode[0] != '0' {
+		return false
+	}
+	for _, value := range mode[1:] {
+		if value < '0' || value > '7' {
+			return false
+		}
+	}
+	return true
 }
 
 func hasParentDirectory(source string) bool {
@@ -184,6 +192,17 @@ func hasParentDirectory(source string) bool {
 	return false
 }
 
+func isAbsoluteMountSource(source string) bool {
+	if strings.HasPrefix(source, "/") || strings.HasPrefix(source, `\\`) || strings.HasPrefix(source, `//`) {
+		return true
+	}
+	if len(source) < 2 || source[1] != ':' {
+		return false
+	}
+	letter := source[0]
+	return (letter >= 'A' && letter <= 'Z') || (letter >= 'a' && letter <= 'z')
+}
+
 func validateComponentHealthcheck(component string, healthcheck *model.VersionComponentHealthcheck) error {
 	if healthcheck == nil || healthcheck.Disabled {
 		return nil
@@ -191,8 +210,14 @@ func validateComponentHealthcheck(component string, healthcheck *model.VersionCo
 	if healthcheck.TestMode != "CMD" && healthcheck.TestMode != "CMD-SHELL" {
 		return fmt.Errorf("component %s healthcheck test_mode must be CMD or CMD-SHELL", component)
 	}
-	if len(healthcheck.Test) == 0 {
+	if strings.TrimSpace(healthcheck.Test) == "" {
 		return fmt.Errorf("component %s healthcheck test is required", component)
+	}
+	if healthcheck.TestMode == "CMD" {
+		test, err := commandline.Parse(healthcheck.Test)
+		if err != nil || len(test) == 0 {
+			return fmt.Errorf("component %s healthcheck test is not a valid command", component)
+		}
 	}
 	if healthcheck.Retries != nil && *healthcheck.Retries < 0 {
 		return fmt.Errorf("component %s healthcheck retries must be non-negative", component)

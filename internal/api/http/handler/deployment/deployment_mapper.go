@@ -8,10 +8,10 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-func deploymentListInput(projectID string, applicationID string, status string, search string, dateFrom string, dateTo string, page int, perPage int) deploymentdto.DeploymentListInput {
+func deploymentListInput(projectId string, applicationId string, status string, search string, dateFrom string, dateTo string, page int, perPage int) deploymentdto.DeploymentListInput {
 	return deploymentdto.DeploymentListInput{
-		ProjectId:     projectID,
-		ApplicationId: applicationID,
+		ProjectId:     projectId,
+		ApplicationId: applicationId,
 		Status:        status,
 		Search:        search,
 		DateFrom:      dateFrom,
@@ -64,15 +64,16 @@ func applicationStatusResponse(containers []deploymentdto.RuntimeContainer) *app
 	response := make([]*applicationv1.ApplicationContainerStatusResp, 0, len(containers))
 	for _, container := range containers {
 		response = append(response, &applicationv1.ApplicationContainerStatusResp{
-			Id:           container.ID,
+			Id:           container.Id,
 			Name:         container.Name,
 			Service:      container.Service,
 			State:        container.State,
 			Status:       container.Status,
 			Health:       container.Health,
 			Image:        container.Image,
-			VersionId:    container.VersionID,
+			VersionId:    container.VersionId,
 			VersionLabel: container.VersionLabel,
+			ComponentId:  container.ComponentId,
 		})
 	}
 	return &applicationv1.ApplicationStatusResp{Containers: response}

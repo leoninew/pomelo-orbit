@@ -20,7 +20,7 @@ func (h Handler) ListPipelineStages(c *gin.Context) {
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
 	items, err := h.service.ListPipelineStages(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := make([]pipelinev1.PipelineStageResp, 0, len(items.Items))
@@ -42,7 +42,7 @@ func (h Handler) CreatePipelineStage(c *gin.Context) {
 	}
 	stage, err := h.service.CreatePipelineStage(c.Request.Context(), current.Id, pipelinedto.PipelineStageCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: serviceArtifacts(req.Artifacts), Description: req.Description})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := pipelineStageDetailResponse(stage)
@@ -56,7 +56,7 @@ func (h Handler) GetPipelineStage(c *gin.Context) {
 	}
 	stage, err := h.service.PipelineStageForUser(c.Request.Context(), current.Id, c.Param("stage_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := pipelineStageDetailResponse(stage)
@@ -80,7 +80,7 @@ func (h Handler) UpdatePipelineStage(c *gin.Context) {
 	}
 	stage, err := h.service.UpdatePipelineStage(c.Request.Context(), current.Id, c.Param("stage_id"), pipelinedto.PipelineStageUpdateInput{Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: artifacts, Description: req.Description})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := pipelineStageDetailResponse(stage)
@@ -93,7 +93,7 @@ func (h Handler) DeletePipelineStage(c *gin.Context) {
 		return
 	}
 	if err := h.service.DeletePipelineStage(c.Request.Context(), current.Id, c.Param("stage_id")); err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -111,7 +111,7 @@ func (h Handler) DuplicatePipelineStage(c *gin.Context) {
 	}
 	stage, err := h.service.DuplicatePipelineStage(c.Request.Context(), current.Id, c.Param("stage_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := pipelineStageDetailResponse(stage)

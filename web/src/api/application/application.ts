@@ -15,8 +15,15 @@ import type {
   ApplicationImportReq,
 } from '@/gen/proto/orbit/v1/application/application_bundle';
 import type {
+  VersionComponentAdvancedUpdateReq,
+  VersionComponentBasicUpdateReq,
+  VersionComponentDependenciesUpdateReq,
+  VersionComponentEnvUpdateReq,
+  VersionComponentMountsUpdateReq,
+  VersionComponentPortsUpdateReq,
   VersionComponentReq,
   VersionComponentResp,
+  VersionComponentRuntimeUpdateReq,
   VersionCreateReq,
   VersionForkReq,
   VersionPaginatedResp,
@@ -125,12 +132,60 @@ export const applicationApi = {
     return request.post(`/api/version/${versionId}/component`, data);
   },
 
-  updateVersionComponent(
+  updateVersionComponentBasic(
     versionId: string,
     componentId: string,
-    data: VersionComponentReq
+    data: VersionComponentBasicUpdateReq
   ): Promise<VersionComponentResp> {
-    return request.put(`/api/version/${versionId}/component/${componentId}`, data);
+    return request.put(`/api/version/${versionId}/component/${componentId}/basic`, data);
+  },
+
+  updateVersionComponentRuntime(
+    versionId: string,
+    componentId: string,
+    data: VersionComponentRuntimeUpdateReq
+  ): Promise<VersionComponentResp> {
+    return request.put(`/api/version/${versionId}/component/${componentId}/runtime`, data);
+  },
+
+  updateVersionComponentPorts(
+    versionId: string,
+    componentId: string,
+    data: VersionComponentPortsUpdateReq
+  ): Promise<VersionComponentResp> {
+    return request.put(`/api/version/${versionId}/component/${componentId}/ports`, data);
+  },
+
+  updateVersionComponentEnv(
+    versionId: string,
+    componentId: string,
+    data: VersionComponentEnvUpdateReq
+  ): Promise<VersionComponentResp> {
+    return request.put(`/api/version/${versionId}/component/${componentId}/env`, data);
+  },
+
+  updateVersionComponentMounts(
+    versionId: string,
+    componentId: string,
+    data: VersionComponentMountsUpdateReq
+  ): Promise<VersionComponentResp> {
+    return request.put(`/api/version/${versionId}/component/${componentId}/mounts`, data);
+  },
+
+  updateVersionComponentDependencies(
+    versionId: string,
+    componentId: string,
+    data: VersionComponentDependenciesUpdateReq
+  ): Promise<VersionComponentResp> {
+    return request.put(`/api/version/${versionId}/component/${componentId}/dependencies`, data);
+  },
+
+  updateVersionComponentAdvanced(
+    versionId: string,
+    componentId: string,
+    data: VersionComponentAdvancedUpdateReq
+  ): Promise<VersionComponentResp> {
+    return request.put(`/api/version/${versionId}/component/${componentId}/advanced`, data);
   },
 
   deleteVersionComponent(versionId: string, componentId: string): Promise<void> {

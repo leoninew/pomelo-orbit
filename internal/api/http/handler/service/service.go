@@ -27,7 +27,7 @@ func (h Handler) ListServices(c *gin.Context) {
 		PerPage:       perPage,
 	})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := serviceViewResponses(items.Items)
@@ -47,7 +47,7 @@ func (h Handler) GetService(c *gin.Context) {
 	}
 	view, err := h.service.GetService(c.Request.Context(), current.Id, c.Param("service_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := serviceViewResponse(view)
@@ -68,7 +68,7 @@ func (h Handler) CreateService(c *gin.Context) {
 		ApplicationId: req.ApplicationId, VersionId: req.VersionId, InstanceKey: req.InstanceKey, RuntimeConfig: req.RuntimeConfig,
 	})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := serviceViewResponse(view)
@@ -81,7 +81,7 @@ func (h Handler) DeleteService(c *gin.Context) {
 		return
 	}
 	if err := h.service.DeleteService(c.Request.Context(), current.Id, c.Param("service_id")); err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -94,7 +94,7 @@ func (h Handler) GetServiceRuntimeConfig(c *gin.Context) {
 	}
 	view, err := h.service.RuntimeConfig(c.Request.Context(), current.Id, c.Param("service_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := serviceRuntimeConfigResponse(view)
@@ -113,7 +113,7 @@ func (h Handler) UpdateServiceRuntimeConfig(c *gin.Context) {
 	}
 	view, err := h.service.UpdateRuntimeConfig(c.Request.Context(), current.Id, c.Param("service_id"), req.RuntimeConfig)
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := serviceRuntimeConfigResponse(view)
@@ -128,7 +128,7 @@ func (h Handler) ListApplicationServices(c *gin.Context) {
 	}
 	items, err := h.service.ListServicesByApplication(c.Request.Context(), current.Id, c.Param("app_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := applicationServiceResponses(items)

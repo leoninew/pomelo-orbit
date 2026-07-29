@@ -20,7 +20,7 @@ func (h Handler) ListCredentials(c *gin.Context) {
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 20)
 	items, err := h.service.ListCredentials(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := make([]credentialv1.CredentialResp, 0, len(items.Items))
@@ -42,7 +42,7 @@ func (h Handler) CreateCredential(c *gin.Context) {
 	}
 	created, err := h.service.CreateCredential(c.Request.Context(), current.Id, credentialdto.CredentialCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := credentialResponse(created)
@@ -64,7 +64,7 @@ func (h Handler) ImportCredential(c *gin.Context) {
 	}
 	created, err := h.service.ImportCredential(c.Request.Context(), current.Id, credentialdto.CredentialCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := credentialResponse(created)
@@ -78,7 +78,7 @@ func (h Handler) GetCredential(c *gin.Context) {
 	}
 	credential, err := h.service.CredentialDetailForUser(c.Request.Context(), current.Id, c.Param("credential_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := credentialDetailResponse(credential)
@@ -97,7 +97,7 @@ func (h Handler) UpdateCredential(c *gin.Context) {
 	}
 	updated, err := h.service.UpdateCredential(c.Request.Context(), current.Id, c.Param("credential_id"), credentialdto.CredentialUpdateInput{Name: req.Name, Data: req.Data})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := credentialResponse(updated)
@@ -110,7 +110,7 @@ func (h Handler) DeleteCredential(c *gin.Context) {
 		return
 	}
 	if err := h.service.DeleteCredential(c.Request.Context(), current.Id, c.Param("credential_id")); err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -123,7 +123,7 @@ func (h Handler) ExportCredential(c *gin.Context) {
 	}
 	exported, err := h.service.ExportCredential(c.Request.Context(), current.Id, c.Param("credential_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &credentialv1.CredentialExportResp{Version: exported.Version, Name: exported.Name, Type: exported.Type, Data: exported.Data})

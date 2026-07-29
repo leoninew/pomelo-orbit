@@ -63,6 +63,7 @@ export interface ApplicationContainerStatusResp {
   image: string;
   version_id: string;
   version_label: string;
+  component_id: string;
 }
 
 export interface ApplicationStatusResp {

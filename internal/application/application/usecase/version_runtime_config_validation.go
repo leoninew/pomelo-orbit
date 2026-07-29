@@ -20,10 +20,7 @@ func (s Service) validateServicesRuntimeConfig(ctx context.Context, version mode
 		if service.VersionId != version.Id {
 			continue
 		}
-		missing, extra, err := runtimeconfig.Validate(service.RuntimeConfig, version.EnvJSON, components)
-		if err != nil {
-			return apperror.Wrap(apperror.KindValidation, "Invalid version runtime config", err)
-		}
+		missing, extra := runtimeconfig.Validate(service.RuntimeConfig, components)
 		if len(missing) > 0 {
 			return apperror.New(apperror.KindValidation, fmt.Sprintf("service %s is missing runtime config keys: %s", service.InstanceKey, strings.Join(missing, ", ")))
 		}

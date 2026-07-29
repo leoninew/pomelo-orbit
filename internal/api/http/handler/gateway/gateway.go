@@ -18,7 +18,7 @@ func (h Handler) ListGateways(c *gin.Context) {
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
 	items, err := h.service.ListGateways(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := gatewayResponses(items.Items)
@@ -46,7 +46,7 @@ func (h Handler) CreateGateway(c *gin.Context) {
 	}
 	view, err := h.service.CreateGateway(c.Request.Context(), current.Id, gatewayCreateInput(&req))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := gatewayResponse(view)
@@ -60,7 +60,7 @@ func (h Handler) GetGateway(c *gin.Context) {
 	}
 	view, err := h.service.GatewayForUser(c.Request.Context(), current.Id, c.Param("gateway_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := gatewayResponse(view)
@@ -79,7 +79,7 @@ func (h Handler) UpdateGateway(c *gin.Context) {
 	}
 	view, err := h.service.UpdateGateway(c.Request.Context(), current.Id, c.Param("gateway_id"), gatewayUpdateInput(&req))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := gatewayResponse(view)
@@ -92,7 +92,7 @@ func (h Handler) DeleteGateway(c *gin.Context) {
 		return
 	}
 	if err := h.service.DeleteGateway(c.Request.Context(), current.Id, c.Param("gateway_id"), c.Request.URL.Query().Get("remove_dir") == "true"); err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)

@@ -18,7 +18,7 @@ func (h Handler) ListApplications(c *gin.Context) {
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
 	items, err := h.service.ListApplications(c.Request.Context(), current.Id, binding.QueryProjectId(c.Request.URL.Query().Get("project_id")), page, perPage, c.Request.URL.Query().Get("search"), c.Request.URL.Query().Get("kind"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := applicationResponses(items.Items)
@@ -37,7 +37,7 @@ func (h Handler) CreateApplication(c *gin.Context) {
 	}
 	app, err := h.service.CreateApplication(c.Request.Context(), current.Id, applicationCreateInput(c.Request.URL.Query().Get("project_id"), &req))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := applicationResponse(app)
@@ -51,7 +51,7 @@ func (h Handler) GetApplication(c *gin.Context) {
 	}
 	app, err := h.service.ApplicationForUser(c.Request.Context(), current.Id, c.Param("app_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := applicationResponse(app)
@@ -70,7 +70,7 @@ func (h Handler) UpdateApplication(c *gin.Context) {
 	}
 	app, err := h.service.UpdateApplication(c.Request.Context(), current.Id, c.Param("app_id"), applicationUpdateInput(&req))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := applicationResponse(app)

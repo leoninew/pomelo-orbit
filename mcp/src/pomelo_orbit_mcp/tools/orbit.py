@@ -6,12 +6,45 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from ..docker_runtime import DockerRuntime, DockerRuntimeError
 from ..orbit_client import OrbitClient
-from ..version_specs import VersionComponent, VersionExpose, version_component_payload, version_expose_payload
+from ..version_specs import (
+    VersionComponent,
+    VersionComponentAdvancedUpdate,
+    VersionComponentBasicUpdate,
+    VersionComponentDependenciesUpdate,
+    VersionComponentEnvUpdate,
+    VersionComponentMountsUpdate,
+    VersionComponentPortsUpdate,
+    VersionComponentResourcesUpdate,
+    VersionComponentRuntimeUpdate,
+    VersionComponentTmpfsUpdate,
+    VersionComponentUlimitsUpdate,
+    VersionExpose,
+    version_component_payload,
+    version_expose_payload,
+)
 from .common import compact, write_result
 
+TRAEFIK_GATEWAY_CODE = "traefik"
+TRAEFIK_NETWORK_NAME = "traefik"
 
-def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
+
+async def _update_component_advanced_section(
+    client: OrbitClient, version_id: str, component_id: str, field: str, value: Any
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    component = await client.get_version_component(version_id, component_id)
+    body: dict[str, Any] = {
+        "resources": component.get("resources"),
+        "tmpfs": component.get("tmpfs") or [],
+        "ulimits": component.get("ulimits") or [],
+    }
+    body[field] = value
+    updated = await client.update_version_component_advanced(version_id, component_id, body)
+    return body, updated
+
+
+def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRuntime) -> None:
     @mcp.tool(name="orbit_list_projects")
     async def orbit_list_projects() -> dict[str, Any]:
         """List Projects visible to the configured Orbit user."""
@@ -75,6 +108,25 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
             request_body=body,
             steps=["Created Gateway Application through Orbit"],
             data={"gateway": gateway},
+        )
+
+    @mcp.tool(name="orbit_provision_gateway")
+    async def orbit_provision_gateway(
+        project_id: str,
+        instance_key: str = "default",
+        runtime_config: dict[str, str] | None = None,
+        force_recreate: bool = False,
+        timeout_seconds: int | None = None,
+    ) -> dict[str, Any]:
+        """Ensure one managed traefik Gateway is deployed and its external network is ready."""
+        return await provision_gateway(
+            client,
+            runtime,
+            project_id=project_id,
+            instance_key=instance_key,
+            runtime_config=runtime_config,
+            force_recreate=force_recreate,
+            timeout_seconds=timeout_seconds,
         )
 
     @mcp.tool(name="orbit_get_gateway")
@@ -181,7 +233,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         label: str,
         components: list[VersionComponent],
         exposes: list[VersionExpose],
-        env_json: str | None = None,
         note: str | None = None,
     ) -> dict[str, Any]:
         """Create a Version using complete Component and Expose collections."""
@@ -190,7 +241,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
                 "label": label,
                 "components": [version_component_payload(component) for component in components],
                 "exposes": [version_expose_payload(expose) for expose in exposes],
-                "env_json": env_json,
                 "note": note,
             }
         )
@@ -208,7 +258,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
     async def orbit_update_version(
         version_id: str,
         label: str | None = None,
-        env_json: str | None = None,
         note: str | None = None,
         exposes: list[VersionExpose] | None = None,
     ) -> dict[str, Any]:
@@ -216,7 +265,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         body = compact(
             {
                 "label": label,
-                "env_json": env_json,
                 "note": note,
                 "exposes": [version_expose_payload(expose) for expose in exposes] if exposes is not None else None,
             }
@@ -233,18 +281,162 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
             data={"version": version},
         )
 
-    @mcp.tool(name="orbit_update_version_component")
-    async def orbit_update_version_component(
-        version_id: str, component_id: str, component: VersionComponent
+    @mcp.tool(name="orbit_update_version_component_basic")
+    async def orbit_update_version_component_basic(
+        version_id: str, component_id: str, basic: VersionComponentBasicUpdate
     ) -> dict[str, Any]:
-        """Replace one Version component through Orbit's component route."""
-        body = version_component_payload(component)
-        updated = await client.update_version_component(version_id, component_id, body)
+        """Replace a Component's name, image, command, pull policy, and restart policy."""
+        body = basic.model_dump(exclude_none=True)
+        updated = await client.update_version_component_basic(version_id, component_id, body)
         return write_result(
-            "update_version_component",
+            "update_version_component_basic",
             {"version_id": version_id, "component_id": component_id},
             "PUT",
-            f"/api/version/{version_id}/component/{component_id}",
+            f"/api/version/{version_id}/component/{component_id}/basic",
+            request_body=body,
+            data={"component": updated},
+        )
+
+    @mcp.tool(name="orbit_update_version_component_runtime")
+    async def orbit_update_version_component_runtime(
+        version_id: str, component_id: str, runtime: VersionComponentRuntimeUpdate
+    ) -> dict[str, Any]:
+        """Replace a Component's health check."""
+        body = runtime.model_dump(exclude_none=True)
+        updated = await client.update_version_component_runtime(version_id, component_id, body)
+        return write_result(
+            "update_version_component_runtime",
+            {"version_id": version_id, "component_id": component_id},
+            "PUT",
+            f"/api/version/{version_id}/component/{component_id}/runtime",
+            request_body=body,
+            data={"component": updated},
+        )
+
+    @mcp.tool(name="orbit_update_version_component_ports")
+    async def orbit_update_version_component_ports(
+        version_id: str, component_id: str, ports: VersionComponentPortsUpdate
+    ) -> dict[str, Any]:
+        """Replace a Component's port collection."""
+        body = ports.model_dump(exclude_none=True)
+        updated = await client.update_version_component_ports(version_id, component_id, body)
+        return write_result(
+            "update_version_component_ports",
+            {"version_id": version_id, "component_id": component_id},
+            "PUT",
+            f"/api/version/{version_id}/component/{component_id}/ports",
+            request_body=body,
+            data={"component": updated},
+        )
+
+    @mcp.tool(name="orbit_update_version_component_env")
+    async def orbit_update_version_component_env(
+        version_id: str, component_id: str, env: VersionComponentEnvUpdate
+    ) -> dict[str, Any]:
+        """Replace a Component's environment collection."""
+        body = env.model_dump(exclude_none=True)
+        updated = await client.update_version_component_env(version_id, component_id, body)
+        return write_result(
+            "update_version_component_env",
+            {"version_id": version_id, "component_id": component_id},
+            "PUT",
+            f"/api/version/{version_id}/component/{component_id}/env",
+            request_body=body,
+            data={"component": updated},
+        )
+
+    @mcp.tool(name="orbit_update_version_component_mounts")
+    async def orbit_update_version_component_mounts(
+        version_id: str, component_id: str, mounts: VersionComponentMountsUpdate
+    ) -> dict[str, Any]:
+        """Replace a Component's mount collection."""
+        body = mounts.model_dump(exclude_none=True)
+        updated = await client.update_version_component_mounts(version_id, component_id, body)
+        return write_result(
+            "update_version_component_mounts",
+            {"version_id": version_id, "component_id": component_id},
+            "PUT",
+            f"/api/version/{version_id}/component/{component_id}/mounts",
+            request_body=body,
+            data={"component": updated},
+        )
+
+    @mcp.tool(name="orbit_update_version_component_dependencies")
+    async def orbit_update_version_component_dependencies(
+        version_id: str, component_id: str, dependencies: VersionComponentDependenciesUpdate
+    ) -> dict[str, Any]:
+        """Replace a Component's dependency collection."""
+        body = dependencies.model_dump(exclude_none=True)
+        updated = await client.update_version_component_dependencies(version_id, component_id, body)
+        return write_result(
+            "update_version_component_dependencies",
+            {"version_id": version_id, "component_id": component_id},
+            "PUT",
+            f"/api/version/{version_id}/component/{component_id}/dependencies",
+            request_body=body,
+            data={"component": updated},
+        )
+
+    @mcp.tool(name="orbit_update_version_component_advanced")
+    async def orbit_update_version_component_advanced(
+        version_id: str, component_id: str, advanced: VersionComponentAdvancedUpdate
+    ) -> dict[str, Any]:
+        """Replace a Component's resources, tmpfs, and ulimit settings."""
+        body = advanced.model_dump(exclude_none=True)
+        updated = await client.update_version_component_advanced(version_id, component_id, body)
+        return write_result(
+            "update_version_component_advanced",
+            {"version_id": version_id, "component_id": component_id},
+            "PUT",
+            f"/api/version/{version_id}/component/{component_id}/advanced",
+            request_body=body,
+            data={"component": updated},
+        )
+
+    @mcp.tool(name="orbit_update_version_component_resources")
+    async def orbit_update_version_component_resources(
+        version_id: str, component_id: str, resources: VersionComponentResourcesUpdate
+    ) -> dict[str, Any]:
+        """Replace a Component's resource constraints and preserve its tmpfs and ulimit settings."""
+        value = resources.resources.model_dump(exclude_none=True) if resources.resources else None
+        body, updated = await _update_component_advanced_section(client, version_id, component_id, "resources", value)
+        return write_result(
+            "update_version_component_resources",
+            {"version_id": version_id, "component_id": component_id},
+            "PUT",
+            f"/api/version/{version_id}/component/{component_id}/advanced",
+            request_body=body,
+            data={"component": updated},
+        )
+
+    @mcp.tool(name="orbit_update_version_component_tmpfs")
+    async def orbit_update_version_component_tmpfs(
+        version_id: str, component_id: str, tmpfs: VersionComponentTmpfsUpdate
+    ) -> dict[str, Any]:
+        """Replace a Component's tmpfs collection and preserve its resource and ulimit settings."""
+        value = [item.model_dump() for item in tmpfs.tmpfs]
+        body, updated = await _update_component_advanced_section(client, version_id, component_id, "tmpfs", value)
+        return write_result(
+            "update_version_component_tmpfs",
+            {"version_id": version_id, "component_id": component_id},
+            "PUT",
+            f"/api/version/{version_id}/component/{component_id}/advanced",
+            request_body=body,
+            data={"component": updated},
+        )
+
+    @mcp.tool(name="orbit_update_version_component_ulimits")
+    async def orbit_update_version_component_ulimits(
+        version_id: str, component_id: str, ulimits: VersionComponentUlimitsUpdate
+    ) -> dict[str, Any]:
+        """Replace a Component's ulimit collection and preserve its resource and tmpfs settings."""
+        value = [item.model_dump() for item in ulimits.ulimits]
+        body, updated = await _update_component_advanced_section(client, version_id, component_id, "ulimits", value)
+        return write_result(
+            "update_version_component_ulimits",
+            {"version_id": version_id, "component_id": component_id},
+            "PUT",
+            f"/api/version/{version_id}/component/{component_id}/advanced",
             request_body=body,
             data={"component": updated},
         )
@@ -426,6 +618,195 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         """Wait only until an Orbit Deployment reaches a terminal state or the configured timeout."""
         result = await client.wait_deployment(deployment_id, timeout_seconds)
         return {"operation": "wait_deployment", "deployment_id": deployment_id, **result}
+
+
+async def provision_gateway(
+    client: OrbitClient,
+    runtime: DockerRuntime,
+    *,
+    project_id: str,
+    instance_key: str,
+    runtime_config: dict[str, str] | None,
+    force_recreate: bool,
+    timeout_seconds: int | None,
+) -> dict[str, Any]:
+    """Run the explicit Gateway provisioning workflow without nesting MCP tool calls."""
+    normalized_project_id = project_id.strip()
+    normalized_instance_key = instance_key.strip()
+    if not normalized_project_id:
+        raise ValueError("project_id is required")
+    if not normalized_instance_key:
+        raise ValueError("instance_key is required")
+    supplied_runtime_config = dict(runtime_config or {})
+
+    gateway_matches = [
+        gateway
+        for gateway in await client.list_gateways(normalized_project_id)
+        if str(gateway.get("code") or "") == TRAEFIK_GATEWAY_CODE
+    ]
+    if len(gateway_matches) > 1:
+        raise ValueError("multiple traefik Gateways exist in the Project")
+
+    gateway_created = not gateway_matches
+    if gateway_created:
+        gateway = await client.create_gateway(normalized_project_id, _default_gateway_payload(normalized_project_id))
+    else:
+        gateway = gateway_matches[0]
+    gateway_id = _resource_id(gateway, "Gateway")
+    resource_ids = {"gateway_id": gateway_id, "application_id": gateway_id}
+    steps = ["Created Gateway Application through Orbit" if gateway_created else "Reused Gateway Application"]
+
+    versions = await client.list_versions(gateway_id)
+    services = await client.list_application_services(gateway_id)
+    service_matches = [
+        service for service in services if str(service.get("instance_key") or "") == normalized_instance_key
+    ]
+    if len(service_matches) > 1:
+        raise ValueError("multiple Gateway Services use the requested instance_key")
+    service = service_matches[0] if service_matches else None
+    if service is not None and supplied_runtime_config:
+        raise ValueError("runtime_config cannot be supplied when reusing an existing Gateway Service")
+
+    version = _select_gateway_version(versions, service)
+    version_id = _resource_id(version, "Gateway Version")
+    version_published = str(version.get("status") or "") == "published"
+    published_now = False
+    if not version_published:
+        await client.publish_version(version_id)
+        version_published = True
+        published_now = True
+        steps.append("Published Gateway Version")
+    resource_ids["version_id"] = version_id
+
+    service_created = service is None
+    if service is None:
+        service_result = await client.create_service(
+            gateway_id, version_id, normalized_instance_key, supplied_runtime_config
+        )
+        steps.append("Created Gateway Service")
+    else:
+        service_result = service
+        steps.append("Reused Gateway Service")
+    service_id = _resource_id(service_result, "Gateway Service")
+    resource_ids["service_id"] = service_id
+
+    deployment = await client.deploy_application(
+        gateway_id,
+        {
+            "version_id": version_id,
+            "instance_key": normalized_instance_key,
+            "force_recreate": force_recreate,
+        },
+    )
+    deployment_id = _resource_id(deployment, "Gateway Deployment", field="deployment_id")
+    resource_ids["deployment_id"] = deployment_id
+    steps.append("Created Gateway Deployment through Orbit")
+    waited = await client.wait_deployment(deployment_id, timeout_seconds)
+    deployment_status = str(_mapping(waited.get("deployment")).get("status") or "")
+    if waited.get("timed_out") or deployment_status != "ran_to_completion":
+        return _provision_gateway_result(
+            resource_ids,
+            steps + ["Gateway Deployment did not reach a successful terminal state"],
+            gateway_created=gateway_created,
+            service_created=service_created,
+            version_published=published_now,
+            ready=False,
+            network={"name": TRAEFIK_NETWORK_NAME, "ready": False, "status": "not_checked"},
+        )
+
+    steps.append("Gateway Deployment reached a successful terminal state")
+    try:
+        network_detail = await runtime.external_network_inspect(TRAEFIK_NETWORK_NAME)
+    except DockerRuntimeError:
+        return _provision_gateway_result(
+            resource_ids,
+            steps + ["External traefik network is unavailable"],
+            gateway_created=gateway_created,
+            service_created=service_created,
+            version_published=published_now,
+            ready=False,
+            network={"name": TRAEFIK_NETWORK_NAME, "ready": False, "status": "unavailable"},
+        )
+    network_ready = network_detail["driver"] == "bridge"
+    network = {**network_detail, "ready": network_ready, "status": "ready" if network_ready else "unsupported_driver"}
+    final_steps = steps + (
+        ["Confirmed external traefik bridge network"]
+        if network_ready
+        else ["External traefik network is not a bridge network"]
+    )
+    return _provision_gateway_result(
+        resource_ids,
+        final_steps,
+        gateway_created=gateway_created,
+        service_created=service_created,
+        version_published=published_now,
+        ready=network_ready,
+        network=network,
+    )
+
+
+def _default_gateway_payload(project_id: str) -> dict[str, str]:
+    return {
+        "project_id": project_id,
+        "code": TRAEFIK_GATEWAY_CODE,
+        "name": "Traefik",
+        "rest_api_url": "http://localhost:8080",
+        "base_domain": "lvh.me",
+        "image": "traefik:3.6",
+        "image_pull_policy": "missing",
+    }
+
+
+def _select_gateway_version(versions: list[dict[str, Any]], service: dict[str, Any] | None) -> dict[str, Any]:
+    unpublished = [version for version in versions if str(version.get("status") or "") == "unpublished"]
+    if len(unpublished) == 1:
+        return unpublished[0]
+    if len(unpublished) > 1:
+        raise ValueError("multiple unpublished Gateway Versions exist")
+    if service is not None:
+        service_version_id = str(service.get("version_id") or "")
+        matches = [version for version in versions if str(version.get("id") or "") == service_version_id]
+        if len(matches) == 1:
+            return matches[0]
+        raise ValueError("existing Gateway Service does not reference a listed Version")
+    if len(versions) == 1:
+        return versions[0]
+    raise ValueError("unable to select a unique Gateway Version")
+
+
+def _resource_id(resource: dict[str, Any], resource_name: str, *, field: str = "id") -> str:
+    resource_id = str(resource.get(field) or "").strip()
+    if not resource_id:
+        raise ValueError(f"Orbit {resource_name} response did not contain {field}")
+    return resource_id
+
+
+def _provision_gateway_result(
+    resource_ids: dict[str, str],
+    steps: list[str],
+    *,
+    gateway_created: bool,
+    service_created: bool,
+    version_published: bool,
+    ready: bool,
+    network: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "operation": "provision_gateway",
+        "ready": ready,
+        "resource_ids": resource_ids,
+        "created": {
+            "gateway": gateway_created,
+            "service": service_created,
+            "version_published": version_published,
+        },
+        "network": network,
+        "steps": steps,
+    }
+
+
+def _mapping(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
 
 
 def application_service_list_result(application_id: str, services: list[dict[str, Any]]) -> dict[str, Any]:

@@ -128,7 +128,6 @@ type ApplicationImportReq struct {
 	Code            string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
 	ImagePullPolicy string                 `protobuf:"bytes,3,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
 	VersionLabel    string                 `protobuf:"bytes,4,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
-	VersionEnvJson  *string                `protobuf:"bytes,5,opt,name=version_env_json,json=versionEnvJson,proto3,oneof" json:"version_env_json,omitempty"`
 	VersionNote     *string                `protobuf:"bytes,6,opt,name=version_note,json=versionNote,proto3,oneof" json:"version_note,omitempty"`
 	Components      []*VersionComponentReq `protobuf:"bytes,7,rep,name=components,proto3" json:"components,omitempty"`
 	Exposes         []*VersionExposeReq    `protobuf:"bytes,8,rep,name=exposes,proto3" json:"exposes,omitempty"`
@@ -195,13 +194,6 @@ func (x *ApplicationImportReq) GetVersionLabel() string {
 	return ""
 }
 
-func (x *ApplicationImportReq) GetVersionEnvJson() string {
-	if x != nil && x.VersionEnvJson != nil {
-		return *x.VersionEnvJson
-	}
-	return ""
-}
-
 func (x *ApplicationImportReq) GetVersionNote() string {
 	if x != nil && x.VersionNote != nil {
 		return *x.VersionNote
@@ -245,22 +237,20 @@ const file_orbit_v1_application_application_bundle_proto_rawDesc = "" +
 	"\bversions\x18\x06 \x03(\v2!.orbit.v1.application.VersionRespR\bversions\x129\n" +
 	"\bservices\x18\a \x03(\v2\x1d.orbit.v1.service.ServiceRespR\bservices\x12\x12\n" +
 	"\x04kind\x18\b \x01(\tR\x04kindB\r\n" +
-	"\v_project_id\"\xbb\x03\n" +
+	"\v_project_id\"\xfd\x02\n" +
 	"\x14ApplicationImportReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12*\n" +
 	"\x11image_pull_policy\x18\x03 \x01(\tR\x0fimagePullPolicy\x12#\n" +
-	"\rversion_label\x18\x04 \x01(\tR\fversionLabel\x12-\n" +
-	"\x10version_env_json\x18\x05 \x01(\tH\x00R\x0eversionEnvJson\x88\x01\x01\x12&\n" +
-	"\fversion_note\x18\x06 \x01(\tH\x01R\vversionNote\x88\x01\x01\x12I\n" +
+	"\rversion_label\x18\x04 \x01(\tR\fversionLabel\x12&\n" +
+	"\fversion_note\x18\x06 \x01(\tH\x00R\vversionNote\x88\x01\x01\x12I\n" +
 	"\n" +
 	"components\x18\a \x03(\v2).orbit.v1.application.VersionComponentReqR\n" +
 	"components\x12@\n" +
 	"\aexposes\x18\b \x03(\v2&.orbit.v1.application.VersionExposeReqR\aexposes\x12\x17\n" +
-	"\x04kind\x18\t \x01(\tH\x02R\x04kind\x88\x01\x01B\x13\n" +
-	"\x11_version_env_jsonB\x0f\n" +
+	"\x04kind\x18\t \x01(\tH\x01R\x04kind\x88\x01\x01B\x0f\n" +
 	"\r_version_noteB\a\n" +
-	"\x05_kindB\xef\x01\n" +
+	"\x05_kindJ\x04\b\x05\x10\x06B\xef\x01\n" +
 	"\x18com.orbit.v1.applicationB\x16ApplicationBundleProtoP\x01ZIgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application\xa2\x02\x03OVA\xaa\x02\x14Orbit.V1.Application\xca\x02\x14Orbit\\V1\\Application\xe2\x02 Orbit\\V1\\Application\\GPBMetadata\xea\x02\x16Orbit::V1::Applicationb\x06proto3"
 
 var (

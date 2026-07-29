@@ -11,12 +11,10 @@ export const protobufPackage = "orbit.v1.application";
 export interface VersionComponentReq {
   name: string;
   image: string;
-  command: string[];
-  args: string[];
+  command: string;
   env: ComponentEnv[];
   ports: ComponentPort[];
   mounts: ComponentMount[];
-  networks: string[];
   dependencies: ComponentDependency[];
   healthcheck: ComponentHealthcheck | undefined;
   resources: ComponentResources | undefined;
@@ -26,17 +24,49 @@ export interface VersionComponentReq {
   ulimits: ComponentUlimit[];
 }
 
+export interface VersionComponentBasicUpdateReq {
+  name: string;
+  image: string;
+  pull_policy?: string | undefined;
+  restart_policy?: string | undefined;
+  command: string;
+}
+
+export interface VersionComponentRuntimeUpdateReq {
+  healthcheck: ComponentHealthcheck | undefined;
+}
+
+export interface VersionComponentPortsUpdateReq {
+  ports: ComponentPort[];
+}
+
+export interface VersionComponentEnvUpdateReq {
+  env: ComponentEnv[];
+}
+
+export interface VersionComponentMountsUpdateReq {
+  mounts: ComponentMount[];
+}
+
+export interface VersionComponentDependenciesUpdateReq {
+  dependencies: ComponentDependency[];
+}
+
+export interface VersionComponentAdvancedUpdateReq {
+  tmpfs: ComponentTmpfs[];
+  ulimits: ComponentUlimit[];
+  resources: ComponentResources | undefined;
+}
+
 export interface VersionComponentResp {
   id: string;
   version_id: string;
   name: string;
   image: string;
-  command: string[];
-  args: string[];
+  command: string;
   env: ComponentEnv[];
   ports: ComponentPort[];
   mounts: ComponentMount[];
-  networks: string[];
   dependencies: ComponentDependency[];
   healthcheck: ComponentHealthcheck | undefined;
   resources: ComponentResources | undefined;
@@ -64,7 +94,9 @@ export interface ComponentMount {
   target: string;
   read_only: boolean;
   content?: string | undefined;
-  content_mode?: string | undefined;
+  source_is_host_path: boolean;
+  ignore_if_exists: boolean;
+  mode: string;
 }
 
 export interface ComponentDependency {
@@ -74,7 +106,7 @@ export interface ComponentDependency {
 
 export interface ComponentHealthcheck {
   test_mode: string;
-  test: string[];
+  test: string;
   interval?: string | undefined;
   timeout?: string | undefined;
   retries?: number | undefined;
@@ -131,7 +163,6 @@ export interface VersionExposeResp {
 export interface VersionCreateReq {
   application_id: string;
   label: string;
-  env_json?: string | undefined;
   note?: string | undefined;
   components: VersionComponentReq[];
   exposes: VersionExposeReq[];
@@ -139,7 +170,6 @@ export interface VersionCreateReq {
 
 export interface VersionUpdateReq {
   label?: string | undefined;
-  env_json?: string | undefined;
   note?: string | undefined;
   exposes: VersionExposeReq[];
 }
@@ -153,7 +183,6 @@ export interface VersionResp {
   application_id: string;
   label: string;
   status: string;
-  env_json?: string | undefined;
   created_from_version_id?: string | undefined;
   note?: string | undefined;
   created_at: string;

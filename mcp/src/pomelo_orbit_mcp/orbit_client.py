@@ -169,6 +169,9 @@ class OrbitClient:
     async def get_version(self, version_id: str) -> dict[str, Any]:
         return await self.request("GET", f"/api/version/{version_id}")
 
+    async def get_version_component(self, version_id: str, component_id: str) -> dict[str, Any]:
+        return await self.request("GET", f"/api/version/{version_id}/component/{component_id}")
+
     async def create_version(self, application_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         body = {"application_id": application_id, **payload}
         return await self.request("POST", f"/api/application/{application_id}/version", json_body=body)
@@ -176,11 +179,47 @@ class OrbitClient:
     async def update_version(self, version_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         return await self.request("PUT", f"/api/version/{version_id}", json_body=payload)
 
-    async def update_version_component(
+    async def update_version_component_basic(
+        self, version_id: str, component_id: str, payload: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        return await self.request("PUT", f"/api/version/{version_id}/component/{component_id}/basic", json_body=payload)
+
+    async def update_version_component_runtime(
         self, version_id: str, component_id: str, payload: Mapping[str, Any]
     ) -> dict[str, Any]:
         return await self.request(
-            "PUT", f"/api/version/{version_id}/component/{component_id}", json_body=payload
+            "PUT", f"/api/version/{version_id}/component/{component_id}/runtime", json_body=payload
+        )
+
+    async def update_version_component_ports(
+        self, version_id: str, component_id: str, payload: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        return await self.request("PUT", f"/api/version/{version_id}/component/{component_id}/ports", json_body=payload)
+
+    async def update_version_component_env(
+        self, version_id: str, component_id: str, payload: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        return await self.request("PUT", f"/api/version/{version_id}/component/{component_id}/env", json_body=payload)
+
+    async def update_version_component_mounts(
+        self, version_id: str, component_id: str, payload: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        return await self.request(
+            "PUT", f"/api/version/{version_id}/component/{component_id}/mounts", json_body=payload
+        )
+
+    async def update_version_component_dependencies(
+        self, version_id: str, component_id: str, payload: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        return await self.request(
+            "PUT", f"/api/version/{version_id}/component/{component_id}/dependencies", json_body=payload
+        )
+
+    async def update_version_component_advanced(
+        self, version_id: str, component_id: str, payload: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        return await self.request(
+            "PUT", f"/api/version/{version_id}/component/{component_id}/advanced", json_body=payload
         )
 
     async def publish_version(self, version_id: str) -> dict[str, Any]:

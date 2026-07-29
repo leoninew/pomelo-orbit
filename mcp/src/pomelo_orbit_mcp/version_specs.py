@@ -20,12 +20,14 @@ class EnvironmentVariable(_Spec):
 
 
 class LogicalMount(_Spec):
-    source_type: Literal["directory", "file", "named_volume", "special"]
+    source_type: Literal["directory", "file", "named_volume", "controlled_file"]
     source: str
     target: str
     read_only: bool = False
+    source_is_host_path: bool = False
     content: str | None = None
-    content_mode: Literal["seed", "sync"] | None = None
+    mode: str | None = None
+    ignore_if_exists: bool = False
 
 
 class ComponentDependency(_Spec):
@@ -35,7 +37,7 @@ class ComponentDependency(_Spec):
 
 class Healthcheck(_Spec):
     test_mode: Literal["CMD", "CMD-SHELL"] = "CMD"
-    test: list[str]
+    test: str
     interval: str | None = None
     timeout: str | None = None
     retries: int | None = None
@@ -71,12 +73,10 @@ class UlimitSpec(_Spec):
 class VersionComponent(_Spec):
     name: str
     image: str
-    command: list[str] | None = None
-    args: list[str] | None = None
+    command: str | None = None
     env: list[EnvironmentVariable] | None = None
     ports: list[ComponentPort] | None = None
     mounts: list[LogicalMount] | None = None
-    networks: list[str] | None = None
     dependencies: list[ComponentDependency] | None = None
     healthcheck: Healthcheck | None = None
     resources: ResourceSpec | None = None
@@ -84,6 +84,52 @@ class VersionComponent(_Spec):
     restart_policy: Literal["no", "unless-stopped"] | None = None
     tmpfs: list[TmpfsSpec] | None = None
     ulimits: list[UlimitSpec] | None = None
+
+
+class VersionComponentBasicUpdate(_Spec):
+    name: str
+    image: str
+    command: str
+    pull_policy: str | None = None
+    restart_policy: Literal["no", "unless-stopped"] | None = None
+
+
+class VersionComponentRuntimeUpdate(_Spec):
+    healthcheck: Healthcheck | None = None
+
+
+class VersionComponentPortsUpdate(_Spec):
+    ports: list[ComponentPort]
+
+
+class VersionComponentEnvUpdate(_Spec):
+    env: list[EnvironmentVariable]
+
+
+class VersionComponentMountsUpdate(_Spec):
+    mounts: list[LogicalMount]
+
+
+class VersionComponentDependenciesUpdate(_Spec):
+    dependencies: list[ComponentDependency]
+
+
+class VersionComponentAdvancedUpdate(_Spec):
+    resources: ResourceSpec | None = None
+    tmpfs: list[TmpfsSpec]
+    ulimits: list[UlimitSpec]
+
+
+class VersionComponentResourcesUpdate(_Spec):
+    resources: ResourceSpec | None
+
+
+class VersionComponentTmpfsUpdate(_Spec):
+    tmpfs: list[TmpfsSpec]
+
+
+class VersionComponentUlimitsUpdate(_Spec):
+    ulimits: list[UlimitSpec]
 
 
 class VersionExpose(_Spec):
@@ -100,11 +146,9 @@ def version_component_payload(component: VersionComponent) -> dict[str, Any]:
         "name": component.name,
         "image": component.image,
         "command": component.command,
-        "args": component.args,
         "env": _model_items(component.env),
         "ports": _model_items(component.ports),
         "mounts": _model_items(component.mounts),
-        "networks": component.networks,
         "dependencies": _model_items(component.dependencies),
         "healthcheck": _model_value(component.healthcheck),
         "resources": _model_value(component.resources),

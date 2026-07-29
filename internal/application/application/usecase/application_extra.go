@@ -12,12 +12,12 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
-func (s Service) ImportApplication(ctx context.Context, userID string, input applicationdto.ApplicationImportInput) (model.Application, error) {
-	projectID := strings.TrimSpace(input.ProjectId)
-	if projectID == "" {
+func (s Service) ImportApplication(ctx context.Context, userId string, input applicationdto.ApplicationImportInput) (model.Application, error) {
+	projectId := strings.TrimSpace(input.ProjectId)
+	if projectId == "" {
 		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Application{}, err
 	}
 	name, code, kind, imagePullPolicy, err := normalizeApplicationImportInput(input)
@@ -30,7 +30,7 @@ func (s Service) ImportApplication(ctx context.Context, userID string, input app
 	if err := s.ensureApplicationCodeAvailable(ctx, code); err != nil {
 		return model.Application{}, err
 	}
-	app := model.Application{Id: idutil.NewId(), ProjectId: &projectID, Name: name, Code: code, Kind: kind, ImagePullPolicy: imagePullPolicy}
+	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: kind, ImagePullPolicy: imagePullPolicy}
 	if err := s.store.CreateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to import application", err)
 	}
@@ -38,8 +38,8 @@ func (s Service) ImportApplication(ctx context.Context, userID string, input app
 	if label == "" {
 		label = "v1"
 	}
-	if _, err := s.CreateVersion(ctx, userID, applicationdto.VersionCreateInput{
-		ApplicationId: app.Id, Label: label, EnvJSON: input.VersionEnvJSON, Note: input.VersionNote,
+	if _, err := s.CreateVersion(ctx, userId, applicationdto.VersionCreateInput{
+		ApplicationId: app.Id, Label: label, Note: input.VersionNote,
 		Components: input.Components, Exposes: input.Exposes,
 	}); err != nil {
 		_ = s.store.DeleteApplication(ctx, app.Id)
@@ -52,12 +52,12 @@ func (s Service) ImportApplication(ctx context.Context, userID string, input app
 	return created, nil
 }
 
-func (s Service) ExportApplication(ctx context.Context, userID string, applicationID string) (applicationdto.ApplicationExport, error) {
-	app, err := s.loadApplicationForUser(ctx, userID, applicationID)
+func (s Service) ExportApplication(ctx context.Context, userId string, applicationId string) (applicationdto.ApplicationExport, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
 		return applicationdto.ApplicationExport{}, err
 	}
-	versions, err := s.ListVersions(ctx, userID, app.Id)
+	versions, err := s.ListVersions(ctx, userId, app.Id)
 	if err != nil {
 		return applicationdto.ApplicationExport{}, err
 	}

@@ -6,7 +6,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from ..docker_runtime import DockerRuntime
+from ..docker_runtime import DockerRuntime, compose_container_summaries
 from ..orbit_client import OrbitClient
 from ..settings import Settings
 from ..verification import resolve_runtime_target
@@ -50,8 +50,9 @@ def register_runtime_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRun
         instance_key: str | None = None,
         gateway_application_id: str | None = None,
         gateway_instance_key: str | None = None,
+        network_name: str | None = None,
     ) -> dict[str, Any]:
-        """Check Docker prerequisites and optionally verify traefik from a managed Gateway target."""
+        """Check Docker prerequisites, a managed target, or the fixed external traefik network."""
         supplied = [application_id, instance_key]
         if any(value is not None for value in supplied) and not all(supplied):
             raise ValueError("application_id and instance_key must be supplied together")
@@ -60,6 +61,13 @@ def register_runtime_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRun
             raise ValueError("gateway_application_id and gateway_instance_key must be supplied together")
         if all(supplied) and all(gateway_supplied):
             raise ValueError("application target and gateway target cannot be requested together")
+        normalized_network_name = network_name.strip() if network_name is not None else None
+        if network_name is not None and not normalized_network_name:
+            raise ValueError("network_name is required when supplied")
+        if normalized_network_name and normalized_network_name != TRAEFIK_NETWORK_NAME:
+            raise ValueError("network_name must be traefik")
+        if normalized_network_name and (all(supplied) or all(gateway_supplied)):
+            raise ValueError("network_name cannot be combined with an application or gateway target")
         target = None
         expected_external_networks: tuple[str, ...] = ()
         if application_id and instance_key:
@@ -67,7 +75,11 @@ def register_runtime_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRun
         if gateway_application_id and gateway_instance_key:
             target = await _gateway_target(client, settings, gateway_application_id, gateway_instance_key)
             expected_external_networks = (TRAEFIK_NETWORK_NAME,)
-        result = await runtime.doctor(target, expected_external_networks=expected_external_networks)
+        result = await runtime.doctor(
+            target,
+            expected_external_networks=expected_external_networks,
+            external_network_name=normalized_network_name,
+        )
         return runtime_result(target, result) if target else result
 
     @mcp.tool(name="runtime_compose_config")
@@ -77,10 +89,15 @@ def register_runtime_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRun
         return runtime_result(target, await runtime.compose_config(target))
 
     @mcp.tool(name="runtime_compose_ps")
-    async def runtime_compose_ps(application_id: str, instance_key: str = "default") -> dict[str, Any]:
-        """Read Docker Compose container state, including stopped containers, for one managed runtime target."""
+    async def runtime_compose_ps(
+        application_id: str, instance_key: str = "default", detail: bool = False
+    ) -> dict[str, Any]:
+        """Read concise Compose container state; set detail=true for raw Compose JSON."""
         target = await _target(client, settings, application_id, instance_key)
-        return runtime_result(target, await runtime.compose_ps(target))
+        result = await runtime.compose_ps(target)
+        if detail:
+            return runtime_result(target, result)
+        return runtime_result(target, {"containers": compose_container_summaries(result["containers"])})
 
     @mcp.tool(name="runtime_compose_logs")
     async def runtime_compose_logs(

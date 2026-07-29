@@ -23,7 +23,7 @@ func (h Handler) ListRoutes(c *gin.Context) {
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
 	items, err := h.service.ListRoutes(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := routeResponses(items.Items)
@@ -42,7 +42,7 @@ func (h Handler) CreateRoute(c *gin.Context) {
 	}
 	route, err := h.service.CreateRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routeCreateInput(&req))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
@@ -56,7 +56,7 @@ func (h Handler) GetRoute(c *gin.Context) {
 	}
 	route, err := h.service.RouteForUser(c.Request.Context(), current.Id, c.Param("route_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
@@ -75,7 +75,7 @@ func (h Handler) UpdateRoute(c *gin.Context) {
 	}
 	route, err := h.service.UpdateRoute(c.Request.Context(), current.Id, c.Param("route_id"), routeUpdateInput(&req))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
@@ -88,7 +88,7 @@ func (h Handler) DeleteRoute(c *gin.Context) {
 		return
 	}
 	if err := h.service.DeleteRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -105,7 +105,7 @@ func (h Handler) EnableRoute(c *gin.Context) {
 		return
 	}
 	if _, err := h.service.EnableRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &routev1.RouteEnableResp{Message: "Route enabled successfully"})
@@ -122,7 +122,7 @@ func (h Handler) DisableRoute(c *gin.Context) {
 		return
 	}
 	if _, err := h.service.DisableRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &routev1.RouteDisableResp{Message: "Route disabled successfully"})
@@ -139,7 +139,7 @@ func (h Handler) SyncRoutes(c *gin.Context) {
 		return
 	}
 	if err := h.service.SyncRoutes(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id")); err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &routev1.RouteSyncResp{Message: "Routes synced successfully"})
@@ -169,7 +169,7 @@ func (h Handler) UploadRouteCert(c *gin.Context) {
 	}
 	route, err := h.service.UploadRouteCert(c.Request.Context(), current.Id, c.Param("route_id"), certPEM, certKey)
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
@@ -183,7 +183,7 @@ func (h Handler) DisableRouteHTTPS(c *gin.Context) {
 	}
 	route, err := h.service.DisableRouteHTTPS(c.Request.Context(), current.Id, c.Param("route_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
@@ -202,7 +202,7 @@ func (h Handler) EnableRouteLetsEncrypt(c *gin.Context) {
 	}
 	route, err := h.service.EnableRouteLetsEncrypt(c.Request.Context(), current.Id, c.Param("route_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
@@ -221,7 +221,7 @@ func (h Handler) EnableRouteMkcert(c *gin.Context) {
 	}
 	route, err := h.service.EnableRouteMkcert(c.Request.Context(), current.Id, c.Param("route_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
@@ -235,7 +235,7 @@ func (h Handler) GetTraefikRouteConfig(c *gin.Context) {
 	}
 	config, err := h.service.TraefikRouteConfig(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := traefikConfigResponse(config)
@@ -253,7 +253,7 @@ func (h Handler) ListTraefikRoutes(c *gin.Context) {
 			transportresponse.WriteError(c, apperror.Wrap(apperror.KindUnavailable, "", err))
 			return
 		}
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := traefikRouteListResponse(items)

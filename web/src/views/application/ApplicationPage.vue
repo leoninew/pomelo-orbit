@@ -39,7 +39,7 @@
     <div v-else class="app-surface">
       <AppEmptyState v-if="applications.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[1040px]">
+        <table class="app-data-table min-w-[1040px]">
           <thead>
             <tr>
               <th>{{ t('common.name') }}</th>
@@ -168,7 +168,6 @@
     kind: 'standard',
     image_pull_policy: 'missing',
     version_label: 'v1',
-    version_env_json: undefined,
     version_note: undefined,
     components: [],
     exposes: [],

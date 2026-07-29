@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS version (
     application_id TEXT NOT NULL,
     label TEXT NOT NULL,
     status TEXT NOT NULL,
-    env_json TEXT,
     created_from_version_id TEXT,
     note TEXT,
     component_summary TEXT NOT NULL DEFAULT '',
@@ -39,6 +38,7 @@ CREATE TABLE IF NOT EXISTS version_component (
     version_id TEXT NOT NULL,
     name TEXT NOT NULL,
     image TEXT NOT NULL,
+    command_json TEXT NOT NULL DEFAULT '[]',
     pull_policy TEXT,
     restart_policy TEXT,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
@@ -48,15 +48,6 @@ CREATE TABLE IF NOT EXISTS version_component (
 );
 
 CREATE INDEX IF NOT EXISTS idx_version_component_version ON version_component(version_id);
-
-CREATE TABLE IF NOT EXISTS version_component_argument (
-    component_id TEXT NOT NULL,
-    kind TEXT NOT NULL CHECK (kind IN ('command', 'args')),
-    position INTEGER NOT NULL CHECK (position >= 0),
-    value TEXT NOT NULL,
-    PRIMARY KEY (component_id, kind, position),
-    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
-);
 
 CREATE TABLE IF NOT EXISTS version_component_env (
     component_id TEXT NOT NULL,
@@ -79,23 +70,16 @@ CREATE TABLE IF NOT EXISTS version_component_port (
 
 CREATE TABLE IF NOT EXISTS version_component_mount (
     component_id TEXT NOT NULL,
-    source_type TEXT NOT NULL CHECK (source_type IN ('directory', 'file', 'named_volume', 'special')),
+    source_type TEXT NOT NULL CHECK (source_type IN ('directory', 'file', 'named_volume', 'controlled_file')),
     source TEXT NOT NULL,
     target TEXT NOT NULL,
     read_only INTEGER NOT NULL DEFAULT 0 CHECK (read_only IN (0, 1)),
+    source_is_host_path INTEGER NOT NULL DEFAULT 0 CHECK (source_is_host_path IN (0, 1)),
     content TEXT,
-    content_mode TEXT CHECK (content_mode IN ('seed', 'sync')),
+    mode TEXT NOT NULL DEFAULT '',
+    ignore_if_exists INTEGER NOT NULL DEFAULT 0 CHECK (ignore_if_exists IN (0, 1)),
     position INTEGER NOT NULL CHECK (position >= 0),
     PRIMARY KEY (component_id, position),
-    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS version_component_network (
-    component_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    position INTEGER NOT NULL CHECK (position >= 0),
-    PRIMARY KEY (component_id, position),
-    UNIQUE (component_id, name),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
 );
 
@@ -112,20 +96,13 @@ CREATE TABLE IF NOT EXISTS version_component_dependency (
 CREATE TABLE IF NOT EXISTS version_component_healthcheck (
     component_id TEXT PRIMARY KEY,
     test_mode TEXT CHECK (test_mode IN ('CMD', 'CMD-SHELL')),
+    test TEXT NOT NULL DEFAULT '',
     interval TEXT,
     timeout TEXT,
     retries INTEGER,
     start_period TEXT,
     start_interval TEXT,
     disabled INTEGER NOT NULL DEFAULT 0 CHECK (disabled IN (0, 1)),
-    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS version_component_healthcheck_arg (
-    component_id TEXT NOT NULL,
-    position INTEGER NOT NULL CHECK (position >= 0),
-    value TEXT NOT NULL,
-    PRIMARY KEY (component_id, position),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
 );
 

@@ -116,10 +116,7 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	if err != nil {
 		return "", err
 	}
-	missing, _, err := runtimeconfig.Validate(service.RuntimeConfig, version.EnvJSON, components)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindValidation, "Invalid version runtime config", err)
-	}
+	missing, _ := runtimeconfig.Validate(service.RuntimeConfig, components)
 	if len(missing) > 0 {
 		return "", apperror.New(apperror.KindValidation, "missing runtime config keys: "+strings.Join(missing, ", "))
 	}
@@ -142,7 +139,7 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	if err := s.commandStore.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
-	if err := s.dispatcher.DispatchDeploy(ctx, deploymentdto.DeployDispatchInput{ApplicationID: app.Id, DeploymentID: deployment.Id, ForceRecreate: input.ForceRecreate}); err != nil {
+	if err := s.dispatcher.DispatchDeploy(ctx, deploymentdto.DeployDispatchInput{ApplicationId: app.Id, DeploymentId: deployment.Id, ForceRecreate: input.ForceRecreate}); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to enqueue deployment", err)
 	}
 	return deployment.Id, nil
@@ -173,7 +170,7 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	if err := s.commandStore.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
-	if err := s.dispatcher.DispatchStop(ctx, deploymentdto.StopDispatchInput{ApplicationID: app.Id, DeploymentID: deployment.Id, RemoveVolumes: input.RemoveVolumes}); err != nil {
+	if err := s.dispatcher.DispatchStop(ctx, deploymentdto.StopDispatchInput{ApplicationId: app.Id, DeploymentId: deployment.Id, RemoveVolumes: input.RemoveVolumes}); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to enqueue deployment", err)
 	}
 	return deployment.Id, nil
@@ -215,10 +212,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	if err := validateVersionComponents(components); err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
-	missing, _, err := runtimeconfig.Validate(service.RuntimeConfig, version.EnvJSON, components)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindValidation, "Invalid version runtime config", err)
-	}
+	missing, _ := runtimeconfig.Validate(service.RuntimeConfig, components)
 	if len(missing) > 0 {
 		return "", apperror.New(apperror.KindValidation, "missing runtime config keys: "+strings.Join(missing, ", "))
 	}
@@ -235,44 +229,44 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	if err := s.commandStore.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
-	if err := s.dispatcher.DispatchRestart(ctx, deploymentdto.RestartDispatchInput{ApplicationID: app.Id, DeploymentID: deployment.Id}); err != nil {
+	if err := s.dispatcher.DispatchRestart(ctx, deploymentdto.RestartDispatchInput{ApplicationId: app.Id, DeploymentId: deployment.Id}); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to enqueue deployment", err)
 	}
 	return deployment.Id, nil
 }
 
-func (s Service) loadApplicationForUser(ctx context.Context, userID string, applicationID string) (model.Application, error) {
+func (s Service) loadApplicationForUser(ctx context.Context, userId string, applicationId string) (model.Application, error) {
 	if s.commandStore == nil {
 		return model.Application{}, apperror.New(apperror.KindInternal, "deployment command store is not configured")
 	}
-	app, err := s.commandStore.Application(ctx, applicationID)
+	app, err := s.commandStore.Application(ctx, applicationId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return model.Application{}, apperror.New(apperror.KindNotFound, "Application "+applicationID+" not found")
+			return model.Application{}, apperror.New(apperror.KindNotFound, "Application "+applicationId+" not found")
 		}
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
 	if app.ProjectId != nil {
-		if err := s.ensureCommandProjectMembership(ctx, *app.ProjectId, userID); err != nil {
+		if err := s.ensureCommandProjectMembership(ctx, *app.ProjectId, userId); err != nil {
 			return model.Application{}, err
 		}
 	}
 	return app, nil
 }
 
-func (s Service) resolveServiceTarget(ctx context.Context, applicationID string, input deploymentdto.ServiceTargetInput) (model.Service, error) {
-	serviceID := strings.TrimSpace(input.ServiceId)
-	if serviceID == "" {
+func (s Service) resolveServiceTarget(ctx context.Context, applicationId string, input deploymentdto.ServiceTargetInput) (model.Service, error) {
+	serviceId := strings.TrimSpace(input.ServiceId)
+	if serviceId == "" {
 		return model.Service{}, apperror.New(apperror.KindValidation, "service_id is required")
 	}
-	service, err := s.commandStore.Service(ctx, serviceID)
+	service, err := s.commandStore.Service(ctx, serviceId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
 		}
 		return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	if service.ApplicationId != applicationID {
+	if service.ApplicationId != applicationId {
 		return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
 	}
 	return service, nil
@@ -295,14 +289,14 @@ func (s Service) resolveDeployService(ctx context.Context, app model.Application
 	}, nil
 }
 
-func (s Service) ensureCommandProjectMembership(ctx context.Context, projectID string, userID string) error {
-	if _, err := s.commandStore.Project(ctx, projectID); err != nil {
+func (s Service) ensureCommandProjectMembership(ctx context.Context, projectId string, userId string) error {
+	if _, err := s.commandStore.Project(ctx, projectId); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return apperror.New(apperror.KindNotFound, "Project "+projectID+" not found")
+			return apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
 	}
-	member, err := s.commandStore.IsProjectMember(ctx, projectID, userID)
+	member, err := s.commandStore.IsProjectMember(ctx, projectId, userId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check project member", err)
 	}

@@ -1,26 +1,21 @@
 package deploymentsvc
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
 const (
-	mountSourceDirectory   = "directory"
-	mountSourceFile        = "file"
-	mountSourceNamedVolume = "named_volume"
-	mountSourceSpecial     = "special"
-
-	specialDockerSock = "docker.sock"
-
-	contentModeSeed = "seed"
-	contentModeSync = "sync"
+	mountSourceDirectory      = "directory"
+	mountSourceFile           = "file"
+	mountSourceNamedVolume    = "named_volume"
+	mountSourceControlledFile = "controlled_file"
 
 	maxMountContentBytes = 256 * 1024
 )
@@ -38,49 +33,54 @@ type EnvVar struct {
 }
 
 type ResolvedMount struct {
-	Compose     string
-	HostSource  string
-	IsFile      bool
-	SourceType  string
-	Content     string
-	ContentMode string
+	Compose           string
+	HostSource        string
+	IsFile            bool
+	ShouldMaterialize bool
+	SourceType        string
+	Content           string
+	IgnoreIfExists    bool
+	FileMode          os.FileMode
+	NamedVolumeName   string
 }
 
 func validateMountSpec(m MountSpec) error {
 	if m.SourceType == "" || m.Source == "" || m.Target == "" {
 		return fmt.Errorf("source_type, source and target are required")
 	}
-	if !strings.HasPrefix(m.Target, "/") {
-		return fmt.Errorf("target must be an absolute container path")
-	}
-	switch m.SourceType {
-	case mountSourceDirectory, mountSourceFile:
+	if m.SourceIsHostPath {
+		if m.SourceType != mountSourceDirectory && m.SourceType != mountSourceFile {
+			return fmt.Errorf("source_is_host_path is only allowed for directory or file mounts")
+		}
+		if !isAbsoluteMountSource(m.Source) {
+			return fmt.Errorf("host path source must be an absolute path")
+		}
+	} else if m.SourceType == mountSourceDirectory || m.SourceType == mountSourceFile || m.SourceType == mountSourceControlledFile {
 		if isAbsoluteMountSource(m.Source) || hasParentMountSegment(m.Source) {
 			return fmt.Errorf("source must be a relative path without parent directory segments")
 		}
-		if m.SourceType == mountSourceFile {
-			if m.ContentMode != contentModeSeed && m.ContentMode != contentModeSync {
-				return fmt.Errorf("file mount content_mode must be seed or sync")
-			}
-			if len(m.Content) > maxMountContentBytes {
-				return fmt.Errorf("content exceeds %d bytes", maxMountContentBytes)
-			}
-		} else if m.Content != "" || m.ContentMode != "" {
-			return fmt.Errorf("content is only allowed on file mounts")
+	}
+	switch m.SourceType {
+	case mountSourceDirectory, mountSourceFile:
+		if m.Content != "" || m.Mode != "" || m.IgnoreIfExists {
+			return fmt.Errorf("content options are only allowed on controlled_file mounts")
 		}
 	case mountSourceNamedVolume:
 		if strings.ContainsAny(m.Source, `/\\`) {
 			return fmt.Errorf("named_volume source must be a volume name")
 		}
-		if m.Content != "" || m.ContentMode != "" {
-			return fmt.Errorf("content is only allowed on file mounts")
+		if m.SourceIsHostPath || m.Content != "" || m.Mode != "" || m.IgnoreIfExists {
+			return fmt.Errorf("named_volume does not support file source options")
 		}
-	case mountSourceSpecial:
-		if m.Source != specialDockerSock || !m.ReadOnly {
-			return fmt.Errorf("only read-only docker.sock is supported as a special mount")
+	case mountSourceControlledFile:
+		if m.SourceIsHostPath {
+			return fmt.Errorf("controlled_file source must be platform-relative")
 		}
-		if m.Content != "" || m.ContentMode != "" {
-			return fmt.Errorf("content is only allowed on file mounts")
+		if len(m.Content) > maxMountContentBytes {
+			return fmt.Errorf("content exceeds %d bytes", maxMountContentBytes)
+		}
+		if _, err := parseUnixFileMode(m.Mode); err != nil {
+			return err
 		}
 	default:
 		return fmt.Errorf("unsupported source_type %q", m.SourceType)
@@ -88,23 +88,15 @@ func validateMountSpec(m MountSpec) error {
 	return nil
 }
 
-func parseEnvVars(raw *string) ([]EnvVar, error) {
-	if raw == nil || *raw == "" {
-		return nil, nil
+func parseUnixFileMode(mode string) (os.FileMode, error) {
+	if len(mode) != 4 || mode[0] != '0' {
+		return 0, fmt.Errorf("controlled_file mode must be a four-digit Unix octal mode")
 	}
-	if strings.HasPrefix(*raw, "{") {
-		return nil, fmt.Errorf("env_json must be a JSON array of {key,value}, not an object")
+	parsed, err := strconv.ParseUint(mode, 8, 32)
+	if err != nil || parsed > 0o777 {
+		return 0, fmt.Errorf("controlled_file mode must be a four-digit Unix octal mode")
 	}
-	var vars []EnvVar
-	if err := json.Unmarshal([]byte(*raw), &vars); err != nil {
-		return nil, fmt.Errorf("env must be a JSON array of objects: %w", err)
-	}
-	for i, item := range vars {
-		if item.Key == "" {
-			return nil, fmt.Errorf("env[%d].key is required", i)
-		}
-	}
-	return vars, nil
+	return os.FileMode(parsed), nil
 }
 
 type placeholderNeed struct {
@@ -179,19 +171,32 @@ func resolveMountSpecs(mounts []MountSpec, physicalServiceDir string) ([]Resolve
 		if err := validateMountSpec(mount); err != nil {
 			return nil, err
 		}
-		item := ResolvedMount{SourceType: mount.SourceType, Content: mount.Content, ContentMode: mount.ContentMode}
+		item := ResolvedMount{SourceType: mount.SourceType, Content: mount.Content, IgnoreIfExists: mount.IgnoreIfExists}
+		if mount.SourceType == mountSourceControlledFile {
+			mode, err := parseUnixFileMode(mount.Mode)
+			if err != nil {
+				return nil, err
+			}
+			item.FileMode = mode
+		}
 		switch mount.SourceType {
-		case mountSourceDirectory, mountSourceFile:
+		case mountSourceDirectory, mountSourceFile, mountSourceControlledFile:
+			if mount.SourceIsHostPath {
+				item.HostSource = mount.Source
+				item.IsFile = mount.SourceType == mountSourceFile
+				item.Compose = item.HostSource + ":" + mount.Target
+				break
+			}
 			if physicalServiceDir == "" {
 				return nil, fmt.Errorf("physical service dir required for %s mount %s", mount.SourceType, mount.Source)
 			}
 			item.HostSource = filepath.ToSlash(filepath.Join(physicalServiceDir, filepath.FromSlash(mount.Source)))
-			item.IsFile = mount.SourceType == mountSourceFile
+			item.IsFile = mount.SourceType == mountSourceFile || mount.SourceType == mountSourceControlledFile
+			item.ShouldMaterialize = mount.SourceType == mountSourceControlledFile
 			item.Compose = item.HostSource + ":" + mount.Target
 		case mountSourceNamedVolume:
 			item.Compose = mount.Source + ":" + mount.Target
-		case mountSourceSpecial:
-			item.Compose = "/var/run/docker.sock:" + mount.Target
+			item.NamedVolumeName = mount.Source
 		}
 		if mount.ReadOnly {
 			item.Compose += ":ro"
@@ -203,12 +208,12 @@ func resolveMountSpecs(mounts []MountSpec, physicalServiceDir string) ([]Resolve
 
 func MaterializeLogicalMountSources(resolved []ResolvedMount) error {
 	for _, item := range resolved {
-		if (item.SourceType != mountSourceDirectory && item.SourceType != mountSourceFile) || item.HostSource == "" {
+		if !item.ShouldMaterialize || item.HostSource == "" {
 			continue
 		}
 		host := filepath.FromSlash(item.HostSource)
 		if item.IsFile {
-			if err := materializeFile(host, item.Content, item.ContentMode); err != nil {
+			if err := materializeFile(host, item.Content, item.IgnoreIfExists, item.FileMode); err != nil {
 				return err
 			}
 			continue
@@ -220,18 +225,18 @@ func MaterializeLogicalMountSources(resolved []ResolvedMount) error {
 	return nil
 }
 
-func materializeFile(path string, content string, mode string) error {
-	if mode == "" {
-		return fmt.Errorf("content_mode is required for file mount %s", path)
-	}
+func materializeFile(path string, content string, ignoreIfExists bool, mode os.FileMode) error {
 	if st, err := os.Stat(path); err == nil {
 		if st.IsDir() {
 			return fmt.Errorf("mount source %s exists as directory but must be a file", path)
 		}
-		if mode == contentModeSync {
-			if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-				return fmt.Errorf("sync mount file %s: %w", path, err)
+		if !ignoreIfExists {
+			if err := os.WriteFile(path, []byte(content), mode); err != nil {
+				return fmt.Errorf("write controlled mount file %s: %w", path, err)
 			}
+		}
+		if err := os.Chmod(path, mode); err != nil {
+			return fmt.Errorf("set controlled mount file mode %s: %w", path, err)
 		}
 		return nil
 	} else if !os.IsNotExist(err) {
@@ -240,8 +245,11 @@ func materializeFile(path string, content string, mode string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("create parent for mount file %s: %w", path, err)
 	}
-	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(content), mode); err != nil {
 		return fmt.Errorf("create mount file %s: %w", path, err)
+	}
+	if err := os.Chmod(path, mode); err != nil {
+		return fmt.Errorf("set controlled mount file mode %s: %w", path, err)
 	}
 	return nil
 }

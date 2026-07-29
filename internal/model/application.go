@@ -23,7 +23,6 @@ type Version struct {
 	ApplicationId        string    `db:"application_id"`
 	Label                string    `db:"label"`
 	Status               string    `db:"status"`
-	EnvJSON              *string   `db:"env_json"`
 	CreatedFromVersionId *string   `db:"created_from_version_id"`
 	Note                 *string   `db:"note"`
 	ComponentSummary     string    `db:"component_summary"`
@@ -31,7 +30,7 @@ type Version struct {
 	UpdatedAt            time.Time `db:"updated_at"`
 }
 
-// VersionComponentSummary returns the stable, user-facing image list for a version.
+// VersionComponentSummary returns the stable, user-facing component name list for a version.
 func VersionComponentSummary(components []VersionComponent) string {
 	if len(components) == 0 {
 		return ""
@@ -42,7 +41,7 @@ func VersionComponentSummary(components []VersionComponent) string {
 	})
 	parts := make([]string, 0, len(items))
 	for _, component := range items {
-		parts = append(parts, component.Image)
+		parts = append(parts, component.Name)
 	}
 	return strings.Join(parts, ", ")
 }
@@ -54,11 +53,9 @@ type VersionComponent struct {
 	Name          string `db:"name"`
 	Image         string `db:"image"`
 	Command       []string
-	Args          []string
 	Env           []VersionComponentEnv
 	Ports         []VersionComponentPort
 	Mounts        []VersionComponentMount
-	Networks      []string
 	Dependencies  []VersionComponentDependency
 	Healthcheck   *VersionComponentHealthcheck
 	Resources     *VersionComponentResources
@@ -81,12 +78,14 @@ type VersionComponentPort struct {
 }
 
 type VersionComponentMount struct {
-	SourceType  string
-	Source      string
-	Target      string
-	ReadOnly    bool
-	Content     string
-	ContentMode string
+	SourceType       string
+	Source           string
+	Target           string
+	ReadOnly         bool
+	SourceIsHostPath bool
+	Content          string
+	Mode             string
+	IgnoreIfExists   bool
 }
 
 type VersionComponentDependency struct {
@@ -96,7 +95,7 @@ type VersionComponentDependency struct {
 
 type VersionComponentHealthcheck struct {
 	TestMode      string
-	Test          []string
+	Test          string
 	Interval      *string
 	Timeout       *string
 	Retries       *int

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gopkg.in/yaml.v3"
@@ -79,16 +80,11 @@ func renderComposeServices(input RenderInput, injectGatewayNetwork bool) (Render
 		return RenderResult{}, err
 	}
 
-	versionEnvVars, err := parseEnvVars(input.Version.EnvJSON)
-	if err != nil {
-		return RenderResult{}, fmt.Errorf("version env_json: %w", err)
-	}
-	versionEnv := applyEnvPlaceholders(versionEnvVars, input.RuntimeConfig)
-
 	services := make(map[string]any, len(input.Components))
 	var allResolved []ResolvedMount
+	composeVolumes := map[string]any{}
 	for _, component := range input.Components {
-		service, resolved, err := renderVersionComponentService(component, versionEnv, input.App.Code, input.PhysicalSvcDir, input.RuntimeConfig)
+		service, resolved, err := renderVersionComponentService(component, input.App.Code, input.PhysicalSvcDir, input.RuntimeConfig)
 		if err != nil {
 			return RenderResult{}, fmt.Errorf("component %s: %w", component.Name, err)
 		}
@@ -97,6 +93,11 @@ func renderComposeServices(input RenderInput, injectGatewayNetwork bool) (Render
 		}
 		services[component.Name] = service
 		allResolved = append(allResolved, resolved...)
+		for _, mount := range resolved {
+			if mount.NamedVolumeName != "" {
+				composeVolumes[mount.NamedVolumeName] = map[string]any{}
+			}
+		}
 	}
 
 	if len(input.Exposes) > 0 {
@@ -117,9 +118,10 @@ func renderComposeServices(input RenderInput, injectGatewayNetwork bool) (Render
 			return RenderResult{}, err
 		}
 	}
-	injectContainerVersionLabels(services, input.Version)
-
 	data := map[string]any{"services": services}
+	if len(composeVolumes) > 0 {
+		data["volumes"] = composeVolumes
+	}
 	if injectGatewayNetwork {
 		data["networks"] = map[string]any{
 			gatewayNetworkKey: map[string]any{
@@ -568,7 +570,6 @@ func validateVersionExposes(exposes []model.VersionExpose, components []model.Ve
 
 func renderVersionComponentService(
 	component model.VersionComponent,
-	versionEnv map[string]string,
 	appCode string,
 	physicalServiceDir string,
 	runtime map[string]string,
@@ -580,15 +581,7 @@ func renderVersionComponentService(
 	if len(component.Command) > 0 {
 		service["command"] = append([]string(nil), component.Command...)
 	}
-	if len(component.Args) > 0 {
-		if existing, ok := service["command"].([]string); ok {
-			service["command"] = append(existing, component.Args...)
-		} else {
-			service["command"] = append([]string(nil), component.Args...)
-		}
-	}
-	runtimeEnv := componentEnv(component.Env, runtime)
-	env := mergeEnv(versionEnv, runtimeEnv)
+	env := componentEnv(component.Env, runtime)
 	if len(env) > 0 {
 		service["environment"] = env
 	}
@@ -613,9 +606,6 @@ func renderVersionComponentService(
 		}
 		service["volumes"] = volumes
 	}
-	if len(component.Networks) > 0 {
-		service["networks"] = append([]string(nil), component.Networks...)
-	}
 	if len(component.Dependencies) > 0 {
 		depends := make(map[string]map[string]string, len(component.Dependencies))
 		for _, dependency := range component.Dependencies {
@@ -624,7 +614,11 @@ func renderVersionComponentService(
 		service["depends_on"] = depends
 	}
 	if component.Healthcheck != nil {
-		service["healthcheck"] = renderComponentHealthcheck(component.Healthcheck)
+		healthcheck, err := renderComponentHealthcheck(component.Healthcheck)
+		if err != nil {
+			return nil, nil, err
+		}
+		service["healthcheck"] = healthcheck
 	}
 	if component.Resources != nil {
 		service["deploy"] = map[string]any{"resources": renderComponentResources(component.Resources)}
@@ -635,11 +629,24 @@ func renderVersionComponentService(
 	return service, resolved, nil
 }
 
-func renderComponentHealthcheck(healthcheck *model.VersionComponentHealthcheck) map[string]any {
+func renderComponentHealthcheck(healthcheck *model.VersionComponentHealthcheck) (map[string]any, error) {
 	if healthcheck.Disabled {
-		return map[string]any{"disable": true}
+		return map[string]any{"disable": true}, nil
 	}
-	result := map[string]any{"test": append([]string{healthcheck.TestMode}, healthcheck.Test...)}
+	test := []string{healthcheck.TestMode}
+	switch healthcheck.TestMode {
+	case "CMD":
+		args, err := commandline.Parse(healthcheck.Test)
+		if err != nil {
+			return nil, fmt.Errorf("parse healthcheck command: %w", err)
+		}
+		test = append(test, args...)
+	case "CMD-SHELL":
+		test = append(test, healthcheck.Test)
+	default:
+		return nil, fmt.Errorf("unsupported healthcheck test mode %q", healthcheck.TestMode)
+	}
+	result := map[string]any{"test": test}
 	if healthcheck.Interval != nil {
 		result["interval"] = *healthcheck.Interval
 	}
@@ -655,7 +662,7 @@ func renderComponentHealthcheck(healthcheck *model.VersionComponentHealthcheck) 
 	if healthcheck.StartInterval != nil {
 		result["start_interval"] = *healthcheck.StartInterval
 	}
-	return result
+	return result, nil
 }
 
 func renderComponentResources(resources *model.VersionComponentResources) map[string]any {
@@ -678,20 +685,6 @@ func resourceValues(cpus *string, memory *string) map[string]string {
 		values["memory"] = *memory
 	}
 	return values
-}
-
-func mergeEnv(base map[string]string, override map[string]string) map[string]string {
-	if len(base) == 0 && len(override) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(base)+len(override))
-	for k, v := range base {
-		out[k] = v
-	}
-	for k, v := range override {
-		out[k] = v
-	}
-	return out
 }
 
 func validDeploymentRouteDomain(domain string) bool {

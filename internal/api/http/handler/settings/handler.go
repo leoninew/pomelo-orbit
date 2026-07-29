@@ -11,7 +11,6 @@ import (
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
 	settingssvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/usecase"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 )
 
 type Handler struct {
@@ -30,7 +29,7 @@ func (h Handler) GetConfig(c *gin.Context) {
 	}
 	resp, err := h.service.Config(c.Request.Context())
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	body := systemConfigResponse(resp)
@@ -48,7 +47,7 @@ func (h Handler) UpdateConfig(c *gin.Context) {
 	}
 	resp, err := h.service.Update(c.Request.Context(), req.Key, configUpdateValue(&req))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	body := systemConfigResponse(resp)
@@ -66,16 +65,10 @@ func (h Handler) ResetConfig(c *gin.Context) {
 	}
 	resp, err := h.service.Reset(c.Request.Context(), req.Keys)
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	body := systemConfigResponse(resp)
 	transportresponse.ProtoJSON(c, http.StatusOK, &body)
 }
 
-func (h Handler) writeError(c *gin.Context, err error) {
-	if apperror.StatusCode(err) == http.StatusInternalServerError {
-		h.logger.Error("settings request failed", "error", err)
-	}
-	transportresponse.WriteError(c, err)
-}

@@ -63,8 +63,8 @@ func (q *Queries) CountVersions(ctx context.Context, arg CountVersionsParams) (i
 }
 
 const createVersion = `-- name: CreateVersion :exec
-INSERT INTO version (id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO version (id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateVersionParams struct {
@@ -72,7 +72,6 @@ type CreateVersionParams struct {
 	ApplicationID        string         `db:"application_id"`
 	Label                string         `db:"label"`
 	Status               string         `db:"status"`
-	EnvJson              sql.NullString `db:"env_json"`
 	CreatedFromVersionID sql.NullString `db:"created_from_version_id"`
 	Note                 sql.NullString `db:"note"`
 	ComponentSummary     string         `db:"component_summary"`
@@ -86,7 +85,6 @@ func (q *Queries) CreateVersion(ctx context.Context, arg CreateVersionParams) er
 		arg.ApplicationID,
 		arg.Label,
 		arg.Status,
-		arg.EnvJson,
 		arg.CreatedFromVersionID,
 		arg.Note,
 		arg.ComponentSummary,
@@ -113,16 +111,6 @@ WHERE id = ?
 
 func (q *Queries) DeleteVersionComponent(ctx context.Context, id string) error {
 	_, err := q.db.ExecContext(ctx, deleteVersionComponent, id)
-	return err
-}
-
-const deleteVersionComponentArguments = `-- name: DeleteVersionComponentArguments :exec
-DELETE FROM version_component_argument
-WHERE component_id = ?
-`
-
-func (q *Queries) DeleteVersionComponentArguments(ctx context.Context, componentID string) error {
-	_, err := q.db.ExecContext(ctx, deleteVersionComponentArguments, componentID)
 	return err
 }
 
@@ -156,16 +144,6 @@ func (q *Queries) DeleteVersionComponentHealthcheck(ctx context.Context, compone
 	return err
 }
 
-const deleteVersionComponentHealthcheckArgs = `-- name: DeleteVersionComponentHealthcheckArgs :exec
-DELETE FROM version_component_healthcheck_arg
-WHERE component_id = ?
-`
-
-func (q *Queries) DeleteVersionComponentHealthcheckArgs(ctx context.Context, componentID string) error {
-	_, err := q.db.ExecContext(ctx, deleteVersionComponentHealthcheckArgs, componentID)
-	return err
-}
-
 const deleteVersionComponentMounts = `-- name: DeleteVersionComponentMounts :exec
 DELETE FROM version_component_mount
 WHERE component_id = ?
@@ -173,16 +151,6 @@ WHERE component_id = ?
 
 func (q *Queries) DeleteVersionComponentMounts(ctx context.Context, componentID string) error {
 	_, err := q.db.ExecContext(ctx, deleteVersionComponentMounts, componentID)
-	return err
-}
-
-const deleteVersionComponentNetworks = `-- name: DeleteVersionComponentNetworks :exec
-DELETE FROM version_component_network
-WHERE component_id = ?
-`
-
-func (q *Queries) DeleteVersionComponentNetworks(ctx context.Context, componentID string) error {
-	_, err := q.db.ExecContext(ctx, deleteVersionComponentNetworks, componentID)
 	return err
 }
 
@@ -248,8 +216,8 @@ func (q *Queries) DeleteVersionExposes(ctx context.Context, versionID string) er
 
 const insertVersionComponent = `-- name: InsertVersionComponent :exec
 INSERT INTO version_component (
-  id, version_id, name, image, pull_policy, restart_policy, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentParams struct {
@@ -257,6 +225,7 @@ type InsertVersionComponentParams struct {
 	VersionID     string         `db:"version_id"`
 	Name          string         `db:"name"`
 	Image         string         `db:"image"`
+	CommandJson   string         `db:"command_json"`
 	PullPolicy    sql.NullString `db:"pull_policy"`
 	RestartPolicy sql.NullString `db:"restart_policy"`
 	CreatedAt     time.Time      `db:"created_at"`
@@ -269,32 +238,11 @@ func (q *Queries) InsertVersionComponent(ctx context.Context, arg InsertVersionC
 		arg.VersionID,
 		arg.Name,
 		arg.Image,
+		arg.CommandJson,
 		arg.PullPolicy,
 		arg.RestartPolicy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-	)
-	return err
-}
-
-const insertVersionComponentArgument = `-- name: InsertVersionComponentArgument :exec
-INSERT INTO version_component_argument (component_id, kind, position, value)
-VALUES (?, ?, ?, ?)
-`
-
-type InsertVersionComponentArgumentParams struct {
-	ComponentID string `db:"component_id"`
-	Kind        string `db:"kind"`
-	Position    int64  `db:"position"`
-	Value       string `db:"value"`
-}
-
-func (q *Queries) InsertVersionComponentArgument(ctx context.Context, arg InsertVersionComponentArgumentParams) error {
-	_, err := q.db.ExecContext(ctx, insertVersionComponentArgument,
-		arg.ComponentID,
-		arg.Kind,
-		arg.Position,
-		arg.Value,
 	)
 	return err
 }
@@ -345,13 +293,14 @@ func (q *Queries) InsertVersionComponentEnv(ctx context.Context, arg InsertVersi
 
 const insertVersionComponentHealthcheck = `-- name: InsertVersionComponentHealthcheck :exec
 INSERT INTO version_component_healthcheck (
-  component_id, test_mode, interval, timeout, retries, start_period, start_interval, disabled
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  component_id, test_mode, test, interval, timeout, retries, start_period, start_interval, disabled
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentHealthcheckParams struct {
 	ComponentID   string         `db:"component_id"`
 	TestMode      sql.NullString `db:"test_mode"`
+	Test          string         `db:"test"`
 	Interval      sql.NullString `db:"interval"`
 	Timeout       sql.NullString `db:"timeout"`
 	Retries       sql.NullInt64  `db:"retries"`
@@ -364,6 +313,7 @@ func (q *Queries) InsertVersionComponentHealthcheck(ctx context.Context, arg Ins
 	_, err := q.db.ExecContext(ctx, insertVersionComponentHealthcheck,
 		arg.ComponentID,
 		arg.TestMode,
+		arg.Test,
 		arg.Interval,
 		arg.Timeout,
 		arg.Retries,
@@ -374,37 +324,23 @@ func (q *Queries) InsertVersionComponentHealthcheck(ctx context.Context, arg Ins
 	return err
 }
 
-const insertVersionComponentHealthcheckArg = `-- name: InsertVersionComponentHealthcheckArg :exec
-INSERT INTO version_component_healthcheck_arg (component_id, position, value)
-VALUES (?, ?, ?)
-`
-
-type InsertVersionComponentHealthcheckArgParams struct {
-	ComponentID string `db:"component_id"`
-	Position    int64  `db:"position"`
-	Value       string `db:"value"`
-}
-
-func (q *Queries) InsertVersionComponentHealthcheckArg(ctx context.Context, arg InsertVersionComponentHealthcheckArgParams) error {
-	_, err := q.db.ExecContext(ctx, insertVersionComponentHealthcheckArg, arg.ComponentID, arg.Position, arg.Value)
-	return err
-}
-
 const insertVersionComponentMount = `-- name: InsertVersionComponentMount :exec
 INSERT INTO version_component_mount (
-  component_id, source_type, source, target, read_only, content, content_mode, position
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  component_id, source_type, source, target, read_only, source_is_host_path, content, mode, ignore_if_exists, position
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentMountParams struct {
-	ComponentID string         `db:"component_id"`
-	SourceType  string         `db:"source_type"`
-	Source      string         `db:"source"`
-	Target      string         `db:"target"`
-	ReadOnly    int64          `db:"read_only"`
-	Content     sql.NullString `db:"content"`
-	ContentMode sql.NullString `db:"content_mode"`
-	Position    int64          `db:"position"`
+	ComponentID      string         `db:"component_id"`
+	SourceType       string         `db:"source_type"`
+	Source           string         `db:"source"`
+	Target           string         `db:"target"`
+	ReadOnly         int64          `db:"read_only"`
+	SourceIsHostPath int64          `db:"source_is_host_path"`
+	Content          sql.NullString `db:"content"`
+	Mode             string         `db:"mode"`
+	IgnoreIfExists   int64          `db:"ignore_if_exists"`
+	Position         int64          `db:"position"`
 }
 
 func (q *Queries) InsertVersionComponentMount(ctx context.Context, arg InsertVersionComponentMountParams) error {
@@ -414,26 +350,12 @@ func (q *Queries) InsertVersionComponentMount(ctx context.Context, arg InsertVer
 		arg.Source,
 		arg.Target,
 		arg.ReadOnly,
+		arg.SourceIsHostPath,
 		arg.Content,
-		arg.ContentMode,
+		arg.Mode,
+		arg.IgnoreIfExists,
 		arg.Position,
 	)
-	return err
-}
-
-const insertVersionComponentNetwork = `-- name: InsertVersionComponentNetwork :exec
-INSERT INTO version_component_network (component_id, name, position)
-VALUES (?, ?, ?)
-`
-
-type InsertVersionComponentNetworkParams struct {
-	ComponentID string `db:"component_id"`
-	Name        string `db:"name"`
-	Position    int64  `db:"position"`
-}
-
-func (q *Queries) InsertVersionComponentNetwork(ctx context.Context, arg InsertVersionComponentNetworkParams) error {
-	_, err := q.db.ExecContext(ctx, insertVersionComponentNetwork, arg.ComponentID, arg.Name, arg.Position)
 	return err
 }
 
@@ -568,7 +490,7 @@ func (q *Queries) InsertVersionExpose(ctx context.Context, arg InsertVersionExpo
 }
 
 const listVersions = `-- name: ListVersions :many
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
+SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
 ORDER BY created_at DESC, id
@@ -588,7 +510,6 @@ func (q *Queries) ListVersions(ctx context.Context, applicationID string) ([]Ver
 			&i.ApplicationID,
 			&i.Label,
 			&i.Status,
-			&i.EnvJson,
 			&i.CreatedFromVersionID,
 			&i.Note,
 			&i.ComponentSummary,
@@ -609,7 +530,7 @@ func (q *Queries) ListVersions(ctx context.Context, applicationID string) ([]Ver
 }
 
 const listVersionsPage = `-- name: ListVersionsPage :many
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
+SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
   AND (? = '' OR label LIKE ? OR note LIKE ?)
@@ -647,7 +568,6 @@ func (q *Queries) ListVersionsPage(ctx context.Context, arg ListVersionsPagePara
 			&i.ApplicationID,
 			&i.Label,
 			&i.Status,
-			&i.EnvJson,
 			&i.CreatedFromVersionID,
 			&i.Note,
 			&i.ComponentSummary,
@@ -711,16 +631,31 @@ func (q *Queries) RenameVersionComponentExposes(ctx context.Context, arg RenameV
 	return err
 }
 
+const touchVersionComponent = `-- name: TouchVersionComponent :exec
+UPDATE version_component
+SET updated_at = ?
+WHERE id = ?
+`
+
+type TouchVersionComponentParams struct {
+	UpdatedAt time.Time `db:"updated_at"`
+	ID        string    `db:"id"`
+}
+
+func (q *Queries) TouchVersionComponent(ctx context.Context, arg TouchVersionComponentParams) error {
+	_, err := q.db.ExecContext(ctx, touchVersionComponent, arg.UpdatedAt, arg.ID)
+	return err
+}
+
 const updateVersion = `-- name: UpdateVersion :exec
 UPDATE version
-SET label = ?, status = ?, env_json = ?, note = ?, component_summary = ?, updated_at = ?
+SET label = ?, status = ?, note = ?, component_summary = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateVersionParams struct {
 	Label            string         `db:"label"`
 	Status           string         `db:"status"`
-	EnvJson          sql.NullString `db:"env_json"`
 	Note             sql.NullString `db:"note"`
 	ComponentSummary string         `db:"component_summary"`
 	UpdatedAt        time.Time      `db:"updated_at"`
@@ -731,7 +666,6 @@ func (q *Queries) UpdateVersion(ctx context.Context, arg UpdateVersionParams) er
 	_, err := q.db.ExecContext(ctx, updateVersion,
 		arg.Label,
 		arg.Status,
-		arg.EnvJson,
 		arg.Note,
 		arg.ComponentSummary,
 		arg.UpdatedAt,
@@ -740,13 +674,13 @@ func (q *Queries) UpdateVersion(ctx context.Context, arg UpdateVersionParams) er
 	return err
 }
 
-const updateVersionComponent = `-- name: UpdateVersionComponent :exec
+const updateVersionComponentBasic = `-- name: UpdateVersionComponentBasic :exec
 UPDATE version_component
 SET name = ?, image = ?, pull_policy = ?, restart_policy = ?, updated_at = ?
 WHERE id = ?
 `
 
-type UpdateVersionComponentParams struct {
+type UpdateVersionComponentBasicParams struct {
 	Name          string         `db:"name"`
 	Image         string         `db:"image"`
 	PullPolicy    sql.NullString `db:"pull_policy"`
@@ -755,8 +689,8 @@ type UpdateVersionComponentParams struct {
 	ID            string         `db:"id"`
 }
 
-func (q *Queries) UpdateVersionComponent(ctx context.Context, arg UpdateVersionComponentParams) error {
-	_, err := q.db.ExecContext(ctx, updateVersionComponent,
+func (q *Queries) UpdateVersionComponentBasic(ctx context.Context, arg UpdateVersionComponentBasicParams) error {
+	_, err := q.db.ExecContext(ctx, updateVersionComponentBasic,
 		arg.Name,
 		arg.Image,
 		arg.PullPolicy,
@@ -764,6 +698,23 @@ func (q *Queries) UpdateVersionComponent(ctx context.Context, arg UpdateVersionC
 		arg.UpdatedAt,
 		arg.ID,
 	)
+	return err
+}
+
+const updateVersionComponentCommand = `-- name: UpdateVersionComponentCommand :exec
+UPDATE version_component
+SET command_json = ?, updated_at = ?
+WHERE id = ?
+`
+
+type UpdateVersionComponentCommandParams struct {
+	CommandJson string    `db:"command_json"`
+	UpdatedAt   time.Time `db:"updated_at"`
+	ID          string    `db:"id"`
+}
+
+func (q *Queries) UpdateVersionComponentCommand(ctx context.Context, arg UpdateVersionComponentCommandParams) error {
+	_, err := q.db.ExecContext(ctx, updateVersionComponentCommand, arg.CommandJson, arg.UpdatedAt, arg.ID)
 	return err
 }
 
@@ -785,7 +736,7 @@ func (q *Queries) UpdateVersionComponentSummary(ctx context.Context, arg UpdateV
 }
 
 const versionByID = `-- name: VersionByID :one
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
+SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE id = ?
 `
@@ -798,7 +749,6 @@ func (q *Queries) VersionByID(ctx context.Context, id string) (Version, error) {
 		&i.ApplicationID,
 		&i.Label,
 		&i.Status,
-		&i.EnvJson,
 		&i.CreatedFromVersionID,
 		&i.Note,
 		&i.ComponentSummary,
@@ -808,43 +758,8 @@ func (q *Queries) VersionByID(ctx context.Context, id string) (Version, error) {
 	return i, err
 }
 
-const versionComponentArgumentsByComponent = `-- name: VersionComponentArgumentsByComponent :many
-SELECT component_id, kind, position, value
-FROM version_component_argument
-WHERE component_id = ?
-ORDER BY kind, position
-`
-
-func (q *Queries) VersionComponentArgumentsByComponent(ctx context.Context, componentID string) ([]VersionComponentArgument, error) {
-	rows, err := q.db.QueryContext(ctx, versionComponentArgumentsByComponent, componentID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []VersionComponentArgument
-	for rows.Next() {
-		var i VersionComponentArgument
-		if err := rows.Scan(
-			&i.ComponentID,
-			&i.Kind,
-			&i.Position,
-			&i.Value,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const versionComponentByID = `-- name: VersionComponentByID :one
-SELECT id, version_id, name, image, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE id = ?
 `
@@ -857,6 +772,7 @@ func (q *Queries) VersionComponentByID(ctx context.Context, id string) (VersionC
 		&i.VersionID,
 		&i.Name,
 		&i.Image,
+		&i.CommandJson,
 		&i.PullPolicy,
 		&i.RestartPolicy,
 		&i.CreatedAt,
@@ -935,38 +851,8 @@ func (q *Queries) VersionComponentEnvByComponent(ctx context.Context, componentI
 	return items, nil
 }
 
-const versionComponentHealthcheckArgsByComponent = `-- name: VersionComponentHealthcheckArgsByComponent :many
-SELECT component_id, position, value
-FROM version_component_healthcheck_arg
-WHERE component_id = ?
-ORDER BY position
-`
-
-func (q *Queries) VersionComponentHealthcheckArgsByComponent(ctx context.Context, componentID string) ([]VersionComponentHealthcheckArg, error) {
-	rows, err := q.db.QueryContext(ctx, versionComponentHealthcheckArgsByComponent, componentID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []VersionComponentHealthcheckArg
-	for rows.Next() {
-		var i VersionComponentHealthcheckArg
-		if err := rows.Scan(&i.ComponentID, &i.Position, &i.Value); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const versionComponentHealthcheckByComponent = `-- name: VersionComponentHealthcheckByComponent :one
-SELECT component_id, test_mode, interval, timeout, retries, start_period, start_interval, disabled
+SELECT component_id, test_mode, test, interval, timeout, retries, start_period, start_interval, disabled
 FROM version_component_healthcheck
 WHERE component_id = ?
 `
@@ -977,6 +863,7 @@ func (q *Queries) VersionComponentHealthcheckByComponent(ctx context.Context, co
 	err := row.Scan(
 		&i.ComponentID,
 		&i.TestMode,
+		&i.Test,
 		&i.Interval,
 		&i.Timeout,
 		&i.Retries,
@@ -988,7 +875,7 @@ func (q *Queries) VersionComponentHealthcheckByComponent(ctx context.Context, co
 }
 
 const versionComponentMountsByComponent = `-- name: VersionComponentMountsByComponent :many
-SELECT component_id, source_type, source, target, read_only, content, content_mode, position
+SELECT component_id, source_type, source, target, read_only, source_is_host_path, content, mode, ignore_if_exists, position
 FROM version_component_mount
 WHERE component_id = ?
 ORDER BY position
@@ -1009,40 +896,12 @@ func (q *Queries) VersionComponentMountsByComponent(ctx context.Context, compone
 			&i.Source,
 			&i.Target,
 			&i.ReadOnly,
+			&i.SourceIsHostPath,
 			&i.Content,
-			&i.ContentMode,
+			&i.Mode,
+			&i.IgnoreIfExists,
 			&i.Position,
 		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const versionComponentNetworksByComponent = `-- name: VersionComponentNetworksByComponent :many
-SELECT component_id, name, position
-FROM version_component_network
-WHERE component_id = ?
-ORDER BY position
-`
-
-func (q *Queries) VersionComponentNetworksByComponent(ctx context.Context, componentID string) ([]VersionComponentNetwork, error) {
-	rows, err := q.db.QueryContext(ctx, versionComponentNetworksByComponent, componentID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []VersionComponentNetwork
-	for rows.Next() {
-		var i VersionComponentNetwork
-		if err := rows.Scan(&i.ComponentID, &i.Name, &i.Position); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1183,7 +1042,7 @@ func (q *Queries) VersionComponentUlimitsByComponent(ctx context.Context, compon
 }
 
 const versionComponentsByVersion = `-- name: VersionComponentsByVersion :many
-SELECT id, version_id, name, image, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE version_id = ?
 ORDER BY name
@@ -1203,6 +1062,7 @@ func (q *Queries) VersionComponentsByVersion(ctx context.Context, versionID stri
 			&i.VersionID,
 			&i.Name,
 			&i.Image,
+			&i.CommandJson,
 			&i.PullPolicy,
 			&i.RestartPolicy,
 			&i.CreatedAt,

@@ -105,17 +105,17 @@ func (s Service) GetService(ctx context.Context, userId string, serviceId string
 }
 
 func (s Service) CreateService(ctx context.Context, userId string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
-	applicationID := strings.TrimSpace(input.ApplicationId)
-	versionID := strings.TrimSpace(input.VersionId)
+	applicationId := strings.TrimSpace(input.ApplicationId)
+	versionId := strings.TrimSpace(input.VersionId)
 	instanceKey := strings.TrimSpace(input.InstanceKey)
-	if applicationID == "" || versionID == "" || instanceKey == "" {
+	if applicationId == "" || versionId == "" || instanceKey == "" {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "application_id, version_id and instance_key are required")
 	}
-	app, err := s.loadApplicationForUser(ctx, userId, applicationID)
+	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
 		return servicedto.ServiceView{}, err
 	}
-	version, components, err := s.versionComponents(ctx, versionID, app.Id)
+	version, components, err := s.versionComponents(ctx, versionId, app.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, err
 	}
@@ -123,7 +123,7 @@ func (s Service) CreateService(ctx context.Context, userId string, input service
 	if err != nil {
 		return servicedto.ServiceView{}, err
 	}
-	if err := validateRuntimeConfig(runtimeConfig, version, components); err != nil {
+	if err := validateRuntimeConfig(runtimeConfig, components); err != nil {
 		return servicedto.ServiceView{}, err
 	}
 	if _, err := s.service.ServiceByKey(ctx, app.Id, instanceKey); err == nil {
@@ -155,7 +155,7 @@ func (s Service) UpdateRuntimeConfig(ctx context.Context, userId string, service
 	if err != nil {
 		return servicedto.RuntimeConfigView{}, err
 	}
-	version, components, err := s.versionComponents(ctx, svc.VersionId, svc.ApplicationId)
+	_, components, err := s.versionComponents(ctx, svc.VersionId, svc.ApplicationId)
 	if err != nil {
 		return servicedto.RuntimeConfigView{}, err
 	}
@@ -163,7 +163,7 @@ func (s Service) UpdateRuntimeConfig(ctx context.Context, userId string, service
 	if err != nil {
 		return servicedto.RuntimeConfigView{}, err
 	}
-	if err := validateRuntimeConfig(runtimeConfig, version, components); err != nil {
+	if err := validateRuntimeConfig(runtimeConfig, components); err != nil {
 		return servicedto.RuntimeConfigView{}, err
 	}
 	if err := s.service.UpdateServiceRuntimeConfig(ctx, svc.Id, runtimeConfig); err != nil {
@@ -207,11 +207,11 @@ func (s Service) ResolveServiceTarget(ctx context.Context, userId string, applic
 }
 
 func (s Service) resolveServiceTarget(ctx context.Context, applicationId string, input servicedto.ServiceTargetInput) (model.Service, error) {
-	serviceID := strings.TrimSpace(input.ServiceId)
-	if serviceID == "" {
+	serviceId := strings.TrimSpace(input.ServiceId)
+	if serviceId == "" {
 		return model.Service{}, apperror.New(apperror.KindValidation, "service_id is required")
 	}
-	svc, err := s.service.Service(ctx, serviceID)
+	svc, err := s.service.Service(ctx, serviceId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
@@ -275,11 +275,8 @@ func normalizeRuntimeConfig(values map[string]string) (map[string]string, error)
 	return result, nil
 }
 
-func validateRuntimeConfig(values map[string]string, version model.Version, components []model.VersionComponent) error {
-	missing, _, err := runtimeconfig.Validate(values, version.EnvJSON, components)
-	if err != nil {
-		return apperror.Wrap(apperror.KindValidation, "Invalid version runtime config", err)
-	}
+func validateRuntimeConfig(values map[string]string, components []model.VersionComponent) error {
+	missing, _ := runtimeconfig.Validate(values, components)
 	if len(missing) > 0 {
 		return apperror.New(apperror.KindValidation, fmt.Sprintf("missing runtime config keys: %s", strings.Join(missing, ", ")))
 	}

@@ -23,12 +23,12 @@ Version 详情保留组件目录；组件独立详情路由承载未发布版本
 | 挂载 | `version_component_mount(component_id, source_type, source, target, read_only, content, content_mode, position)` | `repeated ComponentMount` |
 | 网络 | `version_component_network(component_id, name, position)` | `repeated string networks` |
 | 依赖 | `version_component_dependency(component_id, depends_on_name, condition, position)` | `repeated ComponentDependency` |
-| 健康检查 | `version_component_healthcheck(component_id, test_mode, interval, timeout, retries, start_period, start_interval, disabled)` 与 `version_component_healthcheck_arg(component_id, position, value)` | `ComponentHealthcheck` |
+| 健康检查 | `version_component_healthcheck(component_id, test_mode, test, interval, timeout, retries, start_period, start_interval, disabled)` | `ComponentHealthcheck` |
 | 资源 | `version_component_resource(component_id, limit_cpus, limit_memory, reservation_cpus, reservation_memory)` | `ComponentResources` |
 | tmpfs | `version_component_tmpfs(component_id, target, size_bytes, mode, position)` | `repeated ComponentTmpfs` |
 | ulimit | `version_component_ulimit(component_id, name, soft, hard, position)` | `repeated ComponentUlimit` |
 
-`test_mode` 为 `CMD` 或 `CMD-SHELL`；`disabled` 表达 Compose 的 `healthcheck.disable`。测试命令参数以有序行表单维护，避免把参数数组退化为单一文本或 JSON。
+`test_mode` 为 `CMD` 或 `CMD-SHELL`；`disabled` 表达 Compose 的 `healthcheck.disable`。测试命令以单一文本维护；`CMD` 在渲染 Compose 时解析为 argv，`CMD-SHELL` 原样传递。
 
 资源表单范围为 CPU 和内存的 limits / reservations；现有开发数据只使用 `limits.memory`，迁移后保持原值。未被表单模型支持的 Component JSON 形状在转换前应视为迁移失败，不能静默删除。
 

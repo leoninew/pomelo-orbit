@@ -462,6 +462,7 @@ type ApplicationContainerStatusResp struct {
 	Image         string                 `protobuf:"bytes,7,opt,name=image,proto3" json:"image,omitempty"`
 	VersionId     string                 `protobuf:"bytes,8,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
 	VersionLabel  string                 `protobuf:"bytes,9,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
+	ComponentId   string                 `protobuf:"bytes,10,opt,name=component_id,json=componentId,proto3" json:"component_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -555,6 +556,13 @@ func (x *ApplicationContainerStatusResp) GetVersionId() string {
 func (x *ApplicationContainerStatusResp) GetVersionLabel() string {
 	if x != nil {
 		return x.VersionLabel
+	}
+	return ""
+}
+
+func (x *ApplicationContainerStatusResp) GetComponentId() string {
+	if x != nil {
+		return x.ComponentId
 	}
 	return ""
 }
@@ -767,7 +775,7 @@ const file_orbit_v1_application_application_proto_rawDesc = "" +
 	"\n" +
 	"service_id\x18\x02 \x01(\tR\tserviceId\";\n" +
 	"\x14DeploymentActionResp\x12#\n" +
-	"\rdeployment_id\x18\x01 \x01(\tR\fdeploymentId\"\xfe\x01\n" +
+	"\rdeployment_id\x18\x01 \x01(\tR\fdeploymentId\"\xa1\x02\n" +
 	"\x1eApplicationContainerStatusResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -778,7 +786,9 @@ const file_orbit_v1_application_application_proto_rawDesc = "" +
 	"\x05image\x18\a \x01(\tR\x05image\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\b \x01(\tR\tversionId\x12#\n" +
-	"\rversion_label\x18\t \x01(\tR\fversionLabel\"m\n" +
+	"\rversion_label\x18\t \x01(\tR\fversionLabel\x12!\n" +
+	"\fcomponent_id\x18\n" +
+	" \x01(\tR\vcomponentId\"m\n" +
 	"\x15ApplicationStatusResp\x12T\n" +
 	"\n" +
 	"containers\x18\x01 \x03(\v24.orbit.v1.application.ApplicationContainerStatusRespR\n" +

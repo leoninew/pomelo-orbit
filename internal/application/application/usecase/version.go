@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
@@ -86,7 +87,6 @@ func (s Service) CreateVersion(ctx context.Context, userId string, input applica
 		ApplicationId: app.Id,
 		Label:         label,
 		Status:        status.VersionStatusUnpublished,
-		EnvJSON:       optionalText(input.EnvJSON),
 		Note:          optionalText(input.Note),
 	}
 	for i := range components {
@@ -114,9 +114,6 @@ func (s Service) UpdateVersion(ctx context.Context, userId string, versionId str
 			return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, "Invalid version label")
 		}
 		version.Label = label
-	}
-	if input.EnvJSON != nil {
-		version.EnvJSON = optionalText(input.EnvJSON)
 	}
 	if input.Note != nil {
 		version.Note = optionalText(input.Note)
@@ -200,7 +197,75 @@ func (s Service) CreateVersionComponent(ctx context.Context, userId string, vers
 	return s.VersionComponentForUser(ctx, userId, version.Id, component.Id)
 }
 
-func (s Service) UpdateVersionComponent(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentInput) (model.VersionComponent, error) {
+func (s Service) UpdateVersionComponentBasic(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentBasicUpdateInput) (model.VersionComponent, error) {
+	command, err := parseComponentCommand(input.Command)
+	if err != nil {
+		return model.VersionComponent{}, err
+	}
+	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+		component.Name = input.Name
+		component.Image = input.Image
+		component.Command = command
+		component.PullPolicy = input.PullPolicy
+		component.RestartPolicy = input.RestartPolicy
+	}, s.store.UpdateVersionComponentBasic)
+}
+
+func (s Service) UpdateVersionComponentRuntime(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentRuntimeUpdateInput) (model.VersionComponent, error) {
+	healthcheck, err := componentHealthcheckFromInput(input.Healthcheck)
+	if err != nil {
+		return model.VersionComponent{}, err
+	}
+	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+		component.Healthcheck = healthcheck
+	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentRuntime(ctx, component)
+	})
+}
+
+func (s Service) UpdateVersionComponentPorts(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentPortsUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+		component.Ports = append([]model.VersionComponentPort(nil), input.Ports...)
+	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentPorts(ctx, component)
+	})
+}
+
+func (s Service) UpdateVersionComponentEnv(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentEnvUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+		component.Env = append([]model.VersionComponentEnv(nil), input.Env...)
+	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentEnv(ctx, component)
+	})
+}
+
+func (s Service) UpdateVersionComponentMounts(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentMountsUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+		component.Mounts = append([]model.VersionComponentMount(nil), input.Mounts...)
+	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentMounts(ctx, component)
+	})
+}
+
+func (s Service) UpdateVersionComponentDependencies(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentDependenciesUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+		component.Dependencies = append([]model.VersionComponentDependency(nil), input.Dependencies...)
+	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentDependencies(ctx, component)
+	})
+}
+
+func (s Service) UpdateVersionComponentAdvanced(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentAdvancedUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+		component.Resources = cloneComponentResources(input.Resources)
+		component.Tmpfs = append([]model.VersionComponentTmpfs(nil), input.Tmpfs...)
+		component.Ulimits = append([]model.VersionComponentUlimit(nil), input.Ulimits...)
+	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentAdvanced(ctx, component)
+	})
+}
+
+func (s Service) updateVersionComponentGroup(ctx context.Context, userId string, versionId string, componentId string, update func(*model.VersionComponent), persist func(context.Context, model.VersionComponent, string) error) (model.VersionComponent, error) {
 	version, err := s.loadVersionForUser(ctx, userId, versionId)
 	if err != nil {
 		return model.VersionComponent{}, err
@@ -212,23 +277,22 @@ func (s Service) UpdateVersionComponent(ctx context.Context, userId string, vers
 	if err != nil {
 		return model.VersionComponent{}, err
 	}
-	componentsFromInput, err := versionComponentsFromInputs([]applicationdto.VersionComponentInput{input})
-	if err != nil {
-		return model.VersionComponent{}, err
-	}
-	component := componentsFromInput[0]
-	component.Id = existing.Id
-	component.VersionId = version.Id
 	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
 		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
+	componentIndex := -1
 	for index := range components {
-		if components[index].Id == component.Id {
-			components[index] = component
+		if components[index].Id == existing.Id {
+			componentIndex = index
 			break
 		}
 	}
+	if componentIndex == -1 {
+		return model.VersionComponent{}, apperror.New(apperror.KindInternal, "Component was not found in its version")
+	}
+	update(&components[componentIndex])
+	component := components[componentIndex]
 	if existing.Name != component.Name {
 		for componentIndex := range components {
 			for dependencyIndex := range components[componentIndex].Dependencies {
@@ -244,7 +308,7 @@ func (s Service) UpdateVersionComponent(ctx context.Context, userId string, vers
 	if err := s.validateServicesRuntimeConfig(ctx, version, components); err != nil {
 		return model.VersionComponent{}, err
 	}
-	if err := s.store.UpdateVersionComponent(ctx, component, existing.Name); err != nil {
+	if err := persist(ctx, component, existing.Name); err != nil {
 		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to update component", err)
 	}
 	return s.VersionComponentForUser(ctx, userId, version.Id, component.Id)
@@ -382,7 +446,6 @@ func (s Service) ForkVersion(ctx context.Context, userId string, versionId strin
 		ApplicationId:        source.ApplicationId,
 		Label:                label,
 		Status:               status.VersionStatusUnpublished,
-		EnvJSON:              source.EnvJSON,
 		CreatedFromVersionId: &fromId,
 		Note:                 source.Note,
 	}
@@ -446,20 +509,56 @@ func versionComponentsFromInputs(inputs []applicationdto.VersionComponentInput) 
 		if !applicationCreateCodePattern.MatchString(name) {
 			return nil, apperror.New(apperror.KindValidation, "Component name must match ^[a-z][a-z0-9-]*$")
 		}
-		if input.PullPolicy != nil && !validImagePullPolicy(*input.PullPolicy) {
+		pullPolicy := "missing"
+		if input.PullPolicy != nil {
+			pullPolicy = *input.PullPolicy
+		}
+		if !validImagePullPolicy(pullPolicy) {
 			return nil, apperror.New(apperror.KindValidation, "Component pull_policy must be always, missing or never")
+		}
+		command, err := parseComponentCommand(input.Command)
+		if err != nil {
+			return nil, err
+		}
+		healthcheck, err := componentHealthcheckFromInput(input.Healthcheck)
+		if err != nil {
+			return nil, err
 		}
 		components = append(components, model.VersionComponent{
 			Name: name, Image: image,
-			Command: append([]string(nil), input.Command...), Args: append([]string(nil), input.Args...),
-			Env: append([]model.VersionComponentEnv(nil), input.Env...), Ports: append([]model.VersionComponentPort(nil), input.Ports...),
-			Mounts: append([]model.VersionComponentMount(nil), input.Mounts...), Networks: append([]string(nil), input.Networks...),
-			Dependencies: append([]model.VersionComponentDependency(nil), input.Dependencies...), Healthcheck: cloneComponentHealthcheck(input.Healthcheck),
-			Resources: cloneComponentResources(input.Resources), PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy,
+			Command: command,
+			Env:     append([]model.VersionComponentEnv(nil), input.Env...), Ports: append([]model.VersionComponentPort(nil), input.Ports...),
+			Mounts:       append([]model.VersionComponentMount(nil), input.Mounts...),
+			Dependencies: append([]model.VersionComponentDependency(nil), input.Dependencies...), Healthcheck: healthcheck,
+			Resources: cloneComponentResources(input.Resources), PullPolicy: &pullPolicy, RestartPolicy: input.RestartPolicy,
 			Tmpfs: append([]model.VersionComponentTmpfs(nil), input.Tmpfs...), Ulimits: append([]model.VersionComponentUlimit(nil), input.Ulimits...),
 		})
 	}
 	return components, nil
+}
+
+func parseComponentCommand(input string) ([]string, error) {
+	command, err := commandline.Parse(input)
+	if err != nil {
+		return nil, apperror.New(apperror.KindValidation, "Invalid component command")
+	}
+	return command, nil
+}
+
+func componentHealthcheckFromInput(input *applicationdto.VersionComponentHealthcheckInput) (*model.VersionComponentHealthcheck, error) {
+	if input == nil {
+		return nil, nil
+	}
+	return &model.VersionComponentHealthcheck{
+		TestMode:      input.TestMode,
+		Test:          input.Test,
+		Interval:      input.Interval,
+		Timeout:       input.Timeout,
+		Retries:       input.Retries,
+		StartPeriod:   input.StartPeriod,
+		StartInterval: input.StartInterval,
+		Disabled:      input.Disabled,
+	}, nil
 }
 
 func cloneComponentHealthcheck(input *model.VersionComponentHealthcheck) *model.VersionComponentHealthcheck {
@@ -467,7 +566,6 @@ func cloneComponentHealthcheck(input *model.VersionComponentHealthcheck) *model.
 		return nil
 	}
 	copy := *input
-	copy.Test = append([]string(nil), input.Test...)
 	return &copy
 }
 

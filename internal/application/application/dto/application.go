@@ -20,7 +20,6 @@ type ApplicationUpdateInput struct {
 type VersionCreateInput struct {
 	ApplicationId string
 	Label         string
-	EnvJSON       *string
 	Note          *string
 	Components    []VersionComponentInput
 	Exposes       []VersionExposeInput
@@ -29,7 +28,6 @@ type VersionCreateInput struct {
 // VersionUpdateInput updates version metadata and optionally components/exposes.
 type VersionUpdateInput struct {
 	Label   *string
-	EnvJSON *string
 	Note    *string
 	Exposes *[]VersionExposeInput
 }
@@ -37,19 +35,62 @@ type VersionUpdateInput struct {
 type VersionComponentInput struct {
 	Name          string
 	Image         string
-	Command       []string
-	Args          []string
+	Command       string
 	Env           []model.VersionComponentEnv
 	Ports         []model.VersionComponentPort
 	Mounts        []model.VersionComponentMount
-	Networks      []string
 	Dependencies  []model.VersionComponentDependency
-	Healthcheck   *model.VersionComponentHealthcheck
+	Healthcheck   *VersionComponentHealthcheckInput
 	Resources     *model.VersionComponentResources
 	PullPolicy    *string
 	RestartPolicy *string
 	Tmpfs         []model.VersionComponentTmpfs
 	Ulimits       []model.VersionComponentUlimit
+}
+
+type VersionComponentBasicUpdateInput struct {
+	Name          string
+	Image         string
+	Command       string
+	PullPolicy    *string
+	RestartPolicy *string
+}
+
+type VersionComponentRuntimeUpdateInput struct {
+	Healthcheck *VersionComponentHealthcheckInput
+}
+
+type VersionComponentHealthcheckInput struct {
+	TestMode      string
+	Test          string
+	Interval      *string
+	Timeout       *string
+	Retries       *int
+	StartPeriod   *string
+	StartInterval *string
+	Disabled      bool
+}
+
+type VersionComponentPortsUpdateInput struct {
+	Ports []model.VersionComponentPort
+}
+
+type VersionComponentEnvUpdateInput struct {
+	Env []model.VersionComponentEnv
+}
+
+type VersionComponentMountsUpdateInput struct {
+	Mounts []model.VersionComponentMount
+}
+
+type VersionComponentDependenciesUpdateInput struct {
+	Dependencies []model.VersionComponentDependency
+}
+
+type VersionComponentAdvancedUpdateInput struct {
+	Resources *model.VersionComponentResources
+	Tmpfs     []model.VersionComponentTmpfs
+	Ulimits   []model.VersionComponentUlimit
 }
 
 type VersionExposeInput struct {
@@ -76,7 +117,6 @@ type ApplicationImportInput struct {
 	Kind            string
 	ImagePullPolicy string
 	VersionLabel    string
-	VersionEnvJSON  *string
 	VersionNote     *string
 	Components      []VersionComponentInput
 	Exposes         []VersionExposeInput

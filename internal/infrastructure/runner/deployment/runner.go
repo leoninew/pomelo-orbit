@@ -17,8 +17,8 @@ const maxErrorOutputBytes = 4 * 1024
 type ShellRunner struct{}
 
 func (ShellRunner) Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error {
-	commandText := shellCommandText(name, args...)
-	if _, err := fmt.Fprintf(log, "Working directory: %s\nCommand: %s\n", cwd, commandText); err != nil {
+	commandText := commandDisplayText(name, args...)
+	if _, err := fmt.Fprintf(log, "Running: %s\n", commandText); err != nil {
 		return err
 	}
 	var output bytes.Buffer
@@ -54,15 +54,22 @@ func (CommandQueryRunner) Run(ctx context.Context, cwd string, name string, args
 	return output.String(), err
 }
 
-func shellCommandText(name string, args ...string) string {
+func commandDisplayText(name string, args ...string) string {
 	parts := make([]string, 0, len(args)+1)
 	parts = append(parts, name)
 	parts = append(parts, args...)
-	quoted := make([]string, 0, len(parts))
+	display := make([]string, 0, len(parts))
 	for _, part := range parts {
-		quoted = append(quoted, strconv.Quote(part))
+		display = append(display, commandDisplayArg(part))
 	}
-	return strings.Join(quoted, " ")
+	return strings.Join(display, " ")
+}
+
+func commandDisplayArg(arg string) string {
+	if arg == "" || strings.ContainsAny(arg, " \t\r\n\"'") {
+		return strconv.Quote(arg)
+	}
+	return arg
 }
 
 func commandErrorOutput(output string) string {

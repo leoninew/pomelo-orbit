@@ -57,6 +57,7 @@ message ApplicationContainerStatusResp {
   string image = 7;
   string version_id = 8;
   string version_label = 9;
+  string component_id = 10;
 }
 
 message ApplicationStatusResp {

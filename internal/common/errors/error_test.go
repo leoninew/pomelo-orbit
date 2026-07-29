@@ -18,6 +18,7 @@ func TestClassify(t *testing.T) {
 		{name: "not found", err: New(KindNotFound, ""), want: Classification{StatusCode: http.StatusNotFound, Code: "not_found", Message: "Resource not found."}},
 		{name: "conflict", err: New(KindConflict, ""), want: Classification{StatusCode: http.StatusConflict, Code: "conflict", Message: "Conflict."}},
 		{name: "method not allowed", err: New(KindMethodNotAllowed, ""), want: Classification{StatusCode: http.StatusMethodNotAllowed, Code: "method_not_allowed", Message: "Method not allowed."}},
+		{name: "rate limited", err: New(KindRateLimited, ""), want: Classification{StatusCode: http.StatusTooManyRequests, Code: "rate_limited", Message: "Too many requests."}},
 		{name: "service unavailable", err: New(KindUnavailable, ""), want: Classification{StatusCode: http.StatusServiceUnavailable, Code: "service_unavailable", Message: "Service unavailable."}},
 		{name: "internal ignores message and cause", err: Wrap(KindInternal, "database password", errors.New("token=secret")), want: Classification{StatusCode: http.StatusInternalServerError, Code: "internal_error", Message: "Internal server error."}},
 		{name: "unknown error", err: errors.New("database password"), want: Classification{StatusCode: http.StatusInternalServerError, Code: "internal_error", Message: "Internal server error."}},

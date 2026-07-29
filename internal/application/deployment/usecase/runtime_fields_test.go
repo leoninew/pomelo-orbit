@@ -31,3 +31,44 @@ func TestRenderComposeIncludesStructuredRuntimeFields(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderComponentHealthcheckUsesSingleCommandText(t *testing.T) {
+	tests := []struct {
+		name        string
+		healthcheck model.VersionComponentHealthcheck
+		want        []string
+	}{
+		{
+			name: "command",
+			healthcheck: model.VersionComponentHealthcheck{
+				TestMode: "CMD",
+				Test:     `curl -f 'http://localhost:8080/health check'`,
+			},
+			want: []string{"CMD", "curl", "-f", "http://localhost:8080/health check"},
+		},
+		{
+			name: "shell command",
+			healthcheck: model.VersionComponentHealthcheck{
+				TestMode: "CMD-SHELL",
+				Test:     `curl -f "http://localhost:8080/health check" || exit 1`,
+			},
+			want: []string{"CMD-SHELL", `curl -f "http://localhost:8080/health check" || exit 1`},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			healthcheck, err := renderComponentHealthcheck(&test.healthcheck)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, ok := healthcheck["test"].([]string)
+			if !ok {
+				t.Fatalf("healthcheck test type = %T", healthcheck["test"])
+			}
+			if strings.Join(got, "\x00") != strings.Join(test.want, "\x00") {
+				t.Fatalf("healthcheck test = %#v, want %#v", got, test.want)
+			}
+		})
+	}
+}

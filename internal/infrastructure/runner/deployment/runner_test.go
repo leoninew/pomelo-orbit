@@ -39,6 +39,20 @@ func TestShellRunnerRunIncludesCommandOutputInError(t *testing.T) {
 	if !strings.Contains(logBuf.String(), "unable to get image") {
 		t.Fatalf("log should include command output, got %q", logBuf.String())
 	}
+	if strings.Contains(logBuf.String(), "Working directory:") {
+		t.Fatalf("runner must not duplicate the working directory, got %q", logBuf.String())
+	}
+	if !strings.Contains(logBuf.String(), "Running: ") {
+		t.Fatalf("log should identify the command being run, got %q", logBuf.String())
+	}
+}
+
+func TestCommandDisplayTextUsesMinimalQuoting(t *testing.T) {
+	got := commandDisplayText("docker", "compose", "-p", "demo-default", "two words", `contains"quote`)
+	want := `docker compose -p demo-default "two words" "contains\"quote"`
+	if got != want {
+		t.Fatalf("unexpected command display: got %q, want %q", got, want)
+	}
 }
 
 func TestCommandErrorOutputKeepsTail(t *testing.T) {

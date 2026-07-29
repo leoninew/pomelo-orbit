@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from pomelo_orbit_mcp.docker_runtime import DockerRuntimeError
-from pomelo_orbit_mcp.verification import observe_stability, verify_deployment
+from pomelo_orbit_mcp.verification import VerificationResult, observe_stability, verify_deployment
 
 from .conftest import make_settings
 from .test_docker_runtime import target
@@ -111,3 +111,37 @@ async def test_verification_propagates_runtime_errors_instead_of_returning_incon
             "application-1",
             "deployment-1",
         )
+
+
+def test_verification_result_defaults_to_summary_and_exposes_evidence_only_on_request() -> None:
+    result = VerificationResult(
+        "consistent",
+        evidence={
+            "containers": [
+                {
+                    "ID": "container-1",
+                    "Service": "web",
+                    "State": "running",
+                    "Command": "secret-command",
+                    "Labels": {"secret": "value"},
+                }
+            ],
+            "inspections": {
+                "container-1": {
+                    "State": {"Status": "running", "Health": {"Status": "healthy"}},
+                    "RestartCount": 2,
+                }
+            },
+            "stability": {"state": "stable", "issues": [], "samples": [{"raw": "detail"}]},
+            "compose_config": "services: {secret: value}",
+        },
+    )
+
+    summary = result.as_dict()
+
+    assert "evidence" not in summary
+    assert summary["components"][0]["restart_count"] == 2
+    assert summary["port_constraints"] == {"status": "passed", "issues": []}
+    assert summary["network_constraints"] == {"status": "passed", "issues": []}
+    assert summary["stability"] == {"state": "stable", "issues": []}
+    assert result.as_dict(detail=True)["evidence"]["compose_config"] == "services: {secret: value}"

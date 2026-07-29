@@ -20,7 +20,7 @@ func (h Handler) ListRepositoryRuns(c *gin.Context) {
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
 	items, err := h.service.ListRepositoryRuns(c.Request.Context(), current.Id, c.Param("repository_id"), page, perPage)
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := make([]pipelinerunv1.PipelineRunResp, 0, len(items.Items))
@@ -42,7 +42,7 @@ func (h Handler) TriggerRepository(c *gin.Context) {
 	}
 	detail, err := h.service.TriggerRepository(c.Request.Context(), current.Id, pipelinerundto.PipelineRunTriggerInput{RepositoryId: c.Param("repository_id"), TemplateId: req.TemplateId, TriggerRef: req.TriggerRef, Variables: req.Variables})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := pipelineRunResponse(detail)
@@ -58,7 +58,7 @@ func (h Handler) ListPipelineRuns(c *gin.Context) {
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 20)
 	items, err := h.service.ListPipelineRuns(c.Request.Context(), current.Id, pipelinerundto.PipelineRunListInput{ProjectId: c.Request.URL.Query().Get("project_id"), RepositoryId: c.Request.URL.Query().Get("repository_id"), TemplateId: c.Request.URL.Query().Get("template_id"), DateFrom: c.Request.URL.Query().Get("date_from"), DateTo: c.Request.URL.Query().Get("date_to"), Page: page, PerPage: perPage})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := make([]pipelinerunv1.PipelineRunResp, 0, len(items.Items))
@@ -75,7 +75,7 @@ func (h Handler) GetPipelineRun(c *gin.Context) {
 	}
 	detail, err := h.service.PipelineRunForUser(c.Request.Context(), current.Id, c.Param("run_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := pipelineRunResponse(detail)
@@ -89,7 +89,7 @@ func (h Handler) ListPipelineRunArtifacts(c *gin.Context) {
 	}
 	items, err := h.service.ListPipelineRunArtifacts(c.Request.Context(), current.Id, c.Param("run_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	responses := make([]pipelinerunv1.ArtifactResp, 0, len(items))
@@ -106,7 +106,7 @@ func (h Handler) GetPipelineStageLog(c *gin.Context) {
 	}
 	result, err := h.service.PipelineStageLog(c.Request.Context(), current.Id, c.Param("run_id"), c.Param("stage_run_id"), binding.QueryInt(c.Request.URL.Query().Get("offset"), 0))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineStageLogResp{Logs: result.Logs, Offset: int32(result.Offset), IsComplete: result.IsComplete})
@@ -124,7 +124,7 @@ func (h Handler) CancelPipelineRun(c *gin.Context) {
 	}
 	detail, err := h.service.CancelPipelineRun(c.Request.Context(), current.Id, c.Param("run_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := pipelineRunResponse(detail)
@@ -143,7 +143,7 @@ func (h Handler) RetryPipelineRun(c *gin.Context) {
 	}
 	detail, err := h.service.RetryPipelineRun(c.Request.Context(), current.Id, c.Param("run_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := pipelineRunResponse(detail)

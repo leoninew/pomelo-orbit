@@ -23,7 +23,7 @@ func (h Handler) ListRepositories(c *gin.Context) {
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
 	items, err := h.service.ListRepositories(c.Request.Context(), current.Id, binding.QueryProjectId(c.Request.URL.Query().Get("project_id")), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := make([]repositoryv1.RepositoryResp, 0, len(items.Items))
@@ -45,7 +45,7 @@ func (h Handler) CreateRepository(c *gin.Context) {
 	}
 	detail, err := h.service.CreateRepository(c.Request.Context(), current.Id, repositorydto.RepositoryCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Code: req.Code, RepositoryUrl: req.RepositoryUrl, GitCredentialId: req.GitCredentialId, VariableOverrides: variableDeclarationRequestMaps(req.VariableOverrides), DefaultBranch: req.DefaultBranch})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := repositoryDetailResponse(detail)
@@ -59,7 +59,7 @@ func (h Handler) GetRepository(c *gin.Context) {
 	}
 	detail, err := h.service.RepositoryForUser(c.Request.Context(), current.Id, c.Param("repository_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := repositoryDetailResponse(detail)
@@ -83,7 +83,7 @@ func (h Handler) UpdateRepository(c *gin.Context) {
 	}
 	detail, err := h.service.UpdateRepository(c.Request.Context(), current.Id, c.Param("repository_id"), repositorydto.RepositoryUpdateInput{Name: req.Name, RepositoryUrl: req.RepositoryUrl, GitCredentialId: req.GitCredentialId, VariableOverrides: variableOverrides, DefaultBranch: req.DefaultBranch})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := repositoryDetailResponse(detail)
@@ -96,7 +96,7 @@ func (h Handler) DeleteRepository(c *gin.Context) {
 		return
 	}
 	if err := h.service.DeleteRepository(c.Request.Context(), current.Id, c.Param("repository_id")); err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -109,7 +109,7 @@ func (h Handler) ListRepositoryWebhooks(c *gin.Context) {
 	}
 	items, err := h.service.ListRepositoryWebhooks(c.Request.Context(), current.Id, c.Param("repository_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := make([]repositoryv1.RepositoryWebhookResp, 0, len(items))
@@ -131,7 +131,7 @@ func (h Handler) CreateRepositoryWebhook(c *gin.Context) {
 	}
 	webhook, err := h.service.CreateRepositoryWebhook(c.Request.Context(), current.Id, c.Param("repository_id"), repositorydto.WebhookCreateInput{Name: req.Name, TemplateId: req.TemplateId, Secret: req.Secret, BranchFilter: req.BranchFilter})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := repositoryWebhookResponse(webhook)
@@ -145,7 +145,7 @@ func (h Handler) GetRepositoryWebhook(c *gin.Context) {
 	}
 	webhook, err := h.service.RepositoryWebhookForUser(c.Request.Context(), current.Id, c.Param("webhook_id"))
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := repositoryWebhookResponse(webhook)
@@ -164,7 +164,7 @@ func (h Handler) UpdateRepositoryWebhook(c *gin.Context) {
 	}
 	webhook, err := h.service.UpdateRepositoryWebhook(c.Request.Context(), current.Id, c.Param("repository_id"), c.Param("webhook_id"), repositorydto.WebhookUpdateInput{Name: req.Body.Name, TemplateId: req.Body.TemplateId, Secret: req.Body.Secret, BranchFilter: req.Body.BranchFilter, BranchSet: req.BranchSet, Enabled: req.Body.Enabled})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := repositoryWebhookResponse(webhook)
@@ -177,7 +177,7 @@ func (h Handler) DeleteRepositoryWebhook(c *gin.Context) {
 		return
 	}
 	if err := h.service.DeleteRepositoryWebhook(c.Request.Context(), current.Id, c.Param("repository_id"), c.Param("webhook_id")); err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -192,7 +192,7 @@ func (h Handler) ReceiveRepositoryWebhook(c *gin.Context) {
 	}
 	result, err := h.service.ReceiveRepositoryWebhook(c.Request.Context(), repositorydto.WebhookReceiveInput{WebhookId: c.Param("webhook_id"), Headers: requestHeaders(c), Payload: payload})
 	if err != nil {
-		h.writeError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &repositoryv1.RepositoryWebhookReceiveResp{Status: result.Status, Reason: result.Reason, RunId: result.RunId})

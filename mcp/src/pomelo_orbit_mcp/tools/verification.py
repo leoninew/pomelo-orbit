@@ -14,7 +14,7 @@ from ..verification import verify_deployment
 
 def register_verification_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRuntime, settings: Settings) -> None:
     @mcp.tool(name="verify_deployment")
-    async def verify_deployment_tool(application_id: str, deployment_id: str) -> dict[str, Any]:
-        """Compare Orbit records, Compose artifacts, Docker state, labels, networks, ports, and short-term container stability."""
+    async def verify_deployment_tool(application_id: str, deployment_id: str, detail: bool = False) -> dict[str, Any]:
+        """Verify deployment state with a concise result; set detail=true for raw diagnostic evidence."""
         result = await verify_deployment(client, runtime, settings, application_id, deployment_id)
-        return {"application_id": application_id, "deployment_id": deployment_id, **result.as_dict()}
+        return {"application_id": application_id, "deployment_id": deployment_id, **result.as_dict(detail=detail)}

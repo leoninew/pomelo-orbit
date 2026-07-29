@@ -14,23 +14,23 @@ type stores struct {
 	service     repository.ServiceReader
 }
 
-func (s stores) ListServicesByApplication(ctx context.Context, applicationID string) ([]model.Service, error) {
+func (s stores) ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error) {
 	if s.service == nil {
 		return nil, nil
 	}
-	return s.service.ListServicesByApplication(ctx, applicationID)
+	return s.service.ListServicesByApplication(ctx, applicationId)
 }
 
 func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
 	return s.project.Project(ctx, id)
 }
 
-func (s stores) IsProjectMember(ctx context.Context, projectID string, userID string) (bool, error) {
-	return s.project.IsProjectMember(ctx, projectID, userID)
+func (s stores) IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error) {
+	return s.project.IsProjectMember(ctx, projectId, userId)
 }
 
-func (s stores) ListApplications(ctx context.Context, projectID *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
-	return s.application.ListApplications(ctx, projectID, page, perPage, search, kind)
+func (s stores) ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
+	return s.application.ListApplications(ctx, projectId, page, perPage, search, kind)
 }
 
 func (s stores) Application(ctx context.Context, id string) (model.Application, error) {
@@ -57,12 +57,12 @@ func (s stores) DeleteApplication(ctx context.Context, id string) error {
 	return s.application.DeleteApplication(ctx, id)
 }
 
-func (s stores) ListVersions(ctx context.Context, applicationID string) ([]model.Version, error) {
-	return s.application.ListVersions(ctx, applicationID)
+func (s stores) ListVersions(ctx context.Context, applicationId string) ([]model.Version, error) {
+	return s.application.ListVersions(ctx, applicationId)
 }
 
-func (s stores) ListVersionsPage(ctx context.Context, applicationID string, page int, perPage int, search string) (repository.Page[model.Version], error) {
-	return s.application.ListVersionsPage(ctx, applicationID, page, perPage, search)
+func (s stores) ListVersionsPage(ctx context.Context, applicationId string, page int, perPage int, search string) (repository.Page[model.Version], error) {
+	return s.application.ListVersionsPage(ctx, applicationId, page, perPage, search)
 }
 
 func (s stores) Version(ctx context.Context, id string) (model.Version, error) {
@@ -81,40 +81,64 @@ func (s stores) DeleteVersion(ctx context.Context, id string) error {
 	return s.application.DeleteVersion(ctx, id)
 }
 
-func (s stores) CountVersionRuntimeRefs(ctx context.Context, versionID string) (int, error) {
-	return s.application.CountVersionRuntimeRefs(ctx, versionID)
+func (s stores) CountVersionRuntimeRefs(ctx context.Context, versionId string) (int, error) {
+	return s.application.CountVersionRuntimeRefs(ctx, versionId)
 }
 
-func (s stores) VersionComponentsByVersion(ctx context.Context, versionID string) ([]model.VersionComponent, error) {
-	return s.application.VersionComponentsByVersion(ctx, versionID)
+func (s stores) VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error) {
+	return s.application.VersionComponentsByVersion(ctx, versionId)
 }
 
 func (s stores) VersionComponent(ctx context.Context, id string) (model.VersionComponent, error) {
 	return s.application.VersionComponent(ctx, id)
 }
 
-func (s stores) VersionExposesByVersion(ctx context.Context, versionID string) ([]model.VersionExpose, error) {
-	return s.application.VersionExposesByVersion(ctx, versionID)
+func (s stores) VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error) {
+	return s.application.VersionExposesByVersion(ctx, versionId)
 }
 
-func (s stores) ReplaceVersionComponents(ctx context.Context, versionID string, components []model.VersionComponent) error {
-	return s.application.ReplaceVersionComponents(ctx, versionID, components)
+func (s stores) ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error {
+	return s.application.ReplaceVersionComponents(ctx, versionId, components)
 }
 
 func (s stores) CreateVersionComponent(ctx context.Context, component model.VersionComponent) error {
 	return s.application.CreateVersionComponent(ctx, component)
 }
 
-func (s stores) UpdateVersionComponent(ctx context.Context, component model.VersionComponent, oldName string) error {
-	return s.application.UpdateVersionComponent(ctx, component, oldName)
+func (s stores) UpdateVersionComponentBasic(ctx context.Context, component model.VersionComponent, oldName string) error {
+	return s.application.UpdateVersionComponentBasic(ctx, component, oldName)
+}
+
+func (s stores) UpdateVersionComponentRuntime(ctx context.Context, component model.VersionComponent) error {
+	return s.application.UpdateVersionComponentRuntime(ctx, component)
+}
+
+func (s stores) UpdateVersionComponentPorts(ctx context.Context, component model.VersionComponent) error {
+	return s.application.UpdateVersionComponentPorts(ctx, component)
+}
+
+func (s stores) UpdateVersionComponentEnv(ctx context.Context, component model.VersionComponent) error {
+	return s.application.UpdateVersionComponentEnv(ctx, component)
+}
+
+func (s stores) UpdateVersionComponentMounts(ctx context.Context, component model.VersionComponent) error {
+	return s.application.UpdateVersionComponentMounts(ctx, component)
+}
+
+func (s stores) UpdateVersionComponentDependencies(ctx context.Context, component model.VersionComponent) error {
+	return s.application.UpdateVersionComponentDependencies(ctx, component)
+}
+
+func (s stores) UpdateVersionComponentAdvanced(ctx context.Context, component model.VersionComponent) error {
+	return s.application.UpdateVersionComponentAdvanced(ctx, component)
 }
 
 func (s stores) DeleteVersionComponent(ctx context.Context, component model.VersionComponent) error {
 	return s.application.DeleteVersionComponent(ctx, component)
 }
 
-func (s stores) ReplaceVersionExposes(ctx context.Context, versionID string, exposes []model.VersionExpose) error {
-	return s.application.ReplaceVersionExposes(ctx, versionID, exposes)
+func (s stores) ReplaceVersionExposes(ctx context.Context, versionId string, exposes []model.VersionExpose) error {
+	return s.application.ReplaceVersionExposes(ctx, versionId, exposes)
 }
 
 func (s stores) CreateVersionWithVersionComponentsAndExposes(ctx context.Context, version model.Version, components []model.VersionComponent, exposes []model.VersionExpose) error {

@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS version (
     application_id VARCHAR(26) NOT NULL,
     label VARCHAR(128) NOT NULL,
     status VARCHAR(32) NOT NULL,
-    env_json LONGTEXT,
     created_from_version_id VARCHAR(26),
     note TEXT,
     component_summary TEXT NOT NULL,
@@ -40,6 +39,7 @@ CREATE TABLE IF NOT EXISTS version_component (
     version_id VARCHAR(26) NOT NULL,
     name VARCHAR(255) NOT NULL,
     image VARCHAR(512) NOT NULL,
+    command_json TEXT NOT NULL,
     pull_policy VARCHAR(32),
     restart_policy VARCHAR(32),
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -49,17 +49,6 @@ CREATE TABLE IF NOT EXISTS version_component (
 );
 
 CREATE INDEX idx_version_component_version ON version_component(version_id);
-
-CREATE TABLE IF NOT EXISTS version_component_argument (
-    component_id VARCHAR(26) NOT NULL,
-    kind VARCHAR(16) NOT NULL,
-    position INT NOT NULL,
-    value TEXT NOT NULL,
-    PRIMARY KEY (component_id, kind, position),
-    CONSTRAINT fk_version_component_argument_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
-    CONSTRAINT chk_version_component_argument_kind CHECK (kind IN ('command', 'args')),
-    CONSTRAINT chk_version_component_argument_position CHECK (position >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS version_component_env (
     component_id VARCHAR(26) NOT NULL,
@@ -90,25 +79,18 @@ CREATE TABLE IF NOT EXISTS version_component_mount (
     source VARCHAR(1024) NOT NULL,
     target VARCHAR(1024) NOT NULL,
     read_only TINYINT(1) NOT NULL DEFAULT 0,
+    source_is_host_path TINYINT(1) NOT NULL DEFAULT 0,
     content LONGTEXT,
-    content_mode VARCHAR(16),
+    mode VARCHAR(4) NOT NULL DEFAULT '',
+    ignore_if_exists TINYINT(1) NOT NULL DEFAULT 0,
     position INT NOT NULL,
     PRIMARY KEY (component_id, position),
     CONSTRAINT fk_version_component_mount_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
-    CONSTRAINT chk_version_component_mount_type CHECK (source_type IN ('directory', 'file', 'named_volume', 'special')),
+    CONSTRAINT chk_version_component_mount_type CHECK (source_type IN ('directory', 'file', 'named_volume', 'controlled_file')),
     CONSTRAINT chk_version_component_mount_read_only CHECK (read_only IN (0, 1)),
-    CONSTRAINT chk_version_component_mount_content_mode CHECK (content_mode IN ('seed', 'sync')),
+    CONSTRAINT chk_version_component_mount_source_is_host_path CHECK (source_is_host_path IN (0, 1)),
+    CONSTRAINT chk_version_component_mount_ignore_if_exists CHECK (ignore_if_exists IN (0, 1)),
     CONSTRAINT chk_version_component_mount_position CHECK (position >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS version_component_network (
-    component_id VARCHAR(26) NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    position INT NOT NULL,
-    PRIMARY KEY (component_id, position),
-    UNIQUE KEY uq_version_component_network_name (component_id, name),
-    CONSTRAINT fk_version_component_network_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
-    CONSTRAINT chk_version_component_network_position CHECK (position >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS version_component_dependency (
@@ -126,6 +108,7 @@ CREATE TABLE IF NOT EXISTS version_component_dependency (
 CREATE TABLE IF NOT EXISTS version_component_healthcheck (
     component_id VARCHAR(26) PRIMARY KEY,
     test_mode VARCHAR(16),
+    test TEXT NOT NULL,
     interval VARCHAR(64),
     timeout VARCHAR(64),
     retries INT,
@@ -135,15 +118,6 @@ CREATE TABLE IF NOT EXISTS version_component_healthcheck (
     CONSTRAINT fk_version_component_healthcheck_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_version_component_healthcheck_mode CHECK (test_mode IN ('CMD', 'CMD-SHELL')),
     CONSTRAINT chk_version_component_healthcheck_disabled CHECK (disabled IN (0, 1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS version_component_healthcheck_arg (
-    component_id VARCHAR(26) NOT NULL,
-    position INT NOT NULL,
-    value TEXT NOT NULL,
-    PRIMARY KEY (component_id, position),
-    CONSTRAINT fk_version_component_healthcheck_arg_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
-    CONSTRAINT chk_version_component_healthcheck_arg_position CHECK (position >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS version_component_resource (

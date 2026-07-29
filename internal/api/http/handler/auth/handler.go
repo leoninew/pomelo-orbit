@@ -57,13 +57,13 @@ func (h Handler) Login(c *gin.Context) {
 	}
 	input := loginInput(&req, clientIP(c), c.Request.UserAgent())
 	if err := authsvc.ValidateLoginInput(input); err != nil {
-		h.writeServiceError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	if h.turnstile.Enabled {
 		turnstileToken := strings.TrimSpace(req.TurnstileToken)
 		if turnstileToken == "" {
-			h.writeServiceError(c, authsvc.ErrMissingLoginFields)
+			transportresponse.WriteError(c, authsvc.ErrMissingLoginFields)
 			return
 		}
 		if err := h.turnstileVerifier.Verify(c.Request.Context(), turnstileToken, clientIP(c)); err != nil {
@@ -74,7 +74,7 @@ func (h Handler) Login(c *gin.Context) {
 	}
 	token, err := h.service.Login(c.Request.Context(), input)
 	if err != nil {
-		h.writeServiceError(c, err)
+		transportresponse.WriteError(c, err)
 		return
 	}
 	resp := tokenResponse(token)
@@ -123,7 +123,7 @@ func (h Handler) ChangePassword(c *gin.Context) {
 	}
 	if err := h.service.ChangePassword(c.Request.Context(), changePasswordInput(user, &req)); err != nil {
 		if apperror.IsKind(err, apperror.KindValidation) || apperror.IsKind(err, apperror.KindUnauthorized) {
-			h.writeServiceError(c, err)
+			transportresponse.WriteError(c, err)
 			return
 		}
 		h.logger.Error("change password failed", "user_id", user.Id, "error", err)
@@ -165,9 +165,6 @@ func (h Handler) GoogleCallback(c *gin.Context) {
 	transportresponse.WriteStatusError(c, http.StatusServiceUnavailable, "Google OAuth is not configured")
 }
 
-func (h Handler) writeServiceError(c *gin.Context, err error) {
-	transportresponse.WriteError(c, err)
-}
 
 func clientIP(c *gin.Context) string {
 	forwarded := strings.TrimSpace(c.GetHeader("X-Forwarded-For"))

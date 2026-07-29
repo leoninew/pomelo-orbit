@@ -22,7 +22,7 @@
     </div>
     <div v-else class="app-surface">
       <div class="overflow-x-auto">
-        <table class="app-table-list table-fixed min-w-[960px]">
+        <table class="app-data-table table-fixed min-w-[960px]">
           <colgroup>
             <col class="w-[25%]" />
             <col class="w-[30%]" />

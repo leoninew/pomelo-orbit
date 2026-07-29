@@ -6,7 +6,7 @@
   >
     <div class="space-y-2">
       <div class="flex items-center justify-between">
-        <h4 class="text-sm font-semibold text-foreground">{{ stage.name }}</h4>
+        <h4 class="text-base font-semibold text-foreground">{{ stage.name }}</h4>
         <span
           v-if="status"
           class="inline-block h-2 w-2 rounded-full"

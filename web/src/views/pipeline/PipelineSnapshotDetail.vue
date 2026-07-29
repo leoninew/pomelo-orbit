@@ -4,7 +4,7 @@
 
     <div v-else-if="snapshot" class="flex flex-col gap-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h1 class="text-xl font-semibold text-foreground">快照详情</h1>
+        <h1 class="app-detail-page-title">快照详情</h1>
         <button class="app-button h-9 px-4" @click="router.back()">
           <ArrowLeft class="size-4" />
           返回
@@ -12,17 +12,17 @@
       </div>
 
       <!-- 基本信息 -->
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">基本信息</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">基本信息</h2>
         </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">快照 ID</dt>
+            <dt>快照 ID</dt>
             <dd class="min-w-0 break-all text-foreground">{{ snapshot.id }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">模板</dt>
+            <dt>模板</dt>
             <dd>
               <router-link :to="`/pipeline/template/${snapshot.template_id}`" class="app-link">
                 {{ snapshot.template_name }}
@@ -30,31 +30,31 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">快照版本</dt>
+            <dt>快照版本</dt>
             <dd class="text-foreground">v{{ snapshot.version }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">模板版本</dt>
+            <dt>模板版本</dt>
             <dd class="text-foreground">v{{ snapshot.template_version }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">创建时间</dt>
+            <dt>创建时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(snapshot.created_at) }}</dd>
           </div>
         </dl>
       </div>
 
       <!-- Stage 快照 -->
-      <div class="app-surface">
-        <div class="app-section-header flex items-center justify-between">
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
           <div class="flex items-center gap-4">
-            <h2 class="font-semibold text-foreground">Stage 快照</h2>
+            <h2 class="app-detail-section-title">Stage 快照</h2>
             <div
               v-if="snapshot.stages_snapshot.length > 0"
               class="flex gap-1 rounded-md border border-border bg-background p-1"
             >
               <button
-                class="rounded px-3 py-1 text-xs font-medium transition-colors"
+                class="rounded px-3 py-1 text-sm font-medium transition-colors"
                 :class="
                   stagesView === 'list'
                     ? 'bg-primary text-primary-foreground'
@@ -65,7 +65,7 @@
                 列表
               </button>
               <button
-                class="rounded px-3 py-1 text-xs font-medium transition-colors"
+                class="rounded px-3 py-1 text-sm font-medium transition-colors"
                 :class="
                   stagesView === 'dag'
                     ? 'bg-primary text-primary-foreground'
@@ -83,7 +83,7 @@
 
         <!-- 列表视图 -->
         <div v-else-if="stagesView === 'list'" class="overflow-x-auto">
-          <table class="app-table-detail min-w-[760px]">
+          <table class="app-data-table min-w-[760px]">
             <thead>
               <tr>
                 <th>#</th>
@@ -110,10 +110,9 @@
                       {{ snapshotStageMap[depId]?.name ?? depId }}
                     </AppBadge>
                   </div>
-                  <span v-else class="text-muted-foreground">—</span>
                 </td>
                 <td class="text-foreground">
-                  {{ stage.artifacts?.length ? stage.artifacts.length : '—' }}
+                  {{ stage.artifacts?.length }}
                 </td>
               </tr>
             </tbody>
@@ -129,9 +128,9 @@
       </div>
 
       <!-- 变量声明 -->
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">变量声明</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">变量声明</h2>
         </div>
         <VariableDeclarationsTable
           :declarations="snapshot.variables_snapshot"
@@ -141,13 +140,13 @@
       </div>
 
       <!-- 制品声明 -->
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">制品声明</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">制品声明</h2>
         </div>
         <AppEmptyState v-if="artifactDeclarations.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
-          <table class="app-table-detail min-w-[720px]">
+          <table class="app-data-table min-w-[720px]">
             <thead>
               <tr>
                 <th>Stage</th>

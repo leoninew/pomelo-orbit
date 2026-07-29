@@ -30,7 +30,7 @@
       </div>
       <AppEmptyState v-else-if="filteredRoutes.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[1080px]">
+        <table class="app-data-table min-w-[1080px]">
           <colgroup>
             <col class="w-[20%]" />
             <col class="w-[10%]" />

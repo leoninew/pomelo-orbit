@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-xl font-semibold text-foreground">
+      <h1 class="text-base font-semibold text-foreground">
         {{ t('gateway.dialog.create') }}
       </h1>
       <div class="flex flex-wrap items-center gap-2">
@@ -18,7 +18,7 @@
 
     <div class="app-surface">
       <div class="app-section-header">
-        <h2 class="font-semibold text-foreground">{{ t('gateway.sections.config') }}</h2>
+        <h2 class="text-base font-semibold text-foreground">{{ t('gateway.sections.config') }}</h2>
       </div>
       <div class="space-y-4 px-5 py-4">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">

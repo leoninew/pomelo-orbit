@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+        <h1 class="app-detail-page-title min-w-0 break-words">
           {{ user?.username ?? '用户详情' }}
         </h1>
         <DetailHeaderMeta v-if="user">
@@ -55,26 +55,23 @@
       </div>
     </div>
 
-    <div class="app-surface">
-      <div class="app-section-header">
-        <h2 class="font-semibold text-foreground">{{ t('userManagement.basicInfo') }}</h2>
+    <div class="app-surface app-detail-card">
+      <div class="app-section-header app-detail-section-header">
+        <h2 class="app-detail-section-title">{{ t('userManagement.basicInfo') }}</h2>
       </div>
 
       <AppSpinner v-if="loading" class="px-5 py-10" />
-      <dl
-        v-else-if="user"
-        class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
-      >
+      <dl v-else-if="user" class="app-detail-info-grid">
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('userManagement.username') }}</dt>
+          <dt>{{ t('userManagement.username') }}</dt>
           <dd class="text-foreground">{{ user.username }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('userManagement.email') }}</dt>
+          <dt>{{ t('userManagement.email') }}</dt>
           <dd class="text-foreground">{{ user.email || '-' }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
+          <dt>{{ t('common.status') }}</dt>
           <dd>
             <AppBadge variant="status" :tone="user.status === 'enabled' ? 'success' : 'default'">
               {{ user.status }}
@@ -82,21 +79,21 @@
           </dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('userManagement.authSource') }}</dt>
+          <dt>{{ t('userManagement.authSource') }}</dt>
           <dd>
             <AppBadge variant="pill">{{ user.auth_source }}</AppBadge>
           </dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+          <dt>{{ t('common.createdAt') }}</dt>
           <dd class="text-muted-foreground">{{ formatTime(user.created_at) }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
+          <dt>{{ t('common.updatedAt') }}</dt>
           <dd class="text-muted-foreground">{{ formatTime(user.updated_at) }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('userManagement.lastLoginAt') }}</dt>
+          <dt>{{ t('userManagement.lastLoginAt') }}</dt>
           <dd class="text-muted-foreground">
             {{ user.last_login_at ? formatTime(user.last_login_at) : '-' }}
           </dd>
@@ -104,9 +101,11 @@
       </dl>
     </div>
 
-    <div class="app-surface">
-      <div class="app-section-header flex flex-wrap items-center justify-between gap-3">
-        <h2 class="font-semibold text-foreground">{{ t('userManagement.rolesAndPermissions') }}</h2>
+    <div class="app-surface app-detail-card">
+      <div class="app-section-header app-detail-section-header">
+        <h2 class="app-detail-section-title">
+          {{ t('userManagement.rolesAndPermissions') }}
+        </h2>
         <button
           v-if="user && canAssignRoles"
           class="app-button-primary h-9 px-3"
@@ -209,11 +208,7 @@
     >
       <form id="user-role-form" class="space-y-4" @submit.prevent="handleRoleOk">
         <div class="grid gap-2 sm:grid-cols-2">
-          <label
-            v-for="role in roleOptions"
-            :key="role.id"
-            class="flex items-start gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-sm transition-colors hover:border-primary/40"
-          >
+          <label v-for="role in roleOptions" :key="role.id" class="app-detail-list-item">
             <input
               v-model="roleForm.roleIds"
               type="checkbox"

@@ -52,7 +52,7 @@
           class="app-surface p-5 transition-colors hover:border-primary"
         >
           <div class="mb-3 flex items-start justify-between gap-4">
-            <h3 class="min-w-0 text-sm font-medium">
+            <h3 class="min-w-0 text-base font-medium">
               <router-link :to="`/pipeline/template/${tpl.id}`" class="app-link block truncate">
                 {{ tpl.name }}
               </router-link>
@@ -65,8 +65,8 @@
               {{ t('common.copy') }}
             </button>
           </div>
-          <p class="mb-4 min-h-10 text-sm text-muted-foreground">
-            {{ tpl.description || '—' }}
+          <p v-if="tpl.description" class="mb-4 min-h-10 text-sm text-muted-foreground">
+            {{ tpl.description }}
           </p>
           <div class="mb-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
             <AppBadge>v{{ tpl.version }}</AppBadge>
@@ -96,7 +96,7 @@
 
     <div v-else class="app-surface">
       <div class="overflow-x-auto">
-        <table class="app-table-list min-w-[780px]">
+        <table class="app-data-table min-w-[780px]">
           <thead>
             <tr>
               <th>{{ t('common.name') }}</th>
@@ -117,7 +117,7 @@
                 <AppBadge>v{{ tpl.version }}</AppBadge>
               </td>
               <td class="max-w-sm truncate text-foreground" :title="tpl.description || undefined">
-                {{ tpl.description || '—' }}
+                {{ tpl.description }}
               </td>
               <td class="whitespace-nowrap text-foreground">{{ formatTime(tpl.created_at) }}</td>
               <td>

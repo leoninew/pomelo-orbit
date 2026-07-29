@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+        <h1 class="app-detail-page-title min-w-0 break-words">
           {{ t('pipelineRun.detailTitle') }}
         </h1>
         <DetailHeaderMeta v-if="run">
@@ -50,17 +50,17 @@
     <!-- Content -->
     <div v-else-if="run" class="flex flex-col gap-4">
       <!-- Basic Info Card -->
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">{{ t('pipelineRun.basicInfo') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">{{ t('pipelineRun.basicInfo') }}</h2>
         </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
-          <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('pipelineRun.fields.runId') }}</dt>
+        <dl class="app-detail-info-grid">
+          <div v-if="run.snapshot_id" class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.runId') }}</dt>
             <dd class="min-w-0 text-foreground">{{ runId }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
+            <dt>{{ t('common.status') }}</dt>
             <dd>
               <AppBadge variant="pill" :tone="pipelineStatusTone">
                 {{ run.status }}
@@ -68,7 +68,7 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('pipelineRun.fields.repository') }}
             </dt>
             <dd>
@@ -78,7 +78,7 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('pipelineRun.fields.triggerType') }}
             </dt>
             <dd>
@@ -88,13 +88,13 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('pipelineRun.fields.triggerBranch') }}
             </dt>
             <dd class="text-foreground">{{ run.trigger_ref }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('pipelineRun.fields.template') }}
             </dt>
             <dd>
@@ -104,57 +104,43 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('pipelineRun.fields.snapshot') }}
             </dt>
             <dd>
-              <router-link
-                v-if="run.snapshot_id"
-                :to="`/pipeline/snapshot/${run.snapshot_id}`"
-                class="app-link"
-              >
+              <router-link :to="`/pipeline/snapshot/${run.snapshot_id}`" class="app-link">
                 {{ t('application.view') }}
               </router-link>
-              <span v-else class="text-muted-foreground">—</span>
             </dd>
           </div>
-          <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+          <div v-if="run.retry_of" class="flex gap-2">
+            <dt>
               {{ t('pipelineRun.fields.retryOf') }}
             </dt>
             <dd>
-              <router-link
-                v-if="run.retry_of"
-                :to="`/pipeline-run/${run.retry_of}`"
-                class="app-link"
-              >
+              <router-link :to="`/pipeline-run/${run.retry_of}`" class="app-link">
                 {{ t('application.view') }}
               </router-link>
-              <span v-else class="text-muted-foreground">—</span>
             </dd>
           </div>
-          <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+          <div v-if="run.started_at" class="flex gap-2">
+            <dt>{{ t('common.createdAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(run.created_at) }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('pipelineRun.fields.startTime') }}
             </dt>
-            <dd class="text-muted-foreground">
-              {{ run.started_at ? formatTime(run.started_at) : '—' }}
-            </dd>
+            <dd class="text-muted-foreground">{{ formatTime(run.started_at) }}</dd>
           </div>
-          <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+          <div v-if="run.finished_at" class="flex gap-2">
+            <dt>
               {{ t('pipelineRun.fields.endTime') }}
             </dt>
-            <dd class="text-muted-foreground">
-              {{ run.finished_at ? formatTime(run.finished_at) : '—' }}
-            </dd>
+            <dd class="text-muted-foreground">{{ formatTime(run.finished_at) }}</dd>
           </div>
           <div v-if="run.error_message" class="flex gap-2 sm:col-span-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('pipelineRun.fields.errorMessage') }}
             </dt>
             <dd class="min-w-0 text-destructive">
@@ -167,9 +153,11 @@
       </div>
 
       <!-- Stage List -->
-      <div class="app-surface">
-        <div class="app-section-header flex items-center justify-between">
-          <h2 class="font-semibold text-foreground">{{ t('pipelineRun.stageOrchestration') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
+            {{ t('pipelineRun.stageOrchestration') }}
+          </h2>
           <ViewModeToggle v-model="stagesView" />
         </div>
 
@@ -182,7 +170,7 @@
         <!-- List View -->
         <div v-else-if="stagesView === 'list'">
           <div class="overflow-x-auto">
-            <table class="app-table-detail min-w-[960px]">
+            <table class="app-data-table min-w-[960px]">
               <thead>
                 <tr>
                   <th>#</th>
@@ -210,10 +198,9 @@
                         {{ snapshotStageMap[depId]?.name ?? depId }}
                       </AppBadge>
                     </div>
-                    <span v-else class="text-muted-foreground">—</span>
                   </td>
                   <td class="text-foreground">
-                    {{ stage.artifacts?.length ? stage.artifacts.length : '—' }}
+                    {{ stage.artifacts?.length }}
                   </td>
                   <td>
                     <AppBadge
@@ -231,7 +218,6 @@
                     >
                       {{ stageRunMap[stage.id]?.error_message }}
                     </span>
-                    <span v-else class="text-muted-foreground">—</span>
                   </td>
                   <td>
                     <button
@@ -241,7 +227,6 @@
                     >
                       {{ t('pipelineRun.viewLog') }}
                     </button>
-                    <span v-else class="text-muted-foreground">—</span>
                   </td>
                 </tr>
               </tbody>
@@ -266,16 +251,18 @@
         </div>
       </div>
 
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">{{ t('pipelineRun.variableSnapshot') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
+            {{ t('pipelineRun.variableSnapshot') }}
+          </h2>
         </div>
         <VariableDeclarationsTable :declarations="runVariableDeclarations" :readonly="true" />
       </div>
 
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">{{ t('pipelineRun.artifacts') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">{{ t('pipelineRun.artifacts') }}</h2>
         </div>
         <AppSpinner v-if="artifactsLoading" class="py-16" />
         <AppEmptyState
@@ -285,7 +272,7 @@
         />
         <AppEmptyState v-else-if="artifacts.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
-          <table class="app-table-detail min-w-[760px]">
+          <table class="app-data-table min-w-[760px]">
             <thead>
               <tr>
                 <th>{{ t('pipelineRun.stage') }}</th>
@@ -305,7 +292,7 @@
                 </td>
                 <td class="text-foreground">{{ artifact.name }}</td>
                 <td class="max-w-md truncate text-muted-foreground">
-                  {{ artifact.path || '—' }}
+                  {{ artifact.path }}
                 </td>
                 <td class="text-muted-foreground">
                   {{ formatTime(artifact.created_at) }}

@@ -35,7 +35,7 @@
       </div>
       <AppEmptyState v-else-if="artifacts.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list table-fixed">
+        <table class="app-data-table table-fixed">
           <colgroup>
             <col class="w-[17%]" />
             <col class="w-[17%]" />
@@ -85,7 +85,7 @@
                 {{ a.stage_name }}
               </td>
               <td class="overflow-hidden truncate text-foreground" :title="a.path || undefined">
-                {{ a.path ?? '—' }}
+                {{ a.path }}
               </td>
               <td
                 class="overflow-hidden truncate text-foreground"

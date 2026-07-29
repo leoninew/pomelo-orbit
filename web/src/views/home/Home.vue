@@ -20,8 +20,8 @@
 
         <!-- 指标文字 -->
         <div class="flex min-w-0 flex-1 flex-col justify-center gap-2">
-          <p class="text-base font-medium text-foreground">{{ card.label }}</p>
-          <span class="text-4xl font-bold leading-none text-foreground">
+          <p class="text-base font-semibold text-foreground">{{ card.label }}</p>
+          <span class="text-base font-semibold text-foreground">
             {{ card.value }}
           </span>
           <span class="text-sm text-muted-foreground">{{ card.description }}</span>
@@ -49,7 +49,7 @@
     <div class="grid grid-cols-1 gap-6 2xl:grid-cols-2">
       <section class="app-surface overflow-hidden">
         <div class="app-section-header flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-foreground">{{ t('home.recentBuilds') }}</h2>
+          <h2 class="text-base font-semibold text-foreground">{{ t('home.recentBuilds') }}</h2>
           <button
             class="app-link inline-flex items-center gap-1 text-sm"
             @click="router.push('/pipeline-run')"
@@ -61,7 +61,7 @@
         <AppSpinner v-if="status === 'loading'" class="py-16" />
         <AppEmptyState v-else-if="recentRuns.length === 0" />
         <div v-else class="overflow-x-auto">
-          <table class="app-table-list table-fixed min-w-[560px]">
+          <table class="app-data-table table-fixed min-w-[560px]">
             <colgroup>
               <col class="w-[42%]" />
               <col class="w-[34%]" />
@@ -104,7 +104,7 @@
 
       <section class="app-surface overflow-hidden">
         <div class="app-section-header flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-foreground">{{ t('home.recentDeploys') }}</h2>
+          <h2 class="text-base font-semibold text-foreground">{{ t('home.recentDeploys') }}</h2>
           <button
             class="app-link inline-flex items-center gap-1 text-sm"
             @click="router.push('/deployments')"
@@ -116,7 +116,7 @@
         <AppSpinner v-if="status === 'loading'" class="py-16" />
         <AppEmptyState v-else-if="recentDeploys.length === 0" />
         <div v-else class="overflow-x-auto">
-          <table class="app-table-list table-fixed min-w-[560px]">
+          <table class="app-data-table table-fixed min-w-[560px]">
             <colgroup>
               <col class="w-[42%]" />
               <col class="w-[34%]" />

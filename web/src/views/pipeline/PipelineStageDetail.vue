@@ -4,7 +4,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <div>
-          <h1 class="break-words text-xl font-semibold text-foreground">
+          <h1 class="app-detail-page-title break-words">
             {{ stage?.name ?? t('buildStageDetail.title') }}
           </h1>
         </div>
@@ -45,42 +45,46 @@
     <!-- Content -->
     <template v-else-if="stage">
       <!-- Basic Info Card -->
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">{{ t('buildStageDetail.basicInfo') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
+            {{ t('buildStageDetail.basicInfo') }}
+          </h2>
         </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.name') }}</dt>
+            <dt>{{ t('common.name') }}</dt>
             <dd class="text-foreground">{{ stage.name }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('buildStageDetail.version') }}</dt>
+            <dt>{{ t('buildStageDetail.version') }}</dt>
             <dd class="text-foreground">v{{ stage.version }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('buildStageDetail.image') }}</dt>
+            <dt>{{ t('buildStageDetail.image') }}</dt>
             <dd class="text-foreground">{{ stage.image }}</dd>
           </div>
-          <div class="flex gap-2 sm:col-span-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.description') }}</dt>
-            <dd class="text-foreground">{{ stage.description || '—' }}</dd>
+          <div v-if="stage.description" class="flex gap-2 sm:col-span-2">
+            <dt>{{ t('common.description') }}</dt>
+            <dd class="text-foreground">{{ stage.description }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+            <dt>{{ t('common.createdAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(stage.created_at) }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
+            <dt>{{ t('common.updatedAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(stage.updated_at) }}</dd>
           </div>
         </dl>
       </div>
 
       <!-- Script Card -->
-      <div class="app-surface">
-        <div class="app-section-header flex items-center justify-between">
-          <h2 class="font-semibold text-foreground">{{ t('buildStageDetail.script') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
+            {{ t('buildStageDetail.script') }}
+          </h2>
           <div class="flex items-center gap-2">
             <button class="app-button-primary h-9 px-3" @click="openScriptDrawer">
               <Pencil class="size-4" />
@@ -107,9 +111,11 @@
       </div>
 
       <!-- Artifacts Card -->
-      <div class="app-surface">
-        <div class="app-section-header flex items-center justify-between">
-          <h2 class="font-semibold text-foreground">{{ t('buildStageDetail.artifactConfig') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
+            {{ t('buildStageDetail.artifactConfig') }}
+          </h2>
           <button class="app-button-primary h-9 px-3" @click="openAddArtifactModal">
             <Plus class="size-4" />
             {{ t('buildStageDetail.addArtifact') }}
@@ -117,7 +123,7 @@
         </div>
         <AppEmptyState v-if="sortableArtifacts.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
-          <table class="app-table-detail min-w-[720px]">
+          <table class="app-data-table min-w-[720px]">
             <thead>
               <tr>
                 <th>#</th>

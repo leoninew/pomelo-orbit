@@ -2,7 +2,7 @@
   <div class="flex h-full min-h-0 flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">部署详情</h1>
+        <h1 class="app-detail-page-title min-w-0 break-words">部署详情</h1>
         <DetailHeaderMeta v-if="deployment">
           <AppBadge variant="status" :tone="deploymentStatusTone">{{ deployment.status }}</AppBadge>
         </DetailHeaderMeta>
@@ -30,30 +30,25 @@
     <!-- 内容 -->
     <div v-else-if="deployment" class="flex min-h-0 flex-1 flex-col gap-4">
       <!-- 基本信息卡片 -->
-      <div class="app-surface shrink-0">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">基本信息</h2>
+      <div class="app-surface shrink-0 app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">基本信息</h2>
         </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
-          <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">部署 ID</dt>
+        <dl class="app-detail-info-grid">
+          <div v-if="deployment.application_id" class="flex gap-2">
+            <dt>部署 ID</dt>
             <dd class="min-w-0 break-all text-foreground">{{ deploymentId }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">应用</dt>
+            <dt>应用</dt>
             <dd>
-              <router-link
-                v-if="deployment.application_id"
-                :to="`/application/${deployment.application_id}`"
-                class="app-link"
-              >
+              <router-link :to="`/application/${deployment.application_id}`" class="app-link">
                 {{ deployment.application_name || deployment.application_id }}
               </router-link>
-              <span v-else class="text-muted-foreground">—</span>
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">状态</dt>
+            <dt>状态</dt>
             <dd>
               <AppBadge variant="pill" :tone="deploymentStatusTone">
                 {{ deployment.status }}
@@ -61,43 +56,43 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">操作类型</dt>
+            <dt>操作类型</dt>
             <dd>
               <AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge>
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">触发方式</dt>
+            <dt>触发方式</dt>
             <dd>
               <AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge>
             </dd>
           </div>
           <div class="flex gap-2 sm:col-span-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">执行命令</dt>
+            <dt>执行命令</dt>
             <dd class="min-w-0 break-all text-xs text-foreground">
               {{ deployment.command_text || '未记录' }}
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">耗时</dt>
+            <dt>耗时</dt>
             <dd class="text-muted-foreground">
               {{ formatDuration(deployment.started_at, deployment.finished_at) }}
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">创建时间</dt>
+            <dt>创建时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(deployment.created_at) }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">开始时间</dt>
+            <dt>开始时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(deployment.started_at) }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">完成时间</dt>
+            <dt>完成时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(deployment.finished_at) }}</dd>
           </div>
           <div v-if="deployment.error_message" class="flex gap-2 sm:col-span-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">错误信息</dt>
+            <dt>错误信息</dt>
             <dd class="min-w-0 text-destructive">
               <pre class="whitespace-pre-wrap break-words font-sans text-xs">{{
                 deployment.error_message
@@ -107,9 +102,9 @@
         </dl>
       </div>
 
-      <div class="app-surface flex min-h-[360px] min-w-0 flex-1 flex-col">
+      <div class="app-surface flex min-h-[360px] min-w-0 flex-1 flex-col app-detail-card">
         <TabsRoot default-value="operation" class="flex min-h-0 flex-1 flex-col">
-          <div class="app-section-header flex shrink-0 items-center justify-between">
+          <div class="app-section-header shrink-0 app-detail-section-header">
             <TabsList aria-label="日志类型" class="flex gap-1 border-b border-border">
               <TabsTrigger
                 value="operation"

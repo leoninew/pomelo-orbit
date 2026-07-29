@@ -26,7 +26,7 @@
     </div>
 
     <div v-if="variableList.length > 0" class="space-y-3">
-      <h4 class="text-sm font-medium text-foreground">变量配置</h4>
+      <h4 class="text-base font-medium text-foreground">变量配置</h4>
       <div v-for="variable in variableList" :key="variable.name" class="space-y-1.5">
         <label class="app-field-label block">
           {{ variable.name }}

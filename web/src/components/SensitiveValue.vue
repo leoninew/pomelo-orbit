@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-w-0 flex-1 items-start gap-2 text-sm">
+  <div class="flex min-w-0 flex-1 items-start gap-2">
     <span class="min-w-0 whitespace-pre-wrap break-all text-foreground">
       {{ isVisible ? value : mask }}
     </span>

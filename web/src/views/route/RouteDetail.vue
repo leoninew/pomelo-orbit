@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+        <h1 class="app-detail-page-title min-w-0 break-words">
           {{ routeData?.name ?? t('route.detailTitle') }}
         </h1>
         <DetailHeaderMeta v-if="routeData">
@@ -60,17 +60,17 @@
     <!-- Content -->
     <template v-else-if="routeData">
       <!-- Basic Info Card -->
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">{{ t('route.basicInfo') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">{{ t('route.basicInfo') }}</h2>
         </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('route.fields.name') }}</dt>
+            <dt>{{ t('route.fields.name') }}</dt>
             <dd class="text-foreground">{{ routeData.name }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('route.fields.domain') }}</dt>
+            <dt>{{ t('route.fields.domain') }}</dt>
             <dd>
               <a
                 :href="`${routeData.https_enabled ? 'https' : 'http'}://${routeData.domain}`"
@@ -83,15 +83,15 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('route.fields.pathPrefix') }}</dt>
+            <dt>{{ t('route.fields.pathPrefix') }}</dt>
             <dd class="text-foreground">{{ routeData.path_prefix }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('route.fields.targetUrl') }}</dt>
+            <dt>{{ t('route.fields.targetUrl') }}</dt>
             <dd class="text-foreground">{{ routeData.target_url }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
+            <dt>{{ t('common.status') }}</dt>
             <dd>
               <AppBadge variant="status" :tone="routeData.enabled ? 'success' : 'default'">
                 {{ routeData.enabled ? t('route.status.enabled') : t('route.status.disabled') }}
@@ -99,20 +99,20 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+            <dt>{{ t('common.createdAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(routeData.created_at) }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
+            <dt>{{ t('common.updatedAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(routeData.updated_at) }}</dd>
           </div>
         </dl>
       </div>
 
       <!-- HTTPS Config Card -->
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">{{ t('route.httpsConfig') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">{{ t('route.httpsConfig') }}</h2>
         </div>
         <div class="space-y-4 px-5 py-4">
           <div class="flex items-center justify-between rounded-md bg-muted/30 p-3">

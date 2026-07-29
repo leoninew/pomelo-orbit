@@ -1,7 +1,7 @@
 <template>
   <div class="app-surface">
     <div class="app-section-header flex items-center justify-between">
-      <h3 class="font-semibold text-foreground">Webhook 配置</h3>
+      <h3 class="text-base font-semibold text-foreground">Webhook 配置</h3>
       <button class="app-button-primary h-9 px-3" @click="openCreateModal">
         <Plus class="size-4" />
         添加 Webhook
@@ -9,7 +9,7 @@
     </div>
 
     <div class="overflow-x-auto">
-      <table class="app-table-detail min-w-[960px]">
+      <table class="app-data-table min-w-[960px]">
         <thead>
           <tr>
             <th>名称</th>

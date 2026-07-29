@@ -18,7 +18,7 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="repositories.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[960px]">
+        <table class="app-data-table min-w-[960px]">
           <thead>
             <tr>
               <th>名称</th>
@@ -37,7 +37,7 @@
                 </router-link>
               </td>
               <td class="whitespace-nowrap text-foreground">{{ p.code }}</td>
-              <td class="whitespace-nowrap text-foreground">{{ p.default_branch || '—' }}</td>
+              <td class="whitespace-nowrap text-foreground">{{ p.default_branch }}</td>
               <td class="max-w-md truncate text-foreground" :title="p.repository_url">
                 {{ p.repository_url }}
               </td>
@@ -50,7 +50,6 @@
                   已配置
                 </router-link>
                 <span v-else-if="p.has_credential">已配置</span>
-                <span v-else class="text-muted-foreground">—</span>
               </td>
               <td class="whitespace-nowrap text-foreground">{{ formatTime(p.created_at) }}</td>
             </tr>

@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="break-words text-xl font-semibold text-foreground">
+      <h1 class="app-detail-page-title break-words">
         {{ role?.name ?? '角色详情' }}
       </h1>
       <div class="flex flex-wrap items-center gap-2">
@@ -30,42 +30,41 @@
       </div>
     </div>
 
-    <div class="app-surface">
-      <div class="app-section-header">
-        <h2 class="font-semibold text-foreground">{{ t('roleManagement.basicInfo') }}</h2>
+    <div class="app-surface app-detail-card">
+      <div class="app-section-header app-detail-section-header">
+        <h2 class="app-detail-section-title">{{ t('roleManagement.basicInfo') }}</h2>
       </div>
 
       <AppSpinner v-if="loading" class="px-5 py-10" />
-      <dl
-        v-else-if="role"
-        class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
-      >
+      <dl v-else-if="role" class="app-detail-info-grid">
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('roleManagement.code') }}</dt>
+          <dt>{{ t('roleManagement.code') }}</dt>
           <dd class="text-foreground">{{ role.code }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.name') }}</dt>
+          <dt>{{ t('common.name') }}</dt>
           <dd class="text-foreground">{{ role.name }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.description') }}</dt>
+          <dt>{{ t('common.description') }}</dt>
           <dd class="text-foreground">{{ role.description || '-' }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+          <dt>{{ t('common.createdAt') }}</dt>
           <dd class="text-muted-foreground">{{ formatTime(role.created_at) }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
+          <dt>{{ t('common.updatedAt') }}</dt>
           <dd class="text-muted-foreground">{{ formatTime(role.updated_at) }}</dd>
         </div>
       </dl>
     </div>
 
-    <div class="app-surface">
-      <div class="app-section-header flex flex-wrap items-center justify-between gap-3">
-        <h2 class="font-semibold text-foreground">{{ t('roleManagement.permissions') }}</h2>
+    <div class="app-surface app-detail-card">
+      <div class="app-section-header app-detail-section-header">
+        <h2 class="app-detail-section-title">
+          {{ t('roleManagement.permissions') }}
+        </h2>
         <button
           v-if="role && canWriteRoles"
           class="app-button-primary h-9 px-3"
@@ -158,7 +157,7 @@
           <label
             v-for="permission in permissions"
             :key="permission.code"
-            class="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm"
+            class="app-detail-list-item"
           >
             <input
               v-model="permissionForm.codes"

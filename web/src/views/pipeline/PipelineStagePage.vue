@@ -17,7 +17,7 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="stages.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[920px]">
+        <table class="app-data-table min-w-[920px]">
           <thead>
             <tr>
               <th>名称</th>
@@ -45,7 +45,7 @@
                 class="max-w-xs truncate text-muted-foreground"
                 :title="stage.description || undefined"
               >
-                {{ stage.description || '—' }}
+                {{ stage.description }}
               </td>
               <td class="whitespace-nowrap text-muted-foreground">
                 {{ formatTime(stage.created_at) }}

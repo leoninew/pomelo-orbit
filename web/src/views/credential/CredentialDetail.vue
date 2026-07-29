@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+        <h1 class="app-detail-page-title min-w-0 break-words">
           {{ credential?.name ?? '凭据详情' }}
         </h1>
         <DetailHeaderMeta v-if="credential">
@@ -44,22 +44,19 @@
       </div>
     </div>
 
-    <div class="app-surface">
-      <div class="app-section-header">
-        <h2 class="font-semibold text-foreground">基本信息</h2>
+    <div class="app-surface app-detail-card">
+      <div class="app-section-header app-detail-section-header">
+        <h2 class="app-detail-section-title">基本信息</h2>
       </div>
 
       <AppSpinner v-if="loading" class="px-5 py-10" />
-      <dl
-        v-else-if="credential"
-        class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
-      >
+      <dl v-else-if="credential" class="app-detail-info-grid">
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">凭据名称</dt>
+          <dt>凭据名称</dt>
           <dd class="text-foreground">{{ credential.name }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">类型</dt>
+          <dt>类型</dt>
           <dd>
             <AppBadge variant="pill">
               {{ credential.type }}
@@ -67,11 +64,11 @@
           </dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">创建时间</dt>
+          <dt>创建时间</dt>
           <dd class="text-muted-foreground">{{ formatTime(credential.created_at) }}</dd>
         </div>
         <div class="flex gap-2 sm:col-span-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">凭据内容</dt>
+          <dt>凭据内容</dt>
           <dd class="min-w-0 flex-1">
             <SensitiveValue :value="credential.data" label="凭据内容" />
           </dd>
@@ -99,7 +96,7 @@
           <label class="app-field-label block">凭据内容</label>
           <textarea
             v-model="form.data"
-            class="app-textarea text-xs"
+            class="app-textarea"
             :class="errors.data ? 'app-input-error' : ''"
             rows="8"
             :placeholder="credential ? getDataPlaceholder(credential.type) : ''"

@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+        <h1 class="app-detail-page-title min-w-0 break-words">
           {{ project?.name ?? t('project.detailTitle') }}
         </h1>
         <DetailHeaderMeta v-if="project">
@@ -31,26 +31,23 @@
       </div>
     </div>
 
-    <div class="app-surface">
-      <div class="app-section-header">
-        <h2 class="font-semibold text-foreground">{{ t('userManagement.basicInfo') }}</h2>
+    <div class="app-surface app-detail-card">
+      <div class="app-section-header app-detail-section-header">
+        <h2 class="app-detail-section-title">{{ t('userManagement.basicInfo') }}</h2>
       </div>
 
       <AppSpinner v-if="loading" class="px-5 py-10" />
-      <dl
-        v-else-if="project"
-        class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
-      >
+      <dl v-else-if="project" class="app-detail-info-grid">
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('project.name') }}</dt>
+          <dt>{{ t('project.name') }}</dt>
           <dd class="text-foreground">{{ project.name }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('project.code') }}</dt>
+          <dt>{{ t('project.code') }}</dt>
           <dd class="text-foreground">{{ project.code }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
+          <dt>{{ t('common.status') }}</dt>
           <dd>
             <AppBadge v-if="project.is_active" variant="status" tone="success">
               {{ t('project.active') }}
@@ -61,19 +58,19 @@
           </dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+          <dt>{{ t('common.createdAt') }}</dt>
           <dd class="text-muted-foreground">{{ formatTime(project.created_at) }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
+          <dt>{{ t('common.updatedAt') }}</dt>
           <dd class="text-muted-foreground">{{ formatTime(project.updated_at) }}</dd>
         </div>
       </dl>
     </div>
 
-    <div class="app-surface">
-      <div class="app-section-header flex flex-wrap items-center justify-between gap-3">
-        <h2 class="font-semibold text-foreground">{{ t('project.members') }}</h2>
+    <div class="app-surface app-detail-card">
+      <div class="app-section-header app-detail-section-header">
+        <h2 class="app-detail-section-title">{{ t('project.members') }}</h2>
         <button class="app-button-primary h-9 px-3" :disabled="operating" @click="openMemberModal">
           <UserPlus class="size-4" />
           {{ t('common.add') }}
@@ -83,7 +80,7 @@
       <AppSpinner v-if="loadingMembers" class="px-5 py-10" />
       <AppEmptyState v-else-if="members.length === 0" size="compact" />
       <div v-else class="px-5 py-4">
-        <table class="app-table-detail">
+        <table class="app-data-table">
           <thead>
             <tr>
               <th>{{ t('userManagement.username') }}</th>
@@ -97,7 +94,7 @@
           <tbody>
             <tr v-for="member in members" :key="member.id">
               <td>{{ member.username }}</td>
-              <td>{{ member.email || '—' }}</td>
+              <td>{{ member.email }}</td>
               <td>
                 <AppBadge
                   variant="status"
@@ -109,7 +106,7 @@
               <td>
                 <AppBadge variant="pill">{{ member.auth_source }}</AppBadge>
               </td>
-              <td>{{ member.last_login_at ? formatTime(member.last_login_at) : '—' }}</td>
+              <td>{{ member.last_login_at ? formatTime(member.last_login_at) : '' }}</td>
               <td class="text-right">
                 <button
                   class="app-link-danger"

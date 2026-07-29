@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="min-w-0">
-        <h1 class="break-words text-xl font-semibold text-foreground">
+        <h1 class="app-detail-page-title break-words">
           {{ gateway?.name || t('gateway.detailTitle') }}
         </h1>
       </div>
@@ -47,21 +47,23 @@
     <AppSpinner v-if="status === 'loading'" class="py-12" />
 
     <template v-else-if="gateway">
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">{{ t('gateway.sections.config') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
+            {{ t('gateway.sections.config') }}
+          </h2>
         </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('gateway.fields.name') }}</dt>
+            <dt>{{ t('gateway.fields.name') }}</dt>
             <dd class="text-foreground">{{ gateway.name }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('gateway.fields.code') }}</dt>
+            <dt>{{ t('gateway.fields.code') }}</dt>
             <dd class="text-foreground">{{ gateway.code }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('gateway.fields.restApiUrl') }}
             </dt>
             <dd class="min-w-0 break-all">
@@ -77,13 +79,13 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('gateway.fields.baseDomain') }}
             </dt>
             <dd class="text-foreground">{{ gateway.base_domain }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('gateway.fields.defaultEntrypoint') }}
             </dt>
             <dd>
@@ -91,42 +93,44 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('gateway.fields.tlsMode') }}</dt>
+            <dt>{{ t('gateway.fields.tlsMode') }}</dt>
             <dd>
               <AppBadge variant="pill">{{ gateway.tls_mode }}</AppBadge>
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('gateway.fields.imagePullPolicy') }}
             </dt>
             <dd>
               <AppBadge variant="pill">{{ gateway.image_pull_policy }}</AppBadge>
             </dd>
           </div>
-          <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('gateway.fields.image') }}</dt>
-            <dd class="min-w-0 break-all text-foreground">{{ gateway.image || '—' }}</dd>
+          <div v-if="gateway.image" class="flex gap-2">
+            <dt>{{ t('gateway.fields.image') }}</dt>
+            <dd class="min-w-0 break-all text-foreground">{{ gateway.image }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+            <dt>{{ t('common.createdAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(gateway.created_at) }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
+            <dt>{{ t('common.updatedAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(gateway.updated_at) }}</dd>
           </div>
         </dl>
       </div>
 
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">{{ t('gateway.exposures.title') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
+            {{ t('gateway.exposures.title') }}
+          </h2>
         </div>
         <div class="px-5 py-4">
           <AppEmptyState v-if="!(gateway.exposures || []).length" size="compact" />
           <div v-else class="overflow-x-auto">
-            <table class="app-table-list min-w-[720px]">
+            <table class="app-data-table min-w-[720px]">
               <thead>
                 <tr>
                   <th>{{ t('gateway.exposures.app') }}</th>

@@ -31,7 +31,7 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="runs.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list table-fixed min-w-[1200px]">
+        <table class="app-data-table table-fixed min-w-[1200px]">
           <colgroup>
             <col class="w-[14%]" />
             <col class="w-[16%]" />
@@ -92,7 +92,7 @@
                 :class="run.error_message ? 'text-destructive' : 'text-muted-foreground'"
                 :title="run.error_message || undefined"
               >
-                {{ run.error_message || '—' }}
+                {{ run.error_message }}
               </td>
               <td class="whitespace-nowrap text-foreground" :title="formatTime(run.started_at)">
                 {{ formatTime(run.started_at) }}

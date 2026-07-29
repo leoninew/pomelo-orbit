@@ -10,7 +10,7 @@
       >
         <div class="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
           <div class="min-w-0">
-            <DialogTitle class="text-lg font-semibold text-foreground">
+            <DialogTitle class="text-base font-semibold text-foreground">
               {{ title }}
             </DialogTitle>
             <DialogDescription v-if="description" class="mt-1 text-sm text-muted-foreground">

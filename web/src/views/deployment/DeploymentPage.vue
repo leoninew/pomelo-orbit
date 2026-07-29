@@ -24,7 +24,7 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="deployments.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[1120px]">
+        <table class="app-data-table min-w-[1120px]">
           <thead>
             <tr>
               <th>{{ t('deployment.fields.application') }}</th>
@@ -60,7 +60,7 @@
                 :class="deployment.error_message ? 'text-destructive' : 'text-muted-foreground'"
                 :title="deployment.error_message || undefined"
               >
-                {{ deployment.error_message || '—' }}
+                {{ deployment.error_message }}
               </td>
               <td class="text-foreground">{{ formatTime(deployment.started_at) }}</td>
               <td class="text-foreground">

@@ -23,7 +23,7 @@
       </div>
       <AppEmptyState v-else-if="filteredProjects.length === 0" :message="t('project.noProjects')" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[900px]">
+        <table class="app-data-table min-w-[900px]">
           <colgroup>
             <col class="w-[20%]" />
             <col class="w-[15%]" />

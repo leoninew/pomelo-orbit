@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="break-words text-xl font-semibold text-foreground">
+      <h1 class="app-detail-page-title break-words">
         {{ repository?.name ?? '仓库详情' }}
       </h1>
       <div class="flex flex-wrap items-center gap-2">
@@ -42,31 +42,31 @@
     <AppSpinner v-if="status === 'loading'" class="py-12" />
 
     <template v-else-if="repository">
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">基本信息</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">基本信息</h2>
         </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">名称</dt>
+            <dt>名称</dt>
             <dd class="min-w-0 text-foreground">{{ repository.name }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">编码</dt>
+            <dt>编码</dt>
             <dd class="min-w-0 text-foreground">{{ repository.code }}</dd>
           </div>
           <div class="flex gap-2 sm:col-span-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">仓库地址</dt>
+            <dt>仓库地址</dt>
             <dd class="min-w-0 truncate text-foreground" :title="repository.repository_url">
               {{ repository.repository_url }}
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">默认分支</dt>
+            <dt>默认分支</dt>
             <dd class="text-foreground">{{ repository.default_branch || 'master' }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">Git 凭据</dt>
+            <dt>Git 凭据</dt>
             <dd>
               <router-link
                 v-if="repository.git_credential_id"
@@ -79,7 +79,7 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">流水线记录</dt>
+            <dt>流水线记录</dt>
             <dd>
               <router-link :to="`/pipeline-run?repository_id=${repository.id}`" class="app-link">
                 查看所有记录
@@ -87,19 +87,19 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">创建时间</dt>
+            <dt>创建时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(repository.created_at) }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">更新时间</dt>
+            <dt>更新时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(repository.updated_at) }}</dd>
           </div>
         </dl>
       </div>
 
-      <div class="app-surface">
-        <div class="app-section-header flex flex-wrap items-center justify-between gap-3">
-          <h2 class="font-semibold text-foreground">变量配置</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">变量配置</h2>
           <button class="app-button-primary h-9 px-3" @click="openAddVariableDialog">
             <Plus class="size-4" />
             添加自定义变量

@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="break-words text-xl font-semibold text-foreground">
+      <h1 class="app-detail-page-title break-words">
         {{ template?.name || t('pipelineTemplate.detailTitle') }}
       </h1>
       <div class="flex flex-wrap items-center gap-2">
@@ -48,23 +48,25 @@
     <!-- Content -->
     <div v-else-if="template" class="flex flex-col gap-4">
       <!-- Basic Info Card -->
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">{{ t('pipelineTemplate.basicInfo') }}</h2>
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
+            {{ t('pipelineTemplate.basicInfo') }}
+          </h2>
         </div>
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
+            <dt>
               {{ t('pipelineTemplate.templateName') }}
             </dt>
             <dd class="text-foreground">{{ template.name }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('pipelineTemplate.version') }}</dt>
+            <dt>{{ t('pipelineTemplate.version') }}</dt>
             <dd class="text-foreground">v{{ template.version }}</dd>
           </div>
           <div class="flex gap-2 sm:col-span-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.description') }}</dt>
+            <dt>{{ t('common.description') }}</dt>
             <dd class="text-foreground">
               {{ template.description || t('pipelineTemplate.noDescription') }}
             </dd>
@@ -73,9 +75,9 @@
       </div>
 
       <!-- Stage Orchestration -->
-      <div class="app-surface">
-        <div class="app-section-header flex items-center justify-between">
-          <h2 class="font-semibold text-foreground">
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
             {{ t('pipelineTemplate.stageOrchestration') }}
           </h2>
           <div class="flex items-center gap-2">
@@ -90,7 +92,7 @@
 
         <!-- List View -->
         <div v-else-if="viewMode === 'list'" class="overflow-x-auto">
-          <table class="app-table-detail min-w-[760px]">
+          <table class="app-data-table min-w-[760px]">
             <thead>
               <tr>
                 <th>{{ t('pipelineTemplate.stage') }}</th>
@@ -125,10 +127,9 @@
                       {{ stageCache[depId]?.name ?? depId }}
                     </AppBadge>
                   </div>
-                  <span v-else class="text-muted-foreground">—</span>
                 </td>
                 <td class="text-foreground">
-                  {{ stageCache[orch.stage_id]?.artifacts?.length ?? '—' }}
+                  {{ stageCache[orch.stage_id]?.artifacts?.length }}
                 </td>
                 <td>
                   <div class="flex items-center gap-3">
@@ -158,9 +159,9 @@
       </div>
 
       <!-- {{ t('pipelineTemplate.variableDeclarations') }} -->
-      <div class="app-surface">
-        <div class="app-section-header flex items-center justify-between">
-          <h2 class="font-semibold text-foreground">
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
             {{ t('pipelineTemplate.variableDeclarations') }}
           </h2>
           <button class="app-button-primary h-9 px-3" @click="openAddVarModal">
@@ -177,15 +178,15 @@
       </div>
 
       <!-- {{ t('pipelineTemplate.artifactDeclarations') }} -->
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">
             {{ t('pipelineTemplate.artifactDeclarations') }}
           </h2>
         </div>
         <AppEmptyState v-if="artifactDeclarations.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
-          <table class="app-table-detail min-w-[720px]">
+          <table class="app-data-table min-w-[720px]">
             <thead>
               <tr>
                 <th>Stage</th>
@@ -203,7 +204,7 @@
                   </AppBadge>
                 </td>
                 <td class="text-foreground">{{ artifact.name }}</td>
-                <td class="text-muted-foreground">{{ artifact.path || '—' }}</td>
+                <td class="text-muted-foreground">{{ artifact.path }}</td>
               </tr>
             </tbody>
           </table>

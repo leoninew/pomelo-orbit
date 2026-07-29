@@ -5,7 +5,7 @@
     <div class="w-full max-w-md">
       <div class="app-surface rounded-lg p-8">
         <div class="text-center mb-8">
-          <h1 class="text-3xl font-bold text-foreground mb-2">{{ t('login.title') }}</h1>
+          <h1 class="text-base font-semibold text-foreground mb-2">{{ t('login.title') }}</h1>
           <p class="text-muted-foreground">{{ t('login.subtitle') }}</p>
         </div>
 

@@ -143,7 +143,7 @@
 
     <div v-else class="app-surface">
       <div class="overflow-x-auto">
-        <table class="app-table-list min-w-[1080px]">
+        <table class="app-data-table min-w-[1080px]">
           <thead>
             <tr>
               <th>{{ t('service.fields.instanceKey') }}</th>
@@ -282,29 +282,63 @@
       <div class="space-y-4">
         <div>
           <label class="app-field-label mb-1.5 block">{{ t('service.fields.application') }}</label>
-          <ComboboxSelect :model-value="createForm.application_id" :options="applicationSelectOptions" width-class="w-full" @update:model-value="handleCreateApplicationChange" />
+          <ComboboxSelect
+            :model-value="createForm.application_id"
+            :options="applicationSelectOptions"
+            width-class="w-full"
+            @update:model-value="handleCreateApplicationChange"
+          />
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">{{ t('service.fields.version') }}</label>
-          <ComboboxSelect :model-value="createForm.version_id" :options="createVersionSelectOptions" width-class="w-full" @update:model-value="createForm.version_id = String($event || '')" />
+          <ComboboxSelect
+            :model-value="createForm.version_id"
+            :options="createVersionSelectOptions"
+            width-class="w-full"
+            @update:model-value="createForm.version_id = String($event || '')"
+          />
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">{{ t('service.fields.instanceKey') }}</label>
           <input v-model="createForm.instance_key" class="app-input" />
         </div>
         <div class="space-y-2">
-          <div v-for="(item, index) in createForm.runtime_config" :key="index" class="grid grid-cols-[1fr_1fr_auto] gap-2">
-            <input v-model="item.key" class="app-input font-mono text-sm" :placeholder="t('service.runtimeConfig.key')" />
-            <input v-model="item.value" class="app-input text-sm" :placeholder="t('service.runtimeConfig.value')" />
-            <button class="app-button-danger size-9" :aria-label="t('common.delete')" @click="createForm.runtime_config.splice(index, 1)"><Trash2 class="size-4" /></button>
+          <div
+            v-for="(item, index) in createForm.runtime_config"
+            :key="index"
+            class="grid grid-cols-[1fr_1fr_auto] gap-2"
+          >
+            <input
+              v-model="item.key"
+              class="app-input font-mono text-sm"
+              :placeholder="t('service.runtimeConfig.key')"
+            />
+            <input
+              v-model="item.value"
+              class="app-input text-sm"
+              :placeholder="t('service.runtimeConfig.value')"
+            />
+            <button
+              class="app-button-danger size-9"
+              :aria-label="t('common.delete')"
+              @click="createForm.runtime_config.splice(index, 1)"
+            >
+              <Trash2 class="size-4" />
+            </button>
           </div>
-          <button class="app-link" @click="createForm.runtime_config.push({ key: '', value: '' })">{{ t('common.add') }}</button>
+          <button class="app-link" @click="createForm.runtime_config.push({ key: '', value: '' })">
+            {{ t('common.add') }}
+          </button>
         </div>
         <p v-if="createError" class="app-field-error text-xs">{{ createError }}</p>
       </div>
       <template #footer>
-        <button class="app-button" @click="isCreateDialogOpen = false">{{ t('common.cancel') }}</button>
-        <button class="app-button-primary" :disabled="operating" @click="handleCreateOk">{{ t('common.create') }}</button>
+        <button class="app-button" @click="isCreateDialogOpen = false">
+          {{ t('common.cancel') }}
+        </button>
+        <button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
+          {{ t('common.create') }}
+        </button>
       </template>
     </AppDialog>
 
@@ -425,7 +459,11 @@
     applications.value.map((application) => ({ value: application.id, label: application.name }))
   );
   const createVersionSelectOptions = computed(() =>
-    versions.value.map((version) => ({ value: version.id, label: version.label, description: version.status }))
+    versions.value.map((version) => ({
+      value: version.id,
+      label: version.label,
+      description: version.status,
+    }))
   );
 
   const deployTargetLabel = computed(() => serviceTargetLabel(selectedService.value));
@@ -493,7 +531,12 @@
     try {
       const page = await applicationApi.list({ project_id: projectId, per_page: 100 });
       applications.value = page.items ?? [];
-      Object.assign(createForm, { application_id: applications.value[0]?.id ?? '', version_id: '', instance_key: 'default', runtime_config: [] });
+      Object.assign(createForm, {
+        application_id: applications.value[0]?.id ?? '',
+        version_id: '',
+        instance_key: 'default',
+        runtime_config: [],
+      });
       createError.value = '';
       if (createForm.application_id) {
         await handleCreateApplicationChange(createForm.application_id);
@@ -536,7 +579,12 @@
     }
     try {
       await executeOp(async () => {
-        const created = await serviceApi.create({ application_id: createForm.application_id, version_id: createForm.version_id, instance_key: createForm.instance_key.trim(), runtime_config });
+        const created = await serviceApi.create({
+          application_id: createForm.application_id,
+          version_id: createForm.version_id,
+          instance_key: createForm.instance_key.trim(),
+          runtime_config,
+        });
         isCreateDialogOpen.value = false;
         toast.success(t('service.create.saved'));
         await router.push(`/service/${created.id}`);

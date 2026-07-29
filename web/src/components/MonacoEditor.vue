@@ -60,7 +60,7 @@
 
   const editorOptions = computed<editor.IStandaloneEditorConstructionOptions>(() => ({
     minimap: { enabled: false },
-    fontSize: 13,
+    fontSize: 12,
     lineNumbers: 'on',
     scrollBeyondLastLine: false,
     automaticLayout: true,

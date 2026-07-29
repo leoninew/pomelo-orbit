@@ -1,7 +1,7 @@
 <template>
   <div class="overflow-hidden">
     <AppEmptyState v-if="declarations.length === 0" size="compact" />
-    <table v-else class="app-table-detail">
+    <table v-else class="app-data-table">
       <thead>
         <tr>
           <th>{{ t('variableDeclaration.name') }}</th>
@@ -20,13 +20,11 @@
             <span v-if="decl.description" class="text-muted-foreground">
               {{ decl.description }}
             </span>
-            <span v-else class="text-muted-foreground">—</span>
           </td>
           <td class="max-w-sm truncate" :title="String(effectiveValue(decl) ?? '')">
             <span v-if="hasDisplayValue(effectiveValue(decl))" class="text-foreground">
               {{ effectiveValue(decl) }}
             </span>
-            <span v-else class="text-muted-foreground">—</span>
           </td>
           <td>
             <AppBadge variant="status" :tone="getSourceTone(requireSource(decl))">
@@ -45,7 +43,6 @@
               >
                 {{ t('common.reset') }}
               </button>
-              <span v-if="!canEdit(decl)" class="text-muted-foreground">—</span>
             </div>
           </td>
         </tr>

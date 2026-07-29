@@ -53,7 +53,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-sm text-foreground;
     font-feature-settings:
       'rlig' 1,
       'calt' 1;
@@ -91,6 +91,63 @@
 
   .app-section-header {
     @apply border-b border-border px-6 py-5;
+  }
+
+  .app-detail-card {
+    @apply text-sm;
+  }
+
+  .app-detail-card-body {
+    @apply p-5 sm:p-6;
+  }
+
+  .app-detail-subsection {
+    @apply border-t border-border p-5 sm:p-6;
+  }
+
+  .app-detail-section-header {
+    @apply flex flex-wrap items-center justify-between gap-3;
+  }
+
+  .app-detail-page-title,
+  .app-detail-section-title {
+    @apply text-base font-semibold text-foreground;
+  }
+
+  .app-detail-info-grid {
+    @apply grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2;
+  }
+
+  .app-detail-info-grid > * {
+    @apply flex gap-2;
+  }
+
+  .app-detail-info-grid dt {
+    @apply w-32 shrink-0 text-muted-foreground;
+  }
+
+  .app-detail-info-grid dd {
+    @apply min-w-0;
+  }
+
+  .app-detail-fields {
+    @apply text-sm;
+  }
+
+  .app-detail-fields > div {
+    @apply flex min-w-0 gap-2;
+  }
+
+  .app-detail-fields dt {
+    @apply shrink-0 text-muted-foreground;
+  }
+
+  .app-detail-fields dd {
+    @apply !mt-0 min-w-0;
+  }
+
+  .app-detail-list-item {
+    @apply flex items-start gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/40;
   }
 
   .app-toolbar-simple {
@@ -170,7 +227,7 @@
   }
 
   .app-action-item {
-    @apply block w-full rounded-xl border border-border bg-muted/30 p-3 text-left transition-colors hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply block w-full rounded-xl border border-border bg-muted/30 p-3 text-left text-sm transition-colors hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-checkbox {
@@ -210,7 +267,7 @@
   }
 
   .app-popover-content {
-    @apply z-[60] max-h-64 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none;
+    @apply z-[60] max-h-64 rounded-xl border border-border bg-popover p-1 text-sm text-popover-foreground shadow-lg outline-none;
   }
 
   .app-option-item {
@@ -226,63 +283,43 @@
   }
 
   .app-dialog-content {
-    @apply fixed left-1/2 top-1/2 z-50 max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card shadow-xl outline-none data-[state=open]:animate-contentShow;
+    @apply fixed left-1/2 top-1/2 z-50 max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card text-sm text-foreground shadow-xl outline-none data-[state=open]:animate-contentShow;
   }
 
   .app-drawer-content {
-    @apply fixed bottom-0 right-0 top-0 z-50 flex max-h-screen max-w-full flex-col border-l border-border bg-card shadow-xl outline-none;
+    @apply fixed bottom-0 right-0 top-0 z-50 flex max-h-screen max-w-full flex-col border-l border-border bg-card text-sm text-foreground shadow-xl outline-none;
   }
 
   .app-toast-root {
-    @apply flex w-full items-start gap-3 rounded-xl border px-4 py-3 shadow-lg outline-none;
+    @apply flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg outline-none;
   }
 
-  .app-table-list {
-    @apply w-full;
-  }
-
-  .app-table-list thead {
-    @apply border-b border-border bg-muted/30;
-  }
-
-  .app-table-list th {
-    @apply h-12 whitespace-nowrap px-6 py-3 text-left align-middle text-xs font-medium text-muted-foreground;
-  }
-
-  .app-table-list tbody {
-    @apply divide-y divide-border;
-  }
-
-  .app-table-list tbody tr {
-    @apply transition-colors hover:bg-muted/30;
-  }
-
-  .app-table-list td {
-    @apply h-12 px-6 py-4 align-middle text-sm;
-  }
-
-  .app-table-detail {
+  .app-data-table {
     @apply w-full text-sm;
   }
 
-  .app-table-detail thead {
+  .app-data-table thead {
     @apply border-b border-border bg-muted/30;
   }
 
-  .app-table-detail th {
-    @apply h-11 whitespace-nowrap px-5 py-2 text-left align-middle text-xs font-medium text-muted-foreground;
+  .app-data-table th {
+    @apply h-11 whitespace-nowrap px-5 py-2 text-left align-middle text-sm font-medium text-muted-foreground;
   }
 
-  .app-table-detail tbody {
+  .app-data-table tbody {
     @apply divide-y divide-border;
   }
 
-  .app-table-detail tbody tr {
+  .app-data-table tbody tr {
     @apply transition-colors hover:bg-muted/30;
   }
 
-  .app-table-detail td {
-    @apply h-11 whitespace-nowrap px-5 py-2 align-middle text-sm;
+  .app-data-table td {
+    @apply h-11 px-5 py-2 align-middle text-sm;
+  }
+
+  .app-data-table :is(button, input, select, textarea, [role='button'], [role='combobox']) {
+    @apply text-sm;
   }
 }
 

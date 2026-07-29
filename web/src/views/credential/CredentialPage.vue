@@ -26,7 +26,7 @@
       </div>
       <AppEmptyState v-else-if="credentials.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[880px]">
+        <table class="app-data-table min-w-[880px]">
           <thead>
             <tr>
               <th>名称</th>

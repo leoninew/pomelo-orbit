@@ -24,7 +24,7 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="routes.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[1200px]">
+        <table class="app-data-table min-w-[1200px]">
           <colgroup>
             <col class="w-[14%]" />
             <col class="w-[16%]" />

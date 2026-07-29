@@ -20,7 +20,7 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="roles.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[760px]">
+        <table class="app-data-table min-w-[760px]">
           <colgroup>
             <col class="w-[20%]" />
             <col class="w-[20%]" />

@@ -20,7 +20,7 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="gateways.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[960px]">
+        <table class="app-data-table min-w-[960px]">
           <thead>
             <tr>
               <th>{{ t('gateway.fields.name') }}</th>

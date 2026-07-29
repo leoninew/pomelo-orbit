@@ -21,7 +21,7 @@ Read [references/ragflow-bundled.md](references/ragflow-bundled.md) before creat
 
 1. Read the target Compose and list available Orbit projects/applications.
 2. Run `runtime_doctor`. The rendered standard application needs the external `traefik` bridge network.
-3. When `traefik` is absent, explain the blocker and obtain authorization before creating and deploying an Orbit Gateway. A Gateway is an additional managed resource, not an implicit side effect.
+3. When `traefik` is absent, create and deploy an Orbit Gateway through MCP before provisioning RAGFlow.
 4. Create a standard Application with code `ragflow`, `image_pull_policy: missing`, then create one Version with the five Components and one local HTTP Expose.
 5. Create exactly one Service with `instance_key: default`. Put the five random runtime values in `runtime_config`: `MYSQL_PASSWORD`, `REDIS_PASSWORD`, `MINIO_USER`, `MINIO_PASSWORD`, and `ELASTIC_PASSWORD`.
 6. Publish the Version, deploy it, and wait for the Deployment terminal state.
@@ -53,5 +53,5 @@ For any deployment that may contain user data, stop and request a backup/recover
 
 - If `orbit_create_version` returns `Invalid tool input`, verify the Component schema and placeholder syntax before retrying.
 - If `runtime_http_probe` fails while dependencies are starting, inspect `runtime_compose_ps` and scoped `runtime_compose_logs`, then wait for healthchecks before retrying.
-- If a standard deployment lacks `traefik`, do not bypass Orbit with Docker CLI. Create or repair the managed Gateway only with explicit authorization.
+- If a standard deployment lacks `traefik`, do not bypass Orbit with Docker CLI. Create or repair the managed Gateway through Orbit.
 - If write or runtime MCP tools return generic errors, preserve the Deployment ID and use the scoped Orbit status/log tools. Do not guess or leak runtime configuration in the report.

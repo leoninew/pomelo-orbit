@@ -13,6 +13,7 @@ Thumbs.db
 
 # pomelo-pw
 .pomelo-pw
+.playwright-cli
 
 # backend
 logs/

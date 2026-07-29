@@ -139,39 +139,39 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 func (e Executor) pipelineStageRunConfig(ctx context.Context, repo model.Repository, variables map[string]any, stage model.StageDefinition) (string, []string, error) {
 	script := commandLines(stage.Script)
 	environment := envMap(variables)
-	if repo.GitCredentialId == nil || !stageUsesRepositoryURL(stage.Script, repo.RepositoryURL) {
+	if repo.GitCredentialId == nil || !stageUsesRepositoryUrl(stage.Script, repo.RepositoryUrl) {
 		return script, environment, nil
 	}
 	credential, err := e.store.Credential(ctx, *repo.GitCredentialId)
 	if err != nil {
 		return "", nil, fmt.Errorf("load git credential: %w", err)
 	}
-	authenticatedURL, err := e.authenticatedRepositoryURL(repo.RepositoryURL, credential)
+	authenticatedUrl, err := e.authenticatedRepositoryUrl(repo.RepositoryUrl, credential)
 	if err != nil {
 		return "", nil, err
 	}
-	environment = append(environment, gitCredentialEnvironment(repo.RepositoryURL, authenticatedURL)...)
+	environment = append(environment, gitCredentialEnvironment(repo.RepositoryUrl, authenticatedUrl)...)
 	return script, environment, nil
 }
 
-func stageUsesRepositoryURL(script string, repositoryURL string) bool {
-	return strings.TrimSpace(repositoryURL) != "" && strings.Contains(script, repositoryURL)
+func stageUsesRepositoryUrl(script string, repositoryUrl string) bool {
+	return strings.TrimSpace(repositoryUrl) != "" && strings.Contains(script, repositoryUrl)
 }
 
-func (e Executor) authenticatedRepositoryURL(repositoryURL string, credential model.Credential) (string, error) {
+func (e Executor) authenticatedRepositoryUrl(repositoryUrl string, credential model.Credential) (string, error) {
 	credentialData, err := security.DecryptString(e.secretKey, credential.EncryptedData)
 	if err != nil {
 		return "", fmt.Errorf("decrypt git credential: %w", err)
 	}
 	switch credential.Type {
 	case "github_token":
-		return buildAuthenticatedRepositoryURL(repositoryURL, credentialData)
+		return buildAuthenticatedRepositoryUrl(repositoryUrl, credentialData)
 	case "gitee_token":
 		username, token, err := splitGiteeCredential(credentialData)
 		if err != nil {
 			return "", err
 		}
-		return buildAuthenticatedRepositoryURL(repositoryURL, username+":"+token)
+		return buildAuthenticatedRepositoryUrl(repositoryUrl, username+":"+token)
 	case "git_ssh":
 		return "", fmt.Errorf("git_ssh credentials are not supported by pomelo-orbit pipeline execution")
 	default:
@@ -188,13 +188,13 @@ func splitGiteeCredential(value string) (string, string, error) {
 	return username, token, nil
 }
 
-func buildAuthenticatedRepositoryURL(repositoryURL string, authPart string) (string, error) {
+func buildAuthenticatedRepositoryUrl(repositoryUrl string, authPart string) (string, error) {
 	if strings.TrimSpace(authPart) == "" {
 		return "", fmt.Errorf("git credential data is empty")
 	}
-	parsed, err := url.Parse(repositoryURL)
+	parsed, err := url.Parse(repositoryUrl)
 	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
-		return "", fmt.Errorf("unsupported repository URL format: %s", repositoryURL)
+		return "", fmt.Errorf("unsupported repository URL format: %s", repositoryUrl)
 	}
 	if strings.Contains(authPart, ":") {
 		username, password, _ := strings.Cut(authPart, ":")
@@ -205,12 +205,12 @@ func buildAuthenticatedRepositoryURL(repositoryURL string, authPart string) (str
 	return parsed.String(), nil
 }
 
-func gitCredentialEnvironment(repositoryURL string, authenticatedURL string) []string {
+func gitCredentialEnvironment(repositoryUrl string, authenticatedUrl string) []string {
 	return []string{
 		"GIT_TERMINAL_PROMPT=0",
 		"GIT_CONFIG_COUNT=1",
-		"GIT_CONFIG_KEY_0=url." + authenticatedURL + ".insteadOf",
-		"GIT_CONFIG_VALUE_0=" + repositoryURL,
+		"GIT_CONFIG_KEY_0=url." + authenticatedUrl + ".insteadOf",
+		"GIT_CONFIG_VALUE_0=" + repositoryUrl,
 	}
 }
 

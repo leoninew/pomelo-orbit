@@ -19,7 +19,7 @@ func NewPipelineRunDispatcher(tasks tasksvc.Service) PipelineRunDispatcher {
 }
 
 func (d PipelineRunDispatcher) DispatchPipelineRun(ctx context.Context, input pipelinerundto.PipelineRunDispatchInput) error {
-	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypePipelineRunExecute, pipelineRunExecutePayload{PipelineRunID: input.PipelineRunID})
+	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypePipelineRunExecute, pipelineRunExecutePayload{PipelineRunId: input.PipelineRunId})
 	return err
 }
 
@@ -34,8 +34,8 @@ func NewDeploymentDispatcher(tasks tasksvc.Service) DeploymentDispatcher {
 
 func (d DeploymentDispatcher) DispatchDeploy(ctx context.Context, input deploymentdto.DeployDispatchInput) error {
 	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypeDeploymentDeploy, deploymentDeployPayload{
-		ApplicationID: input.ApplicationID,
-		DeploymentID:  input.DeploymentID,
+		ApplicationId: input.ApplicationId,
+		DeploymentId:  input.DeploymentId,
 		ForceRecreate: input.ForceRecreate,
 	})
 	return err
@@ -43,38 +43,38 @@ func (d DeploymentDispatcher) DispatchDeploy(ctx context.Context, input deployme
 
 func (d DeploymentDispatcher) DispatchRestart(ctx context.Context, input deploymentdto.RestartDispatchInput) error {
 	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypeDeploymentRestart, deploymentRestartPayload{
-		ApplicationID: input.ApplicationID,
-		DeploymentID:  input.DeploymentID,
+		ApplicationId: input.ApplicationId,
+		DeploymentId:  input.DeploymentId,
 	})
 	return err
 }
 
 func (d DeploymentDispatcher) DispatchStop(ctx context.Context, input deploymentdto.StopDispatchInput) error {
 	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypeDeploymentStop, deploymentStopPayload{
-		ApplicationID: input.ApplicationID,
-		DeploymentID:  input.DeploymentID,
+		ApplicationId: input.ApplicationId,
+		DeploymentId:  input.DeploymentId,
 		RemoveVolumes: input.RemoveVolumes,
 	})
 	return err
 }
 
 type pipelineRunExecutePayload struct {
-	PipelineRunID string `json:"pipeline_run_id"`
+	PipelineRunId string `json:"pipeline_run_id"`
 }
 
 type deploymentDeployPayload struct {
-	ApplicationID string `json:"application_id"`
-	DeploymentID  string `json:"deployment_id"`
+	ApplicationId string `json:"application_id"`
+	DeploymentId  string `json:"deployment_id"`
 	ForceRecreate bool   `json:"force_recreate"`
 }
 
 type deploymentRestartPayload struct {
-	ApplicationID string `json:"application_id"`
-	DeploymentID  string `json:"deployment_id"`
+	ApplicationId string `json:"application_id"`
+	DeploymentId  string `json:"deployment_id"`
 }
 
 type deploymentStopPayload struct {
-	ApplicationID string `json:"application_id"`
-	DeploymentID  string `json:"deployment_id"`
+	ApplicationId string `json:"application_id"`
+	DeploymentId  string `json:"deployment_id"`
 	RemoveVolumes bool   `json:"remove_volumes"`
 }

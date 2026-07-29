@@ -51,8 +51,8 @@ func TestListRepositoriesUsesNamedSQLiteParameters(t *testing.T) {
 	projectOne := "project-1"
 	projectTwo := "project-2"
 	for _, item := range []model.Repository{
-		{Id: "repository-1", ProjectId: &projectOne, Name: "Repository One", Code: "repository-one", RepositoryURL: "https://example.test/one.git", VariableOverrides: "[]", DefaultBranch: "main"},
-		{Id: "repository-2", ProjectId: &projectTwo, Name: "Repository Two", Code: "repository-two", RepositoryURL: "https://example.test/two.git", VariableOverrides: "[]", DefaultBranch: "main"},
+		{Id: "repository-1", ProjectId: &projectOne, Name: "Repository One", Code: "repository-one", RepositoryUrl: "https://example.test/one.git", VariableOverrides: "[]", DefaultBranch: "main"},
+		{Id: "repository-2", ProjectId: &projectTwo, Name: "Repository Two", Code: "repository-two", RepositoryUrl: "https://example.test/two.git", VariableOverrides: "[]", DefaultBranch: "main"},
 	} {
 		if err := repo.CreateRepository(ctx, item); err != nil {
 			t.Fatal(err)

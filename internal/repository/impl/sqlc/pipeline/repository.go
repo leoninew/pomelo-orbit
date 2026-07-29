@@ -26,7 +26,7 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r Repository) q(ctx context.Context) *pipelinesqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *pipelinesqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *pipelinesqlc.Queries {
 		return pipelinesqlc.New(dbtx)
 	})
 }
@@ -286,24 +286,24 @@ func (r Repository) CreatePipelineSnapshot(ctx context.Context, snapshot model.P
 	return nil
 }
 
-func pipelineStageFromRow(id string, projectID sql.NullString, name, image, script string, artifacts sql.NullString, description string, version int64, createdAt, updatedAt time.Time) model.PipelineStage {
+func pipelineStageFromRow(id string, projectId sql.NullString, name, image, script string, artifacts sql.NullString, description string, version int64, createdAt, updatedAt time.Time) model.PipelineStage {
 	return model.PipelineStage{
-		Id: id, ProjectId: dbmodel.StringPtr(projectID), Name: name, Image: image, Script: script,
+		Id: id, ProjectId: dbmodel.StringPtr(projectId), Name: name, Image: image, Script: script,
 		Artifacts: dbmodel.StringPtr(artifacts), Description: description, Version: int(version),
 		CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
 }
 
-func templateFrom(id string, projectID sql.NullString, name, description, vars string, version int64, createdAt, updatedAt time.Time) model.PipelineTemplate {
+func templateFrom(id string, projectId sql.NullString, name, description, vars string, version int64, createdAt, updatedAt time.Time) model.PipelineTemplate {
 	return model.PipelineTemplate{
-		Id: id, ProjectId: dbmodel.StringPtr(projectID), Name: name, Description: description,
+		Id: id, ProjectId: dbmodel.StringPtr(projectId), Name: name, Description: description,
 		VariableDeclarations: vars, Version: int(version), CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
 }
 
-func snapshotFrom(id string, projectID sql.NullString, templateID string, version int64, stages, vars string, createdAt time.Time) model.PipelineSnapshot {
+func snapshotFrom(id string, projectId sql.NullString, templateId string, version int64, stages, vars string, createdAt time.Time) model.PipelineSnapshot {
 	return model.PipelineSnapshot{
-		Id: id, ProjectId: dbmodel.StringPtr(projectID), TemplateId: templateID, Version: int(version),
+		Id: id, ProjectId: dbmodel.StringPtr(projectId), TemplateId: templateId, Version: int(version),
 		StagesSnapshot: stages, VariablesSnapshot: vars, CreatedAt: createdAt,
 	}
 }

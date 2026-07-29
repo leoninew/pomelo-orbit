@@ -28,7 +28,7 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r Repository) q(ctx context.Context) *servicesqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *servicesqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *servicesqlc.Queries {
 		return servicesqlc.New(dbtx)
 	})
 }
@@ -131,7 +131,7 @@ func (r Repository) Service(ctx context.Context, id string) (model.Service, erro
 
 func (r Repository) UpsertService(ctx context.Context, svc model.Service) error {
 	q := r.q(ctx)
-	existingID, err := q.ServiceIDByKey(ctx, servicesqlc.ServiceIDByKeyParams{
+	existingId, err := q.ServiceIDByKey(ctx, servicesqlc.ServiceIDByKeyParams{
 		ApplicationID: svc.ApplicationId,
 		InstanceKey:   svc.InstanceKey,
 	})
@@ -165,7 +165,7 @@ func (r Repository) UpsertService(ctx context.Context, svc model.Service) error 
 		}
 		return nil
 	}
-	id := existingID
+	id := existingId
 	if strings.TrimSpace(svc.Id) != "" {
 		id = svc.Id
 	}
@@ -250,7 +250,7 @@ func serviceFrom(row servicesqlc.Service) (model.Service, error) {
 }
 
 func serviceListFrom(
-	id, applicationID, instanceKey, versionID, runtimeConfigJSON string,
+	id, applicationId, instanceKey, versionId, runtimeConfigJSON string,
 	svcStatus string, createdAt, updatedAt time.Time,
 	applicationName, applicationCode, applicationKind, versionLabel string,
 ) (model.ServiceListItem, error) {
@@ -260,9 +260,9 @@ func serviceListFrom(
 	}
 	return model.ServiceListItem{
 		Id:              id,
-		ApplicationId:   applicationID,
+		ApplicationId:   applicationId,
 		InstanceKey:     instanceKey,
-		VersionId:       versionID,
+		VersionId:       versionId,
 		RuntimeConfig:   runtimeConfig,
 		Status:          svcStatus,
 		CreatedAt:       createdAt,

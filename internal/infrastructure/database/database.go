@@ -59,7 +59,7 @@ func configureSQLite(database *sql.DB) error {
 }
 
 func openMySQL(cfg config.MySQLConfig) (*sql.DB, error) {
-	dsn, err := mysqlDSN(cfg.DSN)
+	dsn, err := mysqlDsn(cfg.Dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func openMySQL(cfg config.MySQLConfig) (*sql.DB, error) {
 	return database, nil
 }
 
-func mysqlDSN(dsn string) (string, error) {
+func mysqlDsn(dsn string) (string, error) {
 	cfg, err := gomysql.ParseDSN(dsn)
 	if err != nil {
 		return "", fmt.Errorf("parse mysql dsn: %w", err)

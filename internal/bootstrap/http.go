@@ -43,7 +43,7 @@ func NewHTTPServer(cfg config.Config, logger *slog.Logger, database *sql.DB, tas
 
 func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database *sql.DB, taskRepo taskrepo.Repository) routes.Dependencies {
 	stores := newDomainStores(database)
-	tokenService := jwt.NewTokenService(cfg.JWT.SecretKey)
+	tokenService := jwt.NewTokenService(cfg.Jwt.SecretKey)
 	taskService := tasksvc.New(taskRepo, cfg.Worker.MaxAttempts)
 	pipelineRunDispatcher := queuedispatch.NewPipelineRunDispatcher(taskService)
 	deploymentDispatcher := queuedispatch.NewDeploymentDispatcher(taskService)
@@ -61,7 +61,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		UserService:       usersvc.New(stores.user, stores.role),
 		ProjectService:    projectsvc.New(stores.project, stores.user),
 		SettingsService:   settingssvc.New(cfg, envfile.NewStore(cfg.EnvFilePath)),
-		CredentialService: credentialsvc.New(stores.project, stores.credential, cfg.JWT.SecretKey),
+		CredentialService: credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey),
 		RepositoryService: repositorysvc.New(
 			stores.project,
 			stores.credential,
@@ -80,7 +80,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			stores.pipelineRun,
 			pipelineRunDispatcher,
 			pipelineWorkspace,
-			cfg.JWT.SecretKey,
+			cfg.Jwt.SecretKey,
 			logger,
 			pipelinerunner.DockerRunner{},
 			logStore,

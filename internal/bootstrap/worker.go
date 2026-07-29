@@ -34,7 +34,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		stores.pipeline,
 		stores.pipelineRun,
 		pipelineWorkspace,
-		cfg.JWT.SecretKey,
+		cfg.Jwt.SecretKey,
 		logger,
 		pipelinerunner.DockerRunner{},
 		logStore,

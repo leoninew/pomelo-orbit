@@ -25,8 +25,8 @@ type MigrationVersion struct {
 	Dirty   bool
 }
 
-func MigrateUp(sqlDB *sql.DB, driver string) error {
-	runner, err := newMigrationRunner(sqlDB, driver)
+func MigrateUp(sqlDb *sql.DB, driver string) error {
+	runner, err := newMigrationRunner(sqlDb, driver)
 	if err != nil {
 		return err
 	}
@@ -38,8 +38,8 @@ func MigrateUp(sqlDB *sql.DB, driver string) error {
 	return nil
 }
 
-func ReadMigrationVersion(sqlDB *sql.DB, driver string) (MigrationVersion, error) {
-	databaseDriver, err := migrationDatabaseDriver(sqlDB, driver)
+func ReadMigrationVersion(sqlDb *sql.DB, driver string) (MigrationVersion, error) {
+	databaseDriver, err := migrationDatabaseDriver(sqlDb, driver)
 	if err != nil {
 		return MigrationVersion{}, err
 	}
@@ -55,7 +55,7 @@ func ReadMigrationVersion(sqlDB *sql.DB, driver string) (MigrationVersion, error
 	return MigrationVersion{Version: uint(version), Dirty: dirty}, nil
 }
 
-func newMigrationRunner(sqlDB *sql.DB, driver string) (*gomigrate.Migrate, error) {
+func newMigrationRunner(sqlDb *sql.DB, driver string) (*gomigrate.Migrate, error) {
 	migrationSource, err := iofs.New(migrationfiles.Files, path.Join(migrationsRoot, driver))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -64,7 +64,7 @@ func newMigrationRunner(sqlDB *sql.DB, driver string) (*gomigrate.Migrate, error
 		return nil, fmt.Errorf("open %s migrations: %w", driver, err)
 	}
 
-	databaseDriver, err := migrationDatabaseDriver(sqlDB, driver)
+	databaseDriver, err := migrationDatabaseDriver(sqlDb, driver)
 	if err != nil {
 		_ = migrationSource.Close()
 		return nil, err
@@ -79,16 +79,16 @@ func newMigrationRunner(sqlDB *sql.DB, driver string) (*gomigrate.Migrate, error
 	return runner, nil
 }
 
-func migrationDatabaseDriver(sqlDB *sql.DB, driver string) (database.Driver, error) {
+func migrationDatabaseDriver(sqlDb *sql.DB, driver string) (database.Driver, error) {
 	switch driver {
 	case config.DatabaseDriverSQLite:
-		driver, err := migratesqlite.WithInstance(sqlDB, &migratesqlite.Config{})
+		driver, err := migratesqlite.WithInstance(sqlDb, &migratesqlite.Config{})
 		if err != nil {
 			return nil, err
 		}
 		return noCloseDatabaseDriver{Driver: driver}, nil
 	case config.DatabaseDriverMySQL:
-		connection, err := sqlDB.Conn(context.Background())
+		connection, err := sqlDb.Conn(context.Background())
 		if err != nil {
 			return nil, err
 		}

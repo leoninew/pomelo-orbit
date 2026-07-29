@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	testJWTSecret           = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-	standardBase64JWTSecret = "J69d31L/5Dg4yhJXhp+CacFovpi8Ikhr34zSsHmE3x4="
+	testJwtSecret           = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	standardBase64JwtSecret = "J69d31L/5Dg4yhJXhp+CacFovpi8Ikhr34zSsHmE3x4="
 )
 
 func TestLoadDefaultConfigFile(t *testing.T) {
@@ -33,14 +33,14 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Server.Port != 9021 {
 		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
 	}
-	if len(cfg.Server.CORSAllowedOrigins) != 0 {
-		t.Fatalf("unexpected cors allowed origins: %v", cfg.Server.CORSAllowedOrigins)
+	if len(cfg.Server.CorsAllowedOrigins) != 0 {
+		t.Fatalf("unexpected cors allowed origins: %v", cfg.Server.CorsAllowedOrigins)
 	}
 	if len(cfg.Server.ApiPathPrefixes) != 1 || cfg.Server.ApiPathPrefixes[0] != "/api" {
 		t.Fatalf("unexpected api path prefixes: %v", cfg.Server.ApiPathPrefixes)
 	}
-	if cfg.Server.PublicURL != "" {
-		t.Fatalf("unexpected server public url: %s", cfg.Server.PublicURL)
+	if cfg.Server.PublicUrl != "" {
+		t.Fatalf("unexpected server public url: %s", cfg.Server.PublicUrl)
 	}
 	if cfg.Logging.File != "logs/pomelo-orbit.log" {
 		t.Fatalf("unexpected logging file: %s", cfg.Logging.File)
@@ -60,8 +60,8 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if !cfg.Logging.HTTPSkipAssets200Enabled {
 		t.Fatal("expected http assets 200 log skipping enabled")
 	}
-	if cfg.JWT.SecretKey != testJWTSecret {
-		t.Fatalf("unexpected jwt secret key: %s", cfg.JWT.SecretKey)
+	if cfg.Jwt.SecretKey != testJwtSecret {
+		t.Fatalf("unexpected jwt secret key: %s", cfg.Jwt.SecretKey)
 	}
 	if cfg.Traefik.CertDir != "data/deployment/traefik/data/certs" {
 		t.Fatalf("unexpected traefik cert dir: %s", cfg.Traefik.CertDir)
@@ -75,8 +75,8 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Turnstile.SecretKey != "1x0000000000000000000000000000000AA" {
 		t.Fatalf("unexpected turnstile secret key: %s", cfg.Turnstile.SecretKey)
 	}
-	if cfg.Turnstile.VerifyURL != "https://challenges.cloudflare.com/turnstile/v0/siteverify" {
-		t.Fatalf("unexpected turnstile verify url: %s", cfg.Turnstile.VerifyURL)
+	if cfg.Turnstile.VerifyUrl != "https://challenges.cloudflare.com/turnstile/v0/siteverify" {
+		t.Fatalf("unexpected turnstile verify url: %s", cfg.Turnstile.VerifyUrl)
 	}
 	if cfg.Worker.PollInterval != time.Second {
 		t.Fatalf("unexpected poll interval: %s", cfg.Worker.PollInterval)
@@ -198,14 +198,14 @@ worker:
 	if cfg.Server.Port != 8088 {
 		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
 	}
-	if len(cfg.Server.CORSAllowedOrigins) != 2 || cfg.Server.CORSAllowedOrigins[0] != "https://orbit.preflite.cn" || cfg.Server.CORSAllowedOrigins[1] != "https://preview.preflite.cn" {
-		t.Fatalf("unexpected cors allowed origins: %v", cfg.Server.CORSAllowedOrigins)
+	if len(cfg.Server.CorsAllowedOrigins) != 2 || cfg.Server.CorsAllowedOrigins[0] != "https://orbit.preflite.cn" || cfg.Server.CorsAllowedOrigins[1] != "https://preview.preflite.cn" {
+		t.Fatalf("unexpected cors allowed origins: %v", cfg.Server.CorsAllowedOrigins)
 	}
 	if len(cfg.Server.ApiPathPrefixes) != 2 || cfg.Server.ApiPathPrefixes[0] != "/api" || cfg.Server.ApiPathPrefixes[1] != "/graphql" {
 		t.Fatalf("unexpected api path prefixes: %v", cfg.Server.ApiPathPrefixes)
 	}
-	if cfg.Server.PublicURL != "https://orbit-api.preflite.cn" {
-		t.Fatalf("unexpected server public url: %s", cfg.Server.PublicURL)
+	if cfg.Server.PublicUrl != "https://orbit-api.preflite.cn" {
+		t.Fatalf("unexpected server public url: %s", cfg.Server.PublicUrl)
 	}
 	if cfg.Database.SQLite.Path != "/data/pomelo-repository.db" {
 		t.Fatalf("unexpected sqlite path: %s", cfg.Database.SQLite.Path)
@@ -234,8 +234,8 @@ worker:
 	if cfg.Turnstile.SecretKey != "secret-from-env" {
 		t.Fatalf("unexpected turnstile secret key: %s", cfg.Turnstile.SecretKey)
 	}
-	if cfg.Turnstile.VerifyURL != "https://turnstile.example.test" {
-		t.Fatalf("unexpected turnstile verify url: %s", cfg.Turnstile.VerifyURL)
+	if cfg.Turnstile.VerifyUrl != "https://turnstile.example.test" {
+		t.Fatalf("unexpected turnstile verify url: %s", cfg.Turnstile.VerifyUrl)
 	}
 	if cfg.Traefik.CertDir != "data/custom/certs" {
 		t.Fatalf("unexpected traefik cert dir: %s", cfg.Traefik.CertDir)
@@ -283,7 +283,7 @@ func TestLoadConfigRejectsInvalidApiPathPrefixes(t *testing.T) {
 	}
 }
 
-func TestLoadConfigRejectsInvalidPublicURL(t *testing.T) {
+func TestLoadConfigRejectsInvalidPublicUrl(t *testing.T) {
 	setupDefaultConfig(t)
 	t.Setenv("POMELO_ORBIT_SERVER__PUBLIC_URL", "ftp://orbit-api.preflite.cn")
 
@@ -296,7 +296,7 @@ func TestLoadConfigRejectsInvalidPublicURL(t *testing.T) {
 	}
 }
 
-func TestLoadConfigRejectsInvalidCORSOrigin(t *testing.T) {
+func TestLoadConfigRejectsInvalidCorsOrigin(t *testing.T) {
 	setupDefaultConfig(t)
 	t.Setenv("POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS", "https://orbit.preflite.cn/path")
 
@@ -391,7 +391,7 @@ func TestLoadConfigRejectsInvalidEnvFile(t *testing.T) {
 	}
 }
 
-func TestLoadConfigJWTEnvOverride(t *testing.T) {
+func TestLoadConfigJwtEnvOverride(t *testing.T) {
 	setupDefaultConfig(t)
 	writeEnvConfig(t, "develop", `database:
   sqlite:
@@ -399,14 +399,14 @@ func TestLoadConfigJWTEnvOverride(t *testing.T) {
 jwt:
   secret_key: "from-yaml"
 `)
-	t.Setenv("POMELO_ORBIT_JWT__SECRET_KEY", standardBase64JWTSecret)
+	t.Setenv("POMELO_ORBIT_JWT__SECRET_KEY", standardBase64JwtSecret)
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if cfg.JWT.SecretKey != standardBase64JWTSecret {
-		t.Fatalf("unexpected jwt secret: %s", cfg.JWT.SecretKey)
+	if cfg.Jwt.SecretKey != standardBase64JwtSecret {
+		t.Fatalf("unexpected jwt secret: %s", cfg.Jwt.SecretKey)
 	}
 }
 
@@ -448,7 +448,7 @@ database:
 	}
 }
 
-func TestLoadConfigValidatesJWTSecretKey(t *testing.T) {
+func TestLoadConfigValidatesJwtSecretKey(t *testing.T) {
 	cases := []struct {
 		name    string
 		content string
@@ -469,18 +469,18 @@ func TestLoadConfigValidatesJWTSecretKey(t *testing.T) {
 	}
 }
 
-func TestLoadConfigAcceptsStandardBase64JWTSecretKey(t *testing.T) {
+func TestLoadConfigAcceptsStandardBase64JwtSecretKey(t *testing.T) {
 	setupDefaultConfig(t)
 	writeEnvConfig(t, "develop", fmt.Sprintf(`jwt:
   secret_key: %q
-`, standardBase64JWTSecret))
+`, standardBase64JwtSecret))
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if cfg.JWT.SecretKey != standardBase64JWTSecret {
-		t.Fatalf("unexpected jwt secret: %s", cfg.JWT.SecretKey)
+	if cfg.Jwt.SecretKey != standardBase64JwtSecret {
+		t.Fatalf("unexpected jwt secret: %s", cfg.Jwt.SecretKey)
 	}
 }
 
@@ -499,7 +499,7 @@ func TestLoadConfigMySQL(t *testing.T) {
 	if cfg.Database.Driver != DatabaseDriverMySQL {
 		t.Fatalf("unexpected database driver: %s", cfg.Database.Driver)
 	}
-	if cfg.Database.MySQL.DSN == "" {
+	if cfg.Database.MySQL.Dsn == "" {
 		t.Fatal("expected mysql dsn")
 	}
 }

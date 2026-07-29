@@ -12,8 +12,8 @@ import (
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 )
 
-func TestCORSNoopWhenNotConfigured(t *testing.T) {
-	recorder := serveCORSRequest(t, nil, http.MethodGet, "/api/health", "https://orbit.preflite.cn")
+func TestCorsNoopWhenNotConfigured(t *testing.T) {
+	recorder := serveCorsRequest(t, nil, http.MethodGet, "/api/health", "https://orbit.preflite.cn")
 
 	if recorder.Header().Get("Access-Control-Allow-Origin") != "" {
 		t.Fatalf("expected no cors origin header, got %s", recorder.Header().Get("Access-Control-Allow-Origin"))
@@ -23,62 +23,62 @@ func TestCORSNoopWhenNotConfigured(t *testing.T) {
 	}
 }
 
-func TestCORSAllowsSingleOrigin(t *testing.T) {
-	recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodGet, "/api/health", "https://orbit.preflite.cn")
+func TestCorsAllowsSingleOrigin(t *testing.T) {
+	recorder := serveCorsRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodGet, "/api/health", "https://orbit.preflite.cn")
 
-	assertCORSHeaders(t, recorder, "https://orbit.preflite.cn")
+	assertCorsHeaders(t, recorder, "https://orbit.preflite.cn")
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
 }
 
-func TestCORSAllowsMultipleOrigins(t *testing.T) {
-	recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn", "https://preview.preflite.cn"}, http.MethodGet, "/api/health", "https://preview.preflite.cn")
+func TestCorsAllowsMultipleOrigins(t *testing.T) {
+	recorder := serveCorsRequest(t, []string{"https://orbit.preflite.cn", "https://preview.preflite.cn"}, http.MethodGet, "/api/health", "https://preview.preflite.cn")
 
-	assertCORSHeaders(t, recorder, "https://preview.preflite.cn")
+	assertCorsHeaders(t, recorder, "https://preview.preflite.cn")
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
 }
 
-func TestCORSNormalizesConfiguredTrailingSlash(t *testing.T) {
-	recorder := serveCORSRequest(t, []string{" https://orbit.preflite.cn/ "}, http.MethodGet, "/api/health", "https://orbit.preflite.cn")
+func TestCorsNormalizesConfiguredTrailingSlash(t *testing.T) {
+	recorder := serveCorsRequest(t, []string{" https://orbit.preflite.cn/ "}, http.MethodGet, "/api/health", "https://orbit.preflite.cn")
 
-	assertCORSHeaders(t, recorder, "https://orbit.preflite.cn")
+	assertCorsHeaders(t, recorder, "https://orbit.preflite.cn")
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
 }
 
-func TestCORSAllowedPreflightReturnsNoContent(t *testing.T) {
-	recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, "/api/health", "https://orbit.preflite.cn")
+func TestCorsAllowedPreflightReturnsNoContent(t *testing.T) {
+	recorder := serveCorsRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, "/api/health", "https://orbit.preflite.cn")
 
-	assertCORSHeaders(t, recorder, "https://orbit.preflite.cn")
+	assertCorsHeaders(t, recorder, "https://orbit.preflite.cn")
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("expected status 204, got %d", recorder.Code)
 	}
 }
 
-func TestCORSAllowsAPIRootPath(t *testing.T) {
-	recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, "/api", "https://orbit.preflite.cn")
+func TestCorsAllowsApiRootPath(t *testing.T) {
+	recorder := serveCorsRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, "/api", "https://orbit.preflite.cn")
 
-	assertCORSHeaders(t, recorder, "https://orbit.preflite.cn")
+	assertCorsHeaders(t, recorder, "https://orbit.preflite.cn")
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("expected status 204, got %d", recorder.Code)
 	}
 }
 
-func TestCORSUsesConfiguredApiPathPrefixes(t *testing.T) {
-	recorder := serveCORSRequestWithPrefixes(t, []string{"https://orbit.preflite.cn"}, []string{"/api", "/graphql"}, http.MethodOptions, "/graphql", "https://orbit.preflite.cn")
+func TestCorsUsesConfiguredApiPathPrefixes(t *testing.T) {
+	recorder := serveCorsRequestWithPrefixes(t, []string{"https://orbit.preflite.cn"}, []string{"/api", "/graphql"}, http.MethodOptions, "/graphql", "https://orbit.preflite.cn")
 
-	assertCORSHeaders(t, recorder, "https://orbit.preflite.cn")
+	assertCorsHeaders(t, recorder, "https://orbit.preflite.cn")
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("expected status 204, got %d", recorder.Code)
 	}
 }
 
-func TestCORSDeniedPreflightReturnsForbidden(t *testing.T) {
-	recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, "/api/health", "https://evil.example.test")
+func TestCorsDeniedPreflightReturnsForbidden(t *testing.T) {
+	recorder := serveCorsRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, "/api/health", "https://evil.example.test")
 
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", recorder.Code)
@@ -95,10 +95,10 @@ func TestCORSDeniedPreflightReturnsForbidden(t *testing.T) {
 	}
 }
 
-func TestCORSIgnoresNonAPIPaths(t *testing.T) {
+func TestCorsIgnoresNonApiPaths(t *testing.T) {
 	paths := []string{"/repository", "/apix/health"}
 	for _, path := range paths {
-		recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, path, "https://orbit.preflite.cn")
+		recorder := serveCorsRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, path, "https://orbit.preflite.cn")
 
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("expected downstream status 200 for %s, got %d", path, recorder.Code)
@@ -109,8 +109,8 @@ func TestCORSIgnoresNonAPIPaths(t *testing.T) {
 	}
 }
 
-func TestCORSIgnoresRequestsWithoutOrigin(t *testing.T) {
-	recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, "/api/health", "")
+func TestCorsIgnoresRequestsWithoutOrigin(t *testing.T) {
+	recorder := serveCorsRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, "/api/health", "")
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected downstream status 200, got %d", recorder.Code)
@@ -120,7 +120,7 @@ func TestCORSIgnoresRequestsWithoutOrigin(t *testing.T) {
 	}
 }
 
-func TestHasAPIPathPrefixUsesConfiguredPrefixes(t *testing.T) {
+func TestHasApiPathPrefixUsesConfiguredPrefixes(t *testing.T) {
 	prefixes := []string{"/api", "/graphql", "/report-api"}
 	cases := []struct {
 		path string
@@ -136,23 +136,23 @@ func TestHasAPIPathPrefixUsesConfiguredPrefixes(t *testing.T) {
 		{path: "/report-api-v2", want: false},
 	}
 	for _, tc := range cases {
-		if got := hasAPIPathPrefix(tc.path, prefixes); got != tc.want {
+		if got := hasApiPathPrefix(tc.path, prefixes); got != tc.want {
 			t.Fatalf("hasAPIPathPrefix(%q) = %v, want %v", tc.path, got, tc.want)
 		}
 	}
 }
 
-func serveCORSRequest(t *testing.T, allowedOrigins []string, method string, path string, origin string) *httptest.ResponseRecorder {
+func serveCorsRequest(t *testing.T, allowedOrigins []string, method string, path string, origin string) *httptest.ResponseRecorder {
 	t.Helper()
-	return serveCORSRequestWithPrefixes(t, allowedOrigins, []string{"/api"}, method, path, origin)
+	return serveCorsRequestWithPrefixes(t, allowedOrigins, []string{"/api"}, method, path, origin)
 }
 
-func serveCORSRequestWithPrefixes(t *testing.T, allowedOrigins []string, apiPathPrefixes []string, method string, path string, origin string) *httptest.ResponseRecorder {
+func serveCorsRequestWithPrefixes(t *testing.T, allowedOrigins []string, apiPathPrefixes []string, method string, path string, origin string) *httptest.ResponseRecorder {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.Use(RequestId())
-	router.Use(CORS(allowedOrigins, apiPathPrefixes))
+	router.Use(Cors(allowedOrigins, apiPathPrefixes))
 	router.NoRoute(func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
@@ -165,7 +165,7 @@ func serveCORSRequestWithPrefixes(t *testing.T, allowedOrigins []string, apiPath
 	return recorder
 }
 
-func assertCORSHeaders(t *testing.T, recorder *httptest.ResponseRecorder, origin string) {
+func assertCorsHeaders(t *testing.T, recorder *httptest.ResponseRecorder, origin string) {
 	t.Helper()
 	if recorder.Header().Get("Access-Control-Allow-Origin") != origin {
 		t.Fatalf("unexpected allow origin: %s", recorder.Header().Get("Access-Control-Allow-Origin"))

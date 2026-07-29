@@ -157,9 +157,9 @@ func (s *gatewayTestStore) ListServicesByApplication(_ context.Context, applicat
 
 func TestEnsureGatewayRunningRejectsConfiguredButUndeployedGateway(t *testing.T) {
 	service, store := newGatewayTestService()
-	projectID := "project-1"
-	gateway := model.Application{Id: "gateway-1", ProjectId: &projectID, Name: "Traefik", Code: "traefik", Kind: status.ApplicationKindGateway}
-	business := model.Application{Id: "app-1", ProjectId: &projectID, Name: "RAGFlow", Code: "ragflow", Kind: status.ApplicationKindStandard}
+	projectId := "project-1"
+	gateway := model.Application{Id: "gateway-1", ProjectId: &projectId, Name: "Traefik", Code: "traefik", Kind: status.ApplicationKindGateway}
+	business := model.Application{Id: "app-1", ProjectId: &projectId, Name: "RAGFlow", Code: "ragflow", Kind: status.ApplicationKindStandard}
 	store.applications[gateway.Id] = gateway
 	store.applications[business.Id] = business
 	store.configs[gateway.Id] = model.GatewayConfig{ApplicationId: gateway.Id, BaseDomain: "lvh.me"}
@@ -175,9 +175,9 @@ func TestEnsureGatewayRunningRejectsConfiguredButUndeployedGateway(t *testing.T)
 
 func TestEnsureGatewayRunningAcceptsRunningGateway(t *testing.T) {
 	service, store := newGatewayTestService()
-	projectID := "project-1"
-	gateway := model.Application{Id: "gateway-1", ProjectId: &projectID, Name: "Traefik", Code: "traefik", Kind: status.ApplicationKindGateway}
-	business := model.Application{Id: "app-1", ProjectId: &projectID, Name: "RAGFlow", Code: "ragflow", Kind: status.ApplicationKindStandard}
+	projectId := "project-1"
+	gateway := model.Application{Id: "gateway-1", ProjectId: &projectId, Name: "Traefik", Code: "traefik", Kind: status.ApplicationKindGateway}
+	business := model.Application{Id: "app-1", ProjectId: &projectId, Name: "RAGFlow", Code: "ragflow", Kind: status.ApplicationKindStandard}
 	store.applications[gateway.Id] = gateway
 	store.applications[business.Id] = business
 	store.configs[gateway.Id] = model.GatewayConfig{ApplicationId: gateway.Id, BaseDomain: "lvh.me"}
@@ -300,10 +300,10 @@ func TestGatewayRejectsActivePortConflicts(t *testing.T) {
 
 func TestPrepareDeploymentCompilesGatewayForChangedPublicTCPListeners(t *testing.T) {
 	service, store := newGatewayTestService()
-	projectID := "project-1"
+	projectId := "project-1"
 	image := "traefik:v3"
-	store.applications["gateway"] = model.Application{Id: "gateway", ProjectId: &projectID, Code: "gateway", Name: "Gateway", Kind: status.ApplicationKindGateway}
-	store.applications["candidate"] = model.Application{Id: "candidate", ProjectId: &projectID, Code: "candidate", Name: "Candidate", Kind: status.ApplicationKindStandard}
+	store.applications["gateway"] = model.Application{Id: "gateway", ProjectId: &projectId, Code: "gateway", Name: "Gateway", Kind: status.ApplicationKindGateway}
+	store.applications["candidate"] = model.Application{Id: "candidate", ProjectId: &projectId, Code: "candidate", Name: "Candidate", Kind: status.ApplicationKindStandard}
 	store.configs["gateway"] = model.GatewayConfig{ApplicationId: "gateway", BaseDomain: "example.com", TLSMode: "none", Image: &image}
 	store.versions["gateway"] = []model.Version{{Id: "gateway-version", ApplicationId: "gateway", Status: status.VersionStatusUnpublished}}
 
@@ -323,10 +323,10 @@ func TestPrepareDeploymentCompilesGatewayForChangedPublicTCPListeners(t *testing
 
 func TestPrepareDeploymentSkipsGatewayRolloutWhenListenersMatch(t *testing.T) {
 	service, store := newGatewayTestService()
-	projectID := "project-1"
+	projectId := "project-1"
 	image := "traefik:v3"
-	gateway := model.Application{Id: "gateway", ProjectId: &projectID, Code: "gateway", Name: "Gateway", Kind: status.ApplicationKindGateway}
-	candidate := model.Application{Id: "candidate", ProjectId: &projectID, Code: "candidate", Name: "Candidate", Kind: status.ApplicationKindStandard}
+	gateway := model.Application{Id: "gateway", ProjectId: &projectId, Code: "gateway", Name: "Gateway", Kind: status.ApplicationKindGateway}
+	candidate := model.Application{Id: "candidate", ProjectId: &projectId, Code: "candidate", Name: "Candidate", Kind: status.ApplicationKindStandard}
 	store.applications[gateway.Id] = gateway
 	store.applications[candidate.Id] = candidate
 	store.configs[gateway.Id] = model.GatewayConfig{ApplicationId: gateway.Id, BaseDomain: "example.com", TLSMode: "none", Image: &image}
@@ -348,9 +348,9 @@ func TestPrepareDeploymentSkipsGatewayRolloutWhenListenersMatch(t *testing.T) {
 
 func TestPrepareDeploymentReturnsExposureConflict(t *testing.T) {
 	service, store := newGatewayTestService()
-	projectID := "project-1"
-	store.applications["existing"] = model.Application{Id: "existing", ProjectId: &projectID, Code: "existing", Name: "Existing", Kind: status.ApplicationKindStandard}
-	store.applications["candidate"] = model.Application{Id: "candidate", ProjectId: &projectID, Code: "candidate", Name: "Candidate", Kind: status.ApplicationKindStandard}
+	projectId := "project-1"
+	store.applications["existing"] = model.Application{Id: "existing", ProjectId: &projectId, Code: "existing", Name: "Existing", Kind: status.ApplicationKindStandard}
+	store.applications["candidate"] = model.Application{Id: "candidate", ProjectId: &projectId, Code: "candidate", Name: "Candidate", Kind: status.ApplicationKindStandard}
 	store.services["existing"] = []model.Service{{Id: "service-existing", ApplicationId: "existing", VersionId: "existing-version", Status: status.ServiceStatusRunning}}
 	store.exposes["existing-version"] = []model.VersionExpose{{ComponentName: "database", Protocol: "tcp", Access: "public", ContainerPort: 5432}}
 	store.configs["gateway"] = model.GatewayConfig{ApplicationId: "gateway", BaseDomain: "example.com", TLSMode: "none"}

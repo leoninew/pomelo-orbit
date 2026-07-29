@@ -26,7 +26,7 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r Repository) q(ctx context.Context) *routesqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *routesqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *routesqlc.Queries {
 		return routesqlc.New(dbtx)
 	})
 }
@@ -86,7 +86,7 @@ func (r Repository) Route(ctx context.Context, id string) (model.Route, error) {
 	if err != nil {
 		return model.Route{}, fmt.Errorf("load route %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return routeFromByID(row), nil
+	return routeFromById(row), nil
 }
 
 func (r Repository) RouteByDomain(ctx context.Context, domain string) (model.Route, error) {
@@ -101,7 +101,7 @@ func (r Repository) CreateRoute(ctx context.Context, route model.Route) error {
 	now := time.Now().UTC()
 	err := r.q(ctx).CreateRoute(ctx, routesqlc.CreateRouteParams{
 		ID: route.Id, ProjectID: dbmodel.NullString(route.ProjectId), Name: route.Name, Domain: route.Domain,
-		PathPrefix: route.PathPrefix, TargetUrl: route.TargetURL, Enabled: dbmodel.BoolInt(route.Enabled),
+		PathPrefix: route.PathPrefix, TargetUrl: route.TargetUrl, Enabled: dbmodel.BoolInt(route.Enabled),
 		HttpsEnabled: dbmodel.BoolInt(route.HTTPSEnabled), CertPem: dbmodel.NullString(route.CertPEM),
 		CertKey: dbmodel.NullString(route.CertKey), CertType: route.CertType,
 		CreatedAt: now, UpdatedAt: now,
@@ -114,7 +114,7 @@ func (r Repository) CreateRoute(ctx context.Context, route model.Route) error {
 
 func (r Repository) UpdateRoute(ctx context.Context, route model.Route) error {
 	err := r.q(ctx).UpdateRoute(ctx, routesqlc.UpdateRouteParams{
-		Name: route.Name, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetUrl: route.TargetURL,
+		Name: route.Name, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetUrl: route.TargetUrl,
 		Enabled: dbmodel.BoolInt(route.Enabled), HttpsEnabled: dbmodel.BoolInt(route.HTTPSEnabled),
 		CertPem: dbmodel.NullString(route.CertPEM), CertKey: dbmodel.NullString(route.CertKey),
 		CertType: route.CertType, UpdatedAt: time.Now().UTC(), ID: route.Id,
@@ -132,10 +132,10 @@ func (r Repository) DeleteRoute(ctx context.Context, id string) error {
 	return nil
 }
 
-func routeCommon(id string, projectID sql.NullString, name, domain, pathPrefix, targetURL string, enabled, httpsEnabled int64, certPem, certKey sql.NullString, certType string, createdAt, updatedAt time.Time) model.Route {
+func routeCommon(id string, projectId sql.NullString, name, domain, pathPrefix, targetUrl string, enabled, httpsEnabled int64, certPem, certKey sql.NullString, certType string, createdAt, updatedAt time.Time) model.Route {
 	return model.Route{
-		Id: id, ProjectId: dbmodel.StringPtr(projectID), Name: name, Domain: domain, PathPrefix: pathPrefix,
-		TargetURL: targetURL, Enabled: dbmodel.IntBool(enabled), HTTPSEnabled: dbmodel.IntBool(httpsEnabled),
+		Id: id, ProjectId: dbmodel.StringPtr(projectId), Name: name, Domain: domain, PathPrefix: pathPrefix,
+		TargetUrl: targetUrl, Enabled: dbmodel.IntBool(enabled), HTTPSEnabled: dbmodel.IntBool(httpsEnabled),
 		CertPEM: dbmodel.StringPtr(certPem), CertKey: dbmodel.StringPtr(certKey), CertType: certType,
 		CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
@@ -150,7 +150,7 @@ func routeFromAll(row routesqlc.ListAllRoutesRow) model.Route {
 func routeFromEnabled(row routesqlc.ListEnabledRoutesRow) model.Route {
 	return routeCommon(row.ID, row.ProjectID, row.Name, row.Domain, row.PathPrefix, row.TargetUrl, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
 }
-func routeFromByID(row routesqlc.RouteByIDRow) model.Route {
+func routeFromById(row routesqlc.RouteByIDRow) model.Route {
 	return routeCommon(row.ID, row.ProjectID, row.Name, row.Domain, row.PathPrefix, row.TargetUrl, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
 }
 func routeFromByDomain(row routesqlc.RouteByDomainRow) model.Route {

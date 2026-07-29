@@ -64,7 +64,7 @@ func (h Handler) GetRole(c *gin.Context) {
 	if _, ok := h.authenticator.RequirePermission(c, "role:read"); !ok {
 		return
 	}
-	detail, err := h.service.Detail(c.Request.Context(), roleID(c))
+	detail, err := h.service.Detail(c.Request.Context(), roleId(c))
 	if err != nil {
 		h.writeServiceError(c, err, "Failed to load role")
 		return
@@ -100,7 +100,7 @@ func (h Handler) UpdateRole(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.UpdateByID(c.Request.Context(), roleID(c), roleUpdateInput(&req))
+	detail, err := h.service.UpdateById(c.Request.Context(), roleId(c), roleUpdateInput(&req))
 	if err != nil {
 		h.writeServiceError(c, err, "Failed to update role")
 		return
@@ -113,7 +113,7 @@ func (h Handler) DeleteRole(c *gin.Context) {
 	if _, ok := h.authenticator.RequirePermission(c, "role:write"); !ok {
 		return
 	}
-	if err := h.service.Delete(c.Request.Context(), roleID(c)); err != nil {
+	if err := h.service.Delete(c.Request.Context(), roleId(c)); err != nil {
 		h.writeServiceError(c, err, "Failed to delete role")
 		return
 	}
@@ -127,6 +127,6 @@ func (h Handler) writeServiceError(c *gin.Context, err error, internalDetail str
 	transportresponse.WriteError(c, err)
 }
 
-func roleID(c *gin.Context) string {
+func roleId(c *gin.Context) string {
 	return strings.TrimSpace(c.Param("role_id"))
 }

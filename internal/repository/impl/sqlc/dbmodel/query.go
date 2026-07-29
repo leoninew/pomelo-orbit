@@ -9,8 +9,8 @@ import (
 )
 
 // Queries picks the request/message transaction when present, otherwise the root DB.
-func Queries[T any](ctx context.Context, db *sql.DB, newFn func(tx.DBTX) T) T {
-	if dbtx, err := tx.DBTXFrom(ctx); err == nil {
+func Queries[T any](ctx context.Context, db *sql.DB, newFn func(tx.DbTX) T) T {
+	if dbtx, err := tx.DbTXFrom(ctx); err == nil {
 		return newFn(dbtx)
 	}
 	return newFn(db)

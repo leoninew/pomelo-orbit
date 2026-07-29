@@ -23,7 +23,7 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r Repository) q(ctx context.Context) *tasksqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *tasksqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *tasksqlc.Queries {
 		return tasksqlc.New(dbtx)
 	})
 }
@@ -49,7 +49,7 @@ func (r Repository) Enqueue(ctx context.Context, id string, taskType string, pay
 }
 
 func (r Repository) ClaimNext(ctx context.Context, workerId string, lockTimeout time.Duration) (*tasksvc.Task, error) {
-	var claimedID string
+	var claimedId string
 	err := tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		q := r.q(txCtx)
 		cutoff := time.Now().UTC().Add(-lockTimeout)
@@ -82,16 +82,16 @@ func (r Repository) ClaimNext(ctx context.Context, workerId string, lockTimeout 
 		if rows == 0 {
 			return nil
 		}
-		claimedID = task.ID
+		claimedId = task.ID
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	if claimedID == "" {
+	if claimedId == "" {
 		return nil, nil
 	}
-	return r.FindById(ctx, claimedID)
+	return r.FindById(ctx, claimedId)
 }
 
 func (r Repository) Complete(ctx context.Context, taskId string) error {

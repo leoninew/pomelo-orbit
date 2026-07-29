@@ -32,7 +32,7 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 
-	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "api-route", Domain: "api.example.test", PathPrefix: "/api", TargetURL: "http://host.docker.internal:8081", Enabled: false})
+	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "api-route", Domain: "api.example.test", PathPrefix: "/api", TargetUrl: "http://host.docker.internal:8081", Enabled: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	enabled, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "enabled-route", Domain: "enabled.example.test", PathPrefix: "/", TargetURL: "http://host.docker.internal:8082", Enabled: true})
+	enabled, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "enabled-route", Domain: "enabled.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8082", Enabled: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	}
 
 	dashboardProject := routeTestProjectId
-	if err := service.route.CreateRoute(ctx, model.Route{Id: "01KTRAETFIKROUTE0000000001", ProjectId: &dashboardProject, Name: "traefik-dashboard", Domain: "traefik.lvh.me", PathPrefix: "/", TargetURL: "http://traefik:8080", Enabled: true, HTTPSEnabled: true, CertType: "manual"}); err != nil {
+	if err := service.route.CreateRoute(ctx, model.Route{Id: "01KTRAETFIKROUTE0000000001", ProjectId: &dashboardProject, Name: "traefik-dashboard", Domain: "traefik.lvh.me", PathPrefix: "/", TargetUrl: "http://traefik:8080", Enabled: true, HTTPSEnabled: true, CertType: "manual"}); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := service.TraefikRouteConfig(ctx, routeTestUserId, routeTestProjectId)

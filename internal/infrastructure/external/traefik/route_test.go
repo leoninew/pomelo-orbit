@@ -67,9 +67,9 @@ func TestRouteManagerApplySnapshotPutsFullRestConfig(t *testing.T) {
 
 	manager := NewRouteManager(config.Config{})
 	err := manager.ApplySnapshot(context.Background(), server.URL, []model.Route{
-		{Name: "api", Domain: "api.example.test", PathPrefix: "/v1", TargetURL: "http://app:8080", Enabled: true},
-		{Name: "off", Domain: "off.example.test", PathPrefix: "/", TargetURL: "http://app:8081", Enabled: false},
-		{Name: "secure", Domain: "secure.example.test", PathPrefix: "/", TargetURL: "http://app:8082", Enabled: true, HTTPSEnabled: true, CertType: "letsencrypt"},
+		{Name: "api", Domain: "api.example.test", PathPrefix: "/v1", TargetUrl: "http://app:8080", Enabled: true},
+		{Name: "off", Domain: "off.example.test", PathPrefix: "/", TargetUrl: "http://app:8081", Enabled: false},
+		{Name: "secure", Domain: "secure.example.test", PathPrefix: "/", TargetUrl: "http://app:8082", Enabled: true, HTTPSEnabled: true, CertType: "letsencrypt"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -123,8 +123,8 @@ func TestRouteManagerApplySnapshotClearsWithEmptyMaps(t *testing.T) {
 
 func TestBuildRestSnapshotSkipsDisabled(t *testing.T) {
 	snapshot := buildRestSnapshot([]model.Route{
-		{Name: "a", Domain: "a.test", PathPrefix: "/", TargetURL: "http://a:1", Enabled: true},
-		{Name: "b", Domain: "b.test", PathPrefix: "/", TargetURL: "http://b:1", Enabled: false},
+		{Name: "a", Domain: "a.test", PathPrefix: "/", TargetUrl: "http://a:1", Enabled: true},
+		{Name: "b", Domain: "b.test", PathPrefix: "/", TargetUrl: "http://b:1", Enabled: false},
 	})
 	httpCfg := snapshot["http"].(map[string]any)
 	if len(httpCfg["routers"].(map[string]any)) != 1 {

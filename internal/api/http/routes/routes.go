@@ -71,7 +71,7 @@ func (r Router) Handler() http.Handler {
 	engine.Use(transportmiddleware.RealIP())
 	engine.Use(transportmiddleware.LogRequest(r.logger, transportmiddleware.LogRequestConfig{BodyEnabled: r.cfg.Logging.HTTPBodyEnabled, BodyMaxBytes: r.cfg.Logging.HTTPBodyMaxBytes, SkipAssets200Enabled: r.cfg.Logging.HTTPSkipAssets200Enabled}))
 	engine.Use(transportmiddleware.Recovery(r.logger))
-	engine.Use(transportmiddleware.CORS(r.cfg.Server.CORSAllowedOrigins, r.cfg.Server.ApiPathPrefixes))
+	engine.Use(transportmiddleware.Cors(r.cfg.Server.CorsAllowedOrigins, r.cfg.Server.ApiPathPrefixes))
 	engine.GET("/api/health", func(c *gin.Context) {
 		transportresponse.ProtoJSON(c, http.StatusOK, &commonv1.HealthResp{Status: "ok"})
 	})

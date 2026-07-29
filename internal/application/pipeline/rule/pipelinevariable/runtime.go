@@ -81,7 +81,7 @@ func RepositoryBuiltinVariables(repo model.Repository, triggerRef string) map[st
 		"repository_id":   repo.Id,
 		"repository_name": repo.Name,
 		"repository_code": repo.Code,
-		"repository_url":  repo.RepositoryURL,
+		"repository_url":  repo.RepositoryUrl,
 		"repository_ref":  triggerRef,
 	}
 }

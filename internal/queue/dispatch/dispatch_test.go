@@ -16,7 +16,7 @@ func TestPipelineRunDispatcherPreservesTaskContract(t *testing.T) {
 	repo := &recordingTaskRepository{}
 	dispatcher := NewPipelineRunDispatcher(tasksvc.New(repo, 3))
 
-	if err := dispatcher.DispatchPipelineRun(context.Background(), pipelinerundto.PipelineRunDispatchInput{PipelineRunID: "run-1"}); err != nil {
+	if err := dispatcher.DispatchPipelineRun(context.Background(), pipelinerundto.PipelineRunDispatchInput{PipelineRunId: "run-1"}); err != nil {
 		t.Fatal(err)
 	}
 	if repo.taskType != status.TaskTypePipelineRunExecute {
@@ -34,25 +34,25 @@ func TestDispatchersPropagateEnqueueError(t *testing.T) {
 		{
 			name: "pipeline_run execute",
 			dispatch: func(pipelineRun PipelineRunDispatcher, _ DeploymentDispatcher) error {
-				return pipelineRun.DispatchPipelineRun(context.Background(), pipelinerundto.PipelineRunDispatchInput{PipelineRunID: "run-1"})
+				return pipelineRun.DispatchPipelineRun(context.Background(), pipelinerundto.PipelineRunDispatchInput{PipelineRunId: "run-1"})
 			},
 		},
 		{
 			name: "deployment deploy",
 			dispatch: func(_ PipelineRunDispatcher, deployment DeploymentDispatcher) error {
-				return deployment.DispatchDeploy(context.Background(), deploymentdto.DeployDispatchInput{ApplicationID: "app-1", DeploymentID: "deploy-1"})
+				return deployment.DispatchDeploy(context.Background(), deploymentdto.DeployDispatchInput{ApplicationId: "app-1", DeploymentId: "deploy-1"})
 			},
 		},
 		{
 			name: "deployment restart",
 			dispatch: func(_ PipelineRunDispatcher, deployment DeploymentDispatcher) error {
-				return deployment.DispatchRestart(context.Background(), deploymentdto.RestartDispatchInput{ApplicationID: "app-1", DeploymentID: "restart-1"})
+				return deployment.DispatchRestart(context.Background(), deploymentdto.RestartDispatchInput{ApplicationId: "app-1", DeploymentId: "restart-1"})
 			},
 		},
 		{
 			name: "deployment stop",
 			dispatch: func(_ PipelineRunDispatcher, deployment DeploymentDispatcher) error {
-				return deployment.DispatchStop(context.Background(), deploymentdto.StopDispatchInput{ApplicationID: "app-1", DeploymentID: "stop-1"})
+				return deployment.DispatchStop(context.Background(), deploymentdto.StopDispatchInput{ApplicationId: "app-1", DeploymentId: "stop-1"})
 			},
 		},
 	}
@@ -78,7 +78,7 @@ func TestDeploymentDispatcherPreservesTaskContracts(t *testing.T) {
 		{
 			name: "deploy",
 			dispatch: func(d DeploymentDispatcher) error {
-				return d.DispatchDeploy(context.Background(), deploymentdto.DeployDispatchInput{ApplicationID: "app-1", DeploymentID: "deploy-1", ForceRecreate: true})
+				return d.DispatchDeploy(context.Background(), deploymentdto.DeployDispatchInput{ApplicationId: "app-1", DeploymentId: "deploy-1", ForceRecreate: true})
 			},
 			taskType: status.TaskTypeDeploymentDeploy,
 			payload:  `{"application_id":"app-1","deployment_id":"deploy-1","force_recreate":true}`,
@@ -86,7 +86,7 @@ func TestDeploymentDispatcherPreservesTaskContracts(t *testing.T) {
 		{
 			name: "restart",
 			dispatch: func(d DeploymentDispatcher) error {
-				return d.DispatchRestart(context.Background(), deploymentdto.RestartDispatchInput{ApplicationID: "app-1", DeploymentID: "restart-1"})
+				return d.DispatchRestart(context.Background(), deploymentdto.RestartDispatchInput{ApplicationId: "app-1", DeploymentId: "restart-1"})
 			},
 			taskType: status.TaskTypeDeploymentRestart,
 			payload:  `{"application_id":"app-1","deployment_id":"restart-1"}`,
@@ -94,7 +94,7 @@ func TestDeploymentDispatcherPreservesTaskContracts(t *testing.T) {
 		{
 			name: "stop",
 			dispatch: func(d DeploymentDispatcher) error {
-				return d.DispatchStop(context.Background(), deploymentdto.StopDispatchInput{ApplicationID: "app-1", DeploymentID: "stop-1", RemoveVolumes: true})
+				return d.DispatchStop(context.Background(), deploymentdto.StopDispatchInput{ApplicationId: "app-1", DeploymentId: "stop-1", RemoveVolumes: true})
 			},
 			taskType: status.TaskTypeDeploymentStop,
 			payload:  `{"application_id":"app-1","deployment_id":"stop-1","remove_volumes":true}`,

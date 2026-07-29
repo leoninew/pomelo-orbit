@@ -28,7 +28,7 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r Repository) q(ctx context.Context) *pipelinerunsqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *pipelinerunsqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *pipelinerunsqlc.Queries {
 		return pipelinerunsqlc.New(dbtx)
 	})
 }
@@ -47,14 +47,14 @@ func nullTimeArg(value *time.Time) any {
 
 func (r Repository) ListPipelineRuns(ctx context.Context, projectId string, repositoryId string, templateId string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (repository.Page[model.PipelineRun], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
-	repoRaw, repoID := optionalFilter(repositoryId)
-	tplRaw, tplID := optionalFilter(templateId)
+	repoRaw, repoId := optionalFilter(repositoryId)
+	tplRaw, tplId := optionalFilter(templateId)
 	params := pipelinerunsqlc.CountPipelineRunsParams{
 		ProjectID:        sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
 		RepositoryFilter: repoRaw,
-		RepositoryID:     repoID,
+		RepositoryID:     repoId,
 		TemplateFilter:   tplRaw,
-		TemplateID:       tplID,
+		TemplateID:       tplId,
 		DateFrom:         nullTimeArg(dateFrom),
 		DateTo:           nullTimeArg(dateTo),
 	}
@@ -203,13 +203,13 @@ func (r Repository) UpdatePipelineStageRun(ctx context.Context, stage model.Pipe
 
 func (r Repository) ListArtifacts(ctx context.Context, projectId string, repositoryId string, templateId string, page int, perPage int, search string) (repository.Page[model.Artifact], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
-	repoRaw, repoID := optionalFilter(repositoryId)
-	tplRaw, tplID := optionalFilter(templateId)
+	repoRaw, repoId := optionalFilter(repositoryId)
+	tplRaw, tplId := optionalFilter(templateId)
 	searchRaw, pattern := dbmodel.SearchPattern(search)
 	q := r.q(ctx)
 	total, err := q.CountArtifacts(ctx, pipelinerunsqlc.CountArtifactsParams{
 		ProjectID: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		Column2:   repoRaw, RepositoryID: repoID, Column4: tplRaw, TemplateID: tplID,
+		Column2:   repoRaw, RepositoryID: repoId, Column4: tplRaw, TemplateID: tplId,
 		Column6: searchRaw, Name: pattern, Path: sql.NullString{String: pattern, Valid: pattern != ""},
 	})
 	if err != nil {
@@ -217,7 +217,7 @@ func (r Repository) ListArtifacts(ctx context.Context, projectId string, reposit
 	}
 	rows, err := q.ListArtifacts(ctx, pipelinerunsqlc.ListArtifactsParams{
 		ProjectID: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		Column2:   repoRaw, RepositoryID: repoID, Column4: tplRaw, TemplateID: tplID,
+		Column2:   repoRaw, RepositoryID: repoId, Column4: tplRaw, TemplateID: tplId,
 		Column6: searchRaw, Name: pattern, Path: sql.NullString{String: pattern, Valid: pattern != ""},
 		Limit: int64(perPage), Offset: int64((page - 1) * perPage),
 	})
@@ -261,28 +261,28 @@ func (r Repository) InsertArtifact(ctx context.Context, projectId *string, run m
 	return nil
 }
 
-func pipelineRunFrom(id string, projectID sql.NullString, repositoryID, repositoryName, snapshotID, templateID, templateName string, templateVersion int64, trigger, triggerRef, variablesSnapshot, runStatus string, retryOf sql.NullString, startedAt, finishedAt sql.NullTime, errorMessage sql.NullString, createdAt time.Time) model.PipelineRun {
+func pipelineRunFrom(id string, projectId sql.NullString, repositoryId, repositoryName, snapshotId, templateId, templateName string, templateVersion int64, trigger, triggerRef, variablesSnapshot, runStatus string, retryOf sql.NullString, startedAt, finishedAt sql.NullTime, errorMessage sql.NullString, createdAt time.Time) model.PipelineRun {
 	return model.PipelineRun{
-		Id: id, ProjectId: dbmodel.StringPtr(projectID), RepositoryId: repositoryID, RepositoryName: repositoryName,
-		SnapshotId: snapshotID, TemplateId: templateID, TemplateName: templateName, TemplateVersion: int(templateVersion),
+		Id: id, ProjectId: dbmodel.StringPtr(projectId), RepositoryId: repositoryId, RepositoryName: repositoryName,
+		SnapshotId: snapshotId, TemplateId: templateId, TemplateName: templateName, TemplateVersion: int(templateVersion),
 		Trigger: trigger, TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: runStatus,
 		RetryOf: dbmodel.StringPtr(retryOf), StartedAt: dbmodel.TimePtr(startedAt), FinishedAt: dbmodel.TimePtr(finishedAt),
 		ErrorMessage: dbmodel.StringPtr(errorMessage), CreatedAt: createdAt,
 	}
 }
 
-func pipelineStageRunFrom(id, pipelineRunID, stageID, stageName, runStatus string, startedAt, finishedAt sql.NullTime, exitCode sql.NullInt64, errorMessage sql.NullString) model.PipelineStageRun {
+func pipelineStageRunFrom(id, pipelineRunId, stageId, stageName, runStatus string, startedAt, finishedAt sql.NullTime, exitCode sql.NullInt64, errorMessage sql.NullString) model.PipelineStageRun {
 	return model.PipelineStageRun{
-		Id: id, PipelineRunId: pipelineRunID, StageId: stageID, StageName: stageName, Status: runStatus,
+		Id: id, PipelineRunId: pipelineRunId, StageId: stageId, StageName: stageName, Status: runStatus,
 		StartedAt: dbmodel.TimePtr(startedAt), FinishedAt: dbmodel.TimePtr(finishedAt),
 		ExitCode: dbmodel.IntPtrFromNullInt64(exitCode), ErrorMessage: dbmodel.StringPtr(errorMessage),
 	}
 }
 
-func artifactFrom(id string, projectID sql.NullString, pipelineRunID, repositoryID, repositoryName, templateID, templateName, stageName, typ, name string, path sql.NullString, createdAt time.Time) model.Artifact {
+func artifactFrom(id string, projectId sql.NullString, pipelineRunId, repositoryId, repositoryName, templateId, templateName, stageName, typ, name string, path sql.NullString, createdAt time.Time) model.Artifact {
 	return model.Artifact{
-		Id: id, ProjectId: dbmodel.StringPtr(projectID), PipelineRunId: pipelineRunID, RepositoryId: repositoryID,
-		RepositoryName: repositoryName, TemplateId: templateID, TemplateName: templateName, StageName: stageName,
+		Id: id, ProjectId: dbmodel.StringPtr(projectId), PipelineRunId: pipelineRunId, RepositoryId: repositoryId,
+		RepositoryName: repositoryName, TemplateId: templateId, TemplateName: templateName, StageName: stageName,
 		Type: typ, Name: name, Path: dbmodel.StringPtr(path), CreatedAt: createdAt,
 	}
 }

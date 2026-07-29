@@ -134,8 +134,8 @@ func (s Service) PrepareDeployment(ctx context.Context, app model.Application, e
 	return preparation, nil
 }
 
-func (s Service) compiledGatewayTCPListens(ctx context.Context, applicationID string) ([]int, error) {
-	versions, err := s.application.ListVersions(ctx, applicationID)
+func (s Service) compiledGatewayTCPListens(ctx context.Context, applicationId string) ([]int, error) {
+	versions, err := s.application.ListVersions(ctx, applicationId)
 	if err != nil {
 		return nil, err
 	}

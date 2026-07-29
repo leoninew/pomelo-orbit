@@ -20,12 +20,12 @@ func taskCreateInput(req *taskv1.CreateTaskReq) tasksvc.CreateInput {
 	}
 }
 
-func pipelineRunExecutePayload(runID string) map[string]string {
-	return map[string]string{"pipeline_run_id": runID}
+func pipelineRunExecutePayload(runId string) map[string]string {
+	return map[string]string{"pipeline_run_id": runId}
 }
 
-func applicationDeploymentPayload(applicationID string, deploymentID string) map[string]string {
-	return map[string]string{"application_id": applicationID, "deployment_id": deploymentID}
+func applicationDeploymentPayload(applicationId string, deploymentId string) map[string]string {
+	return map[string]string{"application_id": applicationId, "deployment_id": deploymentId}
 }
 
 func taskResponse(item *tasksvc.Task) taskv1.TaskResp {

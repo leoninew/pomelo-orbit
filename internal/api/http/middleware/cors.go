@@ -16,22 +16,22 @@ const (
 	corsMaxAge       = "600"
 )
 
-func CORS(allowedOrigins []string, apiPathPrefixes []string) gin.HandlerFunc {
-	origins := parseCORSAllowedOrigins(allowedOrigins)
+func Cors(allowedOrigins []string, apiPathPrefixes []string) gin.HandlerFunc {
+	origins := parseCorsAllowedOrigins(allowedOrigins)
 	return func(c *gin.Context) {
 		if len(origins) == 0 {
 			c.Next()
 			return
 		}
 
-		origin := normalizeCORSOrigin(c.GetHeader("Origin"))
-		if !isAPIPath(c.Request.URL.Path, apiPathPrefixes) || origin == "" {
+		origin := normalizeCorsOrigin(c.GetHeader("Origin"))
+		if !isApiPath(c.Request.URL.Path, apiPathPrefixes) || origin == "" {
 			c.Next()
 			return
 		}
 
 		if origins[origin] {
-			setCORSHeaders(c.Writer.Header(), origin)
+			setCorsHeaders(c.Writer.Header(), origin)
 			if c.Request.Method == http.MethodOptions {
 				c.AbortWithStatus(http.StatusNoContent)
 				return
@@ -48,10 +48,10 @@ func CORS(allowedOrigins []string, apiPathPrefixes []string) gin.HandlerFunc {
 	}
 }
 
-func parseCORSAllowedOrigins(values []string) map[string]bool {
+func parseCorsAllowedOrigins(values []string) map[string]bool {
 	origins := make(map[string]bool)
 	for _, item := range values {
-		origin := normalizeCORSOrigin(item)
+		origin := normalizeCorsOrigin(item)
 		if origin != "" {
 			origins[origin] = true
 		}
@@ -59,11 +59,11 @@ func parseCORSAllowedOrigins(values []string) map[string]bool {
 	return origins
 }
 
-func isAPIPath(path string, prefixes []string) bool {
-	return hasAPIPathPrefix(path, prefixes)
+func isApiPath(path string, prefixes []string) bool {
+	return hasApiPathPrefix(path, prefixes)
 }
 
-func hasAPIPathPrefix(path string, prefixes []string) bool {
+func hasApiPathPrefix(path string, prefixes []string) bool {
 	for _, prefix := range prefixes {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
@@ -72,11 +72,11 @@ func hasAPIPathPrefix(path string, prefixes []string) bool {
 	return false
 }
 
-func normalizeCORSOrigin(value string) string {
+func normalizeCorsOrigin(value string) string {
 	return strings.TrimRight(strings.TrimSpace(value), "/")
 }
 
-func setCORSHeaders(header http.Header, origin string) {
+func setCorsHeaders(header http.Header, origin string) {
 	header.Set("Access-Control-Allow-Origin", origin)
 	header.Set("Access-Control-Allow-Headers", corsAllowHeaders)
 	header.Set("Access-Control-Allow-Methods", corsAllowMethods)

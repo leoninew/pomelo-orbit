@@ -27,7 +27,7 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r Repository) q(ctx context.Context) *credentialsqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *credentialsqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *credentialsqlc.Queries {
 		return credentialsqlc.New(dbtx)
 	})
 }
@@ -147,10 +147,10 @@ func (r Repository) CredentialReferencedByRepositories(ctx context.Context, proj
 	return count > 0, nil
 }
 
-func credentialFrom(id string, projectID sql.NullString, name, typ, encryptedData string, createdAt time.Time) model.Credential {
+func credentialFrom(id string, projectId sql.NullString, name, typ, encryptedData string, createdAt time.Time) model.Credential {
 	return model.Credential{
 		Id:            id,
-		ProjectId:     dbmodel.StringPtr(projectID),
+		ProjectId:     dbmodel.StringPtr(projectId),
 		Name:          name,
 		Type:          typ,
 		EncryptedData: encryptedData,

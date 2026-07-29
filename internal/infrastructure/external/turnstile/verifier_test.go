@@ -28,7 +28,7 @@ func TestVerifierSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	verifier := NewVerifier(config.TurnstileConfig{SecretKey: "secret", VerifyURL: server.URL})
+	verifier := NewVerifier(config.TurnstileConfig{SecretKey: "secret", VerifyUrl: server.URL})
 	if err := verifier.Verify(t.Context(), "token", "127.0.0.1"); err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestVerifierRejectsFailure(t *testing.T) {
 	}))
 	defer server.Close()
 
-	verifier := NewVerifier(config.TurnstileConfig{SecretKey: "secret", VerifyURL: server.URL})
+	verifier := NewVerifier(config.TurnstileConfig{SecretKey: "secret", VerifyUrl: server.URL})
 	if err := verifier.Verify(t.Context(), "token", "127.0.0.1"); err == nil {
 		t.Fatal("expected error")
 	}
@@ -52,7 +52,7 @@ func TestVerifierRejectsHTTPError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	verifier := NewVerifier(config.TurnstileConfig{SecretKey: "secret", VerifyURL: server.URL})
+	verifier := NewVerifier(config.TurnstileConfig{SecretKey: "secret", VerifyUrl: server.URL})
 	if err := verifier.Verify(t.Context(), "token", "127.0.0.1"); err == nil {
 		t.Fatal("expected error")
 	}
@@ -64,7 +64,7 @@ func TestVerifierRejectsInvalidJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	verifier := NewVerifier(config.TurnstileConfig{SecretKey: "secret", VerifyURL: server.URL})
+	verifier := NewVerifier(config.TurnstileConfig{SecretKey: "secret", VerifyUrl: server.URL})
 	if err := verifier.Verify(t.Context(), "token", "127.0.0.1"); err == nil {
 		t.Fatal("expected error")
 	}

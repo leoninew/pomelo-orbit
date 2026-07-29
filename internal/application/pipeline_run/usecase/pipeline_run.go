@@ -61,7 +61,7 @@ func (s Service) TriggerRepository(ctx context.Context, userId string, input pip
 	if err := s.store.CreatePipelineRun(ctx, run); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
-	if err := s.dispatcher.DispatchPipelineRun(ctx, pipelinerundto.PipelineRunDispatchInput{PipelineRunID: run.Id}); err != nil {
+	if err := s.dispatcher.DispatchPipelineRun(ctx, pipelinerundto.PipelineRunDispatchInput{PipelineRunId: run.Id}); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue pipeline run", err)
 	}
 	created, err := s.store.PipelineRun(ctx, run.Id)
@@ -195,7 +195,7 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId string, runId stri
 	if err := s.store.CreatePipelineRun(ctx, newRun); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create retry pipeline run", err)
 	}
-	if err := s.dispatcher.DispatchPipelineRun(ctx, pipelinerundto.PipelineRunDispatchInput{PipelineRunID: newRun.Id}); err != nil {
+	if err := s.dispatcher.DispatchPipelineRun(ctx, pipelinerundto.PipelineRunDispatchInput{PipelineRunId: newRun.Id}); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue pipeline run", err)
 	}
 	created, err := s.store.PipelineRun(ctx, newRun.Id)

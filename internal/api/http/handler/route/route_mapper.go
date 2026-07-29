@@ -13,7 +13,7 @@ func routeCreateInput(req *routev1.RouteCreateReq) routedto.RouteCreateInput {
 		Name:       req.Name,
 		Domain:     req.Domain,
 		PathPrefix: req.PathPrefix,
-		TargetURL:  req.TargetUrl,
+		TargetUrl:  req.TargetUrl,
 		Enabled:    req.Enabled,
 	}
 }
@@ -23,7 +23,7 @@ func routeUpdateInput(req *routev1.RouteUpdateReq) routedto.RouteUpdateInput {
 		Name:       req.Name,
 		Domain:     req.Domain,
 		PathPrefix: req.PathPrefix,
-		TargetURL:  req.TargetUrl,
+		TargetUrl:  req.TargetUrl,
 		Enabled:    req.Enabled,
 	}
 }
@@ -42,7 +42,7 @@ func routeResponse(route model.Route) routev1.RouteResp {
 		Name:         route.Name,
 		Domain:       route.Domain,
 		PathPrefix:   route.PathPrefix,
-		TargetUrl:    route.TargetURL,
+		TargetUrl:    route.TargetUrl,
 		Enabled:      route.Enabled,
 		HttpsEnabled: route.HTTPSEnabled,
 		CertType:     route.CertType,

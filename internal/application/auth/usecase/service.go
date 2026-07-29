@@ -49,8 +49,8 @@ func (s Service) Login(ctx context.Context, input authdto.LoginInput) (string, e
 	return s.tokens.Sign(user.Id, user.Username)
 }
 
-func (s Service) Authenticate(ctx context.Context, rawJWT string) (authdto.AuthenticatedUser, error) {
-	claims, err := s.tokens.Verify(strings.TrimSpace(rawJWT))
+func (s Service) Authenticate(ctx context.Context, rawJwt string) (authdto.AuthenticatedUser, error) {
+	claims, err := s.tokens.Verify(strings.TrimSpace(rawJwt))
 	if err != nil {
 		return authdto.AuthenticatedUser{}, apperror.New(apperror.KindUnauthorized, "Invalid token")
 	}

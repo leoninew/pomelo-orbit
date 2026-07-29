@@ -48,8 +48,8 @@ func (w *Workspace) ArtifactsPath(runId string) string {
 	return filepath.Join(w.logicalDataRoot, pipelineDataDir, "runs", runId, "artifacts")
 }
 
-func (w *Workspace) ArtifactExists(runID string, artifactPath string) (bool, error) {
-	_, err := os.Stat(filepath.Join(w.ArtifactsPath(runID), artifactPath))
+func (w *Workspace) ArtifactExists(runId string, artifactPath string) (bool, error) {
+	_, err := os.Stat(filepath.Join(w.ArtifactsPath(runId), artifactPath))
 	if err == nil {
 		return true, nil
 	}
@@ -63,14 +63,14 @@ func (w *Workspace) StageLogPath(runId string, pipelineStageRunId string) string
 	return filepath.Join(w.logicalDataRoot, pipelineDataDir, "runs", runId, "stages", pipelineStageRunId+".log")
 }
 
-func (w *Workspace) DockerStageMounts(ctx context.Context, projectCode string, runID string) ([]pipelinerunport.VolumeMount, error) {
+func (w *Workspace) DockerStageMounts(ctx context.Context, projectCode string, runId string) ([]pipelinerunport.VolumeMount, error) {
 	physicalDataRoot, err := w.PhysicalDataRoot(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return []pipelinerunport.VolumeMount{
 		{HostPath: filepath.Join(physicalDataRoot, pipelineDataDir, projectCode, "workspace"), ContainerPath: "/workspace", Mode: "rw"},
-		{HostPath: filepath.Join(physicalDataRoot, pipelineDataDir, "runs", runID, "artifacts"), ContainerPath: "/artifacts", Mode: "rw"},
+		{HostPath: filepath.Join(physicalDataRoot, pipelineDataDir, "runs", runId, "artifacts"), ContainerPath: "/artifacts", Mode: "rw"},
 	}, nil
 }
 

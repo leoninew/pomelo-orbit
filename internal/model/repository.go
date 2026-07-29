@@ -7,7 +7,7 @@ type Repository struct {
 	ProjectId         *string   `db:"project_id"`
 	Name              string    `db:"name"`
 	Code              string    `db:"code"`
-	RepositoryURL     string    `db:"repository_url"`
+	RepositoryUrl     string    `db:"repository_url"`
 	GitCredentialId   *string   `db:"git_credential_id"`
 	VariableOverrides string    `db:"variable_overrides"`
 	DefaultBranch     string    `db:"default_branch"`

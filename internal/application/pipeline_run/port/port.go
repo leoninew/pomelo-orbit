@@ -27,11 +27,11 @@ type VolumeMount struct {
 }
 
 type Workspace interface {
-	CreateRunDirectories(projectCode string, runID string) error
-	ArtifactsPath(runID string) string
-	ArtifactExists(runID string, artifactPath string) (bool, error)
-	StageLogPath(runID string, pipelineStageRunID string) string
-	DockerStageMounts(ctx context.Context, projectCode string, runID string) ([]VolumeMount, error)
+	CreateRunDirectories(projectCode string, runId string) error
+	ArtifactsPath(runId string) string
+	ArtifactExists(runId string, artifactPath string) (bool, error)
+	StageLogPath(runId string, pipelineStageRunId string) string
+	DockerStageMounts(ctx context.Context, projectCode string, runId string) ([]VolumeMount, error)
 }
 
 type RunOptions struct {

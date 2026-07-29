@@ -28,7 +28,7 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r Repository) q(ctx context.Context) *gatewaysqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *gatewaysqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *gatewaysqlc.Queries {
 		return gatewaysqlc.New(dbtx)
 	})
 }

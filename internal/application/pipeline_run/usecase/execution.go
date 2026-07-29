@@ -13,7 +13,7 @@ import (
 )
 
 func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.ExecutePipelineRunInput) error {
-	run, err := s.executionStore.PipelineRun(ctx, input.PipelineRunID)
+	run, err := s.executionStore.PipelineRun(ctx, input.PipelineRunId)
 	if err != nil {
 		return err
 	}

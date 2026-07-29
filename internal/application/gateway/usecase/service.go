@@ -91,7 +91,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	if !validImagePullPolicy(imagePullPolicy) {
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "image_pull_policy must be always, missing, or never")
 	}
-	restAPIURL, err := normalizeRestAPIURL(input.RestApiUrl)
+	restApiUrl, err := normalizeRestApiUrl(input.RestApiUrl)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
@@ -126,7 +126,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	}
 	cfg := model.GatewayConfig{
 		ApplicationId:     app.Id,
-		RestApiUrl:        restAPIURL,
+		RestApiUrl:        restApiUrl,
 		BaseDomain:        baseDomain,
 		Image:             image,
 		DefaultEntrypoint: policy.DefaultEntrypoint,
@@ -210,11 +210,11 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 		}
 	}
 	if input.RestApiUrl != nil {
-		restAPIURL, err := normalizeRestAPIURL(*input.RestApiUrl)
+		restApiUrl, err := normalizeRestApiUrl(*input.RestApiUrl)
 		if err != nil {
 			return gatewaydto.GatewayView{}, err
 		}
-		cfg.RestApiUrl = restAPIURL
+		cfg.RestApiUrl = restApiUrl
 	}
 	if input.BaseDomain != nil {
 		baseDomain, err := normalizeBaseDomain(*input.BaseDomain)
@@ -348,7 +348,7 @@ func (s Service) ensureApplicationNameAvailable(ctx context.Context, name string
 	return nil
 }
 
-func normalizeRestAPIURL(raw string) (string, error) {
+func normalizeRestApiUrl(raw string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return "", apperror.New(apperror.KindValidation, "rest_api_url is required")

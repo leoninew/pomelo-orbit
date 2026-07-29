@@ -66,7 +66,7 @@ func TestLogRequestIncludesMetadata(t *testing.T) {
 	assertLogValue(t, completed, "response_body", `{"ok":true}`)
 }
 
-func TestRequestIdPreservesIncomingValueAndGeneratesULID(t *testing.T) {
+func TestRequestIdPreservesIncomingValueAndGeneratesULId(t *testing.T) {
 	cases := []struct {
 		name      string
 		requestId string

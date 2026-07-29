@@ -10,11 +10,11 @@ type PipelineRunTriggerInput struct {
 }
 
 type PipelineRunDispatchInput struct {
-	PipelineRunID string
+	PipelineRunId string
 }
 
 type ExecutePipelineRunInput struct {
-	PipelineRunID string
+	PipelineRunId string
 	Variables     map[string]any
 }
 

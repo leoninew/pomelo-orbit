@@ -12,7 +12,7 @@ import (
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 )
 
-func openTestDB(t *testing.T) *sql.DB {
+func openTestDb(t *testing.T) *sql.DB {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
@@ -26,7 +26,7 @@ func openTestDB(t *testing.T) *sql.DB {
 }
 
 func TestRepositoryClaimComplete(t *testing.T) {
-	database := openTestDB(t)
+	database := openTestDb(t)
 	defer func() { _ = database.Close() }()
 
 	repo := NewRepository(database)
@@ -60,7 +60,7 @@ func TestRepositoryClaimComplete(t *testing.T) {
 }
 
 func TestRepositoryFailRetriesUntilMaxAttempts(t *testing.T) {
-	database := openTestDB(t)
+	database := openTestDb(t)
 	defer func() { _ = database.Close() }()
 
 	repo := NewRepository(database)

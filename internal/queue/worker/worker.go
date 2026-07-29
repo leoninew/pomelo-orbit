@@ -128,7 +128,7 @@ func (w *Worker) runSlot(ctx context.Context, slot int) {
 
 func (w *Worker) runOnce(ctx context.Context, slot int) error {
 	if w.db != nil {
-		ctx = tx.WithDB(ctx, w.db)
+		ctx = tx.WithDb(ctx, w.db)
 	}
 	taskItem, err := w.repo.ClaimNext(ctx, w.workerId, w.leaseDuration)
 	if err != nil {

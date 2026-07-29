@@ -92,7 +92,7 @@ func (s Service) Create(ctx context.Context, input roledto.SaveInput) (model.Rol
 	return role, nil
 }
 
-func (s Service) UpdateByID(ctx context.Context, roleId string, input roledto.SaveInput) (roledto.Detail, error) {
+func (s Service) UpdateById(ctx context.Context, roleId string, input roledto.SaveInput) (roledto.Detail, error) {
 	role, err := s.find(ctx, roleId)
 	if err != nil {
 		return roledto.Detail{}, err

@@ -25,7 +25,7 @@ func RunInTx(ctx context.Context, db *sql.DB, fn func(ctx context.Context) error
 			_ = sqlTx.Rollback()
 		}
 	}()
-	if err := fn(WithTx(WithDB(ctx, db), sqlTx)); err != nil {
+	if err := fn(WithTx(WithDb(ctx, db), sqlTx)); err != nil {
 		return err
 	}
 	if err := sqlTx.Commit(); err != nil {

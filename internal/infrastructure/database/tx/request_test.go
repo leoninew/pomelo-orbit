@@ -26,7 +26,7 @@ func TestMiddlewareCommitOnSuccess(t *testing.T) {
 
 	r := newRouter(db)
 	r.POST("/api/ok", func(c *gin.Context) {
-		conn, err := DBTXFrom(c.Request.Context())
+		conn, err := DbTXFrom(c.Request.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -60,7 +60,7 @@ func TestMiddlewareRollbackOnError(t *testing.T) {
 
 	r := newRouter(db)
 	r.POST("/api/fail", func(c *gin.Context) {
-		conn, err := DBTXFrom(c.Request.Context())
+		conn, err := DbTXFrom(c.Request.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -130,7 +130,7 @@ func TestMiddlewareDiscardsSuccessResponseWhenCommitFails(t *testing.T) {
 
 	r := newRouter(db)
 	r.POST("/api/commit", func(c *gin.Context) {
-		connection, err := DBTXFrom(c.Request.Context())
+		connection, err := DbTXFrom(c.Request.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -158,13 +158,13 @@ func TestMiddlewarePanicDiscardsBufferedSuccessResponse(t *testing.T) {
 	}
 
 	r := gin.New()
-	addRequestID(r)
+	addRequestId(r)
 	r.Use(gin.CustomRecovery(func(c *gin.Context, _ any) {
 		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", errors.New("handler panic")))
 	}))
 	r.Use(Middleware(db))
 	r.POST("/api/panic", func(c *gin.Context) {
-		connection, err := DBTXFrom(c.Request.Context())
+		connection, err := DbTXFrom(c.Request.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -192,12 +192,12 @@ func TestMiddlewarePanicDiscardsBufferedSuccessResponse(t *testing.T) {
 func newRouter(db *sql.DB) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	addRequestID(r)
+	addRequestId(r)
 	r.Use(Middleware(db))
 	return r
 }
 
-func addRequestID(r *gin.Engine) {
+func addRequestId(r *gin.Engine) {
 	r.Use(func(c *gin.Context) {
 		c.Set(requestid.ContextKey, "request-1")
 		c.Header(requestid.HeaderName, "request-1")

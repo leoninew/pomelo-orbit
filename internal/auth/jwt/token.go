@@ -29,7 +29,7 @@ func (s TokenService) Sign(userId string, username string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return s.signJWT(claims), nil
+	return s.signJwt(claims), nil
 }
 
 func (s TokenService) Verify(token string) (Claims, error) {
@@ -56,7 +56,7 @@ func (s TokenService) Verify(token string) (Claims, error) {
 	return claims, nil
 }
 
-func (s TokenService) signJWT(payload []byte) string {
+func (s TokenService) signJwt(payload []byte) string {
 	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
 	body := base64.RawURLEncoding.EncodeToString(payload)
 	signed := header + "." + body

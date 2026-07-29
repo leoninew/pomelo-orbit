@@ -17,7 +17,7 @@ func TestHandleRejectsInvalidPayload(t *testing.T) {
 	}
 }
 
-func TestHandleRequiresPipelineRunID(t *testing.T) {
+func TestHandleRequiresPipelineRunId(t *testing.T) {
 	handler := NewHandler(&fakeExecutor{})
 	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{}`})
 	if err == nil || !strings.Contains(err.Error(), "pipeline_run_id is required") {
@@ -33,8 +33,8 @@ func TestHandleExecutesPipelineRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
-	if executor.input.PipelineRunID != "run-1" {
-		t.Fatalf("unexpected pipeline run id: %s", executor.input.PipelineRunID)
+	if executor.input.PipelineRunId != "run-1" {
+		t.Fatalf("unexpected pipeline run id: %s", executor.input.PipelineRunId)
 	}
 	if executor.input.Variables["IMAGE"] != "demo" {
 		t.Fatalf("unexpected variables: %+v", executor.input.Variables)

@@ -17,7 +17,7 @@ import (
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 )
 
-func openTestDB(t *testing.T) *sql.DB {
+func openTestDb(t *testing.T) *sql.DB {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
@@ -31,7 +31,7 @@ func openTestDB(t *testing.T) *sql.DB {
 }
 
 func TestWorkerCompletesTask(t *testing.T) {
-	database := openTestDB(t)
+	database := openTestDb(t)
 	defer func() { _ = database.Close() }()
 
 	repo := taskrepo.NewRepository(database)
@@ -56,7 +56,7 @@ func TestWorkerCompletesTask(t *testing.T) {
 }
 
 func TestWorkerRequeuesFailedTask(t *testing.T) {
-	database := openTestDB(t)
+	database := openTestDb(t)
 	defer func() { _ = database.Close() }()
 
 	repo := taskrepo.NewRepository(database)

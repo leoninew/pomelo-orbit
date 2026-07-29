@@ -9,7 +9,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 )
 
-func openMemoryDB(t *testing.T) *sql.DB {
+func openMemoryDb(t *testing.T) *sql.DB {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
@@ -20,7 +20,7 @@ func openMemoryDB(t *testing.T) *sql.DB {
 }
 
 func TestMigrateUpSQLite(t *testing.T) {
-	database := openMemoryDB(t)
+	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}

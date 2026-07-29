@@ -12,30 +12,30 @@ import (
 
 func TestNormalizeRepositoryCreateInput(t *testing.T) {
 	credential := " credential-1 "
-	name, code, repositoryURL, defaultBranch, credentialId, err := normalizeRepositoryCreateInput(repositorydto.RepositoryCreateInput{
+	name, code, repositoryUrl, defaultBranch, credentialId, err := normalizeRepositoryCreateInput(repositorydto.RepositoryCreateInput{
 		Name:            " Repo One ",
 		Code:            "repo-one",
-		RepositoryURL:   " https://example.test/repo.git ",
+		RepositoryUrl:   " https://example.test/repo.git ",
 		GitCredentialId: &credential,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if name != "Repo One" || code != "repo-one" || repositoryURL != "https://example.test/repo.git" || defaultBranch != "master" {
-		t.Fatalf("unexpected normalized repository fields: name=%q code=%q url=%q branch=%q", name, code, repositoryURL, defaultBranch)
+	if name != "Repo One" || code != "repo-one" || repositoryUrl != "https://example.test/repo.git" || defaultBranch != "master" {
+		t.Fatalf("unexpected normalized repository fields: name=%q code=%q url=%q branch=%q", name, code, repositoryUrl, defaultBranch)
 	}
 	if credentialId == nil || *credentialId != "credential-1" {
 		t.Fatalf("unexpected credential id: %v", credentialId)
 	}
 
-	_, _, _, _, _, err = normalizeRepositoryCreateInput(repositorydto.RepositoryCreateInput{Name: "Repo", Code: "Repo One", RepositoryURL: "https://example.test/repo.git"})
+	_, _, _, _, _, err = normalizeRepositoryCreateInput(repositorydto.RepositoryCreateInput{Name: "Repo", Code: "Repo One", RepositoryUrl: "https://example.test/repo.git"})
 	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("expected invalid repository code to return 400, got %v", err)
 	}
 }
 
 func TestRepositoryVariables(t *testing.T) {
-	repo := model.Repository{Id: "repo-1", Name: "Repo One", Code: "repo-one", RepositoryURL: "https://example.test/repo.git", VariableOverrides: "", DefaultBranch: "main"}
+	repo := model.Repository{Id: "repo-1", Name: "Repo One", Code: "repo-one", RepositoryUrl: "https://example.test/repo.git", VariableOverrides: "", DefaultBranch: "main"}
 	variables, err := repositoryVariables(repo)
 	if err != nil {
 		t.Fatal(err)

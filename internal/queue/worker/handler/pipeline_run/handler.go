@@ -34,5 +34,5 @@ func (h Handler) Handle(ctx context.Context, item tasksvc.Task) error {
 	if payload.PipelineRunId == "" {
 		return fmt.Errorf("pipeline_run_id is required")
 	}
-	return h.executor.ExecutePipelineRun(ctx, pipelinerundto.ExecutePipelineRunInput{PipelineRunID: payload.PipelineRunId, Variables: payload.Variables})
+	return h.executor.ExecutePipelineRun(ctx, pipelinerundto.ExecutePipelineRunInput{PipelineRunId: payload.PipelineRunId, Variables: payload.Variables})
 }

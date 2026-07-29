@@ -32,8 +32,8 @@ func (w *Workspace) ServiceDir(appCode string, instanceKey string) string {
 	return filepath.Join(w.AppDir(appCode), instanceKey)
 }
 
-func (w *Workspace) DeploymentLogPath(appCode string, instanceKey string, deploymentID string) string {
-	return filepath.Join(w.ServiceDir(appCode, instanceKey), "deployments", deploymentID+".log")
+func (w *Workspace) DeploymentLogPath(appCode string, instanceKey string, deploymentId string) string {
+	return filepath.Join(w.ServiceDir(appCode, instanceKey), "deployments", deploymentId+".log")
 }
 
 func (w *Workspace) WriteConfig(appCode string, instanceKey string, path string, content string) error {

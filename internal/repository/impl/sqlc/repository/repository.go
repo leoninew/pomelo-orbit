@@ -26,7 +26,7 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r Repository) q(ctx context.Context) *reposqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *reposqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *reposqlc.Queries {
 		return reposqlc.New(dbtx)
 	})
 }
@@ -94,7 +94,7 @@ func (r Repository) CreateRepository(ctx context.Context, repo model.Repository)
 		ProjectID:         dbmodel.NullString(repo.ProjectId),
 		Name:              repo.Name,
 		Code:              repo.Code,
-		RepositoryUrl:     repo.RepositoryURL,
+		RepositoryUrl:     repo.RepositoryUrl,
 		GitCredentialID:   dbmodel.NullString(repo.GitCredentialId),
 		VariableOverrides: repo.VariableOverrides,
 		DefaultBranch:     repo.DefaultBranch,
@@ -110,7 +110,7 @@ func (r Repository) CreateRepository(ctx context.Context, repo model.Repository)
 func (r Repository) UpdateRepository(ctx context.Context, repo model.Repository) error {
 	err := r.q(ctx).UpdateRepository(ctx, reposqlc.UpdateRepositoryParams{
 		Name:              repo.Name,
-		RepositoryUrl:     repo.RepositoryURL,
+		RepositoryUrl:     repo.RepositoryUrl,
 		GitCredentialID:   dbmodel.NullString(repo.GitCredentialId),
 		VariableOverrides: repo.VariableOverrides,
 		DefaultBranch:     repo.DefaultBranch,
@@ -224,19 +224,19 @@ func optionalNarg(value *string) interface{} {
 
 func repositoryFrom(
 	id string,
-	projectID sql.NullString,
-	name, code, repositoryURL string,
-	gitCredentialID sql.NullString,
+	projectId sql.NullString,
+	name, code, repositoryUrl string,
+	gitCredentialId sql.NullString,
 	variableOverrides, defaultBranch string,
 	createdAt, updatedAt time.Time,
 ) model.Repository {
 	return model.Repository{
 		Id:                id,
-		ProjectId:         dbmodel.StringPtr(projectID),
+		ProjectId:         dbmodel.StringPtr(projectId),
 		Name:              name,
 		Code:              code,
-		RepositoryURL:     repositoryURL,
-		GitCredentialId:   dbmodel.StringPtr(gitCredentialID),
+		RepositoryUrl:     repositoryUrl,
+		GitCredentialId:   dbmodel.StringPtr(gitCredentialId),
 		VariableOverrides: variableOverrides,
 		DefaultBranch:     defaultBranch,
 		CreatedAt:         createdAt,

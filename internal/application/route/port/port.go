@@ -8,7 +8,7 @@ import (
 
 // RouteConfigPublisher publishes the platform route snapshot to Traefik providers.rest.
 type RouteConfigPublisher interface {
-	ApplySnapshot(ctx context.Context, restAPIURL string, routes []model.Route) error
+	ApplySnapshot(ctx context.Context, restApiUrl string, routes []model.Route) error
 	WriteCertificate(ctx context.Context, routeName string, certPEM string, certKey string) error
 	RevokeCertificate(ctx context.Context, routeName string) error
 }
@@ -29,6 +29,6 @@ type TraefikRouter struct {
 }
 
 type TraefikRouterClient interface {
-	ListRouters(ctx context.Context, restAPIURL string) ([]TraefikRouter, error)
+	ListRouters(ctx context.Context, restApiUrl string) ([]TraefikRouter, error)
 	IsConnectionError(err error) bool
 }

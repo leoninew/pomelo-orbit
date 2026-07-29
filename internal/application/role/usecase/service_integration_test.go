@@ -28,7 +28,7 @@ func TestRoleServiceCreateUpdateAndDelete(t *testing.T) {
 	if created.Id == "" || created.Code != "auditor" || created.Name != "Auditor" || created.Description == nil || *created.Description != description {
 		t.Fatalf("unexpected created role: %+v", created)
 	}
-	updated, err := service.UpdateByID(ctx, created.Id, roledto.SaveInput{Code: "auditor", Name: "Auditor Updated", PermissionCodes: []string{"role:read", "user:read"}})
+	updated, err := service.UpdateById(ctx, created.Id, roledto.SaveInput{Code: "auditor", Name: "Auditor Updated", PermissionCodes: []string{"role:read", "user:read"}})
 	if err != nil {
 		t.Fatal(err)
 	}

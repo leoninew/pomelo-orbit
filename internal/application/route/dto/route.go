@@ -4,7 +4,7 @@ type RouteCreateInput struct {
 	Name       string
 	Domain     string
 	PathPrefix string
-	TargetURL  string
+	TargetUrl  string
 	Enabled    bool
 }
 
@@ -12,7 +12,7 @@ type RouteUpdateInput struct {
 	Name       *string
 	Domain     *string
 	PathPrefix *string
-	TargetURL  *string
+	TargetUrl  *string
 	Enabled    *bool
 }
 

@@ -58,10 +58,10 @@ func TestStaticFilesFallbackUsesConfiguredApiPathPrefixes(t *testing.T) {
 		t.Fatalf("expected configured api prefix 404, got %d: %s", apiRecorder.Code, apiRecorder.Body.String())
 	}
 
-	nonAPIRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(nonAPIRecorder, httptest.NewRequest(http.MethodGet, "/graphqlx", nil))
-	if nonAPIRecorder.Code != http.StatusOK || !strings.Contains(nonAPIRecorder.Body.String(), "<script>window.__CONFIG__ = {};</script>") {
-		t.Fatalf("expected non-api spa fallback, got %d: %s", nonAPIRecorder.Code, nonAPIRecorder.Body.String())
+	nonApiRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(nonApiRecorder, httptest.NewRequest(http.MethodGet, "/graphqlx", nil))
+	if nonApiRecorder.Code != http.StatusOK || !strings.Contains(nonApiRecorder.Body.String(), "<script>window.__CONFIG__ = {};</script>") {
+		t.Fatalf("expected non-api spa fallback, got %d: %s", nonApiRecorder.Code, nonApiRecorder.Body.String())
 	}
 }
 
@@ -95,10 +95,10 @@ func TestStaticFilesFallbackServesFrontend(t *testing.T) {
 		t.Fatalf("expected api root 404, got %d: %s", apiRootRecorder.Code, apiRootRecorder.Body.String())
 	}
 
-	nonAPIRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(nonAPIRecorder, httptest.NewRequest(http.MethodGet, "/apix/missing", nil))
-	if nonAPIRecorder.Code != http.StatusOK || !strings.Contains(nonAPIRecorder.Body.String(), "<script>window.__CONFIG__ = {};</script>") {
-		t.Fatalf("expected non-api spa fallback, got %d: %s", nonAPIRecorder.Code, nonAPIRecorder.Body.String())
+	nonApiRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(nonApiRecorder, httptest.NewRequest(http.MethodGet, "/apix/missing", nil))
+	if nonApiRecorder.Code != http.StatusOK || !strings.Contains(nonApiRecorder.Body.String(), "<script>window.__CONFIG__ = {};</script>") {
+		t.Fatalf("expected non-api spa fallback, got %d: %s", nonApiRecorder.Code, nonApiRecorder.Body.String())
 	}
 
 	postRecorder := httptest.NewRecorder()
@@ -140,8 +140,8 @@ func TestAllowedHTTPMethodsMatchesParameterizedRoute(t *testing.T) {
 	}
 }
 
-func TestStaticFilesInjectRuntimeConfigPublicURL(t *testing.T) {
-	server := newServerForServerTest(config.Config{Server: config.ServerConfig{PublicURL: "https://orbit-api.preflite.cn"}})
+func TestStaticFilesInjectRuntimeConfigPublicUrl(t *testing.T) {
+	server := newServerForServerTest(config.Config{Server: config.ServerConfig{PublicUrl: "https://orbit-api.preflite.cn"}})
 	withStaticDir(t, "<html><head><!-- __RUNTIME_CONFIG__ --></head><body>app</body></html>", nil)
 
 	recorder := httptest.NewRecorder()
@@ -175,7 +175,7 @@ func TestStaticFilesInjectRuntimeConfigEmptyObject(t *testing.T) {
 }
 
 func TestStaticFilesInjectRuntimeConfigFallbackBeforeHeadEnd(t *testing.T) {
-	server := newServerForServerTest(config.Config{Server: config.ServerConfig{PublicURL: "https://orbit-api.preflite.cn"}})
+	server := newServerForServerTest(config.Config{Server: config.ServerConfig{PublicUrl: "https://orbit-api.preflite.cn"}})
 	withStaticDir(t, "<html><head><title>Orbit</title></head><body>app</body></html>", nil)
 
 	recorder := httptest.NewRecorder()

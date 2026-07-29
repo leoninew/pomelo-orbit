@@ -70,7 +70,7 @@ func (h Handler) GetUser(c *gin.Context) {
 	if _, ok := h.authenticator.RequirePermission(c, "user:read"); !ok {
 		return
 	}
-	detail, err := h.service.Detail(c.Request.Context(), userID(c))
+	detail, err := h.service.Detail(c.Request.Context(), userId(c))
 	if err != nil {
 		h.writeServiceError(c, err, "Failed to load user")
 		return
@@ -89,7 +89,7 @@ func (h Handler) UpdateUser(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.UpdateByActor(c.Request.Context(), actor(current), userID(c), userUpdateInput(&req))
+	detail, err := h.service.UpdateByActor(c.Request.Context(), actor(current), userId(c), userUpdateInput(&req))
 	if err != nil {
 		h.writeServiceError(c, err, "Failed to update user")
 		return
@@ -108,7 +108,7 @@ func (h Handler) UpdateUserRoles(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.SetRoles(c.Request.Context(), actor(current), userID(c), req.RoleIds)
+	detail, err := h.service.SetRoles(c.Request.Context(), actor(current), userId(c), req.RoleIds)
 	if err != nil {
 		h.writeServiceError(c, err, "Failed to update user roles")
 		return
@@ -127,7 +127,7 @@ func (h Handler) DisableUser(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	if err := h.service.SetStatusByActor(c.Request.Context(), actor(current), userID(c), "disabled"); err != nil {
+	if err := h.service.SetStatusByActor(c.Request.Context(), actor(current), userId(c), "disabled"); err != nil {
 		h.writeServiceError(c, err, "Failed to disable user")
 		return
 	}
@@ -144,7 +144,7 @@ func (h Handler) EnableUser(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	if err := h.service.SetStatusByActor(c.Request.Context(), actor(current), userID(c), "enabled"); err != nil {
+	if err := h.service.SetStatusByActor(c.Request.Context(), actor(current), userId(c), "enabled"); err != nil {
 		h.writeServiceError(c, err, "Failed to enable user")
 		return
 	}
@@ -156,7 +156,7 @@ func (h Handler) DeleteUser(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteByActor(c.Request.Context(), actor(current), userID(c)); err != nil {
+	if err := h.service.DeleteByActor(c.Request.Context(), actor(current), userId(c)); err != nil {
 		h.writeServiceError(c, err, "Failed to delete user")
 		return
 	}
@@ -170,6 +170,6 @@ func (h Handler) writeServiceError(c *gin.Context, err error, internalDetail str
 	transportresponse.WriteError(c, err)
 }
 
-func userID(c *gin.Context) string {
+func userId(c *gin.Context) string {
 	return strings.TrimSpace(c.Param("user_id"))
 }

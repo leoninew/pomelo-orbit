@@ -259,10 +259,10 @@ func normalizeRoleIds(values []string) ([]string, error) {
 	for _, value := range values {
 		roleId := strings.TrimSpace(value)
 		if roleId == "" {
-			return nil, ErrInvalidRoleID
+			return nil, ErrInvalidRoleId
 		}
 		if _, ok := seen[roleId]; ok {
-			return nil, ErrDuplicateRoleIDs
+			return nil, ErrDuplicateRoleIds
 		}
 		seen[roleId] = struct{}{}
 		result = append(result, roleId)
@@ -311,7 +311,7 @@ var (
 	ErrInvalidUserStatus        = apperror.New(apperror.KindValidation, "Invalid user status")
 	ErrCannotDisableCurrentUser = apperror.New(apperror.KindValidation, "Cannot disable current user")
 	ErrCannotDeleteCurrentUser  = apperror.New(apperror.KindValidation, "Cannot delete current user")
-	ErrInvalidRoleID            = apperror.New(apperror.KindValidation, "Invalid role id")
-	ErrDuplicateRoleIDs         = apperror.New(apperror.KindValidation, "role_ids must be unique")
+	ErrInvalidRoleId            = apperror.New(apperror.KindValidation, "Invalid role id")
+	ErrDuplicateRoleIds         = apperror.New(apperror.KindValidation, "role_ids must be unique")
 	ErrPermissionDenied         = apperror.New(apperror.KindForbidden, "Permission denied")
 )

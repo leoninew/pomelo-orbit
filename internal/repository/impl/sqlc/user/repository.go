@@ -25,7 +25,7 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r Repository) q(ctx context.Context) *usersqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *usersqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *usersqlc.Queries {
 		return usersqlc.New(dbtx)
 	})
 }
@@ -238,7 +238,7 @@ func (r Repository) MarkUserLoggedIn(ctx context.Context, userId string) error {
 }
 
 func userFromRow(
-	id, username, passwordHash, status, oauthProvider, oauthProviderID string,
+	id, username, passwordHash, status, oauthProvider, oauthProviderId string,
 	email sql.NullString,
 	authSource string,
 	createdAt, updatedAt time.Time,
@@ -250,7 +250,7 @@ func userFromRow(
 		PasswordHash:    passwordHash,
 		Status:          status,
 		OAuthProvider:   oauthProvider,
-		OAuthProviderId: oauthProviderID,
+		OAuthProviderId: oauthProviderId,
 		Email:           dbmodel.StringPtr(email),
 		AuthSource:      authSource,
 		CreatedAt:       createdAt,

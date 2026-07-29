@@ -22,7 +22,7 @@ func Middleware(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		ctx := WithDB(c.Request.Context(), db)
+		ctx := WithDb(c.Request.Context(), db)
 		sqlTx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))

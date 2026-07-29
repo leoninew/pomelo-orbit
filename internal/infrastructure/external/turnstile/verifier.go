@@ -13,7 +13,7 @@ import (
 
 type Verifier struct {
 	secretKey string
-	verifyURL string
+	verifyUrl string
 	client    *http.Client
 }
 
@@ -33,7 +33,7 @@ type verifyResp struct {
 func NewVerifier(cfg config.TurnstileConfig) Verifier {
 	return Verifier{
 		secretKey: cfg.SecretKey,
-		verifyURL: cfg.VerifyURL,
+		verifyUrl: cfg.VerifyUrl,
 		client:    &http.Client{Timeout: 3 * time.Second},
 	}
 }
@@ -43,7 +43,7 @@ func (v Verifier) Verify(ctx context.Context, token string, remoteIP string) err
 	if err != nil {
 		return fmt.Errorf("marshal turnstile verification request: %w", err)
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, v.verifyURL, bytes.NewReader(payload))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, v.verifyUrl, bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("create turnstile verification request: %w", err)
 	}

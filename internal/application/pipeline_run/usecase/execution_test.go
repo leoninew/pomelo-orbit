@@ -43,7 +43,7 @@ func TestExecutePipelineRunMarksRunFaultedWhenStageFails(t *testing.T) {
 	}
 	service := newTestExecutionService(store, newTestWorkspace(t), testExecutionFernetKey, slog.Default(), failingContainerRunner{}, executionlog.Store{})
 
-	err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{PipelineRunID: "run-1"})
+	err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{PipelineRunId: "run-1"})
 	if err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestExecutePipelineRunExecutesPipelineRun(t *testing.T) {
 	}
 	service := newTestExecutionService(store, newTestWorkspace(t), testExecutionFernetKey, slog.Default(), fakeContainerRunner{}, executionlog.Store{})
 
-	err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{PipelineRunID: "run-1"})
+	err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{PipelineRunId: "run-1"})
 	if err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestExecutePipelineRunInjectsGiteeCredentialRewrite(t *testing.T) {
 			TemplateId:   "template-1",
 			TriggerRef:   "develop",
 		},
-		repo:       model.Repository{Id: "repo-1", Name: "Repo", Code: "repo", RepositoryURL: "https://gitee.com/leoninew/pomelo-orbit.git", GitCredentialId: &credentialId},
+		repo:       model.Repository{Id: "repo-1", Name: "Repo", Code: "repo", RepositoryUrl: "https://gitee.com/leoninew/pomelo-orbit.git", GitCredentialId: &credentialId},
 		credential: model.Credential{Id: credentialId, Type: "gitee_token", EncryptedData: encrypted},
 		template:   model.PipelineTemplate{Id: "template-1", Name: "template", Version: 1},
 		snapshot:   model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"git clone","image":"alpine/git","script":"git remote add origin {{ repository_url }}\ngit fetch --depth=1 origin {{ repository_ref }}"}]`, VariablesSnapshot: `[{"name":"repository_url","source":"template","editable":false},{"name":"repository_ref","source":"template","editable":false}]`},
@@ -120,7 +120,7 @@ func TestExecutePipelineRunInjectsGiteeCredentialRewrite(t *testing.T) {
 	runner := &recordingContainerRunner{}
 	service := newTestExecutionService(store, newTestWorkspace(t), testExecutionFernetKey, slog.Default(), runner, executionlog.Store{})
 
-	if err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{PipelineRunID: "run-1"}); err != nil {
+	if err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{PipelineRunId: "run-1"}); err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
 	}
 	if runner.script != "git remote add origin https://gitee.com/leoninew/pomelo-orbit.git\ngit fetch --depth=1 origin develop" {
@@ -152,14 +152,14 @@ func TestExecutePipelineRunResolvesVariablesFromDeclarations(t *testing.T) {
 			TemplateId:   "template-1",
 			TriggerRef:   "main",
 		},
-		repo:     model.Repository{Id: "repo-1", Name: "Repo", Code: "repo", RepositoryURL: "https://example.test/repo.git"},
+		repo:     model.Repository{Id: "repo-1", Name: "Repo", Code: "repo", RepositoryUrl: "https://example.test/repo.git"},
 		template: model.PipelineTemplate{Id: "template-1", Name: "template", Version: 1},
 		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"cd {{ working_dir }} && echo {{ repository_code }}"}]`, VariablesSnapshot: `[{"name":"working_dir","default":".","source":"template_stage","editable":true},{"name":"repository_code","source":"template","editable":false}]`},
 	}
 	runner := &recordingContainerRunner{}
 	service := newTestExecutionService(store, newTestWorkspace(t), testExecutionFernetKey, slog.Default(), runner, executionlog.Store{})
 
-	if err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{PipelineRunID: "run-1", Variables: map[string]any{"working_dir": "ignored"}}); err != nil {
+	if err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{PipelineRunId: "run-1", Variables: map[string]any{"working_dir": "ignored"}}); err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
 	}
 	if runner.script != "cd . && echo repo" {
@@ -282,8 +282,8 @@ func newTestWorkspace(t *testing.T) testWorkspace {
 	return testWorkspace{root: t.TempDir()}
 }
 
-func (w testWorkspace) CreateRunDirectories(projectCode string, runID string) error {
-	for _, path := range []string{w.workspacePath(projectCode), w.ArtifactsPath(runID)} {
+func (w testWorkspace) CreateRunDirectories(projectCode string, runId string) error {
+	for _, path := range []string{w.workspacePath(projectCode), w.ArtifactsPath(runId)} {
 		if err := os.MkdirAll(path, 0o755); err != nil {
 			return err
 		}
@@ -291,12 +291,12 @@ func (w testWorkspace) CreateRunDirectories(projectCode string, runID string) er
 	return nil
 }
 
-func (w testWorkspace) ArtifactsPath(runID string) string {
-	return filepath.Join(w.root, "pipeline", "runs", runID, "artifacts")
+func (w testWorkspace) ArtifactsPath(runId string) string {
+	return filepath.Join(w.root, "pipeline", "runs", runId, "artifacts")
 }
 
-func (w testWorkspace) ArtifactExists(runID string, artifactPath string) (bool, error) {
-	_, err := os.Stat(filepath.Join(w.ArtifactsPath(runID), artifactPath))
+func (w testWorkspace) ArtifactExists(runId string, artifactPath string) (bool, error) {
+	_, err := os.Stat(filepath.Join(w.ArtifactsPath(runId), artifactPath))
 	if err == nil {
 		return true, nil
 	}
@@ -306,14 +306,14 @@ func (w testWorkspace) ArtifactExists(runID string, artifactPath string) (bool, 
 	return false, err
 }
 
-func (w testWorkspace) StageLogPath(runID string, pipelineStageRunID string) string {
-	return filepath.Join(w.root, "pipeline", "runs", runID, "stages", pipelineStageRunID+".log")
+func (w testWorkspace) StageLogPath(runId string, pipelineStageRunId string) string {
+	return filepath.Join(w.root, "pipeline", "runs", runId, "stages", pipelineStageRunId+".log")
 }
 
-func (w testWorkspace) DockerStageMounts(ctx context.Context, projectCode string, runID string) ([]pipelinerunport.VolumeMount, error) {
+func (w testWorkspace) DockerStageMounts(ctx context.Context, projectCode string, runId string) ([]pipelinerunport.VolumeMount, error) {
 	return []pipelinerunport.VolumeMount{
 		{HostPath: w.workspacePath(projectCode), ContainerPath: "/workspace", Mode: "rw"},
-		{HostPath: w.ArtifactsPath(runID), ContainerPath: "/artifacts", Mode: "rw"},
+		{HostPath: w.ArtifactsPath(runId), ContainerPath: "/artifacts", Mode: "rw"},
 	}, nil
 }
 

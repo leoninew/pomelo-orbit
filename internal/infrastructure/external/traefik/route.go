@@ -44,7 +44,7 @@ func NewRouteManager(cfg config.Config) *RouteManager {
 
 // ApplySnapshot replaces the entire @rest HTTP configuration with the given enabled routes.
 // restAPIURL is the Gateway config control-plane base URL (required).
-func (m *RouteManager) ApplySnapshot(ctx context.Context, restAPIURL string, routes []model.Route) error {
+func (m *RouteManager) ApplySnapshot(ctx context.Context, restApiUrl string, routes []model.Route) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -60,7 +60,7 @@ func (m *RouteManager) ApplySnapshot(ctx context.Context, restAPIURL string, rou
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to marshal traefik rest snapshot", err)
 	}
-	return m.putRestConfig(ctx, restAPIURL, body)
+	return m.putRestConfig(ctx, restApiUrl, body)
 }
 
 func (m *RouteManager) WriteCertificate(_ context.Context, routeName string, certPEM string, certKey string) error {
@@ -81,8 +81,8 @@ func (m *RouteManager) RevokeCertificate(_ context.Context, routeName string) er
 	return nil
 }
 
-func (m *RouteManager) ListRouters(ctx context.Context, restAPIURL string) ([]routeport.TraefikRouter, error) {
-	base := strings.TrimRight(strings.TrimSpace(restAPIURL), "/")
+func (m *RouteManager) ListRouters(ctx context.Context, restApiUrl string) ([]routeport.TraefikRouter, error) {
+	base := strings.TrimRight(strings.TrimSpace(restApiUrl), "/")
 	if base == "" {
 		return nil, apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
 	}
@@ -135,8 +135,8 @@ func (m *RouteManager) IsConnectionError(err error) bool {
 	return errors.As(err, &opErr)
 }
 
-func (m *RouteManager) putRestConfig(ctx context.Context, restAPIURL string, body []byte) error {
-	base := strings.TrimRight(strings.TrimSpace(restAPIURL), "/")
+func (m *RouteManager) putRestConfig(ctx context.Context, restApiUrl string, body []byte) error {
+	base := strings.TrimRight(strings.TrimSpace(restApiUrl), "/")
 	if base == "" {
 		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for rest route publish")
 	}
@@ -218,7 +218,7 @@ func buildRestSnapshot(routes []model.Route) map[string]any {
 		routers[routerName] = router
 		services[serviceName] = map[string]any{
 			"loadBalancer": map[string]any{
-				"servers": []map[string]string{{"url": route.TargetURL}},
+				"servers": []map[string]string{{"url": route.TargetUrl}},
 			},
 		}
 	}

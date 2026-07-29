@@ -45,7 +45,7 @@ func (s Service) CreateRepository(ctx context.Context, userId string, input repo
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	name, code, repositoryURL, defaultBranch, gitCredentialId, err := normalizeRepositoryCreateInput(input)
+	name, code, repositoryUrl, defaultBranch, gitCredentialId, err := normalizeRepositoryCreateInput(input)
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
@@ -59,7 +59,7 @@ func (s Service) CreateRepository(ctx context.Context, userId string, input repo
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	repo := model.Repository{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, RepositoryURL: repositoryURL, GitCredentialId: gitCredentialId, VariableOverrides: overrides, DefaultBranch: defaultBranch}
+	repo := model.Repository{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, RepositoryUrl: repositoryUrl, GitCredentialId: gitCredentialId, VariableOverrides: overrides, DefaultBranch: defaultBranch}
 	if err := s.store.CreateRepository(ctx, repo); err != nil {
 		return repositorydto.RepositoryDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create repository", err)
 	}
@@ -90,12 +90,12 @@ func (s Service) UpdateRepository(ctx context.Context, userId string, repository
 		}
 		repo.Name = name
 	}
-	if input.RepositoryURL != nil {
-		repositoryURL := strings.TrimSpace(*input.RepositoryURL)
-		if repositoryURL == "" {
+	if input.RepositoryUrl != nil {
+		repositoryUrl := strings.TrimSpace(*input.RepositoryUrl)
+		if repositoryUrl == "" {
 			return repositorydto.RepositoryDetail{}, apperror.New(apperror.KindValidation, "Invalid repository fields")
 		}
-		repo.RepositoryURL = repositoryURL
+		repo.RepositoryUrl = repositoryUrl
 	}
 	if input.GitCredentialId != nil {
 		repo.GitCredentialId = normalizeOptionalString(input.GitCredentialId)
@@ -320,7 +320,7 @@ func (s Service) ReceiveRepositoryWebhook(ctx context.Context, input repositoryd
 	if err := s.store.CreatePipelineRun(ctx, run); err != nil {
 		return repositorydto.WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
-	if err := s.dispatcher.DispatchPipelineRun(ctx, pipelinerundto.PipelineRunDispatchInput{PipelineRunID: run.Id}); err != nil {
+	if err := s.dispatcher.DispatchPipelineRun(ctx, pipelinerundto.PipelineRunDispatchInput{PipelineRunId: run.Id}); err != nil {
 		return repositorydto.WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue pipeline run", err)
 	}
 	return repositorydto.WebhookReceiveResult{Status: "triggered", RunId: run.Id}, nil
@@ -433,16 +433,16 @@ func (s Service) repositoryCredentialName(ctx context.Context, credentialId *str
 func normalizeRepositoryCreateInput(input repositorydto.RepositoryCreateInput) (string, string, string, string, *string, error) {
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
-	repositoryURL := strings.TrimSpace(input.RepositoryURL)
+	repositoryUrl := strings.TrimSpace(input.RepositoryUrl)
 	defaultBranch := strings.TrimSpace(input.DefaultBranch)
 	if defaultBranch == "" {
 		defaultBranch = "master"
 	}
 	gitCredentialId := normalizeOptionalString(input.GitCredentialId)
-	if name == "" || code == "" || !repositoryCodePattern.MatchString(code) || repositoryURL == "" || defaultBranch == "" {
+	if name == "" || code == "" || !repositoryCodePattern.MatchString(code) || repositoryUrl == "" || defaultBranch == "" {
 		return "", "", "", "", nil, apperror.New(apperror.KindValidation, "Invalid repository fields")
 	}
-	return name, code, repositoryURL, defaultBranch, gitCredentialId, nil
+	return name, code, repositoryUrl, defaultBranch, gitCredentialId, nil
 }
 
 func normalizeOptionalString(value *string) *string {
@@ -493,7 +493,7 @@ func repositoryBuiltinVariableDeclarations(repo model.Repository) []map[string]a
 		repositoryBuiltinVariableDeclaration("repository_id", repo.Id),
 		repositoryBuiltinVariableDeclaration("repository_name", repo.Name),
 		repositoryBuiltinVariableDeclaration("repository_code", repo.Code),
-		repositoryBuiltinVariableDeclaration("repository_url", repo.RepositoryURL),
+		repositoryBuiltinVariableDeclaration("repository_url", repo.RepositoryUrl),
 		repositoryBuiltinVariableDeclaration("repository_ref", repo.DefaultBranch),
 	}
 }

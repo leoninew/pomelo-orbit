@@ -30,7 +30,7 @@ type Config struct {
 	Database    DatabaseConfig  `mapstructure:"database" yaml:"database"`
 	Worker      WorkerConfig    `mapstructure:"worker" yaml:"worker"`
 	Orbit       OrbitConfig     `mapstructure:"orbit" yaml:"orbit"`
-	JWT         JWTConfig       `mapstructure:"jwt" yaml:"jwt"`
+	Jwt         JwtConfig       `mapstructure:"jwt" yaml:"jwt"`
 	Traefik     TraefikConfig   `mapstructure:"traefik" yaml:"traefik"`
 	Turnstile   TurnstileConfig `mapstructure:"turnstile" yaml:"turnstile"`
 	Cert        CertConfig      `mapstructure:"cert" yaml:"cert"`
@@ -49,9 +49,9 @@ type AppConfig struct {
 type ServerConfig struct {
 	Host               string   `mapstructure:"host" yaml:"host"`
 	Port               int      `mapstructure:"port" yaml:"port"`
-	CORSAllowedOrigins []string `mapstructure:"cors_allowed_origins" yaml:"cors_allowed_origins"`
+	CorsAllowedOrigins []string `mapstructure:"cors_allowed_origins" yaml:"cors_allowed_origins"`
 	ApiPathPrefixes    []string `mapstructure:"api_path_prefixes" yaml:"api_path_prefixes"`
-	PublicURL          string   `mapstructure:"public_url" yaml:"public_url"`
+	PublicUrl          string   `mapstructure:"public_url" yaml:"public_url"`
 }
 
 type LoggingConfig struct {
@@ -80,7 +80,7 @@ type SQLiteConfig struct {
 }
 
 type MySQLConfig struct {
-	DSN string `mapstructure:"dsn" yaml:"dsn"`
+	Dsn string `mapstructure:"dsn" yaml:"dsn"`
 }
 
 type WorkerConfig struct {
@@ -95,7 +95,7 @@ type OrbitConfig struct {
 	Root string `mapstructure:"root" yaml:"root"`
 }
 
-type JWTConfig struct {
+type JwtConfig struct {
 	SecretKey string `mapstructure:"secret_key" yaml:"secret_key"`
 }
 
@@ -109,7 +109,7 @@ type TurnstileConfig struct {
 	Enabled   bool   `mapstructure:"enabled" yaml:"enabled"`
 	SiteKey   string `mapstructure:"site_key" yaml:"site_key"`
 	SecretKey string `mapstructure:"secret_key" yaml:"secret_key"`
-	VerifyURL string `mapstructure:"verify_url" yaml:"verify_url"`
+	VerifyUrl string `mapstructure:"verify_url" yaml:"verify_url"`
 }
 
 type CertConfig struct {
@@ -296,7 +296,7 @@ func (c Config) Validate() error {
 			return errors.New("database.sqlite.path is required")
 		}
 	case DatabaseDriverMySQL:
-		if c.Database.MySQL.DSN == "" {
+		if c.Database.MySQL.Dsn == "" {
 			return errors.New("database.mysql.dsn is required")
 		}
 	default:
@@ -314,7 +314,7 @@ func (c Config) Validate() error {
 	if c.Logging.HTTPBodyMaxBytes <= 0 {
 		return errors.New("logging.http_body_max_bytes must be positive")
 	}
-	if err := validateJWTSecretKey(c.JWT.SecretKey); err != nil {
+	if err := validateJwtSecretKey(c.Jwt.SecretKey); err != nil {
 		return err
 	}
 	if c.Turnstile.Enabled {
@@ -324,7 +324,7 @@ func (c Config) Validate() error {
 		if strings.TrimSpace(c.Turnstile.SecretKey) == "" {
 			return errors.New("turnstile.secret_key is required when turnstile is enabled")
 		}
-		if strings.TrimSpace(c.Turnstile.VerifyURL) == "" {
+		if strings.TrimSpace(c.Turnstile.VerifyUrl) == "" {
 			return errors.New("turnstile.verify_url is required when turnstile is enabled")
 		}
 	}
@@ -344,8 +344,8 @@ func (c Config) Validate() error {
 }
 
 func normalizeServerRuntimeOriginConfig(cfg *ServerConfig) {
-	cfg.PublicURL = strings.TrimRight(strings.TrimSpace(cfg.PublicURL), "/")
-	cfg.CORSAllowedOrigins = normalizeHTTPOrigins(cfg.CORSAllowedOrigins)
+	cfg.PublicUrl = strings.TrimRight(strings.TrimSpace(cfg.PublicUrl), "/")
+	cfg.CorsAllowedOrigins = normalizeHTTPOrigins(cfg.CorsAllowedOrigins)
 	cfg.ApiPathPrefixes = normalizeApiPathPrefixes(cfg.ApiPathPrefixes)
 }
 
@@ -390,13 +390,13 @@ func validateServerRuntimeOriginConfig(cfg ServerConfig) error {
 	if err := validateApiPathPrefixes(cfg.ApiPathPrefixes); err != nil {
 		return err
 	}
-	if cfg.PublicURL != "" {
-		if err := validateHTTPURL("server.public_url", cfg.PublicURL, false); err != nil {
+	if cfg.PublicUrl != "" {
+		if err := validateHTTPUrl("server.public_url", cfg.PublicUrl, false); err != nil {
 			return err
 		}
 	}
-	for _, origin := range cfg.CORSAllowedOrigins {
-		if err := validateHTTPURL("server.cors_allowed_origins", origin, true); err != nil {
+	for _, origin := range cfg.CorsAllowedOrigins {
+		if err := validateHTTPUrl("server.cors_allowed_origins", origin, true); err != nil {
 			return err
 		}
 	}
@@ -418,7 +418,7 @@ func validateApiPathPrefixes(prefixes []string) error {
 	return nil
 }
 
-func validateHTTPURL(key string, value string, originOnly bool) error {
+func validateHTTPUrl(key string, value string, originOnly bool) error {
 	parsed, err := url.Parse(strings.TrimSpace(value))
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return fmt.Errorf("%s must be an absolute http or https URL", key)
@@ -435,7 +435,7 @@ func validateHTTPURL(key string, value string, originOnly bool) error {
 	return nil
 }
 
-func validateJWTSecretKey(secretKey string) error {
+func validateJwtSecretKey(secretKey string) error {
 	secretKey = strings.TrimSpace(secretKey)
 	if secretKey == "" {
 		return errors.New("jwt.secret_key is required")

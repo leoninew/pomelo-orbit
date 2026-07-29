@@ -77,7 +77,7 @@ const (
 )
 
 var routeNamePattern = regexp.MustCompile(`^[a-z][a-z0-9._-]*$`)
-var routeTargetURLPattern = regexp.MustCompile(`^https?://[a-zA-Z0-9.-]+:\d+$`)
+var routeTargetUrlPattern = regexp.MustCompile(`^https?://[a-zA-Z0-9.-]+:\d+$`)
 
 // ListRoutes returns routes visible to the user.
 func (s Service) ListRoutes(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[model.Route], error) {
@@ -104,11 +104,11 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Route{}, err
 	}
-	name, domain, pathPrefix, targetURL, enabled, err := normalizeRouteInput(input.Name, input.Domain, input.PathPrefix, input.TargetURL, input.Enabled)
+	name, domain, pathPrefix, targetUrl, enabled, err := normalizeRouteInput(input.Name, input.Domain, input.PathPrefix, input.TargetUrl, input.Enabled)
 	if err != nil {
 		return model.Route{}, err
 	}
-	route := model.Route{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Domain: domain, PathPrefix: pathPrefix, TargetURL: targetURL, Enabled: enabled, HTTPSEnabled: false, CertType: certTypeManual}
+	route := model.Route{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Domain: domain, PathPrefix: pathPrefix, TargetUrl: targetUrl, Enabled: enabled, HTTPSEnabled: false, CertType: certTypeManual}
 	if err := s.route.CreateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to create route", err)
 	}
@@ -143,13 +143,13 @@ func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string,
 	if input.PathPrefix != nil {
 		route.PathPrefix = strings.TrimSpace(*input.PathPrefix)
 	}
-	if input.TargetURL != nil {
-		route.TargetURL = strings.TrimSpace(*input.TargetURL)
+	if input.TargetUrl != nil {
+		route.TargetUrl = strings.TrimSpace(*input.TargetUrl)
 	}
 	if input.Enabled != nil {
 		route.Enabled = *input.Enabled
 	}
-	if !validRouteFields(route.Name, route.Domain, route.PathPrefix, route.TargetURL) {
+	if !validRouteFields(route.Name, route.Domain, route.PathPrefix, route.TargetUrl) {
 		return model.Route{}, apperror.New(apperror.KindValidation, "Invalid route fields")
 	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
@@ -456,20 +456,20 @@ func (s Service) revokeRouteCertFiles(ctx context.Context, routeName string) err
 	return s.routePublisher.RevokeCertificate(ctx, routeName)
 }
 
-func normalizeRouteInput(name string, domain string, pathPrefix string, targetURL string, enabled bool) (string, string, string, string, bool, error) {
+func normalizeRouteInput(name string, domain string, pathPrefix string, targetUrl string, enabled bool) (string, string, string, string, bool, error) {
 	name = strings.TrimSpace(name)
 	domain = strings.TrimSpace(domain)
 	pathPrefix = strings.TrimSpace(pathPrefix)
-	targetURL = strings.TrimSpace(targetURL)
+	targetUrl = strings.TrimSpace(targetUrl)
 	if pathPrefix == "" {
 		pathPrefix = "/"
 	}
-	if !validRouteFields(name, domain, pathPrefix, targetURL) {
+	if !validRouteFields(name, domain, pathPrefix, targetUrl) {
 		return "", "", "", "", false, apperror.New(apperror.KindValidation, "Invalid route fields")
 	}
-	return name, domain, pathPrefix, targetURL, enabled, nil
+	return name, domain, pathPrefix, targetUrl, enabled, nil
 }
 
-func validRouteFields(name string, domain string, pathPrefix string, targetURL string) bool {
-	return routeNamePattern.MatchString(name) && domain != "" && strings.HasPrefix(pathPrefix, "/") && routeTargetURLPattern.MatchString(targetURL)
+func validRouteFields(name string, domain string, pathPrefix string, targetUrl string) bool {
+	return routeNamePattern.MatchString(name) && domain != "" && strings.HasPrefix(pathPrefix, "/") && routeTargetUrlPattern.MatchString(targetUrl)
 }

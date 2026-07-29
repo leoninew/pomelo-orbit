@@ -38,12 +38,12 @@ func roleCodes(roles []model.Role) []string {
 	return codes
 }
 
-func roleResponses(roles []model.Role, permissionsByRoleID map[string][]string) []userv1.UserRoleResp {
+func roleResponses(roles []model.Role, permissionsByRoleId map[string][]string) []userv1.UserRoleResp {
 	items := make([]userv1.UserRoleResp, 0, len(roles))
 	for _, role := range roles {
 		permissionCodes := []string{}
-		if permissionsByRoleID != nil && permissionsByRoleID[role.Id] != nil {
-			permissionCodes = permissionsByRoleID[role.Id]
+		if permissionsByRoleId != nil && permissionsByRoleId[role.Id] != nil {
+			permissionCodes = permissionsByRoleId[role.Id]
 		}
 		items = append(items, userv1.UserRoleResp{Id: role.Id, Code: role.Code, Name: role.Name, PermissionCodes: permissionCodes})
 	}

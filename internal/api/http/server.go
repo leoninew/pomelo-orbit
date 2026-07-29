@@ -38,7 +38,7 @@ func (s Server) Handler() http.Handler {
 
 func (s Server) registerFallbackRoutes(r *gin.Engine) {
 	r.NoRoute(func(c *gin.Context) {
-		if isAPIPath(c.Request.URL.Path, s.appCfg.Server.ApiPathPrefixes) {
+		if isApiPath(c.Request.URL.Path, s.appCfg.Server.ApiPathPrefixes) {
 			transportresponse.WriteError(c, apperror.New(apperror.KindNotFound, ""))
 			return
 		}
@@ -137,15 +137,15 @@ func (s Server) serveIndexHTML(c *gin.Context, indexPath string) bool {
 	if c.Request.Method == http.MethodHead {
 		return true
 	}
-	_, _ = c.Writer.Write(injectRuntimeConfig(content, s.appCfg.Server.PublicURL))
+	_, _ = c.Writer.Write(injectRuntimeConfig(content, s.appCfg.Server.PublicUrl))
 	return true
 }
 
-func injectRuntimeConfig(content []byte, publicURL string) []byte {
+func injectRuntimeConfig(content []byte, publicUrl string) []byte {
 	configValue := map[string]string{}
-	publicURL = strings.TrimRight(strings.TrimSpace(publicURL), "/")
-	if publicURL != "" {
-		configValue["publicUrl"] = publicURL
+	publicUrl = strings.TrimRight(strings.TrimSpace(publicUrl), "/")
+	if publicUrl != "" {
+		configValue["publicUrl"] = publicUrl
 	}
 	configJSON, err := json.Marshal(configValue)
 	if err != nil {
@@ -167,11 +167,11 @@ func (s Server) Addr() string {
 	return fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
 }
 
-func isAPIPath(requestPath string, prefixes []string) bool {
-	return hasAPIPathPrefix(requestPath, prefixes)
+func isApiPath(requestPath string, prefixes []string) bool {
+	return hasApiPathPrefix(requestPath, prefixes)
 }
 
-func hasAPIPathPrefix(requestPath string, prefixes []string) bool {
+func hasApiPathPrefix(requestPath string, prefixes []string) bool {
 	for _, prefix := range prefixes {
 		if requestPath == prefix || strings.HasPrefix(requestPath, prefix+"/") {
 			return true

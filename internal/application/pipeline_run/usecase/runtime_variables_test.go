@@ -8,7 +8,7 @@ import (
 )
 
 func TestBuildPipelineRunVariablesMergesDefaultsAndProtectsBuiltins(t *testing.T) {
-	repo := model.Repository{Id: "repo-1", Name: "Repo", Code: "real-code", RepositoryURL: "https://example.test/repo.git", VariableOverrides: `[{"name":"IMAGE","value":"repo-image","source":"repository_custom"}]`}
+	repo := model.Repository{Id: "repo-1", Name: "Repo", Code: "real-code", RepositoryUrl: "https://example.test/repo.git", VariableOverrides: `[{"name":"IMAGE","value":"repo-image","source":"repository_custom"}]`}
 	template := model.PipelineTemplate{Id: "template-1", Name: "template", Version: 7, VariableDeclarations: `[{"name":"IMAGE","value":"template-image","source":"template_custom"}]`}
 	snapshot := model.PipelineSnapshot{VariablesSnapshot: `[{"name":"repository_code","source":"template","editable":false},{"name":"IMAGE","default":"stage-image","source":"template_stage","editable":true},{"name":"working_dir","default":".","source":"template_stage","editable":true}]`}
 
@@ -29,7 +29,7 @@ func TestBuildPipelineRunVariablesMergesDefaultsAndProtectsBuiltins(t *testing.T
 }
 
 func TestBuildPipelineRunVariablesKeepsSecretSnapshotValue(t *testing.T) {
-	repo := model.Repository{Id: "repo-1", Name: "Repo", Code: "repo", RepositoryURL: "https://example.test/repo.git"}
+	repo := model.Repository{Id: "repo-1", Name: "Repo", Code: "repo", RepositoryUrl: "https://example.test/repo.git"}
 	template := model.PipelineTemplate{Id: "template-1", Name: "template", Version: 1, VariableDeclarations: `[{"name":"TOKEN","value":"secret-token","secret":true,"source":"template_custom"}]`}
 	snapshot := model.PipelineSnapshot{VariablesSnapshot: `[{"name":"TOKEN","secret":true,"source":"template_custom"}]`}
 

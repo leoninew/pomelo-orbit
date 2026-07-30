@@ -12,7 +12,7 @@
         <span class="text-base font-semibold leading-tight tracking-normal">Pomelo Orbit</span>
         <span
           v-if="runtimeConfig.envLabel"
-          class="text-xs font-medium leading-tight text-amber-600 dark:text-amber-400"
+          class="text-xs leading-tight text-amber-600 dark:text-amber-400"
         >
           {{ runtimeConfig.envLabel }}
         </span>
@@ -35,7 +35,7 @@
           <NavigationMenuLink as-child :active="isActive(item.key)">
             <RouterLink
               :to="item.path"
-              class="flex h-full min-w-24 items-center justify-center border-b-2 px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/20 md:min-w-28 md:px-5"
+              class="flex h-full min-w-24 items-center justify-center border-b-2 px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/20 md:min-w-28 md:px-5"
               :class="
                 isActive(item.key)
                   ? 'border-primary text-primary'
@@ -68,7 +68,7 @@
         @click="toggleLocale"
       >
         <Languages class="size-5" />
-        <span class="text-xs font-semibold leading-none">{{ nextLocaleShortName }}</span>
+        <span class="text-xs leading-none">{{ nextLocaleShortName }}</span>
       </ToolbarButton>
     </ToolbarRoot>
 
@@ -79,7 +79,7 @@
         @click="handleUserMenuOpen"
       >
         <span
-          class="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground"
+          class="flex size-8 items-center justify-center rounded-full bg-primary text-sm text-primary-foreground"
         >
           {{ (authStore.user?.username || 'admin').slice(0, 1).toUpperCase() }}
         </span>
@@ -198,12 +198,11 @@
       </div>
     </div>
     <template #footer>
-      <button class="app-button" @click="closePasswordDialog">
-        {{ t('common.cancel') }}
-      </button>
-      <button class="app-button-primary" :disabled="passwordLoading" @click="handleChangePassword">
-        {{ t('settings.changePassword') }}
-      </button>
+      <AppDialogActions
+        :busy="passwordLoading"
+        @cancel="closePasswordDialog"
+        @confirm="handleChangePassword"
+      />
     </template>
   </AppDialog>
 </template>
@@ -224,6 +223,7 @@
   import { useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
   import { useAuthStore } from '@/stores/auth';
   import { useProjectStore } from '@/stores/project';

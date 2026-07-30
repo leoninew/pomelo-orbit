@@ -9,7 +9,7 @@
       />
       <button class="app-button-primary px-5" @click="openCreateModal">
         <Plus class="size-4" />
-        新建仓库
+        创建
       </button>
     </ToolbarRoot>
 
@@ -68,7 +68,7 @@
     </div>
   </div>
 
-  <AppDialog v-model:open="showCreateModal" title="新建仓库">
+  <AppDialog v-model:open="showCreateModal" title="创建仓库">
     <AppSpinner v-if="modalStatus === 'loading'" class="py-8" />
 
     <div v-else class="space-y-4">
@@ -126,14 +126,12 @@
     </div>
 
     <template #footer>
-      <button class="app-button" @click="showCreateModal = false">取消</button>
-      <button
-        class="app-button-primary"
-        :disabled="operating || modalStatus === 'loading'"
-        @click="handleCreateOk"
-      >
-        创建
-      </button>
+      <AppDialogActions
+        :busy="operating"
+        :confirm-disabled="modalStatus === 'loading'"
+        @cancel="showCreateModal = false"
+        @confirm="handleCreateOk"
+      />
     </template>
   </AppDialog>
 </template>
@@ -145,6 +143,7 @@
   import { credentialApi } from '@/api/credential/credential';
   import { repositoryApi } from '@/api/repository/repository';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';

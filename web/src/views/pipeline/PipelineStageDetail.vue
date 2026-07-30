@@ -10,10 +10,6 @@
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <button v-if="stage" class="app-button-primary h-9 px-3" @click="openEditModal">
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
         <button
           v-if="stage"
           class="app-button h-9 px-3"
@@ -50,6 +46,10 @@
           <h2 class="app-detail-section-title">
             {{ t('buildStageDetail.basicInfo') }}
           </h2>
+          <button class="app-button-primary h-9 px-3" @click="openEditModal">
+            <Pencil class="size-4" />
+            {{ t('common.edit') }}
+          </button>
         </div>
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
@@ -130,7 +130,7 @@
                 <th>{{ t('buildStageDetail.artifactType') }}</th>
                 <th>{{ t('common.name') }}</th>
                 <th>{{ t('buildStageDetail.pathOrImage') }}</th>
-                <th>{{ t('common.operation') }}</th>
+                <th class="w-24">{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -143,13 +143,25 @@
                 </td>
                 <td class="text-foreground">{{ artifact.name }}</td>
                 <td class="text-muted-foreground">{{ artifact.path }}</td>
-                <td>
-                  <div class="flex items-center gap-3">
-                    <button class="app-link" @click="openEditArtifactModal(idx)">
-                      {{ t('common.edit') }}
+                <td class="w-24">
+                  <div class="flex items-center gap-1">
+                    <button
+                      class="app-icon-button"
+                      :aria-label="t('common.edit')"
+                      :disabled="saving"
+                      :title="t('common.edit')"
+                      @click="openEditArtifactModal(idx)"
+                    >
+                      <Pencil class="size-4" />
                     </button>
-                    <button class="app-link-danger" @click="confirmRemoveArtifact(idx)">
-                      {{ t('common.delete') }}
+                    <button
+                      class="app-icon-button"
+                      :aria-label="t('common.delete')"
+                      :disabled="saving"
+                      :title="t('common.delete')"
+                      @click="confirmRemoveArtifact(idx)"
+                    >
+                      <Trash2 class="size-4" />
                     </button>
                   </div>
                 </td>
@@ -193,12 +205,7 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="isEditDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" :disabled="saving" @click="handleSave">
-          {{ t('common.save') }}
-        </button>
+        <AppDialogActions :busy="saving" @cancel="isEditDialogOpen = false" @confirm="handleSave" />
       </template>
     </AppDialog>
 
@@ -219,10 +226,7 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="closeScriptDrawer">{{ t('common.cancel') }}</button>
-        <button class="app-button-primary" :disabled="saving" @click="confirmScript">
-          {{ t('common.save') }}
-        </button>
+        <AppDialogActions :busy="saving" @cancel="closeScriptDrawer" @confirm="confirmScript" />
       </template>
     </AppDrawer>
 
@@ -261,12 +265,11 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="isArtifactDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" :disabled="saving" @click="handleSaveArtifact">
-          {{ artifactForm.isEdit ? t('common.save') : t('common.add') }}
-        </button>
+        <AppDialogActions
+          :busy="saving"
+          @cancel="isArtifactDialogOpen = false"
+          @confirm="handleSaveArtifact"
+        />
       </template>
     </AppDialog>
 
@@ -283,12 +286,12 @@
         }}
       </p>
       <template #footer>
-        <button class="app-button" @click="isDeleteArtifactDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-destructive" :disabled="saving" @click="removeArtifact">
-          {{ t('common.delete') }}
-        </button>
+        <AppDialogActions
+          :busy="saving"
+          variant="destructive"
+          @cancel="isDeleteArtifactDialogOpen = false"
+          @confirm="removeArtifact"
+        />
       </template>
     </AppDialog>
 
@@ -301,12 +304,12 @@
         {{ t('buildStageDetail.deleteStageConfirm', { name: stage?.name ?? '' }) }}
       </p>
       <template #footer>
-        <button class="app-button" @click="isDeleteDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-destructive" :disabled="deleting" @click="handleDelete">
-          {{ t('common.delete') }}
-        </button>
+        <AppDialogActions
+          :busy="deleting"
+          variant="destructive"
+          @cancel="isDeleteDialogOpen = false"
+          @confirm="handleDelete"
+        />
       </template>
     </AppDialog>
   </div>
@@ -319,6 +322,7 @@
   import { useRoute, useRouter } from 'vue-router';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';

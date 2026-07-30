@@ -7,15 +7,6 @@
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="role && canWriteRoles"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openEditModal"
-        >
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
-        <button
-          v-if="role && canWriteRoles"
           class="app-button-danger h-9 px-3"
           :disabled="operating"
           @click="openDeleteModal"
@@ -33,6 +24,15 @@
     <div class="app-surface app-detail-card">
       <div class="app-section-header app-detail-section-header">
         <h2 class="app-detail-section-title">{{ t('roleManagement.basicInfo') }}</h2>
+        <button
+          v-if="role && canWriteRoles"
+          class="app-button-primary h-9 px-3"
+          :disabled="operating"
+          @click="openEditModal"
+        >
+          <Pencil class="size-4" />
+          {{ t('common.edit') }}
+        </button>
       </div>
 
       <AppSpinner v-if="loading" class="px-5 py-10" />
@@ -133,17 +133,12 @@
         </div>
       </form>
       <template #footer>
-        <button class="app-button" :disabled="operating" @click="isEditModalOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          class="app-button-primary"
-          type="submit"
+        <AppDialogActions
+          :busy="operating"
+          confirm-type="submit"
           form="role-edit-form"
-          :disabled="operating"
-        >
-          {{ t('common.save') }}
-        </button>
+          @cancel="isEditModalOpen = false"
+        />
       </template>
     </AppDialog>
 
@@ -173,17 +168,12 @@
         </div>
       </form>
       <template #footer>
-        <button class="app-button" :disabled="operating" @click="isPermissionModalOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          class="app-button-primary"
-          type="submit"
+        <AppDialogActions
+          :busy="operating"
+          confirm-type="submit"
           form="role-permission-form"
-          :disabled="operating"
-        >
-          {{ t('common.save') }}
-        </button>
+          @cancel="isPermissionModalOpen = false"
+        />
       </template>
     </AppDialog>
 
@@ -194,15 +184,15 @@
     >
       <p class="text-sm text-foreground">
         {{ t('roleManagement.deleteConfirm') }}
-        <strong>{{ role?.name }}</strong>
+        <span>{{ role?.name }}</span>
       </p>
       <template #footer>
-        <button class="app-button" :disabled="operating" @click="isDeleteModalOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-danger" :disabled="operating" @click="handleDelete">
-          {{ t('common.delete') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          variant="destructive"
+          @cancel="isDeleteModalOpen = false"
+          @confirm="handleDelete"
+        />
       </template>
     </AppDialog>
   </div>
@@ -216,6 +206,7 @@
   import { roleApi } from '@/api/role/role';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';

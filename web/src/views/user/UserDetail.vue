@@ -13,15 +13,6 @@
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <button
-          v-if="user && canWriteUsers"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openEditModal"
-        >
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
-        <button
           v-if="user && canWriteUsers && user.status === 'enabled'"
           class="app-button-danger h-9 px-3"
           :disabled="operating"
@@ -58,6 +49,15 @@
     <div class="app-surface app-detail-card">
       <div class="app-section-header app-detail-section-header">
         <h2 class="app-detail-section-title">{{ t('userManagement.basicInfo') }}</h2>
+        <button
+          v-if="user && canWriteUsers"
+          class="app-button-primary h-9 px-3"
+          :disabled="operating"
+          @click="openEditModal"
+        >
+          <Pencil class="size-4" />
+          {{ t('common.edit') }}
+        </button>
       </div>
 
       <AppSpinner v-if="loading" class="px-5 py-10" />
@@ -124,7 +124,7 @@
               v-for="role in user.role_items"
               :key="role.id"
               :value="role.id"
-              class="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
+              class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
             >
               {{ role.name }}
             </TabsTrigger>
@@ -187,17 +187,12 @@
         </div>
       </form>
       <template #footer>
-        <button class="app-button" :disabled="operating" @click="isEditModalOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          class="app-button-primary"
-          type="submit"
+        <AppDialogActions
+          :busy="operating"
+          confirm-type="submit"
           form="user-edit-form"
-          :disabled="operating"
-        >
-          {{ t('common.save') }}
-        </button>
+          @cancel="isEditModalOpen = false"
+        />
       </template>
     </AppDialog>
 
@@ -224,17 +219,12 @@
         </div>
       </form>
       <template #footer>
-        <button class="app-button" :disabled="operating" @click="isRoleModalOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          class="app-button-primary"
-          type="submit"
+        <AppDialogActions
+          :busy="operating"
+          confirm-type="submit"
           form="user-role-form"
-          :disabled="operating"
-        >
-          {{ t('common.save') }}
-        </button>
+          @cancel="isRoleModalOpen = false"
+        />
       </template>
     </AppDialog>
 
@@ -245,15 +235,15 @@
     >
       <p class="text-sm text-foreground">
         {{ t('userManagement.disableConfirm') }}
-        <strong>{{ user?.username }}</strong>
+        <span>{{ user?.username }}</span>
       </p>
       <template #footer>
-        <button class="app-button" :disabled="operating" @click="isDisableModalOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-danger" :disabled="operating" @click="handleDisable">
-          {{ t('userManagement.disable') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          variant="destructive"
+          @cancel="isDisableModalOpen = false"
+          @confirm="handleDisable"
+        />
       </template>
     </AppDialog>
 
@@ -264,15 +254,15 @@
     >
       <p class="text-sm text-foreground">
         {{ t('userManagement.deleteConfirm') }}
-        <strong>{{ user?.username }}</strong>
+        <span>{{ user?.username }}</span>
       </p>
       <template #footer>
-        <button class="app-button" :disabled="operating" @click="isDeleteModalOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-danger" :disabled="operating" @click="handleDelete">
-          {{ t('common.delete') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          variant="destructive"
+          @cancel="isDeleteModalOpen = false"
+          @confirm="handleDelete"
+        />
       </template>
     </AppDialog>
   </div>
@@ -289,6 +279,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

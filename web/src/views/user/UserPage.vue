@@ -140,10 +140,12 @@
         </div>
       </form>
       <template #footer>
-        <button class="app-button" @click="isDialogOpen = false">{{ t('common.cancel') }}</button>
-        <button class="app-button-primary" type="submit" form="user-form" :disabled="operating">
-          {{ t('userManagement.create') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          confirm-type="submit"
+          form="user-form"
+          @cancel="isDialogOpen = false"
+        />
       </template>
     </AppDialog>
 
@@ -188,30 +190,27 @@
         </div>
       </form>
       <template #footer>
-        <button class="app-button" @click="isEditDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          class="app-button-primary"
-          type="submit"
+        <AppDialogActions
+          :busy="operating"
+          confirm-type="submit"
           form="user-edit-form"
-          :disabled="operating"
-        >
-          {{ t('common.save') }}
-        </button>
+          @cancel="isEditDialogOpen = false"
+        />
       </template>
     </AppDialog>
 
     <AppDialog v-model:open="confirmDialogOpen" :title="confirmTitle">
       <p class="text-sm text-foreground">
         {{ confirmMessage }}
-        <strong>{{ confirmAction?.user.username }}</strong>
+        <span>{{ confirmAction?.user.username }}</span>
       </p>
       <template #footer>
-        <button class="app-button" @click="confirmAction = null">{{ t('common.cancel') }}</button>
-        <button class="app-button-danger" :disabled="operating" @click="handleConfirm">
-          {{ confirmButtonText }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          variant="destructive"
+          @cancel="confirmAction = null"
+          @confirm="handleConfirm"
+        />
       </template>
     </AppDialog>
   </div>
@@ -225,6 +224,7 @@
   import { userApi } from '@/api/user/user';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';
@@ -272,7 +272,6 @@
   });
   const confirmTitle = computed(() => t('userManagement.disable'));
   const confirmMessage = computed(() => t('userManagement.disableConfirm'));
-  const confirmButtonText = computed(() => t('userManagement.disable'));
 
   function resetForm() {
     form.username = '';

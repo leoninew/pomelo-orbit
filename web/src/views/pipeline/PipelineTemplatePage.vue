@@ -52,7 +52,7 @@
           class="app-surface p-5 transition-colors hover:border-primary"
         >
           <div class="mb-3 flex items-start justify-between gap-4">
-            <h3 class="min-w-0 text-base font-medium">
+            <h3 class="min-w-0 text-base font-semibold">
               <router-link :to="`/pipeline/template/${tpl.id}`" class="app-link block truncate">
                 {{ tpl.name }}
               </router-link>
@@ -165,10 +165,11 @@
       </div>
     </div>
     <template #footer>
-      <button class="app-button" @click="showCreateDialog = false">{{ t('common.cancel') }}</button>
-      <button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
-        {{ t('application.create') }}
-      </button>
+      <AppDialogActions
+        :busy="operating"
+        @cancel="showCreateDialog = false"
+        @confirm="handleCreateOk"
+      />
     </template>
   </AppDialog>
 </template>
@@ -180,6 +181,7 @@
   import { useRouter } from 'vue-router';
   import { pipelineTemplateApi } from '@/api/pipeline/template';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';

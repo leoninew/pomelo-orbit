@@ -16,7 +16,7 @@
       <div class="text-xs text-muted-foreground">
         <p>{{ stage.image }}</p>
       </div>
-      <div v-if="status" class="text-xs font-medium" :style="{ color: textColor }">
+      <div v-if="status" class="text-xs" :style="{ color: textColor }">
         {{ statusText }}
       </div>
     </div>

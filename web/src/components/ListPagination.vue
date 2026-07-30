@@ -25,7 +25,7 @@
           <button
             v-for="page in totalPages"
             :key="page"
-            class="flex size-9 items-center justify-center rounded-lg border text-sm font-medium transition-colors"
+            class="flex size-9 items-center justify-center rounded-lg border text-sm transition-colors"
             :class="
               page === current
                 ? 'border-primary bg-primary text-primary-foreground'
@@ -41,7 +41,7 @@
           <button
             v-for="(page, index) in visiblePages"
             :key="page === -1 ? `ellipsis-${index}` : page"
-            class="flex size-9 items-center justify-center rounded-lg border text-sm font-medium transition-colors"
+            class="flex size-9 items-center justify-center rounded-lg border text-sm transition-colors"
             :class="
               page === current
                 ? 'border-primary bg-primary text-primary-foreground'

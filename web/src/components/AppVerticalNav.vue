@@ -6,7 +6,7 @@
         v-for="branch in items"
         :key="branch.key"
         :to="branch.path"
-        class="flex h-10 shrink-0 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors md:px-0"
+        class="flex h-10 shrink-0 items-center justify-center rounded-md px-3 text-sm transition-colors md:px-0"
         :class="
           isBranchActive(branch)
             ? 'bg-primary/10 text-primary'
@@ -28,7 +28,7 @@
         @update:open="(open) => setOpen(branch.key, open)"
       >
         <CollapsibleTrigger
-          class="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+          class="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
           :class="
             isBranchActive(branch)
               ? 'bg-muted/60 text-foreground'
@@ -49,7 +49,7 @@
               v-for="child in branch.children"
               :key="child.key"
               :to="child.path"
-              class="flex h-9 items-center rounded-md px-2.5 text-sm font-medium transition-colors"
+              class="flex h-9 items-center rounded-md px-2.5 text-sm transition-colors"
               :class="
                 selectedKey === child.key
                   ? 'bg-primary/10 text-primary'

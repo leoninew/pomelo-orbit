@@ -19,8 +19,7 @@
   });
 
   const badgeClass = computed(() => {
-    const base =
-      'inline-flex items-center whitespace-nowrap rounded border px-2 py-0.5 text-xs font-medium';
+    const base = 'inline-flex items-center whitespace-nowrap rounded border px-2 py-0.5 text-xs';
 
     const variants = {
       default: '',

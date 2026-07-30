@@ -124,26 +124,23 @@
       </div>
 
       <template #footer>
-        <button class="app-button" @click="isDialogOpen = false">{{ t('common.cancel') }}</button>
-        <button class="app-button-primary" :disabled="operating" @click="handleSave">
-          {{ editingProject ? t('common.save') : t('project.create') }}
-        </button>
+        <AppDialogActions :busy="operating" @cancel="isDialogOpen = false" @confirm="handleSave" />
       </template>
     </AppDialog>
 
     <AppDialog v-model:open="isDeprecateDialogOpen" :title="t('project.deprecateProject')">
       <p class="text-sm text-foreground">
         {{ t('project.deprecateConfirmPrefix') }}
-        <strong>{{ deprecatingProject?.name }}</strong>
+        <span>{{ deprecatingProject?.name }}</span>
         {{ t('project.deprecateConfirmSuffix') }}
       </p>
       <template #footer>
-        <button class="app-button" @click="isDeprecateDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-danger" :disabled="operating" @click="handleDeprecate">
-          {{ t('project.deprecate') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          variant="destructive"
+          @cancel="isDeprecateDialogOpen = false"
+          @confirm="handleDeprecate"
+        />
       </template>
     </AppDialog>
   </div>
@@ -158,6 +155,7 @@
   import type { ProjectResp } from '@/gen/proto/orbit/v1/project/project';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';

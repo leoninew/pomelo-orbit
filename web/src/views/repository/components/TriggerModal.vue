@@ -26,7 +26,7 @@
     </div>
 
     <div v-if="variableList.length > 0" class="space-y-3">
-      <h4 class="text-base font-medium text-foreground">变量配置</h4>
+      <h4 class="text-base font-semibold text-foreground">变量配置</h4>
       <div v-for="variable in variableList" :key="variable.name" class="space-y-1.5">
         <label class="app-field-label block">
           {{ variable.name }}
@@ -45,10 +45,11 @@
     </div>
 
     <template #footer>
-      <button type="button" class="app-button" @click="isOpen = false">取消</button>
-      <button type="button" :disabled="!canSubmit" class="app-button-primary" @click="handleOk">
-        触发
-      </button>
+      <AppDialogActions
+        :confirm-disabled="!canSubmit"
+        @cancel="isOpen = false"
+        @confirm="handleOk"
+      />
     </template>
   </AppDialog>
 </template>
@@ -56,6 +57,7 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useToast } from '@/composables/useToast';
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';

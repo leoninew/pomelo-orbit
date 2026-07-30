@@ -162,12 +162,11 @@
     </div>
 
     <template #footer>
-      <button class="app-button" @click="isCreateDialogOpen = false">
-        {{ t('common.cancel') }}
-      </button>
-      <button class="app-button-primary" :disabled="operating" @click="handleSave">
-        {{ t('common.add') }}
-      </button>
+      <AppDialogActions
+        :busy="operating"
+        @cancel="isCreateDialogOpen = false"
+        @confirm="handleSave"
+      />
     </template>
   </AppDialog>
 </template>
@@ -181,6 +180,7 @@
   import { routeApi } from '@/api/route/route';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';

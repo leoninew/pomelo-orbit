@@ -7,14 +7,14 @@
   >
     <ToggleGroupItem
       value="list"
-      class="px-3 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+      class="px-3 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
       aria-label="列表视图"
     >
       列表
     </ToggleGroupItem>
     <ToggleGroupItem
       value="dag"
-      class="px-3 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+      class="px-3 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
       aria-label="DAG视图"
     >
       DAG

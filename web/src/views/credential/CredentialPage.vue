@@ -14,7 +14,7 @@
         </button>
         <button class="app-button-primary px-5" @click="openCreateModal">
           <Plus class="size-4" />
-          新建凭据
+          创建
         </button>
       </div>
     </ToolbarRoot>
@@ -72,7 +72,7 @@
 
   <AppDialog
     v-model:open="showCredentialDialog"
-    :title="isEditing ? '编辑凭据' : '新建凭据'"
+    :title="isEditing ? '编辑凭据' : '创建凭据'"
     width-class="w-[min(600px,calc(100vw-32px))]"
   >
     <div class="space-y-4">
@@ -109,10 +109,11 @@
       </div>
     </div>
     <template #footer>
-      <button class="app-button" @click="showCredentialDialog = false">取消</button>
-      <button class="app-button-primary" :disabled="operating" @click="handleModalOk">
-        {{ isEditing ? '保存' : '创建' }}
-      </button>
+      <AppDialogActions
+        :busy="operating"
+        @cancel="showCredentialDialog = false"
+        @confirm="handleModalOk"
+      />
     </template>
   </AppDialog>
 
@@ -123,10 +124,12 @@
   >
     <p class="text-sm text-foreground">确定要删除这个凭据吗？此操作不可恢复。</p>
     <template #footer>
-      <button class="app-button" @click="showDeleteDialog = false">取消</button>
-      <button class="app-button-destructive" :disabled="operating" @click="handleDelete">
-        删除
-      </button>
+      <AppDialogActions
+        :busy="operating"
+        variant="destructive"
+        @cancel="showDeleteDialog = false"
+        @confirm="handleDelete"
+      />
     </template>
   </AppDialog>
 
@@ -169,8 +172,11 @@
       </div>
     </div>
     <template #footer>
-      <button class="app-button" @click="showImportDialog = false">取消</button>
-      <button class="app-button-primary" :disabled="operating" @click="handleImportOk">导入</button>
+      <AppDialogActions
+        :busy="operating"
+        @cancel="showImportDialog = false"
+        @confirm="handleImportOk"
+      />
     </template>
   </AppDialog>
 </template>
@@ -181,6 +187,7 @@
   import { credentialApi } from '@/api/credential/credential';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';

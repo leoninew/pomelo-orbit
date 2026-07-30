@@ -16,10 +16,6 @@
         </DetailHeaderMeta>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <button v-if="routeData" class="app-button-primary h-9 px-3" @click="openEditModal">
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
         <button
           v-if="routeData && !routeData.enabled"
           class="app-button h-9 px-3"
@@ -63,6 +59,15 @@
       <div class="app-surface app-detail-card">
         <div class="app-section-header app-detail-section-header">
           <h2 class="app-detail-section-title">{{ t('route.basicInfo') }}</h2>
+          <button
+            v-if="routeData"
+            class="app-button-primary h-9 px-3"
+            :disabled="operating"
+            @click="openEditModal"
+          >
+            <Pencil class="size-4" />
+            {{ t('common.edit') }}
+          </button>
         </div>
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
@@ -187,12 +192,11 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="isEditDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" :disabled="operating" @click="handleSave">
-          {{ t('common.save') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isEditDialogOpen = false"
+          @confirm="handleSave"
+        />
       </template>
     </AppDialog>
 
@@ -205,12 +209,12 @@
         {{ t('route.deleteConfirm', { domain: routeData?.domain }) }}
       </p>
       <template #footer>
-        <button class="app-button" @click="isDeleteDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-destructive" :disabled="operating" @click="handleDelete">
-          {{ t('common.delete') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          variant="destructive"
+          @cancel="isDeleteDialogOpen = false"
+          @confirm="handleDelete"
+        />
       </template>
     </AppDialog>
   </div>
@@ -226,6 +230,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -286,6 +291,16 @@
   }
 
   function openEditModal() {
+    if (!routeData.value) {
+      return;
+    }
+    Object.assign(form, {
+      name: routeData.value.name,
+      domain: routeData.value.domain,
+      path_prefix: routeData.value.path_prefix,
+      target_url: routeData.value.target_url,
+      enabled: routeData.value.enabled,
+    });
     Object.assign(errors, { domain: '', target_url: '' });
     isEditDialogOpen.value = true;
   }

@@ -54,7 +54,7 @@
               class="flex gap-1 rounded-md border border-border bg-background p-1"
             >
               <button
-                class="rounded px-3 py-1 text-sm font-medium transition-colors"
+                class="rounded px-3 py-1 text-sm transition-colors"
                 :class="
                   stagesView === 'list'
                     ? 'bg-primary text-primary-foreground'
@@ -65,7 +65,7 @@
                 列表
               </button>
               <button
-                class="rounded px-3 py-1 text-sm font-medium transition-colors"
+                class="rounded px-3 py-1 text-sm transition-colors"
                 :class="
                   stagesView === 'dag'
                     ? 'bg-primary text-primary-foreground'

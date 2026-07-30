@@ -20,8 +20,8 @@
 
         <!-- 指标文字 -->
         <div class="flex min-w-0 flex-1 flex-col justify-center gap-2">
-          <p class="text-base font-semibold text-foreground">{{ card.label }}</p>
-          <span class="text-base font-semibold text-foreground">
+          <p class="text-base text-foreground">{{ card.label }}</p>
+          <span class="text-base text-foreground">
             {{ card.value }}
           </span>
           <span class="text-sm text-muted-foreground">{{ card.description }}</span>

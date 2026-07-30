@@ -19,7 +19,12 @@
             <slot name="description" />
           </div>
           <DialogClose as-child>
-            <button type="button" class="app-icon-button shrink-0" aria-label="关闭抽屉">
+            <button
+              type="button"
+              class="app-icon-button shrink-0"
+              :aria-label="t('common.close')"
+              :title="t('common.close')"
+            >
               <X class="size-4" />
             </button>
           </DialogClose>
@@ -38,6 +43,7 @@
 <script setup lang="ts">
   import { X } from 'lucide-vue-next';
   import { computed, useSlots } from 'vue';
+  import { useI18n } from 'vue-i18n';
   import {
     DialogClose,
     DialogContent,
@@ -70,6 +76,7 @@
   }>();
 
   const slots = useSlots();
+  const { t } = useI18n({ useScope: 'global' });
   const openModel = computed({
     get: () => props.open,
     set: (value) => emit('update:open', value),

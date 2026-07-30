@@ -9,7 +9,7 @@
       />
       <button class="app-button-primary px-5" @click="openCreateModal">
         <Plus class="size-4" />
-        新建构建
+        创建
       </button>
     </ToolbarRoot>
 
@@ -73,7 +73,7 @@
 
   <AppDialog
     v-model:open="isModalOpen"
-    title="新建构建"
+    title="创建构建"
     width-class="w-[min(600px,calc(100vw-32px))]"
   >
     <div class="space-y-4">
@@ -106,8 +106,7 @@
     </div>
 
     <template #footer>
-      <button class="app-button" @click="isModalOpen = false">取消</button>
-      <button class="app-button-primary" :disabled="operating" @click="handleModalOk">创建</button>
+      <AppDialogActions :busy="operating" @cancel="isModalOpen = false" @confirm="handleModalOk" />
     </template>
   </AppDialog>
 </template>
@@ -118,6 +117,7 @@
   import { ToolbarRoot } from 'reka-ui';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';

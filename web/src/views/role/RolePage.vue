@@ -121,23 +121,27 @@
         </div>
       </form>
       <template #footer>
-        <button class="app-button" @click="isDialogOpen = false">{{ t('common.cancel') }}</button>
-        <button class="app-button-primary" type="submit" form="role-form" :disabled="operating">
-          {{ editingRole ? t('common.save') : t('roleManagement.create') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          confirm-type="submit"
+          form="role-form"
+          @cancel="isDialogOpen = false"
+        />
       </template>
     </AppDialog>
 
     <AppDialog v-model:open="confirmDialogOpen" :title="t('roleManagement.delete')">
       <p class="text-sm text-foreground">
         {{ t('roleManagement.deleteConfirm') }}
-        <strong>{{ confirmAction?.role.name }}</strong>
+        <span>{{ confirmAction?.role.name }}</span>
       </p>
       <template #footer>
-        <button class="app-button" @click="confirmAction = null">{{ t('common.cancel') }}</button>
-        <button class="app-button-danger" :disabled="operating" @click="handleConfirm">
-          {{ t('common.delete') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          variant="destructive"
+          @cancel="confirmAction = null"
+          @confirm="handleConfirm"
+        />
       </template>
     </AppDialog>
   </div>
@@ -150,6 +154,7 @@
   import { useRouter } from 'vue-router';
   import { roleApi } from '@/api/role/role';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';

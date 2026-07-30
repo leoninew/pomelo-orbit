@@ -9,15 +9,6 @@
           v-if="repository"
           class="app-button-primary h-9 px-3"
           :disabled="operating"
-          @click="openEditDialog"
-        >
-          <Pencil class="size-4" />
-          编辑
-        </button>
-        <button
-          v-if="repository"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
           @click="openTriggerModal"
         >
           <Play class="size-4" />
@@ -45,6 +36,10 @@
       <div class="app-surface app-detail-card">
         <div class="app-section-header app-detail-section-header">
           <h2 class="app-detail-section-title">基本信息</h2>
+          <button class="app-button-primary h-9 px-3" :disabled="operating" @click="openEditDialog">
+            <Pencil class="size-4" />
+            编辑
+          </button>
         </div>
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
@@ -178,8 +173,11 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="isEditDialogOpen = false">取消</button>
-        <button class="app-button-primary" :disabled="operating" @click="handleEditOk">保存</button>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isEditDialogOpen = false"
+          @confirm="handleEditOk"
+        />
       </template>
     </AppDialog>
 
@@ -190,7 +188,7 @@
     >
       <p class="text-sm text-foreground">
         确定要删除仓库「
-        <strong>{{ repository?.name ?? '' }}</strong>
+        <span>{{ repository?.name ?? '' }}</span>
         」吗？此操作不可撤销。
       </p>
       <label class="mt-4 flex cursor-pointer items-center gap-2">
@@ -200,10 +198,12 @@
         </span>
       </label>
       <template #footer>
-        <button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
-        <button class="app-button-destructive" :disabled="operating" @click="handleDeleteOk">
-          删除
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          variant="destructive"
+          @cancel="isDeleteDialogOpen = false"
+          @confirm="handleDeleteOk"
+        />
       </template>
     </AppDialog>
 
@@ -237,10 +237,11 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="isAddVariableDialogOpen = false">取消</button>
-        <button class="app-button-primary" :disabled="operating" @click="handleAddVariableOk">
-          添加
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isAddVariableDialogOpen = false"
+          @confirm="handleAddVariableOk"
+        />
       </template>
     </AppDialog>
 
@@ -265,10 +266,11 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="isEditVariableDialogOpen = false">取消</button>
-        <button class="app-button-primary" :disabled="operating" @click="handleEditVariableOk">
-          保存
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isEditVariableDialogOpen = false"
+          @confirm="handleEditVariableOk"
+        />
       </template>
     </AppDialog>
   </div>
@@ -283,6 +285,7 @@
   import { repositoryApi } from '@/api/repository/repository';
   import { webhookApi } from '@/api/repository/webhook';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

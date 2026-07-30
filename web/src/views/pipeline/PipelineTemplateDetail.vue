@@ -5,10 +5,6 @@
         {{ template?.name || t('pipelineTemplate.detailTitle') }}
       </h1>
       <div class="flex flex-wrap items-center gap-2">
-        <button v-if="template" class="app-button-primary h-9 px-3" @click="openEditInfoModal">
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
         <button
           v-if="template && (isDirty || hasStageUpdates)"
           :disabled="saving"
@@ -53,6 +49,10 @@
           <h2 class="app-detail-section-title">
             {{ t('pipelineTemplate.basicInfo') }}
           </h2>
+          <button class="app-button-primary h-9 px-3" @click="openEditInfoModal">
+            <Pencil class="size-4" />
+            {{ t('common.edit') }}
+          </button>
         </div>
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
@@ -99,7 +99,7 @@
                 <th>{{ t('pipelineTemplate.version') }}</th>
                 <th>{{ t('pipelineTemplate.dependency') }}</th>
                 <th>{{ t('pipelineTemplate.artifact') }}</th>
-                <th>{{ t('common.operation') }}</th>
+                <th class="w-24">{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -131,13 +131,25 @@
                 <td class="text-foreground">
                   {{ stageCache[orch.stage_id]?.artifacts?.length }}
                 </td>
-                <td>
-                  <div class="flex items-center gap-3">
-                    <button class="app-link" @click="openEditOrchModal(idx)">
-                      {{ t('common.edit') }}
+                <td class="w-24">
+                  <div class="flex items-center gap-1">
+                    <button
+                      class="app-icon-button"
+                      :aria-label="t('common.edit')"
+                      :disabled="saving"
+                      :title="t('common.edit')"
+                      @click="openEditOrchModal(idx)"
+                    >
+                      <Pencil class="size-4" />
                     </button>
-                    <button class="app-link-danger" @click="confirmRemoveOrch(idx)">
-                      {{ t('common.remove') }}
+                    <button
+                      class="app-icon-button"
+                      :aria-label="t('common.remove')"
+                      :disabled="saving"
+                      :title="t('common.remove')"
+                      @click="confirmRemoveOrch(idx)"
+                    >
+                      <Trash2 class="size-4" />
                     </button>
                   </div>
                 </td>
@@ -222,10 +234,7 @@
         <textarea v-model="editForm.description" rows="3" class="app-textarea"></textarea>
       </div>
       <template #footer>
-        <button class="app-button" @click="cancelEditInfo">{{ t('common.cancel') }}</button>
-        <button :disabled="saving" class="app-button-primary" @click="handleEditInfoOk">
-          {{ t('common.save') }}
-        </button>
+        <AppDialogActions :busy="saving" @cancel="cancelEditInfo" @confirm="handleEditInfoOk" />
       </template>
     </AppDialog>
 
@@ -258,12 +267,11 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="isAddOrchDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="!addOrchForm.stageId" class="app-button-primary" @click="confirmAddOrch">
-          {{ t('common.add') }}
-        </button>
+        <AppDialogActions
+          :confirm-disabled="!addOrchForm.stageId"
+          @cancel="isAddOrchDialogOpen = false"
+          @confirm="confirmAddOrch"
+        />
       </template>
     </AppDialog>
 
@@ -287,10 +295,7 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="isEditOrchDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" @click="confirmEditOrch">{{ t('common.save') }}</button>
+        <AppDialogActions @cancel="isEditOrchDialogOpen = false" @confirm="confirmEditOrch" />
       </template>
     </AppDialog>
 
@@ -322,16 +327,12 @@
         />
       </div>
       <template #footer>
-        <button class="app-button" @click="isRunDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          :disabled="!runForm.repositoryId || !selectedRepository?.git_credential_id || running"
-          class="app-button-primary"
-          @click="handleRunOk"
-        >
-          {{ t('pipelineTemplate.runPipeline') }}
-        </button>
+        <AppDialogActions
+          :busy="running"
+          :confirm-disabled="!runForm.repositoryId || !selectedRepository?.git_credential_id"
+          @cancel="isRunDialogOpen = false"
+          @confirm="handleRunOk"
+        />
       </template>
     </AppDialog>
 
@@ -349,10 +350,7 @@
         <input v-model="varForm.description" type="text" class="app-input" />
       </div>
       <template #footer>
-        <button class="app-button" @click="isAddVarDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" @click="handleAddVarOk">{{ t('common.add') }}</button>
+        <AppDialogActions @cancel="isAddVarDialogOpen = false" @confirm="handleAddVarOk" />
       </template>
     </AppDialog>
 
@@ -370,10 +368,7 @@
         <input v-model="varForm.description" type="text" class="app-input" />
       </div>
       <template #footer>
-        <button class="app-button" @click="isEditVarDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" @click="handleEditVarOk">{{ t('common.save') }}</button>
+        <AppDialogActions @cancel="isEditVarDialogOpen = false" @confirm="handleEditVarOk" />
       </template>
     </AppDialog>
 
@@ -384,12 +379,12 @@
     >
       <p class="text-sm text-muted-foreground">{{ t('pipelineTemplate.deleteTemplateConfirm') }}</p>
       <template #footer>
-        <button class="app-button" @click="isDeleteDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="deleting" class="app-button-destructive" @click="handleDeleteOk">
-          {{ t('pipelineTemplate.confirmDeleteAction') }}
-        </button>
+        <AppDialogActions
+          :busy="deleting"
+          variant="destructive"
+          @cancel="isDeleteDialogOpen = false"
+          @confirm="handleDeleteOk"
+        />
       </template>
     </AppDialog>
 
@@ -400,12 +395,11 @@
     >
       <p class="text-sm text-muted-foreground">{{ t('pipelineTemplate.removeStageConfirm') }}</p>
       <template #footer>
-        <button class="app-button" @click="isDeleteOrchDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-destructive" @click="removeOrch">
-          {{ t('pipelineTemplate.confirmRemoveAction') }}
-        </button>
+        <AppDialogActions
+          variant="destructive"
+          @cancel="isDeleteOrchDialogOpen = false"
+          @confirm="removeOrch"
+        />
       </template>
     </AppDialog>
 
@@ -418,12 +412,11 @@
         {{ t('pipelineTemplate.deleteVariableConfirm', { name: varToDelete }) }}
       </p>
       <template #footer>
-        <button class="app-button" @click="isDeleteVarDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-destructive" @click="deleteVariable">
-          {{ t('pipelineTemplate.confirmDeleteAction') }}
-        </button>
+        <AppDialogActions
+          variant="destructive"
+          @cancel="isDeleteVarDialogOpen = false"
+          @confirm="deleteVariable"
+        />
       </template>
     </AppDialog>
   </div>
@@ -439,6 +432,7 @@
   import { pipelineTemplateApi } from '@/api/pipeline/template';
   import { repositoryApi } from '@/api/repository/repository';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';

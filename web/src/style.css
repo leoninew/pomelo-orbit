@@ -109,9 +109,12 @@
     @apply flex flex-wrap items-center justify-between gap-3;
   }
 
-  .app-detail-page-title,
-  .app-detail-section-title {
+  .app-detail-page-title {
     @apply text-base font-semibold text-foreground;
+  }
+
+  .app-detail-section-title {
+    @apply text-sm font-semibold text-foreground;
   }
 
   .app-detail-info-grid {
@@ -167,7 +170,7 @@
   }
 
   .app-field-label {
-    @apply text-sm font-medium text-foreground;
+    @apply text-sm text-foreground;
   }
 
   .app-field-error {
@@ -199,7 +202,7 @@
   }
 
   .app-search-button {
-    @apply inline-flex h-full min-w-20 shrink-0 items-center justify-center bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-full min-w-20 shrink-0 items-center justify-center bg-primary px-5 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-textarea {
@@ -207,19 +210,19 @@
   }
 
   .app-button {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 text-sm text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-button-primary {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-button-danger {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-destructive/50 bg-background px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-destructive/50 bg-background px-4 text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-button-destructive {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-destructive bg-destructive px-4 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-destructive bg-destructive px-4 text-sm text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-icon-button {
@@ -303,7 +306,7 @@
   }
 
   .app-data-table th {
-    @apply h-11 whitespace-nowrap px-5 py-2 text-left align-middle text-sm font-medium text-muted-foreground;
+    @apply h-11 whitespace-nowrap px-5 py-2 text-left align-middle text-sm text-muted-foreground;
   }
 
   .app-data-table tbody {

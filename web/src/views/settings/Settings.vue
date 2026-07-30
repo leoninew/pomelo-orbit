@@ -129,12 +129,11 @@
     >
       <p class="text-sm text-muted-foreground">{{ t('settings.resetDialog.description') }}</p>
       <template #footer>
-        <button class="app-button" @click="isResetDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" :disabled="operating" @click="handleReset">
-          {{ t('common.reset') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isResetDialogOpen = false"
+          @confirm="handleReset"
+        />
       </template>
     </AppDialog>
   </div>
@@ -146,6 +145,7 @@
   import { useI18n } from 'vue-i18n';
   import { settingApi } from '@/api/settings/settings';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import SearchControl from '@/components/SearchControl.vue';

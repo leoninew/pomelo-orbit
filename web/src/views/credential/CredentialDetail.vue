@@ -12,15 +12,6 @@
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="credential"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openEditModal"
-        >
-          <Pencil class="size-4" />
-          编辑
-        </button>
-        <button
-          v-if="credential"
           class="app-button h-9 px-3"
           :disabled="operating"
           @click="handleExport"
@@ -47,6 +38,15 @@
     <div class="app-surface app-detail-card">
       <div class="app-section-header app-detail-section-header">
         <h2 class="app-detail-section-title">基本信息</h2>
+        <button
+          v-if="credential"
+          class="app-button-primary h-9 px-3"
+          :disabled="operating"
+          @click="openEditModal"
+        >
+          <Pencil class="size-4" />
+          编辑
+        </button>
       </div>
 
       <AppSpinner v-if="loading" class="px-5 py-10" />
@@ -105,8 +105,11 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="isEditModalOpen = false">取消</button>
-        <button class="app-button-primary" :disabled="operating" @click="handleEditOk">保存</button>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isEditModalOpen = false"
+          @confirm="handleEditOk"
+        />
       </template>
     </AppDialog>
 
@@ -117,10 +120,12 @@
     >
       <p class="text-sm text-foreground">确定删除此凭据？</p>
       <template #footer>
-        <button class="app-button" @click="isDeleteModalOpen = false">取消</button>
-        <button class="app-button-destructive" :disabled="operating" @click="handleDelete">
-          删除
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          variant="destructive"
+          @cancel="isDeleteModalOpen = false"
+          @confirm="handleDelete"
+        />
       </template>
     </AppDialog>
   </div>
@@ -132,6 +137,7 @@
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import SensitiveValue from '@/components/SensitiveValue.vue';

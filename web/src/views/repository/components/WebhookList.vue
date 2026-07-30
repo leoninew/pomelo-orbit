@@ -1,14 +1,15 @@
 <template>
-  <div class="app-surface">
-    <div class="app-section-header flex items-center justify-between">
-      <h3 class="text-base font-semibold text-foreground">Webhook 配置</h3>
+  <div class="app-surface app-detail-card">
+    <div class="app-section-header app-detail-section-header">
+      <h2 class="app-detail-section-title">Webhook 配置</h2>
       <button class="app-button-primary h-9 px-3" @click="openCreateModal">
         <Plus class="size-4" />
         添加 Webhook
       </button>
     </div>
 
-    <div class="overflow-x-auto">
+    <AppEmptyState v-if="webhooks.length === 0" size="compact" />
+    <div v-else class="overflow-x-auto">
       <table class="app-data-table min-w-[960px]">
         <thead>
           <tr>
@@ -17,13 +18,10 @@
             <th>分支过滤</th>
             <th>Webhook URL</th>
             <th>状态</th>
-            <th>操作</th>
+            <th class="w-24">操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="webhooks.length === 0">
-            <td colspan="6" class="text-center text-muted-foreground">暂无 Webhook 配置</td>
-          </tr>
           <tr v-for="wh in webhooks" :key="wh.id">
             <td class="text-foreground">{{ wh.name }}</td>
             <td>
@@ -42,7 +40,12 @@
                     {{ webhookUrl(wh.id) }}
                   </AppBadge>
                 </span>
-                <button class="app-icon-button size-7" title="复制 URL" @click="copyUrl(wh.id)">
+                <button
+                  class="app-icon-button size-7"
+                  aria-label="复制 URL"
+                  title="复制 URL"
+                  @click="copyUrl(wh.id)"
+                >
                   <Copy class="size-3.5" />
                 </button>
               </div>
@@ -52,10 +55,26 @@
                 {{ wh.enabled ? '启用' : '停用' }}
               </AppBadge>
             </td>
-            <td>
-              <div class="flex items-center gap-3">
-                <button class="app-link" @click="openEditModal(wh)">编辑</button>
-                <button class="app-link-danger" @click="handleDelete(wh)">删除</button>
+            <td class="w-24">
+              <div class="flex items-center gap-1">
+                <button
+                  class="app-icon-button"
+                  aria-label="编辑"
+                  :disabled="operating"
+                  title="编辑"
+                  @click="openEditModal(wh)"
+                >
+                  <Pencil class="size-4" />
+                </button>
+                <button
+                  class="app-icon-button"
+                  aria-label="删除"
+                  :disabled="operating"
+                  title="删除"
+                  @click="handleDelete(wh)"
+                >
+                  <Trash2 class="size-4" />
+                </button>
               </div>
             </td>
           </tr>
@@ -130,10 +149,7 @@
         </label>
       </div>
       <template #footer>
-        <button class="app-button" @click="isDialogOpen = false">取消</button>
-        <button class="app-button-primary" :disabled="operating" @click="handleOk">
-          {{ editingWebhook ? '保存' : '添加' }}
-        </button>
+        <AppDialogActions :busy="operating" @cancel="isDialogOpen = false" @confirm="handleOk" />
       </template>
     </AppDialog>
 
@@ -144,22 +160,26 @@
     >
       <p class="text-sm text-muted-foreground">确定删除此 Webhook？此操作不可撤销。</p>
       <template #footer>
-        <button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
-        <button class="app-button-destructive" :disabled="operating" @click="confirmDelete">
-          删除
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          variant="destructive"
+          @cancel="isDeleteDialogOpen = false"
+          @confirm="confirmDelete"
+        />
       </template>
     </AppDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { Copy, Eye, EyeOff, Plus } from 'lucide-vue-next';
+  import { Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-vue-next';
   import { computed, nextTick, reactive, ref } from 'vue';
   import { webhookApi } from '@/api/repository/webhook';
   import AppBadge from '@/components/AppBadge.vue';
   import { buildApiUrl } from '@/config';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
+  import AppEmptyState from '@/components/AppEmptyState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';

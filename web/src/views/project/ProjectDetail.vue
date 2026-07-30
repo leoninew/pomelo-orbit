@@ -15,15 +15,6 @@
         </DetailHeaderMeta>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <button
-          v-if="project"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openEditModal"
-        >
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
         <button class="app-button h-9 px-4" @click="router.push('/projects')">
           <ArrowLeft class="size-4" />
           {{ t('common.back') }}
@@ -34,6 +25,15 @@
     <div class="app-surface app-detail-card">
       <div class="app-section-header app-detail-section-header">
         <h2 class="app-detail-section-title">{{ t('userManagement.basicInfo') }}</h2>
+        <button
+          v-if="project"
+          class="app-button-primary h-9 px-3"
+          :disabled="operating"
+          @click="openEditModal"
+        >
+          <Pencil class="size-4" />
+          {{ t('common.edit') }}
+        </button>
       </div>
 
       <AppSpinner v-if="loading" class="px-5 py-10" />
@@ -88,7 +88,7 @@
               <th>{{ t('common.status') }}</th>
               <th>{{ t('userManagement.authSource') }}</th>
               <th>{{ t('userManagement.lastLoginAt') }}</th>
-              <th class="text-right">{{ t('common.operation') }}</th>
+              <th class="w-16">{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -107,13 +107,15 @@
                 <AppBadge variant="pill">{{ member.auth_source }}</AppBadge>
               </td>
               <td>{{ member.last_login_at ? formatTime(member.last_login_at) : '' }}</td>
-              <td class="text-right">
+              <td class="w-16">
                 <button
-                  class="app-link-danger"
+                  class="app-icon-button"
+                  :aria-label="t('project.removeMember')"
                   :disabled="operating"
+                  :title="t('project.removeMember')"
                   @click="handleRemoveMember(member.id)"
                 >
-                  {{ t('project.removeMember') }}
+                  <Trash2 class="size-4" />
                 </button>
               </td>
             </tr>
@@ -160,17 +162,12 @@
         </div>
       </form>
       <template #footer>
-        <button class="app-button" :disabled="operating" @click="isEditModalOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          class="app-button-primary"
-          type="submit"
+        <AppDialogActions
+          :busy="operating"
+          confirm-type="submit"
           form="project-edit-form"
-          :disabled="operating"
-        >
-          {{ t('common.save') }}
-        </button>
+          @cancel="isEditModalOpen = false"
+        />
       </template>
     </AppDialog>
 
@@ -188,23 +185,19 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" :disabled="operating" @click="isMemberModalOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          class="app-button-primary"
-          :disabled="operating || !selectedUserId"
-          @click="handleAddMember"
-        >
-          {{ t('common.add') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-disabled="!selectedUserId"
+          @cancel="isMemberModalOpen = false"
+          @confirm="handleAddMember"
+        />
       </template>
     </AppDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Pencil, UserPlus } from 'lucide-vue-next';
+  import { ArrowLeft, Pencil, Trash2, UserPlus } from 'lucide-vue-next';
   import { onMounted, reactive, ref, computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
@@ -213,6 +206,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';

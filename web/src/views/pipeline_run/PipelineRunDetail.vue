@@ -349,17 +349,12 @@
     >
       <p class="text-sm text-foreground">{{ t('pipelineRun.cancelConfirm') }}</p>
       <template #footer>
-        <button type="button" class="app-button" @click="isCancelDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          type="button"
-          :disabled="canceling"
-          class="app-button-destructive"
-          @click="handleCancel"
-        >
-          {{ t('common.confirm') }}
-        </button>
+        <AppDialogActions
+          :busy="canceling"
+          variant="destructive"
+          @cancel="isCancelDialogOpen = false"
+          @confirm="handleCancel"
+        />
       </template>
     </AppDialog>
   </div>
@@ -373,6 +368,7 @@
   import { pipelineTemplateApi } from '@/api/pipeline/template';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';

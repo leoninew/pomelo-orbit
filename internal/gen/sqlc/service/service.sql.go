@@ -16,6 +16,7 @@ SELECT COUNT(*)
 FROM service_expose se
 INNER JOIN service s ON s.id = se.service_id
 WHERE s.version_id = ?
+  AND s.status = 'running'
   AND se.component_name = ?
 `
 

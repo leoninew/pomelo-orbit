@@ -281,6 +281,7 @@ export default {
         removeVolumes: '同时删除数据卷',
         domain: '域名',
         port: '端口',
+        pathPrefix: '路径前缀',
       },
       empty: {
         versions: '暂无版本，请先创建版本后再部署',

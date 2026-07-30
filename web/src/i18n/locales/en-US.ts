@@ -288,6 +288,7 @@ export default {
         removeVolumes: 'Also remove volumes',
         domain: 'Domain',
         port: 'Port',
+        pathPrefix: 'Path prefix',
       },
       empty: {
         versions: 'No versions yet. Create a version before deploying.',

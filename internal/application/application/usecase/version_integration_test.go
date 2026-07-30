@@ -272,6 +272,81 @@ func TestVersionComponentRenamePreservesValuesAndUpdatesReferences(t *testing.T)
 	}
 }
 
+func TestVersionComponentRenameOnlyRejectsRunningServiceExposes(t *testing.T) {
+	testCases := []struct {
+		name          string
+		serviceStatus string
+		wantRejected  bool
+	}{
+		{name: "stopped service", serviceStatus: status.ServiceStatusStopped},
+		{name: "faulted service", serviceStatus: status.ServiceStatusFaulted},
+		{name: "running service", serviceStatus: status.ServiceStatusRunning, wantRejected: true},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			service, database, applicationStore := newVersionIntegrationService(t)
+			defer func() { _ = database.Close() }()
+			ctx := context.Background()
+
+			app := model.Application{
+				Id:              idutil.NewId(),
+				Name:            "component-service-reference-" + idutil.NewId(),
+				Code:            "component-service-reference-" + idutil.NewId(),
+				Kind:            status.ApplicationKindStandard,
+				ImagePullPolicy: "missing",
+			}
+			if err := applicationStore.CreateApplication(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			created, err := service.CreateVersion(ctx, versionTestUserId, applicationdto.VersionCreateInput{
+				ApplicationId: app.Id,
+				Label:         "v1",
+				Components: []applicationdto.VersionComponentInput{{
+					Name: "api", Image: "nginx:1.27",
+				}},
+			})
+			if err != nil {
+				t.Fatalf("create version: %v", err)
+			}
+
+			exposedService := model.Service{
+				Id:            idutil.NewId(),
+				ApplicationId: app.Id,
+				InstanceKey:   "default",
+				VersionId:     created.Version.Id,
+				Status:        testCase.serviceStatus,
+			}
+			expose := model.ServiceExpose{
+				Id:            idutil.NewId(),
+				ServiceId:     exposedService.Id,
+				ComponentName: "api",
+				Protocol:      "http",
+				ContainerPort: 80,
+				Access:        "local",
+			}
+			serviceStore := servicerepo.NewRepository(database)
+			if err := serviceStore.CreateServiceWithExposes(ctx, exposedService, []model.ServiceExpose{expose}); err != nil {
+				t.Fatalf("create exposed service: %v", err)
+			}
+			service = New(projectrepo.NewRepository(database), applicationStore, serviceStore)
+
+			_, err = service.UpdateVersionComponentBasic(ctx, versionTestUserId, created.Version.Id, created.Components[0].Id, applicationdto.VersionComponentBasicUpdateInput{
+				Name: "backend", Image: "nginx:1.27", Command: "",
+			})
+			if testCase.wantRejected {
+				if apperror.StatusCode(err) != http.StatusBadRequest {
+					t.Fatalf("expected running service expose to reject rename, got %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("rename referenced by %s service: %v", testCase.serviceStatus, err)
+			}
+		})
+	}
+}
+
 func TestVersionComponentGroupUpdatesPreserveOtherConfiguration(t *testing.T) {
 	service, database, applicationStore := newVersionIntegrationService(t)
 	defer func() { _ = database.Close() }()

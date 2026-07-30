@@ -21,6 +21,13 @@ export interface ServiceResp {
   application_code: string;
   application_kind: string;
   version_label: string;
+  exposes: ServiceExposeResp[];
+  runtime_config: { [key: string]: string };
+}
+
+export interface ServiceResp_RuntimeConfigEntry {
+  key: string;
+  value: string;
 }
 
 export interface ServiceListResp {
@@ -40,6 +47,7 @@ export interface ServiceCreateReq {
   version_id: string;
   instance_key: string;
   runtime_config: { [key: string]: string };
+  exposes: ServiceExposeReq[];
 }
 
 export interface ServiceCreateReq_RuntimeConfigEntry {
@@ -47,22 +55,62 @@ export interface ServiceCreateReq_RuntimeConfigEntry {
   value: string;
 }
 
-export interface ServiceRuntimeConfigReq {
+export interface ServiceConfigReq {
   runtime_config: { [key: string]: string };
+  exposes: ServiceExposeReq[];
 }
 
-export interface ServiceRuntimeConfigReq_RuntimeConfigEntry {
+export interface ServiceConfigReq_RuntimeConfigEntry {
   key: string;
   value: string;
 }
 
-export interface ServiceRuntimeConfigResp {
-  service_id: string;
+export interface ServiceBasicUpdateReq {
   version_id: string;
-  runtime_config: { [key: string]: string };
+  instance_key: string;
 }
 
-export interface ServiceRuntimeConfigResp_RuntimeConfigEntry {
-  key: string;
-  value: string;
+export interface ServiceExposeReq {
+  component_name: string;
+  protocol: string;
+  container_port: number;
+  path_prefix?: string | undefined;
+  access: string;
+  listen_port?: number | undefined;
+}
+
+export interface ServiceExposeResp {
+  id: string;
+  service_id: string;
+  component_name: string;
+  protocol: string;
+  container_port: number;
+  path_prefix?: string | undefined;
+  access: string;
+  listen_port?: number | undefined;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServicePreviewReq {
+}
+
+export interface ServicePreviewResp {
+  compose_yaml: string;
+}
+
+export interface ServiceDeployReq {
+  force_recreate: boolean;
+}
+
+export interface ServiceDeployResp {
+  deployment_id: string;
+  warnings: string[];
+}
+
+export interface ServiceStopReq {
+  remove_volumes: boolean;
+}
+
+export interface ServiceRestartReq {
 }

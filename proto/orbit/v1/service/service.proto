@@ -3,7 +3,7 @@ syntax = "proto3";
 package orbit.v1.service;
 
 message ServiceResp {
-	reserved 5, 13;
+  reserved 5, 13;
 
   string id = 1;
   string application_id = 2;
@@ -17,6 +17,8 @@ message ServiceResp {
   string application_code = 10;
   string application_kind = 11;
   string version_label = 12;
+  repeated ServiceExposeResp exposes = 14;
+  map<string, string> runtime_config = 15;
 }
 
 message ServiceListResp {
@@ -36,14 +38,59 @@ message ServiceCreateReq {
   string version_id = 2;
   string instance_key = 3;
   map<string, string> runtime_config = 4;
+  repeated ServiceExposeReq exposes = 5;
 }
 
-message ServiceRuntimeConfigReq {
-  map<string, string> runtime_config = 1;
+message ServiceConfigReq {
+  reserved 1;
+  map<string, string> runtime_config = 2;
+  repeated ServiceExposeReq exposes = 3;
 }
 
-message ServiceRuntimeConfigResp {
-  string service_id = 1;
-  string version_id = 2;
-  map<string, string> runtime_config = 3;
+message ServiceBasicUpdateReq {
+  string version_id = 1;
+  string instance_key = 2;
 }
+
+message ServiceExposeReq {
+  string component_name = 1;
+  string protocol = 2;
+  int32 container_port = 3;
+  optional string path_prefix = 4;
+  string access = 5;
+  optional int32 listen_port = 6;
+}
+
+message ServiceExposeResp {
+  string id = 1;
+  string service_id = 2;
+  string component_name = 3;
+  string protocol = 4;
+  int32 container_port = 5;
+  optional string path_prefix = 6;
+  string access = 7;
+  optional int32 listen_port = 8;
+  string created_at = 9;
+  string updated_at = 10;
+}
+
+message ServicePreviewReq {}
+
+message ServicePreviewResp {
+  string compose_yaml = 1;
+}
+
+message ServiceDeployReq {
+  bool force_recreate = 1;
+}
+
+message ServiceDeployResp {
+  string deployment_id = 1;
+  repeated string warnings = 2;
+}
+
+message ServiceStopReq {
+  bool remove_volumes = 1;
+}
+
+message ServiceRestartReq {}

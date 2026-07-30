@@ -2,8 +2,11 @@ export default {
   common: {
     confirm: '确定',
     cancel: '取消',
+    close: '关闭',
+    create: '创建',
     delete: '删除',
     edit: '编辑',
+    import: '导入',
     save: '保存',
     search: '搜索',
     clearSearch: '清空搜索',
@@ -11,9 +14,13 @@ export default {
     previousPage: '上一页',
     nextPage: '下一页',
     refresh: '刷新',
+    retry: '重试',
     add: '添加',
     back: '返回',
     copy: '复制',
+    deploy: '部署',
+    stop: '停止',
+    trigger: '触发',
     viewAll: '查看全部',
     loading: '加载中...',
     noData: '暂无数据',
@@ -559,9 +566,13 @@ export default {
       title: '服务详情',
       subtitle: '实例 {instance} · 版本 {version}',
       notFound: '服务不存在或无权访问',
+      saved: '基本信息已保存',
       sections: {
         basic: '基本信息',
         components: '运行状态',
+      },
+      dialog: {
+        editBasic: '编辑服务基本信息',
       },
     },
     runtimeConfig: {
@@ -574,6 +585,11 @@ export default {
       value: '值',
       showValue: '显示运行时配置值',
       hideValue: '隐藏运行时配置值',
+    },
+    exposes: {
+      title: '接入暴露',
+      saved: '接入暴露已保存',
+      loadFailed: '保存接入暴露失败',
     },
     create: {
       title: '创建服务',
@@ -825,6 +841,7 @@ export default {
     openDashboard: '打开 Dashboard',
     serviceCheckHint: '请检查 Traefik 服务是否正常运行',
     retry: '重试',
+    run: '运行',
     fields: {
       name: '名称',
       provider: '提供者',

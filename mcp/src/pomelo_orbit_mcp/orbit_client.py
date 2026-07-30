@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -231,13 +231,6 @@ class OrbitClient:
     async def delete_version(self, version_id: str) -> None:
         await self.request("DELETE", f"/api/version/{version_id}")
 
-    async def preview_version(self, version_id: str, instance_key: str) -> dict[str, Any]:
-        return await self.request(
-            "POST",
-            f"/api/version/{version_id}/preview",
-            json_body={"instance_key": instance_key},
-        )
-
     async def list_application_services(self, application_id: str) -> list[dict[str, Any]]:
         return _items(await self.request("GET", f"/api/application/{application_id}/service"))
 
@@ -250,6 +243,7 @@ class OrbitClient:
         version_id: str,
         instance_key: str,
         runtime_config: Mapping[str, str],
+        exposes: Sequence[Mapping[str, Any]],
     ) -> dict[str, Any]:
         return await self.request(
             "POST",
@@ -259,19 +253,36 @@ class OrbitClient:
                 "version_id": version_id,
                 "instance_key": instance_key,
                 "runtime_config": dict(runtime_config),
+                "exposes": list(exposes),
             },
         )
 
-    async def get_service_runtime_config(self, service_id: str) -> dict[str, Any]:
-        return await self.request("GET", f"/api/service/{service_id}/runtime-config")
-
-    async def update_service_runtime_config(self, service_id: str, runtime_config: Mapping[str, str]) -> dict[str, Any]:
+    async def update_service_configuration(
+        self,
+        service_id: str,
+        runtime_config: Mapping[str, str],
+        exposes: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any]:
         return await self.request(
-            "PUT", f"/api/service/{service_id}/runtime-config", json_body={"runtime_config": dict(runtime_config)}
+            "PUT",
+            f"/api/service/{service_id}/config",
+            json_body={"runtime_config": dict(runtime_config), "exposes": list(exposes)},
         )
 
-    async def deploy_application(self, application_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-        return await self.request("POST", f"/api/application/{application_id}/deploy", json_body=payload)
+    async def update_service_basic(self, service_id: str, version_id: str, instance_key: str) -> dict[str, Any]:
+        return await self.request(
+            "PUT",
+            f"/api/service/{service_id}/basic",
+            json_body={"version_id": version_id, "instance_key": instance_key},
+        )
+
+    async def preview_service(self, service_id: str) -> dict[str, Any]:
+        return await self.request("POST", f"/api/service/{service_id}/preview", json_body={})
+
+    async def deploy_service(self, service_id: str, force_recreate: bool) -> dict[str, Any]:
+        return await self.request(
+            "POST", f"/api/service/{service_id}/deploy", json_body={"force_recreate": force_recreate}
+        )
 
     async def stop_application(self, application_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         return await self.request("POST", f"/api/application/{application_id}/stop", json_body=payload)

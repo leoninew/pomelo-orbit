@@ -49,6 +49,8 @@ make -C mcp run
 
 `orbit_create_gateway` 只创建 Gateway 配置和 Application。`orbit_provision_gateway` 是高层确保型工具：它会唯一复用或创建 `traefik` Gateway、准备 `default` Service、发布当前 Version、部署、等待终态并确认 `traefik` bridge 网络。复用已有 Service 时，不会覆盖 runtime configuration；此时传入非空 `runtime_config` 会失败。
 
+Service 是运行时配置和部署的唯一目标。`orbit_create_service` 必须提交 Version、instance key、runtime configuration 与 exposes；`orbit_update_service_basic` 只修改 Version 和 instance key，`orbit_update_service_configuration` 原子替换 runtime configuration 与 exposes。`orbit_preview_service` 和 `orbit_deploy` 都只接受已保存的 `service_id`。public TCP expose 缺少 Gateway entrypoint 时，`orbit_deploy` 仍会创建 Service deployment 并在响应中返回 warning；它绝不修改或部署 Gateway。必须由操作者显式配置 Gateway 端口并部署 Gateway Service。
+
 `orbit_create_version_component` 向未发布 Version 添加一个仅含名称、镜像、命令和拉取/重启策略的 Component；其余配置通过专用更新工具设置。Version Component 写操作按当前控制面拆分为 `basic`、`runtime`、`ports`、`env`、`mounts`、`dependencies` 与 `advanced`。`orbit_update_version_component_advanced` 保留资源、tmpfs 与 ulimit 的原子全量替换；`orbit_update_version_component_resources`、`orbit_update_version_component_tmpfs`、`orbit_update_version_component_ulimits` 分别只替换一个高级分组，并保留其余已保存配置。`orbit_update_version_component_connectivity` 已移除，Component 请求也不接受 `networks` 字段；修改工具后需重启 stdio MCP session。
 
 `runtime_compose_ps` 和 `verify_deployment` 默认只返回容器/验证摘要。显式传入 `detail=true` 才会返回原始 Compose 或 inspect 诊断数据。`runtime_http_probe` 仅对目标 Compose `ps` 返回的 running component 执行固定 `docker exec ... curl`，不接受任意 Docker 命令、不返回 HTTP body 或容器错误输出。

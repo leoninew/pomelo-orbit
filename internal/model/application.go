@@ -122,17 +122,3 @@ type VersionComponentUlimit struct {
 	Soft int64
 	Hard int64
 }
-
-// VersionExpose is version-scoped protocol/port exposure (no domain).
-type VersionExpose struct {
-	Id            string    `db:"id"`
-	VersionId     string    `db:"version_id"`
-	ComponentName string    `db:"component_name"`
-	Protocol      string    `db:"protocol"`
-	ContainerPort int       `db:"container_port"`
-	PathPrefix    *string   `db:"path_prefix"`
-	Access        string    `db:"access"`      // local | public
-	ListenPort    *int      `db:"listen_port"` // nil/0 → container_port
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
-}

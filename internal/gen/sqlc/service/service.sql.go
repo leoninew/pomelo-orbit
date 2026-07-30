@@ -11,6 +11,26 @@ import (
 	"time"
 )
 
+const countServiceExposesByVersionComponent = `-- name: CountServiceExposesByVersionComponent :one
+SELECT COUNT(*)
+FROM service_expose se
+INNER JOIN service s ON s.id = se.service_id
+WHERE s.version_id = ?
+  AND se.component_name = ?
+`
+
+type CountServiceExposesByVersionComponentParams struct {
+	VersionID     string `db:"version_id"`
+	ComponentName string `db:"component_name"`
+}
+
+func (q *Queries) CountServiceExposesByVersionComponent(ctx context.Context, arg CountServiceExposesByVersionComponentParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countServiceExposesByVersionComponent, arg.VersionID, arg.ComponentName)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countServicesByProject = `-- name: CountServicesByProject :one
 SELECT COUNT(*)
 FROM service s
@@ -63,6 +83,16 @@ func (q *Queries) DeleteService(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteServiceExposes = `-- name: DeleteServiceExposes :exec
+DELETE FROM service_expose
+WHERE service_id = ?
+`
+
+func (q *Queries) DeleteServiceExposes(ctx context.Context, serviceID string) error {
+	_, err := q.db.ExecContext(ctx, deleteServiceExposes, serviceID)
+	return err
+}
+
 const detachDeploymentServiceRefs = `-- name: DetachDeploymentServiceRefs :exec
 UPDATE deployment
 SET service_id = NULL
@@ -99,6 +129,41 @@ func (q *Queries) InsertService(ctx context.Context, arg InsertServiceParams) er
 		arg.VersionID,
 		arg.RuntimeConfigJson,
 		arg.Status,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
+const insertServiceExpose = `-- name: InsertServiceExpose :exec
+INSERT INTO service_expose (
+  id, service_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertServiceExposeParams struct {
+	ID            string         `db:"id"`
+	ServiceID     string         `db:"service_id"`
+	ComponentName string         `db:"component_name"`
+	Protocol      string         `db:"protocol"`
+	ContainerPort int64          `db:"container_port"`
+	PathPrefix    sql.NullString `db:"path_prefix"`
+	Access        string         `db:"access"`
+	ListenPort    sql.NullInt64  `db:"listen_port"`
+	CreatedAt     time.Time      `db:"created_at"`
+	UpdatedAt     time.Time      `db:"updated_at"`
+}
+
+func (q *Queries) InsertServiceExpose(ctx context.Context, arg InsertServiceExposeParams) error {
+	_, err := q.db.ExecContext(ctx, insertServiceExpose,
+		arg.ID,
+		arg.ServiceID,
+		arg.ComponentName,
+		arg.Protocol,
+		arg.ContainerPort,
+		arg.PathPrefix,
+		arg.Access,
+		arg.ListenPort,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -238,6 +303,91 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 	return items, nil
 }
 
+const localServiceExposesByListen = `-- name: LocalServiceExposesByListen :many
+SELECT se.id, se.service_id, se.component_name, se.protocol, se.container_port, se.path_prefix, se.access, se.listen_port, se.created_at, se.updated_at
+FROM service_expose se
+WHERE se.access = 'local'
+  AND COALESCE(se.listen_port, se.container_port) = ?
+ORDER BY se.service_id, se.id
+`
+
+func (q *Queries) LocalServiceExposesByListen(ctx context.Context, listenPort sql.NullInt64) ([]ServiceExpose, error) {
+	rows, err := q.db.QueryContext(ctx, localServiceExposesByListen, listenPort)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ServiceExpose
+	for rows.Next() {
+		var i ServiceExpose
+		if err := rows.Scan(
+			&i.ID,
+			&i.ServiceID,
+			&i.ComponentName,
+			&i.Protocol,
+			&i.ContainerPort,
+			&i.PathPrefix,
+			&i.Access,
+			&i.ListenPort,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const publicTCPServiceExposesByListen = `-- name: PublicTCPServiceExposesByListen :many
+SELECT se.id, se.service_id, se.component_name, se.protocol, se.container_port, se.path_prefix, se.access, se.listen_port, se.created_at, se.updated_at
+FROM service_expose se
+WHERE se.access = 'public'
+  AND se.protocol = 'tcp'
+  AND COALESCE(se.listen_port, se.container_port) = ?
+ORDER BY se.service_id, se.id
+`
+
+func (q *Queries) PublicTCPServiceExposesByListen(ctx context.Context, listenPort sql.NullInt64) ([]ServiceExpose, error) {
+	rows, err := q.db.QueryContext(ctx, publicTCPServiceExposesByListen, listenPort)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ServiceExpose
+	for rows.Next() {
+		var i ServiceExpose
+		if err := rows.Scan(
+			&i.ID,
+			&i.ServiceID,
+			&i.ComponentName,
+			&i.Protocol,
+			&i.ContainerPort,
+			&i.PathPrefix,
+			&i.Access,
+			&i.ListenPort,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const serviceByID = `-- name: ServiceByID :one
 SELECT id, application_id, instance_key, version_id, runtime_config_json, status, created_at, updated_at
 FROM service
@@ -285,6 +435,47 @@ func (q *Queries) ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Ser
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const serviceExposesByService = `-- name: ServiceExposesByService :many
+SELECT id, service_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at
+FROM service_expose
+WHERE service_id = ?
+ORDER BY component_name, protocol, container_port
+`
+
+func (q *Queries) ServiceExposesByService(ctx context.Context, serviceID string) ([]ServiceExpose, error) {
+	rows, err := q.db.QueryContext(ctx, serviceExposesByService, serviceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ServiceExpose
+	for rows.Next() {
+		var i ServiceExpose
+		if err := rows.Scan(
+			&i.ID,
+			&i.ServiceID,
+			&i.ComponentName,
+			&i.Protocol,
+			&i.ContainerPort,
+			&i.PathPrefix,
+			&i.Access,
+			&i.ListenPort,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const serviceIDByKey = `-- name: ServiceIDByKey :one
@@ -392,6 +583,31 @@ func (q *Queries) UpdateServiceAfterDeploy(ctx context.Context, arg UpdateServic
 	_, err := q.db.ExecContext(ctx, updateServiceAfterDeploy,
 		arg.Status,
 		arg.VersionID,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	return err
+}
+
+const updateServiceConfiguration = `-- name: UpdateServiceConfiguration :exec
+UPDATE service
+SET instance_key = ?, version_id = ?, runtime_config_json = ?, updated_at = ?
+WHERE id = ?
+`
+
+type UpdateServiceConfigurationParams struct {
+	InstanceKey       string    `db:"instance_key"`
+	VersionID         string    `db:"version_id"`
+	RuntimeConfigJson string    `db:"runtime_config_json"`
+	UpdatedAt         time.Time `db:"updated_at"`
+	ID                string    `db:"id"`
+}
+
+func (q *Queries) UpdateServiceConfiguration(ctx context.Context, arg UpdateServiceConfigurationParams) error {
+	_, err := q.db.ExecContext(ctx, updateServiceConfiguration,
+		arg.InstanceKey,
+		arg.VersionID,
+		arg.RuntimeConfigJson,
 		arg.UpdatedAt,
 		arg.ID,
 	)

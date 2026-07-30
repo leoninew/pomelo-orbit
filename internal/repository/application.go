@@ -11,7 +11,7 @@ type ApplicationReader interface {
 	Application(ctx context.Context, id string) (model.Application, error)
 }
 
-// ApplicationStore persists applications, versions, components, and exposes.
+// ApplicationStore persists applications, versions, and component specifications.
 type ApplicationStore interface {
 	ApplicationReader
 	ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string, kind string) (Page[model.Application], error)
@@ -29,7 +29,6 @@ type ApplicationStore interface {
 	CountVersionRuntimeRefs(ctx context.Context, versionId string) (int, error)
 	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
 	VersionComponent(ctx context.Context, id string) (model.VersionComponent, error)
-	VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error)
 	ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error
 	CreateVersionComponent(ctx context.Context, component model.VersionComponent) error
 	UpdateVersionComponentBasic(ctx context.Context, component model.VersionComponent, oldName string) error
@@ -40,6 +39,5 @@ type ApplicationStore interface {
 	UpdateVersionComponentDependencies(ctx context.Context, component model.VersionComponent) error
 	UpdateVersionComponentAdvanced(ctx context.Context, component model.VersionComponent) error
 	DeleteVersionComponent(ctx context.Context, component model.VersionComponent) error
-	ReplaceVersionExposes(ctx context.Context, versionId string, exposes []model.VersionExpose) error
-	CreateVersionWithVersionComponentsAndExposes(ctx context.Context, version model.Version, components []model.VersionComponent, exposes []model.VersionExpose) error
+	CreateVersionWithVersionComponents(ctx context.Context, version model.Version, components []model.VersionComponent) error
 }

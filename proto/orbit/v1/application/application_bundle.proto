@@ -24,6 +24,6 @@ message ApplicationImportReq {
   reserved 5;
   optional string version_note = 6;
   repeated VersionComponentReq components = 7;
-  repeated VersionExposeReq exposes = 8;
+  reserved 8;
   optional string kind = 9;
 }

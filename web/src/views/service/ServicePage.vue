@@ -229,52 +229,18 @@
         <p class="text-sm text-muted-foreground">
           {{ deployTargetLabel }}
         </p>
-        <p class="text-sm text-muted-foreground">{{ t('service.deploy.description') }}</p>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('service.fields.instanceKey') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="deployForm.instance_key"
-            type="text"
-            required
-            class="app-input"
-            placeholder="default"
-          />
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('service.fields.version') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <AppSpinner v-if="deployOptionsLoading" class="py-3" />
-          <ComboboxSelect
-            v-else
-            :model-value="deployForm.version_id"
-            :options="versionSelectOptions"
-            :placeholder="t('service.deploy.selectVersion')"
-            width-class="w-full"
-            @update:model-value="handleDeployVersionChange"
-          />
-          <p v-if="deployError" class="app-field-error mt-1 text-xs">{{ deployError }}</p>
-        </div>
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('service.deploy.forceRecreate') }}</span>
         </label>
       </div>
       <template #footer>
-        <button class="app-button" @click="isDeployDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          class="app-button-primary"
-          :disabled="operating || deployOptionsLoading"
-          @click="handleDeployOk"
-        >
-          {{ t('service.actions.deploy') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.deploy')"
+          @cancel="isDeployDialogOpen = false"
+          @confirm="handleDeployOk"
+        />
       </template>
     </AppDialog>
 
@@ -336,12 +302,12 @@
         <p v-if="createError" class="app-field-error text-xs">{{ createError }}</p>
       </div>
       <template #footer>
-        <button class="app-button" @click="isCreateDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
-          {{ t('service.actions.create') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.create')"
+          @cancel="isCreateDialogOpen = false"
+          @confirm="handleCreateOk"
+        />
       </template>
     </AppDialog>
 
@@ -359,12 +325,13 @@
         </label>
       </div>
       <template #footer>
-        <button class="app-button" @click="isStopDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-danger" :disabled="operating" @click="handleStopOk">
-          {{ t('service.actions.stop') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.stop')"
+          variant="destructive"
+          @cancel="isStopDialogOpen = false"
+          @confirm="handleStopOk"
+        />
       </template>
     </AppDialog>
 
@@ -377,12 +344,13 @@
         {{ t('service.delete.confirm', { instance: selectedService?.instance_key || 'default' }) }}
       </p>
       <template #footer>
-        <button class="app-button" @click="isDeleteDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-destructive" :disabled="operating" @click="handleDeleteOk">
-          {{ t('common.delete') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.delete')"
+          variant="destructive"
+          @cancel="isDeleteDialogOpen = false"
+          @confirm="handleDeleteOk"
+        />
       </template>
     </AppDialog>
   </div>
@@ -398,6 +366,7 @@
   import { serviceApi } from '@/api/service/service';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
@@ -432,11 +401,7 @@
   const applications = ref<ApplicationResp[]>([]);
   const versions = ref<VersionResp[]>([]);
   const isDeployDialogOpen = ref(false);
-  const deployOptionsLoading = ref(false);
-  const deployError = ref('');
   const deployForm = reactive({
-    version_id: '',
-    instance_key: 'default',
     force_recreate: false,
   });
   const isStopDialogOpen = ref(false);
@@ -451,13 +416,6 @@
     runtime_config: [] as Array<{ key: string; value: string }>,
   });
 
-  const versionSelectOptions = computed(() =>
-    versions.value.map((version) => ({
-      value: version.id,
-      label: version.label,
-      description: version.status,
-    }))
-  );
   const applicationSelectOptions = computed(() =>
     applications.value.map((application) => ({ value: application.id, label: application.name }))
   );
@@ -494,35 +452,6 @@
       services.value = [];
       pagination.total = 0;
       toast.error(t('service.toast.loadFailed'));
-    }
-  }
-
-  async function loadVersions(service: ServiceResp) {
-    deployOptionsLoading.value = true;
-    try {
-      const resp = await applicationApi.listVersions(service.application_id, { per_page: 100 });
-      versions.value = (resp.items ?? []).filter((version) => version.status === 'published');
-      if (
-        service.version_id &&
-        !versions.value.some((version) => version.id === service.version_id)
-      ) {
-        versions.value = [
-          {
-            id: service.version_id,
-            application_id: service.application_id,
-            label: service.version_label || service.version_id,
-            status: 'published',
-            created_at: '',
-            updated_at: '',
-          } as VersionResp,
-          ...versions.value,
-        ];
-      }
-    } catch (error) {
-      versions.value = [];
-      toast.error(error instanceof Error ? error.message : t('service.toast.deployFailed'));
-    } finally {
-      deployOptionsLoading.value = false;
     }
   }
 
@@ -585,6 +514,7 @@
           version_id: createForm.version_id,
           instance_key: createForm.instance_key.trim(),
           runtime_config,
+          exposes: [],
         });
         isCreateDialogOpen.value = false;
         toast.success(t('service.create.saved'));
@@ -613,18 +543,8 @@
 
   async function openDeployDialog(service: ServiceResp) {
     selectedService.value = service;
-    versions.value = [];
-    deployForm.version_id = service.version_id;
-    deployForm.instance_key = 'default';
     deployForm.force_recreate = false;
-    deployError.value = '';
     isDeployDialogOpen.value = true;
-    await loadVersions(service);
-  }
-
-  function handleDeployVersionChange(value: ComboboxOptionValue) {
-    deployForm.version_id = String(value || '');
-    deployError.value = '';
   }
 
   async function handleDeployOk() {
@@ -632,17 +552,12 @@
     if (!service) {
       return;
     }
-    if (!deployForm.version_id) {
-      deployError.value = t('service.deploy.versionRequired');
-      return;
-    }
     try {
       await executeOp(async () => {
-        const result = await applicationApi.deploy(service.application_id, {
-          version_id: deployForm.version_id,
-          instance_key: deployForm.instance_key,
+        const result = await serviceApi.deploy(service.id, {
           force_recreate: deployForm.force_recreate,
         });
+        for (const warning of result.warnings) toast.error(warning);
         toast.success(t('service.toast.deployQueued'));
         isDeployDialogOpen.value = false;
         if (result.deployment_id) {

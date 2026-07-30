@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	gatewayport "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	runtimeconfig "gitee.com/leoninew/PomeloOrbit-go/internal/common/runtimeconfig"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
@@ -55,7 +54,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	exposes, err := s.executionStore.VersionExposesByVersion(ctx, version.Id)
+	exposes, err := s.executionStore.ServiceExposesByService(ctx, svc.Id)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -64,23 +63,16 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	preparation, err := s.prepareGatewayDeployment(ctx, app, exposes)
+	gateway, err := s.gatewayForDeployment(ctx, app, exposes)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if preparation.RolloutConfig != nil {
-		if err := s.deployGatewayInPlace(ctx, preparation.RolloutConfig, deployment.Id); err != nil {
-			_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
-			return err
-		}
-	}
-
 	if err := s.executionStore.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
 		return err
 	}
 
-	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, svc, preparation.RenderConfig, deployment.Id, opts.ForceRecreate, opts.RuntimeConfig); err != nil {
+	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, svc, gateway, deployment.Id, opts.ForceRecreate, opts.RuntimeConfig); err != nil {
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -117,23 +109,16 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	exposes, err := s.executionStore.VersionExposesByVersion(ctx, version.Id)
+	exposes, err := s.executionStore.ServiceExposesByService(ctx, svc.Id)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	preparation, err := s.prepareGatewayDeployment(ctx, app, exposes)
+	gateway, err := s.gatewayForDeployment(ctx, app, exposes)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if preparation.RolloutConfig != nil {
-		if err := s.deployGatewayInPlace(ctx, preparation.RolloutConfig, deployment.Id); err != nil {
-			_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
-			return err
-		}
-	}
-
 	if err := s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusDeploying); err != nil {
 		return err
 	}
@@ -141,7 +126,7 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		return err
 	}
 
-	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, svc, preparation.RenderConfig, deployment.Id, false, restartOpts.RuntimeConfig); err != nil {
+	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, svc, gateway, deployment.Id, false, restartOpts.RuntimeConfig); err != nil {
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -231,7 +216,7 @@ func (s Service) renderAndDeployWithOptions(
 	app model.Application,
 	version model.Version,
 	components []model.VersionComponent,
-	exposes []model.VersionExpose,
+	exposes []model.ServiceExpose,
 	svc model.Service,
 	gateway *model.GatewayConfig,
 	deploymentId string,
@@ -349,76 +334,4 @@ func (s Service) ensureSingleRuntime(ctx context.Context, app model.Application,
 		return fmt.Errorf("application already has an active runtime (service %s status=%s); single runtime only", svc.Id, svc.Status)
 	}
 	return nil
-}
-
-func (s Service) prepareGatewayDeployment(ctx context.Context, app model.Application, exposes []model.VersionExpose) (gatewayport.DeploymentPreparation, error) {
-	if s.gatewayCoordinator == nil {
-		return gatewayport.DeploymentPreparation{}, fmt.Errorf("gateway deployment coordinator is not configured")
-	}
-	return s.gatewayCoordinator.PrepareDeployment(ctx, app, exposes)
-}
-
-func (s Service) deployGatewayInPlace(ctx context.Context, gateway *model.GatewayConfig, parentDeploymentId string) error {
-	if gateway == nil || s.store == nil {
-		return nil
-	}
-	gwApp, err := s.store.Application(ctx, gateway.ApplicationId)
-	if err != nil {
-		return err
-	}
-	services, err := s.store.ListServicesByApplication(ctx, gwApp.Id)
-	if err != nil {
-		return err
-	}
-	var active *model.Service
-	for i := range services {
-		if isActiveServiceStatus(services[i].Status) || services[i].Status == status.ServiceStatusStopped || services[i].Status == status.ServiceStatusFaulted {
-			// Prefer running/deploying; else last service for env
-			if isActiveServiceStatus(services[i].Status) {
-				active = &services[i]
-				break
-			}
-			if active == nil {
-				active = &services[i]
-			}
-		}
-	}
-	if active == nil {
-		// Gateway not deployed yet: compile only is enough; first gateway deploy will pick ports.
-		return nil
-	}
-	version, err := s.store.Version(ctx, active.VersionId)
-	// After compile, unpublished managed version may be newer; use unpublished if present.
-	versions, listErr := s.store.ListVersions(ctx, gwApp.Id)
-	if listErr == nil {
-		for _, v := range versions {
-			if v.Status == status.VersionStatusUnpublished {
-				version = v
-				break
-			}
-		}
-	}
-	if err != nil && version.Id == "" {
-		return err
-	}
-	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
-	if err != nil {
-		return err
-	}
-	exposes, err := s.store.VersionExposesByVersion(ctx, version.Id)
-	if err != nil {
-		return err
-	}
-	// Mark deploying and roll gateway with force recreate.
-	active.VersionId = version.Id
-	active.Status = status.ServiceStatusDeploying
-	if err := s.store.UpsertService(ctx, *active); err != nil {
-		return err
-	}
-	logId := parentDeploymentId + "-gw"
-	if err := s.renderAndDeployWithOptions(ctx, gwApp, version, components, exposes, *active, gateway, logId, true, cloneRuntimeConfig(active.RuntimeConfig)); err != nil {
-		_ = s.store.UpdateServiceAfterDeploy(ctx, active.Id, status.ServiceStatusFaulted, version.Id)
-		return fmt.Errorf("gateway reconcile deploy failed (business deploy aborted): %w", err)
-	}
-	return s.store.UpdateServiceAfterDeploy(ctx, active.Id, status.ServiceStatusRunning, version.Id)
 }

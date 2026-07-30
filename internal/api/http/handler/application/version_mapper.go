@@ -1,9 +1,6 @@
 package applicationhandler
 
 import (
-	"encoding/json"
-
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
@@ -146,65 +143,21 @@ func componentUlimitInput(items []*applicationv1.ComponentUlimit) []model.Versio
 	return result
 }
 
-func versionExposeInput(req *applicationv1.VersionExposeReq) applicationdto.VersionExposeInput {
-	var listenPort *int
-	if req.ListenPort != nil {
-		v := int(*req.ListenPort)
-		listenPort = &v
-	}
-	return applicationdto.VersionExposeInput{
-		ComponentName: req.ComponentName,
-		Protocol:      req.Protocol,
-		ContainerPort: int(req.ContainerPort),
-		PathPrefix:    req.PathPrefix,
-		Access:        req.Access,
-		ListenPort:    listenPort,
-	}
-}
-
 func versionCreateInput(req *applicationv1.VersionCreateReq) applicationdto.VersionCreateInput {
 	components := make([]applicationdto.VersionComponentInput, 0, len(req.Components))
 	for _, item := range req.Components {
 		components = append(components, versionComponentInput(item))
-	}
-	exposes := make([]applicationdto.VersionExposeInput, 0, len(req.Exposes))
-	for _, item := range req.Exposes {
-		exposes = append(exposes, versionExposeInput(item))
 	}
 	return applicationdto.VersionCreateInput{
 		ApplicationId: req.ApplicationId,
 		Label:         req.Label,
 		Note:          req.Note,
 		Components:    components,
-		Exposes:       exposes,
 	}
 }
 
-// versionUpdateInputFromJSON preserves an explicit empty expose collection.
-func versionUpdateInputFromJSON(data []byte) (applicationdto.VersionUpdateInput, error) {
-	var req applicationv1.VersionUpdateReq
-	if err := codec.UnmarshalProtoJSON(data, &req); err != nil {
-		return applicationdto.VersionUpdateInput{}, err
-	}
-	var present map[string]json.RawMessage
-	if err := json.Unmarshal(data, &present); err != nil {
-		return applicationdto.VersionUpdateInput{}, err
-	}
-	input := applicationdto.VersionUpdateInput{
-		Label: req.Label,
-		Note:  req.Note,
-	}
-	if _, ok := present["exposes"]; ok {
-		exposes := make([]applicationdto.VersionExposeInput, 0, len(req.Exposes))
-		for _, item := range req.Exposes {
-			if item == nil {
-				continue
-			}
-			exposes = append(exposes, versionExposeInput(item))
-		}
-		input.Exposes = &exposes
-	}
-	return input, nil
+func versionUpdateInput(req *applicationv1.VersionUpdateReq) applicationdto.VersionUpdateInput {
+	return applicationdto.VersionUpdateInput{Label: req.Label, Note: req.Note}
 }
 
 func versionResponses(views []applicationdto.VersionView) []applicationv1.VersionResp {
@@ -221,11 +174,6 @@ func versionResponse(view applicationdto.VersionView) applicationv1.VersionResp 
 		item := versionComponentResponse(component)
 		components = append(components, &item)
 	}
-	exposes := make([]*applicationv1.VersionExposeResp, 0, len(view.Exposes))
-	for _, expose := range view.Exposes {
-		item := versionExposeResponse(expose)
-		exposes = append(exposes, &item)
-	}
 	return applicationv1.VersionResp{
 		Id:                   view.Version.Id,
 		ApplicationId:        view.Version.ApplicationId,
@@ -237,7 +185,6 @@ func versionResponse(view applicationdto.VersionView) applicationv1.VersionResp 
 		CreatedAt:            transportresponse.FormatTime(view.Version.CreatedAt),
 		UpdatedAt:            transportresponse.FormatTime(view.Version.UpdatedAt),
 		Components:           components,
-		Exposes:              exposes,
 	}
 }
 
@@ -353,24 +300,4 @@ func int32Value(value *int) *int32 {
 	}
 	converted := int32(*value)
 	return &converted
-}
-
-func versionExposeResponse(expose model.VersionExpose) applicationv1.VersionExposeResp {
-	var listenPort *int32
-	if expose.ListenPort != nil {
-		v := int32(*expose.ListenPort)
-		listenPort = &v
-	}
-	return applicationv1.VersionExposeResp{
-		Id:            expose.Id,
-		VersionId:     expose.VersionId,
-		ComponentName: expose.ComponentName,
-		Protocol:      expose.Protocol,
-		ContainerPort: int32(expose.ContainerPort),
-		PathPrefix:    expose.PathPrefix,
-		CreatedAt:     transportresponse.FormatTime(expose.CreatedAt),
-		UpdatedAt:     transportresponse.FormatTime(expose.UpdatedAt),
-		Access:        expose.Access,
-		ListenPort:    listenPort,
-	}
 }

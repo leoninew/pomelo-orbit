@@ -43,7 +43,12 @@ class ProvisionClient:
         return {"id": version_id, "status": "published"}
 
     async def create_service(
-        self, application_id: str, version_id: str, instance_key: str, runtime_config: dict[str, str]
+        self,
+        application_id: str,
+        version_id: str,
+        instance_key: str,
+        runtime_config: dict[str, str],
+        exposes: list[dict[str, object]],
     ) -> dict[str, str]:
         self.calls.append(
             (
@@ -53,13 +58,27 @@ class ProvisionClient:
                     "version_id": version_id,
                     "instance_key": instance_key,
                     "runtime_config": runtime_config,
+                    "exposes": exposes,
                 },
             )
         )
         return {"id": "service-1", "instance_key": instance_key, "version_id": version_id}
 
-    async def deploy_application(self, application_id: str, payload: dict[str, object]) -> dict[str, str]:
-        self.calls.append(("deploy_application", {"application_id": application_id, "payload": payload}))
+    async def get_service(self, service_id: str) -> dict[str, object]:
+        self.calls.append(("get_service", service_id))
+        return next(service for service in self.services if service["id"] == service_id)
+
+    async def update_service_basic(self, service_id: str, version_id: str, instance_key: str) -> dict[str, object]:
+        self.calls.append(
+            (
+                "update_service_basic",
+                {"service_id": service_id, "version_id": version_id, "instance_key": instance_key},
+            )
+        )
+        return {"id": service_id, "version_id": version_id, "instance_key": instance_key}
+
+    async def deploy_service(self, service_id: str, force_recreate: bool) -> dict[str, str]:
+        self.calls.append(("deploy_service", {"service_id": service_id, "force_recreate": force_recreate}))
         return {"deployment_id": "deployment-1"}
 
     async def wait_deployment(self, deployment_id: str, timeout_seconds: int | None) -> dict[str, object]:
@@ -120,7 +139,7 @@ async def test_provision_gateway_creates_publishes_deploys_and_confirms_network(
         "list_application_services",
         "publish_version",
         "create_service",
-        "deploy_application",
+        "deploy_service",
         "wait_deployment",
     ]
     assert runtime.calls == ["traefik"]

@@ -21,6 +21,13 @@ func (s stores) ListServicesByApplication(ctx context.Context, applicationId str
 	return s.service.ListServicesByApplication(ctx, applicationId)
 }
 
+func (s stores) CountServiceExposesByVersionComponent(ctx context.Context, versionId string, componentName string) (int, error) {
+	if s.service == nil {
+		return 0, nil
+	}
+	return s.service.CountServiceExposesByVersionComponent(ctx, versionId, componentName)
+}
+
 func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
 	return s.project.Project(ctx, id)
 }
@@ -93,10 +100,6 @@ func (s stores) VersionComponent(ctx context.Context, id string) (model.VersionC
 	return s.application.VersionComponent(ctx, id)
 }
 
-func (s stores) VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error) {
-	return s.application.VersionExposesByVersion(ctx, versionId)
-}
-
 func (s stores) ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error {
 	return s.application.ReplaceVersionComponents(ctx, versionId, components)
 }
@@ -137,10 +140,6 @@ func (s stores) DeleteVersionComponent(ctx context.Context, component model.Vers
 	return s.application.DeleteVersionComponent(ctx, component)
 }
 
-func (s stores) ReplaceVersionExposes(ctx context.Context, versionId string, exposes []model.VersionExpose) error {
-	return s.application.ReplaceVersionExposes(ctx, versionId, exposes)
-}
-
-func (s stores) CreateVersionWithVersionComponentsAndExposes(ctx context.Context, version model.Version, components []model.VersionComponent, exposes []model.VersionExpose) error {
-	return s.application.CreateVersionWithVersionComponentsAndExposes(ctx, version, components, exposes)
+func (s stores) CreateVersionWithVersionComponents(ctx context.Context, version model.Version, components []model.VersionComponent) error {
+	return s.application.CreateVersionWithVersionComponents(ctx, version, components)
 }

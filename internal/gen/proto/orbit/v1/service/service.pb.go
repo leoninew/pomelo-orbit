@@ -31,10 +31,12 @@ type ServiceResp struct {
 	CreatedAt     string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     string                 `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// Display labels (filled on project-scoped list; empty on bare app-scoped list).
-	ApplicationName string `protobuf:"bytes,9,opt,name=application_name,json=applicationName,proto3" json:"application_name,omitempty"`
-	ApplicationCode string `protobuf:"bytes,10,opt,name=application_code,json=applicationCode,proto3" json:"application_code,omitempty"`
-	ApplicationKind string `protobuf:"bytes,11,opt,name=application_kind,json=applicationKind,proto3" json:"application_kind,omitempty"`
-	VersionLabel    string `protobuf:"bytes,12,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
+	ApplicationName string               `protobuf:"bytes,9,opt,name=application_name,json=applicationName,proto3" json:"application_name,omitempty"`
+	ApplicationCode string               `protobuf:"bytes,10,opt,name=application_code,json=applicationCode,proto3" json:"application_code,omitempty"`
+	ApplicationKind string               `protobuf:"bytes,11,opt,name=application_kind,json=applicationKind,proto3" json:"application_kind,omitempty"`
+	VersionLabel    string               `protobuf:"bytes,12,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
+	Exposes         []*ServiceExposeResp `protobuf:"bytes,14,rep,name=exposes,proto3" json:"exposes,omitempty"`
+	RuntimeConfig   map[string]string    `protobuf:"bytes,15,rep,name=runtime_config,json=runtimeConfig,proto3" json:"runtime_config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -144,6 +146,20 @@ func (x *ServiceResp) GetVersionLabel() string {
 		return x.VersionLabel
 	}
 	return ""
+}
+
+func (x *ServiceResp) GetExposes() []*ServiceExposeResp {
+	if x != nil {
+		return x.Exposes
+	}
+	return nil
+}
+
+func (x *ServiceResp) GetRuntimeConfig() map[string]string {
+	if x != nil {
+		return x.RuntimeConfig
+	}
+	return nil
 }
 
 type ServiceListResp struct {
@@ -272,6 +288,7 @@ type ServiceCreateReq struct {
 	VersionId     string                 `protobuf:"bytes,2,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
 	InstanceKey   string                 `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
 	RuntimeConfig map[string]string      `protobuf:"bytes,4,rep,name=runtime_config,json=runtimeConfig,proto3" json:"runtime_config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Exposes       []*ServiceExposeReq    `protobuf:"bytes,5,rep,name=exposes,proto3" json:"exposes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -334,27 +351,35 @@ func (x *ServiceCreateReq) GetRuntimeConfig() map[string]string {
 	return nil
 }
 
-type ServiceRuntimeConfigReq struct {
+func (x *ServiceCreateReq) GetExposes() []*ServiceExposeReq {
+	if x != nil {
+		return x.Exposes
+	}
+	return nil
+}
+
+type ServiceConfigReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	RuntimeConfig map[string]string      `protobuf:"bytes,1,rep,name=runtime_config,json=runtimeConfig,proto3" json:"runtime_config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	RuntimeConfig map[string]string      `protobuf:"bytes,2,rep,name=runtime_config,json=runtimeConfig,proto3" json:"runtime_config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Exposes       []*ServiceExposeReq    `protobuf:"bytes,3,rep,name=exposes,proto3" json:"exposes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ServiceRuntimeConfigReq) Reset() {
-	*x = ServiceRuntimeConfigReq{}
+func (x *ServiceConfigReq) Reset() {
+	*x = ServiceConfigReq{}
 	mi := &file_orbit_v1_service_service_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ServiceRuntimeConfigReq) String() string {
+func (x *ServiceConfigReq) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ServiceRuntimeConfigReq) ProtoMessage() {}
+func (*ServiceConfigReq) ProtoMessage() {}
 
-func (x *ServiceRuntimeConfigReq) ProtoReflect() protoreflect.Message {
+func (x *ServiceConfigReq) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_service_service_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -366,41 +391,47 @@ func (x *ServiceRuntimeConfigReq) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ServiceRuntimeConfigReq.ProtoReflect.Descriptor instead.
-func (*ServiceRuntimeConfigReq) Descriptor() ([]byte, []int) {
+// Deprecated: Use ServiceConfigReq.ProtoReflect.Descriptor instead.
+func (*ServiceConfigReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *ServiceRuntimeConfigReq) GetRuntimeConfig() map[string]string {
+func (x *ServiceConfigReq) GetRuntimeConfig() map[string]string {
 	if x != nil {
 		return x.RuntimeConfig
 	}
 	return nil
 }
 
-type ServiceRuntimeConfigResp struct {
+func (x *ServiceConfigReq) GetExposes() []*ServiceExposeReq {
+	if x != nil {
+		return x.Exposes
+	}
+	return nil
+}
+
+type ServiceBasicUpdateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ServiceId     string                 `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
-	VersionId     string                 `protobuf:"bytes,2,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
-	RuntimeConfig map[string]string      `protobuf:"bytes,3,rep,name=runtime_config,json=runtimeConfig,proto3" json:"runtime_config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	VersionId     string                 `protobuf:"bytes,1,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	InstanceKey   string                 `protobuf:"bytes,2,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ServiceRuntimeConfigResp) Reset() {
-	*x = ServiceRuntimeConfigResp{}
+func (x *ServiceBasicUpdateReq) Reset() {
+	*x = ServiceBasicUpdateReq{}
 	mi := &file_orbit_v1_service_service_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ServiceRuntimeConfigResp) String() string {
+func (x *ServiceBasicUpdateReq) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ServiceRuntimeConfigResp) ProtoMessage() {}
+func (*ServiceBasicUpdateReq) ProtoMessage() {}
 
-func (x *ServiceRuntimeConfigResp) ProtoReflect() protoreflect.Message {
+func (x *ServiceBasicUpdateReq) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_service_service_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -412,37 +443,486 @@ func (x *ServiceRuntimeConfigResp) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ServiceRuntimeConfigResp.ProtoReflect.Descriptor instead.
-func (*ServiceRuntimeConfigResp) Descriptor() ([]byte, []int) {
+// Deprecated: Use ServiceBasicUpdateReq.ProtoReflect.Descriptor instead.
+func (*ServiceBasicUpdateReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *ServiceRuntimeConfigResp) GetServiceId() string {
-	if x != nil {
-		return x.ServiceId
-	}
-	return ""
-}
-
-func (x *ServiceRuntimeConfigResp) GetVersionId() string {
+func (x *ServiceBasicUpdateReq) GetVersionId() string {
 	if x != nil {
 		return x.VersionId
 	}
 	return ""
 }
 
-func (x *ServiceRuntimeConfigResp) GetRuntimeConfig() map[string]string {
+func (x *ServiceBasicUpdateReq) GetInstanceKey() string {
 	if x != nil {
-		return x.RuntimeConfig
+		return x.InstanceKey
+	}
+	return ""
+}
+
+type ServiceExposeReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ComponentName string                 `protobuf:"bytes,1,opt,name=component_name,json=componentName,proto3" json:"component_name,omitempty"`
+	Protocol      string                 `protobuf:"bytes,2,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	ContainerPort int32                  `protobuf:"varint,3,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
+	PathPrefix    *string                `protobuf:"bytes,4,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
+	Access        string                 `protobuf:"bytes,5,opt,name=access,proto3" json:"access,omitempty"`
+	ListenPort    *int32                 `protobuf:"varint,6,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceExposeReq) Reset() {
+	*x = ServiceExposeReq{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceExposeReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceExposeReq) ProtoMessage() {}
+
+func (x *ServiceExposeReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceExposeReq.ProtoReflect.Descriptor instead.
+func (*ServiceExposeReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ServiceExposeReq) GetComponentName() string {
+	if x != nil {
+		return x.ComponentName
+	}
+	return ""
+}
+
+func (x *ServiceExposeReq) GetProtocol() string {
+	if x != nil {
+		return x.Protocol
+	}
+	return ""
+}
+
+func (x *ServiceExposeReq) GetContainerPort() int32 {
+	if x != nil {
+		return x.ContainerPort
+	}
+	return 0
+}
+
+func (x *ServiceExposeReq) GetPathPrefix() string {
+	if x != nil && x.PathPrefix != nil {
+		return *x.PathPrefix
+	}
+	return ""
+}
+
+func (x *ServiceExposeReq) GetAccess() string {
+	if x != nil {
+		return x.Access
+	}
+	return ""
+}
+
+func (x *ServiceExposeReq) GetListenPort() int32 {
+	if x != nil && x.ListenPort != nil {
+		return *x.ListenPort
+	}
+	return 0
+}
+
+type ServiceExposeResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ServiceId     string                 `protobuf:"bytes,2,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	ComponentName string                 `protobuf:"bytes,3,opt,name=component_name,json=componentName,proto3" json:"component_name,omitempty"`
+	Protocol      string                 `protobuf:"bytes,4,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	ContainerPort int32                  `protobuf:"varint,5,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
+	PathPrefix    *string                `protobuf:"bytes,6,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
+	Access        string                 `protobuf:"bytes,7,opt,name=access,proto3" json:"access,omitempty"`
+	ListenPort    *int32                 `protobuf:"varint,8,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceExposeResp) Reset() {
+	*x = ServiceExposeResp{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceExposeResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceExposeResp) ProtoMessage() {}
+
+func (x *ServiceExposeResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceExposeResp.ProtoReflect.Descriptor instead.
+func (*ServiceExposeResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ServiceExposeResp) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ServiceExposeResp) GetServiceId() string {
+	if x != nil {
+		return x.ServiceId
+	}
+	return ""
+}
+
+func (x *ServiceExposeResp) GetComponentName() string {
+	if x != nil {
+		return x.ComponentName
+	}
+	return ""
+}
+
+func (x *ServiceExposeResp) GetProtocol() string {
+	if x != nil {
+		return x.Protocol
+	}
+	return ""
+}
+
+func (x *ServiceExposeResp) GetContainerPort() int32 {
+	if x != nil {
+		return x.ContainerPort
+	}
+	return 0
+}
+
+func (x *ServiceExposeResp) GetPathPrefix() string {
+	if x != nil && x.PathPrefix != nil {
+		return *x.PathPrefix
+	}
+	return ""
+}
+
+func (x *ServiceExposeResp) GetAccess() string {
+	if x != nil {
+		return x.Access
+	}
+	return ""
+}
+
+func (x *ServiceExposeResp) GetListenPort() int32 {
+	if x != nil && x.ListenPort != nil {
+		return *x.ListenPort
+	}
+	return 0
+}
+
+func (x *ServiceExposeResp) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *ServiceExposeResp) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+type ServicePreviewReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServicePreviewReq) Reset() {
+	*x = ServicePreviewReq{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServicePreviewReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServicePreviewReq) ProtoMessage() {}
+
+func (x *ServicePreviewReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServicePreviewReq.ProtoReflect.Descriptor instead.
+func (*ServicePreviewReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{8}
+}
+
+type ServicePreviewResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ComposeYaml   string                 `protobuf:"bytes,1,opt,name=compose_yaml,json=composeYaml,proto3" json:"compose_yaml,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServicePreviewResp) Reset() {
+	*x = ServicePreviewResp{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServicePreviewResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServicePreviewResp) ProtoMessage() {}
+
+func (x *ServicePreviewResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServicePreviewResp.ProtoReflect.Descriptor instead.
+func (*ServicePreviewResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ServicePreviewResp) GetComposeYaml() string {
+	if x != nil {
+		return x.ComposeYaml
+	}
+	return ""
+}
+
+type ServiceDeployReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ForceRecreate bool                   `protobuf:"varint,1,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceDeployReq) Reset() {
+	*x = ServiceDeployReq{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceDeployReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceDeployReq) ProtoMessage() {}
+
+func (x *ServiceDeployReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceDeployReq.ProtoReflect.Descriptor instead.
+func (*ServiceDeployReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ServiceDeployReq) GetForceRecreate() bool {
+	if x != nil {
+		return x.ForceRecreate
+	}
+	return false
+}
+
+type ServiceDeployResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DeploymentId  string                 `protobuf:"bytes,1,opt,name=deployment_id,json=deploymentId,proto3" json:"deployment_id,omitempty"`
+	Warnings      []string               `protobuf:"bytes,2,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceDeployResp) Reset() {
+	*x = ServiceDeployResp{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceDeployResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceDeployResp) ProtoMessage() {}
+
+func (x *ServiceDeployResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceDeployResp.ProtoReflect.Descriptor instead.
+func (*ServiceDeployResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ServiceDeployResp) GetDeploymentId() string {
+	if x != nil {
+		return x.DeploymentId
+	}
+	return ""
+}
+
+func (x *ServiceDeployResp) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
 	}
 	return nil
+}
+
+type ServiceStopReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RemoveVolumes bool                   `protobuf:"varint,1,opt,name=remove_volumes,json=removeVolumes,proto3" json:"remove_volumes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceStopReq) Reset() {
+	*x = ServiceStopReq{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceStopReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceStopReq) ProtoMessage() {}
+
+func (x *ServiceStopReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceStopReq.ProtoReflect.Descriptor instead.
+func (*ServiceStopReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ServiceStopReq) GetRemoveVolumes() bool {
+	if x != nil {
+		return x.RemoveVolumes
+	}
+	return false
+}
+
+type ServiceRestartReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceRestartReq) Reset() {
+	*x = ServiceRestartReq{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceRestartReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceRestartReq) ProtoMessage() {}
+
+func (x *ServiceRestartReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceRestartReq.ProtoReflect.Descriptor instead.
+func (*ServiceRestartReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{13}
 }
 
 var File_orbit_v1_service_service_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\x8e\x03\n" +
+	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\xe8\x04\n" +
 	"\vServiceResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12!\n" +
@@ -458,7 +938,12 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x10application_code\x18\n" +
 	" \x01(\tR\x0fapplicationCode\x12)\n" +
 	"\x10application_kind\x18\v \x01(\tR\x0fapplicationKind\x12#\n" +
-	"\rversion_label\x18\f \x01(\tR\fversionLabelJ\x04\b\x05\x10\x06J\x04\b\r\x10\x0e\"F\n" +
+	"\rversion_label\x18\f \x01(\tR\fversionLabel\x12=\n" +
+	"\aexposes\x18\x0e \x03(\v2#.orbit.v1.service.ServiceExposeRespR\aexposes\x12W\n" +
+	"\x0eruntime_config\x18\x0f \x03(\v20.orbit.v1.service.ServiceResp.RuntimeConfigEntryR\rruntimeConfig\x1a@\n" +
+	"\x12RuntimeConfigEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\x05\x10\x06J\x04\b\r\x10\x0e\"F\n" +
 	"\x0fServiceListResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.service.ServiceRespR\x05items\"\xa6\x01\n" +
 	"\x14ServicePaginatedResp\x123\n" +
@@ -466,30 +951,68 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pages\"\x9b\x02\n" +
+	"\x05pages\x18\x05 \x01(\x05R\x05pages\"\xd9\x02\n" +
 	"\x10ServiceCreateReq\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\x02 \x01(\tR\tversionId\x12!\n" +
 	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\x12\\\n" +
-	"\x0eruntime_config\x18\x04 \x03(\v25.orbit.v1.service.ServiceCreateReq.RuntimeConfigEntryR\rruntimeConfig\x1a@\n" +
+	"\x0eruntime_config\x18\x04 \x03(\v25.orbit.v1.service.ServiceCreateReq.RuntimeConfigEntryR\rruntimeConfig\x12<\n" +
+	"\aexposes\x18\x05 \x03(\v2\".orbit.v1.service.ServiceExposeReqR\aexposes\x1a@\n" +
 	"\x12RuntimeConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc0\x01\n" +
-	"\x17ServiceRuntimeConfigReq\x12c\n" +
-	"\x0eruntime_config\x18\x01 \x03(\v2<.orbit.v1.service.ServiceRuntimeConfigReq.RuntimeConfigEntryR\rruntimeConfig\x1a@\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf6\x01\n" +
+	"\x10ServiceConfigReq\x12\\\n" +
+	"\x0eruntime_config\x18\x02 \x03(\v25.orbit.v1.service.ServiceConfigReq.RuntimeConfigEntryR\rruntimeConfig\x12<\n" +
+	"\aexposes\x18\x03 \x03(\v2\".orbit.v1.service.ServiceExposeReqR\aexposes\x1a@\n" +
 	"\x12RuntimeConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x80\x02\n" +
-	"\x18ServiceRuntimeConfigResp\x12\x1d\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\x01\x10\x02\"Y\n" +
+	"\x15ServiceBasicUpdateReq\x12\x1d\n" +
 	"\n" +
-	"service_id\x18\x01 \x01(\tR\tserviceId\x12\x1d\n" +
+	"version_id\x18\x01 \x01(\tR\tversionId\x12!\n" +
+	"\finstance_key\x18\x02 \x01(\tR\vinstanceKey\"\x80\x02\n" +
+	"\x10ServiceExposeReq\x12%\n" +
+	"\x0ecomponent_name\x18\x01 \x01(\tR\rcomponentName\x12\x1a\n" +
+	"\bprotocol\x18\x02 \x01(\tR\bprotocol\x12%\n" +
+	"\x0econtainer_port\x18\x03 \x01(\x05R\rcontainerPort\x12$\n" +
+	"\vpath_prefix\x18\x04 \x01(\tH\x00R\n" +
+	"pathPrefix\x88\x01\x01\x12\x16\n" +
+	"\x06access\x18\x05 \x01(\tR\x06access\x12$\n" +
+	"\vlisten_port\x18\x06 \x01(\x05H\x01R\n" +
+	"listenPort\x88\x01\x01B\x0e\n" +
+	"\f_path_prefixB\x0e\n" +
+	"\f_listen_port\"\xee\x02\n" +
+	"\x11ServiceExposeResp\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x02 \x01(\tR\tversionId\x12d\n" +
-	"\x0eruntime_config\x18\x03 \x03(\v2=.orbit.v1.service.ServiceRuntimeConfigResp.RuntimeConfigEntryR\rruntimeConfig\x1a@\n" +
-	"\x12RuntimeConfigEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xcd\x01\n" +
+	"service_id\x18\x02 \x01(\tR\tserviceId\x12%\n" +
+	"\x0ecomponent_name\x18\x03 \x01(\tR\rcomponentName\x12\x1a\n" +
+	"\bprotocol\x18\x04 \x01(\tR\bprotocol\x12%\n" +
+	"\x0econtainer_port\x18\x05 \x01(\x05R\rcontainerPort\x12$\n" +
+	"\vpath_prefix\x18\x06 \x01(\tH\x00R\n" +
+	"pathPrefix\x88\x01\x01\x12\x16\n" +
+	"\x06access\x18\a \x01(\tR\x06access\x12$\n" +
+	"\vlisten_port\x18\b \x01(\x05H\x01R\n" +
+	"listenPort\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\t \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\n" +
+	" \x01(\tR\tupdatedAtB\x0e\n" +
+	"\f_path_prefixB\x0e\n" +
+	"\f_listen_port\"\x13\n" +
+	"\x11ServicePreviewReq\"7\n" +
+	"\x12ServicePreviewResp\x12!\n" +
+	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"9\n" +
+	"\x10ServiceDeployReq\x12%\n" +
+	"\x0eforce_recreate\x18\x01 \x01(\bR\rforceRecreate\"T\n" +
+	"\x11ServiceDeployResp\x12#\n" +
+	"\rdeployment_id\x18\x01 \x01(\tR\fdeploymentId\x12\x1a\n" +
+	"\bwarnings\x18\x02 \x03(\tR\bwarnings\"7\n" +
+	"\x0eServiceStopReq\x12%\n" +
+	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\"\x13\n" +
+	"\x11ServiceRestartReqB\xcd\x01\n" +
 	"\x14com.orbit.v1.serviceB\fServiceProtoP\x01ZEgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service\xa2\x02\x03OVS\xaa\x02\x10Orbit.V1.Service\xca\x02\x10Orbit\\V1\\Service\xe2\x02\x1cOrbit\\V1\\Service\\GPBMetadata\xea\x02\x12Orbit::V1::Serviceb\x06proto3"
 
 var (
@@ -504,29 +1027,40 @@ func file_orbit_v1_service_service_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_service_service_proto_rawDescData
 }
 
-var file_orbit_v1_service_service_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_orbit_v1_service_service_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_orbit_v1_service_service_proto_goTypes = []any{
-	(*ServiceResp)(nil),              // 0: orbit.v1.service.ServiceResp
-	(*ServiceListResp)(nil),          // 1: orbit.v1.service.ServiceListResp
-	(*ServicePaginatedResp)(nil),     // 2: orbit.v1.service.ServicePaginatedResp
-	(*ServiceCreateReq)(nil),         // 3: orbit.v1.service.ServiceCreateReq
-	(*ServiceRuntimeConfigReq)(nil),  // 4: orbit.v1.service.ServiceRuntimeConfigReq
-	(*ServiceRuntimeConfigResp)(nil), // 5: orbit.v1.service.ServiceRuntimeConfigResp
-	nil,                              // 6: orbit.v1.service.ServiceCreateReq.RuntimeConfigEntry
-	nil,                              // 7: orbit.v1.service.ServiceRuntimeConfigReq.RuntimeConfigEntry
-	nil,                              // 8: orbit.v1.service.ServiceRuntimeConfigResp.RuntimeConfigEntry
+	(*ServiceResp)(nil),           // 0: orbit.v1.service.ServiceResp
+	(*ServiceListResp)(nil),       // 1: orbit.v1.service.ServiceListResp
+	(*ServicePaginatedResp)(nil),  // 2: orbit.v1.service.ServicePaginatedResp
+	(*ServiceCreateReq)(nil),      // 3: orbit.v1.service.ServiceCreateReq
+	(*ServiceConfigReq)(nil),      // 4: orbit.v1.service.ServiceConfigReq
+	(*ServiceBasicUpdateReq)(nil), // 5: orbit.v1.service.ServiceBasicUpdateReq
+	(*ServiceExposeReq)(nil),      // 6: orbit.v1.service.ServiceExposeReq
+	(*ServiceExposeResp)(nil),     // 7: orbit.v1.service.ServiceExposeResp
+	(*ServicePreviewReq)(nil),     // 8: orbit.v1.service.ServicePreviewReq
+	(*ServicePreviewResp)(nil),    // 9: orbit.v1.service.ServicePreviewResp
+	(*ServiceDeployReq)(nil),      // 10: orbit.v1.service.ServiceDeployReq
+	(*ServiceDeployResp)(nil),     // 11: orbit.v1.service.ServiceDeployResp
+	(*ServiceStopReq)(nil),        // 12: orbit.v1.service.ServiceStopReq
+	(*ServiceRestartReq)(nil),     // 13: orbit.v1.service.ServiceRestartReq
+	nil,                           // 14: orbit.v1.service.ServiceResp.RuntimeConfigEntry
+	nil,                           // 15: orbit.v1.service.ServiceCreateReq.RuntimeConfigEntry
+	nil,                           // 16: orbit.v1.service.ServiceConfigReq.RuntimeConfigEntry
 }
 var file_orbit_v1_service_service_proto_depIdxs = []int32{
-	0, // 0: orbit.v1.service.ServiceListResp.items:type_name -> orbit.v1.service.ServiceResp
-	0, // 1: orbit.v1.service.ServicePaginatedResp.items:type_name -> orbit.v1.service.ServiceResp
-	6, // 2: orbit.v1.service.ServiceCreateReq.runtime_config:type_name -> orbit.v1.service.ServiceCreateReq.RuntimeConfigEntry
-	7, // 3: orbit.v1.service.ServiceRuntimeConfigReq.runtime_config:type_name -> orbit.v1.service.ServiceRuntimeConfigReq.RuntimeConfigEntry
-	8, // 4: orbit.v1.service.ServiceRuntimeConfigResp.runtime_config:type_name -> orbit.v1.service.ServiceRuntimeConfigResp.RuntimeConfigEntry
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	7,  // 0: orbit.v1.service.ServiceResp.exposes:type_name -> orbit.v1.service.ServiceExposeResp
+	14, // 1: orbit.v1.service.ServiceResp.runtime_config:type_name -> orbit.v1.service.ServiceResp.RuntimeConfigEntry
+	0,  // 2: orbit.v1.service.ServiceListResp.items:type_name -> orbit.v1.service.ServiceResp
+	0,  // 3: orbit.v1.service.ServicePaginatedResp.items:type_name -> orbit.v1.service.ServiceResp
+	15, // 4: orbit.v1.service.ServiceCreateReq.runtime_config:type_name -> orbit.v1.service.ServiceCreateReq.RuntimeConfigEntry
+	6,  // 5: orbit.v1.service.ServiceCreateReq.exposes:type_name -> orbit.v1.service.ServiceExposeReq
+	16, // 6: orbit.v1.service.ServiceConfigReq.runtime_config:type_name -> orbit.v1.service.ServiceConfigReq.RuntimeConfigEntry
+	6,  // 7: orbit.v1.service.ServiceConfigReq.exposes:type_name -> orbit.v1.service.ServiceExposeReq
+	8,  // [8:8] is the sub-list for method output_type
+	8,  // [8:8] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_service_service_proto_init() }
@@ -534,13 +1068,15 @@ func file_orbit_v1_service_service_proto_init() {
 	if File_orbit_v1_service_service_proto != nil {
 		return
 	}
+	file_orbit_v1_service_service_proto_msgTypes[6].OneofWrappers = []any{}
+	file_orbit_v1_service_service_proto_msgTypes[7].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_service_service_proto_rawDesc), len(file_orbit_v1_service_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

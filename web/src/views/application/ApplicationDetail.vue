@@ -10,10 +10,6 @@
         </DetailHeaderMeta>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <button v-if="application" class="app-button-primary h-9 px-3" @click="openEditModal">
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
         <button v-if="application" class="app-button h-9 px-3" @click="handleExport">
           <Download class="size-4" />
           {{ t('application.detail.actions.export') }}
@@ -43,6 +39,10 @@
           <h2 class="app-detail-section-title">
             {{ t('application.detail.sections.basicInfo') }}
           </h2>
+          <button class="app-button-primary h-9 px-3" @click="openEditModal">
+            <Pencil class="size-4" />
+            {{ t('common.edit') }}
+          </button>
         </div>
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
@@ -146,9 +146,6 @@
                 <router-link :to="`/version/${version.id}`" class="app-link">
                   {{ t('application.view') }}
                 </router-link>
-                <button class="app-link" @click="openPreview(version.id)">
-                  {{ t('application.detail.actions.preview') }}
-                </button>
                 <button class="app-link" @click="openForkModal(version)">
                   {{ t('application.detail.actions.fork') }}
                 </button>
@@ -234,9 +231,6 @@
                 <td class="text-muted-foreground">{{ formatTime(version.created_at) }}</td>
                 <td>
                   <div class="flex flex-wrap items-center gap-3">
-                    <button class="app-link" @click="openPreview(version.id)">
-                      {{ t('application.detail.actions.preview') }}
-                    </button>
                     <button
                       v-if="versionsOnly && version.status === 'unpublished'"
                       class="app-link"
@@ -310,12 +304,12 @@
         <RawValueSelect v-model="editForm.image_pull_policy" :values="imagePullPolicyValues" />
       </div>
       <template #footer>
-        <button class="app-button" @click="isEditDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="operating" class="app-button-primary" @click="handleEditOk">
-          {{ t('common.save') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.save')"
+          @cancel="isEditDialogOpen = false"
+          @confirm="handleEditOk"
+        />
       </template>
     </AppDialog>
 
@@ -340,12 +334,13 @@
         </span>
       </label>
       <template #footer>
-        <button class="app-button" @click="isDeleteDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="operating" class="app-button-destructive" @click="handleDeleteOk">
-          {{ t('common.delete') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.delete')"
+          variant="destructive"
+          @cancel="isDeleteDialogOpen = false"
+          @confirm="handleDeleteOk"
+        />
       </template>
     </AppDialog>
 
@@ -364,16 +359,17 @@
         }}
       </p>
       <template #footer>
-        <button class="app-button" @click="isDeleteVersionDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="operating" class="app-button-destructive" @click="handleDeleteVersionOk">
-          {{ t('common.delete') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.delete')"
+          variant="destructive"
+          @cancel="isDeleteVersionDialogOpen = false"
+          @confirm="handleDeleteVersionOk"
+        />
       </template>
     </AppDialog>
 
-    <!-- 新建版本（仅基本信息） -->
+    <!-- 创建版本（仅基本信息） -->
     <AppDialog
       v-model:open="isVersionDialogOpen"
       :title="t('application.detail.dialog.createVersion')"
@@ -409,12 +405,12 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="isVersionDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="operating" class="app-button-primary" @click="handleVersionCreate">
-          {{ t('common.save') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.create')"
+          @cancel="isVersionDialogOpen = false"
+          @confirm="handleVersionCreate"
+        />
       </template>
     </AppDialog>
 
@@ -439,51 +435,14 @@
         <p v-if="forkLabelError" class="app-field-error mt-1 text-xs">{{ forkLabelError }}</p>
       </div>
       <template #footer>
-        <button class="app-button" @click="isForkDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="operating" class="app-button-primary" @click="handleForkOk">
-          {{ t('application.detail.actions.fork') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.copy')"
+          @cancel="isForkDialogOpen = false"
+          @confirm="handleForkOk"
+        />
       </template>
     </AppDialog>
-
-    <!-- Compose 预览 -->
-    <AppDrawer
-      :open="composePreviewDrawerOpen"
-      :title="t('application.detail.drawer.composePreview')"
-      width-class="w-[min(960px,100vw)]"
-      body-class="min-h-0 flex-1 overflow-hidden p-0"
-      @update:open="handleComposePreviewDrawerOpenChange"
-    >
-      <div class="flex h-full flex-col gap-3 p-6">
-        <p class="text-sm text-muted-foreground">
-          {{ t('application.detail.drawer.composePreviewDescription') }}
-        </p>
-        <div v-if="composePreviewLoading" class="flex flex-1 items-center justify-center">
-          <AppSpinner />
-        </div>
-        <div
-          v-else-if="composePreviewError"
-          class="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-        >
-          {{ composePreviewError }}
-        </div>
-        <div v-else class="min-h-0 flex-1">
-          <MonacoEditor
-            :model-value="composePreviewYaml"
-            language="yaml"
-            height="100%"
-            :readonly="true"
-          />
-        </div>
-      </div>
-      <template #footer>
-        <button class="app-button" @click="composePreviewDrawerOpen = false">
-          {{ t('application.detail.actions.close') }}
-        </button>
-      </template>
-    </AppDrawer>
   </div>
 </template>
 
@@ -503,11 +462,10 @@
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
-  import AppDrawer from '@/components/AppDrawer.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';
-  import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -535,7 +493,6 @@
   const { loading: basicInfoLoading, execute: executeBasicInfo } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
   const { loading: versionListLoading, execute: executeVersionList } = useStatusAsync();
-  const { loading: composePreviewLoading, execute: executeComposePreview } = useStatusAsync();
 
   const application = ref<ApplicationResp>();
   const versions = ref<VersionResp[]>([]);
@@ -552,13 +509,10 @@
   const pendingDeleteVersion = ref<VersionResp | null>(null);
   const isVersionDialogOpen = ref(false);
   const isForkDialogOpen = ref(false);
-  const composePreviewDrawerOpen = ref(false);
   const forkingVersionId = ref('');
   const forkLabel = ref('');
   const forkLabelError = ref('');
   const deleteDir = ref(false);
-  const composePreviewYaml = ref('');
-  const composePreviewError = ref('');
 
   const editForm = reactive({
     name: '',
@@ -730,7 +684,6 @@
           label: versionForm.label.trim(),
           note,
           components: [],
-          exposes: [],
         });
         toast.success(t('application.toast.createVersionSuccess'));
         isVersionDialogOpen.value = false;
@@ -815,31 +768,6 @@
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('application.toast.forkFailed'));
-    }
-  }
-
-  async function openPreview(versionId: string) {
-    composePreviewYaml.value = '';
-    composePreviewError.value = '';
-    composePreviewDrawerOpen.value = true;
-    try {
-      await executeComposePreview(async () => {
-        const { compose_yaml } = await applicationApi.previewVersion(versionId, {
-          instance_key: 'default',
-        });
-        composePreviewYaml.value = compose_yaml;
-      });
-    } catch (error) {
-      composePreviewError.value =
-        error instanceof Error ? error.message : t('application.toast.loadPreviewFailed');
-    }
-  }
-
-  function handleComposePreviewDrawerOpenChange(open: boolean) {
-    composePreviewDrawerOpen.value = open;
-    if (!open) {
-      composePreviewYaml.value = '';
-      composePreviewError.value = '';
     }
   }
 

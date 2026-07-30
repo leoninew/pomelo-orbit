@@ -17,7 +17,7 @@ type RenderInput struct {
 	App            model.Application
 	Version        model.Version
 	Components     []model.VersionComponent
-	Exposes        []model.VersionExpose
+	Exposes        []model.ServiceExpose
 	Service        model.Service
 	Gateway        *model.GatewayConfig // required for public HTTP host / gateway dashboard when domains needed
 	RuntimeConfig  map[string]string    // resolved placeholders for this deploy/preview
@@ -76,7 +76,7 @@ func renderComposeServices(input RenderInput, injectGatewayNetwork bool) (Render
 	if err := validateVersionComponents(input.Components); err != nil {
 		return RenderResult{}, err
 	}
-	if err := validateVersionExposes(input.Exposes, input.Components); err != nil {
+	if err := validateServiceExposes(input.Exposes, input.Components); err != nil {
 		return RenderResult{}, err
 	}
 
@@ -84,7 +84,7 @@ func renderComposeServices(input RenderInput, injectGatewayNetwork bool) (Render
 	var allResolved []ResolvedMount
 	composeVolumes := map[string]any{}
 	for _, component := range input.Components {
-		service, resolved, err := renderVersionComponentService(component, input.App.Code, input.PhysicalSvcDir, input.RuntimeConfig)
+		service, resolved, err := renderVersionComponentService(component, input.App.Code, input.PhysicalSvcDir, input.RuntimeConfig, injectGatewayNetwork)
 		if err != nil {
 			return RenderResult{}, fmt.Errorf("component %s: %w", component.Name, err)
 		}
@@ -232,7 +232,7 @@ func injectExposeOutlets(services map[string]any, input RenderInput) error {
 	return nil
 }
 
-func validateLocalListenConflicts(exposes []model.VersionExpose) error {
+func validateLocalListenConflicts(exposes []model.ServiceExpose) error {
 	seen := map[int]string{}
 	for _, expose := range exposes {
 		if expose.Access != exposeAccessLocal {
@@ -248,7 +248,7 @@ func validateLocalListenConflicts(exposes []model.VersionExpose) error {
 	return nil
 }
 
-func validatePolicyForExposes(gateway *model.GatewayConfig, exposes []model.VersionExpose, app model.Application) error {
+func validatePolicyForExposes(gateway *model.GatewayConfig, exposes []model.ServiceExpose, app model.Application) error {
 	hasPublicHTTP := false
 	hasPublicTCP := false
 	hasPublicTCPWithTLS := false
@@ -299,7 +299,7 @@ func validatePolicyForExposes(gateway *model.GatewayConfig, exposes []model.Vers
 	return nil
 }
 
-func validateHTTPPathConflicts(gateway *model.GatewayConfig, appCode string, exposes []model.VersionExpose) error {
+func validateHTTPPathConflicts(gateway *model.GatewayConfig, appCode string, exposes []model.ServiceExpose) error {
 	host, err := deriveHost(gateway, appCode)
 	if err != nil {
 		return err
@@ -390,7 +390,7 @@ func injectGatewayDashboardLabels(services map[string]any, input RenderInput) er
 	return nil
 }
 
-func buildTraefikLabels(routerName string, expose model.VersionExpose, input RenderInput, host string) ([]string, error) {
+func buildTraefikLabels(routerName string, expose model.ServiceExpose, input RenderInput, host string) ([]string, error) {
 	labels := []string{"traefik.enable=true"}
 	if input.Gateway == nil {
 		return nil, fmt.Errorf("gateway config required for public expose labels")
@@ -526,7 +526,7 @@ func validateVersionComponents(components []model.VersionComponent) error {
 	return nil
 }
 
-func validateVersionExposes(exposes []model.VersionExpose, components []model.VersionComponent) error {
+func validateServiceExposes(exposes []model.ServiceExpose, components []model.VersionComponent) error {
 	names := make(map[string]struct{}, len(components))
 	for _, c := range components {
 		names[c.Name] = struct{}{}
@@ -554,10 +554,8 @@ func validateVersionExposes(exposes []model.VersionExpose, components []model.Ve
 		if protocol == "tcp" && ptrString(expose.PathPrefix) != "" {
 			return fmt.Errorf("path_prefix is only allowed for http expose")
 		}
-		if expose.ListenPort != nil && *expose.ListenPort != 0 {
-			if *expose.ListenPort < 1 || *expose.ListenPort > 65535 {
-				return fmt.Errorf("expose listen_port out of range")
-			}
+		if expose.ListenPort != nil && (*expose.ListenPort < 1 || *expose.ListenPort > 65535) {
+			return fmt.Errorf("expose listen_port out of range")
 		}
 		key := exposeKey(name, protocol, expose.ContainerPort)
 		if _, ok := seen[key]; ok {
@@ -573,6 +571,7 @@ func renderVersionComponentService(
 	appCode string,
 	physicalServiceDir string,
 	runtime map[string]string,
+	publishComponentPorts bool,
 ) (map[string]any, []ResolvedMount, error) {
 	service := map[string]any{
 		"image":          component.Image,
@@ -588,7 +587,7 @@ func renderVersionComponentService(
 	if err := applyComponentRuntimeFields(service, component); err != nil {
 		return nil, nil, err
 	}
-	if len(component.Ports) > 0 {
+	if publishComponentPorts && len(component.Ports) > 0 {
 		ports := make([]string, 0, len(component.Ports))
 		for _, port := range component.Ports {
 			ports = append(ports, fmt.Sprintf("%d:%d", port.HostPort, port.ContainerPort))

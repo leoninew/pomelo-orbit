@@ -10,18 +10,25 @@ import (
 )
 
 type Querier interface {
+	CountServiceExposesByVersionComponent(ctx context.Context, arg CountServiceExposesByVersionComponentParams) (int64, error)
 	CountServicesByProject(ctx context.Context, arg CountServicesByProjectParams) (int64, error)
 	DeleteService(ctx context.Context, id string) error
+	DeleteServiceExposes(ctx context.Context, serviceID string) error
 	DetachDeploymentServiceRefs(ctx context.Context, serviceID sql.NullString) error
 	InsertService(ctx context.Context, arg InsertServiceParams) error
+	InsertServiceExpose(ctx context.Context, arg InsertServiceExposeParams) error
 	ListServicesByApplication(ctx context.Context, applicationID string) ([]Service, error)
 	ListServicesByProject(ctx context.Context, arg ListServicesByProjectParams) ([]ListServicesByProjectRow, error)
+	LocalServiceExposesByListen(ctx context.Context, listenPort sql.NullInt64) ([]ServiceExpose, error)
+	PublicTCPServiceExposesByListen(ctx context.Context, listenPort sql.NullInt64) ([]ServiceExpose, error)
 	ServiceByID(ctx context.Context, id string) (Service, error)
 	ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Service, error)
+	ServiceExposesByService(ctx context.Context, serviceID string) ([]ServiceExpose, error)
 	ServiceIDByKey(ctx context.Context, arg ServiceIDByKeyParams) (string, error)
 	ServiceListItemByID(ctx context.Context, id string) (ServiceListItemByIDRow, error)
 	UpdateService(ctx context.Context, arg UpdateServiceParams) error
 	UpdateServiceAfterDeploy(ctx context.Context, arg UpdateServiceAfterDeployParams) error
+	UpdateServiceConfiguration(ctx context.Context, arg UpdateServiceConfigurationParams) error
 	UpdateServiceRuntimeConfig(ctx context.Context, arg UpdateServiceRuntimeConfigParams) error
 	UpdateServiceStatus(ctx context.Context, arg UpdateServiceStatusParams) error
 }

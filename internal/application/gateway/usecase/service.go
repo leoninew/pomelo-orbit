@@ -139,12 +139,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 		_ = s.application.DeleteApplication(ctx, app.Id)
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway config", err)
 	}
-	tcpListens, err := s.ActivePublicTCPListens(ctx, "")
-	if err != nil {
-		_ = s.application.DeleteApplication(ctx, app.Id)
-		return gatewaydto.GatewayView{}, err
-	}
-	if _, err := s.CompileGatewayToVersion(ctx, app, cfg, tcpListens...); err != nil {
+	if _, err := s.CompileGatewayToVersion(ctx, app, cfg); err != nil {
 		_ = s.application.DeleteApplication(ctx, app.Id)
 		return gatewaydto.GatewayView{}, err
 	}
@@ -250,11 +245,7 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 	if err := s.config.UpsertGatewayConfig(ctx, cfg); err != nil {
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to update gateway config", err)
 	}
-	tcpListens, err := s.ActivePublicTCPListens(ctx, "")
-	if err != nil {
-		return gatewaydto.GatewayView{}, err
-	}
-	if _, err := s.CompileGatewayToVersion(ctx, app, cfg, tcpListens...); err != nil {
+	if _, err := s.CompileGatewayToVersion(ctx, app, cfg); err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
 	return s.GatewayForUser(ctx, userId, applicationId)
@@ -438,7 +429,7 @@ func validGatewayEntrypoint(name string) bool {
 	}
 }
 
-func buildGatewayExposureItem(app model.Application, expose model.VersionExpose, gateway *model.GatewayConfig) (gatewaydto.GatewayExposureItem, error) {
+func buildGatewayExposureItem(app model.Application, expose model.ServiceExpose, gateway *model.GatewayConfig) (gatewaydto.GatewayExposureItem, error) {
 	internal, err := runtimeName(app.Code, expose.ComponentName)
 	if err != nil {
 		return gatewaydto.GatewayExposureItem{}, apperror.New(apperror.KindValidation, err.Error())
@@ -498,7 +489,7 @@ func (s Service) listActiveGatewayExposures(ctx context.Context, gateway *model.
 			if !isActiveServiceStatus(service.Status) {
 				continue
 			}
-			exposes, err := s.application.VersionExposesByVersion(ctx, service.VersionId)
+			exposes, err := s.service.ServiceExposesByService(ctx, service.Id)
 			if err != nil {
 				return nil, apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
 			}

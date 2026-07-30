@@ -69,17 +69,8 @@ func (s stores) CountVersionRuntimeRefs(ctx context.Context, versionId string) (
 func (s stores) VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error) {
 	return s.application.VersionComponentsByVersion(ctx, versionId)
 }
-func (s stores) VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error) {
-	return s.application.VersionExposesByVersion(ctx, versionId)
-}
 func (s stores) ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error {
 	return s.application.ReplaceVersionComponents(ctx, versionId, components)
-}
-func (s stores) ReplaceVersionExposes(ctx context.Context, versionId string, exposes []model.VersionExpose) error {
-	return s.application.ReplaceVersionExposes(ctx, versionId, exposes)
-}
-func (s stores) CreateVersionWithVersionComponentsAndExposes(ctx context.Context, version model.Version, components []model.VersionComponent, exposes []model.VersionExpose) error {
-	return s.application.CreateVersionWithVersionComponentsAndExposes(ctx, version, components, exposes)
 }
 
 func (s stores) ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error) {
@@ -96,6 +87,9 @@ func (s stores) ServiceByKey(ctx context.Context, applicationId string, instance
 }
 func (s stores) Service(ctx context.Context, id string) (model.Service, error) {
 	return s.service.Service(ctx, id)
+}
+func (s stores) ServiceExposesByService(ctx context.Context, serviceId string) ([]model.ServiceExpose, error) {
+	return s.service.ServiceExposesByService(ctx, serviceId)
 }
 func (s stores) UpsertService(ctx context.Context, svc model.Service) error {
 	return s.service.UpsertService(ctx, svc)

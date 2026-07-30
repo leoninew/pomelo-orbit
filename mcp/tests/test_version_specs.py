@@ -5,6 +5,7 @@ from pomelo_orbit_mcp.version_specs import (
     Healthcheck,
     LogicalMount,
     ResourceSpec,
+    ServiceExpose,
     TmpfsSpec,
     UlimitSpec,
     VersionComponent,
@@ -18,10 +19,9 @@ from pomelo_orbit_mcp.version_specs import (
     VersionComponentResourcesUpdate,
     VersionComponentTmpfsUpdate,
     VersionComponentUlimitsUpdate,
-    VersionExpose,
+    service_expose_payload,
     version_component_create_payload,
     version_component_payload,
-    version_expose_payload,
 )
 
 
@@ -73,8 +73,8 @@ def test_version_component_create_payload_contains_only_basic_fields() -> None:
     }
 
 
-def test_version_expose_payload_uses_api_field_names() -> None:
-    expose = VersionExpose(
+def test_service_expose_payload_uses_api_field_names() -> None:
+    expose = ServiceExpose(
         component_name="ragflow-cpu",
         protocol="http",
         container_port=80,
@@ -82,7 +82,7 @@ def test_version_expose_payload_uses_api_field_names() -> None:
         listen_port=9380,
     )
 
-    assert version_expose_payload(expose) == {
+    assert service_expose_payload(expose) == {
         "component_name": "ragflow-cpu",
         "protocol": "http",
         "container_port": 80,

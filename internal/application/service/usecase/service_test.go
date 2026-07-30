@@ -97,12 +97,36 @@ func (f *deleteServiceStoreFake) Service(_ context.Context, _ string) (model.Ser
 	return f.item.Service(), nil
 }
 
+func (f *deleteServiceStoreFake) ServiceExposesByService(_ context.Context, _ string) ([]model.ServiceExpose, error) {
+	return nil, nil
+}
+
+func (f *deleteServiceStoreFake) LocalServiceExposesByListen(_ context.Context, _ int) ([]model.ServiceExpose, error) {
+	return nil, nil
+}
+
+func (f *deleteServiceStoreFake) PublicTCPServiceExposesByListen(_ context.Context, _ int) ([]model.ServiceExpose, error) {
+	return nil, nil
+}
+
+func (f *deleteServiceStoreFake) CountServiceExposesByVersionComponent(_ context.Context, _, _ string) (int, error) {
+	return 0, nil
+}
+
 func (f *deleteServiceStoreFake) DeleteService(_ context.Context, id string) error {
 	f.deletedId = id
 	return nil
 }
 
 func (f *deleteServiceStoreFake) UpsertService(_ context.Context, _ model.Service) error { return nil }
+
+func (f *deleteServiceStoreFake) CreateServiceWithExposes(_ context.Context, _ model.Service, _ []model.ServiceExpose) error {
+	return nil
+}
+
+func (f *deleteServiceStoreFake) UpdateServiceConfiguration(_ context.Context, _ model.Service, _ []model.ServiceExpose) error {
+	return nil
+}
 
 func (f *deleteServiceStoreFake) UpdateServiceRuntimeConfig(_ context.Context, _ string, _ map[string]string) error {
 	return nil

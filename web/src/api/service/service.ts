@@ -1,8 +1,12 @@
 import type {
+  ServiceConfigReq,
+  ServiceBasicUpdateReq,
+  ServiceDeployReq,
+  ServiceDeployResp,
   ServicePaginatedResp,
+  ServicePreviewResp,
   ServiceResp,
   ServiceCreateReq,
-  ServiceRuntimeConfigResp,
 } from '@/gen/proto/orbit/v1/service/service';
 import request from '@/utils/request';
 
@@ -30,14 +34,19 @@ export const serviceApi = {
     return request.delete(`/api/service/${id}`);
   },
 
-  getRuntimeConfig(id: string): Promise<ServiceRuntimeConfigResp> {
-    return request.get(`/api/service/${id}/runtime-config`);
+  updateConfiguration(id: string, payload: ServiceConfigReq): Promise<ServiceResp> {
+    return request.put(`/api/service/${id}/config`, payload);
   },
 
-  updateRuntimeConfig(
-    id: string,
-    runtime_config: Record<string, string>
-  ): Promise<ServiceRuntimeConfigResp> {
-    return request.put(`/api/service/${id}/runtime-config`, { runtime_config });
+  updateBasic(id: string, payload: ServiceBasicUpdateReq): Promise<ServiceResp> {
+    return request.put(`/api/service/${id}/basic`, payload);
+  },
+
+  preview(id: string): Promise<ServicePreviewResp> {
+    return request.post(`/api/service/${id}/preview`, {});
+  },
+
+  deploy(id: string, payload: ServiceDeployReq): Promise<ServiceDeployResp> {
+    return request.post(`/api/service/${id}/deploy`, payload);
   },
 };

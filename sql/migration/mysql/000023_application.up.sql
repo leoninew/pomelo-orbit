@@ -1,5 +1,5 @@
 -- Domain: application
--- Tables: application, version, version_component, version_expose
+-- Tables: application, version, version_component
 -- Ref: docs/analyze/20260724-domain-split-consensus-共识.md
 
 CREATE TABLE IF NOT EXISTS application (
@@ -151,20 +151,4 @@ CREATE TABLE IF NOT EXISTS version_component_ulimit (
     UNIQUE KEY uq_version_component_ulimit_position (component_id, position),
     CONSTRAINT fk_version_component_ulimit_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_version_component_ulimit_position CHECK (position >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS version_expose (
-    id VARCHAR(26) PRIMARY KEY,
-    version_id VARCHAR(26) NOT NULL,
-    component_name VARCHAR(255) NOT NULL,
-    protocol VARCHAR(16) NOT NULL,
-    container_port INT NOT NULL,
-    path_prefix VARCHAR(512) NULL,
-    access VARCHAR(16) NOT NULL DEFAULT 'public',
-    listen_port INT NULL,
-    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    UNIQUE KEY uq_version_expose_key (version_id, component_name, protocol, container_port),
-    KEY idx_version_expose_version (version_id),
-    CONSTRAINT fk_version_expose_version FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

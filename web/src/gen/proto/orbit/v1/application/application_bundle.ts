@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 import type { ServiceResp } from "../service/service";
-import type { VersionComponentReq, VersionExposeReq, VersionResp } from "./version";
+import type { VersionComponentReq, VersionResp } from "./version";
 
 export const protobufPackage = "orbit.v1.application";
 
@@ -28,6 +28,5 @@ export interface ApplicationImportReq {
   version_label: string;
   version_note?: string | undefined;
   components: VersionComponentReq[];
-  exposes: VersionExposeReq[];
   kind?: string | undefined;
 }

@@ -5,6 +5,7 @@ import "gitee.com/leoninew/PomeloOrbit-go/internal/model"
 // ServiceView is the runtime binding for an application instance, with display labels.
 type ServiceView struct {
 	Service         model.Service
+	Exposes         []model.ServiceExpose
 	ApplicationName string
 	ApplicationCode string
 	ApplicationKind string
@@ -31,11 +32,24 @@ type ServiceCreateInput struct {
 	VersionId     string
 	InstanceKey   string
 	RuntimeConfig map[string]string
+	Exposes       []ServiceExposeInput
 }
 
-// RuntimeConfigView is the stored Service configuration, not a container snapshot.
-type RuntimeConfigView struct {
-	ServiceId     string
-	VersionId     string
+type ServiceConfigInput struct {
 	RuntimeConfig map[string]string
+	Exposes       []ServiceExposeInput
+}
+
+type ServiceBasicUpdateInput struct {
+	VersionId   string
+	InstanceKey string
+}
+
+type ServiceExposeInput struct {
+	ComponentName string
+	Protocol      string
+	ContainerPort int
+	PathPrefix    *string
+	Access        string
+	ListenPort    *int
 }

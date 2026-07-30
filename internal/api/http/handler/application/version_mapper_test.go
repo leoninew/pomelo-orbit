@@ -28,33 +28,14 @@ func TestVersionComponentCreateInputUsesBasicFieldsOnly(t *testing.T) {
 	}
 }
 
-func TestVersionUpdateInputFromJSONClearsEmptyExposes(t *testing.T) {
-	body := []byte(`{
-		"label":"v1",
-		"exposes":[]
-	}`)
-	input, err := versionUpdateInputFromJSON(body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if input.Exposes == nil {
-		t.Fatal("expected exposes pointer set so empty list replaces existing rows")
-	}
-	if len(*input.Exposes) != 0 {
-		t.Fatalf("expected empty exposes, got %d", len(*input.Exposes))
-	}
-}
-
-func TestVersionUpdateInputFromJSONOmitsMissingExposes(t *testing.T) {
-	body := []byte(`{"label":"v2"}`)
-	input, err := versionUpdateInputFromJSON(body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if input.Exposes != nil {
-		t.Fatal("missing exposes key must leave collection unchanged (nil)")
-	}
+func TestVersionUpdateInputMapsMetadata(t *testing.T) {
+	label := "v2"
+	note := "updated"
+	input := versionUpdateInput(&applicationv1.VersionUpdateReq{Label: &label, Note: &note})
 	if input.Label == nil || *input.Label != "v2" {
 		t.Fatalf("expected label v2, got %#v", input.Label)
+	}
+	if input.Note == nil || *input.Note != note {
+		t.Fatalf("expected note %q, got %#v", note, input.Note)
 	}
 }

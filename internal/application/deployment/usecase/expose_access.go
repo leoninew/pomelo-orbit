@@ -11,8 +11,8 @@ const (
 	exposeAccessPublic = "public"
 )
 
-func effectiveListen(e model.VersionExpose) int {
-	if e.ListenPort != nil && *e.ListenPort > 0 {
+func effectiveListen(e model.ServiceExpose) int {
+	if e.ListenPort != nil {
 		return *e.ListenPort
 	}
 	return e.ContainerPort

@@ -25,14 +25,6 @@
           <Square class="size-4" />
           {{ t('gateway.actions.stop') }}
         </button>
-        <button
-          v-if="gateway"
-          class="app-button h-9 px-3"
-          @click="router.push(`/gateway/edit/${gateway.id}`)"
-        >
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
         <button v-if="gateway" class="app-button h-9 px-3" @click="goWorkload">
           <Layers class="size-4" />
           {{ t('gateway.openWorkload') }}
@@ -52,6 +44,10 @@
           <h2 class="app-detail-section-title">
             {{ t('gateway.sections.config') }}
           </h2>
+          <button class="app-button-primary h-9 px-3" :disabled="operating" @click="openEditDialog">
+            <Pencil class="size-4" />
+            {{ t('common.edit') }}
+          </button>
         </div>
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
@@ -213,12 +209,11 @@
         <p v-if="deployError" class="app-field-error text-xs">{{ deployError }}</p>
       </div>
       <template #footer>
-        <button class="app-button" @click="isDeployDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" :disabled="operating" @click="handleDeployOk">
-          {{ t('gateway.actions.deploy') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isDeployDialogOpen = false"
+          @confirm="handleDeployOk"
+        />
       </template>
     </AppDialog>
 
@@ -247,12 +242,127 @@
         </label>
       </div>
       <template #footer>
-        <button class="app-button" @click="isStopDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-danger" :disabled="operating" @click="handleStopOk">
-          {{ t('gateway.actions.stop') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          variant="destructive"
+          @cancel="isStopDialogOpen = false"
+          @confirm="handleStopOk"
+        />
+      </template>
+    </AppDialog>
+
+    <AppDialog
+      v-model:open="isEditDialogOpen"
+      :title="t('gateway.dialog.edit')"
+      width-class="w-[min(720px,calc(100vw-32px))]"
+      body-class="space-y-4 px-6 py-4 text-sm"
+    >
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('gateway.fields.name') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="editForm.name"
+            type="text"
+            class="app-input"
+            :class="editErrors.name ? 'app-input-error' : ''"
+            :placeholder="t('gateway.placeholders.name')"
+          />
+          <p v-if="editErrors.name" class="app-field-error mt-1 text-xs">{{ editErrors.name }}</p>
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">{{ t('gateway.fields.code') }}</label>
+          <input :value="gateway?.code" type="text" class="app-input" disabled />
+          <p class="app-field-hint mt-1">{{ t('gateway.hints.code') }}</p>
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('gateway.fields.restApiUrl') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="editForm.rest_api_url"
+            type="text"
+            class="app-input"
+            :class="editErrors.rest_api_url ? 'app-input-error' : ''"
+            :placeholder="t('gateway.placeholders.restApiUrl')"
+          />
+          <p v-if="editErrors.rest_api_url" class="app-field-error mt-1 text-xs">
+            {{ editErrors.rest_api_url }}
+          </p>
+          <p v-else class="app-field-hint mt-1">{{ t('gateway.hints.restApiUrl') }}</p>
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('gateway.fields.baseDomain') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="editForm.base_domain"
+            type="text"
+            class="app-input"
+            :class="editErrors.base_domain ? 'app-input-error' : ''"
+            :placeholder="t('gateway.placeholders.baseDomain')"
+          />
+          <p v-if="editErrors.base_domain" class="app-field-error mt-1 text-xs">
+            {{ editErrors.base_domain }}
+          </p>
+          <p v-else class="app-field-hint mt-1">{{ t('gateway.hints.baseDomain') }}</p>
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('gateway.fields.defaultEntrypoint') }}
+          </label>
+          <RawValueSelect
+            v-model="editForm.default_entrypoint"
+            :values="entrypointValues"
+            :placeholder="t('gateway.placeholders.defaultEntrypoint')"
+          />
+          <p class="app-field-hint mt-1">{{ t('gateway.hints.defaultEntrypoint') }}</p>
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">{{ t('gateway.fields.tlsMode') }}</label>
+          <RawValueSelect
+            v-model="editForm.tls_mode"
+            :values="tlsModeValues"
+            :placeholder="t('gateway.placeholders.tlsMode')"
+          />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('gateway.fields.imagePullPolicy') }}
+          </label>
+          <RawValueSelect
+            v-model="editForm.image_pull_policy"
+            :values="imagePullPolicyValues"
+            :placeholder="t('application.imagePullPolicyPlaceholder')"
+          />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('gateway.fields.image') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="editForm.image"
+            type="text"
+            class="app-input"
+            :class="editErrors.image ? 'app-input-error' : ''"
+            :placeholder="t('gateway.placeholders.image')"
+          />
+          <p v-if="editErrors.image" class="app-field-error mt-1 text-xs">{{ editErrors.image }}</p>
+          <p v-else class="app-field-hint mt-1">{{ t('gateway.hints.image') }}</p>
+        </div>
+      </div>
+      <p class="text-sm text-muted-foreground">{{ t('gateway.hints.compileOnSave') }}</p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isEditDialogOpen = false"
+          @confirm="saveGateway"
+        />
       </template>
     </AppDialog>
   </div>
@@ -264,11 +374,15 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
+
+  import { serviceApi } from '@/api/service/service';
   import { gatewayApi } from '@/api/gateway/gateway';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
+  import RawValueSelect from '@/components/RawValueSelect.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -302,6 +416,22 @@
     service_id: '',
     remove_volumes: false,
   });
+  const isEditDialogOpen = ref(false);
+  const editForm = reactive({
+    name: '',
+    rest_api_url: '',
+    base_domain: '',
+    image: '',
+    image_pull_policy: 'missing',
+    default_entrypoint: 'web',
+    tls_mode: 'none',
+  });
+  const editErrors = reactive({
+    name: '',
+    rest_api_url: '',
+    base_domain: '',
+    image: '',
+  });
 
   const gatewayId = () => String(route.params.id || '');
   const operating = computed(() => opStatus.value === 'loading');
@@ -311,6 +441,9 @@
   );
   const canStop = computed(() => stoppableServices.value.length > 0);
   const primaryService = computed(() => services.value[0] ?? null);
+  const imagePullPolicyValues = ['missing', 'always', 'never'];
+  const entrypointValues = ['web', 'websecure'];
+  const tlsModeValues = ['none', 'letsencrypt', 'tls'];
 
   const versionSelectOptions = computed(() =>
     versions.value.map((item) => ({
@@ -333,6 +466,63 @@
 
   function isHttpAddress(value: string) {
     return /^https?:\/\//i.test(value);
+  }
+
+  function openEditDialog() {
+    const current = gateway.value;
+    if (!current) {
+      return;
+    }
+    Object.assign(editForm, {
+      name: current.name,
+      rest_api_url: current.rest_api_url || '',
+      base_domain: current.base_domain || '',
+      image: current.image || '',
+      image_pull_policy: current.image_pull_policy,
+      default_entrypoint: current.default_entrypoint,
+      tls_mode: current.tls_mode,
+    });
+    Object.assign(editErrors, { name: '', rest_api_url: '', base_domain: '', image: '' });
+    isEditDialogOpen.value = true;
+  }
+
+  function validateEditForm() {
+    editErrors.name = editForm.name.trim() ? '' : t('gateway.validation.nameRequired');
+    editErrors.rest_api_url = editForm.rest_api_url.trim()
+      ? ''
+      : t('gateway.validation.restApiUrlRequired');
+    editErrors.base_domain = editForm.base_domain.trim()
+      ? ''
+      : t('gateway.validation.baseDomainRequired');
+    editErrors.image = editForm.image.trim() ? '' : t('gateway.validation.imageRequired');
+    return (
+      !editErrors.name && !editErrors.rest_api_url && !editErrors.base_domain && !editErrors.image
+    );
+  }
+
+  async function saveGateway() {
+    const current = gateway.value;
+    if (!current || !validateEditForm()) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        gateway.value = await gatewayApi.update(current.id, {
+          name: editForm.name.trim(),
+          rest_api_url: editForm.rest_api_url.trim(),
+          base_domain: editForm.base_domain.trim(),
+          image: editForm.image.trim(),
+          image_pull_policy: editForm.image_pull_policy,
+          default_entrypoint: editForm.default_entrypoint,
+          tls_mode: editForm.tls_mode,
+        });
+        isEditDialogOpen.value = false;
+        toast.success(t('gateway.toast.saveCompiled'));
+        await loadRuntimeContext();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('gateway.toast.saveFailed'));
+    }
   }
 
   async function loadGateway() {
@@ -433,11 +623,35 @@
     deployError.value = '';
     try {
       await executeOp(async () => {
-        const result = await applicationApi.deploy(current.id, {
-          version_id: deployForm.version_id,
-          instance_key: deployForm.instance_key,
+        const instanceKey = deployForm.instance_key.trim();
+        if (!instanceKey) {
+          deployError.value = t('gateway.toast.instanceKeyRequired');
+          return;
+        }
+        const existing = services.value.find((item) => item.instance_key === instanceKey);
+        let serviceId = existing?.id;
+        if (serviceId) {
+          const detail = await serviceApi.get(serviceId);
+          if (detail.version_id !== deployForm.version_id) {
+            await serviceApi.updateBasic(serviceId, {
+              version_id: deployForm.version_id,
+              instance_key: detail.instance_key,
+            });
+          }
+        } else {
+          const created = await serviceApi.create({
+            application_id: current.id,
+            version_id: deployForm.version_id,
+            instance_key: instanceKey,
+            runtime_config: {},
+            exposes: [],
+          });
+          serviceId = created.id;
+        }
+        const result = await serviceApi.deploy(serviceId, {
           force_recreate: deployForm.force_recreate,
         });
+        for (const warning of result.warnings) toast.error(warning);
         toast.success(t('gateway.toast.deployQueued'));
         isDeployDialogOpen.value = false;
         if (result.deployment_id) {

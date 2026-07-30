@@ -130,7 +130,6 @@ type ApplicationImportReq struct {
 	VersionLabel    string                 `protobuf:"bytes,4,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
 	VersionNote     *string                `protobuf:"bytes,6,opt,name=version_note,json=versionNote,proto3,oneof" json:"version_note,omitempty"`
 	Components      []*VersionComponentReq `protobuf:"bytes,7,rep,name=components,proto3" json:"components,omitempty"`
-	Exposes         []*VersionExposeReq    `protobuf:"bytes,8,rep,name=exposes,proto3" json:"exposes,omitempty"`
 	Kind            *string                `protobuf:"bytes,9,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
@@ -208,13 +207,6 @@ func (x *ApplicationImportReq) GetComponents() []*VersionComponentReq {
 	return nil
 }
 
-func (x *ApplicationImportReq) GetExposes() []*VersionExposeReq {
-	if x != nil {
-		return x.Exposes
-	}
-	return nil
-}
-
 func (x *ApplicationImportReq) GetKind() string {
 	if x != nil && x.Kind != nil {
 		return *x.Kind
@@ -237,7 +229,7 @@ const file_orbit_v1_application_application_bundle_proto_rawDesc = "" +
 	"\bversions\x18\x06 \x03(\v2!.orbit.v1.application.VersionRespR\bversions\x129\n" +
 	"\bservices\x18\a \x03(\v2\x1d.orbit.v1.service.ServiceRespR\bservices\x12\x12\n" +
 	"\x04kind\x18\b \x01(\tR\x04kindB\r\n" +
-	"\v_project_id\"\xfd\x02\n" +
+	"\v_project_id\"\xc1\x02\n" +
 	"\x14ApplicationImportReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12*\n" +
@@ -246,11 +238,10 @@ const file_orbit_v1_application_application_bundle_proto_rawDesc = "" +
 	"\fversion_note\x18\x06 \x01(\tH\x00R\vversionNote\x88\x01\x01\x12I\n" +
 	"\n" +
 	"components\x18\a \x03(\v2).orbit.v1.application.VersionComponentReqR\n" +
-	"components\x12@\n" +
-	"\aexposes\x18\b \x03(\v2&.orbit.v1.application.VersionExposeReqR\aexposes\x12\x17\n" +
+	"components\x12\x17\n" +
 	"\x04kind\x18\t \x01(\tH\x01R\x04kind\x88\x01\x01B\x0f\n" +
 	"\r_version_noteB\a\n" +
-	"\x05_kindJ\x04\b\x05\x10\x06B\xef\x01\n" +
+	"\x05_kindJ\x04\b\x05\x10\x06J\x04\b\b\x10\tB\xef\x01\n" +
 	"\x18com.orbit.v1.applicationB\x16ApplicationBundleProtoP\x01ZIgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application\xa2\x02\x03OVA\xaa\x02\x14Orbit.V1.Application\xca\x02\x14Orbit\\V1\\Application\xe2\x02 Orbit\\V1\\Application\\GPBMetadata\xea\x02\x16Orbit::V1::Applicationb\x06proto3"
 
 var (
@@ -272,18 +263,16 @@ var file_orbit_v1_application_application_bundle_proto_goTypes = []any{
 	(*VersionResp)(nil),           // 2: orbit.v1.application.VersionResp
 	(*service.ServiceResp)(nil),   // 3: orbit.v1.service.ServiceResp
 	(*VersionComponentReq)(nil),   // 4: orbit.v1.application.VersionComponentReq
-	(*VersionExposeReq)(nil),      // 5: orbit.v1.application.VersionExposeReq
 }
 var file_orbit_v1_application_application_bundle_proto_depIdxs = []int32{
 	2, // 0: orbit.v1.application.ApplicationExportResp.versions:type_name -> orbit.v1.application.VersionResp
 	3, // 1: orbit.v1.application.ApplicationExportResp.services:type_name -> orbit.v1.service.ServiceResp
 	4, // 2: orbit.v1.application.ApplicationImportReq.components:type_name -> orbit.v1.application.VersionComponentReq
-	5, // 3: orbit.v1.application.ApplicationImportReq.exposes:type_name -> orbit.v1.application.VersionExposeReq
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_application_application_bundle_proto_init() }

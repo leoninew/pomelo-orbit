@@ -129,6 +129,52 @@ func (r Repository) Service(ctx context.Context, id string) (model.Service, erro
 	return serviceFrom(row)
 }
 
+func (r Repository) ServiceExposesByService(ctx context.Context, serviceId string) ([]model.ServiceExpose, error) {
+	rows, err := r.q(ctx).ServiceExposesByService(ctx, serviceId)
+	if err != nil {
+		return nil, fmt.Errorf("list service exposes %s: %w", serviceId, err)
+	}
+	items := make([]model.ServiceExpose, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, serviceExposeFrom(row))
+	}
+	return items, nil
+}
+
+func (r Repository) LocalServiceExposesByListen(ctx context.Context, listenPort int) ([]model.ServiceExpose, error) {
+	rows, err := r.q(ctx).LocalServiceExposesByListen(ctx, sql.NullInt64{Int64: int64(listenPort), Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("list local service exposes on %d: %w", listenPort, err)
+	}
+	items := make([]model.ServiceExpose, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, serviceExposeFrom(row))
+	}
+	return items, nil
+}
+
+func (r Repository) PublicTCPServiceExposesByListen(ctx context.Context, listenPort int) ([]model.ServiceExpose, error) {
+	rows, err := r.q(ctx).PublicTCPServiceExposesByListen(ctx, sql.NullInt64{Int64: int64(listenPort), Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("list public TCP service exposes on %d: %w", listenPort, err)
+	}
+	items := make([]model.ServiceExpose, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, serviceExposeFrom(row))
+	}
+	return items, nil
+}
+
+func (r Repository) CountServiceExposesByVersionComponent(ctx context.Context, versionId string, componentName string) (int, error) {
+	count, err := r.q(ctx).CountServiceExposesByVersionComponent(ctx, servicesqlc.CountServiceExposesByVersionComponentParams{
+		VersionID: versionId, ComponentName: componentName,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("count service exposes for version component %s/%s: %w", versionId, componentName, err)
+	}
+	return int(count), nil
+}
+
 func (r Repository) UpsertService(ctx context.Context, svc model.Service) error {
 	q := r.q(ctx)
 	existingId, err := q.ServiceIDByKey(ctx, servicesqlc.ServiceIDByKeyParams{
@@ -179,6 +225,36 @@ func (r Repository) UpsertService(ctx context.Context, svc model.Service) error 
 		return fmt.Errorf("update service %s: %w", id, err)
 	}
 	return nil
+}
+
+func (r Repository) CreateServiceWithExposes(ctx context.Context, svc model.Service, exposes []model.ServiceExpose) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		if err := r.insertService(txCtx, svc); err != nil {
+			return err
+		}
+		return r.replaceServiceExposes(txCtx, svc.Id, exposes)
+	})
+}
+
+func (r Repository) UpdateServiceConfiguration(ctx context.Context, svc model.Service, exposes []model.ServiceExpose) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		runtimeConfigJSON, err := marshalRuntimeConfig(svc.RuntimeConfig)
+		if err != nil {
+			return err
+		}
+		if err := r.q(txCtx).UpdateServiceConfiguration(txCtx, servicesqlc.UpdateServiceConfigurationParams{
+			InstanceKey: svc.InstanceKey, VersionID: svc.VersionId, RuntimeConfigJson: runtimeConfigJSON, UpdatedAt: time.Now().UTC(), ID: svc.Id,
+		}); err != nil {
+			return fmt.Errorf("update service configuration %s: %w", svc.Id, err)
+		}
+		return r.replaceServiceExposes(txCtx, svc.Id, exposes)
+	})
+}
+
+func (r Repository) ReplaceServiceExposes(ctx context.Context, serviceId string, exposes []model.ServiceExpose) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		return r.replaceServiceExposes(txCtx, serviceId, exposes)
+	})
 }
 
 func (r Repository) UpdateServiceRuntimeConfig(ctx context.Context, id string, runtimeConfig map[string]string) error {
@@ -232,6 +308,53 @@ func (r Repository) UpdateServiceAfterDeploy(ctx context.Context, id string, sta
 	return nil
 }
 
+func (r Repository) insertService(ctx context.Context, svc model.Service) error {
+	now := time.Now().UTC()
+	runtimeConfigJSON, err := marshalRuntimeConfig(svc.RuntimeConfig)
+	if err != nil {
+		return err
+	}
+	createdAt, updatedAt := svc.CreatedAt, svc.UpdatedAt
+	if createdAt.IsZero() {
+		createdAt = now
+	}
+	if updatedAt.IsZero() {
+		updatedAt = now
+	}
+	if err := r.q(ctx).InsertService(ctx, servicesqlc.InsertServiceParams{
+		ID: svc.Id, ApplicationID: svc.ApplicationId, InstanceKey: svc.InstanceKey, VersionID: svc.VersionId,
+		RuntimeConfigJson: runtimeConfigJSON, Status: svc.Status, CreatedAt: createdAt, UpdatedAt: updatedAt,
+	}); err != nil {
+		return fmt.Errorf("create service for application %s: %w", svc.ApplicationId, err)
+	}
+	return nil
+}
+
+func (r Repository) replaceServiceExposes(ctx context.Context, serviceId string, exposes []model.ServiceExpose) error {
+	q := r.q(ctx)
+	if err := q.DeleteServiceExposes(ctx, serviceId); err != nil {
+		return fmt.Errorf("delete service exposes %s: %w", serviceId, err)
+	}
+	now := time.Now().UTC()
+	for _, expose := range exposes {
+		createdAt, updatedAt := expose.CreatedAt, expose.UpdatedAt
+		if createdAt.IsZero() {
+			createdAt = now
+		}
+		if updatedAt.IsZero() {
+			updatedAt = now
+		}
+		if err := q.InsertServiceExpose(ctx, servicesqlc.InsertServiceExposeParams{
+			ID: expose.Id, ServiceID: serviceId, ComponentName: expose.ComponentName, Protocol: expose.Protocol,
+			ContainerPort: int64(expose.ContainerPort), PathPrefix: dbmodel.NullString(expose.PathPrefix), Access: expose.Access,
+			ListenPort: dbmodel.NullInt64FromIntPtr(expose.ListenPort), CreatedAt: createdAt, UpdatedAt: updatedAt,
+		}); err != nil {
+			return fmt.Errorf("insert service expose %s: %w", expose.Id, err)
+		}
+	}
+	return nil
+}
+
 func serviceFrom(row servicesqlc.Service) (model.Service, error) {
 	runtimeConfig, err := unmarshalRuntimeConfig(row.RuntimeConfigJson)
 	if err != nil {
@@ -247,6 +370,21 @@ func serviceFrom(row servicesqlc.Service) (model.Service, error) {
 		CreatedAt:     row.CreatedAt,
 		UpdatedAt:     row.UpdatedAt,
 	}, nil
+}
+
+func serviceExposeFrom(row servicesqlc.ServiceExpose) model.ServiceExpose {
+	return model.ServiceExpose{
+		Id:            row.ID,
+		ServiceId:     row.ServiceID,
+		ComponentName: row.ComponentName,
+		Protocol:      row.Protocol,
+		ContainerPort: int(row.ContainerPort),
+		PathPrefix:    dbmodel.StringPtr(row.PathPrefix),
+		Access:        row.Access,
+		ListenPort:    dbmodel.IntPtrFromNullInt64(row.ListenPort),
+		CreatedAt:     row.CreatedAt,
+		UpdatedAt:     row.UpdatedAt,
+	}
 }
 
 func serviceListFrom(

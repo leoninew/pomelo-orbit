@@ -2,8 +2,11 @@ export default {
   common: {
     confirm: 'Confirm',
     cancel: 'Cancel',
+    close: 'Close',
+    create: 'Create',
     delete: 'Delete',
     edit: 'Edit',
+    import: 'Import',
     save: 'Save',
     search: 'Search',
     clearSearch: 'Clear search',
@@ -11,9 +14,13 @@ export default {
     previousPage: 'Previous page',
     nextPage: 'Next page',
     refresh: 'Refresh',
+    retry: 'Retry',
     add: 'Add',
     back: 'Back',
     copy: 'Copy',
+    deploy: 'Deploy',
+    stop: 'Stop',
+    trigger: 'Trigger',
     viewAll: 'View All',
     loading: 'Loading...',
     noData: 'No Data',
@@ -572,9 +579,13 @@ export default {
       title: 'Service detail',
       subtitle: 'Instance {instance} · Version {version}',
       notFound: 'Service not found or access denied',
+      saved: 'Basic information saved',
       sections: {
         basic: 'Basic info',
         components: 'Runtime status',
+      },
+      dialog: {
+        editBasic: 'Edit service basic information',
       },
     },
     runtimeConfig: {
@@ -587,6 +598,11 @@ export default {
       value: 'Value',
       showValue: 'Show runtime configuration value',
       hideValue: 'Hide runtime configuration value',
+    },
+    exposes: {
+      title: 'Ingress exposure',
+      saved: 'Ingress exposure saved',
+      loadFailed: 'Failed to save ingress exposure',
     },
     create: {
       title: 'Create service',
@@ -842,6 +858,7 @@ export default {
     openDashboard: 'Open Dashboard',
     serviceCheckHint: 'Check whether the Traefik service is running normally',
     retry: 'Retry',
+    run: 'Run',
     fields: {
       name: 'Name',
       provider: 'Provider',

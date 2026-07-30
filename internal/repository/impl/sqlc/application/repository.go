@@ -265,9 +265,6 @@ func (r Repository) DeleteVersion(ctx context.Context, id string) error {
 	if err := q.DeleteVersionComponents(ctx, id); err != nil {
 		return fmt.Errorf("delete version components %s: %w", id, err)
 	}
-	if err := q.DeleteVersionExposes(ctx, id); err != nil {
-		return fmt.Errorf("delete version exposes %s: %w", id, err)
-	}
 	if err := q.DeleteVersion(ctx, id); err != nil {
 		return fmt.Errorf("delete version %s: %w", id, err)
 	}
@@ -308,18 +305,6 @@ func (r Repository) VersionComponent(ctx context.Context, id string) (model.Vers
 		return model.VersionComponent{}, err
 	}
 	return component, nil
-}
-
-func (r Repository) VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error) {
-	rows, err := r.q(ctx).VersionExposesByVersion(ctx, versionId)
-	if err != nil {
-		return nil, fmt.Errorf("list version exposes %s: %w", versionId, err)
-	}
-	items := make([]model.VersionExpose, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, exposeFrom(row))
-	}
-	return items, nil
 }
 
 func (r Repository) ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error {
@@ -384,11 +369,6 @@ func (r Repository) UpdateVersionComponentBasic(ctx context.Context, component m
 			return fmt.Errorf("update component command: %w", err)
 		}
 		if oldName != component.Name {
-			if err := q.RenameVersionComponentExposes(txCtx, applicationsqlc.RenameVersionComponentExposesParams{
-				NewName: component.Name, UpdatedAt: now, VersionID: component.VersionId, OldName: oldName,
-			}); err != nil {
-				return fmt.Errorf("rename version component exposes: %w", err)
-			}
 			if err := q.RenameVersionComponentDependencies(txCtx, applicationsqlc.RenameVersionComponentDependenciesParams{
 				NewName: component.Name, VersionID: component.VersionId, OldName: oldName,
 			}); err != nil {
@@ -449,39 +429,7 @@ func (r Repository) DeleteVersionComponent(ctx context.Context, component model.
 	})
 }
 
-func (r Repository) ReplaceVersionExposes(ctx context.Context, versionId string, exposes []model.VersionExpose) error {
-	q := r.q(ctx)
-	if err := q.DeleteVersionExposes(ctx, versionId); err != nil {
-		return fmt.Errorf("delete version exposes %s: %w", versionId, err)
-	}
-	now := time.Now().UTC()
-	for _, e := range exposes {
-		createdAt, updatedAt := e.CreatedAt, e.UpdatedAt
-		if createdAt.IsZero() {
-			createdAt = now
-		}
-		if updatedAt.IsZero() {
-			updatedAt = now
-		}
-		if err := q.InsertVersionExpose(ctx, applicationsqlc.InsertVersionExposeParams{
-			ID:            e.Id,
-			VersionID:     versionId,
-			ComponentName: e.ComponentName,
-			Protocol:      e.Protocol,
-			ContainerPort: int64(e.ContainerPort),
-			PathPrefix:    dbmodel.NullString(e.PathPrefix),
-			Access:        e.Access,
-			ListenPort:    dbmodel.NullInt64FromIntPtr(e.ListenPort),
-			CreatedAt:     createdAt,
-			UpdatedAt:     updatedAt,
-		}); err != nil {
-			return fmt.Errorf("insert version expose %s: %w", e.Id, err)
-		}
-	}
-	return nil
-}
-
-func (r Repository) CreateVersionWithVersionComponentsAndExposes(ctx context.Context, version model.Version, components []model.VersionComponent, exposes []model.VersionExpose) error {
+func (r Repository) CreateVersionWithVersionComponents(ctx context.Context, version model.Version, components []model.VersionComponent) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		if err := r.CreateVersion(txCtx, version); err != nil {
 			return err
@@ -489,7 +437,7 @@ func (r Repository) CreateVersionWithVersionComponentsAndExposes(ctx context.Con
 		if err := r.replaceVersionComponents(txCtx, version.Id, components); err != nil {
 			return err
 		}
-		return r.ReplaceVersionExposes(txCtx, version.Id, exposes)
+		return nil
 	})
 }
 
@@ -817,21 +765,6 @@ func optionalText(value string) sql.NullString {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: value, Valid: true}
-}
-
-func exposeFrom(row applicationsqlc.VersionExpose) model.VersionExpose {
-	return model.VersionExpose{
-		Id:            row.ID,
-		VersionId:     row.VersionID,
-		ComponentName: row.ComponentName,
-		Protocol:      row.Protocol,
-		ContainerPort: int(row.ContainerPort),
-		PathPrefix:    dbmodel.StringPtr(row.PathPrefix),
-		Access:        row.Access,
-		ListenPort:    dbmodel.IntPtrFromNullInt64(row.ListenPort),
-		CreatedAt:     row.CreatedAt,
-		UpdatedAt:     row.UpdatedAt,
-	}
 }
 
 func asInt(v interface{}) int {

@@ -8,11 +8,19 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-const (
-	exposeAccessLocal  = "local"
-	exposeAccessPublic = "public"
-	maxMountContent    = 256 * 1024
-)
+const maxMountContent = 256 * 1024
+
+func validateApplicationComponentPorts(app model.Application, components []model.VersionComponent) error {
+	if app.Kind == "gateway" {
+		return nil
+	}
+	for _, component := range components {
+		if len(component.Ports) > 0 {
+			return fmt.Errorf("component %s ports are only supported for gateway applications", component.Name)
+		}
+	}
+	return nil
+}
 
 func validateVersionComponents(components []model.VersionComponent) error {
 	names := make(map[string]struct{}, len(components))
@@ -221,46 +229,6 @@ func validateComponentHealthcheck(component string, healthcheck *model.VersionCo
 	}
 	if healthcheck.Retries != nil && *healthcheck.Retries < 0 {
 		return fmt.Errorf("component %s healthcheck retries must be non-negative", component)
-	}
-	return nil
-}
-
-func validateVersionExposes(exposes []model.VersionExpose, components []model.VersionComponent) error {
-	names := make(map[string]struct{}, len(components))
-	for _, component := range components {
-		names[component.Name] = struct{}{}
-	}
-	seen := make(map[string]struct{}, len(exposes))
-	for _, expose := range exposes {
-		name := expose.ComponentName
-		if name == "" {
-			return fmt.Errorf("expose component_name is required")
-		}
-		if _, ok := names[name]; !ok {
-			return fmt.Errorf("expose component %s not found in version components", name)
-		}
-		protocol := expose.Protocol
-		if protocol != "http" && protocol != "tcp" {
-			return fmt.Errorf("expose protocol must be http or tcp")
-		}
-		if expose.ContainerPort < 1 || expose.ContainerPort > 65535 {
-			return fmt.Errorf("expose container_port out of range")
-		}
-		access := expose.Access
-		if access != exposeAccessLocal && access != exposeAccessPublic {
-			return fmt.Errorf("expose access must be local or public")
-		}
-		if protocol == "tcp" && expose.PathPrefix != nil && *expose.PathPrefix != "" {
-			return fmt.Errorf("path_prefix is only allowed for http expose")
-		}
-		if expose.ListenPort != nil && *expose.ListenPort != 0 && (*expose.ListenPort < 1 || *expose.ListenPort > 65535) {
-			return fmt.Errorf("expose listen_port out of range")
-		}
-		key := fmt.Sprintf("%s/%s/%d", name, protocol, expose.ContainerPort)
-		if _, ok := seen[key]; ok {
-			return fmt.Errorf("duplicate expose %s", key)
-		}
-		seen[key] = struct{}{}
 	}
 	return nil
 }

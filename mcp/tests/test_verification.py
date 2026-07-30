@@ -92,7 +92,7 @@ class VerificationClient:
     async def get_service(self, _service_id):
         return {"id": "service-1", "application_id": "application-1", "instance_key": "default"}
 
-    async def preview_version(self, _version_id, _instance_key):
+    async def preview_service(self, _service_id):
         return {"compose_yaml": "services: {}"}
 
 

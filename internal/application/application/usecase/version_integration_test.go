@@ -169,7 +169,7 @@ func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *te
 	if item.Version.ComponentSummary != created.Version.ComponentSummary {
 		t.Fatalf("list component summary = %q, want %q", item.Version.ComponentSummary, created.Version.ComponentSummary)
 	}
-	if item.Components != nil || item.Exposes != nil {
+	if item.Components != nil {
 		t.Fatalf("version list unexpectedly loaded details: %+v", item)
 	}
 
@@ -234,9 +234,6 @@ func TestVersionComponentRenamePreservesValuesAndUpdatesReferences(t *testing.T)
 				}},
 			},
 		},
-		Exposes: []applicationdto.VersionExposeInput{{
-			ComponentName: "api", Protocol: "http", ContainerPort: 8080, Access: "local",
-		}},
 	})
 	if err != nil {
 		t.Fatalf("create version: %v", err)
@@ -265,9 +262,6 @@ func TestVersionComponentRenamePreservesValuesAndUpdatesReferences(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.Exposes[0].ComponentName != "backend" {
-		t.Fatalf("expose reference = %q, want backend", view.Exposes[0].ComponentName)
-	}
 	for _, item := range view.Components {
 		if item.Name == "worker" && item.Dependencies[0].Name != "backend" {
 			t.Fatalf("worker dependency = %q, want backend", item.Dependencies[0].Name)
@@ -287,7 +281,7 @@ func TestVersionComponentGroupUpdatesPreserveOtherConfiguration(t *testing.T) {
 		Id:              idutil.NewId(),
 		Name:            "component-groups-" + idutil.NewId(),
 		Code:            "component-groups-" + idutil.NewId(),
-		Kind:            status.ApplicationKindStandard,
+		Kind:            status.ApplicationKindGateway,
 		ImagePullPolicy: "missing",
 	}
 	if err := applicationStore.CreateApplication(ctx, app); err != nil {

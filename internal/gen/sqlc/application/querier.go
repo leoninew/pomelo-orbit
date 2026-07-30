@@ -33,7 +33,6 @@ type Querier interface {
 	DeleteVersionComponentTmpfs(ctx context.Context, componentID string) error
 	DeleteVersionComponentUlimits(ctx context.Context, componentID string) error
 	DeleteVersionComponents(ctx context.Context, versionID string) error
-	DeleteVersionExposes(ctx context.Context, versionID string) error
 	DeleteVersionsByApplication(ctx context.Context, applicationID string) error
 	DetachDeploymentServiceRefsByApplication(ctx context.Context, applicationID string) error
 	DetachDeploymentVersionRefsByApplication(ctx context.Context, applicationID string) error
@@ -46,12 +45,10 @@ type Querier interface {
 	InsertVersionComponentResource(ctx context.Context, arg InsertVersionComponentResourceParams) error
 	InsertVersionComponentTmpfs(ctx context.Context, arg InsertVersionComponentTmpfsParams) error
 	InsertVersionComponentUlimit(ctx context.Context, arg InsertVersionComponentUlimitParams) error
-	InsertVersionExpose(ctx context.Context, arg InsertVersionExposeParams) error
 	ListApplications(ctx context.Context, arg ListApplicationsParams) ([]ListApplicationsRow, error)
 	ListVersions(ctx context.Context, applicationID string) ([]Version, error)
 	ListVersionsPage(ctx context.Context, arg ListVersionsPageParams) ([]Version, error)
 	RenameVersionComponentDependencies(ctx context.Context, arg RenameVersionComponentDependenciesParams) error
-	RenameVersionComponentExposes(ctx context.Context, arg RenameVersionComponentExposesParams) error
 	TouchVersionComponent(ctx context.Context, arg TouchVersionComponentParams) error
 	UpdateApplication(ctx context.Context, arg UpdateApplicationParams) error
 	UpdateVersion(ctx context.Context, arg UpdateVersionParams) error
@@ -69,7 +66,6 @@ type Querier interface {
 	VersionComponentTmpfsByComponent(ctx context.Context, componentID string) ([]VersionComponentTmpf, error)
 	VersionComponentUlimitsByComponent(ctx context.Context, componentID string) ([]VersionComponentUlimit, error)
 	VersionComponentsByVersion(ctx context.Context, versionID string) ([]VersionComponent, error)
-	VersionExposesByVersion(ctx context.Context, versionID string) ([]VersionExpose, error)
 }
 
 var _ Querier = (*Queries)(nil)

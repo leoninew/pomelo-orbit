@@ -22,12 +22,13 @@ type CommandStore interface {
 	Application(ctx context.Context, id string) (model.Application, error)
 	Version(ctx context.Context, id string) (model.Version, error)
 	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
-	ServiceByKey(ctx context.Context, applicationId string, instanceKey string) (model.Service, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
-	UpsertService(ctx context.Context, service model.Service) error
+	ServiceExposesByService(ctx context.Context, serviceId string) ([]model.ServiceExpose, error)
+	UpdateServiceStatus(ctx context.Context, id string, status string) error
 	CreateDeployment(ctx context.Context, deployment model.Deployment) error
 	HasActiveGatewayService(ctx context.Context, excludeApplicationId string) (bool, error)
+	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
 }
 
 // ExecutionStore is the worker's narrow persistence view. It deliberately
@@ -37,7 +38,7 @@ type ExecutionStore interface {
 	Deployment(ctx context.Context, id string) (model.Deployment, error)
 	Version(ctx context.Context, id string) (model.Version, error)
 	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
-	VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error)
+	ServiceExposesByService(ctx context.Context, serviceId string) ([]model.ServiceExpose, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 	UpdateServiceStatus(ctx context.Context, id string, status string) error
 	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string) error

@@ -1,6 +1,5 @@
 import type {
   ApplicationCreateReq,
-  ApplicationDeployReq,
   ApplicationLogsResp,
   ApplicationPaginatedResp,
   ApplicationResp,
@@ -27,8 +26,6 @@ import type {
   VersionCreateReq,
   VersionForkReq,
   VersionPaginatedResp,
-  VersionPreviewReq,
-  VersionPreviewResp,
   VersionResp,
   VersionUpdateReq,
 } from '@/gen/proto/orbit/v1/application/version';
@@ -62,10 +59,6 @@ export const applicationApi = {
     return request.delete(`/api/application/${id}`, {
       params: { remove_dir: removeDir },
     });
-  },
-
-  deploy(id: string, data: ApplicationDeployReq): Promise<DeploymentActionResp> {
-    return request.post(`/api/application/${id}/deploy`, data);
   },
 
   stop(id: string, data: ApplicationStopReq): Promise<DeploymentActionResp> {
@@ -210,9 +203,5 @@ export const applicationApi = {
 
   forkVersion(versionId: string, data: VersionForkReq): Promise<VersionResp> {
     return request.post(`/api/version/${versionId}/fork`, data);
-  },
-
-  previewVersion(versionId: string, data: VersionPreviewReq): Promise<VersionPreviewResp> {
-    return request.post(`/api/version/${versionId}/preview`, data);
   },
 };

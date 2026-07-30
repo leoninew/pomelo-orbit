@@ -52,10 +52,6 @@ WHERE created_from_version_id = ?;
 DELETE FROM version_component
 WHERE version_id = ?;
 
--- name: DeleteVersionExposes :exec
-DELETE FROM version_expose
-WHERE version_id = ?;
-
 -- name: DeleteVersion :exec
 DELETE FROM version
 WHERE id = ?;
@@ -70,12 +66,6 @@ ORDER BY name;
 SELECT id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE id = ?;
-
--- name: VersionExposesByVersion :many
-SELECT id, version_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at
-FROM version_expose
-WHERE version_id = ?
-ORDER BY component_name, protocol, container_port;
 
 -- name: InsertVersionComponent :exec
 INSERT INTO version_component (
@@ -214,12 +204,6 @@ ORDER BY position;
 DELETE FROM version_component_ulimit
 WHERE component_id = ?;
 
--- name: RenameVersionComponentExposes :exec
-UPDATE version_expose
-SET component_name = sqlc.arg(new_name), updated_at = sqlc.arg(updated_at)
-WHERE version_id = sqlc.arg(version_id)
-  AND component_name = sqlc.arg(old_name);
-
 -- name: RenameVersionComponentDependencies :exec
 UPDATE version_component_dependency
 SET depends_on_name = sqlc.arg(new_name)
@@ -227,8 +211,3 @@ WHERE component_id IN (
   SELECT id FROM version_component WHERE version_id = sqlc.arg(version_id)
 )
   AND depends_on_name = sqlc.arg(old_name);
-
--- name: InsertVersionExpose :exec
-INSERT INTO version_expose (
-  id, version_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);

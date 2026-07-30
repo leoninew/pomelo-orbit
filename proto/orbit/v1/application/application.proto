@@ -28,12 +28,6 @@ message ApplicationUpdateReq {
   optional string image_pull_policy = 3;
 }
 
-message ApplicationDeployReq {
-  string version_id = 1;
-  string instance_key = 2;
-  bool force_recreate = 3;
-}
-
 message ApplicationStopReq {
   bool remove_volumes = 1;
   string service_id = 3;

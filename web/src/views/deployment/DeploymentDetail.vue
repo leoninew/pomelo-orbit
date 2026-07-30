@@ -15,7 +15,7 @@
           @click="isCancelDialogOpen = true"
         >
           <X class="size-4" />
-          取消部署
+          取消
         </button>
         <button class="app-button h-9 px-4" @click="goBack">
           <ArrowLeft class="size-4" />
@@ -108,13 +108,13 @@
             <TabsList aria-label="日志类型" class="flex gap-1 border-b border-border">
               <TabsTrigger
                 value="operation"
-                class="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
+                class="px-3 py-2 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
               >
                 操作日志
               </TabsTrigger>
               <TabsTrigger
                 value="container"
-                class="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
+                class="px-3 py-2 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
               >
                 容器日志
               </TabsTrigger>
@@ -209,27 +209,24 @@
 
     <AppDialog
       v-model:open="isCancelDialogOpen"
-      title="确认取消"
+      :title="t('deployment.dialog.confirmCancel')"
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
-      <p class="text-sm text-foreground">确定要取消此部署吗？</p>
+      <p class="text-sm text-foreground">
+        {{
+          t('deployment.dialog.cancelConfirm', {
+            name: deployment?.application_name || t('deployment.dialog.currentApplication'),
+          })
+        }}
+      </p>
       <template #footer>
-        <button
-          type="button"
-          class="app-button"
-          :disabled="isCancelling"
-          @click="isCancelDialogOpen = false"
-        >
-          取消
-        </button>
-        <button
-          type="button"
-          class="app-button-destructive"
-          :disabled="isCancelling"
-          @click="handleCancel"
-        >
-          确认取消
-        </button>
+        <AppDialogActions
+          :busy="isCancelling"
+          :confirm-label="t('common.confirm')"
+          variant="destructive"
+          @cancel="isCancelDialogOpen = false"
+          @confirm="handleCancel"
+        />
       </template>
     </AppDialog>
   </div>
@@ -244,6 +241,7 @@
   import { deploymentApi } from '@/api/deployment/deployment';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';

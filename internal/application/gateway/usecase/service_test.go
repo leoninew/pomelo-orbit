@@ -15,7 +15,7 @@ type gatewayTestStore struct {
 	applications map[string]model.Application
 	versions     map[string][]model.Version
 	components   map[string][]model.VersionComponent
-	exposes      map[string][]model.VersionExpose
+	exposes      map[string][]model.ServiceExpose
 	configs      map[string]model.GatewayConfig
 	services     map[string][]model.Service
 	removedDirs  []string
@@ -26,7 +26,7 @@ func newGatewayTestStore() *gatewayTestStore {
 		applications: map[string]model.Application{},
 		versions:     map[string][]model.Version{},
 		components:   map[string][]model.VersionComponent{},
-		exposes:      map[string][]model.VersionExpose{},
+		exposes:      map[string][]model.ServiceExpose{},
 		configs:      map[string]model.GatewayConfig{},
 		services:     map[string][]model.Service{},
 	}
@@ -127,8 +127,8 @@ func (s *gatewayTestStore) ReplaceVersionComponents(_ context.Context, versionId
 	return nil
 }
 
-func (s *gatewayTestStore) VersionExposesByVersion(_ context.Context, versionId string) ([]model.VersionExpose, error) {
-	return append([]model.VersionExpose(nil), s.exposes[versionId]...), nil
+func (s *gatewayTestStore) ServiceExposesByService(_ context.Context, serviceID string) ([]model.ServiceExpose, error) {
+	return append([]model.ServiceExpose(nil), s.exposes[serviceID]...), nil
 }
 
 func (s *gatewayTestStore) GatewayConfig(_ context.Context, applicationId string) (model.GatewayConfig, error) {
@@ -218,9 +218,9 @@ func TestGatewayCRUDCompilesManagedVersionAndProjectsExposures(t *testing.T) {
 	projectId := "project-1"
 	store.applications["api-app"] = model.Application{Id: "api-app", ProjectId: &projectId, Code: "api", Name: "API", Kind: status.ApplicationKindStandard}
 	store.services["api-app"] = []model.Service{{Id: "service-1", ApplicationId: "api-app", VersionId: "api-version", Status: status.ServiceStatusRunning}}
-	store.exposes["api-version"] = []model.VersionExpose{
-		{ComponentName: "web", Protocol: "http", Access: "public", ContainerPort: 80},
-		{ComponentName: "postgres", Protocol: "tcp", Access: "local", ContainerPort: 5432},
+	store.exposes["service-1"] = []model.ServiceExpose{
+		{ServiceId: "service-1", ComponentName: "web", Protocol: "http", Access: "public", ContainerPort: 80},
+		{ServiceId: "service-1", ComponentName: "postgres", Protocol: "tcp", Access: "local", ContainerPort: 5432},
 	}
 	view, err = service.GatewayForUser(context, "user-1", view.Application.Id)
 	if err != nil {
@@ -272,93 +272,5 @@ func TestCompileGatewayToVersionCreatesUniqueDraftAfterManagedVersionIsPublished
 	}
 	if !strings.HasPrefix(versions[1].Label, gatewayCompileVersionLabel+"-") {
 		t.Fatalf("expected unique managed draft label, got %q", versions[1].Label)
-	}
-}
-
-func TestGatewayRejectsActivePortConflicts(t *testing.T) {
-	service, store := newGatewayTestService()
-	projectId := "project-1"
-	store.applications["existing"] = model.Application{Id: "existing", ProjectId: &projectId, Code: "existing", Name: "Existing", Kind: status.ApplicationKindStandard}
-	store.services["existing"] = []model.Service{{Id: "service-existing", ApplicationId: "existing", VersionId: "existing-version", Status: status.ServiceStatusRunning}}
-	store.exposes["existing-version"] = []model.VersionExpose{{ComponentName: "db", Protocol: "tcp", Access: "public", ContainerPort: 5432}}
-	store.configs["gateway"] = model.GatewayConfig{ApplicationId: "gateway", BaseDomain: "example.com", TLSMode: "none"}
-
-	ports, err := service.ActivePublicTCPListens(context.Background(), "")
-	if err != nil {
-		t.Fatalf("list active TCP ports: %v", err)
-	}
-	if len(ports) != 1 || ports[0] != 5432 {
-		t.Fatalf("active TCP ports = %v", ports)
-	}
-	err = service.ValidateDeploymentExposureConflicts(context.Background(), model.Application{Id: "candidate", Code: "candidate"}, []model.VersionExpose{{
-		ComponentName: "db", Protocol: "tcp", Access: "public", ContainerPort: 5432,
-	}}, &model.GatewayConfig{BaseDomain: "example.com", TLSMode: "none"})
-	if err == nil || !strings.Contains(err.Error(), "public TCP listen port 5432") {
-		t.Fatalf("expected public TCP conflict, got %v", err)
-	}
-}
-
-func TestPrepareDeploymentCompilesGatewayForChangedPublicTCPListeners(t *testing.T) {
-	service, store := newGatewayTestService()
-	projectId := "project-1"
-	image := "traefik:v3"
-	store.applications["gateway"] = model.Application{Id: "gateway", ProjectId: &projectId, Code: "gateway", Name: "Gateway", Kind: status.ApplicationKindGateway}
-	store.applications["candidate"] = model.Application{Id: "candidate", ProjectId: &projectId, Code: "candidate", Name: "Candidate", Kind: status.ApplicationKindStandard}
-	store.configs["gateway"] = model.GatewayConfig{ApplicationId: "gateway", BaseDomain: "example.com", TLSMode: "none", Image: &image}
-	store.versions["gateway"] = []model.Version{{Id: "gateway-version", ApplicationId: "gateway", Status: status.VersionStatusUnpublished}}
-
-	preparation, err := service.PrepareDeployment(context.Background(), store.applications["candidate"], []model.VersionExpose{{
-		ComponentName: "database", Protocol: "tcp", Access: "public", ContainerPort: 5432,
-	}})
-	if err != nil {
-		t.Fatalf("PrepareDeployment returned error: %v", err)
-	}
-	if preparation.RenderConfig == nil || preparation.RolloutConfig == nil {
-		t.Fatalf("expected render and rollout configs, got %+v", preparation)
-	}
-	if listens := CompiledTCPListens(store.components["gateway-version"]); len(listens) != 1 || listens[0] != 5432 {
-		t.Fatalf("compiled gateway TCP listens = %v", listens)
-	}
-}
-
-func TestPrepareDeploymentSkipsGatewayRolloutWhenListenersMatch(t *testing.T) {
-	service, store := newGatewayTestService()
-	projectId := "project-1"
-	image := "traefik:v3"
-	gateway := model.Application{Id: "gateway", ProjectId: &projectId, Code: "gateway", Name: "Gateway", Kind: status.ApplicationKindGateway}
-	candidate := model.Application{Id: "candidate", ProjectId: &projectId, Code: "candidate", Name: "Candidate", Kind: status.ApplicationKindStandard}
-	store.applications[gateway.Id] = gateway
-	store.applications[candidate.Id] = candidate
-	store.configs[gateway.Id] = model.GatewayConfig{ApplicationId: gateway.Id, BaseDomain: "example.com", TLSMode: "none", Image: &image}
-	store.versions[gateway.Id] = []model.Version{{Id: "gateway-version", ApplicationId: gateway.Id, Status: status.VersionStatusUnpublished}}
-	if _, err := service.CompileGatewayToVersion(context.Background(), gateway, store.configs[gateway.Id], 5432); err != nil {
-		t.Fatalf("compile gateway: %v", err)
-	}
-
-	preparation, err := service.PrepareDeployment(context.Background(), candidate, []model.VersionExpose{{
-		ComponentName: "database", Protocol: "tcp", Access: "public", ContainerPort: 5432,
-	}})
-	if err != nil {
-		t.Fatalf("PrepareDeployment returned error: %v", err)
-	}
-	if preparation.RolloutConfig != nil {
-		t.Fatalf("expected no rollout, got %+v", preparation.RolloutConfig)
-	}
-}
-
-func TestPrepareDeploymentReturnsExposureConflict(t *testing.T) {
-	service, store := newGatewayTestService()
-	projectId := "project-1"
-	store.applications["existing"] = model.Application{Id: "existing", ProjectId: &projectId, Code: "existing", Name: "Existing", Kind: status.ApplicationKindStandard}
-	store.applications["candidate"] = model.Application{Id: "candidate", ProjectId: &projectId, Code: "candidate", Name: "Candidate", Kind: status.ApplicationKindStandard}
-	store.services["existing"] = []model.Service{{Id: "service-existing", ApplicationId: "existing", VersionId: "existing-version", Status: status.ServiceStatusRunning}}
-	store.exposes["existing-version"] = []model.VersionExpose{{ComponentName: "database", Protocol: "tcp", Access: "public", ContainerPort: 5432}}
-	store.configs["gateway"] = model.GatewayConfig{ApplicationId: "gateway", BaseDomain: "example.com", TLSMode: "none"}
-
-	_, err := service.PrepareDeployment(context.Background(), store.applications["candidate"], []model.VersionExpose{{
-		ComponentName: "database", Protocol: "tcp", Access: "public", ContainerPort: 5432,
-	}})
-	if err == nil || !strings.Contains(err.Error(), "public TCP listen port 5432") {
-		t.Fatalf("expected public TCP conflict, got %v", err)
 	}
 }

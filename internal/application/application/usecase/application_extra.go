@@ -40,7 +40,7 @@ func (s Service) ImportApplication(ctx context.Context, userId string, input app
 	}
 	if _, err := s.CreateVersion(ctx, userId, applicationdto.VersionCreateInput{
 		ApplicationId: app.Id, Label: label, Note: input.VersionNote,
-		Components: input.Components, Exposes: input.Exposes,
+		Components: input.Components,
 	}); err != nil {
 		_ = s.store.DeleteApplication(ctx, app.Id)
 		return model.Application{}, err

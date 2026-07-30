@@ -16,7 +16,7 @@ func TestRenderComponentPreservesDependencyConditions(t *testing.T) {
 			{Name: "mysql", Condition: "service_healthy"},
 			{Name: "redis", Condition: "service_started"},
 		},
-	}, "demo", "", nil)
+	}, "demo", "", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}

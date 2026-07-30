@@ -33,6 +33,9 @@ func (s Service) CompileGatewayToVersion(ctx context.Context, app model.Applicat
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components for compile", err)
 	}
+	if tcpListens == nil {
+		tcpListens = CompiledTCPListens(existing)
+	}
 	managed, err := buildManagedGatewayComponent(cfg, existing, normalizeTCPListens(tcpListens))
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())

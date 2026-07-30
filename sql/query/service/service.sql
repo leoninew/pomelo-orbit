@@ -9,6 +9,34 @@ SELECT id, application_id, instance_key, version_id, runtime_config_json, status
 FROM service
 WHERE id = ?;
 
+-- name: ServiceExposesByService :many
+SELECT id, service_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at
+FROM service_expose
+WHERE service_id = ?
+ORDER BY component_name, protocol, container_port;
+
+-- name: CountServiceExposesByVersionComponent :one
+SELECT COUNT(*)
+FROM service_expose se
+INNER JOIN service s ON s.id = se.service_id
+WHERE s.version_id = ?
+  AND se.component_name = ?;
+
+-- name: PublicTCPServiceExposesByListen :many
+SELECT se.id, se.service_id, se.component_name, se.protocol, se.container_port, se.path_prefix, se.access, se.listen_port, se.created_at, se.updated_at
+FROM service_expose se
+WHERE se.access = 'public'
+  AND se.protocol = 'tcp'
+  AND COALESCE(se.listen_port, se.container_port) = ?
+ORDER BY se.service_id, se.id;
+
+-- name: LocalServiceExposesByListen :many
+SELECT se.id, se.service_id, se.component_name, se.protocol, se.container_port, se.path_prefix, se.access, se.listen_port, se.created_at, se.updated_at
+FROM service_expose se
+WHERE se.access = 'local'
+  AND COALESCE(se.listen_port, se.container_port) = ?
+ORDER BY se.service_id, se.id;
+
 -- name: ServiceByKey :one
 SELECT id, application_id, instance_key, version_id, runtime_config_json, status, created_at, updated_at
 FROM service
@@ -34,6 +62,11 @@ UPDATE service
 SET runtime_config_json = ?, updated_at = ?
 WHERE id = ?;
 
+-- name: UpdateServiceConfiguration :exec
+UPDATE service
+SET instance_key = ?, version_id = ?, runtime_config_json = ?, updated_at = ?
+WHERE id = ?;
+
 -- name: UpdateServiceStatus :exec
 UPDATE service
 SET status = ?, updated_at = ?
@@ -52,6 +85,15 @@ WHERE service_id = ?;
 -- name: DeleteService :exec
 DELETE FROM service
 WHERE id = ?;
+
+-- name: DeleteServiceExposes :exec
+DELETE FROM service_expose
+WHERE service_id = ?;
+
+-- name: InsertServiceExpose :exec
+INSERT INTO service_expose (
+  id, service_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: CountServicesByProject :one
 SELECT COUNT(*)

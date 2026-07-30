@@ -279,6 +279,19 @@ type Service struct {
 	UpdatedAt         time.Time `db:"updated_at"`
 }
 
+type ServiceExpose struct {
+	ID            string         `db:"id"`
+	ServiceID     string         `db:"service_id"`
+	ComponentName string         `db:"component_name"`
+	Protocol      string         `db:"protocol"`
+	ContainerPort int64          `db:"container_port"`
+	PathPrefix    sql.NullString `db:"path_prefix"`
+	Access        string         `db:"access"`
+	ListenPort    sql.NullInt64  `db:"listen_port"`
+	CreatedAt     time.Time      `db:"created_at"`
+	UpdatedAt     time.Time      `db:"updated_at"`
+}
+
 type User struct {
 	ID              string         `db:"id"`
 	Username        string         `db:"username"`
@@ -391,17 +404,4 @@ type VersionComponentUlimit struct {
 	Soft        int64  `db:"soft"`
 	Hard        int64  `db:"hard"`
 	Position    int64  `db:"position"`
-}
-
-type VersionExpose struct {
-	ID            string         `db:"id"`
-	VersionID     string         `db:"version_id"`
-	ComponentName string         `db:"component_name"`
-	Protocol      string         `db:"protocol"`
-	ContainerPort int64          `db:"container_port"`
-	PathPrefix    sql.NullString `db:"path_prefix"`
-	Access        string         `db:"access"`
-	ListenPort    sql.NullInt64  `db:"listen_port"`
-	CreatedAt     time.Time      `db:"created_at"`
-	UpdatedAt     time.Time      `db:"updated_at"`
 }

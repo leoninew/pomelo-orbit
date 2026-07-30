@@ -204,16 +204,6 @@ func (q *Queries) DeleteVersionComponents(ctx context.Context, versionID string)
 	return err
 }
 
-const deleteVersionExposes = `-- name: DeleteVersionExposes :exec
-DELETE FROM version_expose
-WHERE version_id = ?
-`
-
-func (q *Queries) DeleteVersionExposes(ctx context.Context, versionID string) error {
-	_, err := q.db.ExecContext(ctx, deleteVersionExposes, versionID)
-	return err
-}
-
 const insertVersionComponent = `-- name: InsertVersionComponent :exec
 INSERT INTO version_component (
   id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
@@ -454,41 +444,6 @@ func (q *Queries) InsertVersionComponentUlimit(ctx context.Context, arg InsertVe
 	return err
 }
 
-const insertVersionExpose = `-- name: InsertVersionExpose :exec
-INSERT INTO version_expose (
-  id, version_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`
-
-type InsertVersionExposeParams struct {
-	ID            string         `db:"id"`
-	VersionID     string         `db:"version_id"`
-	ComponentName string         `db:"component_name"`
-	Protocol      string         `db:"protocol"`
-	ContainerPort int64          `db:"container_port"`
-	PathPrefix    sql.NullString `db:"path_prefix"`
-	Access        string         `db:"access"`
-	ListenPort    sql.NullInt64  `db:"listen_port"`
-	CreatedAt     time.Time      `db:"created_at"`
-	UpdatedAt     time.Time      `db:"updated_at"`
-}
-
-func (q *Queries) InsertVersionExpose(ctx context.Context, arg InsertVersionExposeParams) error {
-	_, err := q.db.ExecContext(ctx, insertVersionExpose,
-		arg.ID,
-		arg.VersionID,
-		arg.ComponentName,
-		arg.Protocol,
-		arg.ContainerPort,
-		arg.PathPrefix,
-		arg.Access,
-		arg.ListenPort,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
 const listVersions = `-- name: ListVersions :many
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
@@ -604,30 +559,6 @@ type RenameVersionComponentDependenciesParams struct {
 
 func (q *Queries) RenameVersionComponentDependencies(ctx context.Context, arg RenameVersionComponentDependenciesParams) error {
 	_, err := q.db.ExecContext(ctx, renameVersionComponentDependencies, arg.NewName, arg.VersionID, arg.OldName)
-	return err
-}
-
-const renameVersionComponentExposes = `-- name: RenameVersionComponentExposes :exec
-UPDATE version_expose
-SET component_name = ?1, updated_at = ?2
-WHERE version_id = ?3
-  AND component_name = ?4
-`
-
-type RenameVersionComponentExposesParams struct {
-	NewName   string    `db:"new_name"`
-	UpdatedAt time.Time `db:"updated_at"`
-	VersionID string    `db:"version_id"`
-	OldName   string    `db:"old_name"`
-}
-
-func (q *Queries) RenameVersionComponentExposes(ctx context.Context, arg RenameVersionComponentExposesParams) error {
-	_, err := q.db.ExecContext(ctx, renameVersionComponentExposes,
-		arg.NewName,
-		arg.UpdatedAt,
-		arg.VersionID,
-		arg.OldName,
-	)
 	return err
 }
 
@@ -1065,47 +996,6 @@ func (q *Queries) VersionComponentsByVersion(ctx context.Context, versionID stri
 			&i.CommandJson,
 			&i.PullPolicy,
 			&i.RestartPolicy,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const versionExposesByVersion = `-- name: VersionExposesByVersion :many
-SELECT id, version_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at
-FROM version_expose
-WHERE version_id = ?
-ORDER BY component_name, protocol, container_port
-`
-
-func (q *Queries) VersionExposesByVersion(ctx context.Context, versionID string) ([]VersionExpose, error) {
-	rows, err := q.db.QueryContext(ctx, versionExposesByVersion, versionID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []VersionExpose
-	for rows.Next() {
-		var i VersionExpose
-		if err := rows.Scan(
-			&i.ID,
-			&i.VersionID,
-			&i.ComponentName,
-			&i.Protocol,
-			&i.ContainerPort,
-			&i.PathPrefix,
-			&i.Access,
-			&i.ListenPort,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

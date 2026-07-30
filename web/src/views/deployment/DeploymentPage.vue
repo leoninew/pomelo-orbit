@@ -109,12 +109,13 @@
         }}
       </p>
       <template #footer>
-        <button class="app-button" @click="isCancelDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-destructive" :disabled="operating" @click="handleCancelOk">
-          {{ t('deployment.dialog.confirmCancel') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.confirm')"
+          variant="destructive"
+          @cancel="isCancelDialogOpen = false"
+          @confirm="handleCancelOk"
+        />
       </template>
     </AppDialog>
   </div>
@@ -128,6 +129,7 @@
   import { deploymentApi } from '@/api/deployment/deployment';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';

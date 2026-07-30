@@ -8,6 +8,7 @@ import (
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
 	applicationv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application"
 	deploymentv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/deployment"
+	servicev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -88,24 +89,22 @@ func (h Handler) CancelDeployment(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) DeployApplication(c *gin.Context) {
+func (h Handler) DeployService(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	var req applicationv1.ApplicationDeployReq
+	var req servicev1.ServiceDeployReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	deploymentId, err := h.service.DeployApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentdto.DeployInput{
-		VersionId: req.VersionId, InstanceKey: req.InstanceKey, ForceRecreate: req.ForceRecreate,
-	})
+	result, err := h.service.DeployService(c.Request.Context(), current.Id, c.Param("service_id"), deploymentdto.DeployServiceInput{ForceRecreate: req.ForceRecreate})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &applicationv1.DeploymentActionResp{DeploymentId: deploymentId})
+	transportresponse.ProtoJSON(c, http.StatusOK, &servicev1.ServiceDeployResp{DeploymentId: result.DeploymentId, Warnings: result.Warnings})
 }
 
 func (h Handler) StopApplication(c *gin.Context) {
@@ -170,22 +169,22 @@ func (h Handler) GetApplicationLogs(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &applicationv1.ApplicationLogsResp{Logs: value})
 }
 
-func (h Handler) PreviewVersion(c *gin.Context) {
+func (h Handler) PreviewService(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	var req applicationv1.VersionPreviewReq
+	var req servicev1.ServicePreviewReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	compose, err := h.service.PreviewVersion(c.Request.Context(), current.Id, c.Param("version_id"), derefString(req.InstanceKey))
+	compose, err := h.service.PreviewService(c.Request.Context(), current.Id, c.Param("service_id"))
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &applicationv1.VersionPreviewResp{ComposeYaml: compose})
+	transportresponse.ProtoJSON(c, http.StatusOK, &servicev1.ServicePreviewResp{ComposeYaml: compose})
 }
 
 func (h Handler) DeleteApplication(c *gin.Context) {
@@ -206,11 +205,4 @@ func deploymentTarget(serviceId string, removeVolumes bool) deploymentdto.Servic
 
 func deploymentTargetFromQuery(c *gin.Context) deploymentdto.ServiceTargetInput {
 	return deploymentTarget(c.Request.URL.Query().Get("service_id"), false)
-}
-
-func derefString(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
 }

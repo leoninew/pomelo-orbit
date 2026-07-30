@@ -13,7 +13,7 @@ const (
 	entrypointWebSecure = "websecure"
 )
 
-func (s Service) gatewayForDeployment(ctx context.Context, app model.Application, exposes []model.VersionExpose) (*model.GatewayConfig, error) {
+func (s Service) gatewayForDeployment(ctx context.Context, app model.Application, exposes []model.ServiceExpose) (*model.GatewayConfig, error) {
 	if s.gatewayCoordinator == nil {
 		return nil, apperror.New(apperror.KindInternal, "gateway deployment coordinator is not configured")
 	}

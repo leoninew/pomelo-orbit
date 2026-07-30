@@ -23,9 +23,9 @@ type applicationReader interface {
 
 type serviceStore interface {
 	repository.ServiceReader
-	UpsertService(ctx context.Context, service model.Service) error
+	CreateServiceWithExposes(ctx context.Context, service model.Service, exposes []model.ServiceExpose) error
+	UpdateServiceConfiguration(ctx context.Context, service model.Service, exposes []model.ServiceExpose) error
 	DeleteService(ctx context.Context, id string) error
-	UpdateServiceRuntimeConfig(ctx context.Context, id string, runtimeConfig map[string]string) error
 }
 
 type Service struct {
@@ -80,7 +80,11 @@ func (s Service) ListServices(ctx context.Context, userId string, input serviced
 	}
 	items := make([]servicedto.ServiceView, 0, len(page.Items))
 	for _, item := range page.Items {
-		items = append(items, serviceViewFromListItem(item))
+		view, err := s.serviceView(ctx, item)
+		if err != nil {
+			return repository.Page[servicedto.ServiceView]{}, err
+		}
+		items = append(items, view)
 	}
 	return repository.Page[servicedto.ServiceView]{Items: items, Total: page.Total, Page: page.Page, PerPage: page.PerPage}, nil
 }
@@ -101,7 +105,7 @@ func (s Service) GetService(ctx context.Context, userId string, serviceId string
 	if _, err := s.loadApplicationForUser(ctx, userId, item.ApplicationId); err != nil {
 		return servicedto.ServiceView{}, err
 	}
-	return serviceViewFromListItem(item), nil
+	return s.serviceView(ctx, item)
 }
 
 func (s Service) CreateService(ctx context.Context, userId string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
@@ -126,50 +130,119 @@ func (s Service) CreateService(ctx context.Context, userId string, input service
 	if err := validateRuntimeConfig(runtimeConfig, components); err != nil {
 		return servicedto.ServiceView{}, err
 	}
+	exposes, err := serviceExposesFromInputs(input.Exposes)
+	if err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	if err := validateServiceExposes(exposes, components); err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	if err := s.validateExposeConflicts(ctx, "", exposes); err != nil {
+		return servicedto.ServiceView{}, err
+	}
 	if _, err := s.service.ServiceByKey(ctx, app.Id, instanceKey); err == nil {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service instance already exists")
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
 	svc := model.Service{Id: idutil.NewId(), ApplicationId: app.Id, InstanceKey: instanceKey, VersionId: version.Id, RuntimeConfig: runtimeConfig, Status: status.ServiceStatusStopped}
-	if err := s.service.UpsertService(ctx, svc); err != nil {
+	for i := range exposes {
+		exposes[i].Id = idutil.NewId()
+		exposes[i].ServiceId = svc.Id
+	}
+	if err := s.service.CreateServiceWithExposes(ctx, svc, exposes); err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to create service", err)
 	}
 	created, err := s.service.ServiceListItem(ctx, svc.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	return serviceViewFromListItem(created), nil
+	return s.serviceView(ctx, created)
 }
 
-func (s Service) RuntimeConfig(ctx context.Context, userId string, serviceId string) (servicedto.RuntimeConfigView, error) {
+func (s Service) UpdateServiceConfiguration(ctx context.Context, userId string, serviceId string, input servicedto.ServiceConfigInput) (servicedto.ServiceView, error) {
 	svc, err := s.serviceForUser(ctx, userId, serviceId)
 	if err != nil {
-		return servicedto.RuntimeConfigView{}, err
-	}
-	return servicedto.RuntimeConfigView{ServiceId: svc.Id, VersionId: svc.VersionId, RuntimeConfig: cloneRuntimeConfig(svc.RuntimeConfig)}, nil
-}
-
-func (s Service) UpdateRuntimeConfig(ctx context.Context, userId string, serviceId string, values map[string]string) (servicedto.RuntimeConfigView, error) {
-	svc, err := s.serviceForUser(ctx, userId, serviceId)
-	if err != nil {
-		return servicedto.RuntimeConfigView{}, err
+		return servicedto.ServiceView{}, err
 	}
 	_, components, err := s.versionComponents(ctx, svc.VersionId, svc.ApplicationId)
 	if err != nil {
-		return servicedto.RuntimeConfigView{}, err
+		return servicedto.ServiceView{}, err
 	}
-	runtimeConfig, err := normalizeRuntimeConfig(values)
+	runtimeConfig, err := normalizeRuntimeConfig(input.RuntimeConfig)
 	if err != nil {
-		return servicedto.RuntimeConfigView{}, err
+		return servicedto.ServiceView{}, err
 	}
 	if err := validateRuntimeConfig(runtimeConfig, components); err != nil {
-		return servicedto.RuntimeConfigView{}, err
+		return servicedto.ServiceView{}, err
 	}
-	if err := s.service.UpdateServiceRuntimeConfig(ctx, svc.Id, runtimeConfig); err != nil {
-		return servicedto.RuntimeConfigView{}, apperror.Wrap(apperror.KindInternal, "Failed to update service runtime config", err)
+	exposes, err := serviceExposesFromInputs(input.Exposes)
+	if err != nil {
+		return servicedto.ServiceView{}, err
 	}
-	return servicedto.RuntimeConfigView{ServiceId: svc.Id, VersionId: svc.VersionId, RuntimeConfig: runtimeConfig}, nil
+	if err := validateServiceExposes(exposes, components); err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	if err := s.validateExposeConflicts(ctx, svc.Id, exposes); err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	for i := range exposes {
+		exposes[i].Id = idutil.NewId()
+		exposes[i].ServiceId = svc.Id
+	}
+	svc.RuntimeConfig = runtimeConfig
+	if err := s.service.UpdateServiceConfiguration(ctx, svc, exposes); err != nil {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to update service configuration", err)
+	}
+	updated, err := s.service.ServiceListItem(ctx, svc.Id)
+	if err != nil {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	return s.serviceView(ctx, updated)
+}
+
+func (s Service) UpdateServiceBasic(ctx context.Context, userId string, serviceId string, input servicedto.ServiceBasicUpdateInput) (servicedto.ServiceView, error) {
+	svc, err := s.serviceForUser(ctx, userId, serviceId)
+	if err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	versionId := strings.TrimSpace(input.VersionId)
+	instanceKey := strings.TrimSpace(input.InstanceKey)
+	if versionId == "" || instanceKey == "" {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "version_id and instance_key are required")
+	}
+	version, components, err := s.versionComponents(ctx, versionId, svc.ApplicationId)
+	if err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	if existing, err := s.service.ServiceByKey(ctx, svc.ApplicationId, instanceKey); err == nil && existing.Id != svc.Id {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service instance already exists")
+	} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	exposes, err := s.service.ServiceExposesByService(ctx, svc.Id)
+	if err != nil {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service exposes", err)
+	}
+	if err := validateRuntimeConfig(svc.RuntimeConfig, components); err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	if err := validateServiceExposes(exposes, components); err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	if err := s.validateExposeConflicts(ctx, svc.Id, exposes); err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	svc.VersionId = version.Id
+	svc.InstanceKey = instanceKey
+	if err := s.service.UpdateServiceConfiguration(ctx, svc, exposes); err != nil {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to update service basic information", err)
+	}
+	updated, err := s.service.ServiceListItem(ctx, svc.Id)
+	if err != nil {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	return s.serviceView(ctx, updated)
 }
 
 // ListServicesByApplication returns runtime bindings after authorizing access to the application.
@@ -283,12 +356,127 @@ func validateRuntimeConfig(values map[string]string, components []model.VersionC
 	return nil
 }
 
-func cloneRuntimeConfig(values map[string]string) map[string]string {
-	result := make(map[string]string, len(values))
-	for key, value := range values {
-		result[key] = value
+func optionalText(value *string) *string {
+	if value == nil || strings.TrimSpace(*value) == "" {
+		return nil
 	}
-	return result
+	copy := strings.TrimSpace(*value)
+	return &copy
+}
+
+func serviceExposesFromInputs(inputs []servicedto.ServiceExposeInput) ([]model.ServiceExpose, error) {
+	result := make([]model.ServiceExpose, 0, len(inputs))
+	for _, input := range inputs {
+		componentName := strings.TrimSpace(input.ComponentName)
+		protocol := strings.ToLower(strings.TrimSpace(input.Protocol))
+		access := strings.ToLower(strings.TrimSpace(input.Access))
+		if componentName == "" || (protocol != "http" && protocol != "tcp") || (access != "local" && access != "public") {
+			return nil, apperror.New(apperror.KindValidation, "Invalid service expose fields")
+		}
+		if input.ContainerPort < 1 || input.ContainerPort > 65535 {
+			return nil, apperror.New(apperror.KindValidation, "expose container_port out of range")
+		}
+		var listenPort *int
+		if input.ListenPort != nil {
+			if *input.ListenPort < 1 || *input.ListenPort > 65535 {
+				return nil, apperror.New(apperror.KindValidation, "expose listen_port out of range")
+			}
+			value := *input.ListenPort
+			listenPort = &value
+		}
+		pathPrefix := optionalText(input.PathPrefix)
+		if protocol == "tcp" && pathPrefix != nil && *pathPrefix != "" {
+			return nil, apperror.New(apperror.KindValidation, "path_prefix is only allowed for http expose")
+		}
+		result = append(result, model.ServiceExpose{
+			ComponentName: componentName, Protocol: protocol, ContainerPort: input.ContainerPort,
+			PathPrefix: pathPrefix, Access: access, ListenPort: listenPort,
+		})
+	}
+	return result, nil
+}
+
+func validateServiceExposes(exposes []model.ServiceExpose, components []model.VersionComponent) error {
+	componentNames := make(map[string]struct{}, len(components))
+	for _, component := range components {
+		componentNames[component.Name] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(exposes))
+	localListens := map[int]struct{}{}
+	httpPaths := map[string]struct{}{}
+	for _, expose := range exposes {
+		if _, ok := componentNames[expose.ComponentName]; !ok {
+			return apperror.New(apperror.KindValidation, "Expose component is not present in the selected version")
+		}
+		key := fmt.Sprintf("%s|%s|%d", expose.ComponentName, expose.Protocol, expose.ContainerPort)
+		if _, ok := seen[key]; ok {
+			return apperror.New(apperror.KindValidation, "Duplicate service expose")
+		}
+		seen[key] = struct{}{}
+		listen := expose.ContainerPort
+		if expose.ListenPort != nil {
+			listen = *expose.ListenPort
+		}
+		if expose.Access == "local" {
+			if _, exists := localListens[listen]; exists {
+				return apperror.New(apperror.KindValidation, "Duplicate local listen port")
+			}
+			localListens[listen] = struct{}{}
+		}
+		if expose.Access == "public" && expose.Protocol == "http" {
+			path := ""
+			if expose.PathPrefix != nil {
+				path = *expose.PathPrefix
+			}
+			if _, exists := httpPaths[path]; exists {
+				return apperror.New(apperror.KindValidation, "Duplicate public HTTP path prefix")
+			}
+			httpPaths[path] = struct{}{}
+		}
+	}
+	return nil
+}
+
+func (s Service) validateExposeConflicts(ctx context.Context, serviceId string, exposes []model.ServiceExpose) error {
+	for _, expose := range exposes {
+		listen := expose.ContainerPort
+		if expose.ListenPort != nil {
+			listen = *expose.ListenPort
+		}
+		if expose.Access == "local" {
+			existing, err := s.service.LocalServiceExposesByListen(ctx, listen)
+			if err != nil {
+				return apperror.Wrap(apperror.KindInternal, "Failed to check local listen conflicts", err)
+			}
+			for _, item := range existing {
+				if item.ServiceId != serviceId {
+					return apperror.New(apperror.KindConflict, "Local listen port is already used by another service")
+				}
+			}
+		}
+		if expose.Access == "public" && expose.Protocol == "tcp" {
+			existing, err := s.service.PublicTCPServiceExposesByListen(ctx, listen)
+			if err != nil {
+				return apperror.Wrap(apperror.KindInternal, "Failed to check public TCP conflicts", err)
+			}
+			for _, item := range existing {
+				if item.ServiceId != serviceId {
+					return apperror.New(apperror.KindConflict, "Public TCP listen port is already used by another service")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (servicedto.ServiceView, error) {
+	exposes, err := s.service.ServiceExposesByService(ctx, item.Id)
+	if err != nil {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service exposes", err)
+	}
+	view := serviceViewFromListItem(item)
+	view.Exposes = exposes
+	return view, nil
 }
 
 func serviceViewFromListItem(item model.ServiceListItem) servicedto.ServiceView {

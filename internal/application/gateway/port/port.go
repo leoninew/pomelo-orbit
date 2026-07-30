@@ -26,7 +26,6 @@ type ApplicationStore interface {
 	CreateVersion(ctx context.Context, version model.Version) error
 	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
 	ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error
-	VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error)
 }
 
 // ConfigStore persists gateway configuration and resolves the active gateway.
@@ -39,6 +38,7 @@ type ConfigStore interface {
 // ServiceReader exposes only runtime bindings needed by gateway projections and conflict checks.
 type ServiceReader interface {
 	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
+	ServiceExposesByService(ctx context.Context, serviceId string) ([]model.ServiceExpose, error)
 }
 
 // Workspace owns the optional on-disk application cleanup operation.
@@ -46,18 +46,9 @@ type Workspace interface {
 	RemoveAppDir(appCode string) error
 }
 
-// DeploymentPreparation is Gateway's policy decision for a deployment.
-// RolloutConfig is set only when the active Gateway must be restarted before
-// the application deployment can continue.
-type DeploymentPreparation struct {
-	RenderConfig  *model.GatewayConfig
-	RolloutConfig *model.GatewayConfig
-}
-
-// DeploymentCoordinator keeps Gateway configuration, exposure conflict rules,
-// and managed listener compilation inside the Gateway domain.
+// DeploymentCoordinator resolves the explicit Gateway configuration required to
+// render a Service deployment. It never mutates or deploys Gateway resources.
 type DeploymentCoordinator interface {
 	EnsureGatewayRunning(ctx context.Context, app model.Application) error
-	GatewayForDeployment(ctx context.Context, app model.Application, exposes []model.VersionExpose) (*model.GatewayConfig, error)
-	PrepareDeployment(ctx context.Context, app model.Application, exposes []model.VersionExpose) (DeploymentPreparation, error)
+	GatewayForDeployment(ctx context.Context, app model.Application, exposes []model.ServiceExpose) (*model.GatewayConfig, error)
 }

@@ -19,7 +19,6 @@ func (r Router) registerApplication(engine *gin.Engine) {
 	engine.GET("/api/application/:app_id", handler.GetApplication)
 	engine.PUT("/api/application/:app_id", handler.UpdateApplication)
 	engine.DELETE("/api/application/:app_id", deploymentHandler.DeleteApplication)
-	engine.POST("/api/application/:app_id/deploy", deploymentHandler.DeployApplication)
 	engine.GET("/api/application/:app_id/export", handler.ExportApplication)
 	engine.POST("/api/application/:app_id/stop", deploymentHandler.StopApplication)
 	engine.POST("/api/application/:app_id/restart", deploymentHandler.RestartApplication)
@@ -44,5 +43,4 @@ func (r Router) registerApplication(engine *gin.Engine) {
 	engine.POST("/api/version/:version_id/publish", handler.PublishVersion)
 	engine.POST("/api/version/:version_id/unpublish", handler.UnpublishVersion)
 	engine.POST("/api/version/:version_id/fork", handler.ForkVersion)
-	engine.POST("/api/version/:version_id/preview", deploymentHandler.PreviewVersion)
 }

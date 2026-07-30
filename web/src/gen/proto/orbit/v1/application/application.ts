@@ -34,12 +34,6 @@ export interface ApplicationUpdateReq {
   image_pull_policy?: string | undefined;
 }
 
-export interface ApplicationDeployReq {
-  version_id: string;
-  instance_key: string;
-  force_recreate: boolean;
-}
-
 export interface ApplicationStopReq {
   remove_volumes: boolean;
   service_id: string;

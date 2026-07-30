@@ -109,7 +109,7 @@ func TestResolveServiceTargetRejectsServiceFromAnotherApplication(t *testing.T) 
 	}
 }
 
-func TestServiceRuntimeConfigPersistsIndependentlyOfDeployment(t *testing.T) {
+func TestUpdateServiceConfigurationPersistsRuntimeConfig(t *testing.T) {
 	service, database, applicationStore, serviceStore := newServiceIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
@@ -120,19 +120,40 @@ func TestServiceRuntimeConfigPersistsIndependentlyOfDeployment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	view, err := service.RuntimeConfig(ctx, serviceTestUserId, binding.Id)
+	updated, err := service.UpdateServiceConfiguration(ctx, serviceTestUserId, binding.Id, servicedto.ServiceConfigInput{
+		RuntimeConfig: map[string]string{"API_TOKEN": "next-value"}, Exposes: []servicedto.ServiceExposeInput{},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.RuntimeConfig["API_TOKEN"] != "service-value" {
-		t.Fatalf("runtime config = %+v", view.RuntimeConfig)
+	if updated.Service.RuntimeConfig["API_TOKEN"] != "next-value" {
+		t.Fatalf("updated runtime config = %+v", updated.Service.RuntimeConfig)
 	}
-	updated, err := service.UpdateRuntimeConfig(ctx, serviceTestUserId, binding.Id, map[string]string{"API_TOKEN": "next-value"})
+}
+
+func TestUpdateServiceBasicPersistsVersionAndInstanceKey(t *testing.T) {
+	service, database, applicationStore, serviceStore := newServiceIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	app, firstVersion := createServiceTestApplication(t, applicationStore, "basic-service")
+	secondVersion := model.Version{Id: idutil.NewId(), ApplicationId: app.Id, Label: "v2", Status: status.VersionStatusPublished}
+	if err := applicationStore.CreateVersion(ctx, secondVersion); err != nil {
+		t.Fatal(err)
+	}
+	binding := model.Service{Id: idutil.NewId(), ApplicationId: app.Id, InstanceKey: "default", VersionId: firstVersion.Id, Status: status.ServiceStatusStopped}
+	if err := serviceStore.UpsertService(ctx, binding); err != nil {
+		t.Fatal(err)
+	}
+
+	updated, err := service.UpdateServiceBasic(ctx, serviceTestUserId, binding.Id, servicedto.ServiceBasicUpdateInput{
+		VersionId: secondVersion.Id, InstanceKey: "canary",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.RuntimeConfig["API_TOKEN"] != "next-value" {
-		t.Fatalf("updated runtime config = %+v", updated.RuntimeConfig)
+	if updated.Service.VersionId != secondVersion.Id || updated.Service.InstanceKey != "canary" {
+		t.Fatalf("updated basic service = %+v", updated.Service)
 	}
 }
 

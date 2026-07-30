@@ -3,7 +3,6 @@ package applicationsvc
 import (
 	"context"
 	"errors"
-	"strconv"
 	"strings"
 
 	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
@@ -75,12 +74,8 @@ func (s Service) CreateVersion(ctx context.Context, userId string, input applica
 	if err := validateVersionComponents(components); err != nil {
 		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	exposes, err := versionExposesFromInputs(input.Exposes)
-	if err != nil {
+	if err := validateApplicationComponentPorts(app, components); err != nil {
 		return applicationdto.VersionView{}, err
-	}
-	if err := validateVersionExposes(exposes, components); err != nil {
-		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
 	version := model.Version{
 		Id:            idutil.NewId(),
@@ -93,11 +88,7 @@ func (s Service) CreateVersion(ctx context.Context, userId string, input applica
 		components[i].Id = idutil.NewId()
 		components[i].VersionId = version.Id
 	}
-	for i := range exposes {
-		exposes[i].Id = idutil.NewId()
-		exposes[i].VersionId = version.Id
-	}
-	if err := s.store.CreateVersionWithVersionComponentsAndExposes(ctx, version, components, exposes); err != nil {
+	if err := s.store.CreateVersionWithVersionComponents(ctx, version, components); err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to create version", err)
 	}
 	return s.VersionForUser(ctx, userId, version.Id)
@@ -127,22 +118,6 @@ func (s Service) UpdateVersion(ctx context.Context, userId string, versionId str
 	}
 	if err := s.store.UpdateVersion(ctx, version); err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to update version", err)
-	}
-	if input.Exposes != nil {
-		exposes, err := versionExposesFromInputs(*input.Exposes)
-		if err != nil {
-			return applicationdto.VersionView{}, err
-		}
-		if err := validateVersionExposes(exposes, components); err != nil {
-			return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
-		}
-		for i := range exposes {
-			exposes[i].Id = idutil.NewId()
-			exposes[i].VersionId = version.Id
-		}
-		if err := s.store.ReplaceVersionExposes(ctx, version.Id, exposes); err != nil {
-			return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to replace exposes", err)
-		}
 	}
 	return s.VersionForUser(ctx, userId, version.Id)
 }
@@ -187,6 +162,13 @@ func (s Service) CreateVersionComponent(ctx context.Context, userId string, vers
 	components = append(components, component)
 	if err := validateVersionComponents(components); err != nil {
 		return model.VersionComponent{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	app, err := s.store.Application(ctx, version.ApplicationId)
+	if err != nil {
+		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+	}
+	if err := validateApplicationComponentPorts(app, components); err != nil {
+		return model.VersionComponent{}, err
 	}
 	if err := s.validateServicesRuntimeConfig(ctx, version, components); err != nil {
 		return model.VersionComponent{}, err
@@ -305,8 +287,24 @@ func (s Service) updateVersionComponentGroup(ctx context.Context, userId string,
 	if err := validateVersionComponents(components); err != nil {
 		return model.VersionComponent{}, apperror.New(apperror.KindValidation, err.Error())
 	}
+	app, err := s.store.Application(ctx, version.ApplicationId)
+	if err != nil {
+		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+	}
+	if err := validateApplicationComponentPorts(app, components); err != nil {
+		return model.VersionComponent{}, err
+	}
 	if err := s.validateServicesRuntimeConfig(ctx, version, components); err != nil {
 		return model.VersionComponent{}, err
+	}
+	if component.Name != existing.Name {
+		references, err := s.store.CountServiceExposesByVersionComponent(ctx, version.Id, existing.Name)
+		if err != nil {
+			return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to check service expose references", err)
+		}
+		if references > 0 {
+			return model.VersionComponent{}, apperror.New(apperror.KindValidation, "Component is referenced by service exposes")
+		}
 	}
 	if err := persist(ctx, component, existing.Name); err != nil {
 		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to update component", err)
@@ -326,20 +324,18 @@ func (s Service) DeleteVersionComponent(ctx context.Context, userId string, vers
 	if err != nil {
 		return err
 	}
+	exposeReferences, err := s.store.CountServiceExposesByVersionComponent(ctx, version.Id, component.Name)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to check service expose references", err)
+	}
+	if exposeReferences > 0 {
+		return apperror.New(apperror.KindValidation, "Component is referenced by service exposes")
+	}
 	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
-	exposes, err := s.store.VersionExposesByVersion(ctx, version.Id)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
-	}
 	references := make([]string, 0)
-	for _, expose := range exposes {
-		if expose.ComponentName == component.Name {
-			references = append(references, "expose "+expose.Protocol+":"+strconv.Itoa(expose.ContainerPort))
-		}
-	}
 	for _, candidate := range components {
 		for _, dependency := range candidate.Dependencies {
 			if dependency.Name == component.Name {
@@ -376,13 +372,6 @@ func (s Service) PublishVersion(ctx context.Context, userId string, versionId st
 	}
 	if err := s.validateServicesRuntimeConfig(ctx, version, components); err != nil {
 		return applicationdto.VersionView{}, err
-	}
-	exposes, err := s.store.VersionExposesByVersion(ctx, version.Id)
-	if err != nil {
-		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
-	}
-	if err := validateVersionExposes(exposes, components); err != nil {
-		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
 	version.Status = status.VersionStatusPublished
 	if err := s.store.UpdateVersion(ctx, version); err != nil {
@@ -436,10 +425,6 @@ func (s Service) ForkVersion(ctx context.Context, userId string, versionId strin
 	if err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
-	exposes, err := s.store.VersionExposesByVersion(ctx, source.Id)
-	if err != nil {
-		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
-	}
 	fromId := source.Id
 	version := model.Version{
 		Id:                   idutil.NewId(),
@@ -455,13 +440,7 @@ func (s Service) ForkVersion(ctx context.Context, userId string, versionId strin
 		component.VersionId = version.Id
 		forkedComponents = append(forkedComponents, component)
 	}
-	forkedExposes := make([]model.VersionExpose, 0, len(exposes))
-	for _, expose := range exposes {
-		expose.Id = idutil.NewId()
-		expose.VersionId = version.Id
-		forkedExposes = append(forkedExposes, expose)
-	}
-	if err := s.store.CreateVersionWithVersionComponentsAndExposes(ctx, version, forkedComponents, forkedExposes); err != nil {
+	if err := s.store.CreateVersionWithVersionComponents(ctx, version, forkedComponents); err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to fork version", err)
 	}
 	return s.VersionForUser(ctx, userId, version.Id)
@@ -472,11 +451,7 @@ func (s Service) versionView(ctx context.Context, version model.Version) (applic
 	if err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
-	exposes, err := s.store.VersionExposesByVersion(ctx, version.Id)
-	if err != nil {
-		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
-	}
-	return applicationdto.VersionView{Version: version, Components: components, Exposes: exposes}, nil
+	return applicationdto.VersionView{Version: version, Components: components}, nil
 }
 
 func (s Service) loadVersionForUser(ctx context.Context, userId string, versionId string) (model.Version, error) {
@@ -561,54 +536,10 @@ func componentHealthcheckFromInput(input *applicationdto.VersionComponentHealthc
 	}, nil
 }
 
-func cloneComponentHealthcheck(input *model.VersionComponentHealthcheck) *model.VersionComponentHealthcheck {
-	if input == nil {
-		return nil
-	}
-	copy := *input
-	return &copy
-}
-
 func cloneComponentResources(input *model.VersionComponentResources) *model.VersionComponentResources {
 	if input == nil {
 		return nil
 	}
 	copy := *input
 	return &copy
-}
-
-func versionExposesFromInputs(inputs []applicationdto.VersionExposeInput) ([]model.VersionExpose, error) {
-	exposes := make([]model.VersionExpose, 0, len(inputs))
-	for _, input := range inputs {
-		protocol := input.Protocol
-		componentName := input.ComponentName
-		if componentName == "" || (protocol != "http" && protocol != "tcp") || input.ContainerPort < 1 || input.ContainerPort > 65535 {
-			return nil, apperror.New(apperror.KindValidation, "Invalid expose fields")
-		}
-		access := input.Access
-		if access != exposeAccessLocal && access != exposeAccessPublic {
-			return nil, apperror.New(apperror.KindValidation, "expose access must be local or public")
-		}
-		var listenPort *int
-		if input.ListenPort != nil {
-			if *input.ListenPort < 1 || *input.ListenPort > 65535 {
-				return nil, apperror.New(apperror.KindValidation, "expose listen_port out of range")
-			}
-			v := *input.ListenPort
-			listenPort = &v
-		}
-		pathPrefix := optionalText(input.PathPrefix)
-		if protocol == "tcp" && pathPrefix != nil && *pathPrefix != "" {
-			return nil, apperror.New(apperror.KindValidation, "path_prefix is only allowed for http expose")
-		}
-		exposes = append(exposes, model.VersionExpose{
-			ComponentName: componentName,
-			Protocol:      protocol,
-			ContainerPort: input.ContainerPort,
-			PathPrefix:    pathPrefix,
-			Access:        access,
-			ListenPort:    listenPort,
-		})
-	}
-	return exposes, nil
 }

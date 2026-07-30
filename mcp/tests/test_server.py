@@ -46,10 +46,10 @@ async def test_server_registers_the_accepted_tool_surface(tmp_path) -> None:
         "orbit_update_version_component_ulimits",
         "orbit_publish_version",
         "orbit_delete_version",
-        "orbit_preview_version",
+        "orbit_preview_service",
         "orbit_create_service",
-        "orbit_get_service_runtime_config",
-        "orbit_update_service_runtime_config",
+        "orbit_update_service_configuration",
+        "orbit_update_service_basic",
         "orbit_deploy",
         "orbit_stop",
         "orbit_restart",
@@ -196,3 +196,46 @@ async def test_server_component_group_schemas_match_the_current_json_contract(tm
         assert definition["required"] == [field_name]
 
     assert "orbit_update_version_component_connectivity" not in tools
+
+
+@pytest.mark.asyncio
+async def test_server_service_schemas_target_saved_service_configuration(tmp_path) -> None:
+    settings = make_settings(tmp_path)
+    client = OrbitClient(settings)
+    try:
+        server = create_server(settings=settings, client=client)
+        tools = {tool.name: tool for tool in await server.list_tools()}
+    finally:
+        await client.aclose()
+
+    assert "orbit_preview_version" not in tools
+
+    create = tools["orbit_create_service"].inputSchema
+    assert create["required"] == ["application_id", "version_id", "instance_key", "runtime_config", "exposes"]
+    expose = create["$defs"]["ServiceExpose"]
+    assert set(expose["properties"]) == {
+        "component_name",
+        "protocol",
+        "container_port",
+        "path_prefix",
+        "access",
+        "listen_port",
+    }
+    assert expose["required"] == ["component_name", "protocol", "container_port", "access"]
+
+    configuration = tools["orbit_update_service_configuration"].inputSchema
+    assert configuration["required"] == ["service_id", "runtime_config", "exposes"]
+    assert "version_id" not in configuration["properties"]
+
+    basic = tools["orbit_update_service_basic"].inputSchema
+    assert basic["required"] == ["service_id", "version_id", "instance_key"]
+
+    preview = tools["orbit_preview_service"].inputSchema
+    assert preview["required"] == ["service_id"]
+
+    deploy = tools["orbit_deploy"].inputSchema
+    assert deploy["required"] == ["service_id"]
+    assert deploy["properties"]["force_recreate"]["default"] is False
+    assert "application_id" not in deploy["properties"]
+    assert "version_id" not in deploy["properties"]
+    assert "instance_key" not in deploy["properties"]

@@ -14,6 +14,20 @@ type Service struct {
 	UpdatedAt     time.Time `db:"updated_at"`
 }
 
+// ServiceExpose is the persisted runtime routing and port binding of a service.
+type ServiceExpose struct {
+	Id            string    `db:"id"`
+	ServiceId     string    `db:"service_id"`
+	ComponentName string    `db:"component_name"`
+	Protocol      string    `db:"protocol"`
+	ContainerPort int       `db:"container_port"`
+	PathPrefix    *string   `db:"path_prefix"`
+	Access        string    `db:"access"`
+	ListenPort    *int      `db:"listen_port"`
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
+}
+
 // ServiceListItem is Service plus application and version labels.
 type ServiceListItem struct {
 	Id              string `db:"id"`

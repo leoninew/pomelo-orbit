@@ -29,18 +29,6 @@
           <RotateCcw class="size-4" />
           {{ t('application.detail.actions.unpublish') }}
         </button>
-        <button
-          v-if="version && isDeployable"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openDeployModal"
-        >
-          <Rocket class="size-4" />
-          {{ t('application.detail.actions.deploy') }}
-        </button>
-        <button v-if="version" class="app-button h-9 px-3" @click="openPreview">
-          {{ t('application.detail.actions.preview') }}
-        </button>
         <button v-if="version" class="app-button h-9 px-3" @click="openForkModal">
           {{ t('application.detail.actions.fork') }}
         </button>
@@ -69,7 +57,12 @@
           <h2 class="app-detail-section-title">
             {{ t('application.detail.sections.basicInfo') }}
           </h2>
-          <button v-if="isEditable" class="app-button h-9 px-3" @click="openBasicModal">
+          <button
+            v-if="isEditable"
+            class="app-button-primary h-9 px-3"
+            :disabled="operating"
+            @click="openBasicModal"
+          >
             <Pencil class="size-4" />
             {{ t('common.edit') }}
           </button>
@@ -112,123 +105,42 @@
           <h2 class="app-detail-section-title">
             {{ t('application.detail.fields.components') }}
           </h2>
-          <button v-if="isEditable" class="app-button h-9 px-3" @click="openComponentPage()">
+          <button
+            v-if="isEditable"
+            class="app-button-primary h-9 px-3"
+            :disabled="operating"
+            @click="openComponentDialog"
+          >
             <Plus class="size-4" />
             {{ t('application.detail.actions.addComponent') }}
           </button>
         </div>
         <AppEmptyState v-if="(version.components ?? []).length === 0" size="compact" />
-        <TabsRoot v-else v-model="activeComponentId" class="flex min-w-0 flex-col">
-          <div class="overflow-x-auto border-b border-border px-5">
-            <TabsList
-              :aria-label="t('application.detail.fields.components')"
-              class="flex min-w-max gap-1"
-            >
-              <TabsTrigger
-                v-for="component in version.components"
-                :key="component.id"
-                :value="component.id"
-                class="border-b-2 border-transparent px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground"
-              >
-                {{ component.name }}
-              </TabsTrigger>
-            </TabsList>
-          </div>
-          <TabsContent
-            v-for="component in version.components"
-            :key="component.id"
-            :value="component.id"
-            class="outline-none"
-          >
-            <dl class="app-detail-info-grid">
-              <div class="flex gap-2 sm:col-span-2">
-                <dt class="whitespace-nowrap">
-                  {{ t('application.detail.fields.image') }}
-                </dt>
-                <dd class="min-w-0 break-all text-foreground">{{ component.image }}</dd>
-              </div>
-              <div class="flex gap-2">
-                <dt class="whitespace-nowrap">
-                  {{ t('application.componentDetail.fields.pullPolicy') }}
-                </dt>
-                <dd class="text-foreground">{{ component.pull_policy }}</dd>
-              </div>
-              <div class="flex gap-2">
-                <dt class="whitespace-nowrap">
-                  {{ t('application.componentDetail.fields.restartPolicy') }}
-                </dt>
-                <dd class="text-foreground">{{ component.restart_policy }}</dd>
-              </div>
-              <div class="flex gap-2 sm:col-span-2">
-                <dt class="whitespace-nowrap">
-                  {{ t('application.componentDetail.fields.command') }}
-                </dt>
-                <dd class="min-w-0 break-all text-foreground">{{ component.command }}</dd>
-              </div>
-            </dl>
-            <div class="border-t border-border px-5 py-3 text-sm">
-              <button class="app-link" @click="openComponentPage(component.id)">
-                {{ t('application.view') }}
-              </button>
-            </div>
-          </TabsContent>
-        </TabsRoot>
-      </div>
-
-      <!-- 暴露 -->
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">
-            {{ t('application.detail.fields.exposes') }}
-          </h2>
-          <button
-            v-if="isEditable"
-            class="app-button-primary h-9 px-3"
-            :disabled="(version.components ?? []).length === 0"
-            @click="openExposeModal()"
-          >
-            <Plus class="size-4" />
-            {{ t('application.detail.actions.addExpose') }}
-          </button>
-        </div>
-        <AppEmptyState v-if="(version.exposes ?? []).length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
-          <table class="app-data-table min-w-[720px]">
+          <table class="app-data-table min-w-[840px]">
             <thead>
               <tr>
                 <th>{{ t('application.detail.fields.component') }}</th>
-                <th>{{ t('application.detail.placeholders.exposeProtocol') }}</th>
-                <th>{{ t('application.detail.placeholders.exposeAccess') }}</th>
-                <th>{{ t('application.detail.placeholders.containerPort') }}</th>
-                <th>{{ t('application.detail.placeholders.listenPort') }}</th>
-                <th v-if="isEditable">{{ t('common.operation') }}</th>
+                <th>{{ t('application.detail.fields.image') }}</th>
+                <th>{{ t('application.componentDetail.fields.pullPolicy') }}</th>
+                <th>{{ t('application.componentDetail.fields.restartPolicy') }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(row, index) in version.exposes" :key="row.id || index">
-                <td class="text-foreground">{{ row.component_name }}</td>
+              <tr v-for="component in version.components" :key="component.id">
                 <td>
-                  <AppBadge variant="pill">{{ row.protocol }}</AppBadge>
+                  <router-link
+                    :to="`/version/${version.id}/component/${component.id}`"
+                    class="app-link"
+                  >
+                    {{ component.name }}
+                  </router-link>
                 </td>
-                <td>
-                  <AppBadge variant="pill">{{ row.access }}</AppBadge>
+                <td class="max-w-md whitespace-normal break-all text-muted-foreground">
+                  {{ component.image }}
                 </td>
-                <td class="text-muted-foreground">{{ row.container_port }}</td>
-                <td class="text-muted-foreground">{{ row.listen_port || row.container_port }}</td>
-                <td v-if="isEditable">
-                  <div class="flex items-center gap-3">
-                    <button class="app-link" @click="openExposeModal(index)">
-                      {{ t('common.edit') }}
-                    </button>
-                    <button
-                      class="app-link-danger"
-                      :disabled="operating"
-                      @click="removeExpose(index)"
-                    >
-                      {{ t('common.delete') }}
-                    </button>
-                  </div>
-                </td>
+                <td class="text-muted-foreground">{{ component.pull_policy }}</td>
+                <td class="text-muted-foreground">{{ component.restart_policy }}</td>
               </tr>
             </tbody>
           </table>
@@ -270,99 +182,85 @@
         </div>
       </div>
       <template #footer>
-        <button class="app-button" @click="isBasicDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="operating" class="app-button-primary" @click="saveBasic">
-          {{ t('common.save') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.save')"
+          @cancel="isBasicDialogOpen = false"
+          @confirm="saveBasic"
+        />
       </template>
     </AppDialog>
 
-    <!-- 暴露表单 -->
+    <!-- 添加组件 -->
     <AppDialog
-      v-model:open="isExposeDialogOpen"
-      :title="
-        editingExposeIndex === null
-          ? t('application.versionDetail.dialog.addExpose')
-          : t('application.versionDetail.dialog.editExpose')
-      "
-      width-class="w-[min(560px,calc(100vw-32px))]"
+      v-model:open="isComponentDialogOpen"
+      :title="t('application.versionDetail.dialog.addComponent')"
+      width-class="w-[min(640px,calc(100vw-32px))]"
     >
-      <div class="space-y-4">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.detail.fields.component') }}
             <span class="text-destructive">*</span>
           </label>
-          <RawValueSelect
-            :key="`expose-component-${exposeFormSession}`"
-            v-model="exposeForm.component_name"
-            :values="componentNameValues"
-            :placeholder="t('application.detail.placeholders.exposeComponent')"
+          <input
+            v-model="componentForm.name"
+            class="app-input"
+            :class="componentFormError ? 'app-input-error' : ''"
+            type="text"
+            :placeholder="t('application.detail.placeholders.componentName')"
           />
         </div>
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label class="app-field-label mb-1.5 block">
-              {{ t('application.detail.placeholders.exposeProtocol') }}
-            </label>
-            <RawValueSelect
-              :key="`expose-protocol-${exposeFormSession}`"
-              v-model="exposeForm.protocol"
-              :values="exposeProtocolValues"
-              :placeholder="t('application.detail.placeholders.exposeProtocol')"
-            />
-          </div>
-          <div>
-            <label class="app-field-label mb-1.5 block">
-              {{ t('application.detail.placeholders.exposeAccess') }}
-            </label>
-            <RawValueSelect
-              :key="`expose-access-${exposeFormSession}`"
-              v-model="exposeForm.access"
-              :values="exposeAccessValues"
-              :placeholder="t('application.detail.placeholders.exposeAccess')"
-            />
-          </div>
+        <div class="sm:col-span-2">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.detail.fields.image') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="componentForm.image"
+            class="app-input"
+            :class="componentFormError ? 'app-input-error' : ''"
+            type="text"
+            :placeholder="t('application.detail.placeholders.componentImage')"
+          />
         </div>
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label class="app-field-label mb-1.5 block">
-              {{ t('application.detail.placeholders.containerPort') }}
-              <span class="text-destructive">*</span>
-            </label>
-            <input
-              v-model.number="exposeForm.container_port"
-              type="number"
-              min="1"
-              max="65535"
-              class="app-input"
-            />
-          </div>
-          <div>
-            <label class="app-field-label mb-1.5 block">
-              {{ t('application.detail.placeholders.listenPort') }}
-            </label>
-            <input
-              v-model="exposeForm.listen_port"
-              type="number"
-              min="1"
-              max="65535"
-              class="app-input"
-              :placeholder="t('application.detail.placeholders.listenPort')"
-            />
-          </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.pullPolicy') }}
+          </label>
+          <RawValueSelect
+            v-model="componentForm.pull_policy"
+            :placeholder="t('common.notSet')"
+            :values="pullPolicyValues"
+          />
         </div>
-        <p v-if="exposeFormError" class="app-field-error text-xs">{{ exposeFormError }}</p>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.restartPolicy') }}
+          </label>
+          <RawValueSelect
+            v-model="componentForm.restart_policy"
+            :placeholder="t('common.notSet')"
+            :values="restartPolicyValues"
+          />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.command') }}
+          </label>
+          <textarea v-model="componentForm.command" class="app-textarea" rows="3" />
+        </div>
       </div>
+      <p v-if="componentFormError" class="app-field-error mt-3 text-xs">
+        {{ componentFormError }}
+      </p>
       <template #footer>
-        <button class="app-button" @click="isExposeDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="operating" class="app-button-primary" @click="saveExpose">
-          {{ t('common.save') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.create')"
+          @cancel="closeComponentDialog"
+          @confirm="createComponent"
+        />
       </template>
     </AppDialog>
 
@@ -387,12 +285,12 @@
         <p v-if="forkLabelError" class="app-field-error mt-1 text-xs">{{ forkLabelError }}</p>
       </div>
       <template #footer>
-        <button class="app-button" @click="isForkDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="operating" class="app-button-primary" @click="handleForkOk">
-          {{ t('application.detail.actions.fork') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.copy')"
+          @cancel="isForkDialogOpen = false"
+          @confirm="handleForkOk"
+        />
       </template>
     </AppDialog>
 
@@ -410,114 +308,37 @@
         }}
       </p>
       <template #footer>
-        <button class="app-button" @click="isDeleteDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="operating" class="app-button-destructive" @click="handleDeleteOk">
-          {{ t('common.delete') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.delete')"
+          variant="destructive"
+          @cancel="isDeleteDialogOpen = false"
+          @confirm="handleDeleteOk"
+        />
       </template>
     </AppDialog>
-
-    <!-- Deploy -->
-    <AppDialog
-      v-model:open="isDeployDialogOpen"
-      :title="t('application.detail.dialog.deploy')"
-      width-class="w-[min(480px,calc(100vw-32px))]"
-    >
-      <div class="space-y-4">
-        <p class="text-sm text-muted-foreground">
-          {{ t('application.versionDetail.deployDescription', { label: version?.label || '-' }) }}
-        </p>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('service.fields.instanceKey') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="deployForm.instance_key"
-            type="text"
-            required
-            class="app-input"
-            :placeholder="t('application.versionDetail.instanceKeyPlaceholder')"
-          />
-        </div>
-        <label class="flex items-center gap-2">
-          <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
-          <span class="text-sm text-foreground">
-            {{ t('application.detail.fields.forceRecreate') }}
-          </span>
-        </label>
-      </div>
-      <template #footer>
-        <button class="app-button" @click="isDeployDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="operating" class="app-button-primary" @click="handleDeployOk">
-          {{ t('application.detail.actions.deploy') }}
-        </button>
-      </template>
-    </AppDialog>
-
-    <!-- Compose 预览 -->
-    <AppDrawer
-      :open="composePreviewDrawerOpen"
-      :title="t('application.detail.drawer.composePreview')"
-      width-class="w-[min(960px,100vw)]"
-      body-class="min-h-0 flex-1 overflow-hidden p-0"
-      @update:open="handleComposePreviewDrawerOpenChange"
-    >
-      <div class="flex h-full flex-col gap-3 p-6">
-        <p class="text-sm text-muted-foreground">
-          {{ t('application.detail.drawer.composePreviewDescription') }}
-        </p>
-        <div v-if="composePreviewLoading" class="flex flex-1 items-center justify-center">
-          <AppSpinner />
-        </div>
-        <div
-          v-else-if="composePreviewError"
-          class="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-        >
-          {{ composePreviewError }}
-        </div>
-        <div v-else class="min-h-0 flex-1">
-          <MonacoEditor
-            :model-value="composePreviewYaml"
-            language="yaml"
-            height="100%"
-            :readonly="true"
-          />
-        </div>
-      </div>
-      <template #footer>
-        <button class="app-button" @click="composePreviewDrawerOpen = false">
-          {{ t('application.detail.actions.close') }}
-        </button>
-      </template>
-    </AppDrawer>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Pencil, Plus, Rocket, RotateCcw, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
-  import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
   import { applicationApi } from '@/api/application/application';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
-  import AppDrawer from '@/components/AppDrawer.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
-  import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { VersionExposeReq, VersionResp } from '@/gen/proto/orbit/v1/application/version';
+  import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import { versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
+  import { componentCreateRequestFromForm, emptyComponentForm } from './componentForm';
 
   const route = useRoute();
   const router = useRouter();
@@ -527,72 +348,32 @@
 
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
-  const { loading: composePreviewLoading, execute: executeComposePreview } = useStatusAsync();
 
   const version = ref<VersionResp>();
 
   const isBasicDialogOpen = ref(false);
-  const isExposeDialogOpen = ref(false);
+  const isComponentDialogOpen = ref(false);
   const isForkDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
-  const isDeployDialogOpen = ref(false);
-  const composePreviewDrawerOpen = ref(false);
-  const composePreviewYaml = ref('');
-  const composePreviewError = ref('');
-  const editingExposeIndex = ref<number | null>(null);
   const forkLabel = ref('');
   const forkLabelError = ref('');
   const basicFormError = ref('');
-  const exposeFormError = ref('');
-  const exposeFormSession = ref(0);
-  const deployError = ref('');
-  const deployForm = reactive({
-    instance_key: 'default',
-    force_recreate: false,
-  });
+  const componentFormError = ref('');
 
   const basicForm = reactive({
     label: '',
     note: '',
   });
-  const exposeForm = reactive({
-    component_name: '',
-    protocol: '',
-    container_port: 80,
-    access: 'local',
-    listen_port: '',
-  });
-
-  const exposeProtocolValues = ['http', 'tcp'];
-  const exposeAccessValues = ['local', 'public'];
+  const componentForm = reactive(emptyComponentForm());
+  const pullPolicyValues = ['always', 'missing', 'never'];
+  const restartPolicyValues = ['no', 'unless-stopped'];
   const isEditable = computed(() => version.value?.status === 'unpublished');
   const isPublished = computed(() => version.value?.status === 'published');
-  const isDeployable = computed(() => Boolean(version.value));
-  const hasComponents = computed(() => (version.value?.components ?? []).length > 0);
-  const componentNameValues = computed(() => (version.value?.components ?? []).map((c) => c.name));
-  const activeComponentId = ref('');
-
-  function exposesPayload(): VersionExposeReq[] {
-    return (version.value?.exposes ?? []).map((item) => ({
-      component_name: item.component_name,
-      protocol: item.protocol,
-      container_port: item.container_port,
-      path_prefix: item.path_prefix,
-      access: item.access,
-      listen_port: item.listen_port,
-    }));
-  }
 
   async function fetchVersion() {
     try {
       await execute(async () => {
         version.value = await applicationApi.getVersion(versionId);
-        const firstComponentId = version.value.components[0]?.id ?? '';
-        if (
-          !version.value.components.some((component) => component.id === activeComponentId.value)
-        ) {
-          activeComponentId.value = firstComponentId;
-        }
       });
     } catch {
       toast.error(t('application.toast.loadVersionsFailed'));
@@ -630,7 +411,6 @@
         version.value = await applicationApi.updateVersion(versionId, {
           label: basicForm.label,
           note: basicForm.note,
-          exposes: exposesPayload(),
         });
         toast.success(t('application.toast.updateSuccess'));
         isBasicDialogOpen.value = false;
@@ -640,100 +420,29 @@
     }
   }
 
-  function openComponentPage(id = 'new') {
-    router.push(`/version/${versionId}/component/${id}`);
+  function openComponentDialog() {
+    Object.assign(componentForm, emptyComponentForm());
+    componentFormError.value = '';
+    isComponentDialogOpen.value = true;
   }
 
-  function openExposeModal(index?: number) {
-    if ((version.value?.components ?? []).length === 0) {
-      toast.error(t('application.validation.exposeNeedsComponent'));
-      return;
-    }
-    editingExposeIndex.value = index ?? null;
-    exposeFormError.value = '';
-    if (index === undefined || !version.value?.exposes?.[index]) {
-      exposeForm.component_name = version.value?.components?.[0]?.name ?? '';
-      exposeForm.protocol = '';
-      exposeForm.container_port = 80;
-      exposeForm.access = 'local';
-      exposeForm.listen_port = '';
-    } else {
-      const row = version.value.exposes[index];
-      exposeForm.component_name = row.component_name;
-      exposeForm.protocol = row.protocol;
-      exposeForm.container_port = row.container_port;
-      exposeForm.access = row.access;
-      exposeForm.listen_port = row.listen_port ? String(row.listen_port) : '';
-    }
-    exposeFormSession.value += 1;
-    isExposeDialogOpen.value = true;
+  function closeComponentDialog() {
+    isComponentDialogOpen.value = false;
+    componentFormError.value = '';
   }
 
-  async function saveExpose() {
-    const componentName = exposeForm.component_name;
-    const containerPort = Number(exposeForm.container_port);
-    if (!componentName) {
-      exposeFormError.value = t('application.validation.exposeComponentRequired');
+  async function createComponent() {
+    const result = componentCreateRequestFromForm(componentForm);
+    if (!result.valid) {
+      componentFormError.value = t(`application.componentDetail.validation.${result.error}`);
       return;
-    }
-    if (!(version.value?.components ?? []).some((c) => c.name === componentName)) {
-      exposeFormError.value = t('application.validation.exposeComponentNotFound');
-      return;
-    }
-    if (
-      (exposeForm.protocol !== 'http' && exposeForm.protocol !== 'tcp') ||
-      (exposeForm.access !== 'local' && exposeForm.access !== 'public')
-    ) {
-      exposeFormError.value = t('application.validation.exposeFieldsInvalid');
-      return;
-    }
-    if (!Number.isInteger(containerPort) || containerPort < 1 || containerPort > 65535) {
-      exposeFormError.value = t('application.validation.portRange');
-      return;
-    }
-    const listenText = String(exposeForm.listen_port);
-    let listenPort: number | undefined;
-    if (listenText) {
-      listenPort = Number(listenText);
-      if (!Number.isInteger(listenPort) || listenPort < 1 || listenPort > 65535) {
-        exposeFormError.value = t('application.validation.portRange');
-        return;
-      }
-    }
-    const req: VersionExposeReq = {
-      component_name: componentName,
-      protocol: exposeForm.protocol,
-      container_port: containerPort,
-      access: exposeForm.access,
-      listen_port: listenPort,
-    };
-    const next = exposesPayload();
-    if (editingExposeIndex.value === null) {
-      next.push(req);
-    } else {
-      next[editingExposeIndex.value] = req;
     }
     try {
       await executeOp(async () => {
-        version.value = await applicationApi.updateVersion(versionId, {
-          exposes: next,
-        });
+        await applicationApi.createVersionComponent(versionId, result.value);
+        version.value = await applicationApi.getVersion(versionId);
         toast.success(t('application.toast.updateSuccess'));
-        isExposeDialogOpen.value = false;
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-    }
-  }
-
-  async function removeExpose(index: number) {
-    const next = exposesPayload().filter((_, i) => i !== index);
-    try {
-      await executeOp(async () => {
-        version.value = await applicationApi.updateVersion(versionId, {
-          exposes: next,
-        });
-        toast.success(t('application.toast.updateSuccess'));
+        closeComponentDialog();
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
@@ -801,74 +510,6 @@
       toast.error(
         error instanceof Error ? error.message : t('application.toast.deleteVersionFailed')
       );
-    }
-  }
-
-  async function openPreview() {
-    composePreviewYaml.value = '';
-    composePreviewError.value = '';
-    composePreviewDrawerOpen.value = true;
-    try {
-      await executeComposePreview(async () => {
-        const { compose_yaml } = await applicationApi.previewVersion(versionId, {
-          instance_key: 'default',
-        });
-        composePreviewYaml.value = compose_yaml;
-      });
-    } catch (error) {
-      composePreviewError.value =
-        error instanceof Error ? error.message : t('application.toast.loadPreviewFailed');
-    }
-  }
-
-  function openDeployModal() {
-    if (!version.value || !isDeployable.value) {
-      return;
-    }
-    if (!hasComponents.value) {
-      toast.error(t('application.validation.componentRequired'));
-      return;
-    }
-    deployError.value = '';
-    deployForm.force_recreate = false;
-    deployForm.instance_key = 'default';
-    isDeployDialogOpen.value = true;
-  }
-
-  async function handleDeployOk() {
-    const current = version.value;
-    if (!current) {
-      return;
-    }
-    if (!hasComponents.value) {
-      toast.error(t('application.validation.componentRequired'));
-      isDeployDialogOpen.value = false;
-      return;
-    }
-    deployError.value = '';
-    try {
-      await executeOp(async () => {
-        const result = await applicationApi.deploy(current.application_id, {
-          version_id: current.id,
-          instance_key: deployForm.instance_key,
-          force_recreate: deployForm.force_recreate,
-        });
-        toast.success(t('application.toast.deployTriggeredDetail'));
-        isDeployDialogOpen.value = false;
-        if (result.deployment_id) {
-          router.push(`/deployment/${result.deployment_id}`);
-        }
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.deployFailed'));
-    }
-  }
-
-  function handleComposePreviewDrawerOpenChange(open: boolean) {
-    composePreviewDrawerOpen.value = open;
-    if (!open) {
-      composePreviewYaml.value = '';
-      composePreviewError.value = '';
     }
   }
 

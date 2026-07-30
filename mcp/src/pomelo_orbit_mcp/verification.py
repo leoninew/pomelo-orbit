@@ -88,7 +88,7 @@ async def verify_deployment(
     version = await client.get_version(version_id)
     service = await client.get_service(service_id)
     target = build_runtime_target(settings, application, service, _nonempty_string(service.get("instance_key")) or "")
-    preview = await client.preview_version(version_id, target.instance_key)
+    preview = await client.preview_service(service_id)
     compose_config = await runtime.compose_config(target)
     ps = await runtime.compose_ps(target)
     inspections = await _inspect_containers(runtime, target, ps["containers"])

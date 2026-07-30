@@ -8,7 +8,6 @@ import (
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
@@ -92,34 +91,31 @@ func (s Service) ApplicationLogs(ctx context.Context, userId string, application
 	return output, nil
 }
 
-// PreviewVersion renders the deployment compose file without creating a deployment.
-func (s Service) PreviewVersion(ctx context.Context, userId string, versionId string, instanceKey string) (string, error) {
+// PreviewService renders a saved service configuration without creating a deployment.
+func (s Service) PreviewService(ctx context.Context, userId string, serviceId string) (string, error) {
 	if s.commandStore == nil || s.executionStore == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment stores are not configured")
 	}
-	version, err := s.commandStore.Version(ctx, versionId)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return "", apperror.New(apperror.KindNotFound, "Version "+versionId+" not found")
-		}
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to load version", err)
-	}
-	app, err := s.loadApplicationForUser(ctx, userId, version.ApplicationId)
+	service, app, err := s.serviceForUser(ctx, userId, serviceId)
 	if err != nil {
 		return "", err
 	}
-	if instanceKey == "" {
-		return "", apperror.New(apperror.KindValidation, "instance_key is required")
+	version, err := s.commandStore.Version(ctx, service.VersionId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return "", apperror.New(apperror.KindNotFound, "Version "+service.VersionId+" not found")
+		}
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to load version", err)
 	}
 	components, err := s.commandStore.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
-	exposes, err := s.executionStore.VersionExposesByVersion(ctx, version.Id)
+	exposes, err := s.executionStore.ServiceExposesByService(ctx, service.Id)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
 	}
-	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, instanceKey)
+	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, service.InstanceKey)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical service dir", err)
 	}
@@ -129,7 +125,7 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 	}
 	content, err := s.RenderCompose(ctx, RenderInput{
 		App: app, Version: version, Components: components, Exposes: exposes,
-		Service: model.Service{InstanceKey: instanceKey}, Gateway: gateway, PhysicalSvcDir: physicalDir,
+		Service: service, Gateway: gateway, RuntimeConfig: cloneRuntimeConfig(service.RuntimeConfig), PhysicalSvcDir: physicalDir,
 	})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())

@@ -1,5 +1,5 @@
 -- Domain: application
--- Tables: application, version, version_component, version_expose
+-- Tables: application, version, version_component
 -- Ref: docs/analyze/20260724-domain-split-consensus-共识.md
 
 CREATE TABLE IF NOT EXISTS application (
@@ -136,20 +136,3 @@ CREATE TABLE IF NOT EXISTS version_component_ulimit (
     UNIQUE (component_id, position),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
 );
-
-CREATE TABLE IF NOT EXISTS version_expose (
-    id TEXT PRIMARY KEY,
-    version_id TEXT NOT NULL,
-    component_name TEXT NOT NULL,
-    protocol TEXT NOT NULL,
-    container_port INTEGER NOT NULL,
-    path_prefix TEXT,
-    access TEXT NOT NULL DEFAULT 'public',
-    listen_port INTEGER,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE,
-    UNIQUE(version_id, component_name, protocol, container_port)
-);
-
-CREATE INDEX IF NOT EXISTS idx_version_expose_version ON version_expose(version_id);

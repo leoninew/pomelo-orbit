@@ -11,10 +11,6 @@ func applicationImportInput(projectId string, req *applicationv1.ApplicationImpo
 	for _, item := range req.Components {
 		components = append(components, versionComponentInput(item))
 	}
-	exposes := make([]applicationdto.VersionExposeInput, 0, len(req.Exposes))
-	for _, item := range req.Exposes {
-		exposes = append(exposes, versionExposeInput(item))
-	}
 	kind := ""
 	if req.Kind != nil {
 		kind = *req.Kind
@@ -28,7 +24,6 @@ func applicationImportInput(projectId string, req *applicationv1.ApplicationImpo
 		VersionLabel:    req.VersionLabel,
 		VersionNote:     req.VersionNote,
 		Components:      components,
-		Exposes:         exposes,
 	}
 }
 

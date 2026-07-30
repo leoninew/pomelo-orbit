@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	deploymentport "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/port"
-	gatewayport "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
@@ -216,14 +215,14 @@ func TestExecuteApplicationDeployRequiresVersionId(t *testing.T) {
 	}
 }
 
-func TestExecuteApplicationDeployFaultsWhenGatewayPreparationFails(t *testing.T) {
+func TestExecuteApplicationDeployFaultsWhenGatewayResolutionFails(t *testing.T) {
 	store := deployStore(t)
 	service := newTestExecutionService(store, slog.Default(), testWorkspace(t.TempDir()), fakeCommandRunner{}, executionlog.Store{})
-	service.gatewayCoordinator = &fakeGatewayCoordinator{prepareErr: errors.New("gateway exposure conflict")}
+	service.gatewayCoordinator = &fakeGatewayCoordinator{gatewayErr: errors.New("gateway resolution failed")}
 
 	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
-	if err == nil || !strings.Contains(err.Error(), "gateway exposure conflict") {
-		t.Fatalf("expected gateway preparation error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "gateway resolution failed") {
+		t.Fatalf("expected gateway resolution error, got %v", err)
 	}
 	if store.deploymentStatus != status.WorkStatusFaulted {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
@@ -233,7 +232,7 @@ func TestExecuteApplicationDeployFaultsWhenGatewayPreparationFails(t *testing.T)
 func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
 	store := deployStore(t)
-	store.exposes = []model.VersionExpose{
+	store.exposes = []model.ServiceExpose{
 		{ComponentName: "web", Protocol: "http", Access: exposeAccessPublic, ContainerPort: 80},
 	}
 	store.gateway = model.GatewayConfig{
@@ -281,7 +280,7 @@ type fakeDeploymentExecutionStore struct {
 	deployment       model.Deployment
 	version          model.Version
 	components       []model.VersionComponent
-	exposes          []model.VersionExpose
+	exposes          []model.ServiceExpose
 	gateway          model.GatewayConfig
 	service          model.Service
 	serviceStatus    string
@@ -290,41 +289,22 @@ type fakeDeploymentExecutionStore struct {
 }
 
 type fakeGatewayCoordinator struct {
-	store       *fakeDeploymentExecutionStore
-	preparation gatewayport.DeploymentPreparation
-	prepareErr  error
+	store      *fakeDeploymentExecutionStore
+	gatewayErr error
 }
 
 func (f *fakeGatewayCoordinator) EnsureGatewayRunning(_ context.Context, _ model.Application) error {
 	return nil
 }
 
-func (f *fakeGatewayCoordinator) GatewayForDeployment(_ context.Context, app model.Application, exposes []model.VersionExpose) (*model.GatewayConfig, error) {
-	if f.prepareErr != nil {
-		return nil, f.prepareErr
-	}
-	if f.preparation.RenderConfig != nil {
-		return f.preparation.RenderConfig, nil
+func (f *fakeGatewayCoordinator) GatewayForDeployment(_ context.Context, app model.Application, exposes []model.ServiceExpose) (*model.GatewayConfig, error) {
+	if f.gatewayErr != nil {
+		return nil, f.gatewayErr
 	}
 	if f.store != nil && f.store.gateway.BaseDomain != "" {
 		return &f.store.gateway, nil
 	}
 	return nil, nil
-}
-
-func (f *fakeGatewayCoordinator) PrepareDeployment(ctx context.Context, app model.Application, exposes []model.VersionExpose) (gatewayport.DeploymentPreparation, error) {
-	if f.prepareErr != nil {
-		return gatewayport.DeploymentPreparation{}, f.prepareErr
-	}
-	preparation := f.preparation
-	if preparation.RenderConfig == nil {
-		gateway, err := f.GatewayForDeployment(ctx, app, exposes)
-		if err != nil {
-			return gatewayport.DeploymentPreparation{}, err
-		}
-		preparation.RenderConfig = gateway
-	}
-	return preparation, nil
 }
 
 func (s *fakeDeploymentExecutionStore) Application(_ context.Context, id string) (model.Application, error) {
@@ -346,7 +326,7 @@ func (s *fakeDeploymentExecutionStore) VersionComponentsByVersion(_ context.Cont
 	return s.components, nil
 }
 
-func (s *fakeDeploymentExecutionStore) VersionExposesByVersion(_ context.Context, versionId string) ([]model.VersionExpose, error) {
+func (s *fakeDeploymentExecutionStore) ServiceExposesByService(_ context.Context, serviceId string) ([]model.ServiceExpose, error) {
 	return s.exposes, nil
 }
 

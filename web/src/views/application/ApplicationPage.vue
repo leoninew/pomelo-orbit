@@ -88,12 +88,12 @@
         @update:form="Object.assign(createForm, $event)"
       />
       <template #footer>
-        <button class="app-button" @click="isCreateDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
-          {{ t('application.create') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.create')"
+          @cancel="isCreateDialogOpen = false"
+          @confirm="handleCreateOk"
+        />
       </template>
     </AppDialog>
 
@@ -107,12 +107,12 @@
         {{ importSummary }}
       </div>
       <template #footer>
-        <button class="app-button" @click="isImportDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" :disabled="operating" @click="handleImportOk">
-          {{ t('application.import') }}
-        </button>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.import')"
+          @cancel="isImportDialogOpen = false"
+          @confirm="handleImportOk"
+        />
       </template>
     </AppDialog>
   </div>
@@ -126,6 +126,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';
@@ -170,14 +171,12 @@
     version_label: 'v1',
     version_note: undefined,
     components: [],
-    exposes: [],
   });
   const importErrors = reactive({ name: '', code: '' });
   const importSummary = computed(() =>
     t('application.importSummary', {
       versionLabel: importForm.version_label || '-',
       components: importForm.components.length,
-      exposes: importForm.exposes?.length ?? 0,
     })
   );
 

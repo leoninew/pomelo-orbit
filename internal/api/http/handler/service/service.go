@@ -66,6 +66,7 @@ func (h Handler) CreateService(c *gin.Context) {
 	}
 	view, err := h.service.CreateService(c.Request.Context(), current.Id, servicedto.ServiceCreateInput{
 		ApplicationId: req.ApplicationId, VersionId: req.VersionId, InstanceKey: req.InstanceKey, RuntimeConfig: req.RuntimeConfig,
+		Exposes: serviceExposeInputs(req.Exposes),
 	})
 	if err != nil {
 		transportresponse.WriteError(c, err)
@@ -87,36 +88,45 @@ func (h Handler) DeleteService(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) GetServiceRuntimeConfig(c *gin.Context) {
+func (h Handler) UpdateServiceConfiguration(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	view, err := h.service.RuntimeConfig(c.Request.Context(), current.Id, c.Param("service_id"))
-	if err != nil {
-		transportresponse.WriteError(c, err)
-		return
-	}
-	resp := serviceRuntimeConfigResponse(view)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
-}
-
-func (h Handler) UpdateServiceRuntimeConfig(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	var req servicev1.ServiceRuntimeConfigReq
+	var req servicev1.ServiceConfigReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	view, err := h.service.UpdateRuntimeConfig(c.Request.Context(), current.Id, c.Param("service_id"), req.RuntimeConfig)
+	view, err := h.service.UpdateServiceConfiguration(c.Request.Context(), current.Id, c.Param("service_id"), servicedto.ServiceConfigInput{
+		RuntimeConfig: req.RuntimeConfig, Exposes: serviceExposeInputs(req.Exposes),
+	})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	resp := serviceRuntimeConfigResponse(view)
+	resp := serviceViewResponse(view)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+}
+
+func (h Handler) UpdateServiceBasic(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var req servicev1.ServiceBasicUpdateReq
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	view, err := h.service.UpdateServiceBasic(c.Request.Context(), current.Id, c.Param("service_id"), servicedto.ServiceBasicUpdateInput{
+		VersionId: req.VersionId, InstanceKey: req.InstanceKey,
+	})
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	resp := serviceViewResponse(view)
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
@@ -141,7 +151,7 @@ func applicationServiceResponses(items []model.Service) []servicev1.ServiceResp 
 		resp = append(resp, servicev1.ServiceResp{
 			Id: item.Id, ApplicationId: item.ApplicationId,
 			InstanceKey: item.InstanceKey, VersionId: item.VersionId,
-			Status:    item.Status,
+			Status: item.Status, RuntimeConfig: item.RuntimeConfig,
 			CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt),
 		})
 	}

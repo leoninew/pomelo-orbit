@@ -11,11 +11,14 @@ type DeploymentListInput struct {
 	PerPage       int
 }
 
-// DeployInput describes a user-requested deployment of an application version.
-type DeployInput struct {
-	VersionId     string
-	InstanceKey   string
+// DeployServiceInput describes a user-requested deployment of saved Service configuration.
+type DeployServiceInput struct {
 	ForceRecreate bool
+}
+
+type DeployServiceResult struct {
+	DeploymentId string
+	Warnings     []string
 }
 
 // ServiceTargetInput identifies the runtime service affected by an operation.

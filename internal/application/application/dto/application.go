@@ -16,20 +16,18 @@ type ApplicationUpdateInput struct {
 	ImagePullPolicy *string
 }
 
-// VersionCreateInput creates an unpublished version with components and exposes.
+// VersionCreateInput creates an unpublished version with component specifications.
 type VersionCreateInput struct {
 	ApplicationId string
 	Label         string
 	Note          *string
 	Components    []VersionComponentInput
-	Exposes       []VersionExposeInput
 }
 
-// VersionUpdateInput updates version metadata and optionally components/exposes.
+// VersionUpdateInput updates version metadata.
 type VersionUpdateInput struct {
-	Label   *string
-	Note    *string
-	Exposes *[]VersionExposeInput
+	Label *string
+	Note  *string
 }
 
 type VersionComponentInput struct {
@@ -93,20 +91,10 @@ type VersionComponentAdvancedUpdateInput struct {
 	Ulimits   []model.VersionComponentUlimit
 }
 
-type VersionExposeInput struct {
-	ComponentName string
-	Protocol      string
-	ContainerPort int
-	PathPrefix    *string
-	Access        string
-	ListenPort    *int
-}
-
-// VersionView is a version with optional component and expose details for API responses.
+// VersionView is a version with optional component details for API responses.
 type VersionView struct {
 	Version    model.Version
 	Components []model.VersionComponent
-	Exposes    []model.VersionExpose
 }
 
 // ApplicationImportInput imports an application with an initial version.
@@ -119,7 +107,6 @@ type ApplicationImportInput struct {
 	VersionLabel    string
 	VersionNote     *string
 	Components      []VersionComponentInput
-	Exposes         []VersionExposeInput
 }
 
 // ApplicationExport bundles application/version data. Runtime services are

@@ -142,44 +142,16 @@ export interface ComponentUlimit {
   hard: number;
 }
 
-export interface VersionExposeReq {
-  component_name: string;
-  protocol: string;
-  container_port: number;
-  path_prefix?:
-    | string
-    | undefined;
-  /** local | public; empty treated as public */
-  access: string;
-  /** 0/omit = use container_port */
-  listen_port?: number | undefined;
-}
-
-export interface VersionExposeResp {
-  id: string;
-  version_id: string;
-  component_name: string;
-  protocol: string;
-  container_port: number;
-  path_prefix?: string | undefined;
-  created_at: string;
-  updated_at: string;
-  access: string;
-  listen_port?: number | undefined;
-}
-
 export interface VersionCreateReq {
   application_id: string;
   label: string;
   note?: string | undefined;
   components: VersionComponentReq[];
-  exposes: VersionExposeReq[];
 }
 
 export interface VersionUpdateReq {
   label?: string | undefined;
   note?: string | undefined;
-  exposes: VersionExposeReq[];
 }
 
 export interface VersionForkReq {
@@ -196,7 +168,6 @@ export interface VersionResp {
   created_at: string;
   updated_at: string;
   components: VersionComponentResp[];
-  exposes: VersionExposeResp[];
   component_summary: string;
 }
 
@@ -206,12 +177,4 @@ export interface VersionPaginatedResp {
   page: number;
   per_page: number;
   pages: number;
-}
-
-export interface VersionPreviewReq {
-  instance_key?: string | undefined;
-}
-
-export interface VersionPreviewResp {
-  compose_yaml: string;
 }

@@ -1,4 +1,4 @@
-"""Structured MCP inputs for Orbit Version components and exposes."""
+"""Structured MCP inputs for Orbit Version components and Service exposes."""
 
 from __future__ import annotations
 
@@ -140,12 +140,12 @@ class VersionComponentUlimitsUpdate(_Spec):
     ulimits: list[UlimitSpec]
 
 
-class VersionExpose(_Spec):
+class ServiceExpose(_Spec):
     component_name: str
     protocol: Literal["http", "tcp"]
     container_port: int
     path_prefix: str | None = None
-    access: Literal["local", "public"] = "public"
+    access: Literal["local", "public"]
     listen_port: int | None = None
 
 
@@ -172,7 +172,7 @@ def version_component_create_payload(component: VersionComponentCreate) -> dict[
     return component.model_dump(exclude_none=True)
 
 
-def version_expose_payload(expose: VersionExpose) -> dict[str, str | int]:
+def service_expose_payload(expose: ServiceExpose) -> dict[str, str | int]:
     values: dict[str, str | int | None] = {
         "component_name": expose.component_name,
         "protocol": expose.protocol,

@@ -9,6 +9,7 @@ from mcp.server.fastmcp import FastMCP
 from ..docker_runtime import DockerRuntime, DockerRuntimeError
 from ..orbit_client import OrbitClient
 from ..version_specs import (
+    ServiceExpose,
     VersionComponent,
     VersionComponentAdvancedUpdate,
     VersionComponentBasicUpdate,
@@ -21,10 +22,9 @@ from ..version_specs import (
     VersionComponentRuntimeUpdate,
     VersionComponentTmpfsUpdate,
     VersionComponentUlimitsUpdate,
-    VersionExpose,
+    service_expose_payload,
     version_component_create_payload,
     version_component_payload,
-    version_expose_payload,
 )
 from .common import compact, write_result
 
@@ -226,7 +226,7 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
 
     @mcp.tool(name="orbit_get_version")
     async def orbit_get_version(version_id: str) -> dict[str, Any]:
-        """Read a Version with its Components and Exposes."""
+        """Read a Version with its Components."""
         return {"version": await client.get_version(version_id)}
 
     @mcp.tool(name="orbit_create_version_component")
@@ -248,15 +248,13 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
         application_id: str,
         label: str,
         components: list[VersionComponent],
-        exposes: list[VersionExpose],
         note: str | None = None,
     ) -> dict[str, Any]:
-        """Create a Version using complete Component and Expose collections."""
+        """Create a Version using a complete Component collection."""
         body = compact(
             {
                 "label": label,
                 "components": [version_component_payload(component) for component in components],
-                "exposes": [version_expose_payload(expose) for expose in exposes],
                 "note": note,
             }
         )
@@ -275,14 +273,12 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
         version_id: str,
         label: str | None = None,
         note: str | None = None,
-        exposes: list[VersionExpose] | None = None,
     ) -> dict[str, Any]:
-        """Update Version metadata or replace its exposes; components have dedicated tools."""
+        """Update Version metadata; Components have dedicated tools."""
         body = compact(
             {
                 "label": label,
                 "note": note,
-                "exposes": [version_expose_payload(expose) for expose in exposes] if exposes is not None else None,
             }
         )
         if not body:
@@ -476,15 +472,11 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
         await client.delete_version(version_id)
         return write_result("delete_version", {"version_id": version_id}, "DELETE", f"/api/version/{version_id}")
 
-    @mcp.tool(name="orbit_preview_version")
-    async def orbit_preview_version(version_id: str, instance_key: str = "default") -> dict[str, Any]:
-        """Render a Version's expected Compose document through Orbit without deploying it."""
-        preview = await client.preview_version(version_id, instance_key)
-        return {
-            "version_id": version_id,
-            "instance_key": instance_key,
-            "preview": preview,
-        }
+    @mcp.tool(name="orbit_preview_service")
+    async def orbit_preview_service(service_id: str) -> dict[str, Any]:
+        """Render a saved Service configuration without deploying it."""
+        preview = await client.preview_service(service_id)
+        return {"service_id": service_id, "preview": preview}
 
     @mcp.tool(name="orbit_create_service")
     async def orbit_create_service(
@@ -492,9 +484,11 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
         version_id: str,
         instance_key: str,
         runtime_config: dict[str, str],
+        exposes: list[ServiceExpose],
     ) -> dict[str, Any]:
-        """Create a stopped Service with its plain runtime K/V configuration."""
-        service = await client.create_service(application_id, version_id, instance_key, runtime_config)
+        """Create a stopped Service with complete runtime and expose configuration."""
+        payload_exposes = [service_expose_payload(expose) for expose in exposes]
+        service = await client.create_service(application_id, version_id, instance_key, runtime_config, payload_exposes)
         service_id = str(service.get("id") or "")
         if not service_id:
             raise ValueError("Orbit service create response did not contain an id")
@@ -508,58 +502,70 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
                 "version_id": version_id,
                 "instance_key": instance_key,
                 "runtime_config": runtime_config,
+                "exposes": payload_exposes,
             },
             data={"service": service},
         )
 
-    @mcp.tool(name="orbit_get_service_runtime_config")
-    async def orbit_get_service_runtime_config(service_id: str) -> dict[str, Any]:
-        """Read the saved Service runtime configuration, not container process state."""
-        return {"runtime_config": await client.get_service_runtime_config(service_id)}
-
-    @mcp.tool(name="orbit_update_service_runtime_config")
-    async def orbit_update_service_runtime_config(service_id: str, runtime_config: dict[str, str]) -> dict[str, Any]:
-        """Replace a Service runtime configuration; it takes effect on a later deploy or restart."""
-        result = await client.update_service_runtime_config(service_id, runtime_config)
+    @mcp.tool(name="orbit_update_service_configuration")
+    async def orbit_update_service_configuration(
+        service_id: str,
+        runtime_config: dict[str, str],
+        exposes: list[ServiceExpose],
+    ) -> dict[str, Any]:
+        """Replace a Service's runtime configuration and exposes."""
+        payload_exposes = [service_expose_payload(expose) for expose in exposes]
+        result = await client.update_service_configuration(service_id, runtime_config, payload_exposes)
         return write_result(
-            "update_service_runtime_config",
+            "update_service_configuration",
             {"service_id": service_id},
             "PUT",
-            f"/api/service/{service_id}/runtime-config",
-            request_body={"runtime_config": runtime_config},
-            data={"runtime_config": result},
+            f"/api/service/{service_id}/config",
+            request_body={"runtime_config": runtime_config, "exposes": payload_exposes},
+            data={"service": result},
+        )
+
+    @mcp.tool(name="orbit_update_service_basic")
+    async def orbit_update_service_basic(
+        service_id: str,
+        version_id: str,
+        instance_key: str,
+    ) -> dict[str, Any]:
+        """Replace a Service's selected Version and instance key."""
+        body = {"version_id": version_id, "instance_key": instance_key}
+        result = await client.update_service_basic(service_id, version_id, instance_key)
+        return write_result(
+            "update_service_basic",
+            {"service_id": service_id},
+            "PUT",
+            f"/api/service/{service_id}/basic",
+            request_body=body,
+            data={"service": result},
         )
 
     @mcp.tool(name="orbit_deploy")
     async def orbit_deploy(
-        application_id: str,
-        version_id: str,
-        instance_key: str = "default",
+        service_id: str,
         force_recreate: bool = False,
     ) -> dict[str, Any]:
         """Create an Orbit deployment and immediately return its persisted command summary."""
-        body = {
-            "version_id": version_id,
-            "instance_key": instance_key,
-            "force_recreate": force_recreate,
-        }
-        action = await client.deploy_application(application_id, body)
+        body = {"force_recreate": force_recreate}
+        action = await client.deploy_service(service_id, force_recreate)
         deployment_id = str(action["deployment_id"])
         deployment = await client.get_deployment(deployment_id)
         return write_result(
-            "deploy_application",
+            "deploy_service",
             {
-                "application_id": application_id,
-                "version_id": version_id,
-                "instance_key": instance_key,
+                "service_id": service_id,
                 "deployment_id": deployment_id,
             },
             "POST",
-            f"/api/application/{application_id}/deploy",
+            f"/api/service/{service_id}/deploy",
             request_body=body,
             steps=["Created Deployment through Orbit", "Read persisted Deployment command summary"],
             data={
                 "deployment_id": deployment_id,
+                "warnings": action.get("warnings") or [],
                 "command_text": deployment.get("command_text"),
                 "deployment": deployment,
             },
@@ -697,23 +703,22 @@ async def provision_gateway(
     service_created = service is None
     if service is None:
         service_result = await client.create_service(
-            gateway_id, version_id, normalized_instance_key, supplied_runtime_config
+            gateway_id, version_id, normalized_instance_key, supplied_runtime_config, []
         )
         steps.append("Created Gateway Service")
     else:
-        service_result = service
+        service_result = await client.get_service(_resource_id(service, "Gateway Service"))
+        if str(service_result.get("version_id") or "") != version_id:
+            await client.update_service_basic(
+                _resource_id(service_result, "Gateway Service"),
+                version_id,
+                str(service_result.get("instance_key") or ""),
+            )
         steps.append("Reused Gateway Service")
     service_id = _resource_id(service_result, "Gateway Service")
     resource_ids["service_id"] = service_id
 
-    deployment = await client.deploy_application(
-        gateway_id,
-        {
-            "version_id": version_id,
-            "instance_key": normalized_instance_key,
-            "force_recreate": force_recreate,
-        },
-    )
+    deployment = await client.deploy_service(service_id, force_recreate)
     deployment_id = _resource_id(deployment, "Gateway Deployment", field="deployment_id")
     resource_ids["deployment_id"] = deployment_id
     steps.append("Created Gateway Deployment through Orbit")

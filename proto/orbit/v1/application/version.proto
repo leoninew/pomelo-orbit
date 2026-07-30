@@ -142,37 +142,13 @@ message ComponentUlimit {
   int64 hard = 3;
 }
 
-message VersionExposeReq {
-  string component_name = 1;
-  string protocol = 2;
-  int32 container_port = 3;
-  optional string path_prefix = 4;
-  // local | public; empty treated as public
-  string access = 5;
-  // 0/omit = use container_port
-  optional int32 listen_port = 6;
-}
-
-message VersionExposeResp {
-  string id = 1;
-  string version_id = 2;
-  string component_name = 3;
-  string protocol = 4;
-  int32 container_port = 5;
-  optional string path_prefix = 6;
-  string created_at = 7;
-  string updated_at = 8;
-  string access = 9;
-  optional int32 listen_port = 10;
-}
-
 message VersionCreateReq {
   string application_id = 1;
   string label = 2;
   reserved 3;
   optional string note = 4;
   repeated VersionComponentReq components = 5;
-  repeated VersionExposeReq exposes = 6;
+  reserved 6;
 }
 
 message VersionUpdateReq {
@@ -180,7 +156,7 @@ message VersionUpdateReq {
   reserved 2;
   optional string note = 3;
   reserved 4;
-  repeated VersionExposeReq exposes = 5;
+  reserved 5;
 }
 
 message VersionForkReq {
@@ -198,7 +174,7 @@ message VersionResp {
   string created_at = 8;
   string updated_at = 9;
   repeated VersionComponentResp components = 10;
-  repeated VersionExposeResp exposes = 11;
+  reserved 11;
   string component_summary = 12;
 }
 
@@ -208,12 +184,4 @@ message VersionPaginatedResp {
   int32 page = 3;
   int32 per_page = 4;
   int32 pages = 5;
-}
-
-message VersionPreviewReq {
-  optional string instance_key = 1;
-}
-
-message VersionPreviewResp {
-  string compose_yaml = 1;
 }

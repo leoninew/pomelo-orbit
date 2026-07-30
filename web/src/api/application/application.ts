@@ -17,11 +17,11 @@ import type {
 import type {
   VersionComponentAdvancedUpdateReq,
   VersionComponentBasicUpdateReq,
+  VersionComponentCreateReq,
   VersionComponentDependenciesUpdateReq,
   VersionComponentEnvUpdateReq,
   VersionComponentMountsUpdateReq,
   VersionComponentPortsUpdateReq,
-  VersionComponentReq,
   VersionComponentResp,
   VersionComponentRuntimeUpdateReq,
   VersionCreateReq,
@@ -127,7 +127,7 @@ export const applicationApi = {
 
   createVersionComponent(
     versionId: string,
-    data: VersionComponentReq
+    data: VersionComponentCreateReq
   ): Promise<VersionComponentResp> {
     return request.post(`/api/version/${versionId}/component`, data);
   },

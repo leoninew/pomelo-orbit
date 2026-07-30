@@ -24,6 +24,14 @@ export interface VersionComponentReq {
   ulimits: ComponentUlimit[];
 }
 
+export interface VersionComponentCreateReq {
+  name: string;
+  image: string;
+  pull_policy?: string | undefined;
+  restart_policy?: string | undefined;
+  command: string;
+}
+
 export interface VersionComponentBasicUpdateReq {
   name: string;
   image: string;

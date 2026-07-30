@@ -31,6 +31,7 @@ async def test_server_registers_the_accepted_tool_surface(tmp_path) -> None:
         "orbit_delete_application",
         "orbit_list_versions",
         "orbit_get_version",
+        "orbit_create_version_component",
         "orbit_create_version",
         "orbit_update_version",
         "orbit_update_version_component_basic",
@@ -124,6 +125,22 @@ async def test_server_component_group_schemas_match_the_current_json_contract(tm
         "restart_policy",
     }
     assert basic_definition["properties"]["command"] == {"title": "Command", "type": "string"}
+
+    create_component = tools["orbit_create_version_component"].inputSchema
+    create_component_definition = create_component["$defs"]["VersionComponentCreate"]
+    assert create_component["required"] == ["version_id", "component"]
+    assert set(create_component_definition["properties"]) == {
+        "name",
+        "image",
+        "command",
+        "pull_policy",
+        "restart_policy",
+    }
+    assert create_component_definition["properties"]["command"] == {
+        "default": "",
+        "title": "Command",
+        "type": "string",
+    }
 
     runtime = tools["orbit_update_version_component_runtime"].inputSchema
     runtime_definition = runtime["$defs"]["VersionComponentRuntimeUpdate"]

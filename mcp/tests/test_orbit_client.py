@@ -201,6 +201,9 @@ async def test_client_maps_component_update_sections(tmp_path) -> None:
     async with httpx.AsyncClient(base_url=settings.orbit_url, transport=httpx.MockTransport(handler)) as http_client:
         client = OrbitClient(settings, http_client)
         assert await client.get_version_component("version-1", "component-1") == {"id": "component-1"}
+        assert await client.create_version_component(
+            "version-1", {"name": "web", "image": "nginx:1.27", "command": "nginx -g 'daemon off;'"}
+        ) == {"id": "component-1"}
         assert await client.update_version_component_basic(
             "version-1", "component-1", {"name": "web", "image": "nginx:1.27", "command": "nginx -g 'daemon off;'"}
         ) == {"id": "component-1"}
@@ -225,6 +228,7 @@ async def test_client_maps_component_update_sections(tmp_path) -> None:
 
     assert [(request.method, request.url.path) for request in requests] == [
         ("GET", "/api/version/version-1/component/component-1"),
+        ("POST", "/api/version/version-1/component"),
         ("PUT", "/api/version/version-1/component/component-1/basic"),
         ("PUT", "/api/version/version-1/component/component-1/runtime"),
         ("PUT", "/api/version/version-1/component/component-1/ports"),
@@ -235,6 +239,7 @@ async def test_client_maps_component_update_sections(tmp_path) -> None:
     ]
     assert [json.loads(request.content) if request.content else None for request in requests] == [
         None,
+        {"name": "web", "image": "nginx:1.27", "command": "nginx -g 'daemon off;'"},
         {"name": "web", "image": "nginx:1.27", "command": "nginx -g 'daemon off;'"},
         {"healthcheck": None},
         {"ports": [{"host_port": 8080, "container_port": 80}]},

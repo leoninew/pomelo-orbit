@@ -19,6 +19,14 @@ message VersionComponentReq {
   repeated ComponentUlimit ulimits = 15;
 }
 
+message VersionComponentCreateReq {
+  string name = 1;
+  string image = 2;
+  optional string pull_policy = 3;
+  optional string restart_policy = 4;
+  string command = 5;
+}
+
 message VersionComponentBasicUpdateReq {
   string name = 1;
   string image = 2;

@@ -161,7 +161,7 @@
               </div>
             </dl>
           </section>
-          <section class="app-surface app-detail-card">
+          <section v-if="!isNew" class="app-surface app-detail-card">
             <div class="app-section-header app-detail-section-header">
               <h2 class="app-detail-section-title">
                 {{ t('application.componentDetail.sections.healthcheck') }}
@@ -253,7 +253,7 @@
             </div>
           </section>
 
-          <section class="app-surface app-detail-card">
+          <section v-if="!isNew" class="app-surface app-detail-card">
             <div class="app-section-header app-detail-section-header">
               <h2 class="app-detail-section-title">
                 {{ t('application.componentDetail.fields.dependency') }}
@@ -285,7 +285,7 @@
           </section>
         </TabsContent>
 
-        <TabsContent value="connectivity" class="flex flex-col gap-4 outline-none">
+        <TabsContent v-if="!isNew" value="connectivity" class="flex flex-col gap-4 outline-none">
           <section class="app-surface app-detail-card">
             <div class="app-section-header app-detail-section-header">
               <h2 class="app-detail-section-title">
@@ -350,7 +350,7 @@
           </section>
         </TabsContent>
 
-        <TabsContent value="mounts" class="flex flex-col gap-4 outline-none">
+        <TabsContent v-if="!isNew" value="mounts" class="flex flex-col gap-4 outline-none">
           <section class="app-surface app-detail-card">
             <div class="app-section-header app-detail-section-header">
               <h2 class="app-detail-section-title">
@@ -430,7 +430,7 @@
           </section>
         </TabsContent>
 
-        <TabsContent value="advanced" class="flex flex-col gap-4 outline-none">
+        <TabsContent v-if="!isNew" value="advanced" class="flex flex-col gap-4 outline-none">
           <section class="app-surface app-detail-card">
             <div class="app-section-header app-detail-section-header">
               <h2 class="app-detail-section-title">
@@ -1231,6 +1231,7 @@
   import { versionStatusTone } from '@/utils/status';
   import {
     componentBasicRequestFromForm,
+    componentCreateRequestFromForm,
     componentDependenciesRequestFromForm,
     componentEnvRequestFromForm,
     componentFormFromResponse,
@@ -1238,7 +1239,6 @@
     componentPortsRequestFromForm,
     componentResourcesRequestFromForm,
     componentRuntimeRequestFromForm,
-    componentRequestFromForm,
     componentTmpfsRequestFromForm,
     componentUlimitsRequestFromForm,
     emptyComponentForm,
@@ -1297,12 +1297,21 @@
   const ulimitsForm = ref<UlimitRow[]>([]);
 
   const canEdit = computed(() => version.value?.status === 'unpublished');
-  const tabs = computed(() => [
-    { id: 'runtime' as const, label: t('application.componentDetail.tabs.runtime') },
-    { id: 'connectivity' as const, label: t('application.componentDetail.tabs.connectivity') },
-    { id: 'mounts' as const, label: t('application.componentDetail.tabs.mounts') },
-    { id: 'advanced' as const, label: t('application.componentDetail.tabs.advanced') },
-  ]);
+  const tabs = computed(() => {
+    const runtime = {
+      id: 'runtime' as const,
+      label: t('application.componentDetail.tabs.runtime'),
+    };
+    if (isNew) {
+      return [runtime];
+    }
+    return [
+      runtime,
+      { id: 'connectivity' as const, label: t('application.componentDetail.tabs.connectivity') },
+      { id: 'mounts' as const, label: t('application.componentDetail.tabs.mounts') },
+      { id: 'advanced' as const, label: t('application.componentDetail.tabs.advanced') },
+    ];
+  });
   const pullPolicyValues = ['always', 'missing', 'never'];
   const restartPolicyValues = ['no', 'unless-stopped'];
   const mountSourceTypes = ['directory', 'file', 'named_volume', 'controlled_file'];
@@ -1397,10 +1406,15 @@
   }
 
   function openConnectivityDialog(group: ConnectivityGroup) {
-    if (!isNew && !component.value) {
-      return;
+    if (isNew) {
+      assignConnectivityForm(form);
+    } else {
+      const currentComponent = component.value;
+      if (!currentComponent) {
+        return;
+      }
+      assignConnectivityForm(componentFormFromResponse(currentComponent));
     }
-    assignConnectivityForm(isNew ? form : componentFormFromResponse(component.value!));
     connectivityFormError.value = '';
     connectivityDialogGroup.value = group;
   }
@@ -1884,7 +1898,7 @@
 
   async function save(group?: ComponentSaveGroup) {
     if (isNew) {
-      const result = componentRequestFromForm(form);
+      const result = componentCreateRequestFromForm(form);
       if (!result.valid) {
         showValidationError(result.error);
         return;

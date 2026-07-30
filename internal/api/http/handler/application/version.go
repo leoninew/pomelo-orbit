@@ -28,12 +28,12 @@ func (h Handler) CreateVersionComponent(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req applicationv1.VersionComponentReq
+	var req applicationv1.VersionComponentCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.CreateVersionComponent(c.Request.Context(), current.Id, c.Param("version_id"), versionComponentInput(&req))
+	component, err := h.service.CreateVersionComponent(c.Request.Context(), current.Id, c.Param("version_id"), versionComponentCreateInput(&req))
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return

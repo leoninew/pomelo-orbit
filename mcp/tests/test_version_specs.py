@@ -10,6 +10,7 @@ from pomelo_orbit_mcp.version_specs import (
     VersionComponent,
     VersionComponentAdvancedUpdate,
     VersionComponentBasicUpdate,
+    VersionComponentCreate,
     VersionComponentDependenciesUpdate,
     VersionComponentEnvUpdate,
     VersionComponentMountsUpdate,
@@ -18,6 +19,7 @@ from pomelo_orbit_mcp.version_specs import (
     VersionComponentTmpfsUpdate,
     VersionComponentUlimitsUpdate,
     VersionExpose,
+    version_component_create_payload,
     version_component_payload,
     version_expose_payload,
 )
@@ -50,6 +52,23 @@ def test_version_component_payload_serializes_protocol_json_fields() -> None:
             }
         ],
         "dependencies": [{"name": "database", "condition": "service_healthy"}],
+        "restart_policy": "unless-stopped",
+    }
+
+
+def test_version_component_create_payload_contains_only_basic_fields() -> None:
+    component = VersionComponentCreate(
+        name="web",
+        image="nginx:1.27",
+        pull_policy="missing",
+        restart_policy="unless-stopped",
+    )
+
+    assert version_component_create_payload(component) == {
+        "name": "web",
+        "image": "nginx:1.27",
+        "command": "",
+        "pull_policy": "missing",
         "restart_policy": "unless-stopped",
     }
 

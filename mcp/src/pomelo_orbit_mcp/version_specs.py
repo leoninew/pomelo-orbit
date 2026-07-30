@@ -86,6 +86,14 @@ class VersionComponent(_Spec):
     ulimits: list[UlimitSpec] | None = None
 
 
+class VersionComponentCreate(_Spec):
+    name: str
+    image: str
+    command: str = ""
+    pull_policy: str | None = None
+    restart_policy: Literal["no", "unless-stopped"] | None = None
+
+
 class VersionComponentBasicUpdate(_Spec):
     name: str
     image: str
@@ -158,6 +166,10 @@ def version_component_payload(component: VersionComponent) -> dict[str, Any]:
         "ulimits": _model_items(component.ulimits),
     }
     return {key: value for key, value in values.items() if value is not None}
+
+
+def version_component_create_payload(component: VersionComponentCreate) -> dict[str, Any]:
+    return component.model_dump(exclude_none=True)
 
 
 def version_expose_payload(expose: VersionExpose) -> dict[str, str | int]:

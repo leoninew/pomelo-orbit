@@ -172,6 +172,9 @@ class OrbitClient:
     async def get_version_component(self, version_id: str, component_id: str) -> dict[str, Any]:
         return await self.request("GET", f"/api/version/{version_id}/component/{component_id}")
 
+    async def create_version_component(self, version_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        return await self.request("POST", f"/api/version/{version_id}/component", json_body=payload)
+
     async def create_version(self, application_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         body = {"application_id": application_id, **payload}
         return await self.request("POST", f"/api/application/{application_id}/version", json_body=body)

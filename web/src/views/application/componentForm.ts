@@ -8,6 +8,7 @@ import type {
   ComponentUlimit,
   VersionComponentAdvancedUpdateReq,
   VersionComponentBasicUpdateReq,
+  VersionComponentCreateReq,
   VersionComponentDependenciesUpdateReq,
   VersionComponentEnvUpdateReq,
   VersionComponentMountsUpdateReq,
@@ -387,6 +388,27 @@ export function componentRequestFromForm(form: ComponentForm): ComponentFormVali
 export function componentBasicRequestFromForm(
   form: ComponentForm
 ): ComponentFormValidation<VersionComponentBasicUpdateReq> {
+  if (form.name === '' || form.image === '') {
+    return { valid: false, error: 'nameImage' };
+  }
+  if (!/^[a-z][a-z0-9-]*$/.test(form.name)) {
+    return { valid: false, error: 'componentName' };
+  }
+  return {
+    valid: true,
+    value: {
+      name: form.name,
+      image: form.image,
+      command: form.command,
+      pull_policy: optionalText(form.pull_policy),
+      restart_policy: optionalText(form.restart_policy),
+    },
+  };
+}
+
+export function componentCreateRequestFromForm(
+  form: ComponentForm
+): ComponentFormValidation<VersionComponentCreateReq> {
   if (form.name === '' || form.image === '') {
     return { valid: false, error: 'nameImage' };
   }

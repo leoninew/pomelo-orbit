@@ -559,7 +559,7 @@
     component_name: '',
     protocol: '',
     container_port: 80,
-    access: '',
+    access: 'local',
     listen_port: '',
   });
 
@@ -652,10 +652,10 @@
     editingExposeIndex.value = index ?? null;
     exposeFormError.value = '';
     if (index === undefined || !version.value?.exposes?.[index]) {
-      exposeForm.component_name = '';
+      exposeForm.component_name = version.value?.components?.[0]?.name ?? '';
       exposeForm.protocol = '';
       exposeForm.container_port = 80;
-      exposeForm.access = '';
+      exposeForm.access = 'local';
       exposeForm.listen_port = '';
     } else {
       const row = version.value.exposes[index];
@@ -691,7 +691,7 @@
       exposeFormError.value = t('application.validation.portRange');
       return;
     }
-    const listenText = exposeForm.listen_port.trim();
+    const listenText = String(exposeForm.listen_port);
     let listenPort: number | undefined;
     if (listenText) {
       listenPort = Number(listenText);

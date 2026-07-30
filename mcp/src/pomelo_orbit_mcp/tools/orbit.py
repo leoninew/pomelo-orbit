@@ -12,6 +12,7 @@ from ..version_specs import (
     VersionComponent,
     VersionComponentAdvancedUpdate,
     VersionComponentBasicUpdate,
+    VersionComponentCreate,
     VersionComponentDependenciesUpdate,
     VersionComponentEnvUpdate,
     VersionComponentMountsUpdate,
@@ -21,6 +22,7 @@ from ..version_specs import (
     VersionComponentTmpfsUpdate,
     VersionComponentUlimitsUpdate,
     VersionExpose,
+    version_component_create_payload,
     version_component_payload,
     version_expose_payload,
 )
@@ -226,6 +228,20 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
     async def orbit_get_version(version_id: str) -> dict[str, Any]:
         """Read a Version with its Components and Exposes."""
         return {"version": await client.get_version(version_id)}
+
+    @mcp.tool(name="orbit_create_version_component")
+    async def orbit_create_version_component(version_id: str, component: VersionComponentCreate) -> dict[str, Any]:
+        """Add a Component with basic configuration to an unpublished Version."""
+        body = version_component_create_payload(component)
+        created = await client.create_version_component(version_id, body)
+        return write_result(
+            "create_version_component",
+            {"version_id": version_id, "component_id": str(created["id"])},
+            "POST",
+            f"/api/version/{version_id}/component",
+            request_body=body,
+            data={"component": created},
+        )
 
     @mcp.tool(name="orbit_create_version")
     async def orbit_create_version(

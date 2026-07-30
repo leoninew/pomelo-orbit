@@ -163,7 +163,6 @@ func (h Handler) DeleteUser(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-
 func userId(c *gin.Context) string {
 	return strings.TrimSpace(c.Param("user_id"))
 }

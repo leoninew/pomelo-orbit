@@ -71,4 +71,3 @@ func (h Handler) ResetConfig(c *gin.Context) {
 	body := systemConfigResponse(resp)
 	transportresponse.ProtoJSON(c, http.StatusOK, &body)
 }
-

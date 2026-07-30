@@ -165,7 +165,6 @@ func (h Handler) GoogleCallback(c *gin.Context) {
 	transportresponse.WriteStatusError(c, http.StatusServiceUnavailable, "Google OAuth is not configured")
 }
 
-
 func clientIP(c *gin.Context) string {
 	forwarded := strings.TrimSpace(c.GetHeader("X-Forwarded-For"))
 	if forwarded != "" {

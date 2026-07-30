@@ -120,7 +120,6 @@ func (h Handler) DeleteRole(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-
 func roleId(c *gin.Context) string {
 	return strings.TrimSpace(c.Param("role_id"))
 }

@@ -178,4 +178,3 @@ func (h Handler) loadProjectForUser(c *gin.Context, userId string) (model.Projec
 	}
 	return project, true
 }
-

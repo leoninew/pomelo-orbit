@@ -119,4 +119,3 @@ func (h Handler) GetTask(c *gin.Context) {
 	resp := taskResponse(item)
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
-

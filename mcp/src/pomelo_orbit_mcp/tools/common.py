@@ -27,7 +27,11 @@ def write_result(
         "resource_ids": dict(resource_ids),
         "steps": steps or [f"Orbit HTTP {method} {path} completed"],
         "request_summary": compact(
-            {"method": method, "path": path, "body": dict(request_body) if request_body is not None else None}
+            {
+                "method": method,
+                "path": path,
+                "body": dict(request_body) if request_body is not None else None,
+            }
         ),
     }
     if data:

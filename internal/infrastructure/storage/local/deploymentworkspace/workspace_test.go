@@ -40,6 +40,28 @@ func TestWorkspaceWritesInitScriptWithoutChangingContent(t *testing.T) {
 	}
 }
 
+func TestWorkspaceReportsServiceDirectoryExistence(t *testing.T) {
+	workspace := NewWithResolver(t.TempDir(), func(context.Context, string) (string, error) { return "", nil })
+
+	exists, err := workspace.ServiceDirExists("demo", "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exists {
+		t.Fatal("service directory should not exist before deployment")
+	}
+	if err := os.MkdirAll(workspace.ServiceDir("demo", "default"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	exists, err = workspace.ServiceDirExists("demo", "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists {
+		t.Fatal("service directory should exist after creation")
+	}
+}
+
 func TestWorkspaceWritesNonInitConfigWithoutChangingContent(t *testing.T) {
 	workspace := NewWithResolver(t.TempDir(), func(context.Context, string) (string, error) { return "", nil })
 	content := "services:\r\n  app:\r\n    image: nginx\r\n"

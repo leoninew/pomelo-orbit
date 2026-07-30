@@ -68,6 +68,7 @@ type ExecutionLogStore interface {
 type Workspace interface {
 	AppDir(appCode string) string
 	ServiceDir(appCode string, instanceKey string) string
+	ServiceDirExists(appCode string, instanceKey string) (bool, error)
 	DeploymentLogPath(appCode string, instanceKey string, deploymentId string) string
 	PhysicalDir(ctx context.Context) (string, error)
 	PhysicalServiceDir(ctx context.Context, appCode string, instanceKey string) (string, error)

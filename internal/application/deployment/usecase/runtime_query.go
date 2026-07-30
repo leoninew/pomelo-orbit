@@ -22,6 +22,13 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, applicati
 	if err != nil {
 		return nil, err
 	}
+	exists, err := s.workspace.ServiceDirExists(app.Code, service.InstanceKey)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
+	}
+	if !exists {
+		return []deploymentdto.RuntimeContainer{}, nil
+	}
 	command := containerPsCommand(composeProjectName(app.Code, service.InstanceKey))
 	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, service.InstanceKey), command.Name, command.Args...)
 	if err != nil {

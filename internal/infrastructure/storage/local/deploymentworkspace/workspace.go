@@ -2,6 +2,7 @@ package deploymentworkspace
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -30,6 +31,17 @@ func (w *Workspace) AppDir(appCode string) string {
 
 func (w *Workspace) ServiceDir(appCode string, instanceKey string) string {
 	return filepath.Join(w.AppDir(appCode), instanceKey)
+}
+
+func (w *Workspace) ServiceDirExists(appCode string, instanceKey string) (bool, error) {
+	info, err := os.Stat(w.ServiceDir(appCode, instanceKey))
+	if err == nil {
+		return info.IsDir(), nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
 }
 
 func (w *Workspace) DeploymentLogPath(appCode string, instanceKey string, deploymentId string) string {

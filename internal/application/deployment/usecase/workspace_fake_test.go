@@ -13,11 +13,12 @@ type workspaceWrite struct {
 }
 
 type workspaceFake struct {
-	dataRoot     string
-	physicalRoot string
-	physicalErr  error
-	writes       []workspaceWrite
-	removedApps  []string
+	dataRoot      string
+	physicalRoot  string
+	physicalErr   error
+	hasServiceDir bool
+	writes        []workspaceWrite
+	removedApps   []string
 }
 
 func testWorkspace(dataRoot string) *workspaceFake {
@@ -34,6 +35,10 @@ func (w *workspaceFake) AppDir(appCode string) string {
 
 func (w *workspaceFake) ServiceDir(appCode string, instanceKey string) string {
 	return filepath.Join(w.AppDir(appCode), instanceKey)
+}
+
+func (w *workspaceFake) ServiceDirExists(string, string) (bool, error) {
+	return w.hasServiceDir, nil
 }
 
 func (w *workspaceFake) DeploymentLogPath(appCode string, instanceKey string, deploymentId string) string {

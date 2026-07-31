@@ -73,37 +73,52 @@
 
     <div v-else class="space-y-4">
       <div class="space-y-1.5">
-        <label class="app-field-label block">名称</label>
+        <label class="app-field-label block">
+          名称
+          <span class="text-destructive">*</span>
+        </label>
         <input
           v-model="form.name"
           type="text"
           placeholder="例如: my-backend"
           class="app-input"
           :class="errors.name ? 'app-input-error' : ''"
+          :aria-invalid="errors.name ? 'true' : undefined"
+          @input="errors.name = ''"
         />
         <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
       </div>
 
       <div class="space-y-1.5">
-        <label class="app-field-label block">仓库编码</label>
+        <label class="app-field-label block">
+          仓库编码
+          <span class="text-destructive">*</span>
+        </label>
         <input
           v-model="form.code"
           type="text"
           placeholder="例如: my-backend（固化工作目录，创建后不可修改）"
           class="app-input"
           :class="errors.code ? 'app-input-error' : ''"
+          :aria-invalid="errors.code ? 'true' : undefined"
+          @input="errors.code = ''"
         />
         <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
       </div>
 
       <div class="space-y-1.5">
-        <label class="app-field-label block">仓库地址</label>
+        <label class="app-field-label block">
+          仓库地址
+          <span class="text-destructive">*</span>
+        </label>
         <input
           v-model="form.repository_url"
           type="text"
           placeholder="git@github.com:user/repo.git"
           class="app-input"
           :class="errors.repository_url ? 'app-input-error' : ''"
+          :aria-invalid="errors.repository_url ? 'true' : undefined"
+          @input="errors.repository_url = ''"
         />
         <p v-if="errors.repository_url" class="app-field-error text-xs">
           {{ errors.repository_url }}
@@ -111,7 +126,7 @@
       </div>
 
       <div class="space-y-1.5">
-        <label class="app-field-label block">Git 凭据（可选）</label>
+        <label class="app-field-label block">Git 凭据</label>
         <ComboboxSelect
           v-model="form.git_credential_id"
           :options="gitCredentialOptions"
@@ -127,8 +142,7 @@
 
     <template #footer>
       <AppDialogActions
-        :busy="operating"
-        :confirm-disabled="modalStatus === 'loading'"
+        :busy="operating || modalStatus === 'loading'"
         @cancel="showCreateModal = false"
         @confirm="handleCreateOk"
       />

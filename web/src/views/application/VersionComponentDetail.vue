@@ -87,14 +87,34 @@
                   {{ t('application.detail.fields.component') }}
                   <span class="text-destructive">*</span>
                 </label>
-                <input v-model="form.name" class="app-input" type="text" />
+                <input
+                  v-model="form.name"
+                  class="app-input"
+                  :class="basicErrors.name ? 'app-input-error' : ''"
+                  type="text"
+                  :aria-invalid="basicErrors.name ? 'true' : undefined"
+                  @input="basicErrors.name = ''"
+                />
+                <p v-if="basicErrors.name" class="app-field-error" role="alert">
+                  {{ basicErrors.name }}
+                </p>
               </div>
               <div class="sm:col-span-2">
                 <label class="app-field-label mb-1.5 block">
                   {{ t('application.detail.fields.image') }}
                   <span class="text-destructive">*</span>
                 </label>
-                <input v-model="form.image" class="app-input" type="text" />
+                <input
+                  v-model="form.image"
+                  class="app-input"
+                  :class="basicErrors.image ? 'app-input-error' : ''"
+                  type="text"
+                  :aria-invalid="basicErrors.image ? 'true' : undefined"
+                  @input="basicErrors.image = ''"
+                />
+                <p v-if="basicErrors.image" class="app-field-error" role="alert">
+                  {{ basicErrors.image }}
+                </p>
               </div>
               <div>
                 <label class="app-field-label mb-1.5 block">
@@ -691,14 +711,34 @@
             {{ t('application.detail.fields.component') }}
             <span class="text-destructive">*</span>
           </label>
-          <input v-model="form.name" class="app-input" type="text" />
+          <input
+            v-model="form.name"
+            class="app-input"
+            :class="basicErrors.name ? 'app-input-error' : ''"
+            type="text"
+            :aria-invalid="basicErrors.name ? 'true' : undefined"
+            @input="basicErrors.name = ''"
+          />
+          <p v-if="basicErrors.name" class="app-field-error" role="alert">
+            {{ basicErrors.name }}
+          </p>
         </div>
         <div class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">
             {{ t('application.detail.fields.image') }}
             <span class="text-destructive">*</span>
           </label>
-          <input v-model="form.image" class="app-input" type="text" />
+          <input
+            v-model="form.image"
+            class="app-input"
+            :class="basicErrors.image ? 'app-input-error' : ''"
+            type="text"
+            :aria-invalid="basicErrors.image ? 'true' : undefined"
+            @input="basicErrors.image = ''"
+          />
+          <p v-if="basicErrors.image" class="app-field-error" role="alert">
+            {{ basicErrors.image }}
+          </p>
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">
@@ -745,20 +785,31 @@
       @update:open="setHealthcheckDialogOpen"
     >
       <label class="flex items-center gap-2 text-sm text-foreground">
-        <input v-model="form.healthcheck_disabled" class="app-checkbox" type="checkbox" />
+        <input
+          v-model="form.healthcheck_disabled"
+          class="app-checkbox"
+          type="checkbox"
+          @change="resetHealthcheckErrors"
+        />
         {{ t('application.componentDetail.fields.disabled') }}
       </label>
       <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <div>
           <label class="app-field-label mb-1 block">
             {{ t('application.componentDetail.fields.testMode') }}
+            <span v-if="!form.healthcheck_disabled" class="text-destructive">*</span>
           </label>
           <RawValueSelect
             v-model="form.healthcheck_test_mode"
             :disabled="form.healthcheck_disabled"
+            :invalid="Boolean(healthcheckErrors.test_mode)"
             :placeholder="t('application.componentDetail.fields.testMode')"
             :values="healthcheckTestModes"
+            @update:model-value="healthcheckErrors.test_mode = ''"
           />
+          <p v-if="healthcheckErrors.test_mode" class="app-field-error" role="alert">
+            {{ healthcheckErrors.test_mode }}
+          </p>
         </div>
         <div>
           <label class="app-field-label mb-1 block">
@@ -792,7 +843,13 @@
             :disabled="form.healthcheck_disabled"
             inputmode="numeric"
             type="text"
+            :class="healthcheckErrors.retries ? 'app-input-error' : ''"
+            :aria-invalid="healthcheckErrors.retries ? 'true' : undefined"
+            @input="healthcheckErrors.retries = ''"
           />
+          <p v-if="healthcheckErrors.retries" class="app-field-error" role="alert">
+            {{ healthcheckErrors.retries }}
+          </p>
         </div>
         <div>
           <label class="app-field-label mb-1 block">
@@ -820,8 +877,19 @@
       <div v-if="!form.healthcheck_disabled" class="mt-5 border-t border-border pt-5">
         <label class="app-field-label mb-1 block">
           {{ t('application.componentDetail.fields.test') }}
+          <span class="text-destructive">*</span>
         </label>
-        <input v-model="form.healthcheck_test" class="app-input" type="text" />
+        <input
+          v-model="form.healthcheck_test"
+          class="app-input"
+          :class="healthcheckErrors.test ? 'app-input-error' : ''"
+          type="text"
+          :aria-invalid="healthcheckErrors.test ? 'true' : undefined"
+          @input="healthcheckErrors.test = ''"
+        />
+        <p v-if="healthcheckErrors.test" class="app-field-error" role="alert">
+          {{ healthcheckErrors.test }}
+        </p>
       </div>
       <p v-if="formError" class="app-field-error mt-4">{{ formError }}</p>
       <template #footer>
@@ -891,26 +959,40 @@
           <div>
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.hostPort') }}
+              <span class="text-destructive">*</span>
             </label>
             <input
               v-model="portForm.host_port"
               class="app-input"
+              :class="recordErrors.host_port ? 'app-input-error' : ''"
               :placeholder="t('application.componentDetail.fields.hostPort')"
               inputmode="numeric"
               type="text"
+              :aria-invalid="recordErrors.host_port ? 'true' : undefined"
+              @input="recordErrors.host_port = ''"
             />
+            <p v-if="recordErrors.host_port" class="app-field-error" role="alert">
+              {{ recordErrors.host_port }}
+            </p>
           </div>
           <div>
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.containerPort') }}
+              <span class="text-destructive">*</span>
             </label>
             <input
               v-model="portForm.container_port"
               class="app-input"
+              :class="recordErrors.container_port ? 'app-input-error' : ''"
               :placeholder="t('application.componentDetail.fields.containerPort')"
               inputmode="numeric"
               type="text"
+              :aria-invalid="recordErrors.container_port ? 'true' : undefined"
+              @input="recordErrors.container_port = ''"
             />
+            <p v-if="recordErrors.container_port" class="app-field-error" role="alert">
+              {{ recordErrors.container_port }}
+            </p>
           </div>
         </div>
       </template>
@@ -920,8 +1002,19 @@
           <div>
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.key') }}
+              <span class="text-destructive">*</span>
             </label>
-            <input v-model="envForm.key" class="app-input" type="text" />
+            <input
+              v-model="envForm.key"
+              class="app-input"
+              :class="recordErrors.key ? 'app-input-error' : ''"
+              type="text"
+              :aria-invalid="recordErrors.key ? 'true' : undefined"
+              @input="recordErrors.key = ''"
+            />
+            <p v-if="recordErrors.key" class="app-field-error" role="alert">
+              {{ recordErrors.key }}
+            </p>
           </div>
           <div>
             <label class="app-field-label mb-1.5 block">
@@ -937,22 +1030,34 @@
           <div>
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.dependency') }}
+              <span class="text-destructive">*</span>
             </label>
             <RawValueSelect
               v-model="dependencyForm.name"
+              :invalid="Boolean(recordErrors.name)"
               :placeholder="t('application.componentDetail.fields.dependency')"
               :values="dependencyNames"
+              @update:model-value="recordErrors.name = ''"
             />
+            <p v-if="recordErrors.name" class="app-field-error" role="alert">
+              {{ recordErrors.name }}
+            </p>
           </div>
           <div>
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.condition') }}
+              <span class="text-destructive">*</span>
             </label>
             <RawValueSelect
               v-model="dependencyForm.condition"
+              :invalid="Boolean(recordErrors.condition)"
               :placeholder="t('application.componentDetail.fields.condition')"
               :values="dependencyConditions"
+              @update:model-value="recordErrors.condition = ''"
             />
+            <p v-if="recordErrors.condition" class="app-field-error" role="alert">
+              {{ recordErrors.condition }}
+            </p>
           </div>
         </div>
       </template>
@@ -962,25 +1067,54 @@
           <div>
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.target') }}
+              <span class="text-destructive">*</span>
             </label>
-            <input v-model="tmpfsForm.target" class="app-input" type="text" />
+            <input
+              v-model="tmpfsForm.target"
+              class="app-input"
+              :class="recordErrors.target ? 'app-input-error' : ''"
+              type="text"
+              :aria-invalid="recordErrors.target ? 'true' : undefined"
+              @input="recordErrors.target = ''"
+            />
+            <p v-if="recordErrors.target" class="app-field-error" role="alert">
+              {{ recordErrors.target }}
+            </p>
           </div>
           <div>
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.sizeBytes') }}
+              <span class="text-destructive">*</span>
             </label>
             <input
               v-model="tmpfsForm.size_bytes"
               class="app-input"
+              :class="recordErrors.size_bytes ? 'app-input-error' : ''"
               inputmode="numeric"
               type="text"
+              :aria-invalid="recordErrors.size_bytes ? 'true' : undefined"
+              @input="recordErrors.size_bytes = ''"
             />
+            <p v-if="recordErrors.size_bytes" class="app-field-error" role="alert">
+              {{ recordErrors.size_bytes }}
+            </p>
           </div>
           <div>
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.mode') }}
+              <span class="text-destructive">*</span>
             </label>
-            <input v-model="tmpfsForm.mode" class="app-input" type="text" />
+            <input
+              v-model="tmpfsForm.mode"
+              class="app-input"
+              :class="recordErrors.mode ? 'app-input-error' : ''"
+              type="text"
+              :aria-invalid="recordErrors.mode ? 'true' : undefined"
+              @input="recordErrors.mode = ''"
+            />
+            <p v-if="recordErrors.mode" class="app-field-error" role="alert">
+              {{ recordErrors.mode }}
+            </p>
           </div>
         </div>
       </template>
@@ -990,24 +1124,54 @@
           <div>
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.name') }}
+              <span class="text-destructive">*</span>
             </label>
             <RawValueSelect
               v-model="ulimitForm.name"
+              :invalid="Boolean(recordErrors.name)"
               :placeholder="t('application.componentDetail.fields.name')"
               :values="ulimitNames"
+              @update:model-value="recordErrors.name = ''"
             />
+            <p v-if="recordErrors.name" class="app-field-error" role="alert">
+              {{ recordErrors.name }}
+            </p>
           </div>
           <div>
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.soft') }}
+              <span class="text-destructive">*</span>
             </label>
-            <input v-model="ulimitForm.soft" class="app-input" inputmode="numeric" type="text" />
+            <input
+              v-model="ulimitForm.soft"
+              class="app-input"
+              :class="recordErrors.soft ? 'app-input-error' : ''"
+              inputmode="numeric"
+              type="text"
+              :aria-invalid="recordErrors.soft ? 'true' : undefined"
+              @input="recordErrors.soft = ''"
+            />
+            <p v-if="recordErrors.soft" class="app-field-error" role="alert">
+              {{ recordErrors.soft }}
+            </p>
           </div>
           <div>
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.hard') }}
+              <span class="text-destructive">*</span>
             </label>
-            <input v-model="ulimitForm.hard" class="app-input" inputmode="numeric" type="text" />
+            <input
+              v-model="ulimitForm.hard"
+              class="app-input"
+              :class="recordErrors.hard ? 'app-input-error' : ''"
+              inputmode="numeric"
+              type="text"
+              :aria-invalid="recordErrors.hard ? 'true' : undefined"
+              @input="recordErrors.hard = ''"
+            />
+            <p v-if="recordErrors.hard" class="app-field-error" role="alert">
+              {{ recordErrors.hard }}
+            </p>
           </div>
         </div>
       </template>
@@ -1034,25 +1198,52 @@
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.sourceType') }}
+            <span class="text-destructive">*</span>
           </label>
           <RawValueSelect
             :model-value="mountForm.source_type"
+            :invalid="Boolean(mountErrors.source_type)"
             :placeholder="t('application.detail.placeholders.mountSourceType')"
             :values="mountSourceTypes"
             @update:model-value="updateMountFormSourceType"
           />
+          <p v-if="mountErrors.source_type" class="app-field-error" role="alert">
+            {{ mountErrors.source_type }}
+          </p>
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.source') }}
+            <span class="text-destructive">*</span>
           </label>
-          <input v-model="mountForm.source" class="app-input" type="text" />
+          <input
+            v-model="mountForm.source"
+            class="app-input"
+            :class="mountErrors.source ? 'app-input-error' : ''"
+            type="text"
+            :aria-invalid="mountErrors.source ? 'true' : undefined"
+            @input="mountErrors.source = ''"
+          />
+          <p v-if="mountErrors.source" class="app-field-error" role="alert">
+            {{ mountErrors.source }}
+          </p>
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.target') }}
+            <span class="text-destructive">*</span>
           </label>
-          <input v-model="mountForm.target" class="app-input" type="text" />
+          <input
+            v-model="mountForm.target"
+            class="app-input"
+            :class="mountErrors.target ? 'app-input-error' : ''"
+            type="text"
+            :aria-invalid="mountErrors.target ? 'true' : undefined"
+            @input="mountErrors.target = ''"
+          />
+          <p v-if="mountErrors.target" class="app-field-error" role="alert">
+            {{ mountErrors.target }}
+          </p>
         </div>
         <label class="flex items-center gap-2 self-end pb-2">
           <input v-model="mountForm.read_only" class="app-checkbox" type="checkbox" />
@@ -1090,15 +1281,24 @@
     >
       <div class="flex h-full min-h-0 flex-col gap-4 p-6 text-sm">
         <div class="shrink-0 space-y-3">
-          <label class="app-field-label">
-            {{ t('application.componentDetail.fields.fileMode') }}
+          <div class="space-y-1.5">
+            <label class="app-field-label block">
+              {{ t('application.componentDetail.fields.fileMode') }}
+              <span class="text-destructive">*</span>
+            </label>
             <input
               v-model="mountContentForm.mode"
-              class="app-input mt-1"
+              class="app-input"
+              :class="mountContentErrors.mode ? 'app-input-error' : ''"
               inputmode="numeric"
               placeholder="0600"
+              :aria-invalid="mountContentErrors.mode ? 'true' : undefined"
+              @input="mountContentErrors.mode = ''"
             />
-          </label>
+            <p v-if="mountContentErrors.mode" class="app-field-error" role="alert">
+              {{ mountContentErrors.mode }}
+            </p>
+          </div>
           <label class="flex items-center gap-2">
             <input
               v-model="mountContentForm.ignore_if_exists"
@@ -1215,11 +1415,25 @@
   const form = reactive(emptyComponentForm());
   const activeTab = ref<ComponentTab>('runtime');
   const basicDialogOpen = ref(false);
+  const basicErrors = reactive({ name: '', image: '' });
   const healthcheckDialogOpen = ref(false);
+  const healthcheckErrors = reactive({ test_mode: '', test: '', retries: '' });
   const resourcesDialogOpen = ref(false);
   const recordDialogGroup = ref<RecordGroup | null>(null);
   const editingRecordIndex = ref<number | null>(null);
   const recordDialogError = ref('');
+  const recordErrors = reactive({
+    host_port: '',
+    container_port: '',
+    key: '',
+    name: '',
+    condition: '',
+    target: '',
+    size_bytes: '',
+    mode: '',
+    soft: '',
+    hard: '',
+  });
   const portForm = reactive({ host_port: '', container_port: '' });
   const envForm = reactive({ key: '', value: '' });
   const dependencyForm = reactive({ name: '', condition: '' });
@@ -1229,6 +1443,7 @@
   const editingMountIndex = ref<number | null>(null);
   const mountForm = reactive<MountRow>(emptyMount());
   const mountDialogError = ref('');
+  const mountErrors = reactive({ source_type: '', source: '', target: '' });
   const mountContentDrawerOpen = ref(false);
   const contentMountIndex = ref<number | null>(null);
   const mountContentForm = reactive({
@@ -1237,6 +1452,7 @@
     ignore_if_exists: false,
   });
   const mountContentError = ref('');
+  const mountContentErrors = reactive({ mode: '' });
   const deleteDialogOpen = ref(false);
   const formError = ref('');
   const resourcesFormError = ref('');
@@ -1279,6 +1495,116 @@
 
   function assignForm(source: ReturnType<typeof emptyComponentForm>) {
     Object.assign(form, source);
+  }
+
+  function resetBasicErrors() {
+    Object.assign(basicErrors, { name: '', image: '' });
+  }
+
+  function validateBasicForm() {
+    const name = form.name.trim();
+    basicErrors.name = !name
+      ? t('application.componentDetail.validation.componentNameRequired')
+      : /^[a-z][a-z0-9-]*$/.test(name)
+        ? ''
+        : t('application.componentDetail.validation.componentName');
+    basicErrors.image = form.image.trim()
+      ? ''
+      : t('application.componentDetail.validation.imageRequired');
+    return !basicErrors.name && !basicErrors.image;
+  }
+
+  function resetHealthcheckErrors() {
+    Object.assign(healthcheckErrors, { test_mode: '', test: '', retries: '' });
+  }
+
+  function validateHealthcheckForm() {
+    resetHealthcheckErrors();
+    if (form.healthcheck_disabled) {
+      return true;
+    }
+    const invalidMessage = t('application.componentDetail.validation.healthcheckTest');
+    healthcheckErrors.test_mode = healthcheckTestModes.includes(form.healthcheck_test_mode)
+      ? ''
+      : invalidMessage;
+    healthcheckErrors.test = form.healthcheck_test.trim() ? '' : invalidMessage;
+    healthcheckErrors.retries =
+      form.healthcheck_retries === '' || /^\d+$/.test(form.healthcheck_retries)
+        ? ''
+        : invalidMessage;
+    return !healthcheckErrors.test_mode && !healthcheckErrors.test && !healthcheckErrors.retries;
+  }
+
+  function resetRecordErrors() {
+    Object.assign(recordErrors, {
+      host_port: '',
+      container_port: '',
+      key: '',
+      name: '',
+      condition: '',
+      target: '',
+      size_bytes: '',
+      mode: '',
+      soft: '',
+      hard: '',
+    });
+  }
+
+  function validateRecordForm(group: RecordGroup) {
+    resetRecordErrors();
+    const invalidPort = t('application.componentDetail.validation.invalidPort');
+    const invalidTmpfs = t('application.componentDetail.validation.invalidTmpfs');
+    const invalidUlimit = t('application.componentDetail.validation.invalidUlimit');
+    const isPort = (value: string) => /^\d+$/.test(value) && Number(value) <= 65535;
+    if (group === 'ports') {
+      recordErrors.host_port =
+        isPort(portForm.host_port) && Number(portForm.host_port) > 0 ? '' : invalidPort;
+      recordErrors.container_port =
+        isPort(portForm.container_port) && Number(portForm.container_port) > 0 ? '' : invalidPort;
+    } else if (group === 'env') {
+      recordErrors.key = envForm.key.trim()
+        ? ''
+        : t('application.componentDetail.validation.rowIncomplete', {
+            section: t('application.componentDetail.sections.env'),
+          });
+    } else if (group === 'dependencies') {
+      const message = t('application.componentDetail.validation.rowIncomplete', {
+        section: t('application.componentDetail.fields.dependency'),
+      });
+      recordErrors.name = dependencyForm.name ? '' : message;
+      recordErrors.condition = dependencyForm.condition ? '' : message;
+    } else if (group === 'tmpfs') {
+      recordErrors.target = tmpfsForm.target.trim() ? '' : invalidTmpfs;
+      recordErrors.size_bytes =
+        /^\d+$/.test(tmpfsForm.size_bytes) &&
+        Number(tmpfsForm.size_bytes) >= 1048576 &&
+        Number(tmpfsForm.size_bytes) <= 8589934592
+          ? ''
+          : invalidTmpfs;
+      recordErrors.mode = /^[0-7]{3,4}$/.test(tmpfsForm.mode) ? '' : invalidTmpfs;
+    } else {
+      recordErrors.name = ulimitForm.name ? '' : invalidUlimit;
+      recordErrors.soft = /^-?\d+$/.test(ulimitForm.soft) ? '' : invalidUlimit;
+      recordErrors.hard = /^-?\d+$/.test(ulimitForm.hard) ? '' : invalidUlimit;
+    }
+    return !Object.values(recordErrors).some(Boolean);
+  }
+
+  function resetMountErrors() {
+    Object.assign(mountErrors, { source_type: '', source: '', target: '' });
+  }
+
+  function validateMountForm() {
+    const message = messageFor('mounts');
+    mountErrors.source_type = mountSourceTypes.includes(mountForm.source_type) ? '' : message;
+    mountErrors.source = mountForm.source.trim() ? '' : message;
+    mountErrors.target = mountForm.target.trim() ? '' : message;
+    return !mountErrors.source_type && !mountErrors.source && !mountErrors.target;
+  }
+
+  function validateMountContentForm() {
+    mountContentErrors.mode = /^0[0-7]{3}$/.test(mountContentForm.mode) ? '' : messageFor('mounts');
+    return !mountContentErrors.mode;
   }
 
   function cloneComponentForm(source: ComponentForm): ComponentForm {
@@ -1344,6 +1670,7 @@
     }
     assignForm(componentFormFromResponse(component.value));
     formError.value = '';
+    resetBasicErrors();
     basicDialogOpen.value = true;
   }
 
@@ -1352,6 +1679,7 @@
       assignForm(componentFormFromResponse(component.value));
     }
     formError.value = '';
+    resetBasicErrors();
     basicDialogOpen.value = false;
   }
 
@@ -1372,6 +1700,7 @@
     }
     form.healthcheck_enabled = true;
     formError.value = '';
+    resetHealthcheckErrors();
     healthcheckDialogOpen.value = true;
   }
 
@@ -1380,6 +1709,7 @@
       assignForm(componentFormFromResponse(component.value));
     }
     formError.value = '';
+    resetHealthcheckErrors();
     healthcheckDialogOpen.value = false;
   }
 
@@ -1392,6 +1722,9 @@
   }
 
   function saveHealthcheck() {
+    if (!validateHealthcheckForm()) {
+      return;
+    }
     if (isNew) {
       healthcheckDialogOpen.value = false;
       return;
@@ -1606,6 +1939,7 @@
   function openRecordDialog(group: RecordGroup, index?: number) {
     editingRecordIndex.value = index ?? null;
     recordDialogError.value = '';
+    resetRecordErrors();
     if (group === 'ports') {
       Object.assign(
         portForm,
@@ -1636,6 +1970,7 @@
     recordDialogGroup.value = null;
     editingRecordIndex.value = null;
     recordDialogError.value = '';
+    resetRecordErrors();
   }
 
   function setRecordDialogOpen(open: boolean) {
@@ -1647,6 +1982,9 @@
   async function saveRecord() {
     const group = recordDialogGroup.value;
     if (!group) {
+      return;
+    }
+    if (!validateRecordForm(group)) {
       return;
     }
     const outcome =
@@ -1697,6 +2035,7 @@
     Object.assign(mountForm, { ...mount });
     editingMountIndex.value = index ?? null;
     mountDialogError.value = '';
+    resetMountErrors();
     mountDialogOpen.value = true;
   }
 
@@ -1704,6 +2043,7 @@
     mountDialogOpen.value = false;
     editingMountIndex.value = null;
     mountDialogError.value = '';
+    resetMountErrors();
   }
 
   function setMountDialogOpen(open: boolean) {
@@ -1716,6 +2056,7 @@
 
   function updateMountFormSourceType(value: string | number) {
     mountForm.source_type = String(value);
+    mountErrors.source_type = '';
     if (mountForm.source_type !== 'directory' && mountForm.source_type !== 'file') {
       mountForm.source_is_host_path = false;
     }
@@ -1734,6 +2075,7 @@
     mountContentForm.mode = mount.mode;
     mountContentForm.ignore_if_exists = mount.ignore_if_exists;
     mountContentError.value = '';
+    mountContentErrors.mode = '';
     mountContentDrawerOpen.value = true;
   }
 
@@ -1741,6 +2083,7 @@
     mountContentDrawerOpen.value = false;
     contentMountIndex.value = null;
     mountContentError.value = '';
+    mountContentErrors.mode = '';
   }
 
   function setMountContentDrawerOpen(open: boolean) {
@@ -1782,6 +2125,9 @@
   }
 
   async function saveMount() {
+    if (!validateMountForm()) {
+      return;
+    }
     const nextMounts = form.mounts.map((row) => ({ ...row }));
     const mount = { ...mountForm };
     if (editingMountIndex.value === null) {
@@ -1808,6 +2154,9 @@
     const nextMounts = form.mounts.map((row) => ({ ...row }));
     const mount = nextMounts[contentMountIndex.value];
     if (!mount || mount.source_type !== 'controlled_file') {
+      return;
+    }
+    if (!validateMountContentForm()) {
       return;
     }
     mount.content = mountContentForm.content;
@@ -1884,6 +2233,9 @@
 
   async function save(group?: ComponentSaveGroup) {
     if (isNew) {
+      if (!validateBasicForm()) {
+        return;
+      }
       const result = componentCreateRequestFromForm(form);
       if (!result.valid) {
         showValidationError(result.error);
@@ -1909,6 +2261,9 @@
       await executeOperation(async () => {
         let updated: VersionComponentResp;
         if (group === 'basic') {
+          if (!validateBasicForm()) {
+            return;
+          }
           const result = componentBasicRequestFromForm(form);
           if (!result.valid) {
             showValidationError(result.error);
@@ -1920,6 +2275,9 @@
             result.value
           );
         } else {
+          if (!validateHealthcheckForm()) {
+            return;
+          }
           const result = componentRuntimeRequestFromForm(form);
           if (!result.valid) {
             showValidationError(result.error);

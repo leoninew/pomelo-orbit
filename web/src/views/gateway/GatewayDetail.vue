@@ -187,7 +187,12 @@
             v-model="deployForm.version_id"
             :options="versionSelectOptions"
             :placeholder="t('gateway.deploy.selectVersion')"
+            :invalid="Boolean(deployErrors.version_id)"
+            @update:model-value="deployErrors.version_id = ''"
           />
+          <p v-if="deployErrors.version_id" class="app-field-error" role="alert">
+            {{ deployErrors.version_id }}
+          </p>
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">
@@ -199,14 +204,19 @@
             type="text"
             required
             class="app-input"
+            :class="deployErrors.instance_key ? 'app-input-error' : ''"
             :placeholder="t('gateway.deploy.instanceKeyPlaceholder')"
+            :aria-invalid="deployErrors.instance_key ? 'true' : undefined"
+            @input="deployErrors.instance_key = ''"
           />
+          <p v-if="deployErrors.instance_key" class="app-field-error" role="alert">
+            {{ deployErrors.instance_key }}
+          </p>
         </div>
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('gateway.deploy.forceRecreate') }}</span>
         </label>
-        <p v-if="deployError" class="app-field-error text-xs">{{ deployError }}</p>
       </div>
       <template #footer>
         <AppDialogActions
@@ -233,8 +243,10 @@
             v-model="stopForm.service_id"
             :options="stopServiceSelectOptions"
             :placeholder="t('gateway.stop.selectService')"
+            :invalid="Boolean(stopError)"
+            @update:model-value="stopError = ''"
           />
-          <p v-if="stopError" class="app-field-error mt-1 text-xs">{{ stopError }}</p>
+          <p v-if="stopError" class="app-field-error" role="alert">{{ stopError }}</p>
         </div>
         <label class="flex items-center gap-2">
           <input v-model="stopForm.remove_volumes" type="checkbox" class="app-checkbox" />
@@ -269,6 +281,8 @@
             class="app-input"
             :class="editErrors.name ? 'app-input-error' : ''"
             :placeholder="t('gateway.placeholders.name')"
+            :aria-invalid="editErrors.name ? 'true' : undefined"
+            @input="editErrors.name = ''"
           />
           <p v-if="editErrors.name" class="app-field-error mt-1 text-xs">{{ editErrors.name }}</p>
         </div>
@@ -288,6 +302,8 @@
             class="app-input"
             :class="editErrors.rest_api_url ? 'app-input-error' : ''"
             :placeholder="t('gateway.placeholders.restApiUrl')"
+            :aria-invalid="editErrors.rest_api_url ? 'true' : undefined"
+            @input="editErrors.rest_api_url = ''"
           />
           <p v-if="editErrors.rest_api_url" class="app-field-error mt-1 text-xs">
             {{ editErrors.rest_api_url }}
@@ -305,6 +321,8 @@
             class="app-input"
             :class="editErrors.base_domain ? 'app-input-error' : ''"
             :placeholder="t('gateway.placeholders.baseDomain')"
+            :aria-invalid="editErrors.base_domain ? 'true' : undefined"
+            @input="editErrors.base_domain = ''"
           />
           <p v-if="editErrors.base_domain" class="app-field-error mt-1 text-xs">
             {{ editErrors.base_domain }}
@@ -351,6 +369,8 @@
             class="app-input"
             :class="editErrors.image ? 'app-input-error' : ''"
             :placeholder="t('gateway.placeholders.image')"
+            :aria-invalid="editErrors.image ? 'true' : undefined"
+            @input="editErrors.image = ''"
           />
           <p v-if="editErrors.image" class="app-field-error mt-1 text-xs">{{ editErrors.image }}</p>
           <p v-else class="app-field-hint mt-1">{{ t('gateway.hints.image') }}</p>
@@ -403,7 +423,7 @@
   const versions = ref<VersionResp[]>([]);
 
   const isDeployDialogOpen = ref(false);
-  const deployError = ref('');
+  const deployErrors = reactive({ version_id: '', instance_key: '' });
   const deployForm = reactive({
     version_id: '',
     instance_key: 'default',
@@ -594,7 +614,7 @@
     if (!gateway.value) {
       return;
     }
-    deployError.value = '';
+    Object.assign(deployErrors, { version_id: '', instance_key: '' });
     deployForm.force_recreate = false;
     deployForm.instance_key = 'default';
     try {
@@ -617,17 +637,18 @@
       return;
     }
     if (!deployForm.version_id) {
-      deployError.value = t('gateway.toast.versionRequired');
+      deployErrors.version_id = t('gateway.toast.versionRequired');
       return;
     }
-    deployError.value = '';
+    deployErrors.version_id = '';
+    deployErrors.instance_key = '';
+    const instanceKey = deployForm.instance_key.trim();
+    if (!instanceKey) {
+      deployErrors.instance_key = t('gateway.toast.instanceKeyRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        const instanceKey = deployForm.instance_key.trim();
-        if (!instanceKey) {
-          deployError.value = t('gateway.toast.instanceKeyRequired');
-          return;
-        }
         const existing = services.value.find((item) => item.instance_key === instanceKey);
         let serviceId = existing?.id;
         if (serviceId) {

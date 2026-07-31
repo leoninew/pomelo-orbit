@@ -99,6 +99,8 @@
             class="app-input"
             :class="createErrors.name ? 'app-input-error' : ''"
             :placeholder="t('gateway.placeholders.name')"
+            :aria-invalid="createErrors.name ? 'true' : undefined"
+            @input="createErrors.name = ''"
           />
           <p v-if="createErrors.name" class="app-field-error mt-1 text-xs">
             {{ createErrors.name }}
@@ -115,6 +117,8 @@
             class="app-input"
             :class="createErrors.code ? 'app-input-error' : ''"
             :placeholder="t('gateway.placeholders.code')"
+            :aria-invalid="createErrors.code ? 'true' : undefined"
+            @input="createErrors.code = ''"
           />
           <p v-if="createErrors.code" class="app-field-error mt-1 text-xs">
             {{ createErrors.code }}
@@ -131,6 +135,8 @@
             class="app-input"
             :class="createErrors.rest_api_url ? 'app-input-error' : ''"
             :placeholder="t('gateway.placeholders.restApiUrl')"
+            :aria-invalid="createErrors.rest_api_url ? 'true' : undefined"
+            @input="createErrors.rest_api_url = ''"
           />
           <p v-if="createErrors.rest_api_url" class="app-field-error mt-1 text-xs">
             {{ createErrors.rest_api_url }}
@@ -147,6 +153,8 @@
             class="app-input"
             :class="createErrors.base_domain ? 'app-input-error' : ''"
             :placeholder="t('gateway.placeholders.baseDomain')"
+            :aria-invalid="createErrors.base_domain ? 'true' : undefined"
+            @input="createErrors.base_domain = ''"
           />
           <p v-if="createErrors.base_domain" class="app-field-error mt-1 text-xs">
             {{ createErrors.base_domain }}
@@ -191,6 +199,8 @@
             class="app-input"
             :class="createErrors.image ? 'app-input-error' : ''"
             :placeholder="t('gateway.placeholders.image')"
+            :aria-invalid="createErrors.image ? 'true' : undefined"
+            @input="createErrors.image = ''"
           />
           <p v-if="createErrors.image" class="app-field-error mt-1 text-xs">
             {{ createErrors.image }}

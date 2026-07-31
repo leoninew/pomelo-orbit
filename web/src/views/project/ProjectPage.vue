@@ -99,24 +99,34 @@
     >
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('project.name') }}</label>
+          <label class="app-field-label block">
+            {{ t('project.name') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="form.name"
             type="text"
             class="app-input"
             :class="errors.name ? 'app-input-error' : ''"
             placeholder="Default Project"
+            :aria-invalid="errors.name ? 'true' : undefined"
+            @input="errors.name = ''"
           />
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('project.code') }}</label>
+          <label class="app-field-label block">
+            {{ t('project.code') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="form.code"
             type="text"
             class="app-input"
             :class="errors.code ? 'app-input-error' : ''"
             placeholder="default"
+            :aria-invalid="errors.code ? 'true' : undefined"
+            @input="errors.code = ''"
           />
           <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
           <p v-else class="app-field-hint">{{ t('project.codeHint') }}</p>

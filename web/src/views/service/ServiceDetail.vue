@@ -309,14 +309,19 @@
         <select
           v-model="basicForm.version_id"
           class="app-input"
-          :class="basicError ? 'app-input-error' : ''"
+          :class="basicErrors.version_id ? 'app-input-error' : ''"
           :disabled="operating"
+          :aria-invalid="basicErrors.version_id ? 'true' : undefined"
+          @change="basicErrors.version_id = ''"
         >
           <option value="" disabled>{{ t('service.create.selectVersion') }}</option>
           <option v-for="version in versions" :key="version.id" :value="version.id">
             {{ version.label }}
           </option>
         </select>
+        <p v-if="basicErrors.version_id" class="app-field-error" role="alert">
+          {{ basicErrors.version_id }}
+        </p>
       </div>
       <div>
         <label class="app-field-label mb-1.5 block">
@@ -327,10 +332,14 @@
           v-model="basicForm.instance_key"
           type="text"
           class="app-input"
-          :class="basicError ? 'app-input-error' : ''"
+          :class="basicErrors.instance_key ? 'app-input-error' : ''"
           :disabled="operating"
+          :aria-invalid="basicErrors.instance_key ? 'true' : undefined"
+          @input="basicErrors.instance_key = ''"
         />
-        <p v-if="basicError" class="app-field-error mt-1 text-xs">{{ basicError }}</p>
+        <p v-if="basicErrors.instance_key" class="app-field-error" role="alert">
+          {{ basicErrors.instance_key }}
+        </p>
       </div>
       <template #footer>
         <AppDialogActions
@@ -355,9 +364,14 @@
           v-model="runtimeConfigForm.key"
           type="text"
           class="app-input"
-          :class="runtimeConfigFormError ? 'app-input-error' : ''"
+          :class="runtimeConfigFormErrors.key ? 'app-input-error' : ''"
           :disabled="operating"
+          :aria-invalid="runtimeConfigFormErrors.key ? 'true' : undefined"
+          @input="runtimeConfigFormErrors.key = ''"
         />
+        <p v-if="runtimeConfigFormErrors.key" class="app-field-error" role="alert">
+          {{ runtimeConfigFormErrors.key }}
+        </p>
       </div>
       <div>
         <label class="app-field-label mb-1.5 block">{{ t('service.runtimeConfig.value') }}</label>
@@ -388,9 +402,6 @@
             <Eye v-else class="size-4" />
           </button>
         </div>
-        <p v-if="runtimeConfigFormError" class="app-field-error mt-1 text-xs">
-          {{ runtimeConfigFormError }}
-        </p>
       </div>
       <template #footer>
         <AppDialogActions
@@ -412,10 +423,18 @@
       width-class="w-[min(560px,calc(100vw-32px))]"
     >
       <div class="space-y-4">
-        <label class="app-field-label block">
-          {{ t('application.detail.fields.component') }}
-          <span class="text-destructive">*</span>
-          <select v-model="exposeForm.component_name" class="app-input mt-1.5 w-full">
+        <div class="space-y-1.5">
+          <label class="app-field-label block">
+            {{ t('application.detail.fields.component') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <select
+            v-model="exposeForm.component_name"
+            class="app-input"
+            :class="exposeErrors.component_name ? 'app-input-error' : ''"
+            :aria-invalid="exposeErrors.component_name ? 'true' : undefined"
+            @change="exposeErrors.component_name = ''"
+          >
             <option
               v-for="component in selectedComponents"
               :key="component.id"
@@ -424,62 +443,118 @@
               {{ component.name }}
             </option>
           </select>
-        </label>
+          <p v-if="exposeErrors.component_name" class="app-field-error" role="alert">
+            {{ exposeErrors.component_name }}
+          </p>
+        </div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label class="app-field-label">
-            {{ t('application.detail.placeholders.exposeProtocol') }}
-            <span class="text-destructive">*</span>
-            <select v-model="exposeForm.protocol" class="app-input mt-1.5 w-full">
+          <div class="space-y-1.5">
+            <label class="app-field-label block">
+              {{ t('application.detail.placeholders.exposeProtocol') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <select
+              v-model="exposeForm.protocol"
+              class="app-input"
+              :class="exposeErrors.protocol ? 'app-input-error' : ''"
+              :aria-invalid="exposeErrors.protocol ? 'true' : undefined"
+              @change="
+                exposeErrors.protocol = '';
+                exposeErrors.path_prefix = '';
+                if (exposeForm.protocol === 'tcp') exposeForm.path_prefix = '';
+              "
+            >
               <option value="" disabled>
                 {{ t('application.detail.placeholders.exposeProtocol') }}
               </option>
               <option value="http">http</option>
               <option value="tcp">tcp</option>
             </select>
-          </label>
-          <label class="app-field-label">
-            {{ t('application.detail.placeholders.exposeAccess') }}
-            <span class="text-destructive">*</span>
-            <select v-model="exposeForm.access" class="app-input mt-1.5 w-full">
+            <p v-if="exposeErrors.protocol" class="app-field-error" role="alert">
+              {{ exposeErrors.protocol }}
+            </p>
+          </div>
+          <div class="space-y-1.5">
+            <label class="app-field-label block">
+              {{ t('application.detail.placeholders.exposeAccess') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <select
+              v-model="exposeForm.access"
+              class="app-input"
+              :class="exposeErrors.access ? 'app-input-error' : ''"
+              :aria-invalid="exposeErrors.access ? 'true' : undefined"
+              @change="exposeErrors.access = ''"
+            >
               <option value="local">local</option>
               <option value="public">public</option>
             </select>
-          </label>
+            <p v-if="exposeErrors.access" class="app-field-error" role="alert">
+              {{ exposeErrors.access }}
+            </p>
+          </div>
         </div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label class="app-field-label">
-            {{ t('application.detail.placeholders.containerPort') }}
-            <span class="text-destructive">*</span>
+          <div class="space-y-1.5">
+            <label class="app-field-label block">
+              {{ t('application.detail.placeholders.containerPort') }}
+              <span class="text-destructive">*</span>
+            </label>
             <input
               v-model="exposeForm.container_port"
               type="number"
               min="1"
               max="65535"
-              class="app-input mt-1.5 w-full"
+              class="app-input"
+              :class="exposeErrors.container_port ? 'app-input-error' : ''"
+              :aria-invalid="exposeErrors.container_port ? 'true' : undefined"
+              @input="exposeErrors.container_port = ''"
             />
-          </label>
-          <label class="app-field-label">
-            {{ t('application.detail.placeholders.listenPort') }}
+            <p v-if="exposeErrors.container_port" class="app-field-error" role="alert">
+              {{ exposeErrors.container_port }}
+            </p>
+          </div>
+          <div class="space-y-1.5">
+            <label class="app-field-label block">
+              {{ t('application.detail.placeholders.listenPort') }}
+            </label>
             <input
               v-model="exposeForm.listen_port"
               type="number"
               min="1"
               max="65535"
-              class="app-input mt-1.5 w-full"
+              class="app-input"
+              :class="exposeErrors.listen_port ? 'app-input-error' : ''"
+              :aria-invalid="exposeErrors.listen_port ? 'true' : undefined"
+              @input="exposeErrors.listen_port = ''"
             />
-          </label>
+            <p v-if="exposeErrors.listen_port" class="app-field-error" role="alert">
+              {{ exposeErrors.listen_port }}
+            </p>
+          </div>
         </div>
-        <label v-if="exposeForm.protocol === 'http'" class="app-field-label block">
-          {{ t('application.detail.fields.pathPrefix') }}
-          <input v-model="exposeForm.path_prefix" class="app-input mt-1.5 w-full" />
-        </label>
+        <div v-if="exposeForm.protocol === 'http'" class="space-y-1.5">
+          <label class="app-field-label block">
+            {{ t('application.detail.fields.pathPrefix') }}
+          </label>
+          <input
+            v-model="exposeForm.path_prefix"
+            class="app-input"
+            :class="exposeErrors.path_prefix ? 'app-input-error' : ''"
+            :aria-invalid="exposeErrors.path_prefix ? 'true' : undefined"
+            @input="exposeErrors.path_prefix = ''"
+          />
+          <p v-if="exposeErrors.path_prefix" class="app-field-error" role="alert">
+            {{ exposeErrors.path_prefix }}
+          </p>
+        </div>
         <p v-if="exposeFormError" class="app-field-error text-xs">{{ exposeFormError }}</p>
       </div>
       <template #footer>
         <AppDialogActions
           :busy="operating"
           :confirm-label="t('common.save')"
-          @cancel="isExposeDialogOpen = false"
+          @cancel="closeExposeDialog"
           @confirm="saveExpose"
         />
       </template>
@@ -645,16 +720,24 @@
   const containersLoading = ref(false);
   const containersError = ref('');
   const isBasicDialogOpen = ref(false);
-  const basicError = ref('');
+  const basicErrors = reactive({ version_id: '', instance_key: '' });
   const basicForm = reactive({ version_id: '', instance_key: '' });
   const isRuntimeConfigDialogOpen = ref(false);
   const editingRuntimeConfigKey = ref<string | null>(null);
   const isRuntimeConfigValueVisible = ref(false);
-  const runtimeConfigFormError = ref('');
+  const runtimeConfigFormErrors = reactive({ key: '' });
   const runtimeConfigForm = reactive({ key: '', value: '' });
   const isExposeDialogOpen = ref(false);
   const editingExposeIndex = ref<number | null>(null);
   const exposeFormError = ref('');
+  const exposeErrors = reactive({
+    component_name: '',
+    protocol: '',
+    access: '',
+    container_port: '',
+    listen_port: '',
+    path_prefix: '',
+  });
   const exposeForm = reactive<ExposeForm>({
     component_name: '',
     protocol: '',
@@ -753,14 +836,17 @@
       version_id: service.value.version_id,
       instance_key: service.value.instance_key,
     });
-    basicError.value = '';
+    Object.assign(basicErrors, { version_id: '', instance_key: '' });
     isBasicDialogOpen.value = true;
   }
   async function saveBasic() {
     const current = service.value;
     if (!current) return;
-    if (!basicForm.version_id || !basicForm.instance_key.trim()) {
-      basicError.value = t('service.create.required');
+    basicErrors.version_id = basicForm.version_id ? '' : t('service.create.versionRequired');
+    basicErrors.instance_key = basicForm.instance_key.trim()
+      ? ''
+      : t('service.create.instanceKeyRequired');
+    if (basicErrors.version_id || basicErrors.instance_key) {
       return;
     }
     try {
@@ -774,7 +860,7 @@
       toast.success(t('service.detail.saved'));
       await Promise.all([loadSelectedVersion(), loadContainers()]);
     } catch (error) {
-      basicError.value =
+      basicErrors.instance_key =
         error instanceof Error ? error.message : t('service.toast.loadDetailFailed');
     }
   }
@@ -786,7 +872,7 @@
       key: key ?? '',
       value: key === undefined ? '' : service.value.runtime_config[key],
     });
-    runtimeConfigFormError.value = '';
+    runtimeConfigFormErrors.key = '';
     isRuntimeConfigValueVisible.value = false;
     isRuntimeConfigDialogOpen.value = true;
   }
@@ -794,14 +880,33 @@
   function closeRuntimeConfigDialog() {
     isRuntimeConfigDialogOpen.value = false;
     editingRuntimeConfigKey.value = null;
-    runtimeConfigFormError.value = '';
+    runtimeConfigFormErrors.key = '';
     isRuntimeConfigValueVisible.value = false;
+  }
+
+  function resetExposeErrors() {
+    Object.assign(exposeErrors, {
+      component_name: '',
+      protocol: '',
+      access: '',
+      container_port: '',
+      listen_port: '',
+      path_prefix: '',
+    });
+  }
+
+  function closeExposeDialog() {
+    isExposeDialogOpen.value = false;
+    editingExposeIndex.value = null;
+    exposeFormError.value = '';
+    resetExposeErrors();
   }
 
   function openExposeDialog(index?: number) {
     if (!service.value || !selectedComponents.value.length) return;
     editingExposeIndex.value = index ?? null;
     exposeFormError.value = '';
+    resetExposeErrors();
     const current = index === undefined ? undefined : service.value.exposes[index];
     if (current)
       Object.assign(exposeForm, {
@@ -830,22 +935,33 @@
     const containerPort = Number(exposeForm.container_port);
     const listenText = exposeForm.listen_port.trim();
     const listenPort = listenText === '' ? undefined : Number(listenText);
-    if (
-      !selectedComponents.value.some((component) => component.name === exposeForm.component_name) ||
-      !['http', 'tcp'].includes(exposeForm.protocol) ||
-      !['local', 'public'].includes(exposeForm.access) ||
-      !Number.isInteger(containerPort) ||
-      containerPort < 1 ||
-      containerPort > 65535 ||
-      (listenPort !== undefined &&
-        (!Number.isInteger(listenPort) || listenPort < 1 || listenPort > 65535))
-    ) {
-      exposeFormError.value = t('application.validation.exposeFieldsInvalid');
-      return;
-    }
     const pathPrefix = exposeForm.path_prefix.trim();
-    if (exposeForm.protocol === 'tcp' && pathPrefix) {
-      exposeFormError.value = t('application.validation.exposeFieldsInvalid');
+    const componentMessage = t('application.validation.exposeComponentRequired');
+    const protocolAccessMessage = t('application.validation.exposeFieldsInvalid');
+    const portMessage = t('application.validation.portRange');
+    exposeErrors.component_name = selectedComponents.value.some(
+      (component) => component.name === exposeForm.component_name
+    )
+      ? ''
+      : componentMessage;
+    exposeErrors.protocol = ['http', 'tcp'].includes(exposeForm.protocol)
+      ? ''
+      : protocolAccessMessage;
+    exposeErrors.access = ['local', 'public'].includes(exposeForm.access)
+      ? ''
+      : protocolAccessMessage;
+    exposeErrors.container_port =
+      Number.isInteger(containerPort) && containerPort >= 1 && containerPort <= 65535
+        ? ''
+        : portMessage;
+    exposeErrors.listen_port =
+      listenPort === undefined ||
+      (Number.isInteger(listenPort) && listenPort >= 1 && listenPort <= 65535)
+        ? ''
+        : portMessage;
+    exposeErrors.path_prefix =
+      exposeForm.protocol === 'tcp' && pathPrefix ? protocolAccessMessage : '';
+    if (Object.values(exposeErrors).some(Boolean)) {
       return;
     }
     const expose: ServiceExposeReq = {
@@ -866,7 +982,7 @@
           exposes,
         });
       });
-      isExposeDialogOpen.value = false;
+      closeExposeDialog();
       toast.success(t('service.exposes.saved'));
     } catch (error) {
       exposeFormError.value =
@@ -883,7 +999,7 @@
       (editingRuntimeConfigKey.value !== key &&
         Object.prototype.hasOwnProperty.call(current.runtime_config, key))
     ) {
-      runtimeConfigFormError.value = t('service.runtimeConfig.invalid');
+      runtimeConfigFormErrors.key = t('service.runtimeConfig.invalid');
       return;
     }
     const runtimeConfig = { ...current.runtime_config };
@@ -899,7 +1015,7 @@
       closeRuntimeConfigDialog();
       toast.success(t('service.runtimeConfig.saved'));
     } catch (error) {
-      runtimeConfigFormError.value =
+      runtimeConfigFormErrors.key =
         error instanceof Error ? error.message : t('service.runtimeConfig.loadFailed');
     }
   }

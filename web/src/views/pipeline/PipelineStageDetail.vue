@@ -175,22 +175,40 @@
     <AppDialog v-model:open="isEditDialogOpen" :title="t('buildStageDetail.editBuild')">
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('common.name') }}</label>
+          <label class="app-field-label block">
+            {{ t('common.name') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="form.name"
             type="text"
             class="app-input"
+            :class="editErrors.name ? 'app-input-error' : ''"
             :placeholder="t('buildStageDetail.namePlaceholder')"
+            :aria-invalid="editErrors.name ? 'true' : undefined"
+            @input="editErrors.name = ''"
           />
+          <p v-if="editErrors.name" class="app-field-error" role="alert">
+            {{ editErrors.name }}
+          </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('buildStageDetail.image') }}</label>
+          <label class="app-field-label block">
+            {{ t('buildStageDetail.image') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="form.image"
             type="text"
             class="app-input"
+            :class="editErrors.image ? 'app-input-error' : ''"
             :placeholder="t('buildStageDetail.imagePlaceholder')"
+            :aria-invalid="editErrors.image ? 'true' : undefined"
+            @input="editErrors.image = ''"
           />
+          <p v-if="editErrors.image" class="app-field-error" role="alert">
+            {{ editErrors.image }}
+          </p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">
@@ -238,7 +256,10 @@
     >
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('buildStageDetail.artifactType') }}</label>
+          <label class="app-field-label block">
+            {{ t('buildStageDetail.artifactType') }}
+            <span class="text-destructive">*</span>
+          </label>
           <RawValueSelect
             v-model="artifactForm.type"
             :values="artifactTypeValues"
@@ -246,22 +267,40 @@
           />
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('common.name') }}</label>
+          <label class="app-field-label block">
+            {{ t('common.name') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="artifactForm.name"
             type="text"
             class="app-input"
+            :class="artifactErrors.name ? 'app-input-error' : ''"
             :placeholder="t('buildStageDetail.artifactNamePlaceholder')"
+            :aria-invalid="artifactErrors.name ? 'true' : undefined"
+            @input="artifactErrors.name = ''"
           />
+          <p v-if="artifactErrors.name" class="app-field-error" role="alert">
+            {{ artifactErrors.name }}
+          </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('buildStageDetail.pathOrImage') }}</label>
+          <label class="app-field-label block">
+            {{ t('buildStageDetail.pathOrImage') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="artifactForm.path"
             type="text"
             class="app-input"
+            :class="artifactErrors.path ? 'app-input-error' : ''"
             :placeholder="t('buildStageDetail.artifactPathPlaceholder')"
+            :aria-invalid="artifactErrors.path ? 'true' : undefined"
+            @input="artifactErrors.path = ''"
           />
+          <p v-if="artifactErrors.path" class="app-field-error" role="alert">
+            {{ artifactErrors.path }}
+          </p>
         </div>
       </div>
       <template #footer>
@@ -357,6 +396,7 @@
   const scriptTemp = ref('');
   const artifactTypeValues = ['docker_image', 'binary'];
   const form = reactive({ name: '', image: '', description: '' });
+  const editErrors = reactive({ name: '', image: '' });
   const artifactForm = reactive({
     isEdit: false,
     order: -1,
@@ -364,6 +404,7 @@
     name: '',
     path: '',
   });
+  const artifactErrors = reactive({ name: '', path: '' });
   const sortableArtifacts = ref<ArtifactConfigResp[]>([]);
   const artifactToDelete = ref(-1);
 
@@ -388,6 +429,7 @@
       image: stage.value.image,
       description: stage.value.description,
     });
+    Object.assign(editErrors, { name: '', image: '' });
     isEditDialogOpen.value = true;
   }
 
@@ -432,6 +474,11 @@
   }
 
   async function handleSave() {
+    editErrors.name = form.name.trim() ? '' : t('buildStageDetail.nameRequired');
+    editErrors.image = form.image.trim() ? '' : t('buildStageDetail.imageRequired');
+    if (editErrors.name || editErrors.image) {
+      return;
+    }
     try {
       await executeSave(async () => {
         const updated = await pipelineStageApi.update(stageId.value, {
@@ -456,6 +503,7 @@
       name: '',
       path: '',
     });
+    Object.assign(artifactErrors, { name: '', path: '' });
     isArtifactDialogOpen.value = true;
   }
 
@@ -471,6 +519,7 @@
       name: artifact.name,
       path: artifact.path,
     });
+    Object.assign(artifactErrors, { name: '', path: '' });
     isArtifactDialogOpen.value = true;
   }
 
@@ -502,8 +551,13 @@
   }
 
   async function handleSaveArtifact() {
-    if (!artifactForm.name.trim() || !artifactForm.path.trim()) {
-      toast.error(t('buildStageDetail.artifactFieldsRequired'));
+    artifactErrors.name = artifactForm.name.trim()
+      ? ''
+      : t('buildStageDetail.artifactNameRequired');
+    artifactErrors.path = artifactForm.path.trim()
+      ? ''
+      : t('buildStageDetail.artifactPathRequired');
+    if (artifactErrors.name || artifactErrors.path) {
       return;
     }
 
@@ -515,7 +569,7 @@
       };
     } else {
       if (sortableArtifacts.value.some((a) => a.name === artifactForm.name)) {
-        toast.error(t('buildStageDetail.artifactNameExists'));
+        artifactErrors.name = t('buildStageDetail.artifactNameExists');
         return;
       }
       sortableArtifacts.value.push({

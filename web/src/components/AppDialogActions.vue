@@ -9,8 +9,7 @@
       {{ resolvedCancelLabel }}
     </button>
     <button
-      :type="confirmType"
-      :form="form"
+      type="button"
       :class="confirmClass"
       :disabled="busy || confirmDisabled"
       @click="handleConfirm"
@@ -33,8 +32,6 @@
       cancelLabel?: string;
       confirmDisabled?: boolean;
       confirmLabel?: string;
-      confirmType?: 'button' | 'submit';
-      form?: string;
       variant?: 'primary' | 'destructive';
     }>(),
     {
@@ -43,8 +40,6 @@
       cancelLabel: '',
       confirmDisabled: false,
       confirmLabel: '',
-      confirmType: 'button',
-      form: undefined,
       variant: 'primary',
     }
   );
@@ -62,8 +57,6 @@
   );
 
   function handleConfirm() {
-    if (props.confirmType === 'button') {
-      emit('confirm');
-    }
+    emit('confirm');
   }
 </script>

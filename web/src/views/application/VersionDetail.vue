@@ -166,6 +166,8 @@
             class="app-input"
             :class="basicFormError ? 'app-input-error' : ''"
             :placeholder="t('application.detail.placeholders.versionLabel')"
+            :aria-invalid="basicFormError ? 'true' : undefined"
+            @input="basicFormError = ''"
           />
           <p v-if="basicFormError" class="app-field-error mt-1 text-xs">{{ basicFormError }}</p>
         </div>
@@ -206,10 +208,15 @@
           <input
             v-model="componentForm.name"
             class="app-input"
-            :class="componentFormError ? 'app-input-error' : ''"
+            :class="componentFormErrors.name ? 'app-input-error' : ''"
             type="text"
             :placeholder="t('application.detail.placeholders.componentName')"
+            :aria-invalid="componentFormErrors.name ? 'true' : undefined"
+            @input="componentFormErrors.name = ''"
           />
+          <p v-if="componentFormErrors.name" class="app-field-error" role="alert">
+            {{ componentFormErrors.name }}
+          </p>
         </div>
         <div class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">
@@ -219,10 +226,15 @@
           <input
             v-model="componentForm.image"
             class="app-input"
-            :class="componentFormError ? 'app-input-error' : ''"
+            :class="componentFormErrors.image ? 'app-input-error' : ''"
             type="text"
             :placeholder="t('application.detail.placeholders.componentImage')"
+            :aria-invalid="componentFormErrors.image ? 'true' : undefined"
+            @input="componentFormErrors.image = ''"
           />
+          <p v-if="componentFormErrors.image" class="app-field-error" role="alert">
+            {{ componentFormErrors.image }}
+          </p>
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">
@@ -251,9 +263,6 @@
           <textarea v-model="componentForm.command" class="app-textarea" rows="3" />
         </div>
       </div>
-      <p v-if="componentFormError" class="app-field-error mt-3 text-xs">
-        {{ componentFormError }}
-      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -281,6 +290,8 @@
           class="app-input"
           :class="forkLabelError ? 'app-input-error' : ''"
           :placeholder="t('application.detail.placeholders.versionLabel')"
+          :aria-invalid="forkLabelError ? 'true' : undefined"
+          @input="forkLabelError = ''"
         />
         <p v-if="forkLabelError" class="app-field-error mt-1 text-xs">{{ forkLabelError }}</p>
       </div>
@@ -358,7 +369,7 @@
   const forkLabel = ref('');
   const forkLabelError = ref('');
   const basicFormError = ref('');
-  const componentFormError = ref('');
+  const componentFormErrors = reactive({ name: '', image: '' });
 
   const basicForm = reactive({
     label: '',
@@ -422,19 +433,28 @@
 
   function openComponentDialog() {
     Object.assign(componentForm, emptyComponentForm());
-    componentFormError.value = '';
+    Object.assign(componentFormErrors, { name: '', image: '' });
     isComponentDialogOpen.value = true;
   }
 
   function closeComponentDialog() {
     isComponentDialogOpen.value = false;
-    componentFormError.value = '';
+    Object.assign(componentFormErrors, { name: '', image: '' });
   }
 
   async function createComponent() {
     const result = componentCreateRequestFromForm(componentForm);
     if (!result.valid) {
-      componentFormError.value = t(`application.componentDetail.validation.${result.error}`);
+      componentFormErrors.name =
+        result.error === 'nameImage' && !componentForm.name.trim()
+          ? t('application.componentDetail.validation.componentNameRequired')
+          : result.error === 'componentName'
+            ? t('application.componentDetail.validation.componentName')
+            : '';
+      componentFormErrors.image =
+        result.error === 'nameImage' && !componentForm.image.trim()
+          ? t('application.componentDetail.validation.imageRequired')
+          : '';
       return;
     }
     try {

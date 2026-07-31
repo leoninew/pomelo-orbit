@@ -168,6 +168,9 @@
         <div v-else class="p-6 text-center text-destructive">
           {{ t('pipelineTemplate.invalidViewMode') }}
         </div>
+        <p v-if="orchestrationError" class="app-field-error px-6 pb-4" role="alert">
+          {{ orchestrationError }}
+        </p>
       </div>
 
       <!-- {{ t('pipelineTemplate.variableDeclarations') }} -->
@@ -226,8 +229,21 @@
 
     <AppDialog v-model:open="isEditInfoDialogOpen" :title="t('pipelineTemplate.editBasicInfo')">
       <div class="space-y-1.5">
-        <label class="app-field-label block">{{ t('pipelineTemplate.templateName') }}</label>
-        <input v-model="editForm.name" type="text" class="app-input" />
+        <label class="app-field-label block">
+          {{ t('pipelineTemplate.templateName') }}
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          v-model="editForm.name"
+          type="text"
+          class="app-input"
+          :class="editInfoErrors.name ? 'app-input-error' : ''"
+          :aria-invalid="editInfoErrors.name ? 'true' : undefined"
+          @input="editInfoErrors.name = ''"
+        />
+        <p v-if="editInfoErrors.name" class="app-field-error" role="alert">
+          {{ editInfoErrors.name }}
+        </p>
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">{{ t('common.description') }}</label>
@@ -240,19 +256,26 @@
 
     <AppDialog v-model:open="isAddOrchDialogOpen" :title="t('pipelineTemplate.addStage')">
       <div class="space-y-1.5">
-        <label class="app-field-label block">{{ t('pipelineTemplate.selectStage') }}</label>
+        <label class="app-field-label block">
+          {{ t('pipelineTemplate.selectStage') }}
+          <span class="text-destructive">*</span>
+        </label>
         <ComboboxSelect
           :model-value="addOrchForm.stageId"
           :options="stageSelectOptions"
           :portal="false"
           :placeholder="t('pipelineTemplate.searchStage')"
           :empty-text="t('pipelineTemplate.noStageFound')"
+          :invalid="Boolean(addOrchErrors.stageId)"
           @update:model-value="handleStageSelection"
         />
+        <p v-if="addOrchErrors.stageId" class="app-field-error" role="alert">
+          {{ addOrchErrors.stageId }}
+        </p>
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">
-          {{ t('pipelineTemplate.dependsOnStageOptional') }}
+          {{ t('pipelineTemplate.dependsOnStage') }}
         </label>
         <div class="space-y-2">
           <label v-for="orch in sortableOrch" :key="orch.stage_id" class="flex items-center gap-2">
@@ -261,17 +284,17 @@
               :value="orch.stage_id"
               type="checkbox"
               class="app-checkbox"
+              @change="addOrchErrors.dependsOn = ''"
             />
             <span class="text-sm text-foreground">{{ orch.stage_name }}</span>
           </label>
         </div>
+        <p v-if="addOrchErrors.dependsOn" class="app-field-error" role="alert">
+          {{ addOrchErrors.dependsOn }}
+        </p>
       </div>
       <template #footer>
-        <AppDialogActions
-          :confirm-disabled="!addOrchForm.stageId"
-          @cancel="isAddOrchDialogOpen = false"
-          @confirm="confirmAddOrch"
-        />
+        <AppDialogActions @cancel="closeAddOrchDialog" @confirm="confirmAddOrch" />
       </template>
     </AppDialog>
 
@@ -289,32 +312,43 @@
               :value="orch.stage_id"
               type="checkbox"
               class="app-checkbox"
+              @change="editOrchErrors.dependsOn = ''"
             />
             <span class="text-sm text-foreground">{{ orch.stage_name }}</span>
           </label>
         </div>
+        <p v-if="editOrchErrors.dependsOn" class="app-field-error" role="alert">
+          {{ editOrchErrors.dependsOn }}
+        </p>
       </div>
       <template #footer>
-        <AppDialogActions @cancel="isEditOrchDialogOpen = false" @confirm="confirmEditOrch" />
+        <AppDialogActions @cancel="closeEditOrchDialog" @confirm="confirmEditOrch" />
       </template>
     </AppDialog>
 
     <AppDialog v-model:open="isRunDialogOpen" :title="t('pipelineTemplate.runPipeline')">
       <div class="space-y-1.5">
-        <label class="app-field-label block">{{ t('pipelineTemplate.selectRepository') }}</label>
+        <label class="app-field-label block">
+          {{ t('pipelineTemplate.selectRepository') }}
+          <span class="text-destructive">*</span>
+        </label>
         <ComboboxSelect
           :model-value="runForm.repositoryId"
           :options="repoSelectOptions"
           :portal="false"
           :placeholder="t('pipelineTemplate.searchRepository')"
           :empty-text="t('pipelineTemplate.noRepositoryFound')"
+          :invalid="Boolean(runErrors.repositoryId)"
           @update:model-value="handleRepoSelection"
         />
         <p
-          v-if="selectedRepository && !selectedRepository.git_credential_id"
-          class="mt-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          v-if="
+            runErrors.repositoryId || (selectedRepository && !selectedRepository.git_credential_id)
+          "
+          class="app-field-error"
+          role="alert"
         >
-          {{ t('pipelineTemplate.repositoryMissingCredential') }}
+          {{ runErrors.repositoryId || t('pipelineTemplate.repositoryMissingCredential') }}
         </p>
       </div>
       <div class="space-y-1.5">
@@ -329,7 +363,6 @@
       <template #footer>
         <AppDialogActions
           :busy="running"
-          :confirm-disabled="!runForm.repositoryId || !selectedRepository?.git_credential_id"
           @cancel="isRunDialogOpen = false"
           @confirm="handleRunOk"
         />
@@ -338,8 +371,21 @@
 
     <AppDialog v-model:open="isAddVarDialogOpen" :title="t('pipelineTemplate.addVariableTitle')">
       <div class="space-y-1.5">
-        <label class="app-field-label block">{{ t('pipelineTemplate.variableName') }}</label>
-        <input v-model="varForm.name" type="text" class="app-input" />
+        <label class="app-field-label block">
+          {{ t('pipelineTemplate.variableName') }}
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          v-model="varForm.name"
+          type="text"
+          class="app-input"
+          :class="addVariableErrors.name ? 'app-input-error' : ''"
+          :aria-invalid="addVariableErrors.name ? 'true' : undefined"
+          @input="addVariableErrors.name = ''"
+        />
+        <p v-if="addVariableErrors.name" class="app-field-error" role="alert">
+          {{ addVariableErrors.name }}
+        </p>
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">{{ t('pipelineTemplate.variableValue') }}</label>
@@ -546,23 +592,29 @@
   const isDeleteVarDialogOpen = ref(false);
 
   const editForm = reactive({ name: '', description: '' });
+  const editInfoErrors = reactive({ name: '' });
+  const orchestrationError = ref('');
   const addOrchForm = reactive({
     stageId: '',
     dependsOn: [] as string[],
   });
+  const addOrchErrors = reactive({ stageId: '', dependsOn: '' });
   const runForm = reactive({
     repositoryId: '',
     triggerRef: '',
   });
+  const runErrors = reactive({ repositoryId: '' });
   const editOrchForm = reactive({
     editingStageId: '',
     dependsOn: [] as string[],
   });
+  const editOrchErrors = reactive({ dependsOn: '' });
   const varForm = reactive({
     name: '',
     value: '',
     description: '',
   });
+  const addVariableErrors = reactive({ name: '' });
   const orchToDelete = ref(-1);
   const varToDelete = ref('');
 
@@ -650,6 +702,8 @@
 
   function handleStageSelection(value: ComboboxOptionValue) {
     addOrchForm.stageId = String(value || '');
+    addOrchErrors.stageId = '';
+    addOrchErrors.dependsOn = '';
     const stage = stageOptions.value.find((item) => item.id === addOrchForm.stageId);
     if (stage) {
       stageCache[stage.id] = stage;
@@ -686,6 +740,7 @@
       name: template.value?.name ?? '',
       description: template.value?.description ?? '',
     });
+    editInfoErrors.name = '';
     isEditInfoDialogOpen.value = true;
   }
 
@@ -694,12 +749,13 @@
       name: template.value?.name ?? '',
       description: template.value?.description ?? '',
     });
+    editInfoErrors.name = '';
     isEditInfoDialogOpen.value = false;
   }
 
   async function handleEditInfoOk() {
-    if (!editForm.name.trim()) {
-      toast.error(t('pipelineTemplate.validation.nameNotEmpty'));
+    editInfoErrors.name = editForm.name.trim() ? '' : t('pipelineTemplate.validation.nameNotEmpty');
+    if (editInfoErrors.name) {
       return;
     }
 
@@ -725,9 +781,12 @@
     }));
     const cycle = detectCircularDependencies(orchForCheck);
     if (cycle) {
-      toast.error(t('pipelineTemplate.cycleDetected', { cycle: cycle.join(' → ') }));
+      orchestrationError.value = t('pipelineTemplate.cycleDetected', {
+        cycle: cycle.join(' → '),
+      });
       return;
     }
+    orchestrationError.value = '';
 
     try {
       await executeSave(async () => {
@@ -791,18 +850,26 @@
   async function openAddOrchModal() {
     addOrchForm.stageId = '';
     addOrchForm.dependsOn = [];
+    Object.assign(addOrchErrors, { stageId: '', dependsOn: '' });
     isAddOrchDialogOpen.value = true;
     await searchStages();
   }
 
+  function closeAddOrchDialog() {
+    isAddOrchDialogOpen.value = false;
+    Object.assign(addOrchErrors, { stageId: '', dependsOn: '' });
+  }
+
   async function confirmAddOrch() {
     if (!addOrchForm.stageId) {
+      addOrchErrors.stageId = t('pipelineTemplate.validation.selectStageRequired');
       return;
     }
     const stage =
       stageOptions.value.find((s) => s.id === addOrchForm.stageId) ??
       stageCache[addOrchForm.stageId];
     if (!stage) {
+      addOrchErrors.stageId = t('pipelineTemplate.validation.selectStageRequired');
       return;
     }
     const newOrch: StageOrchestrationResp = {
@@ -818,13 +885,17 @@
     }));
     const cycle = detectCircularDependencies(orchForCheck);
     if (cycle) {
-      toast.error(t('pipelineTemplate.cycleDetected', { cycle: cycle.join(' → ') }));
+      addOrchErrors.dependsOn = t('pipelineTemplate.cycleDetected', {
+        cycle: cycle.join(' → '),
+      });
       return;
     }
+    addOrchErrors.dependsOn = '';
     sortableOrch.value.push(newOrch);
+    orchestrationError.value = '';
     stageCache[stage.id] = stage;
     await syncDeclarations();
-    isAddOrchDialogOpen.value = false;
+    closeAddOrchDialog();
   }
 
   function confirmRemoveOrch(idx: number) {
@@ -842,6 +913,7 @@
     for (const o of sortableOrch.value) {
       o.depends_on = o.depends_on.filter((depId) => depId !== removed.stage_id);
     }
+    orchestrationError.value = '';
     await syncDeclarations();
     isDeleteOrchDialogOpen.value = false;
     orchToDelete.value = -1;
@@ -854,7 +926,15 @@
     }
     editOrchForm.editingStageId = orch.stage_id;
     editOrchForm.dependsOn = [...orch.depends_on];
+    editOrchErrors.dependsOn = '';
     isEditOrchDialogOpen.value = true;
+  }
+
+  function closeEditOrchDialog() {
+    editOrchForm.editingStageId = '';
+    editOrchForm.dependsOn = [];
+    editOrchErrors.dependsOn = '';
+    isEditOrchDialogOpen.value = false;
   }
 
   function confirmEditOrch() {
@@ -869,13 +949,14 @@
     }));
     const cycle = detectCircularDependencies(orchForCheck);
     if (cycle) {
-      toast.error(t('pipelineTemplate.cycleDetected', { cycle: cycle.join(' → ') }));
+      editOrchErrors.dependsOn = t('pipelineTemplate.cycleDetected', {
+        cycle: cycle.join(' → '),
+      });
       return;
     }
     orch.depends_on = editOrchForm.dependsOn;
-    editOrchForm.editingStageId = '';
-    editOrchForm.dependsOn = [];
-    isEditOrchDialogOpen.value = false;
+    orchestrationError.value = '';
+    closeEditOrchDialog();
   }
 
   // ── Run pipeline ────────────────────────────────────────────────────────────────
@@ -901,6 +982,7 @@
 
   function handleRepoSelection(value: ComboboxOptionValue) {
     runForm.repositoryId = String(value || '');
+    runErrors.repositoryId = '';
   }
 
   async function openRunModal() {
@@ -910,19 +992,20 @@
     }
     runForm.repositoryId = '';
     runForm.triggerRef = '';
+    runErrors.repositoryId = '';
     await searchRepos();
     isRunDialogOpen.value = true;
   }
 
   async function handleRunOk() {
     if (!runForm.repositoryId) {
-      toast.error(t('pipelineTemplate.toast.selectRepositoryRequired'));
+      runErrors.repositoryId = t('pipelineTemplate.toast.selectRepositoryRequired');
       return;
     }
 
     const repo = selectedRepository.value;
     if (!repo?.git_credential_id) {
-      toast.error(t('pipelineTemplate.toast.repositoryMissingCredential'));
+      runErrors.repositoryId = t('pipelineTemplate.toast.repositoryMissingCredential');
       return;
     }
 
@@ -949,18 +1032,19 @@
     varForm.name = '';
     varForm.value = '';
     varForm.description = '';
+    addVariableErrors.name = '';
     isAddVarDialogOpen.value = true;
   }
 
   function handleAddVarOk() {
     if (!varForm.name.trim()) {
-      toast.error(t('pipelineTemplate.validation.variableNameRequired'));
+      addVariableErrors.name = t('pipelineTemplate.validation.variableNameRequired');
       return;
     }
 
     // Check duplicates
     if (declarations.value.some((d) => d.name === varForm.name)) {
-      toast.error(t('pipelineTemplate.validation.variableNameExists'));
+      addVariableErrors.name = t('pipelineTemplate.validation.variableNameExists');
       return;
     }
 

@@ -246,30 +246,59 @@
 
     <AppDialog v-model:open="isCreateDialogOpen" :title="t('service.create.title')">
       <div class="space-y-4">
-        <div>
-          <label class="app-field-label mb-1.5 block">{{ t('service.fields.application') }}</label>
+        <div class="space-y-1.5">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('service.fields.application') }}
+            <span class="text-destructive">*</span>
+          </label>
           <ComboboxSelect
             :model-value="createForm.application_id"
             :options="applicationSelectOptions"
             :placeholder="t('service.create.selectApplication')"
+            :invalid="Boolean(createErrors.application_id)"
             width-class="w-full"
             @update:model-value="handleCreateApplicationChange"
           />
+          <p v-if="createErrors.application_id" class="app-field-error" role="alert">
+            {{ createErrors.application_id }}
+          </p>
         </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">{{ t('service.fields.version') }}</label>
+        <div class="space-y-1.5">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('service.fields.version') }}
+            <span class="text-destructive">*</span>
+          </label>
           <ComboboxSelect
             :model-value="createForm.version_id"
             :options="createVersionSelectOptions"
             :placeholder="t('service.create.selectVersion')"
             :disabled="!createForm.application_id"
+            :invalid="Boolean(createErrors.version_id)"
             width-class="w-full"
-            @update:model-value="createForm.version_id = String($event || '')"
+            @update:model-value="
+              createForm.version_id = String($event || '');
+              createErrors.version_id = '';
+            "
           />
+          <p v-if="createErrors.version_id" class="app-field-error" role="alert">
+            {{ createErrors.version_id }}
+          </p>
         </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">{{ t('service.fields.instanceKey') }}</label>
-          <input v-model="createForm.instance_key" class="app-input" />
+        <div class="space-y-1.5">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('service.fields.instanceKey') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="createForm.instance_key"
+            class="app-input"
+            :class="createErrors.instance_key ? 'app-input-error' : ''"
+            :aria-invalid="createErrors.instance_key ? 'true' : undefined"
+            @input="createErrors.instance_key = ''"
+          />
+          <p v-if="createErrors.instance_key" class="app-field-error" role="alert">
+            {{ createErrors.instance_key }}
+          </p>
         </div>
         <div class="space-y-2">
           <div
@@ -277,11 +306,19 @@
             :key="index"
             class="grid grid-cols-[1fr_1fr_auto] gap-2"
           >
-            <input
-              v-model="item.key"
-              class="app-input font-mono text-sm"
-              :placeholder="t('service.runtimeConfig.key')"
-            />
+            <div class="space-y-1.5">
+              <input
+                v-model="item.key"
+                class="app-input font-mono text-sm"
+                :class="runtimeConfigErrors[index] ? 'app-input-error' : ''"
+                :placeholder="t('service.runtimeConfig.key')"
+                :aria-invalid="runtimeConfigErrors[index] ? 'true' : undefined"
+                @input="runtimeConfigErrors[index] = ''"
+              />
+              <p v-if="runtimeConfigErrors[index]" class="app-field-error" role="alert">
+                {{ runtimeConfigErrors[index] }}
+              </p>
+            </div>
             <input
               v-model="item.value"
               class="app-input text-sm"
@@ -290,12 +327,21 @@
             <button
               class="app-button-danger size-9"
               :aria-label="t('common.delete')"
-              @click="createForm.runtime_config.splice(index, 1)"
+              @click="
+                createForm.runtime_config.splice(index, 1);
+                runtimeConfigErrors.splice(index, 1);
+              "
             >
               <Trash2 class="size-4" />
             </button>
           </div>
-          <button class="app-link" @click="createForm.runtime_config.push({ key: '', value: '' })">
+          <button
+            class="app-link"
+            @click="
+              createForm.runtime_config.push({ key: '', value: '' });
+              runtimeConfigErrors.push('');
+            "
+          >
             {{ t('common.add') }}
           </button>
         </div>
@@ -409,6 +455,12 @@
   const isDeleteDialogOpen = ref(false);
   const isCreateDialogOpen = ref(false);
   const createError = ref('');
+  const createErrors = reactive({
+    application_id: '',
+    version_id: '',
+    instance_key: '',
+  });
+  const runtimeConfigErrors = ref<string[]>([]);
   const createForm = reactive({
     application_id: '',
     version_id: '',
@@ -471,6 +523,12 @@
         runtime_config: [],
       });
       createError.value = '';
+      Object.assign(createErrors, {
+        application_id: '',
+        version_id: '',
+        instance_key: '',
+      });
+      runtimeConfigErrors.value = [];
       isCreateDialogOpen.value = true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('service.toast.loadFailed'));
@@ -480,6 +538,8 @@
   async function handleCreateApplicationChange(value: ComboboxOptionValue) {
     createForm.application_id = String(value || '');
     createForm.version_id = '';
+    createErrors.application_id = '';
+    createErrors.version_id = '';
     versions.value = [];
     if (!createForm.application_id) {
       return;
@@ -494,17 +554,31 @@
   }
 
   async function handleCreateOk() {
+    createError.value = '';
+    createErrors.application_id = createForm.application_id
+      ? ''
+      : t('service.create.applicationRequired');
+    createErrors.version_id = createForm.version_id ? '' : t('service.create.versionRequired');
+    createErrors.instance_key = createForm.instance_key.trim()
+      ? ''
+      : t('service.create.instanceKeyRequired');
+    runtimeConfigErrors.value = createForm.runtime_config.map(() => '');
+
     const runtime_config: Record<string, string> = {};
-    for (const item of createForm.runtime_config) {
+    for (const [index, item] of createForm.runtime_config.entries()) {
       const key = item.key.trim();
       if (!key || Object.prototype.hasOwnProperty.call(runtime_config, key)) {
-        createError.value = t('service.runtimeConfig.invalid');
+        runtimeConfigErrors.value[index] = t('service.runtimeConfig.invalid');
         return;
       }
       runtime_config[key] = item.value;
     }
-    if (!createForm.application_id || !createForm.version_id || !createForm.instance_key.trim()) {
-      createError.value = t('service.create.required');
+    if (
+      createErrors.application_id ||
+      createErrors.version_id ||
+      createErrors.instance_key ||
+      runtimeConfigErrors.value.some(Boolean)
+    ) {
       return;
     }
     try {

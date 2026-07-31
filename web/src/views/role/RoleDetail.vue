@@ -91,33 +91,49 @@
       :title="t('roleManagement.edit')"
       width-class="w-[min(600px,calc(100vw-32px))]"
     >
-      <form id="role-edit-form" class="space-y-4" @submit.prevent="handleEditOk">
+      <form class="space-y-4" novalidate @submit.prevent="handleEditOk">
         <div class="space-y-1.5">
           <label class="app-field-label block" for="role-code">
             {{ t('roleManagement.code') }}
+            <span class="text-destructive">*</span>
           </label>
           <input
             id="role-code"
             v-model="form.code"
             type="text"
             class="app-input"
+            :class="formErrors.code ? 'app-input-error' : ''"
             maxlength="50"
             pattern="[A-Za-z0-9_-]+"
             required
             :disabled="operating"
+            :aria-invalid="formErrors.code ? 'true' : undefined"
+            @input="formErrors.code = ''"
           />
+          <p v-if="formErrors.code" class="app-field-error" role="alert">
+            {{ formErrors.code }}
+          </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block" for="role-name">{{ t('common.name') }}</label>
+          <label class="app-field-label block" for="role-name">
+            {{ t('common.name') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
             id="role-name"
             v-model="form.name"
             type="text"
             class="app-input"
+            :class="formErrors.name ? 'app-input-error' : ''"
             maxlength="100"
             required
             :disabled="operating"
+            :aria-invalid="formErrors.name ? 'true' : undefined"
+            @input="formErrors.name = ''"
           />
+          <p v-if="formErrors.name" class="app-field-error" role="alert">
+            {{ formErrors.name }}
+          </p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block" for="role-description">
@@ -131,13 +147,13 @@
             :disabled="operating"
           />
         </div>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
       <template #footer>
         <AppDialogActions
           :busy="operating"
-          confirm-type="submit"
-          form="role-edit-form"
           @cancel="isEditModalOpen = false"
+          @confirm="handleEditOk"
         />
       </template>
     </AppDialog>
@@ -147,7 +163,7 @@
       :title="t('roleManagement.editPermissions')"
       width-class="w-[min(600px,calc(100vw-32px))]"
     >
-      <form id="role-permission-form" class="space-y-2" @submit.prevent="handlePermissionOk">
+      <form class="space-y-2" novalidate @submit.prevent="handlePermissionOk">
         <div class="grid gap-2 sm:grid-cols-2">
           <label
             v-for="permission in permissions"
@@ -166,13 +182,13 @@
             </span>
           </label>
         </div>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
       <template #footer>
         <AppDialogActions
           :busy="operating"
-          confirm-type="submit"
-          form="role-permission-form"
           @cancel="isPermissionModalOpen = false"
+          @confirm="handlePermissionOk"
         />
       </template>
     </AppDialog>
@@ -229,6 +245,7 @@
   const isDeleteModalOpen = ref(false);
   const isPermissionModalOpen = ref(false);
   const form = reactive({ code: '', name: '', description: '' });
+  const formErrors = reactive({ code: '', name: '' });
   const permissionForm = reactive({ codes: [] as string[] });
 
   const canWriteRoles = computed(() => authStore.hasPermission(PERMISSIONS.ROLE_WRITE));
@@ -264,11 +281,26 @@
     form.code = role.value?.code ?? '';
     form.name = role.value?.name ?? '';
     form.description = role.value?.description ?? '';
+    Object.assign(formErrors, { code: '', name: '' });
     isEditModalOpen.value = true;
+  }
+
+  function validateEditForm() {
+    const code = form.code.trim();
+    formErrors.code = !code
+      ? t('roleManagement.codeRequired')
+      : /^[A-Za-z0-9_-]+$/.test(code)
+        ? ''
+        : t('roleManagement.codeInvalid');
+    formErrors.name = form.name.trim() ? '' : t('roleManagement.nameRequired');
+    return !formErrors.code && !formErrors.name;
   }
 
   async function handleEditOk() {
     if (!role.value) {
+      return;
+    }
+    if (!validateEditForm()) {
       return;
     }
     const permissionCodes = role.value.permission_codes;

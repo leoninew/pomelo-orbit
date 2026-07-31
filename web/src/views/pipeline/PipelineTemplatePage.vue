@@ -144,13 +144,18 @@
   <AppDialog v-model:open="showCreateDialog" :title="t('pipelineTemplate.createTemplate')">
     <div class="space-y-4">
       <div class="space-y-1.5">
-        <label class="app-field-label block">{{ t('pipelineTemplate.templateName') }}</label>
+        <label class="app-field-label block">
+          {{ t('pipelineTemplate.templateName') }}
+          <span class="text-destructive">*</span>
+        </label>
         <input
           v-model="form.name"
           type="text"
           :placeholder="t('pipelineTemplate.templateNamePlaceholder')"
           class="app-input"
           :class="errors.name ? 'app-input-error' : ''"
+          :aria-invalid="errors.name ? 'true' : undefined"
+          @input="errors.name = ''"
         />
         <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
       </div>

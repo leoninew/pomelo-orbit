@@ -112,25 +112,35 @@
   <AppDialog v-model:open="isCreateDialogOpen" :title="t('route.addRoute')">
     <div class="space-y-4">
       <div class="space-y-1.5">
-        <label class="app-field-label block">{{ t('route.fields.name') }}</label>
+        <label class="app-field-label block">
+          {{ t('route.fields.name') }}
+          <span class="text-destructive">*</span>
+        </label>
         <input
           v-model="form.name"
           type="text"
           class="app-input"
           :class="errors.name ? 'app-input-error' : ''"
           placeholder="example-route"
+          :aria-invalid="errors.name ? 'true' : undefined"
+          @input="errors.name = ''"
         />
         <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         <p v-else class="app-field-hint">{{ t('route.hints.name') }}</p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label block">{{ t('route.fields.domain') }}</label>
+        <label class="app-field-label block">
+          {{ t('route.fields.domain') }}
+          <span class="text-destructive">*</span>
+        </label>
         <input
           v-model="form.domain"
           type="text"
           class="app-input"
           :class="errors.domain ? 'app-input-error' : ''"
           placeholder="example.com"
+          :aria-invalid="errors.domain ? 'true' : undefined"
+          @input="errors.domain = ''"
         />
         <p v-if="errors.domain" class="app-field-error text-xs">{{ errors.domain }}</p>
       </div>
@@ -140,13 +150,18 @@
         <p class="app-field-hint">{{ t('route.hints.pathPrefix') }}</p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label block">{{ t('route.fields.targetUrl') }}</label>
+        <label class="app-field-label block">
+          {{ t('route.fields.targetUrl') }}
+          <span class="text-destructive">*</span>
+        </label>
         <input
           v-model="form.target_url"
           type="text"
           class="app-input"
           :class="errors.target_url ? 'app-input-error' : ''"
           placeholder="http://host:port"
+          :aria-invalid="errors.target_url ? 'true' : undefined"
+          @input="errors.target_url = ''"
         />
         <p v-if="errors.target_url" class="app-field-error text-xs">
           {{ errors.target_url }}

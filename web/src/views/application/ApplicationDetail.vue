@@ -292,6 +292,8 @@
           type="text"
           class="app-input"
           :class="editErrors.name ? 'app-input-error' : ''"
+          :aria-invalid="editErrors.name ? 'true' : undefined"
+          @input="editErrors.name = ''"
         />
         <p v-if="editErrors.name" class="app-field-error mt-1 text-xs">{{ editErrors.name }}</p>
       </div>
@@ -387,6 +389,8 @@
             class="app-input"
             :class="versionFormErrors.label ? 'app-input-error' : ''"
             :placeholder="t('application.detail.placeholders.versionLabel')"
+            :aria-invalid="versionFormErrors.label ? 'true' : undefined"
+            @input="versionFormErrors.label = ''"
           />
           <p v-if="versionFormErrors.label" class="app-field-error mt-1 text-xs">
             {{ versionFormErrors.label }}
@@ -431,6 +435,8 @@
           class="app-input"
           :class="forkLabelError ? 'app-input-error' : ''"
           :placeholder="t('application.detail.placeholders.versionLabel')"
+          :aria-invalid="forkLabelError ? 'true' : undefined"
+          @input="forkLabelError = ''"
         />
         <p v-if="forkLabelError" class="app-field-error mt-1 text-xs">{{ forkLabelError }}</p>
       </div>

@@ -78,29 +78,39 @@
   >
     <div class="space-y-4">
       <div class="space-y-1.5">
-        <label class="app-field-label block">名称</label>
+        <label class="app-field-label block">
+          名称
+          <span class="text-destructive">*</span>
+        </label>
         <input
           v-model="form.name"
           type="text"
           class="app-input"
           :class="errors.name ? 'app-input-error' : ''"
           placeholder="例如: build"
+          :aria-invalid="errors.name ? 'true' : undefined"
+          @input="errors.name = ''"
         />
         <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label block">镜像</label>
+        <label class="app-field-label block">
+          镜像
+          <span class="text-destructive">*</span>
+        </label>
         <input
           v-model="form.image"
           type="text"
           class="app-input"
           :class="errors.image ? 'app-input-error' : ''"
           placeholder="例如: alpine:latest"
+          :aria-invalid="errors.image ? 'true' : undefined"
+          @input="errors.image = ''"
         />
         <p v-if="errors.image" class="app-field-error text-xs">{{ errors.image }}</p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label block">描述（可选）</label>
+        <label class="app-field-label block">描述</label>
         <input v-model="form.description" type="text" class="app-input" placeholder="简短描述" />
       </div>
     </div>

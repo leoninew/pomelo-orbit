@@ -149,20 +149,27 @@
       :title="t('userManagement.edit')"
       width-class="w-[min(600px,calc(100vw-32px))]"
     >
-      <form id="user-edit-form" class="space-y-5" @submit.prevent="handleEditOk">
+      <form class="space-y-5" novalidate @submit.prevent="handleEditOk">
         <div class="space-y-1.5">
           <label class="app-field-label block" for="username">
             {{ t('userManagement.username') }}
+            <span class="text-destructive">*</span>
           </label>
           <input
             id="username"
             v-model="form.username"
             type="text"
             class="app-input"
+            :class="formErrors.username ? 'app-input-error' : ''"
             maxlength="50"
             required
             :disabled="operating"
+            :aria-invalid="formErrors.username ? 'true' : undefined"
+            @input="formErrors.username = ''"
           />
+          <p v-if="formErrors.username" class="app-field-error" role="alert">
+            {{ formErrors.username }}
+          </p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block" for="password">
@@ -173,25 +180,43 @@
             v-model="form.password"
             type="password"
             class="app-input"
+            :class="formErrors.password ? 'app-input-error' : ''"
             minlength="6"
             maxlength="255"
             :disabled="operating"
+            :aria-invalid="formErrors.password ? 'true' : undefined"
+            @input="formErrors.password = ''"
           />
+          <p v-if="formErrors.password" class="app-field-error" role="alert">
+            {{ formErrors.password }}
+          </p>
           <p class="app-field-hint">
             {{ t('common.emptyKeepUnchanged') }}
           </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('common.status') }}</label>
-          <RawValueSelect v-model="form.status" :values="userStatusValues" :disabled="operating" />
+          <label class="app-field-label block">
+            {{ t('common.status') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <RawValueSelect
+            v-model="form.status"
+            :values="userStatusValues"
+            :disabled="operating"
+            :invalid="Boolean(formErrors.status)"
+            @update:model-value="formErrors.status = ''"
+          />
+          <p v-if="formErrors.status" class="app-field-error" role="alert">
+            {{ formErrors.status }}
+          </p>
         </div>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
       <template #footer>
         <AppDialogActions
           :busy="operating"
-          confirm-type="submit"
-          form="user-edit-form"
           @cancel="isEditModalOpen = false"
+          @confirm="handleEditOk"
         />
       </template>
     </AppDialog>
@@ -201,7 +226,7 @@
       :title="t('userManagement.roles')"
       width-class="w-[min(600px,calc(100vw-32px))]"
     >
-      <form id="user-role-form" class="space-y-4" @submit.prevent="handleRoleOk">
+      <form class="space-y-4" novalidate @submit.prevent="handleRoleOk">
         <div class="grid gap-2 sm:grid-cols-2">
           <label v-for="role in roleOptions" :key="role.id" class="app-detail-list-item">
             <input
@@ -217,13 +242,13 @@
             </span>
           </label>
         </div>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
       <template #footer>
         <AppDialogActions
           :busy="operating"
-          confirm-type="submit"
-          form="user-role-form"
           @cancel="isRoleModalOpen = false"
+          @confirm="handleRoleOk"
         />
       </template>
     </AppDialog>
@@ -309,6 +334,7 @@
     password: '',
     status: '',
   });
+  const formErrors = reactive({ username: '', password: '', status: '' });
   const roleForm = reactive<{ roleIds: string[] }>({ roleIds: [] });
 
   const canWriteUsers = computed(() => authStore.hasPermission(PERMISSIONS.USER_WRITE));
@@ -348,7 +374,20 @@
       throw new Error('User detail is not loaded');
     }
     form.status = user.value.status;
+    Object.assign(formErrors, { username: '', password: '', status: '' });
     isEditModalOpen.value = true;
+  }
+
+  function validateEditForm() {
+    formErrors.username = form.username.trim() ? '' : t('userManagement.usernameRequired');
+    formErrors.password =
+      !form.password || form.password.trim().length >= 6
+        ? ''
+        : t('userManagement.passwordTooShort');
+    formErrors.status = userStatusValues.includes(form.status)
+      ? ''
+      : t('userManagement.statusRequired');
+    return !formErrors.username && !formErrors.password && !formErrors.status;
   }
 
   function openRoleModal() {
@@ -357,6 +396,9 @@
   }
 
   async function handleEditOk() {
+    if (!validateEditForm()) {
+      return;
+    }
     try {
       await executeOp(async () => {
         await userApi.update(props.id, {

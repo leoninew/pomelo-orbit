@@ -106,46 +106,68 @@
     </div>
 
     <AppDialog v-model:open="isDialogOpen" :title="t('userManagement.create')">
-      <form id="user-form" class="space-y-4" @submit.prevent="handleSave">
+      <form class="space-y-4" novalidate @submit.prevent="handleSave">
         <div class="space-y-1.5">
           <label class="app-field-label block" for="username">
             {{ t('userManagement.username') }}
+            <span class="text-destructive">*</span>
           </label>
           <input
             id="username"
             v-model="form.username"
             type="text"
             class="app-input"
+            :class="formErrors.username ? 'app-input-error' : ''"
             maxlength="50"
             required
+            :aria-invalid="formErrors.username ? 'true' : undefined"
+            @input="formErrors.username = ''"
           />
+          <p v-if="formErrors.username" class="app-field-error" role="alert">
+            {{ formErrors.username }}
+          </p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block" for="email">{{ t('userManagement.email') }}</label>
-          <input id="email" v-model="form.email" type="email" class="app-input" maxlength="255" />
+          <input
+            id="email"
+            v-model="form.email"
+            type="email"
+            class="app-input"
+            :class="formErrors.email ? 'app-input-error' : ''"
+            maxlength="255"
+            :aria-invalid="formErrors.email ? 'true' : undefined"
+            @input="formErrors.email = ''"
+          />
+          <p v-if="formErrors.email" class="app-field-error" role="alert">
+            {{ formErrors.email }}
+          </p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block" for="password">
             {{ t('userManagement.password') }}
+            <span class="text-destructive">*</span>
           </label>
           <input
             id="password"
             v-model="form.password"
             type="password"
             class="app-input"
+            :class="formErrors.password ? 'app-input-error' : ''"
             minlength="6"
             maxlength="255"
             required
+            :aria-invalid="formErrors.password ? 'true' : undefined"
+            @input="formErrors.password = ''"
           />
+          <p v-if="formErrors.password" class="app-field-error" role="alert">
+            {{ formErrors.password }}
+          </p>
         </div>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
       <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          confirm-type="submit"
-          form="user-form"
-          @cancel="isDialogOpen = false"
-        />
+        <AppDialogActions :busy="operating" @cancel="isDialogOpen = false" @confirm="handleSave" />
       </template>
     </AppDialog>
 
@@ -154,19 +176,26 @@
       :title="t('userManagement.edit')"
       width-class="w-[min(600px,calc(100vw-32px))]"
     >
-      <form id="user-edit-form" class="space-y-5" @submit.prevent="handleEditSave">
+      <form class="space-y-5" novalidate @submit.prevent="handleEditSave">
         <div class="space-y-1.5">
           <label class="app-field-label block" for="edit-username">
             {{ t('userManagement.username') }}
+            <span class="text-destructive">*</span>
           </label>
           <input
             id="edit-username"
             v-model="editForm.username"
             type="text"
             class="app-input"
+            :class="editFormErrors.username ? 'app-input-error' : ''"
             maxlength="50"
             required
+            :aria-invalid="editFormErrors.username ? 'true' : undefined"
+            @input="editFormErrors.username = ''"
           />
+          <p v-if="editFormErrors.username" class="app-field-error" role="alert">
+            {{ editFormErrors.username }}
+          </p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block" for="edit-password">
@@ -177,24 +206,41 @@
             v-model="editForm.password"
             type="password"
             class="app-input"
+            :class="editFormErrors.password ? 'app-input-error' : ''"
             minlength="6"
             maxlength="255"
+            :aria-invalid="editFormErrors.password ? 'true' : undefined"
+            @input="editFormErrors.password = ''"
           />
+          <p v-if="editFormErrors.password" class="app-field-error" role="alert">
+            {{ editFormErrors.password }}
+          </p>
           <p class="app-field-hint">
             {{ t('common.emptyKeepUnchanged') }}
           </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('common.status') }}</label>
-          <RawValueSelect v-model="editForm.status" :values="userStatusValues" />
+          <label class="app-field-label block">
+            {{ t('common.status') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <RawValueSelect
+            v-model="editForm.status"
+            :values="userStatusValues"
+            :invalid="Boolean(editFormErrors.status)"
+            @update:model-value="editFormErrors.status = ''"
+          />
+          <p v-if="editFormErrors.status" class="app-field-error" role="alert">
+            {{ editFormErrors.status }}
+          </p>
         </div>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
       <template #footer>
         <AppDialogActions
           :busy="operating"
-          confirm-type="submit"
-          form="user-edit-form"
           @cancel="isEditDialogOpen = false"
+          @confirm="handleEditSave"
         />
       </template>
     </AppDialog>
@@ -254,11 +300,13 @@
   const isEditDialogOpen = ref(false);
   const editingUser = ref<UserListResp | null>(null);
   const form = reactive({ username: '', email: '', password: '' });
+  const formErrors = reactive({ username: '', email: '', password: '' });
   const editForm = reactive({
     username: '',
     password: '',
     status: '',
   });
+  const editFormErrors = reactive({ username: '', password: '', status: '' });
   const canWriteUsers = computed(() => authStore.hasPermission(PERMISSIONS.USER_WRITE));
   const userStatusValues = ['enabled', 'disabled'];
   const totalPages = computed(() => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)));
@@ -277,6 +325,30 @@
     form.username = '';
     form.email = '';
     form.password = '';
+    Object.assign(formErrors, { username: '', email: '', password: '' });
+  }
+
+  function validateCreateForm() {
+    formErrors.username = form.username.trim() ? '' : t('userManagement.usernameRequired');
+    formErrors.email =
+      !form.email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+        ? ''
+        : t('userManagement.emailInvalid');
+    formErrors.password =
+      form.password.trim().length >= 6 ? '' : t('userManagement.passwordTooShort');
+    return !formErrors.username && !formErrors.email && !formErrors.password;
+  }
+
+  function validateEditForm() {
+    editFormErrors.username = editForm.username.trim() ? '' : t('userManagement.usernameRequired');
+    editFormErrors.password =
+      !editForm.password || editForm.password.trim().length >= 6
+        ? ''
+        : t('userManagement.passwordTooShort');
+    editFormErrors.status = userStatusValues.includes(editForm.status)
+      ? ''
+      : t('userManagement.statusRequired');
+    return !editFormErrors.username && !editFormErrors.password && !editFormErrors.status;
   }
 
   function formatRoleNames(user: UserListResp) {
@@ -331,6 +403,9 @@
   }
 
   async function handleSave() {
+    if (!validateCreateForm()) {
+      return;
+    }
     try {
       await executeOp(async () => {
         const user = await userApi.create({
@@ -352,12 +427,16 @@
     editForm.username = user.username;
     editForm.password = '';
     editForm.status = user.status;
+    Object.assign(editFormErrors, { username: '', password: '', status: '' });
     isEditDialogOpen.value = true;
   }
 
   async function handleEditSave() {
     const user = editingUser.value;
     if (!user) {
+      return;
+    }
+    if (!validateEditForm()) {
       return;
     }
     try {

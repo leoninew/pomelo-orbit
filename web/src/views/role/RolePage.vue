@@ -82,31 +82,47 @@
       v-model:open="isDialogOpen"
       :title="editingRole ? t('roleManagement.edit') : t('roleManagement.create')"
     >
-      <form id="role-form" class="space-y-4" @submit.prevent="handleSave">
+      <form class="space-y-4" novalidate @submit.prevent="handleSave">
         <div class="space-y-1.5">
           <label class="app-field-label block" for="role-code">
             {{ t('roleManagement.code') }}
+            <span class="text-destructive">*</span>
           </label>
           <input
             id="role-code"
             v-model="form.code"
             type="text"
             class="app-input"
+            :class="formErrors.code ? 'app-input-error' : ''"
             maxlength="50"
             pattern="[A-Za-z0-9_-]+"
             required
+            :aria-invalid="formErrors.code ? 'true' : undefined"
+            @input="formErrors.code = ''"
           />
+          <p v-if="formErrors.code" class="app-field-error" role="alert">
+            {{ formErrors.code }}
+          </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block" for="role-name">{{ t('common.name') }}</label>
+          <label class="app-field-label block" for="role-name">
+            {{ t('common.name') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
             id="role-name"
             v-model="form.name"
             type="text"
             class="app-input"
+            :class="formErrors.name ? 'app-input-error' : ''"
             maxlength="100"
             required
+            :aria-invalid="formErrors.name ? 'true' : undefined"
+            @input="formErrors.name = ''"
           />
+          <p v-if="formErrors.name" class="app-field-error" role="alert">
+            {{ formErrors.name }}
+          </p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block" for="role-description">
@@ -119,14 +135,10 @@
             maxlength="500"
           />
         </div>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
       <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          confirm-type="submit"
-          form="role-form"
-          @cancel="isDialogOpen = false"
-        />
+        <AppDialogActions :busy="operating" @cancel="isDialogOpen = false" @confirm="handleSave" />
       </template>
     </AppDialog>
 
@@ -182,6 +194,7 @@
   const confirmAction = ref<ConfirmAction | null>(null);
   const isDialogOpen = ref(false);
   const form = reactive({ code: '', name: '', description: '' });
+  const formErrors = reactive({ code: '', name: '' });
   const canWriteRoles = computed(() => authStore.hasPermission(PERMISSIONS.ROLE_WRITE));
   const totalPages = computed(() => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)));
   const confirmDialogOpen = computed({
@@ -197,6 +210,18 @@
     form.code = role?.code ?? '';
     form.name = role?.name ?? '';
     form.description = role?.description ?? '';
+    Object.assign(formErrors, { code: '', name: '' });
+  }
+
+  function validateForm() {
+    const code = form.code.trim();
+    formErrors.code = !code
+      ? t('roleManagement.codeRequired')
+      : /^[A-Za-z0-9_-]+$/.test(code)
+        ? ''
+        : t('roleManagement.codeInvalid');
+    formErrors.name = form.name.trim() ? '' : t('roleManagement.nameRequired');
+    return !formErrors.code && !formErrors.name;
   }
 
   async function fetchRoles() {
@@ -250,6 +275,9 @@
   }
 
   async function handleSave() {
+    if (!validateForm()) {
+      return;
+    }
     try {
       await executeOp(async () => {
         const payload = {

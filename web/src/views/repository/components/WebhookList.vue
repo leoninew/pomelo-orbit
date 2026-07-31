@@ -88,32 +88,39 @@
     >
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label class="app-field-label block">名称</label>
+          <label class="app-field-label block">
+            名称
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="form.name"
             type="text"
             class="app-input"
             :class="errors.name ? 'app-input-error' : ''"
             placeholder="例如: main-branch-webhook"
+            :aria-invalid="errors.name ? 'true' : undefined"
+            @input="errors.name = ''"
           />
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">流水线模板</label>
+          <label class="app-field-label block">
+            流水线模板
+            <span class="text-destructive">*</span>
+          </label>
           <ComboboxSelect
             v-model="form.template_id"
             :options="templateOptions"
             placeholder="请选择模板"
+            :invalid="Boolean(errors.template_id)"
+            @update:model-value="errors.template_id = ''"
           />
-          <p v-if="errors.template_id" class="app-field-error text-xs">
+          <p v-if="errors.template_id" class="app-field-error" role="alert">
             {{ errors.template_id }}
           </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">
-            分支过滤
-            <span class="font-normal text-muted-foreground">（可选，支持正则）</span>
-          </label>
+          <label class="app-field-label block">分支过滤</label>
           <input
             v-model="form.branch_filter"
             type="text"
@@ -122,7 +129,10 @@
           />
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">签名密钥</label>
+          <label class="app-field-label block">
+            签名密钥
+            <span class="text-destructive">*</span>
+          </label>
           <div class="relative">
             <input
               v-model="form.secret"
@@ -130,6 +140,8 @@
               class="app-input pr-10"
               :class="errors.secret ? 'app-input-error' : ''"
               placeholder="用于验证 Webhook 请求"
+              :aria-invalid="errors.secret ? 'true' : undefined"
+              @input="errors.secret = ''"
             />
             <button
               type="button"

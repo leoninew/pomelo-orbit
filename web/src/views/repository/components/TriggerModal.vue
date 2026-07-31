@@ -7,12 +7,20 @@
     body-class="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-4"
   >
     <div class="space-y-1.5">
-      <label class="app-field-label block">流水线模板</label>
+      <label class="app-field-label block">
+        流水线模板
+        <span class="text-destructive">*</span>
+      </label>
       <ComboboxSelect
         v-model="form.template_id"
         :options="templateOptions"
         placeholder="请选择模板"
+        :invalid="Boolean(errors.template_id)"
+        @update:model-value="errors.template_id = ''"
       />
+      <p v-if="errors.template_id" class="app-field-error" role="alert">
+        {{ errors.template_id }}
+      </p>
     </div>
 
     <div class="space-y-1.5">
@@ -40,16 +48,18 @@
           :placeholder="getVariablePlaceholder(variable.name)"
           :disabled="isBuiltinVariable(variable)"
           class="app-input"
+          :class="errors.variables[variable.name] ? 'app-input-error' : ''"
+          :aria-invalid="errors.variables[variable.name] ? 'true' : undefined"
+          @input="delete errors.variables[variable.name]"
         />
+        <p v-if="errors.variables[variable.name]" class="app-field-error" role="alert">
+          {{ errors.variables[variable.name] }}
+        </p>
       </div>
     </div>
 
     <template #footer>
-      <AppDialogActions
-        :confirm-disabled="!canSubmit"
-        @cancel="isOpen = false"
-        @confirm="handleOk"
-      />
+      <AppDialogActions @cancel="isOpen = false" @confirm="handleOk" />
     </template>
   </AppDialog>
 </template>
@@ -59,7 +69,6 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
-  import { useToast } from '@/composables/useToast';
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
   import type { PipelineTemplateResp } from '@/gen/proto/orbit/v1/pipeline/template';
   import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
@@ -82,14 +91,16 @@
     ];
   }>();
 
-  const toast = useToast();
-
   const isOpen = ref(false);
   const initialVariableValues = ref<Record<string, string>>({});
 
   const form = reactive({
     template_id: '',
     trigger_ref: props.defaultBranch || 'main',
+    variables: {} as Record<string, string>,
+  });
+  const errors = reactive({
+    template_id: '',
     variables: {} as Record<string, string>,
   });
 
@@ -187,15 +198,6 @@
     initialVariableValues.value = { ...nextValues };
   }
 
-  const canSubmit = computed(() => {
-    if (!form.template_id) {
-      return false;
-    }
-    return variableList.value
-      .filter((variable) => !isBuiltinVariable(variable))
-      .every((variable) => hasVariableValue(variable.name));
-  });
-
   watch(
     () => form.template_id,
     () => {
@@ -238,12 +240,20 @@
     form.trigger_ref = props.defaultBranch || 'main';
     form.variables = {};
     initialVariableValues.value = {};
+    errors.template_id = '';
+    errors.variables = {};
     isOpen.value = true;
   }
 
   function handleOk() {
-    if (!canSubmit.value) {
-      toast.error('请为所有变量提供值');
+    errors.template_id = form.template_id ? '' : '请选择模板';
+    errors.variables = {};
+    for (const variable of variableList.value) {
+      if (!isBuiltinVariable(variable) && !hasVariableValue(variable.name)) {
+        errors.variables[variable.name] = '请输入变量值';
+      }
+    }
+    if (errors.template_id || Object.keys(errors.variables).length > 0) {
       return;
     }
 

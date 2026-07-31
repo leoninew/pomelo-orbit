@@ -77,18 +77,26 @@
   >
     <div class="space-y-4">
       <div class="space-y-1.5">
-        <label class="app-field-label block">凭据名称</label>
+        <label class="app-field-label block">
+          凭据名称
+          <span class="text-destructive">*</span>
+        </label>
         <input
           v-model="form.name"
           type="text"
           placeholder="输入凭据名称"
           class="app-input"
           :class="errors.name ? 'app-input-error' : ''"
+          :aria-invalid="errors.name ? 'true' : undefined"
+          @input="errors.name = ''"
         />
         <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label block">凭据类型</label>
+        <label class="app-field-label block">
+          凭据类型
+          <span class="text-destructive">*</span>
+        </label>
         <RawValueSelect
           v-model="form.type"
           :values="credentialTypeValues"
@@ -97,13 +105,18 @@
         />
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label block">凭据内容</label>
+        <label class="app-field-label block">
+          凭据内容
+          <span class="text-destructive">*</span>
+        </label>
         <textarea
           v-model="form.data"
           rows="8"
           :placeholder="getDataPlaceholder(form.type)"
           class="app-textarea"
           :class="errors.data ? 'app-input-error' : ''"
+          :aria-invalid="errors.data ? 'true' : undefined"
+          @input="errors.data = ''"
         />
         <p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
       </div>
@@ -140,18 +153,26 @@
   >
     <div class="space-y-4">
       <div class="space-y-1.5">
-        <label class="app-field-label block">凭据名称</label>
+        <label class="app-field-label block">
+          凭据名称
+          <span class="text-destructive">*</span>
+        </label>
         <input
           v-model="importForm.name"
           type="text"
           placeholder="输入凭据名称"
           class="app-input"
           :class="importErrors.name ? 'app-input-error' : ''"
+          :aria-invalid="importErrors.name ? 'true' : undefined"
+          @input="importErrors.name = ''"
         />
         <p v-if="importErrors.name" class="app-field-error text-xs">{{ importErrors.name }}</p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label block">凭据类型</label>
+        <label class="app-field-label block">
+          凭据类型
+          <span class="text-destructive">*</span>
+        </label>
         <RawValueSelect
           v-model="importForm.type"
           :values="credentialTypeValues"
@@ -159,12 +180,17 @@
         />
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label block">凭据内容</label>
+        <label class="app-field-label block">
+          凭据内容
+          <span class="text-destructive">*</span>
+        </label>
         <textarea
           v-model="importForm.data"
           rows="8"
           class="app-textarea"
           :class="importErrors.data ? 'app-input-error' : ''"
+          :aria-invalid="importErrors.data ? 'true' : undefined"
+          @input="importErrors.data = ''"
         />
         <p v-if="importErrors.data" class="app-field-error text-xs">
           {{ importErrors.data }}

@@ -4,7 +4,10 @@
     :disabled="disabled"
     @update:model-value="emit('update:modelValue', $event as SelectOptionValue)"
   >
-    <SelectTrigger class="app-select-trigger" :class="widthClass">
+    <SelectTrigger
+      class="app-select-trigger"
+      :class="[widthClass, invalid ? 'app-input-error' : '']"
+    >
       <SelectValue :placeholder="placeholder" />
       <ChevronDown class="size-4 shrink-0 text-muted-foreground" />
     </SelectTrigger>
@@ -62,11 +65,13 @@
       options: SelectOption[];
       placeholder?: string;
       disabled?: boolean;
+      invalid?: boolean;
       widthClass?: string;
     }>(),
     {
       placeholder: '请选择',
       disabled: false,
+      invalid: false,
       widthClass: 'w-full',
     }
   );

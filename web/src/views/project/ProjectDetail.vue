@@ -129,9 +129,12 @@
       :title="t('project.editProject')"
       width-class="w-[min(600px,calc(100vw-32px))]"
     >
-      <form id="project-edit-form" class="space-y-4" @submit.prevent="handleEditOk">
+      <form class="space-y-4" novalidate @submit.prevent="handleEditOk">
         <div class="space-y-1.5">
-          <label class="app-field-label block" for="project-name">{{ t('project.name') }}</label>
+          <label class="app-field-label block" for="project-name">
+            {{ t('project.name') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
             id="project-name"
             v-model="form.name"
@@ -141,11 +144,16 @@
             maxlength="100"
             required
             :disabled="operating"
+            :aria-invalid="errors.name ? 'true' : undefined"
+            @input="errors.name = ''"
           />
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block" for="project-code">{{ t('project.code') }}</label>
+          <label class="app-field-label block" for="project-code">
+            {{ t('project.code') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
             id="project-code"
             v-model="form.code"
@@ -156,17 +164,19 @@
             pattern="[a-z0-9_-]+"
             required
             :disabled="operating"
+            :aria-invalid="errors.code ? 'true' : undefined"
+            @input="errors.code = ''"
           />
           <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
           <p v-else class="app-field-hint">{{ t('project.codeHint') }}</p>
         </div>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
       <template #footer>
         <AppDialogActions
           :busy="operating"
-          confirm-type="submit"
-          form="project-edit-form"
           @cancel="isEditModalOpen = false"
+          @confirm="handleEditOk"
         />
       </template>
     </AppDialog>
@@ -174,23 +184,26 @@
     <AppDialog v-model:open="isMemberModalOpen" :title="t('project.addMember')">
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('project.selectUser') }}</label>
+          <label class="app-field-label block">
+            {{ t('project.selectUser') }}
+            <span class="text-destructive">*</span>
+          </label>
           <ComboboxSelect
             v-model="selectedUserId"
             :options="userOptions"
             :placeholder="t('project.searchUser')"
             :empty-text="t('project.noAvailableUsers')"
             :disabled="operating"
+            :invalid="Boolean(memberErrors.userId)"
+            @update:model-value="memberErrors.userId = ''"
           />
+          <p v-if="memberErrors.userId" class="app-field-error" role="alert">
+            {{ memberErrors.userId }}
+          </p>
         </div>
       </div>
       <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          :confirm-disabled="!selectedUserId"
-          @cancel="isMemberModalOpen = false"
-          @confirm="handleAddMember"
-        />
+        <AppDialogActions :busy="operating" @cancel="closeMemberModal" @confirm="handleAddMember" />
       </template>
     </AppDialog>
   </div>
@@ -233,6 +246,7 @@
   const selectedUserId = ref('');
   const form = reactive({ name: '', code: '' });
   const errors = reactive({ name: '', code: '' });
+  const memberErrors = reactive({ userId: '' });
   const { loading: loadingMembers, execute: executeMembers } = useStatusAsync();
 
   const availableUsers = computed(() => {
@@ -311,11 +325,19 @@
 
   function openMemberModal() {
     selectedUserId.value = '';
+    memberErrors.userId = '';
     isMemberModalOpen.value = true;
+  }
+
+  function closeMemberModal() {
+    selectedUserId.value = '';
+    memberErrors.userId = '';
+    isMemberModalOpen.value = false;
   }
 
   async function handleAddMember() {
     if (!selectedUserId.value) {
+      memberErrors.userId = t('project.selectUserRequired');
       return;
     }
     try {
@@ -323,6 +345,7 @@
         const resp = await projectApi.addMember(props.id, { user_id: selectedUserId.value });
         members.value = resp.items;
         selectedUserId.value = '';
+        memberErrors.userId = '';
         toast.success(t('project.memberAdded'));
         isMemberModalOpen.value = false;
       });

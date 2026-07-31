@@ -174,7 +174,7 @@
   }
 
   .app-field-error {
-    @apply text-sm text-destructive;
+    @apply !text-xs !font-normal !leading-4 !text-destructive;
   }
 
   .app-field-hint {

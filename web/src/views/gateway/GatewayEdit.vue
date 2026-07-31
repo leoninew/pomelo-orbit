@@ -37,6 +37,8 @@
               class="app-input"
               :class="errors.name ? 'app-input-error' : ''"
               :placeholder="t('gateway.placeholders.name')"
+              :aria-invalid="errors.name ? 'true' : undefined"
+              @input="errors.name = ''"
             />
             <p v-if="errors.name" class="app-field-error">{{ errors.name }}</p>
           </div>
@@ -56,6 +58,8 @@
               class="app-input"
               :class="errors.rest_api_url ? 'app-input-error' : ''"
               :placeholder="t('gateway.placeholders.restApiUrl')"
+              :aria-invalid="errors.rest_api_url ? 'true' : undefined"
+              @input="errors.rest_api_url = ''"
             />
             <p v-if="errors.rest_api_url" class="app-field-error">{{ errors.rest_api_url }}</p>
             <p v-else class="app-field-hint">{{ t('gateway.hints.restApiUrl') }}</p>
@@ -71,6 +75,8 @@
               class="app-input"
               :class="errors.base_domain ? 'app-input-error' : ''"
               :placeholder="t('gateway.placeholders.baseDomain')"
+              :aria-invalid="errors.base_domain ? 'true' : undefined"
+              @input="errors.base_domain = ''"
             />
             <p v-if="errors.base_domain" class="app-field-error">{{ errors.base_domain }}</p>
             <p v-else class="app-field-hint">{{ t('gateway.hints.baseDomain') }}</p>
@@ -111,6 +117,8 @@
               class="app-input"
               :class="errors.image ? 'app-input-error' : ''"
               :placeholder="t('gateway.placeholders.image')"
+              :aria-invalid="errors.image ? 'true' : undefined"
+              @input="errors.image = ''"
             />
             <p v-if="errors.image" class="app-field-error">{{ errors.image }}</p>
             <p v-else class="app-field-hint">{{ t('gateway.hints.image') }}</p>

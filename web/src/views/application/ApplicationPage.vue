@@ -85,6 +85,7 @@
       <ApplicationFormFields
         :form="createForm"
         :errors="createErrors"
+        @clear-error="clearCreateError"
         @update:form="Object.assign(createForm, $event)"
       />
       <template #footer>
@@ -101,6 +102,7 @@
       <ApplicationFormFields
         :form="importForm"
         :errors="importErrors"
+        @clear-error="clearImportError"
         @update:form="Object.assign(importForm, $event)"
       />
       <div class="app-tip">
@@ -243,6 +245,14 @@
     });
     Object.assign(createErrors, { name: '', code: '' });
     isCreateDialogOpen.value = true;
+  }
+
+  function clearCreateError(field: 'name' | 'code') {
+    createErrors[field] = '';
+  }
+
+  function clearImportError(field: 'name' | 'code') {
+    importErrors[field] = '';
   }
 
   async function handleCreateOk() {

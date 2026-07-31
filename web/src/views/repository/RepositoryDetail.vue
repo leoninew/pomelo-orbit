@@ -129,12 +129,17 @@
     <AppDialog v-model:open="isEditDialogOpen" title="编辑仓库">
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label class="app-field-label block">名称</label>
+          <label class="app-field-label block">
+            名称
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="editForm.name"
             type="text"
             class="app-input"
             :class="editErrors.name ? 'app-input-error' : ''"
+            :aria-invalid="editErrors.name ? 'true' : undefined"
+            @input="editErrors.name = ''"
           />
           <p v-if="editErrors.name" class="app-field-error text-xs">{{ editErrors.name }}</p>
         </div>
@@ -143,12 +148,17 @@
           <input :value="repository?.code" type="text" disabled class="app-input" />
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">仓库地址</label>
+          <label class="app-field-label block">
+            仓库地址
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="editForm.repository_url"
             type="text"
             class="app-input"
             :class="editErrors.repository_url ? 'app-input-error' : ''"
+            :aria-invalid="editErrors.repository_url ? 'true' : undefined"
+            @input="editErrors.repository_url = ''"
           />
           <p v-if="editErrors.repository_url" class="app-field-error text-xs">
             {{ editErrors.repository_url }}
@@ -210,13 +220,18 @@
     <AppDialog v-model:open="isAddVariableDialogOpen" title="添加变量">
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label class="app-field-label block">变量名</label>
+          <label class="app-field-label block">
+            变量名
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="variableForm.name"
             type="text"
             placeholder="例如: DEPLOY_ENV"
             class="app-input"
             :class="variableErrors.name ? 'app-input-error' : ''"
+            :aria-invalid="variableErrors.name ? 'true' : undefined"
+            @input="variableErrors.name = ''"
           />
           <p v-if="variableErrors.name" class="app-field-error text-xs">
             {{ variableErrors.name }}
@@ -228,12 +243,7 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">说明</label>
-          <input
-            v-model="variableForm.description"
-            type="text"
-            placeholder="可选"
-            class="app-input"
-          />
+          <input v-model="variableForm.description" type="text" class="app-input" />
         </div>
       </div>
       <template #footer>
@@ -248,7 +258,10 @@
     <AppDialog v-model:open="isEditVariableDialogOpen" title="编辑变量">
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label class="app-field-label block">变量名</label>
+          <label class="app-field-label block">
+            变量名
+            <span class="text-destructive">*</span>
+          </label>
           <input :value="editingVariableName" type="text" disabled class="app-input" />
         </div>
         <div class="space-y-1.5">
@@ -257,12 +270,7 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">说明</label>
-          <input
-            v-model="variableForm.description"
-            type="text"
-            placeholder="可选"
-            class="app-input"
-          />
+          <input v-model="variableForm.description" type="text" class="app-input" />
         </div>
       </div>
       <template #footer>

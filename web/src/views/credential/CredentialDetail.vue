@@ -83,23 +83,33 @@
     >
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label class="app-field-label block">凭据名称</label>
+          <label class="app-field-label block">
+            凭据名称
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="form.name"
             type="text"
             class="app-input"
             :class="errors.name ? 'app-input-error' : ''"
+            :aria-invalid="errors.name ? 'true' : undefined"
+            @input="errors.name = ''"
           />
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">凭据内容</label>
+          <label class="app-field-label block">
+            凭据内容
+            <span class="text-destructive">*</span>
+          </label>
           <textarea
             v-model="form.data"
             class="app-textarea"
             :class="errors.data ? 'app-input-error' : ''"
             rows="8"
             :placeholder="credential ? getDataPlaceholder(credential.type) : ''"
+            :aria-invalid="errors.data ? 'true' : undefined"
+            @input="errors.data = ''"
           />
           <p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
         </div>

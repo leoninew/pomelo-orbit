@@ -34,7 +34,7 @@ Traefik 负责 TLS 终止，证书以 PEM 格式通过 pomelo-orbit UI 上传后
 # 查看帮助
 python scripts/cert.py -h
 
-# 生成证书（输出到 scripts/cert/{domain}.pem）
+# 生成证书（输出到 data/deployment/traefik/data/certs/{domain}.pem）
 python scripts/cert.py new -n pomelo-orbit.localhost
 
 # 检查证书信任链（CA → 叶证书 → TLS 握手，模拟浏览器）
@@ -43,7 +43,7 @@ python scripts/cert.py check -n pomelo-orbit.localhost
 
 ### new
 
-生成 mkcert 证书并输出合并 PEM 到 `scripts/cert/` 目录：
+生成 mkcert 证书并输出合并 PEM 到 `data/deployment/traefik/data/certs/` 目录：
 - `{domain}.pem` — cert + key 合并，用于上传到 pomelo-orbit UI
 
 ### check
@@ -52,7 +52,7 @@ python scripts/cert.py check -n pomelo-orbit.localhost
 
 1. mkcert 根 CA 文件是否存在
 2. mkcert CA 是否已导入 Windows 系统信任库（Root store）
-3. 本地 `scripts/cert/{domain}.pem` 文件内容（有效期、SAN、签发者）
+3. 本地 `data/deployment/traefik/data/certs/{domain}.pem` 文件内容（有效期、SAN、签发者）
 4. 叶证书是否由当前 mkcert CA 签名（离线验证）
 5. 实际 TLS 握手，使用系统信任库验证（与浏览器行为一致）
 
@@ -77,7 +77,7 @@ python scripts/cert.py check -n pomelo-orbit.localhost
 ### 1. 生成证书
 
 ```bash
-# 生成证书（输出到 scripts/cert/{domain}.pem）
+# 生成证书（输出到 data/deployment/traefik/data/certs/{domain}.pem）
 python scripts/cert.py new -n app.localhost
 ```
 
@@ -87,7 +87,7 @@ python scripts/cert.py new -n app.localhost
 2. 进入路由管理页面
 3. 选择要启用 HTTPS 的路由
 4. 点击"上传证书"按钮
-5. 选择生成的 `scripts/cert/{domain}.pem` 文件
+5. 选择生成的 `data/deployment/traefik/data/certs/{domain}.pem` 文件
 6. 上传完成后，路由自动启用 HTTPS
 
 ### 3. 验证证书

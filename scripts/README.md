@@ -1,54 +1,52 @@
-# 运维脚本
+# 脚本工具
 
-## 检查
+本目录包含本地开发、远程运维、发布支持与一次性迁移脚本。每个 Python 脚本都必须有同名 Markdown 参考文档；文档描述用途、前置条件、支持的用法和安全边界。与文档冲突时以脚本代码为准。
+
+## 本地开发工具
+
+| 脚本 | 用途 |
+| --- | --- |
+| [`gen_ulid.py`](./gen_ulid.md) | 生成一个或多个 ULID。 |
+| [`run.py`](./run.md) | 同时启动后端和前端开发服务。 |
+| [`cert.py`](./cert.md) | 生成或检查本地开发证书。 |
+| [`prepare_ragflow_tei.py`](./prepare_ragflow_tei.md) | 准备和验证 RAGFlow TEI 模型缓存与镜像。 |
+
+## 远程运维
+
+| 脚本 | 用途 |
+| --- | --- |
+| [`manage.py`](./manage.md) | 远程部署、SSH、Compose、文件复制与备份入口。 |
+| [`clean_remote_docker.py`](./clean_remote_docker.md) | 检查或清理远程 Docker 可回收空间。 |
+| [`reconcile_compose_proxies.py`](./reconcile_compose_proxies.md) | 协调手工 CD Compose 项目的代理配置。 |
+
+## 一次性迁移与生成工具
+
+| 脚本 | 用途 |
+| --- | --- |
+| [`fix_frontend_import_format.py`](./fix_frontend_import_format.md) | 修正指定前端 Proto 导入格式。 |
+| [`gen_sqlc_domain_repos.py`](./gen_sqlc_domain_repos.md) | 生成部分 SQLC 领域仓储实现。 |
+| [`move_platform_api_domains.py`](./move_platform_api_domains.md) | 迁移前端 API 模块到领域目录。 |
+| [`rewrite_frontend_proto_imports.py`](./rewrite_frontend_proto_imports.md) | 迁移前端 Proto 导入到领域路径。 |
+| [`rewrite_proto_domain_imports.py`](./rewrite_proto_domain_imports.md) | 迁移后端 Proto 导入到领域包。 |
+
+## 测试与发布支持
+
+| 脚本 | 用途 |
+| --- | --- |
+| [`test_reconcile_compose_proxies.py`](./test_reconcile_compose_proxies.md) | Compose 代理协调单元测试。 |
+| [`test_prepare_ragflow_tei.py`](./test_prepare_ragflow_tei.md) | RAGFlow TEI 缓存 staging 与 `tar.gz` 归档单元测试。 |
+| [`test_export_ragflow_tei_baseline.py`](./test_export_ragflow_tei_baseline.md) | RAGFlow TEI SQLite 基线导出/导入单元测试。 |
+| [`version-calc.py`](./version-calc.md) | 从 Git 历史计算并按需写入版本。 |
+| [`export_ragflow_tei_baseline.py`](./export_ragflow_tei_baseline.md) | 导出 RAGFlow TEI SQLite 控制面候选基线。 |
+
+## 可选 Python 检查
+
+仓库目前未为 `scripts/` 配置强制执行的 Python 检查。若本机已安装相应工具，可手动执行不修改文件的检查：
 
 ```bash
 python -m mypy scripts/
-python -m ruff check scripts/ --fix
-python -m ruff format scripts/
+python -m ruff check scripts/
+python -m ruff format --check scripts/
 ```
 
-## CD Compose 代理协调
-
-`reconcile_compose_proxies.py` 在宿主机上协调手工维护的 CD Compose 文件：递归扫描 `/opt/pomelo-orbit/data/cd/**/docker-compose.yml`，为每个服务写入 `host.docker.internal` 映射和 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`、`NO_PROXY`。仅在文件实际变化时才备份、写入并立即执行 `docker compose up -d`。
-
-脚本会自动从 Compose 服务使用的本机 Docker bridge 网络读取 IPv4 gateway，并从 `ss -H -ltnp` 发现**绑定到该 gateway 的 Mihomo listener**。不会将代理 endpoint 写死为特定地址或端口。发现不到、发现多个候选 listener，或通过候选 listener 的 HTTPS 代理探测失败时，脚本会在改动 Compose 文件前退出。
-
-远程前置条件：Python 3.12、PyYAML、Docker Compose v2、宿主 Mihomo 已在每个目标 Docker bridge gateway 上安全监听。脚本不安装或修改 Mihomo，也不会改动 labels、networks、ports、volumes、镜像、Traefik 路由或 `/opt/pomelo-orbit/docker-compose.yml`。
-
-脚本需要读取其他用户运行的 Mihomo socket 进程归属并写入 Compose 文件，通常应以 root 运行。先进行只读预演：
-
-```bash
-sudo python3 scripts/reconcile_compose_proxies.py --dry-run
-```
-
-默认写入、验证并立即部署变更的项目：
-
-```bash
-sudo python3 scripts/reconcile_compose_proxies.py
-```
-
-常用选项：
-
-```bash
-# 只处理指定 CD 目录；写入但不部署
-python3 scripts/reconcile_compose_proxies.py --include typing-island --no-deploy
-
-# 当一个 Docker gateway 上有多个 Mihomo listener 时精确选择端口
-python3 scripts/reconcile_compose_proxies.py --network traefik --proxy-port 7891
-
-# 指定扫描根目录并追加内部绕过项
-python3 scripts/reconcile_compose_proxies.py \
-  --root /opt/pomelo-orbit/data/cd \
-  --no-proxy internal.example,10.0.0.0/8
-```
-
-已变更文件的原始字节备份默认位于：
-
-```text
-<root>/.proxy-reconcile-backups/<UTC-run-id>/
-```
-
-候选 Compose 在替换前会执行 `docker compose config -q`；写入后部署失败时，脚本恢复对应备份并尝试以恢复后的 Compose 重新部署。PyYAML 会规范化发生变更的 YAML 文件格式和注释；已经符合目标状态的文件不会重写、不会备份，也不会触发部署。
-
-该脚本管理的是手工 CD Compose 物料。Pomelo Orbit 后续重新渲染其自身管理的部署工作区时，可能覆盖独立的手工配置；它不是 Pomelo Orbit Go 部署渲染器的替代方案。
+维护脚本时，若变更了脚本接口、前置条件或副作用，必须在同一变更中更新对应的同名 Markdown 文档。

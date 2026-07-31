@@ -41,7 +41,7 @@
           v-if="service"
           class="app-button h-9 px-3"
           :disabled="operating"
-          @click="openLogsDrawer"
+          @click="() => openLogsDrawer()"
         >
           <ScrollText class="size-4" />
           {{ t('service.actions.logsAll') }}
@@ -133,13 +133,13 @@
             <colgroup>
               <col class="w-[36%]" />
               <col />
-              <col class="w-24" />
+              <col class="w-32" />
             </colgroup>
             <thead>
               <tr>
                 <th>{{ t('service.runtimeConfig.key') }}</th>
                 <th>{{ t('service.runtimeConfig.value') }}</th>
-                <th class="w-24">{{ t('common.operation') }}</th>
+                <th class="w-32">{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -157,22 +157,18 @@
                 <td class="w-24">
                   <div class="flex items-center gap-1">
                     <button
-                      class="app-icon-button"
-                      :aria-label="t('common.edit')"
+                      class="app-link"
                       :disabled="operating"
-                      :title="t('common.edit')"
                       @click="openRuntimeConfigDialog(entry.key)"
                     >
-                      <Pencil class="size-4" />
+                      {{ t('common.edit') }}
                     </button>
                     <button
-                      class="app-icon-button"
-                      :aria-label="t('common.delete')"
+                      class="app-link-danger"
                       :disabled="operating"
-                      :title="t('common.delete')"
                       @click="removeRuntimeConfig(entry.key)"
                     >
-                      <Trash2 class="size-4" />
+                      {{ t('common.delete') }}
                     </button>
                   </div>
                 </td>
@@ -205,7 +201,7 @@
                 <th>{{ t('application.detail.placeholders.exposeAccess') }}</th>
                 <th>{{ t('application.detail.placeholders.containerPort') }}</th>
                 <th>{{ t('application.detail.placeholders.listenPort') }}</th>
-                <th class="w-24">{{ t('common.operation') }}</th>
+                <th class="w-32">{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -218,22 +214,18 @@
                 <td class="w-24">
                   <div class="flex items-center gap-1">
                     <button
-                      class="app-icon-button"
-                      :aria-label="t('common.edit')"
+                      class="app-link"
                       :disabled="operating"
-                      :title="t('common.edit')"
                       @click="openExposeDialog(index)"
                     >
-                      <Pencil class="size-4" />
+                      {{ t('common.edit') }}
                     </button>
                     <button
-                      class="app-icon-button"
-                      :aria-label="t('common.delete')"
+                      class="app-link-danger"
                       :disabled="operating"
-                      :title="t('common.delete')"
                       @click="removeExpose(index)"
                     >
-                      <Trash2 class="size-4" />
+                      {{ t('common.delete') }}
                     </button>
                   </div>
                 </td>
@@ -257,13 +249,14 @@
         </p>
         <AppEmptyState v-else-if="containers.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
-          <table class="app-data-table min-w-[720px]">
+          <table class="app-data-table min-w-[800px]">
             <thead>
               <tr>
                 <th>{{ t('service.fields.component') }}</th>
                 <th>{{ t('common.status') }}</th>
                 <th>{{ t('service.fields.health') }}</th>
                 <th>{{ t('service.fields.image') }}</th>
+                <th class="w-24">{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -280,6 +273,15 @@
                 </td>
                 <td>{{ container.health }}</td>
                 <td class="max-w-sm truncate" :title="container.image">{{ container.image }}</td>
+                <td class="w-24">
+                  <button
+                    class="app-link"
+                    :disabled="!container.service"
+                    @click="openLogsDrawer(container.service)"
+                  >
+                    {{ t('service.actions.logs') }}
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -640,23 +642,67 @@
     </AppDrawer>
     <AppDrawer
       :open="logsDrawerOpen"
-      :title="t('service.logs.title')"
+      :title="logsDrawerTitle"
       width-class="w-[min(960px,100vw)]"
       body-class="min-h-0 flex-1 overflow-hidden p-0"
-      @update:open="(open) => (logsDrawerOpen = open)"
+      @update:open="handleLogsDrawerOpenChange"
     >
       <div class="flex h-full min-h-[420px] flex-col gap-3 p-6">
-        <button class="app-button h-9 w-fit px-3" :disabled="logsLoading" @click="loadLogs">
-          <RefreshCw class="size-4" :class="{ 'animate-spin': logsLoading }" />
+        <div class="flex shrink-0 justify-end">
+          <button
+            class="app-button inline-flex h-9 items-center gap-2 px-3"
+            :class="isLogsAutoRefreshing ? 'text-primary' : ''"
+            @click="toggleLogsAutoRefresh"
+          >
+            <Loader2 class="size-4" :class="isLogsAutoRefreshing ? 'animate-spin' : ''" />
+            {{
+              isLogsAutoRefreshing
+                ? t('service.logs.autoRefreshing')
+                : t('service.logs.refreshPaused')
+            }}
+          </button>
+        </div>
+        <div class="min-h-0 flex-1">
+          <div
+            v-if="!logText"
+            class="flex h-full min-h-[320px] items-center justify-center text-muted-foreground"
+          >
+            <div class="text-center">
+              <AppSpinner v-if="logStatus === 'loading' || logStatus === 'streaming'" />
+              <p v-if="logStatus === 'loading'" class="mt-2 text-sm">
+                {{ t('service.logs.loading') }}
+              </p>
+              <p v-else-if="logStatus === 'streaming'" class="mt-2 text-sm">
+                {{ t('service.logs.streaming') }}
+              </p>
+              <p v-else-if="logStatus === 'empty'" class="text-sm">{{ t('service.logs.empty') }}</p>
+              <div v-else-if="logStatus === 'error'">
+                <p class="text-sm text-destructive">{{ logError || t('service.logs.loadFailed') }}</p>
+                <button type="button" class="app-link mt-2 text-sm" @click="retryLogs">
+                  {{ t('service.logs.retry') }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <MonacoEditor
+            v-else
+            :model-value="logText"
+            language="plaintext"
+            height="100%"
+            :readonly="true"
+            squared
+          />
+        </div>
+      </div>
+      <template #footer>
+        <button class="app-button" @click="handleLogsDrawerOpenChange(false)">
+          {{ t('common.cancel') }}
+        </button>
+        <button class="app-button-primary" :disabled="logStatus === 'loading'" @click="retryLogs">
+          <RefreshCw class="size-4" :class="{ 'animate-spin': logStatus === 'loading' }" />
           {{ t('common.refresh') }}
         </button>
-        <AppSpinner v-if="logsLoading" class="py-8" />
-        <p v-else-if="logsError" class="text-sm text-destructive">{{ logsError }}</p>
-        <pre
-          v-else
-          class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted/30 p-3 text-xs text-foreground"
-          >{{ logs || t('service.logs.empty') }}</pre>
-      </div>
+      </template>
     </AppDrawer>
   </div>
 </template>
@@ -667,6 +713,7 @@
     Eye,
     EyeOff,
     FileCode2,
+    Loader2,
     Pencil,
     Plus,
     RefreshCw,
@@ -675,7 +722,7 @@
     Square,
     Trash2,
   } from 'lucide-vue-next';
-  import { computed, onMounted, reactive, ref, watch } from 'vue';
+  import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
@@ -695,7 +742,7 @@
   import type { VersionComponentResp, VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceExposeReq, ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { appStatusTone, containerStateTone } from '@/utils/status';
-  import { formatTime } from '@/utils/time';
+  import { delayAsync, formatTime } from '@/utils/time';
 
   type ExposeForm = {
     component_name: string;
@@ -705,6 +752,8 @@
     access: string;
     path_prefix: string;
   };
+
+  type LogStatus = 'loading' | 'streaming' | 'done' | 'empty' | 'error';
 
   const route = useRoute();
   const router = useRouter();
@@ -756,9 +805,13 @@
   const previewYaml = ref('');
   const previewError = ref('');
   const logsDrawerOpen = ref(false);
-  const logsLoading = ref(false);
-  const logs = ref('');
-  const logsError = ref('');
+  const logsComponent = ref('');
+  const logText = ref('');
+  const logStatus = ref<LogStatus>('loading');
+  const logError = ref('');
+  const isLogsAutoRefreshing = ref(false);
+  let logsRefreshAbort: AbortController | null = null;
+  let logsRefreshGeneration = 0;
   const operating = computed(() => opLoading.value);
   const isDeploying = computed(() => service.value?.status === 'deploying');
   const canStop = computed(
@@ -770,6 +823,19 @@
       .map(([key, value]) => ({ key, value }))
       .sort((a, b) => a.key.localeCompare(b.key))
   );
+  const logsDrawerTitle = computed(() => {
+    if (!service.value) return t('service.logs.title');
+    const app = service.value.application_name || service.value.application_id;
+    const instance = service.value.instance_key || 'default';
+    if (logsComponent.value) {
+      return t('service.logs.titleWithComponent', {
+        app,
+        instance,
+        component: logsComponent.value,
+      });
+    }
+    return t('service.logs.titleWithTarget', { app, instance });
+  });
 
   function cloneExposes(exposes: ServiceResp['exposes']): ServiceExposeReq[] {
     return exposes.map((expose) => ({
@@ -1118,33 +1184,121 @@
       toast.error(error instanceof Error ? error.message : t('service.toast.deleteFailed'));
     }
   }
-  function openLogsDrawer() {
-    logsDrawerOpen.value = true;
-    void loadLogs();
+  function isCurrentLogsRefresh(generation: number, signal: AbortSignal) {
+    return !signal.aborted && generation === logsRefreshGeneration;
   }
-  async function loadLogs() {
-    if (!service.value) return;
-    logsLoading.value = true;
-    logsError.value = '';
+
+  async function fetchServiceLogs(generation?: number, signal?: AbortSignal) {
+    if (!service.value) {
+      return;
+    }
+    if (generation === undefined) {
+      logStatus.value = logText.value ? 'streaming' : 'loading';
+      logError.value = '';
+    }
     try {
-      logs.value = (
-        await applicationApi.getLogs(service.value.application_id, {
-          service_id: service.value.id,
-          tail: 200,
-        })
-      ).logs;
-    } catch (error) {
-      logsError.value = error instanceof Error ? error.message : t('service.logs.loadFailed');
-    } finally {
-      logsLoading.value = false;
+      const data = await applicationApi.getLogs(service.value.application_id, {
+        tail: 200,
+        service_id: service.value.id,
+        component: logsComponent.value || undefined,
+      });
+      if (generation !== undefined && signal && !isCurrentLogsRefresh(generation, signal)) {
+        return;
+      }
+      logText.value = data.logs || '';
+      logStatus.value = logText.value
+        ? isLogsAutoRefreshing.value
+          ? 'streaming'
+          : 'done'
+        : 'empty';
+    } catch (err: unknown) {
+      if (generation === undefined || !signal || isCurrentLogsRefresh(generation, signal)) {
+        logStatus.value = 'error';
+        logError.value = err instanceof Error ? err.message : t('service.logs.loadFailed');
+      }
     }
   }
 
+  function stopLogsAutoRefresh() {
+    logsRefreshGeneration++;
+    logsRefreshAbort?.abort();
+    logsRefreshAbort = null;
+    isLogsAutoRefreshing.value = false;
+  }
+
+  function startLogsAutoRefresh() {
+    if (isLogsAutoRefreshing.value || !service.value) {
+      return;
+    }
+    const generation = ++logsRefreshGeneration;
+    const controller = new AbortController();
+    const { signal } = controller;
+    logsRefreshAbort = controller;
+    isLogsAutoRefreshing.value = true;
+    void (async () => {
+      while (isCurrentLogsRefresh(generation, signal)) {
+        await delayAsync(2000, signal);
+        if (!isCurrentLogsRefresh(generation, signal)) break;
+        await fetchServiceLogs(generation, signal);
+      }
+      if (isCurrentLogsRefresh(generation, signal)) {
+        logsRefreshAbort = null;
+        isLogsAutoRefreshing.value = false;
+        if (logText.value && logStatus.value === 'streaming') {
+          logStatus.value = 'done';
+        }
+      }
+    })();
+  }
+
+  function toggleLogsAutoRefresh() {
+    if (isLogsAutoRefreshing.value) {
+      stopLogsAutoRefresh();
+      if (logText.value && logStatus.value === 'streaming') {
+        logStatus.value = 'done';
+      }
+      return;
+    }
+    startLogsAutoRefresh();
+  }
+
+  function openLogsDrawer(component?: string) {
+    stopLogsAutoRefresh();
+    logsComponent.value = (component || '').trim();
+    logText.value = '';
+    logError.value = '';
+    logStatus.value = 'loading';
+    logsDrawerOpen.value = true;
+    void (async () => {
+      await fetchServiceLogs();
+      startLogsAutoRefresh();
+    })();
+  }
+
+  function handleLogsDrawerOpenChange(open: boolean) {
+    logsDrawerOpen.value = open;
+    if (!open) {
+      stopLogsAutoRefresh();
+      logsComponent.value = '';
+      logText.value = '';
+      logError.value = '';
+      logStatus.value = 'loading';
+    }
+  }
+
+  function retryLogs() {
+    void fetchServiceLogs();
+  }
+
   watch(serviceId, () => {
+    handleLogsDrawerOpenChange(false);
     service.value = undefined;
     void fetchService();
   });
   onMounted(() => {
     void fetchService();
+  });
+  onUnmounted(() => {
+    stopLogsAutoRefresh();
   });
 </script>

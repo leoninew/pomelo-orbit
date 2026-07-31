@@ -99,7 +99,7 @@
                 <th>{{ t('pipelineTemplate.version') }}</th>
                 <th>{{ t('pipelineTemplate.dependency') }}</th>
                 <th>{{ t('pipelineTemplate.artifact') }}</th>
-                <th class="w-24">{{ t('common.operation') }}</th>
+                <th class="w-32">{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -131,25 +131,17 @@
                 <td class="text-foreground">
                   {{ stageCache[orch.stage_id]?.artifacts?.length }}
                 </td>
-                <td class="w-24">
-                  <div class="flex items-center gap-1">
-                    <button
-                      class="app-icon-button"
-                      :aria-label="t('common.edit')"
-                      :disabled="saving"
-                      :title="t('common.edit')"
-                      @click="openEditOrchModal(idx)"
-                    >
-                      <Pencil class="size-4" />
+                <td class="w-32">
+                  <div class="flex items-center gap-3">
+                    <button class="app-link" :disabled="saving" @click="openEditOrchModal(idx)">
+                      {{ t('common.edit') }}
                     </button>
                     <button
-                      class="app-icon-button"
-                      :aria-label="t('common.remove')"
+                      class="app-link-danger"
                       :disabled="saving"
-                      :title="t('common.remove')"
                       @click="confirmRemoveOrch(idx)"
                     >
-                      <Trash2 class="size-4" />
+                      {{ t('common.remove') }}
                     </button>
                   </div>
                 </td>

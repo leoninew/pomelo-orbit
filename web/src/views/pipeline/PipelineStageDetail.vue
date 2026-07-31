@@ -130,7 +130,7 @@
                 <th>{{ t('buildStageDetail.artifactType') }}</th>
                 <th>{{ t('common.name') }}</th>
                 <th>{{ t('buildStageDetail.pathOrImage') }}</th>
-                <th class="w-24">{{ t('common.operation') }}</th>
+                <th class="w-32">{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -143,25 +143,17 @@
                 </td>
                 <td class="text-foreground">{{ artifact.name }}</td>
                 <td class="text-muted-foreground">{{ artifact.path }}</td>
-                <td class="w-24">
-                  <div class="flex items-center gap-1">
-                    <button
-                      class="app-icon-button"
-                      :aria-label="t('common.edit')"
-                      :disabled="saving"
-                      :title="t('common.edit')"
-                      @click="openEditArtifactModal(idx)"
-                    >
-                      <Pencil class="size-4" />
+                <td class="w-32">
+                  <div class="flex items-center gap-3">
+                    <button class="app-link" :disabled="saving" @click="openEditArtifactModal(idx)">
+                      {{ t('common.edit') }}
                     </button>
                     <button
-                      class="app-icon-button"
-                      :aria-label="t('common.delete')"
+                      class="app-link-danger"
                       :disabled="saving"
-                      :title="t('common.delete')"
                       @click="confirmRemoveArtifact(idx)"
                     >
-                      <Trash2 class="size-4" />
+                      {{ t('common.delete') }}
                     </button>
                   </div>
                 </td>

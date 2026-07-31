@@ -88,7 +88,7 @@
               <th>{{ t('common.status') }}</th>
               <th>{{ t('userManagement.authSource') }}</th>
               <th>{{ t('userManagement.lastLoginAt') }}</th>
-              <th class="w-16">{{ t('common.operation') }}</th>
+              <th class="w-20">{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -107,15 +107,13 @@
                 <AppBadge variant="pill">{{ member.auth_source }}</AppBadge>
               </td>
               <td>{{ member.last_login_at ? formatTime(member.last_login_at) : '' }}</td>
-              <td class="w-16">
+              <td class="w-20">
                 <button
-                  class="app-icon-button"
-                  :aria-label="t('project.removeMember')"
+                  class="app-link-danger"
                   :disabled="operating"
-                  :title="t('project.removeMember')"
                   @click="handleRemoveMember(member.id)"
                 >
-                  <Trash2 class="size-4" />
+                  {{ t('project.removeMember') }}
                 </button>
               </td>
             </tr>
@@ -210,7 +208,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Pencil, Trash2, UserPlus } from 'lucide-vue-next';
+  import { ArrowLeft, Pencil, UserPlus } from 'lucide-vue-next';
   import { onMounted, reactive, ref, computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';

@@ -18,7 +18,7 @@
             <th>分支过滤</th>
             <th>Webhook URL</th>
             <th>状态</th>
-            <th class="w-24">操作</th>
+            <th class="w-32">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -55,25 +55,13 @@
                 {{ wh.enabled ? '启用' : '停用' }}
               </AppBadge>
             </td>
-            <td class="w-24">
-              <div class="flex items-center gap-1">
-                <button
-                  class="app-icon-button"
-                  aria-label="编辑"
-                  :disabled="operating"
-                  title="编辑"
-                  @click="openEditModal(wh)"
-                >
-                  <Pencil class="size-4" />
+            <td class="w-32">
+              <div class="flex items-center gap-3">
+                <button class="app-link" :disabled="operating" @click="openEditModal(wh)">
+                  编辑
                 </button>
-                <button
-                  class="app-icon-button"
-                  aria-label="删除"
-                  :disabled="operating"
-                  title="删除"
-                  @click="handleDelete(wh)"
-                >
-                  <Trash2 class="size-4" />
+                <button class="app-link-danger" :disabled="operating" @click="handleDelete(wh)">
+                  删除
                 </button>
               </div>
             </td>
@@ -184,7 +172,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-vue-next';
+  import { Copy, Eye, EyeOff, Plus } from 'lucide-vue-next';
   import { computed, nextTick, reactive, ref } from 'vue';
   import { webhookApi } from '@/api/repository/webhook';
   import AppBadge from '@/components/AppBadge.vue';

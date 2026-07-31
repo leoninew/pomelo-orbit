@@ -8,7 +8,7 @@
           <th>{{ t('variableDeclaration.description') }}</th>
           <th>{{ t('variableDeclaration.value') }}</th>
           <th>{{ t('variableDeclaration.source') }}</th>
-          <th v-if="!readonly" class="w-24">{{ t('common.operation') }}</th>
+          <th v-if="!readonly" class="w-32">{{ t('common.operation') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -31,25 +31,17 @@
               {{ requireSource(decl) }}
             </AppBadge>
           </td>
-          <td v-if="!readonly" class="w-24">
-            <div class="flex items-center gap-1">
-              <button
-                v-if="canEdit(decl)"
-                class="app-icon-button"
-                :aria-label="t('common.edit')"
-                :title="t('common.edit')"
-                @click="emit('edit', decl.name)"
-              >
-                <Pencil class="size-4" />
+          <td v-if="!readonly" class="w-32">
+            <div class="flex items-center gap-3">
+              <button v-if="canEdit(decl)" class="app-link" @click="emit('edit', decl.name)">
+                {{ t('common.edit') }}
               </button>
               <button
                 v-if="canEdit(decl)"
-                class="app-icon-button"
-                :aria-label="t('common.reset')"
-                :title="t('common.reset')"
+                class="app-link-danger"
                 @click="emit('delete', decl.name)"
               >
-                <Trash2 class="size-4" />
+                {{ t('common.reset') }}
               </button>
             </div>
           </td>
@@ -60,7 +52,6 @@
 </template>
 
 <script setup lang="ts">
-  import { Pencil, Trash2 } from 'lucide-vue-next';
   import { useI18n } from 'vue-i18n';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';

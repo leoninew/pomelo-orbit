@@ -1,14 +1,14 @@
 # RAGFlow 内嵌 BGE-M3 TEI 运维手册
-最后修改时间: 2026-07-31 10:50:28
+最后修改时间: 2026-07-31 15:53:31
 
-本文记录 RAGFlow 内嵌 Text Embeddings Inference (TEI) 的部署选择、模型准备和验收方法。交付包含 CPU/GPU 两个完整 Version；运行时部署仍只能通过 Pomelo Orbit 管理。本轮只进行 CPU 运行验收，GPU Version 仅交付静态规格与 Compose 渲染，不声称完成 GPU 容器测试。
+本文记录集成式 RAGFlow 内嵌 Text Embeddings Inference (TEI) 的部署选择、模型准备和验收方法。集成式 Application 包含 CPU/GPU 两个完整 Version；拆分式部署使用独立的 `deploy-ragflow-split-orbit` skill。运行时部署仍只能通过 Pomelo Orbit 管理。本轮只进行 CPU 运行验收，GPU Version 仅交付静态规格与 Compose 渲染，不声称完成 GPU 容器测试。
 
 ## 方案摘要
 
 使用一个 `ragflow` Application，维护两个包含 `mysql`、`redis`、`minio`、`es01`、`tei`、`ragflow-cpu` 的完整 Version：
 
-- `ragflow-tei-cpu`：通用开发和无 NVIDIA GPU 的 Host。
-- `ragflow-tei-gpu`：具备 NVIDIA Driver、NVIDIA Container Toolkit 和相应 GPU compute capability 的 Host。
+- `ragflow-integrated-cpu`：通用开发和无 NVIDIA GPU 的 Host。
+- `ragflow-integrated-gpu`：具备 NVIDIA Driver、NVIDIA Container Toolkit 和相应 GPU compute capability 的 Host。
 
 TEI 是同一 Service 内部组件，不发布独立宿主机端口。RAGFlow 保留唯一的 local HTTP expose：`127.0.0.1:9380 -> ragflow-cpu:80`。RAGFlow 的 HuggingFace Embedding Provider 使用模型 `BAAI/bge-m3` 和基础地址 `http://tei:80`；不要填旧独立应用地址，也不要在地址后附加 `/embed`。
 
@@ -31,13 +31,13 @@ TEI 是同一 Service 内部组件，不发布独立宿主机端口。RAGFlow �
 | Ada SM 8.9 | `89-1.9` | `sha256:e47e625ced2385d3dbfdee79ba0380204578e0b27ef1a926783f9b3486aaf109` | RTX 4000 系列等。 |
 | Hopper SM 9.0 | `hopper-1.9` | `sha256:e3009cd99f63dbabd29346412e2d65224e4ab179e7559b0065f26e38fb7334c4` | H100 等。 |
 
-通用 CUDA Version 是跨 GPU Host 的初始 Variant。追求性能时，应在 GPU Host 读取 compute capability 后先同步修改固定镜像契约、Compose 覆盖和导出校验，再原地更新 `ragflow-tei-gpu` 并重新导出基线；当前交付不得新增临时或第三个 Version。TEI 官方资料指出 compute capability 低于 7.5 的 NVIDIA GPU 不受支持；目标 Host 的 NVIDIA 驱动需要兼容 CUDA 12.2 及以上。
+通用 CUDA Version 是跨 GPU Host 的初始 Variant。追求性能时，应在 GPU Host 读取 compute capability 后先同步修改固定镜像契约、Compose 覆盖和导出校验，再原地更新 `ragflow-integrated-gpu` 并重新导出基线；当前集成式交付不得新增临时或第三个 Version。TEI 官方资料指出 compute capability 低于 7.5 的 NVIDIA GPU 不受支持；目标 Host 的 NVIDIA 驱动需要兼容 CUDA 12.2 及以上。
 
 ## Compose 参考
 
 `scripts/ragflow-bundled/docker-compose.yml` 与 `scripts/ragflow-split/docker-compose.ragflow.yml` 是 CPU 参考。对应的 `*.gpu.yml` 是仅覆盖 `tei` 的 GPU 参考：固定 CUDA digest 并声明 `nvidia`、全部 GPU、`gpu` capability。Docker Compose 的规范化输出将 `count: all` 表示为 `count: -1`，两者等价。
 
-这些文件只用于审阅和 `docker compose ... config` 预览；实际创建、更新、部署和停止仍通过 Orbit MCP 完成。
+这些文件只用于审阅和 `docker compose ... config` 预览；实际创建、更新、部署和停止仍通过 Pomelo Delivery MCP（`pomelo_delivery`）完成。
 
 ## 模型缓存准备
 
@@ -165,4 +165,4 @@ python scripts/prepare_ragflow_tei.py prepare-image --profile gpu
 python scripts/prepare_ragflow_tei.py prepare --profile cpu
 ```
 
-脚本不会启动或停止容器，不执行 Docker Compose，也不会创建或修改 Orbit Application、Version、Service 或 Deployment。通过 `check` 后，使用合并后的 `deploy-ragflow-tei-orbit` 技能执行 Orbit 生命周期操作。
+脚本不会启动或停止容器，不执行 Docker Compose，也不会创建或修改 Orbit Application、Version、Service 或 Deployment。通过 `check` 后，集成式使用 `deploy-ragflow-integrated-orbit`，显式拆分式使用 `deploy-ragflow-split-orbit` 执行 Orbit 生命周期操作。

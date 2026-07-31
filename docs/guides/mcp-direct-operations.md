@@ -1,6 +1,10 @@
 # MCP 直接操作
 
-`pomelo_orbit` 只执行用户明确要求的独立动作。调用结果为 `isError=true` 时，该调用失败；不要自动执行依赖它的后续动作。
+## 命名与启动约定
+
+Codex 注册名为 `pomelo_delivery`，本地 stdio 入口为 `uv --directory mcp/src/delivery-mcp run pomelo-delivery-mcp`，工具在客户端中显示为 `mcp__pomelo_delivery__orbit_*`。`orbit_*` 保留是因为它们适配 Pomelo Orbit 控制面；不要使用已移除的 `pomelo_orbit` 注册名或 `pomelo-orbit-mcp` 命令。
+
+`pomelo_delivery` 只执行用户明确要求的独立动作。调用结果为 `isError=true` 时，该调用失败；不要自动执行依赖它的后续动作。
 
 | 用户明确要求 | 调用工具 | 不隐含的动作 |
 | --- | --- | --- |

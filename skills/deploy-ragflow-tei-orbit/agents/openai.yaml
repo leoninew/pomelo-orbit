@@ -1,4 +1,0 @@
-interface:
-  display_name: "Deploy RAGFlow with TEI"
-  short_description: "Idempotently deploy or repair bundled RAGFlow and BGE-M3 TEI through Pomelo Orbit."
-  default_prompt: "Use $deploy-ragflow-tei-orbit to idempotently create, repair, or deploy the bundled RAGFlow CPU/GPU TEI Versions through Pomelo Orbit."

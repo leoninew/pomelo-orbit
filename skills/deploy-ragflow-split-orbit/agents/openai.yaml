@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deploy Split RAGFlow + TEI"
+  short_description: "Deploy split RAGFlow with Pomelo Delivery MCP."
+  default_prompt: "Use $deploy-ragflow-split-orbit to deploy split RAGFlow, reuse compatible data services, and select GPU with Pomelo Delivery MCP when NVIDIA is available."

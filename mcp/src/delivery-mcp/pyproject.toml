@@ -1,0 +1,58 @@
+[project]
+name = "pomelo-delivery-mcp"
+version = "0.1.0"
+description = "Local stdio MCP server for Pomelo delivery control and runtime verification"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dynaconf>=3.2.11",
+    "httpx>=0.28.1",
+    "mcp>=1.25.0",
+    "pydantic>=2.11.0",
+    "pyyaml>=6.0.2",
+]
+
+[project.scripts]
+pomelo-delivery-mcp = "pomelo_delivery_mcp.server:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.0",
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.3",
+    "ruff>=0.15.0",
+    "types-PyYAML>=6.0.12.20250915",
+]
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "-m 'not docker'"
+markers = [
+    "docker: requires a local Docker daemon and Compose CLI",
+]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pomelo_delivery_mcp"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+mypy_path = ["src"]
+strict = true
+warn_unused_configs = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pomelo_delivery_mcp"]

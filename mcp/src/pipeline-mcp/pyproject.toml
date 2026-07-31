@@ -1,0 +1,13 @@
+[project]
+name = "pomelo-pipeline-mcp"
+version = "0.0.0"
+description = "Reserved package for the future Pomelo pipeline MCP"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pomelo_pipeline_mcp"]

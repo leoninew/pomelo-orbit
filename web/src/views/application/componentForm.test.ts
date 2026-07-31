@@ -91,6 +91,18 @@ describe('componentForm', () => {
     });
   });
 
+  it('rejects an omitted or unsupported pull policy', () => {
+    const form = emptyComponentForm();
+    form.name = 'api';
+    form.image = 'nginx:1.27';
+
+    form.pull_policy = '';
+    expect(componentBasicRequestFromForm(form)).toEqual({ valid: false, error: 'pullPolicy' });
+
+    form.pull_policy = 'on-demand';
+    expect(componentBasicRequestFromForm(form)).toEqual({ valid: false, error: 'pullPolicy' });
+  });
+
   it('keeps a health check as one command field', () => {
     const form = emptyComponentForm();
     form.healthcheck_enabled = true;

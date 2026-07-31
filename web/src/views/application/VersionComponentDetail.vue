@@ -119,12 +119,15 @@
               <div>
                 <label class="app-field-label mb-1.5 block">
                   {{ t('application.componentDetail.fields.pullPolicy') }}
+                  <span class="text-destructive">*</span>
                 </label>
                 <RawValueSelect
                   v-model="form.pull_policy"
-                  :placeholder="t('common.notSet')"
                   :values="pullPolicyValues"
                 />
+                <p v-if="basicErrors.pullPolicy" class="app-field-error" role="alert">
+                  {{ basicErrors.pullPolicy }}
+                </p>
               </div>
               <div>
                 <label class="app-field-label mb-1.5 block">
@@ -162,7 +165,7 @@
                 <dt class="text-muted-foreground">
                   {{ t('application.componentDetail.fields.pullPolicy') }}
                 </dt>
-                <dd class="mt-1 text-foreground">{{ form.pull_policy || t('common.notSet') }}</dd>
+                <dd class="mt-1 text-foreground">{{ form.pull_policy }}</dd>
               </div>
               <div>
                 <dt class="text-muted-foreground">
@@ -300,32 +303,28 @@
                   <tr>
                     <th>{{ t('application.componentDetail.fields.dependency') }}</th>
                     <th>{{ t('application.componentDetail.fields.condition') }}</th>
-                    <th class="w-24">{{ t('common.operation') }}</th>
+                    <th class="w-32">{{ t('common.operation') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(row, index) in form.dependencies" :key="`dependency-${index}`">
                     <td class="min-w-56 text-foreground">{{ row.name }}</td>
                     <td class="min-w-56 text-foreground">{{ row.condition }}</td>
-                    <td class="w-24">
-                      <div v-if="canEdit" class="flex items-center gap-1">
+                    <td class="w-32">
+                      <div v-if="canEdit" class="flex items-center gap-3">
                         <button
-                          class="app-icon-button"
-                          :aria-label="t('common.edit')"
+                          class="app-link"
                           :disabled="operating"
-                          :title="t('common.edit')"
                           @click="openRecordDialog('dependencies', index)"
                         >
-                          <Pencil class="size-4" />
+                          {{ t('common.edit') }}
                         </button>
                         <button
-                          class="app-icon-button"
-                          :aria-label="t('common.delete')"
+                          class="app-link-danger"
                           :disabled="operating"
-                          :title="t('common.delete')"
                           @click="deleteRecord('dependencies', index)"
                         >
-                          <Trash2 class="size-4" />
+                          {{ t('common.delete') }}
                         </button>
                       </div>
                     </td>
@@ -361,32 +360,28 @@
                   <tr>
                     <th>{{ t('application.componentDetail.fields.hostPort') }}</th>
                     <th>{{ t('application.componentDetail.fields.containerPort') }}</th>
-                    <th class="w-24">{{ t('common.operation') }}</th>
+                    <th class="w-32">{{ t('common.operation') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(row, index) in form.ports" :key="`port-${index}`">
                     <td class="min-w-56 text-foreground">{{ row.host_port }}</td>
                     <td class="min-w-56 text-foreground">{{ row.container_port }}</td>
-                    <td class="w-24">
-                      <div v-if="canEdit" class="flex items-center gap-1">
+                    <td class="w-32">
+                      <div v-if="canEdit" class="flex items-center gap-3">
                         <button
-                          class="app-icon-button"
-                          :aria-label="t('common.edit')"
+                          class="app-link"
                           :disabled="operating"
-                          :title="t('common.edit')"
                           @click="openRecordDialog('ports', index)"
                         >
-                          <Pencil class="size-4" />
+                          {{ t('common.edit') }}
                         </button>
                         <button
-                          class="app-icon-button"
-                          :aria-label="t('common.delete')"
+                          class="app-link-danger"
                           :disabled="operating"
-                          :title="t('common.delete')"
                           @click="deleteRecord('ports', index)"
                         >
-                          <Trash2 class="size-4" />
+                          {{ t('common.delete') }}
                         </button>
                       </div>
                     </td>
@@ -419,32 +414,28 @@
                   <tr>
                     <th>{{ t('application.componentDetail.fields.key') }}</th>
                     <th>{{ t('application.componentDetail.fields.value') }}</th>
-                    <th class="w-24">{{ t('common.operation') }}</th>
+                    <th class="w-32">{{ t('common.operation') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(row, index) in form.env" :key="`env-${index}`">
                     <td class="min-w-56 break-all text-foreground">{{ row.key }}</td>
                     <td class="min-w-80 break-all text-foreground">{{ row.value }}</td>
-                    <td class="w-24">
-                      <div v-if="canEdit" class="flex items-center gap-1">
+                    <td class="w-32">
+                      <div v-if="canEdit" class="flex items-center gap-3">
                         <button
-                          class="app-icon-button"
-                          :aria-label="t('common.edit')"
+                          class="app-link"
                           :disabled="operating"
-                          :title="t('common.edit')"
                           @click="openRecordDialog('env', index)"
                         >
-                          <Pencil class="size-4" />
+                          {{ t('common.edit') }}
                         </button>
                         <button
-                          class="app-icon-button"
-                          :aria-label="t('common.delete')"
+                          class="app-link-danger"
                           :disabled="operating"
-                          :title="t('common.delete')"
                           @click="deleteRecord('env', index)"
                         >
-                          <Trash2 class="size-4" />
+                          {{ t('common.delete') }}
                         </button>
                       </div>
                     </td>
@@ -481,7 +472,7 @@
                     <th>{{ t('application.componentDetail.fields.source') }}</th>
                     <th>{{ t('application.componentDetail.fields.target') }}</th>
                     <th>{{ t('application.componentDetail.fields.readOnly') }}</th>
-                    <th class="w-36">{{ t('common.operation') }}</th>
+                    <th class="w-48">{{ t('common.operation') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -495,36 +486,30 @@
                       {{ row.read_only ? t('common.yes') : t('common.no') }}
                     </td>
                     <td class="w-36">
-                      <div class="flex items-center gap-1">
+                      <div class="flex items-center gap-3">
                         <button
                           v-if="canEdit && row.source_type === 'controlled_file'"
-                          class="app-icon-button"
-                          :aria-label="t('application.componentDetail.fields.content')"
+                          class="app-link"
                           :disabled="operating"
-                          :title="t('application.componentDetail.fields.content')"
                           @click="openMountContentDrawer(index)"
                         >
-                          <FileText class="size-4" />
+                          {{ t('application.componentDetail.fields.content') }}
                         </button>
                         <button
                           v-if="canEdit"
-                          class="app-icon-button"
-                          :aria-label="t('common.edit')"
+                          class="app-link"
                           :disabled="operating"
-                          :title="t('common.edit')"
                           @click="openMountDialog(index)"
                         >
-                          <Pencil class="size-4" />
+                          {{ t('common.edit') }}
                         </button>
                         <button
                           v-if="canEdit"
-                          class="app-icon-button"
-                          :aria-label="t('common.delete')"
+                          class="app-link-danger"
                           :disabled="operating"
-                          :title="t('common.delete')"
                           @click="deleteMount(index)"
                         >
-                          <Trash2 class="size-4" />
+                          {{ t('common.delete') }}
                         </button>
                       </div>
                     </td>
@@ -579,6 +564,61 @@
           <section class="app-surface app-detail-card">
             <div class="app-section-header app-detail-section-header">
               <h2 class="app-detail-section-title">
+                {{ t('application.componentDetail.sections.devices') }}
+              </h2>
+              <button
+                v-if="canEdit"
+                class="app-button-primary h-9 px-3"
+                :disabled="operating"
+                @click="openRecordDialog('devices')"
+              >
+                <Plus class="size-4" />
+                {{ t('common.add') }}
+              </button>
+            </div>
+            <AppEmptyState v-if="form.devices.length === 0" size="compact" />
+            <div v-else class="overflow-x-auto">
+              <table class="app-data-table min-w-[720px]">
+                <thead>
+                  <tr>
+                    <th>{{ t('application.componentDetail.fields.driver') }}</th>
+                    <th>{{ t('application.componentDetail.fields.count') }}</th>
+                    <th>{{ t('application.componentDetail.fields.capabilities') }}</th>
+                    <th class="w-32">{{ t('common.operation') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, index) in form.devices" :key="`device-${index}`">
+                    <td class="min-w-52 text-foreground">{{ row.driver }}</td>
+                    <td class="min-w-40 text-foreground">{{ row.count }}</td>
+                    <td class="min-w-60 break-all text-foreground">{{ row.capabilities.join(', ') }}</td>
+                    <td class="w-32">
+                      <div v-if="canEdit" class="flex items-center gap-3">
+                        <button
+                          class="app-link"
+                          :disabled="operating"
+                          @click="openRecordDialog('devices', index)"
+                        >
+                          {{ t('common.edit') }}
+                        </button>
+                        <button
+                          class="app-link-danger"
+                          :disabled="operating"
+                          @click="deleteRecord('devices', index)"
+                        >
+                          {{ t('common.delete') }}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="app-surface app-detail-card">
+            <div class="app-section-header app-detail-section-header">
+              <h2 class="app-detail-section-title">
                 {{ t('application.componentDetail.sections.tmpfs') }}
               </h2>
               <button
@@ -599,7 +639,7 @@
                     <th>{{ t('application.componentDetail.fields.target') }}</th>
                     <th>{{ t('application.componentDetail.fields.sizeBytes') }}</th>
                     <th>{{ t('application.componentDetail.fields.mode') }}</th>
-                    <th class="w-24">{{ t('common.operation') }}</th>
+                    <th class="w-32">{{ t('common.operation') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -607,25 +647,21 @@
                     <td class="min-w-60 break-all text-foreground">{{ row.target }}</td>
                     <td class="min-w-52 text-foreground">{{ row.size_bytes }}</td>
                     <td class="min-w-40 text-foreground">{{ row.mode }}</td>
-                    <td class="w-24">
-                      <div v-if="canEdit" class="flex items-center gap-1">
+                    <td class="w-32">
+                      <div v-if="canEdit" class="flex items-center gap-3">
                         <button
-                          class="app-icon-button"
-                          :aria-label="t('common.edit')"
+                          class="app-link"
                           :disabled="operating"
-                          :title="t('common.edit')"
                           @click="openRecordDialog('tmpfs', index)"
                         >
-                          <Pencil class="size-4" />
+                          {{ t('common.edit') }}
                         </button>
                         <button
-                          class="app-icon-button"
-                          :aria-label="t('common.delete')"
+                          class="app-link-danger"
                           :disabled="operating"
-                          :title="t('common.delete')"
                           @click="deleteRecord('tmpfs', index)"
                         >
-                          <Trash2 class="size-4" />
+                          {{ t('common.delete') }}
                         </button>
                       </div>
                     </td>
@@ -658,7 +694,7 @@
                     <th>{{ t('application.componentDetail.fields.name') }}</th>
                     <th>{{ t('application.componentDetail.fields.soft') }}</th>
                     <th>{{ t('application.componentDetail.fields.hard') }}</th>
-                    <th class="w-24">{{ t('common.operation') }}</th>
+                    <th class="w-32">{{ t('common.operation') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -666,25 +702,21 @@
                     <td class="min-w-52 text-foreground">{{ row.name }}</td>
                     <td class="min-w-52 text-foreground">{{ row.soft }}</td>
                     <td class="min-w-52 text-foreground">{{ row.hard }}</td>
-                    <td class="w-24">
-                      <div v-if="canEdit" class="flex items-center gap-1">
+                    <td class="w-32">
+                      <div v-if="canEdit" class="flex items-center gap-3">
                         <button
-                          class="app-icon-button"
-                          :aria-label="t('common.edit')"
+                          class="app-link"
                           :disabled="operating"
-                          :title="t('common.edit')"
                           @click="openRecordDialog('ulimits', index)"
                         >
-                          <Pencil class="size-4" />
+                          {{ t('common.edit') }}
                         </button>
                         <button
-                          class="app-icon-button"
-                          :aria-label="t('common.delete')"
+                          class="app-link-danger"
                           :disabled="operating"
-                          :title="t('common.delete')"
                           @click="deleteRecord('ulimits', index)"
                         >
-                          <Trash2 class="size-4" />
+                          {{ t('common.delete') }}
                         </button>
                       </div>
                     </td>
@@ -743,12 +775,15 @@
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.pullPolicy') }}
+            <span class="text-destructive">*</span>
           </label>
           <RawValueSelect
             v-model="form.pull_policy"
-            :placeholder="t('common.notSet')"
             :values="pullPolicyValues"
           />
+          <p v-if="basicErrors.pullPolicy" class="app-field-error" role="alert">
+            {{ basicErrors.pullPolicy }}
+          </p>
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">
@@ -1176,6 +1211,62 @@
         </div>
       </template>
 
+      <template v-else-if="recordDialogGroup === 'devices'">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label class="app-field-label mb-1.5 block">
+              {{ t('application.componentDetail.fields.driver') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <input
+              v-model="deviceForm.driver"
+              class="app-input"
+              :class="recordErrors.driver ? 'app-input-error' : ''"
+              type="text"
+              :aria-invalid="recordErrors.driver ? 'true' : undefined"
+              @input="recordErrors.driver = ''"
+            />
+            <p v-if="recordErrors.driver" class="app-field-error" role="alert">
+              {{ recordErrors.driver }}
+            </p>
+          </div>
+          <div>
+            <label class="app-field-label mb-1.5 block">
+              {{ t('application.componentDetail.fields.count') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <input
+              v-model="deviceForm.count"
+              class="app-input"
+              :class="recordErrors.count ? 'app-input-error' : ''"
+              type="text"
+              :aria-invalid="recordErrors.count ? 'true' : undefined"
+              @input="recordErrors.count = ''"
+            />
+            <p v-if="recordErrors.count" class="app-field-error" role="alert">
+              {{ recordErrors.count }}
+            </p>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="app-field-label mb-1.5 block">
+              {{ t('application.componentDetail.fields.capabilities') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <input
+              v-model="deviceForm.capabilities"
+              class="app-input"
+              :class="recordErrors.capabilities ? 'app-input-error' : ''"
+              type="text"
+              :aria-invalid="recordErrors.capabilities ? 'true' : undefined"
+              @input="recordErrors.capabilities = ''"
+            />
+            <p v-if="recordErrors.capabilities" class="app-field-error" role="alert">
+              {{ recordErrors.capabilities }}
+            </p>
+          </div>
+        </div>
+      </template>
+
       <p v-if="recordDialogError" class="app-field-error">{{ recordDialogError }}</p>
 
       <template #footer>
@@ -1352,7 +1443,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, FileText, Pencil, Plus, Save, Trash2, X } from 'lucide-vue-next';
+  import { ArrowLeft, Pencil, Plus, Save, Trash2, X } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
@@ -1378,6 +1469,7 @@
     componentBasicRequestFromForm,
     componentCreateRequestFromForm,
     componentDependenciesRequestFromForm,
+    componentDevicesRequestFromForm,
     componentEnvRequestFromForm,
     componentFormFromResponse,
     componentMountsRequestFromForm,
@@ -1389,6 +1481,7 @@
     emptyComponentForm,
     type ComponentForm,
     type ComponentFormError,
+    type DeviceRow,
     type MountRow,
     type TmpfsRow,
     type UlimitRow,
@@ -1397,7 +1490,7 @@
   type ComponentTab = 'runtime' | 'connectivity' | 'mounts' | 'advanced';
   type ComponentSaveGroup = 'basic' | 'runtime';
   type ConnectivityGroup = 'ports' | 'env' | 'dependencies';
-  type RecordGroup = ConnectivityGroup | 'tmpfs' | 'ulimits';
+  type RecordGroup = ConnectivityGroup | 'tmpfs' | 'ulimits' | 'devices';
   type PersistOutcome = 'saved' | 'invalid' | 'failed';
 
   const route = useRoute();
@@ -1415,7 +1508,7 @@
   const form = reactive(emptyComponentForm());
   const activeTab = ref<ComponentTab>('runtime');
   const basicDialogOpen = ref(false);
-  const basicErrors = reactive({ name: '', image: '' });
+  const basicErrors = reactive({ name: '', image: '', pullPolicy: '' });
   const healthcheckDialogOpen = ref(false);
   const healthcheckErrors = reactive({ test_mode: '', test: '', retries: '' });
   const resourcesDialogOpen = ref(false);
@@ -1433,12 +1526,16 @@
     mode: '',
     soft: '',
     hard: '',
+    driver: '',
+    count: '',
+    capabilities: '',
   });
   const portForm = reactive({ host_port: '', container_port: '' });
   const envForm = reactive({ key: '', value: '' });
   const dependencyForm = reactive({ name: '', condition: '' });
   const tmpfsForm = reactive<TmpfsRow>({ target: '', size_bytes: '', mode: '' });
   const ulimitForm = reactive<UlimitRow>({ name: '', soft: '', hard: '' });
+  const deviceForm = reactive({ driver: 'nvidia', count: 'all', capabilities: 'gpu' });
   const mountDialogOpen = ref(false);
   const editingMountIndex = ref<number | null>(null);
   const mountForm = reactive<MountRow>(emptyMount());
@@ -1498,7 +1595,7 @@
   }
 
   function resetBasicErrors() {
-    Object.assign(basicErrors, { name: '', image: '' });
+    Object.assign(basicErrors, { name: '', image: '', pullPolicy: '' });
   }
 
   function validateBasicForm() {
@@ -1511,7 +1608,10 @@
     basicErrors.image = form.image.trim()
       ? ''
       : t('application.componentDetail.validation.imageRequired');
-    return !basicErrors.name && !basicErrors.image;
+    basicErrors.pullPolicy = ['always', 'missing', 'never'].includes(form.pull_policy)
+      ? ''
+      : t('application.componentDetail.validation.pullPolicy');
+    return !basicErrors.name && !basicErrors.image && !basicErrors.pullPolicy;
   }
 
   function resetHealthcheckErrors() {
@@ -1547,6 +1647,9 @@
       mode: '',
       soft: '',
       hard: '',
+      driver: '',
+      count: '',
+      capabilities: '',
     });
   }
 
@@ -1582,10 +1685,24 @@
           ? ''
           : invalidTmpfs;
       recordErrors.mode = /^[0-7]{3,4}$/.test(tmpfsForm.mode) ? '' : invalidTmpfs;
-    } else {
+    } else if (group === 'ulimits') {
       recordErrors.name = ulimitForm.name ? '' : invalidUlimit;
       recordErrors.soft = /^-?\d+$/.test(ulimitForm.soft) ? '' : invalidUlimit;
       recordErrors.hard = /^-?\d+$/.test(ulimitForm.hard) ? '' : invalidUlimit;
+    } else {
+      const invalidDevice = t('application.componentDetail.validation.invalidDevice');
+      const capabilities = deviceForm.capabilities.split(',').map((item) => item.trim());
+      recordErrors.driver =
+        deviceForm.driver !== '' && !/\s/.test(deviceForm.driver) ? '' : invalidDevice;
+      recordErrors.count =
+        deviceForm.count === 'all' || /^[1-9]\d*$/.test(deviceForm.count) ? '' : invalidDevice;
+      recordErrors.capabilities =
+        capabilities.length > 0 &&
+        capabilities.every((item) => item !== '' && !/\s/.test(item)) &&
+        new Set(capabilities).size === capabilities.length &&
+        (deviceForm.driver !== 'nvidia' || capabilities.includes('gpu'))
+          ? ''
+          : invalidDevice;
     }
     return !Object.values(recordErrors).some(Boolean);
   }
@@ -1617,6 +1734,7 @@
       resources: { ...source.resources },
       tmpfs: source.tmpfs.map((row) => ({ ...row })),
       ulimits: source.ulimits.map((row) => ({ ...row })),
+      devices: source.devices.map((row) => ({ ...row, capabilities: [...row.capabilities] })),
     };
   }
 
@@ -1936,6 +2054,33 @@
       : 'failed';
   }
 
+  async function persistDevices(nextDevices: DeviceRow[]): Promise<PersistOutcome> {
+    const result = componentDevicesRequestFromForm(nextDevices);
+    if (!result.valid) {
+      return 'invalid';
+    }
+    if (isNew) {
+      form.devices = nextDevices.map((row) => ({ ...row, capabilities: [...row.capabilities] }));
+      return 'saved';
+    }
+    try {
+      await executeOperation(async () => {
+        const updated = await applicationApi.updateVersionComponentDevices(
+          versionId,
+          componentId,
+          result.value
+        );
+        component.value = updated;
+        assignForm(componentFormFromResponse(updated));
+        toast.success(t('application.toast.updateSuccess'));
+      });
+      return 'saved';
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+      return 'failed';
+    }
+  }
+
   function openRecordDialog(group: RecordGroup, index?: number) {
     editingRecordIndex.value = index ?? null;
     recordDialogError.value = '';
@@ -1957,10 +2102,18 @@
         tmpfsForm,
         index === undefined ? { target: '', size_bytes: '', mode: '' } : form.tmpfs[index]
       );
-    } else {
+    } else if (group === 'ulimits') {
       Object.assign(
         ulimitForm,
         index === undefined ? { name: '', soft: '', hard: '' } : form.ulimits[index]
+      );
+    } else {
+      const device = index === undefined ? undefined : form.devices[index];
+      Object.assign(
+        deviceForm,
+        device === undefined
+          ? { driver: 'nvidia', count: 'all', capabilities: 'gpu' }
+          : { driver: device.driver, count: device.count, capabilities: device.capabilities.join(', ') }
       );
     }
     recordDialogGroup.value = group;
@@ -1996,7 +2149,15 @@
             ? await persistDependencies(nextRecordRows(form.dependencies, { ...dependencyForm }))
             : group === 'tmpfs'
               ? await persistTmpfs(nextRecordRows(form.tmpfs, { ...tmpfsForm }))
-              : await persistUlimits(nextRecordRows(form.ulimits, { ...ulimitForm }));
+              : group === 'ulimits'
+                ? await persistUlimits(nextRecordRows(form.ulimits, { ...ulimitForm }))
+                : await persistDevices(
+                    nextRecordRows(form.devices, {
+                      driver: deviceForm.driver,
+                      count: deviceForm.count,
+                      capabilities: deviceForm.capabilities.split(',').map((item) => item.trim()),
+                    })
+                  );
     if (outcome === 'invalid') {
       recordDialogError.value = messageFor(group);
       return;
@@ -2018,7 +2179,9 @@
               )
             : group === 'tmpfs'
               ? await persistTmpfs(form.tmpfs.filter((_, rowIndex) => rowIndex !== index))
-              : await persistUlimits(form.ulimits.filter((_, rowIndex) => rowIndex !== index));
+              : group === 'ulimits'
+                ? await persistUlimits(form.ulimits.filter((_, rowIndex) => rowIndex !== index))
+                : await persistDevices(form.devices.filter((_, rowIndex) => rowIndex !== index));
     if (outcome === 'invalid') {
       toast.error(messageFor(group));
     }
@@ -2180,7 +2343,7 @@
   }
 
   function tabForError(error: ComponentFormError): ComponentTab {
-    if (error === 'nameImage' || error === 'componentName') {
+    if (error === 'nameImage' || error === 'componentName' || error === 'pullPolicy') {
       return 'runtime';
     }
     if (error === 'command' || error === 'healthcheck') {
@@ -2204,6 +2367,9 @@
     }
     if (error === 'componentName') {
       return t('application.componentDetail.validation.componentName');
+    }
+    if (error === 'pullPolicy') {
+      return t('application.componentDetail.validation.pullPolicy');
     }
     if (error === 'ports') {
       return t('application.componentDetail.validation.invalidPort');

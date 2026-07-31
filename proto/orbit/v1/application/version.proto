@@ -13,16 +13,17 @@ message VersionComponentReq {
   repeated ComponentDependency dependencies = 9;
   ComponentHealthcheck healthcheck = 10;
   ComponentResources resources = 11;
-  optional string pull_policy = 12;
+  string pull_policy = 12;
   optional string restart_policy = 13;
   repeated ComponentTmpfs tmpfs = 14;
   repeated ComponentUlimit ulimits = 15;
+  repeated ComponentDeviceRequest devices = 16;
 }
 
 message VersionComponentCreateReq {
   string name = 1;
   string image = 2;
-  optional string pull_policy = 3;
+  string pull_policy = 3;
   optional string restart_policy = 4;
   string command = 5;
 }
@@ -30,7 +31,7 @@ message VersionComponentCreateReq {
 message VersionComponentBasicUpdateReq {
   string name = 1;
   string image = 2;
-  optional string pull_policy = 3;
+  string pull_policy = 3;
   optional string restart_policy = 4;
   string command = 5;
 }
@@ -58,6 +59,10 @@ message VersionComponentDependenciesUpdateReq {
   repeated ComponentDependency dependencies = 1;
 }
 
+message VersionComponentDevicesUpdateReq {
+  repeated ComponentDeviceRequest devices = 1;
+}
+
 message VersionComponentAdvancedUpdateReq {
   repeated ComponentTmpfs tmpfs = 1;
   repeated ComponentUlimit ulimits = 2;
@@ -77,12 +82,13 @@ message VersionComponentResp {
   repeated ComponentDependency dependencies = 11;
   ComponentHealthcheck healthcheck = 12;
   ComponentResources resources = 13;
-  optional string pull_policy = 14;
+  string pull_policy = 14;
   string created_at = 15;
   string updated_at = 16;
   optional string restart_policy = 17;
   repeated ComponentTmpfs tmpfs = 18;
   repeated ComponentUlimit ulimits = 19;
+  repeated ComponentDeviceRequest devices = 20;
 }
 
 message ComponentEnv {
@@ -140,6 +146,12 @@ message ComponentUlimit {
   string name = 1;
   int64 soft = 2;
   int64 hard = 3;
+}
+
+message ComponentDeviceRequest {
+  string driver = 1;
+  string count = 2;
+  repeated string capabilities = 3;
 }
 
 message VersionCreateReq {

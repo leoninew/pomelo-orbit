@@ -204,6 +204,20 @@ ORDER BY position;
 DELETE FROM version_component_ulimit
 WHERE component_id = ?;
 
+-- name: InsertVersionComponentDevice :exec
+INSERT INTO version_component_device (component_id, driver, device_count, capabilities_json, position)
+VALUES (?, ?, ?, ?, ?);
+
+-- name: VersionComponentDevicesByComponent :many
+SELECT component_id, driver, device_count, capabilities_json, position
+FROM version_component_device
+WHERE component_id = ?
+ORDER BY position;
+
+-- name: DeleteVersionComponentDevices :exec
+DELETE FROM version_component_device
+WHERE component_id = ?;
+
 -- name: RenameVersionComponentDependencies :exec
 UPDATE version_component_dependency
 SET depends_on_name = sqlc.arg(new_name)

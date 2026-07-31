@@ -2,6 +2,7 @@ package applicationsvc
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
@@ -92,7 +93,7 @@ func validateVersionComponents(components []model.VersionComponent) error {
 }
 
 func validateComponentFields(component model.VersionComponent) error {
-	if component.PullPolicy != nil && !validImagePullPolicy(*component.PullPolicy) {
+	if !validImagePullPolicy(component.PullPolicy) {
 		return fmt.Errorf("component %s pull_policy must be always, missing or never", component.Name)
 	}
 	if err := validateComponentRuntimeFields(component); err != nil {
@@ -131,6 +132,42 @@ func validateComponentFields(component model.VersionComponent) error {
 	}
 	if err := validateComponentHealthcheck(component.Name, component.Healthcheck); err != nil {
 		return err
+	}
+	if err := validateComponentDevices(component.Name, component.Devices); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateComponentDevices(component string, devices []model.VersionComponentDeviceRequest) error {
+	for _, device := range devices {
+		if device.Driver == "" || strings.TrimSpace(device.Driver) != device.Driver || strings.ContainsAny(device.Driver, " \t\r\n") {
+			return fmt.Errorf("component %s device driver is invalid", component)
+		}
+		if device.Count != "all" {
+			count, err := strconv.ParseUint(device.Count, 10, 64)
+			if err != nil || count == 0 || strconv.FormatUint(count, 10) != device.Count {
+				return fmt.Errorf("component %s device count must be all or a positive integer", component)
+			}
+		}
+		if len(device.Capabilities) == 0 {
+			return fmt.Errorf("component %s device capabilities are required", component)
+		}
+		capabilities := make(map[string]struct{}, len(device.Capabilities))
+		for _, capability := range device.Capabilities {
+			if capability == "" || strings.TrimSpace(capability) != capability || strings.ContainsAny(capability, " \t\r\n") {
+				return fmt.Errorf("component %s device capability is invalid", component)
+			}
+			if _, exists := capabilities[capability]; exists {
+				return fmt.Errorf("component %s has duplicate device capability %s", component, capability)
+			}
+			capabilities[capability] = struct{}{}
+		}
+		if device.Driver == "nvidia" {
+			if _, exists := capabilities["gpu"]; !exists {
+				return fmt.Errorf("component %s nvidia device requires gpu capability", component)
+			}
+		}
 	}
 	return nil
 }

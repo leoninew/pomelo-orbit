@@ -40,17 +40,18 @@ type VersionComponentInput struct {
 	Dependencies  []model.VersionComponentDependency
 	Healthcheck   *VersionComponentHealthcheckInput
 	Resources     *model.VersionComponentResources
-	PullPolicy    *string
+	PullPolicy    string
 	RestartPolicy *string
 	Tmpfs         []model.VersionComponentTmpfs
 	Ulimits       []model.VersionComponentUlimit
+	Devices       []model.VersionComponentDeviceRequest
 }
 
 type VersionComponentBasicUpdateInput struct {
 	Name          string
 	Image         string
 	Command       string
-	PullPolicy    *string
+	PullPolicy    string
 	RestartPolicy *string
 }
 
@@ -89,6 +90,10 @@ type VersionComponentAdvancedUpdateInput struct {
 	Resources *model.VersionComponentResources
 	Tmpfs     []model.VersionComponentTmpfs
 	Ulimits   []model.VersionComponentUlimit
+}
+
+type VersionComponentDevicesUpdateInput struct {
+	Devices []model.VersionComponentDeviceRequest
 }
 
 // VersionView is a version with optional component details for API responses.

@@ -15,7 +15,7 @@ func versionComponentInput(req *applicationv1.VersionComponentReq) applicationdt
 		Env:     componentEnvInput(req.Env), Ports: componentPortInput(req.Ports), Mounts: componentMountInput(req.Mounts),
 		Dependencies: componentDependencyInput(req.Dependencies),
 		Healthcheck:  componentHealthcheckInput(req.Healthcheck), Resources: componentResourcesInput(req.Resources),
-		PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, Tmpfs: componentTmpfsInput(req.Tmpfs), Ulimits: componentUlimitInput(req.Ulimits),
+		PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, Tmpfs: componentTmpfsInput(req.Tmpfs), Ulimits: componentUlimitInput(req.Ulimits), Devices: componentDeviceInput(req.Devices),
 	}
 }
 
@@ -57,6 +57,10 @@ func versionComponentAdvancedUpdateInput(req *applicationv1.VersionComponentAdva
 	return applicationdto.VersionComponentAdvancedUpdateInput{
 		Resources: componentResourcesInput(req.Resources), Tmpfs: componentTmpfsInput(req.Tmpfs), Ulimits: componentUlimitInput(req.Ulimits),
 	}
+}
+
+func versionComponentDevicesUpdateInput(req *applicationv1.VersionComponentDevicesUpdateReq) applicationdto.VersionComponentDevicesUpdateInput {
+	return applicationdto.VersionComponentDevicesUpdateInput{Devices: componentDeviceInput(req.Devices)}
 }
 
 func componentEnvInput(items []*applicationv1.ComponentEnv) []model.VersionComponentEnv {
@@ -143,6 +147,18 @@ func componentUlimitInput(items []*applicationv1.ComponentUlimit) []model.Versio
 	return result
 }
 
+func componentDeviceInput(items []*applicationv1.ComponentDeviceRequest) []model.VersionComponentDeviceRequest {
+	result := make([]model.VersionComponentDeviceRequest, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, model.VersionComponentDeviceRequest{
+				Driver: item.Driver, Count: item.Count, Capabilities: append([]string(nil), item.Capabilities...),
+			})
+		}
+	}
+	return result
+}
+
 func versionCreateInput(req *applicationv1.VersionCreateReq) applicationdto.VersionCreateInput {
 	components := make([]applicationdto.VersionComponentInput, 0, len(req.Components))
 	for _, item := range req.Components {
@@ -196,6 +212,7 @@ func versionComponentResponse(component model.VersionComponent) applicationv1.Ve
 		Dependencies: componentDependencyResponse(component.Dependencies),
 		Healthcheck:  componentHealthcheckResponse(component.Healthcheck), Resources: componentResourcesResponse(component.Resources),
 		PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: componentTmpfsResponse(component.Tmpfs), Ulimits: componentUlimitResponse(component.Ulimits),
+		Devices:   componentDeviceResponse(component.Devices),
 		CreatedAt: transportresponse.FormatTime(component.CreatedAt), UpdatedAt: transportresponse.FormatTime(component.UpdatedAt),
 	}
 }
@@ -268,6 +285,16 @@ func componentUlimitResponse(items []model.VersionComponentUlimit) []*applicatio
 	result := make([]*applicationv1.ComponentUlimit, 0, len(items))
 	for _, item := range items {
 		result = append(result, &applicationv1.ComponentUlimit{Name: item.Name, Soft: item.Soft, Hard: item.Hard})
+	}
+	return result
+}
+
+func componentDeviceResponse(items []model.VersionComponentDeviceRequest) []*applicationv1.ComponentDeviceRequest {
+	result := make([]*applicationv1.ComponentDeviceRequest, 0, len(items))
+	for _, item := range items {
+		result = append(result, &applicationv1.ComponentDeviceRequest{
+			Driver: item.Driver, Count: item.Count, Capabilities: append([]string(nil), item.Capabilities...),
+		})
 	}
 	return result
 }

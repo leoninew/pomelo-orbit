@@ -18,16 +18,17 @@ export interface VersionComponentReq {
   dependencies: ComponentDependency[];
   healthcheck: ComponentHealthcheck | undefined;
   resources: ComponentResources | undefined;
-  pull_policy?: string | undefined;
+  pull_policy: string;
   restart_policy?: string | undefined;
   tmpfs: ComponentTmpfs[];
   ulimits: ComponentUlimit[];
+  devices: ComponentDeviceRequest[];
 }
 
 export interface VersionComponentCreateReq {
   name: string;
   image: string;
-  pull_policy?: string | undefined;
+  pull_policy: string;
   restart_policy?: string | undefined;
   command: string;
 }
@@ -35,7 +36,7 @@ export interface VersionComponentCreateReq {
 export interface VersionComponentBasicUpdateReq {
   name: string;
   image: string;
-  pull_policy?: string | undefined;
+  pull_policy: string;
   restart_policy?: string | undefined;
   command: string;
 }
@@ -60,6 +61,10 @@ export interface VersionComponentDependenciesUpdateReq {
   dependencies: ComponentDependency[];
 }
 
+export interface VersionComponentDevicesUpdateReq {
+  devices: ComponentDeviceRequest[];
+}
+
 export interface VersionComponentAdvancedUpdateReq {
   tmpfs: ComponentTmpfs[];
   ulimits: ComponentUlimit[];
@@ -78,12 +83,13 @@ export interface VersionComponentResp {
   dependencies: ComponentDependency[];
   healthcheck: ComponentHealthcheck | undefined;
   resources: ComponentResources | undefined;
-  pull_policy?: string | undefined;
+  pull_policy: string;
   created_at: string;
   updated_at: string;
   restart_policy?: string | undefined;
   tmpfs: ComponentTmpfs[];
   ulimits: ComponentUlimit[];
+  devices: ComponentDeviceRequest[];
 }
 
 export interface ComponentEnv {
@@ -140,6 +146,12 @@ export interface ComponentUlimit {
   name: string;
   soft: number;
   hard: number;
+}
+
+export interface ComponentDeviceRequest {
+  driver: string;
+  count: string;
+  capabilities: string[];
 }
 
 export interface VersionCreateReq {

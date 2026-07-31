@@ -222,6 +222,9 @@ async def test_client_maps_component_update_sections(tmp_path) -> None:
         assert await client.update_version_component_dependencies(
             "version-1", "component-1", {"dependencies": [{"name": "database", "condition": "service_healthy"}]}
         ) == {"id": "component-1"}
+        assert await client.update_version_component_devices(
+            "version-1", "component-1", {"devices": [{"driver": "nvidia", "count": "all", "capabilities": ["gpu"]}]}
+        ) == {"id": "component-1"}
         assert await client.update_version_component_advanced(
             "version-1", "component-1", {"resources": {"limit_memory": "512m"}, "tmpfs": [], "ulimits": []}
         ) == {"id": "component-1"}
@@ -235,6 +238,7 @@ async def test_client_maps_component_update_sections(tmp_path) -> None:
         ("PUT", "/api/version/version-1/component/component-1/env"),
         ("PUT", "/api/version/version-1/component/component-1/mounts"),
         ("PUT", "/api/version/version-1/component/component-1/dependencies"),
+        ("PUT", "/api/version/version-1/component/component-1/devices"),
         ("PUT", "/api/version/version-1/component/component-1/advanced"),
     ]
     assert [json.loads(request.content) if request.content else None for request in requests] == [
@@ -246,5 +250,6 @@ async def test_client_maps_component_update_sections(tmp_path) -> None:
         {"env": [{"key": "MODE", "value": "production"}]},
         {"mounts": [{"source_type": "directory", "source": "data", "target": "/data"}]},
         {"dependencies": [{"name": "database", "condition": "service_healthy"}]},
+        {"devices": [{"driver": "nvidia", "count": "all", "capabilities": ["gpu"]}]},
         {"resources": {"limit_memory": "512m"}, "tmpfs": [], "ulimits": []},
     ]

@@ -124,6 +124,16 @@ func (q *Queries) DeleteVersionComponentDependencies(ctx context.Context, compon
 	return err
 }
 
+const deleteVersionComponentDevices = `-- name: DeleteVersionComponentDevices :exec
+DELETE FROM version_component_device
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentDevices(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentDevices, componentID)
+	return err
+}
+
 const deleteVersionComponentEnv = `-- name: DeleteVersionComponentEnv :exec
 DELETE FROM version_component_env
 WHERE component_id = ?
@@ -216,7 +226,7 @@ type InsertVersionComponentParams struct {
 	Name          string         `db:"name"`
 	Image         string         `db:"image"`
 	CommandJson   string         `db:"command_json"`
-	PullPolicy    sql.NullString `db:"pull_policy"`
+	PullPolicy    string         `db:"pull_policy"`
 	RestartPolicy sql.NullString `db:"restart_policy"`
 	CreatedAt     time.Time      `db:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at"`
@@ -254,6 +264,30 @@ func (q *Queries) InsertVersionComponentDependency(ctx context.Context, arg Inse
 		arg.ComponentID,
 		arg.DependsOnName,
 		arg.Condition,
+		arg.Position,
+	)
+	return err
+}
+
+const insertVersionComponentDevice = `-- name: InsertVersionComponentDevice :exec
+INSERT INTO version_component_device (component_id, driver, device_count, capabilities_json, position)
+VALUES (?, ?, ?, ?, ?)
+`
+
+type InsertVersionComponentDeviceParams struct {
+	ComponentID      string `db:"component_id"`
+	Driver           string `db:"driver"`
+	DeviceCount      string `db:"device_count"`
+	CapabilitiesJson string `db:"capabilities_json"`
+	Position         int64  `db:"position"`
+}
+
+func (q *Queries) InsertVersionComponentDevice(ctx context.Context, arg InsertVersionComponentDeviceParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentDevice,
+		arg.ComponentID,
+		arg.Driver,
+		arg.DeviceCount,
+		arg.CapabilitiesJson,
 		arg.Position,
 	)
 	return err
@@ -614,7 +648,7 @@ WHERE id = ?
 type UpdateVersionComponentBasicParams struct {
 	Name          string         `db:"name"`
 	Image         string         `db:"image"`
-	PullPolicy    sql.NullString `db:"pull_policy"`
+	PullPolicy    string         `db:"pull_policy"`
 	RestartPolicy sql.NullString `db:"restart_policy"`
 	UpdatedAt     time.Time      `db:"updated_at"`
 	ID            string         `db:"id"`
@@ -732,6 +766,42 @@ func (q *Queries) VersionComponentDependenciesByComponent(ctx context.Context, c
 			&i.ComponentID,
 			&i.DependsOnName,
 			&i.Condition,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const versionComponentDevicesByComponent = `-- name: VersionComponentDevicesByComponent :many
+SELECT component_id, driver, device_count, capabilities_json, position
+FROM version_component_device
+WHERE component_id = ?
+ORDER BY position
+`
+
+func (q *Queries) VersionComponentDevicesByComponent(ctx context.Context, componentID string) ([]VersionComponentDevice, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentDevicesByComponent, componentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VersionComponentDevice
+	for rows.Next() {
+		var i VersionComponentDevice
+		if err := rows.Scan(
+			&i.ComponentID,
+			&i.Driver,
+			&i.DeviceCount,
+			&i.CapabilitiesJson,
 			&i.Position,
 		); err != nil {
 			return nil, err

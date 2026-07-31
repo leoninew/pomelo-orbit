@@ -1,5 +1,6 @@
 import type {
   ComponentEnv,
+  ComponentDeviceRequest,
   ComponentHealthcheck,
   ComponentMount,
   ComponentPort,
@@ -10,6 +11,7 @@ import type {
   VersionComponentBasicUpdateReq,
   VersionComponentCreateReq,
   VersionComponentDependenciesUpdateReq,
+  VersionComponentDevicesUpdateReq,
   VersionComponentEnvUpdateReq,
   VersionComponentMountsUpdateReq,
   VersionComponentPortsUpdateReq,
@@ -51,6 +53,12 @@ export interface UlimitRow {
   hard: string;
 }
 
+export interface DeviceRow {
+  driver: string;
+  count: string;
+  capabilities: string[];
+}
+
 export interface ComponentForm {
   name: string;
   image: string;
@@ -78,6 +86,7 @@ export interface ComponentForm {
   };
   tmpfs: TmpfsRow[];
   ulimits: UlimitRow[];
+  devices: DeviceRow[];
 }
 
 export type ComponentFormValidation<T = VersionComponentReq> =
@@ -86,6 +95,7 @@ export type ComponentFormValidation<T = VersionComponentReq> =
 export type ComponentFormError =
   | 'nameImage'
   | 'componentName'
+  | 'pullPolicy'
   | 'command'
   | 'env'
   | 'ports'
@@ -93,7 +103,8 @@ export type ComponentFormError =
   | 'dependencies'
   | 'healthcheck'
   | 'tmpfs'
-  | 'ulimits';
+  | 'ulimits'
+  | 'devices';
 
 function inputText(value: string | undefined): string {
   return value === undefined ? '' : value;
@@ -127,6 +138,7 @@ export function emptyComponentForm(): ComponentForm {
     },
     tmpfs: [],
     ulimits: [],
+    devices: [],
   };
 }
 
@@ -165,7 +177,7 @@ export function componentFormFromResponse(component: VersionComponentResp): Comp
     healthcheck_retries: healthcheck?.retries === undefined ? '' : String(healthcheck.retries),
     healthcheck_start_period: inputText(healthcheck?.start_period),
     healthcheck_start_interval: inputText(healthcheck?.start_interval),
-    pull_policy: inputText(component.pull_policy),
+    pull_policy: component.pull_policy,
     restart_policy: inputText(component.restart_policy),
     resources: {
       limit_cpus: inputText(resources?.limit_cpus),
@@ -182,6 +194,11 @@ export function componentFormFromResponse(component: VersionComponentResp): Comp
       name: item.name,
       soft: String(item.soft),
       hard: String(item.hard),
+    })),
+    devices: component.devices.map((item) => ({
+      driver: item.driver,
+      count: item.count,
+      capabilities: [...item.capabilities],
     })),
   };
 }
@@ -316,6 +333,29 @@ function buildUlimits(rows: UlimitRow[]): ComponentUlimit[] | null {
   return ulimits;
 }
 
+function buildDevices(rows: DeviceRow[]): ComponentDeviceRequest[] | null {
+  const devices: ComponentDeviceRequest[] = [];
+  for (const row of rows) {
+    if (
+      row.driver === '' ||
+      /\s/.test(row.driver) ||
+      (row.count !== 'all' && !/^[1-9]\d*$/.test(row.count)) ||
+      row.capabilities.length === 0 ||
+      row.capabilities.some((capability) => capability === '' || /\s/.test(capability)) ||
+      new Set(row.capabilities).size !== row.capabilities.length ||
+      (row.driver === 'nvidia' && !row.capabilities.includes('gpu'))
+    ) {
+      return null;
+    }
+    devices.push({
+      driver: row.driver,
+      count: row.count,
+      capabilities: [...row.capabilities],
+    });
+  }
+  return devices;
+}
+
 export function componentResourcesRequestFromForm(
   resources: ComponentForm['resources']
 ): ComponentResources | undefined {
@@ -340,6 +380,16 @@ export function componentUlimitsRequestFromForm(
     return { valid: false, error: 'ulimits' };
   }
   return { valid: true, value: ulimits };
+}
+
+export function componentDevicesRequestFromForm(
+  deviceRows: DeviceRow[]
+): ComponentFormValidation<VersionComponentDevicesUpdateReq> {
+  const devices = buildDevices(deviceRows);
+  if (devices === null) {
+    return { valid: false, error: 'devices' };
+  }
+  return { valid: true, value: { devices } };
 }
 
 export function componentRequestFromForm(form: ComponentForm): ComponentFormValidation {
@@ -371,6 +421,10 @@ export function componentRequestFromForm(form: ComponentForm): ComponentFormVali
   if (!advanced.valid) {
     return advanced;
   }
+  const devices = componentDevicesRequestFromForm(form.devices);
+  if (!devices.valid) {
+    return devices;
+  }
   return {
     valid: true,
     value: {
@@ -381,6 +435,7 @@ export function componentRequestFromForm(form: ComponentForm): ComponentFormVali
       ...mounts.value,
       ...dependencies.value,
       ...advanced.value,
+      ...devices.value,
     },
   };
 }
@@ -394,13 +449,16 @@ export function componentBasicRequestFromForm(
   if (!/^[a-z][a-z0-9-]*$/.test(form.name)) {
     return { valid: false, error: 'componentName' };
   }
+  if (!['always', 'missing', 'never'].includes(form.pull_policy)) {
+    return { valid: false, error: 'pullPolicy' };
+  }
   return {
     valid: true,
     value: {
       name: form.name,
       image: form.image,
       command: form.command,
-      pull_policy: optionalText(form.pull_policy),
+      pull_policy: form.pull_policy,
       restart_policy: optionalText(form.restart_policy),
     },
   };
@@ -415,13 +473,16 @@ export function componentCreateRequestFromForm(
   if (!/^[a-z][a-z0-9-]*$/.test(form.name)) {
     return { valid: false, error: 'componentName' };
   }
+  if (!['always', 'missing', 'never'].includes(form.pull_policy)) {
+    return { valid: false, error: 'pullPolicy' };
+  }
   return {
     valid: true,
     value: {
       name: form.name,
       image: form.image,
       command: form.command,
-      pull_policy: optionalText(form.pull_policy),
+      pull_policy: form.pull_policy,
       restart_policy: optionalText(form.restart_policy),
     },
   };

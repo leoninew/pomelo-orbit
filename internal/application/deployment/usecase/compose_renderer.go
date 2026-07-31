@@ -619,12 +619,10 @@ func renderVersionComponentService(
 		}
 		service["healthcheck"] = healthcheck
 	}
-	if component.Resources != nil {
-		service["deploy"] = map[string]any{"resources": renderComponentResources(component.Resources)}
+	if component.Resources != nil || len(component.Devices) > 0 {
+		service["deploy"] = map[string]any{"resources": renderComponentResources(component.Resources, component.Devices)}
 	}
-	if component.PullPolicy != nil && *component.PullPolicy != "" {
-		service["pull_policy"] = *component.PullPolicy
-	}
+	service["pull_policy"] = component.PullPolicy
 	return service, resolved, nil
 }
 
@@ -664,13 +662,35 @@ func renderComponentHealthcheck(healthcheck *model.VersionComponentHealthcheck) 
 	return result, nil
 }
 
-func renderComponentResources(resources *model.VersionComponentResources) map[string]any {
+func renderComponentResources(resources *model.VersionComponentResources, devices []model.VersionComponentDeviceRequest) map[string]any {
 	result := map[string]any{}
-	if limits := resourceValues(resources.LimitCPUs, resources.LimitMemory); len(limits) > 0 {
-		result["limits"] = limits
+	if resources != nil {
+		if limits := resourceValues(resources.LimitCPUs, resources.LimitMemory); len(limits) > 0 {
+			result["limits"] = limits
+		}
+		if reservations := resourceValues(resources.ReservationCPUs, resources.ReservationMemory); len(reservations) > 0 {
+			result["reservations"] = reservations
+		}
 	}
-	if reservations := resourceValues(resources.ReservationCPUs, resources.ReservationMemory); len(reservations) > 0 {
-		result["reservations"] = reservations
+	if len(devices) > 0 {
+		reservations, ok := result["reservations"].(map[string]string)
+		if !ok {
+			reservations = map[string]string{}
+		}
+		deviceSpecs := make([]map[string]any, 0, len(devices))
+		for _, device := range devices {
+			deviceSpecs = append(deviceSpecs, map[string]any{
+				"driver": device.Driver, "count": device.Count, "capabilities": append([]string(nil), device.Capabilities...),
+			})
+		}
+		result["reservations"] = map[string]any{"cpus": reservations["cpus"], "memory": reservations["memory"], "devices": deviceSpecs}
+		reservationValues := result["reservations"].(map[string]any)
+		if reservations["cpus"] == "" {
+			delete(reservationValues, "cpus")
+		}
+		if reservations["memory"] == "" {
+			delete(reservationValues, "memory")
+		}
 	}
 	return result
 }

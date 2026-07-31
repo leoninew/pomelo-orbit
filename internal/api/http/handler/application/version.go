@@ -156,6 +156,25 @@ func (h Handler) UpdateVersionComponentDependencies(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
+func (h Handler) UpdateVersionComponentDevices(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var req applicationv1.VersionComponentDevicesUpdateReq
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	component, err := h.service.UpdateVersionComponentDevices(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentDevicesUpdateInput(&req))
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	resp := versionComponentResponse(component)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+}
+
 func (h Handler) UpdateVersionComponentAdvanced(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {

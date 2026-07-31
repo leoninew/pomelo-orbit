@@ -15,6 +15,7 @@ from ..version_specs import (
     VersionComponentBasicUpdate,
     VersionComponentCreate,
     VersionComponentDependenciesUpdate,
+    VersionComponentDevicesUpdate,
     VersionComponentEnvUpdate,
     VersionComponentMountsUpdate,
     VersionComponentPortsUpdate,
@@ -385,6 +386,22 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
             {"version_id": version_id, "component_id": component_id},
             "PUT",
             f"/api/version/{version_id}/component/{component_id}/dependencies",
+            request_body=body,
+            data={"component": updated},
+        )
+
+    @mcp.tool(name="orbit_update_version_component_devices")
+    async def orbit_update_version_component_devices(
+        version_id: str, component_id: str, devices: VersionComponentDevicesUpdate
+    ) -> dict[str, Any]:
+        """Replace a Component's device requests without changing resources, tmpfs, or ulimits."""
+        body = devices.model_dump(exclude_none=True)
+        updated = await client.update_version_component_devices(version_id, component_id, body)
+        return write_result(
+            "update_version_component_devices",
+            {"version_id": version_id, "component_id": component_id},
+            "PUT",
+            f"/api/version/{version_id}/component/{component_id}/devices",
             request_body=body,
             data={"component": updated},
         )

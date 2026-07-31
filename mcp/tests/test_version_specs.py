@@ -1,6 +1,10 @@
+import pytest
+from pydantic import ValidationError
+
 from pomelo_orbit_mcp.version_specs import (
     ComponentDependency,
     ComponentPort,
+    DeviceRequestSpec,
     EnvironmentVariable,
     Healthcheck,
     LogicalMount,
@@ -13,6 +17,7 @@ from pomelo_orbit_mcp.version_specs import (
     VersionComponentBasicUpdate,
     VersionComponentCreate,
     VersionComponentDependenciesUpdate,
+    VersionComponentDevicesUpdate,
     VersionComponentEnvUpdate,
     VersionComponentMountsUpdate,
     VersionComponentPortsUpdate,
@@ -33,6 +38,8 @@ def test_version_component_payload_serializes_protocol_json_fields() -> None:
         env=[EnvironmentVariable(key="MYSQL_ROOT_PASSWORD", value="${MYSQL_PASSWORD}")],
         mounts=[LogicalMount(source_type="directory", source="mysql", target="/var/lib/mysql")],
         dependencies=[ComponentDependency(name="database", condition="service_healthy")],
+        devices=[DeviceRequestSpec(driver="nvidia", count="all", capabilities=["gpu"])],
+        pull_policy="missing",
         restart_policy="unless-stopped",
     )
 
@@ -52,6 +59,8 @@ def test_version_component_payload_serializes_protocol_json_fields() -> None:
             }
         ],
         "dependencies": [{"name": "database", "condition": "service_healthy"}],
+        "devices": [{"driver": "nvidia", "count": "all", "capabilities": ["gpu"]}],
+        "pull_policy": "missing",
         "restart_policy": "unless-stopped",
     }
 
@@ -95,6 +104,7 @@ def test_healthcheck_payload_uses_one_command_text() -> None:
     component = VersionComponent(
         name="redis",
         image="redis:7.4",
+        pull_policy="missing",
         healthcheck=Healthcheck(
             test_mode="CMD-SHELL",
             test="redis-cli ping || exit 1",
@@ -138,6 +148,7 @@ def test_component_group_payloads_match_the_split_json_contracts() -> None:
     dependencies = VersionComponentDependenciesUpdate(
         dependencies=[ComponentDependency(name="database", condition="service_healthy")]
     )
+    devices = VersionComponentDevicesUpdate(devices=[DeviceRequestSpec(driver="nvidia", count="1", capabilities=["gpu"])])
     resources = VersionComponentResourcesUpdate(resources=ResourceSpec(limit_memory="1g"))
     tmpfs = VersionComponentTmpfsUpdate(tmpfs=[TmpfsSpec(target="/run", size_bytes=16_777_216, mode="0755")])
     ulimits = VersionComponentUlimitsUpdate(ulimits=[UlimitSpec(name="memlock", soft=1_024, hard=2_048)])
@@ -171,6 +182,49 @@ def test_component_group_payloads_match_the_split_json_contracts() -> None:
         ]
     }
     assert dependencies.model_dump() == {"dependencies": [{"name": "database", "condition": "service_healthy"}]}
+    assert devices.model_dump() == {"devices": [{"driver": "nvidia", "count": "1", "capabilities": ["gpu"]}]}
     assert resources.model_dump(exclude_none=True) == {"resources": {"limit_memory": "1g"}}
     assert tmpfs.model_dump() == {"tmpfs": [{"target": "/run", "size_bytes": 16_777_216, "mode": "0755"}]}
     assert ulimits.model_dump() == {"ulimits": [{"name": "memlock", "soft": 1_024, "hard": 2_048}]}
+
+
+@pytest.mark.parametrize(
+    "component_type, value",
+    (
+        (VersionComponent, {"name": "web", "image": "nginx:1.27"}),
+        (VersionComponentCreate, {"name": "web", "image": "nginx:1.27"}),
+        (VersionComponentBasicUpdate, {"name": "web", "image": "nginx:1.27", "command": ""}),
+    ),
+)
+def test_pull_policy_is_required(component_type: type[object], value: dict[str, str]) -> None:
+    with pytest.raises(ValidationError):
+        component_type.model_validate(value)  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    "component_type, value",
+    (
+        (VersionComponent, {"name": "web", "image": "nginx:1.27", "pull_policy": "on-demand"}),
+        (VersionComponentCreate, {"name": "web", "image": "nginx:1.27", "pull_policy": "on-demand"}),
+        (VersionComponentBasicUpdate, {"name": "web", "image": "nginx:1.27", "command": "", "pull_policy": "on-demand"}),
+    ),
+)
+def test_pull_policy_rejects_unsupported_values(component_type: type[object], value: dict[str, str]) -> None:
+    with pytest.raises(ValidationError):
+        component_type.model_validate(value)  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    "value",
+    (
+        {"driver": "nvidia", "count": "all", "capabilities": []},
+        {"driver": "nvidia", "count": "all", "capabilities": ["compute"]},
+        {"driver": "nvidia", "count": "01", "capabilities": ["gpu"]},
+        {"driver": "nvidia gpu", "count": "1", "capabilities": ["gpu"]},
+        {"driver": "nvidia", "count": "1", "capabilities": ["gpu", "gpu"]},
+        {"driver": "nvidia", "count": 1, "capabilities": ["gpu"]},
+    ),
+)
+def test_device_request_rejects_invalid_or_coerced_values(value: object) -> None:
+    with pytest.raises(ValidationError):
+        DeviceRequestSpec.model_validate(value)

@@ -330,7 +330,7 @@ type VersionComponent struct {
 	Name          string         `db:"name"`
 	Image         string         `db:"image"`
 	CommandJson   string         `db:"command_json"`
-	PullPolicy    sql.NullString `db:"pull_policy"`
+	PullPolicy    string         `db:"pull_policy"`
 	RestartPolicy sql.NullString `db:"restart_policy"`
 	CreatedAt     time.Time      `db:"created_at"`
 	UpdatedAt     time.Time      `db:"updated_at"`
@@ -341,6 +341,14 @@ type VersionComponentDependency struct {
 	DependsOnName string `db:"depends_on_name"`
 	Condition     string `db:"condition"`
 	Position      int64  `db:"position"`
+}
+
+type VersionComponentDevice struct {
+	ComponentID      string `db:"component_id"`
+	Driver           string `db:"driver"`
+	DeviceCount      string `db:"device_count"`
+	CapabilitiesJson string `db:"capabilities_json"`
+	Position         int64  `db:"position"`
 }
 
 type VersionComponentEnv struct {

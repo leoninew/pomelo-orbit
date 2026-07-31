@@ -1,6 +1,26 @@
-# Alternate split deployment mode: deploy only when five independent RAGFlow Applications are requested.
+# Alternate split deployment mode: deploy only when five independent Applications are requested.
+# TEI is part of the RAGFlow Application rather than a sixth independent Application.
 # Do not combine with scripts/ragflow-bundled/docker-compose.yml.
+# CPU reference for the split deployment. Combine with
+# docker-compose.ragflow.gpu.yml to reproduce the GPU TEI variant.
 services:
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3@sha256:ad950d30878eceb72aaf32024d26fa2b1d04a75304fa0b4776b49aa1941fea07
+    command: [--model-id, /data/bge-m3, --json-output]
+    volumes:
+      - ./data/tei/cache:/data
+    networks:
+      traefik:
+        aliases:
+          - ragflow-tei
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 5m
+    restart: unless-stopped
+
   ragflow-cpu:
     image: infiniflow/ragflow:v0.26.4
     command: [--enable-adminserver, --init-model-provider-tables]
@@ -23,6 +43,9 @@ services:
       ES_HOST: ragflow-elasticsearch-es01
       ES_USER: elastic
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?ELASTIC_PASSWORD must be set}
+    depends_on:
+      tei:
+        condition: service_healthy
     ports:
       - 127.0.0.1:${RAGFLOW_HTTP_PORT:-9380}:80
     volumes:

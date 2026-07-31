@@ -247,6 +247,14 @@ func (s Service) UpdateVersionComponentAdvanced(ctx context.Context, userId stri
 	})
 }
 
+func (s Service) UpdateVersionComponentDevices(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentDevicesUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+		component.Devices = cloneComponentDeviceRequests(input.Devices)
+	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentDevices(ctx, component)
+	})
+}
+
 func (s Service) updateVersionComponentGroup(ctx context.Context, userId string, versionId string, componentId string, update func(*model.VersionComponent), persist func(context.Context, model.VersionComponent, string) error) (model.VersionComponent, error) {
 	version, err := s.loadVersionForUser(ctx, userId, versionId)
 	if err != nil {
@@ -484,11 +492,7 @@ func versionComponentsFromInputs(inputs []applicationdto.VersionComponentInput) 
 		if !applicationCreateCodePattern.MatchString(name) {
 			return nil, apperror.New(apperror.KindValidation, "Component name must match ^[a-z][a-z0-9-]*$")
 		}
-		pullPolicy := "missing"
-		if input.PullPolicy != nil {
-			pullPolicy = *input.PullPolicy
-		}
-		if !validImagePullPolicy(pullPolicy) {
+		if !validImagePullPolicy(input.PullPolicy) {
 			return nil, apperror.New(apperror.KindValidation, "Component pull_policy must be always, missing or never")
 		}
 		command, err := parseComponentCommand(input.Command)
@@ -505,8 +509,9 @@ func versionComponentsFromInputs(inputs []applicationdto.VersionComponentInput) 
 			Env:     append([]model.VersionComponentEnv(nil), input.Env...), Ports: append([]model.VersionComponentPort(nil), input.Ports...),
 			Mounts:       append([]model.VersionComponentMount(nil), input.Mounts...),
 			Dependencies: append([]model.VersionComponentDependency(nil), input.Dependencies...), Healthcheck: healthcheck,
-			Resources: cloneComponentResources(input.Resources), PullPolicy: &pullPolicy, RestartPolicy: input.RestartPolicy,
+			Resources: cloneComponentResources(input.Resources), PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy,
 			Tmpfs: append([]model.VersionComponentTmpfs(nil), input.Tmpfs...), Ulimits: append([]model.VersionComponentUlimit(nil), input.Ulimits...),
+			Devices: cloneComponentDeviceRequests(input.Devices),
 		})
 	}
 	return components, nil
@@ -542,4 +547,14 @@ func cloneComponentResources(input *model.VersionComponentResources) *model.Vers
 	}
 	copy := *input
 	return &copy
+}
+
+func cloneComponentDeviceRequests(input []model.VersionComponentDeviceRequest) []model.VersionComponentDeviceRequest {
+	devices := make([]model.VersionComponentDeviceRequest, 0, len(input))
+	for _, device := range input {
+		devices = append(devices, model.VersionComponentDeviceRequest{
+			Driver: device.Driver, Count: device.Count, Capabilities: append([]string(nil), device.Capabilities...),
+		})
+	}
+	return devices
 }

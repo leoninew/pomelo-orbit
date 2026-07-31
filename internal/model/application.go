@@ -59,10 +59,11 @@ type VersionComponent struct {
 	Dependencies  []VersionComponentDependency
 	Healthcheck   *VersionComponentHealthcheck
 	Resources     *VersionComponentResources
-	PullPolicy    *string `db:"pull_policy"`
+	PullPolicy    string  `db:"pull_policy"`
 	RestartPolicy *string `db:"restart_policy"`
 	Tmpfs         []VersionComponentTmpfs
 	Ulimits       []VersionComponentUlimit
+	Devices       []VersionComponentDeviceRequest
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
 }
@@ -121,4 +122,11 @@ type VersionComponentUlimit struct {
 	Name string
 	Soft int64
 	Hard int64
+}
+
+// VersionComponentDeviceRequest maps to Compose deploy.resources.reservations.devices.
+type VersionComponentDeviceRequest struct {
+	Driver       string
+	Count        string
+	Capabilities []string
 }

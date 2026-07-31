@@ -136,6 +136,10 @@ func (s stores) UpdateVersionComponentAdvanced(ctx context.Context, component mo
 	return s.application.UpdateVersionComponentAdvanced(ctx, component)
 }
 
+func (s stores) UpdateVersionComponentDevices(ctx context.Context, component model.VersionComponent) error {
+	return s.application.UpdateVersionComponentDevices(ctx, component)
+}
+
 func (s stores) DeleteVersionComponent(ctx context.Context, component model.VersionComponent) error {
 	return s.application.DeleteVersionComponent(ctx, component)
 }

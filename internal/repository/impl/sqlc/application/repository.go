@@ -356,7 +356,7 @@ func (r Repository) UpdateVersionComponentBasic(ctx context.Context, component m
 		if err := q.UpdateVersionComponentBasic(txCtx, applicationsqlc.UpdateVersionComponentBasicParams{
 			Name:          component.Name,
 			Image:         component.Image,
-			PullPolicy:    dbmodel.NullString(component.PullPolicy),
+			PullPolicy:    component.PullPolicy,
 			RestartPolicy: dbmodel.NullString(component.RestartPolicy),
 			UpdatedAt:     now,
 			ID:            component.Id,
@@ -401,6 +401,10 @@ func (r Repository) UpdateVersionComponentDependencies(ctx context.Context, comp
 
 func (r Repository) UpdateVersionComponentAdvanced(ctx context.Context, component model.VersionComponent) error {
 	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentAdvancedConfig, insertVersionComponentAdvancedConfig)
+}
+
+func (r Repository) UpdateVersionComponentDevices(ctx context.Context, component model.VersionComponent) error {
+	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentDevicesConfig, insertVersionComponentDevicesConfig)
 }
 
 func (r Repository) updateVersionComponentConfig(ctx context.Context, component model.VersionComponent, deleteConfig func(context.Context, *applicationsqlc.Queries, string) error, insertConfig func(context.Context, *applicationsqlc.Queries, model.VersionComponent) error) error {
@@ -476,7 +480,7 @@ func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Que
 	component := model.VersionComponent{
 		Id: row.ID, VersionId: row.VersionID, Name: row.Name, Image: row.Image,
 		Command:    command,
-		PullPolicy: dbmodel.StringPtr(row.PullPolicy), RestartPolicy: dbmodel.StringPtr(row.RestartPolicy),
+		PullPolicy: row.PullPolicy, RestartPolicy: dbmodel.StringPtr(row.RestartPolicy),
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 	env, err := q.VersionComponentEnvByComponent(ctx, component.Id)
@@ -546,6 +550,22 @@ func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Que
 	for _, item := range ulimits {
 		component.Ulimits = append(component.Ulimits, model.VersionComponentUlimit{Name: item.Name, Soft: item.Soft, Hard: item.Hard})
 	}
+	devices, err := q.VersionComponentDevicesByComponent(ctx, component.Id)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("load version component devices %s: %w", component.Id, err)
+	}
+	for _, item := range devices {
+		var capabilities []string
+		if err := json.Unmarshal([]byte(item.CapabilitiesJson), &capabilities); err != nil || capabilities == nil {
+			if err == nil {
+				err = fmt.Errorf("must be a JSON array")
+			}
+			return model.VersionComponent{}, fmt.Errorf("decode version component device %s: %w", component.Id, err)
+		}
+		component.Devices = append(component.Devices, model.VersionComponentDeviceRequest{
+			Driver: item.Driver, Count: item.DeviceCount, Capabilities: capabilities,
+		})
+	}
 	return component, nil
 }
 
@@ -564,7 +584,7 @@ func insertVersionComponent(ctx context.Context, q *applicationsqlc.Queries, com
 	if err := q.InsertVersionComponent(ctx, applicationsqlc.InsertVersionComponentParams{
 		ID: component.Id, VersionID: component.VersionId, Name: component.Name, Image: component.Image,
 		CommandJson: commandJSON,
-		PullPolicy:  dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy),
+		PullPolicy:  component.PullPolicy, RestartPolicy: dbmodel.NullString(component.RestartPolicy),
 		CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}); err != nil {
 		return fmt.Errorf("insert version component %s: %w", component.Name, err)
@@ -577,6 +597,7 @@ func insertVersionComponentConfig(ctx context.Context, q *applicationsqlc.Querie
 		insertVersionComponentRuntimeConfig,
 		insertVersionComponentConnectivityConfig,
 		insertVersionComponentAdvancedConfig,
+		insertVersionComponentDevicesConfig,
 	} {
 		if err := insertConfig(ctx, q, component); err != nil {
 			return err
@@ -675,6 +696,22 @@ func insertVersionComponentAdvancedConfig(ctx context.Context, q *applicationsql
 	return nil
 }
 
+func insertVersionComponentDevicesConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
+	for position, item := range component.Devices {
+		capabilitiesJSON, err := json.Marshal(item.Capabilities)
+		if err != nil {
+			return fmt.Errorf("encode component device capabilities: %w", err)
+		}
+		if err := q.InsertVersionComponentDevice(ctx, applicationsqlc.InsertVersionComponentDeviceParams{
+			ComponentID: component.Id, Driver: item.Driver, DeviceCount: item.Count,
+			CapabilitiesJson: string(capabilitiesJSON), Position: int64(position),
+		}); err != nil {
+			return fmt.Errorf("insert component device: %w", err)
+		}
+	}
+	return nil
+}
+
 func deleteVersionComponentRuntimeConfig(ctx context.Context, q *applicationsqlc.Queries, componentId string) error {
 	return deleteVersionComponentConfigRows(ctx, componentId,
 		q.DeleteVersionComponentHealthcheck,
@@ -725,6 +762,10 @@ func deleteVersionComponentAdvancedConfig(ctx context.Context, q *applicationsql
 		q.DeleteVersionComponentTmpfs,
 		q.DeleteVersionComponentUlimits,
 	)
+}
+
+func deleteVersionComponentDevicesConfig(ctx context.Context, q *applicationsqlc.Queries, componentId string) error {
+	return deleteVersionComponentConfigRows(ctx, componentId, q.DeleteVersionComponentDevices)
 }
 
 func deleteVersionComponentConfigRows(ctx context.Context, componentId string, deletes ...func(context.Context, string) error) error {

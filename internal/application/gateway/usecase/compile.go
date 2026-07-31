@@ -101,7 +101,7 @@ func buildManagedGatewayComponent(cfg model.GatewayConfig, existing []model.Vers
 	mounts := mergeManagedGatewayMounts(previousMounts, buildManagedGatewayMounts(cfg, tcpListens))
 	return model.VersionComponent{
 		Name: gatewayManagedComponentName, Image: strings.TrimSpace(*cfg.Image),
-		Ports: ports, Mounts: mounts,
+		PullPolicy: "missing", Ports: ports, Mounts: mounts,
 	}, nil
 }
 

@@ -218,6 +218,13 @@ class OrbitClient:
             "PUT", f"/api/version/{version_id}/component/{component_id}/dependencies", json_body=payload
         )
 
+    async def update_version_component_devices(
+        self, version_id: str, component_id: str, payload: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        return await self.request(
+            "PUT", f"/api/version/{version_id}/component/{component_id}/devices", json_body=payload
+        )
+
     async def update_version_component_advanced(
         self, version_id: str, component_id: str, payload: Mapping[str, Any]
     ) -> dict[str, Any]:

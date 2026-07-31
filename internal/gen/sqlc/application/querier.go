@@ -25,6 +25,7 @@ type Querier interface {
 	DeleteVersion(ctx context.Context, id string) error
 	DeleteVersionComponent(ctx context.Context, id string) error
 	DeleteVersionComponentDependencies(ctx context.Context, componentID string) error
+	DeleteVersionComponentDevices(ctx context.Context, componentID string) error
 	DeleteVersionComponentEnv(ctx context.Context, componentID string) error
 	DeleteVersionComponentHealthcheck(ctx context.Context, componentID string) error
 	DeleteVersionComponentMounts(ctx context.Context, componentID string) error
@@ -38,6 +39,7 @@ type Querier interface {
 	DetachDeploymentVersionRefsByApplication(ctx context.Context, applicationID string) error
 	InsertVersionComponent(ctx context.Context, arg InsertVersionComponentParams) error
 	InsertVersionComponentDependency(ctx context.Context, arg InsertVersionComponentDependencyParams) error
+	InsertVersionComponentDevice(ctx context.Context, arg InsertVersionComponentDeviceParams) error
 	InsertVersionComponentEnv(ctx context.Context, arg InsertVersionComponentEnvParams) error
 	InsertVersionComponentHealthcheck(ctx context.Context, arg InsertVersionComponentHealthcheckParams) error
 	InsertVersionComponentMount(ctx context.Context, arg InsertVersionComponentMountParams) error
@@ -58,6 +60,7 @@ type Querier interface {
 	VersionByID(ctx context.Context, id string) (Version, error)
 	VersionComponentByID(ctx context.Context, id string) (VersionComponent, error)
 	VersionComponentDependenciesByComponent(ctx context.Context, componentID string) ([]VersionComponentDependency, error)
+	VersionComponentDevicesByComponent(ctx context.Context, componentID string) ([]VersionComponentDevice, error)
 	VersionComponentEnvByComponent(ctx context.Context, componentID string) ([]VersionComponentEnv, error)
 	VersionComponentHealthcheckByComponent(ctx context.Context, componentID string) (VersionComponentHealthcheck, error)
 	VersionComponentMountsByComponent(ctx context.Context, componentID string) ([]VersionComponentMount, error)

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Deploy BGE-M3 with Orbit"
-  short_description: "Deploy local BGE-M3 TEI through Orbit MCP."
-  default_prompt: "Use $deploy-bge-m3-orbit to deploy BAAI/bge-m3 through Pomelo Orbit MCP with the local Git LFS model cache."

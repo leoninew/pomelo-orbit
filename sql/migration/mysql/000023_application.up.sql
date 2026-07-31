@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS version_component (
     name VARCHAR(255) NOT NULL,
     image VARCHAR(512) NOT NULL,
     command_json TEXT NOT NULL,
-    pull_policy VARCHAR(32),
+    pull_policy VARCHAR(32) NOT NULL CHECK (pull_policy IN ('always', 'missing', 'never')),
     restart_policy VARCHAR(32),
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS version_component_mount (
     read_only TINYINT(1) NOT NULL DEFAULT 0,
     source_is_host_path TINYINT(1) NOT NULL DEFAULT 0,
     content LONGTEXT,
+    content_masked TINYINT(1) NOT NULL DEFAULT 0,
     mode VARCHAR(4) NOT NULL DEFAULT '',
     ignore_if_exists TINYINT(1) NOT NULL DEFAULT 0,
     position INT NOT NULL,
@@ -89,6 +90,7 @@ CREATE TABLE IF NOT EXISTS version_component_mount (
     CONSTRAINT chk_version_component_mount_type CHECK (source_type IN ('directory', 'file', 'named_volume', 'controlled_file')),
     CONSTRAINT chk_version_component_mount_read_only CHECK (read_only IN (0, 1)),
     CONSTRAINT chk_version_component_mount_source_is_host_path CHECK (source_is_host_path IN (0, 1)),
+    CONSTRAINT chk_version_component_mount_content_masked CHECK (content_masked IN (0, 1)),
     CONSTRAINT chk_version_component_mount_ignore_if_exists CHECK (ignore_if_exists IN (0, 1)),
     CONSTRAINT chk_version_component_mount_position CHECK (position >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -151,4 +153,15 @@ CREATE TABLE IF NOT EXISTS version_component_ulimit (
     UNIQUE KEY uq_version_component_ulimit_position (component_id, position),
     CONSTRAINT fk_version_component_ulimit_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_version_component_ulimit_position CHECK (position >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS version_component_device (
+    component_id VARCHAR(26) NOT NULL,
+    driver VARCHAR(64) NOT NULL,
+    device_count VARCHAR(32) NOT NULL,
+    capabilities_json JSON NOT NULL,
+    position INT NOT NULL,
+    PRIMARY KEY (component_id, position),
+    CONSTRAINT fk_version_component_device_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
+    CONSTRAINT chk_version_component_device_position CHECK (position >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

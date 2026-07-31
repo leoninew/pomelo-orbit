@@ -18,6 +18,7 @@ import type {
   VersionComponentBasicUpdateReq,
   VersionComponentCreateReq,
   VersionComponentDependenciesUpdateReq,
+  VersionComponentDevicesUpdateReq,
   VersionComponentEnvUpdateReq,
   VersionComponentMountsUpdateReq,
   VersionComponentPortsUpdateReq,
@@ -171,6 +172,14 @@ export const applicationApi = {
     data: VersionComponentDependenciesUpdateReq
   ): Promise<VersionComponentResp> {
     return request.put(`/api/version/${versionId}/component/${componentId}/dependencies`, data);
+  },
+
+  updateVersionComponentDevices(
+    versionId: string,
+    componentId: string,
+    data: VersionComponentDevicesUpdateReq
+  ): Promise<VersionComponentResp> {
+    return request.put(`/api/version/${versionId}/component/${componentId}/devices`, data);
   },
 
   updateVersionComponentAdvanced(

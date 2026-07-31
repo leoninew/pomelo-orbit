@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS version_component (
     name TEXT NOT NULL,
     image TEXT NOT NULL,
     command_json TEXT NOT NULL DEFAULT '[]',
-    pull_policy TEXT,
+    pull_policy TEXT NOT NULL CHECK (pull_policy IN ('always', 'missing', 'never')),
     restart_policy TEXT,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS version_component_mount (
     read_only INTEGER NOT NULL DEFAULT 0 CHECK (read_only IN (0, 1)),
     source_is_host_path INTEGER NOT NULL DEFAULT 0 CHECK (source_is_host_path IN (0, 1)),
     content TEXT,
+    content_masked INTEGER NOT NULL DEFAULT 0 CHECK (content_masked IN (0, 1)),
     mode TEXT NOT NULL DEFAULT '',
     ignore_if_exists INTEGER NOT NULL DEFAULT 0 CHECK (ignore_if_exists IN (0, 1)),
     position INTEGER NOT NULL CHECK (position >= 0),
@@ -134,5 +135,15 @@ CREATE TABLE IF NOT EXISTS version_component_ulimit (
     position INTEGER NOT NULL CHECK (position >= 0),
     PRIMARY KEY (component_id, name),
     UNIQUE (component_id, position),
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_component_device (
+    component_id TEXT NOT NULL,
+    driver TEXT NOT NULL,
+    device_count TEXT NOT NULL,
+    capabilities_json TEXT NOT NULL,
+    position INTEGER NOT NULL CHECK (position >= 0),
+    PRIMARY KEY (component_id, position),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
 );

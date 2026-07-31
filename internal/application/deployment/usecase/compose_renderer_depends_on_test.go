@@ -50,3 +50,43 @@ func TestRenderComposeDeclaresNamedVolumes(t *testing.T) {
 		t.Fatalf("compose must declare named volume:\n%s", compose)
 	}
 }
+
+func TestRenderComponentMergesResourceReservationsAndDevices(t *testing.T) {
+	reservationCPUs := "2"
+	reservationMemory := "8g"
+	service, _, err := renderVersionComponentService(model.VersionComponent{
+		Name: "tei", Image: "ghcr.io/huggingface/text-embeddings-inference:cuda-1.9.3",
+		Resources: &model.VersionComponentResources{
+			ReservationCPUs:   &reservationCPUs,
+			ReservationMemory: &reservationMemory,
+		},
+		Devices: []model.VersionComponentDeviceRequest{{
+			Driver: "nvidia", Count: "all", Capabilities: []string{"gpu"},
+		}},
+	}, "demo", "", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deploy, ok := service["deploy"].(map[string]any)
+	if !ok {
+		t.Fatalf("deploy type = %T", service["deploy"])
+	}
+	resources, ok := deploy["resources"].(map[string]any)
+	if !ok {
+		t.Fatalf("resources type = %T", deploy["resources"])
+	}
+	reservations, ok := resources["reservations"].(map[string]any)
+	if !ok {
+		t.Fatalf("reservations type = %T", resources["reservations"])
+	}
+	if reservations["cpus"] != reservationCPUs || reservations["memory"] != reservationMemory {
+		t.Fatalf("reservations = %#v", reservations)
+	}
+	devices, ok := reservations["devices"].([]map[string]any)
+	if !ok || len(devices) != 1 {
+		t.Fatalf("devices = %#v", reservations["devices"])
+	}
+	if devices[0]["driver"] != "nvidia" || devices[0]["count"] != "all" {
+		t.Fatalf("device = %#v", devices[0])
+	}
+}

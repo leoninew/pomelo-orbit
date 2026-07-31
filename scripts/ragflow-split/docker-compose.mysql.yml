@@ -1,4 +1,5 @@
-# Alternate split deployment mode: deploy only when five independent RAGFlow Applications are requested.
+# Alternate split deployment mode: deploy only when five independent Applications are requested.
+# TEI is part of the RAGFlow Application rather than a sixth independent Application.
 # Do not combine with scripts/ragflow-bundled/docker-compose.yml.
 services:
   mysql:

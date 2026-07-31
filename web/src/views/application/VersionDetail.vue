@@ -124,6 +124,7 @@
                 <th>{{ t('application.detail.fields.image') }}</th>
                 <th>{{ t('application.componentDetail.fields.pullPolicy') }}</th>
                 <th>{{ t('application.componentDetail.fields.restartPolicy') }}</th>
+                <th>{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -141,6 +142,24 @@
                 </td>
                 <td class="text-muted-foreground">{{ component.pull_policy }}</td>
                 <td class="text-muted-foreground">{{ component.restart_policy }}</td>
+                <td>
+                  <div v-if="isEditable" class="flex items-center gap-2">
+                    <button
+                      class="app-link"
+                      :disabled="operating"
+                      @click="openComponentEditDialog(component)"
+                    >
+                      {{ t('common.edit') }}
+                    </button>
+                    <button
+                      class="app-link-danger"
+                      :disabled="operating"
+                      @click="openComponentDeleteDialog(component)"
+                    >
+                      {{ t('common.delete') }}
+                    </button>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -273,6 +292,109 @@
       </template>
     </AppDialog>
 
+    <!-- 编辑组件基本信息 -->
+    <AppDialog
+      :open="isComponentEditDialogOpen"
+      :title="t('application.componentDetail.sections.basic')"
+      width-class="w-[min(640px,calc(100vw-32px))]"
+      @update:open="setComponentEditDialogOpen"
+    >
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.detail.fields.component') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="componentEditForm.name"
+            class="app-input"
+            :class="componentEditErrors.name ? 'app-input-error' : ''"
+            type="text"
+            :aria-invalid="componentEditErrors.name ? 'true' : undefined"
+            @input="componentEditErrors.name = ''"
+          />
+          <p v-if="componentEditErrors.name" class="app-field-error" role="alert">
+            {{ componentEditErrors.name }}
+          </p>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.detail.fields.image') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="componentEditForm.image"
+            class="app-input"
+            :class="componentEditErrors.image ? 'app-input-error' : ''"
+            type="text"
+            :aria-invalid="componentEditErrors.image ? 'true' : undefined"
+            @input="componentEditErrors.image = ''"
+          />
+          <p v-if="componentEditErrors.image" class="app-field-error" role="alert">
+            {{ componentEditErrors.image }}
+          </p>
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.pullPolicy') }}
+          </label>
+          <RawValueSelect
+            v-model="componentEditForm.pull_policy"
+            :placeholder="t('common.notSet')"
+            :values="pullPolicyValues"
+          />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.restartPolicy') }}
+          </label>
+          <RawValueSelect
+            v-model="componentEditForm.restart_policy"
+            :placeholder="t('common.notSet')"
+            :values="restartPolicyValues"
+          />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.command') }}
+          </label>
+          <textarea v-model="componentEditForm.command" class="app-textarea" rows="3" />
+        </div>
+      </div>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.save')"
+          @cancel="cancelComponentEditing"
+          @confirm="saveComponentBasic"
+        />
+      </template>
+    </AppDialog>
+
+    <!-- 删除组件 -->
+    <AppDialog
+      v-model:open="isComponentDeleteDialogOpen"
+      :title="t('application.componentDetail.actions.delete')"
+      width-class="w-[min(420px,calc(100vw-32px))]"
+    >
+      <p class="text-sm text-muted-foreground">
+        {{
+          t('application.componentDetail.deleteDescription', {
+            name: pendingComponent?.name || '-',
+          })
+        }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.delete')"
+          variant="destructive"
+          @cancel="cancelComponentDeletion"
+          @confirm="deleteComponent"
+        />
+      </template>
+    </AppDialog>
+
     <!-- Fork -->
     <AppDialog
       v-model:open="isForkDialogOpen"
@@ -346,10 +468,18 @@
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
+  import type {
+    VersionComponentResp,
+    VersionResp,
+  } from '@/gen/proto/orbit/v1/application/version';
   import { versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
-  import { componentCreateRequestFromForm, emptyComponentForm } from './componentForm';
+  import {
+    componentBasicRequestFromForm,
+    componentCreateRequestFromForm,
+    componentFormFromResponse,
+    emptyComponentForm,
+  } from './componentForm';
 
   const route = useRoute();
   const router = useRouter();
@@ -366,16 +496,21 @@
   const isComponentDialogOpen = ref(false);
   const isForkDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
+  const isComponentEditDialogOpen = ref(false);
+  const isComponentDeleteDialogOpen = ref(false);
+  const pendingComponent = ref<VersionComponentResp>();
   const forkLabel = ref('');
   const forkLabelError = ref('');
   const basicFormError = ref('');
   const componentFormErrors = reactive({ name: '', image: '' });
+  const componentEditErrors = reactive({ name: '', image: '' });
 
   const basicForm = reactive({
     label: '',
     note: '',
   });
   const componentForm = reactive(emptyComponentForm());
+  const componentEditForm = reactive(emptyComponentForm());
   const pullPolicyValues = ['always', 'missing', 'never'];
   const restartPolicyValues = ['no', 'unless-stopped'];
   const isEditable = computed(() => version.value?.status === 'unpublished');
@@ -463,6 +598,103 @@
         version.value = await applicationApi.getVersion(versionId);
         toast.success(t('application.toast.updateSuccess'));
         closeComponentDialog();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+    }
+  }
+
+  function resetComponentEditErrors() {
+    Object.assign(componentEditErrors, { name: '', image: '' });
+  }
+
+  function openComponentEditDialog(component: VersionComponentResp) {
+    pendingComponent.value = component;
+    Object.assign(componentEditForm, componentFormFromResponse(component));
+    resetComponentEditErrors();
+    isComponentEditDialogOpen.value = true;
+  }
+
+  function cancelComponentEditing() {
+    Object.assign(componentEditForm, emptyComponentForm());
+    resetComponentEditErrors();
+    isComponentEditDialogOpen.value = false;
+  }
+
+  function setComponentEditDialogOpen(open: boolean) {
+    if (open) {
+      isComponentEditDialogOpen.value = true;
+      return;
+    }
+    cancelComponentEditing();
+  }
+
+  async function saveComponentBasic() {
+    const target = pendingComponent.value;
+    if (!target) {
+      return;
+    }
+    const result = componentBasicRequestFromForm(componentEditForm);
+    if (!result.valid) {
+      componentEditErrors.name =
+        result.error === 'nameImage'
+          ? componentEditForm.name.trim()
+            ? ''
+            : t('application.componentDetail.validation.componentNameRequired')
+          : t('application.componentDetail.validation.componentName');
+      componentEditErrors.image = componentEditForm.image.trim()
+        ? ''
+        : t('application.componentDetail.validation.imageRequired');
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        const updated = await applicationApi.updateVersionComponentBasic(
+          versionId,
+          target.id,
+          result.value
+        );
+        if (version.value) {
+          const index = version.value.components.findIndex((item) => item.id === updated.id);
+          if (index !== -1) {
+            version.value.components.splice(index, 1, updated);
+          }
+        }
+        pendingComponent.value = updated;
+        cancelComponentEditing();
+        toast.success(t('application.toast.updateSuccess'));
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+    }
+  }
+
+  function openComponentDeleteDialog(component: VersionComponentResp) {
+    pendingComponent.value = component;
+    isComponentDeleteDialogOpen.value = true;
+  }
+
+  function cancelComponentDeletion() {
+    isComponentDeleteDialogOpen.value = false;
+    pendingComponent.value = undefined;
+  }
+
+  async function deleteComponent() {
+    const target = pendingComponent.value;
+    if (!target) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        await applicationApi.deleteVersionComponent(versionId, target.id);
+        if (version.value) {
+          const index = version.value.components.findIndex((item) => item.id === target.id);
+          if (index !== -1) {
+            version.value.components.splice(index, 1);
+          }
+        }
+        cancelComponentDeletion();
+        toast.success(t('application.toast.updateSuccess'));
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));

@@ -7,20 +7,19 @@ import (
 )
 
 func TestVersionComponentCreateInputUsesBasicFieldsOnly(t *testing.T) {
-	pullPolicy := "always"
 	restartPolicy := "unless-stopped"
 	input := versionComponentCreateInput(&applicationv1.VersionComponentCreateReq{
 		Name:          "api",
 		Image:         "nginx:1.27",
 		Command:       "nginx -g 'daemon off;'",
-		PullPolicy:    &pullPolicy,
+		PullPolicy:    "always",
 		RestartPolicy: &restartPolicy,
 	})
 
 	if input.Name != "api" || input.Image != "nginx:1.27" || input.Command != "nginx -g 'daemon off;'" {
 		t.Fatalf("unexpected basic input: %+v", input)
 	}
-	if input.PullPolicy != &pullPolicy || input.RestartPolicy != &restartPolicy {
+	if input.PullPolicy != "always" || input.RestartPolicy != &restartPolicy {
 		t.Fatalf("unexpected policies: %+v", input)
 	}
 	if len(input.Env) != 0 || len(input.Ports) != 0 || len(input.Mounts) != 0 || len(input.Dependencies) != 0 || input.Healthcheck != nil || input.Resources != nil || len(input.Tmpfs) != 0 || len(input.Ulimits) != 0 {

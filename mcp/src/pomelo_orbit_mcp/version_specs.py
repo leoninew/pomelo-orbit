@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
 class _Spec(BaseModel):
@@ -70,6 +70,47 @@ class UlimitSpec(_Spec):
     hard: int
 
 
+class DeviceRequestSpec(_Spec):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    driver: str
+    count: str
+    capabilities: list[str]
+
+    @field_validator("driver")
+    @classmethod
+    def validate_driver(cls, value: str) -> str:
+        if not value or value != value.strip() or any(character.isspace() for character in value):
+            raise ValueError("device driver must be a non-empty token")
+        return value
+
+    @field_validator("count")
+    @classmethod
+    def validate_count(cls, value: str) -> str:
+        if value == "all":
+            return value
+        if not value.isdecimal() or value.startswith("0"):
+            raise ValueError("device count must be all or a positive integer")
+        return value
+
+    @field_validator("capabilities")
+    @classmethod
+    def validate_capabilities(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("device capabilities are required")
+        if any(not item or item != item.strip() or any(character.isspace() for character in item) for item in value):
+            raise ValueError("device capabilities must be non-empty tokens")
+        if len(set(value)) != len(value):
+            raise ValueError("device capabilities must not contain duplicates")
+        return value
+
+    @model_validator(mode="after")
+    def validate_nvidia_capabilities(self) -> "DeviceRequestSpec":
+        if self.driver == "nvidia" and "gpu" not in self.capabilities:
+            raise ValueError("nvidia device requests require gpu capability")
+        return self
+
+
 class VersionComponent(_Spec):
     name: str
     image: str
@@ -80,17 +121,18 @@ class VersionComponent(_Spec):
     dependencies: list[ComponentDependency] | None = None
     healthcheck: Healthcheck | None = None
     resources: ResourceSpec | None = None
-    pull_policy: str | None = None
+    pull_policy: Literal["always", "missing", "never"]
     restart_policy: Literal["no", "unless-stopped"] | None = None
     tmpfs: list[TmpfsSpec] | None = None
     ulimits: list[UlimitSpec] | None = None
+    devices: list[DeviceRequestSpec] | None = None
 
 
 class VersionComponentCreate(_Spec):
     name: str
     image: str
     command: str = ""
-    pull_policy: str | None = None
+    pull_policy: Literal["always", "missing", "never"]
     restart_policy: Literal["no", "unless-stopped"] | None = None
 
 
@@ -98,7 +140,7 @@ class VersionComponentBasicUpdate(_Spec):
     name: str
     image: str
     command: str
-    pull_policy: str | None = None
+    pull_policy: Literal["always", "missing", "never"]
     restart_policy: Literal["no", "unless-stopped"] | None = None
 
 
@@ -140,6 +182,10 @@ class VersionComponentUlimitsUpdate(_Spec):
     ulimits: list[UlimitSpec]
 
 
+class VersionComponentDevicesUpdate(_Spec):
+    devices: list[DeviceRequestSpec]
+
+
 class ServiceExpose(_Spec):
     component_name: str
     protocol: Literal["http", "tcp"]
@@ -164,6 +210,7 @@ def version_component_payload(component: VersionComponent) -> dict[str, Any]:
         "restart_policy": component.restart_policy,
         "tmpfs": _model_items(component.tmpfs),
         "ulimits": _model_items(component.ulimits),
+        "devices": _model_items(component.devices),
     }
     return {key: value for key, value in values.items() if value is not None}
 

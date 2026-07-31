@@ -99,7 +99,7 @@ func TestUpdateVersionRejectsMissingRuntimeConfigForBoundService(t *testing.T) {
 	ctx := context.Background()
 
 	app, version := createPublishedVersion(t, ctx, applicationStore, "runtime-config-validation")
-	component := model.VersionComponent{Id: idutil.NewId(), VersionId: version.Id, Name: "web", Image: "nginx"}
+	component := model.VersionComponent{Id: idutil.NewId(), VersionId: version.Id, Name: "web", Image: "nginx", PullPolicy: "missing"}
 	if err := applicationStore.CreateVersionComponent(ctx, component); err != nil {
 		t.Fatal(err)
 	}
@@ -123,6 +123,17 @@ func TestUpdateVersionRejectsMissingRuntimeConfigForBoundService(t *testing.T) {
 	}
 }
 
+func TestVersionComponentsRequireValidPullPolicy(t *testing.T) {
+	for _, pullPolicy := range []string{"", "on-demand"} {
+		_, err := versionComponentsFromInputs([]applicationdto.VersionComponentInput{{
+			Name: "api", Image: "nginx:1.27", PullPolicy: pullPolicy,
+		}})
+		if err == nil {
+			t.Fatalf("pull policy %q was accepted", pullPolicy)
+		}
+	}
+}
+
 func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *testing.T) {
 	service, database, applicationStore := newVersionIntegrationService(t)
 	defer func() { _ = database.Close() }()
@@ -142,8 +153,8 @@ func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *te
 		ApplicationId: app.Id,
 		Label:         "v1",
 		Components: []applicationdto.VersionComponentInput{
-			{Name: "worker", Image: "busybox:1.36"},
-			{Name: "api", Image: "nginx:1.27"},
+			{Name: "worker", Image: "busybox:1.36", PullPolicy: "missing"},
+			{Name: "api", Image: "nginx:1.27", PullPolicy: "missing"},
 		},
 	})
 	if err != nil {
@@ -153,8 +164,8 @@ func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *te
 		t.Fatalf("component summary = %q, want %q", got, want)
 	}
 	for _, component := range created.Components {
-		if component.PullPolicy == nil || *component.PullPolicy != "missing" {
-			t.Fatalf("component %s pull policy = %v, want missing", component.Name, component.PullPolicy)
+		if component.PullPolicy != "missing" {
+			t.Fatalf("component %s pull policy = %q, want missing", component.Name, component.PullPolicy)
 		}
 	}
 
@@ -179,7 +190,7 @@ func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *te
 			apiId = component.Id
 		}
 	}
-	updatedComponent, err := service.UpdateVersionComponentBasic(ctx, versionTestUserId, created.Version.Id, apiId, applicationdto.VersionComponentBasicUpdateInput{Name: "api", Image: "caddy:2.8", Command: ""})
+	updatedComponent, err := service.UpdateVersionComponentBasic(ctx, versionTestUserId, created.Version.Id, apiId, applicationdto.VersionComponentBasicUpdateInput{Name: "api", Image: "caddy:2.8", Command: "", PullPolicy: "missing"})
 	if err != nil {
 		t.Fatalf("update version components: %v", err)
 	}
@@ -223,12 +234,13 @@ func TestVersionComponentRenamePreservesValuesAndUpdatesReferences(t *testing.T)
 		Note:          ptr("  keep this note exactly  "),
 		Components: []applicationdto.VersionComponentInput{
 			{
-				Name:  "api",
-				Image: "nginx:1.27",
-				Env:   []model.VersionComponentEnv{{Key: "TOKEN", Value: "  ${TOKEN}  "}},
+				Name:       "api",
+				Image:      "nginx:1.27",
+				PullPolicy: "missing",
+				Env:        []model.VersionComponentEnv{{Key: "TOKEN", Value: "  ${TOKEN}  "}},
 			},
 			{
-				Name: "worker", Image: "busybox:1.36",
+				Name: "worker", Image: "busybox:1.36", PullPolicy: "missing",
 				Dependencies: []model.VersionComponentDependency{{
 					Name: "api", Condition: "service_started",
 				}},
@@ -249,7 +261,7 @@ func TestVersionComponentRenamePreservesValuesAndUpdatesReferences(t *testing.T)
 		}
 	}
 	updated, err := service.UpdateVersionComponentBasic(ctx, versionTestUserId, created.Version.Id, apiId, applicationdto.VersionComponentBasicUpdateInput{
-		Name: "backend", Image: "nginx:1.27", Command: "",
+		Name: "backend", Image: "nginx:1.27", Command: "", PullPolicy: "missing",
 	})
 	if err != nil {
 		t.Fatalf("rename component: %v", err)
@@ -303,7 +315,7 @@ func TestVersionComponentRenameOnlyRejectsRunningServiceExposes(t *testing.T) {
 				ApplicationId: app.Id,
 				Label:         "v1",
 				Components: []applicationdto.VersionComponentInput{{
-					Name: "api", Image: "nginx:1.27",
+					Name: "api", Image: "nginx:1.27", PullPolicy: "missing",
 				}},
 			})
 			if err != nil {
@@ -332,7 +344,7 @@ func TestVersionComponentRenameOnlyRejectsRunningServiceExposes(t *testing.T) {
 			service = New(projectrepo.NewRepository(database), applicationStore, serviceStore)
 
 			_, err = service.UpdateVersionComponentBasic(ctx, versionTestUserId, created.Version.Id, created.Components[0].Id, applicationdto.VersionComponentBasicUpdateInput{
-				Name: "backend", Image: "nginx:1.27", Command: "",
+				Name: "backend", Image: "nginx:1.27", Command: "", PullPolicy: "missing",
 			})
 			if testCase.wantRejected {
 				if apperror.StatusCode(err) != http.StatusBadRequest {
@@ -366,7 +378,7 @@ func TestVersionComponentGroupUpdatesPreserveOtherConfiguration(t *testing.T) {
 		ApplicationId: app.Id,
 		Label:         "v1",
 		Components: []applicationdto.VersionComponentInput{{
-			Name: "api", Image: "nginx:1.27", Command: "nginx",
+			Name: "api", Image: "nginx:1.27", Command: "nginx", PullPolicy: "missing",
 			Env:       []model.VersionComponentEnv{{Key: "TOKEN", Value: "before"}},
 			Ports:     []model.VersionComponentPort{{HostPort: 8080, ContainerPort: 80}},
 			Resources: &model.VersionComponentResources{LimitMemory: ptr("128m")},
@@ -436,7 +448,7 @@ func TestVersionComponentGroupUpdatesPreserveOtherConfiguration(t *testing.T) {
 	}
 
 	basic, err := service.UpdateVersionComponentBasic(ctx, versionTestUserId, created.Version.Id, componentId, applicationdto.VersionComponentBasicUpdateInput{
-		Name: "backend", Image: "caddy:2.8", Command: "caddy run",
+		Name: "backend", Image: "caddy:2.8", Command: "caddy run", PullPolicy: "missing",
 	})
 	if err != nil {
 		t.Fatalf("update basic group: %v", err)
@@ -450,6 +462,70 @@ func TestVersionComponentGroupUpdatesPreserveOtherConfiguration(t *testing.T) {
 	}
 	if got, want := view.Version.ComponentSummary, "backend"; got != want {
 		t.Fatalf("component summary = %q, want %q", got, want)
+	}
+}
+
+func TestVersionComponentDevicesAreValidatedUpdatedAndForked(t *testing.T) {
+	service, database, applicationStore := newVersionIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	app := model.Application{
+		Id:              idutil.NewId(),
+		Name:            "component-devices-" + idutil.NewId(),
+		Code:            "component-devices-" + idutil.NewId(),
+		Kind:            status.ApplicationKindStandard,
+		ImagePullPolicy: "missing",
+	}
+	if err := applicationStore.CreateApplication(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	created, err := service.CreateVersion(ctx, versionTestUserId, applicationdto.VersionCreateInput{
+		ApplicationId: app.Id,
+		Label:         "cpu",
+		Components: []applicationdto.VersionComponentInput{{
+			Name: "tei", Image: "ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3", PullPolicy: "missing",
+			Env:       []model.VersionComponentEnv{{Key: "MODEL_ID", Value: "/data/bge-m3"}},
+			Resources: &model.VersionComponentResources{ReservationMemory: ptr("4g")},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("create version: %v", err)
+	}
+	componentID := created.Components[0].Id
+
+	_, err = service.UpdateVersionComponentDevices(ctx, versionTestUserId, created.Version.Id, componentID, applicationdto.VersionComponentDevicesUpdateInput{
+		Devices: []model.VersionComponentDeviceRequest{{Driver: "nvidia", Count: "all", Capabilities: []string{"compute"}}},
+	})
+	if apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("missing NVIDIA gpu capability must be rejected, got %v", err)
+	}
+
+	updated, err := service.UpdateVersionComponentDevices(ctx, versionTestUserId, created.Version.Id, componentID, applicationdto.VersionComponentDevicesUpdateInput{
+		Devices: []model.VersionComponentDeviceRequest{{Driver: "nvidia", Count: "all", Capabilities: []string{"gpu"}}},
+	})
+	if err != nil {
+		t.Fatalf("update devices: %v", err)
+	}
+	if len(updated.Devices) != 1 || updated.Devices[0].Driver != "nvidia" {
+		t.Fatalf("updated devices = %+v", updated.Devices)
+	}
+	if got := updated.Env[0].Value; got != "/data/bge-m3" {
+		t.Fatalf("device update replaced env = %q", got)
+	}
+	if got := *updated.Resources.ReservationMemory; got != "4g" {
+		t.Fatalf("device update replaced resources = %q", got)
+	}
+
+	forked, err := service.ForkVersion(ctx, versionTestUserId, created.Version.Id, "gpu")
+	if err != nil {
+		t.Fatalf("fork version: %v", err)
+	}
+	if len(forked.Components) != 1 || len(forked.Components[0].Devices) != 1 {
+		t.Fatalf("forked device requests = %+v", forked.Components)
+	}
+	if got := forked.Components[0].Devices[0]; got.Driver != "nvidia" || got.Count != "all" || len(got.Capabilities) != 1 || got.Capabilities[0] != "gpu" {
+		t.Fatalf("forked device request = %+v", got)
 	}
 }
 

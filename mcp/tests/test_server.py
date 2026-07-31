@@ -40,6 +40,7 @@ async def test_server_registers_the_accepted_tool_surface(tmp_path) -> None:
         "orbit_update_version_component_env",
         "orbit_update_version_component_mounts",
         "orbit_update_version_component_dependencies",
+        "orbit_update_version_component_devices",
         "orbit_update_version_component_advanced",
         "orbit_update_version_component_resources",
         "orbit_update_version_component_tmpfs",
@@ -125,6 +126,7 @@ async def test_server_component_group_schemas_match_the_current_json_contract(tm
         "restart_policy",
     }
     assert basic_definition["properties"]["command"] == {"title": "Command", "type": "string"}
+    assert set(basic_definition["required"]) == {"name", "image", "command", "pull_policy"}
 
     create_component = tools["orbit_create_version_component"].inputSchema
     create_component_definition = create_component["$defs"]["VersionComponentCreate"]
@@ -141,6 +143,7 @@ async def test_server_component_group_schemas_match_the_current_json_contract(tm
         "title": "Command",
         "type": "string",
     }
+    assert set(create_component_definition["required"]) == {"name", "image", "pull_policy"}
 
     runtime = tools["orbit_update_version_component_runtime"].inputSchema
     runtime_definition = runtime["$defs"]["VersionComponentRuntimeUpdate"]
@@ -157,6 +160,7 @@ async def test_server_component_group_schemas_match_the_current_json_contract(tm
         ("orbit_update_version_component_resources", "VersionComponentResourcesUpdate", "resources"),
         ("orbit_update_version_component_tmpfs", "VersionComponentTmpfsUpdate", "tmpfs"),
         ("orbit_update_version_component_ulimits", "VersionComponentUlimitsUpdate", "ulimits"),
+        ("orbit_update_version_component_devices", "VersionComponentDevicesUpdate", "devices"),
     ):
         schema = tools[tool_name].inputSchema
         definition = schema["$defs"][definition_name]
@@ -180,7 +184,9 @@ async def test_server_component_group_schemas_match_the_current_json_contract(tm
         "restart_policy",
         "tmpfs",
         "ulimits",
+        "devices",
     }
+    assert set(component_definition["required"]) == {"name", "image", "pull_policy"}
     assert "networks" not in component_definition["properties"]
 
     for tool_name, definition_name, field_name in (

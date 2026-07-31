@@ -38,6 +38,7 @@ type ApplicationStore interface {
 	UpdateVersionComponentMounts(ctx context.Context, component model.VersionComponent) error
 	UpdateVersionComponentDependencies(ctx context.Context, component model.VersionComponent) error
 	UpdateVersionComponentAdvanced(ctx context.Context, component model.VersionComponent) error
+	UpdateVersionComponentDevices(ctx context.Context, component model.VersionComponent) error
 	DeleteVersionComponent(ctx context.Context, component model.VersionComponent) error
 	CreateVersionWithVersionComponents(ctx context.Context, version model.Version, components []model.VersionComponent) error
 }

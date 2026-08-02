@@ -36,10 +36,17 @@ tasks:
       - ./bin/buf generate
       - ./bin/buf generate . --template web/buf.gen.yaml --output web
 
-  run:
-    desc: Start the development orchestrator
+  dev:backend:
+    desc: Start the Go development server with hot reload
+    env:
+      POMELO_ORBIT_APP__ENV: development
     cmds:
-      - python scripts/run.py
+      - air -c .air.server.toml
+
+  dev:frontend:
+    desc: Start the frontend development server
+    cmds:
+      - yarn --cwd web dev
 
   check:
     desc: Run web and Go checks

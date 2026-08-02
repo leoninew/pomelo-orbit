@@ -38,6 +38,7 @@ func TestRunHTTPServerAndWorkerReturnsServeErrorAndCancelsWorker(t *testing.T) {
 
 func TestRunHTTPServerAndWorkerReturnsContextErrorOnCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	worker := blockingRuntimeWorker{started: make(chan struct{})}
 	server := &http.Server{Addr: "127.0.0.1:0", Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})}
 

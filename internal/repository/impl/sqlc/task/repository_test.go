@@ -41,6 +41,7 @@ func TestRepositoryClaimComplete(t *testing.T) {
 	}
 	if claimed == nil {
 		t.Fatal("expected task to be claimed")
+		return
 	}
 	if claimed.Id != "task-1" {
 		t.Fatalf("unexpected task id: %s", claimed.Id)

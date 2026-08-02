@@ -93,7 +93,8 @@ Web UI 配置路由
 ```bash
 task install       # 安装 web 和 Go 依赖
 go install github.com/air-verse/air@latest  # 安装开发热重载工具
-task run           # 启动前端和 Go 后端开发服务
+task dev:backend   # 启动 Go 后端开发服务
+task dev:frontend  # 启动前端开发服务
 ```
 
 访问 [localhost:9020](http://localhost:9020)，默认账号：admin / admin

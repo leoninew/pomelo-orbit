@@ -51,14 +51,17 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Logging.MaxBackups != 7 {
 		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
 	}
-	if cfg.Logging.HTTPBodyEnabled {
-		t.Fatal("expected http body logging disabled")
+	if cfg.Logging.HTTP.Enabled {
+		t.Fatal("expected http access logging disabled")
 	}
-	if cfg.Logging.HTTPBodyMaxBytes != 4096 {
-		t.Fatalf("unexpected http body max bytes: %d", cfg.Logging.HTTPBodyMaxBytes)
+	if cfg.Logging.HTTP.RequestBodyLimit != 4096 {
+		t.Fatalf("unexpected http request body limit: %d", cfg.Logging.HTTP.RequestBodyLimit)
 	}
-	if !cfg.Logging.HTTPSkipAssets200Enabled {
-		t.Fatal("expected http assets 200 log skipping enabled")
+	if cfg.Logging.HTTP.ResponseBodyLimit != 4096 {
+		t.Fatalf("unexpected http response body limit: %d", cfg.Logging.HTTP.ResponseBodyLimit)
+	}
+	if !cfg.Logging.HTTP.SkipAssetEnabled {
+		t.Fatal("expected successful asset log skipping enabled")
 	}
 	if cfg.Jwt.SecretKey != testJwtSecret {
 		t.Fatalf("unexpected jwt secret key: %s", cfg.Jwt.SecretKey)
@@ -93,9 +96,11 @@ func TestLoadConfigMergesEnvConfig(t *testing.T) {
   level: "DEBUG"
   max_size_mb: 50
   max_backups: 3
-  http_body_enabled: true
-  http_body_max_bytes: 2048
-  http_skip_assets_200_enabled: false
+  http:
+    enabled: true
+    request_body_limit: 2048
+    response_body_limit: 1024
+    skip_asset_enabled: false
 database:
   sqlite:
     path: "data/test.db"
@@ -120,14 +125,17 @@ worker:
 	if cfg.Logging.MaxBackups != 3 {
 		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
 	}
-	if !cfg.Logging.HTTPBodyEnabled {
-		t.Fatal("expected http body logging enabled")
+	if !cfg.Logging.HTTP.Enabled {
+		t.Fatal("expected http access logging enabled")
 	}
-	if cfg.Logging.HTTPBodyMaxBytes != 2048 {
-		t.Fatalf("unexpected http body max bytes: %d", cfg.Logging.HTTPBodyMaxBytes)
+	if cfg.Logging.HTTP.RequestBodyLimit != 2048 {
+		t.Fatalf("unexpected http request body limit: %d", cfg.Logging.HTTP.RequestBodyLimit)
 	}
-	if cfg.Logging.HTTPSkipAssets200Enabled {
-		t.Fatal("expected http assets 200 log skipping disabled")
+	if cfg.Logging.HTTP.ResponseBodyLimit != 1024 {
+		t.Fatalf("unexpected http response body limit: %d", cfg.Logging.HTTP.ResponseBodyLimit)
+	}
+	if cfg.Logging.HTTP.SkipAssetEnabled {
+		t.Fatal("expected successful asset log skipping disabled")
 	}
 	if cfg.Worker.Id != "worker-1" {
 		t.Fatalf("unexpected worker id: %s", cfg.Worker.Id)
@@ -176,9 +184,10 @@ worker:
 	t.Setenv("POMELO_ORBIT_DATABASE__SQLITE__PATH", "/data/pomelo-repository.db")
 	t.Setenv("POMELO_ORBIT_LOGGING__MAX_SIZE_MB", "25")
 	t.Setenv("POMELO_ORBIT_LOGGING__MAX_BACKUPS", "4")
-	t.Setenv("POMELO_ORBIT_LOGGING__HTTP_BODY_ENABLED", "true")
-	t.Setenv("POMELO_ORBIT_LOGGING__HTTP_BODY_MAX_BYTES", "8192")
-	t.Setenv("POMELO_ORBIT_LOGGING__HTTP_SKIP_ASSETS_200_ENABLED", "false")
+	t.Setenv("POMELO_ORBIT_LOGGING__HTTP__ENABLED", "true")
+	t.Setenv("POMELO_ORBIT_LOGGING__HTTP__REQUEST_BODY_LIMIT", "8192")
+	t.Setenv("POMELO_ORBIT_LOGGING__HTTP__RESPONSE_BODY_LIMIT", "2048")
+	t.Setenv("POMELO_ORBIT_LOGGING__HTTP__SKIP_ASSET_ENABLED", "false")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__ENABLED", "false")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SITE_KEY", "site-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SECRET_KEY", "secret-from-env")
@@ -216,14 +225,17 @@ worker:
 	if cfg.Logging.MaxBackups != 4 {
 		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
 	}
-	if !cfg.Logging.HTTPBodyEnabled {
-		t.Fatal("expected http body logging enabled")
+	if !cfg.Logging.HTTP.Enabled {
+		t.Fatal("expected http access logging enabled")
 	}
-	if cfg.Logging.HTTPBodyMaxBytes != 8192 {
-		t.Fatalf("unexpected http body max bytes: %d", cfg.Logging.HTTPBodyMaxBytes)
+	if cfg.Logging.HTTP.RequestBodyLimit != 8192 {
+		t.Fatalf("unexpected http request body limit: %d", cfg.Logging.HTTP.RequestBodyLimit)
 	}
-	if cfg.Logging.HTTPSkipAssets200Enabled {
-		t.Fatal("expected http assets 200 log skipping disabled")
+	if cfg.Logging.HTTP.ResponseBodyLimit != 2048 {
+		t.Fatalf("unexpected http response body limit: %d", cfg.Logging.HTTP.ResponseBodyLimit)
+	}
+	if cfg.Logging.HTTP.SkipAssetEnabled {
+		t.Fatal("expected successful asset log skipping disabled")
 	}
 	if cfg.Turnstile.Enabled {
 		t.Fatal("expected turnstile disabled")
@@ -530,9 +542,6 @@ func TestLoadConfigValidatesLogging(t *testing.T) {
 		{name: "missing max backups", content: `logging:
   max_backups: 0
 `},
-		{name: "missing http body max bytes", content: `logging:
-  http_body_max_bytes: 0
-`},
 	}
 	for _, tc := range cases {
 		setupDefaultConfig(t)
@@ -540,6 +549,23 @@ func TestLoadConfigValidatesLogging(t *testing.T) {
 		if _, err := Load(); err == nil {
 			t.Fatalf("expected error for %s", tc.name)
 		}
+	}
+}
+
+func TestLoadConfigNormalizesHTTPBodyLimits(t *testing.T) {
+	setupDefaultConfig(t)
+	writeEnvConfig(t, "develop", `logging:
+  http:
+    request_body_limit: -1
+    response_body_limit: 0
+`)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Logging.HTTP.RequestBodyLimit != 0 || cfg.Logging.HTTP.ResponseBodyLimit != 0 {
+		t.Fatalf("expected disabled HTTP body logging limits, got %+v", cfg.Logging.HTTP)
 	}
 }
 
@@ -679,9 +705,11 @@ logging:
   file: logs/pomelo-orbit.log
   max_size_mb: 100
   max_backups: 7
-  http_body_enabled: false
-  http_body_max_bytes: 4096
-  http_skip_assets_200_enabled: true
+  http:
+    enabled: false
+    request_body_limit: 4096
+    response_body_limit: 4096
+    skip_asset_enabled: true
 database:
   driver: sqlite
   sqlite:

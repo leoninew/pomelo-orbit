@@ -69,7 +69,12 @@ func (r Router) Handler() http.Handler {
 	engine.HandleMethodNotAllowed = true
 	engine.Use(transportmiddleware.RequestId())
 	engine.Use(transportmiddleware.RealIP())
-	engine.Use(transportmiddleware.LogRequest(r.logger, transportmiddleware.LogRequestConfig{BodyEnabled: r.cfg.Logging.HTTPBodyEnabled, BodyMaxBytes: r.cfg.Logging.HTTPBodyMaxBytes, SkipAssets200Enabled: r.cfg.Logging.HTTPSkipAssets200Enabled}))
+	engine.Use(transportmiddleware.LogRequest(r.logger, transportmiddleware.LogRequestConfig{
+		Enabled:           r.cfg.Logging.HTTP.Enabled,
+		RequestBodyLimit:  r.cfg.Logging.HTTP.RequestBodyLimit,
+		ResponseBodyLimit: r.cfg.Logging.HTTP.ResponseBodyLimit,
+		SkipAssetEnabled:  r.cfg.Logging.HTTP.SkipAssetEnabled,
+	}))
 	engine.Use(transportmiddleware.Recovery(r.logger))
 	engine.Use(transportmiddleware.Cors(r.cfg.Server.CorsAllowedOrigins, r.cfg.Server.ApiPathPrefixes))
 	engine.GET("/api/health", func(c *gin.Context) {

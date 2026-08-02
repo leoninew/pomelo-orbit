@@ -28,6 +28,9 @@ func TestProtoJSONPreservesProtoJSONContract(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d", http.StatusCreated, recorder.Code)
 	}
+	if got := recorder.Header().Get("Content-Type"); got != "application/json; charset=utf-8" {
+		t.Fatalf("expected JSON content type, got %q", got)
+	}
 	response := &authv1.TokenResp{}
 	if err := protojson.Unmarshal(recorder.Body.Bytes(), response); err != nil {
 		t.Fatalf("decode proto json response: %v", err)

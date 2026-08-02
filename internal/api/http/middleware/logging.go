@@ -26,9 +26,10 @@ const (
 )
 
 type LogRequestConfig struct {
-	BodyEnabled          bool
-	BodyMaxBytes         int
-	SkipAssets200Enabled bool
+	Enabled           bool
+	RequestBodyLimit  int
+	ResponseBodyLimit int
+	SkipAssetEnabled  bool
 }
 
 func RequestId() gin.HandlerFunc {
@@ -62,13 +63,15 @@ func RealIP() gin.HandlerFunc {
 }
 
 func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
-	if cfg.BodyEnabled && cfg.BodyMaxBytes <= 0 {
-		panic("http body max bytes must be positive")
+	if !cfg.Enabled {
+		return func(c *gin.Context) {
+			c.Next()
+		}
 	}
 	return func(c *gin.Context) {
 		startedAt := time.Now()
 		requestAttrs := requestLogAttrs(c)
-		requestBody, bodyErr := readRequestBodyForLog(c.Request, cfg)
+		requestBody, bodyErr := readRequestBodyForLog(c.Request, cfg.RequestBodyLimit)
 
 		startedAttrs := append([]any{}, requestAttrs...)
 		if requestBody != "" {
@@ -77,12 +80,12 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
 		if bodyErr != nil {
 			startedAttrs = append(startedAttrs, "body_read_error", bodyErr.Error())
 		}
-		delayStartedLog := cfg.SkipAssets200Enabled && isSkippableAssetPath(c.Request.URL.Path)
+		delayStartedLog := cfg.SkipAssetEnabled && isSkippableAssetPath(c.Request.URL.Path)
 		if !delayStartedLog {
 			logger.Info("request started", startedAttrs...)
 		}
 
-		bodyWriter := &bodyLogWriter{ResponseWriter: c.Writer, cfg: cfg}
+		bodyWriter := &bodyLogWriter{ResponseWriter: c.Writer, responseBodyLimit: cfg.ResponseBodyLimit}
 		c.Writer = bodyWriter
 		c.Next()
 
@@ -138,28 +141,24 @@ func requestLogAttrs(c *gin.Context) []any {
 }
 
 func shouldSkipRequestLog(r *http.Request, status int, cfg LogRequestConfig) bool {
-	return cfg.SkipAssets200Enabled && status == http.StatusOK && isSkippableAssetPath(r.URL.Path)
+	return cfg.SkipAssetEnabled && isSkippableAssetPath(r.URL.Path) && isSuccessfulAssetStatus(status)
 }
 
 func isSkippableAssetPath(requestPath string) bool {
 	requestPath = path.Clean("/" + requestPath)
-	if !strings.HasPrefix(requestPath, "/assets/") {
-		return false
-	}
-	switch strings.ToLower(path.Ext(requestPath)) {
-	case ".js", ".css", ".html":
-		return true
-	default:
-		return false
-	}
+	return strings.HasPrefix(requestPath, "/assets/")
 }
 
-func readRequestBodyForLog(r *http.Request, cfg LogRequestConfig) (string, error) {
-	if !cfg.BodyEnabled || !isJSONContentType(r.Header.Get("Content-Type")) || r.Body == nil {
+func isSuccessfulAssetStatus(status int) bool {
+	return (status >= http.StatusOK && status < http.StatusMultipleChoices) || status == http.StatusNotModified
+}
+
+func readRequestBodyForLog(r *http.Request, limit int) (string, error) {
+	if limit <= 0 || !isJSONContentType(r.Header.Get("Content-Type")) || r.Body == nil {
 		return "", nil
 	}
 	body := r.Body
-	loggedBytes, err := io.ReadAll(io.LimitReader(body, int64(cfg.BodyMaxBytes)+1))
+	loggedBytes, err := io.ReadAll(io.LimitReader(body, int64(limit)+1))
 	r.Body = &prefixReadCloser{reader: io.MultiReader(bytes.NewReader(loggedBytes), body), closer: body}
 	if err != nil {
 		return "", err
@@ -167,7 +166,7 @@ func readRequestBodyForLog(r *http.Request, cfg LogRequestConfig) (string, error
 	if len(loggedBytes) == 0 {
 		return "", nil
 	}
-	return truncateLogBody(loggedBytes, cfg.BodyMaxBytes), nil
+	return truncateLogBody(loggedBytes, limit), nil
 }
 
 func isJSONContentType(contentType string) bool {
@@ -208,8 +207,8 @@ func (r *prefixReadCloser) Close() error {
 
 type bodyLogWriter struct {
 	gin.ResponseWriter
-	cfg  LogRequestConfig
-	body bytes.Buffer
+	responseBodyLimit int
+	body              bytes.Buffer
 }
 
 func (w *bodyLogWriter) Write(data []byte) (int, error) {
@@ -223,17 +222,17 @@ func (w *bodyLogWriter) WriteString(data string) (int, error) {
 }
 
 func (w *bodyLogWriter) Body() string {
-	if !w.cfg.BodyEnabled || w.body.Len() == 0 {
+	if w.responseBodyLimit <= 0 || w.body.Len() == 0 {
 		return ""
 	}
-	return truncateLogBody(w.body.Bytes(), w.cfg.BodyMaxBytes)
+	return truncateLogBody(w.body.Bytes(), w.responseBodyLimit)
 }
 
 func (w *bodyLogWriter) captureBody(data []byte) {
-	if !w.cfg.BodyEnabled || !isJSONContentType(w.Header().Get("Content-Type")) || len(data) == 0 {
+	if w.responseBodyLimit <= 0 || !isJSONContentType(w.Header().Get("Content-Type")) || len(data) == 0 {
 		return
 	}
-	limit := w.cfg.BodyMaxBytes + 1
+	limit := w.responseBodyLimit + 1
 	if w.body.Len() >= limit {
 		return
 	}

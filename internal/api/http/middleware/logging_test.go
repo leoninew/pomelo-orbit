@@ -16,6 +16,7 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	authv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/auth"
 )
 
 const testBodyMaxBytes = 32
@@ -125,37 +126,43 @@ func transportError() error {
 	return errors.New("database password=secret")
 }
 
-func TestLogRequestSkipsAssets200WhenEnabled(t *testing.T) {
-	cfg := LogRequestConfig{BodyEnabled: true, BodyMaxBytes: testBodyMaxBytes, SkipAssets200Enabled: true}
-	cases := []string{
-		"/assets/app.js",
-		"/assets/app.css?v=1",
-		"/assets/page.html",
+func TestLogRequestSkipsSuccessfulAssetsWhenEnabled(t *testing.T) {
+	cfg := LogRequestConfig{Enabled: true, RequestBodyLimit: testBodyMaxBytes, ResponseBodyLimit: testBodyMaxBytes, SkipAssetEnabled: true}
+	cases := []struct {
+		target string
+		status int
+	}{
+		{target: "/assets/app.js", status: http.StatusOK},
+		{target: "/assets/app.css?v=1", status: http.StatusCreated},
+		{target: "/assets/page.html", status: http.StatusNoContent},
+		{target: "/assets/image.png", status: http.StatusOK},
+		{target: "/assets/fonts/app.woff2", status: http.StatusNotModified},
+		{target: "/assets/manifest", status: http.StatusOK},
 	}
-	for _, target := range cases {
-		content, recorder := runLoggedRequestContentWithConfig(t, cfg, http.MethodGet, target, "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
+	for _, tc := range cases {
+		content, recorder := runLoggedRequestContentWithConfig(t, cfg, http.MethodGet, tc.target, "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(tc.status)
 			_, _ = w.Write([]byte("asset"))
 		}))
 		if content != "" {
-			t.Fatalf("expected no log entries for %s, got %s", target, content)
+			t.Fatalf("expected no log entries for %s, got %s", tc.target, content)
 		}
-		if recorder.Code != http.StatusOK {
-			t.Fatalf("expected status 200 for %s, got %d", target, recorder.Code)
+		if recorder.Code != tc.status {
+			t.Fatalf("expected status %d for %s, got %d", tc.status, tc.target, recorder.Code)
 		}
 	}
 }
 
-func TestLogRequestKeepsNonSkippedAssetLogs(t *testing.T) {
-	cfg := LogRequestConfig{BodyEnabled: true, BodyMaxBytes: testBodyMaxBytes, SkipAssets200Enabled: true}
+func TestLogRequestKeepsFailedAssetsAndNonAssets(t *testing.T) {
+	cfg := LogRequestConfig{Enabled: true, RequestBodyLimit: testBodyMaxBytes, ResponseBodyLimit: testBodyMaxBytes, SkipAssetEnabled: true}
 	cases := []struct {
 		name   string
 		target string
 		status int
 	}{
-		{name: "asset js not found", target: "/assets/app.js", status: http.StatusNotFound},
-		{name: "asset js not modified", target: "/assets/app.js", status: http.StatusNotModified},
-		{name: "asset png ok", target: "/assets/app.png", status: http.StatusOK},
+		{name: "asset not found", target: "/assets/app.js", status: http.StatusNotFound},
+		{name: "asset redirect", target: "/assets/app.js", status: http.StatusFound},
+		{name: "non-asset ok", target: "/static/app.png", status: http.StatusOK},
 		{name: "asset prefix mismatch", target: "/assets-old/app.js", status: http.StatusOK},
 		{name: "asserts typo", target: "/asserts/app.js", status: http.StatusOK},
 	}
@@ -170,8 +177,8 @@ func TestLogRequestKeepsNonSkippedAssetLogs(t *testing.T) {
 	}
 }
 
-func TestLogRequestKeepsAssets200WhenSkipDisabled(t *testing.T) {
-	cfg := LogRequestConfig{BodyEnabled: true, BodyMaxBytes: testBodyMaxBytes, SkipAssets200Enabled: false}
+func TestLogRequestKeepsSuccessfulAssetsWhenSkipDisabled(t *testing.T) {
+	cfg := LogRequestConfig{Enabled: true, RequestBodyLimit: testBodyMaxBytes, ResponseBodyLimit: testBodyMaxBytes, SkipAssetEnabled: false}
 	entries, _ := runLoggedRequestWithConfig(t, cfg, http.MethodGet, "/assets/app.js", "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -179,9 +186,9 @@ func TestLogRequestKeepsAssets200WhenSkipDisabled(t *testing.T) {
 	assertLogNumber(t, completed, "status", http.StatusOK)
 }
 
-func TestLogRequestSkipsBodiesWhenDisabled(t *testing.T) {
+func TestLogRequestSkipsBodiesWhenLimitsDisabled(t *testing.T) {
 	body := `{"name":"demo"}`
-	entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{BodyEnabled: false, BodyMaxBytes: testBodyMaxBytes}, http.MethodPost, "/api/test", "application/json", body, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true}, http.MethodPost, "/api/test", "application/json", body, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeTestJSON(w, http.StatusOK, map[string]string{"ok": "true"})
 	}))
 	started, completed := assertStartedAndCompleted(t, entries)
@@ -190,6 +197,52 @@ func TestLogRequestSkipsBodiesWhenDisabled(t *testing.T) {
 	assertLogMissing(t, started, "response_body")
 	assertLogMissing(t, completed, "request_body")
 	assertLogMissing(t, completed, "response_body")
+}
+
+func TestLogRequestRecordsConfiguredBodyDirection(t *testing.T) {
+	body := `{"name":"demo"}`
+	cases := []struct {
+		name              string
+		requestBodyLimit  int
+		responseBodyLimit int
+		wantRequestBody   bool
+		wantResponseBody  bool
+	}{
+		{name: "request only", requestBodyLimit: testBodyMaxBytes, wantRequestBody: true},
+		{name: "response only", responseBodyLimit: testBodyMaxBytes, wantResponseBody: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: tc.requestBodyLimit, ResponseBodyLimit: tc.responseBodyLimit}, http.MethodPost, "/api/test", "application/json", body, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				writeTestJSON(w, http.StatusOK, map[string]string{"ok": "true"})
+			}))
+			started, completed := assertStartedAndCompleted(t, entries)
+			if tc.wantRequestBody {
+				assertLogValue(t, started, "request_body", body)
+			} else {
+				assertLogMissing(t, started, "request_body")
+			}
+			if tc.wantResponseBody {
+				if _, ok := completed["response_body"]; !ok {
+					t.Fatalf("expected response body: %+v", completed)
+				}
+			} else {
+				assertLogMissing(t, completed, "response_body")
+			}
+		})
+	}
+}
+
+func TestLogRequestSkipsAllAccessLogsWhenDisabled(t *testing.T) {
+	content, recorder := runLoggedRequestContentWithConfig(t, LogRequestConfig{}, http.MethodGet, "/api/test", "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	if content != "" {
+		t.Fatalf("expected no access log entries, got %s", content)
+	}
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
 }
 
 func TestLogRequestRecordsJSONRequestBody(t *testing.T) {
@@ -234,6 +287,27 @@ func TestLogRequestRecordsJSONResponseBody(t *testing.T) {
 	assertLogValue(t, completed, "response_body", responseBody)
 	if recorder.Body.String() != responseBody {
 		t.Fatalf("expected response body %q, got %q", responseBody, recorder.Body.String())
+	}
+}
+
+func TestLogRequestRecordsProtoJSONResponseBody(t *testing.T) {
+	var logBuffer bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&logBuffer, nil))
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(RequestId())
+	router.Use(RealIP())
+	router.Use(LogRequest(logger, testLogRequestConfig()))
+	router.GET("/api/test", func(c *gin.Context) {
+		transportresponse.ProtoJSON(c, http.StatusOK, &authv1.TokenResp{AccessToken: "token"})
+	})
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/test", nil))
+	_, completed := assertStartedAndCompleted(t, decodeLogEntries(t, logBuffer.String()))
+	responseBody, ok := completed["response_body"].(string)
+	if !ok || !strings.Contains(responseBody, `"access_token":"token"`) {
+		t.Fatalf("expected proto JSON response body, got %#v", completed["response_body"])
 	}
 }
 
@@ -378,7 +452,7 @@ func runLoggedRequestContentWithConfig(t *testing.T, cfg LogRequestConfig, metho
 }
 
 func testLogRequestConfig() LogRequestConfig {
-	return LogRequestConfig{BodyEnabled: true, BodyMaxBytes: testBodyMaxBytes}
+	return LogRequestConfig{Enabled: true, RequestBodyLimit: testBodyMaxBytes, ResponseBodyLimit: testBodyMaxBytes}
 }
 
 func decodeLogEntries(t *testing.T, content string) []map[string]any {

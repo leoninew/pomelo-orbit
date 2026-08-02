@@ -55,13 +55,18 @@ type ServerConfig struct {
 }
 
 type LoggingConfig struct {
-	Level                    string `mapstructure:"level" yaml:"level"`
-	File                     string `mapstructure:"file" yaml:"file"`
-	MaxSizeMB                int    `mapstructure:"max_size_mb" yaml:"max_size_mb"`
-	MaxBackups               int    `mapstructure:"max_backups" yaml:"max_backups"`
-	HTTPBodyEnabled          bool   `mapstructure:"http_body_enabled" yaml:"http_body_enabled"`
-	HTTPBodyMaxBytes         int    `mapstructure:"http_body_max_bytes" yaml:"http_body_max_bytes"`
-	HTTPSkipAssets200Enabled bool   `mapstructure:"http_skip_assets_200_enabled" yaml:"http_skip_assets_200_enabled"`
+	Level      string        `mapstructure:"level" yaml:"level"`
+	File       string        `mapstructure:"file" yaml:"file"`
+	MaxSizeMB  int           `mapstructure:"max_size_mb" yaml:"max_size_mb"`
+	MaxBackups int           `mapstructure:"max_backups" yaml:"max_backups"`
+	HTTP       LogHTTPConfig `mapstructure:"http" yaml:"http"`
+}
+
+type LogHTTPConfig struct {
+	Enabled           bool `mapstructure:"enabled" yaml:"enabled"`
+	RequestBodyLimit  int  `mapstructure:"request_body_limit" yaml:"request_body_limit"`
+	ResponseBodyLimit int  `mapstructure:"response_body_limit" yaml:"response_body_limit"`
+	SkipAssetEnabled  bool `mapstructure:"skip_asset_enabled" yaml:"skip_asset_enabled"`
 }
 
 const (
@@ -156,6 +161,7 @@ func Load() (Config, error) {
 	}
 
 	normalizeServerRuntimeOriginConfig(&cfg.Server)
+	normalizeLogHTTPConfig(&cfg.Logging.HTTP)
 	if cfg.Worker.Id == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -195,6 +201,7 @@ func loadBaseConfig(envName string) (Config, error) {
 		return Config{}, fmt.Errorf("parse default config: %w", err)
 	}
 	normalizeServerRuntimeOriginConfig(&base.Server)
+	normalizeLogHTTPConfig(&base.Logging.HTTP)
 	return base, nil
 }
 
@@ -256,9 +263,10 @@ func bindEnv(loader *viper.Viper) {
 		"logging.file",
 		"logging.max_size_mb",
 		"logging.max_backups",
-		"logging.http_body_enabled",
-		"logging.http_body_max_bytes",
-		"logging.http_skip_assets_200_enabled",
+		"logging.http.enabled",
+		"logging.http.request_body_limit",
+		"logging.http.response_body_limit",
+		"logging.http.skip_asset_enabled",
 		"database.driver",
 		"database.sqlite.path",
 		"database.mysql.dsn",
@@ -311,9 +319,6 @@ func (c Config) Validate() error {
 	if c.Logging.MaxBackups <= 0 {
 		return errors.New("logging.max_backups must be positive")
 	}
-	if c.Logging.HTTPBodyMaxBytes <= 0 {
-		return errors.New("logging.http_body_max_bytes must be positive")
-	}
 	if err := validateJwtSecretKey(c.Jwt.SecretKey); err != nil {
 		return err
 	}
@@ -341,6 +346,15 @@ func (c Config) Validate() error {
 		return errors.New("worker.concurrency must be at least 1")
 	}
 	return nil
+}
+
+func normalizeLogHTTPConfig(cfg *LogHTTPConfig) {
+	if cfg.RequestBodyLimit <= 0 {
+		cfg.RequestBodyLimit = 0
+	}
+	if cfg.ResponseBodyLimit <= 0 {
+		cfg.ResponseBodyLimit = 0
+	}
 }
 
 func normalizeServerRuntimeOriginConfig(cfg *ServerConfig) {

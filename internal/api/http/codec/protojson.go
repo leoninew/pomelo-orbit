@@ -22,6 +22,7 @@ type ProtoJSON struct {
 }
 
 func (r ProtoJSON) Render(w http.ResponseWriter) error {
+	r.WriteContentType(w)
 	data, err := MarshalProtoJSON(r.Message)
 	if err != nil {
 		return err

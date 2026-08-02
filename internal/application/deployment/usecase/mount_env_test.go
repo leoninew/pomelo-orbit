@@ -118,3 +118,16 @@ func TestMaterializeControlledFileRespectsIgnoreIfExists(t *testing.T) {
 		}
 	}
 }
+
+func TestCountLogicalMountsIncludesControlledFiles(t *testing.T) {
+	items := []ResolvedMount{
+		{SourceType: mountSourceDirectory},
+		{SourceType: mountSourceFile},
+		{SourceType: mountSourceControlledFile},
+		{SourceType: mountSourceNamedVolume},
+	}
+
+	if got, want := countLogicalMounts(items), 3; got != want {
+		t.Fatalf("countLogicalMounts() = %d, want %d", got, want)
+	}
+}

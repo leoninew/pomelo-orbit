@@ -310,7 +310,7 @@ func verifyDeploymentPlanHash(deployment model.Deployment, plan model.EffectiveS
 func countLogicalMounts(items []ResolvedMount) int {
 	n := 0
 	for _, item := range items {
-		if item.SourceType == mountSourceDirectory || item.SourceType == mountSourceFile {
+		if item.SourceType == mountSourceDirectory || item.SourceType == mountSourceFile || item.SourceType == mountSourceControlledFile {
 			n++
 		}
 	}

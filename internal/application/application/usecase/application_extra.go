@@ -20,7 +20,7 @@ func (s Service) ImportApplication(ctx context.Context, userId string, input app
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Application{}, err
 	}
-	name, code, kind, imagePullPolicy, err := normalizeApplicationImportInput(input)
+	name, code, kind, err := normalizeApplicationImportInput(input)
 	if err != nil {
 		return model.Application{}, err
 	}
@@ -30,7 +30,7 @@ func (s Service) ImportApplication(ctx context.Context, userId string, input app
 	if err := s.ensureApplicationCodeAvailable(ctx, code); err != nil {
 		return model.Application{}, err
 	}
-	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: kind, ImagePullPolicy: imagePullPolicy}
+	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: kind}
 	if err := s.store.CreateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to import application", err)
 	}
@@ -64,21 +64,17 @@ func (s Service) ExportApplication(ctx context.Context, userId string, applicati
 	return applicationdto.ApplicationExport{Application: app, Versions: versions}, nil
 }
 
-func normalizeApplicationImportInput(input applicationdto.ApplicationImportInput) (string, string, string, string, error) {
+func normalizeApplicationImportInput(input applicationdto.ApplicationImportInput) (string, string, string, error) {
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
 	kind, err := normalizeApplicationKind(input.Kind)
 	if err != nil {
-		return "", "", "", "", err
+		return "", "", "", err
 	}
-	imagePullPolicy := strings.TrimSpace(input.ImagePullPolicy)
-	if imagePullPolicy == "" {
-		imagePullPolicy = "missing"
+	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !applicationCreateCodePattern.MatchString(code) {
+		return "", "", "", apperror.New(apperror.KindValidation, "Invalid application fields")
 	}
-	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !applicationCreateCodePattern.MatchString(code) || !validImagePullPolicy(imagePullPolicy) {
-		return "", "", "", "", apperror.New(apperror.KindValidation, "Invalid application fields")
-	}
-	return name, code, kind, imagePullPolicy, nil
+	return name, code, kind, nil
 }
 
 func (s Service) ensureApplicationCodeAvailable(ctx context.Context, code string) error {

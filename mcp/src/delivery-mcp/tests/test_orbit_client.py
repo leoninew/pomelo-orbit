@@ -210,8 +210,8 @@ async def test_client_maps_component_update_sections(tmp_path) -> None:
         assert await client.update_version_component_runtime("version-1", "component-1", {"healthcheck": None}) == {
             "id": "component-1"
         }
-        assert await client.update_version_component_ports(
-            "version-1", "component-1", {"ports": [{"host_port": 8080, "container_port": 80}]}
+        assert await client.update_version_component_endpoints(
+            "version-1", "component-1", {"endpoints": [{"name": "http", "protocol": "http", "container_port": 80, "mode": "host", "listen_port": 8080}]}
         ) == {"id": "component-1"}
         assert await client.update_version_component_env(
             "version-1", "component-1", {"env": [{"key": "MODE", "value": "production"}]}
@@ -234,7 +234,7 @@ async def test_client_maps_component_update_sections(tmp_path) -> None:
         ("POST", "/api/version/version-1/component"),
         ("PUT", "/api/version/version-1/component/component-1/basic"),
         ("PUT", "/api/version/version-1/component/component-1/runtime"),
-        ("PUT", "/api/version/version-1/component/component-1/ports"),
+        ("PUT", "/api/version/version-1/component/component-1/endpoints"),
         ("PUT", "/api/version/version-1/component/component-1/env"),
         ("PUT", "/api/version/version-1/component/component-1/mounts"),
         ("PUT", "/api/version/version-1/component/component-1/dependencies"),
@@ -246,7 +246,7 @@ async def test_client_maps_component_update_sections(tmp_path) -> None:
         {"name": "web", "image": "nginx:1.27", "command": "nginx -g 'daemon off;'"},
         {"name": "web", "image": "nginx:1.27", "command": "nginx -g 'daemon off;'"},
         {"healthcheck": None},
-        {"ports": [{"host_port": 8080, "container_port": 80}]},
+        {"endpoints": [{"name": "http", "protocol": "http", "container_port": 80, "mode": "host", "listen_port": 8080}]},
         {"env": [{"key": "MODE", "value": "production"}]},
         {"mounts": [{"source_type": "directory", "source": "data", "target": "/data"}]},
         {"dependencies": [{"name": "database", "condition": "service_healthy"}]},

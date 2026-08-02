@@ -12,6 +12,10 @@
         </DetailHeaderMeta>
       </div>
       <div class="flex flex-wrap items-center gap-2">
+        <button v-if="version" class="app-button h-9 px-3" :disabled="operating" @click="preview">
+          <FileCode2 class="size-4" />
+          {{ t('application.detail.actions.preview') }}
+        </button>
         <button
           v-if="version && isEditable"
           class="app-button-primary h-9 px-3"
@@ -51,121 +55,55 @@
     <AppSpinner v-if="loading" class="py-12" />
 
     <template v-else-if="version">
-      <!-- 基本信息 -->
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">
-            {{ t('application.detail.sections.basicInfo') }}
-          </h2>
-          <button
-            v-if="isEditable"
-            class="app-button-primary h-9 px-3"
-            :disabled="operating"
-            @click="openBasicModal"
-          >
-            <Pencil class="size-4" />
-            {{ t('common.edit') }}
-          </button>
-        </div>
-        <dl class="app-detail-info-grid">
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">
-              {{ t('application.detail.fields.versionLabel') }}
-            </dt>
-            <dd class="text-foreground">{{ version.label }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">
-              {{ t('common.status') }}
-            </dt>
-            <dd>
-              <AppBadge variant="pill" :tone="versionStatusTone(version.status)">
-                {{ version.status }}
-              </AppBadge>
-            </dd>
-          </div>
-          <div v-if="version.note" class="flex gap-2">
-            <dt class="whitespace-nowrap">
-              {{ t('application.detail.fields.note') }}
-            </dt>
-            <dd class="text-foreground">{{ version.note }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">
-              {{ t('common.createdAt') }}
-            </dt>
-            <dd class="text-muted-foreground">{{ formatTime(version.created_at) }}</dd>
-          </div>
-        </dl>
-      </div>
-
-      <!-- 组件 -->
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">
-            {{ t('application.detail.fields.components') }}
-          </h2>
-          <button
-            v-if="isEditable"
-            class="app-button-primary h-9 px-3"
-            :disabled="operating"
-            @click="openComponentDialog"
-          >
-            <Plus class="size-4" />
-            {{ t('application.detail.actions.addComponent') }}
-          </button>
-        </div>
-        <AppEmptyState v-if="(version.components ?? []).length === 0" size="compact" />
-        <div v-else class="overflow-x-auto">
-          <table class="app-data-table min-w-[840px]">
-            <thead>
-              <tr>
-                <th>{{ t('application.detail.fields.component') }}</th>
-                <th>{{ t('application.detail.fields.image') }}</th>
-                <th>{{ t('application.componentDetail.fields.pullPolicy') }}</th>
-                <th>{{ t('application.componentDetail.fields.restartPolicy') }}</th>
-                <th>{{ t('common.operation') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="component in version.components" :key="component.id">
-                <td>
-                  <router-link
-                    :to="`/version/${version.id}/component/${component.id}`"
-                    class="app-link"
-                  >
-                    {{ component.name }}
-                  </router-link>
-                </td>
-                <td class="max-w-md whitespace-normal break-all text-muted-foreground">
-                  {{ component.image }}
-                </td>
-                <td class="text-muted-foreground">{{ component.pull_policy }}</td>
-                <td class="text-muted-foreground">{{ component.restart_policy }}</td>
-                <td>
-                  <div v-if="isEditable" class="flex items-center gap-2">
-                    <button
-                      class="app-link"
-                      :disabled="operating"
-                      @click="openComponentEditDialog(component)"
-                    >
-                      {{ t('common.edit') }}
-                    </button>
-                    <button
-                      class="app-link-danger"
-                      :disabled="operating"
-                      @click="openComponentDeleteDialog(component)"
-                    >
-                      {{ t('common.delete') }}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <VersionBasicInfoCard
+        :version="version"
+        :editable="isEditable"
+        :disabled="operating"
+        @edit="openBasicModal"
+      />
+      <VersionComponentsCard
+        :version-id="version.id"
+        :components="version.components"
+        :editable="isEditable"
+        :disabled="operating"
+        @add="openComponentDialog"
+        @edit="openComponentEditDialog"
+        @delete="openComponentDeleteDialog"
+      />
     </template>
+
+    <AppDrawer
+      :open="previewOpen"
+      :title="t('application.detail.drawer.composePreview')"
+      width-class="w-[min(960px,100vw)]"
+      body-class="min-h-0 flex-1 overflow-hidden p-0"
+      @update:open="setPreviewOpen"
+    >
+      <div class="flex h-full flex-col gap-3 p-6">
+        <div v-if="previewLoading" class="flex flex-1 items-center justify-center">
+          <AppSpinner />
+        </div>
+        <div
+          v-else-if="previewError"
+          class="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+        >
+          {{ previewError }}
+        </div>
+        <div v-else class="min-h-0 flex-1">
+          <MonacoEditor
+            :model-value="previewContent"
+            language="yaml"
+            height="100%"
+            :readonly="true"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <button class="app-button" @click="setPreviewOpen(false)">
+          {{ t('application.detail.actions.close') }}
+        </button>
+      </template>
+    </AppDrawer>
 
     <!-- 编辑基本信息 -->
     <AppDialog
@@ -454,7 +392,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, FileCode2, RotateCcw, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -463,17 +401,16 @@
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
+  import AppDrawer from '@/components/AppDrawer.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
+  import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type {
-    VersionComponentResp,
-    VersionResp,
-  } from '@/gen/proto/orbit/v1/application/version';
+  import type { VersionComponentResp, VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import { versionStatusTone } from '@/utils/status';
-  import { formatTime } from '@/utils/time';
+  import VersionBasicInfoCard from './components/VersionBasicInfoCard.vue';
+  import VersionComponentsCard from './components/VersionComponentsCard.vue';
   import {
     componentBasicRequestFromForm,
     componentCreateRequestFromForm,
@@ -489,8 +426,12 @@
 
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
+  const { loading: previewLoading, execute: executePreview } = useStatusAsync();
 
   const version = ref<VersionResp>();
+  const previewOpen = ref(false);
+  const previewContent = ref('');
+  const previewError = ref('');
 
   const isBasicDialogOpen = ref(false);
   const isComponentDialogOpen = ref(false);
@@ -534,6 +475,29 @@
       return;
     }
     router.push('/applications');
+  }
+
+  async function preview() {
+    previewContent.value = '';
+    previewError.value = '';
+    previewOpen.value = true;
+    try {
+      await executePreview(async () => {
+        const result = await applicationApi.previewVersion(versionId, {});
+        previewContent.value = result.compose_yaml;
+      });
+    } catch (error) {
+      previewError.value =
+        error instanceof Error ? error.message : t('application.toast.loadPreviewFailed');
+    }
+  }
+
+  function setPreviewOpen(open: boolean) {
+    previewOpen.value = open;
+    if (!open) {
+      previewContent.value = '';
+      previewError.value = '';
+    }
   }
 
   function openBasicModal() {

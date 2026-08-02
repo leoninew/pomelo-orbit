@@ -11,7 +11,7 @@ from .conftest import make_settings
 
 
 @pytest.mark.asyncio
-async def test_service_runtime_config_client_uses_service_aggregate(tmp_path) -> None:
+async def test_service_client_creates_only_the_version_binding(tmp_path) -> None:
     token = "header.eyJleHAiOjQxMDI0NDQ4MDB9.signature"
     requests: list[httpx.Request] = []
 
@@ -24,8 +24,6 @@ async def test_service_runtime_config_client_uses_service_aggregate(tmp_path) ->
             "application_id": "application-1",
             "version_id": "version-1",
             "instance_key": "default",
-            "runtime_config": {"MYSQL_PASSWORD": "runtime-test-value"},
-            "exposes": [],
         }
         return httpx.Response(
             201,
@@ -34,33 +32,66 @@ async def test_service_runtime_config_client_uses_service_aggregate(tmp_path) ->
 
     settings = make_settings(tmp_path, jwt_from_environment=token)
     async with httpx.AsyncClient(base_url=settings.orbit_url, transport=httpx.MockTransport(handler)) as http_client:
-        created = await OrbitClient(settings, http_client).create_service(
-            "application-1", "version-1", "default", {"MYSQL_PASSWORD": "runtime-test-value"}, []
-        )
+        created = await OrbitClient(settings, http_client).create_service("application-1", "version-1", "default")
     assert created["id"] == "service-1"
     assert len(requests) == 1
 
 
 @pytest.mark.asyncio
-async def test_service_configuration_client_does_not_send_version_id(tmp_path) -> None:
+async def test_service_component_overlay_client_targets_declared_component(tmp_path) -> None:
     token = "header.eyJleHAiOjQxMDI0NDQ4MDB9.signature"
 
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.headers["Authorization"] == f"Bearer {token}"
         assert request.method == "PUT"
-        assert request.url.path == "/api/service/service-1/config"
+        assert request.url.path == "/api/service/service-1/component/component-1"
         assert json.loads(request.content) == {
-            "runtime_config": {"MYSQL_PASSWORD": "runtime-test-value"},
-            "exposes": [{"component_name": "mysql", "protocol": "tcp", "container_port": 3306}],
+            "env": [{"key": "MYSQL_PASSWORD", "value": "runtime-test-value", "state": "override"}],
+            "mounts": [{"target": "/data", "state": "deleted"}],
+            "endpoints": [],
         }
         return httpx.Response(200, json={"id": "service-1"})
 
     settings = make_settings(tmp_path, jwt_from_environment=token)
     async with httpx.AsyncClient(base_url=settings.orbit_url, transport=httpx.MockTransport(handler)) as http_client:
-        updated = await OrbitClient(settings, http_client).update_service_configuration(
+        updated = await OrbitClient(settings, http_client).update_service_component_overlay(
             "service-1",
-            {"MYSQL_PASSWORD": "runtime-test-value"},
-            [{"component_name": "mysql", "protocol": "tcp", "container_port": 3306}],
+            "component-1",
+            {
+                "env": [{"key": "MYSQL_PASSWORD", "value": "runtime-test-value", "state": "override"}],
+                "mounts": [{"target": "/data", "state": "deleted"}],
+                "endpoints": [],
+            },
+        )
+    assert updated["id"] == "service-1"
+
+
+@pytest.mark.asyncio
+async def test_service_environment_client_replaces_the_service_collection(tmp_path) -> None:
+    token = "header.eyJleHAiOjQxMDI0NDQ4MDB9.signature"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == f"Bearer {token}"
+        assert request.method == "PUT"
+        assert request.url.path == "/api/service/service-1/env"
+        assert json.loads(request.content) == {
+            "env": [
+                {"key": "SHARED_DATABASE_PASSWORD", "value": "runtime-test-value"},
+                {"key": "SHARED_DATABASE_USER", "value": "orbit"},
+            ]
+        }
+        return httpx.Response(200, json={"id": "service-1"})
+
+    settings = make_settings(tmp_path, jwt_from_environment=token)
+    async with httpx.AsyncClient(base_url=settings.orbit_url, transport=httpx.MockTransport(handler)) as http_client:
+        updated = await OrbitClient(settings, http_client).update_service_env(
+            "service-1",
+            {
+                "env": [
+                    {"key": "SHARED_DATABASE_PASSWORD", "value": "runtime-test-value"},
+                    {"key": "SHARED_DATABASE_USER", "value": "orbit"},
+                ]
+            },
         )
     assert updated["id"] == "service-1"
 

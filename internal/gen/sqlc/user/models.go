@@ -10,14 +10,13 @@ import (
 )
 
 type Application struct {
-	ID              string         `db:"id"`
-	Name            string         `db:"name"`
-	Code            string         `db:"code"`
-	Kind            string         `db:"kind"`
-	ImagePullPolicy string         `db:"image_pull_policy"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
-	ProjectID       sql.NullString `db:"project_id"`
+	ID        string         `db:"id"`
+	Name      string         `db:"name"`
+	Code      string         `db:"code"`
+	Kind      string         `db:"kind"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
+	ProjectID sql.NullString `db:"project_id"`
 }
 
 type Artifact struct {
@@ -80,17 +79,17 @@ type Deployment struct {
 	ServiceID                sql.NullString `db:"service_id"`
 	OptionsJson              sql.NullString `db:"options_json"`
 	CommandText              string         `db:"command_text"`
+	EffectivePlanHash        sql.NullString `db:"effective_plan_hash"`
 }
 
 type GatewayConfig struct {
-	ApplicationID     string         `db:"application_id"`
-	RestApiUrl        string         `db:"rest_api_url"`
-	BaseDomain        string         `db:"base_domain"`
-	Image             sql.NullString `db:"image"`
-	DefaultEntrypoint string         `db:"default_entrypoint"`
-	TlsMode           string         `db:"tls_mode"`
-	CreatedAt         time.Time      `db:"created_at"`
-	UpdatedAt         time.Time      `db:"updated_at"`
+	ApplicationID     string    `db:"application_id"`
+	RestApiUrl        string    `db:"rest_api_url"`
+	BaseDomain        string    `db:"base_domain"`
+	DefaultEntrypoint string    `db:"default_entrypoint"`
+	TlsMode           string    `db:"tls_mode"`
+	CreatedAt         time.Time `db:"created_at"`
+	UpdatedAt         time.Time `db:"updated_at"`
 }
 
 type LoginAttempt struct {
@@ -269,27 +268,64 @@ type Route struct {
 }
 
 type Service struct {
-	ID                string    `db:"id"`
-	ApplicationID     string    `db:"application_id"`
-	InstanceKey       string    `db:"instance_key"`
-	VersionID         string    `db:"version_id"`
-	RuntimeConfigJson string    `db:"runtime_config_json"`
-	Status            string    `db:"status"`
-	CreatedAt         time.Time `db:"created_at"`
-	UpdatedAt         time.Time `db:"updated_at"`
+	ID            string    `db:"id"`
+	ApplicationID string    `db:"application_id"`
+	InstanceKey   string    `db:"instance_key"`
+	VersionID     string    `db:"version_id"`
+	Status        string    `db:"status"`
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
 }
 
-type ServiceExpose struct {
-	ID            string         `db:"id"`
-	ServiceID     string         `db:"service_id"`
-	ComponentName string         `db:"component_name"`
-	Protocol      string         `db:"protocol"`
-	ContainerPort int64          `db:"container_port"`
-	PathPrefix    sql.NullString `db:"path_prefix"`
-	Access        string         `db:"access"`
-	ListenPort    sql.NullInt64  `db:"listen_port"`
-	CreatedAt     time.Time      `db:"created_at"`
-	UpdatedAt     time.Time      `db:"updated_at"`
+type ServiceComponent struct {
+	ID                       string    `db:"id"`
+	ServiceID                string    `db:"service_id"`
+	SourceVersionComponentID string    `db:"source_version_component_id"`
+	ComponentName            string    `db:"component_name"`
+	Status                   string    `db:"status"`
+	CreatedAt                time.Time `db:"created_at"`
+	UpdatedAt                time.Time `db:"updated_at"`
+}
+
+type ServiceComponentEndpoint struct {
+	ServiceComponentID string         `db:"service_component_id"`
+	Name               string         `db:"name"`
+	Mode               sql.NullString `db:"mode"`
+	BindAddress        sql.NullString `db:"bind_address"`
+	ListenPort         sql.NullInt64  `db:"listen_port"`
+	Entrypoint         sql.NullString `db:"entrypoint"`
+	PathPrefix         sql.NullString `db:"path_prefix"`
+	State              string         `db:"state"`
+}
+
+type ServiceComponentEnv struct {
+	ServiceComponentID string         `db:"service_component_id"`
+	EnvKey             string         `db:"env_key"`
+	Value              sql.NullString `db:"value"`
+	State              string         `db:"state"`
+}
+
+type ServiceComponentMount struct {
+	ID                 string         `db:"id"`
+	ServiceComponentID string         `db:"service_component_id"`
+	Target             string         `db:"target"`
+	Source             sql.NullString `db:"source"`
+	State              string         `db:"state"`
+}
+
+type ServiceComponentResource struct {
+	ServiceComponentID string         `db:"service_component_id"`
+	LimitCpus          sql.NullString `db:"limit_cpus"`
+	LimitMemory        sql.NullString `db:"limit_memory"`
+	ReservationCpus    sql.NullString `db:"reservation_cpus"`
+	ReservationMemory  sql.NullString `db:"reservation_memory"`
+	State              string         `db:"state"`
+}
+
+type ServiceEnv struct {
+	ServiceID string `db:"service_id"`
+	EnvKey    string `db:"env_key"`
+	Value     string `db:"value"`
 }
 
 type User struct {
@@ -351,6 +387,19 @@ type VersionComponentDevice struct {
 	Position         int64  `db:"position"`
 }
 
+type VersionComponentEndpoint struct {
+	ComponentID   string         `db:"component_id"`
+	Name          string         `db:"name"`
+	Protocol      string         `db:"protocol"`
+	ContainerPort int64          `db:"container_port"`
+	Mode          string         `db:"mode"`
+	BindAddress   sql.NullString `db:"bind_address"`
+	ListenPort    sql.NullInt64  `db:"listen_port"`
+	Entrypoint    sql.NullString `db:"entrypoint"`
+	PathPrefix    sql.NullString `db:"path_prefix"`
+	Position      int64          `db:"position"`
+}
+
 type VersionComponentEnv struct {
 	ComponentID string `db:"component_id"`
 	EnvKey      string `db:"env_key"`
@@ -378,16 +427,10 @@ type VersionComponentMount struct {
 	ReadOnly         int64          `db:"read_only"`
 	SourceIsHostPath int64          `db:"source_is_host_path"`
 	Content          sql.NullString `db:"content"`
+	ContentMasked    int64          `db:"content_masked"`
 	Mode             string         `db:"mode"`
 	IgnoreIfExists   int64          `db:"ignore_if_exists"`
 	Position         int64          `db:"position"`
-}
-
-type VersionComponentPort struct {
-	ComponentID   string `db:"component_id"`
-	HostPort      int64  `db:"host_port"`
-	ContainerPort int64  `db:"container_port"`
-	Position      int64  `db:"position"`
 }
 
 type VersionComponentResource struct {

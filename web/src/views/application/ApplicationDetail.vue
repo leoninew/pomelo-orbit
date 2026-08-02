@@ -33,62 +33,12 @@
     <AppSpinner v-if="basicInfoLoading" class="py-12" />
 
     <div v-else-if="application" class="flex flex-col gap-4">
-      <!-- 基本信息 -->
-      <div v-if="!versionsOnly" class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">
-            {{ t('application.detail.sections.basicInfo') }}
-          </h2>
-          <button class="app-button-primary h-9 px-3" @click="openEditModal">
-            <Pencil class="size-4" />
-            {{ t('common.edit') }}
-          </button>
-        </div>
-        <dl class="app-detail-info-grid">
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">
-              {{ t('application.name') }}
-            </dt>
-            <dd class="text-foreground">{{ application.name }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">
-              {{ t('application.code') }}
-            </dt>
-            <dd class="text-foreground">{{ application.code }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">
-              {{ t('application.kind') }}
-            </dt>
-            <dd>
-              <AppBadge variant="pill" :tone="applicationKindTone(application.kind)">
-                {{ application.kind }}
-              </AppBadge>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">
-              {{ t('application.imagePullPolicy') }}
-            </dt>
-            <dd class="text-foreground">
-              <AppBadge variant="pill">{{ application.image_pull_policy }}</AppBadge>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">
-              {{ t('common.createdAt') }}
-            </dt>
-            <dd class="text-muted-foreground">{{ formatTime(application.created_at) }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">
-              {{ t('common.updatedAt') }}
-            </dt>
-            <dd class="text-muted-foreground">{{ formatTime(application.updated_at) }}</dd>
-          </div>
-        </dl>
-      </div>
+      <ApplicationBasicInfoCard
+        v-if="!versionsOnly"
+        :application="application"
+        :disabled="operating"
+        @edit="openEditModal"
+      />
 
       <!-- 版本 -->
       <div class="app-surface app-detail-card">
@@ -146,6 +96,9 @@
                 <router-link :to="`/version/${version.id}`" class="app-link">
                   {{ t('application.view') }}
                 </router-link>
+                <button class="app-link" :disabled="operating" @click="previewVersion(version.id)">
+                  {{ t('application.detail.actions.preview') }}
+                </button>
                 <button class="app-link" @click="openForkModal(version)">
                   {{ t('application.detail.actions.fork') }}
                 </button>
@@ -269,6 +222,13 @@
                     >
                       {{ t('application.detail.actions.unpublish') }}
                     </button>
+                    <button
+                      class="app-link"
+                      :disabled="operating"
+                      @click="previewVersion(version.id)"
+                    >
+                      {{ t('application.detail.actions.preview') }}
+                    </button>
                     <button class="app-link" @click="openForkModal(version)">
                       {{ t('application.detail.actions.fork') }}
                     </button>
@@ -306,7 +266,7 @@
     >
       <div>
         <label class="app-field-label mb-1.5 block">
-          {{ t('application.name') }}
+          {{ t('common.name') }}
           <span class="text-destructive">*</span>
         </label>
         <input
@@ -322,10 +282,6 @@
       <div>
         <label class="app-field-label mb-1.5 block">{{ t('application.code') }}</label>
         <input v-model="editForm.code" type="text" disabled class="app-input" />
-      </div>
-      <div>
-        <label class="app-field-label mb-1.5 block">{{ t('application.imagePullPolicy') }}</label>
-        <RawValueSelect v-model="editForm.image_pull_policy" :values="imagePullPolicyValues" />
       </div>
       <template #footer>
         <AppDialogActions
@@ -574,11 +530,44 @@
         />
       </template>
     </AppDialog>
+
+    <AppDrawer
+      :open="previewOpen"
+      :title="t('application.detail.drawer.composePreview')"
+      width-class="w-[min(960px,100vw)]"
+      body-class="min-h-0 flex-1 overflow-hidden p-0"
+      @update:open="setPreviewOpen"
+    >
+      <div class="flex h-full flex-col gap-3 p-6">
+        <div v-if="previewLoading" class="flex flex-1 items-center justify-center">
+          <AppSpinner />
+        </div>
+        <div
+          v-else-if="previewError"
+          class="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+        >
+          {{ previewError }}
+        </div>
+        <div v-else class="min-h-0 flex-1">
+          <MonacoEditor
+            :model-value="previewContent"
+            language="yaml"
+            height="100%"
+            :readonly="true"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <button class="app-button" @click="setPreviewOpen(false)">
+          {{ t('application.detail.actions.close') }}
+        </button>
+      </template>
+    </AppDrawer>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ChevronDown, Download, Pencil, Plus, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, ChevronDown, Download, Plus, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -594,9 +583,11 @@
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
+  import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';
+  import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -604,6 +595,7 @@
   import type { VersionComponentResp, VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import { applicationKindTone, versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
+  import ApplicationBasicInfoCard from './components/ApplicationBasicInfoCard.vue';
   import {
     componentBasicRequestFromForm,
     componentFormFromResponse,
@@ -628,6 +620,7 @@
 
   const { loading: basicInfoLoading, execute: executeBasicInfo } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
+  const { loading: previewLoading, execute: executePreview } = useStatusAsync();
   const { loading: versionListLoading, execute: executeVersionList } = useStatusAsync();
 
   const application = ref<ApplicationResp>();
@@ -638,6 +631,10 @@
   const versionTotalPages = computed(() =>
     Math.ceil(versionPagination.total / versionPagination.pageSize)
   );
+
+  const previewOpen = ref(false);
+  const previewContent = ref('');
+  const previewError = ref('');
 
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
@@ -657,10 +654,8 @@
   const editForm = reactive({
     name: '',
     code: '',
-    image_pull_policy: 'missing',
   });
   const editErrors = reactive({ name: '' });
-  const imagePullPolicyValues = ['missing', 'always', 'never'];
 
   const versionForm = reactive({
     label: '',
@@ -680,7 +675,6 @@
         Object.assign(editForm, {
           name: data.name,
           code: data.code,
-          image_pull_policy: data.image_pull_policy,
         });
       });
     } catch {
@@ -757,13 +751,35 @@
     }
   }
 
+  async function previewVersion(versionId: string) {
+    previewContent.value = '';
+    previewError.value = '';
+    previewOpen.value = true;
+    try {
+      await executePreview(async () => {
+        const result = await applicationApi.previewVersion(versionId, {});
+        previewContent.value = result.compose_yaml;
+      });
+    } catch (error) {
+      previewError.value =
+        error instanceof Error ? error.message : t('application.toast.loadPreviewFailed');
+    }
+  }
+
+  function setPreviewOpen(open: boolean) {
+    previewOpen.value = open;
+    if (!open) {
+      previewContent.value = '';
+      previewError.value = '';
+    }
+  }
+
   function openEditModal() {
     editErrors.name = '';
     if (application.value) {
       Object.assign(editForm, {
         name: application.value.name,
         code: application.value.code,
-        image_pull_policy: application.value.image_pull_policy,
       });
     }
     isEditDialogOpen.value = true;
@@ -778,7 +794,6 @@
       await executeOp(async () => {
         await applicationApi.update(applicationId, {
           name: editForm.name,
-          image_pull_policy: editForm.image_pull_policy,
         });
         toast.success(t('application.toast.updateSuccess'));
         isEditDialogOpen.value = false;

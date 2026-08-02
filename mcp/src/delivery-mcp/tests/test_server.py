@@ -37,7 +37,7 @@ async def test_server_registers_the_accepted_tool_surface(tmp_path) -> None:
         "orbit_update_version",
         "orbit_update_version_component_basic",
         "orbit_update_version_component_runtime",
-        "orbit_update_version_component_ports",
+        "orbit_update_version_component_endpoints",
         "orbit_update_version_component_env",
         "orbit_update_version_component_mounts",
         "orbit_update_version_component_dependencies",
@@ -50,7 +50,8 @@ async def test_server_registers_the_accepted_tool_surface(tmp_path) -> None:
         "orbit_delete_version",
         "orbit_preview_service",
         "orbit_create_service",
-        "orbit_update_service_configuration",
+        "orbit_update_service_component_overlay",
+        "orbit_update_service_env",
         "orbit_update_service_basic",
         "orbit_deploy",
         "orbit_stop",
@@ -85,7 +86,7 @@ async def test_create_gateway_exposes_local_traefik_defaults(tmp_path) -> None:
     assert schema["properties"]["name"]["default"] == "Traefik"
     assert schema["properties"]["rest_api_url"]["default"] == "http://localhost:8080"
     assert schema["properties"]["base_domain"]["default"] == "lvh.me"
-    assert schema["properties"]["image"]["default"] == "traefik:3.6"
+    assert schema["properties"]["initial_component_image"]["default"] == "traefik:3.6"
 
 
 @pytest.mark.asyncio
@@ -176,7 +177,7 @@ async def test_server_component_group_schemas_match_the_current_json_contract(tm
         "image",
         "command",
         "env",
-        "ports",
+        "endpoints",
         "mounts",
         "dependencies",
         "healthcheck",
@@ -191,7 +192,7 @@ async def test_server_component_group_schemas_match_the_current_json_contract(tm
     assert "networks" not in component_definition["properties"]
 
     for tool_name, definition_name, field_name in (
-        ("orbit_update_version_component_ports", "VersionComponentPortsUpdate", "ports"),
+        ("orbit_update_version_component_endpoints", "VersionComponentEndpointsUpdate", "endpoints"),
         ("orbit_update_version_component_env", "VersionComponentEnvUpdate", "env"),
         ("orbit_update_version_component_mounts", "VersionComponentMountsUpdate", "mounts"),
         ("orbit_update_version_component_dependencies", "VersionComponentDependenciesUpdate", "dependencies"),
@@ -218,21 +219,15 @@ async def test_server_service_schemas_target_saved_service_configuration(tmp_pat
     assert "orbit_preview_version" not in tools
 
     create = tools["orbit_create_service"].inputSchema
-    assert create["required"] == ["application_id", "version_id", "instance_key", "runtime_config", "exposes"]
-    expose = create["$defs"]["ServiceExpose"]
-    assert set(expose["properties"]) == {
-        "component_name",
-        "protocol",
-        "container_port",
-        "path_prefix",
-        "access",
-        "listen_port",
-    }
-    assert expose["required"] == ["component_name", "protocol", "container_port", "access"]
+    assert create["required"] == ["application_id", "version_id", "instance_key"]
 
-    configuration = tools["orbit_update_service_configuration"].inputSchema
-    assert configuration["required"] == ["service_id", "runtime_config", "exposes"]
-    assert "version_id" not in configuration["properties"]
+    configuration = tools["orbit_update_service_component_overlay"].inputSchema
+    assert configuration["required"] == ["service_id", "component_id", "overlay"]
+    assert "ServiceComponentOverlayUpdate" in configuration["$defs"]
+
+    environment = tools["orbit_update_service_env"].inputSchema
+    assert environment["required"] == ["service_id", "env"]
+    assert "ServiceEnvUpdate" in environment["$defs"]
 
     basic = tools["orbit_update_service_basic"].inputSchema
     assert basic["required"] == ["service_id", "version_id", "instance_key"]

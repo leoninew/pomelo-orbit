@@ -29,10 +29,9 @@ type ServiceTargetInput struct {
 
 // DeployOptionsJSON is persisted with a deployment and consumed by the worker.
 type DeployOptionsJSON struct {
-	ForceRecreate bool              `json:"force_recreate"`
-	InstanceKey   string            `json:"instance_key"`
-	RemoveVolumes bool              `json:"remove_volumes"`
-	RuntimeConfig map[string]string `json:"runtime_config"`
+	ForceRecreate bool   `json:"force_recreate"`
+	InstanceKey   string `json:"instance_key"`
+	RemoveVolumes bool   `json:"remove_volumes"`
 }
 
 type DeployDispatchInput struct {

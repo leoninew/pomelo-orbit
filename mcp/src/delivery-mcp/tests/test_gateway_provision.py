@@ -47,8 +47,6 @@ class ProvisionClient:
         application_id: str,
         version_id: str,
         instance_key: str,
-        runtime_config: dict[str, str],
-        exposes: list[dict[str, object]],
     ) -> dict[str, str]:
         self.calls.append(
             (
@@ -57,8 +55,6 @@ class ProvisionClient:
                     "application_id": application_id,
                     "version_id": version_id,
                     "instance_key": instance_key,
-                    "runtime_config": runtime_config,
-                    "exposes": exposes,
                 },
             )
         )
@@ -110,7 +106,6 @@ async def test_provision_gateway_creates_publishes_deploys_and_confirms_network(
         runtime,  # type: ignore[arg-type]
         project_id="project-1",
         instance_key="default",
-        runtime_config={"TOKEN": "secret-value"},
         force_recreate=True,
         timeout_seconds=30,
     )
@@ -131,7 +126,6 @@ async def test_provision_gateway_creates_publishes_deploys_and_confirms_network(
         "ready": True,
         "status": "ready",
     }
-    assert "secret-value" not in str(result)
     assert [call[0] for call in client.calls] == [
         "list_gateways",
         "create_gateway",
@@ -159,7 +153,6 @@ async def test_provision_gateway_reuses_one_published_gateway_service_and_versio
         runtime,  # type: ignore[arg-type]
         project_id="project-1",
         instance_key="default",
-        runtime_config=None,
         force_recreate=False,
         timeout_seconds=None,
     )
@@ -181,7 +174,6 @@ async def test_provision_gateway_rejects_duplicate_gateway_matches_before_writes
             ProvisionRuntime(),  # type: ignore[arg-type]
             project_id="project-1",
             instance_key="default",
-            runtime_config=None,
             force_recreate=False,
             timeout_seconds=None,
         )
@@ -190,26 +182,6 @@ async def test_provision_gateway_rejects_duplicate_gateway_matches_before_writes
 
 
 @pytest.mark.asyncio
-async def test_provision_gateway_rejects_runtime_config_when_reusing_service() -> None:
-    client = ProvisionClient(
-        gateways=[{"id": "gateway-1", "code": "traefik"}],
-        services=[{"id": "service-1", "instance_key": "default", "version_id": "version-1"}],
-    )
-
-    with pytest.raises(ValueError, match="runtime_config cannot"):
-        await provision_gateway(
-            client,  # type: ignore[arg-type]
-            ProvisionRuntime(),  # type: ignore[arg-type]
-            project_id="project-1",
-            instance_key="default",
-            runtime_config={"TOKEN": "secret-value"},
-            force_recreate=False,
-            timeout_seconds=None,
-        )
-
-    assert [call[0] for call in client.calls] == ["list_gateways", "list_versions", "list_application_services"]
-
-
 @pytest.mark.asyncio
 async def test_provision_gateway_stops_before_network_check_when_deployment_is_unsuccessful() -> None:
     client = ProvisionClient(deployment_status="faulted")
@@ -220,7 +192,6 @@ async def test_provision_gateway_stops_before_network_check_when_deployment_is_u
         runtime,  # type: ignore[arg-type]
         project_id="project-1",
         instance_key="default",
-        runtime_config=None,
         force_recreate=False,
         timeout_seconds=None,
     )

@@ -41,7 +41,7 @@ func (q *Queries) CountActiveGatewayServices(ctx context.Context, arg CountActiv
 }
 
 const gatewayConfigByApplication = `-- name: GatewayConfigByApplication :one
-SELECT application_id, rest_api_url, base_domain, image, default_entrypoint, tls_mode, created_at, updated_at
+SELECT application_id, rest_api_url, base_domain, default_entrypoint, tls_mode, created_at, updated_at
 FROM gateway_config
 WHERE application_id = ?
 `
@@ -53,7 +53,6 @@ func (q *Queries) GatewayConfigByApplication(ctx context.Context, applicationID 
 		&i.ApplicationID,
 		&i.RestApiUrl,
 		&i.BaseDomain,
-		&i.Image,
 		&i.DefaultEntrypoint,
 		&i.TlsMode,
 		&i.CreatedAt,
@@ -63,19 +62,18 @@ func (q *Queries) GatewayConfigByApplication(ctx context.Context, applicationID 
 }
 
 const insertGatewayConfig = `-- name: InsertGatewayConfig :exec
-INSERT INTO gateway_config (application_id, rest_api_url, base_domain, image, default_entrypoint, tls_mode, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO gateway_config (application_id, rest_api_url, base_domain, default_entrypoint, tls_mode, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertGatewayConfigParams struct {
-	ApplicationID     string         `db:"application_id"`
-	RestApiUrl        string         `db:"rest_api_url"`
-	BaseDomain        string         `db:"base_domain"`
-	Image             sql.NullString `db:"image"`
-	DefaultEntrypoint string         `db:"default_entrypoint"`
-	TlsMode           string         `db:"tls_mode"`
-	CreatedAt         time.Time      `db:"created_at"`
-	UpdatedAt         time.Time      `db:"updated_at"`
+	ApplicationID     string    `db:"application_id"`
+	RestApiUrl        string    `db:"rest_api_url"`
+	BaseDomain        string    `db:"base_domain"`
+	DefaultEntrypoint string    `db:"default_entrypoint"`
+	TlsMode           string    `db:"tls_mode"`
+	CreatedAt         time.Time `db:"created_at"`
+	UpdatedAt         time.Time `db:"updated_at"`
 }
 
 func (q *Queries) InsertGatewayConfig(ctx context.Context, arg InsertGatewayConfigParams) error {
@@ -83,7 +81,6 @@ func (q *Queries) InsertGatewayConfig(ctx context.Context, arg InsertGatewayConf
 		arg.ApplicationID,
 		arg.RestApiUrl,
 		arg.BaseDomain,
-		arg.Image,
 		arg.DefaultEntrypoint,
 		arg.TlsMode,
 		arg.CreatedAt,
@@ -93,21 +90,20 @@ func (q *Queries) InsertGatewayConfig(ctx context.Context, arg InsertGatewayConf
 }
 
 const listAllGatewayApplications = `-- name: ListAllGatewayApplications :many
-SELECT id, project_id, name, code, kind, image_pull_policy, created_at, updated_at
+SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE kind = ?
 ORDER BY created_at, id
 `
 
 type ListAllGatewayApplicationsRow struct {
-	ID              string         `db:"id"`
-	ProjectID       sql.NullString `db:"project_id"`
-	Name            string         `db:"name"`
-	Code            string         `db:"code"`
-	Kind            string         `db:"kind"`
-	ImagePullPolicy string         `db:"image_pull_policy"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
+	ID        string         `db:"id"`
+	ProjectID sql.NullString `db:"project_id"`
+	Name      string         `db:"name"`
+	Code      string         `db:"code"`
+	Kind      string         `db:"kind"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) ListAllGatewayApplications(ctx context.Context, kind string) ([]ListAllGatewayApplicationsRow, error) {
@@ -125,7 +121,6 @@ func (q *Queries) ListAllGatewayApplications(ctx context.Context, kind string) (
 			&i.Name,
 			&i.Code,
 			&i.Kind,
-			&i.ImagePullPolicy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -143,7 +138,7 @@ func (q *Queries) ListAllGatewayApplications(ctx context.Context, kind string) (
 }
 
 const listGatewayApplications = `-- name: ListGatewayApplications :many
-SELECT id, project_id, name, code, kind, image_pull_policy, created_at, updated_at
+SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE project_id = ? AND kind = ?
 ORDER BY created_at DESC, id
@@ -155,14 +150,13 @@ type ListGatewayApplicationsParams struct {
 }
 
 type ListGatewayApplicationsRow struct {
-	ID              string         `db:"id"`
-	ProjectID       sql.NullString `db:"project_id"`
-	Name            string         `db:"name"`
-	Code            string         `db:"code"`
-	Kind            string         `db:"kind"`
-	ImagePullPolicy string         `db:"image_pull_policy"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
+	ID        string         `db:"id"`
+	ProjectID sql.NullString `db:"project_id"`
+	Name      string         `db:"name"`
+	Code      string         `db:"code"`
+	Kind      string         `db:"kind"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) ListGatewayApplications(ctx context.Context, arg ListGatewayApplicationsParams) ([]ListGatewayApplicationsRow, error) {
@@ -180,7 +174,6 @@ func (q *Queries) ListGatewayApplications(ctx context.Context, arg ListGatewayAp
 			&i.Name,
 			&i.Code,
 			&i.Kind,
-			&i.ImagePullPolicy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -198,7 +191,7 @@ func (q *Queries) ListGatewayApplications(ctx context.Context, arg ListGatewayAp
 }
 
 const resolveActiveGatewayConfig = `-- name: ResolveActiveGatewayConfig :one
-SELECT gc.application_id, gc.rest_api_url, gc.base_domain, gc.image, gc.default_entrypoint, gc.tls_mode, gc.created_at, gc.updated_at
+SELECT gc.application_id, gc.rest_api_url, gc.base_domain, gc.default_entrypoint, gc.tls_mode, gc.created_at, gc.updated_at
 FROM gateway_config gc
 INNER JOIN service s ON s.application_id = gc.application_id
 INNER JOIN application a ON a.id = gc.application_id
@@ -220,7 +213,6 @@ func (q *Queries) ResolveActiveGatewayConfig(ctx context.Context, arg ResolveAct
 		&i.ApplicationID,
 		&i.RestApiUrl,
 		&i.BaseDomain,
-		&i.Image,
 		&i.DefaultEntrypoint,
 		&i.TlsMode,
 		&i.CreatedAt,
@@ -231,25 +223,23 @@ func (q *Queries) ResolveActiveGatewayConfig(ctx context.Context, arg ResolveAct
 
 const updateGatewayConfig = `-- name: UpdateGatewayConfig :exec
 UPDATE gateway_config
-SET rest_api_url = ?, base_domain = ?, image = ?, default_entrypoint = ?, tls_mode = ?, updated_at = ?
+SET rest_api_url = ?, base_domain = ?, default_entrypoint = ?, tls_mode = ?, updated_at = ?
 WHERE application_id = ?
 `
 
 type UpdateGatewayConfigParams struct {
-	RestApiUrl        string         `db:"rest_api_url"`
-	BaseDomain        string         `db:"base_domain"`
-	Image             sql.NullString `db:"image"`
-	DefaultEntrypoint string         `db:"default_entrypoint"`
-	TlsMode           string         `db:"tls_mode"`
-	UpdatedAt         time.Time      `db:"updated_at"`
-	ApplicationID     string         `db:"application_id"`
+	RestApiUrl        string    `db:"rest_api_url"`
+	BaseDomain        string    `db:"base_domain"`
+	DefaultEntrypoint string    `db:"default_entrypoint"`
+	TlsMode           string    `db:"tls_mode"`
+	UpdatedAt         time.Time `db:"updated_at"`
+	ApplicationID     string    `db:"application_id"`
 }
 
 func (q *Queries) UpdateGatewayConfig(ctx context.Context, arg UpdateGatewayConfigParams) error {
 	_, err := q.db.ExecContext(ctx, updateGatewayConfig,
 		arg.RestApiUrl,
 		arg.BaseDomain,
-		arg.Image,
 		arg.DefaultEntrypoint,
 		arg.TlsMode,
 		arg.UpdatedAt,

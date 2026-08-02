@@ -22,7 +22,7 @@ func TestVersionComponentCreateInputUsesBasicFieldsOnly(t *testing.T) {
 	if input.PullPolicy != "always" || input.RestartPolicy != &restartPolicy {
 		t.Fatalf("unexpected policies: %+v", input)
 	}
-	if len(input.Env) != 0 || len(input.Ports) != 0 || len(input.Mounts) != 0 || len(input.Dependencies) != 0 || input.Healthcheck != nil || input.Resources != nil || len(input.Tmpfs) != 0 || len(input.Ulimits) != 0 {
+	if len(input.Env) != 0 || len(input.Endpoints) != 0 || len(input.Mounts) != 0 || len(input.Dependencies) != 0 || input.Healthcheck != nil || input.Resources != nil || len(input.Tmpfs) != 0 || len(input.Ulimits) != 0 {
 		t.Fatalf("create input must not include non-basic configuration: %+v", input)
 	}
 }

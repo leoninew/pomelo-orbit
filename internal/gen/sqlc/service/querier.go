@@ -10,26 +10,40 @@ import (
 )
 
 type Querier interface {
-	CountServiceExposesByVersionComponent(ctx context.Context, arg CountServiceExposesByVersionComponentParams) (int64, error)
 	CountServicesByProject(ctx context.Context, arg CountServicesByProjectParams) (int64, error)
 	DeleteService(ctx context.Context, id string) error
-	DeleteServiceExposes(ctx context.Context, serviceID string) error
+	DeleteServiceComponentEndpoints(ctx context.Context, serviceComponentID string) error
+	DeleteServiceComponentEnv(ctx context.Context, serviceComponentID string) error
+	DeleteServiceComponentMounts(ctx context.Context, serviceComponentID string) error
+	DeleteServiceComponentResource(ctx context.Context, serviceComponentID string) error
+	DeleteServiceComponents(ctx context.Context, serviceID string) error
+	DeleteServiceEnv(ctx context.Context, serviceID string) error
 	DetachDeploymentServiceRefs(ctx context.Context, serviceID sql.NullString) error
 	InsertService(ctx context.Context, arg InsertServiceParams) error
-	InsertServiceExpose(ctx context.Context, arg InsertServiceExposeParams) error
+	InsertServiceComponent(ctx context.Context, arg InsertServiceComponentParams) error
+	InsertServiceComponentEndpoint(ctx context.Context, arg InsertServiceComponentEndpointParams) error
+	InsertServiceComponentEnv(ctx context.Context, arg InsertServiceComponentEnvParams) error
+	InsertServiceComponentMount(ctx context.Context, arg InsertServiceComponentMountParams) error
+	InsertServiceComponentResource(ctx context.Context, arg InsertServiceComponentResourceParams) error
+	InsertServiceEnv(ctx context.Context, arg InsertServiceEnvParams) error
 	ListServicesByApplication(ctx context.Context, applicationID string) ([]Service, error)
 	ListServicesByProject(ctx context.Context, arg ListServicesByProjectParams) ([]ListServicesByProjectRow, error)
-	LocalServiceExposesByListen(ctx context.Context, listenPort sql.NullInt64) ([]ServiceExpose, error)
-	PublicTCPServiceExposesByListen(ctx context.Context, listenPort sql.NullInt64) ([]ServiceExpose, error)
 	ServiceByID(ctx context.Context, id string) (Service, error)
 	ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Service, error)
-	ServiceExposesByService(ctx context.Context, serviceID string) ([]ServiceExpose, error)
+	ServiceComponentByID(ctx context.Context, id string) (ServiceComponent, error)
+	ServiceComponentEndpointsByComponent(ctx context.Context, serviceComponentID string) ([]ServiceComponentEndpoint, error)
+	ServiceComponentEnvByComponent(ctx context.Context, serviceComponentID string) ([]ServiceComponentEnv, error)
+	ServiceComponentMountsByComponent(ctx context.Context, serviceComponentID string) ([]ServiceComponentMountsByComponentRow, error)
+	ServiceComponentResourceByComponent(ctx context.Context, serviceComponentID string) (ServiceComponentResource, error)
+	ServiceComponentsByService(ctx context.Context, serviceID string) ([]ServiceComponent, error)
+	ServiceEnvByService(ctx context.Context, serviceID string) ([]ServiceEnv, error)
 	ServiceIDByKey(ctx context.Context, arg ServiceIDByKeyParams) (string, error)
 	ServiceListItemByID(ctx context.Context, id string) (ServiceListItemByIDRow, error)
+	TouchService(ctx context.Context, arg TouchServiceParams) error
 	UpdateService(ctx context.Context, arg UpdateServiceParams) error
 	UpdateServiceAfterDeploy(ctx context.Context, arg UpdateServiceAfterDeployParams) error
+	UpdateServiceComponentSource(ctx context.Context, arg UpdateServiceComponentSourceParams) error
 	UpdateServiceConfiguration(ctx context.Context, arg UpdateServiceConfigurationParams) error
-	UpdateServiceRuntimeConfig(ctx context.Context, arg UpdateServiceRuntimeConfigParams) error
 	UpdateServiceStatus(ctx context.Context, arg UpdateServiceStatusParams) error
 }
 

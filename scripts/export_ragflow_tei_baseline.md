@@ -4,9 +4,9 @@ Doc role: local script reference。与代码冲突时以代码为准。
 
 ## 用途
 
-从 SQLite 数据库的只读连接导出 RAGFlow + TEI 停止态控制面 SQL 基线。导出范围包含指定 Project、RAGFlow 与 Gateway Application、CPU/GPU Version、组件、Service、Expose 及关联配置；Deployment 不在范围内。
+从 SQLite 数据库的只读连接导出 RAGFlow + TEI 停止态控制面 SQL 基线。导出范围包含指定 Project、RAGFlow 与 Gateway Application、CPU/GPU Version、组件、Service、Version Endpoint、ServiceComponent 映射与非机密 Endpoint overlay；Deployment 不在范围内。
 
-为使 SQL 能直接初始化一个新的 RAGFlow 实例，导出时会为 RAGFlow 的 `default` Service 随机生成 `MYSQL_PASSWORD`、`REDIS_PASSWORD`、`MINIO_USER`、`MINIO_PASSWORD` 和 `ELASTIC_PASSWORD`。这些值不从现有 Service 复制，不写入终端日志，并由组件环境变量中的占位符引用。Gateway Service 不需要这些变量，仍导出为空对象。每次导出都会产生不同的 RAGFlow 运行时配置。
+基线不导出任何 `service_component_env` 值，包括 RAGFlow 的密码和其他运行时覆盖。初始化后必须通过 Orbit MCP 为相应 Service 写入运行时配置；Gateway Service 同样不携带运行时环境值。
 
 基线保留 Project 记录，但以 `INSERT OR IGNORE` 写入，以兼容标准 SQLite 迁移已经创建的同 ID `default` Project。其余记录保持普通 `INSERT`，因此在错误的预置数据或重复导入时会明确失败。
 

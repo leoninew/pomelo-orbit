@@ -39,14 +39,14 @@
     <div v-else class="app-surface">
       <AppEmptyState v-if="applications.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-data-table min-w-[1040px]">
+        <table class="app-data-table min-w-[960px]">
           <thead>
             <tr>
               <th>{{ t('common.name') }}</th>
               <th>{{ t('application.code') }}</th>
               <th>{{ t('application.kind') }}</th>
-              <th>{{ t('application.imagePullPolicy') }}</th>
               <th>{{ t('common.createdAt') }}</th>
+              <th class="w-24">{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -62,10 +62,12 @@
                   {{ app.kind }}
                 </AppBadge>
               </td>
-              <td>
-                <AppBadge variant="pill">{{ app.image_pull_policy }}</AppBadge>
-              </td>
               <td class="text-foreground">{{ formatTime(app.created_at) }}</td>
+              <td class="w-24">
+                <button class="app-link" :disabled="operating" @click="openEditDialog(app)">
+                  {{ t('common.edit') }}
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -94,6 +96,39 @@
           :confirm-label="t('common.create')"
           @cancel="isCreateDialogOpen = false"
           @confirm="handleCreateOk"
+        />
+      </template>
+    </AppDialog>
+
+    <AppDialog
+      v-model:open="isEditDialogOpen"
+      :title="t('application.detail.dialog.editApplication')"
+    >
+      <div>
+        <label class="app-field-label mb-1.5 block">
+          {{ t('common.name') }}
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          v-model="editForm.name"
+          type="text"
+          class="app-input"
+          :class="editErrors.name ? 'app-input-error' : ''"
+          :aria-invalid="editErrors.name ? 'true' : undefined"
+          @input="editErrors.name = ''"
+        />
+        <p v-if="editErrors.name" class="app-field-error mt-1 text-xs">{{ editErrors.name }}</p>
+      </div>
+      <div>
+        <label class="app-field-label mb-1.5 block">{{ t('application.code') }}</label>
+        <input v-model="editForm.code" type="text" disabled class="app-input" />
+      </div>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.save')"
+          @cancel="isEditDialogOpen = false"
+          @confirm="handleEditOk"
         />
       </template>
     </AppDialog>
@@ -154,6 +189,7 @@
   const applications = ref<ApplicationResp[]>([]);
   const searchText = ref('');
   const isCreateDialogOpen = ref(false);
+  const isEditDialogOpen = ref(false);
   const isImportDialogOpen = ref(false);
   const fileInput = ref<HTMLInputElement>();
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
@@ -162,14 +198,15 @@
     name: '',
     code: '',
     kind: 'standard',
-    image_pull_policy: 'missing',
   });
   const createErrors = reactive({ name: '', code: '' });
+  const editingApplication = ref<ApplicationResp>();
+  const editForm = reactive({ name: '', code: '' });
+  const editErrors = reactive({ name: '' });
   const importForm = reactive<ApplicationImportReq>({
     name: '',
     code: '',
     kind: 'standard',
-    image_pull_policy: 'missing',
     version_label: 'v1',
     version_note: undefined,
     components: [],
@@ -241,10 +278,34 @@
       name: '',
       code: '',
       kind: 'standard',
-      image_pull_policy: 'missing',
     });
     Object.assign(createErrors, { name: '', code: '' });
     isCreateDialogOpen.value = true;
+  }
+
+  function openEditDialog(application: ApplicationResp) {
+    editingApplication.value = application;
+    Object.assign(editForm, { name: application.name, code: application.code });
+    editErrors.name = '';
+    isEditDialogOpen.value = true;
+  }
+
+  async function handleEditOk() {
+    editErrors.name = editForm.name.trim() ? '' : t('application.validation.nameRequired');
+    const applicationId = editingApplication.value?.id;
+    if (editErrors.name || !applicationId) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        await applicationApi.update(applicationId, { name: editForm.name.trim() });
+        toast.success(t('application.toast.updateSuccess'));
+        isEditDialogOpen.value = false;
+        await fetchApplications();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+    }
   }
 
   function clearCreateError(field: 'name' | 'code') {
@@ -271,7 +332,6 @@
             name: createForm.name,
             code: createForm.code,
             kind: createForm.kind,
-            image_pull_policy: createForm.image_pull_policy,
           },
           { project_id: projectId }
         );

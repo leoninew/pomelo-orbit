@@ -1,5 +1,5 @@
 -- Domain: service
--- Tables: service, service_expose
+-- Tables: service, service_env, service_component
 -- Ref: docs/analyze/20260724-domain-split-consensus-共识.md
 
 CREATE TABLE IF NOT EXISTS service (
@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS service (
     application_id VARCHAR(26) NOT NULL,
     instance_key VARCHAR(100) NOT NULL DEFAULT 'default',
     version_id VARCHAR(26) NOT NULL,
-    runtime_config_json LONGTEXT NOT NULL,
     status VARCHAR(32) NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -18,22 +17,87 @@ CREATE TABLE IF NOT EXISTS service (
     CONSTRAINT fk_service_version FOREIGN KEY (version_id) REFERENCES version(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS service_expose (
-    id VARCHAR(26) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS service_env (
     service_id VARCHAR(26) NOT NULL,
+    env_key VARCHAR(255) NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (service_id, env_key),
+    CONSTRAINT fk_service_env_service FOREIGN KEY (service_id) REFERENCES service(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS service_component (
+    id VARCHAR(128) NOT NULL PRIMARY KEY,
+    service_id VARCHAR(26) NOT NULL,
+    source_version_component_id VARCHAR(26) NOT NULL,
     component_name VARCHAR(255) NOT NULL,
-    protocol VARCHAR(16) NOT NULL,
-    container_port INT NOT NULL,
-    path_prefix VARCHAR(512) NULL,
-    access VARCHAR(16) NOT NULL,
-    listen_port INT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'active',
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    UNIQUE KEY uq_service_expose_key (service_id, component_name, protocol, container_port),
-    KEY idx_service_expose_service (service_id),
-    CONSTRAINT fk_service_expose_service FOREIGN KEY (service_id) REFERENCES service(id) ON DELETE CASCADE,
-    CONSTRAINT chk_service_expose_protocol CHECK (protocol IN ('http', 'tcp')),
-    CONSTRAINT chk_service_expose_container_port CHECK (container_port BETWEEN 1 AND 65535),
-    CONSTRAINT chk_service_expose_access CHECK (access IN ('local', 'public')),
-    CONSTRAINT chk_service_expose_listen_port CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535)
+    UNIQUE KEY uq_service_component_source (service_id, source_version_component_id),
+    UNIQUE KEY uq_service_component_name (service_id, component_name),
+    KEY idx_service_component_service (service_id),
+    CONSTRAINT fk_service_component_service FOREIGN KEY (service_id) REFERENCES service(id) ON DELETE CASCADE,
+    CONSTRAINT fk_service_component_source FOREIGN KEY (source_version_component_id) REFERENCES version_component(id) ON DELETE CASCADE,
+    CONSTRAINT chk_service_component_status CHECK (status = 'active')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS service_component_env (
+    service_component_id VARCHAR(128) NOT NULL,
+    env_key VARCHAR(255) NOT NULL,
+    value TEXT NULL,
+    state VARCHAR(16) NOT NULL,
+    PRIMARY KEY (service_component_id, env_key),
+    CONSTRAINT fk_service_component_env_component FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE,
+    CONSTRAINT chk_service_component_env_state CHECK (
+        (state = 'override' AND value IS NOT NULL)
+        OR (state = 'deleted' AND value IS NULL)
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS service_component_mount (
+    id VARCHAR(160) NOT NULL PRIMARY KEY,
+    service_component_id VARCHAR(128) NOT NULL,
+    target VARCHAR(1024) NOT NULL,
+    source VARCHAR(1024) NULL,
+    state VARCHAR(16) NOT NULL,
+    KEY idx_service_component_mount_component (service_component_id),
+    CONSTRAINT fk_service_component_mount_component FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE,
+    CONSTRAINT chk_service_component_mount_state CHECK (
+        (state = 'override' AND source IS NOT NULL)
+        OR (state = 'deleted' AND source IS NULL)
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS service_component_resource (
+    service_component_id VARCHAR(128) NOT NULL PRIMARY KEY,
+    limit_cpus VARCHAR(64) NULL,
+    limit_memory VARCHAR(64) NULL,
+    reservation_cpus VARCHAR(64) NULL,
+    reservation_memory VARCHAR(64) NULL,
+    state VARCHAR(16) NOT NULL,
+    CONSTRAINT fk_service_component_resource_component FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE,
+    CONSTRAINT chk_service_component_resource_state CHECK (
+        (state = 'deleted' AND limit_cpus IS NULL AND limit_memory IS NULL AND reservation_cpus IS NULL AND reservation_memory IS NULL)
+        OR (state = 'override' AND (limit_cpus IS NOT NULL OR limit_memory IS NOT NULL OR reservation_cpus IS NOT NULL OR reservation_memory IS NOT NULL))
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS service_component_endpoint (
+    service_component_id VARCHAR(128) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    mode VARCHAR(32) NULL,
+    bind_address VARCHAR(255) NULL,
+    listen_port INT NULL,
+    entrypoint VARCHAR(128) NULL,
+    path_prefix VARCHAR(512) NULL,
+    state VARCHAR(16) NOT NULL,
+    PRIMARY KEY (service_component_id, name),
+    KEY idx_service_component_endpoint_listen (listen_port),
+    CONSTRAINT fk_service_component_endpoint_component FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE,
+    CONSTRAINT chk_service_component_endpoint_mode CHECK (mode IS NULL OR mode IN ('internal', 'local', 'host', 'gateway_http', 'gateway_tcp')),
+    CONSTRAINT chk_service_component_endpoint_listen CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
+    CONSTRAINT chk_service_component_endpoint_state CHECK (
+        (state = 'deleted' AND mode IS NULL AND bind_address IS NULL AND listen_port IS NULL AND entrypoint IS NULL AND path_prefix IS NULL)
+        OR (state = 'override' AND (mode IS NOT NULL OR bind_address IS NOT NULL OR listen_port IS NOT NULL OR entrypoint IS NOT NULL OR path_prefix IS NOT NULL))
+    )
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

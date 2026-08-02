@@ -17,8 +17,10 @@ message ServiceResp {
   string application_code = 10;
   string application_kind = 11;
   string version_label = 12;
-  repeated ServiceExposeResp exposes = 14;
-  map<string, string> runtime_config = 15;
+  repeated ServiceComponentResp components = 14;
+  bool pending_deploy = 15;
+  string effective_plan_hash = 16;
+  repeated ServiceEnv env = 17;
 }
 
 message ServiceListResp {
@@ -37,14 +39,6 @@ message ServiceCreateReq {
   string application_id = 1;
   string version_id = 2;
   string instance_key = 3;
-  map<string, string> runtime_config = 4;
-  repeated ServiceExposeReq exposes = 5;
-}
-
-message ServiceConfigReq {
-  reserved 1;
-  map<string, string> runtime_config = 2;
-  repeated ServiceExposeReq exposes = 3;
 }
 
 message ServiceBasicUpdateReq {
@@ -52,26 +46,117 @@ message ServiceBasicUpdateReq {
   string instance_key = 2;
 }
 
-message ServiceExposeReq {
-  string component_name = 1;
-  string protocol = 2;
-  int32 container_port = 3;
-  optional string path_prefix = 4;
-  string access = 5;
-  optional int32 listen_port = 6;
+message ServiceEnv {
+  string key = 1;
+  string value = 2;
 }
 
-message ServiceExposeResp {
+message ServiceEnvUpdateReq {
+  repeated ServiceEnv env = 1;
+}
+
+message ServiceComponentResp {
   string id = 1;
   string service_id = 2;
-  string component_name = 3;
-  string protocol = 4;
-  int32 container_port = 5;
+  string source_version_component_id = 3;
+  string component_name = 4;
+  string status = 5;
+  repeated ServiceComponentEnvOverlay env = 6;
+  repeated ServiceComponentMountOverlay mounts = 7;
+  ServiceComponentResourceOverlay resources = 8;
+  repeated ServiceComponentEndpointOverlay endpoints = 9;
+  string created_at = 10;
+  string updated_at = 11;
+  string image = 12;
+}
+
+// ServiceComponentDetailResp provides the declaration, sparse overlay and
+// server-merged effective component so clients never infer runtime state from
+// absent values.
+message ServiceComponentDetailResp {
+  ServiceComponentResp component = 1;
+  ServiceComponentDefinitionResp declaration = 2;
+  ServiceComponentDefinitionResp effective = 3;
+}
+
+message ServiceComponentDefinitionResp {
+  string id = 1;
+  string name = 2;
+  string image = 3;
+  string command = 4;
+  string pull_policy = 5;
+  repeated ServiceComponentDeclaredEnv env = 6;
+  repeated ServiceComponentDeclaredMount mounts = 7;
+  ServiceComponentDeclaredResources resources = 8;
+  repeated ServiceComponentDeclaredEndpoint endpoints = 9;
+}
+
+message ServiceComponentDeclaredEnv {
+  string key = 1;
+  string value = 2;
+}
+
+message ServiceComponentDeclaredMount {
+  string source_type = 1;
+  string source = 2;
+  string target = 3;
+  bool read_only = 4;
+}
+
+message ServiceComponentDeclaredResources {
+  optional string limit_cpus = 1;
+  optional string limit_memory = 2;
+  optional string reservation_cpus = 3;
+  optional string reservation_memory = 4;
+}
+
+message ServiceComponentDeclaredEndpoint {
+  string name = 1;
+  string protocol = 2;
+  int32 container_port = 3;
+  string mode = 4;
+  optional string bind_address = 5;
+  optional int32 listen_port = 6;
+  optional string entrypoint = 7;
+  optional string path_prefix = 8;
+}
+
+message ServiceComponentOverlayUpdateReq {
+  repeated ServiceComponentEnvOverlay env = 1;
+  repeated ServiceComponentMountOverlay mounts = 2;
+  ServiceComponentResourceOverlay resources = 3;
+  repeated ServiceComponentEndpointOverlay endpoints = 4;
+}
+
+message ServiceComponentEnvOverlay {
+  string key = 1;
+  optional string value = 2;
+  string state = 3;
+}
+
+message ServiceComponentMountOverlay {
+  reserved 1;
+  optional string source = 2;
+  string state = 3;
+  string target = 4;
+}
+
+message ServiceComponentResourceOverlay {
+  optional string limit_cpus = 1;
+  optional string limit_memory = 2;
+  optional string reservation_cpus = 3;
+  optional string reservation_memory = 4;
+  string state = 5;
+}
+
+message ServiceComponentEndpointOverlay {
+  string name = 1;
+  optional string mode = 2;
+  optional string bind_address = 3;
+  optional int32 listen_port = 4;
+  optional string entrypoint = 5;
   optional string path_prefix = 6;
-  string access = 7;
-  optional int32 listen_port = 8;
-  string created_at = 9;
-  string updated_at = 10;
+  string state = 7;
 }
 
 message ServicePreviewReq {}

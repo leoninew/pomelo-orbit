@@ -4,7 +4,7 @@ import {
   componentDependenciesRequestFromForm,
   componentEnvRequestFromForm,
   componentMountsRequestFromForm,
-  componentPortsRequestFromForm,
+  componentEndpointsRequestFromForm,
   componentRequestFromForm,
   componentAdvancedRequestFromForm,
   componentResourcesRequestFromForm,
@@ -142,9 +142,13 @@ describe('componentForm', () => {
     });
     form.dependencies.push({ name: 'database', condition: 'service_healthy' });
 
-    expect(componentPortsRequestFromForm(form)).toEqual({
+    expect(componentEndpointsRequestFromForm(form)).toEqual({
       valid: true,
-      value: { ports: [{ host_port: 8080, container_port: 80 }] },
+      value: {
+        endpoints: [
+          { name: 'tcp-80', protocol: 'tcp', container_port: 80, mode: 'host', listen_port: 8080 },
+        ],
+      },
     });
     expect(componentEnvRequestFromForm(form)).toEqual({
       valid: true,
@@ -170,6 +174,34 @@ describe('componentForm', () => {
     expect(componentDependenciesRequestFromForm(form)).toEqual({
       valid: true,
       value: { dependencies: [{ name: 'database', condition: 'service_healthy' }] },
+    });
+  });
+
+  it('serializes a gateway HTTP endpoint without a host port', () => {
+    const form = emptyComponentForm();
+    form.ports.push({
+      protocol: 'http',
+      host_port: '',
+      container_port: '80',
+      mode: 'gateway_http',
+      entrypoint: 'web',
+      path_prefix: '/',
+    });
+
+    expect(componentEndpointsRequestFromForm(form)).toEqual({
+      valid: true,
+      value: {
+        endpoints: [
+          {
+            name: 'http-80',
+            protocol: 'http',
+            container_port: 80,
+            mode: 'gateway_http',
+            entrypoint: 'web',
+            path_prefix: '/',
+          },
+        ],
+      },
     });
   });
 

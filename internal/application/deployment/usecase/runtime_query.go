@@ -111,22 +111,68 @@ func (s Service) PreviewService(ctx context.Context, userId string, serviceId st
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
-	exposes, err := s.executionStore.ServiceExposesByService(ctx, service.Id)
+	overlays, err := s.executionStore.ServiceComponentsByService(ctx, service.Id)
 	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to list service components", err)
+	}
+	env, err := s.executionStore.ServiceEnvByService(ctx, service.Id)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to load service environment", err)
+	}
+	plan, _, err := BuildEffectiveServicePlan(app, version, service, components, overlays, env, nil)
+	if err != nil {
+		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
 	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, service.InstanceKey)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical service dir", err)
 	}
-	gateway, err := s.gatewayForDeployment(ctx, app, exposes)
+	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
 		return "", err
 	}
-	content, err := s.RenderCompose(ctx, RenderInput{
-		App: app, Version: version, Components: components, Exposes: exposes,
-		Service: service, Gateway: gateway, RuntimeConfig: cloneRuntimeConfig(service.RuntimeConfig), PhysicalSvcDir: physicalDir,
-	})
+	plan.Gateway = gateway
+	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, PhysicalSvcDir: physicalDir})
+	if err != nil {
+		return "", apperror.New(apperror.KindValidation, err.Error())
+	}
+	return content, nil
+}
+
+// PreviewVersion renders version declarations without reading Service runtime configuration.
+func (s Service) PreviewVersion(ctx context.Context, userId string, versionId string) (string, error) {
+	if s.commandStore == nil {
+		return "", apperror.New(apperror.KindInternal, "deployment command store is not configured")
+	}
+	version, err := s.commandStore.Version(ctx, versionId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return "", apperror.New(apperror.KindNotFound, "Version "+versionId+" not found")
+		}
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to load version", err)
+	}
+	app, err := s.loadApplicationForUser(ctx, userId, version.ApplicationId)
+	if err != nil {
+		return "", err
+	}
+	components, err := s.commandStore.VersionComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
+	}
+	plan, err := BuildVersionPreviewPlan(app, version, components, nil)
+	if err != nil {
+		return "", apperror.New(apperror.KindValidation, err.Error())
+	}
+	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, versionPreviewInstanceKey)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical preview dir", err)
+	}
+	gateway, err := s.gatewayForDeployment(ctx, app, plan)
+	if err != nil {
+		return "", err
+	}
+	plan.Gateway = gateway
+	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, PhysicalSvcDir: physicalDir})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}

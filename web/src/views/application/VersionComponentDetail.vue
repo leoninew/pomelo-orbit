@@ -121,10 +121,7 @@
                   {{ t('application.componentDetail.fields.pullPolicy') }}
                   <span class="text-destructive">*</span>
                 </label>
-                <RawValueSelect
-                  v-model="form.pull_policy"
-                  :values="pullPolicyValues"
-                />
+                <RawValueSelect v-model="form.pull_policy" :values="pullPolicyValues" />
                 <p v-if="basicErrors.pullPolicy" class="app-field-error" role="alert">
                   {{ basicErrors.pullPolicy }}
                 </p>
@@ -335,7 +332,7 @@
           </section>
         </TabsContent>
 
-        <TabsContent v-if="!isNew" value="connectivity" class="flex flex-col gap-4 outline-none">
+        <TabsContent value="connectivity" class="flex flex-col gap-4 outline-none">
           <section class="app-surface app-detail-card">
             <div class="app-section-header app-detail-section-header">
               <h2 class="app-detail-section-title">
@@ -355,9 +352,12 @@
 
             <AppEmptyState v-if="form.ports.length === 0" size="compact" />
             <div v-else class="overflow-x-auto">
-              <table class="app-data-table min-w-[560px]">
+              <table class="app-data-table min-w-[760px]">
                 <thead>
                   <tr>
+                    <th>{{ t('application.componentDetail.fields.endpointName') }}</th>
+                    <th>{{ t('application.componentDetail.fields.protocol') }}</th>
+                    <th>{{ t('application.componentDetail.fields.endpointMode') }}</th>
                     <th>{{ t('application.componentDetail.fields.hostPort') }}</th>
                     <th>{{ t('application.componentDetail.fields.containerPort') }}</th>
                     <th class="w-32">{{ t('common.operation') }}</th>
@@ -365,8 +365,11 @@
                 </thead>
                 <tbody>
                   <tr v-for="(row, index) in form.ports" :key="`port-${index}`">
-                    <td class="min-w-56 text-foreground">{{ row.host_port }}</td>
-                    <td class="min-w-56 text-foreground">{{ row.container_port }}</td>
+                    <td class="text-foreground">{{ portName(row) }}</td>
+                    <td class="text-foreground">{{ row.protocol || 'tcp' }}</td>
+                    <td class="text-foreground">{{ row.mode || 'host' }}</td>
+                    <td class="text-foreground">{{ row.host_port || '-' }}</td>
+                    <td class="text-foreground">{{ row.container_port }}</td>
                     <td class="w-32">
                       <div v-if="canEdit" class="flex items-center gap-3">
                         <button
@@ -392,57 +395,15 @@
           </section>
 
           <section class="app-surface app-detail-card">
-            <div class="app-section-header app-detail-section-header">
-              <h2 class="app-detail-section-title">
-                {{ t('application.componentDetail.sections.env') }}
-              </h2>
-              <div v-if="canEdit" class="flex items-center gap-2">
-                <button
-                  class="app-button-primary h-9 px-3"
-                  :disabled="operating"
-                  @click="openRecordDialog('env')"
-                >
-                  <Plus class="size-4" />
-                  {{ t('common.add') }}
-                </button>
-              </div>
-            </div>
-            <AppEmptyState v-if="form.env.length === 0" size="compact" />
-            <div v-else class="overflow-x-auto">
-              <table class="app-data-table min-w-[640px]">
-                <thead>
-                  <tr>
-                    <th>{{ t('application.componentDetail.fields.key') }}</th>
-                    <th>{{ t('application.componentDetail.fields.value') }}</th>
-                    <th class="w-32">{{ t('common.operation') }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(row, index) in form.env" :key="`env-${index}`">
-                    <td class="min-w-56 break-all text-foreground">{{ row.key }}</td>
-                    <td class="min-w-80 break-all text-foreground">{{ row.value }}</td>
-                    <td class="w-32">
-                      <div v-if="canEdit" class="flex items-center gap-3">
-                        <button
-                          class="app-link"
-                          :disabled="operating"
-                          @click="openRecordDialog('env', index)"
-                        >
-                          {{ t('common.edit') }}
-                        </button>
-                        <button
-                          class="app-link-danger"
-                          :disabled="operating"
-                          @click="deleteRecord('env', index)"
-                        >
-                          {{ t('common.delete') }}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <EnvironmentVariableListEditor
+              :rows="environmentRows"
+              :saved-rows="savedEnvironmentRows"
+              :title="t('environment.title')"
+              :disabled="operating"
+              :editable="canEdit"
+              @update:rows="updateEnvironmentRows"
+              @save="persistEnvironment"
+            />
           </section>
         </TabsContent>
 
@@ -591,7 +552,9 @@
                   <tr v-for="(row, index) in form.devices" :key="`device-${index}`">
                     <td class="min-w-52 text-foreground">{{ row.driver }}</td>
                     <td class="min-w-40 text-foreground">{{ row.count }}</td>
-                    <td class="min-w-60 break-all text-foreground">{{ row.capabilities.join(', ') }}</td>
+                    <td class="min-w-60 break-all text-foreground">
+                      {{ row.capabilities.join(', ') }}
+                    </td>
                     <td class="w-32">
                       <div v-if="canEdit" class="flex items-center gap-3">
                         <button
@@ -777,10 +740,7 @@
             {{ t('application.componentDetail.fields.pullPolicy') }}
             <span class="text-destructive">*</span>
           </label>
-          <RawValueSelect
-            v-model="form.pull_policy"
-            :values="pullPolicyValues"
-          />
+          <RawValueSelect v-model="form.pull_policy" :values="pullPolicyValues" />
           <p v-if="basicErrors.pullPolicy" class="app-field-error" role="alert">
             {{ basicErrors.pullPolicy }}
           </p>
@@ -993,8 +953,42 @@
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label class="app-field-label mb-1.5 block">
-              {{ t('application.componentDetail.fields.hostPort') }}
+              {{ t('application.componentDetail.fields.endpointName') }}
+            </label>
+            <input v-model="portForm.name" class="app-input" type="text" />
+          </div>
+          <div>
+            <label class="app-field-label mb-1.5 block">
+              {{ t('application.componentDetail.fields.protocol') }}
               <span class="text-destructive">*</span>
+            </label>
+            <RawValueSelect
+              v-model="portForm.protocol"
+              :invalid="Boolean(recordErrors.protocol)"
+              :values="endpointProtocolValues"
+            />
+            <p v-if="recordErrors.protocol" class="app-field-error" role="alert">
+              {{ recordErrors.protocol }}
+            </p>
+          </div>
+          <div>
+            <label class="app-field-label mb-1.5 block">
+              {{ t('application.componentDetail.fields.endpointMode') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <RawValueSelect
+              v-model="portForm.mode"
+              :invalid="Boolean(recordErrors.endpoint_mode)"
+              :values="endpointModeValues"
+            />
+            <p v-if="recordErrors.endpoint_mode" class="app-field-error" role="alert">
+              {{ recordErrors.endpoint_mode }}
+            </p>
+          </div>
+          <div>
+            <label class="app-field-label mb-1.5 block">
+              {{ t('application.componentDetail.fields.hostPort') }}
+              <span v-if="portRequiresListenPort" class="text-destructive">*</span>
             </label>
             <input
               v-model="portForm.host_port"
@@ -1030,32 +1024,24 @@
             </p>
           </div>
         </div>
-      </template>
-
-      <template v-else-if="recordDialogGroup === 'env'">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label class="app-field-label mb-1.5 block">
-              {{ t('application.componentDetail.fields.key') }}
-              <span class="text-destructive">*</span>
+              {{ t('application.componentDetail.fields.bindAddress') }}
             </label>
-            <input
-              v-model="envForm.key"
-              class="app-input"
-              :class="recordErrors.key ? 'app-input-error' : ''"
-              type="text"
-              :aria-invalid="recordErrors.key ? 'true' : undefined"
-              @input="recordErrors.key = ''"
-            />
-            <p v-if="recordErrors.key" class="app-field-error" role="alert">
-              {{ recordErrors.key }}
-            </p>
+            <input v-model="portForm.bind_address" class="app-input" type="text" />
           </div>
           <div>
             <label class="app-field-label mb-1.5 block">
-              {{ t('application.componentDetail.fields.value') }}
+              {{ t('application.componentDetail.fields.entrypoint') }}
             </label>
-            <input v-model="envForm.value" class="app-input" type="text" />
+            <input v-model="portForm.entrypoint" class="app-input" type="text" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="app-field-label mb-1.5 block">
+              {{ t('application.componentDetail.fields.pathPrefix') }}
+            </label>
+            <input v-model="portForm.path_prefix" class="app-input" type="text" />
           </div>
         </div>
       </template>
@@ -1455,6 +1441,7 @@
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
+  import EnvironmentVariableListEditor from '@/components/EnvironmentVariableListEditor.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -1470,10 +1457,9 @@
     componentCreateRequestFromForm,
     componentDependenciesRequestFromForm,
     componentDevicesRequestFromForm,
-    componentEnvRequestFromForm,
     componentFormFromResponse,
     componentMountsRequestFromForm,
-    componentPortsRequestFromForm,
+    componentEndpointsRequestFromForm,
     componentResourcesRequestFromForm,
     componentRuntimeRequestFromForm,
     componentTmpfsRequestFromForm,
@@ -1483,13 +1469,20 @@
     type ComponentFormError,
     type DeviceRow,
     type MountRow,
+    type PortRow,
     type TmpfsRow,
     type UlimitRow,
   } from './componentForm';
+  import {
+    cloneEnvironmentVariableRows,
+    environmentVariableRowsFromEntries,
+    type EnvironmentVariableEntry,
+    type EnvironmentVariableListRow,
+  } from '@/components/environmentVariableList';
 
   type ComponentTab = 'runtime' | 'connectivity' | 'mounts' | 'advanced';
   type ComponentSaveGroup = 'basic' | 'runtime';
-  type ConnectivityGroup = 'ports' | 'env' | 'dependencies';
+  type ConnectivityGroup = 'ports' | 'dependencies';
   type RecordGroup = ConnectivityGroup | 'tmpfs' | 'ulimits' | 'devices';
   type PersistOutcome = 'saved' | 'invalid' | 'failed';
 
@@ -1506,6 +1499,8 @@
   const version = ref<VersionResp>();
   const component = ref<VersionComponentResp>();
   const form = reactive(emptyComponentForm());
+  const environmentRows = ref<EnvironmentVariableListRow[]>([]);
+  const savedEnvironmentRows = ref<EnvironmentVariableListRow[]>([]);
   const activeTab = ref<ComponentTab>('runtime');
   const basicDialogOpen = ref(false);
   const basicErrors = reactive({ name: '', image: '', pullPolicy: '' });
@@ -1518,7 +1513,8 @@
   const recordErrors = reactive({
     host_port: '',
     container_port: '',
-    key: '',
+    protocol: '',
+    endpoint_mode: '',
     name: '',
     condition: '',
     target: '',
@@ -1530,8 +1526,16 @@
     count: '',
     capabilities: '',
   });
-  const portForm = reactive({ host_port: '', container_port: '' });
-  const envForm = reactive({ key: '', value: '' });
+  const portForm = reactive<PortRow>({
+    name: '',
+    protocol: 'tcp',
+    host_port: '',
+    container_port: '',
+    mode: 'host',
+    bind_address: '',
+    entrypoint: '',
+    path_prefix: '',
+  });
   const dependencyForm = reactive({ name: '', condition: '' });
   const tmpfsForm = reactive<TmpfsRow>({ target: '', size_bytes: '', mode: '' });
   const ulimitForm = reactive<UlimitRow>({ name: '', soft: '', hard: '' });
@@ -1562,7 +1566,10 @@
       label: t('application.componentDetail.tabs.runtime'),
     };
     if (isNew) {
-      return [runtime];
+      return [
+        runtime,
+        { id: 'connectivity' as const, label: t('application.componentDetail.tabs.connectivity') },
+      ];
     }
     return [
       runtime,
@@ -1574,6 +1581,11 @@
   const pullPolicyValues = ['always', 'missing', 'never'];
   const restartPolicyValues = ['no', 'unless-stopped'];
   const mountSourceTypes = ['directory', 'file', 'named_volume', 'controlled_file'];
+  const endpointProtocolValues = ['http', 'tcp'];
+  const endpointModeValues = ['internal', 'local', 'host', 'gateway_http', 'gateway_tcp'];
+  const portRequiresListenPort = computed(() =>
+    ['local', 'host'].includes(portForm.mode || 'host')
+  );
   const dependencyConditions = [
     'service_started',
     'service_healthy',
@@ -1592,6 +1604,18 @@
 
   function assignForm(source: ReturnType<typeof emptyComponentForm>) {
     Object.assign(form, source);
+    setEnvironmentRows(source.env);
+  }
+
+  function setEnvironmentRows(entries: EnvironmentVariableEntry[]) {
+    const rows = environmentVariableRowsFromEntries(entries, 'version-component-environment');
+    environmentRows.value = rows;
+    savedEnvironmentRows.value = cloneEnvironmentVariableRows(rows);
+  }
+
+  function updateEnvironmentRows(rows: EnvironmentVariableListRow[]) {
+    environmentRows.value = rows;
+    form.env = rows.map(({ key, value }) => ({ key, value }));
   }
 
   function resetBasicErrors() {
@@ -1639,6 +1663,8 @@
     Object.assign(recordErrors, {
       host_port: '',
       container_port: '',
+      protocol: '',
+      endpoint_mode: '',
       key: '',
       name: '',
       condition: '',
@@ -1660,16 +1686,25 @@
     const invalidUlimit = t('application.componentDetail.validation.invalidUlimit');
     const isPort = (value: string) => /^\d+$/.test(value) && Number(value) <= 65535;
     if (group === 'ports') {
+      const protocol = portForm.protocol || 'tcp';
+      const mode = portForm.mode || 'host';
+      const needsListenPort = mode === 'local' || mode === 'host';
+      recordErrors.protocol =
+        endpointProtocolValues.includes(protocol) &&
+        !(mode === 'gateway_http' && protocol !== 'http') &&
+        !(mode === 'gateway_tcp' && protocol !== 'tcp')
+          ? ''
+          : t('application.componentDetail.validation.invalidEndpoint');
+      recordErrors.endpoint_mode = endpointModeValues.includes(mode)
+        ? ''
+        : t('application.componentDetail.validation.invalidEndpoint');
       recordErrors.host_port =
-        isPort(portForm.host_port) && Number(portForm.host_port) > 0 ? '' : invalidPort;
+        (!needsListenPort && portForm.host_port === '') ||
+        (isPort(portForm.host_port) && Number(portForm.host_port) > 0)
+          ? ''
+          : invalidPort;
       recordErrors.container_port =
         isPort(portForm.container_port) && Number(portForm.container_port) > 0 ? '' : invalidPort;
-    } else if (group === 'env') {
-      recordErrors.key = envForm.key.trim()
-        ? ''
-        : t('application.componentDetail.validation.rowIncomplete', {
-            section: t('application.componentDetail.sections.env'),
-          });
     } else if (group === 'dependencies') {
       const message = t('application.componentDetail.validation.rowIncomplete', {
         section: t('application.componentDetail.fields.dependency'),
@@ -1749,6 +1784,10 @@
       mode: '',
       ignore_if_exists: false,
     };
+  }
+
+  function portName(row: PortRow) {
+    return row.name?.trim() || `${row.protocol || 'tcp'}-${row.container_port}`;
   }
 
   function mountTypeLabel(value: string): string {
@@ -1932,7 +1971,7 @@
   async function persistPorts(nextPorts: ComponentForm['ports']): Promise<PersistOutcome> {
     const draft = cloneComponentForm(form);
     draft.ports = nextPorts.map((row) => ({ ...row }));
-    const result = componentPortsRequestFromForm(draft);
+    const result = componentEndpointsRequestFromForm(draft);
     if (!result.valid) {
       return 'invalid';
     }
@@ -1942,7 +1981,7 @@
     }
     try {
       await executeOperation(async () => {
-        const updated = await applicationApi.updateVersionComponentPorts(
+        const updated = await applicationApi.updateVersionComponentEndpoints(
           versionId,
           componentId,
           result.value
@@ -1958,32 +1997,25 @@
     }
   }
 
-  async function persistEnv(nextEnv: ComponentForm['env']): Promise<PersistOutcome> {
-    const draft = cloneComponentForm(form);
-    draft.env = nextEnv.map((row) => ({ ...row }));
-    const result = componentEnvRequestFromForm(draft);
-    if (!result.valid) {
-      return 'invalid';
-    }
+  async function persistEnvironment(entries: EnvironmentVariableEntry[]) {
     if (isNew) {
-      form.env = draft.env;
-      return 'saved';
+      updateEnvironmentRows(
+        environmentVariableRowsFromEntries(entries, 'version-component-environment')
+      );
+      savedEnvironmentRows.value = cloneEnvironmentVariableRows(environmentRows.value);
+      return;
     }
     try {
       await executeOperation(async () => {
-        const updated = await applicationApi.updateVersionComponentEnv(
-          versionId,
-          componentId,
-          result.value
-        );
+        const updated = await applicationApi.updateVersionComponentEnv(versionId, componentId, {
+          env: entries,
+        });
         component.value = updated;
         assignForm(componentFormFromResponse(updated));
         toast.success(t('application.toast.updateSuccess'));
       });
-      return 'saved';
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-      return 'failed';
     }
   }
 
@@ -2088,10 +2120,19 @@
     if (group === 'ports') {
       Object.assign(
         portForm,
-        index === undefined ? { host_port: '', container_port: '' } : form.ports[index]
+        index === undefined
+          ? {
+              name: '',
+              protocol: 'tcp',
+              host_port: '',
+              container_port: '',
+              mode: 'host',
+              bind_address: '',
+              entrypoint: '',
+              path_prefix: '',
+            }
+          : form.ports[index]
       );
-    } else if (group === 'env') {
-      Object.assign(envForm, index === undefined ? { key: '', value: '' } : form.env[index]);
     } else if (group === 'dependencies') {
       Object.assign(
         dependencyForm,
@@ -2113,7 +2154,11 @@
         deviceForm,
         device === undefined
           ? { driver: 'nvidia', count: 'all', capabilities: 'gpu' }
-          : { driver: device.driver, count: device.count, capabilities: device.capabilities.join(', ') }
+          : {
+              driver: device.driver,
+              count: device.count,
+              capabilities: device.capabilities.join(', '),
+            }
       );
     }
     recordDialogGroup.value = group;
@@ -2143,21 +2188,19 @@
     const outcome =
       group === 'ports'
         ? await persistPorts(nextRecordRows(form.ports, { ...portForm }))
-        : group === 'env'
-          ? await persistEnv(nextRecordRows(form.env, { ...envForm }))
-          : group === 'dependencies'
-            ? await persistDependencies(nextRecordRows(form.dependencies, { ...dependencyForm }))
-            : group === 'tmpfs'
-              ? await persistTmpfs(nextRecordRows(form.tmpfs, { ...tmpfsForm }))
-              : group === 'ulimits'
-                ? await persistUlimits(nextRecordRows(form.ulimits, { ...ulimitForm }))
-                : await persistDevices(
-                    nextRecordRows(form.devices, {
-                      driver: deviceForm.driver,
-                      count: deviceForm.count,
-                      capabilities: deviceForm.capabilities.split(',').map((item) => item.trim()),
-                    })
-                  );
+        : group === 'dependencies'
+          ? await persistDependencies(nextRecordRows(form.dependencies, { ...dependencyForm }))
+          : group === 'tmpfs'
+            ? await persistTmpfs(nextRecordRows(form.tmpfs, { ...tmpfsForm }))
+            : group === 'ulimits'
+              ? await persistUlimits(nextRecordRows(form.ulimits, { ...ulimitForm }))
+              : await persistDevices(
+                  nextRecordRows(form.devices, {
+                    driver: deviceForm.driver,
+                    count: deviceForm.count,
+                    capabilities: deviceForm.capabilities.split(',').map((item) => item.trim()),
+                  })
+                );
     if (outcome === 'invalid') {
       recordDialogError.value = messageFor(group);
       return;
@@ -2171,17 +2214,13 @@
     const outcome =
       group === 'ports'
         ? await persistPorts(form.ports.filter((_, rowIndex) => rowIndex !== index))
-        : group === 'env'
-          ? await persistEnv(form.env.filter((_, rowIndex) => rowIndex !== index))
-          : group === 'dependencies'
-            ? await persistDependencies(
-                form.dependencies.filter((_, rowIndex) => rowIndex !== index)
-              )
-            : group === 'tmpfs'
-              ? await persistTmpfs(form.tmpfs.filter((_, rowIndex) => rowIndex !== index))
-              : group === 'ulimits'
-                ? await persistUlimits(form.ulimits.filter((_, rowIndex) => rowIndex !== index))
-                : await persistDevices(form.devices.filter((_, rowIndex) => rowIndex !== index));
+        : group === 'dependencies'
+          ? await persistDependencies(form.dependencies.filter((_, rowIndex) => rowIndex !== index))
+          : group === 'tmpfs'
+            ? await persistTmpfs(form.tmpfs.filter((_, rowIndex) => rowIndex !== index))
+            : group === 'ulimits'
+              ? await persistUlimits(form.ulimits.filter((_, rowIndex) => rowIndex !== index))
+              : await persistDevices(form.devices.filter((_, rowIndex) => rowIndex !== index));
     if (outcome === 'invalid') {
       toast.error(messageFor(group));
     }

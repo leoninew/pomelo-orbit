@@ -13,7 +13,7 @@ export interface VersionComponentReq {
   image: string;
   command: string;
   env: ComponentEnv[];
-  ports: ComponentPort[];
+  endpoints: ComponentEndpoint[];
   mounts: ComponentMount[];
   dependencies: ComponentDependency[];
   healthcheck: ComponentHealthcheck | undefined;
@@ -45,8 +45,8 @@ export interface VersionComponentRuntimeUpdateReq {
   healthcheck: ComponentHealthcheck | undefined;
 }
 
-export interface VersionComponentPortsUpdateReq {
-  ports: ComponentPort[];
+export interface VersionComponentEndpointsUpdateReq {
+  endpoints: ComponentEndpoint[];
 }
 
 export interface VersionComponentEnvUpdateReq {
@@ -78,7 +78,7 @@ export interface VersionComponentResp {
   image: string;
   command: string;
   env: ComponentEnv[];
-  ports: ComponentPort[];
+  endpoints: ComponentEndpoint[];
   mounts: ComponentMount[];
   dependencies: ComponentDependency[];
   healthcheck: ComponentHealthcheck | undefined;
@@ -97,9 +97,15 @@ export interface ComponentEnv {
   value: string;
 }
 
-export interface ComponentPort {
-  host_port: number;
+export interface ComponentEndpoint {
+  name: string;
+  protocol: string;
   container_port: number;
+  mode: string;
+  bind_address?: string | undefined;
+  listen_port?: number | undefined;
+  entrypoint?: string | undefined;
+  path_prefix?: string | undefined;
 }
 
 export interface ComponentMount {
@@ -189,4 +195,11 @@ export interface VersionPaginatedResp {
   page: number;
   per_page: number;
   pages: number;
+}
+
+export interface VersionPreviewReq {
+}
+
+export interface VersionPreviewResp {
+  compose_yaml: string;
 }

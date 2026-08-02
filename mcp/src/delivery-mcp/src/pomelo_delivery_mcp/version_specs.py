@@ -1,4 +1,4 @@
-"""Structured MCP inputs for Orbit Version components and Service exposes."""
+"""Structured MCP inputs for Orbit component declarations and Service overlays."""
 
 from __future__ import annotations
 
@@ -53,9 +53,15 @@ class ResourceSpec(_Spec):
     reservation_memory: str | None = None
 
 
-class ComponentPort(_Spec):
-    host_port: int
+class ComponentEndpoint(_Spec):
+    name: str
+    protocol: Literal["http", "tcp"]
     container_port: int
+    mode: Literal["internal", "local", "host", "gateway_http", "gateway_tcp"] = "internal"
+    bind_address: str | None = None
+    listen_port: int | None = None
+    entrypoint: str | None = None
+    path_prefix: str | None = None
 
 
 class TmpfsSpec(_Spec):
@@ -116,7 +122,7 @@ class VersionComponent(_Spec):
     image: str
     command: str | None = None
     env: list[EnvironmentVariable] | None = None
-    ports: list[ComponentPort] | None = None
+    endpoints: list[ComponentEndpoint] | None = None
     mounts: list[LogicalMount] | None = None
     dependencies: list[ComponentDependency] | None = None
     healthcheck: Healthcheck | None = None
@@ -148,8 +154,8 @@ class VersionComponentRuntimeUpdate(_Spec):
     healthcheck: Healthcheck | None = None
 
 
-class VersionComponentPortsUpdate(_Spec):
-    ports: list[ComponentPort]
+class VersionComponentEndpointsUpdate(_Spec):
+    endpoints: list[ComponentEndpoint]
 
 
 class VersionComponentEnvUpdate(_Spec):
@@ -186,13 +192,45 @@ class VersionComponentDevicesUpdate(_Spec):
     devices: list[DeviceRequestSpec]
 
 
-class ServiceExpose(_Spec):
-    component_name: str
-    protocol: Literal["http", "tcp"]
-    container_port: int
-    path_prefix: str | None = None
-    access: Literal["local", "public"]
+class ServiceComponentEnvOverlay(_Spec):
+    key: str
+    value: str | None = None
+    state: Literal["override", "deleted"]
+
+
+class ServiceComponentMountOverlay(_Spec):
+    target: str
+    source: str | None = None
+    state: Literal["override", "deleted"]
+
+
+class ServiceComponentResourceOverlay(_Spec):
+    limit_cpus: str | None = None
+    limit_memory: str | None = None
+    reservation_cpus: str | None = None
+    reservation_memory: str | None = None
+    state: Literal["override", "deleted"]
+
+
+class ServiceComponentEndpointOverlay(_Spec):
+    name: str
+    mode: Literal["internal", "local", "host", "gateway_http", "gateway_tcp"] | None = None
+    bind_address: str | None = None
     listen_port: int | None = None
+    entrypoint: str | None = None
+    path_prefix: str | None = None
+    state: Literal["override", "deleted"]
+
+
+class ServiceComponentOverlayUpdate(_Spec):
+    env: list[ServiceComponentEnvOverlay] = []
+    mounts: list[ServiceComponentMountOverlay] = []
+    resources: ServiceComponentResourceOverlay | None = None
+    endpoints: list[ServiceComponentEndpointOverlay] = []
+
+
+class ServiceEnvUpdate(_Spec):
+    env: list[EnvironmentVariable]
 
 
 def version_component_payload(component: VersionComponent) -> dict[str, Any]:
@@ -201,7 +239,7 @@ def version_component_payload(component: VersionComponent) -> dict[str, Any]:
         "image": component.image,
         "command": component.command,
         "env": _model_items(component.env),
-        "ports": _model_items(component.ports),
+        "endpoints": _model_items(component.endpoints),
         "mounts": _model_items(component.mounts),
         "dependencies": _model_items(component.dependencies),
         "healthcheck": _model_value(component.healthcheck),
@@ -217,18 +255,6 @@ def version_component_payload(component: VersionComponent) -> dict[str, Any]:
 
 def version_component_create_payload(component: VersionComponentCreate) -> dict[str, Any]:
     return component.model_dump(exclude_none=True)
-
-
-def service_expose_payload(expose: ServiceExpose) -> dict[str, str | int]:
-    values: dict[str, str | int | None] = {
-        "component_name": expose.component_name,
-        "protocol": expose.protocol,
-        "container_port": expose.container_port,
-        "path_prefix": expose.path_prefix,
-        "access": expose.access,
-        "listen_port": expose.listen_port,
-    }
-    return {key: value for key, value in values.items() if value is not None}
 
 
 def _model_items(value: list[SpecT] | None) -> list[dict[str, Any]] | None:

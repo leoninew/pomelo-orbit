@@ -6,11 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	runtimeconfig "gitee.com/leoninew/PomeloOrbit-go/internal/common/runtimeconfig"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -54,7 +52,17 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	exposes, err := s.executionStore.ServiceExposesByService(ctx, svc.Id)
+	overlays, err := s.executionStore.ServiceComponentsByService(ctx, svc.Id)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	env, err := s.executionStore.ServiceEnvByService(ctx, svc.Id)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	plan, _, err := BuildEffectiveServicePlan(app, version, svc, components, overlays, env, nil)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -63,8 +71,13 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	gateway, err := s.gatewayForDeployment(ctx, app, exposes)
+	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	plan.Gateway = gateway
+	if err := verifyDeploymentPlanHash(deployment, plan); err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
@@ -72,7 +85,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		return err
 	}
 
-	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, svc, gateway, deployment.Id, opts.ForceRecreate, opts.RuntimeConfig); err != nil {
+	if err := s.renderAndDeployWithOptions(ctx, plan, deployment.Id, opts.ForceRecreate); err != nil {
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -94,6 +107,7 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
+	_ = restartOpts
 	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
@@ -109,13 +123,28 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	exposes, err := s.executionStore.ServiceExposesByService(ctx, svc.Id)
+	overlays, err := s.executionStore.ServiceComponentsByService(ctx, svc.Id)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	gateway, err := s.gatewayForDeployment(ctx, app, exposes)
+	env, err := s.executionStore.ServiceEnvByService(ctx, svc.Id)
 	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	plan, _, err := BuildEffectiveServicePlan(app, version, svc, components, overlays, env, nil)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	gateway, err := s.gatewayForDeployment(ctx, app, plan)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	plan.Gateway = gateway
+	if err := verifyDeploymentPlanHash(deployment, plan); err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
@@ -126,7 +155,7 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		return err
 	}
 
-	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, svc, gateway, deployment.Id, false, restartOpts.RuntimeConfig); err != nil {
+	if err := s.renderAndDeployWithOptions(ctx, plan, deployment.Id, false); err != nil {
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -211,18 +240,8 @@ func (s Service) resolveServiceFromDeployment(ctx context.Context, applicationId
 	return svc, nil
 }
 
-func (s Service) renderAndDeployWithOptions(
-	ctx context.Context,
-	app model.Application,
-	version model.Version,
-	components []model.VersionComponent,
-	exposes []model.ServiceExpose,
-	svc model.Service,
-	gateway *model.GatewayConfig,
-	deploymentId string,
-	forceRecreate bool,
-	runtimeConfig map[string]string,
-) error {
+func (s Service) renderAndDeployWithOptions(ctx context.Context, plan model.EffectiveServicePlan, deploymentId string, forceRecreate bool) error {
+	app, version, svc := plan.Application, plan.Version, plan.Service
 	serviceDir := s.workspace.ServiceDir(app.Code, svc.InstanceKey)
 	logPath := s.workspace.DeploymentLogPath(app.Code, svc.InstanceKey, deploymentId)
 	logWriter, err := s.executionLogStore.Writer(logPath)
@@ -241,23 +260,11 @@ func (s Service) renderAndDeployWithOptions(
 	if err != nil {
 		return err
 	}
-	resolvedRuntimeConfig, extraKeys, err := runtimeconfig.Resolve(runtimeConfig, components)
-	if err != nil {
-		return err
-	}
-	if len(extraKeys) > 0 {
-		if _, err := fmt.Fprintf(logWriter, "Warning: ignored unused runtime config keys: %s\n", strings.Join(extraKeys, ", ")); err != nil {
-			return err
-		}
-	}
 	if _, err := fmt.Fprintf(logWriter, "Rendering version %s (%s) with %d component(s) into instance %s\n",
-		version.Label, version.Id, len(components), svc.InstanceKey); err != nil {
+		version.Label, version.Id, len(plan.Components), svc.InstanceKey); err != nil {
 		return err
 	}
-	result, err := s.RenderComposeDetailed(ctx, RenderInput{
-		App: app, Version: version, Components: components, Exposes: exposes,
-		Service: svc, Gateway: gateway, RuntimeConfig: resolvedRuntimeConfig, PhysicalSvcDir: physicalDir,
-	})
+	result, err := s.RenderComposeDetailed(ctx, RenderInput{Plan: plan, PhysicalSvcDir: physicalDir})
 	if err != nil {
 		return err
 	}
@@ -276,12 +283,26 @@ func (s Service) renderAndDeployWithOptions(
 		return err
 	}
 	projectName := composeProjectName(app.Code, svc.InstanceKey)
-	command := deployComposeCommand(projectName, app.ImagePullPolicy, forceRecreate)
+	command := deployComposeCommand(projectName, deploymentPullPolicy(plan), forceRecreate)
 	if _, err := fmt.Fprintln(logWriter, "Starting services"); err != nil {
 		return err
 	}
 	if err := s.runner.Run(ctx, serviceDir, logWriter, command.Name, command.Args...); err != nil {
 		return err
+	}
+	return nil
+}
+
+func verifyDeploymentPlanHash(deployment model.Deployment, plan model.EffectiveServicePlan) error {
+	if deployment.EffectivePlanHash == nil || *deployment.EffectivePlanHash == "" {
+		return fmt.Errorf("deployment %s is missing effective plan hash", deployment.Id)
+	}
+	current, err := EffectiveServicePlanHash(plan)
+	if err != nil {
+		return err
+	}
+	if current != *deployment.EffectivePlanHash {
+		return fmt.Errorf("service configuration changed after deployment was queued; deploy again")
 	}
 	return nil
 }

@@ -27,7 +27,7 @@ type VersionComponentReq struct {
 	Image         string                    `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
 	Command       string                    `protobuf:"bytes,3,opt,name=command,proto3" json:"command,omitempty"`
 	Env           []*ComponentEnv           `protobuf:"bytes,5,rep,name=env,proto3" json:"env,omitempty"`
-	Ports         []*ComponentPort          `protobuf:"bytes,6,rep,name=ports,proto3" json:"ports,omitempty"`
+	Endpoints     []*ComponentEndpoint      `protobuf:"bytes,6,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
 	Mounts        []*ComponentMount         `protobuf:"bytes,7,rep,name=mounts,proto3" json:"mounts,omitempty"`
 	Dependencies  []*ComponentDependency    `protobuf:"bytes,9,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
 	Healthcheck   *ComponentHealthcheck     `protobuf:"bytes,10,opt,name=healthcheck,proto3" json:"healthcheck,omitempty"`
@@ -99,9 +99,9 @@ func (x *VersionComponentReq) GetEnv() []*ComponentEnv {
 	return nil
 }
 
-func (x *VersionComponentReq) GetPorts() []*ComponentPort {
+func (x *VersionComponentReq) GetEndpoints() []*ComponentEndpoint {
 	if x != nil {
-		return x.Ports
+		return x.Endpoints
 	}
 	return nil
 }
@@ -365,27 +365,27 @@ func (x *VersionComponentRuntimeUpdateReq) GetHealthcheck() *ComponentHealthchec
 	return nil
 }
 
-type VersionComponentPortsUpdateReq struct {
+type VersionComponentEndpointsUpdateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ports         []*ComponentPort       `protobuf:"bytes,1,rep,name=ports,proto3" json:"ports,omitempty"`
+	Endpoints     []*ComponentEndpoint   `protobuf:"bytes,1,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *VersionComponentPortsUpdateReq) Reset() {
-	*x = VersionComponentPortsUpdateReq{}
+func (x *VersionComponentEndpointsUpdateReq) Reset() {
+	*x = VersionComponentEndpointsUpdateReq{}
 	mi := &file_orbit_v1_application_version_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *VersionComponentPortsUpdateReq) String() string {
+func (x *VersionComponentEndpointsUpdateReq) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*VersionComponentPortsUpdateReq) ProtoMessage() {}
+func (*VersionComponentEndpointsUpdateReq) ProtoMessage() {}
 
-func (x *VersionComponentPortsUpdateReq) ProtoReflect() protoreflect.Message {
+func (x *VersionComponentEndpointsUpdateReq) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_application_version_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -397,14 +397,14 @@ func (x *VersionComponentPortsUpdateReq) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use VersionComponentPortsUpdateReq.ProtoReflect.Descriptor instead.
-func (*VersionComponentPortsUpdateReq) Descriptor() ([]byte, []int) {
+// Deprecated: Use VersionComponentEndpointsUpdateReq.ProtoReflect.Descriptor instead.
+func (*VersionComponentEndpointsUpdateReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_application_version_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *VersionComponentPortsUpdateReq) GetPorts() []*ComponentPort {
+func (x *VersionComponentEndpointsUpdateReq) GetEndpoints() []*ComponentEndpoint {
 	if x != nil {
-		return x.Ports
+		return x.Endpoints
 	}
 	return nil
 }
@@ -653,7 +653,7 @@ type VersionComponentResp struct {
 	Image         string                    `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
 	Command       string                    `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty"`
 	Env           []*ComponentEnv           `protobuf:"bytes,7,rep,name=env,proto3" json:"env,omitempty"`
-	Ports         []*ComponentPort          `protobuf:"bytes,8,rep,name=ports,proto3" json:"ports,omitempty"`
+	Endpoints     []*ComponentEndpoint      `protobuf:"bytes,8,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
 	Mounts        []*ComponentMount         `protobuf:"bytes,9,rep,name=mounts,proto3" json:"mounts,omitempty"`
 	Dependencies  []*ComponentDependency    `protobuf:"bytes,11,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
 	Healthcheck   *ComponentHealthcheck     `protobuf:"bytes,12,opt,name=healthcheck,proto3" json:"healthcheck,omitempty"`
@@ -741,9 +741,9 @@ func (x *VersionComponentResp) GetEnv() []*ComponentEnv {
 	return nil
 }
 
-func (x *VersionComponentResp) GetPorts() []*ComponentPort {
+func (x *VersionComponentResp) GetEndpoints() []*ComponentEndpoint {
 	if x != nil {
-		return x.Ports
+		return x.Endpoints
 	}
 	return nil
 }
@@ -877,28 +877,34 @@ func (x *ComponentEnv) GetValue() string {
 	return ""
 }
 
-type ComponentPort struct {
+type ComponentEndpoint struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	HostPort      int32                  `protobuf:"varint,1,opt,name=host_port,json=hostPort,proto3" json:"host_port,omitempty"`
-	ContainerPort int32                  `protobuf:"varint,2,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Protocol      string                 `protobuf:"bytes,2,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	ContainerPort int32                  `protobuf:"varint,3,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
+	Mode          string                 `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
+	BindAddress   *string                `protobuf:"bytes,5,opt,name=bind_address,json=bindAddress,proto3,oneof" json:"bind_address,omitempty"`
+	ListenPort    *int32                 `protobuf:"varint,6,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
+	Entrypoint    *string                `protobuf:"bytes,7,opt,name=entrypoint,proto3,oneof" json:"entrypoint,omitempty"`
+	PathPrefix    *string                `protobuf:"bytes,8,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ComponentPort) Reset() {
-	*x = ComponentPort{}
+func (x *ComponentEndpoint) Reset() {
+	*x = ComponentEndpoint{}
 	mi := &file_orbit_v1_application_version_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ComponentPort) String() string {
+func (x *ComponentEndpoint) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ComponentPort) ProtoMessage() {}
+func (*ComponentEndpoint) ProtoMessage() {}
 
-func (x *ComponentPort) ProtoReflect() protoreflect.Message {
+func (x *ComponentEndpoint) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_application_version_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -910,23 +916,65 @@ func (x *ComponentPort) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ComponentPort.ProtoReflect.Descriptor instead.
-func (*ComponentPort) Descriptor() ([]byte, []int) {
+// Deprecated: Use ComponentEndpoint.ProtoReflect.Descriptor instead.
+func (*ComponentEndpoint) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_application_version_proto_rawDescGZIP(), []int{12}
 }
 
-func (x *ComponentPort) GetHostPort() int32 {
+func (x *ComponentEndpoint) GetName() string {
 	if x != nil {
-		return x.HostPort
+		return x.Name
 	}
-	return 0
+	return ""
 }
 
-func (x *ComponentPort) GetContainerPort() int32 {
+func (x *ComponentEndpoint) GetProtocol() string {
+	if x != nil {
+		return x.Protocol
+	}
+	return ""
+}
+
+func (x *ComponentEndpoint) GetContainerPort() int32 {
 	if x != nil {
 		return x.ContainerPort
 	}
 	return 0
+}
+
+func (x *ComponentEndpoint) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *ComponentEndpoint) GetBindAddress() string {
+	if x != nil && x.BindAddress != nil {
+		return *x.BindAddress
+	}
+	return ""
+}
+
+func (x *ComponentEndpoint) GetListenPort() int32 {
+	if x != nil && x.ListenPort != nil {
+		return *x.ListenPort
+	}
+	return 0
+}
+
+func (x *ComponentEndpoint) GetEntrypoint() string {
+	if x != nil && x.Entrypoint != nil {
+		return *x.Entrypoint
+	}
+	return ""
+}
+
+func (x *ComponentEndpoint) GetPathPrefix() string {
+	if x != nil && x.PathPrefix != nil {
+		return *x.PathPrefix
+	}
+	return ""
 }
 
 type ComponentMount struct {
@@ -1785,17 +1833,97 @@ func (x *VersionPaginatedResp) GetPages() int32 {
 	return 0
 }
 
+type VersionPreviewReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VersionPreviewReq) Reset() {
+	*x = VersionPreviewReq{}
+	mi := &file_orbit_v1_application_version_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VersionPreviewReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VersionPreviewReq) ProtoMessage() {}
+
+func (x *VersionPreviewReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_application_version_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VersionPreviewReq.ProtoReflect.Descriptor instead.
+func (*VersionPreviewReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_application_version_proto_rawDescGZIP(), []int{25}
+}
+
+type VersionPreviewResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ComposeYaml   string                 `protobuf:"bytes,1,opt,name=compose_yaml,json=composeYaml,proto3" json:"compose_yaml,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VersionPreviewResp) Reset() {
+	*x = VersionPreviewResp{}
+	mi := &file_orbit_v1_application_version_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VersionPreviewResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VersionPreviewResp) ProtoMessage() {}
+
+func (x *VersionPreviewResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_application_version_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VersionPreviewResp.ProtoReflect.Descriptor instead.
+func (*VersionPreviewResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_application_version_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *VersionPreviewResp) GetComposeYaml() string {
+	if x != nil {
+		return x.ComposeYaml
+	}
+	return ""
+}
+
 var File_orbit_v1_application_version_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\n" +
-	"\"orbit/v1/application/version.proto\x12\x14orbit.v1.application\"\x98\x06\n" +
+	"\"orbit/v1/application/version.proto\x12\x14orbit.v1.application\"\xa4\x06\n" +
 	"\x13VersionComponentReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x18\n" +
 	"\acommand\x18\x03 \x01(\tR\acommand\x124\n" +
-	"\x03env\x18\x05 \x03(\v2\".orbit.v1.application.ComponentEnvR\x03env\x129\n" +
-	"\x05ports\x18\x06 \x03(\v2#.orbit.v1.application.ComponentPortR\x05ports\x12<\n" +
+	"\x03env\x18\x05 \x03(\v2\".orbit.v1.application.ComponentEnvR\x03env\x12E\n" +
+	"\tendpoints\x18\x06 \x03(\v2'.orbit.v1.application.ComponentEndpointR\tendpoints\x12<\n" +
 	"\x06mounts\x18\a \x03(\v2$.orbit.v1.application.ComponentMountR\x06mounts\x12M\n" +
 	"\fdependencies\x18\t \x03(\v2).orbit.v1.application.ComponentDependencyR\fdependencies\x12L\n" +
 	"\vhealthcheck\x18\n" +
@@ -1825,9 +1953,9 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\acommand\x18\x05 \x01(\tR\acommandB\x11\n" +
 	"\x0f_restart_policy\"\x82\x01\n" +
 	" VersionComponentRuntimeUpdateReq\x12L\n" +
-	"\vhealthcheck\x18\x03 \x01(\v2*.orbit.v1.application.ComponentHealthcheckR\vhealthcheckJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03J\x04\b\x04\x10\x05\"[\n" +
-	"\x1eVersionComponentPortsUpdateReq\x129\n" +
-	"\x05ports\x18\x01 \x03(\v2#.orbit.v1.application.ComponentPortR\x05ports\"T\n" +
+	"\vhealthcheck\x18\x03 \x01(\v2*.orbit.v1.application.ComponentHealthcheckR\vhealthcheckJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03J\x04\b\x04\x10\x05\"k\n" +
+	"\"VersionComponentEndpointsUpdateReq\x12E\n" +
+	"\tendpoints\x18\x01 \x03(\v2'.orbit.v1.application.ComponentEndpointR\tendpoints\"T\n" +
 	"\x1cVersionComponentEnvUpdateReq\x124\n" +
 	"\x03env\x18\x01 \x03(\v2\".orbit.v1.application.ComponentEnvR\x03env\"_\n" +
 	"\x1fVersionComponentMountsUpdateReq\x12<\n" +
@@ -1839,7 +1967,7 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"!VersionComponentAdvancedUpdateReq\x12:\n" +
 	"\x05tmpfs\x18\x01 \x03(\v2$.orbit.v1.application.ComponentTmpfsR\x05tmpfs\x12?\n" +
 	"\aulimits\x18\x02 \x03(\v2%.orbit.v1.application.ComponentUlimitR\aulimits\x12F\n" +
-	"\tresources\x18\x03 \x01(\v2(.orbit.v1.application.ComponentResourcesR\tresources\"\x86\a\n" +
+	"\tresources\x18\x03 \x01(\v2(.orbit.v1.application.ComponentResourcesR\tresources\"\x92\a\n" +
 	"\x14VersionComponentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1847,8 +1975,8 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x04 \x01(\tR\x05image\x12\x18\n" +
 	"\acommand\x18\x05 \x01(\tR\acommand\x124\n" +
-	"\x03env\x18\a \x03(\v2\".orbit.v1.application.ComponentEnvR\x03env\x129\n" +
-	"\x05ports\x18\b \x03(\v2#.orbit.v1.application.ComponentPortR\x05ports\x12<\n" +
+	"\x03env\x18\a \x03(\v2\".orbit.v1.application.ComponentEnvR\x03env\x12E\n" +
+	"\tendpoints\x18\b \x03(\v2'.orbit.v1.application.ComponentEndpointR\tendpoints\x12<\n" +
 	"\x06mounts\x18\t \x03(\v2$.orbit.v1.application.ComponentMountR\x06mounts\x12M\n" +
 	"\fdependencies\x18\v \x03(\v2).orbit.v1.application.ComponentDependencyR\fdependencies\x12L\n" +
 	"\vhealthcheck\x18\f \x01(\v2*.orbit.v1.application.ComponentHealthcheckR\vhealthcheck\x12F\n" +
@@ -1866,10 +1994,24 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x0f_restart_policyJ\x04\b\x06\x10\a\"6\n" +
 	"\fComponentEnv\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"S\n" +
-	"\rComponentPort\x12\x1b\n" +
-	"\thost_port\x18\x01 \x01(\x05R\bhostPort\x12%\n" +
-	"\x0econtainer_port\x18\x02 \x01(\x05R\rcontainerPort\"\x9c\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xd7\x02\n" +
+	"\x11ComponentEndpoint\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
+	"\bprotocol\x18\x02 \x01(\tR\bprotocol\x12%\n" +
+	"\x0econtainer_port\x18\x03 \x01(\x05R\rcontainerPort\x12\x12\n" +
+	"\x04mode\x18\x04 \x01(\tR\x04mode\x12&\n" +
+	"\fbind_address\x18\x05 \x01(\tH\x00R\vbindAddress\x88\x01\x01\x12$\n" +
+	"\vlisten_port\x18\x06 \x01(\x05H\x01R\n" +
+	"listenPort\x88\x01\x01\x12#\n" +
+	"\n" +
+	"entrypoint\x18\a \x01(\tH\x02R\n" +
+	"entrypoint\x88\x01\x01\x12$\n" +
+	"\vpath_prefix\x18\b \x01(\tH\x03R\n" +
+	"pathPrefix\x88\x01\x01B\x0f\n" +
+	"\r_bind_addressB\x0e\n" +
+	"\f_listen_portB\r\n" +
+	"\v_entrypointB\x0e\n" +
+	"\f_path_prefix\"\x9c\x02\n" +
 	"\x0eComponentMount\x12\x1f\n" +
 	"\vsource_type\x18\x01 \x01(\tR\n" +
 	"sourceType\x12\x16\n" +
@@ -1962,7 +2104,10 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xe5\x01\n" +
+	"\x05pages\x18\x05 \x01(\x05R\x05pages\"\x13\n" +
+	"\x11VersionPreviewReq\"7\n" +
+	"\x12VersionPreviewResp\x12!\n" +
+	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYamlB\xe5\x01\n" +
 	"\x18com.orbit.v1.applicationB\fVersionProtoP\x01ZIgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application\xa2\x02\x03OVA\xaa\x02\x14Orbit.V1.Application\xca\x02\x14Orbit\\V1\\Application\xe2\x02 Orbit\\V1\\Application\\GPBMetadata\xea\x02\x16Orbit::V1::Applicationb\x06proto3"
 
 var (
@@ -1977,13 +2122,13 @@ func file_orbit_v1_application_version_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_application_version_proto_rawDescData
 }
 
-var file_orbit_v1_application_version_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_orbit_v1_application_version_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_orbit_v1_application_version_proto_goTypes = []any{
 	(*VersionComponentReq)(nil),                   // 0: orbit.v1.application.VersionComponentReq
 	(*VersionComponentCreateReq)(nil),             // 1: orbit.v1.application.VersionComponentCreateReq
 	(*VersionComponentBasicUpdateReq)(nil),        // 2: orbit.v1.application.VersionComponentBasicUpdateReq
 	(*VersionComponentRuntimeUpdateReq)(nil),      // 3: orbit.v1.application.VersionComponentRuntimeUpdateReq
-	(*VersionComponentPortsUpdateReq)(nil),        // 4: orbit.v1.application.VersionComponentPortsUpdateReq
+	(*VersionComponentEndpointsUpdateReq)(nil),    // 4: orbit.v1.application.VersionComponentEndpointsUpdateReq
 	(*VersionComponentEnvUpdateReq)(nil),          // 5: orbit.v1.application.VersionComponentEnvUpdateReq
 	(*VersionComponentMountsUpdateReq)(nil),       // 6: orbit.v1.application.VersionComponentMountsUpdateReq
 	(*VersionComponentDependenciesUpdateReq)(nil), // 7: orbit.v1.application.VersionComponentDependenciesUpdateReq
@@ -1991,7 +2136,7 @@ var file_orbit_v1_application_version_proto_goTypes = []any{
 	(*VersionComponentAdvancedUpdateReq)(nil),     // 9: orbit.v1.application.VersionComponentAdvancedUpdateReq
 	(*VersionComponentResp)(nil),                  // 10: orbit.v1.application.VersionComponentResp
 	(*ComponentEnv)(nil),                          // 11: orbit.v1.application.ComponentEnv
-	(*ComponentPort)(nil),                         // 12: orbit.v1.application.ComponentPort
+	(*ComponentEndpoint)(nil),                     // 12: orbit.v1.application.ComponentEndpoint
 	(*ComponentMount)(nil),                        // 13: orbit.v1.application.ComponentMount
 	(*ComponentDependency)(nil),                   // 14: orbit.v1.application.ComponentDependency
 	(*ComponentHealthcheck)(nil),                  // 15: orbit.v1.application.ComponentHealthcheck
@@ -2004,10 +2149,12 @@ var file_orbit_v1_application_version_proto_goTypes = []any{
 	(*VersionForkReq)(nil),                        // 22: orbit.v1.application.VersionForkReq
 	(*VersionResp)(nil),                           // 23: orbit.v1.application.VersionResp
 	(*VersionPaginatedResp)(nil),                  // 24: orbit.v1.application.VersionPaginatedResp
+	(*VersionPreviewReq)(nil),                     // 25: orbit.v1.application.VersionPreviewReq
+	(*VersionPreviewResp)(nil),                    // 26: orbit.v1.application.VersionPreviewResp
 }
 var file_orbit_v1_application_version_proto_depIdxs = []int32{
 	11, // 0: orbit.v1.application.VersionComponentReq.env:type_name -> orbit.v1.application.ComponentEnv
-	12, // 1: orbit.v1.application.VersionComponentReq.ports:type_name -> orbit.v1.application.ComponentPort
+	12, // 1: orbit.v1.application.VersionComponentReq.endpoints:type_name -> orbit.v1.application.ComponentEndpoint
 	13, // 2: orbit.v1.application.VersionComponentReq.mounts:type_name -> orbit.v1.application.ComponentMount
 	14, // 3: orbit.v1.application.VersionComponentReq.dependencies:type_name -> orbit.v1.application.ComponentDependency
 	15, // 4: orbit.v1.application.VersionComponentReq.healthcheck:type_name -> orbit.v1.application.ComponentHealthcheck
@@ -2016,7 +2163,7 @@ var file_orbit_v1_application_version_proto_depIdxs = []int32{
 	18, // 7: orbit.v1.application.VersionComponentReq.ulimits:type_name -> orbit.v1.application.ComponentUlimit
 	19, // 8: orbit.v1.application.VersionComponentReq.devices:type_name -> orbit.v1.application.ComponentDeviceRequest
 	15, // 9: orbit.v1.application.VersionComponentRuntimeUpdateReq.healthcheck:type_name -> orbit.v1.application.ComponentHealthcheck
-	12, // 10: orbit.v1.application.VersionComponentPortsUpdateReq.ports:type_name -> orbit.v1.application.ComponentPort
+	12, // 10: orbit.v1.application.VersionComponentEndpointsUpdateReq.endpoints:type_name -> orbit.v1.application.ComponentEndpoint
 	11, // 11: orbit.v1.application.VersionComponentEnvUpdateReq.env:type_name -> orbit.v1.application.ComponentEnv
 	13, // 12: orbit.v1.application.VersionComponentMountsUpdateReq.mounts:type_name -> orbit.v1.application.ComponentMount
 	14, // 13: orbit.v1.application.VersionComponentDependenciesUpdateReq.dependencies:type_name -> orbit.v1.application.ComponentDependency
@@ -2025,7 +2172,7 @@ var file_orbit_v1_application_version_proto_depIdxs = []int32{
 	18, // 16: orbit.v1.application.VersionComponentAdvancedUpdateReq.ulimits:type_name -> orbit.v1.application.ComponentUlimit
 	16, // 17: orbit.v1.application.VersionComponentAdvancedUpdateReq.resources:type_name -> orbit.v1.application.ComponentResources
 	11, // 18: orbit.v1.application.VersionComponentResp.env:type_name -> orbit.v1.application.ComponentEnv
-	12, // 19: orbit.v1.application.VersionComponentResp.ports:type_name -> orbit.v1.application.ComponentPort
+	12, // 19: orbit.v1.application.VersionComponentResp.endpoints:type_name -> orbit.v1.application.ComponentEndpoint
 	13, // 20: orbit.v1.application.VersionComponentResp.mounts:type_name -> orbit.v1.application.ComponentMount
 	14, // 21: orbit.v1.application.VersionComponentResp.dependencies:type_name -> orbit.v1.application.ComponentDependency
 	15, // 22: orbit.v1.application.VersionComponentResp.healthcheck:type_name -> orbit.v1.application.ComponentHealthcheck
@@ -2052,6 +2199,7 @@ func file_orbit_v1_application_version_proto_init() {
 	file_orbit_v1_application_version_proto_msgTypes[1].OneofWrappers = []any{}
 	file_orbit_v1_application_version_proto_msgTypes[2].OneofWrappers = []any{}
 	file_orbit_v1_application_version_proto_msgTypes[10].OneofWrappers = []any{}
+	file_orbit_v1_application_version_proto_msgTypes[12].OneofWrappers = []any{}
 	file_orbit_v1_application_version_proto_msgTypes[13].OneofWrappers = []any{}
 	file_orbit_v1_application_version_proto_msgTypes[15].OneofWrappers = []any{}
 	file_orbit_v1_application_version_proto_msgTypes[16].OneofWrappers = []any{}
@@ -2064,7 +2212,7 @@ func file_orbit_v1_application_version_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_application_version_proto_rawDesc), len(file_orbit_v1_application_version_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   25,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

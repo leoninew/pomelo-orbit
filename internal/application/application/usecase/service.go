@@ -51,14 +51,14 @@ func (s Service) CreateApplication(ctx context.Context, userId string, input app
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Application{}, err
 	}
-	name, code, kind, imagePullPolicy, err := normalizeApplicationCreateInput(input)
+	name, code, kind, err := normalizeApplicationCreateInput(input)
 	if err != nil {
 		return model.Application{}, err
 	}
 	if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
 		return model.Application{}, err
 	}
-	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: kind, ImagePullPolicy: imagePullPolicy}
+	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: kind}
 	if err := s.store.CreateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to create application", err)
 	}
@@ -96,13 +96,6 @@ func (s Service) UpdateApplication(ctx context.Context, userId string, applicati
 			return model.Application{}, apperror.New(apperror.KindValidation, "Invalid application fields")
 		}
 		app.Code = code
-	}
-	if input.ImagePullPolicy != nil {
-		policy := strings.TrimSpace(*input.ImagePullPolicy)
-		if !validImagePullPolicy(policy) {
-			return model.Application{}, apperror.New(apperror.KindValidation, "Invalid application fields")
-		}
-		app.ImagePullPolicy = policy
 	}
 	if err := s.store.UpdateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to update application", err)
@@ -159,18 +152,17 @@ func (s Service) ensureApplicationNameAvailable(ctx context.Context, name string
 	return nil
 }
 
-func normalizeApplicationCreateInput(input applicationdto.ApplicationCreateInput) (string, string, string, string, error) {
+func normalizeApplicationCreateInput(input applicationdto.ApplicationCreateInput) (string, string, string, error) {
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
 	kind, err := normalizeApplicationKind(input.Kind)
 	if err != nil {
-		return "", "", "", "", err
+		return "", "", "", err
 	}
-	imagePullPolicy := strings.TrimSpace(input.ImagePullPolicy)
-	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !applicationCreateCodePattern.MatchString(code) || !validImagePullPolicy(imagePullPolicy) {
-		return "", "", "", "", apperror.New(apperror.KindValidation, "Invalid application fields")
+	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !applicationCreateCodePattern.MatchString(code) {
+		return "", "", "", apperror.New(apperror.KindValidation, "Invalid application fields")
 	}
-	return name, code, kind, imagePullPolicy, nil
+	return name, code, kind, nil
 }
 
 func normalizeApplicationKind(kind string) (string, error) {

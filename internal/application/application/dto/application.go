@@ -3,17 +3,15 @@ package dto
 import "gitee.com/leoninew/PomeloOrbit-go/internal/model"
 
 type ApplicationCreateInput struct {
-	ProjectId       string
-	Name            string
-	Code            string
-	Kind            string
-	ImagePullPolicy string
+	ProjectId string
+	Name      string
+	Code      string
+	Kind      string
 }
 
 type ApplicationUpdateInput struct {
-	Name            *string
-	Code            *string
-	ImagePullPolicy *string
+	Name *string
+	Code *string
 }
 
 // VersionCreateInput creates an unpublished version with component specifications.
@@ -35,7 +33,7 @@ type VersionComponentInput struct {
 	Image         string
 	Command       string
 	Env           []model.VersionComponentEnv
-	Ports         []model.VersionComponentPort
+	Endpoints     []model.VersionComponentEndpoint
 	Mounts        []model.VersionComponentMount
 	Dependencies  []model.VersionComponentDependency
 	Healthcheck   *VersionComponentHealthcheckInput
@@ -70,8 +68,8 @@ type VersionComponentHealthcheckInput struct {
 	Disabled      bool
 }
 
-type VersionComponentPortsUpdateInput struct {
-	Ports []model.VersionComponentPort
+type VersionComponentEndpointsUpdateInput struct {
+	Endpoints []model.VersionComponentEndpoint
 }
 
 type VersionComponentEnvUpdateInput struct {
@@ -104,14 +102,13 @@ type VersionView struct {
 
 // ApplicationImportInput imports an application with an initial version.
 type ApplicationImportInput struct {
-	ProjectId       string
-	Name            string
-	Code            string
-	Kind            string
-	ImagePullPolicy string
-	VersionLabel    string
-	VersionNote     *string
-	Components      []VersionComponentInput
+	ProjectId    string
+	Name         string
+	Code         string
+	Kind         string
+	VersionLabel string
+	VersionNote  *string
+	Components   []VersionComponentInput
 }
 
 // ApplicationExport bundles application/version data. Runtime services are

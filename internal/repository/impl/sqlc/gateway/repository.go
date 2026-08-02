@@ -99,14 +99,13 @@ func (r Repository) ListGatewayApplications(ctx context.Context, projectId strin
 		items := make([]model.Application, 0, len(all))
 		for _, row := range all {
 			items = append(items, model.Application{
-				Id:              row.ID,
-				ProjectId:       dbmodel.StringPtr(row.ProjectID),
-				Name:            row.Name,
-				Code:            row.Code,
-				Kind:            row.Kind,
-				ImagePullPolicy: row.ImagePullPolicy,
-				CreatedAt:       row.CreatedAt,
-				UpdatedAt:       row.UpdatedAt,
+				Id:        row.ID,
+				ProjectId: dbmodel.StringPtr(row.ProjectID),
+				Name:      row.Name,
+				Code:      row.Code,
+				Kind:      row.Kind,
+				CreatedAt: row.CreatedAt,
+				UpdatedAt: row.UpdatedAt,
 			})
 		}
 		return items, nil
@@ -121,14 +120,13 @@ func (r Repository) ListGatewayApplications(ctx context.Context, projectId strin
 	items := make([]model.Application, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, model.Application{
-			Id:              row.ID,
-			ProjectId:       dbmodel.StringPtr(row.ProjectID),
-			Name:            row.Name,
-			Code:            row.Code,
-			Kind:            row.Kind,
-			ImagePullPolicy: row.ImagePullPolicy,
-			CreatedAt:       row.CreatedAt,
-			UpdatedAt:       row.UpdatedAt,
+			Id:        row.ID,
+			ProjectId: dbmodel.StringPtr(row.ProjectID),
+			Name:      row.Name,
+			Code:      row.Code,
+			Kind:      row.Kind,
+			CreatedAt: row.CreatedAt,
+			UpdatedAt: row.UpdatedAt,
 		})
 	}
 	return items, nil
@@ -153,7 +151,6 @@ func (r Repository) UpsertGatewayConfig(ctx context.Context, cfg model.GatewayCo
 			ApplicationID:     cfg.ApplicationId,
 			RestApiUrl:        cfg.RestApiUrl,
 			BaseDomain:        cfg.BaseDomain,
-			Image:             dbmodel.NullString(cfg.Image),
 			DefaultEntrypoint: cfg.DefaultEntrypoint,
 			TlsMode:           cfg.TLSMode,
 			CreatedAt:         createdAt,
@@ -166,7 +163,6 @@ func (r Repository) UpsertGatewayConfig(ctx context.Context, cfg model.GatewayCo
 	if err := q.UpdateGatewayConfig(ctx, gatewaysqlc.UpdateGatewayConfigParams{
 		RestApiUrl:        cfg.RestApiUrl,
 		BaseDomain:        cfg.BaseDomain,
-		Image:             dbmodel.NullString(cfg.Image),
 		DefaultEntrypoint: cfg.DefaultEntrypoint,
 		TlsMode:           cfg.TLSMode,
 		UpdatedAt:         now,
@@ -182,7 +178,6 @@ func gatewayFrom(row gatewaysqlc.GatewayConfig) model.GatewayConfig {
 		ApplicationId:     row.ApplicationID,
 		RestApiUrl:        row.RestApiUrl,
 		BaseDomain:        row.BaseDomain,
-		Image:             dbmodel.StringPtr(row.Image),
 		DefaultEntrypoint: row.DefaultEntrypoint,
 		TLSMode:           row.TlsMode,
 		CreatedAt:         row.CreatedAt,

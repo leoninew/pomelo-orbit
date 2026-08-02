@@ -31,17 +31,19 @@ func TestRenderComponentPreservesDependencyConditions(t *testing.T) {
 
 func TestRenderComposeDeclaresNamedVolumes(t *testing.T) {
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
-		App:     model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
-		Version: model.Version{Id: "version-1"},
-		Components: []model.VersionComponent{{
-			Name:  "db",
-			Image: "postgres:16",
-			Mounts: []model.VersionComponentMount{{
-				SourceType: mountSourceNamedVolume,
-				Source:     "postgres-data",
-				Target:     "/var/lib/postgresql/data",
+		Plan: model.EffectiveServicePlan{
+			Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
+			Version:     model.Version{Id: "version-1"},
+			Components: []model.EffectiveServiceComponent{{
+				Name:  "db",
+				Image: "postgres:16",
+				Mounts: []model.VersionComponentMount{{
+					SourceType: mountSourceNamedVolume,
+					Source:     "postgres-data",
+					Target:     "/var/lib/postgresql/data",
+				}},
 			}},
-		}},
+		},
 	})
 	if err != nil {
 		t.Fatal(err)

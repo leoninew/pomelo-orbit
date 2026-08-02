@@ -74,9 +74,6 @@ func (s Service) CreateVersion(ctx context.Context, userId string, input applica
 	if err := validateVersionComponents(components); err != nil {
 		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	if err := validateApplicationComponentPorts(app, components); err != nil {
-		return applicationdto.VersionView{}, err
-	}
 	version := model.Version{
 		Id:            idutil.NewId(),
 		ApplicationId: app.Id,
@@ -108,13 +105,6 @@ func (s Service) UpdateVersion(ctx context.Context, userId string, versionId str
 	}
 	if input.Note != nil {
 		version.Note = optionalText(input.Note)
-	}
-	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
-	if err != nil {
-		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
-	}
-	if err := s.validateServicesRuntimeConfig(ctx, version, components); err != nil {
-		return applicationdto.VersionView{}, err
 	}
 	if err := s.store.UpdateVersion(ctx, version); err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to update version", err)
@@ -163,16 +153,6 @@ func (s Service) CreateVersionComponent(ctx context.Context, userId string, vers
 	if err := validateVersionComponents(components); err != nil {
 		return model.VersionComponent{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	app, err := s.store.Application(ctx, version.ApplicationId)
-	if err != nil {
-		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
-	}
-	if err := validateApplicationComponentPorts(app, components); err != nil {
-		return model.VersionComponent{}, err
-	}
-	if err := s.validateServicesRuntimeConfig(ctx, version, components); err != nil {
-		return model.VersionComponent{}, err
-	}
 	if err := s.store.CreateVersionComponent(ctx, component); err != nil {
 		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to create component", err)
 	}
@@ -205,11 +185,11 @@ func (s Service) UpdateVersionComponentRuntime(ctx context.Context, userId strin
 	})
 }
 
-func (s Service) UpdateVersionComponentPorts(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentPortsUpdateInput) (model.VersionComponent, error) {
+func (s Service) UpdateVersionComponentEndpoints(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentEndpointsUpdateInput) (model.VersionComponent, error) {
 	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
-		component.Ports = append([]model.VersionComponentPort(nil), input.Ports...)
+		component.Endpoints = append([]model.VersionComponentEndpoint(nil), input.Endpoints...)
 	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
-		return s.store.UpdateVersionComponentPorts(ctx, component)
+		return s.store.UpdateVersionComponentEndpoints(ctx, component)
 	})
 }
 
@@ -295,25 +275,6 @@ func (s Service) updateVersionComponentGroup(ctx context.Context, userId string,
 	if err := validateVersionComponents(components); err != nil {
 		return model.VersionComponent{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	app, err := s.store.Application(ctx, version.ApplicationId)
-	if err != nil {
-		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
-	}
-	if err := validateApplicationComponentPorts(app, components); err != nil {
-		return model.VersionComponent{}, err
-	}
-	if err := s.validateServicesRuntimeConfig(ctx, version, components); err != nil {
-		return model.VersionComponent{}, err
-	}
-	if component.Name != existing.Name {
-		references, err := s.store.CountServiceExposesByVersionComponent(ctx, version.Id, existing.Name)
-		if err != nil {
-			return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to check service expose references", err)
-		}
-		if references > 0 {
-			return model.VersionComponent{}, apperror.New(apperror.KindValidation, "Component is referenced by service exposes")
-		}
-	}
 	if err := persist(ctx, component, existing.Name); err != nil {
 		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to update component", err)
 	}
@@ -331,13 +292,6 @@ func (s Service) DeleteVersionComponent(ctx context.Context, userId string, vers
 	component, err := s.VersionComponentForUser(ctx, userId, version.Id, componentId)
 	if err != nil {
 		return err
-	}
-	exposeReferences, err := s.store.CountServiceExposesByVersionComponent(ctx, version.Id, component.Name)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to check service expose references", err)
-	}
-	if exposeReferences > 0 {
-		return apperror.New(apperror.KindValidation, "Component is referenced by service exposes")
 	}
 	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
@@ -377,9 +331,6 @@ func (s Service) PublishVersion(ctx context.Context, userId string, versionId st
 	}
 	if err := validateVersionComponents(components); err != nil {
 		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
-	}
-	if err := s.validateServicesRuntimeConfig(ctx, version, components); err != nil {
-		return applicationdto.VersionView{}, err
 	}
 	version.Status = status.VersionStatusPublished
 	if err := s.store.UpdateVersion(ctx, version); err != nil {
@@ -506,7 +457,7 @@ func versionComponentsFromInputs(inputs []applicationdto.VersionComponentInput) 
 		components = append(components, model.VersionComponent{
 			Name: name, Image: image,
 			Command: command,
-			Env:     append([]model.VersionComponentEnv(nil), input.Env...), Ports: append([]model.VersionComponentPort(nil), input.Ports...),
+			Env:     append([]model.VersionComponentEnv(nil), input.Env...), Endpoints: append([]model.VersionComponentEndpoint(nil), input.Endpoints...),
 			Mounts:       append([]model.VersionComponentMount(nil), input.Mounts...),
 			Dependencies: append([]model.VersionComponentDependency(nil), input.Dependencies...), Healthcheck: healthcheck,
 			Resources: cloneComponentResources(input.Resources), PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy,

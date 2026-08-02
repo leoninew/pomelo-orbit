@@ -33,7 +33,7 @@ type ApplicationStore interface {
 	CreateVersionComponent(ctx context.Context, component model.VersionComponent) error
 	UpdateVersionComponentBasic(ctx context.Context, component model.VersionComponent, oldName string) error
 	UpdateVersionComponentRuntime(ctx context.Context, component model.VersionComponent) error
-	UpdateVersionComponentPorts(ctx context.Context, component model.VersionComponent) error
+	UpdateVersionComponentEndpoints(ctx context.Context, component model.VersionComponent) error
 	UpdateVersionComponentEnv(ctx context.Context, component model.VersionComponent) error
 	UpdateVersionComponentMounts(ctx context.Context, component model.VersionComponent) error
 	UpdateVersionComponentDependencies(ctx context.Context, component model.VersionComponent) error

@@ -3,7 +3,7 @@ import type {
   ComponentDeviceRequest,
   ComponentHealthcheck,
   ComponentMount,
-  ComponentPort,
+  ComponentEndpoint,
   ComponentResources,
   ComponentTmpfs,
   ComponentUlimit,
@@ -14,15 +14,21 @@ import type {
   VersionComponentDevicesUpdateReq,
   VersionComponentEnvUpdateReq,
   VersionComponentMountsUpdateReq,
-  VersionComponentPortsUpdateReq,
+  VersionComponentEndpointsUpdateReq,
   VersionComponentReq,
   VersionComponentResp,
   VersionComponentRuntimeUpdateReq,
 } from '@/gen/proto/orbit/v1/application/version';
 
 export interface PortRow {
+  name?: string;
+  protocol?: string;
   host_port: string;
   container_port: string;
+  mode?: string;
+  bind_address?: string;
+  entrypoint?: string;
+  path_prefix?: string;
 }
 
 export interface MountRow {
@@ -150,9 +156,15 @@ export function componentFormFromResponse(component: VersionComponentResp): Comp
     image: component.image,
     command: component.command,
     env: component.env.map((item) => ({ key: item.key, value: item.value })),
-    ports: component.ports.map((item) => ({
-      host_port: String(item.host_port),
+    ports: component.endpoints.map((item) => ({
+      name: item.name,
+      protocol: item.protocol,
+      host_port: item.listen_port === undefined ? '' : String(item.listen_port),
       container_port: String(item.container_port),
+      mode: item.mode,
+      bind_address: inputText(item.bind_address),
+      entrypoint: inputText(item.entrypoint),
+      path_prefix: inputText(item.path_prefix),
     })),
     mounts: component.mounts.map((item) => ({
       source_type: item.source_type,
@@ -259,20 +271,48 @@ function buildResources(resourceForm: ComponentForm['resources']): ComponentReso
   return Object.values(resources).some((value) => value !== undefined) ? resources : undefined;
 }
 
-function buildPorts(rows: PortRow[]): ComponentPort[] | null {
-  const ports: ComponentPort[] = [];
+function buildPorts(rows: PortRow[]): ComponentEndpoint[] | null {
+  const endpoints: ComponentEndpoint[] = [];
   for (const row of rows) {
-    if (!isInteger(row.host_port) || !isInteger(row.container_port)) {
+    const protocol = row.protocol || 'tcp';
+    const mode = row.mode || 'host';
+    const requiresListenPort = mode === 'local' || mode === 'host';
+    if (
+      !isInteger(row.container_port) ||
+      (requiresListenPort && !isInteger(row.host_port)) ||
+      (!requiresListenPort && row.host_port !== '' && !isInteger(row.host_port)) ||
+      !['http', 'tcp'].includes(protocol) ||
+      !['internal', 'local', 'host', 'gateway_http', 'gateway_tcp'].includes(mode) ||
+      (mode === 'gateway_http' && protocol !== 'http') ||
+      (mode === 'gateway_tcp' && protocol !== 'tcp')
+    ) {
       return null;
     }
-    const hostPort = Number(row.host_port);
     const containerPort = Number(row.container_port);
-    if (hostPort < 1 || hostPort > 65535 || containerPort < 1 || containerPort > 65535) {
+    const hostPort = row.host_port === '' ? undefined : Number(row.host_port);
+    if (
+      (hostPort !== undefined && (hostPort < 1 || hostPort > 65535)) ||
+      containerPort < 1 ||
+      containerPort > 65535
+    ) {
       return null;
     }
-    ports.push({ host_port: hostPort, container_port: containerPort });
+    const name = row.name?.trim() || `${protocol}-${containerPort}`;
+    if (!/^[a-z][a-z0-9-]*$/.test(name)) {
+      return null;
+    }
+    endpoints.push({
+      name,
+      protocol,
+      container_port: containerPort,
+      mode,
+      listen_port: hostPort,
+      bind_address: optionalText(row.bind_address ?? ''),
+      entrypoint: optionalText(row.entrypoint ?? ''),
+      path_prefix: optionalText(row.path_prefix ?? ''),
+    });
   }
-  return ports;
+  return endpoints;
 }
 
 function buildMounts(rows: MountRow[]): ComponentMount[] | null {
@@ -401,7 +441,7 @@ export function componentRequestFromForm(form: ComponentForm): ComponentFormVali
   if (!runtime.valid) {
     return runtime;
   }
-  const ports = componentPortsRequestFromForm(form);
+  const ports = componentEndpointsRequestFromForm(form);
   if (!ports.valid) {
     return ports;
   }
@@ -503,14 +543,14 @@ export function componentRuntimeRequestFromForm(
   };
 }
 
-export function componentPortsRequestFromForm(
+export function componentEndpointsRequestFromForm(
   form: ComponentForm
-): ComponentFormValidation<VersionComponentPortsUpdateReq> {
-  const ports = buildPorts(form.ports);
-  if (ports === null) {
+): ComponentFormValidation<VersionComponentEndpointsUpdateReq> {
+  const endpoints = buildPorts(form.ports);
+  if (endpoints === null) {
     return { valid: false, error: 'ports' };
   }
-  return { valid: true, value: { ports } };
+  return { valid: true, value: { endpoints } };
 }
 
 export function componentEnvRequestFromForm(

@@ -1,15 +1,15 @@
 -- name: ApplicationByID :one
-SELECT id, project_id, name, code, kind, image_pull_policy, created_at, updated_at
+SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE id = ?;
 
 -- name: ApplicationByName :one
-SELECT id, project_id, name, code, kind, image_pull_policy, created_at, updated_at
+SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE name = ?;
 
 -- name: ApplicationByCode :one
-SELECT id, project_id, name, code, kind, image_pull_policy, created_at, updated_at
+SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE code = ?;
 
@@ -21,7 +21,7 @@ WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
   AND (sqlc.arg(kind_filter) = '' OR kind = sqlc.arg(kind));
 
 -- name: ListApplications :many
-SELECT id, project_id, name, code, kind, image_pull_policy, created_at, updated_at
+SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
   AND (sqlc.arg(search) = '' OR name LIKE sqlc.arg(name_pattern) OR code LIKE sqlc.arg(name_pattern))
@@ -30,12 +30,12 @@ ORDER BY created_at DESC, id
 LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: CreateApplication :exec
-INSERT INTO application (id, project_id, name, code, kind, image_pull_policy, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO application (id, project_id, name, code, kind, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateApplication :exec
 UPDATE application
-SET name = ?, code = ?, image_pull_policy = ?, updated_at = ?
+SET name = ?, code = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DetachDeploymentServiceRefsByApplication :exec

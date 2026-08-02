@@ -22,15 +22,14 @@ const (
 )
 
 type GatewayCreateReq struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	ProjectId  string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Code       string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	Name       string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	RestApiUrl string                 `protobuf:"bytes,4,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
-	BaseDomain string                 `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
-	Image      *string                `protobuf:"bytes,6,opt,name=image,proto3,oneof" json:"image,omitempty"`
-	// docker compose --pull: always|missing|never
-	ImagePullPolicy string `protobuf:"bytes,7,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
+	state                      protoimpl.MessageState `protogen:"open.v1"`
+	ProjectId                  string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Code                       string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	Name                       string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	RestApiUrl                 string                 `protobuf:"bytes,4,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
+	BaseDomain                 string                 `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	InitialComponentImage      *string                `protobuf:"bytes,6,opt,name=initial_component_image,json=initialComponentImage,proto3,oneof" json:"initial_component_image,omitempty"`
+	InitialComponentPullPolicy string                 `protobuf:"bytes,7,opt,name=initial_component_pull_policy,json=initialComponentPullPolicy,proto3" json:"initial_component_pull_policy,omitempty"`
 	// Traefik entryPoints name: web|websecure (default web when empty on create)
 	DefaultEntrypoint *string `protobuf:"bytes,8,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
 	// none|letsencrypt|tls (default none when empty on create)
@@ -104,16 +103,16 @@ func (x *GatewayCreateReq) GetBaseDomain() string {
 	return ""
 }
 
-func (x *GatewayCreateReq) GetImage() string {
-	if x != nil && x.Image != nil {
-		return *x.Image
+func (x *GatewayCreateReq) GetInitialComponentImage() string {
+	if x != nil && x.InitialComponentImage != nil {
+		return *x.InitialComponentImage
 	}
 	return ""
 }
 
-func (x *GatewayCreateReq) GetImagePullPolicy() string {
+func (x *GatewayCreateReq) GetInitialComponentPullPolicy() string {
 	if x != nil {
-		return x.ImagePullPolicy
+		return x.InitialComponentPullPolicy
 	}
 	return ""
 }
@@ -137,8 +136,6 @@ type GatewayUpdateReq struct {
 	Name              *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	RestApiUrl        *string                `protobuf:"bytes,2,opt,name=rest_api_url,json=restApiUrl,proto3,oneof" json:"rest_api_url,omitempty"`
 	BaseDomain        *string                `protobuf:"bytes,3,opt,name=base_domain,json=baseDomain,proto3,oneof" json:"base_domain,omitempty"`
-	Image             *string                `protobuf:"bytes,4,opt,name=image,proto3,oneof" json:"image,omitempty"`
-	ImagePullPolicy   *string                `protobuf:"bytes,5,opt,name=image_pull_policy,json=imagePullPolicy,proto3,oneof" json:"image_pull_policy,omitempty"`
 	DefaultEntrypoint *string                `protobuf:"bytes,6,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
 	TlsMode           *string                `protobuf:"bytes,8,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
 	unknownFields     protoimpl.UnknownFields
@@ -192,20 +189,6 @@ func (x *GatewayUpdateReq) GetRestApiUrl() string {
 func (x *GatewayUpdateReq) GetBaseDomain() string {
 	if x != nil && x.BaseDomain != nil {
 		return *x.BaseDomain
-	}
-	return ""
-}
-
-func (x *GatewayUpdateReq) GetImage() string {
-	if x != nil && x.Image != nil {
-		return *x.Image
-	}
-	return ""
-}
-
-func (x *GatewayUpdateReq) GetImagePullPolicy() string {
-	if x != nil && x.ImagePullPolicy != nil {
-		return *x.ImagePullPolicy
 	}
 	return ""
 }
@@ -350,11 +333,9 @@ type GatewayResp struct {
 	Kind              string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
 	RestApiUrl        string                 `protobuf:"bytes,6,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
 	BaseDomain        string                 `protobuf:"bytes,7,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
-	Image             *string                `protobuf:"bytes,8,opt,name=image,proto3,oneof" json:"image,omitempty"`
 	CreatedAt         string                 `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt         string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	ConfigUpdatedAt   string                 `protobuf:"bytes,11,opt,name=config_updated_at,json=configUpdatedAt,proto3" json:"config_updated_at,omitempty"`
-	ImagePullPolicy   string                 `protobuf:"bytes,12,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
 	DefaultEntrypoint string                 `protobuf:"bytes,13,opt,name=default_entrypoint,json=defaultEntrypoint,proto3" json:"default_entrypoint,omitempty"`
 	TlsMode           string                 `protobuf:"bytes,15,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
 	Exposures         []*GatewayExposureItem `protobuf:"bytes,16,rep,name=exposures,proto3" json:"exposures,omitempty"`
@@ -441,13 +422,6 @@ func (x *GatewayResp) GetBaseDomain() string {
 	return ""
 }
 
-func (x *GatewayResp) GetImage() string {
-	if x != nil && x.Image != nil {
-		return *x.Image
-	}
-	return ""
-}
-
 func (x *GatewayResp) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
@@ -465,13 +439,6 @@ func (x *GatewayResp) GetUpdatedAt() string {
 func (x *GatewayResp) GetConfigUpdatedAt() string {
 	if x != nil {
 		return x.ConfigUpdatedAt
-	}
-	return ""
-}
-
-func (x *GatewayResp) GetImagePullPolicy() string {
-	if x != nil {
-		return x.ImagePullPolicy
 	}
 	return ""
 }
@@ -577,7 +544,7 @@ var File_orbit_v1_gateway_gateway_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorbit/v1/gateway/gateway.proto\x12\x10orbit.v1.gateway\"\xe5\x02\n" +
+	"\x1eorbit/v1/gateway/gateway.proto\x12\x10orbit.v1.gateway\"\xb0\x03\n" +
 	"\x10GatewayCreateReq\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x12\n" +
@@ -586,32 +553,28 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\frest_api_url\x18\x04 \x01(\tR\n" +
 	"restApiUrl\x12\x1f\n" +
 	"\vbase_domain\x18\x05 \x01(\tR\n" +
-	"baseDomain\x12\x19\n" +
-	"\x05image\x18\x06 \x01(\tH\x00R\x05image\x88\x01\x01\x12*\n" +
-	"\x11image_pull_policy\x18\a \x01(\tR\x0fimagePullPolicy\x122\n" +
+	"baseDomain\x12;\n" +
+	"\x17initial_component_image\x18\x06 \x01(\tH\x00R\x15initialComponentImage\x88\x01\x01\x12A\n" +
+	"\x1dinitial_component_pull_policy\x18\a \x01(\tR\x1ainitialComponentPullPolicy\x122\n" +
 	"\x12default_entrypoint\x18\b \x01(\tH\x01R\x11defaultEntrypoint\x88\x01\x01\x12\x1e\n" +
 	"\btls_mode\x18\n" +
-	" \x01(\tH\x02R\atlsMode\x88\x01\x01B\b\n" +
-	"\x06_imageB\x15\n" +
+	" \x01(\tH\x02R\atlsMode\x88\x01\x01B\x1a\n" +
+	"\x18_initial_component_imageB\x15\n" +
 	"\x13_default_entrypointB\v\n" +
-	"\t_tls_mode\"\x86\x03\n" +
+	"\t_tls_mode\"\xa6\x02\n" +
 	"\x10GatewayUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12%\n" +
 	"\frest_api_url\x18\x02 \x01(\tH\x01R\n" +
 	"restApiUrl\x88\x01\x01\x12$\n" +
 	"\vbase_domain\x18\x03 \x01(\tH\x02R\n" +
-	"baseDomain\x88\x01\x01\x12\x19\n" +
-	"\x05image\x18\x04 \x01(\tH\x03R\x05image\x88\x01\x01\x12/\n" +
-	"\x11image_pull_policy\x18\x05 \x01(\tH\x04R\x0fimagePullPolicy\x88\x01\x01\x122\n" +
-	"\x12default_entrypoint\x18\x06 \x01(\tH\x05R\x11defaultEntrypoint\x88\x01\x01\x12\x1e\n" +
-	"\btls_mode\x18\b \x01(\tH\x06R\atlsMode\x88\x01\x01B\a\n" +
+	"baseDomain\x88\x01\x01\x122\n" +
+	"\x12default_entrypoint\x18\x06 \x01(\tH\x03R\x11defaultEntrypoint\x88\x01\x01\x12\x1e\n" +
+	"\btls_mode\x18\b \x01(\tH\x04R\atlsMode\x88\x01\x01B\a\n" +
 	"\x05_nameB\x0f\n" +
 	"\r_rest_api_urlB\x0e\n" +
-	"\f_base_domainB\b\n" +
-	"\x06_imageB\x14\n" +
-	"\x12_image_pull_policyB\x15\n" +
+	"\f_base_domainB\x15\n" +
 	"\x13_default_entrypointB\v\n" +
-	"\t_tls_mode\"\xef\x02\n" +
+	"\t_tls_modeJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06\"\xef\x02\n" +
 	"\x13GatewayExposureItem\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12)\n" +
 	"\x10application_code\x18\x02 \x01(\tR\x0fapplicationCode\x12%\n" +
@@ -626,7 +589,7 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\finternal_dns\x18\t \x01(\tR\vinternalDns\x12\x1f\n" +
 	"\vclient_hint\x18\n" +
 	" \x01(\tR\n" +
-	"clientHint\"\x85\x04\n" +
+	"clientHint\"\xc0\x03\n" +
 	"\vGatewayResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -637,19 +600,16 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\frest_api_url\x18\x06 \x01(\tR\n" +
 	"restApiUrl\x12\x1f\n" +
 	"\vbase_domain\x18\a \x01(\tR\n" +
-	"baseDomain\x12\x19\n" +
-	"\x05image\x18\b \x01(\tH\x00R\x05image\x88\x01\x01\x12\x1d\n" +
+	"baseDomain\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\t \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\n" +
 	" \x01(\tR\tupdatedAt\x12*\n" +
-	"\x11config_updated_at\x18\v \x01(\tR\x0fconfigUpdatedAt\x12*\n" +
-	"\x11image_pull_policy\x18\f \x01(\tR\x0fimagePullPolicy\x12-\n" +
+	"\x11config_updated_at\x18\v \x01(\tR\x0fconfigUpdatedAt\x12-\n" +
 	"\x12default_entrypoint\x18\r \x01(\tR\x11defaultEntrypoint\x12\x19\n" +
 	"\btls_mode\x18\x0f \x01(\tR\atlsMode\x12C\n" +
-	"\texposures\x18\x10 \x03(\v2%.orbit.v1.gateway.GatewayExposureItemR\texposuresB\b\n" +
-	"\x06_image\"\xa6\x01\n" +
+	"\texposures\x18\x10 \x03(\v2%.orbit.v1.gateway.GatewayExposureItemR\texposuresJ\x04\b\b\x10\tJ\x04\b\f\x10\r\"\xa6\x01\n" +
 	"\x14GatewayPaginatedResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.gateway.GatewayRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
@@ -695,7 +655,6 @@ func file_orbit_v1_gateway_gateway_proto_init() {
 	}
 	file_orbit_v1_gateway_gateway_proto_msgTypes[0].OneofWrappers = []any{}
 	file_orbit_v1_gateway_gateway_proto_msgTypes[1].OneofWrappers = []any{}
-	file_orbit_v1_gateway_gateway_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

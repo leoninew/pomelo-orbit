@@ -8,9 +8,8 @@ message GatewayCreateReq {
   string name = 3;
   string rest_api_url = 4;
   string base_domain = 5;
-  optional string image = 6;
-  // docker compose --pull: always|missing|never
-  string image_pull_policy = 7;
+  optional string initial_component_image = 6;
+  string initial_component_pull_policy = 7;
   // Traefik entryPoints name: web|websecure (default web when empty on create)
   optional string default_entrypoint = 8;
   // none|letsencrypt|tls (default none when empty on create)
@@ -21,8 +20,7 @@ message GatewayUpdateReq {
   optional string name = 1;
   optional string rest_api_url = 2;
   optional string base_domain = 3;
-  optional string image = 4;
-  optional string image_pull_policy = 5;
+  reserved 4, 5;
   optional string default_entrypoint = 6;
   optional string tls_mode = 8;
 }
@@ -49,11 +47,11 @@ message GatewayResp {
   string kind = 5;
   string rest_api_url = 6;
   string base_domain = 7;
-  optional string image = 8;
+  reserved 8;
   string created_at = 9;
   string updated_at = 10;
   string config_updated_at = 11;
-  string image_pull_policy = 12;
+  reserved 12;
   string default_entrypoint = 13;
   string tls_mode = 15;
   repeated GatewayExposureItem exposures = 16;

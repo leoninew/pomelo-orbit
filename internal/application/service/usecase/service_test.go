@@ -2,132 +2,262 @@ package servicesvc
 
 import (
 	"context"
+	"strings"
 	"testing"
 
+	deploymentsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/usecase"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
-func TestDeleteServiceDeletesStoppedService(t *testing.T) {
-	service, store := newDeleteServiceTestService(status.ServiceStatusStopped)
+type serviceApplicationFake struct {
+	app          model.Application
+	version      model.Version
+	declarations []model.VersionComponent
+}
 
-	err := service.DeleteService(context.Background(), "user-1", "service-1")
+func (f serviceApplicationFake) Application(_ context.Context, _ string) (model.Application, error) {
+	return f.app, nil
+}
+
+func (f serviceApplicationFake) Version(_ context.Context, _ string) (model.Version, error) {
+	return f.version, nil
+}
+
+func (f serviceApplicationFake) VersionComponentsByVersion(_ context.Context, _ string) ([]model.VersionComponent, error) {
+	return f.declarations, nil
+}
+
+type serviceStoreFake struct {
+	repository.ServiceStore
+	service    model.Service
+	component  model.ServiceComponent
+	components []model.ServiceComponent
+	env        []model.ServiceEnv
+}
+
+func (f serviceStoreFake) Service(_ context.Context, _ string) (model.Service, error) {
+	return f.service, nil
+}
+
+func (f serviceStoreFake) ServiceComponent(_ context.Context, _ string) (model.ServiceComponent, error) {
+	return f.component, nil
+}
+
+func (f serviceStoreFake) ServiceComponentsByService(_ context.Context, _ string) ([]model.ServiceComponent, error) {
+	return f.components, nil
+}
+
+func (f serviceStoreFake) ServiceEnvByService(_ context.Context, _ string) ([]model.ServiceEnv, error) {
+	return f.env, nil
+}
+
+type deploymentStoreFake struct {
+	repository.DeploymentStore
+	planHash *string
+}
+
+func (f deploymentStoreFake) LatestSuccessfulDeploymentPlanHash(_ context.Context, _ string) (*string, error) {
+	return f.planHash, nil
+}
+
+func TestServiceViewPendingDeployComparesEffectivePlanHash(t *testing.T) {
+	service, app, version, declaration, component := serviceViewFixture()
+	plan, hash, err := buildFixturePlan(app, version, service, declaration, component)
 	if err != nil {
-		t.Fatalf("DeleteService returned error: %v", err)
+		t.Fatalf("build fixture plan: %v", err)
 	}
-	if store.deletedId != "service-1" {
-		t.Fatalf("deleted service id = %q, want service-1", store.deletedId)
+	if len(plan.Components) != 1 {
+		t.Fatalf("fixture plan has %d components", len(plan.Components))
+	}
+	for _, test := range []struct {
+		name     string
+		deployed *string
+		pending  bool
+	}{
+		{name: "matches latest successful deployment", deployed: &hash, pending: false},
+		{name: "changed since latest successful deployment", deployed: stringPtr("outdated"), pending: true},
+		{name: "has never been deployed", deployed: nil, pending: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			usecase := Service{
+				application: serviceApplicationFake{app: app, version: version, declarations: []model.VersionComponent{declaration}},
+				service:     serviceStoreFake{components: []model.ServiceComponent{component}},
+				deployment:  deploymentStoreFake{planHash: test.deployed},
+			}
+			view, err := usecase.serviceView(context.Background(), model.ServiceListItem{
+				Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
+				Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if view.EffectivePlanHash != hash || view.PendingDeploy != test.pending {
+				t.Fatalf("service view = %#v, want hash %q and pending=%t", view, hash, test.pending)
+			}
+			if len(view.ComponentDefinitions) != 1 || view.ComponentDefinitions[0].Image != declaration.Image {
+				t.Fatalf("component definitions = %#v, want declaration image %q", view.ComponentDefinitions, declaration.Image)
+			}
+		})
 	}
 }
 
-func TestDeleteServiceRejectsNonStoppedService(t *testing.T) {
-	service, store := newDeleteServiceTestService(status.ServiceStatusRunning)
-
-	err := service.DeleteService(context.Background(), "user-1", "service-1")
-	if apperror.StatusCode(err) != 400 {
-		t.Fatalf("DeleteService error status = %d, want 400; error=%v", apperror.StatusCode(err), err)
+func TestGetServiceComponentReturnsDeclarationOverlayAndEffectiveValues(t *testing.T) {
+	service, app, version, declaration, component := serviceViewFixture()
+	usecase := Service{
+		application: serviceApplicationFake{app: app, version: version, declarations: []model.VersionComponent{declaration}},
+		service:     serviceStoreFake{service: service, component: component},
 	}
-	if store.deletedId != "" {
-		t.Fatalf("service must not be deleted while running: %q", store.deletedId)
+	detail, err := usecase.GetServiceComponent(context.Background(), "user-1", service.Id, component.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if detail.Component.Id != component.Id || detail.Declaration.Id != declaration.Id {
+		t.Fatalf("component detail lost source views: %#v", detail)
+	}
+	if len(detail.Effective.Env) != 1 || detail.Effective.Env[0].Value != "runtime-value" {
+		t.Fatalf("effective environment = %#v", detail.Effective.Env)
 	}
 }
 
-func newDeleteServiceTestService(serviceStatus string) (Service, *deleteServiceStoreFake) {
-	projectId := "project-1"
-	store := &deleteServiceStoreFake{item: model.ServiceListItem{
-		Id: "service-1", ApplicationId: "application-1", InstanceKey: "default", VersionId: "version-1", Status: serviceStatus,
+func TestGetServiceComponentResolvesServiceEnvironmentWithoutCreatingOverlay(t *testing.T) {
+	service, app, version, declaration, component := serviceViewFixture()
+	declaration.Env[0].Value = "${SHARED_VALUE}"
+	component.Env = nil
+	usecase := Service{
+		application: serviceApplicationFake{app: app, version: version, declarations: []model.VersionComponent{declaration}},
+		service: serviceStoreFake{
+			service: service, component: component,
+			env: []model.ServiceEnv{{Key: "SHARED_VALUE", Value: "from-service"}},
+		},
+	}
+	detail, err := usecase.GetServiceComponent(context.Background(), "user-1", service.Id, component.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(detail.Component.Env) != 0 {
+		t.Fatalf("service value must not become a component overlay: %#v", detail.Component.Env)
+	}
+	if len(detail.Effective.Env) != 1 || detail.Effective.Env[0].Value != "from-service" {
+		t.Fatalf("effective environment = %#v", detail.Effective.Env)
+	}
+}
+
+func TestServiceViewAllowsMissingRequiredServiceEnvironment(t *testing.T) {
+	service, app, version, declaration, component := serviceViewFixture()
+	declaration.Env[0].Value = "${REQUIRED_VALUE:?required}"
+	component.Env = nil
+	usecase := Service{
+		application: serviceApplicationFake{app: app, version: version, declarations: []model.VersionComponent{declaration}},
+		service:     serviceStoreFake{components: []model.ServiceComponent{component}},
+		deployment:  deploymentStoreFake{},
+	}
+	view, err := usecase.serviceView(context.Background(), model.ServiceListItem{
+		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
+		Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
+	})
+	if err != nil {
+		t.Fatalf("service view must remain accessible: %v", err)
+	}
+	if !view.PendingDeploy {
+		t.Fatal("missing environment must require a deployment after it is set")
+	}
+}
+
+func TestNormalizeServiceEnv(t *testing.T) {
+	items, err := normalizeServiceEnv([]model.ServiceEnv{{Key: " SHARED_VALUE ", Value: "value"}})
+	if err != nil || len(items) != 1 || items[0].Key != "SHARED_VALUE" {
+		t.Fatalf("normalized environment = %#v, %v", items, err)
+	}
+	for _, input := range [][]model.ServiceEnv{
+		{{Key: ""}},
+		{{Key: "invalid.key"}},
+		{{Key: "VALUE"}, {Key: "VALUE"}},
+	} {
+		if _, err := normalizeServiceEnv(input); err == nil {
+			t.Fatalf("environment %#v must be rejected", input)
+		}
+	}
+}
+
+func TestRemapServiceComponentsKeepsMountOverlayWithItsTargetAfterReorder(t *testing.T) {
+	overrideSource := "/srv/runtime-data"
+	mappings := []model.ServiceComponent{{
+		Id: "service-component-1", ServiceId: "service-1", SourceVersionComponentId: "component-v1", ComponentName: "web",
+		Mounts: []model.ServiceComponentMount{{Target: "/data", Source: &overrideSource, State: model.ServiceComponentOverlayOverride}},
 	}}
-	return New(
-		deleteServiceProjectFake{},
-		deleteServiceApplicationFake{application: model.Application{Id: "application-1", ProjectId: &projectId}},
-		store,
-	), store
+	declarations := []model.VersionComponent{{
+		Id: "component-v2", Name: "web", Image: "nginx:latest",
+		Mounts: []model.VersionComponentMount{
+			{SourceType: "directory", Source: "cache", Target: "/cache"},
+			{SourceType: "directory", Source: "data", Target: "/data"},
+		},
+	}}
+
+	if err := remapServiceComponents(mappings, declarations); err != nil {
+		t.Fatal(err)
+	}
+	if mappings[0].SourceVersionComponentId != "component-v2" {
+		t.Fatalf("component was not remapped: %#v", mappings[0])
+	}
+	plan, _, err := deploymentsvc.BuildEffectiveServicePlan(
+		model.Application{Id: "app-1", Code: "example", Kind: status.ApplicationKindStandard},
+		model.Version{Id: "version-v2", ApplicationId: "app-1"},
+		model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-v2"},
+		declarations,
+		mappings,
+		nil,
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Components[0].Mounts[0].Target != "/cache" || plan.Components[0].Mounts[0].Source != "cache" {
+		t.Fatalf("cache mount received the data overlay: %#v", plan.Components[0].Mounts)
+	}
+	if plan.Components[0].Mounts[1].Target != "/data" || plan.Components[0].Mounts[1].Source != overrideSource {
+		t.Fatalf("data mount lost its overlay: %#v", plan.Components[0].Mounts)
+	}
 }
 
-type deleteServiceProjectFake struct{}
+func TestRemapServiceComponentsRejectsMissingMountTarget(t *testing.T) {
+	deleted := model.ServiceComponentOverlayDeleted
+	mappings := []model.ServiceComponent{{
+		Id: "service-component-1", ServiceId: "service-1", SourceVersionComponentId: "component-v1", ComponentName: "web",
+		Mounts: []model.ServiceComponentMount{{Target: "/removed", State: deleted}},
+	}}
+	declarations := []model.VersionComponent{{
+		Id: "component-v2", Name: "web", Image: "nginx:latest",
+		Mounts: []model.VersionComponentMount{{SourceType: "directory", Source: "data", Target: "/data"}},
+	}}
 
-func (deleteServiceProjectFake) Project(_ context.Context, id string) (model.Project, error) {
-	return model.Project{Id: id}, nil
+	err := remapServiceComponents(mappings, declarations)
+	if err == nil || !strings.Contains(err.Error(), "mount target /removed is not declared") {
+		t.Fatalf("remap error = %v, want missing target rejection", err)
+	}
+	if mappings[0].SourceVersionComponentId != "component-v1" {
+		t.Fatalf("failed remap must not update source declaration: %#v", mappings[0])
+	}
 }
 
-func (deleteServiceProjectFake) IsProjectMember(_ context.Context, _, _ string) (bool, error) {
-	return true, nil
+func serviceViewFixture() (model.Service, model.Application, model.Version, model.VersionComponent, model.ServiceComponent) {
+	baseValue, overrideValue := "version-value", "runtime-value"
+	service := model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-1", InstanceKey: "default", Status: status.ServiceStatusStopped}
+	app := model.Application{Id: "app-1", Name: "Example", Code: "example", Kind: status.ApplicationKindStandard}
+	version := model.Version{Id: "version-1", ApplicationId: "app-1", Label: "v1"}
+	declaration := model.VersionComponent{Id: "component-1", VersionId: version.Id, Name: "web", Image: "nginx:latest", Env: []model.VersionComponentEnv{{Key: "APP_VALUE", Value: baseValue}}}
+	component := model.ServiceComponent{
+		Id: "service-component-1", ServiceId: service.Id, SourceVersionComponentId: declaration.Id, ComponentName: declaration.Name,
+		Env: []model.ServiceComponentEnv{{Key: "APP_VALUE", Value: &overrideValue, State: model.ServiceComponentOverlayOverride}},
+	}
+	return service, app, version, declaration, component
 }
 
-type deleteServiceApplicationFake struct {
-	application model.Application
+func buildFixturePlan(app model.Application, version model.Version, service model.Service, declaration model.VersionComponent, component model.ServiceComponent) (model.EffectiveServicePlan, string, error) {
+	return deploymentsvc.BuildEffectiveServicePlan(app, version, service, []model.VersionComponent{declaration}, []model.ServiceComponent{component}, nil, nil)
 }
 
-func (f deleteServiceApplicationFake) Application(_ context.Context, _ string) (model.Application, error) {
-	return f.application, nil
-}
-
-func (deleteServiceApplicationFake) Version(_ context.Context, _ string) (model.Version, error) {
-	return model.Version{}, repository.ErrNotFound
-}
-
-func (deleteServiceApplicationFake) VersionComponentsByVersion(_ context.Context, _ string) ([]model.VersionComponent, error) {
-	return nil, nil
-}
-
-type deleteServiceStoreFake struct {
-	item      model.ServiceListItem
-	deletedId string
-}
-
-func (f *deleteServiceStoreFake) ListServicesByApplication(_ context.Context, _ string) ([]model.Service, error) {
-	return []model.Service{f.item.Service()}, nil
-}
-
-func (f *deleteServiceStoreFake) ListServicesByProject(_ context.Context, _, _, _, _ string, page, perPage int) (repository.Page[model.ServiceListItem], error) {
-	return repository.Page[model.ServiceListItem]{Items: []model.ServiceListItem{f.item}, Total: 1, Page: page, PerPage: perPage}, nil
-}
-
-func (f *deleteServiceStoreFake) ServiceListItem(_ context.Context, _ string) (model.ServiceListItem, error) {
-	return f.item, nil
-}
-
-func (f *deleteServiceStoreFake) ServiceByKey(_ context.Context, _, _ string) (model.Service, error) {
-	return f.item.Service(), nil
-}
-
-func (f *deleteServiceStoreFake) Service(_ context.Context, _ string) (model.Service, error) {
-	return f.item.Service(), nil
-}
-
-func (f *deleteServiceStoreFake) ServiceExposesByService(_ context.Context, _ string) ([]model.ServiceExpose, error) {
-	return nil, nil
-}
-
-func (f *deleteServiceStoreFake) LocalServiceExposesByListen(_ context.Context, _ int) ([]model.ServiceExpose, error) {
-	return nil, nil
-}
-
-func (f *deleteServiceStoreFake) PublicTCPServiceExposesByListen(_ context.Context, _ int) ([]model.ServiceExpose, error) {
-	return nil, nil
-}
-
-func (f *deleteServiceStoreFake) CountServiceExposesByVersionComponent(_ context.Context, _, _ string) (int, error) {
-	return 0, nil
-}
-
-func (f *deleteServiceStoreFake) DeleteService(_ context.Context, id string) error {
-	f.deletedId = id
-	return nil
-}
-
-func (f *deleteServiceStoreFake) UpsertService(_ context.Context, _ model.Service) error { return nil }
-
-func (f *deleteServiceStoreFake) CreateServiceWithExposes(_ context.Context, _ model.Service, _ []model.ServiceExpose) error {
-	return nil
-}
-
-func (f *deleteServiceStoreFake) UpdateServiceConfiguration(_ context.Context, _ model.Service, _ []model.ServiceExpose) error {
-	return nil
-}
-
-func (f *deleteServiceStoreFake) UpdateServiceRuntimeConfig(_ context.Context, _ string, _ map[string]string) error {
-	return nil
+func stringPtr(value string) *string {
+	return &value
 }

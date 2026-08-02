@@ -23,17 +23,16 @@ const (
 )
 
 type ApplicationExportResp struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId       *string                `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
-	Name            string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Code            string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
-	ImagePullPolicy string                 `protobuf:"bytes,5,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
-	Versions        []*VersionResp         `protobuf:"bytes,6,rep,name=versions,proto3" json:"versions,omitempty"`
-	Services        []*service.ServiceResp `protobuf:"bytes,7,rep,name=services,proto3" json:"services,omitempty"`
-	Kind            string                 `protobuf:"bytes,8,opt,name=kind,proto3" json:"kind,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId     *string                `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Code          string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
+	Versions      []*VersionResp         `protobuf:"bytes,6,rep,name=versions,proto3" json:"versions,omitempty"`
+	Services      []*service.ServiceResp `protobuf:"bytes,7,rep,name=services,proto3" json:"services,omitempty"`
+	Kind          string                 `protobuf:"bytes,8,opt,name=kind,proto3" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ApplicationExportResp) Reset() {
@@ -94,13 +93,6 @@ func (x *ApplicationExportResp) GetCode() string {
 	return ""
 }
 
-func (x *ApplicationExportResp) GetImagePullPolicy() string {
-	if x != nil {
-		return x.ImagePullPolicy
-	}
-	return ""
-}
-
 func (x *ApplicationExportResp) GetVersions() []*VersionResp {
 	if x != nil {
 		return x.Versions
@@ -123,16 +115,15 @@ func (x *ApplicationExportResp) GetKind() string {
 }
 
 type ApplicationImportReq struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Code            string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	ImagePullPolicy string                 `protobuf:"bytes,3,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
-	VersionLabel    string                 `protobuf:"bytes,4,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
-	VersionNote     *string                `protobuf:"bytes,6,opt,name=version_note,json=versionNote,proto3,oneof" json:"version_note,omitempty"`
-	Components      []*VersionComponentReq `protobuf:"bytes,7,rep,name=components,proto3" json:"components,omitempty"`
-	Kind            *string                `protobuf:"bytes,9,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	VersionLabel  string                 `protobuf:"bytes,4,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
+	VersionNote   *string                `protobuf:"bytes,6,opt,name=version_note,json=versionNote,proto3,oneof" json:"version_note,omitempty"`
+	Components    []*VersionComponentReq `protobuf:"bytes,7,rep,name=components,proto3" json:"components,omitempty"`
+	Kind          *string                `protobuf:"bytes,9,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ApplicationImportReq) Reset() {
@@ -179,13 +170,6 @@ func (x *ApplicationImportReq) GetCode() string {
 	return ""
 }
 
-func (x *ApplicationImportReq) GetImagePullPolicy() string {
-	if x != nil {
-		return x.ImagePullPolicy
-	}
-	return ""
-}
-
 func (x *ApplicationImportReq) GetVersionLabel() string {
 	if x != nil {
 		return x.VersionLabel
@@ -218,22 +202,20 @@ var File_orbit_v1_application_application_bundle_proto protoreflect.FileDescript
 
 const file_orbit_v1_application_application_bundle_proto_rawDesc = "" +
 	"\n" +
-	"-orbit/v1/application/application_bundle.proto\x12\x14orbit.v1.application\x1a\"orbit/v1/application/version.proto\x1a\x1eorbit/v1/service/service.proto\"\xbc\x02\n" +
+	"-orbit/v1/application/application_bundle.proto\x12\x14orbit.v1.application\x1a\"orbit/v1/application/version.proto\x1a\x1eorbit/v1/service/service.proto\"\x96\x02\n" +
 	"\x15ApplicationExportResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tH\x00R\tprojectId\x88\x01\x01\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
-	"\x04code\x18\x04 \x01(\tR\x04code\x12*\n" +
-	"\x11image_pull_policy\x18\x05 \x01(\tR\x0fimagePullPolicy\x12=\n" +
+	"\x04code\x18\x04 \x01(\tR\x04code\x12=\n" +
 	"\bversions\x18\x06 \x03(\v2!.orbit.v1.application.VersionRespR\bversions\x129\n" +
 	"\bservices\x18\a \x03(\v2\x1d.orbit.v1.service.ServiceRespR\bservices\x12\x12\n" +
 	"\x04kind\x18\b \x01(\tR\x04kindB\r\n" +
-	"\v_project_id\"\xc1\x02\n" +
+	"\v_project_idJ\x04\b\x05\x10\x06\"\x9b\x02\n" +
 	"\x14ApplicationImportReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04code\x18\x02 \x01(\tR\x04code\x12*\n" +
-	"\x11image_pull_policy\x18\x03 \x01(\tR\x0fimagePullPolicy\x12#\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12#\n" +
 	"\rversion_label\x18\x04 \x01(\tR\fversionLabel\x12&\n" +
 	"\fversion_note\x18\x06 \x01(\tH\x00R\vversionNote\x88\x01\x01\x12I\n" +
 	"\n" +
@@ -241,7 +223,7 @@ const file_orbit_v1_application_application_bundle_proto_rawDesc = "" +
 	"components\x12\x17\n" +
 	"\x04kind\x18\t \x01(\tH\x01R\x04kind\x88\x01\x01B\x0f\n" +
 	"\r_version_noteB\a\n" +
-	"\x05_kindJ\x04\b\x05\x10\x06J\x04\b\b\x10\tB\xef\x01\n" +
+	"\x05_kindJ\x04\b\x03\x10\x04J\x04\b\x05\x10\x06J\x04\b\b\x10\tB\xef\x01\n" +
 	"\x18com.orbit.v1.applicationB\x16ApplicationBundleProtoP\x01ZIgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application\xa2\x02\x03OVA\xaa\x02\x14Orbit.V1.Application\xca\x02\x14Orbit\\V1\\Application\xe2\x02 Orbit\\V1\\Application\\GPBMetadata\xea\x02\x16Orbit::V1::Applicationb\x06proto3"
 
 var (

@@ -22,14 +22,13 @@ const (
 )
 
 type ApplicationResp struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId       *string                `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
-	Name            string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Code            string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
-	ImagePullPolicy string                 `protobuf:"bytes,5,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
-	CreatedAt       string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt       string                 `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId *string                `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
+	Name      string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Code      string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
+	CreatedAt string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt string                 `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// kind is standard|gateway; immutable after create.
 	Kind          string `protobuf:"bytes,12,opt,name=kind,proto3" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -94,13 +93,6 @@ func (x *ApplicationResp) GetCode() string {
 	return ""
 }
 
-func (x *ApplicationResp) GetImagePullPolicy() string {
-	if x != nil {
-		return x.ImagePullPolicy
-	}
-	return ""
-}
-
 func (x *ApplicationResp) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
@@ -123,10 +115,9 @@ func (x *ApplicationResp) GetKind() string {
 }
 
 type ApplicationCreateReq struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Code            string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	ImagePullPolicy string                 `protobuf:"bytes,3,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Code  string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
 	// optional; empty defaults to standard.
 	Kind          *string `protobuf:"bytes,4,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -177,13 +168,6 @@ func (x *ApplicationCreateReq) GetCode() string {
 	return ""
 }
 
-func (x *ApplicationCreateReq) GetImagePullPolicy() string {
-	if x != nil {
-		return x.ImagePullPolicy
-	}
-	return ""
-}
-
 func (x *ApplicationCreateReq) GetKind() string {
 	if x != nil && x.Kind != nil {
 		return *x.Kind
@@ -192,12 +176,11 @@ func (x *ApplicationCreateReq) GetKind() string {
 }
 
 type ApplicationUpdateReq struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Name            *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Code            *string                `protobuf:"bytes,2,opt,name=code,proto3,oneof" json:"code,omitempty"`
-	ImagePullPolicy *string                `protobuf:"bytes,3,opt,name=image_pull_policy,json=imagePullPolicy,proto3,oneof" json:"image_pull_policy,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Code          *string                `protobuf:"bytes,2,opt,name=code,proto3,oneof" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ApplicationUpdateReq) Reset() {
@@ -240,13 +223,6 @@ func (x *ApplicationUpdateReq) GetName() string {
 func (x *ApplicationUpdateReq) GetCode() string {
 	if x != nil && x.Code != nil {
 		return *x.Code
-	}
-	return ""
-}
-
-func (x *ApplicationUpdateReq) GetImagePullPolicy() string {
-	if x != nil && x.ImagePullPolicy != nil {
-		return *x.ImagePullPolicy
 	}
 	return ""
 }
@@ -675,33 +651,29 @@ var File_orbit_v1_application_application_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_application_application_proto_rawDesc = "" +
 	"\n" +
-	"&orbit/v1/application/application.proto\x12\x14orbit.v1.application\"\xfa\x01\n" +
+	"&orbit/v1/application/application.proto\x12\x14orbit.v1.application\"\xd4\x01\n" +
 	"\x0fApplicationResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tH\x00R\tprojectId\x88\x01\x01\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
-	"\x04code\x18\x04 \x01(\tR\x04code\x12*\n" +
-	"\x11image_pull_policy\x18\x05 \x01(\tR\x0fimagePullPolicy\x12\x1d\n" +
+	"\x04code\x18\x04 \x01(\tR\x04code\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\b \x01(\tR\tupdatedAt\x12\x12\n" +
 	"\x04kind\x18\f \x01(\tR\x04kindB\r\n" +
-	"\v_project_id\"\x8c\x01\n" +
+	"\v_project_idJ\x04\b\x05\x10\x06\"f\n" +
 	"\x14ApplicationCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04code\x18\x02 \x01(\tR\x04code\x12*\n" +
-	"\x11image_pull_policy\x18\x03 \x01(\tR\x0fimagePullPolicy\x12\x17\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12\x17\n" +
 	"\x04kind\x18\x04 \x01(\tH\x00R\x04kind\x88\x01\x01B\a\n" +
-	"\x05_kind\"\xa1\x01\n" +
+	"\x05_kindJ\x04\b\x03\x10\x04\"`\n" +
 	"\x14ApplicationUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x17\n" +
-	"\x04code\x18\x02 \x01(\tH\x01R\x04code\x88\x01\x01\x12/\n" +
-	"\x11image_pull_policy\x18\x03 \x01(\tH\x02R\x0fimagePullPolicy\x88\x01\x01B\a\n" +
+	"\x04code\x18\x02 \x01(\tH\x01R\x04code\x88\x01\x01B\a\n" +
 	"\x05_nameB\a\n" +
-	"\x05_codeB\x14\n" +
-	"\x12_image_pull_policy\"Z\n" +
+	"\x05_codeJ\x04\b\x03\x10\x04\"Z\n" +
 	"\x12ApplicationStopReq\x12%\n" +
 	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\x12\x1d\n" +
 	"\n" +

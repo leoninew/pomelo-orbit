@@ -8,15 +8,15 @@ import (
 
 func gatewayCreateInput(req *gatewayv1.GatewayCreateReq) gatewaydto.GatewayCreateInput {
 	return gatewaydto.GatewayCreateInput{
-		ProjectId:         req.ProjectId,
-		Code:              req.Code,
-		Name:              req.Name,
-		RestApiUrl:        req.RestApiUrl,
-		BaseDomain:        req.BaseDomain,
-		Image:             req.Image,
-		ImagePullPolicy:   req.ImagePullPolicy,
-		DefaultEntrypoint: req.DefaultEntrypoint,
-		TLSMode:           req.TlsMode,
+		ProjectId:                  req.ProjectId,
+		Code:                       req.Code,
+		Name:                       req.Name,
+		RestApiUrl:                 req.RestApiUrl,
+		BaseDomain:                 req.BaseDomain,
+		InitialComponentImage:      req.InitialComponentImage,
+		InitialComponentPullPolicy: req.InitialComponentPullPolicy,
+		DefaultEntrypoint:          req.DefaultEntrypoint,
+		TLSMode:                    req.TlsMode,
 	}
 }
 
@@ -25,8 +25,6 @@ func gatewayUpdateInput(req *gatewayv1.GatewayUpdateReq) gatewaydto.GatewayUpdat
 		Name:              req.Name,
 		RestApiUrl:        req.RestApiUrl,
 		BaseDomain:        req.BaseDomain,
-		Image:             req.Image,
-		ImagePullPolicy:   req.ImagePullPolicy,
 		DefaultEntrypoint: req.DefaultEntrypoint,
 		TLSMode:           req.TlsMode,
 	}
@@ -70,11 +68,9 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 		Kind:              app.Kind,
 		RestApiUrl:        cfg.RestApiUrl,
 		BaseDomain:        cfg.BaseDomain,
-		Image:             cfg.Image,
 		CreatedAt:         transportresponse.FormatTime(app.CreatedAt),
 		UpdatedAt:         transportresponse.FormatTime(app.UpdatedAt),
 		ConfigUpdatedAt:   transportresponse.FormatTime(cfg.UpdatedAt),
-		ImagePullPolicy:   app.ImagePullPolicy,
 		DefaultEntrypoint: cfg.DefaultEntrypoint,
 		TlsMode:           cfg.TLSMode,
 		Exposures:         exposures,

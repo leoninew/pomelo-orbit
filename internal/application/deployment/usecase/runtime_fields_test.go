@@ -13,14 +13,16 @@ func TestRenderComposeIncludesStructuredRuntimeFields(t *testing.T) {
 	restartPolicy := "unless-stopped"
 	service := Service{}
 	compose, err := service.RenderCompose(context.Background(), RenderInput{
-		App:     model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
-		Version: model.Version{Id: "version-1"},
-		Service: model.Service{InstanceKey: "default"},
-		Components: []model.VersionComponent{{
-			Name: "web", Image: "nginx", RestartPolicy: &restartPolicy,
-			Tmpfs:   []model.VersionComponentTmpfs{{Target: "/tmp", SizeBytes: 1048576, Mode: "1777"}},
-			Ulimits: []model.VersionComponentUlimit{{Name: "memlock", Soft: -1, Hard: -1}},
-		}},
+		Plan: model.EffectiveServicePlan{
+			Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
+			Version:     model.Version{Id: "version-1"},
+			Service:     model.Service{InstanceKey: "default"},
+			Components: []model.EffectiveServiceComponent{{
+				Name: "web", Image: "nginx", RestartPolicy: &restartPolicy,
+				Tmpfs:   []model.VersionComponentTmpfs{{Target: "/tmp", SizeBytes: 1048576, Mode: "1777"}},
+				Ulimits: []model.VersionComponentUlimit{{Name: "memlock", Soft: -1, Hard: -1}},
+			}},
+		},
 	})
 	if err != nil {
 		t.Fatal(err)

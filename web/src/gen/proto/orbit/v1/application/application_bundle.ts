@@ -15,7 +15,6 @@ export interface ApplicationExportResp {
   project_id?: string | undefined;
   name: string;
   code: string;
-  image_pull_policy: string;
   versions: VersionResp[];
   services: ServiceResp[];
   kind: string;
@@ -24,7 +23,6 @@ export interface ApplicationExportResp {
 export interface ApplicationImportReq {
   name: string;
   code: string;
-  image_pull_policy: string;
   version_label: string;
   version_note?: string | undefined;
   components: VersionComponentReq[];

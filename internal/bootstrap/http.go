@@ -103,6 +103,8 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			stores.project,
 			stores.application,
 			stores.service,
+			stores.deployment,
+			stores.gateway,
 		),
 		DeploymentService: deploymentsvc.NewCommandService(
 			stores.project,

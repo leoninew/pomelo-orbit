@@ -7,7 +7,7 @@ message ApplicationResp {
   optional string project_id = 2;
   string name = 3;
   string code = 4;
-  string image_pull_policy = 5;
+  reserved 5;
   string created_at = 7;
   string updated_at = 8;
   // kind is standard|gateway; immutable after create.
@@ -17,7 +17,7 @@ message ApplicationResp {
 message ApplicationCreateReq {
   string name = 1;
   string code = 2;
-  string image_pull_policy = 3;
+  reserved 3;
   // optional; empty defaults to standard.
   optional string kind = 4;
 }
@@ -25,7 +25,7 @@ message ApplicationCreateReq {
 message ApplicationUpdateReq {
   optional string name = 1;
   optional string code = 2;
-  optional string image_pull_policy = 3;
+  reserved 3;
 }
 
 message ApplicationStopReq {

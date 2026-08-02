@@ -12,34 +12,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// RenderInput is the render context for one application version and gateway policy.
+// RenderInput contains the already-merged desired state for one Service.
+// Rendering never reads Version defaults and Service overlays independently.
 type RenderInput struct {
-	App            model.Application
-	Version        model.Version
-	Components     []model.VersionComponent
-	Exposes        []model.ServiceExpose
-	Service        model.Service
-	Gateway        *model.GatewayConfig // required for public HTTP host / gateway dashboard when domains needed
-	RuntimeConfig  map[string]string    // resolved placeholders for this deploy/preview
-	PhysicalSvcDir string               // host path for logical mounts; required when mounts present
+	Plan           model.EffectiveServicePlan
+	PhysicalSvcDir string
 }
 
-// RenderResult is compose YAML plus resolved logical mounts for deploy materialize.
 type RenderResult struct {
 	Compose        string
 	ResolvedMounts []ResolvedMount
 }
 
 const defaultGatewayNetworkName = "traefik"
-
-// gatewayNetworkKey is the compose network key for kind=gateway (provider creates the network).
-const gatewayNetworkKey = "default"
-
-// consumerPlatformNetworkKey is the compose network key standard apps use to join the gateway network.
+const gatewayNetworkKey = "traefik"
 const consumerPlatformNetworkKey = "traefik"
 
-// RenderCompose builds docker-compose.yml from a version and runtime binding.
-// Preview and deploy share this function. Branch is driven by Application.kind only.
 func (s Service) RenderCompose(ctx context.Context, input RenderInput) (string, error) {
 	result, err := s.RenderComposeDetailed(ctx, input)
 	if err != nil {
@@ -48,103 +36,207 @@ func (s Service) RenderCompose(ctx context.Context, input RenderInput) (string, 
 	return result.Compose, nil
 }
 
-// RenderComposeDetailed returns compose YAML and resolved mounts for materialize.
 func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (RenderResult, error) {
 	_ = ctx
-	switch input.App.Kind {
-	case status.ApplicationKindStandard:
-		return renderStandardCompose(input)
-	case status.ApplicationKindGateway:
-		return renderGatewayCompose(input)
-	default:
-		return RenderResult{}, fmt.Errorf("unsupported application kind %q", input.App.Kind)
+	if len(input.Plan.Components) == 0 {
+		return RenderResult{}, fmt.Errorf("service %s has no effective components", input.Plan.Service.Id)
 	}
-}
-
-func renderStandardCompose(input RenderInput) (RenderResult, error) {
-	return renderComposeServices(input, false)
-}
-
-func renderGatewayCompose(input RenderInput) (RenderResult, error) {
-	return renderComposeServices(input, true)
-}
-
-func renderComposeServices(input RenderInput, injectGatewayNetwork bool) (RenderResult, error) {
-	if len(input.Components) == 0 {
-		return RenderResult{}, fmt.Errorf("version %s has no components", input.Version.Id)
-	}
-	if err := validateVersionComponents(input.Components); err != nil {
-		return RenderResult{}, err
-	}
-	if err := validateServiceExposes(input.Exposes, input.Components); err != nil {
-		return RenderResult{}, err
-	}
-
-	services := make(map[string]any, len(input.Components))
-	var allResolved []ResolvedMount
-	composeVolumes := map[string]any{}
-	for _, component := range input.Components {
-		service, resolved, err := renderVersionComponentService(component, input.App.Code, input.PhysicalSvcDir, input.RuntimeConfig, injectGatewayNetwork)
+	services := make(map[string]any, len(input.Plan.Components))
+	volumes := map[string]any{}
+	var resolved []ResolvedMount
+	for _, effective := range input.Plan.Components {
+		component := versionComponentFromEffective(effective)
+		if err := validateVersionComponent(component); err != nil {
+			return RenderResult{}, err
+		}
+		service, mounts, err := renderVersionComponentService(component, input.Plan.Application.Code, input.PhysicalSvcDir, nil, false)
 		if err != nil {
 			return RenderResult{}, fmt.Errorf("component %s: %w", component.Name, err)
 		}
-		if injectGatewayNetwork {
-			service["networks"] = []string{gatewayNetworkKey}
-		}
 		services[component.Name] = service
-		allResolved = append(allResolved, resolved...)
-		for _, mount := range resolved {
+		resolved = append(resolved, mounts...)
+		for _, mount := range mounts {
 			if mount.NamedVolumeName != "" {
-				composeVolumes[mount.NamedVolumeName] = map[string]any{}
+				volumes[mount.NamedVolumeName] = map[string]any{}
 			}
 		}
 	}
-
-	if len(input.Exposes) > 0 {
-		if err := injectExposeOutlets(services, input); err != nil {
-			return RenderResult{}, err
-		}
+	if err := applyEffectiveEndpoints(services, input.Plan); err != nil {
+		return RenderResult{}, err
 	}
-	// Gateway control-plane dashboard: kind=gateway × ingress policy → api@internal.
-	if injectGatewayNetwork {
-		if err := injectGatewayDashboardLabels(services, input); err != nil {
+	switch input.Plan.Application.Kind {
+	case status.ApplicationKindGateway:
+		for _, raw := range services {
+			raw.(map[string]any)["networks"] = []string{gatewayNetworkKey}
+		}
+		if err := injectGatewayDashboardLabels(services, input.Plan); err != nil {
 			return RenderResult{}, err
 		}
-	}
-
-	// Standard apps always join platform network for cluster DNS (with or without expose).
-	if !injectGatewayNetwork {
-		if err := injectAllComponentsPlatformNetwork(services, input.App.Code); err != nil {
+	case status.ApplicationKindStandard:
+		if err := injectAllComponentsPlatformNetwork(services, input.Plan.Application.Code); err != nil {
 			return RenderResult{}, err
 		}
+	default:
+		return RenderResult{}, fmt.Errorf("unsupported application kind %q", input.Plan.Application.Kind)
 	}
 	data := map[string]any{"services": services}
-	if len(composeVolumes) > 0 {
-		data["volumes"] = composeVolumes
+	if len(volumes) > 0 {
+		data["volumes"] = volumes
 	}
-	if injectGatewayNetwork {
-		data["networks"] = map[string]any{
-			gatewayNetworkKey: map[string]any{
-				"name":   defaultGatewayNetworkName,
-				"driver": "bridge",
-			},
-		}
+	if input.Plan.Application.Kind == status.ApplicationKindGateway {
+		data["networks"] = map[string]any{gatewayNetworkKey: map[string]any{"name": defaultGatewayNetworkName, "driver": "bridge"}}
 	} else {
-		data["networks"] = map[string]any{
-			consumerPlatformNetworkKey: map[string]any{
-				"name":     defaultGatewayNetworkName,
-				"external": true,
-			},
-		}
+		data["networks"] = map[string]any{consumerPlatformNetworkKey: map[string]any{"name": defaultGatewayNetworkName, "external": true}}
 	}
-	out, err := yaml.Marshal(data)
+	content, err := yaml.Marshal(data)
 	if err != nil {
 		return RenderResult{}, fmt.Errorf("marshal compose: %w", err)
 	}
-	return RenderResult{Compose: string(out), ResolvedMounts: allResolved}, nil
+	return RenderResult{Compose: string(content), ResolvedMounts: resolved}, nil
 }
 
-// injectAllComponentsPlatformNetwork joins every standard component to traefik with runtime alias.
+func versionComponentFromEffective(component model.EffectiveServiceComponent) model.VersionComponent {
+	return model.VersionComponent{Id: component.SourceComponentId, Name: component.Name, Image: component.Image, Command: component.Command, Env: component.Env, Mounts: component.Mounts, Dependencies: component.Dependencies, Healthcheck: component.Healthcheck, Resources: component.Resources, PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: component.Tmpfs, Ulimits: component.Ulimits, Devices: component.Devices, Endpoints: component.Endpoints}
+}
+
+func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServicePlan) error {
+	host := ""
+	for _, component := range plan.Components {
+		service, ok := services[component.Name].(map[string]any)
+		if !ok {
+			return fmt.Errorf("effective component %s is missing from compose", component.Name)
+		}
+		for _, endpoint := range component.Endpoints {
+			switch endpoint.Mode {
+			case "internal":
+				continue
+			case "local", "host":
+				if endpoint.ListenPort == nil {
+					return fmt.Errorf("endpoint %s/%s requires listen_port", component.Name, endpoint.Name)
+				}
+				address := "0.0.0.0"
+				if endpoint.Mode == "local" {
+					address = "127.0.0.1"
+				}
+				if endpoint.BindAddress != nil && *endpoint.BindAddress != "" {
+					address = *endpoint.BindAddress
+				}
+				if endpoint.Mode == "local" && address != "127.0.0.1" && address != "::1" {
+					return fmt.Errorf("local endpoint %s/%s must bind loopback", component.Name, endpoint.Name)
+				}
+				appendString(service, "ports", fmt.Sprintf("%s:%d:%d", address, *endpoint.ListenPort, endpoint.ContainerPort))
+			case "gateway_http":
+				if endpoint.Protocol != "http" {
+					return fmt.Errorf("gateway_http endpoint %s/%s must use http", component.Name, endpoint.Name)
+				}
+				if plan.Gateway == nil {
+					return fmt.Errorf("gateway config required for endpoint %s/%s", component.Name, endpoint.Name)
+				}
+				if host == "" {
+					var err error
+					host, err = deriveHost(plan.Gateway, plan.Application.Code)
+					if err != nil {
+						return err
+					}
+				}
+				entrypoint := plan.Gateway.DefaultEntrypoint
+				if endpoint.Entrypoint != nil && *endpoint.Entrypoint != "" {
+					entrypoint = *endpoint.Entrypoint
+				}
+				if entrypoint == "" {
+					return fmt.Errorf("gateway_http endpoint %s/%s requires entrypoint", component.Name, endpoint.Name)
+				}
+				router := routerName(plan, component.Name, endpoint.Name)
+				rule := "Host(`" + host + "`)"
+				if endpoint.PathPrefix != nil && *endpoint.PathPrefix != "" && *endpoint.PathPrefix != "/" {
+					rule += " && PathPrefix(`" + *endpoint.PathPrefix + "`)"
+				}
+				appendStrings(service, "labels", []string{"traefik.enable=true", "traefik.http.routers." + router + ".rule=" + rule, "traefik.http.routers." + router + ".entrypoints=" + entrypoint, "traefik.http.routers." + router + ".service=" + router, "traefik.http.services." + router + ".loadbalancer.server.port=" + strconv.Itoa(endpoint.ContainerPort)})
+				appendTLSLabels(service, router, "http", plan.Gateway.TLSMode)
+			case "gateway_tcp":
+				if endpoint.Protocol != "tcp" {
+					return fmt.Errorf("gateway_tcp endpoint %s/%s must use tcp", component.Name, endpoint.Name)
+				}
+				if plan.Gateway == nil {
+					return fmt.Errorf("gateway config required for endpoint %s/%s", component.Name, endpoint.Name)
+				}
+				if endpoint.Entrypoint == nil || *endpoint.Entrypoint == "" {
+					return fmt.Errorf("gateway_tcp endpoint %s/%s requires entrypoint", component.Name, endpoint.Name)
+				}
+				router := routerName(plan, component.Name, endpoint.Name)
+				sni := "*"
+				if plan.Gateway.TLSMode == "letsencrypt" || plan.Gateway.TLSMode == "tls" {
+					var err error
+					sni, err = deriveHost(plan.Gateway, plan.Application.Code)
+					if err != nil {
+						return err
+					}
+				}
+				appendStrings(service, "labels", []string{"traefik.enable=true", "traefik.tcp.routers." + router + ".rule=HostSNI(`" + sni + "`)", "traefik.tcp.routers." + router + ".entrypoints=" + *endpoint.Entrypoint, "traefik.tcp.routers." + router + ".service=" + router, "traefik.tcp.services." + router + ".loadbalancer.server.port=" + strconv.Itoa(endpoint.ContainerPort)})
+				appendTLSLabels(service, router, "tcp", plan.Gateway.TLSMode)
+			default:
+				return fmt.Errorf("endpoint %s/%s has unsupported mode %q", component.Name, endpoint.Name, endpoint.Mode)
+			}
+		}
+	}
+	return nil
+}
+
+func routerName(plan model.EffectiveServicePlan, component, endpoint string) string {
+	return plan.Application.Code + "-" + plan.Service.InstanceKey + "-" + component + "-" + endpoint
+}
+
+func appendTLSLabels(service map[string]any, router, protocol, mode string) {
+	base := "traefik." + protocol + ".routers." + router + ".tls"
+	switch mode {
+	case "letsencrypt":
+		appendStrings(service, "labels", []string{base + "=true", base + ".certresolver=letsencrypt"})
+	case "tls":
+		appendString(service, "labels", base+"=true")
+	}
+}
+
+func appendString(service map[string]any, key, value string) {
+	appendStrings(service, key, []string{value})
+}
+func appendStrings(service map[string]any, key string, values []string) {
+	current, _ := service[key].([]string)
+	service[key] = append(current, values...)
+}
+
+func deriveHost(gateway *model.GatewayConfig, appCode string) (string, error) {
+	if gateway == nil || gateway.BaseDomain == "" {
+		return "", fmt.Errorf("gateway base_domain is required")
+	}
+	if appCode == "" {
+		return "", fmt.Errorf("application code is required")
+	}
+	host := appCode + "." + gateway.BaseDomain
+	if !validDeploymentRouteDomain(host) {
+		return "", fmt.Errorf("invalid derived host %q", host)
+	}
+	return host, nil
+}
+
+func injectGatewayDashboardLabels(services map[string]any, plan model.EffectiveServicePlan) error {
+	if plan.Gateway == nil || len(plan.Components) == 0 {
+		return nil
+	}
+	host, err := deriveHost(plan.Gateway, plan.Application.Code)
+	if err != nil {
+		return err
+	}
+	entrypoint := plan.Gateway.DefaultEntrypoint
+	if entrypoint == "" {
+		return fmt.Errorf("gateway default_entrypoint is required")
+	}
+	service := services[plan.Components[0].Name].(map[string]any)
+	router := plan.Application.Code + "-" + plan.Service.InstanceKey + "-dashboard"
+	appendStrings(service, "labels", []string{"traefik.enable=true", "traefik.http.routers." + router + ".rule=Host(`" + host + "`)", "traefik.http.routers." + router + ".entrypoints=" + entrypoint, "traefik.http.routers." + router + ".service=api@internal"})
+	appendTLSLabels(service, router, "http", plan.Gateway.TLSMode)
+	return nil
+}
+
 func injectAllComponentsPlatformNetwork(services map[string]any, appCode string) error {
 	for name, raw := range services {
 		service, ok := raw.(map[string]any)
@@ -157,442 +249,31 @@ func injectAllComponentsPlatformNetwork(services map[string]any, appCode string)
 }
 
 func ensureServiceJoinsNetworksWithAlias(service map[string]any, alias string) {
-	raw, has := service["networks"]
-	nets := map[string]any{
-		"default": map[string]any{},
-		consumerPlatformNetworkKey: map[string]any{
-			"aliases": []string{alias},
-		},
-	}
-	if !has || raw == nil {
-		service["networks"] = nets
-		return
-	}
-	switch existing := raw.(type) {
-	case map[string]any:
-		if _, ok := existing["default"]; !ok {
-			existing["default"] = map[string]any{}
-		}
-		traefikNet, _ := existing[consumerPlatformNetworkKey].(map[string]any)
-		if traefikNet == nil {
-			traefikNet = map[string]any{}
-		}
-		traefikNet["aliases"] = []string{alias}
-		existing[consumerPlatformNetworkKey] = traefikNet
-		service["networks"] = existing
-	default:
-		service["networks"] = nets
-	}
+	service["networks"] = map[string]any{"default": map[string]any{}, consumerPlatformNetworkKey: map[string]any{"aliases": []string{alias}}}
 }
 
-func injectExposeOutlets(services map[string]any, input RenderInput) error {
-	if err := validatePolicyForExposes(input.Gateway, input.Exposes, input.App); err != nil {
-		return err
+func validateVersionComponent(component model.VersionComponent) error {
+	if component.Name == "" || component.Image == "" {
+		return fmt.Errorf("component name and image are required")
 	}
-	if err := validateLocalListenConflicts(input.Exposes); err != nil {
-		return err
-	}
-	host := ""
-	if input.Gateway != nil {
-		if h, err := deriveHost(input.Gateway, input.App.Code); err == nil {
-			host = h
-		}
-	}
-	for _, expose := range input.Exposes {
-		service, ok := services[expose.ComponentName].(map[string]any)
-		if !ok {
-			return fmt.Errorf("component %s not found in compose services", expose.ComponentName)
-		}
-		switch expose.Access {
-		case exposeAccessLocal:
-			listen := effectiveListen(expose)
-			portMapping := fmt.Sprintf("127.0.0.1:%d:%d", listen, expose.ContainerPort)
-			existing, _ := service["ports"].([]any)
-			if existing == nil {
-				if ports, ok := service["ports"].([]string); ok {
-					for _, p := range ports {
-						existing = append(existing, p)
-					}
-				}
-			}
-			service["ports"] = append(existing, portMapping)
-		case exposeAccessPublic:
-			routerName := fmt.Sprintf("%s-%s-%s-%s",
-				input.App.Code, input.Service.InstanceKey, expose.ComponentName, expose.Protocol)
-			labels, err := buildTraefikLabels(routerName, expose, input, host)
-			if err != nil {
-				return err
-			}
-			existing, _ := service["labels"].([]string)
-			service["labels"] = append(existing, labels...)
-		default:
-			return fmt.Errorf("unsupported expose access %q", expose.Access)
+	for _, mount := range component.Mounts {
+		if err := validateMountSpec(mount); err != nil {
+			return fmt.Errorf("component %s mount: %w", component.Name, err)
 		}
 	}
 	return nil
 }
 
-func validateLocalListenConflicts(exposes []model.ServiceExpose) error {
-	seen := map[int]string{}
-	for _, expose := range exposes {
-		if expose.Access != exposeAccessLocal {
-			continue
-		}
-		listen := effectiveListen(expose)
-		key := listen
-		if prev, ok := seen[key]; ok {
-			return fmt.Errorf("duplicate local listen port %d (%s and %s)", listen, prev, expose.ComponentName)
-		}
-		seen[key] = expose.ComponentName
-	}
-	return nil
-}
-
-func validatePolicyForExposes(gateway *model.GatewayConfig, exposes []model.ServiceExpose, app model.Application) error {
-	hasPublicHTTP := false
-	hasPublicTCP := false
-	hasPublicTCPWithTLS := false
-	for _, expose := range exposes {
-		if expose.Access != exposeAccessPublic {
-			continue
-		}
-		switch expose.Protocol {
-		case "http":
-			hasPublicHTTP = true
-		case "tcp":
-			hasPublicTCP = true
-		}
-	}
-	if !hasPublicHTTP && !hasPublicTCP {
-		return nil
-	}
-	if gateway == nil {
-		return fmt.Errorf("gateway config required for public expose")
-	}
-	tlsMode := gateway.TLSMode
-	if tlsMode != "none" && tlsMode != "letsencrypt" && tlsMode != "tls" {
-		return fmt.Errorf("gateway tls_mode must be none, letsencrypt or tls")
-	}
-	if hasPublicTCP && (tlsMode == "letsencrypt" || tlsMode == "tls") {
-		hasPublicTCPWithTLS = true
-	}
-	if hasPublicHTTP {
-		entrypoint := gateway.DefaultEntrypoint
-		if entrypoint == "" {
-			return fmt.Errorf("gateway ingress policy incomplete: default_entrypoint is required")
-		}
-		if !validGatewayEntrypoint(entrypoint) {
-			return fmt.Errorf("gateway default_entrypoint must be web or websecure")
-		}
-		if _, err := deriveHost(gateway, app.Code); err != nil {
-			return err
-		}
-		if err := validateHTTPPathConflicts(gateway, app.Code, exposes); err != nil {
-			return err
-		}
-	}
-	if hasPublicTCPWithTLS {
-		if _, err := deriveHost(gateway, app.Code); err != nil {
-			return fmt.Errorf("gateway base_domain required for TCP TLS: %w", err)
-		}
-	}
-	return nil
-}
-
-func validateHTTPPathConflicts(gateway *model.GatewayConfig, appCode string, exposes []model.ServiceExpose) error {
-	host, err := deriveHost(gateway, appCode)
-	if err != nil {
-		return err
-	}
-	seen := map[string]struct{}{}
-	for _, expose := range exposes {
-		if expose.Protocol != "http" {
-			continue
-		}
-		if expose.Access != exposeAccessPublic {
-			continue
-		}
-		path := ptrString(expose.PathPrefix)
-		key := host + "|" + path
-		if _, ok := seen[key]; ok {
-			return fmt.Errorf("duplicate http route host+path for version: %s%s (use distinct path_prefix)", host, path)
-		}
-		seen[key] = struct{}{}
-	}
-	return nil
-}
-
-// deriveHost builds {app_code}.{gateway.base_domain}.
-func deriveHost(gateway *model.GatewayConfig, appCode string) (string, error) {
-	if gateway == nil {
-		return "", fmt.Errorf("gateway config required for host derivation")
-	}
-	baseDomain := gateway.BaseDomain
-	if baseDomain == "" {
-		return "", fmt.Errorf("gateway base_domain is required for host derivation")
-	}
-	if appCode == "" {
-		return "", fmt.Errorf("app code is required for host derivation")
-	}
-	host := appCode + "." + baseDomain
-	if !validDeploymentRouteDomain(host) {
-		return "", fmt.Errorf("invalid derived host %q", host)
-	}
-	return host, nil
-}
-
-// injectGatewayDashboardLabels writes Traefik self-route labels for the dashboard/API.
-func injectGatewayDashboardLabels(services map[string]any, input RenderInput) error {
-	if input.Gateway == nil {
-		return nil
-	}
-	entrypoint := input.Gateway.DefaultEntrypoint
-	if entrypoint == "" {
-		return fmt.Errorf("gateway default_entrypoint is required")
-	}
-	if !validGatewayEntrypoint(entrypoint) {
-		return fmt.Errorf("gateway default_entrypoint must be web or websecure")
-	}
-	host, err := deriveHost(input.Gateway, input.App.Code)
-	if err != nil {
-		return err
-	}
-	if len(input.Components) == 0 {
-		return nil
-	}
-	componentName := input.Components[0].Name
-	service, ok := services[componentName].(map[string]any)
-	if !ok {
-		return fmt.Errorf("gateway component %s not found in compose services", componentName)
-	}
-	routerName := fmt.Sprintf("%s-%s-dashboard", input.App.Code, input.Service.InstanceKey)
-	labels := []string{
-		"traefik.enable=true",
-		"traefik.http.routers." + routerName + ".rule=Host(`" + host + "`)",
-		"traefik.http.routers." + routerName + ".entrypoints=" + entrypoint,
-		"traefik.http.routers." + routerName + ".service=api@internal",
-	}
-	tlsMode := input.Gateway.TLSMode
-	switch tlsMode {
-	case "letsencrypt":
-		labels = append(labels,
-			"traefik.http.routers."+routerName+".tls=true",
-			"traefik.http.routers."+routerName+".tls.certresolver=letsencrypt",
-		)
-	case "tls":
-		labels = append(labels, "traefik.http.routers."+routerName+".tls=true")
-	case "none":
-	default:
-		return fmt.Errorf("gateway tls_mode must be none, letsencrypt or tls")
-	}
-	existing, _ := service["labels"].([]string)
-	service["labels"] = append(existing, labels...)
-	return nil
-}
-
-func buildTraefikLabels(routerName string, expose model.ServiceExpose, input RenderInput, host string) ([]string, error) {
-	labels := []string{"traefik.enable=true"}
-	if input.Gateway == nil {
-		return nil, fmt.Errorf("gateway config required for public expose labels")
-	}
-	entrypoint := input.Gateway.DefaultEntrypoint
-	tlsMode := input.Gateway.TLSMode
-	if tlsMode != "none" && tlsMode != "letsencrypt" && tlsMode != "tls" {
-		return nil, fmt.Errorf("gateway tls_mode must be none, letsencrypt or tls")
-	}
-
-	switch expose.Protocol {
-	case "http":
-		if entrypoint == "" {
-			return nil, fmt.Errorf("gateway default_entrypoint is required for %s", expose.ComponentName)
-		}
-		if !validGatewayEntrypoint(entrypoint) {
-			return nil, fmt.Errorf("gateway default_entrypoint must be web or websecure")
-		}
-		if host == "" {
-			derived, err := deriveHost(input.Gateway, input.App.Code)
-			if err != nil {
-				return nil, err
-			}
-			host = derived
-		}
-		rule := "Host(`" + host + "`)"
-		path := ptrString(expose.PathPrefix)
-		if path != "" && path != "/" {
-			rule = rule + " && PathPrefix(`" + path + "`)"
-		}
-		labels = append(labels,
-			"traefik.http.routers."+routerName+".rule="+rule,
-			"traefik.http.routers."+routerName+".entrypoints="+entrypoint,
-			"traefik.http.services."+routerName+".loadbalancer.server.port="+strconv.Itoa(expose.ContainerPort),
-			"traefik.http.routers."+routerName+".service="+routerName,
-		)
-		switch tlsMode {
-		case "letsencrypt":
-			labels = append(labels,
-				"traefik.http.routers."+routerName+".tls=true",
-				"traefik.http.routers."+routerName+".tls.certresolver=letsencrypt",
-			)
-		case "tls":
-			labels = append(labels, "traefik.http.routers."+routerName+".tls=true")
-		}
-	case "tcp":
-		listen := effectiveListen(expose)
-		tcpEP := tcpEntrypointName(listen)
-		sni := "*"
-		if tlsMode == "letsencrypt" || tlsMode == "tls" {
-			if host == "" {
-				derived, err := deriveHost(input.Gateway, input.App.Code)
-				if err != nil {
-					return nil, err
-				}
-				host = derived
-			}
-			sni = host
-		}
-		labels = append(labels,
-			"traefik.tcp.routers."+routerName+".rule=HostSNI(`"+sni+"`)",
-			"traefik.tcp.routers."+routerName+".entrypoints="+tcpEP,
-			"traefik.tcp.services."+routerName+".loadbalancer.server.port="+strconv.Itoa(expose.ContainerPort),
-			"traefik.tcp.routers."+routerName+".service="+routerName,
-		)
-		switch tlsMode {
-		case "letsencrypt":
-			labels = append(labels,
-				"traefik.tcp.routers."+routerName+".tls=true",
-				"traefik.tcp.routers."+routerName+".tls.certresolver=letsencrypt",
-			)
-		case "tls":
-			labels = append(labels, "traefik.tcp.routers."+routerName+".tls=true")
-		}
-	default:
-		return nil, fmt.Errorf("unsupported expose protocol %s", expose.Protocol)
-	}
-	return labels, nil
-}
-
-func exposeKey(componentName string, protocol string, port int) string {
-	return componentName + "|" + protocol + "|" + strconv.Itoa(port)
-}
-
-func ptrString(v *string) string {
-	if v == nil {
-		return ""
-	}
-	return *v
-}
-
-func validateVersionComponents(components []model.VersionComponent) error {
-	if len(components) == 0 {
-		return fmt.Errorf("at least one component is required")
-	}
-	names := make(map[string]struct{}, len(components))
-	for _, component := range components {
-		name := component.Name
-		if name == "" {
-			return fmt.Errorf("component name is required")
-		}
-		if component.Image == "" {
-			return fmt.Errorf("component %s image is required", name)
-		}
-		if _, exists := names[name]; exists {
-			return fmt.Errorf("duplicate component name %s", name)
-		}
-		names[name] = struct{}{}
-		for _, mount := range component.Mounts {
-			if err := validateMountSpec(mount); err != nil {
-				return fmt.Errorf("component %s mount: %w", name, err)
-			}
-		}
-		if err := validateComponentRuntimeFields(component); err != nil {
-			return err
-		}
-	}
-	for _, component := range components {
-		for _, dependency := range component.Dependencies {
-			if dependency.Name == component.Name {
-				return fmt.Errorf("component %s depends on itself", component.Name)
-			}
-			if _, ok := names[dependency.Name]; !ok {
-				return fmt.Errorf("component %s depends on missing component %s", component.Name, dependency.Name)
-			}
-			switch dependency.Condition {
-			case "service_started", "service_healthy", "service_completed_successfully":
-			default:
-				return fmt.Errorf("component %s dependency %s has unsupported condition", component.Name, dependency.Name)
-			}
-		}
-	}
-	return nil
-}
-
-func validateServiceExposes(exposes []model.ServiceExpose, components []model.VersionComponent) error {
-	names := make(map[string]struct{}, len(components))
-	for _, c := range components {
-		names[c.Name] = struct{}{}
-	}
-	seen := map[string]struct{}{}
-	for _, expose := range exposes {
-		name := expose.ComponentName
-		if name == "" {
-			return fmt.Errorf("expose component_name is required")
-		}
-		if _, ok := names[name]; !ok {
-			return fmt.Errorf("expose component %s not found in version components", name)
-		}
-		protocol := expose.Protocol
-		if protocol != "http" && protocol != "tcp" {
-			return fmt.Errorf("expose protocol must be http or tcp")
-		}
-		if expose.ContainerPort < 1 || expose.ContainerPort > 65535 {
-			return fmt.Errorf("expose container_port out of range")
-		}
-		access := expose.Access
-		if access != exposeAccessLocal && access != exposeAccessPublic {
-			return fmt.Errorf("expose access must be local or public")
-		}
-		if protocol == "tcp" && ptrString(expose.PathPrefix) != "" {
-			return fmt.Errorf("path_prefix is only allowed for http expose")
-		}
-		if expose.ListenPort != nil && (*expose.ListenPort < 1 || *expose.ListenPort > 65535) {
-			return fmt.Errorf("expose listen_port out of range")
-		}
-		key := exposeKey(name, protocol, expose.ContainerPort)
-		if _, ok := seen[key]; ok {
-			return fmt.Errorf("duplicate expose %s", key)
-		}
-		seen[key] = struct{}{}
-	}
-	return nil
-}
-
-func renderVersionComponentService(
-	component model.VersionComponent,
-	appCode string,
-	physicalServiceDir string,
-	runtime map[string]string,
-	publishComponentPorts bool,
-) (map[string]any, []ResolvedMount, error) {
-	service := map[string]any{
-		"image":          component.Image,
-		"container_name": runtimeName(appCode, component.Name),
-	}
+func renderVersionComponentService(component model.VersionComponent, appCode, physicalServiceDir string, runtime map[string]string, _ bool) (map[string]any, []ResolvedMount, error) {
+	service := map[string]any{"image": component.Image, "container_name": runtimeName(appCode, component.Name)}
 	if len(component.Command) > 0 {
 		service["command"] = append([]string(nil), component.Command...)
 	}
-	env := componentEnv(component.Env, runtime)
-	if len(env) > 0 {
+	if env := componentEnv(component.Env, runtime); len(env) > 0 {
 		service["environment"] = env
 	}
 	if err := applyComponentRuntimeFields(service, component); err != nil {
 		return nil, nil, err
-	}
-	if publishComponentPorts && len(component.Ports) > 0 {
-		ports := make([]string, 0, len(component.Ports))
-		for _, port := range component.Ports {
-			ports = append(ports, fmt.Sprintf("%d:%d", port.HostPort, port.ContainerPort))
-		}
-		service["ports"] = ports
 	}
 	resolved, err := resolveMountSpecs(component.Mounts, physicalServiceDir)
 	if err != nil {
@@ -606,11 +287,11 @@ func renderVersionComponentService(
 		service["volumes"] = volumes
 	}
 	if len(component.Dependencies) > 0 {
-		depends := make(map[string]map[string]string, len(component.Dependencies))
+		dependencies := map[string]map[string]string{}
 		for _, dependency := range component.Dependencies {
-			depends[dependency.Name] = map[string]string{"condition": dependency.Condition}
+			dependencies[dependency.Name] = map[string]string{"condition": dependency.Condition}
 		}
-		service["depends_on"] = depends
+		service["depends_on"] = dependencies
 	}
 	if component.Healthcheck != nil {
 		healthcheck, err := renderComponentHealthcheck(component.Healthcheck)
@@ -673,29 +354,24 @@ func renderComponentResources(resources *model.VersionComponentResources, device
 		}
 	}
 	if len(devices) > 0 {
-		reservations, ok := result["reservations"].(map[string]string)
-		if !ok {
-			reservations = map[string]string{}
-		}
-		deviceSpecs := make([]map[string]any, 0, len(devices))
+		reservations, _ := result["reservations"].(map[string]string)
+		devicesOut := make([]map[string]any, 0, len(devices))
 		for _, device := range devices {
-			deviceSpecs = append(deviceSpecs, map[string]any{
-				"driver": device.Driver, "count": device.Count, "capabilities": append([]string(nil), device.Capabilities...),
-			})
+			devicesOut = append(devicesOut, map[string]any{"driver": device.Driver, "count": device.Count, "capabilities": append([]string(nil), device.Capabilities...)})
 		}
-		result["reservations"] = map[string]any{"cpus": reservations["cpus"], "memory": reservations["memory"], "devices": deviceSpecs}
-		reservationValues := result["reservations"].(map[string]any)
-		if reservations["cpus"] == "" {
-			delete(reservationValues, "cpus")
+		values := map[string]any{"devices": devicesOut}
+		if reservations["cpus"] != "" {
+			values["cpus"] = reservations["cpus"]
 		}
-		if reservations["memory"] == "" {
-			delete(reservationValues, "memory")
+		if reservations["memory"] != "" {
+			values["memory"] = reservations["memory"]
 		}
+		result["reservations"] = values
 	}
 	return result
 }
 
-func resourceValues(cpus *string, memory *string) map[string]string {
+func resourceValues(cpus, memory *string) map[string]string {
 	values := map[string]string{}
 	if cpus != nil {
 		values["cpus"] = *cpus
@@ -705,7 +381,17 @@ func resourceValues(cpus *string, memory *string) map[string]string {
 	}
 	return values
 }
-
 func validDeploymentRouteDomain(domain string) bool {
 	return domain != "" && len(domain) <= 253 && !strings.ContainsAny(domain, " `\t\r\n")
+}
+
+func runtimeName(appCode, component string) string {
+	name := strings.ToLower(strings.TrimSpace(appCode) + "-" + strings.TrimSpace(component))
+	name = strings.Map(func(char rune) rune {
+		if (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '-' {
+			return char
+		}
+		return '-'
+	}, name)
+	return strings.Trim(name, "-")
 }

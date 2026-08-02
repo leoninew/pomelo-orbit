@@ -21,8 +21,9 @@ const (
 )
 
 var (
-	envPlaceholderRequired = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$`)
-	envPlaceholderDefault  = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*):-([^}]*)\}$`)
+	envPlaceholderRequired        = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$`)
+	envPlaceholderDefault         = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*):-([^}]*)\}$`)
+	envPlaceholderRequiredMessage = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*):\?[^}]*\}$`)
 )
 
 type MountSpec = model.VersionComponentMount
@@ -106,6 +107,9 @@ type placeholderNeed struct {
 }
 
 func parsePlaceholder(value string) (string, placeholderNeed, bool) {
+	if m := envPlaceholderRequiredMessage.FindStringSubmatch(value); len(m) == 2 {
+		return m[1], placeholderNeed{Required: true}, true
+	}
 	if m := envPlaceholderRequired.FindStringSubmatch(value); len(m) == 2 {
 		return m[1], placeholderNeed{Required: true}, true
 	}

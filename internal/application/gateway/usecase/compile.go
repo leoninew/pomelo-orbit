@@ -79,29 +79,28 @@ func (s Service) ensureUnpublishedGatewayVersion(ctx context.Context, applicatio
 }
 
 func buildManagedGatewayComponent(cfg model.GatewayConfig, existing []model.VersionComponent, tcpListens []int) (model.VersionComponent, error) {
-	if cfg.Image == nil || strings.TrimSpace(*cfg.Image) == "" {
-		return model.VersionComponent{}, fmt.Errorf("gateway image is required")
+	var previous *model.VersionComponent
+	for index := range existing {
+		if existing[index].Name == gatewayManagedComponentName {
+			previous = &existing[index]
+			break
+		}
 	}
-	ports := []model.VersionComponentPort{
-		{HostPort: 80, ContainerPort: 80},
-		{HostPort: 443, ContainerPort: 443},
-		{HostPort: 8080, ContainerPort: 8080},
+	if previous == nil || strings.TrimSpace(previous.Image) == "" {
+		return model.VersionComponent{}, fmt.Errorf("gateway version must declare a traefik component image")
+	}
+	endpoints := []model.VersionComponentEndpoint{
+		{Name: "web", Protocol: "tcp", ContainerPort: 80, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(80)},
+		{Name: "websecure", Protocol: "tcp", ContainerPort: 443, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(443)},
+		{Name: "api", Protocol: "tcp", ContainerPort: 8080, Mode: "internal"},
 	}
 	for _, listen := range tcpListens {
-		ports = append(ports, model.VersionComponentPort{HostPort: listen, ContainerPort: listen})
+		endpoints = append(endpoints, model.VersionComponentEndpoint{Name: tcpEntrypointName(listen), Protocol: "tcp", ContainerPort: listen, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(listen)})
 	}
-	var previousMounts []model.VersionComponentMount
-	for _, component := range existing {
-		if component.Name != gatewayManagedComponentName {
-			continue
-		}
-		previousMounts = component.Mounts
-		break
-	}
-	mounts := mergeManagedGatewayMounts(previousMounts, buildManagedGatewayMounts(cfg, tcpListens))
+	mounts := mergeManagedGatewayMounts(previous.Mounts, buildManagedGatewayMounts(cfg, tcpListens))
 	return model.VersionComponent{
-		Name: gatewayManagedComponentName, Image: strings.TrimSpace(*cfg.Image),
-		PullPolicy: "missing", Ports: ports, Mounts: mounts,
+		Id: previous.Id, Name: gatewayManagedComponentName, Image: previous.Image,
+		PullPolicy: previous.PullPolicy, Endpoints: endpoints, Mounts: mounts,
 	}, nil
 }
 
@@ -199,14 +198,19 @@ func CompiledTCPListens(components []model.VersionComponent) []int {
 		if component.Name != gatewayManagedComponentName {
 			continue
 		}
-		listens := make([]int, 0, len(component.Ports))
-		for _, port := range component.Ports {
-			listens = append(listens, port.HostPort)
+		listens := make([]int, 0, len(component.Endpoints))
+		for _, endpoint := range component.Endpoints {
+			if endpoint.ListenPort != nil {
+				listens = append(listens, *endpoint.ListenPort)
+			}
 		}
 		return normalizeTCPListens(listens)
 	}
 	return nil
 }
+
+func stringRef(value string) *string { return &value }
+func intRef(value int) *int          { return &value }
 
 // TCPListensEqual compares host TCP port sets after normalization.
 func TCPListensEqual(left []int, right []int) bool {

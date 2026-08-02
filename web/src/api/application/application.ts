@@ -21,12 +21,14 @@ import type {
   VersionComponentDevicesUpdateReq,
   VersionComponentEnvUpdateReq,
   VersionComponentMountsUpdateReq,
-  VersionComponentPortsUpdateReq,
+  VersionComponentEndpointsUpdateReq,
   VersionComponentResp,
   VersionComponentRuntimeUpdateReq,
   VersionCreateReq,
   VersionForkReq,
   VersionPaginatedResp,
+  VersionPreviewReq,
+  VersionPreviewResp,
   VersionResp,
   VersionUpdateReq,
 } from '@/gen/proto/orbit/v1/application/version';
@@ -115,6 +117,10 @@ export const applicationApi = {
     return request.get(`/api/version/${versionId}`);
   },
 
+  previewVersion(versionId: string, data: VersionPreviewReq): Promise<VersionPreviewResp> {
+    return request.post(`/api/version/${versionId}/preview`, data);
+  },
+
   getVersionComponent(versionId: string, componentId: string): Promise<VersionComponentResp> {
     return request.get(`/api/version/${versionId}/component/${componentId}`);
   },
@@ -142,12 +148,12 @@ export const applicationApi = {
     return request.put(`/api/version/${versionId}/component/${componentId}/runtime`, data);
   },
 
-  updateVersionComponentPorts(
+  updateVersionComponentEndpoints(
     versionId: string,
     componentId: string,
-    data: VersionComponentPortsUpdateReq
+    data: VersionComponentEndpointsUpdateReq
   ): Promise<VersionComponentResp> {
-    return request.put(`/api/version/${versionId}/component/${componentId}/ports`, data);
+    return request.put(`/api/version/${versionId}/component/${componentId}/endpoints`, data);
   },
 
   updateVersionComponentEnv(

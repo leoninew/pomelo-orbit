@@ -183,7 +183,7 @@
             {{ t('gateway.fields.imagePullPolicy') }}
           </label>
           <RawValueSelect
-            v-model="createForm.image_pull_policy"
+            v-model="createForm.initial_component_pull_policy"
             :values="imagePullPolicyValues"
             :placeholder="t('application.imagePullPolicyPlaceholder')"
           />
@@ -194,7 +194,7 @@
             <span class="text-destructive">*</span>
           </label>
           <input
-            v-model="createForm.image"
+            v-model="createForm.initial_component_image"
             type="text"
             class="app-input"
             :class="createErrors.image ? 'app-input-error' : ''"
@@ -343,8 +343,8 @@
       code: 'traefik',
       rest_api_url: 'http://localhost:8080',
       base_domain: 'lvh.me',
-      image: 'traefik:3.6',
-      image_pull_policy: 'missing',
+      initial_component_image: 'traefik:3.6',
+      initial_component_pull_policy: 'missing',
       default_entrypoint: 'web',
       tls_mode: 'none',
     };
@@ -373,7 +373,9 @@
     createErrors.base_domain = createForm.base_domain.trim()
       ? ''
       : t('gateway.validation.baseDomainRequired');
-    createErrors.image = createForm.image.trim() ? '' : t('gateway.validation.imageRequired');
+    createErrors.image = createForm.initial_component_image.trim()
+      ? ''
+      : t('gateway.validation.imageRequired');
     return (
       !createErrors.code &&
       !createErrors.name &&
@@ -401,8 +403,8 @@
             name: createForm.name.trim(),
             rest_api_url: createForm.rest_api_url.trim(),
             base_domain: createForm.base_domain.trim(),
-            image: createForm.image.trim(),
-            image_pull_policy: createForm.image_pull_policy,
+            initial_component_image: createForm.initial_component_image.trim(),
+            initial_component_pull_policy: createForm.initial_component_pull_policy,
             default_entrypoint: createForm.default_entrypoint,
             tls_mode: createForm.tls_mode,
           },

@@ -61,8 +61,8 @@ func (s Service) EnsureGatewayRunning(ctx context.Context, app model.Application
 
 // GatewayForDeployment resolves the Gateway configuration required to render
 // an application's Compose definition.
-func (s Service) GatewayForDeployment(ctx context.Context, app model.Application, exposes []model.ServiceExpose) (*model.GatewayConfig, error) {
-	if strings.TrimSpace(app.Kind) != status.ApplicationKindGateway && !hasPublicExpose(exposes) {
+func (s Service) GatewayForDeployment(ctx context.Context, app model.Application, plan model.EffectiveServicePlan) (*model.GatewayConfig, error) {
+	if strings.TrimSpace(app.Kind) != status.ApplicationKindGateway && !hasGatewayEndpoint(plan) {
 		return nil, nil
 	}
 	if strings.TrimSpace(app.Kind) == status.ApplicationKindGateway {
@@ -84,10 +84,12 @@ func (s Service) GatewayForDeployment(ctx context.Context, app model.Application
 	return &cfg, nil
 }
 
-func hasPublicExpose(exposes []model.ServiceExpose) bool {
-	for _, expose := range exposes {
-		if exposeAccessOf(expose) == exposeAccessPublic {
-			return true
+func hasGatewayEndpoint(plan model.EffectiveServicePlan) bool {
+	for _, component := range plan.Components {
+		for _, endpoint := range component.Endpoints {
+			if endpoint.Mode == "gateway_http" || endpoint.Mode == "gateway_tcp" {
+				return true
+			}
 		}
 	}
 	return false

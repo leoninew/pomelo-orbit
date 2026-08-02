@@ -7,7 +7,6 @@ type GatewayConfig struct {
 	ApplicationId     string    `db:"application_id"`
 	RestApiUrl        string    `db:"rest_api_url"`
 	BaseDomain        string    `db:"base_domain"`
-	Image             *string   `db:"image"`
 	DefaultEntrypoint string    `db:"default_entrypoint"`
 	TLSMode           string    `db:"tls_mode"`
 	CreatedAt         time.Time `db:"created_at"`

@@ -38,7 +38,7 @@ type ConfigStore interface {
 // ServiceReader exposes only runtime bindings needed by gateway projections and conflict checks.
 type ServiceReader interface {
 	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
-	ServiceExposesByService(ctx context.Context, serviceId string) ([]model.ServiceExpose, error)
+	ServiceComponentsByService(ctx context.Context, serviceId string) ([]model.ServiceComponent, error)
 }
 
 // Workspace owns the optional on-disk application cleanup operation.
@@ -50,5 +50,5 @@ type Workspace interface {
 // render a Service deployment. It never mutates or deploys Gateway resources.
 type DeploymentCoordinator interface {
 	EnsureGatewayRunning(ctx context.Context, app model.Application) error
-	GatewayForDeployment(ctx context.Context, app model.Application, exposes []model.ServiceExpose) (*model.GatewayConfig, error)
+	GatewayForDeployment(ctx context.Context, app model.Application, plan model.EffectiveServicePlan) (*model.GatewayConfig, error)
 }

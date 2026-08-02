@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -194,10 +194,10 @@ class OrbitClient:
             "PUT", f"/api/version/{version_id}/component/{component_id}/runtime", json_body=payload
         )
 
-    async def update_version_component_ports(
+    async def update_version_component_endpoints(
         self, version_id: str, component_id: str, payload: Mapping[str, Any]
     ) -> dict[str, Any]:
-        return await self.request("PUT", f"/api/version/{version_id}/component/{component_id}/ports", json_body=payload)
+        return await self.request("PUT", f"/api/version/{version_id}/component/{component_id}/endpoints", json_body=payload)
 
     async def update_version_component_env(
         self, version_id: str, component_id: str, payload: Mapping[str, Any]
@@ -249,8 +249,6 @@ class OrbitClient:
         application_id: str,
         version_id: str,
         instance_key: str,
-        runtime_config: Mapping[str, str],
-        exposes: Sequence[Mapping[str, Any]],
     ) -> dict[str, Any]:
         return await self.request(
             "POST",
@@ -259,22 +257,26 @@ class OrbitClient:
                 "application_id": application_id,
                 "version_id": version_id,
                 "instance_key": instance_key,
-                "runtime_config": dict(runtime_config),
-                "exposes": list(exposes),
             },
         )
 
-    async def update_service_configuration(
+    async def get_service_component(self, service_id: str, component_id: str) -> dict[str, Any]:
+        return await self.request("GET", f"/api/service/{service_id}/component/{component_id}")
+
+    async def update_service_component_overlay(
         self,
         service_id: str,
-        runtime_config: Mapping[str, str],
-        exposes: Sequence[Mapping[str, Any]],
+        component_id: str,
+        payload: Mapping[str, Any],
     ) -> dict[str, Any]:
         return await self.request(
             "PUT",
-            f"/api/service/{service_id}/config",
-            json_body={"runtime_config": dict(runtime_config), "exposes": list(exposes)},
+            f"/api/service/{service_id}/component/{component_id}",
+            json_body=payload,
         )
+
+    async def update_service_env(self, service_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        return await self.request("PUT", f"/api/service/{service_id}/env", json_body=payload)
 
     async def update_service_basic(self, service_id: str, version_id: str, instance_key: str) -> dict[str, Any]:
         return await self.request(

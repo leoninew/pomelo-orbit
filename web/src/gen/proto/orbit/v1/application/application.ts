@@ -13,7 +13,6 @@ export interface ApplicationResp {
   project_id?: string | undefined;
   name: string;
   code: string;
-  image_pull_policy: string;
   created_at: string;
   updated_at: string;
   /** kind is standard|gateway; immutable after create. */
@@ -23,7 +22,6 @@ export interface ApplicationResp {
 export interface ApplicationCreateReq {
   name: string;
   code: string;
-  image_pull_policy: string;
   /** optional; empty defaults to standard. */
   kind?: string | undefined;
 }
@@ -31,7 +29,6 @@ export interface ApplicationCreateReq {
 export interface ApplicationUpdateReq {
   name?: string | undefined;
   code?: string | undefined;
-  image_pull_policy?: string | undefined;
 }
 
 export interface ApplicationStopReq {

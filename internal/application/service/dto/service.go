@@ -4,12 +4,16 @@ import "gitee.com/leoninew/PomeloOrbit-go/internal/model"
 
 // ServiceView is the runtime binding for an application instance, with display labels.
 type ServiceView struct {
-	Service         model.Service
-	Exposes         []model.ServiceExpose
-	ApplicationName string
-	ApplicationCode string
-	ApplicationKind string
-	VersionLabel    string
+	Service              model.Service
+	Env                  []model.ServiceEnv
+	Components           []model.ServiceComponent
+	ComponentDefinitions []model.VersionComponent
+	PendingDeploy        bool
+	EffectivePlanHash    string
+	ApplicationName      string
+	ApplicationCode      string
+	ApplicationKind      string
+	VersionLabel         string
 }
 
 // ServiceListInput filters project-scoped service listing.
@@ -31,13 +35,21 @@ type ServiceCreateInput struct {
 	ApplicationId string
 	VersionId     string
 	InstanceKey   string
-	RuntimeConfig map[string]string
-	Exposes       []ServiceExposeInput
 }
 
-type ServiceConfigInput struct {
-	RuntimeConfig map[string]string
-	Exposes       []ServiceExposeInput
+type ServiceComponentOverlayInput struct {
+	Env       []model.ServiceComponentEnv
+	Mounts    []model.ServiceComponentMount
+	Resources *model.ServiceComponentResources
+	Endpoints []model.ServiceComponentEndpoint
+}
+
+// ServiceComponentDetail is the complete server-side view needed to compare a
+// Version declaration, its sparse Service overlay, and the deployed intent.
+type ServiceComponentDetail struct {
+	Component   model.ServiceComponent
+	Declaration model.VersionComponent
+	Effective   model.EffectiveServiceComponent
 }
 
 type ServiceBasicUpdateInput struct {
@@ -45,11 +57,6 @@ type ServiceBasicUpdateInput struct {
 	InstanceKey string
 }
 
-type ServiceExposeInput struct {
-	ComponentName string
-	Protocol      string
-	ContainerPort int
-	PathPrefix    *string
-	Access        string
-	ListenPort    *int
+type ServiceEnvUpdateInput struct {
+	Env []model.ServiceEnv
 }

@@ -46,7 +46,7 @@
     </div>
 
     <div v-else-if="services.length === 0" class="app-surface">
-      <AppEmptyState :message="t('service.empty')" />
+      <AppEmptyState />
     </div>
 
     <div v-else-if="viewMode === 'card'" class="space-y-6">
@@ -300,51 +300,6 @@
             {{ createErrors.instance_key }}
           </p>
         </div>
-        <div class="space-y-2">
-          <div
-            v-for="(item, index) in createForm.runtime_config"
-            :key="index"
-            class="grid grid-cols-[1fr_1fr_auto] gap-2"
-          >
-            <div class="space-y-1.5">
-              <input
-                v-model="item.key"
-                class="app-input font-mono text-sm"
-                :class="runtimeConfigErrors[index] ? 'app-input-error' : ''"
-                :placeholder="t('service.runtimeConfig.key')"
-                :aria-invalid="runtimeConfigErrors[index] ? 'true' : undefined"
-                @input="runtimeConfigErrors[index] = ''"
-              />
-              <p v-if="runtimeConfigErrors[index]" class="app-field-error" role="alert">
-                {{ runtimeConfigErrors[index] }}
-              </p>
-            </div>
-            <input
-              v-model="item.value"
-              class="app-input text-sm"
-              :placeholder="t('service.runtimeConfig.value')"
-            />
-            <button
-              class="app-button-danger size-9"
-              :aria-label="t('common.delete')"
-              @click="
-                createForm.runtime_config.splice(index, 1);
-                runtimeConfigErrors.splice(index, 1);
-              "
-            >
-              <Trash2 class="size-4" />
-            </button>
-          </div>
-          <button
-            class="app-link"
-            @click="
-              createForm.runtime_config.push({ key: '', value: '' });
-              runtimeConfigErrors.push('');
-            "
-          >
-            {{ t('common.add') }}
-          </button>
-        </div>
         <p v-if="createError" class="app-field-error text-xs">{{ createError }}</p>
       </div>
       <template #footer>
@@ -403,7 +358,7 @@
 </template>
 
 <script setup lang="ts">
-  import { LayoutGrid, List, Plus, Trash2 } from 'lucide-vue-next';
+  import { LayoutGrid, List, Plus } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
@@ -460,12 +415,10 @@
     version_id: '',
     instance_key: '',
   });
-  const runtimeConfigErrors = ref<string[]>([]);
   const createForm = reactive({
     application_id: '',
     version_id: '',
     instance_key: 'default',
-    runtime_config: [] as Array<{ key: string; value: string }>,
   });
 
   const applicationSelectOptions = computed(() =>
@@ -520,7 +473,6 @@
         application_id: '',
         version_id: '',
         instance_key: 'default',
-        runtime_config: [],
       });
       createError.value = '';
       Object.assign(createErrors, {
@@ -528,7 +480,6 @@
         version_id: '',
         instance_key: '',
       });
-      runtimeConfigErrors.value = [];
       isCreateDialogOpen.value = true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('service.toast.loadFailed'));
@@ -562,23 +513,7 @@
     createErrors.instance_key = createForm.instance_key.trim()
       ? ''
       : t('service.create.instanceKeyRequired');
-    runtimeConfigErrors.value = createForm.runtime_config.map(() => '');
-
-    const runtime_config: Record<string, string> = {};
-    for (const [index, item] of createForm.runtime_config.entries()) {
-      const key = item.key.trim();
-      if (!key || Object.prototype.hasOwnProperty.call(runtime_config, key)) {
-        runtimeConfigErrors.value[index] = t('service.runtimeConfig.invalid');
-        return;
-      }
-      runtime_config[key] = item.value;
-    }
-    if (
-      createErrors.application_id ||
-      createErrors.version_id ||
-      createErrors.instance_key ||
-      runtimeConfigErrors.value.some(Boolean)
-    ) {
+    if (createErrors.application_id || createErrors.version_id || createErrors.instance_key) {
       return;
     }
     try {
@@ -587,8 +522,6 @@
           application_id: createForm.application_id,
           version_id: createForm.version_id,
           instance_key: createForm.instance_key.trim(),
-          runtime_config,
-          exposes: [],
         });
         isCreateDialogOpen.value = false;
         toast.success(t('service.create.saved'));

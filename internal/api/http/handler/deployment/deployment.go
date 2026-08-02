@@ -187,6 +187,24 @@ func (h Handler) PreviewService(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &servicev1.ServicePreviewResp{ComposeYaml: compose})
 }
 
+func (h Handler) PreviewVersion(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var req applicationv1.VersionPreviewReq
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	compose, err := h.service.PreviewVersion(c.Request.Context(), current.Id, c.Param("version_id"))
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	transportresponse.ProtoJSON(c, http.StatusOK, &applicationv1.VersionPreviewResp{ComposeYaml: compose})
+}
+
 func (h Handler) DeleteApplication(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {

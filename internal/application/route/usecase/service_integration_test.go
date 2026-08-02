@@ -156,22 +156,19 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 	gwRepo := gatewayrepo.NewRepository(database)
 	projectId := routeTestProjectId
 	app := model.Application{
-		Id:              "01KROUTEGATEWAYAPP000000001",
-		ProjectId:       &projectId,
-		Name:            "Test Gateway",
-		Code:            "test-gateway",
-		Kind:            status.ApplicationKindGateway,
-		ImagePullPolicy: "missing",
+		Id:        "01KROUTEGATEWAYAPP000000001",
+		ProjectId: &projectId,
+		Name:      "Test Gateway",
+		Code:      "test-gateway",
+		Kind:      status.ApplicationKindGateway,
 	}
 	if err := appRepo.CreateApplication(ctx, app); err != nil {
 		t.Fatalf("seed gateway app: %v", err)
 	}
-	img := "traefik:3.6"
 	if err := gwRepo.UpsertGatewayConfig(ctx, model.GatewayConfig{
 		ApplicationId:     app.Id,
 		RestApiUrl:        "http://traefik:8080",
 		BaseDomain:        "lvh.me",
-		Image:             &img,
 		DefaultEntrypoint: "websecure",
 		TLSMode:           "optional",
 	}); err != nil {

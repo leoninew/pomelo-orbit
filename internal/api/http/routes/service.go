@@ -16,7 +16,9 @@ func (r Router) registerService(engine *gin.Engine) {
 	engine.GET("/api/service/:service_id", handler.GetService)
 	engine.DELETE("/api/service/:service_id", handler.DeleteService)
 	engine.PUT("/api/service/:service_id/basic", handler.UpdateServiceBasic)
-	engine.PUT("/api/service/:service_id/config", handler.UpdateServiceConfiguration)
+	engine.PUT("/api/service/:service_id/env", handler.UpdateServiceEnv)
+	engine.GET("/api/service/:service_id/component/:component_id", handler.GetServiceComponent)
+	engine.PUT("/api/service/:service_id/component/:component_id", handler.UpdateServiceComponentOverlay)
 	engine.POST("/api/service/:service_id/preview", deploymentHandler.PreviewService)
 	engine.POST("/api/service/:service_id/deploy", deploymentHandler.DeployService)
 }

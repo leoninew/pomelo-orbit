@@ -21,13 +21,10 @@ export interface ServiceResp {
   application_code: string;
   application_kind: string;
   version_label: string;
-  exposes: ServiceExposeResp[];
-  runtime_config: { [key: string]: string };
-}
-
-export interface ServiceResp_RuntimeConfigEntry {
-  key: string;
-  value: string;
+  components: ServiceComponentResp[];
+  pending_deploy: boolean;
+  effective_plan_hash: string;
+  env: ServiceEnv[];
 }
 
 export interface ServiceListResp {
@@ -46,23 +43,6 @@ export interface ServiceCreateReq {
   application_id: string;
   version_id: string;
   instance_key: string;
-  runtime_config: { [key: string]: string };
-  exposes: ServiceExposeReq[];
-}
-
-export interface ServiceCreateReq_RuntimeConfigEntry {
-  key: string;
-  value: string;
-}
-
-export interface ServiceConfigReq {
-  runtime_config: { [key: string]: string };
-  exposes: ServiceExposeReq[];
-}
-
-export interface ServiceConfigReq_RuntimeConfigEntry {
-  key: string;
-  value: string;
 }
 
 export interface ServiceBasicUpdateReq {
@@ -70,26 +50,118 @@ export interface ServiceBasicUpdateReq {
   instance_key: string;
 }
 
-export interface ServiceExposeReq {
-  component_name: string;
-  protocol: string;
-  container_port: number;
-  path_prefix?: string | undefined;
-  access: string;
-  listen_port?: number | undefined;
+export interface ServiceEnv {
+  key: string;
+  value: string;
 }
 
-export interface ServiceExposeResp {
+export interface ServiceEnvUpdateReq {
+  env: ServiceEnv[];
+}
+
+export interface ServiceComponentResp {
   id: string;
   service_id: string;
+  source_version_component_id: string;
   component_name: string;
-  protocol: string;
-  container_port: number;
-  path_prefix?: string | undefined;
-  access: string;
-  listen_port?: number | undefined;
+  status: string;
+  env: ServiceComponentEnvOverlay[];
+  mounts: ServiceComponentMountOverlay[];
+  resources: ServiceComponentResourceOverlay | undefined;
+  endpoints: ServiceComponentEndpointOverlay[];
   created_at: string;
   updated_at: string;
+  image: string;
+}
+
+/**
+ * ServiceComponentDetailResp provides the declaration, sparse overlay and
+ * server-merged effective component so clients never infer runtime state from
+ * absent values.
+ */
+export interface ServiceComponentDetailResp {
+  component: ServiceComponentResp | undefined;
+  declaration: ServiceComponentDefinitionResp | undefined;
+  effective: ServiceComponentDefinitionResp | undefined;
+}
+
+export interface ServiceComponentDefinitionResp {
+  id: string;
+  name: string;
+  image: string;
+  command: string;
+  pull_policy: string;
+  env: ServiceComponentDeclaredEnv[];
+  mounts: ServiceComponentDeclaredMount[];
+  resources: ServiceComponentDeclaredResources | undefined;
+  endpoints: ServiceComponentDeclaredEndpoint[];
+}
+
+export interface ServiceComponentDeclaredEnv {
+  key: string;
+  value: string;
+}
+
+export interface ServiceComponentDeclaredMount {
+  source_type: string;
+  source: string;
+  target: string;
+  read_only: boolean;
+}
+
+export interface ServiceComponentDeclaredResources {
+  limit_cpus?: string | undefined;
+  limit_memory?: string | undefined;
+  reservation_cpus?: string | undefined;
+  reservation_memory?: string | undefined;
+}
+
+export interface ServiceComponentDeclaredEndpoint {
+  name: string;
+  protocol: string;
+  container_port: number;
+  mode: string;
+  bind_address?: string | undefined;
+  listen_port?: number | undefined;
+  entrypoint?: string | undefined;
+  path_prefix?: string | undefined;
+}
+
+export interface ServiceComponentOverlayUpdateReq {
+  env: ServiceComponentEnvOverlay[];
+  mounts: ServiceComponentMountOverlay[];
+  resources: ServiceComponentResourceOverlay | undefined;
+  endpoints: ServiceComponentEndpointOverlay[];
+}
+
+export interface ServiceComponentEnvOverlay {
+  key: string;
+  value?: string | undefined;
+  state: string;
+}
+
+export interface ServiceComponentMountOverlay {
+  source?: string | undefined;
+  state: string;
+  target: string;
+}
+
+export interface ServiceComponentResourceOverlay {
+  limit_cpus?: string | undefined;
+  limit_memory?: string | undefined;
+  reservation_cpus?: string | undefined;
+  reservation_memory?: string | undefined;
+  state: string;
+}
+
+export interface ServiceComponentEndpointOverlay {
+  name: string;
+  mode?: string | undefined;
+  bind_address?: string | undefined;
+  listen_port?: number | undefined;
+  entrypoint?: string | undefined;
+  path_prefix?: string | undefined;
+  state: string;
 }
 
 export interface ServicePreviewReq {

@@ -88,8 +88,11 @@ func (s stores) ServiceByKey(ctx context.Context, applicationId string, instance
 func (s stores) Service(ctx context.Context, id string) (model.Service, error) {
 	return s.service.Service(ctx, id)
 }
-func (s stores) ServiceExposesByService(ctx context.Context, serviceId string) ([]model.ServiceExpose, error) {
-	return s.service.ServiceExposesByService(ctx, serviceId)
+func (s stores) ServiceEnvByService(ctx context.Context, serviceId string) ([]model.ServiceEnv, error) {
+	return s.service.ServiceEnvByService(ctx, serviceId)
+}
+func (s stores) ServiceComponentsByService(ctx context.Context, serviceId string) ([]model.ServiceComponent, error) {
+	return s.service.ServiceComponentsByService(ctx, serviceId)
 }
 func (s stores) UpsertService(ctx context.Context, svc model.Service) error {
 	return s.service.UpsertService(ctx, svc)

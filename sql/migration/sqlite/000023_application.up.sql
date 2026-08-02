@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS application (
     name TEXT NOT NULL UNIQUE,
     code TEXT NOT NULL,
     kind TEXT NOT NULL DEFAULT 'standard',
-    image_pull_policy TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     project_id TEXT REFERENCES project(id)
@@ -59,12 +58,20 @@ CREATE TABLE IF NOT EXISTS version_component_env (
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS version_component_port (
+CREATE TABLE IF NOT EXISTS version_component_endpoint (
     component_id TEXT NOT NULL,
-    host_port INTEGER NOT NULL CHECK (host_port BETWEEN 1 AND 65535),
+    name TEXT NOT NULL,
+    protocol TEXT NOT NULL CHECK (protocol IN ('http', 'tcp')),
     container_port INTEGER NOT NULL CHECK (container_port BETWEEN 1 AND 65535),
+    mode TEXT NOT NULL DEFAULT 'internal' CHECK (mode IN ('internal', 'local', 'host', 'gateway_http', 'gateway_tcp')),
+    bind_address TEXT,
+    listen_port INTEGER CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
+    entrypoint TEXT,
+    path_prefix TEXT,
     position INTEGER NOT NULL CHECK (position >= 0),
-    PRIMARY KEY (component_id, position),
+    PRIMARY KEY (component_id, name),
+    UNIQUE (component_id, position),
+    UNIQUE (component_id, protocol, container_port),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
 );
 

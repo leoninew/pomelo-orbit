@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS deployment (
     version_id TEXT REFERENCES version(id),
     service_id TEXT REFERENCES service(id),
     options_json TEXT,
+    effective_plan_hash TEXT,
     command_text TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (rollback_from_deployment_id) REFERENCES deployment(id)
 );
@@ -30,3 +31,4 @@ CREATE INDEX IF NOT EXISTS idx_deployment_app_name ON deployment(application_nam
 CREATE INDEX IF NOT EXISTS idx_deployment_status ON deployment(status);
 CREATE INDEX IF NOT EXISTS idx_deployment_started ON deployment(started_at);
 CREATE INDEX IF NOT EXISTS idx_deployment_project ON deployment(project_id);
+CREATE INDEX IF NOT EXISTS idx_deployment_service_success_hash ON deployment(service_id, status, effective_plan_hash, finished_at);

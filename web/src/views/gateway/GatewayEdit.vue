@@ -98,31 +98,6 @@
               :placeholder="t('gateway.placeholders.tlsMode')"
             />
           </div>
-          <div class="space-y-1.5">
-            <label class="app-field-label block">{{ t('gateway.fields.imagePullPolicy') }}</label>
-            <RawValueSelect
-              v-model="form.image_pull_policy"
-              :values="imagePullPolicyValues"
-              :placeholder="t('application.imagePullPolicyPlaceholder')"
-            />
-          </div>
-          <div class="space-y-1.5">
-            <label class="app-field-label block">
-              {{ t('gateway.fields.image') }}
-              <span class="text-destructive">*</span>
-            </label>
-            <input
-              v-model="form.image"
-              type="text"
-              class="app-input"
-              :class="errors.image ? 'app-input-error' : ''"
-              :placeholder="t('gateway.placeholders.image')"
-              :aria-invalid="errors.image ? 'true' : undefined"
-              @input="errors.image = ''"
-            />
-            <p v-if="errors.image" class="app-field-error">{{ errors.image }}</p>
-            <p v-else class="app-field-hint">{{ t('gateway.hints.image') }}</p>
-          </div>
         </div>
         <p class="text-sm text-muted-foreground">{{ t('gateway.hints.compileOnSave') }}</p>
       </div>
@@ -154,8 +129,6 @@
     name: '',
     rest_api_url: '',
     base_domain: '',
-    image: '',
-    image_pull_policy: 'missing',
     default_entrypoint: 'web',
     tls_mode: 'none',
   });
@@ -163,10 +136,8 @@
     name: '',
     rest_api_url: '',
     base_domain: '',
-    image: '',
   });
 
-  const imagePullPolicyValues = ['missing', 'always', 'never'];
   const entrypointValues = ['web', 'websecure'];
   const tlsModeValues = ['none', 'letsencrypt', 'tls'];
 
@@ -177,15 +148,12 @@
       name: data.name,
       rest_api_url: data.rest_api_url || '',
       base_domain: data.base_domain || '',
-      image: data.image || '',
-      image_pull_policy: data.image_pull_policy,
       default_entrypoint: data.default_entrypoint,
       tls_mode: data.tls_mode,
     });
     errors.name = '';
     errors.rest_api_url = '';
     errors.base_domain = '';
-    errors.image = '';
   }
 
   async function loadGateway() {
@@ -210,8 +178,7 @@
       ? ''
       : t('gateway.validation.restApiUrlRequired');
     errors.base_domain = form.base_domain.trim() ? '' : t('gateway.validation.baseDomainRequired');
-    errors.image = form.image.trim() ? '' : t('gateway.validation.imageRequired');
-    return !errors.name && !errors.rest_api_url && !errors.base_domain && !errors.image;
+    return !errors.name && !errors.rest_api_url && !errors.base_domain;
   }
 
   function goBack() {
@@ -234,8 +201,6 @@
           name: form.name.trim(),
           rest_api_url: form.rest_api_url.trim(),
           base_domain: form.base_domain.trim(),
-          image: form.image.trim(),
-          image_pull_policy: form.image_pull_policy,
           default_entrypoint: form.default_entrypoint,
           tls_mode: form.tls_mode,
         });

@@ -21,4 +21,5 @@ type Deployment struct {
 	ErrorMessage             *string    `db:"error_message"`
 	IsRollback               bool       `db:"is_rollback"`
 	RollbackFromDeploymentId *string    `db:"rollback_from_deployment_id"`
+	EffectivePlanHash        *string    `db:"effective_plan_hash"`
 }

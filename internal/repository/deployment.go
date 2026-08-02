@@ -15,4 +15,5 @@ type DeploymentStore interface {
 	Deployment(ctx context.Context, id string) (model.Deployment, error)
 	CancelDeployment(ctx context.Context, id string) error
 	MarkDeploymentRunning(ctx context.Context, id string) error
+	LatestSuccessfulDeploymentPlanHash(ctx context.Context, serviceId string) (*string, error)
 }

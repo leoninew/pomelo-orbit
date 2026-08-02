@@ -73,7 +73,7 @@ func (r Repository) ListApplications(ctx context.Context, projectId *string, pag
 	}
 	items := make([]model.Application, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.ImagePullPolicy, row.CreatedAt, row.UpdatedAt))
+		items = append(items, appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt))
 	}
 	return repository.Page[model.Application]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
@@ -83,7 +83,7 @@ func (r Repository) Application(ctx context.Context, id string) (model.Applicati
 	if err != nil {
 		return model.Application{}, fmt.Errorf("load application %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.ImagePullPolicy, row.CreatedAt, row.UpdatedAt), nil
+	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r Repository) ApplicationByName(ctx context.Context, name string) (model.Application, error) {
@@ -91,7 +91,7 @@ func (r Repository) ApplicationByName(ctx context.Context, name string) (model.A
 	if err != nil {
 		return model.Application{}, fmt.Errorf("load application by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
-	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.ImagePullPolicy, row.CreatedAt, row.UpdatedAt), nil
+	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r Repository) ApplicationByCode(ctx context.Context, code string) (model.Application, error) {
@@ -99,7 +99,7 @@ func (r Repository) ApplicationByCode(ctx context.Context, code string) (model.A
 	if err != nil {
 		return model.Application{}, fmt.Errorf("load application by code %s: %w", code, sqlcommon.TranslateError(err))
 	}
-	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.ImagePullPolicy, row.CreatedAt, row.UpdatedAt), nil
+	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r Repository) CreateApplication(ctx context.Context, app model.Application) error {
@@ -112,14 +112,13 @@ func (r Repository) CreateApplication(ctx context.Context, app model.Application
 		updatedAt = now
 	}
 	err := r.q(ctx).CreateApplication(ctx, applicationsqlc.CreateApplicationParams{
-		ID:              app.Id,
-		ProjectID:       dbmodel.NullString(app.ProjectId),
-		Name:            app.Name,
-		Code:            app.Code,
-		Kind:            app.Kind,
-		ImagePullPolicy: app.ImagePullPolicy,
-		CreatedAt:       createdAt,
-		UpdatedAt:       updatedAt,
+		ID:        app.Id,
+		ProjectID: dbmodel.NullString(app.ProjectId),
+		Name:      app.Name,
+		Code:      app.Code,
+		Kind:      app.Kind,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
 	})
 	if err != nil {
 		return fmt.Errorf("create application %s: %w", app.Name, err)
@@ -129,11 +128,10 @@ func (r Repository) CreateApplication(ctx context.Context, app model.Application
 
 func (r Repository) UpdateApplication(ctx context.Context, app model.Application) error {
 	err := r.q(ctx).UpdateApplication(ctx, applicationsqlc.UpdateApplicationParams{
-		Name:            app.Name,
-		Code:            app.Code,
-		ImagePullPolicy: app.ImagePullPolicy,
-		UpdatedAt:       time.Now().UTC(),
-		ID:              app.Id,
+		Name:      app.Name,
+		Code:      app.Code,
+		UpdatedAt: time.Now().UTC(),
+		ID:        app.Id,
 	})
 	if err != nil {
 		return fmt.Errorf("update application %s: %w", app.Id, err)
@@ -383,8 +381,8 @@ func (r Repository) UpdateVersionComponentRuntime(ctx context.Context, component
 	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentRuntimeConfig, insertVersionComponentRuntimeConfig)
 }
 
-func (r Repository) UpdateVersionComponentPorts(ctx context.Context, component model.VersionComponent) error {
-	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentPortsConfig, insertVersionComponentPortsConfig)
+func (r Repository) UpdateVersionComponentEndpoints(ctx context.Context, component model.VersionComponent) error {
+	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentEndpointsConfig, insertVersionComponentEndpointsConfig)
 }
 
 func (r Repository) UpdateVersionComponentEnv(ctx context.Context, component model.VersionComponent) error {
@@ -445,16 +443,15 @@ func (r Repository) CreateVersionWithVersionComponents(ctx context.Context, vers
 	})
 }
 
-func appFrom(id string, projectId sql.NullString, name, code, kind, imagePullPolicy string, createdAt, updatedAt time.Time) model.Application {
+func appFrom(id string, projectId sql.NullString, name, code, kind string, createdAt, updatedAt time.Time) model.Application {
 	return model.Application{
-		Id:              id,
-		ProjectId:       dbmodel.StringPtr(projectId),
-		Name:            name,
-		Code:            code,
-		Kind:            kind,
-		ImagePullPolicy: imagePullPolicy,
-		CreatedAt:       createdAt,
-		UpdatedAt:       updatedAt,
+		Id:        id,
+		ProjectId: dbmodel.StringPtr(projectId),
+		Name:      name,
+		Code:      code,
+		Kind:      kind,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
 	}
 }
 
@@ -490,12 +487,16 @@ func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Que
 	for _, item := range env {
 		component.Env = append(component.Env, model.VersionComponentEnv{Key: item.EnvKey, Value: item.Value})
 	}
-	ports, err := q.VersionComponentPortsByComponent(ctx, component.Id)
+	endpoints, err := q.VersionComponentEndpointsByComponent(ctx, component.Id)
 	if err != nil {
-		return model.VersionComponent{}, fmt.Errorf("load version component ports %s: %w", component.Id, err)
+		return model.VersionComponent{}, fmt.Errorf("load version component endpoints %s: %w", component.Id, err)
 	}
-	for _, item := range ports {
-		component.Ports = append(component.Ports, model.VersionComponentPort{HostPort: int(item.HostPort), ContainerPort: int(item.ContainerPort)})
+	for _, item := range endpoints {
+		component.Endpoints = append(component.Endpoints, model.VersionComponentEndpoint{
+			Name: item.Name, Protocol: item.Protocol, ContainerPort: int(item.ContainerPort), Mode: item.Mode,
+			BindAddress: dbmodel.StringPtr(item.BindAddress), ListenPort: dbmodel.IntPtrFromNullInt64(item.ListenPort),
+			Entrypoint: dbmodel.StringPtr(item.Entrypoint), PathPrefix: dbmodel.StringPtr(item.PathPrefix),
+		})
 	}
 	mounts, err := q.VersionComponentMountsByComponent(ctx, component.Id)
 	if err != nil {
@@ -623,7 +624,7 @@ func insertVersionComponentRuntimeConfig(ctx context.Context, q *applicationsqlc
 func insertVersionComponentConnectivityConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
 	for _, insertConfig := range []func(context.Context, *applicationsqlc.Queries, model.VersionComponent) error{
 		insertVersionComponentEnvConfig,
-		insertVersionComponentPortsConfig,
+		insertVersionComponentEndpointsConfig,
 		insertVersionComponentMountsConfig,
 		insertVersionComponentDependenciesConfig,
 	} {
@@ -643,10 +644,10 @@ func insertVersionComponentEnvConfig(ctx context.Context, q *applicationsqlc.Que
 	return nil
 }
 
-func insertVersionComponentPortsConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
-	for position, item := range component.Ports {
-		if err := q.InsertVersionComponentPort(ctx, applicationsqlc.InsertVersionComponentPortParams{ComponentID: component.Id, HostPort: int64(item.HostPort), ContainerPort: int64(item.ContainerPort), Position: int64(position)}); err != nil {
-			return fmt.Errorf("insert component port: %w", err)
+func insertVersionComponentEndpointsConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
+	for position, item := range component.Endpoints {
+		if err := q.InsertVersionComponentEndpoint(ctx, applicationsqlc.InsertVersionComponentEndpointParams{ComponentID: component.Id, Name: item.Name, Protocol: item.Protocol, ContainerPort: int64(item.ContainerPort), Mode: item.Mode, BindAddress: dbmodel.NullString(item.BindAddress), ListenPort: dbmodel.NullInt64FromIntPtr(item.ListenPort), Entrypoint: dbmodel.NullString(item.Entrypoint), PathPrefix: dbmodel.NullString(item.PathPrefix), Position: int64(position)}); err != nil {
+			return fmt.Errorf("insert component endpoint: %w", err)
 		}
 	}
 	return nil
@@ -740,8 +741,8 @@ func commandJSON(command []string) (string, error) {
 	return string(encoded), nil
 }
 
-func deleteVersionComponentPortsConfig(ctx context.Context, q *applicationsqlc.Queries, componentId string) error {
-	return deleteVersionComponentConfigRows(ctx, componentId, q.DeleteVersionComponentPorts)
+func deleteVersionComponentEndpointsConfig(ctx context.Context, q *applicationsqlc.Queries, componentId string) error {
+	return deleteVersionComponentConfigRows(ctx, componentId, q.DeleteVersionComponentEndpoints)
 }
 
 func deleteVersionComponentEnvConfig(ctx context.Context, q *applicationsqlc.Queries, componentId string) error {

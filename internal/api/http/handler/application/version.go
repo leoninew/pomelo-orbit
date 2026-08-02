@@ -80,17 +80,17 @@ func (h Handler) UpdateVersionComponentRuntime(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) UpdateVersionComponentPorts(c *gin.Context) {
+func (h Handler) UpdateVersionComponentEndpoints(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	var req applicationv1.VersionComponentPortsUpdateReq
+	var req applicationv1.VersionComponentEndpointsUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.UpdateVersionComponentPorts(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentPortsUpdateInput(&req))
+	component, err := h.service.UpdateVersionComponentEndpoints(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentEndpointsUpdateInput(&req))
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return

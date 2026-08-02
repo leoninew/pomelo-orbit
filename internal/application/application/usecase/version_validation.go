@@ -11,18 +11,6 @@ import (
 
 const maxMountContent = 256 * 1024
 
-func validateApplicationComponentPorts(app model.Application, components []model.VersionComponent) error {
-	if app.Kind == "gateway" {
-		return nil
-	}
-	for _, component := range components {
-		if len(component.Ports) > 0 {
-			return fmt.Errorf("component %s ports are only supported for gateway applications", component.Name)
-		}
-	}
-	return nil
-}
-
 func validateVersionComponents(components []model.VersionComponent) error {
 	names := make(map[string]struct{}, len(components))
 	dependencies := make(map[string][]string, len(components))
@@ -109,16 +97,21 @@ func validateComponentFields(component model.VersionComponent) error {
 		}
 		env[item.Key] = struct{}{}
 	}
-	ports := make(map[string]struct{}, len(component.Ports))
-	for _, item := range component.Ports {
-		if item.HostPort < 1 || item.HostPort > 65535 || item.ContainerPort < 1 || item.ContainerPort > 65535 {
-			return fmt.Errorf("component %s port must be between 1 and 65535", component.Name)
+	endpoints := make(map[string]struct{}, len(component.Endpoints))
+	for _, item := range component.Endpoints {
+		if item.Name == "" || (item.Protocol != "http" && item.Protocol != "tcp") || item.ContainerPort < 1 || item.ContainerPort > 65535 {
+			return fmt.Errorf("component %s endpoint is invalid", component.Name)
 		}
-		key := fmt.Sprintf("%d:%d", item.HostPort, item.ContainerPort)
-		if _, exists := ports[key]; exists {
-			return fmt.Errorf("component %s has duplicate port %s", component.Name, key)
+		if item.Mode != "internal" && item.Mode != "local" && item.Mode != "host" && item.Mode != "gateway_http" && item.Mode != "gateway_tcp" {
+			return fmt.Errorf("component %s endpoint mode is invalid", component.Name)
 		}
-		ports[key] = struct{}{}
+		if item.ListenPort != nil && (*item.ListenPort < 1 || *item.ListenPort > 65535) {
+			return fmt.Errorf("component %s endpoint listen port is invalid", component.Name)
+		}
+		if _, exists := endpoints[item.Name]; exists {
+			return fmt.Errorf("component %s has duplicate endpoint %s", component.Name, item.Name)
+		}
+		endpoints[item.Name] = struct{}{}
 	}
 	mountTargets := make(map[string]struct{}, len(component.Mounts))
 	for _, item := range component.Mounts {

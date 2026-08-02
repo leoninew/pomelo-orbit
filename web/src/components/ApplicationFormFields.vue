@@ -37,30 +37,13 @@
 
     <div class="space-y-1.5">
       <label class="app-field-label block">{{ t('application.kind') }}</label>
-      <RawValueSelect
-        :model-value="form.kind"
-        :values="kindValues"
-        :placeholder="t('application.kindPlaceholder')"
-        @update:model-value="updateField('kind', String($event))"
-      />
-      <p class="app-field-hint">{{ t('application.kindHint') }}</p>
-    </div>
-
-    <div class="space-y-1.5">
-      <label class="app-field-label block">{{ t('application.imagePullPolicy') }}</label>
-      <RawValueSelect
-        :model-value="form.image_pull_policy"
-        :values="imagePullPolicyValues"
-        :placeholder="t('application.imagePullPolicyPlaceholder')"
-        @update:model-value="updateField('image_pull_policy', String($event))"
-      />
+      <input value="standard" type="text" class="app-input" disabled />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
-  import RawValueSelect from '@/components/RawValueSelect.vue';
   import type { ApplicationCreateReq } from '@/gen/proto/orbit/v1/application/application';
 
   const props = defineProps<{
@@ -84,8 +67,4 @@
     }
     emit('update:form', { ...props.form, [field]: value });
   }
-
-  const kindValues = ['standard', 'gateway'];
-
-  const imagePullPolicyValues = ['missing', 'always', 'never'];
 </script>

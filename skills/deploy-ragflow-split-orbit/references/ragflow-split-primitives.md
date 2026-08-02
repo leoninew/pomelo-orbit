@@ -47,13 +47,13 @@ For a reused resource, retain its existing values. Do not derive secrets from an
 
 | Component | Image / command | Logical mount | Health and special settings |
 | --- | --- | --- | --- |
-| `mysql` | `mysql:8.0.39`; preserve MySQL flags | `mysql/data` -> `/var/lib/mysql` | `MYSQL_DATABASE=rag_flow`, `MYSQL_ROOT_HOST=%`; `mysqladmin ping`; no host port |
-| `redis` | `valkey/valkey:8`; preserve password and 128 MB LRU command | `redis/data` -> `/data` | `redis-cli` password health check; no host port |
-| `minio` | `pgsty/minio:RELEASE.2026-03-25T00-00-00Z`; `server --console-address :9001 /data` | `minio/data` -> `/data` | MinIO live health check; no host port |
-| `es01` | `elasticsearch:8.11.3` | `es01/data` -> `/usr/share/elasticsearch/data` | 8g memory limit, `/tmp` tmpfs 512 MiB mode 1777, unlimited memlock, security and disk watermark settings, authenticated health check |
+| `mysql` | `mysql:8.0.39`; preserve MySQL flags | named volume `mysql_data` -> `/var/lib/mysql` | `MYSQL_DATABASE=rag_flow`, `MYSQL_ROOT_HOST=%`; `mysqladmin ping`; no host port |
+| `redis` | `valkey/valkey:8`; preserve password and 128 MB LRU command | named volume `redis_data` -> `/data` | `redis-cli` password health check; no host port |
+| `minio` | `pgsty/minio:RELEASE.2026-03-25T00-00-00Z`; `server --console-address :9001 /data` | named volume `minio_data` -> `/data` | MinIO live health check; no host port |
+| `es01` | `elasticsearch:8.11.3` | named volume `elasticsearch_data` -> `/usr/share/elasticsearch/data` | 8g memory limit, `/tmp` tmpfs 512 MiB mode 1777, unlimited memlock, security and disk watermark settings, authenticated health check |
 | `tei` CPU | `ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3@sha256:ad950d30878eceb72aaf32024d26fa2b1d04a75304fa0b4776b49aa1941fea07`; `--model-id /data/bge-m3 --json-output` | `tei/cache` -> `/data` | `127.0.0.1:80/health`; 30s interval, 5s timeout, 10 retries, 5m start period; no host port |
 | `tei` GPU | `ghcr.io/huggingface/text-embeddings-inference:cuda-1.9.3@sha256:249a0bc87522bfe2f1012b4d194f0225878f47079115ada3aeb0b1ef257b402a`; same command | `tei/cache` -> `/data` | CPU settings plus device `nvidia`, `all`, `gpu` |
-| `ragflow-cpu` | `infiniflow/ragflow:v0.26.4`; `--enable-adminserver --init-model-provider-tables` | `ragflow-cpu/logs` -> `/ragflow/logs` | local dependency on `tei: service_healthy`; root HTTP health check |
+| `ragflow-cpu` | `infiniflow/ragflow:v0.26.4`; `--enable-adminserver --init-model-provider-tables` | named volume `ragflow_logs` -> `/ragflow/logs` | local dependency on `tei: service_healthy`; root HTTP health check |
 
 Use the exact component environment values from `scripts/ragflow-split/docker-compose.*.yml`. Preserve `$${...}` in container-shell commands and health checks. Use `scripts/ragflow-split/` only for this explicit split topology and never run its Docker Compose lifecycle commands.
 
@@ -85,7 +85,7 @@ Replace a canonical hostname only after verifying the reused resource's external
 }
 ```
 
-Every backing Service and TEI has an empty expose collection. Do not add a route for a data service.
+TEI and every backing component must have no `local`, `host`, `gateway_http`, or `gateway_tcp` endpoint. An `internal` declaration is allowed (the current Valkey baseline declares internal TCP `6379`) and must never create a host mapping or public route. Do not add a route for a data service.
 
 ## MCP Workflow Primitive
 

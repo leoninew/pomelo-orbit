@@ -12,7 +12,7 @@ func versionComponentInput(req *applicationv1.VersionComponentReq) applicationdt
 	return applicationdto.VersionComponentInput{
 		Name: req.Name, Image: req.Image,
 		Command: req.Command,
-		Env:     componentEnvInput(req.Env), Ports: componentPortInput(req.Ports), Mounts: componentMountInput(req.Mounts),
+		Env:     componentEnvInput(req.Env), Endpoints: componentEndpointInput(req.Endpoints), Mounts: componentMountInput(req.Mounts),
 		Dependencies: componentDependencyInput(req.Dependencies),
 		Healthcheck:  componentHealthcheckInput(req.Healthcheck), Resources: componentResourcesInput(req.Resources),
 		PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, Tmpfs: componentTmpfsInput(req.Tmpfs), Ulimits: componentUlimitInput(req.Ulimits), Devices: componentDeviceInput(req.Devices),
@@ -37,8 +37,8 @@ func versionComponentRuntimeUpdateInput(req *applicationv1.VersionComponentRunti
 	}
 }
 
-func versionComponentPortsUpdateInput(req *applicationv1.VersionComponentPortsUpdateReq) applicationdto.VersionComponentPortsUpdateInput {
-	return applicationdto.VersionComponentPortsUpdateInput{Ports: componentPortInput(req.Ports)}
+func versionComponentEndpointsUpdateInput(req *applicationv1.VersionComponentEndpointsUpdateReq) applicationdto.VersionComponentEndpointsUpdateInput {
+	return applicationdto.VersionComponentEndpointsUpdateInput{Endpoints: componentEndpointInput(req.Endpoints)}
 }
 
 func versionComponentEnvUpdateInput(req *applicationv1.VersionComponentEnvUpdateReq) applicationdto.VersionComponentEnvUpdateInput {
@@ -73,11 +73,11 @@ func componentEnvInput(items []*applicationv1.ComponentEnv) []model.VersionCompo
 	return result
 }
 
-func componentPortInput(items []*applicationv1.ComponentPort) []model.VersionComponentPort {
-	result := make([]model.VersionComponentPort, 0, len(items))
+func componentEndpointInput(items []*applicationv1.ComponentEndpoint) []model.VersionComponentEndpoint {
+	result := make([]model.VersionComponentEndpoint, 0, len(items))
 	for _, item := range items {
 		if item != nil {
-			result = append(result, model.VersionComponentPort{HostPort: int(item.HostPort), ContainerPort: int(item.ContainerPort)})
+			result = append(result, model.VersionComponentEndpoint{Name: item.Name, Protocol: item.Protocol, ContainerPort: int(item.ContainerPort), Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: intValue(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix})
 		}
 	}
 	return result
@@ -208,7 +208,7 @@ func versionComponentResponse(component model.VersionComponent) applicationv1.Ve
 	return applicationv1.VersionComponentResp{
 		Id: component.Id, VersionId: component.VersionId, Name: component.Name, Image: component.Image,
 		Command: commandline.Format(component.Command),
-		Env:     componentEnvResponse(component.Env), Ports: componentPortResponse(component.Ports), Mounts: componentMountResponse(component.Mounts),
+		Env:     componentEnvResponse(component.Env), Endpoints: componentEndpointResponse(component.Endpoints), Mounts: componentMountResponse(component.Mounts),
 		Dependencies: componentDependencyResponse(component.Dependencies),
 		Healthcheck:  componentHealthcheckResponse(component.Healthcheck), Resources: componentResourcesResponse(component.Resources),
 		PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: componentTmpfsResponse(component.Tmpfs), Ulimits: componentUlimitResponse(component.Ulimits),
@@ -225,10 +225,10 @@ func componentEnvResponse(items []model.VersionComponentEnv) []*applicationv1.Co
 	return result
 }
 
-func componentPortResponse(items []model.VersionComponentPort) []*applicationv1.ComponentPort {
-	result := make([]*applicationv1.ComponentPort, 0, len(items))
+func componentEndpointResponse(items []model.VersionComponentEndpoint) []*applicationv1.ComponentEndpoint {
+	result := make([]*applicationv1.ComponentEndpoint, 0, len(items))
 	for _, item := range items {
-		result = append(result, &applicationv1.ComponentPort{HostPort: int32(item.HostPort), ContainerPort: int32(item.ContainerPort)})
+		result = append(result, &applicationv1.ComponentEndpoint{Name: item.Name, Protocol: item.Protocol, ContainerPort: int32(item.ContainerPort), Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: int32Value(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix})
 	}
 	return result
 }

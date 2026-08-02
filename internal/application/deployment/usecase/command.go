@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"sort"
-	"strconv"
 	"strings"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
@@ -14,7 +12,6 @@ import (
 	gatewayport "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	runtimeconfig "gitee.com/leoninew/PomeloOrbit-go/internal/common/runtimeconfig"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
@@ -92,8 +89,10 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
-	if err := validateVersionComponents(components); err != nil {
-		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
+	for _, component := range components {
+		if err := validateVersionComponent(component); err != nil {
+			return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
+		}
 	}
 	if app.Kind == status.ApplicationKindGateway {
 		active, err := s.commandStore.HasActiveGatewayService(ctx, app.Id)
@@ -104,21 +103,33 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 			return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, "another gateway is already deploying or running; multiple gateways are not supported")
 		}
 	}
-	exposes, err := s.commandStore.ServiceExposesByService(ctx, service.Id)
+	overlays, err := s.commandStore.ServiceComponentsByService(ctx, service.Id)
 	if err != nil {
-		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load service exposes", err)
+		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load service components", err)
 	}
-	missing, _ := runtimeconfig.Validate(service.RuntimeConfig, components)
-	if len(missing) > 0 {
-		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, "missing runtime config keys: "+strings.Join(missing, ", "))
+	env, err := s.commandStore.ServiceEnvByService(ctx, service.Id)
+	if err != nil {
+		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load service environment", err)
 	}
-	warnings, err := s.publicTCPGatewayWarnings(ctx, app, exposes)
+	plan, _, err := BuildEffectiveServicePlan(app, version, service, components, overlays, env, nil)
+	if err != nil {
+		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	if err := preflightGatewayNetwork(ctx, s.queryRunner, app); err != nil {
+		return deploymentdto.DeployServiceResult{}, err
+	}
+	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
+	plan.Gateway = gateway
+	planHash, err := EffectiveServicePlanHash(plan)
+	if err != nil {
+		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to hash deployment plan", err)
+	}
 	deployment := newDeployment(app, "deploy")
 	deployment.VersionId = &version.Id
-	opts := deploymentdto.DeployOptionsJSON{ForceRecreate: input.ForceRecreate, InstanceKey: service.InstanceKey, RuntimeConfig: cloneRuntimeConfig(service.RuntimeConfig)}
+	opts := deploymentdto.DeployOptionsJSON{ForceRecreate: input.ForceRecreate, InstanceKey: service.InstanceKey}
 	if err := setDeploymentOptions(&deployment, opts); err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
@@ -129,14 +140,15 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to prepare service", err)
 	}
 	deployment.ServiceId = &service.Id
-	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, service.InstanceKey), app.ImagePullPolicy, input.ForceRecreate).String()
+	deployment.EffectivePlanHash = &planHash
+	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, service.InstanceKey), deploymentPullPolicy(plan), input.ForceRecreate).String()
 	if err := s.commandStore.CreateDeployment(ctx, deployment); err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
 	if err := s.dispatcher.DispatchDeploy(ctx, deploymentdto.DeployDispatchInput{ApplicationId: app.Id, DeploymentId: deployment.Id, ForceRecreate: input.ForceRecreate}); err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue deployment", err)
 	}
-	return deploymentdto.DeployServiceResult{DeploymentId: deployment.Id, Warnings: warnings}, nil
+	return deploymentdto.DeployServiceResult{DeploymentId: deployment.Id}, nil
 }
 
 func (s Service) StopApplication(ctx context.Context, userId string, applicationId string, input deploymentdto.ServiceTargetInput) (string, error) {
@@ -148,7 +160,8 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	if err != nil {
 		return "", err
 	}
-	if service.Status != status.ServiceStatusRunning && service.Status != status.ServiceStatusFaulted {
+	canRemoveStoppedVolumes := service.Status == status.ServiceStatusStopped && input.RemoveVolumes
+	if service.Status != status.ServiceStatusRunning && service.Status != status.ServiceStatusFaulted && !canRemoveStoppedVolumes {
 		return "", apperror.New(apperror.KindValidation, "应用未在运行中, 无法停止")
 	}
 	deployment := newDeployment(app, "stop")
@@ -203,20 +216,35 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
-	if err := validateVersionComponents(components); err != nil {
+	overlays, err := s.commandStore.ServiceComponentsByService(ctx, service.Id)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to load service components", err)
+	}
+	env, err := s.commandStore.ServiceEnvByService(ctx, service.Id)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to load service environment", err)
+	}
+	plan, _, err := BuildEffectiveServicePlan(app, version, service, components, overlays, env, nil)
+	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
-	missing, _ := runtimeconfig.Validate(service.RuntimeConfig, components)
-	if len(missing) > 0 {
-		return "", apperror.New(apperror.KindValidation, "missing runtime config keys: "+strings.Join(missing, ", "))
+	gateway, err := s.gatewayForDeployment(ctx, app, plan)
+	if err != nil {
+		return "", err
+	}
+	plan.Gateway = gateway
+	planHash, err := EffectiveServicePlanHash(plan)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to hash deployment plan", err)
 	}
 	deployment := newDeployment(app, "restart")
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &version.Id
-	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey, RuntimeConfig: cloneRuntimeConfig(service.RuntimeConfig)}); err != nil {
+	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey}); err != nil {
 		return "", err
 	}
-	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, service.InstanceKey), app.ImagePullPolicy, false).String()
+	deployment.EffectivePlanHash = &planHash
+	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, service.InstanceKey), deploymentPullPolicy(plan), false).String()
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}
@@ -285,52 +313,20 @@ func (s Service) serviceForUser(ctx context.Context, userId string, serviceId st
 	return service, app, nil
 }
 
-func (s Service) publicTCPGatewayWarnings(ctx context.Context, app model.Application, exposes []model.ServiceExpose) ([]string, error) {
-	if app.Kind == status.ApplicationKindGateway {
-		return nil, nil
-	}
-	required := map[int]struct{}{}
-	for _, expose := range exposes {
-		if expose.Access == "public" && expose.Protocol == "tcp" {
-			required[effectiveListen(expose)] = struct{}{}
+func deploymentPullPolicy(plan model.EffectiveServicePlan) string {
+	allNever := len(plan.Components) > 0
+	for _, component := range plan.Components {
+		if component.PullPolicy == "always" {
+			return "always"
+		}
+		if component.PullPolicy != "never" {
+			allNever = false
 		}
 	}
-	if len(required) == 0 {
-		return nil, nil
+	if allNever {
+		return "never"
 	}
-	cfg, err := s.commandStore.ResolveActiveGatewayConfig(ctx)
-	if err != nil {
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to resolve active gateway", err)
-	}
-	services, err := s.commandStore.ListServicesByApplication(ctx, cfg.ApplicationId)
-	if err != nil {
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load gateway services", err)
-	}
-	available := map[int]struct{}{}
-	for _, gatewayService := range services {
-		if gatewayService.Status != status.ServiceStatusRunning {
-			continue
-		}
-		components, err := s.commandStore.VersionComponentsByVersion(ctx, gatewayService.VersionId)
-		if err != nil {
-			return nil, apperror.Wrap(apperror.KindInternal, "Failed to load deployed gateway components", err)
-		}
-		for _, component := range components {
-			for _, port := range component.Ports {
-				if port.HostPort == port.ContainerPort {
-					available[port.HostPort] = struct{}{}
-				}
-			}
-		}
-	}
-	warnings := make([]string, 0, len(required))
-	for listen := range required {
-		if _, ok := available[listen]; !ok {
-			warnings = append(warnings, "Gateway is running but does not expose tcp"+strconv.Itoa(listen)+"; configure port "+strconv.Itoa(listen)+" and deploy Gateway.")
-		}
-	}
-	sort.Strings(warnings)
-	return warnings, nil
+	return "missing"
 }
 
 func (s Service) ensureCommandProjectMembership(ctx context.Context, projectId string, userId string) error {
@@ -362,12 +358,4 @@ func setDeploymentOptions(deployment *model.Deployment, options deploymentdto.De
 	text := string(raw)
 	deployment.OptionsJSON = &text
 	return nil
-}
-
-func cloneRuntimeConfig(values map[string]string) map[string]string {
-	clone := make(map[string]string, len(values))
-	for key, value := range values {
-		clone[key] = value
-	}
-	return clone
 }

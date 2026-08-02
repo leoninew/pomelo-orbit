@@ -26,10 +26,10 @@ type Querier interface {
 	DeleteVersionComponent(ctx context.Context, id string) error
 	DeleteVersionComponentDependencies(ctx context.Context, componentID string) error
 	DeleteVersionComponentDevices(ctx context.Context, componentID string) error
+	DeleteVersionComponentEndpoints(ctx context.Context, componentID string) error
 	DeleteVersionComponentEnv(ctx context.Context, componentID string) error
 	DeleteVersionComponentHealthcheck(ctx context.Context, componentID string) error
 	DeleteVersionComponentMounts(ctx context.Context, componentID string) error
-	DeleteVersionComponentPorts(ctx context.Context, componentID string) error
 	DeleteVersionComponentResource(ctx context.Context, componentID string) error
 	DeleteVersionComponentTmpfs(ctx context.Context, componentID string) error
 	DeleteVersionComponentUlimits(ctx context.Context, componentID string) error
@@ -40,10 +40,10 @@ type Querier interface {
 	InsertVersionComponent(ctx context.Context, arg InsertVersionComponentParams) error
 	InsertVersionComponentDependency(ctx context.Context, arg InsertVersionComponentDependencyParams) error
 	InsertVersionComponentDevice(ctx context.Context, arg InsertVersionComponentDeviceParams) error
+	InsertVersionComponentEndpoint(ctx context.Context, arg InsertVersionComponentEndpointParams) error
 	InsertVersionComponentEnv(ctx context.Context, arg InsertVersionComponentEnvParams) error
 	InsertVersionComponentHealthcheck(ctx context.Context, arg InsertVersionComponentHealthcheckParams) error
 	InsertVersionComponentMount(ctx context.Context, arg InsertVersionComponentMountParams) error
-	InsertVersionComponentPort(ctx context.Context, arg InsertVersionComponentPortParams) error
 	InsertVersionComponentResource(ctx context.Context, arg InsertVersionComponentResourceParams) error
 	InsertVersionComponentTmpfs(ctx context.Context, arg InsertVersionComponentTmpfsParams) error
 	InsertVersionComponentUlimit(ctx context.Context, arg InsertVersionComponentUlimitParams) error
@@ -61,10 +61,10 @@ type Querier interface {
 	VersionComponentByID(ctx context.Context, id string) (VersionComponent, error)
 	VersionComponentDependenciesByComponent(ctx context.Context, componentID string) ([]VersionComponentDependency, error)
 	VersionComponentDevicesByComponent(ctx context.Context, componentID string) ([]VersionComponentDevice, error)
+	VersionComponentEndpointsByComponent(ctx context.Context, componentID string) ([]VersionComponentEndpoint, error)
 	VersionComponentEnvByComponent(ctx context.Context, componentID string) ([]VersionComponentEnv, error)
 	VersionComponentHealthcheckByComponent(ctx context.Context, componentID string) (VersionComponentHealthcheck, error)
-	VersionComponentMountsByComponent(ctx context.Context, componentID string) ([]VersionComponentMount, error)
-	VersionComponentPortsByComponent(ctx context.Context, componentID string) ([]VersionComponentPort, error)
+	VersionComponentMountsByComponent(ctx context.Context, componentID string) ([]VersionComponentMountsByComponentRow, error)
 	VersionComponentResourceByComponent(ctx context.Context, componentID string) (VersionComponentResource, error)
 	VersionComponentTmpfsByComponent(ctx context.Context, componentID string) ([]VersionComponentTmpf, error)
 	VersionComponentUlimitsByComponent(ctx context.Context, componentID string) ([]VersionComponentUlimit, error)

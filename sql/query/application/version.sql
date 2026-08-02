@@ -105,18 +105,19 @@ ORDER BY position;
 DELETE FROM version_component_env
 WHERE component_id = ?;
 
--- name: InsertVersionComponentPort :exec
-INSERT INTO version_component_port (component_id, host_port, container_port, position)
-VALUES (?, ?, ?, ?);
+-- name: InsertVersionComponentEndpoint :exec
+INSERT INTO version_component_endpoint (
+  component_id, name, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
--- name: VersionComponentPortsByComponent :many
-SELECT component_id, host_port, container_port, position
-FROM version_component_port
+-- name: VersionComponentEndpointsByComponent :many
+SELECT component_id, name, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
+FROM version_component_endpoint
 WHERE component_id = ?
 ORDER BY position;
 
--- name: DeleteVersionComponentPorts :exec
-DELETE FROM version_component_port
+-- name: DeleteVersionComponentEndpoints :exec
+DELETE FROM version_component_endpoint
 WHERE component_id = ?;
 
 -- name: InsertVersionComponentMount :exec

@@ -3,13 +3,15 @@ from pydantic import ValidationError
 
 from pomelo_delivery_mcp.version_specs import (
     ComponentDependency,
-    ComponentPort,
+    ComponentEndpoint,
     DeviceRequestSpec,
     EnvironmentVariable,
     Healthcheck,
     LogicalMount,
     ResourceSpec,
-    ServiceExpose,
+    ServiceComponentEndpointOverlay,
+    ServiceComponentMountOverlay,
+    ServiceComponentOverlayUpdate,
     TmpfsSpec,
     UlimitSpec,
     VersionComponent,
@@ -18,13 +20,12 @@ from pomelo_delivery_mcp.version_specs import (
     VersionComponentCreate,
     VersionComponentDependenciesUpdate,
     VersionComponentDevicesUpdate,
+    VersionComponentEndpointsUpdate,
     VersionComponentEnvUpdate,
     VersionComponentMountsUpdate,
-    VersionComponentPortsUpdate,
     VersionComponentResourcesUpdate,
     VersionComponentTmpfsUpdate,
     VersionComponentUlimitsUpdate,
-    service_expose_payload,
     version_component_create_payload,
     version_component_payload,
 )
@@ -82,22 +83,21 @@ def test_version_component_create_payload_contains_only_basic_fields() -> None:
     }
 
 
-def test_service_expose_payload_uses_api_field_names() -> None:
-    expose = ServiceExpose(
-        component_name="ragflow-cpu",
-        protocol="http",
-        container_port=80,
-        access="local",
-        listen_port=9380,
+def test_service_component_overlay_uses_sparse_api_fields() -> None:
+    overlay = ServiceComponentOverlayUpdate(
+        mounts=[ServiceComponentMountOverlay(target="/data", state="deleted")],
+        endpoints=[ServiceComponentEndpointOverlay(name="http", mode="host", listen_port=9380, state="override")]
     )
 
-    assert service_expose_payload(expose) == {
-        "component_name": "ragflow-cpu",
-        "protocol": "http",
-        "container_port": 80,
-        "access": "local",
-        "listen_port": 9380,
+    assert overlay.model_dump(exclude_none=True) == {
+        "env": [],
+        "mounts": [{"target": "/data", "state": "deleted"}],
+        "endpoints": [{"name": "http", "mode": "host", "listen_port": 9380, "state": "override"}],
     }
+    with pytest.raises(ValidationError):
+        ServiceComponentOverlayUpdate.model_validate(
+            {"mounts": [{"position": 0, "state": "deleted"}]}
+        )
 
 
 def test_healthcheck_payload_uses_one_command_text() -> None:
@@ -131,7 +131,9 @@ def test_component_group_payloads_match_the_split_json_contracts() -> None:
         tmpfs=[TmpfsSpec(target="/tmp", size_bytes=67_108_864, mode="1777")],
         ulimits=[UlimitSpec(name="nofile", soft=65_535, hard=65_535)],
     )
-    ports = VersionComponentPortsUpdate(ports=[ComponentPort(host_port=8080, container_port=80)])
+    endpoints = VersionComponentEndpointsUpdate(
+        endpoints=[ComponentEndpoint(name="http", protocol="http", container_port=80, mode="host", listen_port=8080)]
+    )
     env = VersionComponentEnvUpdate(env=[EnvironmentVariable(key="MODE", value="production")])
     mounts = VersionComponentMountsUpdate(
         mounts=[
@@ -167,7 +169,7 @@ def test_component_group_payloads_match_the_split_json_contracts() -> None:
         "tmpfs": [{"target": "/tmp", "size_bytes": 67_108_864, "mode": "1777"}],
         "ulimits": [{"name": "nofile", "soft": 65_535, "hard": 65_535}],
     }
-    assert ports.model_dump() == {"ports": [{"host_port": 8080, "container_port": 80}]}
+    assert endpoints.model_dump() == {"endpoints": [{"name": "http", "protocol": "http", "container_port": 80, "mode": "host", "bind_address": None, "listen_port": 8080, "entrypoint": None, "path_prefix": None}]}
     assert env.model_dump() == {"env": [{"key": "MODE", "value": "production"}]}
     assert mounts.model_dump(exclude_none=True) == {
         "mounts": [

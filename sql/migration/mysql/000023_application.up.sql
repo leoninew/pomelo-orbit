@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS application (
     name VARCHAR(255) NOT NULL UNIQUE,
     code VARCHAR(255) NOT NULL,
     kind VARCHAR(32) NOT NULL DEFAULT 'standard',
-    image_pull_policy VARCHAR(32) NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     project_id VARCHAR(26),
@@ -61,16 +60,26 @@ CREATE TABLE IF NOT EXISTS version_component_env (
     CONSTRAINT chk_version_component_env_position CHECK (position >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS version_component_port (
+CREATE TABLE IF NOT EXISTS version_component_endpoint (
     component_id VARCHAR(26) NOT NULL,
-    host_port INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    protocol VARCHAR(16) NOT NULL,
     container_port INT NOT NULL,
+    mode VARCHAR(32) NOT NULL DEFAULT 'internal',
+    bind_address VARCHAR(255) NULL,
+    listen_port INT NULL,
+    entrypoint VARCHAR(128) NULL,
+    path_prefix VARCHAR(512) NULL,
     position INT NOT NULL,
-    PRIMARY KEY (component_id, position),
-    CONSTRAINT fk_version_component_port_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
-    CONSTRAINT chk_version_component_port_host CHECK (host_port BETWEEN 1 AND 65535),
-    CONSTRAINT chk_version_component_port_container CHECK (container_port BETWEEN 1 AND 65535),
-    CONSTRAINT chk_version_component_port_position CHECK (position >= 0)
+    PRIMARY KEY (component_id, name),
+    UNIQUE KEY uq_version_component_endpoint_position (component_id, position),
+    UNIQUE KEY uq_version_component_endpoint_contract (component_id, protocol, container_port),
+    CONSTRAINT fk_version_component_endpoint_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
+    CONSTRAINT chk_version_component_endpoint_protocol CHECK (protocol IN ('http', 'tcp')),
+    CONSTRAINT chk_version_component_endpoint_port CHECK (container_port BETWEEN 1 AND 65535),
+    CONSTRAINT chk_version_component_endpoint_mode CHECK (mode IN ('internal', 'local', 'host', 'gateway_http', 'gateway_tcp')),
+    CONSTRAINT chk_version_component_endpoint_listen CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
+    CONSTRAINT chk_version_component_endpoint_position CHECK (position >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS version_component_mount (

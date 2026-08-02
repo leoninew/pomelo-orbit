@@ -21,13 +21,6 @@ func (s stores) ListServicesByApplication(ctx context.Context, applicationId str
 	return s.service.ListServicesByApplication(ctx, applicationId)
 }
 
-func (s stores) CountServiceExposesByVersionComponent(ctx context.Context, versionId string, componentName string) (int, error) {
-	if s.service == nil {
-		return 0, nil
-	}
-	return s.service.CountServiceExposesByVersionComponent(ctx, versionId, componentName)
-}
-
 func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
 	return s.project.Project(ctx, id)
 }
@@ -116,8 +109,8 @@ func (s stores) UpdateVersionComponentRuntime(ctx context.Context, component mod
 	return s.application.UpdateVersionComponentRuntime(ctx, component)
 }
 
-func (s stores) UpdateVersionComponentPorts(ctx context.Context, component model.VersionComponent) error {
-	return s.application.UpdateVersionComponentPorts(ctx, component)
+func (s stores) UpdateVersionComponentEndpoints(ctx context.Context, component model.VersionComponent) error {
+	return s.application.UpdateVersionComponentEndpoints(ctx, component)
 }
 
 func (s stores) UpdateVersionComponentEnv(ctx context.Context, component model.VersionComponent) error {

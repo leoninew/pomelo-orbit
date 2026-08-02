@@ -6,6 +6,7 @@ package deployment
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -16,6 +17,7 @@ type Querier interface {
 	CreateDeployment(ctx context.Context, arg CreateDeploymentParams) error
 	DeploymentByID(ctx context.Context, id string) (DeploymentByIDRow, error)
 	DeploymentStartedAt(ctx context.Context, id string) (time.Time, error)
+	LatestSuccessfulDeploymentPlanHash(ctx context.Context, serviceID sql.NullString) (sql.NullString, error)
 	ListDeployments(ctx context.Context, arg ListDeploymentsParams) ([]ListDeploymentsRow, error)
 	MarkDeploymentRunning(ctx context.Context, arg MarkDeploymentRunningParams) error
 }

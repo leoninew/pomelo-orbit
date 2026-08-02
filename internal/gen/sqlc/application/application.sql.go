@@ -12,20 +12,19 @@ import (
 )
 
 const applicationByCode = `-- name: ApplicationByCode :one
-SELECT id, project_id, name, code, kind, image_pull_policy, created_at, updated_at
+SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE code = ?
 `
 
 type ApplicationByCodeRow struct {
-	ID              string         `db:"id"`
-	ProjectID       sql.NullString `db:"project_id"`
-	Name            string         `db:"name"`
-	Code            string         `db:"code"`
-	Kind            string         `db:"kind"`
-	ImagePullPolicy string         `db:"image_pull_policy"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
+	ID        string         `db:"id"`
+	ProjectID sql.NullString `db:"project_id"`
+	Name      string         `db:"name"`
+	Code      string         `db:"code"`
+	Kind      string         `db:"kind"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) ApplicationByCode(ctx context.Context, code string) (ApplicationByCodeRow, error) {
@@ -37,7 +36,6 @@ func (q *Queries) ApplicationByCode(ctx context.Context, code string) (Applicati
 		&i.Name,
 		&i.Code,
 		&i.Kind,
-		&i.ImagePullPolicy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -45,20 +43,19 @@ func (q *Queries) ApplicationByCode(ctx context.Context, code string) (Applicati
 }
 
 const applicationByID = `-- name: ApplicationByID :one
-SELECT id, project_id, name, code, kind, image_pull_policy, created_at, updated_at
+SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE id = ?
 `
 
 type ApplicationByIDRow struct {
-	ID              string         `db:"id"`
-	ProjectID       sql.NullString `db:"project_id"`
-	Name            string         `db:"name"`
-	Code            string         `db:"code"`
-	Kind            string         `db:"kind"`
-	ImagePullPolicy string         `db:"image_pull_policy"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
+	ID        string         `db:"id"`
+	ProjectID sql.NullString `db:"project_id"`
+	Name      string         `db:"name"`
+	Code      string         `db:"code"`
+	Kind      string         `db:"kind"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) ApplicationByID(ctx context.Context, id string) (ApplicationByIDRow, error) {
@@ -70,7 +67,6 @@ func (q *Queries) ApplicationByID(ctx context.Context, id string) (ApplicationBy
 		&i.Name,
 		&i.Code,
 		&i.Kind,
-		&i.ImagePullPolicy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -78,20 +74,19 @@ func (q *Queries) ApplicationByID(ctx context.Context, id string) (ApplicationBy
 }
 
 const applicationByName = `-- name: ApplicationByName :one
-SELECT id, project_id, name, code, kind, image_pull_policy, created_at, updated_at
+SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE name = ?
 `
 
 type ApplicationByNameRow struct {
-	ID              string         `db:"id"`
-	ProjectID       sql.NullString `db:"project_id"`
-	Name            string         `db:"name"`
-	Code            string         `db:"code"`
-	Kind            string         `db:"kind"`
-	ImagePullPolicy string         `db:"image_pull_policy"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
+	ID        string         `db:"id"`
+	ProjectID sql.NullString `db:"project_id"`
+	Name      string         `db:"name"`
+	Code      string         `db:"code"`
+	Kind      string         `db:"kind"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) ApplicationByName(ctx context.Context, name string) (ApplicationByNameRow, error) {
@@ -103,7 +98,6 @@ func (q *Queries) ApplicationByName(ctx context.Context, name string) (Applicati
 		&i.Name,
 		&i.Code,
 		&i.Kind,
-		&i.ImagePullPolicy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -151,19 +145,18 @@ func (q *Queries) CountApplications(ctx context.Context, arg CountApplicationsPa
 }
 
 const createApplication = `-- name: CreateApplication :exec
-INSERT INTO application (id, project_id, name, code, kind, image_pull_policy, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO application (id, project_id, name, code, kind, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateApplicationParams struct {
-	ID              string         `db:"id"`
-	ProjectID       sql.NullString `db:"project_id"`
-	Name            string         `db:"name"`
-	Code            string         `db:"code"`
-	Kind            string         `db:"kind"`
-	ImagePullPolicy string         `db:"image_pull_policy"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
+	ID        string         `db:"id"`
+	ProjectID sql.NullString `db:"project_id"`
+	Name      string         `db:"name"`
+	Code      string         `db:"code"`
+	Kind      string         `db:"kind"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) CreateApplication(ctx context.Context, arg CreateApplicationParams) error {
@@ -173,7 +166,6 @@ func (q *Queries) CreateApplication(ctx context.Context, arg CreateApplicationPa
 		arg.Name,
 		arg.Code,
 		arg.Kind,
-		arg.ImagePullPolicy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -233,7 +225,7 @@ func (q *Queries) DetachDeploymentVersionRefsByApplication(ctx context.Context, 
 }
 
 const listApplications = `-- name: ListApplications :many
-SELECT id, project_id, name, code, kind, image_pull_policy, created_at, updated_at
+SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE (?1 IS NULL OR project_id = ?1)
   AND (?2 = '' OR name LIKE ?3 OR code LIKE ?3)
@@ -253,14 +245,13 @@ type ListApplicationsParams struct {
 }
 
 type ListApplicationsRow struct {
-	ID              string         `db:"id"`
-	ProjectID       sql.NullString `db:"project_id"`
-	Name            string         `db:"name"`
-	Code            string         `db:"code"`
-	Kind            string         `db:"kind"`
-	ImagePullPolicy string         `db:"image_pull_policy"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
+	ID        string         `db:"id"`
+	ProjectID sql.NullString `db:"project_id"`
+	Name      string         `db:"name"`
+	Code      string         `db:"code"`
+	Kind      string         `db:"kind"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) ListApplications(ctx context.Context, arg ListApplicationsParams) ([]ListApplicationsRow, error) {
@@ -286,7 +277,6 @@ func (q *Queries) ListApplications(ctx context.Context, arg ListApplicationsPara
 			&i.Name,
 			&i.Code,
 			&i.Kind,
-			&i.ImagePullPolicy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -305,23 +295,21 @@ func (q *Queries) ListApplications(ctx context.Context, arg ListApplicationsPara
 
 const updateApplication = `-- name: UpdateApplication :exec
 UPDATE application
-SET name = ?, code = ?, image_pull_policy = ?, updated_at = ?
+SET name = ?, code = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateApplicationParams struct {
-	Name            string    `db:"name"`
-	Code            string    `db:"code"`
-	ImagePullPolicy string    `db:"image_pull_policy"`
-	UpdatedAt       time.Time `db:"updated_at"`
-	ID              string    `db:"id"`
+	Name      string    `db:"name"`
+	Code      string    `db:"code"`
+	UpdatedAt time.Time `db:"updated_at"`
+	ID        string    `db:"id"`
 }
 
 func (q *Queries) UpdateApplication(ctx context.Context, arg UpdateApplicationParams) error {
 	_, err := q.db.ExecContext(ctx, updateApplication,
 		arg.Name,
 		arg.Code,
-		arg.ImagePullPolicy,
 		arg.UpdatedAt,
 		arg.ID,
 	)

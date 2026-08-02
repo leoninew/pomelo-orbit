@@ -10,7 +10,7 @@ message ApplicationExportResp {
   optional string project_id = 2;
   string name = 3;
   string code = 4;
-  string image_pull_policy = 5;
+  reserved 5;
   repeated VersionResp versions = 6;
   repeated orbit.v1.service.ServiceResp services = 7;
   string kind = 8;
@@ -19,7 +19,7 @@ message ApplicationExportResp {
 message ApplicationImportReq {
   string name = 1;
   string code = 2;
-  string image_pull_policy = 3;
+  reserved 3;
   string version_label = 4;
   reserved 5;
   optional string version_note = 6;

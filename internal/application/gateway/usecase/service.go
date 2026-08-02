@@ -84,12 +84,12 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
-	imagePullPolicy := strings.TrimSpace(input.ImagePullPolicy)
+	imagePullPolicy := strings.TrimSpace(input.InitialComponentPullPolicy)
 	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !gatewayCreateCodePattern.MatchString(code) {
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "Invalid gateway fields")
 	}
 	if !validImagePullPolicy(imagePullPolicy) {
-		return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "image_pull_policy must be always, missing, or never")
+		return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "initial_component_pull_policy must be always, missing, or never")
 	}
 	restApiUrl, err := normalizeRestApiUrl(input.RestApiUrl)
 	if err != nil {
@@ -103,7 +103,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	image, err := requireGatewayImage(input.Image)
+	image, err := requireGatewayImage(input.InitialComponentImage)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
@@ -117,18 +117,12 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	}
 
 	app := model.Application{
-		Id:              idutil.NewId(),
-		ProjectId:       &projectId,
-		Name:            name,
-		Code:            code,
-		Kind:            status.ApplicationKindGateway,
-		ImagePullPolicy: imagePullPolicy,
+		Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: status.ApplicationKindGateway,
 	}
 	cfg := model.GatewayConfig{
 		ApplicationId:     app.Id,
 		RestApiUrl:        restApiUrl,
 		BaseDomain:        baseDomain,
-		Image:             image,
 		DefaultEntrypoint: policy.DefaultEntrypoint,
 		TLSMode:           policy.TLSMode,
 	}
@@ -138,6 +132,15 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	if err := s.config.UpsertGatewayConfig(ctx, cfg); err != nil {
 		_ = s.application.DeleteApplication(ctx, app.Id)
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway config", err)
+	}
+	version := model.Version{Id: idutil.NewId(), ApplicationId: app.Id, Label: "managed", Status: status.VersionStatusUnpublished}
+	if err := s.application.CreateVersion(ctx, version); err != nil {
+		_ = s.application.DeleteApplication(ctx, app.Id)
+		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway version", err)
+	}
+	if err := s.application.ReplaceVersionComponents(ctx, version.Id, []model.VersionComponent{{Id: idutil.NewId(), VersionId: version.Id, Name: gatewayManagedComponentName, Image: *image, PullPolicy: imagePullPolicy}}); err != nil {
+		_ = s.application.DeleteApplication(ctx, app.Id)
+		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway component", err)
 	}
 	if _, err := s.CompileGatewayToVersion(ctx, app, cfg); err != nil {
 		_ = s.application.DeleteApplication(ctx, app.Id)
@@ -189,16 +192,6 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 			appDirty = true
 		}
 	}
-	if input.ImagePullPolicy != nil {
-		policy := strings.TrimSpace(*input.ImagePullPolicy)
-		if !validImagePullPolicy(policy) {
-			return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "image_pull_policy must be always, missing, or never")
-		}
-		if policy != app.ImagePullPolicy {
-			app.ImagePullPolicy = policy
-			appDirty = true
-		}
-	}
 	if appDirty {
 		if err := s.application.UpdateApplication(ctx, app); err != nil {
 			return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to update gateway application", err)
@@ -218,16 +211,6 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 		}
 		cfg.BaseDomain = baseDomain
 	}
-	if input.Image != nil {
-		image, err := requireGatewayImage(input.Image)
-		if err != nil {
-			return gatewaydto.GatewayView{}, err
-		}
-		cfg.Image = image
-	}
-	if _, err := requireGatewayImage(cfg.Image); err != nil {
-		return gatewaydto.GatewayView{}, err
-	}
 	defaultEntrypoint := &cfg.DefaultEntrypoint
 	if input.DefaultEntrypoint != nil {
 		defaultEntrypoint = input.DefaultEntrypoint
@@ -244,9 +227,6 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 	cfg.TLSMode = policy.TLSMode
 	if err := s.config.UpsertGatewayConfig(ctx, cfg); err != nil {
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to update gateway config", err)
-	}
-	if _, err := s.CompileGatewayToVersion(ctx, app, cfg); err != nil {
-		return gatewaydto.GatewayView{}, err
 	}
 	return s.GatewayForUser(ctx, userId, applicationId)
 }
@@ -429,25 +409,26 @@ func validGatewayEntrypoint(name string) bool {
 	}
 }
 
-func buildGatewayExposureItem(app model.Application, expose model.ServiceExpose, gateway *model.GatewayConfig) (gatewaydto.GatewayExposureItem, error) {
-	internal, err := runtimeName(app.Code, expose.ComponentName)
-	if err != nil {
-		return gatewaydto.GatewayExposureItem{}, apperror.New(apperror.KindValidation, err.Error())
+func buildGatewayExposureItem(app model.Application, component model.EffectiveServiceComponent, endpoint model.VersionComponentEndpoint, gateway *model.GatewayConfig) (gatewaydto.GatewayExposureItem, error) {
+	internal := strings.ToLower(strings.TrimSpace(app.Code) + "-" + strings.TrimSpace(component.Name))
+	listen := endpoint.ContainerPort
+	if endpoint.ListenPort != nil {
+		listen = *endpoint.ListenPort
 	}
-	listen := effectiveListen(expose)
-	access := exposeAccessOf(expose)
+	access := "local"
+	if endpoint.Mode == "gateway_http" || endpoint.Mode == "gateway_tcp" {
+		access = "public"
+	}
 	publicHost := ""
 	clientHint := ""
 	switch access {
-	case exposeAccessLocal:
+	case "local":
 		clientHint = fmt.Sprintf("127.0.0.1:%d", listen)
-	case exposeAccessPublic:
+	case "public":
 		if gateway != nil {
-			if host, err := deriveHost(gateway, app.Code); err == nil {
-				publicHost = host
-			}
+			publicHost = strings.TrimSpace(app.Code) + "." + strings.TrimSpace(gateway.BaseDomain)
 		}
-		switch strings.ToLower(strings.TrimSpace(expose.Protocol)) {
+		switch endpoint.Protocol {
 		case "http":
 			if publicHost != "" {
 				scheme := "http"
@@ -465,11 +446,11 @@ func buildGatewayExposureItem(app model.Application, expose model.ServiceExpose,
 		}
 	}
 	if clientHint == "" {
-		clientHint = fmt.Sprintf("%s:%d", internal, expose.ContainerPort)
+		clientHint = fmt.Sprintf("%s:%d", internal, endpoint.ContainerPort)
 	}
 	return gatewaydto.GatewayExposureItem{
-		ApplicationId: app.Id, ApplicationCode: app.Code, ComponentName: expose.ComponentName,
-		Protocol: expose.Protocol, Access: access, ContainerPort: expose.ContainerPort,
+		ApplicationId: app.Id, ApplicationCode: app.Code, ComponentName: component.Name,
+		Protocol: endpoint.Protocol, Access: access, ContainerPort: endpoint.ContainerPort,
 		ListenPort: listen, PublicHost: publicHost, InternalDns: internal, ClientHint: clientHint,
 	}, nil
 }
@@ -489,20 +470,77 @@ func (s Service) listActiveGatewayExposures(ctx context.Context, gateway *model.
 			if !isActiveServiceStatus(service.Status) {
 				continue
 			}
-			exposes, err := s.service.ServiceExposesByService(ctx, service.Id)
+			declarations, err := s.application.VersionComponentsByVersion(ctx, service.VersionId)
 			if err != nil {
-				return nil, apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
+				return nil, apperror.Wrap(apperror.KindInternal, "Failed to list version components", err)
 			}
-			for _, expose := range exposes {
-				item, err := buildGatewayExposureItem(app, expose, gateway)
-				if err != nil {
-					return nil, err
+			overlays, err := s.service.ServiceComponentsByService(ctx, service.Id)
+			if err != nil {
+				return nil, apperror.Wrap(apperror.KindInternal, "Failed to list service components", err)
+			}
+			plan, _, err := buildGatewayEffectivePlan(app, service, declarations, overlays, gateway)
+			if err != nil {
+				return nil, apperror.Wrap(apperror.KindInternal, "Failed to resolve service endpoints", err)
+			}
+			for _, component := range plan.Components {
+				for _, endpoint := range component.Endpoints {
+					if endpoint.Mode == "internal" {
+						continue
+					}
+					item, err := buildGatewayExposureItem(app, component, endpoint, gateway)
+					if err != nil {
+						return nil, err
+					}
+					items = append(items, item)
 				}
-				items = append(items, item)
 			}
 		}
 	}
 	return items, nil
+}
+
+func buildGatewayEffectivePlan(app model.Application, service model.Service, declarations []model.VersionComponent, overlays []model.ServiceComponent, gateway *model.GatewayConfig) (model.EffectiveServicePlan, string, error) {
+	// Kept local to avoid a dependency from Gateway to the deployment use case.
+	bySource := make(map[string]model.ServiceComponent, len(overlays))
+	for _, overlay := range overlays {
+		bySource[overlay.SourceVersionComponentId] = overlay
+	}
+	plan := model.EffectiveServicePlan{Application: app, Version: model.Version{Id: service.VersionId}, Service: service, Gateway: gateway}
+	for _, declaration := range declarations {
+		overlay, ok := bySource[declaration.Id]
+		if !ok {
+			return plan, "", fmt.Errorf("service component mapping missing for %s", declaration.Name)
+		}
+		component := model.EffectiveServiceComponent{Name: declaration.Name, Endpoints: append([]model.VersionComponentEndpoint(nil), declaration.Endpoints...)}
+		for index := range component.Endpoints {
+			for _, endpoint := range overlay.Endpoints {
+				if endpoint.Name != component.Endpoints[index].Name {
+					continue
+				}
+				if endpoint.State == model.ServiceComponentOverlayDeleted {
+					component.Endpoints[index].Mode, component.Endpoints[index].BindAddress, component.Endpoints[index].ListenPort, component.Endpoints[index].Entrypoint, component.Endpoints[index].PathPrefix = "internal", nil, nil, nil, nil
+					continue
+				}
+				if endpoint.Mode != nil {
+					component.Endpoints[index].Mode = *endpoint.Mode
+				}
+				if endpoint.BindAddress != nil {
+					component.Endpoints[index].BindAddress = endpoint.BindAddress
+				}
+				if endpoint.ListenPort != nil {
+					component.Endpoints[index].ListenPort = endpoint.ListenPort
+				}
+				if endpoint.Entrypoint != nil {
+					component.Endpoints[index].Entrypoint = endpoint.Entrypoint
+				}
+				if endpoint.PathPrefix != nil {
+					component.Endpoints[index].PathPrefix = endpoint.PathPrefix
+				}
+			}
+		}
+		plan.Components = append(plan.Components, component)
+	}
+	return plan, "", nil
 }
 
 func isActiveServiceStatus(value string) bool {

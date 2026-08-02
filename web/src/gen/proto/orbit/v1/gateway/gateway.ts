@@ -14,11 +14,8 @@ export interface GatewayCreateReq {
   name: string;
   rest_api_url: string;
   base_domain: string;
-  image?:
-    | string
-    | undefined;
-  /** docker compose --pull: always|missing|never */
-  image_pull_policy: string;
+  initial_component_image?: string | undefined;
+  initial_component_pull_policy: string;
   /** Traefik entryPoints name: web|websecure (default web when empty on create) */
   default_entrypoint?:
     | string
@@ -31,8 +28,6 @@ export interface GatewayUpdateReq {
   name?: string | undefined;
   rest_api_url?: string | undefined;
   base_domain?: string | undefined;
-  image?: string | undefined;
-  image_pull_policy?: string | undefined;
   default_entrypoint?: string | undefined;
   tls_mode?: string | undefined;
 }
@@ -59,11 +54,9 @@ export interface GatewayResp {
   kind: string;
   rest_api_url: string;
   base_domain: string;
-  image?: string | undefined;
   created_at: string;
   updated_at: string;
   config_updated_at: string;
-  image_pull_policy: string;
   default_entrypoint: string;
   tls_mode: string;
   exposures: GatewayExposureItem[];

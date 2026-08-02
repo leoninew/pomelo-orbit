@@ -116,6 +116,12 @@ const router = createRouter({
       meta: { title: '服务详情', menuKey: 'services' },
     },
     {
+      path: '/service/:id/component/:componentId',
+      name: 'ServiceComponentDetail',
+      component: () => import('@/views/service/ServiceComponentDetail.vue'),
+      meta: { title: '服务组件配置', menuKey: 'services' },
+    },
+    {
       path: '/gateways',
       name: 'Gateways',
       component: () => import('@/views/gateway/GatewayPage.vue'),

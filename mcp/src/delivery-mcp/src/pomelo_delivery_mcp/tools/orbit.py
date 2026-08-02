@@ -9,21 +9,21 @@ from mcp.server.fastmcp import FastMCP
 from ..docker_runtime import DockerRuntime, DockerRuntimeError
 from ..orbit_client import OrbitClient
 from ..version_specs import (
-    ServiceExpose,
+    ServiceComponentOverlayUpdate,
+    ServiceEnvUpdate,
     VersionComponent,
     VersionComponentAdvancedUpdate,
     VersionComponentBasicUpdate,
     VersionComponentCreate,
     VersionComponentDependenciesUpdate,
     VersionComponentDevicesUpdate,
+    VersionComponentEndpointsUpdate,
     VersionComponentEnvUpdate,
     VersionComponentMountsUpdate,
-    VersionComponentPortsUpdate,
     VersionComponentResourcesUpdate,
     VersionComponentRuntimeUpdate,
     VersionComponentTmpfsUpdate,
     VersionComponentUlimitsUpdate,
-    service_expose_payload,
     version_component_create_payload,
     version_component_payload,
 )
@@ -80,8 +80,8 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
         name: str = "Traefik",
         rest_api_url: str = "http://localhost:8080",
         base_domain: str = "lvh.me",
-        image: str = "traefik:3.6",
-        image_pull_policy: str = "missing",
+        initial_component_image: str = "traefik:3.6",
+        initial_component_pull_policy: str = "missing",
         default_entrypoint: str | None = None,
         tls_mode: str | None = None,
     ) -> dict[str, Any]:
@@ -93,8 +93,8 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
                 "name": name,
                 "rest_api_url": rest_api_url,
                 "base_domain": base_domain,
-                "image": image,
-                "image_pull_policy": image_pull_policy,
+                "initial_component_image": initial_component_image,
+                "initial_component_pull_policy": initial_component_pull_policy,
                 "default_entrypoint": default_entrypoint,
                 "tls_mode": tls_mode,
             }
@@ -117,7 +117,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
     async def orbit_provision_gateway(
         project_id: str,
         instance_key: str = "default",
-        runtime_config: dict[str, str] | None = None,
         force_recreate: bool = False,
         timeout_seconds: int | None = None,
     ) -> dict[str, Any]:
@@ -127,7 +126,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
             runtime,
             project_id=project_id,
             instance_key=instance_key,
-            runtime_config=runtime_config,
             force_recreate=force_recreate,
             timeout_seconds=timeout_seconds,
         )
@@ -143,8 +141,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
         name: str | None = None,
         rest_api_url: str | None = None,
         base_domain: str | None = None,
-        image: str | None = None,
-        image_pull_policy: str | None = None,
         default_entrypoint: str | None = None,
         tls_mode: str | None = None,
     ) -> dict[str, Any]:
@@ -154,8 +150,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
                 "name": name,
                 "rest_api_url": rest_api_url,
                 "base_domain": base_domain,
-                "image": image,
-                "image_pull_policy": image_pull_policy,
                 "default_entrypoint": default_entrypoint,
                 "tls_mode": tls_mode,
             }
@@ -178,13 +172,12 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
         project_id: str,
         name: str,
         code: str,
-        image_pull_policy: str = "missing",
         kind: str = "standard",
     ) -> dict[str, Any]:
         """Create a standard Application through Orbit and return its initial draft Version."""
         if kind != "standard":
             raise ValueError("MCP creation only supports kind=standard")
-        body = {"name": name, "code": code, "image_pull_policy": image_pull_policy, "kind": kind}
+        body = {"name": name, "code": code, "kind": kind}
         application = await client.create_application(project_id, body)
         versions = await client.list_versions(str(application["id"]))
         initial = next((item for item in versions if item.get("status") == "unpublished"), None)
@@ -326,18 +319,18 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
             data={"component": updated},
         )
 
-    @mcp.tool(name="orbit_update_version_component_ports")
-    async def orbit_update_version_component_ports(
-        version_id: str, component_id: str, ports: VersionComponentPortsUpdate
+    @mcp.tool(name="orbit_update_version_component_endpoints")
+    async def orbit_update_version_component_endpoints(
+        version_id: str, component_id: str, endpoints: VersionComponentEndpointsUpdate
     ) -> dict[str, Any]:
-        """Replace a Component's port collection."""
-        body = ports.model_dump(exclude_none=True)
-        updated = await client.update_version_component_ports(version_id, component_id, body)
+        """Replace a Component's declared endpoint collection."""
+        body = endpoints.model_dump(exclude_none=True)
+        updated = await client.update_version_component_endpoints(version_id, component_id, body)
         return write_result(
-            "update_version_component_ports",
+            "update_version_component_endpoints",
             {"version_id": version_id, "component_id": component_id},
             "PUT",
-            f"/api/version/{version_id}/component/{component_id}/ports",
+            f"/api/version/{version_id}/component/{component_id}/endpoints",
             request_body=body,
             data={"component": updated},
         )
@@ -500,12 +493,9 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
         application_id: str,
         version_id: str,
         instance_key: str,
-        runtime_config: dict[str, str],
-        exposes: list[ServiceExpose],
     ) -> dict[str, Any]:
-        """Create a stopped Service with complete runtime and expose configuration."""
-        payload_exposes = [service_expose_payload(expose) for expose in exposes]
-        service = await client.create_service(application_id, version_id, instance_key, runtime_config, payload_exposes)
+        """Create a stopped Service whose Component overlays initially inherit the Version."""
+        service = await client.create_service(application_id, version_id, instance_key)
         service_id = str(service.get("id") or "")
         if not service_id:
             raise ValueError("Orbit service create response did not contain an id")
@@ -518,28 +508,39 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRunti
                 "application_id": application_id,
                 "version_id": version_id,
                 "instance_key": instance_key,
-                "runtime_config": runtime_config,
-                "exposes": payload_exposes,
             },
             data={"service": service},
         )
 
-    @mcp.tool(name="orbit_update_service_configuration")
-    async def orbit_update_service_configuration(
+    @mcp.tool(name="orbit_update_service_component_overlay")
+    async def orbit_update_service_component_overlay(
         service_id: str,
-        runtime_config: dict[str, str],
-        exposes: list[ServiceExpose],
+        component_id: str,
+        overlay: ServiceComponentOverlayUpdate,
     ) -> dict[str, Any]:
-        """Replace a Service's runtime configuration and exposes."""
-        payload_exposes = [service_expose_payload(expose) for expose in exposes]
-        result = await client.update_service_configuration(service_id, runtime_config, payload_exposes)
+        """Replace one declared Service Component's sparse runtime overlay."""
+        body = overlay.model_dump(exclude_none=True)
+        result = await client.update_service_component_overlay(service_id, component_id, body)
         return write_result(
-            "update_service_configuration",
+            "update_service_component_overlay",
+            {"service_id": service_id, "component_id": component_id},
+            "PUT",
+            f"/api/service/{service_id}/component/{component_id}",
+            request_body=body,
+            data={"component": result},
+        )
+
+    @mcp.tool(name="orbit_update_service_env")
+    async def orbit_update_service_env(service_id: str, env: ServiceEnvUpdate) -> dict[str, Any]:
+        """Replace the Service environment shared by declared Components."""
+        body = env.model_dump()
+        await client.update_service_env(service_id, body)
+        return write_result(
+            "update_service_env",
             {"service_id": service_id},
             "PUT",
-            f"/api/service/{service_id}/config",
-            request_body={"runtime_config": runtime_config, "exposes": payload_exposes},
-            data={"service": result},
+            f"/api/service/{service_id}/env",
+            request_body={"env_count": len(env.env)},
         )
 
     @mcp.tool(name="orbit_update_service_basic")
@@ -665,7 +666,6 @@ async def provision_gateway(
     *,
     project_id: str,
     instance_key: str,
-    runtime_config: dict[str, str] | None,
     force_recreate: bool,
     timeout_seconds: int | None,
 ) -> dict[str, Any]:
@@ -676,8 +676,6 @@ async def provision_gateway(
         raise ValueError("project_id is required")
     if not normalized_instance_key:
         raise ValueError("instance_key is required")
-    supplied_runtime_config = dict(runtime_config or {})
-
     gateway_matches = [
         gateway
         for gateway in await client.list_gateways(normalized_project_id)
@@ -703,9 +701,6 @@ async def provision_gateway(
     if len(service_matches) > 1:
         raise ValueError("multiple Gateway Services use the requested instance_key")
     service = service_matches[0] if service_matches else None
-    if service is not None and supplied_runtime_config:
-        raise ValueError("runtime_config cannot be supplied when reusing an existing Gateway Service")
-
     version = _select_gateway_version(versions, service)
     version_id = _resource_id(version, "Gateway Version")
     version_published = str(version.get("status") or "") == "published"
@@ -719,9 +714,7 @@ async def provision_gateway(
 
     service_created = service is None
     if service is None:
-        service_result = await client.create_service(
-            gateway_id, version_id, normalized_instance_key, supplied_runtime_config, []
-        )
+        service_result = await client.create_service(gateway_id, version_id, normalized_instance_key)
         steps.append("Created Gateway Service")
     else:
         service_result = await client.get_service(_resource_id(service, "Gateway Service"))
@@ -790,8 +783,8 @@ def _default_gateway_payload(project_id: str) -> dict[str, str]:
         "name": "Traefik",
         "rest_api_url": "http://localhost:8080",
         "base_domain": "lvh.me",
-        "image": "traefik:3.6",
-        "image_pull_policy": "missing",
+        "initial_component_image": "traefik:3.6",
+        "initial_component_pull_policy": "missing",
     }
 
 

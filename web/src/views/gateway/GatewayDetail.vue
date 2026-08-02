@@ -95,18 +95,6 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt>
-              {{ t('gateway.fields.imagePullPolicy') }}
-            </dt>
-            <dd>
-              <AppBadge variant="pill">{{ gateway.image_pull_policy }}</AppBadge>
-            </dd>
-          </div>
-          <div v-if="gateway.image" class="flex gap-2">
-            <dt>{{ t('gateway.fields.image') }}</dt>
-            <dd class="min-w-0 break-all text-foreground">{{ gateway.image }}</dd>
-          </div>
-          <div class="flex gap-2">
             <dt>{{ t('common.createdAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(gateway.created_at) }}</dd>
           </div>
@@ -348,33 +336,6 @@
             :placeholder="t('gateway.placeholders.tlsMode')"
           />
         </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.fields.imagePullPolicy') }}
-          </label>
-          <RawValueSelect
-            v-model="editForm.image_pull_policy"
-            :values="imagePullPolicyValues"
-            :placeholder="t('application.imagePullPolicyPlaceholder')"
-          />
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.fields.image') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="editForm.image"
-            type="text"
-            class="app-input"
-            :class="editErrors.image ? 'app-input-error' : ''"
-            :placeholder="t('gateway.placeholders.image')"
-            :aria-invalid="editErrors.image ? 'true' : undefined"
-            @input="editErrors.image = ''"
-          />
-          <p v-if="editErrors.image" class="app-field-error mt-1 text-xs">{{ editErrors.image }}</p>
-          <p v-else class="app-field-hint mt-1">{{ t('gateway.hints.image') }}</p>
-        </div>
       </div>
       <p class="text-sm text-muted-foreground">{{ t('gateway.hints.compileOnSave') }}</p>
       <template #footer>
@@ -441,8 +402,6 @@
     name: '',
     rest_api_url: '',
     base_domain: '',
-    image: '',
-    image_pull_policy: 'missing',
     default_entrypoint: 'web',
     tls_mode: 'none',
   });
@@ -450,7 +409,6 @@
     name: '',
     rest_api_url: '',
     base_domain: '',
-    image: '',
   });
 
   const gatewayId = () => String(route.params.id || '');
@@ -461,7 +419,6 @@
   );
   const canStop = computed(() => stoppableServices.value.length > 0);
   const primaryService = computed(() => services.value[0] ?? null);
-  const imagePullPolicyValues = ['missing', 'always', 'never'];
   const entrypointValues = ['web', 'websecure'];
   const tlsModeValues = ['none', 'letsencrypt', 'tls'];
 
@@ -497,12 +454,10 @@
       name: current.name,
       rest_api_url: current.rest_api_url || '',
       base_domain: current.base_domain || '',
-      image: current.image || '',
-      image_pull_policy: current.image_pull_policy,
       default_entrypoint: current.default_entrypoint,
       tls_mode: current.tls_mode,
     });
-    Object.assign(editErrors, { name: '', rest_api_url: '', base_domain: '', image: '' });
+    Object.assign(editErrors, { name: '', rest_api_url: '', base_domain: '' });
     isEditDialogOpen.value = true;
   }
 
@@ -514,10 +469,7 @@
     editErrors.base_domain = editForm.base_domain.trim()
       ? ''
       : t('gateway.validation.baseDomainRequired');
-    editErrors.image = editForm.image.trim() ? '' : t('gateway.validation.imageRequired');
-    return (
-      !editErrors.name && !editErrors.rest_api_url && !editErrors.base_domain && !editErrors.image
-    );
+    return !editErrors.name && !editErrors.rest_api_url && !editErrors.base_domain;
   }
 
   async function saveGateway() {
@@ -531,8 +483,6 @@
           name: editForm.name.trim(),
           rest_api_url: editForm.rest_api_url.trim(),
           base_domain: editForm.base_domain.trim(),
-          image: editForm.image.trim(),
-          image_pull_policy: editForm.image_pull_policy,
           default_entrypoint: editForm.default_entrypoint,
           tls_mode: editForm.tls_mode,
         });
@@ -664,8 +614,6 @@
             application_id: current.id,
             version_id: deployForm.version_id,
             instance_key: instanceKey,
-            runtime_config: {},
-            exposes: [],
           });
           serviceId = created.id;
         }

@@ -3,6 +3,7 @@ package deploymentrepo
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -52,6 +53,7 @@ func (r Repository) CreateDeployment(ctx context.Context, deployment model.Deplo
 		VersionID:                dbmodel.NullString(deployment.VersionId),
 		ServiceID:                dbmodel.NullString(deployment.ServiceId),
 		OptionsJson:              dbmodel.NullString(deployment.OptionsJSON),
+		EffectivePlanHash:        dbmodel.NullString(deployment.EffectivePlanHash),
 		OperationType:            deployment.OperationType,
 		TriggerType:              deployment.TriggerType,
 		CommandText:              deployment.CommandText,
@@ -128,7 +130,7 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	for _, row := range rows {
 		items = append(items, deploymentFrom(
 			row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
-			row.OptionsJson, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
+			row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 			row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
 		))
 	}
@@ -142,7 +144,7 @@ func (r Repository) Deployment(ctx context.Context, id string) (model.Deployment
 	}
 	return deploymentFrom(
 		row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
-		row.OptionsJson, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
+		row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 		row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
 	), nil
 }
@@ -180,9 +182,20 @@ func (r Repository) MarkDeploymentRunning(ctx context.Context, id string) error 
 	return nil
 }
 
+func (r Repository) LatestSuccessfulDeploymentPlanHash(ctx context.Context, serviceId string) (*string, error) {
+	value, err := r.q(ctx).LatestSuccessfulDeploymentPlanHash(ctx, sql.NullString{String: serviceId, Valid: serviceId != ""})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("load latest successful deployment plan hash for service %s: %w", serviceId, err)
+	}
+	return dbmodel.StringPtr(value), nil
+}
+
 func deploymentFrom(
 	id string, projectId, applicationId sql.NullString, applicationName string,
-	versionId, serviceId, optionsJSON sql.NullString,
+	versionId, serviceId, optionsJSON, effectivePlanHash sql.NullString,
 	operationType, triggerType, commandText, deployStatus string,
 	startedAt time.Time, finishedAt sql.NullTime, durationMs sql.NullInt64,
 	logText, errorMessage sql.NullString, isRollback int64, rollbackFrom sql.NullString,
@@ -195,6 +208,7 @@ func deploymentFrom(
 		VersionId:                dbmodel.StringPtr(versionId),
 		ServiceId:                dbmodel.StringPtr(serviceId),
 		OptionsJSON:              dbmodel.StringPtr(optionsJSON),
+		EffectivePlanHash:        dbmodel.StringPtr(effectivePlanHash),
 		OperationType:            operationType,
 		TriggerType:              triggerType,
 		CommandText:              commandText,

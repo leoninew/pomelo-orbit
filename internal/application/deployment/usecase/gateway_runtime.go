@@ -8,20 +8,11 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-const (
-	entrypointWeb       = "web"
-	entrypointWebSecure = "websecure"
-)
-
-func (s Service) gatewayForDeployment(ctx context.Context, app model.Application, exposes []model.ServiceExpose) (*model.GatewayConfig, error) {
+func (s Service) gatewayForDeployment(ctx context.Context, app model.Application, plan model.EffectiveServicePlan) (*model.GatewayConfig, error) {
 	if s.gatewayCoordinator == nil {
 		return nil, apperror.New(apperror.KindInternal, "gateway deployment coordinator is not configured")
 	}
-	return s.gatewayCoordinator.GatewayForDeployment(ctx, app, exposes)
-}
-
-func validGatewayEntrypoint(name string) bool {
-	return name == entrypointWeb || name == entrypointWebSecure
+	return s.gatewayCoordinator.GatewayForDeployment(ctx, app, plan)
 }
 
 func isActiveServiceStatus(statusValue string) bool {

@@ -6,4 +6,4 @@
 python -m unittest scripts/test_export_ragflow_tei_baseline.py
 ```
 
-测试用临时 SQLite fixture 导出 SQL，再导入相同空 schema，确认组件子表能稳定导出，设备请求仍存在，所有 Service 的运行时配置为 `{}` 且状态为 `stopped`。
+测试用临时 SQLite fixture 导出 SQL，再导入相同空 schema，确认组件子表和 ServiceComponent 映射能稳定导出，设备请求仍存在，Service 均为 `stopped`，且不导出运行时环境覆盖。

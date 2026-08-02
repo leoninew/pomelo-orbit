@@ -14,19 +14,17 @@ func applicationCreateInput(projectId string, req *applicationv1.ApplicationCrea
 		kind = *req.Kind
 	}
 	return applicationdto.ApplicationCreateInput{
-		ProjectId:       projectId,
-		Name:            req.Name,
-		Code:            req.Code,
-		Kind:            kind,
-		ImagePullPolicy: req.ImagePullPolicy,
+		ProjectId: projectId,
+		Name:      req.Name,
+		Code:      req.Code,
+		Kind:      kind,
 	}
 }
 
 func applicationUpdateInput(req *applicationv1.ApplicationUpdateReq) applicationdto.ApplicationUpdateInput {
 	return applicationdto.ApplicationUpdateInput{
-		Name:            req.Name,
-		Code:            req.Code,
-		ImagePullPolicy: req.ImagePullPolicy,
+		Name: req.Name,
+		Code: req.Code,
 	}
 }
 
@@ -40,14 +38,13 @@ func applicationResponses(items []model.Application) []applicationv1.Application
 
 func applicationResponse(item model.Application) applicationv1.ApplicationResp {
 	return applicationv1.ApplicationResp{
-		Id:              item.Id,
-		ProjectId:       item.ProjectId,
-		Name:            item.Name,
-		Code:            item.Code,
-		Kind:            item.Kind,
-		ImagePullPolicy: item.ImagePullPolicy,
-		CreatedAt:       transportresponse.FormatTime(item.CreatedAt),
-		UpdatedAt:       transportresponse.FormatTime(item.UpdatedAt),
+		Id:        item.Id,
+		ProjectId: item.ProjectId,
+		Name:      item.Name,
+		Code:      item.Code,
+		Kind:      item.Kind,
+		CreatedAt: transportresponse.FormatTime(item.CreatedAt),
+		UpdatedAt: transportresponse.FormatTime(item.UpdatedAt),
 	}
 }
 

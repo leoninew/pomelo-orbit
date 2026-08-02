@@ -16,27 +16,25 @@ func applicationImportInput(projectId string, req *applicationv1.ApplicationImpo
 		kind = *req.Kind
 	}
 	return applicationdto.ApplicationImportInput{
-		ProjectId:       projectId,
-		Name:            req.Name,
-		Code:            req.Code,
-		Kind:            kind,
-		ImagePullPolicy: req.ImagePullPolicy,
-		VersionLabel:    req.VersionLabel,
-		VersionNote:     req.VersionNote,
-		Components:      components,
+		ProjectId:    projectId,
+		Name:         req.Name,
+		Code:         req.Code,
+		Kind:         kind,
+		VersionLabel: req.VersionLabel,
+		VersionNote:  req.VersionNote,
+		Components:   components,
 	}
 }
 
 func applicationExportResponse(exported applicationdto.ApplicationExport) *applicationv1.ApplicationExportResp {
 	resp := &applicationv1.ApplicationExportResp{
-		Id:              exported.Application.Id,
-		ProjectId:       exported.Application.ProjectId,
-		Name:            exported.Application.Name,
-		Code:            exported.Application.Code,
-		Kind:            exported.Application.Kind,
-		ImagePullPolicy: exported.Application.ImagePullPolicy,
-		Versions:        make([]*applicationv1.VersionResp, 0, len(exported.Versions)),
-		Services:        make([]*servicev1.ServiceResp, 0, len(exported.Services)),
+		Id:        exported.Application.Id,
+		ProjectId: exported.Application.ProjectId,
+		Name:      exported.Application.Name,
+		Code:      exported.Application.Code,
+		Kind:      exported.Application.Kind,
+		Versions:  make([]*applicationv1.VersionResp, 0, len(exported.Versions)),
+		Services:  make([]*servicev1.ServiceResp, 0, len(exported.Services)),
 	}
 	for _, view := range exported.Versions {
 		item := versionResponse(view)

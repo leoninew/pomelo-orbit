@@ -7,14 +7,13 @@ import (
 )
 
 type Application struct {
-	Id              string    `db:"id"`
-	ProjectId       *string   `db:"project_id"`
-	Name            string    `db:"name"`
-	Code            string    `db:"code"`
-	Kind            string    `db:"kind"`
-	ImagePullPolicy string    `db:"image_pull_policy"`
-	CreatedAt       time.Time `db:"created_at"`
-	UpdatedAt       time.Time `db:"updated_at"`
+	Id        string    `db:"id"`
+	ProjectId *string   `db:"project_id"`
+	Name      string    `db:"name"`
+	Code      string    `db:"code"`
+	Kind      string    `db:"kind"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
 // Version is application static specification metadata (business data).
@@ -54,7 +53,7 @@ type VersionComponent struct {
 	Image         string `db:"image"`
 	Command       []string
 	Env           []VersionComponentEnv
-	Ports         []VersionComponentPort
+	Endpoints     []VersionComponentEndpoint
 	Mounts        []VersionComponentMount
 	Dependencies  []VersionComponentDependency
 	Healthcheck   *VersionComponentHealthcheck
@@ -73,9 +72,18 @@ type VersionComponentEnv struct {
 	Value string
 }
 
-type VersionComponentPort struct {
-	HostPort      int
+// VersionComponentEndpoint declares a component container interface and its
+// reusable runtime defaults. Protocol and container port are immutable
+// interface contracts; a Service only overlays the remaining value fields.
+type VersionComponentEndpoint struct {
+	Name          string
+	Protocol      string
 	ContainerPort int
+	Mode          string
+	BindAddress   *string
+	ListenPort    *int
+	Entrypoint    *string
+	PathPrefix    *string
 }
 
 type VersionComponentMount struct {

@@ -1,8 +1,11 @@
 import type {
-  ServiceConfigReq,
   ServiceBasicUpdateReq,
+  ServiceComponentDetailResp,
+  ServiceComponentResp,
+  ServiceComponentOverlayUpdateReq,
   ServiceDeployReq,
   ServiceDeployResp,
+  ServiceEnvUpdateReq,
   ServicePaginatedResp,
   ServicePreviewResp,
   ServiceResp,
@@ -34,12 +37,24 @@ export const serviceApi = {
     return request.delete(`/api/service/${id}`);
   },
 
-  updateConfiguration(id: string, payload: ServiceConfigReq): Promise<ServiceResp> {
-    return request.put(`/api/service/${id}/config`, payload);
+  getComponent(serviceId: string, componentId: string): Promise<ServiceComponentDetailResp> {
+    return request.get(`/api/service/${serviceId}/component/${componentId}`);
+  },
+
+  updateComponent(
+    serviceId: string,
+    componentId: string,
+    payload: ServiceComponentOverlayUpdateReq
+  ): Promise<ServiceComponentResp> {
+    return request.put(`/api/service/${serviceId}/component/${componentId}`, payload);
   },
 
   updateBasic(id: string, payload: ServiceBasicUpdateReq): Promise<ServiceResp> {
     return request.put(`/api/service/${id}/basic`, payload);
+  },
+
+  updateEnv(id: string, payload: ServiceEnvUpdateReq): Promise<ServiceResp> {
+    return request.put(`/api/service/${id}/env`, payload);
   },
 
   preview(id: string): Promise<ServicePreviewResp> {

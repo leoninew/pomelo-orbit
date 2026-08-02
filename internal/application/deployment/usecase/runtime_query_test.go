@@ -6,6 +6,8 @@ import (
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 type statusQueryRunner struct {
@@ -18,7 +20,7 @@ func (r *statusQueryRunner) Run(context.Context, string, string, ...string) (str
 }
 
 func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T) {
-	service, store, _ := newCommandTestService()
+	service, store := newRuntimeQueryService()
 	store.service.Status = status.ServiceStatusStopped
 	workspace := testWorkspace(t.TempDir())
 	runner := &statusQueryRunner{}
@@ -37,6 +39,72 @@ func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T)
 	if runner.called {
 		t.Fatal("status query must not run without a deployment workspace")
 	}
+}
+
+func newRuntimeQueryService() (Service, *runtimeQueryStore) {
+	projectID := "project-1"
+	store := &runtimeQueryStore{
+		application: model.Application{Id: "app-1", ProjectId: &projectID, Code: "demo", Kind: status.ApplicationKindStandard},
+		service:     model.Service{Id: "service-1", ApplicationId: "app-1", InstanceKey: "default", VersionId: "version-1"},
+	}
+	return Service{commandStore: store}, store
+}
+
+type runtimeQueryStore struct {
+	application model.Application
+	service     model.Service
+}
+
+func (s *runtimeQueryStore) ServiceEnvByService(_ context.Context, _ string) ([]model.ServiceEnv, error) {
+	return nil, nil
+}
+
+func (s *runtimeQueryStore) Project(context.Context, string) (model.Project, error) {
+	return model.Project{Id: "project-1"}, nil
+}
+
+func (s *runtimeQueryStore) IsProjectMember(context.Context, string, string) (bool, error) {
+	return true, nil
+}
+
+func (s *runtimeQueryStore) Application(context.Context, string) (model.Application, error) {
+	return s.application, nil
+}
+
+func (s *runtimeQueryStore) Version(context.Context, string) (model.Version, error) {
+	return model.Version{}, repository.ErrNotFound
+}
+
+func (s *runtimeQueryStore) VersionComponentsByVersion(context.Context, string) ([]model.VersionComponent, error) {
+	return nil, nil
+}
+
+func (s *runtimeQueryStore) Service(context.Context, string) (model.Service, error) {
+	return s.service, nil
+}
+
+func (s *runtimeQueryStore) ListServicesByApplication(context.Context, string) ([]model.Service, error) {
+	return []model.Service{s.service}, nil
+}
+
+func (s *runtimeQueryStore) ServiceComponentsByService(context.Context, string) ([]model.ServiceComponent, error) {
+	return nil, nil
+}
+
+func (s *runtimeQueryStore) UpdateServiceStatus(context.Context, string, string) error {
+	return nil
+}
+
+func (s *runtimeQueryStore) CreateDeployment(context.Context, model.Deployment) error {
+	return nil
+}
+
+func (s *runtimeQueryStore) HasActiveGatewayService(context.Context, string) (bool, error) {
+	return false, nil
+}
+
+func (s *runtimeQueryStore) ResolveActiveGatewayConfig(context.Context) (model.GatewayConfig, error) {
+	return model.GatewayConfig{}, repository.ErrNotFound
 }
 
 func TestApplyContainerComponentIds(t *testing.T) {

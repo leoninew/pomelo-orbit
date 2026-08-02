@@ -134,6 +134,16 @@ func (q *Queries) DeleteVersionComponentDevices(ctx context.Context, componentID
 	return err
 }
 
+const deleteVersionComponentEndpoints = `-- name: DeleteVersionComponentEndpoints :exec
+DELETE FROM version_component_endpoint
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentEndpoints(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentEndpoints, componentID)
+	return err
+}
+
 const deleteVersionComponentEnv = `-- name: DeleteVersionComponentEnv :exec
 DELETE FROM version_component_env
 WHERE component_id = ?
@@ -161,16 +171,6 @@ WHERE component_id = ?
 
 func (q *Queries) DeleteVersionComponentMounts(ctx context.Context, componentID string) error {
 	_, err := q.db.ExecContext(ctx, deleteVersionComponentMounts, componentID)
-	return err
-}
-
-const deleteVersionComponentPorts = `-- name: DeleteVersionComponentPorts :exec
-DELETE FROM version_component_port
-WHERE component_id = ?
-`
-
-func (q *Queries) DeleteVersionComponentPorts(ctx context.Context, componentID string) error {
-	_, err := q.db.ExecContext(ctx, deleteVersionComponentPorts, componentID)
 	return err
 }
 
@@ -293,6 +293,41 @@ func (q *Queries) InsertVersionComponentDevice(ctx context.Context, arg InsertVe
 	return err
 }
 
+const insertVersionComponentEndpoint = `-- name: InsertVersionComponentEndpoint :exec
+INSERT INTO version_component_endpoint (
+  component_id, name, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertVersionComponentEndpointParams struct {
+	ComponentID   string         `db:"component_id"`
+	Name          string         `db:"name"`
+	Protocol      string         `db:"protocol"`
+	ContainerPort int64          `db:"container_port"`
+	Mode          string         `db:"mode"`
+	BindAddress   sql.NullString `db:"bind_address"`
+	ListenPort    sql.NullInt64  `db:"listen_port"`
+	Entrypoint    sql.NullString `db:"entrypoint"`
+	PathPrefix    sql.NullString `db:"path_prefix"`
+	Position      int64          `db:"position"`
+}
+
+func (q *Queries) InsertVersionComponentEndpoint(ctx context.Context, arg InsertVersionComponentEndpointParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentEndpoint,
+		arg.ComponentID,
+		arg.Name,
+		arg.Protocol,
+		arg.ContainerPort,
+		arg.Mode,
+		arg.BindAddress,
+		arg.ListenPort,
+		arg.Entrypoint,
+		arg.PathPrefix,
+		arg.Position,
+	)
+	return err
+}
+
 const insertVersionComponentEnv = `-- name: InsertVersionComponentEnv :exec
 INSERT INTO version_component_env (component_id, env_key, value, position)
 VALUES (?, ?, ?, ?)
@@ -378,28 +413,6 @@ func (q *Queries) InsertVersionComponentMount(ctx context.Context, arg InsertVer
 		arg.Content,
 		arg.Mode,
 		arg.IgnoreIfExists,
-		arg.Position,
-	)
-	return err
-}
-
-const insertVersionComponentPort = `-- name: InsertVersionComponentPort :exec
-INSERT INTO version_component_port (component_id, host_port, container_port, position)
-VALUES (?, ?, ?, ?)
-`
-
-type InsertVersionComponentPortParams struct {
-	ComponentID   string `db:"component_id"`
-	HostPort      int64  `db:"host_port"`
-	ContainerPort int64  `db:"container_port"`
-	Position      int64  `db:"position"`
-}
-
-func (q *Queries) InsertVersionComponentPort(ctx context.Context, arg InsertVersionComponentPortParams) error {
-	_, err := q.db.ExecContext(ctx, insertVersionComponentPort,
-		arg.ComponentID,
-		arg.HostPort,
-		arg.ContainerPort,
 		arg.Position,
 	)
 	return err
@@ -817,6 +830,47 @@ func (q *Queries) VersionComponentDevicesByComponent(ctx context.Context, compon
 	return items, nil
 }
 
+const versionComponentEndpointsByComponent = `-- name: VersionComponentEndpointsByComponent :many
+SELECT component_id, name, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
+FROM version_component_endpoint
+WHERE component_id = ?
+ORDER BY position
+`
+
+func (q *Queries) VersionComponentEndpointsByComponent(ctx context.Context, componentID string) ([]VersionComponentEndpoint, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentEndpointsByComponent, componentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VersionComponentEndpoint
+	for rows.Next() {
+		var i VersionComponentEndpoint
+		if err := rows.Scan(
+			&i.ComponentID,
+			&i.Name,
+			&i.Protocol,
+			&i.ContainerPort,
+			&i.Mode,
+			&i.BindAddress,
+			&i.ListenPort,
+			&i.Entrypoint,
+			&i.PathPrefix,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const versionComponentEnvByComponent = `-- name: VersionComponentEnvByComponent :many
 SELECT component_id, env_key, value, position
 FROM version_component_env
@@ -882,15 +936,28 @@ WHERE component_id = ?
 ORDER BY position
 `
 
-func (q *Queries) VersionComponentMountsByComponent(ctx context.Context, componentID string) ([]VersionComponentMount, error) {
+type VersionComponentMountsByComponentRow struct {
+	ComponentID      string         `db:"component_id"`
+	SourceType       string         `db:"source_type"`
+	Source           string         `db:"source"`
+	Target           string         `db:"target"`
+	ReadOnly         int64          `db:"read_only"`
+	SourceIsHostPath int64          `db:"source_is_host_path"`
+	Content          sql.NullString `db:"content"`
+	Mode             string         `db:"mode"`
+	IgnoreIfExists   int64          `db:"ignore_if_exists"`
+	Position         int64          `db:"position"`
+}
+
+func (q *Queries) VersionComponentMountsByComponent(ctx context.Context, componentID string) ([]VersionComponentMountsByComponentRow, error) {
 	rows, err := q.db.QueryContext(ctx, versionComponentMountsByComponent, componentID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []VersionComponentMount
+	var items []VersionComponentMountsByComponentRow
 	for rows.Next() {
-		var i VersionComponentMount
+		var i VersionComponentMountsByComponentRow
 		if err := rows.Scan(
 			&i.ComponentID,
 			&i.SourceType,
@@ -901,41 +968,6 @@ func (q *Queries) VersionComponentMountsByComponent(ctx context.Context, compone
 			&i.Content,
 			&i.Mode,
 			&i.IgnoreIfExists,
-			&i.Position,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const versionComponentPortsByComponent = `-- name: VersionComponentPortsByComponent :many
-SELECT component_id, host_port, container_port, position
-FROM version_component_port
-WHERE component_id = ?
-ORDER BY position
-`
-
-func (q *Queries) VersionComponentPortsByComponent(ctx context.Context, componentID string) ([]VersionComponentPort, error) {
-	rows, err := q.db.QueryContext(ctx, versionComponentPortsByComponent, componentID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []VersionComponentPort
-	for rows.Next() {
-		var i VersionComponentPort
-		if err := rows.Scan(
-			&i.ComponentID,
-			&i.HostPort,
-			&i.ContainerPort,
 			&i.Position,
 		); err != nil {
 			return nil, err

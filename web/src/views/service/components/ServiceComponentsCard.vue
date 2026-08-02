@@ -27,12 +27,21 @@
               {{ component.image }}
             </td>
             <td>
-              <router-link
-                class="app-link"
-                :to="`/service/${service.id}/component/${component.id}`"
-              >
-                {{ t('common.edit') }}
-              </router-link>
+              <div class="flex items-center gap-3">
+                <router-link
+                  class="app-link"
+                  :to="`/service/${service.id}/component/${component.id}`"
+                >
+                  {{ t('common.edit') }}
+                </router-link>
+                <button
+                  class="app-link"
+                  type="button"
+                  @click="emit('view-logs', component.component_name)"
+                >
+                  {{ t('service.actions.logs') }}
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -47,6 +56,10 @@
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
 
   defineProps<{ service: ServiceResp }>();
+
+  const emit = defineEmits<{
+    'view-logs': [component: string];
+  }>();
 
   const { t } = useI18n();
 </script>

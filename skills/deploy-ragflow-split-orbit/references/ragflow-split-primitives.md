@@ -71,7 +71,7 @@ ES_USER=elastic
 TEI_BASE_URL=http://tei:80
 ```
 
-Replace a canonical hostname only after verifying the reused resource's external-network hostname and component contract. Never point at a localhost port, a public route, or the bundled RAGFlow Components.
+Replace an expected hostname only after verifying the reused resource's external-network hostname and component contract. Never point at a localhost port, a public route, or the bundled RAGFlow Components.
 
 ## Service Expose Primitive
 
@@ -93,10 +93,10 @@ TEI and every backing component must have no `local`, `host`, `gateway_http`, or
 discover:  orbit_list_projects -> orbit_list_applications -> orbit_get_application
            -> orbit_list_versions / orbit_get_version -> orbit_list_application_services
 preflight: runtime_doctor(network_name="traefik")
-write:     orbit_create_application -> orbit_create_version -> orbit_publish_version
+write:     orbit_create_application -> orbit_create_version
            -> orbit_create_service -> orbit_preview_service -> orbit_deploy
 verify:    orbit_wait_deployment -> runtime_compose_ps -> runtime_http_probe
            -> verify_deployment
 ```
 
-Inspect the write tool schema immediately before each write. Use `orbit_update_*` only to repair the matching canonical resource; do not mutate a merely similar Application. Sanitize all tool results before reporting them.
+Inspect the write tool schema immediately before each write. Use `orbit_update_*` only to repair the matching target resource; do not mutate a merely similar Application. Sanitize all tool results before reporting them.

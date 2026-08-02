@@ -21,7 +21,7 @@
     <AppSpinner v-if="loading" class="py-12" />
 
     <template v-else-if="detail && draft">
-      <section class="app-surface app-detail-card">
+      <section class="order-2 app-surface app-detail-card">
         <div class="app-section-header app-detail-section-header">
           <h2 class="app-detail-section-title">{{ t('environment.title') }}</h2>
         </div>
@@ -95,7 +95,7 @@
         </div>
       </section>
 
-      <section class="app-surface app-detail-card">
+      <section class="order-4 app-surface app-detail-card">
         <div class="app-section-header app-detail-section-header">
           <h2 class="app-detail-section-title">资源配额</h2>
           <button
@@ -179,7 +179,7 @@
         </div>
       </section>
 
-      <section class="app-surface app-detail-card">
+      <section class="order-1 app-surface app-detail-card">
         <div class="app-section-header app-detail-section-header">
           <h2 class="app-detail-section-title">Endpoint</h2>
         </div>
@@ -311,7 +311,7 @@
         </div>
       </section>
 
-      <section class="app-surface app-detail-card">
+      <section class="order-3 app-surface app-detail-card">
         <div class="app-section-header app-detail-section-header">
           <h2 class="app-detail-section-title">挂载</h2>
         </div>

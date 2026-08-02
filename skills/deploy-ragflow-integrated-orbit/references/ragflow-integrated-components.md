@@ -1,6 +1,6 @@
 # Integrated RAGFlow Component Mapping
 
-Use this mapping only for `ragflow-integrated-cpu` and `ragflow-integrated-gpu` in Application `ragflow`.
+Use this mapping only for `ragflow-integrated-cpu` and `ragflow-integrated-gpu` in Application `ragflow-integrated`.
 
 | Component | CPU / GPU mapping |
 | --- | --- |

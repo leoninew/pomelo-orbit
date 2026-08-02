@@ -52,7 +52,7 @@
       <AppSpinner v-if="loading" class="px-5 py-10" />
       <dl v-else-if="credential" class="app-detail-info-grid">
         <div class="flex gap-2">
-          <dt>凭据名称</dt>
+          <dt>名称</dt>
           <dd class="text-foreground">{{ credential.name }}</dd>
         </div>
         <div class="flex gap-2">
@@ -84,7 +84,7 @@
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label class="app-field-label block">
-            凭据名称
+            名称
             <span class="text-destructive">*</span>
           </label>
           <input

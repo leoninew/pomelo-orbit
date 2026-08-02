@@ -90,7 +90,7 @@
   }
 
   .app-section-header {
-    @apply border-b border-border px-6 py-5;
+    @apply min-h-[60px] border-b border-border px-6 py-3;
   }
 
   .app-detail-card {

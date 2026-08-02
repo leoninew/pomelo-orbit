@@ -1,0 +1,80 @@
+<template>
+  <section class="app-surface app-detail-card">
+    <div class="app-section-header app-detail-section-header">
+      <h2 class="app-detail-section-title">{{ t('application.detail.fields.components') }}</h2>
+      <button
+        v-if="editable"
+        class="app-button-primary h-9 px-3"
+        :disabled="disabled"
+        @click="emit('add')"
+      >
+        <Plus class="size-4" />
+        {{ t('common.add') }}
+      </button>
+    </div>
+    <AppEmptyState v-if="components.length === 0" size="compact" />
+    <div v-else class="overflow-x-auto">
+      <table class="app-data-table min-w-[840px]">
+        <thead>
+          <tr>
+            <th>{{ t('application.detail.fields.component') }}</th>
+            <th>{{ t('application.detail.fields.image') }}</th>
+            <th>{{ t('application.componentDetail.fields.pullPolicy') }}</th>
+            <th>{{ t('application.componentDetail.fields.restartPolicy') }}</th>
+            <th>{{ t('common.operation') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="component in components" :key="component.id">
+            <td>
+              <router-link :to="`/version/${versionId}/component/${component.id}`" class="app-link">
+                {{ component.name }}
+              </router-link>
+            </td>
+            <td class="max-w-md whitespace-normal break-all text-muted-foreground">
+              {{ component.image }}
+            </td>
+            <td class="text-muted-foreground">{{ component.pull_policy }}</td>
+            <td class="text-muted-foreground">{{ component.restart_policy }}</td>
+            <td>
+              <div v-if="editable" class="flex items-center gap-2">
+                <button class="app-link" :disabled="disabled" @click="emit('edit', component)">
+                  {{ t('common.edit') }}
+                </button>
+                <button
+                  class="app-link-danger"
+                  :disabled="disabled"
+                  @click="emit('delete', component)"
+                >
+                  {{ t('common.delete') }}
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</template>
+
+<script setup lang="ts">
+  import { Plus } from 'lucide-vue-next';
+  import { useI18n } from 'vue-i18n';
+  import AppEmptyState from '@/components/AppEmptyState.vue';
+  import type { VersionComponentResp } from '@/gen/proto/orbit/v1/application/version';
+
+  defineProps<{
+    versionId: string;
+    components: VersionComponentResp[];
+    editable: boolean;
+    disabled: boolean;
+  }>();
+
+  const emit = defineEmits<{
+    add: [];
+    edit: [component: VersionComponentResp];
+    delete: [component: VersionComponentResp];
+  }>();
+
+  const { t } = useI18n();
+</script>

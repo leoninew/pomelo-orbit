@@ -21,7 +21,7 @@
       <div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
         <p class="text-sm">{{ error || t('project.loadFailed') }}</p>
       </div>
-      <AppEmptyState v-else-if="filteredProjects.length === 0" :message="t('project.noProjects')" />
+      <AppEmptyState v-else-if="filteredProjects.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-data-table min-w-[900px]">
           <colgroup>

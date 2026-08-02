@@ -21,70 +21,20 @@
       </div>
     </div>
 
-    <div class="app-surface app-detail-card">
-      <div class="app-section-header app-detail-section-header">
-        <h2 class="app-detail-section-title">{{ t('roleManagement.basicInfo') }}</h2>
-        <button
-          v-if="role && canWriteRoles"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openEditModal"
-        >
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
-      </div>
-
-      <AppSpinner v-if="loading" class="px-5 py-10" />
-      <dl v-else-if="role" class="app-detail-info-grid">
-        <div class="flex gap-2">
-          <dt>{{ t('roleManagement.code') }}</dt>
-          <dd class="text-foreground">{{ role.code }}</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt>{{ t('common.name') }}</dt>
-          <dd class="text-foreground">{{ role.name }}</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt>{{ t('common.description') }}</dt>
-          <dd class="text-foreground">{{ role.description || '-' }}</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt>{{ t('common.createdAt') }}</dt>
-          <dd class="text-muted-foreground">{{ formatTime(role.created_at) }}</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt>{{ t('common.updatedAt') }}</dt>
-          <dd class="text-muted-foreground">{{ formatTime(role.updated_at) }}</dd>
-        </div>
-      </dl>
-    </div>
-
-    <div class="app-surface app-detail-card">
-      <div class="app-section-header app-detail-section-header">
-        <h2 class="app-detail-section-title">
-          {{ t('roleManagement.permissions') }}
-        </h2>
-        <button
-          v-if="role && canWriteRoles"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openPermissionModal"
-        >
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
-      </div>
-
-      <div class="px-5 py-4">
-        <div v-if="role && role.permission_codes.length > 0" class="flex flex-wrap gap-2">
-          <AppBadge v-for="code in role.permission_codes" :key="code">
-            {{ getPermissionName(code) }}
-          </AppBadge>
-        </div>
-        <p v-else class="text-sm text-muted-foreground">{{ t('common.noData') }}</p>
-      </div>
-    </div>
+    <RoleBasicInfoCard
+      :role="role"
+      :loading="loading"
+      :editable="canWriteRoles"
+      :disabled="operating"
+      @edit="openEditModal"
+    />
+    <RolePermissionsCard
+      :role="role"
+      :editable="canWriteRoles"
+      :disabled="operating"
+      :permission-name="getPermissionName"
+      @edit="openPermissionModal"
+    />
 
     <AppDialog
       v-model:open="isEditModalOpen"
@@ -215,21 +165,20 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Pencil, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { roleApi } from '@/api/role/role';
-  import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
   import type { PermissionResp, RoleResp } from '@/gen/proto/orbit/v1/role/role';
-  import { formatTime } from '@/utils/time';
+  import RoleBasicInfoCard from './components/RoleBasicInfoCard.vue';
+  import RolePermissionsCard from './components/RolePermissionsCard.vue';
 
   const props = defineProps<{ id: string }>();
   const { t } = useI18n();

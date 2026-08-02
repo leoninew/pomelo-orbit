@@ -78,7 +78,7 @@
     <div class="space-y-4">
       <div class="space-y-1.5">
         <label class="app-field-label block">
-          凭据名称
+          名称
           <span class="text-destructive">*</span>
         </label>
         <input
@@ -154,7 +154,7 @@
     <div class="space-y-4">
       <div class="space-y-1.5">
         <label class="app-field-label block">
-          凭据名称
+          名称
           <span class="text-destructive">*</span>
         </label>
         <input

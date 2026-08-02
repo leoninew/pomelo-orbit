@@ -105,16 +105,16 @@
       <div class="app-surface flex min-h-[360px] min-w-0 flex-1 flex-col app-detail-card">
         <TabsRoot default-value="operation" class="flex min-h-0 flex-1 flex-col">
           <div class="app-section-header shrink-0 app-detail-section-header">
-            <TabsList aria-label="日志类型" class="flex gap-1 border-b border-border">
+            <TabsList aria-label="日志类型" class="flex h-9 gap-1">
               <TabsTrigger
                 value="operation"
-                class="px-3 py-2 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
+                class="inline-flex h-9 items-center px-3 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
               >
                 操作日志
               </TabsTrigger>
               <TabsTrigger
                 value="container"
-                class="px-3 py-2 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
+                class="inline-flex h-9 items-center px-3 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
               >
                 容器日志
               </TabsTrigger>

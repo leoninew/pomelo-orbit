@@ -47,36 +47,8 @@
       <!-- Stage 快照 -->
       <div class="app-surface app-detail-card">
         <div class="app-section-header app-detail-section-header">
-          <div class="flex items-center gap-4">
-            <h2 class="app-detail-section-title">Stage 快照</h2>
-            <div
-              v-if="snapshot.stages_snapshot.length > 0"
-              class="flex gap-1 rounded-md border border-border bg-background p-1"
-            >
-              <button
-                class="rounded px-3 py-1 text-sm transition-colors"
-                :class="
-                  stagesView === 'list'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                "
-                @click="stagesView = 'list'"
-              >
-                列表
-              </button>
-              <button
-                class="rounded px-3 py-1 text-sm transition-colors"
-                :class="
-                  stagesView === 'dag'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                "
-                @click="stagesView = 'dag'"
-              >
-                DAG
-              </button>
-            </div>
-          </div>
+          <h2 class="app-detail-section-title">Stage 快照</h2>
+          <ViewModeToggle v-if="snapshot.stages_snapshot.length > 0" v-model="stagesView" />
         </div>
 
         <AppEmptyState v-if="snapshot.stages_snapshot.length === 0" size="compact" />
@@ -182,6 +154,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
+  import ViewModeToggle from '@/components/ViewModeToggle.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type {

@@ -46,103 +46,19 @@
       </div>
     </div>
 
-    <div class="app-surface app-detail-card">
-      <div class="app-section-header app-detail-section-header">
-        <h2 class="app-detail-section-title">{{ t('userManagement.basicInfo') }}</h2>
-        <button
-          v-if="user && canWriteUsers"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openEditModal"
-        >
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
-      </div>
-
-      <AppSpinner v-if="loading" class="px-5 py-10" />
-      <dl v-else-if="user" class="app-detail-info-grid">
-        <div class="flex gap-2">
-          <dt>{{ t('userManagement.username') }}</dt>
-          <dd class="text-foreground">{{ user.username }}</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt>{{ t('userManagement.email') }}</dt>
-          <dd class="text-foreground">{{ user.email || '-' }}</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt>{{ t('common.status') }}</dt>
-          <dd>
-            <AppBadge variant="status" :tone="user.status === 'enabled' ? 'success' : 'default'">
-              {{ user.status }}
-            </AppBadge>
-          </dd>
-        </div>
-        <div class="flex gap-2">
-          <dt>{{ t('userManagement.authSource') }}</dt>
-          <dd>
-            <AppBadge variant="pill">{{ user.auth_source }}</AppBadge>
-          </dd>
-        </div>
-        <div class="flex gap-2">
-          <dt>{{ t('common.createdAt') }}</dt>
-          <dd class="text-muted-foreground">{{ formatTime(user.created_at) }}</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt>{{ t('common.updatedAt') }}</dt>
-          <dd class="text-muted-foreground">{{ formatTime(user.updated_at) }}</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt>{{ t('userManagement.lastLoginAt') }}</dt>
-          <dd class="text-muted-foreground">
-            {{ user.last_login_at ? formatTime(user.last_login_at) : '-' }}
-          </dd>
-        </div>
-      </dl>
-    </div>
-
-    <div class="app-surface app-detail-card">
-      <div class="app-section-header app-detail-section-header">
-        <h2 class="app-detail-section-title">
-          {{ t('userManagement.rolesAndPermissions') }}
-        </h2>
-        <button
-          v-if="user && canAssignRoles"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openRoleModal"
-        >
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
-      </div>
-
-      <div v-if="user && user.role_items.length > 0" class="px-5 py-4">
-        <TabsRoot :default-value="user.role_items[0]?.id">
-          <TabsList class="flex gap-1 border-b border-border">
-            <TabsTrigger
-              v-for="role in user.role_items"
-              :key="role.id"
-              :value="role.id"
-              class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
-            >
-              {{ role.name }}
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent v-for="role in user.role_items" :key="role.id" :value="role.id" class="pt-4">
-            <div v-if="role.permission_codes.length > 0" class="flex flex-wrap gap-2">
-              <AppBadge v-for="permission in role.permission_codes" :key="permission">
-                {{ permission }}
-              </AppBadge>
-            </div>
-            <p v-else class="text-sm text-muted-foreground">{{ t('common.noData') }}</p>
-          </TabsContent>
-        </TabsRoot>
-      </div>
-      <div v-else class="px-5 py-4">
-        <p class="text-sm text-muted-foreground">{{ t('common.noData') }}</p>
-      </div>
-    </div>
+    <UserBasicInfoCard
+      :user="user"
+      :loading="loading"
+      :editable="canWriteUsers"
+      :disabled="operating"
+      @edit="openEditModal"
+    />
+    <UserRolesCard
+      :user="user"
+      :editable="canAssignRoles"
+      :disabled="operating"
+      @edit="openRoleModal"
+    />
 
     <AppDialog
       v-model:open="isEditModalOpen"
@@ -294,9 +210,8 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Ban, CheckCircle, Pencil, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Ban, CheckCircle, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
-  import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { roleApi } from '@/api/role/role';
@@ -305,7 +220,6 @@
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -313,7 +227,8 @@
   import { PERMISSIONS } from '@/constants/permissions';
   import type { RoleResp } from '@/gen/proto/orbit/v1/role/role';
   import type { UserResp } from '@/gen/proto/orbit/v1/user/user';
-  import { formatTime } from '@/utils/time';
+  import UserBasicInfoCard from './components/UserBasicInfoCard.vue';
+  import UserRolesCard from './components/UserRolesCard.vue';
 
   const props = defineProps<{ id: string }>();
   const { t } = useI18n();

@@ -29,13 +29,12 @@ type Service struct {
 	application applicationReader
 	service     serviceStore
 	deployment  repository.DeploymentStore
-	gateway     repository.GatewayStore
 }
 
 var serviceEnvironmentKey = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
-func New(project repository.ProjectReader, application applicationReader, service serviceStore, deployment repository.DeploymentStore, gateway repository.GatewayStore) Service {
-	return Service{project: project, application: application, service: service, deployment: deployment, gateway: gateway}
+func New(project repository.ProjectReader, application applicationReader, service serviceStore, deployment repository.DeploymentStore) Service {
+	return Service{project: project, application: application, service: service, deployment: deployment}
 }
 
 func (s Service) DeleteService(ctx context.Context, userId, serviceId string) error {
@@ -453,18 +452,6 @@ func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (s
 		view.PendingDeploy = true
 		return view, nil
 	}
-	if s.gateway != nil && (app.Kind == status.ApplicationKindGateway || planHasGatewayEndpoint(plan)) {
-		var cfg model.GatewayConfig
-		if app.Kind == status.ApplicationKindGateway {
-			cfg, err = s.gateway.GatewayConfig(ctx, app.Id)
-		} else {
-			cfg, err = s.gateway.ResolveActiveGatewayConfig(ctx)
-		}
-		if err != nil {
-			return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway plan context", err)
-		}
-		plan.Gateway = &cfg
-	}
 	hash, err := deploymentsvc.EffectiveServicePlanHash(plan)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to hash service plan", err)
@@ -478,16 +465,6 @@ func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (s
 	return view, nil
 }
 
-func planHasGatewayEndpoint(plan model.EffectiveServicePlan) bool {
-	for _, component := range plan.Components {
-		for _, endpoint := range component.Endpoints {
-			if endpoint.Mode == "gateway_http" || endpoint.Mode == "gateway_tcp" {
-				return true
-			}
-		}
-	}
-	return false
-}
 func (s Service) serviceForUser(ctx context.Context, userID, serviceID string) (model.Service, error) {
 	svc, err := s.service.Service(ctx, strings.TrimSpace(serviceID))
 	if err != nil {

@@ -103,6 +103,31 @@ func TestServiceViewPendingDeployComparesEffectivePlanHash(t *testing.T) {
 	}
 }
 
+func TestServiceViewWithGatewayEndpointDoesNotRequireGateway(t *testing.T) {
+	service, app, version, declaration, component := serviceViewFixture()
+	declaration.Endpoints = []model.VersionComponentEndpoint{{Name: "http", Protocol: "http", ContainerPort: 80, Mode: "gateway_http"}}
+	_, hash, err := buildFixturePlan(app, version, service, declaration, component)
+	if err != nil {
+		t.Fatalf("build fixture plan: %v", err)
+	}
+	usecase := Service{
+		application: serviceApplicationFake{app: app, version: version, declarations: []model.VersionComponent{declaration}},
+		service:     serviceStoreFake{components: []model.ServiceComponent{component}},
+		deployment:  deploymentStoreFake{planHash: &hash},
+	}
+
+	view, err := usecase.serviceView(context.Background(), model.ServiceListItem{
+		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
+		Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
+	})
+	if err != nil {
+		t.Fatalf("service view must not require a gateway: %v", err)
+	}
+	if view.EffectivePlanHash != hash || view.PendingDeploy {
+		t.Fatalf("service view = %#v, want hash %q and pending=false", view, hash)
+	}
+}
+
 func TestGetServiceComponentReturnsDeclarationOverlayAndEffectiveValues(t *testing.T) {
 	service, app, version, declaration, component := serviceViewFixture()
 	usecase := Service{

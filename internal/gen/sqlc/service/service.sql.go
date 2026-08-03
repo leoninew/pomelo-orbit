@@ -360,7 +360,7 @@ WHERE a.project_id = ?
   AND (? = '' OR s.application_id = ?)
   AND (? = '' OR s.status = ?)
   AND (? = '' OR a.name LIKE ? OR a.code LIKE ? OR s.instance_key LIKE ? OR v.label LIKE ?)
-ORDER BY s.updated_at DESC, a.name, s.instance_key
+ORDER BY s.created_at DESC, a.name, s.instance_key
 LIMIT ? OFFSET ?
 `
 

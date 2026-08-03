@@ -78,8 +78,8 @@ type Deployment struct {
 	VersionID                sql.NullString `db:"version_id"`
 	ServiceID                sql.NullString `db:"service_id"`
 	OptionsJson              sql.NullString `db:"options_json"`
-	CommandText              string         `db:"command_text"`
 	EffectivePlanHash        sql.NullString `db:"effective_plan_hash"`
+	CommandText              string         `db:"command_text"`
 }
 
 type GatewayConfig struct {

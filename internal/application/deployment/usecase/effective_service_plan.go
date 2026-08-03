@@ -290,8 +290,9 @@ func cloneInt(value *int) *int {
 	return &copy
 }
 
-// EffectiveServicePlanHash excludes identifiers and timestamps so it describes
-// deployable intent rather than the persistence history that produced it.
+// EffectiveServicePlanHash excludes identifiers, timestamps, and gateway
+// configuration so it describes service configuration rather than persistence
+// history or shared gateway state.
 func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 	type fingerprintComponent struct {
 		Name          string
@@ -309,19 +310,12 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 		Devices       []model.VersionComponentDeviceRequest
 		Endpoints     []model.VersionComponentEndpoint
 	}
-	type gatewayFingerprint struct {
-		RestAPIURL        string
-		BaseDomain        string
-		DefaultEntrypoint string
-		TLSMode           string
-	}
 	type fingerprint struct {
 		AppCode      string
 		AppKind      string
 		VersionLabel string
 		InstanceKey  string
 		Components   []fingerprintComponent
-		Gateway      *gatewayFingerprint
 	}
 	components := make([]fingerprintComponent, 0, len(plan.Components))
 	for _, component := range plan.Components {
@@ -329,9 +323,6 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 	}
 	sort.Slice(components, func(i, j int) bool { return components[i].Name < components[j].Name })
 	data := fingerprint{AppCode: plan.Application.Code, AppKind: plan.Application.Kind, VersionLabel: plan.Version.Label, InstanceKey: plan.Service.InstanceKey, Components: components}
-	if plan.Gateway != nil {
-		data.Gateway = &gatewayFingerprint{RestAPIURL: plan.Gateway.RestApiUrl, BaseDomain: plan.Gateway.BaseDomain, DefaultEntrypoint: plan.Gateway.DefaultEntrypoint, TLSMode: plan.Gateway.TLSMode}
-	}
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return "", fmt.Errorf("encode effective service plan: %w", err)

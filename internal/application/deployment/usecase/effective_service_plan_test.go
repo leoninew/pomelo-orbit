@@ -59,6 +59,30 @@ func TestBuildEffectiveServicePlanMergesSparseOverrides(t *testing.T) {
 	}
 }
 
+func TestEffectiveServicePlanHashExcludesGatewayConfiguration(t *testing.T) {
+	plan := model.EffectiveServicePlan{
+		Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
+		Version:     model.Version{Label: "v1"},
+		Service:     model.Service{InstanceKey: "default"},
+		Components: []model.EffectiveServiceComponent{{
+			Name: "web", Image: "nginx:latest",
+			Endpoints: []model.VersionComponentEndpoint{{Name: "http", Protocol: "http", ContainerPort: 80, Mode: "gateway_http"}},
+		}},
+	}
+	withoutGateway, err := EffectiveServicePlanHash(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan.Gateway = &model.GatewayConfig{RestApiUrl: "http://127.0.0.1:8080", BaseDomain: "example.com", DefaultEntrypoint: "websecure", TLSMode: "letsencrypt"}
+	withGateway, err := EffectiveServicePlanHash(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withGateway != withoutGateway {
+		t.Fatalf("gateway configuration changed plan hash: without=%s with=%s", withoutGateway, withGateway)
+	}
+}
+
 func TestBuildVersionPreviewPlanUsesVersionDeclarations(t *testing.T) {
 	listenPort := 8080
 	app := model.Application{Id: "app-1", Code: "demo", Kind: status.ApplicationKindStandard}

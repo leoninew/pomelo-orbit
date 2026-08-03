@@ -25,4 +25,4 @@ Read [shared initialization inventory](../ragflow-orbit-inventory.md), [integrat
 
 ## Completion
 
-Keep TEI and all backing Components internal. The only expose is `127.0.0.1:9380 -> ragflow-cpu:80`. After health is confirmed, create the HuggingFace embedding provider manually in the RAGFlow UI with `tei-bge-m3`, `BAAI/bge-m3`, `http://tei:80`, and `8192`.
+Keep TEI and all backing Components internal. Expose `ragflow-cpu:80` only as `gateway_http` through the Gateway `web` entrypoint; do not add a local or host mapping. After health is confirmed, create the HuggingFace embedding provider manually in the RAGFlow UI with `ragflow-split-tei`, `BAAI/bge-m3`, `http://ragflow-split-tei:80`, and `8192`.

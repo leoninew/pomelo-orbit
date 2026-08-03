@@ -58,6 +58,6 @@ Use a read-only NVIDIA check before profile selection. If NVIDIA is unavailable,
 - `deploy-ragflow-integrated-orbit` deploys only `ragflow-integrated/default` with `ragflow-integrated-{cpu,gpu}`. It stops `ragflow-split/default` first; split backing Services may remain running.
 - `deploy-ragflow-split-orbit` deploys all four split backing Services, waits for their health, stops `ragflow-integrated/default`, then deploys only `ragflow-split/default` with `ragflow-split-{cpu,gpu}`.
 
-Both RAGFlow Services expose `127.0.0.1:9380`, so only one may run. Before deployment, stop the other RAGFlow Service through Orbit with `remove_volumes=false`; do not stop or remove its backing data. Split backing Services may remain running while integrated RAGFlow is selected.
+Both RAGFlow Services expose `ragflow-cpu:80` through `gateway_http`, so only one may run. Before deployment, stop the other RAGFlow Service through Orbit with `remove_volumes=false`; do not stop or remove its backing data. Split backing Services may remain running while integrated RAGFlow is selected. The managed Traefik API is initialized as `http` local `127.0.0.1:8080`; use `http://127.0.0.1:8080/dashboard/` after Gateway deployment.
 
 Before every `pomelo_delivery` lifecycle write, inspect the live tool schema. Use only the delivery MCP for lifecycle changes and sanitize result summaries before reporting them.

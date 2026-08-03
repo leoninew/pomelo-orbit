@@ -80,12 +80,12 @@ Replace an expected hostname only after verifying the reused resource's external
   "component_name": "ragflow-cpu",
   "protocol": "http",
   "container_port": 80,
-  "access": "local",
-  "listen_port": 9380
+  "access": "gateway_http",
+  "entrypoint": "web"
 }
 ```
 
-TEI and every backing component must have no `local`, `host`, `gateway_http`, or `gateway_tcp` endpoint. An `internal` declaration is allowed (the current Valkey baseline declares internal TCP `6379`) and must never create a host mapping or public route. Do not add a route for a data service.
+TEI and every backing component must have no `local`, `host`, `gateway_http`, or `gateway_tcp` endpoint. An `internal` TCP `6379` declaration is allowed and must never create a host mapping or public route. Do not add a route for a data service.
 
 ## MCP Workflow Primitive
 

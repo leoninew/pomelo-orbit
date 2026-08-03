@@ -1,0 +1,42 @@
+package gatewaysvc
+
+import (
+	"testing"
+
+	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+)
+
+func TestBuildManagedGatewayComponentExposesDashboardAPIOnLoopback(t *testing.T) {
+	component, err := buildManagedGatewayComponent(
+		model.GatewayConfig{},
+		[]model.VersionComponent{{
+			Id:    "traefik-component",
+			Name:  gatewayManagedComponentName,
+			Image: "traefik:3.6",
+		}},
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("build managed gateway component: %v", err)
+	}
+
+	var api *model.VersionComponentEndpoint
+	for index := range component.Endpoints {
+		if component.Endpoints[index].Name == "api" {
+			api = &component.Endpoints[index]
+			break
+		}
+	}
+	if api == nil {
+		t.Fatal("managed gateway does not declare an API endpoint")
+	}
+	if api.Protocol != "http" || api.ContainerPort != 8080 || api.Mode != "local" {
+		t.Fatalf("unexpected API endpoint: %#v", *api)
+	}
+	if api.BindAddress == nil || *api.BindAddress != "127.0.0.1" {
+		t.Fatalf("API endpoint must bind loopback, got %#v", api.BindAddress)
+	}
+	if api.ListenPort == nil || *api.ListenPort != 8080 {
+		t.Fatalf("API endpoint must listen on 8080, got %#v", api.ListenPort)
+	}
+}

@@ -92,7 +92,7 @@ func buildManagedGatewayComponent(cfg model.GatewayConfig, existing []model.Vers
 	endpoints := []model.VersionComponentEndpoint{
 		{Name: "web", Protocol: "tcp", ContainerPort: 80, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(80)},
 		{Name: "websecure", Protocol: "tcp", ContainerPort: 443, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(443)},
-		{Name: "api", Protocol: "tcp", ContainerPort: 8080, Mode: "internal"},
+		{Name: "api", Protocol: "http", ContainerPort: 8080, Mode: "local", BindAddress: stringRef("127.0.0.1"), ListenPort: intRef(8080)},
 	}
 	for _, listen := range tcpListens {
 		endpoints = append(endpoints, model.VersionComponentEndpoint{Name: tcpEntrypointName(listen), Protocol: "tcp", ContainerPort: listen, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(listen)})

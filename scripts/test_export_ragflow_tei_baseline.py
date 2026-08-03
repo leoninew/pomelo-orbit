@@ -29,6 +29,7 @@ CREATE TABLE version_component_tmpfs (component_id TEXT NOT NULL, position INTEG
 CREATE TABLE version_component_ulimit (component_id TEXT NOT NULL, name TEXT NOT NULL, soft INTEGER NOT NULL);
 CREATE TABLE version_component_device (component_id TEXT NOT NULL, position INTEGER NOT NULL, driver TEXT NOT NULL, device_count TEXT NOT NULL, capabilities_json TEXT NOT NULL);
 CREATE TABLE service (id TEXT PRIMARY KEY, application_id TEXT NOT NULL, instance_key TEXT NOT NULL, version_id TEXT NOT NULL, status TEXT NOT NULL);
+CREATE TABLE service_env (service_id TEXT NOT NULL, env_key TEXT NOT NULL, value TEXT NOT NULL);
 CREATE TABLE service_component (id TEXT PRIMARY KEY, service_id TEXT NOT NULL, source_version_component_id TEXT NOT NULL, component_name TEXT NOT NULL, status TEXT NOT NULL);
 CREATE TABLE service_component_env (service_component_id TEXT NOT NULL, env_key TEXT NOT NULL, value TEXT, state TEXT NOT NULL);
 CREATE TABLE service_component_mount (id TEXT PRIMARY KEY, service_component_id TEXT NOT NULL, target TEXT NOT NULL, source TEXT, state TEXT NOT NULL);
@@ -49,10 +50,16 @@ def connect(path: Path) -> sqlite3.Connection:
 
 class BaselineExportTests(unittest.TestCase):
     def populate(self, connection: sqlite3.Connection) -> None:
-        connection.execute("INSERT INTO project VALUES ('project', 'Project')")
         connection.executemany(
-            "INSERT INTO application VALUES (?, 'project', ?, ?, ?)",
-            (("gateway", "traefik", "Gateway", "gateway"), ("ragflow", "ragflow", "RAGFlow", "standard")),
+            "INSERT INTO project VALUES (?, ?)",
+            (("project", "Project"), ("gateway-project", "Gateway Project")),
+        )
+        connection.executemany(
+            "INSERT INTO application VALUES (?, ?, ?, ?, ?)",
+            (
+                ("gateway", "gateway-project", "traefik", "Gateway", "gateway"),
+                ("ragflow", "project", "ragflow", "RAGFlow", "standard"),
+            ),
         )
         connection.execute("INSERT INTO gateway_config VALUES ('gateway', 'http://127.0.0.1:8080', 'example.test', 'web', 'none')")
         connection.executemany(
@@ -99,6 +106,10 @@ class BaselineExportTests(unittest.TestCase):
                 ("ragflow-service", "ragflow", "version-a", "running"),
             ),
         )
+        connection.executemany(
+            "INSERT INTO service_env VALUES (?, ?, ?)",
+            (("gateway-service", "GATEWAY_VALUE", "gateway-value"), ("ragflow-service", "RUNTIME_VALUE", "runtime-value")),
+        )
         service_components = [("gateway-component", "gateway-service", "gateway-traefik", "traefik", "active")]
         service_components.extend(
             (
@@ -138,7 +149,7 @@ class BaselineExportTests(unittest.TestCase):
                 rendered = exporter.render_sql(connection, exporter.selected_baseline(connection, args))
             finally:
                 connection.close()
-            exporter.write_output(output, rendered, replace=False)
+            exporter.write_output(output, rendered)
 
             restored_path = root / "restored.db"
             restored = connect(restored_path)
@@ -146,7 +157,16 @@ class BaselineExportTests(unittest.TestCase):
                 restored.execute("INSERT INTO project VALUES ('project', 'Project')")
                 restored.executescript(rendered)
                 self.assertEqual(restored.execute("SELECT COUNT(*) FROM project").fetchone()[0], 1)
+                self.assertNotIn("gateway_config", rendered)
+                self.assertNotIn("'gateway'", rendered)
+                self.assertNotIn("gateway-project", rendered)
                 self.assertIn("exported-value", rendered)
+                self.assertEqual(restored.execute("SELECT COUNT(*) FROM gateway_config").fetchone()[0], 0)
+                self.assertEqual(restored.execute("SELECT COUNT(*) FROM application WHERE kind = 'gateway'").fetchone()[0], 0)
+                self.assertEqual(
+                    restored.execute("SELECT env_key, value FROM service_env").fetchall(),
+                    [("RUNTIME_VALUE", "runtime-value")],
+                )
                 self.assertEqual(restored.execute("SELECT COUNT(*) FROM service_component_env").fetchone()[0], 1)
                 self.assertEqual(
                     restored.execute(
@@ -190,13 +210,11 @@ class BaselineExportTests(unittest.TestCase):
             finally:
                 source.close()
 
-    def test_existing_output_requires_explicit_replace(self) -> None:
+    def test_existing_output_is_replaced_by_default(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "baseline.sql"
             output.write_text("previous", encoding="utf-8")
-            with self.assertRaisesRegex(exporter.ExportError, "refusing to overwrite"):
-                exporter.write_output(output, "next", replace=False)
-            exporter.write_output(output, "next", replace=True)
+            exporter.write_output(output, "next")
             self.assertEqual(output.read_text(encoding="utf-8"), "next")
 
 

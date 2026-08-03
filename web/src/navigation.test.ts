@@ -5,18 +5,18 @@ describe('domain navigation declarations', () => {
   it('keeps primary navigation scoped to continuous integration, deployment, and system management', () => {
     expect(primaryNavigation).toEqual([
       expect.objectContaining({ key: 'pipeline', path: '/repository' }),
-      expect.objectContaining({ key: 'deployment', path: '/gateways' }),
+      expect.objectContaining({ key: 'deployment', path: '/applications' }),
       expect.objectContaining({
         key: 'settings',
         labelKey: 'nav.systemManagement',
-        path: '/users',
+        path: '/projects',
       }),
     ]);
   });
 
   it.each([
     ['/', 'home'],
-    ['/projects', 'home'],
+    ['/projects', 'settings'],
     ['/users', 'settings'],
     ['/settings', 'settings'],
     ['/pipeline/template', 'pipeline'],
@@ -49,22 +49,21 @@ describe('domain navigation declarations', () => {
     ]);
   });
 
-  it('groups continuous deployment entries into runtime and workload', () => {
+  it('groups continuous deployment entries into delivery and ingress flows', () => {
     expect(secondaryNavigation.deployment).toEqual([
       expect.objectContaining({
-        key: 'runtime',
+        key: 'delivery',
         children: [
-          expect.objectContaining({ key: 'gateways', path: '/gateways' }),
+          expect.objectContaining({ key: 'applications', path: '/applications' }),
           expect.objectContaining({ key: 'services', path: '/services' }),
-          expect.objectContaining({ key: 'route', path: '/routes' }),
-          expect.objectContaining({ key: 'traefik-http-routers', path: '/route/traefik' }),
+          expect.objectContaining({ key: 'deployments', path: '/deployments' }),
         ],
       }),
       expect.objectContaining({
-        key: 'workload',
+        key: 'ingress',
         children: [
-          expect.objectContaining({ key: 'applications', path: '/applications' }),
-          expect.objectContaining({ key: 'deployments', path: '/deployments' }),
+          expect.objectContaining({ key: 'gateways', path: '/gateways' }),
+          expect.objectContaining({ key: 'route', path: '/routes' }),
         ],
       }),
     ]);
@@ -75,6 +74,7 @@ describe('domain navigation declarations', () => {
       expect.objectContaining({
         key: 'admin',
         children: [
+          expect.objectContaining({ key: 'projects', path: '/projects' }),
           expect.objectContaining({ key: 'users', path: '/users' }),
           expect.objectContaining({ key: 'roles', path: '/roles' }),
           expect.objectContaining({ key: 'loginhistory', path: '/login-history' }),

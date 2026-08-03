@@ -105,7 +105,6 @@ export default {
     gateways: 'Gateways',
     deployments: 'Deployments',
     routes: 'Routes',
-    traefikRoutes: 'Traefik Routers',
     repositories: 'Repository',
     buildStages: 'Stages',
     pipelineTemplates: 'Templates',
@@ -115,8 +114,8 @@ export default {
     groups: {
       workspace: 'Workspace',
       admin: 'Administration',
-      workload: 'Workload',
-      runtime: 'Runtime',
+      delivery: 'Application Delivery',
+      ingress: 'Network Access',
       code: 'Code',
       pipeline: 'Pipeline',
     },
@@ -828,9 +827,13 @@ export default {
   },
   route: {
     toolbar: 'Route toolbar',
+    sections: {
+      traefikRouters: 'Traefik Routers',
+      customConfiguration: 'Custom Route Configuration',
+    },
     searchPlaceholder: 'Search name/domain/target URL',
     addRoute: 'Add Route',
-    syncAll: 'Sync All',
+    syncAll: 'Sync',
     syncSuccess: 'Synced successfully',
     syncFailed: 'Failed to sync',
     detailTitle: 'Route Details',

@@ -55,13 +55,7 @@ const homeNavigation: NavigationBranch[] = [
     labelKey: 'nav.groups.workspace',
     icon: LayoutGrid,
     children: [
-      { key: 'home', label: '项目概述', labelKey: 'nav.home', path: '/' },
-      {
-        key: 'projects',
-        label: '项目管理',
-        labelKey: 'nav.projects',
-        path: '/projects',
-      },
+      { key: 'home', label: '概述', labelKey: 'nav.home', path: '/' },
     ],
   },
 ];
@@ -72,6 +66,12 @@ const settingsNavigation: NavigationBranch[] = [
     labelKey: 'nav.groups.admin',
     icon: Wrench,
     children: [
+      {
+        key: 'projects',
+        label: '项目',
+        labelKey: 'nav.projects',
+        path: '/projects',
+      },
       {
         key: 'users',
         label: '用户',
@@ -106,39 +106,8 @@ const settingsNavigation: NavigationBranch[] = [
 
 const deploymentNavigation: NavigationBranch[] = [
   {
-    key: 'runtime',
-    labelKey: 'nav.groups.runtime',
-    icon: Network,
-    children: [
-      {
-        key: 'gateways',
-        label: '网关',
-        labelKey: 'nav.gateways',
-        path: '/gateways',
-      },
-      {
-        key: 'services',
-        label: '服务',
-        labelKey: 'nav.services',
-        path: '/services',
-      },
-      {
-        key: 'route',
-        label: '路由配置',
-        labelKey: 'nav.routes',
-        path: '/routes',
-      },
-      {
-        key: 'traefik-http-routers',
-        label: 'Traefik Routers',
-        labelKey: 'nav.traefikRoutes',
-        path: '/route/traefik',
-      },
-    ],
-  },
-  {
-    key: 'workload',
-    labelKey: 'nav.groups.workload',
+    key: 'delivery',
+    labelKey: 'nav.groups.delivery',
     icon: Layers,
     children: [
       {
@@ -148,10 +117,35 @@ const deploymentNavigation: NavigationBranch[] = [
         path: '/applications',
       },
       {
+        key: 'services',
+        label: '服务',
+        labelKey: 'nav.services',
+        path: '/services',
+      },
+      {
         key: 'deployments',
-        label: '部署记录',
+        label: '部署',
         labelKey: 'nav.deployments',
         path: '/deployments',
+      },
+    ],
+  },
+  {
+    key: 'ingress',
+    labelKey: 'nav.groups.ingress',
+    icon: Network,
+    children: [
+      {
+        key: 'gateways',
+        label: '网关',
+        labelKey: 'nav.gateways',
+        path: '/gateways',
+      },
+      {
+        key: 'route',
+        label: '路由',
+        labelKey: 'nav.routes',
+        path: '/routes',
       },
     ],
   },
@@ -288,9 +282,7 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path === '/login-history' ||
     path === '/settings'
   ) {
-    return path === '/' || path === '/home' || path === '/projects' || path.startsWith('/project/')
-      ? 'home'
-      : 'settings';
+    return path === '/' || path === '/home' ? 'home' : 'settings';
   }
   if (
     path === '/pipeline' ||

@@ -1,0 +1,410 @@
+{
+  "schema_version": 1,
+  "contract_path": "scripts/ragflow-split/deployment-contract.json",
+  "primitive_path": "skills/deploy-ragflow-split-orbit/references/ragflow-split-primitives.md",
+  "primitive_title": "RAGFlow Split Deployment Primitives",
+  "primitive_description": "Use this reference before a split RAGFlow `pomelo_delivery` write. The contract is the only hand-maintained source for split topology configuration.",
+  "network": {
+    "name": "traefik",
+    "external": true
+  },
+  "compose_header": [
+    "Alternate split deployment mode: deploy only when five independent Applications are requested.",
+    "TEI is part of the RAGFlow Application rather than a sixth independent Application.",
+    "Do not combine with scripts/ragflow-bundled/docker-compose.yml."
+  ],
+  "model_cache_paths": [
+    "data/deployment/ragflow-integrated/default/tei/cache/bge-m3",
+    "data/deployment/ragflow-split/default/tei/cache/bge-m3"
+  ],
+  "runtime_config": {
+    "name": "RagflowRuntimeConfig",
+    "keys": [
+      "MYSQL_PASSWORD",
+      "REDIS_PASSWORD",
+      "MINIO_USER",
+      "MINIO_PASSWORD",
+      "ELASTIC_PASSWORD"
+    ],
+    "assignments": [
+      {
+        "component": "mysql",
+        "keys": ["MYSQL_PASSWORD"]
+      },
+      {
+        "component": "redis",
+        "keys": ["REDIS_PASSWORD"]
+      },
+      {
+        "component": "minio",
+        "keys": ["MINIO_USER", "MINIO_PASSWORD"]
+      },
+      {
+        "component": "es01",
+        "keys": ["ELASTIC_PASSWORD"]
+      },
+      {
+        "component": "ragflow-cpu",
+        "keys": [
+          "MYSQL_PASSWORD",
+          "REDIS_PASSWORD",
+          "MINIO_USER",
+          "MINIO_PASSWORD",
+          "ELASTIC_PASSWORD"
+        ]
+      }
+    ]
+  },
+  "applications": [
+    {
+      "code": "ragflow-split",
+      "service": "default",
+      "versions": [
+        {
+          "role": "RAGFlow CPU",
+          "label": "ragflow-split-cpu",
+          "components": ["tei", "ragflow-cpu"],
+          "hostname_component": "ragflow-cpu"
+        },
+        {
+          "role": "RAGFlow GPU",
+          "label": "ragflow-split-gpu",
+          "components": ["tei", "ragflow-cpu"],
+          "hostname_component": "ragflow-cpu"
+        }
+      ]
+    },
+    {
+      "code": "ragflow-mysql",
+      "service": "default",
+      "versions": [
+        {
+          "role": "MySQL",
+          "label": "mysql-8",
+          "components": ["mysql"],
+          "hostname_component": "mysql"
+        }
+      ]
+    },
+    {
+      "code": "ragflow-redis",
+      "service": "default",
+      "versions": [
+        {
+          "role": "Valkey",
+          "label": "valkey-8",
+          "components": ["redis"],
+          "hostname_component": "redis"
+        }
+      ]
+    },
+    {
+      "code": "ragflow-minio",
+      "service": "default",
+      "versions": [
+        {
+          "role": "MinIO",
+          "label": "minio",
+          "components": ["minio"],
+          "hostname_component": "minio"
+        }
+      ]
+    },
+    {
+      "code": "ragflow-elasticsearch",
+      "service": "default",
+      "versions": [
+        {
+          "role": "Elasticsearch",
+          "label": "elasticsearch-8",
+          "components": ["es01"],
+          "hostname_component": "es01"
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "name": "mysql",
+      "application": "ragflow-mysql",
+      "compose_file": "scripts/ragflow-split/docker-compose.mysql.yml",
+      "service_name": "mysql",
+      "image": "mysql:8.0.39",
+      "command": [
+        "--max_connections=1000",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+        "--default-authentication-plugin=mysql_native_password",
+        "--tls_version=TLSv1.2,TLSv1.3",
+        "--binlog_expire_logs_seconds=604800"
+      ],
+      "environment": [
+        {"key": "MYSQL_DATABASE", "value": "rag_flow"},
+        {"key": "MYSQL_ROOT_HOST", "value": "%"},
+        {"key": "MYSQL_ROOT_PASSWORD", "runtime_key": "MYSQL_PASSWORD"}
+      ],
+      "mounts": [
+        {
+          "type": "volume",
+          "source": "mysql_data",
+          "target": "/var/lib/mysql",
+          "logical_source": "mysql_data"
+        }
+      ],
+      "network_alias": "ragflow-mysql-mysql",
+      "healthcheck": {
+        "test": ["CMD-SHELL", "mysqladmin ping -uroot -p\"$${MYSQL_ROOT_PASSWORD}\""],
+        "interval": "10s",
+        "timeout": "10s",
+        "retries": 120
+      },
+      "endpoints": [
+        {"name": "mysql", "protocol": "tcp", "container_port": 3306, "mode": "internal"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "redis",
+      "application": "ragflow-redis",
+      "compose_file": "scripts/ragflow-split/docker-compose.redis.yml",
+      "service_name": "redis",
+      "image": "valkey/valkey:8",
+      "command": [
+        "sh",
+        "-c",
+        "exec redis-server --requirepass \"$${REDIS_PASSWORD}\" --maxmemory 128mb --maxmemory-policy allkeys-lru"
+      ],
+      "environment": [
+        {"key": "REDIS_PASSWORD", "runtime_key": "REDIS_PASSWORD"}
+      ],
+      "mounts": [
+        {
+          "type": "volume",
+          "source": "redis_data",
+          "target": "/data",
+          "logical_source": "redis_data"
+        }
+      ],
+      "network_alias": "ragflow-redis-redis",
+      "healthcheck": {
+        "test": ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping"],
+        "interval": "10s",
+        "timeout": "10s",
+        "retries": 120
+      },
+      "endpoints": [
+        {"name": "redis", "protocol": "tcp", "container_port": 6379, "mode": "internal"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "minio",
+      "application": "ragflow-minio",
+      "compose_file": "scripts/ragflow-split/docker-compose.minio.yml",
+      "service_name": "minio",
+      "image": "pgsty/minio:RELEASE.2026-03-25T00-00-00Z",
+      "command": ["server", "--console-address", ":9001", "/data"],
+      "environment": [
+        {"key": "MINIO_ROOT_USER", "runtime_key": "MINIO_USER"},
+        {"key": "MINIO_ROOT_PASSWORD", "runtime_key": "MINIO_PASSWORD"}
+      ],
+      "mounts": [
+        {
+          "type": "volume",
+          "source": "minio_data",
+          "target": "/data",
+          "logical_source": "minio_data"
+        }
+      ],
+      "network_alias": "ragflow-minio-minio",
+      "healthcheck": {
+        "test": ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"],
+        "interval": "10s",
+        "timeout": "10s",
+        "retries": 120
+      },
+      "endpoints": [
+        {"name": "api", "protocol": "http", "container_port": 9000, "mode": "internal"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "es01",
+      "application": "ragflow-elasticsearch",
+      "compose_file": "scripts/ragflow-split/docker-compose.elasticsearch.yml",
+      "service_name": "es01",
+      "image": "elasticsearch:8.11.3",
+      "environment": [
+        {"key": "ELASTIC_PASSWORD", "runtime_key": "ELASTIC_PASSWORD"},
+        {"key": "node.name", "value": "es01"},
+        {"key": "bootstrap.memory_lock", "value": "false"},
+        {"key": "discovery.type", "value": "single-node"},
+        {"key": "xpack.security.enabled", "value": "true"},
+        {"key": "xpack.security.http.ssl.enabled", "value": "false"},
+        {"key": "xpack.security.transport.ssl.enabled", "value": "false"},
+        {"key": "cluster.routing.allocation.disk.watermark.low", "value": "5gb"},
+        {"key": "cluster.routing.allocation.disk.watermark.high", "value": "3gb"},
+        {"key": "cluster.routing.allocation.disk.watermark.flood_stage", "value": "2gb"}
+      ],
+      "mounts": [
+        {
+          "type": "volume",
+          "source": "elasticsearch_data",
+          "target": "/usr/share/elasticsearch/data",
+          "logical_source": "elasticsearch_data"
+        }
+      ],
+      "tmpfs": ["/tmp:size=536870912,mode=1777"],
+      "ulimits": {
+        "memlock": {"soft": -1, "hard": -1}
+      },
+      "deploy": {
+        "resources": {
+          "limits": {"memory": "8g"}
+        }
+      },
+      "network_alias": "ragflow-elasticsearch-es01",
+      "healthcheck": {
+        "test": ["CMD-SHELL", "curl -fsS -u \"elastic:$${ELASTIC_PASSWORD}\" http://localhost:9200"],
+        "interval": "10s",
+        "timeout": "10s",
+        "retries": 120
+      },
+      "endpoints": [
+        {"name": "http", "protocol": "http", "container_port": 9200, "mode": "internal"}
+      ],
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "tei",
+      "application": "ragflow-split",
+      "compose_file": "scripts/ragflow-split/docker-compose.ragflow.yml",
+      "service_name": "tei",
+      "images": {
+        "cpu": "ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3@sha256:ad950d30878eceb72aaf32024d26fa2b1d04a75304fa0b4776b49aa1941fea07",
+        "gpu": "ghcr.io/huggingface/text-embeddings-inference:cuda-1.9.3@sha256:249a0bc87522bfe2f1012b4d194f0225878f47079115ada3aeb0b1ef257b402a"
+      },
+      "command": ["--model-id", "/data/bge-m3", "--json-output"],
+      "mounts": [
+        {
+          "type": "bind",
+          "source": "./data/tei/cache",
+          "target": "/data",
+          "logical_source": "tei/cache"
+        }
+      ],
+      "network_alias": "ragflow-split-tei",
+      "healthcheck": {
+        "test": ["CMD-SHELL", "curl -fsS http://127.0.0.1:80/health"],
+        "interval": "30s",
+        "timeout": "5s",
+        "retries": 10,
+        "start_period": "5m"
+      },
+      "endpoints": [
+        {"name": "http", "protocol": "http", "container_port": 80, "mode": "internal"}
+      ],
+      "profile_overrides": {
+        "gpu": {
+          "deploy": {
+            "resources": {
+              "reservations": {
+                "devices": [
+                  {"driver": "nvidia", "count": "all", "capabilities": ["gpu"]}
+                ]
+              }
+            }
+          }
+        }
+      },
+      "restart": "unless-stopped"
+    },
+    {
+      "name": "ragflow-cpu",
+      "application": "ragflow-split",
+      "compose_file": "scripts/ragflow-split/docker-compose.ragflow.yml",
+      "service_name": "ragflow-cpu",
+      "image": "infiniflow/ragflow:v0.26.4",
+      "command": ["--enable-adminserver", "--init-model-provider-tables"],
+      "environment": [
+        {"key": "DOC_ENGINE", "value": "elasticsearch"},
+        {"key": "DEVICE", "value": "cpu"},
+        {"key": "API_PROXY_SCHEME", "value": "python"},
+        {"key": "TZ", "value": "Asia/Shanghai"},
+        {"key": "MYSQL_HOST", "value": "ragflow-mysql-mysql"},
+        {"key": "MYSQL_PORT", "value": "3306"},
+        {"key": "MYSQL_DBNAME", "value": "rag_flow"},
+        {"key": "MYSQL_USER", "value": "root"},
+        {"key": "MYSQL_PASSWORD", "runtime_key": "MYSQL_PASSWORD"},
+        {"key": "MYSQL_MAX_PACKET", "value": "1073741824"},
+        {"key": "REDIS_HOST", "value": "ragflow-redis-redis"},
+        {"key": "REDIS_PASSWORD", "runtime_key": "REDIS_PASSWORD"},
+        {"key": "MINIO_HOST", "value": "ragflow-minio-minio"},
+        {"key": "MINIO_USER", "runtime_key": "MINIO_USER"},
+        {"key": "MINIO_PASSWORD", "runtime_key": "MINIO_PASSWORD"},
+        {"key": "ES_HOST", "value": "ragflow-elasticsearch-es01"},
+        {"key": "ES_USER", "value": "elastic"},
+        {"key": "ELASTIC_PASSWORD", "runtime_key": "ELASTIC_PASSWORD"}
+      ],
+      "depends_on": {
+        "tei": {"condition": "service_healthy"}
+      },
+      "mounts": [
+        {
+          "type": "volume",
+          "source": "ragflow_logs",
+          "target": "/ragflow/logs",
+          "logical_source": "ragflow_logs"
+        }
+      ],
+      "network_alias": "ragflow-split-ragflow-cpu",
+      "healthcheck": {
+        "test": ["CMD", "curl", "-fsS", "http://localhost:80/"],
+        "interval": "10s",
+        "timeout": "10s",
+        "retries": 120
+      },
+      "endpoints": [
+        {
+          "name": "http",
+          "protocol": "http",
+          "container_port": 80,
+          "mode": "gateway_http",
+          "entrypoint": "web"
+        }
+      ],
+      "restart": "unless-stopped"
+    }
+  ],
+  "compose_targets": [
+    {"path": "scripts/ragflow-split/docker-compose.mysql.yml", "components": ["mysql"]},
+    {"path": "scripts/ragflow-split/docker-compose.redis.yml", "components": ["redis"]},
+    {"path": "scripts/ragflow-split/docker-compose.minio.yml", "components": ["minio"]},
+    {"path": "scripts/ragflow-split/docker-compose.elasticsearch.yml", "components": ["es01"]},
+    {
+      "path": "scripts/ragflow-split/docker-compose.ragflow.yml",
+      "components": ["tei", "ragflow-cpu"],
+      "header": [
+        "CPU reference for the split deployment. Combine with",
+        "docker-compose.ragflow.gpu.yml to reproduce the GPU TEI variant."
+      ]
+    },
+    {
+      "path": "scripts/ragflow-split/docker-compose.ragflow.gpu.yml",
+      "profile": "gpu",
+      "components": ["tei"],
+      "overlay": true,
+      "header": [
+        "GPU overlay for the split RAGFlow + TEI Compose reference.",
+        "Use only on a host with NVIDIA Driver and NVIDIA Container Toolkit.",
+        "Orbit lifecycle operations remain MCP-only."
+      ]
+    }
+  ],
+  "manual_provider": {
+    "name": "tei-bge-m3",
+    "model": "BAAI/bge-m3",
+    "tei_base_url": "http://tei:80",
+    "max_tokens": 8192
+  }
+}

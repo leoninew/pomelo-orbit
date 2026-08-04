@@ -50,17 +50,25 @@
             <dt>编码</dt>
             <dd class="min-w-0 text-foreground">{{ repository.code }}</dd>
           </div>
+          <div class="flex gap-2">
+            <dt>仓库类型</dt>
+            <dd class="text-foreground">
+              {{ repository.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
+            </dd>
+          </div>
           <div class="flex gap-2 sm:col-span-2">
-            <dt>仓库地址</dt>
-            <dd class="min-w-0 truncate text-foreground" :title="repository.repository_url">
-              {{ repository.repository_url }}
+            <dt>
+              {{ repository.repository_type === 'local_directory' ? '本地目录' : '仓库地址' }}
+            </dt>
+            <dd class="min-w-0 truncate text-foreground" :title="repositoryLocation(repository)">
+              {{ repositoryLocation(repository) }}
             </dd>
           </div>
           <div class="flex gap-2">
             <dt>默认分支</dt>
             <dd class="text-foreground">{{ repository.default_branch || 'master' }}</dd>
           </div>
-          <div class="flex gap-2">
+          <div v-if="repository.repository_type !== 'local_directory'" class="flex gap-2">
             <dt>Git 凭据</dt>
             <dd>
               <router-link
@@ -109,6 +117,7 @@
       </div>
 
       <WebhookList
+        v-if="repository.repository_type !== 'local_directory'"
         :repository-id="repositoryId"
         :webhooks="webhooks"
         :templates="templates"
@@ -127,45 +136,98 @@
       @trigger="handleTrigger"
     />
 
-    <AppDialog v-model:open="isEditDialogOpen" title="编辑仓库">
+    <AppDialog :open="isEditDialogOpen" title="编辑仓库" @update:open="handleEditDialogOpenChange">
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label class="app-field-label block">
+          <label for="edit-repository-type" class="app-field-label block">仓库类型</label>
+          <select
+            id="edit-repository-type"
+            v-model="editForm.repository_type"
+            class="app-input"
+            @change="handleEditRepositoryTypeChange"
+          >
+            <option value="remote_git">远程 Git</option>
+            <option value="local_directory">本地目录</option>
+          </select>
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="edit-repository-name" class="app-field-label block">
             名称
             <span class="text-destructive">*</span>
           </label>
           <input
+            id="edit-repository-name"
             v-model="editForm.name"
             type="text"
             class="app-input"
             :class="editErrors.name ? 'app-input-error' : ''"
             :aria-invalid="editErrors.name ? 'true' : undefined"
-            @input="editErrors.name = ''"
+            :aria-describedby="editErrors.name ? 'edit-repository-name-error' : undefined"
+            @input="clearEditError('name')"
           />
-          <p v-if="editErrors.name" class="app-field-error text-xs">{{ editErrors.name }}</p>
+          <p
+            v-if="editErrors.name"
+            id="edit-repository-name-error"
+            class="app-field-error text-xs"
+            role="alert"
+          >
+            {{ editErrors.name }}
+          </p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">编码</label>
           <input :value="repository?.code" type="text" disabled class="app-input" />
         </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label block">
+        <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
+          <label for="edit-repository-url" class="app-field-label block">
             仓库地址
             <span class="text-destructive">*</span>
           </label>
           <input
+            id="edit-repository-url"
             v-model="editForm.repository_url"
             type="text"
             class="app-input"
             :class="editErrors.repository_url ? 'app-input-error' : ''"
             :aria-invalid="editErrors.repository_url ? 'true' : undefined"
-            @input="editErrors.repository_url = ''"
+            :aria-describedby="editErrors.repository_url ? 'edit-repository-url-error' : undefined"
+            @input="clearEditError('repository_url')"
           />
-          <p v-if="editErrors.repository_url" class="app-field-error text-xs">
+          <p
+            v-if="editErrors.repository_url"
+            id="edit-repository-url-error"
+            class="app-field-error text-xs"
+            role="alert"
+          >
             {{ editErrors.repository_url }}
           </p>
         </div>
-        <div class="space-y-1.5">
+        <div v-else class="space-y-1.5">
+          <label for="edit-repository-url" class="app-field-label block">
+            本地目录
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="edit-repository-url"
+            v-model="editForm.repository_url"
+            type="text"
+            class="app-input"
+            :class="editErrors.repository_url ? 'app-input-error' : ''"
+            :aria-invalid="editErrors.repository_url ? 'true' : undefined"
+            :aria-describedby="editErrors.repository_url ? 'edit-repository-url-error' : undefined"
+            @input="clearEditError('repository_url')"
+          />
+          <p
+            v-if="editErrors.repository_url"
+            id="edit-repository-url-error"
+            class="app-field-error text-xs"
+            role="alert"
+          >
+            {{ editErrors.repository_url }}
+          </p>
+        </div>
+        <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
           <label class="app-field-label block">Git 凭据</label>
           <ComboboxSelect
             v-model="editForm.git_credential_id"
@@ -182,13 +244,12 @@
             class="app-input"
           />
         </div>
+        <p v-if="editFormError" class="app-field-error text-xs" role="alert">
+          {{ editFormError }}
+        </p>
       </div>
       <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          @cancel="isEditDialogOpen = false"
-          @confirm="handleEditOk"
-        />
+        <AppDialogActions :busy="operating" @cancel="closeEditDialog" @confirm="handleEditOk" />
       </template>
     </AppDialog>
 
@@ -306,6 +367,12 @@
   import type { RepositoryWebhookResp } from '@/gen/proto/orbit/v1/repository/webhook';
   import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
   import { formatTime } from '@/utils/time';
+  import {
+    repositoryFormFeedback,
+    type RepositoryFormErrors,
+    type RepositoryFormFields,
+    validateRepositoryForm,
+  } from '@/views/repository/repositoryForm';
   import TriggerModal from '@/views/repository/components/TriggerModal.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
   import WebhookList from '@/views/repository/components/WebhookList.vue';
@@ -325,6 +392,7 @@
   const credentials = ref<CredentialResp[]>([]);
 
   const isEditDialogOpen = ref(false);
+  const editFormError = ref('');
   const isDeleteDialogOpen = ref(false);
   const isAddVariableDialogOpen = ref(false);
   const isEditVariableDialogOpen = ref(false);
@@ -333,12 +401,14 @@
 
   const editForm = reactive({
     name: '',
+    repository_type: 'remote_git',
     repository_url: '',
     git_credential_id: '',
     default_branch: 'master',
   });
-  const editErrors = reactive({
+  const editErrors = reactive<Record<RepositoryFormFields, string>>({
     name: '',
+    code: '',
     repository_url: '',
   });
   const variableForm = reactive({
@@ -387,17 +457,59 @@
     }
     Object.assign(editForm, {
       name: repository.value.name,
+      repository_type: repository.value.repository_type || 'remote_git',
       repository_url: repository.value.repository_url,
       git_credential_id: repository.value.git_credential_id ?? '',
       default_branch: repository.value.default_branch || 'master',
     });
-    Object.assign(editErrors, { name: '', repository_url: '' });
+    resetEditFormFeedback();
   }
 
   function validateEditForm() {
-    editErrors.name = editForm.name.trim() ? '' : '请输入名称';
-    editErrors.repository_url = editForm.repository_url.trim() ? '' : '请输入仓库地址';
-    return !editErrors.name && !editErrors.repository_url;
+    applyEditErrors(validateRepositoryForm(editForm, { requireCode: false }));
+    return !Object.values(editErrors).some(Boolean);
+  }
+
+  function applyEditErrors(next: RepositoryFormErrors) {
+    Object.assign(editErrors, { name: '', code: '', repository_url: '' }, next);
+  }
+
+  function resetEditFormFeedback() {
+    applyEditErrors({});
+    editFormError.value = '';
+  }
+
+  function clearEditError(field: RepositoryFormFields) {
+    editErrors[field] = '';
+  }
+
+  function handleEditRepositoryTypeChange() {
+    clearEditError('repository_url');
+    editFormError.value = '';
+  }
+
+  function handleEditDialogOpenChange(open: boolean) {
+    isEditDialogOpen.value = open;
+    if (!open) {
+      resetEditFormFeedback();
+    }
+  }
+
+  function closeEditDialog() {
+    handleEditDialogOpenChange(false);
+  }
+
+  function applyEditFailure(error: unknown) {
+    const feedback = repositoryFormFeedback(error);
+    if (!feedback) {
+      return false;
+    }
+    if (feedback.kind === 'field') {
+      applyEditErrors(feedback.errors);
+    } else {
+      editFormError.value = feedback.message;
+    }
+    return true;
   }
 
   function variableOverridesWith(nextVariable?: VariableDeclarationResp) {
@@ -462,7 +574,10 @@
   }
 
   async function openTriggerModal() {
-    if (!repository.value?.git_credential_id) {
+    if (
+      repository.value?.repository_type !== 'local_directory' &&
+      !repository.value?.git_credential_id
+    ) {
       toast.error('请先配置 Git 凭据后再触发流水线');
       return;
     }
@@ -506,8 +621,10 @@
       await executeOp(async () => {
         const updated = await repositoryApi.update(repositoryId, {
           name: editForm.name,
+          repository_type: editForm.repository_type,
           repository_url: editForm.repository_url,
-          git_credential_id: editForm.git_credential_id || undefined,
+          git_credential_id:
+            editForm.repository_type === 'remote_git' ? editForm.git_credential_id : '',
           default_branch: editForm.default_branch || 'master',
         });
         repository.value = updated;
@@ -516,7 +633,9 @@
         isEditDialogOpen.value = false;
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '更新失败');
+      if (!applyEditFailure(error)) {
+        toast.error(error instanceof Error ? error.message : '更新失败');
+      }
     }
   }
 
@@ -652,6 +771,10 @@
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '删除失败');
     }
+  }
+
+  function repositoryLocation(value: RepositoryResp) {
+    return value.repository_url;
   }
 
   onMounted(async () => {

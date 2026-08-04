@@ -15,6 +15,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/deploymentworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/pipelineworkspace"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/repositorysource"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/queue/worker"
 	deploymentworker "gitee.com/leoninew/PomeloOrbit-go/internal/queue/worker/handler/deployment"
 	pipelinerunworker "gitee.com/leoninew/PomeloOrbit-go/internal/queue/worker/handler/pipeline_run"
@@ -24,6 +25,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	stores := newDomainStores(database)
 	logStore := executionlog.Store{}
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
+	localSource := repositorysource.New(runtimepath.ResolvePhysicalPath)
 	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
 	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, deploymentWorkspace)
 
@@ -38,6 +40,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		logger,
 		pipelinerunner.DockerRunner{},
 		logStore,
+		localSource,
 	)
 	deploymentService := deploymentsvc.NewExecutionService(
 		stores.project,

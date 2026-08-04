@@ -2,11 +2,12 @@
 -- Ref: docs/analyze/20260724-domain-split-consensus-共识.md
 
 INSERT IGNORE INTO repository (
-    id, name, code, repository_url, git_credential_id, variable_overrides, default_branch, project_id, created_at, updated_at
+    id, name, code, repository_type, repository_url, git_credential_id, variable_overrides, default_branch, project_id, created_at, updated_at
 ) VALUES (
     '01KNNRBH52BQJYT9487B2H8N62',
     'golang/example',
     'golang-example',
+    'remote_git',
     'https://github.com/golang/example',
     NULL,
     '[]',
@@ -17,11 +18,12 @@ INSERT IGNORE INTO repository (
 );
 
 INSERT IGNORE INTO repository (
-    id, name, code, repository_url, git_credential_id, variable_overrides, default_branch, project_id, created_at, updated_at
+    id, name, code, repository_type, repository_url, git_credential_id, variable_overrides, default_branch, project_id, created_at, updated_at
 ) VALUES (
     '01KP0JZFQQA2Z77FRRVH35BYF6',
     'docker/awesome-compose',
     'awesome-compose',
+    'remote_git',
     'https://github.com/docker/awesome-compose',
     NULL,
     '[]',

@@ -56,7 +56,7 @@ func (r Repository) ListRepositories(ctx context.Context, projectId *string, pag
 	}
 	items := make([]model.Repository, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, repositoryFrom(row.ID, row.ProjectID, row.Name, row.Code, row.RepositoryUrl, row.GitCredentialID, row.VariableOverrides, row.DefaultBranch, row.CreatedAt, row.UpdatedAt))
+		items = append(items, repositoryFrom(row.ID, row.ProjectID, row.Name, row.Code, row.RepositoryType, row.RepositoryUrl, row.GitCredentialID, row.VariableOverrides, row.DefaultBranch, row.CreatedAt, row.UpdatedAt))
 	}
 	return repository.Page[model.Repository]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
@@ -66,7 +66,7 @@ func (r Repository) Repository(ctx context.Context, id string) (model.Repository
 	if err != nil {
 		return model.Repository{}, fmt.Errorf("load repository %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return repositoryFrom(row.ID, row.ProjectID, row.Name, row.Code, row.RepositoryUrl, row.GitCredentialID, row.VariableOverrides, row.DefaultBranch, row.CreatedAt, row.UpdatedAt), nil
+	return repositoryFrom(row.ID, row.ProjectID, row.Name, row.Code, row.RepositoryType, row.RepositoryUrl, row.GitCredentialID, row.VariableOverrides, row.DefaultBranch, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r Repository) RepositoryByCode(ctx context.Context, projectId *string, code string) (model.Repository, error) {
@@ -77,7 +77,7 @@ func (r Repository) RepositoryByCode(ctx context.Context, projectId *string, cod
 	if err != nil {
 		return model.Repository{}, fmt.Errorf("load repository by code %s: %w", code, sqlcommon.TranslateError(err))
 	}
-	return repositoryFrom(row.ID, row.ProjectID, row.Name, row.Code, row.RepositoryUrl, row.GitCredentialID, row.VariableOverrides, row.DefaultBranch, row.CreatedAt, row.UpdatedAt), nil
+	return repositoryFrom(row.ID, row.ProjectID, row.Name, row.Code, row.RepositoryType, row.RepositoryUrl, row.GitCredentialID, row.VariableOverrides, row.DefaultBranch, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r Repository) CreateRepository(ctx context.Context, repo model.Repository) error {
@@ -94,6 +94,7 @@ func (r Repository) CreateRepository(ctx context.Context, repo model.Repository)
 		ProjectID:         dbmodel.NullString(repo.ProjectId),
 		Name:              repo.Name,
 		Code:              repo.Code,
+		RepositoryType:    repo.RepositoryType,
 		RepositoryUrl:     repo.RepositoryUrl,
 		GitCredentialID:   dbmodel.NullString(repo.GitCredentialId),
 		VariableOverrides: repo.VariableOverrides,
@@ -110,6 +111,7 @@ func (r Repository) CreateRepository(ctx context.Context, repo model.Repository)
 func (r Repository) UpdateRepository(ctx context.Context, repo model.Repository) error {
 	err := r.q(ctx).UpdateRepository(ctx, reposqlc.UpdateRepositoryParams{
 		Name:              repo.Name,
+		RepositoryType:    repo.RepositoryType,
 		RepositoryUrl:     repo.RepositoryUrl,
 		GitCredentialID:   dbmodel.NullString(repo.GitCredentialId),
 		VariableOverrides: repo.VariableOverrides,
@@ -225,7 +227,7 @@ func optionalNarg(value *string) interface{} {
 func repositoryFrom(
 	id string,
 	projectId sql.NullString,
-	name, code, repositoryUrl string,
+	name, code, repositoryType, repositoryUrl string,
 	gitCredentialId sql.NullString,
 	variableOverrides, defaultBranch string,
 	createdAt, updatedAt time.Time,
@@ -235,6 +237,7 @@ func repositoryFrom(
 		ProjectId:         dbmodel.StringPtr(projectId),
 		Name:              name,
 		Code:              code,
+		RepositoryType:    repositoryType,
 		RepositoryUrl:     repositoryUrl,
 		GitCredentialId:   dbmodel.StringPtr(gitCredentialId),
 		VariableOverrides: variableOverrides,

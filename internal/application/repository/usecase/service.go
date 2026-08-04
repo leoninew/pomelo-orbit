@@ -6,14 +6,16 @@ import (
 	"time"
 
 	pipelinerunport "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/port"
+	repositoryport "gitee.com/leoninew/PomeloOrbit-go/internal/application/repository/port"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 type Service struct {
-	store      stores
-	dispatcher pipelinerunport.PipelineRunDispatcher
-	logger     *slog.Logger
+	store       stores
+	dispatcher  pipelinerunport.PipelineRunDispatcher
+	localSource repositoryport.LocalDirectorySource
+	logger      *slog.Logger
 }
 
 type stores struct {
@@ -31,13 +33,14 @@ func New(
 	pipeline repository.PipelineStore,
 	pipelineRun repository.PipelineRunStore,
 	dispatcher pipelinerunport.PipelineRunDispatcher,
+	localSource repositoryport.LocalDirectorySource,
 	logger *slog.Logger,
 ) Service {
 	s := stores{
 		project: project, credential: credential, repository: repoStore,
 		pipeline: pipeline, pipelineRun: pipelineRun,
 	}
-	return Service{store: s, dispatcher: dispatcher, logger: logger}
+	return Service{store: s, dispatcher: dispatcher, localSource: localSource, logger: logger}
 }
 
 func (s stores) Project(ctx context.Context, id string) (model.Project, error) {

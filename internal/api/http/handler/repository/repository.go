@@ -43,7 +43,7 @@ func (h Handler) CreateRepository(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.CreateRepository(c.Request.Context(), current.Id, repositorydto.RepositoryCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Code: req.Code, RepositoryUrl: req.RepositoryUrl, GitCredentialId: req.GitCredentialId, VariableOverrides: variableDeclarationRequestMaps(req.VariableOverrides), DefaultBranch: req.DefaultBranch})
+	detail, err := h.service.CreateRepository(c.Request.Context(), current.Id, repositorydto.RepositoryCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Code: req.Code, RepositoryType: req.RepositoryType, RepositoryUrl: req.RepositoryUrl, GitCredentialId: req.GitCredentialId, VariableOverrides: variableDeclarationRequestMaps(req.VariableOverrides), DefaultBranch: req.DefaultBranch})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -81,7 +81,7 @@ func (h Handler) UpdateRepository(c *gin.Context) {
 		items := variableDeclarationRequestMaps(req.VariableOverrides.Items)
 		variableOverrides = &items
 	}
-	detail, err := h.service.UpdateRepository(c.Request.Context(), current.Id, c.Param("repository_id"), repositorydto.RepositoryUpdateInput{Name: req.Name, RepositoryUrl: req.RepositoryUrl, GitCredentialId: req.GitCredentialId, VariableOverrides: variableOverrides, DefaultBranch: req.DefaultBranch})
+	detail, err := h.service.UpdateRepository(c.Request.Context(), current.Id, c.Param("repository_id"), repositorydto.RepositoryUpdateInput{Name: req.Name, RepositoryType: req.RepositoryType, RepositoryUrl: req.RepositoryUrl, GitCredentialId: req.GitCredentialId, VariableOverrides: variableOverrides, DefaultBranch: req.DefaultBranch})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -199,12 +199,12 @@ func (h Handler) ReceiveRepositoryWebhook(c *gin.Context) {
 }
 
 func repositoryListResponse(item model.Repository) repositoryv1.RepositoryResp {
-	return repositoryv1.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryUrl: item.RepositoryUrl, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return repositoryv1.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryType: item.RepositoryType, RepositoryUrl: item.RepositoryUrl, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
 func repositoryDetailResponse(detail repositorydto.RepositoryDetail) repositoryv1.RepositoryResp {
 	item := detail.Repository
-	return repositoryv1.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryUrl: item.RepositoryUrl, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), GitCredentialName: detail.GitCredentialName, VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return repositoryv1.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryType: item.RepositoryType, RepositoryUrl: item.RepositoryUrl, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), GitCredentialName: detail.GitCredentialName, VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
 func repositoryWebhookResponse(item model.RepositoryWebhook) repositoryv1.RepositoryWebhookResp {

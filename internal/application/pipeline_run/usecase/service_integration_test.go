@@ -157,6 +157,7 @@ func newPipelineRunIntegrationService(t *testing.T) (Service, *sql.DB) {
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 		fakeContainerRunner{},
 		executionlog.Store{},
+		nil,
 	)
 	return service, database
 }

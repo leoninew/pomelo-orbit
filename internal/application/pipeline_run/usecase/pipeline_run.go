@@ -53,6 +53,10 @@ func (s Service) TriggerRepository(ctx context.Context, userId string, input pip
 	if triggerRef == "" {
 		triggerRef = repo.DefaultBranch
 	}
+	triggerRef, err = s.pipelineRunRef(ctx, repo, triggerRef)
+	if err != nil {
+		return pipelinerundto.PipelineRunDetail{}, err
+	}
 	variablesSnapshot, err := buildPipelineRunVariables(repo, template, snapshot, triggerRef, input.Variables)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
@@ -248,6 +252,31 @@ func (s Service) pipelineRunDetail(ctx context.Context, item model.PipelineRun, 
 		pipelineStageRuns = items
 	}
 	return pipelinerundto.PipelineRunDetail{Run: item, VariablesSnapshot: variables, PipelineStageRuns: pipelineStageRuns}, nil
+}
+
+func (s Service) pipelineRunRef(ctx context.Context, repo model.Repository, ref string) (string, error) {
+	repositoryType := repo.RepositoryType
+	if repositoryType == "" {
+		repositoryType = model.RepositoryTypeRemoteGit
+	}
+	switch repositoryType {
+	case model.RepositoryTypeRemoteGit:
+		if strings.TrimSpace(repo.RepositoryUrl) == "" {
+			return "", apperror.New(apperror.KindValidation, "repository_url is required for remote Git repositories")
+		}
+		return ref, nil
+	case model.RepositoryTypeLocalDirectory:
+		if s.localSource == nil {
+			return "", apperror.New(apperror.KindValidation, "Local directory sources are disabled")
+		}
+		revision, err := s.localSource.ResolveRevision(ctx, repo.RepositoryUrl, ref)
+		if err != nil {
+			return "", apperror.New(apperror.KindValidation, "Unable to resolve local source revision: "+err.Error())
+		}
+		return revision, nil
+	default:
+		return "", apperror.New(apperror.KindValidation, "Unsupported repository_type")
+	}
 }
 
 func (s Service) ensurePipelineRunRepositoryFilter(ctx context.Context, projectId string, repositoryId string) error {

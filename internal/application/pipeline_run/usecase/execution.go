@@ -51,7 +51,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 		return err
 	}
 
-	stageExecutor := Executor{store: s.executionStore, workspace: s.workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, runner: s.runner}
+	stageExecutor := Executor{store: s.executionStore, workspace: s.workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, runner: s.runner, localSource: s.localSource}
 	ok, message := stageExecutor.Execute(ctx, run, repo, variables, stages)
 	current, err := s.executionStore.PipelineRun(ctx, run.Id)
 	if err != nil {
@@ -82,7 +82,15 @@ func (s Service) pipelineRunExecutionVariables(repo model.Repository, template m
 	if err != nil {
 		return nil, err
 	}
-	return pipelinevariable.BuildRuntimeVariables(repo, template, run.TriggerRef, overrides, declarations)
+	sourceRepo := repo
+	if sourceRepo.RepositoryType == model.RepositoryTypeLocalDirectory {
+		sourceRepo.RepositoryUrl = "file:///source"
+	}
+	variables, err := pipelinevariable.BuildRuntimeVariables(sourceRepo, template, run.TriggerRef, overrides, declarations)
+	if err != nil {
+		return nil, err
+	}
+	return variables, nil
 }
 
 func pipelineRunRuntimeOverrides(value string) (map[string]string, error) {

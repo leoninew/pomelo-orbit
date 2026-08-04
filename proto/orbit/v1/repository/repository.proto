@@ -10,6 +10,7 @@ message RepositoryResp {
   optional string project_id = 2;
   string name = 3;
   string code = 4;
+  string repository_type = 13;
   string repository_url = 5;
   bool has_credential = 6;
   string git_credential_id = 7;
@@ -23,6 +24,7 @@ message RepositoryResp {
 message RepositoryCreateReq {
   string name = 1;
   string code = 2;
+  string repository_type = 7;
   string repository_url = 3;
   optional string git_credential_id = 4;
   repeated orbit.v1.common.VariableDeclarationReq variable_overrides = 5;
@@ -31,6 +33,7 @@ message RepositoryCreateReq {
 
 message RepositoryUpdateReq {
   optional string name = 1;
+  optional string repository_type = 6;
   optional string repository_url = 2;
   optional string git_credential_id = 3;
   optional orbit.v1.common.VariableDeclarationListReq variable_overrides = 4;

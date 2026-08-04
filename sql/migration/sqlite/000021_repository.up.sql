@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS repository (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     code TEXT NOT NULL UNIQUE,
+    repository_type TEXT NOT NULL DEFAULT 'remote_git',
     repository_url TEXT NOT NULL,
     git_credential_id TEXT,
     variable_overrides TEXT NOT NULL DEFAULT '[]',

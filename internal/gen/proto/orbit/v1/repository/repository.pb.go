@@ -28,6 +28,7 @@ type RepositoryResp struct {
 	ProjectId            *string                           `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
 	Name                 string                            `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	Code                 string                            `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
+	RepositoryType       string                            `protobuf:"bytes,13,opt,name=repository_type,json=repositoryType,proto3" json:"repository_type,omitempty"`
 	RepositoryUrl        string                            `protobuf:"bytes,5,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
 	HasCredential        bool                              `protobuf:"varint,6,opt,name=has_credential,json=hasCredential,proto3" json:"has_credential,omitempty"`
 	GitCredentialId      string                            `protobuf:"bytes,7,opt,name=git_credential_id,json=gitCredentialId,proto3" json:"git_credential_id,omitempty"`
@@ -98,6 +99,13 @@ func (x *RepositoryResp) GetCode() string {
 	return ""
 }
 
+func (x *RepositoryResp) GetRepositoryType() string {
+	if x != nil {
+		return x.RepositoryType
+	}
+	return ""
+}
+
 func (x *RepositoryResp) GetRepositoryUrl() string {
 	if x != nil {
 		return x.RepositoryUrl
@@ -158,6 +166,7 @@ type RepositoryCreateReq struct {
 	state             protoimpl.MessageState           `protogen:"open.v1"`
 	Name              string                           `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Code              string                           `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	RepositoryType    string                           `protobuf:"bytes,7,opt,name=repository_type,json=repositoryType,proto3" json:"repository_type,omitempty"`
 	RepositoryUrl     string                           `protobuf:"bytes,3,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
 	GitCredentialId   *string                          `protobuf:"bytes,4,opt,name=git_credential_id,json=gitCredentialId,proto3,oneof" json:"git_credential_id,omitempty"`
 	VariableOverrides []*common.VariableDeclarationReq `protobuf:"bytes,5,rep,name=variable_overrides,json=variableOverrides,proto3" json:"variable_overrides,omitempty"`
@@ -210,6 +219,13 @@ func (x *RepositoryCreateReq) GetCode() string {
 	return ""
 }
 
+func (x *RepositoryCreateReq) GetRepositoryType() string {
+	if x != nil {
+		return x.RepositoryType
+	}
+	return ""
+}
+
 func (x *RepositoryCreateReq) GetRepositoryUrl() string {
 	if x != nil {
 		return x.RepositoryUrl
@@ -241,6 +257,7 @@ func (x *RepositoryCreateReq) GetDefaultBranch() string {
 type RepositoryUpdateReq struct {
 	state             protoimpl.MessageState             `protogen:"open.v1"`
 	Name              *string                            `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	RepositoryType    *string                            `protobuf:"bytes,6,opt,name=repository_type,json=repositoryType,proto3,oneof" json:"repository_type,omitempty"`
 	RepositoryUrl     *string                            `protobuf:"bytes,2,opt,name=repository_url,json=repositoryUrl,proto3,oneof" json:"repository_url,omitempty"`
 	GitCredentialId   *string                            `protobuf:"bytes,3,opt,name=git_credential_id,json=gitCredentialId,proto3,oneof" json:"git_credential_id,omitempty"`
 	VariableOverrides *common.VariableDeclarationListReq `protobuf:"bytes,4,opt,name=variable_overrides,json=variableOverrides,proto3,oneof" json:"variable_overrides,omitempty"`
@@ -282,6 +299,13 @@ func (*RepositoryUpdateReq) Descriptor() ([]byte, []int) {
 func (x *RepositoryUpdateReq) GetName() string {
 	if x != nil && x.Name != nil {
 		return *x.Name
+	}
+	return ""
+}
+
+func (x *RepositoryUpdateReq) GetRepositoryType() string {
+	if x != nil && x.RepositoryType != nil {
+		return *x.RepositoryType
 	}
 	return ""
 }
@@ -394,13 +418,14 @@ var File_orbit_v1_repository_repository_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_repository_repository_proto_rawDesc = "" +
 	"\n" +
-	"$orbit/v1/repository/repository.proto\x12\x13orbit.v1.repository\x1a\x1corbit/v1/common/common.proto\"\x86\x04\n" +
+	"$orbit/v1/repository/repository.proto\x12\x13orbit.v1.repository\x1a\x1corbit/v1/common/common.proto\"\xaf\x04\n" +
 	"\x0eRepositoryResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tH\x00R\tprojectId\x88\x01\x01\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
-	"\x04code\x18\x04 \x01(\tR\x04code\x12%\n" +
+	"\x04code\x18\x04 \x01(\tR\x04code\x12'\n" +
+	"\x0frepository_type\x18\r \x01(\tR\x0erepositoryType\x12%\n" +
 	"\x0erepository_url\x18\x05 \x01(\tR\rrepositoryUrl\x12%\n" +
 	"\x0ehas_credential\x18\x06 \x01(\bR\rhasCredential\x12*\n" +
 	"\x11git_credential_id\x18\a \x01(\tR\x0fgitCredentialId\x123\n" +
@@ -413,22 +438,25 @@ const file_orbit_v1_repository_repository_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\f \x01(\tR\tupdatedAtB\r\n" +
 	"\v_project_idB\x16\n" +
-	"\x14_git_credential_name\"\xaa\x02\n" +
+	"\x14_git_credential_name\"\xd3\x02\n" +
 	"\x13RepositoryCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04code\x18\x02 \x01(\tR\x04code\x12%\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12'\n" +
+	"\x0frepository_type\x18\a \x01(\tR\x0erepositoryType\x12%\n" +
 	"\x0erepository_url\x18\x03 \x01(\tR\rrepositoryUrl\x12/\n" +
 	"\x11git_credential_id\x18\x04 \x01(\tH\x00R\x0fgitCredentialId\x88\x01\x01\x12V\n" +
 	"\x12variable_overrides\x18\x05 \x03(\v2'.orbit.v1.common.VariableDeclarationReqR\x11variableOverrides\x12%\n" +
 	"\x0edefault_branch\x18\x06 \x01(\tR\rdefaultBranchB\x14\n" +
-	"\x12_git_credential_id\"\xf4\x02\n" +
+	"\x12_git_credential_id\"\xb6\x03\n" +
 	"\x13RepositoryUpdateReq\x12\x17\n" +
-	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12*\n" +
-	"\x0erepository_url\x18\x02 \x01(\tH\x01R\rrepositoryUrl\x88\x01\x01\x12/\n" +
-	"\x11git_credential_id\x18\x03 \x01(\tH\x02R\x0fgitCredentialId\x88\x01\x01\x12_\n" +
-	"\x12variable_overrides\x18\x04 \x01(\v2+.orbit.v1.common.VariableDeclarationListReqH\x03R\x11variableOverrides\x88\x01\x01\x12*\n" +
-	"\x0edefault_branch\x18\x05 \x01(\tH\x04R\rdefaultBranch\x88\x01\x01B\a\n" +
-	"\x05_nameB\x11\n" +
+	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12,\n" +
+	"\x0frepository_type\x18\x06 \x01(\tH\x01R\x0erepositoryType\x88\x01\x01\x12*\n" +
+	"\x0erepository_url\x18\x02 \x01(\tH\x02R\rrepositoryUrl\x88\x01\x01\x12/\n" +
+	"\x11git_credential_id\x18\x03 \x01(\tH\x03R\x0fgitCredentialId\x88\x01\x01\x12_\n" +
+	"\x12variable_overrides\x18\x04 \x01(\v2+.orbit.v1.common.VariableDeclarationListReqH\x04R\x11variableOverrides\x88\x01\x01\x12*\n" +
+	"\x0edefault_branch\x18\x05 \x01(\tH\x05R\rdefaultBranch\x88\x01\x01B\a\n" +
+	"\x05_nameB\x12\n" +
+	"\x10_repository_typeB\x11\n" +
 	"\x0f_repository_urlB\x14\n" +
 	"\x12_git_credential_idB\x15\n" +
 	"\x13_variable_overridesB\x11\n" +

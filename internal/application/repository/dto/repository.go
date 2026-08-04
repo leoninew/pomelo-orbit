@@ -6,6 +6,7 @@ type RepositoryCreateInput struct {
 	ProjectId         string
 	Name              string
 	Code              string
+	RepositoryType    string
 	RepositoryUrl     string
 	GitCredentialId   *string
 	VariableOverrides []map[string]any
@@ -14,6 +15,7 @@ type RepositoryCreateInput struct {
 
 type RepositoryUpdateInput struct {
 	Name              *string
+	RepositoryType    *string
 	RepositoryUrl     *string
 	GitCredentialId   *string
 	VariableOverrides *[]map[string]any

@@ -14,6 +14,7 @@ export interface RepositoryResp {
   project_id?: string | undefined;
   name: string;
   code: string;
+  repository_type: string;
   repository_url: string;
   has_credential: boolean;
   git_credential_id: string;
@@ -27,6 +28,7 @@ export interface RepositoryResp {
 export interface RepositoryCreateReq {
   name: string;
   code: string;
+  repository_type: string;
   repository_url: string;
   git_credential_id?: string | undefined;
   variable_overrides: VariableDeclarationReq[];
@@ -35,6 +37,7 @@ export interface RepositoryCreateReq {
 
 export interface RepositoryUpdateReq {
   name?: string | undefined;
+  repository_type?: string | undefined;
   repository_url?: string | undefined;
   git_credential_id?: string | undefined;
   variable_overrides?: VariableDeclarationListReq | undefined;

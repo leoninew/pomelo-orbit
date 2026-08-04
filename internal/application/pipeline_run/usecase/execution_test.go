@@ -175,6 +175,51 @@ func TestExecutePipelineRunResolvesVariablesFromDeclarations(t *testing.T) {
 	}
 }
 
+func TestExecutePipelineRunUsesStandardGitCloneStageForLocalSource(t *testing.T) {
+	store := &fakeExecutionStore{
+		run: model.PipelineRun{
+			Id:           "run-1",
+			RepositoryId: "repo-1",
+			SnapshotId:   "snapshot-1",
+			TemplateId:   "template-1",
+			TriggerRef:   "0123456789abcdef0123456789abcdef01234567",
+		},
+		repo:     model.Repository{Id: "repo-1", Name: "Repo", Code: "repo", RepositoryType: model.RepositoryTypeLocalDirectory, RepositoryUrl: "service"},
+		template: model.PipelineTemplate{Id: "template-1", Name: "template", Version: 1},
+		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"checkout","image":"alpine/git","script":"git remote add origin {{ repository_url }}\ngit fetch --depth=1 origin {{ repository_ref }}"}]`, VariablesSnapshot: `[{"name":"repository_url","source":"template","editable":false},{"name":"repository_ref","source":"template","editable":false}]`},
+	}
+	runner := &recordingContainerRunner{}
+	service := newTestExecutionService(store, newTestWorkspace(t), testExecutionFernetKey, slog.Default(), runner, executionlog.Store{})
+	service.localSource = fakeLocalSource{hostPath: filepath.Join(t.TempDir(), "service")}
+
+	if err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{PipelineRunId: "run-1"}); err != nil {
+		t.Fatalf("ExecutePipelineRun returned error: %v", err)
+	}
+	if !containsVolume(runner.volumes, "/source", "ro") {
+		t.Fatalf("expected read-only /source mount, got %+v", runner.volumes)
+	}
+	if !strings.Contains(runner.script, "file:///source") || !strings.Contains(runner.script, store.run.TriggerRef) {
+		t.Fatalf("expected local source URL and revision in checkout script, got:\n%s", runner.script)
+	}
+}
+
+func TestPipelineRunRefResolvesLocalRefToCommit(t *testing.T) {
+	const revision = "0123456789abcdef0123456789abcdef01234567"
+	service := Service{localSource: fakeLocalSource{revision: revision}}
+
+	got, err := service.pipelineRunRef(
+		context.Background(),
+		model.Repository{RepositoryType: model.RepositoryTypeLocalDirectory, RepositoryUrl: "service"},
+		"main",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != revision {
+		t.Fatalf("unexpected revision: got %q want %q", got, revision)
+	}
+}
+
 type fakeExecutionStore struct {
 	mu                sync.Mutex
 	run               model.PipelineRun
@@ -266,6 +311,23 @@ type recordingContainerRunner struct {
 	volumes     []pipelinerunport.VolumeMount
 }
 
+type fakeLocalSource struct {
+	hostPath string
+	revision string
+}
+
+func (s fakeLocalSource) Validate(ctx context.Context, localPath string) (string, error) {
+	return localPath, nil
+}
+
+func (s fakeLocalSource) ResolveRevision(ctx context.Context, localPath string, ref string) (string, error) {
+	return s.revision, nil
+}
+
+func (s fakeLocalSource) DockerHostPath(ctx context.Context, localPath string) (string, error) {
+	return s.hostPath, nil
+}
+
 func (r *recordingContainerRunner) Run(ctx context.Context, opts pipelinerunport.RunOptions) (int, string, error) {
 	r.script = opts.Script
 	r.environment = opts.Environment
@@ -283,7 +345,7 @@ func newTestWorkspace(t *testing.T) testWorkspace {
 }
 
 func (w testWorkspace) CreateRunDirectories(projectCode string, runId string) error {
-	for _, path := range []string{w.workspacePath(projectCode), w.ArtifactsPath(runId)} {
+	for _, path := range []string{w.workspacePath(runId), w.ArtifactsPath(runId)} {
 		if err := os.MkdirAll(path, 0o755); err != nil {
 			return err
 		}
@@ -312,15 +374,24 @@ func (w testWorkspace) StageLogPath(runId string, pipelineStageRunId string) str
 
 func (w testWorkspace) DockerStageMounts(ctx context.Context, projectCode string, runId string) ([]pipelinerunport.VolumeMount, error) {
 	return []pipelinerunport.VolumeMount{
-		{HostPath: w.workspacePath(projectCode), ContainerPath: "/workspace", Mode: "rw"},
+		{HostPath: w.workspacePath(runId), ContainerPath: "/workspace", Mode: "rw"},
 		{HostPath: w.ArtifactsPath(runId), ContainerPath: "/artifacts", Mode: "rw"},
 	}, nil
 }
 
-func (w testWorkspace) workspacePath(projectCode string) string {
-	return filepath.Join(w.root, "pipeline", projectCode, "workspace")
+func (w testWorkspace) workspacePath(runId string) string {
+	return filepath.Join(w.root, "pipeline", "runs", runId, "workspace")
 }
 
 func containsString(values []string, expected string) bool {
 	return slices.Contains(values, expected)
+}
+
+func containsVolume(values []pipelinerunport.VolumeMount, containerPath string, mode string) bool {
+	for _, value := range values {
+		if value.ContainerPath == containerPath && value.Mode == mode {
+			return true
+		}
+	}
+	return false
 }

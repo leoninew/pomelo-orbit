@@ -1,11 +1,11 @@
 -- name: RepositoryByID :one
-SELECT id, project_id, name, code, repository_url, git_credential_id,
+SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
 WHERE id = ?;
 
 -- name: RepositoryByCode :one
-SELECT id, project_id, name, code, repository_url, git_credential_id,
+SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
 WHERE code = sqlc.arg(code)
@@ -23,7 +23,7 @@ WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
   );
 
 -- name: ListRepositories :many
-SELECT id, project_id, name, code, repository_url, git_credential_id,
+SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
 WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
@@ -37,12 +37,12 @@ ORDER BY created_at DESC, id
 LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: CreateRepository :exec
-INSERT INTO repository (id, project_id, name, code, repository_url, git_credential_id, variable_overrides, default_branch, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO repository (id, project_id, name, code, repository_type, repository_url, git_credential_id, variable_overrides, default_branch, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateRepository :exec
 UPDATE repository
-SET name = ?, repository_url = ?, git_credential_id = ?, variable_overrides = ?, default_branch = ?, updated_at = ?
+SET name = ?, repository_type = ?, repository_url = ?, git_credential_id = ?, variable_overrides = ?, default_branch = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DeleteRepository :exec

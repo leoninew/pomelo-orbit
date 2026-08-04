@@ -32,6 +32,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/envfile"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/pipelineworkspace"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/repositorysource"
 	queuedispatch "gitee.com/leoninew/PomeloOrbit-go/internal/queue/dispatch"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
@@ -50,6 +51,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	authService := authsvc.New(stores.user, stores.auth, tokenService, logger)
 	logStore := executionlog.Store{}
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
+	localSource := repositorysource.New(runtimepath.ResolvePhysicalPath)
 	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
 	routeManager := traefik.NewRouteManager(cfg)
 	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, deploymentWorkspace)
@@ -69,6 +71,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			stores.pipeline,
 			stores.pipelineRun,
 			pipelineRunDispatcher,
+			localSource,
 			logger,
 		),
 		PipelineService: pipelinesvc.New(stores.project, stores.pipeline, logger),
@@ -84,6 +87,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			logger,
 			pipelinerunner.DockerRunner{},
 			logStore,
+			localSource,
 		),
 		RouteService: routesvc.New(
 			stores.project,

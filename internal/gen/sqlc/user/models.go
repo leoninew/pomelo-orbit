@@ -215,6 +215,7 @@ type Repository struct {
 	ID                string         `db:"id"`
 	Name              string         `db:"name"`
 	Code              string         `db:"code"`
+	RepositoryType    string         `db:"repository_type"`
 	RepositoryUrl     string         `db:"repository_url"`
 	GitCredentialID   sql.NullString `db:"git_credential_id"`
 	VariableOverrides string         `db:"variable_overrides"`

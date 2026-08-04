@@ -12,23 +12,24 @@ import (
 
 func TestNormalizeRepositoryCreateInput(t *testing.T) {
 	credential := " credential-1 "
-	name, code, repositoryUrl, defaultBranch, credentialId, err := normalizeRepositoryCreateInput(repositorydto.RepositoryCreateInput{
+	name, code, repositoryType, repositoryUrl, defaultBranch, credentialId, err := normalizeRepositoryCreateInput(repositorydto.RepositoryCreateInput{
 		Name:            " Repo One ",
 		Code:            "repo-one",
+		RepositoryType:  model.RepositoryTypeRemoteGit,
 		RepositoryUrl:   " https://example.test/repo.git ",
 		GitCredentialId: &credential,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if name != "Repo One" || code != "repo-one" || repositoryUrl != "https://example.test/repo.git" || defaultBranch != "master" {
-		t.Fatalf("unexpected normalized repository fields: name=%q code=%q url=%q branch=%q", name, code, repositoryUrl, defaultBranch)
+	if name != "Repo One" || code != "repo-one" || repositoryType != model.RepositoryTypeRemoteGit || repositoryUrl != "https://example.test/repo.git" || defaultBranch != "master" {
+		t.Fatalf("unexpected normalized repository fields: name=%q code=%q repository_type=%q url=%q branch=%q", name, code, repositoryType, repositoryUrl, defaultBranch)
 	}
 	if credentialId == nil || *credentialId != "credential-1" {
 		t.Fatalf("unexpected credential id: %v", credentialId)
 	}
 
-	_, _, _, _, _, err = normalizeRepositoryCreateInput(repositorydto.RepositoryCreateInput{Name: "Repo", Code: "Repo One", RepositoryUrl: "https://example.test/repo.git"})
+	_, _, _, _, _, _, err = normalizeRepositoryCreateInput(repositorydto.RepositoryCreateInput{Name: "Repo", Code: "Repo One", RepositoryUrl: "https://example.test/repo.git"})
 	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("expected invalid repository code to return 400, got %v", err)
 	}

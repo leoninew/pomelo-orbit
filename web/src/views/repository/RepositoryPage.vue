@@ -26,8 +26,9 @@
             <tr>
               <th>名称</th>
               <th>编码</th>
+              <th>仓库类型</th>
               <th>默认分支</th>
-              <th>地址</th>
+              <th>地址/目录</th>
               <th>Git 凭据</th>
               <th>创建时间</th>
             </tr>
@@ -40,9 +41,12 @@
                 </router-link>
               </td>
               <td class="whitespace-nowrap text-foreground">{{ p.code }}</td>
+              <td class="whitespace-nowrap text-foreground">
+                {{ p.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
+              </td>
               <td class="whitespace-nowrap text-foreground">{{ p.default_branch }}</td>
-              <td class="max-w-md truncate text-foreground" :title="p.repository_url">
-                {{ p.repository_url }}
+              <td class="max-w-md truncate text-foreground" :title="repositoryLocation(p)">
+                {{ repositoryLocation(p) }}
               </td>
               <td class="whitespace-nowrap text-foreground">
                 <router-link
@@ -71,64 +75,128 @@
     </div>
   </div>
 
-  <AppDialog v-model:open="showCreateModal" title="创建仓库">
+  <AppDialog :open="showCreateModal" title="创建仓库" @update:open="handleCreateModalOpenChange">
     <AppLoadingState v-if="modalStatus === 'loading'" size="compact" />
 
     <div v-else class="space-y-4">
       <div class="space-y-1.5">
-        <label class="app-field-label block">
+        <label for="create-repository-type" class="app-field-label block">仓库类型</label>
+        <select
+          id="create-repository-type"
+          v-model="form.repository_type"
+          class="app-input"
+          @change="handleRepositoryTypeChange"
+        >
+          <option value="remote_git">远程 Git</option>
+          <option value="local_directory">本地目录</option>
+        </select>
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="create-repository-name" class="app-field-label block">
           名称
           <span class="text-destructive">*</span>
         </label>
         <input
+          id="create-repository-name"
           v-model="form.name"
           type="text"
           placeholder="例如: my-backend"
           class="app-input"
           :class="errors.name ? 'app-input-error' : ''"
           :aria-invalid="errors.name ? 'true' : undefined"
-          @input="errors.name = ''"
+          :aria-describedby="errors.name ? 'create-repository-name-error' : undefined"
+          @input="clearError('name')"
         />
-        <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+        <p
+          v-if="errors.name"
+          id="create-repository-name-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ errors.name }}
+        </p>
       </div>
 
       <div class="space-y-1.5">
-        <label class="app-field-label block">
+        <label for="create-repository-code" class="app-field-label block">
           仓库编码
           <span class="text-destructive">*</span>
         </label>
         <input
+          id="create-repository-code"
           v-model="form.code"
           type="text"
           placeholder="例如: my-backend（固化工作目录，创建后不可修改）"
           class="app-input"
           :class="errors.code ? 'app-input-error' : ''"
           :aria-invalid="errors.code ? 'true' : undefined"
-          @input="errors.code = ''"
+          :aria-describedby="errors.code ? 'create-repository-code-error' : undefined"
+          @input="clearError('code')"
         />
-        <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
+        <p
+          v-if="errors.code"
+          id="create-repository-code-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ errors.code }}
+        </p>
       </div>
 
-      <div class="space-y-1.5">
-        <label class="app-field-label block">
+      <div v-if="form.repository_type === 'remote_git'" class="space-y-1.5">
+        <label for="create-repository-url" class="app-field-label block">
           仓库地址
           <span class="text-destructive">*</span>
         </label>
         <input
+          id="create-repository-url"
           v-model="form.repository_url"
           type="text"
           placeholder="git@github.com:user/repo.git"
           class="app-input"
           :class="errors.repository_url ? 'app-input-error' : ''"
           :aria-invalid="errors.repository_url ? 'true' : undefined"
-          @input="errors.repository_url = ''"
+          :aria-describedby="errors.repository_url ? 'create-repository-url-error' : undefined"
+          @input="clearError('repository_url')"
         />
-        <p v-if="errors.repository_url" class="app-field-error text-xs">
+        <p
+          v-if="errors.repository_url"
+          id="create-repository-url-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
           {{ errors.repository_url }}
         </p>
       </div>
 
-      <div class="space-y-1.5">
+      <div v-else class="space-y-1.5">
+        <label for="create-repository-url" class="app-field-label block">
+          本地目录
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          id="create-repository-url"
+          v-model="form.repository_url"
+          type="text"
+          placeholder="例如: D:/workspace/my-backend"
+          class="app-input"
+          :class="errors.repository_url ? 'app-input-error' : ''"
+          :aria-invalid="errors.repository_url ? 'true' : undefined"
+          :aria-describedby="errors.repository_url ? 'create-repository-url-error' : undefined"
+          @input="clearError('repository_url')"
+        />
+        <p
+          v-if="errors.repository_url"
+          id="create-repository-url-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ errors.repository_url }}
+        </p>
+      </div>
+
+      <div v-if="form.repository_type === 'remote_git'" class="space-y-1.5">
         <label class="app-field-label block">Git 凭据</label>
         <ComboboxSelect
           v-model="form.git_credential_id"
@@ -141,12 +209,16 @@
         <label class="app-field-label block">默认分支</label>
         <input v-model="form.default_branch" type="text" placeholder="develop" class="app-input" />
       </div>
+
+      <p v-if="createFormError" class="app-field-error text-xs" role="alert">
+        {{ createFormError }}
+      </p>
     </div>
 
     <template #footer>
       <AppDialogActions
         :busy="operating || modalStatus === 'loading'"
-        @cancel="showCreateModal = false"
+        @cancel="closeCreateModal"
         @confirm="handleCreateOk"
       />
     </template>
@@ -172,6 +244,12 @@
   import type { CredentialResp } from '@/gen/proto/orbit/v1/credential/credential';
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
   import { formatTime } from '@/utils/time';
+  import {
+    repositoryFormFeedback,
+    type RepositoryFormErrors,
+    type RepositoryFormFields,
+    validateRepositoryForm,
+  } from '@/views/repository/repositoryForm';
   import { ToolbarRoot } from 'reka-ui';
 
   const router = useRouter();
@@ -198,25 +276,67 @@
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const searchText = ref('');
   const showCreateModal = ref(false);
+  const createFormError = ref('');
 
   const form = reactive({
     name: '',
     code: '',
+    repository_type: 'remote_git',
     repository_url: '',
     git_credential_id: '',
     default_branch: 'develop',
   });
-  const errors = reactive({
+  const errors = reactive<Record<RepositoryFormFields, string>>({
     name: '',
     code: '',
     repository_url: '',
   });
 
   function validate() {
-    errors.name = form.name.trim() ? '' : '请输入名称';
-    errors.code = /^[a-z0-9-]+$/.test(form.code.trim()) ? '' : '编码只能包含小写字母、数字和连字符';
-    errors.repository_url = form.repository_url.trim() ? '' : '请输入仓库地址';
-    return !errors.name && !errors.code && !errors.repository_url;
+    applyErrors(validateRepositoryForm(form, { requireCode: true }));
+    return !Object.values(errors).some(Boolean);
+  }
+
+  function applyErrors(next: RepositoryFormErrors) {
+    Object.assign(errors, { name: '', code: '', repository_url: '' }, next);
+  }
+
+  function resetCreateFormFeedback() {
+    applyErrors({});
+    createFormError.value = '';
+  }
+
+  function clearError(field: RepositoryFormFields) {
+    errors[field] = '';
+  }
+
+  function handleRepositoryTypeChange() {
+    clearError('repository_url');
+    createFormError.value = '';
+  }
+
+  function handleCreateModalOpenChange(open: boolean) {
+    showCreateModal.value = open;
+    if (!open) {
+      resetCreateFormFeedback();
+    }
+  }
+
+  function closeCreateModal() {
+    handleCreateModalOpenChange(false);
+  }
+
+  function applyCreateFailure(error: unknown) {
+    const feedback = repositoryFormFeedback(error);
+    if (!feedback) {
+      return false;
+    }
+    if (feedback.kind === 'field') {
+      applyErrors(feedback.errors);
+    } else {
+      createFormError.value = feedback.message;
+    }
+    return true;
   }
 
   async function fetchProjects() {
@@ -269,11 +389,12 @@
     Object.assign(form, {
       name: '',
       code: '',
+      repository_type: 'remote_git',
       repository_url: '',
       git_credential_id: '',
       default_branch: 'develop',
     });
-    Object.assign(errors, { name: '', code: '', repository_url: '' });
+    resetCreateFormFeedback();
     showCreateModal.value = true;
     try {
       await executeModal(async () => {
@@ -303,8 +424,12 @@
           {
             name: form.name,
             code: form.code,
+            repository_type: form.repository_type,
             repository_url: form.repository_url,
-            git_credential_id: form.git_credential_id || undefined,
+            git_credential_id:
+              form.repository_type === 'remote_git'
+                ? form.git_credential_id || undefined
+                : undefined,
             variable_overrides: [],
             default_branch: form.default_branch,
           },
@@ -315,8 +440,14 @@
         router.push(`/repository/${repository.id}`);
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '创建失败');
+      if (!applyCreateFailure(error)) {
+        toast.error(error instanceof Error ? error.message : '创建失败');
+      }
     }
+  }
+
+  function repositoryLocation(repository: RepositoryResp) {
+    return repository.repository_url;
   }
 
   onMounted(fetchProjects);

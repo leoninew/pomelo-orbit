@@ -14,19 +14,25 @@ import (
 // ResolvePhysicalDataRoot resolves the backend logical data root to the host path
 // Docker should use as a bind-mount source.
 func ResolvePhysicalDataRoot(ctx context.Context, logicalDataRoot string) (string, error) {
-	absoluteDataRoot, err := filepath.Abs(logicalDataRoot)
+	return ResolvePhysicalPath(ctx, logicalDataRoot)
+}
+
+// ResolvePhysicalPath resolves a path visible to the backend process to its host path
+// when the backend itself runs inside Docker.
+func ResolvePhysicalPath(ctx context.Context, logicalPath string) (string, error) {
+	absolutePath, err := filepath.Abs(logicalPath)
 	if err != nil {
-		return "", fmt.Errorf("resolve physical data root %s: %w", logicalDataRoot, err)
+		return "", fmt.Errorf("resolve physical path %s: %w", logicalPath, err)
 	}
 	containerId, ok := currentContainerId()
 	if !ok {
-		return absoluteDataRoot, nil
+		return absolutePath, nil
 	}
-	physicalDataRoot, err := currentContainerMountSource(ctx, containerId, absoluteDataRoot)
+	physicalPath, err := currentContainerPathSource(ctx, containerId, absolutePath)
 	if err != nil {
 		return "", err
 	}
-	return physicalDataRoot, nil
+	return physicalPath, nil
 }
 
 func currentContainerId() (string, bool) {
@@ -79,7 +85,7 @@ type dockerInspectMount struct {
 	Destination string `json:"Destination"`
 }
 
-func currentContainerMountSource(ctx context.Context, containerId string, containerDataRoot string) (string, error) {
+func currentContainerPathSource(ctx context.Context, containerId string, containerPath string) (string, error) {
 	output, err := exec.CommandContext(ctx, "docker", "inspect", containerId, "--format", "{{json .Mounts}}").Output()
 	if err != nil {
 		return "", fmt.Errorf("resolve physical data root: inspect current container %s: %w", containerId, err)
@@ -88,16 +94,38 @@ func currentContainerMountSource(ctx context.Context, containerId string, contai
 	if err := json.Unmarshal(output, &mounts); err != nil {
 		return "", fmt.Errorf("resolve physical data root: parse current container mounts: %w", err)
 	}
-	wanted := cleanContainerPath(containerDataRoot)
+	wanted := cleanContainerPath(containerPath)
+	matchedDestination := ""
+	matchedSource := ""
 	for _, mount := range mounts {
-		if cleanContainerPath(mount.Destination) == wanted {
-			if strings.TrimSpace(mount.Source) == "" {
-				return "", fmt.Errorf("resolve physical data root: container data root %s has empty host source", containerDataRoot)
-			}
-			return mount.Source, nil
+		destination := cleanContainerPath(mount.Destination)
+		if _, ok := containerPathRelative(destination, wanted); !ok {
+			continue
+		}
+		if len(destination) > len(matchedDestination) {
+			matchedDestination = destination
+			matchedSource = mount.Source
 		}
 	}
-	return "", fmt.Errorf("resolve physical data root: container data root %s is not mounted from the host; mount the data directory explicitly", containerDataRoot)
+	if matchedDestination == "" || strings.TrimSpace(matchedSource) == "" {
+		return "", fmt.Errorf("resolve physical path: container path %s is not mounted from the host; mount it explicitly", containerPath)
+	}
+	relativePath, _ := containerPathRelative(matchedDestination, wanted)
+	if relativePath == "." {
+		return matchedSource, nil
+	}
+	return filepath.Join(matchedSource, filepath.FromSlash(relativePath)), nil
+}
+
+func containerPathRelative(basePath string, targetPath string) (string, bool) {
+	if targetPath == basePath {
+		return ".", true
+	}
+	prefix := strings.TrimRight(basePath, "/") + "/"
+	if !strings.HasPrefix(targetPath, prefix) {
+		return "", false
+	}
+	return strings.TrimPrefix(targetPath, prefix), true
 }
 
 func cleanContainerPath(value string) string {

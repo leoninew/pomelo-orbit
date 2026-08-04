@@ -45,9 +45,15 @@ func (s Service) CreateRepository(ctx context.Context, userId string, input repo
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	name, code, repositoryUrl, defaultBranch, gitCredentialId, err := normalizeRepositoryCreateInput(input)
+	name, code, repositoryType, repositoryUrl, defaultBranch, gitCredentialId, err := normalizeRepositoryCreateInput(input)
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
+	}
+	if repositoryType == model.RepositoryTypeLocalDirectory {
+		repositoryUrl, err = s.validateLocalSourcePath(ctx, repositoryUrl)
+		if err != nil {
+			return repositorydto.RepositoryDetail{}, err
+		}
 	}
 	if err := s.ensureRepositoryCodeAvailable(ctx, &projectId, code); err != nil {
 		return repositorydto.RepositoryDetail{}, err
@@ -59,7 +65,7 @@ func (s Service) CreateRepository(ctx context.Context, userId string, input repo
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	repo := model.Repository{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, RepositoryUrl: repositoryUrl, GitCredentialId: gitCredentialId, VariableOverrides: overrides, DefaultBranch: defaultBranch}
+	repo := model.Repository{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, RepositoryType: repositoryType, RepositoryUrl: repositoryUrl, GitCredentialId: gitCredentialId, VariableOverrides: overrides, DefaultBranch: defaultBranch}
 	if err := s.store.CreateRepository(ctx, repo); err != nil {
 		return repositorydto.RepositoryDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create repository", err)
 	}
@@ -90,12 +96,11 @@ func (s Service) UpdateRepository(ctx context.Context, userId string, repository
 		}
 		repo.Name = name
 	}
+	if input.RepositoryType != nil {
+		repo.RepositoryType = strings.TrimSpace(*input.RepositoryType)
+	}
 	if input.RepositoryUrl != nil {
-		repositoryUrl := strings.TrimSpace(*input.RepositoryUrl)
-		if repositoryUrl == "" {
-			return repositorydto.RepositoryDetail{}, apperror.New(apperror.KindValidation, "Invalid repository fields")
-		}
-		repo.RepositoryUrl = repositoryUrl
+		repo.RepositoryUrl = strings.TrimSpace(*input.RepositoryUrl)
 	}
 	if input.GitCredentialId != nil {
 		repo.GitCredentialId = normalizeOptionalString(input.GitCredentialId)
@@ -116,6 +121,9 @@ func (s Service) UpdateRepository(ctx context.Context, userId string, repository
 			return repositorydto.RepositoryDetail{}, apperror.New(apperror.KindValidation, "Invalid repository fields")
 		}
 		repo.DefaultBranch = branch
+	}
+	if err := s.normalizeRepositorySource(ctx, &repo); err != nil {
+		return repositorydto.RepositoryDetail{}, err
 	}
 	if err := s.store.UpdateRepository(ctx, repo); err != nil {
 		return repositorydto.RepositoryDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to update repository", err)
@@ -161,6 +169,9 @@ func (s Service) CreateRepositoryWebhook(ctx context.Context, userId string, rep
 	repo, err := s.loadRepositoryForUser(ctx, userId, repositoryId)
 	if err != nil {
 		return model.RepositoryWebhook{}, err
+	}
+	if repo.RepositoryType == model.RepositoryTypeLocalDirectory {
+		return model.RepositoryWebhook{}, apperror.New(apperror.KindValidation, "Local directory repositories do not support webhooks")
 	}
 	name, templateId, secret, branchFilter, err := normalizeWebhookCreateInput(input)
 	if err != nil {
@@ -296,6 +307,9 @@ func (s Service) ReceiveRepositoryWebhook(ctx context.Context, input repositoryd
 		}
 		return repositorydto.WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
 	}
+	if repo.RepositoryType == model.RepositoryTypeLocalDirectory {
+		return repositorydto.WebhookReceiveResult{}, apperror.New(apperror.KindValidation, "Local directory repositories do not support webhooks")
+	}
 	template, err := s.store.PipelineTemplate(ctx, webhook.TemplateId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -430,19 +444,74 @@ func (s Service) repositoryCredentialName(ctx context.Context, credentialId *str
 	return name, nil
 }
 
-func normalizeRepositoryCreateInput(input repositorydto.RepositoryCreateInput) (string, string, string, string, *string, error) {
+func normalizeRepositoryCreateInput(input repositorydto.RepositoryCreateInput) (string, string, string, string, string, *string, error) {
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
 	repositoryUrl := strings.TrimSpace(input.RepositoryUrl)
+	repositoryType := strings.TrimSpace(input.RepositoryType)
+	if repositoryType == "" {
+		repositoryType = model.RepositoryTypeRemoteGit
+	}
 	defaultBranch := strings.TrimSpace(input.DefaultBranch)
 	if defaultBranch == "" {
 		defaultBranch = "master"
 	}
 	gitCredentialId := normalizeOptionalString(input.GitCredentialId)
-	if name == "" || code == "" || !repositoryCodePattern.MatchString(code) || repositoryUrl == "" || defaultBranch == "" {
-		return "", "", "", "", nil, apperror.New(apperror.KindValidation, "Invalid repository fields")
+	if name == "" || code == "" || !repositoryCodePattern.MatchString(code) || defaultBranch == "" {
+		return "", "", "", "", "", nil, apperror.New(apperror.KindValidation, "Invalid repository fields")
 	}
-	return name, code, repositoryUrl, defaultBranch, gitCredentialId, nil
+	switch repositoryType {
+	case model.RepositoryTypeRemoteGit:
+		if repositoryUrl == "" {
+			return "", "", "", "", "", nil, apperror.New(apperror.KindValidation, "repository_url is required for remote Git repositories")
+		}
+	case model.RepositoryTypeLocalDirectory:
+		if repositoryUrl == "" || gitCredentialId != nil {
+			return "", "", "", "", "", nil, apperror.New(apperror.KindValidation, "local directory repositories require repository_url and do not support Git credentials")
+		}
+	default:
+		return "", "", "", "", "", nil, apperror.New(apperror.KindValidation, "Unsupported repository_type")
+	}
+	return name, code, repositoryType, repositoryUrl, defaultBranch, gitCredentialId, nil
+}
+
+func (s Service) normalizeRepositorySource(ctx context.Context, repo *model.Repository) error {
+	repositoryType := strings.TrimSpace(repo.RepositoryType)
+	if repositoryType == "" {
+		repositoryType = model.RepositoryTypeRemoteGit
+	}
+	switch repositoryType {
+	case model.RepositoryTypeRemoteGit:
+		if strings.TrimSpace(repo.RepositoryUrl) == "" {
+			return apperror.New(apperror.KindValidation, "repository_url is required for remote Git repositories")
+		}
+		repo.RepositoryType = repositoryType
+		repo.RepositoryUrl = strings.TrimSpace(repo.RepositoryUrl)
+	case model.RepositoryTypeLocalDirectory:
+		if repo.GitCredentialId != nil {
+			return apperror.New(apperror.KindValidation, "local directory repositories do not support Git credentials")
+		}
+		repositoryUrl, err := s.validateLocalSourcePath(ctx, repo.RepositoryUrl)
+		if err != nil {
+			return err
+		}
+		repo.RepositoryType = repositoryType
+		repo.RepositoryUrl = repositoryUrl
+	default:
+		return apperror.New(apperror.KindValidation, "Unsupported repository_type")
+	}
+	return nil
+}
+
+func (s Service) validateLocalSourcePath(ctx context.Context, localPath string) (string, error) {
+	if s.localSource == nil {
+		return "", apperror.New(apperror.KindValidation, "Local directory sources are disabled")
+	}
+	resolved, err := s.localSource.Validate(ctx, localPath)
+	if err != nil {
+		return "", apperror.New(apperror.KindValidation, "Invalid local source path: "+err.Error())
+	}
+	return resolved, nil
 }
 
 func normalizeOptionalString(value *string) *string {

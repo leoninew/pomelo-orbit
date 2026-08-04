@@ -12,6 +12,7 @@ import (
 	"time"
 
 	pipelinerunport "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/port"
+	repositoryport "gitee.com/leoninew/PomeloOrbit-go/internal/application/repository/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
@@ -19,12 +20,13 @@ import (
 )
 
 type Executor struct {
-	store     pipelineExecutionStore
-	workspace pipelinerunport.Workspace
-	logStore  pipelinerunport.ExecutionLogStore
-	secretKey string
-	logger    *slog.Logger
-	runner    pipelinerunport.ContainerRunner
+	store       pipelineExecutionStore
+	workspace   pipelinerunport.Workspace
+	logStore    pipelinerunport.ExecutionLogStore
+	secretKey   string
+	logger      *slog.Logger
+	runner      pipelinerunport.ContainerRunner
+	localSource repositoryport.LocalDirectorySource
 }
 
 func (e Executor) Execute(ctx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stages []model.StageDefinition) (bool, string) {
@@ -96,6 +98,16 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 	if err != nil {
 		return e.failStage(ctx, pipelineStageRun, err.Error())
 	}
+	if repo.RepositoryType == model.RepositoryTypeLocalDirectory {
+		if e.localSource == nil {
+			return e.failStage(ctx, pipelineStageRun, "local directory sources are disabled")
+		}
+		sourcePath, err := e.localSource.DockerHostPath(ctx, repo.RepositoryUrl)
+		if err != nil {
+			return e.failStage(ctx, pipelineStageRun, err.Error())
+		}
+		volumes = append(volumes, pipelinerunport.VolumeMount{HostPath: sourcePath, ContainerPath: "/source", Mode: "ro"})
+	}
 
 	script, environment, err := e.pipelineStageRunConfig(ctx, repo, variables, stage)
 	if err != nil {
@@ -139,7 +151,7 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 func (e Executor) pipelineStageRunConfig(ctx context.Context, repo model.Repository, variables map[string]any, stage model.StageDefinition) (string, []string, error) {
 	script := commandLines(stage.Script)
 	environment := envMap(variables)
-	if repo.GitCredentialId == nil || !stageUsesRepositoryUrl(stage.Script, repo.RepositoryUrl) {
+	if repo.RepositoryType == model.RepositoryTypeLocalDirectory || repo.GitCredentialId == nil || !stageUsesRepositoryUrl(stage.Script, repo.RepositoryUrl) {
 		return script, environment, nil
 	}
 	credential, err := e.store.Credential(ctx, *repo.GitCredentialId)

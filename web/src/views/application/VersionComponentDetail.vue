@@ -479,6 +479,61 @@
               </table>
             </div>
           </section>
+
+          <section class="app-surface app-detail-card">
+            <div class="app-section-header app-detail-section-header">
+              <h2 class="app-detail-section-title">
+                {{ t('application.componentDetail.sections.tmpfs') }}
+              </h2>
+              <button
+                v-if="canEdit"
+                class="app-button-primary h-9 px-3"
+                :disabled="operating"
+                @click="openRecordDialog('tmpfs')"
+              >
+                <Plus class="size-4" />
+                {{ t('common.add') }}
+              </button>
+            </div>
+            <AppEmptyState v-if="form.tmpfs.length === 0" size="compact" />
+            <div v-else class="overflow-x-auto">
+              <table class="app-data-table min-w-[720px]">
+                <thead>
+                  <tr>
+                    <th>{{ t('application.componentDetail.fields.target') }}</th>
+                    <th>{{ t('application.componentDetail.fields.sizeBytes') }}</th>
+                    <th>{{ t('application.componentDetail.fields.mode') }}</th>
+                    <th class="w-32">{{ t('common.operation') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, index) in form.tmpfs" :key="`tmpfs-${index}`">
+                    <td class="min-w-60 break-all text-foreground">{{ row.target }}</td>
+                    <td class="min-w-52 text-foreground">{{ row.size_bytes }}</td>
+                    <td class="min-w-40 text-foreground">{{ row.mode }}</td>
+                    <td class="w-32">
+                      <div v-if="canEdit" class="flex items-center gap-3">
+                        <button
+                          class="app-link"
+                          :disabled="operating"
+                          @click="openRecordDialog('tmpfs', index)"
+                        >
+                          {{ t('common.edit') }}
+                        </button>
+                        <button
+                          class="app-link-danger"
+                          :disabled="operating"
+                          @click="deleteRecord('tmpfs', index)"
+                        >
+                          {{ t('common.delete') }}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </TabsContent>
 
         <TabsContent v-if="!isNew" value="advanced" class="flex flex-col gap-4 outline-none">
@@ -568,61 +623,6 @@
                           class="app-link-danger"
                           :disabled="operating"
                           @click="deleteRecord('devices', index)"
-                        >
-                          {{ t('common.delete') }}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="app-surface app-detail-card">
-            <div class="app-section-header app-detail-section-header">
-              <h2 class="app-detail-section-title">
-                {{ t('application.componentDetail.sections.tmpfs') }}
-              </h2>
-              <button
-                v-if="canEdit"
-                class="app-button-primary h-9 px-3"
-                :disabled="operating"
-                @click="openRecordDialog('tmpfs')"
-              >
-                <Plus class="size-4" />
-                {{ t('common.add') }}
-              </button>
-            </div>
-            <AppEmptyState v-if="form.tmpfs.length === 0" size="compact" />
-            <div v-else class="overflow-x-auto">
-              <table class="app-data-table min-w-[720px]">
-                <thead>
-                  <tr>
-                    <th>{{ t('application.componentDetail.fields.target') }}</th>
-                    <th>{{ t('application.componentDetail.fields.sizeBytes') }}</th>
-                    <th>{{ t('application.componentDetail.fields.mode') }}</th>
-                    <th class="w-32">{{ t('common.operation') }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(row, index) in form.tmpfs" :key="`tmpfs-${index}`">
-                    <td class="min-w-60 break-all text-foreground">{{ row.target }}</td>
-                    <td class="min-w-52 text-foreground">{{ row.size_bytes }}</td>
-                    <td class="min-w-40 text-foreground">{{ row.mode }}</td>
-                    <td class="w-32">
-                      <div v-if="canEdit" class="flex items-center gap-3">
-                        <button
-                          class="app-link"
-                          :disabled="operating"
-                          @click="openRecordDialog('tmpfs', index)"
-                        >
-                          {{ t('common.edit') }}
-                        </button>
-                        <button
-                          class="app-link-danger"
-                          :disabled="operating"
-                          @click="deleteRecord('tmpfs', index)"
                         >
                           {{ t('common.delete') }}
                         </button>

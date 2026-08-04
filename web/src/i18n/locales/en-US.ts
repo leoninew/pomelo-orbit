@@ -420,7 +420,7 @@ export default {
         pathPrefix: 'Path Prefix',
         key: 'Key',
         value: 'Value',
-        sourceType: 'Source type',
+        sourceType: 'Type',
         source: 'Source',
         target: 'Target path',
         readOnly: 'Read only',
@@ -606,7 +606,6 @@ export default {
       logsAll: 'All logs',
       deploy: 'Deploy',
       stop: 'Stop',
-      delete: 'Delete',
     },
     detail: {
       title: 'Service detail',
@@ -664,10 +663,6 @@ export default {
       confirm: 'Stop all components of this service instance?',
       removeVolumes: 'Also remove volumes',
     },
-    delete: {
-      dialogTitle: 'Delete service',
-      confirm: 'Delete stopped service instance "{instance}"? This cannot be undone.',
-    },
     containers: {
       empty: 'No containers',
       loadFailed: 'Failed to load container status',
@@ -692,8 +687,6 @@ export default {
       deployFailed: 'Deploy failed',
       stopQueued: 'Stop task created',
       stopFailed: 'Stop failed',
-      deleteSuccess: 'Service deleted',
-      deleteFailed: 'Failed to delete service',
     },
   },
   gateway: {

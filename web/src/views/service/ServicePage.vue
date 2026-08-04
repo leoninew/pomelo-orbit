@@ -60,16 +60,15 @@
             <div class="min-w-0 space-y-1">
               <h2 class="text-base font-semibold text-foreground">
                 <router-link :to="`/service/${svc.id}`" class="app-link block truncate">
-                  {{ svc.instance_key || 'default' }}
+                  {{ svc.application_name || svc.application_id }}
                 </router-link>
               </h2>
-              <router-link
-                :to="`/application/${svc.application_id}`"
-                class="app-link block truncate text-sm"
-                :title="svc.application_name || svc.application_id"
+              <p
+                v-if="svc.instance_key && svc.instance_key !== 'default'"
+                class="truncate text-sm text-muted-foreground"
               >
-                {{ svc.application_name || svc.application_id }}
-              </router-link>
+                {{ svc.instance_key }}
+              </p>
             </div>
             <AppBadge variant="status" :tone="appStatusTone(svc.status)">
               {{ svc.status }}
@@ -112,14 +111,6 @@
             >
               {{ t('service.actions.stop') }}
             </button>
-            <button
-              v-if="svc.status === 'stopped'"
-              class="app-link-danger"
-              :disabled="operating"
-              @click="openDeleteDialog(svc)"
-            >
-              {{ t('service.actions.delete') }}
-            </button>
             <router-link
               :to="{ path: '/deployments', query: { application_id: svc.application_id } }"
               class="app-link"
@@ -143,10 +134,9 @@
 
     <div v-else class="app-surface">
       <div class="overflow-x-auto">
-        <table class="app-data-table min-w-[1080px]">
+        <table class="app-data-table min-w-[960px]">
           <thead>
             <tr>
-              <th>{{ t('service.fields.instanceKey') }}</th>
               <th>{{ t('service.fields.application') }}</th>
               <th>{{ t('service.fields.version') }}</th>
               <th>{{ t('common.status') }}</th>
@@ -157,14 +147,19 @@
           <tbody>
             <tr v-for="svc in services" :key="svc.id">
               <td>
-                <router-link :to="`/service/${svc.id}`" class="app-link">
-                  {{ svc.instance_key || 'default' }}
-                </router-link>
-              </td>
-              <td>
-                <router-link :to="`/application/${svc.application_id}`" class="app-link">
+                <router-link
+                  :to="`/service/${svc.id}`"
+                  class="app-link"
+                  :title="svc.application_name || svc.application_id"
+                >
                   {{ svc.application_name || svc.application_id }}
                 </router-link>
+                <span
+                  v-if="svc.instance_key && svc.instance_key !== 'default'"
+                  class="ml-2 text-xs text-muted-foreground"
+                >
+                  {{ svc.instance_key }}
+                </span>
               </td>
               <td>
                 <router-link :to="`/version/${svc.version_id}`" class="app-link">
@@ -192,14 +187,6 @@
                     @click="openStopDialog(svc)"
                   >
                     {{ t('service.actions.stop') }}
-                  </button>
-                  <button
-                    v-if="svc.status === 'stopped'"
-                    class="app-link-danger"
-                    :disabled="operating"
-                    @click="openDeleteDialog(svc)"
-                  >
-                    {{ t('service.actions.delete') }}
                   </button>
                   <router-link
                     :to="{ path: '/deployments', query: { application_id: svc.application_id } }"
@@ -335,25 +322,6 @@
         />
       </template>
     </AppDialog>
-
-    <AppDialog
-      v-model:open="isDeleteDialogOpen"
-      :title="t('service.delete.dialogTitle')"
-      width-class="w-[min(420px,calc(100vw-32px))]"
-    >
-      <p class="text-sm text-foreground">
-        {{ t('service.delete.confirm', { instance: selectedService?.instance_key || 'default' }) }}
-      </p>
-      <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          :confirm-label="t('common.delete')"
-          variant="destructive"
-          @cancel="isDeleteDialogOpen = false"
-          @confirm="handleDeleteOk"
-        />
-      </template>
-    </AppDialog>
   </div>
 </template>
 
@@ -407,7 +375,6 @@
   });
   const isStopDialogOpen = ref(false);
   const stopRemoveVolumes = ref(false);
-  const isDeleteDialogOpen = ref(false);
   const isCreateDialogOpen = ref(false);
   const createError = ref('');
   const createErrors = reactive({
@@ -584,11 +551,6 @@
     isStopDialogOpen.value = true;
   }
 
-  function openDeleteDialog(service: ServiceResp) {
-    selectedService.value = service;
-    isDeleteDialogOpen.value = true;
-  }
-
   async function handleStopOk() {
     const service = selectedService.value;
     if (!service) {
@@ -610,26 +572,6 @@
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('service.toast.stopFailed'));
-    }
-  }
-
-  async function handleDeleteOk() {
-    const service = selectedService.value;
-    if (!service) {
-      return;
-    }
-    try {
-      await executeOp(async () => {
-        await serviceApi.remove(service.id);
-        toast.success(t('service.toast.deleteSuccess'));
-        isDeleteDialogOpen.value = false;
-        if (services.value.length === 1 && pagination.current > 1) {
-          pagination.current--;
-        }
-        await fetchServices();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('service.toast.deleteFailed'));
     }
   }
 

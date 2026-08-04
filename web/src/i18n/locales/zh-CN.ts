@@ -412,7 +412,7 @@ export default {
         pathPrefix: '路径前缀',
         key: '键',
         value: '值',
-        sourceType: '源类型',
+        sourceType: '类型',
         source: '源',
         target: '目标路径',
         readOnly: '只读',
@@ -592,7 +592,6 @@ export default {
       logsAll: '全部日志',
       deploy: '部署',
       stop: '停止',
-      delete: '删除',
     },
     detail: {
       title: '服务详情',
@@ -649,10 +648,6 @@ export default {
       confirm: '确定停止该服务实例的全部组件？',
       removeVolumes: '同时删除 volumes',
     },
-    delete: {
-      dialogTitle: '删除服务',
-      confirm: '确定删除已停止的服务实例「{instance}」吗？此操作不可恢复。',
-    },
     containers: {
       empty: '暂无容器',
       loadFailed: '获取容器状态失败',
@@ -677,8 +672,6 @@ export default {
       deployFailed: '部署失败',
       stopQueued: '停止任务已创建',
       stopFailed: '停止失败',
-      deleteSuccess: '服务已删除',
-      deleteFailed: '删除服务失败',
     },
   },
   gateway: {

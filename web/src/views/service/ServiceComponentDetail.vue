@@ -53,41 +53,82 @@
                   </span>
                 </td>
                 <td class="max-w-0">
-                  <span
-                    v-if="entry.deleted"
-                    class="block py-2 text-sm text-amber-700 dark:text-amber-300"
-                  >
-                    {{ t('common.remove') }}
-                  </span>
-                  <div v-else>
+                  <div v-if="editingEnvironmentKey === entry.key">
                     <input
-                      :value="entry.value"
+                      v-model="editingEnvironmentValue"
                       type="text"
                       class="app-input h-9"
-                      :class="entry.overridden ? 'border-amber-500' : ''"
                       :aria-label="t('service.componentDetail.currentValue')"
                       :disabled="operating"
-                      @input="updateEnvironmentValue(entry, $event)"
                     />
                   </div>
-                </td>
-                <td class="align-top whitespace-nowrap">
-                  <button
-                    v-if="entry.deleted || entry.overridden"
-                    class="app-link inline-flex h-9 items-center"
-                    :disabled="operating"
-                    @click="entry.deleted ? restoreEnvironment(entry) : resetEnvironment(entry)"
-                  >
-                    {{ entry.deleted ? t('common.restore') : t('common.reset') }}
-                  </button>
-                  <button
+                  <span
                     v-else
-                    class="app-link-danger inline-flex h-9 items-center"
-                    :disabled="operating"
-                    @click="removeEnvironment(entry)"
+                    class="block h-9 truncate leading-9"
+                    :class="
+                      entry.deleted || entry.overridden
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-foreground'
+                    "
+                    :title="entry.deleted ? '-' : displayValue(entry.value)"
                   >
-                    {{ t('common.delete') }}
-                  </button>
+                    {{ entry.deleted ? '-' : displayValue(entry.value) }}
+                  </span>
+                </td>
+                <td class="whitespace-nowrap">
+                  <div
+                    v-if="editingEnvironmentKey === entry.key"
+                    class="flex h-9 items-center gap-2"
+                  >
+                    <button
+                      class="app-link"
+                      :disabled="operating"
+                      @click="applyEnvironmentEdit(entry)"
+                    >
+                      {{ t('common.save') }}
+                    </button>
+                    <button
+                      class="text-muted-foreground hover:text-foreground"
+                      :disabled="operating"
+                      @click="cancelEnvironmentEdit"
+                    >
+                      {{ t('common.cancel') }}
+                    </button>
+                  </div>
+                  <div v-else class="flex h-9 items-center gap-2">
+                    <button
+                      v-if="!entry.deleted"
+                      class="app-link"
+                      :disabled="operating"
+                      @click="startEnvironmentEdit(entry)"
+                    >
+                      {{ t('common.edit') }}
+                    </button>
+                    <button
+                      v-if="entry.deleted"
+                      class="app-link"
+                      :disabled="operating"
+                      @click="restoreEnvironment(entry)"
+                    >
+                      {{ t('common.restore') }}
+                    </button>
+                    <button
+                      v-else-if="entry.overridden"
+                      class="text-muted-foreground hover:text-foreground"
+                      :disabled="operating"
+                      @click="resetEnvironment(entry)"
+                    >
+                      {{ t('common.reset') }}
+                    </button>
+                    <button
+                      v-else
+                      class="app-link-danger"
+                      :disabled="operating"
+                      @click="removeEnvironment(entry)"
+                    >
+                      {{ t('common.remove') }}
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -137,7 +178,7 @@
                   </div>
                   <span
                     v-else
-                    class="block truncate"
+                    class="block h-9 truncate leading-9"
                     :class="
                       resourceDeleted || field.value !== field.base
                         ? 'text-amber-600 dark:text-amber-400'
@@ -149,7 +190,7 @@
                   </span>
                 </td>
                 <td>
-                  <div v-if="editingResourceKey === field.key" class="flex gap-2">
+                  <div v-if="editingResourceKey === field.key" class="flex h-9 items-center gap-2">
                     <button class="app-link" @click="applyResourceEdit(field)">
                       {{ t('common.save') }}
                     </button>
@@ -160,7 +201,7 @@
                       {{ t('common.cancel') }}
                     </button>
                   </div>
-                  <div v-else-if="!resourceDeleted" class="flex gap-2">
+                  <div v-else-if="!resourceDeleted" class="flex h-9 items-center gap-2">
                     <button class="app-link" @click="startResourceEdit(field)">
                       {{ t('common.edit') }}
                     </button>
@@ -237,7 +278,7 @@
                         v-if="field.key === 'mode'"
                         v-model="editingEndpoint[field.key]"
                         :values="endpointModes"
-                        width-class="w-full"
+                        width-class="h-9 w-full"
                       />
                       <input v-else v-model="editingEndpoint[field.key]" class="app-input h-9" />
                     </label>
@@ -267,7 +308,10 @@
                   </dl>
                 </td>
                 <td>
-                  <div v-if="editingEndpointName === endpoint.name" class="flex gap-2">
+                  <div
+                    v-if="editingEndpointName === endpoint.name"
+                    class="flex h-9 items-center gap-2"
+                  >
                     <button class="app-link" @click="applyEndpointEdit(endpoint)">
                       {{ t('common.save') }}
                     </button>
@@ -278,7 +322,7 @@
                       {{ t('common.cancel') }}
                     </button>
                   </div>
-                  <div v-else class="flex gap-2">
+                  <div v-else class="flex h-9 items-center gap-2">
                     <button
                       v-if="!endpoint.deleted"
                       class="app-link"
@@ -353,7 +397,7 @@
                   </div>
                   <span
                     v-else
-                    class="block truncate"
+                    class="block h-9 truncate leading-9"
                     :class="
                       mount.deleted || mount.source !== mount.base
                         ? 'text-amber-600 dark:text-amber-400'
@@ -365,7 +409,10 @@
                   </span>
                 </td>
                 <td>
-                  <div v-if="editingMountTarget === mount.target" class="flex gap-2">
+                  <div
+                    v-if="editingMountTarget === mount.target"
+                    class="flex h-9 items-center gap-2"
+                  >
                     <button class="app-link" @click="applyMountEdit(mount)">
                       {{ t('common.save') }}
                     </button>
@@ -376,7 +423,7 @@
                       {{ t('common.cancel') }}
                     </button>
                   </div>
-                  <div v-else class="flex gap-2">
+                  <div v-else class="flex h-9 items-center gap-2">
                     <button v-if="!mount.deleted" class="app-link" @click="startMountEdit(mount)">
                       {{ t('common.edit') }}
                     </button>
@@ -472,6 +519,8 @@
   const componentId = String(route.params.componentId || '');
   const detail = ref<ServiceComponentDetailResp>();
   const environmentRows = ref<EnvRow[]>([]);
+  const editingEnvironmentKey = ref<string | null>(null);
+  const editingEnvironmentValue = ref('');
   const mountRows = ref<MountRow[]>([]);
   const editingMountTarget = ref<string | null>(null);
   const editingMountSource = ref('');
@@ -587,24 +636,36 @@
         ]
       : [];
   }
-  function updateEnvironmentValue(row: EnvRow, event: Event) {
-    row.value = (event.target as HTMLInputElement).value;
+  function startEnvironmentEdit(row: EnvRow) {
+    editingEnvironmentKey.value = row.key;
+    editingEnvironmentValue.value = row.value;
+  }
+  function applyEnvironmentEdit(row: EnvRow) {
+    row.value = editingEnvironmentValue.value;
     row.deleted = false;
     row.overridden = row.value !== row.inheritedValue;
+    cancelEnvironmentEdit();
+  }
+  function cancelEnvironmentEdit() {
+    editingEnvironmentKey.value = null;
+    editingEnvironmentValue.value = '';
   }
   function resetEnvironment(row: EnvRow) {
     row.value = row.inheritedValue;
     row.deleted = false;
     row.overridden = false;
+    cancelEnvironmentEdit();
   }
   function removeEnvironment(row: EnvRow) {
     row.deleted = true;
     row.overridden = false;
+    cancelEnvironmentEdit();
   }
   function restoreEnvironment(row: EnvRow) {
     row.value = row.inheritedValue;
     row.deleted = false;
     row.overridden = false;
+    cancelEnvironmentEdit();
   }
   function startResourceEdit(field: ResourceField) {
     editingResourceKey.value = field.key;

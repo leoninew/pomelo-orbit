@@ -18,14 +18,22 @@
   const props = withDefaults(
     defineProps<{
       message?: string;
-      size?: 'default' | 'compact';
+      size?: 'page' | 'section' | 'compact';
     }>(),
     {
-      size: 'default',
+      size: 'page',
     }
   );
 
   const displayMessage = computed(() => props.message || t('common.noData'));
-  const paddingClass = computed(() => (props.size === 'compact' ? 'py-8' : 'py-16'));
+  const paddingClass = computed(() => {
+    if (props.size === 'compact') {
+      return 'py-8';
+    }
+    if (props.size === 'section') {
+      return 'py-12';
+    }
+    return 'py-16';
+  });
   const iconClass = computed(() => (props.size === 'compact' ? 'size-8' : 'size-12'));
 </script>

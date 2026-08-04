@@ -45,7 +45,7 @@
     </div>
 
     <!-- Loading State -->
-    <AppSpinner v-if="loading" class="py-12" />
+    <AppLoadingState v-if="loading" size="section" />
 
     <!-- Content -->
     <div v-else-if="run" class="flex flex-col gap-4">
@@ -161,7 +161,7 @@
           <ViewModeToggle v-model="stagesView" />
         </div>
 
-        <AppSpinner v-if="run.snapshot_id && !snapshot" class="py-8" />
+        <AppLoadingState v-if="run.snapshot_id && !snapshot" size="compact" />
         <AppEmptyState
           v-else-if="!snapshot || snapshot.stages_snapshot.length === 0"
           size="compact"
@@ -264,7 +264,7 @@
         <div class="app-section-header app-detail-section-header">
           <h2 class="app-detail-section-title">{{ t('pipelineRun.artifacts') }}</h2>
         </div>
-        <AppSpinner v-if="artifactsLoading" class="py-16" />
+        <AppLoadingState v-if="artifactsLoading" />
         <AppEmptyState
           v-else-if="!isTerminalStatus(run.status)"
           :message="t('pipelineRun.artifactsAfterCompletion')"
@@ -372,6 +372,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import ViewModeToggle from '@/components/ViewModeToggle.vue';

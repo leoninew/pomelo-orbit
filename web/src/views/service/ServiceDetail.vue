@@ -32,7 +32,7 @@
       </div>
     </div>
 
-    <AppSpinner v-if="loading && !service" class="py-12" />
+    <AppLoadingState v-if="loading && !service" size="section" />
     <AppEmptyState v-else-if="!service" :message="t('service.detail.notFound')" />
 
     <template v-else>
@@ -56,9 +56,7 @@
       @update:open="setPreviewOpen"
     >
       <div class="flex h-full flex-col gap-3 p-6">
-        <div v-if="previewLoading" class="flex flex-1 items-center justify-center">
-          <AppSpinner />
-        </div>
+        <AppLoadingState v-if="previewLoading" class="flex-1 items-center" size="section" />
         <div
           v-else-if="previewError"
           class="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
@@ -162,6 +160,7 @@
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import {
     cloneEnvironmentVariableRows,

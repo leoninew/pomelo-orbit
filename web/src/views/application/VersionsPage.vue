@@ -23,7 +23,12 @@
     </ToolbarRoot>
 
     <div v-if="loadingApplications" class="app-surface">
-      <AppSpinner class="py-16" />
+      <AppLoadingState />
+    </div>
+    <div v-else-if="loadError" class="app-surface">
+      <div class="py-16 text-center text-destructive">
+        <p class="text-sm">{{ loadError }}</p>
+      </div>
     </div>
     <AppEmptyState v-else-if="applications.length === 0" />
     <ApplicationDetail
@@ -43,7 +48,7 @@
   import { ToolbarRoot } from 'reka-ui';
   import { applicationApi } from '@/api/application/application';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useToast } from '@/composables/useToast';
@@ -61,6 +66,7 @@
   const storageStore = useStorageStore();
   const applications = ref<ApplicationResp[]>([]);
   const loadingApplications = ref(false);
+  const loadError = ref('');
   const search = ref('');
 
   const applicationId = computed(() => String(route.query.application_id || ''));
@@ -111,6 +117,7 @@
       return;
     }
     loadingApplications.value = true;
+    loadError.value = '';
     try {
       const response = await applicationApi.list({ per_page: 100, project_id: projectId });
       applications.value = response.items ?? [];
@@ -121,7 +128,8 @@
       await syncApplicationQuery(selected);
     } catch {
       applications.value = [];
-      toast.error(t('application.toast.loadFailed'));
+      loadError.value = t('application.toast.loadFailed');
+      toast.error(loadError.value);
     } finally {
       loadingApplications.value = false;
     }

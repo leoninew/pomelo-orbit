@@ -29,7 +29,7 @@
     </ToolbarRoot>
 
     <div class="app-surface">
-      <AppSpinner v-if="status === 'loading'" class="py-16" />
+      <AppLoadingState v-if="status === 'loading'" />
       <div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
         <p class="text-sm">{{ error || '加载失败' }}</p>
       </div>
@@ -123,7 +123,7 @@
   import { repositoryApi } from '@/api/repository/repository';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';

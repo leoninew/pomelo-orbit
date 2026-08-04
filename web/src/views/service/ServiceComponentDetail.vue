@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <AppSpinner v-if="loading" class="py-12" />
+    <AppLoadingState v-if="loading" size="section" />
 
     <template v-else-if="detail && draft">
       <section class="order-2 app-surface app-detail-card">
@@ -459,7 +459,7 @@
   import { serviceApi } from '@/api/service/service';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';

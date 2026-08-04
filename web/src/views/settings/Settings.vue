@@ -15,7 +15,12 @@
 
     <!-- Config Table -->
     <div v-if="configLoading" class="app-surface">
-      <AppSpinner class="py-16" />
+      <AppLoadingState />
+    </div>
+    <div v-else-if="configStatus === 'error'" class="app-surface">
+      <div class="py-16 text-center text-destructive">
+        <p class="text-sm">{{ configError || t('settings.loadFailed') }}</p>
+      </div>
     </div>
     <div v-else-if="filteredConfig.length === 0" class="app-surface">
       <AppEmptyState />
@@ -147,7 +152,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -162,7 +167,12 @@
 
   const config = ref<SystemConfigResp>();
   const searchText = ref('');
-  const { loading: configLoading, execute } = useStatusAsync();
+  const {
+    status: configStatus,
+    error: configError,
+    loading: configLoading,
+    execute,
+  } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
   const needsRestart = ref(false);
   const canWriteSettings = computed(() => authStore.hasPermission(PERMISSIONS.SETTING_WRITE));

@@ -52,7 +52,7 @@
       </div>
     </div>
 
-    <AppSpinner v-if="loading" class="py-12" />
+    <AppLoadingState v-if="loading" size="section" />
 
     <template v-else-if="version">
       <VersionBasicInfoCard
@@ -80,9 +80,7 @@
       @update:open="setPreviewOpen"
     >
       <div class="flex h-full flex-col gap-3 p-6">
-        <div v-if="previewLoading" class="flex flex-1 items-center justify-center">
-          <AppSpinner />
-        </div>
+        <AppLoadingState v-if="previewLoading" class="flex-1 items-center" size="section" />
         <div
           v-else-if="previewError"
           class="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
@@ -402,7 +400,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

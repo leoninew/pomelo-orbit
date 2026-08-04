@@ -30,7 +30,7 @@
       </div>
     </div>
 
-    <AppSpinner v-if="basicInfoLoading" class="py-12" />
+    <AppLoadingState v-if="basicInfoLoading" size="section" />
 
     <div v-else-if="application" class="flex flex-col gap-4">
       <ApplicationBasicInfoCard
@@ -51,7 +51,7 @@
             {{ t('application.detail.actions.createVersion') }}
           </button>
         </div>
-        <AppSpinner v-if="versionListLoading" class="py-8" />
+        <AppLoadingState v-if="versionListLoading" size="compact" />
         <AppEmptyState v-else-if="versions.length === 0" size="compact" />
         <AccordionRoot
           v-else-if="!versionsOnly"
@@ -105,7 +105,10 @@
               </div>
             </div>
             <AccordionContent class="border-t border-border px-5 py-4">
-              <AppSpinner v-if="versionComponentLoadState[version.id] === 'loading'" class="py-4" />
+              <AppLoadingState
+                v-if="versionComponentLoadState[version.id] === 'loading'"
+                size="compact"
+              />
               <p
                 v-else-if="versionComponentLoadState[version.id] === 'error'"
                 class="py-2 text-sm text-destructive"
@@ -539,9 +542,7 @@
       @update:open="setPreviewOpen"
     >
       <div class="flex h-full flex-col gap-3 p-6">
-        <div v-if="previewLoading" class="flex flex-1 items-center justify-center">
-          <AppSpinner />
-        </div>
+        <AppLoadingState v-if="previewLoading" class="flex-1 items-center" size="section" />
         <div
           v-else-if="previewError"
           class="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
@@ -585,7 +586,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';

@@ -30,7 +30,7 @@
         </ToolbarRoot>
       </div>
 
-      <AppSpinner v-if="traefikStatus === 'loading'" class="py-16" />
+      <AppLoadingState v-if="traefikStatus === 'loading'" />
       <div v-else-if="traefikStatus === 'error'" class="py-16 text-center">
         <p class="text-sm text-destructive">
           {{ traefikError || t('traefikRoute.toast.loadFailed') }}
@@ -146,7 +146,10 @@
         </ToolbarRoot>
       </div>
 
-      <AppSpinner v-if="routeStatus === 'loading'" class="py-16" />
+      <AppLoadingState v-if="routeStatus === 'loading'" />
+      <div v-else-if="routeStatus === 'error'" class="py-16 text-center text-destructive">
+        <p class="text-sm">{{ routeError || t('route.toast.loadFailed') }}</p>
+      </div>
       <AppEmptyState v-else-if="routes.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-data-table min-w-[1200px]">
@@ -329,7 +332,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -342,7 +345,7 @@
   const toast = useToast();
   const { t } = useI18n();
   const projectStore = useProjectStore();
-  const { status: routeStatus, execute: executeRoutes } = useStatusAsync();
+  const { status: routeStatus, error: routeError, execute: executeRoutes } = useStatusAsync();
   const { loading: routeOperating, execute: executeRouteOperation } = useStatusAsync();
   const { status: traefikStatus, error: traefikError, execute: executeTraefik } = useStatusAsync();
 

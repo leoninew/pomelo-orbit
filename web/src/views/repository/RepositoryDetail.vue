@@ -30,7 +30,7 @@
       </div>
     </div>
 
-    <AppSpinner v-if="status === 'loading'" class="py-12" />
+    <AppLoadingState v-if="status === 'loading'" size="section" />
 
     <template v-else-if="repository">
       <div class="app-surface app-detail-card">
@@ -123,6 +123,7 @@
       :default-branch="repository?.default_branch"
       :project-variables="repositoryCustomVariables"
       :repository="repository"
+      :busy="operating"
       @trigger="handleTrigger"
     />
 
@@ -294,7 +295,7 @@
   import { webhookApi } from '@/api/repository/webhook';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -478,6 +479,7 @@
       await executeOp(async () => {
         const run = await repositoryApi.trigger(repositoryId, data);
         toast.success('触发成功');
+        triggerModalRef.value?.close();
         router.push(`/pipeline-run/${run.id}`);
       });
     } catch (error) {

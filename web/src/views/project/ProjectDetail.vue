@@ -36,7 +36,7 @@
         </button>
       </div>
 
-      <AppSpinner v-if="loading" class="px-5 py-10" />
+      <AppLoadingState v-if="loading" size="section" />
       <dl v-else-if="project" class="app-detail-info-grid">
         <div class="flex gap-2">
           <dt>{{ t('project.name') }}</dt>
@@ -77,7 +77,7 @@
         </button>
       </div>
 
-      <AppSpinner v-if="loadingMembers" class="px-5 py-10" />
+      <AppLoadingState v-if="loadingMembers" size="section" />
       <AppEmptyState v-else-if="members.length === 0" size="compact" />
       <div v-else class="px-5 py-4">
         <table class="app-data-table">
@@ -219,7 +219,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';

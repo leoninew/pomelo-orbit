@@ -12,7 +12,7 @@
         {{ t('common.edit') }}
       </button>
     </div>
-    <AppSpinner v-if="loading" class="px-5 py-10" />
+    <AppLoadingState v-if="loading" size="section" />
     <dl v-else-if="role" class="app-detail-info-grid">
       <div class="flex gap-2">
         <dt>{{ t('roleManagement.code') }}</dt>
@@ -41,7 +41,7 @@
 <script setup lang="ts">
   import { Pencil } from 'lucide-vue-next';
   import { useI18n } from 'vue-i18n';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import type { RoleResp } from '@/gen/proto/orbit/v1/role/role';
   import { formatTime } from '@/utils/time';
 

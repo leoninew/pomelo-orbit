@@ -39,7 +39,7 @@
     </div>
 
     <!-- Loading State -->
-    <AppSpinner v-if="status === 'loading'" class="py-12" />
+    <AppLoadingState v-if="status === 'loading'" size="section" />
 
     <!-- Content -->
     <div v-else-if="template" class="flex flex-col gap-4">
@@ -473,7 +473,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ViewModeToggle from '@/components/ViewModeToggle.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

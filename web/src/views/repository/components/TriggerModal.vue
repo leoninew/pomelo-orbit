@@ -59,7 +59,7 @@
     </div>
 
     <template #footer>
-      <AppDialogActions @cancel="isOpen = false" @confirm="handleOk" />
+      <AppDialogActions :busy="busy" @cancel="isOpen = false" @confirm="handleOk" />
     </template>
   </AppDialog>
 </template>
@@ -74,6 +74,7 @@
   import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
 
   const props = defineProps<{
+    busy?: boolean;
     repositoryId: string;
     templates: PipelineTemplateResp[];
     defaultBranch?: string;
@@ -92,6 +93,7 @@
   }>();
 
   const isOpen = ref(false);
+  const busy = computed(() => props.busy ?? false);
   const initialVariableValues = ref<Record<string, string>>({});
 
   const form = reactive({
@@ -246,6 +248,9 @@
   }
 
   function handleOk() {
+    if (busy.value) {
+      return;
+    }
     errors.template_id = form.template_id ? '' : '请选择模板';
     errors.variables = {};
     for (const variable of variableList.value) {
@@ -262,8 +267,11 @@
       trigger_ref: form.trigger_ref,
       variables: buildRuntimeOverrides(),
     });
+  }
+
+  function close() {
     isOpen.value = false;
   }
 
-  defineExpose({ open });
+  defineExpose({ open, close });
 </script>

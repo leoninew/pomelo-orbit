@@ -58,7 +58,10 @@
             <ArrowRight class="size-4" />
           </button>
         </div>
-        <AppSpinner v-if="status === 'loading'" class="py-16" />
+        <AppLoadingState v-if="status === 'loading'" />
+        <div v-else-if="status === 'error'" class="py-16 text-center text-destructive">
+          <p class="text-sm">{{ error || t('common.loadFailed') }}</p>
+        </div>
         <AppEmptyState v-else-if="recentRuns.length === 0" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table table-fixed min-w-[560px]">
@@ -113,7 +116,10 @@
             <ArrowRight class="size-4" />
           </button>
         </div>
-        <AppSpinner v-if="status === 'loading'" class="py-16" />
+        <AppLoadingState v-if="status === 'loading'" />
+        <div v-else-if="status === 'error'" class="py-16 text-center text-destructive">
+          <p class="text-sm">{{ error || t('common.loadFailed') }}</p>
+        </div>
         <AppEmptyState v-else-if="recentDeploys.length === 0" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table table-fixed min-w-[560px]">
@@ -171,7 +177,7 @@
   import { repositoryApi } from '@/api/repository/repository';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
@@ -191,7 +197,7 @@
   const toast = useToast();
   const authStore = useAuthStore();
   const projectStore = useProjectStore();
-  const { status, execute } = useStatusAsync();
+  const { status, error, execute } = useStatusAsync();
   const { t } = useI18n({ useScope: 'global' });
 
   const pipelineStats = reactive({ projectCount: 0, todayRuns: 0 });

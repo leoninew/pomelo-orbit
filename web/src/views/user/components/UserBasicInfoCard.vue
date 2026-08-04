@@ -13,7 +13,7 @@
       </button>
     </div>
 
-    <AppSpinner v-if="loading" class="px-5 py-10" />
+    <AppLoadingState v-if="loading" size="section" />
     <dl v-else-if="user" class="app-detail-info-grid">
       <div class="flex gap-2">
         <dt>{{ t('userManagement.username') }}</dt>
@@ -59,7 +59,7 @@
   import { Pencil } from 'lucide-vue-next';
   import { useI18n } from 'vue-i18n';
   import AppBadge from '@/components/AppBadge.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import type { UserResp } from '@/gen/proto/orbit/v1/user/user';
   import { formatTime } from '@/utils/time';
 

@@ -28,7 +28,10 @@
     </ToolbarRoot>
 
     <div class="app-surface">
-      <AppSpinner v-if="status === 'loading'" class="py-16" />
+      <AppLoadingState v-if="status === 'loading'" />
+      <div v-else-if="status === 'error'" class="py-16 text-center text-destructive">
+        <p class="text-sm">{{ error || t('pipelineRun.toast.loadFailed') }}</p>
+      </div>
       <AppEmptyState v-else-if="runs.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-data-table table-fixed min-w-[1200px]">
@@ -132,7 +135,7 @@
   import { repositoryApi } from '@/api/repository/repository';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -149,7 +152,7 @@
   const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();
-  const { status, execute } = useStatusAsync();
+  const { status, error, execute } = useStatusAsync();
 
   const runs = ref<PipelineRunResp[]>([]);
   const repositories = ref<RepositoryResp[]>([]);

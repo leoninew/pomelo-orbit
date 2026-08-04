@@ -21,7 +21,10 @@
 
     <!-- Table Card -->
     <div class="app-surface">
-      <AppSpinner v-if="status === 'loading'" class="py-16" />
+      <AppLoadingState v-if="status === 'loading'" />
+      <div v-else-if="status === 'error'" class="py-16 text-center text-destructive">
+        <p class="text-sm">{{ error || t('deployment.toast.loadFailed') }}</p>
+      </div>
       <AppEmptyState v-else-if="deployments.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-data-table min-w-[1120px]">
@@ -131,7 +134,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
@@ -148,7 +151,7 @@
   const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();
-  const { status, execute } = useStatusAsync();
+  const { status, error, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
   const deployments = ref<DeploymentResp[]>([]);

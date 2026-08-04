@@ -49,7 +49,7 @@
         </button>
       </div>
 
-      <AppSpinner v-if="loading" class="px-5 py-10" />
+      <AppLoadingState v-if="loading" size="section" />
       <dl v-else-if="credential" class="app-detail-info-grid">
         <div class="flex gap-2">
           <dt>名称</dt>
@@ -151,7 +151,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import SensitiveValue from '@/components/SensitiveValue.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { CredentialDetailResp } from '@/gen/proto/orbit/v1/credential/credential';

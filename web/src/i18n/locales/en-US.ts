@@ -23,6 +23,7 @@ export default {
     trigger: 'Trigger',
     viewAll: 'View All',
     loading: 'Loading...',
+    loadFailed: 'Failed to load',
     noData: 'No Data',
     operation: 'Operation',
     status: 'Status',

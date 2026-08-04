@@ -23,6 +23,7 @@ export default {
     trigger: '触发',
     viewAll: '查看全部',
     loading: '加载中...',
+    loadFailed: '加载失败',
     noData: '暂无数据',
     operation: '操作',
     status: '状态',

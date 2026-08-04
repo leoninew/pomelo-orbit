@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <AppSpinner v-if="status === 'loading'" class="py-12" />
+    <AppLoadingState v-if="status === 'loading'" size="section" />
 
     <div v-else-if="gateway" class="app-surface">
       <div class="app-section-header">
@@ -111,7 +111,7 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { gatewayApi } from '@/api/gateway/gateway';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';

@@ -51,7 +51,7 @@
     </div>
 
     <!-- Loading State -->
-    <AppSpinner v-if="basicInfoLoading" class="py-12" />
+    <AppLoadingState v-if="basicInfoLoading" size="section" />
 
     <!-- Content -->
     <template v-else-if="routeData">
@@ -241,7 +241,7 @@
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';

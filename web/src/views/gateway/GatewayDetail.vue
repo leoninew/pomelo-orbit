@@ -36,7 +36,7 @@
       </div>
     </div>
 
-    <AppSpinner v-if="status === 'loading'" class="py-12" />
+    <AppLoadingState v-if="status === 'loading'" size="section" />
 
     <template v-else-if="gateway">
       <div class="app-surface app-detail-card">
@@ -362,7 +362,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

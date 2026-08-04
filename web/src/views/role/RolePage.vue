@@ -17,7 +17,10 @@
     </div>
 
     <div class="app-surface">
-      <AppSpinner v-if="status === 'loading'" class="py-16" />
+      <AppLoadingState v-if="status === 'loading'" />
+      <div v-else-if="status === 'error'" class="py-16 text-center text-destructive">
+        <p class="text-sm">{{ error || t('roleManagement.loadFailed') }}</p>
+      </div>
       <AppEmptyState v-else-if="roles.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-data-table min-w-[760px]">
@@ -168,7 +171,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -182,7 +185,7 @@
   const router = useRouter();
   const toast = useToast();
   const authStore = useAuthStore();
-  const { status, execute } = useStatusAsync();
+  const { status, error, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
   const roles = ref<RoleResp[]>([]);

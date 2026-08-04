@@ -11,7 +11,10 @@
 
     <!-- Table Card -->
     <div class="app-surface">
-      <AppSpinner v-if="status === 'loading'" class="py-16" />
+      <AppLoadingState v-if="status === 'loading'" />
+      <div v-else-if="status === 'error'" class="py-16 text-center text-destructive">
+        <p class="text-sm">{{ error || t('loginHistory.loadFailed') }}</p>
+      </div>
       <AppEmptyState v-else-if="history.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-data-table min-w-[920px]">
@@ -64,7 +67,7 @@
   import { authApi } from '@/api/auth/auth';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -75,7 +78,7 @@
 
   const { t } = useI18n();
   const toast = useToast();
-  const { status, execute } = useStatusAsync();
+  const { status, error, execute } = useStatusAsync();
   const history = ref<LoginHistoryResp[]>([]);
   const searchText = ref('');
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });

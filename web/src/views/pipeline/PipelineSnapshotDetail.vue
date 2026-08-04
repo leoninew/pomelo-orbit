@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col gap-4">
-    <AppSpinner v-if="status === 'loading'" class="py-12" />
+    <AppLoadingState v-if="status === 'loading'" size="section" />
 
     <div v-else-if="snapshot" class="flex flex-col gap-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -153,7 +153,7 @@
   import { pipelineTemplateApi } from '@/api/pipeline/template';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ViewModeToggle from '@/components/ViewModeToggle.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';

@@ -36,7 +36,7 @@
       </div>
     </header>
 
-    <AppSpinner v-if="loading" class="py-12" />
+    <AppLoadingState v-if="loading" size="section" />
 
     <template v-else-if="version">
       <div
@@ -1440,7 +1440,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import EnvironmentVariableListEditor from '@/components/EnvironmentVariableListEditor.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';

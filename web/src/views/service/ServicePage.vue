@@ -42,7 +42,13 @@
     </ToolbarRoot>
 
     <div v-if="status === 'loading'" class="app-surface">
-      <AppSpinner class="py-16" />
+      <AppLoadingState />
+    </div>
+
+    <div v-else-if="status === 'error'" class="app-surface">
+      <div class="py-16 text-center text-destructive">
+        <p class="text-sm">{{ error || t('service.toast.loadFailed') }}</p>
+      </div>
     </div>
 
     <div v-else-if="services.length === 0" class="app-surface">
@@ -337,7 +343,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
@@ -354,7 +360,7 @@
   const toast = useToast();
   const router = useRouter();
   const projectStore = useProjectStore();
-  const { status, execute } = useStatusAsync();
+  const { status, error, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
   const services = ref<ServiceResp[]>([]);

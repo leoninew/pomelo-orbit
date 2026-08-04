@@ -25,7 +25,7 @@
     </div>
 
     <!-- 加载状态 -->
-    <AppSpinner v-if="status === 'loading'" class="py-12" />
+    <AppLoadingState v-if="status === 'loading'" size="section" />
 
     <!-- 内容 -->
     <div v-else-if="deployment" class="flex min-h-0 flex-1 flex-col gap-4">
@@ -243,6 +243,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

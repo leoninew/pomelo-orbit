@@ -34,7 +34,7 @@ INSERT OR IGNORE INTO repository (
 INSERT OR IGNORE INTO pipeline_stage (
     id, name, image, script, artifacts, description, version, project_id, created_at, updated_at
 ) VALUES (
-    '01STAGE000000000000000CLONE',
+    '01KZ5A17696GZ6NS5BS6VJGR9B',
     'git clone',
     'alpine/git',
     'set -e
@@ -164,7 +164,7 @@ INSERT OR IGNORE INTO pipeline_template_stage (
 ) VALUES (
     '01KRCWNJVA1DM02TJXZ4STJCCK',
     '01KNVEJPWVK757139NMNNNCEFE',
-    '01STAGE000000000000000CLONE',
+    '01KZ5A17696GZ6NS5BS6VJGR9B',
     'git clone',
     8,
     '[]',
@@ -179,7 +179,7 @@ INSERT OR IGNORE INTO pipeline_template_stage (
     '01KNRANZDR4PASATAXKTBBTRX9',
     'golang:1.23 test',
     3,
-    '["01STAGE000000000000000CLONE"]',
+    '["01KZ5A17696GZ6NS5BS6VJGR9B"]',
     1
 );
 
@@ -191,7 +191,7 @@ INSERT OR IGNORE INTO pipeline_template_stage (
     '01KNRKNAHG3EBS07VBK2YY5ZQN',
     'golang:1.23 lint',
     3,
-    '["01STAGE000000000000000CLONE"]',
+    '["01KZ5A17696GZ6NS5BS6VJGR9B"]',
     2
 );
 
@@ -212,7 +212,7 @@ INSERT OR IGNORE INTO pipeline_template_stage (
 ) VALUES (
     '01KRCYJJF8GNWTA76CE2M4QXAZ',
     '01KP0K6W1YW73REFQE8YAVTPMN',
-    '01STAGE000000000000000CLONE',
+    '01KZ5A17696GZ6NS5BS6VJGR9B',
     'git clone',
     8,
     '[]',
@@ -227,6 +227,6 @@ INSERT OR IGNORE INTO pipeline_template_stage (
     '01KP0K4ZTV60PM2XDT11MTX2MY',
     'docker build',
     16,
-    '["01STAGE000000000000000CLONE"]',
+    '["01KZ5A17696GZ6NS5BS6VJGR9B"]',
     1
 );

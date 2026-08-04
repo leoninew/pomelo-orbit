@@ -17,6 +17,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 )
 
 const (
@@ -36,7 +37,7 @@ func RequestId() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestId := strings.TrimSpace(c.GetHeader(RequestIdHeader))
 		if requestId == "" {
-			requestId = requestid.New()
+			requestId = idutil.NewId()
 		}
 		c.Set(RequestIdKey, requestId)
 		c.Writer.Header().Set(RequestIdHeader, requestId)

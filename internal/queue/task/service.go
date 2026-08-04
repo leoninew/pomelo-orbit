@@ -2,13 +2,12 @@ package tasksvc
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 )
 
 type Repository interface {
@@ -51,11 +50,7 @@ func (s Service) Create(ctx context.Context, input CreateInput) (*Task, error) {
 
 	id := strings.TrimSpace(input.Id)
 	if id == "" {
-		generated, err := NewId()
-		if err != nil {
-			return nil, fmt.Errorf("generate task id: %w", err)
-		}
-		id = generated
+		id = idutil.NewId()
 	}
 	maxAttempts := input.MaxAttempts
 	if maxAttempts == 0 {
@@ -88,14 +83,6 @@ func (s Service) EnqueueTyped(ctx context.Context, taskType string, payload any)
 
 func (s Service) FindById(ctx context.Context, id string) (*Task, error) {
 	return s.repo.FindById(ctx, strings.TrimSpace(id))
-}
-
-func NewId() (string, error) {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", err
-	}
-	return "task_" + hex.EncodeToString(b[:]), nil
 }
 
 var (

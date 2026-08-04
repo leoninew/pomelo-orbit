@@ -1,1 +1,1 @@
-"""Reserved package for the future Pomelo pipeline MCP."""
+"""Read-only MCP adapter for Pomelo CI pipeline queries."""

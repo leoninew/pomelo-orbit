@@ -63,13 +63,14 @@
                 {{ tpl.name }}
               </router-link>
             </h3>
-            <button
-              :disabled="duplicating"
-              class="app-link shrink-0 text-sm"
-              @click="handleDuplicate(tpl.id)"
-            >
-              {{ t('common.copy') }}
-            </button>
+            <div class="flex shrink-0 items-center gap-3 text-sm">
+              <button class="app-link" @click="openEditModal(tpl)">
+                {{ t('common.edit') }}
+              </button>
+              <button :disabled="duplicating" class="app-link" @click="handleDuplicate(tpl.id)">
+                {{ t('common.copy') }}
+              </button>
+            </div>
           </div>
           <p v-if="tpl.description" class="mb-4 min-h-10 text-sm text-muted-foreground">
             {{ tpl.description }}
@@ -127,9 +128,14 @@
               </td>
               <td class="whitespace-nowrap text-foreground">{{ formatTime(tpl.created_at) }}</td>
               <td>
-                <button :disabled="duplicating" class="app-link" @click="handleDuplicate(tpl.id)">
-                  {{ t('common.copy') }}
-                </button>
+                <div class="flex items-center gap-3">
+                  <button class="app-link" @click="openEditModal(tpl)">
+                    {{ t('common.edit') }}
+                  </button>
+                  <button :disabled="duplicating" class="app-link" @click="handleDuplicate(tpl.id)">
+                    {{ t('common.copy') }}
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -183,6 +189,55 @@
       />
     </template>
   </AppDialog>
+
+  <AppDialog
+    :open="showEditDialog"
+    :title="t('pipelineTemplate.editBasicInfo')"
+    @update:open="handleEditDialogOpenChange"
+  >
+    <form class="space-y-4" novalidate @submit.prevent="handleEditOk">
+      <div class="space-y-1.5">
+        <label for="edit-template-name" class="app-field-label block">
+          {{ t('pipelineTemplate.templateName') }}
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          id="edit-template-name"
+          v-model="editForm.name"
+          type="text"
+          :placeholder="t('pipelineTemplate.templateNamePlaceholder')"
+          class="app-input"
+          :class="editErrors.name ? 'app-input-error' : ''"
+          :aria-invalid="editErrors.name ? 'true' : undefined"
+          :aria-describedby="editErrors.name ? 'edit-template-name-error' : undefined"
+          @input="clearEditError('name')"
+        />
+        <p
+          v-if="editErrors.name"
+          id="edit-template-name-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ editErrors.name }}
+        </p>
+      </div>
+      <div class="space-y-1.5">
+        <label for="edit-template-description" class="app-field-label block">
+          {{ t('common.description') }}
+        </label>
+        <textarea
+          id="edit-template-description"
+          v-model="editForm.description"
+          rows="3"
+          :placeholder="t('pipelineTemplate.templateDescriptionPlaceholder')"
+          class="app-textarea"
+        />
+      </div>
+    </form>
+    <template #footer>
+      <AppDialogActions :busy="operating" @cancel="closeEditModal" @confirm="handleEditOk" />
+    </template>
+  </AppDialog>
 </template>
 
 <script setup lang="ts">
@@ -219,9 +274,13 @@
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const searchText = ref('');
   const showCreateDialog = ref(false);
+  const showEditDialog = ref(false);
+  const editingTemplate = ref<PipelineTemplateResp>();
 
   const form = reactive({ name: '', description: '' });
   const errors = reactive({ name: '' });
+  const editForm = reactive({ name: '', description: '' });
+  const editErrors = reactive({ name: '' });
 
   async function fetchTemplates() {
     const projectId = projectStore.activeProjectId;
@@ -270,6 +329,38 @@
     showCreateDialog.value = true;
   }
 
+  function resetEditForm() {
+    if (!editingTemplate.value) {
+      return;
+    }
+    Object.assign(editForm, {
+      name: editingTemplate.value.name,
+      description: editingTemplate.value.description ?? '',
+    });
+    editErrors.name = '';
+  }
+
+  function clearEditError(field: 'name') {
+    editErrors[field] = '';
+  }
+
+  function openEditModal(template: PipelineTemplateResp) {
+    editingTemplate.value = template;
+    resetEditForm();
+    showEditDialog.value = true;
+  }
+
+  function handleEditDialogOpenChange(open: boolean) {
+    showEditDialog.value = open;
+    if (!open) {
+      editErrors.name = '';
+    }
+  }
+
+  function closeEditModal() {
+    handleEditDialogOpenChange(false);
+  }
+
   async function handleCreateOk() {
     errors.name = form.name.trim() ? '' : t('pipelineTemplate.validation.nameRequired');
     if (errors.name) {
@@ -298,6 +389,28 @@
       toast.error(
         error instanceof Error ? error.message : t('pipelineTemplate.toast.createFailed')
       );
+    }
+  }
+
+  async function handleEditOk() {
+    const template = editingTemplate.value;
+    editErrors.name = editForm.name.trim() ? '' : t('pipelineTemplate.validation.nameNotEmpty');
+    if (!template || editErrors.name) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        const updated = await pipelineTemplateApi.update(template.id, {
+          name: editForm.name,
+          description: editForm.description,
+        });
+        templates.value = templates.value.map((item) => (item.id === updated.id ? updated : item));
+        editingTemplate.value = updated;
+        toast.success(t('pipelineTemplate.toast.saveSuccess'));
+        closeEditModal();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('pipelineTemplate.toast.saveFailed'));
     }
   }
 

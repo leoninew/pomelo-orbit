@@ -210,6 +210,9 @@
               <td class="whitespace-nowrap text-foreground">{{ formatTime(route.created_at) }}</td>
               <td class="whitespace-nowrap">
                 <div class="flex items-center gap-3">
+                  <button class="app-link" :disabled="routeOperating" @click="openEditModal(route)">
+                    {{ t('common.edit') }}
+                  </button>
                   <button
                     v-if="!route.enabled"
                     class="app-link-success"
@@ -319,6 +322,115 @@
       />
     </template>
   </AppDialog>
+
+  <AppDialog
+    :open="isEditDialogOpen"
+    :title="t('route.editRoute')"
+    @update:open="handleEditDialogOpenChange"
+  >
+    <form class="space-y-4" novalidate @submit.prevent="handleEditSave">
+      <div class="space-y-1.5">
+        <label for="edit-route-name" class="app-field-label block">
+          {{ t('route.fields.name') }}
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          id="edit-route-name"
+          v-model="editForm.name"
+          type="text"
+          class="app-input"
+          :class="editErrors.name ? 'app-input-error' : ''"
+          placeholder="example-route"
+          :aria-invalid="editErrors.name ? 'true' : undefined"
+          :aria-describedby="editErrors.name ? 'edit-route-name-error' : undefined"
+          @input="clearEditError('name')"
+        />
+        <p
+          v-if="editErrors.name"
+          id="edit-route-name-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ editErrors.name }}
+        </p>
+        <p v-else class="app-field-hint">{{ t('route.hints.name') }}</p>
+      </div>
+      <div class="space-y-1.5">
+        <label for="edit-route-domain" class="app-field-label block">
+          {{ t('route.fields.domain') }}
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          id="edit-route-domain"
+          v-model="editForm.domain"
+          type="text"
+          class="app-input"
+          :class="editErrors.domain ? 'app-input-error' : ''"
+          placeholder="example.com"
+          :aria-invalid="editErrors.domain ? 'true' : undefined"
+          :aria-describedby="editErrors.domain ? 'edit-route-domain-error' : undefined"
+          @input="clearEditError('domain')"
+        />
+        <p
+          v-if="editErrors.domain"
+          id="edit-route-domain-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ editErrors.domain }}
+        </p>
+      </div>
+      <div class="space-y-1.5">
+        <label for="edit-route-path-prefix" class="app-field-label block">
+          {{ t('route.fields.pathPrefix') }}
+        </label>
+        <input
+          id="edit-route-path-prefix"
+          v-model="editForm.path_prefix"
+          type="text"
+          class="app-input"
+          placeholder="/"
+        />
+        <p class="app-field-hint">{{ t('route.hints.pathPrefix') }}</p>
+      </div>
+      <div class="space-y-1.5">
+        <label for="edit-route-target-url" class="app-field-label block">
+          {{ t('route.fields.targetUrl') }}
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          id="edit-route-target-url"
+          v-model="editForm.target_url"
+          type="text"
+          class="app-input"
+          :class="editErrors.target_url ? 'app-input-error' : ''"
+          placeholder="http://host:port"
+          :aria-invalid="editErrors.target_url ? 'true' : undefined"
+          :aria-describedby="editErrors.target_url ? 'edit-route-target-url-error' : undefined"
+          @input="clearEditError('target_url')"
+        />
+        <p
+          v-if="editErrors.target_url"
+          id="edit-route-target-url-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ editErrors.target_url }}
+        </p>
+        <p v-else class="app-field-hint">{{ t('route.hints.targetUrl') }}</p>
+      </div>
+      <label class="flex cursor-pointer items-center gap-3">
+        <SwitchRoot v-model:checked="editForm.enabled" class="app-switch-root">
+          <SwitchThumb class="app-switch-thumb" />
+        </SwitchRoot>
+        <span class="text-sm text-foreground">{{ t('route.status.enabled') }}</span>
+      </label>
+    </form>
+
+    <template #footer>
+      <AppDialogActions :busy="routeOperating" @cancel="closeEditModal" @confirm="handleEditSave" />
+    </template>
+  </AppDialog>
 </template>
 
 <script setup lang="ts">
@@ -354,6 +466,8 @@
   const routeSearchText = ref('');
   const traefikSearchText = ref('');
   const isCreateDialogOpen = ref(false);
+  const isEditDialogOpen = ref(false);
+  const editingRoute = ref<RouteResp>();
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
@@ -379,6 +493,14 @@
     enabled: false,
   });
   const errors = reactive({ name: '', domain: '', target_url: '' });
+  const editForm = reactive({
+    name: '',
+    domain: '',
+    path_prefix: '/',
+    target_url: 'http://',
+    enabled: false,
+  });
+  const editErrors = reactive({ name: '', domain: '', target_url: '' });
 
   function validate() {
     errors.name = /^[a-z][a-z0-9._-]*$/.test(form.name) ? '' : t('route.validation.nameInvalid');
@@ -455,6 +577,52 @@
     isCreateDialogOpen.value = true;
   }
 
+  function resetEditForm() {
+    if (!editingRoute.value) {
+      return;
+    }
+    Object.assign(editForm, {
+      name: editingRoute.value.name,
+      domain: editingRoute.value.domain,
+      path_prefix: editingRoute.value.path_prefix,
+      target_url: editingRoute.value.target_url,
+      enabled: editingRoute.value.enabled,
+    });
+    Object.assign(editErrors, { name: '', domain: '', target_url: '' });
+  }
+
+  function validateEditForm() {
+    editErrors.name = /^[a-z][a-z0-9._-]*$/.test(editForm.name)
+      ? ''
+      : t('route.validation.nameInvalid');
+    editErrors.domain = editForm.domain.trim() ? '' : t('route.validation.domainRequired');
+    editErrors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(editForm.target_url)
+      ? ''
+      : t('route.validation.targetUrlInvalid');
+    return !editErrors.name && !editErrors.domain && !editErrors.target_url;
+  }
+
+  function clearEditError(field: 'name' | 'domain' | 'target_url') {
+    editErrors[field] = '';
+  }
+
+  function openEditModal(route: RouteResp) {
+    editingRoute.value = route;
+    resetEditForm();
+    isEditDialogOpen.value = true;
+  }
+
+  function handleEditDialogOpenChange(open: boolean) {
+    isEditDialogOpen.value = open;
+    if (!open) {
+      Object.assign(editErrors, { name: '', domain: '', target_url: '' });
+    }
+  }
+
+  function closeEditModal() {
+    handleEditDialogOpenChange(false);
+  }
+
   async function handleSave() {
     if (!validate()) {
       return;
@@ -473,6 +641,31 @@
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.addFailed'));
+    }
+  }
+
+  async function handleEditSave() {
+    const route = editingRoute.value;
+    if (!route || !validateEditForm()) {
+      return;
+    }
+    try {
+      await executeRouteOperation(async () => {
+        const updated = await routeApi.update(route.id, {
+          name: editForm.name,
+          domain: editForm.domain,
+          path_prefix: editForm.path_prefix,
+          target_url: editForm.target_url,
+          enabled: editForm.enabled,
+        });
+        routes.value = routes.value.map((item) => (item.id === updated.id ? updated : item));
+        editingRoute.value = updated;
+        toast.success(t('route.toast.updateSuccess'));
+        closeEditModal();
+        fetchTraefikRoutes();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('route.toast.updateFailed'));
     }
   }
 

@@ -54,9 +54,16 @@
                 {{ formatTime(stage.created_at) }}
               </td>
               <td class="whitespace-nowrap">
-                <button class="app-link" :disabled="duplicating" @click="handleDuplicate(stage.id)">
-                  复制
-                </button>
+                <div class="flex items-center gap-3">
+                  <button class="app-link" @click="openEditModal(stage)">编辑</button>
+                  <button
+                    class="app-link"
+                    :disabled="duplicating"
+                    @click="handleDuplicate(stage.id)"
+                  >
+                    复制
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -122,6 +129,80 @@
       <AppDialogActions :busy="operating" @cancel="isModalOpen = false" @confirm="handleModalOk" />
     </template>
   </AppDialog>
+
+  <AppDialog
+    :open="showEditModal"
+    title="编辑构建"
+    width-class="w-[min(600px,calc(100vw-32px))]"
+    @update:open="handleEditModalOpenChange"
+  >
+    <form class="space-y-4" novalidate @submit.prevent="handleEditOk">
+      <div class="space-y-1.5">
+        <label for="edit-stage-name" class="app-field-label block">
+          名称
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          id="edit-stage-name"
+          v-model="editForm.name"
+          type="text"
+          class="app-input"
+          :class="editErrors.name ? 'app-input-error' : ''"
+          placeholder="例如: build"
+          :aria-invalid="editErrors.name ? 'true' : undefined"
+          :aria-describedby="editErrors.name ? 'edit-stage-name-error' : undefined"
+          @input="clearEditError('name')"
+        />
+        <p
+          v-if="editErrors.name"
+          id="edit-stage-name-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ editErrors.name }}
+        </p>
+      </div>
+      <div class="space-y-1.5">
+        <label for="edit-stage-image" class="app-field-label block">
+          镜像
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          id="edit-stage-image"
+          v-model="editForm.image"
+          type="text"
+          class="app-input"
+          :class="editErrors.image ? 'app-input-error' : ''"
+          placeholder="例如: alpine:latest"
+          :aria-invalid="editErrors.image ? 'true' : undefined"
+          :aria-describedby="editErrors.image ? 'edit-stage-image-error' : undefined"
+          @input="clearEditError('image')"
+        />
+        <p
+          v-if="editErrors.image"
+          id="edit-stage-image-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ editErrors.image }}
+        </p>
+      </div>
+      <div class="space-y-1.5">
+        <label for="edit-stage-description" class="app-field-label block">描述</label>
+        <input
+          id="edit-stage-description"
+          v-model="editForm.description"
+          type="text"
+          class="app-input"
+          placeholder="简短描述"
+        />
+      </div>
+    </form>
+
+    <template #footer>
+      <AppDialogActions :busy="operating" @cancel="closeEditModal" @confirm="handleEditOk" />
+    </template>
+  </AppDialog>
 </template>
 <script setup lang="ts">
   import { Plus } from 'lucide-vue-next';
@@ -154,9 +235,13 @@
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const searchText = ref('');
   const isModalOpen = ref(false);
+  const showEditModal = ref(false);
+  const editingStage = ref<PipelineStageResp>();
 
   const form = reactive({ name: '', image: '', description: '' });
   const errors = reactive({ name: '', image: '' });
+  const editForm = reactive({ name: '', image: '', description: '' });
+  const editErrors = reactive({ name: '', image: '' });
 
   function validate() {
     errors.name = form.name.trim() ? '' : '请输入名称';
@@ -211,6 +296,39 @@
     isModalOpen.value = true;
   }
 
+  function resetEditForm() {
+    if (!editingStage.value) {
+      return;
+    }
+    Object.assign(editForm, {
+      name: editingStage.value.name,
+      image: editingStage.value.image,
+      description: editingStage.value.description,
+    });
+    Object.assign(editErrors, { name: '', image: '' });
+  }
+
+  function clearEditError(field: 'name' | 'image') {
+    editErrors[field] = '';
+  }
+
+  function openEditModal(stage: PipelineStageResp) {
+    editingStage.value = stage;
+    resetEditForm();
+    showEditModal.value = true;
+  }
+
+  function handleEditModalOpenChange(open: boolean) {
+    showEditModal.value = open;
+    if (!open) {
+      Object.assign(editErrors, { name: '', image: '' });
+    }
+  }
+
+  function closeEditModal() {
+    handleEditModalOpenChange(false);
+  }
+
   async function handleModalOk() {
     if (!validate()) {
       return;
@@ -238,6 +356,30 @@
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '操作失败');
+    }
+  }
+
+  async function handleEditOk() {
+    const stage = editingStage.value;
+    editErrors.name = editForm.name.trim() ? '' : '请输入名称';
+    editErrors.image = editForm.image.trim() ? '' : '请输入镜像';
+    if (!stage || editErrors.name || editErrors.image) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        const updated = await pipelineStageApi.update(stage.id, {
+          name: editForm.name,
+          image: editForm.image,
+          description: editForm.description,
+        });
+        stages.value = stages.value.map((item) => (item.id === updated.id ? updated : item));
+        editingStage.value = updated;
+        toast.success('更新成功');
+        closeEditModal();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '更新失败');
     }
   }
 

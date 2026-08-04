@@ -21,7 +21,7 @@
       </div>
       <AppEmptyState v-else-if="repositories.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-data-table min-w-[960px]">
+        <table class="app-data-table min-w-[1040px]">
           <thead>
             <tr>
               <th>名称</th>
@@ -31,6 +31,7 @@
               <th>地址/目录</th>
               <th>Git 凭据</th>
               <th>创建时间</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -59,6 +60,9 @@
                 <span v-else-if="p.has_credential">已配置</span>
               </td>
               <td class="whitespace-nowrap text-foreground">{{ formatTime(p.created_at) }}</td>
+              <td class="whitespace-nowrap">
+                <button class="app-link" @click="openEditModal(p)">编辑</button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -223,6 +227,139 @@
       />
     </template>
   </AppDialog>
+
+  <AppDialog :open="showEditModal" title="编辑仓库" @update:open="handleEditModalOpenChange">
+    <AppLoadingState v-if="modalStatus === 'loading'" size="compact" />
+
+    <form v-else class="space-y-4" novalidate @submit.prevent="handleEditOk">
+      <div class="space-y-1.5">
+        <label for="edit-repository-type" class="app-field-label block">仓库类型</label>
+        <select
+          id="edit-repository-type"
+          v-model="editForm.repository_type"
+          class="app-input"
+          @change="handleEditRepositoryTypeChange"
+        >
+          <option value="remote_git">远程 Git</option>
+          <option value="local_directory">本地目录</option>
+        </select>
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="edit-repository-name" class="app-field-label block">
+          名称
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          id="edit-repository-name"
+          v-model="editForm.name"
+          type="text"
+          class="app-input"
+          :class="editErrors.name ? 'app-input-error' : ''"
+          :aria-invalid="editErrors.name ? 'true' : undefined"
+          :aria-describedby="editErrors.name ? 'edit-repository-name-error' : undefined"
+          @input="clearEditError('name')"
+        />
+        <p
+          v-if="editErrors.name"
+          id="edit-repository-name-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ editErrors.name }}
+        </p>
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="app-field-label block">仓库编码</label>
+        <input :value="editingRepository?.code" type="text" disabled class="app-input" />
+      </div>
+
+      <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
+        <label for="edit-repository-url" class="app-field-label block">
+          仓库地址
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          id="edit-repository-url"
+          v-model="editForm.repository_url"
+          type="text"
+          placeholder="git@github.com:user/repo.git"
+          class="app-input"
+          :class="editErrors.repository_url ? 'app-input-error' : ''"
+          :aria-invalid="editErrors.repository_url ? 'true' : undefined"
+          :aria-describedby="editErrors.repository_url ? 'edit-repository-url-error' : undefined"
+          @input="clearEditError('repository_url')"
+        />
+        <p
+          v-if="editErrors.repository_url"
+          id="edit-repository-url-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ editErrors.repository_url }}
+        </p>
+      </div>
+
+      <div v-else class="space-y-1.5">
+        <label for="edit-repository-url" class="app-field-label block">
+          本地目录
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          id="edit-repository-url"
+          v-model="editForm.repository_url"
+          type="text"
+          placeholder="例如: D:/workspace/my-backend"
+          class="app-input"
+          :class="editErrors.repository_url ? 'app-input-error' : ''"
+          :aria-invalid="editErrors.repository_url ? 'true' : undefined"
+          :aria-describedby="editErrors.repository_url ? 'edit-repository-url-error' : undefined"
+          @input="clearEditError('repository_url')"
+        />
+        <p
+          v-if="editErrors.repository_url"
+          id="edit-repository-url-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ editErrors.repository_url }}
+        </p>
+      </div>
+
+      <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
+        <label class="app-field-label block">Git 凭据</label>
+        <ComboboxSelect
+          v-model="editForm.git_credential_id"
+          :options="gitCredentialOptions"
+          placeholder="不使用凭据"
+        />
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="edit-repository-default-branch" class="app-field-label block">默认分支</label>
+        <input
+          id="edit-repository-default-branch"
+          v-model="editForm.default_branch"
+          type="text"
+          placeholder="master"
+          class="app-input"
+        />
+      </div>
+
+      <p v-if="editFormError" class="app-field-error text-xs" role="alert">
+        {{ editFormError }}
+      </p>
+    </form>
+
+    <template #footer>
+      <AppDialogActions
+        :busy="operating || modalStatus === 'loading'"
+        @cancel="closeEditModal"
+        @confirm="handleEditOk"
+      />
+    </template>
+  </AppDialog>
 </template>
 
 <script setup lang="ts">
@@ -276,7 +413,10 @@
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const searchText = ref('');
   const showCreateModal = ref(false);
+  const showEditModal = ref(false);
+  const editingRepository = ref<RepositoryResp>();
   const createFormError = ref('');
+  const editFormError = ref('');
 
   const form = reactive({
     name: '',
@@ -287,6 +427,18 @@
     default_branch: 'develop',
   });
   const errors = reactive<Record<RepositoryFormFields, string>>({
+    name: '',
+    code: '',
+    repository_url: '',
+  });
+  const editForm = reactive({
+    name: '',
+    repository_type: 'remote_git',
+    repository_url: '',
+    git_credential_id: '',
+    default_branch: 'master',
+  });
+  const editErrors = reactive<Record<RepositoryFormFields, string>>({
     name: '',
     code: '',
     repository_url: '',
@@ -315,6 +467,43 @@
     createFormError.value = '';
   }
 
+  function resetEditForm() {
+    if (!editingRepository.value) {
+      return;
+    }
+    Object.assign(editForm, {
+      name: editingRepository.value.name,
+      repository_type: editingRepository.value.repository_type || 'remote_git',
+      repository_url: editingRepository.value.repository_url,
+      git_credential_id: editingRepository.value.git_credential_id ?? '',
+      default_branch: editingRepository.value.default_branch || 'master',
+    });
+    resetEditFormFeedback();
+  }
+
+  function validateEditForm() {
+    applyEditErrors(validateRepositoryForm(editForm, { requireCode: false }));
+    return !Object.values(editErrors).some(Boolean);
+  }
+
+  function applyEditErrors(next: RepositoryFormErrors) {
+    Object.assign(editErrors, { name: '', code: '', repository_url: '' }, next);
+  }
+
+  function resetEditFormFeedback() {
+    applyEditErrors({});
+    editFormError.value = '';
+  }
+
+  function clearEditError(field: RepositoryFormFields) {
+    editErrors[field] = '';
+  }
+
+  function handleEditRepositoryTypeChange() {
+    clearEditError('repository_url');
+    editFormError.value = '';
+  }
+
   function handleCreateModalOpenChange(open: boolean) {
     showCreateModal.value = open;
     if (!open) {
@@ -326,6 +515,17 @@
     handleCreateModalOpenChange(false);
   }
 
+  function handleEditModalOpenChange(open: boolean) {
+    showEditModal.value = open;
+    if (!open) {
+      resetEditFormFeedback();
+    }
+  }
+
+  function closeEditModal() {
+    handleEditModalOpenChange(false);
+  }
+
   function applyCreateFailure(error: unknown) {
     const feedback = repositoryFormFeedback(error);
     if (!feedback) {
@@ -335,6 +535,19 @@
       applyErrors(feedback.errors);
     } else {
       createFormError.value = feedback.message;
+    }
+    return true;
+  }
+
+  function applyEditFailure(error: unknown) {
+    const feedback = repositoryFormFeedback(error);
+    if (!feedback) {
+      return false;
+    }
+    if (feedback.kind === 'field') {
+      applyEditErrors(feedback.errors);
+    } else {
+      editFormError.value = feedback.message;
     }
     return true;
   }
@@ -409,6 +622,28 @@
     }
   }
 
+  async function openEditModal(repository: RepositoryResp) {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error('请先选择项目');
+      return;
+    }
+    editingRepository.value = repository;
+    resetEditForm();
+    showEditModal.value = true;
+    try {
+      await executeModal(async () => {
+        const credRes = await credentialApi.list({
+          per_page: 100,
+          project_id: projectId,
+        });
+        credentials.value = credRes.items;
+      });
+    } catch {
+      toast.error('加载表单数据失败');
+    }
+  }
+
   async function handleCreateOk() {
     if (!validate()) {
       return;
@@ -442,6 +677,35 @@
     } catch (error) {
       if (!applyCreateFailure(error)) {
         toast.error(error instanceof Error ? error.message : '创建失败');
+      }
+    }
+  }
+
+  async function handleEditOk() {
+    const repository = editingRepository.value;
+    if (!repository || !validateEditForm()) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        const updated = await repositoryApi.update(repository.id, {
+          name: editForm.name,
+          repository_type: editForm.repository_type,
+          repository_url: editForm.repository_url,
+          git_credential_id:
+            editForm.repository_type === 'remote_git' ? editForm.git_credential_id : '',
+          default_branch: editForm.default_branch || 'master',
+        });
+        repositories.value = repositories.value.map((repository) =>
+          repository.id === updated.id ? updated : repository
+        );
+        editingRepository.value = updated;
+        toast.success('更新成功');
+        closeEditModal();
+      });
+    } catch (error) {
+      if (!applyEditFailure(error)) {
+        toast.error(error instanceof Error ? error.message : '更新失败');
       }
     }
   }

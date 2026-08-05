@@ -6,12 +6,14 @@ package application
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
 	ApplicationByCode(ctx context.Context, code string) (ApplicationByCodeRow, error)
 	ApplicationByID(ctx context.Context, id string) (ApplicationByIDRow, error)
 	ApplicationByName(ctx context.Context, name string) (ApplicationByNameRow, error)
+	ClearVersionForkRefs(ctx context.Context, versionID sql.NullString) error
 	CountApplications(ctx context.Context, arg CountApplicationsParams) (int64, error)
 	CountVersionRuntimeRefs(ctx context.Context, versionID string) (interface{}, error)
 	CountVersions(ctx context.Context, arg CountVersionsParams) (int64, error)

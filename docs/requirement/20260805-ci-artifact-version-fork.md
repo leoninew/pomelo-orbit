@@ -60,7 +60,7 @@ Application 包含多个 Version，Version 由 Component 镜像及其运行配�
 3. Application 不增加 base Version 或 current Version 字段。
 4. fork 策略限定为 `latest` 和 `fixed` 两种；`latest` 要求应用已有 Version，`fixed` 要求用户选择已有 Version。
 5. 新 Version 通过现有 fork 语义创建为未发布 Version；本需求不扩展为部署工作流。
-6. 删除 Version 前必须断言不存在任何引用；引用包括既有 Service、Deployment 和本需求新增的固定阶段关联、制品关联及 fork 血缘，不再静默断开引用。
+6. 删除 Version 前必须断言不存在 Service、Deployment 或固定阶段关联。Run 级来源/生成 Version ID 只作为历史记录，不建立 Version 外键或删除门槛；存在 fork 子 Version 时清空其 `created_from_version_id` 后删除。
 
 ## Risk
 
@@ -74,4 +74,4 @@ Application 包含多个 Version，Version 由 Component 镜像及其运行配�
 2. 用户确认不需要因本地 tag 覆盖而阻止部署；记录镜像 SHA 已足以说明构建来源。
 3. 用户强调当前讨论仅覆盖制品与 Version 的关联，不包含部署行为。
 4. 用户确认 `latest` 使用 Application 最后创建的 Version 作为 fork 来源。
-5. 用户确认删除 Version 时必须断言没有被引用。
+5. 用户确认 Service、Deployment 与固定阶段关联继续阻止删除；Run 级 Version 信息仅作历史记录，fork 血缘可在删除来源 Version 时断开。

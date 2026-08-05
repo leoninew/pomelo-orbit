@@ -48,11 +48,13 @@ WHERE id = ?;
 SELECT (
   (SELECT COUNT(*) FROM service WHERE service.version_id = sqlc.arg(version_id)) +
   (SELECT COUNT(*) FROM deployment WHERE deployment.version_id = sqlc.arg(version_id)) +
-  (SELECT COUNT(*) FROM pipeline_stage_build_version_binding WHERE fixed_version_id = sqlc.arg(version_id)) +
-  (SELECT COUNT(*) FROM pipeline_run_build_version_binding WHERE source_version_id = sqlc.arg(version_id)) +
-  (SELECT COUNT(*) FROM pipeline_run_build_version_binding WHERE generated_version_id = sqlc.arg(version_id)) +
-  (SELECT COUNT(*) FROM version WHERE created_from_version_id = sqlc.arg(version_id))
+  (SELECT COUNT(*) FROM pipeline_stage_build_version_binding WHERE fixed_version_id = sqlc.arg(version_id))
 );
+
+-- name: ClearVersionForkRefs :exec
+UPDATE version
+SET created_from_version_id = NULL
+WHERE created_from_version_id = sqlc.arg(version_id);
 
 -- name: VersionComponentArtifact :one
 SELECT artifact.id, artifact.image_ref, artifact.local_image_sha256, source_artifact.value AS source_commit_sha

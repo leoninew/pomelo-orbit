@@ -67,8 +67,6 @@ CREATE TABLE IF NOT EXISTS pipeline_run_build_version_binding (
     PRIMARY KEY (pipeline_run_id, pipeline_stage_id),
     FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE,
     FOREIGN KEY (application_id) REFERENCES application(id),
-    FOREIGN KEY (source_version_id) REFERENCES version(id),
-    FOREIGN KEY (generated_version_id) REFERENCES version(id),
     FOREIGN KEY (artifact_id) REFERENCES artifact(id)
 );
 

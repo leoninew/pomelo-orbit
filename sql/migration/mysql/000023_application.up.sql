@@ -68,8 +68,6 @@ CREATE TABLE IF NOT EXISTS pipeline_run_build_version_binding (
     PRIMARY KEY (pipeline_run_id, pipeline_stage_id),
     CONSTRAINT fk_pipeline_run_build_binding_run FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE,
     CONSTRAINT fk_pipeline_run_build_binding_application FOREIGN KEY (application_id) REFERENCES application(id),
-    CONSTRAINT fk_pipeline_run_build_binding_source_version FOREIGN KEY (source_version_id) REFERENCES version(id),
-    CONSTRAINT fk_pipeline_run_build_binding_generated_version FOREIGN KEY (generated_version_id) REFERENCES version(id),
     CONSTRAINT fk_pipeline_run_build_binding_artifact FOREIGN KEY (artifact_id) REFERENCES artifact(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

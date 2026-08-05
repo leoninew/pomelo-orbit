@@ -109,14 +109,12 @@ docker_image
 
 ### Version reference integrity
 
-删除 Version 前必须检查所有入向引用，至少包括：
+删除 Version 前必须检查会影响运行资源配置的入向引用，至少包括：
 
 - Service 和 Deployment；
 - `fixed` 阶段绑定；
-- 已创建的 Run 级来源或生成 Version 绑定；
-- 子 Version 的 `created_from_version_id`。
 
-任一引用存在即拒绝删除，不再清空 fork 血缘后删除。Component 的 `artifact_id` 随 Version Component 删除；通用 Artifact 保留，不作为反向删除 Version 的理由。
+Run 级 `source_version_id`、`generated_version_id` 与对应 label 是不可变历史快照，不建立到 Version 的外键，也不参与删除校验；删除 Version 后仍保留原值。存在子 Version 的 `created_from_version_id` 时，先将其清空再删除来源 Version。Component 的 `artifact_id` 随 Version Component 删除；通用 Artifact 保留，不作为反向删除 Version 的理由。
 
 ## Affected components
 

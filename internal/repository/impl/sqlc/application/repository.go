@@ -140,36 +140,43 @@ func (r Repository) UpdateApplication(ctx context.Context, app model.Application
 }
 
 func (r Repository) DeleteApplication(ctx context.Context, id string) error {
-	q := r.q(ctx)
-	versionIds, err := q.VersionIdsByApplication(ctx, id)
-	if err != nil {
-		return fmt.Errorf("list application version ids %s: %w", id, err)
-	}
-	for _, versionId := range versionIds {
-		refs, err := q.CountVersionRuntimeRefs(ctx, versionId)
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		versionIds, err := q.VersionIdsByApplication(txCtx, id)
 		if err != nil {
-			return fmt.Errorf("count version references %s: %w", versionId, err)
+			return fmt.Errorf("list application version ids %s: %w", id, err)
 		}
-		if asInt(refs) > 0 {
-			return fmt.Errorf("application %s contains referenced version %s: %w", id, versionId, repository.ErrReferenced)
+		for _, versionId := range versionIds {
+			refs, err := q.CountVersionRuntimeRefs(txCtx, versionId)
+			if err != nil {
+				return fmt.Errorf("count version references %s: %w", versionId, err)
+			}
+			if asInt(refs) > 0 {
+				return fmt.Errorf("application %s contains referenced version %s: %w", id, versionId, repository.ErrReferenced)
+			}
 		}
-	}
-	if err := q.DetachDeploymentServiceRefsByApplication(ctx, id); err != nil {
-		return fmt.Errorf("detach deployment service refs for application %s: %w", id, err)
-	}
-	if err := q.DetachDeploymentVersionRefsByApplication(ctx, id); err != nil {
-		return fmt.Errorf("detach deployment version refs for application %s: %w", id, err)
-	}
-	if err := q.DeleteServicesByApplication(ctx, id); err != nil {
-		return fmt.Errorf("delete application service %s: %w", id, err)
-	}
-	if err := q.DeleteVersionsByApplication(ctx, id); err != nil {
-		return fmt.Errorf("delete application versions %s: %w", id, err)
-	}
-	if err := q.DeleteApplication(ctx, id); err != nil {
-		return fmt.Errorf("delete application %s: %w", id, err)
-	}
-	return nil
+		for _, versionId := range versionIds {
+			if err := q.ClearVersionForkRefs(txCtx, sql.NullString{String: versionId, Valid: true}); err != nil {
+				return fmt.Errorf("clear version fork references %s: %w", versionId, err)
+			}
+		}
+		if err := q.DetachDeploymentServiceRefsByApplication(txCtx, id); err != nil {
+			return fmt.Errorf("detach deployment service refs for application %s: %w", id, err)
+		}
+		if err := q.DetachDeploymentVersionRefsByApplication(txCtx, id); err != nil {
+			return fmt.Errorf("detach deployment version refs for application %s: %w", id, err)
+		}
+		if err := q.DeleteServicesByApplication(txCtx, id); err != nil {
+			return fmt.Errorf("delete application service %s: %w", id, err)
+		}
+		if err := q.DeleteVersionsByApplication(txCtx, id); err != nil {
+			return fmt.Errorf("delete application versions %s: %w", id, err)
+		}
+		if err := q.DeleteApplication(txCtx, id); err != nil {
+			return fmt.Errorf("delete application %s: %w", id, err)
+		}
+		return nil
+	})
 }
 
 func (r Repository) ListVersions(ctx context.Context, applicationId string) ([]model.Version, error) {
@@ -274,14 +281,19 @@ func (r Repository) UpdateVersion(ctx context.Context, version model.Version) er
 }
 
 func (r Repository) DeleteVersion(ctx context.Context, id string) error {
-	q := r.q(ctx)
-	if err := q.DeleteVersionComponents(ctx, id); err != nil {
-		return fmt.Errorf("delete version components %s: %w", id, err)
-	}
-	if err := q.DeleteVersion(ctx, id); err != nil {
-		return fmt.Errorf("delete version %s: %w", id, err)
-	}
-	return nil
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		if err := q.ClearVersionForkRefs(txCtx, sql.NullString{String: id, Valid: true}); err != nil {
+			return fmt.Errorf("clear version fork references %s: %w", id, err)
+		}
+		if err := q.DeleteVersionComponents(txCtx, id); err != nil {
+			return fmt.Errorf("delete version components %s: %w", id, err)
+		}
+		if err := q.DeleteVersion(txCtx, id); err != nil {
+			return fmt.Errorf("delete version %s: %w", id, err)
+		}
+		return nil
+	})
 }
 
 func (r Repository) CountVersionRuntimeRefs(ctx context.Context, versionId string) (int, error) {

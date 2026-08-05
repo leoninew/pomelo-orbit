@@ -11,14 +11,22 @@ import (
 	"time"
 )
 
+const clearVersionForkRefs = `-- name: ClearVersionForkRefs :exec
+UPDATE version
+SET created_from_version_id = NULL
+WHERE created_from_version_id = ?1
+`
+
+func (q *Queries) ClearVersionForkRefs(ctx context.Context, versionID sql.NullString) error {
+	_, err := q.db.ExecContext(ctx, clearVersionForkRefs, versionID)
+	return err
+}
+
 const countVersionRuntimeRefs = `-- name: CountVersionRuntimeRefs :one
 SELECT (
   (SELECT COUNT(*) FROM service WHERE service.version_id = ?1) +
   (SELECT COUNT(*) FROM deployment WHERE deployment.version_id = ?1) +
-  (SELECT COUNT(*) FROM pipeline_stage_build_version_binding WHERE fixed_version_id = ?1) +
-  (SELECT COUNT(*) FROM pipeline_run_build_version_binding WHERE source_version_id = ?1) +
-  (SELECT COUNT(*) FROM pipeline_run_build_version_binding WHERE generated_version_id = ?1) +
-  (SELECT COUNT(*) FROM version WHERE created_from_version_id = ?1)
+  (SELECT COUNT(*) FROM pipeline_stage_build_version_binding WHERE fixed_version_id = ?1)
 )
 `
 

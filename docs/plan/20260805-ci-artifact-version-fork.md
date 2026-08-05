@@ -18,7 +18,7 @@ Review status: Accepted
    - 建立 `pipeline_stage_build_version_binding`：以 `pipeline_stage_id` 唯一保存 `application_id`、`component_name`、`fork_strategy` 和可空的 `fixed_version_id`。
    - 建立 `pipeline_run_build_version_binding`：以 `(pipeline_run_id, pipeline_stage_id)` 唯一保存冻结后的 Application、组件、来源 Version，以及可空的 `generated_version_id` 和 `artifact_id`。
    - `artifact` 使用 `pipeline_stage_id`、`collector`、`location` 取代 `type`、`path`；直接保存 `value`、`value_format`、`image_ref`、`local_image_sha256` 与 `source_artifact_id`；`version_component.artifact_id` 关联 fork 后的 Component 与该 Artifact。
-   - 为 Repository 的 `running` 查询和 Version 入向引用计数添加索引；对固定绑定、Run 来源/生成 Version 和 fork 血缘使用限制删除的外键。Component 制品关联可随 Component 删除。
+   - 为 Repository 的 `running` 查询和 Version 入向引用计数添加索引；固定绑定使用限制删除的 Version 外键。Run 来源/生成 Version ID 仅为历史快照，不建立 Version 外键；Component 制品关联可随 Component 删除。
    - 就地更新 seed Git clone Stage 为 `command`/`git_object_id` collector，并更新 Docker Stage 为 `docker_image`/`reference` collector；移除 `/artifacts/source_commit` 写入。
 
 2. 扩展领域模型、SQL 查询、sqlc 适配器和 Repository 接口。
@@ -45,10 +45,10 @@ Review status: Accepted
    - 在 Docker build Stage 脚本成功后，通过 Run/Stage/名称查询其唯一上游 `git_object_id` 值，再 inspect 本地镜像并写入 `source_artifact_id`。读取或 inspect 失败时将 Stage 标为失败，错误明确说明制品归档失败。
    - 有构建绑定时，在同一事务 fork 已冻结来源 Version，生成 `build-<runtime_datetime>` 展示 label，只替换指定 Component 的 `image`，保留其他 Component 与配置；记录新 Version、Component `artifact_id` 和 Artifact 关系。以 Run 绑定唯一键保证同一成功 Stage 不重复 fork。
 
-6. 收紧 Version 删除及 Application 级级联删除的引用完整性。
-   - 用统一的 Version 引用计数替代仅检查 Service/Deployment 的 `CountVersionRuntimeRefs`，涵盖 Service、Deployment、固定阶段绑定、Run 的来源/生成 Version 绑定和子 Version 的 `created_from_version_id`。
-   - 删除 `ClearVersionForkRefs` 及 Application 删除路径中静默清空 fork 血缘的语义。存在任一引用即以业务错误拒绝删除，不删除或改写引用记录。
-   - 调整 Application 删除的级联逻辑，使其不会绕过上述 Version 引用检查；存在受引用 Version 时拒绝整个 Application 删除。
+6. 调整 Version 删除及 Application 级级联删除的引用完整性。
+   - Version 引用计数涵盖 Service、Deployment 与固定阶段绑定；Run 的来源/生成 Version ID 仅为不可变历史快照，不计入引用。
+   - 删除来源 Version 前清空子 Version 的 `created_from_version_id`；不改写 Run 级来源/生成 Version ID 或 label。
+   - 调整 Application 删除的级联逻辑，使其不会绕过仍会阻断删除的 Service、Deployment 与固定阶段绑定。
 
 7. 更新 API、传输层和 Web 视图。
    - 在 `proto/orbit/v1/pipeline/pipeline_stage.proto` 增加可选 `BuildVersionBinding` 请求/响应字段；在 `pipeline_run/artifact.proto` 与 `application/version.proto` 增加只读镜像元数据和 Component 制品来源字段。重新生成 Go 与 TypeScript Proto 客户端并更新 DTO、handler、HTTP 映射。
@@ -76,7 +76,7 @@ Review status: Accepted
 2. Pipeline Stage/Template 测试：覆盖项目归属、`latest`/`fixed` 约束、单一 `docker_image`、固定 Version 所属校验、Snapshot 冻结与唯一传递 `source_commit` 生产者校验。
 3. PipelineRun 测试：覆盖 `id DESC` 的 latest 选择、fixed 选择、无 Version/组件失败、retry 重新解析 latest，以及只有 `running` 状态阻止触发或重试；断言 `waiting_to_run` 不阻止且没有任何锁表/lease 行为。
 4. Executor/Repository 测试：覆盖 command collector 的输出与 Git object ID 格式、Docker inspect 成功/失败、镜像 metadata 与 Artifact 自关联血缘保存、fork 后仅替换目标 Component、事务回滚和同一 Run/Stage 的幂等关联。
-5. Version 测试：覆盖 Service、Deployment、固定绑定、Run 来源/生成绑定与子 Version 任一存在时删除拒绝；覆盖 Application 删除不会绕过该检查。
+5. Version 测试：覆盖 Service、Deployment 与固定绑定继续拒绝删除；覆盖 fork 子 Version 解绑后删除，以及 Run 来源/生成 ID 在 Version 删除后仍保留；覆盖 Application 删除不会绕过阻断检查。
 6. API/Web 验证：重新生成 Proto/sqlc 后执行 Go 单测、静态检查与前端 typecheck/lint；手工验证绑定配置、Artifact 追溯和 Version Component 来源展示。
 
 ## 风险与回滚

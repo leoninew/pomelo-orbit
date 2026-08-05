@@ -40,7 +40,7 @@
           v-if="version && isEditable"
           :disabled="operating"
           class="app-button-danger h-9 px-3"
-          @click="isDeleteDialogOpen = true"
+          @click="openDeleteDialog"
         >
           <Trash2 class="size-4" />
           {{ t('common.delete') }}
@@ -365,9 +365,10 @@
 
     <!-- Delete -->
     <AppDialog
-      v-model:open="isDeleteDialogOpen"
+      :open="isDeleteDialogOpen"
       :title="t('application.detail.dialog.deleteVersion')"
       width-class="w-[min(420px,calc(100vw-32px))]"
+      @update:open="setDeleteDialogOpen"
     >
       <p class="text-sm text-muted-foreground">
         {{
@@ -376,12 +377,15 @@
           })
         }}
       </p>
+      <p v-if="deleteVersionError" class="app-field-error" role="alert">
+        {{ deleteVersionError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
           :confirm-label="t('common.delete')"
           variant="destructive"
-          @cancel="isDeleteDialogOpen = false"
+          @cancel="setDeleteDialogOpen(false)"
           @confirm="handleDeleteOk"
         />
       </template>
@@ -435,6 +439,7 @@
   const isComponentDialogOpen = ref(false);
   const isForkDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
+  const deleteVersionError = ref('');
   const isComponentEditDialogOpen = ref(false);
   const isComponentDeleteDialogOpen = ref(false);
   const pendingComponent = ref<VersionComponentResp>();
@@ -691,6 +696,11 @@
     isForkDialogOpen.value = true;
   }
 
+  function openDeleteDialog() {
+    deleteVersionError.value = '';
+    isDeleteDialogOpen.value = true;
+  }
+
   async function handleForkOk() {
     forkLabelError.value = forkLabel.value.trim()
       ? ''
@@ -717,13 +727,19 @@
       await executeOp(async () => {
         await applicationApi.deleteVersion(versionId);
         toast.success(t('application.toast.deleteVersionSuccess'));
-        isDeleteDialogOpen.value = false;
+        setDeleteDialogOpen(false);
         goBack();
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t('application.toast.deleteVersionFailed')
-      );
+      deleteVersionError.value =
+        error instanceof Error ? error.message : t('application.toast.deleteVersionFailed');
+    }
+  }
+
+  function setDeleteDialogOpen(open: boolean) {
+    isDeleteDialogOpen.value = open;
+    if (!open) {
+      deleteVersionError.value = '';
     }
   }
 

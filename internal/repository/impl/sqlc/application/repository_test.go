@@ -38,3 +38,118 @@ func TestDeleteApplicationRejectsReferencedVersion(t *testing.T) {
 		t.Fatalf("expected referenced version error, got %v", err)
 	}
 }
+
+func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = database.Close() }()
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind) VALUES ('app-1', 'App', 'app', 'application')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status, created_from_version_id) VALUES ('version-2', 'app-1', 'v2', 'unpublished', 'version-1')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-3', 'app-1', 'v3', 'unpublished')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO pipeline_template (id, name) VALUES ('template-1', 'Template')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO pipeline_snapshot (id, template_id, version) VALUES ('snapshot-1', 'template-1', 1)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO repository (id, name, code, repository_url) VALUES ('repository-1', 'Repository', 'repository', 'https://example.invalid/repository.git')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO pipeline_run (id, repository_id, snapshot_id, template_version, trigger, trigger_ref, status) VALUES ('run-1', 'repository-1', 'snapshot-1', 1, 'manual', 'main', 'ran_to_completion')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO pipeline_run_build_version_binding (pipeline_run_id, pipeline_stage_id, application_id, application_name, component_name, source_version_id, source_version_label, generated_version_id, generated_version_label) VALUES ('run-1', 'stage-1', 'app-1', 'App', 'web', 'version-1', 'v1', 'version-3', 'v3')`); err != nil {
+		t.Fatal(err)
+	}
+
+	repo := NewRepository(database)
+	refs, err := repo.CountVersionRuntimeRefs(ctx, "version-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refs != 0 {
+		t.Fatalf("expected fork reference to be deletable, got %d blocking references", refs)
+	}
+	if err := repo.DeleteVersion(ctx, "version-1"); err != nil {
+		t.Fatal(err)
+	}
+
+	var createdFrom sql.NullString
+	if err := database.QueryRowContext(ctx, `SELECT created_from_version_id FROM version WHERE id = 'version-2'`).Scan(&createdFrom); err != nil {
+		t.Fatal(err)
+	}
+	if createdFrom.Valid {
+		t.Fatalf("expected cleared fork reference, got %q", createdFrom.String)
+	}
+	var sourceVersionID, generatedVersionID string
+	if err := database.QueryRowContext(ctx, `SELECT source_version_id, generated_version_id FROM pipeline_run_build_version_binding WHERE pipeline_run_id = 'run-1'`).Scan(&sourceVersionID, &generatedVersionID); err != nil {
+		t.Fatal(err)
+	}
+	if sourceVersionID != "version-1" || generatedVersionID != "version-3" {
+		t.Fatalf("expected preserved pipeline run history, got source=%q generated=%q", sourceVersionID, generatedVersionID)
+	}
+
+	refs, err = repo.CountVersionRuntimeRefs(ctx, "version-3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refs != 0 {
+		t.Fatalf("expected generated version history to be non-blocking, got %d blocking references", refs)
+	}
+	if err := repo.DeleteVersion(ctx, "version-3"); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.QueryRowContext(ctx, `SELECT generated_version_id FROM pipeline_run_build_version_binding WHERE pipeline_run_id = 'run-1'`).Scan(&generatedVersionID); err != nil {
+		t.Fatal(err)
+	}
+	if generatedVersionID != "version-3" {
+		t.Fatalf("expected preserved generated version history, got %q", generatedVersionID)
+	}
+}
+
+func TestDeleteApplicationAllowsForkLineage(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = database.Close() }()
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind) VALUES ('app-1', 'App', 'app', 'application')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status, created_from_version_id) VALUES ('version-2', 'app-1', 'v2', 'unpublished', 'version-1')`); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := NewRepository(database).DeleteApplication(ctx, "app-1"); err != nil {
+		t.Fatal(err)
+	}
+	var remaining int
+	if err := database.QueryRowContext(ctx, `SELECT COUNT(*) FROM application WHERE id = 'app-1'`).Scan(&remaining); err != nil {
+		t.Fatal(err)
+	}
+	if remaining != 0 {
+		t.Fatalf("expected application to be deleted, got %d remaining rows", remaining)
+	}
+}

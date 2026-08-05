@@ -376,9 +376,10 @@
 
     <!-- 删除未发布版本 -->
     <AppDialog
-      v-model:open="isDeleteVersionDialogOpen"
+      :open="isDeleteVersionDialogOpen"
       :title="t('application.detail.dialog.deleteVersion')"
       width-class="w-[min(420px,calc(100vw-32px))]"
+      @update:open="setDeleteVersionDialogOpen"
     >
       <p class="text-sm text-muted-foreground">
         {{
@@ -387,12 +388,15 @@
           })
         }}
       </p>
+      <p v-if="deleteVersionError" class="app-field-error" role="alert">
+        {{ deleteVersionError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
           :confirm-label="t('common.delete')"
           variant="destructive"
-          @cancel="isDeleteVersionDialogOpen = false"
+          @cancel="setDeleteVersionDialogOpen(false)"
           @confirm="handleDeleteVersionOk"
         />
       </template>
@@ -681,6 +685,7 @@
   const isDeleteDialogOpen = ref(false);
   const isDeleteVersionDialogOpen = ref(false);
   const pendingDeleteVersion = ref<VersionResp | null>(null);
+  const deleteVersionError = ref('');
   const isVersionDialogOpen = ref(false);
   const isForkDialogOpen = ref(false);
   const isComponentEditDialogOpen = ref(false);
@@ -930,7 +935,16 @@
 
   function openDeleteVersionModal(version: VersionResp) {
     pendingDeleteVersion.value = version;
+    deleteVersionError.value = '';
     isDeleteVersionDialogOpen.value = true;
+  }
+
+  function setDeleteVersionDialogOpen(open: boolean) {
+    isDeleteVersionDialogOpen.value = open;
+    if (!open) {
+      pendingDeleteVersion.value = null;
+      deleteVersionError.value = '';
+    }
   }
 
   async function handleDeleteVersionOk() {
@@ -942,14 +956,12 @@
       await executeOp(async () => {
         await applicationApi.deleteVersion(target.id);
         toast.success(t('application.toast.deleteVersionSuccess'));
-        isDeleteVersionDialogOpen.value = false;
-        pendingDeleteVersion.value = null;
+        setDeleteVersionDialogOpen(false);
         await loadVersions();
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t('application.toast.deleteVersionFailed')
-      );
+      deleteVersionError.value =
+        error instanceof Error ? error.message : t('application.toast.deleteVersionFailed');
     }
   }
 

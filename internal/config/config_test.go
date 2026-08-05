@@ -84,6 +84,15 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Worker.PollInterval != time.Second {
 		t.Fatalf("unexpected poll interval: %s", cfg.Worker.PollInterval)
 	}
+	if cfg.PipelineRun.ExecutionTimeout != time.Hour {
+		t.Fatalf("unexpected pipeline execution timeout: %s", cfg.PipelineRun.ExecutionTimeout)
+	}
+	if cfg.Worker.LeaseDuration != time.Hour+5*time.Minute {
+		t.Fatalf("unexpected worker lease duration: %s", cfg.Worker.LeaseDuration)
+	}
+	if cfg.Worker.MaxAttempts != 1 {
+		t.Fatalf("unexpected worker max attempts: %d", cfg.Worker.MaxAttempts)
+	}
 	if cfg.EnvFilePath != filepath.Join(currentDir(t), ".env") {
 		t.Fatalf("unexpected env file path: %s", cfg.EnvFilePath)
 	}
@@ -146,8 +155,11 @@ worker:
 	if cfg.Worker.PollInterval != time.Second {
 		t.Fatalf("unexpected poll interval from defaults: %s", cfg.Worker.PollInterval)
 	}
-	if cfg.Worker.LeaseDuration != 5*time.Minute {
+	if cfg.Worker.LeaseDuration != time.Hour+5*time.Minute {
 		t.Fatalf("unexpected lease duration from defaults: %s", cfg.Worker.LeaseDuration)
+	}
+	if cfg.PipelineRun.ExecutionTimeout != time.Hour {
+		t.Fatalf("unexpected pipeline execution timeout from defaults: %s", cfg.PipelineRun.ExecutionTimeout)
 	}
 }
 
@@ -196,6 +208,8 @@ worker:
 	t.Setenv("POMELO_ORBIT_ORBIT__ROOT", "/srv/pomelo-orbit")
 	t.Setenv("POMELO_ORBIT_WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_WORKER__POLL_INTERVAL", "2s")
+	t.Setenv("POMELO_ORBIT_WORKER__LEASE_DURATION", "3h")
+	t.Setenv("POMELO_ORBIT_PIPELINE_RUN__EXECUTION_TIMEOUT", "2h")
 
 	cfg, err := Load()
 	if err != nil {
@@ -260,6 +274,49 @@ worker:
 	}
 	if cfg.Worker.PollInterval != 2*time.Second {
 		t.Fatalf("unexpected poll interval: %s", cfg.Worker.PollInterval)
+	}
+	if cfg.Worker.LeaseDuration != 3*time.Hour {
+		t.Fatalf("unexpected worker lease duration: %s", cfg.Worker.LeaseDuration)
+	}
+	if cfg.PipelineRun.ExecutionTimeout != 2*time.Hour {
+		t.Fatalf("unexpected pipeline execution timeout: %s", cfg.PipelineRun.ExecutionTimeout)
+	}
+}
+
+func TestLoadConfigRejectsInvalidPipelineExecutionTimeout(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name: "non-positive timeout",
+			content: `pipeline_run:
+  execution_timeout: 0s
+`,
+			want: "pipeline_run.execution_timeout must be positive",
+		},
+		{
+			name: "lease does not exceed timeout",
+			content: `pipeline_run:
+  execution_timeout: 1h
+worker:
+  lease_duration: 1h
+`,
+			want: "worker.lease_duration must exceed pipeline_run.execution_timeout",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			setupDefaultConfig(t)
+			writeEnvConfig(t, "develop", tc.content)
+
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("expected %q, got %v", tc.want, err)
+			}
+		})
 	}
 }
 
@@ -738,10 +795,12 @@ settings:
     - database__mysql__dsn
     - jwt__secret_key
     - turnstile__secret_key
+pipeline_run:
+  execution_timeout: 1h
 worker:
   id: ""
   poll_interval: 1s
-  lease_duration: 5m
-  max_attempts: 3
+  lease_duration: 1h5m
+  max_attempts: 1
   concurrency: 1
 `

@@ -11,8 +11,9 @@ import (
 func TestRunArgsUseBindMountSyntax(t *testing.T) {
 	hostPath := filepath.Join(t.TempDir(), "workspace")
 	args, err := runArgs(pipelinerunport.RunOptions{
-		Image:  "alpine",
-		Script: "echo ok",
+		ContainerName: "pipeline-stage-1",
+		Image:         "alpine",
+		Script:        "echo ok",
 		Volumes: []pipelinerunport.VolumeMount{
 			{HostPath: hostPath, ContainerPath: "/workspace", Mode: "rw"},
 		},
@@ -27,6 +28,9 @@ func TestRunArgsUseBindMountSyntax(t *testing.T) {
 	want := "type=bind,source=" + hostPath + ",target=/workspace"
 	if !containsArg(args, "--mount", want) {
 		t.Fatalf("expected bind mount %q in args %+v", want, args)
+	}
+	if !containsArg(args, "--name", "pipeline-stage-1") {
+		t.Fatalf("expected container name in args %+v", args)
 	}
 }
 

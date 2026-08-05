@@ -16,14 +16,6 @@
           width-class="app-toolbar-select"
           @update:model-value="handleTemplateChange"
         />
-        <button
-          class="app-button-primary shrink-0 px-5"
-          :disabled="status === 'loading'"
-          @click="handleSearch"
-        >
-          <Search class="size-4" />
-          {{ t('common.search') }}
-        </button>
       </div>
     </ToolbarRoot>
 
@@ -34,33 +26,40 @@
       </div>
       <AppEmptyState v-else-if="runs.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-data-table table-fixed min-w-[1200px]">
+        <table class="app-data-table table-fixed min-w-[1320px]">
           <colgroup>
+            <col class="w-[22%]" />
+            <col class="w-[13%]" />
             <col class="w-[14%]" />
-            <col class="w-[16%]" />
-            <col class="w-[8%]" />
-            <col class="w-[11%]" />
-            <col class="w-[10%]" />
+            <col class="w-[7%]" />
             <col class="w-[12%]" />
-            <col class="w-[15%]" />
-            <col class="w-[7%]" />
-            <col class="w-[7%]" />
+            <col class="w-[9%]" />
+            <col class="w-[13%]" />
+            <col class="w-[10%]" />
           </colgroup>
           <thead>
             <tr>
+              <th>ID</th>
               <th>{{ t('pipelineRun.fields.repository') }}</th>
               <th>{{ t('pipelineRun.fields.template') }}</th>
               <th>{{ t('pipelineRun.fields.version') }}</th>
               <th>{{ t('pipelineRun.fields.triggerRef') }}</th>
               <th>{{ t('common.status') }}</th>
-              <th>{{ t('pipelineRun.fields.errorMessage') }}</th>
               <th>{{ t('pipelineRun.fields.startTime') }}</th>
               <th>{{ t('pipelineRun.fields.duration') }}</th>
-              <th>{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="run in runs" :key="run.id">
+              <td class="overflow-hidden">
+                <router-link
+                  :to="`/pipeline-run/${run.id}`"
+                  class="app-link block truncate font-mono"
+                  :title="run.id"
+                >
+                  {{ run.id }}
+                </router-link>
+              </td>
               <td class="overflow-hidden">
                 <router-link
                   :to="`/repository/${run.repository_id}`"
@@ -86,27 +85,19 @@
                 {{ run.trigger_ref }}
               </td>
               <td>
-                <AppBadge variant="status" :tone="statusTone(run.status)">
+                <AppBadge
+                  variant="status"
+                  :tone="statusTone(run.status)"
+                  :title="run.status === 'faulted' ? run.error_message || undefined : undefined"
+                >
                   {{ run.status }}
                 </AppBadge>
-              </td>
-              <td
-                class="overflow-hidden truncate"
-                :class="run.error_message ? 'text-destructive' : 'text-muted-foreground'"
-                :title="run.error_message || undefined"
-              >
-                {{ run.error_message }}
               </td>
               <td class="whitespace-nowrap text-foreground" :title="formatTime(run.started_at)">
                 {{ formatTime(run.started_at) }}
               </td>
               <td class="whitespace-nowrap text-foreground">
                 {{ formatDuration(run.started_at, run.finished_at) }}
-              </td>
-              <td>
-                <router-link :to="`/pipeline-run/${run.id}`" class="app-link whitespace-nowrap">
-                  {{ t('application.view') }}
-                </router-link>
               </td>
             </tr>
           </tbody>
@@ -126,7 +117,6 @@
 </template>
 
 <script setup lang="ts">
-  import { Search } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute } from 'vue-router';

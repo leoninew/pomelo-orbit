@@ -57,9 +57,12 @@ settings:
     - jwt__secret_key
     - turnstile__secret_key
 
+pipeline_run:
+  execution_timeout: 1h
+
 worker:
   id: default
   poll_interval: 1s
-  lease_duration: 5m
-  max_attempts: 3
+  lease_duration: 1h5m
+  max_attempts: 1
   concurrency: 2

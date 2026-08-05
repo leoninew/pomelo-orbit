@@ -24,19 +24,20 @@ func EnvConfigFile(env string) string {
 }
 
 type Config struct {
-	App         AppConfig       `mapstructure:"app" yaml:"app"`
-	Server      ServerConfig    `mapstructure:"server" yaml:"server"`
-	Logging     LoggingConfig   `mapstructure:"logging" yaml:"logging"`
-	Database    DatabaseConfig  `mapstructure:"database" yaml:"database"`
-	Worker      WorkerConfig    `mapstructure:"worker" yaml:"worker"`
-	Orbit       OrbitConfig     `mapstructure:"orbit" yaml:"orbit"`
-	Jwt         JwtConfig       `mapstructure:"jwt" yaml:"jwt"`
-	Traefik     TraefikConfig   `mapstructure:"traefik" yaml:"traefik"`
-	Turnstile   TurnstileConfig `mapstructure:"turnstile" yaml:"turnstile"`
-	Cert        CertConfig      `mapstructure:"cert" yaml:"cert"`
-	Settings    SettingsConfig  `mapstructure:"settings" yaml:"settings"`
-	EnvFilePath string          `mapstructure:"-" yaml:"-"`
-	Base        *Config         `mapstructure:"-" yaml:"-"`
+	App         AppConfig         `mapstructure:"app" yaml:"app"`
+	Server      ServerConfig      `mapstructure:"server" yaml:"server"`
+	Logging     LoggingConfig     `mapstructure:"logging" yaml:"logging"`
+	Database    DatabaseConfig    `mapstructure:"database" yaml:"database"`
+	PipelineRun PipelineRunConfig `mapstructure:"pipeline_run" yaml:"pipeline_run"`
+	Worker      WorkerConfig      `mapstructure:"worker" yaml:"worker"`
+	Orbit       OrbitConfig       `mapstructure:"orbit" yaml:"orbit"`
+	Jwt         JwtConfig         `mapstructure:"jwt" yaml:"jwt"`
+	Traefik     TraefikConfig     `mapstructure:"traefik" yaml:"traefik"`
+	Turnstile   TurnstileConfig   `mapstructure:"turnstile" yaml:"turnstile"`
+	Cert        CertConfig        `mapstructure:"cert" yaml:"cert"`
+	Settings    SettingsConfig    `mapstructure:"settings" yaml:"settings"`
+	EnvFilePath string            `mapstructure:"-" yaml:"-"`
+	Base        *Config           `mapstructure:"-" yaml:"-"`
 }
 
 type AppConfig struct {
@@ -94,6 +95,10 @@ type WorkerConfig struct {
 	LeaseDuration time.Duration `mapstructure:"lease_duration" yaml:"lease_duration"`
 	MaxAttempts   int           `mapstructure:"max_attempts" yaml:"max_attempts"`
 	Concurrency   int           `mapstructure:"concurrency" yaml:"concurrency"`
+}
+
+type PipelineRunConfig struct {
+	ExecutionTimeout time.Duration `mapstructure:"execution_timeout" yaml:"execution_timeout"`
 }
 
 type OrbitConfig struct {
@@ -270,6 +275,7 @@ func bindEnv(loader *viper.Viper) {
 		"database.driver",
 		"database.sqlite.path",
 		"database.mysql.dsn",
+		"pipeline_run.execution_timeout",
 		"orbit.root",
 		"jwt.secret_key",
 		"traefik.cert_dir",
@@ -338,6 +344,12 @@ func (c Config) Validate() error {
 	}
 	if c.Worker.LeaseDuration <= 0 {
 		return errors.New("worker.lease_duration must be positive")
+	}
+	if c.PipelineRun.ExecutionTimeout <= 0 {
+		return errors.New("pipeline_run.execution_timeout must be positive")
+	}
+	if c.Worker.LeaseDuration <= c.PipelineRun.ExecutionTimeout {
+		return errors.New("worker.lease_duration must exceed pipeline_run.execution_timeout")
 	}
 	if c.Worker.MaxAttempts < 1 {
 		return errors.New("worker.max_attempts must be at least 1")

@@ -9,13 +9,6 @@
           width-class="app-toolbar-select"
           @update:model-value="handleApplicationChange"
         />
-        <SearchControl
-          v-model="query.search"
-          :placeholder="t('deployment.searchPlaceholder')"
-          :loading="status === 'loading'"
-          class="shrink-0"
-          @search="handleSearch"
-        />
       </div>
     </ToolbarRoot>
 
@@ -27,21 +20,29 @@
       </div>
       <AppEmptyState v-else-if="deployments.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-data-table min-w-[1120px]">
+        <table class="app-data-table min-w-[1040px]">
           <thead>
             <tr>
+              <th>ID</th>
               <th>{{ t('deployment.fields.application') }}</th>
               <th>{{ t('deployment.fields.operationType') }}</th>
               <th>{{ t('deployment.fields.triggerType') }}</th>
               <th>{{ t('common.status') }}</th>
-              <th>{{ t('deployment.fields.errorMessage') }}</th>
               <th>{{ t('deployment.fields.startTime') }}</th>
               <th>{{ t('deployment.fields.duration') }}</th>
-              <th>{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="deployment in deployments" :key="deployment.id">
+              <td class="max-w-64 truncate">
+                <router-link
+                  :to="`/deployment/${deployment.id}`"
+                  class="app-link font-mono"
+                  :title="deployment.id"
+                >
+                  {{ deployment.id }}
+                </router-link>
+              </td>
               <td>
                 <router-link :to="`/application/${deployment.application_id}`" class="app-link">
                   {{ deployment.application_name || deployment.application_id }}
@@ -54,35 +55,17 @@
                 <AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge>
               </td>
               <td>
-                <AppBadge variant="status" :tone="statusTone(deployment.status)">
+                <AppBadge
+                  variant="status"
+                  :tone="statusTone(deployment.status)"
+                  :title="deployment.status === 'faulted' ? deployment.error_message || undefined : undefined"
+                >
                   {{ deployment.status }}
                 </AppBadge>
-              </td>
-              <td
-                class="max-w-56 truncate"
-                :class="deployment.error_message ? 'text-destructive' : 'text-muted-foreground'"
-                :title="deployment.error_message || undefined"
-              >
-                {{ deployment.error_message }}
               </td>
               <td class="text-foreground">{{ formatTime(deployment.started_at) }}</td>
               <td class="text-foreground">
                 {{ formatDuration(deployment.started_at, deployment.finished_at) }}
-              </td>
-              <td>
-                <div class="flex items-center gap-3">
-                  <router-link :to="`/deployment/${deployment.id}`" class="app-link">
-                    {{ t('application.view') }}
-                  </router-link>
-                  <button
-                    v-if="isCancelable(deployment)"
-                    class="app-link-danger"
-                    :disabled="operating"
-                    @click="openCancelDialog(deployment)"
-                  >
-                    {{ t('common.cancel') }}
-                  </button>
-                </div>
               </td>
             </tr>
           </tbody>
@@ -99,28 +82,6 @@
       />
     </div>
 
-    <AppDialog
-      v-model:open="isCancelDialogOpen"
-      :title="t('deployment.dialog.confirmCancel')"
-      width-class="w-[min(420px,calc(100vw-32px))]"
-    >
-      <p class="text-sm text-foreground">
-        {{
-          t('deployment.dialog.cancelConfirm', {
-            name: deploymentToCancel?.application_name || t('deployment.dialog.currentApplication'),
-          })
-        }}
-      </p>
-      <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          :confirm-label="t('common.confirm')"
-          variant="destructive"
-          @cancel="isCancelDialogOpen = false"
-          @confirm="handleCancelOk"
-        />
-      </template>
-    </AppDialog>
   </div>
 </template>
 
@@ -131,13 +92,10 @@
   import { applicationApi } from '@/api/application/application';
   import { deploymentApi } from '@/api/deployment/deployment';
   import AppBadge from '@/components/AppBadge.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
-  import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -152,16 +110,12 @@
   const toast = useToast();
   const projectStore = useProjectStore();
   const { status, error, execute } = useStatusAsync();
-  const { loading: operating, execute: executeOp } = useStatusAsync();
 
   const deployments = ref<DeploymentResp[]>([]);
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-  const isCancelDialogOpen = ref(false);
-  const deploymentToCancel = ref<DeploymentResp | null>(null);
 
   const query = reactive({
-    search: '',
     application_id: (route.query.application_id as string) || '',
   });
 
@@ -198,7 +152,6 @@
         const res = await deploymentApi.list({
           page: pagination.current,
           per_page: pagination.pageSize,
-          search: query.search || undefined,
           application_id: query.application_id || undefined,
           project_id: projectId,
         });
@@ -216,10 +169,6 @@
       return;
     }
     query.application_id = nextValue;
-    handleSearch();
-  }
-
-  function handleSearch() {
     pagination.current = 1;
     fetchDeployments();
   }
@@ -233,33 +182,6 @@
     pagination.pageSize = pageSize;
     pagination.current = 1;
     fetchDeployments();
-  }
-
-  function isCancelable(deployment: DeploymentResp) {
-    return ['running', 'waiting_to_run'].includes(deployment.status);
-  }
-
-  function openCancelDialog(deployment: DeploymentResp) {
-    deploymentToCancel.value = deployment;
-    isCancelDialogOpen.value = true;
-  }
-
-  async function handleCancelOk() {
-    if (!deploymentToCancel.value) {
-      return;
-    }
-    const target = deploymentToCancel.value;
-    try {
-      await executeOp(async () => {
-        await deploymentApi.cancel(target.id, {});
-        toast.success(t('deployment.toast.cancelSuccess'));
-        isCancelDialogOpen.value = false;
-        deploymentToCancel.value = null;
-        await fetchDeployments();
-      });
-    } catch {
-      toast.error(t('deployment.toast.cancelFailed'));
-    }
   }
 
   onMounted(async () => {

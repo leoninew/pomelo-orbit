@@ -51,8 +51,10 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 		return err
 	}
 
-	stageExecutor := Executor{store: s.executionStore, workspace: s.workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, runner: s.runner, localSource: s.localSource}
-	ok, message := stageExecutor.Execute(ctx, run, repo, variables, stages)
+	executionCtx, cancel := context.WithTimeout(ctx, s.executionTimeout)
+	defer cancel()
+	stageExecutor := Executor{store: s.executionStore, workspace: s.workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, executionTimeout: s.executionTimeout, runner: s.runner, localSource: s.localSource}
+	ok, message := stageExecutor.Execute(ctx, executionCtx, run, repo, variables, stages)
 	current, err := s.executionStore.PipelineRun(ctx, run.Id)
 	if err != nil {
 		return err

@@ -20,16 +20,17 @@ import (
 )
 
 type Executor struct {
-	store       pipelineExecutionStore
-	workspace   pipelinerunport.Workspace
-	logStore    pipelinerunport.ExecutionLogStore
-	secretKey   string
-	logger      *slog.Logger
-	runner      pipelinerunport.ContainerRunner
-	localSource repositoryport.LocalDirectorySource
+	store            pipelineExecutionStore
+	workspace        pipelinerunport.Workspace
+	logStore         pipelinerunport.ExecutionLogStore
+	secretKey        string
+	logger           *slog.Logger
+	executionTimeout time.Duration
+	runner           pipelinerunport.ContainerRunner
+	localSource      repositoryport.LocalDirectorySource
 }
 
-func (e Executor) Execute(ctx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stages []model.StageDefinition) (bool, string) {
+func (e Executor) Execute(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stages []model.StageDefinition) (bool, string) {
 	layers, err := topologicalLayers(stages)
 	if err != nil {
 		e.logger.Error("cyclic dependency", "run", run.Id, "error", err)
@@ -42,7 +43,7 @@ func (e Executor) Execute(ctx context.Context, run model.PipelineRun, repo model
 
 	for layerIndex, layer := range layers {
 		e.logger.Info("executing layer", "index", layerIndex+1, "total", len(layers), "run", run.Id, "stages", layer)
-		results := e.executeLayer(ctx, run, repo, variables, layer, stageById)
+		results := e.executeLayer(ctx, executionCtx, run, repo, variables, layer, stageById)
 		failed := make([]string, 0)
 		for _, stageId := range layer {
 			stage := stageById[stageId]
@@ -58,14 +59,14 @@ func (e Executor) Execute(ctx context.Context, run model.PipelineRun, repo model
 	return true, ""
 }
 
-func (e Executor) executeLayer(ctx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, layer []string, stages map[string]model.StageDefinition) map[string]bool {
+func (e Executor) executeLayer(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, layer []string, stages map[string]model.StageDefinition) map[string]bool {
 	results := make(map[string]bool, len(layer))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for _, stageId := range layer {
 		stage := stages[stageId]
 		wg.Go(func() {
-			ok := e.executeStage(ctx, run, repo, variables, stage)
+			ok := e.executeStage(ctx, executionCtx, run, repo, variables, stage)
 			mu.Lock()
 			results[stage.Name] = ok
 			mu.Unlock()
@@ -75,7 +76,7 @@ func (e Executor) executeLayer(ctx context.Context, run model.PipelineRun, repo 
 	return results
 }
 
-func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stage model.StageDefinition) bool {
+func (e Executor) executeStage(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stage model.StageDefinition) bool {
 	pipelineStageRun := model.PipelineStageRun{Id: idutil.NewId(), PipelineRunId: run.Id, StageId: stage.Id, StageName: stage.Name, Status: status.WorkStatusWaitingToRun}
 	if err := e.store.InsertPipelineStageRun(ctx, pipelineStageRun); err != nil {
 		e.logger.Error("pipeline stage run insert failed", "run", run.Id, "stage", stage.Name, "error", err)
@@ -86,6 +87,9 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 	pipelineStageRun.StartedAt = &started
 	pipelineStageRun.Status = status.WorkStatusRunning
 	_ = e.store.UpdatePipelineStageRun(ctx, pipelineStageRun)
+	if err := executionCtx.Err(); err != nil {
+		return e.failStage(ctx, pipelineStageRun, e.executionErrorMessage(err))
+	}
 
 	logPath := e.workspace.StageLogPath(run.Id, pipelineStageRun.Id)
 	logWriter, err := e.logStore.Writer(logPath)
@@ -114,15 +118,26 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 		return e.failStage(ctx, pipelineStageRun, err.Error())
 	}
 
-	exitCode, _, err := e.runner.Run(ctx, pipelinerunport.RunOptions{
-		Image:       stage.Image,
-		Script:      safeCommand(script),
-		Environment: environment,
-		Volumes:     volumes,
-		LogWriter:   logWriter,
+	exitCode, _, err := e.runner.Run(executionCtx, pipelinerunport.RunOptions{
+		ContainerName: "pomelo-orbit-stage-" + pipelineStageRun.Id,
+		Image:         stage.Image,
+		Script:        safeCommand(script),
+		Environment:   environment,
+		Volumes:       volumes,
+		LogWriter:     logWriter,
 	})
 	if err != nil {
+		if executionErr := executionCtx.Err(); executionErr != nil {
+			message := e.executionErrorMessage(executionErr)
+			if err != executionErr {
+				message = fmt.Sprintf("%s: %v", message, err)
+			}
+			return e.failStage(ctx, pipelineStageRun, message)
+		}
 		return e.failStage(ctx, pipelineStageRun, err.Error())
+	}
+	if err := executionCtx.Err(); err != nil {
+		return e.failStage(ctx, pipelineStageRun, e.executionErrorMessage(err))
 	}
 	if exitCode != 0 {
 		if err := logWriter.Close(); err != nil {
@@ -146,6 +161,13 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 	}
 	e.logger.Info("stage succeeded", "run", run.Id, "stage", stage.Name)
 	return true
+}
+
+func (e Executor) executionErrorMessage(err error) string {
+	if err == context.DeadlineExceeded {
+		return fmt.Sprintf("pipeline execution timed out after %s", e.executionTimeout)
+	}
+	return fmt.Sprintf("pipeline execution canceled: %v", err)
 }
 
 func (e Executor) pipelineStageRunConfig(ctx context.Context, repo model.Repository, variables map[string]any, stage model.StageDefinition) (string, []string, error) {

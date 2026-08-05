@@ -35,11 +35,12 @@ type Workspace interface {
 }
 
 type RunOptions struct {
-	Image       string
-	Script      string
-	Environment []string
-	Volumes     []VolumeMount
-	LogWriter   io.Writer
+	ContainerName string
+	Image         string
+	Script        string
+	Environment   []string
+	Volumes       []VolumeMount
+	LogWriter     io.Writer
 }
 
 type ContainerRunner interface {

@@ -20,6 +20,7 @@ type Service struct {
 	executionLogStore pipelinerunport.ExecutionLogStore
 	secretKey         string
 	logger            *slog.Logger
+	executionTimeout  time.Duration
 	runner            pipelinerunport.ContainerRunner
 	localSource       repositoryport.LocalDirectorySource
 }
@@ -78,6 +79,7 @@ func NewExecutionService(
 	workspace pipelinerunport.Workspace,
 	secretKey string,
 	logger *slog.Logger,
+	executionTimeout time.Duration,
 	runner pipelinerunport.ContainerRunner,
 	logStore pipelinerunport.ExecutionLogStore,
 	localSource repositoryport.LocalDirectorySource,
@@ -88,7 +90,7 @@ func NewExecutionService(
 	}
 	return Service{
 		store: s, executionStore: s, workspace: workspace, logStore: logStore,
-		executionLogStore: logStore, secretKey: secretKey, logger: logger, runner: runner, localSource: localSource,
+		executionLogStore: logStore, secretKey: secretKey, logger: logger, executionTimeout: executionTimeout, runner: runner, localSource: localSource,
 	}
 }
 

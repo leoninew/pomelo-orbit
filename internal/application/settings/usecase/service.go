@@ -142,6 +142,7 @@ func settingDefinitions(cfg config.Config) []settingsdto.Definition {
 		{Key: "cert__letsencrypt__email", Default: cfg.Cert.LetsEncrypt.Email, Description: "Let's Encrypt account email"},
 		{Key: "cert__letsencrypt__challenge", Default: cfg.Cert.LetsEncrypt.Challenge, Description: "Let's Encrypt challenge type"},
 		{Key: "cert__letsencrypt__dns_provider", Default: cfg.Cert.LetsEncrypt.DNSProvider, Description: "Let's Encrypt DNS challenge provider"},
+		{Key: "pipeline_run__execution_timeout", Default: cfg.PipelineRun.ExecutionTimeout.String(), Description: "Maximum pipeline execution duration"},
 		{Key: "worker__id", Default: cfg.Worker.Id, Description: "Background worker ID"},
 		{Key: "worker__poll_interval", Default: cfg.Worker.PollInterval.String(), Description: "Background worker poll interval"},
 		{Key: "worker__lease_duration", Default: cfg.Worker.LeaseDuration.String(), Description: "Background task lease duration"},

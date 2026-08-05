@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	pipelinerundto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/dto"
 	pipelinerunport "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/port"
@@ -28,6 +29,7 @@ func newTestExecutionService(store pipelineExecutionStore, workspace pipelinerun
 		executionLogStore: logStore,
 		secretKey:         secretKey,
 		logger:            logger,
+		executionTimeout:  time.Hour,
 		runner:            runner,
 	}
 }
@@ -95,6 +97,33 @@ func TestExecutePipelineRunExecutesPipelineRun(t *testing.T) {
 	}
 	if store.pipelineStageRuns[0].Status != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected stage status: %s", store.pipelineStageRuns[0].Status)
+	}
+}
+
+func TestExecutePipelineRunMarksRunFaultedOnTimeout(t *testing.T) {
+	store := &fakeExecutionStore{
+		run:      model.PipelineRun{Id: "run-1", RepositoryId: "repo-1", SnapshotId: "snapshot-1", VariablesSnapshot: `[]`},
+		repo:     model.Repository{Id: "repo-1", Code: "repo"},
+		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"sleep 3600"}]`},
+	}
+	service := newTestExecutionService(store, newTestWorkspace(t), testExecutionFernetKey, slog.Default(), blockingContainerRunner{}, executionlog.Store{})
+	service.executionTimeout = 10 * time.Millisecond
+
+	if err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{PipelineRunId: "run-1"}); err != nil {
+		t.Fatalf("ExecutePipelineRun returned error: %v", err)
+	}
+	if store.runStatus != status.WorkStatusFaulted {
+		t.Fatalf("unexpected final run status: %s", store.runStatus)
+	}
+	if len(store.pipelineStageRuns) != 1 {
+		t.Fatalf("expected one stage run, got %d", len(store.pipelineStageRuns))
+	}
+	stage := store.pipelineStageRuns[0]
+	if stage.Status != status.WorkStatusFaulted {
+		t.Fatalf("unexpected stage status: %s", stage.Status)
+	}
+	if stage.ErrorMessage == nil || !strings.Contains(*stage.ErrorMessage, "timed out after 10ms") {
+		t.Fatalf("unexpected timeout message: %v", stage.ErrorMessage)
 	}
 }
 
@@ -303,6 +332,13 @@ type failingContainerRunner struct{}
 
 func (failingContainerRunner) Run(ctx context.Context, opts pipelinerunport.RunOptions) (int, string, error) {
 	return 1, "line1\nline2\nline3\nline4", nil
+}
+
+type blockingContainerRunner struct{}
+
+func (blockingContainerRunner) Run(ctx context.Context, opts pipelinerunport.RunOptions) (int, string, error) {
+	<-ctx.Done()
+	return 1, "", ctx.Err()
 }
 
 type recordingContainerRunner struct {

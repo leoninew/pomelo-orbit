@@ -230,16 +230,22 @@ const router = createRouter({
       meta: { title: '流水线记录', menuKey: 'pipelineruns' },
     },
     {
-      path: '/pipeline-run/:id',
-      name: 'PipelineRunDetail',
-      component: () => import('@/views/pipeline_run/PipelineRunDetail.vue'),
-      meta: { title: 'Run 详情', menuKey: 'pipelineruns' },
-    },
-    {
       path: '/pipeline-run/artifact',
       name: 'Artifacts',
       component: () => import('@/views/pipeline_run/ArtifactPage.vue'),
       meta: { title: '制品记录', menuKey: 'artifacts' },
+    },
+    {
+      path: '/pipeline-run/artifact/:id',
+      name: 'ArtifactDetail',
+      component: () => import('@/views/pipeline_run/ArtifactDetail.vue'),
+      meta: { title: '制品详情', menuKey: 'artifacts' },
+    },
+    {
+      path: '/pipeline-run/:id',
+      name: 'PipelineRunDetail',
+      component: () => import('@/views/pipeline_run/PipelineRunDetail.vue'),
+      meta: { title: 'Run 详情', menuKey: 'pipelineruns' },
     },
     // auth / settings
     {

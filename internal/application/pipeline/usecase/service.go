@@ -9,20 +9,22 @@ import (
 )
 
 type Service struct {
-	project  repository.ProjectReader
-	pipeline repository.PipelineStore
-	logger   *slog.Logger
-	store    stores
+	project     repository.ProjectReader
+	pipeline    repository.PipelineStore
+	application repository.ApplicationStore
+	logger      *slog.Logger
+	store       stores
 }
 
 type stores struct {
-	project  repository.ProjectReader
-	pipeline repository.PipelineStore
+	project     repository.ProjectReader
+	pipeline    repository.PipelineStore
+	application repository.ApplicationStore
 }
 
-func New(project repository.ProjectReader, pipeline repository.PipelineStore, logger *slog.Logger) Service {
-	s := stores{project: project, pipeline: pipeline}
-	return Service{project: project, pipeline: pipeline, logger: logger, store: s}
+func New(project repository.ProjectReader, pipeline repository.PipelineStore, application repository.ApplicationStore, logger *slog.Logger) Service {
+	s := stores{project: project, pipeline: pipeline, application: application}
+	return Service{project: project, pipeline: pipeline, application: application, logger: logger, store: s}
 }
 
 func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
@@ -30,6 +32,15 @@ func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
 }
 func (s stores) IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error) {
 	return s.project.IsProjectMember(ctx, projectId, userId)
+}
+func (s stores) Application(ctx context.Context, id string) (model.Application, error) {
+	return s.application.Application(ctx, id)
+}
+func (s stores) Version(ctx context.Context, id string) (model.Version, error) {
+	return s.application.Version(ctx, id)
+}
+func (s stores) VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error) {
+	return s.application.VersionComponentsByVersion(ctx, versionId)
 }
 func (s stores) PipelineTemplate(ctx context.Context, id string) (model.PipelineTemplate, error) {
 	return s.pipeline.PipelineTemplate(ctx, id)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	pipelinerunport "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/port"
@@ -49,7 +50,11 @@ func (w *Workspace) ArtifactsPath(runId string) string {
 }
 
 func (w *Workspace) ArtifactExists(runId string, artifactPath string) (bool, error) {
-	_, err := os.Stat(filepath.Join(w.ArtifactsPath(runId), artifactPath))
+	path, err := w.artifactPath(runId, artifactPath)
+	if err != nil {
+		return false, err
+	}
+	_, err = os.Stat(path)
 	if err == nil {
 		return true, nil
 	}
@@ -57,6 +62,14 @@ func (w *Workspace) ArtifactExists(runId string, artifactPath string) (bool, err
 		return false, nil
 	}
 	return false, err
+}
+
+func (w *Workspace) artifactPath(runId string, artifactPath string) (string, error) {
+	clean := filepath.Clean(artifactPath)
+	if clean == "." || filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("invalid artifact path %s", artifactPath)
+	}
+	return filepath.Join(w.ArtifactsPath(runId), clean), nil
 }
 
 func (w *Workspace) StageLogPath(runId string, pipelineStageRunId string) string {

@@ -11,21 +11,14 @@ import (
 	"time"
 )
 
-const clearVersionForkRefs = `-- name: ClearVersionForkRefs :exec
-UPDATE version
-SET created_from_version_id = NULL
-WHERE created_from_version_id = ?
-`
-
-func (q *Queries) ClearVersionForkRefs(ctx context.Context, createdFromVersionID sql.NullString) error {
-	_, err := q.db.ExecContext(ctx, clearVersionForkRefs, createdFromVersionID)
-	return err
-}
-
 const countVersionRuntimeRefs = `-- name: CountVersionRuntimeRefs :one
 SELECT (
   (SELECT COUNT(*) FROM service WHERE service.version_id = ?1) +
-  (SELECT COUNT(*) FROM deployment WHERE deployment.version_id = ?1)
+  (SELECT COUNT(*) FROM deployment WHERE deployment.version_id = ?1) +
+  (SELECT COUNT(*) FROM pipeline_stage_build_version_binding WHERE fixed_version_id = ?1) +
+  (SELECT COUNT(*) FROM pipeline_run_build_version_binding WHERE source_version_id = ?1) +
+  (SELECT COUNT(*) FROM pipeline_run_build_version_binding WHERE generated_version_id = ?1) +
+  (SELECT COUNT(*) FROM version WHERE created_from_version_id = ?1)
 )
 `
 
@@ -216,8 +209,8 @@ func (q *Queries) DeleteVersionComponents(ctx context.Context, versionID string)
 
 const insertVersionComponent = `-- name: InsertVersionComponent :exec
 INSERT INTO version_component (
-  id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  id, version_id, name, image, artifact_id, command_json, pull_policy, restart_policy, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentParams struct {
@@ -225,6 +218,7 @@ type InsertVersionComponentParams struct {
 	VersionID     string         `db:"version_id"`
 	Name          string         `db:"name"`
 	Image         string         `db:"image"`
+	ArtifactID    sql.NullString `db:"artifact_id"`
 	CommandJson   string         `db:"command_json"`
 	PullPolicy    string         `db:"pull_policy"`
 	RestartPolicy sql.NullString `db:"restart_policy"`
@@ -238,6 +232,7 @@ func (q *Queries) InsertVersionComponent(ctx context.Context, arg InsertVersionC
 		arg.VersionID,
 		arg.Name,
 		arg.Image,
+		arg.ArtifactID,
 		arg.CommandJson,
 		arg.PullPolicy,
 		arg.RestartPolicy,
@@ -491,6 +486,31 @@ func (q *Queries) InsertVersionComponentUlimit(ctx context.Context, arg InsertVe
 	return err
 }
 
+const latestVersionByApplication = `-- name: LatestVersionByApplication :one
+SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
+FROM version
+WHERE application_id = ?
+ORDER BY id DESC
+LIMIT 1
+`
+
+func (q *Queries) LatestVersionByApplication(ctx context.Context, applicationID string) (Version, error) {
+	row := q.db.QueryRowContext(ctx, latestVersionByApplication, applicationID)
+	var i Version
+	err := row.Scan(
+		&i.ID,
+		&i.ApplicationID,
+		&i.Label,
+		&i.Status,
+		&i.CreatedFromVersionID,
+		&i.Note,
+		&i.ComponentSummary,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listVersions = `-- name: ListVersions :many
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
@@ -606,6 +626,22 @@ type RenameVersionComponentDependenciesParams struct {
 
 func (q *Queries) RenameVersionComponentDependencies(ctx context.Context, arg RenameVersionComponentDependenciesParams) error {
 	_, err := q.db.ExecContext(ctx, renameVersionComponentDependencies, arg.NewName, arg.VersionID, arg.OldName)
+	return err
+}
+
+const setVersionComponentArtifact = `-- name: SetVersionComponentArtifact :exec
+UPDATE version_component
+SET artifact_id = ?1
+WHERE id = ?2
+`
+
+type SetVersionComponentArtifactParams struct {
+	ArtifactID  sql.NullString `db:"artifact_id"`
+	ComponentID string         `db:"component_id"`
+}
+
+func (q *Queries) SetVersionComponentArtifact(ctx context.Context, arg SetVersionComponentArtifactParams) error {
+	_, err := q.db.ExecContext(ctx, setVersionComponentArtifact, arg.ArtifactID, arg.ComponentID)
 	return err
 }
 
@@ -736,8 +772,37 @@ func (q *Queries) VersionByID(ctx context.Context, id string) (Version, error) {
 	return i, err
 }
 
+const versionComponentArtifact = `-- name: VersionComponentArtifact :one
+SELECT artifact.id, artifact.image_ref, artifact.local_image_sha256, source_artifact.value AS source_commit_sha
+FROM version_component
+JOIN artifact ON artifact.id = version_component.artifact_id
+LEFT JOIN artifact AS source_artifact
+  ON source_artifact.id = artifact.source_artifact_id
+ AND source_artifact.value_format = 'git_object_id'
+WHERE version_component.id = ?
+`
+
+type VersionComponentArtifactRow struct {
+	ID               string         `db:"id"`
+	ImageRef         sql.NullString `db:"image_ref"`
+	LocalImageSha256 sql.NullString `db:"local_image_sha256"`
+	SourceCommitSha  sql.NullString `db:"source_commit_sha"`
+}
+
+func (q *Queries) VersionComponentArtifact(ctx context.Context, id string) (VersionComponentArtifactRow, error) {
+	row := q.db.QueryRowContext(ctx, versionComponentArtifact, id)
+	var i VersionComponentArtifactRow
+	err := row.Scan(
+		&i.ID,
+		&i.ImageRef,
+		&i.LocalImageSha256,
+		&i.SourceCommitSha,
+	)
+	return i, err
+}
+
 const versionComponentByID = `-- name: VersionComponentByID :one
-SELECT id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, artifact_id, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE id = ?
 `
@@ -750,6 +815,7 @@ func (q *Queries) VersionComponentByID(ctx context.Context, id string) (VersionC
 		&i.VersionID,
 		&i.Name,
 		&i.Image,
+		&i.ArtifactID,
 		&i.CommandJson,
 		&i.PullPolicy,
 		&i.RestartPolicy,
@@ -1075,7 +1141,7 @@ func (q *Queries) VersionComponentUlimitsByComponent(ctx context.Context, compon
 }
 
 const versionComponentsByVersion = `-- name: VersionComponentsByVersion :many
-SELECT id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, artifact_id, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE version_id = ?
 ORDER BY name
@@ -1095,6 +1161,7 @@ func (q *Queries) VersionComponentsByVersion(ctx context.Context, versionID stri
 			&i.VersionID,
 			&i.Name,
 			&i.Image,
+			&i.ArtifactID,
 			&i.CommandJson,
 			&i.PullPolicy,
 			&i.RestartPolicy,

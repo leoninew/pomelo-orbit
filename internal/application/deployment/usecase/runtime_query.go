@@ -204,6 +204,9 @@ func (s Service) DeleteApplication(ctx context.Context, userId string, applicati
 		}
 	}
 	if err := s.application.DeleteApplication(ctx, app.Id); err != nil {
+		if errors.Is(err, repository.ErrReferenced) {
+			return apperror.New(apperror.KindValidation, "应用包含被引用的版本, 无法删除")
+		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete application", err)
 	}
 	return nil

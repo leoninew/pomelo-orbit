@@ -122,21 +122,25 @@
             <thead>
               <tr>
                 <th>Stage</th>
-                <th>类型</th>
+                <th>Collector</th>
                 <th>名称</th>
-                <th>路径/镜像</th>
+                <th>引用/命令</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(artifact, idx) in artifactDeclarations" :key="idx">
-                <td class="text-foreground">{{ artifact.stageName }}</td>
+                <td>
+                  <router-link :to="`/pipeline/stage/${artifact.stageId}`" class="app-link">
+                    {{ artifact.stageName }}
+                  </router-link>
+                </td>
                 <td>
                   <AppBadge variant="pill">
-                    {{ artifact.type }}
+                    {{ artifact.collector }}
                   </AppBadge>
                 </td>
                 <td class="text-foreground">{{ artifact.name }}</td>
-                <td class="text-muted-foreground">{{ artifact.path }}</td>
+                <td class="text-muted-foreground">{{ artifact.detail }}</td>
               </tr>
             </tbody>
           </table>
@@ -166,10 +170,11 @@
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
 
   interface ArtifactDeclaration {
+    stageId: string;
     stageName: string;
-    type: string;
+    collector: string;
     name: string;
-    path: string;
+    detail: string;
   }
 
   const route = useRoute();
@@ -193,7 +198,13 @@
     const result: ArtifactDeclaration[] = [];
     for (const s of snapshot.value?.stages_snapshot ?? []) {
       for (const a of s.artifacts ?? []) {
-        result.push({ stageName: s.name, type: a.type, name: a.name, path: a.path });
+        result.push({
+          stageId: s.id,
+          stageName: s.name,
+          collector: a.collector,
+          name: a.name,
+          detail: a.collector === 'command' ? a.command : a.reference,
+        });
       }
     }
     return result;

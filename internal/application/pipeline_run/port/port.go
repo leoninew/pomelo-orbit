@@ -46,3 +46,12 @@ type RunOptions struct {
 type ContainerRunner interface {
 	Run(ctx context.Context, opts RunOptions) (int, string, error)
 }
+
+// CommandOutputRunner runs a collector command in the same image, environment, and mounts as its stage.
+type CommandOutputRunner interface {
+	RunCommand(ctx context.Context, opts RunOptions, command string) (string, error)
+}
+
+type ImageInspector interface {
+	ImageId(ctx context.Context, imageRef string) (string, error)
+}

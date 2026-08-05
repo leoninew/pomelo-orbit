@@ -29,3 +29,17 @@ func (h Handler) ListArtifacts(c *gin.Context) {
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.ArtifactPaginatedResp{Items: transportresponse.Ptrs(resp), Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transportresponse.PageCount(items.Total, items.PerPage))})
 }
+
+func (h Handler) GetArtifact(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	item, err := h.service.ArtifactForUser(c.Request.Context(), current.Id, c.Param("artifact_id"))
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	resp := artifactResponse(item)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+}

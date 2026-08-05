@@ -104,17 +104,6 @@ func (q *Queries) ApplicationByName(ctx context.Context, name string) (Applicati
 	return i, err
 }
 
-const clearVersionForkRefsByApplication = `-- name: ClearVersionForkRefsByApplication :exec
-UPDATE version
-SET created_from_version_id = NULL
-WHERE application_id = ?
-`
-
-func (q *Queries) ClearVersionForkRefsByApplication(ctx context.Context, applicationID string) error {
-	_, err := q.db.ExecContext(ctx, clearVersionForkRefsByApplication, applicationID)
-	return err
-}
-
 const countApplications = `-- name: CountApplications :one
 SELECT COUNT(*)
 FROM application
@@ -314,4 +303,33 @@ func (q *Queries) UpdateApplication(ctx context.Context, arg UpdateApplicationPa
 		arg.ID,
 	)
 	return err
+}
+
+const versionIdsByApplication = `-- name: VersionIdsByApplication :many
+SELECT id
+FROM version
+WHERE application_id = ?
+`
+
+func (q *Queries) VersionIdsByApplication(ctx context.Context, applicationID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, versionIdsByApplication, applicationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

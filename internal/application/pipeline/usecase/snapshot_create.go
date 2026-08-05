@@ -134,10 +134,14 @@ func pipelineTemplateSnapshotStages(ctx context.Context, store SnapshotStore, te
 		definitions = append(definitions, model.StageDefinition{
 			Name: item.StageName, Id: stage.Id, Image: stage.Image, Version: stage.Version,
 			DependsOn: item.DependsOn, Script: stage.Script, Artifacts: artifacts,
+			BuildVersionBinding: cloneBuildVersionBinding(stage.BuildVersionBinding),
 		})
 	}
 	if len(missing) > 0 {
 		return nil, apperror.New(apperror.KindNotFound, "Stage(s) not found: "+strings.Join(missing, ", "))
+	}
+	if err := validateSourceCommitDependencies(definitions); err != nil {
+		return nil, apperror.New(apperror.KindValidation, err.Error())
 	}
 	return definitions, nil
 }

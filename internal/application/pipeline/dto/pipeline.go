@@ -3,38 +3,52 @@ package dto
 import "gitee.com/leoninew/PomeloOrbit-go/internal/model"
 
 type ArtifactConfig struct {
-	Type string `json:"type"`
-	Path string `json:"path"`
-	Name string `json:"name"`
+	Name      string `json:"name"`
+	Collector string `json:"collector"`
+	Reference string `json:"reference,omitempty"`
+	Command   string `json:"command,omitempty"`
+	Format    string `json:"format,omitempty"`
+}
+
+type BuildVersionBinding struct {
+	ApplicationId   string
+	ApplicationName string
+	ComponentName   string
+	ForkStrategy    string
+	FixedVersionId  *string
 }
 
 type PipelineStageCreateInput struct {
-	ProjectId   string
-	Name        string
-	Image       string
-	Script      string
-	Artifacts   []ArtifactConfig
-	Description string
+	ProjectId           string
+	Name                string
+	Image               string
+	Script              string
+	Artifacts           []ArtifactConfig
+	BuildVersionBinding *BuildVersionBinding
+	Description         string
 }
 
 type PipelineStageUpdateInput struct {
-	Name        *string
-	Image       *string
-	Script      *string
-	Artifacts   *[]ArtifactConfig
-	Description *string
+	Name                     *string
+	Image                    *string
+	Script                   *string
+	Artifacts                *[]ArtifactConfig
+	BuildVersionBinding      *BuildVersionBinding
+	ClearBuildVersionBinding bool
+	Description              *string
 }
 
 type PipelineStageDetail struct {
-	Id          string
-	Name        string
-	Image       string
-	Script      string
-	Artifacts   []ArtifactConfig
-	Description string
-	Version     int
-	CreatedAt   string
-	UpdatedAt   string
+	Id                  string
+	Name                string
+	Image               string
+	Script              string
+	Artifacts           []ArtifactConfig
+	BuildVersionBinding *BuildVersionBinding
+	Description         string
+	Version             int
+	CreatedAt           string
+	UpdatedAt           string
 }
 
 type StageOrchestration struct {

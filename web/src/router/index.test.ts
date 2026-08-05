@@ -6,6 +6,7 @@ describe('domain route cutover', () => {
   it.each([
     ['/pipeline/stage', 'PipelineStagePage'],
     ['/pipeline-run/42', 'PipelineRunDetail'],
+    ['/pipeline-run/artifact/42', 'ArtifactDetail'],
     ['/application/42', 'ApplicationDetail'],
     ['/gateway/edit/42', 'GatewayEdit'],
     ['/routes', 'Route'],

@@ -13,7 +13,7 @@ func TestResolveStagesRendersScriptAndArtifacts(t *testing.T) {
 		Name:   "build",
 		Script: "{% if PUSH_IMAGE %}docker build -t {{ IMAGE }} .{% endif %}",
 		Artifacts: []model.ArtifactConfig{
-			{Type: "docker_image", Name: "{{ IMAGE }}", Path: "{{ IMAGE }}:latest"},
+			{Collector: "docker_image", Name: "{{ IMAGE }}", Reference: "{{ IMAGE }}:latest"},
 		},
 	}}
 
@@ -24,7 +24,7 @@ func TestResolveStagesRendersScriptAndArtifacts(t *testing.T) {
 	if resolved[0].Script != "docker build -t demo ." {
 		t.Fatalf("unexpected script: %s", resolved[0].Script)
 	}
-	if resolved[0].Artifacts[0].Name != "demo" || resolved[0].Artifacts[0].Path != "demo:latest" {
+	if resolved[0].Artifacts[0].Name != "demo" || resolved[0].Artifacts[0].Reference != "demo:latest" {
 		t.Fatalf("unexpected artifact: %+v", resolved[0].Artifacts[0])
 	}
 }

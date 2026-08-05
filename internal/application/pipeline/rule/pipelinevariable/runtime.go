@@ -230,8 +230,9 @@ func ResolveTemplateVariables(stages []model.PipelineStage, custom []map[string]
 			var artifacts []model.ArtifactConfig
 			if err := json.Unmarshal([]byte(*stage.Artifacts), &artifacts); err == nil {
 				for _, artifact := range artifacts {
-					ExtractTemplateVariables(artifact.Path, extracted)
+					ExtractTemplateVariables(artifact.Reference, extracted)
 					ExtractTemplateVariables(artifact.Name, extracted)
+					ExtractTemplateVariables(artifact.Command, extracted)
 				}
 			}
 		}

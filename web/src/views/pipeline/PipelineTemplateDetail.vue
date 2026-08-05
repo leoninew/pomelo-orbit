@@ -197,21 +197,25 @@
             <thead>
               <tr>
                 <th>Stage</th>
-                <th>{{ t('common.type') }}</th>
+                <th>Collector</th>
                 <th>{{ t('common.name') }}</th>
-                <th>{{ t('pipelineTemplate.pathOrImage') }}</th>
+                <th>引用/命令</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(artifact, idx) in artifactDeclarations" :key="idx">
-                <td class="text-foreground">{{ artifact.stageName }}</td>
+                <td>
+                  <router-link :to="`/pipeline/stage/${artifact.stageId}`" class="app-link">
+                    {{ artifact.stageName }}
+                  </router-link>
+                </td>
                 <td>
                   <AppBadge variant="pill">
-                    {{ artifact.type }}
+                    {{ artifact.collector }}
                   </AppBadge>
                 </td>
                 <td class="text-foreground">{{ artifact.name }}</td>
-                <td class="text-muted-foreground">{{ artifact.path }}</td>
+                <td class="text-muted-foreground">{{ artifact.detail }}</td>
               </tr>
             </tbody>
           </table>
@@ -335,7 +339,10 @@
         />
         <p
           v-if="
-            runErrors.repositoryId || (selectedRepository && !selectedRepository.git_credential_id)
+            runErrors.repositoryId ||
+            (selectedRepository &&
+              requiresGitCredential(selectedRepository) &&
+              !selectedRepository.git_credential_id)
           "
           class="app-field-error"
           role="alert"
@@ -491,10 +498,11 @@
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
 
   interface ArtifactDeclaration {
+    stageId: string;
     stageName: string;
-    type: string;
+    collector: string;
     name: string;
-    path: string;
+    detail: string;
   }
 
   const route = useRoute();
@@ -534,11 +542,16 @@
     repoOptions.value.map((repo) => ({
       value: repo.id,
       label: repo.name,
-      description: repo.git_credential_id
-        ? repo.repository_url
-        : t('pipelineTemplate.missingGitCredential'),
+      description:
+        !requiresGitCredential(repo) || repo.git_credential_id
+          ? repo.repository_url
+          : t('pipelineTemplate.missingGitCredential'),
     }))
   );
+
+  function requiresGitCredential(repository: RepositoryResp) {
+    return repository.repository_type !== 'local_directory';
+  }
 
   // Saved snapshots for dirty detection
   const savedOrch = ref<string>('[]');
@@ -563,10 +576,11 @@
       const stage = stageCache[orch.stage_id];
       for (const artifact of stage?.artifacts ?? []) {
         result.push({
+          stageId: orch.stage_id,
           stageName: stage?.name ?? orch.stage_name,
-          type: artifact.type,
+          collector: artifact.collector,
           name: artifact.name,
-          path: artifact.path,
+          detail: artifact.collector === 'command' ? artifact.command : artifact.reference,
         });
       }
     }
@@ -996,7 +1010,7 @@
     }
 
     const repo = selectedRepository.value;
-    if (!repo?.git_credential_id) {
+    if (!repo || (requiresGitCredential(repo) && !repo.git_credential_id)) {
       runErrors.repositoryId = t('pipelineTemplate.toast.repositoryMissingCredential');
       return;
     }

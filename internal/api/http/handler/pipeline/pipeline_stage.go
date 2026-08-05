@@ -40,7 +40,7 @@ func (h Handler) CreatePipelineStage(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	stage, err := h.service.CreatePipelineStage(c.Request.Context(), current.Id, pipelinedto.PipelineStageCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: serviceArtifacts(req.Artifacts), Description: req.Description})
+	stage, err := h.service.CreatePipelineStage(c.Request.Context(), current.Id, pipelinedto.PipelineStageCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: serviceArtifacts(req.Artifacts), BuildVersionBinding: buildVersionBindingInput(req.BuildVersionBinding), Description: req.Description})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -78,7 +78,7 @@ func (h Handler) UpdatePipelineStage(c *gin.Context) {
 		items := serviceArtifacts(req.Artifacts.Items)
 		artifacts = &items
 	}
-	stage, err := h.service.UpdatePipelineStage(c.Request.Context(), current.Id, c.Param("stage_id"), pipelinedto.PipelineStageUpdateInput{Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: artifacts, Description: req.Description})
+	stage, err := h.service.UpdatePipelineStage(c.Request.Context(), current.Id, c.Param("stage_id"), pipelinedto.PipelineStageUpdateInput{Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: artifacts, BuildVersionBinding: buildVersionBindingInput(req.BuildVersionBinding), ClearBuildVersionBinding: req.ClearBuildVersionBinding != nil && *req.ClearBuildVersionBinding, Description: req.Description})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return

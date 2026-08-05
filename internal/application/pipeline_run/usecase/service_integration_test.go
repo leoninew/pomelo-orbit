@@ -21,6 +21,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	queuedispatch "gitee.com/leoninew/PomeloOrbit-go/internal/queue/dispatch"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
+	applicationrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/application"
 	credentialrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/credential"
 	pipelinerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/pipeline"
 	pipelinerunrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/pipeline_run"
@@ -108,7 +109,16 @@ func TestPipelineRunServiceReadsLogsAndFiltersArtifacts(t *testing.T) {
 		t.Fatalf("unexpected stage log response: %+v", logResp)
 	}
 
-	if _, err := database.ExecContext(ctx, `INSERT INTO artifact (id, project_id, pipeline_run_id, repository_id, repository_name, template_id, template_name, stage_name, type, name, path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, "artifact-log-test", ciTestProjectId, "run-log-test", ciTestRepositoryId, "golang/example", ciTestTemplateId, "Go 构建流水线", "test", "file", "test.log", "test.log"); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO artifact (id, project_id, pipeline_run_id, repository_id, repository_name, template_id, template_name, pipeline_stage_id, stage_name, collector, name, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, "artifact-log-test", ciTestProjectId, "run-log-test", ciTestRepositoryId, "golang/example", ciTestTemplateId, "Go 构建流水线", "stage-1", "test", "file", "test.log", "test.log"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, project_id, name, code, kind) VALUES (?, ?, ?, ?, ?)`, "artifact-app-test", ciTestProjectId, "Artifact App", "artifact-app", "application"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES (?, ?, ?, ?), (?, ?, ?, ?)`, "artifact-source-version", "artifact-app-test", "source", "published", "artifact-generated-version", "artifact-app-test", "generated", "unpublished"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO pipeline_run_build_version_binding (pipeline_run_id, pipeline_stage_id, application_id, application_name, component_name, source_version_id, source_version_label, generated_version_id, generated_version_label, artifact_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, "run-log-test", "stage-1", "artifact-app-test", "Artifact App", "web", "artifact-source-version", "source", "artifact-generated-version", "generated", "artifact-log-test"); err != nil {
 		t.Fatal(err)
 	}
 	artifacts, err := service.ListPipelineRunArtifacts(ctx, ciTestUserId, "run-log-test")
@@ -117,6 +127,13 @@ func TestPipelineRunServiceReadsLogsAndFiltersArtifacts(t *testing.T) {
 	}
 	if len(artifacts) != 1 || artifacts[0].Id != "artifact-log-test" || artifacts[0].RepositoryId != ciTestRepositoryId {
 		t.Fatalf("unexpected run artifacts: %+v", artifacts)
+	}
+	detail, err := service.ArtifactForUser(ctx, ciTestUserId, "artifact-log-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if detail.Id != "artifact-log-test" || detail.ProjectId == nil || *detail.ProjectId != ciTestProjectId || detail.ApplicationName == nil || *detail.ApplicationName != "Artifact App" || detail.SourceVersionLabel == nil || *detail.SourceVersionLabel != "source" || detail.GeneratedVersionLabel == nil || *detail.GeneratedVersionLabel != "generated" || detail.VersionComponentName == nil || *detail.VersionComponentName != "web" {
+		t.Fatalf("unexpected artifact detail: %+v", detail)
 	}
 
 	filtered, err := service.ListArtifacts(ctx, ciTestUserId, pipelinerundto.ArtifactListInput{ProjectId: ciTestProjectId, RepositoryId: ciTestRepositoryId, TemplateId: ciTestTemplateId, Search: "test.log", Page: 1, PerPage: 20})
@@ -151,6 +168,7 @@ func newPipelineRunIntegrationService(t *testing.T) (Service, *sql.DB) {
 		vcsrepo.NewRepository(database),
 		pipelinerepo.NewRepository(database),
 		pipelinerunrepo.NewRepository(database),
+		applicationrepo.NewRepository(database),
 		queuedispatch.NewPipelineRunDispatcher(tasks),
 		newTestWorkspace(t),
 		ciTestSecretKey,

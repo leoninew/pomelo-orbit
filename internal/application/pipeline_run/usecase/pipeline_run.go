@@ -49,6 +49,13 @@ func (s Service) TriggerRepository(ctx context.Context, userId string, input pip
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
+	if err := s.ensureRepositoryHasNoRunningPipelineRun(ctx, repo.Id); err != nil {
+		return pipelinerundto.PipelineRunDetail{}, err
+	}
+	buildBindings, err := s.resolvePipelineRunBuildVersionBindings(ctx, repo.ProjectId, snapshot)
+	if err != nil {
+		return pipelinerundto.PipelineRunDetail{}, err
+	}
 	triggerRef := strings.TrimSpace(input.TriggerRef)
 	if triggerRef == "" {
 		triggerRef = repo.DefaultBranch
@@ -62,7 +69,7 @@ func (s Service) TriggerRepository(ctx context.Context, userId string, input pip
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
 	run := model.PipelineRun{Id: idutil.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "manual", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: status.WorkStatusWaitingToRun}
-	if err := s.store.CreatePipelineRun(ctx, run); err != nil {
+	if err := s.store.CreatePipelineRunWithBuildVersionBindings(ctx, run, buildBindings); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
 	if err := s.dispatcher.DispatchPipelineRun(ctx, pipelinerundto.PipelineRunDispatchInput{PipelineRunId: run.Id}); err != nil {
@@ -195,8 +202,15 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId string, runId stri
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
+	if err := s.ensureRepositoryHasNoRunningPipelineRun(ctx, repo.Id); err != nil {
+		return pipelinerundto.PipelineRunDetail{}, err
+	}
+	buildBindings, err := s.resolvePipelineRunBuildVersionBindings(ctx, repo.ProjectId, snapshot)
+	if err != nil {
+		return pipelinerundto.PipelineRunDetail{}, err
+	}
 	newRun := model.PipelineRun{Id: idutil.NewId(), ProjectId: original.ProjectId, RepositoryId: original.RepositoryId, RepositoryName: repo.Name, SnapshotId: original.SnapshotId, TemplateId: original.TemplateId, TemplateName: original.TemplateName, TemplateVersion: original.TemplateVersion, Trigger: original.Trigger, TriggerRef: original.TriggerRef, VariablesSnapshot: variablesSnapshot, Status: status.WorkStatusWaitingToRun, RetryOf: &original.Id}
-	if err := s.store.CreatePipelineRun(ctx, newRun); err != nil {
+	if err := s.store.CreatePipelineRunWithBuildVersionBindings(ctx, newRun, buildBindings); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create retry pipeline run", err)
 	}
 	if err := s.dispatcher.DispatchPipelineRun(ctx, pipelinerundto.PipelineRunDispatchInput{PipelineRunId: newRun.Id}); err != nil {

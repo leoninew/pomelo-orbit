@@ -23,6 +23,13 @@ SELECT id, application_id, label, status, created_from_version_id, note, compone
 FROM version
 WHERE id = ?;
 
+-- name: LatestVersionByApplication :one
+SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
+FROM version
+WHERE application_id = ?
+ORDER BY id DESC
+LIMIT 1;
+
 -- name: CreateVersion :exec
 INSERT INTO version (id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
@@ -40,13 +47,26 @@ WHERE id = ?;
 -- name: CountVersionRuntimeRefs :one
 SELECT (
   (SELECT COUNT(*) FROM service WHERE service.version_id = sqlc.arg(version_id)) +
-  (SELECT COUNT(*) FROM deployment WHERE deployment.version_id = sqlc.arg(version_id))
+  (SELECT COUNT(*) FROM deployment WHERE deployment.version_id = sqlc.arg(version_id)) +
+  (SELECT COUNT(*) FROM pipeline_stage_build_version_binding WHERE fixed_version_id = sqlc.arg(version_id)) +
+  (SELECT COUNT(*) FROM pipeline_run_build_version_binding WHERE source_version_id = sqlc.arg(version_id)) +
+  (SELECT COUNT(*) FROM pipeline_run_build_version_binding WHERE generated_version_id = sqlc.arg(version_id)) +
+  (SELECT COUNT(*) FROM version WHERE created_from_version_id = sqlc.arg(version_id))
 );
 
--- name: ClearVersionForkRefs :exec
-UPDATE version
-SET created_from_version_id = NULL
-WHERE created_from_version_id = ?;
+-- name: VersionComponentArtifact :one
+SELECT artifact.id, artifact.image_ref, artifact.local_image_sha256, source_artifact.value AS source_commit_sha
+FROM version_component
+JOIN artifact ON artifact.id = version_component.artifact_id
+LEFT JOIN artifact AS source_artifact
+  ON source_artifact.id = artifact.source_artifact_id
+ AND source_artifact.value_format = 'git_object_id'
+WHERE version_component.id = ?;
+
+-- name: SetVersionComponentArtifact :exec
+UPDATE version_component
+SET artifact_id = sqlc.arg(artifact_id)
+WHERE id = sqlc.arg(component_id);
 
 -- name: DeleteVersionComponents :exec
 DELETE FROM version_component
@@ -57,20 +77,20 @@ DELETE FROM version
 WHERE id = ?;
 
 -- name: VersionComponentsByVersion :many
-SELECT id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, artifact_id, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE version_id = ?
 ORDER BY name;
 
 -- name: VersionComponentByID :one
-SELECT id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, artifact_id, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE id = ?;
 
 -- name: InsertVersionComponent :exec
 INSERT INTO version_component (
-  id, version_id, name, image, command_json, pull_policy, restart_policy, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+  id, version_id, name, image, artifact_id, command_json, pull_policy, restart_policy, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateVersionComponentBasic :exec
 UPDATE version_component

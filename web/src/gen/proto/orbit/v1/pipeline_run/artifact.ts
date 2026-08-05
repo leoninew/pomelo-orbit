@@ -16,10 +16,24 @@ export interface ArtifactResp {
   template_id: string;
   template_name: string;
   stage_name: string;
-  type: string;
+  collector: string;
   name: string;
-  path?: string | undefined;
+  location?: string | undefined;
   created_at: string;
+  image_ref?: string | undefined;
+  local_image_sha256?: string | undefined;
+  source_commit_sha?: string | undefined;
+  generated_version_id?: string | undefined;
+  version_component_id?: string | undefined;
+  pipeline_stage_id: string;
+  value?: string | undefined;
+  value_format?: string | undefined;
+  application_id?: string | undefined;
+  application_name?: string | undefined;
+  source_version_id?: string | undefined;
+  source_version_label?: string | undefined;
+  generated_version_label?: string | undefined;
+  version_component_name?: string | undefined;
 }
 
 export interface ArtifactPaginatedResp {

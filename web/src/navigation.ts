@@ -54,9 +54,7 @@ const homeNavigation: NavigationBranch[] = [
     key: 'workspace',
     labelKey: 'nav.groups.workspace',
     icon: LayoutGrid,
-    children: [
-      { key: 'home', label: '概述', labelKey: 'nav.home', path: '/' },
-    ],
+    children: [{ key: 'home', label: '概述', labelKey: 'nav.home', path: '/' }],
   },
 ];
 

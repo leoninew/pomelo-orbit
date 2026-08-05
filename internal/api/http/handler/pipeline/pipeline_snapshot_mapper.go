@@ -40,16 +40,27 @@ func snapshotStageResponses(items []model.StageDefinition) []pipelinev1.Snapshot
 	resp := make([]pipelinev1.SnapshotStageResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, pipelinev1.SnapshotStageResp{
-			Name:      item.Name,
-			Id:        item.Id,
-			Image:     item.Image,
-			Version:   int32(item.Version),
-			DependsOn: item.DependsOn,
-			Script:    item.Script,
-			Artifacts: transportresponse.Ptrs(snapshotArtifactConfigResponses(item.Artifacts)),
+			Name:                item.Name,
+			Id:                  item.Id,
+			Image:               item.Image,
+			Version:             int32(item.Version),
+			DependsOn:           item.DependsOn,
+			Script:              item.Script,
+			Artifacts:           transportresponse.Ptrs(snapshotArtifactConfigResponses(item.Artifacts)),
+			BuildVersionBinding: buildVersionBindingModelResponse(item.BuildVersionBinding),
 		})
 	}
 	return resp
+}
+
+func buildVersionBindingModelResponse(item *model.BuildVersionBinding) *pipelinev1.BuildVersionBindingResp {
+	if item == nil {
+		return nil
+	}
+	return &pipelinev1.BuildVersionBindingResp{
+		ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, ComponentName: item.ComponentName,
+		ForkStrategy: item.ForkStrategy, FixedVersionId: item.FixedVersionId,
+	}
 }
 
 func snapshotArtifactConfigResponses(items []model.ArtifactConfig) []pipelinev1.ArtifactConfigResp {
@@ -58,7 +69,9 @@ func snapshotArtifactConfigResponses(items []model.ArtifactConfig) []pipelinev1.
 	}
 	resp := make([]pipelinev1.ArtifactConfigResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, pipelinev1.ArtifactConfigResp{Type: item.Type, Path: item.Path, Name: item.Name})
+		resp = append(resp, pipelinev1.ArtifactConfigResp{
+			Name: item.Name, Collector: item.Collector, Reference: item.Reference, Command: item.Command, Format: item.Format,
+		})
 	}
 	return resp
 }

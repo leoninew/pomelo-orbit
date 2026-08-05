@@ -14,16 +14,26 @@ type PipelineTemplate struct {
 }
 
 type PipelineStage struct {
-	Id          string    `db:"id"`
-	ProjectId   *string   `db:"project_id"`
-	Name        string    `db:"name"`
-	Image       string    `db:"image"`
-	Script      string    `db:"script"`
-	Artifacts   *string   `db:"artifacts"`
-	Description string    `db:"description"`
-	Version     int       `db:"version"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+	Id                  string               `db:"id"`
+	ProjectId           *string              `db:"project_id"`
+	Name                string               `db:"name"`
+	Image               string               `db:"image"`
+	Script              string               `db:"script"`
+	Artifacts           *string              `db:"artifacts"`
+	BuildVersionBinding *BuildVersionBinding `db:"-"`
+	Description         string               `db:"description"`
+	Version             int                  `db:"version"`
+	CreatedAt           time.Time            `db:"created_at"`
+	UpdatedAt           time.Time            `db:"updated_at"`
+}
+
+// BuildVersionBinding describes the optional application-version fork performed by a build stage.
+type BuildVersionBinding struct {
+	ApplicationId   string  `json:"application_id"`
+	ApplicationName string  `json:"application_name"`
+	ComponentName   string  `json:"component_name"`
+	ForkStrategy    string  `json:"fork_strategy"`
+	FixedVersionId  *string `json:"fixed_version_id,omitempty"`
 }
 
 type PipelineTemplateStage struct {
@@ -47,19 +57,22 @@ type PipelineSnapshot struct {
 }
 
 type StageDefinition struct {
-	Name      string           `json:"name"`
-	Id        string           `json:"id"`
-	Image     string           `json:"image"`
-	Version   int              `json:"version"`
-	DependsOn []string         `json:"depends_on"`
-	Script    string           `json:"script"`
-	Artifacts []ArtifactConfig `json:"artifacts"`
+	Name                string               `json:"name"`
+	Id                  string               `json:"id"`
+	Image               string               `json:"image"`
+	Version             int                  `json:"version"`
+	DependsOn           []string             `json:"depends_on"`
+	Script              string               `json:"script"`
+	Artifacts           []ArtifactConfig     `json:"artifacts"`
+	BuildVersionBinding *BuildVersionBinding `json:"build_version_binding,omitempty"`
 }
 
 type ArtifactConfig struct {
-	Type string `json:"type"`
-	Path string `json:"path"`
-	Name string `json:"name"`
+	Name      string `json:"name"`
+	Collector string `json:"collector"`
+	Reference string `json:"reference,omitempty"`
+	Command   string `json:"command,omitempty"`
+	Format    string `json:"format,omitempty"`
 }
 
 type VariableDeclaration struct {

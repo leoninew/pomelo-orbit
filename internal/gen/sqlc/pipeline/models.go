@@ -20,18 +20,24 @@ type Application struct {
 }
 
 type Artifact struct {
-	ID             string         `db:"id"`
-	PipelineRunID  string         `db:"pipeline_run_id"`
-	StageName      string         `db:"stage_name"`
-	Type           string         `db:"type"`
-	Name           string         `db:"name"`
-	Path           sql.NullString `db:"path"`
-	CreatedAt      time.Time      `db:"created_at"`
-	RepositoryID   string         `db:"repository_id"`
-	RepositoryName string         `db:"repository_name"`
-	TemplateID     string         `db:"template_id"`
-	TemplateName   string         `db:"template_name"`
-	ProjectID      sql.NullString `db:"project_id"`
+	ID               string         `db:"id"`
+	PipelineRunID    string         `db:"pipeline_run_id"`
+	PipelineStageID  string         `db:"pipeline_stage_id"`
+	StageName        string         `db:"stage_name"`
+	Collector        string         `db:"collector"`
+	Name             string         `db:"name"`
+	Location         sql.NullString `db:"location"`
+	Value            sql.NullString `db:"value"`
+	ValueFormat      sql.NullString `db:"value_format"`
+	ImageRef         sql.NullString `db:"image_ref"`
+	LocalImageSha256 sql.NullString `db:"local_image_sha256"`
+	SourceArtifactID sql.NullString `db:"source_artifact_id"`
+	CreatedAt        time.Time      `db:"created_at"`
+	RepositoryID     string         `db:"repository_id"`
+	RepositoryName   string         `db:"repository_name"`
+	TemplateID       string         `db:"template_id"`
+	TemplateName     string         `db:"template_name"`
+	ProjectID        sql.NullString `db:"project_id"`
 }
 
 type BackgroundTask struct {
@@ -140,6 +146,19 @@ type PipelineRun struct {
 	ProjectID         sql.NullString `db:"project_id"`
 }
 
+type PipelineRunBuildVersionBinding struct {
+	PipelineRunID         string         `db:"pipeline_run_id"`
+	PipelineStageID       string         `db:"pipeline_stage_id"`
+	ApplicationID         string         `db:"application_id"`
+	ApplicationName       string         `db:"application_name"`
+	ComponentName         string         `db:"component_name"`
+	SourceVersionID       string         `db:"source_version_id"`
+	SourceVersionLabel    string         `db:"source_version_label"`
+	GeneratedVersionID    sql.NullString `db:"generated_version_id"`
+	GeneratedVersionLabel sql.NullString `db:"generated_version_label"`
+	ArtifactID            sql.NullString `db:"artifact_id"`
+}
+
 type PipelineSnapshot struct {
 	ID                string         `db:"id"`
 	TemplateID        string         `db:"template_id"`
@@ -161,6 +180,15 @@ type PipelineStage struct {
 	CreatedAt   time.Time      `db:"created_at"`
 	UpdatedAt   time.Time      `db:"updated_at"`
 	ProjectID   sql.NullString `db:"project_id"`
+}
+
+type PipelineStageBuildVersionBinding struct {
+	PipelineStageID string         `db:"pipeline_stage_id"`
+	ApplicationID   string         `db:"application_id"`
+	ApplicationName string         `db:"application_name"`
+	ComponentName   string         `db:"component_name"`
+	ForkStrategy    string         `db:"fork_strategy"`
+	FixedVersionID  sql.NullString `db:"fixed_version_id"`
 }
 
 type PipelineStageRun struct {
@@ -366,6 +394,7 @@ type VersionComponent struct {
 	VersionID     string         `db:"version_id"`
 	Name          string         `db:"name"`
 	Image         string         `db:"image"`
+	ArtifactID    sql.NullString `db:"artifact_id"`
 	CommandJson   string         `db:"command_json"`
 	PullPolicy    string         `db:"pull_policy"`
 	RestartPolicy sql.NullString `db:"restart_policy"`

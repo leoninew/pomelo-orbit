@@ -31,6 +31,7 @@ CREATE INDEX idx_pipeline_run_status ON pipeline_run(status);
 CREATE INDEX idx_pipeline_run_snapshot ON pipeline_run(snapshot_id);
 CREATE INDEX idx_pipeline_run_retry_of ON pipeline_run(retry_of);
 CREATE INDEX idx_pipeline_run_project ON pipeline_run(project_id);
+CREATE INDEX idx_pipeline_run_repository_status ON pipeline_run(repository_id, status);
 
 CREATE TABLE IF NOT EXISTS pipeline_stage_run (
     id VARCHAR(26) PRIMARY KEY,
@@ -51,10 +52,16 @@ CREATE INDEX idx_pipeline_stage_run_status ON pipeline_stage_run(status);
 CREATE TABLE IF NOT EXISTS artifact (
     id VARCHAR(26) PRIMARY KEY,
     pipeline_run_id VARCHAR(26) NOT NULL,
+    pipeline_stage_id VARCHAR(26) NOT NULL,
     stage_name VARCHAR(255) NOT NULL,
-    type VARCHAR(64) NOT NULL,
+    collector VARCHAR(64) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    path VARCHAR(1024),
+    location VARCHAR(1024),
+    value TEXT,
+    value_format VARCHAR(64),
+    image_ref VARCHAR(512),
+    local_image_sha256 VARCHAR(128),
+    source_artifact_id VARCHAR(26),
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     repository_id VARCHAR(26) NOT NULL DEFAULT '',
     repository_name VARCHAR(255) NOT NULL DEFAULT '',
@@ -62,9 +69,16 @@ CREATE TABLE IF NOT EXISTS artifact (
     template_name VARCHAR(255) NOT NULL DEFAULT '',
     project_id VARCHAR(26),
     FOREIGN KEY (project_id) REFERENCES project(id),
-    FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE
+    FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE,
+    CONSTRAINT fk_artifact_source FOREIGN KEY (source_artifact_id) REFERENCES artifact(id) ON DELETE SET NULL,
+    CONSTRAINT chk_artifact_collector_payload CHECK (
+        (collector = 'file' AND location IS NOT NULL AND value IS NULL AND value_format IS NULL AND image_ref IS NULL AND local_image_sha256 IS NULL AND source_artifact_id IS NULL) OR
+        (collector = 'command' AND location IS NULL AND value IS NOT NULL AND value_format IN ('text', 'git_object_id') AND image_ref IS NULL AND local_image_sha256 IS NULL AND source_artifact_id IS NULL) OR
+        (collector = 'docker_image' AND location IS NULL AND value IS NULL AND value_format IS NULL AND image_ref IS NOT NULL AND local_image_sha256 IS NOT NULL)
+    )
 );
 
 CREATE INDEX idx_artifact_run ON artifact(pipeline_run_id);
+CREATE INDEX idx_artifact_run_stage ON artifact(pipeline_run_id, pipeline_stage_id);
 CREATE INDEX ix_artifact_repository_id ON artifact (repository_id);
 CREATE INDEX idx_artifact_project ON artifact(project_id);

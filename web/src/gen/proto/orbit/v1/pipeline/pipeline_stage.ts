@@ -9,19 +9,38 @@
 export const protobufPackage = "orbit.v1.pipeline";
 
 export interface ArtifactConfigResp {
-  type: string;
-  path: string;
+  collector: string;
+  reference: string;
   name: string;
+  command: string;
+  format: string;
 }
 
 export interface ArtifactConfigReq {
-  type: string;
-  path: string;
+  collector: string;
+  reference: string;
   name: string;
+  command: string;
+  format: string;
 }
 
 export interface ArtifactConfigListReq {
   items: ArtifactConfigReq[];
+}
+
+export interface BuildVersionBindingReq {
+  application_id: string;
+  component_name: string;
+  fork_strategy: string;
+  fixed_version_id?: string | undefined;
+}
+
+export interface BuildVersionBindingResp {
+  application_id: string;
+  component_name: string;
+  fork_strategy: string;
+  fixed_version_id?: string | undefined;
+  application_name: string;
 }
 
 export interface PipelineStageResp {
@@ -34,6 +53,7 @@ export interface PipelineStageResp {
   version: number;
   created_at: string;
   updated_at: string;
+  build_version_binding?: BuildVersionBindingResp | undefined;
 }
 
 export interface PipelineStageCreateReq {
@@ -42,6 +62,7 @@ export interface PipelineStageCreateReq {
   script: string;
   artifacts: ArtifactConfigReq[];
   description: string;
+  build_version_binding?: BuildVersionBindingReq | undefined;
 }
 
 export interface PipelineStageUpdateReq {
@@ -50,6 +71,8 @@ export interface PipelineStageUpdateReq {
   script?: string | undefined;
   artifacts?: ArtifactConfigListReq | undefined;
   description?: string | undefined;
+  build_version_binding?: BuildVersionBindingReq | undefined;
+  clear_build_version_binding?: boolean | undefined;
 }
 
 export interface PipelineStageDuplicateReq {

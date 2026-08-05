@@ -249,16 +249,31 @@ func TestPipelineRunRefResolvesLocalRefToCommit(t *testing.T) {
 	}
 }
 
+func TestArchiveCommandArtifactStoresGitObjectId(t *testing.T) {
+	const commit = "0123456789abcdef0123456789abcdef01234567"
+	store := &fakeExecutionStore{}
+	executor := Executor{store: store, runner: commandOutputContainerRunner{output: commit}}
+	artifact := model.ArtifactConfig{Name: "source_commit", Collector: "command", Command: "git rev-parse HEAD", Format: "git_object_id"}
+	if err := executor.archiveCommandArtifact(context.Background(), model.PipelineRun{Id: "run-1"}, model.StageDefinition{Id: "stage-1", Name: "clone"}, artifact, pipelinerunport.RunOptions{Image: "alpine/git"}); err != nil {
+		t.Fatal(err)
+	}
+	if store.artifactValue != commit || store.artifactValueFormat != "git_object_id" {
+		t.Fatalf("unexpected persisted command artifact: value=%q format=%q", store.artifactValue, store.artifactValueFormat)
+	}
+}
+
 type fakeExecutionStore struct {
-	mu                sync.Mutex
-	run               model.PipelineRun
-	repo              model.Repository
-	credential        model.Credential
-	snapshot          model.PipelineSnapshot
-	template          model.PipelineTemplate
-	pipelineStageRuns []model.PipelineStageRun
-	runStarted        bool
-	runStatus         string
+	mu                  sync.Mutex
+	run                 model.PipelineRun
+	repo                model.Repository
+	credential          model.Credential
+	snapshot            model.PipelineSnapshot
+	template            model.PipelineTemplate
+	pipelineStageRuns   []model.PipelineStageRun
+	runStarted          bool
+	runStatus           string
+	artifactValue       string
+	artifactValueFormat string
 }
 
 func (s *fakeExecutionStore) PipelineRun(ctx context.Context, id string) (model.PipelineRun, error) {
@@ -318,14 +333,36 @@ func (s *fakeExecutionStore) UpdatePipelineStageRun(ctx context.Context, stage m
 	return nil
 }
 
-func (s *fakeExecutionStore) InsertArtifact(ctx context.Context, projectId *string, run model.PipelineRun, stageName string, artifact model.ArtifactConfig, path string) error {
+func (s *fakeExecutionStore) CreateArtifact(ctx context.Context, artifact model.Artifact) error {
+	if artifact.Value != nil {
+		s.artifactValue = *artifact.Value
+	}
+	if artifact.ValueFormat != nil {
+		s.artifactValueFormat = *artifact.ValueFormat
+	}
 	return nil
+}
+
+func (s *fakeExecutionStore) CommandArtifactByRunStageAndName(ctx context.Context, pipelineRunId string, pipelineStageId string, name string) (model.Artifact, error) {
+	return model.Artifact{}, nil
 }
 
 type fakeContainerRunner struct{}
 
 func (fakeContainerRunner) Run(ctx context.Context, opts pipelinerunport.RunOptions) (int, string, error) {
 	return 0, "ok", nil
+}
+
+type commandOutputContainerRunner struct {
+	output string
+}
+
+func (commandOutputContainerRunner) Run(ctx context.Context, opts pipelinerunport.RunOptions) (int, string, error) {
+	return 0, "", nil
+}
+
+func (r commandOutputContainerRunner) RunCommand(ctx context.Context, opts pipelinerunport.RunOptions, command string) (string, error) {
+	return r.output, nil
 }
 
 type failingContainerRunner struct{}

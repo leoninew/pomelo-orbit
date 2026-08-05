@@ -20,7 +20,7 @@ func (h Handler) GetVersionComponent(c *gin.Context) {
 		return
 	}
 	resp := versionComponentResponse(component)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transportresponse.ProtoJSON(c, http.StatusOK, resp)
 }
 
 func (h Handler) CreateVersionComponent(c *gin.Context) {
@@ -39,7 +39,7 @@ func (h Handler) CreateVersionComponent(c *gin.Context) {
 		return
 	}
 	resp := versionComponentResponse(component)
-	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
+	transportresponse.ProtoJSON(c, http.StatusCreated, resp)
 }
 
 func (h Handler) UpdateVersionComponentBasic(c *gin.Context) {
@@ -58,7 +58,7 @@ func (h Handler) UpdateVersionComponentBasic(c *gin.Context) {
 		return
 	}
 	resp := versionComponentResponse(component)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transportresponse.ProtoJSON(c, http.StatusOK, resp)
 }
 
 func (h Handler) UpdateVersionComponentRuntime(c *gin.Context) {
@@ -77,7 +77,7 @@ func (h Handler) UpdateVersionComponentRuntime(c *gin.Context) {
 		return
 	}
 	resp := versionComponentResponse(component)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transportresponse.ProtoJSON(c, http.StatusOK, resp)
 }
 
 func (h Handler) UpdateVersionComponentEndpoints(c *gin.Context) {
@@ -96,7 +96,7 @@ func (h Handler) UpdateVersionComponentEndpoints(c *gin.Context) {
 		return
 	}
 	resp := versionComponentResponse(component)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transportresponse.ProtoJSON(c, http.StatusOK, resp)
 }
 
 func (h Handler) UpdateVersionComponentEnv(c *gin.Context) {
@@ -115,7 +115,7 @@ func (h Handler) UpdateVersionComponentEnv(c *gin.Context) {
 		return
 	}
 	resp := versionComponentResponse(component)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transportresponse.ProtoJSON(c, http.StatusOK, resp)
 }
 
 func (h Handler) UpdateVersionComponentMounts(c *gin.Context) {
@@ -134,7 +134,7 @@ func (h Handler) UpdateVersionComponentMounts(c *gin.Context) {
 		return
 	}
 	resp := versionComponentResponse(component)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transportresponse.ProtoJSON(c, http.StatusOK, resp)
 }
 
 func (h Handler) UpdateVersionComponentDependencies(c *gin.Context) {
@@ -153,7 +153,7 @@ func (h Handler) UpdateVersionComponentDependencies(c *gin.Context) {
 		return
 	}
 	resp := versionComponentResponse(component)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transportresponse.ProtoJSON(c, http.StatusOK, resp)
 }
 
 func (h Handler) UpdateVersionComponentDevices(c *gin.Context) {
@@ -172,7 +172,7 @@ func (h Handler) UpdateVersionComponentDevices(c *gin.Context) {
 		return
 	}
 	resp := versionComponentResponse(component)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transportresponse.ProtoJSON(c, http.StatusOK, resp)
 }
 
 func (h Handler) UpdateVersionComponentAdvanced(c *gin.Context) {
@@ -191,7 +191,7 @@ func (h Handler) UpdateVersionComponentAdvanced(c *gin.Context) {
 		return
 	}
 	resp := versionComponentResponse(component)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transportresponse.ProtoJSON(c, http.StatusOK, resp)
 }
 
 func (h Handler) DeleteVersionComponent(c *gin.Context) {

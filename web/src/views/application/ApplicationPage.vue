@@ -44,34 +44,50 @@
     <div v-else class="app-surface">
       <AppEmptyState v-if="applications.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-data-table min-w-[960px]">
+        <table class="app-data-table table-fixed min-w-[960px]">
+          <colgroup>
+            <col class="w-[28%]" />
+            <col class="w-[20%]" />
+            <col class="w-[12%]" />
+            <col class="w-[20%]" />
+            <col class="w-[20%]" />
+          </colgroup>
           <thead>
             <tr>
               <th>{{ t('common.name') }}</th>
               <th>{{ t('application.code') }}</th>
               <th>{{ t('application.kind') }}</th>
               <th>{{ t('common.createdAt') }}</th>
-              <th class="w-24">{{ t('common.operation') }}</th>
+              <th>{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="app in applications" :key="app.id">
-              <td>
-                <router-link :to="`/application/${app.id}`" class="app-link">
+              <td class="min-w-0 truncate">
+                <router-link :to="`/application/${app.id}`" class="app-link" :title="app.name">
                   {{ app.name }}
                 </router-link>
               </td>
-              <td class="text-foreground">{{ app.code }}</td>
+              <td class="truncate text-foreground" :title="app.code">{{ app.code }}</td>
               <td>
                 <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
                   {{ app.kind }}
                 </AppBadge>
               </td>
-              <td class="text-foreground">{{ formatTime(app.created_at) }}</td>
-              <td class="w-24">
-                <button class="app-link" :disabled="operating" @click="openEditDialog(app)">
-                  {{ t('common.edit') }}
-                </button>
+              <td class="whitespace-nowrap text-foreground">{{ formatTime(app.created_at) }}</td>
+              <td>
+                <div class="flex items-center gap-3 whitespace-nowrap">
+                  <button class="app-link" :disabled="operating" @click="openEditDialog(app)">
+                    {{ t('common.edit') }}
+                  </button>
+                  <button
+                    class="app-link-danger"
+                    :disabled="operating"
+                    @click="openDeleteDialog(app)"
+                  >
+                    {{ t('common.delete') }}
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -138,6 +154,39 @@
       </template>
     </AppDialog>
 
+    <AppDialog
+      v-model:open="isDeleteDialogOpen"
+      :title="t('application.detail.dialog.confirmDelete')"
+      width-class="w-[min(420px,calc(100vw-32px))]"
+    >
+      <p class="mb-4 text-sm text-muted-foreground">
+        {{
+          t('application.detail.dialog.deleteApplicationConfirm', {
+            name: pendingDeleteApplication?.name || '-',
+          })
+        }}
+      </p>
+      <label class="flex items-center gap-2">
+        <input v-model="deleteDir" type="checkbox" class="app-checkbox" />
+        <span class="text-sm text-foreground">
+          {{
+            t('application.detail.dialog.deleteWorkDir', {
+              code: pendingDeleteApplication?.code || '-',
+            })
+          }}
+        </span>
+      </label>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.delete')"
+          variant="destructive"
+          @cancel="isDeleteDialogOpen = false"
+          @confirm="handleDeleteOk"
+        />
+      </template>
+    </AppDialog>
+
     <AppDialog v-model:open="isImportDialogOpen" :title="t('application.importApplication')">
       <ApplicationFormFields
         :form="importForm"
@@ -195,6 +244,7 @@
   const searchText = ref('');
   const isCreateDialogOpen = ref(false);
   const isEditDialogOpen = ref(false);
+  const isDeleteDialogOpen = ref(false);
   const isImportDialogOpen = ref(false);
   const fileInput = ref<HTMLInputElement>();
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
@@ -206,8 +256,10 @@
   });
   const createErrors = reactive({ name: '', code: '' });
   const editingApplication = ref<ApplicationResp>();
+  const pendingDeleteApplication = ref<ApplicationResp>();
   const editForm = reactive({ name: '', code: '' });
   const editErrors = reactive({ name: '' });
+  const deleteDir = ref(false);
   const importForm = reactive<ApplicationImportReq>({
     name: '',
     code: '',
@@ -295,6 +347,12 @@
     isEditDialogOpen.value = true;
   }
 
+  function openDeleteDialog(application: ApplicationResp) {
+    pendingDeleteApplication.value = application;
+    deleteDir.value = false;
+    isDeleteDialogOpen.value = true;
+  }
+
   async function handleEditOk() {
     editErrors.name = editForm.name.trim() ? '' : t('application.validation.nameRequired');
     const applicationId = editingApplication.value?.id;
@@ -310,6 +368,27 @@
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+    }
+  }
+
+  async function handleDeleteOk() {
+    const application = pendingDeleteApplication.value;
+    if (!application) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        await applicationApi.delete(application.id, deleteDir.value);
+        toast.success(t('application.toast.deleteSuccess'));
+        isDeleteDialogOpen.value = false;
+        pendingDeleteApplication.value = undefined;
+        if (applications.value.length === 1 && pagination.current > 1) {
+          pagination.current -= 1;
+        }
+        await fetchApplications();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.deleteFailed'));
     }
   }
 

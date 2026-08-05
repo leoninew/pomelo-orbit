@@ -58,7 +58,11 @@
                 <AppBadge
                   variant="status"
                   :tone="statusTone(deployment.status)"
-                  :title="deployment.status === 'faulted' ? deployment.error_message || undefined : undefined"
+                  :title="
+                    deployment.status === 'faulted'
+                      ? deployment.error_message || undefined
+                      : undefined
+                  "
                 >
                   {{ deployment.status }}
                 </AppBadge>
@@ -81,7 +85,6 @@
         @change-page-size="handlePageSizeChange"
       />
     </div>
-
   </div>
 </template>
 

@@ -52,9 +52,9 @@ WHERE version_id IN (SELECT id FROM version WHERE version.application_id = ?);
 DELETE FROM service
 WHERE application_id = ?;
 
--- name: ClearVersionForkRefsByApplication :exec
-UPDATE version
-SET created_from_version_id = NULL
+-- name: VersionIdsByApplication :many
+SELECT id
+FROM version
 WHERE application_id = ?;
 
 -- name: DeleteVersionsByApplication :exec

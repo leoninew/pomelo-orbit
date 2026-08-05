@@ -4,19 +4,38 @@ package orbit.v1.pipeline;
 
 
 message ArtifactConfigResp {
-  string type = 1;
-  string path = 2;
+  string collector = 1;
+  string reference = 2;
   string name = 3;
+  string command = 4;
+  string format = 5;
 }
 
 message ArtifactConfigReq {
-  string type = 1;
-  string path = 2;
+  string collector = 1;
+  string reference = 2;
   string name = 3;
+  string command = 4;
+  string format = 5;
 }
 
 message ArtifactConfigListReq {
   repeated ArtifactConfigReq items = 1;
+}
+
+message BuildVersionBindingReq {
+  string application_id = 1;
+  string component_name = 2;
+  string fork_strategy = 3;
+  optional string fixed_version_id = 4;
+}
+
+message BuildVersionBindingResp {
+  string application_id = 1;
+  string component_name = 2;
+  string fork_strategy = 3;
+  optional string fixed_version_id = 4;
+  string application_name = 5;
 }
 
 message PipelineStageResp {
@@ -29,6 +48,7 @@ message PipelineStageResp {
   int32 version = 7;
   string created_at = 8;
   string updated_at = 9;
+  optional BuildVersionBindingResp build_version_binding = 10;
 }
 
 message PipelineStageCreateReq {
@@ -37,6 +57,7 @@ message PipelineStageCreateReq {
   string script = 3;
   repeated ArtifactConfigReq artifacts = 4;
   string description = 5;
+  optional BuildVersionBindingReq build_version_binding = 6;
 }
 
 message PipelineStageUpdateReq {
@@ -45,6 +66,8 @@ message PipelineStageUpdateReq {
   optional string script = 3;
   optional ArtifactConfigListReq artifacts = 4;
   optional string description = 5;
+  optional BuildVersionBindingReq build_version_binding = 6;
+  optional bool clear_build_version_binding = 7;
 }
 
 message PipelineStageDuplicateReq {}

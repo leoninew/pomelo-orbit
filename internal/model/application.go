@@ -47,10 +47,11 @@ func VersionComponentSummary(components []VersionComponent) string {
 
 // VersionComponent is a version-scoped specification unit (own table).
 type VersionComponent struct {
-	Id            string `db:"id"`
-	VersionId     string `db:"version_id"`
-	Name          string `db:"name"`
-	Image         string `db:"image"`
+	Id            string  `db:"id"`
+	VersionId     string  `db:"version_id"`
+	Name          string  `db:"name"`
+	Image         string  `db:"image"`
+	ArtifactId    *string `db:"artifact_id"`
 	Command       []string
 	Env           []VersionComponentEnv
 	Endpoints     []VersionComponentEndpoint
@@ -63,8 +64,17 @@ type VersionComponent struct {
 	Tmpfs         []VersionComponentTmpfs
 	Ulimits       []VersionComponentUlimit
 	Devices       []VersionComponentDeviceRequest
+	Artifact      *VersionComponentArtifact
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
+}
+
+// VersionComponentArtifact records the local image that was used to create a component.
+type VersionComponentArtifact struct {
+	ArtifactId       string
+	ImageRef         string
+	LocalImageSha256 string
+	SourceCommitSha  string
 }
 
 type VersionComponentEnv struct {

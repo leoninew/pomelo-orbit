@@ -272,13 +272,12 @@
         />
         <AppEmptyState v-else-if="artifacts.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
-          <table class="app-data-table min-w-[760px]">
+          <table class="app-data-table min-w-[640px]">
             <thead>
               <tr>
                 <th>{{ t('pipelineRun.stage') }}</th>
-                <th>{{ t('common.type') }}</th>
+                <th>Collector</th>
                 <th>{{ t('common.name') }}</th>
-                <th>{{ t('pipelineRun.fields.path') }}</th>
                 <th>{{ t('common.createdAt') }}</th>
               </tr>
             </thead>
@@ -287,12 +286,13 @@
                 <td class="text-foreground">{{ artifact.stage_name }}</td>
                 <td>
                   <AppBadge variant="pill">
-                    {{ artifact.type }}
+                    {{ artifact.collector }}
                   </AppBadge>
                 </td>
-                <td class="text-foreground">{{ artifact.name }}</td>
-                <td class="max-w-md truncate text-muted-foreground">
-                  {{ artifact.path }}
+                <td>
+                  <router-link :to="`/pipeline-run/artifact/${artifact.id}`" class="app-link">
+                    {{ artifact.name }}
+                  </router-link>
                 </td>
                 <td class="text-muted-foreground">
                   {{ formatTime(artifact.created_at) }}

@@ -149,6 +149,42 @@ func (q *Queries) CreatePipelineRun(ctx context.Context, arg CreatePipelineRunPa
 	return err
 }
 
+const insertPipelineRunBuildVersionBinding = `-- name: InsertPipelineRunBuildVersionBinding :exec
+INSERT INTO pipeline_run_build_version_binding (
+  pipeline_run_id, pipeline_stage_id, application_id, application_name, component_name, source_version_id,
+  source_version_label, generated_version_id, generated_version_label, artifact_id
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertPipelineRunBuildVersionBindingParams struct {
+	PipelineRunID         string         `db:"pipeline_run_id"`
+	PipelineStageID       string         `db:"pipeline_stage_id"`
+	ApplicationID         string         `db:"application_id"`
+	ApplicationName       string         `db:"application_name"`
+	ComponentName         string         `db:"component_name"`
+	SourceVersionID       string         `db:"source_version_id"`
+	SourceVersionLabel    string         `db:"source_version_label"`
+	GeneratedVersionID    sql.NullString `db:"generated_version_id"`
+	GeneratedVersionLabel sql.NullString `db:"generated_version_label"`
+	ArtifactID            sql.NullString `db:"artifact_id"`
+}
+
+func (q *Queries) InsertPipelineRunBuildVersionBinding(ctx context.Context, arg InsertPipelineRunBuildVersionBindingParams) error {
+	_, err := q.db.ExecContext(ctx, insertPipelineRunBuildVersionBinding,
+		arg.PipelineRunID,
+		arg.PipelineStageID,
+		arg.ApplicationID,
+		arg.ApplicationName,
+		arg.ComponentName,
+		arg.SourceVersionID,
+		arg.SourceVersionLabel,
+		arg.GeneratedVersionID,
+		arg.GeneratedVersionLabel,
+		arg.ArtifactID,
+	)
+	return err
+}
+
 const listPipelineRuns = `-- name: ListPipelineRuns :many
 SELECT id, project_id, repository_id, repository_name, snapshot_id, template_id,
        template_name, template_version, "trigger", trigger_ref, variables_snapshot, status, retry_of,
@@ -346,6 +382,78 @@ func (q *Queries) MarkPipelineRunRunning(ctx context.Context, arg MarkPipelineRu
 	return err
 }
 
+const pipelineRunBuildVersionBindingByRunAndStage = `-- name: PipelineRunBuildVersionBindingByRunAndStage :one
+SELECT pipeline_run_id, pipeline_stage_id, application_id, application_name, component_name, source_version_id,
+       source_version_label, generated_version_id, generated_version_label, artifact_id
+FROM pipeline_run_build_version_binding
+WHERE pipeline_run_id = ? AND pipeline_stage_id = ?
+`
+
+type PipelineRunBuildVersionBindingByRunAndStageParams struct {
+	PipelineRunID   string `db:"pipeline_run_id"`
+	PipelineStageID string `db:"pipeline_stage_id"`
+}
+
+func (q *Queries) PipelineRunBuildVersionBindingByRunAndStage(ctx context.Context, arg PipelineRunBuildVersionBindingByRunAndStageParams) (PipelineRunBuildVersionBinding, error) {
+	row := q.db.QueryRowContext(ctx, pipelineRunBuildVersionBindingByRunAndStage, arg.PipelineRunID, arg.PipelineStageID)
+	var i PipelineRunBuildVersionBinding
+	err := row.Scan(
+		&i.PipelineRunID,
+		&i.PipelineStageID,
+		&i.ApplicationID,
+		&i.ApplicationName,
+		&i.ComponentName,
+		&i.SourceVersionID,
+		&i.SourceVersionLabel,
+		&i.GeneratedVersionID,
+		&i.GeneratedVersionLabel,
+		&i.ArtifactID,
+	)
+	return i, err
+}
+
+const pipelineRunBuildVersionBindingsByRun = `-- name: PipelineRunBuildVersionBindingsByRun :many
+SELECT pipeline_run_id, pipeline_stage_id, application_id, application_name, component_name, source_version_id,
+       source_version_label, generated_version_id, generated_version_label, artifact_id
+FROM pipeline_run_build_version_binding
+WHERE pipeline_run_id = ?
+ORDER BY pipeline_stage_id
+`
+
+func (q *Queries) PipelineRunBuildVersionBindingsByRun(ctx context.Context, pipelineRunID string) ([]PipelineRunBuildVersionBinding, error) {
+	rows, err := q.db.QueryContext(ctx, pipelineRunBuildVersionBindingsByRun, pipelineRunID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PipelineRunBuildVersionBinding
+	for rows.Next() {
+		var i PipelineRunBuildVersionBinding
+		if err := rows.Scan(
+			&i.PipelineRunID,
+			&i.PipelineStageID,
+			&i.ApplicationID,
+			&i.ApplicationName,
+			&i.ComponentName,
+			&i.SourceVersionID,
+			&i.SourceVersionLabel,
+			&i.GeneratedVersionID,
+			&i.GeneratedVersionLabel,
+			&i.ArtifactID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const pipelineRunByID = `-- name: PipelineRunByID :one
 SELECT id, project_id, repository_id, repository_name, snapshot_id, template_id,
        template_name, template_version, "trigger", trigger_ref, variables_snapshot, status, retry_of,
@@ -397,4 +505,43 @@ func (q *Queries) PipelineRunByID(ctx context.Context, id string) (PipelineRunBy
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const repositoryHasRunningPipelineRun = `-- name: RepositoryHasRunningPipelineRun :one
+SELECT EXISTS(
+  SELECT 1 FROM pipeline_run
+  WHERE repository_id = ? AND status = 'running'
+)
+`
+
+func (q *Queries) RepositoryHasRunningPipelineRun(ctx context.Context, repositoryID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, repositoryHasRunningPipelineRun, repositoryID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const updatePipelineRunBuildVersionBindingResult = `-- name: UpdatePipelineRunBuildVersionBindingResult :exec
+UPDATE pipeline_run_build_version_binding
+SET generated_version_id = ?, generated_version_label = ?, artifact_id = ?
+WHERE pipeline_run_id = ? AND pipeline_stage_id = ?
+`
+
+type UpdatePipelineRunBuildVersionBindingResultParams struct {
+	GeneratedVersionID    sql.NullString `db:"generated_version_id"`
+	GeneratedVersionLabel sql.NullString `db:"generated_version_label"`
+	ArtifactID            sql.NullString `db:"artifact_id"`
+	PipelineRunID         string         `db:"pipeline_run_id"`
+	PipelineStageID       string         `db:"pipeline_stage_id"`
+}
+
+func (q *Queries) UpdatePipelineRunBuildVersionBindingResult(ctx context.Context, arg UpdatePipelineRunBuildVersionBindingResultParams) error {
+	_, err := q.db.ExecContext(ctx, updatePipelineRunBuildVersionBindingResult,
+		arg.GeneratedVersionID,
+		arg.GeneratedVersionLabel,
+		arg.ArtifactID,
+		arg.PipelineRunID,
+		arg.PipelineStageID,
+	)
+	return err
 }

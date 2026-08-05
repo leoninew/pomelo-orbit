@@ -45,3 +45,17 @@ SELECT COUNT(*)
 FROM pipeline_template_stage
 JOIN pipeline_template ON pipeline_template.id = pipeline_template_stage.template_id
 WHERE pipeline_template.project_id = ? AND pipeline_template_stage.stage_id = ?;
+
+-- name: PipelineStageBuildVersionBindingByStageID :one
+SELECT pipeline_stage_id, application_id, application_name, component_name, fork_strategy, fixed_version_id
+FROM pipeline_stage_build_version_binding
+WHERE pipeline_stage_id = ?;
+
+-- name: CreatePipelineStageBuildVersionBinding :exec
+INSERT INTO pipeline_stage_build_version_binding (
+  pipeline_stage_id, application_id, application_name, component_name, fork_strategy, fixed_version_id
+) VALUES (?, ?, ?, ?, ?, ?);
+
+-- name: DeletePipelineStageBuildVersionBinding :exec
+DELETE FROM pipeline_stage_build_version_binding
+WHERE pipeline_stage_id = ?;

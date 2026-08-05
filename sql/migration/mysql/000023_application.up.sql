@@ -33,21 +33,69 @@ CREATE TABLE IF NOT EXISTS version (
 CREATE INDEX idx_version_application ON version(application_id);
 CREATE INDEX idx_version_status ON version(status);
 
+CREATE TABLE IF NOT EXISTS pipeline_stage_build_version_binding (
+    pipeline_stage_id VARCHAR(26) PRIMARY KEY,
+    application_id VARCHAR(26) NOT NULL,
+    application_name VARCHAR(255) NOT NULL,
+    component_name VARCHAR(255) NOT NULL,
+    fork_strategy VARCHAR(16) NOT NULL,
+    fixed_version_id VARCHAR(26) NULL,
+    CONSTRAINT fk_pipeline_stage_build_binding_stage FOREIGN KEY (pipeline_stage_id) REFERENCES pipeline_stage(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pipeline_stage_build_binding_application FOREIGN KEY (application_id) REFERENCES application(id),
+    CONSTRAINT fk_pipeline_stage_build_binding_fixed_version FOREIGN KEY (fixed_version_id) REFERENCES version(id),
+    CONSTRAINT chk_pipeline_stage_build_binding_strategy CHECK (
+        (fork_strategy = 'latest' AND fixed_version_id IS NULL) OR
+        (fork_strategy = 'fixed' AND fixed_version_id IS NOT NULL)
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX idx_pipeline_stage_build_version_binding_application
+    ON pipeline_stage_build_version_binding(application_id);
+CREATE INDEX idx_pipeline_stage_build_version_binding_fixed_version
+    ON pipeline_stage_build_version_binding(fixed_version_id);
+
+CREATE TABLE IF NOT EXISTS pipeline_run_build_version_binding (
+    pipeline_run_id VARCHAR(26) NOT NULL,
+    pipeline_stage_id VARCHAR(26) NOT NULL,
+    application_id VARCHAR(26) NOT NULL,
+    application_name VARCHAR(255) NOT NULL,
+    component_name VARCHAR(255) NOT NULL,
+    source_version_id VARCHAR(26) NOT NULL,
+    source_version_label VARCHAR(255) NOT NULL,
+    generated_version_id VARCHAR(26) NULL,
+    generated_version_label VARCHAR(255) NULL,
+    artifact_id VARCHAR(26) NULL,
+    PRIMARY KEY (pipeline_run_id, pipeline_stage_id),
+    CONSTRAINT fk_pipeline_run_build_binding_run FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pipeline_run_build_binding_application FOREIGN KEY (application_id) REFERENCES application(id),
+    CONSTRAINT fk_pipeline_run_build_binding_source_version FOREIGN KEY (source_version_id) REFERENCES version(id),
+    CONSTRAINT fk_pipeline_run_build_binding_generated_version FOREIGN KEY (generated_version_id) REFERENCES version(id),
+    CONSTRAINT fk_pipeline_run_build_binding_artifact FOREIGN KEY (artifact_id) REFERENCES artifact(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX idx_pipeline_run_build_version_binding_source_version
+    ON pipeline_run_build_version_binding(source_version_id);
+CREATE INDEX idx_pipeline_run_build_version_binding_generated_version
+    ON pipeline_run_build_version_binding(generated_version_id);
+
 CREATE TABLE IF NOT EXISTS version_component (
     id VARCHAR(26) PRIMARY KEY,
     version_id VARCHAR(26) NOT NULL,
     name VARCHAR(255) NOT NULL,
     image VARCHAR(512) NOT NULL,
+    artifact_id VARCHAR(26),
     command_json TEXT NOT NULL,
     pull_policy VARCHAR(32) NOT NULL CHECK (pull_policy IN ('always', 'missing', 'never')),
     restart_policy VARCHAR(32),
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE,
+    CONSTRAINT fk_version_component_artifact FOREIGN KEY (artifact_id) REFERENCES artifact(id) ON DELETE SET NULL,
     UNIQUE(version_id, name)
 );
 
 CREATE INDEX idx_version_component_version ON version_component(version_id);
+CREATE INDEX idx_version_component_artifact_id ON version_component(artifact_id);
 
 CREATE TABLE IF NOT EXISTS version_component_env (
     component_id VARCHAR(26) NOT NULL,

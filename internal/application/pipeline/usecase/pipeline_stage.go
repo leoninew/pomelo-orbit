@@ -52,6 +52,10 @@ func (s Service) CreatePipelineStage(ctx context.Context, userId string, input p
 	if err := validatePipelineStageArtifacts(input.Artifacts); err != nil {
 		return pipelinedto.PipelineStageDetail{}, err
 	}
+	binding, err := s.buildVersionBinding(ctx, projectId, artifactConfigsFromDTO(input.Artifacts), input.BuildVersionBinding)
+	if err != nil {
+		return pipelinedto.PipelineStageDetail{}, err
+	}
 	if err := s.ensurePipelineStageNameAvailable(ctx, projectId, name, ""); err != nil {
 		return pipelinedto.PipelineStageDetail{}, err
 	}
@@ -59,7 +63,7 @@ func (s Service) CreatePipelineStage(ctx context.Context, userId string, input p
 	if err != nil {
 		return pipelinedto.PipelineStageDetail{}, err
 	}
-	stage := model.PipelineStage{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Image: image, Script: script, Artifacts: artifacts, Description: input.Description, Version: 1}
+	stage := model.PipelineStage{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Image: image, Script: script, Artifacts: artifacts, BuildVersionBinding: binding, Description: input.Description, Version: 1}
 	if err := s.store.CreatePipelineStage(ctx, stage); err != nil {
 		return pipelinedto.PipelineStageDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline stage", err)
 	}
@@ -125,7 +129,7 @@ func (s Service) DuplicatePipelineStage(ctx context.Context, userId string, stag
 	if err != nil {
 		return pipelinedto.PipelineStageDetail{}, err
 	}
-	duplicated := model.PipelineStage{Id: idutil.NewId(), ProjectId: stage.ProjectId, Name: name, Image: stage.Image, Script: stage.Script, Artifacts: stage.Artifacts, Description: stage.Description, Version: 1}
+	duplicated := model.PipelineStage{Id: idutil.NewId(), ProjectId: stage.ProjectId, Name: name, Image: stage.Image, Script: stage.Script, Artifacts: stage.Artifacts, BuildVersionBinding: cloneBuildVersionBinding(stage.BuildVersionBinding), Description: stage.Description, Version: 1}
 	if err := s.store.CreatePipelineStage(ctx, duplicated); err != nil {
 		return pipelinedto.PipelineStageDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to duplicate pipeline stage", err)
 	}
@@ -185,6 +189,9 @@ func (s Service) nextPipelineStageCopyName(ctx context.Context, projectId string
 func (s Service) applyPipelineStageUpdateInput(ctx context.Context, stage *model.PipelineStage, req pipelinedto.PipelineStageUpdateInput) error {
 	projectId := pipelineStageProjectId(*stage)
 	versionChanged := false
+	if req.ClearBuildVersionBinding && req.BuildVersionBinding != nil {
+		return apperror.New(apperror.KindValidation, "Cannot set and clear build version binding together")
+	}
 	if req.Name != nil {
 		value := strings.TrimSpace(*req.Name)
 		if value == "" {
@@ -225,6 +232,34 @@ func (s Service) applyPipelineStageUpdateInput(ctx context.Context, stage *model
 			versionChanged = true
 		}
 	}
+	if req.ClearBuildVersionBinding {
+		if stage.BuildVersionBinding != nil {
+			stage.BuildVersionBinding = nil
+			versionChanged = true
+		}
+	} else if req.BuildVersionBinding != nil {
+		artifacts, err := pipelineStageArtifactConfigs(*stage)
+		if err != nil {
+			return err
+		}
+		binding, err := s.buildVersionBinding(ctx, projectId, artifacts, req.BuildVersionBinding)
+		if err != nil {
+			return err
+		}
+		if !buildVersionBindingEqual(stage.BuildVersionBinding, binding) {
+			stage.BuildVersionBinding = binding
+			versionChanged = true
+		}
+	}
+	if stage.BuildVersionBinding != nil {
+		artifacts, err := pipelineStageArtifactConfigs(*stage)
+		if err != nil {
+			return err
+		}
+		if dockerImageArtifactCount(artifacts) != 1 {
+			return apperror.New(apperror.KindValidation, "Build version binding requires exactly one docker_image artifact")
+		}
+	}
 	if req.Description != nil {
 		stage.Description = *req.Description
 	}
@@ -260,9 +295,31 @@ func marshalPipelineStageArtifacts(artifacts []pipelinedto.ArtifactConfig) (*str
 }
 
 func validatePipelineStageArtifacts(artifacts []pipelinedto.ArtifactConfig) error {
+	names := make(map[string]struct{}, len(artifacts))
 	for _, artifact := range artifacts {
-		if strings.TrimSpace(artifact.Type) == "" || strings.TrimSpace(artifact.Path) == "" || strings.TrimSpace(artifact.Name) == "" {
+		artifact.Name = strings.TrimSpace(artifact.Name)
+		artifact.Collector = strings.TrimSpace(artifact.Collector)
+		artifact.Reference = strings.TrimSpace(artifact.Reference)
+		artifact.Command = strings.TrimSpace(artifact.Command)
+		artifact.Format = strings.TrimSpace(artifact.Format)
+		if artifact.Name == "" || artifact.Collector == "" {
 			return apperror.New(apperror.KindValidation, "Invalid pipeline stage artifacts")
+		}
+		if _, exists := names[artifact.Name]; exists {
+			return apperror.New(apperror.KindValidation, "Pipeline stage artifact names must be unique")
+		}
+		names[artifact.Name] = struct{}{}
+		switch artifact.Collector {
+		case "file", "docker_image":
+			if artifact.Reference == "" || artifact.Command != "" || artifact.Format != "" {
+				return apperror.New(apperror.KindValidation, "Invalid pipeline stage artifacts")
+			}
+		case "command":
+			if artifact.Reference != "" || artifact.Command == "" || (artifact.Format != "text" && artifact.Format != "git_object_id") {
+				return apperror.New(apperror.KindValidation, "Invalid pipeline stage artifacts")
+			}
+		default:
+			return apperror.New(apperror.KindValidation, "Unknown artifact collector")
 		}
 	}
 	return nil

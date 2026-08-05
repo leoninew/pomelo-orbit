@@ -22,20 +22,34 @@ const (
 )
 
 type ArtifactResp struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	PipelineRunId  string                 `protobuf:"bytes,2,opt,name=pipeline_run_id,json=pipelineRunId,proto3" json:"pipeline_run_id,omitempty"`
-	RepositoryId   string                 `protobuf:"bytes,3,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
-	RepositoryName string                 `protobuf:"bytes,4,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
-	TemplateId     string                 `protobuf:"bytes,5,opt,name=template_id,json=templateId,proto3" json:"template_id,omitempty"`
-	TemplateName   string                 `protobuf:"bytes,6,opt,name=template_name,json=templateName,proto3" json:"template_name,omitempty"`
-	StageName      string                 `protobuf:"bytes,7,opt,name=stage_name,json=stageName,proto3" json:"stage_name,omitempty"`
-	Type           string                 `protobuf:"bytes,8,opt,name=type,proto3" json:"type,omitempty"`
-	Name           string                 `protobuf:"bytes,9,opt,name=name,proto3" json:"name,omitempty"`
-	Path           *string                `protobuf:"bytes,10,opt,name=path,proto3,oneof" json:"path,omitempty"`
-	CreatedAt      string                 `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Id                    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	PipelineRunId         string                 `protobuf:"bytes,2,opt,name=pipeline_run_id,json=pipelineRunId,proto3" json:"pipeline_run_id,omitempty"`
+	RepositoryId          string                 `protobuf:"bytes,3,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
+	RepositoryName        string                 `protobuf:"bytes,4,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
+	TemplateId            string                 `protobuf:"bytes,5,opt,name=template_id,json=templateId,proto3" json:"template_id,omitempty"`
+	TemplateName          string                 `protobuf:"bytes,6,opt,name=template_name,json=templateName,proto3" json:"template_name,omitempty"`
+	StageName             string                 `protobuf:"bytes,7,opt,name=stage_name,json=stageName,proto3" json:"stage_name,omitempty"`
+	Collector             string                 `protobuf:"bytes,8,opt,name=collector,proto3" json:"collector,omitempty"`
+	Name                  string                 `protobuf:"bytes,9,opt,name=name,proto3" json:"name,omitempty"`
+	Location              *string                `protobuf:"bytes,10,opt,name=location,proto3,oneof" json:"location,omitempty"`
+	CreatedAt             string                 `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ImageRef              *string                `protobuf:"bytes,12,opt,name=image_ref,json=imageRef,proto3,oneof" json:"image_ref,omitempty"`
+	LocalImageSha256      *string                `protobuf:"bytes,13,opt,name=local_image_sha256,json=localImageSha256,proto3,oneof" json:"local_image_sha256,omitempty"`
+	SourceCommitSha       *string                `protobuf:"bytes,14,opt,name=source_commit_sha,json=sourceCommitSha,proto3,oneof" json:"source_commit_sha,omitempty"`
+	GeneratedVersionId    *string                `protobuf:"bytes,15,opt,name=generated_version_id,json=generatedVersionId,proto3,oneof" json:"generated_version_id,omitempty"`
+	VersionComponentId    *string                `protobuf:"bytes,16,opt,name=version_component_id,json=versionComponentId,proto3,oneof" json:"version_component_id,omitempty"`
+	PipelineStageId       string                 `protobuf:"bytes,17,opt,name=pipeline_stage_id,json=pipelineStageId,proto3" json:"pipeline_stage_id,omitempty"`
+	Value                 *string                `protobuf:"bytes,18,opt,name=value,proto3,oneof" json:"value,omitempty"`
+	ValueFormat           *string                `protobuf:"bytes,19,opt,name=value_format,json=valueFormat,proto3,oneof" json:"value_format,omitempty"`
+	ApplicationId         *string                `protobuf:"bytes,20,opt,name=application_id,json=applicationId,proto3,oneof" json:"application_id,omitempty"`
+	ApplicationName       *string                `protobuf:"bytes,21,opt,name=application_name,json=applicationName,proto3,oneof" json:"application_name,omitempty"`
+	SourceVersionId       *string                `protobuf:"bytes,22,opt,name=source_version_id,json=sourceVersionId,proto3,oneof" json:"source_version_id,omitempty"`
+	SourceVersionLabel    *string                `protobuf:"bytes,23,opt,name=source_version_label,json=sourceVersionLabel,proto3,oneof" json:"source_version_label,omitempty"`
+	GeneratedVersionLabel *string                `protobuf:"bytes,24,opt,name=generated_version_label,json=generatedVersionLabel,proto3,oneof" json:"generated_version_label,omitempty"`
+	VersionComponentName  *string                `protobuf:"bytes,25,opt,name=version_component_name,json=versionComponentName,proto3,oneof" json:"version_component_name,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ArtifactResp) Reset() {
@@ -117,9 +131,9 @@ func (x *ArtifactResp) GetStageName() string {
 	return ""
 }
 
-func (x *ArtifactResp) GetType() string {
+func (x *ArtifactResp) GetCollector() string {
 	if x != nil {
-		return x.Type
+		return x.Collector
 	}
 	return ""
 }
@@ -131,9 +145,9 @@ func (x *ArtifactResp) GetName() string {
 	return ""
 }
 
-func (x *ArtifactResp) GetPath() string {
-	if x != nil && x.Path != nil {
-		return *x.Path
+func (x *ArtifactResp) GetLocation() string {
+	if x != nil && x.Location != nil {
+		return *x.Location
 	}
 	return ""
 }
@@ -141,6 +155,104 @@ func (x *ArtifactResp) GetPath() string {
 func (x *ArtifactResp) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetImageRef() string {
+	if x != nil && x.ImageRef != nil {
+		return *x.ImageRef
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetLocalImageSha256() string {
+	if x != nil && x.LocalImageSha256 != nil {
+		return *x.LocalImageSha256
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetSourceCommitSha() string {
+	if x != nil && x.SourceCommitSha != nil {
+		return *x.SourceCommitSha
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetGeneratedVersionId() string {
+	if x != nil && x.GeneratedVersionId != nil {
+		return *x.GeneratedVersionId
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetVersionComponentId() string {
+	if x != nil && x.VersionComponentId != nil {
+		return *x.VersionComponentId
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetPipelineStageId() string {
+	if x != nil {
+		return x.PipelineStageId
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetValue() string {
+	if x != nil && x.Value != nil {
+		return *x.Value
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetValueFormat() string {
+	if x != nil && x.ValueFormat != nil {
+		return *x.ValueFormat
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetApplicationId() string {
+	if x != nil && x.ApplicationId != nil {
+		return *x.ApplicationId
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetApplicationName() string {
+	if x != nil && x.ApplicationName != nil {
+		return *x.ApplicationName
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetSourceVersionId() string {
+	if x != nil && x.SourceVersionId != nil {
+		return *x.SourceVersionId
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetSourceVersionLabel() string {
+	if x != nil && x.SourceVersionLabel != nil {
+		return *x.SourceVersionLabel
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetGeneratedVersionLabel() string {
+	if x != nil && x.GeneratedVersionLabel != nil {
+		return *x.GeneratedVersionLabel
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetVersionComponentName() string {
+	if x != nil && x.VersionComponentName != nil {
+		return *x.VersionComponentName
 	}
 	return ""
 }
@@ -225,7 +337,8 @@ var File_orbit_v1_pipeline_run_artifact_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_pipeline_run_artifact_proto_rawDesc = "" +
 	"\n" +
-	"$orbit/v1/pipeline_run/artifact.proto\x12\x15orbit.v1.pipeline_run\"\xe2\x02\n" +
+	"$orbit/v1/pipeline_run/artifact.proto\x12\x15orbit.v1.pipeline_run\"\xad\n" +
+	"\n" +
 	"\fArtifactResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12&\n" +
 	"\x0fpipeline_run_id\x18\x02 \x01(\tR\rpipelineRunId\x12#\n" +
@@ -235,14 +348,43 @@ const file_orbit_v1_pipeline_run_artifact_proto_rawDesc = "" +
 	"templateId\x12#\n" +
 	"\rtemplate_name\x18\x06 \x01(\tR\ftemplateName\x12\x1d\n" +
 	"\n" +
-	"stage_name\x18\a \x01(\tR\tstageName\x12\x12\n" +
-	"\x04type\x18\b \x01(\tR\x04type\x12\x12\n" +
-	"\x04name\x18\t \x01(\tR\x04name\x12\x17\n" +
-	"\x04path\x18\n" +
-	" \x01(\tH\x00R\x04path\x88\x01\x01\x12\x1d\n" +
+	"stage_name\x18\a \x01(\tR\tstageName\x12\x1c\n" +
+	"\tcollector\x18\b \x01(\tR\tcollector\x12\x12\n" +
+	"\x04name\x18\t \x01(\tR\x04name\x12\x1f\n" +
+	"\blocation\x18\n" +
+	" \x01(\tH\x00R\blocation\x88\x01\x01\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\v \x01(\tR\tcreatedAtB\a\n" +
-	"\x05_path\"\xad\x01\n" +
+	"created_at\x18\v \x01(\tR\tcreatedAt\x12 \n" +
+	"\timage_ref\x18\f \x01(\tH\x01R\bimageRef\x88\x01\x01\x121\n" +
+	"\x12local_image_sha256\x18\r \x01(\tH\x02R\x10localImageSha256\x88\x01\x01\x12/\n" +
+	"\x11source_commit_sha\x18\x0e \x01(\tH\x03R\x0fsourceCommitSha\x88\x01\x01\x125\n" +
+	"\x14generated_version_id\x18\x0f \x01(\tH\x04R\x12generatedVersionId\x88\x01\x01\x125\n" +
+	"\x14version_component_id\x18\x10 \x01(\tH\x05R\x12versionComponentId\x88\x01\x01\x12*\n" +
+	"\x11pipeline_stage_id\x18\x11 \x01(\tR\x0fpipelineStageId\x12\x19\n" +
+	"\x05value\x18\x12 \x01(\tH\x06R\x05value\x88\x01\x01\x12&\n" +
+	"\fvalue_format\x18\x13 \x01(\tH\aR\vvalueFormat\x88\x01\x01\x12*\n" +
+	"\x0eapplication_id\x18\x14 \x01(\tH\bR\rapplicationId\x88\x01\x01\x12.\n" +
+	"\x10application_name\x18\x15 \x01(\tH\tR\x0fapplicationName\x88\x01\x01\x12/\n" +
+	"\x11source_version_id\x18\x16 \x01(\tH\n" +
+	"R\x0fsourceVersionId\x88\x01\x01\x125\n" +
+	"\x14source_version_label\x18\x17 \x01(\tH\vR\x12sourceVersionLabel\x88\x01\x01\x12;\n" +
+	"\x17generated_version_label\x18\x18 \x01(\tH\fR\x15generatedVersionLabel\x88\x01\x01\x129\n" +
+	"\x16version_component_name\x18\x19 \x01(\tH\rR\x14versionComponentName\x88\x01\x01B\v\n" +
+	"\t_locationB\f\n" +
+	"\n" +
+	"_image_refB\x15\n" +
+	"\x13_local_image_sha256B\x14\n" +
+	"\x12_source_commit_shaB\x17\n" +
+	"\x15_generated_version_idB\x17\n" +
+	"\x15_version_component_idB\b\n" +
+	"\x06_valueB\x0f\n" +
+	"\r_value_formatB\x11\n" +
+	"\x0f_application_idB\x13\n" +
+	"\x11_application_nameB\x14\n" +
+	"\x12_source_version_idB\x17\n" +
+	"\x15_source_version_labelB\x1a\n" +
+	"\x18_generated_version_labelB\x19\n" +
+	"\x17_version_component_name\"\xad\x01\n" +
 	"\x15ArtifactPaginatedResp\x129\n" +
 	"\x05items\x18\x01 \x03(\v2#.orbit.v1.pipeline_run.ArtifactRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +

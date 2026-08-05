@@ -285,6 +285,8 @@ export default {
         addMount: 'Add mount',
         addPort: 'Add port mapping',
         addRuntimeConfig: 'Add runtime value',
+        expandComponents: 'Expand component list',
+        collapseComponents: 'Collapse component list',
       },
       fields: {
         deployments: 'Deployments',

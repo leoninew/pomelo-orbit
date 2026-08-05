@@ -66,6 +66,33 @@ func (q *Queries) CreatePipelineStage(ctx context.Context, arg CreatePipelineSta
 	return err
 }
 
+const createPipelineStageBuildVersionBinding = `-- name: CreatePipelineStageBuildVersionBinding :exec
+INSERT INTO pipeline_stage_build_version_binding (
+  pipeline_stage_id, application_id, application_name, component_name, fork_strategy, fixed_version_id
+) VALUES (?, ?, ?, ?, ?, ?)
+`
+
+type CreatePipelineStageBuildVersionBindingParams struct {
+	PipelineStageID string         `db:"pipeline_stage_id"`
+	ApplicationID   string         `db:"application_id"`
+	ApplicationName string         `db:"application_name"`
+	ComponentName   string         `db:"component_name"`
+	ForkStrategy    string         `db:"fork_strategy"`
+	FixedVersionID  sql.NullString `db:"fixed_version_id"`
+}
+
+func (q *Queries) CreatePipelineStageBuildVersionBinding(ctx context.Context, arg CreatePipelineStageBuildVersionBindingParams) error {
+	_, err := q.db.ExecContext(ctx, createPipelineStageBuildVersionBinding,
+		arg.PipelineStageID,
+		arg.ApplicationID,
+		arg.ApplicationName,
+		arg.ComponentName,
+		arg.ForkStrategy,
+		arg.FixedVersionID,
+	)
+	return err
+}
+
 const deletePipelineStage = `-- name: DeletePipelineStage :exec
 DELETE FROM pipeline_stage
 WHERE id = ?
@@ -73,6 +100,16 @@ WHERE id = ?
 
 func (q *Queries) DeletePipelineStage(ctx context.Context, id string) error {
 	_, err := q.db.ExecContext(ctx, deletePipelineStage, id)
+	return err
+}
+
+const deletePipelineStageBuildVersionBinding = `-- name: DeletePipelineStageBuildVersionBinding :exec
+DELETE FROM pipeline_stage_build_version_binding
+WHERE pipeline_stage_id = ?
+`
+
+func (q *Queries) DeletePipelineStageBuildVersionBinding(ctx context.Context, pipelineStageID string) error {
+	_, err := q.db.ExecContext(ctx, deletePipelineStageBuildVersionBinding, pipelineStageID)
 	return err
 }
 
@@ -144,6 +181,26 @@ func (q *Queries) ListPipelineStages(ctx context.Context, arg ListPipelineStages
 		return nil, err
 	}
 	return items, nil
+}
+
+const pipelineStageBuildVersionBindingByStageID = `-- name: PipelineStageBuildVersionBindingByStageID :one
+SELECT pipeline_stage_id, application_id, application_name, component_name, fork_strategy, fixed_version_id
+FROM pipeline_stage_build_version_binding
+WHERE pipeline_stage_id = ?
+`
+
+func (q *Queries) PipelineStageBuildVersionBindingByStageID(ctx context.Context, pipelineStageID string) (PipelineStageBuildVersionBinding, error) {
+	row := q.db.QueryRowContext(ctx, pipelineStageBuildVersionBindingByStageID, pipelineStageID)
+	var i PipelineStageBuildVersionBinding
+	err := row.Scan(
+		&i.PipelineStageID,
+		&i.ApplicationID,
+		&i.ApplicationName,
+		&i.ComponentName,
+		&i.ForkStrategy,
+		&i.FixedVersionID,
+	)
+	return i, err
 }
 
 const pipelineStageByID = `-- name: PipelineStageByID :one

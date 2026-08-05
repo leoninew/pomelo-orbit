@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -18,6 +19,19 @@ import (
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
+
+var gitObjectIdPattern = regexp.MustCompile(`^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$`)
+
+type buildArtifactStore interface {
+	pipelineExecutionStore
+	PipelineRunBuildVersionBinding(ctx context.Context, pipelineRunId string, pipelineStageId string) (model.PipelineRunBuildVersionBinding, error)
+	RunInTransaction(ctx context.Context, fn func(context.Context) error) error
+	CompletePipelineRunBuildVersionBinding(ctx context.Context, pipelineRunId string, pipelineStageId string, generatedVersionId string, generatedVersionLabel string, artifactId string) error
+	Version(ctx context.Context, id string) (model.Version, error)
+	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
+	CreateVersionWithVersionComponents(ctx context.Context, version model.Version, components []model.VersionComponent) error
+	SetVersionComponentArtifact(ctx context.Context, componentId string, artifactId string) error
+}
 
 type Executor struct {
 	store            pipelineExecutionStore
@@ -66,7 +80,7 @@ func (e Executor) executeLayer(ctx context.Context, executionCtx context.Context
 	for _, stageId := range layer {
 		stage := stages[stageId]
 		wg.Go(func() {
-			ok := e.executeStage(ctx, executionCtx, run, repo, variables, stage)
+			ok := e.executeStage(ctx, executionCtx, run, repo, variables, stage, stages)
 			mu.Lock()
 			results[stage.Name] = ok
 			mu.Unlock()
@@ -76,7 +90,7 @@ func (e Executor) executeLayer(ctx context.Context, executionCtx context.Context
 	return results
 }
 
-func (e Executor) executeStage(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stage model.StageDefinition) bool {
+func (e Executor) executeStage(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stage model.StageDefinition, stages map[string]model.StageDefinition) bool {
 	pipelineStageRun := model.PipelineStageRun{Id: idutil.NewId(), PipelineRunId: run.Id, StageId: stage.Id, StageName: stage.Name, Status: status.WorkStatusWaitingToRun}
 	if err := e.store.InsertPipelineStageRun(ctx, pipelineStageRun); err != nil {
 		e.logger.Error("pipeline stage run insert failed", "run", run.Id, "stage", stage.Name, "error", err)
@@ -118,14 +132,15 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 		return e.failStage(ctx, pipelineStageRun, err.Error())
 	}
 
-	exitCode, _, err := e.runner.Run(executionCtx, pipelinerunport.RunOptions{
+	runOptions := pipelinerunport.RunOptions{
 		ContainerName: "pomelo-orbit-stage-" + pipelineStageRun.Id,
 		Image:         stage.Image,
 		Script:        safeCommand(script),
 		Environment:   environment,
 		Volumes:       volumes,
 		LogWriter:     logWriter,
-	})
+	}
+	exitCode, _, err := e.runner.Run(executionCtx, runOptions)
 	if err != nil {
 		if executionErr := executionCtx.Err(); executionErr != nil {
 			message := e.executionErrorMessage(executionErr)
@@ -152,7 +167,8 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 	pipelineStageRun.FinishedAt = &finished
 	pipelineStageRun.Status = status.WorkStatusRanToCompletion
 	pipelineStageRun.ExitCode = &exitCode
-	if err := e.saveArtifacts(ctx, run, stage); err != nil {
+	runtimeDatetime, _ := variables["runtime_datetime"].(string)
+	if err := e.saveArtifacts(executionCtx, run, stage, stages, runOptions, runtimeDatetime); err != nil {
 		return e.failStage(ctx, pipelineStageRun, err.Error())
 	}
 	if err := e.store.UpdatePipelineStageRun(ctx, pipelineStageRun); err != nil {
@@ -278,25 +294,165 @@ func (e Executor) cancelRemaining(ctx context.Context, runId string, layers [][]
 	}
 }
 
-func (e Executor) saveArtifacts(ctx context.Context, run model.PipelineRun, stage model.StageDefinition) error {
+func (e Executor) saveArtifacts(ctx context.Context, run model.PipelineRun, stage model.StageDefinition, stages map[string]model.StageDefinition, runOptions pipelinerunport.RunOptions, runtimeDatetime string) error {
 	for _, artifact := range stage.Artifacts {
-		artifactPath := artifact.Path
-		if artifact.Type == "binary" {
-			exists, err := e.workspace.ArtifactExists(run.Id, artifact.Path)
+		switch artifact.Collector {
+		case "file":
+			exists, err := e.workspace.ArtifactExists(run.Id, artifact.Reference)
 			if err != nil {
-				return fmt.Errorf("check artifact %s: %w", artifact.Path, err)
+				return fmt.Errorf("check file artifact %s: %w", artifact.Reference, err)
 			}
-			artifactPath = filepath.Join(e.workspace.ArtifactsPath(run.Id), artifact.Path)
+			location := filepath.Join(e.workspace.ArtifactsPath(run.Id), artifact.Reference)
 			if !exists {
-				e.logger.Warn("artifact file not found, skipping", "run", run.Id, "stage", stage.Name, "path", artifactPath)
+				e.logger.Warn("artifact file not found, skipping", "run", run.Id, "stage", stage.Name, "location", location)
 				continue
 			}
-		}
-		if err := e.store.InsertArtifact(ctx, run.ProjectId, run, stage.Name, artifact, artifactPath); err != nil {
-			return err
+			created := artifactForRun(run, stage, artifact)
+			created.Location = &location
+			if err := e.store.CreateArtifact(ctx, created); err != nil {
+				return err
+			}
+		case "command":
+			if err := e.archiveCommandArtifact(ctx, run, stage, artifact, runOptions); err != nil {
+				return err
+			}
+		case "docker_image":
+			if err := e.archiveContainerImageArtifact(ctx, run, stage, stages, artifact, runtimeDatetime); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unsupported artifact collector %s", artifact.Collector)
 		}
 	}
 	return nil
+}
+
+func (e Executor) archiveCommandArtifact(ctx context.Context, run model.PipelineRun, stage model.StageDefinition, artifact model.ArtifactConfig, runOptions pipelinerunport.RunOptions) error {
+	runner, ok := e.runner.(pipelinerunport.CommandOutputRunner)
+	if !ok {
+		return fmt.Errorf("command artifact execution is unavailable")
+	}
+	output, err := runner.RunCommand(ctx, runOptions, artifact.Command)
+	if err != nil {
+		return fmt.Errorf("collect command artifact %s: %w", artifact.Name, err)
+	}
+	value := strings.TrimSpace(output)
+	if artifact.Format == "git_object_id" && !gitObjectIdPattern.MatchString(value) {
+		return fmt.Errorf("command artifact %s must be a 40 or 64 character hexadecimal Git object Id", artifact.Name)
+	}
+	created := artifactForRun(run, stage, artifact)
+	created.Value = &value
+	created.ValueFormat = &artifact.Format
+	if err := e.store.CreateArtifact(ctx, created); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e Executor) archiveContainerImageArtifact(ctx context.Context, run model.PipelineRun, stage model.StageDefinition, stages map[string]model.StageDefinition, artifact model.ArtifactConfig, runtimeDatetime string) error {
+	store, ok := e.store.(buildArtifactStore)
+	if !ok {
+		return fmt.Errorf("container image artifact storage is unavailable")
+	}
+	inspector, ok := e.runner.(pipelinerunport.ImageInspector)
+	if !ok {
+		return fmt.Errorf("local image inspection is unavailable")
+	}
+	sourceCommitArtifact, err := sourceCommitArtifactForStage(stage, stages)
+	if err != nil {
+		return err
+	}
+	sourceArtifact, err := store.CommandArtifactByRunStageAndName(ctx, run.Id, sourceCommitArtifact.ProducerStageId, sourceCommitArtifact.Artifact.Name)
+	if err != nil {
+		return fmt.Errorf("load source command artifact: %w", err)
+	}
+	if sourceArtifact.Value == nil || sourceArtifact.ValueFormat == nil || *sourceArtifact.ValueFormat != "git_object_id" || !gitObjectIdPattern.MatchString(*sourceArtifact.Value) {
+		return fmt.Errorf("source command artifact %s is not a valid Git object Id", sourceCommitArtifact.Artifact.Name)
+	}
+	imageId, err := inspector.ImageId(ctx, artifact.Reference)
+	if err != nil {
+		return fmt.Errorf("inspect local image %s: %w", artifact.Reference, err)
+	}
+	if stage.BuildVersionBinding != nil {
+		binding, err := store.PipelineRunBuildVersionBinding(ctx, run.Id, stage.Id)
+		if err != nil {
+			return fmt.Errorf("load build version binding: %w", err)
+		}
+		if binding.GeneratedVersionId != nil {
+			return nil
+		}
+	}
+	return store.RunInTransaction(ctx, func(txCtx context.Context) error {
+		created := artifactForRun(run, stage, artifact)
+		created.ImageRef = &artifact.Reference
+		created.LocalImageSha256 = &imageId
+		created.SourceArtifactId = &sourceArtifact.Id
+		created.SourceCommitSha = sourceArtifact.Value
+		if err := store.CreateArtifact(txCtx, created); err != nil {
+			return err
+		}
+		if stage.BuildVersionBinding == nil {
+			return nil
+		}
+		return e.forkBuildVersion(txCtx, store, run, stage, created, runtimeDatetime)
+	})
+}
+
+func (e Executor) forkBuildVersion(ctx context.Context, store buildArtifactStore, run model.PipelineRun, stage model.StageDefinition, artifact model.Artifact, runtimeDatetime string) error {
+	binding, err := store.PipelineRunBuildVersionBinding(ctx, run.Id, stage.Id)
+	if err != nil {
+		return fmt.Errorf("load build version binding: %w", err)
+	}
+	if binding.GeneratedVersionId != nil {
+		return nil
+	}
+	source, err := store.Version(ctx, binding.SourceVersionId)
+	if err != nil {
+		return fmt.Errorf("load source version: %w", err)
+	}
+	components, err := store.VersionComponentsByVersion(ctx, source.Id)
+	if err != nil {
+		return fmt.Errorf("load source version components: %w", err)
+	}
+	createdFromVersionId := source.Id
+	version := model.Version{
+		Id: idutil.NewId(), ApplicationId: source.ApplicationId, Label: buildVersionLabel(runtimeDatetime),
+		Status: status.VersionStatusUnpublished, CreatedFromVersionId: &createdFromVersionId, Note: source.Note,
+	}
+	targetComponentId := ""
+	for index := range components {
+		components[index].Id = idutil.NewId()
+		components[index].VersionId = version.Id
+		if components[index].Name == binding.ComponentName {
+			components[index].Image = *artifact.ImageRef
+			targetComponentId = components[index].Id
+		}
+	}
+	if targetComponentId == "" {
+		return fmt.Errorf("source version does not contain component %s", binding.ComponentName)
+	}
+	if err := store.CreateVersionWithVersionComponents(ctx, version, components); err != nil {
+		return fmt.Errorf("fork source version: %w", err)
+	}
+	if err := store.SetVersionComponentArtifact(ctx, targetComponentId, artifact.Id); err != nil {
+		return fmt.Errorf("associate generated version component with artifact: %w", err)
+	}
+	if err := store.CompletePipelineRunBuildVersionBinding(ctx, run.Id, stage.Id, version.Id, version.Label, artifact.Id); err != nil {
+		return err
+	}
+	return nil
+}
+
+func buildVersionLabel(runtimeDatetime string) string {
+	return "build-" + runtimeDatetime
+}
+
+func artifactForRun(run model.PipelineRun, stage model.StageDefinition, config model.ArtifactConfig) model.Artifact {
+	return model.Artifact{
+		Id: idutil.NewId(), ProjectId: run.ProjectId, PipelineRunId: run.Id, RepositoryId: run.RepositoryId, RepositoryName: run.RepositoryName,
+		TemplateId: run.TemplateId, TemplateName: run.TemplateName, PipelineStageId: stage.Id, StageName: stage.Name,
+		Collector: config.Collector, Name: config.Name, CreatedAt: now(),
+	}
 }
 
 func topologicalLayers(stages []model.StageDefinition) ([][]string, error) {

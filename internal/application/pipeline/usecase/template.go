@@ -360,6 +360,7 @@ func pipelineTemplateStageRows(templateId string, orchestration []pipelinedto.St
 		stageMap[stage.Id] = stage
 	}
 	rows := make([]model.PipelineTemplateStage, 0, len(orchestration))
+	definitions := make([]model.StageDefinition, 0, len(orchestration))
 	for _, item := range orchestration {
 		stageId := strings.TrimSpace(item.StageId)
 		dependsOn, err := marshalPipelineTemplateDependsOn(item.DependsOn)
@@ -367,7 +368,19 @@ func pipelineTemplateStageRows(templateId string, orchestration []pipelinedto.St
 			return nil, err
 		}
 		stage := stageMap[stageId]
+		artifacts, err := pipelineStageArtifactConfigs(stage)
+		if err != nil {
+			return nil, err
+		}
+		definitions = append(definitions, model.StageDefinition{
+			Name: item.StageName, Id: stage.Id, Image: stage.Image, Version: stage.Version,
+			DependsOn: item.DependsOn, Script: stage.Script, Artifacts: artifacts,
+			BuildVersionBinding: cloneBuildVersionBinding(stage.BuildVersionBinding),
+		})
 		rows = append(rows, model.PipelineTemplateStage{Id: idutil.NewId(), TemplateId: templateId, StageId: stage.Id, StageName: stage.Name, StageVersion: stage.Version, DependsOn: dependsOn, SortOrder: item.SortOrder})
+	}
+	if err := validateSourceCommitDependencies(definitions); err != nil {
+		return nil, apperror.New(apperror.KindValidation, err.Error())
 	}
 	return rows, nil
 }
@@ -384,7 +397,19 @@ func pipelineStageDetail(stage model.PipelineStage) pipelinedto.PipelineStageDet
 	if stage.Artifacts != nil && strings.TrimSpace(*stage.Artifacts) != "" {
 		_ = json.Unmarshal([]byte(*stage.Artifacts), &artifacts)
 	}
-	return pipelinedto.PipelineStageDetail{Id: stage.Id, Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: artifacts, Description: stage.Description, Version: stage.Version, CreatedAt: stage.CreatedAt.UTC().Format(timeFormatRFC3339), UpdatedAt: stage.UpdatedAt.UTC().Format(timeFormatRFC3339)}
+	return pipelinedto.PipelineStageDetail{Id: stage.Id, Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: artifacts, BuildVersionBinding: buildVersionBindingDetail(stage.BuildVersionBinding), Description: stage.Description, Version: stage.Version, CreatedAt: stage.CreatedAt.UTC().Format(timeFormatRFC3339), UpdatedAt: stage.UpdatedAt.UTC().Format(timeFormatRFC3339)}
+}
+
+func buildVersionBindingDetail(value *model.BuildVersionBinding) *pipelinedto.BuildVersionBinding {
+	if value == nil {
+		return nil
+	}
+	result := &pipelinedto.BuildVersionBinding{ApplicationId: value.ApplicationId, ApplicationName: value.ApplicationName, ComponentName: value.ComponentName, ForkStrategy: value.ForkStrategy}
+	if value.FixedVersionId != nil {
+		fixedVersionId := *value.FixedVersionId
+		result.FixedVersionId = &fixedVersionId
+	}
+	return result
 }
 
 const timeFormatRFC3339 = "2006-01-02T15:04:05Z07:00"

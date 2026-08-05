@@ -3,6 +3,7 @@ package pipelinerepo
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -48,7 +49,11 @@ func (r Repository) ListPipelineStages(ctx context.Context, projectId string, pa
 	}
 	items := make([]model.PipelineStage, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt))
+		stage, err := r.pipelineStageWithBinding(ctx, pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt))
+		if err != nil {
+			return repository.Page[model.PipelineStage]{}, err
+		}
+		items = append(items, stage)
 	}
 	return repository.Page[model.PipelineStage]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
@@ -58,7 +63,7 @@ func (r Repository) PipelineStage(ctx context.Context, id string) (model.Pipelin
 	if err != nil {
 		return model.PipelineStage{}, fmt.Errorf("load pipeline stage %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt), nil
+	return r.pipelineStageWithBinding(ctx, pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt))
 }
 
 func (r Repository) PipelineStageByName(ctx context.Context, projectId string, name string) (model.PipelineStage, error) {
@@ -68,7 +73,7 @@ func (r Repository) PipelineStageByName(ctx context.Context, projectId string, n
 	if err != nil {
 		return model.PipelineStage{}, fmt.Errorf("load pipeline stage by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
-	return pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt), nil
+	return r.pipelineStageWithBinding(ctx, pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt))
 }
 
 func (r Repository) PipelineStagesByIds(ctx context.Context, projectId string, ids []string) ([]model.PipelineStage, error) {
@@ -83,31 +88,76 @@ func (r Repository) PipelineStagesByIds(ctx context.Context, projectId string, i
 	}
 	items := make([]model.PipelineStage, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt))
+		stage, err := r.pipelineStageWithBinding(ctx, pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt))
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, stage)
 	}
 	return items, nil
 }
 
 func (r Repository) CreatePipelineStage(ctx context.Context, stage model.PipelineStage) error {
-	now := time.Now().UTC()
-	err := r.q(ctx).CreatePipelineStage(ctx, pipelinesqlc.CreatePipelineStageParams{
-		ID: stage.Id, ProjectID: dbmodel.NullString(stage.ProjectId), Name: stage.Name, Image: stage.Image,
-		Script: stage.Script, Artifacts: dbmodel.NullString(stage.Artifacts), Description: stage.Description,
-		Version: int64(stage.Version), CreatedAt: now, UpdatedAt: now,
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		now := time.Now().UTC()
+		if err := r.q(txCtx).CreatePipelineStage(txCtx, pipelinesqlc.CreatePipelineStageParams{
+			ID: stage.Id, ProjectID: dbmodel.NullString(stage.ProjectId), Name: stage.Name, Image: stage.Image,
+			Script: stage.Script, Artifacts: dbmodel.NullString(stage.Artifacts), Description: stage.Description,
+			Version: int64(stage.Version), CreatedAt: now, UpdatedAt: now,
+		}); err != nil {
+			return fmt.Errorf("create pipeline stage %s: %w", stage.Name, err)
+		}
+		return r.replacePipelineStageBuildVersionBinding(txCtx, stage.Id, stage.BuildVersionBinding)
 	})
-	if err != nil {
-		return fmt.Errorf("create pipeline stage %s: %w", stage.Name, err)
-	}
-	return nil
 }
 
 func (r Repository) UpdatePipelineStage(ctx context.Context, stage model.PipelineStage) error {
-	err := r.q(ctx).UpdatePipelineStage(ctx, pipelinesqlc.UpdatePipelineStageParams{
-		Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: dbmodel.NullString(stage.Artifacts),
-		Description: stage.Description, Version: int64(stage.Version), UpdatedAt: time.Now().UTC(), ID: stage.Id,
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		if err := r.q(txCtx).UpdatePipelineStage(txCtx, pipelinesqlc.UpdatePipelineStageParams{
+			Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: dbmodel.NullString(stage.Artifacts),
+			Description: stage.Description, Version: int64(stage.Version), UpdatedAt: time.Now().UTC(), ID: stage.Id,
+		}); err != nil {
+			return fmt.Errorf("update pipeline stage %s: %w", stage.Id, err)
+		}
+		return r.replacePipelineStageBuildVersionBinding(txCtx, stage.Id, stage.BuildVersionBinding)
 	})
+}
+
+func (r Repository) pipelineStageWithBinding(ctx context.Context, stage model.PipelineStage) (model.PipelineStage, error) {
+	row, err := r.q(ctx).PipelineStageBuildVersionBindingByStageID(ctx, stage.Id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return stage, nil
+	}
 	if err != nil {
-		return fmt.Errorf("update pipeline stage %s: %w", stage.Id, err)
+		return model.PipelineStage{}, fmt.Errorf("load pipeline stage build version binding %s: %w", stage.Id, err)
+	}
+	stage.BuildVersionBinding = &model.BuildVersionBinding{
+		ApplicationId:   row.ApplicationID,
+		ApplicationName: row.ApplicationName,
+		ComponentName:   row.ComponentName,
+		ForkStrategy:    row.ForkStrategy,
+		FixedVersionId:  dbmodel.StringPtr(row.FixedVersionID),
+	}
+	return stage, nil
+}
+
+func (r Repository) replacePipelineStageBuildVersionBinding(ctx context.Context, stageId string, binding *model.BuildVersionBinding) error {
+	q := r.q(ctx)
+	if err := q.DeletePipelineStageBuildVersionBinding(ctx, stageId); err != nil {
+		return fmt.Errorf("delete pipeline stage build version binding %s: %w", stageId, err)
+	}
+	if binding == nil {
+		return nil
+	}
+	if err := q.CreatePipelineStageBuildVersionBinding(ctx, pipelinesqlc.CreatePipelineStageBuildVersionBindingParams{
+		PipelineStageID: stageId,
+		ApplicationID:   binding.ApplicationId,
+		ApplicationName: binding.ApplicationName,
+		ComponentName:   binding.ComponentName,
+		ForkStrategy:    binding.ForkStrategy,
+		FixedVersionID:  dbmodel.NullString(binding.FixedVersionId),
+	}); err != nil {
+		return fmt.Errorf("create pipeline stage build version binding %s: %w", stageId, err)
 	}
 	return nil
 }

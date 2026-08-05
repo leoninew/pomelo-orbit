@@ -123,16 +123,17 @@ func (x *PipelineSnapshotResp) GetCreatedAt() string {
 }
 
 type SnapshotStageResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	Image         string                 `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
-	Version       int32                  `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
-	DependsOn     []string               `protobuf:"bytes,5,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
-	Script        string                 `protobuf:"bytes,6,opt,name=script,proto3" json:"script,omitempty"`
-	Artifacts     []*ArtifactConfigResp  `protobuf:"bytes,7,rep,name=artifacts,proto3" json:"artifacts,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState   `protogen:"open.v1"`
+	Name                string                   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Id                  string                   `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	Image               string                   `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
+	Version             int32                    `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
+	DependsOn           []string                 `protobuf:"bytes,5,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
+	Script              string                   `protobuf:"bytes,6,opt,name=script,proto3" json:"script,omitempty"`
+	Artifacts           []*ArtifactConfigResp    `protobuf:"bytes,7,rep,name=artifacts,proto3" json:"artifacts,omitempty"`
+	BuildVersionBinding *BuildVersionBindingResp `protobuf:"bytes,8,opt,name=build_version_binding,json=buildVersionBinding,proto3,oneof" json:"build_version_binding,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *SnapshotStageResp) Reset() {
@@ -214,6 +215,13 @@ func (x *SnapshotStageResp) GetArtifacts() []*ArtifactConfigResp {
 	return nil
 }
 
+func (x *SnapshotStageResp) GetBuildVersionBinding() *BuildVersionBindingResp {
+	if x != nil {
+		return x.BuildVersionBinding
+	}
+	return nil
+}
+
 var File_orbit_v1_pipeline_snapshot_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_pipeline_snapshot_proto_rawDesc = "" +
@@ -229,7 +237,7 @@ const file_orbit_v1_pipeline_snapshot_proto_rawDesc = "" +
 	"\x0fstages_snapshot\x18\x06 \x03(\v2$.orbit.v1.pipeline.SnapshotStageRespR\x0estagesSnapshot\x12W\n" +
 	"\x12variables_snapshot\x18\a \x03(\v2(.orbit.v1.common.VariableDeclarationRespR\x11variablesSnapshot\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\b \x01(\tR\tcreatedAt\"\xe3\x01\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\"\xe2\x02\n" +
 	"\x11SnapshotStageResp\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x14\n" +
@@ -238,7 +246,9 @@ const file_orbit_v1_pipeline_snapshot_proto_rawDesc = "" +
 	"\n" +
 	"depends_on\x18\x05 \x03(\tR\tdependsOn\x12\x16\n" +
 	"\x06script\x18\x06 \x01(\tR\x06script\x12C\n" +
-	"\tartifacts\x18\a \x03(\v2%.orbit.v1.pipeline.ArtifactConfigRespR\tartifactsB\xd4\x01\n" +
+	"\tartifacts\x18\a \x03(\v2%.orbit.v1.pipeline.ArtifactConfigRespR\tartifacts\x12c\n" +
+	"\x15build_version_binding\x18\b \x01(\v2*.orbit.v1.pipeline.BuildVersionBindingRespH\x00R\x13buildVersionBinding\x88\x01\x01B\x18\n" +
+	"\x16_build_version_bindingB\xd4\x01\n" +
 	"\x15com.orbit.v1.pipelineB\rSnapshotProtoP\x01ZFgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/pipeline\xa2\x02\x03OVP\xaa\x02\x11Orbit.V1.Pipeline\xca\x02\x11Orbit\\V1\\Pipeline\xe2\x02\x1dOrbit\\V1\\Pipeline\\GPBMetadata\xea\x02\x13Orbit::V1::Pipelineb\x06proto3"
 
 var (
@@ -259,16 +269,18 @@ var file_orbit_v1_pipeline_snapshot_proto_goTypes = []any{
 	(*SnapshotStageResp)(nil),              // 1: orbit.v1.pipeline.SnapshotStageResp
 	(*common.VariableDeclarationResp)(nil), // 2: orbit.v1.common.VariableDeclarationResp
 	(*ArtifactConfigResp)(nil),             // 3: orbit.v1.pipeline.ArtifactConfigResp
+	(*BuildVersionBindingResp)(nil),        // 4: orbit.v1.pipeline.BuildVersionBindingResp
 }
 var file_orbit_v1_pipeline_snapshot_proto_depIdxs = []int32{
 	1, // 0: orbit.v1.pipeline.PipelineSnapshotResp.stages_snapshot:type_name -> orbit.v1.pipeline.SnapshotStageResp
 	2, // 1: orbit.v1.pipeline.PipelineSnapshotResp.variables_snapshot:type_name -> orbit.v1.common.VariableDeclarationResp
 	3, // 2: orbit.v1.pipeline.SnapshotStageResp.artifacts:type_name -> orbit.v1.pipeline.ArtifactConfigResp
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	4, // 3: orbit.v1.pipeline.SnapshotStageResp.build_version_binding:type_name -> orbit.v1.pipeline.BuildVersionBindingResp
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_pipeline_snapshot_proto_init() }
@@ -277,6 +289,7 @@ func file_orbit_v1_pipeline_snapshot_proto_init() {
 		return
 	}
 	file_orbit_v1_pipeline_pipeline_stage_proto_init()
+	file_orbit_v1_pipeline_snapshot_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

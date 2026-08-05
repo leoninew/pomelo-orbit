@@ -100,7 +100,7 @@
           <MonacoEditor
             :model-value="stage.script"
             language="shell"
-            height="300px"
+            height="200px"
             :readonly="true"
             squared
           />
@@ -127,9 +127,9 @@
             <thead>
               <tr>
                 <th>#</th>
-                <th>{{ t('buildStageDetail.artifactType') }}</th>
+                <th>Collector</th>
                 <th>{{ t('common.name') }}</th>
-                <th>{{ t('buildStageDetail.pathOrImage') }}</th>
+                <th>引用/命令</th>
                 <th class="w-32">{{ t('common.operation') }}</th>
               </tr>
             </thead>
@@ -138,11 +138,13 @@
                 <td class="text-muted-foreground">{{ idx + 1 }}</td>
                 <td>
                   <AppBadge variant="pill">
-                    {{ artifact.type }}
+                    {{ artifact.collector }}
                   </AppBadge>
                 </td>
                 <td class="text-foreground">{{ artifact.name }}</td>
-                <td class="text-muted-foreground">{{ artifact.path }}</td>
+                <td class="text-muted-foreground">
+                  {{ artifact.collector === 'command' ? artifact.command : artifact.reference }}
+                </td>
                 <td class="w-32">
                   <div class="flex items-center gap-3">
                     <button class="app-link" :disabled="saving" @click="openEditArtifactModal(idx)">
@@ -160,6 +162,56 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="app-surface app-detail-card">
+        <div class="app-section-header app-detail-section-header">
+          <h2 class="app-detail-section-title">应用版本关联</h2>
+          <div class="flex items-center gap-2">
+            <button
+              class="app-button-primary h-9 px-3"
+              :disabled="saving"
+              @click="openBuildVersionBindingDialog"
+            >
+              <Link2 class="size-4" />
+              {{ stage.build_version_binding ? '编辑关联' : '配置关联' }}
+            </button>
+            <button
+              v-if="stage.build_version_binding"
+              class="app-button h-9 px-3"
+              :disabled="saving"
+              @click="clearBuildVersionBinding"
+            >
+              <Unlink class="size-4" />
+              解除关联
+            </button>
+          </div>
+        </div>
+        <dl v-if="stage.build_version_binding" class="app-detail-info-grid">
+          <div class="flex gap-2">
+            <dt>应用</dt>
+            <dd class="min-w-0 break-all text-foreground">
+              {{ stage.build_version_binding.application_name }}
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>Fork 策略</dt>
+            <dd class="text-foreground">{{ stage.build_version_binding.fork_strategy }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>目标组件</dt>
+            <dd class="text-foreground">{{ stage.build_version_binding.component_name }}</dd>
+          </div>
+          <div v-if="stage.build_version_binding.fixed_version_id" class="flex gap-2">
+            <dt>固定版本</dt>
+            <dd class="min-w-0 break-all text-foreground">
+              {{ stage.build_version_binding.fixed_version_id }}
+            </dd>
+          </div>
+        </dl>
+        <div v-else class="px-5 py-10 text-center text-sm text-muted-foreground">
+          未关联应用版本
         </div>
       </div>
     </template>
@@ -219,6 +271,70 @@
       </template>
     </AppDialog>
 
+    <AppDialog
+      v-model:open="isBuildVersionBindingDialogOpen"
+      title="应用版本关联"
+      width-class="w-[min(620px,calc(100vw-32px))]"
+    >
+      <div class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="app-field-label block">
+            应用
+            <span class="text-destructive">*</span>
+          </label>
+          <ComboboxSelect
+            :model-value="bindingForm.applicationId"
+            :options="applicationOptions"
+            placeholder="选择应用"
+            @update:model-value="handleBindingApplicationChange"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block">
+            Fork 策略
+            <span class="text-destructive">*</span>
+          </label>
+          <RawValueSelect
+            :model-value="bindingForm.forkStrategy"
+            :values="['latest', 'fixed']"
+            @update:model-value="handleForkStrategyChange"
+          />
+        </div>
+        <div v-if="bindingForm.forkStrategy === 'fixed'" class="space-y-1.5">
+          <label class="app-field-label block">
+            固定版本
+            <span class="text-destructive">*</span>
+          </label>
+          <ComboboxSelect
+            :model-value="bindingForm.fixedVersionId"
+            :options="versionOptions"
+            placeholder="选择版本"
+            @update:model-value="handleFixedVersionChange"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block">
+            目标组件
+            <span class="text-destructive">*</span>
+          </label>
+          <ComboboxSelect
+            :model-value="bindingForm.componentName"
+            :options="componentOptions"
+            placeholder="选择组件"
+            @update:model-value="handleBindingComponentChange"
+          />
+        </div>
+        <p v-if="bindingError" class="app-field-error" role="alert">{{ bindingError }}</p>
+      </div>
+      <template #footer>
+        <AppDialogActions
+          :busy="saving"
+          @cancel="isBuildVersionBindingDialogOpen = false"
+          @confirm="saveBuildVersionBinding"
+        />
+      </template>
+    </AppDialog>
+
     <AppDrawer
       v-model:open="showScriptDrawer"
       :title="t('buildStageDetail.editScript')"
@@ -249,13 +365,13 @@
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label class="app-field-label block">
-            {{ t('buildStageDetail.artifactType') }}
+            Collector
             <span class="text-destructive">*</span>
           </label>
           <RawValueSelect
-            v-model="artifactForm.type"
-            :values="artifactTypeValues"
-            :placeholder="t('buildStageDetail.artifactTypePlaceholder')"
+            v-model="artifactForm.collector"
+            :values="artifactCollectorValues"
+            placeholder="选择 collector"
           />
         </div>
         <div class="space-y-1.5">
@@ -276,24 +392,56 @@
             {{ artifactErrors.name }}
           </p>
         </div>
-        <div class="space-y-1.5">
+        <div v-if="artifactForm.collector !== 'command'" class="space-y-1.5">
           <label class="app-field-label block">
-            {{ t('buildStageDetail.pathOrImage') }}
+            引用
             <span class="text-destructive">*</span>
           </label>
           <input
-            v-model="artifactForm.path"
+            v-model="artifactForm.reference"
             type="text"
             class="app-input"
-            :class="artifactErrors.path ? 'app-input-error' : ''"
-            :placeholder="t('buildStageDetail.artifactPathPlaceholder')"
-            :aria-invalid="artifactErrors.path ? 'true' : undefined"
-            @input="artifactErrors.path = ''"
+            :class="artifactErrors.reference ? 'app-input-error' : ''"
+            :placeholder="
+              artifactForm.collector === 'docker_image' ? '本地镜像引用' : '制品文件路径'
+            "
+            :aria-invalid="artifactErrors.reference ? 'true' : undefined"
+            @input="artifactErrors.reference = ''"
           />
-          <p v-if="artifactErrors.path" class="app-field-error" role="alert">
-            {{ artifactErrors.path }}
+          <p v-if="artifactErrors.reference" class="app-field-error" role="alert">
+            {{ artifactErrors.reference }}
           </p>
         </div>
+        <template v-else>
+          <div class="space-y-1.5">
+            <label class="app-field-label block">
+              命令
+              <span class="text-destructive">*</span>
+            </label>
+            <input
+              v-model="artifactForm.command"
+              type="text"
+              class="app-input"
+              :class="artifactErrors.command ? 'app-input-error' : ''"
+              placeholder="在阶段运行环境中执行"
+              :aria-invalid="artifactErrors.command ? 'true' : undefined"
+              @input="artifactErrors.command = ''"
+            />
+            <p v-if="artifactErrors.command" class="app-field-error" role="alert">
+              {{ artifactErrors.command }}
+            </p>
+          </div>
+          <div class="space-y-1.5">
+            <label class="app-field-label block">
+              输出格式
+              <span class="text-destructive">*</span>
+            </label>
+            <RawValueSelect v-model="artifactForm.format" :values="artifactValueFormats" />
+            <p v-if="artifactErrors.format" class="app-field-error" role="alert">
+              {{ artifactErrors.format }}
+            </p>
+          </div>
+        </template>
       </div>
       <template #footer>
         <AppDialogActions
@@ -347,11 +495,12 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Copy, Pencil, Plus, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Copy, Link2, Pencil, Plus, Trash2, Unlink } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
+  import { applicationApi } from '@/api/application/application';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
@@ -360,12 +509,16 @@
   import AppDrawer from '@/components/AppDrawer.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
+  import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import { useProjectStore } from '@/stores/project';
   import type {
     ArtifactConfigResp,
     PipelineStageResp,
   } from '@/gen/proto/orbit/v1/pipeline/pipeline_stage';
+  import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
+  import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import { formatTime } from '@/utils/time';
 
   const route = useRoute();
@@ -373,6 +526,7 @@
   const { t } = useI18n({ useScope: 'global' });
   const stageId = computed(() => route.params.id as string);
   const toast = useToast();
+  const projectStore = useProjectStore();
 
   const { status, execute } = useStatusAsync();
   const { loading: saving, execute: executeSave } = useStatusAsync();
@@ -384,21 +538,63 @@
   const isEditDialogOpen = ref(false);
   const isArtifactDialogOpen = ref(false);
   const isDeleteArtifactDialogOpen = ref(false);
+  const isBuildVersionBindingDialogOpen = ref(false);
   const showScriptDrawer = ref(false);
   const scriptTemp = ref('');
-  const artifactTypeValues = ['docker_image', 'binary'];
+  const artifactCollectorValues = ['file', 'command', 'docker_image'];
+  const artifactValueFormats = ['text', 'git_object_id'];
   const form = reactive({ name: '', image: '', description: '' });
   const editErrors = reactive({ name: '', image: '' });
   const artifactForm = reactive({
     isEdit: false,
     order: -1,
-    type: 'docker_image',
+    collector: 'docker_image',
     name: '',
-    path: '',
+    reference: '',
+    command: '',
+    format: '',
   });
-  const artifactErrors = reactive({ name: '', path: '' });
+  const artifactErrors = reactive({ name: '', reference: '', command: '', format: '' });
   const sortableArtifacts = ref<ArtifactConfigResp[]>([]);
   const artifactToDelete = ref(-1);
+  const applications = ref<ApplicationResp[]>([]);
+  const versions = ref<VersionResp[]>([]);
+  const sourceVersion = ref<VersionResp>();
+  const bindingError = ref('');
+  const bindingForm = reactive({
+    applicationId: '',
+    componentName: '',
+    forkStrategy: 'latest',
+    fixedVersionId: '',
+  });
+
+  const applicationOptions = computed(() =>
+    applications.value.map((application) => ({
+      value: application.id,
+      label: application.name,
+      description: application.code,
+    }))
+  );
+  const versionOptions = computed(() =>
+    versions.value.map((version) => ({
+      value: version.id,
+      label: version.label,
+      description: version.status,
+    }))
+  );
+  const latestVersionId = computed(() =>
+    versions.value.reduce(
+      (latestId, version) => (version.id > latestId ? version.id : latestId),
+      ''
+    )
+  );
+  const componentOptions = computed(() =>
+    (sourceVersion.value?.components ?? []).map((component) => ({
+      value: component.name,
+      label: component.name,
+      description: component.image,
+    }))
+  );
 
   async function fetchStage() {
     try {
@@ -409,6 +605,143 @@
     } catch {
       toast.error(t('buildStageDetail.fetchFailed'));
       router.push('/pipeline/stage');
+    }
+  }
+
+  async function loadApplications() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
+    const response = await applicationApi.list({ project_id: projectId, per_page: 100 });
+    applications.value = response.items;
+  }
+
+  async function loadVersions(applicationId: string) {
+    if (!applicationId) {
+      versions.value = [];
+      sourceVersion.value = undefined;
+      return;
+    }
+    const response = await applicationApi.listVersions(applicationId, { per_page: 100 });
+    versions.value = response.items;
+  }
+
+  async function loadSourceVersion(versionId: string) {
+    sourceVersion.value = versionId ? await applicationApi.getVersion(versionId) : undefined;
+  }
+
+  async function loadSourceVersionForStrategy() {
+    const versionId =
+      bindingForm.forkStrategy === 'fixed' ? bindingForm.fixedVersionId : latestVersionId.value;
+    await loadSourceVersion(versionId);
+  }
+
+  async function openBuildVersionBindingDialog() {
+    const binding = stage.value?.build_version_binding;
+    Object.assign(bindingForm, {
+      applicationId: binding?.application_id ?? '',
+      componentName: binding?.component_name ?? '',
+      forkStrategy: binding?.fork_strategy ?? 'latest',
+      fixedVersionId: binding?.fixed_version_id ?? '',
+    });
+    bindingError.value = '';
+    try {
+      await loadApplications();
+      await loadVersions(bindingForm.applicationId);
+      await loadSourceVersionForStrategy();
+      isBuildVersionBindingDialogOpen.value = true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '加载应用版本失败');
+    }
+  }
+
+  async function handleBindingApplicationChange(value: string | number | boolean) {
+    bindingForm.applicationId = String(value || '');
+    bindingForm.fixedVersionId = '';
+    bindingForm.componentName = '';
+    sourceVersion.value = undefined;
+    bindingError.value = '';
+    try {
+      await loadVersions(bindingForm.applicationId);
+      await loadSourceVersionForStrategy();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '加载应用版本失败');
+    }
+  }
+
+  async function handleFixedVersionChange(value: string | number | boolean) {
+    bindingForm.fixedVersionId = String(value || '');
+    bindingForm.componentName = '';
+    bindingError.value = '';
+    try {
+      await loadSourceVersionForStrategy();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '加载版本组件失败');
+    }
+  }
+
+  async function handleForkStrategyChange(value: string | number | boolean) {
+    bindingForm.forkStrategy = String(value || 'latest');
+    bindingForm.componentName = '';
+    bindingError.value = '';
+    try {
+      await loadSourceVersionForStrategy();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '加载版本组件失败');
+    }
+  }
+
+  function handleBindingComponentChange(value: string | number | boolean) {
+    bindingForm.componentName = String(value || '');
+    bindingError.value = '';
+  }
+
+  async function saveBuildVersionBinding() {
+    if (!stage.value) {
+      return;
+    }
+    bindingError.value =
+      !bindingForm.applicationId || !bindingForm.componentName.trim()
+        ? '请选择应用和目标组件'
+        : bindingForm.forkStrategy === 'fixed' && !bindingForm.fixedVersionId
+          ? '请选择固定版本'
+          : '';
+    if (bindingError.value) {
+      return;
+    }
+    try {
+      await executeSave(async () => {
+        stage.value = await pipelineStageApi.update(stageId.value, {
+          build_version_binding: {
+            application_id: bindingForm.applicationId,
+            component_name: bindingForm.componentName.trim(),
+            fork_strategy: bindingForm.forkStrategy,
+            fixed_version_id:
+              bindingForm.forkStrategy === 'fixed' ? bindingForm.fixedVersionId : undefined,
+          },
+        });
+        isBuildVersionBindingDialogOpen.value = false;
+        toast.success('应用版本关联已保存');
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '保存应用版本关联失败');
+    }
+  }
+
+  async function clearBuildVersionBinding() {
+    if (!stage.value) {
+      return;
+    }
+    try {
+      await executeSave(async () => {
+        stage.value = await pipelineStageApi.update(stageId.value, {
+          clear_build_version_binding: true,
+        });
+        toast.success('应用版本关联已解除');
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '解除应用版本关联失败');
     }
   }
 
@@ -491,11 +824,13 @@
     Object.assign(artifactForm, {
       isEdit: false,
       order: -1,
-      type: 'docker_image',
+      collector: 'docker_image',
       name: '',
-      path: '',
+      reference: '',
+      command: '',
+      format: '',
     });
-    Object.assign(artifactErrors, { name: '', path: '' });
+    Object.assign(artifactErrors, { name: '', reference: '', command: '', format: '' });
     isArtifactDialogOpen.value = true;
   }
 
@@ -507,11 +842,13 @@
     Object.assign(artifactForm, {
       isEdit: true,
       order: idx,
-      type: artifact.type,
+      collector: artifact.collector,
       name: artifact.name,
-      path: artifact.path,
+      reference: artifact.reference,
+      command: artifact.command,
+      format: artifact.format,
     });
-    Object.assign(artifactErrors, { name: '', path: '' });
+    Object.assign(artifactErrors, { name: '', reference: '', command: '', format: '' });
     isArtifactDialogOpen.value = true;
   }
 
@@ -546,29 +883,37 @@
     artifactErrors.name = artifactForm.name.trim()
       ? ''
       : t('buildStageDetail.artifactNameRequired');
-    artifactErrors.path = artifactForm.path.trim()
-      ? ''
-      : t('buildStageDetail.artifactPathRequired');
-    if (artifactErrors.name || artifactErrors.path) {
+    artifactErrors.reference =
+      artifactForm.collector !== 'command' && !artifactForm.reference.trim() ? '请输入引用' : '';
+    artifactErrors.command =
+      artifactForm.collector === 'command' && !artifactForm.command.trim() ? '请输入命令' : '';
+    artifactErrors.format =
+      artifactForm.collector === 'command' && !artifactForm.format ? '请选择输出格式' : '';
+    if (
+      artifactErrors.name ||
+      artifactErrors.reference ||
+      artifactErrors.command ||
+      artifactErrors.format
+    ) {
       return;
     }
 
+    const nextArtifact = {
+      collector: artifactForm.collector,
+      name: artifactForm.name.trim(),
+      reference: artifactForm.collector === 'command' ? '' : artifactForm.reference.trim(),
+      command: artifactForm.collector === 'command' ? artifactForm.command.trim() : '',
+      format: artifactForm.collector === 'command' ? artifactForm.format : '',
+    };
+
     if (artifactForm.isEdit) {
-      sortableArtifacts.value[artifactForm.order] = {
-        type: artifactForm.type,
-        name: artifactForm.name,
-        path: artifactForm.path,
-      };
+      sortableArtifacts.value[artifactForm.order] = nextArtifact;
     } else {
-      if (sortableArtifacts.value.some((a) => a.name === artifactForm.name)) {
+      if (sortableArtifacts.value.some((a) => a.name === nextArtifact.name)) {
         artifactErrors.name = t('buildStageDetail.artifactNameExists');
         return;
       }
-      sortableArtifacts.value.push({
-        type: artifactForm.type,
-        name: artifactForm.name,
-        path: artifactForm.path,
-      });
+      sortableArtifacts.value.push(nextArtifact);
     }
 
     try {
@@ -617,5 +962,14 @@
   }
 
   watch(stageId, fetchStage);
+  watch(
+    () => bindingForm.forkStrategy,
+    (strategy) => {
+      if (strategy === 'latest') {
+        bindingForm.fixedVersionId = '';
+        sourceVersion.value = undefined;
+      }
+    }
+  );
   onMounted(fetchStage);
 </script>

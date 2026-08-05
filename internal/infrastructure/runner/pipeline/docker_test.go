@@ -47,6 +47,29 @@ func TestRunArgsRejectRelativeHostPath(t *testing.T) {
 	}
 }
 
+func TestCommandArgsUseStageWorkspaceWithoutContainerName(t *testing.T) {
+	hostPath := filepath.Join(t.TempDir(), "workspace")
+	args, err := commandArgs(pipelinerunport.RunOptions{
+		ContainerName: "pipeline-stage-1",
+		Image:         "alpine/git",
+		Volumes: []pipelinerunport.VolumeMount{
+			{HostPath: hostPath, ContainerPath: "/workspace", Mode: "rw"},
+		},
+	}, "git rev-parse HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if containsArg(args, "--name", "pipeline-stage-1") {
+		t.Fatalf("command collector must not reuse the stage container name: %+v", args)
+	}
+	if !containsArg(args, "--entrypoint", "sh") {
+		t.Fatalf("expected shell entrypoint in command collector args: %+v", args)
+	}
+	if args[len(args)-2] != "-c" || args[len(args)-1] != "git rev-parse HEAD" {
+		t.Fatalf("unexpected command collector args: %+v", args)
+	}
+}
+
 func containsArg(args []string, flag string, value string) bool {
 	for i := 0; i+1 < len(args); i++ {
 		if args[i] == flag && args[i+1] == value {

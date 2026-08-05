@@ -646,27 +646,31 @@ func (x *VersionComponentAdvancedUpdateReq) GetResources() *ComponentResources {
 }
 
 type VersionComponentResp struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Id            string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	VersionId     string                    `protobuf:"bytes,2,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
-	Name          string                    `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Image         string                    `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
-	Command       string                    `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty"`
-	Env           []*ComponentEnv           `protobuf:"bytes,7,rep,name=env,proto3" json:"env,omitempty"`
-	Endpoints     []*ComponentEndpoint      `protobuf:"bytes,8,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
-	Mounts        []*ComponentMount         `protobuf:"bytes,9,rep,name=mounts,proto3" json:"mounts,omitempty"`
-	Dependencies  []*ComponentDependency    `protobuf:"bytes,11,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
-	Healthcheck   *ComponentHealthcheck     `protobuf:"bytes,12,opt,name=healthcheck,proto3" json:"healthcheck,omitempty"`
-	Resources     *ComponentResources       `protobuf:"bytes,13,opt,name=resources,proto3" json:"resources,omitempty"`
-	PullPolicy    string                    `protobuf:"bytes,14,opt,name=pull_policy,json=pullPolicy,proto3" json:"pull_policy,omitempty"`
-	CreatedAt     string                    `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     string                    `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	RestartPolicy *string                   `protobuf:"bytes,17,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
-	Tmpfs         []*ComponentTmpfs         `protobuf:"bytes,18,rep,name=tmpfs,proto3" json:"tmpfs,omitempty"`
-	Ulimits       []*ComponentUlimit        `protobuf:"bytes,19,rep,name=ulimits,proto3" json:"ulimits,omitempty"`
-	Devices       []*ComponentDeviceRequest `protobuf:"bytes,20,rep,name=devices,proto3" json:"devices,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                    protoimpl.MessageState    `protogen:"open.v1"`
+	Id                       string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	VersionId                string                    `protobuf:"bytes,2,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	Name                     string                    `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Image                    string                    `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
+	Command                  string                    `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty"`
+	Env                      []*ComponentEnv           `protobuf:"bytes,7,rep,name=env,proto3" json:"env,omitempty"`
+	Endpoints                []*ComponentEndpoint      `protobuf:"bytes,8,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
+	Mounts                   []*ComponentMount         `protobuf:"bytes,9,rep,name=mounts,proto3" json:"mounts,omitempty"`
+	Dependencies             []*ComponentDependency    `protobuf:"bytes,11,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
+	Healthcheck              *ComponentHealthcheck     `protobuf:"bytes,12,opt,name=healthcheck,proto3" json:"healthcheck,omitempty"`
+	Resources                *ComponentResources       `protobuf:"bytes,13,opt,name=resources,proto3" json:"resources,omitempty"`
+	PullPolicy               string                    `protobuf:"bytes,14,opt,name=pull_policy,json=pullPolicy,proto3" json:"pull_policy,omitempty"`
+	CreatedAt                string                    `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt                string                    `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	RestartPolicy            *string                   `protobuf:"bytes,17,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
+	Tmpfs                    []*ComponentTmpfs         `protobuf:"bytes,18,rep,name=tmpfs,proto3" json:"tmpfs,omitempty"`
+	Ulimits                  []*ComponentUlimit        `protobuf:"bytes,19,rep,name=ulimits,proto3" json:"ulimits,omitempty"`
+	Devices                  []*ComponentDeviceRequest `protobuf:"bytes,20,rep,name=devices,proto3" json:"devices,omitempty"`
+	ArtifactId               *string                   `protobuf:"bytes,21,opt,name=artifact_id,json=artifactId,proto3,oneof" json:"artifact_id,omitempty"`
+	ArtifactImageRef         *string                   `protobuf:"bytes,22,opt,name=artifact_image_ref,json=artifactImageRef,proto3,oneof" json:"artifact_image_ref,omitempty"`
+	ArtifactLocalImageSha256 *string                   `protobuf:"bytes,23,opt,name=artifact_local_image_sha256,json=artifactLocalImageSha256,proto3,oneof" json:"artifact_local_image_sha256,omitempty"`
+	ArtifactSourceCommitSha  *string                   `protobuf:"bytes,24,opt,name=artifact_source_commit_sha,json=artifactSourceCommitSha,proto3,oneof" json:"artifact_source_commit_sha,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *VersionComponentResp) Reset() {
@@ -823,6 +827,34 @@ func (x *VersionComponentResp) GetDevices() []*ComponentDeviceRequest {
 		return x.Devices
 	}
 	return nil
+}
+
+func (x *VersionComponentResp) GetArtifactId() string {
+	if x != nil && x.ArtifactId != nil {
+		return *x.ArtifactId
+	}
+	return ""
+}
+
+func (x *VersionComponentResp) GetArtifactImageRef() string {
+	if x != nil && x.ArtifactImageRef != nil {
+		return *x.ArtifactImageRef
+	}
+	return ""
+}
+
+func (x *VersionComponentResp) GetArtifactLocalImageSha256() string {
+	if x != nil && x.ArtifactLocalImageSha256 != nil {
+		return *x.ArtifactLocalImageSha256
+	}
+	return ""
+}
+
+func (x *VersionComponentResp) GetArtifactSourceCommitSha() string {
+	if x != nil && x.ArtifactSourceCommitSha != nil {
+		return *x.ArtifactSourceCommitSha
+	}
+	return ""
 }
 
 type ComponentEnv struct {
@@ -1967,7 +1999,7 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"!VersionComponentAdvancedUpdateReq\x12:\n" +
 	"\x05tmpfs\x18\x01 \x03(\v2$.orbit.v1.application.ComponentTmpfsR\x05tmpfs\x12?\n" +
 	"\aulimits\x18\x02 \x03(\v2%.orbit.v1.application.ComponentUlimitR\aulimits\x12F\n" +
-	"\tresources\x18\x03 \x01(\v2(.orbit.v1.application.ComponentResourcesR\tresources\"\x92\a\n" +
+	"\tresources\x18\x03 \x01(\v2(.orbit.v1.application.ComponentResourcesR\tresources\"\xd7\t\n" +
 	"\x14VersionComponentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1990,8 +2022,17 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x0erestart_policy\x18\x11 \x01(\tH\x00R\rrestartPolicy\x88\x01\x01\x12:\n" +
 	"\x05tmpfs\x18\x12 \x03(\v2$.orbit.v1.application.ComponentTmpfsR\x05tmpfs\x12?\n" +
 	"\aulimits\x18\x13 \x03(\v2%.orbit.v1.application.ComponentUlimitR\aulimits\x12F\n" +
-	"\adevices\x18\x14 \x03(\v2,.orbit.v1.application.ComponentDeviceRequestR\adevicesB\x11\n" +
-	"\x0f_restart_policyJ\x04\b\x06\x10\a\"6\n" +
+	"\adevices\x18\x14 \x03(\v2,.orbit.v1.application.ComponentDeviceRequestR\adevices\x12$\n" +
+	"\vartifact_id\x18\x15 \x01(\tH\x01R\n" +
+	"artifactId\x88\x01\x01\x121\n" +
+	"\x12artifact_image_ref\x18\x16 \x01(\tH\x02R\x10artifactImageRef\x88\x01\x01\x12B\n" +
+	"\x1bartifact_local_image_sha256\x18\x17 \x01(\tH\x03R\x18artifactLocalImageSha256\x88\x01\x01\x12@\n" +
+	"\x1aartifact_source_commit_sha\x18\x18 \x01(\tH\x04R\x17artifactSourceCommitSha\x88\x01\x01B\x11\n" +
+	"\x0f_restart_policyB\x0e\n" +
+	"\f_artifact_idB\x15\n" +
+	"\x13_artifact_image_refB\x1e\n" +
+	"\x1c_artifact_local_image_sha256B\x1d\n" +
+	"\x1b_artifact_source_commit_shaJ\x04\b\x06\x10\a\"6\n" +
 	"\fComponentEnv\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\"\xd7\x02\n" +

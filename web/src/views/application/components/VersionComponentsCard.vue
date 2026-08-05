@@ -32,7 +32,19 @@
               </router-link>
             </td>
             <td class="max-w-md whitespace-normal break-all text-muted-foreground">
-              {{ component.image }}
+              <div>{{ component.image }}</div>
+              <div
+                v-if="component.artifact_local_image_sha256"
+                class="mt-1 font-mono text-xs text-muted-foreground"
+              >
+                {{ component.artifact_local_image_sha256 }}
+              </div>
+              <div
+                v-if="component.artifact_source_commit_sha"
+                class="font-mono text-xs text-muted-foreground"
+              >
+                {{ component.artifact_source_commit_sha }}
+              </div>
             </td>
             <td class="text-muted-foreground">{{ component.pull_policy }}</td>
             <td class="text-muted-foreground">{{ component.restart_policy }}</td>

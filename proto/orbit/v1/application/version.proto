@@ -89,6 +89,10 @@ message VersionComponentResp {
   repeated ComponentTmpfs tmpfs = 18;
   repeated ComponentUlimit ulimits = 19;
   repeated ComponentDeviceRequest devices = 20;
+  optional string artifact_id = 21;
+  optional string artifact_image_ref = 22;
+  optional string artifact_local_image_sha256 = 23;
+  optional string artifact_source_commit_sha = 24;
 }
 
 message ComponentEnv {

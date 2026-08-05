@@ -53,126 +53,173 @@
         </div>
         <AppLoadingState v-if="versionListLoading" size="compact" />
         <AppEmptyState v-else-if="versions.length === 0" size="compact" />
-        <AccordionRoot
-          v-else-if="!versionsOnly"
-          :default-value="versions[0] ? [versions[0].id] : []"
-          type="multiple"
-          class="divide-y divide-border"
-        >
-          <AccordionItem v-for="version in versions" :key="version.id" :value="version.id">
-            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
-              <AccordionHeader class="min-w-0 flex-1">
-                <AccordionTrigger
-                  class="group flex w-full items-center justify-between gap-3 text-left hover:text-foreground"
-                  @click="loadVersionComponents(version.id)"
-                >
-                  <ChevronDown
-                    class="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
-                  />
-                  <span
-                    class="grid min-w-0 flex-1 gap-x-6 gap-y-1 sm:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_minmax(10rem,0.8fr)] sm:items-center"
-                  >
-                    <span class="flex min-w-0 items-center gap-2">
-                      <span class="break-words text-sm text-foreground">
-                        {{ version.label }}
-                      </span>
-                      <AppBadge variant="pill" :tone="versionStatusTone(version.status)">
-                        {{ version.status }}
-                      </AppBadge>
-                    </span>
-                    <span
-                      v-if="version.component_summary"
-                      class="break-words text-sm text-muted-foreground"
-                    >
-                      {{ version.component_summary }}
-                    </span>
-                    <span v-if="version.note" class="break-words text-sm text-muted-foreground">
-                      {{ version.note }}
-                    </span>
+        <div v-else-if="!versionsOnly" class="overflow-x-auto">
+          <table class="app-data-table min-w-[1000px]">
+            <thead>
+              <tr>
+                <th class="w-12">
+                  <span class="sr-only">
+                    {{ t('application.detail.actions.expandComponents') }}
                   </span>
-                </AccordionTrigger>
-              </AccordionHeader>
-              <div class="flex shrink-0 flex-wrap items-center gap-3 text-sm">
-                <router-link :to="`/version/${version.id}`" class="app-link">
-                  {{ t('application.view') }}
-                </router-link>
-                <button class="app-link" :disabled="operating" @click="previewVersion(version.id)">
-                  {{ t('application.detail.actions.preview') }}
-                </button>
-                <button class="app-link" @click="openForkModal(version)">
-                  {{ t('application.detail.actions.fork') }}
-                </button>
-              </div>
-            </div>
-            <AccordionContent class="border-t border-border px-5 py-4">
-              <AppLoadingState
-                v-if="versionComponentLoadState[version.id] === 'loading'"
-                size="compact"
-              />
-              <p
-                v-else-if="versionComponentLoadState[version.id] === 'error'"
-                class="py-2 text-sm text-destructive"
-              >
-                {{ t('application.versionDetail.componentsLoadFailed') }}
-              </p>
-              <AppEmptyState
-                v-else-if="versionComponents[version.id]?.length === 0"
-                size="compact"
-              />
-              <div v-else-if="versionComponents[version.id]" class="overflow-x-auto">
-                <table class="app-data-table min-w-[840px]">
-                  <thead>
-                    <tr>
-                      <th>{{ t('application.detail.fields.component') }}</th>
-                      <th>{{ t('application.detail.fields.image') }}</th>
-                      <th>{{ t('application.componentDetail.fields.pullPolicy') }}</th>
-                      <th>{{ t('application.componentDetail.fields.restartPolicy') }}</th>
-                      <th>{{ t('common.operation') }}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="component in versionComponents[version.id]" :key="component.id">
-                      <td>
-                        <router-link
-                          :to="`/version/${version.id}/component/${component.id}`"
-                          class="app-link"
-                        >
-                          {{ component.name }}
-                        </router-link>
-                      </td>
-                      <td class="max-w-md whitespace-normal break-all text-muted-foreground">
-                        {{ component.image }}
-                      </td>
-                      <td class="text-muted-foreground">{{ component.pull_policy }}</td>
-                      <td class="text-muted-foreground">{{ component.restart_policy }}</td>
-                      <td>
-                        <div
-                          v-if="version.status === 'unpublished'"
-                          class="flex items-center gap-2"
-                        >
-                          <button
-                            class="app-link"
-                            :disabled="operating"
-                            @click="openComponentEditDialog(version.id, component)"
-                          >
-                            {{ t('common.edit') }}
-                          </button>
-                          <button
-                            class="app-link-danger"
-                            :disabled="operating"
-                            @click="openComponentDeleteDialog(version.id, component)"
-                          >
-                            {{ t('common.delete') }}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </AccordionRoot>
+                </th>
+                <th>{{ t('application.detail.fields.versionLabel') }}</th>
+                <th>{{ t('common.status') }}</th>
+                <th>{{ t('application.detail.fields.components') }}</th>
+                <th>{{ t('common.createdAt') }}</th>
+                <th>{{ t('common.operation') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="version in versions" :key="version.id">
+                <tr>
+                  <td class="w-12">
+                    <button
+                      type="button"
+                      class="app-icon-button size-7"
+                      :title="
+                        isVersionExpanded(version.id)
+                          ? t('application.detail.actions.collapseComponents')
+                          : t('application.detail.actions.expandComponents')
+                      "
+                      :aria-label="
+                        isVersionExpanded(version.id)
+                          ? t('application.detail.actions.collapseComponents')
+                          : t('application.detail.actions.expandComponents')
+                      "
+                      :aria-expanded="isVersionExpanded(version.id)"
+                      @click="toggleVersionComponents(version.id)"
+                    >
+                      <ChevronDown
+                        class="size-4 transition-transform"
+                        :class="isVersionExpanded(version.id) ? 'rotate-180' : ''"
+                      />
+                    </button>
+                  </td>
+                  <td class="text-foreground">
+                    <router-link :to="`/version/${version.id}`" class="app-link">
+                      {{ version.label }}
+                    </router-link>
+                  </td>
+                  <td>
+                    <AppBadge variant="pill" :tone="versionStatusTone(version.status)">
+                      {{ version.status }}
+                    </AppBadge>
+                  </td>
+                  <td
+                    class="max-w-xs truncate text-muted-foreground"
+                    :title="version.component_summary || ''"
+                  >
+                    {{ version.component_summary }}
+                  </td>
+                  <td class="whitespace-nowrap text-muted-foreground">
+                    {{ formatTime(version.created_at) }}
+                  </td>
+                  <td>
+                    <div class="flex flex-wrap items-center gap-3">
+                      <router-link :to="`/version/${version.id}`" class="app-link">
+                        {{ t('application.view') }}
+                      </router-link>
+                      <button
+                        class="app-link"
+                        :disabled="operating"
+                        @click="previewVersion(version.id)"
+                      >
+                        {{ t('application.detail.actions.preview') }}
+                      </button>
+                      <button class="app-link" @click="openForkModal(version)">
+                        {{ t('application.detail.actions.fork') }}
+                      </button>
+                      <button
+                        v-if="version.status === 'unpublished'"
+                        class="app-link-danger"
+                        :disabled="operating"
+                        @click="openDeleteVersionModal(version)"
+                      >
+                        {{ t('common.delete') }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="isVersionExpanded(version.id)" class="!hover:bg-transparent">
+                  <td :colspan="6" class="!h-auto bg-muted/20 p-0">
+                    <div class="px-5 py-4">
+                      <AppLoadingState
+                        v-if="versionComponentLoadState[version.id] === 'loading'"
+                        size="compact"
+                      />
+                      <p
+                        v-else-if="versionComponentLoadState[version.id] === 'error'"
+                        class="py-2 text-sm text-destructive"
+                      >
+                        {{ t('application.versionDetail.componentsLoadFailed') }}
+                      </p>
+                      <AppEmptyState
+                        v-else-if="versionComponents[version.id]?.length === 0"
+                        size="compact"
+                      />
+                      <div v-else-if="versionComponents[version.id]" class="overflow-x-auto">
+                        <table class="app-data-table min-w-[840px]">
+                          <thead>
+                            <tr>
+                              <th>{{ t('application.detail.fields.component') }}</th>
+                              <th>{{ t('application.detail.fields.image') }}</th>
+                              <th>{{ t('application.componentDetail.fields.pullPolicy') }}</th>
+                              <th>{{ t('application.componentDetail.fields.restartPolicy') }}</th>
+                              <th>{{ t('common.operation') }}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr
+                              v-for="component in versionComponents[version.id]"
+                              :key="component.id"
+                            >
+                              <td>
+                                <router-link
+                                  :to="`/version/${version.id}/component/${component.id}`"
+                                  class="app-link"
+                                >
+                                  {{ component.name }}
+                                </router-link>
+                              </td>
+                              <td
+                                class="max-w-md whitespace-normal break-all text-muted-foreground"
+                              >
+                                {{ component.image }}
+                              </td>
+                              <td class="text-muted-foreground">{{ component.pull_policy }}</td>
+                              <td class="text-muted-foreground">{{ component.restart_policy }}</td>
+                              <td>
+                                <div
+                                  v-if="version.status === 'unpublished'"
+                                  class="flex items-center gap-2"
+                                >
+                                  <button
+                                    class="app-link"
+                                    :disabled="operating"
+                                    @click="openComponentEditDialog(version.id, component)"
+                                  >
+                                    {{ t('common.edit') }}
+                                  </button>
+                                  <button
+                                    class="app-link-danger"
+                                    :disabled="operating"
+                                    @click="openComponentDeleteDialog(version.id, component)"
+                                  >
+                                    {{ t('common.delete') }}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
         <div v-else class="overflow-x-auto">
           <table class="app-data-table min-w-[880px]">
             <thead>
@@ -329,7 +376,6 @@
 
     <!-- 删除未发布版本 -->
     <AppDialog
-      v-if="versionsOnly"
       v-model:open="isDeleteVersionDialogOpen"
       :title="t('application.detail.dialog.deleteVersion')"
       width-class="w-[min(420px,calc(100vw-32px))]"
@@ -572,13 +618,6 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
-  import {
-    AccordionContent,
-    AccordionHeader,
-    AccordionItem,
-    AccordionRoot,
-    AccordionTrigger,
-  } from 'reka-ui';
   import { applicationApi } from '@/api/application/application';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
@@ -626,6 +665,7 @@
 
   const application = ref<ApplicationResp>();
   const versions = ref<VersionResp[]>([]);
+  const expandedVersionIds = ref<string[]>([]);
   const versionComponents = reactive<Record<string, VersionComponentResp[]>>({});
   const versionComponentLoadState = reactive<Record<string, 'loading' | 'loaded' | 'error'>>({});
   const versionPagination = reactive({ current: 1, pageSize: 10, total: 0 });
@@ -699,9 +739,6 @@
           versionPagination.pageSize = resp.per_page;
         }
       });
-      if (!versionsOnly && versions.value[0]) {
-        void loadVersionComponents(versions.value[0].id);
-      }
     } catch {
       toast.error(t('application.toast.loadVersionsFailed'));
     }
@@ -721,6 +758,19 @@
       versionComponentLoadState[versionId] = 'error';
       toast.error(t('application.versionDetail.componentsLoadFailed'));
     }
+  }
+
+  function isVersionExpanded(versionId: string) {
+    return expandedVersionIds.value.includes(versionId);
+  }
+
+  function toggleVersionComponents(versionId: string) {
+    if (isVersionExpanded(versionId)) {
+      expandedVersionIds.value = expandedVersionIds.value.filter((id) => id !== versionId);
+      return;
+    }
+    expandedVersionIds.value = [...expandedVersionIds.value, versionId];
+    void loadVersionComponents(versionId);
   }
 
   function handleVersionPageChange(page: number) {

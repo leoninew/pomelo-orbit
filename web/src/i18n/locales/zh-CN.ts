@@ -278,6 +278,8 @@ export default {
         addMount: '添加挂载',
         addPort: '添加端口映射',
         addRuntimeConfig: '添加运行时配置',
+        expandComponents: '展开组件列表',
+        collapseComponents: '收起组件列表',
       },
       fields: {
         deployments: '部署记录',

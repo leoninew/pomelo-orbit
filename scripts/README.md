@@ -29,6 +29,7 @@
 | [`move_platform_api_domains.py`](./move_platform_api_domains.md) | 迁移前端 API 模块到领域目录。 |
 | [`rewrite_frontend_proto_imports.py`](./rewrite_frontend_proto_imports.md) | 迁移前端 Proto 导入到领域路径。 |
 | [`rewrite_proto_domain_imports.py`](./rewrite_proto_domain_imports.md) | 迁移后端 Proto 导入到领域包。 |
+| [`migrate_legacy_sqlite.py`](./migrate_legacy_sqlite.md) | 将旧 v30 SQLite 控制面数据库升级到当前基线。 |
 
 ## 测试与发布支持
 

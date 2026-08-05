@@ -8,15 +8,36 @@ import (
 
 func pipelineStageDetailResponse(item pipelinedto.PipelineStageDetail) pipelinev1.PipelineStageResp {
 	return pipelinev1.PipelineStageResp{
-		Id:          item.Id,
-		Name:        item.Name,
-		Image:       item.Image,
-		Script:      item.Script,
-		Artifacts:   transportresponse.Ptrs(artifactConfigsResponse(item.Artifacts)),
-		Description: item.Description,
-		Version:     int32(item.Version),
-		CreatedAt:   item.CreatedAt,
-		UpdatedAt:   item.UpdatedAt,
+		Id:                  item.Id,
+		Name:                item.Name,
+		Image:               item.Image,
+		Script:              item.Script,
+		Artifacts:           transportresponse.Ptrs(artifactConfigsResponse(item.Artifacts)),
+		BuildVersionBinding: buildVersionBindingResponse(item.BuildVersionBinding),
+		Description:         item.Description,
+		Version:             int32(item.Version),
+		CreatedAt:           item.CreatedAt,
+		UpdatedAt:           item.UpdatedAt,
+	}
+}
+
+func buildVersionBindingInput(item *pipelinev1.BuildVersionBindingReq) *pipelinedto.BuildVersionBinding {
+	if item == nil {
+		return nil
+	}
+	return &pipelinedto.BuildVersionBinding{
+		ApplicationId: item.ApplicationId, ComponentName: item.ComponentName,
+		ForkStrategy: item.ForkStrategy, FixedVersionId: item.FixedVersionId,
+	}
+}
+
+func buildVersionBindingResponse(item *pipelinedto.BuildVersionBinding) *pipelinev1.BuildVersionBindingResp {
+	if item == nil {
+		return nil
+	}
+	return &pipelinev1.BuildVersionBindingResp{
+		ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, ComponentName: item.ComponentName,
+		ForkStrategy: item.ForkStrategy, FixedVersionId: item.FixedVersionId,
 	}
 }
 
@@ -34,7 +55,9 @@ func artifactConfigsResponse(items []pipelinedto.ArtifactConfig) []pipelinev1.Ar
 	}
 	resp := make([]pipelinev1.ArtifactConfigResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, pipelinev1.ArtifactConfigResp{Type: item.Type, Path: item.Path, Name: item.Name})
+		resp = append(resp, pipelinev1.ArtifactConfigResp{
+			Name: item.Name, Collector: item.Collector, Reference: item.Reference, Command: item.Command, Format: item.Format,
+		})
 	}
 	return resp
 }
@@ -45,7 +68,9 @@ func serviceArtifacts(items []*pipelinev1.ArtifactConfigReq) []pipelinedto.Artif
 		if item == nil {
 			continue
 		}
-		resp = append(resp, pipelinedto.ArtifactConfig{Type: item.Type, Path: item.Path, Name: item.Name})
+		resp = append(resp, pipelinedto.ArtifactConfig{
+			Name: item.Name, Collector: item.Collector, Reference: item.Reference, Command: item.Command, Format: item.Format,
+		})
 	}
 	return resp
 }

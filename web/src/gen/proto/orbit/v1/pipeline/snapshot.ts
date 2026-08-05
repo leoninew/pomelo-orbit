@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 import type { VariableDeclarationResp } from "../common/common";
-import type { ArtifactConfigResp } from "./pipeline_stage";
+import type { ArtifactConfigResp, BuildVersionBindingResp } from "./pipeline_stage";
 
 export const protobufPackage = "orbit.v1.pipeline";
 
@@ -29,4 +29,5 @@ export interface SnapshotStageResp {
   depends_on: string[];
   script: string;
   artifacts: ArtifactConfigResp[];
+  build_version_binding?: BuildVersionBindingResp | undefined;
 }

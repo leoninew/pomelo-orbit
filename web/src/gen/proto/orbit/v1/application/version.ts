@@ -90,6 +90,10 @@ export interface VersionComponentResp {
   tmpfs: ComponentTmpfs[];
   ulimits: ComponentUlimit[];
   devices: ComponentDeviceRequest[];
+  artifact_id?: string | undefined;
+  artifact_image_ref?: string | undefined;
+  artifact_local_image_sha256?: string | undefined;
+  artifact_source_commit_sha?: string | undefined;
 }
 
 export interface ComponentEnv {

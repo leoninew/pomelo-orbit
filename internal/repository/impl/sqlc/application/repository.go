@@ -141,6 +141,19 @@ func (r Repository) UpdateApplication(ctx context.Context, app model.Application
 
 func (r Repository) DeleteApplication(ctx context.Context, id string) error {
 	q := r.q(ctx)
+	versionIds, err := q.VersionIdsByApplication(ctx, id)
+	if err != nil {
+		return fmt.Errorf("list application version ids %s: %w", id, err)
+	}
+	for _, versionId := range versionIds {
+		refs, err := q.CountVersionRuntimeRefs(ctx, versionId)
+		if err != nil {
+			return fmt.Errorf("count version references %s: %w", versionId, err)
+		}
+		if asInt(refs) > 0 {
+			return fmt.Errorf("application %s contains referenced version %s: %w", id, versionId, repository.ErrReferenced)
+		}
+	}
 	if err := q.DetachDeploymentServiceRefsByApplication(ctx, id); err != nil {
 		return fmt.Errorf("detach deployment service refs for application %s: %w", id, err)
 	}
@@ -149,9 +162,6 @@ func (r Repository) DeleteApplication(ctx context.Context, id string) error {
 	}
 	if err := q.DeleteServicesByApplication(ctx, id); err != nil {
 		return fmt.Errorf("delete application service %s: %w", id, err)
-	}
-	if err := q.ClearVersionForkRefsByApplication(ctx, id); err != nil {
-		return fmt.Errorf("detach version fork refs for application %s: %w", id, err)
 	}
 	if err := q.DeleteVersionsByApplication(ctx, id); err != nil {
 		return fmt.Errorf("delete application versions %s: %w", id, err)
@@ -172,6 +182,14 @@ func (r Repository) ListVersions(ctx context.Context, applicationId string) ([]m
 		items = append(items, versionFrom(row))
 	}
 	return items, nil
+}
+
+func (r Repository) LatestVersionByApplication(ctx context.Context, applicationId string) (model.Version, error) {
+	row, err := r.q(ctx).LatestVersionByApplication(ctx, applicationId)
+	if err != nil {
+		return model.Version{}, fmt.Errorf("load latest version for application %s: %w", applicationId, sqlcommon.TranslateError(err))
+	}
+	return versionFrom(row), nil
 }
 
 func (r Repository) ListVersionsPage(ctx context.Context, applicationId string, page int, perPage int, search string) (repository.Page[model.Version], error) {
@@ -257,9 +275,6 @@ func (r Repository) UpdateVersion(ctx context.Context, version model.Version) er
 
 func (r Repository) DeleteVersion(ctx context.Context, id string) error {
 	q := r.q(ctx)
-	if err := q.ClearVersionForkRefs(ctx, sql.NullString{String: id, Valid: true}); err != nil {
-		return fmt.Errorf("clear version fork refs %s: %w", id, err)
-	}
 	if err := q.DeleteVersionComponents(ctx, id); err != nil {
 		return fmt.Errorf("delete version components %s: %w", id, err)
 	}
@@ -284,7 +299,7 @@ func (r Repository) VersionComponentsByVersion(ctx context.Context, versionId st
 	}
 	items := make([]model.VersionComponent, 0, len(rows))
 	for _, row := range rows {
-		component, err := r.componentFromRow(ctx, r.q(ctx), row)
+		component, err := r.componentFromRow(ctx, r.q(ctx), row.ID, row.VersionID, row.Name, row.Image, row.ArtifactID, row.CommandJson, row.PullPolicy, row.RestartPolicy, row.CreatedAt, row.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -298,11 +313,20 @@ func (r Repository) VersionComponent(ctx context.Context, id string) (model.Vers
 	if err != nil {
 		return model.VersionComponent{}, fmt.Errorf("load version component %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	component, err := r.componentFromRow(ctx, r.q(ctx), row)
+	component, err := r.componentFromRow(ctx, r.q(ctx), row.ID, row.VersionID, row.Name, row.Image, row.ArtifactID, row.CommandJson, row.PullPolicy, row.RestartPolicy, row.CreatedAt, row.UpdatedAt)
 	if err != nil {
 		return model.VersionComponent{}, err
 	}
 	return component, nil
+}
+
+func (r Repository) SetVersionComponentArtifact(ctx context.Context, componentId string, artifactId string) error {
+	if err := r.q(ctx).SetVersionComponentArtifact(ctx, applicationsqlc.SetVersionComponentArtifactParams{
+		ArtifactID: sql.NullString{String: artifactId, Valid: true}, ComponentID: componentId,
+	}); err != nil {
+		return fmt.Errorf("set version component artifact %s: %w", componentId, err)
+	}
+	return nil
 }
 
 func (r Repository) ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error {
@@ -469,16 +493,16 @@ func versionFrom(row applicationsqlc.Version) model.Version {
 	}
 }
 
-func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Queries, row applicationsqlc.VersionComponent) (model.VersionComponent, error) {
-	command, err := commandFromJSON(row.CommandJson)
+func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Queries, id string, versionId string, name string, image string, artifactId sql.NullString, commandValue string, pullPolicy string, restartPolicy sql.NullString, createdAt time.Time, updatedAt time.Time) (model.VersionComponent, error) {
+	command, err := commandFromJSON(commandValue)
 	if err != nil {
-		return model.VersionComponent{}, fmt.Errorf("decode version component command %s: %w", row.ID, err)
+		return model.VersionComponent{}, fmt.Errorf("decode version component command %s: %w", id, err)
 	}
 	component := model.VersionComponent{
-		Id: row.ID, VersionId: row.VersionID, Name: row.Name, Image: row.Image,
+		Id: id, VersionId: versionId, Name: name, Image: image, ArtifactId: dbmodel.StringPtr(artifactId),
 		Command:    command,
-		PullPolicy: row.PullPolicy, RestartPolicy: dbmodel.StringPtr(row.RestartPolicy),
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		PullPolicy: pullPolicy, RestartPolicy: dbmodel.StringPtr(restartPolicy),
+		CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
 	env, err := q.VersionComponentEnvByComponent(ctx, component.Id)
 	if err != nil {
@@ -567,6 +591,16 @@ func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Que
 			Driver: item.Driver, Count: item.DeviceCount, Capabilities: capabilities,
 		})
 	}
+	artifact, err := q.VersionComponentArtifact(ctx, component.Id)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return model.VersionComponent{}, fmt.Errorf("load version component artifact %s: %w", component.Id, err)
+	}
+	if err == nil {
+		component.Artifact = &model.VersionComponentArtifact{
+			ArtifactId: artifact.ID, ImageRef: artifact.ImageRef.String,
+			LocalImageSha256: artifact.LocalImageSha256.String, SourceCommitSha: artifact.SourceCommitSha.String,
+		}
+	}
 	return component, nil
 }
 
@@ -583,7 +617,7 @@ func insertVersionComponent(ctx context.Context, q *applicationsqlc.Queries, com
 		updatedAt = fallback
 	}
 	if err := q.InsertVersionComponent(ctx, applicationsqlc.InsertVersionComponentParams{
-		ID: component.Id, VersionID: component.VersionId, Name: component.Name, Image: component.Image,
+		ID: component.Id, VersionID: component.VersionId, Name: component.Name, Image: component.Image, ArtifactID: dbmodel.NullString(component.ArtifactId),
 		CommandJson: commandJSON,
 		PullPolicy:  component.PullPolicy, RestartPolicy: dbmodel.NullString(component.RestartPolicy),
 		CreatedAt: createdAt, UpdatedAt: updatedAt,

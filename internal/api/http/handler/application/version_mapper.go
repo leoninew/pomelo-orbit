@@ -187,8 +187,7 @@ func versionResponses(views []applicationdto.VersionView) []applicationv1.Versio
 func versionResponse(view applicationdto.VersionView) applicationv1.VersionResp {
 	components := make([]*applicationv1.VersionComponentResp, 0, len(view.Components))
 	for _, component := range view.Components {
-		item := versionComponentResponse(component)
-		components = append(components, &item)
+		components = append(components, versionComponentResponse(component))
 	}
 	return applicationv1.VersionResp{
 		Id:                   view.Version.Id,
@@ -204,8 +203,8 @@ func versionResponse(view applicationdto.VersionView) applicationv1.VersionResp 
 	}
 }
 
-func versionComponentResponse(component model.VersionComponent) applicationv1.VersionComponentResp {
-	return applicationv1.VersionComponentResp{
+func versionComponentResponse(component model.VersionComponent) *applicationv1.VersionComponentResp {
+	response := &applicationv1.VersionComponentResp{
 		Id: component.Id, VersionId: component.VersionId, Name: component.Name, Image: component.Image,
 		Command: commandline.Format(component.Command),
 		Env:     componentEnvResponse(component.Env), Endpoints: componentEndpointResponse(component.Endpoints), Mounts: componentMountResponse(component.Mounts),
@@ -215,6 +214,13 @@ func versionComponentResponse(component model.VersionComponent) applicationv1.Ve
 		Devices:   componentDeviceResponse(component.Devices),
 		CreatedAt: transportresponse.FormatTime(component.CreatedAt), UpdatedAt: transportresponse.FormatTime(component.UpdatedAt),
 	}
+	if component.Artifact != nil {
+		response.ArtifactId = optionalString(component.Artifact.ArtifactId)
+		response.ArtifactImageRef = optionalString(component.Artifact.ImageRef)
+		response.ArtifactLocalImageSha256 = optionalString(component.Artifact.LocalImageSha256)
+		response.ArtifactSourceCommitSha = optionalString(component.Artifact.SourceCommitSha)
+	}
+	return response
 }
 
 func componentEnvResponse(items []model.VersionComponentEnv) []*applicationv1.ComponentEnv {

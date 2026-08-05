@@ -15,7 +15,7 @@ func resolveStages(stages []model.StageDefinition, variables map[string]any) ([]
 		}
 		resolved[i].Script = script
 		for j := range resolved[i].Artifacts {
-			path, err := templatex.Render(resolved[i].Artifacts[j].Path, variables)
+			reference, err := templatex.Render(resolved[i].Artifacts[j].Reference, variables)
 			if err != nil {
 				return nil, err
 			}
@@ -23,8 +23,13 @@ func resolveStages(stages []model.StageDefinition, variables map[string]any) ([]
 			if err != nil {
 				return nil, err
 			}
-			resolved[i].Artifacts[j].Path = path
+			command, err := templatex.Render(resolved[i].Artifacts[j].Command, variables)
+			if err != nil {
+				return nil, err
+			}
+			resolved[i].Artifacts[j].Reference = reference
 			resolved[i].Artifacts[j].Name = name
+			resolved[i].Artifacts[j].Command = command
 		}
 	}
 	return resolved, nil

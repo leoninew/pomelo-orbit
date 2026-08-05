@@ -2,6 +2,7 @@ package pipelinerunsvc
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	pipelinerundto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/dto"
@@ -29,4 +30,21 @@ func (s Service) ListArtifacts(ctx context.Context, userId string, input pipelin
 		return repository.Page[model.Artifact]{}, apperror.Wrap(apperror.KindInternal, "Failed to list artifacts", err)
 	}
 	return items, nil
+}
+
+func (s Service) ArtifactForUser(ctx context.Context, userId string, artifactId string) (model.Artifact, error) {
+	artifactId = strings.TrimSpace(artifactId)
+	item, err := s.store.Artifact(ctx, artifactId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return model.Artifact{}, apperror.New(apperror.KindNotFound, "Artifact "+artifactId+" not found")
+		}
+		return model.Artifact{}, apperror.Wrap(apperror.KindInternal, "Failed to load artifact", err)
+	}
+	if item.ProjectId != nil {
+		if err := s.ensureProjectMembership(ctx, *item.ProjectId, userId); err != nil {
+			return model.Artifact{}, err
+		}
+	}
+	return item, nil
 }

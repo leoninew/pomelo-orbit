@@ -364,7 +364,7 @@ func (s Service) DeleteVersion(ctx context.Context, userId string, versionId str
 		return apperror.Wrap(apperror.KindInternal, "Failed to check version references", err)
 	}
 	if refs > 0 {
-		return apperror.New(apperror.KindValidation, "Version is referenced by a service or deployment")
+		return apperror.New(apperror.KindValidation, "Version is referenced and cannot be deleted")
 	}
 	if err := s.store.DeleteVersion(ctx, version.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete version", err)

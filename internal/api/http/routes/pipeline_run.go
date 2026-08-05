@@ -18,4 +18,5 @@ func (r Router) registerPipelineRun(engine *gin.Engine) {
 	engine.POST("/api/pipeline-run/:run_id/cancel", handler.CancelPipelineRun)
 	engine.POST("/api/pipeline-run/:run_id/retry", handler.RetryPipelineRun)
 	engine.GET("/api/pipeline-run/artifact", handler.ListArtifacts)
+	engine.GET("/api/pipeline-run/artifact/:artifact_id", handler.GetArtifact)
 }

@@ -52,9 +52,9 @@ git remote add origin {{ repository_url }}
 # 拉取代码
 git fetch --depth=1 origin {{ repository_ref }}
 git checkout -B {{ repository_ref }} FETCH_HEAD',
-    NULL,
+    '[{"collector":"command","command":"git rev-parse HEAD","format":"git_object_id","name":"source_commit"}]',
     '克隆代码仓库',
-    8,
+    9,
     '01KRRKK0K3T519ZQZES3M4QA9Z',
     '2024-03-16T00:00:00Z',
     '2024-03-16T00:00:00Z'
@@ -126,9 +126,9 @@ INSERT IGNORE INTO pipeline_stage (
 cd {{ working_dir }}
 docker build -t {{ repository_code }}:{{ runtime_datetime }} -f {{ repository_dockerfile }} .
 # docker push {{ repository_code }}:{{ runtime_datetime }}',
-    '[{"type": "docker_image", "path": "{{ repository_code }}:{{ runtime_datetime }}", "name": "{{ repository_code }}"}]',
+    '[{"collector":"docker_image","reference":"{{ repository_code }}:{{ runtime_datetime }}","name":"{{ repository_code }}"}]',
     '通用镜像构建+推送',
-    16,
+    17,
     '01KRRKK0K3T519ZQZES3M4QA9Z',
     '2024-03-16T00:00:00Z',
     '2024-03-16T00:00:00Z'

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export non-Gateway RAGFlow SQLite control-plane data as SQL INSERT statements."""
+"""Export SQLite continuous-delivery control-plane data as SQL INSERT statements."""
 
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ TABLES = (
     "version_component_tmpfs",
     "version_component_ulimit",
     "version_component_device",
+    "gateway_config",
     "service",
     "service_env",
     "service_component",
@@ -33,6 +34,7 @@ TABLES = (
     "service_component_mount",
     "service_component_resource",
     "service_component_endpoint",
+    "route",
 )
 IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -42,7 +44,7 @@ class ExportError(RuntimeError):
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", default=str(root / "data" / "db" / "pomelo-orbit.db"))
     parser.add_argument("--output", required=True, help="SQL file to replace after a successful export")
@@ -51,7 +53,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="replace an existing output file after all export checks pass",
     )
-    parser.add_argument("--project-id", help="Accepted for command compatibility; the baseline exports all configured tables")
     return parser.parse_args(argv)
 
 
@@ -98,66 +99,8 @@ def table_rows(connection: sqlite3.Connection, table: str) -> list[dict[str, Any
     return [dict(row) for row in connection.execute(query)]
 
 
-def rows_with_foreign_key(rows: list[dict[str, Any]], key: str, values: set[str]) -> list[dict[str, Any]]:
-    return [row for row in rows if str(row[key]) in values]
-
-
-def selected_baseline(connection: sqlite3.Connection, _args: argparse.Namespace) -> dict[str, list[dict[str, Any]]]:
-    data = {table: table_rows(connection, table) for table in TABLES}
-
-    applications = [row for row in data["application"] if row["kind"] != "gateway"]
-    application_ids = {str(row["id"]) for row in applications}
-    project_ids = {str(row["project_id"]) for row in applications if row["project_id"] is not None}
-    versions = rows_with_foreign_key(data["version"], "application_id", application_ids)
-    version_ids = {str(row["id"]) for row in versions}
-    components = rows_with_foreign_key(data["version_component"], "version_id", version_ids)
-    component_ids = {str(row["id"]) for row in components}
-    services = rows_with_foreign_key(data["service"], "application_id", application_ids)
-    service_ids = {str(row["id"]) for row in services}
-    service_components = rows_with_foreign_key(data["service_component"], "service_id", service_ids)
-    service_component_ids = {str(row["id"]) for row in service_components}
-
-    data["project"] = rows_with_foreign_key(data["project"], "id", project_ids)
-    data["application"] = applications
-    data["version"] = versions
-    data["version_component"] = components
-    data["version_component_dependency"] = rows_with_foreign_key(
-        data["version_component_dependency"], "component_id", component_ids
-    )
-    data["version_component_env"] = rows_with_foreign_key(data["version_component_env"], "component_id", component_ids)
-    data["version_component_healthcheck"] = rows_with_foreign_key(
-        data["version_component_healthcheck"], "component_id", component_ids
-    )
-    data["version_component_mount"] = rows_with_foreign_key(data["version_component_mount"], "component_id", component_ids)
-    data["version_component_endpoint"] = rows_with_foreign_key(
-        data["version_component_endpoint"], "component_id", component_ids
-    )
-    data["version_component_resource"] = rows_with_foreign_key(
-        data["version_component_resource"], "component_id", component_ids
-    )
-    data["version_component_tmpfs"] = rows_with_foreign_key(data["version_component_tmpfs"], "component_id", component_ids)
-    data["version_component_ulimit"] = rows_with_foreign_key(
-        data["version_component_ulimit"], "component_id", component_ids
-    )
-    data["version_component_device"] = rows_with_foreign_key(
-        data["version_component_device"], "component_id", component_ids
-    )
-    data["service"] = services
-    data["service_env"] = rows_with_foreign_key(data["service_env"], "service_id", service_ids)
-    data["service_component"] = service_components
-    data["service_component_env"] = rows_with_foreign_key(
-        data["service_component_env"], "service_component_id", service_component_ids
-    )
-    data["service_component_mount"] = rows_with_foreign_key(
-        data["service_component_mount"], "service_component_id", service_component_ids
-    )
-    data["service_component_resource"] = rows_with_foreign_key(
-        data["service_component_resource"], "service_component_id", service_component_ids
-    )
-    data["service_component_endpoint"] = rows_with_foreign_key(
-        data["service_component_endpoint"], "service_component_id", service_component_ids
-    )
-    return data
+def exported_table_rows(connection: sqlite3.Connection) -> dict[str, list[dict[str, Any]]]:
+    return {table: table_rows(connection, table) for table in TABLES}
 
 
 def sql_value(connection: sqlite3.Connection, value: Any) -> str:
@@ -170,14 +113,15 @@ def sql_insert(connection: sqlite3.Connection, table: str, row: dict[str, Any]) 
         raise ExportError(f"table {table} has no columns")
     values = ", ".join(sql_value(connection, row[column]) for column in columns)
     names = ", ".join(quote_identifier(column) for column in columns)
-    return f"INSERT OR IGNORE INTO {quote_identifier(table)} ({names}) VALUES ({values});"
+    return f"INSERT INTO {quote_identifier(table)} ({names}) VALUES ({values});"
 
 
 def render_sql(connection: sqlite3.Connection, data: dict[str, list[dict[str, Any]]]) -> str:
     lines = [
-        "-- RAGFlow data export. Generated by skills/_ragflow/export_ragflow_baseline.py.",
+        "-- Continuous-delivery control-plane export. Generated by scripts/export_cd_baseline.py.",
         "PRAGMA foreign_keys = ON;",
         "BEGIN;",
+        "PRAGMA defer_foreign_keys = ON;",
     ]
     for table in TABLES:
         for row in data[table]:
@@ -206,12 +150,12 @@ def main(argv: list[str]) -> int:
     try:
         with connect_read_only(Path(args.database).resolve()) as connection:
             ensure_database_integrity(connection)
-            rendered = render_sql(connection, selected_baseline(connection, args))
+            rendered = render_sql(connection, exported_table_rows(connection))
         write_output(Path(args.output).resolve(), rendered, replace=args.replace)
     except (ExportError, OSError, sqlite3.Error) as error:
-        print(f"baseline export blocked: {error}", file=sys.stderr)
+        print(f"continuous-delivery export blocked: {error}", file=sys.stderr)
         return 2
-    print(f"baseline SQL written: {Path(args.output).resolve()}")
+    print(f"continuous-delivery SQL written: {Path(args.output).resolve()}")
     return 0
 
 

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package orbit.v1.dialogue;
+
+// DeploymentDialogueMessage is one user or assistant message kept by the
+// deployment dialogue page for the current browser session.
+message DeploymentDialogueMessage {
+  string role = 1;
+  string content = 2;
+}
+
+message DeploymentDialogueTurnReq {
+  string project_id = 1;
+  repeated DeploymentDialogueMessage messages = 2;
+}
+
+message DeploymentDialogueToolCall {
+  string name = 1;
+  string arguments_json = 2;
+  string result_json = 3;
+  bool is_error = 4;
+}
+
+message DeploymentDialogueTurnResp {
+  string message = 1;
+  repeated DeploymentDialogueToolCall tool_calls = 2;
+}
+
+// DeploymentDialogueStreamEvent is sent as the JSON data of one SSE event
+// while a deployment dialogue turn is running.
+message DeploymentDialogueStreamEvent {
+  string type = 1;
+  string message = 2;
+  DeploymentDialogueToolCall tool_call = 3;
+  string code = 4;
+  string request_id = 5;
+}

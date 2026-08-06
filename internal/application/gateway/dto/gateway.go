@@ -1,6 +1,10 @@
 package dto
 
-import "gitee.com/leoninew/PomeloOrbit-go/internal/model"
+import (
+	"time"
+
+	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+)
 
 type GatewayCreateInput struct {
 	ProjectId                  string
@@ -40,4 +44,40 @@ type GatewayView struct {
 	Application model.Application
 	Config      model.GatewayConfig
 	Exposures   []GatewayExposureItem
+}
+
+type ProvisionGatewayInput struct {
+	ProjectId      string
+	InstanceKey    string
+	ForceRecreate  bool
+	TimeoutSeconds *int
+}
+
+type ProvisionGatewayResult struct {
+	GatewayCreated   bool
+	ServiceCreated   bool
+	VersionPublished bool
+	Ready            bool
+	Gateway          GatewayView
+	Version          model.Version
+	Service          model.Service
+	Deployment       model.Deployment
+	TimedOut         bool
+	Network          GatewayNetwork
+	Steps            []string
+}
+
+type GatewayNetwork struct {
+	Name   string
+	Driver string
+	Ready  bool
+	Status string
+}
+
+func (i ProvisionGatewayInput) Timeout() *time.Duration {
+	if i.TimeoutSeconds == nil {
+		return nil
+	}
+	value := time.Duration(*i.TimeoutSeconds) * time.Second
+	return &value
 }

@@ -23,7 +23,9 @@ type ApplicationStore interface {
 	UpdateApplication(ctx context.Context, app model.Application) error
 	DeleteApplication(ctx context.Context, id string) error
 	ListVersions(ctx context.Context, applicationId string) ([]model.Version, error)
+	Version(ctx context.Context, id string) (model.Version, error)
 	CreateVersion(ctx context.Context, version model.Version) error
+	UpdateVersion(ctx context.Context, version model.Version) error
 	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
 	ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error
 }

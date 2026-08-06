@@ -5,7 +5,7 @@ describe('domain navigation declarations', () => {
   it('keeps primary navigation scoped to continuous integration, deployment, and system management', () => {
     expect(primaryNavigation).toEqual([
       expect.objectContaining({ key: 'pipeline', path: '/repository' }),
-      expect.objectContaining({ key: 'deployment', path: '/applications' }),
+      expect.objectContaining({ key: 'deployment', path: '/dialogue' }),
       expect.objectContaining({
         key: 'settings',
         labelKey: 'nav.systemManagement',
@@ -54,6 +54,7 @@ describe('domain navigation declarations', () => {
       expect.objectContaining({
         key: 'delivery',
         children: [
+          expect.objectContaining({ key: 'deployment-dialogue', path: '/dialogue' }),
           expect.objectContaining({ key: 'applications', path: '/applications' }),
           expect.objectContaining({ key: 'services', path: '/services' }),
           expect.objectContaining({ key: 'deployments', path: '/deployments' }),

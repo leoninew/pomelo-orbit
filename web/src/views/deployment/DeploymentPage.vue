@@ -9,6 +9,10 @@
           width-class="app-toolbar-select"
           @update:model-value="handleApplicationChange"
         />
+        <button class="app-button h-9 px-3" type="button" @click="router.push('/dialogue')">
+          <MessageSquareText :size="16" aria-hidden="true" />
+          <span>{{ t('deploymentDialogue.open') }}</span>
+        </button>
       </div>
     </ToolbarRoot>
 
@@ -91,7 +95,8 @@
 <script setup lang="ts">
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRoute } from 'vue-router';
+  import { useRoute, useRouter } from 'vue-router';
+  import { MessageSquareText } from 'lucide-vue-next';
   import { applicationApi } from '@/api/application/application';
   import { deploymentApi } from '@/api/deployment/deployment';
   import AppBadge from '@/components/AppBadge.vue';
@@ -109,6 +114,7 @@
   import { ToolbarRoot } from 'reka-ui';
 
   const route = useRoute();
+  const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();

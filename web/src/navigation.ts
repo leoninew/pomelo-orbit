@@ -109,6 +109,12 @@ const deploymentNavigation: NavigationBranch[] = [
     icon: Layers,
     children: [
       {
+        key: 'deployment-dialogue',
+        label: '对话',
+        labelKey: 'nav.deploymentDialogue',
+        path: '/dialogue',
+      },
+      {
         key: 'applications',
         label: '应用',
         labelKey: 'nav.applications',
@@ -307,6 +313,7 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path === '/deployment' ||
     path.startsWith('/deployment/') ||
     path === '/deployments' ||
+    path === '/dialogue' ||
     path === '/gateway' ||
     path.startsWith('/gateway/') ||
     path === '/gateways' ||

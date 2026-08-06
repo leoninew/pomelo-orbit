@@ -1,10 +1,10 @@
 <template>
-  <div class="min-h-screen bg-background text-foreground md:h-screen">
+  <div class="h-dvh min-h-0 bg-background text-foreground">
     <!-- Login page: no layout -->
     <RouterView v-if="isLoginPage" />
 
     <!-- Main layout -->
-    <div v-else class="flex min-h-screen flex-col md:h-full md:min-h-0">
+    <div v-else class="flex h-full min-h-0 flex-col">
       <AppTopBar :current-module="currentPrimaryModule" />
 
       <div
@@ -13,7 +13,7 @@
         <!-- Sidebar -->
         <aside
           v-if="currentScope"
-          class="flex shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-200"
+          class="flex shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-all duration-200"
           :class="collapsed ? 'md:w-16' : 'md:w-60'"
         >
           <AppVerticalNav
@@ -32,7 +32,10 @@
         </aside>
 
         <!-- Main content -->
-        <main class="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+        <main
+          class="min-w-0 flex-1"
+          :class="isDeploymentDialogue ? 'overflow-visible' : 'overflow-x-hidden overflow-y-auto'"
+        >
           <RouterView />
         </main>
       </div>
@@ -67,6 +70,7 @@
   const currentScope = computed(() => getNavigationScope(route.path));
   const selectedKey = computed(() => (route.meta.menuKey as string) ?? '');
   const currentPrimaryModule = computed(() => getPrimaryNavigationKey(route.path));
+  const isDeploymentDialogue = computed(() => route.name === 'DeploymentDialogue');
 
   const sidebarItems = computed(() => {
     if (!currentScope.value) {

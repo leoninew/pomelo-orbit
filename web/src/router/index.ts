@@ -146,6 +146,12 @@ const router = createRouter({
       meta: { title: '部署记录', menuKey: 'deployments' },
     },
     {
+      path: '/dialogue',
+      name: 'DeploymentDialogue',
+      component: () => import('@/views/deployment/DeploymentDialoguePage.vue'),
+      meta: { title: '对话', menuKey: 'deployment-dialogue' },
+    },
+    {
       path: '/deployment/:id',
       name: 'DeploymentDetail',
       component: () => import('@/views/deployment/DeploymentDetail.vue'),

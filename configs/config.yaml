@@ -56,6 +56,13 @@ settings:
     - database__mysql__dsn
     - jwt__secret_key
     - turnstile__secret_key
+    - llm__api_key
+
+llm:
+  base_url: ""
+  api_key: ""
+  model: ""
+  timeout: 60s
 
 pipeline_run:
   execution_timeout: 1h

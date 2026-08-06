@@ -7,9 +7,12 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
+	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
 	gatewaydto "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/dto"
 	gatewayport "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/port"
+	servicesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/usecase"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
@@ -27,24 +30,42 @@ const (
 )
 
 type Service struct {
-	project     gatewayport.ProjectReader
-	application gatewayport.ApplicationStore
-	config      gatewayport.ConfigStore
-	service     gatewayport.ServiceReader
-	workspace   gatewayport.Workspace
+	project         gatewayport.ProjectReader
+	application     gatewayport.ApplicationStore
+	config          gatewayport.ConfigStore
+	service         gatewayport.ServiceReader
+	workspace       gatewayport.Workspace
+	serviceCommands servicesvc.Service
+	deployer        gatewayDeployer
+}
+
+type gatewayDeployer interface {
+	DeployService(context.Context, string, string, deploymentdto.DeployServiceInput) (deploymentdto.DeployServiceResult, error)
+	WaitDeployment(context.Context, string, string, *time.Duration) (deploymentdto.DeploymentWaitResult, error)
+	ExternalNetworkInspect(context.Context, string) (deploymentdto.RuntimeNetwork, error)
 }
 
 func New(
 	project gatewayport.ProjectReader,
 	application gatewayport.ApplicationStore,
 	config gatewayport.ConfigStore,
-	service gatewayport.ServiceReader,
+	service repository.ServiceStore,
+	deployment repository.DeploymentStore,
 	workspace gatewayport.Workspace,
 ) Service {
 	return Service{
 		project: project, application: application, config: config,
 		service: service, workspace: workspace,
+		serviceCommands: servicesvc.New(project, application, service, deployment),
 	}
+}
+
+// WithDeployer completes the one-way dependency injection for the Gateway
+// workflow. Deployment only depends on the gateway port, so this avoids an
+// application-package import cycle.
+func (s Service) WithDeployer(deployer gatewayDeployer) Service {
+	s.deployer = deployer
+	return s
 }
 
 func (s Service) ListGateways(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[gatewaydto.GatewayView], error) {

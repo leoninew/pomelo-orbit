@@ -14,6 +14,7 @@ import (
 	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
 	credentialsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/credential/usecase"
 	deploymentsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/usecase"
+	dialoguesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/dialogue/usecase"
 	gatewaysvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/usecase"
 	pipelinesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline/usecase"
 	pipelinerunsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/usecase"
@@ -47,6 +48,7 @@ type Dependencies struct {
 	ApplicationService applicationsvc.Service
 	ServiceService     servicesvc.Service
 	DeploymentService  deploymentsvc.Service
+	DialogueService    dialoguesvc.Service
 	GatewayService     gatewaysvc.Service
 	TaskService        tasksvc.Service
 	TurnstileVerifier  authhandler.TurnstileVerifier
@@ -80,6 +82,9 @@ func (r Router) Handler() http.Handler {
 	engine.GET("/api/health", func(c *gin.Context) {
 		transportresponse.ProtoJSON(c, http.StatusOK, &commonv1.HealthResp{Status: "ok"})
 	})
+	// Dialogue requests can run external LLM and MCP calls. The MCP server owns
+	// transactions for its tool writes, so this route must not hold a request UoW.
+	r.registerDialogue(engine)
 	if r.deps.Database != nil {
 		// Request-scoped UoW for mutating API routes (health is registered above).
 		engine.Use(tx.Middleware(r.deps.Database))

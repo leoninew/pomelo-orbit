@@ -16,6 +16,7 @@ import (
 
 const (
 	DefaultConfigFile     = "configs/config.yaml"
+	DefaultLLMTimeout     = 60 * time.Second
 	jwtSecretKeyMinLength = 32
 )
 
@@ -36,6 +37,7 @@ type Config struct {
 	Turnstile   TurnstileConfig   `mapstructure:"turnstile" yaml:"turnstile"`
 	Cert        CertConfig        `mapstructure:"cert" yaml:"cert"`
 	Settings    SettingsConfig    `mapstructure:"settings" yaml:"settings"`
+	LLM         LLMConfig         `mapstructure:"llm" yaml:"llm"`
 	EnvFilePath string            `mapstructure:"-" yaml:"-"`
 	Base        *Config           `mapstructure:"-" yaml:"-"`
 }
@@ -135,6 +137,13 @@ type LetsEncryptConfig struct {
 
 type SettingsConfig struct {
 	SecretKeys []string `mapstructure:"secret_keys" yaml:"secret_keys"`
+}
+
+type LLMConfig struct {
+	BaseUrl string        `mapstructure:"base_url" yaml:"base_url"`
+	ApiKey  string        `mapstructure:"api_key" yaml:"api_key"`
+	Model   string        `mapstructure:"model" yaml:"model"`
+	Timeout time.Duration `mapstructure:"timeout" yaml:"timeout"`
 }
 
 func Load() (Config, error) {
@@ -293,6 +302,10 @@ func bindEnv(loader *viper.Viper) {
 		"worker.max_attempts",
 		"worker.concurrency",
 		"settings.secret_keys",
+		"llm.base_url",
+		"llm.api_key",
+		"llm.model",
+		"llm.timeout",
 	}
 	for _, key := range keys {
 		envName := "POMELO_ORBIT_" + strings.ToUpper(strings.ReplaceAll(key, ".", "__"))
@@ -356,6 +369,26 @@ func (c Config) Validate() error {
 	}
 	if c.Worker.Concurrency < 1 {
 		return errors.New("worker.concurrency must be at least 1")
+	}
+	if err := validateLLMConfig(c.LLM); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateLLMConfig(cfg LLMConfig) error {
+	configured := strings.TrimSpace(cfg.BaseUrl) != "" || strings.TrimSpace(cfg.ApiKey) != "" || strings.TrimSpace(cfg.Model) != ""
+	if !configured {
+		return nil
+	}
+	if strings.TrimSpace(cfg.BaseUrl) == "" || strings.TrimSpace(cfg.ApiKey) == "" || strings.TrimSpace(cfg.Model) == "" {
+		return errors.New("llm.base_url, llm.api_key, and llm.model must be configured together")
+	}
+	if err := validateHTTPUrl("llm.base_url", cfg.BaseUrl, false); err != nil {
+		return err
+	}
+	if cfg.Timeout <= 0 {
+		return errors.New("llm.timeout must be positive")
 	}
 	return nil
 }

@@ -13,6 +13,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	applicationsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/usecase"
 	pipelinerundto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
@@ -162,13 +163,16 @@ func newPipelineRunIntegrationService(t *testing.T) (Service, *sql.DB) {
 		t.Fatal(err)
 	}
 	tasks := tasksvc.New(taskrepo.NewRepository(database), 3)
+	projectStore := projectrepo.NewRepository(database)
+	applicationStore := applicationrepo.NewRepository(database)
 	service := New(
-		projectrepo.NewRepository(database),
+		projectStore,
 		credentialrepo.NewRepository(database),
 		vcsrepo.NewRepository(database),
 		pipelinerepo.NewRepository(database),
 		pipelinerunrepo.NewRepository(database),
-		applicationrepo.NewRepository(database),
+		applicationStore,
+		applicationsvc.New(projectStore, applicationStore),
 		queuedispatch.NewPipelineRunDispatcher(tasks),
 		newTestWorkspace(t),
 		ciTestSecretKey,

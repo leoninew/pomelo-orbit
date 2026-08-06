@@ -380,26 +380,8 @@ func (s Service) ForkVersion(ctx context.Context, userId string, versionId strin
 	if strings.TrimSpace(label) == "" || len(label) > 128 {
 		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, "Invalid version label")
 	}
-	components, err := s.store.VersionComponentsByVersion(ctx, source.Id)
+	version, err := forkVersion(ctx, s.store, source, label, nil)
 	if err != nil {
-		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
-	}
-	fromId := source.Id
-	version := model.Version{
-		Id:                   idutil.NewId(),
-		ApplicationId:        source.ApplicationId,
-		Label:                label,
-		Status:               status.VersionStatusUnpublished,
-		CreatedFromVersionId: &fromId,
-		Note:                 source.Note,
-	}
-	forkedComponents := make([]model.VersionComponent, 0, len(components))
-	for _, component := range components {
-		component.Id = idutil.NewId()
-		component.VersionId = version.Id
-		forkedComponents = append(forkedComponents, component)
-	}
-	if err := s.store.CreateVersionWithVersionComponents(ctx, version, forkedComponents); err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to fork version", err)
 	}
 	return s.VersionForUser(ctx, userId, version.Id)

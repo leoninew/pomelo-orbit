@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log/slog"
 
+	applicationsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/usecase"
 	deploymentsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/usecase"
 	gatewaysvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/usecase"
 	pipelinerunsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/usecase"
@@ -27,7 +28,8 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
 	localSource := repositorysource.New(runtimepath.ResolvePhysicalPath)
 	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
-	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, deploymentWorkspace)
+	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, deploymentWorkspace)
+	applicationService := applicationsvc.New(stores.project, stores.application)
 
 	pipelineRunService := pipelinerunsvc.NewExecutionService(
 		stores.project,
@@ -36,6 +38,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		stores.pipeline,
 		stores.pipelineRun,
 		stores.application,
+		applicationService,
 		pipelineWorkspace,
 		cfg.Jwt.SecretKey,
 		logger,

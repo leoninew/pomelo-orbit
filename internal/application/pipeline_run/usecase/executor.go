@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	applicationport "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/port"
 	pipelinerunport "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/port"
 	repositoryport "gitee.com/leoninew/PomeloOrbit-go/internal/application/repository/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
@@ -27,14 +28,11 @@ type buildArtifactStore interface {
 	PipelineRunBuildVersionBinding(ctx context.Context, pipelineRunId string, pipelineStageId string) (model.PipelineRunBuildVersionBinding, error)
 	RunInTransaction(ctx context.Context, fn func(context.Context) error) error
 	CompletePipelineRunBuildVersionBinding(ctx context.Context, pipelineRunId string, pipelineStageId string, generatedVersionId string, generatedVersionLabel string, artifactId string) error
-	Version(ctx context.Context, id string) (model.Version, error)
-	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
-	CreateVersionWithVersionComponents(ctx context.Context, version model.Version, components []model.VersionComponent) error
-	SetVersionComponentArtifact(ctx context.Context, componentId string, artifactId string) error
 }
 
 type Executor struct {
 	store            pipelineExecutionStore
+	versionForker    applicationport.BuildVersionForker
 	workspace        pipelinerunport.Workspace
 	logStore         pipelinerunport.ExecutionLogStore
 	secretKey        string
@@ -406,36 +404,18 @@ func (e Executor) forkBuildVersion(ctx context.Context, store buildArtifactStore
 	if binding.GeneratedVersionId != nil {
 		return nil
 	}
-	source, err := store.Version(ctx, binding.SourceVersionId)
+	if e.versionForker == nil {
+		return fmt.Errorf("application version forker is unavailable")
+	}
+	version, err := e.versionForker.ForkVersionForBuild(ctx, applicationport.BuildVersionForkInput{
+		SourceVersionId: binding.SourceVersionId,
+		Label:           buildVersionLabel(runtimeDatetime),
+		ComponentName:   binding.ComponentName,
+		Image:           *artifact.ImageRef,
+		ArtifactId:      artifact.Id,
+	})
 	if err != nil {
-		return fmt.Errorf("load source version: %w", err)
-	}
-	components, err := store.VersionComponentsByVersion(ctx, source.Id)
-	if err != nil {
-		return fmt.Errorf("load source version components: %w", err)
-	}
-	createdFromVersionId := source.Id
-	version := model.Version{
-		Id: idutil.NewId(), ApplicationId: source.ApplicationId, Label: buildVersionLabel(runtimeDatetime),
-		Status: status.VersionStatusUnpublished, CreatedFromVersionId: &createdFromVersionId, Note: source.Note,
-	}
-	targetComponentId := ""
-	for index := range components {
-		components[index].Id = idutil.NewId()
-		components[index].VersionId = version.Id
-		if components[index].Name == binding.ComponentName {
-			components[index].Image = *artifact.ImageRef
-			targetComponentId = components[index].Id
-		}
-	}
-	if targetComponentId == "" {
-		return fmt.Errorf("source version does not contain component %s", binding.ComponentName)
-	}
-	if err := store.CreateVersionWithVersionComponents(ctx, version, components); err != nil {
 		return fmt.Errorf("fork source version: %w", err)
-	}
-	if err := store.SetVersionComponentArtifact(ctx, targetComponentId, artifact.Id); err != nil {
-		return fmt.Errorf("associate generated version component with artifact: %w", err)
 	}
 	if err := store.CompletePipelineRunBuildVersionBinding(ctx, run.Id, stage.Id, version.Id, version.Label, artifact.Id); err != nil {
 		return err

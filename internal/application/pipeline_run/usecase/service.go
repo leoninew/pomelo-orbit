@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	applicationport "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/port"
 	pipelinerunport "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/port"
 	repositoryport "gitee.com/leoninew/PomeloOrbit-go/internal/application/repository/port"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
@@ -14,6 +15,7 @@ import (
 type Service struct {
 	store             stores
 	executionStore    pipelineExecutionStore
+	versionForker     applicationport.BuildVersionForker
 	dispatcher        pipelinerunport.PipelineRunDispatcher
 	workspace         pipelinerunport.Workspace
 	logStore          pipelinerunport.LogReader
@@ -55,6 +57,7 @@ func New(
 	pipeline repository.PipelineStore,
 	pipelineRun repository.PipelineRunStore,
 	application repository.ApplicationStore,
+	versionForker applicationport.BuildVersionForker,
 	dispatcher pipelinerunport.PipelineRunDispatcher,
 	workspace pipelinerunport.Workspace,
 	secretKey string,
@@ -69,7 +72,8 @@ func New(
 	}
 	return Service{
 		store: s, executionStore: s, dispatcher: dispatcher, workspace: workspace,
-		logStore: logStore, secretKey: secretKey, logger: logger, runner: runner, localSource: localSource,
+		versionForker: versionForker,
+		logStore:      logStore, secretKey: secretKey, logger: logger, runner: runner, localSource: localSource,
 	}
 }
 
@@ -80,6 +84,7 @@ func NewExecutionService(
 	pipeline repository.PipelineStore,
 	pipelineRun repository.PipelineRunStore,
 	application repository.ApplicationStore,
+	versionForker applicationport.BuildVersionForker,
 	workspace pipelinerunport.Workspace,
 	secretKey string,
 	logger *slog.Logger,
@@ -94,6 +99,7 @@ func NewExecutionService(
 	}
 	return Service{
 		store: s, executionStore: s, workspace: workspace, logStore: logStore,
+		versionForker:     versionForker,
 		executionLogStore: logStore, secretKey: secretKey, logger: logger, executionTimeout: executionTimeout, runner: runner, localSource: localSource,
 	}
 }

@@ -53,7 +53,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 
 	executionCtx, cancel := context.WithTimeout(ctx, s.executionTimeout)
 	defer cancel()
-	stageExecutor := Executor{store: s.executionStore, workspace: s.workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, executionTimeout: s.executionTimeout, runner: s.runner, localSource: s.localSource}
+	stageExecutor := Executor{store: s.executionStore, versionForker: s.versionForker, workspace: s.workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, executionTimeout: s.executionTimeout, runner: s.runner, localSource: s.localSource}
 	ok, message := stageExecutor.Execute(ctx, executionCtx, run, repo, variables, stages)
 	current, err := s.executionStore.PipelineRun(ctx, run.Id)
 	if err != nil {

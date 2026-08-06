@@ -132,6 +132,9 @@
           <p v-else class="app-field-hint">{{ t('project.codeHint') }}</p>
         </div>
       </div>
+      <p v-if="submitError" class="app-field-error mt-3" role="alert">
+        {{ submitError }}
+      </p>
 
       <template #footer>
         <AppDialogActions :busy="operating" @cancel="isDialogOpen = false" @confirm="handleSave" />
@@ -143,6 +146,9 @@
         {{ t('project.deprecateConfirmPrefix') }}
         <span>{{ deprecatingProject?.name }}</span>
         {{ t('project.deprecateConfirmSuffix') }}
+      </p>
+      <p v-if="deprecateSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deprecateSubmitError }}
       </p>
       <template #footer>
         <AppDialogActions
@@ -190,6 +196,8 @@
   const pagination = reactive({ current: 1, pageSize: 10 });
   const form = reactive({ name: '', code: '' });
   const errors = reactive({ name: '', code: '' });
+  const submitError = ref('');
+  const deprecateSubmitError = ref('');
 
   const filteredProjects = computed(() => {
     const keyword = searchText.value.trim().toLowerCase();
@@ -214,6 +222,7 @@
     form.code = project?.code ?? '';
     errors.name = '';
     errors.code = '';
+    submitError.value = '';
   }
 
   function validate() {
@@ -236,6 +245,7 @@
 
   async function openDeprecateDialog(project: ProjectResp) {
     deprecatingProject.value = project;
+    deprecateSubmitError.value = '';
     (document.activeElement as HTMLElement)?.blur();
     await nextTick();
     isDeprecateDialogOpen.value = true;
@@ -261,39 +271,49 @@
   }
 
   async function handleSave() {
+    submitError.value = '';
     if (!validate()) {
       return;
     }
-    await executeOp(async () => {
-      if (editingProject.value) {
-        await projectStore.updateProject(editingProject.value.id, {
-          name: form.name.trim(),
-          code: form.code.trim(),
-        });
-        toast.success(t('project.updated'));
-        isDialogOpen.value = false;
-      } else {
-        const project = await projectStore.createProject({
-          name: form.name.trim(),
-          code: form.code.trim(),
-        });
-        toast.success(t('project.created'));
-        isDialogOpen.value = false;
-        router.push({ name: 'ProjectDetail', params: { id: project.id } });
-      }
-    });
+    try {
+      await executeOp(async () => {
+        if (editingProject.value) {
+          await projectStore.updateProject(editingProject.value.id, {
+            name: form.name.trim(),
+            code: form.code.trim(),
+          });
+          toast.success(t('project.updated'));
+          isDialogOpen.value = false;
+        } else {
+          const project = await projectStore.createProject({
+            name: form.name.trim(),
+            code: form.code.trim(),
+          });
+          toast.success(t('project.created'));
+          isDialogOpen.value = false;
+          router.push({ name: 'ProjectDetail', params: { id: project.id } });
+        }
+      });
+    } catch (error: unknown) {
+      submitError.value = error instanceof Error ? error.message : t('project.saveFailed');
+    }
   }
 
   async function handleDeprecate() {
     if (!deprecatingProject.value) {
       return;
     }
+    deprecateSubmitError.value = '';
     const projectId = deprecatingProject.value.id;
-    await executeOp(async () => {
-      await projectStore.deprecateProject(projectId);
-      toast.success(t('project.deprecatedToast'));
-      isDeprecateDialogOpen.value = false;
-    });
+    try {
+      await executeOp(async () => {
+        await projectStore.deprecateProject(projectId);
+        toast.success(t('project.deprecatedToast'));
+        isDeprecateDialogOpen.value = false;
+      });
+    } catch (error: unknown) {
+      deprecateSubmitError.value = error instanceof Error ? error.message : t('project.saveFailed');
+    }
   }
 
   onMounted(fetchProjects);

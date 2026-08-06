@@ -40,7 +40,7 @@
 
         <!-- Hover 光晕效果 -->
         <div
-          class="pointer-events-none absolute inset-0 rounded-[20px] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+          class="pointer-events-none absolute inset-0 rounded-lg opacity-0 transition-opacity duration-300 group-hover:opacity-100"
           :style="{ background: getCardGlow(card.iconColorClass) }"
         ></div>
       </button>

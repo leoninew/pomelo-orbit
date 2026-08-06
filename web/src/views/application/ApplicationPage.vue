@@ -111,6 +111,9 @@
         @clear-error="clearCreateError"
         @update:form="Object.assign(createForm, $event)"
       />
+      <p v-if="createSubmitError" class="app-field-error mt-3" role="alert">
+        {{ createSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -144,6 +147,9 @@
         <label class="app-field-label mb-1.5 block">{{ t('application.code') }}</label>
         <input v-model="editForm.code" type="text" disabled class="app-input" />
       </div>
+      <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
+        {{ editSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -176,6 +182,9 @@
           }}
         </span>
       </label>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -197,6 +206,9 @@
       <div class="app-tip">
         {{ importSummary }}
       </div>
+      <p v-if="importSubmitError" class="app-field-error mt-3" role="alert">
+        {{ importSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -255,11 +267,14 @@
     kind: 'standard',
   });
   const createErrors = reactive({ name: '', code: '' });
+  const createSubmitError = ref('');
   const editingApplication = ref<ApplicationResp>();
   const pendingDeleteApplication = ref<ApplicationResp>();
   const editForm = reactive({ name: '', code: '' });
   const editErrors = reactive({ name: '' });
+  const editSubmitError = ref('');
   const deleteDir = ref(false);
+  const deleteSubmitError = ref('');
   const importForm = reactive<ApplicationImportReq>({
     name: '',
     code: '',
@@ -269,6 +284,7 @@
     components: [],
   });
   const importErrors = reactive({ name: '', code: '' });
+  const importSubmitError = ref('');
   const importSummary = computed(() =>
     t('application.importSummary', {
       versionLabel: importForm.version_label || '-',
@@ -337,6 +353,7 @@
       kind: 'standard',
     });
     Object.assign(createErrors, { name: '', code: '' });
+    createSubmitError.value = '';
     isCreateDialogOpen.value = true;
   }
 
@@ -344,16 +361,19 @@
     editingApplication.value = application;
     Object.assign(editForm, { name: application.name, code: application.code });
     editErrors.name = '';
+    editSubmitError.value = '';
     isEditDialogOpen.value = true;
   }
 
   function openDeleteDialog(application: ApplicationResp) {
     pendingDeleteApplication.value = application;
     deleteDir.value = false;
+    deleteSubmitError.value = '';
     isDeleteDialogOpen.value = true;
   }
 
   async function handleEditOk() {
+    editSubmitError.value = '';
     editErrors.name = editForm.name.trim() ? '' : t('application.validation.nameRequired');
     const applicationId = editingApplication.value?.id;
     if (editErrors.name || !applicationId) {
@@ -367,7 +387,8 @@
         await fetchApplications();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+      editSubmitError.value =
+        error instanceof Error ? error.message : t('application.toast.updateFailed');
     }
   }
 
@@ -376,6 +397,7 @@
     if (!application) {
       return;
     }
+    deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
         await applicationApi.delete(application.id, deleteDir.value);
@@ -388,7 +410,8 @@
         await fetchApplications();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.deleteFailed'));
+      deleteSubmitError.value =
+        error instanceof Error ? error.message : t('application.toast.deleteFailed');
     }
   }
 
@@ -401,12 +424,13 @@
   }
 
   async function handleCreateOk() {
+    createSubmitError.value = '';
     if (!validateCreateForm(createErrors)) {
       return;
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error(t('application.toast.selectProjectRequired'));
+      createSubmitError.value = t('application.toast.selectProjectRequired');
       return;
     }
     try {
@@ -424,7 +448,8 @@
         await fetchApplications();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.createFailed'));
+      createSubmitError.value =
+        error instanceof Error ? error.message : t('application.toast.createFailed');
     }
   }
 
@@ -446,6 +471,7 @@
       }
       Object.assign(importForm, data);
       Object.assign(importErrors, { name: '', code: '' });
+      importSubmitError.value = '';
       isImportDialogOpen.value = true;
     } catch {
       toast.error(t('application.toast.parseImportFailed'));
@@ -455,12 +481,13 @@
   }
 
   async function handleImportOk() {
+    importSubmitError.value = '';
     if (!validateImportForm(importErrors)) {
       return;
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error(t('application.toast.selectProjectRequired'));
+      importSubmitError.value = t('application.toast.selectProjectRequired');
       return;
     }
     try {
@@ -471,7 +498,8 @@
         await fetchApplications();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.importFailed'));
+      importSubmitError.value =
+        error instanceof Error ? error.message : t('application.toast.importFailed');
     }
   }
 

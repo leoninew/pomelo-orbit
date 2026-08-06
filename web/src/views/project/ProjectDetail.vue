@@ -170,6 +170,9 @@
         </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
+      <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
+        {{ editSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -200,6 +203,9 @@
           </p>
         </div>
       </div>
+      <p v-if="memberSubmitError" class="app-field-error mt-3" role="alert">
+        {{ memberSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions :busy="operating" @cancel="closeMemberModal" @confirm="handleAddMember" />
       </template>
@@ -245,6 +251,8 @@
   const form = reactive({ name: '', code: '' });
   const errors = reactive({ name: '', code: '' });
   const memberErrors = reactive({ userId: '' });
+  const editSubmitError = ref('');
+  const memberSubmitError = ref('');
   const { loading: loadingMembers, execute: executeMembers } = useStatusAsync();
 
   const availableUsers = computed(() => {
@@ -265,6 +273,7 @@
     form.code = project.value?.code ?? '';
     errors.name = '';
     errors.code = '';
+    editSubmitError.value = '';
   }
 
   function validate() {
@@ -304,6 +313,7 @@
   }
 
   async function handleEditOk() {
+    editSubmitError.value = '';
     if (!validate()) {
       return;
     }
@@ -317,23 +327,26 @@
         isEditModalOpen.value = false;
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('project.saveFailed'));
+      editSubmitError.value = e instanceof Error ? e.message : t('project.saveFailed');
     }
   }
 
   function openMemberModal() {
     selectedUserId.value = '';
     memberErrors.userId = '';
+    memberSubmitError.value = '';
     isMemberModalOpen.value = true;
   }
 
   function closeMemberModal() {
     selectedUserId.value = '';
     memberErrors.userId = '';
+    memberSubmitError.value = '';
     isMemberModalOpen.value = false;
   }
 
   async function handleAddMember() {
+    memberSubmitError.value = '';
     if (!selectedUserId.value) {
       memberErrors.userId = t('project.selectUserRequired');
       return;
@@ -348,7 +361,7 @@
         isMemberModalOpen.value = false;
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('project.addMemberFailed'));
+      memberSubmitError.value = e instanceof Error ? e.message : t('project.addMemberFailed');
     }
   }
 

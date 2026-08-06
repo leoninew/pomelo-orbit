@@ -130,7 +130,6 @@
                         {{ t('application.detail.actions.fork') }}
                       </button>
                       <button
-                        v-if="version.status === 'unpublished'"
                         class="app-link-danger"
                         :disabled="operating"
                         @click="openDeleteVersionModal(version)"
@@ -283,7 +282,7 @@
                       {{ t('application.detail.actions.fork') }}
                     </button>
                     <button
-                      v-if="versionsOnly && version.status === 'unpublished'"
+                      v-if="versionsOnly"
                       class="app-link-danger"
                       :disabled="operating"
                       @click="openDeleteVersionModal(version)"
@@ -333,6 +332,9 @@
         <label class="app-field-label mb-1.5 block">{{ t('application.code') }}</label>
         <input v-model="editForm.code" type="text" disabled class="app-input" />
       </div>
+      <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
+        {{ editSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -363,6 +365,9 @@
           {{ t('application.detail.dialog.deleteWorkDir', { code: application?.code || '-' }) }}
         </span>
       </label>
+      <p v-if="deleteApplicationError" class="app-field-error mt-3" role="alert">
+        {{ deleteApplicationError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -374,7 +379,7 @@
       </template>
     </AppDialog>
 
-    <!-- 删除未发布版本 -->
+    <!-- 删除版本 -->
     <AppDialog
       :open="isDeleteVersionDialogOpen"
       :title="t('application.detail.dialog.deleteVersion')"
@@ -471,6 +476,9 @@
           <textarea v-model="componentForm.command" class="app-textarea" rows="3" />
         </div>
       </div>
+      <p v-if="componentEditError" class="app-field-error mt-3" role="alert">
+        {{ componentEditError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -493,6 +501,9 @@
             name: pendingComponent?.name || '-',
           })
         }}
+      </p>
+      <p v-if="componentDeleteError" class="app-field-error mt-3" role="alert">
+        {{ componentDeleteError }}
       </p>
       <template #footer>
         <AppDialogActions
@@ -542,6 +553,9 @@
           />
         </div>
       </div>
+      <p v-if="versionCreateError" class="app-field-error mt-3" role="alert">
+        {{ versionCreateError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -574,6 +588,9 @@
         />
         <p v-if="forkLabelError" class="app-field-error mt-1 text-xs">{{ forkLabelError }}</p>
       </div>
+      <p v-if="forkSubmitError" class="app-field-error mt-3" role="alert">
+        {{ forkSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -686,6 +703,11 @@
   const isDeleteVersionDialogOpen = ref(false);
   const pendingDeleteVersion = ref<VersionResp | null>(null);
   const deleteVersionError = ref('');
+  const editSubmitError = ref('');
+  const deleteApplicationError = ref('');
+  const versionCreateError = ref('');
+  const componentEditError = ref('');
+  const componentDeleteError = ref('');
   const isVersionDialogOpen = ref(false);
   const isForkDialogOpen = ref(false);
   const isComponentEditDialogOpen = ref(false);
@@ -695,6 +717,7 @@
   const forkingVersionId = ref('');
   const forkLabel = ref('');
   const forkLabelError = ref('');
+  const forkSubmitError = ref('');
   const deleteDir = ref(false);
 
   const editForm = reactive({
@@ -832,6 +855,7 @@
 
   function openEditModal() {
     editErrors.name = '';
+    editSubmitError.value = '';
     if (application.value) {
       Object.assign(editForm, {
         name: application.value.name,
@@ -842,6 +866,7 @@
   }
 
   async function handleEditOk() {
+    editSubmitError.value = '';
     editErrors.name = editForm.name.trim() ? '' : t('application.validation.nameRequired');
     if (editErrors.name) {
       return;
@@ -856,16 +881,19 @@
         await fetchApplication();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+      editSubmitError.value =
+        error instanceof Error ? error.message : t('application.toast.updateFailed');
     }
   }
 
   function openDeleteModal() {
     deleteDir.value = false;
+    deleteApplicationError.value = '';
     isDeleteDialogOpen.value = true;
   }
 
   async function handleDeleteOk() {
+    deleteApplicationError.value = '';
     try {
       await executeOp(async () => {
         await applicationApi.delete(applicationId, deleteDir.value);
@@ -873,7 +901,8 @@
         router.push('/applications');
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.deleteFailed'));
+      deleteApplicationError.value =
+        error instanceof Error ? error.message : t('application.toast.deleteFailed');
     }
   }
 
@@ -881,10 +910,12 @@
     versionForm.label = '';
     versionForm.note = '';
     versionFormErrors.label = '';
+    versionCreateError.value = '';
     isVersionDialogOpen.value = true;
   }
 
   async function handleVersionCreate() {
+    versionCreateError.value = '';
     versionFormErrors.label = versionForm.label.trim()
       ? ''
       : t('application.validation.versionLabelRequired');
@@ -905,7 +936,8 @@
         router.push(`/version/${created.id}`);
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.saveFailed'));
+      versionCreateError.value =
+        error instanceof Error ? error.message : t('application.toast.saveFailed');
     }
   }
 
@@ -978,12 +1010,14 @@
     pendingComponent.value = component;
     Object.assign(componentForm, componentFormFromResponse(component));
     resetComponentErrors();
+    componentEditError.value = '';
     isComponentEditDialogOpen.value = true;
   }
 
   function cancelComponentEditing() {
     resetComponentForm();
     resetComponentErrors();
+    componentEditError.value = '';
     isComponentEditDialogOpen.value = false;
   }
 
@@ -1000,6 +1034,7 @@
     if (!target || !pendingComponentVersionId.value) {
       return;
     }
+    componentEditError.value = '';
     const result = componentBasicRequestFromForm(componentForm);
     if (!result.valid) {
       componentErrors.name =
@@ -1032,13 +1067,15 @@
         toast.success(t('application.toast.updateSuccess'));
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+      componentEditError.value =
+        error instanceof Error ? error.message : t('application.toast.updateFailed');
     }
   }
 
   function openComponentDeleteDialog(versionId: string, component: VersionComponentResp) {
     pendingComponentVersionId.value = versionId;
     pendingComponent.value = component;
+    componentDeleteError.value = '';
     isComponentDeleteDialogOpen.value = true;
   }
 
@@ -1046,6 +1083,7 @@
     isComponentDeleteDialogOpen.value = false;
     pendingComponent.value = undefined;
     pendingComponentVersionId.value = '';
+    componentDeleteError.value = '';
   }
 
   async function deleteComponent() {
@@ -1053,6 +1091,7 @@
     if (!target || !pendingComponentVersionId.value) {
       return;
     }
+    componentDeleteError.value = '';
     try {
       await executeOp(async () => {
         await applicationApi.deleteVersionComponent(pendingComponentVersionId.value, target.id);
@@ -1067,7 +1106,8 @@
         toast.success(t('application.toast.updateSuccess'));
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+      componentDeleteError.value =
+        error instanceof Error ? error.message : t('application.toast.updateFailed');
     }
   }
 
@@ -1075,10 +1115,12 @@
     forkingVersionId.value = version.id;
     forkLabel.value = `${version.label}-copy`;
     forkLabelError.value = '';
+    forkSubmitError.value = '';
     isForkDialogOpen.value = true;
   }
 
   async function handleForkOk() {
+    forkSubmitError.value = '';
     forkLabelError.value = forkLabel.value.trim()
       ? ''
       : t('application.validation.versionLabelRequired');
@@ -1095,7 +1137,8 @@
         router.push(`/version/${created.id}`);
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.forkFailed'));
+      forkSubmitError.value =
+        error instanceof Error ? error.message : t('application.toast.forkFailed');
     }
   }
 

@@ -206,6 +206,9 @@
           <span class="text-sm text-foreground">{{ t('gateway.deploy.forceRecreate') }}</span>
         </label>
       </div>
+      <p v-if="deploySubmitError" class="app-field-error mt-3" role="alert">
+        {{ deploySubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -241,6 +244,9 @@
           <span class="text-sm text-foreground">{{ t('gateway.stop.removeVolumes') }}</span>
         </label>
       </div>
+      <p v-if="stopSubmitError" class="app-field-error mt-3" role="alert">
+        {{ stopSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -338,6 +344,9 @@
         </div>
       </div>
       <p class="text-sm text-muted-foreground">{{ t('gateway.hints.compileOnSave') }}</p>
+      <p v-if="editSubmitError" class="app-field-error" role="alert">
+        {{ editSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -385,6 +394,7 @@
 
   const isDeployDialogOpen = ref(false);
   const deployErrors = reactive({ version_id: '', instance_key: '' });
+  const deploySubmitError = ref('');
   const deployForm = reactive({
     version_id: '',
     instance_key: 'default',
@@ -393,6 +403,7 @@
 
   const isStopDialogOpen = ref(false);
   const stopError = ref('');
+  const stopSubmitError = ref('');
   const stopForm = reactive({
     service_id: '',
     remove_volumes: false,
@@ -410,6 +421,7 @@
     rest_api_url: '',
     base_domain: '',
   });
+  const editSubmitError = ref('');
 
   const gatewayId = () => String(route.params.id || '');
   const operating = computed(() => opStatus.value === 'loading');
@@ -458,6 +470,7 @@
       tls_mode: current.tls_mode,
     });
     Object.assign(editErrors, { name: '', rest_api_url: '', base_domain: '' });
+    editSubmitError.value = '';
     isEditDialogOpen.value = true;
   }
 
@@ -474,6 +487,7 @@
 
   async function saveGateway() {
     const current = gateway.value;
+    editSubmitError.value = '';
     if (!current || !validateEditForm()) {
       return;
     }
@@ -491,7 +505,8 @@
         await loadRuntimeContext();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('gateway.toast.saveFailed'));
+      editSubmitError.value =
+        error instanceof Error ? error.message : t('gateway.toast.saveFailed');
     }
   }
 
@@ -565,6 +580,7 @@
       return;
     }
     Object.assign(deployErrors, { version_id: '', instance_key: '' });
+    deploySubmitError.value = '';
     deployForm.force_recreate = false;
     deployForm.instance_key = 'default';
     try {
@@ -583,6 +599,7 @@
 
   async function handleDeployOk() {
     const current = gateway.value;
+    deploySubmitError.value = '';
     if (!current) {
       return;
     }
@@ -630,7 +647,8 @@
         await loadRuntimeContext();
       });
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t('gateway.toast.deployFailed'));
+      deploySubmitError.value =
+        err instanceof Error ? err.message : t('gateway.toast.deployFailed');
     }
   }
 
@@ -639,6 +657,7 @@
       return;
     }
     stopError.value = '';
+    stopSubmitError.value = '';
     stopForm.remove_volumes = false;
     stopForm.service_id = stoppableServices.value[0]?.id || '';
     isStopDialogOpen.value = true;
@@ -646,6 +665,7 @@
 
   async function handleStopOk() {
     const current = gateway.value;
+    stopSubmitError.value = '';
     if (!current) {
       return;
     }
@@ -671,7 +691,7 @@
         await loadRuntimeContext();
       });
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t('gateway.toast.stopFailed'));
+      stopSubmitError.value = err instanceof Error ? err.message : t('gateway.toast.stopFailed');
     }
   }
 

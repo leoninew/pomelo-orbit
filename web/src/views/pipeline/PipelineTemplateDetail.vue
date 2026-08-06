@@ -245,6 +245,9 @@
         <label class="app-field-label block">{{ t('common.description') }}</label>
         <textarea v-model="editForm.description" rows="3" class="app-textarea"></textarea>
       </div>
+      <p v-if="editInfoSubmitError" class="app-field-error mt-3" role="alert">
+        {{ editInfoSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions :busy="saving" @cancel="cancelEditInfo" @confirm="handleEditInfoOk" />
       </template>
@@ -359,6 +362,9 @@
           class="app-input"
         />
       </div>
+      <p v-if="runSubmitError" class="app-field-error mt-3" role="alert">
+        {{ runSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="running"
@@ -423,6 +429,9 @@
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
       <p class="text-sm text-muted-foreground">{{ t('pipelineTemplate.deleteTemplateConfirm') }}</p>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="deleting"
@@ -596,6 +605,9 @@
   const isDeleteDialogOpen = ref(false);
   const isDeleteOrchDialogOpen = ref(false);
   const isDeleteVarDialogOpen = ref(false);
+  const editInfoSubmitError = ref('');
+  const runSubmitError = ref('');
+  const deleteSubmitError = ref('');
 
   const editForm = reactive({ name: '', description: '' });
   const editInfoErrors = reactive({ name: '' });
@@ -747,6 +759,7 @@
       description: template.value?.description ?? '',
     });
     editInfoErrors.name = '';
+    editInfoSubmitError.value = '';
     isEditInfoDialogOpen.value = true;
   }
 
@@ -756,10 +769,12 @@
       description: template.value?.description ?? '',
     });
     editInfoErrors.name = '';
+    editInfoSubmitError.value = '';
     isEditInfoDialogOpen.value = false;
   }
 
   async function handleEditInfoOk() {
+    editInfoSubmitError.value = '';
     editInfoErrors.name = editForm.name.trim() ? '' : t('pipelineTemplate.validation.nameNotEmpty');
     if (editInfoErrors.name) {
       return;
@@ -776,7 +791,8 @@
       });
       isEditInfoDialogOpen.value = false;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('pipelineTemplate.toast.saveFailed'));
+      editInfoSubmitError.value =
+        e instanceof Error ? e.message : t('pipelineTemplate.toast.saveFailed');
     }
   }
 
@@ -836,10 +852,12 @@
   }
 
   function openDeleteModal() {
+    deleteSubmitError.value = '';
     isDeleteDialogOpen.value = true;
   }
 
   async function handleDeleteOk() {
+    deleteSubmitError.value = '';
     try {
       await executeDelete(async () => {
         await pipelineTemplateApi.delete(templateId.value);
@@ -847,7 +865,8 @@
         router.push('/pipeline/template');
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('pipelineTemplate.toast.deleteFailed'));
+      deleteSubmitError.value =
+        e instanceof Error ? e.message : t('pipelineTemplate.toast.deleteFailed');
     }
   }
 
@@ -999,11 +1018,13 @@
     runForm.repositoryId = '';
     runForm.triggerRef = '';
     runErrors.repositoryId = '';
+    runSubmitError.value = '';
     await searchRepos();
     isRunDialogOpen.value = true;
   }
 
   async function handleRunOk() {
+    runSubmitError.value = '';
     if (!runForm.repositoryId) {
       runErrors.repositoryId = t('pipelineTemplate.toast.selectRepositoryRequired');
       return;
@@ -1028,7 +1049,8 @@
         router.push(`/pipeline-run/${run.id}`);
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('pipelineTemplate.toast.runFailed'));
+      runSubmitError.value =
+        error instanceof Error ? error.message : t('pipelineTemplate.toast.runFailed');
     }
   }
 

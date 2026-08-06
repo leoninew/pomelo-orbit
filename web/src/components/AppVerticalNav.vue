@@ -28,7 +28,7 @@
         @update:open="(open) => setOpen(branch.key, open)"
       >
         <CollapsibleTrigger
-          class="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+          class="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm transition-colors outline-none focus-visible:bg-muted/60 focus-visible:text-foreground"
           :class="
             isBranchActive(branch)
               ? 'bg-muted/60 text-foreground'

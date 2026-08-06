@@ -148,6 +148,9 @@
           <span class="text-sm text-foreground">启用</span>
         </label>
       </div>
+      <p v-if="submitError" class="app-field-error mt-3" role="alert">
+        {{ submitError }}
+      </p>
       <template #footer>
         <AppDialogActions :busy="operating" @cancel="isDialogOpen = false" @confirm="handleOk" />
       </template>
@@ -159,6 +162,9 @@
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
       <p class="text-sm text-muted-foreground">确定删除此 Webhook？此操作不可撤销。</p>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -204,6 +210,8 @@
   const isSecretVisible = ref(true);
   const editingWebhook = ref<RepositoryWebhookResp>();
   const deletingWebhook = ref<RepositoryWebhookResp>();
+  const submitError = ref('');
+  const deleteSubmitError = ref('');
 
   const form = reactive({
     name: '',
@@ -244,6 +252,7 @@
 
   function resetErrors() {
     Object.assign(errors, { name: '', template_id: '', secret: '' });
+    submitError.value = '';
   }
 
   function openCreateModal() {
@@ -282,6 +291,7 @@
   }
 
   async function handleOk() {
+    submitError.value = '';
     if (!validateForm()) {
       return;
     }
@@ -310,12 +320,13 @@
         emit('refresh');
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '操作失败');
+      submitError.value = error instanceof Error ? error.message : '操作失败';
     }
   }
 
   async function handleDelete(wh: RepositoryWebhookResp) {
     deletingWebhook.value = wh;
+    deleteSubmitError.value = '';
     (document.activeElement as HTMLElement)?.blur();
     await nextTick();
     isDeleteDialogOpen.value = true;
@@ -326,6 +337,7 @@
       return;
     }
 
+    deleteSubmitError.value = '';
     const webhookId = deletingWebhook.value.id;
     try {
       await executeOp(async () => {
@@ -335,7 +347,7 @@
         emit('refresh');
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '删除失败');
+      deleteSubmitError.value = error instanceof Error ? error.message : '删除失败';
     }
   }
 </script>

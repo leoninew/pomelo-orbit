@@ -25,6 +25,15 @@
           <Rocket class="size-4" />
           {{ t('service.actions.deploy') }}
         </button>
+        <button
+          v-if="service"
+          class="app-button-danger h-9 px-3"
+          :disabled="operating || service.status !== 'stopped'"
+          @click="openDeleteDialog"
+        >
+          <Trash2 class="size-4" />
+          {{ t('common.delete') }}
+        </button>
         <button class="app-button h-9 px-4" @click="router.push('/services')">
           <ArrowLeft class="size-4" />
           {{ t('common.back') }}
@@ -47,6 +56,32 @@
         @save="persistEnvironment"
       />
     </template>
+
+    <AppDialog
+      v-model:open="isDeleteDialogOpen"
+      :title="t('service.detail.dialog.confirmDelete')"
+      width-class="w-[min(420px,calc(100vw-32px))]"
+    >
+      <p class="text-sm text-muted-foreground">
+        {{
+          t('service.detail.dialog.deleteConfirm', {
+            instance: service?.instance_key || '-',
+          })
+        }}
+      </p>
+      <p v-if="deleteError" class="app-field-error mt-3" role="alert">
+        {{ deleteError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.delete')"
+          variant="destructive"
+          @cancel="closeDeleteDialog"
+          @confirm="deleteService"
+        />
+      </template>
+    </AppDialog>
 
     <AppDrawer
       :open="previewOpen"
@@ -149,13 +184,15 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, FileCode2, Loader2, RefreshCw, Rocket } from 'lucide-vue-next';
+  import { ArrowLeft, FileCode2, Loader2, RefreshCw, Rocket, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, onUnmounted, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
   import { serviceApi } from '@/api/service/service';
   import AppBadge from '@/components/AppBadge.vue';
+  import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
@@ -185,6 +222,8 @@
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const { loading: previewLoading, execute: executePreview } = useStatusAsync();
   const service = ref<ServiceResp>();
+  const isDeleteDialogOpen = ref(false);
+  const deleteError = ref('');
   const previewOpen = ref(false);
   const previewContent = ref('');
   const previewError = ref('');
@@ -380,6 +419,30 @@
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('service.toast.deployFailed'));
+    }
+  }
+
+  function openDeleteDialog() {
+    if (service.value?.status !== 'stopped') return;
+    deleteError.value = '';
+    isDeleteDialogOpen.value = true;
+  }
+
+  function closeDeleteDialog() {
+    isDeleteDialogOpen.value = false;
+    deleteError.value = '';
+  }
+
+  async function deleteService() {
+    try {
+      await executeOperation(async () => {
+        await serviceApi.remove(serviceId);
+        closeDeleteDialog();
+        toast.success(t('service.toast.deleteSuccess'));
+        await router.push('/services');
+      });
+    } catch (error) {
+      deleteError.value = error instanceof Error ? error.message : t('service.toast.deleteFailed');
     }
   }
 

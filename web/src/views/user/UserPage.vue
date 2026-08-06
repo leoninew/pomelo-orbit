@@ -169,8 +169,11 @@
         </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
+      <p v-if="createSubmitError" class="app-field-error mt-3" role="alert">
+        {{ createSubmitError }}
+      </p>
       <template #footer>
-        <AppDialogActions :busy="operating" @cancel="isDialogOpen = false" @confirm="handleSave" />
+        <AppDialogActions :busy="operating" @cancel="closeCreateDialog" @confirm="handleSave" />
       </template>
     </AppDialog>
 
@@ -239,12 +242,11 @@
         </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
+      <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
+        {{ editSubmitError }}
+      </p>
       <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          @cancel="isEditDialogOpen = false"
-          @confirm="handleEditSave"
-        />
+        <AppDialogActions :busy="operating" @cancel="closeEditDialog" @confirm="handleEditSave" />
       </template>
     </AppDialog>
 
@@ -253,11 +255,14 @@
         {{ confirmMessage }}
         <span>{{ confirmAction?.user.username }}</span>
       </p>
+      <p v-if="confirmSubmitError" class="app-field-error mt-3" role="alert">
+        {{ confirmSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
           variant="destructive"
-          @cancel="confirmAction = null"
+          @cancel="closeConfirmDialog"
           @confirm="handleConfirm"
         />
       </template>
@@ -310,6 +315,9 @@
     status: '',
   });
   const editFormErrors = reactive({ username: '', password: '', status: '' });
+  const createSubmitError = ref('');
+  const editSubmitError = ref('');
+  const confirmSubmitError = ref('');
   const canWriteUsers = computed(() => authStore.hasPermission(PERMISSIONS.USER_WRITE));
   const userStatusValues = ['enabled', 'disabled'];
   const totalPages = computed(() => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)));
@@ -318,6 +326,7 @@
     set: (open) => {
       if (!open) {
         confirmAction.value = null;
+        confirmSubmitError.value = '';
       }
     },
   });
@@ -329,6 +338,7 @@
     form.email = '';
     form.password = '';
     Object.assign(formErrors, { username: '', email: '', password: '' });
+    createSubmitError.value = '';
   }
 
   function validateCreateForm() {
@@ -395,8 +405,14 @@
     isDialogOpen.value = true;
   }
 
+  function closeCreateDialog() {
+    createSubmitError.value = '';
+    isDialogOpen.value = false;
+  }
+
   async function openConfirmDialog(type: 'disable', user: UserListResp) {
     confirmAction.value = { type, user };
+    confirmSubmitError.value = '';
     (document.activeElement as HTMLElement)?.blur();
     await nextTick();
   }
@@ -406,6 +422,7 @@
   }
 
   async function handleSave() {
+    createSubmitError.value = '';
     if (!validateCreateForm()) {
       return;
     }
@@ -421,7 +438,7 @@
         router.push({ name: 'UserDetail', params: { id: user.id } });
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('userManagement.saveFailed'));
+      createSubmitError.value = e instanceof Error ? e.message : t('userManagement.saveFailed');
     }
   }
 
@@ -431,7 +448,13 @@
     editForm.password = '';
     editForm.status = user.status;
     Object.assign(editFormErrors, { username: '', password: '', status: '' });
+    editSubmitError.value = '';
     isEditDialogOpen.value = true;
+  }
+
+  function closeEditDialog() {
+    editSubmitError.value = '';
+    isEditDialogOpen.value = false;
   }
 
   async function handleEditSave() {
@@ -439,6 +462,7 @@
     if (!user) {
       return;
     }
+    editSubmitError.value = '';
     if (!validateEditForm()) {
       return;
     }
@@ -457,7 +481,7 @@
         isEditDialogOpen.value = false;
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('userManagement.saveFailed'));
+      editSubmitError.value = e instanceof Error ? e.message : t('userManagement.saveFailed');
     }
   }
 
@@ -478,6 +502,7 @@
     if (!action) {
       return;
     }
+    confirmSubmitError.value = '';
     try {
       await executeOp(async () => {
         await userApi.disable(action.user.id, {});
@@ -486,8 +511,13 @@
         confirmAction.value = null;
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('userManagement.disableFailed'));
+      confirmSubmitError.value = e instanceof Error ? e.message : t('userManagement.disableFailed');
     }
+  }
+
+  function closeConfirmDialog() {
+    confirmAction.value = null;
+    confirmSubmitError.value = '';
   }
 
   onMounted(() => {

@@ -140,6 +140,9 @@
         </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
+      <p v-if="submitError" class="app-field-error mt-3" role="alert">
+        {{ submitError }}
+      </p>
       <template #footer>
         <AppDialogActions :busy="operating" @cancel="isDialogOpen = false" @confirm="handleSave" />
       </template>
@@ -149,6 +152,9 @@
       <p class="text-sm text-foreground">
         {{ t('roleManagement.deleteConfirm') }}
         <span>{{ confirmAction?.role.name }}</span>
+      </p>
+      <p v-if="confirmSubmitError" class="app-field-error mt-3" role="alert">
+        {{ confirmSubmitError }}
       </p>
       <template #footer>
         <AppDialogActions
@@ -198,6 +204,8 @@
   const isDialogOpen = ref(false);
   const form = reactive({ code: '', name: '', description: '' });
   const formErrors = reactive({ code: '', name: '' });
+  const submitError = ref('');
+  const confirmSubmitError = ref('');
   const canWriteRoles = computed(() => authStore.hasPermission(PERMISSIONS.ROLE_WRITE));
   const totalPages = computed(() => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)));
   const confirmDialogOpen = computed({
@@ -205,6 +213,7 @@
     set: (open) => {
       if (!open) {
         confirmAction.value = null;
+        confirmSubmitError.value = '';
       }
     },
   });
@@ -214,6 +223,7 @@
     form.name = role?.name ?? '';
     form.description = role?.description ?? '';
     Object.assign(formErrors, { code: '', name: '' });
+    submitError.value = '';
   }
 
   function validateForm() {
@@ -273,11 +283,13 @@
 
   async function openConfirmDialog(role: RoleResp) {
     confirmAction.value = { role };
+    confirmSubmitError.value = '';
     (document.activeElement as HTMLElement)?.blur();
     await nextTick();
   }
 
   async function handleSave() {
+    submitError.value = '';
     if (!validateForm()) {
       return;
     }
@@ -303,7 +315,7 @@
         }
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('roleManagement.saveFailed'));
+      submitError.value = e instanceof Error ? e.message : t('roleManagement.saveFailed');
     }
   }
 
@@ -312,6 +324,7 @@
     if (!action) {
       return;
     }
+    confirmSubmitError.value = '';
     try {
       await executeOp(async () => {
         await roleApi.delete(action.role.id);
@@ -321,7 +334,7 @@
         await fetchRoles();
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('roleManagement.deleteFailed'));
+      confirmSubmitError.value = e instanceof Error ? e.message : t('roleManagement.deleteFailed');
     }
   }
 

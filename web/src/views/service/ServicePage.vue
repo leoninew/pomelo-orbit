@@ -227,6 +227,9 @@
           <span class="text-sm text-foreground">{{ t('service.deploy.forceRecreate') }}</span>
         </label>
       </div>
+      <p v-if="deploySubmitError" class="app-field-error mt-3" role="alert">
+        {{ deploySubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -318,6 +321,9 @@
           <span class="text-sm text-foreground">{{ t('service.stop.removeVolumes') }}</span>
         </label>
       </div>
+      <p v-if="stopSubmitError" class="app-field-error mt-3" role="alert">
+        {{ stopSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -379,8 +385,10 @@
   const deployForm = reactive({
     force_recreate: false,
   });
+  const deploySubmitError = ref('');
   const isStopDialogOpen = ref(false);
   const stopRemoveVolumes = ref(false);
+  const stopSubmitError = ref('');
   const isCreateDialogOpen = ref(false);
   const createError = ref('');
   const createErrors = reactive({
@@ -524,6 +532,7 @@
   async function openDeployDialog(service: ServiceResp) {
     selectedService.value = service;
     deployForm.force_recreate = false;
+    deploySubmitError.value = '';
     isDeployDialogOpen.value = true;
   }
 
@@ -532,6 +541,7 @@
     if (!service) {
       return;
     }
+    deploySubmitError.value = '';
     try {
       await executeOp(async () => {
         const result = await serviceApi.deploy(service.id, {
@@ -547,13 +557,15 @@
         await fetchServices();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('service.toast.deployFailed'));
+      deploySubmitError.value =
+        error instanceof Error ? error.message : t('service.toast.deployFailed');
     }
   }
 
   function openStopDialog(service: ServiceResp) {
     selectedService.value = service;
     stopRemoveVolumes.value = false;
+    stopSubmitError.value = '';
     isStopDialogOpen.value = true;
   }
 
@@ -562,6 +574,7 @@
     if (!service) {
       return;
     }
+    stopSubmitError.value = '';
     try {
       await executeOp(async () => {
         const result = await applicationApi.stop(service.application_id, {
@@ -577,7 +590,8 @@
         await fetchServices();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('service.toast.stopFailed'));
+      stopSubmitError.value =
+        error instanceof Error ? error.message : t('service.toast.stopFailed');
     }
   }
 

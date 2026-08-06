@@ -23,7 +23,7 @@
           v-if="run?.status === 'waiting_to_run' || run?.status === 'running'"
           :disabled="canceling"
           class="app-button-destructive h-9 px-3"
-          @click="isCancelDialogOpen = true"
+          @click="openCancelDialog"
         >
           <X class="size-4" />
           {{ t('common.cancel') }}
@@ -348,6 +348,9 @@
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
       <p class="text-sm text-foreground">{{ t('pipelineRun.cancelConfirm') }}</p>
+      <p v-if="cancelSubmitError" class="app-field-error mt-3" role="alert">
+        {{ cancelSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="canceling"
@@ -408,6 +411,7 @@
   const currentStageRunResp = ref<PipelineStageRunResp>();
   const showLogsDrawer = ref(false);
   const isCancelDialogOpen = ref(false);
+  const cancelSubmitError = ref('');
   const stagesView = ref<'list' | 'dag'>('list');
   const stageLogStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error'>('loading');
   const stageLogError = ref('');
@@ -568,6 +572,7 @@
   }
 
   async function handleCancel() {
+    cancelSubmitError.value = '';
     try {
       await executeCancel(async () => {
         await pipelineRunApi.cancel(runId.value, {});
@@ -579,8 +584,14 @@
         }
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('pipelineRun.toast.cancelFailed'));
+      cancelSubmitError.value =
+        error instanceof Error ? error.message : t('pipelineRun.toast.cancelFailed');
     }
+  }
+
+  function openCancelDialog() {
+    cancelSubmitError.value = '';
+    isCancelDialogOpen.value = true;
   }
 
   async function startPolling() {

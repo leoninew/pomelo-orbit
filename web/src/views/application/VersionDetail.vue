@@ -37,7 +37,7 @@
           {{ t('application.detail.actions.fork') }}
         </button>
         <button
-          v-if="version && isEditable"
+          v-if="version"
           :disabled="operating"
           class="app-button-danger h-9 px-3"
           @click="openDeleteDialog"
@@ -96,6 +96,9 @@
           />
         </div>
       </div>
+      <p v-if="basicSubmitError" class="app-field-error mt-3" role="alert">
+        {{ basicSubmitError }}
+      </p>
       <template #footer>
         <button class="app-button" @click="setPreviewOpen(false)">
           {{ t('application.detail.actions.close') }}
@@ -218,6 +221,9 @@
           <textarea v-model="componentForm.command" class="app-textarea" rows="3" />
         </div>
       </div>
+      <p v-if="componentCreateError" class="app-field-error mt-3" role="alert">
+        {{ componentCreateError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -297,6 +303,9 @@
           <textarea v-model="componentEditForm.command" class="app-textarea" rows="3" />
         </div>
       </div>
+      <p v-if="componentEditError" class="app-field-error mt-3" role="alert">
+        {{ componentEditError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -319,6 +328,9 @@
             name: pendingComponent?.name || '-',
           })
         }}
+      </p>
+      <p v-if="componentDeleteError" class="app-field-error mt-3" role="alert">
+        {{ componentDeleteError }}
       </p>
       <template #footer>
         <AppDialogActions
@@ -353,6 +365,9 @@
         />
         <p v-if="forkLabelError" class="app-field-error mt-1 text-xs">{{ forkLabelError }}</p>
       </div>
+      <p v-if="forkSubmitError" class="app-field-error mt-3" role="alert">
+        {{ forkSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -440,11 +455,16 @@
   const isForkDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
   const deleteVersionError = ref('');
+  const basicSubmitError = ref('');
+  const componentCreateError = ref('');
+  const componentEditError = ref('');
+  const componentDeleteError = ref('');
   const isComponentEditDialogOpen = ref(false);
   const isComponentDeleteDialogOpen = ref(false);
   const pendingComponent = ref<VersionComponentResp>();
   const forkLabel = ref('');
   const forkLabelError = ref('');
+  const forkSubmitError = ref('');
   const basicFormError = ref('');
   const componentFormErrors = reactive({ name: '', image: '' });
   const componentEditErrors = reactive({ name: '', image: '' });
@@ -510,10 +530,12 @@
     basicForm.label = version.value.label;
     basicForm.note = version.value.note === undefined ? '' : version.value.note;
     basicFormError.value = '';
+    basicSubmitError.value = '';
     isBasicDialogOpen.value = true;
   }
 
   async function saveBasic() {
+    basicSubmitError.value = '';
     basicFormError.value =
       basicForm.label === '' ? t('application.validation.versionLabelRequired') : '';
     if (basicFormError.value) {
@@ -529,22 +551,26 @@
         isBasicDialogOpen.value = false;
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+      basicSubmitError.value =
+        error instanceof Error ? error.message : t('application.toast.updateFailed');
     }
   }
 
   function openComponentDialog() {
     Object.assign(componentForm, emptyComponentForm());
     Object.assign(componentFormErrors, { name: '', image: '' });
+    componentCreateError.value = '';
     isComponentDialogOpen.value = true;
   }
 
   function closeComponentDialog() {
     isComponentDialogOpen.value = false;
     Object.assign(componentFormErrors, { name: '', image: '' });
+    componentCreateError.value = '';
   }
 
   async function createComponent() {
+    componentCreateError.value = '';
     const result = componentCreateRequestFromForm(componentForm);
     if (!result.valid) {
       componentFormErrors.name =
@@ -567,7 +593,8 @@
         closeComponentDialog();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+      componentCreateError.value =
+        error instanceof Error ? error.message : t('application.toast.updateFailed');
     }
   }
 
@@ -579,12 +606,14 @@
     pendingComponent.value = component;
     Object.assign(componentEditForm, componentFormFromResponse(component));
     resetComponentEditErrors();
+    componentEditError.value = '';
     isComponentEditDialogOpen.value = true;
   }
 
   function cancelComponentEditing() {
     Object.assign(componentEditForm, emptyComponentForm());
     resetComponentEditErrors();
+    componentEditError.value = '';
     isComponentEditDialogOpen.value = false;
   }
 
@@ -601,6 +630,7 @@
     if (!target) {
       return;
     }
+    componentEditError.value = '';
     const result = componentBasicRequestFromForm(componentEditForm);
     if (!result.valid) {
       componentEditErrors.name =
@@ -632,18 +662,21 @@
         toast.success(t('application.toast.updateSuccess'));
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+      componentEditError.value =
+        error instanceof Error ? error.message : t('application.toast.updateFailed');
     }
   }
 
   function openComponentDeleteDialog(component: VersionComponentResp) {
     pendingComponent.value = component;
+    componentDeleteError.value = '';
     isComponentDeleteDialogOpen.value = true;
   }
 
   function cancelComponentDeletion() {
     isComponentDeleteDialogOpen.value = false;
     pendingComponent.value = undefined;
+    componentDeleteError.value = '';
   }
 
   async function deleteComponent() {
@@ -651,6 +684,7 @@
     if (!target) {
       return;
     }
+    componentDeleteError.value = '';
     try {
       await executeOp(async () => {
         await applicationApi.deleteVersionComponent(versionId, target.id);
@@ -664,7 +698,8 @@
         toast.success(t('application.toast.updateSuccess'));
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+      componentDeleteError.value =
+        error instanceof Error ? error.message : t('application.toast.updateFailed');
     }
   }
 
@@ -693,6 +728,7 @@
   function openForkModal() {
     forkLabel.value = version.value ? `${version.value.label}-copy` : '';
     forkLabelError.value = '';
+    forkSubmitError.value = '';
     isForkDialogOpen.value = true;
   }
 
@@ -702,6 +738,7 @@
   }
 
   async function handleForkOk() {
+    forkSubmitError.value = '';
     forkLabelError.value = forkLabel.value.trim()
       ? ''
       : t('application.validation.versionLabelRequired');
@@ -718,7 +755,8 @@
         router.push(`/version/${created.id}`);
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.forkFailed'));
+      forkSubmitError.value =
+        error instanceof Error ? error.message : t('application.toast.forkFailed');
     }
   }
 

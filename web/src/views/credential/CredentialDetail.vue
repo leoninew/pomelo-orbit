@@ -114,6 +114,9 @@
           <p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
         </div>
       </div>
+      <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
+        {{ editSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -129,6 +132,9 @@
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
       <p class="text-sm text-foreground">确定删除此凭据？</p>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -168,6 +174,8 @@
   const isDeleteModalOpen = ref(false);
   const form = reactive({ name: '', data: '' });
   const errors = reactive({ name: '', data: '' });
+  const editSubmitError = ref('');
+  const deleteSubmitError = ref('');
 
   async function fetchCredential() {
     try {
@@ -185,10 +193,12 @@
       data: credential.value?.data ?? '',
     });
     Object.assign(errors, { name: '', data: '' });
+    editSubmitError.value = '';
     isEditModalOpen.value = true;
   }
 
   async function handleEditOk() {
+    editSubmitError.value = '';
     errors.name = form.name.trim() ? '' : '请输入凭据名称';
     errors.data = form.data.trim() ? '' : '请输入凭据内容';
     if (errors.name || errors.data) {
@@ -205,15 +215,17 @@
         fetchCredential();
       });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '操作失败');
+      editSubmitError.value = err instanceof Error ? err.message : '操作失败';
     }
   }
 
   function openDeleteModal() {
+    deleteSubmitError.value = '';
     isDeleteModalOpen.value = true;
   }
 
   async function handleDelete() {
+    deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
         await credentialApi.delete(props.id);
@@ -221,7 +233,7 @@
         $router.push('/credential');
       });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '删除失败');
+      deleteSubmitError.value = err instanceof Error ? err.message : '删除失败';
     }
   }
 

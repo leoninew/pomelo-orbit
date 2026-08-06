@@ -128,6 +128,9 @@
         </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
+      <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
+        {{ editSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -160,6 +163,9 @@
         </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
+      <p v-if="roleSubmitError" class="app-field-error mt-3" role="alert">
+        {{ roleSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -177,6 +183,9 @@
       <p class="text-sm text-foreground">
         {{ t('userManagement.disableConfirm') }}
         <span>{{ user?.username }}</span>
+      </p>
+      <p v-if="disableSubmitError" class="app-field-error mt-3" role="alert">
+        {{ disableSubmitError }}
       </p>
       <template #footer>
         <AppDialogActions
@@ -196,6 +205,9 @@
       <p class="text-sm text-foreground">
         {{ t('userManagement.deleteConfirm') }}
         <span>{{ user?.username }}</span>
+      </p>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
       </p>
       <template #footer>
         <AppDialogActions
@@ -251,6 +263,10 @@
   });
   const formErrors = reactive({ username: '', password: '', status: '' });
   const roleForm = reactive<{ roleIds: string[] }>({ roleIds: [] });
+  const editSubmitError = ref('');
+  const roleSubmitError = ref('');
+  const disableSubmitError = ref('');
+  const deleteSubmitError = ref('');
 
   const canWriteUsers = computed(() => authStore.hasPermission(PERMISSIONS.USER_WRITE));
   const canAssignRoles = computed(
@@ -290,6 +306,7 @@
     }
     form.status = user.value.status;
     Object.assign(formErrors, { username: '', password: '', status: '' });
+    editSubmitError.value = '';
     isEditModalOpen.value = true;
   }
 
@@ -307,10 +324,12 @@
 
   function openRoleModal() {
     roleForm.roleIds = user.value?.role_items.map((role) => role.id) ?? [];
+    roleSubmitError.value = '';
     isRoleModalOpen.value = true;
   }
 
   async function handleEditOk() {
+    editSubmitError.value = '';
     if (!validateEditForm()) {
       return;
     }
@@ -329,11 +348,12 @@
         await fetchUser();
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('userManagement.saveFailed'));
+      editSubmitError.value = e instanceof Error ? e.message : t('userManagement.saveFailed');
     }
   }
 
   async function handleRoleOk() {
+    roleSubmitError.value = '';
     try {
       await executeOp(async () => {
         await userApi.updateRoles(props.id, { role_ids: roleForm.roleIds });
@@ -345,15 +365,17 @@
         await fetchUser();
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('userManagement.saveFailed'));
+      roleSubmitError.value = e instanceof Error ? e.message : t('userManagement.saveFailed');
     }
   }
 
   function openDisableModal() {
+    disableSubmitError.value = '';
     isDisableModalOpen.value = true;
   }
 
   async function handleDisable() {
+    disableSubmitError.value = '';
     try {
       await executeOp(async () => {
         await userApi.disable(props.id, {});
@@ -362,7 +384,7 @@
         await fetchUser();
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('userManagement.disableFailed'));
+      disableSubmitError.value = e instanceof Error ? e.message : t('userManagement.disableFailed');
     }
   }
 
@@ -379,10 +401,12 @@
   }
 
   function openDeleteModal() {
+    deleteSubmitError.value = '';
     isDeleteModalOpen.value = true;
   }
 
   async function handleDelete() {
+    deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
         await userApi.delete(props.id);
@@ -390,7 +414,7 @@
         $router.push('/users');
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('userManagement.deleteFailed'));
+      deleteSubmitError.value = e instanceof Error ? e.message : t('userManagement.deleteFailed');
     }
   }
 

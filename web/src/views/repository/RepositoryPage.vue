@@ -645,12 +645,13 @@
   }
 
   async function handleCreateOk() {
+    createFormError.value = '';
     if (!validate()) {
       return;
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error('请先选择项目');
+      createFormError.value = '请先选择项目';
       return;
     }
     try {
@@ -676,13 +677,14 @@
       });
     } catch (error) {
       if (!applyCreateFailure(error)) {
-        toast.error(error instanceof Error ? error.message : '创建失败');
+        createFormError.value = error instanceof Error ? error.message : '创建失败';
       }
     }
   }
 
   async function handleEditOk() {
     const repository = editingRepository.value;
+    editFormError.value = '';
     if (!repository || !validateEditForm()) {
       return;
     }
@@ -705,7 +707,7 @@
       });
     } catch (error) {
       if (!applyEditFailure(error)) {
-        toast.error(error instanceof Error ? error.message : '更新失败');
+        editFormError.value = error instanceof Error ? error.message : '更新失败';
       }
     }
   }

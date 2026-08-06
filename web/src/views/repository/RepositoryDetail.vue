@@ -133,6 +133,7 @@
       :project-variables="repositoryCustomVariables"
       :repository="repository"
       :busy="operating"
+      :submit-error="triggerSubmitError"
       @trigger="handleTrigger"
     />
 
@@ -269,6 +270,9 @@
           同时删除工作目录（data/pipeline/{{ repository?.code }}）
         </span>
       </label>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -308,6 +312,9 @@
           <input v-model="variableForm.description" type="text" class="app-input" />
         </div>
       </div>
+      <p v-if="addVariableSubmitError" class="app-field-error mt-3" role="alert">
+        {{ addVariableSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -335,6 +342,9 @@
           <input v-model="variableForm.description" type="text" class="app-input" />
         </div>
       </div>
+      <p v-if="editVariableSubmitError" class="app-field-error mt-3" role="alert">
+        {{ editVariableSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -394,8 +404,12 @@
   const isEditDialogOpen = ref(false);
   const editFormError = ref('');
   const isDeleteDialogOpen = ref(false);
+  const deleteSubmitError = ref('');
   const isAddVariableDialogOpen = ref(false);
+  const addVariableSubmitError = ref('');
   const isEditVariableDialogOpen = ref(false);
+  const editVariableSubmitError = ref('');
+  const triggerSubmitError = ref('');
   const triggerModalRef = ref<InstanceType<typeof TriggerModal>>();
   const deleteWorkspace = ref(false);
 
@@ -581,6 +595,7 @@
       toast.error('请先配置 Git 凭据后再触发流水线');
       return;
     }
+    triggerSubmitError.value = '';
     await fetchTemplates();
     triggerModalRef.value?.open();
   }
@@ -590,6 +605,7 @@
     trigger_ref: string;
     variables: Record<string, string>;
   }) {
+    triggerSubmitError.value = '';
     try {
       await executeOp(async () => {
         const run = await repositoryApi.trigger(repositoryId, data);
@@ -598,7 +614,7 @@
         router.push(`/pipeline-run/${run.id}`);
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '触发失败');
+      triggerSubmitError.value = error instanceof Error ? error.message : '触发失败';
     }
   }
 
@@ -609,12 +625,13 @@
   }
 
   async function handleEditOk() {
+    editFormError.value = '';
     if (!validateEditForm()) {
       return;
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error('请先选择项目');
+      editFormError.value = '请先选择项目';
       return;
     }
     try {
@@ -634,17 +651,19 @@
       });
     } catch (error) {
       if (!applyEditFailure(error)) {
-        toast.error(error instanceof Error ? error.message : '更新失败');
+        editFormError.value = error instanceof Error ? error.message : '更新失败';
       }
     }
   }
 
   function openDeleteDialog() {
     deleteWorkspace.value = false;
+    deleteSubmitError.value = '';
     isDeleteDialogOpen.value = true;
   }
 
   async function handleDeleteOk() {
+    deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
         await repositoryApi.delete(repositoryId, {
@@ -654,13 +673,14 @@
         router.push('/repository');
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '删除失败');
+      deleteSubmitError.value = error instanceof Error ? error.message : '删除失败';
     }
   }
 
   function openAddVariableDialog() {
     Object.assign(variableForm, { name: '', value: '', description: '' });
     Object.assign(variableErrors, { name: '' });
+    addVariableSubmitError.value = '';
     isAddVariableDialogOpen.value = true;
   }
 
@@ -676,10 +696,12 @@
       description: variable.description ?? '',
     });
     Object.assign(variableErrors, { name: '' });
+    editVariableSubmitError.value = '';
     isEditVariableDialogOpen.value = true;
   }
 
   async function handleAddVariableOk() {
+    addVariableSubmitError.value = '';
     variableErrors.name = '';
     if (!variableForm.name.trim()) {
       variableErrors.name = '请输入变量名';
@@ -691,7 +713,7 @@
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error('请先选择项目');
+      addVariableSubmitError.value = '请先选择项目';
       return;
     }
     try {
@@ -713,7 +735,7 @@
         isAddVariableDialogOpen.value = false;
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '添加失败');
+      addVariableSubmitError.value = error instanceof Error ? error.message : '添加失败';
     }
   }
 
@@ -721,9 +743,10 @@
     if (!editingVariableName.value) {
       return;
     }
+    editVariableSubmitError.value = '';
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error('请先选择项目');
+      editVariableSubmitError.value = '请先选择项目';
       return;
     }
     try {
@@ -748,7 +771,7 @@
         isEditVariableDialogOpen.value = false;
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '更新失败');
+      editVariableSubmitError.value = error instanceof Error ? error.message : '更新失败';
     }
   }
 

@@ -45,6 +45,9 @@
         <p class="text-sm">{{ error || t('pipelineTemplate.toast.loadFailed') }}</p>
       </div>
     </div>
+    <p v-if="createSubmitError" class="app-field-error mt-3" role="alert">
+      {{ createSubmitError }}
+    </p>
 
     <div v-else-if="templates.length === 0" class="app-surface">
       <AppEmptyState />
@@ -234,6 +237,9 @@
         />
       </div>
     </form>
+    <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
+      {{ editSubmitError }}
+    </p>
     <template #footer>
       <AppDialogActions :busy="operating" @cancel="closeEditModal" @confirm="handleEditOk" />
     </template>
@@ -281,6 +287,8 @@
   const errors = reactive({ name: '' });
   const editForm = reactive({ name: '', description: '' });
   const editErrors = reactive({ name: '' });
+  const createSubmitError = ref('');
+  const editSubmitError = ref('');
 
   async function fetchTemplates() {
     const projectId = projectStore.activeProjectId;
@@ -326,6 +334,7 @@
   function openCreateModal() {
     Object.assign(form, { name: '', description: '' });
     Object.assign(errors, { name: '' });
+    createSubmitError.value = '';
     showCreateDialog.value = true;
   }
 
@@ -338,6 +347,7 @@
       description: editingTemplate.value.description ?? '',
     });
     editErrors.name = '';
+    editSubmitError.value = '';
   }
 
   function clearEditError(field: 'name') {
@@ -354,6 +364,7 @@
     showEditDialog.value = open;
     if (!open) {
       editErrors.name = '';
+      editSubmitError.value = '';
     }
   }
 
@@ -362,13 +373,14 @@
   }
 
   async function handleCreateOk() {
+    createSubmitError.value = '';
     errors.name = form.name.trim() ? '' : t('pipelineTemplate.validation.nameRequired');
     if (errors.name) {
       return;
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error(t('pipelineTemplate.toast.selectProjectRequired'));
+      createSubmitError.value = t('pipelineTemplate.toast.selectProjectRequired');
       return;
     }
     try {
@@ -386,14 +398,14 @@
         router.push(`/pipeline/template/${tpl.id}`);
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t('pipelineTemplate.toast.createFailed')
-      );
+      createSubmitError.value =
+        error instanceof Error ? error.message : t('pipelineTemplate.toast.createFailed');
     }
   }
 
   async function handleEditOk() {
     const template = editingTemplate.value;
+    editSubmitError.value = '';
     editErrors.name = editForm.name.trim() ? '' : t('pipelineTemplate.validation.nameNotEmpty');
     if (!template || editErrors.name) {
       return;
@@ -410,7 +422,8 @@
         closeEditModal();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('pipelineTemplate.toast.saveFailed'));
+      editSubmitError.value =
+        error instanceof Error ? error.message : t('pipelineTemplate.toast.saveFailed');
     }
   }
 

@@ -22,7 +22,7 @@
     --border: 220 13% 91%; /* 通用边框颜色 */
     --input: 220 13% 91%; /* 输入框边框颜色，与 border 保持一致以确保视觉统一 */
     --ring: 221.2 83.2% 53.3%;
-    --radius: 0.75rem;
+    --radius: 0.5rem;
   }
 
   .dark {
@@ -86,7 +86,7 @@
 
 @layer components {
   .app-surface {
-    @apply overflow-hidden rounded-[20px] border border-border/50 bg-card shadow-sm;
+    @apply overflow-hidden rounded-lg border border-border/50 bg-card shadow-sm;
   }
 
   .app-section-header {
@@ -182,7 +182,7 @@
   }
 
   .app-input {
-    @apply h-10 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+    @apply h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
   }
 
   .app-input-error {
@@ -190,11 +190,11 @@
   }
 
   .app-input-search {
-    @apply h-10 w-full rounded-xl border border-input bg-background pl-10 pr-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+    @apply h-10 w-full rounded-md border border-input bg-background pl-10 pr-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
   }
 
   .app-search-control {
-    @apply flex h-10 w-full max-w-sm items-center overflow-hidden rounded-xl border border-input bg-background transition-colors focus-within:border-ring;
+    @apply flex h-10 w-full max-w-sm items-center overflow-hidden rounded-md border border-input bg-background transition-colors focus-within:border-ring;
   }
 
   .app-search-input {
@@ -206,35 +206,35 @@
   }
 
   .app-textarea {
-    @apply min-h-24 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+    @apply min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
   }
 
   .app-button {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 text-sm text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-sm text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-button-primary {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-primary bg-primary px-4 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-button-danger {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-destructive/50 bg-background px-4 text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-destructive/50 bg-background px-4 text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-button-destructive {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-destructive bg-destructive px-4 text-sm text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-destructive bg-destructive px-4 text-sm text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-icon-button {
-    @apply inline-flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-action-item {
-    @apply block w-full rounded-xl border border-border bg-muted/30 p-3 text-left text-sm transition-colors hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply block w-full rounded-md border border-border bg-muted/30 p-3 text-left text-sm transition-colors hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-checkbox {
-    @apply size-4 rounded border-input text-primary transition-colors focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply size-4 rounded border-input text-primary transition-colors disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-link {
@@ -254,11 +254,11 @@
   }
 
   .app-select-trigger {
-    @apply flex h-10 items-center justify-between gap-2 rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-60;
+    @apply flex h-10 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .app-switch-root {
-    @apply relative h-6 w-11 cursor-pointer rounded-full bg-input outline-none transition-colors focus:ring-2 focus:ring-ring/20 data-[state=checked]:bg-primary disabled:cursor-not-allowed disabled:opacity-60;
+    @apply relative h-6 w-11 cursor-pointer rounded-full bg-input outline-none transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring data-[state=checked]:bg-primary disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .app-switch-thumb {
@@ -266,19 +266,19 @@
   }
 
   .app-combobox-anchor {
-    @apply flex h-10 items-center gap-2 rounded-xl border border-input bg-background px-3 text-sm text-foreground transition-colors hover:bg-accent/50 focus-within:border-ring;
+    @apply flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground transition-colors hover:bg-accent/50 focus-within:border-ring;
   }
 
   .app-popover-content {
-    @apply z-[60] max-h-64 rounded-xl border border-border bg-popover p-1 text-sm text-popover-foreground shadow-lg outline-none;
+    @apply z-[60] max-h-64 rounded-lg border border-border bg-popover p-1 text-sm text-popover-foreground shadow-lg outline-none;
   }
 
   .app-option-item {
-    @apply flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[highlighted]:bg-accent/50;
+    @apply flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[highlighted]:bg-accent/50;
   }
 
   .app-tip {
-    @apply rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground;
+    @apply rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground;
   }
 
   .app-dialog-overlay {
@@ -286,7 +286,7 @@
   }
 
   .app-dialog-content {
-    @apply fixed left-1/2 top-1/2 z-50 max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card text-sm text-foreground shadow-xl outline-none data-[state=open]:animate-contentShow;
+    @apply fixed left-1/2 top-1/2 z-50 max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card text-sm text-foreground shadow-xl outline-none data-[state=open]:animate-contentShow;
   }
 
   .app-drawer-content {
@@ -294,7 +294,7 @@
   }
 
   .app-toast-root {
-    @apply flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg outline-none;
+    @apply flex w-full items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg outline-none;
   }
 
   .app-data-table {

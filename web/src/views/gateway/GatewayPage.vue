@@ -210,6 +210,9 @@
           </p>
         </div>
       </div>
+      <p v-if="createSubmitError" class="app-field-error mt-3" role="alert">
+        {{ createSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -227,6 +230,9 @@
     >
       <p class="text-sm text-muted-foreground">
         {{ t('gateway.dialog.deleteConfirm', { name: pendingDelete?.name || '' }) }}
+      </p>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
       </p>
       <template #footer>
         <AppDialogActions
@@ -282,6 +288,8 @@
     base_domain: '',
     image: '',
   });
+  const createSubmitError = ref('');
+  const deleteSubmitError = ref('');
   const imagePullPolicyValues = ['missing', 'always', 'never'];
   const entrypointValues = ['web', 'websecure'];
   const tlsModeValues = ['none', 'letsencrypt', 'tls'];
@@ -337,6 +345,7 @@
 
   function openDeleteModal(item: GatewayResp) {
     pendingDelete.value = item;
+    deleteSubmitError.value = '';
     isDeleteDialogOpen.value = true;
   }
 
@@ -362,6 +371,7 @@
       base_domain: '',
       image: '',
     });
+    createSubmitError.value = '';
     isCreateDialogOpen.value = true;
   }
 
@@ -389,12 +399,13 @@
   }
 
   async function handleCreate() {
+    createSubmitError.value = '';
     if (!validateCreateForm()) {
       return;
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error(t('gateway.toast.selectProjectRequired'));
+      createSubmitError.value = t('gateway.toast.selectProjectRequired');
       return;
     }
     try {
@@ -418,7 +429,8 @@
         await fetchData();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('gateway.toast.saveFailed'));
+      createSubmitError.value =
+        error instanceof Error ? error.message : t('gateway.toast.saveFailed');
     }
   }
 
@@ -427,6 +439,7 @@
     if (!target) {
       return;
     }
+    deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
         await gatewayApi.delete(target.id);
@@ -436,7 +449,8 @@
         await fetchData();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('gateway.toast.deleteFailed'));
+      deleteSubmitError.value =
+        error instanceof Error ? error.message : t('gateway.toast.deleteFailed');
     }
   }
 

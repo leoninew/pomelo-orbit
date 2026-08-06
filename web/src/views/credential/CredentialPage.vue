@@ -121,6 +121,9 @@
         <p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
       </div>
     </div>
+    <p v-if="credentialSubmitError" class="app-field-error mt-3" role="alert">
+      {{ credentialSubmitError }}
+    </p>
     <template #footer>
       <AppDialogActions
         :busy="operating"
@@ -136,6 +139,9 @@
     width-class="w-[min(420px,calc(100vw-32px))]"
   >
     <p class="text-sm text-foreground">确定要删除这个凭据吗？此操作不可恢复。</p>
+    <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+      {{ deleteSubmitError }}
+    </p>
     <template #footer>
       <AppDialogActions
         :busy="operating"
@@ -197,6 +203,9 @@
         </p>
       </div>
     </div>
+    <p v-if="importSubmitError" class="app-field-error mt-3" role="alert">
+      {{ importSubmitError }}
+    </p>
     <template #footer>
       <AppDialogActions
         :busy="operating"
@@ -254,6 +263,9 @@
   });
   const credentialTypeValues = ['github_token', 'gitee_token', 'git_ssh', 'registry_token'];
   const errors = reactive({ name: '', data: '' });
+  const credentialSubmitError = ref('');
+  const deleteSubmitError = ref('');
+  const importSubmitError = ref('');
   const importForm = reactive<CredentialImportReq>({
     version: '',
     name: '',
@@ -311,6 +323,7 @@
     currentId.value = '';
     Object.assign(form, { name: '', type: 'github_token', data: '' });
     Object.assign(errors, { name: '', data: '' });
+    credentialSubmitError.value = '';
     showCredentialDialog.value = true;
   }
 
@@ -326,6 +339,7 @@
           data: detail.data,
         });
         Object.assign(errors, { name: '', data: '' });
+        credentialSubmitError.value = '';
         showCredentialDialog.value = true;
       });
     } catch (error) {
@@ -334,12 +348,13 @@
   }
 
   async function handleModalOk() {
+    credentialSubmitError.value = '';
     if (!validate()) {
       return;
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error('请先选择项目');
+      credentialSubmitError.value = '请先选择项目';
       return;
     }
     try {
@@ -365,18 +380,20 @@
         fetchCredentials();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '操作失败');
+      credentialSubmitError.value = error instanceof Error ? error.message : '操作失败';
     }
   }
 
   async function confirmDelete(id: string) {
     pendingDeleteId.value = id;
+    deleteSubmitError.value = '';
     (document.activeElement as HTMLElement)?.blur();
     await nextTick();
     showDeleteDialog.value = true;
   }
 
   async function handleDelete() {
+    deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
         await credentialApi.delete(pendingDeleteId.value);
@@ -385,7 +402,7 @@
         fetchCredentials();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '删除失败');
+      deleteSubmitError.value = error instanceof Error ? error.message : '删除失败';
     }
   }
 
@@ -425,6 +442,7 @@
         data: data.data || '',
       });
       Object.assign(importErrors, { name: '', data: '' });
+      importSubmitError.value = '';
       showImportDialog.value = true;
     } catch {
       toast.error('解析文件失败');
@@ -434,6 +452,7 @@
   }
 
   async function handleImportOk() {
+    importSubmitError.value = '';
     importErrors.name = importForm.name.trim() ? '' : '请输入凭据名称';
     importErrors.data = importForm.data.trim() ? '' : '请输入凭据内容';
     if (importErrors.name || importErrors.data) {
@@ -441,7 +460,7 @@
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error('请先选择项目');
+      importSubmitError.value = '请先选择项目';
       return;
     }
     try {
@@ -460,7 +479,7 @@
         fetchCredentials();
       });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '导入失败');
+      importSubmitError.value = err instanceof Error ? err.message : '导入失败';
     }
   }
 

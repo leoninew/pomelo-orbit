@@ -124,6 +124,9 @@
         <input v-model="form.description" type="text" class="app-input" placeholder="简短描述" />
       </div>
     </div>
+    <p v-if="createSubmitError" class="app-field-error mt-3" role="alert">
+      {{ createSubmitError }}
+    </p>
 
     <template #footer>
       <AppDialogActions :busy="operating" @cancel="isModalOpen = false" @confirm="handleModalOk" />
@@ -198,6 +201,9 @@
         />
       </div>
     </form>
+    <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
+      {{ editSubmitError }}
+    </p>
 
     <template #footer>
       <AppDialogActions :busy="operating" @cancel="closeEditModal" @confirm="handleEditOk" />
@@ -242,6 +248,8 @@
   const errors = reactive({ name: '', image: '' });
   const editForm = reactive({ name: '', image: '', description: '' });
   const editErrors = reactive({ name: '', image: '' });
+  const createSubmitError = ref('');
+  const editSubmitError = ref('');
 
   function validate() {
     errors.name = form.name.trim() ? '' : '请输入名称';
@@ -293,6 +301,7 @@
   function openCreateModal() {
     Object.assign(form, { name: '', image: '', description: '' });
     Object.assign(errors, { name: '', image: '' });
+    createSubmitError.value = '';
     isModalOpen.value = true;
   }
 
@@ -306,6 +315,7 @@
       description: editingStage.value.description,
     });
     Object.assign(editErrors, { name: '', image: '' });
+    editSubmitError.value = '';
   }
 
   function clearEditError(field: 'name' | 'image') {
@@ -322,6 +332,7 @@
     showEditModal.value = open;
     if (!open) {
       Object.assign(editErrors, { name: '', image: '' });
+      editSubmitError.value = '';
     }
   }
 
@@ -330,12 +341,13 @@
   }
 
   async function handleModalOk() {
+    createSubmitError.value = '';
     if (!validate()) {
       return;
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error('请先选择项目');
+      createSubmitError.value = '请先选择项目';
       return;
     }
     try {
@@ -355,12 +367,13 @@
         fetchStages();
       });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '操作失败');
+      createSubmitError.value = err instanceof Error ? err.message : '操作失败';
     }
   }
 
   async function handleEditOk() {
     const stage = editingStage.value;
+    editSubmitError.value = '';
     editErrors.name = editForm.name.trim() ? '' : '请输入名称';
     editErrors.image = editForm.image.trim() ? '' : '请输入镜像';
     if (!stage || editErrors.name || editErrors.image) {
@@ -379,7 +392,7 @@
         closeEditModal();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '更新失败');
+      editSubmitError.value = error instanceof Error ? error.message : '更新失败';
     }
   }
 

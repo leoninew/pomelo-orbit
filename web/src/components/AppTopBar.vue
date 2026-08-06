@@ -4,7 +4,7 @@
   >
     <RouterLink
       to="/"
-      class="flex h-14 w-auto shrink-0 items-center gap-3 rounded-md px-2 text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/20 sm:px-3 md:h-full md:w-60"
+      class="flex h-14 w-auto shrink-0 items-center gap-3 rounded-md px-2 text-foreground outline-none transition-colors hover:text-primary focus-visible:bg-accent focus-visible:text-primary sm:px-3 md:h-full md:w-60"
       :aria-label="t('app.homeAria')"
     >
       <img src="/logo-128.png" alt="Pomelo Orbit Logo" class="size-9" width="36" height="36" />
@@ -35,7 +35,7 @@
           <NavigationMenuLink as-child :active="isActive(item.key)">
             <RouterLink
               :to="item.path"
-              class="flex h-full min-w-24 items-center justify-center border-b-2 px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/20 md:min-w-28 md:px-5"
+              class="flex h-full min-w-24 items-center justify-center border-b-2 px-3 text-sm outline-none transition-colors focus-visible:bg-accent/50 md:min-w-28 md:px-5"
               :class="
                 isActive(item.key)
                   ? 'border-primary text-primary'
@@ -53,7 +53,7 @@
 
     <ToolbarRoot class="hidden items-center gap-3 md:flex" :aria-label="t('app.globalToolbarAria')">
       <ToolbarButton
-        class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
+        class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
         :aria-label="t('theme.' + theme)"
         @click="cycleTheme"
       >
@@ -62,7 +62,7 @@
         <Moon v-else class="size-5" />
       </ToolbarButton>
       <ToolbarButton
-        class="inline-flex h-9 min-w-12 items-center justify-center gap-1.5 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
+        class="inline-flex h-9 min-w-12 items-center justify-center gap-1.5 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
         :aria-label="switchLocaleLabel"
         :title="switchLocaleLabel"
         @click="toggleLocale"
@@ -74,7 +74,7 @@
 
     <DropdownMenuRoot>
       <DropdownMenuTrigger
-        class="ml-1 flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:gap-3 md:px-3"
+        class="ml-1 flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:gap-3 md:px-3"
         :aria-label="t('app.userMenuAria')"
         @click="handleUserMenuOpen"
       >
@@ -197,6 +197,9 @@
         </p>
       </div>
     </div>
+    <p v-if="passwordSubmitError" class="app-field-error mt-3" role="alert">
+      {{ passwordSubmitError }}
+    </p>
     <template #footer>
       <AppDialogActions
         :busy="passwordLoading"
@@ -272,6 +275,7 @@
     new_password: '',
     confirm_password: '',
   });
+  const passwordSubmitError = ref('');
 
   const activeProjectLabel = computed(() => {
     const project = projectStore.activeProject;
@@ -332,6 +336,7 @@
       new_password: '',
       confirm_password: '',
     });
+    passwordSubmitError.value = '';
   }
 
   function closePasswordDialog() {
@@ -357,6 +362,7 @@
   }
 
   async function handleChangePassword() {
+    passwordSubmitError.value = '';
     if (!validatePassword()) {
       return;
     }
@@ -367,9 +373,8 @@
         closePasswordDialog();
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t('settings.passwordDialog.changeFailed')
-      );
+      passwordSubmitError.value =
+        error instanceof Error ? error.message : t('settings.passwordDialog.changeFailed');
     }
   }
 

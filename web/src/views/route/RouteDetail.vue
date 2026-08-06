@@ -38,7 +38,7 @@
           v-if="routeData"
           class="app-button-danger h-9 px-3"
           :disabled="operating"
-          @click="isDeleteDialogOpen = true"
+          @click="openDeleteModal"
         >
           <Trash2 class="size-4" />
           {{ t('common.delete') }}
@@ -160,6 +160,9 @@
           </div>
         </div>
       </div>
+      <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
+        {{ editSubmitError }}
+      </p>
     </template>
 
     <AppDialog v-model:open="isEditDialogOpen" :title="t('route.editRoute')">
@@ -218,6 +221,9 @@
       <p class="text-sm text-foreground">
         {{ t('route.deleteConfirm', { domain: routeData?.domain }) }}
       </p>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -267,6 +273,8 @@
     enabled: false,
   });
   const errors = reactive({ domain: '', target_url: '' });
+  const editSubmitError = ref('');
+  const deleteSubmitError = ref('');
 
   const canUseLetsencrypt = computed(() => {
     if (!routeData.value) {
@@ -312,10 +320,17 @@
       enabled: routeData.value.enabled,
     });
     Object.assign(errors, { domain: '', target_url: '' });
+    editSubmitError.value = '';
     isEditDialogOpen.value = true;
   }
 
+  function openDeleteModal() {
+    deleteSubmitError.value = '';
+    isDeleteDialogOpen.value = true;
+  }
+
   async function handleSave() {
+    editSubmitError.value = '';
     errors.domain = form.domain.trim() ? '' : t('route.validation.domainRequired');
     errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
       ? ''
@@ -337,7 +352,8 @@
         fetchRoute();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.updateFailed'));
+      editSubmitError.value =
+        error instanceof Error ? error.message : t('route.toast.updateFailed');
     }
   }
 
@@ -366,6 +382,7 @@
   }
 
   async function handleDelete() {
+    deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
         await routeApi.delete(routeId);
@@ -373,7 +390,8 @@
         router.push('/routes');
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.deleteFailed'));
+      deleteSubmitError.value =
+        error instanceof Error ? error.message : t('route.toast.deleteFailed');
     }
   }
 

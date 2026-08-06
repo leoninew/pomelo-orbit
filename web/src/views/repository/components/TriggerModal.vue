@@ -58,6 +58,10 @@
       </div>
     </div>
 
+    <p v-if="submitError" class="app-field-error" role="alert">
+      {{ submitError }}
+    </p>
+
     <template #footer>
       <AppDialogActions :busy="busy" @cancel="isOpen = false" @confirm="handleOk" />
     </template>
@@ -80,6 +84,7 @@
     defaultBranch?: string;
     projectVariables?: VariableDeclarationResp[];
     repository?: RepositoryResp;
+    submitError?: string;
   }>();
 
   const emit = defineEmits<{

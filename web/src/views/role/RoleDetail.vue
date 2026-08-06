@@ -99,6 +99,9 @@
         </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
+      <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
+        {{ editSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -134,6 +137,9 @@
         </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
+      <p v-if="permissionSubmitError" class="app-field-error mt-3" role="alert">
+        {{ permissionSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -151,6 +157,9 @@
       <p class="text-sm text-foreground">
         {{ t('roleManagement.deleteConfirm') }}
         <span>{{ role?.name }}</span>
+      </p>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
       </p>
       <template #footer>
         <AppDialogActions
@@ -196,6 +205,9 @@
   const form = reactive({ code: '', name: '', description: '' });
   const formErrors = reactive({ code: '', name: '' });
   const permissionForm = reactive({ codes: [] as string[] });
+  const editSubmitError = ref('');
+  const permissionSubmitError = ref('');
+  const deleteSubmitError = ref('');
 
   const canWriteRoles = computed(() => authStore.hasPermission(PERMISSIONS.ROLE_WRITE));
 
@@ -231,6 +243,7 @@
     form.name = role.value?.name ?? '';
     form.description = role.value?.description ?? '';
     Object.assign(formErrors, { code: '', name: '' });
+    editSubmitError.value = '';
     isEditModalOpen.value = true;
   }
 
@@ -249,6 +262,7 @@
     if (!role.value) {
       return;
     }
+    editSubmitError.value = '';
     if (!validateEditForm()) {
       return;
     }
@@ -266,12 +280,13 @@
         await fetchRole();
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('roleManagement.saveFailed'));
+      editSubmitError.value = e instanceof Error ? e.message : t('roleManagement.saveFailed');
     }
   }
 
   function openPermissionModal() {
     permissionForm.codes = role.value?.permission_codes ? [...role.value.permission_codes] : [];
+    permissionSubmitError.value = '';
     isPermissionModalOpen.value = true;
   }
 
@@ -279,6 +294,7 @@
     if (!role.value) {
       return;
     }
+    permissionSubmitError.value = '';
     const currentRole = {
       code: role.value.code,
       name: role.value.name,
@@ -298,15 +314,17 @@
         await fetchRole();
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('roleManagement.saveFailed'));
+      permissionSubmitError.value = e instanceof Error ? e.message : t('roleManagement.saveFailed');
     }
   }
 
   function openDeleteModal() {
+    deleteSubmitError.value = '';
     isDeleteModalOpen.value = true;
   }
 
   async function handleDelete() {
+    deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
         await roleApi.delete(props.id);
@@ -315,7 +333,7 @@
         $router.push('/roles');
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('roleManagement.deleteFailed'));
+      deleteSubmitError.value = e instanceof Error ? e.message : t('roleManagement.deleteFailed');
     }
   }
 

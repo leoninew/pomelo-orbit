@@ -133,6 +133,9 @@
       width-class="w-[min(400px,calc(100vw-32px))]"
     >
       <p class="text-sm text-muted-foreground">{{ t('settings.resetDialog.description') }}</p>
+      <p v-if="resetSubmitError" class="app-field-error mt-3" role="alert">
+        {{ resetSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -275,12 +278,14 @@
 
   const isResetDialogOpen = ref(false);
   const pendingResetKey = ref('');
+  const resetSubmitError = ref('');
 
   function confirmReset(key: string) {
     if (!canWriteSettings.value) {
       return;
     }
     pendingResetKey.value = key;
+    resetSubmitError.value = '';
     isResetDialogOpen.value = true;
   }
 
@@ -288,6 +293,7 @@
     if (!canWriteSettings.value) {
       return;
     }
+    resetSubmitError.value = '';
     try {
       await executeOp(async () => {
         config.value = await settingApi.resetConfig({
@@ -298,7 +304,7 @@
         toast.warning(t('settings.resetSuccess'));
       });
     } catch {
-      toast.error(t('settings.resetFailed'));
+      resetSubmitError.value = t('settings.resetFailed');
     }
   }
 

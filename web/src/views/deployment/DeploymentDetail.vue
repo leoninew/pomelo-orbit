@@ -12,7 +12,7 @@
           v-if="isCancelable"
           class="app-button-danger h-9 px-3"
           :disabled="isCancelling"
-          @click="isCancelDialogOpen = true"
+          @click="openCancelDialog"
         >
           <X class="size-4" />
           取消
@@ -219,6 +219,9 @@
           })
         }}
       </p>
+      <p v-if="cancelSubmitError" class="app-field-error mt-3" role="alert">
+        {{ cancelSubmitError }}
+      </p>
       <template #footer>
         <AppDialogActions
           :busy="isCancelling"
@@ -278,6 +281,7 @@
   const containerLogSource = ref('since');
   const containerLogStatus = ref<LogStatus>('loading');
   const isCancelDialogOpen = ref(false);
+  const cancelSubmitError = ref('');
   const isAutoRefreshing = ref(false);
   let refreshAbort: AbortController | null = null;
   let refreshGeneration = 0;
@@ -479,6 +483,7 @@
   }
 
   async function handleCancel() {
+    cancelSubmitError.value = '';
     try {
       await executeCancel(async () => {
         deployment.value = await deploymentApi.cancel(deploymentId.value, {});
@@ -487,8 +492,13 @@
         toast.success(t('deployment.toast.cancelSuccess'));
       });
     } catch {
-      toast.error(t('deployment.toast.cancelFailed'));
+      cancelSubmitError.value = t('deployment.toast.cancelFailed');
     }
+  }
+
+  function openCancelDialog() {
+    cancelSubmitError.value = '';
+    isCancelDialogOpen.value = true;
   }
 
   function scrollToBottom(logEditor: editor.IStandaloneCodeEditor | null) {

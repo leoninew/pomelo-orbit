@@ -313,6 +313,9 @@
         <span class="text-sm text-foreground">{{ t('route.status.enabled') }}</span>
       </label>
     </div>
+    <p v-if="createSubmitError" class="app-field-error mt-3" role="alert">
+      {{ createSubmitError }}
+    </p>
 
     <template #footer>
       <AppDialogActions
@@ -426,6 +429,9 @@
         <span class="text-sm text-foreground">{{ t('route.status.enabled') }}</span>
       </label>
     </form>
+    <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
+      {{ editSubmitError }}
+    </p>
 
     <template #footer>
       <AppDialogActions :busy="routeOperating" @cancel="closeEditModal" @confirm="handleEditSave" />
@@ -501,6 +507,8 @@
     enabled: false,
   });
   const editErrors = reactive({ name: '', domain: '', target_url: '' });
+  const createSubmitError = ref('');
+  const editSubmitError = ref('');
 
   function validate() {
     errors.name = /^[a-z][a-z0-9._-]*$/.test(form.name) ? '' : t('route.validation.nameInvalid');
@@ -574,6 +582,7 @@
       enabled: false,
     });
     Object.assign(errors, { name: '', domain: '', target_url: '' });
+    createSubmitError.value = '';
     isCreateDialogOpen.value = true;
   }
 
@@ -589,6 +598,7 @@
       enabled: editingRoute.value.enabled,
     });
     Object.assign(editErrors, { name: '', domain: '', target_url: '' });
+    editSubmitError.value = '';
   }
 
   function validateEditForm() {
@@ -616,6 +626,7 @@
     isEditDialogOpen.value = open;
     if (!open) {
       Object.assign(editErrors, { name: '', domain: '', target_url: '' });
+      editSubmitError.value = '';
     }
   }
 
@@ -624,12 +635,13 @@
   }
 
   async function handleSave() {
+    createSubmitError.value = '';
     if (!validate()) {
       return;
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error(t('route.toast.selectProjectRequired'));
+      createSubmitError.value = t('route.toast.selectProjectRequired');
       return;
     }
     try {
@@ -640,12 +652,13 @@
         fetchRoutes();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.addFailed'));
+      createSubmitError.value = error instanceof Error ? error.message : t('route.toast.addFailed');
     }
   }
 
   async function handleEditSave() {
     const route = editingRoute.value;
+    editSubmitError.value = '';
     if (!route || !validateEditForm()) {
       return;
     }
@@ -665,7 +678,8 @@
         fetchTraefikRoutes();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.updateFailed'));
+      editSubmitError.value =
+        error instanceof Error ? error.message : t('route.toast.updateFailed');
     }
   }
 

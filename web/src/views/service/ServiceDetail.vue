@@ -20,7 +20,7 @@
           v-if="service"
           class="app-button-primary h-9 px-3"
           :disabled="operating || service.status === 'deploying'"
-          @click="deploy"
+          @click="openDeployDialog"
         >
           <Rocket class="size-4" />
           {{ t('service.actions.deploy') }}
@@ -56,6 +56,33 @@
         @save="persistEnvironment"
       />
     </template>
+
+    <AppDialog
+      :open="isDeployDialogOpen"
+      :title="t('service.deploy.dialogTitle')"
+      @update:open="handleDeployDialogOpenChange"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-muted-foreground">
+          {{ deployTargetLabel }}
+        </p>
+        <label class="flex items-center gap-2">
+          <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
+          <span class="text-sm text-foreground">{{ t('service.deploy.forceRecreate') }}</span>
+        </label>
+      </div>
+      <p v-if="deploySubmitError" class="app-field-error mt-3" role="alert">
+        {{ deploySubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.deploy')"
+          @cancel="closeDeployDialog"
+          @confirm="handleDeployOk"
+        />
+      </template>
+    </AppDialog>
 
     <AppDialog
       v-model:open="isDeleteDialogOpen"
@@ -185,7 +212,7 @@
 
 <script setup lang="ts">
   import { ArrowLeft, FileCode2, Loader2, RefreshCw, Rocket, Trash2 } from 'lucide-vue-next';
-  import { computed, onMounted, onUnmounted, ref } from 'vue';
+  import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
@@ -222,6 +249,9 @@
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const { loading: previewLoading, execute: executePreview } = useStatusAsync();
   const service = ref<ServiceResp>();
+  const isDeployDialogOpen = ref(false);
+  const deployForm = reactive({ force_recreate: false });
+  const deploySubmitError = ref('');
   const isDeleteDialogOpen = ref(false);
   const deleteError = ref('');
   const previewOpen = ref(false);
@@ -250,6 +280,15 @@
       app,
       instance,
       component: logsComponent.value,
+    });
+  });
+  const deployTargetLabel = computed(() => {
+    const current = service.value;
+    if (!current) return '';
+    const application = current.application_name || current.application_id;
+    return t('service.detail.subtitle', {
+      instance: `${application} / ${current.instance_key || 'default'}`,
+      version: current.version_label || current.version_id,
     });
   });
 
@@ -409,16 +448,41 @@
     void fetchServiceLogs();
   }
 
-  async function deploy() {
+  function openDeployDialog() {
+    deployForm.force_recreate = false;
+    deploySubmitError.value = '';
+    isDeployDialogOpen.value = true;
+  }
+
+  function closeDeployDialog() {
+    isDeployDialogOpen.value = false;
+    deploySubmitError.value = '';
+  }
+
+  function handleDeployDialogOpenChange(open: boolean) {
+    if (open) {
+      isDeployDialogOpen.value = true;
+      return;
+    }
+    closeDeployDialog();
+  }
+
+  async function handleDeployOk() {
+    if (!service.value) return;
+    deploySubmitError.value = '';
     try {
       await executeOperation(async () => {
-        const result = await serviceApi.deploy(serviceId, { force_recreate: false });
+        const result = await serviceApi.deploy(serviceId, {
+          force_recreate: deployForm.force_recreate,
+        });
         for (const warning of result.warnings) toast.error(warning);
         toast.success(t('service.toast.deployQueued'));
+        closeDeployDialog();
         if (result.deployment_id) await router.push(`/deployment/${result.deployment_id}`);
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('service.toast.deployFailed'));
+      deploySubmitError.value =
+        error instanceof Error ? error.message : t('service.toast.deployFailed');
     }
   }
 

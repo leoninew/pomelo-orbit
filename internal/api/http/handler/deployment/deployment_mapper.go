@@ -48,6 +48,7 @@ func deploymentResponse(item model.Deployment) deploymentv1.DeploymentResp {
 		RollbackFromDeploymentId: item.RollbackFromDeploymentId,
 		VersionId:                item.VersionId,
 		ServiceId:                item.ServiceId,
+		ServiceInstanceKey:       item.ServiceInstanceKey,
 		OptionsJson:              item.OptionsJSON,
 	}
 }

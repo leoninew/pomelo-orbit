@@ -1,21 +1,5 @@
 <template>
-  <div class="flex h-full min-h-0 flex-col gap-3">
-    <ToolbarRoot class="app-toolbar-simple" :aria-label="t('deploymentDialogue.toolbar')">
-      <div class="flex items-center gap-3">
-        <h1 class="text-lg font-semibold text-foreground">{{ t('deploymentDialogue.title') }}</h1>
-      </div>
-      <button
-        class="app-icon-button"
-        type="button"
-        :aria-label="t('deploymentDialogue.clear')"
-        :title="t('deploymentDialogue.clear')"
-        :disabled="messages.length === 0 || pending"
-        @click="clearConversation"
-      >
-        <Trash2 :size="16" aria-hidden="true" />
-      </button>
-    </ToolbarRoot>
-
+  <div class="flex h-full min-h-0 flex-col">
     <section class="app-surface flex min-h-0 flex-1 flex-col overflow-hidden border-border">
       <div ref="scrollContainer" class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
         <div v-if="messages.length === 0" class="flex h-full min-h-80 items-center justify-center">
@@ -74,7 +58,7 @@
       </div>
 
       <form class="shrink-0 border-t border-border p-4 sm:p-5" @submit.prevent="send">
-        <div class="flex items-end gap-3">
+        <div class="flex items-center gap-3">
           <textarea
             v-model="draft"
             class="min-h-11 flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
@@ -103,8 +87,7 @@
   import { storeToRefs } from 'pinia';
   import { nextTick, onUnmounted, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { Send, Trash2 } from 'lucide-vue-next';
-  import { ToolbarRoot } from 'reka-ui';
+  import { Send } from 'lucide-vue-next';
   import { dialogueApi } from '@/api/dialogue/dialogue';
   import MarkdownContent from '@/components/MarkdownContent.vue';
   import { useToast } from '@/composables/useToast';
@@ -225,10 +208,6 @@
       clearInterval(thinkingDotsTimer);
       thinkingDotsTimer = undefined;
     }
-  }
-
-  function clearConversation() {
-    dialogueStore.clearMessages();
   }
 
   function messageClass(message: DeploymentDialogueConversationMessage) {

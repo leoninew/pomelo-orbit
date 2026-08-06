@@ -170,6 +170,7 @@ type DeploymentResp struct {
 	VersionId                *string                `protobuf:"bytes,17,opt,name=version_id,json=versionId,proto3,oneof" json:"version_id,omitempty"`
 	ServiceId                *string                `protobuf:"bytes,18,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
 	OptionsJson              *string                `protobuf:"bytes,19,opt,name=options_json,json=optionsJson,proto3,oneof" json:"options_json,omitempty"`
+	ServiceInstanceKey       *string                `protobuf:"bytes,20,opt,name=service_instance_key,json=serviceInstanceKey,proto3,oneof" json:"service_instance_key,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -333,6 +334,13 @@ func (x *DeploymentResp) GetServiceId() string {
 func (x *DeploymentResp) GetOptionsJson() string {
 	if x != nil && x.OptionsJson != nil {
 		return *x.OptionsJson
+	}
+	return ""
+}
+
+func (x *DeploymentResp) GetServiceInstanceKey() string {
+	if x != nil && x.ServiceInstanceKey != nil {
+		return *x.ServiceInstanceKey
 	}
 	return ""
 }
@@ -571,7 +579,7 @@ const file_orbit_v1_deployment_deployment_proto_rawDesc = "" +
 	"\x1bDeploymentContainerLogsResp\x12\x12\n" +
 	"\x04logs\x18\x01 \x01(\tR\x04logs\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x122\n" +
-	"\x15is_realtime_supported\x18\x03 \x01(\bR\x13isRealtimeSupported\"\xf9\x06\n" +
+	"\x15is_realtime_supported\x18\x03 \x01(\bR\x13isRealtimeSupported\"\xc9\a\n" +
 	"\x0eDeploymentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
@@ -600,7 +608,9 @@ const file_orbit_v1_deployment_deployment_proto_rawDesc = "" +
 	"version_id\x18\x11 \x01(\tH\aR\tversionId\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"service_id\x18\x12 \x01(\tH\bR\tserviceId\x88\x01\x01\x12&\n" +
-	"\foptions_json\x18\x13 \x01(\tH\tR\voptionsJson\x88\x01\x01B\r\n" +
+	"\foptions_json\x18\x13 \x01(\tH\tR\voptionsJson\x88\x01\x01\x125\n" +
+	"\x14service_instance_key\x18\x14 \x01(\tH\n" +
+	"R\x12serviceInstanceKey\x88\x01\x01B\r\n" +
 	"\v_project_idB\x11\n" +
 	"\x0f_application_idB\x0e\n" +
 	"\f_finished_atB\x0e\n" +
@@ -610,7 +620,8 @@ const file_orbit_v1_deployment_deployment_proto_rawDesc = "" +
 	"\x1c_rollback_from_deployment_idB\r\n" +
 	"\v_version_idB\r\n" +
 	"\v_service_idB\x0f\n" +
-	"\r_options_json\"\x15\n" +
+	"\r_options_jsonB\x17\n" +
+	"\x15_service_instance_key\"\x15\n" +
 	"\x13DeploymentCancelReq\"\xaf\x01\n" +
 	"\x17DeploymentPaginatedResp\x129\n" +
 	"\x05items\x18\x01 \x03(\v2#.orbit.v1.deployment.DeploymentRespR\x05items\x12\x14\n" +

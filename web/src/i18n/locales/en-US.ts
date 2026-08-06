@@ -810,6 +810,7 @@ export default {
     searchPlaceholder: 'Search application',
     fields: {
       application: 'Application',
+      service: 'Service',
       operationType: 'Operation Type',
       triggerType: 'Trigger Type',
       errorMessage: 'Error Message',
@@ -820,6 +821,7 @@ export default {
       confirmCancel: 'Confirm Cancel',
       cancelConfirm: 'Cancel deployment for "{name}"?',
       currentApplication: 'this application',
+      currentService: 'this service',
     },
     toast: {
       loadFailed: 'Failed to load deployments',

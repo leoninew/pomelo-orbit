@@ -40,12 +40,13 @@
             <dd class="min-w-0 break-all text-foreground">{{ deploymentId }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt>应用</dt>
-            <dd>
-              <router-link :to="`/application/${deployment.application_id}`" class="app-link">
-                {{ deployment.application_name || deployment.application_id }}
+            <dt>{{ t('deployment.fields.service') }}</dt>
+            <dd v-if="deployment.service_id">
+              <router-link :to="`/service/${deployment.service_id}`" class="app-link">
+                {{ deploymentServiceLabel }}
               </router-link>
             </dd>
+            <dd v-else class="text-muted-foreground">-</dd>
           </div>
           <div class="flex gap-2">
             <dt>状态</dt>
@@ -215,7 +216,7 @@
       <p class="text-sm text-foreground">
         {{
           t('deployment.dialog.cancelConfirm', {
-            name: deployment?.application_name || t('deployment.dialog.currentApplication'),
+            name: deploymentServiceLabel || t('deployment.dialog.currentService'),
           })
         }}
       </p>
@@ -265,6 +266,13 @@
   const { loading: isCancelling, execute: executeCancel } = useStatusAsync();
 
   const deployment = ref<DeploymentResp>();
+  const deploymentServiceLabel = computed(
+    () =>
+      deployment.value?.application_name ||
+      deployment.value?.application_id ||
+      deployment.value?.service_id ||
+      ''
+  );
   type LogStatus =
     | 'loading'
     | 'streaming'

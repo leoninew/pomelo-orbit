@@ -792,6 +792,7 @@ export default {
     searchPlaceholder: '搜索应用',
     fields: {
       application: '应用',
+      service: '服务',
       operationType: '操作类型',
       triggerType: '触发方式',
       errorMessage: '错误信息',
@@ -802,6 +803,7 @@ export default {
       confirmCancel: '确认取消',
       cancelConfirm: '确定要取消「{name}」的部署吗？',
       currentApplication: '该应用',
+      currentService: '该服务',
     },
     toast: {
       loadFailed: '获取部署记录失败',

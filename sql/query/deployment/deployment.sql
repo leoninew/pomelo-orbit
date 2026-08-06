@@ -5,11 +5,13 @@ INSERT INTO deployment (
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: DeploymentByID :one
-SELECT id, project_id, application_id, application_name, version_id, service_id, options_json, effective_plan_hash,
-       operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text,
-       error_message, is_rollback, rollback_from_deployment_id
-FROM deployment
-WHERE id = ?;
+SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
+       s.instance_key AS service_instance_key, d.options_json, d.effective_plan_hash,
+       d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
+       d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
+FROM deployment d
+LEFT JOIN service s ON s.id = d.service_id
+WHERE d.id = ?;
 
 -- name: CountDeployments :one
 SELECT COUNT(*)
@@ -31,26 +33,28 @@ WHERE project_id = sqlc.arg(project_id)
   AND (sqlc.narg(date_to) IS NULL OR started_at < sqlc.narg(date_to));
 
 -- name: ListDeployments :many
-SELECT id, project_id, application_id, application_name, version_id, service_id, options_json, effective_plan_hash,
-       operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text,
-       error_message, is_rollback, rollback_from_deployment_id
-FROM deployment
-WHERE project_id = sqlc.arg(project_id)
+SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
+       s.instance_key AS service_instance_key, d.options_json, d.effective_plan_hash,
+       d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
+       d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
+FROM deployment d
+LEFT JOIN service s ON s.id = d.service_id
+WHERE d.project_id = sqlc.arg(project_id)
   AND (
     sqlc.arg(application_filter) = ''
-    OR application_id = sqlc.arg(application_id)
+    OR d.application_id = sqlc.arg(application_id)
   )
   AND (
     sqlc.arg(status_filter) = ''
-    OR status = sqlc.arg(status)
+    OR d.status = sqlc.arg(status)
   )
   AND (
     sqlc.arg(application_name_filter) = ''
-    OR application_name LIKE sqlc.arg(application_name)
+    OR d.application_name LIKE sqlc.arg(application_name)
   )
-  AND (sqlc.narg(date_from) IS NULL OR started_at >= sqlc.narg(date_from))
-  AND (sqlc.narg(date_to) IS NULL OR started_at < sqlc.narg(date_to))
-ORDER BY started_at DESC, id
+  AND (sqlc.narg(date_from) IS NULL OR d.started_at >= sqlc.narg(date_from))
+  AND (sqlc.narg(date_to) IS NULL OR d.started_at < sqlc.narg(date_to))
+ORDER BY d.started_at DESC, d.id
 LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: CancelDeployment :exec

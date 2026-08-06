@@ -36,6 +36,7 @@ message DeploymentResp {
   optional string version_id = 17;
   optional string service_id = 18;
   optional string options_json = 19;
+  optional string service_instance_key = 20;
 }
 
 message DeploymentCancelReq {}

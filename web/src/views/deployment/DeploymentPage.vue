@@ -28,7 +28,7 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>{{ t('deployment.fields.application') }}</th>
+              <th>{{ t('deployment.fields.service') }}</th>
               <th>{{ t('deployment.fields.operationType') }}</th>
               <th>{{ t('deployment.fields.triggerType') }}</th>
               <th>{{ t('common.status') }}</th>
@@ -48,9 +48,18 @@
                 </router-link>
               </td>
               <td>
-                <router-link :to="`/application/${deployment.application_id}`" class="app-link">
-                  {{ deployment.application_name || deployment.application_id }}
+                <router-link
+                  v-if="deployment.service_id"
+                  :to="`/service/${deployment.service_id}`"
+                  class="app-link"
+                >
+                  {{
+                    deployment.application_name ||
+                    deployment.application_id ||
+                    deployment.service_id
+                  }}
                 </router-link>
+                <span v-else class="text-muted-foreground">-</span>
               </td>
               <td>
                 <AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge>

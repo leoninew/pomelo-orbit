@@ -130,7 +130,7 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	for _, row := range rows {
 		items = append(items, deploymentFrom(
 			row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
-			row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
+			row.ServiceInstanceKey, row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 			row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
 		))
 	}
@@ -144,7 +144,7 @@ func (r Repository) Deployment(ctx context.Context, id string) (model.Deployment
 	}
 	return deploymentFrom(
 		row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
-		row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
+		row.ServiceInstanceKey, row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 		row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
 	), nil
 }
@@ -195,7 +195,7 @@ func (r Repository) LatestSuccessfulDeploymentPlanHash(ctx context.Context, serv
 
 func deploymentFrom(
 	id string, projectId, applicationId sql.NullString, applicationName string,
-	versionId, serviceId, optionsJSON, effectivePlanHash sql.NullString,
+	versionId, serviceId, serviceInstanceKey, optionsJSON, effectivePlanHash sql.NullString,
 	operationType, triggerType, commandText, deployStatus string,
 	startedAt time.Time, finishedAt sql.NullTime, durationMs sql.NullInt64,
 	logText, errorMessage sql.NullString, isRollback int64, rollbackFrom sql.NullString,
@@ -207,6 +207,7 @@ func deploymentFrom(
 		ApplicationName:          applicationName,
 		VersionId:                dbmodel.StringPtr(versionId),
 		ServiceId:                dbmodel.StringPtr(serviceId),
+		ServiceInstanceKey:       dbmodel.StringPtr(serviceInstanceKey),
 		OptionsJSON:              dbmodel.StringPtr(optionsJSON),
 		EffectivePlanHash:        dbmodel.StringPtr(effectivePlanHash),
 		OperationType:            operationType,

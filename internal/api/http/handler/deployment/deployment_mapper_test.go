@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -52,5 +53,18 @@ func TestApplicationStatusResponse(t *testing.T) {
 	}
 	if len(payload.Containers) != 1 || payload.Status != nil {
 		t.Fatalf("expected structured containers only, got %s", encoded)
+	}
+}
+
+func TestDeploymentResponseIncludesServiceIdentity(t *testing.T) {
+	serviceID := "service-1"
+	instanceKey := "production"
+	response := deploymentResponse(model.Deployment{Id: "deployment-1", ServiceId: &serviceID, ServiceInstanceKey: &instanceKey})
+
+	if response.ServiceId == nil || *response.ServiceId != serviceID {
+		t.Fatalf("ServiceId = %v, want %q", response.ServiceId, serviceID)
+	}
+	if response.ServiceInstanceKey == nil || *response.ServiceInstanceKey != instanceKey {
+		t.Fatalf("ServiceInstanceKey = %v, want %q", response.ServiceInstanceKey, instanceKey)
 	}
 }

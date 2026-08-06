@@ -157,11 +157,13 @@ func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentPara
 }
 
 const deploymentByID = `-- name: DeploymentByID :one
-SELECT id, project_id, application_id, application_name, version_id, service_id, options_json, effective_plan_hash,
-       operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text,
-       error_message, is_rollback, rollback_from_deployment_id
-FROM deployment
-WHERE id = ?
+SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
+       s.instance_key AS service_instance_key, d.options_json, d.effective_plan_hash,
+       d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
+       d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
+FROM deployment d
+LEFT JOIN service s ON s.id = d.service_id
+WHERE d.id = ?
 `
 
 type DeploymentByIDRow struct {
@@ -171,6 +173,7 @@ type DeploymentByIDRow struct {
 	ApplicationName          string         `db:"application_name"`
 	VersionID                sql.NullString `db:"version_id"`
 	ServiceID                sql.NullString `db:"service_id"`
+	ServiceInstanceKey       sql.NullString `db:"service_instance_key"`
 	OptionsJson              sql.NullString `db:"options_json"`
 	EffectivePlanHash        sql.NullString `db:"effective_plan_hash"`
 	OperationType            string         `db:"operation_type"`
@@ -196,6 +199,7 @@ func (q *Queries) DeploymentByID(ctx context.Context, id string) (DeploymentByID
 		&i.ApplicationName,
 		&i.VersionID,
 		&i.ServiceID,
+		&i.ServiceInstanceKey,
 		&i.OptionsJson,
 		&i.EffectivePlanHash,
 		&i.OperationType,
@@ -244,26 +248,28 @@ func (q *Queries) LatestSuccessfulDeploymentPlanHash(ctx context.Context, servic
 }
 
 const listDeployments = `-- name: ListDeployments :many
-SELECT id, project_id, application_id, application_name, version_id, service_id, options_json, effective_plan_hash,
-       operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text,
-       error_message, is_rollback, rollback_from_deployment_id
-FROM deployment
-WHERE project_id = ?1
+SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
+       s.instance_key AS service_instance_key, d.options_json, d.effective_plan_hash,
+       d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
+       d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
+FROM deployment d
+LEFT JOIN service s ON s.id = d.service_id
+WHERE d.project_id = ?1
   AND (
     ?2 = ''
-    OR application_id = ?3
+    OR d.application_id = ?3
   )
   AND (
     ?4 = ''
-    OR status = ?5
+    OR d.status = ?5
   )
   AND (
     ?6 = ''
-    OR application_name LIKE ?7
+    OR d.application_name LIKE ?7
   )
-  AND (?8 IS NULL OR started_at >= ?8)
-  AND (?9 IS NULL OR started_at < ?9)
-ORDER BY started_at DESC, id
+  AND (?8 IS NULL OR d.started_at >= ?8)
+  AND (?9 IS NULL OR d.started_at < ?9)
+ORDER BY d.started_at DESC, d.id
 LIMIT ?11 OFFSET ?10
 `
 
@@ -288,6 +294,7 @@ type ListDeploymentsRow struct {
 	ApplicationName          string         `db:"application_name"`
 	VersionID                sql.NullString `db:"version_id"`
 	ServiceID                sql.NullString `db:"service_id"`
+	ServiceInstanceKey       sql.NullString `db:"service_instance_key"`
 	OptionsJson              sql.NullString `db:"options_json"`
 	EffectivePlanHash        sql.NullString `db:"effective_plan_hash"`
 	OperationType            string         `db:"operation_type"`
@@ -331,6 +338,7 @@ func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams
 			&i.ApplicationName,
 			&i.VersionID,
 			&i.ServiceID,
+			&i.ServiceInstanceKey,
 			&i.OptionsJson,
 			&i.EffectivePlanHash,
 			&i.OperationType,

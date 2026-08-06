@@ -45,7 +45,7 @@
     <AppEmptyState v-else-if="!service" :message="t('service.detail.notFound')" />
 
     <template v-else>
-      <ServiceBasicInfoCard :service="service" />
+      <ServiceBasicInfoCard :service="service" :disabled="operating" @edit="openBasicEditDialog" />
       <ServiceComponentsCard :service="service" @view-logs="openLogsDrawer" />
       <ServiceEnvironmentCard
         :rows="environmentRows"
@@ -56,6 +56,69 @@
         @save="persistEnvironment"
       />
     </template>
+
+    <AppDialog
+      v-if="service"
+      :open="isBasicEditDialogOpen"
+      :title="t('service.detail.dialog.editBasic')"
+      width-class="w-[min(640px,calc(100vw-32px))]"
+      @update:open="setBasicEditDialogOpen"
+    >
+      <div class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('service.fields.application') }}
+          </label>
+          <input :value="service.application_name" type="text" class="app-input" disabled />
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('service.fields.version') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <ComboboxSelect
+            :model-value="basicEditForm.version_id"
+            :options="basicEditVersionSelectOptions"
+            :placeholder="t('service.create.selectVersion')"
+            :invalid="Boolean(basicEditErrors.version_id)"
+            description-inline
+            width-class="w-full"
+            @update:model-value="handleBasicEditVersionChange"
+          />
+          <p v-if="basicEditErrors.version_id" class="app-field-error" role="alert">
+            {{ basicEditErrors.version_id }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('service.fields.instanceKey') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="basicEditForm.instance_key"
+            type="text"
+            class="app-input"
+            :class="basicEditErrors.instance_key ? 'app-input-error' : ''"
+            :aria-invalid="basicEditErrors.instance_key ? 'true' : undefined"
+            @input="basicEditErrors.instance_key = ''"
+          />
+          <p v-if="basicEditErrors.instance_key" class="app-field-error" role="alert">
+            {{ basicEditErrors.instance_key }}
+          </p>
+        </div>
+      </div>
+      <p v-if="basicEditSubmitError" class="app-field-error mt-3" role="alert">
+        {{ basicEditSubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.save')"
+          @cancel="cancelBasicEditing"
+          @confirm="saveBasicInfo"
+        />
+      </template>
+    </AppDialog>
 
     <AppDialog
       :open="isDeployDialogOpen"
@@ -234,9 +297,11 @@
   } from '@/components/environmentVariableList';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { appStatusTone } from '@/utils/status';
   import { delayAsync } from '@/utils/time';
+  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import ServiceBasicInfoCard from './components/ServiceBasicInfoCard.vue';
   import ServiceComponentsCard from './components/ServiceComponentsCard.vue';
   import ServiceEnvironmentCard from './components/ServiceEnvironmentCard.vue';
@@ -249,6 +314,17 @@
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const { loading: previewLoading, execute: executePreview } = useStatusAsync();
   const service = ref<ServiceResp>();
+  const isBasicEditDialogOpen = ref(false);
+  const basicEditVersions = ref<VersionResp[]>([]);
+  const basicEditForm = reactive({
+    version_id: '',
+    instance_key: '',
+  });
+  const basicEditErrors = reactive({
+    version_id: '',
+    instance_key: '',
+  });
+  const basicEditSubmitError = ref('');
   const isDeployDialogOpen = ref(false);
   const deployForm = reactive({ force_recreate: false });
   const deploySubmitError = ref('');
@@ -274,7 +350,7 @@
 
   const logsDrawerTitle = computed(() => {
     if (!service.value) return t('service.logs.title');
-    const app = service.value.application_name || service.value.application_id;
+    const app = service.value.application_name;
     const instance = service.value.instance_key || 'default';
     return t('service.logs.titleWithComponent', {
       app,
@@ -285,12 +361,19 @@
   const deployTargetLabel = computed(() => {
     const current = service.value;
     if (!current) return '';
-    const application = current.application_name || current.application_id;
+    const application = current.application_name;
     return t('service.detail.subtitle', {
       instance: `${application} / ${current.instance_key || 'default'}`,
-      version: current.version_label || current.version_id,
+      version: current.version_label,
     });
   });
+  const basicEditVersionSelectOptions = computed(() =>
+    basicEditVersions.value.map((version) => ({
+      value: version.id,
+      label: version.label,
+      description: version.status,
+    }))
+  );
 
   function setEnvironmentRows(value: ServiceResp) {
     const rows = environmentVariableRowsFromEntries(value.env, 'service-environment');
@@ -312,6 +395,69 @@
 
   function validateEnvironmentKey(key: string) {
     return environmentKeyPattern.test(key) ? undefined : t('environment.validation.invalidKey');
+  }
+
+  async function openBasicEditDialog() {
+    const current = service.value;
+    if (!current) return;
+    Object.assign(basicEditForm, {
+      version_id: current.version_id,
+      instance_key: current.instance_key,
+    });
+    Object.assign(basicEditErrors, { version_id: '', instance_key: '' });
+    basicEditSubmitError.value = '';
+    try {
+      const page = await applicationApi.listVersions(current.application_id, { per_page: 100 });
+      basicEditVersions.value = page.items ?? [];
+      isBasicEditDialogOpen.value = true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('service.toast.loadFailed'));
+    }
+  }
+
+  function cancelBasicEditing() {
+    isBasicEditDialogOpen.value = false;
+    basicEditVersions.value = [];
+    Object.assign(basicEditForm, { version_id: '', instance_key: '' });
+    Object.assign(basicEditErrors, { version_id: '', instance_key: '' });
+    basicEditSubmitError.value = '';
+  }
+
+  function setBasicEditDialogOpen(open: boolean) {
+    if (open) {
+      isBasicEditDialogOpen.value = true;
+      return;
+    }
+    cancelBasicEditing();
+  }
+
+  function handleBasicEditVersionChange(value: ComboboxOptionValue) {
+    basicEditForm.version_id = String(value || '');
+    basicEditErrors.version_id = '';
+  }
+
+  async function saveBasicInfo() {
+    const versionId = basicEditForm.version_id;
+    const instanceKey = basicEditForm.instance_key.trim();
+    basicEditSubmitError.value = '';
+    basicEditErrors.version_id = versionId ? '' : t('service.create.versionRequired');
+    basicEditErrors.instance_key = instanceKey ? '' : t('service.create.instanceKeyRequired');
+    if (basicEditErrors.version_id || basicEditErrors.instance_key) return;
+    try {
+      await executeOperation(async () => {
+        const updated = await serviceApi.updateBasic(serviceId, {
+          version_id: versionId,
+          instance_key: instanceKey,
+        });
+        service.value = updated;
+        setEnvironmentRows(updated);
+        cancelBasicEditing();
+        toast.success(t('service.detail.saved'));
+      });
+    } catch (error) {
+      basicEditSubmitError.value =
+        error instanceof Error ? error.message : t('service.detail.saveFailed');
+    }
   }
 
   async function persistEnvironment(entries: EnvironmentVariableEntry[]) {

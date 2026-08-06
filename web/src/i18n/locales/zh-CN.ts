@@ -602,6 +602,7 @@ export default {
       subtitle: '实例 {instance} · 版本 {version}',
       notFound: '服务不存在或无权访问',
       saved: '基本信息已保存',
+      saveFailed: '保存基本信息失败',
       sections: {
         basic: '基本信息',
         components: '运行状态',

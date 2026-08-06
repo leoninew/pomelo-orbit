@@ -57,9 +57,16 @@
           :disabled="option.disabled"
           class="app-option-item"
         >
-          <span class="min-w-0">
+          <span :class="descriptionInline ? 'flex min-w-0 items-center gap-2' : 'min-w-0'">
             <span class="block truncate">{{ option.label }}</span>
-            <span v-if="option.description" class="block truncate text-xs text-muted-foreground">
+            <span
+              v-if="option.description"
+              :class="
+                descriptionInline
+                  ? 'shrink-0 whitespace-nowrap text-xs text-muted-foreground'
+                  : 'block truncate text-xs text-muted-foreground'
+              "
+            >
               {{ option.description }}
             </span>
           </span>
@@ -106,6 +113,7 @@
       portal?: boolean;
       widthClass?: string;
       invalid?: boolean;
+      descriptionInline?: boolean;
     }>(),
     {
       placeholder: '请选择',
@@ -114,6 +122,7 @@
       portal: true,
       widthClass: 'w-full',
       invalid: false,
+      descriptionInline: false,
     }
   );
 

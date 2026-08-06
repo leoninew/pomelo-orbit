@@ -79,7 +79,7 @@
                 <td>
                   <div v-if="stage.depends_on.length > 0" class="flex flex-wrap gap-1">
                     <AppBadge v-for="depId in stage.depends_on" :key="depId">
-                      {{ snapshotStageMap[depId]?.name ?? depId }}
+                      {{ snapshotStageMap[depId]?.name }}
                     </AppBadge>
                   </div>
                 </td>

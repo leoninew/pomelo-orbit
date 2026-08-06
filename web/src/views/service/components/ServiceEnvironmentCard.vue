@@ -5,7 +5,6 @@
       :saved-rows="savedRows"
       :title="t('environment.title')"
       :disabled="disabled"
-      mask-values
       :validate-key="validateKey"
       @update:rows="emit('update:rows', $event)"
       @save="emit('save', $event)"

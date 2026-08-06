@@ -66,7 +66,7 @@
             <div class="min-w-0 space-y-1">
               <h2 class="text-base font-semibold text-foreground">
                 <router-link :to="`/service/${svc.id}`" class="app-link block truncate">
-                  {{ svc.application_name || svc.application_id }}
+                  {{ svc.application_name }}
                 </router-link>
               </h2>
               <p
@@ -88,9 +88,9 @@
                 <router-link
                   :to="`/version/${svc.version_id}`"
                   class="app-link block truncate"
-                  :title="svc.version_label || svc.version_id"
+                  :title="svc.version_label"
                 >
-                  {{ svc.version_label || svc.version_id }}
+                  {{ svc.version_label }}
                 </router-link>
               </dd>
             </div>
@@ -156,9 +156,9 @@
                 <router-link
                   :to="`/service/${svc.id}`"
                   class="app-link"
-                  :title="svc.application_name || svc.application_id"
+                  :title="svc.application_name"
                 >
-                  {{ svc.application_name || svc.application_id }}
+                  {{ svc.application_name }}
                 </router-link>
                 <span
                   v-if="svc.instance_key && svc.instance_key !== 'default'"
@@ -169,7 +169,7 @@
               </td>
               <td>
                 <router-link :to="`/version/${svc.version_id}`" class="app-link">
-                  {{ svc.version_label || svc.version_id }}
+                  {{ svc.version_label }}
                 </router-link>
               </td>
               <td>
@@ -517,11 +517,11 @@
     if (!service) {
       return '';
     }
-    const application = service.application_name || service.application_id;
+    const application = service.application_name;
     const instance = service.instance_key || 'default';
     return t('service.detail.subtitle', {
       instance: `${application} / ${instance}`,
-      version: service.version_label || service.version_id,
+      version: service.version_label,
     });
   }
 

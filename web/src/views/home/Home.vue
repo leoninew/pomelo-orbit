@@ -82,10 +82,10 @@
                 <td class="overflow-hidden">
                   <button
                     class="app-link block truncate"
-                    :title="run.repository_name || run.repository_id"
+                    :title="run.repository_name"
                     @click="router.push(`/repository/${run.repository_id}`)"
                   >
-                    {{ run.repository_name || run.repository_id }}
+                    {{ run.repository_name }}
                   </button>
                 </td>
                 <td
@@ -140,10 +140,10 @@
                 <td class="overflow-hidden">
                   <button
                     class="app-link block truncate"
-                    :title="deployment.application_name || deployment.application_id"
+                    :title="deployment.application_name"
                     @click="router.push(`/application/${deployment.application_id}`)"
                   >
-                    {{ deployment.application_name || deployment.application_id }}
+                    {{ deployment.application_name }}
                   </button>
                 </td>
                 <td

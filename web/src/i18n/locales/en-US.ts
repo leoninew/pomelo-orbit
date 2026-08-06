@@ -616,6 +616,7 @@ export default {
       subtitle: 'Instance {instance} · Version {version}',
       notFound: 'Service not found or access denied',
       saved: 'Basic information saved',
+      saveFailed: 'Failed to save basic information',
       sections: {
         basic: 'Basic info',
         components: 'Runtime status',

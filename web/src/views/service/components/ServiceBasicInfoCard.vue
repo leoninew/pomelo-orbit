@@ -2,13 +2,17 @@
   <section class="app-surface app-detail-card">
     <div class="app-section-header app-detail-section-header">
       <h2 class="app-detail-section-title">{{ t('service.detail.sections.basic') }}</h2>
+      <button class="app-button-primary h-9 px-3" :disabled="disabled" @click="emit('edit')">
+        <Pencil class="size-4" />
+        {{ t('common.edit') }}
+      </button>
     </div>
     <dl class="app-detail-info-grid">
       <div class="flex gap-2">
         <dt>{{ t('service.fields.application') }}</dt>
         <dd>
           <router-link :to="`/application/${service.application_id}`" class="app-link">
-            {{ service.application_name || service.application_id }}
+            {{ service.application_name }}
           </router-link>
         </dd>
       </div>
@@ -20,7 +24,7 @@
         <dt>{{ t('service.fields.version') }}</dt>
         <dd>
           <router-link :to="`/version/${service.version_id}`" class="app-link">
-            {{ service.version_label || service.version_id }}
+            {{ service.version_label }}
           </router-link>
         </dd>
       </div>
@@ -45,13 +49,18 @@
 </template>
 
 <script setup lang="ts">
+  import { Pencil } from 'lucide-vue-next';
   import { useI18n } from 'vue-i18n';
   import AppBadge from '@/components/AppBadge.vue';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { appStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
 
-  defineProps<{ service: ServiceResp }>();
+  defineProps<{
+    service: ServiceResp;
+    disabled: boolean;
+  }>();
 
+  const emit = defineEmits<{ edit: [] }>();
   const { t } = useI18n();
 </script>

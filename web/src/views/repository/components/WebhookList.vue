@@ -234,7 +234,7 @@
 
   function getTemplateName(templateId: string) {
     const tpl = props.templates.find((t) => t.id === templateId);
-    return tpl?.name || templateId;
+    return tpl?.name;
   }
 
   function webhookUrl(webhookId: string) {

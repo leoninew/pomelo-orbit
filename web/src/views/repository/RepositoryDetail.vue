@@ -76,7 +76,7 @@
                 :to="`/credential/${repository.git_credential_id}`"
                 class="app-link"
               >
-                {{ repository.git_credential_name || repository.git_credential_id }}
+                {{ repository.git_credential_name }}
               </router-link>
               <span v-else class="text-muted-foreground">未配置</span>
             </dd>

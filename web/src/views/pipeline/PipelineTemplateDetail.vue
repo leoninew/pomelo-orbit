@@ -124,7 +124,7 @@
                 <td>
                   <div v-if="orch.depends_on.length > 0" class="flex flex-wrap gap-1">
                     <AppBadge v-for="depId in orch.depends_on" :key="depId">
-                      {{ stageCache[depId]?.name ?? depId }}
+                      {{ stageCache[depId]?.name }}
                     </AppBadge>
                   </div>
                 </td>
@@ -649,7 +649,7 @@
       const stage = stageCache[orch.stage_id];
       return {
         id: orch.stage_id,
-        name: stage?.name ?? orch.stage_id,
+        name: stage?.name ?? orch.stage_name,
         image: stage?.image ?? '',
         script: stage?.script ?? '',
         version: stage?.version ?? 1,

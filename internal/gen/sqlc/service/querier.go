@@ -6,7 +6,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 )
 
 type Querier interface {
@@ -18,7 +17,6 @@ type Querier interface {
 	DeleteServiceComponentResource(ctx context.Context, serviceComponentID string) error
 	DeleteServiceComponents(ctx context.Context, serviceID string) error
 	DeleteServiceEnv(ctx context.Context, serviceID string) error
-	DetachDeploymentServiceRefs(ctx context.Context, serviceID sql.NullString) error
 	InsertService(ctx context.Context, arg InsertServiceParams) error
 	InsertServiceComponent(ctx context.Context, arg InsertServiceComponentParams) error
 	InsertServiceComponentEndpoint(ctx context.Context, arg InsertServiceComponentEndpointParams) error

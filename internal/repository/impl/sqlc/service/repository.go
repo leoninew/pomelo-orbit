@@ -198,14 +198,13 @@ func (r Repository) UpdateServiceComponentOverlay(ctx context.Context, component
 }
 
 func (r Repository) DeleteService(ctx context.Context, id string) error {
-	q := r.q(ctx)
-	if err := q.DetachDeploymentServiceRefs(ctx, sql.NullString{String: id, Valid: true}); err != nil {
-		return fmt.Errorf("detach deployment service refs for service %s: %w", id, err)
-	}
-	if err := q.DeleteService(ctx, id); err != nil {
-		return fmt.Errorf("delete service %s: %w", id, err)
-	}
-	return nil
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		if err := q.DeleteService(txCtx, id); err != nil {
+			return fmt.Errorf("delete service %s: %w", id, err)
+		}
+		return nil
+	})
 }
 
 func (r Repository) UpdateServiceStatus(ctx context.Context, id, status string) error {

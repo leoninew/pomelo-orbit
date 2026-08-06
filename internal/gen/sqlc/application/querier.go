@@ -34,8 +34,6 @@ type Querier interface {
 	DeleteVersionComponentUlimits(ctx context.Context, componentID string) error
 	DeleteVersionComponents(ctx context.Context, versionID string) error
 	DeleteVersionsByApplication(ctx context.Context, applicationID string) error
-	DetachDeploymentServiceRefsByApplication(ctx context.Context, applicationID string) error
-	DetachDeploymentVersionRefsByApplication(ctx context.Context, applicationID string) error
 	InsertVersionComponent(ctx context.Context, arg InsertVersionComponentParams) error
 	InsertVersionComponentDependency(ctx context.Context, arg InsertVersionComponentDependencyParams) error
 	InsertVersionComponentDevice(ctx context.Context, arg InsertVersionComponentDeviceParams) error

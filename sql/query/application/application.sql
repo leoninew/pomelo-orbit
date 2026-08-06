@@ -38,16 +38,6 @@ UPDATE application
 SET name = ?, code = ?, updated_at = ?
 WHERE id = ?;
 
--- name: DetachDeploymentServiceRefsByApplication :exec
-UPDATE deployment
-SET service_id = NULL
-WHERE service_id IN (SELECT id FROM service WHERE service.application_id = ?);
-
--- name: DetachDeploymentVersionRefsByApplication :exec
-UPDATE deployment
-SET version_id = NULL
-WHERE version_id IN (SELECT id FROM version WHERE version.application_id = ?);
-
 -- name: DeleteServicesByApplication :exec
 DELETE FROM service
 WHERE application_id = ?;

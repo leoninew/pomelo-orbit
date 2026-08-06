@@ -160,12 +160,6 @@ func (r Repository) DeleteApplication(ctx context.Context, id string) error {
 				return fmt.Errorf("clear version fork references %s: %w", versionId, err)
 			}
 		}
-		if err := q.DetachDeploymentServiceRefsByApplication(txCtx, id); err != nil {
-			return fmt.Errorf("detach deployment service refs for application %s: %w", id, err)
-		}
-		if err := q.DetachDeploymentVersionRefsByApplication(txCtx, id); err != nil {
-			return fmt.Errorf("detach deployment version refs for application %s: %w", id, err)
-		}
 		if err := q.DeleteServicesByApplication(txCtx, id); err != nil {
 			return fmt.Errorf("delete application service %s: %w", id, err)
 		}

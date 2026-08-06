@@ -2,6 +2,7 @@ package deploymentsvc
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
@@ -39,6 +40,78 @@ func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T)
 	if runner.called {
 		t.Fatal("status query must not run without a deployment workspace")
 	}
+}
+
+func TestDeleteApplicationRequiresServicesAndVersionsToBeRemoved(t *testing.T) {
+	projectId := "project-1"
+	commandStore := &runtimeQueryStore{
+		application: model.Application{Id: "app-1", ProjectId: &projectId, Code: "demo"},
+	}
+	applicationStore := &deleteApplicationStore{
+		versions: []model.Version{{Id: "version-1", ApplicationId: "app-1"}},
+	}
+	serviceStore := &deleteApplicationServiceStore{
+		services: []model.Service{{Id: "service-1", ApplicationId: "app-1"}},
+	}
+	workspace := testWorkspace(t.TempDir())
+	service := Service{
+		commandStore: commandStore,
+		application:  applicationStore,
+		service:      serviceStore,
+		workspace:    workspace,
+	}
+
+	err := service.DeleteApplication(context.Background(), "user-1", "app-1", true)
+	if err == nil || !strings.Contains(err.Error(), "服务") {
+		t.Fatalf("DeleteApplication error = %v, want service validation error", err)
+	}
+	if applicationStore.deleted || len(workspace.removedApps) != 0 {
+		t.Fatal("application data and workspace must remain while services exist")
+	}
+
+	serviceStore.services = nil
+	err = service.DeleteApplication(context.Background(), "user-1", "app-1", true)
+	if err == nil || !strings.Contains(err.Error(), "版本") {
+		t.Fatalf("DeleteApplication error = %v, want version validation error", err)
+	}
+	if applicationStore.deleted || len(workspace.removedApps) != 0 {
+		t.Fatal("application data and workspace must remain while versions exist")
+	}
+
+	applicationStore.versions = nil
+	if err := service.DeleteApplication(context.Background(), "user-1", "app-1", true); err != nil {
+		t.Fatalf("DeleteApplication returned error: %v", err)
+	}
+	if !applicationStore.deleted {
+		t.Fatal("application was not deleted after services and versions were removed")
+	}
+	if len(workspace.removedApps) != 1 || workspace.removedApps[0] != "demo" {
+		t.Fatalf("removed workspaces = %#v, want [demo]", workspace.removedApps)
+	}
+}
+
+type deleteApplicationStore struct {
+	repository.ApplicationStore
+	versions []model.Version
+	deleted  bool
+}
+
+func (s *deleteApplicationStore) ListVersions(_ context.Context, _ string) ([]model.Version, error) {
+	return s.versions, nil
+}
+
+func (s *deleteApplicationStore) DeleteApplication(context.Context, string) error {
+	s.deleted = true
+	return nil
+}
+
+type deleteApplicationServiceStore struct {
+	repository.ServiceStore
+	services []model.Service
+}
+
+func (s *deleteApplicationServiceStore) ListServicesByApplication(_ context.Context, _ string) ([]model.Service, error) {
+	return s.services, nil
 }
 
 func newRuntimeQueryService() (Service, *runtimeQueryStore) {

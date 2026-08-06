@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
@@ -190,13 +189,15 @@ func (s Service) DeleteApplication(ctx context.Context, userId string, applicati
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to load services", err)
 	}
-	for _, service := range services {
-		switch service.Status {
-		case status.ServiceStatusDeploying:
-			return apperror.New(apperror.KindValidation, "应用正在部署中, 请稍后再试")
-		case status.ServiceStatusRunning:
-			return apperror.New(apperror.KindValidation, "应用正在运行中, 请先停止后再删除")
-		}
+	if len(services) > 0 {
+		return apperror.New(apperror.KindValidation, "应用仍包含服务, 请先删除服务")
+	}
+	versions, err := s.application.ListVersions(ctx, app.Id)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to load versions", err)
+	}
+	if len(versions) > 0 {
+		return apperror.New(apperror.KindValidation, "应用仍包含版本, 请先删除版本")
 	}
 	if removeDir {
 		if err := s.workspace.RemoveAppDir(app.Code); err != nil {

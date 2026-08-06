@@ -47,7 +47,6 @@ WHERE id = ?;
 -- name: CountVersionRuntimeRefs :one
 SELECT (
   (SELECT COUNT(*) FROM service WHERE service.version_id = sqlc.arg(version_id)) +
-  (SELECT COUNT(*) FROM deployment WHERE deployment.version_id = sqlc.arg(version_id)) +
   (SELECT COUNT(*) FROM pipeline_stage_build_version_binding WHERE fixed_version_id = sqlc.arg(version_id))
 );
 

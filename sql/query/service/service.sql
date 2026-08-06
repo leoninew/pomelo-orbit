@@ -43,11 +43,6 @@ UPDATE service
 SET status = ?, version_id = ?, updated_at = ?
 WHERE id = ?;
 
--- name: DetachDeploymentServiceRefs :exec
-UPDATE deployment
-SET service_id = NULL
-WHERE service_id = ?;
-
 -- name: DeleteService :exec
 DELETE FROM service
 WHERE id = ?;

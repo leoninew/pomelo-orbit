@@ -22,13 +22,18 @@ import (
 // concrete services are composed in bootstrap; tool handlers never see stores
 // or infrastructure implementations.
 type Dependencies struct {
-	ActorUserId string
-	Project     ProjectService
-	Application ApplicationService
-	Service     ServiceService
-	Deployment  DeploymentService
-	Gateway     GatewayService
+	ActorUserId     string
+	ActorAuthorizer ActorAuthorizer
+	Project         ProjectService
+	Application     ApplicationService
+	Service         ServiceService
+	Deployment      DeploymentService
+	Gateway         GatewayService
 }
+
+// ActorAuthorizer binds a stdio MCP session to an Orbit user on its first
+// tool invocation. HTTP MCP supplies ActorUserId during connection setup.
+type ActorAuthorizer func(context.Context) (string, error)
 
 type ProjectService interface {
 	ListByMember(context.Context, string) ([]model.Project, error)

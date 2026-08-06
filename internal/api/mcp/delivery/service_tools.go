@@ -9,7 +9,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func (c core) registerServiceTools(server *mcp.Server) {
+func (c *core) registerServiceTools(server *mcp.Server) {
 	addTool(server, "orbit_create_service", "Create a stopped Service whose Component overlays initially inherit the Version.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 		VersionId     string `json:"version_id" jsonschema:"required"`

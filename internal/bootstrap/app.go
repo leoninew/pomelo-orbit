@@ -70,42 +70,45 @@ func (a App) RunMCP(ctx context.Context) error {
 
 	taskRepo := taskrepo.NewRepository(database)
 	deps := newHTTPServerDependencies(a.cfg, a.logger, database, taskRepo)
-	tokenStore, err := mcpinfra.NewDefaultTokenStore()
-	if err != nil {
-		return err
-	}
-	token, err := tokenStore.Load()
-	if err != nil {
-		return err
-	}
-	authenticated, err := deps.AuthService.Authenticate(ctx, token)
-	if err != nil {
-		if !apperror.IsKind(err, apperror.KindUnauthorized) {
-			return err
-		}
-		authorizer, authorizerErr := mcpinfra.NewBrowserAuthorizer(mcpinfra.AuthorizerConfig{
-			APIURL:  a.cfg.MCPAPIUrl(),
-			WebURL:  a.cfg.MCP.WebUrl,
-			Timeout: a.cfg.MCP.AuthTimeout,
-		})
-		if authorizerErr != nil {
-			return authorizerErr
-		}
-		token, err = authorizer.Authorize(ctx)
-		if err != nil {
-			return err
-		}
-		authenticated, err = deps.AuthService.Authenticate(ctx, token)
-		if err != nil {
-			return err
-		}
-		if err := tokenStore.Save(token); err != nil {
-			return err
-		}
-	}
 
 	server, err := deliverymcp.NewServer(deliverymcp.Dependencies{
-		ActorUserId: authenticated.User.Id,
+		ActorAuthorizer: func(ctx context.Context) (string, error) {
+			tokenStore, err := mcpinfra.NewDefaultTokenStore()
+			if err != nil {
+				return "", err
+			}
+			token, err := tokenStore.Load()
+			if err != nil {
+				return "", err
+			}
+			authenticated, err := deps.AuthService.Authenticate(ctx, token)
+			if err == nil {
+				return authenticated.User.Id, nil
+			}
+			if !apperror.IsKind(err, apperror.KindUnauthorized) {
+				return "", err
+			}
+			authorizer, err := mcpinfra.NewBrowserAuthorizer(mcpinfra.AuthorizerConfig{
+				APIURL:  a.cfg.MCPAPIUrl(),
+				WebURL:  a.cfg.MCP.WebUrl,
+				Timeout: a.cfg.MCP.AuthTimeout,
+			})
+			if err != nil {
+				return "", err
+			}
+			token, err = authorizer.Authorize(ctx)
+			if err != nil {
+				return "", err
+			}
+			authenticated, err = deps.AuthService.Authenticate(ctx, token)
+			if err != nil {
+				return "", err
+			}
+			if err := tokenStore.Save(token); err != nil {
+				return "", err
+			}
+			return authenticated.User.Id, nil
+		},
 		Project:     deps.ProjectService,
 		Application: deps.ApplicationService,
 		Service:     deps.ServiceService,

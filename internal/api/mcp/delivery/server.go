@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
 	gatewaydto "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/dto"
@@ -17,19 +18,58 @@ import (
 
 const implementationVersion = "0.1.0"
 
-// NewServer creates the shared Delivery MCP Core. Both stdio and Streamable
-// HTTP transports use this exact server instance definition.
+// NewServer creates the shared Delivery MCP Core. Streamable HTTP supplies an
+// actor when the connection is accepted; stdio can bind one lazily on its
+// first tools/call request.
 func NewServer(deps Dependencies) (*mcp.Server, error) {
-	if strings.TrimSpace(deps.ActorUserId) == "" {
-		return nil, errors.New("mcp actor_user_id is required")
+	if strings.TrimSpace(deps.ActorUserId) == "" && deps.ActorAuthorizer == nil {
+		return nil, errors.New("mcp actor_user_id or actor authorizer is required")
 	}
 	server := mcp.NewServer(&mcp.Implementation{Name: "pomelo-delivery", Version: implementationVersion}, nil)
-	core := core{deps: deps}
+	core := &core{deps: deps}
+	if deps.ActorAuthorizer != nil {
+		server.AddReceivingMiddleware(core.authorizeToolCalls)
+	}
 	core.registerOrbitTools(server)
 	return server, nil
 }
 
-type core struct{ deps Dependencies }
+type core struct {
+	deps            Dependencies
+	authorizationMu sync.Mutex
+}
+
+func (c *core) authorizeToolCalls(next mcp.MethodHandler) mcp.MethodHandler {
+	return func(ctx context.Context, method string, request mcp.Request) (mcp.Result, error) {
+		if method == "tools/call" {
+			if err := c.ensureActor(ctx); err != nil {
+				return &mcp.CallToolResult{
+					Content: []mcp.Content{&mcp.TextContent{Text: "unauthorized: MCP authorization is required before tools can be used"}},
+					IsError: true,
+				}, nil
+			}
+		}
+		return next(ctx, method, request)
+	}
+}
+
+func (c *core) ensureActor(ctx context.Context) error {
+	c.authorizationMu.Lock()
+	defer c.authorizationMu.Unlock()
+
+	if strings.TrimSpace(c.deps.ActorUserId) != "" {
+		return nil
+	}
+	actorUserId, err := c.deps.ActorAuthorizer(ctx)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(actorUserId) == "" {
+		return errors.New("MCP actor authorizer returned an empty user ID")
+	}
+	c.deps.ActorUserId = actorUserId
+	return nil
+}
 
 func addTool[In any](server *mcp.Server, name, description string, handler func(context.Context, In) (map[string]any, error)) {
 	mcp.AddTool(server, &mcp.Tool{Name: name, Description: description}, func(ctx context.Context, _ *mcp.CallToolRequest, input In) (*mcp.CallToolResult, map[string]any, error) {
@@ -49,7 +89,7 @@ func toolError(err error) error {
 	return fmt.Errorf("internal_error: %s", err)
 }
 
-func (c core) registerOrbitTools(server *mcp.Server) {
+func (c *core) registerOrbitTools(server *mcp.Server) {
 	addTool(server, "orbit_list_projects", "List Projects visible to the configured Orbit user.", func(ctx context.Context, _ struct{}) (map[string]any, error) {
 		projects, err := c.deps.Project.ListByMember(ctx, c.deps.ActorUserId)
 		if err != nil {
@@ -371,6 +411,6 @@ func writeResult(operation string, resourceIds map[string]string, method, path s
 	return result
 }
 
-func (c core) updateComponentAdvanced(ctx context.Context, versionId, componentId string, resources *model.VersionComponentResources, tmpfs []model.VersionComponentTmpfs, ulimits []model.VersionComponentUlimit) (model.VersionComponent, error) {
+func (c *core) updateComponentAdvanced(ctx context.Context, versionId, componentId string, resources *model.VersionComponentResources, tmpfs []model.VersionComponentTmpfs, ulimits []model.VersionComponentUlimit) (model.VersionComponent, error) {
 	return c.deps.Application.UpdateVersionComponentAdvanced(ctx, c.deps.ActorUserId, versionId, componentId, applicationdto.VersionComponentAdvancedUpdateInput{Resources: resources, Tmpfs: tmpfs, Ulimits: ulimits})
 }

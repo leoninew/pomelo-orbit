@@ -9,7 +9,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func (c core) registerDeploymentTools(server *mcp.Server) {
+func (c *core) registerDeploymentTools(server *mcp.Server) {
 	addTool(server, "orbit_deploy", "Create an Orbit deployment and immediately return its persisted command summary.", func(ctx context.Context, input struct {
 		ServiceId     string `json:"service_id" jsonschema:"required"`
 		ForceRecreate bool   `json:"force_recreate,omitempty"`

@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -82,6 +83,77 @@ func TestApplicationErrorBecomesClassifiedMCPToolError(t *testing.T) {
 	if !strings.Contains(content.Text, "not_found: Application missing not found") {
 		t.Fatalf("error text = %q, want classified not_found error", content.Text)
 	}
+}
+
+func TestActorAuthorizerRunsOnlyForToolCallsAndBindsTheSession(t *testing.T) {
+	project := &actorProjectService{}
+	authorizations := 0
+	server, err := NewServer(Dependencies{
+		ActorAuthorizer: func(context.Context) (string, error) {
+			authorizations++
+			return "current-user", nil
+		},
+		Project: project,
+	})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	session := connectInMemory(t, server)
+	if _, err := session.ListTools(context.Background(), nil); err != nil {
+		t.Fatalf("ListTools() error = %v", err)
+	}
+	if authorizations != 0 {
+		t.Fatalf("authorizations after ListTools() = %d, want 0", authorizations)
+	}
+	for range 2 {
+		result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_list_projects"})
+		if err != nil {
+			t.Fatalf("CallTool() error = %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("CallTool() returned tool error: %#v", result.Content)
+		}
+	}
+	if authorizations != 1 {
+		t.Fatalf("authorizations after tool calls = %d, want 1", authorizations)
+	}
+	if project.actorUserId != "current-user" || project.calls != 2 {
+		t.Fatalf("project calls = actor %q, count %d; want current-user, 2", project.actorUserId, project.calls)
+	}
+}
+
+func TestActorAuthorizationFailureStopsToolExecution(t *testing.T) {
+	project := &actorProjectService{}
+	server, err := NewServer(Dependencies{
+		ActorAuthorizer: func(context.Context) (string, error) {
+			return "", errors.New("browser authorization canceled")
+		},
+		Project: project,
+	})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	result, err := connectInMemory(t, server).CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_list_projects"})
+	if err != nil {
+		t.Fatalf("CallTool() error = %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("CallTool() IsError = false, want true")
+	}
+	if project.calls != 0 {
+		t.Fatalf("project calls = %d, want 0", project.calls)
+	}
+}
+
+type actorProjectService struct {
+	actorUserId string
+	calls       int
+}
+
+func (s *actorProjectService) ListByMember(_ context.Context, actorUserId string) ([]model.Project, error) {
+	s.actorUserId = actorUserId
+	s.calls++
+	return []model.Project{}, nil
 }
 
 var pythonDeliveryToolNames = []string{

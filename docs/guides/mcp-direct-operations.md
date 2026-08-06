@@ -2,7 +2,7 @@
 
 ## 命名与启动约定
 
-Codex 注册名为 `pomelo_delivery`，本地 stdio 入口为 `go run ./cmd/server mcp`，工具在客户端中显示为 `mcp__pomelo_delivery__orbit_*`。它直接构造绑定当前用户的 Go delivery MCP Core，工具调用不会回环到 Orbit HTTP API。首次启动或本地凭据过期时，进程会打开配置的 Orbit 浏览器登录页；浏览器以短时一次性授权码回调本机 loopback，stdio 进程交换并将 bearer credential 保存到用户配置目录。不要复制浏览器 localStorage token，也不要使用已移除的 `pomelo_orbit` 注册名或 Python MCP 命令。
+Codex 注册名为 `pomelo_delivery`，本地 stdio 入口为 `go run ./cmd/server mcp`，工具在客户端中显示为 `mcp__pomelo_delivery__orbit_*`。它直接构造绑定当前用户的 Go delivery MCP Core，工具调用不会回环到 Orbit HTTP API。Server 初始化和工具发现不会读取或验证本地凭据；首次实际 `tools/call` 时，缓存凭据缺失或失效才会打开配置的 Orbit 浏览器登录页。浏览器以短时一次性授权码回调本机 loopback，stdio 进程交换并将 bearer credential 保存到用户配置目录。不要复制浏览器 localStorage token，也不要使用已移除的 `pomelo_orbit` 注册名或 Python MCP 命令。
 
 `pomelo_delivery` 只执行用户明确要求的独立动作。调用结果为 `isError=true` 时，该调用失败；不要自动执行依赖它的后续动作。
 

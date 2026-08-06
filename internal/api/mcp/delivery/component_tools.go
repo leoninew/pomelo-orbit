@@ -10,7 +10,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func (c core) registerVersionComponentTools(server *mcp.Server) {
+func (c *core) registerVersionComponentTools(server *mcp.Server) {
 	addTool(server, "orbit_update_version_component_basic", "Replace a Component's name, image, command, pull policy, and restart policy.", func(ctx context.Context, input struct {
 		VersionId     string  `json:"version_id" jsonschema:"required"`
 		ComponentId   string  `json:"component_id" jsonschema:"required"`

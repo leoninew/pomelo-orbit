@@ -10,7 +10,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func (c core) registerRuntimeTools(server *mcp.Server) {
+func (c *core) registerRuntimeTools(server *mcp.Server) {
 	addTool(server, "runtime_doctor", "Check Docker prerequisites, one managed target, or the fixed external traefik network. Supply application_id and instance_key together for an Application target, or gateway_application_id and gateway_instance_key together for a Gateway target. Do not combine those target pairs. network_name is an alternative with the only valid value traefik and cannot be combined with either target pair.", func(ctx context.Context, input struct {
 		ApplicationId        string `json:"application_id,omitempty"`
 		InstanceKey          string `json:"instance_key,omitempty"`
@@ -178,7 +178,7 @@ type runtimeTargetInput struct {
 	InstanceKey   string `json:"instance_key,omitempty"`
 }
 
-func (c core) runtimeTarget(ctx context.Context, applicationId, instanceKey string) (deploymentdto.RuntimeTarget, error) {
+func (c *core) runtimeTarget(ctx context.Context, applicationId, instanceKey string) (deploymentdto.RuntimeTarget, error) {
 	if strings.TrimSpace(instanceKey) == "" {
 		instanceKey = "default"
 	}

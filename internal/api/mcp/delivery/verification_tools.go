@@ -9,7 +9,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func (c core) registerVerificationTools(server *mcp.Server) {
+func (c *core) registerVerificationTools(server *mcp.Server) {
 	addTool(server, "verify_deployment", "Verify deployment state with a concise result; set detail=true for raw diagnostic evidence.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 		DeploymentId  string `json:"deployment_id" jsonschema:"required"`

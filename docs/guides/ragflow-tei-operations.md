@@ -58,7 +58,7 @@ TEI 挂载其父目录 `tei/cache` 到 `/data`，启动参数为：
 已有独立 TEI 的 Git LFS 缓存通过校验时，优先使用前置脚本复制到 RAGFlow 的新管理路径，而不是重新下载或移动原目录：
 
 ```powershell
-python scripts/prepare_ragflow_tei.py stage-model --source-dir data/deployment/tei-bge-m3/default/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py stage-model --source-dir data/deployment/tei-bge-m3/default/tei/cache/bge-m3
 ```
 
 该命令要求目标目录为空，复制时忽略 Git 元数据和下载缓存，创建逐文件 SHA-256 manifest，并保留原始 Git LFS checkout 不变。
@@ -142,27 +142,27 @@ SQL 基线应只记录停机状态的 Application、CPU/GPU Version、Gateway、
 
 ## 前置准备脚本
 
-实施后统一使用 `scripts/prepare_ragflow_tei.py` 准备 TEI 运行条件。该脚本会以 `argparse` 子命令和清晰退出码呈现所有可选路径，供人和自动化 Agent 使用：
+实施后统一使用 `skills/_ragflow/prepare_ragflow_tei.py` 准备 TEI 运行条件。该脚本会以 `argparse` 子命令和清晰退出码呈现所有可选路径，供人和自动化 Agent 使用：
 
 ```powershell
 # 只读：检查工具、缓存、镜像 digest 和指定 Host 的 CPU/GPU 条件
-python scripts/prepare_ragflow_tei.py check --profile cpu
-python scripts/prepare_ragflow_tei.py check --profile gpu
+python skills/_ragflow/prepare_ragflow_tei.py check --profile cpu
+python skills/_ragflow/prepare_ragflow_tei.py check --profile gpu
 
 # 显式执行：按 Git LFS 或 HF CLI 准备固定 revision 的模型
-python scripts/prepare_ragflow_tei.py prepare-model --source git-lfs
-python scripts/prepare_ragflow_tei.py prepare-model --source hf-cli
+python skills/_ragflow/prepare_ragflow_tei.py prepare-model --source git-lfs
+python skills/_ragflow/prepare_ragflow_tei.py prepare-model --source hf-cli
 
 # 显式压缩备份已校验模型，并恢复到空缓存目录供下一轮测试
-python scripts/prepare_ragflow_tei.py backup-model
-python scripts/prepare_ragflow_tei.py restore-model --archive data/backup/bge-m3-<revision>.tar.gz
+python skills/_ragflow/prepare_ragflow_tei.py backup-model
+python skills/_ragflow/prepare_ragflow_tei.py restore-model --archive data/backup/bge-m3-<revision>.tar.gz
 
 # 显式拉取已验证的 TEI image digest，并检查备用镜像站
-python scripts/prepare_ragflow_tei.py prepare-image --profile cpu
-python scripts/prepare_ragflow_tei.py prepare-image --profile gpu
+python skills/_ragflow/prepare_ragflow_tei.py prepare-image --profile cpu
+python skills/_ragflow/prepare_ragflow_tei.py prepare-image --profile gpu
 
 # 按 profile 执行所有经明确授权的准备步骤
-python scripts/prepare_ragflow_tei.py prepare --profile cpu
+python skills/_ragflow/prepare_ragflow_tei.py prepare --profile cpu
 ```
 
 脚本不会启动或停止容器，不执行 Docker Compose，也不会创建或修改 Orbit Application、Version、Service 或 Deployment。通过 `check` 后，集成式使用 `deploy-ragflow-integrated-orbit`，显式拆分式使用 `deploy-ragflow-split-orbit` 执行 Orbit 生命周期操作。

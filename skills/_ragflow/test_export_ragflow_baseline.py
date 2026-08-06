@@ -1,4 +1,4 @@
-"""Focused round-trip test for the deterministic RAGFlow TEI SQL exporter."""
+"""Focused round-trip test for the deterministic RAGFlow SQL exporter."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import export_ragflow_tei_baseline as exporter
+import export_ragflow_baseline as exporter
 
 
 SCHEMA = """
@@ -149,7 +149,7 @@ class BaselineExportTests(unittest.TestCase):
                 rendered = exporter.render_sql(connection, exporter.selected_baseline(connection, args))
             finally:
                 connection.close()
-            exporter.write_output(output, rendered)
+            exporter.write_output(output, rendered, replace=False)
 
             restored_path = root / "restored.db"
             restored = connect(restored_path)
@@ -210,11 +210,13 @@ class BaselineExportTests(unittest.TestCase):
             finally:
                 source.close()
 
-    def test_existing_output_is_replaced_by_default(self) -> None:
+    def test_existing_output_requires_explicit_replacement(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "baseline.sql"
             output.write_text("previous", encoding="utf-8")
-            exporter.write_output(output, "next")
+            with self.assertRaises(exporter.ExportError):
+                exporter.write_output(output, "next", replace=False)
+            exporter.write_output(output, "next", replace=True)
             self.assertEqual(output.read_text(encoding="utf-8"), "next")
 
 

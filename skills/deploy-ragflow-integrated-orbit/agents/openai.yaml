@@ -1,4 +1,4 @@
 interface:
   display_name: "Deploy Integrated RAGFlow + TEI"
-  short_description: "Initialize and deploy RAGFlow with Pomelo Delivery MCP."
-  default_prompt: "Use $deploy-ragflow-integrated-orbit to initialize RAGFlow data and deploy its integrated GPU or CPU Version with Pomelo Delivery MCP."
+  short_description: "Initialize and deploy only integrated RAGFlow."
+  default_prompt: "Use $deploy-ragflow-integrated-orbit to initialize only ragflow-integrated and deploy its integrated GPU or CPU Version with Pomelo Delivery MCP."

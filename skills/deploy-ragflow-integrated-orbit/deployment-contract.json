@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract_path": "scripts/ragflow-integrated/deployment-contract.json",
+  "contract_path": "skills/deploy-ragflow-integrated-orbit/deployment-contract.json",
   "primitive_path": "skills/deploy-ragflow-integrated-orbit/references/ragflow-integrated-components.md",
   "primitive_title": "RAGFlow Integrated Deployment Primitives",
   "primitive_description": "Use this reference before an integrated RAGFlow `pomelo_delivery` write. The contract is the only hand-maintained source for integrated topology configuration.",
@@ -67,7 +67,7 @@
     {
       "name": "mysql",
       "application": "ragflow-integrated",
-      "compose_file": "scripts/ragflow-bundled/docker-compose.yml",
+      "compose_file": "skills/deploy-ragflow-integrated-orbit/references/docker-compose.yml",
       "service_name": "mysql",
       "image": "mysql:8.0.39",
       "command": [
@@ -101,7 +101,7 @@
     {
       "name": "redis",
       "application": "ragflow-integrated",
-      "compose_file": "scripts/ragflow-bundled/docker-compose.yml",
+      "compose_file": "skills/deploy-ragflow-integrated-orbit/references/docker-compose.yml",
       "service_name": "redis",
       "image": "valkey/valkey:8",
       "command": ["sh", "-c", "exec redis-server --requirepass \"$${REDIS_PASSWORD}\" --maxmemory 128mb --maxmemory-policy allkeys-lru"],
@@ -126,7 +126,7 @@
     {
       "name": "minio",
       "application": "ragflow-integrated",
-      "compose_file": "scripts/ragflow-bundled/docker-compose.yml",
+      "compose_file": "skills/deploy-ragflow-integrated-orbit/references/docker-compose.yml",
       "service_name": "minio",
       "image": "pgsty/minio:RELEASE.2026-03-25T00-00-00Z",
       "command": ["server", "--console-address", ":9001", "/data"],
@@ -152,7 +152,7 @@
     {
       "name": "es01",
       "application": "ragflow-integrated",
-      "compose_file": "scripts/ragflow-bundled/docker-compose.yml",
+      "compose_file": "skills/deploy-ragflow-integrated-orbit/references/docker-compose.yml",
       "service_name": "es01",
       "image": "elasticsearch:8.11.3",
       "environment": [
@@ -194,7 +194,7 @@
     {
       "name": "tei",
       "application": "ragflow-integrated",
-      "compose_file": "scripts/ragflow-bundled/docker-compose.yml",
+      "compose_file": "skills/deploy-ragflow-integrated-orbit/references/docker-compose.yml",
       "service_name": "tei",
       "images": {
         "cpu": "ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3@sha256:ad950d30878eceb72aaf32024d26fa2b1d04a75304fa0b4776b49aa1941fea07",
@@ -233,7 +233,7 @@
     {
       "name": "ragflow-cpu",
       "application": "ragflow-integrated",
-      "compose_file": "scripts/ragflow-bundled/docker-compose.yml",
+      "compose_file": "skills/deploy-ragflow-integrated-orbit/references/docker-compose.yml",
       "service_name": "ragflow-cpu",
       "image": "infiniflow/ragflow:v0.26.4",
       "command": ["--enable-adminserver", "--init-model-provider-tables"],
@@ -282,14 +282,14 @@
   ],
   "compose_targets": [
     {
-      "path": "scripts/ragflow-bundled/docker-compose.yml",
+      "path": "skills/deploy-ragflow-integrated-orbit/references/docker-compose.yml",
       "components": ["mysql", "redis", "minio", "es01", "tei", "ragflow-cpu"],
       "header": [
         "Combine with docker-compose.gpu.yml to reproduce the GPU TEI variant on an NVIDIA-capable host."
       ]
     },
     {
-      "path": "scripts/ragflow-bundled/docker-compose.gpu.yml",
+      "path": "skills/deploy-ragflow-integrated-orbit/references/docker-compose.gpu.yml",
       "profile": "gpu",
       "components": ["tei"],
       "overlay": true,

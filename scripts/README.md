@@ -9,15 +9,12 @@
 | [`gen_ulid.py`](./gen_ulid.md) | 生成一个或多个 ULID。 |
 | [`run.py`](./run.md) | 同时启动后端和前端开发服务。 |
 | [`cert.py`](./cert.md) | 生成或检查本地开发证书。 |
-| [`prepare_ragflow_tei.py`](./prepare_ragflow_tei.md) | 准备和验证 RAGFlow TEI 模型缓存与镜像。 |
-| [`render_ragflow_deployment_contract.py`](./render_ragflow_deployment_contract.md) | 从 split 与 integrated 部署契约生成 Compose 参考文件和部署 primitive，并检测漂移。 |
 
 ## 远程运维
 
 | 脚本 | 用途 |
 | --- | --- |
-| [`manage.py`](./manage.md) | 远程部署、SSH、Compose、文件复制与备份入口。 |
-| [`clean_remote_docker.py`](./clean_remote_docker.md) | 检查或清理远程 Docker 可回收空间。 |
+| [`manage.py`](./manage.md) | 远程部署、SSH、Compose、文件复制、备份与 Docker 可回收空间清理入口。 |
 | [`reconcile_compose_proxies.py`](./reconcile_compose_proxies.md) | 协调手工 CD Compose 项目的代理配置。 |
 
 ## 一次性迁移与生成工具
@@ -36,11 +33,7 @@
 | 脚本 | 用途 |
 | --- | --- |
 | [`test_reconcile_compose_proxies.py`](./test_reconcile_compose_proxies.md) | Compose 代理协调单元测试。 |
-| [`test_prepare_ragflow_tei.py`](./test_prepare_ragflow_tei.md) | RAGFlow TEI 缓存 staging 与 `tar.gz` 归档单元测试。 |
-| [`test_render_ragflow_split_contract.py`](./test_render_ragflow_split_contract.md) | split 与 integrated 部署契约渲染和漂移检查单元测试。 |
-| [`test_export_ragflow_tei_baseline.py`](./test_export_ragflow_tei_baseline.md) | RAGFlow TEI SQLite 基线导出/导入单元测试。 |
 | [`version-calc.py`](./version-calc.md) | 从 Git 历史计算并按需写入版本。 |
-| [`export_ragflow_tei_baseline.py`](./export_ragflow_tei_baseline.md) | 导出 RAGFlow TEI SQLite 控制面候选基线。 |
 
 ## 可选 Python 检查
 

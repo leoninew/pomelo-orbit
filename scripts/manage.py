@@ -7,6 +7,7 @@ Pomelo Orbit Remote Deployment Tool
 2. SSH 隧道管理（HTTP 转发）
 3. 远程命令执行
 4. Docker Compose 服务管理
+5. 远程 Docker 可回收空间检查与清理
 
 配置文件: scripts/.env
   SSH_HOST                        - 远程主机地址
@@ -25,6 +26,7 @@ Pomelo Orbit Remote Deployment Tool
   python scripts/manage.py scp from-remote [-r] <remote> <local>  - 复制远程文件或目录到本地
   python scripts/manage.py backup                     - 备份远程数据目录
   python scripts/manage.py clean                      - 分析远程数据目录并清理 7 天前的 *.log
+  python scripts/manage.py docker-clean [--execute]  - 检查或清理远程 Docker 可回收空间
 
 示例:
   python scripts/manage.py upgrade --image ghcr.io/leoninew/pomelo-orbit:v1.0
@@ -37,6 +39,8 @@ Pomelo Orbit Remote Deployment Tool
   python scripts/manage.py scp from-remote /tmp/remote.txt ./remote.txt
   python scripts/manage.py scp to-remote -r ./dist /tmp/dist
   python scripts/manage.py clean
+  python scripts/manage.py docker-clean
+  python scripts/manage.py docker-clean --execute
 """
 
 import argparse
@@ -104,6 +108,10 @@ class Config:
     def ssh_target(self) -> str:
         """SSH 连接目标"""
         return f"{self.ssh_user}@{self.ssh_host}"
+
+
+class RemoteDockerCleanupError(RuntimeError):
+    """Raised when remote Docker inspection or cleanup fails."""
 
 
 def run_ssh_command(command: str, description: str = "") -> str:
@@ -565,6 +573,73 @@ du -sh "$base"
         sys.exit(result.returncode)
 
 
+def run_docker_cleanup_command(cfg: "Config", command: str, title: str) -> str:
+    """Run an SSH Docker maintenance command and log its sanitized output."""
+    logger.info(title)
+    try:
+        result = subprocess.run(
+            ["ssh", cfg.ssh_target, command],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+    except FileNotFoundError as error:
+        raise RemoteDockerCleanupError("ssh executable was not found") from error
+    except subprocess.CalledProcessError as error:
+        detail = error.stderr.strip() or error.stdout.strip() or "no command output"
+        raise RemoteDockerCleanupError(f"{title} failed: {detail}") from error
+
+    output = result.stdout.strip()
+    if output:
+        for line in output.splitlines():
+            logger.info("  %s", line)
+    return output
+
+
+def show_docker_cleanup_summary(cfg: "Config", phase: str) -> None:
+    """Log remote filesystem, Docker, and active-container summaries."""
+    logger.info("%s disk usage", phase)
+    run_docker_cleanup_command(cfg, "df -hPT /", "querying root filesystem")
+    logger.info("%s Docker usage", phase)
+    run_docker_cleanup_command(cfg, "docker system df", "querying Docker disk usage")
+    logger.info("active containers")
+    run_docker_cleanup_command(
+        cfg,
+        "docker ps --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}'",
+        "querying active containers",
+    )
+
+
+def docker_clean(cfg: "Config", execute: bool) -> None:
+    """Inspect remote Docker data, deleting only after explicit authorization."""
+    try:
+        logger.info("remote Docker cleanup target: %s", cfg.ssh_target)
+        show_docker_cleanup_summary(cfg, "before")
+
+        if not execute:
+            logger.info("dry run complete; no Docker data was removed")
+            logger.info("rerun with docker-clean --execute to remove cache and unused images")
+            return
+
+        logger.warning("removing all reclaimable BuildKit cache")
+        run_docker_cleanup_command(
+            cfg,
+            "docker builder prune --all --force",
+            "cleaning BuildKit cache",
+        )
+        logger.warning("removing images unused by every container")
+        run_docker_cleanup_command(
+            cfg,
+            "docker image prune --all --force",
+            "cleaning unused images",
+        )
+        show_docker_cleanup_summary(cfg, "after")
+        logger.info("remote Docker cleanup completed")
+    except RemoteDockerCleanupError as error:
+        logger.error("remote Docker cleanup failed: %s", error)
+        sys.exit(1)
+
+
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="Pomelo Orbit 远程部署和管理工具")
@@ -633,6 +708,17 @@ def main():
         help="清理多少天前的 *.log 文件(默认: 7)",
     )
 
+    # docker-clean 命令
+    docker_clean_parser = subparsers.add_parser(
+        "docker-clean",
+        help="检查或清理远程 Docker 可回收空间",
+    )
+    docker_clean_parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="删除全部 BuildKit 缓存和未被容器使用的镜像",
+    )
+
     args = parser.parse_args()
 
     if not args.command:
@@ -690,6 +776,8 @@ def main():
         backup(config, args.remote_dir or config.remote_deploy_dir)
     elif args.command == "clean":
         clean(config, f"{config.remote_deploy_dir}/data", args.days)
+    elif args.command == "docker-clean":
+        docker_clean(config, args.execute)
 
 
 if __name__ == "__main__":

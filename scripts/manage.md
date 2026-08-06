@@ -4,7 +4,7 @@ Doc role: local script reference。与代码冲突时以代码为准。
 
 ## 用途
 
-通过 `scripts/.env` 配置的 SSH 连接执行 Pomelo Orbit 的远程部署、隧道、命令、Compose、文件复制、备份和日志清理操作。
+通过 `scripts/.env` 配置的 SSH 连接执行 Pomelo Orbit 的远程部署、隧道、命令、Compose、文件复制、备份、日志清理和 Docker 可回收空间清理操作。
 
 ## 前置条件
 
@@ -22,13 +22,23 @@ python scripts/manage.py scp to-remote|from-remote [-r] <source> <destination>
 python scripts/manage.py ssh
 python scripts/manage.py backup [--remote-dir DIRECTORY]
 python scripts/manage.py clean
+python scripts/manage.py docker-clean [--execute]
 ```
 
 运行 `python scripts/manage.py <subcommand> --help` 获取当前子命令参数。
 
+`docker-clean` 默认只检查远程根分区、Docker 占用和运行中容器，不删除数据。传入 `--execute` 后会依次执行：
+
+```bash
+docker builder prune --all --force
+docker image prune --all --force
+```
+
+这会删除全部 BuildKit 缓存和未被任何容器使用的镜像；不会删除容器、被任意容器使用的镜像或 Docker 卷。后续构建可能需要重新拉取镜像或重建缓存。
+
 ## 安全边界
 
-`upgrade`、`exec`、`docker-compose`、`scp`、`backup` 与 `clean` 都可能影响远程主机或其文件；`tunnel` 会创建或停止本地 SSH 隧道。执行前应明确目标环境与命令影响，特别是 `exec` 和透传的 Docker Compose 参数。
+`upgrade`、`exec`、`docker-compose`、`scp`、`backup`、`clean` 与 `docker-clean --execute` 都可能影响远程主机或其文件；`tunnel` 会创建或停止本地 SSH 隧道。执行前应明确目标环境与命令影响，特别是 `exec`、透传的 Docker Compose 参数和 Docker 清理。
 
 ## 相关文档
 

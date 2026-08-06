@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract_path": "scripts/ragflow-split/deployment-contract.json",
+  "contract_path": "skills/deploy-ragflow-split-orbit/deployment-contract.json",
   "primitive_path": "skills/deploy-ragflow-split-orbit/references/ragflow-split-primitives.md",
   "primitive_title": "RAGFlow Split Deployment Primitives",
   "primitive_description": "Use this reference before a split RAGFlow `pomelo_delivery` write. The contract is the only hand-maintained source for split topology configuration.",
@@ -11,7 +11,7 @@
   "compose_header": [
     "Alternate split deployment mode: deploy only when five independent Applications are requested.",
     "TEI is part of the RAGFlow Application rather than a sixth independent Application.",
-    "Do not combine with scripts/ragflow-bundled/docker-compose.yml."
+    "Do not combine with the integrated RAGFlow Compose reference."
   ],
   "model_cache_paths": [
     "data/deployment/ragflow-integrated/default/tei/cache/bge-m3",
@@ -127,7 +127,7 @@
     {
       "name": "mysql",
       "application": "ragflow-mysql",
-      "compose_file": "scripts/ragflow-split/docker-compose.mysql.yml",
+      "compose_file": "skills/deploy-ragflow-split-orbit/references/docker-compose.mysql.yml",
       "service_name": "mysql",
       "image": "mysql:8.0.39",
       "command": [
@@ -166,7 +166,7 @@
     {
       "name": "redis",
       "application": "ragflow-redis",
-      "compose_file": "scripts/ragflow-split/docker-compose.redis.yml",
+      "compose_file": "skills/deploy-ragflow-split-orbit/references/docker-compose.redis.yml",
       "service_name": "redis",
       "image": "valkey/valkey:8",
       "command": [
@@ -200,7 +200,7 @@
     {
       "name": "minio",
       "application": "ragflow-minio",
-      "compose_file": "scripts/ragflow-split/docker-compose.minio.yml",
+      "compose_file": "skills/deploy-ragflow-split-orbit/references/docker-compose.minio.yml",
       "service_name": "minio",
       "image": "pgsty/minio:RELEASE.2026-03-25T00-00-00Z",
       "command": ["server", "--console-address", ":9001", "/data"],
@@ -231,7 +231,7 @@
     {
       "name": "es01",
       "application": "ragflow-elasticsearch",
-      "compose_file": "scripts/ragflow-split/docker-compose.elasticsearch.yml",
+      "compose_file": "skills/deploy-ragflow-split-orbit/references/docker-compose.elasticsearch.yml",
       "service_name": "es01",
       "image": "elasticsearch:8.11.3",
       "environment": [
@@ -278,7 +278,7 @@
     {
       "name": "tei",
       "application": "ragflow-split",
-      "compose_file": "scripts/ragflow-split/docker-compose.ragflow.yml",
+      "compose_file": "skills/deploy-ragflow-split-orbit/references/docker-compose.ragflow.yml",
       "service_name": "tei",
       "images": {
         "cpu": "ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3@sha256:ad950d30878eceb72aaf32024d26fa2b1d04a75304fa0b4776b49aa1941fea07",
@@ -322,7 +322,7 @@
     {
       "name": "ragflow-cpu",
       "application": "ragflow-split",
-      "compose_file": "scripts/ragflow-split/docker-compose.ragflow.yml",
+      "compose_file": "skills/deploy-ragflow-split-orbit/references/docker-compose.ragflow.yml",
       "service_name": "ragflow-cpu",
       "image": "infiniflow/ragflow:v0.26.4",
       "command": ["--enable-adminserver", "--init-model-provider-tables"],
@@ -377,12 +377,12 @@
     }
   ],
   "compose_targets": [
-    {"path": "scripts/ragflow-split/docker-compose.mysql.yml", "components": ["mysql"]},
-    {"path": "scripts/ragflow-split/docker-compose.redis.yml", "components": ["redis"]},
-    {"path": "scripts/ragflow-split/docker-compose.minio.yml", "components": ["minio"]},
-    {"path": "scripts/ragflow-split/docker-compose.elasticsearch.yml", "components": ["es01"]},
+    {"path": "skills/deploy-ragflow-split-orbit/references/docker-compose.mysql.yml", "components": ["mysql"]},
+    {"path": "skills/deploy-ragflow-split-orbit/references/docker-compose.redis.yml", "components": ["redis"]},
+    {"path": "skills/deploy-ragflow-split-orbit/references/docker-compose.minio.yml", "components": ["minio"]},
+    {"path": "skills/deploy-ragflow-split-orbit/references/docker-compose.elasticsearch.yml", "components": ["es01"]},
     {
-      "path": "scripts/ragflow-split/docker-compose.ragflow.yml",
+      "path": "skills/deploy-ragflow-split-orbit/references/docker-compose.ragflow.yml",
       "components": ["tei", "ragflow-cpu"],
       "header": [
         "CPU reference for the split deployment. Combine with",
@@ -390,7 +390,7 @@
       ]
     },
     {
-      "path": "scripts/ragflow-split/docker-compose.ragflow.gpu.yml",
+      "path": "skills/deploy-ragflow-split-orbit/references/docker-compose.ragflow.gpu.yml",
       "profile": "gpu",
       "components": ["tei"],
       "overlay": true,

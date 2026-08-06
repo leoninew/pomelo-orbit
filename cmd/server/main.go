@@ -27,7 +27,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger, closeLogger, err := bootstrap.NewLogger(cfg)
+	newLogger := bootstrap.NewLogger
+	if command == "mcp" {
+		newLogger = bootstrap.NewMCPLogger
+	}
+	logger, closeLogger, err := newLogger(cfg)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "init logger failed: %v\n", err)
 		os.Exit(1)
@@ -54,6 +58,8 @@ func run(ctx context.Context, backgroundApp bootstrap.App, command string) error
 		return backgroundApp.Serve(ctx)
 	case "worker":
 		return backgroundApp.RunWorker(ctx)
+	case "mcp":
+		return backgroundApp.RunMCP(ctx)
 	default:
 		return fmt.Errorf("unknown command: %s", command)
 	}

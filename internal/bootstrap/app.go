@@ -5,10 +5,14 @@ import (
 	"log/slog"
 	"net/http"
 
+	deliverymcp "gitee.com/leoninew/PomeloOrbit-go/internal/api/mcp/delivery"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	database "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	mcpinfra "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/mcp"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/queue/worker"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 type App struct {
@@ -50,6 +54,72 @@ func (a App) RunWorker(ctx context.Context) error {
 		Concurrency:   a.cfg.Worker.Concurrency,
 	})
 	return backgroundWorker.Run(ctx)
+}
+
+// RunMCP starts the local stdio transport. It reuses the same application
+// service composition as HTTP but never proxies MCP calls through /api.
+func (a App) RunMCP(ctx context.Context) error {
+	if err := a.cfg.ValidateMCPClient(); err != nil {
+		return err
+	}
+	database, err := OpenDatabase(a.cfg)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = database.Close() }()
+
+	taskRepo := taskrepo.NewRepository(database)
+	deps := newHTTPServerDependencies(a.cfg, a.logger, database, taskRepo)
+	tokenStore, err := mcpinfra.NewDefaultTokenStore()
+	if err != nil {
+		return err
+	}
+	token, err := tokenStore.Load()
+	if err != nil {
+		return err
+	}
+	authenticated, err := deps.AuthService.Authenticate(ctx, token)
+	if err != nil {
+		if !apperror.IsKind(err, apperror.KindUnauthorized) {
+			return err
+		}
+		authorizer, authorizerErr := mcpinfra.NewBrowserAuthorizer(mcpinfra.AuthorizerConfig{
+			APIURL:  a.cfg.MCPAPIUrl(),
+			WebURL:  a.cfg.MCP.WebUrl,
+			Timeout: a.cfg.MCP.AuthTimeout,
+		})
+		if authorizerErr != nil {
+			return authorizerErr
+		}
+		token, err = authorizer.Authorize(ctx)
+		if err != nil {
+			return err
+		}
+		authenticated, err = deps.AuthService.Authenticate(ctx, token)
+		if err != nil {
+			return err
+		}
+		if err := tokenStore.Save(token); err != nil {
+			return err
+		}
+	}
+
+	server, err := deliverymcp.NewServer(deliverymcp.Dependencies{
+		ActorUserId: authenticated.User.Id,
+		Project:     deps.ProjectService,
+		Application: deps.ApplicationService,
+		Service:     deps.ServiceService,
+		Deployment:  deps.DeploymentService,
+		Gateway:     deps.GatewayService,
+	})
+	if err != nil {
+		return err
+	}
+	session, err := server.Connect(ctx, &mcp.StdioTransport{}, nil)
+	if err != nil {
+		return err
+	}
+	return session.Wait()
 }
 
 func (a App) MigrationVersion() (database.MigrationVersion, error) {

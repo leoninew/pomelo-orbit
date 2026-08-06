@@ -3,9 +3,11 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,6 +40,7 @@ type Config struct {
 	Cert        CertConfig        `mapstructure:"cert" yaml:"cert"`
 	Settings    SettingsConfig    `mapstructure:"settings" yaml:"settings"`
 	LLM         LLMConfig         `mapstructure:"llm" yaml:"llm"`
+	MCP         MCPConfig         `mapstructure:"mcp" yaml:"mcp"`
 	EnvFilePath string            `mapstructure:"-" yaml:"-"`
 	Base        *Config           `mapstructure:"-" yaml:"-"`
 }
@@ -144,6 +147,15 @@ type LLMConfig struct {
 	ApiKey  string        `mapstructure:"api_key" yaml:"api_key"`
 	Model   string        `mapstructure:"model" yaml:"model"`
 	Timeout time.Duration `mapstructure:"timeout" yaml:"timeout"`
+}
+
+// MCPConfig configures the local stdio MCP client handoff. APIUrl is optional
+// because a local server URL can be derived from Server; WebUrl is the browser
+// origin that serves the authenticated Orbit UI.
+type MCPConfig struct {
+	APIUrl      string        `mapstructure:"api_url" yaml:"api_url"`
+	WebUrl      string        `mapstructure:"web_url" yaml:"web_url"`
+	AuthTimeout time.Duration `mapstructure:"auth_timeout" yaml:"auth_timeout"`
 }
 
 func Load() (Config, error) {
@@ -306,11 +318,48 @@ func bindEnv(loader *viper.Viper) {
 		"llm.api_key",
 		"llm.model",
 		"llm.timeout",
+		"mcp.api_url",
+		"mcp.web_url",
+		"mcp.auth_timeout",
 	}
 	for _, key := range keys {
 		envName := "POMELO_ORBIT_" + strings.ToUpper(strings.ReplaceAll(key, ".", "__"))
 		_ = loader.BindEnv(key, envName)
 	}
+}
+
+// MCPAPIUrl returns the HTTP server used only for browser-grant exchange. The
+// stdio tools themselves still execute locally through application use cases.
+func (c Config) MCPAPIUrl() string {
+	if value := strings.TrimRight(strings.TrimSpace(c.MCP.APIUrl), "/"); value != "" {
+		return value
+	}
+	if value := strings.TrimRight(strings.TrimSpace(c.Server.PublicUrl), "/"); value != "" {
+		return value
+	}
+	host := strings.TrimSpace(c.Server.Host)
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+	return "http://" + net.JoinHostPort(host, strconv.Itoa(c.Server.Port))
+}
+
+// ValidateMCPClient is intentionally separate from Validate: browser handoff
+// settings are required only for the `server mcp` command, not for HTTP/worker.
+func (c Config) ValidateMCPClient() error {
+	if err := validateHTTPUrl("mcp.api_url", c.MCPAPIUrl(), false); err != nil {
+		return err
+	}
+	if strings.TrimSpace(c.MCP.WebUrl) == "" {
+		return errors.New("mcp.web_url is required for the mcp command")
+	}
+	if err := validateHTTPUrl("mcp.web_url", c.MCP.WebUrl, false); err != nil {
+		return err
+	}
+	if c.MCP.AuthTimeout <= 0 {
+		return errors.New("mcp.auth_timeout must be positive")
+	}
+	return nil
 }
 
 func (c Config) Validate() error {

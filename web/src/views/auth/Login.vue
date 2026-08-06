@@ -108,7 +108,7 @@
 <script setup lang="ts">
   import { Eye, EyeOff } from 'lucide-vue-next';
   import { nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-  import { useRouter } from 'vue-router';
+  import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import { authApi } from '@/api/auth/auth';
   import { buildApiUrl } from '@/config';
@@ -123,6 +123,7 @@
 
   const { t } = useI18n();
   const router = useRouter();
+  const route = useRoute();
   const authStore = useAuthStore();
   const toast = useToast();
 
@@ -236,7 +237,12 @@
   }
 
   function handleGoogleLogin() {
-    window.location.assign(buildApiUrl('/api/auth/google'));
+    const destination = new URL(buildApiUrl('/api/auth/google'), window.location.origin);
+    const redirect = redirectTarget();
+    if (redirect !== '/') {
+      destination.searchParams.set('redirect', redirect);
+    }
+    window.location.assign(destination.toString());
   }
 
   function validate() {
@@ -261,7 +267,7 @@
     try {
       await authStore.login(form.username, form.password, csrfToken.value, turnstileToken.value);
       toast.success(t('login.loginSuccess'));
-      router.push('/');
+      await router.push(redirectTarget());
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t('login.loginFailed'));
       resetTurnstile();
@@ -281,5 +287,13 @@
     } finally {
       loading.value = false;
     }
+  }
+
+  function redirectTarget() {
+    const redirect = route.query.redirect;
+    if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
+      return redirect;
+    }
+    return '/';
   }
 </script>

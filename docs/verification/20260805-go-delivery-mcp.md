@@ -1,5 +1,5 @@
 # Go 持续部署 MCP 改写验证
-最后修改时间: 2026-08-06 12:50:27
+最后修改时间: 2026-08-06 16:26:52
 
 Review status: Draft
 
@@ -19,7 +19,7 @@ Review status: Draft
 
 ## 计划对齐
 
-已实现共享 MCP Core、认证 Streamable HTTP transport、application-usecase 边界、对话 API/客户端/页面、Gateway 编排与运行态验证能力。
+提交 `095749d3` 已实现共享 MCP Core、认证 Streamable HTTP transport、application-usecase 边界、对话 API/客户端/页面、Gateway 编排与运行态验证能力。
 
 Requirement 和 Plan 的早期文字同时出现“stdio + Streamable HTTP”与“无网页 stdio 延后”的表述。实际实现遵循后者：仅提供已认证的 `/mcp` Streamable HTTP；无网页的 stdio、Codex/Claude Code 注册切换和 Python MCP 删除仍未实现。
 
@@ -34,9 +34,8 @@ Requirement 和 Plan 的早期文字同时出现“stdio + Streamable HTTP”与
 
 ### 实际范围
 
-- 暂存区包含 63 个文件，覆盖上述预期范围。
-- 工作区另有 6 个未暂存修正：5 处 `Close()` 错误值处理，以及导航测试对 `/dialogue` 首入口的期望更新。未由本次验证执行暂存操作。
-- `internal/application/application/version_forker.go`、`version_fork.go` 和 `internal/application/pipeline_run/` 的版本派生复用也在当前暂存区，但不直接属于 Go MCP 或对话交付，应在提交前确认是否单独拆分。
+- 验证对象为提交 `095749d3`（55 个文件，5161 行新增、36 行删除），覆盖预期的 Go MCP、对话、runtime/verification、Gateway、配置、proto、Vue 页面、测试与过程文档范围。
+- 当前工作区存在后续未提交工作，不属于本 feature；本验证不把它们计入实际范围，也不调整其暂存状态。
 
 ## 验收清单
 
@@ -47,6 +46,7 @@ Requirement 和 Plan 的早期文字同时出现“stdio + Streamable HTTP”与
 - [x] Gateway provision、runtime 与 verification 通过 application usecase 提供。
 - [x] 对话 API、MCP client Authorization 转发和当前用户 MCP Core 有单元测试覆盖。
 - [x] 对话 proto 已生成 Go 与 Vue DTO，Web 不直接连接 `/mcp`。
+- [ ] Python/Go 自动化 fixture 契约对照尚未建立；当前测试覆盖 Go 工具表、schema、关键调用和 HTTP transport，不比较 Python 进程的实际输出。
 - [ ] 无网页 stdio transport、Codex/Claude Code 注册和 Python Delivery MCP 移除，按已接受的延期决定未实现。
 - [ ] 真实 LLM、MCP、Docker/Deployment Worker 的集成验收，由用户执行。
 
@@ -60,6 +60,8 @@ Requirement 和 Plan 的早期文字同时出现“stdio + Streamable HTTP”与
 
 首次 `task check` 报告 5 处未处理的 `Close()` 返回值，已按仓库既有显式忽略模式修复；首次 Web 单测的 2 个导航断言未包含新增 `/dialogue` 首入口，已更新后通过。
 
+当前工作区已有后续未提交改动，且 `task check` 会执行 `lint:fix`、`format:fix` 等写入操作。为避免影响该工作，本验证未在当前工作区重复运行该命令；以上结果对应提交 `095749d3` 的实现阶段检查。
+
 ## 用户集成验收
 
 由用户执行，不在本次验证中启动或操作部署环境：
@@ -72,9 +74,10 @@ Requirement 和 Plan 的早期文字同时出现“stdio + Streamable HTTP”与
 ## 风险与未完成项
 
 - 真实 Docker、Gateway、LLM provider 和 Deployment Worker 集成未由自动化检查覆盖。
+- Python/Go fixture 契约对照尚未自动化；48 个 Go 工具的名称、schema 与核心路径已有单元测试，但仍需在切换 Python MCP 前补齐跨实现比较。
 - 无网页标准 MCP transport 仍待认证方案明确；不能将当前 `/mcp` HTTP 端点等同于已完成的 stdio MCP。
-- 当前暂存区混入版本派生/Pipeline 变更，可能扩大 Go MCP 提交范围。
+- 当前工作区的后续改动未纳入本次结论；若需再次验证，应在其独立提交或隔离工作区中运行。
 
 ## 结论
 
-自动化质量门禁与受影响单元测试均通过。Verification 保持 Draft，等待用户完成集成验收并确认无网页 stdio 延期和版本派生/Pipeline 变更的提交边界。
+提交 `095749d3` 的自动化质量门禁与受影响单元测试均通过，静态核对确认 SDK、认证转发、48 工具注册和 mounts 扁平 schema。Verification 保持 Draft，等待用户完成集成验收；Python/Go 自动化契约对照亦需在切换和删除 Python MCP 前补齐。

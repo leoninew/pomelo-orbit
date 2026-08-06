@@ -25,10 +25,11 @@ type Service struct {
 	auth   repository.AuthStore
 	tokens jwt.TokenService
 	logger *slog.Logger
+	grants *mcpGrantStore
 }
 
 func New(repo repository.UserStore, auth repository.AuthStore, tokens jwt.TokenService, logger *slog.Logger) Service {
-	return Service{repo: repo, auth: auth, tokens: tokens, logger: logger}
+	return Service{repo: repo, auth: auth, tokens: tokens, logger: logger, grants: newMCPGrantStore()}
 }
 
 func (s Service) Login(ctx context.Context, input authdto.LoginInput) (string, error) {

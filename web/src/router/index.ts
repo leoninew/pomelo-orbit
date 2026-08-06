@@ -17,6 +17,13 @@ const router = createRouter({
       component: () => import('@/views/auth/GoogleCallback.vue'),
       meta: { title: 'Google 登录', public: true },
     },
+
+    {
+      path: '/mcp-authorize',
+      name: 'MCPAuthorize',
+      component: () => import('@/views/auth/MCPAuthorize.vue'),
+      meta: { title: 'MCP 授权' },
+    },
     {
       path: '/403',
       name: 'Forbidden',

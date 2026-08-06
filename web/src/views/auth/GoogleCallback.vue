@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
   import { onMounted, ref } from 'vue';
-  import { useRouter } from 'vue-router';
+  import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import { authApi } from '@/api/auth/auth';
   import { useAuthStore } from '@/stores/auth';
@@ -21,6 +21,7 @@
 
   const { t } = useI18n();
   const router = useRouter();
+  const route = useRoute();
   const authStore = useAuthStore();
   const toast = useToast();
   const message = ref(t('login.googleProcessing'));
@@ -42,10 +43,18 @@
       const profile = await authApi.getCurrentUser();
       authStore.setUser(profile);
       toast.success(t('login.loginSuccess'));
-      router.push('/');
+      await router.push(redirectTarget());
     } catch (err: unknown) {
       message.value = err instanceof Error ? err.message : t('login.googleFailed');
       setTimeout(() => router.push('/login'), 2000);
     }
   });
+
+  function redirectTarget() {
+    const redirect = route.query.redirect;
+    if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
+      return redirect;
+    }
+    return '/';
+  }
 </script>

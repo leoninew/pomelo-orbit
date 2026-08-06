@@ -124,6 +124,51 @@ func TestFlatMountToolMapsCollectionToApplicationInput(t *testing.T) {
 	}
 }
 
+func TestMountToolDocumentsAndMapsControlledFile(t *testing.T) {
+	application := &mountApplicationService{}
+	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: application})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	session := connectInMemory(t, server)
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("ListTools() error = %v", err)
+	}
+	var mountTool *mcp.Tool
+	for _, tool := range tools.Tools {
+		if tool.Name == "orbit_update_version_component_mounts" {
+			mountTool = tool
+			break
+		}
+	}
+	if mountTool == nil {
+		t.Fatal("mount tool not found")
+	}
+	for _, term := range []string{"controlled_file", "source_is_host_path", "262144", "four-digit Unix octal", "empty string"} {
+		if !strings.Contains(mountTool.Description, term) {
+			t.Errorf("mount description does not document %q: %s", term, mountTool.Description)
+		}
+	}
+	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_version_component_mounts", Arguments: map[string]any{
+		"version_id": "version-1", "component_id": "component-1",
+		"mounts": []any{map[string]any{"source_type": "controlled_file", "source": "config/app.env", "target": "/app/.env", "content": "", "mode": "0644", "source_is_host_path": false, "ignore_if_exists": true}},
+	}})
+	if err != nil {
+		t.Fatalf("CallTool() error = %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("CallTool() returned tool error: %#v", result.Content)
+	}
+	if len(application.mounts) != 1 {
+		t.Fatalf("mounts = %#v", application.mounts)
+	}
+	mount := application.mounts[0]
+	if mount.SourceType != "controlled_file" || mount.Source != "config/app.env" || mount.Content != "" || mount.Mode != "0644" || mount.SourceIsHostPath || !mount.IgnoreIfExists {
+		t.Fatalf("controlled file mount = %#v", mount)
+	}
+}
+
 func TestStreamableHTTPUsesTheSharedToolRegistry(t *testing.T) {
 	server, err := NewServer(Dependencies{ActorUserId: "actor"})
 	if err != nil {

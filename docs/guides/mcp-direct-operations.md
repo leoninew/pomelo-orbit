@@ -2,7 +2,7 @@
 
 ## 命名与启动约定
 
-Codex 注册名为 `pomelo_delivery`，本地 stdio 入口为 `uv --directory mcp/src/delivery-mcp run pomelo-delivery-mcp`，工具在客户端中显示为 `mcp__pomelo_delivery__orbit_*`。`orbit_*` 保留是因为它们适配 Pomelo Orbit 控制面；不要使用已移除的 `pomelo_orbit` 注册名或 `pomelo-orbit-mcp` 命令。
+Codex 注册名为 `pomelo_delivery`，本地 stdio 入口为 `go run ./cmd/server mcp`，工具在客户端中显示为 `mcp__pomelo_delivery__orbit_*`。它直接构造绑定当前用户的 Go delivery MCP Core，工具调用不会回环到 Orbit HTTP API。首次启动或本地凭据过期时，进程会打开配置的 Orbit 浏览器登录页；浏览器以短时一次性授权码回调本机 loopback，stdio 进程交换并将 bearer credential 保存到用户配置目录。不要复制浏览器 localStorage token，也不要使用已移除的 `pomelo_orbit` 注册名或 Python MCP 命令。
 
 `pomelo_delivery` 只执行用户明确要求的独立动作。调用结果为 `isError=true` 时，该调用失败；不要自动执行依赖它的后续动作。
 
@@ -25,4 +25,4 @@ Codex 注册名为 `pomelo_delivery`，本地 stdio 入口为 `uv --directory mc
 
 `runtime_compose_ps` 和 `verify_deployment` 默认返回摘要。需要原始 Compose、inspect 或完整 evidence 时，明确传入 `detail=true`；也可以使用已有的 scoped logs、container inspect、network inspect 和 compose config 工具。MCP Server 是 stdio 进程，修改工具后需要重启 MCP client session，并通过 Server instructions 中的 source/schema 指纹确认新的工具表已生效。
 
-Component 写操作已细分为 `orbit_update_version_component_basic`、`runtime`、`ports`、`env`、`mounts`、`dependencies` 和 `advanced`。旧的 `orbit_update_version_component_connectivity` 不再注册，且 Component JSON 不再接受 `networks`；调用方必须使用新 MCP session 读取工具 schema 后再写入。
+Component 写操作已细分为 `orbit_update_version_component_basic`、`runtime`、`endpoints`、`env`、`mounts`、`dependencies` 和 `advanced`。`orbit_update_version_component_mounts` 接收顶层 `mounts` 集合：`controlled_file` 的 `source` 是相对的受管路径，`source_is_host_path=false`，`content` 可为空，`mode` 必须是四位 Unix 八进制值，且内容上限为 256 KiB。端点使用 `internal`、`local`、`host`、`gateway_http` 或 `gateway_tcp` mode。旧的 `orbit_update_version_component_connectivity` 不再注册，且 Component JSON 不再接受 `networks`；调用方必须使用新 MCP session 读取工具 schema 后再写入。

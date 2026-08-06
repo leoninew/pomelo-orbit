@@ -14,6 +14,16 @@ import (
 )
 
 func NewLogger(cfg config.Config) (*slog.Logger, func() error, error) {
+	return newLogger(cfg, os.Stdout)
+}
+
+// NewMCPLogger keeps the stdio transport protocol clean. MCP messages own
+// stdout, so diagnostics are emitted to stderr and the normal rolling log.
+func NewMCPLogger(cfg config.Config) (*slog.Logger, func() error, error) {
+	return newLogger(cfg, os.Stderr)
+}
+
+func newLogger(cfg config.Config, console io.Writer) (*slog.Logger, func() error, error) {
 	loggingCfg := cfg.Logging
 	if strings.TrimSpace(loggingCfg.File) == "" {
 		return nil, nil, fmt.Errorf("logging.file is required")
@@ -46,7 +56,7 @@ func NewLogger(cfg config.Config) (*slog.Logger, func() error, error) {
 		MaxSize:    loggingCfg.MaxSizeMB,
 		MaxBackups: loggingCfg.MaxBackups,
 	}
-	writer := io.MultiWriter(os.Stdout, rollingWriter)
+	writer := io.MultiWriter(console, rollingWriter)
 	handler := slog.NewTextHandler(writer, &slog.HandlerOptions{Level: slogLevel})
 	logger := slog.New(handler)
 	slog.SetDefault(logger)

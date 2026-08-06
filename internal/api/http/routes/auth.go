@@ -12,6 +12,8 @@ func (r Router) registerAuth(engine *gin.Engine) {
 	engine.GET("/api/auth/turnstile-config", handler.GetTurnstileConfig)
 	engine.POST("/api/auth/login", handler.Login)
 	engine.POST("/api/auth/logout", handler.Logout)
+	engine.POST("/api/auth/mcp-grant", handler.CreateMCPGrant)
+	engine.POST("/api/auth/mcp-grant/exchange", handler.ExchangeMCPGrant)
 	engine.GET("/api/auth/me", handler.GetMe)
 	engine.PUT("/api/auth/password", handler.ChangePassword)
 	engine.GET("/api/auth/login-history", handler.ListLoginHistory)

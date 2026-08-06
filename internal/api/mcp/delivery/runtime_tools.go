@@ -11,7 +11,7 @@ import (
 )
 
 func (c core) registerRuntimeTools(server *mcp.Server) {
-	addTool(server, "runtime_doctor", "Check Docker prerequisites, a managed target, or the fixed external traefik network.", func(ctx context.Context, input struct {
+	addTool(server, "runtime_doctor", "Check Docker prerequisites, one managed target, or the fixed external traefik network. Supply application_id and instance_key together for an Application target, or gateway_application_id and gateway_instance_key together for a Gateway target. Do not combine those target pairs. network_name is an alternative with the only valid value traefik and cannot be combined with either target pair.", func(ctx context.Context, input struct {
 		ApplicationId        string `json:"application_id,omitempty"`
 		InstanceKey          string `json:"instance_key,omitempty"`
 		GatewayApplicationId string `json:"gateway_application_id,omitempty"`

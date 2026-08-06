@@ -11,6 +11,11 @@ import type {
 } from '@/gen/proto/orbit/v1/auth/auth';
 import request from '@/utils/request';
 
+export interface MCPGrantResponse {
+  code: string;
+  expires_at: string;
+}
+
 // 认证相关 API
 export const authApi = {
   // 获取 CSRF Token
@@ -31,6 +36,10 @@ export const authApi = {
   // 登出
   logout(data: LogoutReq): Promise<void> {
     return request.post('/api/auth/logout', data);
+  },
+
+  createMcpGrant(data: { callback_url: string; state: string }): Promise<MCPGrantResponse> {
+    return request.post('/api/auth/mcp-grant', data);
   },
 
   // 获取当前用户信息

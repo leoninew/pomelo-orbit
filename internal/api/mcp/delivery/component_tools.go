@@ -46,7 +46,7 @@ func (c core) registerVersionComponentTools(server *mcp.Server) {
 	// The following collection tools deliberately keep their collection at the
 	// top level. Python's wrapper schema required mounts: { mounts: [...] };
 	// this Go schema is mounts: [...], and the same applies to peer fields.
-	addTool(server, "orbit_update_version_component_endpoints", "Replace a Component's declared endpoint collection.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_update_version_component_endpoints", "Replace a Component's declared endpoint collection. Each endpoint requires name, protocol=http|tcp, container_port (1-65535), and mode=internal|local|host|gateway_http|gateway_tcp. Use gateway_http for an HTTP route exposed by the managed Gateway and gateway_tcp for its TCP route; include bind_address, listen_port, entrypoint, or path_prefix only when that selected mode needs an override. This replaces the complete collection, so preserve unrelated endpoints from the preceding orbit_get_version read.", func(ctx context.Context, input struct {
 		VersionId   string                             `json:"version_id" jsonschema:"required"`
 		ComponentId string                             `json:"component_id" jsonschema:"required"`
 		Endpoints   []*applicationv1.ComponentEndpoint `json:"endpoints" jsonschema:"required"`
@@ -70,7 +70,7 @@ func (c core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_env", input.VersionId, input.ComponentId, "/env", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_mounts", "Replace a Component's mount collection.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_update_version_component_mounts", "Replace a Component's mount collection. Each item requires source_type, source, and target. source_type=directory or file uses a managed relative source by default; set source_is_host_path=true only for an absolute host directory/file. source_type=named_volume uses a bare volume name and no file options. source_type=controlled_file materializes content under a relative, non-host source: source_is_host_path must be false, source cannot be absolute, contain backslashes, or contain '..'; content may be an empty string; mode is required as four-digit Unix octal such as 0644; content is at most 262144 bytes; ignore_if_exists is allowed only here. This replaces the complete collection, so preserve unrelated mounts from the preceding orbit_get_version read.", func(ctx context.Context, input struct {
 		VersionId   string                          `json:"version_id" jsonschema:"required"`
 		ComponentId string                          `json:"component_id" jsonschema:"required"`
 		Mounts      []*applicationv1.ComponentMount `json:"mounts" jsonschema:"required"`

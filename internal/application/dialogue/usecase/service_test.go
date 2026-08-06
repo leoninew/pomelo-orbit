@@ -3,6 +3,7 @@ package dialogueusecase
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	dialoguedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/dialogue/dto"
@@ -103,6 +104,51 @@ func TestCompleteTurnReturnsConfigurationPromptBeforeMCPConnect(t *testing.T) {
 	}
 	if factory.authorization != "" {
 		t.Fatalf("MCP Connect() was called with authorization %q", factory.authorization)
+	}
+}
+
+func TestCompleteTurnRequiresVersionReadBeforeDeploy(t *testing.T) {
+	mcp := &fakeMCPClient{tools: []port.ToolDefinition{{Name: "orbit_update_version_component_mounts"}, {Name: "orbit_get_version"}, {Name: "orbit_deploy"}}}
+	llm := &fakeLLM{configured: true, responses: []port.CompletionResponse{
+		{ToolCalls: []port.ToolCall{{Id: "write", Name: "orbit_update_version_component_mounts", Arguments: json.RawMessage(`{"version_id":"version-1","component_id":"component-1","mounts":[]}`)}}},
+		{ToolCalls: []port.ToolCall{{Id: "early-deploy", Name: "orbit_deploy", Arguments: json.RawMessage(`{"service_id":"service-1"}`)}}},
+		{ToolCalls: []port.ToolCall{{Id: "read", Name: "orbit_get_version", Arguments: json.RawMessage(`{"version_id":"version-1"}`)}}},
+		{ToolCalls: []port.ToolCall{{Id: "deploy", Name: "orbit_deploy", Arguments: json.RawMessage(`{"service_id":"service-1"}`)}}},
+		{Content: "已完成。"},
+	}}
+
+	result, err := New(llm, &fakeMCPFactory{client: mcp}).CompleteTurn(context.Background(), "Bearer current-user", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "更新并部署"}}})
+	if err != nil {
+		t.Fatalf("CompleteTurn() error = %v", err)
+	}
+	if len(result.ToolCalls) != 4 || !result.ToolCalls[1].IsError {
+		t.Fatalf("ToolCalls = %#v", result.ToolCalls)
+	}
+	if !strings.Contains(result.ToolCalls[1].ResultJSON, "orbit_get_version") {
+		t.Fatalf("guard result = %s", result.ToolCalls[1].ResultJSON)
+	}
+	if len(mcp.calls) != 3 || mcp.calls[0].name != "orbit_update_version_component_mounts" || mcp.calls[1].name != "orbit_get_version" || mcp.calls[2].name != "orbit_deploy" {
+		t.Fatalf("MCP calls = %#v", mcp.calls)
+	}
+}
+
+func TestCompleteTurnRejectsDuplicateDeploymentForService(t *testing.T) {
+	mcp := &fakeMCPClient{tools: []port.ToolDefinition{{Name: "orbit_deploy"}}}
+	llm := &fakeLLM{configured: true, responses: []port.CompletionResponse{
+		{ToolCalls: []port.ToolCall{{Id: "first", Name: "orbit_deploy", Arguments: json.RawMessage(`{"service_id":"service-1"}`)}}},
+		{ToolCalls: []port.ToolCall{{Id: "second", Name: "orbit_deploy", Arguments: json.RawMessage(`{"service_id":"service-1"}`)}}},
+		{Content: "已提交一次部署。"},
+	}}
+
+	result, err := New(llm, &fakeMCPFactory{client: mcp}).CompleteTurn(context.Background(), "Bearer current-user", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "部署"}}})
+	if err != nil {
+		t.Fatalf("CompleteTurn() error = %v", err)
+	}
+	if len(result.ToolCalls) != 2 || !result.ToolCalls[1].IsError {
+		t.Fatalf("ToolCalls = %#v", result.ToolCalls)
+	}
+	if len(mcp.calls) != 1 || mcp.calls[0].name != "orbit_deploy" {
+		t.Fatalf("MCP calls = %#v", mcp.calls)
 	}
 }
 

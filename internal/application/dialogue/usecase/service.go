@@ -69,15 +69,20 @@ func (s service) completeTurn(ctx context.Context, authorization string, input d
 	}
 	notifyProgress(progress, dialoguedto.StreamEvent{Type: dialoguedto.StreamEventReady})
 	result := dialoguedto.TurnResult{}
+	execution := newTurnExecution()
 	for range maxToolCallRounds {
 		completion, err := s.llm.Complete(ctx, port.CompletionRequest{Messages: messages, Tools: tools})
 		if err != nil {
-			return dialoguedto.TurnResult{}, err
+			return partialTurnResult(result, err)
 		}
 		if len(completion.ToolCalls) == 0 {
+			if deploymentIds := execution.unwaitedDeploymentIds(); len(deploymentIds) > 0 {
+				messages = append(messages, port.Message{Role: "user", Content: "You started Deployment " + strings.Join(deploymentIds, ", ") + ". Call orbit_wait_deployment for each before giving the final answer, then report each terminal status."})
+				continue
+			}
 			message := strings.TrimSpace(completion.Content)
 			if message == "" {
-				return dialoguedto.TurnResult{}, apperror.New(apperror.KindUnavailable, "Deployment dialogue returned an empty response")
+				return partialTurnResult(result, apperror.New(apperror.KindUnavailable, "Deployment dialogue returned an empty response"))
 			}
 			result.Message = message
 			return result, nil
@@ -96,7 +101,7 @@ func (s service) completeTurn(ctx context.Context, authorization string, input d
 					ArgumentsJSON: string(arguments),
 				},
 			})
-			toolResult, isError, callErr := mcpClient.CallTool(ctx, call.Name, arguments)
+			toolResult, isError, callErr := guardedToolCall(ctx, mcpClient, execution, call.Name, arguments)
 			if callErr != nil {
 				toolResult, _ = json.Marshal(map[string]string{"error": callErr.Error()})
 				isError = true
@@ -108,6 +113,7 @@ func (s service) completeTurn(ctx context.Context, authorization string, input d
 				IsError:       isError,
 			}
 			result.ToolCalls = append(result.ToolCalls, toolCall)
+			execution.record(call.Name, arguments, toolResult, isError)
 			notifyProgress(progress, dialoguedto.StreamEvent{
 				Type:     dialoguedto.StreamEventToolCallCompleted,
 				ToolCall: &toolCall,
@@ -116,7 +122,7 @@ func (s service) completeTurn(ctx context.Context, authorization string, input d
 		}
 	}
 
-	return dialoguedto.TurnResult{}, apperror.New(apperror.KindUnavailable, fmt.Sprintf("Deployment dialogue exceeded %d tool-call rounds", maxToolCallRounds))
+	return partialTurnResult(result, apperror.New(apperror.KindUnavailable, fmt.Sprintf("Deployment dialogue exceeded %d tool-call rounds", maxToolCallRounds)))
 }
 
 func notifyProgress(progress func(dialoguedto.StreamEvent), event dialoguedto.StreamEvent) {
@@ -128,7 +134,7 @@ func notifyProgress(progress func(dialoguedto.StreamEvent), event dialoguedto.St
 func dialogueMessages(input dialoguedto.TurnInput) ([]port.Message, error) {
 	messages := []port.Message{{
 		Role:    "system",
-		Content: "You are the Pomelo Orbit continuous deployment assistant. Use the supplied MCP tools as the authoritative source for deployment state and as the only way to change applications, versions, services, gateways, deployments, and managed runtime state. Inspect relevant state before proposing or making changes. Explain completed operations with concrete identifiers. The active project_id is " + input.ProjectId + ".",
+		Content: "You are the Pomelo Orbit continuous deployment assistant. Use the supplied MCP tools as the authoritative source for deployment state and as the only way to change applications, versions, services, gateways, deployments, and managed runtime state. Treat the user's configuration as target state: inspect the relevant resource first, compare concrete fields, make the minimal necessary write when it differs, then read it back before deployment. Component collection writes replace the entire collection. After a Version Component write call orbit_get_version for that version. After a Service write or creation call orbit_preview_service for that service before orbit_deploy. Create no more than one orbit_deploy for a Service in this user turn, and call orbit_wait_deployment for every Deployment you create before the final answer. Explain completed operations, terminal deployment status, and concrete identifiers. The active project_id is " + input.ProjectId + ".",
 	}}
 	for _, message := range input.Messages {
 		role := strings.TrimSpace(message.Role)
@@ -142,4 +148,19 @@ func dialogueMessages(input dialoguedto.TurnInput) ([]port.Message, error) {
 		return nil, apperror.New(apperror.KindValidation, "the last dialogue message must be from the user")
 	}
 	return messages, nil
+}
+
+func guardedToolCall(ctx context.Context, client port.MCPClient, execution *turnExecution, name string, arguments json.RawMessage) (json.RawMessage, bool, error) {
+	if err := execution.before(name, arguments); err != nil {
+		return nil, true, err
+	}
+	return client.CallTool(ctx, name, arguments)
+}
+
+func partialTurnResult(result dialoguedto.TurnResult, cause error) (dialoguedto.TurnResult, error) {
+	if len(result.ToolCalls) == 0 {
+		return dialoguedto.TurnResult{}, cause
+	}
+	result.Message = "The deployment dialogue stopped before a final model response: " + cause.Error() + ". Completed tool calls remain available above; inspect their resource and deployment identifiers before continuing."
+	return result, nil
 }

@@ -1,6 +1,6 @@
 [mcp_servers.pomelo_delivery]
-command = "uv"
-args = ["--directory", "mcp/src/delivery-mcp", "run", "pomelo-delivery-mcp"]
+command = "go"
+args = ["run", "./cmd/server", "mcp"]
 cwd = "."
-startup_timeout_sec = 10.0
+startup_timeout_sec = 60.0
 tool_timeout_sec = 300.0

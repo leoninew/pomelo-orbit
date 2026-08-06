@@ -6,10 +6,12 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
+	authdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/dto"
 	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
@@ -163,6 +165,47 @@ func (h Handler) GoogleCallback(c *gin.Context) {
 		return
 	}
 	transportresponse.WriteStatusError(c, http.StatusServiceUnavailable, "Google OAuth is not configured")
+}
+
+// CreateMCPGrant exchanges the authenticated browser session for a short-lived
+// code that can only be delivered to the local stdio process callback.
+func (h Handler) CreateMCPGrant(c *gin.Context) {
+	user, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var request struct {
+		CallbackURL string `json:"callback_url"`
+		State       string `json:"state"`
+	}
+	if err := binding.DecodeJSON(c, &request); err != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	grant, err := h.service.IssueMCPGrant(c.Request.Context(), user, authdto.MCPGrantInput{CallbackURL: request.CallbackURL, State: request.State})
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, map[string]string{"code": grant.Code, "expires_at": grant.ExpiresAt.Format(time.RFC3339)})
+}
+
+// ExchangeMCPGrant deliberately accepts no bearer token. Possession of the
+// high-entropy, one-time code is the authentication proof for loopback stdio.
+func (h Handler) ExchangeMCPGrant(c *gin.Context) {
+	var request struct {
+		Code string `json:"code"`
+	}
+	if err := binding.DecodeJSON(c, &request); err != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	token, err := h.service.ExchangeMCPGrant(c.Request.Context(), request.Code)
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, map[string]string{"access_token": token, "token_type": "bearer"})
 }
 
 func clientIP(c *gin.Context) string {

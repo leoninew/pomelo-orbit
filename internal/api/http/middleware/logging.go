@@ -40,13 +40,14 @@ func RequestId() gin.HandlerFunc {
 			requestId = idutil.NewId()
 		}
 		c.Set(RequestIdKey, requestId)
+		c.Request = c.Request.WithContext(requestid.WithContext(c.Request.Context(), requestId))
 		c.Writer.Header().Set(RequestIdHeader, requestId)
 		c.Next()
 	}
 }
 
 func RequestIdFromContext(c *gin.Context) string {
-	return requestid.FromContext(c)
+	return requestid.FromGinContext(c)
 }
 
 func RealIP() gin.HandlerFunc {

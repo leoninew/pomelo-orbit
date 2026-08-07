@@ -78,7 +78,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/ci_pipeline.sql"
     queries: "sql/query/pipeline"
     gen:
       go:
@@ -89,7 +89,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/ci_pipeline.sql"
     queries: "sql/query/pipeline_run"
     gen:
       go:
@@ -100,7 +100,9 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema:
+      - "sql/migration/sqlite"
+      - "sql/schema/application_version_component.sql"
     queries: "sql/query/application"
     gen:
       go:

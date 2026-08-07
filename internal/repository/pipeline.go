@@ -6,27 +6,26 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-// PipelineStore persists pipeline stages, templates, and snapshots.
+// PipelineStore persists Pipeline aggregates and their immutable snapshots.
+// Application, Repository, Version, and source-template references are
+// logical references; only stages are owned by the aggregate.
 type PipelineStore interface {
-	PipelineTemplate(ctx context.Context, id string) (model.PipelineTemplate, error)
-	ListPipelineTemplates(ctx context.Context, projectId string, page int, perPage int, search string) (Page[model.PipelineTemplate], error)
-	PipelineTemplateByName(ctx context.Context, projectId string, name string) (model.PipelineTemplate, error)
-	PipelineTemplateStages(ctx context.Context, templateId string) ([]model.PipelineTemplateStage, error)
-	ListPipelineStages(ctx context.Context, projectId string, page int, perPage int, search string) (Page[model.PipelineStage], error)
+	Pipeline(ctx context.Context, id string) (model.Pipeline, error)
+	PipelineByName(ctx context.Context, projectId string, name string) (model.Pipeline, error)
+	ListPipelines(ctx context.Context, projectId string, kind string, page int, perPage int, search string) (Page[model.Pipeline], error)
+	CreatePipeline(ctx context.Context, pipeline model.Pipeline) error
+	UpdatePipeline(ctx context.Context, pipeline model.Pipeline) error
+	DeletePipeline(ctx context.Context, id string) error
+
+	PipelineStages(ctx context.Context, pipelineId string) ([]model.PipelineStage, error)
 	PipelineStage(ctx context.Context, id string) (model.PipelineStage, error)
-	PipelineStageByName(ctx context.Context, projectId string, name string) (model.PipelineStage, error)
-	PipelineStagesByIds(ctx context.Context, projectId string, ids []string) ([]model.PipelineStage, error)
 	CreatePipelineStage(ctx context.Context, stage model.PipelineStage) error
 	UpdatePipelineStage(ctx context.Context, stage model.PipelineStage) error
 	DeletePipelineStage(ctx context.Context, id string) error
-	PipelineStageReferencedByTemplates(ctx context.Context, projectId string, stageId string) (bool, error)
-	CreatePipelineTemplate(ctx context.Context, template model.PipelineTemplate) error
-	UpdatePipelineTemplate(ctx context.Context, template model.PipelineTemplate) error
-	UpdatePipelineTemplateWithStages(ctx context.Context, template model.PipelineTemplate, stages []model.PipelineTemplateStage) error
-	DuplicatePipelineTemplate(ctx context.Context, template model.PipelineTemplate, stages []model.PipelineTemplateStage) error
-	PipelineTemplateReferencedByWebhooks(ctx context.Context, templateId string) (bool, error)
-	DeletePipelineTemplate(ctx context.Context, id string) error
-	LatestPipelineSnapshot(ctx context.Context, templateId string) (model.PipelineSnapshot, error)
+	UpdatePipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error
+	CreatePipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error
+
+	LatestPipelineSnapshot(ctx context.Context, pipelineId string) (model.PipelineSnapshot, error)
 	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
 	CreatePipelineSnapshot(ctx context.Context, snapshot model.PipelineSnapshot) error
 }

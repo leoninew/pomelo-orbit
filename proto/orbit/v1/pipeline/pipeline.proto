@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package orbit.v1.pipeline;
+
+import "orbit/v1/common/common.proto";
+import "orbit/v1/pipeline/pipeline_stage.proto";
+
+message PipelineResp {
+  string id = 1;
+  optional string project_id = 2;
+  string kind = 3;
+  optional string source_pipeline_id = 4;
+  optional string source_template_name = 5;
+  optional int32 source_template_version = 6;
+  optional string application_id = 7;
+  optional string application_name = 8;
+  optional string repository_id = 9;
+  optional string repository_name = 10;
+  optional string version_fork_strategy = 11;
+  optional string fixed_version_id = 12;
+  optional string fixed_version_label = 13;
+  string name = 14;
+  string description = 15;
+  repeated PipelineStageResp stages = 16;
+  repeated orbit.v1.common.VariableDeclarationResp variable_declarations = 17;
+  int32 version = 18;
+  string created_at = 19;
+  string updated_at = 20;
+}
+
+message PipelineCreateReq {
+  string kind = 1;
+  string name = 2;
+  string description = 3;
+  repeated orbit.v1.common.VariableDeclarationReq variable_declarations = 4;
+}
+
+message PipelineUpdateReq {
+  optional string name = 1;
+  optional string description = 2;
+  optional orbit.v1.common.VariableDeclarationListReq variable_declarations = 3;
+  optional string version_fork_strategy = 4;
+  optional string fixed_version_id = 5;
+  optional bool clear_version_fork_strategy = 6;
+}
+
+message PipelineInstantiateReq {
+  string name = 1;
+  optional string application_id = 2;
+  string repository_id = 3;
+}
+
+message PipelinePaginatedResp {
+  repeated PipelineResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}

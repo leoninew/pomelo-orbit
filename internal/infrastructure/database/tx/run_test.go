@@ -72,6 +72,33 @@ func TestRunInTxStartsTransactionWithoutContextTransaction(t *testing.T) {
 	}
 }
 
+func TestTransactionRunnerRunsInTransaction(t *testing.T) {
+	db := openRunTestDatabase(t)
+	if _, err := db.Exec(`CREATE TABLE probe (id INTEGER PRIMARY KEY, v TEXT)`); err != nil {
+		t.Fatal(err)
+	}
+
+	runner := NewTransactionRunner(db)
+	if err := runner.RunInTransaction(context.Background(), func(txCtx context.Context) error {
+		transaction, ok := TxFrom(txCtx)
+		if !ok {
+			t.Fatal("expected transaction runner to attach a transaction")
+		}
+		_, err := transaction.ExecContext(txCtx, `INSERT INTO probe(v) VALUES ('runner')`)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM probe`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected one committed row, got %d", count)
+	}
+}
+
 func openRunTestDatabase(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("sqlite", ":memory:")

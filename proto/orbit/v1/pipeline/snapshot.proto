@@ -2,28 +2,36 @@ syntax = "proto3";
 
 package orbit.v1.pipeline;
 
-
-import "orbit/v1/pipeline/pipeline_stage.proto";
 import "orbit/v1/common/common.proto";
+import "orbit/v1/pipeline/pipeline_stage.proto";
 
 message PipelineSnapshotResp {
   string id = 1;
-  string template_id = 2;
-  string template_name = 3;
-  int32 template_version = 4;
-  int32 version = 5;
-  repeated SnapshotStageResp stages_snapshot = 6;
-  repeated orbit.v1.common.VariableDeclarationResp variables_snapshot = 7;
-  string created_at = 8;
+  string pipeline_id = 2;
+  string pipeline_name = 3;
+  int32 pipeline_version = 4;
+  string source_pipeline_id = 5;
+  string source_template_name = 6;
+  int32 source_template_version = 7;
+  optional string application_id = 8;
+  optional string application_name = 9;
+  string repository_id = 10;
+  string repository_name = 11;
+  optional string version_fork_strategy = 12;
+  optional string fixed_version_id = 13;
+  optional string fixed_version_label = 14;
+  repeated SnapshotStageResp stages_snapshot = 15;
+  repeated orbit.v1.common.VariableDeclarationResp variables_snapshot = 16;
+  string created_at = 17;
 }
 
 message SnapshotStageResp {
-  string name = 1;
-  string id = 2;
+  string id = 1;
+  string name = 2;
   string image = 3;
-  int32 version = 4;
-  repeated string depends_on = 5;
-  string script = 6;
-  repeated ArtifactConfigResp artifacts = 7;
-  optional BuildVersionBindingResp build_version_binding = 8;
+  repeated string depends_on = 4;
+  string script = 5;
+  repeated ArtifactConfigResp artifacts = 6;
+  int32 sort_order = 7;
+  string description = 8;
 }

@@ -4,7 +4,7 @@ import router from './index';
 
 describe('domain route cutover', () => {
   it.each([
-    ['/pipeline/stage', 'PipelineStagePage'],
+    ['/pipeline', 'Pipelines'],
     ['/pipeline-run/42', 'PipelineRunDetail'],
     ['/pipeline-run/artifact/42', 'ArtifactDetail'],
     ['/application/42', 'ApplicationDetail'],

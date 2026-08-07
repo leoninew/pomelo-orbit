@@ -2,6 +2,7 @@ package pipelinerunsvc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -19,27 +20,22 @@ import (
 	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 var gitObjectIdPattern = regexp.MustCompile(`^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$`)
 
-type buildArtifactStore interface {
-	pipelineExecutionStore
-	PipelineRunBuildVersionBinding(ctx context.Context, pipelineRunId string, pipelineStageId string) (model.PipelineRunBuildVersionBinding, error)
-	RunInTransaction(ctx context.Context, fn func(context.Context) error) error
-	CompletePipelineRunBuildVersionBinding(ctx context.Context, pipelineRunId string, pipelineStageId string, generatedVersionId string, generatedVersionLabel string, artifactId string) error
-}
-
 type Executor struct {
-	store            pipelineExecutionStore
-	versionForker    applicationport.BuildVersionForker
-	workspace        pipelinerunport.Workspace
-	logStore         pipelinerunport.ExecutionLogStore
-	secretKey        string
-	logger           *slog.Logger
-	executionTimeout time.Duration
-	runner           pipelinerunport.ContainerRunner
-	localSource      repositoryport.LocalDirectorySource
+	store             pipelineExecutionStore
+	versionForker     applicationport.BuildVersionForker
+	transactionRunner pipelinerunport.TransactionRunner
+	workspace         pipelinerunport.Workspace
+	logStore          pipelinerunport.ExecutionLogStore
+	secretKey         string
+	logger            *slog.Logger
+	executionTimeout  time.Duration
+	runner            pipelinerunport.ContainerRunner
+	localSource       repositoryport.LocalDirectorySource
 }
 
 func (e Executor) Execute(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stages []model.StageDefinition) (bool, string) {
@@ -67,6 +63,9 @@ func (e Executor) Execute(ctx context.Context, executionCtx context.Context, run
 			e.cancelRemaining(ctx, run.Id, layers, layerIndex+1, stageById)
 			return false, fmt.Sprintf("Stage(s) failed: %s", strings.Join(failed, ", "))
 		}
+	}
+	if err := e.forkBuildVersion(ctx, run, stages, fmt.Sprint(variables["runtime_datetime"])); err != nil {
+		return false, err.Error()
 	}
 	return true, ""
 }
@@ -347,90 +346,144 @@ func (e Executor) archiveCommandArtifact(ctx context.Context, run model.Pipeline
 	return nil
 }
 
-func (e Executor) archiveContainerImageArtifact(ctx context.Context, run model.PipelineRun, stage model.StageDefinition, stages map[string]model.StageDefinition, artifact model.ArtifactConfig, runtimeDatetime string) error {
-	store, ok := e.store.(buildArtifactStore)
-	if !ok {
-		return fmt.Errorf("container image artifact storage is unavailable")
-	}
+func (e Executor) archiveContainerImageArtifact(ctx context.Context, run model.PipelineRun, stage model.StageDefinition, stages map[string]model.StageDefinition, artifact model.ArtifactConfig, _ string) error {
 	inspector, ok := e.runner.(pipelinerunport.ImageInspector)
 	if !ok {
 		return fmt.Errorf("local image inspection is unavailable")
-	}
-	sourceCommitArtifact, err := sourceCommitArtifactForStage(stage, stages)
-	if err != nil {
-		return err
-	}
-	sourceArtifact, err := store.CommandArtifactByRunStageAndName(ctx, run.Id, sourceCommitArtifact.ProducerStageId, sourceCommitArtifact.Artifact.Name)
-	if err != nil {
-		return fmt.Errorf("load source command artifact: %w", err)
-	}
-	if sourceArtifact.Value == nil || sourceArtifact.ValueFormat == nil || *sourceArtifact.ValueFormat != "git_object_id" || !gitObjectIdPattern.MatchString(*sourceArtifact.Value) {
-		return fmt.Errorf("source command artifact %s is not a valid Git object Id", sourceCommitArtifact.Artifact.Name)
 	}
 	imageId, err := inspector.ImageId(ctx, artifact.Reference)
 	if err != nil {
 		return fmt.Errorf("inspect local image %s: %w", artifact.Reference, err)
 	}
-	if stage.BuildVersionBinding != nil {
-		binding, err := store.PipelineRunBuildVersionBinding(ctx, run.Id, stage.Id)
+	created := artifactForRun(run, stage, artifact)
+	created.ImageRef = &artifact.Reference
+	created.LocalImageSha256 = &imageId
+	if artifact.ComponentName != nil {
+		source, err := sourceCommitArtifactForStage(stage, stages)
 		if err != nil {
-			return fmt.Errorf("load build version binding: %w", err)
-		}
-		if binding.GeneratedVersionId != nil {
-			return nil
-		}
-	}
-	return store.RunInTransaction(ctx, func(txCtx context.Context) error {
-		created := artifactForRun(run, stage, artifact)
-		created.ImageRef = &artifact.Reference
-		created.LocalImageSha256 = &imageId
-		created.SourceArtifactId = &sourceArtifact.Id
-		created.SourceCommitSha = sourceArtifact.Value
-		if err := store.CreateArtifact(txCtx, created); err != nil {
 			return err
 		}
-		if stage.BuildVersionBinding == nil {
-			return nil
+		sourceArtifact, err := e.store.CommandArtifactByRunStageAndName(ctx, run.Id, source.ProducerStageId, source.Artifact.Name)
+		if err != nil {
+			return fmt.Errorf("load source command artifact: %w", err)
 		}
-		return e.forkBuildVersion(txCtx, store, run, stage, created, runtimeDatetime)
-	})
+		if sourceArtifact.Value == nil || sourceArtifact.ValueFormat == nil || *sourceArtifact.ValueFormat != "git_object_id" || !gitObjectIdPattern.MatchString(*sourceArtifact.Value) {
+			return fmt.Errorf("source command artifact %s is not a valid Git object Id", source.Artifact.Name)
+		}
+		created.SourceArtifactId = &sourceArtifact.Id
+		created.SourceCommitSha = sourceArtifact.Value
+	}
+	return e.store.CreateArtifact(ctx, created)
 }
 
-func (e Executor) forkBuildVersion(ctx context.Context, store buildArtifactStore, run model.PipelineRun, stage model.StageDefinition, artifact model.Artifact, runtimeDatetime string) error {
-	binding, err := store.PipelineRunBuildVersionBinding(ctx, run.Id, stage.Id)
+type forkBuildVersionStore interface {
+	PipelineRunVersionBinding(ctx context.Context, pipelineRunId string) (model.PipelineRunVersionBinding, error)
+	ListArtifactsByRun(ctx context.Context, projectId *string, runId string) ([]model.Artifact, error)
+	CompletePipelineRunVersionBinding(ctx context.Context, pipelineRunId string, generatedVersionId string, generatedVersionLabel string) error
+}
+
+func (e Executor) forkBuildVersion(ctx context.Context, run model.PipelineRun, stages []model.StageDefinition, runtimeDatetime string) error {
+	return forkBuildVersion(ctx, e.store, e.transactionRunner, e.versionForker, run, stages, runtimeDatetime)
+}
+
+func forkBuildVersion(ctx context.Context, store forkBuildVersionStore, transactionRunner pipelinerunport.TransactionRunner, versionForker applicationport.BuildVersionForker, run model.PipelineRun, stages []model.StageDefinition, runtimeDatetime string) error {
+	binding, err := store.PipelineRunVersionBinding(ctx, run.Id)
 	if err != nil {
-		return fmt.Errorf("load build version binding: %w", err)
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil
+		}
+		return fmt.Errorf("load run version binding: %w", err)
 	}
 	if binding.GeneratedVersionId != nil {
 		return nil
 	}
-	if e.versionForker == nil {
+	if versionForker == nil {
 		return fmt.Errorf("application version forker is unavailable")
 	}
-	version, err := e.versionForker.ForkVersionForBuild(ctx, applicationport.BuildVersionForkInput{
-		SourceVersionId: binding.SourceVersionId,
-		Label:           buildVersionLabel(runtimeDatetime),
-		ComponentName:   binding.ComponentName,
-		Image:           *artifact.ImageRef,
-		ArtifactId:      artifact.Id,
-	})
+	artifacts, err := store.ListArtifactsByRun(ctx, run.ProjectId, run.Id)
 	if err != nil {
-		return fmt.Errorf("fork source version: %w", err)
+		return fmt.Errorf("load pipeline artifacts: %w", err)
 	}
-	if err := store.CompletePipelineRunBuildVersionBinding(ctx, run.Id, stage.Id, version.Id, version.Label, artifact.Id); err != nil {
-		return err
+	byStageArtifact := map[string]model.Artifact{}
+	for _, artifact := range artifacts {
+		byStageArtifact[artifact.PipelineStageId+"\x00"+artifact.Name] = artifact
 	}
-	return nil
+	updates := make([]applicationport.BuildVersionComponentUpdate, 0)
+	for _, mapping := range componentMappings(stages) {
+		artifact, exists := byStageArtifact[mapping.Stage.Id+"\x00"+mapping.Artifact.Name]
+		if !exists || artifact.ImageRef == nil || artifact.LocalImageSha256 == nil || artifact.SourceCommitSha == nil {
+			return fmt.Errorf("component-bound artifact %s from stage %s was not collected", mapping.Artifact.Name, mapping.Stage.Name)
+		}
+		updates = append(updates, applicationport.BuildVersionComponentUpdate{ComponentName: mapping.ComponentName, Image: *artifact.ImageRef, ArtifactId: artifact.Id, ArtifactName: artifact.Name, LocalImageSha256: *artifact.LocalImageSha256, SourceCommitSha: *artifact.SourceCommitSha})
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+	if transactionRunner == nil {
+		return fmt.Errorf("transaction runner is unavailable")
+	}
+	return transactionRunner.RunInTransaction(ctx, func(txCtx context.Context) error {
+		version, err := versionForker.ForkVersionForBuild(txCtx, applicationport.BuildVersionForkInput{
+			SourceVersionId: binding.SourceVersionId,
+			Label:           buildVersionLabel(runtimeDatetime),
+			Components:      updates,
+		})
+		if err != nil {
+			return fmt.Errorf("fork source version: %w", err)
+		}
+		return store.CompletePipelineRunVersionBinding(txCtx, run.Id, version.Id, version.Label)
+	})
 }
 
 func buildVersionLabel(runtimeDatetime string) string {
 	return "build-" + runtimeDatetime
 }
 
+type sourceCommitArtifact struct {
+	ProducerStageId string
+	Artifact        model.ArtifactConfig
+}
+
+func sourceCommitArtifactForStage(stage model.StageDefinition, stages map[string]model.StageDefinition) (sourceCommitArtifact, error) {
+	seen := map[string]bool{}
+	candidates := make([]sourceCommitArtifact, 0, 1)
+	var visit func(string) error
+	visit = func(stageId string) error {
+		if seen[stageId] {
+			return nil
+		}
+		seen[stageId] = true
+		ancestor, exists := stages[stageId]
+		if !exists {
+			return fmt.Errorf("dependency %s does not exist", stageId)
+		}
+		for _, artifact := range ancestor.Artifacts {
+			if artifact.Collector == "command" && artifact.Format == "git_object_id" {
+				candidates = append(candidates, sourceCommitArtifact{ProducerStageId: ancestor.Id, Artifact: artifact})
+			}
+		}
+		for _, dependency := range ancestor.DependsOn {
+			if err := visit(dependency); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	for _, dependency := range stage.DependsOn {
+		if err := visit(dependency); err != nil {
+			return sourceCommitArtifact{}, err
+		}
+	}
+	if len(candidates) != 1 {
+		return sourceCommitArtifact{}, fmt.Errorf("requires exactly one transitive git_object_id artifact, found %d", len(candidates))
+	}
+	return candidates[0], nil
+}
+
 func artifactForRun(run model.PipelineRun, stage model.StageDefinition, config model.ArtifactConfig) model.Artifact {
 	return model.Artifact{
 		Id: idutil.NewId(), ProjectId: run.ProjectId, PipelineRunId: run.Id, RepositoryId: run.RepositoryId, RepositoryName: run.RepositoryName,
-		TemplateId: run.TemplateId, TemplateName: run.TemplateName, PipelineStageId: stage.Id, StageName: stage.Name,
+		PipelineId: run.PipelineId, PipelineName: run.PipelineName, PipelineStageId: stage.Id, StageName: stage.Name,
 		Collector: config.Collector, Name: config.Name, CreatedAt: now(),
 	}
 }

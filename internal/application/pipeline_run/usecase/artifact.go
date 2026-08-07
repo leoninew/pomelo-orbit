@@ -19,13 +19,13 @@ func (s Service) ListArtifacts(ctx context.Context, userId string, input pipelin
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return repository.Page[model.Artifact]{}, err
 	}
-	if err := s.ensurePipelineRunRepositoryFilter(ctx, projectId, input.RepositoryId); err != nil {
+	if err := s.ensureRunRepositoryFilter(ctx, projectId, input.RepositoryId); err != nil {
 		return repository.Page[model.Artifact]{}, err
 	}
-	if err := s.ensurePipelineRunTemplateFilter(ctx, projectId, input.TemplateId); err != nil {
+	if err := s.ensureRunPipelineFilter(ctx, projectId, input.PipelineId); err != nil {
 		return repository.Page[model.Artifact]{}, err
 	}
-	items, err := s.store.ListArtifacts(ctx, projectId, input.RepositoryId, input.TemplateId, input.Page, input.PerPage, input.Search)
+	items, err := s.store.ListArtifacts(ctx, projectId, input.RepositoryId, input.PipelineId, input.Page, input.PerPage, input.Search)
 	if err != nil {
 		return repository.Page[model.Artifact]{}, apperror.Wrap(apperror.KindInternal, "Failed to list artifacts", err)
 	}
@@ -41,10 +41,12 @@ func (s Service) ArtifactForUser(ctx context.Context, userId string, artifactId 
 		}
 		return model.Artifact{}, apperror.Wrap(apperror.KindInternal, "Failed to load artifact", err)
 	}
-	if item.ProjectId != nil {
-		if err := s.ensureProjectMembership(ctx, *item.ProjectId, userId); err != nil {
-			return model.Artifact{}, err
-		}
+	projectId, err := requiredProjectID(item.ProjectId, "Artifact")
+	if err != nil {
+		return model.Artifact{}, err
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Artifact{}, err
 	}
 	return item, nil
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getNavigationScope, primaryNavigation, secondaryNavigation } from './navigation';
+import {
+  getNavigationScope,
+  getSecondaryNavigationTitle,
+  primaryNavigation,
+  secondaryNavigation,
+} from './navigation';
 
 describe('domain navigation declarations', () => {
   it('keeps primary navigation scoped to continuous integration, deployment, and system management', () => {
@@ -19,7 +24,7 @@ describe('domain navigation declarations', () => {
     ['/projects', 'settings'],
     ['/users', 'settings'],
     ['/settings', 'settings'],
-    ['/pipeline/template', 'pipeline'],
+    ['/pipeline/example', 'pipeline'],
     ['/pipeline-run/artifact', 'pipeline'],
     ['/application/example', 'deployment'],
     ['/gateway/edit/example', 'deployment'],
@@ -40,8 +45,7 @@ describe('domain navigation declarations', () => {
       expect.objectContaining({
         key: 'pipeline',
         children: [
-          expect.objectContaining({ key: 'pipelinetemplates', path: '/pipeline/template' }),
-          expect.objectContaining({ key: 'buildstages', path: '/pipeline/stage' }),
+          expect.objectContaining({ key: 'pipelines', path: '/pipeline' }),
           expect.objectContaining({ key: 'pipelineruns', path: '/pipeline-run' }),
           expect.objectContaining({ key: 'artifacts', path: '/pipeline-run/artifact' }),
         ],
@@ -68,6 +72,23 @@ describe('domain navigation declarations', () => {
         ],
       }),
     ]);
+  });
+
+  it('builds continuous integration and deployment titles from the selected menu path', () => {
+    const labels: Record<string, string> = {
+      'nav.groups.code': '代码仓库',
+      'nav.repositories': '仓库',
+      'nav.groups.ingress': '网络接入',
+      'nav.gateways': '网关',
+      'nav.groups.admin': '系统管理',
+      'nav.settings': '系统设置',
+    };
+    const t = (key: string) => labels[key] || key;
+
+    expect(getSecondaryNavigationTitle('pipeline', 'repository', t)).toBe('代码仓库 仓库');
+    expect(getSecondaryNavigationTitle('deployment', 'gateways', t)).toBe('网络接入 网关');
+    expect(getSecondaryNavigationTitle('settings', 'settings', t)).toBe('系统管理 系统设置');
+    expect(getSecondaryNavigationTitle('pipeline', 'missing', t)).toBeNull();
   });
 
   it('groups system management entries in the requested order', () => {

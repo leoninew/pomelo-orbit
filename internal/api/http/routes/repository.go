@@ -14,10 +14,4 @@ func (r Router) registerRepository(engine *gin.Engine) {
 	engine.GET("/api/repository/:repository_id", handler.GetRepository)
 	engine.PUT("/api/repository/:repository_id", handler.UpdateRepository)
 	engine.DELETE("/api/repository/:repository_id", handler.DeleteRepository)
-	engine.GET("/api/repository/:repository_id/webhook", handler.ListRepositoryWebhooks)
-	engine.POST("/api/repository/:repository_id/webhook", handler.CreateRepositoryWebhook)
-	engine.PUT("/api/repository/:repository_id/webhook/:webhook_id", handler.UpdateRepositoryWebhook)
-	engine.DELETE("/api/repository/:repository_id/webhook/:webhook_id", handler.DeleteRepositoryWebhook)
-	engine.GET("/api/webhook/:webhook_id", handler.GetRepositoryWebhook)
-	engine.POST("/api/webhook/:webhook_id", handler.ReceiveRepositoryWebhook)
 }

@@ -45,11 +45,7 @@
           </div>
           <div class="flex gap-2">
             <dt>构建阶段</dt>
-            <dd class="min-w-0">
-              <router-link :to="`/pipeline/stage/${artifact.pipeline_stage_id}`" class="app-link">
-                {{ artifact.stage_name }}
-              </router-link>
-            </dd>
+            <dd class="min-w-0 text-foreground">{{ artifact.stage_name }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>仓库</dt>
@@ -60,10 +56,10 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt>模板</dt>
+            <dt>流水线</dt>
             <dd class="min-w-0">
-              <router-link :to="`/pipeline/template/${artifact.template_id}`" class="app-link">
-                {{ artifact.template_name }}
+              <router-link :to="`/pipeline/${artifact.pipeline_id}`" class="app-link">
+                {{ artifact.pipeline_name }}
               </router-link>
             </dd>
           </div>

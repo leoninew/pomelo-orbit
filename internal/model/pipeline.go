@@ -2,77 +2,95 @@ package model
 
 import "time"
 
-type PipelineTemplate struct {
-	Id                   string    `db:"id"`
-	ProjectId            *string   `db:"project_id"`
-	Name                 string    `db:"name"`
-	Description          string    `db:"description"`
-	VariableDeclarations string    `db:"variable_declarations"`
-	Version              int       `db:"version"`
-	CreatedAt            time.Time `db:"created_at"`
-	UpdatedAt            time.Time `db:"updated_at"`
+const (
+	PipelineKindTemplate    = "template"
+	PipelineKindApplication = "application"
+
+	VersionForkStrategyLatest = "latest"
+	VersionForkStrategyFixed  = "fixed"
+)
+
+// Pipeline is either a reusable, non-runnable template or an independently
+// configured application pipeline materialized from a template.
+type Pipeline struct {
+	Id                    string    `db:"id"`
+	ProjectId             *string   `db:"project_id"`
+	Kind                  string    `db:"kind"`
+	SourcePipelineId      *string   `db:"source_pipeline_id"`
+	SourceTemplateName    *string   `db:"source_template_name"`
+	SourceTemplateVersion *int      `db:"source_template_version"`
+	ApplicationId         *string   `db:"application_id"`
+	ApplicationName       *string   `db:"application_name"`
+	RepositoryId          *string   `db:"repository_id"`
+	RepositoryName        *string   `db:"repository_name"`
+	VersionForkStrategy   *string   `db:"version_fork_strategy"`
+	FixedVersionId        *string   `db:"fixed_version_id"`
+	FixedVersionLabel     *string   `db:"fixed_version_label"`
+	Name                  string    `db:"name"`
+	Description           string    `db:"description"`
+	VariableDeclarations  string    `db:"variable_declarations"`
+	Version               int       `db:"version"`
+	CreatedAt             time.Time `db:"created_at"`
+	UpdatedAt             time.Time `db:"updated_at"`
 }
 
+// PipelineStage is owned by one Pipeline. Its IDs are therefore safe to use
+// as the DAG's local identifiers and are never shared across pipelines.
 type PipelineStage struct {
-	Id                  string               `db:"id"`
-	ProjectId           *string              `db:"project_id"`
-	Name                string               `db:"name"`
-	Image               string               `db:"image"`
-	Script              string               `db:"script"`
-	Artifacts           *string              `db:"artifacts"`
-	BuildVersionBinding *BuildVersionBinding `db:"-"`
-	Description         string               `db:"description"`
-	Version             int                  `db:"version"`
-	CreatedAt           time.Time            `db:"created_at"`
-	UpdatedAt           time.Time            `db:"updated_at"`
+	Id          string    `db:"id"`
+	PipelineId  string    `db:"pipeline_id"`
+	Name        string    `db:"name"`
+	Image       string    `db:"image"`
+	Script      string    `db:"script"`
+	Artifacts   *string   `db:"artifacts"`
+	DependsOn   string    `db:"depends_on"`
+	SortOrder   int       `db:"sort_order"`
+	Description string    `db:"description"`
+	CreatedAt   time.Time `db:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at"`
 }
 
-// BuildVersionBinding describes the optional application-version fork performed by a build stage.
-type BuildVersionBinding struct {
-	ApplicationId   string  `json:"application_id"`
-	ApplicationName string  `json:"application_name"`
-	ComponentName   string  `json:"component_name"`
-	ForkStrategy    string  `json:"fork_strategy"`
-	FixedVersionId  *string `json:"fixed_version_id,omitempty"`
-}
-
-type PipelineTemplateStage struct {
-	Id           string `db:"id"`
-	TemplateId   string `db:"template_id"`
-	StageId      string `db:"stage_id"`
-	StageName    string `db:"stage_name"`
-	StageVersion int    `db:"stage_version"`
-	DependsOn    string `db:"depends_on"`
-	SortOrder    int    `db:"sort_order"`
-}
-
+// PipelineSnapshot is an immutable executable input for an application
+// pipeline. Template pipelines never own snapshots.
 type PipelineSnapshot struct {
-	Id                string    `db:"id"`
-	ProjectId         *string   `db:"project_id"`
-	TemplateId        string    `db:"template_id"`
-	Version           int       `db:"version"`
-	StagesSnapshot    string    `db:"stages_snapshot"`
-	VariablesSnapshot string    `db:"variables_snapshot"`
-	CreatedAt         time.Time `db:"created_at"`
+	Id                    string    `db:"id"`
+	ProjectId             *string   `db:"project_id"`
+	PipelineId            string    `db:"pipeline_id"`
+	PipelineName          string    `db:"pipeline_name"`
+	PipelineVersion       int       `db:"pipeline_version"`
+	SourcePipelineId      string    `db:"source_pipeline_id"`
+	SourceTemplateName    string    `db:"source_template_name"`
+	SourceTemplateVersion int       `db:"source_template_version"`
+	ApplicationId         *string   `db:"application_id"`
+	ApplicationName       *string   `db:"application_name"`
+	RepositoryId          string    `db:"repository_id"`
+	RepositoryName        string    `db:"repository_name"`
+	VersionForkStrategy   *string   `db:"version_fork_strategy"`
+	FixedVersionId        *string   `db:"fixed_version_id"`
+	FixedVersionLabel     *string   `db:"fixed_version_label"`
+	StagesSnapshot        string    `db:"stages_snapshot"`
+	VariablesSnapshot     string    `db:"variables_snapshot"`
+	CreatedAt             time.Time `db:"created_at"`
 }
 
 type StageDefinition struct {
-	Name                string               `json:"name"`
-	Id                  string               `json:"id"`
-	Image               string               `json:"image"`
-	Version             int                  `json:"version"`
-	DependsOn           []string             `json:"depends_on"`
-	Script              string               `json:"script"`
-	Artifacts           []ArtifactConfig     `json:"artifacts"`
-	BuildVersionBinding *BuildVersionBinding `json:"build_version_binding,omitempty"`
+	Id          string           `json:"id"`
+	Name        string           `json:"name"`
+	Image       string           `json:"image"`
+	DependsOn   []string         `json:"depends_on"`
+	Script      string           `json:"script"`
+	Artifacts   []ArtifactConfig `json:"artifacts"`
+	SortOrder   int              `json:"sort_order"`
+	Description string           `json:"description"`
 }
 
 type ArtifactConfig struct {
-	Name      string `json:"name"`
-	Collector string `json:"collector"`
-	Reference string `json:"reference,omitempty"`
-	Command   string `json:"command,omitempty"`
-	Format    string `json:"format,omitempty"`
+	Name          string  `json:"name"`
+	Collector     string  `json:"collector"`
+	Reference     string  `json:"reference,omitempty"`
+	Command       string  `json:"command,omitempty"`
+	Format        string  `json:"format,omitempty"`
+	ComponentName *string `json:"component_name,omitempty"`
 }
 
 type VariableDeclaration struct {

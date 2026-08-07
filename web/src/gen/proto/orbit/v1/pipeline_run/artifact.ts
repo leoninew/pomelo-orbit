@@ -13,26 +13,26 @@ export interface ArtifactResp {
   pipeline_run_id: string;
   repository_id: string;
   repository_name: string;
-  template_id: string;
-  template_name: string;
+  pipeline_id: string;
+  pipeline_name: string;
+  pipeline_stage_id: string;
   stage_name: string;
   collector: string;
   name: string;
   location?: string | undefined;
+  value?: string | undefined;
+  value_format?: string | undefined;
   created_at: string;
   image_ref?: string | undefined;
   local_image_sha256?: string | undefined;
   source_commit_sha?: string | undefined;
-  generated_version_id?: string | undefined;
-  version_component_id?: string | undefined;
-  pipeline_stage_id: string;
-  value?: string | undefined;
-  value_format?: string | undefined;
   application_id?: string | undefined;
   application_name?: string | undefined;
   source_version_id?: string | undefined;
   source_version_label?: string | undefined;
+  generated_version_id?: string | undefined;
   generated_version_label?: string | undefined;
+  version_component_id?: string | undefined;
   version_component_name?: string | undefined;
 }
 

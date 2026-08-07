@@ -3,71 +3,67 @@ package pipelinerunhandler
 import (
 	"net/http"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	pipelinerunv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/pipeline_run"
 	"github.com/gin-gonic/gin"
 
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	pipelinerundto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/dto"
+	pipelinerunv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/pipeline_run"
 )
 
-func (h Handler) ListRepositoryRuns(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	page := binding.QueryInt(c.Request.URL.Query().Get("page"), 1)
-	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
-	items, err := h.service.ListRepositoryRuns(c.Request.Context(), current.Id, c.Param("repository_id"), page, perPage)
-	if err != nil {
-		transportresponse.WriteError(c, err)
-		return
-	}
-	resp := make([]pipelinerunv1.PipelineRunResp, 0, len(items.Items))
-	for _, item := range items.Items {
-		resp = append(resp, pipelineRunResponse(item))
-	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineRunPaginatedResp{Items: transportresponse.Ptrs(resp), Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transportresponse.PageCount(items.Total, items.PerPage))})
-}
-
-func (h Handler) TriggerRepository(c *gin.Context) {
+func (h Handler) TriggerPipeline(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pipelinerunv1.PipelineRunTriggerReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
+	if binding.DecodeJSON(c, &req) != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.TriggerRepository(c.Request.Context(), current.Id, pipelinerundto.PipelineRunTriggerInput{RepositoryId: c.Param("repository_id"), TemplateId: req.TemplateId, TriggerRef: req.TriggerRef, Variables: req.Variables})
+	detail, err := h.service.TriggerPipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinerundto.PipelineRunTriggerInput{TriggerRef: req.TriggerRef, Variables: req.Variables})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	resp := pipelineRunResponse(detail)
-	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
+	response := pipelineRunResponse(detail)
+	transportresponse.ProtoJSON(c, http.StatusCreated, response)
 }
 
+func (h Handler) PreviewPipelineRunVariables(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var req pipelinerunv1.PipelineRunVariablePreviewReq
+	if binding.DecodeJSON(c, &req) != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	preview, err := h.service.PreviewPipelineRunVariables(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinerundto.PipelineRunVariablePreviewInput{TriggerRef: req.TriggerRef, Variables: req.Variables})
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineRunVariablePreviewResp{TriggerRef: preview.TriggerRef, VariableDeclarations: pipelineRunVariableDeclarationResponses(preview.VariableDeclarations)})
+}
 func (h Handler) ListPipelineRuns(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	page := binding.QueryInt(c.Request.URL.Query().Get("page"), 1)
-	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 20)
-	items, err := h.service.ListPipelineRuns(c.Request.Context(), current.Id, pipelinerundto.PipelineRunListInput{ProjectId: c.Request.URL.Query().Get("project_id"), RepositoryId: c.Request.URL.Query().Get("repository_id"), TemplateId: c.Request.URL.Query().Get("template_id"), DateFrom: c.Request.URL.Query().Get("date_from"), DateTo: c.Request.URL.Query().Get("date_to"), Page: page, PerPage: perPage})
+	page, perPage := binding.QueryInt(c.Query("page"), 1), binding.QueryInt(c.Query("per_page"), 20)
+	items, err := h.service.ListPipelineRuns(c.Request.Context(), current.Id, pipelinerundto.PipelineRunListInput{ProjectId: c.Query("project_id"), RepositoryId: c.Query("repository_id"), PipelineId: c.Query("pipeline_id"), DateFrom: c.Query("date_from"), DateTo: c.Query("date_to"), Page: page, PerPage: perPage})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	resp := make([]pipelinerunv1.PipelineRunResp, 0, len(items.Items))
+	response := make([]*pipelinerunv1.PipelineRunResp, 0, len(items.Items))
 	for _, item := range items.Items {
-		resp = append(resp, pipelineRunResponse(item))
+		response = append(response, pipelineRunResponse(item))
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineRunPaginatedResp{Items: transportresponse.Ptrs(resp), Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transportresponse.PageCount(items.Total, items.PerPage))})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineRunPaginatedResp{Items: response, Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transportresponse.PageCount(items.Total, items.PerPage))})
 }
-
 func (h Handler) GetPipelineRun(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
@@ -78,10 +74,9 @@ func (h Handler) GetPipelineRun(c *gin.Context) {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	resp := pipelineRunResponse(detail)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	response := pipelineRunResponse(detail)
+	transportresponse.ProtoJSON(c, http.StatusOK, response)
 }
-
 func (h Handler) ListPipelineRunArtifacts(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
@@ -92,33 +87,31 @@ func (h Handler) ListPipelineRunArtifacts(c *gin.Context) {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	responses := make([]pipelinerunv1.ArtifactResp, 0, len(items))
+	response := make([]pipelinerunv1.ArtifactResp, 0, len(items))
 	for _, item := range items {
-		responses = append(responses, artifactResponse(item))
+		response = append(response, artifactResponse(item))
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineRunArtifactListResp{Items: transportresponse.Ptrs(responses)})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineRunArtifactListResp{Items: transportresponse.Ptrs(response)})
 }
-
 func (h Handler) GetPipelineStageLog(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	result, err := h.service.PipelineStageLog(c.Request.Context(), current.Id, c.Param("run_id"), c.Param("stage_run_id"), binding.QueryInt(c.Request.URL.Query().Get("offset"), 0))
+	detail, err := h.service.PipelineStageLog(c.Request.Context(), current.Id, c.Param("run_id"), c.Param("stage_run_id"), binding.QueryInt(c.Query("offset"), 0))
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineStageLogResp{Logs: result.Logs, Offset: int32(result.Offset), IsComplete: result.IsComplete})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineStageLogResp{Logs: detail.Logs, Offset: int32(detail.Offset), IsComplete: detail.IsComplete})
 }
-
 func (h Handler) CancelPipelineRun(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pipelinerunv1.PipelineRunCancelReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
+	if binding.DecodeJSON(c, &req) != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -127,17 +120,16 @@ func (h Handler) CancelPipelineRun(c *gin.Context) {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	resp := pipelineRunResponse(detail)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	response := pipelineRunResponse(detail)
+	transportresponse.ProtoJSON(c, http.StatusOK, response)
 }
-
 func (h Handler) RetryPipelineRun(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pipelinerunv1.PipelineRunRetryReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
+	if binding.DecodeJSON(c, &req) != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -146,6 +138,6 @@ func (h Handler) RetryPipelineRun(c *gin.Context) {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	resp := pipelineRunResponse(detail)
-	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
+	response := pipelineRunResponse(detail)
+	transportresponse.ProtoJSON(c, http.StatusCreated, response)
 }

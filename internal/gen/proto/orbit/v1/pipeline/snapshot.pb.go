@@ -23,17 +23,26 @@ const (
 )
 
 type PipelineSnapshotResp struct {
-	state             protoimpl.MessageState            `protogen:"open.v1"`
-	Id                string                            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	TemplateId        string                            `protobuf:"bytes,2,opt,name=template_id,json=templateId,proto3" json:"template_id,omitempty"`
-	TemplateName      string                            `protobuf:"bytes,3,opt,name=template_name,json=templateName,proto3" json:"template_name,omitempty"`
-	TemplateVersion   int32                             `protobuf:"varint,4,opt,name=template_version,json=templateVersion,proto3" json:"template_version,omitempty"`
-	Version           int32                             `protobuf:"varint,5,opt,name=version,proto3" json:"version,omitempty"`
-	StagesSnapshot    []*SnapshotStageResp              `protobuf:"bytes,6,rep,name=stages_snapshot,json=stagesSnapshot,proto3" json:"stages_snapshot,omitempty"`
-	VariablesSnapshot []*common.VariableDeclarationResp `protobuf:"bytes,7,rep,name=variables_snapshot,json=variablesSnapshot,proto3" json:"variables_snapshot,omitempty"`
-	CreatedAt         string                            `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                 protoimpl.MessageState            `protogen:"open.v1"`
+	Id                    string                            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	PipelineId            string                            `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	PipelineName          string                            `protobuf:"bytes,3,opt,name=pipeline_name,json=pipelineName,proto3" json:"pipeline_name,omitempty"`
+	PipelineVersion       int32                             `protobuf:"varint,4,opt,name=pipeline_version,json=pipelineVersion,proto3" json:"pipeline_version,omitempty"`
+	SourcePipelineId      string                            `protobuf:"bytes,5,opt,name=source_pipeline_id,json=sourcePipelineId,proto3" json:"source_pipeline_id,omitempty"`
+	SourceTemplateName    string                            `protobuf:"bytes,6,opt,name=source_template_name,json=sourceTemplateName,proto3" json:"source_template_name,omitempty"`
+	SourceTemplateVersion int32                             `protobuf:"varint,7,opt,name=source_template_version,json=sourceTemplateVersion,proto3" json:"source_template_version,omitempty"`
+	ApplicationId         *string                           `protobuf:"bytes,8,opt,name=application_id,json=applicationId,proto3,oneof" json:"application_id,omitempty"`
+	ApplicationName       *string                           `protobuf:"bytes,9,opt,name=application_name,json=applicationName,proto3,oneof" json:"application_name,omitempty"`
+	RepositoryId          string                            `protobuf:"bytes,10,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
+	RepositoryName        string                            `protobuf:"bytes,11,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
+	VersionForkStrategy   *string                           `protobuf:"bytes,12,opt,name=version_fork_strategy,json=versionForkStrategy,proto3,oneof" json:"version_fork_strategy,omitempty"`
+	FixedVersionId        *string                           `protobuf:"bytes,13,opt,name=fixed_version_id,json=fixedVersionId,proto3,oneof" json:"fixed_version_id,omitempty"`
+	FixedVersionLabel     *string                           `protobuf:"bytes,14,opt,name=fixed_version_label,json=fixedVersionLabel,proto3,oneof" json:"fixed_version_label,omitempty"`
+	StagesSnapshot        []*SnapshotStageResp              `protobuf:"bytes,15,rep,name=stages_snapshot,json=stagesSnapshot,proto3" json:"stages_snapshot,omitempty"`
+	VariablesSnapshot     []*common.VariableDeclarationResp `protobuf:"bytes,16,rep,name=variables_snapshot,json=variablesSnapshot,proto3" json:"variables_snapshot,omitempty"`
+	CreatedAt             string                            `protobuf:"bytes,17,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *PipelineSnapshotResp) Reset() {
@@ -73,32 +82,95 @@ func (x *PipelineSnapshotResp) GetId() string {
 	return ""
 }
 
-func (x *PipelineSnapshotResp) GetTemplateId() string {
+func (x *PipelineSnapshotResp) GetPipelineId() string {
 	if x != nil {
-		return x.TemplateId
+		return x.PipelineId
 	}
 	return ""
 }
 
-func (x *PipelineSnapshotResp) GetTemplateName() string {
+func (x *PipelineSnapshotResp) GetPipelineName() string {
 	if x != nil {
-		return x.TemplateName
+		return x.PipelineName
 	}
 	return ""
 }
 
-func (x *PipelineSnapshotResp) GetTemplateVersion() int32 {
+func (x *PipelineSnapshotResp) GetPipelineVersion() int32 {
 	if x != nil {
-		return x.TemplateVersion
+		return x.PipelineVersion
 	}
 	return 0
 }
 
-func (x *PipelineSnapshotResp) GetVersion() int32 {
+func (x *PipelineSnapshotResp) GetSourcePipelineId() string {
 	if x != nil {
-		return x.Version
+		return x.SourcePipelineId
+	}
+	return ""
+}
+
+func (x *PipelineSnapshotResp) GetSourceTemplateName() string {
+	if x != nil {
+		return x.SourceTemplateName
+	}
+	return ""
+}
+
+func (x *PipelineSnapshotResp) GetSourceTemplateVersion() int32 {
+	if x != nil {
+		return x.SourceTemplateVersion
 	}
 	return 0
+}
+
+func (x *PipelineSnapshotResp) GetApplicationId() string {
+	if x != nil && x.ApplicationId != nil {
+		return *x.ApplicationId
+	}
+	return ""
+}
+
+func (x *PipelineSnapshotResp) GetApplicationName() string {
+	if x != nil && x.ApplicationName != nil {
+		return *x.ApplicationName
+	}
+	return ""
+}
+
+func (x *PipelineSnapshotResp) GetRepositoryId() string {
+	if x != nil {
+		return x.RepositoryId
+	}
+	return ""
+}
+
+func (x *PipelineSnapshotResp) GetRepositoryName() string {
+	if x != nil {
+		return x.RepositoryName
+	}
+	return ""
+}
+
+func (x *PipelineSnapshotResp) GetVersionForkStrategy() string {
+	if x != nil && x.VersionForkStrategy != nil {
+		return *x.VersionForkStrategy
+	}
+	return ""
+}
+
+func (x *PipelineSnapshotResp) GetFixedVersionId() string {
+	if x != nil && x.FixedVersionId != nil {
+		return *x.FixedVersionId
+	}
+	return ""
+}
+
+func (x *PipelineSnapshotResp) GetFixedVersionLabel() string {
+	if x != nil && x.FixedVersionLabel != nil {
+		return *x.FixedVersionLabel
+	}
+	return ""
 }
 
 func (x *PipelineSnapshotResp) GetStagesSnapshot() []*SnapshotStageResp {
@@ -123,17 +195,17 @@ func (x *PipelineSnapshotResp) GetCreatedAt() string {
 }
 
 type SnapshotStageResp struct {
-	state               protoimpl.MessageState   `protogen:"open.v1"`
-	Name                string                   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Id                  string                   `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	Image               string                   `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
-	Version             int32                    `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
-	DependsOn           []string                 `protobuf:"bytes,5,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
-	Script              string                   `protobuf:"bytes,6,opt,name=script,proto3" json:"script,omitempty"`
-	Artifacts           []*ArtifactConfigResp    `protobuf:"bytes,7,rep,name=artifacts,proto3" json:"artifacts,omitempty"`
-	BuildVersionBinding *BuildVersionBindingResp `protobuf:"bytes,8,opt,name=build_version_binding,json=buildVersionBinding,proto3,oneof" json:"build_version_binding,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Image         string                 `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
+	DependsOn     []string               `protobuf:"bytes,4,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
+	Script        string                 `protobuf:"bytes,5,opt,name=script,proto3" json:"script,omitempty"`
+	Artifacts     []*ArtifactConfigResp  `protobuf:"bytes,6,rep,name=artifacts,proto3" json:"artifacts,omitempty"`
+	SortOrder     int32                  `protobuf:"varint,7,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
+	Description   string                 `protobuf:"bytes,8,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SnapshotStageResp) Reset() {
@@ -166,16 +238,16 @@ func (*SnapshotStageResp) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_pipeline_snapshot_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *SnapshotStageResp) GetName() string {
+func (x *SnapshotStageResp) GetId() string {
 	if x != nil {
-		return x.Name
+		return x.Id
 	}
 	return ""
 }
 
-func (x *SnapshotStageResp) GetId() string {
+func (x *SnapshotStageResp) GetName() string {
 	if x != nil {
-		return x.Id
+		return x.Name
 	}
 	return ""
 }
@@ -185,13 +257,6 @@ func (x *SnapshotStageResp) GetImage() string {
 		return x.Image
 	}
 	return ""
-}
-
-func (x *SnapshotStageResp) GetVersion() int32 {
-	if x != nil {
-		return x.Version
-	}
-	return 0
 }
 
 func (x *SnapshotStageResp) GetDependsOn() []string {
@@ -215,40 +280,62 @@ func (x *SnapshotStageResp) GetArtifacts() []*ArtifactConfigResp {
 	return nil
 }
 
-func (x *SnapshotStageResp) GetBuildVersionBinding() *BuildVersionBindingResp {
+func (x *SnapshotStageResp) GetSortOrder() int32 {
 	if x != nil {
-		return x.BuildVersionBinding
+		return x.SortOrder
 	}
-	return nil
+	return 0
+}
+
+func (x *SnapshotStageResp) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
 }
 
 var File_orbit_v1_pipeline_snapshot_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_pipeline_snapshot_proto_rawDesc = "" +
 	"\n" +
-	" orbit/v1/pipeline/snapshot.proto\x12\x11orbit.v1.pipeline\x1a&orbit/v1/pipeline/pipeline_stage.proto\x1a\x1corbit/v1/common/common.proto\"\xf8\x02\n" +
+	" orbit/v1/pipeline/snapshot.proto\x12\x11orbit.v1.pipeline\x1a\x1corbit/v1/common/common.proto\x1a&orbit/v1/pipeline/pipeline_stage.proto\"\xac\a\n" +
 	"\x14PipelineSnapshotResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
-	"\vtemplate_id\x18\x02 \x01(\tR\n" +
-	"templateId\x12#\n" +
-	"\rtemplate_name\x18\x03 \x01(\tR\ftemplateName\x12)\n" +
-	"\x10template_version\x18\x04 \x01(\x05R\x0ftemplateVersion\x12\x18\n" +
-	"\aversion\x18\x05 \x01(\x05R\aversion\x12M\n" +
-	"\x0fstages_snapshot\x18\x06 \x03(\v2$.orbit.v1.pipeline.SnapshotStageRespR\x0estagesSnapshot\x12W\n" +
-	"\x12variables_snapshot\x18\a \x03(\v2(.orbit.v1.common.VariableDeclarationRespR\x11variablesSnapshot\x12\x1d\n" +
+	"\vpipeline_id\x18\x02 \x01(\tR\n" +
+	"pipelineId\x12#\n" +
+	"\rpipeline_name\x18\x03 \x01(\tR\fpipelineName\x12)\n" +
+	"\x10pipeline_version\x18\x04 \x01(\x05R\x0fpipelineVersion\x12,\n" +
+	"\x12source_pipeline_id\x18\x05 \x01(\tR\x10sourcePipelineId\x120\n" +
+	"\x14source_template_name\x18\x06 \x01(\tR\x12sourceTemplateName\x126\n" +
+	"\x17source_template_version\x18\a \x01(\x05R\x15sourceTemplateVersion\x12*\n" +
+	"\x0eapplication_id\x18\b \x01(\tH\x00R\rapplicationId\x88\x01\x01\x12.\n" +
+	"\x10application_name\x18\t \x01(\tH\x01R\x0fapplicationName\x88\x01\x01\x12#\n" +
+	"\rrepository_id\x18\n" +
+	" \x01(\tR\frepositoryId\x12'\n" +
+	"\x0frepository_name\x18\v \x01(\tR\x0erepositoryName\x127\n" +
+	"\x15version_fork_strategy\x18\f \x01(\tH\x02R\x13versionForkStrategy\x88\x01\x01\x12-\n" +
+	"\x10fixed_version_id\x18\r \x01(\tH\x03R\x0efixedVersionId\x88\x01\x01\x123\n" +
+	"\x13fixed_version_label\x18\x0e \x01(\tH\x04R\x11fixedVersionLabel\x88\x01\x01\x12M\n" +
+	"\x0fstages_snapshot\x18\x0f \x03(\v2$.orbit.v1.pipeline.SnapshotStageRespR\x0estagesSnapshot\x12W\n" +
+	"\x12variables_snapshot\x18\x10 \x03(\v2(.orbit.v1.common.VariableDeclarationRespR\x11variablesSnapshot\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\b \x01(\tR\tcreatedAt\"\xe2\x02\n" +
-	"\x11SnapshotStageResp\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\x12\x14\n" +
-	"\x05image\x18\x03 \x01(\tR\x05image\x12\x18\n" +
-	"\aversion\x18\x04 \x01(\x05R\aversion\x12\x1d\n" +
+	"created_at\x18\x11 \x01(\tR\tcreatedAtB\x11\n" +
+	"\x0f_application_idB\x13\n" +
+	"\x11_application_nameB\x18\n" +
+	"\x16_version_fork_strategyB\x13\n" +
+	"\x11_fixed_version_idB\x16\n" +
+	"\x14_fixed_version_label\"\x8a\x02\n" +
+	"\x11SnapshotStageResp\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05image\x18\x03 \x01(\tR\x05image\x12\x1d\n" +
 	"\n" +
-	"depends_on\x18\x05 \x03(\tR\tdependsOn\x12\x16\n" +
-	"\x06script\x18\x06 \x01(\tR\x06script\x12C\n" +
-	"\tartifacts\x18\a \x03(\v2%.orbit.v1.pipeline.ArtifactConfigRespR\tartifacts\x12c\n" +
-	"\x15build_version_binding\x18\b \x01(\v2*.orbit.v1.pipeline.BuildVersionBindingRespH\x00R\x13buildVersionBinding\x88\x01\x01B\x18\n" +
-	"\x16_build_version_bindingB\xd4\x01\n" +
+	"depends_on\x18\x04 \x03(\tR\tdependsOn\x12\x16\n" +
+	"\x06script\x18\x05 \x01(\tR\x06script\x12C\n" +
+	"\tartifacts\x18\x06 \x03(\v2%.orbit.v1.pipeline.ArtifactConfigRespR\tartifacts\x12\x1d\n" +
+	"\n" +
+	"sort_order\x18\a \x01(\x05R\tsortOrder\x12 \n" +
+	"\vdescription\x18\b \x01(\tR\vdescriptionB\xd4\x01\n" +
 	"\x15com.orbit.v1.pipelineB\rSnapshotProtoP\x01ZFgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/pipeline\xa2\x02\x03OVP\xaa\x02\x11Orbit.V1.Pipeline\xca\x02\x11Orbit\\V1\\Pipeline\xe2\x02\x1dOrbit\\V1\\Pipeline\\GPBMetadata\xea\x02\x13Orbit::V1::Pipelineb\x06proto3"
 
 var (
@@ -269,18 +356,16 @@ var file_orbit_v1_pipeline_snapshot_proto_goTypes = []any{
 	(*SnapshotStageResp)(nil),              // 1: orbit.v1.pipeline.SnapshotStageResp
 	(*common.VariableDeclarationResp)(nil), // 2: orbit.v1.common.VariableDeclarationResp
 	(*ArtifactConfigResp)(nil),             // 3: orbit.v1.pipeline.ArtifactConfigResp
-	(*BuildVersionBindingResp)(nil),        // 4: orbit.v1.pipeline.BuildVersionBindingResp
 }
 var file_orbit_v1_pipeline_snapshot_proto_depIdxs = []int32{
 	1, // 0: orbit.v1.pipeline.PipelineSnapshotResp.stages_snapshot:type_name -> orbit.v1.pipeline.SnapshotStageResp
 	2, // 1: orbit.v1.pipeline.PipelineSnapshotResp.variables_snapshot:type_name -> orbit.v1.common.VariableDeclarationResp
 	3, // 2: orbit.v1.pipeline.SnapshotStageResp.artifacts:type_name -> orbit.v1.pipeline.ArtifactConfigResp
-	4, // 3: orbit.v1.pipeline.SnapshotStageResp.build_version_binding:type_name -> orbit.v1.pipeline.BuildVersionBindingResp
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_pipeline_snapshot_proto_init() }
@@ -289,7 +374,7 @@ func file_orbit_v1_pipeline_snapshot_proto_init() {
 		return
 	}
 	file_orbit_v1_pipeline_pipeline_stage_proto_init()
-	file_orbit_v1_pipeline_snapshot_proto_msgTypes[1].OneofWrappers = []any{}
+	file_orbit_v1_pipeline_snapshot_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

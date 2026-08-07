@@ -11,17 +11,12 @@ import (
 type Querier interface {
 	CountRepositories(ctx context.Context, arg CountRepositoriesParams) (int64, error)
 	CreateRepository(ctx context.Context, arg CreateRepositoryParams) error
-	CreateRepositoryWebhook(ctx context.Context, arg CreateRepositoryWebhookParams) error
 	DeleteRepository(ctx context.Context, id string) error
-	DeleteRepositoryWebhook(ctx context.Context, id string) error
 	ListRepositories(ctx context.Context, arg ListRepositoriesParams) ([]ListRepositoriesRow, error)
-	ListRepositoryWebhooks(ctx context.Context, repositoryID string) ([]RepositoryWebhook, error)
 	RepositoryByCode(ctx context.Context, arg RepositoryByCodeParams) (RepositoryByCodeRow, error)
 	RepositoryByID(ctx context.Context, id string) (RepositoryByIDRow, error)
 	RepositoryHasRunningPipelines(ctx context.Context, arg RepositoryHasRunningPipelinesParams) (int64, error)
-	RepositoryWebhookByID(ctx context.Context, id string) (RepositoryWebhook, error)
 	UpdateRepository(ctx context.Context, arg UpdateRepositoryParams) error
-	UpdateRepositoryWebhook(ctx context.Context, arg UpdateRepositoryWebhookParams) error
 }
 
 var _ Querier = (*Queries)(nil)

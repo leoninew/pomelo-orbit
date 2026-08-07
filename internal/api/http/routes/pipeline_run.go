@@ -9,9 +9,9 @@ import (
 func (r Router) registerPipelineRun(engine *gin.Engine) {
 	handler := pipelinerunhandler.New(r.logger, r.deps.PipelineRunService, r.deps.Authenticator)
 
-	engine.GET("/api/repository/:repository_id/pipeline-run", handler.ListRepositoryRuns)
-	engine.POST("/api/repository/:repository_id/trigger", handler.TriggerRepository)
 	engine.GET("/api/pipeline-run", handler.ListPipelineRuns)
+	engine.POST("/api/pipeline/:pipeline_id/trigger", handler.TriggerPipeline)
+	engine.POST("/api/pipeline/:pipeline_id/variable-preview", handler.PreviewPipelineRunVariables)
 	engine.GET("/api/pipeline-run/:run_id", handler.GetPipelineRun)
 	engine.GET("/api/pipeline-run/:run_id/artifact", handler.ListPipelineRunArtifacts)
 	engine.GET("/api/pipeline-run/:run_id/stage/:stage_run_id/log", handler.GetPipelineStageLog)

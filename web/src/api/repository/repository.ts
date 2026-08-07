@@ -1,8 +1,4 @@
 import type {
-  PipelineRunResp,
-  PipelineRunTriggerReq,
-} from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
-import type {
   RepositoryCreateReq,
   RepositoryPaginatedResp,
   RepositoryResp,
@@ -34,9 +30,5 @@ export const repositoryApi = {
 
   delete(id: string, params?: { delete_workspace?: boolean }): Promise<void> {
     return request.delete(`/api/repository/${id}`, { params });
-  },
-
-  trigger(id: string, data: PipelineRunTriggerReq): Promise<PipelineRunResp> {
-    return request.post(`/api/repository/${id}/trigger`, data);
   },
 };

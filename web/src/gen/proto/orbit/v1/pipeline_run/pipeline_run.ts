@@ -12,7 +12,6 @@ import type { PipelineStageRunResp } from "./pipeline_stage_run";
 export const protobufPackage = "orbit.v1.pipeline_run";
 
 export interface PipelineRunTriggerReq {
-  template_id: string;
   trigger_ref: string;
   variables: { [key: string]: string };
 }
@@ -22,10 +21,34 @@ export interface PipelineRunTriggerReq_VariablesEntry {
   value: string;
 }
 
+export interface PipelineRunVariablePreviewReq {
+  trigger_ref: string;
+  variables: { [key: string]: string };
+}
+
+export interface PipelineRunVariablePreviewReq_VariablesEntry {
+  key: string;
+  value: string;
+}
+
+export interface PipelineRunVariablePreviewResp {
+  trigger_ref: string;
+  variable_declarations: VariableDeclarationResp[];
+}
+
 export interface PipelineRunRetryReq {
 }
 
 export interface PipelineRunCancelReq {
+}
+
+export interface PipelineRunVersionBindingResp {
+  application_id: string;
+  application_name: string;
+  source_version_id: string;
+  source_version_label: string;
+  generated_version_id?: string | undefined;
+  generated_version_label?: string | undefined;
 }
 
 export interface PipelineRunResp {
@@ -34,9 +57,9 @@ export interface PipelineRunResp {
   repository_id: string;
   repository_name: string;
   snapshot_id: string;
-  template_id: string;
-  template_name: string;
-  template_version: number;
+  pipeline_id: string;
+  pipeline_name: string;
+  pipeline_version: number;
   trigger: string;
   trigger_ref: string;
   variables_snapshot: VariableDeclarationResp[];
@@ -47,6 +70,7 @@ export interface PipelineRunResp {
   error_message?: string | undefined;
   created_at: string;
   pipeline_stage_runs: PipelineStageRunResp[];
+  version_binding?: PipelineRunVersionBindingResp | undefined;
 }
 
 export interface PipelineRunArtifactListResp {

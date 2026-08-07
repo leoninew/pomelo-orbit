@@ -6,28 +6,37 @@
 
 /* eslint-disable */
 import type { VariableDeclarationResp } from "../common/common";
-import type { ArtifactConfigResp, BuildVersionBindingResp } from "./pipeline_stage";
+import type { ArtifactConfigResp } from "./pipeline_stage";
 
 export const protobufPackage = "orbit.v1.pipeline";
 
 export interface PipelineSnapshotResp {
   id: string;
-  template_id: string;
-  template_name: string;
-  template_version: number;
-  version: number;
+  pipeline_id: string;
+  pipeline_name: string;
+  pipeline_version: number;
+  source_pipeline_id: string;
+  source_template_name: string;
+  source_template_version: number;
+  application_id?: string | undefined;
+  application_name?: string | undefined;
+  repository_id: string;
+  repository_name: string;
+  version_fork_strategy?: string | undefined;
+  fixed_version_id?: string | undefined;
+  fixed_version_label?: string | undefined;
   stages_snapshot: SnapshotStageResp[];
   variables_snapshot: VariableDeclarationResp[];
   created_at: string;
 }
 
 export interface SnapshotStageResp {
-  name: string;
   id: string;
+  name: string;
   image: string;
-  version: number;
   depends_on: string[];
   script: string;
   artifacts: ArtifactConfigResp[];
-  build_version_binding?: BuildVersionBindingResp | undefined;
+  sort_order: number;
+  description: string;
 }

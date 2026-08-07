@@ -94,12 +94,10 @@
             <dd class="text-foreground">{{ run.trigger_ref }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt>
-              {{ t('pipelineRun.fields.template') }}
-            </dt>
+            <dt>流水线</dt>
             <dd>
-              <router-link :to="`/pipeline/template/${run.template_id}`" class="app-link">
-                {{ run.template_name }} v{{ run.template_version }}
+              <router-link :to="`/pipeline/${run.pipeline_id}`" class="app-link">
+                {{ run.pipeline_name }} v{{ run.pipeline_version }}
               </router-link>
             </dd>
           </div>
@@ -187,11 +185,9 @@
                 <tr v-for="(stage, index) in snapshot?.stages_snapshot ?? []" :key="stage.id">
                   <td class="text-muted-foreground">{{ index + 1 }}</td>
                   <td>
-                    <router-link :to="`/pipeline/stage/${stage.id}`" class="app-link">
-                      {{ stage.name }}
-                    </router-link>
+                    <span class="text-foreground">{{ stage.name }}</span>
                   </td>
-                  <td class="text-foreground">v{{ stage.version }}</td>
+                  <td class="text-foreground">{{ stage.image }}</td>
                   <td>
                     <div v-if="stage.depends_on.length" class="flex flex-wrap gap-1">
                       <AppBadge v-for="depId in stage.depends_on" :key="depId">
@@ -368,7 +364,7 @@
   import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
-  import { pipelineTemplateApi } from '@/api/pipeline/template';
+  import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
@@ -541,7 +537,7 @@
 
   async function fetchSnapshot(snapshotId: string) {
     try {
-      const data = await pipelineTemplateApi.getSnapshot(snapshotId);
+      const data = await pipelineApi.getSnapshot(snapshotId);
       snapshot.value = data;
     } catch {
       // Snapshot load failure does not block the main flow

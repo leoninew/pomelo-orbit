@@ -6,13 +6,23 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-// BuildVersionForkInput identifies the source Version and the build output applied to its target Component.
+// BuildVersionComponentUpdate is one image artifact applied while a build forks
+// a single Version.
+type BuildVersionComponentUpdate struct {
+	ComponentName    string
+	Image            string
+	ArtifactId       string
+	ArtifactName     string
+	LocalImageSha256 string
+	SourceCommitSha  string
+}
+
+// BuildVersionForkInput identifies the source Version and all build outputs
+// applied atomically to its target Components.
 type BuildVersionForkInput struct {
 	SourceVersionId string
 	Label           string
-	ComponentName   string
-	Image           string
-	ArtifactId      string
+	Components      []BuildVersionComponentUpdate
 }
 
 // BuildVersionForker creates an unpublished Version from a source Version for a pipeline build.

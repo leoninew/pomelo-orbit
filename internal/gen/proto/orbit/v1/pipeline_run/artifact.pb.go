@@ -27,26 +27,26 @@ type ArtifactResp struct {
 	PipelineRunId         string                 `protobuf:"bytes,2,opt,name=pipeline_run_id,json=pipelineRunId,proto3" json:"pipeline_run_id,omitempty"`
 	RepositoryId          string                 `protobuf:"bytes,3,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
 	RepositoryName        string                 `protobuf:"bytes,4,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
-	TemplateId            string                 `protobuf:"bytes,5,opt,name=template_id,json=templateId,proto3" json:"template_id,omitempty"`
-	TemplateName          string                 `protobuf:"bytes,6,opt,name=template_name,json=templateName,proto3" json:"template_name,omitempty"`
-	StageName             string                 `protobuf:"bytes,7,opt,name=stage_name,json=stageName,proto3" json:"stage_name,omitempty"`
-	Collector             string                 `protobuf:"bytes,8,opt,name=collector,proto3" json:"collector,omitempty"`
-	Name                  string                 `protobuf:"bytes,9,opt,name=name,proto3" json:"name,omitempty"`
-	Location              *string                `protobuf:"bytes,10,opt,name=location,proto3,oneof" json:"location,omitempty"`
-	CreatedAt             string                 `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	ImageRef              *string                `protobuf:"bytes,12,opt,name=image_ref,json=imageRef,proto3,oneof" json:"image_ref,omitempty"`
-	LocalImageSha256      *string                `protobuf:"bytes,13,opt,name=local_image_sha256,json=localImageSha256,proto3,oneof" json:"local_image_sha256,omitempty"`
-	SourceCommitSha       *string                `protobuf:"bytes,14,opt,name=source_commit_sha,json=sourceCommitSha,proto3,oneof" json:"source_commit_sha,omitempty"`
-	GeneratedVersionId    *string                `protobuf:"bytes,15,opt,name=generated_version_id,json=generatedVersionId,proto3,oneof" json:"generated_version_id,omitempty"`
-	VersionComponentId    *string                `protobuf:"bytes,16,opt,name=version_component_id,json=versionComponentId,proto3,oneof" json:"version_component_id,omitempty"`
-	PipelineStageId       string                 `protobuf:"bytes,17,opt,name=pipeline_stage_id,json=pipelineStageId,proto3" json:"pipeline_stage_id,omitempty"`
-	Value                 *string                `protobuf:"bytes,18,opt,name=value,proto3,oneof" json:"value,omitempty"`
-	ValueFormat           *string                `protobuf:"bytes,19,opt,name=value_format,json=valueFormat,proto3,oneof" json:"value_format,omitempty"`
-	ApplicationId         *string                `protobuf:"bytes,20,opt,name=application_id,json=applicationId,proto3,oneof" json:"application_id,omitempty"`
-	ApplicationName       *string                `protobuf:"bytes,21,opt,name=application_name,json=applicationName,proto3,oneof" json:"application_name,omitempty"`
-	SourceVersionId       *string                `protobuf:"bytes,22,opt,name=source_version_id,json=sourceVersionId,proto3,oneof" json:"source_version_id,omitempty"`
-	SourceVersionLabel    *string                `protobuf:"bytes,23,opt,name=source_version_label,json=sourceVersionLabel,proto3,oneof" json:"source_version_label,omitempty"`
-	GeneratedVersionLabel *string                `protobuf:"bytes,24,opt,name=generated_version_label,json=generatedVersionLabel,proto3,oneof" json:"generated_version_label,omitempty"`
+	PipelineId            string                 `protobuf:"bytes,5,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	PipelineName          string                 `protobuf:"bytes,6,opt,name=pipeline_name,json=pipelineName,proto3" json:"pipeline_name,omitempty"`
+	PipelineStageId       string                 `protobuf:"bytes,7,opt,name=pipeline_stage_id,json=pipelineStageId,proto3" json:"pipeline_stage_id,omitempty"`
+	StageName             string                 `protobuf:"bytes,8,opt,name=stage_name,json=stageName,proto3" json:"stage_name,omitempty"`
+	Collector             string                 `protobuf:"bytes,9,opt,name=collector,proto3" json:"collector,omitempty"`
+	Name                  string                 `protobuf:"bytes,10,opt,name=name,proto3" json:"name,omitempty"`
+	Location              *string                `protobuf:"bytes,11,opt,name=location,proto3,oneof" json:"location,omitempty"`
+	Value                 *string                `protobuf:"bytes,12,opt,name=value,proto3,oneof" json:"value,omitempty"`
+	ValueFormat           *string                `protobuf:"bytes,13,opt,name=value_format,json=valueFormat,proto3,oneof" json:"value_format,omitempty"`
+	CreatedAt             string                 `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ImageRef              *string                `protobuf:"bytes,15,opt,name=image_ref,json=imageRef,proto3,oneof" json:"image_ref,omitempty"`
+	LocalImageSha256      *string                `protobuf:"bytes,16,opt,name=local_image_sha256,json=localImageSha256,proto3,oneof" json:"local_image_sha256,omitempty"`
+	SourceCommitSha       *string                `protobuf:"bytes,17,opt,name=source_commit_sha,json=sourceCommitSha,proto3,oneof" json:"source_commit_sha,omitempty"`
+	ApplicationId         *string                `protobuf:"bytes,18,opt,name=application_id,json=applicationId,proto3,oneof" json:"application_id,omitempty"`
+	ApplicationName       *string                `protobuf:"bytes,19,opt,name=application_name,json=applicationName,proto3,oneof" json:"application_name,omitempty"`
+	SourceVersionId       *string                `protobuf:"bytes,20,opt,name=source_version_id,json=sourceVersionId,proto3,oneof" json:"source_version_id,omitempty"`
+	SourceVersionLabel    *string                `protobuf:"bytes,21,opt,name=source_version_label,json=sourceVersionLabel,proto3,oneof" json:"source_version_label,omitempty"`
+	GeneratedVersionId    *string                `protobuf:"bytes,22,opt,name=generated_version_id,json=generatedVersionId,proto3,oneof" json:"generated_version_id,omitempty"`
+	GeneratedVersionLabel *string                `protobuf:"bytes,23,opt,name=generated_version_label,json=generatedVersionLabel,proto3,oneof" json:"generated_version_label,omitempty"`
+	VersionComponentId    *string                `protobuf:"bytes,24,opt,name=version_component_id,json=versionComponentId,proto3,oneof" json:"version_component_id,omitempty"`
 	VersionComponentName  *string                `protobuf:"bytes,25,opt,name=version_component_name,json=versionComponentName,proto3,oneof" json:"version_component_name,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
@@ -110,16 +110,23 @@ func (x *ArtifactResp) GetRepositoryName() string {
 	return ""
 }
 
-func (x *ArtifactResp) GetTemplateId() string {
+func (x *ArtifactResp) GetPipelineId() string {
 	if x != nil {
-		return x.TemplateId
+		return x.PipelineId
 	}
 	return ""
 }
 
-func (x *ArtifactResp) GetTemplateName() string {
+func (x *ArtifactResp) GetPipelineName() string {
 	if x != nil {
-		return x.TemplateName
+		return x.PipelineName
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetPipelineStageId() string {
+	if x != nil {
+		return x.PipelineStageId
 	}
 	return ""
 }
@@ -152,6 +159,20 @@ func (x *ArtifactResp) GetLocation() string {
 	return ""
 }
 
+func (x *ArtifactResp) GetValue() string {
+	if x != nil && x.Value != nil {
+		return *x.Value
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetValueFormat() string {
+	if x != nil && x.ValueFormat != nil {
+		return *x.ValueFormat
+	}
+	return ""
+}
+
 func (x *ArtifactResp) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
@@ -176,41 +197,6 @@ func (x *ArtifactResp) GetLocalImageSha256() string {
 func (x *ArtifactResp) GetSourceCommitSha() string {
 	if x != nil && x.SourceCommitSha != nil {
 		return *x.SourceCommitSha
-	}
-	return ""
-}
-
-func (x *ArtifactResp) GetGeneratedVersionId() string {
-	if x != nil && x.GeneratedVersionId != nil {
-		return *x.GeneratedVersionId
-	}
-	return ""
-}
-
-func (x *ArtifactResp) GetVersionComponentId() string {
-	if x != nil && x.VersionComponentId != nil {
-		return *x.VersionComponentId
-	}
-	return ""
-}
-
-func (x *ArtifactResp) GetPipelineStageId() string {
-	if x != nil {
-		return x.PipelineStageId
-	}
-	return ""
-}
-
-func (x *ArtifactResp) GetValue() string {
-	if x != nil && x.Value != nil {
-		return *x.Value
-	}
-	return ""
-}
-
-func (x *ArtifactResp) GetValueFormat() string {
-	if x != nil && x.ValueFormat != nil {
-		return *x.ValueFormat
 	}
 	return ""
 }
@@ -243,9 +229,23 @@ func (x *ArtifactResp) GetSourceVersionLabel() string {
 	return ""
 }
 
+func (x *ArtifactResp) GetGeneratedVersionId() string {
+	if x != nil && x.GeneratedVersionId != nil {
+		return *x.GeneratedVersionId
+	}
+	return ""
+}
+
 func (x *ArtifactResp) GetGeneratedVersionLabel() string {
 	if x != nil && x.GeneratedVersionLabel != nil {
 		return *x.GeneratedVersionLabel
+	}
+	return ""
+}
+
+func (x *ArtifactResp) GetVersionComponentId() string {
+	if x != nil && x.VersionComponentId != nil {
+		return *x.VersionComponentId
 	}
 	return ""
 }
@@ -344,46 +344,46 @@ const file_orbit_v1_pipeline_run_artifact_proto_rawDesc = "" +
 	"\x0fpipeline_run_id\x18\x02 \x01(\tR\rpipelineRunId\x12#\n" +
 	"\rrepository_id\x18\x03 \x01(\tR\frepositoryId\x12'\n" +
 	"\x0frepository_name\x18\x04 \x01(\tR\x0erepositoryName\x12\x1f\n" +
-	"\vtemplate_id\x18\x05 \x01(\tR\n" +
-	"templateId\x12#\n" +
-	"\rtemplate_name\x18\x06 \x01(\tR\ftemplateName\x12\x1d\n" +
+	"\vpipeline_id\x18\x05 \x01(\tR\n" +
+	"pipelineId\x12#\n" +
+	"\rpipeline_name\x18\x06 \x01(\tR\fpipelineName\x12*\n" +
+	"\x11pipeline_stage_id\x18\a \x01(\tR\x0fpipelineStageId\x12\x1d\n" +
 	"\n" +
-	"stage_name\x18\a \x01(\tR\tstageName\x12\x1c\n" +
-	"\tcollector\x18\b \x01(\tR\tcollector\x12\x12\n" +
-	"\x04name\x18\t \x01(\tR\x04name\x12\x1f\n" +
-	"\blocation\x18\n" +
-	" \x01(\tH\x00R\blocation\x88\x01\x01\x12\x1d\n" +
+	"stage_name\x18\b \x01(\tR\tstageName\x12\x1c\n" +
+	"\tcollector\x18\t \x01(\tR\tcollector\x12\x12\n" +
+	"\x04name\x18\n" +
+	" \x01(\tR\x04name\x12\x1f\n" +
+	"\blocation\x18\v \x01(\tH\x00R\blocation\x88\x01\x01\x12\x19\n" +
+	"\x05value\x18\f \x01(\tH\x01R\x05value\x88\x01\x01\x12&\n" +
+	"\fvalue_format\x18\r \x01(\tH\x02R\vvalueFormat\x88\x01\x01\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\v \x01(\tR\tcreatedAt\x12 \n" +
-	"\timage_ref\x18\f \x01(\tH\x01R\bimageRef\x88\x01\x01\x121\n" +
-	"\x12local_image_sha256\x18\r \x01(\tH\x02R\x10localImageSha256\x88\x01\x01\x12/\n" +
-	"\x11source_commit_sha\x18\x0e \x01(\tH\x03R\x0fsourceCommitSha\x88\x01\x01\x125\n" +
-	"\x14generated_version_id\x18\x0f \x01(\tH\x04R\x12generatedVersionId\x88\x01\x01\x125\n" +
-	"\x14version_component_id\x18\x10 \x01(\tH\x05R\x12versionComponentId\x88\x01\x01\x12*\n" +
-	"\x11pipeline_stage_id\x18\x11 \x01(\tR\x0fpipelineStageId\x12\x19\n" +
-	"\x05value\x18\x12 \x01(\tH\x06R\x05value\x88\x01\x01\x12&\n" +
-	"\fvalue_format\x18\x13 \x01(\tH\aR\vvalueFormat\x88\x01\x01\x12*\n" +
-	"\x0eapplication_id\x18\x14 \x01(\tH\bR\rapplicationId\x88\x01\x01\x12.\n" +
-	"\x10application_name\x18\x15 \x01(\tH\tR\x0fapplicationName\x88\x01\x01\x12/\n" +
-	"\x11source_version_id\x18\x16 \x01(\tH\n" +
-	"R\x0fsourceVersionId\x88\x01\x01\x125\n" +
-	"\x14source_version_label\x18\x17 \x01(\tH\vR\x12sourceVersionLabel\x88\x01\x01\x12;\n" +
-	"\x17generated_version_label\x18\x18 \x01(\tH\fR\x15generatedVersionLabel\x88\x01\x01\x129\n" +
+	"created_at\x18\x0e \x01(\tR\tcreatedAt\x12 \n" +
+	"\timage_ref\x18\x0f \x01(\tH\x03R\bimageRef\x88\x01\x01\x121\n" +
+	"\x12local_image_sha256\x18\x10 \x01(\tH\x04R\x10localImageSha256\x88\x01\x01\x12/\n" +
+	"\x11source_commit_sha\x18\x11 \x01(\tH\x05R\x0fsourceCommitSha\x88\x01\x01\x12*\n" +
+	"\x0eapplication_id\x18\x12 \x01(\tH\x06R\rapplicationId\x88\x01\x01\x12.\n" +
+	"\x10application_name\x18\x13 \x01(\tH\aR\x0fapplicationName\x88\x01\x01\x12/\n" +
+	"\x11source_version_id\x18\x14 \x01(\tH\bR\x0fsourceVersionId\x88\x01\x01\x125\n" +
+	"\x14source_version_label\x18\x15 \x01(\tH\tR\x12sourceVersionLabel\x88\x01\x01\x125\n" +
+	"\x14generated_version_id\x18\x16 \x01(\tH\n" +
+	"R\x12generatedVersionId\x88\x01\x01\x12;\n" +
+	"\x17generated_version_label\x18\x17 \x01(\tH\vR\x15generatedVersionLabel\x88\x01\x01\x125\n" +
+	"\x14version_component_id\x18\x18 \x01(\tH\fR\x12versionComponentId\x88\x01\x01\x129\n" +
 	"\x16version_component_name\x18\x19 \x01(\tH\rR\x14versionComponentName\x88\x01\x01B\v\n" +
-	"\t_locationB\f\n" +
+	"\t_locationB\b\n" +
+	"\x06_valueB\x0f\n" +
+	"\r_value_formatB\f\n" +
 	"\n" +
 	"_image_refB\x15\n" +
 	"\x13_local_image_sha256B\x14\n" +
-	"\x12_source_commit_shaB\x17\n" +
-	"\x15_generated_version_idB\x17\n" +
-	"\x15_version_component_idB\b\n" +
-	"\x06_valueB\x0f\n" +
-	"\r_value_formatB\x11\n" +
+	"\x12_source_commit_shaB\x11\n" +
 	"\x0f_application_idB\x13\n" +
 	"\x11_application_nameB\x14\n" +
 	"\x12_source_version_idB\x17\n" +
-	"\x15_source_version_labelB\x1a\n" +
-	"\x18_generated_version_labelB\x19\n" +
+	"\x15_source_version_labelB\x17\n" +
+	"\x15_generated_version_idB\x1a\n" +
+	"\x18_generated_version_labelB\x17\n" +
+	"\x15_version_component_idB\x19\n" +
 	"\x17_version_component_name\"\xad\x01\n" +
 	"\x15ArtifactPaginatedResp\x129\n" +
 	"\x05items\x18\x01 \x03(\v2#.orbit.v1.pipeline_run.ArtifactRespR\x05items\x12\x14\n" +

@@ -3,29 +3,47 @@ package dto
 import "gitee.com/leoninew/PomeloOrbit-go/internal/model"
 
 type ArtifactConfig struct {
-	Name      string `json:"name"`
-	Collector string `json:"collector"`
-	Reference string `json:"reference,omitempty"`
-	Command   string `json:"command,omitempty"`
-	Format    string `json:"format,omitempty"`
+	Name          string
+	Collector     string
+	Reference     string
+	Command       string
+	Format        string
+	ComponentName *string
 }
 
-type BuildVersionBinding struct {
-	ApplicationId   string
-	ApplicationName string
-	ComponentName   string
-	ForkStrategy    string
-	FixedVersionId  *string
+type PipelineCreateInput struct {
+	ProjectId            string
+	Kind                 string
+	Name                 string
+	Description          string
+	VariableDeclarations []map[string]any
+}
+
+type PipelineUpdateInput struct {
+	Name                     *string
+	Description              *string
+	VariableDeclarations     *[]map[string]any
+	VersionForkStrategy      *string
+	FixedVersionId           *string
+	ClearVersionForkStrategy bool
+}
+
+type PipelineInstantiateInput struct {
+	Name          string
+	ApplicationId *string
+	RepositoryId  string
 }
 
 type PipelineStageCreateInput struct {
-	ProjectId           string
 	Name                string
 	Image               string
 	Script              string
 	Artifacts           []ArtifactConfig
-	BuildVersionBinding *BuildVersionBinding
+	DependsOn           []string
+	SortOrder           int
 	Description         string
+	VersionForkStrategy *string
+	FixedVersionId      *string
 }
 
 type PipelineStageUpdateInput struct {
@@ -33,55 +51,22 @@ type PipelineStageUpdateInput struct {
 	Image                    *string
 	Script                   *string
 	Artifacts                *[]ArtifactConfig
-	BuildVersionBinding      *BuildVersionBinding
-	ClearBuildVersionBinding bool
+	DependsOn                *[]string
+	SortOrder                *int
 	Description              *string
+	VersionForkStrategy      *string
+	FixedVersionId           *string
+	ClearVersionForkStrategy bool
 }
 
 type PipelineStageDetail struct {
-	Id                  string
-	Name                string
-	Image               string
-	Script              string
-	Artifacts           []ArtifactConfig
-	BuildVersionBinding *BuildVersionBinding
-	Description         string
-	Version             int
-	CreatedAt           string
-	UpdatedAt           string
+	Stage     model.PipelineStage
+	Artifacts []ArtifactConfig
+	DependsOn []string
 }
 
-type StageOrchestration struct {
-	StageId      string   `json:"stage_id"`
-	StageName    string   `json:"stage_name"`
-	StageVersion int      `json:"stage_version"`
-	DependsOn    []string `json:"depends_on"`
-	SortOrder    int      `json:"sort_order"`
-}
-
-type PipelineTemplateCreateInput struct {
-	ProjectId            string
-	Name                 string
-	Description          string
-	VariableDeclarations []map[string]any
-}
-
-type PipelineTemplateUpdateInput struct {
-	Name                 *string
-	Description          *string
-	Orchestration        *[]StageOrchestration
-	VariableDeclarations *[]map[string]any
-}
-
-type PipelineTemplateResolveInput struct {
-	ProjectId            string
-	Orchestration        []StageOrchestration
-	VariableDeclarations []map[string]any
-}
-
-type PipelineTemplateDetail struct {
-	Template             model.PipelineTemplate
-	Orchestration        []StageOrchestration
+type PipelineDetail struct {
+	Pipeline             model.Pipeline
 	Stages               []PipelineStageDetail
 	VariableDeclarations []map[string]any
 }

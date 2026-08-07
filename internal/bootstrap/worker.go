@@ -10,6 +10,7 @@ import (
 	pipelinerunsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/usecase"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	databasetx "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database/tx"
 	deploymentrunner "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/runner/deployment"
 	pipelinerunner "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/runner/pipeline"
 	runtimepath "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local"
@@ -30,6 +31,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
 	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, deploymentWorkspace)
 	applicationService := applicationsvc.New(stores.project, stores.application)
+	transactionRunner := databasetx.NewTransactionRunner(database)
 
 	pipelineRunService := pipelinerunsvc.NewExecutionService(
 		stores.project,
@@ -39,6 +41,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		stores.pipelineRun,
 		stores.application,
 		applicationService,
+		transactionRunner,
 		pipelineWorkspace,
 		cfg.Jwt.SecretKey,
 		logger,

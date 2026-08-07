@@ -8,9 +8,9 @@ type PipelineRun struct {
 	RepositoryId      string     `db:"repository_id"`
 	RepositoryName    string     `db:"repository_name"`
 	SnapshotId        string     `db:"snapshot_id"`
-	TemplateId        string     `db:"template_id"`
-	TemplateName      string     `db:"template_name"`
-	TemplateVersion   int        `db:"template_version"`
+	PipelineId        string     `db:"pipeline_id"`
+	PipelineName      string     `db:"pipeline_name"`
+	PipelineVersion   int        `db:"pipeline_version"`
 	Trigger           string     `db:"trigger"`
 	TriggerRef        string     `db:"trigger_ref"`
 	VariablesSnapshot string     `db:"variables_snapshot"`
@@ -40,8 +40,8 @@ type Artifact struct {
 	PipelineRunId         string    `db:"pipeline_run_id"`
 	RepositoryId          string    `db:"repository_id"`
 	RepositoryName        string    `db:"repository_name"`
-	TemplateId            string    `db:"template_id"`
-	TemplateName          string    `db:"template_name"`
+	PipelineId            string    `db:"pipeline_id"`
+	PipelineName          string    `db:"pipeline_name"`
 	PipelineStageId       string    `db:"pipeline_stage_id"`
 	StageName             string    `db:"stage_name"`
 	Collector             string    `db:"collector"`
@@ -64,15 +64,15 @@ type Artifact struct {
 	CreatedAt             time.Time `db:"created_at"`
 }
 
-type PipelineRunBuildVersionBinding struct {
+// PipelineRunVersionBinding records the single source Version and optional
+// generated Version for a Run. Component-to-artifact lineage lives on the
+// generated Version's components.
+type PipelineRunVersionBinding struct {
 	PipelineRunId         string  `db:"pipeline_run_id"`
-	PipelineStageId       string  `db:"pipeline_stage_id"`
 	ApplicationId         string  `db:"application_id"`
 	ApplicationName       string  `db:"application_name"`
-	ComponentName         string  `db:"component_name"`
 	SourceVersionId       string  `db:"source_version_id"`
 	SourceVersionLabel    string  `db:"source_version_label"`
 	GeneratedVersionId    *string `db:"generated_version_id"`
 	GeneratedVersionLabel *string `db:"generated_version_label"`
-	ArtifactId            *string `db:"artifact_id"`
 }

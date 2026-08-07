@@ -30,7 +30,6 @@ type ApplicationStore interface {
 	CountVersionRuntimeRefs(ctx context.Context, versionId string) (int, error)
 	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
 	VersionComponent(ctx context.Context, id string) (model.VersionComponent, error)
-	SetVersionComponentArtifact(ctx context.Context, componentId string, artifactId string) error
 	ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error
 	CreateVersionComponent(ctx context.Context, component model.VersionComponent) error
 	UpdateVersionComponentBasic(ctx context.Context, component model.VersionComponent, oldName string) error

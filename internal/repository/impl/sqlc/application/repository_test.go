@@ -61,22 +61,23 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-3', 'app-1', 'v3', 'unpublished')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO pipeline_template (id, name) VALUES ('template-1', 'Template')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO pipeline_snapshot (id, template_id, version) VALUES ('snapshot-1', 'template-1', 1)`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO repository (id, name, code, repository_url) VALUES ('repository-1', 'Repository', 'repository', 'https://example.invalid/repository.git')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO pipeline_run (id, repository_id, snapshot_id, template_version, trigger, trigger_ref, status) VALUES ('run-1', 'repository-1', 'snapshot-1', 1, 'manual', 'main', 'ran_to_completion')`); err != nil {
+	if _, err := database.ExecContext(ctx, `
+		CREATE TABLE pipeline_run_version_binding (
+			pipeline_run_id TEXT PRIMARY KEY,
+			application_id TEXT NOT NULL,
+			application_name TEXT NOT NULL,
+			source_version_id TEXT NOT NULL,
+			source_version_label TEXT NOT NULL,
+			generated_version_id TEXT,
+			generated_version_label TEXT
+		)
+	`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO deployment (id, application_name, operation_type, trigger_type, status, is_rollback, version_id) VALUES ('deployment-1', 'App', 'deploy', 'manual', 'succeeded', 0, 'version-1')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO pipeline_run_build_version_binding (pipeline_run_id, pipeline_stage_id, application_id, application_name, component_name, source_version_id, source_version_label, generated_version_id, generated_version_label) VALUES ('run-1', 'stage-1', 'app-1', 'App', 'web', 'version-1', 'v1', 'version-3', 'v3')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO pipeline_run_version_binding (pipeline_run_id, application_id, application_name, source_version_id, source_version_label, generated_version_id, generated_version_label) VALUES ('run-1', 'app-1', 'App', 'version-1', 'v1', 'version-3', 'v3')`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -107,7 +108,7 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 		t.Fatalf("expected preserved deployment version reference, got %q", deploymentVersionID)
 	}
 	var sourceVersionID, generatedVersionID string
-	if err := database.QueryRowContext(ctx, `SELECT source_version_id, generated_version_id FROM pipeline_run_build_version_binding WHERE pipeline_run_id = 'run-1'`).Scan(&sourceVersionID, &generatedVersionID); err != nil {
+	if err := database.QueryRowContext(ctx, `SELECT source_version_id, generated_version_id FROM pipeline_run_version_binding WHERE pipeline_run_id = 'run-1'`).Scan(&sourceVersionID, &generatedVersionID); err != nil {
 		t.Fatal(err)
 	}
 	if sourceVersionID != "version-1" || generatedVersionID != "version-3" {
@@ -124,7 +125,7 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 	if err := repo.DeleteVersion(ctx, "version-3"); err != nil {
 		t.Fatal(err)
 	}
-	if err := database.QueryRowContext(ctx, `SELECT generated_version_id FROM pipeline_run_build_version_binding WHERE pipeline_run_id = 'run-1'`).Scan(&generatedVersionID); err != nil {
+	if err := database.QueryRowContext(ctx, `SELECT generated_version_id FROM pipeline_run_version_binding WHERE pipeline_run_id = 'run-1'`).Scan(&generatedVersionID); err != nil {
 		t.Fatal(err)
 	}
 	if generatedVersionID != "version-3" {

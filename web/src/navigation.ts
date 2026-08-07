@@ -181,16 +181,10 @@ const pipelineNavigation: NavigationBranch[] = [
     icon: Play,
     children: [
       {
-        key: 'pipelinetemplates',
-        label: '模板',
-        labelKey: 'nav.pipelineTemplates',
-        path: '/pipeline/template',
-      },
-      {
-        key: 'buildstages',
-        label: '阶段',
-        labelKey: 'nav.buildStages',
-        path: '/pipeline/stage',
+        key: 'pipelines',
+        label: '流水线',
+        labelKey: 'nav.pipelines',
+        path: '/pipeline',
       },
       {
         key: 'pipelineruns',
@@ -250,6 +244,21 @@ export function resolveSecondaryNavigation(
       };
     })
     .filter((branch) => branch.children.length > 0);
+}
+
+export function getSecondaryNavigationTitle(
+  scope: NavigationScope,
+  menuKey: string,
+  t: (key: string) => string
+): string | null {
+  const branch = secondaryNavigation[scope].find((item) =>
+    item.children.some((child) => child.key === menuKey)
+  );
+  const leaf = branch?.children.find((item) => item.key === menuKey);
+  if (!branch || !leaf) {
+    return null;
+  }
+  return `${t(branch.labelKey)} ${t(leaf.labelKey)}`;
 }
 
 export const primaryNavigation = [

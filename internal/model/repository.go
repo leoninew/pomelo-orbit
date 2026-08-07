@@ -20,15 +20,3 @@ type Repository struct {
 	CreatedAt         time.Time `db:"created_at"`
 	UpdatedAt         time.Time `db:"updated_at"`
 }
-
-type RepositoryWebhook struct {
-	Id              string    `db:"id"`
-	RepositoryId    string    `db:"repository_id"`
-	Name            string    `db:"name"`
-	TemplateId      string    `db:"template_id"`
-	BranchFilter    *string   `db:"branch_filter"`
-	EncryptedSecret string    `db:"encrypted_secret"`
-	Enabled         bool      `db:"enabled"`
-	CreatedAt       time.Time `db:"created_at"`
-	UpdatedAt       time.Time `db:"updated_at"`
-}

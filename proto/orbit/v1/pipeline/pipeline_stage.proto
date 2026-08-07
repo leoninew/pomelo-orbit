@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package orbit.v1.pipeline;
 
-
 message ArtifactConfigResp {
   string collector = 1;
   string reference = 2;
   string name = 3;
   string command = 4;
   string format = 5;
+  optional string component_name = 6;
 }
 
 message ArtifactConfigReq {
@@ -17,38 +17,23 @@ message ArtifactConfigReq {
   string name = 3;
   string command = 4;
   string format = 5;
+  optional string component_name = 6;
 }
 
-message ArtifactConfigListReq {
-  repeated ArtifactConfigReq items = 1;
-}
-
-message BuildVersionBindingReq {
-  string application_id = 1;
-  string component_name = 2;
-  string fork_strategy = 3;
-  optional string fixed_version_id = 4;
-}
-
-message BuildVersionBindingResp {
-  string application_id = 1;
-  string component_name = 2;
-  string fork_strategy = 3;
-  optional string fixed_version_id = 4;
-  string application_name = 5;
-}
+message ArtifactConfigListReq { repeated ArtifactConfigReq items = 1; }
 
 message PipelineStageResp {
   string id = 1;
-  string name = 2;
-  string image = 3;
-  string script = 4;
-  repeated ArtifactConfigResp artifacts = 5;
-  string description = 6;
-  int32 version = 7;
-  string created_at = 8;
-  string updated_at = 9;
-  optional BuildVersionBindingResp build_version_binding = 10;
+  string pipeline_id = 2;
+  string name = 3;
+  string image = 4;
+  string script = 5;
+  repeated ArtifactConfigResp artifacts = 6;
+  repeated string depends_on = 7;
+  int32 sort_order = 8;
+  string description = 9;
+  string created_at = 10;
+  string updated_at = 11;
 }
 
 message PipelineStageCreateReq {
@@ -56,8 +41,13 @@ message PipelineStageCreateReq {
   string image = 2;
   string script = 3;
   repeated ArtifactConfigReq artifacts = 4;
-  string description = 5;
-  optional BuildVersionBindingReq build_version_binding = 6;
+  repeated string depends_on = 5;
+  int32 sort_order = 6;
+  string description = 7;
+  // These fields update the owning application Pipeline in the same
+  // transaction as its initial component-mapped artifact declarations.
+  optional string version_fork_strategy = 8;
+  optional string fixed_version_id = 9;
 }
 
 message PipelineStageUpdateReq {
@@ -65,17 +55,14 @@ message PipelineStageUpdateReq {
   optional string image = 2;
   optional string script = 3;
   optional ArtifactConfigListReq artifacts = 4;
-  optional string description = 5;
-  optional BuildVersionBindingReq build_version_binding = 6;
-  optional bool clear_build_version_binding = 7;
+  optional StringListReq depends_on = 5;
+  optional int32 sort_order = 6;
+  optional string description = 7;
+  // These fields update the owning application Pipeline in the same
+  // transaction as its component-mapped artifact declarations.
+  optional string version_fork_strategy = 8;
+  optional string fixed_version_id = 9;
+  optional bool clear_version_fork_strategy = 10;
 }
 
-message PipelineStageDuplicateReq {}
-
-message PipelineStagePaginatedResp {
-  repeated PipelineStageResp items = 1;
-  int32 total = 2;
-  int32 page = 3;
-  int32 per_page = 4;
-  int32 pages = 5;
-}
+message StringListReq { repeated string items = 1; }

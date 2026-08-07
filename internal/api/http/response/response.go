@@ -38,7 +38,7 @@ func WriteError(c *gin.Context, err error) {
 	c.AbortWithStatusJSON(classification.StatusCode, ErrorResp{
 		Code:      classification.Code,
 		Error:     classification.Message,
-		RequestId: requestid.FromContext(c),
+		RequestId: requestid.FromGinContext(c),
 	})
 }
 

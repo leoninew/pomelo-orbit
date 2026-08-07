@@ -5,6 +5,9 @@ import type {
   PipelineRunResp,
   PipelineRunRetryReq,
   PipelineStageLogResp,
+  PipelineRunTriggerReq,
+  PipelineRunVariablePreviewReq,
+  PipelineRunVariablePreviewResp,
 } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
 import request from '@/utils/request';
 
@@ -14,7 +17,7 @@ export const pipelineRunApi = {
     page?: number;
     per_page?: number;
     repository_id?: string;
-    template_id?: string;
+    pipeline_id?: string;
     date_from?: string;
     date_to?: string;
     project_id?: string;
@@ -24,6 +27,17 @@ export const pipelineRunApi = {
 
   get(id: string): Promise<PipelineRunResp> {
     return request.get(`/api/pipeline-run/${id}`);
+  },
+
+  trigger(id: string, data: PipelineRunTriggerReq): Promise<PipelineRunResp> {
+    return request.post(`/api/pipeline/${id}/trigger`, data);
+  },
+
+  previewVariables(
+    id: string,
+    data: PipelineRunVariablePreviewReq
+  ): Promise<PipelineRunVariablePreviewResp> {
+    return request.post(`/api/pipeline/${id}/variable-preview`, data);
   },
 
   retry(id: string, data: PipelineRunRetryReq): Promise<PipelineRunResp> {

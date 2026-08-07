@@ -81,7 +81,9 @@ func TestRequestIdPreservesIncomingValueAndGeneratesULId(t *testing.T) {
 			gin.SetMode(gin.TestMode)
 			router := gin.New()
 			router.Use(RequestId())
+			var contextRequestID string
 			router.GET("/", func(c *gin.Context) {
+				contextRequestID = requestid.FromContext(c.Request.Context())
 				transportresponse.WriteError(c, transportError())
 			})
 
@@ -98,6 +100,9 @@ func TestRequestIdPreservesIncomingValueAndGeneratesULId(t *testing.T) {
 			}
 			if response.RequestId == "" || recorder.Header().Get(requestid.HeaderName) != response.RequestId {
 				t.Fatalf("request id did not propagate: header=%q body=%q", recorder.Header().Get(requestid.HeaderName), response.RequestId)
+			}
+			if contextRequestID != response.RequestId {
+				t.Fatalf("request context id did not propagate: context=%q body=%q", contextRequestID, response.RequestId)
 			}
 			if tc.requestId != "" && response.RequestId != tc.requestId {
 				t.Fatalf("expected incoming request id %q, got %q", tc.requestId, response.RequestId)

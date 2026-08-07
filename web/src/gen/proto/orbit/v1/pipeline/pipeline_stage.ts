@@ -14,6 +14,7 @@ export interface ArtifactConfigResp {
   name: string;
   command: string;
   format: string;
+  component_name?: string | undefined;
 }
 
 export interface ArtifactConfigReq {
@@ -22,38 +23,25 @@ export interface ArtifactConfigReq {
   name: string;
   command: string;
   format: string;
+  component_name?: string | undefined;
 }
 
 export interface ArtifactConfigListReq {
   items: ArtifactConfigReq[];
 }
 
-export interface BuildVersionBindingReq {
-  application_id: string;
-  component_name: string;
-  fork_strategy: string;
-  fixed_version_id?: string | undefined;
-}
-
-export interface BuildVersionBindingResp {
-  application_id: string;
-  component_name: string;
-  fork_strategy: string;
-  fixed_version_id?: string | undefined;
-  application_name: string;
-}
-
 export interface PipelineStageResp {
   id: string;
+  pipeline_id: string;
   name: string;
   image: string;
   script: string;
   artifacts: ArtifactConfigResp[];
+  depends_on: string[];
+  sort_order: number;
   description: string;
-  version: number;
   created_at: string;
   updated_at: string;
-  build_version_binding?: BuildVersionBindingResp | undefined;
 }
 
 export interface PipelineStageCreateReq {
@@ -61,8 +49,15 @@ export interface PipelineStageCreateReq {
   image: string;
   script: string;
   artifacts: ArtifactConfigReq[];
+  depends_on: string[];
+  sort_order: number;
   description: string;
-  build_version_binding?: BuildVersionBindingReq | undefined;
+  /**
+   * These fields update the owning application Pipeline in the same
+   * transaction as its initial component-mapped artifact declarations.
+   */
+  version_fork_strategy?: string | undefined;
+  fixed_version_id?: string | undefined;
 }
 
 export interface PipelineStageUpdateReq {
@@ -70,18 +65,20 @@ export interface PipelineStageUpdateReq {
   image?: string | undefined;
   script?: string | undefined;
   artifacts?: ArtifactConfigListReq | undefined;
-  description?: string | undefined;
-  build_version_binding?: BuildVersionBindingReq | undefined;
-  clear_build_version_binding?: boolean | undefined;
+  depends_on?: StringListReq | undefined;
+  sort_order?: number | undefined;
+  description?:
+    | string
+    | undefined;
+  /**
+   * These fields update the owning application Pipeline in the same
+   * transaction as its component-mapped artifact declarations.
+   */
+  version_fork_strategy?: string | undefined;
+  fixed_version_id?: string | undefined;
+  clear_version_fork_strategy?: boolean | undefined;
 }
 
-export interface PipelineStageDuplicateReq {
-}
-
-export interface PipelineStagePaginatedResp {
-  items: PipelineStageResp[];
-  total: number;
-  page: number;
-  per_page: number;
-  pages: number;
+export interface StringListReq {
+  items: string[];
 }

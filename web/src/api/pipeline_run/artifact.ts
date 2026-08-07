@@ -9,7 +9,7 @@ export const artifactApi = {
     page?: number;
     per_page?: number;
     repository_id?: string;
-    template_id?: string;
+    pipeline_id?: string;
     search?: string;
     project_id?: string;
   }): Promise<ArtifactPaginatedResp> {

@@ -57,7 +57,7 @@ func (h Handler) StreamTurn(c *gin.Context) {
 	emit := func(event *dialoguev1.DeploymentDialogueStreamEvent) {
 		startStream()
 		if err := writeStreamEvent(c, event); err != nil {
-			h.logger.Error("write deployment dialogue stream event failed", "request_id", requestid.FromContext(c), "error", err)
+			h.logger.Error("write deployment dialogue stream event failed", "request_id", requestid.FromGinContext(c), "error", err)
 		}
 	}
 
@@ -70,12 +70,12 @@ func (h Handler) StreamTurn(c *gin.Context) {
 			return
 		}
 		classification := apperror.Classify(err)
-		h.logger.Error("deployment dialogue stream failed", "request_id", requestid.FromContext(c), "code", classification.Code, "error", err)
+		h.logger.Error("deployment dialogue stream failed", "request_id", requestid.FromGinContext(c), "code", classification.Code, "error", err)
 		emit(&dialoguev1.DeploymentDialogueStreamEvent{
 			Type:      "error",
 			Message:   classification.Message,
 			Code:      classification.Code,
-			RequestId: requestid.FromContext(c),
+			RequestId: requestid.FromGinContext(c),
 		})
 		return
 	}

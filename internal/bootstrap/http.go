@@ -29,6 +29,7 @@ import (
 	usersvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/user/usecase"
 	jwt "gitee.com/leoninew/PomeloOrbit-go/internal/auth/jwt"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	databasetx "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database/tx"
 	llmclient "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/external/openai"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/external/traefik"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/external/turnstile"
@@ -86,6 +87,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	pipelineRunDispatcher := queuedispatch.NewPipelineRunDispatcher(taskService)
 	deploymentDispatcher := queuedispatch.NewDeploymentDispatcher(taskService)
 	authService := authsvc.New(stores.user, stores.auth, tokenService, logger)
+	transactionRunner := databasetx.NewTransactionRunner(database)
 	logStore := executionlog.Store{}
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
 	localSource := repositorysource.New(runtimepath.ResolvePhysicalPath)
@@ -121,13 +123,10 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			stores.project,
 			stores.credential,
 			stores.repository,
-			stores.pipeline,
-			stores.pipelineRun,
-			pipelineRunDispatcher,
 			localSource,
 			logger,
 		),
-		PipelineService: pipelinesvc.New(stores.project, stores.pipeline, stores.application, logger),
+		PipelineService: pipelinesvc.New(stores.project, stores.pipeline, stores.application, stores.repository, logger),
 		PipelineRunService: pipelinerunsvc.New(
 			stores.project,
 			stores.credential,
@@ -136,6 +135,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			stores.pipelineRun,
 			stores.application,
 			applicationService,
+			transactionRunner,
 			pipelineRunDispatcher,
 			pipelineWorkspace,
 			cfg.Jwt.SecretKey,

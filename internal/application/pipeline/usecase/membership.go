@@ -3,10 +3,18 @@ package pipelinesvc
 import (
 	"context"
 	"errors"
+	"strings"
 
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
+
+func requiredProjectID(projectId *string, resource string) (string, error) {
+	if projectId == nil || strings.TrimSpace(*projectId) == "" {
+		return "", apperror.New(apperror.KindValidation, resource+" has no project")
+	}
+	return strings.TrimSpace(*projectId), nil
+}
 
 func (s Service) ensureProjectMembership(ctx context.Context, projectId string, userId string) error {
 	if _, err := s.store.Project(ctx, projectId); err != nil {

@@ -2,39 +2,31 @@ syntax = "proto3";
 
 package orbit.v1.pipeline_run;
 
-
 message ArtifactResp {
   string id = 1;
   string pipeline_run_id = 2;
   string repository_id = 3;
   string repository_name = 4;
-  string template_id = 5;
-  string template_name = 6;
-  string stage_name = 7;
-  string collector = 8;
-  string name = 9;
-  optional string location = 10;
-  string created_at = 11;
-  optional string image_ref = 12;
-  optional string local_image_sha256 = 13;
-  optional string source_commit_sha = 14;
-  optional string generated_version_id = 15;
-  optional string version_component_id = 16;
-  string pipeline_stage_id = 17;
-  optional string value = 18;
-  optional string value_format = 19;
-  optional string application_id = 20;
-  optional string application_name = 21;
-  optional string source_version_id = 22;
-  optional string source_version_label = 23;
-  optional string generated_version_label = 24;
+  string pipeline_id = 5;
+  string pipeline_name = 6;
+  string pipeline_stage_id = 7;
+  string stage_name = 8;
+  string collector = 9;
+  string name = 10;
+  optional string location = 11;
+  optional string value = 12;
+  optional string value_format = 13;
+  string created_at = 14;
+  optional string image_ref = 15;
+  optional string local_image_sha256 = 16;
+  optional string source_commit_sha = 17;
+  optional string application_id = 18;
+  optional string application_name = 19;
+  optional string source_version_id = 20;
+  optional string source_version_label = 21;
+  optional string generated_version_id = 22;
+  optional string generated_version_label = 23;
+  optional string version_component_id = 24;
   optional string version_component_name = 25;
 }
-
-message ArtifactPaginatedResp {
-  repeated ArtifactResp items = 1;
-  int32 total = 2;
-  int32 page = 3;
-  int32 per_page = 4;
-  int32 pages = 5;
-}
+message ArtifactPaginatedResp { repeated ArtifactResp items = 1; int32 total = 2; int32 page = 3; int32 per_page = 4; int32 pages = 5; }

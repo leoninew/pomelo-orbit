@@ -49,7 +49,8 @@ func forkVersion(ctx context.Context, store versionForkStore, source model.Versi
 	return version, nil
 }
 
-// ForkVersionForBuild forks a Version and applies the image artifact produced by a pipeline stage.
+// ForkVersionForBuild forks one Version and applies all component-bound image
+// artifacts from the same PipelineRun atomically.
 func (s Service) ForkVersionForBuild(ctx context.Context, input applicationport.BuildVersionForkInput) (model.Version, error) {
 	return forkVersionForBuild(ctx, s.store, input)
 }
@@ -60,14 +61,30 @@ func forkVersionForBuild(ctx context.Context, store buildVersionForkStore, input
 		return model.Version{}, fmt.Errorf("load source version: %w", err)
 	}
 	return forkVersion(ctx, store, source, input.Label, func(components []model.VersionComponent) error {
+		updates := make(map[string]applicationport.BuildVersionComponentUpdate, len(input.Components))
+		for _, update := range input.Components {
+			updates[update.ComponentName] = update
+		}
 		for index := range components {
-			if components[index].Name != input.ComponentName {
+			update, exists := updates[components[index].Name]
+			if !exists {
 				continue
 			}
-			components[index].Image = input.Image
-			components[index].ArtifactId = &input.ArtifactId
+			components[index].Image = update.Image
+			components[index].ArtifactId = &update.ArtifactId
+			components[index].Artifact = &model.VersionComponentArtifact{
+				ArtifactId: update.ArtifactId, ArtifactName: update.ArtifactName,
+				ImageRef: update.Image, LocalImageSha256: update.LocalImageSha256,
+				SourceCommitSha: update.SourceCommitSha,
+			}
+			delete(updates, components[index].Name)
+		}
+		if len(updates) == 0 {
 			return nil
 		}
-		return fmt.Errorf("source version does not contain component %s", input.ComponentName)
+		for name := range updates {
+			return fmt.Errorf("source version does not contain component %s", name)
+		}
+		return nil
 	})
 }

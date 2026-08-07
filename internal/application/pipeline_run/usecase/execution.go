@@ -30,11 +30,12 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
 		return s.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
-	template, err := s.executionStore.PipelineTemplate(ctx, run.TemplateId)
-	if err != nil {
-		return err
+	pipeline := model.Pipeline{
+		Id: snapshot.PipelineId, ProjectId: snapshot.ProjectId, Kind: model.PipelineKindApplication,
+		Name: snapshot.PipelineName, Version: snapshot.PipelineVersion,
+		VariableDeclarations: snapshot.VariablesSnapshot,
 	}
-	variables, err := s.pipelineRunExecutionVariables(repo, template, snapshot, run)
+	variables, err := s.pipelineRunExecutionVariables(repo, pipeline, snapshot, run)
 	if err != nil {
 		return s.failRun(ctx, run.Id, fmt.Sprintf("Variable resolution failed: %v", err))
 	}
@@ -53,7 +54,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 
 	executionCtx, cancel := context.WithTimeout(ctx, s.executionTimeout)
 	defer cancel()
-	stageExecutor := Executor{store: s.executionStore, versionForker: s.versionForker, workspace: s.workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, executionTimeout: s.executionTimeout, runner: s.runner, localSource: s.localSource}
+	stageExecutor := Executor{store: s.executionStore, versionForker: s.versionForker, transactionRunner: s.transactionRunner, workspace: s.workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, executionTimeout: s.executionTimeout, runner: s.runner, localSource: s.localSource}
 	ok, message := stageExecutor.Execute(ctx, executionCtx, run, repo, variables, stages)
 	current, err := s.executionStore.PipelineRun(ctx, run.Id)
 	if err != nil {
@@ -75,8 +76,8 @@ func (s Service) failRun(ctx context.Context, runId string, message string) erro
 	return nil
 }
 
-func (s Service) pipelineRunExecutionVariables(repo model.Repository, template model.PipelineTemplate, snapshot model.PipelineSnapshot, run model.PipelineRun) (map[string]any, error) {
-	declarations, err := pipelinevariable.CompleteSnapshotVariableDeclarations(snapshot, template)
+func (s Service) pipelineRunExecutionVariables(repo model.Repository, pipeline model.Pipeline, snapshot model.PipelineSnapshot, run model.PipelineRun) (map[string]any, error) {
+	declarations, err := pipelinevariable.CompleteSnapshotVariableDeclarations(snapshot, pipeline)
 	if err != nil {
 		return nil, err
 	}
@@ -88,29 +89,11 @@ func (s Service) pipelineRunExecutionVariables(repo model.Repository, template m
 	if sourceRepo.RepositoryType == model.RepositoryTypeLocalDirectory {
 		sourceRepo.RepositoryUrl = "file:///source"
 	}
-	variables, err := pipelinevariable.BuildRuntimeVariables(sourceRepo, template, run.TriggerRef, overrides, declarations)
+	variables, err := pipelinevariable.BuildRuntimeVariables(sourceRepo, pipeline, run.TriggerRef, overrides, declarations)
 	if err != nil {
 		return nil, err
 	}
 	return variables, nil
-}
-
-func pipelineRunRuntimeOverrides(value string) (map[string]string, error) {
-	overrides := map[string]string{}
-	if strings.TrimSpace(value) == "" {
-		return overrides, nil
-	}
-	var declarations []model.VariableDeclaration
-	if err := json.Unmarshal([]byte(value), &declarations); err != nil {
-		return nil, fmt.Errorf("invalid pipeline run variables: %w", err)
-	}
-	for _, declaration := range declarations {
-		if pipelinevariable.IsPipelineTemplateBuiltinVariable(declaration.Name) || !pipelinevariable.HasRuntimeValue(declaration.Value) {
-			continue
-		}
-		overrides[declaration.Name] = fmt.Sprint(declaration.Value)
-	}
-	return overrides, nil
 }
 
 func envMap(variables map[string]any) []string {

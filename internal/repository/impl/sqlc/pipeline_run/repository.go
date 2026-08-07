@@ -3,7 +3,6 @@ package pipelinerunrepo
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 	"time"
 
@@ -18,357 +17,268 @@ import (
 
 var _ repository.PipelineRunStore = Repository{}
 
-type Repository struct {
-	db *sql.DB
-}
+type Repository struct{ db *sql.DB }
 
-func NewRepository(db *sql.DB) Repository {
-	return Repository{db: db}
-}
-
+func NewRepository(db *sql.DB) Repository { return Repository{db: db} }
 func (r Repository) q(ctx context.Context) *pipelinerunsqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *pipelinerunsqlc.Queries {
-		return pipelinerunsqlc.New(dbtx)
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *pipelinerunsqlc.Queries { return pipelinerunsqlc.New(dbtx) })
+}
+
+func (r Repository) ListPipelineRuns(ctx context.Context, projectID, repositoryID, pipelineID string, from, to *time.Time, page, perPage int) (repository.Page[model.PipelineRun], error) {
+	page, perPage = repository.NormalizePage(page, perPage)
+	params := pipelinerunsqlc.ListPipelineRunsParams{
+		ProjectID:    nullableArgument(projectID),
+		RepositoryID: strings.TrimSpace(repositoryID),
+		PipelineID:   strings.TrimSpace(pipelineID),
+		FromAt:       nullableTimeArgument(from),
+		ToAt:         nullableTimeArgument(to),
+		Limit:        int64(perPage),
+		Offset:       int64((page - 1) * perPage),
+	}
+	count, err := r.q(ctx).CountPipelineRuns(ctx, pipelinerunsqlc.CountPipelineRunsParams{
+		ProjectID:    params.ProjectID,
+		RepositoryID: params.RepositoryID,
+		PipelineID:   params.PipelineID,
+		FromAt:       params.FromAt,
+		ToAt:         params.ToAt,
+	})
+	if err != nil {
+		return repository.Page[model.PipelineRun]{}, translate(err)
+	}
+	rows, err := r.q(ctx).ListPipelineRuns(ctx, params)
+	if err != nil {
+		return repository.Page[model.PipelineRun]{}, translate(err)
+	}
+	items := make([]model.PipelineRun, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, pipelineRunModel(row))
+	}
+	return repository.Page[model.PipelineRun]{Items: items, Total: int(count), Page: page, PerPage: perPage}, nil
+}
+
+func (r Repository) ListPipelineRunsByPipeline(ctx context.Context, pipelineID string, page, perPage int) (repository.Page[model.PipelineRun], error) {
+	return r.ListPipelineRuns(ctx, "", "", pipelineID, nil, nil, page, perPage)
+}
+
+func (r Repository) PipelineRun(ctx context.Context, id string) (model.PipelineRun, error) {
+	item, err := r.q(ctx).PipelineRunByID(ctx, id)
+	return pipelineRunModel(item), translate(err)
+}
+
+func (r Repository) ListPipelineStageRuns(ctx context.Context, runID string) ([]model.PipelineStageRun, error) {
+	rows, err := r.q(ctx).ListPipelineStageRuns(ctx, runID)
+	if err != nil {
+		return nil, translate(err)
+	}
+	items := make([]model.PipelineStageRun, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, pipelineStageRunModel(row))
+	}
+	return items, nil
+}
+
+func (r Repository) PipelineStageRun(ctx context.Context, id string) (model.PipelineStageRun, error) {
+	item, err := r.q(ctx).PipelineStageRunByID(ctx, id)
+	return pipelineStageRunModel(item), translate(err)
+}
+
+func (r Repository) ListArtifacts(ctx context.Context, projectID, repositoryID, pipelineID string, page, perPage int, search string) (repository.Page[model.Artifact], error) {
+	page, perPage = repository.NormalizePage(page, perPage)
+	rawSearch := strings.TrimSpace(search)
+	params := pipelinerunsqlc.ListArtifactsParams{
+		ProjectID:     nullableArgument(projectID),
+		RepositoryID:  strings.TrimSpace(repositoryID),
+		PipelineID:    strings.TrimSpace(pipelineID),
+		Search:        rawSearch,
+		SearchPattern: "%" + rawSearch + "%",
+		Limit:         int64(perPage),
+		Offset:        int64((page - 1) * perPage),
+	}
+	count, err := r.q(ctx).CountArtifacts(ctx, pipelinerunsqlc.CountArtifactsParams{
+		ProjectID:     params.ProjectID,
+		RepositoryID:  params.RepositoryID,
+		PipelineID:    params.PipelineID,
+		Search:        params.Search,
+		SearchPattern: params.SearchPattern,
+	})
+	if err != nil {
+		return repository.Page[model.Artifact]{}, translate(err)
+	}
+	rows, err := r.q(ctx).ListArtifacts(ctx, params)
+	if err != nil {
+		return repository.Page[model.Artifact]{}, translate(err)
+	}
+	items := make([]model.Artifact, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, listArtifactModel(row))
+	}
+	return repository.Page[model.Artifact]{Items: items, Total: int(count), Page: page, PerPage: perPage}, nil
+}
+
+func (r Repository) ListArtifactsByRun(ctx context.Context, projectID *string, runID string) ([]model.Artifact, error) {
+	rows, err := r.q(ctx).ListArtifactsByRun(ctx, pipelinerunsqlc.ListArtifactsByRunParams{PipelineRunID: runID, ProjectID: nullableStringArgument(projectID)})
+	if err != nil {
+		return nil, translate(err)
+	}
+	items := make([]model.Artifact, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, runArtifactModel(row))
+	}
+	return items, nil
+}
+
+func (r Repository) Artifact(ctx context.Context, id string) (model.Artifact, error) {
+	item, err := r.q(ctx).ArtifactByID(ctx, id)
+	return artifactModel(item), translate(err)
+}
+
+func (r Repository) CreatePipelineRun(ctx context.Context, run model.PipelineRun, binding *model.PipelineRunVersionBinding) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		if err := r.q(txCtx).InsertPipelineRun(txCtx, pipelineRunParams(run)); err != nil {
+			return translate(err)
+		}
+		if binding == nil {
+			return nil
+		}
+		return translate(r.q(txCtx).InsertPipelineRunVersionBinding(txCtx, pipelinerunsqlc.InsertPipelineRunVersionBindingParams{
+			PipelineRunID:         run.Id,
+			ApplicationID:         binding.ApplicationId,
+			ApplicationName:       binding.ApplicationName,
+			SourceVersionID:       binding.SourceVersionId,
+			SourceVersionLabel:    binding.SourceVersionLabel,
+			GeneratedVersionID:    nullString(binding.GeneratedVersionId),
+			GeneratedVersionLabel: nullString(binding.GeneratedVersionLabel),
+		}))
 	})
 }
 
-func optionalFilter(value string) (raw string, id string) {
-	raw = strings.TrimSpace(value)
-	return raw, raw
+func (r Repository) RepositoryHasRunningPipelineRun(ctx context.Context, repositoryID string) (bool, error) {
+	count, err := r.q(ctx).CountRunningPipelineRunsByRepository(ctx, pipelinerunsqlc.CountRunningPipelineRunsByRepositoryParams{RepositoryID: repositoryID, Status: status.WorkStatusRunning})
+	return count > 0, translate(err)
 }
 
-func nullTimeArg(value *time.Time) any {
+func (r Repository) PipelineRunVersionBinding(ctx context.Context, runID string) (model.PipelineRunVersionBinding, error) {
+	item, err := r.q(ctx).PipelineRunVersionBindingByRunID(ctx, runID)
+	return pipelineRunVersionBindingModel(item), translate(err)
+}
+
+func (r Repository) CancelPipelineRun(ctx context.Context, id string) error {
+	return translate(r.q(ctx).CancelPipelineRun(ctx, pipelinerunsqlc.CancelPipelineRunParams{Status: status.WorkStatusCanceled, FinishedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true}, ID: id}))
+}
+
+func (r Repository) MarkPipelineRunRunning(ctx context.Context, id string) error {
+	return translate(r.q(ctx).MarkPipelineRunRunning(ctx, pipelinerunsqlc.MarkPipelineRunRunningParams{Status: status.WorkStatusRunning, StartedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true}, ID: id}))
+}
+
+func (r Repository) CompletePipelineRun(ctx context.Context, id, statusValue, message string) error {
+	return translate(r.q(ctx).CompletePipelineRun(ctx, pipelinerunsqlc.CompletePipelineRunParams{Status: statusValue, ErrorMessage: optionalText(message), FinishedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true}, ID: id}))
+}
+
+func (r Repository) InsertPipelineStageRun(ctx context.Context, stage model.PipelineStageRun) error {
+	return translate(r.q(ctx).InsertPipelineStageRun(ctx, pipelineStageRunParams(stage)))
+}
+
+func (r Repository) UpdatePipelineStageRun(ctx context.Context, stage model.PipelineStageRun) error {
+	return translate(r.q(ctx).UpdatePipelineStageRun(ctx, pipelinerunsqlc.UpdatePipelineStageRunParams{Status: stage.Status, StartedAt: dbmodel.NullTime(stage.StartedAt), FinishedAt: dbmodel.NullTime(stage.FinishedAt), ExitCode: dbmodel.NullInt64FromIntPtr(stage.ExitCode), ErrorMessage: nullString(stage.ErrorMessage), ID: stage.Id}))
+}
+
+func (r Repository) CreateArtifact(ctx context.Context, artifact model.Artifact) error {
+	return translate(r.q(ctx).InsertArtifact(ctx, artifactParams(artifact)))
+}
+
+func (r Repository) CommandArtifactByRunStageAndName(ctx context.Context, runID, stageID, name string) (model.Artifact, error) {
+	item, err := r.q(ctx).CommandArtifactByRunStageAndName(ctx, pipelinerunsqlc.CommandArtifactByRunStageAndNameParams{PipelineRunID: runID, PipelineStageID: stageID, Name: name})
+	if err != nil {
+		return model.Artifact{}, translate(err)
+	}
+	return model.Artifact{Id: item.ID, Value: dbmodel.StringPtr(item.Value), ValueFormat: dbmodel.StringPtr(item.ValueFormat)}, nil
+}
+
+func (r Repository) CompletePipelineRunVersionBinding(ctx context.Context, runID, versionID, label string) error {
+	return translate(r.q(ctx).CompletePipelineRunVersionBinding(ctx, pipelinerunsqlc.CompletePipelineRunVersionBindingParams{GeneratedVersionID: sql.NullString{String: versionID, Valid: true}, GeneratedVersionLabel: sql.NullString{String: label, Valid: true}, PipelineRunID: runID}))
+}
+
+func pipelineRunParams(item model.PipelineRun) pipelinerunsqlc.InsertPipelineRunParams {
+	return pipelinerunsqlc.InsertPipelineRunParams{ID: item.Id, ProjectID: nullString(item.ProjectId), RepositoryID: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotID: item.SnapshotId, PipelineID: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int64(item.PipelineVersion), Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: item.VariablesSnapshot, Status: item.Status, RetryOf: nullString(item.RetryOf), StartedAt: dbmodel.NullTime(item.StartedAt), FinishedAt: dbmodel.NullTime(item.FinishedAt), ErrorMessage: nullString(item.ErrorMessage), CreatedAt: timeOrNow(item.CreatedAt)}
+}
+
+func pipelineStageRunParams(item model.PipelineStageRun) pipelinerunsqlc.InsertPipelineStageRunParams {
+	return pipelinerunsqlc.InsertPipelineStageRunParams{ID: item.Id, PipelineRunID: item.PipelineRunId, StageID: item.StageId, StageName: item.StageName, Status: item.Status, StartedAt: dbmodel.NullTime(item.StartedAt), FinishedAt: dbmodel.NullTime(item.FinishedAt), ExitCode: dbmodel.NullInt64FromIntPtr(item.ExitCode), ErrorMessage: nullString(item.ErrorMessage)}
+}
+
+func artifactParams(item model.Artifact) pipelinerunsqlc.InsertArtifactParams {
+	return pipelinerunsqlc.InsertArtifactParams{ID: item.Id, ProjectID: nullString(item.ProjectId), PipelineRunID: item.PipelineRunId, RepositoryID: item.RepositoryId, RepositoryName: item.RepositoryName, PipelineID: item.PipelineId, PipelineName: item.PipelineName, PipelineStageID: item.PipelineStageId, StageName: item.StageName, Collector: item.Collector, Name: item.Name, Location: nullString(item.Location), Value: nullString(item.Value), ValueFormat: nullString(item.ValueFormat), ImageRef: nullString(item.ImageRef), LocalImageSha256: nullString(item.LocalImageSha256), SourceArtifactID: nullString(item.SourceArtifactId), CreatedAt: timeOrNow(item.CreatedAt)}
+}
+
+func pipelineRunModel(item pipelinerunsqlc.PipelineRun) model.PipelineRun {
+	return model.PipelineRun{Id: item.ID, ProjectId: dbmodel.StringPtr(item.ProjectID), RepositoryId: item.RepositoryID, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotID, PipelineId: item.PipelineID, PipelineName: item.PipelineName, PipelineVersion: int(item.PipelineVersion), Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: item.VariablesSnapshot, Status: item.Status, RetryOf: dbmodel.StringPtr(item.RetryOf), StartedAt: dbmodel.TimePtr(item.StartedAt), FinishedAt: dbmodel.TimePtr(item.FinishedAt), ErrorMessage: dbmodel.StringPtr(item.ErrorMessage), CreatedAt: item.CreatedAt}
+}
+
+func pipelineStageRunModel(item pipelinerunsqlc.PipelineStageRun) model.PipelineStageRun {
+	return model.PipelineStageRun{Id: item.ID, PipelineRunId: item.PipelineRunID, StageId: item.StageID, StageName: item.StageName, Status: item.Status, StartedAt: dbmodel.TimePtr(item.StartedAt), FinishedAt: dbmodel.TimePtr(item.FinishedAt), ExitCode: dbmodel.IntPtrFromNullInt64(item.ExitCode), ErrorMessage: dbmodel.StringPtr(item.ErrorMessage)}
+}
+
+func pipelineRunVersionBindingModel(item pipelinerunsqlc.PipelineRunVersionBinding) model.PipelineRunVersionBinding {
+	return model.PipelineRunVersionBinding{PipelineRunId: item.PipelineRunID, ApplicationId: item.ApplicationID, ApplicationName: item.ApplicationName, SourceVersionId: item.SourceVersionID, SourceVersionLabel: item.SourceVersionLabel, GeneratedVersionId: dbmodel.StringPtr(item.GeneratedVersionID), GeneratedVersionLabel: dbmodel.StringPtr(item.GeneratedVersionLabel)}
+}
+
+func artifactModel(item pipelinerunsqlc.ArtifactByIDRow) model.Artifact {
+	return model.Artifact{Id: item.ID, ProjectId: dbmodel.StringPtr(item.ProjectID), PipelineRunId: item.PipelineRunID, RepositoryId: item.RepositoryID, RepositoryName: item.RepositoryName, PipelineId: item.PipelineID, PipelineName: item.PipelineName, PipelineStageId: item.PipelineStageID, StageName: item.StageName, Collector: item.Collector, Name: item.Name, Location: dbmodel.StringPtr(item.Location), Value: dbmodel.StringPtr(item.Value), ValueFormat: dbmodel.StringPtr(item.ValueFormat), ImageRef: dbmodel.StringPtr(item.ImageRef), LocalImageSha256: dbmodel.StringPtr(item.LocalImageSha256), SourceArtifactId: dbmodel.StringPtr(item.SourceArtifactID), SourceCommitSha: dbmodel.StringPtr(item.SourceCommitSha), ApplicationId: dbmodel.StringPtr(item.ApplicationID), ApplicationName: dbmodel.StringPtr(item.ApplicationName), SourceVersionId: dbmodel.StringPtr(item.SourceVersionID), SourceVersionLabel: dbmodel.StringPtr(item.SourceVersionLabel), GeneratedVersionId: dbmodel.StringPtr(item.GeneratedVersionID), GeneratedVersionLabel: dbmodel.StringPtr(item.GeneratedVersionLabel), VersionComponentId: dbmodel.StringPtr(item.VersionComponentID), VersionComponentName: dbmodel.StringPtr(item.VersionComponentName), CreatedAt: item.CreatedAt}
+}
+
+func listArtifactModel(item pipelinerunsqlc.ListArtifactsRow) model.Artifact {
+	return model.Artifact{Id: item.ID, ProjectId: dbmodel.StringPtr(item.ProjectID), PipelineRunId: item.PipelineRunID, RepositoryId: item.RepositoryID, RepositoryName: item.RepositoryName, PipelineId: item.PipelineID, PipelineName: item.PipelineName, PipelineStageId: item.PipelineStageID, StageName: item.StageName, Collector: item.Collector, Name: item.Name, Location: dbmodel.StringPtr(item.Location), Value: dbmodel.StringPtr(item.Value), ValueFormat: dbmodel.StringPtr(item.ValueFormat), ImageRef: dbmodel.StringPtr(item.ImageRef), LocalImageSha256: dbmodel.StringPtr(item.LocalImageSha256), SourceArtifactId: dbmodel.StringPtr(item.SourceArtifactID), SourceCommitSha: dbmodel.StringPtr(item.SourceCommitSha), ApplicationId: dbmodel.StringPtr(item.ApplicationID), ApplicationName: dbmodel.StringPtr(item.ApplicationName), SourceVersionId: dbmodel.StringPtr(item.SourceVersionID), SourceVersionLabel: dbmodel.StringPtr(item.SourceVersionLabel), GeneratedVersionId: dbmodel.StringPtr(item.GeneratedVersionID), GeneratedVersionLabel: dbmodel.StringPtr(item.GeneratedVersionLabel), VersionComponentId: dbmodel.StringPtr(item.VersionComponentID), VersionComponentName: dbmodel.StringPtr(item.VersionComponentName), CreatedAt: item.CreatedAt}
+}
+
+func runArtifactModel(item pipelinerunsqlc.ListArtifactsByRunRow) model.Artifact {
+	return model.Artifact{Id: item.ID, ProjectId: dbmodel.StringPtr(item.ProjectID), PipelineRunId: item.PipelineRunID, RepositoryId: item.RepositoryID, RepositoryName: item.RepositoryName, PipelineId: item.PipelineID, PipelineName: item.PipelineName, PipelineStageId: item.PipelineStageID, StageName: item.StageName, Collector: item.Collector, Name: item.Name, Location: dbmodel.StringPtr(item.Location), Value: dbmodel.StringPtr(item.Value), ValueFormat: dbmodel.StringPtr(item.ValueFormat), ImageRef: dbmodel.StringPtr(item.ImageRef), LocalImageSha256: dbmodel.StringPtr(item.LocalImageSha256), SourceArtifactId: dbmodel.StringPtr(item.SourceArtifactID), SourceCommitSha: dbmodel.StringPtr(item.SourceCommitSha), ApplicationId: dbmodel.StringPtr(item.ApplicationID), ApplicationName: dbmodel.StringPtr(item.ApplicationName), SourceVersionId: dbmodel.StringPtr(item.SourceVersionID), SourceVersionLabel: dbmodel.StringPtr(item.SourceVersionLabel), GeneratedVersionId: dbmodel.StringPtr(item.GeneratedVersionID), GeneratedVersionLabel: dbmodel.StringPtr(item.GeneratedVersionLabel), VersionComponentId: dbmodel.StringPtr(item.VersionComponentID), VersionComponentName: dbmodel.StringPtr(item.VersionComponentName), CreatedAt: item.CreatedAt}
+}
+
+func nullableArgument(value string) any {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return strings.TrimSpace(value)
+}
+
+func nullableStringArgument(value *string) any {
+	if value == nil {
+		return nil
+	}
+	return nullableArgument(*value)
+}
+
+func nullableTimeArgument(value *time.Time) any {
 	if value == nil {
 		return nil
 	}
 	return *value
 }
 
-func (r Repository) ListPipelineRuns(ctx context.Context, projectId string, repositoryId string, templateId string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (repository.Page[model.PipelineRun], error) {
-	page, perPage = repository.NormalizePage(page, perPage)
-	repoRaw, repoId := optionalFilter(repositoryId)
-	tplRaw, tplId := optionalFilter(templateId)
-	params := pipelinerunsqlc.CountPipelineRunsParams{
-		ProjectID:        sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		RepositoryFilter: repoRaw,
-		RepositoryID:     repoId,
-		TemplateFilter:   tplRaw,
-		TemplateID:       tplId,
-		DateFrom:         nullTimeArg(dateFrom),
-		DateTo:           nullTimeArg(dateTo),
+func nullString(value *string) sql.NullString {
+	if value == nil || strings.TrimSpace(*value) == "" {
+		return sql.NullString{}
 	}
-	q := r.q(ctx)
-	total, err := q.CountPipelineRuns(ctx, params)
-	if err != nil {
-		return repository.Page[model.PipelineRun]{}, fmt.Errorf("count pipeline runs: %w", err)
-	}
-	rows, err := q.ListPipelineRuns(ctx, pipelinerunsqlc.ListPipelineRunsParams{
-		ProjectID:        params.ProjectID,
-		RepositoryFilter: params.RepositoryFilter,
-		RepositoryID:     params.RepositoryID,
-		TemplateFilter:   params.TemplateFilter,
-		TemplateID:       params.TemplateID,
-		DateFrom:         params.DateFrom,
-		DateTo:           params.DateTo,
-		Offset:           int64((page - 1) * perPage),
-		Limit:            int64(perPage),
-	})
-	if err != nil {
-		return repository.Page[model.PipelineRun]{}, fmt.Errorf("list pipeline runs: %w", err)
-	}
-	items := make([]model.PipelineRun, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, pipelineRunFrom(row.ID, row.ProjectID, row.RepositoryID, row.RepositoryName, row.SnapshotID, row.TemplateID, row.TemplateName, row.TemplateVersion, row.Trigger, row.TriggerRef, row.VariablesSnapshot, row.Status, row.RetryOf, row.StartedAt, row.FinishedAt, row.ErrorMessage, row.CreatedAt))
-	}
-	return repository.Page[model.PipelineRun]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
+	return sql.NullString{String: *value, Valid: true}
 }
 
-func (r Repository) ListPipelineRunsByRepository(ctx context.Context, repositoryId string, page int, perPage int) (repository.Page[model.PipelineRun], error) {
-	page, perPage = repository.NormalizePage(page, perPage)
-	q := r.q(ctx)
-	total, err := q.CountPipelineRunsByRepository(ctx, repositoryId)
-	if err != nil {
-		return repository.Page[model.PipelineRun]{}, fmt.Errorf("count repository pipeline runs %s: %w", repositoryId, err)
+func optionalText(value string) sql.NullString {
+	if strings.TrimSpace(value) == "" {
+		return sql.NullString{}
 	}
-	rows, err := q.ListPipelineRunsByRepository(ctx, pipelinerunsqlc.ListPipelineRunsByRepositoryParams{
-		RepositoryID: repositoryId, Limit: int64(perPage), Offset: int64((page - 1) * perPage),
-	})
-	if err != nil {
-		return repository.Page[model.PipelineRun]{}, fmt.Errorf("list repository pipeline runs %s: %w", repositoryId, err)
-	}
-	items := make([]model.PipelineRun, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, pipelineRunFrom(row.ID, row.ProjectID, row.RepositoryID, row.RepositoryName, row.SnapshotID, row.TemplateID, row.TemplateName, row.TemplateVersion, row.Trigger, row.TriggerRef, row.VariablesSnapshot, row.Status, row.RetryOf, row.StartedAt, row.FinishedAt, row.ErrorMessage, row.CreatedAt))
-	}
-	return repository.Page[model.PipelineRun]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
+	return sql.NullString{String: value, Valid: true}
 }
 
-func (r Repository) PipelineRun(ctx context.Context, id string) (model.PipelineRun, error) {
-	row, err := r.q(ctx).PipelineRunByID(ctx, id)
-	if err != nil {
-		return model.PipelineRun{}, fmt.Errorf("load pipeline run %s: %w", id, sqlcommon.TranslateError(err))
+func timeOrNow(value time.Time) time.Time {
+	if value.IsZero() {
+		return time.Now().UTC()
 	}
-	return pipelineRunFrom(row.ID, row.ProjectID, row.RepositoryID, row.RepositoryName, row.SnapshotID, row.TemplateID, row.TemplateName, row.TemplateVersion, row.Trigger, row.TriggerRef, row.VariablesSnapshot, row.Status, row.RetryOf, row.StartedAt, row.FinishedAt, row.ErrorMessage, row.CreatedAt), nil
+	return value
 }
 
-func (r Repository) CreatePipelineRun(ctx context.Context, run model.PipelineRun) error {
-	if err := r.createPipelineRun(ctx, run); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r Repository) createPipelineRun(ctx context.Context, run model.PipelineRun) error {
-	err := r.q(ctx).CreatePipelineRun(ctx, pipelinerunsqlc.CreatePipelineRunParams{
-		ID: run.Id, ProjectID: dbmodel.NullString(run.ProjectId), RepositoryID: run.RepositoryId, RepositoryName: run.RepositoryName,
-		SnapshotID: run.SnapshotId, TemplateID: run.TemplateId, TemplateName: run.TemplateName, TemplateVersion: int64(run.TemplateVersion),
-		Trigger: run.Trigger, TriggerRef: run.TriggerRef, VariablesSnapshot: run.VariablesSnapshot, Status: run.Status,
-		RetryOf: dbmodel.NullString(run.RetryOf), CreatedAt: time.Now().UTC(),
-	})
-	if err != nil {
-		return fmt.Errorf("create pipeline run %s: %w", run.Id, err)
-	}
-	return nil
-}
-
-func (r Repository) CreatePipelineRunWithBuildVersionBindings(ctx context.Context, run model.PipelineRun, bindings []model.PipelineRunBuildVersionBinding) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		if err := r.createPipelineRun(txCtx, run); err != nil {
-			return err
-		}
-		q := r.q(txCtx)
-		for _, binding := range bindings {
-			if err := q.InsertPipelineRunBuildVersionBinding(txCtx, pipelinerunsqlc.InsertPipelineRunBuildVersionBindingParams{
-				PipelineRunID: run.Id, PipelineStageID: binding.PipelineStageId, ApplicationID: binding.ApplicationId, ApplicationName: binding.ApplicationName,
-				ComponentName: binding.ComponentName, SourceVersionID: binding.SourceVersionId, SourceVersionLabel: binding.SourceVersionLabel,
-				GeneratedVersionID: dbmodel.NullString(binding.GeneratedVersionId), GeneratedVersionLabel: dbmodel.NullString(binding.GeneratedVersionLabel), ArtifactID: dbmodel.NullString(binding.ArtifactId),
-			}); err != nil {
-				return fmt.Errorf("create pipeline run build version binding %s: %w", binding.PipelineStageId, err)
-			}
-		}
+func translate(err error) error {
+	if err == nil {
 		return nil
-	})
-}
-
-func (r Repository) RepositoryHasRunningPipelineRun(ctx context.Context, repositoryId string) (bool, error) {
-	exists, err := r.q(ctx).RepositoryHasRunningPipelineRun(ctx, repositoryId)
-	if err != nil {
-		return false, fmt.Errorf("check running pipeline runs for repository %s: %w", repositoryId, err)
 	}
-	return exists != 0, nil
-}
-
-func (r Repository) PipelineRunBuildVersionBinding(ctx context.Context, pipelineRunId string, pipelineStageId string) (model.PipelineRunBuildVersionBinding, error) {
-	row, err := r.q(ctx).PipelineRunBuildVersionBindingByRunAndStage(ctx, pipelinerunsqlc.PipelineRunBuildVersionBindingByRunAndStageParams{PipelineRunID: pipelineRunId, PipelineStageID: pipelineStageId})
-	if err != nil {
-		return model.PipelineRunBuildVersionBinding{}, fmt.Errorf("load pipeline run build version binding %s/%s: %w", pipelineRunId, pipelineStageId, sqlcommon.TranslateError(err))
-	}
-	return pipelineRunBuildVersionBindingFrom(row), nil
-}
-
-func (r Repository) RunInTransaction(ctx context.Context, fn func(context.Context) error) error {
-	return tx.RunInTx(ctx, r.db, fn)
-}
-
-func (r Repository) CancelPipelineRun(ctx context.Context, id string) error {
-	now := time.Now().UTC()
-	err := r.q(ctx).CancelPipelineRun(ctx, pipelinerunsqlc.CancelPipelineRunParams{
-		Status: status.WorkStatusCanceled, FinishedAt: sql.NullTime{Time: now, Valid: true}, ID: id,
-	})
-	if err != nil {
-		return fmt.Errorf("cancel pipeline run %s: %w", id, err)
-	}
-	return nil
-}
-
-func (r Repository) MarkPipelineRunRunning(ctx context.Context, id string) error {
-	now := time.Now().UTC()
-	err := r.q(ctx).MarkPipelineRunRunning(ctx, pipelinerunsqlc.MarkPipelineRunRunningParams{
-		Status: status.WorkStatusRunning, StartedAt: sql.NullTime{Time: now, Valid: true}, ID: id,
-	})
-	if err != nil {
-		return fmt.Errorf("mark pipeline run running %s: %w", id, err)
-	}
-	return nil
-}
-
-func (r Repository) CompletePipelineRun(ctx context.Context, id string, runStatus string, message string) error {
-	now := time.Now().UTC()
-	err := r.q(ctx).CompletePipelineRun(ctx, pipelinerunsqlc.CompletePipelineRunParams{
-		Status: runStatus, FinishedAt: sql.NullTime{Time: now, Valid: true}, NULLIF: message, ID: id,
-	})
-	if err != nil {
-		return fmt.Errorf("complete pipeline run %s: %w", id, err)
-	}
-	return nil
-}
-
-func (r Repository) ListPipelineStageRuns(ctx context.Context, runId string) ([]model.PipelineStageRun, error) {
-	rows, err := r.q(ctx).ListPipelineStageRuns(ctx, runId)
-	if err != nil {
-		return nil, fmt.Errorf("list pipeline stage runs %s: %w", runId, err)
-	}
-	items := make([]model.PipelineStageRun, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, pipelineStageRunFrom(row.ID, row.PipelineRunID, row.StageID, row.StageName, row.Status, row.StartedAt, row.FinishedAt, row.ExitCode, row.ErrorMessage))
-	}
-	return items, nil
-}
-
-func (r Repository) PipelineStageRun(ctx context.Context, id string) (model.PipelineStageRun, error) {
-	row, err := r.q(ctx).PipelineStageRunByID(ctx, id)
-	if err != nil {
-		return model.PipelineStageRun{}, fmt.Errorf("load pipeline stage run %s: %w", id, sqlcommon.TranslateError(err))
-	}
-	return pipelineStageRunFrom(row.ID, row.PipelineRunID, row.StageID, row.StageName, row.Status, row.StartedAt, row.FinishedAt, row.ExitCode, row.ErrorMessage), nil
-}
-
-func (r Repository) InsertPipelineStageRun(ctx context.Context, stage model.PipelineStageRun) error {
-	err := r.q(ctx).InsertPipelineStageRun(ctx, pipelinerunsqlc.InsertPipelineStageRunParams{
-		ID: stage.Id, PipelineRunID: stage.PipelineRunId, StageID: stage.StageId, StageName: stage.StageName,
-		Status: stage.Status, StartedAt: dbmodel.NullTime(stage.StartedAt), FinishedAt: dbmodel.NullTime(stage.FinishedAt),
-		ExitCode: dbmodel.NullInt64FromIntPtr(stage.ExitCode), ErrorMessage: dbmodel.NullString(stage.ErrorMessage),
-	})
-	if err != nil {
-		return fmt.Errorf("insert pipeline stage run %s: %w", stage.Id, err)
-	}
-	return nil
-}
-
-func (r Repository) UpdatePipelineStageRun(ctx context.Context, stage model.PipelineStageRun) error {
-	err := r.q(ctx).UpdatePipelineStageRun(ctx, pipelinerunsqlc.UpdatePipelineStageRunParams{
-		Status: stage.Status, StartedAt: dbmodel.NullTime(stage.StartedAt), FinishedAt: dbmodel.NullTime(stage.FinishedAt),
-		ExitCode: dbmodel.NullInt64FromIntPtr(stage.ExitCode), ErrorMessage: dbmodel.NullString(stage.ErrorMessage), ID: stage.Id,
-	})
-	if err != nil {
-		return fmt.Errorf("update pipeline stage run %s: %w", stage.Id, err)
-	}
-	return nil
-}
-
-func (r Repository) ListArtifacts(ctx context.Context, projectId string, repositoryId string, templateId string, page int, perPage int, search string) (repository.Page[model.Artifact], error) {
-	page, perPage = repository.NormalizePage(page, perPage)
-	repoRaw, repoId := optionalFilter(repositoryId)
-	tplRaw, tplId := optionalFilter(templateId)
-	searchRaw, pattern := dbmodel.SearchPattern(search)
-	q := r.q(ctx)
-	total, err := q.CountArtifacts(ctx, pipelinerunsqlc.CountArtifactsParams{
-		ProjectID:        sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		RepositoryFilter: repoRaw, RepositoryID: repoId, TemplateFilter: tplRaw, TemplateID: tplId,
-		SearchFilter: searchRaw, SearchPattern: pattern,
-	})
-	if err != nil {
-		return repository.Page[model.Artifact]{}, fmt.Errorf("count artifacts: %w", err)
-	}
-	rows, err := q.ListArtifacts(ctx, pipelinerunsqlc.ListArtifactsParams{
-		ProjectID:        sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		RepositoryFilter: repoRaw, RepositoryID: repoId, TemplateFilter: tplRaw, TemplateID: tplId,
-		SearchFilter: searchRaw, SearchPattern: pattern,
-		Limit: int64(perPage), Offset: int64((page - 1) * perPage),
-	})
-	if err != nil {
-		return repository.Page[model.Artifact]{}, fmt.Errorf("list artifacts: %w", err)
-	}
-	items := make([]model.Artifact, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, artifactFrom(row.ID, row.ProjectID, row.PipelineRunID, row.RepositoryID, row.RepositoryName, row.TemplateID, row.TemplateName, row.PipelineStageID, row.StageName, row.Collector, row.Name, row.Location, row.Value, row.ValueFormat, row.ImageRef, row.LocalImageSha256, row.SourceCommitSha, row.ApplicationID, row.ApplicationName, row.SourceVersionID, row.SourceVersionLabel, row.GeneratedVersionID, row.GeneratedVersionLabel, row.ComponentName, row.ComponentID, row.CreatedAt))
-	}
-	return repository.Page[model.Artifact]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
-}
-
-func (r Repository) ListArtifactsByRun(ctx context.Context, projectId *string, runId string) ([]model.Artifact, error) {
-	var projectNS sql.NullString
-	if projectId != nil && strings.TrimSpace(*projectId) != "" {
-		projectNS = sql.NullString{String: strings.TrimSpace(*projectId), Valid: true}
-	}
-	rows, err := r.q(ctx).ListArtifactsByRun(ctx, pipelinerunsqlc.ListArtifactsByRunParams{
-		PipelineRunID: runId, ProjectID: projectNS,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("list run artifacts %s: %w", runId, err)
-	}
-	items := make([]model.Artifact, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, artifactFrom(row.ID, row.ProjectID, row.PipelineRunID, row.RepositoryID, row.RepositoryName, row.TemplateID, row.TemplateName, row.PipelineStageID, row.StageName, row.Collector, row.Name, row.Location, row.Value, row.ValueFormat, row.ImageRef, row.LocalImageSha256, row.SourceCommitSha, row.ApplicationID, row.ApplicationName, row.SourceVersionID, row.SourceVersionLabel, row.GeneratedVersionID, row.GeneratedVersionLabel, row.ComponentName, row.ComponentID, row.CreatedAt))
-	}
-	return items, nil
-}
-
-func (r Repository) Artifact(ctx context.Context, artifactId string) (model.Artifact, error) {
-	row, err := r.q(ctx).ArtifactByID(ctx, strings.TrimSpace(artifactId))
-	if err != nil {
-		return model.Artifact{}, fmt.Errorf("load artifact %s: %w", artifactId, sqlcommon.TranslateError(err))
-	}
-	return artifactFrom(row.ID, row.ProjectID, row.PipelineRunID, row.RepositoryID, row.RepositoryName, row.TemplateID, row.TemplateName, row.PipelineStageID, row.StageName, row.Collector, row.Name, row.Location, row.Value, row.ValueFormat, row.ImageRef, row.LocalImageSha256, row.SourceCommitSha, row.ApplicationID, row.ApplicationName, row.SourceVersionID, row.SourceVersionLabel, row.GeneratedVersionID, row.GeneratedVersionLabel, row.ComponentName, row.ComponentID, row.CreatedAt), nil
-}
-
-func (r Repository) CreateArtifact(ctx context.Context, artifact model.Artifact) error {
-	err := r.q(ctx).InsertArtifact(ctx, pipelinerunsqlc.InsertArtifactParams{
-		ID: artifact.Id, ProjectID: dbmodel.NullString(artifact.ProjectId), PipelineRunID: artifact.PipelineRunId, RepositoryID: artifact.RepositoryId,
-		RepositoryName: artifact.RepositoryName, TemplateID: artifact.TemplateId, TemplateName: artifact.TemplateName, PipelineStageID: artifact.PipelineStageId,
-		StageName: artifact.StageName, Collector: artifact.Collector, Name: artifact.Name, Location: dbmodel.NullString(artifact.Location),
-		Value: dbmodel.NullString(artifact.Value), ValueFormat: dbmodel.NullString(artifact.ValueFormat), ImageRef: dbmodel.NullString(artifact.ImageRef),
-		LocalImageSha256: dbmodel.NullString(artifact.LocalImageSha256), SourceArtifactID: dbmodel.NullString(artifact.SourceArtifactId), CreatedAt: artifact.CreatedAt,
-	})
-	if err != nil {
-		return fmt.Errorf("create artifact %s: %w", artifact.Name, err)
-	}
-	return nil
-}
-
-func (r Repository) CommandArtifactByRunStageAndName(ctx context.Context, pipelineRunId string, pipelineStageId string, name string) (model.Artifact, error) {
-	row, err := r.q(ctx).CommandArtifactByRunStageAndName(ctx, pipelinerunsqlc.CommandArtifactByRunStageAndNameParams{
-		PipelineRunID: pipelineRunId, PipelineStageID: pipelineStageId, Name: name,
-	})
-	if err != nil {
-		return model.Artifact{}, fmt.Errorf("load command artifact %s/%s/%s: %w", pipelineRunId, pipelineStageId, name, sqlcommon.TranslateError(err))
-	}
-	return model.Artifact{Id: row.ID, Value: dbmodel.StringPtr(row.Value), ValueFormat: dbmodel.StringPtr(row.ValueFormat)}, nil
-}
-
-func (r Repository) CompletePipelineRunBuildVersionBinding(ctx context.Context, pipelineRunId string, pipelineStageId string, generatedVersionId string, generatedVersionLabel string, artifactId string) error {
-	if err := r.q(ctx).UpdatePipelineRunBuildVersionBindingResult(ctx, pipelinerunsqlc.UpdatePipelineRunBuildVersionBindingResultParams{
-		GeneratedVersionID: sql.NullString{String: generatedVersionId, Valid: true}, GeneratedVersionLabel: sql.NullString{String: generatedVersionLabel, Valid: true}, ArtifactID: sql.NullString{String: artifactId, Valid: true},
-		PipelineRunID: pipelineRunId, PipelineStageID: pipelineStageId,
-	}); err != nil {
-		return fmt.Errorf("complete pipeline run build version binding %s/%s: %w", pipelineRunId, pipelineStageId, err)
-	}
-	return nil
-}
-
-func pipelineRunFrom(id string, projectId sql.NullString, repositoryId, repositoryName, snapshotId, templateId, templateName string, templateVersion int64, trigger, triggerRef, variablesSnapshot, runStatus string, retryOf sql.NullString, startedAt, finishedAt sql.NullTime, errorMessage sql.NullString, createdAt time.Time) model.PipelineRun {
-	return model.PipelineRun{
-		Id: id, ProjectId: dbmodel.StringPtr(projectId), RepositoryId: repositoryId, RepositoryName: repositoryName,
-		SnapshotId: snapshotId, TemplateId: templateId, TemplateName: templateName, TemplateVersion: int(templateVersion),
-		Trigger: trigger, TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: runStatus,
-		RetryOf: dbmodel.StringPtr(retryOf), StartedAt: dbmodel.TimePtr(startedAt), FinishedAt: dbmodel.TimePtr(finishedAt),
-		ErrorMessage: dbmodel.StringPtr(errorMessage), CreatedAt: createdAt,
-	}
-}
-
-func pipelineStageRunFrom(id, pipelineRunId, stageId, stageName, runStatus string, startedAt, finishedAt sql.NullTime, exitCode sql.NullInt64, errorMessage sql.NullString) model.PipelineStageRun {
-	return model.PipelineStageRun{
-		Id: id, PipelineRunId: pipelineRunId, StageId: stageId, StageName: stageName, Status: runStatus,
-		StartedAt: dbmodel.TimePtr(startedAt), FinishedAt: dbmodel.TimePtr(finishedAt),
-		ExitCode: dbmodel.IntPtrFromNullInt64(exitCode), ErrorMessage: dbmodel.StringPtr(errorMessage),
-	}
-}
-
-func artifactFrom(id string, projectId sql.NullString, pipelineRunId, repositoryId, repositoryName, templateId, templateName, pipelineStageId, stageName, collector, name string, location, value, valueFormat, imageRef, localImageSha256, sourceCommitSha, applicationId, applicationName, sourceVersionId, sourceVersionLabel, generatedVersionId, generatedVersionLabel, versionComponentName, versionComponentId sql.NullString, createdAt time.Time) model.Artifact {
-	return model.Artifact{
-		Id: id, ProjectId: dbmodel.StringPtr(projectId), PipelineRunId: pipelineRunId, RepositoryId: repositoryId,
-		RepositoryName: repositoryName, TemplateId: templateId, TemplateName: templateName, PipelineStageId: pipelineStageId, StageName: stageName,
-		Collector: collector, Name: name, Location: dbmodel.StringPtr(location), Value: dbmodel.StringPtr(value), ValueFormat: dbmodel.StringPtr(valueFormat), ImageRef: dbmodel.StringPtr(imageRef), LocalImageSha256: dbmodel.StringPtr(localImageSha256),
-		SourceCommitSha: dbmodel.StringPtr(sourceCommitSha), ApplicationId: dbmodel.StringPtr(applicationId), ApplicationName: dbmodel.StringPtr(applicationName),
-		SourceVersionId: dbmodel.StringPtr(sourceVersionId), SourceVersionLabel: dbmodel.StringPtr(sourceVersionLabel), GeneratedVersionId: dbmodel.StringPtr(generatedVersionId), GeneratedVersionLabel: dbmodel.StringPtr(generatedVersionLabel),
-		VersionComponentId: dbmodel.StringPtr(versionComponentId), VersionComponentName: dbmodel.StringPtr(versionComponentName), CreatedAt: createdAt,
-	}
-}
-
-func pipelineRunBuildVersionBindingFrom(row pipelinerunsqlc.PipelineRunBuildVersionBinding) model.PipelineRunBuildVersionBinding {
-	return model.PipelineRunBuildVersionBinding{
-		PipelineRunId: row.PipelineRunID, PipelineStageId: row.PipelineStageID, ApplicationId: row.ApplicationID, ApplicationName: row.ApplicationName,
-		ComponentName: row.ComponentName, SourceVersionId: row.SourceVersionID, SourceVersionLabel: row.SourceVersionLabel,
-		GeneratedVersionId: dbmodel.StringPtr(row.GeneratedVersionID), GeneratedVersionLabel: dbmodel.StringPtr(row.GeneratedVersionLabel), ArtifactId: dbmodel.StringPtr(row.ArtifactID),
-	}
+	return sqlcommon.TranslateError(err)
 }

@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import i18n from '@/i18n';
+import { getNavigationScope, getSecondaryNavigationTitle } from '@/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { PERMISSIONS } from '@/constants/permissions';
 
@@ -195,34 +197,22 @@ const router = createRouter({
       meta: { title: '凭据详情', menuKey: 'credentials' },
     },
     {
-      path: '/pipeline/stage',
-      name: 'PipelineStagePage',
-      component: () => import('@/views/pipeline/PipelineStagePage.vue'),
-      meta: { title: '构建阶段', menuKey: 'buildstages' },
-    },
-    {
-      path: '/pipeline/stage/:id',
-      name: 'PipelineStageDetail',
-      component: () => import('@/views/pipeline/PipelineStageDetail.vue'),
-      meta: { title: '构建阶段详情', menuKey: 'buildstages' },
-    },
-    {
-      path: '/pipeline/template',
-      name: 'PipelineTemplates',
-      component: () => import('@/views/pipeline/PipelineTemplatePage.vue'),
-      meta: { title: '流水线模板', menuKey: 'pipelinetemplates' },
-    },
-    {
-      path: '/pipeline/template/:id',
-      name: 'PipelineTemplateDetail',
-      component: () => import('@/views/pipeline/PipelineTemplateDetail.vue'),
-      meta: { title: '模板详情', menuKey: 'pipelinetemplates' },
+      path: '/pipeline',
+      name: 'Pipelines',
+      component: () => import('@/views/pipeline/PipelinePage.vue'),
+      meta: { title: '流水线', menuKey: 'pipelines' },
     },
     {
       path: '/pipeline/snapshot/:id',
       name: 'PipelineSnapshotDetail',
       component: () => import('@/views/pipeline/PipelineSnapshotDetail.vue'),
-      meta: { title: '快照详情', menuKey: 'pipelinetemplates' },
+      meta: { title: '快照详情', menuKey: 'pipelines' },
+    },
+    {
+      path: '/pipeline/:id',
+      name: 'PipelineDetail',
+      component: () => import('@/views/pipeline/PipelineDetail.vue'),
+      meta: { title: '流水线详情', menuKey: 'pipelines' },
     },
     {
       path: '/repository',
@@ -278,7 +268,13 @@ const router = createRouter({
 
 // 路由守卫 - 检查登录状态
 router.beforeEach(async (to, _from, next) => {
-  document.title = `${to.meta.title || 'Pomelo Orbit'} - Pomelo Orbit`;
+  const scope = getNavigationScope(to.path);
+  const menuKey = typeof to.meta.menuKey === 'string' ? to.meta.menuKey : '';
+  const navigationTitle =
+    scope === 'pipeline' || scope === 'deployment' || scope === 'settings'
+      ? getSecondaryNavigationTitle(scope, menuKey, (key) => i18n.global.t(key))
+      : null;
+  document.title = `${navigationTitle || to.meta.title || 'Pomelo Orbit'} - Pomelo Orbit`;
 
   if (to.meta.public) {
     next();

@@ -1,5 +1,5 @@
 # 文档主题索引
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-08-07 16:35:00
 
 独立索引文件（与 [README.md](./README.md) 分工：README 讲规则与阅读顺序，本页讲主题 → 路径）。
 
@@ -31,8 +31,8 @@
 | 证书管理 | [guides/certificate-management.md](./guides/certificate-management.md) |
 | Docker labels 路由 | [guides/docker-label-routing.md](./guides/docker-label-routing.md) |
 | 卷挂载 | [guides/volume-mounting.md](./guides/volume-mounting.md) |
-| CI 流水线设计 | [guides/ci-pipeline-design.md](./guides/ci-pipeline-design.md) |
-| CI 变量 | [guides/ci-pipeline-vars-design.md](./guides/ci-pipeline-vars-design.md) |
+| CI Pipeline（模板、应用流水线、制品与运行） | [guides/ci-pipeline-design.md](./guides/ci-pipeline-design.md) |
+| CI Pipeline 变量 | [guides/ci-pipeline-vars-design.md](./guides/ci-pipeline-vars-design.md) |
 | 权限 RBAC | [guides/permissions.md](./guides/permissions.md) |
 | Google OAuth（国内网络） | [guides/google-oauth-china-network.md](./guides/google-oauth-china-network.md) |
 | Traefik file watch（Windows Docker） | [guides/traefik-file-watch-windows-docker.md](./guides/traefik-file-watch-windows-docker.md) |

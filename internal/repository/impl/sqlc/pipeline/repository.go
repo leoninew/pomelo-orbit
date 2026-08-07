@@ -3,8 +3,6 @@ package pipelinerepo
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -18,342 +16,158 @@ import (
 
 var _ repository.PipelineStore = Repository{}
 
-type Repository struct {
-	db *sql.DB
-}
+type Repository struct{ db *sql.DB }
 
-func NewRepository(db *sql.DB) Repository {
-	return Repository{db: db}
-}
-
+func NewRepository(db *sql.DB) Repository { return Repository{db: db} }
 func (r Repository) q(ctx context.Context) *pipelinesqlc.Queries {
-	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *pipelinesqlc.Queries {
-		return pipelinesqlc.New(dbtx)
-	})
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *pipelinesqlc.Queries { return pipelinesqlc.New(dbtx) })
 }
 
-func (r Repository) ListPipelineStages(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[model.PipelineStage], error) {
+func (r Repository) Pipeline(ctx context.Context, id string) (model.Pipeline, error) {
+	item, err := r.q(ctx).PipelineByID(ctx, id)
+	return pipelineModel(item), translate(err)
+}
+func (r Repository) PipelineByName(ctx context.Context, projectID, name string) (model.Pipeline, error) {
+	item, err := r.q(ctx).PipelineByName(ctx, pipelinesqlc.PipelineByNameParams{ProjectID: nullString(&projectID), Name: name})
+	return pipelineModel(item), translate(err)
+}
+func (r Repository) ListPipelines(ctx context.Context, projectID, kind string, page, perPage int, search string) (repository.Page[model.Pipeline], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
-	raw, pattern := dbmodel.SearchPattern(search)
-	projectNS := sql.NullString{String: strings.TrimSpace(projectId), Valid: true}
-	q := r.q(ctx)
-	total, err := q.CountPipelineStages(ctx, pipelinesqlc.CountPipelineStagesParams{ProjectID: projectNS, Column2: raw, Name: pattern})
+	projectID = strings.TrimSpace(projectID)
+	kind = strings.TrimSpace(kind)
+	search = strings.TrimSpace(search)
+	pattern := "%" + search + "%"
+	args := pipelinesqlc.ListPipelinesParams{ProjectID: nullString(&projectID), Kind: kind, Search: search, SearchPattern: pattern, Limit: int64(perPage), Offset: int64((page - 1) * perPage)}
+	count, err := r.q(ctx).CountPipelines(ctx, pipelinesqlc.CountPipelinesParams{ProjectID: nullString(&projectID), Kind: kind, Search: search, SearchPattern: pattern})
 	if err != nil {
-		return repository.Page[model.PipelineStage]{}, fmt.Errorf("count pipeline stages: %w", err)
+		return repository.Page[model.Pipeline]{}, translate(err)
 	}
-	rows, err := q.ListPipelineStages(ctx, pipelinesqlc.ListPipelineStagesParams{
-		ProjectID: projectNS, Column2: raw, Name: pattern, Limit: int64(perPage), Offset: int64((page - 1) * perPage),
-	})
+	rows, err := r.q(ctx).ListPipelines(ctx, args)
 	if err != nil {
-		return repository.Page[model.PipelineStage]{}, fmt.Errorf("list pipeline stages: %w", err)
+		return repository.Page[model.Pipeline]{}, translate(err)
 	}
-	items := make([]model.PipelineStage, 0, len(rows))
-	for _, row := range rows {
-		stage, err := r.pipelineStageWithBinding(ctx, pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt))
-		if err != nil {
-			return repository.Page[model.PipelineStage]{}, err
-		}
-		items = append(items, stage)
+	items := make([]model.Pipeline, 0, len(rows))
+	for _, item := range rows {
+		items = append(items, pipelineModel(item))
 	}
-	return repository.Page[model.PipelineStage]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
+	return repository.Page[model.Pipeline]{Items: items, Total: int(count), Page: page, PerPage: perPage}, nil
 }
-
+func (r Repository) CreatePipeline(ctx context.Context, item model.Pipeline) error {
+	return translate(r.q(ctx).CreatePipeline(ctx, pipelineParams(item)))
+}
+func (r Repository) UpdatePipeline(ctx context.Context, item model.Pipeline) error {
+	return translate(r.q(ctx).UpdatePipeline(ctx, pipelinesqlc.UpdatePipelineParams{Name: item.Name, Description: item.Description, VariableDeclarations: item.VariableDeclarations, Version: int64(item.Version), VersionForkStrategy: nullString(item.VersionForkStrategy), FixedVersionID: nullString(item.FixedVersionId), FixedVersionLabel: nullString(item.FixedVersionLabel), UpdatedAt: time.Now().UTC(), ID: item.Id}))
+}
+func (r Repository) DeletePipeline(ctx context.Context, id string) error {
+	return translate(r.q(ctx).DeletePipeline(ctx, id))
+}
+func (r Repository) PipelineStages(ctx context.Context, pipelineID string) ([]model.PipelineStage, error) {
+	rows, err := r.q(ctx).PipelineStages(ctx, pipelineID)
+	if err != nil {
+		return nil, translate(err)
+	}
+	result := make([]model.PipelineStage, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, stageModel(row))
+	}
+	return result, nil
+}
 func (r Repository) PipelineStage(ctx context.Context, id string) (model.PipelineStage, error) {
 	row, err := r.q(ctx).PipelineStageByID(ctx, id)
-	if err != nil {
-		return model.PipelineStage{}, fmt.Errorf("load pipeline stage %s: %w", id, sqlcommon.TranslateError(err))
-	}
-	return r.pipelineStageWithBinding(ctx, pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt))
+	return stageModel(row), translate(err)
 }
-
-func (r Repository) PipelineStageByName(ctx context.Context, projectId string, name string) (model.PipelineStage, error) {
-	row, err := r.q(ctx).PipelineStageByName(ctx, pipelinesqlc.PipelineStageByNameParams{
-		ProjectID: sql.NullString{String: projectId, Valid: true}, Name: name,
-	})
-	if err != nil {
-		return model.PipelineStage{}, fmt.Errorf("load pipeline stage by name %s: %w", name, sqlcommon.TranslateError(err))
-	}
-	return r.pipelineStageWithBinding(ctx, pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt))
+func (r Repository) CreatePipelineStage(ctx context.Context, item model.PipelineStage) error {
+	return translate(r.q(ctx).InsertPipelineStage(ctx, stageParams(item)))
 }
-
-func (r Repository) PipelineStagesByIds(ctx context.Context, projectId string, ids []string) ([]model.PipelineStage, error) {
-	if len(ids) == 0 {
-		return []model.PipelineStage{}, nil
-	}
-	rows, err := r.q(ctx).PipelineStagesByIds(ctx, pipelinesqlc.PipelineStagesByIdsParams{
-		ProjectID: sql.NullString{String: projectId, Valid: true}, Ids: ids,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("load pipeline stages by ids: %w", err)
-	}
-	items := make([]model.PipelineStage, 0, len(rows))
-	for _, row := range rows {
-		stage, err := r.pipelineStageWithBinding(ctx, pipelineStageFromRow(row.ID, row.ProjectID, row.Name, row.Image, row.Script, row.Artifacts, row.Description, row.Version, row.CreatedAt, row.UpdatedAt))
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, stage)
-	}
-	return items, nil
+func (r Repository) UpdatePipelineStage(ctx context.Context, item model.PipelineStage) error {
+	return translate(r.q(ctx).UpdatePipelineStage(ctx, pipelinesqlc.UpdatePipelineStageParams{Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: nullString(item.Artifacts), DependsOn: item.DependsOn, SortOrder: int64(item.SortOrder), Description: item.Description, UpdatedAt: time.Now().UTC(), ID: item.Id}))
 }
-
-func (r Repository) CreatePipelineStage(ctx context.Context, stage model.PipelineStage) error {
+func (r Repository) DeletePipelineStage(ctx context.Context, id string) error {
+	return translate(r.q(ctx).DeletePipelineStage(ctx, id))
+}
+func (r Repository) CreatePipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		now := time.Now().UTC()
-		if err := r.q(txCtx).CreatePipelineStage(txCtx, pipelinesqlc.CreatePipelineStageParams{
-			ID: stage.Id, ProjectID: dbmodel.NullString(stage.ProjectId), Name: stage.Name, Image: stage.Image,
-			Script: stage.Script, Artifacts: dbmodel.NullString(stage.Artifacts), Description: stage.Description,
-			Version: int64(stage.Version), CreatedAt: now, UpdatedAt: now,
-		}); err != nil {
-			return fmt.Errorf("create pipeline stage %s: %w", stage.Name, err)
+		if err := r.CreatePipeline(txCtx, pipeline); err != nil {
+			return err
 		}
-		return r.replacePipelineStageBuildVersionBinding(txCtx, stage.Id, stage.BuildVersionBinding)
+		for _, stage := range stages {
+			if err := r.CreatePipelineStage(txCtx, stage); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
-
-func (r Repository) UpdatePipelineStage(ctx context.Context, stage model.PipelineStage) error {
+func (r Repository) UpdatePipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		if err := r.q(txCtx).UpdatePipelineStage(txCtx, pipelinesqlc.UpdatePipelineStageParams{
-			Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: dbmodel.NullString(stage.Artifacts),
-			Description: stage.Description, Version: int64(stage.Version), UpdatedAt: time.Now().UTC(), ID: stage.Id,
-		}); err != nil {
-			return fmt.Errorf("update pipeline stage %s: %w", stage.Id, err)
+		if err := r.UpdatePipeline(txCtx, pipeline); err != nil {
+			return err
 		}
-		return r.replacePipelineStageBuildVersionBinding(txCtx, stage.Id, stage.BuildVersionBinding)
+		q := r.q(txCtx)
+		if err := translate(q.DeletePipelineStages(txCtx, pipeline.Id)); err != nil {
+			return err
+		}
+		for _, stage := range stages {
+			if err := translate(q.InsertPipelineStage(txCtx, stageParams(stage))); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
-
-func (r Repository) pipelineStageWithBinding(ctx context.Context, stage model.PipelineStage) (model.PipelineStage, error) {
-	row, err := r.q(ctx).PipelineStageBuildVersionBindingByStageID(ctx, stage.Id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return stage, nil
-	}
-	if err != nil {
-		return model.PipelineStage{}, fmt.Errorf("load pipeline stage build version binding %s: %w", stage.Id, err)
-	}
-	stage.BuildVersionBinding = &model.BuildVersionBinding{
-		ApplicationId:   row.ApplicationID,
-		ApplicationName: row.ApplicationName,
-		ComponentName:   row.ComponentName,
-		ForkStrategy:    row.ForkStrategy,
-		FixedVersionId:  dbmodel.StringPtr(row.FixedVersionID),
-	}
-	return stage, nil
+func (r Repository) LatestPipelineSnapshot(ctx context.Context, pipelineID string) (model.PipelineSnapshot, error) {
+	item, err := r.q(ctx).LatestPipelineSnapshot(ctx, pipelineID)
+	return snapshotModel(item), translate(err)
+}
+func (r Repository) PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error) {
+	item, err := r.q(ctx).PipelineSnapshotByID(ctx, id)
+	return snapshotModel(item), translate(err)
+}
+func (r Repository) CreatePipelineSnapshot(ctx context.Context, item model.PipelineSnapshot) error {
+	return translate(r.q(ctx).InsertPipelineSnapshot(ctx, pipelinesqlc.InsertPipelineSnapshotParams{ID: item.Id, ProjectID: nullString(item.ProjectId), PipelineID: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int64(item.PipelineVersion), SourcePipelineID: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: int64(item.SourceTemplateVersion), ApplicationID: nullString(item.ApplicationId), ApplicationName: nullString(item.ApplicationName), RepositoryID: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: nullString(item.VersionForkStrategy), FixedVersionID: nullString(item.FixedVersionId), FixedVersionLabel: nullString(item.FixedVersionLabel), StagesSnapshot: item.StagesSnapshot, VariablesSnapshot: item.VariablesSnapshot, CreatedAt: timeOrNow(item.CreatedAt)}))
 }
 
-func (r Repository) replacePipelineStageBuildVersionBinding(ctx context.Context, stageId string, binding *model.BuildVersionBinding) error {
-	q := r.q(ctx)
-	if err := q.DeletePipelineStageBuildVersionBinding(ctx, stageId); err != nil {
-		return fmt.Errorf("delete pipeline stage build version binding %s: %w", stageId, err)
+func pipelineParams(item model.Pipeline) pipelinesqlc.CreatePipelineParams {
+	return pipelinesqlc.CreatePipelineParams{ID: item.Id, ProjectID: nullString(item.ProjectId), Kind: item.Kind, SourcePipelineID: nullString(item.SourcePipelineId), SourceTemplateName: nullString(item.SourceTemplateName), SourceTemplateVersion: nullInt(item.SourceTemplateVersion), ApplicationID: nullString(item.ApplicationId), ApplicationName: nullString(item.ApplicationName), RepositoryID: nullString(item.RepositoryId), RepositoryName: nullString(item.RepositoryName), VersionForkStrategy: nullString(item.VersionForkStrategy), FixedVersionID: nullString(item.FixedVersionId), FixedVersionLabel: nullString(item.FixedVersionLabel), Name: item.Name, Description: item.Description, VariableDeclarations: item.VariableDeclarations, Version: int64(item.Version), CreatedAt: timeOrNow(item.CreatedAt), UpdatedAt: timeOrNow(item.UpdatedAt)}
+}
+func stageParams(item model.PipelineStage) pipelinesqlc.InsertPipelineStageParams {
+	return pipelinesqlc.InsertPipelineStageParams{ID: item.Id, PipelineID: item.PipelineId, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: nullString(item.Artifacts), DependsOn: item.DependsOn, SortOrder: int64(item.SortOrder), Description: item.Description, CreatedAt: timeOrNow(item.CreatedAt), UpdatedAt: timeOrNow(item.UpdatedAt)}
+}
+func pipelineModel(item pipelinesqlc.Pipeline) model.Pipeline {
+	result := model.Pipeline{Id: item.ID, ProjectId: dbmodel.StringPtr(item.ProjectID), Kind: item.Kind, SourcePipelineId: dbmodel.StringPtr(item.SourcePipelineID), SourceTemplateName: dbmodel.StringPtr(item.SourceTemplateName), ApplicationId: dbmodel.StringPtr(item.ApplicationID), ApplicationName: dbmodel.StringPtr(item.ApplicationName), RepositoryId: dbmodel.StringPtr(item.RepositoryID), RepositoryName: dbmodel.StringPtr(item.RepositoryName), VersionForkStrategy: dbmodel.StringPtr(item.VersionForkStrategy), FixedVersionId: dbmodel.StringPtr(item.FixedVersionID), FixedVersionLabel: dbmodel.StringPtr(item.FixedVersionLabel), Name: item.Name, Description: item.Description, VariableDeclarations: item.VariableDeclarations, Version: int(item.Version), CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt}
+	if item.SourceTemplateVersion.Valid {
+		value := int(item.SourceTemplateVersion.Int64)
+		result.SourceTemplateVersion = &value
 	}
-	if binding == nil {
+	return result
+}
+func stageModel(item pipelinesqlc.PipelineStage) model.PipelineStage {
+	return model.PipelineStage{Id: item.ID, PipelineId: item.PipelineID, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: dbmodel.StringPtr(item.Artifacts), DependsOn: item.DependsOn, SortOrder: int(item.SortOrder), Description: item.Description, CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt}
+}
+func snapshotModel(item pipelinesqlc.PipelineSnapshot) model.PipelineSnapshot {
+	return model.PipelineSnapshot{Id: item.ID, ProjectId: dbmodel.StringPtr(item.ProjectID), PipelineId: item.PipelineID, PipelineName: item.PipelineName, PipelineVersion: int(item.PipelineVersion), SourcePipelineId: item.SourcePipelineID, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: int(item.SourceTemplateVersion), ApplicationId: dbmodel.StringPtr(item.ApplicationID), ApplicationName: dbmodel.StringPtr(item.ApplicationName), RepositoryId: item.RepositoryID, RepositoryName: item.RepositoryName, VersionForkStrategy: dbmodel.StringPtr(item.VersionForkStrategy), FixedVersionId: dbmodel.StringPtr(item.FixedVersionID), FixedVersionLabel: dbmodel.StringPtr(item.FixedVersionLabel), StagesSnapshot: item.StagesSnapshot, VariablesSnapshot: item.VariablesSnapshot, CreatedAt: item.CreatedAt}
+}
+func nullString(value *string) sql.NullString {
+	if value == nil || strings.TrimSpace(*value) == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *value, Valid: true}
+}
+func nullInt(value *int) sql.NullInt64 {
+	if value == nil {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: int64(*value), Valid: true}
+}
+func timeOrNow(value time.Time) time.Time {
+	if value.IsZero() {
+		return time.Now().UTC()
+	}
+	return value
+}
+func translate(err error) error {
+	if err == nil {
 		return nil
 	}
-	if err := q.CreatePipelineStageBuildVersionBinding(ctx, pipelinesqlc.CreatePipelineStageBuildVersionBindingParams{
-		PipelineStageID: stageId,
-		ApplicationID:   binding.ApplicationId,
-		ApplicationName: binding.ApplicationName,
-		ComponentName:   binding.ComponentName,
-		ForkStrategy:    binding.ForkStrategy,
-		FixedVersionID:  dbmodel.NullString(binding.FixedVersionId),
-	}); err != nil {
-		return fmt.Errorf("create pipeline stage build version binding %s: %w", stageId, err)
-	}
-	return nil
-}
-
-func (r Repository) DeletePipelineStage(ctx context.Context, id string) error {
-	if err := r.q(ctx).DeletePipelineStage(ctx, id); err != nil {
-		return fmt.Errorf("delete pipeline stage %s: %w", id, err)
-	}
-	return nil
-}
-
-func (r Repository) PipelineStageReferencedByTemplates(ctx context.Context, projectId string, stageId string) (bool, error) {
-	count, err := r.q(ctx).PipelineStageReferencedByTemplates(ctx, pipelinesqlc.PipelineStageReferencedByTemplatesParams{
-		ProjectID: sql.NullString{String: projectId, Valid: true}, StageID: stageId,
-	})
-	if err != nil {
-		return false, fmt.Errorf("count pipeline stage template references %s: %w", stageId, err)
-	}
-	return count > 0, nil
-}
-
-func (r Repository) ListPipelineTemplates(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[model.PipelineTemplate], error) {
-	page, perPage = repository.NormalizePage(page, perPage)
-	raw, pattern := dbmodel.SearchPattern(search)
-	projectNS := sql.NullString{String: strings.TrimSpace(projectId), Valid: true}
-	q := r.q(ctx)
-	total, err := q.CountPipelineTemplates(ctx, pipelinesqlc.CountPipelineTemplatesParams{ProjectID: projectNS, Column2: raw, Name: pattern})
-	if err != nil {
-		return repository.Page[model.PipelineTemplate]{}, fmt.Errorf("count pipeline templates: %w", err)
-	}
-	rows, err := q.ListPipelineTemplates(ctx, pipelinesqlc.ListPipelineTemplatesParams{
-		ProjectID: projectNS, Column2: raw, Name: pattern, Limit: int64(perPage), Offset: int64((page - 1) * perPage),
-	})
-	if err != nil {
-		return repository.Page[model.PipelineTemplate]{}, fmt.Errorf("list pipeline templates: %w", err)
-	}
-	items := make([]model.PipelineTemplate, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, templateFrom(row.ID, row.ProjectID, row.Name, row.Description, row.VariableDeclarations, row.Version, row.CreatedAt, row.UpdatedAt))
-	}
-	return repository.Page[model.PipelineTemplate]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
-}
-
-func (r Repository) PipelineTemplate(ctx context.Context, id string) (model.PipelineTemplate, error) {
-	row, err := r.q(ctx).PipelineTemplateByID(ctx, id)
-	if err != nil {
-		return model.PipelineTemplate{}, fmt.Errorf("load pipeline template %s: %w", id, sqlcommon.TranslateError(err))
-	}
-	return templateFrom(row.ID, row.ProjectID, row.Name, row.Description, row.VariableDeclarations, row.Version, row.CreatedAt, row.UpdatedAt), nil
-}
-
-func (r Repository) PipelineTemplateByName(ctx context.Context, projectId string, name string) (model.PipelineTemplate, error) {
-	row, err := r.q(ctx).PipelineTemplateByName(ctx, pipelinesqlc.PipelineTemplateByNameParams{
-		ProjectID: sql.NullString{String: projectId, Valid: true}, Name: name,
-	})
-	if err != nil {
-		return model.PipelineTemplate{}, fmt.Errorf("load pipeline template by name %s: %w", name, sqlcommon.TranslateError(err))
-	}
-	return templateFrom(row.ID, row.ProjectID, row.Name, row.Description, row.VariableDeclarations, row.Version, row.CreatedAt, row.UpdatedAt), nil
-}
-
-func (r Repository) PipelineTemplateStages(ctx context.Context, templateId string) ([]model.PipelineTemplateStage, error) {
-	rows, err := r.q(ctx).PipelineTemplateStages(ctx, templateId)
-	if err != nil {
-		return nil, fmt.Errorf("load pipeline template stages %s: %w", templateId, err)
-	}
-	items := make([]model.PipelineTemplateStage, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, model.PipelineTemplateStage{
-			Id: row.ID, TemplateId: row.TemplateID, StageId: row.StageID, StageName: row.StageName,
-			StageVersion: int(row.StageVersion), DependsOn: row.DependsOn, SortOrder: int(row.SortOrder),
-		})
-	}
-	return items, nil
-}
-
-func (r Repository) CreatePipelineTemplate(ctx context.Context, template model.PipelineTemplate) error {
-	now := time.Now().UTC()
-	err := r.q(ctx).CreatePipelineTemplate(ctx, pipelinesqlc.CreatePipelineTemplateParams{
-		ID: template.Id, ProjectID: dbmodel.NullString(template.ProjectId), Name: template.Name,
-		Description: template.Description, VariableDeclarations: template.VariableDeclarations,
-		Version: int64(template.Version), CreatedAt: now, UpdatedAt: now,
-	})
-	if err != nil {
-		return fmt.Errorf("create pipeline template %s: %w", template.Name, err)
-	}
-	return nil
-}
-
-func (r Repository) UpdatePipelineTemplate(ctx context.Context, template model.PipelineTemplate) error {
-	err := r.q(ctx).UpdatePipelineTemplate(ctx, pipelinesqlc.UpdatePipelineTemplateParams{
-		Name: template.Name, Description: template.Description, VariableDeclarations: template.VariableDeclarations,
-		Version: int64(template.Version), UpdatedAt: time.Now().UTC(), ID: template.Id,
-	})
-	if err != nil {
-		return fmt.Errorf("update pipeline template %s: %w", template.Id, err)
-	}
-	return nil
-}
-
-func (r Repository) UpdatePipelineTemplateWithStages(ctx context.Context, template model.PipelineTemplate, stages []model.PipelineTemplateStage) error {
-	q := r.q(ctx)
-	if err := r.UpdatePipelineTemplate(ctx, template); err != nil {
-		return err
-	}
-	if err := q.DeletePipelineTemplateStages(ctx, template.Id); err != nil {
-		return fmt.Errorf("delete pipeline template stages %s: %w", template.Id, err)
-	}
-	for _, stage := range stages {
-		if err := q.InsertPipelineTemplateStage(ctx, pipelinesqlc.InsertPipelineTemplateStageParams{
-			ID: stage.Id, TemplateID: stage.TemplateId, StageID: stage.StageId, StageName: stage.StageName,
-			StageVersion: int64(stage.StageVersion), DependsOn: stage.DependsOn, SortOrder: int64(stage.SortOrder),
-		}); err != nil {
-			return fmt.Errorf("insert pipeline template stage %s: %w", stage.StageId, err)
-		}
-	}
-	return nil
-}
-
-func (r Repository) DuplicatePipelineTemplate(ctx context.Context, template model.PipelineTemplate, stages []model.PipelineTemplateStage) error {
-	if err := r.CreatePipelineTemplate(ctx, template); err != nil {
-		return err
-	}
-	q := r.q(ctx)
-	for _, stage := range stages {
-		if err := q.InsertPipelineTemplateStage(ctx, pipelinesqlc.InsertPipelineTemplateStageParams{
-			ID: stage.Id, TemplateID: stage.TemplateId, StageID: stage.StageId, StageName: stage.StageName,
-			StageVersion: int64(stage.StageVersion), DependsOn: stage.DependsOn, SortOrder: int64(stage.SortOrder),
-		}); err != nil {
-			return fmt.Errorf("duplicate pipeline template stage %s: %w", stage.StageId, err)
-		}
-	}
-	return nil
-}
-
-func (r Repository) PipelineTemplateReferencedByWebhooks(ctx context.Context, templateId string) (bool, error) {
-	count, err := r.q(ctx).PipelineTemplateReferencedByWebhooks(ctx, templateId)
-	if err != nil {
-		return false, fmt.Errorf("count pipeline template webhook references %s: %w", templateId, err)
-	}
-	return count > 0, nil
-}
-
-func (r Repository) DeletePipelineTemplate(ctx context.Context, id string) error {
-	if err := r.q(ctx).DeletePipelineTemplate(ctx, id); err != nil {
-		return fmt.Errorf("delete pipeline template %s: %w", id, err)
-	}
-	return nil
-}
-
-func (r Repository) PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error) {
-	row, err := r.q(ctx).PipelineSnapshotByID(ctx, id)
-	if err != nil {
-		return model.PipelineSnapshot{}, fmt.Errorf("load pipeline snapshot %s: %w", id, sqlcommon.TranslateError(err))
-	}
-	return snapshotFrom(row.ID, row.ProjectID, row.TemplateID, row.Version, row.StagesSnapshot, row.VariablesSnapshot, row.CreatedAt), nil
-}
-
-func (r Repository) LatestPipelineSnapshot(ctx context.Context, templateId string) (model.PipelineSnapshot, error) {
-	row, err := r.q(ctx).LatestPipelineSnapshot(ctx, templateId)
-	if err != nil {
-		return model.PipelineSnapshot{}, fmt.Errorf("load latest pipeline snapshot %s: %w", templateId, sqlcommon.TranslateError(err))
-	}
-	return snapshotFrom(row.ID, row.ProjectID, row.TemplateID, row.Version, row.StagesSnapshot, row.VariablesSnapshot, row.CreatedAt), nil
-}
-
-func (r Repository) CreatePipelineSnapshot(ctx context.Context, snapshot model.PipelineSnapshot) error {
-	err := r.q(ctx).CreatePipelineSnapshot(ctx, pipelinesqlc.CreatePipelineSnapshotParams{
-		ID: snapshot.Id, ProjectID: dbmodel.NullString(snapshot.ProjectId), TemplateID: snapshot.TemplateId,
-		Version: int64(snapshot.Version), StagesSnapshot: snapshot.StagesSnapshot, VariablesSnapshot: snapshot.VariablesSnapshot,
-		CreatedAt: time.Now().UTC(),
-	})
-	if err != nil {
-		return fmt.Errorf("create pipeline snapshot %s: %w", snapshot.Id, err)
-	}
-	return nil
-}
-
-func pipelineStageFromRow(id string, projectId sql.NullString, name, image, script string, artifacts sql.NullString, description string, version int64, createdAt, updatedAt time.Time) model.PipelineStage {
-	return model.PipelineStage{
-		Id: id, ProjectId: dbmodel.StringPtr(projectId), Name: name, Image: image, Script: script,
-		Artifacts: dbmodel.StringPtr(artifacts), Description: description, Version: int(version),
-		CreatedAt: createdAt, UpdatedAt: updatedAt,
-	}
-}
-
-func templateFrom(id string, projectId sql.NullString, name, description, vars string, version int64, createdAt, updatedAt time.Time) model.PipelineTemplate {
-	return model.PipelineTemplate{
-		Id: id, ProjectId: dbmodel.StringPtr(projectId), Name: name, Description: description,
-		VariableDeclarations: vars, Version: int(version), CreatedAt: createdAt, UpdatedAt: updatedAt,
-	}
-}
-
-func snapshotFrom(id string, projectId sql.NullString, templateId string, version int64, stages, vars string, createdAt time.Time) model.PipelineSnapshot {
-	return model.PipelineSnapshot{
-		Id: id, ProjectId: dbmodel.StringPtr(projectId), TemplateId: templateId, Version: int(version),
-		StagesSnapshot: stages, VariablesSnapshot: vars, CreatedAt: createdAt,
-	}
+	return sqlcommon.TranslateError(err)
 }

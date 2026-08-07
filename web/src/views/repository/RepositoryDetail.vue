@@ -7,15 +7,6 @@
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="repository"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openTriggerModal"
-        >
-          <Play class="size-4" />
-          触发
-        </button>
-        <button
-          v-if="repository"
           class="app-button-danger h-9 px-3"
           :disabled="operating"
           @click="openDeleteDialog"
@@ -115,27 +106,7 @@
           @delete="deleteVariable"
         />
       </div>
-
-      <WebhookList
-        v-if="repository.repository_type !== 'local_directory'"
-        :repository-id="repositoryId"
-        :webhooks="webhooks"
-        :templates="templates"
-        @refresh="fetchWebhooks"
-      />
     </template>
-
-    <TriggerModal
-      ref="triggerModalRef"
-      :repository-id="repositoryId"
-      :templates="templates"
-      :default-branch="repository?.default_branch"
-      :project-variables="repositoryCustomVariables"
-      :repository="repository"
-      :busy="operating"
-      :submit-error="triggerSubmitError"
-      @trigger="handleTrigger"
-    />
 
     <AppDialog :open="isEditDialogOpen" title="编辑仓库" @update:open="handleEditDialogOpenChange">
       <div class="space-y-4">
@@ -357,13 +328,11 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
-  import { pipelineTemplateApi } from '@/api/pipeline/template';
   import { repositoryApi } from '@/api/repository/repository';
-  import { webhookApi } from '@/api/repository/webhook';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
@@ -373,8 +342,6 @@
   import { useProjectStore } from '@/stores/project';
   import type { CredentialResp } from '@/gen/proto/orbit/v1/credential/credential';
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
-  import type { PipelineTemplateResp } from '@/gen/proto/orbit/v1/pipeline/template';
-  import type { RepositoryWebhookResp } from '@/gen/proto/orbit/v1/repository/webhook';
   import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
   import { formatTime } from '@/utils/time';
   import {
@@ -383,9 +350,7 @@
     type RepositoryFormFields,
     validateRepositoryForm,
   } from '@/views/repository/repositoryForm';
-  import TriggerModal from '@/views/repository/components/TriggerModal.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
-  import WebhookList from '@/views/repository/components/WebhookList.vue';
 
   const route = useRoute();
   const router = useRouter();
@@ -397,8 +362,6 @@
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
   const repository = ref<RepositoryResp>();
-  const templates = ref<PipelineTemplateResp[]>([]);
-  const webhooks = ref<RepositoryWebhookResp[]>([]);
   const credentials = ref<CredentialResp[]>([]);
 
   const isEditDialogOpen = ref(false);
@@ -409,8 +372,6 @@
   const addVariableSubmitError = ref('');
   const isEditVariableDialogOpen = ref(false);
   const editVariableSubmitError = ref('');
-  const triggerSubmitError = ref('');
-  const triggerModalRef = ref<InstanceType<typeof TriggerModal>>();
   const deleteWorkspace = ref(false);
 
   const editForm = reactive({
@@ -545,34 +506,6 @@
     }
   }
 
-  async function fetchTemplates() {
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      toast.error('请先选择项目');
-      return;
-    }
-    try {
-      const res = await pipelineTemplateApi.list({ per_page: 100, project_id: projectId });
-      templates.value = res.items;
-    } catch {
-      toast.error('获取模板列表失败');
-    }
-  }
-
-  async function fetchWebhooks() {
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      toast.error('请先选择项目');
-      return;
-    }
-    try {
-      const resp = await webhookApi.list(repositoryId, { project_id: projectId });
-      webhooks.value = resp.items;
-    } catch {
-      toast.error('获取 Webhook 列表失败');
-    }
-  }
-
   async function fetchCredentials() {
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
@@ -584,37 +517,6 @@
       credentials.value = res.items;
     } catch {
       toast.error('获取凭据列表失败');
-    }
-  }
-
-  async function openTriggerModal() {
-    if (
-      repository.value?.repository_type !== 'local_directory' &&
-      !repository.value?.git_credential_id
-    ) {
-      toast.error('请先配置 Git 凭据后再触发流水线');
-      return;
-    }
-    triggerSubmitError.value = '';
-    await fetchTemplates();
-    triggerModalRef.value?.open();
-  }
-
-  async function handleTrigger(data: {
-    template_id: string;
-    trigger_ref: string;
-    variables: Record<string, string>;
-  }) {
-    triggerSubmitError.value = '';
-    try {
-      await executeOp(async () => {
-        const run = await repositoryApi.trigger(repositoryId, data);
-        toast.success('触发成功');
-        triggerModalRef.value?.close();
-        router.push(`/pipeline-run/${run.id}`);
-      });
-    } catch (error) {
-      triggerSubmitError.value = error instanceof Error ? error.message : '触发失败';
     }
   }
 
@@ -802,6 +704,5 @@
 
   onMounted(async () => {
     await fetchRepository();
-    await Promise.all([fetchTemplates(), fetchWebhooks()]);
   });
 </script>

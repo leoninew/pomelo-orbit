@@ -18,7 +18,7 @@ func (h Handler) ListArtifacts(c *gin.Context) {
 	}
 	page := binding.QueryInt(c.Request.URL.Query().Get("page"), 1)
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 20)
-	items, err := h.service.ListArtifacts(c.Request.Context(), current.Id, pipelinerundto.ArtifactListInput{ProjectId: c.Request.URL.Query().Get("project_id"), RepositoryId: c.Request.URL.Query().Get("repository_id"), TemplateId: c.Request.URL.Query().Get("template_id"), Search: c.Request.URL.Query().Get("search"), Page: page, PerPage: perPage})
+	items, err := h.service.ListArtifacts(c.Request.Context(), current.Id, pipelinerundto.ArtifactListInput{ProjectId: c.Request.URL.Query().Get("project_id"), RepositoryId: c.Request.URL.Query().Get("repository_id"), PipelineId: c.Request.URL.Query().Get("pipeline_id"), Search: c.Request.URL.Query().Get("search"), Page: page, PerPage: perPage})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return

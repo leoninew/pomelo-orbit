@@ -33,6 +33,9 @@
             </td>
             <td class="max-w-md whitespace-normal break-all text-muted-foreground">
               <div>{{ component.image }}</div>
+              <div v-if="component.artifact_name" class="mt-1 text-xs">
+                {{ component.artifact_name }}
+              </div>
               <div
                 v-if="component.artifact_local_image_sha256"
                 class="mt-1 font-mono text-xs text-muted-foreground"

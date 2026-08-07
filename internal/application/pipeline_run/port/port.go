@@ -11,6 +11,11 @@ type PipelineRunDispatcher interface {
 	DispatchPipelineRun(ctx context.Context, input pipelinerundto.PipelineRunDispatchInput) error
 }
 
+// TransactionRunner groups a short application-level database write segment.
+type TransactionRunner interface {
+	RunInTransaction(ctx context.Context, fn func(context.Context) error) error
+}
+
 type LogReader interface {
 	Read(logPath string, offset int) ([]byte, int, error)
 }

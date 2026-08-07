@@ -144,75 +144,6 @@ func (r Repository) RepositoryHasRunningPipelines(ctx context.Context, repositor
 	return count > 0, nil
 }
 
-func (r Repository) ListRepositoryWebhooks(ctx context.Context, repositoryId string) ([]model.RepositoryWebhook, error) {
-	rows, err := r.q(ctx).ListRepositoryWebhooks(ctx, repositoryId)
-	if err != nil {
-		return nil, fmt.Errorf("list repository webhooks %s: %w", repositoryId, err)
-	}
-	items := make([]model.RepositoryWebhook, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, webhookFrom(row))
-	}
-	return items, nil
-}
-
-func (r Repository) RepositoryWebhook(ctx context.Context, id string) (model.RepositoryWebhook, error) {
-	row, err := r.q(ctx).RepositoryWebhookByID(ctx, id)
-	if err != nil {
-		return model.RepositoryWebhook{}, fmt.Errorf("load repository webhook %s: %w", id, sqlcommon.TranslateError(err))
-	}
-	return webhookFrom(row), nil
-}
-
-func (r Repository) CreateRepositoryWebhook(ctx context.Context, webhook model.RepositoryWebhook) error {
-	now := time.Now().UTC()
-	createdAt, updatedAt := webhook.CreatedAt, webhook.UpdatedAt
-	if createdAt.IsZero() {
-		createdAt = now
-	}
-	if updatedAt.IsZero() {
-		updatedAt = now
-	}
-	err := r.q(ctx).CreateRepositoryWebhook(ctx, reposqlc.CreateRepositoryWebhookParams{
-		ID:              webhook.Id,
-		RepositoryID:    webhook.RepositoryId,
-		Name:            webhook.Name,
-		TemplateID:      webhook.TemplateId,
-		BranchFilter:    dbmodel.NullString(webhook.BranchFilter),
-		EncryptedSecret: webhook.EncryptedSecret,
-		Enabled:         dbmodel.BoolInt(webhook.Enabled),
-		CreatedAt:       createdAt,
-		UpdatedAt:       updatedAt,
-	})
-	if err != nil {
-		return fmt.Errorf("create repository webhook %s: %w", webhook.Name, err)
-	}
-	return nil
-}
-
-func (r Repository) UpdateRepositoryWebhook(ctx context.Context, webhook model.RepositoryWebhook) error {
-	err := r.q(ctx).UpdateRepositoryWebhook(ctx, reposqlc.UpdateRepositoryWebhookParams{
-		Name:            webhook.Name,
-		TemplateID:      webhook.TemplateId,
-		BranchFilter:    dbmodel.NullString(webhook.BranchFilter),
-		EncryptedSecret: webhook.EncryptedSecret,
-		Enabled:         dbmodel.BoolInt(webhook.Enabled),
-		UpdatedAt:       time.Now().UTC(),
-		ID:              webhook.Id,
-	})
-	if err != nil {
-		return fmt.Errorf("update repository webhook %s: %w", webhook.Id, err)
-	}
-	return nil
-}
-
-func (r Repository) DeleteRepositoryWebhook(ctx context.Context, id string) error {
-	if err := r.q(ctx).DeleteRepositoryWebhook(ctx, id); err != nil {
-		return fmt.Errorf("delete repository webhook %s: %w", id, err)
-	}
-	return nil
-}
-
 func optionalNarg(value *string) interface{} {
 	if value == nil {
 		return nil
@@ -244,19 +175,5 @@ func repositoryFrom(
 		DefaultBranch:     defaultBranch,
 		CreatedAt:         createdAt,
 		UpdatedAt:         updatedAt,
-	}
-}
-
-func webhookFrom(row reposqlc.RepositoryWebhook) model.RepositoryWebhook {
-	return model.RepositoryWebhook{
-		Id:              row.ID,
-		RepositoryId:    row.RepositoryID,
-		Name:            row.Name,
-		TemplateId:      row.TemplateID,
-		BranchFilter:    dbmodel.StringPtr(row.BranchFilter),
-		EncryptedSecret: row.EncryptedSecret,
-		Enabled:         dbmodel.IntBool(row.Enabled),
-		CreatedAt:       row.CreatedAt,
-		UpdatedAt:       row.UpdatedAt,
 	}
 }

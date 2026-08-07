@@ -24,16 +24,15 @@ func (q *Queries) ClearVersionForkRefs(ctx context.Context, versionID sql.NullSt
 
 const countVersionRuntimeRefs = `-- name: CountVersionRuntimeRefs :one
 SELECT (
-  (SELECT COUNT(*) FROM service WHERE service.version_id = ?1) +
-  (SELECT COUNT(*) FROM pipeline_stage_build_version_binding WHERE fixed_version_id = ?1)
+  SELECT COUNT(*) FROM service WHERE service.version_id = ?1
 )
 `
 
-func (q *Queries) CountVersionRuntimeRefs(ctx context.Context, versionID string) (interface{}, error) {
+func (q *Queries) CountVersionRuntimeRefs(ctx context.Context, versionID string) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countVersionRuntimeRefs, versionID)
-	var column_1 interface{}
-	err := row.Scan(&column_1)
-	return column_1, err
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const countVersions = `-- name: CountVersions :one
@@ -216,21 +215,26 @@ func (q *Queries) DeleteVersionComponents(ctx context.Context, versionID string)
 
 const insertVersionComponent = `-- name: InsertVersionComponent :exec
 INSERT INTO version_component (
-  id, version_id, name, image, artifact_id, command_json, pull_policy, restart_policy, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentParams struct {
-	ID            string         `db:"id"`
-	VersionID     string         `db:"version_id"`
-	Name          string         `db:"name"`
-	Image         string         `db:"image"`
-	ArtifactID    sql.NullString `db:"artifact_id"`
-	CommandJson   string         `db:"command_json"`
-	PullPolicy    string         `db:"pull_policy"`
-	RestartPolicy sql.NullString `db:"restart_policy"`
-	CreatedAt     time.Time      `db:"created_at"`
-	UpdatedAt     time.Time      `db:"updated_at"`
+	ID                       string         `db:"id"`
+	VersionID                string         `db:"version_id"`
+	Name                     string         `db:"name"`
+	Image                    string         `db:"image"`
+	ArtifactID               sql.NullString `db:"artifact_id"`
+	ArtifactName             sql.NullString `db:"artifact_name"`
+	ArtifactImageRef         sql.NullString `db:"artifact_image_ref"`
+	ArtifactLocalImageSha256 sql.NullString `db:"artifact_local_image_sha256"`
+	ArtifactSourceCommitSha  sql.NullString `db:"artifact_source_commit_sha"`
+	EntrypointJson           string         `db:"entrypoint_json"`
+	CommandJson              string         `db:"command_json"`
+	PullPolicy               string         `db:"pull_policy"`
+	RestartPolicy            sql.NullString `db:"restart_policy"`
+	CreatedAt                time.Time      `db:"created_at"`
+	UpdatedAt                time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) InsertVersionComponent(ctx context.Context, arg InsertVersionComponentParams) error {
@@ -240,6 +244,11 @@ func (q *Queries) InsertVersionComponent(ctx context.Context, arg InsertVersionC
 		arg.Name,
 		arg.Image,
 		arg.ArtifactID,
+		arg.ArtifactName,
+		arg.ArtifactImageRef,
+		arg.ArtifactLocalImageSha256,
+		arg.ArtifactSourceCommitSha,
+		arg.EntrypointJson,
 		arg.CommandJson,
 		arg.PullPolicy,
 		arg.RestartPolicy,
@@ -636,22 +645,6 @@ func (q *Queries) RenameVersionComponentDependencies(ctx context.Context, arg Re
 	return err
 }
 
-const setVersionComponentArtifact = `-- name: SetVersionComponentArtifact :exec
-UPDATE version_component
-SET artifact_id = ?1
-WHERE id = ?2
-`
-
-type SetVersionComponentArtifactParams struct {
-	ArtifactID  sql.NullString `db:"artifact_id"`
-	ComponentID string         `db:"component_id"`
-}
-
-func (q *Queries) SetVersionComponentArtifact(ctx context.Context, arg SetVersionComponentArtifactParams) error {
-	_, err := q.db.ExecContext(ctx, setVersionComponentArtifact, arg.ArtifactID, arg.ComponentID)
-	return err
-}
-
 const touchVersionComponent = `-- name: TouchVersionComponent :exec
 UPDATE version_component
 SET updated_at = ?
@@ -739,6 +732,23 @@ func (q *Queries) UpdateVersionComponentCommand(ctx context.Context, arg UpdateV
 	return err
 }
 
+const updateVersionComponentEntrypoint = `-- name: UpdateVersionComponentEntrypoint :exec
+UPDATE version_component
+SET entrypoint_json = ?, updated_at = ?
+WHERE id = ?
+`
+
+type UpdateVersionComponentEntrypointParams struct {
+	EntrypointJson string    `db:"entrypoint_json"`
+	UpdatedAt      time.Time `db:"updated_at"`
+	ID             string    `db:"id"`
+}
+
+func (q *Queries) UpdateVersionComponentEntrypoint(ctx context.Context, arg UpdateVersionComponentEntrypointParams) error {
+	_, err := q.db.ExecContext(ctx, updateVersionComponentEntrypoint, arg.EntrypointJson, arg.UpdatedAt, arg.ID)
+	return err
+}
+
 const updateVersionComponentSummary = `-- name: UpdateVersionComponentSummary :exec
 UPDATE version
 SET component_summary = ?, updated_at = ?
@@ -779,50 +789,44 @@ func (q *Queries) VersionByID(ctx context.Context, id string) (Version, error) {
 	return i, err
 }
 
-const versionComponentArtifact = `-- name: VersionComponentArtifact :one
-SELECT artifact.id, artifact.image_ref, artifact.local_image_sha256, source_artifact.value AS source_commit_sha
-FROM version_component
-JOIN artifact ON artifact.id = version_component.artifact_id
-LEFT JOIN artifact AS source_artifact
-  ON source_artifact.id = artifact.source_artifact_id
- AND source_artifact.value_format = 'git_object_id'
-WHERE version_component.id = ?
-`
-
-type VersionComponentArtifactRow struct {
-	ID               string         `db:"id"`
-	ImageRef         sql.NullString `db:"image_ref"`
-	LocalImageSha256 sql.NullString `db:"local_image_sha256"`
-	SourceCommitSha  sql.NullString `db:"source_commit_sha"`
-}
-
-func (q *Queries) VersionComponentArtifact(ctx context.Context, id string) (VersionComponentArtifactRow, error) {
-	row := q.db.QueryRowContext(ctx, versionComponentArtifact, id)
-	var i VersionComponentArtifactRow
-	err := row.Scan(
-		&i.ID,
-		&i.ImageRef,
-		&i.LocalImageSha256,
-		&i.SourceCommitSha,
-	)
-	return i, err
-}
-
 const versionComponentByID = `-- name: VersionComponentByID :one
-SELECT id, version_id, name, image, artifact_id, command_json, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE id = ?
 `
 
-func (q *Queries) VersionComponentByID(ctx context.Context, id string) (VersionComponent, error) {
+type VersionComponentByIDRow struct {
+	ID                       string         `db:"id"`
+	VersionID                string         `db:"version_id"`
+	Name                     string         `db:"name"`
+	Image                    string         `db:"image"`
+	ArtifactID               sql.NullString `db:"artifact_id"`
+	ArtifactName             sql.NullString `db:"artifact_name"`
+	ArtifactImageRef         sql.NullString `db:"artifact_image_ref"`
+	ArtifactLocalImageSha256 sql.NullString `db:"artifact_local_image_sha256"`
+	ArtifactSourceCommitSha  sql.NullString `db:"artifact_source_commit_sha"`
+	EntrypointJson           string         `db:"entrypoint_json"`
+	CommandJson              string         `db:"command_json"`
+	PullPolicy               string         `db:"pull_policy"`
+	RestartPolicy            sql.NullString `db:"restart_policy"`
+	CreatedAt                time.Time      `db:"created_at"`
+	UpdatedAt                time.Time      `db:"updated_at"`
+}
+
+func (q *Queries) VersionComponentByID(ctx context.Context, id string) (VersionComponentByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, versionComponentByID, id)
-	var i VersionComponent
+	var i VersionComponentByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.VersionID,
 		&i.Name,
 		&i.Image,
 		&i.ArtifactID,
+		&i.ArtifactName,
+		&i.ArtifactImageRef,
+		&i.ArtifactLocalImageSha256,
+		&i.ArtifactSourceCommitSha,
+		&i.EntrypointJson,
 		&i.CommandJson,
 		&i.PullPolicy,
 		&i.RestartPolicy,
@@ -1148,27 +1152,50 @@ func (q *Queries) VersionComponentUlimitsByComponent(ctx context.Context, compon
 }
 
 const versionComponentsByVersion = `-- name: VersionComponentsByVersion :many
-SELECT id, version_id, name, image, artifact_id, command_json, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE version_id = ?
 ORDER BY name
 `
 
-func (q *Queries) VersionComponentsByVersion(ctx context.Context, versionID string) ([]VersionComponent, error) {
+type VersionComponentsByVersionRow struct {
+	ID                       string         `db:"id"`
+	VersionID                string         `db:"version_id"`
+	Name                     string         `db:"name"`
+	Image                    string         `db:"image"`
+	ArtifactID               sql.NullString `db:"artifact_id"`
+	ArtifactName             sql.NullString `db:"artifact_name"`
+	ArtifactImageRef         sql.NullString `db:"artifact_image_ref"`
+	ArtifactLocalImageSha256 sql.NullString `db:"artifact_local_image_sha256"`
+	ArtifactSourceCommitSha  sql.NullString `db:"artifact_source_commit_sha"`
+	EntrypointJson           string         `db:"entrypoint_json"`
+	CommandJson              string         `db:"command_json"`
+	PullPolicy               string         `db:"pull_policy"`
+	RestartPolicy            sql.NullString `db:"restart_policy"`
+	CreatedAt                time.Time      `db:"created_at"`
+	UpdatedAt                time.Time      `db:"updated_at"`
+}
+
+func (q *Queries) VersionComponentsByVersion(ctx context.Context, versionID string) ([]VersionComponentsByVersionRow, error) {
 	rows, err := q.db.QueryContext(ctx, versionComponentsByVersion, versionID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []VersionComponent
+	var items []VersionComponentsByVersionRow
 	for rows.Next() {
-		var i VersionComponent
+		var i VersionComponentsByVersionRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.VersionID,
 			&i.Name,
 			&i.Image,
 			&i.ArtifactID,
+			&i.ArtifactName,
+			&i.ArtifactImageRef,
+			&i.ArtifactLocalImageSha256,
+			&i.ArtifactSourceCommitSha,
+			&i.EntrypointJson,
 			&i.CommandJson,
 			&i.PullPolicy,
 			&i.RestartPolicy,

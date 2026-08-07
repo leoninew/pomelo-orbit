@@ -390,16 +390,17 @@ type Version struct {
 }
 
 type VersionComponent struct {
-	ID            string         `db:"id"`
-	VersionID     string         `db:"version_id"`
-	Name          string         `db:"name"`
-	Image         string         `db:"image"`
-	ArtifactID    sql.NullString `db:"artifact_id"`
-	CommandJson   string         `db:"command_json"`
-	PullPolicy    string         `db:"pull_policy"`
-	RestartPolicy sql.NullString `db:"restart_policy"`
-	CreatedAt     time.Time      `db:"created_at"`
-	UpdatedAt     time.Time      `db:"updated_at"`
+	ID             string         `db:"id"`
+	VersionID      string         `db:"version_id"`
+	Name           string         `db:"name"`
+	Image          string         `db:"image"`
+	ArtifactID     sql.NullString `db:"artifact_id"`
+	CommandJson    string         `db:"command_json"`
+	PullPolicy     string         `db:"pull_policy"`
+	RestartPolicy  sql.NullString `db:"restart_policy"`
+	CreatedAt      time.Time      `db:"created_at"`
+	UpdatedAt      time.Time      `db:"updated_at"`
+	EntrypointJson string         `db:"entrypoint_json"`
 }
 
 type VersionComponentDependency struct {

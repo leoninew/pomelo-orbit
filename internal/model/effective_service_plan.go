@@ -16,6 +16,7 @@ type EffectiveServiceComponent struct {
 	SourceComponentId  string
 	Name               string
 	Image              string
+	Entrypoint         []string
 	Command            []string
 	Env                []VersionComponentEnv
 	Mounts             []VersionComponentMount

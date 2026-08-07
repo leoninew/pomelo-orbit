@@ -15,7 +15,7 @@ type Querier interface {
 	ApplicationByName(ctx context.Context, name string) (ApplicationByNameRow, error)
 	ClearVersionForkRefs(ctx context.Context, versionID sql.NullString) error
 	CountApplications(ctx context.Context, arg CountApplicationsParams) (int64, error)
-	CountVersionRuntimeRefs(ctx context.Context, versionID string) (interface{}, error)
+	CountVersionRuntimeRefs(ctx context.Context, versionID string) (int64, error)
 	CountVersions(ctx context.Context, arg CountVersionsParams) (int64, error)
 	CreateApplication(ctx context.Context, arg CreateApplicationParams) error
 	CreateVersion(ctx context.Context, arg CreateVersionParams) error
@@ -49,16 +49,15 @@ type Querier interface {
 	ListVersions(ctx context.Context, applicationID string) ([]Version, error)
 	ListVersionsPage(ctx context.Context, arg ListVersionsPageParams) ([]Version, error)
 	RenameVersionComponentDependencies(ctx context.Context, arg RenameVersionComponentDependenciesParams) error
-	SetVersionComponentArtifact(ctx context.Context, arg SetVersionComponentArtifactParams) error
 	TouchVersionComponent(ctx context.Context, arg TouchVersionComponentParams) error
 	UpdateApplication(ctx context.Context, arg UpdateApplicationParams) error
 	UpdateVersion(ctx context.Context, arg UpdateVersionParams) error
 	UpdateVersionComponentBasic(ctx context.Context, arg UpdateVersionComponentBasicParams) error
 	UpdateVersionComponentCommand(ctx context.Context, arg UpdateVersionComponentCommandParams) error
+	UpdateVersionComponentEntrypoint(ctx context.Context, arg UpdateVersionComponentEntrypointParams) error
 	UpdateVersionComponentSummary(ctx context.Context, arg UpdateVersionComponentSummaryParams) error
 	VersionByID(ctx context.Context, id string) (Version, error)
-	VersionComponentArtifact(ctx context.Context, id string) (VersionComponentArtifactRow, error)
-	VersionComponentByID(ctx context.Context, id string) (VersionComponent, error)
+	VersionComponentByID(ctx context.Context, id string) (VersionComponentByIDRow, error)
 	VersionComponentDependenciesByComponent(ctx context.Context, componentID string) ([]VersionComponentDependency, error)
 	VersionComponentDevicesByComponent(ctx context.Context, componentID string) ([]VersionComponentDevice, error)
 	VersionComponentEndpointsByComponent(ctx context.Context, componentID string) ([]VersionComponentEndpoint, error)
@@ -68,7 +67,7 @@ type Querier interface {
 	VersionComponentResourceByComponent(ctx context.Context, componentID string) (VersionComponentResource, error)
 	VersionComponentTmpfsByComponent(ctx context.Context, componentID string) ([]VersionComponentTmpf, error)
 	VersionComponentUlimitsByComponent(ctx context.Context, componentID string) ([]VersionComponentUlimit, error)
-	VersionComponentsByVersion(ctx context.Context, versionID string) ([]VersionComponent, error)
+	VersionComponentsByVersion(ctx context.Context, versionID string) ([]VersionComponentsByVersionRow, error)
 	VersionIdsByApplication(ctx context.Context, applicationID string) ([]string, error)
 }
 

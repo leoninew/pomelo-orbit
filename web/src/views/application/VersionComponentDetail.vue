@@ -138,6 +138,12 @@
               </div>
               <div class="sm:col-span-2">
                 <label class="app-field-label mb-1.5 block">
+                  {{ t('application.componentDetail.fields.containerEntrypoint') }}
+                </label>
+                <textarea v-model="form.entrypoint" class="app-textarea" rows="3" />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="app-field-label mb-1.5 block">
                   {{ t('application.componentDetail.fields.command') }}
                 </label>
                 <textarea v-model="form.command" class="app-textarea" rows="3" />
@@ -170,6 +176,17 @@
                 </dt>
                 <dd class="mt-1 text-foreground">
                   {{ form.restart_policy || t('common.notSet') }}
+                </dd>
+              </div>
+              <div class="min-w-0 sm:col-span-2">
+                <dt class="text-muted-foreground">
+                  {{ t('application.componentDetail.fields.containerEntrypoint') }}
+                </dt>
+                <dd v-if="!form.entrypoint" class="mt-1 text-foreground">
+                  {{ t('common.notSet') }}
+                </dd>
+                <dd v-else class="mt-1 whitespace-pre-wrap break-words text-foreground">
+                  {{ form.entrypoint }}
                 </dd>
               </div>
               <div class="min-w-0 sm:col-span-2">
@@ -754,6 +771,12 @@
             :placeholder="t('common.notSet')"
             :values="restartPolicyValues"
           />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.containerEntrypoint') }}
+          </label>
+          <textarea v-model="form.entrypoint" class="app-textarea" rows="3" />
         </div>
         <div class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">

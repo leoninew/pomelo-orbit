@@ -31,6 +31,7 @@ type VersionUpdateInput struct {
 type VersionComponentInput struct {
 	Name          string
 	Image         string
+	Entrypoint    string
 	Command       string
 	Env           []model.VersionComponentEnv
 	Endpoints     []model.VersionComponentEndpoint
@@ -48,6 +49,7 @@ type VersionComponentInput struct {
 type VersionComponentBasicUpdateInput struct {
 	Name          string
 	Image         string
+	Entrypoint    string
 	Command       string
 	PullPolicy    string
 	RestartPolicy *string

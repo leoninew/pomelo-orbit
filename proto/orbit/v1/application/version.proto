@@ -18,6 +18,7 @@ message VersionComponentReq {
   repeated ComponentTmpfs tmpfs = 14;
   repeated ComponentUlimit ulimits = 15;
   repeated ComponentDeviceRequest devices = 16;
+  string entrypoint = 17;
 }
 
 message VersionComponentCreateReq {
@@ -26,6 +27,7 @@ message VersionComponentCreateReq {
   string pull_policy = 3;
   optional string restart_policy = 4;
   string command = 5;
+  string entrypoint = 6;
 }
 
 message VersionComponentBasicUpdateReq {
@@ -34,6 +36,7 @@ message VersionComponentBasicUpdateReq {
   string pull_policy = 3;
   optional string restart_policy = 4;
   string command = 5;
+  string entrypoint = 6;
 }
 
 message VersionComponentRuntimeUpdateReq {
@@ -93,6 +96,8 @@ message VersionComponentResp {
   optional string artifact_image_ref = 22;
   optional string artifact_local_image_sha256 = 23;
   optional string artifact_source_commit_sha = 24;
+  optional string artifact_name = 25;
+  string entrypoint = 26;
 }
 
 message ComponentEnv {

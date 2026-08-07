@@ -19,6 +19,7 @@ describe('componentForm', () => {
     const form = emptyComponentForm();
     form.name = 'api';
     form.image = 'nginx:1.27';
+    form.entrypoint = '  /docker-entrypoint.sh  ';
     form.command = '  nginx  ';
     form.env.push({ key: ' TOKEN ', value: ' ${TOKEN} ' });
     form.mounts.push({
@@ -38,6 +39,7 @@ describe('componentForm', () => {
     if (!result.valid) {
       return;
     }
+    expect(result.value.entrypoint).toBe('  /docker-entrypoint.sh  ');
     expect(result.value.command).toBe('  nginx  ');
     expect(result.value.env).toEqual([{ key: ' TOKEN ', value: ' ${TOKEN} ' }]);
     expect(result.value.mounts[0]).toMatchObject({
@@ -67,6 +69,7 @@ describe('componentForm', () => {
       value: {
         name: 'api',
         image: 'nginx:1.27',
+        entrypoint: '',
         command: '',
         pull_policy: 'missing',
         restart_policy: undefined,
@@ -84,6 +87,7 @@ describe('componentForm', () => {
       value: {
         name: 'api',
         image: 'nginx:1.27',
+        entrypoint: '',
         command: '',
         pull_policy: 'missing',
         restart_policy: undefined,

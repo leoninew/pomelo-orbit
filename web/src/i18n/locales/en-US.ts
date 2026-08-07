@@ -109,6 +109,7 @@ export default {
     routes: 'Routes',
     repositories: 'Repository',
     buildStages: 'Stages',
+    pipelines: 'Pipelines',
     pipelineTemplates: 'Templates',
     pipelineRuns: 'Runs',
     artifacts: 'Artifacts',
@@ -118,8 +119,8 @@ export default {
       admin: 'Administration',
       delivery: 'Application Delivery',
       ingress: 'Network Access',
-      code: 'Code',
-      pipeline: 'Pipeline',
+      code: 'Code Repository',
+      pipeline: 'Artifact Build',
     },
   },
   home: {
@@ -414,6 +415,7 @@ export default {
       },
       fields: {
         command: 'Command',
+        containerEntrypoint: 'Container Entrypoint',
         endpointName: 'Endpoint Name',
         protocol: 'Protocol',
         endpointMode: 'Mode',

@@ -11,12 +11,13 @@ func TestVersionComponentCreateInputUsesBasicFieldsOnly(t *testing.T) {
 	input := versionComponentCreateInput(&applicationv1.VersionComponentCreateReq{
 		Name:          "api",
 		Image:         "nginx:1.27",
+		Entrypoint:    "/docker-entrypoint.sh",
 		Command:       "nginx -g 'daemon off;'",
 		PullPolicy:    "always",
 		RestartPolicy: &restartPolicy,
 	})
 
-	if input.Name != "api" || input.Image != "nginx:1.27" || input.Command != "nginx -g 'daemon off;'" {
+	if input.Name != "api" || input.Image != "nginx:1.27" || input.Entrypoint != "/docker-entrypoint.sh" || input.Command != "nginx -g 'daemon off;'" {
 		t.Fatalf("unexpected basic input: %+v", input)
 	}
 	if input.PullPolicy != "always" || input.RestartPolicy != &restartPolicy {

@@ -160,6 +160,10 @@ func (s Service) CreateVersionComponent(ctx context.Context, userId string, vers
 }
 
 func (s Service) UpdateVersionComponentBasic(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentBasicUpdateInput) (model.VersionComponent, error) {
+	entrypoint, err := parseComponentCommand(input.Entrypoint)
+	if err != nil {
+		return model.VersionComponent{}, err
+	}
 	command, err := parseComponentCommand(input.Command)
 	if err != nil {
 		return model.VersionComponent{}, err
@@ -167,6 +171,7 @@ func (s Service) UpdateVersionComponentBasic(ctx context.Context, userId string,
 	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
 		component.Name = input.Name
 		component.Image = input.Image
+		component.Entrypoint = entrypoint
 		component.Command = command
 		component.PullPolicy = input.PullPolicy
 		component.RestartPolicy = input.RestartPolicy
@@ -428,6 +433,10 @@ func versionComponentsFromInputs(inputs []applicationdto.VersionComponentInput) 
 		if !validImagePullPolicy(input.PullPolicy) {
 			return nil, apperror.New(apperror.KindValidation, "Component pull_policy must be always, missing or never")
 		}
+		entrypoint, err := parseComponentCommand(input.Entrypoint)
+		if err != nil {
+			return nil, err
+		}
 		command, err := parseComponentCommand(input.Command)
 		if err != nil {
 			return nil, err
@@ -438,8 +447,8 @@ func versionComponentsFromInputs(inputs []applicationdto.VersionComponentInput) 
 		}
 		components = append(components, model.VersionComponent{
 			Name: name, Image: image,
-			Command: command,
-			Env:     append([]model.VersionComponentEnv(nil), input.Env...), Endpoints: append([]model.VersionComponentEndpoint(nil), input.Endpoints...),
+			Entrypoint: entrypoint, Command: command,
+			Env: append([]model.VersionComponentEnv(nil), input.Env...), Endpoints: append([]model.VersionComponentEndpoint(nil), input.Endpoints...),
 			Mounts:       append([]model.VersionComponentMount(nil), input.Mounts...),
 			Dependencies: append([]model.VersionComponentDependency(nil), input.Dependencies...), Healthcheck: healthcheck,
 			Resources: cloneComponentResources(input.Resources), PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy,

@@ -37,6 +37,7 @@ type VersionComponentReq struct {
 	Tmpfs         []*ComponentTmpfs         `protobuf:"bytes,14,rep,name=tmpfs,proto3" json:"tmpfs,omitempty"`
 	Ulimits       []*ComponentUlimit        `protobuf:"bytes,15,rep,name=ulimits,proto3" json:"ulimits,omitempty"`
 	Devices       []*ComponentDeviceRequest `protobuf:"bytes,16,rep,name=devices,proto3" json:"devices,omitempty"`
+	Entrypoint    string                    `protobuf:"bytes,17,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -169,6 +170,13 @@ func (x *VersionComponentReq) GetDevices() []*ComponentDeviceRequest {
 	return nil
 }
 
+func (x *VersionComponentReq) GetEntrypoint() string {
+	if x != nil {
+		return x.Entrypoint
+	}
+	return ""
+}
+
 type VersionComponentCreateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -176,6 +184,7 @@ type VersionComponentCreateReq struct {
 	PullPolicy    string                 `protobuf:"bytes,3,opt,name=pull_policy,json=pullPolicy,proto3" json:"pull_policy,omitempty"`
 	RestartPolicy *string                `protobuf:"bytes,4,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
 	Command       string                 `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty"`
+	Entrypoint    string                 `protobuf:"bytes,6,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -245,6 +254,13 @@ func (x *VersionComponentCreateReq) GetCommand() string {
 	return ""
 }
 
+func (x *VersionComponentCreateReq) GetEntrypoint() string {
+	if x != nil {
+		return x.Entrypoint
+	}
+	return ""
+}
+
 type VersionComponentBasicUpdateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -252,6 +268,7 @@ type VersionComponentBasicUpdateReq struct {
 	PullPolicy    string                 `protobuf:"bytes,3,opt,name=pull_policy,json=pullPolicy,proto3" json:"pull_policy,omitempty"`
 	RestartPolicy *string                `protobuf:"bytes,4,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
 	Command       string                 `protobuf:"bytes,5,opt,name=command,proto3" json:"command,omitempty"`
+	Entrypoint    string                 `protobuf:"bytes,6,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -317,6 +334,13 @@ func (x *VersionComponentBasicUpdateReq) GetRestartPolicy() string {
 func (x *VersionComponentBasicUpdateReq) GetCommand() string {
 	if x != nil {
 		return x.Command
+	}
+	return ""
+}
+
+func (x *VersionComponentBasicUpdateReq) GetEntrypoint() string {
+	if x != nil {
+		return x.Entrypoint
 	}
 	return ""
 }
@@ -669,6 +693,8 @@ type VersionComponentResp struct {
 	ArtifactImageRef         *string                   `protobuf:"bytes,22,opt,name=artifact_image_ref,json=artifactImageRef,proto3,oneof" json:"artifact_image_ref,omitempty"`
 	ArtifactLocalImageSha256 *string                   `protobuf:"bytes,23,opt,name=artifact_local_image_sha256,json=artifactLocalImageSha256,proto3,oneof" json:"artifact_local_image_sha256,omitempty"`
 	ArtifactSourceCommitSha  *string                   `protobuf:"bytes,24,opt,name=artifact_source_commit_sha,json=artifactSourceCommitSha,proto3,oneof" json:"artifact_source_commit_sha,omitempty"`
+	ArtifactName             *string                   `protobuf:"bytes,25,opt,name=artifact_name,json=artifactName,proto3,oneof" json:"artifact_name,omitempty"`
+	Entrypoint               string                    `protobuf:"bytes,26,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -853,6 +879,20 @@ func (x *VersionComponentResp) GetArtifactLocalImageSha256() string {
 func (x *VersionComponentResp) GetArtifactSourceCommitSha() string {
 	if x != nil && x.ArtifactSourceCommitSha != nil {
 		return *x.ArtifactSourceCommitSha
+	}
+	return ""
+}
+
+func (x *VersionComponentResp) GetArtifactName() string {
+	if x != nil && x.ArtifactName != nil {
+		return *x.ArtifactName
+	}
+	return ""
+}
+
+func (x *VersionComponentResp) GetEntrypoint() string {
+	if x != nil {
+		return x.Entrypoint
 	}
 	return ""
 }
@@ -1949,7 +1989,7 @@ var File_orbit_v1_application_version_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\n" +
-	"\"orbit/v1/application/version.proto\x12\x14orbit.v1.application\"\xa4\x06\n" +
+	"\"orbit/v1/application/version.proto\x12\x14orbit.v1.application\"\xc4\x06\n" +
 	"\x13VersionComponentReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x18\n" +
@@ -1966,23 +2006,32 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x0erestart_policy\x18\r \x01(\tH\x00R\rrestartPolicy\x88\x01\x01\x12:\n" +
 	"\x05tmpfs\x18\x0e \x03(\v2$.orbit.v1.application.ComponentTmpfsR\x05tmpfs\x12?\n" +
 	"\aulimits\x18\x0f \x03(\v2%.orbit.v1.application.ComponentUlimitR\aulimits\x12F\n" +
-	"\adevices\x18\x10 \x03(\v2,.orbit.v1.application.ComponentDeviceRequestR\adevicesB\x11\n" +
-	"\x0f_restart_policyJ\x04\b\x04\x10\x05\"\xbf\x01\n" +
+	"\adevices\x18\x10 \x03(\v2,.orbit.v1.application.ComponentDeviceRequestR\adevices\x12\x1e\n" +
+	"\n" +
+	"entrypoint\x18\x11 \x01(\tR\n" +
+	"entrypointB\x11\n" +
+	"\x0f_restart_policyJ\x04\b\x04\x10\x05\"\xdf\x01\n" +
 	"\x19VersionComponentCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x1f\n" +
 	"\vpull_policy\x18\x03 \x01(\tR\n" +
 	"pullPolicy\x12*\n" +
 	"\x0erestart_policy\x18\x04 \x01(\tH\x00R\rrestartPolicy\x88\x01\x01\x12\x18\n" +
-	"\acommand\x18\x05 \x01(\tR\acommandB\x11\n" +
-	"\x0f_restart_policy\"\xc4\x01\n" +
+	"\acommand\x18\x05 \x01(\tR\acommand\x12\x1e\n" +
+	"\n" +
+	"entrypoint\x18\x06 \x01(\tR\n" +
+	"entrypointB\x11\n" +
+	"\x0f_restart_policy\"\xe4\x01\n" +
 	"\x1eVersionComponentBasicUpdateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x1f\n" +
 	"\vpull_policy\x18\x03 \x01(\tR\n" +
 	"pullPolicy\x12*\n" +
 	"\x0erestart_policy\x18\x04 \x01(\tH\x00R\rrestartPolicy\x88\x01\x01\x12\x18\n" +
-	"\acommand\x18\x05 \x01(\tR\acommandB\x11\n" +
+	"\acommand\x18\x05 \x01(\tR\acommand\x12\x1e\n" +
+	"\n" +
+	"entrypoint\x18\x06 \x01(\tR\n" +
+	"entrypointB\x11\n" +
 	"\x0f_restart_policy\"\x82\x01\n" +
 	" VersionComponentRuntimeUpdateReq\x12L\n" +
 	"\vhealthcheck\x18\x03 \x01(\v2*.orbit.v1.application.ComponentHealthcheckR\vhealthcheckJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03J\x04\b\x04\x10\x05\"k\n" +
@@ -1999,7 +2048,8 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"!VersionComponentAdvancedUpdateReq\x12:\n" +
 	"\x05tmpfs\x18\x01 \x03(\v2$.orbit.v1.application.ComponentTmpfsR\x05tmpfs\x12?\n" +
 	"\aulimits\x18\x02 \x03(\v2%.orbit.v1.application.ComponentUlimitR\aulimits\x12F\n" +
-	"\tresources\x18\x03 \x01(\v2(.orbit.v1.application.ComponentResourcesR\tresources\"\xd7\t\n" +
+	"\tresources\x18\x03 \x01(\v2(.orbit.v1.application.ComponentResourcesR\tresources\"\xb3\n" +
+	"\n" +
 	"\x14VersionComponentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -2027,12 +2077,17 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"artifactId\x88\x01\x01\x121\n" +
 	"\x12artifact_image_ref\x18\x16 \x01(\tH\x02R\x10artifactImageRef\x88\x01\x01\x12B\n" +
 	"\x1bartifact_local_image_sha256\x18\x17 \x01(\tH\x03R\x18artifactLocalImageSha256\x88\x01\x01\x12@\n" +
-	"\x1aartifact_source_commit_sha\x18\x18 \x01(\tH\x04R\x17artifactSourceCommitSha\x88\x01\x01B\x11\n" +
+	"\x1aartifact_source_commit_sha\x18\x18 \x01(\tH\x04R\x17artifactSourceCommitSha\x88\x01\x01\x12(\n" +
+	"\rartifact_name\x18\x19 \x01(\tH\x05R\fartifactName\x88\x01\x01\x12\x1e\n" +
+	"\n" +
+	"entrypoint\x18\x1a \x01(\tR\n" +
+	"entrypointB\x11\n" +
 	"\x0f_restart_policyB\x0e\n" +
 	"\f_artifact_idB\x15\n" +
 	"\x13_artifact_image_refB\x1e\n" +
 	"\x1c_artifact_local_image_sha256B\x1d\n" +
-	"\x1b_artifact_source_commit_shaJ\x04\b\x06\x10\a\"6\n" +
+	"\x1b_artifact_source_commit_shaB\x10\n" +
+	"\x0e_artifact_nameJ\x04\b\x06\x10\a\"6\n" +
 	"\fComponentEnv\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\"\xd7\x02\n" +

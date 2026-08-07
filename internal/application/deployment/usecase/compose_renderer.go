@@ -96,7 +96,7 @@ func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (
 }
 
 func versionComponentFromEffective(component model.EffectiveServiceComponent) model.VersionComponent {
-	return model.VersionComponent{Id: component.SourceComponentId, Name: component.Name, Image: component.Image, Command: component.Command, Env: component.Env, Mounts: component.Mounts, Dependencies: component.Dependencies, Healthcheck: component.Healthcheck, Resources: component.Resources, PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: component.Tmpfs, Ulimits: component.Ulimits, Devices: component.Devices, Endpoints: component.Endpoints}
+	return model.VersionComponent{Id: component.SourceComponentId, Name: component.Name, Image: component.Image, Entrypoint: component.Entrypoint, Command: component.Command, Env: component.Env, Mounts: component.Mounts, Dependencies: component.Dependencies, Healthcheck: component.Healthcheck, Resources: component.Resources, PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: component.Tmpfs, Ulimits: component.Ulimits, Devices: component.Devices, Endpoints: component.Endpoints}
 }
 
 func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServicePlan) error {
@@ -266,6 +266,9 @@ func validateVersionComponent(component model.VersionComponent) error {
 
 func renderVersionComponentService(component model.VersionComponent, appCode, physicalServiceDir string, runtime map[string]string, _ bool) (map[string]any, []ResolvedMount, error) {
 	service := map[string]any{"image": component.Image, "container_name": runtimeName(appCode, component.Name)}
+	if len(component.Entrypoint) > 0 {
+		service["entrypoint"] = append([]string(nil), component.Entrypoint...)
+	}
 	if len(component.Command) > 0 {
 		service["command"] = append([]string(nil), component.Command...)
 	}

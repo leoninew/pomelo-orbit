@@ -23,6 +23,7 @@ export interface VersionComponentReq {
   tmpfs: ComponentTmpfs[];
   ulimits: ComponentUlimit[];
   devices: ComponentDeviceRequest[];
+  entrypoint: string;
 }
 
 export interface VersionComponentCreateReq {
@@ -31,6 +32,7 @@ export interface VersionComponentCreateReq {
   pull_policy: string;
   restart_policy?: string | undefined;
   command: string;
+  entrypoint: string;
 }
 
 export interface VersionComponentBasicUpdateReq {
@@ -39,6 +41,7 @@ export interface VersionComponentBasicUpdateReq {
   pull_policy: string;
   restart_policy?: string | undefined;
   command: string;
+  entrypoint: string;
 }
 
 export interface VersionComponentRuntimeUpdateReq {
@@ -94,6 +97,8 @@ export interface VersionComponentResp {
   artifact_image_ref?: string | undefined;
   artifact_local_image_sha256?: string | undefined;
   artifact_source_commit_sha?: string | undefined;
+  artifact_name?: string | undefined;
+  entrypoint: string;
 }
 
 export interface ComponentEnv {

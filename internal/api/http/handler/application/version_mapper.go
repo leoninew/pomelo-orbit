@@ -11,8 +11,9 @@ import (
 func versionComponentInput(req *applicationv1.VersionComponentReq) applicationdto.VersionComponentInput {
 	return applicationdto.VersionComponentInput{
 		Name: req.Name, Image: req.Image,
-		Command: req.Command,
-		Env:     componentEnvInput(req.Env), Endpoints: componentEndpointInput(req.Endpoints), Mounts: componentMountInput(req.Mounts),
+		Entrypoint: req.Entrypoint,
+		Command:    req.Command,
+		Env:        componentEnvInput(req.Env), Endpoints: componentEndpointInput(req.Endpoints), Mounts: componentMountInput(req.Mounts),
 		Dependencies: componentDependencyInput(req.Dependencies),
 		Healthcheck:  componentHealthcheckInput(req.Healthcheck), Resources: componentResourcesInput(req.Resources),
 		PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, Tmpfs: componentTmpfsInput(req.Tmpfs), Ulimits: componentUlimitInput(req.Ulimits), Devices: componentDeviceInput(req.Devices),
@@ -21,13 +22,13 @@ func versionComponentInput(req *applicationv1.VersionComponentReq) applicationdt
 
 func versionComponentBasicUpdateInput(req *applicationv1.VersionComponentBasicUpdateReq) applicationdto.VersionComponentBasicUpdateInput {
 	return applicationdto.VersionComponentBasicUpdateInput{
-		Name: req.Name, Image: req.Image, Command: req.Command, PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy,
+		Name: req.Name, Image: req.Image, Entrypoint: req.Entrypoint, Command: req.Command, PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy,
 	}
 }
 
 func versionComponentCreateInput(req *applicationv1.VersionComponentCreateReq) applicationdto.VersionComponentInput {
 	return applicationdto.VersionComponentInput{
-		Name: req.Name, Image: req.Image, Command: req.Command, PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy,
+		Name: req.Name, Image: req.Image, Entrypoint: req.Entrypoint, Command: req.Command, PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy,
 	}
 }
 
@@ -206,8 +207,9 @@ func versionResponse(view applicationdto.VersionView) applicationv1.VersionResp 
 func versionComponentResponse(component model.VersionComponent) *applicationv1.VersionComponentResp {
 	response := &applicationv1.VersionComponentResp{
 		Id: component.Id, VersionId: component.VersionId, Name: component.Name, Image: component.Image,
-		Command: commandline.Format(component.Command),
-		Env:     componentEnvResponse(component.Env), Endpoints: componentEndpointResponse(component.Endpoints), Mounts: componentMountResponse(component.Mounts),
+		Entrypoint: commandline.Format(component.Entrypoint),
+		Command:    commandline.Format(component.Command),
+		Env:        componentEnvResponse(component.Env), Endpoints: componentEndpointResponse(component.Endpoints), Mounts: componentMountResponse(component.Mounts),
 		Dependencies: componentDependencyResponse(component.Dependencies),
 		Healthcheck:  componentHealthcheckResponse(component.Healthcheck), Resources: componentResourcesResponse(component.Resources),
 		PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: componentTmpfsResponse(component.Tmpfs), Ulimits: componentUlimitResponse(component.Ulimits),
@@ -216,6 +218,7 @@ func versionComponentResponse(component model.VersionComponent) *applicationv1.V
 	}
 	if component.Artifact != nil {
 		response.ArtifactId = optionalString(component.Artifact.ArtifactId)
+		response.ArtifactName = optionalString(component.Artifact.ArtifactName)
 		response.ArtifactImageRef = optionalString(component.Artifact.ImageRef)
 		response.ArtifactLocalImageSha256 = optionalString(component.Artifact.LocalImageSha256)
 		response.ArtifactSourceCommitSha = optionalString(component.Artifact.SourceCommitSha)

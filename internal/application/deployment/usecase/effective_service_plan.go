@@ -237,6 +237,7 @@ func effectiveComponentFromVersion(declaration model.VersionComponent) model.Eff
 		SourceComponentId: declaration.Id,
 		Name:              declaration.Name,
 		Image:             declaration.Image,
+		Entrypoint:        append([]string(nil), declaration.Entrypoint...),
 		Command:           append([]string(nil), declaration.Command...),
 		Env:               append([]model.VersionComponentEnv(nil), declaration.Env...),
 		Mounts:            append([]model.VersionComponentMount(nil), declaration.Mounts...),
@@ -297,6 +298,7 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 	type fingerprintComponent struct {
 		Name          string
 		Image         string
+		Entrypoint    []string
 		Command       []string
 		Env           []model.VersionComponentEnv
 		Mounts        []model.VersionComponentMount
@@ -319,7 +321,7 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 	}
 	components := make([]fingerprintComponent, 0, len(plan.Components))
 	for _, component := range plan.Components {
-		components = append(components, fingerprintComponent{Name: component.Name, Image: component.Image, Command: component.Command, Env: component.Env, Mounts: component.Mounts, Dependencies: component.Dependencies, Healthcheck: component.Healthcheck, Resources: component.Resources, PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: component.Tmpfs, Ulimits: component.Ulimits, Devices: component.Devices, Endpoints: component.Endpoints})
+		components = append(components, fingerprintComponent{Name: component.Name, Image: component.Image, Entrypoint: component.Entrypoint, Command: component.Command, Env: component.Env, Mounts: component.Mounts, Dependencies: component.Dependencies, Healthcheck: component.Healthcheck, Resources: component.Resources, PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: component.Tmpfs, Ulimits: component.Ulimits, Devices: component.Devices, Endpoints: component.Endpoints})
 	}
 	sort.Slice(components, func(i, j int) bool { return components[i].Name < components[j].Name })
 	data := fingerprint{AppCode: plan.Application.Code, AppKind: plan.Application.Kind, VersionLabel: plan.Version.Label, InstanceKey: plan.Service.InstanceKey, Components: components}

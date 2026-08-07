@@ -68,6 +68,7 @@ export interface DeviceRow {
 export interface ComponentForm {
   name: string;
   image: string;
+  entrypoint: string;
   command: string;
   env: ComponentEnv[];
   ports: PortRow[];
@@ -120,6 +121,7 @@ export function emptyComponentForm(): ComponentForm {
   return {
     name: '',
     image: '',
+    entrypoint: '',
     command: '',
     env: [],
     ports: [],
@@ -154,6 +156,7 @@ export function componentFormFromResponse(component: VersionComponentResp): Comp
   return {
     name: component.name,
     image: component.image,
+    entrypoint: component.entrypoint,
     command: component.command,
     env: component.env.map((item) => ({ key: item.key, value: item.value })),
     ports: component.endpoints.map((item) => ({
@@ -497,6 +500,7 @@ export function componentBasicRequestFromForm(
     value: {
       name: form.name,
       image: form.image,
+      entrypoint: form.entrypoint,
       command: form.command,
       pull_policy: form.pull_policy,
       restart_policy: optionalText(form.restart_policy),
@@ -521,6 +525,7 @@ export function componentCreateRequestFromForm(
     value: {
       name: form.name,
       image: form.image,
+      entrypoint: form.entrypoint,
       command: form.command,
       pull_policy: form.pull_policy,
       restart_policy: optionalText(form.restart_policy),

@@ -52,6 +52,7 @@ type VersionComponent struct {
 	Name          string  `db:"name"`
 	Image         string  `db:"image"`
 	ArtifactId    *string `db:"artifact_id"`
+	Entrypoint    []string
 	Command       []string
 	Env           []VersionComponentEnv
 	Endpoints     []VersionComponentEndpoint
@@ -72,6 +73,7 @@ type VersionComponent struct {
 // VersionComponentArtifact records the local image that was used to create a component.
 type VersionComponentArtifact struct {
 	ArtifactId       string
+	ArtifactName     string
 	ImageRef         string
 	LocalImageSha256 string
 	SourceCommitSha  string

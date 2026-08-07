@@ -108,6 +108,7 @@ export default {
     routes: '路由',
     repositories: '仓库',
     buildStages: '阶段',
+    pipelines: '流水线',
     pipelineTemplates: '模板',
     pipelineRuns: '记录',
     artifacts: '制品',
@@ -117,8 +118,8 @@ export default {
       admin: '系统管理',
       delivery: '应用交付',
       ingress: '网络接入',
-      code: '代码',
-      pipeline: '流水线',
+      code: '代码仓库',
+      pipeline: '制品构建',
     },
   },
   home: {
@@ -406,6 +407,7 @@ export default {
       },
       fields: {
         command: '命令',
+        containerEntrypoint: '容器入口命令',
         endpointName: '端点名称',
         protocol: '协议',
         endpointMode: '模式',

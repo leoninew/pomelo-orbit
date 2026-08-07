@@ -83,6 +83,7 @@ export interface ServiceComponentDetailResp {
   component: ServiceComponentResp | undefined;
   declaration: ServiceComponentDefinitionResp | undefined;
   effective: ServiceComponentDefinitionResp | undefined;
+  effective_error: string;
 }
 
 export interface ServiceComponentDefinitionResp {

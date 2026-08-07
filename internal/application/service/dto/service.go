@@ -44,12 +44,14 @@ type ServiceComponentOverlayInput struct {
 	Endpoints []model.ServiceComponentEndpoint
 }
 
-// ServiceComponentDetail is the complete server-side view needed to compare a
-// Version declaration, its sparse Service overlay, and the deployed intent.
+// ServiceComponentDetail compares a Version declaration and its sparse Service
+// overlay. Effective is unavailable while the Service configuration cannot
+// resolve all required runtime values.
 type ServiceComponentDetail struct {
-	Component   model.ServiceComponent
-	Declaration model.VersionComponent
-	Effective   model.EffectiveServiceComponent
+	Component      model.ServiceComponent
+	Declaration    model.VersionComponent
+	Effective      *model.EffectiveServiceComponent
+	EffectiveError string
 }
 
 type ServiceBasicUpdateInput struct {

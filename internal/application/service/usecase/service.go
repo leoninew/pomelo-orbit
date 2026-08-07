@@ -181,9 +181,9 @@ func (s Service) GetServiceComponent(ctx context.Context, userId, serviceID, com
 		}
 		effective, err := deploymentsvc.MergeServiceComponent(declaration, component, values)
 		if err != nil {
-			return servicedto.ServiceComponentDetail{}, apperror.New(apperror.KindValidation, err.Error())
+			return servicedto.ServiceComponentDetail{Component: component, Declaration: declaration, EffectiveError: err.Error()}, nil
 		}
-		return servicedto.ServiceComponentDetail{Component: component, Declaration: declaration, Effective: effective}, nil
+		return servicedto.ServiceComponentDetail{Component: component, Declaration: declaration, Effective: &effective}, nil
 	}
 	return servicedto.ServiceComponentDetail{}, apperror.New(apperror.KindValidation, "Service component declaration is no longer available")
 }

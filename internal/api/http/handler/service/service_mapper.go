@@ -53,6 +53,9 @@ func serviceComponentResponse(item model.ServiceComponent) servicev1.ServiceComp
 func serviceComponentDetailResponse(item servicedto.ServiceComponentDetail) servicev1.ServiceComponentDetailResp {
 	component := serviceComponentResponse(item.Component)
 	declaration := componentDeclarationResponse(item.Declaration)
+	if item.Effective == nil {
+		return servicev1.ServiceComponentDetailResp{Component: &component, Declaration: &declaration, EffectiveError: item.EffectiveError}
+	}
 	effective := componentDeclarationResponse(model.VersionComponent{
 		Id: item.Effective.SourceComponentId, Name: item.Effective.Name, Image: item.Effective.Image,
 		Command: item.Effective.Command, Env: item.Effective.Env, Endpoints: item.Effective.Endpoints,

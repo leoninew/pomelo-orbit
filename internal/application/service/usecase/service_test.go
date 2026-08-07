@@ -141,8 +141,8 @@ func TestGetServiceComponentReturnsDeclarationOverlayAndEffectiveValues(t *testi
 	if detail.Component.Id != component.Id || detail.Declaration.Id != declaration.Id {
 		t.Fatalf("component detail lost source views: %#v", detail)
 	}
-	if len(detail.Effective.Env) != 1 || detail.Effective.Env[0].Value != "runtime-value" {
-		t.Fatalf("effective environment = %#v", detail.Effective.Env)
+	if detail.Effective == nil || len(detail.Effective.Env) != 1 || detail.Effective.Env[0].Value != "runtime-value" {
+		t.Fatalf("effective component = %#v", detail.Effective)
 	}
 }
 
@@ -164,8 +164,26 @@ func TestGetServiceComponentResolvesServiceEnvironmentWithoutCreatingOverlay(t *
 	if len(detail.Component.Env) != 0 {
 		t.Fatalf("service value must not become a component overlay: %#v", detail.Component.Env)
 	}
-	if len(detail.Effective.Env) != 1 || detail.Effective.Env[0].Value != "from-service" {
-		t.Fatalf("effective environment = %#v", detail.Effective.Env)
+	if detail.Effective == nil || len(detail.Effective.Env) != 1 || detail.Effective.Env[0].Value != "from-service" {
+		t.Fatalf("effective component = %#v", detail.Effective)
+	}
+}
+
+func TestGetServiceComponentAllowsMissingRequiredServiceEnvironment(t *testing.T) {
+	service, app, version, declaration, component := serviceViewFixture()
+	declaration.Env[0].Value = "${MYSQL_DATABASE:?required}"
+	component.Env = nil
+	usecase := Service{
+		application: serviceApplicationFake{app: app, version: version, declarations: []model.VersionComponent{declaration}},
+		service:     serviceStoreFake{service: service, component: component},
+	}
+
+	detail, err := usecase.GetServiceComponent(context.Background(), "user-1", service.Id, component.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if detail.Component.Id != component.Id || detail.Declaration.Id != declaration.Id || detail.Effective != nil || !strings.Contains(detail.EffectiveError, "requires service environment MYSQL_DATABASE") {
+		t.Fatalf("component detail = %#v", detail)
 	}
 }
 

@@ -642,12 +642,13 @@ func (x *ServiceComponentResp) GetImage() string {
 // server-merged effective component so clients never infer runtime state from
 // absent values.
 type ServiceComponentDetailResp struct {
-	state         protoimpl.MessageState          `protogen:"open.v1"`
-	Component     *ServiceComponentResp           `protobuf:"bytes,1,opt,name=component,proto3" json:"component,omitempty"`
-	Declaration   *ServiceComponentDefinitionResp `protobuf:"bytes,2,opt,name=declaration,proto3" json:"declaration,omitempty"`
-	Effective     *ServiceComponentDefinitionResp `protobuf:"bytes,3,opt,name=effective,proto3" json:"effective,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState          `protogen:"open.v1"`
+	Component      *ServiceComponentResp           `protobuf:"bytes,1,opt,name=component,proto3" json:"component,omitempty"`
+	Declaration    *ServiceComponentDefinitionResp `protobuf:"bytes,2,opt,name=declaration,proto3" json:"declaration,omitempty"`
+	Effective      *ServiceComponentDefinitionResp `protobuf:"bytes,3,opt,name=effective,proto3" json:"effective,omitempty"`
+	EffectiveError string                          `protobuf:"bytes,4,opt,name=effective_error,json=effectiveError,proto3" json:"effective_error,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ServiceComponentDetailResp) Reset() {
@@ -699,6 +700,13 @@ func (x *ServiceComponentDetailResp) GetEffective() *ServiceComponentDefinitionR
 		return x.Effective
 	}
 	return nil
+}
+
+func (x *ServiceComponentDetailResp) GetEffectiveError() string {
+	if x != nil {
+		return x.EffectiveError
+	}
+	return ""
 }
 
 type ServiceComponentDefinitionResp struct {
@@ -1775,11 +1783,12 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	" \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\v \x01(\tR\tupdatedAt\x12\x14\n" +
-	"\x05image\x18\f \x01(\tR\x05image\"\x86\x02\n" +
+	"\x05image\x18\f \x01(\tR\x05image\"\xaf\x02\n" +
 	"\x1aServiceComponentDetailResp\x12D\n" +
 	"\tcomponent\x18\x01 \x01(\v2&.orbit.v1.service.ServiceComponentRespR\tcomponent\x12R\n" +
 	"\vdeclaration\x18\x02 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\vdeclaration\x12N\n" +
-	"\teffective\x18\x03 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\teffective\"\xc4\x03\n" +
+	"\teffective\x18\x03 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\teffective\x12'\n" +
+	"\x0feffective_error\x18\x04 \x01(\tR\x0eeffectiveError\"\xc4\x03\n" +
 	"\x1eServiceComponentDefinitionResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +

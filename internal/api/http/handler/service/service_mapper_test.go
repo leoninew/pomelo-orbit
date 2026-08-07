@@ -28,3 +28,14 @@ func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 		t.Fatalf("service environment = %#v", response.Env)
 	}
 }
+
+func TestServiceComponentDetailResponseOmitsUnavailableEffectiveValues(t *testing.T) {
+	response := serviceComponentDetailResponse(servicedto.ServiceComponentDetail{
+		Component:      model.ServiceComponent{Id: "service-component-1"},
+		Declaration:    model.VersionComponent{Id: "version-component-1", Name: "mysql", Image: "mysql:8"},
+		EffectiveError: "component mysql environment MYSQL_DATABASE: requires service environment MYSQL_DATABASE",
+	})
+	if response.Component == nil || response.Declaration == nil || response.Effective != nil || response.EffectiveError == "" {
+		t.Fatal("expected source views without effective component")
+	}
+}

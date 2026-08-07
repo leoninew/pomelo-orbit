@@ -10,7 +10,7 @@ Review status: Accepted
 - 依据已接受的 [流水线模板与应用流水线分离 Requirement](../requirement/20260807-pipeline-template-instance-separation.md)。
 - 产品目标是让 Template 成为真正的来源蓝图，让 Application Pipeline 成为一次配置后可直接运行的交付单元。
 - 本规格采用破坏性模型切换：业务代码、HTTP/Proto 和 Web 只支持新 Pipeline 模型，不保留旧 Template/Stage/Trigger 契约的兼容分支。
-- 开发数据库的就地结构与数据变更由独立迁移脚本或 CI 作业负责，不属于业务代码实现范围；该脚本在主业务开发完成后另行设计。
+- 开发数据库从空库执行迁移链至 version 30，直接得到最终结构和种子数据；不提供旧结构就地转换。
 - Webhook 尚未正式投入使用，本规格不定义或实现其新模型。
 
 ## Product model
@@ -88,7 +88,7 @@ Pipeline {
 | PipelineRun | PipelineSnapshot | 物理外键 | 不适用 | Snapshot 是 Run 的不可变执行输入，不能在仍被 Run 引用时删除 |
 | Artifact | PipelineRun | 物理外键 | 不适用 | Artifact 是 Run 输出，删除 Run 时级联删除 |
 
-新表和独立数据切换脚本都必须按此表建立或移除约束。逻辑外键字段在创建时写入冗余展示值；列表和详情优先显示该快照值，不依赖已删除目标的 join。
+空库迁移链必须按此表建立或移除约束。逻辑外键字段在创建时写入冗余展示值；列表和详情优先显示该快照值，不依赖已删除目标的 join。
 
 `VersionComponent` 在关联构建 Artifact 时，同时写入上表定义的 Artifact 展示快照。Artifact 实体继续保存其完整 Run 级记录；Component 的冗余字段只服务于 Version 详情在 Artifact 或 Run 已物理删除后仍可呈现构建来源。
 
@@ -261,19 +261,11 @@ Application Pipeline 创建过程按名称、Repository（必填）、Applicatio
 - Version 删除检查从旧的全局 Stage 绑定替换为 Application Pipeline 的 `fixed_version_id` 引用；Service、Deployment 和历史 Run 的现有语义保持。
 - Application Pipeline 的身份资源不可修改；Application、Repository 或来源 Template 更换必须创建新 Pipeline，避免运行历史与配置含义漂移。
 
-## Data cutover boundary
+## Database baseline
 
-数据库改造不进入业务 usecase、repository 兼容逻辑或 HTTP handler。独立的开发数据库就地迁移脚本或 CI 作业在主业务开发完成后负责完成旧表到新表的结构与数据调整；在实际环境切换和启动新业务版本前必须完成。
+数据库改造不进入业务 usecase、repository 兼容逻辑或 HTTP handler。空库从 version 1 顺序执行至 version 30 时，必须直接得到新的 `pipeline`、自有 `pipeline_stage`、`pipeline_snapshot`、`pipeline_run`、Run 级 Version 绑定、Artifact 和 VersionComponent 字段；不创建旧 Template/全局 Stage/Webhook 表，也不提供旧库转换路径。
 
-脚本必须满足以下后置条件：
-
-1. 新 `pipeline`、自有 `pipeline_stage`、`pipeline_snapshot`、`pipeline_run`、Run 级 Version 绑定和 Artifact 结构完整且引用新身份；`pipeline_snapshot.stages_snapshot`、`variables_snapshot` 及 Run 对 Snapshot 的不可变引用语义继续保留；
-2. 旧 `pipeline_template`、`pipeline_template_stage`、全局 Stage 绑定和 Repository Template Webhook 结构不再被新代码读取或写入；本轮不创建替代 Webhook 结构；
-3. 旧共享 Stage/Application 绑定无法可靠推断为新的 Application Pipeline；脚本只迁移 Template 蓝图及其自有 Stage，清除制品 `component_name`，由用户显式创建 Application Pipeline。旧 Snapshot、Run、Artifact、旧 Version binding 和 Webhook 历史在存在时必须要求 `--drop-legacy-history` 明确确认后删除，不能猜测归属或生成默认绑定；
-4. 结构和数据变换应在开发数据库中就地执行，并在切换后按逻辑/物理外键评估表运行一致性检查；
-5. 业务代码从切换点开始只依赖新结构，不提供运行时降级或旧数据补偿。
-
-迁移脚本作为业务代码外的离线交付物执行，不修改已执行迁移文件或为新业务增加兼容逻辑；CI 接入策略仍可独立演进。
+`pipeline_snapshot.stages_snapshot`、`variables_snapshot` 及 Run 对 Snapshot 的不可变引用语义继续保留。业务代码仅依赖最终结构，不提供运行时降级或旧数据补偿。
 
 ## Alternatives rejected
 

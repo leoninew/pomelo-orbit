@@ -1,7 +1,5 @@
 -- Domain: application — reverse (FK-safe order)
 
-DROP TABLE IF EXISTS pipeline_run_build_version_binding;
-DROP TABLE IF EXISTS pipeline_stage_build_version_binding;
 DROP TABLE IF EXISTS version_component_device;
 DROP TABLE IF EXISTS version_component_ulimit;
 DROP TABLE IF EXISTS version_component_tmpfs;

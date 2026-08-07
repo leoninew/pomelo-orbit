@@ -61,19 +61,6 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-3', 'app-1', 'v3', 'unpublished')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `
-		CREATE TABLE pipeline_run_version_binding (
-			pipeline_run_id TEXT PRIMARY KEY,
-			application_id TEXT NOT NULL,
-			application_name TEXT NOT NULL,
-			source_version_id TEXT NOT NULL,
-			source_version_label TEXT NOT NULL,
-			generated_version_id TEXT,
-			generated_version_label TEXT
-		)
-	`); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO deployment (id, application_name, operation_type, trigger_type, status, is_rollback, version_id) VALUES ('deployment-1', 'App', 'deploy', 'manual', 'succeeded', 0, 'version-1')`); err != nil {
 		t.Fatal(err)
 	}

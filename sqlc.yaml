@@ -1,7 +1,7 @@
 version: "2"
 sql:
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/auth"
     gen:
       go:
@@ -12,7 +12,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/user"
     gen:
       go:
@@ -23,7 +23,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/role"
     gen:
       go:
@@ -34,7 +34,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/project"
     gen:
       go:
@@ -45,7 +45,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/task"
     gen:
       go:
@@ -56,7 +56,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/credential"
     gen:
       go:
@@ -67,7 +67,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/repository"
     gen:
       go:
@@ -78,7 +78,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/schema/ci_pipeline.sql"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/pipeline"
     gen:
       go:
@@ -89,7 +89,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/schema/ci_pipeline.sql"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/pipeline_run"
     gen:
       go:
@@ -100,9 +100,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema:
-      - "sql/migration/sqlite"
-      - "sql/schema/application_version_component.sql"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/application"
     gen:
       go:
@@ -113,7 +111,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/service"
     gen:
       go:
@@ -124,7 +122,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/deployment"
     gen:
       go:
@@ -135,7 +133,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/gateway"
     gen:
       go:
@@ -146,7 +144,7 @@ sql:
         emit_json_tags: false
         emit_interface: true
   - engine: "sqlite"
-    schema: "sql/migration/sqlite"
+    schema: "sql/schema/schema.sql"
     queries: "sql/query/route"
     gen:
       go:

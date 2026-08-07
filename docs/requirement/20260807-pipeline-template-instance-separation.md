@@ -63,7 +63,7 @@ Review status: Accepted
 1. Repository 身份从可复用 Stage 移至非模板 Pipeline；Application 身份也可在需要版本制品绑定时固定到 Pipeline。来源 Version 策略属于 Pipeline，目标 Component 映射属于 `docker_image` 制品声明。
 2. 从模板创建 Pipeline 时物化完整流水线定义；模板后续修改不隐式影响已创建 Pipeline。
 3. Run 级 Version 绑定继续保存实际 Application 和来源/生成 Version；新 Version Component 通过 `artifact_id` 与对应制品关联，作为不可变执行历史。
-4. 业务代码不保留旧流水线模型的兼容分支。开发数据库的就地结构和数据调整由独立迁移脚本或 CI 作业负责，不进入业务实现。
+4. 业务代码不保留旧流水线模型的兼容分支。空库迁移链在 version 30 直接创建最终结构和种子数据，不提供旧结构就地转换。
 5. Template 与 Application Pipeline 各自维护 `version`。Application Pipeline 创建时记录不可变的 `source_template_version`；只有 Application Pipeline 的版本驱动 Snapshot 创建与复用。
 6. Pipeline 允许物理删除，不增加生命周期状态；既有数据库数据的处置属于后续独立迁移任务。
 7. Webhook 尚未投入使用，本轮不迁移、不重建也不实现其新模型。

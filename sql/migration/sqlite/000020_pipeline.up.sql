@@ -1,64 +1,73 @@
 -- Domain: pipeline
--- Tables: pipeline_template, pipeline_stage, pipeline_template_stage, pipeline_snapshot
--- Ref: docs/analyze/20260724-domain-split-consensus-共识.md
-
-CREATE TABLE IF NOT EXISTS pipeline_template (
+CREATE TABLE IF NOT EXISTS pipeline (
     id TEXT PRIMARY KEY,
+    project_id TEXT,
+    kind TEXT NOT NULL,
+    source_pipeline_id TEXT,
+    source_template_name TEXT,
+    source_template_version INTEGER,
+    application_id TEXT,
+    application_name TEXT,
+    repository_id TEXT,
+    repository_name TEXT,
+    version_fork_strategy TEXT,
+    fixed_version_id TEXT,
+    fixed_version_label TEXT,
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     variable_declarations TEXT NOT NULL DEFAULT '[]',
     version INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    project_id TEXT REFERENCES project(id)
+    UNIQUE (project_id, name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_pipeline_template_name ON pipeline_template(name);
-CREATE INDEX IF NOT EXISTS idx_pipeline_template_project ON pipeline_template(project_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_project ON pipeline(project_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_kind ON pipeline(kind);
+CREATE INDEX IF NOT EXISTS idx_pipeline_source_pipeline ON pipeline(source_pipeline_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_application ON pipeline(application_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_repository ON pipeline(repository_id);
 
 CREATE TABLE IF NOT EXISTS pipeline_stage (
     id TEXT PRIMARY KEY,
+    pipeline_id TEXT NOT NULL,
     name TEXT NOT NULL,
     image TEXT NOT NULL,
     script TEXT NOT NULL DEFAULT '',
     artifacts TEXT,
-    description TEXT NOT NULL DEFAULT '',
-    version INTEGER NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    project_id TEXT REFERENCES project(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_pipeline_stage_name ON pipeline_stage(name);
-CREATE INDEX IF NOT EXISTS idx_pipeline_stage_project ON pipeline_stage(project_id);
-
-CREATE TABLE IF NOT EXISTS pipeline_template_stage (
-    id TEXT PRIMARY KEY,
-    template_id TEXT NOT NULL,
-    stage_id TEXT NOT NULL,
-    stage_name TEXT NOT NULL,
-    stage_version INTEGER NOT NULL DEFAULT 1,
     depends_on TEXT NOT NULL DEFAULT '[]',
     sort_order INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (template_id) REFERENCES pipeline_template(id) ON DELETE CASCADE,
-    FOREIGN KEY (stage_id) REFERENCES pipeline_stage(id),
-    UNIQUE (template_id, stage_name)
+    description TEXT NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (pipeline_id) REFERENCES pipeline(id) ON DELETE CASCADE,
+    UNIQUE (pipeline_id, name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_pipeline_template_stage_template ON pipeline_template_stage(template_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_template_stage_stage ON pipeline_template_stage(stage_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_stage_pipeline ON pipeline_stage(pipeline_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_stage_pipeline_sort ON pipeline_stage(pipeline_id, sort_order);
 
 CREATE TABLE IF NOT EXISTS pipeline_snapshot (
     id TEXT PRIMARY KEY,
-    template_id TEXT NOT NULL,
-    version INTEGER NOT NULL,
+    project_id TEXT,
+    pipeline_id TEXT NOT NULL,
+    pipeline_name TEXT NOT NULL,
+    pipeline_version INTEGER NOT NULL,
+    source_pipeline_id TEXT NOT NULL,
+    source_template_name TEXT NOT NULL,
+    source_template_version INTEGER NOT NULL,
+    application_id TEXT,
+    application_name TEXT,
+    repository_id TEXT NOT NULL,
+    repository_name TEXT NOT NULL,
+    version_fork_strategy TEXT,
+    fixed_version_id TEXT,
+    fixed_version_label TEXT,
     stages_snapshot TEXT NOT NULL DEFAULT '[]',
     variables_snapshot TEXT NOT NULL DEFAULT '[]',
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    project_id TEXT REFERENCES project(id),
-    FOREIGN KEY (template_id) REFERENCES pipeline_template(id),
-    UNIQUE (template_id, version)
+    UNIQUE (pipeline_id, pipeline_version)
 );
 
-CREATE INDEX IF NOT EXISTS idx_pipeline_snapshot_template ON pipeline_snapshot(template_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_snapshot_pipeline ON pipeline_snapshot(pipeline_id);
 CREATE INDEX IF NOT EXISTS idx_pipeline_snapshot_project ON pipeline_snapshot(project_id);

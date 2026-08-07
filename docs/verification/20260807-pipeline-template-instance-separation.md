@@ -25,7 +25,7 @@ Review status: Draft
 ## Actual diff
 
 - 重建 Pipeline 领域、SQLC、Repository、Usecase、Proto、HTTP 路由与 Web 页面，完成 Template 与 Application Pipeline 分离。
-- 新增 `scripts/migrate_pipeline_template_instances.py` 和操作说明，执行开发 SQLite 的就地切换。
+- SQLite 空库迁移至 version 30 后，直接得到 Pipeline 聚合、私有 Stage、Run/Artifact 历史表和 VersionComponent 最终字段。
 - 修正 PipelineRun/Artifact 分页查询的 SQLC 命名参数；新增全仓 SQL query 静态检查，禁止单语句混用命名参数与匿名 `?`。
 - 修正 Pipeline 列表/计数查询：使用完整命名参数，生成 API 不再含 `ColumnN`，并以 SQLite 回归测试执行过滤和分页。
 - 移除 Version 删除检查对旧 `pipeline_stage_build_version_binding` 的残留读取，保留运行中 Service 对 Version 的阻断语义。

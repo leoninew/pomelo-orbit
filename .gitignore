@@ -17,6 +17,8 @@ Thumbs.db
 
 # backend
 logs/
-data/
+data/*
+!data/exports/
+data/exports/*
 bin/
 __pycache__/

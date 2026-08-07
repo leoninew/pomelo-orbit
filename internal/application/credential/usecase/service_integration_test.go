@@ -17,6 +17,7 @@ import (
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	credentialrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/credential"
 	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
+	testseed "gitee.com/leoninew/PomeloOrbit-go/internal/testutil/seed"
 )
 
 const (
@@ -91,6 +92,7 @@ func newCredentialIntegrationService(t *testing.T) (Service, *sql.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
+	testseed.ApplySQLitePipelineDemo(t, database)
 	_ = slog.New(slog.NewTextHandler(io.Discard, nil))
 	service := New(
 		projectrepo.NewRepository(database),

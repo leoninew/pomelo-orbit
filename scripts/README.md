@@ -28,7 +28,6 @@
 | [`rewrite_frontend_proto_imports.py`](./rewrite_frontend_proto_imports.md) | 迁移前端 Proto 导入到领域路径。 |
 | [`rewrite_proto_domain_imports.py`](./rewrite_proto_domain_imports.md) | 迁移后端 Proto 导入到领域包。 |
 | [`migrate_legacy_sqlite.py`](./migrate_legacy_sqlite.md) | 将旧 v30 SQLite 控制面数据库升级到当前基线。 |
-| [`migrate_pipeline_template_instances.py`](./migrate_pipeline_template_instances.md) | 将旧 Pipeline Template/Stage 模型离线切换为 Template Pipeline，并显式清理不兼容运行历史。 |
 
 ## 测试与发布支持
 

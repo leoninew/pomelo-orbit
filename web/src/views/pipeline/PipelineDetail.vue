@@ -1185,7 +1185,7 @@
             fixed_version_id:
               hasComponentMapping.value && stageForm.version_fork_strategy === 'fixed'
                 ? stageForm.fixed_version_id
-                  : undefined,
+                : undefined,
           });
         await loadPipelineVariablePreview();
         stageOpen.value = false;

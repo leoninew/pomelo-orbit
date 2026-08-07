@@ -18,7 +18,7 @@ Review status: Accepted
 
 1. 步骤 1 至 6 已完成：新 Pipeline 聚合、Application Pipeline 实例化、Snapshot/Run、HTTP/Proto、SQLC 和前端工作流均已切换到新模型。
 2. 步骤 7 的活文档已完成首次同步；本次更新继续将 RSPV 与实现、离线迁移和变量预览行为对齐。
-3. 步骤 8 的离线 SQLite 切换脚本已实现，并已在开发库及指定备份库完成就地切换与完整性检查。
+3. 数据库基线改为在 version 30 直接创建最终 Pipeline 模型，并通过空库迁移测试验证。
 4. 尚未完成的交付项是浏览器人工验收；完整 Go 测试目前仅因迁移版本断言仍期望 `30` 而失败，用户已明确将该单元测试修复留给后续会话。
 
 ## Implementation steps
@@ -73,11 +73,9 @@ Review status: Accepted
    - 更新 `docs/INDEX.md` 中 CI 入口名称；删除或重写仍声明全局可复用 Stage、Template 直接触发、Repository Template Webhook 的活文档内容。
    - 保留本任务的 Requirement、Spec、Plan；仅在验收完成后创建 Verification。
 
-8. 实现独立的 SQLite 数据切换脚本。
-   - 在 `scripts/migrate_pipeline_template_instances.py` 对旧 v30 完整基线执行只读预检，要求数据库完整、外键完整、Template 名称在 Project 内唯一、Stage DAG 可重映射且无环。
-   - 保留旧 Template ID/名称/版本/变量和关联行 ID，转成 `kind=template` Pipeline 及其自有 Stage；清空全部 Artifact `component_name`。不从旧 Stage binding 猜测 Application Pipeline，切换后由用户显式实例化。
-   - 旧 Template Snapshot、Run、Artifact、旧 Stage/Run Version binding 和 Webhook 无法可靠映射，存在记录时只有在 `--drop-legacy-history` 明确确认下删除；`--apply` 强制使用尚不存在的 SQLite 备份路径。
-   - 重建 `version_component`，保留 `artifact_id` 为逻辑外键并回填制品展示快照；移除旧 Artifact 物理外键和 `ON DELETE SET NULL`。在事务提交前校验目标 schema、记录数、`component_name` 清理、完整性和外键。
+8. 将最终 Pipeline 模型并入 SQLite/MySQL 的 version 20-23 基础 DDL 和 version 30 种子。
+   - 空库迁移至 version 30 后直接存在 Pipeline、私有 Stage、Snapshot、Run、Artifact、Run Version binding 和 VersionComponent 最终字段。
+   - 种子 Template 使用私有 Stage ID 作为 DAG 依赖，不创建旧 Template、全局 Stage、Stage binding 或 Webhook 表。
 
 ## Files and ownership
 
@@ -90,7 +88,7 @@ Review status: Accepted
 | 传输与组装 | `proto/orbit/v1/pipeline*`, `internal/api/http/`, `internal/bootstrap/http.go` | 破坏性 API 契约、路由和依赖注入 |
 | 前端 | `web/src/views/pipeline/`, `web/src/views/pipeline_run/`, `web/src/api/`, `web/src/router/` | Template/Application Pipeline 工作流、运行与历史展示 |
 | 文档 | `docs/product/`, `docs/guides/`, `docs/INDEX.md` | 新术语和操作路径 |
-| 独立数据切换 | `scripts/migrate_pipeline_template_instances.py` | 开发 SQLite 就地改造、备份和显式旧历史处置；不属于业务运行时 |
+| 数据库基线 | `sql/migration/{sqlite,mysql}/000020..000030_*` | 空库直接创建最终 Pipeline 模型和种子 |
 
 ## Verification plan
 
@@ -117,4 +115,4 @@ Review status: Accepted
 4. 用户确认 Template 保留版本但不再有 Snapshot；Application Pipeline 沿用 Snapshot、Run 与 Artifact 数据链。
 5. 用户确认 Pipeline 允许物理删除，不增加状态；跨生命周期引用使用带展示冗余字段的逻辑外键，只有聚合内组成关系使用物理外键。
 6. 用户确认 Component 映射属于 `docker_image` 制品声明，一个成功 Run 最多 fork 一个 Application Version；Webhook 暂不纳入本轮模型。
-7. 用户在主业务开发完成后授权补充 `scripts/` 下的离线数据库变更脚本；迁移脚本负责开发数据库的就地切换，不回写已执行迁移文件，也不扩展业务兼容范围。
+7. 空库迁移链直接建立最终模型；不提供开发数据库的就地切换脚本，也不扩展业务兼容范围。

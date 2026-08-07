@@ -32,49 +32,6 @@ CREATE TABLE IF NOT EXISTS version (
 CREATE INDEX IF NOT EXISTS idx_version_application ON version(application_id);
 CREATE INDEX IF NOT EXISTS idx_version_status ON version(status);
 
-CREATE TABLE IF NOT EXISTS pipeline_stage_build_version_binding (
-    pipeline_stage_id TEXT PRIMARY KEY,
-    application_id TEXT NOT NULL,
-    application_name TEXT NOT NULL,
-    component_name TEXT NOT NULL,
-    fork_strategy TEXT NOT NULL CHECK (fork_strategy IN ('latest', 'fixed')),
-    fixed_version_id TEXT,
-    FOREIGN KEY (pipeline_stage_id) REFERENCES pipeline_stage(id) ON DELETE CASCADE,
-    FOREIGN KEY (application_id) REFERENCES application(id),
-    FOREIGN KEY (fixed_version_id) REFERENCES version(id),
-    CHECK (
-        (fork_strategy = 'latest' AND fixed_version_id IS NULL) OR
-        (fork_strategy = 'fixed' AND fixed_version_id IS NOT NULL)
-    )
-);
-
-CREATE INDEX IF NOT EXISTS idx_pipeline_stage_build_version_binding_application
-    ON pipeline_stage_build_version_binding(application_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_stage_build_version_binding_fixed_version
-    ON pipeline_stage_build_version_binding(fixed_version_id);
-
-CREATE TABLE IF NOT EXISTS pipeline_run_build_version_binding (
-    pipeline_run_id TEXT NOT NULL,
-    pipeline_stage_id TEXT NOT NULL,
-    application_id TEXT NOT NULL,
-    application_name TEXT NOT NULL,
-    component_name TEXT NOT NULL,
-    source_version_id TEXT NOT NULL,
-    source_version_label TEXT NOT NULL,
-    generated_version_id TEXT,
-    generated_version_label TEXT,
-    artifact_id TEXT,
-    PRIMARY KEY (pipeline_run_id, pipeline_stage_id),
-    FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE,
-    FOREIGN KEY (application_id) REFERENCES application(id),
-    FOREIGN KEY (artifact_id) REFERENCES artifact(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_pipeline_run_build_version_binding_source_version
-    ON pipeline_run_build_version_binding(source_version_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_run_build_version_binding_generated_version
-    ON pipeline_run_build_version_binding(generated_version_id);
-
 CREATE TABLE IF NOT EXISTS version_component (
     id TEXT PRIMARY KEY,
     version_id TEXT NOT NULL,
@@ -86,8 +43,12 @@ CREATE TABLE IF NOT EXISTS version_component (
     restart_policy TEXT,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    entrypoint_json TEXT NOT NULL DEFAULT '[]',
+    artifact_name TEXT,
+    artifact_image_ref TEXT,
+    artifact_local_image_sha256 TEXT,
+    artifact_source_commit_sha TEXT,
     FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE,
-    FOREIGN KEY (artifact_id) REFERENCES artifact(id) ON DELETE SET NULL,
     UNIQUE(version_id, name)
 );
 

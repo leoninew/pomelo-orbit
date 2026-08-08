@@ -21,7 +21,7 @@ message PipelineResp {
   optional string fixed_version_label = 13;
   string name = 14;
   string description = 15;
-  repeated PipelineStageResp stages = 16;
+  repeated PipelineStageNodeResp stage_nodes = 16;
   repeated orbit.v1.common.VariableDeclarationResp variable_declarations = 17;
   int32 version = 18;
   string created_at = 19;
@@ -39,15 +39,21 @@ message PipelineUpdateReq {
   optional string name = 1;
   optional string description = 2;
   optional orbit.v1.common.VariableDeclarationListReq variable_declarations = 3;
-  optional string version_fork_strategy = 4;
-  optional string fixed_version_id = 5;
-  optional bool clear_version_fork_strategy = 6;
 }
 
 message PipelineInstantiateReq {
   string name = 1;
   optional string application_id = 2;
   string repository_id = 3;
+  optional string version_fork_strategy = 4;
+  optional string fixed_version_id = 5;
+  repeated PipelineArtifactBindingReq artifact_bindings = 6;
+}
+
+message PipelineArtifactBindingReq {
+  string stage_id = 1;
+  string artifact_name = 2;
+  string component_name = 3;
 }
 
 message PipelinePaginatedResp {

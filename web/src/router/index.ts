@@ -203,6 +203,18 @@ const router = createRouter({
       meta: { title: '流水线', menuKey: 'pipelines' },
     },
     {
+      path: '/pipeline-stage',
+      name: 'PipelineStages',
+      component: () => import('@/views/pipeline/PipelineStagePage.vue'),
+      meta: { title: '阶段', menuKey: 'pipelinestages' },
+    },
+    {
+      path: '/pipeline-stage/:id',
+      name: 'PipelineStageDetail',
+      component: () => import('@/views/pipeline/PipelineStageDetail.vue'),
+      meta: { title: '阶段详情', menuKey: 'pipelinestages' },
+    },
+    {
       path: '/pipeline/snapshot/:id',
       name: 'PipelineSnapshotDetail',
       component: () => import('@/views/pipeline/PipelineSnapshotDetail.vue'),

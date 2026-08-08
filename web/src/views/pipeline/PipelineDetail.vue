@@ -38,7 +38,7 @@
       <div class="app-surface app-detail-card">
         <div class="app-section-header app-detail-section-header">
           <h2 class="app-detail-section-title">基本信息</h2>
-          <button class="app-button h-9 px-3" @click="openInfoDialog">
+          <button class="app-button-primary h-9 px-3" @click="openInfoDialog">
             <Pencil class="size-4" />
             编辑
           </button>
@@ -97,10 +97,10 @@
           <h2 class="app-detail-section-title">构建阶段</h2>
           <button class="app-button-primary h-9 px-3" @click="openStageDialog()">
             <Plus class="size-4" />
-            添加阶段
+            引入阶段
           </button>
         </div>
-        <AppEmptyState v-if="pipeline.stages.length === 0" size="compact" />
+        <AppEmptyState v-if="pipeline.stage_nodes.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table min-w-[820px]">
             <thead>
@@ -198,11 +198,24 @@
 
     <AppDialog
       v-model:open="stageOpen"
-      :title="editingStage ? '编辑构建阶段' : '添加构建阶段'"
+      :title="editingStage ? '编辑构建阶段' : '引入构建阶段'"
       width-class="w-[min(760px,calc(100vw-32px))]"
       body-class="max-h-[72vh] space-y-4 overflow-y-auto px-6 py-4"
     >
       <form class="space-y-4" @submit.prevent="saveStage">
+        <div v-if="!editingStage" class="space-y-1.5">
+          <label class="app-field-label">
+            阶段
+            <span class="text-destructive">*</span>
+          </label>
+          <ComboboxSelect
+            v-model="stageForm.source_template_stage_id"
+            :options="stageTemplateOptions"
+            placeholder="选择阶段"
+            :invalid="Boolean(stageError) && !stageForm.source_template_stage_id"
+            @update:model-value="selectStageTemplate"
+          />
+        </div>
         <div class="grid gap-4 sm:grid-cols-2">
           <div class="space-y-1.5">
             <label class="app-field-label">
@@ -211,7 +224,7 @@
             </label>
             <input v-model="stageForm.name" class="app-input" />
           </div>
-          <div class="space-y-1.5">
+          <div v-if="!isTemplate" class="space-y-1.5">
             <label class="app-field-label">
               执行镜像
               <span class="text-destructive">*</span>
@@ -219,7 +232,7 @@
             <input v-model="stageForm.image" class="app-input" />
           </div>
         </div>
-        <div class="space-y-1.5">
+        <div v-if="!isTemplate" class="space-y-1.5">
           <label class="app-field-label">脚本</label>
           <textarea v-model="stageForm.script" rows="7" class="app-textarea font-mono" />
         </div>
@@ -249,221 +262,53 @@
             {{ stage.name }}
           </label>
         </fieldset>
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <label class="app-field-label">制品声明</label>
-            <button type="button" class="app-button h-8 px-3" @click="openArtifactDialog()">
-              <Plus class="size-4" />
-              添加制品
-            </button>
-          </div>
-          <AppEmptyState v-if="stageForm.artifacts.length === 0" size="compact" />
-          <div v-else class="overflow-x-auto">
-            <table class="app-data-table min-w-[640px]">
-              <thead>
-                <tr>
-                  <th>名称</th>
-                  <th>收集器</th>
-                  <th v-if="hasApplicationBinding">组件</th>
-                  <th class="w-28">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(artifact, index) in stageForm.artifacts"
-                  :key="`${artifact.name}-${index}`"
-                >
-                  <td>{{ artifact.name }}</td>
-                  <td>{{ artifact.collector }}</td>
-                  <td v-if="hasApplicationBinding">{{ artifact.component_name || '不绑定' }}</td>
-                  <td>
-                    <button type="button" class="app-link" @click="openArtifactDialog(index)">
-                      编辑
-                    </button>
-                    <button
-                      type="button"
-                      class="app-link-danger ml-3"
-                      @click="stageForm.artifacts.splice(index, 1)"
-                    >
-                      删除
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
         <p v-if="stageError" class="app-field-error" role="alert">{{ stageError }}</p>
       </form>
+      <template #title-actions>
+        <button
+          v-if="editingStage?.latest_template_stage_version"
+          type="button"
+          class="app-button-warning h-8 shrink-0 px-3"
+          @click="openTemplateUpdate"
+        >
+          更新至模板 v{{ editingStage.latest_template_stage_version }}
+        </button>
+      </template>
       <template #footer>
         <AppDialogActions :busy="saving" @cancel="stageOpen = false" @confirm="saveStage" />
       </template>
     </AppDialog>
 
-    <AppDialog v-model:open="artifactOpen" :title="artifactIndex === -1 ? '添加制品' : '编辑制品'">
-      <form class="space-y-4" @submit.prevent="saveArtifact">
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div class="space-y-1.5">
-            <label class="app-field-label">
-              名称
-              <span class="text-destructive">*</span>
-            </label>
-            <input
-              v-model="artifactForm.name"
-              class="app-input"
-              :class="artifactErrors.name ? 'app-input-error' : ''"
-              :aria-invalid="artifactErrors.name ? 'true' : undefined"
-              @input="clearArtifactError('name')"
-            />
-            <p v-if="artifactErrors.name" class="app-field-error" role="alert">
-              {{ artifactErrors.name }}
-            </p>
-          </div>
-          <div class="space-y-1.5">
-            <label class="app-field-label">收集器</label>
-            <select
-              v-model="artifactForm.collector"
-              class="app-input"
-              @change="changeArtifactCollector"
-            >
-              <option value="docker_image">docker_image</option>
-              <option value="command">command</option>
-              <option value="file">file</option>
-              <option value="directory">directory</option>
-            </select>
-          </div>
-        </div>
-        <div v-if="artifactForm.collector === 'command'" class="space-y-1.5">
-          <label class="app-field-label">
-            命令
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="artifactForm.command"
-            class="app-input"
-            :class="artifactErrors.command ? 'app-input-error' : ''"
-            :aria-invalid="artifactErrors.command ? 'true' : undefined"
-            @input="clearArtifactError('command')"
-          />
-          <p v-if="artifactErrors.command" class="app-field-error" role="alert">
-            {{ artifactErrors.command }}
-          </p>
-          <label class="app-field-label">格式</label>
-          <select
-            v-model="artifactForm.format"
-            class="app-input"
-            :class="artifactErrors.format ? 'app-input-error' : ''"
-            :aria-invalid="artifactErrors.format ? 'true' : undefined"
-            @change="clearArtifactError('format')"
-          >
-            <option value="">请选择格式</option>
-            <option value="text">text</option>
-            <option value="json">json</option>
-            <option value="git_object_id">git_object_id</option>
-          </select>
-          <p v-if="artifactErrors.format" class="app-field-error" role="alert">
-            {{ artifactErrors.format }}
-          </p>
-        </div>
-        <div v-else class="space-y-1.5">
-          <label class="app-field-label">
-            引用
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="artifactForm.reference"
-            class="app-input"
-            :class="artifactErrors.reference ? 'app-input-error' : ''"
-            :aria-invalid="artifactErrors.reference ? 'true' : undefined"
-            @input="clearArtifactError('reference')"
-          />
-          <p v-if="artifactErrors.reference" class="app-field-error" role="alert">
-            {{ artifactErrors.reference }}
-          </p>
-        </div>
+    <AppDialog v-model:open="templateUpdateOpen" title="更新至模板">
+      <AppLoadingState v-if="templateUpdateLoading" size="compact" />
+      <div v-else-if="templateUpdatePreview" class="space-y-3">
         <div
-          v-if="hasApplicationBinding && artifactForm.collector === 'docker_image'"
-          class="space-y-1.5"
+          v-for="difference in templateUpdatePreview.differences"
+          :key="difference.field"
+          class="grid gap-2 border-b border-border pb-3 text-sm last:border-0"
         >
-          <fieldset class="space-y-2">
-            <legend class="app-field-label">来源版本策略</legend>
-            <RadioGroupRoot
-              v-model="artifactBindingForm.version_fork_strategy"
-              aria-label="来源版本策略"
-              class="flex flex-wrap items-center gap-4"
-            >
-              <div class="flex items-center gap-2 text-sm">
-                <RadioGroupItem
-                  id="artifact-version-strategy-latest"
-                  value="latest"
-                  class="flex size-4 shrink-0 items-center justify-center rounded-full border border-input bg-background text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[state=checked]:border-primary"
-                >
-                  <RadioGroupIndicator class="size-2 rounded-full bg-current" />
-                </RadioGroupItem>
-                <label for="artifact-version-strategy-latest">最新版本</label>
-              </div>
-              <div class="flex items-center gap-2 text-sm">
-                <RadioGroupItem
-                  id="artifact-version-strategy-fixed"
-                  value="fixed"
-                  class="flex size-4 shrink-0 items-center justify-center rounded-full border border-input bg-background text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[state=checked]:border-primary"
-                >
-                  <RadioGroupIndicator class="size-2 rounded-full bg-current" />
-                </RadioGroupItem>
-                <label for="artifact-version-strategy-fixed">固定版本</label>
-              </div>
-            </RadioGroupRoot>
-          </fieldset>
-          <p class="app-field-hint">此策略适用于流水线内的全部目标组件映射。</p>
-          <label class="app-field-label">目标组件</label>
-          <ComboboxSelect
-            v-model="artifactForm.component_name"
-            :options="componentOptions"
-            :disabled="sourceVersionLoading || (!sourceVersionId && !artifactForm.component_name)"
-            :empty-text="componentEmptyText"
-            :invalid="Boolean(artifactErrors.component_name || componentMappingError)"
-            :placeholder="sourceVersionLoading ? '正在加载目标组件' : '不绑定到应用版本'"
-            @update:model-value="clearArtifactError('component_name')"
-          />
-          <p v-if="artifactErrors.component_name" class="app-field-error" role="alert">
-            {{ artifactErrors.component_name }}
+          <p class="font-medium text-foreground">
+            {{ templateUpdateFieldLabel(difference.field) }}
           </p>
-          <p v-else-if="componentMappingError" class="app-field-error" role="alert">
-            {{ componentMappingError }}
-          </p>
-          <p v-else-if="sourceVersionError" class="app-field-error" role="alert">
-            {{ sourceVersionError }}
-          </p>
-          <p v-else-if="!sourceVersionId" class="app-field-hint">
-            {{
-              artifactBindingForm.version_fork_strategy === 'fixed'
-                ? '选择来源版本后加载目标组件。'
-                : '应用尚未创建版本，无法选择目标组件。'
-            }}
-          </p>
-          <p
-            v-else-if="!sourceVersionLoading && sourceVersionDetail?.components?.length === 0"
-            class="app-field-hint"
-          >
-            来源版本 {{ sourceVersionLabel }} 暂无组件。
-          </p>
-          <div v-if="artifactBindingForm.version_fork_strategy === 'fixed'" class="space-y-1.5">
-            <label class="app-field-label">来源版本</label>
-            <ComboboxSelect
-              v-model="artifactBindingForm.fixed_version_id"
-              :options="versionOptions"
-              :invalid="Boolean(artifactErrors.fixed_version_id)"
-              placeholder="选择来源版本"
-              @update:model-value="clearArtifactError('fixed_version_id')"
-            />
-            <p v-if="artifactErrors.fixed_version_id" class="app-field-error" role="alert">
-              {{ artifactErrors.fixed_version_id }}
-            </p>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <pre
+              class="whitespace-pre-wrap break-words bg-muted/40 p-2 text-xs text-muted-foreground"
+              >{{ difference.current }}</pre>
+            <pre class="whitespace-pre-wrap break-words bg-muted/40 p-2 text-xs text-foreground">{{
+              difference.target
+            }}</pre>
           </div>
         </div>
-      </form>
+        <p class="text-sm text-muted-foreground">私有名称、说明、依赖、排序和制品配置将保留。</p>
+      </div>
       <template #footer>
-        <AppDialogActions @cancel="closeArtifactDialog" @confirm="saveArtifact" />
+        <AppDialogActions
+          :busy="saving"
+          confirm-label="更新并保存"
+          :confirm-disabled="!templateUpdatePreview?.available"
+          @cancel="templateUpdateOpen = false"
+          @confirm="applyTemplateUpdate"
+        />
       </template>
     </AppDialog>
 
@@ -565,26 +410,24 @@
   import { ArrowLeft, CopyPlus, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next';
   import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
-  import { applicationApi } from '@/api/application/application';
   import { pipelineApi } from '@/api/pipeline/pipeline';
+  import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import ComboboxSelect from '@/components/ComboboxSelect.vue';
+  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
   import type {
-    ArtifactConfigReq,
-    PipelineStageResp,
+    PipelineStageNodeResp,
+    PipelineStageTemplateUpdatePreviewResp,
   } from '@/gen/proto/orbit/v1/pipeline/pipeline_stage';
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
-  import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { PipelineRunVariablePreviewResp } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
-  import { RadioGroupIndicator, RadioGroupItem, RadioGroupRoot } from 'reka-ui';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
 
   const route = useRoute();
@@ -594,20 +437,20 @@
   const { loading: saving, execute: executeSave } = useStatusAsync();
   const pipelineId = computed(() => String(route.params.id));
   const pipeline = ref<PipelineResp>();
-  const versions = ref<VersionResp[]>([]);
   const infoOpen = ref(false);
   const stageOpen = ref(false);
-  const artifactOpen = ref(false);
+  const templateUpdateOpen = ref(false);
+  const templateUpdateLoading = ref(false);
+  const templateUpdatePreview = ref<PipelineStageTemplateUpdatePreviewResp>();
   const runOpen = ref(false);
   const variableOpen = ref(false);
   const deleteOpen = ref(false);
-  const editingStage = ref<PipelineStageResp>();
-  const artifactIndex = ref(-1);
+  const editingStage = ref<PipelineStageNodeResp>();
+  const stageTemplates = ref<
+    import('@/gen/proto/orbit/v1/pipeline/pipeline_stage').PipelineStageResp[]
+  >([]);
   const infoError = ref('');
   const stageError = ref('');
-  const sourceVersionDetail = ref<VersionResp>();
-  const sourceVersionLoading = ref(false);
-  const sourceVersionError = ref('');
   const runError = ref('');
   const runPreview = ref<PipelineRunVariablePreviewResp>();
   const runPreviewLoading = ref(false);
@@ -620,34 +463,13 @@
   const deleteError = ref('');
   const infoForm = reactive({ name: '', description: '' });
   const stageForm = reactive({
+    source_template_stage_id: '',
     name: '',
     image: '',
     script: '',
-    artifacts: [] as ArtifactConfigReq[],
     depends_on: [] as string[],
     sort_order: 0,
     description: '',
-    version_fork_strategy: 'latest',
-    fixed_version_id: '',
-  });
-  const artifactForm = reactive<ArtifactConfigReq>({
-    name: '',
-    collector: 'docker_image',
-    reference: '',
-    command: '',
-    format: '',
-    component_name: undefined,
-  });
-  const artifactBindingForm = reactive({ version_fork_strategy: 'latest', fixed_version_id: '' });
-  type ArtifactFieldError =
-    'name' | 'command' | 'format' | 'reference' | 'fixed_version_id' | 'component_name';
-  const artifactErrors = reactive<Record<ArtifactFieldError, string>>({
-    name: '',
-    command: '',
-    format: '',
-    reference: '',
-    fixed_version_id: '',
-    component_name: '',
   });
   const runForm = reactive({ trigger_ref: '', variables: {} as Record<string, string> });
   const variableForm = reactive({ name: '', value: '', description: '', secret: false });
@@ -658,58 +480,19 @@
     Boolean(pipeline.value?.application_id && pipeline.value.application_name)
   );
   const orderedStages = computed(() =>
-    [...(pipeline.value?.stages || [])].sort((left, right) => left.sort_order - right.sort_order)
+    [...(pipeline.value?.stage_nodes || [])].sort(
+      (left, right) => left.sort_order - right.sort_order
+    )
   );
   const otherStages = computed(() =>
     orderedStages.value.filter((stage) => stage.id !== editingStage.value?.id)
   );
-  const hasComponentMapping = computed(() =>
-    stageForm.artifacts.some(
-      (artifact) => artifact.collector === 'docker_image' && Boolean(artifact.component_name)
-    )
-  );
-  const versionOptions = computed(() =>
-    versions.value.map((version) => ({
-      value: version.id,
-      label: version.label,
-      description: version.component_summary,
+  const stageTemplateOptions = computed(() =>
+    stageTemplates.value.map((stage) => ({
+      value: stage.id,
+      label: `${stage.name} v${stage.version}`,
     }))
   );
-  const sourceVersionId = computed(() =>
-    artifactBindingForm.version_fork_strategy === 'fixed'
-      ? artifactBindingForm.fixed_version_id
-      : (versions.value[0]?.id ?? '')
-  );
-  const sourceVersionLabel = computed(
-    () => versions.value.find((version) => version.id === sourceVersionId.value)?.label || ''
-  );
-  const componentOptions = computed(() => {
-    const options = (sourceVersionDetail.value?.components || []).map((component) => ({
-      value: component.name,
-      label: component.name,
-      description: component.image,
-    }));
-    const mappedComponent = artifactForm.component_name;
-    if (mappedComponent && !options.some((option) => option.value === mappedComponent))
-      options.unshift({ value: mappedComponent, label: mappedComponent, description: '当前映射' });
-    return options;
-  });
-  const componentEmptyText = computed(() => {
-    if (sourceVersionLoading.value) return '正在加载目标组件';
-    if (sourceVersionError.value) return '目标组件加载失败';
-    if (!sourceVersionId.value)
-      return artifactBindingForm.version_fork_strategy === 'fixed'
-        ? '请先选择来源版本'
-        : '应用暂无版本';
-    return '该来源版本暂无组件';
-  });
-  const componentMappingError = computed(() => {
-    const mappedComponent = artifactForm.component_name;
-    if (!mappedComponent || !sourceVersionDetail.value || sourceVersionLoading.value) return '';
-    if (sourceVersionDetail.value.components.some((item) => item.name === mappedComponent))
-      return '';
-    return `来源版本 ${sourceVersionLabel.value || sourceVersionId.value} 不包含目标组件 ${mappedComponent}`;
-  });
   const versionStrategyLabel = computed(() =>
     pipeline.value?.version_fork_strategy === 'fixed'
       ? `固定版本 ${pipeline.value.fixed_version_label || ''}`
@@ -734,13 +517,10 @@
   );
 
   function stageName(id: string) {
-    return pipeline.value?.stages.find((stage) => stage.id === id)?.name || id;
+    return pipeline.value?.stage_nodes.find((stage) => stage.id === id)?.name || id;
   }
-  function mappedArtifacts(stage: PipelineStageResp) {
+  function mappedArtifacts(stage: PipelineStageNodeResp) {
     return stage.artifacts.filter((artifact) => artifact.component_name);
-  }
-  function cloneArtifacts(artifacts: ArtifactConfigReq[]) {
-    return artifacts.map((artifact) => ({ ...artifact }));
   }
   function displayVariableValue(value: unknown) {
     return value == null ? '' : String(value);
@@ -826,49 +606,6 @@
     if (runPreviewTimer) clearTimeout(runPreviewTimer);
     runPreviewTimer = setTimeout(() => void loadRunVariablePreview(), 250);
   }
-  function clearArtifactError(field: ArtifactFieldError) {
-    artifactErrors[field] = '';
-  }
-  function clearArtifactErrors() {
-    for (const field of Object.keys(artifactErrors) as ArtifactFieldError[])
-      artifactErrors[field] = '';
-  }
-  function clearSourceVersion() {
-    sourceVersionRequest += 1;
-    sourceVersionDetail.value = undefined;
-    sourceVersionLoading.value = false;
-    sourceVersionError.value = '';
-  }
-
-  let sourceVersionRequest = 0;
-  async function loadSourceVersion() {
-    const request = ++sourceVersionRequest;
-    const versionId = sourceVersionId.value;
-    sourceVersionDetail.value = undefined;
-    sourceVersionError.value = '';
-    if (
-      !artifactOpen.value ||
-      !hasApplicationBinding.value ||
-      artifactForm.collector !== 'docker_image' ||
-      !versionId
-    ) {
-      sourceVersionLoading.value = false;
-      return;
-    }
-
-    sourceVersionLoading.value = true;
-    try {
-      const version = await applicationApi.getVersion(versionId);
-      if (request === sourceVersionRequest) sourceVersionDetail.value = version;
-    } catch (reason) {
-      if (request === sourceVersionRequest)
-        sourceVersionError.value =
-          reason instanceof Error ? reason.message : '加载来源版本的目标组件失败';
-    } finally {
-      if (request === sourceVersionRequest) sourceVersionLoading.value = false;
-    }
-  }
-
   async function fetchPipeline() {
     pipelineVariablePreviewRequest += 1;
     pipelineVariablePreview.value = undefined;
@@ -880,20 +617,35 @@
       });
       if (pipeline.value?.kind === 'application') {
         await loadPipelineVariablePreview();
-        if (pipeline.value.application_id) await loadVersions();
       }
+      await loadStageTemplates();
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : '加载流水线失败');
       await router.push('/pipeline');
     }
   }
 
-  async function loadVersions() {
-    if (!pipeline.value?.application_id) return;
-    const response = await applicationApi.listVersions(pipeline.value.application_id, {
+  async function loadStageTemplates() {
+    if (!pipeline.value?.project_id) {
+      stageTemplates.value = [];
+      return;
+    }
+    const response = await pipelineStageApi.list({
+      project_id: pipeline.value.project_id,
       per_page: 100,
     });
-    versions.value = response.items;
+    stageTemplates.value = response.items;
+  }
+
+  function selectStageTemplate(value: ComboboxOptionValue) {
+    const stage = stageTemplates.value.find((item) => item.id === String(value));
+    if (!stage) return;
+    Object.assign(stageForm, {
+      name: stage.name,
+      image: stage.image,
+      script: stage.script,
+      description: stage.description,
+    });
   }
 
   function openInfoDialog() {
@@ -997,159 +749,107 @@
     }
   }
 
-  function openStageDialog(stage?: PipelineStageResp) {
+  function openStageDialog(stage?: PipelineStageNodeResp) {
     editingStage.value = stage;
     Object.assign(
       stageForm,
       stage
         ? {
+            source_template_stage_id: stage.source_template_stage_id,
             name: stage.name,
             image: stage.image,
             script: stage.script,
-            artifacts: cloneArtifacts(stage.artifacts),
             depends_on: [...stage.depends_on],
             sort_order: stage.sort_order,
             description: stage.description,
-            version_fork_strategy: pipeline.value?.version_fork_strategy || 'latest',
-            fixed_version_id: pipeline.value?.fixed_version_id || '',
           }
         : {
+            source_template_stage_id: '',
             name: '',
             image: '',
             script: '',
-            artifacts: [],
             depends_on: [],
             sort_order: (orderedStages.value.at(-1)?.sort_order || 0) + 1,
             description: '',
-            version_fork_strategy: 'latest',
-            fixed_version_id: '',
           }
     );
     stageError.value = '';
     stageOpen.value = true;
   }
 
-  function openArtifactDialog(index = -1) {
-    artifactIndex.value = index;
-    Object.assign(
-      artifactForm,
-      index === -1
-        ? {
-            name: '',
-            collector: 'docker_image',
-            reference: '',
-            command: '',
-            format: '',
-            component_name: undefined,
-          }
-        : { ...stageForm.artifacts[index] }
-    );
-    Object.assign(artifactBindingForm, {
-      version_fork_strategy: stageForm.version_fork_strategy,
-      fixed_version_id: stageForm.fixed_version_id,
-    });
-    clearArtifactErrors();
-    artifactOpen.value = true;
-  }
-
-  function closeArtifactDialog() {
-    artifactOpen.value = false;
-  }
-
-  function changeArtifactCollector() {
-    clearArtifactErrors();
-    if (artifactForm.collector !== 'docker_image') artifactForm.component_name = undefined;
-  }
-
-  function saveArtifact() {
-    clearArtifactErrors();
-    if (!artifactForm.name.trim()) artifactErrors.name = '请输入制品名称';
-    if (artifactForm.collector === 'command' && !artifactForm.command.trim())
-      artifactErrors.command = '请输入制品命令';
-    if (artifactForm.collector === 'command' && !artifactForm.format)
-      artifactErrors.format = '请选择命令输出格式';
-    if (artifactForm.collector !== 'command' && !artifactForm.reference.trim())
-      artifactErrors.reference = '请输入制品引用';
-    if (
-      hasApplicationBinding.value &&
-      artifactForm.collector === 'docker_image' &&
-      artifactForm.component_name &&
-      artifactBindingForm.version_fork_strategy === 'fixed' &&
-      !artifactBindingForm.fixed_version_id
-    )
-      artifactErrors.fixed_version_id = '请选择来源版本';
-    if (
-      hasApplicationBinding.value &&
-      artifactForm.collector === 'docker_image' &&
-      artifactForm.component_name
-    ) {
-      if (!sourceVersionId.value) artifactErrors.component_name = '请先选择来源版本';
-      else if (sourceVersionLoading.value) artifactErrors.component_name = '正在加载来源版本组件';
-      else if (sourceVersionError.value) artifactErrors.component_name = '无法验证目标组件';
-      else if (!sourceVersionDetail.value) artifactErrors.component_name = '正在加载来源版本组件';
-      else if (componentMappingError.value)
-        artifactErrors.component_name = componentMappingError.value;
+  async function openTemplateUpdate() {
+    if (!editingStage.value) return;
+    templateUpdateOpen.value = true;
+    templateUpdateLoading.value = true;
+    templateUpdatePreview.value = undefined;
+    try {
+      const preview = await pipelineApi.previewStageTemplateUpdate(
+        pipelineId.value,
+        editingStage.value.id
+      );
+      if (!preview.available) {
+        templateUpdateOpen.value = false;
+        toast.error('阶段模板没有可用更新');
+        await fetchPipeline();
+        return;
+      }
+      templateUpdatePreview.value = preview;
+    } catch (reason) {
+      templateUpdateOpen.value = false;
+      toast.error(reason instanceof Error ? reason.message : '加载模板更新失败');
+    } finally {
+      templateUpdateLoading.value = false;
     }
-    if (Object.values(artifactErrors).some(Boolean)) return;
-    const artifact: ArtifactConfigReq = {
-      ...artifactForm,
-      name: artifactForm.name.trim(),
-      reference: artifactForm.collector === 'command' ? '' : artifactForm.reference.trim(),
-      command: artifactForm.collector === 'command' ? artifactForm.command.trim() : '',
-      format: artifactForm.collector === 'command' ? artifactForm.format : '',
-      component_name:
-        hasApplicationBinding.value &&
-        artifactForm.collector === 'docker_image' &&
-        artifactForm.component_name
-          ? artifactForm.component_name
-          : undefined,
-    };
-    const nextArtifacts =
-      artifactIndex.value === -1
-        ? [...stageForm.artifacts, artifact]
-        : stageForm.artifacts.map((item, index) =>
-            index === artifactIndex.value ? artifact : item
-          );
-    const hasNextComponentMapping = nextArtifacts.some(
-      (item) => item.collector === 'docker_image' && Boolean(item.component_name)
-    );
-    if (
-      hasApplicationBinding.value &&
-      artifact.collector === 'docker_image' &&
-      hasNextComponentMapping
-    )
-      Object.assign(stageForm, artifactBindingForm);
-    if (artifactIndex.value === -1) stageForm.artifacts.push(artifact);
-    else stageForm.artifacts[artifactIndex.value] = artifact;
-    closeArtifactDialog();
   }
 
-  function remainingMappings() {
+  function templateUpdateFieldLabel(field: string) {
     return (
-      (pipeline.value?.stages || [])
-        .filter((stage) => stage.id !== editingStage.value?.id)
-        .flatMap((stage) => stage.artifacts)
-        .some((artifact) => artifact.collector === 'docker_image' && artifact.component_name) ||
-      hasComponentMapping.value
+      {
+        name: '来源名称',
+        image: '执行镜像',
+        script: '脚本',
+        description: '模板说明',
+        artifacts: '制品声明',
+      }[field] ||
+      field
     );
+  }
+
+  async function applyTemplateUpdate() {
+    const preview = templateUpdatePreview.value;
+    const stage = editingStage.value;
+    if (!preview || !stage) return;
+    try {
+      await executeSave(async () => {
+        pipeline.value = await pipelineApi.updateStageTemplate(pipelineId.value, stage.id, {
+          expected_source_template_stage_version: preview.expected_source_template_stage_version,
+          target_template_stage_version: preview.target_template_stage_version,
+        });
+        await loadPipelineVariablePreview();
+        templateUpdateOpen.value = false;
+        stageOpen.value = false;
+        toast.success('阶段已更新至模板版本');
+      });
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : '更新阶段模板失败');
+      await fetchPipeline();
+    }
   }
 
   async function saveStage() {
-    stageError.value = !stageForm.name.trim()
-      ? '请输入阶段名称'
-      : !stageForm.image.trim()
-        ? '请输入执行镜像'
-        : hasComponentMapping.value &&
-            stageForm.version_fork_strategy === 'fixed' &&
-            !stageForm.fixed_version_id
-          ? '请选择固定来源版本'
-          : '';
+    stageError.value =
+      !editingStage.value && !stageForm.source_template_stage_id
+        ? '请选择阶段'
+        : !stageForm.name.trim()
+          ? '请输入阶段名称'
+          : !isTemplate.value && !stageForm.image.trim()
+            ? '请输入执行镜像'
+            : '';
     if (stageError.value) return;
     const payload = {
       name: stageForm.name.trim(),
       image: stageForm.image.trim(),
       script: stageForm.script,
-      artifacts: cloneArtifacts(stageForm.artifacts),
       depends_on: [...stageForm.depends_on],
       sort_order: stageForm.sort_order,
       description: stageForm.description,
@@ -1157,35 +857,21 @@
     try {
       await executeSave(async () => {
         if (editingStage.value) {
-          const mapped = remainingMappings();
           pipeline.value = await pipelineApi.updateStage(pipelineId.value, editingStage.value.id, {
             name: payload.name,
-            image: payload.image,
-            script: payload.script,
-            artifacts: { items: payload.artifacts },
             depends_on: { items: payload.depends_on },
             sort_order: payload.sort_order,
             description: payload.description,
-            version_fork_strategy: mapped ? stageForm.version_fork_strategy : undefined,
-            fixed_version_id:
-              mapped && stageForm.version_fork_strategy === 'fixed'
-                ? stageForm.fixed_version_id
-                : mapped
-                  ? ''
-                  : undefined,
-            clear_version_fork_strategy:
-              !mapped && Boolean(pipeline.value?.version_fork_strategy) ? true : undefined,
+            image: isTemplate.value ? undefined : payload.image,
+            script: isTemplate.value ? undefined : payload.script,
           });
         } else
-          pipeline.value = await pipelineApi.createStage(pipelineId.value, {
-            ...payload,
-            version_fork_strategy: hasComponentMapping.value
-              ? stageForm.version_fork_strategy
-              : undefined,
-            fixed_version_id:
-              hasComponentMapping.value && stageForm.version_fork_strategy === 'fixed'
-                ? stageForm.fixed_version_id
-                : undefined,
+          pipeline.value = await pipelineApi.importStage(pipelineId.value, {
+            source_template_stage_id: stageForm.source_template_stage_id,
+            name: payload.name,
+            description: payload.description,
+            depends_on: payload.depends_on,
+            sort_order: payload.sort_order,
           });
         await loadPipelineVariablePreview();
         stageOpen.value = false;
@@ -1196,7 +882,7 @@
     }
   }
 
-  async function removeStage(stage: PipelineStageResp) {
+  async function removeStage(stage: PipelineStageNodeResp) {
     try {
       await executeSave(async () => {
         pipeline.value = await pipelineApi.deleteStage(pipelineId.value, stage.id);
@@ -1264,26 +950,6 @@
     }
   }
 
-  watch(
-    () => artifactBindingForm.version_fork_strategy,
-    () => {
-      clearArtifactError('fixed_version_id');
-      if (artifactBindingForm.version_fork_strategy === 'latest')
-        artifactBindingForm.fixed_version_id = '';
-    }
-  );
-  watch(artifactOpen, (open) => {
-    if (!open) {
-      clearArtifactErrors();
-      clearSourceVersion();
-    }
-  });
-  watch(
-    [() => artifactOpen.value, () => artifactForm.collector, () => sourceVersionId.value],
-    () => {
-      void loadSourceVersion();
-    }
-  );
   watch(
     () => runForm.trigger_ref,
     () => scheduleRunVariablePreview()

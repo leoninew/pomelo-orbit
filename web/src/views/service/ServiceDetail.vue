@@ -263,7 +263,6 @@
             language="plaintext"
             height="100%"
             :readonly="true"
-            squared
           />
         </div>
       </div>

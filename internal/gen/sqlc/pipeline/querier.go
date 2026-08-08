@@ -6,25 +6,33 @@ package pipeline
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
+	ApplicationPipelineStages(ctx context.Context, pipelineID sql.NullString) ([]PipelineStage, error)
+	CountPipelineStageTemplates(ctx context.Context, arg CountPipelineStageTemplatesParams) (int64, error)
 	CountPipelines(ctx context.Context, arg CountPipelinesParams) (int64, error)
 	CreatePipeline(ctx context.Context, arg CreatePipelineParams) error
+	DeleteApplicationPipelineStages(ctx context.Context, pipelineID sql.NullString) error
 	DeletePipeline(ctx context.Context, id string) error
-	DeletePipelineStage(ctx context.Context, id string) error
-	DeletePipelineStages(ctx context.Context, pipelineID string) error
+	DeletePipelineStageTemplate(ctx context.Context, id string) error
+	DeleteTemplatePipelineStageReferences(ctx context.Context, pipelineID string) error
+	InsertApplicationPipelineStage(ctx context.Context, arg InsertApplicationPipelineStageParams) error
 	InsertPipelineSnapshot(ctx context.Context, arg InsertPipelineSnapshotParams) error
-	InsertPipelineStage(ctx context.Context, arg InsertPipelineStageParams) error
+	InsertPipelineStageTemplate(ctx context.Context, arg InsertPipelineStageTemplateParams) error
+	InsertTemplatePipelineStageReference(ctx context.Context, arg InsertTemplatePipelineStageReferenceParams) error
 	LatestPipelineSnapshot(ctx context.Context, pipelineID string) (PipelineSnapshot, error)
+	ListPipelineStageTemplates(ctx context.Context, arg ListPipelineStageTemplatesParams) ([]PipelineStage, error)
 	ListPipelines(ctx context.Context, arg ListPipelinesParams) ([]Pipeline, error)
 	PipelineByID(ctx context.Context, id string) (Pipeline, error)
 	PipelineByName(ctx context.Context, arg PipelineByNameParams) (Pipeline, error)
 	PipelineSnapshotByID(ctx context.Context, id string) (PipelineSnapshot, error)
-	PipelineStageByID(ctx context.Context, id string) (PipelineStage, error)
-	PipelineStages(ctx context.Context, pipelineID string) ([]PipelineStage, error)
+	PipelineStageTemplateByID(ctx context.Context, id string) (PipelineStage, error)
+	PipelineStageTemplateByName(ctx context.Context, arg PipelineStageTemplateByNameParams) (PipelineStage, error)
+	TemplatePipelineStageReferences(ctx context.Context, pipelineID string) ([]PipelineStageReference, error)
 	UpdatePipeline(ctx context.Context, arg UpdatePipelineParams) error
-	UpdatePipelineStage(ctx context.Context, arg UpdatePipelineStageParams) error
+	UpdatePipelineStageTemplate(ctx context.Context, arg UpdatePipelineStageTemplateParams) error
 }
 
 var _ Querier = (*Queries)(nil)

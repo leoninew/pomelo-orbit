@@ -6,6 +6,12 @@ const (
 	PipelineKindTemplate    = "template"
 	PipelineKindApplication = "application"
 
+	PipelineStageKindTemplate    = "template"
+	PipelineStageKindApplication = "application"
+
+	PipelineStageNodeTypeTemplateReference = "template_reference"
+	PipelineStageNodeTypeApplication       = "application"
+
 	VersionForkStrategyLatest = "latest"
 	VersionForkStrategyFixed  = "fixed"
 )
@@ -34,20 +40,69 @@ type Pipeline struct {
 	UpdatedAt             time.Time `db:"updated_at"`
 }
 
-// PipelineStage is owned by one Pipeline. Its IDs are therefore safe to use
-// as the DAG's local identifiers and are never shared across pipelines.
+// PipelineStage is either a project-scoped reusable template or an application
+// pipeline's private executable node. Template pipelines use
+// PipelineStageReference for their DAG nodes instead of owning stages.
 type PipelineStage struct {
-	Id          string    `db:"id"`
-	PipelineId  string    `db:"pipeline_id"`
-	Name        string    `db:"name"`
-	Image       string    `db:"image"`
-	Script      string    `db:"script"`
-	Artifacts   *string   `db:"artifacts"`
-	DependsOn   string    `db:"depends_on"`
-	SortOrder   int       `db:"sort_order"`
-	Description string    `db:"description"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+	Id                             string    `db:"id"`
+	ProjectId                      string    `db:"project_id"`
+	Kind                           string    `db:"kind"`
+	PipelineId                     *string   `db:"pipeline_id"`
+	Name                           string    `db:"name"`
+	Image                          string    `db:"image"`
+	Script                         string    `db:"script"`
+	Description                    string    `db:"description"`
+	Version                        *int      `db:"version"`
+	SourceTemplateStageId          *string   `db:"source_template_stage_id"`
+	SourceTemplateStageName        *string   `db:"source_template_stage_name"`
+	SourceTemplateStageVersion     *int      `db:"source_template_stage_version"`
+	SourceTemplateStageDescription *string   `db:"source_template_stage_description"`
+	Artifacts                      *string   `db:"artifacts"`
+	DependsOn                      *string   `db:"depends_on"`
+	SortOrder                      *int      `db:"sort_order"`
+	CreatedAt                      time.Time `db:"created_at"`
+	UpdatedAt                      time.Time `db:"updated_at"`
+}
+
+// PipelineStageReference is a copied template-stage definition plus the
+// Template Pipeline-local DAG node configuration.
+type PipelineStageReference struct {
+	Id                             string    `db:"id"`
+	PipelineId                     string    `db:"pipeline_id"`
+	SourceTemplateStageId          string    `db:"source_template_stage_id"`
+	SourceTemplateStageName        string    `db:"source_template_stage_name"`
+	SourceTemplateStageVersion     int       `db:"source_template_stage_version"`
+	SourceTemplateStageDescription string    `db:"source_template_stage_description"`
+	Name                           string    `db:"name"`
+	Image                          string    `db:"image"`
+	Script                         string    `db:"script"`
+	Description                    string    `db:"description"`
+	Artifacts                      string    `db:"artifacts"`
+	DependsOn                      string    `db:"depends_on"`
+	SortOrder                      int       `db:"sort_order"`
+	CreatedAt                      time.Time `db:"created_at"`
+	UpdatedAt                      time.Time `db:"updated_at"`
+}
+
+// PipelineStageNode is the editor-facing union of a template reference and
+// an application stage. It is not a separately persisted resource.
+type PipelineStageNode struct {
+	Id                             string
+	NodeType                       string
+	PipelineId                     string
+	Name                           string
+	Image                          string
+	Script                         string
+	Description                    string
+	DependsOn                      string
+	SortOrder                      int
+	SourceTemplateStageId          string
+	SourceTemplateStageName        string
+	SourceTemplateStageVersion     int
+	SourceTemplateStageDescription string
+	Artifacts                      *string
+	CreatedAt                      time.Time
+	UpdatedAt                      time.Time
 }
 
 // PipelineSnapshot is an immutable executable input for an application
@@ -74,14 +129,17 @@ type PipelineSnapshot struct {
 }
 
 type StageDefinition struct {
-	Id          string           `json:"id"`
-	Name        string           `json:"name"`
-	Image       string           `json:"image"`
-	DependsOn   []string         `json:"depends_on"`
-	Script      string           `json:"script"`
-	Artifacts   []ArtifactConfig `json:"artifacts"`
-	SortOrder   int              `json:"sort_order"`
-	Description string           `json:"description"`
+	Id                         string           `json:"id"`
+	Name                       string           `json:"name"`
+	Image                      string           `json:"image"`
+	DependsOn                  []string         `json:"depends_on"`
+	Script                     string           `json:"script"`
+	Artifacts                  []ArtifactConfig `json:"artifacts"`
+	SortOrder                  int              `json:"sort_order"`
+	Description                string           `json:"description"`
+	SourceTemplateStageId      string           `json:"source_template_stage_id"`
+	SourceTemplateStageName    string           `json:"source_template_stage_name"`
+	SourceTemplateStageVersion int              `json:"source_template_stage_version"`
 }
 
 type ArtifactConfig struct {

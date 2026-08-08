@@ -87,6 +87,7 @@ func TestMigrateUpSQLiteCreatesPipelineSchema(t *testing.T) {
 	for _, table := range []string{
 		"pipeline",
 		"pipeline_stage",
+		"pipeline_stage_reference",
 		"pipeline_snapshot",
 		"pipeline_run",
 		"pipeline_run_version_binding",
@@ -100,27 +101,6 @@ func TestMigrateUpSQLiteCreatesPipelineSchema(t *testing.T) {
 			t.Fatalf("expected %s table", table)
 		}
 	}
-	for _, table := range []string{"pipeline_template", "pipeline_template_stage"} {
-		var count int
-		if err := database.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?", table).Scan(&count); err != nil {
-			t.Fatalf("check retired %s table: %v", table, err)
-		}
-		if count != 0 {
-			t.Fatalf("retired table %s still exists", table)
-		}
-	}
-
-	var templates, stages int
-	if err := database.QueryRow("SELECT COUNT(*) FROM pipeline WHERE kind = 'template'").Scan(&templates); err != nil {
-		t.Fatalf("count template pipelines: %v", err)
-	}
-	if err := database.QueryRow("SELECT COUNT(*) FROM pipeline_stage").Scan(&stages); err != nil {
-		t.Fatalf("count pipeline stages: %v", err)
-	}
-	if templates != 0 || stages != 0 {
-		t.Fatalf("unexpected pipeline demo seed data: templates=%d stages=%d", templates, stages)
-	}
-
 	for table, want := range map[string]int{
 		"permission":     7,
 		"role":           1,
@@ -170,6 +150,68 @@ func TestMigrateUpSQLiteCreatesPipelineSchema(t *testing.T) {
 	}
 }
 
+func TestMigrateUpSQLiteLeavesPipelineStageShapesToBusinessValidation(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+
+	if _, err := database.Exec(`
+        INSERT INTO pipeline_stage (id, project_id, kind, name, image, script, description, version)
+        VALUES ('stage-template', 'project-1', 'template', 'build', 'golang:1.24', 'go build ./...', '', 1)
+    `); err != nil {
+		t.Fatalf("insert template stage: %v", err)
+	}
+	if _, err := database.Exec(`
+        INSERT INTO pipeline_stage (id, project_id, kind, name, image, script, description, version, artifacts)
+        VALUES ('invalid-template', 'project-1', 'template', 'invalid', 'alpine', 'true', '', 1, '[]')
+	`); err != nil {
+		t.Fatalf("pipeline stage shapes must be validated by the business layer: %v", err)
+	}
+	if _, err := database.Exec(`
+        INSERT INTO pipeline (id, project_id, kind, name, description, variable_declarations, version)
+        VALUES ('template-pipeline', 'project-1', 'template', 'pipeline', '', '[]', 1)
+    `); err != nil {
+		t.Fatalf("insert template pipeline: %v", err)
+	}
+	if _, err := database.Exec(`
+        INSERT INTO pipeline_stage_reference (
+            id, pipeline_id, source_template_stage_id, source_template_stage_name,
+            source_template_stage_version, source_template_stage_description,
+            name, image, script, description, depends_on, sort_order
+        ) VALUES (
+            'invalid-reference', 'template-pipeline', 'stage-template', 'build', 0, '',
+            'invalid', 'alpine', 'true', '', '{}', -1
+        )
+    `); err != nil {
+		t.Fatalf("pipeline stage reference shapes must be validated by the business layer: %v", err)
+	}
+	if _, err := database.Exec(`
+        INSERT INTO pipeline_stage_reference (
+            id, pipeline_id, source_template_stage_id, source_template_stage_name,
+            source_template_stage_version, source_template_stage_description,
+            name, image, script, description, depends_on, sort_order
+        ) VALUES (
+            'reference-1', 'template-pipeline', 'stage-template', 'build', 1, '',
+            'build', 'golang:1.24', 'go build ./...', '', '[]', 0
+        )
+    `); err != nil {
+		t.Fatalf("insert stage reference: %v", err)
+	}
+	if _, err := database.Exec(`
+        DELETE FROM pipeline_stage WHERE id = 'stage-template'
+    `); err != nil {
+		t.Fatalf("delete template stage: %v", err)
+	}
+	var references int
+	if err := database.QueryRow("SELECT COUNT(*) FROM pipeline_stage_reference WHERE id = 'reference-1'").Scan(&references); err != nil {
+		t.Fatalf("count stage references: %v", err)
+	}
+	if references != 1 {
+		t.Fatal("template stage deletion must not remove frozen references")
+	}
+}
+
 func TestOptionalSQLiteSeedExports(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
@@ -191,14 +233,15 @@ func TestOptionalSQLiteSeedExports(t *testing.T) {
 	}
 
 	for table, want := range map[string]int{
-		"permission":      7,
-		"role":            1,
-		"role_permission": 7,
-		"user_role":       1,
-		"project_member":  1,
-		"repository":      2,
-		"pipeline":        2,
-		"pipeline_stage":  6,
+		"permission":               7,
+		"role":                     1,
+		"role_permission":          7,
+		"user_role":                1,
+		"project_member":           1,
+		"repository":               2,
+		"pipeline":                 2,
+		"pipeline_stage":           6,
+		"pipeline_stage_reference": 6,
 	} {
 		var got int
 		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&got); err != nil {

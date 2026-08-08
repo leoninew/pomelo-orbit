@@ -9,58 +9,42 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-func TestClonePipelineStagesRemapsDependenciesAndClearsComponentMappings(t *testing.T) {
+func TestClonePipelineStageReferencesRemapsDependenciesAndKeepsSourceSnapshots(t *testing.T) {
 	t.Parallel()
 
-	componentName := "api"
-	artifacts, err := json.Marshal([]model.ArtifactConfig{{
-		Name:          "image",
-		Collector:     "docker_image",
-		Reference:     "registry.example/api:build",
-		ComponentName: &componentName,
-	}})
-	if err != nil {
-		t.Fatalf("marshal artifacts: %v", err)
-	}
-	dependsOn, err := json.Marshal([]string{"stage-source"})
-	if err != nil {
-		t.Fatalf("marshal dependencies: %v", err)
-	}
-
-	cloned, err := clonePipelineStages([]model.PipelineStage{
-		{Id: "stage-source", PipelineId: "template", Name: "source", DependsOn: "[]", SortOrder: 1},
-		{Id: "stage-build", PipelineId: "template", Name: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: string(dependsOn), SortOrder: 2},
-	}, "application-pipeline")
+	sourceArtifacts := `[{"name":"commit","collector":"command","command":"git rev-parse HEAD","format":"git_object_id"}]`
+	buildArtifacts := `[{"name":"image","collector":"docker_image","reference":"registry.example/build:latest"}]`
+	cloned, err := clonePipelineStageReferences([]model.PipelineStageReference{
+		{Id: "stage-source", SourceTemplateStageId: "template-source", SourceTemplateStageName: "source", SourceTemplateStageVersion: 2, SourceTemplateStageDescription: "source template", Name: "source", Image: "alpine", Script: "source", Description: "local source", Artifacts: sourceArtifacts, DependsOn: "[]", SortOrder: 1},
+		{Id: "stage-build", SourceTemplateStageId: "template-build", SourceTemplateStageName: "build", SourceTemplateStageVersion: 3, SourceTemplateStageDescription: "build template", Name: "build", Image: "builder", Script: "build", Description: "local build", Artifacts: buildArtifacts, DependsOn: "[\"stage-source\"]", SortOrder: 2},
+	}, "application-pipeline", "project-1")
 	if err != nil {
 		t.Fatalf("clone stages: %v", err)
 	}
 	if len(cloned) != 2 {
 		t.Fatalf("expected 2 cloned stages, got %d", len(cloned))
 	}
-	if cloned[0].PipelineId != "application-pipeline" || cloned[1].PipelineId != "application-pipeline" {
+	if cloned[0].PipelineId == nil || cloned[1].PipelineId == nil || *cloned[0].PipelineId != "application-pipeline" || *cloned[1].PipelineId != "application-pipeline" {
 		t.Fatal("cloned stages must belong to the application pipeline")
 	}
 	if cloned[0].Id == "stage-source" || cloned[1].Id == "stage-build" || cloned[0].Id == cloned[1].Id {
 		t.Fatal("cloned stages must receive distinct new ids")
 	}
-
+	if cloned[1].DependsOn == nil {
+		t.Fatal("expected cloned dependencies")
+	}
 	var clonedDependencies []string
-	if err := json.Unmarshal([]byte(cloned[1].DependsOn), &clonedDependencies); err != nil {
+	if err := json.Unmarshal([]byte(*cloned[1].DependsOn), &clonedDependencies); err != nil {
 		t.Fatalf("decode cloned dependencies: %v", err)
 	}
 	if len(clonedDependencies) != 1 || clonedDependencies[0] != cloned[0].Id {
 		t.Fatalf("expected dependency to be remapped to %q, got %v", cloned[0].Id, clonedDependencies)
 	}
-
-	var clonedArtifacts []model.ArtifactConfig
-	if cloned[1].Artifacts == nil {
-		t.Fatal("expected cloned artifacts")
+	if cloned[1].Kind != model.PipelineStageKindApplication || cloned[1].SourceTemplateStageId == nil || *cloned[1].SourceTemplateStageId != "template-build" || cloned[1].SourceTemplateStageVersion == nil || *cloned[1].SourceTemplateStageVersion != 3 {
+		t.Fatalf("source snapshot was not materialized: %#v", cloned[1])
 	}
-	if err := json.Unmarshal([]byte(*cloned[1].Artifacts), &clonedArtifacts); err != nil {
-		t.Fatalf("decode cloned artifacts: %v", err)
-	}
-	if clonedArtifacts[0].ComponentName != nil {
-		t.Fatalf("template component mapping leaked into application pipeline: %q", *clonedArtifacts[0].ComponentName)
+	if cloned[1].Artifacts == nil || *cloned[1].Artifacts != buildArtifacts {
+		t.Fatalf("application stage must copy reference artifacts: %#v", cloned[1].Artifacts)
 	}
 }
 
@@ -117,13 +101,42 @@ func TestValidatePipelineConfigurationRejectsComponentMappingWithoutApplicationB
 		RepositoryId:          &repositoryID,
 		RepositoryName:        &repositoryName,
 	}
+	pipelineID, sourceID, sourceName, sourceDescription, dependsOn := "pipeline-1", "template-stage-1", "build", "template description", "[]"
+	sortOrder, sourceVersion := 0, 1
 	stages := []model.PipelineStage{{
-		Id: "stage-build", Name: "build", Image: "builder", Script: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: "[]",
+		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineID, Name: "build", Image: "builder", Script: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: &dependsOn, SortOrder: &sortOrder, SourceTemplateStageId: &sourceID, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
 	}}
 
 	err = (Service{}).validatePipelineConfiguration(context.Background(), pipeline, stages)
 	if err == nil || !strings.Contains(err.Error(), "require an application binding") {
 		t.Fatalf("expected application binding rejection, got %v", err)
+	}
+}
+
+func TestPipelineStageDefinitionsRejectsInvalidApplicationStageShape(t *testing.T) {
+	t.Parallel()
+
+	pipelineID, sourceID, sourceName, sourceDescription, artifacts, dependsOn := "pipeline-1", "template-stage-1", "build", "template description", "[]", "[]"
+	sortOrder, sourceVersion := 0, 0
+	_, err := pipelineStageDefinitions([]model.PipelineStage{{
+		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineID,
+		Name: "build", Image: "builder", Script: "build", Artifacts: &artifacts, DependsOn: &dependsOn, SortOrder: &sortOrder,
+		SourceTemplateStageId: &sourceID, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
+	}})
+	if err == nil || !strings.Contains(err.Error(), "source snapshot is required") {
+		t.Fatalf("expected business validation of application stage source snapshot, got %v", err)
+	}
+}
+
+func TestValidateTemplatePipelineConfigurationRejectsInvalidReferenceShape(t *testing.T) {
+	t.Parallel()
+
+	err := validateTemplatePipelineConfiguration(model.Pipeline{Id: "template-pipeline", Kind: model.PipelineKindTemplate}, []model.PipelineStageReference{{
+		Id: "reference-1", PipelineId: "template-pipeline", SourceTemplateStageId: "stage-template", SourceTemplateStageName: "build", SourceTemplateStageVersion: 0,
+		Name: "build", Image: "alpine", Script: "true", DependsOn: "{}", SortOrder: -1,
+	}})
+	if err == nil || !strings.Contains(err.Error(), "invalid template pipeline stage reference") {
+		t.Fatalf("expected business validation of template stage reference, got %v", err)
 	}
 }
 

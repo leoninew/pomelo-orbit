@@ -21,7 +21,6 @@
     language?: string;
     height?: string | number;
     readonly?: boolean;
-    squared?: boolean;
     /** 是否显示错误状态边框 */
     hasError?: boolean;
     /** 占位符文本（仅在空值时显示） */
@@ -32,7 +31,6 @@
     language: 'shell',
     height: '400px',
     readonly: false,
-    squared: false,
     hasError: false,
     placeholder: '',
   });
@@ -55,7 +53,6 @@
   const wrapperClass = computed(() => ({
     'monaco-editor-error': props.hasError,
     'monaco-editor-readonly': props.readonly,
-    'monaco-editor-squared': props.squared,
   }));
 
   const editorOptions = computed<editor.IStandaloneEditorConstructionOptions>(() => ({
@@ -98,7 +95,7 @@
     height: 100%;
     overflow: hidden;
     border: 1px solid hsl(var(--border) / 0.5);
-    border-radius: 20px;
+    border-radius: 0.375rem;
     background: hsl(var(--card));
   }
 
@@ -110,16 +107,8 @@
     background: hsl(var(--muted) / 0.3);
   }
 
-  .monaco-editor-squared {
-    border-radius: 0;
-  }
-
   /* 确保编辑器填充容器 */
   .monaco-editor-wrapper :deep(.monaco-editor) {
-    border-radius: 20px;
-  }
-
-  .monaco-editor-squared :deep(.monaco-editor) {
-    border-radius: 0;
+    border-radius: inherit;
   }
 </style>

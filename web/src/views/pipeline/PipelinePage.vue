@@ -158,7 +158,12 @@
     </template>
   </AppDialog>
 
-  <AppDialog v-model:open="instantiateOpen" title="从模板创建应用流水线">
+  <AppDialog
+    v-model:open="instantiateOpen"
+    title="从模板创建应用流水线"
+    width-class="w-[min(760px,calc(100vw-32px))]"
+    body-class="max-h-[72vh] space-y-4 overflow-y-auto px-6 py-4"
+  >
     <form class="space-y-4" @submit.prevent="instantiate">
       <div class="space-y-1.5">
         <label class="app-field-label">
@@ -169,6 +174,8 @@
           v-model="instantiateForm.name"
           class="app-input"
           :class="instantiateErrors.name ? 'app-input-error' : ''"
+          :aria-invalid="instantiateErrors.name ? 'true' : undefined"
+          @input="instantiateErrors.name = ''"
         />
         <p v-if="instantiateErrors.name" class="app-field-error" role="alert">
           {{ instantiateErrors.name }}
@@ -191,18 +198,85 @@
         </p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label">应用</label>
+        <label class="app-field-label">
+          应用
+          <span v-if="dockerArtifacts.length" class="text-destructive">*</span>
+        </label>
         <ComboboxSelect
           v-model="instantiateForm.applicationId"
           :options="applicationOptions"
           :invalid="Boolean(instantiateErrors.applicationId)"
           placeholder="选择应用"
-          @update:model-value="instantiateErrors.applicationId = ''"
+          @update:model-value="changeInstantiationApplication"
         />
         <p v-if="instantiateErrors.applicationId" class="app-field-error" role="alert">
           {{ instantiateErrors.applicationId }}
         </p>
       </div>
+      <template v-if="dockerArtifacts.length">
+        <div v-if="instantiateForm.applicationId" class="grid gap-4 sm:grid-cols-2">
+          <div class="space-y-1.5">
+            <label class="app-field-label">来源版本策略 <span class="text-destructive">*</span></label>
+            <RawValueSelect
+              :model-value="instantiateForm.versionForkStrategy"
+              :values="['latest', 'fixed']"
+              :invalid="Boolean(instantiateErrors.versionForkStrategy)"
+              @update:model-value="changeVersionForkStrategy"
+            />
+            <p v-if="instantiateErrors.versionForkStrategy" class="app-field-error" role="alert">
+              {{ instantiateErrors.versionForkStrategy }}
+            </p>
+          </div>
+          <div v-if="instantiateForm.versionForkStrategy === 'fixed'" class="space-y-1.5">
+            <label class="app-field-label">来源版本 <span class="text-destructive">*</span></label>
+            <ComboboxSelect
+              v-model="instantiateForm.fixedVersionId"
+              :options="versionOptions"
+              :invalid="Boolean(instantiateErrors.fixedVersionId)"
+              placeholder="选择版本"
+              @update:model-value="changeFixedVersion"
+            />
+            <p v-if="instantiateErrors.fixedVersionId" class="app-field-error" role="alert">
+              {{ instantiateErrors.fixedVersionId }}
+            </p>
+          </div>
+        </div>
+        <div v-if="instantiateForm.applicationId" class="space-y-3 border-t border-border pt-4">
+          <div>
+            <h3 class="app-field-label">Docker 制品绑定</h3>
+            <p class="mt-1 text-sm text-muted-foreground">选择每个镜像制品要更新的目标组件。</p>
+          </div>
+          <AppLoadingState v-if="sourceVersionLoading" size="compact" />
+          <p v-else-if="sourceVersionError" class="app-field-error" role="alert">
+            {{ sourceVersionError }}
+          </p>
+          <div v-else class="space-y-3">
+            <div
+              v-for="artifact in dockerArtifacts"
+              :key="artifact.key"
+              class="grid gap-2 border-b border-border pb-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_minmax(220px,1fr)] sm:items-center"
+            >
+              <div class="min-w-0">
+                <p class="truncate text-sm font-medium text-foreground">{{ artifact.name }}</p>
+                <p class="truncate text-xs text-muted-foreground">{{ artifact.stageName }}</p>
+              </div>
+              <div class="space-y-1.5">
+                <ComboboxSelect
+                  v-model="artifactBindings[artifact.key]"
+                  :options="componentOptions"
+                  :invalid="Boolean(artifactBindingErrors[artifact.key])"
+                  :disabled="componentOptions.length === 0"
+                  placeholder="选择目标组件"
+                  @update:model-value="clearArtifactBindingError(artifact.key)"
+                />
+                <p v-if="artifactBindingErrors[artifact.key]" class="app-field-error" role="alert">
+                  {{ artifactBindingErrors[artifact.key] }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
       <p v-if="instantiateError" class="app-field-error" role="alert">{{ instantiateError }}</p>
     </form>
     <template #footer>
@@ -244,12 +318,14 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import ComboboxSelect from '@/components/ComboboxSelect.vue';
+  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
+  import RawValueSelect, { type RawValue } from '@/components/RawValueSelect.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
+  import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
   import { useProjectStore } from '@/stores/project';
@@ -264,6 +340,10 @@
   const pipelines = ref<PipelineResp[]>([]);
   const applications = ref<ApplicationResp[]>([]);
   const repositories = ref<RepositoryResp[]>([]);
+  const versions = ref<VersionResp[]>([]);
+  const sourceVersion = ref<VersionResp>();
+  const sourceVersionLoading = ref(false);
+  const sourceVersionError = ref('');
   const search = ref('');
   const kind = ref('');
   const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
@@ -276,12 +356,26 @@
   const pendingDeleteId = ref('');
   const createForm = reactive({ name: '', description: '' });
   const editForm = reactive({ name: '', description: '' });
-  const instantiateForm = reactive({ name: '', applicationId: '', repositoryId: '' });
+  const instantiateForm = reactive({
+    name: '',
+    applicationId: '',
+    repositoryId: '',
+    versionForkStrategy: 'latest',
+    fixedVersionId: '',
+  });
   const createError = ref('');
   const editError = ref('');
   const instantiateError = ref('');
   const deleteError = ref('');
-  const instantiateErrors = reactive({ name: '', applicationId: '', repositoryId: '' });
+  const instantiateErrors = reactive({
+    name: '',
+    applicationId: '',
+    repositoryId: '',
+    versionForkStrategy: '',
+    fixedVersionId: '',
+  });
+  const artifactBindings = reactive<Record<string, string>>({});
+  const artifactBindingErrors = reactive<Record<string, string>>({});
 
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const applicationOptions = computed(() =>
@@ -293,6 +387,28 @@
       label: repository.name,
       description: repository.repository_url,
     }))
+  );
+  const versionOptions = computed(() =>
+    versions.value.map((version) => ({ value: version.id, label: version.label, description: version.status }))
+  );
+  const componentOptions = computed(() =>
+    (sourceVersion.value?.components || []).map((component) => ({
+      value: component.name,
+      label: component.name,
+      description: component.image,
+    }))
+  );
+  const dockerArtifacts = computed(() =>
+    (selectedTemplate.value?.stage_nodes || []).flatMap((stage) =>
+      stage.artifacts
+        .filter((artifact) => artifact.collector === 'docker_image')
+        .map((artifact) => ({
+          key: `${stage.id}:${artifact.name}`,
+          stageId: stage.id,
+          stageName: stage.name,
+          name: artifact.name,
+        }))
+    )
   );
 
   async function fetchPipelines() {
@@ -407,13 +523,26 @@
   }
 
   async function openInstantiateDialog(template: PipelineResp) {
-    selectedTemplate.value = template;
+    const detail = await pipelineApi.get(template.id);
+    selectedTemplate.value = detail;
     Object.assign(instantiateForm, {
-      name: `${template.name}-应用流水线`,
+      name: `${detail.name}-应用流水线`,
       applicationId: '',
       repositoryId: '',
+      versionForkStrategy: 'latest',
+      fixedVersionId: '',
     });
-    Object.assign(instantiateErrors, { name: '', applicationId: '', repositoryId: '' });
+    Object.assign(instantiateErrors, {
+      name: '',
+      applicationId: '',
+      repositoryId: '',
+      versionForkStrategy: '',
+      fixedVersionId: '',
+    });
+    resetArtifactBindings();
+    versions.value = [];
+    sourceVersion.value = undefined;
+    sourceVersionError.value = '';
     instantiateError.value = '';
     try {
       await loadInstantiationOptions();
@@ -421,6 +550,72 @@
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : '加载应用或仓库失败');
     }
+  }
+
+  function resetArtifactBindings() {
+    for (const key of Object.keys(artifactBindings)) delete artifactBindings[key];
+    for (const key of Object.keys(artifactBindingErrors)) delete artifactBindingErrors[key];
+  }
+
+  async function changeInstantiationApplication(value: ComboboxOptionValue) {
+    instantiateForm.applicationId = String(value || '');
+    instantiateErrors.applicationId = '';
+    instantiateErrors.fixedVersionId = '';
+    instantiateForm.fixedVersionId = '';
+    resetArtifactBindings();
+    versions.value = [];
+    sourceVersion.value = undefined;
+    sourceVersionError.value = '';
+    if (!instantiateForm.applicationId) return;
+    try {
+      const response = await applicationApi.listVersions(instantiateForm.applicationId, { per_page: 100 });
+      versions.value = response.items;
+      await loadSourceVersion();
+    } catch (reason) {
+      sourceVersionError.value = reason instanceof Error ? reason.message : '加载应用版本失败';
+    }
+  }
+
+  async function changeVersionForkStrategy(value: RawValue) {
+    instantiateForm.versionForkStrategy = String(value);
+    instantiateErrors.versionForkStrategy = '';
+    instantiateErrors.fixedVersionId = '';
+    instantiateForm.fixedVersionId = '';
+    resetArtifactBindings();
+    await loadSourceVersion();
+  }
+
+  async function changeFixedVersion(value: ComboboxOptionValue) {
+    instantiateForm.fixedVersionId = String(value || '');
+    instantiateErrors.fixedVersionId = '';
+    resetArtifactBindings();
+    await loadSourceVersion();
+  }
+
+  async function loadSourceVersion() {
+    sourceVersion.value = undefined;
+    sourceVersionError.value = '';
+    if (!instantiateForm.applicationId) return;
+    const versionId =
+      instantiateForm.versionForkStrategy === 'fixed'
+        ? instantiateForm.fixedVersionId
+        : versions.value[0]?.id;
+    if (!versionId) {
+      sourceVersionError.value = '应用尚无可用版本，无法绑定 Docker 制品。';
+      return;
+    }
+    sourceVersionLoading.value = true;
+    try {
+      sourceVersion.value = await applicationApi.getVersion(versionId);
+    } catch (reason) {
+      sourceVersionError.value = reason instanceof Error ? reason.message : '加载来源版本失败';
+    } finally {
+      sourceVersionLoading.value = false;
+    }
+  }
+
+  function clearArtifactBindingError(key: string) {
+    delete artifactBindingErrors[key];
   }
 
   async function openInstantiationFromQuery(templateID: unknown) {
@@ -443,17 +638,57 @@
 
   async function instantiate() {
     instantiateErrors.name = instantiateForm.name.trim() ? '' : '请输入流水线名称';
-    instantiateErrors.applicationId = '';
+    instantiateErrors.applicationId =
+      dockerArtifacts.value.length && !instantiateForm.applicationId ? '请选择应用' : '';
     instantiateErrors.repositoryId = instantiateForm.repositoryId ? '' : '请选择代码仓库';
+    instantiateErrors.versionForkStrategy =
+      dockerArtifacts.value.length && !instantiateForm.versionForkStrategy ? '请选择来源版本策略' : '';
+    instantiateErrors.fixedVersionId =
+      dockerArtifacts.value.length &&
+      instantiateForm.versionForkStrategy === 'fixed' &&
+      !instantiateForm.fixedVersionId
+        ? '请选择来源版本'
+        : '';
+    for (const key of Object.keys(artifactBindingErrors)) delete artifactBindingErrors[key];
+    if (dockerArtifacts.value.length && !sourceVersion.value) {
+      for (const artifact of dockerArtifacts.value)
+        artifactBindingErrors[artifact.key] = '请先加载包含目标组件的来源版本';
+    } else {
+      const selectedComponents = new Map<string, string>();
+      for (const artifact of dockerArtifacts.value) {
+        const componentName = artifactBindings[artifact.key];
+        if (!componentName) artifactBindingErrors[artifact.key] = '请选择目标组件';
+        else if (selectedComponents.has(componentName)) {
+          artifactBindingErrors[artifact.key] = '同一组件只能绑定一个 Docker 制品';
+        } else selectedComponents.set(componentName, artifact.key);
+      }
+    }
     instantiateError.value = '';
     const template = selectedTemplate.value;
-    if (!template || Object.values(instantiateErrors).some(Boolean)) return;
+    if (
+      !template ||
+      Object.values(instantiateErrors).some(Boolean) ||
+      Object.values(artifactBindingErrors).some(Boolean)
+    )
+      return;
     try {
       await executeOperation(async () => {
         const pipeline = await pipelineApi.instantiate(template.id, {
           name: instantiateForm.name.trim(),
           application_id: instantiateForm.applicationId || undefined,
           repository_id: instantiateForm.repositoryId,
+          version_fork_strategy: dockerArtifacts.value.length
+            ? instantiateForm.versionForkStrategy
+            : undefined,
+          fixed_version_id:
+            dockerArtifacts.value.length && instantiateForm.versionForkStrategy === 'fixed'
+              ? instantiateForm.fixedVersionId
+              : undefined,
+          artifact_bindings: dockerArtifacts.value.map((artifact) => ({
+            stage_id: artifact.stageId,
+            artifact_name: artifact.name,
+            component_name: artifactBindings[artifact.key],
+          })),
         });
         instantiateOpen.value = false;
         toast.success('应用流水线已创建');

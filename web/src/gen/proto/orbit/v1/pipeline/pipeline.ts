@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 import type { VariableDeclarationListReq, VariableDeclarationReq, VariableDeclarationResp } from "../common/common";
-import type { PipelineStageResp } from "./pipeline_stage";
+import type { PipelineStageNodeResp } from "./pipeline_stage";
 
 export const protobufPackage = "orbit.v1.pipeline";
 
@@ -26,7 +26,7 @@ export interface PipelineResp {
   fixed_version_label?: string | undefined;
   name: string;
   description: string;
-  stages: PipelineStageResp[];
+  stage_nodes: PipelineStageNodeResp[];
   variable_declarations: VariableDeclarationResp[];
   version: number;
   created_at: string;
@@ -44,15 +44,21 @@ export interface PipelineUpdateReq {
   name?: string | undefined;
   description?: string | undefined;
   variable_declarations?: VariableDeclarationListReq | undefined;
-  version_fork_strategy?: string | undefined;
-  fixed_version_id?: string | undefined;
-  clear_version_fork_strategy?: boolean | undefined;
 }
 
 export interface PipelineInstantiateReq {
   name: string;
   application_id?: string | undefined;
   repository_id: string;
+  version_fork_strategy?: string | undefined;
+  fixed_version_id?: string | undefined;
+  artifact_bindings: PipelineArtifactBindingReq[];
+}
+
+export interface PipelineArtifactBindingReq {
+  stage_id: string;
+  artifact_name: string;
+  component_name: string;
 }
 
 export interface PipelinePaginatedResp {

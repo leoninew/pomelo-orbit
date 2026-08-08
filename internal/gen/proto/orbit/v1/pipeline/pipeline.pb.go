@@ -39,7 +39,7 @@ type PipelineResp struct {
 	FixedVersionLabel     *string                           `protobuf:"bytes,13,opt,name=fixed_version_label,json=fixedVersionLabel,proto3,oneof" json:"fixed_version_label,omitempty"`
 	Name                  string                            `protobuf:"bytes,14,opt,name=name,proto3" json:"name,omitempty"`
 	Description           string                            `protobuf:"bytes,15,opt,name=description,proto3" json:"description,omitempty"`
-	Stages                []*PipelineStageResp              `protobuf:"bytes,16,rep,name=stages,proto3" json:"stages,omitempty"`
+	StageNodes            []*PipelineStageNodeResp          `protobuf:"bytes,16,rep,name=stage_nodes,json=stageNodes,proto3" json:"stage_nodes,omitempty"`
 	VariableDeclarations  []*common.VariableDeclarationResp `protobuf:"bytes,17,rep,name=variable_declarations,json=variableDeclarations,proto3" json:"variable_declarations,omitempty"`
 	Version               int32                             `protobuf:"varint,18,opt,name=version,proto3" json:"version,omitempty"`
 	CreatedAt             string                            `protobuf:"bytes,19,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
@@ -183,9 +183,9 @@ func (x *PipelineResp) GetDescription() string {
 	return ""
 }
 
-func (x *PipelineResp) GetStages() []*PipelineStageResp {
+func (x *PipelineResp) GetStageNodes() []*PipelineStageNodeResp {
 	if x != nil {
-		return x.Stages
+		return x.StageNodes
 	}
 	return nil
 }
@@ -287,15 +287,12 @@ func (x *PipelineCreateReq) GetVariableDeclarations() []*common.VariableDeclarat
 }
 
 type PipelineUpdateReq struct {
-	state                    protoimpl.MessageState             `protogen:"open.v1"`
-	Name                     *string                            `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Description              *string                            `protobuf:"bytes,2,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	VariableDeclarations     *common.VariableDeclarationListReq `protobuf:"bytes,3,opt,name=variable_declarations,json=variableDeclarations,proto3,oneof" json:"variable_declarations,omitempty"`
-	VersionForkStrategy      *string                            `protobuf:"bytes,4,opt,name=version_fork_strategy,json=versionForkStrategy,proto3,oneof" json:"version_fork_strategy,omitempty"`
-	FixedVersionId           *string                            `protobuf:"bytes,5,opt,name=fixed_version_id,json=fixedVersionId,proto3,oneof" json:"fixed_version_id,omitempty"`
-	ClearVersionForkStrategy *bool                              `protobuf:"varint,6,opt,name=clear_version_fork_strategy,json=clearVersionForkStrategy,proto3,oneof" json:"clear_version_fork_strategy,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	state                protoimpl.MessageState             `protogen:"open.v1"`
+	Name                 *string                            `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Description          *string                            `protobuf:"bytes,2,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	VariableDeclarations *common.VariableDeclarationListReq `protobuf:"bytes,3,opt,name=variable_declarations,json=variableDeclarations,proto3,oneof" json:"variable_declarations,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *PipelineUpdateReq) Reset() {
@@ -349,34 +346,16 @@ func (x *PipelineUpdateReq) GetVariableDeclarations() *common.VariableDeclaratio
 	return nil
 }
 
-func (x *PipelineUpdateReq) GetVersionForkStrategy() string {
-	if x != nil && x.VersionForkStrategy != nil {
-		return *x.VersionForkStrategy
-	}
-	return ""
-}
-
-func (x *PipelineUpdateReq) GetFixedVersionId() string {
-	if x != nil && x.FixedVersionId != nil {
-		return *x.FixedVersionId
-	}
-	return ""
-}
-
-func (x *PipelineUpdateReq) GetClearVersionForkStrategy() bool {
-	if x != nil && x.ClearVersionForkStrategy != nil {
-		return *x.ClearVersionForkStrategy
-	}
-	return false
-}
-
 type PipelineInstantiateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	ApplicationId *string                `protobuf:"bytes,2,opt,name=application_id,json=applicationId,proto3,oneof" json:"application_id,omitempty"`
-	RepositoryId  string                 `protobuf:"bytes,3,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState        `protogen:"open.v1"`
+	Name                string                        `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	ApplicationId       *string                       `protobuf:"bytes,2,opt,name=application_id,json=applicationId,proto3,oneof" json:"application_id,omitempty"`
+	RepositoryId        string                        `protobuf:"bytes,3,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
+	VersionForkStrategy *string                       `protobuf:"bytes,4,opt,name=version_fork_strategy,json=versionForkStrategy,proto3,oneof" json:"version_fork_strategy,omitempty"`
+	FixedVersionId      *string                       `protobuf:"bytes,5,opt,name=fixed_version_id,json=fixedVersionId,proto3,oneof" json:"fixed_version_id,omitempty"`
+	ArtifactBindings    []*PipelineArtifactBindingReq `protobuf:"bytes,6,rep,name=artifact_bindings,json=artifactBindings,proto3" json:"artifact_bindings,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *PipelineInstantiateReq) Reset() {
@@ -430,6 +409,87 @@ func (x *PipelineInstantiateReq) GetRepositoryId() string {
 	return ""
 }
 
+func (x *PipelineInstantiateReq) GetVersionForkStrategy() string {
+	if x != nil && x.VersionForkStrategy != nil {
+		return *x.VersionForkStrategy
+	}
+	return ""
+}
+
+func (x *PipelineInstantiateReq) GetFixedVersionId() string {
+	if x != nil && x.FixedVersionId != nil {
+		return *x.FixedVersionId
+	}
+	return ""
+}
+
+func (x *PipelineInstantiateReq) GetArtifactBindings() []*PipelineArtifactBindingReq {
+	if x != nil {
+		return x.ArtifactBindings
+	}
+	return nil
+}
+
+type PipelineArtifactBindingReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StageId       string                 `protobuf:"bytes,1,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	ArtifactName  string                 `protobuf:"bytes,2,opt,name=artifact_name,json=artifactName,proto3" json:"artifact_name,omitempty"`
+	ComponentName string                 `protobuf:"bytes,3,opt,name=component_name,json=componentName,proto3" json:"component_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PipelineArtifactBindingReq) Reset() {
+	*x = PipelineArtifactBindingReq{}
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PipelineArtifactBindingReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PipelineArtifactBindingReq) ProtoMessage() {}
+
+func (x *PipelineArtifactBindingReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PipelineArtifactBindingReq.ProtoReflect.Descriptor instead.
+func (*PipelineArtifactBindingReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_pipeline_pipeline_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *PipelineArtifactBindingReq) GetStageId() string {
+	if x != nil {
+		return x.StageId
+	}
+	return ""
+}
+
+func (x *PipelineArtifactBindingReq) GetArtifactName() string {
+	if x != nil {
+		return x.ArtifactName
+	}
+	return ""
+}
+
+func (x *PipelineArtifactBindingReq) GetComponentName() string {
+	if x != nil {
+		return x.ComponentName
+	}
+	return ""
+}
+
 type PipelinePaginatedResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*PipelineResp        `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -443,7 +503,7 @@ type PipelinePaginatedResp struct {
 
 func (x *PipelinePaginatedResp) Reset() {
 	*x = PipelinePaginatedResp{}
-	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[4]
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -455,7 +515,7 @@ func (x *PipelinePaginatedResp) String() string {
 func (*PipelinePaginatedResp) ProtoMessage() {}
 
 func (x *PipelinePaginatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[4]
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -468,7 +528,7 @@ func (x *PipelinePaginatedResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PipelinePaginatedResp.ProtoReflect.Descriptor instead.
 func (*PipelinePaginatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_pipeline_pipeline_proto_rawDescGZIP(), []int{4}
+	return file_orbit_v1_pipeline_pipeline_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PipelinePaginatedResp) GetItems() []*PipelineResp {
@@ -510,7 +570,7 @@ var File_orbit_v1_pipeline_pipeline_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_pipeline_pipeline_proto_rawDesc = "" +
 	"\n" +
-	" orbit/v1/pipeline/pipeline.proto\x12\x11orbit.v1.pipeline\x1a\x1corbit/v1/common/common.proto\x1a&orbit/v1/pipeline/pipeline_stage.proto\"\xe9\b\n" +
+	" orbit/v1/pipeline/pipeline.proto\x12\x11orbit.v1.pipeline\x1a\x1corbit/v1/common/common.proto\x1a&orbit/v1/pipeline/pipeline_stage.proto\"\xf6\b\n" +
 	"\fPipelineResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
@@ -529,8 +589,9 @@ const file_orbit_v1_pipeline_pipeline_proto_rawDesc = "" +
 	"\x13fixed_version_label\x18\r \x01(\tH\n" +
 	"R\x11fixedVersionLabel\x88\x01\x01\x12\x12\n" +
 	"\x04name\x18\x0e \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x0f \x01(\tR\vdescription\x12<\n" +
-	"\x06stages\x18\x10 \x03(\v2$.orbit.v1.pipeline.PipelineStageRespR\x06stages\x12]\n" +
+	"\vdescription\x18\x0f \x01(\tR\vdescription\x12I\n" +
+	"\vstage_nodes\x18\x10 \x03(\v2(.orbit.v1.pipeline.PipelineStageNodeRespR\n" +
+	"stageNodes\x12]\n" +
 	"\x15variable_declarations\x18\x11 \x03(\v2(.orbit.v1.common.VariableDeclarationRespR\x14variableDeclarations\x12\x18\n" +
 	"\aversion\x18\x12 \x01(\x05R\aversion\x12\x1d\n" +
 	"\n" +
@@ -552,25 +613,28 @@ const file_orbit_v1_pipeline_pipeline_proto_rawDesc = "" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\\\n" +
-	"\x15variable_declarations\x18\x04 \x03(\v2'.orbit.v1.common.VariableDeclarationReqR\x14variableDeclarations\"\xe8\x03\n" +
+	"\x15variable_declarations\x18\x04 \x03(\v2'.orbit.v1.common.VariableDeclarationReqR\x14variableDeclarations\"\xed\x01\n" +
 	"\x11PipelineUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12%\n" +
 	"\vdescription\x18\x02 \x01(\tH\x01R\vdescription\x88\x01\x01\x12e\n" +
-	"\x15variable_declarations\x18\x03 \x01(\v2+.orbit.v1.common.VariableDeclarationListReqH\x02R\x14variableDeclarations\x88\x01\x01\x127\n" +
-	"\x15version_fork_strategy\x18\x04 \x01(\tH\x03R\x13versionForkStrategy\x88\x01\x01\x12-\n" +
-	"\x10fixed_version_id\x18\x05 \x01(\tH\x04R\x0efixedVersionId\x88\x01\x01\x12B\n" +
-	"\x1bclear_version_fork_strategy\x18\x06 \x01(\bH\x05R\x18clearVersionForkStrategy\x88\x01\x01B\a\n" +
+	"\x15variable_declarations\x18\x03 \x01(\v2+.orbit.v1.common.VariableDeclarationListReqH\x02R\x14variableDeclarations\x88\x01\x01B\a\n" +
 	"\x05_nameB\x0e\n" +
 	"\f_descriptionB\x18\n" +
-	"\x16_variable_declarationsB\x18\n" +
-	"\x16_version_fork_strategyB\x13\n" +
-	"\x11_fixed_version_idB\x1e\n" +
-	"\x1c_clear_version_fork_strategy\"\x90\x01\n" +
+	"\x16_variable_declarations\"\x83\x03\n" +
 	"\x16PipelineInstantiateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12*\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tH\x00R\rapplicationId\x88\x01\x01\x12#\n" +
-	"\rrepository_id\x18\x03 \x01(\tR\frepositoryIdB\x11\n" +
-	"\x0f_application_id\"\xa9\x01\n" +
+	"\rrepository_id\x18\x03 \x01(\tR\frepositoryId\x127\n" +
+	"\x15version_fork_strategy\x18\x04 \x01(\tH\x01R\x13versionForkStrategy\x88\x01\x01\x12-\n" +
+	"\x10fixed_version_id\x18\x05 \x01(\tH\x02R\x0efixedVersionId\x88\x01\x01\x12Z\n" +
+	"\x11artifact_bindings\x18\x06 \x03(\v2-.orbit.v1.pipeline.PipelineArtifactBindingReqR\x10artifactBindingsB\x11\n" +
+	"\x0f_application_idB\x18\n" +
+	"\x16_version_fork_strategyB\x13\n" +
+	"\x11_fixed_version_id\"\x83\x01\n" +
+	"\x1aPipelineArtifactBindingReq\x12\x19\n" +
+	"\bstage_id\x18\x01 \x01(\tR\astageId\x12#\n" +
+	"\rartifact_name\x18\x02 \x01(\tR\fartifactName\x12%\n" +
+	"\x0ecomponent_name\x18\x03 \x01(\tR\rcomponentName\"\xa9\x01\n" +
 	"\x15PipelinePaginatedResp\x125\n" +
 	"\x05items\x18\x01 \x03(\v2\x1f.orbit.v1.pipeline.PipelineRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
@@ -591,29 +655,31 @@ func file_orbit_v1_pipeline_pipeline_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_pipeline_pipeline_proto_rawDescData
 }
 
-var file_orbit_v1_pipeline_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_orbit_v1_pipeline_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_orbit_v1_pipeline_pipeline_proto_goTypes = []any{
 	(*PipelineResp)(nil),                      // 0: orbit.v1.pipeline.PipelineResp
 	(*PipelineCreateReq)(nil),                 // 1: orbit.v1.pipeline.PipelineCreateReq
 	(*PipelineUpdateReq)(nil),                 // 2: orbit.v1.pipeline.PipelineUpdateReq
 	(*PipelineInstantiateReq)(nil),            // 3: orbit.v1.pipeline.PipelineInstantiateReq
-	(*PipelinePaginatedResp)(nil),             // 4: orbit.v1.pipeline.PipelinePaginatedResp
-	(*PipelineStageResp)(nil),                 // 5: orbit.v1.pipeline.PipelineStageResp
-	(*common.VariableDeclarationResp)(nil),    // 6: orbit.v1.common.VariableDeclarationResp
-	(*common.VariableDeclarationReq)(nil),     // 7: orbit.v1.common.VariableDeclarationReq
-	(*common.VariableDeclarationListReq)(nil), // 8: orbit.v1.common.VariableDeclarationListReq
+	(*PipelineArtifactBindingReq)(nil),        // 4: orbit.v1.pipeline.PipelineArtifactBindingReq
+	(*PipelinePaginatedResp)(nil),             // 5: orbit.v1.pipeline.PipelinePaginatedResp
+	(*PipelineStageNodeResp)(nil),             // 6: orbit.v1.pipeline.PipelineStageNodeResp
+	(*common.VariableDeclarationResp)(nil),    // 7: orbit.v1.common.VariableDeclarationResp
+	(*common.VariableDeclarationReq)(nil),     // 8: orbit.v1.common.VariableDeclarationReq
+	(*common.VariableDeclarationListReq)(nil), // 9: orbit.v1.common.VariableDeclarationListReq
 }
 var file_orbit_v1_pipeline_pipeline_proto_depIdxs = []int32{
-	5, // 0: orbit.v1.pipeline.PipelineResp.stages:type_name -> orbit.v1.pipeline.PipelineStageResp
-	6, // 1: orbit.v1.pipeline.PipelineResp.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationResp
-	7, // 2: orbit.v1.pipeline.PipelineCreateReq.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationReq
-	8, // 3: orbit.v1.pipeline.PipelineUpdateReq.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationListReq
-	0, // 4: orbit.v1.pipeline.PipelinePaginatedResp.items:type_name -> orbit.v1.pipeline.PipelineResp
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	6, // 0: orbit.v1.pipeline.PipelineResp.stage_nodes:type_name -> orbit.v1.pipeline.PipelineStageNodeResp
+	7, // 1: orbit.v1.pipeline.PipelineResp.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationResp
+	8, // 2: orbit.v1.pipeline.PipelineCreateReq.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationReq
+	9, // 3: orbit.v1.pipeline.PipelineUpdateReq.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationListReq
+	4, // 4: orbit.v1.pipeline.PipelineInstantiateReq.artifact_bindings:type_name -> orbit.v1.pipeline.PipelineArtifactBindingReq
+	0, // 5: orbit.v1.pipeline.PipelinePaginatedResp.items:type_name -> orbit.v1.pipeline.PipelineResp
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_pipeline_pipeline_proto_init() }
@@ -631,7 +697,7 @@ func file_orbit_v1_pipeline_pipeline_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_pipeline_pipeline_proto_rawDesc), len(file_orbit_v1_pipeline_pipeline_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

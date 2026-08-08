@@ -158,7 +158,6 @@
               language="plaintext"
               height="100%"
               :readonly="true"
-              squared
               @mount="handleOperationLogEditorMount"
             />
           </TabsContent>
@@ -200,7 +199,6 @@
               language="plaintext"
               height="100%"
               :readonly="true"
-              squared
               @mount="handleContainerLogEditorMount"
             />
           </TabsContent>

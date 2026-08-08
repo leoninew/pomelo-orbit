@@ -200,17 +200,42 @@ type PipelineSnapshot struct {
 }
 
 type PipelineStage struct {
-	ID          string         `db:"id"`
-	PipelineID  string         `db:"pipeline_id"`
-	Name        string         `db:"name"`
-	Image       string         `db:"image"`
-	Script      string         `db:"script"`
-	Artifacts   sql.NullString `db:"artifacts"`
-	DependsOn   string         `db:"depends_on"`
-	SortOrder   int64          `db:"sort_order"`
-	Description string         `db:"description"`
-	CreatedAt   time.Time      `db:"created_at"`
-	UpdatedAt   time.Time      `db:"updated_at"`
+	ID                             string         `db:"id"`
+	ProjectID                      string         `db:"project_id"`
+	Kind                           string         `db:"kind"`
+	PipelineID                     sql.NullString `db:"pipeline_id"`
+	Name                           string         `db:"name"`
+	Image                          string         `db:"image"`
+	Script                         string         `db:"script"`
+	Description                    string         `db:"description"`
+	Version                        sql.NullInt64  `db:"version"`
+	SourceTemplateStageID          sql.NullString `db:"source_template_stage_id"`
+	SourceTemplateStageName        sql.NullString `db:"source_template_stage_name"`
+	SourceTemplateStageVersion     sql.NullInt64  `db:"source_template_stage_version"`
+	SourceTemplateStageDescription sql.NullString `db:"source_template_stage_description"`
+	Artifacts                      sql.NullString `db:"artifacts"`
+	DependsOn                      sql.NullString `db:"depends_on"`
+	SortOrder                      sql.NullInt64  `db:"sort_order"`
+	CreatedAt                      time.Time      `db:"created_at"`
+	UpdatedAt                      time.Time      `db:"updated_at"`
+}
+
+type PipelineStageReference struct {
+	ID                             string    `db:"id"`
+	PipelineID                     string    `db:"pipeline_id"`
+	SourceTemplateStageID          string    `db:"source_template_stage_id"`
+	SourceTemplateStageName        string    `db:"source_template_stage_name"`
+	SourceTemplateStageVersion     int64     `db:"source_template_stage_version"`
+	SourceTemplateStageDescription string    `db:"source_template_stage_description"`
+	Name                           string    `db:"name"`
+	Image                          string    `db:"image"`
+	Script                         string    `db:"script"`
+	Description                    string    `db:"description"`
+	Artifacts                      string    `db:"artifacts"`
+	DependsOn                      string    `db:"depends_on"`
+	SortOrder                      int64     `db:"sort_order"`
+	CreatedAt                      time.Time `db:"created_at"`
+	UpdatedAt                      time.Time `db:"updated_at"`
 }
 
 type PipelineStageRun struct {

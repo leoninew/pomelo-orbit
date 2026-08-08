@@ -208,7 +208,7 @@
                 {{ t('application.componentDetail.sections.healthcheck') }}
               </h2>
               <div v-if="canEdit" class="flex items-center gap-2">
-                <button class="app-button h-9 px-3" @click="startHealthcheckEditing">
+                <button class="app-button-primary h-9 px-3" @click="startHealthcheckEditing">
                   <Pencil class="size-4" />
                   {{ t('application.componentDetail.actions.edit') }}
                 </button>
@@ -560,7 +560,7 @@
                 {{ t('application.componentDetail.sections.resources') }}
               </h2>
               <div v-if="canEdit" class="flex items-center gap-2">
-                <button class="app-button h-9 px-3" @click="openResourcesDialog">
+                <button class="app-button-primary h-9 px-3" @click="openResourcesDialog">
                   <Pencil class="size-4" />
                   {{ t('application.componentDetail.actions.edit') }}
                 </button>

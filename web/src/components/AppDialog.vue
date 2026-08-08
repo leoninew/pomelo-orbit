@@ -9,9 +9,12 @@
         @close-auto-focus.prevent
       >
         <div class="border-b border-border px-6 py-4">
-          <DialogTitle class="text-base font-semibold text-foreground">
-            {{ title }}
-          </DialogTitle>
+          <div class="flex min-w-0 items-center justify-between gap-3">
+            <DialogTitle class="min-w-0 text-base font-semibold text-foreground">
+              {{ title }}
+            </DialogTitle>
+            <slot name="title-actions" />
+          </div>
           <DialogDescription v-if="description" class="mt-1 text-sm text-muted-foreground">
             {{ description }}
           </DialogDescription>

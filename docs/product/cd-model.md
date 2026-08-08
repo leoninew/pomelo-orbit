@@ -1,5 +1,5 @@
 # CD 领域模型（现行）
-最后修改时间: 2026-08-08 13:29:04
+最后修改时间: 2026-08-08 17:08:45
 
 Doc role: living SoT  
 代码锚点：`internal/model/cd.go`、`internal/common/constant/status.go`、`internal/application/cd/usecase/*`、`sql/migration/*/…_cd_schema*.sql`（以仓库当前迁移文件为准）。
@@ -59,6 +59,13 @@ Project
 - Cancel API 立即写入 `canceled`；worker 以此作为停止 Docker 或 Stage 容器的持久化信号。`canceled` 表示取消已接受，不承诺外部副作用已经回滚。
 - Pipeline 上游失败时，尚未开始的下游 Stage 保持 `waiting_to_run`。Pipeline Retry 是创建新 Run 的显式命令，使用 `retry_of` 记录谱系，不改变原 Run。
 - `background_task` 是调度记录。创建时将 `worker.max_attempts` 冻结到记录；失败时只依据持久化的 `attempts/max_attempts` 决定重投或 `failed`。开发默认预算为 `1`，因此常规业务任务首次失败即终结。
+
+### CI 阶段模型
+
+- `PipelineStage(kind=template)` 是项目内可复用的执行定义，包含名称、镜像、脚本、制品声明、说明和版本；不保存 DAG、排序或 Application/Component 绑定。模板制品声明不得带 `component_name`。
+- Template Pipeline 用 `PipelineStageReference` 保存引入时的来源快照、制品声明及本地 DAG/排序；Application Pipeline 由该引用快照物化自己的 `PipelineStage(kind=application)`，并保留非空来源阶段 ID、名称、版本与说明快照。
+- Application Pipeline 在实例化时选择 Application、来源 Version 策略及 Docker 制品到 Component 的绑定。Snapshot/Run 只读取应用私有阶段的冻结定义，绝不在运行时回读可变阶段库。
+- 阶段库的修改不会自动同步引用或应用阶段。用户可在节点编辑器预览差异后显式更新来源版本；模板删除不影响既有引用、应用阶段、Snapshot、Run 或 Artifact。
 
 ### Application
 

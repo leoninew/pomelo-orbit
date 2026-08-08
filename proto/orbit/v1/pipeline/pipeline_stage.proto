@@ -24,45 +24,96 @@ message ArtifactConfigListReq { repeated ArtifactConfigReq items = 1; }
 
 message PipelineStageResp {
   string id = 1;
-  string pipeline_id = 2;
-  string name = 3;
-  string image = 4;
-  string script = 5;
-  repeated ArtifactConfigResp artifacts = 6;
-  repeated string depends_on = 7;
-  int32 sort_order = 8;
-  string description = 9;
-  string created_at = 10;
-  string updated_at = 11;
+  string project_id = 2;
+  string kind = 3;
+  string name = 4;
+  string image = 5;
+  string script = 6;
+  string description = 7;
+  int32 version = 8;
+  string created_at = 9;
+  string updated_at = 10;
+  repeated ArtifactConfigResp artifacts = 11;
 }
 
 message PipelineStageCreateReq {
   string name = 1;
   string image = 2;
   string script = 3;
-  repeated ArtifactConfigReq artifacts = 4;
-  repeated string depends_on = 5;
-  int32 sort_order = 6;
-  string description = 7;
-  // These fields update the owning application Pipeline in the same
-  // transaction as its initial component-mapped artifact declarations.
-  optional string version_fork_strategy = 8;
-  optional string fixed_version_id = 9;
+  string description = 4;
+  repeated ArtifactConfigReq artifacts = 5;
 }
 
 message PipelineStageUpdateReq {
   optional string name = 1;
   optional string image = 2;
   optional string script = 3;
-  optional ArtifactConfigListReq artifacts = 4;
-  optional StringListReq depends_on = 5;
-  optional int32 sort_order = 6;
-  optional string description = 7;
-  // These fields update the owning application Pipeline in the same
-  // transaction as its component-mapped artifact declarations.
-  optional string version_fork_strategy = 8;
-  optional string fixed_version_id = 9;
-  optional bool clear_version_fork_strategy = 10;
+  optional string description = 4;
+  optional ArtifactConfigListReq artifacts = 5;
 }
 
 message StringListReq { repeated string items = 1; }
+
+message PipelineStagePaginatedResp {
+  repeated PipelineStageResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}
+
+message PipelineStageNodeResp {
+  string id = 1;
+  string node_type = 2;
+  string pipeline_id = 3;
+  string name = 4;
+  string image = 5;
+  string script = 6;
+  repeated ArtifactConfigResp artifacts = 7;
+  repeated string depends_on = 8;
+  int32 sort_order = 9;
+  string description = 10;
+  string source_template_stage_id = 11;
+  string source_template_stage_name = 12;
+  string source_template_stage_description = 13;
+  int32 source_template_stage_version = 14;
+  optional int32 latest_template_stage_version = 15;
+  string created_at = 16;
+  string updated_at = 17;
+}
+
+message PipelineStageImportReq {
+  string source_template_stage_id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  repeated string depends_on = 4;
+  int32 sort_order = 5;
+}
+
+message PipelineStageNodeUpdateReq {
+  optional string name = 1;
+  optional string image = 2;
+  optional string script = 3;
+  optional StringListReq depends_on = 4;
+  optional int32 sort_order = 5;
+  optional string description = 6;
+}
+
+message PipelineStageTemplateFieldDifferenceResp {
+  string field = 1;
+  string current = 2;
+  string target = 3;
+}
+
+message PipelineStageTemplateUpdatePreviewResp {
+  bool available = 1;
+  PipelineStageNodeResp node = 2;
+  int32 expected_source_template_stage_version = 3;
+  int32 target_template_stage_version = 4;
+  repeated PipelineStageTemplateFieldDifferenceResp differences = 5;
+}
+
+message PipelineStageTemplateUpdateReq {
+  int32 expected_source_template_stage_version = 1;
+  int32 target_template_stage_version = 2;
+}

@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-08-07 16:35:00
+最后修改时间: 2026-08-08 17:08:45
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -8,33 +8,38 @@ Doc role: living guide。与代码冲突时以代码为准。
 `Pipeline` 是唯一的流水线聚合根：
 
 ```text
+PipelineStage(kind=template, project scoped)    可复用阶段定义
+  └── name / image / script / artifacts / description / version
+
 Pipeline(kind=template)                         只作为来源，不可运行
-  └── PipelineStage[]                           模板独占阶段
+  └── PipelineStageReference[]                  冻结的阶段引用与 DAG 节点
 
 Pipeline(kind=application)                      可运行的交付单元
   ├── source_pipeline_id + 名称/版本快照        来源 Template
   ├── application_id + 名称快照（可选）          目标 Application（仅组件映射时必填）
   ├── repository_id + 名称快照                  固定的源码 Repository
   ├── version_fork_strategy                     latest | fixed（仅有组件映射时）
-  └── PipelineStage[]                           从模板深复制的独立阶段
+  └── PipelineStage(kind=application)[]         从引用快照物化的独立执行节点
 ```
 
-Template 只定义通用的步骤、DAG、变量和制品收集方式。它没有 Application、Repository、来源 Version 或 Component 绑定，也不能创建 Run 和 Snapshot。
+阶段库只定义通用执行步骤；`PipelineStage(kind=template)` 不保存 DAG、排序、Application、Component 或来源 Version 策略，但保存不带 `component_name` 的制品声明。Template Pipeline 通过 `PipelineStageReference` 保存阶段引入时的来源 ID/名称/版本/说明、镜像、脚本和制品声明快照，以及自己的节点名称、说明、DAG 和排序。
 
-Application Pipeline 必须从同项目 Template 创建。实例化会复制变量与全部阶段、重映射 Stage ID 的 DAG 依赖，并清空所有制品的 `component_name`。Template 后续变更不会影响已创建的 Application Pipeline。
+Application Pipeline 必须从同项目 Template 创建。实例化只读取 Template Pipeline 已关联的引用快照，重映射引用节点 ID 到新的应用阶段 ID，复制制品声明，并在同一请求中选择 Application、来源 Version 策略及 Docker 制品到 Component 的绑定；它不会重新读取可变阶段库。Template 或阶段模板后续变更、删除都不会影响已创建的 Application Pipeline。
 
 ## 阶段与制品
 
-`PipelineStage` 归属于单个 Pipeline，包含：执行镜像、脚本、制品声明、`depends_on`、排序和说明。依赖只能引用同一 Pipeline 的 Stage。
+`PipelineStage(kind=application)` 归属于单个 Application Pipeline，包含私有名称、执行镜像、脚本、制品声明、`depends_on`、排序和说明，并强制保存非空的来源模板阶段 ID、名称、已应用版本和说明快照。依赖只能引用同一 Pipeline 的本地节点。
+
+Template Pipeline 的 `PipelineStageReference` 与 Application Stage 都可对来源模板版本执行显式更新。普通保存不会同步模板；更新前预览来源名称、镜像、脚本、制品声明和模板说明差异。引用会直接替换制品声明；应用阶段按制品名称保留仍有效的 Docker 组件映射，并保留私有名称、说明、DAG、排序和 Pipeline 的来源 Version 策略。
 
 `ArtifactConfig` 的 `component_name` 只允许用于 `docker_image`：
 
-- Template 中必须为空。
-- Application Pipeline 中为空时，制品只保留构建追溯。
-- 非空时，表示成功 Run 要更新的 Application Component；同一 Pipeline 中 Component 不可重复。
+- 模板阶段和 Template Pipeline 引用保存无 `component_name` 的制品声明。
+- Application Pipeline 在实例化时复制声明；未映射的制品只保留构建追溯。
+- Docker 制品的非空 `component_name` 表示成功 Run 要更新的 Application Component；同一 Pipeline 中 Component 不可重复。
 - 每个组件映射镜像必须经由该 Stage 的传递依赖恰好关联一个 `command/git_object_id` 制品，作为 source commit。
 
-来源 Version 策略归 Pipeline 所有：`latest` 在 Run 创建时读取该 Application 的最新 Version，`fixed` 固定一个该 Application 的 Version。制品组件映射与来源 Version 策略在同一个阶段更新事务内保存，避免出现不能运行的中间配置；删除最后一个组件映射时自动清除策略。
+来源 Version 策略归 Pipeline 所有：`latest` 在 Run 创建时读取该 Application 的最新 Version，`fixed` 固定一个该 Application 的 Version。它与制品组件映射在 Template Pipeline 实例化为 Application Pipeline 时一并保存，避免出现不能运行的中间配置。
 
 ## Snapshot、Run 与 Version
 
@@ -57,7 +62,7 @@ Retry 与手动触发共享 Run 创建路径。Retry 创建新 Run；`latest` �
 
 跨生命周期关系是逻辑外键：存稳定 ID，也存删除目标后仍需展示的名称、标签或版本。Template、Application、Repository、Version 与 Pipeline 允许物理删除；历史 Snapshot、Run、Artifact 和 Version Component 不需要回写或置空。
 
-只有聚合内部组成关系使用物理外键：Pipeline -> PipelineStage，PipelineSnapshot -> PipelineRun，PipelineRun -> Artifact。空库通过迁移链至 version 30 直接创建该模型，不在业务代码中保留旧模型兼容路径。
+只有聚合内部组成关系使用物理外键：Template Pipeline -> PipelineStageReference、Application Pipeline -> PipelineStage、PipelineSnapshot -> PipelineRun，PipelineRun -> Artifact。阶段来源使用逻辑快照引用，允许删除模板阶段后继续使用已保存的引用快照。空库通过迁移链至 version 30 直接创建该模型；旧阶段配置由独立离线脚本处置，业务代码不保留兼容路径。
 
 ## HTTP API
 
@@ -66,8 +71,11 @@ Retry 与手动触发共享 Run 创建路径。Retry 创建新 Run；`latest` �
 | `GET/POST /api/pipeline` | 查询 Pipeline；只能创建 Template |
 | `GET/PUT/DELETE /api/pipeline/:pipeline_id` | Pipeline 详情、更新、物理删除 |
 | `POST /api/pipeline/:pipeline_id/instantiate` | 用 Template 创建 Application Pipeline |
-| `POST /api/pipeline/:pipeline_id/stage` | 新增 Pipeline 自有阶段 |
-| `PUT/DELETE /api/pipeline/:pipeline_id/stage/:stage_id` | 更新/删除阶段与制品配置 |
+| `GET/POST /api/pipeline-stage` | 项目内阶段库查询与创建 |
+| `GET/PUT/DELETE /api/pipeline-stage/:stage_id` | 阶段库详情、更新与删除 |
+| `POST /api/pipeline/:pipeline_id/stage` | 从阶段库引入节点 |
+| `PUT/DELETE /api/pipeline/:pipeline_id/stage/:stage_id` | 更新/删除 Pipeline 节点 |
+| `GET/POST /api/pipeline/:pipeline_id/stage/:stage_id/template-update-preview|template-update` | 预览并显式应用模板阶段更新 |
 | `GET /api/pipeline/snapshot/:snapshot_id` | Application Pipeline 的不可变快照 |
 | `POST /api/pipeline/:pipeline_id/trigger` | 运行 Application Pipeline |
 | `GET /api/pipeline-run` | 按 Repository 或 Pipeline 查询 Run |

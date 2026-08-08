@@ -64,20 +64,48 @@ func (s stores) DeletePipeline(ctx context.Context, id string) error {
 	return s.pipeline.DeletePipeline(ctx, id)
 }
 
-func (s stores) PipelineStages(ctx context.Context, pipelineId string) ([]model.PipelineStage, error) {
-	return s.pipeline.PipelineStages(ctx, pipelineId)
+func (s stores) ListPipelineStageTemplates(ctx context.Context, projectId string, page, perPage int, search string) (repository.Page[model.PipelineStage], error) {
+	return s.pipeline.ListPipelineStageTemplates(ctx, projectId, page, perPage, search)
 }
 
-func (s stores) PipelineStage(ctx context.Context, id string) (model.PipelineStage, error) {
-	return s.pipeline.PipelineStage(ctx, id)
+func (s stores) PipelineStageTemplate(ctx context.Context, id string) (model.PipelineStage, error) {
+	return s.pipeline.PipelineStageTemplate(ctx, id)
 }
 
-func (s stores) UpdatePipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
-	return s.pipeline.UpdatePipelineWithStages(ctx, pipeline, stages)
+func (s stores) PipelineStageTemplateByName(ctx context.Context, projectId, name string) (model.PipelineStage, error) {
+	return s.pipeline.PipelineStageTemplateByName(ctx, projectId, name)
 }
 
-func (s stores) CreatePipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
-	return s.pipeline.CreatePipelineWithStages(ctx, pipeline, stages)
+func (s stores) CreatePipelineStageTemplate(ctx context.Context, stage model.PipelineStage) error {
+	return s.pipeline.CreatePipelineStageTemplate(ctx, stage)
+}
+
+func (s stores) UpdatePipelineStageTemplate(ctx context.Context, stage model.PipelineStage) error {
+	return s.pipeline.UpdatePipelineStageTemplate(ctx, stage)
+}
+
+func (s stores) DeletePipelineStageTemplate(ctx context.Context, id string) error {
+	return s.pipeline.DeletePipelineStageTemplate(ctx, id)
+}
+
+func (s stores) TemplatePipelineStageReferences(ctx context.Context, pipelineId string) ([]model.PipelineStageReference, error) {
+	return s.pipeline.TemplatePipelineStageReferences(ctx, pipelineId)
+}
+
+func (s stores) ApplicationPipelineStages(ctx context.Context, pipelineId string) ([]model.PipelineStage, error) {
+	return s.pipeline.ApplicationPipelineStages(ctx, pipelineId)
+}
+
+func (s stores) UpdateTemplatePipelineWithReferences(ctx context.Context, pipeline model.Pipeline, references []model.PipelineStageReference) error {
+	return s.pipeline.UpdateTemplatePipelineWithReferences(ctx, pipeline, references)
+}
+
+func (s stores) UpdateApplicationPipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
+	return s.pipeline.UpdateApplicationPipelineWithStages(ctx, pipeline, stages)
+}
+
+func (s stores) CreateApplicationPipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
+	return s.pipeline.CreateApplicationPipelineWithStages(ctx, pipeline, stages)
 }
 
 func (s stores) LatestPipelineSnapshot(ctx context.Context, pipelineId string) (model.PipelineSnapshot, error) {
@@ -206,16 +234,7 @@ func (s Service) UpdatePipeline(ctx context.Context, userId string, pipelineId s
 			changed = true
 		}
 	}
-	strategyChanged, err := s.applyVersionForkStrategy(ctx, &pipeline, input.VersionForkStrategy, input.FixedVersionId, input.ClearVersionForkStrategy)
-	if err != nil {
-		return pipelinedto.PipelineDetail{}, err
-	}
-	changed = changed || strategyChanged
-	stages, err := s.store.PipelineStages(ctx, pipeline.Id)
-	if err != nil {
-		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
-	}
-	if err := s.validatePipelineConfiguration(ctx, pipeline, stages); err != nil {
+	if err := s.validateStoredPipelineConfiguration(ctx, pipeline); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
 	if changed {
@@ -270,9 +289,12 @@ func (s Service) InstantiatePipeline(ctx context.Context, userId string, templat
 		}
 		applicationId, applicationName = &application.Id, &application.Name
 	}
-	templateStages, err := s.store.PipelineStages(ctx, template.Id)
+	references, err := s.store.TemplatePipelineStageReferences(ctx, template.Id)
 	if err != nil {
-		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load template stages", err)
+		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load template pipeline stage references", err)
+	}
+	if err := validateTemplatePipelineConfiguration(template, references); err != nil {
+		return pipelinedto.PipelineDetail{}, err
 	}
 	templateIdCopy, templateName, templateVersion := template.Id, template.Name, template.Version
 	repositoryId, repositoryName := repo.Id, repo.Name
@@ -282,115 +304,87 @@ func (s Service) InstantiatePipeline(ctx context.Context, userId string, templat
 		ApplicationId: applicationId, ApplicationName: applicationName, RepositoryId: &repositoryId, RepositoryName: &repositoryName,
 		Name: name, Description: template.Description, VariableDeclarations: template.VariableDeclarations, Version: 1,
 	}
-	stages, err := clonePipelineStages(templateStages, pipeline.Id)
+	stages, err := clonePipelineStageReferences(references, pipeline.Id, projectId)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	if err := s.store.CreatePipelineWithStages(ctx, pipeline, stages); err != nil {
-		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to instantiate pipeline", err)
+	if len(input.ArtifactBindings) > 0 && applicationId == nil {
+		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "artifact bindings require an application")
 	}
-	return s.pipelineDetail(ctx, pipeline)
-}
-
-func (s Service) CreatePipelineStage(ctx context.Context, userId string, pipelineId string, input pipelinedto.PipelineStageCreateInput) (pipelinedto.PipelineDetail, error) {
-	pipeline, err := s.loadPipelineForUser(ctx, userId, pipelineId)
-	if err != nil {
+	if err := applyPipelineArtifactBindings(stages, references, input.ArtifactBindings); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	stage, err := pipelineStageFromCreateInput(pipeline.Id, input)
-	if err != nil {
-		return pipelinedto.PipelineDetail{}, err
-	}
-	stages, err := s.store.PipelineStages(ctx, pipeline.Id)
-	if err != nil {
-		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
-	}
-	stages = append(stages, stage)
 	if _, err := s.applyVersionForkStrategy(ctx, &pipeline, input.VersionForkStrategy, input.FixedVersionId, false); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
 	if err := s.validatePipelineConfiguration(ctx, pipeline, stages); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	pipeline.Version++
-	if err := s.store.UpdatePipelineWithStages(ctx, pipeline, stages); err != nil {
-		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline stage", err)
+	if err := s.store.CreateApplicationPipelineWithStages(ctx, pipeline, stages); err != nil {
+		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to instantiate pipeline", err)
 	}
 	return s.pipelineDetail(ctx, pipeline)
 }
 
-func (s Service) UpdatePipelineStage(ctx context.Context, userId string, pipelineId string, stageId string, input pipelinedto.PipelineStageUpdateInput) (pipelinedto.PipelineDetail, error) {
-	pipeline, err := s.loadPipelineForUser(ctx, userId, pipelineId)
-	if err != nil {
-		return pipelinedto.PipelineDetail{}, err
+func applyPipelineArtifactBindings(stages []model.PipelineStage, references []model.PipelineStageReference, bindings []pipelinedto.PipelineArtifactBinding) error {
+	if len(bindings) == 0 {
+		return nil
 	}
-	stages, err := s.store.PipelineStages(ctx, pipeline.Id)
-	if err != nil {
-		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
+	if len(stages) != len(references) {
+		return apperror.New(apperror.KindInternal, "pipeline stage references could not be materialized")
 	}
-	found := false
-	for index := range stages {
-		if stages[index].Id != strings.TrimSpace(stageId) {
-			continue
+	stageIndexByReferenceID := make(map[string]int, len(references))
+	for index, reference := range references {
+		stageIndexByReferenceID[reference.Id] = index
+	}
+	seen := make(map[string]struct{}, len(bindings))
+	for _, binding := range bindings {
+		stageID, artifactName := strings.TrimSpace(binding.StageId), strings.TrimSpace(binding.ArtifactName)
+		componentName, err := optionalComponentName(stageTemplateStringPointer(binding.ComponentName))
+		if err != nil || componentName == nil || stageID == "" || artifactName == "" {
+			return apperror.New(apperror.KindValidation, "invalid pipeline artifact binding")
 		}
-		if err := applyPipelineStageUpdate(&stages[index], input); err != nil {
-			return pipelinedto.PipelineDetail{}, err
+		key := stageID + "\x00" + artifactName
+		if _, exists := seen[key]; exists {
+			return apperror.New(apperror.KindValidation, "pipeline artifact may only be bound once")
 		}
-		found = true
-		break
-	}
-	if !found {
-		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindNotFound, "Pipeline stage "+stageId+" not found")
-	}
-	if _, err := s.applyVersionForkStrategy(ctx, &pipeline, input.VersionForkStrategy, input.FixedVersionId, input.ClearVersionForkStrategy); err != nil {
-		return pipelinedto.PipelineDetail{}, err
-	}
-	if err := s.validatePipelineConfiguration(ctx, pipeline, stages); err != nil {
-		return pipelinedto.PipelineDetail{}, err
-	}
-	pipeline.Version++
-	if err := s.store.UpdatePipelineWithStages(ctx, pipeline, stages); err != nil {
-		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to update pipeline stage", err)
-	}
-	return s.pipelineDetail(ctx, pipeline)
-}
-
-func (s Service) DeletePipelineStage(ctx context.Context, userId string, pipelineId string, stageId string) (pipelinedto.PipelineDetail, error) {
-	pipeline, err := s.loadPipelineForUser(ctx, userId, pipelineId)
-	if err != nil {
-		return pipelinedto.PipelineDetail{}, err
-	}
-	stages, err := s.store.PipelineStages(ctx, pipeline.Id)
-	if err != nil {
-		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
-	}
-	remaining := make([]model.PipelineStage, 0, len(stages)-1)
-	found := false
-	for _, stage := range stages {
-		if stage.Id == strings.TrimSpace(stageId) {
-			found = true
-			continue
+		seen[key] = struct{}{}
+		index, exists := stageIndexByReferenceID[stageID]
+		if !exists {
+			return apperror.New(apperror.KindValidation, "pipeline artifact binding stage does not exist")
 		}
-		remaining = append(remaining, stage)
+		artifacts, err := pipelineStageArtifacts(stages[index])
+		if err != nil {
+			return err
+		}
+		found := false
+		for artifactIndex := range artifacts {
+			if artifacts[artifactIndex].Name == artifactName {
+				if artifacts[artifactIndex].Collector != "docker_image" {
+					return apperror.New(apperror.KindValidation, "only docker_image artifacts can bind a component")
+				}
+				artifacts[artifactIndex].ComponentName = componentName
+				found = true
+				break
+			}
+		}
+		if !found {
+			return apperror.New(apperror.KindValidation, "pipeline artifact binding artifact does not exist")
+		}
+		items := make([]pipelinedto.ArtifactConfig, 0, len(artifacts))
+		for _, artifact := range artifacts {
+			items = append(items, pipelinedto.ArtifactConfig{Name: artifact.Name, Collector: artifact.Collector, Reference: artifact.Reference, Command: artifact.Command, Format: artifact.Format, ComponentName: artifact.ComponentName})
+		}
+		data, err := marshalPipelineStageArtifacts(items)
+		if err != nil {
+			return err
+		}
+		if data == nil {
+			return apperror.New(apperror.KindValidation, "application pipeline stage artifacts are required")
+		}
+		stages[index].Artifacts = data
 	}
-	if !found {
-		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindNotFound, "Pipeline stage "+stageId+" not found")
-	}
-	mappings, err := componentMappingsForStages(remaining)
-	if err != nil {
-		return pipelinedto.PipelineDetail{}, err
-	}
-	if len(mappings) == 0 {
-		pipeline.VersionForkStrategy, pipeline.FixedVersionId, pipeline.FixedVersionLabel = nil, nil, nil
-	}
-	if err := s.validatePipelineConfiguration(ctx, pipeline, remaining); err != nil {
-		return pipelinedto.PipelineDetail{}, err
-	}
-	pipeline.Version++
-	if err := s.store.UpdatePipelineWithStages(ctx, pipeline, remaining); err != nil {
-		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline stage", err)
-	}
-	return s.pipelineDetail(ctx, pipeline)
+	return nil
 }
 
 func (s Service) PipelineSnapshotForUser(ctx context.Context, userId string, snapshotId string) (pipelinedto.PipelineSnapshotDetail, error) {
@@ -439,28 +433,19 @@ func (s Service) loadPipelineForUser(ctx context.Context, userId string, pipelin
 }
 
 func (s Service) pipelineDetail(ctx context.Context, pipeline model.Pipeline) (pipelinedto.PipelineDetail, error) {
-	stages, err := s.store.PipelineStages(ctx, pipeline.Id)
+	nodes, stageViews, err := s.pipelineStageNodes(ctx, pipeline)
 	if err != nil {
-		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
-	}
-	details := make([]pipelinedto.PipelineStageDetail, 0, len(stages))
-	for _, stage := range stages {
-		detail, err := pipelineStageDetail(stage)
-		if err != nil {
-			return pipelinedto.PipelineDetail{}, err
-		}
-		details = append(details, detail)
+		return pipelinedto.PipelineDetail{}, err
 	}
 	variables, err := pipelinevariable.PipelineVariables(pipeline.VariableDeclarations)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	return pipelinedto.PipelineDetail{Pipeline: pipeline, Stages: details, VariableDeclarations: pipelinevariable.ResolvePipelineVariables(stages, variables)}, nil
+	return pipelinedto.PipelineDetail{Pipeline: pipeline, StageNodes: nodes, VariableDeclarations: pipelinevariable.ResolvePipelineVariables(stageViews, variables)}, nil
 }
 
-// applyVersionForkStrategy changes Pipeline-owned version selection. Stage
-// updates call it in the same transaction as artifact component mappings so a
-// client never has to persist an invalid intermediate configuration.
+// applyVersionForkStrategy changes the version selection captured while an
+// application pipeline is instantiated.
 func (s Service) applyVersionForkStrategy(ctx context.Context, pipeline *model.Pipeline, strategyInput *string, fixedVersionInput *string, clear bool) (bool, error) {
 	if strategyInput == nil && fixedVersionInput == nil && !clear {
 		return false, nil
@@ -579,58 +564,6 @@ func marshalPipelineVariables(variables []map[string]any) (string, error) {
 	return string(data), nil
 }
 
-func pipelineStageFromCreateInput(pipelineId string, input pipelinedto.PipelineStageCreateInput) (model.PipelineStage, error) {
-	name, image, script := strings.TrimSpace(input.Name), strings.TrimSpace(input.Image), strings.TrimSpace(input.Script)
-	if name == "" || image == "" || script == "" {
-		return model.PipelineStage{}, apperror.New(apperror.KindValidation, "Invalid pipeline stage fields")
-	}
-	artifacts, err := marshalPipelineStageArtifacts(input.Artifacts)
-	if err != nil {
-		return model.PipelineStage{}, err
-	}
-	dependsOn, err := marshalDependsOn(input.DependsOn)
-	if err != nil {
-		return model.PipelineStage{}, err
-	}
-	return model.PipelineStage{Id: idutil.NewId(), PipelineId: pipelineId, Name: name, Image: image, Script: script, Artifacts: artifacts, DependsOn: dependsOn, SortOrder: input.SortOrder, Description: input.Description}, nil
-}
-
-func applyPipelineStageUpdate(stage *model.PipelineStage, input pipelinedto.PipelineStageUpdateInput) error {
-	if input.Name != nil {
-		stage.Name = strings.TrimSpace(*input.Name)
-	}
-	if input.Image != nil {
-		stage.Image = strings.TrimSpace(*input.Image)
-	}
-	if input.Script != nil {
-		stage.Script = strings.TrimSpace(*input.Script)
-	}
-	if stage.Name == "" || stage.Image == "" || stage.Script == "" {
-		return apperror.New(apperror.KindValidation, "Invalid pipeline stage fields")
-	}
-	if input.Artifacts != nil {
-		value, err := marshalPipelineStageArtifacts(*input.Artifacts)
-		if err != nil {
-			return err
-		}
-		stage.Artifacts = value
-	}
-	if input.DependsOn != nil {
-		value, err := marshalDependsOn(*input.DependsOn)
-		if err != nil {
-			return err
-		}
-		stage.DependsOn = value
-	}
-	if input.SortOrder != nil {
-		stage.SortOrder = *input.SortOrder
-	}
-	if input.Description != nil {
-		stage.Description = *input.Description
-	}
-	return nil
-}
-
 func marshalPipelineStageArtifacts(input []pipelinedto.ArtifactConfig) (*string, error) {
 	artifacts := make([]model.ArtifactConfig, 0, len(input))
 	for _, artifact := range input {
@@ -712,40 +645,41 @@ func marshalDependsOn(dependsOn []string) (string, error) {
 	return string(data), nil
 }
 
-func pipelineStageDetail(stage model.PipelineStage) (pipelinedto.PipelineStageDetail, error) {
-	artifacts, err := pipelineStageArtifacts(stage)
-	if err != nil {
-		return pipelinedto.PipelineStageDetail{}, err
-	}
-	dependsOn, err := stageDependsOn(stage)
-	if err != nil {
-		return pipelinedto.PipelineStageDetail{}, err
-	}
-	items := make([]pipelinedto.ArtifactConfig, 0, len(artifacts))
-	for _, artifact := range artifacts {
-		items = append(items, pipelinedto.ArtifactConfig{Name: artifact.Name, Collector: artifact.Collector, Reference: artifact.Reference, Command: artifact.Command, Format: artifact.Format, ComponentName: artifact.ComponentName})
-	}
-	return pipelinedto.PipelineStageDetail{Stage: stage, Artifacts: items, DependsOn: dependsOn}, nil
-}
-
 func pipelineStageArtifacts(stage model.PipelineStage) ([]model.ArtifactConfig, error) {
-	if stage.Artifacts == nil || strings.TrimSpace(*stage.Artifacts) == "" {
-		return []model.ArtifactConfig{}, nil
+	if stage.Artifacts == nil {
+		return nil, apperror.New(apperror.KindValidation, "application pipeline stage artifacts are required")
+	}
+	if err := validateJSONArray(*stage.Artifacts, "artifacts"); err != nil {
+		return nil, err
 	}
 	var artifacts []model.ArtifactConfig
 	if err := json.Unmarshal([]byte(*stage.Artifacts), &artifacts); err != nil {
-		return nil, apperror.New(apperror.KindInternal, "Invalid pipeline stage artifacts")
+		return nil, apperror.New(apperror.KindValidation, "Invalid pipeline stage artifacts")
+	}
+	seen := map[string]struct{}{}
+	for _, artifact := range artifacts {
+		input := pipelinedto.ArtifactConfig{Name: artifact.Name, Collector: artifact.Collector, Reference: artifact.Reference, Command: artifact.Command, Format: artifact.Format, ComponentName: artifact.ComponentName}
+		if err := validateArtifact(input); err != nil {
+			return nil, err
+		}
+		if _, exists := seen[artifact.Name]; exists {
+			return nil, apperror.New(apperror.KindValidation, "Pipeline stage artifact names must be unique")
+		}
+		seen[artifact.Name] = struct{}{}
 	}
 	return artifacts, nil
 }
 
 func stageDependsOn(stage model.PipelineStage) ([]string, error) {
-	if strings.TrimSpace(stage.DependsOn) == "" {
-		return []string{}, nil
+	if stage.DependsOn == nil {
+		return nil, apperror.New(apperror.KindValidation, "application pipeline stage dependencies are required")
+	}
+	if err := validateJSONArray(*stage.DependsOn, "depends_on"); err != nil {
+		return nil, err
 	}
 	var dependsOn []string
-	if err := json.Unmarshal([]byte(stage.DependsOn), &dependsOn); err != nil {
-		return nil, apperror.New(apperror.KindInternal, "Invalid pipeline stage dependencies")
+	if err := json.Unmarshal([]byte(*stage.DependsOn), &dependsOn); err != nil {
+		return nil, apperror.New(apperror.KindValidation, "Invalid pipeline stage dependencies")
 	}
 	return dependsOn, nil
 }
@@ -770,52 +704,6 @@ func snapshotVariables(value string) ([]model.VariableDeclaration, error) {
 		return nil, apperror.New(apperror.KindInternal, "Invalid pipeline snapshot variables")
 	}
 	return variables, nil
-}
-
-func clonePipelineStages(templateStages []model.PipelineStage, pipelineId string) ([]model.PipelineStage, error) {
-	idMap := make(map[string]string, len(templateStages))
-	for _, stage := range templateStages {
-		idMap[stage.Id] = idutil.NewId()
-	}
-	cloned := make([]model.PipelineStage, 0, len(templateStages))
-	for _, stage := range templateStages {
-		dependsOn, err := stageDependsOn(stage)
-		if err != nil {
-			return nil, err
-		}
-		for index, dependency := range dependsOn {
-			mapped, exists := idMap[dependency]
-			if !exists {
-				return nil, apperror.New(apperror.KindValidation, "Template stage dependency does not exist")
-			}
-			dependsOn[index] = mapped
-		}
-		artifacts, err := pipelineStageArtifacts(stage)
-		if err != nil {
-			return nil, err
-		}
-		for index := range artifacts {
-			artifacts[index].ComponentName = nil
-		}
-		artifactData, err := json.Marshal(artifacts)
-		if err != nil {
-			return nil, apperror.New(apperror.KindInternal, "Invalid template artifacts")
-		}
-		dependsData, err := marshalDependsOn(dependsOn)
-		if err != nil {
-			return nil, err
-		}
-		artifactText := string(artifactData)
-		if len(artifacts) == 0 {
-			artifactText = ""
-		}
-		copy := model.PipelineStage{Id: idMap[stage.Id], PipelineId: pipelineId, Name: stage.Name, Image: stage.Image, Script: stage.Script, DependsOn: dependsData, SortOrder: stage.SortOrder, Description: stage.Description}
-		if artifactText != "" {
-			copy.Artifacts = &artifactText
-		}
-		cloned = append(cloned, copy)
-	}
-	return cloned, nil
 }
 
 func (s Service) validatePipelineConfiguration(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
@@ -922,6 +810,9 @@ func componentMappingsForStages(stages []model.PipelineStage) ([]componentMappin
 func pipelineStageDefinitions(stages []model.PipelineStage) ([]model.StageDefinition, error) {
 	definitions := make([]model.StageDefinition, 0, len(stages))
 	for _, stage := range stages {
+		if err := validateApplicationPipelineStage(stage); err != nil {
+			return nil, err
+		}
 		artifacts, err := pipelineStageArtifacts(stage)
 		if err != nil {
 			return nil, err
@@ -930,9 +821,38 @@ func pipelineStageDefinitions(stages []model.PipelineStage) ([]model.StageDefini
 		if err != nil {
 			return nil, err
 		}
-		definitions = append(definitions, model.StageDefinition{Id: stage.Id, Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: artifacts, DependsOn: dependsOn, SortOrder: stage.SortOrder, Description: stage.Description})
+		definitions = append(definitions, model.StageDefinition{Id: stage.Id, Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: artifacts, DependsOn: dependsOn, SortOrder: *stage.SortOrder, Description: stage.Description, SourceTemplateStageId: *stage.SourceTemplateStageId, SourceTemplateStageName: *stage.SourceTemplateStageName, SourceTemplateStageVersion: *stage.SourceTemplateStageVersion})
 	}
 	return definitions, nil
+}
+
+func validatePipelineStageTemplate(stage model.PipelineStage) error {
+	if strings.TrimSpace(stage.Id) == "" || strings.TrimSpace(stage.ProjectId) == "" || stage.Kind != model.PipelineStageKindTemplate || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version == nil || *stage.Version <= 0 {
+		return apperror.New(apperror.KindValidation, "invalid pipeline stage template")
+	}
+	if stage.PipelineId != nil || stage.SourceTemplateStageId != nil || stage.SourceTemplateStageName != nil || stage.SourceTemplateStageVersion != nil || stage.SourceTemplateStageDescription != nil || stage.DependsOn != nil || stage.SortOrder != nil {
+		return apperror.New(apperror.KindValidation, "pipeline stage templates cannot contain pipeline configuration")
+	}
+	_, err := templateStageArtifacts(stage)
+	return err
+}
+
+func validateApplicationPipelineStage(stage model.PipelineStage) error {
+	if strings.TrimSpace(stage.Id) == "" || strings.TrimSpace(stage.ProjectId) == "" || stage.Kind != model.PipelineStageKindApplication || stage.PipelineId == nil || strings.TrimSpace(*stage.PipelineId) == "" || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version != nil || stage.Artifacts == nil || stage.DependsOn == nil || stage.SortOrder == nil || *stage.SortOrder < 0 {
+		return apperror.New(apperror.KindValidation, "invalid application pipeline stage")
+	}
+	if stage.SourceTemplateStageId == nil || strings.TrimSpace(*stage.SourceTemplateStageId) == "" || stage.SourceTemplateStageName == nil || strings.TrimSpace(*stage.SourceTemplateStageName) == "" || stage.SourceTemplateStageVersion == nil || *stage.SourceTemplateStageVersion <= 0 || stage.SourceTemplateStageDescription == nil {
+		return apperror.New(apperror.KindValidation, "application pipeline stage source snapshot is required")
+	}
+	return nil
+}
+
+func validateJSONArray(value, field string) error {
+	var items []json.RawMessage
+	if strings.TrimSpace(value) == "" || json.Unmarshal([]byte(value), &items) != nil || items == nil {
+		return apperror.New(apperror.KindValidation, field+" must be a JSON array")
+	}
+	return nil
 }
 
 func validatePipelineDAG(stages []model.StageDefinition) error {

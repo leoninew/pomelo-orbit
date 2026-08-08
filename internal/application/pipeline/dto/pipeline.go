@@ -20,54 +20,103 @@ type PipelineCreateInput struct {
 }
 
 type PipelineUpdateInput struct {
-	Name                     *string
-	Description              *string
-	VariableDeclarations     *[]map[string]any
-	VersionForkStrategy      *string
-	FixedVersionId           *string
-	ClearVersionForkStrategy bool
+	Name                 *string
+	Description          *string
+	VariableDeclarations *[]map[string]any
 }
 
 type PipelineInstantiateInput struct {
-	Name          string
-	ApplicationId *string
-	RepositoryId  string
-}
-
-type PipelineStageCreateInput struct {
 	Name                string
-	Image               string
-	Script              string
-	Artifacts           []ArtifactConfig
-	DependsOn           []string
-	SortOrder           int
-	Description         string
+	ApplicationId       *string
+	RepositoryId        string
 	VersionForkStrategy *string
 	FixedVersionId      *string
+	ArtifactBindings    []PipelineArtifactBinding
 }
 
-type PipelineStageUpdateInput struct {
-	Name                     *string
-	Image                    *string
-	Script                   *string
-	Artifacts                *[]ArtifactConfig
+type PipelineArtifactBinding struct {
+	StageId       string
+	ArtifactName  string
+	ComponentName string
+}
+
+type PipelineStageTemplateCreateInput struct {
+	ProjectId   string
+	Name        string
+	Image       string
+	Script      string
+	Description string
+	Artifacts   []ArtifactConfig
+}
+
+type PipelineStageTemplateUpdateInput struct {
+	Name        *string
+	Image       *string
+	Script      *string
+	Description *string
+	Artifacts   *[]ArtifactConfig
+	// The remaining fields make invalid API payloads observable to the service.
+	// They are rejected for a reusable template rather than silently discarded.
 	DependsOn                *[]string
 	SortOrder                *int
-	Description              *string
+	PipelineId               *string
 	VersionForkStrategy      *string
 	FixedVersionId           *string
 	ClearVersionForkStrategy bool
 }
 
-type PipelineStageDetail struct {
+type PipelineStageTemplateDetail struct {
 	Stage     model.PipelineStage
 	Artifacts []ArtifactConfig
-	DependsOn []string
+}
+
+type PipelineStageImportInput struct {
+	SourceTemplateStageId string
+	Name                  *string
+	Description           *string
+	DependsOn             []string
+	SortOrder             int
+}
+
+type PipelineStageNodeUpdateInput struct {
+	Name        *string
+	Image       *string
+	Script      *string
+	DependsOn   *[]string
+	SortOrder   *int
+	Description *string
+}
+
+type PipelineStageNodeDetail struct {
+	Node                       model.PipelineStageNode
+	Artifacts                  []ArtifactConfig
+	DependsOn                  []string
+	LatestTemplateStageVersion *int
+}
+
+type PipelineStageTemplateUpdatePreview struct {
+	Available                     bool
+	Node                          PipelineStageNodeDetail
+	CurrentTemplate               model.PipelineStage
+	ExpectedSourceTemplateVersion int
+	TargetTemplateVersion         int
+	Differences                   []PipelineStageTemplateFieldDifference
+}
+
+type PipelineStageTemplateFieldDifference struct {
+	Field   string
+	Current string
+	Target  string
+}
+
+type PipelineStageTemplateApplyUpdateInput struct {
+	ExpectedSourceTemplateStageVersion int
+	TargetTemplateStageVersion         int
 }
 
 type PipelineDetail struct {
 	Pipeline             model.Pipeline
-	Stages               []PipelineStageDetail
+	StageNodes           []PipelineStageNodeDetail
 	VariableDeclarations []map[string]any
 }
 

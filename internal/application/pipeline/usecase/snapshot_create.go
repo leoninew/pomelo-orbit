@@ -16,7 +16,7 @@ type SnapshotStore interface {
 	LatestPipelineSnapshot(ctx context.Context, pipelineId string) (model.PipelineSnapshot, error)
 	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
 	CreatePipelineSnapshot(ctx context.Context, snapshot model.PipelineSnapshot) error
-	PipelineStages(ctx context.Context, pipelineId string) ([]model.PipelineStage, error)
+	ApplicationPipelineStages(ctx context.Context, pipelineId string) ([]model.PipelineStage, error)
 }
 
 // GetOrCreatePipelineSnapshot only accepts an application Pipeline. Templates
@@ -32,7 +32,7 @@ func GetOrCreatePipelineSnapshot(ctx context.Context, store SnapshotStore, pipel
 	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return model.PipelineSnapshot{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
 	}
-	stages, err := store.PipelineStages(ctx, pipeline.Id)
+	stages, err := store.ApplicationPipelineStages(ctx, pipeline.Id)
 	if err != nil {
 		return model.PipelineSnapshot{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
 	}

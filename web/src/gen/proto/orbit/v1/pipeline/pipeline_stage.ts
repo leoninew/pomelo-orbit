@@ -32,6 +32,49 @@ export interface ArtifactConfigListReq {
 
 export interface PipelineStageResp {
   id: string;
+  project_id: string;
+  kind: string;
+  name: string;
+  image: string;
+  script: string;
+  description: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+  artifacts: ArtifactConfigResp[];
+}
+
+export interface PipelineStageCreateReq {
+  name: string;
+  image: string;
+  script: string;
+  description: string;
+  artifacts: ArtifactConfigReq[];
+}
+
+export interface PipelineStageUpdateReq {
+  name?: string | undefined;
+  image?: string | undefined;
+  script?: string | undefined;
+  description?: string | undefined;
+  artifacts?: ArtifactConfigListReq | undefined;
+}
+
+export interface StringListReq {
+  items: string[];
+}
+
+export interface PipelineStagePaginatedResp {
+  items: PipelineStageResp[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
+export interface PipelineStageNodeResp {
+  id: string;
+  node_type: string;
   pipeline_id: string;
   name: string;
   image: string;
@@ -40,45 +83,47 @@ export interface PipelineStageResp {
   depends_on: string[];
   sort_order: number;
   description: string;
+  source_template_stage_id: string;
+  source_template_stage_name: string;
+  source_template_stage_description: string;
+  source_template_stage_version: number;
+  latest_template_stage_version?: number | undefined;
   created_at: string;
   updated_at: string;
 }
 
-export interface PipelineStageCreateReq {
-  name: string;
-  image: string;
-  script: string;
-  artifacts: ArtifactConfigReq[];
+export interface PipelineStageImportReq {
+  source_template_stage_id: string;
+  name?: string | undefined;
+  description?: string | undefined;
   depends_on: string[];
   sort_order: number;
-  description: string;
-  /**
-   * These fields update the owning application Pipeline in the same
-   * transaction as its initial component-mapped artifact declarations.
-   */
-  version_fork_strategy?: string | undefined;
-  fixed_version_id?: string | undefined;
 }
 
-export interface PipelineStageUpdateReq {
+export interface PipelineStageNodeUpdateReq {
   name?: string | undefined;
   image?: string | undefined;
   script?: string | undefined;
-  artifacts?: ArtifactConfigListReq | undefined;
   depends_on?: StringListReq | undefined;
   sort_order?: number | undefined;
-  description?:
-    | string
-    | undefined;
-  /**
-   * These fields update the owning application Pipeline in the same
-   * transaction as its component-mapped artifact declarations.
-   */
-  version_fork_strategy?: string | undefined;
-  fixed_version_id?: string | undefined;
-  clear_version_fork_strategy?: boolean | undefined;
+  description?: string | undefined;
 }
 
-export interface StringListReq {
-  items: string[];
+export interface PipelineStageTemplateFieldDifferenceResp {
+  field: string;
+  current: string;
+  target: string;
+}
+
+export interface PipelineStageTemplateUpdatePreviewResp {
+  available: boolean;
+  node: PipelineStageNodeResp | undefined;
+  expected_source_template_stage_version: number;
+  target_template_stage_version: number;
+  differences: PipelineStageTemplateFieldDifferenceResp[];
+}
+
+export interface PipelineStageTemplateUpdateReq {
+  expected_source_template_stage_version: number;
+  target_template_stage_version: number;
 }

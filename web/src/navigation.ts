@@ -187,6 +187,12 @@ const pipelineNavigation: NavigationBranch[] = [
         path: '/pipeline',
       },
       {
+        key: 'pipelinestages',
+        label: '阶段',
+        labelKey: 'nav.pipelineStages',
+        path: '/pipeline-stage',
+      },
+      {
         key: 'pipelineruns',
         label: '记录',
         labelKey: 'nav.pipelineRuns',
@@ -300,6 +306,8 @@ export function getNavigationScope(path: string): NavigationScope | null {
   if (
     path === '/pipeline' ||
     path.startsWith('/pipeline/') ||
+    path === '/pipeline-stage' ||
+    path.startsWith('/pipeline-stage/') ||
     path === '/pipeline-run' ||
     path.startsWith('/pipeline-run/') ||
     path === '/repository' ||

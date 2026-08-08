@@ -221,6 +221,10 @@
     @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-destructive/50 bg-background px-4 text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
+  .app-button-warning {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-500/60 bg-background px-4 text-sm text-amber-700 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-400;
+  }
+
   .app-button-destructive {
     @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-destructive bg-destructive px-4 text-sm text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50;
   }

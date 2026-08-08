@@ -74,7 +74,7 @@ func (h Handler) UpdatePipeline(c *gin.Context) {
 		values := variableRequestMaps(req.VariableDeclarations.Items)
 		variables = &values
 	}
-	detail, err := h.service.UpdatePipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinedto.PipelineUpdateInput{Name: req.Name, Description: req.Description, VariableDeclarations: variables, VersionForkStrategy: req.VersionForkStrategy, FixedVersionId: req.FixedVersionId, ClearVersionForkStrategy: req.ClearVersionForkStrategy != nil && *req.ClearVersionForkStrategy})
+	detail, err := h.service.UpdatePipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinedto.PipelineUpdateInput{Name: req.Name, Description: req.Description, VariableDeclarations: variables})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -103,7 +103,13 @@ func (h Handler) InstantiatePipeline(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.InstantiatePipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinedto.PipelineInstantiateInput{Name: req.Name, ApplicationId: req.ApplicationId, RepositoryId: req.RepositoryId})
+	bindings := make([]pipelinedto.PipelineArtifactBinding, 0, len(req.ArtifactBindings))
+	for _, item := range req.ArtifactBindings {
+		if item != nil {
+			bindings = append(bindings, pipelinedto.PipelineArtifactBinding{StageId: item.StageId, ArtifactName: item.ArtifactName, ComponentName: item.ComponentName})
+		}
+	}
+	detail, err := h.service.InstantiatePipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinedto.PipelineInstantiateInput{Name: req.Name, ApplicationId: req.ApplicationId, RepositoryId: req.RepositoryId, VersionForkStrategy: req.VersionForkStrategy, FixedVersionId: req.FixedVersionId, ArtifactBindings: bindings})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -111,17 +117,17 @@ func (h Handler) InstantiatePipeline(c *gin.Context) {
 	response := pipelineResponse(detail)
 	transportresponse.ProtoJSON(c, http.StatusCreated, response)
 }
-func (h Handler) CreatePipelineStage(c *gin.Context) {
+func (h Handler) ImportPipelineStage(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	var req pipelinev1.PipelineStageCreateReq
+	var req pipelinev1.PipelineStageImportReq
 	if binding.DecodeJSON(c, &req) != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.CreatePipelineStage(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinedto.PipelineStageCreateInput{Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: serviceArtifacts(req.Artifacts), DependsOn: req.DependsOn, SortOrder: int(req.SortOrder), Description: req.Description, VersionForkStrategy: req.VersionForkStrategy, FixedVersionId: req.FixedVersionId})
+	detail, err := h.service.ImportPipelineStage(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinedto.PipelineStageImportInput{SourceTemplateStageId: req.SourceTemplateStageId, Name: req.Name, Description: req.Description, DependsOn: req.DependsOn, SortOrder: int(req.SortOrder)})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -129,27 +135,22 @@ func (h Handler) CreatePipelineStage(c *gin.Context) {
 	response := pipelineResponse(detail)
 	transportresponse.ProtoJSON(c, http.StatusCreated, response)
 }
-func (h Handler) UpdatePipelineStage(c *gin.Context) {
+func (h Handler) UpdatePipelineStageNode(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	var req pipelinev1.PipelineStageUpdateReq
+	var req pipelinev1.PipelineStageNodeUpdateReq
 	if binding.DecodeJSON(c, &req) != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
-	}
-	var artifacts *[]pipelinedto.ArtifactConfig
-	if req.Artifacts != nil {
-		values := serviceArtifacts(req.Artifacts.Items)
-		artifacts = &values
 	}
 	var dependsOn *[]string
 	if req.DependsOn != nil {
 		values := req.DependsOn.Items
 		dependsOn = &values
 	}
-	detail, err := h.service.UpdatePipelineStage(c.Request.Context(), current.Id, c.Param("pipeline_id"), c.Param("stage_id"), pipelinedto.PipelineStageUpdateInput{Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: artifacts, DependsOn: dependsOn, SortOrder: int32PtrToInt(req.SortOrder), Description: req.Description, VersionForkStrategy: req.VersionForkStrategy, FixedVersionId: req.FixedVersionId, ClearVersionForkStrategy: req.ClearVersionForkStrategy != nil && *req.ClearVersionForkStrategy})
+	detail, err := h.service.UpdatePipelineStageNode(c.Request.Context(), current.Id, c.Param("pipeline_id"), c.Param("stage_id"), pipelinedto.PipelineStageNodeUpdateInput{Name: req.Name, Image: req.Image, Script: req.Script, DependsOn: dependsOn, SortOrder: int32PtrToInt(req.SortOrder), Description: req.Description})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -157,12 +158,12 @@ func (h Handler) UpdatePipelineStage(c *gin.Context) {
 	response := pipelineResponse(detail)
 	transportresponse.ProtoJSON(c, http.StatusOK, response)
 }
-func (h Handler) DeletePipelineStage(c *gin.Context) {
+func (h Handler) DeletePipelineStageNode(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	detail, err := h.service.DeletePipelineStage(c.Request.Context(), current.Id, c.Param("pipeline_id"), c.Param("stage_id"))
+	detail, err := h.service.DeletePipelineStageNode(c.Request.Context(), current.Id, c.Param("pipeline_id"), c.Param("stage_id"))
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return

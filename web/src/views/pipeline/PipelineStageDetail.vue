@@ -276,6 +276,7 @@
 </template>
 
 <script setup lang="ts">
+  import { ArrowLeft, Copy, Plus, Trash2 } from '@lucide/vue';
   import { onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';

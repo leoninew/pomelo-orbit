@@ -217,7 +217,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Plus, Upload } from 'lucide-vue-next';
+  import { Plus, Upload } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
   import { credentialApi } from '@/api/credential/credential';
   import AppBadge from '@/components/AppBadge.vue';

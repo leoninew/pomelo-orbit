@@ -363,7 +363,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Plus } from 'lucide-vue-next';
+  import { Plus } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';

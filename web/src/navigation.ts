@@ -1,4 +1,4 @@
-import { FolderGit2, Layers, LayoutGrid, Network, Play, Wrench } from 'lucide-vue-next';
+import { FolderGit2, Layers, LayoutGrid, Network, Play, Wrench } from '@lucide/vue';
 import type { Component } from 'vue';
 import { PERMISSIONS } from '@/constants/permissions';
 

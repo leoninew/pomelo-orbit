@@ -79,7 +79,7 @@
         "--binlog_expire_logs_seconds=604800"
       ],
       "environment": [
-        {"key": "MYSQL_DATABASE", "value": "rag_flow"},
+        {"key": "MYSQL_DBNAME", "value": "rag_flow"},
         {"key": "MYSQL_ROOT_HOST", "value": "%"},
         {"key": "MYSQL_ROOT_PASSWORD", "runtime_key": "MYSQL_PASSWORD"}
       ],

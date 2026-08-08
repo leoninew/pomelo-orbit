@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Eye, EyeOff } from 'lucide-vue-next';
+  import { Eye, EyeOff } from '@lucide/vue';
   import { computed, ref, watch } from 'vue';
 
   const props = withDefaults(

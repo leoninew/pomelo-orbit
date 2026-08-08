@@ -167,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowRight, FolderGit2, LayoutGrid, Play, Rocket } from 'lucide-vue-next';
+  import { ArrowRight, FolderGit2, LayoutGrid, Play, Rocket } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';

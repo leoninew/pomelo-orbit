@@ -440,7 +440,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, FileCode2, RotateCcw, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, FileCode2, RotateCcw, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';

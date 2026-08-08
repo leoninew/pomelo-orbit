@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-  import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from 'lucide-vue-next';
+  import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from '@lucide/vue';
   import {
     ToastClose,
     ToastDescription,

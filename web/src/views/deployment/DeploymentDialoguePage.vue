@@ -87,7 +87,7 @@
   import { storeToRefs } from 'pinia';
   import { nextTick, onUnmounted, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { Send } from 'lucide-vue-next';
+  import { Send } from '@lucide/vue';
   import { dialogueApi } from '@/api/dialogue/dialogue';
   import MarkdownContent from '@/components/MarkdownContent.vue';
   import { useToast } from '@/composables/useToast';

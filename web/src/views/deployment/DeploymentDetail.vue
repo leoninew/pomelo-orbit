@@ -232,7 +232,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Loader2, X } from 'lucide-vue-next';
+  import { ArrowLeft, Loader2, X } from '@lucide/vue';
   import { computed, onMounted, onUnmounted, ref } from 'vue';
   import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
   import { useI18n } from 'vue-i18n';

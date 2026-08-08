@@ -169,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Plus } from 'lucide-vue-next';
+  import { Plus } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';

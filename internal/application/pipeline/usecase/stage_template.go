@@ -834,18 +834,6 @@ func applyApplicationStageUpdate(stages []model.PipelineStage, stageId string, i
 	return false, false, nil
 }
 
-func marshalApplicationStageArtifacts(input []pipelinedto.ArtifactConfig) (*string, error) {
-	artifacts, err := marshalPipelineStageArtifacts(input)
-	if err != nil {
-		return nil, err
-	}
-	if artifacts != nil {
-		return artifacts, nil
-	}
-	empty := "[]"
-	return &empty, nil
-}
-
 func removeTemplateReference(references []model.PipelineStageReference, stageId string) ([]model.PipelineStageReference, bool) {
 	remaining := make([]model.PipelineStageReference, 0, len(references))
 	found := false

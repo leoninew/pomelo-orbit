@@ -94,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft } from 'lucide-vue-next';
+  import { ArrowLeft } from '@lucide/vue';
   import { computed, onMounted, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { pipelineApi } from '@/api/pipeline/pipeline';

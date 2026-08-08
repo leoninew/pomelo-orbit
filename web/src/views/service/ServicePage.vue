@@ -370,7 +370,7 @@
 </template>
 
 <script setup lang="ts">
-  import { LayoutGrid, List, Plus } from 'lucide-vue-next';
+  import { LayoutGrid, List, Plus } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';

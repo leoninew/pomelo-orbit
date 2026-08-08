@@ -398,7 +398,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, CopyPlus, Play, Plus, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, CopyPlus, Play, Plus, Trash2 } from '@lucide/vue';
   import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { pipelineApi } from '@/api/pipeline/pipeline';

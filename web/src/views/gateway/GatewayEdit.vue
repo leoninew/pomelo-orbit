@@ -106,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Save } from 'lucide-vue-next';
+  import { ArrowLeft, Save } from '@lucide/vue';
   import { onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';

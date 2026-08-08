@@ -197,7 +197,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';

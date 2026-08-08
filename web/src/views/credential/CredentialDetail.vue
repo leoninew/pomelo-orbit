@@ -140,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Download, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Download, Trash2 } from '@lucide/vue';
   import { onMounted, reactive, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';

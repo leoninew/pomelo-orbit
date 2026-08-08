@@ -350,7 +350,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ExternalLink, Layers, Rocket, Square } from 'lucide-vue-next';
+  import { ArrowLeft, ExternalLink, Layers, Rocket, Square } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';

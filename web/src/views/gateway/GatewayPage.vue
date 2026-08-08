@@ -247,7 +247,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Plus } from 'lucide-vue-next';
+  import { Plus } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { ToolbarRoot } from 'reka-ui';

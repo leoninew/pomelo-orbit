@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Check, ChevronDown, X } from 'lucide-vue-next';
+  import { Check, ChevronDown, X } from '@lucide/vue';
   import { computed } from 'vue';
   import {
     ComboboxAnchor,

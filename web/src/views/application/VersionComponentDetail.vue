@@ -1400,6 +1400,7 @@
 </template>
 
 <script setup lang="ts">
+  import { ArrowLeft, Plus, Save, Trash2, X } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
   import { useI18n } from 'vue-i18n';

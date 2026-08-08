@@ -227,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ExternalLink, Power, PowerOff, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, ExternalLink, Power, PowerOff, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';

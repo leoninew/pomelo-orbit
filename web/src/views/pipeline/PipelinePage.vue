@@ -313,7 +313,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Plus } from 'lucide-vue-next';
+  import { Plus } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';

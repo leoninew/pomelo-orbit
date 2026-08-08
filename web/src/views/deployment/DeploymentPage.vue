@@ -105,7 +105,7 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
-  import { MessageSquareText } from 'lucide-vue-next';
+  import { MessageSquareText } from '@lucide/vue';
   import { applicationApi } from '@/api/application/application';
   import { deploymentApi } from '@/api/deployment/deployment';
   import AppBadge from '@/components/AppBadge.vue';

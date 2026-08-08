@@ -441,7 +441,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ExternalLink, Plus, RefreshCw } from 'lucide-vue-next';
+  import { ExternalLink, Plus, RefreshCw } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';

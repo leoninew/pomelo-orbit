@@ -118,7 +118,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Eye, EyeOff } from 'lucide-vue-next';
+  import { Eye, EyeOff } from '@lucide/vue';
   import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';

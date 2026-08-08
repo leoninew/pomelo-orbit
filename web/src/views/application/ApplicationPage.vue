@@ -222,7 +222,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Plus, Upload } from 'lucide-vue-next';
+  import { Plus, Upload } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { applicationApi } from '@/api/application/application';

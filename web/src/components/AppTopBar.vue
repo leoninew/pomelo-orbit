@@ -221,7 +221,7 @@
     Monitor,
     Moon,
     Sun,
-  } from 'lucide-vue-next';
+  } from '@lucide/vue';
   import { computed, reactive, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';

@@ -320,7 +320,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Plus, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Plus, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';

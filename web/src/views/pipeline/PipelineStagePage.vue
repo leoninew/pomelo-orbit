@@ -128,7 +128,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Plus } from 'lucide-vue-next';
+  import { Plus } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useRouter } from 'vue-router';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';

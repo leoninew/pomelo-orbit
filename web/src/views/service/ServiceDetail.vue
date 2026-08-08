@@ -328,7 +328,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, FileCode2, Loader2, RefreshCw, Rocket, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, FileCode2, Loader2, RefreshCw, Rocket, Trash2 } from '@lucide/vue';
   import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';

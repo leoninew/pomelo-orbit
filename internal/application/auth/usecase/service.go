@@ -7,10 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"crypto/rand"
-	"encoding/hex"
-
 	authdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/dto"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/auth/csrf"
 	jwt "gitee.com/leoninew/PomeloOrbit-go/internal/auth/jwt"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
@@ -21,20 +19,24 @@ import (
 )
 
 type Service struct {
-	repo   repository.UserStore
-	auth   repository.AuthStore
-	tokens jwt.TokenService
-	logger *slog.Logger
-	grants *mcpGrantStore
+	repo      repository.UserStore
+	auth      repository.AuthStore
+	tokens    jwt.TokenService
+	logger    *slog.Logger
+	grants    *mcpGrantStore
+	secretKey string
 }
 
-func New(repo repository.UserStore, auth repository.AuthStore, tokens jwt.TokenService, logger *slog.Logger) Service {
-	return Service{repo: repo, auth: auth, tokens: tokens, logger: logger, grants: newMCPGrantStore()}
+func New(repo repository.UserStore, auth repository.AuthStore, tokens jwt.TokenService, logger *slog.Logger, secretKey string) Service {
+	return Service{repo: repo, auth: auth, tokens: tokens, logger: logger, grants: newMCPGrantStore(), secretKey: secretKey}
 }
 
 func (s Service) Login(ctx context.Context, input authdto.LoginInput) (string, error) {
 	if err := ValidateLoginInput(input); err != nil {
 		return "", err
+	}
+	if err := csrf.Verify(s.secretKey, input.CSRFToken); err != nil {
+		return "", ErrInvalidCSRFToken
 	}
 	username := strings.TrimSpace(input.Username)
 	user, err := s.repo.UserByUsername(ctx, username)
@@ -104,11 +106,7 @@ func (s Service) ListLoginHistory(ctx context.Context, page int, perPage int, se
 }
 
 func (s Service) NewCSRFToken() (string, error) {
-	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(buf), nil
+	return csrf.Issue(s.secretKey)
 }
 
 func ValidateLoginInput(input authdto.LoginInput) error {
@@ -134,6 +132,7 @@ func optionalString(value string) *string {
 
 var (
 	ErrMissingLoginFields    = apperror.New(apperror.KindValidation, "Missing required login fields")
+	ErrInvalidCSRFToken      = apperror.New(apperror.KindValidation, "Request token is invalid or expired, please refresh the page")
 	ErrInvalidPasswordFields = apperror.New(apperror.KindValidation, "Invalid password fields")
 	ErrInvalidCredentials    = apperror.New(apperror.KindUnauthorized, "Invalid username or password")
 )

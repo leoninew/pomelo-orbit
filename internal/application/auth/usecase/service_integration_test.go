@@ -25,7 +25,11 @@ func TestLoginChangePasswordAndHistory(t *testing.T) {
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 
-	token, err := service.Login(ctx, authdto.LoginInput{Username: "admin", Password: "admin", CSRFToken: "csrf", IP: "127.0.0.1", UserAgent: "test"})
+	csrfToken, err := service.NewCSRFToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := service.Login(ctx, authdto.LoginInput{Username: "admin", Password: "admin", CSRFToken: csrfToken, IP: "127.0.0.1", UserAgent: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +43,11 @@ func TestLoginChangePasswordAndHistory(t *testing.T) {
 	if err := service.ChangePassword(ctx, authdto.ChangePasswordInput{User: user, OldPassword: "admin", NewPassword: "newpass1"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Login(ctx, authdto.LoginInput{Username: "admin", Password: "newpass1", CSRFToken: "csrf"}); err != nil {
+	csrfToken, err = service.NewCSRFToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Login(ctx, authdto.LoginInput{Username: "admin", Password: "newpass1", CSRFToken: csrfToken}); err != nil {
 		t.Fatal(err)
 	}
 	history, err := service.ListLoginHistory(ctx, 1, 10, "admin")
@@ -48,6 +56,17 @@ func TestLoginChangePasswordAndHistory(t *testing.T) {
 	}
 	if history.Total == 0 || len(history.Items) == 0 || history.Items[0].Username != "admin" {
 		t.Fatalf("unexpected login history: %+v", history)
+	}
+}
+
+func TestLoginRejectsInvalidCSRFToken(t *testing.T) {
+	service, database := newAuthIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	_, err := service.Login(ctx, authdto.LoginInput{Username: "admin", Password: "admin", CSRFToken: "csrf"})
+	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
+		t.Fatalf("expected invalid csrf validation error, got %v", err)
 	}
 }
 
@@ -75,6 +94,6 @@ func newAuthIntegrationService(t *testing.T) (Service, *sql.DB) {
 		t.Fatal(err)
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	service := New(userrepo.NewRepository(database), authrepo.NewRepository(database), jwt.NewTokenService(authTestSecretKey), logger)
+	service := New(userrepo.NewRepository(database), authrepo.NewRepository(database), jwt.NewTokenService(authTestSecretKey), logger, authTestSecretKey)
 	return service, database
 }

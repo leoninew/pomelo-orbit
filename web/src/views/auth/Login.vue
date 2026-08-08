@@ -19,6 +19,7 @@
               class="app-input"
               :class="errors.username ? 'app-input-error' : ''"
               :placeholder="t('login.usernamePlaceholder')"
+              :disabled="sessionExpired"
               @input="errors.username = ''"
             />
             <p v-if="errors.username" class="app-field-error text-xs">{{ errors.username }}</p>
@@ -34,12 +35,14 @@
                 class="app-input pr-10"
                 :class="errors.password ? 'app-input-error' : ''"
                 :placeholder="t('login.passwordPlaceholder')"
+                :disabled="sessionExpired"
                 @input="errors.password = ''"
                 @keydown.enter="handleLogin"
               />
               <button
                 type="button"
                 class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground transition-colors hover:text-foreground"
+                :disabled="sessionExpired"
                 @click="showPassword = !showPassword"
               >
                 <Eye v-if="!showPassword" class="size-4" />
@@ -57,13 +60,21 @@
             </p>
           </div>
 
-          <button
-            type="submit"
-            class="app-button-primary flex w-full items-center justify-center gap-2"
-            :disabled="loading"
-          >
-            {{ t('login.loginButton') }}
-          </button>
+          <div class="space-y-1.5">
+            <button
+              type="submit"
+              class="app-button-primary flex w-full items-center justify-center gap-2"
+              :disabled="!canSubmit || loading"
+            >
+              {{ loginButtonLabel }}
+            </button>
+            <p v-if="sessionExpired" class="app-field-error text-center text-xs">
+              {{ t('login.sessionExpired') }}
+            </p>
+            <p v-else-if="initError" class="app-field-error text-center text-xs">
+              {{ t('login.initFailed') }}
+            </p>
+          </div>
 
           <div class="relative my-6">
             <div class="absolute inset-0 flex items-center">
@@ -77,6 +88,7 @@
           <button
             type="button"
             class="app-button-outline flex w-full items-center justify-center gap-2"
+            :disabled="sessionExpired"
             @click="handleGoogleLogin"
           >
             <svg class="size-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -107,7 +119,7 @@
 
 <script setup lang="ts">
   import { Eye, EyeOff } from 'lucide-vue-next';
-  import { nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+  import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import { authApi } from '@/api/auth/auth';
@@ -120,6 +132,7 @@
   const TURNSTILE_SCRIPT_ID = 'cloudflare-turnstile-script';
   const TURNSTILE_SCRIPT_SRC =
     'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+  const CSRF_SESSION_MS = 3 * 60 * 1000;
 
   const { t } = useI18n();
   const router = useRouter();
@@ -140,12 +153,25 @@
 
   const showPassword = ref(false);
   const loading = ref(false);
+  const ready = ref(false);
+  const initError = ref(false);
+  const sessionExpired = ref(false);
   const csrfToken = ref('');
   const turnstileEnabled = ref(false);
   const turnstileSiteKey = ref('');
   const turnstileToken = ref('');
   const turnstileContainer = ref<HTMLElement>();
   const turnstileWidgetId = ref('');
+  let sessionTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const canSubmit = computed(() => ready.value && !sessionExpired.value && !initError.value);
+  const loginButtonLabel = computed(() => {
+    // Only the pre-ready loading path uses "initializing"; expired sessions stay on "Login" but disabled.
+    if (!ready.value && !initError.value && !sessionExpired.value) {
+      return t('login.initializing');
+    }
+    return t('login.loginButton');
+  });
 
   onMounted(async () => {
     try {
@@ -153,20 +179,42 @@
         authApi.getCsrfToken(),
         authApi.getTurnstileConfig(),
       ]);
+      if (!csrfResponse.token) {
+        throw new Error('empty csrf token');
+      }
       csrfToken.value = csrfResponse.token;
       applyTurnstileConfig(turnstileConfig);
       await renderTurnstile();
+      ready.value = true;
+      startSessionTimer();
     } catch (err) {
       console.error('Failed to initialize login:', err);
-      toast.error('初始化失败，请刷新页面重试');
+      initError.value = true;
+      toast.error(t('login.initFailed'));
     }
   });
 
   onBeforeUnmount(() => {
+    clearSessionTimer();
     if (turnstileWidgetId.value && window.turnstile) {
       window.turnstile.remove(turnstileWidgetId.value);
     }
   });
+
+  function startSessionTimer() {
+    clearSessionTimer();
+    sessionTimer = setTimeout(() => {
+      sessionExpired.value = true;
+      csrfToken.value = '';
+    }, CSRF_SESSION_MS);
+  }
+
+  function clearSessionTimer() {
+    if (sessionTimer !== undefined) {
+      clearTimeout(sessionTimer);
+      sessionTimer = undefined;
+    }
+  }
 
   function applyTurnstileConfig(config: TurnstileConfigResp) {
     turnstileEnabled.value = config.enabled;
@@ -237,6 +285,9 @@
   }
 
   function handleGoogleLogin() {
+    if (sessionExpired.value) {
+      return;
+    }
     const destination = new URL(buildApiUrl('/api/auth/google'), window.location.origin);
     const redirect = redirectTarget();
     if (redirect !== '/') {
@@ -254,12 +305,15 @@
   }
 
   async function handleLogin() {
-    if (!validate()) {
+    if (sessionExpired.value) {
+      toast.error(t('login.sessionExpired'));
       return;
     }
-
-    if (!csrfToken.value) {
-      toast.error('请求令牌无效，请刷新页面重试');
+    if (!canSubmit.value || !csrfToken.value) {
+      toast.error(t('login.refreshRequired'));
+      return;
+    }
+    if (!validate()) {
       return;
     }
 
@@ -269,7 +323,8 @@
       toast.success(t('login.loginSuccess'));
       await router.push(redirectTarget());
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t('login.loginFailed'));
+      const message = err instanceof Error ? err.message : t('login.loginFailed');
+      toast.error(message);
       resetTurnstile();
 
       const isRateLimited = err instanceof ApiError && err.status === 429;
@@ -277,12 +332,15 @@
         return;
       }
 
-      try {
-        const response = await authApi.getCsrfToken();
-        csrfToken.value = response.token;
-      } catch (error) {
-        console.error('Failed to refresh CSRF token:', error);
-        toast.error('初始化失败，请刷新页面重试');
+      // CSRF invalid/expired: do not silently re-issue; force page refresh.
+      const isCsrfFailure =
+        err instanceof ApiError &&
+        err.status === 400 &&
+        /token is invalid or expired|refresh the page|令牌|刷新/i.test(message);
+      if (isCsrfFailure) {
+        sessionExpired.value = true;
+        csrfToken.value = '';
+        clearSessionTimer();
       }
     } finally {
       loading.value = false;

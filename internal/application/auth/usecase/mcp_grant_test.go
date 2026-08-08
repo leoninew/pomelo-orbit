@@ -13,7 +13,7 @@ import (
 
 func TestMCPGrantIsLoopbackBoundSingleUseAndIssuesBearerToken(t *testing.T) {
 	user := model.User{Id: "user-1", Username: "operator", Status: "enabled"}
-	service := New(mcpGrantUserStore{user: user}, nil, jwt.NewTokenService("abcdefghijklmnopqrstuvwxyz123456"), nil)
+	service := New(mcpGrantUserStore{user: user}, nil, jwt.NewTokenService("abcdefghijklmnopqrstuvwxyz123456"), nil, "abcdefghijklmnopqrstuvwxyz123456")
 	grant, err := service.IssueMCPGrant(context.Background(), user, authdto.MCPGrantInput{CallbackURL: "http://127.0.0.1:48123/mcp/callback", State: "abcdefghijklmnopqrstuvwxyz123456"})
 	if err != nil {
 		t.Fatalf("IssueMCPGrant() error = %v", err)
@@ -35,7 +35,7 @@ func TestMCPGrantIsLoopbackBoundSingleUseAndIssuesBearerToken(t *testing.T) {
 }
 
 func TestMCPGrantRejectsNonLoopbackCallback(t *testing.T) {
-	service := New(mcpGrantUserStore{}, nil, jwt.NewTokenService("abcdefghijklmnopqrstuvwxyz123456"), nil)
+	service := New(mcpGrantUserStore{}, nil, jwt.NewTokenService("abcdefghijklmnopqrstuvwxyz123456"), nil, "abcdefghijklmnopqrstuvwxyz123456")
 	_, err := service.IssueMCPGrant(context.Background(), model.User{Id: "user-1", Status: "enabled"}, authdto.MCPGrantInput{CallbackURL: "https://example.com/mcp/callback", State: "abcdefghijklmnopqrstuvwxyz123456"})
 	if err == nil {
 		t.Fatal("IssueMCPGrant() error = nil")
@@ -43,7 +43,7 @@ func TestMCPGrantRejectsNonLoopbackCallback(t *testing.T) {
 }
 
 func TestMCPGrantExpiresBeforeExchange(t *testing.T) {
-	service := New(mcpGrantUserStore{user: model.User{Id: "user-1", Username: "operator", Status: "enabled"}}, nil, jwt.NewTokenService("abcdefghijklmnopqrstuvwxyz123456"), nil)
+	service := New(mcpGrantUserStore{user: model.User{Id: "user-1", Username: "operator", Status: "enabled"}}, nil, jwt.NewTokenService("abcdefghijklmnopqrstuvwxyz123456"), nil, "abcdefghijklmnopqrstuvwxyz123456")
 	service.grants.put("expired-code", mcpGrantRecord{userID: "user-1", expiresAt: time.Now().UTC().Add(-time.Second)})
 	if _, err := service.ExchangeMCPGrant(context.Background(), "expired-code"); err == nil {
 		t.Fatal("ExchangeMCPGrant() expired code error = nil")

@@ -1,6 +1,12 @@
 package security
 
-import "testing"
+import (
+	"crypto/rand"
+	"io"
+	"strings"
+	"testing"
+	"time"
+)
 
 const testFernetKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
@@ -45,6 +51,56 @@ func TestFernetRejectsTamperedToken(t *testing.T) {
 	}
 	tampered := encrypted[:len(encrypted)-2] + "AA"
 	if _, err := DecryptString(testFernetKey, tampered); err == nil {
+		t.Fatal("expected tampered token error")
+	}
+}
+
+func TestFernetDecryptStringWithTTLAcceptsFreshToken(t *testing.T) {
+	encrypted, err := EncryptString(testFernetKey, "csrf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	decrypted, err := DecryptStringWithTTL(testFernetKey, encrypted, 3*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decrypted != "csrf" {
+		t.Fatalf("unexpected plaintext: %q", decrypted)
+	}
+}
+
+func TestFernetDecryptStringWithTTLRejectsExpiredToken(t *testing.T) {
+	key, err := parseFernetKey(testFernetKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	iv := make([]byte, fernetIVSize)
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-4 * time.Minute).Unix()
+	encrypted, err := encryptFernet(key, []byte("csrf"), iv, past)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DecryptStringWithTTL(testFernetKey, encrypted, 3*time.Minute); err == nil {
+		t.Fatal("expected expired token error")
+	} else if !strings.Contains(err.Error(), "expired") {
+		t.Fatalf("expected expired error, got %v", err)
+	}
+	// Without TTL the ciphertext remains readable for credential-style decrypts.
+	if plain, err := DecryptString(testFernetKey, encrypted); err != nil || plain != "csrf" {
+		t.Fatalf("DecryptString should ignore TTL, got %q %v", plain, err)
+	}
+}
+
+func TestFernetDecryptStringWithTTLRejectsTamperedToken(t *testing.T) {
+	encrypted, err := EncryptString(testFernetKey, "csrf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tampered := encrypted[:len(encrypted)-2] + "AA"
+	if _, err := DecryptStringWithTTL(testFernetKey, tampered, 3*time.Minute); err == nil {
 		t.Fatal("expected tampered token error")
 	}
 }

@@ -86,7 +86,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	taskService := tasksvc.New(taskRepo, cfg.Worker.MaxAttempts)
 	pipelineRunDispatcher := queuedispatch.NewPipelineRunDispatcher(taskService)
 	deploymentDispatcher := queuedispatch.NewDeploymentDispatcher(taskService)
-	authService := authsvc.New(stores.user, stores.auth, tokenService, logger)
+	authService := authsvc.New(stores.user, stores.auth, tokenService, logger, cfg.Jwt.SecretKey)
 	transactionRunner := databasetx.NewTransactionRunner(database)
 	logStore := executionlog.Store{}
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)

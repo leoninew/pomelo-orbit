@@ -138,7 +138,7 @@ func TestCurrentUserReturnsUnauthorizedForInvalidToken(t *testing.T) {
 }
 
 func testAuthenticator(store fakeAuthStore) Authenticator {
-	return New(slog.Default(), authsvc.New(store, store, jwt.NewTokenService(testSecret), slog.Default()))
+	return New(slog.Default(), authsvc.New(store, store, jwt.NewTokenService(testSecret), slog.Default(), testSecret))
 }
 
 func testContext(recorder *httptest.ResponseRecorder, request *http.Request) *gin.Context {

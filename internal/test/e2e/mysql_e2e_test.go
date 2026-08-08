@@ -76,7 +76,7 @@ func TestMySQLE2E(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version.Version != 30 || version.Dirty {
+	if version.Version != 32 || version.Dirty {
 		t.Fatalf("unexpected migration version: %+v", version)
 	}
 
@@ -104,7 +104,29 @@ func TestMySQLE2E(t *testing.T) {
 
 	cfg.Turnstile.Enabled = false
 	server := bootstrap.NewHTTPServer(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), database, taskRepo)
-	loginBody := bytes.NewBufferString(`{"username":"admin","password":"admin","csrf_token":"csrf"}`)
+	csrfRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(csrfRecorder, httptest.NewRequest(http.MethodGet, "/api/auth/csrf-token", nil))
+	if csrfRecorder.Code != http.StatusOK {
+		t.Fatalf("expected csrf status 200, got %d: %s", csrfRecorder.Code, csrfRecorder.Body.String())
+	}
+	var csrfResp struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(csrfRecorder.Body).Decode(&csrfResp); err != nil {
+		t.Fatal(err)
+	}
+	if csrfResp.Token == "" {
+		t.Fatal("expected non-empty csrf token")
+	}
+	loginPayload, err := json.Marshal(map[string]string{
+		"username":   "admin",
+		"password":   "admin",
+		"csrf_token": csrfResp.Token,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	loginBody := bytes.NewBuffer(loginPayload)
 	loginRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(loginRecorder, httptest.NewRequest(http.MethodPost, "/api/auth/login", loginBody))
 	if loginRecorder.Code != http.StatusOK {

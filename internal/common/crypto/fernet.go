@@ -39,9 +39,34 @@ func DecryptString(secretKey string, encryptedValue string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	plaintext, err := decryptFernet(key, encryptedValue)
+	plaintext, _, err := decryptFernet(key, encryptedValue)
 	if err != nil {
 		return "", err
+	}
+	return string(plaintext), nil
+}
+
+// DecryptStringWithTTL decrypts a Fernet token and rejects it when the embedded
+// timestamp is older than maxAge. A small future skew (60s) is tolerated.
+func DecryptStringWithTTL(secretKey string, encryptedValue string, maxAge time.Duration) (string, error) {
+	if maxAge <= 0 {
+		return "", errors.New("fernet max age must be positive")
+	}
+	key, err := parseFernetKey(secretKey)
+	if err != nil {
+		return "", err
+	}
+	plaintext, timestamp, err := decryptFernet(key, encryptedValue)
+	if err != nil {
+		return "", err
+	}
+	issuedAt := time.Unix(timestamp, 0)
+	now := time.Now()
+	if issuedAt.After(now.Add(60 * time.Second)) {
+		return "", errors.New("fernet token timestamp in the future")
+	}
+	if now.Sub(issuedAt) > maxAge {
+		return "", errors.New("fernet token expired")
 	}
 	return string(plaintext), nil
 }
@@ -87,19 +112,19 @@ func encryptFernet(key []byte, plaintext []byte, iv []byte, timestamp int64) (st
 	return base64.URLEncoding.EncodeToString(message), nil
 }
 
-func decryptFernet(key []byte, encryptedValue string) ([]byte, error) {
+func decryptFernet(key []byte, encryptedValue string) ([]byte, int64, error) {
 	token, err := base64.URLEncoding.DecodeString(encryptedValue)
 	if err != nil {
 		token, err = base64.RawURLEncoding.DecodeString(encryptedValue)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("invalid fernet token: %w", err)
+		return nil, 0, fmt.Errorf("invalid fernet token: %w", err)
 	}
 	if len(token) < 1+8+fernetIVSize+aes.BlockSize+fernetHMACSize {
-		return nil, errors.New("invalid fernet token length")
+		return nil, 0, errors.New("invalid fernet token length")
 	}
 	if token[0] != fernetVersion {
-		return nil, errors.New("invalid fernet token version")
+		return nil, 0, errors.New("invalid fernet token version")
 	}
 	signingKey := key[:16]
 	encryptionKey := key[16:]
@@ -108,21 +133,26 @@ func decryptFernet(key []byte, encryptedValue string) ([]byte, error) {
 	mac := hmac.New(sha256.New, signingKey)
 	_, _ = mac.Write(message)
 	if !hmac.Equal(tag, mac.Sum(nil)) {
-		return nil, errors.New("invalid fernet token signature")
+		return nil, 0, errors.New("invalid fernet token signature")
 	}
 
+	timestamp := int64(binary.BigEndian.Uint64(token[1 : 1+8]))
 	ciphertext := token[1+8+fernetIVSize : len(token)-fernetHMACSize]
 	if len(ciphertext) == 0 || len(ciphertext)%aes.BlockSize != 0 {
-		return nil, errors.New("invalid fernet ciphertext length")
+		return nil, 0, errors.New("invalid fernet ciphertext length")
 	}
 	block, err := aes.NewCipher(encryptionKey)
 	if err != nil {
-		return nil, fmt.Errorf("create fernet cipher: %w", err)
+		return nil, 0, fmt.Errorf("create fernet cipher: %w", err)
 	}
 	plaintext := make([]byte, len(ciphertext))
 	iv := token[1+8 : 1+8+fernetIVSize]
 	cipher.NewCBCDecrypter(block, iv).CryptBlocks(plaintext, ciphertext)
-	return pkcs7Unpad(plaintext, aes.BlockSize)
+	unpadded, err := pkcs7Unpad(plaintext, aes.BlockSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	return unpadded, timestamp, nil
 }
 
 func pkcs7Pad(value []byte, blockSize int) []byte {

@@ -1,7 +1,8 @@
-"""Focused round-trip test for the continuous-delivery SQL exporter."""
+"""Focused round-trip tests for the continuous-delivery SQL baseline tool."""
 
 from __future__ import annotations
 
+import argparse
 import sqlite3
 import sys
 import tempfile
@@ -9,7 +10,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import export_cd_baseline as exporter
+import cd_baseline as exporter
 
 
 SCHEMA = """
@@ -121,7 +122,7 @@ class ContinuousDeliveryExportTests(unittest.TestCase):
             connection = exporter.connect_read_only(source_path)
             try:
                 exporter.ensure_database_integrity(connection)
-                rendered = exporter.render_sql(connection, exporter.exported_table_rows(connection))
+                rendered = exporter.render_sql(connection, exporter.exported_table_rows(connection), relace=False)
             finally:
                 connection.close()
 
@@ -131,6 +132,8 @@ class ContinuousDeliveryExportTests(unittest.TestCase):
                 restored.executescript(rendered)
                 self.assertNotIn('INSERT INTO "deployment"', rendered)
                 self.assertNotIn("INSERT OR IGNORE", rendered)
+                self.assertNotIn("BEGIN;", rendered)
+                self.assertNotIn("COMMIT;", rendered)
                 self.assertEqual(restored.execute("SELECT COUNT(*) FROM gateway_config").fetchone()[0], 1)
                 self.assertEqual(restored.execute("SELECT COUNT(*) FROM application WHERE kind = 'gateway'").fetchone()[0], 1)
                 self.assertEqual(restored.execute("SELECT COUNT(*) FROM route").fetchone()[0], 1)
@@ -168,14 +171,39 @@ class ContinuousDeliveryExportTests(unittest.TestCase):
             finally:
                 source.close()
 
-    def test_existing_output_requires_explicit_replacement(self) -> None:
+    def test_relace_round_trips_by_deleting_then_reinserting_selected_tables(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "baseline.sql"
-            output.write_text("previous", encoding="utf-8")
-            with self.assertRaises(exporter.ExportError):
-                exporter.write_output(output, "next", replace=False)
-            exporter.write_output(output, "next", replace=True)
-            self.assertEqual(output.read_text(encoding="utf-8"), "next")
+            root = Path(directory)
+            source_path = root / "source.db"
+            source = connect(source_path)
+            self.populate(source)
+            source.close()
+
+            source = exporter.connect_read_only(source_path)
+            try:
+                rendered = exporter.render_sql(source, exporter.exported_table_rows(source), relace=True)
+            finally:
+                source.close()
+
+            input_path = root / "baseline.sql"
+            exporter.write_output(input_path, rendered)
+            target_path = root / "target.db"
+            target = connect(target_path)
+            self.populate(target)
+            target.close()
+
+            exporter.import_command(argparse.Namespace(database=target_path, input=input_path))
+
+            restored = sqlite3.connect(target_path)
+            try:
+                self.assertEqual(rendered.count("DELETE FROM"), len(exporter.TABLES))
+                self.assertNotIn("BEGIN;", rendered)
+                self.assertNotIn("COMMIT;", rendered)
+                self.assertEqual(restored.execute("SELECT COUNT(*) FROM application").fetchone()[0], 2)
+                self.assertEqual(restored.execute("SELECT COUNT(*) FROM deployment").fetchone()[0], 1)
+                self.assertEqual(restored.execute("SELECT value FROM service_component_env").fetchone()[0], "exported-value")
+            finally:
+                restored.close()
 
 
 if __name__ == "__main__":

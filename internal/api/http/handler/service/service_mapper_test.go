@@ -9,7 +9,7 @@ import (
 
 func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 	response := serviceViewResponse(servicedto.ServiceView{
-		Service:        model.Service{Id: "service-1"},
+		Service:        model.Service{Id: "service-1", Code: "ragflow-default"},
 		Env:            []model.ServiceEnv{{Key: "SHARED_VALUE", Value: "value"}},
 		EffectiveError: "component mysql environment MYSQL_DATABASE: requires service environment MYSQL_DATABASE",
 		Components: []model.ServiceComponent{{
@@ -30,6 +30,9 @@ func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 	}
 	if response.EffectiveError == "" {
 		t.Fatal("service effective error is missing")
+	}
+	if response.Code != "ragflow-default" {
+		t.Fatalf("service code = %q", response.Code)
 	}
 }
 

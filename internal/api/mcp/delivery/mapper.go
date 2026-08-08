@@ -271,7 +271,7 @@ func serviceOutput(value servicedto.ServiceView) map[string]any {
 	for _, item := range value.Components {
 		components = append(components, serviceComponentOutput(item))
 	}
-	return map[string]any{"id": value.Service.Id, "application_id": value.Service.ApplicationId, "instance_key": value.Service.InstanceKey, "version_id": value.Service.VersionId, "status": value.Service.Status, "application_name": value.ApplicationName, "application_code": value.ApplicationCode, "application_kind": value.ApplicationKind, "version_label": value.VersionLabel, "pending_deploy": value.PendingDeploy, "effective_plan_hash": value.EffectivePlanHash, "env": env, "components": components, "created_at": formatTime(value.Service.CreatedAt), "updated_at": formatTime(value.Service.UpdatedAt)}
+	return map[string]any{"id": value.Service.Id, "application_id": value.Service.ApplicationId, "instance_key": value.Service.InstanceKey, "code": value.Service.Code, "version_id": value.Service.VersionId, "status": value.Service.Status, "application_name": value.ApplicationName, "application_code": value.ApplicationCode, "application_kind": value.ApplicationKind, "version_label": value.VersionLabel, "pending_deploy": value.PendingDeploy, "effective_plan_hash": value.EffectivePlanHash, "env": env, "components": components, "created_at": formatTime(value.Service.CreatedAt), "updated_at": formatTime(value.Service.UpdatedAt)}
 }
 
 func serviceComponentOutput(value model.ServiceComponent) map[string]any {

@@ -74,6 +74,12 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label mb-1.5 block">
+            {{ t('service.fields.code') }}
+          </label>
+          <input :value="service.code" type="text" class="app-input" disabled />
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label mb-1.5 block">
             {{ t('service.fields.version') }}
             <span class="text-destructive">*</span>
           </label>

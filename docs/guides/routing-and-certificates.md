@@ -1,5 +1,5 @@
 # Pomelo Orbit 路由和证书原理
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-08-08 13:29:04
 
 Doc role: living guide  
 领域总览见 [CD 模型](../product/cd-model.md)。与代码冲突时以代码为准。
@@ -9,7 +9,7 @@ Doc role: living guide
 Pomelo Orbit 使用 Traefik 作为反向代理网关，实现动态路由和 HTTPS 证书管理。
 
 - **平台路由**（CD Route 表）：经 Traefik **`providers.rest`** 全量 PUT，控制面 URL 来自 **Gateway config `rest_api_url`**。
-- **应用暴露**（Version Expose）：部署时写入 Docker labels；Host 推导为 `{app_code}.{gateway.base_domain}`。
+- **应用暴露**（Version Expose）：部署时写入 Docker labels；每个 `gateway_http` endpoint 的 Host 为 `{component_name}.{service_code}.{gateway.base_domain}`，其中 Service code 在创建窗预填并提交后不可修改。
 - **证书文件**：平台写入证书目录供 TLS 路由引用（见下文）。
 - **接入配置 SoT**：`gateway_config`（非全局 `traefik.api_url` / `domain_suffix` 产品路径）。
 
@@ -171,6 +171,10 @@ http:
    ↓
 4. 证书存储在 acme.json（由 Traefik 管理）
 ```
+
+### 组件级域名的证书覆盖
+
+`{component_name}.{service_code}.{base_domain}` 含有两级子域名。因此 `*.{base_domain}` 不能匹配该地址。使用 TLS 时，部署者需要让 ACME 按实际 Host 申请证书，或提供覆盖精确 SAN / `*.{service_code}.{base_domain}` 的证书；同时 DNS 必须解析这些 Host。
 
 ## 动态配置更新
 

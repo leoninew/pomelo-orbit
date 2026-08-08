@@ -17,6 +17,10 @@
         </dd>
       </div>
       <div class="flex gap-2">
+        <dt>{{ t('service.fields.code') }}</dt>
+        <dd class="text-foreground">{{ service.code }}</dd>
+      </div>
+      <div class="flex gap-2">
         <dt>{{ t('service.fields.instanceKey') }}</dt>
         <dd class="text-foreground">{{ service.instance_key }}</dd>
       </div>

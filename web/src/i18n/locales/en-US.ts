@@ -589,13 +589,14 @@ export default {
   },
   service: {
     toolbar: 'Services toolbar',
-    searchPlaceholder: 'Search app / instance / version',
+    searchPlaceholder: 'Search app / service code / instance / version',
     viewMode: 'Service view',
     cardView: 'Card view',
     tableView: 'Table view',
     fields: {
       application: 'Application',
       instanceKey: 'Instance',
+      code: 'Service Code',
       version: 'Version',
       containers: 'Containers',
       component: 'Component',
@@ -660,6 +661,9 @@ export default {
       versionRequired: 'Select a version',
       instanceKeyRequired: 'Enter an instance key',
       saved: 'Service created',
+      codeRequired: 'Enter a service code',
+      codeInvalid:
+        'Service code must contain only lowercase letters, numbers, or hyphens and be at most 63 characters',
     },
     deploy: {
       dialogTitle: 'Deploy service',

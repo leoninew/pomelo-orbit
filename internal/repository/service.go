@@ -12,6 +12,7 @@ type ServiceReader interface {
 	ListServicesByProject(ctx context.Context, projectId string, applicationId string, status string, search string, page int, perPage int) (Page[model.ServiceListItem], error)
 	ServiceListItem(ctx context.Context, id string) (model.ServiceListItem, error)
 	ServiceByKey(ctx context.Context, applicationId string, instanceKey string) (model.Service, error)
+	ServiceByCode(ctx context.Context, code string) (model.Service, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 	ServiceEnvByService(ctx context.Context, serviceId string) ([]model.ServiceEnv, error)
 	ServiceComponentsByService(ctx context.Context, serviceId string) ([]model.ServiceComponent, error)

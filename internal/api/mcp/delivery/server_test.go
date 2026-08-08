@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
+	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 
@@ -82,6 +83,75 @@ func TestApplicationErrorBecomesClassifiedMCPToolError(t *testing.T) {
 	}
 	if !strings.Contains(content.Text, "not_found: Application missing not found") {
 		t.Fatalf("error text = %q, want classified not_found error", content.Text)
+	}
+}
+
+func TestServiceCodeMCPContract(t *testing.T) {
+	service := &serviceToolService{services: []model.Service{{Id: "service-1", ApplicationId: "application-1", InstanceKey: "default", Code: "ragflow-default", VersionId: "version-1", Status: "stopped"}}}
+	server, err := NewServer(Dependencies{ActorUserId: "actor", Service: service})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	session := connectInMemory(t, server)
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("ListTools() error = %v", err)
+	}
+	byName := make(map[string]*mcp.Tool, len(tools.Tools))
+	for _, tool := range tools.Tools {
+		byName[tool.Name] = tool
+	}
+	createTool := byName["orbit_create_service"]
+	if createTool == nil {
+		t.Fatal("create service tool not found")
+	}
+	var createSchema struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+		Required   []string                   `json:"required"`
+	}
+	encodedSchema, err := json.Marshal(createTool.InputSchema)
+	if err != nil {
+		t.Fatalf("marshal create schema: %v", err)
+	}
+	if err := json.Unmarshal(encodedSchema, &createSchema); err != nil {
+		t.Fatalf("unmarshal create schema: %v", err)
+	}
+	if _, ok := createSchema.Properties["code"]; !ok || !containsString(createSchema.Required, "code") {
+		t.Fatalf("create schema must require code: %s", encodedSchema)
+	}
+	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_create_service", Arguments: map[string]any{
+		"application_id": "application-1", "version_id": "version-1", "instance_key": "default", "code": "ragflow-default",
+	}})
+	if err != nil {
+		t.Fatalf("CallTool(create service) error = %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("CallTool(create service) returned tool error: %#v", result.Content)
+	}
+	if service.createInput.Code != "ragflow-default" {
+		t.Fatalf("create input code = %q", service.createInput.Code)
+	}
+	created := structuredOutput(t, result)
+	createdService, ok := created["service"].(map[string]any)
+	if !ok || createdService["code"] != "ragflow-default" {
+		t.Fatalf("create output service = %#v", created["service"])
+	}
+
+	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_list_application_services", Arguments: map[string]any{"application_id": "application-1"}})
+	if err != nil {
+		t.Fatalf("CallTool(list services) error = %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("CallTool(list services) returned tool error: %#v", result.Content)
+	}
+	listed := structuredOutput(t, result)
+	services, ok := listed["services"].([]any)
+	if !ok || len(services) != 1 {
+		t.Fatalf("list output services = %#v", listed["services"])
+	}
+	listedService, ok := services[0].(map[string]any)
+	if !ok || listedService["code"] != "ragflow-default" {
+		t.Fatalf("list output service = %#v", services[0])
 	}
 }
 
@@ -355,11 +425,48 @@ func schemaTypeIncludes(value any, expected string) bool {
 	return false
 }
 
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
+}
+
+func structuredOutput(t *testing.T, result *mcp.CallToolResult) map[string]any {
+	t.Helper()
+	raw, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatalf("marshal structured output: %v", err)
+	}
+	var output map[string]any
+	if err := json.Unmarshal(raw, &output); err != nil {
+		t.Fatalf("unmarshal structured output: %v", err)
+	}
+	return output
+}
+
 type mountApplicationService struct {
 	ApplicationService
 	versionId   string
 	componentId string
 	mounts      []model.VersionComponentMount
+}
+
+type serviceToolService struct {
+	ServiceService
+	createInput servicedto.ServiceCreateInput
+	services    []model.Service
+}
+
+func (s *serviceToolService) CreateService(_ context.Context, _ string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
+	s.createInput = input
+	return servicedto.ServiceView{Service: model.Service{Id: "service-1", ApplicationId: input.ApplicationId, VersionId: input.VersionId, InstanceKey: input.InstanceKey, Code: input.Code, Status: "stopped"}}, nil
+}
+
+func (s *serviceToolService) ListServicesByApplication(context.Context, string, string) ([]model.Service, error) {
+	return s.services, nil
 }
 
 type errorApplicationService struct{ ApplicationService }

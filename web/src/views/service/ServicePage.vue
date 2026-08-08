@@ -69,6 +69,7 @@
                   {{ svc.application_name }}
                 </router-link>
               </h2>
+              <p class="truncate text-sm text-muted-foreground">{{ svc.code }}</p>
               <p
                 v-if="svc.instance_key && svc.instance_key !== 'default'"
                 class="truncate text-sm text-muted-foreground"
@@ -140,10 +141,11 @@
 
     <div v-else class="app-surface">
       <div class="overflow-x-auto">
-        <table class="app-data-table min-w-[960px]">
+        <table class="app-data-table min-w-[1120px]">
           <thead>
             <tr>
               <th>{{ t('service.fields.application') }}</th>
+              <th>{{ t('service.fields.code') }}</th>
               <th>{{ t('service.fields.version') }}</th>
               <th>{{ t('common.status') }}</th>
               <th>{{ t('common.updatedAt') }}</th>
@@ -167,6 +169,7 @@
                   {{ svc.instance_key }}
                 </span>
               </td>
+              <td class="text-foreground">{{ svc.code }}</td>
               <td>
                 <router-link :to="`/version/${svc.version_id}`" class="app-link">
                   {{ svc.version_label }}
@@ -240,7 +243,11 @@
       </template>
     </AppDialog>
 
-    <AppDialog v-model:open="isCreateDialogOpen" :title="t('service.create.title')">
+    <AppDialog
+      :open="isCreateDialogOpen"
+      :title="t('service.create.title')"
+      @update:open="setCreateDialogOpen"
+    >
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label class="app-field-label mb-1.5 block">
@@ -290,10 +297,35 @@
             class="app-input"
             :class="createErrors.instance_key ? 'app-input-error' : ''"
             :aria-invalid="createErrors.instance_key ? 'true' : undefined"
-            @input="createErrors.instance_key = ''"
+            @input="handleCreateInstanceKeyInput"
           />
           <p v-if="createErrors.instance_key" class="app-field-error" role="alert">
             {{ createErrors.instance_key }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
+          <label for="create-service-code" class="app-field-label mb-1.5 block">
+            {{ t('service.fields.code') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="create-service-code"
+            v-model="createForm.code"
+            type="text"
+            maxlength="63"
+            class="app-input"
+            :class="createErrors.code ? 'app-input-error' : ''"
+            :aria-invalid="createErrors.code ? 'true' : undefined"
+            :aria-describedby="createErrors.code ? 'create-service-code-error' : undefined"
+            @input="handleCreateCodeInput"
+          />
+          <p
+            v-if="createErrors.code"
+            id="create-service-code-error"
+            class="app-field-error"
+            role="alert"
+          >
+            {{ createErrors.code }}
           </p>
         </div>
         <p v-if="createError" class="app-field-error text-xs">{{ createError }}</p>
@@ -302,7 +334,7 @@
         <AppDialogActions
           :busy="operating"
           :confirm-label="t('common.create')"
-          @cancel="isCreateDialogOpen = false"
+          @cancel="setCreateDialogOpen(false)"
           @confirm="handleCreateOk"
         />
       </template>
@@ -395,12 +427,17 @@
     application_id: '',
     version_id: '',
     instance_key: '',
+    code: '',
   });
   const createForm = reactive({
     application_id: '',
     version_id: '',
     instance_key: 'default',
+    code: '',
   });
+  let createCodeIsCustomized = false;
+
+  const serviceCodePattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
   const applicationSelectOptions = computed(() =>
     applications.value.map((application) => ({ value: application.id, label: application.name }))
@@ -454,12 +491,15 @@
         application_id: '',
         version_id: '',
         instance_key: 'default',
+        code: '',
       });
+      createCodeIsCustomized = false;
       createError.value = '';
       Object.assign(createErrors, {
         application_id: '',
         version_id: '',
         instance_key: '',
+        code: '',
       });
       isCreateDialogOpen.value = true;
     } catch (error) {
@@ -472,6 +512,7 @@
     createForm.version_id = '';
     createErrors.application_id = '';
     createErrors.version_id = '';
+    updateSuggestedCreateCode();
     versions.value = [];
     if (!createForm.application_id) {
       return;
@@ -485,6 +526,40 @@
     }
   }
 
+  function setCreateDialogOpen(open: boolean) {
+    isCreateDialogOpen.value = open;
+    if (!open) {
+      createError.value = '';
+      Object.assign(createErrors, { application_id: '', version_id: '', instance_key: '', code: '' });
+    }
+  }
+
+  function suggestedCreateCode() {
+    const application = applications.value.find(
+      (item) => item.id === createForm.application_id
+    );
+    const instanceKey = createForm.instance_key.trim();
+    return application && instanceKey ? `${application.code}-${instanceKey}` : '';
+  }
+
+  function updateSuggestedCreateCode() {
+    createForm.code = suggestedCreateCode();
+    createCodeIsCustomized = false;
+    createErrors.code = '';
+  }
+
+  function handleCreateInstanceKeyInput() {
+    createErrors.instance_key = '';
+    if (!createCodeIsCustomized) {
+      updateSuggestedCreateCode();
+    }
+  }
+
+  function handleCreateCodeInput() {
+    createCodeIsCustomized = true;
+    createErrors.code = '';
+  }
+
   async function handleCreateOk() {
     createError.value = '';
     createErrors.application_id = createForm.application_id
@@ -494,7 +569,18 @@
     createErrors.instance_key = createForm.instance_key.trim()
       ? ''
       : t('service.create.instanceKeyRequired');
-    if (createErrors.application_id || createErrors.version_id || createErrors.instance_key) {
+    const code = createForm.code.trim();
+    createErrors.code = !code
+      ? t('service.create.codeRequired')
+      : serviceCodePattern.test(code)
+        ? ''
+        : t('service.create.codeInvalid');
+    if (
+      createErrors.application_id ||
+      createErrors.version_id ||
+      createErrors.instance_key ||
+      createErrors.code
+    ) {
       return;
     }
     try {
@@ -503,14 +589,33 @@
           application_id: createForm.application_id,
           version_id: createForm.version_id,
           instance_key: createForm.instance_key.trim(),
+          code,
         });
-        isCreateDialogOpen.value = false;
+        setCreateDialogOpen(false);
         toast.success(t('service.create.saved'));
         await router.push(`/service/${created.id}`);
       });
     } catch (error) {
+      if (applyCreateFailure(error)) {
+        return;
+      }
       createError.value = error instanceof Error ? error.message : t('service.toast.deployFailed');
     }
+  }
+
+  function applyCreateFailure(error: unknown) {
+    const apiError = error as { code?: unknown; kind?: unknown; message?: unknown } | undefined;
+    if (
+      !apiError ||
+      apiError.kind !== 'api' ||
+      (apiError.code !== 'validation_failed' && apiError.code !== 'conflict') ||
+      typeof apiError.message !== 'string' ||
+      !/^Service code .+ is invalid$|^Service code already exists$/i.test(apiError.message)
+    ) {
+      return false;
+    }
+    createErrors.code = apiError.message;
+    return true;
   }
 
   function serviceTargetLabel(service: ServiceResp | null) {

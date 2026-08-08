@@ -23,7 +23,7 @@ func serviceViewResponse(item servicedto.ServiceView) servicev1.ServiceResp {
 	for _, value := range item.Env {
 		env = append(env, &servicev1.ServiceEnv{Key: value.Key, Value: value.Value})
 	}
-	return servicev1.ServiceResp{Id: item.Service.Id, ApplicationId: item.Service.ApplicationId, InstanceKey: item.Service.InstanceKey, VersionId: item.Service.VersionId, Status: item.Service.Status, CreatedAt: transportresponse.FormatTime(item.Service.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.Service.UpdatedAt), ApplicationName: item.ApplicationName, ApplicationCode: item.ApplicationCode, ApplicationKind: item.ApplicationKind, VersionLabel: item.VersionLabel, Components: components, PendingDeploy: item.PendingDeploy, EffectivePlanHash: item.EffectivePlanHash, Env: env, EffectiveError: item.EffectiveError}
+	return servicev1.ServiceResp{Id: item.Service.Id, ApplicationId: item.Service.ApplicationId, InstanceKey: item.Service.InstanceKey, VersionId: item.Service.VersionId, Status: item.Service.Status, CreatedAt: transportresponse.FormatTime(item.Service.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.Service.UpdatedAt), ApplicationName: item.ApplicationName, ApplicationCode: item.ApplicationCode, ApplicationKind: item.ApplicationKind, VersionLabel: item.VersionLabel, Components: components, PendingDeploy: item.PendingDeploy, EffectivePlanHash: item.EffectivePlanHash, Env: env, EffectiveError: item.EffectiveError, Code: item.Service.Code}
 }
 
 func serviceViewResponses(items []servicedto.ServiceView) []servicev1.ServiceResp {

@@ -53,6 +53,7 @@ func serviceResponse(item model.Service) servicev1.ServiceResp {
 		Id:            item.Id,
 		ApplicationId: item.ApplicationId,
 		InstanceKey:   item.InstanceKey,
+		Code:          item.Code,
 		VersionId:     item.VersionId,
 		Status:        item.Status,
 		CreatedAt:     transportresponse.FormatTime(item.CreatedAt),

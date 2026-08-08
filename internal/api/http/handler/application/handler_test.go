@@ -11,6 +11,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"github.com/gin-gonic/gin"
 )
 
@@ -40,5 +41,12 @@ func TestWriteErrorMapsRuntimeCredentialReadFailureToSafeContract(t *testing.T) 
 	}
 	if got := recorder.Header().Get(requestid.HeaderName); got != requestId {
 		t.Fatalf("expected request id header %q, got %q", requestId, got)
+	}
+}
+
+func TestApplicationServiceResponseIncludesCode(t *testing.T) {
+	response := serviceResponse(model.Service{Id: "service-1", Code: "ragflow-default"})
+	if response.Code != "ragflow-default" {
+		t.Fatalf("service response code = %q", response.Code)
 	}
 }

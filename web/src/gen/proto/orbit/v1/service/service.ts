@@ -26,6 +26,7 @@ export interface ServiceResp {
   effective_plan_hash: string;
   env: ServiceEnv[];
   effective_error: string;
+  code: string;
 }
 
 export interface ServiceListResp {
@@ -44,6 +45,7 @@ export interface ServiceCreateReq {
   application_id: string;
   version_id: string;
   instance_key: string;
+  code: string;
 }
 
 export interface ServiceBasicUpdateReq {

@@ -575,13 +575,14 @@ export default {
   },
   service: {
     toolbar: '服务工具栏',
-    searchPlaceholder: '搜索应用 / 实例 / 版本',
+    searchPlaceholder: '搜索应用 / 服务编码 / 实例 / 版本',
     viewMode: '服务视图',
     cardView: '卡片视图',
     tableView: '表格视图',
     fields: {
       application: '应用',
       instanceKey: '实例',
+      code: '服务编码',
       version: '版本',
       containers: '容器',
       component: '组件',
@@ -645,6 +646,8 @@ export default {
       versionRequired: '请选择版本',
       instanceKeyRequired: '请输入实例键',
       saved: '服务已创建',
+      codeRequired: '请输入服务编码',
+      codeInvalid: '服务编码只能包含小写字母、数字或连字符，长度不超过 63 位',
     },
     deploy: {
       dialogTitle: '部署服务',

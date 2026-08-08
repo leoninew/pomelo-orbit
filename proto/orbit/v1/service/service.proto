@@ -22,6 +22,7 @@ message ServiceResp {
   string effective_plan_hash = 16;
   repeated ServiceEnv env = 17;
   string effective_error = 18;
+  string code = 20;
 }
 
 message ServiceListResp {
@@ -40,6 +41,7 @@ message ServiceCreateReq {
   string application_id = 1;
   string version_id = 2;
   string instance_key = 3;
+  string code = 4;
 }
 
 message ServiceBasicUpdateReq {

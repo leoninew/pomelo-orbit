@@ -430,7 +430,7 @@ func validGatewayEntrypoint(name string) bool {
 	}
 }
 
-func buildGatewayExposureItem(app model.Application, component model.EffectiveServiceComponent, endpoint model.VersionComponentEndpoint, gateway *model.GatewayConfig) (gatewaydto.GatewayExposureItem, error) {
+func buildGatewayExposureItem(app model.Application, service model.Service, component model.EffectiveServiceComponent, endpoint model.VersionComponentEndpoint, gateway *model.GatewayConfig) (gatewaydto.GatewayExposureItem, error) {
 	internal := strings.ToLower(strings.TrimSpace(app.Code) + "-" + strings.TrimSpace(component.Name))
 	listen := endpoint.ContainerPort
 	if endpoint.ListenPort != nil {
@@ -447,7 +447,11 @@ func buildGatewayExposureItem(app model.Application, component model.EffectiveSe
 		clientHint = fmt.Sprintf("127.0.0.1:%d", listen)
 	case "public":
 		if gateway != nil {
-			publicHost = strings.TrimSpace(app.Code) + "." + strings.TrimSpace(gateway.BaseDomain)
+			var err error
+			publicHost, err = model.DeriveServiceComponentHost(gateway, service, component.Name)
+			if err != nil {
+				return gatewaydto.GatewayExposureItem{}, err
+			}
 		}
 		switch endpoint.Protocol {
 		case "http":
@@ -508,7 +512,7 @@ func (s Service) listActiveGatewayExposures(ctx context.Context, gateway *model.
 					if endpoint.Mode == "internal" {
 						continue
 					}
-					item, err := buildGatewayExposureItem(app, component, endpoint, gateway)
+					item, err := buildGatewayExposureItem(app, service, component, endpoint, gateway)
 					if err != nil {
 						return nil, err
 					}

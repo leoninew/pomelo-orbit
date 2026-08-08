@@ -128,11 +128,7 @@ func (m *RouteManager) ListRouters(ctx context.Context, restApiUrl string) ([]ro
 
 func (m *RouteManager) IsConnectionError(err error) bool {
 	var netErr net.Error
-	if errors.As(err, &netErr) {
-		return true
-	}
-	var opErr *net.OpError
-	return errors.As(err, &opErr)
+	return errors.As(err, &netErr)
 }
 
 func (m *RouteManager) putRestConfig(ctx context.Context, restApiUrl string, body []byte) error {

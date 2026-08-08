@@ -100,7 +100,7 @@ func versionComponentFromEffective(component model.EffectiveServiceComponent) mo
 }
 
 func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServicePlan) error {
-	host := ""
+	httpRoutes := map[string]struct{}{}
 	for _, component := range plan.Components {
 		service, ok := services[component.Name].(map[string]any)
 		if !ok {
@@ -132,12 +132,9 @@ func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServic
 				if plan.Gateway == nil {
 					return fmt.Errorf("gateway config required for endpoint %s/%s", component.Name, endpoint.Name)
 				}
-				if host == "" {
-					var err error
-					host, err = deriveHost(plan.Gateway, plan.Application.Code)
-					if err != nil {
-						return err
-					}
+				host, err := model.DeriveServiceComponentHost(plan.Gateway, plan.Service, component.Name)
+				if err != nil {
+					return err
 				}
 				entrypoint := plan.Gateway.DefaultEntrypoint
 				if endpoint.Entrypoint != nil && *endpoint.Entrypoint != "" {
@@ -146,10 +143,16 @@ func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServic
 				if entrypoint == "" {
 					return fmt.Errorf("gateway_http endpoint %s/%s requires entrypoint", component.Name, endpoint.Name)
 				}
+				pathPrefix := normalizedPathPrefix(endpoint.PathPrefix)
+				routeKey := host + "\x00" + entrypoint + "\x00" + pathPrefix
+				if _, exists := httpRoutes[routeKey]; exists {
+					return fmt.Errorf("gateway_http endpoint %s/%s duplicates route %s%s", component.Name, endpoint.Name, host, pathPrefix)
+				}
+				httpRoutes[routeKey] = struct{}{}
 				router := routerName(plan, component.Name, endpoint.Name)
 				rule := "Host(`" + host + "`)"
-				if endpoint.PathPrefix != nil && *endpoint.PathPrefix != "" && *endpoint.PathPrefix != "/" {
-					rule += " && PathPrefix(`" + *endpoint.PathPrefix + "`)"
+				if pathPrefix != "/" {
+					rule += " && PathPrefix(`" + pathPrefix + "`)"
 				}
 				appendStrings(service, "labels", []string{"traefik.enable=true", "traefik.http.routers." + router + ".rule=" + rule, "traefik.http.routers." + router + ".entrypoints=" + entrypoint, "traefik.http.routers." + router + ".service=" + router, "traefik.http.services." + router + ".loadbalancer.server.port=" + strconv.Itoa(endpoint.ContainerPort)})
 				appendTLSLabels(service, router, "http", plan.Gateway.TLSMode)
@@ -167,7 +170,7 @@ func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServic
 				sni := "*"
 				if plan.Gateway.TLSMode == "letsencrypt" || plan.Gateway.TLSMode == "tls" {
 					var err error
-					sni, err = deriveHost(plan.Gateway, plan.Application.Code)
+					sni, err = model.DeriveServiceComponentHost(plan.Gateway, plan.Service, component.Name)
 					if err != nil {
 						return err
 					}
@@ -183,7 +186,14 @@ func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServic
 }
 
 func routerName(plan model.EffectiveServicePlan, component, endpoint string) string {
-	return plan.Application.Code + "-" + plan.Service.InstanceKey + "-" + component + "-" + endpoint
+	return plan.Service.Code + "-" + component + "-" + endpoint
+}
+
+func normalizedPathPrefix(value *string) string {
+	if value == nil || *value == "" || *value == "/" {
+		return "/"
+	}
+	return *value
 }
 
 func appendTLSLabels(service map[string]any, router, protocol, mode string) {

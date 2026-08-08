@@ -1,18 +1,23 @@
 -- name: ListServicesByApplication :many
-SELECT id, application_id, instance_key, version_id, status, created_at, updated_at
+SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = ?
 ORDER BY instance_key;
 
 -- name: ServiceByID :one
-SELECT id, application_id, instance_key, version_id, status, created_at, updated_at
+SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE id = ?;
 
 -- name: ServiceByKey :one
-SELECT id, application_id, instance_key, version_id, status, created_at, updated_at
+SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = ? AND instance_key = ?;
+
+-- name: ServiceByCode :one
+SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
+FROM service
+WHERE code = ?;
 
 -- name: ServiceIDByKey :one
 SELECT id
@@ -20,8 +25,8 @@ FROM service
 WHERE application_id = ? AND instance_key = ?;
 
 -- name: InsertService :exec
-INSERT INTO service (id, application_id, instance_key, version_id, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO service (id, application_id, instance_key, code, version_id, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateService :exec
 UPDATE service
@@ -153,27 +158,53 @@ SELECT COUNT(*)
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
-WHERE a.project_id = ?
-  AND (? = '' OR s.application_id = ?)
-  AND (? = '' OR s.status = ?)
-  AND (? = '' OR a.name LIKE ? OR a.code LIKE ? OR s.instance_key LIKE ? OR v.label LIKE ?);
+WHERE a.project_id = CAST(sqlc.arg(project_id) AS TEXT)
+  AND (
+    CAST(sqlc.narg(application_id) AS TEXT) IS NULL
+    OR s.application_id = CAST(sqlc.narg(application_id) AS TEXT)
+  )
+  AND (
+    CAST(sqlc.narg(status) AS TEXT) IS NULL
+    OR s.status = CAST(sqlc.narg(status) AS TEXT)
+  )
+  AND (
+    CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+    OR a.name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR a.code LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR s.code LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR s.instance_key LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR v.label LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+  );
 
 -- name: ListServicesByProject :many
-SELECT s.id, s.application_id, s.instance_key, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
-WHERE a.project_id = ?
-  AND (? = '' OR s.application_id = ?)
-  AND (? = '' OR s.status = ?)
-  AND (? = '' OR a.name LIKE ? OR a.code LIKE ? OR s.instance_key LIKE ? OR v.label LIKE ?)
+WHERE a.project_id = CAST(sqlc.arg(project_id) AS TEXT)
+  AND (
+    CAST(sqlc.narg(application_id) AS TEXT) IS NULL
+    OR s.application_id = CAST(sqlc.narg(application_id) AS TEXT)
+  )
+  AND (
+    CAST(sqlc.narg(status) AS TEXT) IS NULL
+    OR s.status = CAST(sqlc.narg(status) AS TEXT)
+  )
+  AND (
+    CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+    OR a.name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR a.code LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR s.code LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR s.instance_key LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR v.label LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+  )
 ORDER BY s.created_at DESC, a.name, s.instance_key
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: ServiceListItemByID :one
-SELECT s.id, s.application_id, s.instance_key, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s

@@ -65,7 +65,7 @@ func (h Handler) CreateService(c *gin.Context) {
 		return
 	}
 	view, err := h.service.CreateService(c.Request.Context(), current.Id, servicedto.ServiceCreateInput{
-		ApplicationId: req.ApplicationId, VersionId: req.VersionId, InstanceKey: req.InstanceKey,
+		ApplicationId: req.ApplicationId, VersionId: req.VersionId, InstanceKey: req.InstanceKey, Code: req.Code,
 	})
 	if err != nil {
 		transportresponse.WriteError(c, err)
@@ -180,7 +180,7 @@ func applicationServiceResponses(items []model.Service) []servicev1.ServiceResp 
 	for _, item := range items {
 		resp = append(resp, servicev1.ServiceResp{
 			Id: item.Id, ApplicationId: item.ApplicationId,
-			InstanceKey: item.InstanceKey, VersionId: item.VersionId,
+			InstanceKey: item.InstanceKey, Code: item.Code, VersionId: item.VersionId,
 			Status:    item.Status,
 			CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt),
 		})

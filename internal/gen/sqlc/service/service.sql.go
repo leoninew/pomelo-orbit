@@ -16,37 +16,38 @@ SELECT COUNT(*)
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
-WHERE a.project_id = ?
-  AND (? = '' OR s.application_id = ?)
-  AND (? = '' OR s.status = ?)
-  AND (? = '' OR a.name LIKE ? OR a.code LIKE ? OR s.instance_key LIKE ? OR v.label LIKE ?)
+WHERE a.project_id = CAST(?1 AS TEXT)
+  AND (
+    CAST(?2 AS TEXT) IS NULL
+    OR s.application_id = CAST(?2 AS TEXT)
+  )
+  AND (
+    CAST(?3 AS TEXT) IS NULL
+    OR s.status = CAST(?3 AS TEXT)
+  )
+  AND (
+    CAST(?4 AS TEXT) IS NULL
+    OR a.name LIKE CAST(?4 AS TEXT)
+    OR a.code LIKE CAST(?4 AS TEXT)
+    OR s.code LIKE CAST(?4 AS TEXT)
+    OR s.instance_key LIKE CAST(?4 AS TEXT)
+    OR v.label LIKE CAST(?4 AS TEXT)
+  )
 `
 
 type CountServicesByProjectParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
-	Column2       interface{}    `db:"column_2"`
-	ApplicationID string         `db:"application_id"`
-	Column4       interface{}    `db:"column_4"`
-	Status        string         `db:"status"`
-	Column6       interface{}    `db:"column_6"`
-	Name          string         `db:"name"`
-	Code          string         `db:"code"`
-	InstanceKey   string         `db:"instance_key"`
-	Label         string         `db:"label"`
+	ProjectID     string         `db:"project_id"`
+	ApplicationID sql.NullString `db:"application_id"`
+	Status        sql.NullString `db:"status"`
+	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountServicesByProject(ctx context.Context, arg CountServicesByProjectParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countServicesByProject,
 		arg.ProjectID,
-		arg.Column2,
 		arg.ApplicationID,
-		arg.Column4,
 		arg.Status,
-		arg.Column6,
-		arg.Name,
-		arg.Code,
-		arg.InstanceKey,
-		arg.Label,
+		arg.SearchPattern,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -124,14 +125,15 @@ func (q *Queries) DeleteServiceEnv(ctx context.Context, serviceID string) error 
 }
 
 const insertService = `-- name: InsertService :exec
-INSERT INTO service (id, application_id, instance_key, version_id, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO service (id, application_id, instance_key, code, version_id, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertServiceParams struct {
 	ID            string    `db:"id"`
 	ApplicationID string    `db:"application_id"`
 	InstanceKey   string    `db:"instance_key"`
+	Code          string    `db:"code"`
 	VersionID     string    `db:"version_id"`
 	Status        string    `db:"status"`
 	CreatedAt     time.Time `db:"created_at"`
@@ -143,6 +145,7 @@ func (q *Queries) InsertService(ctx context.Context, arg InsertServiceParams) er
 		arg.ID,
 		arg.ApplicationID,
 		arg.InstanceKey,
+		arg.Code,
 		arg.VersionID,
 		arg.Status,
 		arg.CreatedAt,
@@ -301,7 +304,7 @@ func (q *Queries) InsertServiceEnv(ctx context.Context, arg InsertServiceEnvPara
 }
 
 const listServicesByApplication = `-- name: ListServicesByApplication :many
-SELECT id, application_id, instance_key, version_id, status, created_at, updated_at
+SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = ?
 ORDER BY instance_key
@@ -320,6 +323,7 @@ func (q *Queries) ListServicesByApplication(ctx context.Context, applicationID s
 			&i.ID,
 			&i.ApplicationID,
 			&i.InstanceKey,
+			&i.Code,
 			&i.VersionID,
 			&i.Status,
 			&i.CreatedAt,
@@ -339,39 +343,47 @@ func (q *Queries) ListServicesByApplication(ctx context.Context, applicationID s
 }
 
 const listServicesByProject = `-- name: ListServicesByProject :many
-SELECT s.id, s.application_id, s.instance_key, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
-WHERE a.project_id = ?
-  AND (? = '' OR s.application_id = ?)
-  AND (? = '' OR s.status = ?)
-  AND (? = '' OR a.name LIKE ? OR a.code LIKE ? OR s.instance_key LIKE ? OR v.label LIKE ?)
+WHERE a.project_id = CAST(?1 AS TEXT)
+  AND (
+    CAST(?2 AS TEXT) IS NULL
+    OR s.application_id = CAST(?2 AS TEXT)
+  )
+  AND (
+    CAST(?3 AS TEXT) IS NULL
+    OR s.status = CAST(?3 AS TEXT)
+  )
+  AND (
+    CAST(?4 AS TEXT) IS NULL
+    OR a.name LIKE CAST(?4 AS TEXT)
+    OR a.code LIKE CAST(?4 AS TEXT)
+    OR s.code LIKE CAST(?4 AS TEXT)
+    OR s.instance_key LIKE CAST(?4 AS TEXT)
+    OR v.label LIKE CAST(?4 AS TEXT)
+  )
 ORDER BY s.created_at DESC, a.name, s.instance_key
-LIMIT ? OFFSET ?
+LIMIT ?6 OFFSET ?5
 `
 
 type ListServicesByProjectParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
-	Column2       interface{}    `db:"column_2"`
-	ApplicationID string         `db:"application_id"`
-	Column4       interface{}    `db:"column_4"`
-	Status        string         `db:"status"`
-	Column6       interface{}    `db:"column_6"`
-	Name          string         `db:"name"`
-	Code          string         `db:"code"`
-	InstanceKey   string         `db:"instance_key"`
-	Label         string         `db:"label"`
-	Limit         int64          `db:"limit"`
+	ProjectID     string         `db:"project_id"`
+	ApplicationID sql.NullString `db:"application_id"`
+	Status        sql.NullString `db:"status"`
+	SearchPattern sql.NullString `db:"search_pattern"`
 	Offset        int64          `db:"offset"`
+	Limit         int64          `db:"limit"`
 }
 
 type ListServicesByProjectRow struct {
 	ID              string    `db:"id"`
 	ApplicationID   string    `db:"application_id"`
 	InstanceKey     string    `db:"instance_key"`
+	Code            string    `db:"code"`
 	VersionID       string    `db:"version_id"`
 	Status          string    `db:"status"`
 	CreatedAt       time.Time `db:"created_at"`
@@ -385,17 +397,11 @@ type ListServicesByProjectRow struct {
 func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByProjectParams) ([]ListServicesByProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, listServicesByProject,
 		arg.ProjectID,
-		arg.Column2,
 		arg.ApplicationID,
-		arg.Column4,
 		arg.Status,
-		arg.Column6,
-		arg.Name,
-		arg.Code,
-		arg.InstanceKey,
-		arg.Label,
-		arg.Limit,
+		arg.SearchPattern,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -408,6 +414,7 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 			&i.ID,
 			&i.ApplicationID,
 			&i.InstanceKey,
+			&i.Code,
 			&i.VersionID,
 			&i.Status,
 			&i.CreatedAt,
@@ -430,8 +437,30 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 	return items, nil
 }
 
+const serviceByCode = `-- name: ServiceByCode :one
+SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
+FROM service
+WHERE code = ?
+`
+
+func (q *Queries) ServiceByCode(ctx context.Context, code string) (Service, error) {
+	row := q.db.QueryRowContext(ctx, serviceByCode, code)
+	var i Service
+	err := row.Scan(
+		&i.ID,
+		&i.ApplicationID,
+		&i.InstanceKey,
+		&i.Code,
+		&i.VersionID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const serviceByID = `-- name: ServiceByID :one
-SELECT id, application_id, instance_key, version_id, status, created_at, updated_at
+SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE id = ?
 `
@@ -443,6 +472,7 @@ func (q *Queries) ServiceByID(ctx context.Context, id string) (Service, error) {
 		&i.ID,
 		&i.ApplicationID,
 		&i.InstanceKey,
+		&i.Code,
 		&i.VersionID,
 		&i.Status,
 		&i.CreatedAt,
@@ -452,7 +482,7 @@ func (q *Queries) ServiceByID(ctx context.Context, id string) (Service, error) {
 }
 
 const serviceByKey = `-- name: ServiceByKey :one
-SELECT id, application_id, instance_key, version_id, status, created_at, updated_at
+SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = ? AND instance_key = ?
 `
@@ -469,6 +499,7 @@ func (q *Queries) ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Ser
 		&i.ID,
 		&i.ApplicationID,
 		&i.InstanceKey,
+		&i.Code,
 		&i.VersionID,
 		&i.Status,
 		&i.CreatedAt,
@@ -721,7 +752,7 @@ func (q *Queries) ServiceIDByKey(ctx context.Context, arg ServiceIDByKeyParams) 
 }
 
 const serviceListItemByID = `-- name: ServiceListItemByID :one
-SELECT s.id, s.application_id, s.instance_key, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
@@ -734,6 +765,7 @@ type ServiceListItemByIDRow struct {
 	ID              string    `db:"id"`
 	ApplicationID   string    `db:"application_id"`
 	InstanceKey     string    `db:"instance_key"`
+	Code            string    `db:"code"`
 	VersionID       string    `db:"version_id"`
 	Status          string    `db:"status"`
 	CreatedAt       time.Time `db:"created_at"`
@@ -751,6 +783,7 @@ func (q *Queries) ServiceListItemByID(ctx context.Context, id string) (ServiceLi
 		&i.ID,
 		&i.ApplicationID,
 		&i.InstanceKey,
+		&i.Code,
 		&i.VersionID,
 		&i.Status,
 		&i.CreatedAt,

@@ -131,7 +131,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		}
 		items := make([]map[string]any, 0, len(services))
 		for _, service := range services {
-			items = append(items, map[string]any{"id": service.Id, "application_id": service.ApplicationId, "instance_key": service.InstanceKey, "version_id": service.VersionId, "status": service.Status, "created_at": formatTime(service.CreatedAt), "updated_at": formatTime(service.UpdatedAt)})
+			items = append(items, map[string]any{"id": service.Id, "application_id": service.ApplicationId, "instance_key": service.InstanceKey, "code": service.Code, "version_id": service.VersionId, "status": service.Status, "created_at": formatTime(service.CreatedAt), "updated_at": formatTime(service.UpdatedAt)})
 		}
 		return map[string]any{"application_id": input.ApplicationId, "services": items}, nil
 	})

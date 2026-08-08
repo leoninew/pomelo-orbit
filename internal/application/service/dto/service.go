@@ -36,6 +36,7 @@ type ServiceCreateInput struct {
 	ApplicationId string
 	VersionId     string
 	InstanceKey   string
+	Code          string
 }
 
 type ServiceComponentOverlayInput struct {

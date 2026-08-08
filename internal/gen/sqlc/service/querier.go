@@ -26,6 +26,7 @@ type Querier interface {
 	InsertServiceEnv(ctx context.Context, arg InsertServiceEnvParams) error
 	ListServicesByApplication(ctx context.Context, applicationID string) ([]Service, error)
 	ListServicesByProject(ctx context.Context, arg ListServicesByProjectParams) ([]ListServicesByProjectRow, error)
+	ServiceByCode(ctx context.Context, code string) (Service, error)
 	ServiceByID(ctx context.Context, id string) (Service, error)
 	ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Service, error)
 	ServiceComponentByID(ctx context.Context, id string) (ServiceComponent, error)

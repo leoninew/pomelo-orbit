@@ -87,8 +87,12 @@ func (s Service) GetService(ctx context.Context, userId, serviceId string) (serv
 
 func (s Service) CreateService(ctx context.Context, userId string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
 	applicationID, versionID, instanceKey := strings.TrimSpace(input.ApplicationId), strings.TrimSpace(input.VersionId), strings.TrimSpace(input.InstanceKey)
-	if applicationID == "" || versionID == "" || instanceKey == "" {
-		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "application_id, version_id and instance_key are required")
+	code, err := normalizeServiceCode(input.Code)
+	if err != nil {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	if applicationID == "" || versionID == "" || instanceKey == "" || code == "" {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "application_id, version_id, instance_key and code are required")
 	}
 	app, err := s.loadApplicationForUser(ctx, userId, applicationID)
 	if err != nil {
@@ -98,12 +102,17 @@ func (s Service) CreateService(ctx context.Context, userId string, input service
 	if err != nil {
 		return servicedto.ServiceView{}, err
 	}
+	if _, err := s.service.ServiceByCode(ctx, code); err == nil {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service code already exists")
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service code", err)
+	}
 	if _, err := s.service.ServiceByKey(ctx, app.Id, instanceKey); err == nil {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service instance already exists")
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	svc := model.Service{Id: idutil.NewId(), ApplicationId: app.Id, InstanceKey: instanceKey, VersionId: version.Id, Status: status.ServiceStatusStopped}
+	svc := model.Service{Id: idutil.NewId(), ApplicationId: app.Id, InstanceKey: instanceKey, Code: code, VersionId: version.Id, Status: status.ServiceStatusStopped}
 	components := mappedServiceComponents(svc.Id, declarations)
 	if err := s.service.CreateServiceWithComponents(ctx, svc, components); err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to create service", err)
@@ -421,6 +430,16 @@ func normalizeServiceEnv(env []model.ServiceEnv) ([]model.ServiceEnv, error) {
 	return items, nil
 }
 
+func normalizeServiceCode(input string) (string, error) {
+	code := strings.TrimSpace(input)
+	if code == "" {
+		return "", nil
+	}
+	if !model.IsDNSLabel(code) {
+		return "", fmt.Errorf("service code %q is invalid", code)
+	}
+	return code, nil
+}
 func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (servicedto.ServiceView, error) {
 	env, err := s.service.ServiceEnvByService(ctx, item.Id)
 	if err != nil {

@@ -1,5 +1,5 @@
 # CD 领域模型（现行）
-最后修改时间: 2026-07-27 13:41:16
+最后修改时间: 2026-08-08 13:29:04
 
 Doc role: living SoT  
 代码锚点：`internal/model/cd.go`、`internal/common/constant/status.go`、`internal/application/cd/usecase/*`、`sql/migration/*/…_cd_schema*.sql`（以仓库当前迁移文件为准）。
@@ -15,7 +15,7 @@ Doc role: living SoT
 | 暴露 | `VersionExpose` | 协议 + 容器端口 + `access`；**不含域名** |
 | 环境 | `Environment` | **Project 下**部署目标元数据；无 ingress 字段 |
 | 网关配置 | `GatewayConfig` | 与 `kind=gateway` 应用 1:1：`rest_api_url`、`base_domain`、入口/TLS |
-| 服务 | `Service` | 运行绑定与运行时配置 SoT：Application + `instance_key` + Version + 明文 K/V |
+| 服务 | `Service` | 运行绑定与运行时配置 SoT：Application + `instance_key` + Version + 不可变 `code` + 明文 K/V |
 | 部署 | `Deployment` | 操作流水（deploy/stop/restart 等）与日志/状态 |
 | 平台路由 | `Route` | 控制面配置的 Traefik rest 路由；**不是** Version 暴露 SoT |
 | 容器 | Container | 物化观测概念；以 Docker 运行时为准 |
@@ -47,6 +47,7 @@ Project
 
 - `deploying` / `running` / `stopped` / `faulted`  
 - 身份：`(application_id, environment_id, instance_key)`，默认 `instance_key=default`  
+- `code` 是全局唯一、创建后只读且不可变的 DNS-label 路由身份；创建窗以 `<application_code>-<instance_key>` 预填，用户提交后不随 Application code、instance key 或 Version 变更。
 - stop 不删除 Service 行（绑定保留）
 - `runtime_config_json` 是普通明文 `key/value` 配置；修改只更新待部署配置，不改变运行中的容器。
 - Credential 不属于 Service 运行时配置或部署链路。
@@ -76,7 +77,7 @@ Gateway 部署与 standard 共用 Version/Deploy 管线；保存 Gateway 时可 
 | 概念 | 现行规则 |
 |------|----------|
 | 出口 SoT | `VersionExpose`：`protocol`（http\|tcp 等）+ `access`（`local`\|`public`）+ 端口 |
-| 域名 | public HTTP：`{app_code}.{gateway.base_domain}`（由 Gateway 提供 base_domain） |
+| 域名 | `gateway_http`：`{component_name}.{service.code}.{gateway.base_domain}`；TLS `gateway_tcp` 使用同一 Host 作为 SNI |
 | local | loopback host ports；不写该 expose 的 Traefik public labels |
 | public TCP | 经 Gateway TCP entrypoint / labels；业务侧不另起 Gateway TCP 路由 CRUD |
 | 平台 Route | 独立 `route` 表 + active Gateway 的 `rest_api_url` 全量 PUT rest provider |

@@ -40,6 +40,7 @@ type ServiceResp struct {
 	EffectivePlanHash string                  `protobuf:"bytes,16,opt,name=effective_plan_hash,json=effectivePlanHash,proto3" json:"effective_plan_hash,omitempty"`
 	Env               []*ServiceEnv           `protobuf:"bytes,17,rep,name=env,proto3" json:"env,omitempty"`
 	EffectiveError    string                  `protobuf:"bytes,18,opt,name=effective_error,json=effectiveError,proto3" json:"effective_error,omitempty"`
+	Code              string                  `protobuf:"bytes,20,opt,name=code,proto3" json:"code,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -186,6 +187,13 @@ func (x *ServiceResp) GetEffectiveError() string {
 	return ""
 }
 
+func (x *ServiceResp) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
 type ServiceListResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*ServiceResp         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -311,6 +319,7 @@ type ServiceCreateReq struct {
 	ApplicationId string                 `protobuf:"bytes,1,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
 	VersionId     string                 `protobuf:"bytes,2,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
 	InstanceKey   string                 `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
+	Code          string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -362,6 +371,13 @@ func (x *ServiceCreateReq) GetVersionId() string {
 func (x *ServiceCreateReq) GetInstanceKey() string {
 	if x != nil {
 		return x.InstanceKey
+	}
+	return ""
+}
+
+func (x *ServiceCreateReq) GetCode() string {
+	if x != nil {
+		return x.Code
 	}
 	return ""
 }
@@ -1721,7 +1737,7 @@ var File_orbit_v1_service_service_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\x86\x05\n" +
+	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\x9a\x05\n" +
 	"\vServiceResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12!\n" +
@@ -1744,7 +1760,8 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x0epending_deploy\x18\x0f \x01(\bR\rpendingDeploy\x12.\n" +
 	"\x13effective_plan_hash\x18\x10 \x01(\tR\x11effectivePlanHash\x12.\n" +
 	"\x03env\x18\x11 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\x12'\n" +
-	"\x0feffective_error\x18\x12 \x01(\tR\x0eeffectiveErrorJ\x04\b\x05\x10\x06J\x04\b\r\x10\x0e\"F\n" +
+	"\x0feffective_error\x18\x12 \x01(\tR\x0eeffectiveError\x12\x12\n" +
+	"\x04code\x18\x14 \x01(\tR\x04codeJ\x04\b\x05\x10\x06J\x04\b\r\x10\x0e\"F\n" +
 	"\x0fServiceListResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.service.ServiceRespR\x05items\"\xa6\x01\n" +
 	"\x14ServicePaginatedResp\x123\n" +
@@ -1752,12 +1769,13 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pages\"{\n" +
+	"\x05pages\x18\x05 \x01(\x05R\x05pages\"\x8f\x01\n" +
 	"\x10ServiceCreateReq\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\x02 \x01(\tR\tversionId\x12!\n" +
-	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\"Y\n" +
+	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\x12\x12\n" +
+	"\x04code\x18\x04 \x01(\tR\x04code\"Y\n" +
 	"\x15ServiceBasicUpdateReq\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\x01 \x01(\tR\tversionId\x12!\n" +

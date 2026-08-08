@@ -7,6 +7,7 @@ type Service struct {
 	Id            string    `db:"id"`
 	ApplicationId string    `db:"application_id"`
 	InstanceKey   string    `db:"instance_key"`
+	Code          string    `db:"code"`
 	VersionId     string    `db:"version_id"`
 	Status        string    `db:"status"`
 	CreatedAt     time.Time `db:"created_at"`
@@ -78,6 +79,7 @@ type ServiceListItem struct {
 	Id              string    `db:"id"`
 	ApplicationId   string    `db:"application_id"`
 	InstanceKey     string    `db:"instance_key"`
+	Code            string    `db:"code"`
 	VersionId       string    `db:"version_id"`
 	Status          string    `db:"status"`
 	CreatedAt       time.Time `db:"created_at"`
@@ -94,6 +96,7 @@ func (item ServiceListItem) Service() Service {
 		Id:            item.Id,
 		ApplicationId: item.ApplicationId,
 		InstanceKey:   item.InstanceKey,
+		Code:          item.Code,
 		VersionId:     item.VersionId,
 		Status:        item.Status,
 		CreatedAt:     item.CreatedAt,

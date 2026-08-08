@@ -1,5 +1,5 @@
 # CD 运行时与渲染
-最后修改时间: 2026-07-27 13:41:16
+最后修改时间: 2026-08-08 13:29:04
 
 Doc role: living SoT  
 代码锚点：`internal/application/cd/usecase/compose_renderer.go`、`deployment_execution*.go`、`gateway*.go`、`expose_*.go`、`internal/infrastructure/runner/cd`、`internal/infrastructure/storage/local/cdworkspace`、`internal/infrastructure/external/traefik`。
@@ -28,7 +28,7 @@ HTTP Deploy/Stop/Restart
 
 ## Render
 
-输入：Application（含 kind）+ Version 的 Components/Exposes + Environment/instance +（可选）GatewayConfig。
+输入：Application（含 kind）+ Service（含不可变 `code`）+ Version 的 Components/Exposes + Environment/instance +（可选）GatewayConfig。
 
 | kind | 行为 |
 |------|------|
@@ -40,6 +40,8 @@ HTTP Deploy/Stop/Restart
 预览（Preview）与部署应走同一套渲染语义（测试与 usecase 对齐）。
 
 ## Gateway
+
+对每个 `gateway_http` endpoint，Host 统一派生为 `{component_name}.{service.code}.{gateway.base_domain}`；同一 Host、entrypoint 与归一化 path prefix 只能对应一个 endpoint。TLS `gateway_tcp` 使用同一 Host 作为 SNI；无 TLS TCP 仍使用 `HostSNI(*)`。
 
 | 字段（GatewayConfig） | 用途 |
 |----------------------|------|
@@ -59,7 +61,7 @@ HTTP Deploy/Stop/Restart
 |--|-------|----------------|
 | 存储 | `route` 表 | `version_expose` |
 | 下发 | rest API 全量 PUT | 部署时 Docker labels / ports |
-| 域名 | 用户配置 domain | public 时由 base_domain 推导 |
+| 域名 | 用户配置 domain | `gateway_http` 为 `{component_name}.{service.code}.{gateway.base_domain}` |
 
 证书：平台 Route 可存 PEM；应用 HTTPS/ACME 与 Gateway `tls_mode`、证书目录配置相关——细节见 `docs/guides/routing-and-certificates.md` 与代码（以代码为准）。
 

@@ -631,6 +631,7 @@
             application_id: current.id,
             version_id: deployForm.version_id,
             instance_key: instanceKey,
+            code: `${current.code}-${instanceKey}`,
           });
           serviceId = created.id;
         }

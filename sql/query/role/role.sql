@@ -16,14 +16,20 @@ WHERE name = ?;
 -- name: CountRoles :one
 SELECT COUNT(*)
 FROM role
-WHERE (? = '' OR LOWER(code) LIKE ? OR LOWER(name) LIKE ? OR LOWER(COALESCE(description, '')) LIKE ?);
+WHERE (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+  OR LOWER(code) LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+  OR LOWER(name) LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+  OR LOWER(COALESCE(description, '')) LIKE CAST(sqlc.narg(search_pattern) AS TEXT));
 
 -- name: ListRoles :many
 SELECT id, code, name, description, created_at, updated_at
 FROM role
-WHERE (? = '' OR LOWER(code) LIKE ? OR LOWER(name) LIKE ? OR LOWER(COALESCE(description, '')) LIKE ?)
+WHERE (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+  OR LOWER(code) LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+  OR LOWER(name) LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+  OR LOWER(COALESCE(description, '')) LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
 ORDER BY created_at DESC, id
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: ListPermissions :many
 SELECT id, code, name, description, created_at, updated_at

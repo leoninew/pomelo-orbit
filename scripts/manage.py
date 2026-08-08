@@ -490,12 +490,16 @@ def backup(cfg: "Config", remote_dir: str) -> None:
     local_archive = local_backup_dir / f"data-{date_str}.tar.gz"
 
     logger.info(f"备份远程目录: {remote_dir}")
-    logger.info("排除: 流水线工作区 (pipeline/*/workspace, ci/*/workspace)")
+    logger.info(
+        "排除: 源码工作区 "
+        "(pipeline/*/workspace, ci/*/workspace, deployment/*/workspace)"
+    )
 
-    # 构建排除参数
+    # 源码 checkout 目录（含完整 .git），不属于运行态备份范围
     excludes = [
         "./data/pipeline/*/workspace",
         "./data/ci/*/workspace",
+        "./data/deployment/*/workspace",
     ]
     exclude_args = " ".join(f"--exclude={shlex.quote(pattern)}" for pattern in excludes)
 

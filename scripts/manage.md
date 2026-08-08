@@ -25,6 +25,14 @@ python scripts/manage.py clean
 python scripts/manage.py docker-clean [--execute]
 ```
 
+`backup` 打包远程部署目录并下载到本地 `scripts/backup/`。会排除源码工作区：
+
+- `data/pipeline/*/workspace`
+- `data/ci/*/workspace`
+- `data/deployment/*/workspace`
+
+这些目录通常是 git checkout（含 `.git`），不属于运行态恢复所需数据。
+
 运行 `python scripts/manage.py <subcommand> --help` 获取当前子命令参数。
 
 `docker-clean` 默认只检查远程根分区、Docker 占用和运行中容器，不删除数据。传入 `--execute` 后会依次执行：

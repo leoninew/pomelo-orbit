@@ -1,16 +1,22 @@
 -- name: CountRoutes :one
 SELECT COUNT(*)
 FROM route
-WHERE project_id = ?
-  AND (? = '' OR name LIKE ? OR domain LIKE ? OR target_url LIKE ?);
+WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
+  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+    OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR domain LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR target_url LIKE CAST(sqlc.narg(search_pattern) AS TEXT));
 
 -- name: ListRoutes :many
 SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
 FROM route
-WHERE project_id = ?
-  AND (? = '' OR name LIKE ? OR domain LIKE ? OR target_url LIKE ?)
+WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
+  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+    OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR domain LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR target_url LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
 ORDER BY id DESC
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: ListAllRoutes :many
 SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at

@@ -6,10 +6,11 @@ package role
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
-	CountRoles(ctx context.Context, arg CountRolesParams) (int64, error)
+	CountRoles(ctx context.Context, searchPattern sql.NullString) (int64, error)
 	CreateRole(ctx context.Context, arg CreateRoleParams) error
 	DeleteRole(ctx context.Context, id string) error
 	DeleteRolePermissions(ctx context.Context, roleID string) error

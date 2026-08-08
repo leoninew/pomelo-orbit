@@ -33,40 +33,38 @@ func (r Repository) q(ctx context.Context) *applicationsqlc.Queries {
 	})
 }
 
-func optionalProjectId(projectId *string) interface{} {
+func optionalProjectId(projectId *string) sql.NullString {
 	if projectId == nil {
-		return nil
+		return sql.NullString{}
 	}
 	trimmed := strings.TrimSpace(*projectId)
 	if trimmed == "" {
-		return nil
+		return sql.NullString{}
 	}
-	return trimmed
+	return sql.NullString{String: trimmed, Valid: true}
 }
 
 func (r Repository) ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	raw, pattern := dbmodel.SearchPattern(search)
 	kindFilter := strings.TrimSpace(kind)
+	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
+	kindValue := sql.NullString{String: kindFilter, Valid: kindFilter != ""}
 	q := r.q(ctx)
 	total, err := q.CountApplications(ctx, applicationsqlc.CountApplicationsParams{
-		ProjectID:   optionalProjectId(projectId),
-		Search:      raw,
-		NamePattern: pattern,
-		KindFilter:  kindFilter,
-		Kind:        kindFilter,
+		ProjectID:     optionalProjectId(projectId),
+		SearchPattern: searchPattern,
+		Kind:          kindValue,
 	})
 	if err != nil {
 		return repository.Page[model.Application]{}, fmt.Errorf("count applications: %w", err)
 	}
 	rows, err := q.ListApplications(ctx, applicationsqlc.ListApplicationsParams{
-		ProjectID:   optionalProjectId(projectId),
-		Search:      raw,
-		NamePattern: pattern,
-		KindFilter:  kindFilter,
-		Kind:        kindFilter,
-		Limit:       int64(perPage),
-		Offset:      int64((page - 1) * perPage),
+		ProjectID:     optionalProjectId(projectId),
+		SearchPattern: searchPattern,
+		Kind:          kindValue,
+		Limit:         int64(perPage),
+		Offset:        int64((page - 1) * perPage),
 	})
 	if err != nil {
 		return repository.Page[model.Application]{}, fmt.Errorf("list applications: %w", err)
@@ -196,22 +194,18 @@ func (r Repository) LatestVersionByApplication(ctx context.Context, applicationI
 func (r Repository) ListVersionsPage(ctx context.Context, applicationId string, page int, perPage int, search string) (repository.Page[model.Version], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	raw, pattern := dbmodel.SearchPattern(search)
-	notePattern := sql.NullString{String: pattern, Valid: true}
+	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
 	q := r.q(ctx)
 	total, err := q.CountVersions(ctx, applicationsqlc.CountVersionsParams{
 		ApplicationID: applicationId,
-		Column2:       raw,
-		Label:         pattern,
-		Note:          notePattern,
+		SearchPattern: searchPattern,
 	})
 	if err != nil {
 		return repository.Page[model.Version]{}, fmt.Errorf("count versions: %w", err)
 	}
 	rows, err := q.ListVersionsPage(ctx, applicationsqlc.ListVersionsPageParams{
 		ApplicationID: applicationId,
-		Column2:       raw,
-		Label:         pattern,
-		Note:          notePattern,
+		SearchPattern: searchPattern,
 		Limit:         int64(perPage),
 		Offset:        int64((page - 1) * perPage),
 	})

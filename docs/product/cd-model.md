@@ -45,17 +45,20 @@ Project
 
 ### Service（运行态 SoT，**不是** Application 状态机）
 
-- `deploying` / `running` / `stopped` / `faulted`  
+- `running` / `stopped` / `faulted`
 - 身份：`(application_id, environment_id, instance_key)`，默认 `instance_key=default`  
 - `code` 是全局唯一、创建后只读且不可变的 DNS-label 路由身份；创建窗以 `<application_code>-<instance_key>` 预填，用户提交后不随 Application code、instance key 或 Version 变更。
 - stop 不删除 Service 行（绑定保留）
 - `runtime_config_json` 是普通明文 `key/value` 配置；修改只更新待部署配置，不改变运行中的容器。
 - Credential 不属于 Service 运行时配置或部署链路。
 
-### Deployment（任务态）
+### 异步操作（Deployment / Pipeline Run / Pipeline Stage Run）
 
-- `waiting_to_run` → `running` → `ran_to_completion` \| `faulted` \| `canceled`  
-- 与后台 task 队列配合；API 创建记录，worker 执行 Docker 操作
+- `waiting_to_run` → `running` → `ran_to_completion` \| `faulted` \| `canceled`，也可从 `waiting_to_run` 直接进入 `canceled`。
+- `ran_to_completion`、`faulted`、`canceled` 是不可逆终态。状态写入必须验证当前源状态，worker 不能覆盖已取消的记录。
+- Cancel API 立即写入 `canceled`；worker 以此作为停止 Docker 或 Stage 容器的持久化信号。`canceled` 表示取消已接受，不承诺外部副作用已经回滚。
+- Pipeline 上游失败时，尚未开始的下游 Stage 保持 `waiting_to_run`。Pipeline Retry 是创建新 Run 的显式命令，使用 `retry_of` 记录谱系，不改变原 Run。
+- `background_task` 是调度记录。创建时将 `worker.max_attempts` 冻结到记录；失败时只依据持久化的 `attempts/max_attempts` 决定重投或 `failed`。开发默认预算为 `1`，因此常规业务任务首次失败即终结。
 
 ### Application
 
@@ -70,7 +73,7 @@ Project
 5. **apply**（`docker compose …`）。
 6. 更新 Service / Deployment / 观测。
 
-Gateway 部署与 standard 共用 Version/Deploy 管线；保存 Gateway 时可 compile 未发布 Version（托管 traefik 组件与静态配置）。同一时刻仅允许 **一个** gateway Service 处于 deploying/running。
+Gateway 部署与 standard 共用 Version/Deploy 管线；保存 Gateway 时可 compile 未发布 Version（托管 traefik 组件与静态配置）。同一时刻仅允许一个实际 `running` 的 gateway Service，或另一 gateway Service 的活跃 Deployment。
 
 ## 暴露与接入
 

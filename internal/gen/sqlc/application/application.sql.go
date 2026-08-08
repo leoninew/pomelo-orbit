@@ -107,27 +107,19 @@ func (q *Queries) ApplicationByName(ctx context.Context, name string) (Applicati
 const countApplications = `-- name: CountApplications :one
 SELECT COUNT(*)
 FROM application
-WHERE (?1 IS NULL OR project_id = ?1)
-  AND (?2 = '' OR name LIKE ?3 OR code LIKE ?3)
-  AND (?4 = '' OR kind = ?5)
+WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
+  AND (CAST(?2 AS TEXT) IS NULL OR name LIKE CAST(?2 AS TEXT) OR code LIKE CAST(?2 AS TEXT))
+  AND (CAST(?3 AS TEXT) IS NULL OR kind = CAST(?3 AS TEXT))
 `
 
 type CountApplicationsParams struct {
-	ProjectID   interface{} `db:"project_id"`
-	Search      interface{} `db:"search"`
-	NamePattern string      `db:"name_pattern"`
-	KindFilter  interface{} `db:"kind_filter"`
-	Kind        string      `db:"kind"`
+	ProjectID     sql.NullString `db:"project_id"`
+	SearchPattern sql.NullString `db:"search_pattern"`
+	Kind          sql.NullString `db:"kind"`
 }
 
 func (q *Queries) CountApplications(ctx context.Context, arg CountApplicationsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countApplications,
-		arg.ProjectID,
-		arg.Search,
-		arg.NamePattern,
-		arg.KindFilter,
-		arg.Kind,
-	)
+	row := q.db.QueryRowContext(ctx, countApplications, arg.ProjectID, arg.SearchPattern, arg.Kind)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -194,21 +186,19 @@ func (q *Queries) DeleteVersionsByApplication(ctx context.Context, applicationID
 const listApplications = `-- name: ListApplications :many
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
-WHERE (?1 IS NULL OR project_id = ?1)
-  AND (?2 = '' OR name LIKE ?3 OR code LIKE ?3)
-  AND (?4 = '' OR kind = ?5)
+WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
+  AND (CAST(?2 AS TEXT) IS NULL OR name LIKE CAST(?2 AS TEXT) OR code LIKE CAST(?2 AS TEXT))
+  AND (CAST(?3 AS TEXT) IS NULL OR kind = CAST(?3 AS TEXT))
 ORDER BY created_at DESC, id
-LIMIT ?7 OFFSET ?6
+LIMIT ?5 OFFSET ?4
 `
 
 type ListApplicationsParams struct {
-	ProjectID   interface{} `db:"project_id"`
-	Search      interface{} `db:"search"`
-	NamePattern string      `db:"name_pattern"`
-	KindFilter  interface{} `db:"kind_filter"`
-	Kind        string      `db:"kind"`
-	Offset      int64       `db:"offset"`
-	Limit       int64       `db:"limit"`
+	ProjectID     sql.NullString `db:"project_id"`
+	SearchPattern sql.NullString `db:"search_pattern"`
+	Kind          sql.NullString `db:"kind"`
+	Offset        int64          `db:"offset"`
+	Limit         int64          `db:"limit"`
 }
 
 type ListApplicationsRow struct {
@@ -224,9 +214,7 @@ type ListApplicationsRow struct {
 func (q *Queries) ListApplications(ctx context.Context, arg ListApplicationsParams) ([]ListApplicationsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listApplications,
 		arg.ProjectID,
-		arg.Search,
-		arg.NamePattern,
-		arg.KindFilter,
+		arg.SearchPattern,
 		arg.Kind,
 		arg.Offset,
 		arg.Limit,

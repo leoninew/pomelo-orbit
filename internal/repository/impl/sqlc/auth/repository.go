@@ -47,19 +47,16 @@ func (r Repository) SaveLoginHistory(ctx context.Context, history model.LoginHis
 func (r Repository) ListLoginHistory(ctx context.Context, page int, perPage int, search string) (repository.Page[model.LoginHistory], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	raw, pattern := dbmodel.LowerSearchPattern(search)
+	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
 	q := r.q(ctx)
-	total, err := q.CountLoginHistory(ctx, authsqlc.CountLoginHistoryParams{
-		Column1:  raw,
-		Username: pattern,
-	})
+	total, err := q.CountLoginHistory(ctx, searchPattern)
 	if err != nil {
 		return repository.Page[model.LoginHistory]{}, fmt.Errorf("count login history: %w", err)
 	}
 	rows, err := q.ListLoginHistory(ctx, authsqlc.ListLoginHistoryParams{
-		Column1:  raw,
-		Username: pattern,
-		Limit:    int64(perPage),
-		Offset:   int64((page - 1) * perPage),
+		SearchPattern: searchPattern,
+		Limit:         int64(perPage),
+		Offset:        int64((page - 1) * perPage),
 	})
 	if err != nil {
 		return repository.Page[model.LoginHistory]{}, fmt.Errorf("list login history: %w", err)

@@ -34,18 +34,20 @@ func (r Repository) q(ctx context.Context) *routesqlc.Queries {
 func (r Repository) ListRoutes(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[model.Route], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	raw, pattern := dbmodel.SearchPattern(search)
+	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
+	projectID := strings.TrimSpace(projectId)
 	q := r.q(ctx)
 	total, err := q.CountRoutes(ctx, routesqlc.CountRoutesParams{
-		ProjectID: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		Column2:   raw, Name: pattern, Domain: pattern, TargetUrl: pattern,
+		ProjectID:     projectID,
+		SearchPattern: searchPattern,
 	})
 	if err != nil {
 		return repository.Page[model.Route]{}, fmt.Errorf("count routes: %w", err)
 	}
 	rows, err := q.ListRoutes(ctx, routesqlc.ListRoutesParams{
-		ProjectID: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		Column2:   raw, Name: pattern, Domain: pattern, TargetUrl: pattern,
-		Limit: int64(perPage), Offset: int64((page - 1) * perPage),
+		ProjectID:     projectID,
+		SearchPattern: searchPattern,
+		Limit:         int64(perPage), Offset: int64((page - 1) * perPage),
 	})
 	if err != nil {
 		return repository.Page[model.Route]{}, fmt.Errorf("list routes: %w", err)

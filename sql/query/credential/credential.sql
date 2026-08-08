@@ -21,16 +21,20 @@ WHERE id = ?;
 -- name: CountCredentials :one
 SELECT COUNT(*)
 FROM credential
-WHERE project_id = ?
-  AND (? = '' OR name LIKE ? OR type LIKE ?);
+WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
+  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+    OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR type LIKE CAST(sqlc.narg(search_pattern) AS TEXT));
 
 -- name: ListCredentials :many
 SELECT id, project_id, name, type, encrypted_data, created_at
 FROM credential
-WHERE project_id = ?
-  AND (? = '' OR name LIKE ? OR type LIKE ?)
+WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
+  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+    OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR type LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
 ORDER BY created_at DESC
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: CreateCredential :exec
 INSERT INTO credential (id, project_id, name, type, encrypted_data, created_at)

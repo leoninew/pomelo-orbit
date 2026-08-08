@@ -34,22 +34,21 @@ func (r Repository) q(ctx context.Context) *reposqlc.Queries {
 func (r Repository) ListRepositories(ctx context.Context, projectId *string, page int, perPage int, search string) (repository.Page[model.Repository], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	raw, pattern := dbmodel.SearchPattern(search)
+	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
 	q := r.q(ctx)
 	params := reposqlc.CountRepositoriesParams{
-		ProjectID: optionalNarg(projectId),
-		Search:    raw,
-		Pattern:   pattern,
+		ProjectID:     optionalNarg(projectId),
+		SearchPattern: searchPattern,
 	}
 	total, err := q.CountRepositories(ctx, params)
 	if err != nil {
 		return repository.Page[model.Repository]{}, fmt.Errorf("count repositories: %w", err)
 	}
 	rows, err := q.ListRepositories(ctx, reposqlc.ListRepositoriesParams{
-		ProjectID: optionalNarg(projectId),
-		Search:    raw,
-		Pattern:   pattern,
-		Offset:    int64((page - 1) * perPage),
-		Limit:     int64(perPage),
+		ProjectID:     optionalNarg(projectId),
+		SearchPattern: searchPattern,
+		Offset:        int64((page - 1) * perPage),
+		Limit:         int64(perPage),
 	})
 	if err != nil {
 		return repository.Page[model.Repository]{}, fmt.Errorf("list repositories: %w", err)
@@ -144,15 +143,15 @@ func (r Repository) RepositoryHasRunningPipelines(ctx context.Context, repositor
 	return count > 0, nil
 }
 
-func optionalNarg(value *string) interface{} {
+func optionalNarg(value *string) sql.NullString {
 	if value == nil {
-		return nil
+		return sql.NullString{}
 	}
 	trimmed := *value
 	if trimmed == "" {
-		return nil
+		return sql.NullString{}
 	}
-	return trimmed
+	return sql.NullString{String: trimmed, Valid: true}
 }
 
 func repositoryFrom(

@@ -19,15 +19,19 @@ WHERE email = ?;
 -- name: CountUsers :one
 SELECT COUNT(*)
 FROM user
-WHERE (? = '' OR LOWER(username) LIKE ? OR LOWER(COALESCE(email, '')) LIKE ?);
+WHERE (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+  OR LOWER(username) LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+  OR LOWER(COALESCE(email, '')) LIKE CAST(sqlc.narg(search_pattern) AS TEXT));
 
 -- name: ListUsers :many
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
 FROM user
-WHERE (? = '' OR LOWER(username) LIKE ? OR LOWER(COALESCE(email, '')) LIKE ?)
+WHERE (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+  OR LOWER(username) LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+  OR LOWER(COALESCE(email, '')) LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
 ORDER BY created_at DESC, id
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: UserRoles :many
 SELECT role.code

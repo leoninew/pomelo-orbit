@@ -106,7 +106,7 @@
           >
             <button
               class="app-link"
-              :disabled="operating || svc.status === 'deploying'"
+              :disabled="operating || svc.active_deployment"
               @click="openDeployDialog(svc)"
             >
               {{ t('service.actions.deploy') }}
@@ -185,7 +185,7 @@
                 <div class="flex flex-wrap items-center gap-3">
                   <button
                     class="app-link"
-                    :disabled="operating || svc.status === 'deploying'"
+                    :disabled="operating || svc.active_deployment"
                     @click="openDeployDialog(svc)"
                   >
                     {{ t('service.actions.deploy') }}
@@ -530,14 +530,17 @@
     isCreateDialogOpen.value = open;
     if (!open) {
       createError.value = '';
-      Object.assign(createErrors, { application_id: '', version_id: '', instance_key: '', code: '' });
+      Object.assign(createErrors, {
+        application_id: '',
+        version_id: '',
+        instance_key: '',
+        code: '',
+      });
     }
   }
 
   function suggestedCreateCode() {
-    const application = applications.value.find(
-      (item) => item.id === createForm.application_id
-    );
+    const application = applications.value.find((item) => item.id === createForm.application_id);
     const instanceKey = createForm.instance_key.trim();
     return application && instanceKey ? `${application.code}-${instanceKey}` : '';
   }
@@ -631,7 +634,9 @@
   }
 
   function canStop(service: ServiceResp) {
-    return service.status === 'running' || service.status === 'faulted';
+    return (
+      !service.active_deployment && (service.status === 'running' || service.status === 'faulted')
+    );
   }
 
   async function openDeployDialog(service: ServiceResp) {

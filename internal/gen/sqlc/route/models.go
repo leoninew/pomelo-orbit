@@ -289,6 +289,7 @@ type Service struct {
 	ID            string    `db:"id"`
 	ApplicationID string    `db:"application_id"`
 	InstanceKey   string    `db:"instance_key"`
+	Code          string    `db:"code"`
 	VersionID     string    `db:"version_id"`
 	Status        string    `db:"status"`
 	CreatedAt     time.Time `db:"created_at"`

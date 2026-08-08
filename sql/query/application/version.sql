@@ -7,16 +7,20 @@ ORDER BY created_at DESC, id;
 -- name: CountVersions :one
 SELECT COUNT(*)
 FROM version
-WHERE application_id = ?
-  AND (? = '' OR label LIKE ? OR note LIKE ?);
+WHERE application_id = CAST(sqlc.arg(application_id) AS TEXT)
+  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+    OR label LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR note LIKE CAST(sqlc.narg(search_pattern) AS TEXT));
 
 -- name: ListVersionsPage :many
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
-WHERE application_id = ?
-  AND (? = '' OR label LIKE ? OR note LIKE ?)
+WHERE application_id = CAST(sqlc.arg(application_id) AS TEXT)
+  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
+    OR label LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    OR note LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
 ORDER BY created_at DESC, id
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: VersionByID :one
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at

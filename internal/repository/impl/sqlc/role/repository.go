@@ -57,23 +57,16 @@ func (r Repository) RoleByName(ctx context.Context, name string) (model.Role, er
 func (r Repository) ListRoles(ctx context.Context, page int, perPage int, search string) (repository.Page[model.Role], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	raw, pattern := dbmodel.LowerSearchPattern(search)
+	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
 	q := r.q(ctx)
-	total, err := q.CountRoles(ctx, rolesqlc.CountRolesParams{
-		Column1:     raw,
-		Code:        pattern,
-		Name:        pattern,
-		Description: sql.NullString{String: pattern, Valid: true},
-	})
+	total, err := q.CountRoles(ctx, searchPattern)
 	if err != nil {
 		return repository.Page[model.Role]{}, fmt.Errorf("count roles: %w", err)
 	}
 	rows, err := q.ListRoles(ctx, rolesqlc.ListRolesParams{
-		Column1:     raw,
-		Code:        pattern,
-		Name:        pattern,
-		Description: sql.NullString{String: pattern, Valid: true},
-		Limit:       int64(perPage),
-		Offset:      int64((page - 1) * perPage),
+		SearchPattern: searchPattern,
+		Limit:         int64(perPage),
+		Offset:        int64((page - 1) * perPage),
 	})
 	if err != nil {
 		return repository.Page[model.Role]{}, fmt.Errorf("list roles: %w", err)

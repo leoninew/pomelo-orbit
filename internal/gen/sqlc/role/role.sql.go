@@ -15,23 +15,14 @@ import (
 const countRoles = `-- name: CountRoles :one
 SELECT COUNT(*)
 FROM role
-WHERE (? = '' OR LOWER(code) LIKE ? OR LOWER(name) LIKE ? OR LOWER(COALESCE(description, '')) LIKE ?)
+WHERE (CAST(?1 AS TEXT) IS NULL
+  OR LOWER(code) LIKE CAST(?1 AS TEXT)
+  OR LOWER(name) LIKE CAST(?1 AS TEXT)
+  OR LOWER(COALESCE(description, '')) LIKE CAST(?1 AS TEXT))
 `
 
-type CountRolesParams struct {
-	Column1     interface{}    `db:"column_1"`
-	Code        string         `db:"code"`
-	Name        string         `db:"name"`
-	Description sql.NullString `db:"description"`
-}
-
-func (q *Queries) CountRoles(ctx context.Context, arg CountRolesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRoles,
-		arg.Column1,
-		arg.Code,
-		arg.Name,
-		arg.Description,
-	)
+func (q *Queries) CountRoles(ctx context.Context, searchPattern sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countRoles, searchPattern)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -138,29 +129,22 @@ func (q *Queries) ListPermissions(ctx context.Context) ([]Permission, error) {
 const listRoles = `-- name: ListRoles :many
 SELECT id, code, name, description, created_at, updated_at
 FROM role
-WHERE (? = '' OR LOWER(code) LIKE ? OR LOWER(name) LIKE ? OR LOWER(COALESCE(description, '')) LIKE ?)
+WHERE (CAST(?1 AS TEXT) IS NULL
+  OR LOWER(code) LIKE CAST(?1 AS TEXT)
+  OR LOWER(name) LIKE CAST(?1 AS TEXT)
+  OR LOWER(COALESCE(description, '')) LIKE CAST(?1 AS TEXT))
 ORDER BY created_at DESC, id
-LIMIT ? OFFSET ?
+LIMIT ?3 OFFSET ?2
 `
 
 type ListRolesParams struct {
-	Column1     interface{}    `db:"column_1"`
-	Code        string         `db:"code"`
-	Name        string         `db:"name"`
-	Description sql.NullString `db:"description"`
-	Limit       int64          `db:"limit"`
-	Offset      int64          `db:"offset"`
+	SearchPattern sql.NullString `db:"search_pattern"`
+	Offset        int64          `db:"offset"`
+	Limit         int64          `db:"limit"`
 }
 
 func (q *Queries) ListRoles(ctx context.Context, arg ListRolesParams) ([]Role, error) {
-	rows, err := q.db.QueryContext(ctx, listRoles,
-		arg.Column1,
-		arg.Code,
-		arg.Name,
-		arg.Description,
-		arg.Limit,
-		arg.Offset,
-	)
+	rows, err := q.db.QueryContext(ctx, listRoles, arg.SearchPattern, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

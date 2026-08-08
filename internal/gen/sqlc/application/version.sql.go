@@ -38,24 +38,19 @@ func (q *Queries) CountVersionRuntimeRefs(ctx context.Context, versionID string)
 const countVersions = `-- name: CountVersions :one
 SELECT COUNT(*)
 FROM version
-WHERE application_id = ?
-  AND (? = '' OR label LIKE ? OR note LIKE ?)
+WHERE application_id = CAST(?1 AS TEXT)
+  AND (CAST(?2 AS TEXT) IS NULL
+    OR label LIKE CAST(?2 AS TEXT)
+    OR note LIKE CAST(?2 AS TEXT))
 `
 
 type CountVersionsParams struct {
 	ApplicationID string         `db:"application_id"`
-	Column2       interface{}    `db:"column_2"`
-	Label         string         `db:"label"`
-	Note          sql.NullString `db:"note"`
+	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountVersions(ctx context.Context, arg CountVersionsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countVersions,
-		arg.ApplicationID,
-		arg.Column2,
-		arg.Label,
-		arg.Note,
-	)
+	row := q.db.QueryRowContext(ctx, countVersions, arg.ApplicationID, arg.SearchPattern)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -570,29 +565,27 @@ func (q *Queries) ListVersions(ctx context.Context, applicationID string) ([]Ver
 const listVersionsPage = `-- name: ListVersionsPage :many
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
-WHERE application_id = ?
-  AND (? = '' OR label LIKE ? OR note LIKE ?)
+WHERE application_id = CAST(?1 AS TEXT)
+  AND (CAST(?2 AS TEXT) IS NULL
+    OR label LIKE CAST(?2 AS TEXT)
+    OR note LIKE CAST(?2 AS TEXT))
 ORDER BY created_at DESC, id
-LIMIT ? OFFSET ?
+LIMIT ?4 OFFSET ?3
 `
 
 type ListVersionsPageParams struct {
 	ApplicationID string         `db:"application_id"`
-	Column2       interface{}    `db:"column_2"`
-	Label         string         `db:"label"`
-	Note          sql.NullString `db:"note"`
-	Limit         int64          `db:"limit"`
+	SearchPattern sql.NullString `db:"search_pattern"`
 	Offset        int64          `db:"offset"`
+	Limit         int64          `db:"limit"`
 }
 
 func (q *Queries) ListVersionsPage(ctx context.Context, arg ListVersionsPageParams) ([]Version, error) {
 	rows, err := q.db.QueryContext(ctx, listVersionsPage,
 		arg.ApplicationID,
-		arg.Column2,
-		arg.Label,
-		arg.Note,
-		arg.Limit,
+		arg.SearchPattern,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

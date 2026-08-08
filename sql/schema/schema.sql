@@ -270,6 +270,9 @@ CREATE INDEX IF NOT EXISTS idx_pipeline_run_snapshot ON pipeline_run(snapshot_id
 CREATE INDEX IF NOT EXISTS idx_pipeline_run_retry_of ON pipeline_run(retry_of);
 CREATE INDEX IF NOT EXISTS idx_pipeline_run_project ON pipeline_run(project_id);
 CREATE INDEX IF NOT EXISTS idx_pipeline_run_repository_status ON pipeline_run(repository_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pipeline_run_active_repository
+    ON pipeline_run(repository_id)
+    WHERE status IN ('waiting_to_run', 'running');
 
 CREATE TABLE IF NOT EXISTS pipeline_stage_run (
     id TEXT PRIMARY KEY,
@@ -286,6 +289,8 @@ CREATE TABLE IF NOT EXISTS pipeline_stage_run (
 
 CREATE INDEX IF NOT EXISTS idx_pipeline_stage_run_run ON pipeline_stage_run(pipeline_run_id);
 CREATE INDEX IF NOT EXISTS idx_pipeline_stage_run_status ON pipeline_stage_run(status);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pipeline_stage_run_run_stage
+    ON pipeline_stage_run(pipeline_run_id, stage_id);
 
 CREATE TABLE IF NOT EXISTS pipeline_run_version_binding (
     pipeline_run_id TEXT PRIMARY KEY,
@@ -640,6 +645,9 @@ CREATE INDEX IF NOT EXISTS idx_deployment_status ON deployment(status);
 CREATE INDEX IF NOT EXISTS idx_deployment_started ON deployment(started_at);
 CREATE INDEX IF NOT EXISTS idx_deployment_project ON deployment(project_id);
 CREATE INDEX IF NOT EXISTS idx_deployment_service_success_hash ON deployment(service_id, status, effective_plan_hash, finished_at);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_deployment_active_service
+    ON deployment(service_id)
+    WHERE service_id IS NOT NULL AND status IN ('waiting_to_run', 'running');
 
 CREATE TABLE IF NOT EXISTS route (
     id TEXT PRIMARY KEY,

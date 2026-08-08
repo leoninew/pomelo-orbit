@@ -94,7 +94,7 @@ func (s Service) ProvisionGateway(ctx context.Context, userId string, input gate
 	result.Version = version
 
 	if existing == nil {
-		created, err := s.serviceCommands.CreateService(ctx, userId, servicedto.ServiceCreateInput{ApplicationId: result.Gateway.Application.Id, VersionId: version.Id, InstanceKey: instanceKey})
+		created, err := s.serviceCommands.CreateService(ctx, userId, servicedto.ServiceCreateInput{ApplicationId: result.Gateway.Application.Id, VersionId: version.Id, InstanceKey: instanceKey, Code: result.Gateway.Application.Code + "-" + instanceKey})
 		if err != nil {
 			return gatewaydto.ProvisionGatewayResult{}, err
 		}

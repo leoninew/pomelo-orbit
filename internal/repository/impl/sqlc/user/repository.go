@@ -73,21 +73,16 @@ func (r Repository) UserPermissions(ctx context.Context, userId string) ([]strin
 func (r Repository) ListUsers(ctx context.Context, page int, perPage int, search string) (repository.Page[model.User], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	raw, pattern := dbmodel.LowerSearchPattern(search)
+	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
 	q := r.q(ctx)
-	total, err := q.CountUsers(ctx, usersqlc.CountUsersParams{
-		Column1:  raw,
-		Username: pattern,
-		Email:    sql.NullString{String: pattern, Valid: true},
-	})
+	total, err := q.CountUsers(ctx, searchPattern)
 	if err != nil {
 		return repository.Page[model.User]{}, fmt.Errorf("count users: %w", err)
 	}
 	rows, err := q.ListUsers(ctx, usersqlc.ListUsersParams{
-		Column1:  raw,
-		Username: pattern,
-		Email:    sql.NullString{String: pattern, Valid: true},
-		Limit:    int64(perPage),
-		Offset:   int64((page - 1) * perPage),
+		SearchPattern: searchPattern,
+		Limit:         int64(perPage),
+		Offset:        int64((page - 1) * perPage),
 	})
 	if err != nil {
 		return repository.Page[model.User]{}, fmt.Errorf("list users: %w", err)

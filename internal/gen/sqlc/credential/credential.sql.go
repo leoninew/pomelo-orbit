@@ -14,24 +14,19 @@ import (
 const countCredentials = `-- name: CountCredentials :one
 SELECT COUNT(*)
 FROM credential
-WHERE project_id = ?
-  AND (? = '' OR name LIKE ? OR type LIKE ?)
+WHERE project_id = CAST(?1 AS TEXT)
+  AND (CAST(?2 AS TEXT) IS NULL
+    OR name LIKE CAST(?2 AS TEXT)
+    OR type LIKE CAST(?2 AS TEXT))
 `
 
 type CountCredentialsParams struct {
-	ProjectID sql.NullString `db:"project_id"`
-	Column2   interface{}    `db:"column_2"`
-	Name      string         `db:"name"`
-	Type      string         `db:"type"`
+	ProjectID     string         `db:"project_id"`
+	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountCredentials(ctx context.Context, arg CountCredentialsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countCredentials,
-		arg.ProjectID,
-		arg.Column2,
-		arg.Name,
-		arg.Type,
-	)
+	row := q.db.QueryRowContext(ctx, countCredentials, arg.ProjectID, arg.SearchPattern)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -183,19 +178,19 @@ func (q *Queries) DeleteCredential(ctx context.Context, id string) error {
 const listCredentials = `-- name: ListCredentials :many
 SELECT id, project_id, name, type, encrypted_data, created_at
 FROM credential
-WHERE project_id = ?
-  AND (? = '' OR name LIKE ? OR type LIKE ?)
+WHERE project_id = CAST(?1 AS TEXT)
+  AND (CAST(?2 AS TEXT) IS NULL
+    OR name LIKE CAST(?2 AS TEXT)
+    OR type LIKE CAST(?2 AS TEXT))
 ORDER BY created_at DESC
-LIMIT ? OFFSET ?
+LIMIT ?4 OFFSET ?3
 `
 
 type ListCredentialsParams struct {
-	ProjectID sql.NullString `db:"project_id"`
-	Column2   interface{}    `db:"column_2"`
-	Name      string         `db:"name"`
-	Type      string         `db:"type"`
-	Limit     int64          `db:"limit"`
-	Offset    int64          `db:"offset"`
+	ProjectID     string         `db:"project_id"`
+	SearchPattern sql.NullString `db:"search_pattern"`
+	Offset        int64          `db:"offset"`
+	Limit         int64          `db:"limit"`
 }
 
 type ListCredentialsRow struct {
@@ -210,11 +205,9 @@ type ListCredentialsRow struct {
 func (q *Queries) ListCredentials(ctx context.Context, arg ListCredentialsParams) ([]ListCredentialsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listCredentials,
 		arg.ProjectID,
-		arg.Column2,
-		arg.Name,
-		arg.Type,
-		arg.Limit,
+		arg.SearchPattern,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

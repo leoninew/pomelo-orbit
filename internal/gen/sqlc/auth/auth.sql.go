@@ -14,16 +14,12 @@ import (
 const countLoginHistory = `-- name: CountLoginHistory :one
 SELECT COUNT(*)
 FROM login_history
-WHERE (? = '' OR LOWER(username) LIKE ?)
+WHERE (CAST(?1 AS TEXT) IS NULL
+  OR LOWER(username) LIKE CAST(?1 AS TEXT))
 `
 
-type CountLoginHistoryParams struct {
-	Column1  interface{} `db:"column_1"`
-	Username string      `db:"username"`
-}
-
-func (q *Queries) CountLoginHistory(ctx context.Context, arg CountLoginHistoryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countLoginHistory, arg.Column1, arg.Username)
+func (q *Queries) CountLoginHistory(ctx context.Context, searchPattern sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countLoginHistory, searchPattern)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -32,25 +28,20 @@ func (q *Queries) CountLoginHistory(ctx context.Context, arg CountLoginHistoryPa
 const listLoginHistory = `-- name: ListLoginHistory :many
 SELECT id, user_id, username, ip_address, user_agent, login_at, success
 FROM login_history
-WHERE (? = '' OR LOWER(username) LIKE ?)
+WHERE (CAST(?1 AS TEXT) IS NULL
+  OR LOWER(username) LIKE CAST(?1 AS TEXT))
 ORDER BY login_at DESC, id DESC
-LIMIT ? OFFSET ?
+LIMIT ?3 OFFSET ?2
 `
 
 type ListLoginHistoryParams struct {
-	Column1  interface{} `db:"column_1"`
-	Username string      `db:"username"`
-	Limit    int64       `db:"limit"`
-	Offset   int64       `db:"offset"`
+	SearchPattern sql.NullString `db:"search_pattern"`
+	Offset        int64          `db:"offset"`
+	Limit         int64          `db:"limit"`
 }
 
 func (q *Queries) ListLoginHistory(ctx context.Context, arg ListLoginHistoryParams) ([]LoginHistory, error) {
-	rows, err := q.db.QueryContext(ctx, listLoginHistory,
-		arg.Column1,
-		arg.Username,
-		arg.Limit,
-		arg.Offset,
-	)
+	rows, err := q.db.QueryContext(ctx, listLoginHistory, arg.SearchPattern, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

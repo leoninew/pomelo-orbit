@@ -1551,8 +1551,8 @@
     capabilities: '',
   });
   const portForm = reactive<PortRow>({
-    name: '',
-    protocol: 'tcp',
+    name: 'http',
+    protocol: 'http',
     host_port: '',
     container_port: '',
     mode: 'host',
@@ -2146,8 +2146,8 @@
         portForm,
         index === undefined
           ? {
-              name: '',
-              protocol: 'tcp',
+              name: 'http',
+              protocol: 'http',
               host_port: '',
               container_port: '',
               mode: 'host',

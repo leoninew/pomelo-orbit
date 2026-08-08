@@ -14,26 +14,20 @@ import (
 const countRoutes = `-- name: CountRoutes :one
 SELECT COUNT(*)
 FROM route
-WHERE project_id = ?
-  AND (? = '' OR name LIKE ? OR domain LIKE ? OR target_url LIKE ?)
+WHERE project_id = CAST(?1 AS TEXT)
+  AND (CAST(?2 AS TEXT) IS NULL
+    OR name LIKE CAST(?2 AS TEXT)
+    OR domain LIKE CAST(?2 AS TEXT)
+    OR target_url LIKE CAST(?2 AS TEXT))
 `
 
 type CountRoutesParams struct {
-	ProjectID sql.NullString `db:"project_id"`
-	Column2   interface{}    `db:"column_2"`
-	Name      string         `db:"name"`
-	Domain    string         `db:"domain"`
-	TargetUrl string         `db:"target_url"`
+	ProjectID     string         `db:"project_id"`
+	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountRoutes(ctx context.Context, arg CountRoutesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRoutes,
-		arg.ProjectID,
-		arg.Column2,
-		arg.Name,
-		arg.Domain,
-		arg.TargetUrl,
-	)
+	row := q.db.QueryRowContext(ctx, countRoutes, arg.ProjectID, arg.SearchPattern)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -212,20 +206,20 @@ func (q *Queries) ListEnabledRoutes(ctx context.Context, enabled int64) ([]ListE
 const listRoutes = `-- name: ListRoutes :many
 SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
 FROM route
-WHERE project_id = ?
-  AND (? = '' OR name LIKE ? OR domain LIKE ? OR target_url LIKE ?)
+WHERE project_id = CAST(?1 AS TEXT)
+  AND (CAST(?2 AS TEXT) IS NULL
+    OR name LIKE CAST(?2 AS TEXT)
+    OR domain LIKE CAST(?2 AS TEXT)
+    OR target_url LIKE CAST(?2 AS TEXT))
 ORDER BY id DESC
-LIMIT ? OFFSET ?
+LIMIT ?4 OFFSET ?3
 `
 
 type ListRoutesParams struct {
-	ProjectID sql.NullString `db:"project_id"`
-	Column2   interface{}    `db:"column_2"`
-	Name      string         `db:"name"`
-	Domain    string         `db:"domain"`
-	TargetUrl string         `db:"target_url"`
-	Limit     int64          `db:"limit"`
-	Offset    int64          `db:"offset"`
+	ProjectID     string         `db:"project_id"`
+	SearchPattern sql.NullString `db:"search_pattern"`
+	Offset        int64          `db:"offset"`
+	Limit         int64          `db:"limit"`
 }
 
 type ListRoutesRow struct {
@@ -247,12 +241,9 @@ type ListRoutesRow struct {
 func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListRoutesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRoutes,
 		arg.ProjectID,
-		arg.Column2,
-		arg.Name,
-		arg.Domain,
-		arg.TargetUrl,
-		arg.Limit,
+		arg.SearchPattern,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

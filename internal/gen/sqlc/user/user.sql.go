@@ -15,17 +15,13 @@ import (
 const countUsers = `-- name: CountUsers :one
 SELECT COUNT(*)
 FROM user
-WHERE (? = '' OR LOWER(username) LIKE ? OR LOWER(COALESCE(email, '')) LIKE ?)
+WHERE (CAST(?1 AS TEXT) IS NULL
+  OR LOWER(username) LIKE CAST(?1 AS TEXT)
+  OR LOWER(COALESCE(email, '')) LIKE CAST(?1 AS TEXT))
 `
 
-type CountUsersParams struct {
-	Column1  interface{}    `db:"column_1"`
-	Username string         `db:"username"`
-	Email    sql.NullString `db:"email"`
-}
-
-func (q *Queries) CountUsers(ctx context.Context, arg CountUsersParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countUsers, arg.Column1, arg.Username, arg.Email)
+func (q *Queries) CountUsers(ctx context.Context, searchPattern sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsers, searchPattern)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -107,17 +103,17 @@ const listUsers = `-- name: ListUsers :many
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
 FROM user
-WHERE (? = '' OR LOWER(username) LIKE ? OR LOWER(COALESCE(email, '')) LIKE ?)
+WHERE (CAST(?1 AS TEXT) IS NULL
+  OR LOWER(username) LIKE CAST(?1 AS TEXT)
+  OR LOWER(COALESCE(email, '')) LIKE CAST(?1 AS TEXT))
 ORDER BY created_at DESC, id
-LIMIT ? OFFSET ?
+LIMIT ?3 OFFSET ?2
 `
 
 type ListUsersParams struct {
-	Column1  interface{}    `db:"column_1"`
-	Username string         `db:"username"`
-	Email    sql.NullString `db:"email"`
-	Limit    int64          `db:"limit"`
-	Offset   int64          `db:"offset"`
+	SearchPattern sql.NullString `db:"search_pattern"`
+	Offset        int64          `db:"offset"`
+	Limit         int64          `db:"limit"`
 }
 
 type ListUsersRow struct {
@@ -135,13 +131,7 @@ type ListUsersRow struct {
 }
 
 func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUsers,
-		arg.Column1,
-		arg.Username,
-		arg.Email,
-		arg.Limit,
-		arg.Offset,
-	)
+	rows, err := q.db.QueryContext(ctx, listUsers, arg.SearchPattern, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

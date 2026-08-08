@@ -10,8 +10,60 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
+
+func TestListApplicationsBindsTypedFilters(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = database.Close() }()
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	for _, project := range []struct {
+		id   string
+		code string
+	}{
+		{id: "project-1", code: "project-one"},
+		{id: "project-2", code: "project-two"},
+	} {
+		if _, err := database.ExecContext(ctx, `INSERT INTO project (id, name, code) VALUES (?, ?, ?)`, project.id, project.code, project.code); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	projectOne := "project-1"
+	projectTwo := "project-2"
+	repo := NewRepository(database)
+	for _, app := range []model.Application{
+		{Id: "application-1", ProjectId: &projectOne, Name: "Application One", Code: "application-one", Kind: "standard"},
+		{Id: "application-2", ProjectId: &projectTwo, Name: "Application Two", Code: "application-two", Kind: "gateway"},
+	} {
+		if err := repo.CreateApplication(ctx, app); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	filtered, err := repo.ListApplications(ctx, &projectOne, 1, 1, "One", "standard")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filtered.Total != 1 || len(filtered.Items) != 1 || filtered.Items[0].Id != "application-1" {
+		t.Fatalf("unexpected filtered page: %+v", filtered)
+	}
+
+	all, err := repo.ListApplications(ctx, nil, 1, 100, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if all.Total != 2 || len(all.Items) != 2 {
+		t.Fatalf("unexpected unfiltered page: %+v", all)
+	}
+}
 
 func TestDeleteApplicationRejectsReferencedVersion(t *testing.T) {
 	database, err := sql.Open("sqlite", ":memory:")

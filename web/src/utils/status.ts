@@ -21,12 +21,11 @@ export function applicationKindTone(kind: string | undefined | null): BadgeTone 
  *
  * 来自 Service.status（application.service_status）；无 Service 时为空。
  * - '' / undeployed: 从未部署
- * - deploying | running | stopped | faulted
+ * - running | stopped | faulted
  */
 export function appStatusTone(status: string): BadgeTone {
   const tones: Record<string, BadgeTone> = {
     undeployed: 'default',
-    deploying: 'info',
     running: 'success',
     stopped: 'warning',
     faulted: 'error',

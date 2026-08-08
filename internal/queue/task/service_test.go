@@ -22,7 +22,7 @@ func (s *taskRepositoryStub) FindById(_ context.Context, _ string) (*Task, error
 
 func TestCreateGeneratesULID(t *testing.T) {
 	repo := &taskRepositoryStub{}
-	service := New(repo, 3)
+	service := New(repo, 2)
 
 	task, err := service.Create(context.Background(), CreateInput{TaskType: "test"})
 	if err != nil {
@@ -30,5 +30,8 @@ func TestCreateGeneratesULID(t *testing.T) {
 	}
 	if _, err := ulid.ParseStrict(task.Id); err != nil {
 		t.Fatalf("expected ULID task ID, got %q: %v", task.Id, err)
+	}
+	if task.MaxAttempts != 2 {
+		t.Fatalf("max attempts = %d, want 2", task.MaxAttempts)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"time"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
 	deploymentport "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/port"
@@ -56,6 +57,7 @@ func NewExecutionService(
 	workspace deploymentport.Workspace,
 	runner deploymentport.CommandRunner,
 	logStore deploymentport.ExecutionLogStore,
+	pollInterval time.Duration,
 ) Service {
 	store := &stores{
 		project: project, application: application,
@@ -64,7 +66,7 @@ func NewExecutionService(
 	return Service{
 		project: project, application: application,
 		service: service, deployment: deployment, store: store, executionStore: store,
-		logger: logger, workspace: workspace, runner: runner,
+		logger: logger, workspace: workspace, runner: runner, pollInterval: pollInterval,
 		logStore: logStore, executionLogStore: logStore,
 		gatewayCoordinator: gatewayCoordinator,
 	}
@@ -73,6 +75,9 @@ func NewExecutionService(
 func (s Service) DeployService(ctx context.Context, userId string, serviceId string, input deploymentdto.DeployServiceInput) (deploymentdto.DeployServiceResult, error) {
 	service, app, err := s.serviceForUser(ctx, userId, serviceId)
 	if err != nil {
+		return deploymentdto.DeployServiceResult{}, err
+	}
+	if err := s.ensureNoActiveDeployment(ctx, service.Id); err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
 	if err := s.ensureBusinessGatewayRunning(ctx, app); err != nil {
@@ -99,7 +104,7 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 		if err != nil {
 			return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to check active gateway", err)
 		}
-		if active && service.Status != status.ServiceStatusRunning && service.Status != status.ServiceStatusDeploying {
+		if active {
 			return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, "another gateway is already deploying or running; multiple gateways are not supported")
 		}
 	}
@@ -136,9 +141,6 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 	if s.dispatcher == nil {
 		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}
-	if err := s.commandStore.UpdateServiceStatus(ctx, service.Id, status.ServiceStatusDeploying); err != nil {
-		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to prepare service", err)
-	}
 	deployment.ServiceId = &service.Id
 	deployment.EffectivePlanHash = &planHash
 	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, service.InstanceKey), deploymentPullPolicy(plan), input.ForceRecreate).String()
@@ -158,6 +160,9 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	}
 	service, err := s.resolveServiceTarget(ctx, app.Id, input)
 	if err != nil {
+		return "", err
+	}
+	if err := s.ensureNoActiveDeployment(ctx, service.Id); err != nil {
 		return "", err
 	}
 	canRemoveStoppedVolumes := service.Status == status.ServiceStatusStopped && input.RemoveVolumes
@@ -193,6 +198,17 @@ func (s Service) ensureBusinessGatewayRunning(ctx context.Context, app model.App
 	return s.gatewayCoordinator.EnsureGatewayRunning(ctx, app)
 }
 
+func (s Service) ensureNoActiveDeployment(ctx context.Context, serviceID string) error {
+	active, err := s.commandStore.HasActiveDeployment(ctx, serviceID)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to check active deployment", err)
+	}
+	if active {
+		return apperror.New(apperror.KindConflict, "Service already has an active deployment")
+	}
+	return nil
+}
+
 func (s Service) RestartApplication(ctx context.Context, userId string, applicationId string, input deploymentdto.ServiceTargetInput) (string, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
@@ -203,6 +219,9 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	}
 	service, err := s.resolveServiceTarget(ctx, app.Id, input)
 	if err != nil {
+		return "", err
+	}
+	if err := s.ensureNoActiveDeployment(ctx, service.Id); err != nil {
 		return "", err
 	}
 	if service.Status != status.ServiceStatusRunning && service.Status != status.ServiceStatusFaulted {

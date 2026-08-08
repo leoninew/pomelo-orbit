@@ -42,7 +42,11 @@ func TestRepositoryPersistsEffectivePlanHash(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("create deployment: %v", err)
 	}
-	if err := repository.CompleteDeployment(context.Background(), "deployment-1", status.WorkStatusRanToCompletion, ""); err != nil {
+	begun, err := repository.BeginDeployment(context.Background(), "deployment-1")
+	if err != nil || !begun {
+		t.Fatalf("begin deployment: begun=%t err=%v", begun, err)
+	}
+	if _, err := repository.CompleteDeployment(context.Background(), "deployment-1", status.WorkStatusRanToCompletion, ""); err != nil {
 		t.Fatalf("complete deployment: %v", err)
 	}
 

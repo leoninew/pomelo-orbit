@@ -262,9 +262,6 @@ func (s Service) DeleteGateway(ctx context.Context, userId string, applicationId
 		return apperror.Wrap(apperror.KindInternal, "Failed to load services", err)
 	}
 	for _, service := range services {
-		if service.Status == status.ServiceStatusDeploying {
-			return apperror.New(apperror.KindValidation, "应用正在部署中, 请稍后再试")
-		}
 		if service.Status == status.ServiceStatusRunning {
 			return apperror.New(apperror.KindValidation, "应用正在运行中, 请先停止后再删除")
 		}
@@ -570,7 +567,7 @@ func buildGatewayEffectivePlan(app model.Application, service model.Service, dec
 
 func isActiveServiceStatus(value string) bool {
 	switch strings.TrimSpace(value) {
-	case status.ServiceStatusRunning, status.ServiceStatusDeploying:
+	case status.ServiceStatusRunning:
 		return true
 	default:
 		return false

@@ -425,9 +425,11 @@
 
   const gatewayId = () => String(route.params.id || '');
   const operating = computed(() => opStatus.value === 'loading');
-  const isDeploying = computed(() => services.value.some((item) => item.status === 'deploying'));
+  const isDeploying = computed(() => services.value.some((item) => item.active_deployment));
   const stoppableServices = computed(() =>
-    services.value.filter((item) => item.status === 'running' || item.status === 'faulted')
+    services.value.filter(
+      (item) => !item.active_deployment && (item.status === 'running' || item.status === 'faulted')
+    )
   );
   const canStop = computed(() => stoppableServices.value.length > 0);
   const primaryService = computed(() => services.value[0] ?? null);

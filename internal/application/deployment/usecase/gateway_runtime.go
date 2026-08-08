@@ -17,7 +17,7 @@ func (s Service) gatewayForDeployment(ctx context.Context, app model.Application
 
 func isActiveServiceStatus(statusValue string) bool {
 	switch statusValue {
-	case status.ServiceStatusRunning, status.ServiceStatusDeploying:
+	case status.ServiceStatusRunning:
 		return true
 	default:
 		return false

@@ -7,7 +7,6 @@ import (
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
 	servicev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"github.com/gin-gonic/gin"
 )
 
@@ -166,24 +165,11 @@ func (h Handler) ListApplicationServices(c *gin.Context) {
 	if !ok {
 		return
 	}
-	items, err := h.service.ListServicesByApplication(c.Request.Context(), current.Id, c.Param("app_id"))
+	items, err := h.service.ListServiceViewsByApplication(c.Request.Context(), current.Id, c.Param("app_id"))
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	resp := applicationServiceResponses(items)
+	resp := serviceViewResponses(items)
 	transportresponse.ProtoJSON(c, http.StatusOK, &servicev1.ServiceListResp{Items: transportresponse.Ptrs(resp)})
-}
-
-func applicationServiceResponses(items []model.Service) []servicev1.ServiceResp {
-	resp := make([]servicev1.ServiceResp, 0, len(items))
-	for _, item := range items {
-		resp = append(resp, servicev1.ServiceResp{
-			Id: item.Id, ApplicationId: item.ApplicationId,
-			InstanceKey: item.InstanceKey, Code: item.Code, VersionId: item.VersionId,
-			Status:    item.Status,
-			CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt),
-		})
-	}
-	return resp
 }

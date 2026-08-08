@@ -26,6 +26,7 @@ export interface ServiceResp {
   effective_plan_hash: string;
   env: ServiceEnv[];
   effective_error: string;
+  active_deployment: boolean;
   code: string;
 }
 

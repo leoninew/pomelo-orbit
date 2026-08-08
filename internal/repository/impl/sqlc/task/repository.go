@@ -29,9 +29,6 @@ func (r Repository) q(ctx context.Context) *tasksqlc.Queries {
 }
 
 func (r Repository) Enqueue(ctx context.Context, id string, taskType string, payloadJSON string, maxAttempts int) error {
-	if maxAttempts < 1 {
-		return errors.New("maxAttempts must be at least 1")
-	}
 	now := time.Now().UTC()
 	err := r.q(ctx).EnqueueTask(ctx, tasksqlc.EnqueueTaskParams{
 		ID:          id,
@@ -101,6 +98,7 @@ func (r Repository) Complete(ctx context.Context, taskId string) error {
 		FinishedAt: sql.NullTime{Time: now, Valid: true},
 		UpdatedAt:  now,
 		ID:         taskId,
+		Status_2:   status.TaskRunning,
 	})
 	if err != nil {
 		return fmt.Errorf("complete task %s: %w", taskId, err)
@@ -117,6 +115,7 @@ func (r Repository) Fail(ctx context.Context, taskId string, message string) err
 		UpdatedAt:    now,
 		ErrorMessage: sql.NullString{String: message, Valid: true},
 		ID:           taskId,
+		Status_3:     status.TaskRunning,
 	})
 	if err != nil {
 		return fmt.Errorf("fail task %s: %w", taskId, err)

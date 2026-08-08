@@ -34,19 +34,21 @@ type Service struct {
 	secretKey         string
 	logger            *slog.Logger
 	executionTimeout  time.Duration
+	pollInterval      time.Duration
 	runner            pipelinerunport.ContainerRunner
 	localSource       repositoryport.LocalDirectorySource
 }
 
 type pipelineExecutionStore interface {
 	PipelineRun(ctx context.Context, id string) (model.PipelineRun, error)
+	ListPipelineStageRuns(ctx context.Context, runId string) ([]model.PipelineStageRun, error)
 	Repository(ctx context.Context, id string) (model.Repository, error)
 	Credential(ctx context.Context, id string) (model.Credential, error)
 	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
-	MarkPipelineRunRunning(ctx context.Context, id string) error
-	CompletePipelineRun(ctx context.Context, id string, status string, message string) error
-	InsertPipelineStageRun(ctx context.Context, stage model.PipelineStageRun) error
-	UpdatePipelineStageRun(ctx context.Context, stage model.PipelineStageRun) error
+	BeginPipelineRun(ctx context.Context, id string) (bool, error)
+	CompletePipelineRun(ctx context.Context, id string, status string, message string) (bool, error)
+	BeginPipelineStageRun(ctx context.Context, id string) (bool, error)
+	CompletePipelineStageRun(ctx context.Context, stage model.PipelineStageRun) (bool, error)
 	CreateArtifact(ctx context.Context, artifact model.Artifact) error
 	CommandArtifactByRunStageAndName(ctx context.Context, pipelineRunId string, pipelineStageId string, name string) (model.Artifact, error)
 	ListArtifactsByRun(ctx context.Context, projectId *string, runId string) ([]model.Artifact, error)
@@ -68,9 +70,9 @@ func New(project repository.ProjectReader, credential repository.CredentialStore
 	return Service{store: store, executionStore: store, versionForker: versionForker, transactionRunner: transactionRunner, dispatcher: dispatcher, workspace: workspace, secretKey: secretKey, logger: logger, runner: runner, logStore: logStore, localSource: localSource}
 }
 
-func NewExecutionService(project repository.ProjectReader, credential repository.CredentialStore, repos repository.RepositoryStore, pipeline repository.PipelineStore, pipelineRun repository.PipelineRunStore, application repository.ApplicationStore, versionForker applicationport.BuildVersionForker, transactionRunner pipelinerunport.TransactionRunner, workspace pipelinerunport.Workspace, secretKey string, logger *slog.Logger, executionTimeout time.Duration, runner pipelinerunport.ContainerRunner, logStore pipelinerunport.ExecutionLogStore, localSource repositoryport.LocalDirectorySource) Service {
+func NewExecutionService(project repository.ProjectReader, credential repository.CredentialStore, repos repository.RepositoryStore, pipeline repository.PipelineStore, pipelineRun repository.PipelineRunStore, application repository.ApplicationStore, versionForker applicationport.BuildVersionForker, transactionRunner pipelinerunport.TransactionRunner, workspace pipelinerunport.Workspace, secretKey string, logger *slog.Logger, executionTimeout time.Duration, pollInterval time.Duration, runner pipelinerunport.ContainerRunner, logStore pipelinerunport.ExecutionLogStore, localSource repositoryport.LocalDirectorySource) Service {
 	store := stores{project: project, credential: credential, repository: repos, pipeline: pipeline, pipelineRun: pipelineRun, application: application}
-	return Service{store: store, executionStore: store, versionForker: versionForker, transactionRunner: transactionRunner, workspace: workspace, secretKey: secretKey, logger: logger, executionTimeout: executionTimeout, runner: runner, logStore: logStore, executionLogStore: logStore, localSource: localSource}
+	return Service{store: store, executionStore: store, versionForker: versionForker, transactionRunner: transactionRunner, workspace: workspace, secretKey: secretKey, logger: logger, executionTimeout: executionTimeout, pollInterval: pollInterval, runner: runner, logStore: logStore, executionLogStore: logStore, localSource: localSource}
 }
 
 func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
@@ -97,8 +99,8 @@ func (s stores) LatestPipelineSnapshot(ctx context.Context, pipelineId string) (
 func (s stores) CreatePipelineSnapshot(ctx context.Context, snapshot model.PipelineSnapshot) error {
 	return s.pipeline.CreatePipelineSnapshot(ctx, snapshot)
 }
-func (s stores) PipelineStages(ctx context.Context, pipelineId string) ([]model.PipelineStage, error) {
-	return s.pipeline.PipelineStages(ctx, pipelineId)
+func (s stores) ApplicationPipelineStages(ctx context.Context, pipelineId string) ([]model.PipelineStage, error) {
+	return s.pipeline.ApplicationPipelineStages(ctx, pipelineId)
 }
 func (s stores) Application(ctx context.Context, id string) (model.Application, error) {
 	return s.application.Application(ctx, id)
@@ -136,29 +138,32 @@ func (s stores) ListArtifactsByRun(ctx context.Context, project *string, runID s
 func (s stores) Artifact(ctx context.Context, id string) (model.Artifact, error) {
 	return s.pipelineRun.Artifact(ctx, id)
 }
-func (s stores) CreatePipelineRun(ctx context.Context, run model.PipelineRun, binding *model.PipelineRunVersionBinding) error {
-	return s.pipelineRun.CreatePipelineRun(ctx, run, binding)
+func (s stores) CreatePipelineRun(ctx context.Context, run model.PipelineRun, binding *model.PipelineRunVersionBinding, stageRuns []model.PipelineStageRun) error {
+	return s.pipelineRun.CreatePipelineRun(ctx, run, binding, stageRuns)
 }
-func (s stores) RepositoryHasRunningPipelineRun(ctx context.Context, id string) (bool, error) {
-	return s.pipelineRun.RepositoryHasRunningPipelineRun(ctx, id)
+func (s stores) RepositoryHasActivePipelineRun(ctx context.Context, id string) (bool, error) {
+	return s.pipelineRun.RepositoryHasActivePipelineRun(ctx, id)
 }
 func (s stores) PipelineRunVersionBinding(ctx context.Context, runID string) (model.PipelineRunVersionBinding, error) {
 	return s.pipelineRun.PipelineRunVersionBinding(ctx, runID)
 }
-func (s stores) CancelPipelineRun(ctx context.Context, id string) error {
+func (s stores) CancelPipelineRun(ctx context.Context, id string) (bool, error) {
 	return s.pipelineRun.CancelPipelineRun(ctx, id)
 }
-func (s stores) MarkPipelineRunRunning(ctx context.Context, id string) error {
-	return s.pipelineRun.MarkPipelineRunRunning(ctx, id)
+func (s stores) CancelRunningPipelineStageRuns(ctx context.Context, id string) error {
+	return s.pipelineRun.CancelRunningPipelineStageRuns(ctx, id)
 }
-func (s stores) CompletePipelineRun(ctx context.Context, id, statusValue, message string) error {
+func (s stores) BeginPipelineRun(ctx context.Context, id string) (bool, error) {
+	return s.pipelineRun.BeginPipelineRun(ctx, id)
+}
+func (s stores) CompletePipelineRun(ctx context.Context, id, statusValue, message string) (bool, error) {
 	return s.pipelineRun.CompletePipelineRun(ctx, id, statusValue, message)
 }
-func (s stores) InsertPipelineStageRun(ctx context.Context, stage model.PipelineStageRun) error {
-	return s.pipelineRun.InsertPipelineStageRun(ctx, stage)
+func (s stores) BeginPipelineStageRun(ctx context.Context, id string) (bool, error) {
+	return s.pipelineRun.BeginPipelineStageRun(ctx, id)
 }
-func (s stores) UpdatePipelineStageRun(ctx context.Context, stage model.PipelineStageRun) error {
-	return s.pipelineRun.UpdatePipelineStageRun(ctx, stage)
+func (s stores) CompletePipelineStageRun(ctx context.Context, stage model.PipelineStageRun) (bool, error) {
+	return s.pipelineRun.CompletePipelineStageRun(ctx, stage)
 }
 func (s stores) CreateArtifact(ctx context.Context, artifact model.Artifact) error {
 	return s.pipelineRun.CreateArtifact(ctx, artifact)
@@ -206,7 +211,7 @@ func (s Service) PreviewPipelineRunVariables(ctx context.Context, userID, pipeli
 	if err != nil {
 		return pipelinerundto.PipelineRunVariablePreview{}, err
 	}
-	stages, err := s.store.PipelineStages(ctx, pipeline.Id)
+	stages, err := s.store.ApplicationPipelineStages(ctx, pipeline.Id)
 	if err != nil {
 		return pipelinerundto.PipelineRunVariablePreview{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
 	}
@@ -229,9 +234,6 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId, runId string) (pi
 	original, err := s.loadPipelineRunForUser(ctx, userId, runId)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
-	}
-	if original.Status != status.WorkStatusFaulted && original.Status != status.WorkStatusRanToCompletion {
-		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "Cannot retry run with status "+original.Status)
 	}
 	pipeline, err := s.pipelineForUser(ctx, userId, original.PipelineId)
 	if err != nil {
@@ -276,7 +278,11 @@ func (s Service) createPipelineRun(ctx context.Context, pipeline model.Pipeline,
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
 	run := model.PipelineRun{Id: idutil.NewId(), ProjectId: pipeline.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, PipelineId: pipeline.Id, PipelineName: pipeline.Name, PipelineVersion: pipeline.Version, Trigger: "manual", TriggerRef: ref, VariablesSnapshot: variables, Status: status.WorkStatusWaitingToRun, RetryOf: retryOf}
-	if err := s.store.CreatePipelineRun(ctx, run, binding); err != nil {
+	stageRuns, err := pipelineStageRuns(run.Id, snapshot.StagesSnapshot)
+	if err != nil {
+		return pipelinerundto.PipelineRunDetail{}, err
+	}
+	if err := s.store.CreatePipelineRun(ctx, run, binding, stageRuns); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
 	if s.dispatcher != nil {
@@ -344,8 +350,12 @@ func (s Service) CancelPipelineRun(ctx context.Context, userId, runId string) (p
 	if run.Status != status.WorkStatusWaitingToRun && run.Status != status.WorkStatusRunning {
 		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "Cannot cancel run with status "+run.Status)
 	}
-	if err := s.store.CancelPipelineRun(ctx, run.Id); err != nil {
+	canceled, err := s.store.CancelPipelineRun(ctx, run.Id)
+	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to cancel pipeline run", err)
+	}
+	if !canceled {
+		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "Cannot cancel run with status "+run.Status)
 	}
 	updated, err := s.store.PipelineRun(ctx, run.Id)
 	if err != nil {
@@ -484,14 +494,32 @@ func (s Service) resolvePipelineRunVersionBinding(ctx context.Context, snapshot 
 }
 
 func (s Service) ensureRepositoryHasNoRunningPipelineRun(ctx context.Context, repositoryID string) error {
-	running, err := s.store.RepositoryHasRunningPipelineRun(ctx, repositoryID)
+	running, err := s.store.RepositoryHasActivePipelineRun(ctx, repositoryID)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check running pipeline runs", err)
 	}
 	if running {
-		return apperror.New(apperror.KindValidation, "Repository already has a running pipeline run")
+		return apperror.New(apperror.KindConflict, "Repository already has an active pipeline run")
 	}
 	return nil
+}
+
+func pipelineStageRuns(runID, stagesSnapshot string) ([]model.PipelineStageRun, error) {
+	var stages []model.StageDefinition
+	if err := json.Unmarshal([]byte(stagesSnapshot), &stages); err != nil {
+		return nil, apperror.New(apperror.KindInternal, "Invalid pipeline snapshot stages")
+	}
+	runs := make([]model.PipelineStageRun, 0, len(stages))
+	for _, stage := range stages {
+		runs = append(runs, model.PipelineStageRun{
+			Id:            idutil.NewId(),
+			PipelineRunId: runID,
+			StageId:       stage.Id,
+			StageName:     stage.Name,
+			Status:        status.WorkStatusWaitingToRun,
+		})
+	}
+	return runs, nil
 }
 func (s Service) ensureRunRepositoryFilter(ctx context.Context, projectID, repositoryID string) error {
 	if strings.TrimSpace(repositoryID) == "" {

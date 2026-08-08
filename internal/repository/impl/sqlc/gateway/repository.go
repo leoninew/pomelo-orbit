@@ -36,11 +36,11 @@ func (r Repository) q(ctx context.Context) *gatewaysqlc.Queries {
 func (r Repository) HasActiveGatewayService(ctx context.Context, excludeApplicationId string) (bool, error) {
 	exclude := strings.TrimSpace(excludeApplicationId)
 	count, err := r.q(ctx).CountActiveGatewayServices(ctx, gatewaysqlc.CountActiveGatewayServicesParams{
-		Kind:          status.ApplicationKindGateway,
-		Status:        status.ServiceStatusRunning,
-		Status_2:      status.ServiceStatusDeploying,
-		Column4:       exclude,
-		ApplicationID: exclude,
+		Kind:                 status.ApplicationKindGateway,
+		ExcludeApplicationID: sql.NullString{String: exclude, Valid: exclude != ""},
+		ServiceStatus:        status.ServiceStatusRunning,
+		WaitingStatus:        status.WorkStatusWaitingToRun,
+		RunningStatus:        status.WorkStatusRunning,
 	})
 	if err != nil {
 		return false, fmt.Errorf("count active gateway services: %w", err)
@@ -58,9 +58,8 @@ func (r Repository) GatewayConfig(ctx context.Context, applicationId string) (mo
 
 func (r Repository) ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error) {
 	row, err := r.q(ctx).ResolveActiveGatewayConfig(ctx, gatewaysqlc.ResolveActiveGatewayConfigParams{
-		Kind:     status.ApplicationKindGateway,
-		Status:   status.ServiceStatusRunning,
-		Status_2: status.ServiceStatusDeploying,
+		Kind:   status.ApplicationKindGateway,
+		Status: status.ServiceStatusRunning,
 	})
 	if err == nil {
 		return gatewayFrom(row), nil

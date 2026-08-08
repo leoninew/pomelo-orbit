@@ -9,7 +9,7 @@ Doc role: living SoT
 ```text
 HTTP Deploy/Stop/Restart
   → usecase 校验 Service/Version 匹配，快照 Service RuntimeConfig 到 Deployment.options_json
-  → 写 Deployment / Service / Task
+  → 写 Deployment / Task（Service 不表达操作进行态）
   → worker 拾取 task
   → deployment_execution：只读 Deployment 快照，解析占位符 → Render → 工作区 → docker compose
   → 更新 Deployment / Service 状态与日志
@@ -17,6 +17,8 @@ HTTP Deploy/Stop/Restart
 
 - API **不**在请求路径内直接 `docker compose down/up` 作为同步主路径；由任务队列驱动。  
 - 项目名 / compose project 命名以实现代码为准（常见含 app、env、instance）。
+- worker 领取后先条件转换 `waiting_to_run -> running`，然后才执行 Render、工作区和 Docker 操作；完成写入只允许从 `running` 进入终态。
+- Cancel API 立即条件写入 `canceled`。worker 按 `worker.poll_interval` 读取该状态并取消外部命令 Context，后续完成写入不能覆盖取消终态。
 
 ## RuntimeConfig
 
@@ -39,9 +41,9 @@ HTTP Deploy/Stop/Restart
 
 预览（Preview）与部署应走同一套渲染语义（测试与 usecase 对齐）。
 
-## Gateway
-
 对每个 `gateway_http` endpoint，Host 统一派生为 `{component_name}.{service.code}.{gateway.base_domain}`；同一 Host、entrypoint 与归一化 path prefix 只能对应一个 endpoint。TLS `gateway_tcp` 使用同一 Host 作为 SNI；无 TLS TCP 仍使用 `HostSNI(*)`。
+
+## Gateway
 
 | 字段（GatewayConfig） | 用途 |
 |----------------------|------|
@@ -53,7 +55,13 @@ HTTP Deploy/Stop/Restart
 
 - 保存/编译：可生成未发布 Version（compile）。  
 - 部署 standard public 暴露前，可能需 reconcile Gateway TCP listen 集合（public TCP）。  
-- **单 active gateway**：已有 deploying/running 的 gateway Service 时拒绝再部署另一个 gateway。
+- **单 active gateway**：已有 `running` gateway Service，或另一 gateway Service 存在 `waiting_to_run` / `running` Deployment 时拒绝冲突部署。
+
+## 部署结果
+
+- Deploy/Restart 使用 `docker compose up -d` 的零退出码作为成功条件，并立即将 Service 更新为 `running`、Deployment 更新为 `ran_to_completion`。
+- Component Healthcheck 会渲染到 Compose，`depends_on.condition=service_healthy` 可影响 Compose 内启动顺序，但不决定 Deployment 主状态。独立验证接口才读取容器运行态与 Health 状态。
+- Pipeline 的 `execution_timeout` 超时属于失败：Run 和仍在运行的 Stage 写为 `faulted`，错误原因包含 timeout；关联 task 进入 `failed`。
 
 ## 平台 Route vs 应用 Expose
 
@@ -61,7 +69,7 @@ HTTP Deploy/Stop/Restart
 |--|-------|----------------|
 | 存储 | `route` 表 | `version_expose` |
 | 下发 | rest API 全量 PUT | 部署时 Docker labels / ports |
-| 域名 | 用户配置 domain | `gateway_http` 为 `{component_name}.{service.code}.{gateway.base_domain}` |
+| 域名 | 用户配置 domain | `gateway_http` 为 `{component_name}.{service.code}.{base_domain}` |
 
 证书：平台 Route 可存 PEM；应用 HTTPS/ACME 与 Gateway `tls_mode`、证书目录配置相关——细节见 `docs/guides/routing-and-certificates.md` 与代码（以代码为准）。
 

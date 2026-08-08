@@ -15,25 +15,34 @@ const countActiveGatewayServices = `-- name: CountActiveGatewayServices :one
 SELECT COUNT(*)
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
-WHERE a.kind = ? AND s.status IN (?, ?)
-  AND (? = '' OR s.application_id <> ?)
+WHERE a.kind = CAST(?1 AS TEXT)
+  AND (CAST(?2 AS TEXT) IS NULL OR s.application_id <> CAST(?2 AS TEXT))
+  AND (
+    s.status = CAST(?3 AS TEXT)
+    OR EXISTS (
+      SELECT 1
+      FROM deployment d
+      WHERE d.service_id = s.id
+        AND d.status IN (CAST(?4 AS TEXT), CAST(?5 AS TEXT))
+    )
+  )
 `
 
 type CountActiveGatewayServicesParams struct {
-	Kind          string      `db:"kind"`
-	Status        string      `db:"status"`
-	Status_2      string      `db:"status_2"`
-	Column4       interface{} `db:"column_4"`
-	ApplicationID string      `db:"application_id"`
+	Kind                 string         `db:"kind"`
+	ExcludeApplicationID sql.NullString `db:"exclude_application_id"`
+	ServiceStatus        string         `db:"service_status"`
+	WaitingStatus        string         `db:"waiting_status"`
+	RunningStatus        string         `db:"running_status"`
 }
 
 func (q *Queries) CountActiveGatewayServices(ctx context.Context, arg CountActiveGatewayServicesParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countActiveGatewayServices,
 		arg.Kind,
-		arg.Status,
-		arg.Status_2,
-		arg.Column4,
-		arg.ApplicationID,
+		arg.ExcludeApplicationID,
+		arg.ServiceStatus,
+		arg.WaitingStatus,
+		arg.RunningStatus,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -195,19 +204,18 @@ SELECT gc.application_id, gc.rest_api_url, gc.base_domain, gc.default_entrypoint
 FROM gateway_config gc
 INNER JOIN service s ON s.application_id = gc.application_id
 INNER JOIN application a ON a.id = gc.application_id
-WHERE a.kind = ? AND s.status IN (?, ?)
+WHERE a.kind = ? AND s.status = ?
 ORDER BY s.updated_at DESC, gc.application_id
 LIMIT 1
 `
 
 type ResolveActiveGatewayConfigParams struct {
-	Kind     string `db:"kind"`
-	Status   string `db:"status"`
-	Status_2 string `db:"status_2"`
+	Kind   string `db:"kind"`
+	Status string `db:"status"`
 }
 
 func (q *Queries) ResolveActiveGatewayConfig(ctx context.Context, arg ResolveActiveGatewayConfigParams) (GatewayConfig, error) {
-	row := q.db.QueryRowContext(ctx, resolveActiveGatewayConfig, arg.Kind, arg.Status, arg.Status_2)
+	row := q.db.QueryRowContext(ctx, resolveActiveGatewayConfig, arg.Kind, arg.Status)
 	var i GatewayConfig
 	err := row.Scan(
 		&i.ApplicationID,

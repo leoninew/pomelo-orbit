@@ -107,7 +107,7 @@ func (s stores) UpdateServiceAfterDeploy(ctx context.Context, id string, status 
 func (s stores) CreateDeployment(ctx context.Context, deployment model.Deployment) error {
 	return s.deployment.CreateDeployment(ctx, deployment)
 }
-func (s stores) CompleteDeployment(ctx context.Context, id string, status string, message string) error {
+func (s stores) CompleteDeployment(ctx context.Context, id string, status string, message string) (bool, error) {
 	return s.deployment.CompleteDeployment(ctx, id, status, message)
 }
 func (s stores) ListDeployments(ctx context.Context, projectId string, applicationId string, status string, search string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (repository.Page[model.Deployment], error) {
@@ -116,11 +116,14 @@ func (s stores) ListDeployments(ctx context.Context, projectId string, applicati
 func (s stores) Deployment(ctx context.Context, id string) (model.Deployment, error) {
 	return s.deployment.Deployment(ctx, id)
 }
-func (s stores) CancelDeployment(ctx context.Context, id string) error {
+func (s stores) CancelDeployment(ctx context.Context, id string) (bool, error) {
 	return s.deployment.CancelDeployment(ctx, id)
 }
-func (s stores) MarkDeploymentRunning(ctx context.Context, id string) error {
-	return s.deployment.MarkDeploymentRunning(ctx, id)
+func (s stores) BeginDeployment(ctx context.Context, id string) (bool, error) {
+	return s.deployment.BeginDeployment(ctx, id)
+}
+func (s stores) HasActiveDeployment(ctx context.Context, serviceID string) (bool, error) {
+	return s.deployment.HasActiveDeployment(ctx, serviceID)
 }
 
 func (s stores) HasActiveGatewayService(ctx context.Context, excludeApplicationId string) (bool, error) {

@@ -1,5 +1,5 @@
 # CD 部署原理（How-to / 概览）
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-08-08 12:35:00
 
 Doc role: living guide  
 权威领域模型见 [CD 领域模型](../product/cd-model.md)、[CD 运行时](../architecture/cd-runtime.md)。与代码冲突时以代码为准。
@@ -29,8 +29,10 @@ Pomelo Orbit 可在本机 Docker 上部署 **standard** 业务应用与 **gatewa
 
 | 对象 | 状态 |
 |------|------|
-| Service | `deploying` / `running` / `stopped` / `faulted` |
+| Service | `running` / `stopped` / `faulted` |
 | Deployment | `waiting_to_run` / `running` / `ran_to_completion` / `faulted` / `canceled` |
+
+Deployment 是操作状态；Service 只表达实际运行态。取消会立即把 Deployment 写为 `canceled`，worker 随后按 `worker.poll_interval` 停止外部命令，且不能以完成或失败覆盖该终态。Deploy/Restart 成功仍仅以 `docker compose up -d` 零退出码判定；Healthcheck 不在该主路径等待或改写结果。
 
 **不要**再使用已归档的 Application `undeployed/deployed` 状态机（`docs/archive/guides/application-state-machine.md`）。
 
@@ -40,7 +42,7 @@ Pomelo Orbit 可在本机 Docker 上部署 **standard** 业务应用与 **gatewa
 - 与 standard 共用 Version / Deploy 管线  
 - 平台 Route：`providers.rest` PUT 到 `rest_api_url`  
 - 应用 public Host：`{app_code}.{gateway.base_domain}`  
-- 同时仅一个 active gateway Service（deploying/running）
+- 同时仅一个实际 `running` 的 gateway Service，或另一 gateway Service 的活跃 Deployment
 
 ## 相关指南
 

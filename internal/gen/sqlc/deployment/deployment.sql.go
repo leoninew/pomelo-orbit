@@ -11,10 +11,36 @@ import (
 	"time"
 )
 
-const cancelDeployment = `-- name: CancelDeployment :exec
+const beginDeployment = `-- name: BeginDeployment :execrows
+UPDATE deployment
+SET status = ?, started_at = ?, error_message = NULL
+WHERE id = ? AND status = ?
+`
+
+type BeginDeploymentParams struct {
+	Status    string    `db:"status"`
+	StartedAt time.Time `db:"started_at"`
+	ID        string    `db:"id"`
+	Status_2  string    `db:"status_2"`
+}
+
+func (q *Queries) BeginDeployment(ctx context.Context, arg BeginDeploymentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, beginDeployment,
+		arg.Status,
+		arg.StartedAt,
+		arg.ID,
+		arg.Status_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const cancelDeployment = `-- name: CancelDeployment :execrows
 UPDATE deployment
 SET status = ?, finished_at = ?, duration_ms = ?, error_message = ?
-WHERE id = ?
+WHERE id = ? AND status IN (?, ?)
 `
 
 type CancelDeploymentParams struct {
@@ -23,85 +49,113 @@ type CancelDeploymentParams struct {
 	DurationMs   sql.NullInt64  `db:"duration_ms"`
 	ErrorMessage sql.NullString `db:"error_message"`
 	ID           string         `db:"id"`
+	Status_2     string         `db:"status_2"`
+	Status_3     string         `db:"status_3"`
 }
 
-func (q *Queries) CancelDeployment(ctx context.Context, arg CancelDeploymentParams) error {
-	_, err := q.db.ExecContext(ctx, cancelDeployment,
+func (q *Queries) CancelDeployment(ctx context.Context, arg CancelDeploymentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, cancelDeployment,
 		arg.Status,
 		arg.FinishedAt,
 		arg.DurationMs,
 		arg.ErrorMessage,
 		arg.ID,
+		arg.Status_2,
+		arg.Status_3,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const completeDeployment = `-- name: CompleteDeployment :exec
+const completeDeployment = `-- name: CompleteDeployment :execrows
 UPDATE deployment
-SET status = ?, finished_at = ?, duration_ms = ?, error_message = NULLIF(?, '')
-WHERE id = ?
+SET status = ?1,
+    finished_at = ?2,
+    duration_ms = ?3,
+    error_message = NULLIF(CAST(?4 AS TEXT), '')
+WHERE id = ?5 AND status = ?6
 `
 
 type CompleteDeploymentParams struct {
-	Status     string        `db:"status"`
-	FinishedAt sql.NullTime  `db:"finished_at"`
-	DurationMs sql.NullInt64 `db:"duration_ms"`
-	NULLIF     interface{}   `db:"NULLIF"`
-	ID         string        `db:"id"`
+	Status        string        `db:"status"`
+	FinishedAt    sql.NullTime  `db:"finished_at"`
+	DurationMs    sql.NullInt64 `db:"duration_ms"`
+	ErrorMessage  string        `db:"error_message"`
+	ID            string        `db:"id"`
+	CurrentStatus string        `db:"current_status"`
 }
 
-func (q *Queries) CompleteDeployment(ctx context.Context, arg CompleteDeploymentParams) error {
-	_, err := q.db.ExecContext(ctx, completeDeployment,
+func (q *Queries) CompleteDeployment(ctx context.Context, arg CompleteDeploymentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, completeDeployment,
 		arg.Status,
 		arg.FinishedAt,
 		arg.DurationMs,
-		arg.NULLIF,
+		arg.ErrorMessage,
 		arg.ID,
+		arg.CurrentStatus,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const countActiveDeploymentsByService = `-- name: CountActiveDeploymentsByService :one
+SELECT COUNT(*)
+FROM deployment
+WHERE service_id = ? AND status IN (?, ?)
+`
+
+type CountActiveDeploymentsByServiceParams struct {
+	ServiceID sql.NullString `db:"service_id"`
+	Status    string         `db:"status"`
+	Status_2  string         `db:"status_2"`
+}
+
+func (q *Queries) CountActiveDeploymentsByService(ctx context.Context, arg CountActiveDeploymentsByServiceParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countActiveDeploymentsByService, arg.ServiceID, arg.Status, arg.Status_2)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const countDeployments = `-- name: CountDeployments :one
 SELECT COUNT(*)
 FROM deployment
-WHERE project_id = ?1
+WHERE project_id = CAST(?1 AS TEXT)
   AND (
-    ?2 = ''
-    OR application_id = ?3
+    CAST(?2 AS TEXT) IS NULL
+    OR application_id = CAST(?2 AS TEXT)
   )
   AND (
-    ?4 = ''
-    OR status = ?5
+    CAST(?3 AS TEXT) IS NULL
+    OR status = CAST(?3 AS TEXT)
   )
   AND (
-    ?6 = ''
-    OR application_name LIKE ?7
+    CAST(?4 AS TEXT) IS NULL
+    OR application_name LIKE CAST(?4 AS TEXT)
   )
-  AND (?8 IS NULL OR started_at >= ?8)
-  AND (?9 IS NULL OR started_at < ?9)
+  AND (CAST(?5 AS DATETIME) IS NULL OR started_at >= ?5)
+  AND (CAST(?6 AS DATETIME) IS NULL OR started_at < ?6)
 `
 
 type CountDeploymentsParams struct {
-	ProjectID             sql.NullString `db:"project_id"`
-	ApplicationFilter     interface{}    `db:"application_filter"`
-	ApplicationID         sql.NullString `db:"application_id"`
-	StatusFilter          interface{}    `db:"status_filter"`
-	Status                string         `db:"status"`
-	ApplicationNameFilter interface{}    `db:"application_name_filter"`
-	ApplicationName       string         `db:"application_name"`
-	DateFrom              interface{}    `db:"date_from"`
-	DateTo                interface{}    `db:"date_to"`
+	ProjectID              string         `db:"project_id"`
+	ApplicationID          sql.NullString `db:"application_id"`
+	Status                 sql.NullString `db:"status"`
+	ApplicationNamePattern sql.NullString `db:"application_name_pattern"`
+	DateFrom               sql.NullTime   `db:"date_from"`
+	DateTo                 sql.NullTime   `db:"date_to"`
 }
 
 func (q *Queries) CountDeployments(ctx context.Context, arg CountDeploymentsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countDeployments,
 		arg.ProjectID,
-		arg.ApplicationFilter,
 		arg.ApplicationID,
-		arg.StatusFilter,
 		arg.Status,
-		arg.ApplicationNameFilter,
-		arg.ApplicationName,
+		arg.ApplicationNamePattern,
 		arg.DateFrom,
 		arg.DateTo,
 	)
@@ -254,37 +308,34 @@ SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
 FROM deployment d
 LEFT JOIN service s ON s.id = d.service_id
-WHERE d.project_id = ?1
+WHERE d.project_id = CAST(?1 AS TEXT)
   AND (
-    ?2 = ''
-    OR d.application_id = ?3
+    CAST(?2 AS TEXT) IS NULL
+    OR d.application_id = CAST(?2 AS TEXT)
   )
   AND (
-    ?4 = ''
-    OR d.status = ?5
+    CAST(?3 AS TEXT) IS NULL
+    OR d.status = CAST(?3 AS TEXT)
   )
   AND (
-    ?6 = ''
-    OR d.application_name LIKE ?7
+    CAST(?4 AS TEXT) IS NULL
+    OR d.application_name LIKE CAST(?4 AS TEXT)
   )
-  AND (?8 IS NULL OR d.started_at >= ?8)
-  AND (?9 IS NULL OR d.started_at < ?9)
+  AND (CAST(?5 AS DATETIME) IS NULL OR d.started_at >= ?5)
+  AND (CAST(?6 AS DATETIME) IS NULL OR d.started_at < ?6)
 ORDER BY d.started_at DESC, d.id
-LIMIT ?11 OFFSET ?10
+LIMIT ?8 OFFSET ?7
 `
 
 type ListDeploymentsParams struct {
-	ProjectID             sql.NullString `db:"project_id"`
-	ApplicationFilter     interface{}    `db:"application_filter"`
-	ApplicationID         sql.NullString `db:"application_id"`
-	StatusFilter          interface{}    `db:"status_filter"`
-	Status                string         `db:"status"`
-	ApplicationNameFilter interface{}    `db:"application_name_filter"`
-	ApplicationName       string         `db:"application_name"`
-	DateFrom              interface{}    `db:"date_from"`
-	DateTo                interface{}    `db:"date_to"`
-	Offset                int64          `db:"offset"`
-	Limit                 int64          `db:"limit"`
+	ProjectID              string         `db:"project_id"`
+	ApplicationID          sql.NullString `db:"application_id"`
+	Status                 sql.NullString `db:"status"`
+	ApplicationNamePattern sql.NullString `db:"application_name_pattern"`
+	DateFrom               sql.NullTime   `db:"date_from"`
+	DateTo                 sql.NullTime   `db:"date_to"`
+	Offset                 int64          `db:"offset"`
+	Limit                  int64          `db:"limit"`
 }
 
 type ListDeploymentsRow struct {
@@ -313,12 +364,9 @@ type ListDeploymentsRow struct {
 func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams) ([]ListDeploymentsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listDeployments,
 		arg.ProjectID,
-		arg.ApplicationFilter,
 		arg.ApplicationID,
-		arg.StatusFilter,
 		arg.Status,
-		arg.ApplicationNameFilter,
-		arg.ApplicationName,
+		arg.ApplicationNamePattern,
 		arg.DateFrom,
 		arg.DateTo,
 		arg.Offset,
@@ -364,21 +412,4 @@ func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams
 		return nil, err
 	}
 	return items, nil
-}
-
-const markDeploymentRunning = `-- name: MarkDeploymentRunning :exec
-UPDATE deployment
-SET status = ?, started_at = ?, error_message = NULL
-WHERE id = ?
-`
-
-type MarkDeploymentRunningParams struct {
-	Status    string    `db:"status"`
-	StartedAt time.Time `db:"started_at"`
-	ID        string    `db:"id"`
-}
-
-func (q *Queries) MarkDeploymentRunning(ctx context.Context, arg MarkDeploymentRunningParams) error {
-	_, err := q.db.ExecContext(ctx, markDeploymentRunning, arg.Status, arg.StartedAt, arg.ID)
-	return err
 }

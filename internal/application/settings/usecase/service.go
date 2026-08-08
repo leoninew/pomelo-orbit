@@ -146,7 +146,7 @@ func settingDefinitions(cfg config.Config) []settingsdto.Definition {
 		{Key: "worker__id", Default: cfg.Worker.Id, Description: "Background worker ID"},
 		{Key: "worker__poll_interval", Default: cfg.Worker.PollInterval.String(), Description: "Background worker poll interval"},
 		{Key: "worker__lease_duration", Default: cfg.Worker.LeaseDuration.String(), Description: "Background task lease duration"},
-		{Key: "worker__max_attempts", Default: cfg.Worker.MaxAttempts, Description: "Default task max attempts"},
+		{Key: "worker__max_attempts", Default: cfg.Worker.MaxAttempts, Description: "Attempts frozen into each new background task"},
 		{Key: "worker__concurrency", Default: cfg.Worker.Concurrency, Description: "Background worker concurrency"},
 	}
 	for index := range definitions {

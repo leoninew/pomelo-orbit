@@ -19,7 +19,7 @@
         <button
           v-if="service"
           class="app-button-primary h-9 px-3"
-          :disabled="operating || service.status === 'deploying'"
+          :disabled="operating || service.active_deployment"
           @click="openDeployDialog"
         >
           <Rocket class="size-4" />

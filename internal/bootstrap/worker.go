@@ -46,6 +46,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		cfg.Jwt.SecretKey,
 		logger,
 		cfg.PipelineRun.ExecutionTimeout,
+		cfg.Worker.PollInterval,
 		pipelinerunner.DockerRunner{},
 		logStore,
 		localSource,
@@ -60,6 +61,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		deploymentWorkspace,
 		deploymentrunner.ShellRunner{},
 		logStore,
+		cfg.Worker.PollInterval,
 	)
 
 	router := worker.NewRouter()

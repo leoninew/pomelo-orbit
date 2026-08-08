@@ -28,7 +28,6 @@ type CreateTaskReq struct {
 	TaskType      string                 `protobuf:"bytes,2,opt,name=task_type,json=taskType,proto3" json:"task_type,omitempty"`
 	Payload       *structpb.Value        `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
 	PayloadJson   string                 `protobuf:"bytes,4,opt,name=payload_json,json=payloadJson,proto3" json:"payload_json,omitempty"`
-	MaxAttempts   int32                  `protobuf:"varint,5,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -89,13 +88,6 @@ func (x *CreateTaskReq) GetPayloadJson() string {
 		return x.PayloadJson
 	}
 	return ""
-}
-
-func (x *CreateTaskReq) GetMaxAttempts() int32 {
-	if x != nil {
-		return x.MaxAttempts
-	}
-	return 0
 }
 
 type TaskResp struct {
@@ -242,13 +234,12 @@ var File_orbit_v1_task_task_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_task_task_proto_rawDesc = "" +
 	"\n" +
-	"\x18orbit/v1/task/task.proto\x12\rorbit.v1.task\x1a\x1cgoogle/protobuf/struct.proto\"\xb4\x01\n" +
+	"\x18orbit/v1/task/task.proto\x12\rorbit.v1.task\x1a\x1cgoogle/protobuf/struct.proto\"\x91\x01\n" +
 	"\rCreateTaskReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttask_type\x18\x02 \x01(\tR\btaskType\x120\n" +
 	"\apayload\x18\x03 \x01(\v2\x16.google.protobuf.ValueR\apayload\x12!\n" +
-	"\fpayload_json\x18\x04 \x01(\tR\vpayloadJson\x12!\n" +
-	"\fmax_attempts\x18\x05 \x01(\x05R\vmaxAttempts\"\xf4\x03\n" +
+	"\fpayload_json\x18\x04 \x01(\tR\vpayloadJson\"\xf4\x03\n" +
 	"\bTaskResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttask_type\x18\x02 \x01(\tR\btaskType\x12!\n" +

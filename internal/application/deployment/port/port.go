@@ -28,6 +28,7 @@ type CommandStore interface {
 	ServiceComponentsByService(ctx context.Context, serviceId string) ([]model.ServiceComponent, error)
 	UpdateServiceStatus(ctx context.Context, id string, status string) error
 	CreateDeployment(ctx context.Context, deployment model.Deployment) error
+	HasActiveDeployment(ctx context.Context, serviceId string) (bool, error)
 	HasActiveGatewayService(ctx context.Context, excludeApplicationId string) (bool, error)
 	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
 }
@@ -44,8 +45,8 @@ type ExecutionStore interface {
 	Service(ctx context.Context, id string) (model.Service, error)
 	UpdateServiceStatus(ctx context.Context, id string, status string) error
 	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string) error
-	MarkDeploymentRunning(ctx context.Context, id string) error
-	CompleteDeployment(ctx context.Context, id string, status string, message string) error
+	BeginDeployment(ctx context.Context, id string) (bool, error)
+	CompleteDeployment(ctx context.Context, id string, status string, message string) (bool, error)
 	GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error)
 	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
 }

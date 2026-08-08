@@ -16,7 +16,6 @@ func taskCreateInput(req *taskv1.CreateTaskReq) tasksvc.CreateInput {
 		TaskType:    req.TaskType,
 		Payload:     rawPayload(req.Payload),
 		PayloadJSON: req.PayloadJson,
-		MaxAttempts: int(req.MaxAttempts),
 	}
 }
 

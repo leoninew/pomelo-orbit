@@ -28,8 +28,8 @@ func (r Repository) ListPipelineRuns(ctx context.Context, projectID, repositoryI
 	page, perPage = repository.NormalizePage(page, perPage)
 	params := pipelinerunsqlc.ListPipelineRunsParams{
 		ProjectID:    nullableArgument(projectID),
-		RepositoryID: strings.TrimSpace(repositoryID),
-		PipelineID:   strings.TrimSpace(pipelineID),
+		RepositoryID: nullableArgument(repositoryID),
+		PipelineID:   nullableArgument(pipelineID),
 		FromAt:       nullableTimeArgument(from),
 		ToAt:         nullableTimeArgument(to),
 		Limit:        int64(perPage),
@@ -85,12 +85,12 @@ func (r Repository) PipelineStageRun(ctx context.Context, id string) (model.Pipe
 func (r Repository) ListArtifacts(ctx context.Context, projectID, repositoryID, pipelineID string, page, perPage int, search string) (repository.Page[model.Artifact], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	rawSearch := strings.TrimSpace(search)
+	searchPattern := sql.NullString{String: "%" + rawSearch + "%", Valid: rawSearch != ""}
 	params := pipelinerunsqlc.ListArtifactsParams{
 		ProjectID:     nullableArgument(projectID),
-		RepositoryID:  strings.TrimSpace(repositoryID),
-		PipelineID:    strings.TrimSpace(pipelineID),
-		Search:        rawSearch,
-		SearchPattern: "%" + rawSearch + "%",
+		RepositoryID:  nullableArgument(repositoryID),
+		PipelineID:    nullableArgument(pipelineID),
+		SearchPattern: searchPattern,
 		Limit:         int64(perPage),
 		Offset:        int64((page - 1) * perPage),
 	}
@@ -98,7 +98,6 @@ func (r Repository) ListArtifacts(ctx context.Context, projectID, repositoryID, 
 		ProjectID:     params.ProjectID,
 		RepositoryID:  params.RepositoryID,
 		PipelineID:    params.PipelineID,
-		Search:        params.Search,
 		SearchPattern: params.SearchPattern,
 	})
 	if err != nil {
@@ -132,10 +131,15 @@ func (r Repository) Artifact(ctx context.Context, id string) (model.Artifact, er
 	return artifactModel(item), translate(err)
 }
 
-func (r Repository) CreatePipelineRun(ctx context.Context, run model.PipelineRun, binding *model.PipelineRunVersionBinding) error {
+func (r Repository) CreatePipelineRun(ctx context.Context, run model.PipelineRun, binding *model.PipelineRunVersionBinding, stageRuns []model.PipelineStageRun) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		if err := r.q(txCtx).InsertPipelineRun(txCtx, pipelineRunParams(run)); err != nil {
 			return translate(err)
+		}
+		for _, stageRun := range stageRuns {
+			if err := r.q(txCtx).InsertPipelineStageRun(txCtx, pipelineStageRunParams(stageRun)); err != nil {
+				return translate(err)
+			}
 		}
 		if binding == nil {
 			return nil
@@ -152,8 +156,8 @@ func (r Repository) CreatePipelineRun(ctx context.Context, run model.PipelineRun
 	})
 }
 
-func (r Repository) RepositoryHasRunningPipelineRun(ctx context.Context, repositoryID string) (bool, error) {
-	count, err := r.q(ctx).CountRunningPipelineRunsByRepository(ctx, pipelinerunsqlc.CountRunningPipelineRunsByRepositoryParams{RepositoryID: repositoryID, Status: status.WorkStatusRunning})
+func (r Repository) RepositoryHasActivePipelineRun(ctx context.Context, repositoryID string) (bool, error) {
+	count, err := r.q(ctx).CountActivePipelineRunsByRepository(ctx, pipelinerunsqlc.CountActivePipelineRunsByRepositoryParams{RepositoryID: repositoryID, Status: status.WorkStatusWaitingToRun, Status_2: status.WorkStatusRunning})
 	return count > 0, translate(err)
 }
 
@@ -162,24 +166,47 @@ func (r Repository) PipelineRunVersionBinding(ctx context.Context, runID string)
 	return pipelineRunVersionBindingModel(item), translate(err)
 }
 
-func (r Repository) CancelPipelineRun(ctx context.Context, id string) error {
-	return translate(r.q(ctx).CancelPipelineRun(ctx, pipelinerunsqlc.CancelPipelineRunParams{Status: status.WorkStatusCanceled, FinishedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true}, ID: id}))
+func (r Repository) CancelPipelineRun(ctx context.Context, id string) (bool, error) {
+	canceled := false
+	err := tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		now := time.Now().UTC()
+		rows, err := r.q(txCtx).CancelPipelineRun(txCtx, pipelinerunsqlc.CancelPipelineRunParams{Status: status.WorkStatusCanceled, FinishedAt: sql.NullTime{Time: now, Valid: true}, ErrorMessage: sql.NullString{String: "Cancelled by user", Valid: true}, ID: id, Status_2: status.WorkStatusWaitingToRun, Status_3: status.WorkStatusRunning})
+		if err != nil {
+			return translate(err)
+		}
+		if rows == 0 {
+			return nil
+		}
+		canceled = true
+		_, err = r.q(txCtx).CancelRunningPipelineStageRuns(txCtx, pipelinerunsqlc.CancelRunningPipelineStageRunsParams{Status: status.WorkStatusCanceled, FinishedAt: sql.NullTime{Time: now, Valid: true}, ErrorMessage: sql.NullString{String: "Cancelled by user", Valid: true}, PipelineRunID: id, Status_2: status.WorkStatusRunning})
+		return translate(err)
+	})
+	return canceled, err
 }
 
-func (r Repository) MarkPipelineRunRunning(ctx context.Context, id string) error {
-	return translate(r.q(ctx).MarkPipelineRunRunning(ctx, pipelinerunsqlc.MarkPipelineRunRunningParams{Status: status.WorkStatusRunning, StartedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true}, ID: id}))
+func (r Repository) CancelRunningPipelineStageRuns(ctx context.Context, runID string) error {
+	_, err := r.q(ctx).CancelRunningPipelineStageRuns(ctx, pipelinerunsqlc.CancelRunningPipelineStageRunsParams{Status: status.WorkStatusCanceled, FinishedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true}, ErrorMessage: sql.NullString{String: "Cancelled by user", Valid: true}, PipelineRunID: runID, Status_2: status.WorkStatusRunning})
+	return translate(err)
 }
 
-func (r Repository) CompletePipelineRun(ctx context.Context, id, statusValue, message string) error {
-	return translate(r.q(ctx).CompletePipelineRun(ctx, pipelinerunsqlc.CompletePipelineRunParams{Status: statusValue, ErrorMessage: optionalText(message), FinishedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true}, ID: id}))
+func (r Repository) BeginPipelineRun(ctx context.Context, id string) (bool, error) {
+	rows, err := r.q(ctx).BeginPipelineRun(ctx, pipelinerunsqlc.BeginPipelineRunParams{Status: status.WorkStatusRunning, StartedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true}, ID: id, Status_2: status.WorkStatusWaitingToRun})
+	return rows == 1, translate(err)
 }
 
-func (r Repository) InsertPipelineStageRun(ctx context.Context, stage model.PipelineStageRun) error {
-	return translate(r.q(ctx).InsertPipelineStageRun(ctx, pipelineStageRunParams(stage)))
+func (r Repository) CompletePipelineRun(ctx context.Context, id, statusValue, message string) (bool, error) {
+	rows, err := r.q(ctx).CompletePipelineRun(ctx, pipelinerunsqlc.CompletePipelineRunParams{Status: statusValue, ErrorMessage: optionalText(message), FinishedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true}, ID: id, Status_2: status.WorkStatusRunning})
+	return rows == 1, translate(err)
 }
 
-func (r Repository) UpdatePipelineStageRun(ctx context.Context, stage model.PipelineStageRun) error {
-	return translate(r.q(ctx).UpdatePipelineStageRun(ctx, pipelinerunsqlc.UpdatePipelineStageRunParams{Status: stage.Status, StartedAt: dbmodel.NullTime(stage.StartedAt), FinishedAt: dbmodel.NullTime(stage.FinishedAt), ExitCode: dbmodel.NullInt64FromIntPtr(stage.ExitCode), ErrorMessage: nullString(stage.ErrorMessage), ID: stage.Id}))
+func (r Repository) BeginPipelineStageRun(ctx context.Context, id string) (bool, error) {
+	rows, err := r.q(ctx).BeginPipelineStageRun(ctx, pipelinerunsqlc.BeginPipelineStageRunParams{Status: status.WorkStatusRunning, StartedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true}, ID: id, Status_2: status.WorkStatusWaitingToRun, Status_3: status.WorkStatusRunning})
+	return rows == 1, translate(err)
+}
+
+func (r Repository) CompletePipelineStageRun(ctx context.Context, stage model.PipelineStageRun) (bool, error) {
+	rows, err := r.q(ctx).CompletePipelineStageRun(ctx, pipelinerunsqlc.CompletePipelineStageRunParams{Status: stage.Status, FinishedAt: dbmodel.NullTime(stage.FinishedAt), ExitCode: dbmodel.NullInt64FromIntPtr(stage.ExitCode), ErrorMessage: nullString(stage.ErrorMessage), ID: stage.Id, Status_2: status.WorkStatusRunning})
+	return rows == 1, translate(err)
 }
 
 func (r Repository) CreateArtifact(ctx context.Context, artifact model.Artifact) error {
@@ -234,25 +261,26 @@ func runArtifactModel(item pipelinerunsqlc.ListArtifactsByRunRow) model.Artifact
 	return model.Artifact{Id: item.ID, ProjectId: dbmodel.StringPtr(item.ProjectID), PipelineRunId: item.PipelineRunID, RepositoryId: item.RepositoryID, RepositoryName: item.RepositoryName, PipelineId: item.PipelineID, PipelineName: item.PipelineName, PipelineStageId: item.PipelineStageID, StageName: item.StageName, Collector: item.Collector, Name: item.Name, Location: dbmodel.StringPtr(item.Location), Value: dbmodel.StringPtr(item.Value), ValueFormat: dbmodel.StringPtr(item.ValueFormat), ImageRef: dbmodel.StringPtr(item.ImageRef), LocalImageSha256: dbmodel.StringPtr(item.LocalImageSha256), SourceArtifactId: dbmodel.StringPtr(item.SourceArtifactID), SourceCommitSha: dbmodel.StringPtr(item.SourceCommitSha), ApplicationId: dbmodel.StringPtr(item.ApplicationID), ApplicationName: dbmodel.StringPtr(item.ApplicationName), SourceVersionId: dbmodel.StringPtr(item.SourceVersionID), SourceVersionLabel: dbmodel.StringPtr(item.SourceVersionLabel), GeneratedVersionId: dbmodel.StringPtr(item.GeneratedVersionID), GeneratedVersionLabel: dbmodel.StringPtr(item.GeneratedVersionLabel), VersionComponentId: dbmodel.StringPtr(item.VersionComponentID), VersionComponentName: dbmodel.StringPtr(item.VersionComponentName), CreatedAt: item.CreatedAt}
 }
 
-func nullableArgument(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
+func nullableArgument(value string) sql.NullString {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return sql.NullString{}
 	}
-	return strings.TrimSpace(value)
+	return sql.NullString{String: value, Valid: true}
 }
 
-func nullableStringArgument(value *string) any {
+func nullableStringArgument(value *string) sql.NullString {
 	if value == nil {
-		return nil
+		return sql.NullString{}
 	}
 	return nullableArgument(*value)
 }
 
-func nullableTimeArgument(value *time.Time) any {
+func nullableTimeArgument(value *time.Time) sql.NullTime {
 	if value == nil {
-		return nil
+		return sql.NullTime{}
 	}
-	return *value
+	return sql.NullTime{Time: *value, Valid: true}
 }
 
 func nullString(value *string) sql.NullString {

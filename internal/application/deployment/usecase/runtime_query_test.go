@@ -172,6 +172,10 @@ func (s *runtimeQueryStore) CreateDeployment(context.Context, model.Deployment) 
 	return nil
 }
 
+func (s *runtimeQueryStore) HasActiveDeployment(context.Context, string) (bool, error) {
+	return false, nil
+}
+
 func (s *runtimeQueryStore) HasActiveGatewayService(context.Context, string) (bool, error) {
 	return false, nil
 }

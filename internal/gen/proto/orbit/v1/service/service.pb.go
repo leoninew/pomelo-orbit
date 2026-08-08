@@ -40,6 +40,7 @@ type ServiceResp struct {
 	EffectivePlanHash string                  `protobuf:"bytes,16,opt,name=effective_plan_hash,json=effectivePlanHash,proto3" json:"effective_plan_hash,omitempty"`
 	Env               []*ServiceEnv           `protobuf:"bytes,17,rep,name=env,proto3" json:"env,omitempty"`
 	EffectiveError    string                  `protobuf:"bytes,18,opt,name=effective_error,json=effectiveError,proto3" json:"effective_error,omitempty"`
+	ActiveDeployment  bool                    `protobuf:"varint,19,opt,name=active_deployment,json=activeDeployment,proto3" json:"active_deployment,omitempty"`
 	Code              string                  `protobuf:"bytes,20,opt,name=code,proto3" json:"code,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
@@ -185,6 +186,13 @@ func (x *ServiceResp) GetEffectiveError() string {
 		return x.EffectiveError
 	}
 	return ""
+}
+
+func (x *ServiceResp) GetActiveDeployment() bool {
+	if x != nil {
+		return x.ActiveDeployment
+	}
+	return false
 }
 
 func (x *ServiceResp) GetCode() string {
@@ -1737,7 +1745,7 @@ var File_orbit_v1_service_service_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\x9a\x05\n" +
+	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\xc7\x05\n" +
 	"\vServiceResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12!\n" +
@@ -1760,7 +1768,8 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x0epending_deploy\x18\x0f \x01(\bR\rpendingDeploy\x12.\n" +
 	"\x13effective_plan_hash\x18\x10 \x01(\tR\x11effectivePlanHash\x12.\n" +
 	"\x03env\x18\x11 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\x12'\n" +
-	"\x0feffective_error\x18\x12 \x01(\tR\x0eeffectiveError\x12\x12\n" +
+	"\x0feffective_error\x18\x12 \x01(\tR\x0eeffectiveError\x12+\n" +
+	"\x11active_deployment\x18\x13 \x01(\bR\x10activeDeployment\x12\x12\n" +
 	"\x04code\x18\x14 \x01(\tR\x04codeJ\x04\b\x05\x10\x06J\x04\b\r\x10\x0e\"F\n" +
 	"\x0fServiceListResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.service.ServiceRespR\x05items\"\xa6\x01\n" +

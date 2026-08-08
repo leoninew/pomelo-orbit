@@ -13,7 +13,6 @@ export interface CreateTaskReq {
   task_type: string;
   payload: any | undefined;
   payload_json: string;
-  max_attempts: number;
 }
 
 export interface TaskResp {

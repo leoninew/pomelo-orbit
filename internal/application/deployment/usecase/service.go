@@ -30,6 +30,7 @@ type Service struct {
 	dispatcher         deploymentport.Dispatcher
 	executionLogStore  deploymentport.ExecutionLogStore
 	logger             *slog.Logger
+	pollInterval       time.Duration
 	runner             deploymentport.CommandRunner
 	commandStore       deploymentport.CommandStore
 	gatewayCoordinator gatewayport.DeploymentCoordinator
@@ -106,8 +107,12 @@ func (s Service) CancelDeployment(ctx context.Context, userId string, deployment
 	if deployment.Status != status.WorkStatusWaitingToRun && deployment.Status != status.WorkStatusRunning {
 		return model.Deployment{}, apperror.New(apperror.KindValidation, "Cannot cancel deployment with status "+deployment.Status)
 	}
-	if err := s.deployment.CancelDeployment(ctx, deployment.Id); err != nil {
+	canceled, err := s.deployment.CancelDeployment(ctx, deployment.Id)
+	if err != nil {
 		return model.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to cancel deployment", err)
+	}
+	if !canceled {
+		return model.Deployment{}, apperror.New(apperror.KindValidation, "Cannot cancel deployment with status "+deployment.Status)
 	}
 	updated, err := s.deployment.Deployment(ctx, deployment.Id)
 	if err != nil {

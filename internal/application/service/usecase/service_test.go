@@ -56,6 +56,11 @@ func (f serviceStoreFake) ServiceEnvByService(_ context.Context, _ string) ([]mo
 type deploymentStoreFake struct {
 	repository.DeploymentStore
 	planHash *string
+	active   bool
+}
+
+func (f deploymentStoreFake) HasActiveDeployment(_ context.Context, _ string) (bool, error) {
+	return f.active, nil
 }
 
 func (f deploymentStoreFake) LatestSuccessfulDeploymentPlanHash(_ context.Context, _ string) (*string, error) {
@@ -100,6 +105,25 @@ func TestServiceViewPendingDeployComparesEffectivePlanHash(t *testing.T) {
 				t.Fatalf("component definitions = %#v, want declaration image %q", view.ComponentDefinitions, declaration.Image)
 			}
 		})
+	}
+}
+
+func TestServiceViewReportsActiveDeploymentSeparatelyFromServiceStatus(t *testing.T) {
+	service, app, version, declaration, component := serviceViewFixture()
+	usecase := Service{
+		application: serviceApplicationFake{app: app, version: version, declarations: []model.VersionComponent{declaration}},
+		service:     serviceStoreFake{components: []model.ServiceComponent{component}},
+		deployment:  deploymentStoreFake{active: true},
+	}
+	view, err := usecase.serviceView(context.Background(), model.ServiceListItem{
+		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
+		Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !view.ActiveDeployment || view.Service.Status != status.ServiceStatusStopped {
+		t.Fatalf("service view must expose operation state separately: %#v", view)
 	}
 }
 

@@ -246,6 +246,29 @@ func (s Service) ListServicesByApplication(ctx context.Context, userId, applicat
 	}
 	return items, nil
 }
+
+// ListServiceViewsByApplication provides the same runtime bindings as the
+// application-scoped list, including active operation state for UI guards.
+func (s Service) ListServiceViewsByApplication(ctx context.Context, userID, applicationID string) ([]servicedto.ServiceView, error) {
+	items, err := s.ListServicesByApplication(ctx, userID, applicationID)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]servicedto.ServiceView, 0, len(items))
+	for _, item := range items {
+		view := servicedto.ServiceView{Service: item}
+		if s.deployment != nil {
+			active, err := s.deployment.HasActiveDeployment(ctx, item.Id)
+			if err != nil {
+				return nil, apperror.Wrap(apperror.KindInternal, "Failed to load active deployment", err)
+			}
+			view.ActiveDeployment = active
+		}
+		views = append(views, view)
+	}
+	return views, nil
+}
+
 func (s Service) PrimaryServiceByApplication(ctx context.Context, userId, applicationID string) (*model.Service, error) {
 	items, err := s.ListServicesByApplication(ctx, userId, applicationID)
 	if err != nil || len(items) == 0 {
@@ -440,6 +463,7 @@ func normalizeServiceCode(input string) (string, error) {
 	}
 	return code, nil
 }
+
 func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (servicedto.ServiceView, error) {
 	env, err := s.service.ServiceEnvByService(ctx, item.Id)
 	if err != nil {
@@ -453,6 +477,11 @@ func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (s
 	if s.deployment == nil {
 		return view, nil
 	}
+	active, err := s.deployment.HasActiveDeployment(ctx, item.Id)
+	if err != nil {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load active deployment", err)
+	}
+	view.ActiveDeployment = active
 	app, err := s.application.Application(ctx, item.ApplicationId)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load application plan context", err)

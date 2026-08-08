@@ -25,7 +25,6 @@ type CreateInput struct {
 	TaskType    string
 	Payload     json.RawMessage
 	PayloadJSON string
-	MaxAttempts int
 }
 
 func New(repo Repository, defaultMaxAttempts int) Service {
@@ -47,23 +46,15 @@ func (s Service) Create(ctx context.Context, input CreateInput) (*Task, error) {
 	if !json.Valid([]byte(payloadJSON)) {
 		return nil, ErrInvalidPayload
 	}
+	if s.defaultMaxAttempts < 1 {
+		return nil, ErrInvalidMaxAttempts
+	}
 
 	id := strings.TrimSpace(input.Id)
 	if id == "" {
 		id = idutil.NewId()
 	}
-	maxAttempts := input.MaxAttempts
-	if maxAttempts == 0 {
-		maxAttempts = s.defaultMaxAttempts
-	}
-	if maxAttempts == 0 {
-		maxAttempts = 3
-	}
-	if maxAttempts < 1 {
-		return nil, ErrInvalidMaxAttempts
-	}
-
-	if err := s.repo.Enqueue(ctx, id, taskType, payloadJSON, maxAttempts); err != nil {
+	if err := s.repo.Enqueue(ctx, id, taskType, payloadJSON, s.defaultMaxAttempts); err != nil {
 		return nil, fmt.Errorf("enqueue task: %w", err)
 	}
 	item, err := s.repo.FindById(ctx, id)
@@ -88,5 +79,5 @@ func (s Service) FindById(ctx context.Context, id string) (*Task, error) {
 var (
 	ErrTaskTypeRequired   = apperror.New(apperror.KindValidation, "task_type is required")
 	ErrInvalidPayload     = apperror.New(apperror.KindValidation, "payload must be valid JSON")
-	ErrInvalidMaxAttempts = apperror.New(apperror.KindValidation, "max_attempts must be at least 1")
+	ErrInvalidMaxAttempts = apperror.New(apperror.KindValidation, "default max_attempts must be at least 1")
 )

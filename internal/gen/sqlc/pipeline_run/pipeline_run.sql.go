@@ -85,19 +85,122 @@ func (q *Queries) ArtifactByID(ctx context.Context, id string) (ArtifactByIDRow,
 	return i, err
 }
 
-const cancelPipelineRun = `-- name: CancelPipelineRun :exec
-UPDATE pipeline_run SET status = ?, finished_at = ? WHERE id = ?
+const beginPipelineRun = `-- name: BeginPipelineRun :execrows
+UPDATE pipeline_run SET status = ?, started_at = ?
+WHERE id = ? AND status = ?
+`
+
+type BeginPipelineRunParams struct {
+	Status    string       `db:"status"`
+	StartedAt sql.NullTime `db:"started_at"`
+	ID        string       `db:"id"`
+	Status_2  string       `db:"status_2"`
+}
+
+func (q *Queries) BeginPipelineRun(ctx context.Context, arg BeginPipelineRunParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, beginPipelineRun,
+		arg.Status,
+		arg.StartedAt,
+		arg.ID,
+		arg.Status_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const beginPipelineStageRun = `-- name: BeginPipelineStageRun :execrows
+UPDATE pipeline_stage_run
+SET status = ?, started_at = ?, error_message = NULL
+WHERE pipeline_stage_run.id = ?
+  AND pipeline_stage_run.status = ?
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline_run
+    WHERE pipeline_run.id = pipeline_stage_run.pipeline_run_id
+      AND pipeline_run.status = ?
+  )
+`
+
+type BeginPipelineStageRunParams struct {
+	Status    string       `db:"status"`
+	StartedAt sql.NullTime `db:"started_at"`
+	ID        string       `db:"id"`
+	Status_2  string       `db:"status_2"`
+	Status_3  string       `db:"status_3"`
+}
+
+func (q *Queries) BeginPipelineStageRun(ctx context.Context, arg BeginPipelineStageRunParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, beginPipelineStageRun,
+		arg.Status,
+		arg.StartedAt,
+		arg.ID,
+		arg.Status_2,
+		arg.Status_3,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const cancelPipelineRun = `-- name: CancelPipelineRun :execrows
+UPDATE pipeline_run
+SET status = ?, finished_at = ?, error_message = ?
+WHERE id = ? AND status IN (?, ?)
 `
 
 type CancelPipelineRunParams struct {
-	Status     string       `db:"status"`
-	FinishedAt sql.NullTime `db:"finished_at"`
-	ID         string       `db:"id"`
+	Status       string         `db:"status"`
+	FinishedAt   sql.NullTime   `db:"finished_at"`
+	ErrorMessage sql.NullString `db:"error_message"`
+	ID           string         `db:"id"`
+	Status_2     string         `db:"status_2"`
+	Status_3     string         `db:"status_3"`
 }
 
-func (q *Queries) CancelPipelineRun(ctx context.Context, arg CancelPipelineRunParams) error {
-	_, err := q.db.ExecContext(ctx, cancelPipelineRun, arg.Status, arg.FinishedAt, arg.ID)
-	return err
+func (q *Queries) CancelPipelineRun(ctx context.Context, arg CancelPipelineRunParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, cancelPipelineRun,
+		arg.Status,
+		arg.FinishedAt,
+		arg.ErrorMessage,
+		arg.ID,
+		arg.Status_2,
+		arg.Status_3,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const cancelRunningPipelineStageRuns = `-- name: CancelRunningPipelineStageRuns :execrows
+UPDATE pipeline_stage_run
+SET status = ?, finished_at = ?, error_message = ?
+WHERE pipeline_run_id = ? AND status = ?
+`
+
+type CancelRunningPipelineStageRunsParams struct {
+	Status        string         `db:"status"`
+	FinishedAt    sql.NullTime   `db:"finished_at"`
+	ErrorMessage  sql.NullString `db:"error_message"`
+	PipelineRunID string         `db:"pipeline_run_id"`
+	Status_2      string         `db:"status_2"`
+}
+
+func (q *Queries) CancelRunningPipelineStageRuns(ctx context.Context, arg CancelRunningPipelineStageRunsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, cancelRunningPipelineStageRuns,
+		arg.Status,
+		arg.FinishedAt,
+		arg.ErrorMessage,
+		arg.PipelineRunID,
+		arg.Status_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const commandArtifactByRunStageAndName = `-- name: CommandArtifactByRunStageAndName :one
@@ -124,8 +227,9 @@ func (q *Queries) CommandArtifactByRunStageAndName(ctx context.Context, arg Comm
 	return i, err
 }
 
-const completePipelineRun = `-- name: CompletePipelineRun :exec
-UPDATE pipeline_run SET status = ?, error_message = ?, finished_at = ? WHERE id = ?
+const completePipelineRun = `-- name: CompletePipelineRun :execrows
+UPDATE pipeline_run SET status = ?, error_message = ?, finished_at = ?
+WHERE id = ? AND status = ?
 `
 
 type CompletePipelineRunParams struct {
@@ -133,16 +237,21 @@ type CompletePipelineRunParams struct {
 	ErrorMessage sql.NullString `db:"error_message"`
 	FinishedAt   sql.NullTime   `db:"finished_at"`
 	ID           string         `db:"id"`
+	Status_2     string         `db:"status_2"`
 }
 
-func (q *Queries) CompletePipelineRun(ctx context.Context, arg CompletePipelineRunParams) error {
-	_, err := q.db.ExecContext(ctx, completePipelineRun,
+func (q *Queries) CompletePipelineRun(ctx context.Context, arg CompletePipelineRunParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, completePipelineRun,
 		arg.Status,
 		arg.ErrorMessage,
 		arg.FinishedAt,
 		arg.ID,
+		arg.Status_2,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const completePipelineRunVersionBinding = `-- name: CompletePipelineRunVersionBinding :exec
@@ -160,20 +269,67 @@ func (q *Queries) CompletePipelineRunVersionBinding(ctx context.Context, arg Com
 	return err
 }
 
+const completePipelineStageRun = `-- name: CompletePipelineStageRun :execrows
+UPDATE pipeline_stage_run
+SET status = ?, finished_at = ?, exit_code = ?, error_message = ?
+WHERE id = ? AND status = ?
+`
+
+type CompletePipelineStageRunParams struct {
+	Status       string         `db:"status"`
+	FinishedAt   sql.NullTime   `db:"finished_at"`
+	ExitCode     sql.NullInt64  `db:"exit_code"`
+	ErrorMessage sql.NullString `db:"error_message"`
+	ID           string         `db:"id"`
+	Status_2     string         `db:"status_2"`
+}
+
+func (q *Queries) CompletePipelineStageRun(ctx context.Context, arg CompletePipelineStageRunParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, completePipelineStageRun,
+		arg.Status,
+		arg.FinishedAt,
+		arg.ExitCode,
+		arg.ErrorMessage,
+		arg.ID,
+		arg.Status_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const countActivePipelineRunsByRepository = `-- name: CountActivePipelineRunsByRepository :one
+SELECT COUNT(*) FROM pipeline_run
+WHERE repository_id = ? AND status IN (?, ?)
+`
+
+type CountActivePipelineRunsByRepositoryParams struct {
+	RepositoryID string `db:"repository_id"`
+	Status       string `db:"status"`
+	Status_2     string `db:"status_2"`
+}
+
+func (q *Queries) CountActivePipelineRunsByRepository(ctx context.Context, arg CountActivePipelineRunsByRepositoryParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countActivePipelineRunsByRepository, arg.RepositoryID, arg.Status, arg.Status_2)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countArtifacts = `-- name: CountArtifacts :one
 SELECT COUNT(*) FROM artifact
-WHERE (?1 IS NULL OR project_id = ?1)
-  AND (?2 = '' OR repository_id = ?2)
-  AND (?3 = '' OR pipeline_id = ?3)
-  AND (?4 = '' OR name LIKE ?5 OR stage_name LIKE ?5)
+WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
+  AND (CAST(?2 AS TEXT) IS NULL OR repository_id = CAST(?2 AS TEXT))
+  AND (CAST(?3 AS TEXT) IS NULL OR pipeline_id = CAST(?3 AS TEXT))
+  AND (CAST(?4 AS TEXT) IS NULL OR name LIKE CAST(?4 AS TEXT) OR stage_name LIKE CAST(?4 AS TEXT))
 `
 
 type CountArtifactsParams struct {
-	ProjectID     interface{} `db:"project_id"`
-	RepositoryID  interface{} `db:"repository_id"`
-	PipelineID    interface{} `db:"pipeline_id"`
-	Search        interface{} `db:"search"`
-	SearchPattern string      `db:"search_pattern"`
+	ProjectID     sql.NullString `db:"project_id"`
+	RepositoryID  sql.NullString `db:"repository_id"`
+	PipelineID    sql.NullString `db:"pipeline_id"`
+	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountArtifacts(ctx context.Context, arg CountArtifactsParams) (int64, error) {
@@ -181,7 +337,6 @@ func (q *Queries) CountArtifacts(ctx context.Context, arg CountArtifactsParams) 
 		arg.ProjectID,
 		arg.RepositoryID,
 		arg.PipelineID,
-		arg.Search,
 		arg.SearchPattern,
 	)
 	var count int64
@@ -191,19 +346,19 @@ func (q *Queries) CountArtifacts(ctx context.Context, arg CountArtifactsParams) 
 
 const countPipelineRuns = `-- name: CountPipelineRuns :one
 SELECT COUNT(*) FROM pipeline_run
-WHERE (?1 IS NULL OR project_id = ?1)
-  AND (?2 = '' OR repository_id = ?2)
-  AND (?3 = '' OR pipeline_id = ?3)
-  AND (?4 IS NULL OR created_at >= ?4)
-  AND (?5 IS NULL OR created_at <= ?5)
+WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
+  AND (CAST(?2 AS TEXT) IS NULL OR repository_id = CAST(?2 AS TEXT))
+  AND (CAST(?3 AS TEXT) IS NULL OR pipeline_id = CAST(?3 AS TEXT))
+  AND (CAST(?4 AS DATETIME) IS NULL OR created_at >= ?4)
+  AND (CAST(?5 AS DATETIME) IS NULL OR created_at <= ?5)
 `
 
 type CountPipelineRunsParams struct {
-	ProjectID    interface{} `db:"project_id"`
-	RepositoryID interface{} `db:"repository_id"`
-	PipelineID   interface{} `db:"pipeline_id"`
-	FromAt       interface{} `db:"from_at"`
-	ToAt         interface{} `db:"to_at"`
+	ProjectID    sql.NullString `db:"project_id"`
+	RepositoryID sql.NullString `db:"repository_id"`
+	PipelineID   sql.NullString `db:"pipeline_id"`
+	FromAt       sql.NullTime   `db:"from_at"`
+	ToAt         sql.NullTime   `db:"to_at"`
 }
 
 func (q *Queries) CountPipelineRuns(ctx context.Context, arg CountPipelineRunsParams) (int64, error) {
@@ -214,22 +369,6 @@ func (q *Queries) CountPipelineRuns(ctx context.Context, arg CountPipelineRunsPa
 		arg.FromAt,
 		arg.ToAt,
 	)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countRunningPipelineRunsByRepository = `-- name: CountRunningPipelineRunsByRepository :one
-SELECT COUNT(*) FROM pipeline_run WHERE repository_id = ? AND status = ?
-`
-
-type CountRunningPipelineRunsByRepositoryParams struct {
-	RepositoryID string `db:"repository_id"`
-	Status       string `db:"status"`
-}
-
-func (q *Queries) CountRunningPipelineRunsByRepository(ctx context.Context, arg CountRunningPipelineRunsByRepositoryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRunningPipelineRunsByRepository, arg.RepositoryID, arg.Status)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -399,21 +538,20 @@ FROM artifact
 LEFT JOIN artifact AS source_artifact ON source_artifact.id = artifact.source_artifact_id AND source_artifact.value_format = 'git_object_id'
 LEFT JOIN pipeline_run_version_binding AS binding ON binding.pipeline_run_id = artifact.pipeline_run_id
 LEFT JOIN version_component ON version_component.artifact_id = artifact.id
-WHERE (?1 IS NULL OR artifact.project_id = ?1)
-  AND (?2 = '' OR artifact.repository_id = ?2)
-  AND (?3 = '' OR artifact.pipeline_id = ?3)
-  AND (?4 = '' OR artifact.name LIKE ?5 OR artifact.stage_name LIKE ?5)
-ORDER BY artifact.created_at DESC, artifact.id LIMIT ?7 OFFSET ?6
+WHERE (CAST(?1 AS TEXT) IS NULL OR artifact.project_id = CAST(?1 AS TEXT))
+  AND (CAST(?2 AS TEXT) IS NULL OR artifact.repository_id = CAST(?2 AS TEXT))
+  AND (CAST(?3 AS TEXT) IS NULL OR artifact.pipeline_id = CAST(?3 AS TEXT))
+  AND (CAST(?4 AS TEXT) IS NULL OR artifact.name LIKE CAST(?4 AS TEXT) OR artifact.stage_name LIKE CAST(?4 AS TEXT))
+ORDER BY artifact.created_at DESC, artifact.id LIMIT ?6 OFFSET ?5
 `
 
 type ListArtifactsParams struct {
-	ProjectID     interface{} `db:"project_id"`
-	RepositoryID  interface{} `db:"repository_id"`
-	PipelineID    interface{} `db:"pipeline_id"`
-	Search        interface{} `db:"search"`
-	SearchPattern string      `db:"search_pattern"`
-	Offset        int64       `db:"offset"`
-	Limit         int64       `db:"limit"`
+	ProjectID     sql.NullString `db:"project_id"`
+	RepositoryID  sql.NullString `db:"repository_id"`
+	PipelineID    sql.NullString `db:"pipeline_id"`
+	SearchPattern sql.NullString `db:"search_pattern"`
+	Offset        int64          `db:"offset"`
+	Limit         int64          `db:"limit"`
 }
 
 type ListArtifactsRow struct {
@@ -451,7 +589,6 @@ func (q *Queries) ListArtifacts(ctx context.Context, arg ListArtifactsParams) ([
 		arg.ProjectID,
 		arg.RepositoryID,
 		arg.PipelineID,
-		arg.Search,
 		arg.SearchPattern,
 		arg.Offset,
 		arg.Limit,
@@ -511,14 +648,14 @@ FROM artifact
 LEFT JOIN artifact AS source_artifact ON source_artifact.id = artifact.source_artifact_id AND source_artifact.value_format = 'git_object_id'
 LEFT JOIN pipeline_run_version_binding AS binding ON binding.pipeline_run_id = artifact.pipeline_run_id
 LEFT JOIN version_component ON version_component.artifact_id = artifact.id
-WHERE artifact.pipeline_run_id = ?1
-  AND (?2 IS NULL OR artifact.project_id = ?2)
+WHERE artifact.pipeline_run_id = CAST(?1 AS TEXT)
+  AND (CAST(?2 AS TEXT) IS NULL OR artifact.project_id = CAST(?2 AS TEXT))
 ORDER BY artifact.created_at, artifact.id
 `
 
 type ListArtifactsByRunParams struct {
-	PipelineRunID string      `db:"pipeline_run_id"`
-	ProjectID     interface{} `db:"project_id"`
+	PipelineRunID string         `db:"pipeline_run_id"`
+	ProjectID     sql.NullString `db:"project_id"`
 }
 
 type ListArtifactsByRunRow struct {
@@ -605,22 +742,22 @@ func (q *Queries) ListArtifactsByRun(ctx context.Context, arg ListArtifactsByRun
 const listPipelineRuns = `-- name: ListPipelineRuns :many
 SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, trigger_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run
-WHERE (?1 IS NULL OR project_id = ?1)
-  AND (?2 = '' OR repository_id = ?2)
-  AND (?3 = '' OR pipeline_id = ?3)
-  AND (?4 IS NULL OR created_at >= ?4)
-  AND (?5 IS NULL OR created_at <= ?5)
+WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
+  AND (CAST(?2 AS TEXT) IS NULL OR repository_id = CAST(?2 AS TEXT))
+  AND (CAST(?3 AS TEXT) IS NULL OR pipeline_id = CAST(?3 AS TEXT))
+  AND (CAST(?4 AS DATETIME) IS NULL OR created_at >= ?4)
+  AND (CAST(?5 AS DATETIME) IS NULL OR created_at <= ?5)
 ORDER BY created_at DESC, id LIMIT ?7 OFFSET ?6
 `
 
 type ListPipelineRunsParams struct {
-	ProjectID    interface{} `db:"project_id"`
-	RepositoryID interface{} `db:"repository_id"`
-	PipelineID   interface{} `db:"pipeline_id"`
-	FromAt       interface{} `db:"from_at"`
-	ToAt         interface{} `db:"to_at"`
-	Offset       int64       `db:"offset"`
-	Limit        int64       `db:"limit"`
+	ProjectID    sql.NullString `db:"project_id"`
+	RepositoryID sql.NullString `db:"repository_id"`
+	PipelineID   sql.NullString `db:"pipeline_id"`
+	FromAt       sql.NullTime   `db:"from_at"`
+	ToAt         sql.NullTime   `db:"to_at"`
+	Offset       int64          `db:"offset"`
+	Limit        int64          `db:"limit"`
 }
 
 func (q *Queries) ListPipelineRuns(ctx context.Context, arg ListPipelineRunsParams) ([]PipelineRun, error) {
@@ -710,21 +847,6 @@ func (q *Queries) ListPipelineStageRuns(ctx context.Context, pipelineRunID strin
 	return items, nil
 }
 
-const markPipelineRunRunning = `-- name: MarkPipelineRunRunning :exec
-UPDATE pipeline_run SET status = ?, started_at = ? WHERE id = ?
-`
-
-type MarkPipelineRunRunningParams struct {
-	Status    string       `db:"status"`
-	StartedAt sql.NullTime `db:"started_at"`
-	ID        string       `db:"id"`
-}
-
-func (q *Queries) MarkPipelineRunRunning(ctx context.Context, arg MarkPipelineRunRunningParams) error {
-	_, err := q.db.ExecContext(ctx, markPipelineRunRunning, arg.Status, arg.StartedAt, arg.ID)
-	return err
-}
-
 const pipelineRunByID = `-- name: PipelineRunByID :one
 SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, trigger_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run WHERE id = ?
@@ -795,29 +917,4 @@ func (q *Queries) PipelineStageRunByID(ctx context.Context, id string) (Pipeline
 		&i.ErrorMessage,
 	)
 	return i, err
-}
-
-const updatePipelineStageRun = `-- name: UpdatePipelineStageRun :exec
-UPDATE pipeline_stage_run SET status = ?, started_at = ?, finished_at = ?, exit_code = ?, error_message = ? WHERE id = ?
-`
-
-type UpdatePipelineStageRunParams struct {
-	Status       string         `db:"status"`
-	StartedAt    sql.NullTime   `db:"started_at"`
-	FinishedAt   sql.NullTime   `db:"finished_at"`
-	ExitCode     sql.NullInt64  `db:"exit_code"`
-	ErrorMessage sql.NullString `db:"error_message"`
-	ID           string         `db:"id"`
-}
-
-func (q *Queries) UpdatePipelineStageRun(ctx context.Context, arg UpdatePipelineStageRunParams) error {
-	_, err := q.db.ExecContext(ctx, updatePipelineStageRun,
-		arg.Status,
-		arg.StartedAt,
-		arg.FinishedAt,
-		arg.ExitCode,
-		arg.ErrorMessage,
-		arg.ID,
-	)
-	return err
 }

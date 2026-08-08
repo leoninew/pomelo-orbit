@@ -55,12 +55,12 @@ func TestWorkerCompletesTask(t *testing.T) {
 	}
 }
 
-func TestWorkerRequeuesFailedTask(t *testing.T) {
+func TestWorkerFailsTaskWithoutRetry(t *testing.T) {
 	database := openTestDb(t)
 	defer func() { _ = database.Close() }()
 
 	repo := taskrepo.NewRepository(database)
-	if err := repo.Enqueue(context.Background(), "task-1", status.TaskTypePipelineRunExecute, `{}`, 2); err != nil {
+	if err := repo.Enqueue(context.Background(), "task-1", status.TaskTypePipelineRunExecute, `{}`, 1); err != nil {
 		t.Fatal(err)
 	}
 	router := NewRouter()
@@ -75,7 +75,7 @@ func TestWorkerRequeuesFailedTask(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if item.Status != status.TaskPending {
+	if item.Status != status.TaskFailed {
 		t.Fatalf("unexpected status: %s", item.Status)
 	}
 }

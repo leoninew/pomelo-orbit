@@ -9,6 +9,7 @@ type ServiceView struct {
 	Components           []model.ServiceComponent
 	ComponentDefinitions []model.VersionComponent
 	PendingDeploy        bool
+	ActiveDeployment     bool
 	EffectivePlanHash    string
 	EffectiveError       string
 	ApplicationName      string

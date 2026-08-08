@@ -12,7 +12,6 @@ import (
 func TestMigrateAndMigrationVersion(t *testing.T) {
 	cfg := config.Config{
 		Database: config.DatabaseConfig{Driver: config.DatabaseDriverSQLite, SQLite: config.SQLiteConfig{Path: filepath.Join(t.TempDir(), "pomelo-orbit.db")}},
-		Worker:   config.WorkerConfig{MaxAttempts: 3},
 	}
 	app := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err := app.Migrate(); err != nil {
@@ -22,7 +21,7 @@ func TestMigrateAndMigrationVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version.Version != 29 || version.Dirty {
+	if version.Version != 32 || version.Dirty {
 		t.Fatalf("unexpected migration version: %+v", version)
 	}
 }

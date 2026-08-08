@@ -9,7 +9,6 @@ message CreateTaskReq {
   string task_type = 2;
   google.protobuf.Value payload = 3;
   string payload_json = 4;
-  int32 max_attempts = 5;
 }
 
 message TaskResp {

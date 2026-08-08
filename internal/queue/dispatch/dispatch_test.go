@@ -14,7 +14,7 @@ import (
 
 func TestPipelineRunDispatcherPreservesTaskContract(t *testing.T) {
 	repo := &recordingTaskRepository{}
-	dispatcher := NewPipelineRunDispatcher(tasksvc.New(repo, 3))
+	dispatcher := NewPipelineRunDispatcher(tasksvc.New(repo, 1))
 
 	if err := dispatcher.DispatchPipelineRun(context.Background(), pipelinerundto.PipelineRunDispatchInput{PipelineRunId: "run-1"}); err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func TestDispatchersPropagateEnqueueError(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			repo := &recordingTaskRepository{enqueueErr: want}
-			err := test.dispatch(NewPipelineRunDispatcher(tasksvc.New(repo, 3)), NewDeploymentDispatcher(tasksvc.New(repo, 3)))
+			err := test.dispatch(NewPipelineRunDispatcher(tasksvc.New(repo, 1)), NewDeploymentDispatcher(tasksvc.New(repo, 1)))
 			if !errors.Is(err, want) {
 				t.Fatalf("expected enqueue error %v, got %v", want, err)
 			}
@@ -104,7 +104,7 @@ func TestDeploymentDispatcherPreservesTaskContracts(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			repo := &recordingTaskRepository{}
-			if err := test.dispatch(NewDeploymentDispatcher(tasksvc.New(repo, 3))); err != nil {
+			if err := test.dispatch(NewDeploymentDispatcher(tasksvc.New(repo, 1))); err != nil {
 				t.Fatal(err)
 			}
 			if repo.taskType != test.taskType {
@@ -142,16 +142,18 @@ type recordingTaskRepository struct {
 	id          string
 	taskType    string
 	payloadJSON string
+	maxAttempts int
 	enqueueErr  error
 }
 
-func (r *recordingTaskRepository) Enqueue(_ context.Context, id string, taskType string, payloadJSON string, _ int) error {
+func (r *recordingTaskRepository) Enqueue(_ context.Context, id string, taskType string, payloadJSON string, maxAttempts int) error {
 	r.id = id
 	r.taskType = taskType
 	r.payloadJSON = payloadJSON
+	r.maxAttempts = maxAttempts
 	return r.enqueueErr
 }
 
 func (r *recordingTaskRepository) FindById(_ context.Context, id string) (*tasksvc.Task, error) {
-	return &tasksvc.Task{Id: id, TaskType: r.taskType, PayloadJSON: r.payloadJSON}, nil
+	return &tasksvc.Task{Id: id, TaskType: r.taskType, PayloadJSON: r.payloadJSON, MaxAttempts: r.maxAttempts}, nil
 }

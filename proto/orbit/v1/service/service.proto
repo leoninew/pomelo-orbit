@@ -22,6 +22,7 @@ message ServiceResp {
   string effective_plan_hash = 16;
   repeated ServiceEnv env = 17;
   string effective_error = 18;
+  bool active_deployment = 19;
   string code = 20;
 }
 

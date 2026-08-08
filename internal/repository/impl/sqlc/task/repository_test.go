@@ -31,7 +31,7 @@ func TestRepositoryClaimComplete(t *testing.T) {
 
 	repo := NewRepository(database)
 	ctx := context.Background()
-	if err := repo.Enqueue(ctx, "task-1", status.TaskTypePipelineRunExecute, `{"pipeline_run_id":"run-1"}`, 3); err != nil {
+	if err := repo.Enqueue(ctx, "task-1", status.TaskTypePipelineRunExecute, `{"pipeline_run_id":"run-1"}`, 1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -60,13 +60,13 @@ func TestRepositoryClaimComplete(t *testing.T) {
 	}
 }
 
-func TestRepositoryFailRetriesUntilMaxAttempts(t *testing.T) {
+func TestRepositoryFailTerminatesTask(t *testing.T) {
 	database := openTestDb(t)
 	defer func() { _ = database.Close() }()
 
 	repo := NewRepository(database)
 	ctx := context.Background()
-	if err := repo.Enqueue(ctx, "task-1", status.TaskTypePipelineRunExecute, `{}`, 2); err != nil {
+	if err := repo.Enqueue(ctx, "task-1", status.TaskTypePipelineRunExecute, `{}`, 1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -77,26 +77,60 @@ func TestRepositoryFailRetriesUntilMaxAttempts(t *testing.T) {
 	if err := repo.Fail(ctx, claimed.Id, "first failure"); err != nil {
 		t.Fatal(err)
 	}
-	failedOnce, err := repo.FindById(ctx, claimed.Id)
+	failed, err := repo.FindById(ctx, claimed.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if failedOnce.Status != status.TaskPending {
-		t.Fatalf("expected retry pending, got %s", failedOnce.Status)
+	if failed.Status != status.TaskFailed {
+		t.Fatalf("expected failed task, got %s", failed.Status)
+	}
+}
+
+func TestRepositoryFailRequeuesUntilFrozenAttemptBudgetIsExhausted(t *testing.T) {
+	database := openTestDb(t)
+	defer func() { _ = database.Close() }()
+
+	repo := NewRepository(database)
+	ctx := context.Background()
+	if err := repo.Enqueue(ctx, "task-1", status.TaskTypePipelineRunExecute, `{}`, 2); err != nil {
+		t.Fatal(err)
 	}
 
-	claimedAgain, err := repo.ClaimNext(ctx, "worker-1", time.Minute)
+	firstAttempt, err := repo.ClaimNext(ctx, "worker-1", time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Fail(ctx, claimedAgain.Id, "second failure"); err != nil {
+	if firstAttempt == nil || firstAttempt.Attempts != 1 || firstAttempt.MaxAttempts != 2 {
+		t.Fatalf("unexpected first claim: %+v", firstAttempt)
+	}
+	if err := repo.Fail(ctx, firstAttempt.Id, "first failure"); err != nil {
 		t.Fatal(err)
 	}
-	failedTwice, err := repo.FindById(ctx, claimedAgain.Id)
+
+	requeued, err := repo.FindById(ctx, firstAttempt.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if failedTwice.Status != status.TaskFailed {
-		t.Fatalf("expected final failure, got %s", failedTwice.Status)
+	if requeued.Status != status.TaskPending || requeued.Attempts != 1 || requeued.MaxAttempts != 2 || requeued.FinishedAt != nil {
+		t.Fatalf("unexpected requeued task: %+v", requeued)
+	}
+
+	secondAttempt, err := repo.ClaimNext(ctx, "worker-1", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secondAttempt == nil || secondAttempt.Attempts != 2 {
+		t.Fatalf("unexpected second claim: %+v", secondAttempt)
+	}
+	if err := repo.Fail(ctx, secondAttempt.Id, "second failure"); err != nil {
+		t.Fatal(err)
+	}
+
+	failed, err := repo.FindById(ctx, secondAttempt.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if failed.Status != status.TaskFailed || failed.Attempts != 2 || failed.MaxAttempts != 2 || failed.FinishedAt == nil {
+		t.Fatalf("unexpected terminal task: %+v", failed)
 	}
 }

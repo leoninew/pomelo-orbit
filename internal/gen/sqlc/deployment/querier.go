@@ -11,15 +11,16 @@ import (
 )
 
 type Querier interface {
-	CancelDeployment(ctx context.Context, arg CancelDeploymentParams) error
-	CompleteDeployment(ctx context.Context, arg CompleteDeploymentParams) error
+	BeginDeployment(ctx context.Context, arg BeginDeploymentParams) (int64, error)
+	CancelDeployment(ctx context.Context, arg CancelDeploymentParams) (int64, error)
+	CompleteDeployment(ctx context.Context, arg CompleteDeploymentParams) (int64, error)
+	CountActiveDeploymentsByService(ctx context.Context, arg CountActiveDeploymentsByServiceParams) (int64, error)
 	CountDeployments(ctx context.Context, arg CountDeploymentsParams) (int64, error)
 	CreateDeployment(ctx context.Context, arg CreateDeploymentParams) error
 	DeploymentByID(ctx context.Context, id string) (DeploymentByIDRow, error)
 	DeploymentStartedAt(ctx context.Context, id string) (time.Time, error)
 	LatestSuccessfulDeploymentPlanHash(ctx context.Context, serviceID sql.NullString) (sql.NullString, error)
 	ListDeployments(ctx context.Context, arg ListDeploymentsParams) ([]ListDeploymentsRow, error)
-	MarkDeploymentRunning(ctx context.Context, arg MarkDeploymentRunningParams) error
 }
 
 var _ Querier = (*Queries)(nil)

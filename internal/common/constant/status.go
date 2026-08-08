@@ -25,10 +25,9 @@ const (
 
 // ServiceStatus is the runtime binding status for model.Service (not Application).
 const (
-	ServiceStatusDeploying = "deploying"
-	ServiceStatusRunning   = "running"
-	ServiceStatusStopped   = "stopped"
-	ServiceStatusFaulted   = "faulted"
+	ServiceStatusRunning = "running"
+	ServiceStatusStopped = "stopped"
+	ServiceStatusFaulted = "faulted"
 )
 
 // ApplicationKind is the render strategy for an application.

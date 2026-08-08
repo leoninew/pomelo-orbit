@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
+	"time"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
@@ -13,24 +15,33 @@ import (
 )
 
 func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string, forceRecreate bool) error {
+	begun, err := s.executionStore.BeginDeployment(ctx, deploymentId)
+	if err != nil {
+		return err
+	}
+	if !begun {
+		return nil
+	}
 	app, deployment, err := s.loadDeploymentExecution(ctx, applicationId, deploymentId)
 	if err != nil {
 		return err
 	}
+	executionCtx, cancel := s.deploymentExecutionContext(ctx, deployment.Id)
+	defer cancel()
 	if deployment.VersionId == nil || *deployment.VersionId == "" {
 		err := fmt.Errorf("deployment %s missing version_id", deployment.Id)
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	opts, err := parseDeployOptions(deployment.OptionsJSON)
 	if err != nil {
 		err = fmt.Errorf("deployment %s has invalid options: %w", deployment.Id, err)
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if forceRecreate {
@@ -38,148 +49,159 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 	}
 	if opts.InstanceKey == "" {
 		err := fmt.Errorf("deployment %s missing instance_key", deployment.Id)
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 
 	version, err := s.executionStore.Version(ctx, *deployment.VersionId)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	components, err := s.executionStore.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	overlays, err := s.executionStore.ServiceComponentsByService(ctx, svc.Id)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	env, err := s.executionStore.ServiceEnvByService(ctx, svc.Id)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	plan, _, err := BuildEffectiveServicePlan(app, version, svc, components, overlays, env, nil)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := s.ensureSingleRuntime(ctx, app, opts.InstanceKey); err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	plan.Gateway = gateway
 	if err := verifyDeploymentPlanHash(deployment, plan); err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.executionStore.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
-		return err
-	}
-
-	if err := s.renderAndDeployWithOptions(ctx, plan, deployment.Id, opts.ForceRecreate); err != nil {
+	if err := s.renderAndDeployWithOptions(executionCtx, plan, deployment.Id, opts.ForceRecreate); err != nil {
+		if s.deploymentCanceled(ctx, deployment.Id) {
+			s.reconcileCanceledService(ctx, app, svc)
+			return nil
+		}
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id)
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
-	return s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
+	return s.completeDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
 
 func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId string, deploymentId string) error {
+	begun, err := s.executionStore.BeginDeployment(ctx, deploymentId)
+	if err != nil {
+		return err
+	}
+	if !begun {
+		return nil
+	}
 	app, deployment, err := s.loadDeploymentExecution(ctx, applicationId, deploymentId)
 	if err != nil {
 		return err
 	}
+	executionCtx, cancel := s.deploymentExecutionContext(ctx, deployment.Id)
+	defer cancel()
 	restartOpts, err := parseDeployOptions(deployment.OptionsJSON)
 	if err != nil {
 		err = fmt.Errorf("deployment %s has invalid options: %w", deployment.Id, err)
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	_ = restartOpts
 	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	version, err := s.executionStore.Version(ctx, svc.VersionId)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	components, err := s.executionStore.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	overlays, err := s.executionStore.ServiceComponentsByService(ctx, svc.Id)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	env, err := s.executionStore.ServiceEnvByService(ctx, svc.Id)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	plan, _, err := BuildEffectiveServicePlan(app, version, svc, components, overlays, env, nil)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	plan.Gateway = gateway
 	if err := verifyDeploymentPlanHash(deployment, plan); err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusDeploying); err != nil {
-		return err
-	}
-	if err := s.executionStore.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
-		return err
-	}
-
-	if err := s.renderAndDeployWithOptions(ctx, plan, deployment.Id, false); err != nil {
+	if err := s.renderAndDeployWithOptions(executionCtx, plan, deployment.Id, false); err != nil {
+		if s.deploymentCanceled(ctx, deployment.Id) {
+			s.reconcileCanceledService(ctx, app, svc)
+			return nil
+		}
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id)
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
-	return s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
+	return s.completeDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
 
 func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId string, deploymentId string, removeVolumes bool) error {
+	begun, err := s.executionStore.BeginDeployment(ctx, deploymentId)
+	if err != nil {
+		return err
+	}
+	if !begun {
+		return nil
+	}
 	app, deployment, err := s.loadDeploymentExecution(ctx, applicationId, deploymentId)
 	if err != nil {
 		return err
 	}
+	executionCtx, cancel := s.deploymentExecutionContext(ctx, deployment.Id)
+	defer cancel()
 	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
 	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.executionStore.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
-		return err
-	}
-
 	serviceDir := s.workspace.ServiceDir(app.Code, svc.InstanceKey)
 	logPath := s.workspace.DeploymentLogPath(app.Code, svc.InstanceKey, deployment.Id)
 	logWriter, err := s.executionLogStore.Writer(logPath)
@@ -203,15 +225,94 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 	}
 	projectName := composeProjectName(app.Code, svc.InstanceKey)
 	command := stopComposeCommand(projectName, removeVolumes)
-	if err := s.runner.Run(ctx, serviceDir, logWriter, command.Name, command.Args...); err != nil {
+	if err := s.runner.Run(executionCtx, serviceDir, logWriter, command.Name, command.Args...); err != nil {
+		if s.deploymentCanceled(ctx, deployment.Id) {
+			s.reconcileCanceledService(ctx, app, svc)
+			return nil
+		}
 		_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusFaulted)
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusStopped); err != nil {
 		return err
 	}
-	return s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
+	return s.completeDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
+}
+
+func (s Service) deploymentCanceled(ctx context.Context, deploymentID string) bool {
+	deployment, err := s.executionStore.Deployment(ctx, deploymentID)
+	return err == nil && deployment.Status == status.WorkStatusCanceled
+}
+
+// reconcileCanceledService records the actual Compose runtime after a canceled
+// command. The Deployment remains canceled regardless of observation failures.
+func (s Service) reconcileCanceledService(ctx context.Context, app model.Application, svc model.Service) {
+	serviceStatus := status.ServiceStatusFaulted
+	if s.workspace != nil && s.queryRunner != nil {
+		exists, err := s.workspace.ServiceDirExists(app.Code, svc.InstanceKey)
+		if err == nil && !exists {
+			serviceStatus = status.ServiceStatusStopped
+		} else if err == nil {
+			command := containerPsCommand(composeProjectName(app.Code, svc.InstanceKey))
+			output, runErr := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, svc.InstanceKey), command.Name, command.Args...)
+			if runErr == nil {
+				containers, parseErr := parseComposePsOutput(output)
+				if parseErr == nil {
+					serviceStatus = observedServiceStatus(containers)
+				}
+			}
+		}
+	}
+	_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, serviceStatus)
+}
+
+func observedServiceStatus(containers []deploymentdto.RuntimeContainer) string {
+	if len(containers) == 0 {
+		return status.ServiceStatusStopped
+	}
+	for _, container := range containers {
+		if !strings.EqualFold(strings.TrimSpace(container.State), "running") {
+			return status.ServiceStatusFaulted
+		}
+	}
+	return status.ServiceStatusRunning
+}
+
+func (s Service) completeDeployment(ctx context.Context, deploymentID, statusValue, message string) error {
+	_, err := s.executionStore.CompleteDeployment(ctx, deploymentID, statusValue, message)
+	return err
+}
+
+func (s Service) deploymentExecutionContext(ctx context.Context, deploymentID string) (context.Context, context.CancelFunc) {
+	monitoredCtx, cancelMonitored := context.WithCancel(ctx)
+	done := make(chan struct{})
+	interval := s.pollInterval
+	if interval <= 0 {
+		interval = time.Second
+	}
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-monitoredCtx.Done():
+				return
+			case <-ticker.C:
+				deployment, err := s.executionStore.Deployment(ctx, deploymentID)
+				if err == nil && deployment.Status == status.WorkStatusCanceled {
+					cancelMonitored()
+					return
+				}
+			}
+		}
+	}()
+	return monitoredCtx, func() {
+		close(done)
+		cancelMonitored()
+	}
 }
 
 func (s Service) loadDeploymentExecution(ctx context.Context, applicationId string, deploymentId string) (model.Application, model.Deployment, error) {

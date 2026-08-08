@@ -53,7 +53,7 @@ const completeTask = `-- name: CompleteTask :exec
 UPDATE background_task
 SET status = ?, locked_by = NULL, locked_at = NULL, finished_at = ?,
     updated_at = ?, error_message = NULL
-WHERE id = ?
+WHERE id = ? AND status = ?
 `
 
 type CompleteTaskParams struct {
@@ -61,6 +61,7 @@ type CompleteTaskParams struct {
 	FinishedAt sql.NullTime `db:"finished_at"`
 	UpdatedAt  time.Time    `db:"updated_at"`
 	ID         string       `db:"id"`
+	Status_2   string       `db:"status_2"`
 }
 
 func (q *Queries) CompleteTask(ctx context.Context, arg CompleteTaskParams) error {
@@ -69,6 +70,7 @@ func (q *Queries) CompleteTask(ctx context.Context, arg CompleteTaskParams) erro
 		arg.FinishedAt,
 		arg.UpdatedAt,
 		arg.ID,
+		arg.Status_2,
 	)
 	return err
 }
@@ -107,7 +109,7 @@ SET status = CASE WHEN attempts >= max_attempts THEN ? ELSE ? END,
     locked_by = NULL, locked_at = NULL,
     finished_at = CASE WHEN attempts >= max_attempts THEN ? ELSE finished_at END,
     updated_at = ?, error_message = ?
-WHERE id = ?
+WHERE id = ? AND status = ?
 `
 
 type FailTaskParams struct {
@@ -117,6 +119,7 @@ type FailTaskParams struct {
 	UpdatedAt    time.Time      `db:"updated_at"`
 	ErrorMessage sql.NullString `db:"error_message"`
 	ID           string         `db:"id"`
+	Status_3     string         `db:"status_3"`
 }
 
 func (q *Queries) FailTask(ctx context.Context, arg FailTaskParams) error {
@@ -127,6 +130,7 @@ func (q *Queries) FailTask(ctx context.Context, arg FailTaskParams) error {
 		arg.UpdatedAt,
 		arg.ErrorMessage,
 		arg.ID,
+		arg.Status_3,
 	)
 	return err
 }

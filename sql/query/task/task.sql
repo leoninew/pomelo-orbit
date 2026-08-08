@@ -22,7 +22,7 @@ WHERE id = ?
 UPDATE background_task
 SET status = ?, locked_by = NULL, locked_at = NULL, finished_at = ?,
     updated_at = ?, error_message = NULL
-WHERE id = ?;
+WHERE id = ? AND status = ?;
 
 -- name: FailTask :exec
 UPDATE background_task
@@ -30,7 +30,7 @@ SET status = CASE WHEN attempts >= max_attempts THEN ? ELSE ? END,
     locked_by = NULL, locked_at = NULL,
     finished_at = CASE WHEN attempts >= max_attempts THEN ? ELSE finished_at END,
     updated_at = ?, error_message = ?
-WHERE id = ?;
+WHERE id = ? AND status = ?;
 
 -- name: FindTaskByID :one
 SELECT id, task_type, payload_json, status, attempts, max_attempts, locked_by, locked_at,

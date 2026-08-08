@@ -117,7 +117,6 @@ orbit:
   root: "../.."
 worker:
   id: "worker-1"
-  max_attempts: 4
   concurrency: 3
 `)
 

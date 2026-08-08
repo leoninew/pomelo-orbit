@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS pipeline_stage_run (
     finished_at DATETIME(3),
     exit_code INT,
     error_message TEXT,
+    UNIQUE KEY uq_pipeline_stage_run_run_stage (pipeline_run_id, stage_id),
     FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

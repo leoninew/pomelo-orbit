@@ -1,6 +1,8 @@
--- Reusable build-stage templates for the default project.
--- Requires migrations 000029_seed_system and 000030_pipeline_stage_template_library.
-INSERT OR IGNORE INTO pipeline_stage (
+-- Business data migration: default-project reusable pipeline templates.
+-- Requires the 000029 system seed and the 000030 pipeline stage library schema.
+-- This file is intentionally not loaded by golang-migrate.
+
+INSERT IGNORE INTO pipeline_stage (
     id, project_id, kind, name, image, script, description, version, artifacts, created_at, updated_at
 ) VALUES
     (
@@ -9,15 +11,17 @@ INSERT OR IGNORE INTO pipeline_stage (
         'template',
         'git clone',
         'alpine/git',
-        'set -e' || char(10) ||
-        'git config --global http.sslVerify "false"' || char(10) ||
-        'git config --system http.sslVerify "false"' || char(10) ||
-        'git config --global --add safe.directory /workspace' || char(10) ||
-        'git init' || char(10) ||
-        'git remote remove origin 2>/dev/null || true' || char(10) ||
-        'git remote add origin {{ repository_url }}' || char(10) ||
-        'git fetch --depth=1 origin {{ repository_ref }}' || char(10) ||
-        'git checkout -B {{ repository_ref }} FETCH_HEAD',
+        CONCAT(
+            'set -e', CHAR(10),
+            'git config --global http.sslVerify "false"', CHAR(10),
+            'git config --system http.sslVerify "false"', CHAR(10),
+            'git config --global --add safe.directory /workspace', CHAR(10),
+            'git init', CHAR(10),
+            'git remote remove origin 2>/dev/null || true', CHAR(10),
+            'git remote add origin {{ repository_url }}', CHAR(10),
+            'git fetch --depth=1 origin {{ repository_ref }}', CHAR(10),
+            'git checkout -B {{ repository_ref }} FETCH_HEAD'
+        ),
         'Clone source repository',
         1,
         '[{"collector":"command","command":"git rev-parse HEAD","format":"git_object_id","name":"source_commit"}]',
@@ -30,9 +34,11 @@ INSERT OR IGNORE INTO pipeline_stage (
         'template',
         'docker build',
         'docker:29.4',
-        'set -e' || char(10) ||
-        'cd {{ working_dir }}' || char(10) ||
-        'docker build -t {{ repository_code }}:{{ runtime_datetime }} -f {{ repository_dockerfile }} .',
+        CONCAT(
+            'set -e', CHAR(10),
+            'cd {{ working_dir }}', CHAR(10),
+            'docker build -t {{ repository_code }}:{{ runtime_datetime }} -f {{ repository_dockerfile }} .'
+        ),
         'Build container image',
         1,
         '[{"collector":"docker_image","reference":"{{ repository_code }}:{{ runtime_datetime }}","name":"{{ repository_code }}"}]',
@@ -40,7 +46,7 @@ INSERT OR IGNORE INTO pipeline_stage (
         '2024-03-16T00:00:00Z'
     );
 
-INSERT OR IGNORE INTO pipeline (
+INSERT IGNORE INTO pipeline (
     id, project_id, kind, name, description, variable_declarations, version, created_at, updated_at
 ) VALUES (
     '01KZG83K2MXG08EJ6G48SG38B3',
@@ -54,7 +60,7 @@ INSERT OR IGNORE INTO pipeline (
     '2026-08-08T09:35:00.6543397Z'
 );
 
-INSERT OR IGNORE INTO pipeline_stage_reference (
+INSERT IGNORE INTO pipeline_stage_reference (
     id,
     pipeline_id,
     source_template_stage_id,
@@ -80,15 +86,17 @@ INSERT OR IGNORE INTO pipeline_stage_reference (
         'Clone source repository',
         'git clone',
         'alpine/git',
-        'set -e' || char(10) ||
-        'git config --global http.sslVerify "false"' || char(10) ||
-        'git config --system http.sslVerify "false"' || char(10) ||
-        'git config --global --add safe.directory /workspace' || char(10) ||
-        'git init' || char(10) ||
-        'git remote remove origin 2>/dev/null || true' || char(10) ||
-        'git remote add origin {{ repository_url }}' || char(10) ||
-        'git fetch --depth=1 origin {{ repository_ref }}' || char(10) ||
-        'git checkout -B {{ repository_ref }} FETCH_HEAD',
+        CONCAT(
+            'set -e', CHAR(10),
+            'git config --global http.sslVerify "false"', CHAR(10),
+            'git config --system http.sslVerify "false"', CHAR(10),
+            'git config --global --add safe.directory /workspace', CHAR(10),
+            'git init', CHAR(10),
+            'git remote remove origin 2>/dev/null || true', CHAR(10),
+            'git remote add origin {{ repository_url }}', CHAR(10),
+            'git fetch --depth=1 origin {{ repository_ref }}', CHAR(10),
+            'git checkout -B {{ repository_ref }} FETCH_HEAD'
+        ),
         'Clone source repository',
         '[{"collector":"command","command":"git rev-parse HEAD","format":"git_object_id","name":"source_commit"}]',
         '[]',
@@ -105,9 +113,11 @@ INSERT OR IGNORE INTO pipeline_stage_reference (
         'Build container image',
         'docker build',
         'docker:29.4',
-        'set -e' || char(10) ||
-        'cd {{ working_dir }}' || char(10) ||
-        'docker build -t {{ repository_code }}:{{ runtime_datetime }} -f {{ repository_dockerfile }} .',
+        CONCAT(
+            'set -e', CHAR(10),
+            'cd {{ working_dir }}', CHAR(10),
+            'docker build -t {{ repository_code }}:{{ runtime_datetime }} -f {{ repository_dockerfile }} .'
+        ),
         'Build container image',
         '[{"collector":"docker_image","reference":"{{ repository_code }}:{{ runtime_datetime }}","name":"{{ repository_code }}"}]',
         '["01KZGBG9NT6NCK8AT6H6ENV874"]',

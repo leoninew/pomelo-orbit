@@ -7,7 +7,9 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cd_baseline as exporter
@@ -154,6 +156,28 @@ class ContinuousDeliveryExportTests(unittest.TestCase):
                 self.assertEqual(restored.execute("SELECT COUNT(*) FROM version_component_device").fetchone()[0], 1)
             finally:
                 restored.close()
+
+    def test_export_uses_timestamped_output_by_default(self) -> None:
+        self.assertEqual(
+            exporter.default_export_output_path(datetime(2026, 8, 8, 20, 16, 20)),
+            Path("data/exports/pomelo-orbit-cd-20260808201620.sql"),
+        )
+        self.assertIsNone(exporter.parse_args(["export"]).output)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_path = root / "source.db"
+            source = connect(source_path)
+            self.populate(source)
+            source.close()
+
+            output_path = root / "data" / "exports" / "pomelo-orbit-cd-20260808201620.sql"
+            args = argparse.Namespace(database=source_path, output=None, relace=False)
+            with patch.object(exporter, "default_export_output_path", return_value=output_path):
+                exported_path = exporter.export_command(args)
+
+            self.assertEqual(exported_path, output_path.resolve())
+            self.assertTrue(exported_path.is_file())
 
     def test_export_reads_every_configured_table_without_business_filters(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -92,6 +92,7 @@ func newCredentialIntegrationService(t *testing.T) (Service, *sql.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
+	testseed.ApplySQLiteSystemSeed(t, database)
 	testseed.ApplySQLitePipelineDemo(t, database)
 	_ = slog.New(slog.NewTextHandler(io.Discard, nil))
 	service := New(

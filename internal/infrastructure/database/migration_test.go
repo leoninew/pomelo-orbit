@@ -1,9 +1,13 @@
 package db
 
 import (
+	"bytes"
 	"database/sql"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/oklog/ulid/v2"
@@ -27,19 +31,73 @@ func TestMigrateUpSQLite(t *testing.T) {
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	version, err := ReadMigrationVersion(database, config.DatabaseDriverSQLite)
-	if err != nil {
-		t.Fatalf("read version: %v", err)
+	var adminCount int
+	if err := database.QueryRow("SELECT COUNT(*) FROM user WHERE username = 'admin'").Scan(&adminCount); err != nil {
+		t.Fatalf("count built-in administrator: %v", err)
 	}
-	if version.Version == 0 {
-		t.Fatal("expected non-zero migration version")
+	if adminCount != 0 {
+		t.Fatalf("migrate up applied business data: admin count=%d", adminCount)
+	}
+
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("repeat migrate up: %v", err)
 	}
 }
 
-func TestMigrateUpSQLiteBuiltInSeedIDsAreULIDs(t *testing.T) {
+func TestMigrateDataSQLite(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
+	}
+
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, nil))
+	if err := MigrateData(database, config.DatabaseDriverSQLite, logger); err != nil {
+		t.Fatalf("migrate data: %v", err)
+	}
+	if err := MigrateData(database, config.DatabaseDriverSQLite, logger); err != nil {
+		t.Fatalf("repeat migrate data: %v", err)
+	}
+
+	for table, want := range map[string]int{
+		"user":                     1,
+		"project":                  1,
+		"permission":               7,
+		"role":                     1,
+		"pipeline":                 1,
+		"pipeline_stage":           2,
+		"pipeline_stage_reference": 2,
+	} {
+		var got int
+		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&got); err != nil {
+			t.Fatalf("count %s rows: %v", table, err)
+		}
+		if got != want {
+			t.Fatalf("%s rows=%d, want %d", table, got, want)
+		}
+	}
+
+	output := logs.String()
+	for _, want := range []string{
+		`msg="execute data migration" path=migration/data/sqlite/000029_seed_system.up.sql`,
+		`msg="execute data migration" path=migration/data/sqlite/000030_pipeline_template_library.sql`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected log entry %q in:\n%s", want, output)
+		}
+	}
+	if strings.Contains(output, "000029_seed_system.down.sql") {
+		t.Fatalf("down migration must be filtered from startup logs:\n%s", output)
+	}
+}
+
+func TestSQLiteSystemSeedIDsAreULIDs(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+	if err := MigrateData(database, config.DatabaseDriverSQLite, slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
+		t.Fatalf("migrate data: %v", err)
 	}
 
 	for _, table := range []string{
@@ -82,6 +140,12 @@ func TestMigrateUpSQLiteCreatesPipelineSchema(t *testing.T) {
 
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
+	}
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("repeat migrate up: %v", err)
+	}
+	if err := MigrateData(database, config.DatabaseDriverSQLite, slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
+		t.Fatalf("migrate data: %v", err)
 	}
 
 	for _, table := range []string{
@@ -150,6 +214,41 @@ func TestMigrateUpSQLiteCreatesPipelineSchema(t *testing.T) {
 	}
 }
 
+func TestMigrateUpSQLiteDoesNotConstrainActivePipelineRunsByRepository(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+
+	for _, id := range []string{"run-1", "run-2"} {
+		if _, err := database.Exec(`
+            INSERT INTO pipeline_run (
+                id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name,
+                pipeline_version, trigger, trigger_ref, variables_snapshot, status
+            ) VALUES (?, 'repository-1', 'Repository', 'snapshot-1', 'pipeline-1', 'Pipeline', 1, 'manual', 'main', '[]', 'waiting_to_run')
+        `, id); err != nil {
+			t.Fatalf("insert active pipeline run %s: %v", id, err)
+		}
+	}
+}
+
+func TestMigrateUpSQLiteDoesNotConstrainActiveDeploymentsByService(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+
+	for _, id := range []string{"deployment-1", "deployment-2"} {
+		if _, err := database.Exec(`
+            INSERT INTO deployment (
+                id, application_name, operation_type, trigger_type, status, is_rollback, service_id
+            ) VALUES (?, 'Application', 'deploy', 'manual', 'waiting_to_run', 0, 'service-1')
+        `, id); err != nil {
+			t.Fatalf("insert active deployment %s: %v", id, err)
+		}
+	}
+}
+
 func TestMigrateUpSQLiteLeavesPipelineStageShapesToBusinessValidation(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
@@ -212,10 +311,42 @@ func TestMigrateUpSQLiteLeavesPipelineStageShapesToBusinessValidation(t *testing
 	}
 }
 
+func TestSQLiteTemplateLibraryDataMigration(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	if err := MigrateData(database, config.DatabaseDriverSQLite, logger); err != nil {
+		t.Fatalf("migrate data: %v", err)
+	}
+	if err := MigrateData(database, config.DatabaseDriverSQLite, logger); err != nil {
+		t.Fatalf("repeat migrate data: %v", err)
+	}
+
+	for table, want := range map[string]int{
+		"pipeline":                 1,
+		"pipeline_stage":           2,
+		"pipeline_stage_reference": 2,
+	} {
+		var got int
+		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&got); err != nil {
+			t.Fatalf("count %s rows: %v", table, err)
+		}
+		if got != want {
+			t.Fatalf("%s rows=%d, want %d", table, got, want)
+		}
+	}
+}
+
 func TestOptionalSQLiteSeedExports(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
+	}
+	if err := MigrateData(database, config.DatabaseDriverSQLite, slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
+		t.Fatalf("migrate data: %v", err)
 	}
 
 	for _, name := range []string{"000041_pipeline-demo.sqlite.sql"} {
@@ -239,9 +370,9 @@ func TestOptionalSQLiteSeedExports(t *testing.T) {
 		"user_role":                1,
 		"project_member":           1,
 		"repository":               2,
-		"pipeline":                 2,
+		"pipeline":                 3,
 		"pipeline_stage":           6,
-		"pipeline_stage_reference": 6,
+		"pipeline_stage_reference": 8,
 	} {
 		var got int
 		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&got); err != nil {

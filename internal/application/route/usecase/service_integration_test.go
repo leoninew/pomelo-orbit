@@ -20,6 +20,7 @@ import (
 	gatewayrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/gateway"
 	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
 	routerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/route"
+	testseed "gitee.com/leoninew/PomeloOrbit-go/internal/testutil/seed"
 )
 
 const (
@@ -131,6 +132,7 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
+	testseed.ApplySQLiteSystemSeed(t, database)
 	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
 	cfg.Cert.LetsEncrypt.Enabled = true
 	cfg.Cert.LetsEncrypt.Email = "admin@example.test"

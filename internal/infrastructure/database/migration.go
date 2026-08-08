@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"path"
+	"strings"
 
 	gomigrate "github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
@@ -19,6 +21,8 @@ import (
 )
 
 const migrationsRoot = "migration"
+
+const dataMigrationsRoot = migrationsRoot + "/data"
 
 type MigrationVersion struct {
 	Version uint
@@ -35,6 +39,50 @@ func MigrateUp(sqlDb *sql.DB, driver string) error {
 	if err := runner.Up(); err != nil && !errors.Is(err, gomigrate.ErrNoChange) {
 		return fmt.Errorf("run migrations: %w", err)
 	}
+	return nil
+}
+
+// MigrateData executes the business data migrations for driver. Data scripts
+// are not tracked by golang-migrate and must be idempotent because application
+// startup executes them after each schema migration check.
+func MigrateData(sqlDb *sql.DB, driver string, logger *slog.Logger) error {
+	if logger == nil {
+		return errors.New("data migration logger is required")
+	}
+
+	directory := path.Join(dataMigrationsRoot, driver)
+	entries, err := fs.ReadDir(migrationfiles.DataFiles, directory)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("unsupported data migration source driver: %s", driver)
+		}
+		return fmt.Errorf("list data migrations in %s: %w", directory, err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		scriptPath := path.Join(directory, entry.Name())
+		switch {
+		case strings.HasSuffix(entry.Name(), ".down.sql"):
+			continue
+		case !strings.HasSuffix(entry.Name(), ".sql"):
+			continue
+		}
+
+		contents, err := migrationfiles.DataFiles.ReadFile(scriptPath)
+		if err != nil {
+			return fmt.Errorf("read data migration %s: %w", scriptPath, err)
+		}
+
+		logger.Info("execute data migration", "path", scriptPath)
+		if _, err := sqlDb.Exec(string(contents)); err != nil {
+			return fmt.Errorf("execute data migration %s: %w", scriptPath, err)
+		}
+	}
+
 	return nil
 }
 

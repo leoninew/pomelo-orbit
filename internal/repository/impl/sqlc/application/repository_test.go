@@ -81,7 +81,7 @@ func TestDeleteApplicationRejectsReferencedVersion(t *testing.T) {
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO service (id, application_id, version_id, instance_key, status) VALUES ('service-1', 'app-1', 'version-1', 'default', 'stopped')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'app-1', 'version-1', 'default', 'app-default', 'stopped')`); err != nil {
 		t.Fatal(err)
 	}
 

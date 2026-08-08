@@ -72,11 +72,14 @@ func TestMySQLE2E(t *testing.T) {
 	if err := db.MigrateUp(database, cfg.Database.Driver); err != nil {
 		t.Fatal(err)
 	}
+	if err := db.MigrateData(database, cfg.Database.Driver, slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
+		t.Fatal(err)
+	}
 	version, err := db.ReadMigrationVersion(database, cfg.Database.Driver)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version.Version != 32 || version.Dirty {
+	if version.Version != 30 || version.Dirty {
 		t.Fatalf("unexpected migration version: %+v", version)
 	}
 

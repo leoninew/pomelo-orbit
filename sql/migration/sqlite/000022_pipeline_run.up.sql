@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS pipeline_stage_run (
 
 CREATE INDEX IF NOT EXISTS idx_pipeline_stage_run_run ON pipeline_stage_run(pipeline_run_id);
 CREATE INDEX IF NOT EXISTS idx_pipeline_stage_run_status ON pipeline_stage_run(status);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pipeline_stage_run_run_stage
+    ON pipeline_stage_run(pipeline_run_id, stage_id);
 
 CREATE TABLE IF NOT EXISTS pipeline_run_version_binding (
     pipeline_run_id TEXT PRIMARY KEY,

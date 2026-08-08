@@ -1,4 +1,6 @@
--- Reverse the built-in system user, default project, and RBAC seed.
+-- Reverse the built-in administrator, default project, and RBAC seed.
+-- This file is not loaded by golang-migrate.
+
 DELETE FROM user_role
 WHERE user_id = '01KKX2YNPF6VJ9N7QYCWG61KVK'
   AND role_id = '01KRXJXVPC6MQ75SZPWYZJSSAB';
@@ -17,5 +19,4 @@ WHERE project_id = '01KRRKK0K3T519ZQZES3M4QA9Z'
   AND user_id = '01KKX2YNPF6VJ9N7QYCWG61KVK';
 
 DELETE FROM project WHERE id = '01KRRKK0K3T519ZQZES3M4QA9Z';
-
 DELETE FROM user WHERE id = '01KKX2YNPF6VJ9N7QYCWG61KVK';

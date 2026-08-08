@@ -31,7 +31,7 @@ func (a App) Migrate() error {
 	}
 	defer func() { _ = database.Close() }()
 
-	return RunMigrations(database, a.cfg.Database.Driver)
+	return RunMigrations(database, a.cfg.Database.Driver, a.logger)
 }
 
 func (a App) RunWorker(ctx context.Context) error {
@@ -41,7 +41,7 @@ func (a App) RunWorker(ctx context.Context) error {
 	}
 	defer func() { _ = database.Close() }()
 
-	if err := RunMigrations(database, a.cfg.Database.Driver); err != nil {
+	if err := RunMigrations(database, a.cfg.Database.Driver, a.logger); err != nil {
 		return err
 	}
 
@@ -141,7 +141,7 @@ func (a App) Serve(ctx context.Context) error {
 	}
 	defer func() { _ = database.Close() }()
 
-	if err := RunMigrations(database, a.cfg.Database.Driver); err != nil {
+	if err := RunMigrations(database, a.cfg.Database.Driver, a.logger); err != nil {
 		return err
 	}
 

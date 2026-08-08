@@ -1,5 +1,5 @@
 # 后端架构（现行）
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-08-08
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。  
@@ -49,14 +49,15 @@ cmd/server, cmd/migrate
 
 ## 数据与迁移
 
-- 迁移文件：`sql/migration/{sqlite,mysql}/`。  
+- 编号 DDL 迁移：`sql/migration/{sqlite,mysql}/`，由 `MigrateUp` 自动执行。
+- 业务数据迁移：`sql/migration/data/{sqlite,mysql}/`，嵌入二进制并在应用启动的结构迁移完成后自动执行。按字典序执行 `.up.sql` 与普通 `.sql`，发现阶段过滤 `.down.sql`；脚本必须幂等。
 - **不修改已执行的迁移文件**（项目约束）。开发期重建库可接受时，以当前迁移链终态为准。  
 - 终态 CD 表见 `*_cd_schema*` 类迁移（application/version/component/expose/environment/gateway_config/service/deployment/route 等）；**无** 旧表 `application_config_file`、`application_service`、`application_route`、`environment_binding` 作为现行 schema。
 
 ## 运行形态
 
-- `App.Serve`：迁移 → HTTP → **同进程** background worker（见 `internal/bootstrap/app.go`）。  
-- `App.RunWorker`：可单独跑 worker。  
+- `App.Serve`：结构迁移 → 数据迁移 → HTTP → **同进程** background worker（见 `internal/bootstrap/app.go`）。
+- `App.RunWorker`：结构迁移 → 数据迁移 → 可单独跑 worker。
 - 单节点挂载 Docker socket 执行 CI/CD 容器操作；不做 API→远程 worker 协议主路径。
 
 ## 相关

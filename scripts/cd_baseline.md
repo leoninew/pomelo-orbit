@@ -23,7 +23,10 @@ Doc role: local script reference。与代码冲突时以代码为准。
 ## 用法
 
 ```bash
-# 使用默认数据库导出完整持续部署控制面
+# 使用默认数据库导出完整持续部署控制面；输出为 data/exports/pomelo-orbit-cd-<timestamp>.sql
+python scripts/cd_baseline.py export
+
+# 指定输出文件
 python scripts/cd_baseline.py export --output data/exports/pomelo-orbit-cd.sql
 
 # 生成可清空同范围 CD 数据后再导入的 SQL
@@ -33,7 +36,7 @@ python scripts/cd_baseline.py export --output data/exports/pomelo-orbit-cd.sql -
 python scripts/cd_baseline.py import  --input data/exports/pomelo-orbit-cd.sql
 ```
 
-`export` 通过 SQLite `mode=ro` 打开数据库，先执行完整性和外键检查。输出使用普通 `INSERT`，不会静默跳过重复记录。`--relace`（参数名按脚本接口拼写）会在所有 `INSERT` 前按依赖反序写入该导出范围内每张表的 `DELETE`，用于恢复同一份 CD 基线。输出文件仅在导出检查通过后原子替换。
+`export` 通过 SQLite `mode=ro` 打开数据库，先执行完整性和外键检查。未指定 `--output` 时，输出文件名为 `data/exports/pomelo-orbit-cd-YYYYMMDDHHMMSS.sql`。输出使用普通 `INSERT`，不会静默跳过重复记录。`--relace`（参数名按脚本接口拼写）会在所有 `INSERT` 前按依赖反序写入该导出范围内每张表的 `DELETE`，用于恢复同一份 CD 基线。输出文件仅在导出检查通过后原子替换。
 
 `import` 不创建事务，按文件顺序执行 SQL。为处理 Version 自引用及 Service 对 Version 的引用，生成的 SQL 在导入期间暂时关闭 SQLite 外键检查，并在末尾重新开启；导入命令随后执行完整性和外键检查。SQL 出错时，已经执行的语句不会回滚，必须从导入前备份恢复数据库。
 

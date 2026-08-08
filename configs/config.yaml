@@ -67,8 +67,8 @@ llm:
 # Local Codex MCP browser authorization. Production deployments should set
 # mcp.web_url to the externally reachable Orbit UI origin.
 mcp:
-  api_url: ""
-  web_url: "http://127.0.0.1:9020"
+  api_url: "http://127.0.0.1:9021"
+  web_url: "http://localhost:9020"
   auth_timeout: 3m
 
 pipeline_run:

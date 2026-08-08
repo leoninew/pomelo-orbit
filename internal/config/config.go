@@ -347,7 +347,7 @@ func (c Config) MCPAPIUrl() string {
 // ValidateMCPClient is intentionally separate from Validate: browser handoff
 // settings are required only for the `server mcp` command, not for HTTP/worker.
 func (c Config) ValidateMCPClient() error {
-	if err := validateHTTPUrl("mcp.api_url", c.MCPAPIUrl(), false); err != nil {
+	if err := validateHTTPUrl("mcp.api_url", c.MCPAPIUrl(), true); err != nil {
 		return err
 	}
 	if strings.TrimSpace(c.MCP.WebUrl) == "" {

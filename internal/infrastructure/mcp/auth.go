@@ -208,7 +208,9 @@ func (a BrowserAuthorizer) callbackHandler(state string, result chan<- callbackR
 			}
 			return
 		}
-		writer.WriteHeader(http.StatusNoContent)
+		writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+		writer.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(writer, "<!doctype html><title>MCP authorization complete</title><p>MCP authorization complete. You may close this window.</p>")
 		select {
 		case result <- callbackResult{code: code}:
 		default:

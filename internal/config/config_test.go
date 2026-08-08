@@ -98,6 +98,21 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	}
 }
 
+func TestValidateMCPClientRejectsAPIURLPath(t *testing.T) {
+	cfg := Config{
+		MCP: MCPConfig{
+			APIUrl:      "http://127.0.0.1:9021/api",
+			WebUrl:      "http://localhost:9020",
+			AuthTimeout: time.Minute,
+		},
+	}
+
+	err := cfg.ValidateMCPClient()
+	if err == nil || !strings.Contains(err.Error(), "mcp.api_url must not include path") {
+		t.Fatalf("ValidateMCPClient() error = %v", err)
+	}
+}
+
 func TestLoadConfigMergesEnvConfig(t *testing.T) {
 	setupDefaultConfig(t)
 	t.Setenv("POMELO_ORBIT_APP__ENV", "develop")

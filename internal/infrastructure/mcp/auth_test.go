@@ -67,7 +67,7 @@ func TestBrowserAuthorizerDeliversLoopbackCodeAndExchangesIt(t *testing.T) {
 				return err
 			}
 			defer func() { _ = response.Body.Close() }()
-			if response.StatusCode != http.StatusNoContent {
+			if response.StatusCode != http.StatusOK {
 				t.Fatalf("callback status = %d", response.StatusCode)
 			}
 			return nil

@@ -21,9 +21,6 @@
     <AppLoadingState v-if="loading" size="section" />
 
     <template v-else-if="detail && draft">
-      <p v-if="detail.effective_error" class="app-field-error text-sm" role="alert">
-        有效运行配置不可用：{{ detail.effective_error }}
-      </p>
       <section class="order-2 app-surface app-detail-card">
         <div class="app-section-header app-detail-section-header">
           <h2 class="app-detail-section-title">{{ t('environment.title') }}</h2>

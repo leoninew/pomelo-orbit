@@ -23,6 +23,10 @@
       </div>
     </div>
 
+    <p v-if="formError" class="app-field-error px-6" role="alert">
+      {{ formError }}
+    </p>
+
     <AppEmptyState v-if="rows.length === 0" size="compact" />
     <div v-else class="overflow-x-auto">
       <table class="app-data-table min-w-[640px] table-fixed">
@@ -172,12 +176,14 @@
       editable?: boolean;
       maskValues?: boolean;
       validateKey?: EnvironmentVariableKeyValidator;
+      formError?: string;
     }>(),
     {
       disabled: false,
       editable: true,
       maskValues: false,
       validateKey: undefined,
+      formError: undefined,
     }
   );
 

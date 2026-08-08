@@ -9,8 +9,9 @@ import (
 
 func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 	response := serviceViewResponse(servicedto.ServiceView{
-		Service: model.Service{Id: "service-1"},
-		Env:     []model.ServiceEnv{{Key: "SHARED_VALUE", Value: "value"}},
+		Service:        model.Service{Id: "service-1"},
+		Env:            []model.ServiceEnv{{Key: "SHARED_VALUE", Value: "value"}},
+		EffectiveError: "component mysql environment MYSQL_DATABASE: requires service environment MYSQL_DATABASE",
 		Components: []model.ServiceComponent{{
 			Id: "service-component-1", SourceVersionComponentId: "version-component-1",
 		}},
@@ -27,15 +28,17 @@ func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 	if len(response.Env) != 1 || response.Env[0].Key != "SHARED_VALUE" || response.Env[0].Value != "value" {
 		t.Fatalf("service environment = %#v", response.Env)
 	}
+	if response.EffectiveError == "" {
+		t.Fatal("service effective error is missing")
+	}
 }
 
 func TestServiceComponentDetailResponseOmitsUnavailableEffectiveValues(t *testing.T) {
 	response := serviceComponentDetailResponse(servicedto.ServiceComponentDetail{
-		Component:      model.ServiceComponent{Id: "service-component-1"},
-		Declaration:    model.VersionComponent{Id: "version-component-1", Name: "mysql", Image: "mysql:8"},
-		EffectiveError: "component mysql environment MYSQL_DATABASE: requires service environment MYSQL_DATABASE",
+		Component:   model.ServiceComponent{Id: "service-component-1"},
+		Declaration: model.VersionComponent{Id: "version-component-1", Name: "mysql", Image: "mysql:8"},
 	})
-	if response.Component == nil || response.Declaration == nil || response.Effective != nil || response.EffectiveError == "" {
+	if response.Component == nil || response.Declaration == nil || response.Effective != nil {
 		t.Fatal("expected source views without effective component")
 	}
 }

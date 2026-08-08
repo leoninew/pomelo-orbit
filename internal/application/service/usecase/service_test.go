@@ -169,7 +169,7 @@ func TestGetServiceComponentResolvesServiceEnvironmentWithoutCreatingOverlay(t *
 	}
 }
 
-func TestGetServiceComponentAllowsMissingRequiredServiceEnvironment(t *testing.T) {
+func TestGetServiceComponentReturnsSourceValuesForIncompleteServiceEnvironment(t *testing.T) {
 	service, app, version, declaration, component := serviceViewFixture()
 	declaration.Env[0].Value = "${MYSQL_DATABASE:?required}"
 	component.Env = nil
@@ -182,7 +182,7 @@ func TestGetServiceComponentAllowsMissingRequiredServiceEnvironment(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if detail.Component.Id != component.Id || detail.Declaration.Id != declaration.Id || detail.Effective != nil || !strings.Contains(detail.EffectiveError, "requires service environment MYSQL_DATABASE") {
+	if detail.Component.Id != component.Id || detail.Declaration.Id != declaration.Id || detail.Effective != nil {
 		t.Fatalf("component detail = %#v", detail)
 	}
 }
@@ -203,8 +203,8 @@ func TestServiceViewAllowsMissingRequiredServiceEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("service view must remain accessible: %v", err)
 	}
-	if !view.PendingDeploy {
-		t.Fatal("missing environment must require a deployment after it is set")
+	if !view.PendingDeploy || !strings.Contains(view.EffectiveError, "requires service environment REQUIRED_VALUE") {
+		t.Fatalf("service view must report the missing environment: %#v", view)
 	}
 }
 

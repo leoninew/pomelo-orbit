@@ -1291,11 +1291,12 @@
     <AppDialog
       :open="mountDialogOpen"
       :title="editingMountIndex === null ? t('common.add') : t('common.edit')"
+      width-class="w-[min(760px,calc(100vw-32px))]"
       body-class="space-y-4 px-6 py-4 text-sm"
       @update:open="setMountDialogOpen"
     >
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
+        <div class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.sourceType') }}
             <span class="text-destructive">*</span>

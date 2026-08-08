@@ -4,6 +4,11 @@
       :rows="rows"
       :saved-rows="savedRows"
       :title="t('environment.title')"
+      :form-error="
+        effectiveError
+          ? t('service.detail.effectiveConfigUnavailable', { error: effectiveError })
+          : undefined
+      "
       :disabled="disabled"
       :validate-key="validateKey"
       @update:rows="emit('update:rows', $event)"
@@ -24,6 +29,7 @@
   defineProps<{
     rows: EnvironmentVariableListRow[];
     savedRows: EnvironmentVariableListRow[];
+    effectiveError?: string;
     disabled: boolean;
     validateKey: EnvironmentVariableKeyValidator;
   }>();

@@ -619,6 +619,7 @@ export default {
       notFound: 'Service not found or access denied',
       saved: 'Basic information saved',
       saveFailed: 'Failed to save basic information',
+      effectiveConfigUnavailable: 'Effective runtime configuration is unavailable: {error}',
       sections: {
         basic: 'Basic info',
         components: 'Runtime status',

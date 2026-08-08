@@ -181,7 +181,7 @@ func (s Service) GetServiceComponent(ctx context.Context, userId, serviceID, com
 		}
 		effective, err := deploymentsvc.MergeServiceComponent(declaration, component, values)
 		if err != nil {
-			return servicedto.ServiceComponentDetail{Component: component, Declaration: declaration, EffectiveError: err.Error()}, nil
+			return servicedto.ServiceComponentDetail{Component: component, Declaration: declaration}, nil
 		}
 		return servicedto.ServiceComponentDetail{Component: component, Declaration: declaration, Effective: &effective}, nil
 	}
@@ -450,6 +450,7 @@ func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (s
 	plan, _, err := deploymentsvc.BuildEffectiveServicePlan(app, version, item.Service(), declarations, components, env, nil)
 	if err != nil {
 		view.PendingDeploy = true
+		view.EffectiveError = err.Error()
 		return view, nil
 	}
 	hash, err := deploymentsvc.EffectiveServicePlanHash(plan)

@@ -50,6 +50,7 @@
       <ServiceEnvironmentCard
         :rows="environmentRows"
         :saved-rows="savedEnvironmentRows"
+        :effective-error="service.effective_error"
         :disabled="operating"
         :validate-key="validateEnvironmentKey"
         @update:rows="environmentRows = $event"

@@ -10,6 +10,7 @@ type ServiceView struct {
 	ComponentDefinitions []model.VersionComponent
 	PendingDeploy        bool
 	EffectivePlanHash    string
+	EffectiveError       string
 	ApplicationName      string
 	ApplicationCode      string
 	ApplicationKind      string
@@ -45,13 +46,11 @@ type ServiceComponentOverlayInput struct {
 }
 
 // ServiceComponentDetail compares a Version declaration and its sparse Service
-// overlay. Effective is unavailable while the Service configuration cannot
-// resolve all required runtime values.
+// overlay. Effective is unavailable while the Service configuration is incomplete.
 type ServiceComponentDetail struct {
-	Component      model.ServiceComponent
-	Declaration    model.VersionComponent
-	Effective      *model.EffectiveServiceComponent
-	EffectiveError string
+	Component   model.ServiceComponent
+	Declaration model.VersionComponent
+	Effective   *model.EffectiveServiceComponent
 }
 
 type ServiceBasicUpdateInput struct {

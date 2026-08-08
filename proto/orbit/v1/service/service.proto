@@ -21,6 +21,7 @@ message ServiceResp {
   bool pending_deploy = 15;
   string effective_plan_hash = 16;
   repeated ServiceEnv env = 17;
+  string effective_error = 18;
 }
 
 message ServiceListResp {
@@ -74,10 +75,11 @@ message ServiceComponentResp {
 // server-merged effective component so clients never infer runtime state from
 // absent values.
 message ServiceComponentDetailResp {
+  reserved 4;
+
   ServiceComponentResp component = 1;
   ServiceComponentDefinitionResp declaration = 2;
   ServiceComponentDefinitionResp effective = 3;
-  string effective_error = 4;
 }
 
 message ServiceComponentDefinitionResp {

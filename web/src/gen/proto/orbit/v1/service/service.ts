@@ -25,6 +25,7 @@ export interface ServiceResp {
   pending_deploy: boolean;
   effective_plan_hash: string;
   env: ServiceEnv[];
+  effective_error: string;
 }
 
 export interface ServiceListResp {
@@ -83,7 +84,6 @@ export interface ServiceComponentDetailResp {
   component: ServiceComponentResp | undefined;
   declaration: ServiceComponentDefinitionResp | undefined;
   effective: ServiceComponentDefinitionResp | undefined;
-  effective_error: string;
 }
 
 export interface ServiceComponentDefinitionResp {

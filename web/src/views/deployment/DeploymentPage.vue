@@ -38,10 +38,10 @@
           </thead>
           <tbody>
             <tr v-for="deployment in deployments" :key="deployment.id">
-              <td class="max-w-64 truncate">
+              <td class="max-w-64 truncate font-mono text-xs">
                 <router-link
                   :to="`/deployment/${deployment.id}`"
-                  class="app-link font-mono"
+                  class="app-link"
                   :title="deployment.id"
                 >
                   {{ deployment.id }}

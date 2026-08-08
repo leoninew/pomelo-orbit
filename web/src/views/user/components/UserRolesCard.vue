@@ -1,18 +1,10 @@
 <template>
-  <section class="app-surface app-detail-card">
-    <div class="app-section-header app-detail-section-header">
-      <h2 class="app-detail-section-title">{{ t('userManagement.rolesAndPermissions') }}</h2>
-      <button
-        v-if="user && editable"
-        class="app-button-primary h-9 px-3"
-        :disabled="disabled"
-        @click="emit('edit')"
-      >
-        <Pencil class="size-4" />
-        {{ t('common.edit') }}
-      </button>
-    </div>
-
+  <DetailInfoCard
+    :title="t('userManagement.rolesAndPermissions')"
+    :editable="Boolean(user && editable)"
+    :disabled="disabled"
+    @edit="emit('edit')"
+  >
     <div v-if="user && user.role_items.length > 0" class="px-5 py-4">
       <TabsRoot :default-value="user.role_items[0]?.id">
         <TabsList class="flex gap-1 border-b border-border">
@@ -38,14 +30,14 @@
     <div v-else class="px-5 py-4">
       <p class="text-sm text-muted-foreground">{{ t('common.noData') }}</p>
     </div>
-  </section>
+  </DetailInfoCard>
 </template>
 
 <script setup lang="ts">
-  import { Pencil } from 'lucide-vue-next';
   import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import type { UserResp } from '@/gen/proto/orbit/v1/user/user';
 
   defineProps<{

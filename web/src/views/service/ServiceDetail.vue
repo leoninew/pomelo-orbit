@@ -45,7 +45,55 @@
     <AppEmptyState v-else-if="!service" :message="t('service.detail.notFound')" />
 
     <template v-else>
-      <ServiceBasicInfoCard :service="service" :disabled="operating" @edit="openBasicEditDialog" />
+      <DetailInfoCard
+        :title="t('service.detail.sections.basic')"
+        editable
+        :disabled="operating"
+        @edit="openBasicEditDialog"
+      >
+        <dl class="app-detail-info-grid">
+          <div class="flex gap-2">
+            <dt>{{ t('service.fields.application') }}</dt>
+            <dd>
+              <router-link :to="`/application/${service.application_id}`" class="app-link">
+                {{ service.application_name }}
+              </router-link>
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('service.fields.code') }}</dt>
+            <dd class="text-foreground">{{ service.code }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('service.fields.instanceKey') }}</dt>
+            <dd class="text-foreground">{{ service.instance_key }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('service.fields.version') }}</dt>
+            <dd>
+              <router-link :to="`/version/${service.version_id}`" class="app-link">
+                {{ service.version_label }}
+              </router-link>
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('common.status') }}</dt>
+            <dd>
+              <AppBadge variant="status" :tone="appStatusTone(service.status)">
+                {{ service.status }}
+              </AppBadge>
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('common.createdAt') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(service.created_at) }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('common.updatedAt') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(service.updated_at) }}</dd>
+          </div>
+        </dl>
+      </DetailInfoCard>
       <ServiceComponentsCard :service="service" @view-logs="openLogsDrawer" />
       <ServiceEnvironmentCard
         :rows="environmentRows"
@@ -306,9 +354,9 @@
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { appStatusTone } from '@/utils/status';
-  import { delayAsync } from '@/utils/time';
+  import { delayAsync, formatTime } from '@/utils/time';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
-  import ServiceBasicInfoCard from './components/ServiceBasicInfoCard.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import ServiceComponentsCard from './components/ServiceComponentsCard.vue';
   import ServiceEnvironmentCard from './components/ServiceEnvironmentCard.vue';
 

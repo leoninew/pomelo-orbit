@@ -1,5 +1,5 @@
 <template>
-  <form class="space-y-4" @submit.prevent="submit">
+  <form class="app-surface app-detail-card space-y-4" @submit.prevent="submit">
     <div class="app-section-header app-detail-section-header">
       <h2 class="app-detail-section-title">{{ title }}</h2>
       <div v-if="editable" class="flex shrink-0 items-center gap-2">

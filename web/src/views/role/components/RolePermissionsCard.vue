@@ -1,17 +1,10 @@
 <template>
-  <section class="app-surface app-detail-card">
-    <div class="app-section-header app-detail-section-header">
-      <h2 class="app-detail-section-title">{{ t('roleManagement.permissions') }}</h2>
-      <button
-        v-if="role && editable"
-        class="app-button-primary h-9 px-3"
-        :disabled="disabled"
-        @click="emit('edit')"
-      >
-        <Pencil class="size-4" />
-        {{ t('common.edit') }}
-      </button>
-    </div>
+  <DetailInfoCard
+    :title="t('roleManagement.permissions')"
+    :editable="Boolean(role && editable)"
+    :disabled="disabled"
+    @edit="emit('edit')"
+  >
     <div class="px-5 py-4">
       <div v-if="role && role.permission_codes.length > 0" class="flex flex-wrap gap-2">
         <AppBadge v-for="code in role.permission_codes" :key="code">
@@ -20,13 +13,13 @@
       </div>
       <p v-else class="text-sm text-muted-foreground">{{ t('common.noData') }}</p>
     </div>
-  </section>
+  </DetailInfoCard>
 </template>
 
 <script setup lang="ts">
-  import { Pencil } from 'lucide-vue-next';
   import { useI18n } from 'vue-i18n';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import type { RoleResp } from '@/gen/proto/orbit/v1/role/role';
 
   defineProps<{

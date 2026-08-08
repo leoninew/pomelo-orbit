@@ -46,6 +46,7 @@ describe('domain navigation declarations', () => {
         key: 'pipeline',
         children: [
           expect.objectContaining({ key: 'pipelines', path: '/pipeline' }),
+          expect.objectContaining({ key: 'pipelinestages', path: '/pipeline-stage' }),
           expect.objectContaining({ key: 'pipelineruns', path: '/pipeline-run' }),
           expect.objectContaining({ key: 'artifacts', path: '/pipeline-run/artifact' }),
         ],

@@ -20,14 +20,7 @@
     </p>
 
     <template v-else-if="stage">
-      <section class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">基本信息</h2>
-          <button class="app-button-primary h-9 px-3" @click="openBasicEdit">
-            <Pencil class="size-4" />
-            编辑
-          </button>
-        </div>
+      <DetailInfoCard title="基本信息" editable @edit="openBasicEdit">
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>名称</dt>
@@ -54,22 +47,15 @@
             <dd class="text-muted-foreground">{{ formatTime(stage.updated_at) }}</dd>
           </div>
         </dl>
-      </section>
+      </DetailInfoCard>
 
-      <section class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">脚本</h2>
-          <div class="flex items-center gap-2">
-            <button class="app-button-primary h-9 px-3" @click="openScriptEdit">
-              <Pencil class="size-4" />
-              编辑
-            </button>
-            <button v-if="stage.script" class="app-button h-9 px-3" @click="copyScript">
-              <Copy class="size-4" />
-              复制
-            </button>
-          </div>
-        </div>
+      <DetailInfoCard title="脚本" editable @edit="openScriptEdit">
+        <template #actions>
+          <button v-if="stage.script" class="app-button h-9 px-3" @click="copyScript">
+            <Copy class="size-4" />
+            复制
+          </button>
+        </template>
         <div v-if="stage.script" class="p-5">
           <MonacoEditor
             :model-value="stage.script"
@@ -79,16 +65,15 @@
           />
         </div>
         <div v-else class="px-5 py-10 text-center text-sm text-muted-foreground">暂无脚本</div>
-      </section>
+      </DetailInfoCard>
 
-      <section class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">制品声明</h2>
-          <button class="app-button-primary h-9 px-3" @click="openArtifact">
+      <DetailInfoCard title="制品声明">
+        <template #actions>
+          <button class="app-button-primary h-9 px-3" @click="() => openArtifact()">
             <Plus class="size-4" />
             添加制品
           </button>
-        </div>
+        </template>
         <AppEmptyState v-if="stage.artifacts.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table min-w-[720px]">
@@ -103,7 +88,9 @@
             <tbody>
               <tr v-for="(artifact, index) in stage.artifacts" :key="artifact.name">
                 <td class="text-foreground">{{ artifact.name }}</td>
-                <td><AppBadge>{{ artifact.collector }}</AppBadge></td>
+                <td>
+                  <AppBadge>{{ artifact.collector }}</AppBadge>
+                </td>
                 <td class="max-w-xl truncate text-muted-foreground">
                   {{ artifact.collector === 'command' ? artifact.command : artifact.reference }}
                 </td>
@@ -117,13 +104,16 @@
             </tbody>
           </table>
         </div>
-      </section>
+      </DetailInfoCard>
     </template>
 
     <AppDialog v-model:open="basicOpen" title="编辑阶段">
       <form class="space-y-4" @submit.prevent="saveBasic">
         <div class="space-y-1.5">
-          <label class="app-field-label">名称 <span class="text-destructive">*</span></label>
+          <label class="app-field-label">
+            名称
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="basicForm.name"
             class="app-input"
@@ -134,7 +124,10 @@
           <p v-if="basicErrors.name" class="app-field-error" role="alert">{{ basicErrors.name }}</p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label">执行镜像 <span class="text-destructive">*</span></label>
+          <label class="app-field-label">
+            执行镜像
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="basicForm.image"
             class="app-input"
@@ -142,7 +135,9 @@
             :aria-invalid="basicErrors.image ? 'true' : undefined"
             @input="basicErrors.image = ''"
           />
-          <p v-if="basicErrors.image" class="app-field-error" role="alert">{{ basicErrors.image }}</p>
+          <p v-if="basicErrors.image" class="app-field-error" role="alert">
+            {{ basicErrors.image }}
+          </p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label">说明</label>
@@ -178,7 +173,10 @@
       <form class="space-y-4" @submit.prevent="saveArtifact">
         <div class="grid gap-4 sm:grid-cols-2">
           <div class="space-y-1.5">
-            <label class="app-field-label">名称 <span class="text-destructive">*</span></label>
+            <label class="app-field-label">
+              名称
+              <span class="text-destructive">*</span>
+            </label>
             <input
               v-model="artifactForm.name"
               class="app-input"
@@ -186,10 +184,15 @@
               :aria-invalid="artifactErrors.name ? 'true' : undefined"
               @input="artifactErrors.name = ''"
             />
-            <p v-if="artifactErrors.name" class="app-field-error" role="alert">{{ artifactErrors.name }}</p>
+            <p v-if="artifactErrors.name" class="app-field-error" role="alert">
+              {{ artifactErrors.name }}
+            </p>
           </div>
           <div class="space-y-1.5">
-            <label class="app-field-label">收集器 <span class="text-destructive">*</span></label>
+            <label class="app-field-label">
+              收集器
+              <span class="text-destructive">*</span>
+            </label>
             <RawValueSelect
               :model-value="artifactForm.collector"
               :values="artifactCollectors"
@@ -203,7 +206,10 @@
         </div>
         <div v-if="artifactForm.collector === 'command'" class="grid gap-4 sm:grid-cols-2">
           <div class="space-y-1.5">
-            <label class="app-field-label">命令 <span class="text-destructive">*</span></label>
+            <label class="app-field-label">
+              命令
+              <span class="text-destructive">*</span>
+            </label>
             <input
               v-model="artifactForm.command"
               class="app-input"
@@ -216,7 +222,10 @@
             </p>
           </div>
           <div class="space-y-1.5">
-            <label class="app-field-label">输出格式 <span class="text-destructive">*</span></label>
+            <label class="app-field-label">
+              输出格式
+              <span class="text-destructive">*</span>
+            </label>
             <RawValueSelect
               :model-value="artifactForm.format"
               :values="artifactFormats"
@@ -229,7 +238,10 @@
           </div>
         </div>
         <div v-else class="space-y-1.5">
-          <label class="app-field-label">引用 <span class="text-destructive">*</span></label>
+          <label class="app-field-label">
+            引用
+            <span class="text-destructive">*</span>
+          </label>
           <input
             v-model="artifactForm.reference"
             class="app-input"
@@ -264,11 +276,11 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Copy, Pencil, Plus, Trash2 } from 'lucide-vue-next';
   import { onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
@@ -390,7 +402,9 @@
     scriptError.value = '';
     try {
       await executeSave(async () => {
-        stage.value = await pipelineStageApi.update(stageId(), { script: scriptForm.script.trim() });
+        stage.value = await pipelineStageApi.update(stageId(), {
+          script: scriptForm.script.trim(),
+        });
         closeScriptDrawer();
         toast.success('脚本已保存');
       });
@@ -446,7 +460,8 @@
   async function saveArtifact() {
     clearArtifactErrors();
     if (!artifactForm.name.trim()) artifactErrors.name = '请输入制品名称';
-    if (!artifactCollectors.includes(artifactForm.collector)) artifactErrors.collector = '请选择收集器';
+    if (!artifactCollectors.includes(artifactForm.collector))
+      artifactErrors.collector = '请选择收集器';
     if (artifactForm.collector === 'command' && !artifactForm.command.trim())
       artifactErrors.command = '请输入制品命令';
     if (artifactForm.collector === 'command' && !artifactForm.format)
@@ -459,7 +474,9 @@
     const artifacts =
       artifactIndex.value === -1
         ? [...stage.value.artifacts, artifact]
-        : stage.value.artifacts.map((item, index) => (index === artifactIndex.value ? artifact : item));
+        : stage.value.artifacts.map((item, index) =>
+            index === artifactIndex.value ? artifact : item
+          );
     try {
       await executeSave(async () => {
         stage.value = await pipelineStageApi.update(stageId(), { artifacts: { items: artifacts } });
@@ -476,7 +493,9 @@
     try {
       await executeSave(async () => {
         stage.value = await pipelineStageApi.update(stageId(), {
-          artifacts: { items: stage.value?.artifacts.filter((_, itemIndex) => itemIndex !== index) || [] },
+          artifacts: {
+            items: stage.value?.artifacts.filter((_, itemIndex) => itemIndex !== index) || [],
+          },
         });
         toast.success('制品声明已删除');
       });
@@ -502,6 +521,9 @@
     }
   }
 
-  watch(() => route.params.id, () => void fetchStage());
+  watch(
+    () => route.params.id,
+    () => void fetchStage()
+  );
   onMounted(() => void fetchStage());
 </script>

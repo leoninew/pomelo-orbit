@@ -9,10 +9,7 @@
     </div>
     <AppLoadingState v-if="status === 'loading'" size="section" />
     <template v-else-if="snapshot">
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">冻结的流水线配置</h2>
-        </div>
+      <DetailInfoCard title="冻结的流水线配置">
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>流水线</dt>
@@ -57,11 +54,8 @@
             <dd class="text-muted-foreground">{{ formatTime(snapshot.created_at) }}</dd>
           </div>
         </dl>
-      </div>
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">阶段快照</h2>
-        </div>
+      </DetailInfoCard>
+      <DetailInfoCard title="阶段快照">
         <AppEmptyState v-if="snapshot.stages_snapshot.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table min-w-[760px]">
@@ -91,13 +85,10 @@
             </tbody>
           </table>
         </div>
-      </div>
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">变量快照</h2>
-        </div>
+      </DetailInfoCard>
+      <DetailInfoCard title="变量快照">
         <VariableDeclarationsTable :declarations="snapshot.variables_snapshot" readonly />
-      </div>
+      </DetailInfoCard>
     </template>
   </div>
 </template>
@@ -108,6 +99,7 @@
   import { useRoute, useRouter } from 'vue-router';
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

@@ -30,10 +30,7 @@
     <!-- 内容 -->
     <div v-else-if="deployment" class="flex min-h-0 flex-1 flex-col gap-4">
       <!-- 基本信息卡片 -->
-      <div class="app-surface shrink-0 app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">基本信息</h2>
-        </div>
+      <DetailInfoCard class="shrink-0" title="基本信息">
         <dl class="app-detail-info-grid">
           <div v-if="deployment.application_id" class="flex gap-2">
             <dt>部署 ID</dt>
@@ -101,11 +98,11 @@
             </dd>
           </div>
         </dl>
-      </div>
+      </DetailInfoCard>
 
-      <div class="app-surface flex min-h-[360px] min-w-0 flex-1 flex-col app-detail-card">
-        <TabsRoot default-value="operation" class="flex min-h-0 flex-1 flex-col">
-          <div class="app-section-header shrink-0 app-detail-section-header">
+      <TabsRoot default-value="operation" class="flex min-h-[360px] min-w-0 flex-1 flex-col">
+        <DetailInfoCard class="flex min-h-0 flex-1 flex-col">
+          <template #header>
             <TabsList aria-label="日志类型" class="flex h-9 gap-1">
               <TabsTrigger
                 value="operation"
@@ -129,7 +126,7 @@
               <Loader2 class="size-4" :class="isAutoRefreshing ? 'animate-spin' : ''" />
               {{ isAutoRefreshing ? '自动刷新' : '暂停刷新' }}
             </button>
-          </div>
+          </template>
           <TabsContent value="operation" class="min-h-0 flex-1 p-5 outline-none">
             <div
               v-if="!operationLogText"
@@ -202,8 +199,8 @@
               @mount="handleContainerLogEditorMount"
             />
           </TabsContent>
-        </TabsRoot>
-      </div>
+        </DetailInfoCard>
+      </TabsRoot>
     </div>
 
     <AppDialog
@@ -242,6 +239,7 @@
   import { useRoute, useRouter } from 'vue-router';
   import { deploymentApi } from '@/api/deployment/deployment';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';

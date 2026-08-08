@@ -1,8 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
-    <section class="app-surface app-detail-card">
-      <div class="app-section-header app-detail-section-header">
-        <h2 class="app-detail-section-title">{{ t('route.sections.traefikRouters') }}</h2>
+    <DetailInfoCard :title="t('route.sections.traefikRouters')" actions-class="w-full lg:w-auto">
+      <template #actions>
         <ToolbarRoot
           class="flex w-full flex-wrap items-center justify-between gap-3 lg:w-auto lg:flex-nowrap"
           :aria-label="t('traefikRoute.toolbar')"
@@ -28,7 +27,7 @@
             </button>
           </div>
         </ToolbarRoot>
-      </div>
+      </template>
 
       <AppLoadingState v-if="traefikStatus === 'loading'" />
       <div v-else-if="traefikStatus === 'error'" class="py-16 text-center">
@@ -113,11 +112,13 @@
           </tbody>
         </table>
       </div>
-    </section>
+    </DetailInfoCard>
 
-    <section class="app-surface app-detail-card">
-      <div class="app-section-header app-detail-section-header">
-        <h2 class="app-detail-section-title">{{ t('route.sections.customConfiguration') }}</h2>
+    <DetailInfoCard
+      :title="t('route.sections.customConfiguration')"
+      actions-class="w-full lg:w-auto"
+    >
+      <template #actions>
         <ToolbarRoot
           class="flex w-full flex-wrap items-center justify-between gap-3 lg:w-auto lg:flex-nowrap"
           :aria-label="t('route.toolbar')"
@@ -144,7 +145,7 @@
             </button>
           </div>
         </ToolbarRoot>
-      </div>
+      </template>
 
       <AppLoadingState v-if="routeStatus === 'loading'" />
       <div v-else-if="routeStatus === 'error'" class="py-16 text-center text-destructive">
@@ -244,7 +245,7 @@
         @change-page="goPage"
         @change-page-size="handlePageSizeChange"
       />
-    </section>
+    </DetailInfoCard>
   </div>
 
   <AppDialog v-model:open="isCreateDialogOpen" :title="t('route.addRoute')">
@@ -450,6 +451,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';

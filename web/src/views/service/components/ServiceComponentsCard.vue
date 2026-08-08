@@ -1,8 +1,5 @@
 <template>
-  <section class="app-surface app-detail-card">
-    <div class="app-section-header app-detail-section-header">
-      <h2 class="app-detail-section-title">{{ t('application.detail.fields.components') }}</h2>
-    </div>
+  <DetailInfoCard :title="t('application.detail.fields.components')">
     <AppEmptyState v-if="service.components.length === 0" size="compact" />
     <div v-else class="overflow-x-auto">
       <table class="app-data-table min-w-[840px]">
@@ -47,12 +44,13 @@
         </tbody>
       </table>
     </div>
-  </section>
+  </DetailInfoCard>
 </template>
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
   import AppEmptyState from '@/components/AppEmptyState.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
 
   defineProps<{ service: ServiceResp }>();

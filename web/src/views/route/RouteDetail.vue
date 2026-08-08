@@ -56,19 +56,12 @@
     <!-- Content -->
     <template v-else-if="routeData">
       <!-- Basic Info Card -->
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">{{ t('route.basicInfo') }}</h2>
-          <button
-            v-if="routeData"
-            class="app-button-primary h-9 px-3"
-            :disabled="operating"
-            @click="openEditModal"
-          >
-            <Pencil class="size-4" />
-            {{ t('common.edit') }}
-          </button>
-        </div>
+      <DetailInfoCard
+        :title="t('route.basicInfo')"
+        :editable="Boolean(routeData)"
+        :disabled="operating"
+        @edit="openEditModal"
+      >
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>{{ t('route.fields.name') }}</dt>
@@ -112,13 +105,10 @@
             <dd class="text-muted-foreground">{{ formatTime(routeData.updated_at) }}</dd>
           </div>
         </dl>
-      </div>
+      </DetailInfoCard>
 
       <!-- HTTPS Config Card -->
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">{{ t('route.httpsConfig') }}</h2>
-        </div>
+      <DetailInfoCard :title="t('route.httpsConfig')">
         <div class="space-y-4 px-5 py-4">
           <div class="flex items-center justify-between rounded-md bg-muted/30 p-3">
             <div>
@@ -159,7 +149,7 @@
             </button>
           </div>
         </div>
-      </div>
+      </DetailInfoCard>
       <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
         {{ editSubmitError }}
       </p>
@@ -237,13 +227,14 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ExternalLink, Pencil, Power, PowerOff, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, ExternalLink, Power, PowerOff, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
   import { routeApi } from '@/api/route/route';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';

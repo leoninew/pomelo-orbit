@@ -1,7 +1,6 @@
 <template>
-  <section class="app-surface app-detail-card">
-    <div class="app-section-header app-detail-section-header">
-      <h2 class="app-detail-section-title">{{ t('application.detail.fields.components') }}</h2>
+  <DetailInfoCard :title="t('application.detail.fields.components')">
+    <template #actions>
       <button
         v-if="editable"
         class="app-button-primary h-9 px-3"
@@ -11,7 +10,7 @@
         <Plus class="size-4" />
         {{ t('common.add') }}
       </button>
-    </div>
+    </template>
     <AppEmptyState v-if="components.length === 0" size="compact" />
     <div v-else class="overflow-x-auto">
       <table class="app-data-table min-w-[840px]">
@@ -69,13 +68,14 @@
         </tbody>
       </table>
     </div>
-  </section>
+  </DetailInfoCard>
 </template>
 
 <script setup lang="ts">
   import { Plus } from 'lucide-vue-next';
   import { useI18n } from 'vue-i18n';
   import AppEmptyState from '@/components/AppEmptyState.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import type { VersionComponentResp } from '@/gen/proto/orbit/v1/application/version';
 
   defineProps<{

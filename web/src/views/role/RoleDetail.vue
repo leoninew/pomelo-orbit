@@ -21,13 +21,36 @@
       </div>
     </div>
 
-    <RoleBasicInfoCard
-      :role="role"
+    <DetailInfoCard
+      :title="t('roleManagement.basicInfo')"
       :loading="loading"
-      :editable="canWriteRoles"
+      :editable="Boolean(canWriteRoles && role)"
       :disabled="operating"
       @edit="openEditModal"
-    />
+    >
+      <dl v-if="role" class="app-detail-info-grid">
+        <div class="flex gap-2">
+          <dt>{{ t('roleManagement.code') }}</dt>
+          <dd class="text-foreground">{{ role.code }}</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt>{{ t('common.name') }}</dt>
+          <dd class="text-foreground">{{ role.name }}</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt>{{ t('common.description') }}</dt>
+          <dd class="text-foreground">{{ role.description || '-' }}</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt>{{ t('common.createdAt') }}</dt>
+          <dd class="text-muted-foreground">{{ formatTime(role.created_at) }}</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt>{{ t('common.updatedAt') }}</dt>
+          <dd class="text-muted-foreground">{{ formatTime(role.updated_at) }}</dd>
+        </div>
+      </dl>
+    </DetailInfoCard>
     <RolePermissionsCard
       :role="role"
       :editable="canWriteRoles"
@@ -183,10 +206,11 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import { formatTime } from '@/utils/time';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
   import type { PermissionResp, RoleResp } from '@/gen/proto/orbit/v1/role/role';
-  import RoleBasicInfoCard from './components/RoleBasicInfoCard.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import RolePermissionsCard from './components/RolePermissionsCard.vue';
 
   const props = defineProps<{ id: string }>();

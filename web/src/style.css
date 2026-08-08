@@ -97,10 +97,6 @@
     @apply text-sm;
   }
 
-  .app-detail-card-body {
-    @apply p-5 sm:p-6;
-  }
-
   .app-detail-subsection {
     @apply border-t border-border p-5 sm:p-6;
   }

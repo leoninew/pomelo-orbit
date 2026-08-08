@@ -216,7 +216,10 @@
       <template v-if="dockerArtifacts.length">
         <div v-if="instantiateForm.applicationId" class="grid gap-4 sm:grid-cols-2">
           <div class="space-y-1.5">
-            <label class="app-field-label">来源版本策略 <span class="text-destructive">*</span></label>
+            <label class="app-field-label">
+              来源版本策略
+              <span class="text-destructive">*</span>
+            </label>
             <RawValueSelect
               :model-value="instantiateForm.versionForkStrategy"
               :values="['latest', 'fixed']"
@@ -228,7 +231,10 @@
             </p>
           </div>
           <div v-if="instantiateForm.versionForkStrategy === 'fixed'" class="space-y-1.5">
-            <label class="app-field-label">来源版本 <span class="text-destructive">*</span></label>
+            <label class="app-field-label">
+              来源版本
+              <span class="text-destructive">*</span>
+            </label>
             <ComboboxSelect
               v-model="instantiateForm.fixedVersionId"
               :options="versionOptions"
@@ -389,7 +395,11 @@
     }))
   );
   const versionOptions = computed(() =>
-    versions.value.map((version) => ({ value: version.id, label: version.label, description: version.status }))
+    versions.value.map((version) => ({
+      value: version.id,
+      label: version.label,
+      description: version.status,
+    }))
   );
   const componentOptions = computed(() =>
     (sourceVersion.value?.components || []).map((component) => ({
@@ -568,7 +578,9 @@
     sourceVersionError.value = '';
     if (!instantiateForm.applicationId) return;
     try {
-      const response = await applicationApi.listVersions(instantiateForm.applicationId, { per_page: 100 });
+      const response = await applicationApi.listVersions(instantiateForm.applicationId, {
+        per_page: 100,
+      });
       versions.value = response.items;
       await loadSourceVersion();
     } catch (reason) {
@@ -642,7 +654,9 @@
       dockerArtifacts.value.length && !instantiateForm.applicationId ? '请选择应用' : '';
     instantiateErrors.repositoryId = instantiateForm.repositoryId ? '' : '请选择代码仓库';
     instantiateErrors.versionForkStrategy =
-      dockerArtifacts.value.length && !instantiateForm.versionForkStrategy ? '请选择来源版本策略' : '';
+      dockerArtifacts.value.length && !instantiateForm.versionForkStrategy
+        ? '请选择来源版本策略'
+        : '';
     instantiateErrors.fixedVersionId =
       dockerArtifacts.value.length &&
       instantiateForm.versionForkStrategy === 'fixed' &&

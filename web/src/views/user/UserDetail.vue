@@ -46,13 +46,52 @@
       </div>
     </div>
 
-    <UserBasicInfoCard
-      :user="user"
+    <DetailInfoCard
+      :title="t('userManagement.basicInfo')"
       :loading="loading"
-      :editable="canWriteUsers"
+      :editable="Boolean(canWriteUsers && user)"
       :disabled="operating"
       @edit="openEditModal"
-    />
+    >
+      <dl v-if="user" class="app-detail-info-grid">
+        <div class="flex gap-2">
+          <dt>{{ t('userManagement.username') }}</dt>
+          <dd class="text-foreground">{{ user.username }}</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt>{{ t('userManagement.email') }}</dt>
+          <dd class="text-foreground">{{ user.email || '-' }}</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt>{{ t('common.status') }}</dt>
+          <dd>
+            <AppBadge variant="status" :tone="user.status === 'enabled' ? 'success' : 'default'">
+              {{ user.status }}
+            </AppBadge>
+          </dd>
+        </div>
+        <div class="flex gap-2">
+          <dt>{{ t('userManagement.authSource') }}</dt>
+          <dd>
+            <AppBadge variant="pill">{{ user.auth_source }}</AppBadge>
+          </dd>
+        </div>
+        <div class="flex gap-2">
+          <dt>{{ t('common.createdAt') }}</dt>
+          <dd class="text-muted-foreground">{{ formatTime(user.created_at) }}</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt>{{ t('common.updatedAt') }}</dt>
+          <dd class="text-muted-foreground">{{ formatTime(user.updated_at) }}</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt>{{ t('userManagement.lastLoginAt') }}</dt>
+          <dd class="text-muted-foreground">
+            {{ user.last_login_at ? formatTime(user.last_login_at) : '-' }}
+          </dd>
+        </div>
+      </dl>
+    </DetailInfoCard>
     <UserRolesCard
       :user="user"
       :editable="canAssignRoles"
@@ -235,11 +274,12 @@
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import { formatTime } from '@/utils/time';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
   import type { RoleResp } from '@/gen/proto/orbit/v1/role/role';
   import type { UserResp } from '@/gen/proto/orbit/v1/user/user';
-  import UserBasicInfoCard from './components/UserBasicInfoCard.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import UserRolesCard from './components/UserRolesCard.vue';
 
   const props = defineProps<{ id: string }>();

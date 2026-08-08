@@ -16,10 +16,7 @@
     <AppLoadingState v-if="loading" size="section" />
 
     <template v-else-if="artifact">
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">制品信息</h2>
-        </div>
+      <DetailInfoCard title="制品信息">
         <dl class="app-detail-info-grid">
           <div class="flex gap-2 sm:col-span-2">
             <dt>ID</dt>
@@ -68,12 +65,9 @@
             <dd class="text-muted-foreground">{{ formatTime(artifact.created_at) }}</dd>
           </div>
         </dl>
-      </div>
+      </DetailInfoCard>
 
-      <div v-if="hasContent" class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">制品内容</h2>
-        </div>
+      <DetailInfoCard v-if="hasContent" title="制品内容">
         <dl class="app-detail-info-grid">
           <div v-if="artifact.location !== undefined" class="flex gap-2 sm:col-span-2">
             <dt>位置</dt>
@@ -92,12 +86,9 @@
             </dd>
           </div>
         </dl>
-      </div>
+      </DetailInfoCard>
 
-      <div v-if="hasLineage" class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">关联</h2>
-        </div>
+      <DetailInfoCard v-if="hasLineage" title="关联">
         <dl class="app-detail-info-grid">
           <div v-if="artifact.application_id && artifact.application_name" class="flex gap-2">
             <dt>应用</dt>
@@ -164,7 +155,7 @@
             </dd>
           </div>
         </dl>
-      </div>
+      </DetailInfoCard>
     </template>
   </div>
 </template>
@@ -175,6 +166,7 @@
   import { useRoute, useRouter } from 'vue-router';
   import { artifactApi } from '@/api/pipeline_run/artifact';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

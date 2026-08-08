@@ -50,10 +50,7 @@
     <!-- Content -->
     <div v-else-if="run" class="flex flex-col gap-4">
       <!-- Basic Info Card -->
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">{{ t('pipelineRun.basicInfo') }}</h2>
-        </div>
+      <DetailInfoCard :title="t('pipelineRun.basicInfo')">
         <dl class="app-detail-info-grid">
           <div v-if="run.snapshot_id" class="flex gap-2">
             <dt>{{ t('pipelineRun.fields.runId') }}</dt>
@@ -148,16 +145,13 @@
             </dd>
           </div>
         </dl>
-      </div>
+      </DetailInfoCard>
 
       <!-- Stage List -->
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">
-            {{ t('pipelineRun.stageOrchestration') }}
-          </h2>
+      <DetailInfoCard :title="t('pipelineRun.stageOrchestration')">
+        <template #actions>
           <ViewModeToggle v-model="stagesView" />
-        </div>
+        </template>
 
         <AppLoadingState v-if="run.snapshot_id && !snapshot" size="compact" />
         <AppEmptyState
@@ -245,21 +239,13 @@
         <div v-else class="p-6 text-center text-destructive">
           {{ t('pipelineRun.invalidViewMode') }}
         </div>
-      </div>
+      </DetailInfoCard>
 
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">
-            {{ t('pipelineRun.variableSnapshot') }}
-          </h2>
-        </div>
+      <DetailInfoCard :title="t('pipelineRun.variableSnapshot')">
         <VariableDeclarationsTable :declarations="runVariableDeclarations" :readonly="true" />
-      </div>
+      </DetailInfoCard>
 
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">{{ t('pipelineRun.artifacts') }}</h2>
-        </div>
+      <DetailInfoCard :title="t('pipelineRun.artifacts')">
         <AppLoadingState v-if="artifactsLoading" />
         <AppEmptyState
           v-else-if="!isTerminalStatus(run.status)"
@@ -297,7 +283,7 @@
             </tbody>
           </table>
         </div>
-      </div>
+      </DetailInfoCard>
     </div>
 
     <AppDrawer
@@ -368,6 +354,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';

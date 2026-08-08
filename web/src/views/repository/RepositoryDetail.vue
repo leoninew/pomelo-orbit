@@ -24,14 +24,7 @@
     <AppLoadingState v-if="status === 'loading'" size="section" />
 
     <template v-else-if="repository">
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">基本信息</h2>
-          <button class="app-button-primary h-9 px-3" :disabled="operating" @click="openEditDialog">
-            <Pencil class="size-4" />
-            编辑
-          </button>
-        </div>
+      <DetailInfoCard title="基本信息" editable :disabled="operating" @edit="openEditDialog">
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>名称</dt>
@@ -89,23 +82,22 @@
             <dd class="text-muted-foreground">{{ formatTime(repository.updated_at) }}</dd>
           </div>
         </dl>
-      </div>
+      </DetailInfoCard>
 
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">变量配置</h2>
+      <DetailInfoCard title="变量配置">
+        <template #actions>
           <button class="app-button-primary h-9 px-3" @click="openAddVariableDialog">
             <Plus class="size-4" />
             添加自定义变量
           </button>
-        </div>
+        </template>
         <VariableDeclarationsTable
           :declarations="repositoryVariableRows"
           :readonly="false"
           @edit="openEditVariableDialog"
           @delete="deleteVariable"
         />
-      </div>
+      </DetailInfoCard>
     </template>
 
     <AppDialog :open="isEditDialogOpen" title="编辑仓库" @update:open="handleEditDialogOpenChange">
@@ -328,12 +320,13 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Plus, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
   import { repositoryApi } from '@/api/repository/repository';
   import AppDialog from '@/components/AppDialog.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';

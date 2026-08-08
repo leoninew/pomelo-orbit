@@ -222,6 +222,7 @@
             image: form.image.trim(),
             script: '',
             description: form.description,
+            artifacts: [],
           },
           { project_id: projectId }
         );

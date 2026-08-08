@@ -31,7 +31,7 @@
           </thead>
           <tbody>
             <tr v-for="run in runs" :key="run.id">
-              <td class="max-w-52 truncate font-mono">
+              <td class="max-w-52 truncate font-mono text-xs">
                 <router-link :to="`/pipeline-run/${run.id}`" class="app-link">
                   {{ run.id }}
                 </router-link>

@@ -21,10 +21,7 @@
     <AppLoadingState v-if="loading" size="section" />
 
     <template v-else-if="detail && draft">
-      <section class="order-2 app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">{{ t('environment.title') }}</h2>
-        </div>
+      <DetailInfoCard class="order-2" :title="t('environment.title')">
         <AppEmptyState v-if="environmentRows.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table table-fixed min-w-[760px]">
@@ -134,11 +131,10 @@
             </tbody>
           </table>
         </div>
-      </section>
+      </DetailInfoCard>
 
-      <section class="order-4 app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">资源配额</h2>
+      <DetailInfoCard class="order-4" title="资源配额">
+        <template #actions>
           <button
             v-if="resourceFields.length"
             :class="resourceDeleted ? 'app-link' : 'app-link-danger'"
@@ -146,7 +142,7 @@
           >
             {{ resourceDeleted ? t('common.restore') : t('common.remove') }}
           </button>
-        </div>
+        </template>
         <AppEmptyState v-if="resourceFields.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table table-fixed min-w-[760px]">
@@ -218,12 +214,9 @@
             </tbody>
           </table>
         </div>
-      </section>
+      </DetailInfoCard>
 
-      <section class="order-1 app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">Endpoint</h2>
-        </div>
+      <DetailInfoCard class="order-1" title="Endpoint">
         <AppEmptyState v-if="endpointRows.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table table-fixed min-w-[1080px]">
@@ -353,12 +346,9 @@
             </tbody>
           </table>
         </div>
-      </section>
+      </DetailInfoCard>
 
-      <section class="order-3 app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">挂载</h2>
-        </div>
+      <DetailInfoCard class="order-3" title="挂载">
         <AppEmptyState v-if="mountRows.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table table-fixed min-w-[880px]">
@@ -446,7 +436,7 @@
             </tbody>
           </table>
         </div>
-      </section>
+      </DetailInfoCard>
     </template>
   </div>
 </template>
@@ -458,6 +448,7 @@
   import { useRoute, useRouter } from 'vue-router';
   import { serviceApi } from '@/api/service/service';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';

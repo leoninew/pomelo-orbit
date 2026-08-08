@@ -22,22 +22,14 @@
       </div>
     </div>
 
-    <div class="app-surface app-detail-card">
-      <div class="app-section-header app-detail-section-header">
-        <h2 class="app-detail-section-title">{{ t('userManagement.basicInfo') }}</h2>
-        <button
-          v-if="project"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openEditModal"
-        >
-          <Pencil class="size-4" />
-          {{ t('common.edit') }}
-        </button>
-      </div>
-
-      <AppLoadingState v-if="loading" size="section" />
-      <dl v-else-if="project" class="app-detail-info-grid">
+    <DetailInfoCard
+      :title="t('userManagement.basicInfo')"
+      :loading="loading"
+      :editable="Boolean(project)"
+      :disabled="operating"
+      @edit="openEditModal"
+    >
+      <dl v-if="project" class="app-detail-info-grid">
         <div class="flex gap-2">
           <dt>{{ t('project.name') }}</dt>
           <dd class="text-foreground">{{ project.name }}</dd>
@@ -66,16 +58,15 @@
           <dd class="text-muted-foreground">{{ formatTime(project.updated_at) }}</dd>
         </div>
       </dl>
-    </div>
+    </DetailInfoCard>
 
-    <div class="app-surface app-detail-card">
-      <div class="app-section-header app-detail-section-header">
-        <h2 class="app-detail-section-title">{{ t('project.members') }}</h2>
+    <DetailInfoCard :title="t('project.members')">
+      <template #actions>
         <button class="app-button-primary h-9 px-3" :disabled="operating" @click="openMemberModal">
           <UserPlus class="size-4" />
           {{ t('common.add') }}
         </button>
-      </div>
+      </template>
 
       <AppLoadingState v-if="loadingMembers" size="section" />
       <AppEmptyState v-else-if="members.length === 0" size="compact" />
@@ -120,7 +111,7 @@
           </tbody>
         </table>
       </div>
-    </div>
+    </DetailInfoCard>
 
     <AppDialog
       v-model:open="isEditModalOpen"
@@ -214,13 +205,14 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Pencil, UserPlus } from 'lucide-vue-next';
+  import { ArrowLeft, UserPlus } from 'lucide-vue-next';
   import { onMounted, reactive, ref, computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { projectApi } from '@/api/project/project';
   import { userApi } from '@/api/user/user';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';

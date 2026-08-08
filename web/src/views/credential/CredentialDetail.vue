@@ -35,22 +35,14 @@
       </div>
     </div>
 
-    <div class="app-surface app-detail-card">
-      <div class="app-section-header app-detail-section-header">
-        <h2 class="app-detail-section-title">基本信息</h2>
-        <button
-          v-if="credential"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating"
-          @click="openEditModal"
-        >
-          <Pencil class="size-4" />
-          编辑
-        </button>
-      </div>
-
-      <AppLoadingState v-if="loading" size="section" />
-      <dl v-else-if="credential" class="app-detail-info-grid">
+    <DetailInfoCard
+      title="基本信息"
+      :loading="loading"
+      :editable="Boolean(credential)"
+      :disabled="operating"
+      @edit="openEditModal"
+    >
+      <dl v-if="credential" class="app-detail-info-grid">
         <div class="flex gap-2">
           <dt>名称</dt>
           <dd class="text-foreground">{{ credential.name }}</dd>
@@ -74,7 +66,7 @@
           </dd>
         </div>
       </dl>
-    </div>
+    </DetailInfoCard>
 
     <AppDialog
       v-model:open="isEditModalOpen"
@@ -148,16 +140,16 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Download, Pencil, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Download, Trash2 } from 'lucide-vue-next';
   import { onMounted, reactive, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import SensitiveValue from '@/components/SensitiveValue.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { CredentialDetailResp } from '@/gen/proto/orbit/v1/credential/credential';

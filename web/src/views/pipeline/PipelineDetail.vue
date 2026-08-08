@@ -35,14 +35,7 @@
 
     <AppLoadingState v-if="status === 'loading'" size="section" />
     <template v-else-if="pipeline">
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">基本信息</h2>
-          <button class="app-button-primary h-9 px-3" @click="openInfoDialog">
-            <Pencil class="size-4" />
-            编辑
-          </button>
-        </div>
+      <DetailInfoCard title="基本信息" editable @edit="openInfoDialog">
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>名称</dt>
@@ -90,16 +83,15 @@
             </div>
           </template>
         </dl>
-      </div>
+      </DetailInfoCard>
 
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">构建阶段</h2>
+      <DetailInfoCard title="构建阶段">
+        <template #actions>
           <button class="app-button-primary h-9 px-3" @click="openStageDialog()">
             <Plus class="size-4" />
             引入阶段
           </button>
-        </div>
+        </template>
         <AppEmptyState v-if="pipeline.stage_nodes.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table min-w-[820px]">
@@ -148,16 +140,15 @@
             </tbody>
           </table>
         </div>
-      </div>
+      </DetailInfoCard>
 
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">变量声明</h2>
+      <DetailInfoCard title="变量声明">
+        <template #actions>
           <button class="app-button-primary h-9 px-3" @click="openAddVariableDialog">
             <Plus class="size-4" />
             添加自定义变量
           </button>
-        </div>
+        </template>
         <AppLoadingState v-if="pipelineVariablePreviewLoading" size="compact" />
         <p v-else-if="pipelineVariablePreviewError" class="py-4 text-sm text-destructive">
           {{ pipelineVariablePreviewError }}
@@ -169,7 +160,7 @@
           @edit="openEditVariableDialog"
           @delete="deleteVariable"
         />
-      </div>
+      </DetailInfoCard>
     </template>
 
     <AppDialog v-model:open="infoOpen" title="编辑流水线信息">
@@ -407,13 +398,14 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, CopyPlus, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, CopyPlus, Play, Plus, Trash2 } from 'lucide-vue-next';
   import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
@@ -810,8 +802,7 @@
         script: '脚本',
         description: '模板说明',
         artifacts: '制品声明',
-      }[field] ||
-      field
+      }[field] || field
     );
   }
 

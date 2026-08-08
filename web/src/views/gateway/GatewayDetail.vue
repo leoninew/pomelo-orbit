@@ -39,16 +39,12 @@
     <AppLoadingState v-if="status === 'loading'" size="section" />
 
     <template v-else-if="gateway">
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">
-            {{ t('gateway.sections.config') }}
-          </h2>
-          <button class="app-button-primary h-9 px-3" :disabled="operating" @click="openEditDialog">
-            <Pencil class="size-4" />
-            {{ t('common.edit') }}
-          </button>
-        </div>
+      <DetailInfoCard
+        :title="t('gateway.sections.config')"
+        editable
+        :disabled="operating"
+        @edit="openEditDialog"
+      >
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>{{ t('gateway.fields.name') }}</dt>
@@ -103,14 +99,9 @@
             <dd class="text-muted-foreground">{{ formatTime(gateway.updated_at) }}</dd>
           </div>
         </dl>
-      </div>
+      </DetailInfoCard>
 
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">
-            {{ t('gateway.exposures.title') }}
-          </h2>
-        </div>
+      <DetailInfoCard :title="t('gateway.exposures.title')">
         <div class="px-5 py-4">
           <AppEmptyState v-if="!(gateway.exposures || []).length" size="compact" />
           <div v-else class="overflow-x-auto">
@@ -156,7 +147,7 @@
             </table>
           </div>
         </div>
-      </div>
+      </DetailInfoCard>
     </template>
 
     <AppDialog
@@ -359,7 +350,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ExternalLink, Layers, Pencil, Rocket, Square } from 'lucide-vue-next';
+  import { ArrowLeft, ExternalLink, Layers, Rocket, Square } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -368,6 +359,7 @@
   import { serviceApi } from '@/api/service/service';
   import { gatewayApi } from '@/api/gateway/gateway';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';

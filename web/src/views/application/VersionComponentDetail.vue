@@ -39,12 +39,7 @@
     <AppLoadingState v-if="loading" size="section" />
 
     <template v-else-if="version">
-      <div
-        v-if="isNew && !canEdit"
-        class="app-surface p-5 text-sm text-muted-foreground app-detail-card"
-      >
-        {{ t('application.componentDetail.empty') }}
-      </div>
+      <AppEmptyState v-if="isNew && !canEdit" :message="t('application.componentDetail.empty')" />
 
       <TabsRoot v-else v-model="activeTab" class="flex min-w-0 flex-col gap-4">
         <div class="overflow-x-auto border-b border-border">
@@ -64,23 +59,12 @@
         </div>
 
         <TabsContent value="runtime" class="flex flex-col gap-4 outline-none">
-          <section class="app-surface app-detail-card">
-            <div class="app-section-header app-detail-section-header">
-              <h2 class="app-detail-section-title">
-                {{ t('application.componentDetail.sections.basic') }}
-              </h2>
-              <div v-if="canEdit && !isNew" class="flex items-center gap-2">
-                <button
-                  class="app-button-primary h-9 px-3"
-                  :disabled="operating"
-                  @click="startBasicEditing"
-                >
-                  <Pencil class="size-4" />
-                  {{ t('application.componentDetail.actions.edit') }}
-                </button>
-              </div>
-            </div>
-
+          <DetailInfoCard
+            :title="t('application.componentDetail.sections.basic')"
+            :editable="Boolean(canEdit && !isNew)"
+            :disabled="operating"
+            @edit="startBasicEditing"
+          >
             <div v-if="isNew" class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 sm:p-6">
               <div>
                 <label class="app-field-label mb-1.5 block">
@@ -201,115 +185,103 @@
                 </dd>
               </div>
             </dl>
-          </section>
-          <section v-if="!isNew" class="app-surface app-detail-card">
-            <div class="app-section-header app-detail-section-header">
-              <h2 class="app-detail-section-title">
-                {{ t('application.componentDetail.sections.healthcheck') }}
-              </h2>
-              <div v-if="canEdit" class="flex items-center gap-2">
-                <button class="app-button-primary h-9 px-3" @click="startHealthcheckEditing">
-                  <Pencil class="size-4" />
-                  {{ t('application.componentDetail.actions.edit') }}
-                </button>
+          </DetailInfoCard>
+          <DetailInfoCard
+            v-if="!isNew"
+            :title="t('application.componentDetail.sections.healthcheck')"
+            :editable="canEdit"
+            :disabled="operating"
+            @edit="startHealthcheckEditing"
+          >
+            <p v-if="!form.healthcheck_enabled" class="p-5 text-sm text-muted-foreground sm:p-6">
+              {{ t('common.notSet') }}
+            </p>
+            <dl
+              v-else
+              class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-4 p-5 sm:grid-cols-2 lg:grid-cols-3 sm:p-6"
+            >
+              <div>
+                <dt class="text-muted-foreground">
+                  {{ t('application.componentDetail.fields.disabled') }}
+                </dt>
+                <dd class="mt-1 text-foreground">
+                  {{ form.healthcheck_disabled ? t('common.yes') : t('common.no') }}
+                </dd>
               </div>
-            </div>
+              <div>
+                <dt class="text-muted-foreground">
+                  {{ t('application.componentDetail.fields.testMode') }}
+                </dt>
+                <dd class="mt-1 text-foreground">
+                  {{ form.healthcheck_test_mode || t('common.notSet') }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-muted-foreground">
+                  {{ t('application.componentDetail.fields.interval') }}
+                </dt>
+                <dd class="mt-1 text-foreground">
+                  {{ form.healthcheck_interval || t('common.notSet') }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-muted-foreground">
+                  {{ t('application.componentDetail.fields.timeout') }}
+                </dt>
+                <dd class="mt-1 text-foreground">
+                  {{ form.healthcheck_timeout || t('common.notSet') }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-muted-foreground">
+                  {{ t('application.componentDetail.fields.retries') }}
+                </dt>
+                <dd class="mt-1 text-foreground">
+                  {{ form.healthcheck_retries || t('common.notSet') }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-muted-foreground">
+                  {{ t('application.componentDetail.fields.startPeriod') }}
+                </dt>
+                <dd class="mt-1 text-foreground">
+                  {{ form.healthcheck_start_period || t('common.notSet') }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-muted-foreground">
+                  {{ t('application.componentDetail.fields.startInterval') }}
+                </dt>
+                <dd class="mt-1 text-foreground">
+                  {{ form.healthcheck_start_interval || t('common.notSet') }}
+                </dd>
+              </div>
+              <div class="sm:col-span-2 lg:col-span-3">
+                <dt class="text-muted-foreground">
+                  {{ t('application.componentDetail.fields.test') }}
+                </dt>
+                <dd v-if="!form.healthcheck_test" class="mt-1 text-foreground">
+                  {{ t('common.notSet') }}
+                </dd>
+                <dd v-else class="mt-1 break-all text-foreground">
+                  {{ form.healthcheck_test }}
+                </dd>
+              </div>
+            </dl>
+          </DetailInfoCard>
 
-            <div class="app-detail-card-body">
-              <p v-if="!form.healthcheck_enabled" class="text-sm text-muted-foreground">
-                {{ t('common.notSet') }}
-              </p>
-              <dl
-                v-else
-                class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3"
+          <DetailInfoCard v-if="!isNew" :title="t('application.componentDetail.fields.dependency')">
+            <template #actions>
+              <button
+                v-if="canEdit"
+                class="app-button-primary h-9 px-3"
+                :disabled="operating"
+                @click="openRecordDialog('dependencies')"
               >
-                <div>
-                  <dt class="text-muted-foreground">
-                    {{ t('application.componentDetail.fields.disabled') }}
-                  </dt>
-                  <dd class="mt-1 text-foreground">
-                    {{ form.healthcheck_disabled ? t('common.yes') : t('common.no') }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-muted-foreground">
-                    {{ t('application.componentDetail.fields.testMode') }}
-                  </dt>
-                  <dd class="mt-1 text-foreground">
-                    {{ form.healthcheck_test_mode || t('common.notSet') }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-muted-foreground">
-                    {{ t('application.componentDetail.fields.interval') }}
-                  </dt>
-                  <dd class="mt-1 text-foreground">
-                    {{ form.healthcheck_interval || t('common.notSet') }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-muted-foreground">
-                    {{ t('application.componentDetail.fields.timeout') }}
-                  </dt>
-                  <dd class="mt-1 text-foreground">
-                    {{ form.healthcheck_timeout || t('common.notSet') }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-muted-foreground">
-                    {{ t('application.componentDetail.fields.retries') }}
-                  </dt>
-                  <dd class="mt-1 text-foreground">
-                    {{ form.healthcheck_retries || t('common.notSet') }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-muted-foreground">
-                    {{ t('application.componentDetail.fields.startPeriod') }}
-                  </dt>
-                  <dd class="mt-1 text-foreground">
-                    {{ form.healthcheck_start_period || t('common.notSet') }}
-                  </dd>
-                </div>
-                <div>
-                  <dt class="text-muted-foreground">
-                    {{ t('application.componentDetail.fields.startInterval') }}
-                  </dt>
-                  <dd class="mt-1 text-foreground">
-                    {{ form.healthcheck_start_interval || t('common.notSet') }}
-                  </dd>
-                </div>
-                <div class="sm:col-span-2 lg:col-span-3">
-                  <dt class="text-muted-foreground">
-                    {{ t('application.componentDetail.fields.test') }}
-                  </dt>
-                  <dd v-if="!form.healthcheck_test" class="mt-1 text-foreground">
-                    {{ t('common.notSet') }}
-                  </dd>
-                  <dd v-else class="mt-1 break-all text-foreground">
-                    {{ form.healthcheck_test }}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </section>
-
-          <section v-if="!isNew" class="app-surface app-detail-card">
-            <div class="app-section-header app-detail-section-header">
-              <h2 class="app-detail-section-title">
-                {{ t('application.componentDetail.fields.dependency') }}
-              </h2>
-              <div v-if="canEdit" class="flex items-center gap-2">
-                <button
-                  class="app-button-primary h-9 px-3"
-                  :disabled="operating"
-                  @click="openRecordDialog('dependencies')"
-                >
-                  <Plus class="size-4" />
-                  {{ t('common.add') }}
-                </button>
-              </div>
-            </div>
+                <Plus class="size-4" />
+                {{ t('common.add') }}
+              </button>
+            </template>
             <AppEmptyState v-if="form.dependencies.length === 0" size="compact" />
             <div v-else class="overflow-x-auto">
               <table class="app-data-table min-w-[560px]">
@@ -346,26 +318,22 @@
                 </tbody>
               </table>
             </div>
-          </section>
+          </DetailInfoCard>
         </TabsContent>
 
         <TabsContent value="connectivity" class="flex flex-col gap-4 outline-none">
-          <section class="app-surface app-detail-card">
-            <div class="app-section-header app-detail-section-header">
-              <h2 class="app-detail-section-title">
-                {{ t('application.componentDetail.sections.ports') }}
-              </h2>
-              <div v-if="canEdit" class="flex items-center gap-2">
-                <button
-                  class="app-button-primary h-9 px-3"
-                  :disabled="operating"
-                  @click="openRecordDialog('ports')"
-                >
-                  <Plus class="size-4" />
-                  {{ t('common.add') }}
-                </button>
-              </div>
-            </div>
+          <DetailInfoCard :title="t('application.componentDetail.sections.ports')">
+            <template #actions>
+              <button
+                v-if="canEdit"
+                class="app-button-primary h-9 px-3"
+                :disabled="operating"
+                @click="openRecordDialog('ports')"
+              >
+                <Plus class="size-4" />
+                {{ t('common.add') }}
+              </button>
+            </template>
 
             <AppEmptyState v-if="form.ports.length === 0" size="compact" />
             <div v-else class="overflow-x-auto">
@@ -409,38 +377,32 @@
                 </tbody>
               </table>
             </div>
-          </section>
+          </DetailInfoCard>
 
-          <section class="app-surface app-detail-card">
-            <EnvironmentVariableListEditor
-              :rows="environmentRows"
-              :saved-rows="savedEnvironmentRows"
-              :title="t('environment.title')"
-              :disabled="operating"
-              :editable="canEdit"
-              @update:rows="updateEnvironmentRows"
-              @save="persistEnvironment"
-            />
-          </section>
+          <EnvironmentVariableListEditor
+            :rows="environmentRows"
+            :saved-rows="savedEnvironmentRows"
+            :title="t('environment.title')"
+            :disabled="operating"
+            :editable="canEdit"
+            @update:rows="updateEnvironmentRows"
+            @save="persistEnvironment"
+          />
         </TabsContent>
 
         <TabsContent v-if="!isNew" value="mounts" class="flex flex-col gap-4 outline-none">
-          <section class="app-surface app-detail-card">
-            <div class="app-section-header app-detail-section-header">
-              <h2 class="app-detail-section-title">
-                {{ t('application.componentDetail.sections.mounts') }}
-              </h2>
-              <div v-if="canEdit" class="flex items-center gap-2">
-                <button
-                  class="app-button-primary h-9 px-3"
-                  :disabled="operating"
-                  @click="openMountDialog()"
-                >
-                  <Plus class="size-4" />
-                  {{ t('common.add') }}
-                </button>
-              </div>
-            </div>
+          <DetailInfoCard :title="t('application.componentDetail.sections.mounts')">
+            <template #actions>
+              <button
+                v-if="canEdit"
+                class="app-button-primary h-9 px-3"
+                :disabled="operating"
+                @click="openMountDialog()"
+              >
+                <Plus class="size-4" />
+                {{ t('common.add') }}
+              </button>
+            </template>
             <AppEmptyState v-if="form.mounts.length === 0" size="compact" />
             <div v-else class="overflow-x-auto">
               <table class="app-data-table min-w-[760px]">
@@ -495,13 +457,10 @@
                 </tbody>
               </table>
             </div>
-          </section>
+          </DetailInfoCard>
 
-          <section class="app-surface app-detail-card">
-            <div class="app-section-header app-detail-section-header">
-              <h2 class="app-detail-section-title">
-                {{ t('application.componentDetail.sections.tmpfs') }}
-              </h2>
+          <DetailInfoCard :title="t('application.componentDetail.sections.tmpfs')">
+            <template #actions>
               <button
                 v-if="canEdit"
                 class="app-button-primary h-9 px-3"
@@ -511,7 +470,7 @@
                 <Plus class="size-4" />
                 {{ t('common.add') }}
               </button>
-            </div>
+            </template>
             <AppEmptyState v-if="form.tmpfs.length === 0" size="compact" />
             <div v-else class="overflow-x-auto">
               <table class="app-data-table min-w-[720px]">
@@ -550,22 +509,16 @@
                 </tbody>
               </table>
             </div>
-          </section>
+          </DetailInfoCard>
         </TabsContent>
 
         <TabsContent v-if="!isNew" value="advanced" class="flex flex-col gap-4 outline-none">
-          <section class="app-surface app-detail-card">
-            <div class="app-section-header app-detail-section-header">
-              <h2 class="app-detail-section-title">
-                {{ t('application.componentDetail.sections.resources') }}
-              </h2>
-              <div v-if="canEdit" class="flex items-center gap-2">
-                <button class="app-button-primary h-9 px-3" @click="openResourcesDialog">
-                  <Pencil class="size-4" />
-                  {{ t('application.componentDetail.actions.edit') }}
-                </button>
-              </div>
-            </div>
+          <DetailInfoCard
+            :title="t('application.componentDetail.sections.resources')"
+            :editable="canEdit"
+            :disabled="operating"
+            @edit="openResourcesDialog"
+          >
             <dl class="app-detail-info-grid">
               <div>
                 <dt>{{ t('application.componentDetail.fields.limitCpus') }}</dt>
@@ -592,13 +545,10 @@
                 </dd>
               </div>
             </dl>
-          </section>
+          </DetailInfoCard>
 
-          <section class="app-surface app-detail-card">
-            <div class="app-section-header app-detail-section-header">
-              <h2 class="app-detail-section-title">
-                {{ t('application.componentDetail.sections.devices') }}
-              </h2>
+          <DetailInfoCard :title="t('application.componentDetail.sections.devices')">
+            <template #actions>
               <button
                 v-if="canEdit"
                 class="app-button-primary h-9 px-3"
@@ -608,7 +558,7 @@
                 <Plus class="size-4" />
                 {{ t('common.add') }}
               </button>
-            </div>
+            </template>
             <AppEmptyState v-if="form.devices.length === 0" size="compact" />
             <div v-else class="overflow-x-auto">
               <table class="app-data-table min-w-[720px]">
@@ -649,13 +599,10 @@
                 </tbody>
               </table>
             </div>
-          </section>
+          </DetailInfoCard>
 
-          <section class="app-surface app-detail-card">
-            <div class="app-section-header app-detail-section-header">
-              <h2 class="app-detail-section-title">
-                {{ t('application.componentDetail.sections.ulimits') }}
-              </h2>
+          <DetailInfoCard :title="t('application.componentDetail.sections.ulimits')">
+            <template #actions>
               <button
                 v-if="canEdit"
                 class="app-button-primary h-9 px-3"
@@ -665,7 +612,7 @@
                 <Plus class="size-4" />
                 {{ t('common.add') }}
               </button>
-            </div>
+            </template>
             <AppEmptyState v-if="form.ulimits.length === 0" size="compact" />
             <div v-else class="overflow-x-auto">
               <table class="app-data-table min-w-[720px]">
@@ -704,7 +651,7 @@
                 </tbody>
               </table>
             </div>
-          </section>
+          </DetailInfoCard>
         </TabsContent>
 
         <p v-if="formError" class="app-field-error text-sm">{{ formError }}</p>
@@ -1453,13 +1400,13 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Pencil, Plus, Save, Trash2, X } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppDrawer from '@/components/AppDrawer.vue';

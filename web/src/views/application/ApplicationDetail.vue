@@ -33,24 +33,49 @@
     <AppLoadingState v-if="basicInfoLoading" size="section" />
 
     <div v-else-if="application" class="flex flex-col gap-4">
-      <ApplicationBasicInfoCard
+      <DetailInfoCard
         v-if="!versionsOnly"
-        :application="application"
+        :title="t('application.detail.sections.basicInfo')"
+        editable
         :disabled="operating"
         @edit="openEditModal"
-      />
+      >
+        <dl class="app-detail-info-grid">
+          <div class="flex gap-2">
+            <dt class="whitespace-nowrap">{{ t('common.name') }}</dt>
+            <dd class="text-foreground">{{ application.name }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt class="whitespace-nowrap">{{ t('application.code') }}</dt>
+            <dd class="text-foreground">{{ application.code }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt class="whitespace-nowrap">{{ t('application.kind') }}</dt>
+            <dd>
+              <AppBadge variant="pill" :tone="applicationKindTone(application.kind)">
+                {{ application.kind }}
+              </AppBadge>
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt class="whitespace-nowrap">{{ t('common.createdAt') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(application.created_at) }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt class="whitespace-nowrap">{{ t('common.updatedAt') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(application.updated_at) }}</dd>
+          </div>
+        </dl>
+      </DetailInfoCard>
 
       <!-- 版本 -->
-      <div class="app-surface app-detail-card">
-        <div class="app-section-header app-detail-section-header">
-          <h2 class="app-detail-section-title">
-            {{ t('application.detail.sections.versions') }}
-          </h2>
+      <DetailInfoCard :title="t('application.detail.sections.versions')">
+        <template #actions>
           <button class="app-button-primary h-9 px-3" @click="openCreateVersionModal">
             <Plus class="size-4" />
             {{ t('application.detail.actions.createVersion') }}
           </button>
-        </div>
+        </template>
         <AppLoadingState v-if="versionListLoading" size="compact" />
         <AppEmptyState v-else-if="versions.length === 0" size="compact" />
         <div v-else-if="!versionsOnly" class="overflow-x-auto">
@@ -295,7 +320,7 @@
             </tbody>
           </table>
         </div>
-      </div>
+      </DetailInfoCard>
       <ListPagination
         v-if="versionsOnly"
         :current="versionPagination.current"
@@ -656,7 +681,7 @@
   import type { VersionComponentResp, VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import { applicationKindTone, versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
-  import ApplicationBasicInfoCard from './components/ApplicationBasicInfoCard.vue';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import {
     componentBasicRequestFromForm,
     componentFormFromResponse,

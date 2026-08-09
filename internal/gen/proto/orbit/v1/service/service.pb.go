@@ -894,13 +894,14 @@ func (x *ServiceComponentDeclaredEnv) GetValue() string {
 }
 
 type ServiceComponentDeclaredMount struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SourceType    string                 `protobuf:"bytes,1,opt,name=source_type,json=sourceType,proto3" json:"source_type,omitempty"`
-	Source        string                 `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
-	Target        string                 `protobuf:"bytes,3,opt,name=target,proto3" json:"target,omitempty"`
-	ReadOnly      bool                   `protobuf:"varint,4,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	SourceType       string                 `protobuf:"bytes,1,opt,name=source_type,json=sourceType,proto3" json:"source_type,omitempty"`
+	Source           string                 `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
+	Target           string                 `protobuf:"bytes,3,opt,name=target,proto3" json:"target,omitempty"`
+	ReadOnly         bool                   `protobuf:"varint,4,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
+	SourceIsHostPath bool                   `protobuf:"varint,5,opt,name=source_is_host_path,json=sourceIsHostPath,proto3" json:"source_is_host_path,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ServiceComponentDeclaredMount) Reset() {
@@ -957,6 +958,13 @@ func (x *ServiceComponentDeclaredMount) GetTarget() string {
 func (x *ServiceComponentDeclaredMount) GetReadOnly() bool {
 	if x != nil {
 		return x.ReadOnly
+	}
+	return false
+}
+
+func (x *ServiceComponentDeclaredMount) GetSourceIsHostPath() bool {
+	if x != nil {
+		return x.SourceIsHostPath
 	}
 	return false
 }
@@ -1258,12 +1266,13 @@ func (x *ServiceComponentEnvOverlay) GetState() string {
 }
 
 type ServiceComponentMountOverlay struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Source        *string                `protobuf:"bytes,2,opt,name=source,proto3,oneof" json:"source,omitempty"`
-	State         string                 `protobuf:"bytes,3,opt,name=state,proto3" json:"state,omitempty"`
-	Target        string                 `protobuf:"bytes,4,opt,name=target,proto3" json:"target,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Source           *string                `protobuf:"bytes,2,opt,name=source,proto3,oneof" json:"source,omitempty"`
+	State            string                 `protobuf:"bytes,3,opt,name=state,proto3" json:"state,omitempty"`
+	Target           string                 `protobuf:"bytes,4,opt,name=target,proto3" json:"target,omitempty"`
+	SourceIsHostPath *bool                  `protobuf:"varint,5,opt,name=source_is_host_path,json=sourceIsHostPath,proto3,oneof" json:"source_is_host_path,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ServiceComponentMountOverlay) Reset() {
@@ -1315,6 +1324,13 @@ func (x *ServiceComponentMountOverlay) GetTarget() string {
 		return x.Target
 	}
 	return ""
+}
+
+func (x *ServiceComponentMountOverlay) GetSourceIsHostPath() bool {
+	if x != nil && x.SourceIsHostPath != nil {
+		return *x.SourceIsHostPath
+	}
+	return false
 }
 
 type ServiceComponentResourceOverlay struct {
@@ -1829,13 +1845,14 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\tendpoints\x18\t \x03(\v22.orbit.v1.service.ServiceComponentDeclaredEndpointR\tendpoints\"E\n" +
 	"\x1bServiceComponentDeclaredEnv\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\x8d\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xbc\x01\n" +
 	"\x1dServiceComponentDeclaredMount\x12\x1f\n" +
 	"\vsource_type\x18\x01 \x01(\tR\n" +
 	"sourceType\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x12\x16\n" +
 	"\x06target\x18\x03 \x01(\tR\x06target\x12\x1b\n" +
-	"\tread_only\x18\x04 \x01(\bR\breadOnly\"\x9f\x02\n" +
+	"\tread_only\x18\x04 \x01(\bR\breadOnly\x12-\n" +
+	"\x13source_is_host_path\x18\x05 \x01(\bR\x10sourceIsHostPath\"\x9f\x02\n" +
 	"!ServiceComponentDeclaredResources\x12\"\n" +
 	"\n" +
 	"limit_cpus\x18\x01 \x01(\tH\x00R\tlimitCpus\x88\x01\x01\x12&\n" +
@@ -1872,12 +1889,14 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x19\n" +
 	"\x05value\x18\x02 \x01(\tH\x00R\x05value\x88\x01\x01\x12\x14\n" +
 	"\x05state\x18\x03 \x01(\tR\x05stateB\b\n" +
-	"\x06_value\"z\n" +
+	"\x06_value\"\xc6\x01\n" +
 	"\x1cServiceComponentMountOverlay\x12\x1b\n" +
 	"\x06source\x18\x02 \x01(\tH\x00R\x06source\x88\x01\x01\x12\x14\n" +
 	"\x05state\x18\x03 \x01(\tR\x05state\x12\x16\n" +
-	"\x06target\x18\x04 \x01(\tR\x06targetB\t\n" +
-	"\a_sourceJ\x04\b\x01\x10\x02\"\xb3\x02\n" +
+	"\x06target\x18\x04 \x01(\tR\x06target\x122\n" +
+	"\x13source_is_host_path\x18\x05 \x01(\bH\x01R\x10sourceIsHostPath\x88\x01\x01B\t\n" +
+	"\a_sourceB\x16\n" +
+	"\x14_source_is_host_pathJ\x04\b\x01\x10\x02\"\xb3\x02\n" +
 	"\x1fServiceComponentResourceOverlay\x12\"\n" +
 	"\n" +
 	"limit_cpus\x18\x01 \x01(\tH\x00R\tlimitCpus\x88\x01\x01\x12&\n" +

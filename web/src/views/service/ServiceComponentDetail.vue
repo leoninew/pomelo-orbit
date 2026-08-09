@@ -351,83 +351,69 @@
       <DetailInfoCard class="order-3" title="挂载">
         <AppEmptyState v-if="mountRows.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
-          <table class="app-data-table table-fixed min-w-[880px]">
-            <colgroup>
-              <col class="w-[18%]" />
-              <col class="w-[15%]" />
-              <col class="w-[26%]" />
-              <col class="w-[26%]" />
-              <col class="w-[15%]" />
-            </colgroup>
+          <table class="app-data-table min-w-[760px]">
             <thead>
               <tr>
-                <th>目标</th>
-                <th>类型</th>
-                <th>{{ t('service.componentDetail.defaultValue') }}</th>
-                <th>{{ t('service.componentDetail.currentValue') }}</th>
-                <th>操作</th>
+                <th>{{ t('application.componentDetail.fields.sourceType') }}</th>
+                <th>{{ t('application.componentDetail.fields.source') }}</th>
+                <th>{{ t('application.componentDetail.fields.target') }}</th>
+                <th>{{ t('application.componentDetail.fields.readOnly') }}</th>
+                <th class="w-48">{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="mount in mountRows" :key="mount.target">
-                <td class="max-w-0 text-foreground">
-                  <span class="block truncate" :title="mount.target">{{ mount.target }}</span>
+                <td class="min-w-28 text-foreground">
+                  {{ mountTypeLabel(mount.source_type) }}
                 </td>
-                <td>
-                  <AppBadge variant="pill">{{ mount.source_type }}</AppBadge>
+                <td
+                  class="min-w-56 break-all"
+                  :class="
+                    mount.deleted || mountHasChanges(mount)
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-foreground'
+                  "
+                >
+                  {{ mount.deleted ? '-' : displayValue(mount.source) }}
                 </td>
-                <td class="max-w-0 text-muted-foreground">
-                  <span class="block truncate" :title="displayValue(mount.base)">
-                    {{ displayValue(mount.base) }}
-                  </span>
+                <td class="min-w-56 break-all text-foreground">
+                  {{ mount.target }}
                 </td>
-                <td class="max-w-0">
-                  <div v-if="editingMountTarget === mount.target">
-                    <input v-model="editingMountSource" class="app-input h-9" />
-                  </div>
-                  <span
-                    v-else
-                    class="block h-9 truncate leading-9"
-                    :class="
-                      mount.deleted || mount.source !== mount.base
-                        ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-foreground'
-                    "
-                    :title="mount.deleted ? '-' : displayValue(mount.source)"
-                  >
-                    {{ mount.deleted ? '-' : displayValue(mount.source) }}
-                  </span>
+                <td class="min-w-20 text-foreground">
+                  {{ mount.read_only ? t('common.yes') : t('common.no') }}
                 </td>
-                <td>
-                  <div
-                    v-if="editingMountTarget === mount.target"
-                    class="flex h-9 items-center gap-2"
-                  >
-                    <button class="app-link" @click="applyMountEdit(mount)">
-                      {{ t('common.save') }}
-                    </button>
+                <td class="w-36">
+                  <div class="flex items-center gap-3">
                     <button
-                      class="text-muted-foreground hover:text-foreground"
-                      @click="cancelMountEdit"
+                      v-if="!mount.deleted"
+                      class="app-link"
+                      :disabled="operating"
+                      @click="openMountDialog(mount)"
                     >
-                      {{ t('common.cancel') }}
-                    </button>
-                  </div>
-                  <div v-else class="flex h-9 items-center gap-2">
-                    <button v-if="!mount.deleted" class="app-link" @click="startMountEdit(mount)">
                       {{ t('common.edit') }}
                     </button>
-                    <button v-if="mount.deleted" class="app-link" @click="restoreMount(mount)">
+                    <button
+                      v-if="mount.deleted"
+                      class="app-link"
+                      :disabled="operating"
+                      @click="restoreMount(mount)"
+                    >
                       {{ t('common.restore') }}
                     </button>
                     <button
-                      v-else-if="mount.source !== mount.base"
+                      v-else-if="mountHasChanges(mount)"
                       class="text-muted-foreground hover:text-foreground"
+                      :disabled="operating"
                       @click="resetMount(mount)"
                     >
                       {{ t('common.reset') }}
                     </button>
-                    <button v-else class="app-link-danger" @click="removeMount(mount)">
+                    <button
+                      v-else
+                      class="app-link-danger"
+                      :disabled="operating"
+                      @click="removeMount(mount)"
+                    >
                       {{ t('common.remove') }}
                     </button>
                   </div>
@@ -438,6 +424,90 @@
         </div>
       </DetailInfoCard>
     </template>
+
+    <AppDialog
+      :open="mountDialogOpen"
+      :title="t('common.edit')"
+      width-class="w-[min(640px,calc(100vw-32px))]"
+      body-class="space-y-4 px-6 py-4 text-sm"
+      @update:open="setMountDialogOpen"
+    >
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.sourceType') }}
+          </label>
+          <input
+            :value="editingMount?.source_type ?? ''"
+            class="app-input bg-muted"
+            :aria-label="t('application.componentDetail.fields.sourceType')"
+            readonly
+          />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.source') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="editingMountSource"
+            class="app-input"
+            :class="mountSourceError ? 'app-input-error' : ''"
+            type="text"
+            :aria-invalid="mountSourceError ? 'true' : undefined"
+            :aria-describedby="mountSourceError ? 'service-mount-source-error' : undefined"
+            @input="clearMountSourceError"
+          />
+          <p
+            v-if="mountSourceError"
+            id="service-mount-source-error"
+            class="app-field-error"
+            role="alert"
+          >
+            {{ mountSourceError }}
+          </p>
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.target') }}
+          </label>
+          <input
+            :value="editingMount?.target ?? ''"
+            class="app-input bg-muted"
+            :aria-label="t('application.componentDetail.fields.target')"
+            readonly
+          />
+        </div>
+        <label class="flex items-center gap-2 self-end pb-2">
+          <input
+            :checked="editingMount?.read_only ?? false"
+            class="app-checkbox"
+            type="checkbox"
+            disabled
+          />
+          <span class="text-sm text-foreground">
+            {{ t('application.componentDetail.fields.readOnly') }}
+          </span>
+        </label>
+        <label
+          v-if="editingMount?.source_type === 'directory' || editingMount?.source_type === 'file'"
+          class="flex items-center gap-2 sm:col-span-2"
+        >
+          <input v-model="editingMountSourceIsHostPath" class="app-checkbox" type="checkbox" />
+          <span class="text-sm text-foreground">
+            {{ t('application.componentDetail.fields.sourceIsHostPath') }}
+          </span>
+        </label>
+      </div>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.confirm')"
+          @cancel="closeMountDialog"
+          @confirm="saveMountDialog"
+        />
+      </template>
+    </AppDialog>
   </div>
 </template>
 
@@ -449,6 +519,8 @@
   import { serviceApi } from '@/api/service/service';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
@@ -470,8 +542,11 @@
   type MountRow = {
     target: string;
     source_type: string;
+    read_only: boolean;
     base: string;
+    base_source_is_host_path: boolean;
     source: string;
+    source_is_host_path: boolean;
     deleted: boolean;
   };
   type EndpointValues = {
@@ -513,8 +588,11 @@
   const editingEnvironmentKey = ref<string | null>(null);
   const editingEnvironmentValue = ref('');
   const mountRows = ref<MountRow[]>([]);
+  const mountDialogOpen = ref(false);
   const editingMountTarget = ref<string | null>(null);
   const editingMountSource = ref('');
+  const editingMountSourceIsHostPath = ref(false);
+  const mountSourceError = ref('');
   const endpointRows = ref<EndpointRow[]>([]);
   const editingEndpointName = ref<string | null>(null);
   const editingEndpoint = ref<EndpointValues>(emptyEndpointValues());
@@ -566,8 +644,11 @@
       return {
         target: item.target,
         source_type: item.source_type,
+        read_only: item.read_only,
         base: item.source,
+        base_source_is_host_path: item.source_is_host_path,
         source: overlay?.source ?? item.source,
+        source_is_host_path: overlay?.source_is_host_path ?? item.source_is_host_path,
         deleted: overlay?.state === 'deleted',
       };
     });
@@ -683,30 +764,63 @@
       field.value = field.base;
     });
   }
-  function startMountEdit(row: MountRow) {
+  const editingMount = computed(() =>
+    mountRows.value.find((row) => row.target === editingMountTarget.value)
+  );
+  function openMountDialog(row: MountRow) {
     editingMountTarget.value = row.target;
     editingMountSource.value = row.source;
+    editingMountSourceIsHostPath.value = row.source_is_host_path;
+    mountSourceError.value = '';
+    mountDialogOpen.value = true;
   }
-  function applyMountEdit(row: MountRow) {
-    row.source = editingMountSource.value;
-    row.deleted = false;
-    cancelMountEdit();
-  }
-  function cancelMountEdit() {
+  function closeMountDialog() {
+    mountDialogOpen.value = false;
     editingMountTarget.value = null;
     editingMountSource.value = '';
+    editingMountSourceIsHostPath.value = false;
+    mountSourceError.value = '';
+  }
+  function setMountDialogOpen(open: boolean) {
+    if (open) {
+      mountDialogOpen.value = true;
+      return;
+    }
+    closeMountDialog();
+  }
+  function clearMountSourceError() {
+    mountSourceError.value = '';
+  }
+  function saveMountDialog() {
+    const row = editingMount.value;
+    if (!row) {
+      return;
+    }
+    if (!editingMountSource.value.trim()) {
+      mountSourceError.value = t('service.componentDetail.validation.sourceRequired');
+      return;
+    }
+    row.source = editingMountSource.value;
+    row.source_is_host_path = editingMountSourceIsHostPath.value;
+    row.deleted = false;
+    closeMountDialog();
   }
   function resetMount(row: MountRow) {
     row.source = row.base;
+    row.source_is_host_path = row.base_source_is_host_path;
     row.deleted = false;
   }
   function removeMount(row: MountRow) {
     row.deleted = true;
-    cancelMountEdit();
+    closeMountDialog();
   }
   function restoreMount(row: MountRow) {
     row.source = row.base;
+    row.source_is_host_path = row.base_source_is_host_path;
     row.deleted = false;
+  }
+  function mountHasChanges(row: MountRow) {
+    return row.source !== row.base || row.source_is_host_path !== row.base_source_is_host_path;
   }
   function startEndpointEdit(row: EndpointRow) {
     editingEndpointName.value = row.name;
@@ -739,6 +853,15 @@
   function displayValue(value: string) {
     return value || '-';
   }
+  function mountTypeLabel(value: string): string {
+    const labels: Record<string, string> = {
+      directory: t('application.componentDetail.mountTypes.directory'),
+      file: t('application.componentDetail.mountTypes.file'),
+      named_volume: t('application.componentDetail.mountTypes.namedVolume'),
+      controlled_file: t('application.componentDetail.mountTypes.controlledFile'),
+    };
+    return labels[value] ?? value;
+  }
   const draft = computed(() => (detail.value?.declaration ? true : false));
   function optional(value: string) {
     return value === '' ? undefined : value;
@@ -759,7 +882,12 @@
       mounts: mountRows.value.map((row) =>
         row.deleted
           ? { target: row.target, state: 'deleted' }
-          : { target: row.target, source: row.source, state: 'override' }
+          : {
+              target: row.target,
+              source: row.source,
+              source_is_host_path: row.source_is_host_path,
+              state: 'override',
+            }
       ),
       resources:
         resourceFields.value.length === 0

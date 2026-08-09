@@ -621,6 +621,9 @@ export default {
     componentDetail: {
       defaultValue: '默认值',
       currentValue: '当前值',
+      validation: {
+        sourceRequired: '请填写源路径',
+      },
     },
     runtimeConfig: {
       title: '运行时配置',

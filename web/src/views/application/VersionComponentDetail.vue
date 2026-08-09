@@ -1299,17 +1299,8 @@
             {{ t('application.componentDetail.fields.readOnly') }}
           </span>
         </label>
-        <label
-          v-if="mountForm.source_type === 'directory' || mountForm.source_type === 'file'"
-          class="flex items-center gap-2 self-end pb-2"
-        >
-          <input v-model="mountForm.source_is_host_path" class="app-checkbox" type="checkbox" />
-          <span class="text-sm text-foreground">
-            {{ t('application.componentDetail.fields.sourceIsHostPath') }}
-          </span>
-        </label>
       </div>
-      <p v-if="mountDialogError" class="app-field-error">{{ mountDialogError }}</p>
+      <p v-if="mountDialogError" class="app-field-error" role="alert">{{ mountDialogError }}</p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
@@ -1364,7 +1355,7 @@
         <div class="min-h-0 flex-1">
           <MonacoEditor v-model="mountContentForm.content" language="plaintext" height="100%" />
         </div>
-        <p v-if="mountContentError" class="app-field-error shrink-0">
+        <p v-if="mountContentError" class="app-field-error shrink-0" role="alert">
           {{ mountContentError }}
         </p>
       </div>
@@ -1457,6 +1448,7 @@
   type ConnectivityGroup = 'ports' | 'dependencies';
   type RecordGroup = ConnectivityGroup | 'tmpfs' | 'ulimits' | 'devices';
   type PersistOutcome = 'saved' | 'invalid' | 'failed';
+  type MountPersistOutcome = { status: PersistOutcome; error?: string };
 
   const route = useRoute();
   const router = useRouter();
@@ -2268,16 +2260,16 @@
     closeMountContentDrawer();
   }
 
-  async function persistMounts(nextMounts: MountRow[]): Promise<'saved' | 'invalid' | 'failed'> {
+  async function persistMounts(nextMounts: MountRow[]): Promise<MountPersistOutcome> {
     const draft = cloneComponentForm(form);
     draft.mounts = nextMounts.map((row) => ({ ...row }));
     const result = componentMountsRequestFromForm(draft);
     if (!result.valid) {
-      return 'invalid';
+      return { status: 'invalid' };
     }
     if (isNew) {
       form.mounts = draft.mounts;
-      return 'saved';
+      return { status: 'saved' };
     }
     try {
       await executeOperation(async () => {
@@ -2291,10 +2283,12 @@
         assignForm(componentFormFromResponse(updated));
         toast.success(t('application.toast.updateSuccess'));
       });
-      return 'saved';
+      return { status: 'saved' };
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-      return 'failed';
+      return {
+        status: 'failed',
+        error: error instanceof Error ? error.message : t('application.toast.updateFailed'),
+      };
     }
   }
 
@@ -2312,11 +2306,15 @@
       return;
     }
     const outcome = await persistMounts(nextMounts);
-    if (outcome === 'invalid') {
+    if (outcome.status === 'invalid') {
       mountDialogError.value = messageFor('mounts');
       return;
     }
-    if (outcome === 'saved') {
+    if (outcome.status === 'failed') {
+      mountDialogError.value = outcome.error ?? t('application.toast.updateFailed');
+      return;
+    }
+    if (outcome.status === 'saved') {
       closeMountDialog();
     }
   }
@@ -2337,19 +2335,25 @@
     mount.mode = mountContentForm.mode;
     mount.ignore_if_exists = mountContentForm.ignore_if_exists;
     const outcome = await persistMounts(nextMounts);
-    if (outcome === 'invalid') {
+    if (outcome.status === 'invalid') {
       mountContentError.value = messageFor('mounts');
       return;
     }
-    if (outcome === 'saved') {
+    if (outcome.status === 'failed') {
+      mountContentError.value = outcome.error ?? t('application.toast.updateFailed');
+      return;
+    }
+    if (outcome.status === 'saved') {
       closeMountContentDrawer();
     }
   }
 
   async function deleteMount(index: number) {
     const outcome = await persistMounts(form.mounts.filter((_, rowIndex) => rowIndex !== index));
-    if (outcome === 'invalid') {
+    if (outcome.status === 'invalid') {
       toast.error(messageFor('mounts'));
+    } else if (outcome.status === 'failed') {
+      toast.error(outcome.error ?? t('application.toast.updateFailed'));
     }
   }
 

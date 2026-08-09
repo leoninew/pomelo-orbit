@@ -1,5 +1,5 @@
 # CD 领域模型（现行）
-最后修改时间: 2026-08-08 17:08:45
+最后修改时间: 2026-08-09 15:02:19
 
 Doc role: living SoT  
 代码锚点：`internal/model/cd.go`、`internal/common/constant/status.go`、`internal/application/cd/usecase/*`、`sql/migration/*/…_cd_schema*.sql`（以仓库当前迁移文件为准）。
@@ -51,6 +51,12 @@ Project
 - stop 不删除 Service 行（绑定保留）
 - `runtime_config_json` 是普通明文 `key/value` 配置；修改只更新待部署配置，不改变运行中的容器。
 - Credential 不属于 Service 运行时配置或部署链路。
+
+### Component Mount
+
+- Version 挂载声明类型、默认源路径和容器目标；普通 Version 编辑不设置宿主机路径模式。
+- Service 组件的稀疏覆盖拥有实际源路径及其宿主机路径模式。目录和文件在该模式下必须使用绝对路径；逻辑源路径仍须为相对路径。
+- Gateway compile 生成的托管挂载属于内部实现，不构成 Version 编辑页的用户配置项。
 
 ### 异步操作（Deployment / Pipeline Run / Pipeline Stage Run）
 

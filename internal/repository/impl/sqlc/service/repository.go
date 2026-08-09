@@ -290,7 +290,7 @@ func (r Repository) serviceComponentFromRow(ctx context.Context, q *servicesqlc.
 		return model.ServiceComponent{}, fmt.Errorf("load service component mounts %s: %w", component.Id, err)
 	}
 	for _, item := range mounts {
-		component.Mounts = append(component.Mounts, model.ServiceComponentMount{Target: item.Target, Source: dbmodel.StringPtr(item.Source), State: model.ServiceComponentOverlayState(item.State)})
+		component.Mounts = append(component.Mounts, model.ServiceComponentMount{Target: item.Target, Source: dbmodel.StringPtr(item.Source), SourceIsHostPath: dbmodel.BoolPtrFromNullInt64(item.SourceIsHostPath), State: model.ServiceComponentOverlayState(item.State)})
 	}
 	resource, err := q.ServiceComponentResourceByComponent(ctx, component.Id)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -331,7 +331,7 @@ func insertServiceComponentOverlay(ctx context.Context, q *servicesqlc.Queries, 
 		}
 	}
 	for _, item := range component.Mounts {
-		if err := q.InsertServiceComponentMount(ctx, servicesqlc.InsertServiceComponentMountParams{ID: idutil.NewId(), ServiceComponentID: component.Id, Target: item.Target, Source: dbmodel.NullString(item.Source), State: string(item.State)}); err != nil {
+		if err := q.InsertServiceComponentMount(ctx, servicesqlc.InsertServiceComponentMountParams{ID: idutil.NewId(), ServiceComponentID: component.Id, Target: item.Target, Source: dbmodel.NullString(item.Source), SourceIsHostPath: dbmodel.NullInt64FromBoolPtr(item.SourceIsHostPath), State: string(item.State)}); err != nil {
 			return fmt.Errorf("insert service component mount: %w", err)
 		}
 	}

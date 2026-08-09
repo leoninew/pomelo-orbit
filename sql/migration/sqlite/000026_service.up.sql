@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS service_component_mount (
     service_component_id TEXT NOT NULL,
     target TEXT NOT NULL,
     source TEXT,
+    source_is_host_path INTEGER,
     state TEXT NOT NULL CHECK (state IN ('override', 'deleted')),
     FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE,
     CHECK (

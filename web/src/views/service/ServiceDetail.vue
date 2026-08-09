@@ -98,7 +98,6 @@
       <ServiceEnvironmentCard
         :rows="environmentRows"
         :saved-rows="savedEnvironmentRows"
-        :effective-error="service.effective_error"
         :disabled="operating"
         :validate-key="validateEnvironmentKey"
         @update:rows="environmentRows = $event"
@@ -435,11 +434,21 @@
     savedEnvironmentRows.value = cloneEnvironmentVariableRows(rows);
   }
 
+  function setService(value: ServiceResp) {
+    service.value = value;
+    setEnvironmentRows(value);
+    if (value.effective_error) {
+      toast.error(
+        t('service.detail.effectiveConfigUnavailable', { error: value.effective_error }),
+        8000
+      );
+    }
+  }
+
   async function load() {
     try {
       await execute(async () => {
-        service.value = await serviceApi.get(serviceId);
-        setEnvironmentRows(service.value);
+        setService(await serviceApi.get(serviceId));
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('service.toast.loadDetailFailed'));
@@ -503,8 +512,7 @@
           version_id: versionId,
           instance_key: instanceKey,
         });
-        service.value = updated;
-        setEnvironmentRows(updated);
+        setService(updated);
         cancelBasicEditing();
         toast.success(t('service.detail.saved'));
       });
@@ -520,8 +528,7 @@
         const updated = await serviceApi.updateEnv(serviceId, {
           env: entries,
         });
-        service.value = updated;
-        setEnvironmentRows(updated);
+        setService(updated);
         toast.success(t('environment.saved'));
       });
     } catch (error) {

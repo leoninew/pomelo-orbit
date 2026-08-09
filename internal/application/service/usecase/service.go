@@ -371,15 +371,18 @@ func normalizeOverlay(component *model.ServiceComponent, declaration model.Versi
 		seenMount[item.Target] = struct{}{}
 		switch item.State {
 		case model.ServiceComponentOverlayDeleted:
-			if item.Source != nil {
-				return fmt.Errorf("deleted mount cannot have a source")
+			if item.Source != nil || item.SourceIsHostPath != nil {
+				return fmt.Errorf("mount %s is deleted and cannot have source settings", item.Target)
 			}
 			mounts = append(mounts, item)
 		case model.ServiceComponentOverlayOverride:
-			if item.Source == nil {
-				return fmt.Errorf("mount overlay requires a source")
+			if item.Source == nil || item.SourceIsHostPath == nil {
+				return fmt.Errorf("mount %s requires source and source_is_host_path", item.Target)
 			}
-			if *item.Source != declarationMount.Source {
+			if err := model.ValidateMountSource(declarationMount.SourceType, *item.Source, *item.SourceIsHostPath); err != nil {
+				return fmt.Errorf("component %s mount %s: %w", declaration.Name, item.Target, err)
+			}
+			if *item.Source != declarationMount.Source || *item.SourceIsHostPath != declarationMount.SourceIsHostPath {
 				mounts = append(mounts, item)
 			}
 		default:

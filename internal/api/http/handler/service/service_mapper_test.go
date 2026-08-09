@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
+	servicev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -47,5 +48,22 @@ func TestServiceComponentDetailResponseOmitsUnavailableEffectiveValues(t *testin
 	})
 	if response.Component == nil || response.Declaration == nil || response.Effective != nil {
 		t.Fatal("expected source views without effective component")
+	}
+}
+
+func TestServiceComponentMountOverlayMapsHostPathMode(t *testing.T) {
+	source := "D:/SourceCodes/mywork/PomeloOrbit-go/data/backup/bge-m3"
+	sourceIsHostPath := true
+	input := serviceComponentOverlayInput(&servicev1.ServiceComponentOverlayUpdateReq{
+		Mounts: []*servicev1.ServiceComponentMountOverlay{{
+			Target: "/data", Source: &source, SourceIsHostPath: &sourceIsHostPath, State: string(model.ServiceComponentOverlayOverride),
+		}},
+	})
+	if len(input.Mounts) != 1 || input.Mounts[0].SourceIsHostPath == nil || !*input.Mounts[0].SourceIsHostPath {
+		t.Fatalf("mount input lost host path mode: %#v", input.Mounts)
+	}
+	response := serviceComponentResponse(model.ServiceComponent{Mounts: input.Mounts})
+	if len(response.Mounts) != 1 || response.Mounts[0].SourceIsHostPath == nil || !*response.Mounts[0].SourceIsHostPath {
+		t.Fatalf("mount response lost host path mode: %#v", response.Mounts)
 	}
 }

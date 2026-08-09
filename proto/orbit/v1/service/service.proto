@@ -107,6 +107,7 @@ message ServiceComponentDeclaredMount {
   string source = 2;
   string target = 3;
   bool read_only = 4;
+  bool source_is_host_path = 5;
 }
 
 message ServiceComponentDeclaredResources {
@@ -145,6 +146,7 @@ message ServiceComponentMountOverlay {
   optional string source = 2;
   string state = 3;
   string target = 4;
+  optional bool source_is_host_path = 5;
 }
 
 message ServiceComponentResourceOverlay {

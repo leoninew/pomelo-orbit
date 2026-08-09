@@ -31,6 +31,9 @@ func TestMigrateAndMigrationVersion(t *testing.T) {
 	if adminCount != 1 {
 		t.Fatalf("admin count=%d, want 1", adminCount)
 	}
+	if _, err := database.Exec("SELECT source_is_host_path FROM service_component_mount LIMIT 0"); err != nil {
+		t.Fatalf("service component mount source path mode column: %v", err)
+	}
 	for _, want := range []string{
 		`msg="run schema migrations" driver=sqlite`,
 		`msg="execute data migration" path=migration/data/sqlite/000029_seed_system.up.sql`,

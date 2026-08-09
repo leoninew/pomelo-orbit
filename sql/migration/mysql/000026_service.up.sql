@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS service_component_mount (
     service_component_id VARCHAR(128) NOT NULL,
     target VARCHAR(1024) NOT NULL,
     source VARCHAR(1024) NULL,
+    source_is_host_path TINYINT(1) NULL,
     state VARCHAR(16) NOT NULL,
     KEY idx_service_component_mount_component (service_component_id),
     CONSTRAINT fk_service_component_mount_component FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE,

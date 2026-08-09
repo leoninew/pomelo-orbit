@@ -14,6 +14,7 @@ func TestBuildEffectiveServicePlanMergesSparseOverrides(t *testing.T) {
 	overrideCPUs := "2"
 	baseSource := "/var/lib/postgres"
 	overrideSource := "/srv/postgres"
+	overrideSourceIsHostPath := true
 	basePort := 5432
 	overridePort := 15432
 	mode := "host"
@@ -33,7 +34,7 @@ func TestBuildEffectiveServicePlanMergesSparseOverrides(t *testing.T) {
 		[]model.ServiceComponent{{
 			Id: "service-component-db", ServiceId: "service-1", SourceVersionComponentId: declaration.Id, ComponentName: declaration.Name,
 			Env:       []model.ServiceComponentEnv{{Key: "POSTGRES_DB", Value: &overrideValue, State: model.ServiceComponentOverlayOverride}},
-			Mounts:    []model.ServiceComponentMount{{Target: "/var/lib/postgresql/data", Source: &overrideSource, State: model.ServiceComponentOverlayOverride}},
+			Mounts:    []model.ServiceComponentMount{{Target: "/var/lib/postgresql/data", Source: &overrideSource, SourceIsHostPath: &overrideSourceIsHostPath, State: model.ServiceComponentOverlayOverride}},
 			Resources: &model.ServiceComponentResources{LimitCPUs: &overrideCPUs, State: model.ServiceComponentOverlayOverride},
 			Endpoints: []model.ServiceComponentEndpoint{{Name: "postgres", Mode: &mode, ListenPort: &overridePort, State: model.ServiceComponentOverlayOverride}},
 		}},
@@ -49,6 +50,9 @@ func TestBuildEffectiveServicePlanMergesSparseOverrides(t *testing.T) {
 	component := plan.Components[0]
 	if component.Env[0].Value != overrideValue || component.Mounts[0].Source != overrideSource {
 		t.Fatalf("unexpected merged component: %#v", component)
+	}
+	if !component.Mounts[0].SourceIsHostPath {
+		t.Fatal("mount source must be rendered as a host path")
 	}
 	if component.Resources.LimitCPUs == nil || *component.Resources.LimitCPUs != overrideCPUs {
 		t.Fatalf("resource override = %#v", component.Resources)
@@ -97,7 +101,7 @@ func TestBuildVersionPreviewPlanUsesVersionDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildVersionPreviewPlan returned error: %v", err)
 	}
-	if plan.Service.Id != "" || plan.Service.InstanceKey != versionPreviewInstanceKey {
+	if plan.Service.Id != "" || plan.Service.InstanceKey != versionPreviewInstanceKey || plan.Service.Code != "demo-default" {
 		t.Fatalf("preview must not use a persisted service: %+v", plan.Service)
 	}
 	if len(plan.Components) != 1 {
@@ -117,6 +121,27 @@ func TestBuildVersionPreviewPlanUsesVersionDeclarations(t *testing.T) {
 	}
 	if !strings.Contains(compose, "MODE: version") || !strings.Contains(compose, "127.0.0.1:8080:80") {
 		t.Fatalf("version declaration was not rendered:\n%s", compose)
+	}
+}
+
+func TestBuildVersionPreviewPlanRendersGatewayHTTPHost(t *testing.T) {
+	app := model.Application{Id: "app-1", Code: "demo", Kind: status.ApplicationKindStandard}
+	version := model.Version{Id: "version-1", ApplicationId: app.Id, Label: "v1"}
+	declarations := []model.VersionComponent{{
+		Id: "component-web", VersionId: version.Id, Name: "web", Image: "nginx:latest",
+		Endpoints: []model.VersionComponentEndpoint{{Name: "http", Protocol: "http", ContainerPort: 80, Mode: "gateway_http"}},
+	}}
+
+	plan, err := BuildVersionPreviewPlan(app, version, declarations, &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web"})
+	if err != nil {
+		t.Fatalf("BuildVersionPreviewPlan returned error: %v", err)
+	}
+	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: plan})
+	if err != nil {
+		t.Fatalf("RenderCompose returned error: %v", err)
+	}
+	if !strings.Contains(compose, "Host(`web.demo-default.example.test`)") {
+		t.Fatalf("gateway host was not rendered:\n%s", compose)
 	}
 }
 

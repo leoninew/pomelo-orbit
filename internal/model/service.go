@@ -51,9 +51,10 @@ type ServiceEnv struct {
 }
 
 type ServiceComponentMount struct {
-	Target string
-	Source *string
-	State  ServiceComponentOverlayState
+	Target           string
+	Source           *string
+	SourceIsHostPath *bool
+	State            ServiceComponentOverlayState
 }
 
 type ServiceComponentResources struct {

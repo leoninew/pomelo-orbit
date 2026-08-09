@@ -25,6 +25,7 @@ func BuildVersionPreviewPlan(app model.Application, version model.Version, decla
 			ApplicationId: app.Id,
 			VersionId:     version.Id,
 			InstanceKey:   versionPreviewInstanceKey,
+			Code:          app.Code + "-" + versionPreviewInstanceKey,
 		},
 		Gateway:    gateway,
 		Components: make([]model.EffectiveServiceComponent, 0, len(declarations)),
@@ -140,10 +141,11 @@ func MergeServiceComponent(declaration model.VersionComponent, overlay model.Ser
 		}
 		switch merged.State {
 		case model.ServiceComponentOverlayOverride:
-			if merged.Source == nil {
-				return result, fmt.Errorf("component %s mount overlay %s has no source", declaration.Name, item.Target)
+			if merged.Source == nil || merged.SourceIsHostPath == nil {
+				return result, fmt.Errorf("component %s mount overlay %s is incomplete", declaration.Name, item.Target)
 			}
 			item.Source = *merged.Source
+			item.SourceIsHostPath = *merged.SourceIsHostPath
 			result.Mounts = append(result.Mounts, item)
 		case model.ServiceComponentOverlayDeleted:
 		default:

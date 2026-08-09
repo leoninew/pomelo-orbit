@@ -237,8 +237,8 @@ func (q *Queries) InsertServiceComponentEnv(ctx context.Context, arg InsertServi
 }
 
 const insertServiceComponentMount = `-- name: InsertServiceComponentMount :exec
-INSERT INTO service_component_mount (id, service_component_id, target, source, state)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO service_component_mount (id, service_component_id, target, source, source_is_host_path, state)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type InsertServiceComponentMountParams struct {
@@ -246,6 +246,7 @@ type InsertServiceComponentMountParams struct {
 	ServiceComponentID string         `db:"service_component_id"`
 	Target             string         `db:"target"`
 	Source             sql.NullString `db:"source"`
+	SourceIsHostPath   sql.NullInt64  `db:"source_is_host_path"`
 	State              string         `db:"state"`
 }
 
@@ -255,6 +256,7 @@ func (q *Queries) InsertServiceComponentMount(ctx context.Context, arg InsertSer
 		arg.ServiceComponentID,
 		arg.Target,
 		arg.Source,
+		arg.SourceIsHostPath,
 		arg.State,
 	)
 	return err
@@ -604,7 +606,7 @@ func (q *Queries) ServiceComponentEnvByComponent(ctx context.Context, serviceCom
 }
 
 const serviceComponentMountsByComponent = `-- name: ServiceComponentMountsByComponent :many
-SELECT service_component_id, target, source, state
+SELECT service_component_id, target, source, source_is_host_path, state
 FROM service_component_mount
 WHERE service_component_id = ?
 ORDER BY target
@@ -614,6 +616,7 @@ type ServiceComponentMountsByComponentRow struct {
 	ServiceComponentID string         `db:"service_component_id"`
 	Target             string         `db:"target"`
 	Source             sql.NullString `db:"source"`
+	SourceIsHostPath   sql.NullInt64  `db:"source_is_host_path"`
 	State              string         `db:"state"`
 }
 
@@ -630,6 +633,7 @@ func (q *Queries) ServiceComponentMountsByComponent(ctx context.Context, service
 			&i.ServiceComponentID,
 			&i.Target,
 			&i.Source,
+			&i.SourceIsHostPath,
 			&i.State,
 		); err != nil {
 			return nil, err

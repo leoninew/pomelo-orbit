@@ -354,6 +354,7 @@ type ServiceComponentMount struct {
 	ServiceComponentID string         `db:"service_component_id"`
 	Target             string         `db:"target"`
 	Source             sql.NullString `db:"source"`
+	SourceIsHostPath   sql.NullInt64  `db:"source_is_host_path"`
 	State              string         `db:"state"`
 }
 

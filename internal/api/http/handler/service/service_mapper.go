@@ -41,7 +41,7 @@ func serviceComponentResponse(item model.ServiceComponent) servicev1.ServiceComp
 	}
 	mounts := make([]*servicev1.ServiceComponentMountOverlay, 0, len(item.Mounts))
 	for _, value := range item.Mounts {
-		mounts = append(mounts, &servicev1.ServiceComponentMountOverlay{Target: value.Target, Source: value.Source, State: string(value.State)})
+		mounts = append(mounts, &servicev1.ServiceComponentMountOverlay{Target: value.Target, Source: value.Source, SourceIsHostPath: value.SourceIsHostPath, State: string(value.State)})
 	}
 	endpoints := make([]*servicev1.ServiceComponentEndpointOverlay, 0, len(item.Endpoints))
 	for _, value := range item.Endpoints {
@@ -78,7 +78,7 @@ func componentDeclarationResponse(component model.VersionComponent) servicev1.Se
 	}
 	mounts := make([]*servicev1.ServiceComponentDeclaredMount, 0, len(component.Mounts))
 	for _, item := range component.Mounts {
-		mounts = append(mounts, &servicev1.ServiceComponentDeclaredMount{SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly})
+		mounts = append(mounts, &servicev1.ServiceComponentDeclaredMount{SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly, SourceIsHostPath: item.SourceIsHostPath})
 	}
 	return servicev1.ServiceComponentDefinitionResp{Id: component.Id, Name: component.Name, Image: component.Image, Command: commandline.Format(component.Command), PullPolicy: component.PullPolicy, Env: env, Endpoints: endpoints, Mounts: mounts, Resources: componentResourcesResponse(component.Resources)}
 }
@@ -102,7 +102,7 @@ func serviceComponentOverlayInput(req *servicev1.ServiceComponentOverlayUpdateRe
 	}
 	for _, item := range req.Mounts {
 		if item != nil {
-			result.Mounts = append(result.Mounts, model.ServiceComponentMount{Target: item.Target, Source: item.Source, State: model.ServiceComponentOverlayState(item.State)})
+			result.Mounts = append(result.Mounts, model.ServiceComponentMount{Target: item.Target, Source: item.Source, SourceIsHostPath: item.SourceIsHostPath, State: model.ServiceComponentOverlayState(item.State)})
 		}
 	}
 	for _, item := range req.Endpoints {

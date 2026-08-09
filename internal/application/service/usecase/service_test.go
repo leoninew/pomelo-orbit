@@ -248,11 +248,44 @@ func TestNormalizeServiceEnv(t *testing.T) {
 	}
 }
 
+func TestNormalizeOverlayAcceptsAbsoluteHostPathMountSource(t *testing.T) {
+	source := "D:/SourceCodes/mywork/PomeloOrbit-go/data/backup/bge-m3"
+	sourceIsHostPath := true
+	component := model.ServiceComponent{Mounts: []model.ServiceComponentMount{{
+		Target: "/models", Source: &source, SourceIsHostPath: &sourceIsHostPath, State: model.ServiceComponentOverlayOverride,
+	}}}
+	declaration := model.VersionComponent{Name: "tei", Mounts: []model.VersionComponentMount{{
+		SourceType: "directory", Source: "models/bge-m3", Target: "/models",
+	}}}
+	if err := normalizeOverlay(&component, declaration); err != nil {
+		t.Fatalf("normalizeOverlay() error = %v", err)
+	}
+	if len(component.Mounts) != 1 || component.Mounts[0].SourceIsHostPath == nil || !*component.Mounts[0].SourceIsHostPath {
+		t.Fatalf("mount overlay = %#v", component.Mounts)
+	}
+}
+
+func TestNormalizeOverlayRejectsAbsoluteLogicalMountSource(t *testing.T) {
+	source := "D:/SourceCodes/mywork/PomeloOrbit-go/data/backup/bge-m3"
+	sourceIsHostPath := false
+	component := model.ServiceComponent{Mounts: []model.ServiceComponentMount{{
+		Target: "/models", Source: &source, SourceIsHostPath: &sourceIsHostPath, State: model.ServiceComponentOverlayOverride,
+	}}}
+	declaration := model.VersionComponent{Name: "tei", Mounts: []model.VersionComponentMount{{
+		SourceType: "directory", Source: "models/bge-m3", Target: "/models",
+	}}}
+	err := normalizeOverlay(&component, declaration)
+	if err == nil || !strings.Contains(err.Error(), "component tei mount /models: source must be a relative path") {
+		t.Fatalf("normalizeOverlay() error = %v", err)
+	}
+}
+
 func TestRemapServiceComponentsKeepsMountOverlayWithItsTargetAfterReorder(t *testing.T) {
 	overrideSource := "/srv/runtime-data"
+	overrideSourceIsHostPath := true
 	mappings := []model.ServiceComponent{{
 		Id: "service-component-1", ServiceId: "service-1", SourceVersionComponentId: "component-v1", ComponentName: "web",
-		Mounts: []model.ServiceComponentMount{{Target: "/data", Source: &overrideSource, State: model.ServiceComponentOverlayOverride}},
+		Mounts: []model.ServiceComponentMount{{Target: "/data", Source: &overrideSource, SourceIsHostPath: &overrideSourceIsHostPath, State: model.ServiceComponentOverlayOverride}},
 	}}
 	declarations := []model.VersionComponent{{
 		Id: "component-v2", Name: "web", Image: "nginx:latest",

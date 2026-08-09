@@ -111,7 +111,7 @@ INSERT INTO service_component_env (service_component_id, env_key, value, state)
 VALUES (?, ?, ?, ?);
 
 -- name: ServiceComponentMountsByComponent :many
-SELECT service_component_id, target, source, state
+SELECT service_component_id, target, source, source_is_host_path, state
 FROM service_component_mount
 WHERE service_component_id = ?
 ORDER BY target;
@@ -121,8 +121,8 @@ DELETE FROM service_component_mount
 WHERE service_component_id = ?;
 
 -- name: InsertServiceComponentMount :exec
-INSERT INTO service_component_mount (id, service_component_id, target, source, state)
-VALUES (?, ?, ?, ?, ?);
+INSERT INTO service_component_mount (id, service_component_id, target, source, source_is_host_path, state)
+VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: ServiceComponentResourceByComponent :one
 SELECT service_component_id, limit_cpus, limit_memory, reservation_cpus, reservation_memory, state

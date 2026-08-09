@@ -44,6 +44,21 @@ func IntBool(value int64) bool {
 	return value != 0
 }
 
+func NullInt64FromBoolPtr(value *bool) sql.NullInt64 {
+	if value == nil {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: BoolInt(*value), Valid: true}
+}
+
+func BoolPtrFromNullInt64(value sql.NullInt64) *bool {
+	if !value.Valid {
+		return nil
+	}
+	result := IntBool(value.Int64)
+	return &result
+}
+
 func NullInt64FromIntPtr(value *int) sql.NullInt64 {
 	if value == nil {
 		return sql.NullInt64{}

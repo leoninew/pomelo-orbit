@@ -140,6 +140,37 @@ func TestValidateTemplatePipelineConfigurationRejectsInvalidReferenceShape(t *te
 	}
 }
 
+func TestTemplateStageDeletionDependencyFindsDependentStage(t *testing.T) {
+	t.Parallel()
+
+	target, dependent, err := templateStageDeletionDependency([]model.PipelineStageReference{
+		{Id: "source", Name: "source", DependsOn: "[]"},
+		{Id: "build", Name: "build", DependsOn: `["source"]`},
+	}, "source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if target != "source" || dependent != "build" {
+		t.Fatalf("dependency = (%q, %q), want (source, build)", target, dependent)
+	}
+}
+
+func TestApplicationStageDeletionDependencyFindsDependentStage(t *testing.T) {
+	t.Parallel()
+
+	sourceDependencies, buildDependencies := "[]", `["source"]`
+	target, dependent, err := applicationStageDeletionDependency([]model.PipelineStage{
+		{Id: "source", Name: "source", DependsOn: &sourceDependencies},
+		{Id: "build", Name: "build", DependsOn: &buildDependencies},
+	}, "source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if target != "source" || dependent != "build" {
+		t.Fatalf("dependency = (%q, %q), want (source, build)", target, dependent)
+	}
+}
+
 func TestSourceCommitArtifactForStageUsesTransitiveDependency(t *testing.T) {
 	t.Parallel()
 

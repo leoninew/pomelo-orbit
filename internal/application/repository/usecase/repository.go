@@ -122,7 +122,7 @@ func (s Service) DeleteRepository(ctx context.Context, userID, repositoryID stri
 		return apperror.Wrap(apperror.KindInternal, "Failed to check repository pipelines", err)
 	}
 	if running {
-		return apperror.New(apperror.KindConflict, "Repository has running pipelines, cannot delete")
+		return apperror.New(apperror.KindValidation, "Repository has running pipelines. Cancel or wait for them to finish before deleting it.")
 	}
 	if err := s.store.DeleteRepository(ctx, item.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete repository", err)

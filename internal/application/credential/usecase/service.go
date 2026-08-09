@@ -116,7 +116,7 @@ func (s Service) DeleteCredential(ctx context.Context, userId string, credential
 		return apperror.Wrap(apperror.KindInternal, "Failed to check credential references", err)
 	}
 	if referenced {
-		return apperror.New(apperror.KindConflict, "Credential is referenced by projects, cannot delete")
+		return apperror.New(apperror.KindValidation, "Credential is still used by repositories. Remove it from those repositories before deleting it.")
 	}
 	if err := s.credential.DeleteCredential(ctx, credential.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete credential", err)

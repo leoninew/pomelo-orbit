@@ -120,9 +120,6 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	if err := preflightGatewayNetwork(ctx, s.queryRunner, app); err != nil {
-		return deploymentdto.DeployServiceResult{}, err
-	}
 	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, err

@@ -145,15 +145,6 @@ func (r Repository) DeleteApplication(ctx context.Context, id string) error {
 			return fmt.Errorf("list application version ids %s: %w", id, err)
 		}
 		for _, versionId := range versionIds {
-			refs, err := q.CountVersionRuntimeRefs(txCtx, versionId)
-			if err != nil {
-				return fmt.Errorf("count version references %s: %w", versionId, err)
-			}
-			if asInt(refs) > 0 {
-				return fmt.Errorf("application %s contains referenced version %s: %w", id, versionId, repository.ErrReferenced)
-			}
-		}
-		for _, versionId := range versionIds {
 			if err := q.ClearVersionForkRefs(txCtx, sql.NullString{String: versionId, Valid: true}); err != nil {
 				return fmt.Errorf("clear version fork references %s: %w", versionId, err)
 			}

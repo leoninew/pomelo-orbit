@@ -267,12 +267,22 @@ func (s Service) DeletePipelineStageNode(ctx context.Context, userId, pipelineId
 		if err != nil {
 			return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stage references", err)
 		}
+		stageName, dependentStageName, err := templateStageDeletionDependency(references, stageId)
+		if err != nil {
+			return pipelinedto.PipelineDetail{}, err
+		}
+		if stageName == "" {
+			return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindNotFound, "Pipeline stage "+stageId+" not found")
+		}
+		if dependentStageName != "" {
+			return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "Cannot delete stage "+stageName+" because stage "+dependentStageName+" depends on it")
+		}
 		remaining, found := removeTemplateReference(references, stageId)
 		if !found {
 			return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindNotFound, "Pipeline stage "+stageId+" not found")
 		}
 		if err := validateTemplatePipelineConfiguration(pipeline, remaining); err != nil {
-			return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "Cannot delete a stage still referenced by dependencies")
+			return pipelinedto.PipelineDetail{}, err
 		}
 		pipeline.Version++
 		if err := s.store.UpdateTemplatePipelineWithReferences(ctx, pipeline, remaining); err != nil {
@@ -283,6 +293,16 @@ func (s Service) DeletePipelineStageNode(ctx context.Context, userId, pipelineId
 	stages, err := s.store.ApplicationPipelineStages(ctx, pipeline.Id)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load application pipeline stages", err)
+	}
+	stageName, dependentStageName, err := applicationStageDeletionDependency(stages, stageId)
+	if err != nil {
+		return pipelinedto.PipelineDetail{}, err
+	}
+	if stageName == "" {
+		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindNotFound, "Pipeline stage "+stageId+" not found")
+	}
+	if dependentStageName != "" {
+		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "Cannot delete stage "+stageName+" because stage "+dependentStageName+" depends on it")
 	}
 	remaining, found := removeApplicationStage(stages, stageId)
 	if !found {
@@ -296,13 +316,71 @@ func (s Service) DeletePipelineStageNode(ctx context.Context, userId, pipelineId
 		pipeline.VersionForkStrategy, pipeline.FixedVersionId, pipeline.FixedVersionLabel = nil, nil, nil
 	}
 	if err := s.validatePipelineConfiguration(ctx, pipeline, remaining); err != nil {
-		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "Cannot delete a stage still referenced by dependencies")
+		return pipelinedto.PipelineDetail{}, err
 	}
 	pipeline.Version++
 	if err := s.store.UpdateApplicationPipelineWithStages(ctx, pipeline, remaining); err != nil {
 		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline stage", err)
 	}
 	return s.pipelineDetail(ctx, pipeline)
+}
+
+func templateStageDeletionDependency(references []model.PipelineStageReference, stageId string) (string, string, error) {
+	targetID := strings.TrimSpace(stageId)
+	targetName := ""
+	for _, reference := range references {
+		if reference.Id == targetID {
+			targetName = reference.Name
+			break
+		}
+	}
+	if targetName == "" {
+		return "", "", nil
+	}
+	for _, reference := range references {
+		if reference.Id == targetID {
+			continue
+		}
+		dependsOn, err := dependsOnFromJSON(reference.DependsOn)
+		if err != nil {
+			return "", "", err
+		}
+		for _, dependency := range dependsOn {
+			if dependency == targetID {
+				return targetName, reference.Name, nil
+			}
+		}
+	}
+	return targetName, "", nil
+}
+
+func applicationStageDeletionDependency(stages []model.PipelineStage, stageId string) (string, string, error) {
+	targetID := strings.TrimSpace(stageId)
+	targetName := ""
+	for _, stage := range stages {
+		if stage.Id == targetID {
+			targetName = stage.Name
+			break
+		}
+	}
+	if targetName == "" {
+		return "", "", nil
+	}
+	for _, stage := range stages {
+		if stage.Id == targetID {
+			continue
+		}
+		dependsOn, err := stageDependsOn(stage)
+		if err != nil {
+			return "", "", err
+		}
+		for _, dependency := range dependsOn {
+			if dependency == targetID {
+				return targetName, stage.Name, nil
+			}
+		}
+	}
+	return targetName, "", nil
 }
 
 func (s Service) PipelineStageTemplateUpdatePreview(ctx context.Context, userId, pipelineId, stageId string) (pipelinedto.PipelineStageTemplateUpdatePreview, error) {

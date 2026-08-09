@@ -77,8 +77,8 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 	if _, err := database.ExecContext(ctx, `UPDATE repository SET git_credential_id = ? WHERE id = ?`, created.Id, "01KNNRBH52BQJYT9487B2H8N62"); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.DeleteCredential(ctx, ciTestUserId, created.Id); err == nil || apperror.StatusCode(err) != http.StatusConflict {
-		t.Fatalf("expected referenced credential delete conflict, got %v", err)
+	if err := service.DeleteCredential(ctx, ciTestUserId, created.Id); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("expected referenced credential delete validation error, got %v", err)
 	}
 }
 

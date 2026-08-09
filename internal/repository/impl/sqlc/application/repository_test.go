@@ -3,7 +3,6 @@ package applicationrepo
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -11,7 +10,6 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 func TestListApplicationsBindsTypedFilters(t *testing.T) {
@@ -65,7 +63,7 @@ func TestListApplicationsBindsTypedFilters(t *testing.T) {
 	}
 }
 
-func TestDeleteApplicationRejectsReferencedVersion(t *testing.T) {
+func TestDeleteApplicationCleansApplicationResources(t *testing.T) {
 	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
@@ -85,9 +83,24 @@ func TestDeleteApplicationRejectsReferencedVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = NewRepository(database).DeleteApplication(ctx, "app-1")
-	if !errors.Is(err, repository.ErrReferenced) {
-		t.Fatalf("expected referenced version error, got %v", err)
+	if err := NewRepository(database).DeleteApplication(ctx, "app-1"); err != nil {
+		t.Fatal(err)
+	}
+	for _, check := range []struct {
+		table  string
+		column string
+	}{
+		{table: "application", column: "id"},
+		{table: "service", column: "application_id"},
+		{table: "version", column: "application_id"},
+	} {
+		var count int
+		if err := database.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+check.table+" WHERE "+check.column+" = 'app-1'").Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count != 0 {
+			t.Fatalf("expected %s rows to be deleted, got %d", check.table, count)
+		}
 	}
 }
 

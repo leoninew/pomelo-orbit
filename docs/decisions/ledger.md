@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-08-09 13:28:43
 
 Doc role: living SoT  
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -48,6 +48,7 @@ Doc role: living SoT
 | 自定义/自签 PEM 产品化 F1 | 可选 |
 | 多 gateway / K8s | 可选 |
 | sqlx 全域迁 sqlc / DTO 拆分等 | 以进行中 SpecFlow 任务为准，完成后回写本账本与 architecture |
+| 删除路径防御规则整理 | 审视通用 Application 的 Version 引用预检、Credential/Repository 的引用冲突分支、Pipeline 阶段依赖校验和 Gateway 网络预检；明确哪些是核心领域约束，哪些应移除重复或异常兜底。当前网关删除任务不处理。 |
 
 ## 文档治理
 

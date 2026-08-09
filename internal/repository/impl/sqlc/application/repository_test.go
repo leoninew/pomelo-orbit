@@ -91,6 +91,41 @@ func TestDeleteApplicationRejectsReferencedVersion(t *testing.T) {
 	}
 }
 
+func TestDeleteGatewayApplicationDeletesStoppedResources(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = database.Close() }()
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	for _, statement := range []string{
+		`INSERT INTO application (id, name, code, kind) VALUES ('gateway-1', 'Gateway', 'gateway', 'gateway')`,
+		`INSERT INTO gateway_config (application_id, rest_api_url, base_domain) VALUES ('gateway-1', 'http://127.0.0.1:8080', 'example.test')`,
+		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'gateway-1', 'managed', 'unpublished')`,
+		`INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'gateway-1', 'version-1', 'default', 'gateway-default', 'stopped')`,
+	} {
+		if _, err := database.ExecContext(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := NewRepository(database).DeleteGatewayApplication(ctx, "gateway-1"); err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range []string{"application", "gateway_config", "version", "service"} {
+		var count int
+		if err := database.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+table).Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count != 0 {
+			t.Fatalf("expected %s to be deleted, found %d rows", table, count)
+		}
+	}
+}
+
 func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testing.T) {
 	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {

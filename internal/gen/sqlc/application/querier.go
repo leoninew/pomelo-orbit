@@ -20,6 +20,7 @@ type Querier interface {
 	CreateApplication(ctx context.Context, arg CreateApplicationParams) error
 	CreateVersion(ctx context.Context, arg CreateVersionParams) error
 	DeleteApplication(ctx context.Context, id string) error
+	DeleteGatewayConfigByApplication(ctx context.Context, applicationID string) error
 	DeleteServicesByApplication(ctx context.Context, applicationID string) error
 	DeleteVersion(ctx context.Context, id string) error
 	DeleteVersionComponent(ctx context.Context, id string) error

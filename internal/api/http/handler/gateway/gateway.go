@@ -91,7 +91,7 @@ func (h Handler) DeleteGateway(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteGateway(c.Request.Context(), current.Id, c.Param("gateway_id"), c.Request.URL.Query().Get("remove_dir") == "true"); err != nil {
+	if err := h.service.DeleteGateway(c.Request.Context(), current.Id, c.Param("gateway_id")); err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}

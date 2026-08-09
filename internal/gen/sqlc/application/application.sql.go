@@ -163,6 +163,16 @@ func (q *Queries) DeleteApplication(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteGatewayConfigByApplication = `-- name: DeleteGatewayConfigByApplication :exec
+DELETE FROM gateway_config
+WHERE application_id = ?
+`
+
+func (q *Queries) DeleteGatewayConfigByApplication(ctx context.Context, applicationID string) error {
+	_, err := q.db.ExecContext(ctx, deleteGatewayConfigByApplication, applicationID)
+	return err
+}
+
 const deleteServicesByApplication = `-- name: DeleteServicesByApplication :exec
 DELETE FROM service
 WHERE application_id = ?

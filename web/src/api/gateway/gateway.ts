@@ -28,9 +28,7 @@ export const gatewayApi = {
     return request.put(`/api/gateway/${id}`, data);
   },
 
-  delete(id: string, removeDir: boolean = false): Promise<void> {
-    return request.delete(`/api/gateway/${id}`, {
-      params: { remove_dir: removeDir },
-    });
+  delete(id: string): Promise<void> {
+    return request.delete(`/api/gateway/${id}`);
   },
 };

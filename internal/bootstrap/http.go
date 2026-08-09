@@ -93,7 +93,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	localSource := repositorysource.New(runtimepath.ResolvePhysicalPath)
 	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
 	routeManager := traefik.NewRouteManager(cfg)
-	gatewayCore := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, deploymentWorkspace)
+	gatewayCore := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment)
 	deploymentService := deploymentsvc.NewCommandService(
 		stores.project,
 		stores.application,

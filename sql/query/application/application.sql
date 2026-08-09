@@ -51,6 +51,10 @@ WHERE application_id = ?;
 DELETE FROM version
 WHERE application_id = ?;
 
+-- name: DeleteGatewayConfigByApplication :exec
+DELETE FROM gateway_config
+WHERE application_id = ?;
+
 -- name: DeleteApplication :exec
 DELETE FROM application
 WHERE id = ?;

@@ -20,6 +20,7 @@ type ApplicationStore interface {
 	CreateApplication(ctx context.Context, app model.Application) error
 	UpdateApplication(ctx context.Context, app model.Application) error
 	DeleteApplication(ctx context.Context, id string) error
+	DeleteGatewayApplication(ctx context.Context, id string) error
 	ListVersions(ctx context.Context, applicationId string) ([]model.Version, error)
 	LatestVersionByApplication(ctx context.Context, applicationId string) (model.Version, error)
 	ListVersionsPage(ctx context.Context, applicationId string, page int, perPage int, search string) (Page[model.Version], error)

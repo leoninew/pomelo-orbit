@@ -22,6 +22,7 @@ type ApplicationStore interface {
 	CreateApplication(ctx context.Context, app model.Application) error
 	UpdateApplication(ctx context.Context, app model.Application) error
 	DeleteApplication(ctx context.Context, id string) error
+	DeleteGatewayApplication(ctx context.Context, id string) error
 	ListVersions(ctx context.Context, applicationId string) ([]model.Version, error)
 	Version(ctx context.Context, id string) (model.Version, error)
 	CreateVersion(ctx context.Context, version model.Version) error
@@ -41,11 +42,6 @@ type ConfigStore interface {
 type ServiceReader interface {
 	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
 	ServiceComponentsByService(ctx context.Context, serviceId string) ([]model.ServiceComponent, error)
-}
-
-// Workspace owns the optional on-disk application cleanup operation.
-type Workspace interface {
-	RemoveAppDir(appCode string) error
 }
 
 // DeploymentCoordinator resolves the explicit Gateway configuration required to

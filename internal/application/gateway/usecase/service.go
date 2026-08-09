@@ -34,7 +34,6 @@ type Service struct {
 	application     gatewayport.ApplicationStore
 	config          gatewayport.ConfigStore
 	service         gatewayport.ServiceReader
-	workspace       gatewayport.Workspace
 	serviceCommands servicesvc.Service
 	deployer        gatewayDeployer
 }
@@ -51,11 +50,10 @@ func New(
 	config gatewayport.ConfigStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
-	workspace gatewayport.Workspace,
 ) Service {
 	return Service{
 		project: project, application: application, config: config,
-		service: service, workspace: workspace,
+		service:         service,
 		serviceCommands: servicesvc.New(project, application, service, deployment),
 	}
 }
@@ -252,7 +250,7 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 	return s.GatewayForUser(ctx, userId, applicationId)
 }
 
-func (s Service) DeleteGateway(ctx context.Context, userId string, applicationId string, removeDir bool) error {
+func (s Service) DeleteGateway(ctx context.Context, userId string, applicationId string) error {
 	view, err := s.GatewayForUser(ctx, userId, applicationId)
 	if err != nil {
 		return err
@@ -262,19 +260,11 @@ func (s Service) DeleteGateway(ctx context.Context, userId string, applicationId
 		return apperror.Wrap(apperror.KindInternal, "Failed to load services", err)
 	}
 	for _, service := range services {
-		if service.Status == status.ServiceStatusRunning {
-			return apperror.New(apperror.KindValidation, "应用正在运行中, 请先停止后再删除")
+		if service.Status != status.ServiceStatusStopped {
+			return apperror.New(apperror.KindValidation, fmt.Sprintf("网关存在未停止的服务 %s, 请先停止后再删除", service.Code))
 		}
 	}
-	if removeDir {
-		if s.workspace == nil {
-			return apperror.New(apperror.KindInternal, "gateway workspace is not available")
-		}
-		if err := s.workspace.RemoveAppDir(view.Application.Code); err != nil {
-			return apperror.Wrap(apperror.KindInternal, "Failed to remove application directory", err)
-		}
-	}
-	if err := s.application.DeleteApplication(ctx, view.Application.Id); err != nil {
+	if err := s.application.DeleteGatewayApplication(ctx, view.Application.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete application", err)
 	}
 	return nil

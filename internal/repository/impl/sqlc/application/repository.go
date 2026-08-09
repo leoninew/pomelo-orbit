@@ -171,6 +171,34 @@ func (r Repository) DeleteApplication(ctx context.Context, id string) error {
 	})
 }
 
+func (r Repository) DeleteGatewayApplication(ctx context.Context, id string) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		versionIds, err := q.VersionIdsByApplication(txCtx, id)
+		if err != nil {
+			return fmt.Errorf("list gateway version ids %s: %w", id, err)
+		}
+		if err := q.DeleteServicesByApplication(txCtx, id); err != nil {
+			return fmt.Errorf("delete gateway services %s: %w", id, err)
+		}
+		for _, versionId := range versionIds {
+			if err := q.ClearVersionForkRefs(txCtx, sql.NullString{String: versionId, Valid: true}); err != nil {
+				return fmt.Errorf("clear gateway version fork references %s: %w", versionId, err)
+			}
+		}
+		if err := q.DeleteVersionsByApplication(txCtx, id); err != nil {
+			return fmt.Errorf("delete gateway application versions %s: %w", id, err)
+		}
+		if err := q.DeleteGatewayConfigByApplication(txCtx, id); err != nil {
+			return fmt.Errorf("delete gateway config %s: %w", id, err)
+		}
+		if err := q.DeleteApplication(txCtx, id); err != nil {
+			return fmt.Errorf("delete gateway application %s: %w", id, err)
+		}
+		return nil
+	})
+}
+
 func (r Repository) ListVersions(ctx context.Context, applicationId string) ([]model.Version, error) {
 	rows, err := r.q(ctx).ListVersions(ctx, applicationId)
 	if err != nil {

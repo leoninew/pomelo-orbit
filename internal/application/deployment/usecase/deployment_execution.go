@@ -202,8 +202,8 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	serviceDir := s.workspace.ServiceDir(app.Code, svc.InstanceKey)
-	logPath := s.workspace.DeploymentLogPath(app.Code, svc.InstanceKey, deployment.Id)
+	serviceDir := s.workspace.ServiceDir(svc.Code)
+	logPath := s.workspace.DeploymentLogPath(svc.Code, deployment.Id)
 	logWriter, err := s.executionLogStore.Writer(logPath)
 	if err != nil {
 		return err
@@ -250,12 +250,12 @@ func (s Service) deploymentCanceled(ctx context.Context, deploymentID string) bo
 func (s Service) reconcileCanceledService(ctx context.Context, app model.Application, svc model.Service) {
 	serviceStatus := status.ServiceStatusFaulted
 	if s.workspace != nil && s.queryRunner != nil {
-		exists, err := s.workspace.ServiceDirExists(app.Code, svc.InstanceKey)
+		exists, err := s.workspace.ServiceDirExists(svc.Code)
 		if err == nil && !exists {
 			serviceStatus = status.ServiceStatusStopped
 		} else if err == nil {
 			command := containerPsCommand(composeProjectName(app.Code, svc.InstanceKey))
-			output, runErr := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, svc.InstanceKey), command.Name, command.Args...)
+			output, runErr := s.queryRunner.Run(ctx, s.workspace.ServiceDir(svc.Code), command.Name, command.Args...)
 			if runErr == nil {
 				containers, parseErr := parseComposePsOutput(output)
 				if parseErr == nil {
@@ -343,8 +343,8 @@ func (s Service) resolveServiceFromDeployment(ctx context.Context, applicationId
 
 func (s Service) renderAndDeployWithOptions(ctx context.Context, plan model.EffectiveServicePlan, deploymentId string, forceRecreate bool) error {
 	app, version, svc := plan.Application, plan.Version, plan.Service
-	serviceDir := s.workspace.ServiceDir(app.Code, svc.InstanceKey)
-	logPath := s.workspace.DeploymentLogPath(app.Code, svc.InstanceKey, deploymentId)
+	serviceDir := s.workspace.ServiceDir(svc.Code)
+	logPath := s.workspace.DeploymentLogPath(svc.Code, deploymentId)
 	logWriter, err := s.executionLogStore.Writer(logPath)
 	if err != nil {
 		return err
@@ -357,12 +357,12 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, plan model.Effe
 		return err
 	}
 
-	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, svc.InstanceKey)
+	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, svc.Code)
 	if err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(logWriter, "Rendering version %s (%s) with %d component(s) into instance %s\n",
-		version.Label, version.Id, len(plan.Components), svc.InstanceKey); err != nil {
+	if _, err := fmt.Fprintf(logWriter, "Rendering version %s (%s) with %d component(s) into service %s\n",
+		version.Label, version.Id, len(plan.Components), svc.Code); err != nil {
 		return err
 	}
 	result, err := s.RenderComposeDetailed(ctx, RenderInput{Plan: plan, PhysicalSvcDir: physicalDir})
@@ -380,7 +380,7 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, plan model.Effe
 	if _, err := fmt.Fprintln(logWriter, "Writing deployment configuration"); err != nil {
 		return err
 	}
-	if err := s.workspace.WriteConfig(app.Code, svc.InstanceKey, "docker-compose.yml", result.Compose); err != nil {
+	if err := s.workspace.WriteConfig(svc.Code, "docker-compose.yml", result.Compose); err != nil {
 		return err
 	}
 	projectName := composeProjectName(app.Code, svc.InstanceKey)

@@ -87,10 +87,6 @@ def repository_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def default_model_dir() -> Path:
-    return repository_root() / "data" / "deployment" / "ragflow" / "default" / "tei" / "cache" / "bge-m3"
-
-
 def default_archive_dir() -> Path:
     return repository_root() / "data" / "backup"
 
@@ -565,7 +561,7 @@ def prepare_action(args: argparse.Namespace) -> Result:
 
 
 def add_common_arguments(parser: argparse.ArgumentParser, *, profile: bool = False) -> None:
-    parser.add_argument("--model-dir", default=str(default_model_dir()))
+    parser.add_argument("--model-dir", required=True)
     if profile:
         parser.add_argument("--profile", choices=sorted(TEI_IMAGES), default="cpu")
         parser.add_argument("--image", help="Full immutable image reference; use this to probe a mirror before pulling it")

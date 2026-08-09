@@ -18,7 +18,7 @@ services:
       MYSQL_ROOT_HOST: "%"
       MYSQL_ROOT_PASSWORD: "${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}"
     volumes:
-      - "mysql_data:/var/lib/mysql"
+      - "./mysql:/var/lib/mysql"
     networks:
       traefik:
         aliases:
@@ -31,8 +31,6 @@ services:
       timeout: 10s
       retries: 120
     restart: unless-stopped
-volumes:
-  mysql_data: {}
 networks:
   traefik:
     external: true

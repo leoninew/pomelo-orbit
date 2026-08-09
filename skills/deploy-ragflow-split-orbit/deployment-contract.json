@@ -14,8 +14,7 @@
     "Do not combine with the integrated RAGFlow Compose reference."
   ],
   "model_cache_paths": [
-    "data/deployment/ragflow-integrated/default/tei/cache/bge-m3",
-    "data/deployment/ragflow-split/default/tei/cache/bge-m3"
+    "data/deployment/<service-code>/tei/cache/bge-m3"
   ],
   "runtime_config": {
     "name": "RagflowRuntimeConfig",
@@ -139,16 +138,16 @@
         "--binlog_expire_logs_seconds=604800"
       ],
       "environment": [
-        {"key": "MYSQL_DBNAME", "value": "rag_flow"},
+        {"key": "MYSQL_DATABASE", "value": "rag_flow"},
         {"key": "MYSQL_ROOT_HOST", "value": "%"},
         {"key": "MYSQL_ROOT_PASSWORD", "runtime_key": "MYSQL_PASSWORD"}
       ],
       "mounts": [
         {
-          "type": "volume",
-          "source": "mysql_data",
+          "type": "bind",
+          "source": "./mysql",
           "target": "/var/lib/mysql",
-          "logical_source": "mysql_data"
+          "logical_source": "mysql"
         }
       ],
       "network_alias": "ragflow-mysql-mysql",
@@ -179,10 +178,10 @@
       ],
       "mounts": [
         {
-          "type": "volume",
-          "source": "redis_data",
+          "type": "bind",
+          "source": "./redis",
           "target": "/data",
-          "logical_source": "redis_data"
+          "logical_source": "redis"
         }
       ],
       "network_alias": "ragflow-redis-redis",
@@ -210,10 +209,10 @@
       ],
       "mounts": [
         {
-          "type": "volume",
-          "source": "minio_data",
+          "type": "bind",
+          "source": "./minio",
           "target": "/data",
-          "logical_source": "minio_data"
+          "logical_source": "minio"
         }
       ],
       "network_alias": "ragflow-minio-minio",
@@ -248,10 +247,10 @@
       ],
       "mounts": [
         {
-          "type": "volume",
-          "source": "elasticsearch_data",
+          "type": "bind",
+          "source": "./es01",
           "target": "/usr/share/elasticsearch/data",
-          "logical_source": "elasticsearch_data"
+          "logical_source": "es01"
         }
       ],
       "tmpfs": ["/tmp:size=536870912,mode=1777"],
@@ -288,7 +287,7 @@
       "mounts": [
         {
           "type": "bind",
-          "source": "./data/tei/cache",
+          "source": "./tei/cache",
           "target": "/data",
           "logical_source": "tei/cache"
         }
@@ -351,10 +350,10 @@
       },
       "mounts": [
         {
-          "type": "volume",
-          "source": "ragflow_logs",
+          "type": "bind",
+          "source": "./ragflow/logs",
           "target": "/ragflow/logs",
-          "logical_source": "ragflow_logs"
+          "logical_source": "ragflow/logs"
         }
       ],
       "network_alias": "ragflow-split-ragflow-cpu",

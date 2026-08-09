@@ -172,16 +172,6 @@
           })
         }}
       </p>
-      <label class="flex items-center gap-2">
-        <input v-model="deleteDir" type="checkbox" class="app-checkbox" />
-        <span class="text-sm text-foreground">
-          {{
-            t('application.detail.dialog.deleteWorkDir', {
-              code: pendingDeleteApplication?.code || '-',
-            })
-          }}
-        </span>
-      </label>
       <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
         {{ deleteSubmitError }}
       </p>
@@ -273,7 +263,6 @@
   const editForm = reactive({ name: '', code: '' });
   const editErrors = reactive({ name: '' });
   const editSubmitError = ref('');
-  const deleteDir = ref(false);
   const deleteSubmitError = ref('');
   const importForm = reactive<ApplicationImportReq>({
     name: '',
@@ -367,7 +356,6 @@
 
   function openDeleteDialog(application: ApplicationResp) {
     pendingDeleteApplication.value = application;
-    deleteDir.value = false;
     deleteSubmitError.value = '';
     isDeleteDialogOpen.value = true;
   }
@@ -400,7 +388,7 @@
     deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
-        await applicationApi.delete(application.id, deleteDir.value);
+        await applicationApi.delete(application.id);
         toast.success(t('application.toast.deleteSuccess'));
         isDeleteDialogOpen.value = false;
         pendingDeleteApplication.value = undefined;

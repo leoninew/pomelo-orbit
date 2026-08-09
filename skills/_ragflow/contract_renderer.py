@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 
-REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SAFE_YAML_STRING = re.compile(r"^[A-Za-z0-9_./@+%=-]+$")
 YAML_KEYWORDS = {"null", "true", "false", "yes", "no", "on", "off", "~"}
 
@@ -566,4 +566,3 @@ def check_outputs(rendered: Mapping[Path, str], root: Path = REPOSITORY_ROOT) ->
         if not target.is_file() or target.read_text(encoding="utf-8") != expected:
             drifted.append(relative_path)
     return drifted
-

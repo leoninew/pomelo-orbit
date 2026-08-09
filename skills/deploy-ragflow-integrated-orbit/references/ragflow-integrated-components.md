@@ -16,8 +16,7 @@ Every Component joins the external `traefik` network. Hostnames and Version labe
 
 Run the selected CPU or GPU TEI preflight against every path below before deployment:
 
-- `data/deployment/ragflow-integrated/default/tei/cache/bge-m3`
-- `data/deployment/ragflow-split/default/tei/cache/bge-m3`
+- `data/deployment/<service-code>/tei/cache/bge-m3`
 
 ## Runtime Config Primitive
 
@@ -33,12 +32,12 @@ Runtime values are never stored in this contract. Create a single in-memory valu
 
 | Component | Image | Command | Logical mount | Network alias |
 | --- | --- | --- | --- | --- |
-| `mysql` | `mysql:8.0.39` | `--max_connections=1000 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password --tls_version=TLSv1.2,TLSv1.3 --binlog_expire_logs_seconds=604800` | bind `mysql/data` -> `/var/lib/mysql` | `ragflow-mysql` |
-| `redis` | `valkey/valkey:8` | `sh -c exec redis-server --requirepass "$${REDIS_PASSWORD}" --maxmemory 128mb --maxmemory-policy allkeys-lru` | bind `redis/data` -> `/data` | `ragflow-redis` |
-| `minio` | `pgsty/minio:RELEASE.2026-03-25T00-00-00Z` | `server --console-address :9001 /data` | bind `minio/data` -> `/data` | `ragflow-minio` |
-| `es01` | `elasticsearch:8.11.3` | `default` | bind `es01/data` -> `/usr/share/elasticsearch/data` | `ragflow-es01` |
+| `mysql` | `mysql:8.0.39` | `--max_connections=1000 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password --tls_version=TLSv1.2,TLSv1.3 --binlog_expire_logs_seconds=604800` | bind `mysql` -> `/var/lib/mysql` | `ragflow-mysql` |
+| `redis` | `valkey/valkey:8` | `sh -c exec redis-server --requirepass "$${REDIS_PASSWORD}" --maxmemory 128mb --maxmemory-policy allkeys-lru` | bind `redis` -> `/data` | `ragflow-redis` |
+| `minio` | `pgsty/minio:RELEASE.2026-03-25T00-00-00Z` | `server --console-address :9001 /data` | bind `minio` -> `/data` | `ragflow-minio` |
+| `es01` | `elasticsearch:8.11.3` | `default` | bind `es01` -> `/usr/share/elasticsearch/data` | `ragflow-es01` |
 | `tei` | cpu: `ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3@sha256:ad950d30878eceb72aaf32024d26fa2b1d04a75304fa0b4776b49aa1941fea07`; gpu: `ghcr.io/huggingface/text-embeddings-inference:cuda-1.9.3@sha256:249a0bc87522bfe2f1012b4d194f0225878f47079115ada3aeb0b1ef257b402a` | `--model-id /data/bge-m3 --json-output` | bind `tei/cache` -> `/data` | `ragflow-tei` |
-| `ragflow-cpu` | `infiniflow/ragflow:v0.26.4` | `--enable-adminserver --init-model-provider-tables` | bind `ragflow-cpu/logs` -> `/ragflow/logs` | `ragflow-ragflow-cpu` |
+| `ragflow-cpu` | `infiniflow/ragflow:v0.26.4` | `--enable-adminserver --init-model-provider-tables` | bind `ragflow/logs` -> `/ragflow/logs` | `ragflow-ragflow-cpu` |
 
 ### Component environment
 

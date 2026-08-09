@@ -87,7 +87,7 @@ func TestApplicationErrorBecomesClassifiedMCPToolError(t *testing.T) {
 }
 
 func TestServiceCodeMCPContract(t *testing.T) {
-	service := &serviceToolService{services: []model.Service{{Id: "service-1", ApplicationId: "application-1", InstanceKey: "default", Code: "ragflow-default", VersionId: "version-1", Status: "stopped"}}}
+	service := &serviceToolService{services: []model.Service{{Id: "service-1", ApplicationId: "application-1", InstanceKey: "default", Code: "ragflow-service", VersionId: "version-1", Status: "stopped"}}}
 	server, err := NewServer(Dependencies{ActorUserId: "actor", Service: service})
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
@@ -120,7 +120,7 @@ func TestServiceCodeMCPContract(t *testing.T) {
 		t.Fatalf("create schema must require code: %s", encodedSchema)
 	}
 	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_create_service", Arguments: map[string]any{
-		"application_id": "application-1", "version_id": "version-1", "instance_key": "default", "code": "ragflow-default",
+		"application_id": "application-1", "version_id": "version-1", "instance_key": "default", "code": "ragflow-service",
 	}})
 	if err != nil {
 		t.Fatalf("CallTool(create service) error = %v", err)
@@ -128,12 +128,12 @@ func TestServiceCodeMCPContract(t *testing.T) {
 	if result.IsError {
 		t.Fatalf("CallTool(create service) returned tool error: %#v", result.Content)
 	}
-	if service.createInput.Code != "ragflow-default" {
+	if service.createInput.Code != "ragflow-service" {
 		t.Fatalf("create input code = %q", service.createInput.Code)
 	}
 	created := structuredOutput(t, result)
 	createdService, ok := created["service"].(map[string]any)
-	if !ok || createdService["code"] != "ragflow-default" {
+	if !ok || createdService["code"] != "ragflow-service" {
 		t.Fatalf("create output service = %#v", created["service"])
 	}
 
@@ -150,7 +150,7 @@ func TestServiceCodeMCPContract(t *testing.T) {
 		t.Fatalf("list output services = %#v", listed["services"])
 	}
 	listedService, ok := services[0].(map[string]any)
-	if !ok || listedService["code"] != "ragflow-default" {
+	if !ok || listedService["code"] != "ragflow-service" {
 		t.Fatalf("list output service = %#v", services[0])
 	}
 }

@@ -210,7 +210,7 @@ func (h Handler) DeleteApplication(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteApplication(c.Request.Context(), current.Id, c.Param("app_id"), c.Request.URL.Query().Get("remove_dir") == "true"); err != nil {
+	if err := h.service.DeleteApplication(c.Request.Context(), current.Id, c.Param("app_id")); err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}

@@ -18,7 +18,7 @@ services:
       cluster.routing.allocation.disk.watermark.high: 3gb
       cluster.routing.allocation.disk.watermark.flood_stage: 2gb
     volumes:
-      - "elasticsearch_data:/usr/share/elasticsearch/data"
+      - "./es01:/usr/share/elasticsearch/data"
     tmpfs:
       - "/tmp:size=536870912,mode=1777"
     ulimits:
@@ -41,8 +41,6 @@ services:
       timeout: 10s
       retries: 120
     restart: unless-stopped
-volumes:
-  elasticsearch_data: {}
 networks:
   traefik:
     external: true

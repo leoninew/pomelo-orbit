@@ -63,12 +63,36 @@ func TestResolveMountSpecsDoesNotMaterializePlainFile(t *testing.T) {
 		SourceType: mountSourceFile,
 		Source:     "app.conf",
 		Target:     "/etc/app.conf",
-	}}, "/srv/orbit/demo-default")
+	}}, "/srv/orbit/demo-service")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if resolved[0].ShouldMaterialize {
 		t.Fatal("plain file mount must not be materialized")
+	}
+}
+
+func TestResolveMountSpecsMaterializesLogicalDirectoryAtServiceRoot(t *testing.T) {
+	physicalServiceDir := filepath.Join(t.TempDir(), "deployment", "sc")
+	resolved, err := resolveMountSpecs([]MountSpec{{
+		SourceType: mountSourceDirectory,
+		Source:     "mysql",
+		Target:     "/var/lib/mysql",
+	}}, physicalServiceDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resolved) != 1 {
+		t.Fatalf("resolved mount count = %d, want 1", len(resolved))
+	}
+	if !resolved[0].ShouldMaterialize || resolved[0].IsFile {
+		t.Fatalf("directory mount materialization = %+v", resolved[0])
+	}
+	if err := MaterializeLogicalMountSources(resolved); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(filepath.Join(physicalServiceDir, "mysql")); err != nil || !info.IsDir() {
+		t.Fatalf("mysql mount source was not created: info=%v err=%v", info, err)
 	}
 }
 
@@ -79,7 +103,7 @@ func TestResolveMountSpecsRejectsInvalidControlledFileMode(t *testing.T) {
 		Target:     "/etc/app.conf",
 		Content:    "key=value",
 		Mode:       "644",
-	}}, "/srv/orbit/demo-default")
+	}}, "/srv/orbit/demo-service")
 	if err == nil {
 		t.Fatal("controlled file without a four-digit Unix mode must be rejected")
 	}

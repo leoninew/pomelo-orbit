@@ -20,7 +20,7 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, applicati
 	if err != nil {
 		return nil, err
 	}
-	exists, err := s.workspace.ServiceDirExists(app.Code, service.InstanceKey)
+	exists, err := s.workspace.ServiceDirExists(service.Code)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
 	}
@@ -28,7 +28,7 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, applicati
 		return []deploymentdto.RuntimeContainer{}, nil
 	}
 	command := containerPsCommand(composeProjectName(app.Code, service.InstanceKey))
-	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, service.InstanceKey), command.Name, command.Args...)
+	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(service.Code), command.Name, command.Args...)
 	if err != nil {
 		return nil, apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -83,7 +83,7 @@ func (s Service) ApplicationLogs(ctx context.Context, userId string, application
 	if component != "" {
 		command = containerLogsTailCommand(projectName, strconv.Itoa(tail), component)
 	}
-	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, service.InstanceKey), command.Name, command.Args...)
+	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(service.Code), command.Name, command.Args...)
 	if err != nil {
 		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -122,7 +122,7 @@ func (s Service) PreviewService(ctx context.Context, userId string, serviceId st
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
-	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, service.InstanceKey)
+	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, service.Code)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical service dir", err)
 	}
@@ -162,7 +162,7 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
-	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, versionPreviewInstanceKey)
+	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, plan.Service.Code)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical preview dir", err)
 	}
@@ -178,9 +178,9 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 	return content, nil
 }
 
-// DeleteApplication performs the runtime safety checks and optional workspace
-// cleanup required before removing an application specification.
-func (s Service) DeleteApplication(ctx context.Context, userId string, applicationId string, removeDir bool) error {
+// DeleteApplication performs runtime safety checks before removing an
+// application specification. Service workspaces are not application-owned.
+func (s Service) DeleteApplication(ctx context.Context, userId string, applicationId string) error {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
 		return err
@@ -198,11 +198,6 @@ func (s Service) DeleteApplication(ctx context.Context, userId string, applicati
 	}
 	if len(versions) > 0 {
 		return apperror.New(apperror.KindValidation, "应用仍包含版本, 请先删除版本")
-	}
-	if removeDir {
-		if err := s.workspace.RemoveAppDir(app.Code); err != nil {
-			return apperror.Wrap(apperror.KindInternal, "Failed to remove application directory", err)
-		}
 	}
 	if err := s.application.DeleteApplication(ctx, app.Id); err != nil {
 		if errors.Is(err, repository.ErrReferenced) {

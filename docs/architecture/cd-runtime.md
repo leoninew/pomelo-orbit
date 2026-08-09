@@ -1,5 +1,5 @@
 # CD 运行时与渲染
-最后修改时间: 2026-08-08 13:29:04
+最后修改时间: 2026-08-09 18:08:31
 
 Doc role: living SoT  
 代码锚点：`internal/application/cd/usecase/compose_renderer.go`、`deployment_execution*.go`、`gateway*.go`、`expose_*.go`、`internal/infrastructure/runner/cd`、`internal/infrastructure/storage/local/cdworkspace`、`internal/infrastructure/external/traefik`。
@@ -37,7 +37,7 @@ HTTP Deploy/Stop/Restart
 | `standard` | 渲染业务 services；按 Expose 注入 labels / local ports |
 | `gateway` | 网关 compose（托管 Traefik 组件、静态配置、socket 挂载等） |
 
-输出写入 CD workspace（物理数据根下应用工作目录），再执行 compose。
+输出写入 CD workspace（物理数据根下 `deployment/<service-code>/`），再执行 compose。
 
 预览（Preview）与部署应走同一套渲染语义（测试与 usecase 对齐）。
 
@@ -75,8 +75,8 @@ HTTP Deploy/Stop/Restart
 
 ## 工作区与物理路径
 
-- 数据根与应用目录由配置 / `physical_data_root` 等决定。  
-- 挂载物化：logical mount → 宿主机目录/文件（含 content seed）；历史 init.sh 主路径已弱化，以实现为准。
+- 数据根与服务目录由配置 / `physical_data_root` 等决定；Service code 是工作目录唯一键，不使用 Application code 或 instance key。
+- 挂载物化：logical mount → 宿主机目录/文件（含 content seed）；逻辑 `directory` 挂载会在 Compose 执行前创建，组件数据目录直接相对服务根组织。
 
 ## 相关
 

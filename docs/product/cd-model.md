@@ -1,5 +1,5 @@
 # CD 领域模型（现行）
-最后修改时间: 2026-08-09 15:02:19
+最后修改时间: 2026-08-09 18:08:31
 
 Doc role: living SoT  
 代码锚点：`internal/model/cd.go`、`internal/common/constant/status.go`、`internal/application/cd/usecase/*`、`sql/migration/*/…_cd_schema*.sql`（以仓库当前迁移文件为准）。
@@ -56,6 +56,7 @@ Project
 
 - Version 挂载声明类型、默认源路径和容器目标；普通 Version 编辑不设置宿主机路径模式。
 - Service 组件的稀疏覆盖拥有实际源路径及其宿主机路径模式。目录和文件在该模式下必须使用绝对路径；逻辑源路径仍须为相对路径。
+- 服务工作目录固定为 `data/deployment/<service-code>/`；逻辑目录源直接相对此根解析。组件应以自身 code 开始组织数据，例如 `mysql`、`redis`、`tei/cache`，不使用 `data/` 或 `instance_key` 作为目录层级。
 - Gateway compile 生成的托管挂载属于内部实现，不构成 Version 编辑页的用户配置项。
 
 ### 异步操作（Deployment / Pipeline Run / Pipeline Stage Run）

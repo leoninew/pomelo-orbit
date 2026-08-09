@@ -104,7 +104,7 @@ type RuntimeTarget struct {
 	ApplicationId    string
 	ServiceId        string
 	InstanceKey      string
-	ApplicationCode  string
+	ServiceCode      string
 	WorkingDirectory string
 	ComposeProject   string
 }

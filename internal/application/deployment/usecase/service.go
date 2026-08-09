@@ -149,7 +149,7 @@ func (s Service) DeploymentContainerLog(ctx context.Context, userId string, depl
 	if err != nil {
 		return deploymentdto.DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	serviceDir := s.workspace.ServiceDir(app.Code, svc.InstanceKey)
+	serviceDir := s.workspace.ServiceDir(svc.Code)
 	projectName := composeProjectName(app.Code, svc.InstanceKey)
 	sinceCommand := containerLogsSinceCommand(projectName, deployment.StartedAt.UTC().Format(time.RFC3339))
 	output, err := s.queryRunner.Run(ctx, serviceDir, sinceCommand.Name, sinceCommand.Args...)
@@ -230,7 +230,11 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 	if opts.InstanceKey == "" {
 		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated instance")
 	}
-	logPath := s.workspace.DeploymentLogPath(app.Code, opts.InstanceKey, deployment.Id)
+	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
+	if err != nil {
+		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	logPath := s.workspace.DeploymentLogPath(svc.Code, deployment.Id)
 	content, newOffset, err := s.logStore.Read(logPath, offset)
 	if err != nil {
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to read deployment log", err)

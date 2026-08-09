@@ -186,7 +186,7 @@ func (c *core) runtimeTarget(ctx context.Context, applicationId, instanceKey str
 }
 
 func runtimeOutput(target deploymentdto.RuntimeTarget, data map[string]any) map[string]any {
-	result := map[string]any{"target": map[string]any{"application_id": target.ApplicationId, "service_id": target.ServiceId, "instance_key": target.InstanceKey, "application_code": target.ApplicationCode, "working_directory": target.WorkingDirectory, "compose_project": target.ComposeProject}, "working_directory": target.WorkingDirectory}
+	result := map[string]any{"target": map[string]any{"application_id": target.ApplicationId, "service_id": target.ServiceId, "instance_key": target.InstanceKey, "service_code": target.ServiceCode, "working_directory": target.WorkingDirectory, "compose_project": target.ComposeProject}, "working_directory": target.WorkingDirectory}
 	for key, value := range data {
 		result[key] = value
 	}

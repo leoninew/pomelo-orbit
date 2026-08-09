@@ -48,10 +48,7 @@ class RAGFlowSplitContractRendererTests(unittest.TestCase):
         )
         self.assertEqual(
             self.contract["model_cache_paths"],
-            [
-                "data/deployment/ragflow-integrated/default/tei/cache/bge-m3",
-                "data/deployment/ragflow-split/default/tei/cache/bge-m3",
-            ],
+            ["data/deployment/<service-code>/tei/cache/bge-m3"],
         )
 
     def test_check_reports_a_changed_generated_artifact(self) -> None:

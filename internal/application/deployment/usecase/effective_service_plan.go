@@ -25,7 +25,7 @@ func BuildVersionPreviewPlan(app model.Application, version model.Version, decla
 			ApplicationId: app.Id,
 			VersionId:     version.Id,
 			InstanceKey:   versionPreviewInstanceKey,
-			Code:          app.Code + "-" + versionPreviewInstanceKey,
+			Code:          app.Code + "-preview",
 		},
 		Gateway:    gateway,
 		Components: make([]model.EffectiveServiceComponent, 0, len(declarations)),

@@ -13,7 +13,7 @@ services:
       - /data/bge-m3
       - --json-output
     volumes:
-      - "./data/tei/cache:/data"
+      - "./tei/cache:/data"
     networks:
       traefik:
         aliases:
@@ -55,7 +55,7 @@ services:
       tei:
         condition: service_healthy
     volumes:
-      - "ragflow_logs:/ragflow/logs"
+      - "./ragflow/logs:/ragflow/logs"
     networks:
       traefik:
         aliases:
@@ -70,8 +70,6 @@ services:
       timeout: 10s
       retries: 120
     restart: unless-stopped
-volumes:
-  ragflow_logs: {}
 networks:
   traefik:
     external: true

@@ -58,10 +58,8 @@ export const applicationApi = {
     return request.put(`/api/application/${id}`, data);
   },
 
-  delete(id: string, removeDir: boolean = false): Promise<void> {
-    return request.delete(`/api/application/${id}`, {
-      params: { remove_dir: removeDir },
-    });
+  delete(id: string): Promise<void> {
+    return request.delete(`/api/application/${id}`);
   },
 
   stop(id: string, data: ApplicationStopReq): Promise<DeploymentActionResp> {

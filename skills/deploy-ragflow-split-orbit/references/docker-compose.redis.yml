@@ -13,7 +13,7 @@ services:
     environment:
       REDIS_PASSWORD: "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"
     volumes:
-      - "redis_data:/data"
+      - "./redis:/data"
     networks:
       traefik:
         aliases:
@@ -26,8 +26,6 @@ services:
       timeout: 10s
       retries: 120
     restart: unless-stopped
-volumes:
-  redis_data: {}
 networks:
   traefik:
     external: true

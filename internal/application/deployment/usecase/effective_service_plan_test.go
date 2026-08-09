@@ -101,7 +101,7 @@ func TestBuildVersionPreviewPlanUsesVersionDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildVersionPreviewPlan returned error: %v", err)
 	}
-	if plan.Service.Id != "" || plan.Service.InstanceKey != versionPreviewInstanceKey || plan.Service.Code != "demo-default" {
+	if plan.Service.Id != "" || plan.Service.InstanceKey != versionPreviewInstanceKey || plan.Service.Code != "demo-preview" {
 		t.Fatalf("preview must not use a persisted service: %+v", plan.Service)
 	}
 	if len(plan.Components) != 1 {
@@ -140,7 +140,7 @@ func TestBuildVersionPreviewPlanRendersGatewayHTTPHost(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenderCompose returned error: %v", err)
 	}
-	if !strings.Contains(compose, "Host(`web.demo-default.example.test`)") {
+	if !strings.Contains(compose, "Host(`web.demo-preview.example.test`)") {
 		t.Fatalf("gateway host was not rendered:\n%s", compose)
 	}
 }

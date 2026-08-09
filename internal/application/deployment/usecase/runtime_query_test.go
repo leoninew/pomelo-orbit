@@ -53,40 +53,35 @@ func TestDeleteApplicationRequiresServicesAndVersionsToBeRemoved(t *testing.T) {
 	serviceStore := &deleteApplicationServiceStore{
 		services: []model.Service{{Id: "service-1", ApplicationId: "app-1"}},
 	}
-	workspace := testWorkspace(t.TempDir())
 	service := Service{
 		commandStore: commandStore,
 		application:  applicationStore,
 		service:      serviceStore,
-		workspace:    workspace,
 	}
 
-	err := service.DeleteApplication(context.Background(), "user-1", "app-1", true)
+	err := service.DeleteApplication(context.Background(), "user-1", "app-1")
 	if err == nil || !strings.Contains(err.Error(), "服务") {
 		t.Fatalf("DeleteApplication error = %v, want service validation error", err)
 	}
-	if applicationStore.deleted || len(workspace.removedApps) != 0 {
-		t.Fatal("application data and workspace must remain while services exist")
+	if applicationStore.deleted {
+		t.Fatal("application must remain while services exist")
 	}
 
 	serviceStore.services = nil
-	err = service.DeleteApplication(context.Background(), "user-1", "app-1", true)
+	err = service.DeleteApplication(context.Background(), "user-1", "app-1")
 	if err == nil || !strings.Contains(err.Error(), "版本") {
 		t.Fatalf("DeleteApplication error = %v, want version validation error", err)
 	}
-	if applicationStore.deleted || len(workspace.removedApps) != 0 {
-		t.Fatal("application data and workspace must remain while versions exist")
+	if applicationStore.deleted {
+		t.Fatal("application must remain while versions exist")
 	}
 
 	applicationStore.versions = nil
-	if err := service.DeleteApplication(context.Background(), "user-1", "app-1", true); err != nil {
+	if err := service.DeleteApplication(context.Background(), "user-1", "app-1"); err != nil {
 		t.Fatalf("DeleteApplication returned error: %v", err)
 	}
 	if !applicationStore.deleted {
 		t.Fatal("application was not deleted after services and versions were removed")
-	}
-	if len(workspace.removedApps) != 1 || workspace.removedApps[0] != "demo" {
-		t.Fatalf("removed workspaces = %#v, want [demo]", workspace.removedApps)
 	}
 }
 

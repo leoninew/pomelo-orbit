@@ -70,12 +70,10 @@ type ExecutionLogStore interface {
 
 // Workspace is the deployment runtime filesystem boundary.
 type Workspace interface {
-	AppDir(appCode string) string
-	ServiceDir(appCode string, instanceKey string) string
-	ServiceDirExists(appCode string, instanceKey string) (bool, error)
-	DeploymentLogPath(appCode string, instanceKey string, deploymentId string) string
+	ServiceDir(serviceCode string) string
+	ServiceDirExists(serviceCode string) (bool, error)
+	DeploymentLogPath(serviceCode string, deploymentId string) string
 	PhysicalDir(ctx context.Context) (string, error)
-	PhysicalServiceDir(ctx context.Context, appCode string, instanceKey string) (string, error)
-	WriteConfig(appCode string, instanceKey string, path string, content string) error
-	RemoveAppDir(appCode string) error
+	PhysicalServiceDir(ctx context.Context, serviceCode string) (string, error)
+	WriteConfig(serviceCode string, path string, content string) error
 }

@@ -25,16 +25,12 @@ func NewWithResolver(dataRoot string, resolver PhysicalDataRootResolver) *Worksp
 	return &Workspace{logicalDataRoot: dataRoot, resolver: resolver}
 }
 
-func (w *Workspace) AppDir(appCode string) string {
-	return filepath.Join(w.logicalDataRoot, deploymentDataDir, appCode)
+func (w *Workspace) ServiceDir(serviceCode string) string {
+	return filepath.Join(w.logicalDataRoot, deploymentDataDir, serviceCode)
 }
 
-func (w *Workspace) ServiceDir(appCode string, instanceKey string) string {
-	return filepath.Join(w.AppDir(appCode), instanceKey)
-}
-
-func (w *Workspace) ServiceDirExists(appCode string, instanceKey string) (bool, error) {
-	info, err := os.Stat(w.ServiceDir(appCode, instanceKey))
+func (w *Workspace) ServiceDirExists(serviceCode string) (bool, error) {
+	info, err := os.Stat(w.ServiceDir(serviceCode))
 	if err == nil {
 		return info.IsDir(), nil
 	}
@@ -44,12 +40,12 @@ func (w *Workspace) ServiceDirExists(appCode string, instanceKey string) (bool, 
 	return false, err
 }
 
-func (w *Workspace) DeploymentLogPath(appCode string, instanceKey string, deploymentId string) string {
-	return filepath.Join(w.ServiceDir(appCode, instanceKey), "deployments", deploymentId+".log")
+func (w *Workspace) DeploymentLogPath(serviceCode string, deploymentId string) string {
+	return filepath.Join(w.ServiceDir(serviceCode), "deployments", deploymentId+".log")
 }
 
-func (w *Workspace) WriteConfig(appCode string, instanceKey string, path string, content string) error {
-	path = filepath.Join(w.ServiceDir(appCode, instanceKey), path)
+func (w *Workspace) WriteConfig(serviceCode string, path string, content string) error {
+	path = filepath.Join(w.ServiceDir(serviceCode), path)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -60,10 +56,6 @@ func (w *Workspace) WriteConfig(appCode string, instanceKey string, path string,
 		return os.Chmod(path, 0o755)
 	}
 	return nil
-}
-
-func (w *Workspace) RemoveAppDir(appCode string) error {
-	return os.RemoveAll(w.AppDir(appCode))
 }
 
 func (w *Workspace) PhysicalDataRoot(ctx context.Context) (string, error) {
@@ -81,10 +73,10 @@ func (w *Workspace) PhysicalDir(ctx context.Context) (string, error) {
 	return filepath.ToSlash(physicalDataRoot), nil
 }
 
-func (w *Workspace) PhysicalServiceDir(ctx context.Context, appCode string, instanceKey string) (string, error) {
+func (w *Workspace) PhysicalServiceDir(ctx context.Context, serviceCode string) (string, error) {
 	physicalDataRoot, err := w.PhysicalDataRoot(ctx)
 	if err != nil {
 		return "", err
 	}
-	return filepath.ToSlash(filepath.Join(physicalDataRoot, deploymentDataDir, appCode, instanceKey)), nil
+	return filepath.ToSlash(filepath.Join(physicalDataRoot, deploymentDataDir, serviceCode)), nil
 }

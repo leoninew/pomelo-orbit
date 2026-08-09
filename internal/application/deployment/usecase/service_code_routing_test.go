@@ -12,7 +12,7 @@ import (
 func TestRenderComposeUsesComponentServiceHosts(t *testing.T) {
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application: model.Application{Code: "ragflow", Kind: status.ApplicationKindStandard},
-		Service:     model.Service{Code: "ragflow-default"},
+		Service:     model.Service{Code: "ragflow-service"},
 		Gateway:     &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web"},
 		Components: []model.EffectiveServiceComponent{
 			{Name: "minio", Image: "minio:latest", Endpoints: []model.VersionComponentEndpoint{{Name: "api", Protocol: "http", ContainerPort: 9000, Mode: "gateway_http"}}},
@@ -22,7 +22,7 @@ func TestRenderComposeUsesComponentServiceHosts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, host := range []string{"minio.ragflow-default.example.test", "ragflow.ragflow-default.example.test"} {
+	for _, host := range []string{"minio.ragflow-service.example.test", "ragflow.ragflow-service.example.test"} {
 		if !strings.Contains(compose, "Host(`"+host+"`)") {
 			t.Fatalf("compose does not route %s:\n%s", host, compose)
 		}

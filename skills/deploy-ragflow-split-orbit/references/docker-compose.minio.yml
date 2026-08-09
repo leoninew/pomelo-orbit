@@ -15,7 +15,7 @@ services:
       MINIO_ROOT_USER: "${MINIO_USER:?MINIO_USER must be set}"
       MINIO_ROOT_PASSWORD: "${MINIO_PASSWORD:?MINIO_PASSWORD must be set}"
     volumes:
-      - "minio_data:/data"
+      - "./minio:/data"
     networks:
       traefik:
         aliases:
@@ -30,8 +30,6 @@ services:
       timeout: 10s
       retries: 120
     restart: unless-stopped
-volumes:
-  minio_data: {}
 networks:
   traefik:
     external: true

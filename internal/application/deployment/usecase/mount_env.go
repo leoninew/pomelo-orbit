@@ -196,7 +196,7 @@ func resolveMountSpecs(mounts []MountSpec, physicalServiceDir string) ([]Resolve
 			}
 			item.HostSource = filepath.ToSlash(filepath.Join(physicalServiceDir, filepath.FromSlash(mount.Source)))
 			item.IsFile = mount.SourceType == mountSourceFile || mount.SourceType == mountSourceControlledFile
-			item.ShouldMaterialize = mount.SourceType == mountSourceControlledFile
+			item.ShouldMaterialize = mount.SourceType == mountSourceDirectory || mount.SourceType == mountSourceControlledFile
 			item.Compose = item.HostSource + ":" + mount.Target
 		case mountSourceNamedVolume:
 			item.Compose = mount.Source + ":" + mount.Target

@@ -384,12 +384,6 @@
           })
         }}
       </p>
-      <label class="flex items-center gap-2">
-        <input v-model="deleteDir" type="checkbox" class="app-checkbox" />
-        <span class="text-sm text-foreground">
-          {{ t('application.detail.dialog.deleteWorkDir', { code: application?.code || '-' }) }}
-        </span>
-      </label>
       <p v-if="deleteApplicationError" class="app-field-error mt-3" role="alert">
         {{ deleteApplicationError }}
       </p>
@@ -743,7 +737,6 @@
   const forkLabel = ref('');
   const forkLabelError = ref('');
   const forkSubmitError = ref('');
-  const deleteDir = ref(false);
 
   const editForm = reactive({
     name: '',
@@ -912,7 +905,6 @@
   }
 
   function openDeleteModal() {
-    deleteDir.value = false;
     deleteApplicationError.value = '';
     isDeleteDialogOpen.value = true;
   }
@@ -921,7 +913,7 @@
     deleteApplicationError.value = '';
     try {
       await executeOp(async () => {
-        await applicationApi.delete(applicationId, deleteDir.value);
+        await applicationApi.delete(applicationId);
         toast.success(t('application.toast.deleteSuccess'));
         router.push('/applications');
       });

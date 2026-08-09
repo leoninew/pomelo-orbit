@@ -38,10 +38,10 @@ func (s Service) ResolveRuntimeTarget(ctx context.Context, userId, applicationId
 		}
 		return deploymentdto.RuntimeTarget{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	if !safeRuntimeSegment(app.Code) {
-		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindInternal, "invalid managed application code")
+	if !safeRuntimeSegment(service.Code) {
+		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindInternal, "invalid managed service code")
 	}
-	return deploymentdto.RuntimeTarget{ApplicationId: app.Id, ServiceId: service.Id, InstanceKey: service.InstanceKey, ApplicationCode: app.Code, WorkingDirectory: s.workspace.ServiceDir(app.Code, service.InstanceKey), ComposeProject: composeProjectName(app.Code, service.InstanceKey)}, nil
+	return deploymentdto.RuntimeTarget{ApplicationId: app.Id, ServiceId: service.Id, InstanceKey: service.InstanceKey, ServiceCode: service.Code, WorkingDirectory: s.workspace.ServiceDir(service.Code), ComposeProject: composeProjectName(app.Code, service.InstanceKey)}, nil
 }
 
 func safeRuntimeSegment(value string) bool {
@@ -249,7 +249,7 @@ func (s Service) runRuntimeCommand(ctx context.Context, target deploymentdto.Run
 	if s.queryRunner == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment query runner is not configured")
 	}
-	exists, err := s.workspace.ServiceDirExists(target.ApplicationCode, target.InstanceKey)
+	exists, err := s.workspace.ServiceDirExists(target.ServiceCode)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
 	}

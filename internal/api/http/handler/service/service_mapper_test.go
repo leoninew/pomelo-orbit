@@ -9,6 +9,7 @@ import (
 )
 
 func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
+	listenPort := 18080
 	response := serviceViewResponse(servicedto.ServiceView{
 		Service:          model.Service{Id: "service-1", Code: "ragflow-default"},
 		ApplicationCode:  "ragflow",
@@ -21,6 +22,12 @@ func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 		ComponentDefinitions: []model.VersionComponent{{
 			Id: "version-component-1", Image: "nginx:latest",
 		}},
+		EffectiveComponents: []model.EffectiveServiceComponent{{
+			ServiceComponentId: "service-component-1",
+			Endpoints: []model.VersionComponentEndpoint{{
+				Name: "http", Protocol: "http", ContainerPort: 8080, Mode: "local", ListenPort: &listenPort,
+			}},
+		}},
 	})
 	if len(response.Components) != 1 {
 		t.Fatalf("component responses = %d, want 1", len(response.Components))
@@ -30,6 +37,13 @@ func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 	}
 	if got := response.Components[0].ContainerName; got != "ragflow-api" {
 		t.Fatalf("container name = %q, want ragflow-api", got)
+	}
+	if len(response.Components[0].EffectiveEndpoints) != 1 {
+		t.Fatalf("effective endpoints = %#v", response.Components[0].EffectiveEndpoints)
+	}
+	endpoint := response.Components[0].EffectiveEndpoints[0]
+	if endpoint.Name != "http" || endpoint.Protocol != "http" || endpoint.ContainerPort != 8080 || endpoint.Mode != "local" || endpoint.ListenPort == nil || *endpoint.ListenPort != 18080 {
+		t.Fatalf("effective endpoint = %#v", endpoint)
 	}
 	if len(response.Env) != 1 || response.Env[0].Key != "SHARED_VALUE" || response.Env[0].Value != "value" {
 		t.Fatalf("service environment = %#v", response.Env)

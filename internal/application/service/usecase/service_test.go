@@ -69,6 +69,10 @@ func (f deploymentStoreFake) LatestSuccessfulDeploymentPlanHash(_ context.Contex
 
 func TestServiceViewPendingDeployComparesEffectivePlanHash(t *testing.T) {
 	service, app, version, declaration, component := serviceViewFixture()
+	listenPort := 18080
+	mode := "local"
+	declaration.Endpoints = []model.VersionComponentEndpoint{{Name: "api", Protocol: "http", ContainerPort: 8080, Mode: "internal"}}
+	component.Endpoints = []model.ServiceComponentEndpoint{{Name: "api", Mode: &mode, ListenPort: &listenPort, State: model.ServiceComponentOverlayOverride}}
 	plan, hash, err := buildFixturePlan(app, version, service, declaration, component)
 	if err != nil {
 		t.Fatalf("build fixture plan: %v", err)
@@ -103,6 +107,13 @@ func TestServiceViewPendingDeployComparesEffectivePlanHash(t *testing.T) {
 			}
 			if len(view.ComponentDefinitions) != 1 || view.ComponentDefinitions[0].Image != declaration.Image {
 				t.Fatalf("component definitions = %#v, want declaration image %q", view.ComponentDefinitions, declaration.Image)
+			}
+			if len(view.EffectiveComponents) != 1 || len(view.EffectiveComponents[0].Endpoints) != 1 {
+				t.Fatalf("effective components = %#v", view.EffectiveComponents)
+			}
+			endpoint := view.EffectiveComponents[0].Endpoints[0]
+			if endpoint.Protocol != "http" || endpoint.ContainerPort != 8080 || endpoint.Mode != mode || endpoint.ListenPort == nil || *endpoint.ListenPort != listenPort {
+				t.Fatalf("effective endpoint = %#v", endpoint)
 			}
 		})
 	}

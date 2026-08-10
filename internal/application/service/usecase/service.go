@@ -504,6 +504,7 @@ func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (s
 		view.EffectiveError = err.Error()
 		return view, nil
 	}
+	view.EffectiveComponents = plan.Components
 	hash, err := deploymentsvc.EffectiveServicePlanHash(plan)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to hash service plan", err)

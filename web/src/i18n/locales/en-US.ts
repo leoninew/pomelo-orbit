@@ -605,6 +605,7 @@ export default {
       runtime: 'Runtime',
       health: 'Health',
       image: 'Image',
+      ports: 'Ports',
     },
     actions: {
       create: 'Create service',

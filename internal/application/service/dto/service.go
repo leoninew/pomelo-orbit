@@ -8,6 +8,7 @@ type ServiceView struct {
 	Env                  []model.ServiceEnv
 	Components           []model.ServiceComponent
 	ComponentDefinitions []model.VersionComponent
+	EffectiveComponents  []model.EffectiveServiceComponent
 	PendingDeploy        bool
 	ActiveDeployment     bool
 	EffectivePlanHash    string

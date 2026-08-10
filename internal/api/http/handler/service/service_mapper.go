@@ -13,11 +13,16 @@ func serviceViewResponse(item servicedto.ServiceView) servicev1.ServiceResp {
 	for _, definition := range item.ComponentDefinitions {
 		componentImages[definition.Id] = definition.Image
 	}
+	effectiveEndpoints := make(map[string][]model.VersionComponentEndpoint, len(item.EffectiveComponents))
+	for _, component := range item.EffectiveComponents {
+		effectiveEndpoints[component.ServiceComponentId] = component.Endpoints
+	}
 	components := make([]*servicev1.ServiceComponentResp, 0, len(item.Components))
 	for _, component := range item.Components {
 		response := serviceComponentResponse(component)
 		response.Image = componentImages[component.SourceVersionComponentId]
 		response.ContainerName = model.RuntimeContainerName(item.ApplicationCode, component.ComponentName)
+		response.EffectiveEndpoints = serviceComponentDeclaredEndpointsResponse(effectiveEndpoints[component.Id])
 		components = append(components, &response)
 	}
 	env := make([]*servicev1.ServiceEnv, 0, len(item.Env))
@@ -73,15 +78,19 @@ func componentDeclarationResponse(component model.VersionComponent) servicev1.Se
 	for _, item := range component.Env {
 		env = append(env, &servicev1.ServiceComponentDeclaredEnv{Key: item.Key, Value: item.Value})
 	}
-	endpoints := make([]*servicev1.ServiceComponentDeclaredEndpoint, 0, len(component.Endpoints))
-	for _, item := range component.Endpoints {
-		endpoints = append(endpoints, &servicev1.ServiceComponentDeclaredEndpoint{Name: item.Name, Protocol: item.Protocol, ContainerPort: int32(item.ContainerPort), Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: int32Ptr(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix})
-	}
 	mounts := make([]*servicev1.ServiceComponentDeclaredMount, 0, len(component.Mounts))
 	for _, item := range component.Mounts {
 		mounts = append(mounts, &servicev1.ServiceComponentDeclaredMount{SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly, SourceIsHostPath: item.SourceIsHostPath})
 	}
-	return servicev1.ServiceComponentDefinitionResp{Id: component.Id, Name: component.Name, Image: component.Image, Command: commandline.Format(component.Command), PullPolicy: component.PullPolicy, Env: env, Endpoints: endpoints, Mounts: mounts, Resources: componentResourcesResponse(component.Resources)}
+	return servicev1.ServiceComponentDefinitionResp{Id: component.Id, Name: component.Name, Image: component.Image, Command: commandline.Format(component.Command), PullPolicy: component.PullPolicy, Env: env, Endpoints: serviceComponentDeclaredEndpointsResponse(component.Endpoints), Mounts: mounts, Resources: componentResourcesResponse(component.Resources)}
+}
+
+func serviceComponentDeclaredEndpointsResponse(items []model.VersionComponentEndpoint) []*servicev1.ServiceComponentDeclaredEndpoint {
+	endpoints := make([]*servicev1.ServiceComponentDeclaredEndpoint, 0, len(items))
+	for _, item := range items {
+		endpoints = append(endpoints, &servicev1.ServiceComponentDeclaredEndpoint{Name: item.Name, Protocol: item.Protocol, ContainerPort: int32(item.ContainerPort), Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: int32Ptr(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix})
+	}
+	return endpoints
 }
 
 func componentResourcesResponse(value *model.VersionComponentResources) *servicev1.ServiceComponentDeclaredResources {

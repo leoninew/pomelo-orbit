@@ -77,6 +77,11 @@ export interface ServiceComponentResp {
   updated_at: string;
   image: string;
   container_name: string;
+  /**
+   * Fully resolved endpoint values from the Service effective plan. Unlike
+   * endpoints, this includes inherited Version declarations and is read-only.
+   */
+  effective_endpoints: ServiceComponentDeclaredEndpoint[];
 }
 
 /**

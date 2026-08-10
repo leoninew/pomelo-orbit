@@ -73,6 +73,9 @@ message ServiceComponentResp {
   string updated_at = 11;
   string image = 12;
   string container_name = 13;
+  // Fully resolved endpoint values from the Service effective plan. Unlike
+  // endpoints, this includes inherited Version declarations and is read-only.
+  repeated ServiceComponentDeclaredEndpoint effective_endpoints = 14;
 }
 
 // ServiceComponentDetailResp provides the declaration, sparse overlay and

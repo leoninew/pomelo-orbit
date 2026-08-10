@@ -587,10 +587,11 @@ export default {
       version: '版本',
       containers: '容器',
       component: '组件',
-      container: '容器名',
+      container: '容器',
       runtime: '运行时间',
       health: '健康',
       image: '镜像',
+      ports: '端口',
     },
     actions: {
       create: '创建服务',

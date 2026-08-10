@@ -553,8 +553,11 @@ type ServiceComponentResp struct {
 	UpdatedAt                string                             `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	Image                    string                             `protobuf:"bytes,12,opt,name=image,proto3" json:"image,omitempty"`
 	ContainerName            string                             `protobuf:"bytes,13,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// Fully resolved endpoint values from the Service effective plan. Unlike
+	// endpoints, this includes inherited Version declarations and is read-only.
+	EffectiveEndpoints []*ServiceComponentDeclaredEndpoint `protobuf:"bytes,14,rep,name=effective_endpoints,json=effectiveEndpoints,proto3" json:"effective_endpoints,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ServiceComponentResp) Reset() {
@@ -676,6 +679,13 @@ func (x *ServiceComponentResp) GetContainerName() string {
 		return x.ContainerName
 	}
 	return ""
+}
+
+func (x *ServiceComponentResp) GetEffectiveEndpoints() []*ServiceComponentDeclaredEndpoint {
+	if x != nil {
+		return x.EffectiveEndpoints
+	}
+	return nil
 }
 
 // ServiceComponentDetailResp provides the declaration, sparse overlay and
@@ -1818,7 +1828,7 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\"E\n" +
 	"\x13ServiceEnvUpdateReq\x12.\n" +
-	"\x03env\x18\x01 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\"\xe8\x04\n" +
+	"\x03env\x18\x01 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\"\xcd\x05\n" +
 	"\x14ServiceComponentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1836,7 +1846,8 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\v \x01(\tR\tupdatedAt\x12\x14\n" +
 	"\x05image\x18\f \x01(\tR\x05image\x12%\n" +
-	"\x0econtainer_name\x18\r \x01(\tR\rcontainerName\"\x8c\x02\n" +
+	"\x0econtainer_name\x18\r \x01(\tR\rcontainerName\x12c\n" +
+	"\x13effective_endpoints\x18\x0e \x03(\v22.orbit.v1.service.ServiceComponentDeclaredEndpointR\x12effectiveEndpoints\"\x8c\x02\n" +
 	"\x1aServiceComponentDetailResp\x12D\n" +
 	"\tcomponent\x18\x01 \x01(\v2&.orbit.v1.service.ServiceComponentRespR\tcomponent\x12R\n" +
 	"\vdeclaration\x18\x02 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\vdeclaration\x12N\n" +
@@ -1997,22 +2008,23 @@ var file_orbit_v1_service_service_proto_depIdxs = []int32{
 	16, // 6: orbit.v1.service.ServiceComponentResp.mounts:type_name -> orbit.v1.service.ServiceComponentMountOverlay
 	17, // 7: orbit.v1.service.ServiceComponentResp.resources:type_name -> orbit.v1.service.ServiceComponentResourceOverlay
 	18, // 8: orbit.v1.service.ServiceComponentResp.endpoints:type_name -> orbit.v1.service.ServiceComponentEndpointOverlay
-	7,  // 9: orbit.v1.service.ServiceComponentDetailResp.component:type_name -> orbit.v1.service.ServiceComponentResp
-	9,  // 10: orbit.v1.service.ServiceComponentDetailResp.declaration:type_name -> orbit.v1.service.ServiceComponentDefinitionResp
-	9,  // 11: orbit.v1.service.ServiceComponentDetailResp.effective:type_name -> orbit.v1.service.ServiceComponentDefinitionResp
-	10, // 12: orbit.v1.service.ServiceComponentDefinitionResp.env:type_name -> orbit.v1.service.ServiceComponentDeclaredEnv
-	11, // 13: orbit.v1.service.ServiceComponentDefinitionResp.mounts:type_name -> orbit.v1.service.ServiceComponentDeclaredMount
-	12, // 14: orbit.v1.service.ServiceComponentDefinitionResp.resources:type_name -> orbit.v1.service.ServiceComponentDeclaredResources
-	13, // 15: orbit.v1.service.ServiceComponentDefinitionResp.endpoints:type_name -> orbit.v1.service.ServiceComponentDeclaredEndpoint
-	15, // 16: orbit.v1.service.ServiceComponentOverlayUpdateReq.env:type_name -> orbit.v1.service.ServiceComponentEnvOverlay
-	16, // 17: orbit.v1.service.ServiceComponentOverlayUpdateReq.mounts:type_name -> orbit.v1.service.ServiceComponentMountOverlay
-	17, // 18: orbit.v1.service.ServiceComponentOverlayUpdateReq.resources:type_name -> orbit.v1.service.ServiceComponentResourceOverlay
-	18, // 19: orbit.v1.service.ServiceComponentOverlayUpdateReq.endpoints:type_name -> orbit.v1.service.ServiceComponentEndpointOverlay
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	13, // 9: orbit.v1.service.ServiceComponentResp.effective_endpoints:type_name -> orbit.v1.service.ServiceComponentDeclaredEndpoint
+	7,  // 10: orbit.v1.service.ServiceComponentDetailResp.component:type_name -> orbit.v1.service.ServiceComponentResp
+	9,  // 11: orbit.v1.service.ServiceComponentDetailResp.declaration:type_name -> orbit.v1.service.ServiceComponentDefinitionResp
+	9,  // 12: orbit.v1.service.ServiceComponentDetailResp.effective:type_name -> orbit.v1.service.ServiceComponentDefinitionResp
+	10, // 13: orbit.v1.service.ServiceComponentDefinitionResp.env:type_name -> orbit.v1.service.ServiceComponentDeclaredEnv
+	11, // 14: orbit.v1.service.ServiceComponentDefinitionResp.mounts:type_name -> orbit.v1.service.ServiceComponentDeclaredMount
+	12, // 15: orbit.v1.service.ServiceComponentDefinitionResp.resources:type_name -> orbit.v1.service.ServiceComponentDeclaredResources
+	13, // 16: orbit.v1.service.ServiceComponentDefinitionResp.endpoints:type_name -> orbit.v1.service.ServiceComponentDeclaredEndpoint
+	15, // 17: orbit.v1.service.ServiceComponentOverlayUpdateReq.env:type_name -> orbit.v1.service.ServiceComponentEnvOverlay
+	16, // 18: orbit.v1.service.ServiceComponentOverlayUpdateReq.mounts:type_name -> orbit.v1.service.ServiceComponentMountOverlay
+	17, // 19: orbit.v1.service.ServiceComponentOverlayUpdateReq.resources:type_name -> orbit.v1.service.ServiceComponentResourceOverlay
+	18, // 20: orbit.v1.service.ServiceComponentOverlayUpdateReq.endpoints:type_name -> orbit.v1.service.ServiceComponentEndpointOverlay
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_service_service_proto_init() }

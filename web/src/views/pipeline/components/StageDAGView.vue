@@ -28,8 +28,10 @@
   import { statusColor } from '@/utils/status';
   import StageNode from '@/views/pipeline/components/StageNode.vue';
 
+  type DAGStage = Pick<SnapshotStageResp, 'id' | 'name' | 'image' | 'depends_on'>;
+
   interface Props {
-    stages: SnapshotStageResp[];
+    stages: DAGStage[];
     stageRuns?: PipelineStageRunResp[];
     showMinimap?: boolean;
     animated?: boolean;
@@ -42,9 +44,9 @@
   const isReady = ref(false);
   const nodeTypes: NodeTypesObject = { stage: markRaw(StageNode) as unknown as NodeComponent };
 
-  // ── 布局：只算一次 ────────────────────────────────────────────────────────────
+  // ── 布局 ─────────────────────────────────────────────────────────────────────
 
-  function buildLayoutedNodes(stages: SnapshotStageResp[]): Node[] {
+  function buildLayoutedNodes(stages: DAGStage[]): Node[] {
     const g = new graphlib.Graph();
     g.setDefaultEdgeLabel(() => ({}));
     g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 60 });
@@ -64,7 +66,7 @@
       });
   }
 
-  const initialNodes = ref<Node[]>(buildLayoutedNodes(props.stages));
+  const initialNodes = ref<Node[]>([]);
 
   const edges = computed<Edge[]>(() => {
     const stageRunMap = new Map<string, PipelineStageRunResp>();
@@ -93,22 +95,31 @@
     return result;
   });
 
-  // fitView 在节点挂载后执行一次
+  let layoutRequest = 0;
+
+  async function refreshLayout() {
+    const request = ++layoutRequest;
+    isReady.value = false;
+    initialNodes.value = buildLayoutedNodes(props.stages);
+    if (initialNodes.value.length === 0) return;
+
+    await nextTick();
+    await nextTick();
+    setTimeout(() => {
+      if (request !== layoutRequest) return;
+      fitView({ padding: 0.15, duration: 0 });
+      requestAnimationFrame(() => {
+        if (request === layoutRequest) isReady.value = true;
+      });
+    }, 150);
+  }
+
+  // Pipeline editing replaces the stage collection in place, so each update
+  // needs a fresh layout rather than retaining the previous Vue Flow nodes.
   watch(
-    () => initialNodes.value.length,
-    async (len) => {
-      if (len > 0 && !isReady.value) {
-        await nextTick();
-        await nextTick();
-        setTimeout(() => {
-          fitView({ padding: 0.15, duration: 0 });
-          requestAnimationFrame(() => {
-            isReady.value = true;
-          });
-        }, 150);
-      }
-    },
-    { immediate: true }
+    () => props.stages,
+    () => void refreshLayout(),
+    { deep: true, immediate: true }
   );
 
   // ── 状态更新：用 updateNodeData，不重新布局 ───────────────────────────────────

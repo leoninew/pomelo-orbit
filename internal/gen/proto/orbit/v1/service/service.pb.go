@@ -552,6 +552,7 @@ type ServiceComponentResp struct {
 	CreatedAt                string                             `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt                string                             `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	Image                    string                             `protobuf:"bytes,12,opt,name=image,proto3" json:"image,omitempty"`
+	ContainerName            string                             `protobuf:"bytes,13,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -666,6 +667,13 @@ func (x *ServiceComponentResp) GetUpdatedAt() string {
 func (x *ServiceComponentResp) GetImage() string {
 	if x != nil {
 		return x.Image
+	}
+	return ""
+}
+
+func (x *ServiceComponentResp) GetContainerName() string {
+	if x != nil {
+		return x.ContainerName
 	}
 	return ""
 }
@@ -1810,7 +1818,7 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\"E\n" +
 	"\x13ServiceEnvUpdateReq\x12.\n" +
-	"\x03env\x18\x01 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\"\xc1\x04\n" +
+	"\x03env\x18\x01 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\"\xe8\x04\n" +
 	"\x14ServiceComponentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1827,7 +1835,8 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	" \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\v \x01(\tR\tupdatedAt\x12\x14\n" +
-	"\x05image\x18\f \x01(\tR\x05image\"\x8c\x02\n" +
+	"\x05image\x18\f \x01(\tR\x05image\x12%\n" +
+	"\x0econtainer_name\x18\r \x01(\tR\rcontainerName\"\x8c\x02\n" +
 	"\x1aServiceComponentDetailResp\x12D\n" +
 	"\tcomponent\x18\x01 \x01(\v2&.orbit.v1.service.ServiceComponentRespR\tcomponent\x12R\n" +
 	"\vdeclaration\x18\x02 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\vdeclaration\x12N\n" +

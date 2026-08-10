@@ -10,7 +10,19 @@ import (
 
 func ApplySQLitePipelineDemo(t testing.TB, database *sql.DB) {
 	t.Helper()
-	applySQLiteExport(t, database, "000041_pipeline-demo.sqlite.sql")
+	_, err := database.Exec(`
+        INSERT OR IGNORE INTO repository (id, name, code, repository_url, project_id)
+        VALUES (
+            '01KNNRBH52BQJYT9487B2H8N62',
+            'Pipeline Demo',
+            'pipeline-demo',
+            'https://example.invalid/pipeline-demo.git',
+            '01KRRKK0K3T519ZQZES3M4QA9Z'
+        )
+    `)
+	if err != nil {
+		t.Fatalf("seed pipeline demo repository: %v", err)
+	}
 }
 
 func ApplySQLiteSystemSeed(t testing.TB, database *sql.DB) {
@@ -25,21 +37,6 @@ func applySQLiteDataMigration(t testing.TB, database *sql.DB, name string) {
 		t.Fatal("locate test seed package")
 	}
 	contents, err := os.ReadFile(filepath.Join(filepath.Dir(path), "..", "..", "..", "sql", "migration", "data", "sqlite", name))
-	if err != nil {
-		t.Fatalf("read %s: %v", name, err)
-	}
-	if _, err := database.Exec(string(contents)); err != nil {
-		t.Fatalf("apply %s: %v", name, err)
-	}
-}
-
-func applySQLiteExport(t testing.TB, database *sql.DB, name string) {
-	t.Helper()
-	_, path, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("locate test seed package")
-	}
-	contents, err := os.ReadFile(filepath.Join(filepath.Dir(path), "..", "..", "..", "data", "exports", name))
 	if err != nil {
 		t.Fatalf("read %s: %v", name, err)
 	}

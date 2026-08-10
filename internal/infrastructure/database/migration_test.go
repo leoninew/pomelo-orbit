@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"io"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -64,9 +63,9 @@ func TestMigrateDataSQLite(t *testing.T) {
 		"project":                  1,
 		"permission":               7,
 		"role":                     1,
-		"pipeline":                 1,
-		"pipeline_stage":           2,
-		"pipeline_stage_reference": 2,
+		"pipeline":                 2,
+		"pipeline_stage":           5,
+		"pipeline_stage_reference": 6,
 	} {
 		var got int
 		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&got); err != nil {
@@ -321,14 +320,23 @@ func TestSQLiteTemplateLibraryDataMigration(t *testing.T) {
 	if err := MigrateData(database, config.DatabaseDriverSQLite, logger); err != nil {
 		t.Fatalf("migrate data: %v", err)
 	}
+	for _, statement := range []string{
+		"UPDATE pipeline_stage SET version = 0 WHERE id = '01KRCWNJVA1DM02TJXZ4STJD01'",
+		"UPDATE pipeline SET version = 0 WHERE id = '01KZG83K2MXG08EJ6G48SG38B3'",
+		"UPDATE pipeline_stage_reference SET source_template_stage_version = 0 WHERE id = '01KZGBG9NT6NCK8AT6H6ENV874'",
+	} {
+		if _, err := database.Exec(statement); err != nil {
+			t.Fatalf("make template seed stale: %v", err)
+		}
+	}
 	if err := MigrateData(database, config.DatabaseDriverSQLite, logger); err != nil {
 		t.Fatalf("repeat migrate data: %v", err)
 	}
 
 	for table, want := range map[string]int{
-		"pipeline":                 1,
-		"pipeline_stage":           2,
-		"pipeline_stage_reference": 2,
+		"pipeline":                 2,
+		"pipeline_stage":           5,
+		"pipeline_stage_reference": 6,
 	} {
 		var got int
 		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&got); err != nil {
@@ -338,64 +346,20 @@ func TestSQLiteTemplateLibraryDataMigration(t *testing.T) {
 			t.Fatalf("%s rows=%d, want %d", table, got, want)
 		}
 	}
-}
-
-func TestOptionalSQLiteSeedExports(t *testing.T) {
-	database := openMemoryDb(t)
-	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
-		t.Fatalf("migrate up: %v", err)
-	}
-	if err := MigrateData(database, config.DatabaseDriverSQLite, slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
-		t.Fatalf("migrate data: %v", err)
-	}
-
-	for _, name := range []string{"000041_pipeline-demo.sqlite.sql"} {
-		path := filepath.Join("..", "..", "..", "data", "exports", name)
-		contents, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("read %s: %v", name, err)
-		}
-		if _, err := database.Exec(string(contents)); err != nil {
-			t.Fatalf("apply %s: %v", name, err)
-		}
-		if _, err := database.Exec(string(contents)); err != nil {
-			t.Fatalf("reapply %s: %v", name, err)
-		}
-	}
-
-	for table, want := range map[string]int{
-		"permission":               7,
-		"role":                     1,
-		"role_permission":          7,
-		"user_role":                1,
-		"project_member":           1,
-		"repository":               2,
-		"pipeline":                 3,
-		"pipeline_stage":           6,
-		"pipeline_stage_reference": 8,
+	for _, check := range []struct {
+		query string
+		want  int
+	}{
+		{"SELECT version FROM pipeline_stage WHERE id = '01KRCWNJVA1DM02TJXZ4STJD01'", 2},
+		{"SELECT version FROM pipeline WHERE id = '01KZG83K2MXG08EJ6G48SG38B3'", 10},
+		{"SELECT source_template_stage_version FROM pipeline_stage_reference WHERE id = '01KZGBG9NT6NCK8AT6H6ENV874'", 2},
 	} {
 		var got int
-		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&got); err != nil {
-			t.Fatalf("count %s rows: %v", table, err)
+		if err := database.QueryRow(check.query).Scan(&got); err != nil {
+			t.Fatalf("read refreshed template seed: %v", err)
 		}
-		if got != want {
-			t.Fatalf("%s rows=%d, want %d", table, got, want)
+		if got != check.want {
+			t.Fatalf("refreshed template seed value=%d, want %d", got, check.want)
 		}
-	}
-
-	rows, err := database.Query("PRAGMA foreign_key_check")
-	if err != nil {
-		t.Fatalf("run foreign key check: %v", err)
-	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			t.Errorf("close foreign key check: %v", err)
-		}
-	}()
-	if rows.Next() {
-		t.Fatal("foreign key check found violations")
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatalf("iterate foreign key check: %v", err)
 	}
 }

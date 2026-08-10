@@ -253,7 +253,7 @@ func injectAllComponentsPlatformNetwork(services map[string]any, appCode string)
 		if !ok {
 			continue
 		}
-		ensureServiceJoinsNetworksWithAlias(service, runtimeName(appCode, name))
+		ensureServiceJoinsNetworksWithAlias(service, model.RuntimeContainerName(appCode, name))
 	}
 	return nil
 }
@@ -275,7 +275,7 @@ func validateVersionComponent(component model.VersionComponent) error {
 }
 
 func renderVersionComponentService(component model.VersionComponent, appCode, physicalServiceDir string, runtime map[string]string, _ bool) (map[string]any, []ResolvedMount, error) {
-	service := map[string]any{"image": component.Image, "container_name": runtimeName(appCode, component.Name)}
+	service := map[string]any{"image": component.Image, "container_name": model.RuntimeContainerName(appCode, component.Name)}
 	if len(component.Entrypoint) > 0 {
 		service["entrypoint"] = append([]string(nil), component.Entrypoint...)
 	}
@@ -396,15 +396,4 @@ func resourceValues(cpus, memory *string) map[string]string {
 }
 func validDeploymentRouteDomain(domain string) bool {
 	return domain != "" && len(domain) <= 253 && !strings.ContainsAny(domain, " `\t\r\n")
-}
-
-func runtimeName(appCode, component string) string {
-	name := strings.ToLower(strings.TrimSpace(appCode) + "-" + strings.TrimSpace(component))
-	name = strings.Map(func(char rune) rune {
-		if (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '-' {
-			return char
-		}
-		return '-'
-	}, name)
-	return strings.Trim(name, "-")
 }

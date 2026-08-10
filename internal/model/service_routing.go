@@ -13,6 +13,19 @@ func IsDNSLabel(value string) bool {
 	return dnsLabel.MatchString(value)
 }
 
+// RuntimeContainerName returns the explicit Docker container name emitted for
+// an Application component in the generated Compose configuration.
+func RuntimeContainerName(applicationCode, componentName string) string {
+	name := strings.ToLower(strings.TrimSpace(applicationCode) + "-" + strings.TrimSpace(componentName))
+	name = strings.Map(func(char rune) rune {
+		if (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '-' {
+			return char
+		}
+		return '-'
+	}, name)
+	return strings.Trim(name, "-")
+}
+
 // DeriveServiceComponentHost returns the public host for one Service component.
 func DeriveServiceComponentHost(gateway *GatewayConfig, service Service, componentName string) (string, error) {
 	if gateway == nil {

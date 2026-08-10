@@ -2,11 +2,12 @@
   <DetailInfoCard :title="t('application.detail.fields.components')">
     <AppEmptyState v-if="service.components.length === 0" size="compact" />
     <div v-else class="overflow-x-auto">
-      <table class="app-data-table min-w-[840px]">
+      <table class="app-data-table min-w-[980px]">
         <thead>
           <tr>
             <th>{{ t('application.detail.fields.component') }}</th>
             <th>{{ t('application.detail.fields.image') }}</th>
+            <th>{{ t('service.fields.container') }}</th>
             <th>{{ t('common.operation') }}</th>
           </tr>
         </thead>
@@ -20,8 +21,11 @@
                 {{ component.component_name }}
               </router-link>
             </td>
-            <td class="max-w-md whitespace-normal break-all text-muted-foreground">
+            <td class="w-[480px] max-w-[480px] truncate text-muted-foreground" :title="component.image">
               {{ component.image }}
+            </td>
+            <td class="max-w-sm break-all text-muted-foreground">
+              {{ component.container_name }}
             </td>
             <td>
               <div class="flex items-center gap-3">

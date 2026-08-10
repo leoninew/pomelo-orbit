@@ -17,6 +17,7 @@ func serviceViewResponse(item servicedto.ServiceView) servicev1.ServiceResp {
 	for _, component := range item.Components {
 		response := serviceComponentResponse(component)
 		response.Image = componentImages[component.SourceVersionComponentId]
+		response.ContainerName = model.RuntimeContainerName(item.ApplicationCode, component.ComponentName)
 		components = append(components, &response)
 	}
 	env := make([]*servicev1.ServiceEnv, 0, len(item.Env))

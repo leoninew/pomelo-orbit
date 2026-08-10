@@ -35,3 +35,9 @@ func TestDeriveServiceComponentHostRejectsInvalidLabels(t *testing.T) {
 		})
 	}
 }
+
+func TestRuntimeContainerName(t *testing.T) {
+	if got, want := RuntimeContainerName("RAGFlow_Prod", "minio_api"), "ragflow-prod-minio-api"; got != want {
+		t.Fatalf("container name = %q, want %q", got, want)
+	}
+}

@@ -11,11 +11,12 @@ import (
 func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 	response := serviceViewResponse(servicedto.ServiceView{
 		Service:          model.Service{Id: "service-1", Code: "ragflow-default"},
+		ApplicationCode:  "ragflow",
 		Env:              []model.ServiceEnv{{Key: "SHARED_VALUE", Value: "value"}},
 		EffectiveError:   "component mysql environment MYSQL_DATABASE: requires service environment MYSQL_DATABASE",
 		ActiveDeployment: true,
 		Components: []model.ServiceComponent{{
-			Id: "service-component-1", SourceVersionComponentId: "version-component-1",
+			Id: "service-component-1", ComponentName: "api", SourceVersionComponentId: "version-component-1",
 		}},
 		ComponentDefinitions: []model.VersionComponent{{
 			Id: "version-component-1", Image: "nginx:latest",
@@ -26,6 +27,9 @@ func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 	}
 	if got := response.Components[0].Image; got != "nginx:latest" {
 		t.Fatalf("component image = %q, want nginx:latest", got)
+	}
+	if got := response.Components[0].ContainerName; got != "ragflow-api" {
+		t.Fatalf("container name = %q, want ragflow-api", got)
 	}
 	if len(response.Env) != 1 || response.Env[0].Key != "SHARED_VALUE" || response.Env[0].Value != "value" {
 		t.Fatalf("service environment = %#v", response.Env)

@@ -76,6 +76,7 @@ export interface ServiceComponentResp {
   created_at: string;
   updated_at: string;
   image: string;
+  container_name: string;
 }
 
 /**

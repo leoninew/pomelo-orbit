@@ -87,19 +87,34 @@
 
       <DetailInfoCard title="构建阶段">
         <template #actions>
+          <button
+            v-if="outdatedStages.length > 0"
+            class="app-button-warning h-9 px-3"
+            :disabled="saving"
+            @click="updateOutdatedStages"
+          >
+            <RefreshCw class="size-4" :class="updatingStages ? 'animate-spin' : ''" />
+            {{
+              updatingStages
+                ? `正在更新 ${updatedStageCount}/${stagesToUpdateCount} 个构建阶段`
+                : `更新 ${outdatedStages.length} 个构建阶段`
+            }}
+          </button>
+          <ViewModeToggle v-if="pipeline.stage_nodes.length > 0" v-model="stagesView" />
           <button class="app-button-primary h-9 px-3" @click="openStageDialog()">
             <Plus class="size-4" />
             引入阶段
           </button>
         </template>
         <AppEmptyState v-if="pipeline.stage_nodes.length === 0" size="compact" />
-        <div v-else class="overflow-x-auto">
-          <table class="app-data-table min-w-[820px]">
+        <div v-else-if="stagesView === 'list'" class="overflow-x-auto">
+          <table class="app-data-table min-w-[920px]">
             <thead>
               <tr>
                 <th>#</th>
                 <th>名称</th>
                 <th>镜像</th>
+                <th>来源阶段版本</th>
                 <th>依赖</th>
                 <th v-if="hasApplicationBinding">组件映射</th>
                 <th class="w-32">操作</th>
@@ -112,6 +127,7 @@
                 <td class="max-w-xs truncate text-foreground" :title="stage.image">
                   {{ stage.image }}
                 </td>
+                <td>v{{ stage.source_template_stage_version }}</td>
                 <td>
                   <div class="flex flex-wrap gap-1">
                     <AppBadge v-for="dependency in stage.depends_on" :key="dependency">
@@ -139,6 +155,11 @@
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-else class="p-6">
+          <div class="h-[500px]">
+            <StageDAGView :stages="orderedStages" :animated="true" />
+          </div>
         </div>
       </DetailInfoCard>
 
@@ -207,7 +228,7 @@
             @update:model-value="selectStageTemplate"
           />
         </div>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5">
           <div class="space-y-1.5">
             <label class="app-field-label">
               名称
@@ -215,17 +236,6 @@
             </label>
             <input v-model="stageForm.name" class="app-input" />
           </div>
-          <div v-if="!isTemplate" class="space-y-1.5">
-            <label class="app-field-label">
-              执行镜像
-              <span class="text-destructive">*</span>
-            </label>
-            <input v-model="stageForm.image" class="app-input" />
-          </div>
-        </div>
-        <div v-if="!isTemplate" class="space-y-1.5">
-          <label class="app-field-label">脚本</label>
-          <textarea v-model="stageForm.script" rows="7" class="app-textarea font-mono" />
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
           <div class="space-y-1.5">
@@ -398,7 +408,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, CopyPlus, Play, Plus, Trash2 } from '@lucide/vue';
+  import { ArrowLeft, CopyPlus, Play, Plus, RefreshCw, Trash2 } from '@lucide/vue';
   import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { pipelineApi } from '@/api/pipeline/pipeline';
@@ -410,6 +420,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import ViewModeToggle from '@/components/ViewModeToggle.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -420,6 +431,7 @@
   } from '@/gen/proto/orbit/v1/pipeline/pipeline_stage';
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
   import type { PipelineRunVariablePreviewResp } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
+  import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
 
   const route = useRoute();
@@ -429,6 +441,10 @@
   const { loading: saving, execute: executeSave } = useStatusAsync();
   const pipelineId = computed(() => String(route.params.id));
   const pipeline = ref<PipelineResp>();
+  const stagesView = ref<'list' | 'dag'>('list');
+  const updatingStages = ref(false);
+  const updatedStageCount = ref(0);
+  const stagesToUpdateCount = ref(0);
   const infoOpen = ref(false);
   const stageOpen = ref(false);
   const templateUpdateOpen = ref(false);
@@ -457,8 +473,6 @@
   const stageForm = reactive({
     source_template_stage_id: '',
     name: '',
-    image: '',
-    script: '',
     depends_on: [] as string[],
     sort_order: 0,
     description: '',
@@ -474,6 +488,12 @@
   const orderedStages = computed(() =>
     [...(pipeline.value?.stage_nodes || [])].sort(
       (left, right) => left.sort_order - right.sort_order
+    )
+  );
+  const outdatedStages = computed(() =>
+    orderedStages.value.filter(
+      (stage) =>
+        stage.latest_template_stage_version !== undefined && stage.latest_template_stage_version > 0
     )
   );
   const otherStages = computed(() =>
@@ -634,8 +654,6 @@
     if (!stage) return;
     Object.assign(stageForm, {
       name: stage.name,
-      image: stage.image,
-      script: stage.script,
       description: stage.description,
     });
   }
@@ -749,8 +767,6 @@
         ? {
             source_template_stage_id: stage.source_template_stage_id,
             name: stage.name,
-            image: stage.image,
-            script: stage.script,
             depends_on: [...stage.depends_on],
             sort_order: stage.sort_order,
             description: stage.description,
@@ -758,8 +774,6 @@
         : {
             source_template_stage_id: '',
             name: '',
-            image: '',
-            script: '',
             depends_on: [],
             sort_order: (orderedStages.value.at(-1)?.sort_order || 0) + 1,
             description: '',
@@ -827,20 +841,62 @@
     }
   }
 
+  async function updateOutdatedStages() {
+    const stages = [...outdatedStages.value];
+    if (stages.length === 0) return;
+
+    let skippedCount = 0;
+    updatingStages.value = true;
+    updatedStageCount.value = 0;
+    stagesToUpdateCount.value = stages.length;
+    try {
+      await executeSave(async () => {
+        for (const stage of stages) {
+          const preview = await pipelineApi.previewStageTemplateUpdate(pipelineId.value, stage.id);
+          if (!preview.available) {
+            skippedCount += 1;
+            updatedStageCount.value += 1;
+            continue;
+          }
+          pipeline.value = await pipelineApi.updateStageTemplate(pipelineId.value, stage.id, {
+            expected_source_template_stage_version: preview.expected_source_template_stage_version,
+            target_template_stage_version: preview.target_template_stage_version,
+          });
+          updatedStageCount.value += 1;
+        }
+        await loadPipelineVariablePreview();
+      });
+      const updatedCount = stages.length - skippedCount;
+      toast.success(
+        skippedCount > 0
+          ? `已更新 ${updatedCount} 个构建阶段，${skippedCount} 个当前不可更新`
+          : `已更新 ${updatedCount} 个构建阶段`
+      );
+    } catch (reason) {
+      const completedCount = updatedStageCount.value - skippedCount;
+      toast.error(
+        `${reason instanceof Error ? reason.message : '更新构建阶段失败'}${
+          completedCount > 0 ? `，已更新 ${completedCount} 个构建阶段` : ''
+        }`
+      );
+      await fetchPipeline();
+    } finally {
+      updatingStages.value = false;
+      updatedStageCount.value = 0;
+      stagesToUpdateCount.value = 0;
+    }
+  }
+
   async function saveStage() {
     stageError.value =
       !editingStage.value && !stageForm.source_template_stage_id
         ? '请选择阶段'
         : !stageForm.name.trim()
           ? '请输入阶段名称'
-          : !isTemplate.value && !stageForm.image.trim()
-            ? '请输入执行镜像'
-            : '';
+          : '';
     if (stageError.value) return;
     const payload = {
       name: stageForm.name.trim(),
-      image: stageForm.image.trim(),
-      script: stageForm.script,
       depends_on: [...stageForm.depends_on],
       sort_order: stageForm.sort_order,
       description: stageForm.description,
@@ -853,8 +909,6 @@
             depends_on: { items: payload.depends_on },
             sort_order: payload.sort_order,
             description: payload.description,
-            image: isTemplate.value ? undefined : payload.image,
-            script: isTemplate.value ? undefined : payload.script,
           });
         } else
           pipeline.value = await pipelineApi.importStage(pipelineId.value, {

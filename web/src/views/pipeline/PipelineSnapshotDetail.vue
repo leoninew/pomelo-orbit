@@ -56,8 +56,11 @@
         </dl>
       </DetailInfoCard>
       <DetailInfoCard title="阶段快照">
+        <template #actions>
+          <ViewModeToggle v-if="snapshot.stages_snapshot.length > 0" v-model="stagesView" />
+        </template>
         <AppEmptyState v-if="snapshot.stages_snapshot.length === 0" size="compact" />
-        <div v-else class="overflow-x-auto">
+        <div v-else-if="stagesView === 'list'" class="overflow-x-auto">
           <table class="app-data-table min-w-[760px]">
             <thead>
               <tr>
@@ -85,6 +88,11 @@
             </tbody>
           </table>
         </div>
+        <div v-else class="p-6">
+          <div class="h-[500px]">
+            <StageDAGView :stages="snapshot.stages_snapshot" :animated="true" />
+          </div>
+        </div>
       </DetailInfoCard>
       <DetailInfoCard title="变量快照">
         <VariableDeclarationsTable :declarations="snapshot.variables_snapshot" readonly />
@@ -102,10 +110,12 @@
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import ViewModeToggle from '@/components/ViewModeToggle.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineSnapshotResp } from '@/gen/proto/orbit/v1/pipeline/snapshot';
   import { formatTime } from '@/utils/time';
+  import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
 
   const route = useRoute();
@@ -113,6 +123,7 @@
   const toast = useToast();
   const { status, execute } = useStatusAsync();
   const snapshot = ref<PipelineSnapshotResp>();
+  const stagesView = ref<'list' | 'dag'>('list');
   const snapshotId = computed(() => String(route.params.id));
   function stageName(id: string) {
     return snapshot.value?.stages_snapshot.find((stage) => stage.id === id)?.name || id;

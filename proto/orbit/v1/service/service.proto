@@ -72,6 +72,7 @@ message ServiceComponentResp {
   string created_at = 10;
   string updated_at = 11;
   string image = 12;
+  string container_name = 13;
 }
 
 // ServiceComponentDetailResp provides the declaration, sparse overlay and

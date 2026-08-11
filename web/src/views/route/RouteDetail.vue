@@ -17,24 +17,6 @@
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <button
-          v-if="routeData && !routeData.enabled"
-          class="app-button h-9 px-3"
-          :disabled="operating"
-          @click="handleEnable"
-        >
-          <Power class="size-4" />
-          {{ t('route.status.enabled') }}
-        </button>
-        <button
-          v-else-if="routeData"
-          class="app-button h-9 px-3"
-          :disabled="operating"
-          @click="handleDisable"
-        >
-          <PowerOff class="size-4" />
-          {{ t('route.status.disabled') }}
-        </button>
-        <button
           v-if="routeData"
           class="app-button-danger h-9 px-3"
           :disabled="operating"
@@ -159,6 +141,23 @@
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label class="app-field-label block">
+            {{ t('route.fields.name') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="form.name"
+            type="text"
+            class="app-input"
+            :class="errors.name ? 'app-input-error' : ''"
+            placeholder="example-route"
+            :aria-invalid="errors.name ? 'true' : undefined"
+            @input="errors.name = ''"
+          />
+          <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+          <p v-else class="app-field-hint">{{ t('route.hints.name') }}</p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block">
             {{ t('route.fields.domain') }}
             <span class="text-destructive">*</span>
           </label>
@@ -176,6 +175,7 @@
         <div class="space-y-1.5">
           <label class="app-field-label block">{{ t('route.fields.pathPrefix') }}</label>
           <input v-model="form.path_prefix" type="text" class="app-input" placeholder="/" />
+          <p class="app-field-hint">{{ t('route.hints.pathPrefix') }}</p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">
@@ -187,12 +187,19 @@
             type="text"
             class="app-input"
             :class="errors.target_url ? 'app-input-error' : ''"
-            placeholder="http://host:port"
+            placeholder="http[s]://host[:port]"
             :aria-invalid="errors.target_url ? 'true' : undefined"
             @input="errors.target_url = ''"
           />
           <p v-if="errors.target_url" class="app-field-error text-xs">{{ errors.target_url }}</p>
+          <p v-else class="app-field-hint">{{ t('route.hints.targetUrl') }}</p>
         </div>
+        <label class="flex cursor-pointer items-center gap-3">
+          <SwitchRoot v-model="form.enabled" class="app-switch-root">
+            <SwitchThumb class="app-switch-thumb" />
+          </SwitchRoot>
+          <span class="text-sm text-foreground">{{ t('route.status.enabled') }}</span>
+        </label>
       </div>
       <template #footer>
         <AppDialogActions
@@ -227,8 +234,9 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ExternalLink, Power, PowerOff, Trash2 } from '@lucide/vue';
+  import { ArrowLeft, ExternalLink, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
+  import { SwitchRoot, SwitchThumb } from 'reka-ui';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
@@ -248,6 +256,7 @@
   const routeId = currentRoute.params.id as string;
   const toast = useToast();
   const { t } = useI18n();
+  const targetUrlPattern = /^https?:\/\/[a-zA-Z0-9.-]+(?::\d+)?$/;
 
   const { loading: basicInfoLoading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -263,7 +272,7 @@
     target_url: '',
     enabled: false,
   });
-  const errors = reactive({ domain: '', target_url: '' });
+  const errors = reactive({ name: '', domain: '', target_url: '' });
   const editSubmitError = ref('');
   const deleteSubmitError = ref('');
 
@@ -310,7 +319,7 @@
       target_url: routeData.value.target_url,
       enabled: routeData.value.enabled,
     });
-    Object.assign(errors, { domain: '', target_url: '' });
+    Object.assign(errors, { name: '', domain: '', target_url: '' });
     editSubmitError.value = '';
     isEditDialogOpen.value = true;
   }
@@ -322,53 +331,31 @@
 
   async function handleSave() {
     editSubmitError.value = '';
+    errors.name = /^[a-z][a-z0-9._-]*$/.test(form.name) ? '' : t('route.validation.nameInvalid');
     errors.domain = form.domain.trim() ? '' : t('route.validation.domainRequired');
-    errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
+    errors.target_url = targetUrlPattern.test(form.target_url)
       ? ''
       : t('route.validation.targetUrlInvalid');
-    if (errors.domain || errors.target_url) {
+    if (errors.name || errors.domain || errors.target_url) {
       return;
     }
     try {
       await executeOp(async () => {
-        const updateData = {
+        const updated = await routeApi.update(routeId, {
+          name: form.name,
           domain: form.domain,
           path_prefix: form.path_prefix,
           target_url: form.target_url,
           enabled: form.enabled,
-        };
-        await routeApi.update(routeId, updateData);
+        });
+        routeData.value = updated;
         toast.success(t('route.toast.updateSuccess'));
         isEditDialogOpen.value = false;
-        fetchRoute();
+        await fetchRoute();
       });
     } catch (error) {
       editSubmitError.value =
         error instanceof Error ? error.message : t('route.toast.updateFailed');
-    }
-  }
-
-  async function handleEnable() {
-    try {
-      await executeOp(async () => {
-        await routeApi.enable(routeId, {});
-        toast.success(t('route.toast.enableSuccess'));
-        fetchRoute();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.enableFailed'));
-    }
-  }
-
-  async function handleDisable() {
-    try {
-      await executeOp(async () => {
-        await routeApi.disable(routeId, {});
-        toast.success(t('route.toast.disableSuccess'));
-        fetchRoute();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.disableFailed'));
     }
   }
 

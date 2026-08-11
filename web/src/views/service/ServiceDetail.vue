@@ -28,6 +28,15 @@
         <button
           v-if="service"
           class="app-button-danger h-9 px-3"
+          :disabled="operating || !canStopService"
+          @click="openStopDialog"
+        >
+          <Square class="size-4" />
+          {{ t('service.actions.stop') }}
+        </button>
+        <button
+          v-if="service"
+          class="app-button-danger h-9 px-3"
           :disabled="operating || service.status !== 'stopped'"
           @click="openDeleteDialog"
         >
@@ -202,6 +211,33 @@
     </AppDialog>
 
     <AppDialog
+      v-model:open="isStopDialogOpen"
+      :title="t('service.stop.dialogTitle')"
+      width-class="w-[min(420px,calc(100vw-32px))]"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-muted-foreground">{{ deployTargetLabel }}</p>
+        <p class="text-sm text-muted-foreground">{{ t('service.stop.confirm') }}</p>
+        <label class="flex items-center gap-2">
+          <input v-model="stopRemoveVolumes" type="checkbox" class="app-checkbox" />
+          <span class="text-sm text-foreground">{{ t('service.stop.removeVolumes') }}</span>
+        </label>
+      </div>
+      <p v-if="stopSubmitError" class="app-field-error mt-3" role="alert">
+        {{ stopSubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.stop')"
+          variant="destructive"
+          @cancel="isStopDialogOpen = false"
+          @confirm="handleStopOk"
+        />
+      </template>
+    </AppDialog>
+
+    <AppDialog
       v-model:open="isDeleteDialogOpen"
       :title="t('service.detail.dialog.confirmDelete')"
       width-class="w-[min(420px,calc(100vw-32px))]"
@@ -310,6 +346,7 @@
             language="plaintext"
             height="100%"
             :readonly="true"
+            @mount="handleLogEditorMount"
           />
         </div>
       </div>
@@ -327,7 +364,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, FileCode2, Loader2, RefreshCw, Rocket, Trash2 } from '@lucide/vue';
+  import { ArrowLeft, FileCode2, Loader2, RefreshCw, Rocket, Square, Trash2 } from '@lucide/vue';
   import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -356,6 +393,7 @@
   import { delayAsync, formatTime } from '@/utils/time';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import type { editor } from 'monaco-editor';
   import ServiceComponentsCard from './components/ServiceComponentsCard.vue';
   import ServiceEnvironmentCard from './components/ServiceEnvironmentCard.vue';
 
@@ -381,6 +419,9 @@
   const isDeployDialogOpen = ref(false);
   const deployForm = reactive({ force_recreate: false });
   const deploySubmitError = ref('');
+  const isStopDialogOpen = ref(false);
+  const stopRemoveVolumes = ref(false);
+  const stopSubmitError = ref('');
   const isDeleteDialogOpen = ref(false);
   const deleteError = ref('');
   const previewOpen = ref(false);
@@ -398,6 +439,7 @@
   const isLogsAutoRefreshing = ref(false);
   let logsRefreshAbort: AbortController | null = null;
   let logsRefreshGeneration = 0;
+  let logEditor: editor.IStandaloneCodeEditor | null = null;
 
   type LogStatus = 'loading' | 'streaming' | 'done' | 'empty' | 'error';
 
@@ -420,6 +462,12 @@
       version: current.version_label,
     });
   });
+  const canStopService = computed(
+    () =>
+      !!service.value &&
+      !service.value.active_deployment &&
+      (service.value.status === 'running' || service.value.status === 'faulted')
+  );
   const basicEditVersionSelectOptions = computed(() =>
     basicEditVersions.value.map((version) => ({
       value: version.id,
@@ -571,11 +619,15 @@
       logError.value = '';
     }
     try {
-      const data = await applicationApi.getLogs(current.application_id, {
-        tail: 200,
-        service_id: current.id,
-        component: logsComponent.value,
-      });
+      const data = await applicationApi.getLogs(
+        current.application_id,
+        {
+          tail: 200,
+          service_id: current.id,
+          component: logsComponent.value,
+        },
+        { signal }
+      );
       if (generation !== undefined && signal && !isCurrentLogsRefresh(generation, signal)) return;
       logText.value = data.logs || '';
       logStatus.value = logText.value
@@ -583,12 +635,27 @@
           ? 'streaming'
           : 'done'
         : 'empty';
+      revealLastLine(logEditor);
     } catch (error) {
+      if (signal?.aborted) {
+        return;
+      }
       if (generation === undefined || !signal || isCurrentLogsRefresh(generation, signal)) {
         logStatus.value = 'error';
         logError.value = error instanceof Error ? error.message : t('service.logs.loadFailed');
       }
     }
+  }
+
+  function revealLastLine(ed: editor.IStandaloneCodeEditor | null) {
+    if (!ed) return;
+    const n = ed.getModel()?.getLineCount() ?? 0;
+    if (n > 0) ed.revealLine(n);
+  }
+
+  function handleLogEditorMount(ed: editor.IStandaloneCodeEditor) {
+    logEditor = ed;
+    revealLastLine(ed);
   }
 
   function stopLogsAutoRefresh() {
@@ -634,11 +701,11 @@
     logText.value = '';
     logError.value = '';
     logStatus.value = 'loading';
+    logEditor = null;
     logsDrawerOpen.value = true;
-    void (async () => {
-      await fetchServiceLogs();
-      startLogsAutoRefresh();
-    })();
+    // Start refresh first so the initial load does not clear an in-flight loop.
+    startLogsAutoRefresh();
+    void fetchServiceLogs(logsRefreshGeneration, logsRefreshAbort?.signal);
   }
 
   function handleLogsDrawerOpenChange(open: boolean) {
@@ -649,10 +716,14 @@
     logText.value = '';
     logError.value = '';
     logStatus.value = 'loading';
+    logEditor = null;
   }
 
   function retryLogs() {
-    void fetchServiceLogs();
+    void fetchServiceLogs(
+      isLogsAutoRefreshing.value ? logsRefreshGeneration : undefined,
+      isLogsAutoRefreshing.value ? (logsRefreshAbort?.signal ?? undefined) : undefined
+    );
   }
 
   function openDeployDialog() {
@@ -690,6 +761,41 @@
     } catch (error) {
       deploySubmitError.value =
         error instanceof Error ? error.message : t('service.toast.deployFailed');
+    }
+  }
+
+  function openStopDialog() {
+    if (!canStopService.value) {
+      return;
+    }
+    stopRemoveVolumes.value = false;
+    stopSubmitError.value = '';
+    isStopDialogOpen.value = true;
+  }
+
+  async function handleStopOk() {
+    const current = service.value;
+    if (!current) {
+      return;
+    }
+    stopSubmitError.value = '';
+    try {
+      await executeOperation(async () => {
+        const result = await applicationApi.stop(current.application_id, {
+          service_id: current.id,
+          remove_volumes: stopRemoveVolumes.value,
+        });
+        toast.success(t('service.toast.stopQueued'));
+        isStopDialogOpen.value = false;
+        if (result.deployment_id) {
+          await router.push(`/deployment/${result.deployment_id}`);
+          return;
+        }
+        await load();
+      });
+    } catch (error) {
+      stopSubmitError.value =
+        error instanceof Error ? error.message : t('service.toast.stopFailed');
     }
   }
 

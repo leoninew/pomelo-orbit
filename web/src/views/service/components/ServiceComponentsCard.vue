@@ -25,7 +25,10 @@
             <td class="max-w-sm break-all text-muted-foreground">
               {{ component.container_name }}
             </td>
-            <td class="w-[480px] max-w-[480px] truncate text-muted-foreground" :title="component.image">
+            <td
+              class="w-[480px] max-w-[480px] truncate text-muted-foreground"
+              :title="component.image"
+            >
               {{ component.image }}
             </td>
             <td class="min-w-72">
@@ -34,12 +37,16 @@
                 class="flex flex-wrap gap-1.5"
               >
                 <div
-                  v-for="endpoint in publishedServiceComponentEndpoints(component.effective_endpoints)"
+                  v-for="endpoint in publishedServiceComponentEndpoints(
+                    component.effective_endpoints
+                  )"
                   :key="endpoint.name"
                   class="flex items-center gap-2 text-sm"
                 >
                   <AppBadge variant="pill">{{ endpoint.mode }}</AppBadge>
-                  <span class="text-foreground">{{ endpoint.protocol }}/{{ endpoint.container_port }}</span>
+                  <span class="text-foreground">
+                    {{ endpoint.protocol }}/{{ endpoint.container_port }}
+                  </span>
                 </div>
               </div>
             </td>
@@ -73,9 +80,7 @@
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
-  import {
-    publishedServiceComponentEndpoints,
-  } from './serviceComponentPorts';
+  import { publishedServiceComponentEndpoints } from './serviceComponentPorts';
 
   defineProps<{ service: ServiceResp }>();
 

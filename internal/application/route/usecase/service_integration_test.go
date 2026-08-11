@@ -48,6 +48,9 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !enabled.Enabled {
+		t.Fatalf("expected created route to preserve enabled=true, got %+v", enabled)
+	}
 	if len(publisher.snapshots) == 0 {
 		t.Fatal("expected rest snapshot after enabling route")
 	}
@@ -149,6 +152,33 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 	)
 	seedRouteTestGateway(t, database)
 	return service, publisher, client, database
+}
+
+func TestValidRouteFieldsAllowsOptionalTargetUrlPort(t *testing.T) {
+	validTargets := []string{
+		"http://host",
+		"https://host",
+		"http://host:8080",
+		"https://api.example.test:443",
+	}
+	for _, target := range validTargets {
+		if !validRouteFields("api-route", "api.example.test", "/", target) {
+			t.Errorf("expected target URL to be valid: %s", target)
+		}
+	}
+
+	invalidTargets := []string{
+		"host:8080",
+		"http://",
+		"http://host/path",
+		"ftp://host",
+		"http://host:",
+	}
+	for _, target := range invalidTargets {
+		if validRouteFields("api-route", "api.example.test", "/", target) {
+			t.Errorf("expected target URL to be invalid: %s", target)
+		}
+	}
 }
 
 func seedRouteTestGateway(t *testing.T, database *sql.DB) {

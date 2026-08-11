@@ -298,7 +298,7 @@
           type="text"
           class="app-input"
           :class="errors.target_url ? 'app-input-error' : ''"
-          placeholder="http://host:port"
+          placeholder="http[s]://host[:port]"
           :aria-invalid="errors.target_url ? 'true' : undefined"
           @input="errors.target_url = ''"
         />
@@ -308,7 +308,7 @@
         <p v-else class="app-field-hint">{{ t('route.hints.targetUrl') }}</p>
       </div>
       <label class="flex cursor-pointer items-center gap-3">
-        <SwitchRoot v-model:checked="form.enabled" class="app-switch-root">
+        <SwitchRoot v-model="form.enabled" class="app-switch-root">
           <SwitchThumb class="app-switch-thumb" />
         </SwitchRoot>
         <span class="text-sm text-foreground">{{ t('route.status.enabled') }}</span>
@@ -408,7 +408,7 @@
           type="text"
           class="app-input"
           :class="editErrors.target_url ? 'app-input-error' : ''"
-          placeholder="http://host:port"
+          placeholder="http[s]://host[:port]"
           :aria-invalid="editErrors.target_url ? 'true' : undefined"
           :aria-describedby="editErrors.target_url ? 'edit-route-target-url-error' : undefined"
           @input="clearEditError('target_url')"
@@ -424,7 +424,7 @@
         <p v-else class="app-field-hint">{{ t('route.hints.targetUrl') }}</p>
       </div>
       <label class="flex cursor-pointer items-center gap-3">
-        <SwitchRoot v-model:checked="editForm.enabled" class="app-switch-root">
+        <SwitchRoot v-model="editForm.enabled" class="app-switch-root">
           <SwitchThumb class="app-switch-thumb" />
         </SwitchRoot>
         <span class="text-sm text-foreground">{{ t('route.status.enabled') }}</span>
@@ -464,6 +464,7 @@
 
   const toast = useToast();
   const { t } = useI18n();
+  const targetUrlPattern = /^https?:\/\/[a-zA-Z0-9.-]+(?::\d+)?$/;
   const projectStore = useProjectStore();
   const { status: routeStatus, error: routeError, execute: executeRoutes } = useStatusAsync();
   const { loading: routeOperating, execute: executeRouteOperation } = useStatusAsync();
@@ -515,7 +516,7 @@
   function validate() {
     errors.name = /^[a-z][a-z0-9._-]*$/.test(form.name) ? '' : t('route.validation.nameInvalid');
     errors.domain = form.domain.trim() ? '' : t('route.validation.domainRequired');
-    errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
+    errors.target_url = targetUrlPattern.test(form.target_url)
       ? ''
       : t('route.validation.targetUrlInvalid');
     return !errors.name && !errors.domain && !errors.target_url;
@@ -608,7 +609,7 @@
       ? ''
       : t('route.validation.nameInvalid');
     editErrors.domain = editForm.domain.trim() ? '' : t('route.validation.domainRequired');
-    editErrors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(editForm.target_url)
+    editErrors.target_url = targetUrlPattern.test(editForm.target_url)
       ? ''
       : t('route.validation.targetUrlInvalid');
     return !editErrors.name && !editErrors.domain && !editErrors.target_url;
@@ -648,10 +649,20 @@
     }
     try {
       await executeRouteOperation(async () => {
-        await routeApi.create(form, { project_id: projectId });
+        const created = await routeApi.create(
+          {
+            name: form.name,
+            domain: form.domain,
+            path_prefix: form.path_prefix,
+            target_url: form.target_url,
+            enabled: form.enabled,
+          },
+          { project_id: projectId }
+        );
+        routes.value = routes.value.map((item) => (item.id === created.id ? created : item));
         toast.success(t('route.toast.addSuccess'));
         isCreateDialogOpen.value = false;
-        fetchRoutes();
+        await fetchRoutes();
       });
     } catch (error) {
       createSubmitError.value = error instanceof Error ? error.message : t('route.toast.addFailed');
@@ -677,7 +688,8 @@
         editingRoute.value = updated;
         toast.success(t('route.toast.updateSuccess'));
         closeEditModal();
-        fetchTraefikRoutes();
+        await fetchRoutes();
+        await fetchTraefikRoutes();
       });
     } catch (error) {
       editSubmitError.value =

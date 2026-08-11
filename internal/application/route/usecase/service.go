@@ -77,7 +77,7 @@ const (
 )
 
 var routeNamePattern = regexp.MustCompile(`^[a-z][a-z0-9._-]*$`)
-var routeTargetUrlPattern = regexp.MustCompile(`^https?://[a-zA-Z0-9.-]+:\d+$`)
+var routeTargetUrlPattern = regexp.MustCompile(`^https?://[a-zA-Z0-9.-]+(?::\d+)?$`)
 
 // ListRoutes returns routes visible to the user.
 func (s Service) ListRoutes(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[model.Route], error) {

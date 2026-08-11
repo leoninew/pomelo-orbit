@@ -901,13 +901,14 @@ export default {
     hints: {
       name: 'Start with a lowercase letter; numbers, dots, underscores, and hyphens are allowed',
       pathPrefix: 'Match request paths that start with this prefix. Defaults to /',
-      targetUrl: 'Format: http://host:port, for example http://127.0.0.1:8080',
+      targetUrl:
+        'Format: http[s]://host[:port], for example http://127.0.0.1:8080 or https://example.com',
     },
     validation: {
       nameInvalid:
         'Must start with a lowercase letter and only contain lowercase letters, numbers, dots, underscores, and hyphens',
       domainRequired: 'Domain is required',
-      targetUrlInvalid: 'Format should be http://host:port',
+      targetUrlInvalid: 'Format should be http[s]://host[:port]',
     },
     toast: {
       selectProjectRequired: 'Please select a project first',

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { ServiceComponentDeclaredEndpoint } from '@/gen/proto/orbit/v1/service/service';
 import { publishedServiceComponentEndpoints } from './serviceComponentPorts';
 
-function endpoint(values: Partial<ServiceComponentDeclaredEndpoint>): ServiceComponentDeclaredEndpoint {
+function endpoint(
+  values: Partial<ServiceComponentDeclaredEndpoint>
+): ServiceComponentDeclaredEndpoint {
   return {
     name: 'api',
     protocol: 'tcp',

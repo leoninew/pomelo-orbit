@@ -61,7 +61,8 @@
               </td>
               <td class="whitespace-nowrap text-foreground">{{ formatTime(p.created_at) }}</td>
               <td class="whitespace-nowrap">
-                <button class="app-link" @click="openEditModal(p)">编辑</button>
+                <button class="app-link mr-3" @click="openEditModal(p)">编辑</button>
+                <button class="app-link-danger" @click="openDeleteDialog(p)">删除</button>
               </td>
             </tr>
           </tbody>
@@ -360,6 +361,35 @@
       />
     </template>
   </AppDialog>
+
+  <AppDialog
+    v-model:open="showDeleteDialog"
+    title="删除仓库"
+    width-class="w-[min(420px,calc(100vw-32px))]"
+  >
+    <p class="text-sm text-foreground">
+      确定要删除仓库「
+      <span>{{ pendingDelete?.name ?? '' }}</span>
+      」吗？此操作不可撤销。
+    </p>
+    <label class="mt-4 flex cursor-pointer items-center gap-2">
+      <input v-model="deleteWorkspace" type="checkbox" class="size-4 accent-destructive" />
+      <span class="text-sm text-foreground">
+        同时删除工作目录（data/pipeline/{{ pendingDelete?.code }}）
+      </span>
+    </label>
+    <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+      {{ deleteSubmitError }}
+    </p>
+    <template #footer>
+      <AppDialogActions
+        :busy="operating"
+        variant="destructive"
+        @cancel="showDeleteDialog = false"
+        @confirm="handleDeleteOk"
+      />
+    </template>
+  </AppDialog>
 </template>
 
 <script setup lang="ts">
@@ -414,6 +444,10 @@
   const searchText = ref('');
   const showCreateModal = ref(false);
   const showEditModal = ref(false);
+  const showDeleteDialog = ref(false);
+  const pendingDelete = ref<RepositoryResp>();
+  const deleteWorkspace = ref(false);
+  const deleteSubmitError = ref('');
   const editingRepository = ref<RepositoryResp>();
   const createFormError = ref('');
   const editFormError = ref('');
@@ -709,6 +743,37 @@
       if (!applyEditFailure(error)) {
         editFormError.value = error instanceof Error ? error.message : '更新失败';
       }
+    }
+  }
+
+  function openDeleteDialog(repository: RepositoryResp) {
+    pendingDelete.value = repository;
+    deleteWorkspace.value = false;
+    deleteSubmitError.value = '';
+    showDeleteDialog.value = true;
+  }
+
+  async function handleDeleteOk() {
+    const repository = pendingDelete.value;
+    if (!repository) {
+      return;
+    }
+    deleteSubmitError.value = '';
+    try {
+      await executeOp(async () => {
+        await repositoryApi.delete(repository.id, {
+          delete_workspace: deleteWorkspace.value,
+        });
+        toast.success('删除成功');
+        showDeleteDialog.value = false;
+        pendingDelete.value = undefined;
+        if (repositories.value.length === 1 && pagination.current > 1) {
+          pagination.current -= 1;
+        }
+        await fetchProjects();
+      });
+    } catch (error) {
+      deleteSubmitError.value = error instanceof Error ? error.message : '删除失败';
     }
   }
 

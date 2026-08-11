@@ -882,12 +882,12 @@ export default {
     hints: {
       name: '小写字母开头，可含数字、点号、下划线和连字符',
       pathPrefix: '匹配以该前缀开头的请求路径，默认 /',
-      targetUrl: '格式：http://host:port，例如 http://127.0.0.1:8080',
+      targetUrl: '格式：http[s]://host[:port]，例如 http://127.0.0.1:8080 或 https://example.com',
     },
     validation: {
       nameInvalid: '必须以小写字母开头，只能包含小写字母、数字、点号、下划线和连字符',
       domainRequired: '请输入域名',
-      targetUrlInvalid: '格式应为 http://host:port',
+      targetUrlInvalid: '格式应为 http[s]://host[:port]',
     },
     toast: {
       selectProjectRequired: '请先选择项目',

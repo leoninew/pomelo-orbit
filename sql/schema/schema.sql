@@ -272,7 +272,7 @@ CREATE INDEX IF NOT EXISTS idx_repository_project ON repository(project_id);
 
 CREATE TABLE IF NOT EXISTS pipeline_run (
     id TEXT PRIMARY KEY,
-    project_id TEXT REFERENCES project(id),
+    project_id TEXT,
     repository_id TEXT NOT NULL,
     repository_name TEXT NOT NULL DEFAULT '',
     snapshot_id TEXT NOT NULL,
@@ -287,10 +287,7 @@ CREATE TABLE IF NOT EXISTS pipeline_run (
     started_at DATETIME,
     finished_at DATETIME,
     error_message TEXT,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (repository_id) REFERENCES repository(id),
-    FOREIGN KEY (snapshot_id) REFERENCES pipeline_snapshot(id),
-    FOREIGN KEY (retry_of) REFERENCES pipeline_run(id)
+    created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_pipeline_run_pipeline_created ON pipeline_run(pipeline_id, created_at DESC);
@@ -309,8 +306,7 @@ CREATE TABLE IF NOT EXISTS pipeline_stage_run (
     started_at DATETIME,
     finished_at DATETIME,
     exit_code INTEGER,
-    error_message TEXT,
-    FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE
+    error_message TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_pipeline_stage_run_run ON pipeline_stage_run(pipeline_run_id);
@@ -325,8 +321,7 @@ CREATE TABLE IF NOT EXISTS pipeline_run_version_binding (
     source_version_id TEXT NOT NULL,
     source_version_label TEXT NOT NULL,
     generated_version_id TEXT,
-    generated_version_label TEXT,
-    FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE
+    generated_version_label TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_pipeline_run_version_binding_source_version
@@ -353,7 +348,6 @@ CREATE TABLE IF NOT EXISTS artifact (
     local_image_sha256 TEXT,
     source_artifact_id TEXT,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE,
     FOREIGN KEY (source_artifact_id) REFERENCES artifact(id) ON DELETE SET NULL,
     CHECK (
         (collector = 'file' AND location IS NOT NULL AND value IS NULL AND value_format IS NULL AND image_ref IS NULL AND local_image_sha256 IS NULL AND source_artifact_id IS NULL) OR

@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"database/sql"
+	"fmt"
 	"log/slog"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
@@ -13,11 +14,24 @@ func OpenDatabase(cfg config.Config) (*sql.DB, error) {
 }
 
 func RunMigrations(database *sql.DB, driver string, logger *slog.Logger) error {
-	logger.Info("run schema migrations", "driver", driver)
+	before, err := MigrationVersion(database, driver)
+	if err != nil {
+		return fmt.Errorf("read schema migration version before migration: %w", err)
+	}
+	logger.Info("run schema migrations", "driver", driver, "from_version", before.Version, "dirty", before.Dirty)
 	if err := db.MigrateUp(database, driver); err != nil {
 		return err
 	}
-	logger.Info("schema migrations complete", "driver", driver)
+	after, err := MigrationVersion(database, driver)
+	if err != nil {
+		return fmt.Errorf("read schema migration version after migration: %w", err)
+	}
+	logger.Info("schema migrations complete", "driver", driver,
+		"from_version", before.Version,
+		"to_version", after.Version,
+		"applied", after.Version != before.Version,
+		"dirty", after.Dirty,
+	)
 	return db.MigrateData(database, driver, logger)
 }
 

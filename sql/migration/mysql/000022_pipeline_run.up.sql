@@ -16,11 +16,7 @@ CREATE TABLE IF NOT EXISTS pipeline_run (
     started_at DATETIME(3),
     finished_at DATETIME(3),
     error_message TEXT,
-    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    FOREIGN KEY (project_id) REFERENCES project(id),
-    FOREIGN KEY (repository_id) REFERENCES repository(id),
-    FOREIGN KEY (snapshot_id) REFERENCES pipeline_snapshot(id),
-    FOREIGN KEY (retry_of) REFERENCES pipeline_run(id)
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX idx_pipeline_run_pipeline_created ON pipeline_run(pipeline_id, created_at DESC);
@@ -40,8 +36,7 @@ CREATE TABLE IF NOT EXISTS pipeline_stage_run (
     finished_at DATETIME(3),
     exit_code INT,
     error_message TEXT,
-    UNIQUE KEY uq_pipeline_stage_run_run_stage (pipeline_run_id, stage_id),
-    FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE
+    UNIQUE KEY uq_pipeline_stage_run_run_stage (pipeline_run_id, stage_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX idx_pipeline_stage_run_run ON pipeline_stage_run(pipeline_run_id);
@@ -54,8 +49,7 @@ CREATE TABLE IF NOT EXISTS pipeline_run_version_binding (
     source_version_id VARCHAR(26) NOT NULL,
     source_version_label VARCHAR(255) NOT NULL,
     generated_version_id VARCHAR(26),
-    generated_version_label VARCHAR(255),
-    FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE
+    generated_version_label VARCHAR(255)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX idx_pipeline_run_version_binding_source_version
@@ -83,7 +77,6 @@ CREATE TABLE IF NOT EXISTS artifact (
     source_artifact_id VARCHAR(26),
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     FOREIGN KEY (project_id) REFERENCES project(id),
-    FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id) ON DELETE CASCADE,
     CONSTRAINT fk_artifact_source FOREIGN KEY (source_artifact_id) REFERENCES artifact(id) ON DELETE SET NULL,
     CONSTRAINT chk_artifact_collector_payload CHECK (
         (collector = 'file' AND location IS NOT NULL AND value IS NULL AND value_format IS NULL AND image_ref IS NULL AND local_image_sha256 IS NULL AND source_artifact_id IS NULL) OR

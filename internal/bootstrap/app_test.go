@@ -35,7 +35,8 @@ func TestMigrateAndMigrationVersion(t *testing.T) {
 		t.Fatalf("service component mount source path mode column: %v", err)
 	}
 	for _, want := range []string{
-		`msg="run schema migrations" driver=sqlite`,
+		`msg="run schema migrations" driver=sqlite from_version=0 dirty=false`,
+		`msg="schema migrations complete" driver=sqlite from_version=0 to_version=30 applied=true dirty=false`,
 		`msg="execute data migration" path=migration/data/sqlite/000029_seed_system.up.sql`,
 	} {
 		if !strings.Contains(logs.String(), want) {

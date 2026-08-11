@@ -23,6 +23,9 @@ type PipelineUpdateInput struct {
 	Name                 *string
 	Description          *string
 	VariableDeclarations *[]map[string]any
+	// ApplicationId is a first-time bind only: allowed when the pipeline has no
+	// application yet; rejected when already bound or when clearing.
+	ApplicationId *string
 }
 
 type PipelineInstantiateInput struct {

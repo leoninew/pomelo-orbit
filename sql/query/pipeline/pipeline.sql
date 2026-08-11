@@ -25,7 +25,7 @@ INSERT INTO pipeline (id, project_id, kind, source_pipeline_id, source_template_
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdatePipeline :exec
-UPDATE pipeline SET name = ?, description = ?, variable_declarations = ?, version = ?, version_fork_strategy = ?, fixed_version_id = ?, fixed_version_label = ?, updated_at = ? WHERE id = ?;
+UPDATE pipeline SET name = ?, description = ?, variable_declarations = ?, version = ?, application_id = ?, application_name = ?, version_fork_strategy = ?, fixed_version_id = ?, fixed_version_label = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeletePipeline :exec
 DELETE FROM pipeline WHERE id = ?;

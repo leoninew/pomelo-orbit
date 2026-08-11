@@ -57,7 +57,7 @@ func (r Repository) CreatePipeline(ctx context.Context, item model.Pipeline) err
 	return translate(r.q(ctx).CreatePipeline(ctx, pipelineParams(item)))
 }
 func (r Repository) UpdatePipeline(ctx context.Context, item model.Pipeline) error {
-	return translate(r.q(ctx).UpdatePipeline(ctx, pipelinesqlc.UpdatePipelineParams{Name: item.Name, Description: item.Description, VariableDeclarations: item.VariableDeclarations, Version: int64(item.Version), VersionForkStrategy: nullString(item.VersionForkStrategy), FixedVersionID: nullString(item.FixedVersionId), FixedVersionLabel: nullString(item.FixedVersionLabel), UpdatedAt: time.Now().UTC(), ID: item.Id}))
+	return translate(r.q(ctx).UpdatePipeline(ctx, pipelinesqlc.UpdatePipelineParams{Name: item.Name, Description: item.Description, VariableDeclarations: item.VariableDeclarations, Version: int64(item.Version), ApplicationID: nullString(item.ApplicationId), ApplicationName: nullString(item.ApplicationName), VersionForkStrategy: nullString(item.VersionForkStrategy), FixedVersionID: nullString(item.FixedVersionId), FixedVersionLabel: nullString(item.FixedVersionLabel), UpdatedAt: time.Now().UTC(), ID: item.Id}))
 }
 func (r Repository) DeletePipeline(ctx context.Context, id string) error {
 	return translate(r.q(ctx).DeletePipeline(ctx, id))

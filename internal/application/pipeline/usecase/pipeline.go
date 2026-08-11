@@ -234,6 +234,15 @@ func (s Service) UpdatePipeline(ctx context.Context, userId string, pipelineId s
 			changed = true
 		}
 	}
+	if input.ApplicationId != nil {
+		bound, err := s.bindApplicationIfUnbound(ctx, &pipeline, *input.ApplicationId)
+		if err != nil {
+			return pipelinedto.PipelineDetail{}, err
+		}
+		if bound {
+			changed = true
+		}
+	}
 	if err := s.validateStoredPipelineConfiguration(ctx, pipeline); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
@@ -244,6 +253,31 @@ func (s Service) UpdatePipeline(ctx context.Context, userId string, pipelineId s
 		}
 	}
 	return s.pipelineDetail(ctx, pipeline)
+}
+
+// bindApplicationIfUnbound sets application identity only when the pipeline has none.
+// Rebinding or clearing an existing application is rejected.
+func (s Service) bindApplicationIfUnbound(ctx context.Context, pipeline *model.Pipeline, applicationID string) (bool, error) {
+	if pipeline.Kind != model.PipelineKindApplication {
+		return false, apperror.New(apperror.KindValidation, "only application pipelines can bind an application")
+	}
+	id := strings.TrimSpace(applicationID)
+	if id == "" {
+		return false, apperror.New(apperror.KindValidation, "application_id cannot be empty")
+	}
+	if pipeline.ApplicationId != nil {
+		if strings.TrimSpace(*pipeline.ApplicationId) == id {
+			return false, nil
+		}
+		return false, apperror.New(apperror.KindValidation, "application binding cannot be changed once set")
+	}
+	application, err := s.applicationInProject(ctx, id, pipelineProjectId(*pipeline))
+	if err != nil {
+		return false, err
+	}
+	pipeline.ApplicationId = &application.Id
+	pipeline.ApplicationName = &application.Name
+	return true, nil
 }
 
 func (s Service) DeletePipeline(ctx context.Context, userId string, pipelineId string) error {

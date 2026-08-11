@@ -194,14 +194,29 @@
           <input
             v-model="infoForm.name"
             class="app-input"
-            :class="infoError ? 'app-input-error' : ''"
+            :class="infoErrors.name ? 'app-input-error' : ''"
           />
-          <p v-if="infoError" class="app-field-error">{{ infoError }}</p>
+          <p v-if="infoErrors.name" class="app-field-error" role="alert">{{ infoErrors.name }}</p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label">说明</label>
-          <textarea v-model="infoForm.description" rows="3" class="app-textarea" />
+          <input v-model="infoForm.description" class="app-input" />
         </div>
+        <div v-if="!isTemplate" class="space-y-1.5">
+          <label class="app-field-label">应用</label>
+          <ComboboxSelect
+            v-model="infoForm.applicationId"
+            :options="applicationOptions"
+            :disabled="!canBindApplication"
+            placeholder="可选；绑定后不可更改"
+            :invalid="Boolean(infoErrors.applicationId)"
+            @update:model-value="infoErrors.applicationId = ''"
+          />
+          <p v-if="infoErrors.applicationId" class="app-field-error" role="alert">
+            {{ infoErrors.applicationId }}
+          </p>
+        </div>
+        <p v-if="infoError" class="app-field-error" role="alert">{{ infoError }}</p>
       </form>
       <template #footer>
         <AppDialogActions :busy="saving" @cancel="infoOpen = false" @confirm="saveInfo" />
@@ -411,9 +426,11 @@
   import { ArrowLeft, CopyPlus, Play, Plus, RefreshCw, Trash2 } from '@lucide/vue';
   import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
+  import { applicationApi } from '@/api/application/application';
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
+  import { useProjectStore } from '@/stores/project';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -429,6 +446,7 @@
     PipelineStageNodeResp,
     PipelineStageTemplateUpdatePreviewResp,
   } from '@/gen/proto/orbit/v1/pipeline/pipeline_stage';
+  import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
   import type { PipelineRunVariablePreviewResp } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
   import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
@@ -437,6 +455,7 @@
   const route = useRoute();
   const router = useRouter();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const { status, execute } = useStatusAsync();
   const { loading: saving, execute: executeSave } = useStatusAsync();
   const pipelineId = computed(() => String(route.params.id));
@@ -458,6 +477,8 @@
     import('@/gen/proto/orbit/v1/pipeline/pipeline_stage').PipelineStageResp[]
   >([]);
   const infoError = ref('');
+  const infoErrors = reactive({ name: '', applicationId: '' });
+  const applications = ref<ApplicationResp[]>([]);
   const stageError = ref('');
   const runError = ref('');
   const runPreview = ref<PipelineRunVariablePreviewResp>();
@@ -469,7 +490,7 @@
   const initialRunVariableValues = ref<Record<string, string>>({});
   const variableError = ref('');
   const deleteError = ref('');
-  const infoForm = reactive({ name: '', description: '' });
+  const infoForm = reactive({ name: '', description: '', applicationId: '' });
   const stageForm = reactive({
     source_template_stage_id: '',
     name: '',
@@ -485,6 +506,20 @@
   const hasApplicationBinding = computed(() =>
     Boolean(pipeline.value?.application_id && pipeline.value.application_name)
   );
+  const canBindApplication = computed(() => !isTemplate.value && !hasApplicationBinding.value);
+  const applicationOptions = computed(() => {
+    const options = applications.value.map((application) => ({
+      value: application.id,
+      label: application.name,
+    }));
+    // Ensure the currently bound application remains visible when the control is read-only.
+    const currentId = pipeline.value?.application_id;
+    const currentName = pipeline.value?.application_name;
+    if (currentId && currentName && !options.some((option) => option.value === currentId)) {
+      options.unshift({ value: currentId, label: currentName });
+    }
+    return options;
+  });
   const orderedStages = computed(() =>
     [...(pipeline.value?.stage_nodes || [])].sort(
       (left, right) => left.sort_order - right.sort_order
@@ -658,22 +693,55 @@
     });
   }
 
-  function openInfoDialog() {
+  async function openInfoDialog() {
     if (!pipeline.value) return;
-    Object.assign(infoForm, { name: pipeline.value.name, description: pipeline.value.description });
+    Object.assign(infoForm, {
+      name: pipeline.value.name,
+      description: pipeline.value.description,
+      applicationId: pipeline.value.application_id || '',
+    });
+    Object.assign(infoErrors, { name: '', applicationId: '' });
     infoError.value = '';
+    applications.value = [];
+    if (!isTemplate.value) {
+      const projectId = pipeline.value.project_id || projectStore.activeProjectId || '';
+      if (!projectId) {
+        toast.error('请先选择项目');
+        return;
+      }
+      try {
+        const page = await applicationApi.list({
+          project_id: projectId,
+          per_page: 100,
+        });
+        applications.value = page.items ?? [];
+      } catch (reason) {
+        toast.error(reason instanceof Error ? reason.message : '加载应用列表失败');
+        return;
+      }
+    }
     infoOpen.value = true;
   }
 
   async function saveInfo() {
-    infoError.value = infoForm.name.trim() ? '' : '请输入流水线名称';
-    if (infoError.value) return;
+    infoErrors.name = infoForm.name.trim() ? '' : '请输入流水线名称';
+    infoErrors.applicationId = '';
+    infoError.value = '';
+    if (infoErrors.name) return;
+    const payload: {
+      name: string;
+      description: string;
+      application_id?: string;
+    } = {
+      name: infoForm.name.trim(),
+      description: infoForm.description,
+    };
+    if (canBindApplication.value && infoForm.applicationId) {
+      payload.application_id = infoForm.applicationId;
+    }
     try {
       await executeSave(async () => {
-        pipeline.value = await pipelineApi.update(pipelineId.value, {
-          name: infoForm.name.trim(),
-          description: infoForm.description,
-        });
+        pipeline.value = await pipelineApi.update(pipelineId.value, payload);
         await loadPipelineVariablePreview();
         infoOpen.value = false;
         toast.success('流水线信息已保存');

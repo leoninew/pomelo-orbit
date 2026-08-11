@@ -74,7 +74,7 @@ func (h Handler) UpdatePipeline(c *gin.Context) {
 		values := variableRequestMaps(req.VariableDeclarations.Items)
 		variables = &values
 	}
-	detail, err := h.service.UpdatePipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinedto.PipelineUpdateInput{Name: req.Name, Description: req.Description, VariableDeclarations: variables})
+	detail, err := h.service.UpdatePipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinedto.PipelineUpdateInput{Name: req.Name, Description: req.Description, VariableDeclarations: variables, ApplicationId: req.ApplicationId})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return

@@ -66,7 +66,7 @@ Pipeline {
 - `kind=template` 时，`source_pipeline_id`、`source_template_name`、`source_template_version`、`application_id`、`application_name`、`repository_id`、`repository_name` 均为 `NULL`。
 - `kind=application` 时，来源和 Repository ID/名称字段均非空，来源 Pipeline 必须是同 Project 的 Template，Repository 也必须属于同 Project。Application ID/名称必须同时存在或同时为空；存在时必须属于同 Project。
 - Application Pipeline 存在至少一个 Component 绑定制品时，Application 和 `version_fork_strategy` 必须存在；策略为 `latest` 或 `fixed`。`fixed` 必须有属于该 Application 的 `fixed_version_id`，`latest` 不得有 `fixed_version_id`。没有任何 Component 绑定制品时，上述策略字段均为 `NULL`。
-- `source_pipeline_id`、`repository_id` 与可选的 `application_id` 都是 Application Pipeline 的身份，不提供更新接口。绑定错误时应从 Template 重新创建 Pipeline，而不是把已配置 Pipeline 改指向另一组资源。
+- `source_pipeline_id`、`repository_id` 是 Application Pipeline 的身份，创建后不可改。`application_id` 可在创建时为空；**仅当当前未绑定时允许首次补绑**，已绑定后不可更改或解绑。绑错应用时应从 Template 重新创建 Pipeline。
 - Template 和 Application Pipeline 都以 `(project_id, name)` 唯一；同一 Application/Repository 可有多个 Pipeline，以支持不同构建策略或分支策略。
 - Pipeline 使用物理删除，不引入归档或停用状态。数据库中既有 Pipeline/Snapshot/Run/Artifact 历史的具体处置属于后续独立迁移任务；业务代码不为旧结构保留删除兼容逻辑。
 
@@ -241,13 +241,13 @@ Proto、TypeScript 类型、MCP 只暴露上述新模型。没有旧字段别名
 
 应用流水线列表展示 `kind=application`，并显示固定的 Repository 与可选 Application。详情页包含：
 
-- 不可编辑的来源 Template、Repository 和可选 Application；
+- 不可编辑的来源 Template 与 Repository；Application 创建后若未绑定，可在基本信息中首次补绑，绑定后只读；
 - 独立的 Stage 编排和变量编辑；绑定 Application 时才展示构建 Component/fork 策略；
 - 仅 Application Pipeline 可用的运行按钮和 Run/Artifact 历史；
 - 变量声明表显示同一变量解析器计算的默认运行时值，而不是只显示静态声明；
 - 运行对话框只包含 ref 与可覆盖变量，初始与重算期间显示加载状态，预览失败时禁止提交。
 
-Application Pipeline 创建过程按名称、Repository（必填）、Application（可选）的顺序配置；空 Application 不传递为空字符串绑定。随后构建 Stage 映射只在已绑定 Application 的 Pipeline 详情页配置。用户不需要复制或修改 Template Stage 来切换应用。
+Application Pipeline 创建过程按名称、Repository（必填）、Application（可选）的顺序配置；空 Application 不传递为空字符串绑定。未绑定时可在详情基本信息中首次补绑同一 Project 的 Application。随后构建 Stage 映射只在已绑定 Application 的 Pipeline 详情页配置。用户不需要复制或修改 Template Stage 来切换应用；已绑定后不可换绑，需要换应用时从 Template 重新创建。
 
 列表将 Repository 与 Application 拆为独立列，未绑定 Application 明确显示“未绑定”。模板与 Application Pipeline 的每一行均提供删除动作，不再保留无实际语义的“配置”入口；删除确认或删除失败都在其模态窗中反馈，不能将服务端错误穿透为页面级 toast。
 

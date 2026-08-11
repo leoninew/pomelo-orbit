@@ -291,8 +291,11 @@ type PipelineUpdateReq struct {
 	Name                 *string                            `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	Description          *string                            `protobuf:"bytes,2,opt,name=description,proto3,oneof" json:"description,omitempty"`
 	VariableDeclarations *common.VariableDeclarationListReq `protobuf:"bytes,3,opt,name=variable_declarations,json=variableDeclarations,proto3,oneof" json:"variable_declarations,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// First-time bind only when the application pipeline currently has no application.
+	// Changing or clearing an existing binding is rejected by the service.
+	ApplicationId *string `protobuf:"bytes,4,opt,name=application_id,json=applicationId,proto3,oneof" json:"application_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PipelineUpdateReq) Reset() {
@@ -344,6 +347,13 @@ func (x *PipelineUpdateReq) GetVariableDeclarations() *common.VariableDeclaratio
 		return x.VariableDeclarations
 	}
 	return nil
+}
+
+func (x *PipelineUpdateReq) GetApplicationId() string {
+	if x != nil && x.ApplicationId != nil {
+		return *x.ApplicationId
+	}
+	return ""
 }
 
 type PipelineInstantiateReq struct {
@@ -613,14 +623,16 @@ const file_orbit_v1_pipeline_pipeline_proto_rawDesc = "" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\\\n" +
-	"\x15variable_declarations\x18\x04 \x03(\v2'.orbit.v1.common.VariableDeclarationReqR\x14variableDeclarations\"\xed\x01\n" +
+	"\x15variable_declarations\x18\x04 \x03(\v2'.orbit.v1.common.VariableDeclarationReqR\x14variableDeclarations\"\xac\x02\n" +
 	"\x11PipelineUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12%\n" +
 	"\vdescription\x18\x02 \x01(\tH\x01R\vdescription\x88\x01\x01\x12e\n" +
-	"\x15variable_declarations\x18\x03 \x01(\v2+.orbit.v1.common.VariableDeclarationListReqH\x02R\x14variableDeclarations\x88\x01\x01B\a\n" +
+	"\x15variable_declarations\x18\x03 \x01(\v2+.orbit.v1.common.VariableDeclarationListReqH\x02R\x14variableDeclarations\x88\x01\x01\x12*\n" +
+	"\x0eapplication_id\x18\x04 \x01(\tH\x03R\rapplicationId\x88\x01\x01B\a\n" +
 	"\x05_nameB\x0e\n" +
 	"\f_descriptionB\x18\n" +
-	"\x16_variable_declarations\"\x83\x03\n" +
+	"\x16_variable_declarationsB\x11\n" +
+	"\x0f_application_id\"\x83\x03\n" +
 	"\x16PipelineInstantiateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12*\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tH\x00R\rapplicationId\x88\x01\x01\x12#\n" +

@@ -43,7 +43,14 @@ export interface PipelineCreateReq {
 export interface PipelineUpdateReq {
   name?: string | undefined;
   description?: string | undefined;
-  variable_declarations?: VariableDeclarationListReq | undefined;
+  variable_declarations?:
+    | VariableDeclarationListReq
+    | undefined;
+  /**
+   * First-time bind only when the application pipeline currently has no application.
+   * Changing or clearing an existing binding is rejected by the service.
+   */
+  application_id?: string | undefined;
 }
 
 export interface PipelineInstantiateReq {

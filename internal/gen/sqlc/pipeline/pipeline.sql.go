@@ -754,7 +754,7 @@ func (q *Queries) TemplatePipelineStageReferences(ctx context.Context, pipelineI
 }
 
 const updatePipeline = `-- name: UpdatePipeline :exec
-UPDATE pipeline SET name = ?, description = ?, variable_declarations = ?, version = ?, version_fork_strategy = ?, fixed_version_id = ?, fixed_version_label = ?, updated_at = ? WHERE id = ?
+UPDATE pipeline SET name = ?, description = ?, variable_declarations = ?, version = ?, application_id = ?, application_name = ?, version_fork_strategy = ?, fixed_version_id = ?, fixed_version_label = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdatePipelineParams struct {
@@ -762,6 +762,8 @@ type UpdatePipelineParams struct {
 	Description          string         `db:"description"`
 	VariableDeclarations string         `db:"variable_declarations"`
 	Version              int64          `db:"version"`
+	ApplicationID        sql.NullString `db:"application_id"`
+	ApplicationName      sql.NullString `db:"application_name"`
 	VersionForkStrategy  sql.NullString `db:"version_fork_strategy"`
 	FixedVersionID       sql.NullString `db:"fixed_version_id"`
 	FixedVersionLabel    sql.NullString `db:"fixed_version_label"`
@@ -775,6 +777,8 @@ func (q *Queries) UpdatePipeline(ctx context.Context, arg UpdatePipelineParams) 
 		arg.Description,
 		arg.VariableDeclarations,
 		arg.Version,
+		arg.ApplicationID,
+		arg.ApplicationName,
 		arg.VersionForkStrategy,
 		arg.FixedVersionID,
 		arg.FixedVersionLabel,

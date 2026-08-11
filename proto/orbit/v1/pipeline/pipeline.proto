@@ -39,6 +39,9 @@ message PipelineUpdateReq {
   optional string name = 1;
   optional string description = 2;
   optional orbit.v1.common.VariableDeclarationListReq variable_declarations = 3;
+  // First-time bind only when the application pipeline currently has no application.
+  // Changing or clearing an existing binding is rejected by the service.
+  optional string application_id = 4;
 }
 
 message PipelineInstantiateReq {

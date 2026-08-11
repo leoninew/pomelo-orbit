@@ -118,7 +118,7 @@
               </TabsTrigger>
             </TabsList>
             <button
-              v-if="!isTerminalDeployment"
+              v-if="!isCompleteDeployment"
               class="app-button inline-flex h-9 items-center gap-2 px-3"
               :class="isAutoRefreshing ? 'text-primary' : ''"
               @click="toggleAutoRefresh"
@@ -249,7 +249,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { DeploymentResp } from '@/gen/proto/orbit/v1/deployment/deployment';
-  import { isTerminalStatus, statusTone } from '@/utils/status';
+  import { isComplete, statusTone } from '@/utils/status';
   import { delayAsync, formatDuration, formatTime } from '@/utils/time';
   import type { editor } from 'monaco-editor';
 
@@ -321,9 +321,9 @@
     deployment.value ? statusTone(deployment.value.status) : 'default'
   );
 
-  const isTerminalDeployment = computed(() => isTerminalStatus(deployment.value?.status ?? ''));
+  const isCompleteDeployment = computed(() => isComplete(deployment.value?.status ?? ''));
   const isCancelable = computed(() =>
-    deployment.value ? ['waiting_to_run', 'running'].includes(deployment.value.status) : false
+    deployment.value ? !isComplete(deployment.value.status) : false
   );
 
   function isCurrentRefresh(generation: number, signal: AbortSignal) {
@@ -342,12 +342,12 @@
       }
       operationLogText.value += data.logs;
       operationLogOffset.value = data.offset;
-      operationLogStatus.value = isTerminalDeployment.value
+      operationLogStatus.value = data.is_complete
         ? operationLogText.value
           ? 'done'
           : 'empty'
         : 'streaming';
-      scrollOperationLogsToBottom();
+      revealLastLine(operationLogEditor);
     } catch {
       if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {
         operationLogStatus.value = 'error';
@@ -361,7 +361,7 @@
       containerLogStatus.value = 'not_applicable';
       return;
     }
-    if (!isTerminalDeployment.value) {
+    if (!isCompleteDeployment.value) {
       containerLogText.value = '';
       containerLogStatus.value = 'waiting_for_operation';
       return;
@@ -377,12 +377,9 @@
       }
       containerLogText.value = data.logs;
       containerLogSource.value = data.source;
-      containerLogStatus.value = isTerminalDeployment.value
-        ? containerLogText.value
-          ? 'done'
-          : 'empty'
-        : 'streaming';
-      scrollContainerLogsToBottom();
+      // Container logs are only fetched after WorkStatus is_complete.
+      containerLogStatus.value = containerLogText.value ? 'done' : 'empty';
+      revealLastLine(containerLogEditor);
     } catch {
       if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {
         containerLogStatus.value = 'error';
@@ -414,7 +411,7 @@
   }
 
   function startAutoRefresh() {
-    if (isAutoRefreshing.value || !deployment.value || isTerminalDeployment.value) {
+    if (isAutoRefreshing.value || !deployment.value || isCompleteDeployment.value) {
       return;
     }
     const generation = ++refreshGeneration;
@@ -434,7 +431,7 @@
             break;
           }
           deployment.value = data;
-          if (isTerminalStatus(data.status)) {
+          if (isComplete(data.status)) {
             await fetchLogs(generation, signal);
             break;
           }
@@ -481,7 +478,7 @@
       return;
     }
     await fetchLogs();
-    if (!isTerminalDeployment.value) {
+    if (!isCompleteDeployment.value) {
       startAutoRefresh();
     }
   }
@@ -505,31 +502,20 @@
     isCancelDialogOpen.value = true;
   }
 
-  function scrollToBottom(logEditor: editor.IStandaloneCodeEditor | null) {
-    if (logEditor) {
-      const lineCount = logEditor.getModel()?.getLineCount() || 0;
-      if (lineCount > 0) {
-        logEditor.revealLine(lineCount);
-      }
-    }
+  function revealLastLine(ed: editor.IStandaloneCodeEditor | null) {
+    if (!ed) return;
+    const n = ed.getModel()?.getLineCount() ?? 0;
+    if (n > 0) ed.revealLine(n);
   }
 
-  function scrollOperationLogsToBottom() {
-    scrollToBottom(operationLogEditor);
+  function handleOperationLogEditorMount(ed: editor.IStandaloneCodeEditor) {
+    operationLogEditor = ed;
+    revealLastLine(ed);
   }
 
-  function scrollContainerLogsToBottom() {
-    scrollToBottom(containerLogEditor);
-  }
-
-  function handleOperationLogEditorMount(editor: editor.IStandaloneCodeEditor) {
-    operationLogEditor = editor;
-    scrollOperationLogsToBottom();
-  }
-
-  function handleContainerLogEditorMount(editor: editor.IStandaloneCodeEditor) {
-    containerLogEditor = editor;
-    scrollContainerLogsToBottom();
+  function handleContainerLogEditorMount(ed: editor.IStandaloneCodeEditor) {
+    containerLogEditor = ed;
+    revealLastLine(ed);
   }
 
   onMounted(loadDeployment);

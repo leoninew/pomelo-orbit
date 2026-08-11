@@ -23,6 +23,12 @@ const (
 	WorkStatusCanceled        = "canceled"
 )
 
+// WorkStatusIsComplete is the single definition of WorkStatus terminal / API is_complete:
+// ran_to_completion | faulted | canceled.
+func WorkStatusIsComplete(value string) bool {
+	return value == WorkStatusRanToCompletion || value == WorkStatusFaulted || value == WorkStatusCanceled
+}
+
 // ServiceStatus is the runtime binding status for model.Service (not Application).
 const (
 	ServiceStatusRunning = "running"

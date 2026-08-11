@@ -383,7 +383,7 @@ func (s Service) PipelineStageLog(ctx context.Context, userId, runID, stageRunID
 	if err != nil {
 		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to read stage log", err)
 	}
-	return pipelinerundto.PipelineStageLog{Logs: string(content), Offset: next, IsComplete: pipelineRunStatusComplete(stageRun.Status)}, nil
+	return pipelinerundto.PipelineStageLog{Logs: string(content), Offset: next, IsComplete: status.WorkStatusIsComplete(stageRun.Status)}, nil
 }
 
 func (s Service) loadPipelineRunForUser(ctx context.Context, userId, runID string) (model.PipelineRun, error) {
@@ -607,9 +607,6 @@ func parseOptionalRunTime(value, name string) (*time.Time, error) {
 		return nil, apperror.New(apperror.KindValidation, name+" must be ISO 8601")
 	}
 	return &parsed, nil
-}
-func pipelineRunStatusComplete(value string) bool {
-	return value == status.WorkStatusRanToCompletion || value == status.WorkStatusFaulted || value == status.WorkStatusCanceled
 }
 func pipelineRunVariables(value string) ([]model.VariableDeclaration, error) {
 	if strings.TrimSpace(value) == "" {

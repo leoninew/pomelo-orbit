@@ -9,7 +9,7 @@ import type {
   PipelineRunVariablePreviewReq,
   PipelineRunVariablePreviewResp,
 } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
-import request from '@/utils/request';
+import request, { type AxiosRequestConfig } from '@/utils/request';
 
 // PipelineRun API
 export const pipelineRunApi = {
@@ -52,8 +52,14 @@ export const pipelineRunApi = {
     return request.get(`/api/pipeline-run/${runId}/artifact`);
   },
 
-  getStageLog(runId: string, stageRunId: string, offset: number): Promise<PipelineStageLogResp> {
+  getStageLog(
+    runId: string,
+    stageRunId: string,
+    offset: number,
+    config?: AxiosRequestConfig
+  ): Promise<PipelineStageLogResp> {
     return request.get(`/api/pipeline-run/${runId}/stage/${stageRunId}/log`, {
+      ...config,
       params: { offset },
     });
   },

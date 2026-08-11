@@ -5,6 +5,7 @@ import (
 	"time"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
+	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 )
 
@@ -35,7 +36,7 @@ func (s Service) WaitDeployment(ctx context.Context, userId, deploymentId string
 		if err != nil {
 			return deploymentdto.DeploymentWaitResult{}, err
 		}
-		if deploymentStatusComplete(deployment.Status) {
+		if status.WorkStatusIsComplete(deployment.Status) {
 			return deploymentdto.DeploymentWaitResult{Deployment: deployment}, nil
 		}
 		select {

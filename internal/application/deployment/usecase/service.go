@@ -96,7 +96,7 @@ func (s Service) DeploymentLog(ctx context.Context, userId string, deploymentId 
 	if err != nil {
 		return deploymentdto.DeploymentLog{}, err
 	}
-	return deploymentdto.DeploymentLog{Logs: logs, Offset: newOffset, IsComplete: deploymentStatusComplete(deployment.Status), Status: deployment.Status}, nil
+	return deploymentdto.DeploymentLog{Logs: logs, Offset: newOffset, IsComplete: status.WorkStatusIsComplete(deployment.Status), Status: deployment.Status}, nil
 }
 
 func (s Service) CancelDeployment(ctx context.Context, userId string, deploymentId string) (model.Deployment, error) {
@@ -251,10 +251,6 @@ func parseOptionalRunTime(value string, name string) (*time.Time, error) {
 		return nil, apperror.New(apperror.KindValidation, name+" must be ISO 8601")
 	}
 	return &parsed, nil
-}
-
-func deploymentStatusComplete(value string) bool {
-	return value == status.WorkStatusRanToCompletion || value == status.WorkStatusFaulted || value == status.WorkStatusCanceled
 }
 
 func outputOrError(output string, err error) string {

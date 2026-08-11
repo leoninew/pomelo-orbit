@@ -20,7 +20,7 @@
           {{ t('pipelineRun.retry') }}
         </button>
         <button
-          v-if="run?.status === 'waiting_to_run' || run?.status === 'running'"
+          v-if="run && !isComplete(run.status)"
           :disabled="canceling"
           class="app-button-destructive h-9 px-3"
           @click="openCancelDialog"
@@ -29,7 +29,7 @@
           {{ t('common.cancel') }}
         </button>
         <button
-          v-if="run && !isTerminalStatus(run.status)"
+          v-if="run && !isComplete(run.status)"
           class="app-button inline-flex h-9 items-center gap-2 px-3"
           :class="isPolling ? 'text-primary' : ''"
           @click="togglePolling"
@@ -248,7 +248,7 @@
       <DetailInfoCard :title="t('pipelineRun.artifacts')">
         <AppLoadingState v-if="artifactsLoading" />
         <AppEmptyState
-          v-else-if="!isTerminalStatus(run.status)"
+          v-else-if="!isComplete(run.status)"
           :message="t('pipelineRun.artifactsAfterCompletion')"
           size="compact"
         />
@@ -300,6 +300,7 @@
             language="plaintext"
             height="100%"
             :readonly="true"
+            @mount="handleStageLogEditorMount"
           />
         </div>
         <div v-else class="flex flex-1 items-center justify-center text-muted-foreground">
@@ -371,10 +372,11 @@
     PipelineSnapshotResp,
     SnapshotStageResp,
   } from '@/gen/proto/orbit/v1/pipeline/snapshot';
-  import { isTerminalStatus, statusTone } from '@/utils/status';
+  import { isComplete, statusTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
   import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
+  import type { editor } from 'monaco-editor';
 
   const route = useRoute();
   const router = useRouter();
@@ -418,6 +420,7 @@
   // Log drawer state
   const logsText = ref('');
   let logPollAbort: AbortController | null = null;
+  let stageLogEditor: editor.IStandaloneCodeEditor | null = null;
 
   let pollAbort: AbortController | null = null;
   const isPolling = ref(false);
@@ -433,6 +436,7 @@
     logsText.value = '';
     stageLogStatus.value = 'loading';
     stageLogError.value = '';
+    stageLogEditor = null;
     showLogsDrawer.value = true;
     startLogPolling(sr.id);
   }
@@ -448,6 +452,7 @@
     showLogsDrawer.value = false;
     logPollAbort?.abort();
     logPollAbort = null;
+    stageLogEditor = null;
   }
 
   function handleLogDrawerOpenChange(open: boolean) {
@@ -458,6 +463,17 @@
     closeLogDrawer();
   }
 
+  function revealLastLine(ed: editor.IStandaloneCodeEditor | null) {
+    if (!ed) return;
+    const n = ed.getModel()?.getLineCount() ?? 0;
+    if (n > 0) ed.revealLine(n);
+  }
+
+  function handleStageLogEditorMount(ed: editor.IStandaloneCodeEditor) {
+    stageLogEditor = ed;
+    revealLastLine(ed);
+  }
+
   function retryStageLog() {
     if (!currentStageRunResp.value) {
       return;
@@ -466,6 +482,7 @@
     logsText.value = '';
     stageLogStatus.value = 'loading';
     stageLogError.value = '';
+    stageLogEditor = null;
     startLogPolling(currentStageRunResp.value.id);
   }
 
@@ -477,17 +494,19 @@
 
     while (!signal.aborted) {
       try {
-        const resp = await pipelineRunApi.getStageLog(runId.value, stageRunId, offset);
+        const resp = await pipelineRunApi.getStageLog(runId.value, stageRunId, offset, { signal });
         if (signal.aborted) {
           break;
         }
         if (currentStageRunResp.value?.id !== stageRunId) {
           break;
         }
+        // is_complete uses the unified WorkStatus definition from the API.
         if (resp.logs) {
           logsText.value += resp.logs;
           offset = resp.offset;
           stageLogStatus.value = resp.is_complete ? 'done' : 'streaming';
+          revealLastLine(stageLogEditor);
         } else if (resp.is_complete) {
           stageLogStatus.value = logsText.value ? 'done' : 'empty';
         } else {
@@ -504,7 +523,7 @@
         }
         break;
       }
-      await delayAsync(1500);
+      await delayAsync(1500, signal);
     }
   }
 
@@ -561,7 +580,7 @@
         toast.success(t('pipelineRun.toast.cancelSuccess'));
         isCancelDialogOpen.value = false;
         const currentRun = await fetchRun();
-        if (currentRun && isTerminalStatus(currentRun.status)) {
+        if (currentRun && isComplete(currentRun.status)) {
           await fetchArtifacts();
         }
       });
@@ -583,7 +602,7 @@
     while (!signal.aborted) {
       try {
         run.value = await pipelineRunApi.get(runId.value);
-        if (isTerminalStatus(run.value.status)) {
+        if (isComplete(run.value.status)) {
           isPolling.value = false;
           void fetchArtifacts();
           break;
@@ -591,7 +610,7 @@
       } catch {
         // Silently retry on transient network failures without interrupting polling
       }
-      await delayAsync(2000);
+      await delayAsync(2000, signal);
     }
   }
 
@@ -620,7 +639,7 @@
     if (!currentRun) {
       return;
     }
-    if (isTerminalStatus(currentRun.status)) {
+    if (isComplete(currentRun.status)) {
       await fetchArtifacts();
     } else {
       startPolling();

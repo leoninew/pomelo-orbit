@@ -114,8 +114,10 @@ export function statusColor(status: string | undefined): string {
 }
 
 /**
- * 判断任务状态是否为终态
+ * WorkStatus is_complete 统一判定（与 API is_complete 同义）
+ *
+ * is_complete = ran_to_completion | faulted | canceled
  */
-export function isTerminalStatus(status: string): boolean {
+export function isComplete(status: string): boolean {
   return status === 'ran_to_completion' || status === 'faulted' || status === 'canceled';
 }

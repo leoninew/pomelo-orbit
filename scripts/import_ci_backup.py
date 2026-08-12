@@ -625,7 +625,7 @@ def apply_import(connection: sqlite3.Connection, source: dict[str, list[dict[str
                     "id": run["id"], "project_id": run["project_id"], "repository_id": run["repository_id"],
                     "repository_name": run["repository_name"], "snapshot_id": plan["snapshot_ids"][(app_pipeline["id"], run["snapshot_id"])],
                     "pipeline_id": app_pipeline["id"], "pipeline_name": app_pipeline["name"],
-                    "pipeline_version": run["template_version"], "trigger": run["trigger"], "trigger_ref": run["trigger_ref"],
+                    "pipeline_version": run["template_version"], "trigger": run["trigger"], "repository_ref": run["trigger_ref"],
                     "variables_snapshot": translated_run_variables(run), "status": run["status"], "retry_of": run["retry_of"],
                     "started_at": run["started_at"], "finished_at": run["finished_at"], "error_message": run["error_message"],
                     "created_at": run["created_at"],

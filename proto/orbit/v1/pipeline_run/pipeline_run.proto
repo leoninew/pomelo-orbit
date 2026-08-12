@@ -7,16 +7,13 @@ import "orbit/v1/pipeline_run/artifact.proto";
 import "orbit/v1/pipeline_run/pipeline_stage_run.proto";
 
 message PipelineRunTriggerReq {
-  string trigger_ref = 1;
-  map<string, string> variables = 2;
+  map<string, string> variables = 1;
 }
 message PipelineRunVariablePreviewReq {
-  string trigger_ref = 1;
-  map<string, string> variables = 2;
+  map<string, string> variables = 1;
 }
 message PipelineRunVariablePreviewResp {
-  string trigger_ref = 1;
-  repeated orbit.v1.common.VariableDeclarationResp variable_declarations = 2;
+  repeated orbit.v1.common.VariableDeclarationResp variable_declarations = 1;
 }
 message PipelineRunRetryReq {}
 message PipelineRunCancelReq {}
@@ -40,7 +37,7 @@ message PipelineRunResp {
   string pipeline_name = 7;
   int32 pipeline_version = 8;
   string trigger = 9;
-  string trigger_ref = 10;
+  string repository_ref = 10;
   repeated orbit.v1.common.VariableDeclarationResp variables_snapshot = 11;
   string status = 12;
   optional string retry_of = 13;

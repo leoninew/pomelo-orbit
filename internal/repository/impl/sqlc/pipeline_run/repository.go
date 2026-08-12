@@ -226,7 +226,7 @@ func (r Repository) CompletePipelineRunVersionBinding(ctx context.Context, runID
 }
 
 func pipelineRunParams(item model.PipelineRun) pipelinerunsqlc.InsertPipelineRunParams {
-	return pipelinerunsqlc.InsertPipelineRunParams{ID: item.Id, ProjectID: nullString(item.ProjectId), RepositoryID: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotID: item.SnapshotId, PipelineID: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int64(item.PipelineVersion), Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: item.VariablesSnapshot, Status: item.Status, RetryOf: nullString(item.RetryOf), StartedAt: dbmodel.NullTime(item.StartedAt), FinishedAt: dbmodel.NullTime(item.FinishedAt), ErrorMessage: nullString(item.ErrorMessage), CreatedAt: timeOrNow(item.CreatedAt)}
+	return pipelinerunsqlc.InsertPipelineRunParams{ID: item.Id, ProjectID: nullString(item.ProjectId), RepositoryID: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotID: item.SnapshotId, PipelineID: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int64(item.PipelineVersion), Trigger: item.Trigger, RepositoryRef: item.RepositoryRef, VariablesSnapshot: item.VariablesSnapshot, Status: item.Status, RetryOf: nullString(item.RetryOf), StartedAt: dbmodel.NullTime(item.StartedAt), FinishedAt: dbmodel.NullTime(item.FinishedAt), ErrorMessage: nullString(item.ErrorMessage), CreatedAt: timeOrNow(item.CreatedAt)}
 }
 
 func pipelineStageRunParams(item model.PipelineStageRun) pipelinerunsqlc.InsertPipelineStageRunParams {
@@ -238,7 +238,7 @@ func artifactParams(item model.Artifact) pipelinerunsqlc.InsertArtifactParams {
 }
 
 func pipelineRunModel(item pipelinerunsqlc.PipelineRun) model.PipelineRun {
-	return model.PipelineRun{Id: item.ID, ProjectId: dbmodel.StringPtr(item.ProjectID), RepositoryId: item.RepositoryID, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotID, PipelineId: item.PipelineID, PipelineName: item.PipelineName, PipelineVersion: int(item.PipelineVersion), Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: item.VariablesSnapshot, Status: item.Status, RetryOf: dbmodel.StringPtr(item.RetryOf), StartedAt: dbmodel.TimePtr(item.StartedAt), FinishedAt: dbmodel.TimePtr(item.FinishedAt), ErrorMessage: dbmodel.StringPtr(item.ErrorMessage), CreatedAt: item.CreatedAt}
+	return model.PipelineRun{Id: item.ID, ProjectId: dbmodel.StringPtr(item.ProjectID), RepositoryId: item.RepositoryID, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotID, PipelineId: item.PipelineID, PipelineName: item.PipelineName, PipelineVersion: int(item.PipelineVersion), Trigger: item.Trigger, RepositoryRef: item.RepositoryRef, VariablesSnapshot: item.VariablesSnapshot, Status: item.Status, RetryOf: dbmodel.StringPtr(item.RetryOf), StartedAt: dbmodel.TimePtr(item.StartedAt), FinishedAt: dbmodel.TimePtr(item.FinishedAt), ErrorMessage: dbmodel.StringPtr(item.ErrorMessage), CreatedAt: item.CreatedAt}
 }
 
 func pipelineStageRunModel(item pipelinerunsqlc.PipelineStageRun) model.PipelineStageRun {

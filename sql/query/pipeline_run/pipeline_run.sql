@@ -1,5 +1,5 @@
 -- name: ListPipelineRuns :many
-SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, trigger_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
+SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run
 WHERE (CAST(sqlc.narg(project_id) AS TEXT) IS NULL OR project_id = CAST(sqlc.narg(project_id) AS TEXT))
   AND (CAST(sqlc.narg(repository_id) AS TEXT) IS NULL OR repository_id = CAST(sqlc.narg(repository_id) AS TEXT))
@@ -17,7 +17,7 @@ WHERE (CAST(sqlc.narg(project_id) AS TEXT) IS NULL OR project_id = CAST(sqlc.nar
   AND (CAST(sqlc.narg(to_at) AS DATETIME) IS NULL OR created_at <= sqlc.narg(to_at));
 
 -- name: PipelineRunByID :one
-SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, trigger_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
+SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run WHERE id = ?;
 
 -- name: ListPipelineStageRuns :many
@@ -29,7 +29,7 @@ SELECT id, pipeline_run_id, stage_id, stage_name, status, started_at, finished_a
 FROM pipeline_stage_run WHERE id = ?;
 
 -- name: InsertPipelineRun :exec
-INSERT INTO pipeline_run (id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, trigger_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at)
+INSERT INTO pipeline_run (id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: InsertPipelineRunVersionBinding :exec

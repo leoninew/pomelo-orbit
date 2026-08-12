@@ -38,12 +38,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
 		return s.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
-	pipeline := model.Pipeline{
-		Id: snapshot.PipelineId, ProjectId: snapshot.ProjectId, Kind: model.PipelineKindApplication,
-		Name: snapshot.PipelineName, Version: snapshot.PipelineVersion,
-		VariableDeclarations: snapshot.VariablesSnapshot,
-	}
-	variables, err := s.pipelineRunExecutionVariables(repo, pipeline, snapshot, run)
+	variables, err := s.pipelineRunExecutionVariables(run)
 	if err != nil {
 		return s.failRun(ctx, run.Id, fmt.Sprintf("Variable resolution failed: %v", err))
 	}
@@ -128,22 +123,13 @@ func stageRunByStageID(stageRuns []model.PipelineStageRun) map[string]model.Pipe
 	return byStageID
 }
 
-func (s Service) pipelineRunExecutionVariables(repo model.Repository, pipeline model.Pipeline, snapshot model.PipelineSnapshot, run model.PipelineRun) (map[string]any, error) {
-	declarations, err := pipelinevariable.CompleteSnapshotVariableDeclarations(snapshot, pipeline)
+func (s Service) pipelineRunExecutionVariables(run model.PipelineRun) (map[string]any, error) {
+	_, variables, err := pipelinevariable.UnmarshalRuntimeVariableSnapshot(run.VariablesSnapshot)
 	if err != nil {
 		return nil, err
 	}
-	overrides, err := pipelineRunRuntimeOverrides(run.VariablesSnapshot)
-	if err != nil {
-		return nil, err
-	}
-	sourceRepo := repo
-	if sourceRepo.RepositoryType == model.RepositoryTypeLocalDirectory {
-		sourceRepo.RepositoryUrl = "file:///source"
-	}
-	variables, err := pipelinevariable.BuildRuntimeVariables(sourceRepo, pipeline, run.TriggerRef, overrides, declarations)
-	if err != nil {
-		return nil, err
+	if ref, ok := variables["repository_ref"].(string); !ok || ref != run.RepositoryRef {
+		return nil, fmt.Errorf("repository_ref does not match pipeline run")
 	}
 	return variables, nil
 }

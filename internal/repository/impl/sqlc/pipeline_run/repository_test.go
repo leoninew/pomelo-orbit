@@ -20,7 +20,7 @@ func TestListQueriesBindNamedPaginationParameters(t *testing.T) {
 		CREATE TABLE pipeline_run (
 			id TEXT PRIMARY KEY, project_id TEXT, repository_id TEXT NOT NULL, repository_name TEXT NOT NULL,
 			snapshot_id TEXT NOT NULL, pipeline_id TEXT NOT NULL, pipeline_name TEXT NOT NULL,
-			pipeline_version INTEGER NOT NULL, trigger TEXT NOT NULL, trigger_ref TEXT NOT NULL,
+			pipeline_version INTEGER NOT NULL, trigger TEXT NOT NULL, repository_ref TEXT NOT NULL,
 			variables_snapshot TEXT NOT NULL, status TEXT NOT NULL, retry_of TEXT,
 			started_at DATETIME, finished_at DATETIME, error_message TEXT, created_at DATETIME NOT NULL
 		);
@@ -46,7 +46,7 @@ func TestListQueriesBindNamedPaginationParameters(t *testing.T) {
 	if _, err := database.ExecContext(ctx, `
 		INSERT INTO pipeline_run (
 			id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name,
-			pipeline_version, trigger, trigger_ref, variables_snapshot, status, created_at
+			pipeline_version, trigger, repository_ref, variables_snapshot, status, created_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, "run-1", "project-1", "repository-1", "Repository", "snapshot-1", "pipeline-1", "Pipeline", 1, "manual", "main", "{}", "waiting_to_run", createdAt); err != nil {
 		t.Fatal(err)

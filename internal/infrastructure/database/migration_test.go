@@ -180,11 +180,18 @@ func TestMigrateUpSQLiteCreatesPipelineSchema(t *testing.T) {
 		}
 	}
 
-	for _, column := range []string{"pipeline_id", "pipeline_name", "pipeline_version"} {
+	for _, column := range []string{"pipeline_id", "pipeline_name", "pipeline_version", "repository_ref"} {
 		var value string
 		if err := database.QueryRow("SELECT " + column + " FROM pipeline_run LIMIT 1").Scan(&value); err != sql.ErrNoRows {
 			t.Fatalf("pipeline_run %s column is missing or unexpectedly populated: %v", column, err)
 		}
+	}
+	var legacyColumnCount int
+	if err := database.QueryRow("SELECT COUNT(*) FROM pragma_table_info('pipeline_run') WHERE name = 'trigger_ref'").Scan(&legacyColumnCount); err != nil {
+		t.Fatalf("check legacy pipeline_run ref column: %v", err)
+	}
+	if legacyColumnCount != 0 {
+		t.Fatal("pipeline_run trigger_ref column must be removed")
 	}
 	for _, column := range []string{"artifact_name", "artifact_image_ref", "artifact_local_image_sha256", "artifact_source_commit_sha", "entrypoint_json"} {
 		var count int
@@ -223,7 +230,7 @@ func TestMigrateUpSQLiteDoesNotConstrainActivePipelineRunsByRepository(t *testin
 		if _, err := database.Exec(`
             INSERT INTO pipeline_run (
                 id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name,
-                pipeline_version, trigger, trigger_ref, variables_snapshot, status
+                pipeline_version, trigger, repository_ref, variables_snapshot, status
             ) VALUES (?, 'repository-1', 'Repository', 'snapshot-1', 'pipeline-1', 'Pipeline', 1, 'manual', 'main', '[]', 'waiting_to_run')
         `, id); err != nil {
 			t.Fatalf("insert active pipeline run %s: %v", id, err)

@@ -21,7 +21,7 @@ func (h Handler) TriggerPipeline(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.TriggerPipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinerundto.PipelineRunTriggerInput{TriggerRef: req.TriggerRef, Variables: req.Variables})
+	detail, err := h.service.TriggerPipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinerundto.PipelineRunTriggerInput{Variables: req.Variables})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -40,12 +40,12 @@ func (h Handler) PreviewPipelineRunVariables(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	preview, err := h.service.PreviewPipelineRunVariables(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinerundto.PipelineRunVariablePreviewInput{TriggerRef: req.TriggerRef, Variables: req.Variables})
+	preview, err := h.service.PreviewPipelineRunVariables(c.Request.Context(), current.Id, c.Param("pipeline_id"), pipelinerundto.PipelineRunVariablePreviewInput{Variables: req.Variables})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineRunVariablePreviewResp{TriggerRef: preview.TriggerRef, VariableDeclarations: pipelineRunVariableDeclarationResponses(preview.VariableDeclarations)})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineRunVariablePreviewResp{VariableDeclarations: pipelineRunVariableDeclarationResponses(preview.VariableDeclarations)})
 }
 func (h Handler) ListPipelineRuns(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)

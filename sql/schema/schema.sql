@@ -1,5 +1,5 @@
 -- SQLC schema snapshot for the complete SQLite database.
--- It mirrors numbered DDL migrations through 000030. Business data migrations are excluded.
+-- It mirrors numbered DDL migrations through 000031. Business data migrations are excluded.
 
 CREATE TABLE IF NOT EXISTS background_task (
     id TEXT PRIMARY KEY,
@@ -280,7 +280,7 @@ CREATE TABLE IF NOT EXISTS pipeline_run (
     pipeline_name TEXT NOT NULL,
     pipeline_version INTEGER NOT NULL,
     trigger TEXT NOT NULL,
-    trigger_ref TEXT NOT NULL,
+    repository_ref TEXT NOT NULL,
     variables_snapshot TEXT NOT NULL DEFAULT '[]',
     status TEXT NOT NULL,
     retry_of TEXT,

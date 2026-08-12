@@ -3,17 +3,14 @@ package dto
 import "gitee.com/leoninew/PomeloOrbit-go/internal/model"
 
 type PipelineRunTriggerInput struct {
-	TriggerRef string
-	Variables  map[string]string
+	Variables map[string]string
 }
 
 type PipelineRunVariablePreviewInput struct {
-	TriggerRef string
-	Variables  map[string]string
+	Variables map[string]string
 }
 
 type PipelineRunVariablePreview struct {
-	TriggerRef           string
 	VariableDeclarations []model.VariableDeclaration
 }
 

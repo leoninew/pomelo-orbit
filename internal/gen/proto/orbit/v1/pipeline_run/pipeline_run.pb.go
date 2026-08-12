@@ -24,8 +24,7 @@ const (
 
 type PipelineRunTriggerReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TriggerRef    string                 `protobuf:"bytes,1,opt,name=trigger_ref,json=triggerRef,proto3" json:"trigger_ref,omitempty"`
-	Variables     map[string]string      `protobuf:"bytes,2,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Variables     map[string]string      `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -60,13 +59,6 @@ func (*PipelineRunTriggerReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *PipelineRunTriggerReq) GetTriggerRef() string {
-	if x != nil {
-		return x.TriggerRef
-	}
-	return ""
-}
-
 func (x *PipelineRunTriggerReq) GetVariables() map[string]string {
 	if x != nil {
 		return x.Variables
@@ -76,8 +68,7 @@ func (x *PipelineRunTriggerReq) GetVariables() map[string]string {
 
 type PipelineRunVariablePreviewReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TriggerRef    string                 `protobuf:"bytes,1,opt,name=trigger_ref,json=triggerRef,proto3" json:"trigger_ref,omitempty"`
-	Variables     map[string]string      `protobuf:"bytes,2,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Variables     map[string]string      `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -112,13 +103,6 @@ func (*PipelineRunVariablePreviewReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *PipelineRunVariablePreviewReq) GetTriggerRef() string {
-	if x != nil {
-		return x.TriggerRef
-	}
-	return ""
-}
-
 func (x *PipelineRunVariablePreviewReq) GetVariables() map[string]string {
 	if x != nil {
 		return x.Variables
@@ -128,8 +112,7 @@ func (x *PipelineRunVariablePreviewReq) GetVariables() map[string]string {
 
 type PipelineRunVariablePreviewResp struct {
 	state                protoimpl.MessageState            `protogen:"open.v1"`
-	TriggerRef           string                            `protobuf:"bytes,1,opt,name=trigger_ref,json=triggerRef,proto3" json:"trigger_ref,omitempty"`
-	VariableDeclarations []*common.VariableDeclarationResp `protobuf:"bytes,2,rep,name=variable_declarations,json=variableDeclarations,proto3" json:"variable_declarations,omitempty"`
+	VariableDeclarations []*common.VariableDeclarationResp `protobuf:"bytes,1,rep,name=variable_declarations,json=variableDeclarations,proto3" json:"variable_declarations,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -162,13 +145,6 @@ func (x *PipelineRunVariablePreviewResp) ProtoReflect() protoreflect.Message {
 // Deprecated: Use PipelineRunVariablePreviewResp.ProtoReflect.Descriptor instead.
 func (*PipelineRunVariablePreviewResp) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *PipelineRunVariablePreviewResp) GetTriggerRef() string {
-	if x != nil {
-		return x.TriggerRef
-	}
-	return ""
 }
 
 func (x *PipelineRunVariablePreviewResp) GetVariableDeclarations() []*common.VariableDeclarationResp {
@@ -345,7 +321,7 @@ type PipelineRunResp struct {
 	PipelineName      string                            `protobuf:"bytes,7,opt,name=pipeline_name,json=pipelineName,proto3" json:"pipeline_name,omitempty"`
 	PipelineVersion   int32                             `protobuf:"varint,8,opt,name=pipeline_version,json=pipelineVersion,proto3" json:"pipeline_version,omitempty"`
 	Trigger           string                            `protobuf:"bytes,9,opt,name=trigger,proto3" json:"trigger,omitempty"`
-	TriggerRef        string                            `protobuf:"bytes,10,opt,name=trigger_ref,json=triggerRef,proto3" json:"trigger_ref,omitempty"`
+	RepositoryRef     string                            `protobuf:"bytes,10,opt,name=repository_ref,json=repositoryRef,proto3" json:"repository_ref,omitempty"`
 	VariablesSnapshot []*common.VariableDeclarationResp `protobuf:"bytes,11,rep,name=variables_snapshot,json=variablesSnapshot,proto3" json:"variables_snapshot,omitempty"`
 	Status            string                            `protobuf:"bytes,12,opt,name=status,proto3" json:"status,omitempty"`
 	RetryOf           *string                           `protobuf:"bytes,13,opt,name=retry_of,json=retryOf,proto3,oneof" json:"retry_of,omitempty"`
@@ -452,9 +428,9 @@ func (x *PipelineRunResp) GetTrigger() string {
 	return ""
 }
 
-func (x *PipelineRunResp) GetTriggerRef() string {
+func (x *PipelineRunResp) GetRepositoryRef() string {
 	if x != nil {
-		return x.TriggerRef
+		return x.RepositoryRef
 	}
 	return ""
 }
@@ -742,25 +718,19 @@ var File_orbit_v1_pipeline_run_pipeline_run_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_pipeline_run_pipeline_run_proto_rawDesc = "" +
 	"\n" +
-	"(orbit/v1/pipeline_run/pipeline_run.proto\x12\x15orbit.v1.pipeline_run\x1a\x1corbit/v1/common/common.proto\x1a$orbit/v1/pipeline_run/artifact.proto\x1a.orbit/v1/pipeline_run/pipeline_stage_run.proto\"\xd1\x01\n" +
-	"\x15PipelineRunTriggerReq\x12\x1f\n" +
-	"\vtrigger_ref\x18\x01 \x01(\tR\n" +
-	"triggerRef\x12Y\n" +
-	"\tvariables\x18\x02 \x03(\v2;.orbit.v1.pipeline_run.PipelineRunTriggerReq.VariablesEntryR\tvariables\x1a<\n" +
+	"(orbit/v1/pipeline_run/pipeline_run.proto\x12\x15orbit.v1.pipeline_run\x1a\x1corbit/v1/common/common.proto\x1a$orbit/v1/pipeline_run/artifact.proto\x1a.orbit/v1/pipeline_run/pipeline_stage_run.proto\"\xb0\x01\n" +
+	"\x15PipelineRunTriggerReq\x12Y\n" +
+	"\tvariables\x18\x01 \x03(\v2;.orbit.v1.pipeline_run.PipelineRunTriggerReq.VariablesEntryR\tvariables\x1a<\n" +
 	"\x0eVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe1\x01\n" +
-	"\x1dPipelineRunVariablePreviewReq\x12\x1f\n" +
-	"\vtrigger_ref\x18\x01 \x01(\tR\n" +
-	"triggerRef\x12a\n" +
-	"\tvariables\x18\x02 \x03(\v2C.orbit.v1.pipeline_run.PipelineRunVariablePreviewReq.VariablesEntryR\tvariables\x1a<\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc0\x01\n" +
+	"\x1dPipelineRunVariablePreviewReq\x12a\n" +
+	"\tvariables\x18\x01 \x03(\v2C.orbit.v1.pipeline_run.PipelineRunVariablePreviewReq.VariablesEntryR\tvariables\x1a<\n" +
 	"\x0eVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa0\x01\n" +
-	"\x1ePipelineRunVariablePreviewResp\x12\x1f\n" +
-	"\vtrigger_ref\x18\x01 \x01(\tR\n" +
-	"triggerRef\x12]\n" +
-	"\x15variable_declarations\x18\x02 \x03(\v2(.orbit.v1.common.VariableDeclarationRespR\x14variableDeclarations\"\x15\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x7f\n" +
+	"\x1ePipelineRunVariablePreviewResp\x12]\n" +
+	"\x15variable_declarations\x18\x01 \x03(\v2(.orbit.v1.common.VariableDeclarationRespR\x14variableDeclarations\"\x15\n" +
 	"\x13PipelineRunRetryReq\"\x16\n" +
 	"\x14PipelineRunCancelReq\"\xf8\x02\n" +
 	"\x1dPipelineRunVersionBindingResp\x12%\n" +
@@ -771,7 +741,7 @@ const file_orbit_v1_pipeline_run_pipeline_run_proto_rawDesc = "" +
 	"\x14generated_version_id\x18\x05 \x01(\tH\x00R\x12generatedVersionId\x88\x01\x01\x12;\n" +
 	"\x17generated_version_label\x18\x06 \x01(\tH\x01R\x15generatedVersionLabel\x88\x01\x01B\x17\n" +
 	"\x15_generated_version_idB\x1a\n" +
-	"\x18_generated_version_label\"\xa6\a\n" +
+	"\x18_generated_version_label\"\xac\a\n" +
 	"\x0fPipelineRunResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
@@ -784,10 +754,9 @@ const file_orbit_v1_pipeline_run_pipeline_run_proto_rawDesc = "" +
 	"pipelineId\x12#\n" +
 	"\rpipeline_name\x18\a \x01(\tR\fpipelineName\x12)\n" +
 	"\x10pipeline_version\x18\b \x01(\x05R\x0fpipelineVersion\x12\x18\n" +
-	"\atrigger\x18\t \x01(\tR\atrigger\x12\x1f\n" +
-	"\vtrigger_ref\x18\n" +
-	" \x01(\tR\n" +
-	"triggerRef\x12W\n" +
+	"\atrigger\x18\t \x01(\tR\atrigger\x12%\n" +
+	"\x0erepository_ref\x18\n" +
+	" \x01(\tR\rrepositoryRef\x12W\n" +
 	"\x12variables_snapshot\x18\v \x03(\v2(.orbit.v1.common.VariableDeclarationRespR\x11variablesSnapshot\x12\x16\n" +
 	"\x06status\x18\f \x01(\tR\x06status\x12\x1e\n" +
 	"\bretry_of\x18\r \x01(\tH\x01R\aretryOf\x88\x01\x01\x12\"\n" +

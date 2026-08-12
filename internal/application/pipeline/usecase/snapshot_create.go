@@ -21,7 +21,7 @@ type SnapshotStore interface {
 
 // GetOrCreatePipelineSnapshot only accepts an application Pipeline. Templates
 // have a version for provenance, but are not executable inputs.
-func GetOrCreatePipelineSnapshot(ctx context.Context, store SnapshotStore, pipeline model.Pipeline) (model.PipelineSnapshot, error) {
+func GetOrCreatePipelineSnapshot(ctx context.Context, store SnapshotStore, pipeline model.Pipeline, repo model.Repository) (model.PipelineSnapshot, error) {
 	if pipeline.Kind != model.PipelineKindApplication {
 		return model.PipelineSnapshot{}, apperror.New(apperror.KindValidation, "template pipelines cannot create snapshots")
 	}
@@ -47,7 +47,7 @@ func GetOrCreatePipelineSnapshot(ctx context.Context, store SnapshotStore, pipel
 	if err != nil {
 		return model.PipelineSnapshot{}, apperror.Wrap(apperror.KindInternal, "Invalid pipeline snapshot stages", err)
 	}
-	variables, err := pipelinevariable.ResolvePipelineVariableDeclarations(stages, pipeline.VariableDeclarations)
+	variables, err := pipelinevariable.RuntimeVariableDeclarations(repo, pipeline, definitions)
 	if err != nil {
 		return model.PipelineSnapshot{}, err
 	}

@@ -183,7 +183,7 @@ func (s Service) TriggerPipeline(ctx context.Context, userId, pipelineId string,
 	if pipeline.Kind != model.PipelineKindApplication {
 		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "template pipelines cannot run")
 	}
-	return s.createPipelineRun(ctx, pipeline, input.TriggerRef, input.Variables, nil)
+	return s.createPipelineRun(ctx, pipeline, input.Variables, nil)
 }
 
 // PreviewPipelineRunVariables resolves a manual trigger's variable values
@@ -203,31 +203,18 @@ func (s Service) PreviewPipelineRunVariables(ctx context.Context, userID, pipeli
 	if err != nil {
 		return pipelinerundto.PipelineRunVariablePreview{}, err
 	}
-	ref := strings.TrimSpace(input.TriggerRef)
-	if ref == "" {
-		ref = repo.DefaultBranch
-	}
-	ref, err = s.pipelineRunRef(ctx, repo, ref)
-	if err != nil {
-		return pipelinerundto.PipelineRunVariablePreview{}, err
-	}
 	stages, err := s.store.ApplicationPipelineStages(ctx, pipeline.Id)
 	if err != nil {
 		return pipelinerundto.PipelineRunVariablePreview{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
 	}
-	declarations, err := pipelinevariable.ResolvePipelineVariableDeclarations(stages, pipeline.VariableDeclarations)
+	declarations, values, err := pipelinevariable.ResolveRuntimeVariablesFromPipelineStages(repo, pipeline, stages, input.Variables, false)
 	if err != nil {
 		return pipelinerundto.PipelineRunVariablePreview{}, err
 	}
-	snapshot, _, err := resolvePipelineRunVariableSnapshot(repo, pipeline, ref, input.Variables, declarations)
-	if err != nil {
-		return pipelinerundto.PipelineRunVariablePreview{}, err
+	for index := range declarations {
+		declarations[index].Value = values[declarations[index].Name]
 	}
-	resolved, err := pipelineRunVariables(snapshot)
-	if err != nil {
-		return pipelinerundto.PipelineRunVariablePreview{}, err
-	}
-	return pipelinerundto.PipelineRunVariablePreview{TriggerRef: ref, VariableDeclarations: resolved}, nil
+	return pipelinerundto.PipelineRunVariablePreview{VariableDeclarations: declarations}, nil
 }
 
 func (s Service) RetryPipelineRun(ctx context.Context, userId, runId string) (pipelinerundto.PipelineRunDetail, error) {
@@ -239,14 +226,20 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId, runId string) (pi
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	overrides, err := pipelineRunRuntimeOverrides(original.VariablesSnapshot)
+	declarations, _, err := pipelinevariable.UnmarshalRuntimeVariableSnapshot(original.VariablesSnapshot)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Invalid pipeline run variables", err)
 	}
-	return s.createPipelineRun(ctx, pipeline, original.TriggerRef, overrides, &original.Id)
+	overrides := make(map[string]string, len(declarations))
+	for _, declaration := range declarations {
+		if declaration.Source != "system" && pipelinevariable.HasRuntimeValue(declaration.Value) {
+			overrides[declaration.Name] = fmt.Sprint(declaration.Value)
+		}
+	}
+	return s.createPipelineRun(ctx, pipeline, overrides, &original.Id)
 }
 
-func (s Service) createPipelineRun(ctx context.Context, pipeline model.Pipeline, requestedRef string, overrides map[string]string, retryOf *string) (pipelinerundto.PipelineRunDetail, error) {
+func (s Service) createPipelineRun(ctx context.Context, pipeline model.Pipeline, overrides map[string]string, retryOf *string) (pipelinerundto.PipelineRunDetail, error) {
 	if pipeline.RepositoryId == nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "application pipeline identity is incomplete")
 	}
@@ -257,19 +250,11 @@ func (s Service) createPipelineRun(ctx context.Context, pipeline model.Pipeline,
 	if err := s.ensureRepositoryHasNoRunningPipelineRun(ctx, repo.Id); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	snapshot, err := pipelinesvc.GetOrCreatePipelineSnapshot(ctx, s.store, pipeline)
+	snapshot, err := pipelinesvc.GetOrCreatePipelineSnapshot(ctx, s.store, pipeline, repo)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	ref := strings.TrimSpace(requestedRef)
-	if ref == "" {
-		ref = repo.DefaultBranch
-	}
-	ref, err = s.pipelineRunRef(ctx, repo, ref)
-	if err != nil {
-		return pipelinerundto.PipelineRunDetail{}, err
-	}
-	variables, err := buildPipelineRunVariables(repo, pipeline, snapshot, ref, overrides)
+	variables, ref, err := buildPipelineRunVariables(repo, pipeline, snapshot, overrides)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
@@ -277,7 +262,7 @@ func (s Service) createPipelineRun(ctx context.Context, pipeline model.Pipeline,
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	run := model.PipelineRun{Id: idutil.NewId(), ProjectId: pipeline.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, PipelineId: pipeline.Id, PipelineName: pipeline.Name, PipelineVersion: pipeline.Version, Trigger: "manual", TriggerRef: ref, VariablesSnapshot: variables, Status: status.WorkStatusWaitingToRun, RetryOf: retryOf}
+	run := model.PipelineRun{Id: idutil.NewId(), ProjectId: pipeline.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, PipelineId: pipeline.Id, PipelineName: pipeline.Name, PipelineVersion: pipeline.Version, Trigger: "manual", RepositoryRef: ref, VariablesSnapshot: variables, Status: status.WorkStatusWaitingToRun, RetryOf: retryOf}
 	stageRuns, err := pipelineStageRuns(run.Id, snapshot.StagesSnapshot)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
@@ -559,7 +544,7 @@ func (s Service) pipelineRunDetails(ctx context.Context, page repository.Page[mo
 	return repository.Page[pipelinerundto.PipelineRunDetail]{Items: items, Total: page.Total, Page: page.Page, PerPage: page.PerPage}, nil
 }
 func (s Service) pipelineRunDetail(ctx context.Context, run model.PipelineRun, includeStages bool) (pipelinerundto.PipelineRunDetail, error) {
-	variables, err := pipelineRunVariables(run.VariablesSnapshot)
+	variables, _, err := pipelinevariable.UnmarshalRuntimeVariableSnapshot(run.VariablesSnapshot)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
@@ -579,25 +564,6 @@ func (s Service) pipelineRunDetail(ctx context.Context, run model.PipelineRun, i
 	}
 	return detail, nil
 }
-func (s Service) pipelineRunRef(ctx context.Context, repo model.Repository, ref string) (string, error) {
-	if repo.RepositoryType == "" || repo.RepositoryType == model.RepositoryTypeRemoteGit {
-		if strings.TrimSpace(repo.RepositoryUrl) == "" {
-			return "", apperror.New(apperror.KindValidation, "repository_url is required for remote Git repositories")
-		}
-		return ref, nil
-	}
-	if repo.RepositoryType == model.RepositoryTypeLocalDirectory {
-		if s.localSource == nil {
-			return "", apperror.New(apperror.KindValidation, "Local directory sources are disabled")
-		}
-		revision, err := s.localSource.ResolveRevision(ctx, repo.RepositoryUrl, ref)
-		if err != nil {
-			return "", apperror.New(apperror.KindValidation, "Unable to resolve local source revision: "+err.Error())
-		}
-		return revision, nil
-	}
-	return "", apperror.New(apperror.KindValidation, "Unsupported repository_type")
-}
 func parseOptionalRunTime(value, name string) (*time.Time, error) {
 	if strings.TrimSpace(value) == "" {
 		return nil, nil
@@ -608,55 +574,23 @@ func parseOptionalRunTime(value, name string) (*time.Time, error) {
 	}
 	return &parsed, nil
 }
-func pipelineRunVariables(value string) ([]model.VariableDeclaration, error) {
-	if strings.TrimSpace(value) == "" {
-		return []model.VariableDeclaration{}, nil
+func buildPipelineRunVariables(repo model.Repository, pipeline model.Pipeline, snapshot model.PipelineSnapshot, overrides map[string]string) (string, string, error) {
+	var stages []model.StageDefinition
+	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
+		return "", "", apperror.New(apperror.KindInternal, "Invalid pipeline snapshot stages")
 	}
-	var variables []model.VariableDeclaration
-	if err := json.Unmarshal([]byte(value), &variables); err != nil {
-		return nil, apperror.New(apperror.KindInternal, "Invalid pipeline run variables")
-	}
-	return variables, nil
-}
-func buildPipelineRunVariables(repo model.Repository, pipeline model.Pipeline, snapshot model.PipelineSnapshot, ref string, overrides map[string]string) (string, error) {
-	declarations, err := pipelinevariable.CompleteSnapshotVariableDeclarations(snapshot, pipeline)
+	declarations, variables, err := pipelinevariable.ResolveRuntimeVariables(repo, pipeline, stages, overrides, true)
 	if err != nil {
-		return "", err
-	}
-	data, variables, err := resolvePipelineRunVariableSnapshot(repo, pipeline, ref, overrides, declarations)
-	if err != nil {
-		return "", err
-	}
-	if err := pipelinevariable.ValidateRuntimeVariables(variables, declarations); err != nil {
-		return "", err
-	}
-	return data, nil
-}
-
-func resolvePipelineRunVariableSnapshot(repo model.Repository, pipeline model.Pipeline, ref string, overrides map[string]string, declarations []model.VariableDeclaration) (string, map[string]any, error) {
-	variables, err := pipelinevariable.BuildRuntimeVariables(repo, pipeline, ref, overrides, declarations)
-	if err != nil {
-		return "", nil, err
+		return "", "", err
 	}
 	data, err := pipelinevariable.MarshalRuntimeVariableSnapshot(variables, declarations)
 	if err != nil {
-		return "", nil, err
+		return "", "", err
 	}
-	return data, variables, nil
+	ref := fmt.Sprint(variables["repository_ref"])
+	return data, ref, nil
 }
-func pipelineRunRuntimeOverrides(value string) (map[string]string, error) {
-	declarations, err := pipelineRunVariables(value)
-	if err != nil {
-		return nil, err
-	}
-	overrides := map[string]string{}
-	for _, declaration := range declarations {
-		if !pipelinevariable.IsPipelineBuiltinVariable(declaration.Name) && pipelinevariable.HasRuntimeValue(declaration.Value) {
-			overrides[declaration.Name] = fmt.Sprint(declaration.Value)
-		}
-	}
-	return overrides, nil
-}
+
 func versionContainsComponent(components []model.VersionComponent, name string) bool {
 	for _, component := range components {
 		if component.Name == name {

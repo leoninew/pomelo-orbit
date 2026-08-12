@@ -1070,7 +1070,6 @@ export default {
       repository: 'Repository',
       template: 'Template',
       version: 'Version',
-      triggerRef: 'Trigger Ref',
       triggerType: 'Trigger Type',
       triggerBranch: 'Trigger Branch',
       snapshot: 'Snapshot',

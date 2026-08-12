@@ -49,7 +49,7 @@
               <td>
                 <AppBadge>v{{ run.pipeline_version }}</AppBadge>
               </td>
-              <td class="text-foreground">{{ run.trigger_ref }}</td>
+              <td class="text-foreground">{{ run.repository_ref }}</td>
               <td>
                 <AppBadge variant="status" :tone="statusTone(run.status)">
                   {{ run.status }}

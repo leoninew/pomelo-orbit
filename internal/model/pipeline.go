@@ -105,8 +105,8 @@ type PipelineStageNode struct {
 	UpdatedAt                      time.Time
 }
 
-// PipelineSnapshot is an immutable executable input for an application
-// pipeline. Template pipelines never own snapshots.
+// PipelineSnapshot is an immutable structural and historical snapshot for an
+// application pipeline. Run variable values are stored on PipelineRun.
 type PipelineSnapshot struct {
 	Id                    string    `db:"id"`
 	ProjectId             *string   `db:"project_id"`

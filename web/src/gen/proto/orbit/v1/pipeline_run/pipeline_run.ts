@@ -12,7 +12,6 @@ import type { PipelineStageRunResp } from "./pipeline_stage_run";
 export const protobufPackage = "orbit.v1.pipeline_run";
 
 export interface PipelineRunTriggerReq {
-  trigger_ref: string;
   variables: { [key: string]: string };
 }
 
@@ -22,7 +21,6 @@ export interface PipelineRunTriggerReq_VariablesEntry {
 }
 
 export interface PipelineRunVariablePreviewReq {
-  trigger_ref: string;
   variables: { [key: string]: string };
 }
 
@@ -32,7 +30,6 @@ export interface PipelineRunVariablePreviewReq_VariablesEntry {
 }
 
 export interface PipelineRunVariablePreviewResp {
-  trigger_ref: string;
   variable_declarations: VariableDeclarationResp[];
 }
 
@@ -61,7 +58,7 @@ export interface PipelineRunResp {
   pipeline_name: string;
   pipeline_version: number;
   trigger: string;
-  trigger_ref: string;
+  repository_ref: string;
   variables_snapshot: VariableDeclarationResp[];
   status: string;
   retry_of?: string | undefined;

@@ -12,7 +12,7 @@ type PipelineRun struct {
 	PipelineName      string     `db:"pipeline_name"`
 	PipelineVersion   int        `db:"pipeline_version"`
 	Trigger           string     `db:"trigger"`
-	TriggerRef        string     `db:"trigger_ref"`
+	RepositoryRef     string     `db:"repository_ref"`
 	VariablesSnapshot string     `db:"variables_snapshot"`
 	Status            string     `db:"status"`
 	RetryOf           *string    `db:"retry_of"`

@@ -289,7 +289,7 @@ func repositoryCustomVariables(value string) ([]map[string]any, error) {
 	return sanitizeRepositoryVariables(values), nil
 }
 func repositoryBuiltinVariableDeclarations(item model.Repository) []map[string]any {
-	return []map[string]any{repositoryBuiltinVariableDeclaration("repository_id", item.Id), repositoryBuiltinVariableDeclaration("repository_name", item.Name), repositoryBuiltinVariableDeclaration("repository_code", item.Code), repositoryBuiltinVariableDeclaration("repository_url", item.RepositoryUrl), repositoryBuiltinVariableDeclaration("repository_ref", item.DefaultBranch)}
+	return []map[string]any{repositoryBuiltinVariableDeclaration("repository_code", item.Code), repositoryBuiltinVariableDeclaration("repository_url", item.RepositoryUrl), repositoryBuiltinVariableDeclaration("repository_ref", item.DefaultBranch)}
 }
 func repositoryBuiltinVariableDeclaration(name string, value any) map[string]any {
 	return map[string]any{"name": name, "description": pipelinevariable.PipelineBuiltinVariableSpecs()[name], "default": value, "value": nil, "secret": false, "source": "repository", "editable": name == "repository_ref"}

@@ -425,7 +425,7 @@ func (q *Queries) InsertArtifact(ctx context.Context, arg InsertArtifactParams) 
 }
 
 const insertPipelineRun = `-- name: InsertPipelineRun :exec
-INSERT INTO pipeline_run (id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, trigger_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at)
+INSERT INTO pipeline_run (id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
@@ -439,7 +439,7 @@ type InsertPipelineRunParams struct {
 	PipelineName      string         `db:"pipeline_name"`
 	PipelineVersion   int64          `db:"pipeline_version"`
 	Trigger           string         `db:"trigger"`
-	TriggerRef        string         `db:"trigger_ref"`
+	RepositoryRef     string         `db:"repository_ref"`
 	VariablesSnapshot string         `db:"variables_snapshot"`
 	Status            string         `db:"status"`
 	RetryOf           sql.NullString `db:"retry_of"`
@@ -460,7 +460,7 @@ func (q *Queries) InsertPipelineRun(ctx context.Context, arg InsertPipelineRunPa
 		arg.PipelineName,
 		arg.PipelineVersion,
 		arg.Trigger,
-		arg.TriggerRef,
+		arg.RepositoryRef,
 		arg.VariablesSnapshot,
 		arg.Status,
 		arg.RetryOf,
@@ -740,7 +740,7 @@ func (q *Queries) ListArtifactsByRun(ctx context.Context, arg ListArtifactsByRun
 }
 
 const listPipelineRuns = `-- name: ListPipelineRuns :many
-SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, trigger_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
+SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run
 WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
   AND (CAST(?2 AS TEXT) IS NULL OR repository_id = CAST(?2 AS TEXT))
@@ -787,7 +787,7 @@ func (q *Queries) ListPipelineRuns(ctx context.Context, arg ListPipelineRunsPara
 			&i.PipelineName,
 			&i.PipelineVersion,
 			&i.Trigger,
-			&i.TriggerRef,
+			&i.RepositoryRef,
 			&i.VariablesSnapshot,
 			&i.Status,
 			&i.RetryOf,
@@ -848,7 +848,7 @@ func (q *Queries) ListPipelineStageRuns(ctx context.Context, pipelineRunID strin
 }
 
 const pipelineRunByID = `-- name: PipelineRunByID :one
-SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, trigger_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
+SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run WHERE id = ?
 `
 
@@ -865,7 +865,7 @@ func (q *Queries) PipelineRunByID(ctx context.Context, id string) (PipelineRun, 
 		&i.PipelineName,
 		&i.PipelineVersion,
 		&i.Trigger,
-		&i.TriggerRef,
+		&i.RepositoryRef,
 		&i.VariablesSnapshot,
 		&i.Status,
 		&i.RetryOf,

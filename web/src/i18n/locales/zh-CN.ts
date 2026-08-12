@@ -1048,7 +1048,6 @@ export default {
       repository: '仓库',
       template: '模板',
       version: '版本',
-      triggerRef: '触发 Ref',
       triggerType: '触发方式',
       triggerBranch: '触发分支',
       snapshot: '快照',

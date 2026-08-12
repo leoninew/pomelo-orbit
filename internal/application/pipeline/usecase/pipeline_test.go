@@ -51,7 +51,7 @@ func TestClonePipelineStageReferencesRemapsDependenciesAndKeepsSourceSnapshots(t
 func TestGetOrCreatePipelineSnapshotRejectsTemplate(t *testing.T) {
 	t.Parallel()
 
-	_, err := GetOrCreatePipelineSnapshot(context.Background(), nil, model.Pipeline{Kind: model.PipelineKindTemplate})
+	_, err := GetOrCreatePipelineSnapshot(context.Background(), nil, model.Pipeline{Kind: model.PipelineKindTemplate}, model.Repository{})
 	if err == nil || !strings.Contains(err.Error(), "template pipelines cannot create snapshots") {
 		t.Fatalf("expected template snapshot rejection, got %v", err)
 	}

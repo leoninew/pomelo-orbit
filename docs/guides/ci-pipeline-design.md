@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-08-08 17:08:45
+最后修改时间: 2026-08-12 11:29:20
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -43,7 +43,7 @@ Template Pipeline 的 `PipelineStageReference` 与 Application Stage 都可对�
 
 ## Snapshot、Run 与 Version
 
-只有 `kind=application` 的 Pipeline 会在运行前按 Pipeline 版本创建或复用 Snapshot。Snapshot 冻结完整阶段定义、变量、来源 Template、Repository，以及可选的 Application 和 Version 策略。Template 有自己的 `version` 用于来源追溯，但不拥有 Snapshot。
+只有 `kind=application` 的 Pipeline 会在运行前按 Pipeline 版本创建或复用 Snapshot。Snapshot 冻结完整阶段定义、创建时可获得的 Repository/Pipeline/Stage 变量声明、来源 Template、Repository，以及可选的 Application 和 Version 策略，并保存 runtime/system 的声明元数据。Snapshot 的变量声明仅用于历史展示与追溯；变量在每次 Preview、Run 和 Retry 时由当前 Repository、当前 Pipeline 配置、冻结阶段定义与运行表单解析，最终执行值只保存到 Run。Template 有自己的 `version` 用于来源追溯，但不拥有 Snapshot。
 
 ```text
 应用流水线

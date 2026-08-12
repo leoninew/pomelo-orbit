@@ -88,7 +88,7 @@
             <dt>
               {{ t('pipelineRun.fields.triggerBranch') }}
             </dt>
-            <dd class="text-foreground">{{ run.trigger_ref }}</dd>
+            <dd class="text-foreground">{{ run.repository_ref }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>流水线</dt>

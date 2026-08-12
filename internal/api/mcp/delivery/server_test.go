@@ -155,6 +155,53 @@ func TestServiceCodeMCPContract(t *testing.T) {
 	}
 }
 
+func TestServiceComponentOverlayToolMapsRuntimeAndHostPathFields(t *testing.T) {
+	service := &serviceOverlayToolService{}
+	server, err := NewServer(Dependencies{ActorUserId: "actor", Service: service})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	session := connectInMemory(t, server)
+	hostPath := true
+	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_service_component_overlay", Arguments: map[string]any{
+		"service_id":   "service-1",
+		"component_id": "component-1",
+		"overlay": map[string]any{
+			"entrypoint":     "/custom-entrypoint",
+			"command":        "--serve",
+			"pull_policy":    "always",
+			"restart_policy": "no",
+			"mounts": []any{map[string]any{
+				"target":              "/data",
+				"source":              "D:/data",
+				"source_is_host_path": hostPath,
+				"state":               string(model.ServiceComponentOverlayOverride),
+			}},
+		},
+	}})
+	if err != nil {
+		t.Fatalf("CallTool() error = %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("CallTool() returned tool error: %#v", result.Content)
+	}
+	input := service.overlayInput
+	if input.Entrypoint == nil || *input.Entrypoint != "/custom-entrypoint" || input.Command == nil || *input.Command != "--serve" {
+		t.Fatalf("runtime command input = %#v", input)
+	}
+	if input.PullPolicy == nil || *input.PullPolicy != "always" || input.RestartPolicy == nil || *input.RestartPolicy != "no" {
+		t.Fatalf("runtime policy input = %#v", input)
+	}
+	if len(input.Mounts) != 1 || input.Mounts[0].SourceIsHostPath == nil || !*input.Mounts[0].SourceIsHostPath {
+		t.Fatalf("mount host path input = %#v", input.Mounts)
+	}
+	output := structuredOutput(t, result)
+	component, ok := output["component"].(map[string]any)
+	if !ok || component["entrypoint"] != "/custom-entrypoint" || component["command"] != "--serve" || component["pull_policy"] != "always" || component["restart_policy"] != "no" {
+		t.Fatalf("component output = %#v", output["component"])
+	}
+}
+
 func TestActorAuthorizerRunsOnlyForToolCallsAndBindsTheSession(t *testing.T) {
 	project := &actorProjectService{}
 	authorizations := 0
@@ -460,6 +507,11 @@ type serviceToolService struct {
 	services    []model.Service
 }
 
+type serviceOverlayToolService struct {
+	ServiceService
+	overlayInput servicedto.ServiceComponentOverlayInput
+}
+
 func (s *serviceToolService) CreateService(_ context.Context, _ string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
 	s.createInput = input
 	return servicedto.ServiceView{Service: model.Service{Id: "service-1", ApplicationId: input.ApplicationId, VersionId: input.VersionId, InstanceKey: input.InstanceKey, Code: input.Code, Status: "stopped"}}, nil
@@ -467,6 +519,17 @@ func (s *serviceToolService) CreateService(_ context.Context, _ string, input se
 
 func (s *serviceToolService) ListServicesByApplication(context.Context, string, string) ([]model.Service, error) {
 	return s.services, nil
+}
+
+func (s *serviceOverlayToolService) UpdateServiceComponentOverlay(_ context.Context, _ string, _ string, _ string, input servicedto.ServiceComponentOverlayInput) (model.ServiceComponent, error) {
+	s.overlayInput = input
+	return model.ServiceComponent{
+		Id:            "component-1",
+		Entrypoint:    []string{"/custom-entrypoint"},
+		Command:       []string{"--serve"},
+		PullPolicy:    input.PullPolicy,
+		RestartPolicy: input.RestartPolicy,
+	}, nil
 }
 
 type errorApplicationService struct{ ApplicationService }

@@ -82,6 +82,10 @@ export interface ServiceComponentResp {
    * endpoints, this includes inherited Version declarations and is read-only.
    */
   effective_endpoints: ServiceComponentDeclaredEndpoint[];
+  /**
+   * nil inherits the Version declaration; an empty command string is an
+   * explicit empty argv and causes Compose to use the image default.
+   */
   entrypoint?: string | undefined;
   command?: string | undefined;
   pull_policy?: string | undefined;
@@ -89,14 +93,13 @@ export interface ServiceComponentResp {
 }
 
 /**
- * ServiceComponentDetailResp provides the declaration, sparse overlay and
- * server-merged effective component so clients never infer runtime state from
- * absent values.
+ * ServiceComponentDetailResp provides the Version declaration and sparse
+ * Service Component values separately. An absent value in service_component
+ * means that the Service inherits the corresponding Version value.
  */
 export interface ServiceComponentDetailResp {
-  component: ServiceComponentResp | undefined;
-  declaration: ServiceComponentDefinitionResp | undefined;
-  effective: ServiceComponentDefinitionResp | undefined;
+  service_component: ServiceComponentResp | undefined;
+  version_component: ServiceComponentDefinitionResp | undefined;
 }
 
 export interface ServiceComponentDefinitionResp {

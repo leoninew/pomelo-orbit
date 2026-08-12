@@ -57,20 +57,9 @@ func serviceComponentResponse(item model.ServiceComponent) servicev1.ServiceComp
 }
 
 func serviceComponentDetailResponse(item servicedto.ServiceComponentDetail) servicev1.ServiceComponentDetailResp {
-	component := serviceComponentResponse(item.Component)
-	declaration := componentDeclarationResponse(item.Declaration)
-	if item.Effective == nil {
-		return servicev1.ServiceComponentDetailResp{Component: &component, Declaration: &declaration}
-	}
-	effective := componentDeclarationResponse(model.VersionComponent{
-		Id: item.Effective.SourceComponentId, Name: item.Effective.Name, Image: item.Effective.Image,
-		Entrypoint: item.Effective.Entrypoint, Command: item.Effective.Command, Env: item.Effective.Env, Endpoints: item.Effective.Endpoints,
-		Mounts: item.Effective.Mounts, Dependencies: item.Effective.Dependencies,
-		Healthcheck: item.Effective.Healthcheck, Resources: item.Effective.Resources,
-		PullPolicy: item.Effective.PullPolicy, RestartPolicy: item.Effective.RestartPolicy,
-		Tmpfs: item.Effective.Tmpfs, Ulimits: item.Effective.Ulimits, Devices: item.Effective.Devices,
-	})
-	return servicev1.ServiceComponentDetailResp{Component: &component, Declaration: &declaration, Effective: &effective}
+	serviceComponent := serviceComponentResponse(item.ServiceComponent)
+	versionComponent := componentDeclarationResponse(item.VersionComponent)
+	return servicev1.ServiceComponentDetailResp{ServiceComponent: &serviceComponent, VersionComponent: &versionComponent}
 }
 
 func componentDeclarationResponse(component model.VersionComponent) servicev1.ServiceComponentDefinitionResp {

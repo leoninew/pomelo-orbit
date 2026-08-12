@@ -84,15 +84,14 @@ message ServiceComponentResp {
   optional string restart_policy = 18;
 }
 
-// ServiceComponentDetailResp provides the declaration, sparse overlay and
-// server-merged effective component so clients never infer runtime state from
-// absent values.
+// ServiceComponentDetailResp provides the Version declaration and sparse
+// Service Component values separately. An absent value in service_component
+// means that the Service inherits the corresponding Version value.
 message ServiceComponentDetailResp {
-  reserved 4;
+  reserved 3, 4;
 
-  ServiceComponentResp component = 1;
-  ServiceComponentDefinitionResp declaration = 2;
-  ServiceComponentDefinitionResp effective = 3;
+  ServiceComponentResp service_component = 1;
+  ServiceComponentDefinitionResp version_component = 2;
 }
 
 message ServiceComponentDefinitionResp {

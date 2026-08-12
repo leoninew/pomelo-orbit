@@ -23,7 +23,7 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		return writeResult("create_service", map[string]string{"application_id": input.ApplicationId, "service_id": service.Service.Id}, "POST", "/api/service", map[string]any{"service": serviceOutput(service)}), nil
 	})
 
-	addTool(server, "orbit_update_service_component_overlay", "Replace one declared Service Component's sparse runtime overlay.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_update_service_component_overlay", "Replace one declared Service Component's complete sparse overlay, including env, mounts, resources, endpoints, entrypoint, command, pull policy, and restart policy. Preserve unrelated overlay entries because this replaces the complete overlay. Omit an optional runtime field to clear that Service override so it inherits the Version declaration; an empty entrypoint or command string explicitly selects an empty argv.", func(ctx context.Context, input struct {
 		ServiceId   string                                      `json:"service_id" jsonschema:"required"`
 		ComponentId string                                      `json:"component_id" jsonschema:"required"`
 		Overlay     *servicev1.ServiceComponentOverlayUpdateReq `json:"overlay" jsonschema:"required"`

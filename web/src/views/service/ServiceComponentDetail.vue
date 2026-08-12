@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 items-center gap-2">
         <h1 class="app-detail-page-title break-words">
-          {{ detail?.declaration?.name || '组件配置' }}
+          {{ detail?.version_component?.name || '组件配置' }}
         </h1>
       </div>
       <div class="flex flex-wrap items-center gap-2">
@@ -62,7 +62,11 @@
                   <span
                     v-else
                     class="block h-9 truncate leading-9"
-                    :class="field.state.overridden ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'"
+                    :class="
+                      runtimeFieldDiffers(field)
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-foreground'
+                    "
                     :title="displayValue(field.state.value)"
                   >
                     {{ displayValue(field.state.value) }}
@@ -86,12 +90,12 @@
                       {{ t('common.edit') }}
                     </button>
                     <button
-                      v-if="field.state.overridden"
+                      v-if="runtimeFieldDiffers(field)"
                       class="text-muted-foreground hover:text-foreground"
                       :disabled="operating"
-                      @click="resetRuntimeToVersion(field)"
+                      @click="resetRuntime(field)"
                     >
-                      {{ t('service.componentDetail.resetToVersion') }}
+                      {{ t('service.componentDetail.reset') }}
                     </button>
                   </div>
                 </td>
@@ -187,7 +191,7 @@
                       :disabled="operating"
                       @click="resetEnvironmentToVersion(entry)"
                     >
-                      {{ t('service.componentDetail.resetToVersion') }}
+                      {{ t('service.componentDetail.reset') }}
                     </button>
                     <button
                       v-else-if="entry.overridden"
@@ -195,7 +199,7 @@
                       :disabled="operating"
                       @click="resetEnvironmentToVersion(entry)"
                     >
-                      {{ t('service.componentDetail.resetToVersion') }}
+                      {{ t('service.componentDetail.reset') }}
                     </button>
                   </div>
                 </td>
@@ -213,7 +217,7 @@
             :disabled="operating"
             @click="resetResourcesToVersion()"
           >
-            {{ t('service.componentDetail.resetToVersion') }}
+            {{ t('service.componentDetail.reset') }}
           </button>
         </template>
         <AppEmptyState v-if="resourceFields.length === 0" size="compact" />
@@ -279,7 +283,7 @@
                       class="text-muted-foreground hover:text-foreground"
                       @click="resetResourceToVersion(field)"
                     >
-                      {{ t('service.componentDetail.resetToVersion') }}
+                      {{ t('service.componentDetail.reset') }}
                     </button>
                   </div>
                 </td>
@@ -401,14 +405,14 @@
                       class="app-link"
                       @click="resetEndpointToVersion(endpoint)"
                     >
-                      {{ t('service.componentDetail.resetToVersion') }}
+                      {{ t('service.componentDetail.reset') }}
                     </button>
                     <button
                       v-else-if="endpointHasChanges(endpoint)"
                       class="text-muted-foreground hover:text-foreground"
                       @click="resetEndpointToVersion(endpoint)"
                     >
-                      {{ t('service.componentDetail.resetToVersion') }}
+                      {{ t('service.componentDetail.reset') }}
                     </button>
                   </div>
                 </td>
@@ -468,7 +472,7 @@
                       :disabled="operating"
                       @click="resetMountToVersion(mount)"
                     >
-                      {{ t('service.componentDetail.resetToVersion') }}
+                      {{ t('service.componentDetail.reset') }}
                     </button>
                     <button
                       v-else-if="mountHasChanges(mount)"
@@ -476,7 +480,7 @@
                       :disabled="operating"
                       @click="resetMountToVersion(mount)"
                     >
-                      {{ t('service.componentDetail.resetToVersion') }}
+                      {{ t('service.componentDetail.reset') }}
                     </button>
                   </div>
                 </td>
@@ -716,35 +720,33 @@
     return items.find((item) => select(item) === key);
   }
   function draftFromResponse(value: ServiceComponentDetailResp) {
-    if (!value.declaration || !value.component)
+    if (!value.version_component || !value.service_component)
       throw new Error('service component detail is incomplete');
-    const declaration = value.declaration;
-    const component = value.component;
+    const declaration = value.version_component;
+    const component = value.service_component;
     Object.assign(runtimeDraft.entrypoint, {
       base: declaration.entrypoint,
-      value: component.entrypoint ?? declaration.entrypoint,
+      value: component.entrypoint ?? '',
       overridden: component.entrypoint !== undefined,
     });
     Object.assign(runtimeDraft.command, {
       base: declaration.command,
-      value: component.command ?? declaration.command,
+      value: component.command ?? '',
       overridden: component.command !== undefined,
     });
     Object.assign(runtimeDraft.pull_policy, {
       base: declaration.pull_policy,
-      value: component.pull_policy ?? declaration.pull_policy,
+      value: component.pull_policy ?? '',
       overridden: component.pull_policy !== undefined,
     });
     Object.assign(runtimeDraft.restart_policy, {
       base: declaration.restart_policy ?? '',
-      value: component.restart_policy ?? declaration.restart_policy ?? '',
+      value: component.restart_policy ?? '',
       overridden: component.restart_policy !== undefined,
     });
-    const effectiveEnv = value.effective?.env ?? declaration.env;
     environmentRows.value = declaration.env.map((item) => {
       const overlay = overlayByKey(component.env, item.key, (candidate) => candidate.key);
-      const effective = effectiveEnv.find((candidate) => candidate.key === item.key);
-      const inheritedValue = effective?.value ?? item.value;
+      const inheritedValue = item.value;
       return {
         key: item.key,
         base: item.value,
@@ -941,17 +943,40 @@
     return value || '-';
   }
   const runtimeFieldDefinitions = computed<RuntimeFieldDefinition[]>(() => [
-    { key: 'pull_policy', label: t('application.componentDetail.fields.pullPolicy'), kind: 'select', values: pullPolicyValues },
-    { key: 'restart_policy', label: t('application.componentDetail.fields.restartPolicy'), kind: 'select', values: restartPolicyValues },
-    { key: 'entrypoint', label: t('application.componentDetail.fields.containerEntrypoint'), kind: 'text', values: [] },
-    { key: 'command', label: t('application.componentDetail.fields.command'), kind: 'text', values: [] },
+    {
+      key: 'pull_policy',
+      label: t('application.componentDetail.fields.pullPolicy'),
+      kind: 'select',
+      values: pullPolicyValues,
+    },
+    {
+      key: 'restart_policy',
+      label: t('application.componentDetail.fields.restartPolicy'),
+      kind: 'select',
+      values: restartPolicyValues,
+    },
+    {
+      key: 'entrypoint',
+      label: t('application.componentDetail.fields.containerEntrypoint'),
+      kind: 'text',
+      values: [],
+    },
+    {
+      key: 'command',
+      label: t('application.componentDetail.fields.command'),
+      kind: 'text',
+      values: [],
+    },
   ]);
   const runtimeRows = computed<RuntimeField[]>(() =>
     runtimeFieldDefinitions.value.map((field) => ({ ...field, state: runtimeDraft[field.key] }))
   );
+  function runtimeFieldDiffers(field: RuntimeField) {
+    return field.state.overridden && field.state.value !== field.state.base;
+  }
   function startRuntimeEdit(field: RuntimeField) {
     editingRuntimeKey.value = field.key;
-    editingRuntimeValue.value = field.state.value;
+    editingRuntimeValue.value = field.state.overridden ? field.state.value : field.state.base;
   }
   function cancelRuntimeEdit() {
     editingRuntimeKey.value = null;
@@ -963,9 +988,9 @@
     state.overridden = true;
     cancelRuntimeEdit();
   }
-  function resetRuntimeToVersion(field: RuntimeField) {
+  function resetRuntime(field: RuntimeField) {
     const state = runtimeDraft[field.key];
-    state.value = state.base;
+    state.value = '';
     state.overridden = false;
     cancelRuntimeEdit();
   }
@@ -978,7 +1003,7 @@
     };
     return labels[value] ?? value;
   }
-  const draft = computed(() => (detail.value?.declaration ? true : false));
+  const draft = computed(() => (detail.value?.version_component ? true : false));
   function optional(value: string) {
     return value === '' ? undefined : value;
   }

@@ -623,7 +623,7 @@ export default {
       defaultValue: '默认值',
       currentValue: '当前值',
       runtimeTitle: '运行配置',
-      resetToVersion: '重置为 Version 值',
+      reset: '重置',
       validation: {
         sourceRequired: '请填写源路径',
       },

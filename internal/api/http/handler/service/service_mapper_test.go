@@ -59,13 +59,33 @@ func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 	}
 }
 
-func TestServiceComponentDetailResponseOmitsUnavailableEffectiveValues(t *testing.T) {
+func TestServiceComponentDetailResponseReturnsVersionAndServiceValues(t *testing.T) {
+	pullPolicy := "never"
+	restartPolicy := "no"
 	response := serviceComponentDetailResponse(servicedto.ServiceComponentDetail{
-		Component:   model.ServiceComponent{Id: "service-component-1"},
-		Declaration: model.VersionComponent{Id: "version-component-1", Name: "mysql", Image: "mysql:8"},
+		ServiceComponent: model.ServiceComponent{
+			Id: "service-component-1", Entrypoint: []string{"/custom-entrypoint"}, Command: []string{"--serve"},
+			PullPolicy: &pullPolicy, RestartPolicy: &restartPolicy,
+		},
+		VersionComponent: model.VersionComponent{
+			Id: "version-component-1", Name: "mysql", Image: "mysql:8",
+			Entrypoint: []string{"/version-entrypoint"}, Command: []string{"--default"},
+			PullPolicy: "always",
+		},
 	})
-	if response.Component == nil || response.Declaration == nil || response.Effective != nil {
-		t.Fatal("expected source views without effective component")
+	if response.ServiceComponent == nil || response.VersionComponent == nil {
+		t.Fatal("expected Version and Service Component source views")
+	}
+	if response.ServiceComponent.Entrypoint == nil || *response.ServiceComponent.Entrypoint != "/custom-entrypoint" ||
+		response.ServiceComponent.Command == nil || *response.ServiceComponent.Command != "--serve" ||
+		response.ServiceComponent.PullPolicy == nil || *response.ServiceComponent.PullPolicy != pullPolicy ||
+		response.ServiceComponent.RestartPolicy == nil || *response.ServiceComponent.RestartPolicy != restartPolicy {
+		t.Fatalf("service component values = %#v", response.ServiceComponent)
+	}
+	if response.VersionComponent.Entrypoint != "/version-entrypoint" ||
+		response.VersionComponent.Command != "--default" ||
+		response.VersionComponent.PullPolicy != "always" {
+		t.Fatalf("version component values = %#v", response.VersionComponent)
 	}
 }
 

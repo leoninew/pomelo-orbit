@@ -163,7 +163,7 @@ func TestServiceViewWithGatewayEndpointDoesNotRequireGateway(t *testing.T) {
 	}
 }
 
-func TestGetServiceComponentReturnsDeclarationOverlayAndEffectiveValues(t *testing.T) {
+func TestGetServiceComponentReturnsVersionAndServiceComponentValues(t *testing.T) {
 	service, app, version, declaration, component := serviceViewFixture()
 	usecase := Service{
 		application: serviceApplicationFake{app: app, version: version, declarations: []model.VersionComponent{declaration}},
@@ -173,15 +173,15 @@ func TestGetServiceComponentReturnsDeclarationOverlayAndEffectiveValues(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if detail.Component.Id != component.Id || detail.Declaration.Id != declaration.Id {
+	if detail.ServiceComponent.Id != component.Id || detail.VersionComponent.Id != declaration.Id {
 		t.Fatalf("component detail lost source views: %#v", detail)
 	}
-	if detail.Effective == nil || len(detail.Effective.Env) != 1 || detail.Effective.Env[0].Value != "runtime-value" {
-		t.Fatalf("effective component = %#v", detail.Effective)
+	if len(detail.ServiceComponent.Env) != 1 || detail.ServiceComponent.Env[0].Value == nil || *detail.ServiceComponent.Env[0].Value != "runtime-value" {
+		t.Fatalf("service component values = %#v", detail.ServiceComponent)
 	}
 }
 
-func TestGetServiceComponentResolvesServiceEnvironmentWithoutCreatingOverlay(t *testing.T) {
+func TestGetServiceComponentDoesNotResolveServiceEnvironment(t *testing.T) {
 	service, app, version, declaration, component := serviceViewFixture()
 	declaration.Env[0].Value = "${SHARED_VALUE}"
 	component.Env = nil
@@ -196,15 +196,15 @@ func TestGetServiceComponentResolvesServiceEnvironmentWithoutCreatingOverlay(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(detail.Component.Env) != 0 {
-		t.Fatalf("service value must not become a component overlay: %#v", detail.Component.Env)
+	if len(detail.ServiceComponent.Env) != 0 {
+		t.Fatalf("service value must not become a component overlay: %#v", detail.ServiceComponent.Env)
 	}
-	if detail.Effective == nil || len(detail.Effective.Env) != 1 || detail.Effective.Env[0].Value != "from-service" {
-		t.Fatalf("effective component = %#v", detail.Effective)
+	if len(detail.VersionComponent.Env) != 1 || detail.VersionComponent.Env[0].Value != "${SHARED_VALUE}" {
+		t.Fatalf("version component values = %#v", detail.VersionComponent.Env)
 	}
 }
 
-func TestGetServiceComponentReturnsSourceValuesForIncompleteServiceEnvironment(t *testing.T) {
+func TestGetServiceComponentReturnsSourceValuesWithoutResolvingEnvironment(t *testing.T) {
 	service, app, version, declaration, component := serviceViewFixture()
 	declaration.Env[0].Value = "${MYSQL_DATABASE:?required}"
 	component.Env = nil
@@ -217,7 +217,7 @@ func TestGetServiceComponentReturnsSourceValuesForIncompleteServiceEnvironment(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if detail.Component.Id != component.Id || detail.Declaration.Id != declaration.Id || detail.Effective != nil {
+	if detail.ServiceComponent.Id != component.Id || detail.VersionComponent.Id != declaration.Id {
 		t.Fatalf("component detail = %#v", detail)
 	}
 }

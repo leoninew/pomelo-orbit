@@ -638,7 +638,7 @@ export default {
       defaultValue: 'Default value',
       currentValue: 'Current value',
       runtimeTitle: 'Runtime configuration',
-      resetToVersion: 'Reset to Version value',
+      reset: 'Reset',
       validation: {
         sourceRequired: 'Enter a source path.',
       },

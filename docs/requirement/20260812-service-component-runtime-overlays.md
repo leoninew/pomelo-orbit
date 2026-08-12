@@ -1,5 +1,5 @@
 # 服务组件运行时基础配置覆盖
-最后修改时间: 2026-08-12 20:01:34
+最后修改时间: 2026-08-12 22:44:37
 
 Review status: Accepted
 
@@ -60,7 +60,9 @@ Version Component declaration
   -> explicit deployment
 ```
 
-所有读取和部署路径必须调用同一合并逻辑。Service 详情不能由前端自行推断生效值；当已有 Service 配置无法形成有效计划时，返回声明和覆盖，并明确缺少有效值。
+所有部署计划、预览、哈希和 Compose 渲染路径必须调用同一合并逻辑。Service 组件详情只返回
+Version Component 默认声明与 Service Component 当前稀疏值两组来源数据，不返回合并后的 `effective` 组件；
+Service 字段为空表示继承 Version 声明。
 
 ## User Scenarios
 
@@ -80,10 +82,10 @@ Version Component declaration
 
 ## Interaction Rules
 
-- 服务组件详情将基础运行配置置于独立分组，使用 Version 默认值、当前 Service 值和来源状态表达继承或覆盖。
+- 服务组件详情将基础运行配置置于独立分组，分别展示 Version 默认值和 Service 当前值；Service 字段为空时当前值显示为空。
 - 拉取策略、重启策略使用符合其类型的输入控件；`entrypoint` 和 `command` 使用命令文本输入。
-- 每个字段可以单独重置为 Version 值；`entrypoint` 和 `command` 还必须能表示显式清空，`restart_policy=no` 表示显式禁用重启。
-- 组件详情中所有 Service 覆盖卡片使用同一“重置为 Version 值”语义：清除该字段或声明项的 Service 覆盖并恢复 Version 声明；不提供将未覆盖的 Version 声明标记为删除的入口。已有删除覆盖显示同一重置动作。
+- 每个字段可以单独重置；`entrypoint` 和 `command` 还必须能表示显式清空，`restart_policy=no` 表示显式禁用重启。
+- 组件详情中所有 Service 覆盖卡片使用同一“重置”语义：清除该字段或声明项的 Service 覆盖并恢复继承；不提供将未覆盖的 Version 声明标记为删除的入口。已有删除覆盖显示同一重置动作。
 - 保存采用现有“替换一个组件的全部稀疏覆盖”请求模型，必须保留未在当前界面修改的环境变量、挂载、资源和端点覆盖。
 - 成功保存后重新读取服务组件详情，并提示等待显式部署。
 
@@ -109,8 +111,8 @@ Version Component declaration
 
 - 用户确认 Service Component 不可覆盖镜像；镜像保持 Version 的制品与运行契约。
 - 用户已确认启动命令、拉取策略和重启策略属于 Service Component 的可覆盖运行配置。
-- 用户要求统一“重置”文案与行为：服务组件运行配置以及环境变量、资源、端点、挂载均重置为 Version 值；覆盖项不使用“删除”表示恢复继承。
-- 用户确认 MySQL E2E 是环境依赖的非阻塞检查；详情沿用现有配置卡片的 Version 默认值、当前值和覆盖来源表达即可，无须独立展示服务端 effective 列。
+- 用户要求统一“重置”文案与行为：服务组件运行配置以及环境变量、资源、端点、挂载均清除 Service 覆盖并恢复继承；覆盖项不使用“删除”表示恢复继承。
+- 用户确认 MySQL E2E 是环境依赖的非阻塞检查；详情直接展示 Version 默认值与 Service 当前值，不展示服务端 `effective` 列。
 - `entrypoint` 与 `command` 成对纳入范围，避免只覆盖其中之一而无法准确表达 Docker Compose 的启动语义。
 - 组件身份与网络接口契约仍由 Version 管理；Service 只覆盖实例级运行行为。
 - 覆盖字段直接定义在 `service_component`，与 `version_component` 对应字段同名；不建立独立的 runtime 子表或嵌套覆盖对象。

@@ -179,22 +179,9 @@ func (s Service) GetServiceComponent(ctx context.Context, userId, serviceID, com
 		return servicedto.ServiceComponentDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load version components", err)
 	}
 	for _, declaration := range declarations {
-		if declaration.Id != component.SourceVersionComponentId {
-			continue
+		if declaration.Id == component.SourceVersionComponentId {
+			return servicedto.ServiceComponentDetail{ServiceComponent: component, VersionComponent: declaration}, nil
 		}
-		env, err := s.service.ServiceEnvByService(ctx, svc.Id)
-		if err != nil {
-			return servicedto.ServiceComponentDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load service environment", err)
-		}
-		values := make(map[string]string, len(env))
-		for _, item := range env {
-			values[item.Key] = item.Value
-		}
-		effective, err := deploymentsvc.MergeServiceComponent(declaration, component, values)
-		if err != nil {
-			return servicedto.ServiceComponentDetail{Component: component, Declaration: declaration}, nil
-		}
-		return servicedto.ServiceComponentDetail{Component: component, Declaration: declaration, Effective: &effective}, nil
 	}
 	return servicedto.ServiceComponentDetail{}, apperror.New(apperror.KindValidation, "Service component declaration is no longer available")
 }
@@ -223,7 +210,7 @@ func (s Service) UpdateServiceComponentOverlay(ctx context.Context, userId, serv
 	if err != nil {
 		return model.ServiceComponent{}, err
 	}
-	component := detail.Component
+	component := detail.ServiceComponent
 	entrypoint, err := overlayCommand(input.Entrypoint)
 	if err != nil {
 		return model.ServiceComponent{}, apperror.New(apperror.KindValidation, err.Error())
@@ -240,7 +227,7 @@ func (s Service) UpdateServiceComponentOverlay(ctx context.Context, userId, serv
 	component.Mounts = append([]model.ServiceComponentMount(nil), input.Mounts...)
 	component.Resources = input.Resources
 	component.Endpoints = append([]model.ServiceComponentEndpoint(nil), input.Endpoints...)
-	if err := normalizeOverlay(&component, detail.Declaration); err != nil {
+	if err := normalizeOverlay(&component, detail.VersionComponent); err != nil {
 		return model.ServiceComponent{}, apperror.New(apperror.KindValidation, err.Error())
 	}
 	if err := s.service.UpdateServiceComponentOverlay(ctx, component); err != nil {

@@ -1,5 +1,5 @@
 # 服务组件运行时基础配置覆盖实施计划
-最后修改时间: 2026-08-12 20:01:34
+最后修改时间: 2026-08-12 22:44:37
 
 Review status: Accepted
 
@@ -41,19 +41,19 @@ Mode: standard
    - 让 Service 切换 Version 继续由 `remapServiceComponents` 调用同一字段校验，确保不兼容的现有策略值阻止整个更新事务。
 
 4. 扩展 HTTP、MCP 与生成协议。
-   - 更新 `proto/orbit/v1/service/service.proto` 的 Service Component overlay 请求/响应与声明/有效详情结构，直接增加与 `version_component` 对应的 `entrypoint`、`command`、`pull_policy`、`restart_policy` 字段，不为镜像创建 Service 覆盖字段或独立 runtime 消息。
+   - 更新 `proto/orbit/v1/service/service.proto` 的 Service Component overlay 请求/响应与 Version/Service 来源详情结构，直接增加与 `version_component` 对应的 `entrypoint`、`command`、`pull_policy`、`restart_policy` 字段；详情不返回合并后的 `effective` 组件，不为镜像创建 Service 覆盖字段或独立 runtime 消息。
    - 运行 `task proto`，更新 Go protobuf、Web TypeScript DTO，并调整 HTTP mapper 与 MCP mapper / `orbit_update_service_component_overlay` 输出。
    - 保持 API 路由、更新操作和 MCP 工具名称不变；它们仍替换同一个声明组件的完整稀疏 overlay。
 
 5. 更新服务组件详情交互。
-   - 在 `web/src/views/service/ServiceComponentDetail.vue` 增加运行配置编辑分组，显示 Version 默认、Service 当前和继承/覆盖来源。
+   - 在 `web/src/views/service/ServiceComponentDetail.vue` 增加运行配置编辑分组，分别显示 Version 默认和 Service 当前值；当前值来自稀疏 Service Component，空值表示继承。
    - `pull_policy` 使用枚举选择，`restart_policy` 使用 Version 同值集合的枚举选择，其中 `no` 表示显式禁用且“恢复继承”提交空值；`entrypoint` / `command` 使用命令文本输入并支持继承、覆盖和显式清空。
    - 生成保存载荷时合并现有四类 overlay，保存和重新加载后保留未改动的覆盖；镜像只读显示或不在该页面的可编辑表单中出现。
-   - 复用项目共享组件、既有表单错误样式与 `useStatusAsync` / Toast 行为；运行配置和既有环境变量、资源、端点、挂载覆盖统一使用“重置为 Version 值”文本和清除覆盖行为，不再由 UI 创建删除覆盖；更新本地化文本。
+   - 复用项目共享组件、既有表单错误样式与 `useStatusAsync` / Toast 行为；运行配置和既有环境变量、资源、端点、挂载覆盖统一使用“重置”文本和清除覆盖行为，不再由 UI 创建删除覆盖；更新本地化文本。
 
 6. 补充定向测试与运行项目检查。
    - 有效计划测试覆盖四个直接字段的继承、覆盖、argv 显式清空和哈希变化，断言镜像仍来自 Version。
-   - Service usecase 测试覆盖文本命令解析、非法输入、重复/无效策略、冗余覆盖消除、详情声明/覆盖/有效值，以及切换 Version 时的校验和原子性。
+   - Service usecase 测试覆盖文本命令解析、非法输入、重复/无效策略、冗余覆盖消除、详情 Version 默认/Service 当前来源值，以及切换 Version 时的校验和原子性。
    - SQLC repository 测试覆盖 `service_component` 四个列的 SQLite 往返读写、`NULL` 与空 argv 区分。
    - HTTP mapper/MCP 测试覆盖请求和响应契约；Web 单元测试覆盖草稿初始化和载荷生成的三态语义。
    - 实现后运行 `go fmt ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`、`yarn --cwd web lint:fix`、`yarn --cwd web typecheck`，以及相关前端测试。

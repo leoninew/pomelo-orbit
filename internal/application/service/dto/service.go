@@ -52,12 +52,11 @@ type ServiceComponentOverlayInput struct {
 	Endpoints     []model.ServiceComponentEndpoint
 }
 
-// ServiceComponentDetail compares a Version declaration and its sparse Service
-// overlay. Effective is unavailable while the Service configuration is incomplete.
+// ServiceComponentDetail keeps the Version declaration and sparse Service
+// Component values separate. An absent Service value means inheritance.
 type ServiceComponentDetail struct {
-	Component   model.ServiceComponent
-	Declaration model.VersionComponent
-	Effective   *model.EffectiveServiceComponent
+	ServiceComponent model.ServiceComponent
+	VersionComponent model.VersionComponent
 }
 
 type ServiceBasicUpdateInput struct {

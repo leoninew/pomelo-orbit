@@ -722,16 +722,15 @@ func (x *ServiceComponentResp) GetRestartPolicy() string {
 	return ""
 }
 
-// ServiceComponentDetailResp provides the declaration, sparse overlay and
-// server-merged effective component so clients never infer runtime state from
-// absent values.
+// ServiceComponentDetailResp provides the Version declaration and sparse
+// Service Component values separately. An absent value in service_component
+// means that the Service inherits the corresponding Version value.
 type ServiceComponentDetailResp struct {
-	state         protoimpl.MessageState          `protogen:"open.v1"`
-	Component     *ServiceComponentResp           `protobuf:"bytes,1,opt,name=component,proto3" json:"component,omitempty"`
-	Declaration   *ServiceComponentDefinitionResp `protobuf:"bytes,2,opt,name=declaration,proto3" json:"declaration,omitempty"`
-	Effective     *ServiceComponentDefinitionResp `protobuf:"bytes,3,opt,name=effective,proto3" json:"effective,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState          `protogen:"open.v1"`
+	ServiceComponent *ServiceComponentResp           `protobuf:"bytes,1,opt,name=service_component,json=serviceComponent,proto3" json:"service_component,omitempty"`
+	VersionComponent *ServiceComponentDefinitionResp `protobuf:"bytes,2,opt,name=version_component,json=versionComponent,proto3" json:"version_component,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ServiceComponentDetailResp) Reset() {
@@ -764,23 +763,16 @@ func (*ServiceComponentDetailResp) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *ServiceComponentDetailResp) GetComponent() *ServiceComponentResp {
+func (x *ServiceComponentDetailResp) GetServiceComponent() *ServiceComponentResp {
 	if x != nil {
-		return x.Component
+		return x.ServiceComponent
 	}
 	return nil
 }
 
-func (x *ServiceComponentDetailResp) GetDeclaration() *ServiceComponentDefinitionResp {
+func (x *ServiceComponentDetailResp) GetVersionComponent() *ServiceComponentDefinitionResp {
 	if x != nil {
-		return x.Declaration
-	}
-	return nil
-}
-
-func (x *ServiceComponentDetailResp) GetEffective() *ServiceComponentDefinitionResp {
-	if x != nil {
-		return x.Effective
+		return x.VersionComponent
 	}
 	return nil
 }
@@ -1941,11 +1933,10 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\n" +
 	"\b_commandB\x0e\n" +
 	"\f_pull_policyB\x11\n" +
-	"\x0f_restart_policy\"\x8c\x02\n" +
-	"\x1aServiceComponentDetailResp\x12D\n" +
-	"\tcomponent\x18\x01 \x01(\v2&.orbit.v1.service.ServiceComponentRespR\tcomponent\x12R\n" +
-	"\vdeclaration\x18\x02 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\vdeclaration\x12N\n" +
-	"\teffective\x18\x03 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\teffectiveJ\x04\b\x04\x10\x05\"\xa3\x04\n" +
+	"\x0f_restart_policy\"\xdc\x01\n" +
+	"\x1aServiceComponentDetailResp\x12S\n" +
+	"\x11service_component\x18\x01 \x01(\v2&.orbit.v1.service.ServiceComponentRespR\x10serviceComponent\x12]\n" +
+	"\x11version_component\x18\x02 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\x10versionComponentJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05\"\xa3\x04\n" +
 	"\x1eServiceComponentDefinitionResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -2121,22 +2112,21 @@ var file_orbit_v1_service_service_proto_depIdxs = []int32{
 	17, // 7: orbit.v1.service.ServiceComponentResp.resources:type_name -> orbit.v1.service.ServiceComponentResourceOverlay
 	18, // 8: orbit.v1.service.ServiceComponentResp.endpoints:type_name -> orbit.v1.service.ServiceComponentEndpointOverlay
 	13, // 9: orbit.v1.service.ServiceComponentResp.effective_endpoints:type_name -> orbit.v1.service.ServiceComponentDeclaredEndpoint
-	7,  // 10: orbit.v1.service.ServiceComponentDetailResp.component:type_name -> orbit.v1.service.ServiceComponentResp
-	9,  // 11: orbit.v1.service.ServiceComponentDetailResp.declaration:type_name -> orbit.v1.service.ServiceComponentDefinitionResp
-	9,  // 12: orbit.v1.service.ServiceComponentDetailResp.effective:type_name -> orbit.v1.service.ServiceComponentDefinitionResp
-	10, // 13: orbit.v1.service.ServiceComponentDefinitionResp.env:type_name -> orbit.v1.service.ServiceComponentDeclaredEnv
-	11, // 14: orbit.v1.service.ServiceComponentDefinitionResp.mounts:type_name -> orbit.v1.service.ServiceComponentDeclaredMount
-	12, // 15: orbit.v1.service.ServiceComponentDefinitionResp.resources:type_name -> orbit.v1.service.ServiceComponentDeclaredResources
-	13, // 16: orbit.v1.service.ServiceComponentDefinitionResp.endpoints:type_name -> orbit.v1.service.ServiceComponentDeclaredEndpoint
-	15, // 17: orbit.v1.service.ServiceComponentOverlayUpdateReq.env:type_name -> orbit.v1.service.ServiceComponentEnvOverlay
-	16, // 18: orbit.v1.service.ServiceComponentOverlayUpdateReq.mounts:type_name -> orbit.v1.service.ServiceComponentMountOverlay
-	17, // 19: orbit.v1.service.ServiceComponentOverlayUpdateReq.resources:type_name -> orbit.v1.service.ServiceComponentResourceOverlay
-	18, // 20: orbit.v1.service.ServiceComponentOverlayUpdateReq.endpoints:type_name -> orbit.v1.service.ServiceComponentEndpointOverlay
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	7,  // 10: orbit.v1.service.ServiceComponentDetailResp.service_component:type_name -> orbit.v1.service.ServiceComponentResp
+	9,  // 11: orbit.v1.service.ServiceComponentDetailResp.version_component:type_name -> orbit.v1.service.ServiceComponentDefinitionResp
+	10, // 12: orbit.v1.service.ServiceComponentDefinitionResp.env:type_name -> orbit.v1.service.ServiceComponentDeclaredEnv
+	11, // 13: orbit.v1.service.ServiceComponentDefinitionResp.mounts:type_name -> orbit.v1.service.ServiceComponentDeclaredMount
+	12, // 14: orbit.v1.service.ServiceComponentDefinitionResp.resources:type_name -> orbit.v1.service.ServiceComponentDeclaredResources
+	13, // 15: orbit.v1.service.ServiceComponentDefinitionResp.endpoints:type_name -> orbit.v1.service.ServiceComponentDeclaredEndpoint
+	15, // 16: orbit.v1.service.ServiceComponentOverlayUpdateReq.env:type_name -> orbit.v1.service.ServiceComponentEnvOverlay
+	16, // 17: orbit.v1.service.ServiceComponentOverlayUpdateReq.mounts:type_name -> orbit.v1.service.ServiceComponentMountOverlay
+	17, // 18: orbit.v1.service.ServiceComponentOverlayUpdateReq.resources:type_name -> orbit.v1.service.ServiceComponentResourceOverlay
+	18, // 19: orbit.v1.service.ServiceComponentOverlayUpdateReq.endpoints:type_name -> orbit.v1.service.ServiceComponentEndpointOverlay
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_service_service_proto_init() }

@@ -136,7 +136,7 @@ func serviceOverlayInput(input *servicev1.ServiceComponentOverlayUpdateReq) serv
 		if value == nil {
 			continue
 		}
-		result.Mounts = append(result.Mounts, model.ServiceComponentMount{Target: value.Target, Source: value.Source, State: model.ServiceComponentOverlayState(value.State)})
+		result.Mounts = append(result.Mounts, model.ServiceComponentMount{Target: value.Target, Source: value.Source, SourceIsHostPath: value.SourceIsHostPath, State: model.ServiceComponentOverlayState(value.State)})
 	}
 	for _, value := range input.Endpoints {
 		if value == nil {

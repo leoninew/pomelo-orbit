@@ -33,7 +33,7 @@ WHERE (CAST(sqlc.narg(project_id) AS TEXT) IS NULL OR project_id = CAST(sqlc.nar
     OR code LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
     OR repository_url LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
   )
-ORDER BY created_at DESC, id
+ORDER BY id DESC
 LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: CreateRepository :exec

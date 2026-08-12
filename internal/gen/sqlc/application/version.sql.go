@@ -526,7 +526,7 @@ const listVersions = `-- name: ListVersions :many
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
-ORDER BY created_at DESC, id
+ORDER BY id DESC
 `
 
 func (q *Queries) ListVersions(ctx context.Context, applicationID string) ([]Version, error) {
@@ -569,7 +569,7 @@ WHERE application_id = CAST(?1 AS TEXT)
   AND (CAST(?2 AS TEXT) IS NULL
     OR label LIKE CAST(?2 AS TEXT)
     OR note LIKE CAST(?2 AS TEXT))
-ORDER BY created_at DESC, id
+ORDER BY id DESC
 LIMIT ?4 OFFSET ?3
 `
 

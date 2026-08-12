@@ -323,7 +323,7 @@ WHERE d.project_id = CAST(?1 AS TEXT)
   )
   AND (CAST(?5 AS DATETIME) IS NULL OR d.started_at >= ?5)
   AND (CAST(?6 AS DATETIME) IS NULL OR d.started_at < ?6)
-ORDER BY d.started_at DESC, d.id
+ORDER BY d.id DESC
 LIMIT ?8 OFFSET ?7
 `
 

@@ -246,7 +246,7 @@
       </template>
     </AppDialog>
 
-    <AppDialog v-model:open="isAddVariableDialogOpen" title="添加变量">
+    <AppDialog v-model:open="isAddVariableDialogOpen" title="添加自定义变量">
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label class="app-field-label block">
@@ -268,12 +268,20 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">变量值</label>
-          <input v-model="variableForm.value" type="text" class="app-input" />
+          <input
+            v-model="variableForm.value"
+            :type="variableForm.secret ? 'password' : 'text'"
+            class="app-input"
+          />
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">说明</label>
           <input v-model="variableForm.description" type="text" class="app-input" />
         </div>
+        <label class="flex items-center gap-2 text-sm text-foreground">
+          <input v-model="variableForm.secret" type="checkbox" class="app-checkbox" />
+          敏感变量
+        </label>
       </div>
       <p v-if="addVariableSubmitError" class="app-field-error mt-3" role="alert">
         {{ addVariableSubmitError }}
@@ -287,7 +295,7 @@
       </template>
     </AppDialog>
 
-    <AppDialog v-model:open="isEditVariableDialogOpen" title="编辑变量">
+    <AppDialog v-model:open="isEditVariableDialogOpen" title="编辑自定义变量">
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label class="app-field-label block">
@@ -298,12 +306,20 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">变量值</label>
-          <input v-model="variableForm.value" type="text" class="app-input" />
+          <input
+            v-model="variableForm.value"
+            :type="variableForm.secret ? 'password' : 'text'"
+            class="app-input"
+          />
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">说明</label>
           <input v-model="variableForm.description" type="text" class="app-input" />
         </div>
+        <label class="flex items-center gap-2 text-sm text-foreground">
+          <input v-model="variableForm.secret" type="checkbox" class="app-checkbox" />
+          敏感变量
+        </label>
       </div>
       <p v-if="editVariableSubmitError" class="app-field-error mt-3" role="alert">
         {{ editVariableSubmitError }}
@@ -383,6 +399,7 @@
     name: '',
     value: '',
     description: '',
+    secret: false,
   });
   const variableErrors = reactive({
     name: '',
@@ -573,7 +590,7 @@
   }
 
   function openAddVariableDialog() {
-    Object.assign(variableForm, { name: '', value: '', description: '' });
+    Object.assign(variableForm, { name: '', value: '', description: '', secret: false });
     Object.assign(variableErrors, { name: '' });
     addVariableSubmitError.value = '';
     isAddVariableDialogOpen.value = true;
@@ -589,6 +606,7 @@
       name: variable.name,
       value: normalizeValue(variable.value ?? variable.default),
       description: variable.description ?? '',
+      secret: variable.secret,
     });
     Object.assign(variableErrors, { name: '' });
     editVariableSubmitError.value = '';
@@ -618,7 +636,7 @@
           description: variableForm.description.trim(),
           default: undefined,
           value: variableForm.value,
-          secret: false,
+          secret: variableForm.secret,
           source: 'repository_custom',
           editable: true,
         };
@@ -626,7 +644,7 @@
           variable_overrides: { items: variableOverridesWith(nextVariable) },
         });
         repository.value = updated;
-        toast.success('添加成功');
+        toast.success('变量已添加');
         isAddVariableDialogOpen.value = false;
       });
     } catch (error) {
@@ -658,11 +676,12 @@
               ...current,
               value: variableForm.value,
               description: variableForm.description.trim(),
+              secret: variableForm.secret,
             }),
           },
         });
         repository.value = updated;
-        toast.success('更新成功');
+        toast.success('变量已更新');
         isEditVariableDialogOpen.value = false;
       });
     } catch (error) {
@@ -684,7 +703,7 @@
           },
         });
         repository.value = updated;
-        toast.success('删除成功');
+        toast.success('变量已重置');
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '删除失败');

@@ -30,7 +30,7 @@ FROM user
 WHERE (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
   OR LOWER(username) LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
   OR LOWER(COALESCE(email, '')) LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
-ORDER BY created_at DESC, id
+ORDER BY id DESC
 LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: UserRoles :many

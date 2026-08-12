@@ -118,7 +118,7 @@ SELECT project.id, project.name, project.code, project.is_active, project.create
 FROM project
 JOIN project_member ON project_member.project_id = project.id
 WHERE project_member.user_id = ? AND project.is_active = 1
-ORDER BY project.created_at DESC, project.id
+ORDER BY project.id DESC
 `
 
 type ListActiveProjectsByMemberRow struct {
@@ -165,7 +165,7 @@ SELECT project.id, project.name, project.code, project.is_active, project.create
 FROM project
 JOIN project_member ON project_member.project_id = project.id
 WHERE project_member.user_id = ?
-ORDER BY project.created_at DESC, project.id
+ORDER BY project.id DESC
 `
 
 type ListProjectsByMemberRow struct {

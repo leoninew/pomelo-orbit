@@ -6,7 +6,7 @@ WHERE (CAST(sqlc.narg(project_id) AS TEXT) IS NULL OR project_id = CAST(sqlc.nar
   AND (CAST(sqlc.narg(pipeline_id) AS TEXT) IS NULL OR pipeline_id = CAST(sqlc.narg(pipeline_id) AS TEXT))
   AND (CAST(sqlc.narg(from_at) AS DATETIME) IS NULL OR created_at >= sqlc.narg(from_at))
   AND (CAST(sqlc.narg(to_at) AS DATETIME) IS NULL OR created_at <= sqlc.narg(to_at))
-ORDER BY created_at DESC, id LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
+ORDER BY id DESC LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: CountPipelineRuns :one
 SELECT COUNT(*) FROM pipeline_run
@@ -104,7 +104,7 @@ WHERE (CAST(sqlc.narg(project_id) AS TEXT) IS NULL OR artifact.project_id = CAST
   AND (CAST(sqlc.narg(repository_id) AS TEXT) IS NULL OR artifact.repository_id = CAST(sqlc.narg(repository_id) AS TEXT))
   AND (CAST(sqlc.narg(pipeline_id) AS TEXT) IS NULL OR artifact.pipeline_id = CAST(sqlc.narg(pipeline_id) AS TEXT))
   AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL OR artifact.name LIKE CAST(sqlc.narg(search_pattern) AS TEXT) OR artifact.stage_name LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
-ORDER BY artifact.created_at DESC, artifact.id LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
+ORDER BY artifact.id DESC LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: CountArtifacts :one
 SELECT COUNT(*) FROM artifact

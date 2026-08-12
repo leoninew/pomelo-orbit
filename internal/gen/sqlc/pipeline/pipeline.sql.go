@@ -411,7 +411,7 @@ FROM pipeline_stage
 WHERE project_id = CAST(?1 AS TEXT)
   AND kind = 'template'
   AND (CAST(?2 AS TEXT) IS NULL OR name LIKE CAST(?2 AS TEXT))
-ORDER BY updated_at DESC, id LIMIT ?4 OFFSET ?3
+ORDER BY id DESC LIMIT ?4 OFFSET ?3
 `
 
 type ListPipelineStageTemplatesParams struct {
@@ -474,7 +474,7 @@ FROM pipeline
 WHERE project_id = CAST(?1 AS TEXT)
   AND (CAST(?2 AS TEXT) IS NULL OR kind = CAST(?2 AS TEXT))
   AND (CAST(?3 AS TEXT) IS NULL OR name LIKE CAST(?3 AS TEXT))
-ORDER BY updated_at DESC, id LIMIT ?5 OFFSET ?4
+ORDER BY id DESC LIMIT ?5 OFFSET ?4
 `
 
 type ListPipelinesParams struct {

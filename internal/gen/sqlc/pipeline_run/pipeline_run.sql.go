@@ -542,7 +542,7 @@ WHERE (CAST(?1 AS TEXT) IS NULL OR artifact.project_id = CAST(?1 AS TEXT))
   AND (CAST(?2 AS TEXT) IS NULL OR artifact.repository_id = CAST(?2 AS TEXT))
   AND (CAST(?3 AS TEXT) IS NULL OR artifact.pipeline_id = CAST(?3 AS TEXT))
   AND (CAST(?4 AS TEXT) IS NULL OR artifact.name LIKE CAST(?4 AS TEXT) OR artifact.stage_name LIKE CAST(?4 AS TEXT))
-ORDER BY artifact.created_at DESC, artifact.id LIMIT ?6 OFFSET ?5
+ORDER BY artifact.id DESC LIMIT ?6 OFFSET ?5
 `
 
 type ListArtifactsParams struct {
@@ -747,7 +747,7 @@ WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
   AND (CAST(?3 AS TEXT) IS NULL OR pipeline_id = CAST(?3 AS TEXT))
   AND (CAST(?4 AS DATETIME) IS NULL OR created_at >= ?4)
   AND (CAST(?5 AS DATETIME) IS NULL OR created_at <= ?5)
-ORDER BY created_at DESC, id LIMIT ?7 OFFSET ?6
+ORDER BY id DESC LIMIT ?7 OFFSET ?6
 `
 
 type ListPipelineRunsParams struct {

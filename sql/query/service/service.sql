@@ -200,7 +200,7 @@ WHERE a.project_id = CAST(sqlc.arg(project_id) AS TEXT)
     OR s.instance_key LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
     OR v.label LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
   )
-ORDER BY s.created_at DESC, a.name, s.instance_key
+ORDER BY s.id DESC
 LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: ServiceListItemByID :one

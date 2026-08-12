@@ -150,7 +150,7 @@ const listGatewayApplications = `-- name: ListGatewayApplications :many
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE project_id = ? AND kind = ?
-ORDER BY created_at DESC, id
+ORDER BY id DESC
 `
 
 type ListGatewayApplicationsParams struct {

@@ -2,7 +2,7 @@
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
-ORDER BY created_at DESC, id;
+ORDER BY id DESC;
 
 -- name: CountVersions :one
 SELECT COUNT(*)
@@ -19,7 +19,7 @@ WHERE application_id = CAST(sqlc.arg(application_id) AS TEXT)
   AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
     OR label LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
     OR note LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
-ORDER BY created_at DESC, id
+ORDER BY id DESC
 LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: VersionByID :one

@@ -368,7 +368,7 @@ WHERE a.project_id = CAST(?1 AS TEXT)
     OR s.instance_key LIKE CAST(?4 AS TEXT)
     OR v.label LIKE CAST(?4 AS TEXT)
   )
-ORDER BY s.created_at DESC, a.name, s.instance_key
+ORDER BY s.id DESC
 LIMIT ?6 OFFSET ?5
 `
 

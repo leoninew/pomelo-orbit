@@ -163,7 +163,7 @@
         </div>
       </DetailInfoCard>
 
-      <DetailInfoCard title="变量声明">
+      <DetailInfoCard title="变量配置">
         <template #actions>
           <button class="app-button-primary h-9 px-3" @click="openAddVariableDialog">
             <Plus class="size-4" />

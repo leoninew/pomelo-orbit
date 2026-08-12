@@ -92,7 +92,7 @@ WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
     OR code LIKE CAST(?2 AS TEXT)
     OR repository_url LIKE CAST(?2 AS TEXT)
   )
-ORDER BY created_at DESC, id
+ORDER BY id DESC
 LIMIT ?4 OFFSET ?3
 `
 

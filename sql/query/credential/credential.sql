@@ -33,7 +33,7 @@ WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
   AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
     OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
     OR type LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
-ORDER BY created_at DESC
+ORDER BY id DESC
 LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: CreateCredential :exec

@@ -182,7 +182,7 @@ WHERE project_id = CAST(?1 AS TEXT)
   AND (CAST(?2 AS TEXT) IS NULL
     OR name LIKE CAST(?2 AS TEXT)
     OR type LIKE CAST(?2 AS TEXT))
-ORDER BY created_at DESC
+ORDER BY id DESC
 LIMIT ?4 OFFSET ?3
 `
 

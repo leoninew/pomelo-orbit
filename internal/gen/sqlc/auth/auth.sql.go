@@ -30,7 +30,7 @@ SELECT id, user_id, username, ip_address, user_agent, login_at, success
 FROM login_history
 WHERE (CAST(?1 AS TEXT) IS NULL
   OR LOWER(username) LIKE CAST(?1 AS TEXT))
-ORDER BY login_at DESC, id DESC
+ORDER BY id DESC
 LIMIT ?3 OFFSET ?2
 `
 

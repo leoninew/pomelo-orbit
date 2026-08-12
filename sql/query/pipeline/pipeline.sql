@@ -18,7 +18,7 @@ FROM pipeline
 WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
   AND (CAST(sqlc.narg(kind) AS TEXT) IS NULL OR kind = CAST(sqlc.narg(kind) AS TEXT))
   AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
-ORDER BY updated_at DESC, id LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
+ORDER BY id DESC LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: CreatePipeline :exec
 INSERT INTO pipeline (id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at)
@@ -45,7 +45,7 @@ FROM pipeline_stage
 WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
   AND kind = 'template'
   AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
-ORDER BY updated_at DESC, id LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
+ORDER BY id DESC LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: PipelineStageTemplateByID :one
 SELECT id, project_id, kind, pipeline_id, name, image, script, description, version,

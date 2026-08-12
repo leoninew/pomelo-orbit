@@ -54,7 +54,7 @@ WHERE d.project_id = CAST(sqlc.arg(project_id) AS TEXT)
   )
   AND (CAST(sqlc.narg(date_from) AS DATETIME) IS NULL OR d.started_at >= sqlc.narg(date_from))
   AND (CAST(sqlc.narg(date_to) AS DATETIME) IS NULL OR d.started_at < sqlc.narg(date_to))
-ORDER BY d.started_at DESC, d.id
+ORDER BY d.id DESC
 LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: CancelDeployment :execrows

@@ -53,7 +53,7 @@ func serviceComponentResponse(item model.ServiceComponent) servicev1.ServiceComp
 	for _, value := range item.Endpoints {
 		endpoints = append(endpoints, &servicev1.ServiceComponentEndpointOverlay{Name: value.Name, Mode: value.Mode, BindAddress: value.BindAddress, ListenPort: int32Ptr(value.ListenPort), Entrypoint: value.Entrypoint, PathPrefix: value.PathPrefix, State: string(value.State)})
 	}
-	return servicev1.ServiceComponentResp{Id: item.Id, ServiceId: item.ServiceId, SourceVersionComponentId: item.SourceVersionComponentId, ComponentName: item.ComponentName, Status: item.Status, Env: env, Mounts: mounts, Resources: serviceComponentResourcesResponse(item.Resources), Endpoints: endpoints, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return servicev1.ServiceComponentResp{Id: item.Id, ServiceId: item.ServiceId, SourceVersionComponentId: item.SourceVersionComponentId, ComponentName: item.ComponentName, Status: item.Status, Env: env, Mounts: mounts, Resources: serviceComponentResourcesResponse(item.Resources), Endpoints: endpoints, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt), Entrypoint: optionalCommandText(item.Entrypoint), Command: optionalCommandText(item.Command), PullPolicy: item.PullPolicy, RestartPolicy: item.RestartPolicy}
 }
 
 func serviceComponentDetailResponse(item servicedto.ServiceComponentDetail) servicev1.ServiceComponentDetailResp {
@@ -64,7 +64,7 @@ func serviceComponentDetailResponse(item servicedto.ServiceComponentDetail) serv
 	}
 	effective := componentDeclarationResponse(model.VersionComponent{
 		Id: item.Effective.SourceComponentId, Name: item.Effective.Name, Image: item.Effective.Image,
-		Command: item.Effective.Command, Env: item.Effective.Env, Endpoints: item.Effective.Endpoints,
+		Entrypoint: item.Effective.Entrypoint, Command: item.Effective.Command, Env: item.Effective.Env, Endpoints: item.Effective.Endpoints,
 		Mounts: item.Effective.Mounts, Dependencies: item.Effective.Dependencies,
 		Healthcheck: item.Effective.Healthcheck, Resources: item.Effective.Resources,
 		PullPolicy: item.Effective.PullPolicy, RestartPolicy: item.Effective.RestartPolicy,
@@ -82,7 +82,7 @@ func componentDeclarationResponse(component model.VersionComponent) servicev1.Se
 	for _, item := range component.Mounts {
 		mounts = append(mounts, &servicev1.ServiceComponentDeclaredMount{SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly, SourceIsHostPath: item.SourceIsHostPath})
 	}
-	return servicev1.ServiceComponentDefinitionResp{Id: component.Id, Name: component.Name, Image: component.Image, Command: commandline.Format(component.Command), PullPolicy: component.PullPolicy, Env: env, Endpoints: serviceComponentDeclaredEndpointsResponse(component.Endpoints), Mounts: mounts, Resources: componentResourcesResponse(component.Resources)}
+	return servicev1.ServiceComponentDefinitionResp{Id: component.Id, Name: component.Name, Image: component.Image, Entrypoint: commandline.Format(component.Entrypoint), Command: commandline.Format(component.Command), PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Env: env, Endpoints: serviceComponentDeclaredEndpointsResponse(component.Endpoints), Mounts: mounts, Resources: componentResourcesResponse(component.Resources)}
 }
 
 func serviceComponentDeclaredEndpointsResponse(items []model.VersionComponentEndpoint) []*servicev1.ServiceComponentDeclaredEndpoint {
@@ -104,7 +104,7 @@ func serviceComponentOverlayInput(req *servicev1.ServiceComponentOverlayUpdateRe
 	if req == nil {
 		return servicedto.ServiceComponentOverlayInput{}
 	}
-	result := servicedto.ServiceComponentOverlayInput{Resources: serviceComponentResourcesInput(req.Resources)}
+	result := servicedto.ServiceComponentOverlayInput{Entrypoint: req.Entrypoint, Command: req.Command, PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, Resources: serviceComponentResourcesInput(req.Resources)}
 	for _, item := range req.Env {
 		if item != nil {
 			result.Env = append(result.Env, model.ServiceComponentEnv{Key: item.Key, Value: item.Value, State: model.ServiceComponentOverlayState(item.State)})
@@ -121,6 +121,14 @@ func serviceComponentOverlayInput(req *servicev1.ServiceComponentOverlayUpdateRe
 		}
 	}
 	return result
+}
+
+func optionalCommandText(value []string) *string {
+	if value == nil {
+		return nil
+	}
+	text := commandline.Format(value)
+	return &text
 }
 
 func serviceEnvUpdateInput(req *servicev1.ServiceEnvUpdateReq) servicedto.ServiceEnvUpdateInput {

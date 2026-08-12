@@ -87,6 +87,18 @@ func BuildEffectiveServicePlan(app model.Application, version model.Version, ser
 func MergeServiceComponent(declaration model.VersionComponent, overlay model.ServiceComponent, serviceEnv map[string]string) (model.EffectiveServiceComponent, error) {
 	result := effectiveComponentFromVersion(declaration)
 	result.ServiceComponentId = overlay.Id
+	if overlay.Entrypoint != nil {
+		result.Entrypoint = cloneStringSlice(overlay.Entrypoint)
+	}
+	if overlay.Command != nil {
+		result.Command = cloneStringSlice(overlay.Command)
+	}
+	if overlay.PullPolicy != nil {
+		result.PullPolicy = *overlay.PullPolicy
+	}
+	if overlay.RestartPolicy != nil {
+		result.RestartPolicy = cloneString(overlay.RestartPolicy)
+	}
 	// Rebuild fields that accept sparse runtime overlays. Keeping the declaration
 	// values here would emit both the original and the override.
 	result.Env = make([]model.VersionComponentEnv, 0, len(declaration.Env))
@@ -239,8 +251,8 @@ func effectiveComponentFromVersion(declaration model.VersionComponent) model.Eff
 		SourceComponentId: declaration.Id,
 		Name:              declaration.Name,
 		Image:             declaration.Image,
-		Entrypoint:        append([]string(nil), declaration.Entrypoint...),
-		Command:           append([]string(nil), declaration.Command...),
+		Entrypoint:        cloneStringSlice(declaration.Entrypoint),
+		Command:           cloneStringSlice(declaration.Command),
 		Env:               append([]model.VersionComponentEnv(nil), declaration.Env...),
 		Mounts:            append([]model.VersionComponentMount(nil), declaration.Mounts...),
 		Dependencies:      append([]model.VersionComponentDependency(nil), declaration.Dependencies...),
@@ -284,6 +296,13 @@ func cloneString(value *string) *string {
 	}
 	copy := *value
 	return &copy
+}
+
+func cloneStringSlice(value []string) []string {
+	if value == nil {
+		return nil
+	}
+	return append([]string{}, value...)
 }
 func cloneInt(value *int) *int {
 	if value == nil {

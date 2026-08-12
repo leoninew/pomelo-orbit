@@ -36,7 +36,7 @@ func TestMigrateAndMigrationVersion(t *testing.T) {
 	}
 	for _, want := range []string{
 		`msg="run schema migrations" driver=sqlite from_version=0 dirty=false`,
-		`msg="schema migrations complete" driver=sqlite from_version=0 to_version=31 applied=true dirty=false`,
+		`msg="schema migrations complete" driver=sqlite from_version=0 to_version=32 applied=true dirty=false`,
 		`msg="execute data migration" path=migration/data/sqlite/000029_seed_system.up.sql`,
 	} {
 		if !strings.Contains(logs.String(), want) {
@@ -50,7 +50,7 @@ func TestMigrateAndMigrationVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version.Version != 31 || version.Dirty {
+	if version.Version != 32 || version.Dirty {
 		t.Fatalf("unexpected migration version: %+v", version)
 	}
 }

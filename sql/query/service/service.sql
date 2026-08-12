@@ -72,13 +72,13 @@ SET updated_at = ?
 WHERE id = ?;
 
 -- name: ServiceComponentsByService :many
-SELECT id, service_id, source_version_component_id, component_name, status, created_at, updated_at
+SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
 FROM service_component
 WHERE service_id = ?
 ORDER BY component_name;
 
 -- name: ServiceComponentByID :one
-SELECT id, service_id, source_version_component_id, component_name, status, created_at, updated_at
+SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
 FROM service_component
 WHERE id = ?;
 
@@ -88,8 +88,13 @@ WHERE service_id = ?;
 
 -- name: InsertServiceComponent :exec
 INSERT INTO service_component (
-  id, service_id, source_version_component_id, component_name, status, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?);
+  id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: UpdateServiceComponentOverlayFields :exec
+UPDATE service_component
+SET entrypoint_json = ?, command_json = ?, pull_policy = ?, restart_policy = ?, updated_at = ?
+WHERE id = ?;
 
 -- name: UpdateServiceComponentSource :exec
 UPDATE service_component

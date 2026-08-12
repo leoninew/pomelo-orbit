@@ -637,6 +637,8 @@ export default {
     componentDetail: {
       defaultValue: 'Default value',
       currentValue: 'Current value',
+      runtimeTitle: 'Runtime configuration',
+      resetToVersion: 'Reset to Version value',
       validation: {
         sourceRequired: 'Enter a source path.',
       },

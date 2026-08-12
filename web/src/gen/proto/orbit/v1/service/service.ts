@@ -82,6 +82,10 @@ export interface ServiceComponentResp {
    * endpoints, this includes inherited Version declarations and is read-only.
    */
   effective_endpoints: ServiceComponentDeclaredEndpoint[];
+  entrypoint?: string | undefined;
+  command?: string | undefined;
+  pull_policy?: string | undefined;
+  restart_policy?: string | undefined;
 }
 
 /**
@@ -105,6 +109,8 @@ export interface ServiceComponentDefinitionResp {
   mounts: ServiceComponentDeclaredMount[];
   resources: ServiceComponentDeclaredResources | undefined;
   endpoints: ServiceComponentDeclaredEndpoint[];
+  entrypoint: string;
+  restart_policy?: string | undefined;
 }
 
 export interface ServiceComponentDeclaredEnv {
@@ -143,6 +149,10 @@ export interface ServiceComponentOverlayUpdateReq {
   mounts: ServiceComponentMountOverlay[];
   resources: ServiceComponentResourceOverlay | undefined;
   endpoints: ServiceComponentEndpointOverlay[];
+  entrypoint?: string | undefined;
+  command?: string | undefined;
+  pull_policy?: string | undefined;
+  restart_policy?: string | undefined;
 }
 
 export interface ServiceComponentEnvOverlay {

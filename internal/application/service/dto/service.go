@@ -42,10 +42,14 @@ type ServiceCreateInput struct {
 }
 
 type ServiceComponentOverlayInput struct {
-	Env       []model.ServiceComponentEnv
-	Mounts    []model.ServiceComponentMount
-	Resources *model.ServiceComponentResources
-	Endpoints []model.ServiceComponentEndpoint
+	Entrypoint    *string
+	Command       *string
+	PullPolicy    *string
+	RestartPolicy *string
+	Env           []model.ServiceComponentEnv
+	Mounts        []model.ServiceComponentMount
+	Resources     *model.ServiceComponentResources
+	Endpoints     []model.ServiceComponentEndpoint
 }
 
 // ServiceComponentDetail compares a Version declaration and its sparse Service

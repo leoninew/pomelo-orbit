@@ -125,7 +125,7 @@ func serviceOverlayInput(input *servicev1.ServiceComponentOverlayUpdateReq) serv
 	if input == nil {
 		return servicedto.ServiceComponentOverlayInput{}
 	}
-	result := servicedto.ServiceComponentOverlayInput{Resources: serviceResourcesInput(input.Resources)}
+	result := servicedto.ServiceComponentOverlayInput{Entrypoint: input.Entrypoint, Command: input.Command, PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy, Resources: serviceResourcesInput(input.Resources)}
 	for _, value := range input.Env {
 		if value == nil {
 			continue
@@ -275,7 +275,14 @@ func serviceOutput(value servicedto.ServiceView) map[string]any {
 }
 
 func serviceComponentOutput(value model.ServiceComponent) map[string]any {
-	return map[string]any{"id": value.Id, "service_id": value.ServiceId, "source_version_component_id": value.SourceVersionComponentId, "component_name": value.ComponentName, "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
+	return map[string]any{"id": value.Id, "service_id": value.ServiceId, "source_version_component_id": value.SourceVersionComponentId, "component_name": value.ComponentName, "entrypoint": optionalCommandOutput(value.Entrypoint), "command": optionalCommandOutput(value.Command), "pull_policy": value.PullPolicy, "restart_policy": value.RestartPolicy, "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
+}
+
+func optionalCommandOutput(value []string) any {
+	if value == nil {
+		return nil
+	}
+	return commandline.Format(value)
 }
 
 func deploymentOutput(value model.Deployment) map[string]any {

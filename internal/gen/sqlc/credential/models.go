@@ -322,13 +322,17 @@ type Service struct {
 }
 
 type ServiceComponent struct {
-	ID                       string    `db:"id"`
-	ServiceID                string    `db:"service_id"`
-	SourceVersionComponentID string    `db:"source_version_component_id"`
-	ComponentName            string    `db:"component_name"`
-	Status                   string    `db:"status"`
-	CreatedAt                time.Time `db:"created_at"`
-	UpdatedAt                time.Time `db:"updated_at"`
+	ID                       string         `db:"id"`
+	ServiceID                string         `db:"service_id"`
+	SourceVersionComponentID string         `db:"source_version_component_id"`
+	ComponentName            string         `db:"component_name"`
+	EntrypointJson           sql.NullString `db:"entrypoint_json"`
+	CommandJson              sql.NullString `db:"command_json"`
+	PullPolicy               sql.NullString `db:"pull_policy"`
+	RestartPolicy            sql.NullString `db:"restart_policy"`
+	Status                   string         `db:"status"`
+	CreatedAt                time.Time      `db:"created_at"`
+	UpdatedAt                time.Time      `db:"updated_at"`
 }
 
 type ServiceComponentEndpoint struct {

@@ -41,6 +41,7 @@ type Querier interface {
 	TouchService(ctx context.Context, arg TouchServiceParams) error
 	UpdateService(ctx context.Context, arg UpdateServiceParams) error
 	UpdateServiceAfterDeploy(ctx context.Context, arg UpdateServiceAfterDeployParams) error
+	UpdateServiceComponentOverlayFields(ctx context.Context, arg UpdateServiceComponentOverlayFieldsParams) error
 	UpdateServiceComponentSource(ctx context.Context, arg UpdateServiceComponentSourceParams) error
 	UpdateServiceConfiguration(ctx context.Context, arg UpdateServiceConfigurationParams) error
 	UpdateServiceStatus(ctx context.Context, arg UpdateServiceStatusParams) error

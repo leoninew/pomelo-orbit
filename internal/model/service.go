@@ -21,6 +21,10 @@ type ServiceComponent struct {
 	ServiceId                string
 	SourceVersionComponentId string
 	ComponentName            string
+	Entrypoint               []string
+	Command                  []string
+	PullPolicy               *string
+	RestartPolicy            *string
 	Status                   string
 	CreatedAt                time.Time
 	UpdatedAt                time.Time

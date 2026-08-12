@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	deploymentsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/usecase"
 	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
@@ -222,6 +224,18 @@ func (s Service) UpdateServiceComponentOverlay(ctx context.Context, userId, serv
 		return model.ServiceComponent{}, err
 	}
 	component := detail.Component
+	entrypoint, err := overlayCommand(input.Entrypoint)
+	if err != nil {
+		return model.ServiceComponent{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	command, err := overlayCommand(input.Command)
+	if err != nil {
+		return model.ServiceComponent{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	component.Entrypoint = entrypoint
+	component.Command = command
+	component.PullPolicy = input.PullPolicy
+	component.RestartPolicy = input.RestartPolicy
 	component.Env = append([]model.ServiceComponentEnv(nil), input.Env...)
 	component.Mounts = append([]model.ServiceComponentMount(nil), input.Mounts...)
 	component.Resources = input.Resources
@@ -321,6 +335,30 @@ func remapServiceComponents(mappings []model.ServiceComponent, declarations []mo
 }
 
 func normalizeOverlay(component *model.ServiceComponent, declaration model.VersionComponent) error {
+	// An empty argv is an intentional override that restores the image default;
+	// it must remain distinct from a nil value that inherits the declaration.
+	if len(component.Entrypoint) > 0 && slices.Equal(component.Entrypoint, declaration.Entrypoint) {
+		component.Entrypoint = nil
+	}
+	if len(component.Command) > 0 && slices.Equal(component.Command, declaration.Command) {
+		component.Command = nil
+	}
+	if component.PullPolicy != nil {
+		if !validServicePullPolicy(*component.PullPolicy) {
+			return fmt.Errorf("pull_policy must be always, missing or never")
+		}
+		if *component.PullPolicy == declaration.PullPolicy {
+			component.PullPolicy = nil
+		}
+	}
+	if component.RestartPolicy != nil {
+		if !validServiceRestartPolicy(*component.RestartPolicy) {
+			return fmt.Errorf("restart_policy must be no or unless-stopped")
+		}
+		if declaration.RestartPolicy != nil && *component.RestartPolicy == *declaration.RestartPolicy {
+			component.RestartPolicy = nil
+		}
+	}
 	allowedEnv := map[string]string{}
 	for _, item := range declaration.Env {
 		allowedEnv[item.Key] = item.Value
@@ -437,6 +475,25 @@ func normalizeOverlay(component *model.ServiceComponent, declaration model.Versi
 	}
 	component.Endpoints = endpoints
 	return nil
+}
+
+func overlayCommand(input *string) ([]string, error) {
+	if input == nil {
+		return nil, nil
+	}
+	command, err := commandline.Parse(*input)
+	if err != nil {
+		return nil, fmt.Errorf("invalid component command")
+	}
+	return command, nil
+}
+
+func validServicePullPolicy(value string) bool {
+	return value == "always" || value == "missing" || value == "never"
+}
+
+func validServiceRestartPolicy(value string) bool {
+	return value == "no" || value == "unless-stopped"
 }
 
 func normalizeServiceEnv(env []model.ServiceEnv) ([]model.ServiceEnv, error) {

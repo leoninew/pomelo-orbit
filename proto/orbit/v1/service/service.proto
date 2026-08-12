@@ -76,6 +76,12 @@ message ServiceComponentResp {
   // Fully resolved endpoint values from the Service effective plan. Unlike
   // endpoints, this includes inherited Version declarations and is read-only.
   repeated ServiceComponentDeclaredEndpoint effective_endpoints = 14;
+  // nil inherits the Version declaration; an empty command string is an
+  // explicit empty argv and causes Compose to use the image default.
+  optional string entrypoint = 15;
+  optional string command = 16;
+  optional string pull_policy = 17;
+  optional string restart_policy = 18;
 }
 
 // ServiceComponentDetailResp provides the declaration, sparse overlay and
@@ -99,6 +105,8 @@ message ServiceComponentDefinitionResp {
   repeated ServiceComponentDeclaredMount mounts = 7;
   ServiceComponentDeclaredResources resources = 8;
   repeated ServiceComponentDeclaredEndpoint endpoints = 9;
+  string entrypoint = 10;
+  optional string restart_policy = 11;
 }
 
 message ServiceComponentDeclaredEnv {
@@ -137,6 +145,10 @@ message ServiceComponentOverlayUpdateReq {
   repeated ServiceComponentMountOverlay mounts = 2;
   ServiceComponentResourceOverlay resources = 3;
   repeated ServiceComponentEndpointOverlay endpoints = 4;
+  optional string entrypoint = 5;
+  optional string command = 6;
+  optional string pull_policy = 7;
+  optional string restart_policy = 8;
 }
 
 message ServiceComponentEnvOverlay {

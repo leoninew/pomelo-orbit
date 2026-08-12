@@ -3,6 +3,7 @@ package servicerepo
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -205,6 +206,21 @@ func (r Repository) ReplaceServiceEnv(ctx context.Context, serviceId string, env
 func (r Repository) UpdateServiceComponentOverlay(ctx context.Context, component model.ServiceComponent) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		q := r.q(txCtx)
+		entrypointJSON, err := optionalCommandJSON(component.Entrypoint)
+		if err != nil {
+			return fmt.Errorf("encode service component entrypoint: %w", err)
+		}
+		commandJSON, err := optionalCommandJSON(component.Command)
+		if err != nil {
+			return fmt.Errorf("encode service component command: %w", err)
+		}
+		if err := q.UpdateServiceComponentOverlayFields(txCtx, servicesqlc.UpdateServiceComponentOverlayFieldsParams{
+			EntrypointJson: entrypointJSON, CommandJson: commandJSON,
+			PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy),
+			UpdatedAt: time.Now().UTC(), ID: component.Id,
+		}); err != nil {
+			return fmt.Errorf("update service component runtime overlay: %w", err)
+		}
 		if err := q.DeleteServiceComponentEnv(txCtx, component.Id); err != nil {
 			return fmt.Errorf("delete service component env: %w", err)
 		}
@@ -277,7 +293,19 @@ func (r Repository) replaceServiceComponents(ctx context.Context, svc model.Serv
 }
 
 func (r Repository) serviceComponentFromRow(ctx context.Context, q *servicesqlc.Queries, row servicesqlc.ServiceComponent) (model.ServiceComponent, error) {
-	component := model.ServiceComponent{Id: row.ID, ServiceId: row.ServiceID, SourceVersionComponentId: row.SourceVersionComponentID, ComponentName: row.ComponentName, Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	entrypoint, err := optionalCommandFromJSON(row.EntrypointJson)
+	if err != nil {
+		return model.ServiceComponent{}, fmt.Errorf("decode service component entrypoint %s: %w", row.ID, err)
+	}
+	command, err := optionalCommandFromJSON(row.CommandJson)
+	if err != nil {
+		return model.ServiceComponent{}, fmt.Errorf("decode service component command %s: %w", row.ID, err)
+	}
+	component := model.ServiceComponent{
+		Id: row.ID, ServiceId: row.ServiceID, SourceVersionComponentId: row.SourceVersionComponentID, ComponentName: row.ComponentName,
+		Entrypoint: entrypoint, Command: command, PullPolicy: dbmodel.StringPtr(row.PullPolicy), RestartPolicy: dbmodel.StringPtr(row.RestartPolicy),
+		Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}
 	env, err := q.ServiceComponentEnvByComponent(ctx, component.Id)
 	if err != nil {
 		return model.ServiceComponent{}, fmt.Errorf("load service component env %s: %w", component.Id, err)
@@ -318,10 +346,47 @@ func insertServiceComponent(ctx context.Context, q *servicesqlc.Queries, compone
 	if updatedAt.IsZero() {
 		updatedAt = now
 	}
-	if err := q.InsertServiceComponent(ctx, servicesqlc.InsertServiceComponentParams{ID: component.Id, ServiceID: component.ServiceId, SourceVersionComponentID: component.SourceVersionComponentId, ComponentName: component.ComponentName, Status: component.Status, CreatedAt: createdAt, UpdatedAt: updatedAt}); err != nil {
+	entrypointJSON, err := optionalCommandJSON(component.Entrypoint)
+	if err != nil {
+		return fmt.Errorf("encode service component entrypoint %s: %w", component.ComponentName, err)
+	}
+	commandJSON, err := optionalCommandJSON(component.Command)
+	if err != nil {
+		return fmt.Errorf("encode service component command %s: %w", component.ComponentName, err)
+	}
+	if err := q.InsertServiceComponent(ctx, servicesqlc.InsertServiceComponentParams{
+		ID: component.Id, ServiceID: component.ServiceId, SourceVersionComponentID: component.SourceVersionComponentId, ComponentName: component.ComponentName,
+		EntrypointJson: entrypointJSON, CommandJson: commandJSON, PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy),
+		Status: component.Status, CreatedAt: createdAt, UpdatedAt: updatedAt,
+	}); err != nil {
 		return fmt.Errorf("insert service component %s: %w", component.ComponentName, err)
 	}
 	return insertServiceComponentOverlay(ctx, q, component)
+}
+
+func optionalCommandFromJSON(value sql.NullString) ([]string, error) {
+	if !value.Valid {
+		return nil, nil
+	}
+	var command []string
+	if err := json.Unmarshal([]byte(value.String), &command); err != nil {
+		return nil, err
+	}
+	if command == nil {
+		return nil, fmt.Errorf("must be a JSON array")
+	}
+	return command, nil
+}
+
+func optionalCommandJSON(command []string) (sql.NullString, error) {
+	if command == nil {
+		return sql.NullString{}, nil
+	}
+	encoded, err := json.Marshal(command)
+	if err != nil {
+		return sql.NullString{}, err
+	}
+	return sql.NullString{String: string(encoded), Valid: true}, nil
 }
 
 func insertServiceComponentOverlay(ctx context.Context, q *servicesqlc.Queries, component model.ServiceComponent) error {

@@ -21,6 +21,86 @@
     <AppLoadingState v-if="loading" size="section" />
 
     <template v-else-if="detail && draft">
+      <DetailInfoCard class="order-0" :title="t('service.componentDetail.runtimeTitle')">
+        <div class="overflow-x-auto">
+          <table class="app-data-table table-fixed min-w-[760px]">
+            <colgroup>
+              <col class="w-[24%]" />
+              <col class="w-[28%]" />
+              <col class="w-[33%]" />
+              <col class="w-[15%]" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>配置</th>
+                <th>{{ t('service.componentDetail.defaultValue') }}</th>
+                <th>{{ t('service.componentDetail.currentValue') }}</th>
+                <th>{{ t('common.operation') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="field in runtimeRows" :key="field.key">
+                <td class="text-foreground">{{ field.label }}</td>
+                <td class="max-w-0 text-muted-foreground">
+                  <span class="block truncate" :title="displayValue(field.state.base)">
+                    {{ displayValue(field.state.base) }}
+                  </span>
+                </td>
+                <td class="max-w-0">
+                  <RawValueSelect
+                    v-if="editingRuntimeKey === field.key && field.kind === 'select'"
+                    v-model="editingRuntimeValue"
+                    :values="field.values"
+                    width-class="h-9 w-full"
+                  />
+                  <textarea
+                    v-else-if="editingRuntimeKey === field.key"
+                    v-model="editingRuntimeValue"
+                    class="app-textarea"
+                    rows="3"
+                  />
+                  <span
+                    v-else
+                    class="block h-9 truncate leading-9"
+                    :class="field.state.overridden ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'"
+                    :title="displayValue(field.state.value)"
+                  >
+                    {{ displayValue(field.state.value) }}
+                  </span>
+                </td>
+                <td class="whitespace-nowrap">
+                  <div v-if="editingRuntimeKey === field.key" class="flex h-9 items-center gap-2">
+                    <button class="app-link" :disabled="operating" @click="applyRuntimeEdit(field)">
+                      {{ t('common.save') }}
+                    </button>
+                    <button
+                      class="text-muted-foreground hover:text-foreground"
+                      :disabled="operating"
+                      @click="cancelRuntimeEdit"
+                    >
+                      {{ t('common.cancel') }}
+                    </button>
+                  </div>
+                  <div v-else class="flex h-9 items-center gap-2">
+                    <button class="app-link" :disabled="operating" @click="startRuntimeEdit(field)">
+                      {{ t('common.edit') }}
+                    </button>
+                    <button
+                      v-if="field.state.overridden"
+                      class="text-muted-foreground hover:text-foreground"
+                      :disabled="operating"
+                      @click="resetRuntimeToVersion(field)"
+                    >
+                      {{ t('service.componentDetail.resetToVersion') }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </DetailInfoCard>
+
       <DetailInfoCard class="order-2" :title="t('environment.title')">
         <AppEmptyState v-if="environmentRows.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
@@ -105,25 +185,17 @@
                       v-if="entry.deleted"
                       class="app-link"
                       :disabled="operating"
-                      @click="restoreEnvironment(entry)"
+                      @click="resetEnvironmentToVersion(entry)"
                     >
-                      {{ t('common.restore') }}
+                      {{ t('service.componentDetail.resetToVersion') }}
                     </button>
                     <button
                       v-else-if="entry.overridden"
                       class="text-muted-foreground hover:text-foreground"
                       :disabled="operating"
-                      @click="resetEnvironment(entry)"
+                      @click="resetEnvironmentToVersion(entry)"
                     >
-                      {{ t('common.reset') }}
-                    </button>
-                    <button
-                      v-else
-                      class="app-link-danger"
-                      :disabled="operating"
-                      @click="removeEnvironment(entry)"
-                    >
-                      {{ t('common.remove') }}
+                      {{ t('service.componentDetail.resetToVersion') }}
                     </button>
                   </div>
                 </td>
@@ -136,11 +208,12 @@
       <DetailInfoCard class="order-4" title="资源配额">
         <template #actions>
           <button
-            v-if="resourceFields.length"
-            :class="resourceDeleted ? 'app-link' : 'app-link-danger'"
-            @click="resourceDeleted ? restoreResources() : removeResources()"
+            v-if="resourceDeleted"
+            class="app-link"
+            :disabled="operating"
+            @click="resetResourcesToVersion()"
           >
-            {{ resourceDeleted ? t('common.restore') : t('common.remove') }}
+            {{ t('service.componentDetail.resetToVersion') }}
           </button>
         </template>
         <AppEmptyState v-if="resourceFields.length === 0" size="compact" />
@@ -204,9 +277,9 @@
                     <button
                       v-if="field.value !== field.base"
                       class="text-muted-foreground hover:text-foreground"
-                      @click="resetResource(field)"
+                      @click="resetResourceToVersion(field)"
                     >
-                      {{ t('common.reset') }}
+                      {{ t('service.componentDetail.resetToVersion') }}
                     </button>
                   </div>
                 </td>
@@ -326,19 +399,16 @@
                     <button
                       v-if="endpoint.deleted"
                       class="app-link"
-                      @click="restoreEndpoint(endpoint)"
+                      @click="resetEndpointToVersion(endpoint)"
                     >
-                      {{ t('common.restore') }}
+                      {{ t('service.componentDetail.resetToVersion') }}
                     </button>
                     <button
                       v-else-if="endpointHasChanges(endpoint)"
                       class="text-muted-foreground hover:text-foreground"
-                      @click="resetEndpoint(endpoint)"
+                      @click="resetEndpointToVersion(endpoint)"
                     >
-                      {{ t('common.reset') }}
-                    </button>
-                    <button v-else class="app-link-danger" @click="removeEndpoint(endpoint)">
-                      {{ t('common.remove') }}
+                      {{ t('service.componentDetail.resetToVersion') }}
                     </button>
                   </div>
                 </td>
@@ -396,25 +466,17 @@
                       v-if="mount.deleted"
                       class="app-link"
                       :disabled="operating"
-                      @click="restoreMount(mount)"
+                      @click="resetMountToVersion(mount)"
                     >
-                      {{ t('common.restore') }}
+                      {{ t('service.componentDetail.resetToVersion') }}
                     </button>
                     <button
                       v-else-if="mountHasChanges(mount)"
                       class="text-muted-foreground hover:text-foreground"
                       :disabled="operating"
-                      @click="resetMount(mount)"
+                      @click="resetMountToVersion(mount)"
                     >
-                      {{ t('common.reset') }}
-                    </button>
-                    <button
-                      v-else
-                      class="app-link-danger"
-                      :disabled="operating"
-                      @click="removeMount(mount)"
-                    >
-                      {{ t('common.remove') }}
+                      {{ t('service.componentDetail.resetToVersion') }}
                     </button>
                   </div>
                 </td>
@@ -513,7 +575,7 @@
 
 <script setup lang="ts">
   import { ArrowLeft, Save } from '@lucide/vue';
-  import { computed, onMounted, ref } from 'vue';
+  import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { serviceApi } from '@/api/service/service';
@@ -574,6 +636,26 @@
     base: string;
     value: string;
   };
+  type RuntimeFieldKey = 'entrypoint' | 'command' | 'pull_policy' | 'restart_policy';
+  type RuntimeFieldState = {
+    base: string;
+    value: string;
+    overridden: boolean;
+  };
+  type RuntimeOverlayDraft = Record<RuntimeFieldKey, RuntimeFieldState>;
+  type RuntimeFieldDefinition = {
+    key: RuntimeFieldKey;
+    label: string;
+    kind: 'text' | 'select';
+    values: string[];
+  };
+  type RuntimeField = {
+    key: RuntimeFieldKey;
+    label: string;
+    state: RuntimeFieldState;
+    kind: 'text' | 'select';
+    values: string[];
+  };
 
   const route = useRoute();
   const router = useRouter();
@@ -594,6 +676,9 @@
   const editingMountSourceIsHostPath = ref(false);
   const mountSourceError = ref('');
   const endpointRows = ref<EndpointRow[]>([]);
+  const runtimeDraft = reactive<RuntimeOverlayDraft>(emptyRuntimeOverlayDraft());
+  const editingRuntimeKey = ref<RuntimeFieldKey | null>(null);
+  const editingRuntimeValue = ref('');
   const editingEndpointName = ref<string | null>(null);
   const editingEndpoint = ref<EndpointValues>(emptyEndpointValues());
   const resourceDeleted = ref(false);
@@ -601,6 +686,8 @@
   const editingResourceKey = ref<ResourceField['key'] | null>(null);
   const editingResourceValue = ref('');
   const endpointModes = ['internal', 'local', 'host', 'gateway_http', 'gateway_tcp'];
+  const pullPolicyValues = ['always', 'missing', 'never'];
+  const restartPolicyValues = ['no', 'unless-stopped'];
   const endpointFields: EndpointField[] = [
     { key: 'mode', label: '模式' },
     { key: 'bind_address', label: '监听地址' },
@@ -611,6 +698,14 @@
 
   function emptyEndpointValues(): EndpointValues {
     return { mode: '', bind_address: '', listen_port: '', entrypoint: '', path_prefix: '' };
+  }
+  function emptyRuntimeOverlayDraft(): RuntimeOverlayDraft {
+    return {
+      entrypoint: { base: '', value: '', overridden: false },
+      command: { base: '', value: '', overridden: false },
+      pull_policy: { base: '', value: '', overridden: false },
+      restart_policy: { base: '', value: '', overridden: false },
+    };
   }
 
   function overlayByKey<T extends { state: string }>(
@@ -625,6 +720,26 @@
       throw new Error('service component detail is incomplete');
     const declaration = value.declaration;
     const component = value.component;
+    Object.assign(runtimeDraft.entrypoint, {
+      base: declaration.entrypoint,
+      value: component.entrypoint ?? declaration.entrypoint,
+      overridden: component.entrypoint !== undefined,
+    });
+    Object.assign(runtimeDraft.command, {
+      base: declaration.command,
+      value: component.command ?? declaration.command,
+      overridden: component.command !== undefined,
+    });
+    Object.assign(runtimeDraft.pull_policy, {
+      base: declaration.pull_policy,
+      value: component.pull_policy ?? declaration.pull_policy,
+      overridden: component.pull_policy !== undefined,
+    });
+    Object.assign(runtimeDraft.restart_policy, {
+      base: declaration.restart_policy ?? '',
+      value: component.restart_policy ?? declaration.restart_policy ?? '',
+      overridden: component.restart_policy !== undefined,
+    });
     const effectiveEnv = value.effective?.env ?? declaration.env;
     environmentRows.value = declaration.env.map((item) => {
       const overlay = overlayByKey(component.env, item.key, (candidate) => candidate.key);
@@ -722,18 +837,7 @@
     editingEnvironmentKey.value = null;
     editingEnvironmentValue.value = '';
   }
-  function resetEnvironment(row: EnvRow) {
-    row.value = row.inheritedValue;
-    row.deleted = false;
-    row.overridden = false;
-    cancelEnvironmentEdit();
-  }
-  function removeEnvironment(row: EnvRow) {
-    row.deleted = true;
-    row.overridden = false;
-    cancelEnvironmentEdit();
-  }
-  function restoreEnvironment(row: EnvRow) {
+  function resetEnvironmentToVersion(row: EnvRow) {
     row.value = row.inheritedValue;
     row.deleted = false;
     row.overridden = false;
@@ -751,18 +855,16 @@
     editingResourceKey.value = null;
     editingResourceValue.value = '';
   }
-  function resetResource(field: ResourceField) {
+  function resetResourceToVersion(field: ResourceField) {
     field.value = field.base;
-  }
-  function removeResources() {
-    resourceDeleted.value = true;
     cancelResourceEdit();
   }
-  function restoreResources() {
+  function resetResourcesToVersion() {
     resourceDeleted.value = false;
     resourceFields.value.forEach((field) => {
       field.value = field.base;
     });
+    cancelResourceEdit();
   }
   const editingMount = computed(() =>
     mountRows.value.find((row) => row.target === editingMountTarget.value)
@@ -805,19 +907,11 @@
     row.deleted = false;
     closeMountDialog();
   }
-  function resetMount(row: MountRow) {
+  function resetMountToVersion(row: MountRow) {
     row.source = row.base;
     row.source_is_host_path = row.base_source_is_host_path;
     row.deleted = false;
-  }
-  function removeMount(row: MountRow) {
-    row.deleted = true;
     closeMountDialog();
-  }
-  function restoreMount(row: MountRow) {
-    row.source = row.base;
-    row.source_is_host_path = row.base_source_is_host_path;
-    row.deleted = false;
   }
   function mountHasChanges(row: MountRow) {
     return row.source !== row.base || row.source_is_host_path !== row.base_source_is_host_path;
@@ -838,20 +932,42 @@
   function endpointHasChanges(row: EndpointRow) {
     return endpointFields.some((field) => row.value[field.key] !== row.base[field.key]);
   }
-  function resetEndpoint(row: EndpointRow) {
+  function resetEndpointToVersion(row: EndpointRow) {
     row.value = { ...row.base };
     row.deleted = false;
-  }
-  function removeEndpoint(row: EndpointRow) {
-    row.deleted = true;
     cancelEndpointEdit();
-  }
-  function restoreEndpoint(row: EndpointRow) {
-    row.value = { ...row.base };
-    row.deleted = false;
   }
   function displayValue(value: string) {
     return value || '-';
+  }
+  const runtimeFieldDefinitions = computed<RuntimeFieldDefinition[]>(() => [
+    { key: 'pull_policy', label: t('application.componentDetail.fields.pullPolicy'), kind: 'select', values: pullPolicyValues },
+    { key: 'restart_policy', label: t('application.componentDetail.fields.restartPolicy'), kind: 'select', values: restartPolicyValues },
+    { key: 'entrypoint', label: t('application.componentDetail.fields.containerEntrypoint'), kind: 'text', values: [] },
+    { key: 'command', label: t('application.componentDetail.fields.command'), kind: 'text', values: [] },
+  ]);
+  const runtimeRows = computed<RuntimeField[]>(() =>
+    runtimeFieldDefinitions.value.map((field) => ({ ...field, state: runtimeDraft[field.key] }))
+  );
+  function startRuntimeEdit(field: RuntimeField) {
+    editingRuntimeKey.value = field.key;
+    editingRuntimeValue.value = field.state.value;
+  }
+  function cancelRuntimeEdit() {
+    editingRuntimeKey.value = null;
+    editingRuntimeValue.value = '';
+  }
+  function applyRuntimeEdit(field: RuntimeField) {
+    const state = runtimeDraft[field.key];
+    state.value = editingRuntimeValue.value;
+    state.overridden = true;
+    cancelRuntimeEdit();
+  }
+  function resetRuntimeToVersion(field: RuntimeField) {
+    const state = runtimeDraft[field.key];
+    state.value = state.base;
+    state.overridden = false;
+    cancelRuntimeEdit();
   }
   function mountTypeLabel(value: string): string {
     const labels: Record<string, string> = {
@@ -875,6 +991,14 @@
   }
   function payload(): ServiceComponentOverlayUpdateReq {
     return {
+      entrypoint: runtimeDraft.entrypoint.overridden ? runtimeDraft.entrypoint.value : undefined,
+      command: runtimeDraft.command.overridden ? runtimeDraft.command.value : undefined,
+      pull_policy: runtimeDraft.pull_policy.overridden
+        ? optional(runtimeDraft.pull_policy.value)
+        : undefined,
+      restart_policy: runtimeDraft.restart_policy.overridden
+        ? optional(runtimeDraft.restart_policy.value)
+        : undefined,
       env: environmentRows.value.flatMap((row) => {
         if (row.deleted) return [{ key: row.key, state: 'deleted' }];
         return row.overridden ? [{ key: row.key, value: row.value, state: 'override' }] : [];

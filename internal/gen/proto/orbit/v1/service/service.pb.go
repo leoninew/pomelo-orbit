@@ -556,8 +556,14 @@ type ServiceComponentResp struct {
 	// Fully resolved endpoint values from the Service effective plan. Unlike
 	// endpoints, this includes inherited Version declarations and is read-only.
 	EffectiveEndpoints []*ServiceComponentDeclaredEndpoint `protobuf:"bytes,14,rep,name=effective_endpoints,json=effectiveEndpoints,proto3" json:"effective_endpoints,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// nil inherits the Version declaration; an empty command string is an
+	// explicit empty argv and causes Compose to use the image default.
+	Entrypoint    *string `protobuf:"bytes,15,opt,name=entrypoint,proto3,oneof" json:"entrypoint,omitempty"`
+	Command       *string `protobuf:"bytes,16,opt,name=command,proto3,oneof" json:"command,omitempty"`
+	PullPolicy    *string `protobuf:"bytes,17,opt,name=pull_policy,json=pullPolicy,proto3,oneof" json:"pull_policy,omitempty"`
+	RestartPolicy *string `protobuf:"bytes,18,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ServiceComponentResp) Reset() {
@@ -688,6 +694,34 @@ func (x *ServiceComponentResp) GetEffectiveEndpoints() []*ServiceComponentDeclar
 	return nil
 }
 
+func (x *ServiceComponentResp) GetEntrypoint() string {
+	if x != nil && x.Entrypoint != nil {
+		return *x.Entrypoint
+	}
+	return ""
+}
+
+func (x *ServiceComponentResp) GetCommand() string {
+	if x != nil && x.Command != nil {
+		return *x.Command
+	}
+	return ""
+}
+
+func (x *ServiceComponentResp) GetPullPolicy() string {
+	if x != nil && x.PullPolicy != nil {
+		return *x.PullPolicy
+	}
+	return ""
+}
+
+func (x *ServiceComponentResp) GetRestartPolicy() string {
+	if x != nil && x.RestartPolicy != nil {
+		return *x.RestartPolicy
+	}
+	return ""
+}
+
 // ServiceComponentDetailResp provides the declaration, sparse overlay and
 // server-merged effective component so clients never infer runtime state from
 // absent values.
@@ -762,6 +796,8 @@ type ServiceComponentDefinitionResp struct {
 	Mounts        []*ServiceComponentDeclaredMount    `protobuf:"bytes,7,rep,name=mounts,proto3" json:"mounts,omitempty"`
 	Resources     *ServiceComponentDeclaredResources  `protobuf:"bytes,8,opt,name=resources,proto3" json:"resources,omitempty"`
 	Endpoints     []*ServiceComponentDeclaredEndpoint `protobuf:"bytes,9,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
+	Entrypoint    string                              `protobuf:"bytes,10,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
+	RestartPolicy *string                             `protobuf:"bytes,11,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -857,6 +893,20 @@ func (x *ServiceComponentDefinitionResp) GetEndpoints() []*ServiceComponentDecla
 		return x.Endpoints
 	}
 	return nil
+}
+
+func (x *ServiceComponentDefinitionResp) GetEntrypoint() string {
+	if x != nil {
+		return x.Entrypoint
+	}
+	return ""
+}
+
+func (x *ServiceComponentDefinitionResp) GetRestartPolicy() string {
+	if x != nil && x.RestartPolicy != nil {
+		return *x.RestartPolicy
+	}
+	return ""
 }
 
 type ServiceComponentDeclaredEnv struct {
@@ -1161,6 +1211,10 @@ type ServiceComponentOverlayUpdateReq struct {
 	Mounts        []*ServiceComponentMountOverlay    `protobuf:"bytes,2,rep,name=mounts,proto3" json:"mounts,omitempty"`
 	Resources     *ServiceComponentResourceOverlay   `protobuf:"bytes,3,opt,name=resources,proto3" json:"resources,omitempty"`
 	Endpoints     []*ServiceComponentEndpointOverlay `protobuf:"bytes,4,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
+	Entrypoint    *string                            `protobuf:"bytes,5,opt,name=entrypoint,proto3,oneof" json:"entrypoint,omitempty"`
+	Command       *string                            `protobuf:"bytes,6,opt,name=command,proto3,oneof" json:"command,omitempty"`
+	PullPolicy    *string                            `protobuf:"bytes,7,opt,name=pull_policy,json=pullPolicy,proto3,oneof" json:"pull_policy,omitempty"`
+	RestartPolicy *string                            `protobuf:"bytes,8,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1221,6 +1275,34 @@ func (x *ServiceComponentOverlayUpdateReq) GetEndpoints() []*ServiceComponentEnd
 		return x.Endpoints
 	}
 	return nil
+}
+
+func (x *ServiceComponentOverlayUpdateReq) GetEntrypoint() string {
+	if x != nil && x.Entrypoint != nil {
+		return *x.Entrypoint
+	}
+	return ""
+}
+
+func (x *ServiceComponentOverlayUpdateReq) GetCommand() string {
+	if x != nil && x.Command != nil {
+		return *x.Command
+	}
+	return ""
+}
+
+func (x *ServiceComponentOverlayUpdateReq) GetPullPolicy() string {
+	if x != nil && x.PullPolicy != nil {
+		return *x.PullPolicy
+	}
+	return ""
+}
+
+func (x *ServiceComponentOverlayUpdateReq) GetRestartPolicy() string {
+	if x != nil && x.RestartPolicy != nil {
+		return *x.RestartPolicy
+	}
+	return ""
 }
 
 type ServiceComponentEnvOverlay struct {
@@ -1828,7 +1910,7 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\"E\n" +
 	"\x13ServiceEnvUpdateReq\x12.\n" +
-	"\x03env\x18\x01 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\"\xcd\x05\n" +
+	"\x03env\x18\x01 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\"\xa1\a\n" +
 	"\x14ServiceComponentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1847,11 +1929,23 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"updated_at\x18\v \x01(\tR\tupdatedAt\x12\x14\n" +
 	"\x05image\x18\f \x01(\tR\x05image\x12%\n" +
 	"\x0econtainer_name\x18\r \x01(\tR\rcontainerName\x12c\n" +
-	"\x13effective_endpoints\x18\x0e \x03(\v22.orbit.v1.service.ServiceComponentDeclaredEndpointR\x12effectiveEndpoints\"\x8c\x02\n" +
+	"\x13effective_endpoints\x18\x0e \x03(\v22.orbit.v1.service.ServiceComponentDeclaredEndpointR\x12effectiveEndpoints\x12#\n" +
+	"\n" +
+	"entrypoint\x18\x0f \x01(\tH\x00R\n" +
+	"entrypoint\x88\x01\x01\x12\x1d\n" +
+	"\acommand\x18\x10 \x01(\tH\x01R\acommand\x88\x01\x01\x12$\n" +
+	"\vpull_policy\x18\x11 \x01(\tH\x02R\n" +
+	"pullPolicy\x88\x01\x01\x12*\n" +
+	"\x0erestart_policy\x18\x12 \x01(\tH\x03R\rrestartPolicy\x88\x01\x01B\r\n" +
+	"\v_entrypointB\n" +
+	"\n" +
+	"\b_commandB\x0e\n" +
+	"\f_pull_policyB\x11\n" +
+	"\x0f_restart_policy\"\x8c\x02\n" +
 	"\x1aServiceComponentDetailResp\x12D\n" +
 	"\tcomponent\x18\x01 \x01(\v2&.orbit.v1.service.ServiceComponentRespR\tcomponent\x12R\n" +
 	"\vdeclaration\x18\x02 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\vdeclaration\x12N\n" +
-	"\teffective\x18\x03 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\teffectiveJ\x04\b\x04\x10\x05\"\xc4\x03\n" +
+	"\teffective\x18\x03 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\teffectiveJ\x04\b\x04\x10\x05\"\xa3\x04\n" +
 	"\x1eServiceComponentDefinitionResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -1862,7 +1956,13 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x03env\x18\x06 \x03(\v2-.orbit.v1.service.ServiceComponentDeclaredEnvR\x03env\x12G\n" +
 	"\x06mounts\x18\a \x03(\v2/.orbit.v1.service.ServiceComponentDeclaredMountR\x06mounts\x12Q\n" +
 	"\tresources\x18\b \x01(\v23.orbit.v1.service.ServiceComponentDeclaredResourcesR\tresources\x12P\n" +
-	"\tendpoints\x18\t \x03(\v22.orbit.v1.service.ServiceComponentDeclaredEndpointR\tendpoints\"E\n" +
+	"\tendpoints\x18\t \x03(\v22.orbit.v1.service.ServiceComponentDeclaredEndpointR\tendpoints\x12\x1e\n" +
+	"\n" +
+	"entrypoint\x18\n" +
+	" \x01(\tR\n" +
+	"entrypoint\x12*\n" +
+	"\x0erestart_policy\x18\v \x01(\tH\x00R\rrestartPolicy\x88\x01\x01B\x11\n" +
+	"\x0f_restart_policy\"E\n" +
 	"\x1bServiceComponentDeclaredEnv\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\"\xbc\x01\n" +
@@ -1899,12 +1999,24 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\r_bind_addressB\x0e\n" +
 	"\f_listen_portB\r\n" +
 	"\v_entrypointB\x0e\n" +
-	"\f_path_prefix\"\xcc\x02\n" +
+	"\f_path_prefix\"\xa0\x04\n" +
 	" ServiceComponentOverlayUpdateReq\x12>\n" +
 	"\x03env\x18\x01 \x03(\v2,.orbit.v1.service.ServiceComponentEnvOverlayR\x03env\x12F\n" +
 	"\x06mounts\x18\x02 \x03(\v2..orbit.v1.service.ServiceComponentMountOverlayR\x06mounts\x12O\n" +
 	"\tresources\x18\x03 \x01(\v21.orbit.v1.service.ServiceComponentResourceOverlayR\tresources\x12O\n" +
-	"\tendpoints\x18\x04 \x03(\v21.orbit.v1.service.ServiceComponentEndpointOverlayR\tendpoints\"i\n" +
+	"\tendpoints\x18\x04 \x03(\v21.orbit.v1.service.ServiceComponentEndpointOverlayR\tendpoints\x12#\n" +
+	"\n" +
+	"entrypoint\x18\x05 \x01(\tH\x00R\n" +
+	"entrypoint\x88\x01\x01\x12\x1d\n" +
+	"\acommand\x18\x06 \x01(\tH\x01R\acommand\x88\x01\x01\x12$\n" +
+	"\vpull_policy\x18\a \x01(\tH\x02R\n" +
+	"pullPolicy\x88\x01\x01\x12*\n" +
+	"\x0erestart_policy\x18\b \x01(\tH\x03R\rrestartPolicy\x88\x01\x01B\r\n" +
+	"\v_entrypointB\n" +
+	"\n" +
+	"\b_commandB\x0e\n" +
+	"\f_pull_policyB\x11\n" +
+	"\x0f_restart_policy\"i\n" +
 	"\x1aServiceComponentEnvOverlay\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x19\n" +
 	"\x05value\x18\x02 \x01(\tH\x00R\x05value\x88\x01\x01\x12\x14\n" +
@@ -2032,8 +2144,11 @@ func file_orbit_v1_service_service_proto_init() {
 	if File_orbit_v1_service_service_proto != nil {
 		return
 	}
+	file_orbit_v1_service_service_proto_msgTypes[7].OneofWrappers = []any{}
+	file_orbit_v1_service_service_proto_msgTypes[9].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[12].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[13].OneofWrappers = []any{}
+	file_orbit_v1_service_service_proto_msgTypes[14].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[15].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[16].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[17].OneofWrappers = []any{}

@@ -156,18 +156,22 @@ func (q *Queries) InsertService(ctx context.Context, arg InsertServiceParams) er
 
 const insertServiceComponent = `-- name: InsertServiceComponent :exec
 INSERT INTO service_component (
-  id, service_id, source_version_component_id, component_name, status, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?)
+  id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertServiceComponentParams struct {
-	ID                       string    `db:"id"`
-	ServiceID                string    `db:"service_id"`
-	SourceVersionComponentID string    `db:"source_version_component_id"`
-	ComponentName            string    `db:"component_name"`
-	Status                   string    `db:"status"`
-	CreatedAt                time.Time `db:"created_at"`
-	UpdatedAt                time.Time `db:"updated_at"`
+	ID                       string         `db:"id"`
+	ServiceID                string         `db:"service_id"`
+	SourceVersionComponentID string         `db:"source_version_component_id"`
+	ComponentName            string         `db:"component_name"`
+	EntrypointJson           sql.NullString `db:"entrypoint_json"`
+	CommandJson              sql.NullString `db:"command_json"`
+	PullPolicy               sql.NullString `db:"pull_policy"`
+	RestartPolicy            sql.NullString `db:"restart_policy"`
+	Status                   string         `db:"status"`
+	CreatedAt                time.Time      `db:"created_at"`
+	UpdatedAt                time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) InsertServiceComponent(ctx context.Context, arg InsertServiceComponentParams) error {
@@ -176,6 +180,10 @@ func (q *Queries) InsertServiceComponent(ctx context.Context, arg InsertServiceC
 		arg.ServiceID,
 		arg.SourceVersionComponentID,
 		arg.ComponentName,
+		arg.EntrypointJson,
+		arg.CommandJson,
+		arg.PullPolicy,
+		arg.RestartPolicy,
 		arg.Status,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -511,7 +519,7 @@ func (q *Queries) ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Ser
 }
 
 const serviceComponentByID = `-- name: ServiceComponentByID :one
-SELECT id, service_id, source_version_component_id, component_name, status, created_at, updated_at
+SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
 FROM service_component
 WHERE id = ?
 `
@@ -524,6 +532,10 @@ func (q *Queries) ServiceComponentByID(ctx context.Context, id string) (ServiceC
 		&i.ServiceID,
 		&i.SourceVersionComponentID,
 		&i.ComponentName,
+		&i.EntrypointJson,
+		&i.CommandJson,
+		&i.PullPolicy,
+		&i.RestartPolicy,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -670,7 +682,7 @@ func (q *Queries) ServiceComponentResourceByComponent(ctx context.Context, servi
 }
 
 const serviceComponentsByService = `-- name: ServiceComponentsByService :many
-SELECT id, service_id, source_version_component_id, component_name, status, created_at, updated_at
+SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
 FROM service_component
 WHERE service_id = ?
 ORDER BY component_name
@@ -690,6 +702,10 @@ func (q *Queries) ServiceComponentsByService(ctx context.Context, serviceID stri
 			&i.ServiceID,
 			&i.SourceVersionComponentID,
 			&i.ComponentName,
+			&i.EntrypointJson,
+			&i.CommandJson,
+			&i.PullPolicy,
+			&i.RestartPolicy,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -856,6 +872,33 @@ func (q *Queries) UpdateServiceAfterDeploy(ctx context.Context, arg UpdateServic
 	_, err := q.db.ExecContext(ctx, updateServiceAfterDeploy,
 		arg.Status,
 		arg.VersionID,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	return err
+}
+
+const updateServiceComponentOverlayFields = `-- name: UpdateServiceComponentOverlayFields :exec
+UPDATE service_component
+SET entrypoint_json = ?, command_json = ?, pull_policy = ?, restart_policy = ?, updated_at = ?
+WHERE id = ?
+`
+
+type UpdateServiceComponentOverlayFieldsParams struct {
+	EntrypointJson sql.NullString `db:"entrypoint_json"`
+	CommandJson    sql.NullString `db:"command_json"`
+	PullPolicy     sql.NullString `db:"pull_policy"`
+	RestartPolicy  sql.NullString `db:"restart_policy"`
+	UpdatedAt      time.Time      `db:"updated_at"`
+	ID             string         `db:"id"`
+}
+
+func (q *Queries) UpdateServiceComponentOverlayFields(ctx context.Context, arg UpdateServiceComponentOverlayFieldsParams) error {
+	_, err := q.db.ExecContext(ctx, updateServiceComponentOverlayFields,
+		arg.EntrypointJson,
+		arg.CommandJson,
+		arg.PullPolicy,
+		arg.RestartPolicy,
 		arg.UpdatedAt,
 		arg.ID,
 	)

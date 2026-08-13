@@ -1,11 +1,11 @@
 package applicationhandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
-	applicationv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	"github.com/leoninew/pomelo-orbit/internal/common/commandline"
+	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func versionComponentInput(req *applicationv1.VersionComponentReq) applicationdto.VersionComponentInput {

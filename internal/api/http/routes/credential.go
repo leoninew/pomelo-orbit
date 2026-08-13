@@ -3,7 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	credentialhandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/credential"
+	credentialhandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/credential"
 )
 
 func (r Router) registerCredential(engine *gin.Engine) {

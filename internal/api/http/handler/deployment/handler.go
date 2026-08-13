@@ -3,8 +3,8 @@ package deploymenthandler
 import (
 	"log/slog"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	deploymentsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/usecase"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 )
 
 type Handler struct {

@@ -3,8 +3,8 @@ package taskhandler
 import (
 	"testing"
 
-	taskv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/task"
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
+	taskv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/task"
+	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 

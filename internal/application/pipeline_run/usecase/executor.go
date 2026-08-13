@@ -13,14 +13,14 @@ import (
 	"sync"
 	"time"
 
-	applicationport "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/port"
-	pipelinerunport "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/port"
-	repositoryport "gitee.com/leoninew/PomeloOrbit-go/internal/application/repository/port"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	applicationport "github.com/leoninew/pomelo-orbit/internal/application/application/port"
+	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
+	repositoryport "github.com/leoninew/pomelo-orbit/internal/application/repository/port"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	security "github.com/leoninew/pomelo-orbit/internal/common/crypto"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 var gitObjectIdPattern = regexp.MustCompile(`^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$`)

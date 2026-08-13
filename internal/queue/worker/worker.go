@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database/tx"
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
+	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
 )
 
 type Handler interface {

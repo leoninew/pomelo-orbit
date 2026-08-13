@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 	"gopkg.in/yaml.v3"
 )
 

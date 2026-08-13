@@ -1,11 +1,11 @@
 package deploymenthandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	applicationv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application"
-	deploymentv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/deployment"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
+	deploymentv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/deployment"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func deploymentListInput(projectId string, applicationId string, status string, search string, dateFrom string, dateTo string, page int, perPage int) deploymentdto.DeploymentListInput {

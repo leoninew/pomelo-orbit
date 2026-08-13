@@ -10,7 +10,7 @@ import (
 	gomysql "github.com/go-sql-driver/mysql"
 	_ "modernc.org/sqlite"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/config"
 )
 
 func Open(cfg config.DatabaseConfig) (*sql.DB, error) {

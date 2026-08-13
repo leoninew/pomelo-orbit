@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	pipelinerunport "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/port"
+	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
 )
 
 const pipelineDataDir = "pipeline"

@@ -9,18 +9,18 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	routedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/route/dto"
-	routeport "gitee.com/leoninew/PomeloOrbit-go/internal/application/route/port"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	applicationrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/application"
-	gatewayrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/gateway"
-	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
-	routerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/route"
-	testseed "gitee.com/leoninew/PomeloOrbit-go/internal/testutil/seed"
+	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
+	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
+	gatewayrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/gateway"
+	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
+	routerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/route"
+	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
 const (

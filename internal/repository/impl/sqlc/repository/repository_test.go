@@ -7,8 +7,8 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func openRepositoryTestDatabase(t *testing.T) *sql.DB {

@@ -14,9 +14,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/oklog/ulid/v2"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	authv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/auth"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	authv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/auth"
 )
 
 const testBodyMaxBytes = 32

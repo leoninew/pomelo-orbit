@@ -3,7 +3,7 @@ package routehandler
 import (
 	"testing"
 
-	routeport "gitee.com/leoninew/PomeloOrbit-go/internal/application/route/port"
+	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 )
 
 func TestTraefikRouteListResponseMapsPortView(t *testing.T) {

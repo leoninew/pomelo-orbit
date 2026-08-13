@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 func TestDeleteRepositoryRejectsRunningPipelinesWithValidation(t *testing.T) {

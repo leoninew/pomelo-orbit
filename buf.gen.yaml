@@ -4,7 +4,7 @@ managed:
   enabled: true
   override:
     - file_option: go_package_prefix
-      value: gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto
+      value: github.com/leoninew/pomelo-orbit/internal/gen/proto
 
 clean: true
 plugins:

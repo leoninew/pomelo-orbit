@@ -5,9 +5,9 @@ import (
 	"errors"
 	"strconv"
 
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 // ApplicationStatus returns normalized container statuses for a resolved runtime service.

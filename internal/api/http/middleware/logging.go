@@ -14,10 +14,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 )
 
 const (

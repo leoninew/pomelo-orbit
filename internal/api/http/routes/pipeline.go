@@ -3,7 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	pipelinehandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/pipeline"
+	pipelinehandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/pipeline"
 )
 
 func (r Router) registerPipeline(engine *gin.Engine) {

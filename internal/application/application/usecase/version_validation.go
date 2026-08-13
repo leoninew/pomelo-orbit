@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/common/commandline"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 const maxMountContent = 256 * 1024

@@ -7,7 +7,7 @@
 package application
 
 import (
-	service "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
+	service "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -223,8 +223,8 @@ const file_orbit_v1_application_application_bundle_proto_rawDesc = "" +
 	"components\x12\x17\n" +
 	"\x04kind\x18\t \x01(\tH\x01R\x04kind\x88\x01\x01B\x0f\n" +
 	"\r_version_noteB\a\n" +
-	"\x05_kindJ\x04\b\x03\x10\x04J\x04\b\x05\x10\x06J\x04\b\b\x10\tB\xef\x01\n" +
-	"\x18com.orbit.v1.applicationB\x16ApplicationBundleProtoP\x01ZIgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application\xa2\x02\x03OVA\xaa\x02\x14Orbit.V1.Application\xca\x02\x14Orbit\\V1\\Application\xe2\x02 Orbit\\V1\\Application\\GPBMetadata\xea\x02\x16Orbit::V1::Applicationb\x06proto3"
+	"\x05_kindJ\x04\b\x03\x10\x04J\x04\b\x05\x10\x06J\x04\b\b\x10\tB\xee\x01\n" +
+	"\x18com.orbit.v1.applicationB\x16ApplicationBundleProtoP\x01ZHgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application\xa2\x02\x03OVA\xaa\x02\x14Orbit.V1.Application\xca\x02\x14Orbit\\V1\\Application\xe2\x02 Orbit\\V1\\Application\\GPBMetadata\xea\x02\x16Orbit::V1::Applicationb\x06proto3"
 
 var (
 	file_orbit_v1_application_application_bundle_proto_rawDescOnce sync.Once

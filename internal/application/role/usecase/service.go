@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 
-	roledto "gitee.com/leoninew/PomeloOrbit-go/internal/application/role/dto"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	roledto "github.com/leoninew/pomelo-orbit/internal/application/role/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 var codePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)

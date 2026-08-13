@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
-	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

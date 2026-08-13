@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 // stores composes deployment-side domain stores. It is not a repository interface.

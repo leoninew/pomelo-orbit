@@ -265,8 +265,8 @@ const file_orbit_v1_task_task_proto_rawDesc = "" +
 	"_locked_atB\r\n" +
 	"\v_started_atB\x0e\n" +
 	"\f_finished_atB\x10\n" +
-	"\x0e_error_messageB\xb8\x01\n" +
-	"\x11com.orbit.v1.taskB\tTaskProtoP\x01ZBgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/task\xa2\x02\x03OVT\xaa\x02\rOrbit.V1.Task\xca\x02\rOrbit\\V1\\Task\xe2\x02\x19Orbit\\V1\\Task\\GPBMetadata\xea\x02\x0fOrbit::V1::Taskb\x06proto3"
+	"\x0e_error_messageB\xb7\x01\n" +
+	"\x11com.orbit.v1.taskB\tTaskProtoP\x01ZAgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/task\xa2\x02\x03OVT\xaa\x02\rOrbit.V1.Task\xca\x02\rOrbit\\V1\\Task\xe2\x02\x19Orbit\\V1\\Task\\GPBMetadata\xea\x02\x0fOrbit::V1::Taskb\x06proto3"
 
 var (
 	file_orbit_v1_task_task_proto_rawDescOnce sync.Once

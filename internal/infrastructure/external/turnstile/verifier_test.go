@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/config"
 )
 
 func TestVerifierSuccess(t *testing.T) {

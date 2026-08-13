@@ -3,8 +3,8 @@ package port
 import (
 	"context"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 // ProjectReader is the membership read surface required by gateway operations.

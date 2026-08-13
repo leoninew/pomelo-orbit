@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 // TranslateError maps database-specific not-found errors to the repository

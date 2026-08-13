@@ -3,7 +3,7 @@ package port
 import (
 	"context"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 // RouteConfigPublisher publishes the platform route snapshot to Traefik providers.rest.

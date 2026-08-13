@@ -1,8 +1,8 @@
 package pipelinerunsvc
 
 import (
-	templatex "gitee.com/leoninew/PomeloOrbit-go/internal/common/template"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	templatex "github.com/leoninew/pomelo-orbit/internal/common/template"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func resolveStages(stages []model.StageDefinition, variables map[string]any) ([]model.StageDefinition, error) {

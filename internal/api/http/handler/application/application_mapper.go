@@ -1,11 +1,11 @@
 package applicationhandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
-	applicationv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application"
-	servicev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
+	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func applicationCreateInput(projectId string, req *applicationv1.ApplicationCreateReq) applicationdto.ApplicationCreateInput {

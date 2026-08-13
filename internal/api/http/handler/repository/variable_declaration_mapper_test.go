@@ -3,7 +3,7 @@ package repositoryhandler
 import (
 	"testing"
 
-	commonv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/common"
+	commonv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 

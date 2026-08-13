@@ -10,9 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	authv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/auth"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	authv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/auth"
 )
 
 func TestProtoJSONPreservesProtoJSONContract(t *testing.T) {

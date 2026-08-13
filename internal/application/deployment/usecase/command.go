@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	deploymentport "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/port"
-	gatewayport "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/port"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
+	gatewayport "github.com/leoninew/pomelo-orbit/internal/application/gateway/port"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 // NewCommandService is the future HTTP-facing constructor. It keeps command

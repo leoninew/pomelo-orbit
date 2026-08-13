@@ -3,8 +3,8 @@ package gatewayhandler
 import (
 	"log/slog"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	gatewaysvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/usecase"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 )
 
 type Handler struct {

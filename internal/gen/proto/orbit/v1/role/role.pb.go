@@ -478,8 +478,8 @@ const file_orbit_v1_role_role_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xb8\x01\n" +
-	"\x11com.orbit.v1.roleB\tRoleProtoP\x01ZBgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/role\xa2\x02\x03OVR\xaa\x02\rOrbit.V1.Role\xca\x02\rOrbit\\V1\\Role\xe2\x02\x19Orbit\\V1\\Role\\GPBMetadata\xea\x02\x0fOrbit::V1::Roleb\x06proto3"
+	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xb7\x01\n" +
+	"\x11com.orbit.v1.roleB\tRoleProtoP\x01ZAgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/role\xa2\x02\x03OVR\xaa\x02\rOrbit.V1.Role\xca\x02\rOrbit\\V1\\Role\xe2\x02\x19Orbit\\V1\\Role\\GPBMetadata\xea\x02\x0fOrbit::V1::Roleb\x06proto3"
 
 var (
 	file_orbit_v1_role_role_proto_rawDescOnce sync.Once

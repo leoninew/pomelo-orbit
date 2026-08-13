@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 // EnsureGatewayRunning rejects standard application commands until the Gateway

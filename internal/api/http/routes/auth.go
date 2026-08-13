@@ -3,7 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	authhandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/auth"
+	authhandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/auth"
 )
 
 func (r Router) registerAuth(engine *gin.Engine) {

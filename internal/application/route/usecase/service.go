@@ -7,13 +7,13 @@ import (
 	"regexp"
 	"strings"
 
-	routedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/route/dto"
-	routeport "gitee.com/leoninew/PomeloOrbit-go/internal/application/route/port"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
+	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 type Service struct {

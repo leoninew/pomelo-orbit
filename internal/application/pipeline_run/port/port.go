@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	pipelinerundto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/dto"
+	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
 )
 
 type PipelineRunDispatcher interface {

@@ -3,8 +3,8 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	deploymenthandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/deployment"
-	servicehandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/service"
+	deploymenthandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/deployment"
+	servicehandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/service"
 )
 
 func (r Router) registerService(engine *gin.Engine) {

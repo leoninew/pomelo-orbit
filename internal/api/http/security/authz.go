@@ -7,10 +7,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	authsvc "github.com/leoninew/pomelo-orbit/internal/application/auth/usecase"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 type CurrentUserContext struct {

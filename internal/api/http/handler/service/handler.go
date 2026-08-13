@@ -3,8 +3,8 @@ package servicehandler
 import (
 	"log/slog"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	servicesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/usecase"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	servicesvc "github.com/leoninew/pomelo-orbit/internal/application/service/usecase"
 )
 
 type Handler struct {

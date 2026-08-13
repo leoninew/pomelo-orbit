@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/config"
 )
 
 func TestNewLoggerReturnsLogger(t *testing.T) {

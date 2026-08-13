@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	pipelinevariable "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline/rule/pipelinevariable"
-	pipelinerundto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/dto"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	pipelinevariable "github.com/leoninew/pomelo-orbit/internal/application/pipeline/rule/pipelinevariable"
+	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.ExecutePipelineRunInput) error {

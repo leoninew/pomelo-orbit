@@ -693,8 +693,8 @@ const file_orbit_v1_auth_auth_proto_rawDesc = "" +
 	"\x04code\x18\x01 \x01(\tR\x04code\"J\n" +
 	"\x13TurnstileConfigResp\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x19\n" +
-	"\bsite_key\x18\x02 \x01(\tR\asiteKeyB\xb8\x01\n" +
-	"\x11com.orbit.v1.authB\tAuthProtoP\x01ZBgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/auth\xa2\x02\x03OVA\xaa\x02\rOrbit.V1.Auth\xca\x02\rOrbit\\V1\\Auth\xe2\x02\x19Orbit\\V1\\Auth\\GPBMetadata\xea\x02\x0fOrbit::V1::Authb\x06proto3"
+	"\bsite_key\x18\x02 \x01(\tR\asiteKeyB\xb7\x01\n" +
+	"\x11com.orbit.v1.authB\tAuthProtoP\x01ZAgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/auth\xa2\x02\x03OVA\xaa\x02\rOrbit.V1.Auth\xca\x02\rOrbit\\V1\\Auth\xe2\x02\x19Orbit\\V1\\Auth\\GPBMetadata\xea\x02\x0fOrbit::V1::Authb\x06proto3"
 
 var (
 	file_orbit_v1_auth_auth_proto_rawDescOnce sync.Once

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	pipelinerunport "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/port"
+	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
 )
 
 type DockerRunner struct{}

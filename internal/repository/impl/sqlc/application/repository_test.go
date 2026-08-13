@@ -7,9 +7,9 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func TestListApplicationsBindsTypedFilters(t *testing.T) {

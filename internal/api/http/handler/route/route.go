@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	routev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/route"
 	"github.com/gin-gonic/gin"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	routev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/route"
 
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 )
 
 func (h Handler) ListRoutes(c *gin.Context) {

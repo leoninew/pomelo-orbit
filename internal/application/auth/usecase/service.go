@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	authdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/dto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/auth/csrf"
-	jwt "gitee.com/leoninew/PomeloOrbit-go/internal/auth/jwt"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	authdto "github.com/leoninew/pomelo-orbit/internal/application/auth/dto"
+	"github.com/leoninew/pomelo-orbit/internal/auth/csrf"
+	jwt "github.com/leoninew/pomelo-orbit/internal/auth/jwt"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 
 	"golang.org/x/crypto/bcrypt"
 )

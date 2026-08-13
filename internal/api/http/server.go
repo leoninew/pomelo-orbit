@@ -12,13 +12,13 @@ import (
 	"sort"
 	"strings"
 
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 
 	"github.com/gin-gonic/gin"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/routes"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/routes"
+	"github.com/leoninew/pomelo-orbit/internal/config"
 )
 
 type Server struct {

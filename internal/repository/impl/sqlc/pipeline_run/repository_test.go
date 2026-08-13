@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	_ "modernc.org/sqlite"
 )
 

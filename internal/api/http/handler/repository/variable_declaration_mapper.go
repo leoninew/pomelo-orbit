@@ -1,8 +1,8 @@
 package repositoryhandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	commonv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/common"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	commonv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
 )
 
 func variableDeclarationResponses(items []map[string]any) []commonv1.VariableDeclarationResp {

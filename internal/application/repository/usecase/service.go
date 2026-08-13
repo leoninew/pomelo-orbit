@@ -4,9 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	repositoryport "gitee.com/leoninew/PomeloOrbit-go/internal/application/repository/port"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	repositoryport "github.com/leoninew/pomelo-orbit/internal/application/repository/port"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 type Service struct {

@@ -3,7 +3,7 @@ package applicationport
 import (
 	"context"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 // BuildVersionComponentUpdate is one image artifact applied while a build forks

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	rolesqlc "gitee.com/leoninew/PomeloOrbit-go/internal/gen/sqlc/role"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database/tx"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlcommon"
+	rolesqlc "github.com/leoninew/pomelo-orbit/internal/gen/sqlc/role"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
+	"github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/dbmodel"
+	"github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlcommon"
 )
 
 var _ repository.RoleStore = Repository{}

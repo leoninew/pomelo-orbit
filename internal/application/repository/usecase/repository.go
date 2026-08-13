@@ -8,12 +8,12 @@ import (
 	"regexp"
 	"strings"
 
-	pipelinevariable "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline/rule/pipelinevariable"
-	repositorydto "gitee.com/leoninew/PomeloOrbit-go/internal/application/repository/dto"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	pipelinevariable "github.com/leoninew/pomelo-orbit/internal/application/pipeline/rule/pipelinevariable"
+	repositorydto "github.com/leoninew/pomelo-orbit/internal/application/repository/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 var repositoryCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)

@@ -1276,8 +1276,8 @@ const file_orbit_v1_pipeline_pipeline_stage_proto_rawDesc = "" +
 	"\vdifferences\x18\x05 \x03(\v2;.orbit.v1.pipeline.PipelineStageTemplateFieldDifferenceRespR\vdifferences\"\xb7\x01\n" +
 	"\x1ePipelineStageTemplateUpdateReq\x12R\n" +
 	"&expected_source_template_stage_version\x18\x01 \x01(\x05R\"expectedSourceTemplateStageVersion\x12A\n" +
-	"\x1dtarget_template_stage_version\x18\x02 \x01(\x05R\x1atargetTemplateStageVersionB\xd9\x01\n" +
-	"\x15com.orbit.v1.pipelineB\x12PipelineStageProtoP\x01ZFgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/pipeline\xa2\x02\x03OVP\xaa\x02\x11Orbit.V1.Pipeline\xca\x02\x11Orbit\\V1\\Pipeline\xe2\x02\x1dOrbit\\V1\\Pipeline\\GPBMetadata\xea\x02\x13Orbit::V1::Pipelineb\x06proto3"
+	"\x1dtarget_template_stage_version\x18\x02 \x01(\x05R\x1atargetTemplateStageVersionB\xd8\x01\n" +
+	"\x15com.orbit.v1.pipelineB\x12PipelineStageProtoP\x01ZEgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline\xa2\x02\x03OVP\xaa\x02\x11Orbit.V1.Pipeline\xca\x02\x11Orbit\\V1\\Pipeline\xe2\x02\x1dOrbit\\V1\\Pipeline\\GPBMetadata\xea\x02\x13Orbit::V1::Pipelineb\x06proto3"
 
 var (
 	file_orbit_v1_pipeline_pipeline_stage_proto_rawDescOnce sync.Once

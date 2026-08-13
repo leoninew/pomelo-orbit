@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 // PipelineStore persists Pipeline aggregates, project stage templates, and

@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	authdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/dto"
-	jwt "gitee.com/leoninew/PomeloOrbit-go/internal/auth/jwt"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	authdto "github.com/leoninew/pomelo-orbit/internal/application/auth/dto"
+	jwt "github.com/leoninew/pomelo-orbit/internal/auth/jwt"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 func TestMCPGrantIsLoopbackBoundSingleUseAndIssuesBearerToken(t *testing.T) {

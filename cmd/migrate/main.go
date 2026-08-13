@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/bootstrap"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/bootstrap"
+	"github.com/leoninew/pomelo-orbit/internal/config"
 )
 
 func main() {

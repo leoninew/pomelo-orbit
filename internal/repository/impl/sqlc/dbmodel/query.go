@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database/tx"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 )
 
 // Queries picks the request/message transaction when present, otherwise the root DB.

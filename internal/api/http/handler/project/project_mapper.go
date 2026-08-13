@@ -1,10 +1,10 @@
 package projecthandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	projectdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/project/dto"
-	projectv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/project"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	projectdto "github.com/leoninew/pomelo-orbit/internal/application/project/dto"
+	projectv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/project"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func projectSaveInput(req *projectv1.ProjectSaveReq) projectdto.SaveInput {

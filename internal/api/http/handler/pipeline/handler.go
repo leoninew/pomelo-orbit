@@ -3,8 +3,8 @@ package pipelinehandler
 import (
 	"log/slog"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	pipelinesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline/usecase"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
 )
 
 type Handler struct {

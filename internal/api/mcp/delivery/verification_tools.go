@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

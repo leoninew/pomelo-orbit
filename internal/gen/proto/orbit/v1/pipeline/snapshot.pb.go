@@ -7,7 +7,7 @@
 package pipeline
 
 import (
-	common "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/common"
+	common "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -335,8 +335,8 @@ const file_orbit_v1_pipeline_snapshot_proto_rawDesc = "" +
 	"\tartifacts\x18\x06 \x03(\v2%.orbit.v1.pipeline.ArtifactConfigRespR\tartifacts\x12\x1d\n" +
 	"\n" +
 	"sort_order\x18\a \x01(\x05R\tsortOrder\x12 \n" +
-	"\vdescription\x18\b \x01(\tR\vdescriptionB\xd4\x01\n" +
-	"\x15com.orbit.v1.pipelineB\rSnapshotProtoP\x01ZFgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/pipeline\xa2\x02\x03OVP\xaa\x02\x11Orbit.V1.Pipeline\xca\x02\x11Orbit\\V1\\Pipeline\xe2\x02\x1dOrbit\\V1\\Pipeline\\GPBMetadata\xea\x02\x13Orbit::V1::Pipelineb\x06proto3"
+	"\vdescription\x18\b \x01(\tR\vdescriptionB\xd3\x01\n" +
+	"\x15com.orbit.v1.pipelineB\rSnapshotProtoP\x01ZEgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline\xa2\x02\x03OVP\xaa\x02\x11Orbit.V1.Pipeline\xca\x02\x11Orbit\\V1\\Pipeline\xe2\x02\x1dOrbit\\V1\\Pipeline\\GPBMetadata\xea\x02\x13Orbit::V1::Pipelineb\x06proto3"
 
 var (
 	file_orbit_v1_pipeline_snapshot_proto_rawDescOnce sync.Once

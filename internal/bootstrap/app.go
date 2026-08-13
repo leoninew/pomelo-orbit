@@ -5,13 +5,13 @@ import (
 	"log/slog"
 	"net/http"
 
-	deliverymcp "gitee.com/leoninew/PomeloOrbit-go/internal/api/mcp/delivery"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	database "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	mcpinfra "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/mcp"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/queue/worker"
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	deliverymcp "github.com/leoninew/pomelo-orbit/internal/api/mcp/delivery"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	database "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	mcpinfra "github.com/leoninew/pomelo-orbit/internal/infrastructure/mcp"
+	"github.com/leoninew/pomelo-orbit/internal/queue/worker"
+	taskrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/task"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

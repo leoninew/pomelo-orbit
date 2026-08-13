@@ -3,7 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	rolehandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/role"
+	rolehandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/role"
 )
 
 func (r Router) registerRole(engine *gin.Engine) {

@@ -1,11 +1,11 @@
 package userhandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	userdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/user/dto"
-	userv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/user"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	userdto "github.com/leoninew/pomelo-orbit/internal/application/user/dto"
+	userv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/user"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func userCreateInput(req *userv1.UserCreateReq) userdto.CreateInput {

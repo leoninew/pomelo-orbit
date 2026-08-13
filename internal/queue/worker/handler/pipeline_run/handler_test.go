@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	pipelinerundto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/dto"
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
+	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
+	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
 )
 
 func TestHandleRejectsInvalidPayload(t *testing.T) {

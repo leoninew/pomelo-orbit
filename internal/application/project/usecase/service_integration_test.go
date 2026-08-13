@@ -7,13 +7,13 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	projectdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/project/dto"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
-	userrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/user"
-	testseed "gitee.com/leoninew/PomeloOrbit-go/internal/testutil/seed"
+	projectdto "github.com/leoninew/pomelo-orbit/internal/application/project/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
+	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
+	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
 const projectTestUserId = "01KKX2YNPF6VJ9N7QYCWG61KVK"

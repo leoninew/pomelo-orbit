@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string, forceRecreate bool) error {

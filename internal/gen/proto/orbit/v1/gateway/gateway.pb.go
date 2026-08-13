@@ -615,8 +615,8 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xcd\x01\n" +
-	"\x14com.orbit.v1.gatewayB\fGatewayProtoP\x01ZEgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/gateway\xa2\x02\x03OVG\xaa\x02\x10Orbit.V1.Gateway\xca\x02\x10Orbit\\V1\\Gateway\xe2\x02\x1cOrbit\\V1\\Gateway\\GPBMetadata\xea\x02\x12Orbit::V1::Gatewayb\x06proto3"
+	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xcc\x01\n" +
+	"\x14com.orbit.v1.gatewayB\fGatewayProtoP\x01ZDgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/gateway\xa2\x02\x03OVG\xaa\x02\x10Orbit.V1.Gateway\xca\x02\x10Orbit\\V1\\Gateway\xe2\x02\x1cOrbit\\V1\\Gateway\\GPBMetadata\xea\x02\x12Orbit::V1::Gatewayb\x06proto3"
 
 var (
 	file_orbit_v1_gateway_gateway_proto_rawDescOnce sync.Once

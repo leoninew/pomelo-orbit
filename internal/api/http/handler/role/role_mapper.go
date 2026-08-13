@@ -1,10 +1,10 @@
 package rolehandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	roledto "gitee.com/leoninew/PomeloOrbit-go/internal/application/role/dto"
-	rolev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/role"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	roledto "github.com/leoninew/pomelo-orbit/internal/application/role/dto"
+	rolev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/role"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func roleCreateInput(req *rolev1.RoleCreateReq) roledto.SaveInput {

@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	deploymentport "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/port"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func TestObservedServiceStatus(t *testing.T) {

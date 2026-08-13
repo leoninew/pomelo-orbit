@@ -1,6 +1,6 @@
 package dto
 
-import "gitee.com/leoninew/PomeloOrbit-go/internal/model"
+import "github.com/leoninew/pomelo-orbit/internal/model"
 
 // ServiceView is the runtime binding for an application instance, with display labels.
 type ServiceView struct {

@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	applicationport "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/port"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	applicationport "github.com/leoninew/pomelo-orbit/internal/application/application/port"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 type versionForkStore interface {

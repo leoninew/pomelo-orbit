@@ -1,11 +1,11 @@
 package routehandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	routedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/route/dto"
-	routeport "gitee.com/leoninew/PomeloOrbit-go/internal/application/route/port"
-	routev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/route"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
+	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
+	routev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/route"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func routeCreateInput(req *routev1.RouteCreateReq) routedto.RouteCreateInput {

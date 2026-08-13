@@ -531,8 +531,8 @@ const file_orbit_v1_credential_credential_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xe2\x01\n" +
-	"\x17com.orbit.v1.credentialB\x0fCredentialProtoP\x01ZHgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/credential\xa2\x02\x03OVC\xaa\x02\x13Orbit.V1.Credential\xca\x02\x13Orbit\\V1\\Credential\xe2\x02\x1fOrbit\\V1\\Credential\\GPBMetadata\xea\x02\x15Orbit::V1::Credentialb\x06proto3"
+	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xe1\x01\n" +
+	"\x17com.orbit.v1.credentialB\x0fCredentialProtoP\x01ZGgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/credential\xa2\x02\x03OVC\xaa\x02\x13Orbit.V1.Credential\xca\x02\x13Orbit\\V1\\Credential\xe2\x02\x1fOrbit\\V1\\Credential\\GPBMetadata\xea\x02\x15Orbit::V1::Credentialb\x06proto3"
 
 var (
 	file_orbit_v1_credential_credential_proto_rawDescOnce sync.Once

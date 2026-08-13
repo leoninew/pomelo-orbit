@@ -412,8 +412,8 @@ const file_orbit_v1_common_common_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v2'.orbit.v1.common.VariableDeclarationReqR\x05items\"=\n" +
 	"\n" +
 	"RawJsonReq\x12/\n" +
-	"\x06fields\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06fieldsB\xc6\x01\n" +
-	"\x13com.orbit.v1.commonB\vCommonProtoP\x01ZDgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/common\xa2\x02\x03OVC\xaa\x02\x0fOrbit.V1.Common\xca\x02\x0fOrbit\\V1\\Common\xe2\x02\x1bOrbit\\V1\\Common\\GPBMetadata\xea\x02\x11Orbit::V1::Commonb\x06proto3"
+	"\x06fields\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06fieldsB\xc5\x01\n" +
+	"\x13com.orbit.v1.commonB\vCommonProtoP\x01ZCgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common\xa2\x02\x03OVC\xaa\x02\x0fOrbit.V1.Common\xca\x02\x0fOrbit\\V1\\Common\xe2\x02\x1bOrbit\\V1\\Common\\GPBMetadata\xea\x02\x11Orbit::V1::Commonb\x06proto3"
 
 var (
 	file_orbit_v1_common_common_proto_rawDescOnce sync.Once

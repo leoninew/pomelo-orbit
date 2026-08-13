@@ -442,8 +442,8 @@ const file_orbit_v1_project_project_proto_rawDesc = "" +
 	"\x04code\x18\x02 \x01(\tR\x04code\"+\n" +
 	"\x10ProjectMemberReq\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x15\n" +
-	"\x13ProjectDeprecateReqB\xcd\x01\n" +
-	"\x14com.orbit.v1.projectB\fProjectProtoP\x01ZEgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/project\xa2\x02\x03OVP\xaa\x02\x10Orbit.V1.Project\xca\x02\x10Orbit\\V1\\Project\xe2\x02\x1cOrbit\\V1\\Project\\GPBMetadata\xea\x02\x12Orbit::V1::Projectb\x06proto3"
+	"\x13ProjectDeprecateReqB\xcc\x01\n" +
+	"\x14com.orbit.v1.projectB\fProjectProtoP\x01ZDgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/project\xa2\x02\x03OVP\xaa\x02\x10Orbit.V1.Project\xca\x02\x10Orbit\\V1\\Project\xe2\x02\x1cOrbit\\V1\\Project\\GPBMetadata\xea\x02\x12Orbit::V1::Projectb\x06proto3"
 
 var (
 	file_orbit_v1_project_project_proto_rawDescOnce sync.Once

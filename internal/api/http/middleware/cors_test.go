@@ -8,8 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 )
 
 func TestCorsNoopWhenNotConfigured(t *testing.T) {

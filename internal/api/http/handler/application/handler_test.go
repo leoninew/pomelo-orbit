@@ -7,12 +7,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	transportmiddleware "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/middleware"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"github.com/gin-gonic/gin"
+	transportmiddleware "github.com/leoninew/pomelo-orbit/internal/api/http/middleware"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func TestWriteErrorMapsRuntimeCredentialReadFailureToSafeContract(t *testing.T) {

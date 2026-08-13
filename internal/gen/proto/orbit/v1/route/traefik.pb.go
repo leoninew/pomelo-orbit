@@ -235,8 +235,8 @@ const file_orbit_v1_route_traefik_proto_rawDesc = "" +
 	"\rhttps_enabled\x18\x02 \x01(\bR\fhttpsEnabled\"e\n" +
 	"\x14TraefikRouteListResp\x127\n" +
 	"\x05items\x18\x01 \x03(\v2!.orbit.v1.route.TraefikRouterRespR\x05items\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05totalB\xc1\x01\n" +
-	"\x12com.orbit.v1.routeB\fTraefikProtoP\x01ZCgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/route\xa2\x02\x03OVR\xaa\x02\x0eOrbit.V1.Route\xca\x02\x0eOrbit\\V1\\Route\xe2\x02\x1aOrbit\\V1\\Route\\GPBMetadata\xea\x02\x10Orbit::V1::Routeb\x06proto3"
+	"\x05total\x18\x02 \x01(\x05R\x05totalB\xc0\x01\n" +
+	"\x12com.orbit.v1.routeB\fTraefikProtoP\x01ZBgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/route\xa2\x02\x03OVR\xaa\x02\x0eOrbit.V1.Route\xca\x02\x0eOrbit\\V1\\Route\xe2\x02\x1aOrbit\\V1\\Route\\GPBMetadata\xea\x02\x10Orbit::V1::Routeb\x06proto3"
 
 var (
 	file_orbit_v1_route_traefik_proto_rawDescOnce sync.Once

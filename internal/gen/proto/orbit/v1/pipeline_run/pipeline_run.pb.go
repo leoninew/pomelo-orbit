@@ -7,7 +7,7 @@
 package pipeline_run
 
 import (
-	common "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/common"
+	common "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -788,8 +788,8 @@ const file_orbit_v1_pipeline_run_pipeline_run_proto_rawDesc = "" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
 	"\x05pages\x18\x05 \x01(\x05R\x05pages\"\x1b\n" +
-	"\x19PipelineRunExecuteTaskReqB\xeb\x01\n" +
-	"\x19com.orbit.v1.pipeline_runB\x10PipelineRunProtoP\x01ZJgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/pipeline_run\xa2\x02\x03OVP\xaa\x02\x14Orbit.V1.PipelineRun\xca\x02\x14Orbit\\V1\\PipelineRun\xe2\x02 Orbit\\V1\\PipelineRun\\GPBMetadata\xea\x02\x16Orbit::V1::PipelineRunb\x06proto3"
+	"\x19PipelineRunExecuteTaskReqB\xea\x01\n" +
+	"\x19com.orbit.v1.pipeline_runB\x10PipelineRunProtoP\x01ZIgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline_run\xa2\x02\x03OVP\xaa\x02\x14Orbit.V1.PipelineRun\xca\x02\x14Orbit\\V1\\PipelineRun\xe2\x02 Orbit\\V1\\PipelineRun\\GPBMetadata\xea\x02\x16Orbit::V1::PipelineRunb\x06proto3"
 
 var (
 	file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescOnce sync.Once

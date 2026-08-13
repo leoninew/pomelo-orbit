@@ -3,7 +3,7 @@ package gatewaysvc
 import (
 	"testing"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func TestBuildManagedGatewayComponentExposesDashboardAPIOnLoopback(t *testing.T) {

@@ -4,12 +4,12 @@ import (
 	"context"
 	"strings"
 
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	gatewaydto "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/dto"
-	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 const (

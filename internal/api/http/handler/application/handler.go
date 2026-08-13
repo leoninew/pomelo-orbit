@@ -3,9 +3,9 @@ package applicationhandler
 import (
 	"log/slog"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	applicationsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/usecase"
-	servicesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/usecase"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
+	servicesvc "github.com/leoninew/pomelo-orbit/internal/application/service/usecase"
 )
 
 type Handler struct {

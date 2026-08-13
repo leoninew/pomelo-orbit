@@ -13,9 +13,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/routes"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/routes"
+	"github.com/leoninew/pomelo-orbit/internal/config"
 )
 
 func newServerForServerTest(cfg config.Config) Server {

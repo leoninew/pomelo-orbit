@@ -3,7 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	taskhandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/task"
+	taskhandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/task"
 )
 
 func (r Router) registerTask(engine *gin.Engine) {

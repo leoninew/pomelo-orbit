@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func TestRouteManagerListRoutersMapsTraefikResponse(t *testing.T) {

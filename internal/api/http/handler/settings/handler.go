@@ -4,13 +4,13 @@ import (
 	"log/slog"
 	"net/http"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	settingsv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/settings"
 	"github.com/gin-gonic/gin"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
+	settingsv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/settings"
 
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	settingssvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/usecase"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	settingssvc "github.com/leoninew/pomelo-orbit/internal/application/settings/usecase"
 )
 
 type Handler struct {

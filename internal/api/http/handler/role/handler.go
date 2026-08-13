@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	rolesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/role/usecase"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	rolev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/role"
 	"github.com/gin-gonic/gin"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	rolesvc "github.com/leoninew/pomelo-orbit/internal/application/role/usecase"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	rolev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/role"
 )
 
 type Handler struct {

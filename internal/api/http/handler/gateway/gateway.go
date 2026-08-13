@@ -3,10 +3,10 @@ package gatewayhandler
 import (
 	"net/http"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	gatewayv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/gateway"
 	"github.com/gin-gonic/gin"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	gatewayv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/gateway"
 )
 
 func (h Handler) ListGateways(c *gin.Context) {

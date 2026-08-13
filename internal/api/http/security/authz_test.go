@@ -10,10 +10,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
-	jwt "gitee.com/leoninew/PomeloOrbit-go/internal/auth/jwt"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	authsvc "github.com/leoninew/pomelo-orbit/internal/application/auth/usecase"
+	jwt "github.com/leoninew/pomelo-orbit/internal/auth/jwt"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 const testSecret = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

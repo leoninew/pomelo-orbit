@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 )
 
 func OpenDatabase(cfg config.Config) (*sql.DB, error) {

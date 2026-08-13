@@ -3,8 +3,8 @@ package delivery
 import (
 	"context"
 
-	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
-	servicev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

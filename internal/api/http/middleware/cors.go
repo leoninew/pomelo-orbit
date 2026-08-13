@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 )
 
 const (

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	repositoryport "gitee.com/leoninew/PomeloOrbit-go/internal/application/repository/port"
+	repositoryport "github.com/leoninew/pomelo-orbit/internal/application/repository/port"
 )
 
 var _ repositoryport.LocalDirectorySource = Source{}

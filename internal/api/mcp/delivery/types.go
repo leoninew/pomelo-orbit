@@ -5,17 +5,17 @@ import (
 	"context"
 	"time"
 
-	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
-	applicationsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/usecase"
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	deploymentsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/usecase"
-	gatewaydto "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/dto"
-	gatewaysvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/usecase"
-	projectsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/project/usecase"
-	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
-	servicesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/usecase"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
+	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
+	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
+	projectsvc "github.com/leoninew/pomelo-orbit/internal/application/project/usecase"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	servicesvc "github.com/leoninew/pomelo-orbit/internal/application/service/usecase"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 // Dependencies is the MCP adapter's complete application boundary. The

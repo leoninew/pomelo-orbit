@@ -5,11 +5,11 @@ import (
 	"errors"
 	"strings"
 
-	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 func (s Service) ImportApplication(ctx context.Context, userId string, input applicationdto.ApplicationImportInput) (model.Application, error) {

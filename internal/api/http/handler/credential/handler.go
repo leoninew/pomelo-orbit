@@ -3,8 +3,8 @@ package credentialhandler
 import (
 	"log/slog"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	credentialsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/credential/usecase"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
 )
 
 type Handler struct {

@@ -15,10 +15,10 @@ import (
 	"sync"
 	"time"
 
-	routeport "gitee.com/leoninew/PomeloOrbit-go/internal/application/route/port"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 var _ routeport.RouteConfigPublisher = (*RouteManager)(nil)

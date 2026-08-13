@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"time"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/codec"
 )
 
 type ErrorResp struct {

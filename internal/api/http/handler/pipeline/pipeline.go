@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	pipelinedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline/dto"
-	pipelinev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/pipeline"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	pipelinedto "github.com/leoninew/pomelo-orbit/internal/application/pipeline/dto"
+	pipelinev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline"
 )
 
 func (h Handler) ListPipelines(c *gin.Context) {

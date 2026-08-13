@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	repositoryv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/repository"
+	repositoryv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/repository"
 )
 
 func TestMarshalProtoJSONUsesProtoNames(t *testing.T) {

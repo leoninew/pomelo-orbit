@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 type serviceCreateStoreFake struct {

@@ -1,10 +1,10 @@
 package authhandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	authdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/dto"
-	authv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/auth"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	authdto "github.com/leoninew/pomelo-orbit/internal/application/auth/dto"
+	authv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/auth"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func loginInput(req *authv1.LoginReq, ip string, userAgent string) authdto.LoginInput {

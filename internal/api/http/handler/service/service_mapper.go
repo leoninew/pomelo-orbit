@@ -1,11 +1,11 @@
 package servicehandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
-	servicev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	"github.com/leoninew/pomelo-orbit/internal/common/commandline"
+	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func serviceViewResponse(item servicedto.ServiceView) servicev1.ServiceResp {

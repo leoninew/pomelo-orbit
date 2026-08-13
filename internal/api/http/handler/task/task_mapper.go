@@ -3,10 +3,10 @@ package taskhandler
 import (
 	"encoding/json"
 
-	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	taskv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/task"
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
+	transportcodec "github.com/leoninew/pomelo-orbit/internal/api/http/codec"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	taskv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/task"
+	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 

@@ -3,7 +3,7 @@ package applicationhandler
 import (
 	"testing"
 
-	applicationv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application"
+	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
 )
 
 func TestVersionComponentCreateInputUsesBasicFieldsOnly(t *testing.T) {

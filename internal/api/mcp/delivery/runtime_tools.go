@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

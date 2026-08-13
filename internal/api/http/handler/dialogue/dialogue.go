@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"net/http"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	dialoguedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/dialogue/dto"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	dialoguev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/dialogue"
 	"github.com/gin-gonic/gin"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/codec"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	dialoguedto "github.com/leoninew/pomelo-orbit/internal/application/dialogue/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	dialoguev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/dialogue"
 )
 
 func (h Handler) CompleteTurn(c *gin.Context) {

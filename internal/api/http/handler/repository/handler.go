@@ -3,8 +3,8 @@ package repositoryhandler
 import (
 	"log/slog"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	repositorysvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/repository/usecase"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	repositorysvc "github.com/leoninew/pomelo-orbit/internal/application/repository/usecase"
 )
 
 type Handler struct {

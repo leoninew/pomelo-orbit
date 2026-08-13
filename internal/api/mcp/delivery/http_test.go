@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	deliverymcpclient "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/mcp/delivery"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	deliverymcpclient "github.com/leoninew/pomelo-orbit/internal/infrastructure/mcp/delivery"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 // PipelineRunStore persists immutable PipelineRun execution history.

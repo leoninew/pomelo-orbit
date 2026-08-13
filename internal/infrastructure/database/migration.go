@@ -16,8 +16,8 @@ import (
 	migratesqlite "github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	migrationfiles "gitee.com/leoninew/PomeloOrbit-go/sql"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	migrationfiles "github.com/leoninew/pomelo-orbit/sql"
 )
 
 const migrationsRoot = "migration"

@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"google.golang.org/protobuf/proto"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/codec"
 )
 
 func DecodeJSON(c *gin.Context, value any) error {

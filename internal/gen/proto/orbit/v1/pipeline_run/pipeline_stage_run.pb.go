@@ -151,8 +151,8 @@ const file_orbit_v1_pipeline_run_pipeline_stage_run_proto_rawDesc = "" +
 	"\f_finished_atB\f\n" +
 	"\n" +
 	"_exit_codeB\x10\n" +
-	"\x0e_error_messageB\xf0\x01\n" +
-	"\x19com.orbit.v1.pipeline_runB\x15PipelineStageRunProtoP\x01ZJgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/pipeline_run\xa2\x02\x03OVP\xaa\x02\x14Orbit.V1.PipelineRun\xca\x02\x14Orbit\\V1\\PipelineRun\xe2\x02 Orbit\\V1\\PipelineRun\\GPBMetadata\xea\x02\x16Orbit::V1::PipelineRunb\x06proto3"
+	"\x0e_error_messageB\xef\x01\n" +
+	"\x19com.orbit.v1.pipeline_runB\x15PipelineStageRunProtoP\x01ZIgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline_run\xa2\x02\x03OVP\xaa\x02\x14Orbit.V1.PipelineRun\xca\x02\x14Orbit\\V1\\PipelineRun\xe2\x02 Orbit\\V1\\PipelineRun\\GPBMetadata\xea\x02\x16Orbit::V1::PipelineRunb\x06proto3"
 
 var (
 	file_orbit_v1_pipeline_run_pipeline_stage_run_proto_rawDescOnce sync.Once

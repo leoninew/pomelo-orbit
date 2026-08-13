@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 // ApplicationReader provides the application lookup required by downstream domains.

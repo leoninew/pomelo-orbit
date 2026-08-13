@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"time"
 
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	tasksqlc "gitee.com/leoninew/PomeloOrbit-go/internal/gen/sqlc/task"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database/tx"
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	tasksqlc "github.com/leoninew/pomelo-orbit/internal/gen/sqlc/task"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
+	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
+	"github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/dbmodel"
 )
 
 type Repository struct {

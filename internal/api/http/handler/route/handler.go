@@ -3,8 +3,8 @@ package routehandler
 import (
 	"log/slog"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	routesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/route/usecase"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	routesvc "github.com/leoninew/pomelo-orbit/internal/application/route/usecase"
 )
 
 type Handler struct {

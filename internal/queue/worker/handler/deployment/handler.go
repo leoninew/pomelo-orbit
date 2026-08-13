@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
+	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
 )
 
 type Payload struct {

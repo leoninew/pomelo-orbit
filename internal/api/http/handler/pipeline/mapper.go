@@ -1,11 +1,11 @@
 package pipelinehandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	pipelinedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline/dto"
-	commonv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/common"
-	pipelinev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/pipeline"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	pipelinedto "github.com/leoninew/pomelo-orbit/internal/application/pipeline/dto"
+	commonv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
+	pipelinev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func pipelineResponse(detail pipelinedto.PipelineDetail) *pipelinev1.PipelineResp {

@@ -12,13 +12,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/bootstrap"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	"github.com/leoninew/pomelo-orbit/internal/bootstrap"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	taskrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/task"
 )
 
 func TestMySQLE2E(t *testing.T) {

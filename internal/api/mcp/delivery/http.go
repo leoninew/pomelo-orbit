@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

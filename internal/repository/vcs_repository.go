@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 // RepositoryStore persists source repositories. Webhook delivery is not part of

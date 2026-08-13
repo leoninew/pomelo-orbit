@@ -4,14 +4,14 @@ import (
 	"errors"
 	"time"
 
-	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	gatewaydto "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/dto"
-	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
-	applicationv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application"
-	servicev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	"github.com/leoninew/pomelo-orbit/internal/common/commandline"
+	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
+	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func componentInput(input *applicationv1.VersionComponentReq) (applicationdto.VersionComponentInput, error) {

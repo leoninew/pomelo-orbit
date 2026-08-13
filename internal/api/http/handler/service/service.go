@@ -3,11 +3,11 @@ package servicehandler
 import (
 	"net/http"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
-	servicev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
 	"github.com/gin-gonic/gin"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
 )
 
 func (h Handler) ListServices(c *gin.Context) {

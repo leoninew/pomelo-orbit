@@ -1,9 +1,9 @@
 package gatewayhandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	gatewaydto "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/dto"
-	gatewayv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/gateway"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
+	gatewayv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/gateway"
 )
 
 func gatewayCreateInput(req *gatewayv1.GatewayCreateReq) gatewaydto.GatewayCreateInput {

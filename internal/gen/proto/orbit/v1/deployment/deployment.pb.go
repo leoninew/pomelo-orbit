@@ -631,8 +631,8 @@ const file_orbit_v1_deployment_deployment_proto_rawDesc = "" +
 	"\x05pages\x18\x05 \x01(\x05R\x05pages\"\x1a\n" +
 	"\x18ApplicationDeployTaskReq\"\x1b\n" +
 	"\x19ApplicationRestartTaskReq\"\x18\n" +
-	"\x16ApplicationStopTaskReqB\xe2\x01\n" +
-	"\x17com.orbit.v1.deploymentB\x0fDeploymentProtoP\x01ZHgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/deployment\xa2\x02\x03OVD\xaa\x02\x13Orbit.V1.Deployment\xca\x02\x13Orbit\\V1\\Deployment\xe2\x02\x1fOrbit\\V1\\Deployment\\GPBMetadata\xea\x02\x15Orbit::V1::Deploymentb\x06proto3"
+	"\x16ApplicationStopTaskReqB\xe1\x01\n" +
+	"\x17com.orbit.v1.deploymentB\x0fDeploymentProtoP\x01ZGgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/deployment\xa2\x02\x03OVD\xaa\x02\x13Orbit.V1.Deployment\xca\x02\x13Orbit\\V1\\Deployment\xe2\x02\x1fOrbit\\V1\\Deployment\\GPBMetadata\xea\x02\x15Orbit::V1::Deploymentb\x06proto3"
 
 var (
 	file_orbit_v1_deployment_deployment_proto_rawDescOnce sync.Once

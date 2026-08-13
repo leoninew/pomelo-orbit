@@ -353,8 +353,8 @@ const file_orbit_v1_dialogue_dialogue_proto_rawDesc = "" +
 	"\ttool_call\x18\x03 \x01(\v2-.orbit.v1.dialogue.DeploymentDialogueToolCallR\btoolCall\x12\x12\n" +
 	"\x04code\x18\x04 \x01(\tR\x04code\x12\x1d\n" +
 	"\n" +
-	"request_id\x18\x05 \x01(\tR\trequestIdB\xd4\x01\n" +
-	"\x15com.orbit.v1.dialogueB\rDialogueProtoP\x01ZFgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/dialogue\xa2\x02\x03OVD\xaa\x02\x11Orbit.V1.Dialogue\xca\x02\x11Orbit\\V1\\Dialogue\xe2\x02\x1dOrbit\\V1\\Dialogue\\GPBMetadata\xea\x02\x13Orbit::V1::Dialogueb\x06proto3"
+	"request_id\x18\x05 \x01(\tR\trequestIdB\xd3\x01\n" +
+	"\x15com.orbit.v1.dialogueB\rDialogueProtoP\x01ZEgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/dialogue\xa2\x02\x03OVD\xaa\x02\x11Orbit.V1.Dialogue\xca\x02\x11Orbit\\V1\\Dialogue\xe2\x02\x1dOrbit\\V1\\Dialogue\\GPBMetadata\xea\x02\x13Orbit::V1::Dialogueb\x06proto3"
 
 var (
 	file_orbit_v1_dialogue_dialogue_proto_rawDescOnce sync.Once

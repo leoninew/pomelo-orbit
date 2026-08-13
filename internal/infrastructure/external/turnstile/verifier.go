@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/config"
 )
 
 type Verifier struct {

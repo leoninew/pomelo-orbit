@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/application/dialogue/port"
+	"github.com/leoninew/pomelo-orbit/internal/application/dialogue/port"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

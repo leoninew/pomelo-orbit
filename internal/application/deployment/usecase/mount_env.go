@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 const (

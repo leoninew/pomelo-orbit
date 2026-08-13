@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	repositorydto "gitee.com/leoninew/PomeloOrbit-go/internal/application/repository/dto"
-	repositoryv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/repository"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	repositorydto "github.com/leoninew/pomelo-orbit/internal/application/repository/dto"
+	repositoryv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/repository"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func (h Handler) ListRepositories(c *gin.Context) {

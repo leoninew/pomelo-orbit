@@ -1,10 +1,10 @@
 package credentialhandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	credentialdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/credential/dto"
-	credentialv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/credential"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	credentialdto "github.com/leoninew/pomelo-orbit/internal/application/credential/dto"
+	credentialv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/credential"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func credentialResponse(item model.Credential) credentialv1.CredentialResp {

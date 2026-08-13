@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	pipelinevariable "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline/rule/pipelinevariable"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	pipelinevariable "github.com/leoninew/pomelo-orbit/internal/application/pipeline/rule/pipelinevariable"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func TestBuildPipelineRunVariablesIgnoresSnapshotVariableValues(t *testing.T) {

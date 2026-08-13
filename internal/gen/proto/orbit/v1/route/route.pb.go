@@ -736,9 +736,9 @@ const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xbf\x01\n" +
+	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xbe\x01\n" +
 	"\x12com.orbit.v1.routeB\n" +
-	"RouteProtoP\x01ZCgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/route\xa2\x02\x03OVR\xaa\x02\x0eOrbit.V1.Route\xca\x02\x0eOrbit\\V1\\Route\xe2\x02\x1aOrbit\\V1\\Route\\GPBMetadata\xea\x02\x10Orbit::V1::Routeb\x06proto3"
+	"RouteProtoP\x01ZBgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/route\xa2\x02\x03OVR\xaa\x02\x0eOrbit.V1.Route\xca\x02\x0eOrbit\\V1\\Route\xe2\x02\x1aOrbit\\V1\\Route\\GPBMetadata\xea\x02\x10Orbit::V1::Routeb\x06proto3"
 
 var (
 	file_orbit_v1_route_route_proto_rawDescOnce sync.Once

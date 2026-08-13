@@ -3,12 +3,12 @@ package credentialhandler
 import (
 	"net/http"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	credentialv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/credential"
 	"github.com/gin-gonic/gin"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
+	credentialv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/credential"
 
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	credentialdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/credential/dto"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	credentialdto "github.com/leoninew/pomelo-orbit/internal/application/credential/dto"
 )
 
 func (h Handler) ListCredentials(c *gin.Context) {

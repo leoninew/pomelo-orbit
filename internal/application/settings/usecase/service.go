@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	settingsdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/dto"
-	settingsport "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/port"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	settingsdto "github.com/leoninew/pomelo-orbit/internal/application/settings/dto"
+	settingsport "github.com/leoninew/pomelo-orbit/internal/application/settings/port"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/config"
 )
 
 const envPrefix = "POMELO_ORBIT_"

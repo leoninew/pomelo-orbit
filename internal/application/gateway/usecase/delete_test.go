@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"testing"
 
-	gatewayport "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/port"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	gatewayport "github.com/leoninew/pomelo-orbit/internal/application/gateway/port"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 type gatewayDeleteApplicationStore struct {

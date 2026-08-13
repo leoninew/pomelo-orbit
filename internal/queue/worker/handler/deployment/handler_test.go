@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
+	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
 )
 
 func TestHandleRejectsInvalidPayload(t *testing.T) {

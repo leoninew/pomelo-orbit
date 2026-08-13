@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/commandline"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/common/commandline"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 	"gopkg.in/yaml.v3"
 )
 

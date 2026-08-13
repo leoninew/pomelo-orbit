@@ -7,7 +7,7 @@
 package repository
 
 import (
-	common "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/common"
+	common "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -466,8 +466,8 @@ const file_orbit_v1_repository_repository_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xe2\x01\n" +
-	"\x17com.orbit.v1.repositoryB\x0fRepositoryProtoP\x01ZHgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/repository\xa2\x02\x03OVR\xaa\x02\x13Orbit.V1.Repository\xca\x02\x13Orbit\\V1\\Repository\xe2\x02\x1fOrbit\\V1\\Repository\\GPBMetadata\xea\x02\x15Orbit::V1::Repositoryb\x06proto3"
+	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xe1\x01\n" +
+	"\x17com.orbit.v1.repositoryB\x0fRepositoryProtoP\x01ZGgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/repository\xa2\x02\x03OVR\xaa\x02\x13Orbit.V1.Repository\xca\x02\x13Orbit\\V1\\Repository\xe2\x02\x1fOrbit\\V1\\Repository\\GPBMetadata\xea\x02\x15Orbit::V1::Repositoryb\x06proto3"
 
 var (
 	file_orbit_v1_repository_repository_proto_rawDescOnce sync.Once

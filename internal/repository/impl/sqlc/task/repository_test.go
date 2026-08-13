@@ -8,8 +8,8 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 )
 
 func openTestDb(t *testing.T) *sql.DB {

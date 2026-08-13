@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 func TestTranslateErrorMapsNoRowsToErrNotFound(t *testing.T) {

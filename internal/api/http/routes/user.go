@@ -3,7 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	userhandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/user"
+	userhandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/user"
 )
 
 func (r Router) registerUser(engine *gin.Engine) {

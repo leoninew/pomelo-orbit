@@ -3,7 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	gatewayhandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/gateway"
+	gatewayhandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/gateway"
 )
 
 func (r Router) registerGateway(engine *gin.Engine) {

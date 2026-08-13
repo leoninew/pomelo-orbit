@@ -3,19 +3,19 @@ package bootstrap
 import (
 	"database/sql"
 
-	applicationrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/application"
-	authrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/auth"
-	credentialrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/credential"
-	deploymentrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/deployment"
-	gatewayrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/gateway"
-	pipelinerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/pipeline"
-	pipelinerunrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/pipeline_run"
-	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
-	vcsrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/repository"
-	rolerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/role"
-	routerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/route"
-	servicerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/service"
-	userrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/user"
+	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
+	authrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/auth"
+	credentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/credential"
+	deploymentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/deployment"
+	gatewayrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/gateway"
+	pipelinerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/pipeline"
+	pipelinerunrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/pipeline_run"
+	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
+	vcsrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/repository"
+	rolerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/role"
+	routerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/route"
+	servicerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/service"
+	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
 )
 
 // domainStores holds per-domain sqlc repositories for HTTP and worker wiring.

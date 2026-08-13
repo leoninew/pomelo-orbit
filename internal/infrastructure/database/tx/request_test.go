@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	_ "modernc.org/sqlite"
 )
 

@@ -1,9 +1,9 @@
 package applicationhandler
 
 import (
-	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
-	applicationv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application"
-	servicev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
+	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
 )
 
 func applicationImportInput(projectId string, req *applicationv1.ApplicationImportReq) applicationdto.ApplicationImportInput {

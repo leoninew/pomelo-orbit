@@ -3,8 +3,8 @@ package dialoguehandler
 import (
 	"log/slog"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
-	dialoguesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/dialogue/usecase"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	dialoguesvc "github.com/leoninew/pomelo-orbit/internal/application/dialogue/usecase"
 )
 
 type Handler struct {

@@ -2058,8 +2058,8 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\bwarnings\x18\x02 \x03(\tR\bwarnings\"7\n" +
 	"\x0eServiceStopReq\x12%\n" +
 	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\"\x13\n" +
-	"\x11ServiceRestartReqB\xcd\x01\n" +
-	"\x14com.orbit.v1.serviceB\fServiceProtoP\x01ZEgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service\xa2\x02\x03OVS\xaa\x02\x10Orbit.V1.Service\xca\x02\x10Orbit\\V1\\Service\xe2\x02\x1cOrbit\\V1\\Service\\GPBMetadata\xea\x02\x12Orbit::V1::Serviceb\x06proto3"
+	"\x11ServiceRestartReqB\xcc\x01\n" +
+	"\x14com.orbit.v1.serviceB\fServiceProtoP\x01ZDgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service\xa2\x02\x03OVS\xaa\x02\x10Orbit.V1.Service\xca\x02\x10Orbit\\V1\\Service\xe2\x02\x1cOrbit\\V1\\Service\\GPBMetadata\xea\x02\x12Orbit::V1::Serviceb\x06proto3"
 
 var (
 	file_orbit_v1_service_service_proto_rawDescOnce sync.Once

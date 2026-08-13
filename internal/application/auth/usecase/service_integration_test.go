@@ -9,14 +9,14 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	authdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/dto"
-	jwt "gitee.com/leoninew/PomeloOrbit-go/internal/auth/jwt"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	authrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/auth"
-	userrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/user"
-	testseed "gitee.com/leoninew/PomeloOrbit-go/internal/testutil/seed"
+	authdto "github.com/leoninew/pomelo-orbit/internal/application/auth/dto"
+	jwt "github.com/leoninew/pomelo-orbit/internal/auth/jwt"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	authrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/auth"
+	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
+	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
 const authTestSecretKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

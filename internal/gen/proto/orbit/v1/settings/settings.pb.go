@@ -264,8 +264,8 @@ const file_orbit_v1_settings_settings_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12,\n" +
 	"\x05value\x18\x02 \x01(\v2\x16.google.protobuf.ValueR\x05value\"*\n" +
 	"\x14SystemConfigResetReq\x12\x12\n" +
-	"\x04keys\x18\x01 \x03(\tR\x04keysB\xd4\x01\n" +
-	"\x15com.orbit.v1.settingsB\rSettingsProtoP\x01ZFgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/settings\xa2\x02\x03OVS\xaa\x02\x11Orbit.V1.Settings\xca\x02\x11Orbit\\V1\\Settings\xe2\x02\x1dOrbit\\V1\\Settings\\GPBMetadata\xea\x02\x13Orbit::V1::Settingsb\x06proto3"
+	"\x04keys\x18\x01 \x03(\tR\x04keysB\xd3\x01\n" +
+	"\x15com.orbit.v1.settingsB\rSettingsProtoP\x01ZEgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/settings\xa2\x02\x03OVS\xaa\x02\x11Orbit.V1.Settings\xca\x02\x11Orbit\\V1\\Settings\xe2\x02\x1dOrbit\\V1\\Settings\\GPBMetadata\xea\x02\x13Orbit::V1::Settingsb\x06proto3"
 
 var (
 	file_orbit_v1_settings_settings_proto_rawDescOnce sync.Once

@@ -3,7 +3,7 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	dialoguehandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/dialogue"
+	dialoguehandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/dialogue"
 )
 
 func (r Router) registerDialogue(engine *gin.Engine) {

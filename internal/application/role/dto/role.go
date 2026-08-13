@@ -1,6 +1,6 @@
 package dto
 
-import "gitee.com/leoninew/PomeloOrbit-go/internal/model"
+import "github.com/leoninew/pomelo-orbit/internal/model"
 
 type SaveInput struct {
 	Role            model.Role

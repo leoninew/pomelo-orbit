@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 // Dispatcher persists the existing asynchronous task contract for deployment commands.

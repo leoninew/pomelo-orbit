@@ -11,10 +11,10 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
+	taskrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/task"
 )
 
 func openTestDb(t *testing.T) *sql.DB {

@@ -1,9 +1,9 @@
 package settingshandler
 
 import (
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	settingsdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/dto"
-	settingsv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/settings"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	settingsdto "github.com/leoninew/pomelo-orbit/internal/application/settings/dto"
+	settingsv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/settings"
 )
 
 func configUpdateValue(req *settingsv1.SystemConfigUpdateReq) any {

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	settingsdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/dto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/envfile"
+	settingsdto "github.com/leoninew/pomelo-orbit/internal/application/settings/dto"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/envfile"
 )
 
 func TestConfigUpdateAndResetPersistEnvOverrides(t *testing.T) {

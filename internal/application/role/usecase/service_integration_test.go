@@ -8,12 +8,12 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	roledto "gitee.com/leoninew/PomeloOrbit-go/internal/application/role/dto"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	rolerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/role"
-	testseed "gitee.com/leoninew/PomeloOrbit-go/internal/testutil/seed"
+	roledto "github.com/leoninew/pomelo-orbit/internal/application/role/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	rolerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/role"
+	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
 func TestRoleServiceCreateUpdateAndDelete(t *testing.T) {

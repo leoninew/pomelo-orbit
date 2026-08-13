@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	projectsqlc "gitee.com/leoninew/PomeloOrbit-go/internal/gen/sqlc/project"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database/tx"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlcommon"
+	projectsqlc "github.com/leoninew/pomelo-orbit/internal/gen/sqlc/project"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
+	"github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/dbmodel"
+	"github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlcommon"
 )
 
 var _ repository.ProjectStore = Repository{}

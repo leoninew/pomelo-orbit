@@ -2203,8 +2203,8 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x05pages\x18\x05 \x01(\x05R\x05pages\"\x13\n" +
 	"\x11VersionPreviewReq\"7\n" +
 	"\x12VersionPreviewResp\x12!\n" +
-	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYamlB\xe5\x01\n" +
-	"\x18com.orbit.v1.applicationB\fVersionProtoP\x01ZIgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application\xa2\x02\x03OVA\xaa\x02\x14Orbit.V1.Application\xca\x02\x14Orbit\\V1\\Application\xe2\x02 Orbit\\V1\\Application\\GPBMetadata\xea\x02\x16Orbit::V1::Applicationb\x06proto3"
+	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYamlB\xe4\x01\n" +
+	"\x18com.orbit.v1.applicationB\fVersionProtoP\x01ZHgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application\xa2\x02\x03OVA\xaa\x02\x14Orbit.V1.Application\xca\x02\x14Orbit\\V1\\Application\xe2\x02 Orbit\\V1\\Application\\GPBMetadata\xea\x02\x16Orbit::V1::Applicationb\x06proto3"
 
 var (
 	file_orbit_v1_application_version_proto_rawDescOnce sync.Once

@@ -6,9 +6,9 @@ import (
 	"errors"
 	"net/http"
 
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"github.com/gin-gonic/gin"
+	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 )
 
 const unwrittenResponseSize = -1

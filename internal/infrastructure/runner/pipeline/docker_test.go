@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	pipelinerunport "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/port"
+	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
 )
 
 func TestRunArgsUseBindMountSyntax(t *testing.T) {

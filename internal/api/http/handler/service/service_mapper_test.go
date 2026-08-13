@@ -3,9 +3,9 @@ package servicehandler
 import (
 	"testing"
 
-	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
-	servicev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {

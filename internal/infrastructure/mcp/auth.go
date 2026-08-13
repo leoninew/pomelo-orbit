@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
+	authsvc "github.com/leoninew/pomelo-orbit/internal/application/auth/usecase"
 )
 
 const tokenFileName = "mcp-token"

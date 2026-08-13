@@ -7,10 +7,10 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func TestRepositoryPersistsEffectivePlanHash(t *testing.T) {

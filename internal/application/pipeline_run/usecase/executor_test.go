@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	applicationport "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/port"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	applicationport "github.com/leoninew/pomelo-orbit/internal/application/application/port"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func TestForkBuildVersionCompletesBindingInForkTransaction(t *testing.T) {

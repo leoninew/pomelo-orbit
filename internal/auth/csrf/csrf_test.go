@@ -3,7 +3,7 @@ package csrf
 import (
 	"testing"
 
-	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
+	security "github.com/leoninew/pomelo-orbit/internal/common/crypto"
 )
 
 const testKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

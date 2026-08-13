@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	dialoguedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/dialogue/dto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/application/dialogue/port"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	dialoguedto "github.com/leoninew/pomelo-orbit/internal/application/dialogue/dto"
+	"github.com/leoninew/pomelo-orbit/internal/application/dialogue/port"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 )
 
 const maxToolCallRounds = 12

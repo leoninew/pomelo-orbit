@@ -7,11 +7,11 @@ import (
 	"strings"
 	"sync"
 
-	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
-	gatewaydto "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/dto"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	applicationv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

@@ -3,10 +3,10 @@ package dispatch
 import (
 	"context"
 
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	pipelinerundto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/dto"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
 )
 
 // PipelineRunDispatcher enqueues pipeline_run execution tasks.

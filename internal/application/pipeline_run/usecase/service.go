@@ -9,17 +9,17 @@ import (
 	"strings"
 	"time"
 
-	applicationport "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/port"
-	pipelinevariable "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline/rule/pipelinevariable"
-	pipelinesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline/usecase"
-	pipelinerundto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/dto"
-	pipelinerunport "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/port"
-	repositoryport "gitee.com/leoninew/PomeloOrbit-go/internal/application/repository/port"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	applicationport "github.com/leoninew/pomelo-orbit/internal/application/application/port"
+	pipelinevariable "github.com/leoninew/pomelo-orbit/internal/application/pipeline/rule/pipelinevariable"
+	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
+	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
+	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
+	repositoryport "github.com/leoninew/pomelo-orbit/internal/application/repository/port"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 type Service struct {

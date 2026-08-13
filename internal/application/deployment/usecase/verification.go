@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
-	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"gopkg.in/yaml.v3"
 )
 

@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	authdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/dto"
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	authdto "github.com/leoninew/pomelo-orbit/internal/application/auth/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 const mcpGrantTTL = 2 * time.Minute

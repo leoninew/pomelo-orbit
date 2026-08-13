@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 )
 
 // composePsRow is the docker compose ps --format json record schema used by

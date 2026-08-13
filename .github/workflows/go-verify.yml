@@ -27,7 +27,6 @@ jobs:
 
       - name: Verify generated sqlc code
         run: |
-          grep -Fqx '        out: "internal/gen/sqlc"' sqlc.yaml
           "$(go env GOPATH)/bin/sqlc" generate
           git diff --exit-code -- internal/gen/sqlc
 

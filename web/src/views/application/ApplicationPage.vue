@@ -215,6 +215,7 @@
   import { Plus, Upload } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
   import AppBadge from '@/components/AppBadge.vue';
   import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
@@ -237,6 +238,7 @@
   import { ToolbarRoot } from 'reka-ui';
 
   const { t } = useI18n();
+  const router = useRouter();
   const toast = useToast();
   const projectStore = useProjectStore();
   const { status, error, execute } = useStatusAsync();
@@ -423,7 +425,7 @@
     }
     try {
       await executeOp(async () => {
-        await applicationApi.create(
+        const created = await applicationApi.create(
           {
             name: createForm.name,
             code: createForm.code,
@@ -433,7 +435,7 @@
         );
         toast.success(t('application.toast.createSuccess'));
         isCreateDialogOpen.value = false;
-        await fetchApplications();
+        await router.push(`/application/${created.id}`);
       });
     } catch (error) {
       createSubmitError.value =

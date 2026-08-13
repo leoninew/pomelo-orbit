@@ -122,11 +122,11 @@ WHERE component_id = ?;
 
 -- name: InsertVersionComponentEndpoint :exec
 INSERT INTO version_component_endpoint (
-  component_id, name, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  component_id, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: VersionComponentEndpointsByComponent :many
-SELECT component_id, name, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
+SELECT component_id, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
 FROM version_component_endpoint
 WHERE component_id = ?
 ORDER BY position;

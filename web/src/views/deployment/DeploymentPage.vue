@@ -142,7 +142,6 @@
     appOptions.value.map((app) => ({
       value: app.id,
       label: app.name,
-      description: app.code,
     }))
   );
 

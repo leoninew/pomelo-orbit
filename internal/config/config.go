@@ -114,10 +114,18 @@ type JwtConfig struct {
 	SecretKey string `mapstructure:"secret_key" yaml:"secret_key"`
 }
 
+// TraefikConfig is process-level gateway infrastructure only: paths, image pin,
+// environment endpoints, and deploy readiness timing. Product identity (code,
+// component name, network name) and display defaults (name, entrypoint, tls)
+// are code constants — not operator configuration.
+// Fields are normalized and validated during config Load; callers consume them as-is.
+// Per-gateway runtime fields after create live in GatewayConfig.
 type TraefikConfig struct {
-	// CertDir is still used for optional custom PEM materialization (F1 completes alignment).
-	// API URL and domain suffix come from Gateway config (E6), not process config.
-	CertDir string `mapstructure:"cert_dir" yaml:"cert_dir"`
+	CertDir          string        `mapstructure:"cert_dir" yaml:"cert_dir"`
+	Image            string        `mapstructure:"image" yaml:"image"`
+	RestApiUrl       string        `mapstructure:"rest_api_url" yaml:"rest_api_url"`
+	BaseDomain       string        `mapstructure:"base_domain" yaml:"base_domain"`
+	RestReadyTimeout time.Duration `mapstructure:"rest_ready_timeout" yaml:"rest_ready_timeout"`
 }
 
 type TurnstileConfig struct {
@@ -188,6 +196,7 @@ func Load() (Config, error) {
 
 	normalizeServerRuntimeOriginConfig(&cfg.Server)
 	normalizeLogHTTPConfig(&cfg.Logging.HTTP)
+	normalizeTraefikConfig(&cfg.Traefik)
 	if cfg.Worker.Id == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -300,6 +309,10 @@ func bindEnv(loader *viper.Viper) {
 		"orbit.root",
 		"jwt.secret_key",
 		"traefik.cert_dir",
+		"traefik.image",
+		"traefik.rest_api_url",
+		"traefik.base_domain",
+		"traefik.rest_ready_timeout",
 		"turnstile.enabled",
 		"turnstile.site_key",
 		"turnstile.secret_key",
@@ -421,6 +434,43 @@ func (c Config) Validate() error {
 	}
 	if err := validateLLMConfig(c.LLM); err != nil {
 		return err
+	}
+	if err := validateTraefikConfig(c.Traefik); err != nil {
+		return err
+	}
+	return nil
+}
+
+// normalizeTraefikConfig trims and canonicalizes load-time values so runtime
+// code can read TraefikConfig fields without further config-stage work.
+func normalizeTraefikConfig(cfg *TraefikConfig) {
+	cfg.CertDir = strings.TrimSpace(cfg.CertDir)
+	cfg.Image = strings.TrimSpace(cfg.Image)
+	cfg.RestApiUrl = strings.TrimRight(strings.TrimSpace(cfg.RestApiUrl), "/")
+	cfg.BaseDomain = strings.ToLower(strings.TrimSpace(cfg.BaseDomain))
+}
+
+func validateTraefikConfig(cfg TraefikConfig) error {
+	if cfg.CertDir == "" {
+		return errors.New("traefik.cert_dir is required")
+	}
+	if cfg.Image == "" {
+		return errors.New("traefik.image is required")
+	}
+	if cfg.RestApiUrl == "" {
+		return errors.New("traefik.rest_api_url is required")
+	}
+	if err := validateHTTPUrl("traefik.rest_api_url", cfg.RestApiUrl, false); err != nil {
+		return err
+	}
+	if cfg.BaseDomain == "" {
+		return errors.New("traefik.base_domain is required")
+	}
+	if strings.Contains(cfg.BaseDomain, "://") || strings.Contains(cfg.BaseDomain, "/") || strings.Contains(cfg.BaseDomain, " ") {
+		return errors.New("traefik.base_domain must be a bare domain (e.g. lvh.me)")
+	}
+	if cfg.RestReadyTimeout <= 0 {
+		return errors.New("traefik.rest_ready_timeout must be positive")
 	}
 	return nil
 }

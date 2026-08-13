@@ -314,9 +314,9 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="endpoint in endpointRows" :key="endpoint.name">
+              <tr v-for="endpoint in endpointRows" :key="endpoint.identity">
                 <td class="max-w-0 text-foreground">
-                  <span class="block truncate" :title="endpoint.name">{{ endpoint.name }}</span>
+                  <span class="block truncate" :title="endpoint.identity">{{ endpoint.identity }}</span>
                 </td>
                 <td>
                   <AppBadge variant="pill">{{ endpoint.protocol }}</AppBadge>
@@ -337,7 +337,7 @@
                   </dl>
                 </td>
                 <td class="max-w-0">
-                  <div v-if="editingEndpointName === endpoint.name" class="space-y-2">
+                  <div v-if="editingEndpointIdentity === endpoint.identity" class="space-y-2">
                     <label
                       v-for="field in endpointFields"
                       :key="field.key"
@@ -347,7 +347,7 @@
                       <RawValueSelect
                         v-if="field.key === 'mode'"
                         v-model="editingEndpoint[field.key]"
-                        :values="endpointModes"
+                        :values="endpointModeValues(endpoint.protocol)"
                         width-class="h-9 w-full"
                       />
                       <input v-else v-model="editingEndpoint[field.key]" class="app-input h-9" />
@@ -379,7 +379,7 @@
                 </td>
                 <td>
                   <div
-                    v-if="editingEndpointName === endpoint.name"
+                    v-if="editingEndpointIdentity === endpoint.identity"
                     class="flex h-9 items-center gap-2"
                   >
                     <button class="app-link" @click="applyEndpointEdit(endpoint)">
@@ -627,7 +627,7 @@
     label: string;
   };
   type EndpointRow = {
-    name: string;
+    identity: string;
     protocol: string;
     container_port: number;
     base: EndpointValues;
@@ -683,13 +683,17 @@
   const runtimeDraft = reactive<RuntimeOverlayDraft>(emptyRuntimeOverlayDraft());
   const editingRuntimeKey = ref<RuntimeFieldKey | null>(null);
   const editingRuntimeValue = ref('');
-  const editingEndpointName = ref<string | null>(null);
+  const editingEndpointIdentity = ref<string | null>(null);
   const editingEndpoint = ref<EndpointValues>(emptyEndpointValues());
   const resourceDeleted = ref(false);
   const resourceFields = ref<ResourceField[]>([]);
   const editingResourceKey = ref<ResourceField['key'] | null>(null);
   const editingResourceValue = ref('');
-  const endpointModes = ['internal', 'local', 'host', 'gateway_http', 'gateway_tcp'];
+  function endpointModeValues(protocol: string) {
+    return protocol === 'http'
+      ? ['internal', 'local', 'host', 'gateway']
+      : ['internal', 'local', 'host'];
+  }
   const pullPolicyValues = ['always', 'missing', 'never'];
   const restartPolicyValues = ['no', 'unless-stopped'];
   const endpointFields: EndpointField[] = [
@@ -770,7 +774,10 @@
       };
     });
     endpointRows.value = declaration.endpoints.map((item) => {
-      const overlay = overlayByKey(component.endpoints, item.name, (candidate) => candidate.name);
+      const overlay = component.endpoints.find(
+        (candidate) =>
+          candidate.protocol === item.protocol && candidate.container_port === item.container_port
+      );
       const base = {
         mode: item.mode,
         bind_address: item.bind_address ?? '',
@@ -779,7 +786,7 @@
         path_prefix: item.path_prefix ?? '',
       };
       return {
-        name: item.name,
+        identity: `${item.protocol}${item.container_port}`,
         protocol: item.protocol,
         container_port: item.container_port,
         base,
@@ -919,7 +926,7 @@
     return row.source !== row.base || row.source_is_host_path !== row.base_source_is_host_path;
   }
   function startEndpointEdit(row: EndpointRow) {
-    editingEndpointName.value = row.name;
+    editingEndpointIdentity.value = row.identity;
     editingEndpoint.value = { ...row.value };
   }
   function applyEndpointEdit(row: EndpointRow) {
@@ -928,7 +935,7 @@
     cancelEndpointEdit();
   }
   function cancelEndpointEdit() {
-    editingEndpointName.value = null;
+    editingEndpointIdentity.value = null;
     editingEndpoint.value = emptyEndpointValues();
   }
   function endpointHasChanges(row: EndpointRow) {
@@ -1052,9 +1059,10 @@
               },
       endpoints: endpointRows.value.map((row) =>
         row.deleted
-          ? { name: row.name, state: 'deleted' }
+          ? { protocol: row.protocol, container_port: row.container_port, state: 'deleted' }
           : {
-              name: row.name,
+              protocol: row.protocol,
+              container_port: row.container_port,
               state: 'override',
               mode: row.value.mode,
               bind_address: optional(row.value.bind_address),

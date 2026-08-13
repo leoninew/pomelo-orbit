@@ -133,7 +133,6 @@
     repoOptions.value.map((repo) => ({
       value: repo.id,
       label: repo.name,
-      description: repo.repository_url,
     }))
   );
 

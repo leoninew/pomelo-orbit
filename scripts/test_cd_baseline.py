@@ -158,8 +158,14 @@ class ContinuousDeliveryExportTests(unittest.TestCase):
                 restored.close()
 
     def test_export_uses_timestamped_output_by_default(self) -> None:
+        fixed = datetime(2026, 8, 8, 20, 16, 20)
+        self.assertEqual(exporter.default_export_filename(fixed), "pomelo-orbit-cd-20260808201620.sql")
         self.assertEqual(
-            exporter.default_export_output_path(datetime(2026, 8, 8, 20, 16, 20)),
+            exporter.default_export_output_path(fixed),
+            Path("data/exports/pomelo-orbit-cd-20260808201620.sql"),
+        )
+        self.assertEqual(
+            exporter.resolve_export_output_path(None, fixed),
             Path("data/exports/pomelo-orbit-cd-20260808201620.sql"),
         )
         self.assertIsNone(exporter.parse_args(["export"]).output)
@@ -177,6 +183,32 @@ class ContinuousDeliveryExportTests(unittest.TestCase):
                 exported_path = exporter.export_command(args)
 
             self.assertEqual(exported_path, output_path.resolve())
+            self.assertTrue(exported_path.is_file())
+
+    def test_export_output_directory_uses_same_timestamped_filename(self) -> None:
+        fixed = datetime(2026, 8, 8, 20, 16, 20)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            export_dir = root / "out"
+            export_dir.mkdir()
+            self.assertEqual(
+                exporter.resolve_export_output_path(export_dir, fixed),
+                export_dir / "pomelo-orbit-cd-20260808201620.sql",
+            )
+            file_path = root / "custom.sql"
+            self.assertEqual(exporter.resolve_export_output_path(file_path, fixed), file_path)
+
+            source_path = root / "source.db"
+            source = connect(source_path)
+            self.populate(source)
+            source.close()
+
+            expected = export_dir / "pomelo-orbit-cd-20260808201620.sql"
+            args = argparse.Namespace(database=source_path, output=export_dir, relace=False)
+            with patch.object(exporter, "default_export_filename", return_value=expected.name):
+                exported_path = exporter.export_command(args)
+
+            self.assertEqual(exported_path, expected.resolve())
             self.assertTrue(exported_path.is_file())
 
     def test_export_reads_every_configured_table_without_business_filters(self) -> None:

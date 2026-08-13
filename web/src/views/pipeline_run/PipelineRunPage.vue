@@ -6,6 +6,7 @@
         :options="pipelineOptions"
         placeholder="筛选应用流水线"
         width-class="w-64"
+        description-inline
         @update:model-value="searchRuns"
       />
     </div>

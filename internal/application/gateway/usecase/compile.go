@@ -13,8 +13,6 @@ import (
 )
 
 const (
-	gatewayManagedComponentName  = "traefik"
-	gatewayCompileVersionLabel   = "managed"
 	gatewayDockerSocketPath      = "/var/run/docker.sock"
 	gatewayMountTargetTraefikYml = "/etc/traefik/traefik.yml"
 	gatewayMountTargetAcmeJSON   = "/letsencrypt/acme.json"
@@ -34,9 +32,9 @@ func (s Service) CompileGatewayToVersion(ctx context.Context, app model.Applicat
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components for compile", err)
 	}
 	if tcpListens == nil {
-		tcpListens = CompiledTCPListens(existing)
+		tcpListens = CompiledTCPListens(existing, managedGatewayComponentName)
 	}
-	managed, err := buildManagedGatewayComponent(cfg, existing, normalizeTCPListens(tcpListens))
+	managed, err := buildManagedGatewayComponent(cfg, existing, normalizeTCPListens(tcpListens), managedGatewayComponentName, managedGatewayNetworkName)
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
@@ -53,7 +51,42 @@ func (s Service) CompileGatewayToVersion(ctx context.Context, app model.Applicat
 	if err := s.application.ReplaceVersionComponents(ctx, version.Id, components); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to write compiled gateway components", err)
 	}
+	// ReplaceVersionComponents deletes version_component rows first; FK CASCADE
+	// removes service_component mappings for Services already bound to this Version.
+	if err := s.serviceCommands.AlignComponentMappingsToVersion(ctx, app.Id, version.Id); err != nil {
+		return "", err
+	}
 	return version.Id, nil
+}
+
+// CompileTCPRouteListeners compiles the static Gateway entrypoints required by
+// the complete enabled custom TCP Route listener set.
+func (s Service) CompileTCPRouteListeners(ctx context.Context, cfg model.GatewayConfig, listens []int) error {
+	app, err := s.application.Application(ctx, cfg.ApplicationId)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to load gateway application for TCP routes", err)
+	}
+	versions, err := s.application.ListVersions(ctx, app.Id)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to list gateway versions for TCP routes", err)
+	}
+	for _, version := range versions {
+		if version.Status != status.VersionStatusUnpublished {
+			continue
+		}
+		components, err := s.application.VersionComponentsByVersion(ctx, version.Id)
+		if err != nil {
+			return apperror.Wrap(apperror.KindInternal, "Failed to load gateway components for TCP routes", err)
+		}
+		if TCPListensEqual(CompiledTCPListens(components, managedGatewayComponentName), listens) {
+			return nil
+		}
+		break
+	}
+	if _, err := s.CompileGatewayToVersion(ctx, app, cfg, listens...); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s Service) ensureUnpublishedGatewayVersion(ctx context.Context, applicationId string) (model.Version, error) {
@@ -66,48 +99,70 @@ func (s Service) ensureUnpublishedGatewayVersion(ctx context.Context, applicatio
 			return version, nil
 		}
 	}
+	var source *model.Version
+	for index := range versions {
+		if versions[index].Status == status.VersionStatusPublished {
+			source = &versions[index]
+			break
+		}
+	}
+	if source == nil {
+		return model.Version{}, apperror.New(apperror.KindValidation, "gateway has no source version to compile")
+	}
 	version := model.Version{
-		Id:            idutil.NewId(),
-		ApplicationId: applicationId,
-		Label:         gatewayCompileVersionLabel + "-" + idutil.NewId(),
-		Status:        status.VersionStatusUnpublished,
+		Id:                   idutil.NewId(),
+		ApplicationId:        applicationId,
+		Label:                s.traefik.Image + "-" + idutil.NewId(),
+		Status:               status.VersionStatusUnpublished,
+		CreatedFromVersionId: &source.Id,
+	}
+	components, err := s.application.VersionComponentsByVersion(ctx, source.Id)
+	if err != nil {
+		return model.Version{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway source components", err)
+	}
+	for index := range components {
+		components[index].Id = idutil.NewId()
+		components[index].VersionId = version.Id
 	}
 	if err := s.application.CreateVersion(ctx, version); err != nil {
 		return model.Version{}, apperror.Wrap(apperror.KindInternal, "Failed to create managed version", err)
 	}
+	if err := s.application.ReplaceVersionComponents(ctx, version.Id, components); err != nil {
+		return model.Version{}, apperror.Wrap(apperror.KindInternal, "Failed to copy gateway source components", err)
+	}
 	return version, nil
 }
 
-func buildManagedGatewayComponent(cfg model.GatewayConfig, existing []model.VersionComponent, tcpListens []int) (model.VersionComponent, error) {
+func buildManagedGatewayComponent(cfg model.GatewayConfig, existing []model.VersionComponent, tcpListens []int, componentName string, networkName string) (model.VersionComponent, error) {
 	var previous *model.VersionComponent
 	for index := range existing {
-		if existing[index].Name == gatewayManagedComponentName {
+		if existing[index].Name == componentName {
 			previous = &existing[index]
 			break
 		}
 	}
 	if previous == nil || strings.TrimSpace(previous.Image) == "" {
-		return model.VersionComponent{}, fmt.Errorf("gateway version must declare a traefik component image")
+		return model.VersionComponent{}, fmt.Errorf("gateway version must declare a %s component image", componentName)
 	}
 	endpoints := []model.VersionComponentEndpoint{
-		{Name: "web", Protocol: "tcp", ContainerPort: 80, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(80)},
-		{Name: "websecure", Protocol: "tcp", ContainerPort: 443, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(443)},
-		{Name: "api", Protocol: "http", ContainerPort: 8080, Mode: "local", BindAddress: stringRef("127.0.0.1"), ListenPort: intRef(8080)},
+		{Protocol: "tcp", ContainerPort: 80, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(80)},
+		{Protocol: "tcp", ContainerPort: 443, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(443)},
+		{Protocol: "http", ContainerPort: 8080, Mode: "local", BindAddress: stringRef("127.0.0.1"), ListenPort: intRef(8080)},
 	}
 	for _, listen := range tcpListens {
-		endpoints = append(endpoints, model.VersionComponentEndpoint{Name: tcpEntrypointName(listen), Protocol: "tcp", ContainerPort: listen, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(listen)})
+		endpoints = append(endpoints, model.VersionComponentEndpoint{Protocol: "tcp", ContainerPort: listen, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(listen)})
 	}
-	mounts := mergeManagedGatewayMounts(previous.Mounts, buildManagedGatewayMounts(cfg, tcpListens))
+	mounts := mergeManagedGatewayMounts(previous.Mounts, buildManagedGatewayMounts(cfg, tcpListens, networkName))
 	return model.VersionComponent{
-		Id: previous.Id, Name: gatewayManagedComponentName, Image: previous.Image,
+		Id: previous.Id, Name: componentName, Image: previous.Image,
 		PullPolicy: previous.PullPolicy, Endpoints: endpoints, Mounts: mounts,
 	}, nil
 }
 
-func buildManagedGatewayMounts(cfg model.GatewayConfig, tcpListens []int) []model.VersionComponentMount {
+func buildManagedGatewayMounts(cfg model.GatewayConfig, tcpListens []int, networkName string) []model.VersionComponentMount {
 	return []model.VersionComponentMount{
 		{SourceType: mountSourceFile, Source: gatewayDockerSocketPath, SourceIsHostPath: true, Target: gatewayDockerSocketPath, ReadOnly: true},
-		{SourceType: mountSourceControlledFile, Source: "traefik.yml", Target: gatewayMountTargetTraefikYml, Content: buildTraefikStaticConfig(cfg, tcpListens), Mode: "0644"},
+		{SourceType: mountSourceControlledFile, Source: "traefik.yml", Target: gatewayMountTargetTraefikYml, Content: buildTraefikStaticConfig(cfg, tcpListens, networkName), Mode: "0644"},
 		{SourceType: mountSourceControlledFile, Source: "acme.json", Target: gatewayMountTargetAcmeJSON, Content: "{}", Mode: "0600", IgnoreIfExists: true},
 	}
 }
@@ -143,7 +198,7 @@ func upsertComponentByName(existing []model.VersionComponent, managed model.Vers
 	return out
 }
 
-func buildTraefikStaticConfig(cfg model.GatewayConfig, tcpListens []int) string {
+func buildTraefikStaticConfig(cfg model.GatewayConfig, tcpListens []int, networkName string) string {
 	var builder strings.Builder
 	builder.WriteString(strings.TrimSpace(`
 api:
@@ -164,19 +219,9 @@ entryPoints:
 		builder.WriteString(strconv.Itoa(listen))
 		builder.WriteString("\"\n")
 	}
-	builder.WriteString(strings.TrimSpace(`
-providers:
-  docker:
-    endpoint: "unix:///var/run/docker.sock"
-    exposedByDefault: false
-    network: traefik
-  rest:
-    insecure: true
-
-log:
-  level: INFO
-`))
-	builder.WriteByte('\n')
+	builder.WriteString("providers:\n  docker:\n    endpoint: \"unix:///var/run/docker.sock\"\n    exposedByDefault: false\n    network: ")
+	builder.WriteString(networkName)
+	builder.WriteString("\n  rest:\n    insecure: true\n\nlog:\n  level: INFO\n")
 	if strings.EqualFold(strings.TrimSpace(cfg.TLSMode), "letsencrypt") {
 		builder.WriteString(strings.TrimSpace(`
 certificatesResolvers:
@@ -193,9 +238,9 @@ certificatesResolvers:
 }
 
 // CompiledTCPListens reads non-reserved host TCP ports from the managed Traefik component.
-func CompiledTCPListens(components []model.VersionComponent) []int {
+func CompiledTCPListens(components []model.VersionComponent, componentName string) []int {
 	for _, component := range components {
-		if component.Name != gatewayManagedComponentName {
+		if component.Name != componentName {
 			continue
 		}
 		listens := make([]int, 0, len(component.Endpoints))

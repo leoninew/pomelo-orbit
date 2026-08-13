@@ -47,7 +47,7 @@ func componentEndpointsInput(values []*applicationv1.ComponentEndpoint) []model.
 		if value == nil {
 			continue
 		}
-		result = append(result, model.VersionComponentEndpoint{Name: value.Name, Protocol: value.Protocol, ContainerPort: int(value.ContainerPort), Mode: value.Mode, BindAddress: value.BindAddress, ListenPort: intPtr(value.ListenPort), Entrypoint: value.Entrypoint, PathPrefix: value.PathPrefix})
+		result = append(result, model.VersionComponentEndpoint{Protocol: value.Protocol, ContainerPort: int(value.ContainerPort), Mode: value.Mode, BindAddress: value.BindAddress, ListenPort: intPtr(value.ListenPort), Entrypoint: value.Entrypoint, PathPrefix: value.PathPrefix})
 	}
 	return result
 }
@@ -142,7 +142,7 @@ func serviceOverlayInput(input *servicev1.ServiceComponentOverlayUpdateReq) serv
 		if value == nil {
 			continue
 		}
-		result.Endpoints = append(result.Endpoints, model.ServiceComponentEndpoint{Name: value.Name, Mode: value.Mode, BindAddress: value.BindAddress, ListenPort: intPtr(value.ListenPort), Entrypoint: value.Entrypoint, PathPrefix: value.PathPrefix, State: model.ServiceComponentOverlayState(value.State)})
+		result.Endpoints = append(result.Endpoints, model.ServiceComponentEndpoint{Protocol: value.Protocol, ContainerPort: int(value.ContainerPort), Mode: value.Mode, BindAddress: value.BindAddress, ListenPort: intPtr(value.ListenPort), Entrypoint: value.Entrypoint, PathPrefix: value.PathPrefix, State: model.ServiceComponentOverlayState(value.State)})
 	}
 	return result
 }
@@ -251,7 +251,7 @@ func componentOutput(value model.VersionComponent) map[string]any {
 }
 
 func endpointOutput(value model.VersionComponentEndpoint) map[string]any {
-	return map[string]any{"name": value.Name, "protocol": value.Protocol, "container_port": value.ContainerPort, "mode": value.Mode, "bind_address": value.BindAddress, "listen_port": value.ListenPort, "entrypoint": value.Entrypoint, "path_prefix": value.PathPrefix}
+	return map[string]any{"protocol": value.Protocol, "container_port": value.ContainerPort, "mode": value.Mode, "bind_address": value.BindAddress, "listen_port": value.ListenPort, "entrypoint": value.Entrypoint, "path_prefix": value.PathPrefix}
 }
 
 func healthcheckOutput(value model.VersionComponentHealthcheck) map[string]any {

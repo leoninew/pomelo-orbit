@@ -78,7 +78,7 @@ func componentEndpointInput(items []*applicationv1.ComponentEndpoint) []model.Ve
 	result := make([]model.VersionComponentEndpoint, 0, len(items))
 	for _, item := range items {
 		if item != nil {
-			result = append(result, model.VersionComponentEndpoint{Name: item.Name, Protocol: item.Protocol, ContainerPort: int(item.ContainerPort), Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: intValue(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix})
+			result = append(result, model.VersionComponentEndpoint{Protocol: item.Protocol, ContainerPort: int(item.ContainerPort), Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: intValue(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix})
 		}
 	}
 	return result
@@ -237,7 +237,7 @@ func componentEnvResponse(items []model.VersionComponentEnv) []*applicationv1.Co
 func componentEndpointResponse(items []model.VersionComponentEndpoint) []*applicationv1.ComponentEndpoint {
 	result := make([]*applicationv1.ComponentEndpoint, 0, len(items))
 	for _, item := range items {
-		result = append(result, &applicationv1.ComponentEndpoint{Name: item.Name, Protocol: item.Protocol, ContainerPort: int32(item.ContainerPort), Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: int32Value(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix})
+		result = append(result, &applicationv1.ComponentEndpoint{Protocol: item.Protocol, ContainerPort: int32(item.ContainerPort), Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: int32Value(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix})
 	}
 	return result
 }

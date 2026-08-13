@@ -25,7 +25,7 @@ func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 		EffectiveComponents: []model.EffectiveServiceComponent{{
 			ServiceComponentId: "service-component-1",
 			Endpoints: []model.VersionComponentEndpoint{{
-				Name: "http", Protocol: "http", ContainerPort: 8080, Mode: "local", ListenPort: &listenPort,
+				Protocol: "http", ContainerPort: 8080, Mode: "local", ListenPort: &listenPort,
 			}},
 		}},
 	})
@@ -42,7 +42,7 @@ func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 		t.Fatalf("effective endpoints = %#v", response.Components[0].EffectiveEndpoints)
 	}
 	endpoint := response.Components[0].EffectiveEndpoints[0]
-	if endpoint.Name != "http" || endpoint.Protocol != "http" || endpoint.ContainerPort != 8080 || endpoint.Mode != "local" || endpoint.ListenPort == nil || *endpoint.ListenPort != 18080 {
+	if endpoint.Protocol != "http" || endpoint.ContainerPort != 8080 || endpoint.Mode != "local" || endpoint.ListenPort == nil || *endpoint.ListenPort != 18080 {
 		t.Fatalf("effective endpoint = %#v", endpoint)
 	}
 	if len(response.Env) != 1 || response.Env[0].Key != "SHARED_VALUE" || response.Env[0].Value != "value" {

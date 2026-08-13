@@ -951,14 +951,13 @@ func (x *ComponentEnv) GetValue() string {
 
 type ComponentEndpoint struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Protocol      string                 `protobuf:"bytes,2,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	ContainerPort int32                  `protobuf:"varint,3,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
-	Mode          string                 `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
-	BindAddress   *string                `protobuf:"bytes,5,opt,name=bind_address,json=bindAddress,proto3,oneof" json:"bind_address,omitempty"`
-	ListenPort    *int32                 `protobuf:"varint,6,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
-	Entrypoint    *string                `protobuf:"bytes,7,opt,name=entrypoint,proto3,oneof" json:"entrypoint,omitempty"`
-	PathPrefix    *string                `protobuf:"bytes,8,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
+	Protocol      string                 `protobuf:"bytes,1,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	ContainerPort int32                  `protobuf:"varint,2,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
+	Mode          string                 `protobuf:"bytes,3,opt,name=mode,proto3" json:"mode,omitempty"`
+	BindAddress   *string                `protobuf:"bytes,4,opt,name=bind_address,json=bindAddress,proto3,oneof" json:"bind_address,omitempty"`
+	ListenPort    *int32                 `protobuf:"varint,5,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
+	Entrypoint    *string                `protobuf:"bytes,6,opt,name=entrypoint,proto3,oneof" json:"entrypoint,omitempty"`
+	PathPrefix    *string                `protobuf:"bytes,7,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -991,13 +990,6 @@ func (x *ComponentEndpoint) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ComponentEndpoint.ProtoReflect.Descriptor instead.
 func (*ComponentEndpoint) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_application_version_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *ComponentEndpoint) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
 }
 
 func (x *ComponentEndpoint) GetProtocol() string {
@@ -2090,19 +2082,18 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x0e_artifact_nameJ\x04\b\x06\x10\a\"6\n" +
 	"\fComponentEnv\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\xd7\x02\n" +
-	"\x11ComponentEndpoint\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
-	"\bprotocol\x18\x02 \x01(\tR\bprotocol\x12%\n" +
-	"\x0econtainer_port\x18\x03 \x01(\x05R\rcontainerPort\x12\x12\n" +
-	"\x04mode\x18\x04 \x01(\tR\x04mode\x12&\n" +
-	"\fbind_address\x18\x05 \x01(\tH\x00R\vbindAddress\x88\x01\x01\x12$\n" +
-	"\vlisten_port\x18\x06 \x01(\x05H\x01R\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xc3\x02\n" +
+	"\x11ComponentEndpoint\x12\x1a\n" +
+	"\bprotocol\x18\x01 \x01(\tR\bprotocol\x12%\n" +
+	"\x0econtainer_port\x18\x02 \x01(\x05R\rcontainerPort\x12\x12\n" +
+	"\x04mode\x18\x03 \x01(\tR\x04mode\x12&\n" +
+	"\fbind_address\x18\x04 \x01(\tH\x00R\vbindAddress\x88\x01\x01\x12$\n" +
+	"\vlisten_port\x18\x05 \x01(\x05H\x01R\n" +
 	"listenPort\x88\x01\x01\x12#\n" +
 	"\n" +
-	"entrypoint\x18\a \x01(\tH\x02R\n" +
+	"entrypoint\x18\x06 \x01(\tH\x02R\n" +
 	"entrypoint\x88\x01\x01\x12$\n" +
-	"\vpath_prefix\x18\b \x01(\tH\x03R\n" +
+	"\vpath_prefix\x18\a \x01(\tH\x03R\n" +
 	"pathPrefix\x88\x01\x01B\x0f\n" +
 	"\r_bind_addressB\x0e\n" +
 	"\f_listen_portB\r\n" +

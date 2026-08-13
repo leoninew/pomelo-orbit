@@ -368,7 +368,7 @@
           "name": "http",
           "protocol": "http",
           "container_port": 80,
-          "mode": "gateway_http",
+          "mode": "gateway",
           "entrypoint": "web"
         }
       ],

@@ -70,13 +70,15 @@ type ServiceComponentResources struct {
 }
 
 type ServiceComponentEndpoint struct {
-	Name        string
-	Mode        *string
-	BindAddress *string
-	ListenPort  *int
-	Entrypoint  *string
-	PathPrefix  *string
-	State       ServiceComponentOverlayState
+	Id            string
+	Protocol      string
+	ContainerPort int
+	Mode          *string
+	BindAddress   *string
+	ListenPort    *int
+	Entrypoint    *string
+	PathPrefix    *string
+	State         ServiceComponentOverlayState
 }
 
 // ServiceListItem is Service plus application and version labels.

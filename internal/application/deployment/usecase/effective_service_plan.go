@@ -176,13 +176,15 @@ func MergeServiceComponent(declaration model.VersionComponent, overlay model.Ser
 
 	endpointOverlay := make(map[string]model.ServiceComponentEndpoint, len(overlay.Endpoints))
 	for _, item := range overlay.Endpoints {
-		if _, exists := endpointOverlay[item.Name]; exists {
-			return result, fmt.Errorf("component %s has duplicate endpoint overlay %s", declaration.Name, item.Name)
+		identity := model.EndpointDisplayName(item.Protocol, item.ContainerPort)
+		if _, exists := endpointOverlay[identity]; exists {
+			return result, fmt.Errorf("component %s has duplicate endpoint overlay %s", declaration.Name, identity)
 		}
-		endpointOverlay[item.Name] = item
+		endpointOverlay[identity] = item
 	}
 	for _, item := range declaration.Endpoints {
-		merged, exists := endpointOverlay[item.Name]
+		identity := model.EndpointDisplayName(item.Protocol, item.ContainerPort)
+		merged, exists := endpointOverlay[identity]
 		if !exists {
 			result.Endpoints = append(result.Endpoints, item)
 			continue
@@ -207,10 +209,10 @@ func MergeServiceComponent(declaration model.VersionComponent, overlay model.Ser
 		case model.ServiceComponentOverlayDeleted:
 			item.Mode, item.BindAddress, item.ListenPort, item.Entrypoint, item.PathPrefix = "internal", nil, nil, nil, nil
 		default:
-			return result, fmt.Errorf("component %s endpoint overlay %s has invalid state", declaration.Name, item.Name)
+			return result, fmt.Errorf("component %s endpoint overlay %s has invalid state", declaration.Name, identity)
 		}
 		result.Endpoints = append(result.Endpoints, item)
-		delete(endpointOverlay, item.Name)
+		delete(endpointOverlay, identity)
 	}
 	if len(endpointOverlay) != 0 {
 		return result, fmt.Errorf("component %s overlays an undeclared endpoint", declaration.Name)

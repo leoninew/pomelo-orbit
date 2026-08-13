@@ -129,14 +129,13 @@ message ServiceComponentDeclaredResources {
 }
 
 message ServiceComponentDeclaredEndpoint {
-  string name = 1;
-  string protocol = 2;
-  int32 container_port = 3;
-  string mode = 4;
-  optional string bind_address = 5;
-  optional int32 listen_port = 6;
-  optional string entrypoint = 7;
-  optional string path_prefix = 8;
+  string protocol = 1;
+  int32 container_port = 2;
+  string mode = 3;
+  optional string bind_address = 4;
+  optional int32 listen_port = 5;
+  optional string entrypoint = 6;
+  optional string path_prefix = 7;
 }
 
 message ServiceComponentOverlayUpdateReq {
@@ -173,13 +172,14 @@ message ServiceComponentResourceOverlay {
 }
 
 message ServiceComponentEndpointOverlay {
-  string name = 1;
-  optional string mode = 2;
-  optional string bind_address = 3;
-  optional int32 listen_port = 4;
-  optional string entrypoint = 5;
-  optional string path_prefix = 6;
-  string state = 7;
+  string protocol = 1;
+  int32 container_port = 2;
+  optional string mode = 3;
+  optional string bind_address = 4;
+  optional int32 listen_port = 5;
+  optional string entrypoint = 6;
+  optional string path_prefix = 7;
+  string state = 8;
 }
 
 message ServicePreviewReq {}

@@ -34,24 +34,30 @@ func (q *Queries) CountRoutes(ctx context.Context, arg CountRoutesParams) (int64
 }
 
 const createRoute = `-- name: CreateRoute :exec
-INSERT INTO route (id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO route (id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRouteParams struct {
-	ID           string         `db:"id"`
-	ProjectID    sql.NullString `db:"project_id"`
-	Name         string         `db:"name"`
-	Domain       string         `db:"domain"`
-	PathPrefix   string         `db:"path_prefix"`
-	TargetUrl    string         `db:"target_url"`
-	Enabled      int64          `db:"enabled"`
-	HttpsEnabled int64          `db:"https_enabled"`
-	CertPem      sql.NullString `db:"cert_pem"`
-	CertKey      sql.NullString `db:"cert_key"`
-	CertType     string         `db:"cert_type"`
-	CreatedAt    time.Time      `db:"created_at"`
-	UpdatedAt    time.Time      `db:"updated_at"`
+	ID                    string         `db:"id"`
+	ProjectID             sql.NullString `db:"project_id"`
+	Name                  string         `db:"name"`
+	Protocol              string         `db:"protocol"`
+	Domain                string         `db:"domain"`
+	PathPrefix            string         `db:"path_prefix"`
+	TargetUrl             string         `db:"target_url"`
+	ListenPort            sql.NullInt64  `db:"listen_port"`
+	ServiceID             sql.NullString `db:"service_id"`
+	ComponentName         sql.NullString `db:"component_name"`
+	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
+	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
+	Enabled               int64          `db:"enabled"`
+	HttpsEnabled          int64          `db:"https_enabled"`
+	CertPem               sql.NullString `db:"cert_pem"`
+	CertKey               sql.NullString `db:"cert_key"`
+	CertType              string         `db:"cert_type"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) CreateRoute(ctx context.Context, arg CreateRouteParams) error {
@@ -59,9 +65,15 @@ func (q *Queries) CreateRoute(ctx context.Context, arg CreateRouteParams) error 
 		arg.ID,
 		arg.ProjectID,
 		arg.Name,
+		arg.Protocol,
 		arg.Domain,
 		arg.PathPrefix,
 		arg.TargetUrl,
+		arg.ListenPort,
+		arg.ServiceID,
+		arg.ComponentName,
+		arg.EndpointProtocol,
+		arg.EndpointContainerPort,
 		arg.Enabled,
 		arg.HttpsEnabled,
 		arg.CertPem,
@@ -84,26 +96,32 @@ func (q *Queries) DeleteRoute(ctx context.Context, id string) error {
 }
 
 const listAllRoutes = `-- name: ListAllRoutes :many
-SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
 FROM route
 WHERE project_id = ?
 ORDER BY id DESC
 `
 
 type ListAllRoutesRow struct {
-	ID           string         `db:"id"`
-	ProjectID    sql.NullString `db:"project_id"`
-	Name         string         `db:"name"`
-	Domain       string         `db:"domain"`
-	PathPrefix   string         `db:"path_prefix"`
-	TargetUrl    string         `db:"target_url"`
-	Enabled      int64          `db:"enabled"`
-	HttpsEnabled int64          `db:"https_enabled"`
-	CertPem      sql.NullString `db:"cert_pem"`
-	CertKey      sql.NullString `db:"cert_key"`
-	CertType     string         `db:"cert_type"`
-	CreatedAt    time.Time      `db:"created_at"`
-	UpdatedAt    time.Time      `db:"updated_at"`
+	ID                    string         `db:"id"`
+	ProjectID             sql.NullString `db:"project_id"`
+	Name                  string         `db:"name"`
+	Protocol              string         `db:"protocol"`
+	Domain                string         `db:"domain"`
+	PathPrefix            string         `db:"path_prefix"`
+	TargetUrl             string         `db:"target_url"`
+	ListenPort            sql.NullInt64  `db:"listen_port"`
+	ServiceID             sql.NullString `db:"service_id"`
+	ComponentName         sql.NullString `db:"component_name"`
+	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
+	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
+	Enabled               int64          `db:"enabled"`
+	HttpsEnabled          int64          `db:"https_enabled"`
+	CertPem               sql.NullString `db:"cert_pem"`
+	CertKey               sql.NullString `db:"cert_key"`
+	CertType              string         `db:"cert_type"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) ListAllRoutes(ctx context.Context, projectID sql.NullString) ([]ListAllRoutesRow, error) {
@@ -119,9 +137,15 @@ func (q *Queries) ListAllRoutes(ctx context.Context, projectID sql.NullString) (
 			&i.ID,
 			&i.ProjectID,
 			&i.Name,
+			&i.Protocol,
 			&i.Domain,
 			&i.PathPrefix,
 			&i.TargetUrl,
+			&i.ListenPort,
+			&i.ServiceID,
+			&i.ComponentName,
+			&i.EndpointProtocol,
+			&i.EndpointContainerPort,
 			&i.Enabled,
 			&i.HttpsEnabled,
 			&i.CertPem,
@@ -144,26 +168,32 @@ func (q *Queries) ListAllRoutes(ctx context.Context, projectID sql.NullString) (
 }
 
 const listEnabledRoutes = `-- name: ListEnabledRoutes :many
-SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
 FROM route
 WHERE enabled = ?
 ORDER BY name ASC, id ASC
 `
 
 type ListEnabledRoutesRow struct {
-	ID           string         `db:"id"`
-	ProjectID    sql.NullString `db:"project_id"`
-	Name         string         `db:"name"`
-	Domain       string         `db:"domain"`
-	PathPrefix   string         `db:"path_prefix"`
-	TargetUrl    string         `db:"target_url"`
-	Enabled      int64          `db:"enabled"`
-	HttpsEnabled int64          `db:"https_enabled"`
-	CertPem      sql.NullString `db:"cert_pem"`
-	CertKey      sql.NullString `db:"cert_key"`
-	CertType     string         `db:"cert_type"`
-	CreatedAt    time.Time      `db:"created_at"`
-	UpdatedAt    time.Time      `db:"updated_at"`
+	ID                    string         `db:"id"`
+	ProjectID             sql.NullString `db:"project_id"`
+	Name                  string         `db:"name"`
+	Protocol              string         `db:"protocol"`
+	Domain                string         `db:"domain"`
+	PathPrefix            string         `db:"path_prefix"`
+	TargetUrl             string         `db:"target_url"`
+	ListenPort            sql.NullInt64  `db:"listen_port"`
+	ServiceID             sql.NullString `db:"service_id"`
+	ComponentName         sql.NullString `db:"component_name"`
+	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
+	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
+	Enabled               int64          `db:"enabled"`
+	HttpsEnabled          int64          `db:"https_enabled"`
+	CertPem               sql.NullString `db:"cert_pem"`
+	CertKey               sql.NullString `db:"cert_key"`
+	CertType              string         `db:"cert_type"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) ListEnabledRoutes(ctx context.Context, enabled int64) ([]ListEnabledRoutesRow, error) {
@@ -179,9 +209,15 @@ func (q *Queries) ListEnabledRoutes(ctx context.Context, enabled int64) ([]ListE
 			&i.ID,
 			&i.ProjectID,
 			&i.Name,
+			&i.Protocol,
 			&i.Domain,
 			&i.PathPrefix,
 			&i.TargetUrl,
+			&i.ListenPort,
+			&i.ServiceID,
+			&i.ComponentName,
+			&i.EndpointProtocol,
+			&i.EndpointContainerPort,
 			&i.Enabled,
 			&i.HttpsEnabled,
 			&i.CertPem,
@@ -204,7 +240,7 @@ func (q *Queries) ListEnabledRoutes(ctx context.Context, enabled int64) ([]ListE
 }
 
 const listRoutes = `-- name: ListRoutes :many
-SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
 FROM route
 WHERE project_id = CAST(?1 AS TEXT)
   AND (CAST(?2 AS TEXT) IS NULL
@@ -223,19 +259,25 @@ type ListRoutesParams struct {
 }
 
 type ListRoutesRow struct {
-	ID           string         `db:"id"`
-	ProjectID    sql.NullString `db:"project_id"`
-	Name         string         `db:"name"`
-	Domain       string         `db:"domain"`
-	PathPrefix   string         `db:"path_prefix"`
-	TargetUrl    string         `db:"target_url"`
-	Enabled      int64          `db:"enabled"`
-	HttpsEnabled int64          `db:"https_enabled"`
-	CertPem      sql.NullString `db:"cert_pem"`
-	CertKey      sql.NullString `db:"cert_key"`
-	CertType     string         `db:"cert_type"`
-	CreatedAt    time.Time      `db:"created_at"`
-	UpdatedAt    time.Time      `db:"updated_at"`
+	ID                    string         `db:"id"`
+	ProjectID             sql.NullString `db:"project_id"`
+	Name                  string         `db:"name"`
+	Protocol              string         `db:"protocol"`
+	Domain                string         `db:"domain"`
+	PathPrefix            string         `db:"path_prefix"`
+	TargetUrl             string         `db:"target_url"`
+	ListenPort            sql.NullInt64  `db:"listen_port"`
+	ServiceID             sql.NullString `db:"service_id"`
+	ComponentName         sql.NullString `db:"component_name"`
+	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
+	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
+	Enabled               int64          `db:"enabled"`
+	HttpsEnabled          int64          `db:"https_enabled"`
+	CertPem               sql.NullString `db:"cert_pem"`
+	CertKey               sql.NullString `db:"cert_key"`
+	CertType              string         `db:"cert_type"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListRoutesRow, error) {
@@ -256,9 +298,15 @@ func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListR
 			&i.ID,
 			&i.ProjectID,
 			&i.Name,
+			&i.Protocol,
 			&i.Domain,
 			&i.PathPrefix,
 			&i.TargetUrl,
+			&i.ListenPort,
+			&i.ServiceID,
+			&i.ComponentName,
+			&i.EndpointProtocol,
+			&i.EndpointContainerPort,
 			&i.Enabled,
 			&i.HttpsEnabled,
 			&i.CertPem,
@@ -281,25 +329,31 @@ func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListR
 }
 
 const routeByDomain = `-- name: RouteByDomain :one
-SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
 FROM route
 WHERE domain = ?
 `
 
 type RouteByDomainRow struct {
-	ID           string         `db:"id"`
-	ProjectID    sql.NullString `db:"project_id"`
-	Name         string         `db:"name"`
-	Domain       string         `db:"domain"`
-	PathPrefix   string         `db:"path_prefix"`
-	TargetUrl    string         `db:"target_url"`
-	Enabled      int64          `db:"enabled"`
-	HttpsEnabled int64          `db:"https_enabled"`
-	CertPem      sql.NullString `db:"cert_pem"`
-	CertKey      sql.NullString `db:"cert_key"`
-	CertType     string         `db:"cert_type"`
-	CreatedAt    time.Time      `db:"created_at"`
-	UpdatedAt    time.Time      `db:"updated_at"`
+	ID                    string         `db:"id"`
+	ProjectID             sql.NullString `db:"project_id"`
+	Name                  string         `db:"name"`
+	Protocol              string         `db:"protocol"`
+	Domain                string         `db:"domain"`
+	PathPrefix            string         `db:"path_prefix"`
+	TargetUrl             string         `db:"target_url"`
+	ListenPort            sql.NullInt64  `db:"listen_port"`
+	ServiceID             sql.NullString `db:"service_id"`
+	ComponentName         sql.NullString `db:"component_name"`
+	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
+	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
+	Enabled               int64          `db:"enabled"`
+	HttpsEnabled          int64          `db:"https_enabled"`
+	CertPem               sql.NullString `db:"cert_pem"`
+	CertKey               sql.NullString `db:"cert_key"`
+	CertType              string         `db:"cert_type"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) RouteByDomain(ctx context.Context, domain string) (RouteByDomainRow, error) {
@@ -309,9 +363,15 @@ func (q *Queries) RouteByDomain(ctx context.Context, domain string) (RouteByDoma
 		&i.ID,
 		&i.ProjectID,
 		&i.Name,
+		&i.Protocol,
 		&i.Domain,
 		&i.PathPrefix,
 		&i.TargetUrl,
+		&i.ListenPort,
+		&i.ServiceID,
+		&i.ComponentName,
+		&i.EndpointProtocol,
+		&i.EndpointContainerPort,
 		&i.Enabled,
 		&i.HttpsEnabled,
 		&i.CertPem,
@@ -324,25 +384,31 @@ func (q *Queries) RouteByDomain(ctx context.Context, domain string) (RouteByDoma
 }
 
 const routeByID = `-- name: RouteByID :one
-SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
 FROM route
 WHERE id = ?
 `
 
 type RouteByIDRow struct {
-	ID           string         `db:"id"`
-	ProjectID    sql.NullString `db:"project_id"`
-	Name         string         `db:"name"`
-	Domain       string         `db:"domain"`
-	PathPrefix   string         `db:"path_prefix"`
-	TargetUrl    string         `db:"target_url"`
-	Enabled      int64          `db:"enabled"`
-	HttpsEnabled int64          `db:"https_enabled"`
-	CertPem      sql.NullString `db:"cert_pem"`
-	CertKey      sql.NullString `db:"cert_key"`
-	CertType     string         `db:"cert_type"`
-	CreatedAt    time.Time      `db:"created_at"`
-	UpdatedAt    time.Time      `db:"updated_at"`
+	ID                    string         `db:"id"`
+	ProjectID             sql.NullString `db:"project_id"`
+	Name                  string         `db:"name"`
+	Protocol              string         `db:"protocol"`
+	Domain                string         `db:"domain"`
+	PathPrefix            string         `db:"path_prefix"`
+	TargetUrl             string         `db:"target_url"`
+	ListenPort            sql.NullInt64  `db:"listen_port"`
+	ServiceID             sql.NullString `db:"service_id"`
+	ComponentName         sql.NullString `db:"component_name"`
+	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
+	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
+	Enabled               int64          `db:"enabled"`
+	HttpsEnabled          int64          `db:"https_enabled"`
+	CertPem               sql.NullString `db:"cert_pem"`
+	CertKey               sql.NullString `db:"cert_key"`
+	CertType              string         `db:"cert_type"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) RouteByID(ctx context.Context, id string) (RouteByIDRow, error) {
@@ -352,9 +418,15 @@ func (q *Queries) RouteByID(ctx context.Context, id string) (RouteByIDRow, error
 		&i.ID,
 		&i.ProjectID,
 		&i.Name,
+		&i.Protocol,
 		&i.Domain,
 		&i.PathPrefix,
 		&i.TargetUrl,
+		&i.ListenPort,
+		&i.ServiceID,
+		&i.ComponentName,
+		&i.EndpointProtocol,
+		&i.EndpointContainerPort,
 		&i.Enabled,
 		&i.HttpsEnabled,
 		&i.CertPem,
@@ -368,30 +440,42 @@ func (q *Queries) RouteByID(ctx context.Context, id string) (RouteByIDRow, error
 
 const updateRoute = `-- name: UpdateRoute :exec
 UPDATE route
-SET name = ?, domain = ?, path_prefix = ?, target_url = ?, enabled = ?, https_enabled = ?, cert_pem = ?, cert_key = ?, cert_type = ?, updated_at = ?
+SET name = ?, protocol = ?, domain = ?, path_prefix = ?, target_url = ?, listen_port = ?, service_id = ?, component_name = ?, endpoint_protocol = ?, endpoint_container_port = ?, enabled = ?, https_enabled = ?, cert_pem = ?, cert_key = ?, cert_type = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateRouteParams struct {
-	Name         string         `db:"name"`
-	Domain       string         `db:"domain"`
-	PathPrefix   string         `db:"path_prefix"`
-	TargetUrl    string         `db:"target_url"`
-	Enabled      int64          `db:"enabled"`
-	HttpsEnabled int64          `db:"https_enabled"`
-	CertPem      sql.NullString `db:"cert_pem"`
-	CertKey      sql.NullString `db:"cert_key"`
-	CertType     string         `db:"cert_type"`
-	UpdatedAt    time.Time      `db:"updated_at"`
-	ID           string         `db:"id"`
+	Name                  string         `db:"name"`
+	Protocol              string         `db:"protocol"`
+	Domain                string         `db:"domain"`
+	PathPrefix            string         `db:"path_prefix"`
+	TargetUrl             string         `db:"target_url"`
+	ListenPort            sql.NullInt64  `db:"listen_port"`
+	ServiceID             sql.NullString `db:"service_id"`
+	ComponentName         sql.NullString `db:"component_name"`
+	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
+	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
+	Enabled               int64          `db:"enabled"`
+	HttpsEnabled          int64          `db:"https_enabled"`
+	CertPem               sql.NullString `db:"cert_pem"`
+	CertKey               sql.NullString `db:"cert_key"`
+	CertType              string         `db:"cert_type"`
+	UpdatedAt             time.Time      `db:"updated_at"`
+	ID                    string         `db:"id"`
 }
 
 func (q *Queries) UpdateRoute(ctx context.Context, arg UpdateRouteParams) error {
 	_, err := q.db.ExecContext(ctx, updateRoute,
 		arg.Name,
+		arg.Protocol,
 		arg.Domain,
 		arg.PathPrefix,
 		arg.TargetUrl,
+		arg.ListenPort,
+		arg.ServiceID,
+		arg.ComponentName,
+		arg.EndpointProtocol,
+		arg.EndpointContainerPort,
 		arg.Enabled,
 		arg.HttpsEnabled,
 		arg.CertPem,

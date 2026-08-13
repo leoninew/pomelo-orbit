@@ -2,6 +2,7 @@ package model
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -88,7 +89,6 @@ type VersionComponentEnv struct {
 // reusable runtime defaults. Protocol and container port are immutable
 // interface contracts; a Service only overlays the remaining value fields.
 type VersionComponentEndpoint struct {
-	Name          string
 	Protocol      string
 	ContainerPort int
 	Mode          string
@@ -96,6 +96,11 @@ type VersionComponentEndpoint struct {
 	ListenPort    *int
 	Entrypoint    *string
 	PathPrefix    *string
+}
+
+// EndpointDisplayName is the stable, derived identifier for a component endpoint.
+func EndpointDisplayName(protocol string, containerPort int) string {
+	return protocol + strconv.Itoa(containerPort)
 }
 
 type VersionComponentMount struct {

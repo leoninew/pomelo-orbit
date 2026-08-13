@@ -1,4 +1,5 @@
 # MCP 直接操作
+最后修改时间: 2026-08-13 19:10:01
 
 ## 命名与启动约定
 
@@ -25,6 +26,6 @@ Codex 注册名为 `pomelo_delivery`，本地 stdio 入口为 `go run ./cmd/serv
 
 `runtime_compose_ps` 和 `verify_deployment` 默认返回摘要。需要原始 Compose、inspect 或完整 evidence 时，明确传入 `detail=true`；也可以使用已有的 scoped logs、container inspect、network inspect 和 compose config 工具。MCP Server 是 stdio 进程，修改工具后需要重启 MCP client session，并通过 Server instructions 中的 source/schema 指纹确认新的工具表已生效。
 
-Component 写操作已细分为 `orbit_update_version_component_basic`、`runtime`、`endpoints`、`env`、`mounts`、`dependencies` 和 `advanced`。`orbit_update_version_component_mounts` 接收顶层 `mounts` 集合：`controlled_file` 的 `source` 是相对的受管路径，`source_is_host_path=false`，`content` 可为空，`mode` 必须是四位 Unix 八进制值，且内容上限为 256 KiB。端点使用 `internal`、`local`、`host`、`gateway_http` 或 `gateway_tcp` mode。旧的 `orbit_update_version_component_connectivity` 不再注册，且 Component JSON 不再接受 `networks`；调用方必须使用新 MCP session 读取工具 schema 后再写入。
+Component 写操作已细分为 `orbit_update_version_component_basic`、`runtime`、`endpoints`、`env`、`mounts`、`dependencies` 和 `advanced`。`orbit_update_version_component_mounts` 接收顶层 `mounts` 集合：`controlled_file` 的 `source` 是相对的受管路径，`source_is_host_path=false`，`content` 可为空，`mode` 必须是四位 Unix 八进制值，且内容上限为 256 KiB。端点使用 `internal`、`local`、`host` 或 `gateway` mode：`gateway` 仅用于 HTTP 派生域名；公开 TCP 使用自定义 Route 的 `domain:listen_port` 到项目内 Service Component 的 `internal` TCP Endpoint。`gateway` 不替代 `local`/`host` 的直接端口映射；每个 TCP 监听端口只能有一条启用 Route。旧的 `orbit_update_version_component_connectivity` 不再注册，且 Component JSON 不再接受 `networks`；调用方必须使用新 MCP session 读取工具 schema 后再写入。
 
 Service Component 的实例级运行配置通过 `orbit_update_service_component_overlay` 与其他稀疏覆盖一起完整替换。`entrypoint`、`command`、`pull_policy` 和 `restart_policy` 省略时会清除对应的 Service 覆盖并按 Version 声明生效；空的 `entrypoint` 或 `command` 字符串用于明确选择空 argv。调用方必须保留未修改的 env、mounts、resources 和 endpoints；挂载覆盖中的 `source_is_host_path` 会原样传递。

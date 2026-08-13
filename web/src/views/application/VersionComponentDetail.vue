@@ -340,7 +340,6 @@
               <table class="app-data-table min-w-[760px]">
                 <thead>
                   <tr>
-                    <th>{{ t('application.componentDetail.fields.endpointName') }}</th>
                     <th>{{ t('application.componentDetail.fields.protocol') }}</th>
                     <th>{{ t('application.componentDetail.fields.endpointMode') }}</th>
                     <th>{{ t('application.componentDetail.fields.hostPort') }}</th>
@@ -350,7 +349,6 @@
                 </thead>
                 <tbody>
                   <tr v-for="(row, index) in form.ports" :key="`port-${index}`">
-                    <td class="text-foreground">{{ portName(row) }}</td>
                     <td class="text-foreground">{{ row.protocol || 'tcp' }}</td>
                     <td class="text-foreground">{{ row.mode || 'host' }}</td>
                     <td class="text-foreground">{{ row.host_port || '-' }}</td>
@@ -923,12 +921,6 @@
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label class="app-field-label mb-1.5 block">
-              {{ t('application.componentDetail.fields.endpointName') }}
-            </label>
-            <input v-model="portForm.name" class="app-input" type="text" />
-          </div>
-          <div>
-            <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.protocol') }}
               <span class="text-destructive">*</span>
             </label>
@@ -936,6 +928,7 @@
               v-model="portForm.protocol"
               :invalid="Boolean(recordErrors.protocol)"
               :values="endpointProtocolValues"
+              @update:model-value="normalizePortMode"
             />
             <p v-if="recordErrors.protocol" class="app-field-error" role="alert">
               {{ recordErrors.protocol }}
@@ -949,7 +942,7 @@
             <RawValueSelect
               v-model="portForm.mode"
               :invalid="Boolean(recordErrors.endpoint_mode)"
-              :values="endpointModeValues"
+              :values="endpointModeValues(portForm.protocol)"
             />
             <p v-if="recordErrors.endpoint_mode" class="app-field-error" role="alert">
               {{ recordErrors.endpoint_mode }}
@@ -1491,7 +1484,6 @@
     capabilities: '',
   });
   const portForm = reactive<PortRow>({
-    name: 'http',
     protocol: 'http',
     host_port: '',
     container_port: '',
@@ -1546,7 +1538,11 @@
   const restartPolicyValues = ['no', 'unless-stopped'];
   const mountSourceTypes = ['directory', 'file', 'named_volume', 'controlled_file'];
   const endpointProtocolValues = ['http', 'tcp'];
-  const endpointModeValues = ['internal', 'local', 'host', 'gateway_http', 'gateway_tcp'];
+  function endpointModeValues(protocol?: string) {
+    return protocol === 'http'
+      ? ['internal', 'local', 'host', 'gateway']
+      : ['internal', 'local', 'host'];
+  }
   const portRequiresListenPort = computed(() =>
     ['local', 'host'].includes(portForm.mode || 'host')
   );
@@ -1643,6 +1639,14 @@
     });
   }
 
+  function normalizePortMode() {
+    if (!endpointModeValues(portForm.protocol).includes(portForm.mode || '')) {
+      portForm.mode = 'internal';
+    }
+    recordErrors.protocol = '';
+    recordErrors.endpoint_mode = '';
+  }
+
   function validateRecordForm(group: RecordGroup) {
     resetRecordErrors();
     const invalidPort = t('application.componentDetail.validation.invalidPort');
@@ -1655,11 +1659,10 @@
       const needsListenPort = mode === 'local' || mode === 'host';
       recordErrors.protocol =
         endpointProtocolValues.includes(protocol) &&
-        !(mode === 'gateway_http' && protocol !== 'http') &&
-        !(mode === 'gateway_tcp' && protocol !== 'tcp')
+        !(mode === 'gateway' && protocol !== 'http')
           ? ''
           : t('application.componentDetail.validation.invalidEndpoint');
-      recordErrors.endpoint_mode = endpointModeValues.includes(mode)
+      recordErrors.endpoint_mode = endpointModeValues(protocol).includes(mode)
         ? ''
         : t('application.componentDetail.validation.invalidEndpoint');
       recordErrors.host_port =
@@ -1748,10 +1751,6 @@
       mode: '',
       ignore_if_exists: false,
     };
-  }
-
-  function portName(row: PortRow) {
-    return row.name?.trim() || `${row.protocol || 'tcp'}-${row.container_port}`;
   }
 
   function mountTypeLabel(value: string): string {
@@ -2086,7 +2085,6 @@
         portForm,
         index === undefined
           ? {
-              name: 'http',
               protocol: 'http',
               host_port: '',
               container_port: '',

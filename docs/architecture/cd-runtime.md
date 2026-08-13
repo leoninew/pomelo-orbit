@@ -1,5 +1,5 @@
 # CD 运行时与渲染
-最后修改时间: 2026-08-09 18:08:31
+最后修改时间: 2026-08-13 19:10:01
 
 Doc role: living SoT  
 代码锚点：`internal/application/cd/usecase/compose_renderer.go`、`deployment_execution*.go`、`gateway*.go`、`expose_*.go`、`internal/infrastructure/runner/cd`、`internal/infrastructure/storage/local/cdworkspace`、`internal/infrastructure/external/traefik`。
@@ -30,18 +30,18 @@ HTTP Deploy/Stop/Restart
 
 ## Render
 
-输入：Application（含 kind）+ Service（含不可变 `code`）+ Version 的 Components/Exposes + Environment/instance +（可选）GatewayConfig。
+输入：Application（含 kind）+ Service（含不可变 `code`）+ Version 的 Components/Endpoints +（可选）GatewayConfig。Endpoint 以 `(protocol, container_port)` 定位，`http<port>` / `tcp<port>` 仅为派生显示。
 
 | kind | 行为 |
 |------|------|
-| `standard` | 渲染业务 services；按 Expose 注入 labels / local ports |
+| `standard` | 渲染业务 services；按 Endpoint mode 注入 HTTP labels 或直接端口映射 |
 | `gateway` | 网关 compose（托管 Traefik 组件、静态配置、socket 挂载等） |
 
 输出写入 CD workspace（物理数据根下 `deployment/<service-code>/`），再执行 compose。
 
 预览（Preview）与部署应走同一套渲染语义（测试与 usecase 对齐）。
 
-对每个 `gateway_http` endpoint，Host 统一派生为 `{component_name}.{service.code}.{gateway.base_domain}`；同一 Host、entrypoint 与归一化 path prefix 只能对应一个 endpoint。TLS `gateway_tcp` 使用同一 Host 作为 SNI；无 TLS TCP 仍使用 `HostSNI(*)`。
+对每个 `gateway` HTTP Endpoint，Host 统一派生为 `{component_name}.{service.code}.{gateway.base_domain}`；同一 Host、entrypoint 与归一化 path prefix 只能对应一个 Endpoint。TCP Route 引用 `internal` TCP Endpoint，不生成业务 labels 或端口映射。
 
 ## Gateway
 
@@ -53,23 +53,26 @@ HTTP Deploy/Stop/Restart
 | `tls_mode` | `none` / `tls` / `letsencrypt` 等（以实现枚举为准） |
 | `image` | 可选覆盖网关镜像 |
 
+进程配置 `traefik.*` 只保留基础设施：`cert_dir`、`image`、`rest_api_url`、`base_domain`、`rest_ready_timeout`。产品身份（`code=traefik`、组件名、Docker 网络名）与展示默认（名称、entrypoint、tls_mode、pull policy）是代码常量，不进配置。创建时 Version label 直接用所选 image（默认即 `traefik.image`）。创建后的 per-gateway 运行时字段写入 `GatewayConfig`，可再改。
+
 - 保存/编译：可生成未发布 Version（compile）。  
-- 部署 standard public 暴露前，可能需 reconcile Gateway TCP listen 集合（public TCP）。  
+- Route 保存、启停、删除或同步时，按完整启用 TCP Route 集合 reconcile Gateway 静态 `tcp<listen_port>` entrypoints 与宿主机端口映射；HTTP/TCP 的受管目标均在同步时从 Service 当前有效 Endpoint 解析为稳定容器别名和 container port，HTTP 高级自定义下游才使用持久化 URL；实际静态端口变更须部署 Gateway。
 - **单 active gateway**：已有 `running` gateway Service，或另一 gateway Service 存在 `waiting_to_run` / `running` Deployment 时拒绝冲突部署。
 
 ## 部署结果
 
-- Deploy/Restart 使用 `docker compose up -d` 的零退出码作为成功条件，并立即将 Service 更新为 `running`、Deployment 更新为 `ran_to_completion`。
+- Deploy/Restart 使用 `docker compose up -d` 的零退出码作为成功条件。Gateway Service 在写入 `running` 后、Deployment 标记成功前，先等待 Traefik REST 控制面（`rest_api_url`，默认本机 8080）就绪，再发布完整 HTTP/TCP Route REST 动态快照；不在部署后 compile/重写 Gateway Version。`compose up` 成功不代表 API 已监听。发布失败时 Service 与 Deployment 均标记为 `faulted`。TCP 静态 entrypoint 仍由 Route 变更路径 reconcile，并在下一次 Gateway 部署时生效。
 - Component Healthcheck 会渲染到 Compose，`depends_on.condition=service_healthy` 可影响 Compose 内启动顺序，但不决定 Deployment 主状态。独立验证接口才读取容器运行态与 Health 状态。
 - Pipeline 的 `execution_timeout` 超时属于失败：Run 和仍在运行的 Stage 写为 `faulted`，错误原因包含 timeout；关联 task 进入 `failed`。
 
-## 平台 Route vs 应用 Expose
+## 平台 Route vs Component Endpoint
 
-| | Route | VersionExpose |
+| | Route | VersionComponentEndpoint |
 |--|-------|----------------|
-| 存储 | `route` 表 | `version_expose` |
-| 下发 | rest API 全量 PUT | 部署时 Docker labels / ports |
-| 域名 | 用户配置 domain | `gateway_http` 为 `{component_name}.{service.code}.{base_domain}` |
+| 存储 | `route` 表 | `version_component_endpoint`（Service 可稀疏覆盖） |
+| 下发 | REST API 全量 PUT `http` + `tcp` namespaces | 部署时 Docker HTTP labels / direct ports |
+| 域名 | HTTP 使用用户 domain/path；TCP 使用 `domain:listen_port` | `gateway` 为 `{component_name}.{service.code}.{gateway.base_domain}` |
+| TCP | 仅一个启用 Route 独占一个监听端口，动态 rule 为 `HostSNI(*)` | `internal` TCP Endpoint 可作为 Route target；`local`/`host` 是直接映射 |
 
 证书：平台 Route 可存 PEM；应用 HTTPS/ACME 与 Gateway `tls_mode`、证书目录配置相关——细节见 `docs/guides/routing-and-certificates.md` 与代码（以代码为准）。
 

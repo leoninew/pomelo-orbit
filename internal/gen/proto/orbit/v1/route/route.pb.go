@@ -22,19 +22,25 @@ const (
 )
 
 type RouteResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Domain        string                 `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty"`
-	PathPrefix    string                 `protobuf:"bytes,4,opt,name=path_prefix,json=pathPrefix,proto3" json:"path_prefix,omitempty"`
-	TargetUrl     string                 `protobuf:"bytes,5,opt,name=target_url,json=targetUrl,proto3" json:"target_url,omitempty"`
-	Enabled       bool                   `protobuf:"varint,6,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	HttpsEnabled  bool                   `protobuf:"varint,7,opt,name=https_enabled,json=httpsEnabled,proto3" json:"https_enabled,omitempty"`
-	CertType      string                 `protobuf:"bytes,8,opt,name=cert_type,json=certType,proto3" json:"cert_type,omitempty"`
-	CreatedAt     string                 `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Id                    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name                  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Domain                string                 `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty"`
+	PathPrefix            string                 `protobuf:"bytes,4,opt,name=path_prefix,json=pathPrefix,proto3" json:"path_prefix,omitempty"`
+	TargetUrl             string                 `protobuf:"bytes,5,opt,name=target_url,json=targetUrl,proto3" json:"target_url,omitempty"`
+	Enabled               bool                   `protobuf:"varint,6,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	HttpsEnabled          bool                   `protobuf:"varint,7,opt,name=https_enabled,json=httpsEnabled,proto3" json:"https_enabled,omitempty"`
+	CertType              string                 `protobuf:"bytes,8,opt,name=cert_type,json=certType,proto3" json:"cert_type,omitempty"`
+	CreatedAt             string                 `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt             string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Protocol              string                 `protobuf:"bytes,11,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	ListenPort            *int32                 `protobuf:"varint,12,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
+	ServiceId             *string                `protobuf:"bytes,13,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
+	ComponentName         *string                `protobuf:"bytes,14,opt,name=component_name,json=componentName,proto3,oneof" json:"component_name,omitempty"`
+	EndpointProtocol      *string                `protobuf:"bytes,15,opt,name=endpoint_protocol,json=endpointProtocol,proto3,oneof" json:"endpoint_protocol,omitempty"`
+	EndpointContainerPort *int32                 `protobuf:"varint,16,opt,name=endpoint_container_port,json=endpointContainerPort,proto3,oneof" json:"endpoint_container_port,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *RouteResp) Reset() {
@@ -137,15 +143,63 @@ func (x *RouteResp) GetUpdatedAt() string {
 	return ""
 }
 
+func (x *RouteResp) GetProtocol() string {
+	if x != nil {
+		return x.Protocol
+	}
+	return ""
+}
+
+func (x *RouteResp) GetListenPort() int32 {
+	if x != nil && x.ListenPort != nil {
+		return *x.ListenPort
+	}
+	return 0
+}
+
+func (x *RouteResp) GetServiceId() string {
+	if x != nil && x.ServiceId != nil {
+		return *x.ServiceId
+	}
+	return ""
+}
+
+func (x *RouteResp) GetComponentName() string {
+	if x != nil && x.ComponentName != nil {
+		return *x.ComponentName
+	}
+	return ""
+}
+
+func (x *RouteResp) GetEndpointProtocol() string {
+	if x != nil && x.EndpointProtocol != nil {
+		return *x.EndpointProtocol
+	}
+	return ""
+}
+
+func (x *RouteResp) GetEndpointContainerPort() int32 {
+	if x != nil && x.EndpointContainerPort != nil {
+		return *x.EndpointContainerPort
+	}
+	return 0
+}
+
 type RouteCreateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Domain        string                 `protobuf:"bytes,2,opt,name=domain,proto3" json:"domain,omitempty"`
-	PathPrefix    string                 `protobuf:"bytes,3,opt,name=path_prefix,json=pathPrefix,proto3" json:"path_prefix,omitempty"`
-	TargetUrl     string                 `protobuf:"bytes,4,opt,name=target_url,json=targetUrl,proto3" json:"target_url,omitempty"`
-	Enabled       bool                   `protobuf:"varint,5,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Name                  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Domain                string                 `protobuf:"bytes,2,opt,name=domain,proto3" json:"domain,omitempty"`
+	PathPrefix            string                 `protobuf:"bytes,3,opt,name=path_prefix,json=pathPrefix,proto3" json:"path_prefix,omitempty"`
+	TargetUrl             string                 `protobuf:"bytes,4,opt,name=target_url,json=targetUrl,proto3" json:"target_url,omitempty"`
+	Enabled               bool                   `protobuf:"varint,5,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Protocol              string                 `protobuf:"bytes,6,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	ListenPort            *int32                 `protobuf:"varint,7,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
+	ServiceId             *string                `protobuf:"bytes,8,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
+	ComponentName         *string                `protobuf:"bytes,9,opt,name=component_name,json=componentName,proto3,oneof" json:"component_name,omitempty"`
+	EndpointProtocol      *string                `protobuf:"bytes,10,opt,name=endpoint_protocol,json=endpointProtocol,proto3,oneof" json:"endpoint_protocol,omitempty"`
+	EndpointContainerPort *int32                 `protobuf:"varint,11,opt,name=endpoint_container_port,json=endpointContainerPort,proto3,oneof" json:"endpoint_container_port,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *RouteCreateReq) Reset() {
@@ -213,15 +267,63 @@ func (x *RouteCreateReq) GetEnabled() bool {
 	return false
 }
 
+func (x *RouteCreateReq) GetProtocol() string {
+	if x != nil {
+		return x.Protocol
+	}
+	return ""
+}
+
+func (x *RouteCreateReq) GetListenPort() int32 {
+	if x != nil && x.ListenPort != nil {
+		return *x.ListenPort
+	}
+	return 0
+}
+
+func (x *RouteCreateReq) GetServiceId() string {
+	if x != nil && x.ServiceId != nil {
+		return *x.ServiceId
+	}
+	return ""
+}
+
+func (x *RouteCreateReq) GetComponentName() string {
+	if x != nil && x.ComponentName != nil {
+		return *x.ComponentName
+	}
+	return ""
+}
+
+func (x *RouteCreateReq) GetEndpointProtocol() string {
+	if x != nil && x.EndpointProtocol != nil {
+		return *x.EndpointProtocol
+	}
+	return ""
+}
+
+func (x *RouteCreateReq) GetEndpointContainerPort() int32 {
+	if x != nil && x.EndpointContainerPort != nil {
+		return *x.EndpointContainerPort
+	}
+	return 0
+}
+
 type RouteUpdateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Domain        *string                `protobuf:"bytes,2,opt,name=domain,proto3,oneof" json:"domain,omitempty"`
-	PathPrefix    *string                `protobuf:"bytes,3,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
-	TargetUrl     *string                `protobuf:"bytes,4,opt,name=target_url,json=targetUrl,proto3,oneof" json:"target_url,omitempty"`
-	Enabled       *bool                  `protobuf:"varint,5,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Name                  *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Domain                *string                `protobuf:"bytes,2,opt,name=domain,proto3,oneof" json:"domain,omitempty"`
+	PathPrefix            *string                `protobuf:"bytes,3,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
+	TargetUrl             *string                `protobuf:"bytes,4,opt,name=target_url,json=targetUrl,proto3,oneof" json:"target_url,omitempty"`
+	Enabled               *bool                  `protobuf:"varint,5,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	Protocol              *string                `protobuf:"bytes,6,opt,name=protocol,proto3,oneof" json:"protocol,omitempty"`
+	ListenPort            *int32                 `protobuf:"varint,7,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
+	ServiceId             *string                `protobuf:"bytes,8,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
+	ComponentName         *string                `protobuf:"bytes,9,opt,name=component_name,json=componentName,proto3,oneof" json:"component_name,omitempty"`
+	EndpointProtocol      *string                `protobuf:"bytes,10,opt,name=endpoint_protocol,json=endpointProtocol,proto3,oneof" json:"endpoint_protocol,omitempty"`
+	EndpointContainerPort *int32                 `protobuf:"varint,11,opt,name=endpoint_container_port,json=endpointContainerPort,proto3,oneof" json:"endpoint_container_port,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *RouteUpdateReq) Reset() {
@@ -287,6 +389,48 @@ func (x *RouteUpdateReq) GetEnabled() bool {
 		return *x.Enabled
 	}
 	return false
+}
+
+func (x *RouteUpdateReq) GetProtocol() string {
+	if x != nil && x.Protocol != nil {
+		return *x.Protocol
+	}
+	return ""
+}
+
+func (x *RouteUpdateReq) GetListenPort() int32 {
+	if x != nil && x.ListenPort != nil {
+		return *x.ListenPort
+	}
+	return 0
+}
+
+func (x *RouteUpdateReq) GetServiceId() string {
+	if x != nil && x.ServiceId != nil {
+		return *x.ServiceId
+	}
+	return ""
+}
+
+func (x *RouteUpdateReq) GetComponentName() string {
+	if x != nil && x.ComponentName != nil {
+		return *x.ComponentName
+	}
+	return ""
+}
+
+func (x *RouteUpdateReq) GetEndpointProtocol() string {
+	if x != nil && x.EndpointProtocol != nil {
+		return *x.EndpointProtocol
+	}
+	return ""
+}
+
+func (x *RouteUpdateReq) GetEndpointContainerPort() int32 {
+	if x != nil && x.EndpointContainerPort != nil {
+		return *x.EndpointContainerPort
+	}
+	return 0
 }
 
 type RouteEnableReq struct {
@@ -681,7 +825,7 @@ var File_orbit_v1_route_route_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"\n" +
-	"\x1aorbit/v1/route/route.proto\x12\x0eorbit.v1.route\"\xa1\x02\n" +
+	"\x1aorbit/v1/route/route.proto\x12\x0eorbit.v1.route\"\x86\x05\n" +
 	"\tRouteResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -697,7 +841,20 @@ const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"created_at\x18\t \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\n" +
-	" \x01(\tR\tupdatedAt\"\x96\x01\n" +
+	" \x01(\tR\tupdatedAt\x12\x1a\n" +
+	"\bprotocol\x18\v \x01(\tR\bprotocol\x12$\n" +
+	"\vlisten_port\x18\f \x01(\x05H\x00R\n" +
+	"listenPort\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"service_id\x18\r \x01(\tH\x01R\tserviceId\x88\x01\x01\x12*\n" +
+	"\x0ecomponent_name\x18\x0e \x01(\tH\x02R\rcomponentName\x88\x01\x01\x120\n" +
+	"\x11endpoint_protocol\x18\x0f \x01(\tH\x03R\x10endpointProtocol\x88\x01\x01\x12;\n" +
+	"\x17endpoint_container_port\x18\x10 \x01(\x05H\x04R\x15endpointContainerPort\x88\x01\x01B\x0e\n" +
+	"\f_listen_portB\r\n" +
+	"\v_service_idB\x11\n" +
+	"\x0f_component_nameB\x14\n" +
+	"\x12_endpoint_protocolB\x1a\n" +
+	"\x18_endpoint_container_port\"\xfb\x03\n" +
 	"\x0eRouteCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06domain\x18\x02 \x01(\tR\x06domain\x12\x1f\n" +
@@ -705,7 +862,21 @@ const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"pathPrefix\x12\x1d\n" +
 	"\n" +
 	"target_url\x18\x04 \x01(\tR\ttargetUrl\x12\x18\n" +
-	"\aenabled\x18\x05 \x01(\bR\aenabled\"\xee\x01\n" +
+	"\aenabled\x18\x05 \x01(\bR\aenabled\x12\x1a\n" +
+	"\bprotocol\x18\x06 \x01(\tR\bprotocol\x12$\n" +
+	"\vlisten_port\x18\a \x01(\x05H\x00R\n" +
+	"listenPort\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"service_id\x18\b \x01(\tH\x01R\tserviceId\x88\x01\x01\x12*\n" +
+	"\x0ecomponent_name\x18\t \x01(\tH\x02R\rcomponentName\x88\x01\x01\x120\n" +
+	"\x11endpoint_protocol\x18\n" +
+	" \x01(\tH\x03R\x10endpointProtocol\x88\x01\x01\x12;\n" +
+	"\x17endpoint_container_port\x18\v \x01(\x05H\x04R\x15endpointContainerPort\x88\x01\x01B\x0e\n" +
+	"\f_listen_portB\r\n" +
+	"\v_service_idB\x11\n" +
+	"\x0f_component_nameB\x14\n" +
+	"\x12_endpoint_protocolB\x1a\n" +
+	"\x18_endpoint_container_port\"\xe5\x04\n" +
 	"\x0eRouteUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1b\n" +
 	"\x06domain\x18\x02 \x01(\tH\x01R\x06domain\x88\x01\x01\x12$\n" +
@@ -713,13 +884,29 @@ const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"pathPrefix\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"target_url\x18\x04 \x01(\tH\x03R\ttargetUrl\x88\x01\x01\x12\x1d\n" +
-	"\aenabled\x18\x05 \x01(\bH\x04R\aenabled\x88\x01\x01B\a\n" +
+	"\aenabled\x18\x05 \x01(\bH\x04R\aenabled\x88\x01\x01\x12\x1f\n" +
+	"\bprotocol\x18\x06 \x01(\tH\x05R\bprotocol\x88\x01\x01\x12$\n" +
+	"\vlisten_port\x18\a \x01(\x05H\x06R\n" +
+	"listenPort\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"service_id\x18\b \x01(\tH\aR\tserviceId\x88\x01\x01\x12*\n" +
+	"\x0ecomponent_name\x18\t \x01(\tH\bR\rcomponentName\x88\x01\x01\x120\n" +
+	"\x11endpoint_protocol\x18\n" +
+	" \x01(\tH\tR\x10endpointProtocol\x88\x01\x01\x12;\n" +
+	"\x17endpoint_container_port\x18\v \x01(\x05H\n" +
+	"R\x15endpointContainerPort\x88\x01\x01B\a\n" +
 	"\x05_nameB\t\n" +
 	"\a_domainB\x0e\n" +
 	"\f_path_prefixB\r\n" +
 	"\v_target_urlB\n" +
 	"\n" +
-	"\b_enabled\"\x10\n" +
+	"\b_enabledB\v\n" +
+	"\t_protocolB\x0e\n" +
+	"\f_listen_portB\r\n" +
+	"\v_service_idB\x11\n" +
+	"\x0f_component_nameB\x14\n" +
+	"\x12_endpoint_protocolB\x1a\n" +
+	"\x18_endpoint_container_port\"\x10\n" +
 	"\x0eRouteEnableReq\"\x11\n" +
 	"\x0fRouteDisableReq\"\x0e\n" +
 	"\fRouteSyncReq\"\x1b\n" +
@@ -781,6 +968,8 @@ func file_orbit_v1_route_route_proto_init() {
 	if File_orbit_v1_route_route_proto != nil {
 		return
 	}
+	file_orbit_v1_route_route_proto_msgTypes[0].OneofWrappers = []any{}
+	file_orbit_v1_route_route_proto_msgTypes[1].OneofWrappers = []any{}
 	file_orbit_v1_route_route_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

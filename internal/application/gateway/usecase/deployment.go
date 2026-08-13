@@ -87,7 +87,7 @@ func (s Service) GatewayForDeployment(ctx context.Context, app model.Application
 func hasGatewayEndpoint(plan model.EffectiveServicePlan) bool {
 	for _, component := range plan.Components {
 		for _, endpoint := range component.Endpoints {
-			if endpoint.Mode == "gateway_http" || endpoint.Mode == "gateway_tcp" {
+			if endpoint.Mode == "gateway" {
 				return true
 			}
 		}

@@ -1,5 +1,5 @@
 # CD 领域模型（现行）
-最后修改时间: 2026-08-09 18:08:31
+最后修改时间: 2026-08-13 19:10:01
 
 Doc role: living SoT  
 代码锚点：`internal/model/cd.go`、`internal/common/constant/status.go`、`internal/application/cd/usecase/*`、`sql/migration/*/…_cd_schema*.sql`（以仓库当前迁移文件为准）。
@@ -12,7 +12,7 @@ Doc role: living SoT
 | 应用类型 | `Application.kind` | `standard`（默认）\| `gateway`；**创建后不可改** |
 | 版本 | `Version` | 结构化静态规格元数据；**不是** compose 全文存储 |
 | 组件 | `VersionComponent` | Version 内可部署单元（镜像、挂载、env 等 JSON 规格） |
-| 暴露 | `VersionExpose` | 协议 + 容器端口 + `access`；**不含域名** |
+| 端点 | `VersionComponentEndpoint` | `(protocol, container_port)` + mode；名称由 `http<port>` / `tcp<port>` 派生，不持久化 |
 | 环境 | `Environment` | **Project 下**部署目标元数据；无 ingress 字段 |
 | 网关配置 | `GatewayConfig` | 与 `kind=gateway` 应用 1:1：`rest_api_url`、`base_domain`、入口/TLS |
 | 服务 | `Service` | 运行绑定与运行时配置 SoT：Application + `instance_key` + Version + 不可变 `code` + 明文 K/V |
@@ -93,16 +93,17 @@ Gateway 部署与 standard 共用 Version/Deploy 管线；保存 Gateway 时可 
 
 | 概念 | 现行规则 |
 |------|----------|
-| 出口 SoT | `VersionExpose`：`protocol`（http\|tcp 等）+ `access`（`local`\|`public`）+ 端口 |
-| 域名 | `gateway_http`：`{component_name}.{service.code}.{gateway.base_domain}`；TLS `gateway_tcp` 使用同一 Host 作为 SNI |
-| local | loopback host ports；不写该 expose 的 Traefik public labels |
-| public TCP | 经 Gateway TCP entrypoint / labels；业务侧不另起 Gateway TCP 路由 CRUD |
-| 平台 Route | 独立 `route` 表 + active Gateway 的 `rest_api_url` 全量 PUT rest provider |
+| Endpoint mode | `internal`、`local`、`host`、`gateway`。`gateway` 仅用于组件派生 HTTP Host；TCP Route 引用 `internal` TCP Endpoint |
+| local / host | 直接生成宿主机端口映射；其监听端口不能与 TCP Route 冲突 |
+| 平台 HTTP Route | 独立 `route` 表，默认按 domain/path → 项目内 Service Component 的 HTTP Endpoint，经 active Gateway 的 `rest_api_url` 全量 PUT `http` rest namespace；直接 HTTP(S) URL 仅为高级自定义下游 |
+| 平台 TCP Route | 独立 `route` 表，按 `domain:listen_port` → 项目内 Service Component 的 `internal` TCP Endpoint；每个启用监听端口唯一，经 Gateway entrypoint 与 `tcp` rest namespace 转发 |
+| Endpoint identity | Version Endpoint、Service Endpoint overlay 与 Route 受管 target 都以 `(protocol, container_port)` 关联；旧 overlay/受管 Route 只允许离线清理后迁移 |
+| 存量转换 | `gateway_http → gateway`、`gateway_tcp → internal`、`tcp → internal` 由发布前离线 SQL 处理；运行时不兼容旧值 |
 | 废止 | `attach_ingress` / `service.is_ingress` / EnvironmentBinding 用户 SoT / 全局 `traefik.api_url`·`domain_suffix` 产品路径 / Application 级 route 当应用暴露 SoT |
 
 ## kind 与渲染
 
-- **standard**：按 Component + Expose 渲染业务 compose；labels 由 Expose 驱动。  
+- **standard**：按 Component + Endpoint 渲染业务 compose；HTTP labels 或直接 ports 由 Endpoint mode 驱动。
 - **gateway**：`renderGatewayCompose` 等分支；仍用 Version/Component 管线。  
 - **禁止** 以 `code==traefik` 魔法替代 kind。
 
@@ -111,8 +112,8 @@ Gateway 部署与 standard 共用 Version/Deploy 管线；保存 Gateway 时可 
 历史分析指出：旧模型接近「配置文件包管理」，新建应用易成空壳。现行方向为：
 
 1. **Version 结构化规格** + Render，而不是用户手写 compose 作为唯一 SoT。  
-2. **Gateway / Expose** 显式建模接入，而不是散落 compose labels 与全局 env。  
-3. 创建与详情 UI 应对齐 Version/Component/Expose/Service 概念（细节以 `web/` 为准）。
+2. **Gateway / Endpoint / Route** 显式建模接入，而不是散落 compose labels 与全局 env。
+3. 创建与详情 UI 应对齐 Version/Component/Endpoint/Service 概念（细节以 `web/` 为准）。
 
 （原文 `docs/analyze/application-management-usability.md` 已归档，描述的是旧 compose 文件包模型，**不可**再当现行产品说明。）
 

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -15,10 +16,14 @@ import (
 
 func TestRouteManagerListRoutersMapsTraefikResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.Method != http.MethodGet || request.URL.Path != "/api/http/routers" {
+		if request.Method != http.MethodGet || (request.URL.Path != "/api/http/routers" && request.URL.Path != "/api/tcp/routers") {
 			t.Fatalf("unexpected request: %s %s", request.Method, request.URL.Path)
 		}
 		writer.Header().Set("Content-Type", "application/json")
+		if request.URL.Path == "/api/tcp/routers" {
+			_, _ = writer.Write([]byte(`[{"name":"redis@rest","provider":"rest","status":"enabled","rule":"HostSNI(` + "`*`" + `)","service":"redis-service","entryPoints":["tcp16379"],"tls":null}]`))
+			return
+		}
 		_, _ = writer.Write([]byte(`[{"name":"api@docker","provider":"docker","status":"enabled","rule":"Host(api.example.test)","service":"api-service","entryPoints":["websecure"],"tls":{}},{"name":"dashboard@file","provider":"file","status":"disabled","rule":"Host(dashboard.example.test)","service":"dashboard-service","entryPoints":["web"],"tls":null}]`))
 	}))
 	defer server.Close()
@@ -28,7 +33,7 @@ func TestRouteManagerListRoutersMapsTraefikResponse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(routers) != 2 {
+	if len(routers) != 3 {
 		t.Fatalf("expected two routers, got %+v", routers)
 	}
 	if routers[0].Name != "api@docker" || routers[0].Provider != "docker" || routers[0].Status != "enabled" || routers[0].Rule != "Host(api.example.test)" || routers[0].Service != "api-service" || len(routers[0].Entrypoints) != 1 || routers[0].Entrypoints[0] != "websecure" || !routers[0].TLS {
@@ -36,6 +41,9 @@ func TestRouteManagerListRoutersMapsTraefikResponse(t *testing.T) {
 	}
 	if routers[1].Name != "dashboard@file" || routers[1].TLS || len(routers[1].Entrypoints) != 1 || routers[1].Entrypoints[0] != "web" {
 		t.Fatalf("unexpected second router: %+v", routers[1])
+	}
+	if routers[2].Name != "redis@rest" || routers[2].TLS || routers[2].Rule != "HostSNI(`*`)" || routers[2].Entrypoints[0] != "tcp16379" {
+		t.Fatalf("unexpected TCP router: %+v", routers[2])
 	}
 }
 
@@ -48,6 +56,31 @@ func TestRouteManagerListRoutersReturnsErrorForInvalidResponse(t *testing.T) {
 	manager := NewRouteManager(config.Config{})
 	if _, err := manager.ListRouters(context.Background(), server.URL); err == nil {
 		t.Fatal("expected error for non-success Traefik response")
+	}
+}
+
+func TestRouteManagerWaitUntilReadyPollsUntilApiAccepts(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || request.URL.Path != "/api/overview" {
+			t.Fatalf("unexpected request: %s %s", request.Method, request.URL.Path)
+		}
+		attempts++
+		if attempts < 3 {
+			writer.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		writer.WriteHeader(http.StatusOK)
+		_, _ = writer.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	manager := NewRouteManager(config.Config{Traefik: config.TraefikConfig{RestReadyTimeout: 5 * time.Second}})
+	if err := manager.WaitUntilReady(context.Background(), server.URL); err != nil {
+		t.Fatal(err)
+	}
+	if attempts < 3 {
+		t.Fatalf("attempts = %d, want at least 3", attempts)
 	}
 }
 
@@ -67,9 +100,10 @@ func TestRouteManagerApplySnapshotPutsFullRestConfig(t *testing.T) {
 
 	manager := NewRouteManager(config.Config{})
 	err := manager.ApplySnapshot(context.Background(), server.URL, []model.Route{
-		{Name: "api", Domain: "api.example.test", PathPrefix: "/v1", TargetUrl: "http://app:8080", Enabled: true},
-		{Name: "off", Domain: "off.example.test", PathPrefix: "/", TargetUrl: "http://app:8081", Enabled: false},
-		{Name: "secure", Domain: "secure.example.test", PathPrefix: "/", TargetUrl: "http://app:8082", Enabled: true, HTTPSEnabled: true, CertType: "letsencrypt"},
+		{Name: "api", Protocol: "http", Domain: "api.example.test", PathPrefix: "/v1", TargetUrl: "http://app:8080", Enabled: true},
+		{Name: "off", Protocol: "http", Domain: "off.example.test", PathPrefix: "/", TargetUrl: "http://app:8081", Enabled: false},
+		{Name: "secure", Protocol: "http", Domain: "secure.example.test", PathPrefix: "/", TargetUrl: "http://app:8082", Enabled: true, HTTPSEnabled: true, CertType: "letsencrypt"},
+		{Name: "redis", Protocol: "tcp", Domain: "redis.example.test", ListenPort: intPtr(16379), TargetAddress: "redis-redis", TargetPort: 6379, Enabled: true},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +130,20 @@ func TestRouteManagerApplySnapshotPutsFullRestConfig(t *testing.T) {
 	if tls["certResolver"] != "letsencrypt" {
 		t.Fatalf("expected letsencrypt certResolver, got %#v", tls)
 	}
+	tcpCfg := payload["tcp"].(map[string]any)
+	tcpRouters := tcpCfg["routers"].(map[string]any)
+	tcpServices := tcpCfg["services"].(map[string]any)
+	redisRouter := tcpRouters["redis-route"].(map[string]any)
+	if redisRouter["rule"] != "HostSNI(`*`)" || redisRouter["entryPoints"].([]any)[0] != "tcp16379" {
+		t.Fatalf("unexpected TCP router: %#v", redisRouter)
+	}
+	address := tcpServices["redis-service"].(map[string]any)["loadBalancer"].(map[string]any)["servers"].([]any)[0].(map[string]any)["address"]
+	if address != "redis-redis:6379" {
+		t.Fatalf("unexpected TCP server address: %v", address)
+	}
 }
+
+func intPtr(value int) *int { return &value }
 
 func TestRouteManagerApplySnapshotClearsWithEmptyMaps(t *testing.T) {
 	var gotBody string
@@ -119,16 +166,32 @@ func TestRouteManagerApplySnapshotClearsWithEmptyMaps(t *testing.T) {
 	if len(httpCfg["routers"].(map[string]any)) != 0 || len(httpCfg["services"].(map[string]any)) != 0 {
 		t.Fatalf("expected empty routers/services maps, got %s", gotBody)
 	}
+	tcpCfg := payload["tcp"].(map[string]any)
+	if len(tcpCfg["routers"].(map[string]any)) != 0 || len(tcpCfg["services"].(map[string]any)) != 0 {
+		t.Fatalf("expected empty TCP routers/services maps, got %s", gotBody)
+	}
 }
 
 func TestBuildRestSnapshotSkipsDisabled(t *testing.T) {
 	snapshot := buildRestSnapshot([]model.Route{
-		{Name: "a", Domain: "a.test", PathPrefix: "/", TargetUrl: "http://a:1", Enabled: true},
-		{Name: "b", Domain: "b.test", PathPrefix: "/", TargetUrl: "http://b:1", Enabled: false},
+		{Name: "a", Protocol: "http", Domain: "a.test", PathPrefix: "/", TargetUrl: "http://a:1", Enabled: true},
+		{Name: "b", Protocol: "http", Domain: "b.test", PathPrefix: "/", TargetUrl: "http://b:1", Enabled: false},
 	})
 	httpCfg := snapshot["http"].(map[string]any)
 	if len(httpCfg["routers"].(map[string]any)) != 1 {
 		t.Fatalf("expected one router: %#v", snapshot)
+	}
+}
+
+func TestBuildRestSnapshotUsesResolvedManagedHTTPTarget(t *testing.T) {
+	snapshot := buildRestSnapshot([]model.Route{{
+		Name: "api", Protocol: "http", Domain: "api.test", PathPrefix: "/", TargetAddress: "api-api", TargetPort: 8080, Enabled: true,
+	}})
+	httpCfg := snapshot["http"].(map[string]any)
+	service := httpCfg["services"].(map[string]any)["api-service"].(map[string]any)
+	servers := service["loadBalancer"].(map[string]any)["servers"].([]map[string]string)
+	if len(servers) != 1 || servers[0]["url"] != "http://api-api:8080" {
+		t.Fatalf("unexpected managed HTTP servers: %+v", servers)
 	}
 }
 

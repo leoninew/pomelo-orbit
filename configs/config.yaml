@@ -36,7 +36,12 @@ jwt:
   secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 traefik:
+  # Infrastructure only. Product identity (code/component/network) is fixed in code.
   cert_dir: data/deployment/traefik/data/certs
+  image: traefik:3.6
+  rest_api_url: http://localhost:8080
+  base_domain: lvh.me
+  rest_ready_timeout: 20s
 
 turnstile:
   enabled: true

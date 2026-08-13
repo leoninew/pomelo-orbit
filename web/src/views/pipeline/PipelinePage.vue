@@ -245,6 +245,7 @@
               v-model="instantiateForm.fixedVersionId"
               :options="versionOptions"
               :invalid="Boolean(instantiateErrors.fixedVersionId)"
+              description-inline
               placeholder="选择版本"
               @update:model-value="changeFixedVersion"
             />
@@ -415,7 +416,6 @@
     repositories.value.map((repository) => ({
       value: repository.id,
       label: repository.name,
-      description: repository.repository_url,
     }))
   );
   const versionOptions = computed(() =>
@@ -429,7 +429,6 @@
     (sourceVersion.value?.components || []).map((component) => ({
       value: component.name,
       label: component.name,
-      description: component.image,
     }))
   );
   const dockerArtifacts = computed(() =>

@@ -11,7 +11,7 @@ func TestBuildGatewayExposureItemUsesComponentServiceHost(t *testing.T) {
 		model.Application{Id: "app-1", Code: "ragflow"},
 		model.Service{Id: "service-1", Code: "ragflow-default"},
 		model.EffectiveServiceComponent{Name: "minio"},
-		model.VersionComponentEndpoint{Name: "api", Protocol: "http", ContainerPort: 9000, Mode: "gateway_http"},
+		model.VersionComponentEndpoint{Protocol: "http", ContainerPort: 9000, Mode: "gateway"},
 		&model.GatewayConfig{BaseDomain: "example.test"},
 	)
 	if err != nil {

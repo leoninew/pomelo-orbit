@@ -23,7 +23,7 @@ func TestRenderGatewayComposeUsesStableTraefikNetworkKey(t *testing.T) {
 			Components: []model.EffectiveServiceComponent{{
 				Name: "traefik", Image: "traefik:3.6",
 				Endpoints: []model.VersionComponentEndpoint{{
-					Name: "api", Protocol: "tcp", ContainerPort: 8080, Mode: "host", ListenPort: &listenPort,
+					Protocol: "tcp", ContainerPort: 8080, Mode: "host", ListenPort: &listenPort,
 				}},
 			}},
 		},

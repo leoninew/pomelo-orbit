@@ -71,8 +71,8 @@ func TestServiceViewPendingDeployComparesEffectivePlanHash(t *testing.T) {
 	service, app, version, declaration, component := serviceViewFixture()
 	listenPort := 18080
 	mode := "local"
-	declaration.Endpoints = []model.VersionComponentEndpoint{{Name: "api", Protocol: "http", ContainerPort: 8080, Mode: "internal"}}
-	component.Endpoints = []model.ServiceComponentEndpoint{{Name: "api", Mode: &mode, ListenPort: &listenPort, State: model.ServiceComponentOverlayOverride}}
+	declaration.Endpoints = []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 8080, Mode: "internal"}}
+	component.Endpoints = []model.ServiceComponentEndpoint{{Protocol: "http", ContainerPort: 8080, Mode: &mode, ListenPort: &listenPort, State: model.ServiceComponentOverlayOverride}}
 	plan, hash, err := buildFixturePlan(app, version, service, declaration, component)
 	if err != nil {
 		t.Fatalf("build fixture plan: %v", err)
@@ -140,7 +140,7 @@ func TestServiceViewReportsActiveDeploymentSeparatelyFromServiceStatus(t *testin
 
 func TestServiceViewWithGatewayEndpointDoesNotRequireGateway(t *testing.T) {
 	service, app, version, declaration, component := serviceViewFixture()
-	declaration.Endpoints = []model.VersionComponentEndpoint{{Name: "http", Protocol: "http", ContainerPort: 80, Mode: "gateway_http"}}
+	declaration.Endpoints = []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 80, Mode: "gateway"}}
 	_, hash, err := buildFixturePlan(app, version, service, declaration, component)
 	if err != nil {
 		t.Fatalf("build fixture plan: %v", err)
@@ -330,6 +330,103 @@ func TestRemapServiceComponentsKeepsMountOverlayWithItsTargetAfterReorder(t *tes
 	if plan.Components[0].Mounts[1].Target != "/data" || plan.Components[0].Mounts[1].Source != overrideSource {
 		t.Fatalf("data mount lost its overlay: %#v", plan.Components[0].Mounts)
 	}
+}
+
+func TestAlignServiceComponentsRebuildsMissingMappings(t *testing.T) {
+	declarations := []model.VersionComponent{{
+		Id: "component-new", Name: "traefik", Image: "traefik:3.6",
+	}}
+	aligned := alignServiceComponents("service-1", nil, declarations)
+	if len(aligned) != 1 {
+		t.Fatalf("aligned = %#v", aligned)
+	}
+	if aligned[0].ServiceId != "service-1" || aligned[0].SourceVersionComponentId != "component-new" || aligned[0].ComponentName != "traefik" {
+		t.Fatalf("aligned mapping = %#v", aligned[0])
+	}
+	if aligned[0].Id == "" || aligned[0].Status != "active" {
+		t.Fatalf("aligned mapping identity = %#v", aligned[0])
+	}
+}
+
+func TestAlignServiceComponentsKeepsOverlayWhenSourceIdChanges(t *testing.T) {
+	override := "runtime"
+	existing := []model.ServiceComponent{{
+		Id: "service-component-1", ServiceId: "service-1", SourceVersionComponentId: "component-old", ComponentName: "traefik",
+		Env: []model.ServiceComponentEnv{{Key: "FOO", Value: &override, State: model.ServiceComponentOverlayOverride}},
+	}}
+	declarations := []model.VersionComponent{{
+		Id: "component-new", Name: "traefik", Image: "traefik:3.6",
+	}}
+	aligned := alignServiceComponents("service-1", existing, declarations)
+	if len(aligned) != 1 {
+		t.Fatalf("aligned = %#v", aligned)
+	}
+	if aligned[0].Id != "service-component-1" || aligned[0].SourceVersionComponentId != "component-new" {
+		t.Fatalf("aligned mapping = %#v", aligned[0])
+	}
+	if len(aligned[0].Env) != 1 || aligned[0].Env[0].Value == nil || *aligned[0].Env[0].Value != override {
+		t.Fatalf("overlay lost: %#v", aligned[0].Env)
+	}
+}
+
+func TestAlignComponentMappingsToVersionRewritesBoundServices(t *testing.T) {
+	store := &alignServiceStoreFake{
+		services: []model.Service{
+			{Id: "service-bound", ApplicationId: "app-1", VersionId: "version-1"},
+			{Id: "service-other", ApplicationId: "app-1", VersionId: "version-2"},
+		},
+		components: map[string][]model.ServiceComponent{
+			"service-bound": nil,
+			"service-other": {{Id: "keep", ServiceId: "service-other", SourceVersionComponentId: "other", ComponentName: "web"}},
+		},
+	}
+	usecase := Service{
+		application: serviceApplicationFake{
+			version: model.Version{Id: "version-1", ApplicationId: "app-1"},
+			declarations: []model.VersionComponent{{
+				Id: "component-1", Name: "traefik", Image: "traefik:3.6",
+			}},
+		},
+		service: store,
+	}
+	if err := usecase.AlignComponentMappingsToVersion(context.Background(), "app-1", "version-1"); err != nil {
+		t.Fatal(err)
+	}
+	if len(store.updated) != 1 || store.updated[0].service.Id != "service-bound" {
+		t.Fatalf("updated services = %#v", store.updated)
+	}
+	if len(store.updated[0].components) != 1 || store.updated[0].components[0].SourceVersionComponentId != "component-1" {
+		t.Fatalf("updated mappings = %#v", store.updated[0].components)
+	}
+	if _, touched := store.components["service-other"]; !touched {
+		t.Fatal("unrelated service mapping must remain")
+	}
+}
+
+type alignServiceStoreFake struct {
+	repository.ServiceStore
+	services   []model.Service
+	components map[string][]model.ServiceComponent
+	updated    []alignServiceUpdate
+}
+
+type alignServiceUpdate struct {
+	service    model.Service
+	components []model.ServiceComponent
+}
+
+func (f *alignServiceStoreFake) ListServicesByApplication(context.Context, string) ([]model.Service, error) {
+	return append([]model.Service(nil), f.services...), nil
+}
+
+func (f *alignServiceStoreFake) ServiceComponentsByService(_ context.Context, serviceId string) ([]model.ServiceComponent, error) {
+	return append([]model.ServiceComponent(nil), f.components[serviceId]...), nil
+}
+
+func (f *alignServiceStoreFake) UpdateServiceConfiguration(_ context.Context, svc model.Service, components []model.ServiceComponent) error {
+	f.updated = append(f.updated, alignServiceUpdate{service: svc, components: append([]model.ServiceComponent(nil), components...)})
+	f.components[svc.Id] = append([]model.ServiceComponent(nil), components...)
+	return nil
 }
 
 func TestRemapServiceComponentsRejectsMissingMountTarget(t *testing.T) {

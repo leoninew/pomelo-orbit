@@ -99,19 +99,23 @@ func validateComponentFields(component model.VersionComponent) error {
 	}
 	endpoints := make(map[string]struct{}, len(component.Endpoints))
 	for _, item := range component.Endpoints {
-		if item.Name == "" || (item.Protocol != "http" && item.Protocol != "tcp") || item.ContainerPort < 1 || item.ContainerPort > 65535 {
+		if (item.Protocol != "http" && item.Protocol != "tcp") || item.ContainerPort < 1 || item.ContainerPort > 65535 {
 			return fmt.Errorf("component %s endpoint is invalid", component.Name)
 		}
-		if item.Mode != "internal" && item.Mode != "local" && item.Mode != "host" && item.Mode != "gateway_http" && item.Mode != "gateway_tcp" {
+		if item.Mode != "internal" && item.Mode != "local" && item.Mode != "host" && item.Mode != "gateway" {
 			return fmt.Errorf("component %s endpoint mode is invalid", component.Name)
+		}
+		if item.Mode == "gateway" && item.Protocol != "http" {
+			return fmt.Errorf("component %s gateway endpoint must use http", component.Name)
 		}
 		if item.ListenPort != nil && (*item.ListenPort < 1 || *item.ListenPort > 65535) {
 			return fmt.Errorf("component %s endpoint listen port is invalid", component.Name)
 		}
-		if _, exists := endpoints[item.Name]; exists {
-			return fmt.Errorf("component %s has duplicate endpoint %s", component.Name, item.Name)
+		identity := model.EndpointDisplayName(item.Protocol, item.ContainerPort)
+		if _, exists := endpoints[identity]; exists {
+			return fmt.Errorf("component %s has duplicate endpoint %s", component.Name, identity)
 		}
-		endpoints[item.Name] = struct{}{}
+		endpoints[identity] = struct{}{}
 	}
 	mountTargets := make(map[string]struct{}, len(component.Mounts))
 	for _, item := range component.Mounts {

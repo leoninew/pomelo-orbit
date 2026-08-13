@@ -150,7 +150,7 @@ describe('componentForm', () => {
       valid: true,
       value: {
         endpoints: [
-          { name: 'tcp-80', protocol: 'tcp', container_port: 80, mode: 'host', listen_port: 8080 },
+          { protocol: 'tcp', container_port: 80, mode: 'host', listen_port: 8080 },
         ],
       },
     });
@@ -187,7 +187,7 @@ describe('componentForm', () => {
       protocol: 'http',
       host_port: '',
       container_port: '80',
-      mode: 'gateway_http',
+      mode: 'gateway',
       entrypoint: 'web',
       path_prefix: '/',
     });
@@ -197,10 +197,9 @@ describe('componentForm', () => {
       value: {
         endpoints: [
           {
-            name: 'http-80',
             protocol: 'http',
             container_port: 80,
-            mode: 'gateway_http',
+            mode: 'gateway',
             entrypoint: 'web',
             path_prefix: '/',
           },

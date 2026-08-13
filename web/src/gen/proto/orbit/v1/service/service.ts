@@ -137,7 +137,6 @@ export interface ServiceComponentDeclaredResources {
 }
 
 export interface ServiceComponentDeclaredEndpoint {
-  name: string;
   protocol: string;
   container_port: number;
   mode: string;
@@ -180,7 +179,8 @@ export interface ServiceComponentResourceOverlay {
 }
 
 export interface ServiceComponentEndpointOverlay {
-  name: string;
+  protocol: string;
+  container_port: number;
   mode?: string | undefined;
   bind_address?: string | undefined;
   listen_port?: number | undefined;

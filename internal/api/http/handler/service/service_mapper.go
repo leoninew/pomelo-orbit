@@ -51,7 +51,7 @@ func serviceComponentResponse(item model.ServiceComponent) servicev1.ServiceComp
 	}
 	endpoints := make([]*servicev1.ServiceComponentEndpointOverlay, 0, len(item.Endpoints))
 	for _, value := range item.Endpoints {
-		endpoints = append(endpoints, &servicev1.ServiceComponentEndpointOverlay{Name: value.Name, Mode: value.Mode, BindAddress: value.BindAddress, ListenPort: int32Ptr(value.ListenPort), Entrypoint: value.Entrypoint, PathPrefix: value.PathPrefix, State: string(value.State)})
+		endpoints = append(endpoints, &servicev1.ServiceComponentEndpointOverlay{Protocol: value.Protocol, ContainerPort: int32(value.ContainerPort), Mode: value.Mode, BindAddress: value.BindAddress, ListenPort: int32Ptr(value.ListenPort), Entrypoint: value.Entrypoint, PathPrefix: value.PathPrefix, State: string(value.State)})
 	}
 	return servicev1.ServiceComponentResp{Id: item.Id, ServiceId: item.ServiceId, SourceVersionComponentId: item.SourceVersionComponentId, ComponentName: item.ComponentName, Status: item.Status, Env: env, Mounts: mounts, Resources: serviceComponentResourcesResponse(item.Resources), Endpoints: endpoints, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt), Entrypoint: optionalCommandText(item.Entrypoint), Command: optionalCommandText(item.Command), PullPolicy: item.PullPolicy, RestartPolicy: item.RestartPolicy}
 }
@@ -77,7 +77,7 @@ func componentDeclarationResponse(component model.VersionComponent) servicev1.Se
 func serviceComponentDeclaredEndpointsResponse(items []model.VersionComponentEndpoint) []*servicev1.ServiceComponentDeclaredEndpoint {
 	endpoints := make([]*servicev1.ServiceComponentDeclaredEndpoint, 0, len(items))
 	for _, item := range items {
-		endpoints = append(endpoints, &servicev1.ServiceComponentDeclaredEndpoint{Name: item.Name, Protocol: item.Protocol, ContainerPort: int32(item.ContainerPort), Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: int32Ptr(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix})
+		endpoints = append(endpoints, &servicev1.ServiceComponentDeclaredEndpoint{Protocol: item.Protocol, ContainerPort: int32(item.ContainerPort), Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: int32Ptr(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix})
 	}
 	return endpoints
 }
@@ -106,7 +106,7 @@ func serviceComponentOverlayInput(req *servicev1.ServiceComponentOverlayUpdateRe
 	}
 	for _, item := range req.Endpoints {
 		if item != nil {
-			result.Endpoints = append(result.Endpoints, model.ServiceComponentEndpoint{Name: item.Name, Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: intPtr(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix, State: model.ServiceComponentOverlayState(item.State)})
+			result.Endpoints = append(result.Endpoints, model.ServiceComponentEndpoint{Protocol: item.Protocol, ContainerPort: int(item.ContainerPort), Mode: item.Mode, BindAddress: item.BindAddress, ListenPort: intPtr(item.ListenPort), Entrypoint: item.Entrypoint, PathPrefix: item.PathPrefix, State: model.ServiceComponentOverlayState(item.State)})
 		}
 	}
 	return result

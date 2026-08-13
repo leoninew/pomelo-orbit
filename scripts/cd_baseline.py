@@ -56,7 +56,11 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     export.add_argument(
         "--output",
         type=Path,
-        help="SQL file written after export checks pass (default: data/exports/pomelo-orbit-cd-<timestamp>.sql)",
+        help=(
+            "SQL file or directory written after export checks pass "
+            "(default file: data/exports/pomelo-orbit-cd-<timestamp>.sql; "
+            "directory: <dir>/pomelo-orbit-cd-<timestamp>.sql)"
+        ),
     )
     export.add_argument(
         "--relace",
@@ -71,9 +75,27 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def default_export_output_path(now: datetime | None = None) -> Path:
+def default_export_filename(now: datetime | None = None) -> str:
     timestamp = (now or datetime.now()).strftime("%Y%m%d%H%M%S")
-    return DEFAULT_EXPORT_DIRECTORY / f"pomelo-orbit-cd-{timestamp}.sql"
+    return f"pomelo-orbit-cd-{timestamp}.sql"
+
+
+def default_export_output_path(now: datetime | None = None) -> Path:
+    return DEFAULT_EXPORT_DIRECTORY / default_export_filename(now)
+
+
+def resolve_export_output_path(output: Path | None, now: datetime | None = None) -> Path:
+    """Resolve export destination.
+
+    No --output keeps data/exports/pomelo-orbit-cd-<timestamp>.sql.
+    A directory path receives the same generated filename inside that directory.
+    Any other path is treated as the exact SQL file path.
+    """
+    if output is None:
+        return default_export_output_path(now)
+    if output.is_dir():
+        return output / default_export_filename(now)
+    return output
 
 
 def connect_read_only(path: Path) -> sqlite3.Connection:
@@ -215,7 +237,7 @@ def import_sql(connection: sqlite3.Connection, sql: str) -> None:
 
 def export_command(args: argparse.Namespace) -> Path:
     database = args.database.resolve()
-    output = (args.output or default_export_output_path()).resolve()
+    output = resolve_export_output_path(args.output).resolve()
     connection = connect_read_only(database)
     try:
         ensure_database_integrity(connection)

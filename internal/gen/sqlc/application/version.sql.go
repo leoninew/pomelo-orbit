@@ -301,13 +301,12 @@ func (q *Queries) InsertVersionComponentDevice(ctx context.Context, arg InsertVe
 
 const insertVersionComponentEndpoint = `-- name: InsertVersionComponentEndpoint :exec
 INSERT INTO version_component_endpoint (
-  component_id, name, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  component_id, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentEndpointParams struct {
 	ComponentID   string         `db:"component_id"`
-	Name          string         `db:"name"`
 	Protocol      string         `db:"protocol"`
 	ContainerPort int64          `db:"container_port"`
 	Mode          string         `db:"mode"`
@@ -321,7 +320,6 @@ type InsertVersionComponentEndpointParams struct {
 func (q *Queries) InsertVersionComponentEndpoint(ctx context.Context, arg InsertVersionComponentEndpointParams) error {
 	_, err := q.db.ExecContext(ctx, insertVersionComponentEndpoint,
 		arg.ComponentID,
-		arg.Name,
 		arg.Protocol,
 		arg.ContainerPort,
 		arg.Mode,
@@ -901,7 +899,7 @@ func (q *Queries) VersionComponentDevicesByComponent(ctx context.Context, compon
 }
 
 const versionComponentEndpointsByComponent = `-- name: VersionComponentEndpointsByComponent :many
-SELECT component_id, name, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
+SELECT component_id, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, position
 FROM version_component_endpoint
 WHERE component_id = ?
 ORDER BY position
@@ -918,7 +916,6 @@ func (q *Queries) VersionComponentEndpointsByComponent(ctx context.Context, comp
 		var i VersionComponentEndpoint
 		if err := rows.Scan(
 			&i.ComponentID,
-			&i.Name,
 			&i.Protocol,
 			&i.ContainerPort,
 			&i.Mode,

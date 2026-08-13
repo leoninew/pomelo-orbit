@@ -18,22 +18,23 @@ import (
 )
 
 type Service struct {
-	project            repository.ProjectReader
-	application        repository.ApplicationStore
-	service            repository.ServiceStore
-	deployment         repository.DeploymentStore
-	workspace          deploymentport.Workspace
-	logStore           deploymentport.LogReader
-	queryRunner        deploymentport.CommandQueryRunner
-	store              *stores
-	executionStore     deploymentport.ExecutionStore
-	dispatcher         deploymentport.Dispatcher
-	executionLogStore  deploymentport.ExecutionLogStore
-	logger             *slog.Logger
-	pollInterval       time.Duration
-	runner             deploymentport.CommandRunner
-	commandStore       deploymentport.CommandStore
-	gatewayCoordinator gatewayport.DeploymentCoordinator
+	project               repository.ProjectReader
+	application           repository.ApplicationStore
+	service               repository.ServiceStore
+	deployment            repository.DeploymentStore
+	workspace             deploymentport.Workspace
+	logStore              deploymentport.LogReader
+	queryRunner           deploymentport.CommandQueryRunner
+	store                 *stores
+	executionStore        deploymentport.ExecutionStore
+	dispatcher            deploymentport.Dispatcher
+	executionLogStore     deploymentport.ExecutionLogStore
+	logger                *slog.Logger
+	pollInterval          time.Duration
+	runner                deploymentport.CommandRunner
+	commandStore          deploymentport.CommandStore
+	gatewayCoordinator    gatewayport.DeploymentCoordinator
+	gatewayRoutePublisher deploymentport.GatewayRoutePublisher
 }
 
 func New(

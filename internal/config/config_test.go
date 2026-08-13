@@ -69,6 +69,15 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Traefik.CertDir != "data/deployment/traefik/data/certs" {
 		t.Fatalf("unexpected traefik cert dir: %s", cfg.Traefik.CertDir)
 	}
+	if cfg.Traefik.Image != "traefik:3.6" {
+		t.Fatalf("unexpected traefik image: %q", cfg.Traefik.Image)
+	}
+	if cfg.Traefik.RestApiUrl != "http://localhost:8080" || cfg.Traefik.BaseDomain != "lvh.me" {
+		t.Fatalf("unexpected traefik endpoints: rest=%q domain=%q", cfg.Traefik.RestApiUrl, cfg.Traefik.BaseDomain)
+	}
+	if cfg.Traefik.RestReadyTimeout != 20*time.Second {
+		t.Fatalf("unexpected traefik rest ready timeout: %s", cfg.Traefik.RestReadyTimeout)
+	}
 	if !cfg.Turnstile.Enabled {
 		t.Fatal("expected turnstile enabled")
 	}
@@ -219,6 +228,9 @@ worker:
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SECRET_KEY", "secret-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__VERIFY_URL", "https://turnstile.example.test")
 	t.Setenv("POMELO_ORBIT_TRAEFIK__CERT_DIR", "data/custom/certs")
+	t.Setenv("POMELO_ORBIT_TRAEFIK__IMAGE", "traefik:v3.9")
+	t.Setenv("POMELO_ORBIT_TRAEFIK__REST_API_URL", "http://127.0.0.1:9080")
+	t.Setenv("POMELO_ORBIT_TRAEFIK__REST_READY_TIMEOUT", "45s")
 	t.Setenv("POMELO_ORBIT_ORBIT__ROOT", "/srv/pomelo-orbit")
 	t.Setenv("POMELO_ORBIT_WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_WORKER__POLL_INTERVAL", "2s")
@@ -279,6 +291,9 @@ worker:
 	}
 	if cfg.Traefik.CertDir != "data/custom/certs" {
 		t.Fatalf("unexpected traefik cert dir: %s", cfg.Traefik.CertDir)
+	}
+	if cfg.Traefik.Image != "traefik:v3.9" || cfg.Traefik.RestApiUrl != "http://127.0.0.1:9080" || cfg.Traefik.RestReadyTimeout != 45*time.Second {
+		t.Fatalf("unexpected Traefik env overrides: %#v", cfg.Traefik)
 	}
 	if cfg.Orbit.Root != "/srv/pomelo-orbit" {
 		t.Fatalf("unexpected orbit root: %s", cfg.Orbit.Root)
@@ -793,6 +808,10 @@ jwt:
   secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 traefik:
   cert_dir: data/deployment/traefik/data/certs
+  image: traefik:3.6
+  rest_api_url: http://localhost:8080
+  base_domain: lvh.me
+  rest_ready_timeout: 20s
 turnstile:
   enabled: true
   site_key: "1x00000000000000000000AA"

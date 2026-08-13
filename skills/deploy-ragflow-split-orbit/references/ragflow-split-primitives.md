@@ -112,7 +112,7 @@ Runtime values are never stored in this contract. Create a single in-memory valu
     "name": "http",
     "protocol": "http",
     "container_port": 80,
-    "mode": "gateway_http",
+    "mode": "gateway",
     "entrypoint": "web"
   }
 ]

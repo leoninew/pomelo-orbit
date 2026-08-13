@@ -144,10 +144,10 @@ INSERT INTO service_component_resource (
 ) VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: ServiceComponentEndpointsByComponent :many
-SELECT service_component_id, name, mode, bind_address, listen_port, entrypoint, path_prefix, state
+SELECT id, service_component_id, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, state
 FROM service_component_endpoint
 WHERE service_component_id = ?
-ORDER BY name;
+ORDER BY protocol, container_port;
 
 -- name: DeleteServiceComponentEndpoints :exec
 DELETE FROM service_component_endpoint
@@ -155,8 +155,8 @@ WHERE service_component_id = ?;
 
 -- name: InsertServiceComponentEndpoint :exec
 INSERT INTO service_component_endpoint (
-  service_component_id, name, mode, bind_address, listen_port, entrypoint, path_prefix, state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+  id, service_component_id, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: CountServicesByProject :one
 SELECT COUNT(*)

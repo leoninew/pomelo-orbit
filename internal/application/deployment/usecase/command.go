@@ -58,6 +58,7 @@ func NewExecutionService(
 	runner deploymentport.CommandRunner,
 	logStore deploymentport.ExecutionLogStore,
 	pollInterval time.Duration,
+	gatewayRoutePublisher deploymentport.GatewayRoutePublisher,
 ) Service {
 	store := &stores{
 		project: project, application: application,
@@ -68,7 +69,8 @@ func NewExecutionService(
 		service: service, deployment: deployment, store: store, executionStore: store,
 		logger: logger, workspace: workspace, runner: runner, pollInterval: pollInterval,
 		logStore: logStore, executionLogStore: logStore,
-		gatewayCoordinator: gatewayCoordinator,
+		gatewayCoordinator:    gatewayCoordinator,
+		gatewayRoutePublisher: gatewayRoutePublisher,
 	}
 }
 

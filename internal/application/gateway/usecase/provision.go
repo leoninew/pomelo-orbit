@@ -12,11 +12,6 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-const (
-	managedGatewayCode = "traefik"
-	managedNetworkName = "traefik"
-)
-
 // ProvisionGateway owns the high-level managed Gateway workflow. The MCP
 // adapter calls this one use case rather than sequencing lower-level tools.
 func (s Service) ProvisionGateway(ctx context.Context, userId string, input gatewaydto.ProvisionGatewayInput) (gatewaydto.ProvisionGatewayResult, error) {
@@ -29,6 +24,8 @@ func (s Service) ProvisionGateway(ctx context.Context, userId string, input gate
 		return gatewaydto.ProvisionGatewayResult{}, apperror.New(apperror.KindValidation, "project_id and instance_key are required")
 	}
 
+	defaults := s.CreateDefaults()
+
 	gateways, err := s.ListGateways(ctx, userId, projectId, 1, 10000, "")
 	if err != nil {
 		return gatewaydto.ProvisionGatewayResult{}, err
@@ -40,7 +37,7 @@ func (s Service) ProvisionGateway(ctx context.Context, userId string, input gate
 		}
 	}
 	if len(matches) > 1 {
-		return gatewaydto.ProvisionGatewayResult{}, apperror.New(apperror.KindValidation, "multiple traefik Gateways exist in the Project")
+		return gatewaydto.ProvisionGatewayResult{}, apperror.New(apperror.KindValidation, "multiple managed Gateways exist in the Project")
 	}
 
 	result := gatewaydto.ProvisionGatewayResult{}
@@ -48,8 +45,20 @@ func (s Service) ProvisionGateway(ctx context.Context, userId string, input gate
 		result.Gateway = matches[0]
 		result.Steps = append(result.Steps, "Reused Gateway Application")
 	} else {
-		image := "traefik:3.6"
-		gateway, err := s.CreateGateway(ctx, userId, gatewaydto.GatewayCreateInput{ProjectId: projectId, Code: managedGatewayCode, Name: "Traefik", RestApiUrl: "http://localhost:8080", BaseDomain: "lvh.me", InitialComponentImage: &image, InitialComponentPullPolicy: "missing"})
+		image := defaults.InitialComponentImage
+		entrypoint := defaults.DefaultEntrypoint
+		tlsMode := defaults.TLSMode
+		gateway, err := s.CreateGateway(ctx, userId, gatewaydto.GatewayCreateInput{
+			ProjectId:                  projectId,
+			Code:                       managedGatewayCode,
+			Name:                       managedGatewayName,
+			RestApiUrl:                 defaults.RestApiUrl,
+			BaseDomain:                 defaults.BaseDomain,
+			InitialComponentImage:      &image,
+			InitialComponentPullPolicy: managedGatewayImagePullPolicy,
+			DefaultEntrypoint:          &entrypoint,
+			TLSMode:                    &tlsMode,
+		})
 		if err != nil {
 			return gatewaydto.ProvisionGatewayResult{}, err
 		}
@@ -123,25 +132,25 @@ func (s Service) ProvisionGateway(ctx context.Context, userId string, input gate
 	}
 	result.Deployment, result.TimedOut = waited.Deployment, waited.TimedOut
 	if waited.TimedOut || waited.Deployment.Status != status.WorkStatusRanToCompletion {
-		result.Network = gatewaydto.GatewayNetwork{Name: managedNetworkName, Ready: false, Status: "not_checked"}
+		result.Network = gatewaydto.GatewayNetwork{Name: managedGatewayNetworkName, Ready: false, Status: "not_checked"}
 		result.Steps = append(result.Steps, "Gateway Deployment did not reach a successful terminal state")
 		return result, nil
 	}
 	result.Steps = append(result.Steps, "Gateway Deployment reached a successful terminal state")
 
-	network, err := s.deployer.ExternalNetworkInspect(ctx, managedNetworkName)
+	network, err := s.deployer.ExternalNetworkInspect(ctx, managedGatewayNetworkName)
 	if err != nil {
-		result.Network = gatewaydto.GatewayNetwork{Name: managedNetworkName, Ready: false, Status: "unavailable"}
-		result.Steps = append(result.Steps, "External traefik network is unavailable")
+		result.Network = gatewaydto.GatewayNetwork{Name: managedGatewayNetworkName, Ready: false, Status: "unavailable"}
+		result.Steps = append(result.Steps, "External gateway network is unavailable")
 		return result, nil
 	}
 	result.Network = gatewaydto.GatewayNetwork{Name: network.Name, Driver: network.Driver, Ready: network.Driver == "bridge"}
 	if result.Network.Ready {
 		result.Network.Status = "ready"
-		result.Steps = append(result.Steps, "Confirmed external traefik bridge network")
+		result.Steps = append(result.Steps, "Confirmed external gateway bridge network")
 	} else {
 		result.Network.Status = "unsupported_driver"
-		result.Steps = append(result.Steps, "External traefik network is not a bridge network")
+		result.Steps = append(result.Steps, "External gateway network is not a bridge network")
 	}
 	result.Ready = result.Network.Ready
 	return result, nil

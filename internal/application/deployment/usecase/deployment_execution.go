@@ -104,6 +104,11 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
+	if err := s.publishGatewayRoutes(ctx, app); err != nil {
+		_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusFaulted)
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
 	return s.completeDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
 
@@ -180,7 +185,25 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
+	if err := s.publishGatewayRoutes(ctx, app); err != nil {
+		_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusFaulted)
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
 	return s.completeDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
+}
+
+func (s Service) publishGatewayRoutes(ctx context.Context, app model.Application) error {
+	if app.Kind != status.ApplicationKindGateway {
+		return nil
+	}
+	if s.gatewayRoutePublisher == nil {
+		return fmt.Errorf("gateway route publisher is not configured")
+	}
+	if err := s.gatewayRoutePublisher.PublishSnapshot(ctx); err != nil {
+		return fmt.Errorf("publish gateway route snapshot: %w", err)
+	}
+	return nil
 }
 
 func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId string, deploymentId string, removeVolumes bool) error {

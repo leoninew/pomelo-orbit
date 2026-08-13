@@ -274,7 +274,7 @@
         "retries": 120
       },
       "endpoints": [
-        {"name": "http", "protocol": "http", "container_port": 80, "mode": "gateway_http", "entrypoint": "web"}
+        {"name": "http", "protocol": "http", "container_port": 80, "mode": "gateway", "entrypoint": "web"}
       ],
       "restart": "unless-stopped"
     }

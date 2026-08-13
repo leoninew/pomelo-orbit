@@ -295,19 +295,25 @@ type RolePermission struct {
 }
 
 type Route struct {
-	ID           string         `db:"id"`
-	Name         string         `db:"name"`
-	Domain       string         `db:"domain"`
-	PathPrefix   string         `db:"path_prefix"`
-	TargetUrl    string         `db:"target_url"`
-	Enabled      int64          `db:"enabled"`
-	HttpsEnabled int64          `db:"https_enabled"`
-	CertPem      sql.NullString `db:"cert_pem"`
-	CertKey      sql.NullString `db:"cert_key"`
-	CertType     string         `db:"cert_type"`
-	CreatedAt    time.Time      `db:"created_at"`
-	UpdatedAt    time.Time      `db:"updated_at"`
-	ProjectID    sql.NullString `db:"project_id"`
+	ID                    string         `db:"id"`
+	Name                  string         `db:"name"`
+	Protocol              string         `db:"protocol"`
+	Domain                string         `db:"domain"`
+	PathPrefix            string         `db:"path_prefix"`
+	TargetUrl             string         `db:"target_url"`
+	ListenPort            sql.NullInt64  `db:"listen_port"`
+	ServiceID             sql.NullString `db:"service_id"`
+	ComponentName         sql.NullString `db:"component_name"`
+	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
+	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
+	Enabled               int64          `db:"enabled"`
+	HttpsEnabled          int64          `db:"https_enabled"`
+	CertPem               sql.NullString `db:"cert_pem"`
+	CertKey               sql.NullString `db:"cert_key"`
+	CertType              string         `db:"cert_type"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
+	ProjectID             sql.NullString `db:"project_id"`
 }
 
 type Service struct {
@@ -336,8 +342,10 @@ type ServiceComponent struct {
 }
 
 type ServiceComponentEndpoint struct {
+	ID                 string         `db:"id"`
 	ServiceComponentID string         `db:"service_component_id"`
-	Name               string         `db:"name"`
+	Protocol           string         `db:"protocol"`
+	ContainerPort      int64          `db:"container_port"`
 	Mode               sql.NullString `db:"mode"`
 	BindAddress        sql.NullString `db:"bind_address"`
 	ListenPort         sql.NullInt64  `db:"listen_port"`
@@ -444,7 +452,6 @@ type VersionComponentDevice struct {
 
 type VersionComponentEndpoint struct {
 	ComponentID   string         `db:"component_id"`
-	Name          string         `db:"name"`
 	Protocol      string         `db:"protocol"`
 	ContainerPort int64          `db:"container_port"`
 	Mode          string         `db:"mode"`

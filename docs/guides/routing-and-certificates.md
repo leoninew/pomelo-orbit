@@ -1,241 +1,87 @@
-# Pomelo Orbit 路由和证书原理
-最后修改时间: 2026-08-08 13:29:04
+# Pomelo Orbit 路由和证书
+最后修改时间: 2026-08-13 19:10:01
 
 Doc role: living guide  
-领域总览见 [CD 模型](../product/cd-model.md)。与代码冲突时以代码为准。
+领域边界见 [CD 模型](../product/cd-model.md)，运行链路见 [CD 运行时](../architecture/cd-runtime.md)。与代码冲突时以代码为准。
 
-## 概述
+## 路由模型
 
-Pomelo Orbit 使用 Traefik 作为反向代理网关，实现动态路由和 HTTPS 证书管理。
+Pomelo Orbit 使用受管 Gateway 的 Traefik `providers.rest` 管理平台 Route。每次同步均对 REST provider 发出完整快照，快照同时包含顶层 `http` 与 `tcp` namespace，因此禁用、删除 Route 或 Gateway 重建后不会遗留旧动态配置。
 
-- **平台路由**（CD Route 表）：经 Traefik **`providers.rest`** 全量 PUT，控制面 URL 来自 **Gateway config `rest_api_url`**。
-- **应用暴露**（Version Expose）：部署时写入 Docker labels；每个 `gateway_http` endpoint 的 Host 为 `{component_name}.{service_code}.{gateway.base_domain}`，其中 Service code 在创建窗预填并提交后不可修改。
-- **证书文件**：平台写入证书目录供 TLS 路由引用（见下文）。
-- **接入配置 SoT**：`gateway_config`（非全局 `traefik.api_url` / `domain_suffix` 产品路径）。
+| 类型 | 地址 | Target | Traefik 动态规则 |
+|------|------|--------|------------------|
+| HTTP Route | `https?://domain/path_prefix` | 默认同项目 Service Component 的 HTTP Endpoint；高级模式可填 HTTP(S) URL | `Host(...)`，可附加 `PathPrefix(...)` |
+| TCP Route | `domain:listen_port` | 同项目 Service Component 的 TCP Endpoint | `HostSNI(*)`，固定 `tcp<listen_port>` entrypoint |
 
-## 路由系统架构
+普通 TCP 不携带 HTTP Host。TCP Route 的 `domain` 只用于 DNS 和客户端连接地址，而不是同端口分流条件。因此一个启用 TCP Route 独占一个 `listen_port`；不支持 TLS/SNI 共享端口、任意地址 target 或 UDP。
 
-```
-用户配置平台路由（Web UI）
-  ↓
-保存到数据库（route 表）
-  ↓
-ResolveActiveGatewayConfig → rest_api_url
-  ↓
-PUT {rest_api_url}/api/providers/rest  （全量快照）
-  ↓
-路由生效
-```
+## HTTP Route
 
-## 路由配置
-
-### 基本配置
-
-在 Web UI 中配置路由：
+HTTP Route 保持现有域名、路径与证书能力。创建或编辑时默认选择同项目 Service、Component 和已声明 HTTP Endpoint；平台在发布完整 REST 快照时解析目标 Service 当前有效 Endpoint 为 `http://<container-alias>:<container-port>`。只有主动开启“高级：自定义下游地址”时，才填写任意 HTTP(S) URL；受管 Endpoint 与自定义 URL 互斥。
 
 ```json
 {
+  "protocol": "http",
   "name": "my-app",
   "domain": "app.example.com",
   "path_prefix": "/",
-  "target_url": "http://host.docker.internal:8081",
+  "service_id": "01...",
+  "component_name": "api",
+  "endpoint_protocol": "http",
+  "endpoint_container_port": 8080,
   "enabled": true
 }
 ```
 
-### 配置说明
+启用 HTTPS 后，Route 使用 `websecure` entrypoint；否则使用 `web`。手工证书与 mkcert 的 PEM 数据储存在 Route 中，文件以 `{route-name}.pem` 和 `{route-name}-key.pem` 写入 Gateway 证书目录。Let's Encrypt 路由在 REST 快照中使用 `tls.certResolver=letsencrypt`。
 
-| 字段 | 说明 | 示例 |
-|------|------|------|
-| name | 路由名称（同时作为配置文件名和证书文件名前缀） | my-app |
-| domain | 域名 | app.example.com |
-| path_prefix | 路径前缀 | / 或 /api |
-| target_url | 目标 URL | http://host.docker.internal:8081 |
-| enabled | 是否启用 | true/false |
+## TCP Route
 
-## Traefik 配置格式
+先在目标 Component 声明 `internal` TCP Endpoint。它不直接发布宿主机端口或生成 Docker/Traefik label，可由 TCP Route 引用。
 
-平台路由不再写 `dynamic/*.yml` 文件。`RouteManager` 组装与 providers.rest 契约一致的 JSON 全量配置后 PUT 到 Gateway 的管理面。网关静态配置（entryPoints / providers.rest / docker）由 **Gateway 保存时 compile** 写入 Version 挂载 `traefik.yml`（content_mode=sync）。
-
-以下为概念形态（历史 file provider 文档示例；实现已 rest 化）：
-
-### HTTP 路由（概念）
-
-```yaml
-http:
-  routers:
-    my-app-route:
-      rule: "Host(`app.example.com`)"
-      service: my-app-service
-      entryPoints:
-        - web
-  services:
-    my-app-service:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:8081"
+```json
+{
+  "protocol": "tcp",
+  "name": "redis-public",
+  "domain": "redis.example.com",
+  "listen_port": 16379,
+  "service_id": "<service-id>",
+  "component_name": "redis",
+  "endpoint_protocol": "tcp",
+  "endpoint_container_port": 6379,
+  "enabled": true
+}
 ```
 
-### HTTPS 路由（手动证书 / mkcert）
+平台校验 target Service 与 Route 属于同一 Project，Component 和 Endpoint 存在且为 TCP `internal` Endpoint。`listen_port` 必须在 `1..65535`，不得使用 Gateway 的 `80`、`443`、`8080`，不得被另一启用 TCP Route、`local` Endpoint 或 `host` Endpoint 占用。
 
-```yaml
-http:
-  routers:
-    my-app-route:
-      rule: "Host(`app.example.com`)"
-      service: my-app-service
-      entryPoints:
-        - websecure
-      tls: {}
-  services:
-    my-app-service:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:8081"
-tls:
-  certificates:
-    - certFile: /etc/traefik/certs/my-app.pem
-      keyFile: /etc/traefik/certs/my-app-key.pem
-```
+保存、更新、启停、删除或手工同步 Route 时，平台从全部启用 TCP Route 计算 Gateway 端口集合，编译 `tcp<listen_port>` 静态 entrypoint 与 `0.0.0.0:<listen_port>:<listen_port>` Compose 映射。该静态变更要在随后部署 Gateway 后才对外生效。Gateway deploy/restart 在 `compose up` 成功后，会先轮询 `rest_api_url`（Traefik API，默认本机 8080）直到控制面就绪，再全量发布动态 Route REST 快照；不再在部署后 compile Gateway Version。容器起来但 API 尚未监听时不会立刻 PUT。发布失败会使 Gateway Service 和 Deployment 进入 `faulted`。
 
-### HTTPS 路由（Let's Encrypt）
+## Endpoint Mode
 
-```yaml
-http:
-  routers:
-    my-app-route:
-      rule: "Host(`app.example.com`)"
-      service: my-app-service
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-  services:
-    my-app-service:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:8081"
-```
+Endpoint mode 仅有：`internal`、`local`、`host`、`gateway`。
 
-## 证书管理
+- `gateway` 只能用于 HTTP Endpoint，生成组件派生 Host：`{component_name}.{service_code}.{gateway.base_domain}`。
+- TCP Route 仅引用 TCP `internal` Endpoint。
+- `local` 与 `host` 是直接的宿主机端口映射，不能与 TCP Route 监听端口重叠。
 
-### 证书存储
+在部署包含此枚举的新二进制前，先执行同版本交付的离线转换脚本：
 
-证书内容存储在数据库的 `route` 表中：
+- SQLite: `sql/migration/offline/000033_endpoint_mode_rename.sqlite.sql`
+- MySQL: `sql/migration/offline/000033_endpoint_mode_rename.mysql.sql`
 
-- `cert_pem` - 证书内容（PEM 格式）
-- `cert_key` - 证书私钥（PEM 格式）
-- `cert_type` - 证书类型：`manual` | `letsencrypt` | `mkcert`
+它将 `gateway_http` 转换为 `gateway`，并将 `gateway_tcp` 与旧的 `tcp` mode 转换为 `internal`。脚本不由应用启动或业务 usecase 调用；请在执行前备份数据库。
 
-### 证书文件命名
+Endpoint 不保存名称，身份为同一 Component 内的 `(protocol, container_port)`，界面派生显示 `http<container_port>` 或 `tcp<container_port>`。升级到 `000034_endpoint_identity` 前，先执行对应的 `sql/migration/offline/000034_endpoint_identity.{sqlite,mysql}.sql`：该脚本清空旧 Service Endpoint overlay 与受管 Route，随后再执行结构迁移；不在运行时转换旧数据。
 
-按路由名称命名（非域名）：
+## 排查
 
-```
-路由名: my-app
-证书文件: my-app.pem
-私钥文件: my-app-key.pem
-```
+1. 确认 Route 已启用，并在 Route 页面执行同步。
+2. 对 TCP Route，确认 Gateway 最新未发布 Version 已包含 `tcp<listen_port>`，然后部署或重启 Gateway。
+3. 确认 DNS 将 Route 域名解析到 Gateway 主机，且操作系统/防火墙允许对应 TCP 端口。
+4. 通过 Gateway 的 Traefik Dashboard 或 `GET /api/http/routers`、`GET /api/tcp/routers` 检查动态 Route 是否已出现。
+5. 若 Gateway Deployment faulted，查看该 Deployment 日志中的 Route snapshot 发布错误；Gateway 容器可能已启动，但动态 Route 未被确认发布。
 
-### 证书同步流程（手动 / mkcert）
+## 证书边界
 
-```
-1. 用户上传证书或生成 mkcert 证书
-   ↓
-2. 保存到数据库（route.cert_pem / route.cert_key）
-   ↓
-3. 写入文件系统
-   data/traefik/data/certs/
-   ├── {route-name}.pem
-   └── {route-name}-key.pem
-   ↓
-4. 挂载到 Traefik 容器
-   /etc/traefik/certs/{route-name}.pem
-   /etc/traefik/certs/{route-name}-key.pem
-   ↓
-5. 路由 yml 中直接引用证书路径
-   tls:
-     certificates:
-       - certFile: /etc/traefik/certs/{route-name}.pem
-         keyFile: /etc/traefik/certs/{route-name}-key.pem
-```
-
-### Let's Encrypt 流程
-
-```
-1. 用户启用 Let's Encrypt
-   ↓
-2. 路由 yml 写入 tls.certResolver: letsencrypt
-   ↓
-3. Traefik 自动向 Let's Encrypt 申请证书
-   ↓
-4. 证书存储在 acme.json（由 Traefik 管理）
-```
-
-### 组件级域名的证书覆盖
-
-`{component_name}.{service_code}.{base_domain}` 含有两级子域名。因此 `*.{base_domain}` 不能匹配该地址。使用 TLS 时，部署者需要让 ACME 按实际 Host 申请证书，或提供覆盖精确 SAN / `*.{service_code}.{base_domain}` 的证书；同时 DNS 必须解析这些 Host。
-
-## 动态配置更新
-
-Traefik 配置了文件监听，自动加载配置变化：
-
-```yaml
-providers:
-  file:
-    directory: /etc/traefik/dynamic
-    watch: true
-```
-
-在 Linux/macOS 上 Traefik 通过 inotify 自动检测文件变化；Windows 上需要发送 SIGHUP 信号触发重载（由 `TraefikManager._reload_traefik` 处理）。
-
-## 路由规则
-
-### Host 规则
-
-```yaml
-rule: "Host(`app.example.com`)"
-```
-
-### Host + PathPrefix 规则（path_prefix 不为 `/` 时）
-
-```yaml
-rule: "Host(`app.example.com`) && PathPrefix(`/api`)"
-```
-
-## 入口点配置
-
-```yaml
-entryPoints:
-  web:
-    address: ":80"      # HTTP
-  websecure:
-    address: ":443"     # HTTPS
-```
-
-## 证书类型对比
-
-| 类型 | 适用场景 | 证书来源 | 文件管理 |
-|------|----------|----------|----------|
-| manual | 内网域名、自签名 | 用户上传 PEM | Pomelo Orbit 管理 |
-| mkcert | 本地开发 | mkcert 生成 | Pomelo Orbit 管理 |
-| letsencrypt | 公网域名 | Traefik 自动申请 | Traefik 管理（acme.json） |
-
-## 故障排查
-
-### 路由不生效
-
-1. 检查 Traefik 是否运行：`docker ps | grep traefik`
-2. 检查路由配置文件：`ls data/traefik/data/dynamic/`
-3. 检查 Traefik 日志：`docker logs traefik`
-4. 检查域名解析：`nslookup app.example.com`
-
-### 证书错误
-
-1. 检查证书文件是否存在：`ls data/traefik/data/certs/`
-2. 检查证书有效期：`openssl x509 -in my-app.pem -noout -dates`
-3. 检查证书和私钥匹配：
-   ```bash
-   openssl x509 -noout -modulus -in my-app.pem | openssl md5
-   openssl rsa -noout -modulus -in my-app-key.pem | openssl md5
-   ```
+HTTP Route 可使用 `manual`、`mkcert` 或 `letsencrypt`。TCP Route 本需求不进行 TLS 终止、passthrough 或证书管理；公开 Redis、MySQL 等 TCP 服务仍需要由服务本身提供认证、TLS/ACL 和网络防火墙控制。

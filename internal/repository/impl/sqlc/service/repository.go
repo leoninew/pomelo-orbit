@@ -332,7 +332,7 @@ func (r Repository) serviceComponentFromRow(ctx context.Context, q *servicesqlc.
 		return model.ServiceComponent{}, fmt.Errorf("load service component endpoints %s: %w", component.Id, err)
 	}
 	for _, item := range endpoints {
-		component.Endpoints = append(component.Endpoints, model.ServiceComponentEndpoint{Name: item.Name, Mode: dbmodel.StringPtr(item.Mode), BindAddress: dbmodel.StringPtr(item.BindAddress), ListenPort: dbmodel.IntPtrFromNullInt64(item.ListenPort), Entrypoint: dbmodel.StringPtr(item.Entrypoint), PathPrefix: dbmodel.StringPtr(item.PathPrefix), State: model.ServiceComponentOverlayState(item.State)})
+		component.Endpoints = append(component.Endpoints, model.ServiceComponentEndpoint{Id: item.ID, Protocol: item.Protocol, ContainerPort: int(item.ContainerPort), Mode: dbmodel.StringPtr(item.Mode), BindAddress: dbmodel.StringPtr(item.BindAddress), ListenPort: dbmodel.IntPtrFromNullInt64(item.ListenPort), Entrypoint: dbmodel.StringPtr(item.Entrypoint), PathPrefix: dbmodel.StringPtr(item.PathPrefix), State: model.ServiceComponentOverlayState(item.State)})
 	}
 	return component, nil
 }
@@ -406,7 +406,7 @@ func insertServiceComponentOverlay(ctx context.Context, q *servicesqlc.Queries, 
 		}
 	}
 	for _, item := range component.Endpoints {
-		if err := q.InsertServiceComponentEndpoint(ctx, servicesqlc.InsertServiceComponentEndpointParams{ServiceComponentID: component.Id, Name: item.Name, Mode: dbmodel.NullString(item.Mode), BindAddress: dbmodel.NullString(item.BindAddress), ListenPort: dbmodel.NullInt64FromIntPtr(item.ListenPort), Entrypoint: dbmodel.NullString(item.Entrypoint), PathPrefix: dbmodel.NullString(item.PathPrefix), State: string(item.State)}); err != nil {
+		if err := q.InsertServiceComponentEndpoint(ctx, servicesqlc.InsertServiceComponentEndpointParams{ID: idutil.NewId(), ServiceComponentID: component.Id, Protocol: item.Protocol, ContainerPort: int64(item.ContainerPort), Mode: dbmodel.NullString(item.Mode), BindAddress: dbmodel.NullString(item.BindAddress), ListenPort: dbmodel.NullInt64FromIntPtr(item.ListenPort), Entrypoint: dbmodel.NullString(item.Entrypoint), PathPrefix: dbmodel.NullString(item.PathPrefix), State: string(item.State)}); err != nil {
 			return fmt.Errorf("insert service component endpoint: %w", err)
 		}
 	}

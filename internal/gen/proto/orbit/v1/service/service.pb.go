@@ -1099,14 +1099,13 @@ func (x *ServiceComponentDeclaredResources) GetReservationMemory() string {
 
 type ServiceComponentDeclaredEndpoint struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Protocol      string                 `protobuf:"bytes,2,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	ContainerPort int32                  `protobuf:"varint,3,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
-	Mode          string                 `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
-	BindAddress   *string                `protobuf:"bytes,5,opt,name=bind_address,json=bindAddress,proto3,oneof" json:"bind_address,omitempty"`
-	ListenPort    *int32                 `protobuf:"varint,6,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
-	Entrypoint    *string                `protobuf:"bytes,7,opt,name=entrypoint,proto3,oneof" json:"entrypoint,omitempty"`
-	PathPrefix    *string                `protobuf:"bytes,8,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
+	Protocol      string                 `protobuf:"bytes,1,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	ContainerPort int32                  `protobuf:"varint,2,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
+	Mode          string                 `protobuf:"bytes,3,opt,name=mode,proto3" json:"mode,omitempty"`
+	BindAddress   *string                `protobuf:"bytes,4,opt,name=bind_address,json=bindAddress,proto3,oneof" json:"bind_address,omitempty"`
+	ListenPort    *int32                 `protobuf:"varint,5,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
+	Entrypoint    *string                `protobuf:"bytes,6,opt,name=entrypoint,proto3,oneof" json:"entrypoint,omitempty"`
+	PathPrefix    *string                `protobuf:"bytes,7,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1139,13 +1138,6 @@ func (x *ServiceComponentDeclaredEndpoint) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ServiceComponentDeclaredEndpoint.ProtoReflect.Descriptor instead.
 func (*ServiceComponentDeclaredEndpoint) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *ServiceComponentDeclaredEndpoint) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
 }
 
 func (x *ServiceComponentDeclaredEndpoint) GetProtocol() string {
@@ -1503,13 +1495,14 @@ func (x *ServiceComponentResourceOverlay) GetState() string {
 
 type ServiceComponentEndpointOverlay struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Mode          *string                `protobuf:"bytes,2,opt,name=mode,proto3,oneof" json:"mode,omitempty"`
-	BindAddress   *string                `protobuf:"bytes,3,opt,name=bind_address,json=bindAddress,proto3,oneof" json:"bind_address,omitempty"`
-	ListenPort    *int32                 `protobuf:"varint,4,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
-	Entrypoint    *string                `protobuf:"bytes,5,opt,name=entrypoint,proto3,oneof" json:"entrypoint,omitempty"`
-	PathPrefix    *string                `protobuf:"bytes,6,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
-	State         string                 `protobuf:"bytes,7,opt,name=state,proto3" json:"state,omitempty"`
+	Protocol      string                 `protobuf:"bytes,1,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	ContainerPort int32                  `protobuf:"varint,2,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
+	Mode          *string                `protobuf:"bytes,3,opt,name=mode,proto3,oneof" json:"mode,omitempty"`
+	BindAddress   *string                `protobuf:"bytes,4,opt,name=bind_address,json=bindAddress,proto3,oneof" json:"bind_address,omitempty"`
+	ListenPort    *int32                 `protobuf:"varint,5,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
+	Entrypoint    *string                `protobuf:"bytes,6,opt,name=entrypoint,proto3,oneof" json:"entrypoint,omitempty"`
+	PathPrefix    *string                `protobuf:"bytes,7,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
+	State         string                 `protobuf:"bytes,8,opt,name=state,proto3" json:"state,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1544,11 +1537,18 @@ func (*ServiceComponentEndpointOverlay) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{18}
 }
 
-func (x *ServiceComponentEndpointOverlay) GetName() string {
+func (x *ServiceComponentEndpointOverlay) GetProtocol() string {
 	if x != nil {
-		return x.Name
+		return x.Protocol
 	}
 	return ""
+}
+
+func (x *ServiceComponentEndpointOverlay) GetContainerPort() int32 {
+	if x != nil {
+		return x.ContainerPort
+	}
+	return 0
 }
 
 func (x *ServiceComponentEndpointOverlay) GetMode() string {
@@ -1973,19 +1973,18 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\v_limit_cpusB\x0f\n" +
 	"\r_limit_memoryB\x13\n" +
 	"\x11_reservation_cpusB\x15\n" +
-	"\x13_reservation_memory\"\xe6\x02\n" +
-	" ServiceComponentDeclaredEndpoint\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
-	"\bprotocol\x18\x02 \x01(\tR\bprotocol\x12%\n" +
-	"\x0econtainer_port\x18\x03 \x01(\x05R\rcontainerPort\x12\x12\n" +
-	"\x04mode\x18\x04 \x01(\tR\x04mode\x12&\n" +
-	"\fbind_address\x18\x05 \x01(\tH\x00R\vbindAddress\x88\x01\x01\x12$\n" +
-	"\vlisten_port\x18\x06 \x01(\x05H\x01R\n" +
+	"\x13_reservation_memory\"\xd2\x02\n" +
+	" ServiceComponentDeclaredEndpoint\x12\x1a\n" +
+	"\bprotocol\x18\x01 \x01(\tR\bprotocol\x12%\n" +
+	"\x0econtainer_port\x18\x02 \x01(\x05R\rcontainerPort\x12\x12\n" +
+	"\x04mode\x18\x03 \x01(\tR\x04mode\x12&\n" +
+	"\fbind_address\x18\x04 \x01(\tH\x00R\vbindAddress\x88\x01\x01\x12$\n" +
+	"\vlisten_port\x18\x05 \x01(\x05H\x01R\n" +
 	"listenPort\x88\x01\x01\x12#\n" +
 	"\n" +
-	"entrypoint\x18\a \x01(\tH\x02R\n" +
+	"entrypoint\x18\x06 \x01(\tH\x02R\n" +
 	"entrypoint\x88\x01\x01\x12$\n" +
-	"\vpath_prefix\x18\b \x01(\tH\x03R\n" +
+	"\vpath_prefix\x18\a \x01(\tH\x03R\n" +
 	"pathPrefix\x88\x01\x01B\x0f\n" +
 	"\r_bind_addressB\x0e\n" +
 	"\f_listen_portB\r\n" +
@@ -2030,19 +2029,20 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\v_limit_cpusB\x0f\n" +
 	"\r_limit_memoryB\x13\n" +
 	"\x11_reservation_cpusB\x15\n" +
-	"\x13_reservation_memory\"\xc6\x02\n" +
-	"\x1fServiceComponentEndpointOverlay\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x17\n" +
-	"\x04mode\x18\x02 \x01(\tH\x00R\x04mode\x88\x01\x01\x12&\n" +
-	"\fbind_address\x18\x03 \x01(\tH\x01R\vbindAddress\x88\x01\x01\x12$\n" +
-	"\vlisten_port\x18\x04 \x01(\x05H\x02R\n" +
+	"\x13_reservation_memory\"\xf5\x02\n" +
+	"\x1fServiceComponentEndpointOverlay\x12\x1a\n" +
+	"\bprotocol\x18\x01 \x01(\tR\bprotocol\x12%\n" +
+	"\x0econtainer_port\x18\x02 \x01(\x05R\rcontainerPort\x12\x17\n" +
+	"\x04mode\x18\x03 \x01(\tH\x00R\x04mode\x88\x01\x01\x12&\n" +
+	"\fbind_address\x18\x04 \x01(\tH\x01R\vbindAddress\x88\x01\x01\x12$\n" +
+	"\vlisten_port\x18\x05 \x01(\x05H\x02R\n" +
 	"listenPort\x88\x01\x01\x12#\n" +
 	"\n" +
-	"entrypoint\x18\x05 \x01(\tH\x03R\n" +
+	"entrypoint\x18\x06 \x01(\tH\x03R\n" +
 	"entrypoint\x88\x01\x01\x12$\n" +
-	"\vpath_prefix\x18\x06 \x01(\tH\x04R\n" +
+	"\vpath_prefix\x18\a \x01(\tH\x04R\n" +
 	"pathPrefix\x88\x01\x01\x12\x14\n" +
-	"\x05state\x18\a \x01(\tR\x05stateB\a\n" +
+	"\x05state\x18\b \x01(\tR\x05stateB\a\n" +
 	"\x05_modeB\x0f\n" +
 	"\r_bind_addressB\x0e\n" +
 	"\f_listen_portB\r\n" +

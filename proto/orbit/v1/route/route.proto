@@ -14,6 +14,12 @@ message RouteResp {
   string cert_type = 8;
   string created_at = 9;
   string updated_at = 10;
+  string protocol = 11;
+  optional int32 listen_port = 12;
+  optional string service_id = 13;
+  optional string component_name = 14;
+  optional string endpoint_protocol = 15;
+  optional int32 endpoint_container_port = 16;
 }
 
 message RouteCreateReq {
@@ -22,6 +28,12 @@ message RouteCreateReq {
   string path_prefix = 3;
   string target_url = 4;
   bool enabled = 5;
+  string protocol = 6;
+  optional int32 listen_port = 7;
+  optional string service_id = 8;
+  optional string component_name = 9;
+  optional string endpoint_protocol = 10;
+  optional int32 endpoint_container_port = 11;
 }
 
 message RouteUpdateReq {
@@ -30,6 +42,12 @@ message RouteUpdateReq {
   optional string path_prefix = 3;
   optional string target_url = 4;
   optional bool enabled = 5;
+  optional string protocol = 6;
+  optional int32 listen_port = 7;
+  optional string service_id = 8;
+  optional string component_name = 9;
+  optional string endpoint_protocol = 10;
+  optional int32 endpoint_container_port = 11;
 }
 
 message RouteEnableReq {}

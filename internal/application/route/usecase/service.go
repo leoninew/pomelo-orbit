@@ -18,8 +18,11 @@ import (
 
 type Service struct {
 	project              repository.ProjectReader
+	application          repository.ApplicationStore
+	service              repository.ServiceStore
 	route                repository.RouteStore
 	gateway              repository.GatewayStore
+	gatewayCompiler      routeport.GatewayCompiler
 	cfg                  config.Config
 	routePublisher       routeport.RouteConfigPublisher
 	certificateGenerator routeport.RouteCertificateGenerator
@@ -28,15 +31,18 @@ type Service struct {
 
 func New(
 	project repository.ProjectReader,
+	application repository.ApplicationStore,
+	service repository.ServiceStore,
 	route repository.RouteStore,
 	gateway repository.GatewayStore,
+	gatewayCompiler routeport.GatewayCompiler,
 	cfg config.Config,
 	routePublisher routeport.RouteConfigPublisher,
 	certificateGenerator routeport.RouteCertificateGenerator,
 	traefikRouterClient routeport.TraefikRouterClient,
 ) Service {
 	return Service{
-		project: project, route: route, gateway: gateway, cfg: cfg,
+		project: project, application: application, service: service, route: route, gateway: gateway, gatewayCompiler: gatewayCompiler, cfg: cfg,
 		routePublisher: routePublisher, certificateGenerator: certificateGenerator,
 		traefikRouterClient: traefikRouterClient,
 	}
@@ -104,11 +110,12 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Route{}, err
 	}
-	name, domain, pathPrefix, targetUrl, enabled, err := normalizeRouteInput(input.Name, input.Domain, input.PathPrefix, input.TargetUrl, input.Enabled)
+	route, err := s.routeFromCreateInput(ctx, projectId, input)
 	if err != nil {
 		return model.Route{}, err
 	}
-	route := model.Route{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Domain: domain, PathPrefix: pathPrefix, TargetUrl: targetUrl, Enabled: enabled, HTTPSEnabled: false, CertType: certTypeManual}
+	route.Id = idutil.NewId()
+	route.ProjectId = &projectId
 	if err := s.route.CreateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to create route", err)
 	}
@@ -137,6 +144,15 @@ func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string,
 	if input.Name != nil {
 		route.Name = strings.TrimSpace(*input.Name)
 	}
+	if input.Protocol != nil {
+		route.Protocol = strings.TrimSpace(*input.Protocol)
+		if route.Protocol == routeProtocolHTTP {
+			route.ListenPort, route.ServiceId, route.ComponentName, route.EndpointProtocol, route.EndpointContainerPort = nil, nil, nil, nil, nil
+		} else if route.Protocol == routeProtocolTCP {
+			route.PathPrefix, route.TargetUrl = "", ""
+			route.HTTPSEnabled, route.CertPEM, route.CertKey, route.CertType = false, nil, nil, certTypeManual
+		}
+	}
 	if input.Domain != nil {
 		route.Domain = strings.TrimSpace(*input.Domain)
 	}
@@ -149,8 +165,29 @@ func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string,
 	if input.Enabled != nil {
 		route.Enabled = *input.Enabled
 	}
-	if !validRouteFields(route.Name, route.Domain, route.PathPrefix, route.TargetUrl) {
-		return model.Route{}, apperror.New(apperror.KindValidation, "Invalid route fields")
+	if input.ListenPort != nil {
+		route.ListenPort = input.ListenPort
+	}
+	if input.ServiceId != nil {
+		route.ServiceId = optionalString(*input.ServiceId)
+	}
+	if input.ComponentName != nil {
+		route.ComponentName = optionalString(*input.ComponentName)
+	}
+	if input.EndpointProtocol != nil {
+		route.EndpointProtocol = optionalString(*input.EndpointProtocol)
+		if route.EndpointProtocol == nil {
+			route.EndpointContainerPort = nil
+		}
+	}
+	if input.EndpointContainerPort != nil {
+		route.EndpointContainerPort = input.EndpointContainerPort
+	}
+	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
+		route.PathPrefix = "/"
+	}
+	if err := s.validateRoute(ctx, route, route.Id); err != nil {
+		return model.Route{}, err
 	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to update route", err)
@@ -195,6 +232,9 @@ func (s Service) EnableRoute(ctx context.Context, userId string, routeId string)
 		return model.Route{}, err
 	}
 	route.Enabled = true
+	if err := s.validateRoute(ctx, route, route.Id); err != nil {
+		return model.Route{}, err
+	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to enable route", err)
 	}
@@ -246,6 +286,9 @@ func (s Service) UploadRouteCert(ctx context.Context, userId string, routeId str
 	if err != nil {
 		return model.Route{}, err
 	}
+	if err := requireHTTPRoute(route); err != nil {
+		return model.Route{}, err
+	}
 	route.HTTPSEnabled = true
 	route.CertPEM = &certPEM
 	route.CertKey = &certKey
@@ -267,6 +310,9 @@ func (s Service) UploadRouteCert(ctx context.Context, userId string, routeId str
 func (s Service) DisableRouteHTTPS(ctx context.Context, userId string, routeId string) (model.Route, error) {
 	route, err := s.loadRouteForUser(ctx, userId, routeId)
 	if err != nil {
+		return model.Route{}, err
+	}
+	if err := requireHTTPRoute(route); err != nil {
 		return model.Route{}, err
 	}
 	oldName := route.Name
@@ -294,6 +340,9 @@ func (s Service) DisableRouteHTTPS(ctx context.Context, userId string, routeId s
 func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, routeId string) (model.Route, error) {
 	route, err := s.loadRouteForUser(ctx, userId, routeId)
 	if err != nil {
+		return model.Route{}, err
+	}
+	if err := requireHTTPRoute(route); err != nil {
 		return model.Route{}, err
 	}
 	if !s.cfg.Cert.LetsEncrypt.Enabled {
@@ -333,6 +382,9 @@ func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, rout
 func (s Service) EnableRouteMkcert(ctx context.Context, userId string, routeId string) (model.Route, error) {
 	route, err := s.loadRouteForUser(ctx, userId, routeId)
 	if err != nil {
+		return model.Route{}, err
+	}
+	if err := requireHTTPRoute(route); err != nil {
 		return model.Route{}, err
 	}
 	certPEM, keyPEM, err := s.certificateGenerator.Generate(ctx, route.Domain)
@@ -433,8 +485,43 @@ func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId st
 	return route, nil
 }
 
-// publishRouteSnapshot rebuilds the full platform rest config from all enabled routes.
+// publishRouteSnapshot rebuilds the full platform rest config from all enabled
+// routes. Route mutations also reconcile Gateway TCP static listeners into the
+// unpublished Gateway Version; that static change takes effect on the next
+// Gateway deploy.
 func (s Service) publishRouteSnapshot(ctx context.Context) error {
+	routes, err := s.listEnabledRoutesForPublish(ctx)
+	if err != nil {
+		return err
+	}
+	if err := s.reconcileGatewayTCPListeners(ctx, routes); err != nil {
+		return err
+	}
+	return s.applyRouteSnapshot(ctx, routes, false)
+}
+
+// PublishSnapshot is the worker-facing hook used after a Gateway deployment.
+// It only pushes the dynamic HTTP/TCP REST snapshot. Static entrypoint compile
+// belongs to Route mutations and must not rewrite Version components mid-deploy.
+// compose up success is not sufficient: the Traefik REST control plane must
+// accept requests before the snapshot PUT.
+func (s Service) PublishSnapshot(ctx context.Context) error {
+	routes, err := s.listEnabledRoutesForPublish(ctx)
+	if err != nil {
+		return err
+	}
+	return s.applyRouteSnapshot(ctx, routes, true)
+}
+
+func (s Service) listEnabledRoutesForPublish(ctx context.Context) ([]model.Route, error) {
+	routes, err := s.route.ListEnabledRoutes(ctx)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
+	}
+	return routes, nil
+}
+
+func (s Service) applyRouteSnapshot(ctx context.Context, routes []model.Route, waitReady bool) error {
 	gw, err := s.resolveGatewayForRender(ctx)
 	if err != nil {
 		return err
@@ -442,9 +529,13 @@ func (s Service) publishRouteSnapshot(ctx context.Context) error {
 	if strings.TrimSpace(gw.RestApiUrl) == "" {
 		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for route publish")
 	}
-	routes, err := s.route.ListEnabledRoutes(ctx)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
+	if waitReady {
+		if err := s.routePublisher.WaitUntilReady(ctx, gw.RestApiUrl); err != nil {
+			return err
+		}
+	}
+	if err := s.resolveManagedRouteTargets(ctx, routes); err != nil {
+		return err
 	}
 	if err := s.routePublisher.ApplySnapshot(ctx, gw.RestApiUrl, routes); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to publish traefik rest snapshot", err)
@@ -456,20 +547,13 @@ func (s Service) revokeRouteCertFiles(ctx context.Context, routeName string) err
 	return s.routePublisher.RevokeCertificate(ctx, routeName)
 }
 
-func normalizeRouteInput(name string, domain string, pathPrefix string, targetUrl string, enabled bool) (string, string, string, string, bool, error) {
-	name = strings.TrimSpace(name)
-	domain = strings.TrimSpace(domain)
-	pathPrefix = strings.TrimSpace(pathPrefix)
-	targetUrl = strings.TrimSpace(targetUrl)
-	if pathPrefix == "" {
-		pathPrefix = "/"
-	}
-	if !validRouteFields(name, domain, pathPrefix, targetUrl) {
-		return "", "", "", "", false, apperror.New(apperror.KindValidation, "Invalid route fields")
-	}
-	return name, domain, pathPrefix, targetUrl, enabled, nil
+func validRouteIdentity(name string, domain string, pathPrefix string) bool {
+	return routeNamePattern.MatchString(name) && domain != "" && strings.HasPrefix(pathPrefix, "/")
 }
 
-func validRouteFields(name string, domain string, pathPrefix string, targetUrl string) bool {
-	return routeNamePattern.MatchString(name) && domain != "" && strings.HasPrefix(pathPrefix, "/") && routeTargetUrlPattern.MatchString(targetUrl)
+func requireHTTPRoute(route model.Route) error {
+	if route.Protocol != routeProtocolHTTP {
+		return apperror.New(apperror.KindValidation, "HTTPS is only available for HTTP routes")
+	}
+	return nil
 }

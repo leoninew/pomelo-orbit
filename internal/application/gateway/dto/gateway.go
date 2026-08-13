@@ -18,6 +18,18 @@ type GatewayCreateInput struct {
 	TLSMode                    *string
 }
 
+// GatewayCreateDefaults is the process-level default set for managed gateway create.
+type GatewayCreateDefaults struct {
+	Code                       string
+	Name                       string
+	RestApiUrl                 string
+	BaseDomain                 string
+	InitialComponentImage      string
+	InitialComponentPullPolicy string
+	DefaultEntrypoint          string
+	TLSMode                    string
+}
+
 type GatewayUpdateInput struct {
 	Name              *string
 	RestApiUrl        *string

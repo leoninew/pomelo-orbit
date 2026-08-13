@@ -540,7 +540,7 @@ func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Que
 	}
 	for _, item := range endpoints {
 		component.Endpoints = append(component.Endpoints, model.VersionComponentEndpoint{
-			Name: item.Name, Protocol: item.Protocol, ContainerPort: int(item.ContainerPort), Mode: item.Mode,
+			Protocol: item.Protocol, ContainerPort: int(item.ContainerPort), Mode: item.Mode,
 			BindAddress: dbmodel.StringPtr(item.BindAddress), ListenPort: dbmodel.IntPtrFromNullInt64(item.ListenPort),
 			Entrypoint: dbmodel.StringPtr(item.Entrypoint), PathPrefix: dbmodel.StringPtr(item.PathPrefix),
 		})
@@ -712,7 +712,7 @@ func insertVersionComponentEnvConfig(ctx context.Context, q *applicationsqlc.Que
 
 func insertVersionComponentEndpointsConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
 	for position, item := range component.Endpoints {
-		if err := q.InsertVersionComponentEndpoint(ctx, applicationsqlc.InsertVersionComponentEndpointParams{ComponentID: component.Id, Name: item.Name, Protocol: item.Protocol, ContainerPort: int64(item.ContainerPort), Mode: item.Mode, BindAddress: dbmodel.NullString(item.BindAddress), ListenPort: dbmodel.NullInt64FromIntPtr(item.ListenPort), Entrypoint: dbmodel.NullString(item.Entrypoint), PathPrefix: dbmodel.NullString(item.PathPrefix), Position: int64(position)}); err != nil {
+		if err := q.InsertVersionComponentEndpoint(ctx, applicationsqlc.InsertVersionComponentEndpointParams{ComponentID: component.Id, Protocol: item.Protocol, ContainerPort: int64(item.ContainerPort), Mode: item.Mode, BindAddress: dbmodel.NullString(item.BindAddress), ListenPort: dbmodel.NullInt64FromIntPtr(item.ListenPort), Entrypoint: dbmodel.NullString(item.Entrypoint), PathPrefix: dbmodel.NullString(item.PathPrefix), Position: int64(position)}); err != nil {
 			return fmt.Errorf("insert component endpoint: %w", err)
 		}
 	}

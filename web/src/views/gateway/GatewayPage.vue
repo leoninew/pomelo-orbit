@@ -250,6 +250,7 @@
   import { Plus } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { useRouter } from 'vue-router';
   import { ToolbarRoot } from 'reka-ui';
   import { gatewayApi } from '@/api/gateway/gateway';
   import AppBadge from '@/components/AppBadge.vue';
@@ -268,6 +269,7 @@
 
   const toast = useToast();
   const { t } = useI18n();
+  const router = useRouter();
   const projectStore = useProjectStore();
   const { status, error, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -410,7 +412,7 @@
     }
     try {
       await executeOp(async () => {
-        await gatewayApi.create(
+        const created = await gatewayApi.create(
           {
             project_id: projectId,
             code: createForm.code.trim(),
@@ -426,7 +428,7 @@
         );
         toast.success(t('gateway.toast.saveSuccess'));
         isCreateDialogOpen.value = false;
-        await fetchData();
+        await router.push(`/gateway/${created.id}`);
       });
     } catch (error) {
       createSubmitError.value =

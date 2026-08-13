@@ -6,9 +6,11 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 
+	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
@@ -17,9 +19,11 @@ import (
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
+	deploymentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/deployment"
 	gatewayrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/gateway"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	routerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/route"
+	servicerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/service"
 	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
@@ -33,7 +37,7 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 
-	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "api-route", Domain: "api.example.test", PathPrefix: "/api", TargetUrl: "http://host.docker.internal:8081", Enabled: false})
+	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "api-route", Protocol: "http", Domain: "api.example.test", PathPrefix: "/api", TargetUrl: "http://host.docker.internal:8081", Enabled: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +48,7 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	enabled, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "enabled-route", Domain: "enabled.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8082", Enabled: true})
+	enabled, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "enabled-route", Protocol: "http", Domain: "enabled.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8082", Enabled: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +96,7 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	}
 
 	dashboardProject := routeTestProjectId
-	if err := service.route.CreateRoute(ctx, model.Route{Id: "01KTRAETFIKROUTE0000000001", ProjectId: &dashboardProject, Name: "traefik-dashboard", Domain: "traefik.lvh.me", PathPrefix: "/", TargetUrl: "http://traefik:8080", Enabled: true, HTTPSEnabled: true, CertType: "manual"}); err != nil {
+	if err := service.route.CreateRoute(ctx, model.Route{Id: "01KTRAETFIKROUTE0000000001", ProjectId: &dashboardProject, Name: "traefik-dashboard", Protocol: "http", Domain: "traefik.lvh.me", PathPrefix: "/", TargetUrl: "http://traefik:8080", Enabled: true, HTTPSEnabled: true, CertType: "manual"}); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := service.TraefikRouteConfig(ctx, routeTestUserId, routeTestProjectId)
@@ -143,8 +147,14 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 	client := &recordingTraefikClient{}
 	service := New(
 		projectrepo.NewRepository(database),
+		applicationrepo.NewRepository(database),
+		servicerepo.NewRepository(database),
 		routerepo.NewRepository(database),
 		gatewayrepo.NewRepository(database),
+		gatewaysvc.New(projectrepo.NewRepository(database), applicationrepo.NewRepository(database), gatewayrepo.NewRepository(database), servicerepo.NewRepository(database), deploymentrepo.NewRepository(database), config.TraefikConfig{
+			CertDir: "data/deployment/traefik/data/certs", Image: "traefik:3.6",
+			RestApiUrl: "http://localhost:8080", BaseDomain: "lvh.me", RestReadyTimeout: 20 * time.Millisecond,
+		}),
 		cfg,
 		publisher,
 		recordingCertificateGenerator{},
@@ -154,7 +164,7 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 	return service, publisher, client, database
 }
 
-func TestValidRouteFieldsAllowsOptionalTargetUrlPort(t *testing.T) {
+func TestRouteValidationSeparatesIdentityFromCustomTargetURL(t *testing.T) {
 	validTargets := []string{
 		"http://host",
 		"https://host",
@@ -162,7 +172,7 @@ func TestValidRouteFieldsAllowsOptionalTargetUrlPort(t *testing.T) {
 		"https://api.example.test:443",
 	}
 	for _, target := range validTargets {
-		if !validRouteFields("api-route", "api.example.test", "/", target) {
+		if !validRouteIdentity("api-route", "api.example.test", "/") || !routeTargetUrlPattern.MatchString(target) {
 			t.Errorf("expected target URL to be valid: %s", target)
 		}
 	}
@@ -175,10 +185,212 @@ func TestValidRouteFieldsAllowsOptionalTargetUrlPort(t *testing.T) {
 		"http://host:",
 	}
 	for _, target := range invalidTargets {
-		if validRouteFields("api-route", "api.example.test", "/", target) {
+		if routeTargetUrlPattern.MatchString(target) {
 			t.Errorf("expected target URL to be invalid: %s", target)
 		}
 	}
+}
+
+func TestRouteServiceCreatesManagedHTTPRoute(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+	target := seedHTTPRouteTarget(t, database, routeTestProjectId, "01KROUTEHTTPAPP0000000000001", "01KROUTEHTTPVERSION0000000001", "01KROUTEHTTPSERVICE0000000001")
+
+	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "app-route", Protocol: routeProtocolHTTP, Domain: "app.example.test", PathPrefix: "/",
+		ServiceId: target.Id, ComponentName: "api", EndpointProtocol: "http", EndpointContainerPort: intPtr(8080), Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if route.TargetUrl != "" || route.ServiceId == nil || *route.ServiceId != target.Id {
+		t.Fatalf("unexpected managed HTTP route: %+v", route)
+	}
+	snapshot := publisher.snapshots[len(publisher.snapshots)-1]
+	if len(snapshot) != 1 || snapshot[0].TargetAddress != "api-api" || snapshot[0].TargetPort != 8080 {
+		t.Fatalf("unexpected resolved HTTP snapshot: %+v", snapshot)
+	}
+
+	_, err = service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "invalid-http-route", Protocol: routeProtocolHTTP, Domain: "invalid.example.test", PathPrefix: "/",
+		ServiceId: target.Id, ComponentName: "api", EndpointProtocol: "tcp", EndpointContainerPort: intPtr(9090), Enabled: false,
+	})
+	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("HTTP target protocol error = %v, want validation", err)
+	}
+
+	_, err = service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "mixed-http-route", Protocol: routeProtocolHTTP, Domain: "mixed.example.test", PathPrefix: "/", TargetUrl: "http://example.test:8080",
+		ServiceId: target.Id, ComponentName: "api", EndpointProtocol: "http", EndpointContainerPort: intPtr(8080), Enabled: false,
+	})
+	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("mixed HTTP target error = %v, want validation", err)
+	}
+}
+
+func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+	target := seedTCPRouteTarget(t, database, routeTestProjectId, "01KROUTETARGETAPP00000000001", "01KROUTETARGETVERSION0000001", "01KROUTETARGETSERVICE0000001")
+	listenPort := 16379
+
+	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "redis-route", Protocol: routeProtocolTCP, Domain: "redis.example.test", ListenPort: &listenPort,
+		ServiceId: target.Id, ComponentName: "redis", EndpointProtocol: "tcp", EndpointContainerPort: intPtr(6379), Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if route.Protocol != routeProtocolTCP || route.ListenPort == nil || *route.ListenPort != listenPort {
+		t.Fatalf("unexpected TCP route: %+v", route)
+	}
+	if len(publisher.snapshots) == 0 {
+		t.Fatal("expected TCP Route snapshot publication")
+	}
+	snapshot := publisher.snapshots[len(publisher.snapshots)-1]
+	if len(snapshot) != 1 || snapshot[0].TargetAddress != "redis-redis" || snapshot[0].TargetPort != 6379 {
+		t.Fatalf("unexpected resolved TCP snapshot: %+v", snapshot)
+	}
+	assertGatewayTCPListener(t, database, listenPort)
+
+	hostEndpointPort := 16381
+	_, err = service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "host-target", Protocol: routeProtocolTCP, Domain: "host-target.example.test", ListenPort: &hostEndpointPort,
+		ServiceId: target.Id, ComponentName: "redis", EndpointProtocol: "tcp", EndpointContainerPort: intPtr(6380), Enabled: false,
+	})
+	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("TCP host endpoint target error = %v, want validation", err)
+	}
+
+	_, err = service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "duplicate-port", Protocol: routeProtocolTCP, Domain: "another.example.test", ListenPort: &listenPort,
+		ServiceId: target.Id, ComponentName: "redis", EndpointProtocol: "tcp", EndpointContainerPort: intPtr(6379), Enabled: true,
+	})
+	if err == nil || apperror.StatusCode(err) != http.StatusConflict {
+		t.Fatalf("duplicate TCP listener error = %v, want conflict", err)
+	}
+
+	reservedPort := 80
+	_, err = service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "reserved-port", Protocol: routeProtocolTCP, Domain: "reserved.example.test", ListenPort: &reservedPort,
+		ServiceId: target.Id, ComponentName: "redis", EndpointProtocol: "tcp", EndpointContainerPort: intPtr(6379), Enabled: false,
+	})
+	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("reserved TCP listener error = %v, want validation", err)
+	}
+
+	conflictingPort := 16380
+	conflict, err := service.componentPortConflict(ctx, conflictingPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if conflict != "" {
+		t.Fatalf("stopped service host endpoint conflict = %q, want none", conflict)
+	}
+	if err := servicerepo.NewRepository(database).UpdateServiceStatus(ctx, target.Id, status.ServiceStatusRunning); err != nil {
+		t.Fatal(err)
+	}
+	_, err = service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "host-conflict", Protocol: routeProtocolTCP, Domain: "conflict.example.test", ListenPort: &conflictingPort,
+		ServiceId: target.Id, ComponentName: "redis", EndpointProtocol: "tcp", EndpointContainerPort: intPtr(6379), Enabled: true,
+	})
+	if err == nil || apperror.StatusCode(err) != http.StatusConflict {
+		t.Fatalf("host endpoint conflict error = %v, want conflict", err)
+	}
+}
+
+func seedTCPRouteTarget(t *testing.T, database *sql.DB, projectID, appID, versionID, serviceID string) model.Service {
+	t.Helper()
+	ctx := context.Background()
+	appRepo := applicationrepo.NewRepository(database)
+	serviceRepo := servicerepo.NewRepository(database)
+	app := model.Application{Id: appID, ProjectId: &projectID, Name: "Redis", Code: "redis", Kind: status.ApplicationKindStandard}
+	if err := appRepo.CreateApplication(ctx, app); err != nil {
+		t.Fatalf("seed TCP target application: %v", err)
+	}
+	conflictingPort := 16380
+	version := model.Version{Id: versionID, ApplicationId: app.Id, Label: "v1", Status: status.VersionStatusPublished}
+	component := model.VersionComponent{
+		Id: "01KROUTETARGETCOMPONENT00001", VersionId: version.Id, Name: "redis", Image: "redis:7", PullPolicy: "missing",
+		Endpoints: []model.VersionComponentEndpoint{
+			{Protocol: "tcp", ContainerPort: 6379, Mode: "internal"},
+			{Protocol: "tcp", ContainerPort: 6380, Mode: "host", ListenPort: &conflictingPort},
+		},
+	}
+	if err := appRepo.CreateVersionWithVersionComponents(ctx, version, []model.VersionComponent{component}); err != nil {
+		t.Fatalf("seed TCP target version: %v", err)
+	}
+	target := model.Service{Id: serviceID, ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "redis-default", Status: status.ServiceStatusStopped}
+	serviceComponent := model.ServiceComponent{
+		Id: "01KROUTETARGETSERVICECOMP01", ServiceId: target.Id,
+		SourceVersionComponentId: component.Id, ComponentName: component.Name, Status: "active",
+	}
+	if err := serviceRepo.CreateServiceWithComponents(ctx, target, []model.ServiceComponent{serviceComponent}); err != nil {
+		t.Fatalf("seed TCP target service: %v", err)
+	}
+	return target
+}
+
+func seedHTTPRouteTarget(t *testing.T, database *sql.DB, projectID, appID, versionID, serviceID string) model.Service {
+	t.Helper()
+	ctx := context.Background()
+	appRepo := applicationrepo.NewRepository(database)
+	serviceRepo := servicerepo.NewRepository(database)
+	app := model.Application{Id: appID, ProjectId: &projectID, Name: "API", Code: "api", Kind: status.ApplicationKindStandard}
+	if err := appRepo.CreateApplication(ctx, app); err != nil {
+		t.Fatalf("seed HTTP target application: %v", err)
+	}
+	version := model.Version{Id: versionID, ApplicationId: app.Id, Label: "v1", Status: status.VersionStatusPublished}
+	component := model.VersionComponent{
+		Id: "01KROUTEHTTPCOMPONENT000001", VersionId: version.Id, Name: "api", Image: "api:test", PullPolicy: "missing",
+		Endpoints: []model.VersionComponentEndpoint{
+			{Protocol: "http", ContainerPort: 8080, Mode: "internal"},
+			{Protocol: "tcp", ContainerPort: 9090, Mode: "internal"},
+		},
+	}
+	if err := appRepo.CreateVersionWithVersionComponents(ctx, version, []model.VersionComponent{component}); err != nil {
+		t.Fatalf("seed HTTP target version: %v", err)
+	}
+	target := model.Service{Id: serviceID, ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "api-default", Status: status.ServiceStatusStopped}
+	serviceComponent := model.ServiceComponent{
+		Id: "01KROUTEHTTPSERVICECOMP00001", ServiceId: target.Id,
+		SourceVersionComponentId: component.Id, ComponentName: component.Name, Status: "active",
+	}
+	if err := serviceRepo.CreateServiceWithComponents(ctx, target, []model.ServiceComponent{serviceComponent}); err != nil {
+		t.Fatalf("seed HTTP target service: %v", err)
+	}
+	return target
+}
+
+func assertGatewayTCPListener(t *testing.T, database *sql.DB, listenPort int) {
+	t.Helper()
+	versions, err := applicationrepo.NewRepository(database).ListVersions(context.Background(), "01KROUTEGATEWAYAPP000000001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, version := range versions {
+		if version.Status != status.VersionStatusUnpublished {
+			continue
+		}
+		components, err := applicationrepo.NewRepository(database).VersionComponentsByVersion(context.Background(), version.Id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, component := range components {
+			for _, endpoint := range component.Endpoints {
+				if endpoint.Protocol == "tcp" && endpoint.ContainerPort == listenPort && endpoint.ListenPort != nil && *endpoint.ListenPort == listenPort && endpoint.Mode == "host" {
+					return
+				}
+			}
+		}
+	}
+	t.Fatalf("gateway does not contain TCP listener %d", listenPort)
+}
+
+func intPtr(value int) *int {
+	return &value
 }
 
 func seedRouteTestGateway(t *testing.T, database *sql.DB) {
@@ -197,6 +409,10 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 	if err := appRepo.CreateApplication(ctx, app); err != nil {
 		t.Fatalf("seed gateway app: %v", err)
 	}
+	version := model.Version{Id: "01KROUTEGATEWAYVERSION00001", ApplicationId: app.Id, Label: "managed", Status: status.VersionStatusPublished}
+	if err := appRepo.CreateVersionWithVersionComponents(ctx, version, []model.VersionComponent{{Id: "01KROUTEGATEWAYCOMPONENT01", VersionId: version.Id, Name: "traefik", Image: "traefik:3.6", PullPolicy: "missing"}}); err != nil {
+		t.Fatalf("seed gateway version: %v", err)
+	}
 	if err := gwRepo.UpsertGatewayConfig(ctx, model.GatewayConfig{
 		ApplicationId:     app.Id,
 		RestApiUrl:        "http://traefik:8080",
@@ -211,6 +427,12 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 type recordingRoutePublisher struct {
 	snapshots    [][]model.Route
 	revokedCerts []string
+	readyWaits   int
+}
+
+func (p *recordingRoutePublisher) WaitUntilReady(context.Context, string) error {
+	p.readyWaits++
+	return nil
 }
 
 func (p *recordingRoutePublisher) ApplySnapshot(_ context.Context, _ string, routes []model.Route) error {

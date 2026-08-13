@@ -6,7 +6,6 @@ function endpoint(
   values: Partial<ServiceComponentDeclaredEndpoint>
 ): ServiceComponentDeclaredEndpoint {
   return {
-    name: 'api',
     protocol: 'tcp',
     container_port: 8080,
     mode: 'internal',
@@ -16,7 +15,7 @@ function endpoint(
 
 describe('service component ports', () => {
   it('keeps published endpoint protocol and container port while omitting internal-only endpoints', () => {
-    const gateway = endpoint({ protocol: 'http', container_port: 80, mode: 'gateway_http' });
+    const gateway = endpoint({ protocol: 'http', container_port: 80, mode: 'gateway' });
     const published = publishedServiceComponentEndpoints([endpoint({ mode: 'internal' }), gateway]);
     expect(published).toEqual([gateway]);
     expect(published[0]).toMatchObject({ protocol: 'http', container_port: 80 });

@@ -102,8 +102,9 @@ func (r Repository) RouteByDomain(ctx context.Context, domain string) (model.Rou
 func (r Repository) CreateRoute(ctx context.Context, route model.Route) error {
 	now := time.Now().UTC()
 	err := r.q(ctx).CreateRoute(ctx, routesqlc.CreateRouteParams{
-		ID: route.Id, ProjectID: dbmodel.NullString(route.ProjectId), Name: route.Name, Domain: route.Domain,
-		PathPrefix: route.PathPrefix, TargetUrl: route.TargetUrl, Enabled: dbmodel.BoolInt(route.Enabled),
+		ID: route.Id, ProjectID: dbmodel.NullString(route.ProjectId), Name: route.Name, Protocol: route.Protocol, Domain: route.Domain,
+		PathPrefix: route.PathPrefix, TargetUrl: route.TargetUrl, ListenPort: dbmodel.NullInt64FromIntPtr(route.ListenPort),
+		ServiceID: dbmodel.NullString(route.ServiceId), ComponentName: dbmodel.NullString(route.ComponentName), EndpointProtocol: dbmodel.NullString(route.EndpointProtocol), EndpointContainerPort: dbmodel.NullInt64FromIntPtr(route.EndpointContainerPort), Enabled: dbmodel.BoolInt(route.Enabled),
 		HttpsEnabled: dbmodel.BoolInt(route.HTTPSEnabled), CertPem: dbmodel.NullString(route.CertPEM),
 		CertKey: dbmodel.NullString(route.CertKey), CertType: route.CertType,
 		CreatedAt: now, UpdatedAt: now,
@@ -116,8 +117,8 @@ func (r Repository) CreateRoute(ctx context.Context, route model.Route) error {
 
 func (r Repository) UpdateRoute(ctx context.Context, route model.Route) error {
 	err := r.q(ctx).UpdateRoute(ctx, routesqlc.UpdateRouteParams{
-		Name: route.Name, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetUrl: route.TargetUrl,
-		Enabled: dbmodel.BoolInt(route.Enabled), HttpsEnabled: dbmodel.BoolInt(route.HTTPSEnabled),
+		Name: route.Name, Protocol: route.Protocol, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetUrl: route.TargetUrl,
+		ListenPort: dbmodel.NullInt64FromIntPtr(route.ListenPort), ServiceID: dbmodel.NullString(route.ServiceId), ComponentName: dbmodel.NullString(route.ComponentName), EndpointProtocol: dbmodel.NullString(route.EndpointProtocol), EndpointContainerPort: dbmodel.NullInt64FromIntPtr(route.EndpointContainerPort), Enabled: dbmodel.BoolInt(route.Enabled), HttpsEnabled: dbmodel.BoolInt(route.HTTPSEnabled),
 		CertPem: dbmodel.NullString(route.CertPEM), CertKey: dbmodel.NullString(route.CertKey),
 		CertType: route.CertType, UpdatedAt: time.Now().UTC(), ID: route.Id,
 	})
@@ -134,27 +135,27 @@ func (r Repository) DeleteRoute(ctx context.Context, id string) error {
 	return nil
 }
 
-func routeCommon(id string, projectId sql.NullString, name, domain, pathPrefix, targetUrl string, enabled, httpsEnabled int64, certPem, certKey sql.NullString, certType string, createdAt, updatedAt time.Time) model.Route {
+func routeCommon(id string, projectId sql.NullString, name, protocol, domain, pathPrefix, targetUrl string, listenPort sql.NullInt64, serviceId, componentName, endpointProtocol sql.NullString, endpointContainerPort sql.NullInt64, enabled, httpsEnabled int64, certPem, certKey sql.NullString, certType string, createdAt, updatedAt time.Time) model.Route {
 	return model.Route{
-		Id: id, ProjectId: dbmodel.StringPtr(projectId), Name: name, Domain: domain, PathPrefix: pathPrefix,
-		TargetUrl: targetUrl, Enabled: dbmodel.IntBool(enabled), HTTPSEnabled: dbmodel.IntBool(httpsEnabled),
+		Id: id, ProjectId: dbmodel.StringPtr(projectId), Name: name, Protocol: protocol, Domain: domain, PathPrefix: pathPrefix,
+		TargetUrl: targetUrl, ListenPort: dbmodel.IntPtrFromNullInt64(listenPort), ServiceId: dbmodel.StringPtr(serviceId), ComponentName: dbmodel.StringPtr(componentName), EndpointProtocol: dbmodel.StringPtr(endpointProtocol), EndpointContainerPort: dbmodel.IntPtrFromNullInt64(endpointContainerPort), Enabled: dbmodel.IntBool(enabled), HTTPSEnabled: dbmodel.IntBool(httpsEnabled),
 		CertPEM: dbmodel.StringPtr(certPem), CertKey: dbmodel.StringPtr(certKey), CertType: certType,
 		CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
 }
 
 func routeFromRow(row routesqlc.ListRoutesRow) model.Route {
-	return routeCommon(row.ID, row.ProjectID, row.Name, row.Domain, row.PathPrefix, row.TargetUrl, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
+	return routeCommon(row.ID, row.ProjectID, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceID, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
 }
 func routeFromAll(row routesqlc.ListAllRoutesRow) model.Route {
-	return routeCommon(row.ID, row.ProjectID, row.Name, row.Domain, row.PathPrefix, row.TargetUrl, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
+	return routeCommon(row.ID, row.ProjectID, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceID, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
 }
 func routeFromEnabled(row routesqlc.ListEnabledRoutesRow) model.Route {
-	return routeCommon(row.ID, row.ProjectID, row.Name, row.Domain, row.PathPrefix, row.TargetUrl, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
+	return routeCommon(row.ID, row.ProjectID, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceID, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
 }
 func routeFromById(row routesqlc.RouteByIDRow) model.Route {
-	return routeCommon(row.ID, row.ProjectID, row.Name, row.Domain, row.PathPrefix, row.TargetUrl, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
+	return routeCommon(row.ID, row.ProjectID, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceID, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
 }
 func routeFromByDomain(row routesqlc.RouteByDomainRow) model.Route {
-	return routeCommon(row.ID, row.ProjectID, row.Name, row.Domain, row.PathPrefix, row.TargetUrl, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
+	return routeCommon(row.ID, row.ProjectID, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceID, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.CreatedAt, row.UpdatedAt)
 }

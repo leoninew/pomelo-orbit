@@ -6,15 +6,17 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-func TestBuildManagedGatewayComponentExposesDashboardAPIOnLoopback(t *testing.T) {
+func TestBuildManagedGatewayComponentExposesDashboardApiOnLoopback(t *testing.T) {
 	component, err := buildManagedGatewayComponent(
 		model.GatewayConfig{},
 		[]model.VersionComponent{{
 			Id:    "traefik-component",
-			Name:  gatewayManagedComponentName,
+			Name:  "traefik",
 			Image: "traefik:3.6",
 		}},
 		nil,
+		"traefik",
+		"traefik",
 	)
 	if err != nil {
 		t.Fatalf("build managed gateway component: %v", err)
@@ -22,7 +24,7 @@ func TestBuildManagedGatewayComponentExposesDashboardAPIOnLoopback(t *testing.T)
 
 	var api *model.VersionComponentEndpoint
 	for index := range component.Endpoints {
-		if component.Endpoints[index].Name == "api" {
+		if component.Endpoints[index].Protocol == "http" && component.Endpoints[index].ContainerPort == 8080 {
 			api = &component.Endpoints[index]
 			break
 		}

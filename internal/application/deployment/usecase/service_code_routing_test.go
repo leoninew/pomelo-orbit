@@ -15,8 +15,8 @@ func TestRenderComposeUsesComponentServiceHosts(t *testing.T) {
 		Service:     model.Service{Code: "ragflow-service"},
 		Gateway:     &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web"},
 		Components: []model.EffectiveServiceComponent{
-			{Name: "minio", Image: "minio:latest", Endpoints: []model.VersionComponentEndpoint{{Name: "api", Protocol: "http", ContainerPort: 9000, Mode: "gateway_http"}}},
-			{Name: "ragflow", Image: "ragflow:latest", Endpoints: []model.VersionComponentEndpoint{{Name: "web", Protocol: "http", ContainerPort: 80, Mode: "gateway_http"}}},
+			{Name: "minio", Image: "minio:latest", Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 9000, Mode: "gateway"}}},
+			{Name: "ragflow", Image: "ragflow:latest", Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 80, Mode: "gateway"}}},
 		},
 	}})
 	if err != nil {
@@ -29,22 +29,24 @@ func TestRenderComposeUsesComponentServiceHosts(t *testing.T) {
 	}
 }
 
-func TestRenderComposeUsesComponentServiceSNI(t *testing.T) {
-	entrypoint := "tcp3306"
+func TestRenderComposeDoesNotPublishTCPDeclaration(t *testing.T) {
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application: model.Application{Code: "mysql", Kind: status.ApplicationKindStandard},
 		Service:     model.Service{Code: "mysql-default"},
-		Gateway:     &model.GatewayConfig{BaseDomain: "example.test", TLSMode: "tls"},
+		Gateway:     &model.GatewayConfig{},
 		Components: []model.EffectiveServiceComponent{{
 			Name: "mysql", Image: "mysql:8",
-			Endpoints: []model.VersionComponentEndpoint{{Name: "mysql", Protocol: "tcp", ContainerPort: 3306, Mode: "gateway_tcp", Entrypoint: &entrypoint}},
+			Endpoints: []model.VersionComponentEndpoint{{Protocol: "tcp", ContainerPort: 3306, Mode: "internal"}},
 		}},
 	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(compose, "HostSNI(`mysql.mysql-default.example.test`)") {
-		t.Fatalf("compose does not use component SNI:\n%s", compose)
+	if strings.Contains(compose, "traefik.tcp.routers") || strings.Contains(compose, "3306:3306") {
+		t.Fatalf("compose must not publish TCP declarations directly:\n%s", compose)
+	}
+	if !strings.Contains(compose, "- mysql-mysql") {
+		t.Fatalf("TCP route targets must join the Traefik network with their stable alias:\n%s", compose)
 	}
 }
 
@@ -56,8 +58,8 @@ func TestRenderComposeRejectsDuplicateGatewayHTTPRoute(t *testing.T) {
 		Components: []model.EffectiveServiceComponent{{
 			Name: "api", Image: "api:latest",
 			Endpoints: []model.VersionComponentEndpoint{
-				{Name: "http", Protocol: "http", ContainerPort: 80, Mode: "gateway_http"},
-				{Name: "admin", Protocol: "http", ContainerPort: 8080, Mode: "gateway_http"},
+				{Protocol: "http", ContainerPort: 80, Mode: "gateway"},
+				{Protocol: "http", ContainerPort: 8080, Mode: "gateway"},
 			},
 		}},
 	}})

@@ -193,13 +193,15 @@ func (q *Queries) InsertServiceComponent(ctx context.Context, arg InsertServiceC
 
 const insertServiceComponentEndpoint = `-- name: InsertServiceComponentEndpoint :exec
 INSERT INTO service_component_endpoint (
-  service_component_id, name, mode, bind_address, listen_port, entrypoint, path_prefix, state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  id, service_component_id, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertServiceComponentEndpointParams struct {
+	ID                 string         `db:"id"`
 	ServiceComponentID string         `db:"service_component_id"`
-	Name               string         `db:"name"`
+	Protocol           string         `db:"protocol"`
+	ContainerPort      int64          `db:"container_port"`
 	Mode               sql.NullString `db:"mode"`
 	BindAddress        sql.NullString `db:"bind_address"`
 	ListenPort         sql.NullInt64  `db:"listen_port"`
@@ -210,8 +212,10 @@ type InsertServiceComponentEndpointParams struct {
 
 func (q *Queries) InsertServiceComponentEndpoint(ctx context.Context, arg InsertServiceComponentEndpointParams) error {
 	_, err := q.db.ExecContext(ctx, insertServiceComponentEndpoint,
+		arg.ID,
 		arg.ServiceComponentID,
-		arg.Name,
+		arg.Protocol,
+		arg.ContainerPort,
 		arg.Mode,
 		arg.BindAddress,
 		arg.ListenPort,
@@ -544,10 +548,10 @@ func (q *Queries) ServiceComponentByID(ctx context.Context, id string) (ServiceC
 }
 
 const serviceComponentEndpointsByComponent = `-- name: ServiceComponentEndpointsByComponent :many
-SELECT service_component_id, name, mode, bind_address, listen_port, entrypoint, path_prefix, state
+SELECT id, service_component_id, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, state
 FROM service_component_endpoint
 WHERE service_component_id = ?
-ORDER BY name
+ORDER BY protocol, container_port
 `
 
 func (q *Queries) ServiceComponentEndpointsByComponent(ctx context.Context, serviceComponentID string) ([]ServiceComponentEndpoint, error) {
@@ -560,8 +564,10 @@ func (q *Queries) ServiceComponentEndpointsByComponent(ctx context.Context, serv
 	for rows.Next() {
 		var i ServiceComponentEndpoint
 		if err := rows.Scan(
+			&i.ID,
 			&i.ServiceComponentID,
-			&i.Name,
+			&i.Protocol,
+			&i.ContainerPort,
 			&i.Mode,
 			&i.BindAddress,
 			&i.ListenPort,

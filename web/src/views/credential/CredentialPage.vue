@@ -219,6 +219,7 @@
 <script setup lang="ts">
   import { Plus, Upload } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+  import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -239,6 +240,7 @@
   import { ToolbarRoot } from 'reka-ui';
 
   const toast = useToast();
+  const router = useRouter();
   const projectStore = useProjectStore();
   const { status, error, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -365,8 +367,10 @@
             data: form.data,
           });
           toast.success('更新成功');
+          showCredentialDialog.value = false;
+          fetchCredentials();
         } else {
-          await credentialApi.create(
+          const created = await credentialApi.create(
             {
               name: form.name,
               type: form.type,
@@ -375,9 +379,9 @@
             { project_id: projectId }
           );
           toast.success('创建成功');
+          showCredentialDialog.value = false;
+          await router.push(`/credential/${created.id}`);
         }
-        showCredentialDialog.value = false;
-        fetchCredentials();
       });
     } catch (error) {
       credentialSubmitError.value = error instanceof Error ? error.message : '操作失败';

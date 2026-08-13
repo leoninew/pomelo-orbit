@@ -16,6 +16,7 @@ import (
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
+	"github.com/leoninew/pomelo-orbit/internal/config"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
@@ -23,10 +24,17 @@ import (
 var gatewayCreateCodePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
 const (
-	defaultHTTPEntrypoint = "web"
-	defaultGatewayTLSMode = "none"
-	entrypointWeb         = "web"
-	entrypointWebSecure   = "websecure"
+	// Product identity for the managed gateway — not process configuration.
+	managedGatewayCode            = "traefik"
+	managedGatewayName            = "Traefik"
+	managedGatewayNetworkName     = "traefik"
+	managedGatewayComponentName   = "traefik"
+	managedGatewayImagePullPolicy = "missing"
+	managedGatewayEntrypoint      = "web"
+	managedGatewayTLSMode         = "none"
+
+	entrypointWeb       = "web"
+	entrypointWebSecure = "websecure"
 )
 
 type Service struct {
@@ -36,6 +44,7 @@ type Service struct {
 	service         gatewayport.ServiceReader
 	serviceCommands servicesvc.Service
 	deployer        gatewayDeployer
+	traefik         config.TraefikConfig
 }
 
 type gatewayDeployer interface {
@@ -47,14 +56,31 @@ type gatewayDeployer interface {
 func New(
 	project gatewayport.ProjectReader,
 	application gatewayport.ApplicationStore,
-	config gatewayport.ConfigStore,
+	configStore gatewayport.ConfigStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
+	traefik config.TraefikConfig,
 ) Service {
 	return Service{
-		project: project, application: application, config: config,
+		project: project, application: application, config: configStore,
 		service:         service,
 		serviceCommands: servicesvc.New(project, application, service, deployment),
+		traefik:         traefik,
+	}
+}
+
+// CreateDefaults merges product constants with process Traefik infrastructure
+// config for create forms, MCP, and ProvisionGateway.
+func (s Service) CreateDefaults() gatewaydto.GatewayCreateDefaults {
+	return gatewaydto.GatewayCreateDefaults{
+		Code:                       managedGatewayCode,
+		Name:                       managedGatewayName,
+		RestApiUrl:                 s.traefik.RestApiUrl,
+		BaseDomain:                 s.traefik.BaseDomain,
+		InitialComponentImage:      s.traefik.Image,
+		InitialComponentPullPolicy: managedGatewayImagePullPolicy,
+		DefaultEntrypoint:          managedGatewayEntrypoint,
+		TLSMode:                    managedGatewayTLSMode,
 	}
 }
 
@@ -101,6 +127,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 		return gatewaydto.GatewayView{}, err
 	}
 
+	input = s.applyCreateDefaults(input)
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
 	imagePullPolicy := strings.TrimSpace(input.InitialComponentPullPolicy)
@@ -118,7 +145,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	policy, err := normalizeGatewayIngressPolicy(input.DefaultEntrypoint, input.TLSMode, true)
+	policy, err := parseGatewayIngressPolicy(input.DefaultEntrypoint, input.TLSMode)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
@@ -152,12 +179,12 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 		_ = s.application.DeleteApplication(ctx, app.Id)
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway config", err)
 	}
-	version := model.Version{Id: idutil.NewId(), ApplicationId: app.Id, Label: "managed", Status: status.VersionStatusUnpublished}
+	version := model.Version{Id: idutil.NewId(), ApplicationId: app.Id, Label: *image, Status: status.VersionStatusUnpublished}
 	if err := s.application.CreateVersion(ctx, version); err != nil {
 		_ = s.application.DeleteApplication(ctx, app.Id)
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway version", err)
 	}
-	if err := s.application.ReplaceVersionComponents(ctx, version.Id, []model.VersionComponent{{Id: idutil.NewId(), VersionId: version.Id, Name: gatewayManagedComponentName, Image: *image, PullPolicy: imagePullPolicy}}); err != nil {
+	if err := s.application.ReplaceVersionComponents(ctx, version.Id, []model.VersionComponent{{Id: idutil.NewId(), VersionId: version.Id, Name: managedGatewayComponentName, Image: *image, PullPolicy: imagePullPolicy}}); err != nil {
 		_ = s.application.DeleteApplication(ctx, app.Id)
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway component", err)
 	}
@@ -238,7 +265,7 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 	if input.TLSMode != nil {
 		tlsMode = input.TLSMode
 	}
-	policy, err := normalizeGatewayIngressPolicy(defaultEntrypoint, tlsMode, false)
+	policy, err := parseGatewayIngressPolicy(defaultEntrypoint, tlsMode)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
@@ -382,13 +409,46 @@ type gatewayIngressPolicyValues struct {
 	TLSMode           string
 }
 
-func normalizeGatewayIngressPolicy(defaultEntrypoint *string, tlsMode *string, applyCreateDefaults bool) (gatewayIngressPolicyValues, error) {
+// applyCreateDefaults fills empty request fields from process Traefik defaults.
+// Config values are already normalized at load; this only completes the request DTO.
+func (s Service) applyCreateDefaults(input gatewaydto.GatewayCreateInput) gatewaydto.GatewayCreateInput {
+	defaults := s.CreateDefaults()
+	if strings.TrimSpace(input.Code) == "" {
+		input.Code = defaults.Code
+	}
+	if strings.TrimSpace(input.Name) == "" {
+		input.Name = defaults.Name
+	}
+	if strings.TrimSpace(input.RestApiUrl) == "" {
+		input.RestApiUrl = defaults.RestApiUrl
+	}
+	if strings.TrimSpace(input.BaseDomain) == "" {
+		input.BaseDomain = defaults.BaseDomain
+	}
+	if strings.TrimSpace(input.InitialComponentPullPolicy) == "" {
+		input.InitialComponentPullPolicy = defaults.InitialComponentPullPolicy
+	}
+	if input.InitialComponentImage == nil || strings.TrimSpace(*input.InitialComponentImage) == "" {
+		image := defaults.InitialComponentImage
+		input.InitialComponentImage = &image
+	}
+	if input.DefaultEntrypoint == nil || strings.TrimSpace(*input.DefaultEntrypoint) == "" {
+		entrypoint := defaults.DefaultEntrypoint
+		input.DefaultEntrypoint = &entrypoint
+	}
+	if input.TLSMode == nil || strings.TrimSpace(*input.TLSMode) == "" {
+		tlsMode := defaults.TLSMode
+		input.TLSMode = &tlsMode
+	}
+	return input
+}
+
+// parseGatewayIngressPolicy validates request/persisted GatewayConfig policy fields only.
+// Process-level Traefik defaults are not consulted here.
+func parseGatewayIngressPolicy(defaultEntrypoint *string, tlsMode *string) (gatewayIngressPolicyValues, error) {
 	out := gatewayIngressPolicyValues{}
 	if defaultEntrypoint != nil {
 		out.DefaultEntrypoint = strings.TrimSpace(*defaultEntrypoint)
-	}
-	if applyCreateDefaults && out.DefaultEntrypoint == "" {
-		out.DefaultEntrypoint = defaultHTTPEntrypoint
 	}
 	if out.DefaultEntrypoint == "" {
 		return gatewayIngressPolicyValues{}, apperror.New(apperror.KindValidation, "default_entrypoint is required")
@@ -400,7 +460,7 @@ func normalizeGatewayIngressPolicy(defaultEntrypoint *string, tlsMode *string, a
 		out.TLSMode = strings.ToLower(strings.TrimSpace(*tlsMode))
 	}
 	if out.TLSMode == "" {
-		out.TLSMode = defaultGatewayTLSMode
+		return gatewayIngressPolicyValues{}, apperror.New(apperror.KindValidation, "tls_mode is required")
 	}
 	if out.TLSMode != "none" && out.TLSMode != "letsencrypt" && out.TLSMode != "tls" {
 		return gatewayIngressPolicyValues{}, apperror.New(apperror.KindValidation, "Invalid tls_mode")
@@ -424,7 +484,7 @@ func buildGatewayExposureItem(app model.Application, service model.Service, comp
 		listen = *endpoint.ListenPort
 	}
 	access := "local"
-	if endpoint.Mode == "gateway_http" || endpoint.Mode == "gateway_tcp" {
+	if endpoint.Mode == "gateway" {
 		access = "public"
 	}
 	publicHost := ""
@@ -526,7 +586,7 @@ func buildGatewayEffectivePlan(app model.Application, service model.Service, dec
 		component := model.EffectiveServiceComponent{Name: declaration.Name, Endpoints: append([]model.VersionComponentEndpoint(nil), declaration.Endpoints...)}
 		for index := range component.Endpoints {
 			for _, endpoint := range overlay.Endpoints {
-				if endpoint.Name != component.Endpoints[index].Name {
+				if endpoint.Protocol != component.Endpoints[index].Protocol || endpoint.ContainerPort != component.Endpoints[index].ContainerPort {
 					continue
 				}
 				if endpoint.State == model.ServiceComponentOverlayDeleted {

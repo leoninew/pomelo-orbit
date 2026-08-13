@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,7 +25,10 @@ import (
 var _ routeport.RouteConfigPublisher = (*RouteManager)(nil)
 var _ routeport.TraefikRouterClient = (*RouteManager)(nil)
 
-const deploymentDataDir = "deployment"
+const (
+	deploymentDataDir        = "deployment"
+	restApiReadyPollInterval = 500 * time.Millisecond
+)
 
 // RouteManager publishes platform routes via Traefik providers.rest full PUT.
 type RouteManager struct {
@@ -42,7 +46,56 @@ func NewRouteManager(cfg config.Config) *RouteManager {
 	}
 }
 
-// ApplySnapshot replaces the entire @rest HTTP configuration with the given enabled routes.
+// WaitUntilReady polls the Traefik API until it responds successfully.
+// compose up -d returning zero does not mean the REST control plane is listening yet.
+// RestReadyTimeout comes from process config (validated at load).
+func (m *RouteManager) WaitUntilReady(ctx context.Context, restApiUrl string) error {
+	base := strings.TrimRight(strings.TrimSpace(restApiUrl), "/")
+	if base == "" {
+		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
+	}
+	url := base + "/api/overview"
+	deadline := time.Now().Add(m.cfg.Traefik.RestReadyTimeout)
+	var lastErr error
+	for {
+		if err := ctx.Err(); err != nil {
+			if lastErr != nil {
+				return apperror.Wrap(apperror.KindInternal, "Traefik REST API readiness canceled", lastErr)
+			}
+			return apperror.Wrap(apperror.KindInternal, "Traefik REST API readiness canceled", err)
+		}
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return apperror.Wrap(apperror.KindInternal, "Failed to create Traefik readiness request", err)
+		}
+		response, err := m.client.Do(request)
+		if err == nil {
+			_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 512))
+			_ = response.Body.Close()
+			if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
+				return nil
+			}
+			lastErr = fmt.Errorf("traefik readiness returned status %d", response.StatusCode)
+		} else {
+			lastErr = err
+		}
+		if !time.Now().Before(deadline) {
+			return apperror.Wrap(apperror.KindInternal, "Traefik REST API not ready within timeout", lastErr)
+		}
+		timer := time.NewTimer(restApiReadyPollInterval)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			if lastErr != nil {
+				return apperror.Wrap(apperror.KindInternal, "Traefik REST API readiness canceled", lastErr)
+			}
+			return apperror.Wrap(apperror.KindInternal, "Traefik REST API readiness canceled", ctx.Err())
+		case <-timer.C:
+		}
+	}
+}
+
+// ApplySnapshot replaces the entire @rest HTTP and TCP configuration with the given enabled routes.
 // restAPIURL is the Gateway config control-plane base URL (required).
 func (m *RouteManager) ApplySnapshot(ctx context.Context, restApiUrl string, routes []model.Route) error {
 	m.mu.Lock()
@@ -82,11 +135,23 @@ func (m *RouteManager) RevokeCertificate(_ context.Context, routeName string) er
 }
 
 func (m *RouteManager) ListRouters(ctx context.Context, restApiUrl string) ([]routeport.TraefikRouter, error) {
+	httpRouters, err := m.listRouters(ctx, restApiUrl, "http")
+	if err != nil {
+		return nil, err
+	}
+	tcpRouters, err := m.listRouters(ctx, restApiUrl, "tcp")
+	if err != nil {
+		return nil, err
+	}
+	return append(httpRouters, tcpRouters...), nil
+}
+
+func (m *RouteManager) listRouters(ctx context.Context, restApiUrl string, protocol string) ([]routeport.TraefikRouter, error) {
 	base := strings.TrimRight(strings.TrimSpace(restApiUrl), "/")
 	if base == "" {
 		return nil, apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
 	}
-	url := base + "/api/http/routers"
+	url := base + "/api/" + protocol + "/routers"
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create traefik request: %w", err)
@@ -183,12 +248,38 @@ func cleanConfigPath(root string, path string) string {
 	return filepath.Join(root, path)
 }
 
-// buildRestSnapshot assembles a full providers.rest HTTP config (full replace semantics).
+// buildRestSnapshot assembles a full providers.rest HTTP and TCP config (full replace semantics).
 func buildRestSnapshot(routes []model.Route) map[string]any {
-	routers := map[string]any{}
-	services := map[string]any{}
+	httpRouters := map[string]any{}
+	httpServices := map[string]any{}
+	tcpRouters := map[string]any{}
+	tcpServices := map[string]any{}
 	for _, route := range routes {
 		if !route.Enabled {
+			continue
+		}
+		if route.Protocol == "tcp" {
+			if route.ListenPort == nil || route.TargetAddress == "" || route.TargetPort < 1 {
+				continue
+			}
+			serviceName := sanitizeTraefikName(route.Name) + "-service"
+			routerName := sanitizeTraefikName(route.Name) + "-route"
+			tcpRouters[routerName] = map[string]any{
+				"rule": "HostSNI(`*`)", "service": serviceName,
+				"entryPoints": []string{"tcp" + strconv.Itoa(*route.ListenPort)},
+			}
+			tcpServices[serviceName] = map[string]any{
+				"loadBalancer": map[string]any{
+					"servers": []map[string]string{{"address": net.JoinHostPort(route.TargetAddress, strconv.Itoa(route.TargetPort))}},
+				},
+			}
+			continue
+		}
+		targetUrl := route.TargetUrl
+		if route.TargetAddress != "" && route.TargetPort > 0 {
+			targetUrl = "http://" + net.JoinHostPort(route.TargetAddress, strconv.Itoa(route.TargetPort))
+		}
+		if strings.TrimSpace(targetUrl) == "" {
 			continue
 		}
 		serviceName := sanitizeTraefikName(route.Name) + "-service"
@@ -211,18 +302,22 @@ func buildRestSnapshot(routes []model.Route) map[string]any {
 		} else {
 			router["entryPoints"] = []string{"web"}
 		}
-		routers[routerName] = router
-		services[serviceName] = map[string]any{
+		httpRouters[routerName] = router
+		httpServices[serviceName] = map[string]any{
 			"loadBalancer": map[string]any{
-				"servers": []map[string]string{{"url": route.TargetUrl}},
+				"servers": []map[string]string{{"url": targetUrl}},
 			},
 		}
 	}
 	// Empty maps clear the @rest namespace (unlike {} / {"http":{}}).
 	return map[string]any{
 		"http": map[string]any{
-			"routers":  routers,
-			"services": services,
+			"routers":  httpRouters,
+			"services": httpServices,
+		},
+		"tcp": map[string]any{
+			"routers":  tcpRouters,
+			"services": tcpServices,
 		},
 	}
 }

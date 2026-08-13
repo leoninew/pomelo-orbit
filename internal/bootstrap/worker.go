@@ -8,9 +8,11 @@ import (
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	pipelinerunsvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/usecase"
+	routesvc "github.com/leoninew/pomelo-orbit/internal/application/route/usecase"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/traefik"
 	deploymentrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/deployment"
 	pipelinerunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/pipeline"
 	runtimepath "github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local"
@@ -29,7 +31,20 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
 	localSource := repositorysource.New(runtimepath.ResolvePhysicalPath)
 	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
-	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment)
+	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, cfg.Traefik)
+	routeManager := traefik.NewRouteManager(cfg)
+	routeService := routesvc.New(
+		stores.project,
+		stores.application,
+		stores.service,
+		stores.route,
+		stores.gateway,
+		gatewayService,
+		cfg,
+		routeManager,
+		traefik.MkcertGenerator{},
+		routeManager,
+	)
 	applicationService := applicationsvc.New(stores.project, stores.application)
 	transactionRunner := databasetx.NewTransactionRunner(database)
 
@@ -62,6 +77,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		deploymentrunner.ShellRunner{},
 		logStore,
 		cfg.Worker.PollInterval,
+		routeService,
 	)
 
 	router := worker.NewRouter()

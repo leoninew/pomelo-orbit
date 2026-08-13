@@ -23,7 +23,7 @@ func TestBuildEffectiveServicePlanMergesSparseOverrides(t *testing.T) {
 		Env:       []model.VersionComponentEnv{{Key: "POSTGRES_DB", Value: "orbit"}},
 		Mounts:    []model.VersionComponentMount{{SourceType: mountSourceDirectory, Source: baseSource, Target: "/var/lib/postgresql/data"}},
 		Resources: &model.VersionComponentResources{LimitCPUs: &baseCPUs},
-		Endpoints: []model.VersionComponentEndpoint{{Name: "postgres", Protocol: "tcp", ContainerPort: basePort, Mode: "local", ListenPort: &basePort}},
+		Endpoints: []model.VersionComponentEndpoint{{Protocol: "tcp", ContainerPort: basePort, Mode: "local", ListenPort: &basePort}},
 	}
 	overrideValue := "orbit-runtime"
 	plan, hash, err := BuildEffectiveServicePlan(
@@ -36,7 +36,7 @@ func TestBuildEffectiveServicePlanMergesSparseOverrides(t *testing.T) {
 			Env:       []model.ServiceComponentEnv{{Key: "POSTGRES_DB", Value: &overrideValue, State: model.ServiceComponentOverlayOverride}},
 			Mounts:    []model.ServiceComponentMount{{Target: "/var/lib/postgresql/data", Source: &overrideSource, SourceIsHostPath: &overrideSourceIsHostPath, State: model.ServiceComponentOverlayOverride}},
 			Resources: &model.ServiceComponentResources{LimitCPUs: &overrideCPUs, State: model.ServiceComponentOverlayOverride},
-			Endpoints: []model.ServiceComponentEndpoint{{Name: "postgres", Mode: &mode, ListenPort: &overridePort, State: model.ServiceComponentOverlayOverride}},
+			Endpoints: []model.ServiceComponentEndpoint{{Protocol: "tcp", ContainerPort: basePort, Mode: &mode, ListenPort: &overridePort, State: model.ServiceComponentOverlayOverride}},
 		}},
 		nil,
 		nil,
@@ -70,7 +70,7 @@ func TestEffectiveServicePlanHashExcludesGatewayConfiguration(t *testing.T) {
 		Service:     model.Service{InstanceKey: "default"},
 		Components: []model.EffectiveServiceComponent{{
 			Name: "web", Image: "nginx:latest",
-			Endpoints: []model.VersionComponentEndpoint{{Name: "http", Protocol: "http", ContainerPort: 80, Mode: "gateway_http"}},
+			Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 80, Mode: "gateway"}},
 		}},
 	}
 	withoutGateway, err := EffectiveServicePlanHash(plan)
@@ -94,7 +94,7 @@ func TestBuildVersionPreviewPlanUsesVersionDeclarations(t *testing.T) {
 	declarations := []model.VersionComponent{{
 		Id: "component-web", VersionId: version.Id, Name: "web", Image: "nginx:latest",
 		Env:       []model.VersionComponentEnv{{Key: "MODE", Value: "version"}},
-		Endpoints: []model.VersionComponentEndpoint{{Name: "http", Protocol: "http", ContainerPort: 80, Mode: "local", ListenPort: &listenPort}},
+		Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 80, Mode: "local", ListenPort: &listenPort}},
 	}}
 
 	plan, err := BuildVersionPreviewPlan(app, version, declarations, nil)
@@ -129,7 +129,7 @@ func TestBuildVersionPreviewPlanRendersGatewayHTTPHost(t *testing.T) {
 	version := model.Version{Id: "version-1", ApplicationId: app.Id, Label: "v1"}
 	declarations := []model.VersionComponent{{
 		Id: "component-web", VersionId: version.Id, Name: "web", Image: "nginx:latest",
-		Endpoints: []model.VersionComponentEndpoint{{Name: "http", Protocol: "http", ContainerPort: 80, Mode: "gateway_http"}},
+		Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 80, Mode: "gateway"}},
 	}}
 
 	plan, err := BuildVersionPreviewPlan(app, version, declarations, &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web"})
@@ -155,7 +155,7 @@ func TestBuildEffectiveServicePlanAppliesTombstones(t *testing.T) {
 		Env:       []model.VersionComponentEnv{{Key: "FEATURE", Value: value}},
 		Mounts:    []model.VersionComponentMount{{SourceType: mountSourceDirectory, Source: source, Target: "/data"}},
 		Resources: &model.VersionComponentResources{LimitCPUs: &cpus},
-		Endpoints: []model.VersionComponentEndpoint{{Name: "http", Protocol: "http", ContainerPort: port, Mode: "host", ListenPort: &port}},
+		Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: port, Mode: "host", ListenPort: &port}},
 	}
 	plan, _, err := BuildEffectiveServicePlan(
 		model.Application{Id: "app-1", Code: "demo", Kind: status.ApplicationKindStandard},
@@ -167,7 +167,7 @@ func TestBuildEffectiveServicePlanAppliesTombstones(t *testing.T) {
 			Env:       []model.ServiceComponentEnv{{Key: "FEATURE", State: model.ServiceComponentOverlayDeleted}},
 			Mounts:    []model.ServiceComponentMount{{Target: "/data", State: model.ServiceComponentOverlayDeleted}},
 			Resources: &model.ServiceComponentResources{State: model.ServiceComponentOverlayDeleted},
-			Endpoints: []model.ServiceComponentEndpoint{{Name: "http", State: model.ServiceComponentOverlayDeleted}},
+			Endpoints: []model.ServiceComponentEndpoint{{Protocol: "http", ContainerPort: port, State: model.ServiceComponentOverlayDeleted}},
 		}},
 		nil,
 		nil,
@@ -203,7 +203,7 @@ func TestBuildEffectiveServicePlanRejectsUndeclaredOverlay(t *testing.T) {
 	}
 }
 
-func TestBuildEffectiveServicePlanKeepsGatewayAPIEndpointConfiguration(t *testing.T) {
+func TestBuildEffectiveServicePlanKeepsGatewayApiEndpointConfiguration(t *testing.T) {
 	defaultPort := 18080
 	listenPort := 8080
 	mode := "host"
@@ -214,13 +214,13 @@ func TestBuildEffectiveServicePlanKeepsGatewayAPIEndpointConfiguration(t *testin
 		[]model.VersionComponent{{
 			Id: "component-traefik", VersionId: "version-1", Name: "traefik", Image: "traefik:3.6",
 			Endpoints: []model.VersionComponentEndpoint{{
-				Name: "api", Protocol: "tcp", ContainerPort: 8080, Mode: "local", ListenPort: &defaultPort,
+				Protocol: "tcp", ContainerPort: 8080, Mode: "local", ListenPort: &defaultPort,
 			}},
 		}},
 		[]model.ServiceComponent{{
 			Id: "service-component-traefik", ServiceId: "service-1", SourceVersionComponentId: "component-traefik", ComponentName: "traefik",
 			Endpoints: []model.ServiceComponentEndpoint{{
-				Name: "api", Mode: &mode, ListenPort: &listenPort, State: model.ServiceComponentOverlayOverride,
+				Protocol: "tcp", ContainerPort: 8080, Mode: &mode, ListenPort: &listenPort, State: model.ServiceComponentOverlayOverride,
 			}},
 		}},
 		nil,

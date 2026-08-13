@@ -197,6 +197,7 @@
             v-model="editForm.git_credential_id"
             :options="gitCredentialOptions"
             placeholder="不使用凭据"
+            description-inline
           />
         </div>
         <div class="space-y-1.5">

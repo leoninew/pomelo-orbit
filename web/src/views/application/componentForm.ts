@@ -21,7 +21,6 @@ import type {
 } from '@/gen/proto/orbit/v1/application/version';
 
 export interface PortRow {
-  name?: string;
   protocol?: string;
   host_port: string;
   container_port: string;
@@ -160,7 +159,6 @@ export function componentFormFromResponse(component: VersionComponentResp): Comp
     command: component.command,
     env: component.env.map((item) => ({ key: item.key, value: item.value })),
     ports: component.endpoints.map((item) => ({
-      name: item.name,
       protocol: item.protocol,
       host_port: item.listen_port === undefined ? '' : String(item.listen_port),
       container_port: String(item.container_port),
@@ -285,9 +283,8 @@ function buildPorts(rows: PortRow[]): ComponentEndpoint[] | null {
       (requiresListenPort && !isInteger(row.host_port)) ||
       (!requiresListenPort && row.host_port !== '' && !isInteger(row.host_port)) ||
       !['http', 'tcp'].includes(protocol) ||
-      !['internal', 'local', 'host', 'gateway_http', 'gateway_tcp'].includes(mode) ||
-      (mode === 'gateway_http' && protocol !== 'http') ||
-      (mode === 'gateway_tcp' && protocol !== 'tcp')
+      !['internal', 'local', 'host', 'gateway'].includes(mode) ||
+      (mode === 'gateway' && protocol !== 'http')
     ) {
       return null;
     }
@@ -300,12 +297,7 @@ function buildPorts(rows: PortRow[]): ComponentEndpoint[] | null {
     ) {
       return null;
     }
-    const name = row.name?.trim() || `${protocol}-${containerPort}`;
-    if (!/^[a-z][a-z0-9-]*$/.test(name)) {
-      return null;
-    }
     endpoints.push({
-      name,
       protocol,
       container_port: containerPort,
       mode,

@@ -112,7 +112,7 @@ func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServic
 				continue
 			case "local", "host":
 				if endpoint.ListenPort == nil {
-					return fmt.Errorf("endpoint %s/%s requires listen_port", component.Name, endpoint.Name)
+					return fmt.Errorf("endpoint %s/%s requires listen_port", component.Name, model.EndpointDisplayName(endpoint.Protocol, endpoint.ContainerPort))
 				}
 				address := "0.0.0.0"
 				if endpoint.Mode == "local" {
@@ -122,15 +122,15 @@ func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServic
 					address = *endpoint.BindAddress
 				}
 				if endpoint.Mode == "local" && address != "127.0.0.1" && address != "::1" {
-					return fmt.Errorf("local endpoint %s/%s must bind loopback", component.Name, endpoint.Name)
+					return fmt.Errorf("local endpoint %s/%s must bind loopback", component.Name, model.EndpointDisplayName(endpoint.Protocol, endpoint.ContainerPort))
 				}
 				appendString(service, "ports", fmt.Sprintf("%s:%d:%d", address, *endpoint.ListenPort, endpoint.ContainerPort))
-			case "gateway_http":
+			case "gateway":
 				if endpoint.Protocol != "http" {
-					return fmt.Errorf("gateway_http endpoint %s/%s must use http", component.Name, endpoint.Name)
+					return fmt.Errorf("gateway endpoint %s/%s must use http", component.Name, model.EndpointDisplayName(endpoint.Protocol, endpoint.ContainerPort))
 				}
 				if plan.Gateway == nil {
-					return fmt.Errorf("gateway config required for endpoint %s/%s", component.Name, endpoint.Name)
+					return fmt.Errorf("gateway config required for endpoint %s/%s", component.Name, model.EndpointDisplayName(endpoint.Protocol, endpoint.ContainerPort))
 				}
 				host, err := model.DeriveServiceComponentHost(plan.Gateway, plan.Service, component.Name)
 				if err != nil {
@@ -141,44 +141,23 @@ func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServic
 					entrypoint = *endpoint.Entrypoint
 				}
 				if entrypoint == "" {
-					return fmt.Errorf("gateway_http endpoint %s/%s requires entrypoint", component.Name, endpoint.Name)
+					return fmt.Errorf("gateway endpoint %s/%s requires entrypoint", component.Name, model.EndpointDisplayName(endpoint.Protocol, endpoint.ContainerPort))
 				}
 				pathPrefix := normalizedPathPrefix(endpoint.PathPrefix)
 				routeKey := host + "\x00" + entrypoint + "\x00" + pathPrefix
 				if _, exists := httpRoutes[routeKey]; exists {
-					return fmt.Errorf("gateway_http endpoint %s/%s duplicates route %s%s", component.Name, endpoint.Name, host, pathPrefix)
+					return fmt.Errorf("gateway endpoint %s/%s duplicates route %s%s", component.Name, model.EndpointDisplayName(endpoint.Protocol, endpoint.ContainerPort), host, pathPrefix)
 				}
 				httpRoutes[routeKey] = struct{}{}
-				router := routerName(plan, component.Name, endpoint.Name)
+				router := routerName(plan, component.Name, model.EndpointDisplayName(endpoint.Protocol, endpoint.ContainerPort))
 				rule := "Host(`" + host + "`)"
 				if pathPrefix != "/" {
 					rule += " && PathPrefix(`" + pathPrefix + "`)"
 				}
 				appendStrings(service, "labels", []string{"traefik.enable=true", "traefik.http.routers." + router + ".rule=" + rule, "traefik.http.routers." + router + ".entrypoints=" + entrypoint, "traefik.http.routers." + router + ".service=" + router, "traefik.http.services." + router + ".loadbalancer.server.port=" + strconv.Itoa(endpoint.ContainerPort)})
 				appendTLSLabels(service, router, "http", plan.Gateway.TLSMode)
-			case "gateway_tcp":
-				if endpoint.Protocol != "tcp" {
-					return fmt.Errorf("gateway_tcp endpoint %s/%s must use tcp", component.Name, endpoint.Name)
-				}
-				if plan.Gateway == nil {
-					return fmt.Errorf("gateway config required for endpoint %s/%s", component.Name, endpoint.Name)
-				}
-				if endpoint.Entrypoint == nil || *endpoint.Entrypoint == "" {
-					return fmt.Errorf("gateway_tcp endpoint %s/%s requires entrypoint", component.Name, endpoint.Name)
-				}
-				router := routerName(plan, component.Name, endpoint.Name)
-				sni := "*"
-				if plan.Gateway.TLSMode == "letsencrypt" || plan.Gateway.TLSMode == "tls" {
-					var err error
-					sni, err = model.DeriveServiceComponentHost(plan.Gateway, plan.Service, component.Name)
-					if err != nil {
-						return err
-					}
-				}
-				appendStrings(service, "labels", []string{"traefik.enable=true", "traefik.tcp.routers." + router + ".rule=HostSNI(`" + sni + "`)", "traefik.tcp.routers." + router + ".entrypoints=" + *endpoint.Entrypoint, "traefik.tcp.routers." + router + ".service=" + router, "traefik.tcp.services." + router + ".loadbalancer.server.port=" + strconv.Itoa(endpoint.ContainerPort)})
-				appendTLSLabels(service, router, "tcp", plan.Gateway.TLSMode)
 			default:
-				return fmt.Errorf("endpoint %s/%s has unsupported mode %q", component.Name, endpoint.Name, endpoint.Mode)
+				return fmt.Errorf("endpoint %s/%s has unsupported mode %q", component.Name, model.EndpointDisplayName(endpoint.Protocol, endpoint.ContainerPort), endpoint.Mode)
 			}
 		}
 	}

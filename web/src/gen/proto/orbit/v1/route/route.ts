@@ -19,6 +19,12 @@ export interface RouteResp {
   cert_type: string;
   created_at: string;
   updated_at: string;
+  protocol: string;
+  listen_port?: number | undefined;
+  service_id?: string | undefined;
+  component_name?: string | undefined;
+  endpoint_protocol?: string | undefined;
+  endpoint_container_port?: number | undefined;
 }
 
 export interface RouteCreateReq {
@@ -27,6 +33,12 @@ export interface RouteCreateReq {
   path_prefix: string;
   target_url: string;
   enabled: boolean;
+  protocol: string;
+  listen_port?: number | undefined;
+  service_id?: string | undefined;
+  component_name?: string | undefined;
+  endpoint_protocol?: string | undefined;
+  endpoint_container_port?: number | undefined;
 }
 
 export interface RouteUpdateReq {
@@ -35,6 +47,12 @@ export interface RouteUpdateReq {
   path_prefix?: string | undefined;
   target_url?: string | undefined;
   enabled?: boolean | undefined;
+  protocol?: string | undefined;
+  listen_port?: number | undefined;
+  service_id?: string | undefined;
+  component_name?: string | undefined;
+  endpoint_protocol?: string | undefined;
+  endpoint_container_port?: number | undefined;
 }
 
 export interface RouteEnableReq {

@@ -277,6 +277,7 @@
             :placeholder="t('service.create.selectVersion')"
             :disabled="!createForm.application_id"
             :invalid="Boolean(createErrors.version_id)"
+            description-inline
             width-class="w-full"
             @update:model-value="
               createForm.version_id = String($event || '');

@@ -10,21 +10,33 @@ import (
 
 func routeCreateInput(req *routev1.RouteCreateReq) routedto.RouteCreateInput {
 	return routedto.RouteCreateInput{
-		Name:       req.Name,
-		Domain:     req.Domain,
-		PathPrefix: req.PathPrefix,
-		TargetUrl:  req.TargetUrl,
-		Enabled:    req.Enabled,
+		Name:                  req.Name,
+		Protocol:              req.Protocol,
+		Domain:                req.Domain,
+		PathPrefix:            req.PathPrefix,
+		TargetUrl:             req.TargetUrl,
+		ListenPort:            optionalInt(req.ListenPort),
+		ServiceId:             req.GetServiceId(),
+		ComponentName:         req.GetComponentName(),
+		EndpointProtocol:      req.GetEndpointProtocol(),
+		EndpointContainerPort: optionalInt(req.EndpointContainerPort),
+		Enabled:               req.Enabled,
 	}
 }
 
 func routeUpdateInput(req *routev1.RouteUpdateReq) routedto.RouteUpdateInput {
 	return routedto.RouteUpdateInput{
-		Name:       req.Name,
-		Domain:     req.Domain,
-		PathPrefix: req.PathPrefix,
-		TargetUrl:  req.TargetUrl,
-		Enabled:    req.Enabled,
+		Name:                  req.Name,
+		Protocol:              req.Protocol,
+		Domain:                req.Domain,
+		PathPrefix:            req.PathPrefix,
+		TargetUrl:             req.TargetUrl,
+		ListenPort:            optionalInt(req.ListenPort),
+		ServiceId:             req.ServiceId,
+		ComponentName:         req.ComponentName,
+		EndpointProtocol:      req.EndpointProtocol,
+		EndpointContainerPort: optionalInt(req.EndpointContainerPort),
+		Enabled:               req.Enabled,
 	}
 }
 
@@ -38,17 +50,39 @@ func routeResponses(items []model.Route) []routev1.RouteResp {
 
 func routeResponse(route model.Route) routev1.RouteResp {
 	return routev1.RouteResp{
-		Id:           route.Id,
-		Name:         route.Name,
-		Domain:       route.Domain,
-		PathPrefix:   route.PathPrefix,
-		TargetUrl:    route.TargetUrl,
-		Enabled:      route.Enabled,
-		HttpsEnabled: route.HTTPSEnabled,
-		CertType:     route.CertType,
-		CreatedAt:    transportresponse.FormatTime(route.CreatedAt),
-		UpdatedAt:    transportresponse.FormatTime(route.UpdatedAt),
+		Id:                    route.Id,
+		Name:                  route.Name,
+		Protocol:              route.Protocol,
+		Domain:                route.Domain,
+		PathPrefix:            route.PathPrefix,
+		TargetUrl:             route.TargetUrl,
+		ListenPort:            optionalInt32(route.ListenPort),
+		ServiceId:             route.ServiceId,
+		ComponentName:         route.ComponentName,
+		EndpointProtocol:      route.EndpointProtocol,
+		EndpointContainerPort: optionalInt32(route.EndpointContainerPort),
+		Enabled:               route.Enabled,
+		HttpsEnabled:          route.HTTPSEnabled,
+		CertType:              route.CertType,
+		CreatedAt:             transportresponse.FormatTime(route.CreatedAt),
+		UpdatedAt:             transportresponse.FormatTime(route.UpdatedAt),
 	}
+}
+
+func optionalInt(value *int32) *int {
+	if value == nil {
+		return nil
+	}
+	converted := int(*value)
+	return &converted
+}
+
+func optionalInt32(value *int) *int32 {
+	if value == nil {
+		return nil
+	}
+	converted := int32(*value)
+	return &converted
 }
 
 func traefikConfigResponse(config routedto.TraefikConfigView) routev1.TraefikConfigResp {

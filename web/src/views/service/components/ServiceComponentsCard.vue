@@ -40,7 +40,7 @@
                   v-for="endpoint in publishedServiceComponentEndpoints(
                     component.effective_endpoints
                   )"
-                  :key="endpoint.name"
+                  :key="`${endpoint.protocol}:${endpoint.container_port}`"
                   class="flex items-center gap-2 text-sm"
                 >
                   <AppBadge variant="pill">{{ endpoint.mode }}</AppBadge>

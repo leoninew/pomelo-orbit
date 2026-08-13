@@ -12,8 +12,8 @@ Pomelo Orbit 是一个面向本地容器环境的轻量级 CI/CD 平台，提供
 
 ```bash
 task install
-task dev:backend
-task dev:frontend
+task dev:webapi
+task dev:web
 ```
 
 访问 <http://localhost:9020>。

@@ -161,28 +161,18 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		DefaultEntrypoint          *string `json:"default_entrypoint,omitempty"`
 		TLSMode                    *string `json:"tls_mode,omitempty"`
 	}) (map[string]any, error) {
-		code, name, restApiUrl, baseDomain, pullPolicy := input.Code, input.Name, input.RestApiUrl, input.BaseDomain, input.InitialComponentPullPolicy
-		if code == "" {
-			code = "traefik"
-		}
-		if name == "" {
-			name = "Traefik"
-		}
-		if restApiUrl == "" {
-			restApiUrl = "http://localhost:8080"
-		}
-		if baseDomain == "" {
-			baseDomain = "lvh.me"
-		}
-		if pullPolicy == "" {
-			pullPolicy = "missing"
-		}
-		image := input.InitialComponentImage
-		if image == nil {
-			value := "traefik:3.6"
-			image = &value
-		}
-		gateway, err := c.deps.Gateway.CreateGateway(ctx, c.deps.ActorUserId, gatewaydto.GatewayCreateInput{ProjectId: input.ProjectId, Code: code, Name: name, RestApiUrl: restApiUrl, BaseDomain: baseDomain, InitialComponentImage: image, InitialComponentPullPolicy: pullPolicy, DefaultEntrypoint: input.DefaultEntrypoint, TLSMode: input.TLSMode})
+		// Empty optional fields are filled from process Traefik defaults inside CreateGateway.
+		gateway, err := c.deps.Gateway.CreateGateway(ctx, c.deps.ActorUserId, gatewaydto.GatewayCreateInput{
+			ProjectId:                  input.ProjectId,
+			Code:                       input.Code,
+			Name:                       input.Name,
+			RestApiUrl:                 input.RestApiUrl,
+			BaseDomain:                 input.BaseDomain,
+			InitialComponentImage:      input.InitialComponentImage,
+			InitialComponentPullPolicy: input.InitialComponentPullPolicy,
+			DefaultEntrypoint:          input.DefaultEntrypoint,
+			TLSMode:                    input.TLSMode,
+		})
 		if err != nil {
 			return nil, err
 		}

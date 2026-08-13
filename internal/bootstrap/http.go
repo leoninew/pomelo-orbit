@@ -93,7 +93,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	localSource := repositorysource.New(runtimepath.ResolvePhysicalPath)
 	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
 	routeManager := traefik.NewRouteManager(cfg)
-	gatewayCore := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment)
+	gatewayCore := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, cfg.Traefik)
 	deploymentService := deploymentsvc.NewCommandService(
 		stores.project,
 		stores.application,
@@ -146,8 +146,11 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		),
 		RouteService: routesvc.New(
 			stores.project,
+			stores.application,
+			stores.service,
 			stores.route,
 			stores.gateway,
+			gatewayCore,
 			cfg,
 			routeManager,
 			traefik.MkcertGenerator{},

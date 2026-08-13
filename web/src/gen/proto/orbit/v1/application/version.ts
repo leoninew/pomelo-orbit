@@ -107,7 +107,6 @@ export interface ComponentEnv {
 }
 
 export interface ComponentEndpoint {
-  name: string;
   protocol: string;
   container_port: number;
   mode: string;

@@ -77,3 +77,9 @@ type Workspace interface {
 	PhysicalServiceDir(ctx context.Context, serviceCode string) (string, error)
 	WriteConfig(serviceCode string, path string, content string) error
 }
+
+// GatewayRoutePublisher restores the complete custom Route snapshot after a
+// Gateway Compose deployment has replaced the Traefik REST provider state.
+type GatewayRoutePublisher interface {
+	PublishSnapshot(ctx context.Context) error
+}

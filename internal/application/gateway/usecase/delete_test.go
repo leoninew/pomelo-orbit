@@ -15,7 +15,7 @@ import (
 type gatewayDeleteApplicationStore struct {
 	gatewayport.ApplicationStore
 	application model.Application
-	deleteID    string
+	deleteId    string
 	deleteErr   error
 }
 
@@ -28,7 +28,7 @@ func (s *gatewayDeleteApplicationStore) ListApplications(_ context.Context, _ *s
 }
 
 func (s *gatewayDeleteApplicationStore) DeleteGatewayApplication(_ context.Context, id string) error {
-	s.deleteID = id
+	s.deleteId = id
 	return s.deleteErr
 }
 
@@ -58,13 +58,14 @@ func TestDeleteGatewayDeletesStoppedServiceResources(t *testing.T) {
 		gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: "gateway-1"}},
 		gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", Status: status.ServiceStatusStopped}}},
 		nil,
+		testTraefikConfig(),
 	)
 
 	if err := service.DeleteGateway(context.Background(), "user-1", "gateway-1"); err != nil {
 		t.Fatal(err)
 	}
-	if application.deleteID != "gateway-1" {
-		t.Fatalf("deleted application = %q, want gateway-1", application.deleteID)
+	if application.deleteId != "gateway-1" {
+		t.Fatalf("deleted application = %q, want gateway-1", application.deleteId)
 	}
 }
 
@@ -78,6 +79,7 @@ func TestDeleteGatewayRejectsNonStoppedService(t *testing.T) {
 				gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: "gateway-1"}},
 				gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", Code: "gateway-default", Status: serviceStatus}}},
 				nil,
+				testTraefikConfig(),
 			)
 
 			err := service.DeleteGateway(context.Background(), "user-1", "gateway-1")
@@ -88,8 +90,8 @@ func TestDeleteGatewayRejectsNonStoppedService(t *testing.T) {
 			if classification.Message != "网关存在未停止的服务 gateway-default, 请先停止后再删除" {
 				t.Fatalf("message = %q", classification.Message)
 			}
-			if application.deleteID != "" {
-				t.Fatalf("unexpected deletion of %q", application.deleteID)
+			if application.deleteId != "" {
+				t.Fatalf("unexpected deletion of %q", application.deleteId)
 			}
 		})
 	}

@@ -150,14 +150,18 @@
       <!-- Stage List -->
       <DetailInfoCard :title="t('pipelineRun.stageOrchestration')">
         <template #actions>
+          <SearchControl
+            v-model="stageSearchText"
+            :placeholder="t('pipelineRun.searchStagesPlaceholder')"
+            :loading="loading"
+            class="shrink-0"
+            @search="handleStageSearch"
+          />
           <ViewModeToggle v-model="stagesView" />
         </template>
 
         <AppLoadingState v-if="run.snapshot_id && !snapshot" size="compact" />
-        <AppEmptyState
-          v-else-if="!snapshot || snapshot.stages_snapshot.length === 0"
-          size="compact"
-        />
+        <AppEmptyState v-else-if="!snapshot || filteredStages.length === 0" size="compact" />
 
         <!-- List View -->
         <div v-else-if="stagesView === 'list'">
@@ -176,7 +180,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(stage, index) in snapshot?.stages_snapshot ?? []" :key="stage.id">
+                <tr v-for="(stage, index) in filteredStages" :key="stage.id">
                   <td class="text-muted-foreground">{{ index + 1 }}</td>
                   <td>
                     <span class="text-foreground">{{ stage.name }}</span>
@@ -246,13 +250,22 @@
       </DetailInfoCard>
 
       <DetailInfoCard :title="t('pipelineRun.artifacts')">
+        <template #actions>
+          <SearchControl
+            v-model="artifactSearchText"
+            :placeholder="t('pipelineRun.searchArtifactsPlaceholder')"
+            :loading="artifactsLoading"
+            class="shrink-0"
+            @search="handleArtifactSearch"
+          />
+        </template>
         <AppLoadingState v-if="artifactsLoading" />
         <AppEmptyState
           v-else-if="!isComplete(run.status)"
           :message="t('pipelineRun.artifactsAfterCompletion')"
           size="compact"
         />
-        <AppEmptyState v-else-if="artifacts.length === 0" size="compact" />
+        <AppEmptyState v-else-if="filteredArtifacts.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table min-w-[640px]">
             <thead>
@@ -264,7 +277,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="artifact in artifacts" :key="artifact.id">
+              <tr v-for="artifact in filteredArtifacts" :key="artifact.id">
                 <td class="text-foreground">{{ artifact.stage_name }}</td>
                 <td>
                   <AppBadge variant="pill">
@@ -360,6 +373,7 @@
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
+  import SearchControl from '@/components/SearchControl.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import ViewModeToggle from '@/components/ViewModeToggle.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
@@ -399,6 +413,10 @@
   const isCancelDialogOpen = ref(false);
   const cancelSubmitError = ref('');
   const stagesView = ref<'list' | 'dag'>('list');
+  const stageSearchText = ref('');
+  const appliedStageSearch = ref('');
+  const artifactSearchText = ref('');
+  const appliedArtifactSearch = ref('');
   const stageLogStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error'>('loading');
   const stageLogError = ref('');
 
@@ -417,6 +435,31 @@
       map[stage.id] = stage;
     }
     return map;
+  });
+
+  const filteredStages = computed(() => {
+    const stages = snapshot.value?.stages_snapshot ?? [];
+    const keyword = appliedStageSearch.value.trim().toLowerCase();
+    if (!keyword) {
+      return stages;
+    }
+    return stages.filter(
+      (stage) =>
+        stage.name.toLowerCase().includes(keyword) || stage.image.toLowerCase().includes(keyword)
+    );
+  });
+
+  const filteredArtifacts = computed(() => {
+    const keyword = appliedArtifactSearch.value.trim().toLowerCase();
+    if (!keyword) {
+      return artifacts.value;
+    }
+    return artifacts.value.filter(
+      (artifact) =>
+        artifact.name.toLowerCase().includes(keyword) ||
+        artifact.stage_name.toLowerCase().includes(keyword) ||
+        artifact.collector.toLowerCase().includes(keyword)
+    );
   });
 
   // Log drawer state
@@ -560,6 +603,20 @@
     } catch {
       // Artifact load failure does not block the main flow
     }
+  }
+
+  function handleStageSearch() {
+    appliedStageSearch.value = stageSearchText.value;
+    const snapshotId = run.value?.snapshot_id;
+    if (snapshotId) {
+      void fetchSnapshot(snapshotId);
+    }
+    void fetchRun();
+  }
+
+  function handleArtifactSearch() {
+    appliedArtifactSearch.value = artifactSearchText.value;
+    void fetchArtifacts();
   }
 
   async function handleRetry() {

@@ -11,19 +11,12 @@
             class="w-full sm:w-[360px]"
             :placeholder="t('traefikRoute.searchPlaceholder')"
             :loading="traefikStatus === 'loading'"
+            @search="handleTraefikSearch"
           />
           <div class="flex flex-wrap items-center gap-2">
             <button class="app-button-primary h-9 px-3" @click="openDashboard">
               <ExternalLink class="size-4" />
               {{ t('traefikRoute.openDashboard') }}
-            </button>
-            <button
-              class="app-button h-9 px-3"
-              :disabled="traefikStatus === 'loading'"
-              @click="fetchTraefikRoutes"
-            >
-              <RefreshCw class="size-4" :class="{ 'animate-spin': traefikStatus === 'loading' }" />
-              {{ t('common.refresh') }}
             </button>
           </div>
         </ToolbarRoot>
@@ -78,7 +71,9 @@
               </td>
               <td class="max-w-0" :title="traefikRoute.rule">
                 <a
-                  v-if="!isTCPRouter(traefikRoute) && buildRouteUrl(traefikRoute.rule, traefikRoute.tls)"
+                  v-if="
+                    !isTCPRouter(traefikRoute) && buildRouteUrl(traefikRoute.rule, traefikRoute.tls)
+                  "
                   :href="buildRouteUrl(traefikRoute.rule, traefikRoute.tls)!"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -106,7 +101,9 @@
               <td class="whitespace-nowrap">
                 <AppBadge
                   variant="status"
-                  :tone="isTCPRouter(traefikRoute) ? 'warning' : traefikRoute.tls ? 'info' : 'default'"
+                  :tone="
+                    isTCPRouter(traefikRoute) ? 'warning' : traefikRoute.tls ? 'info' : 'default'
+                  "
                 >
                   {{ isTCPRouter(traefikRoute) ? 'TCP' : traefikRoute.tls ? 'HTTPS' : 'HTTP' }}
                 </AppBadge>
@@ -324,9 +321,18 @@
           :listen-port-error="errors.listen_port"
           @update:service-id="form.service_id = $event"
           @update:component-name="form.component_name = $event"
-          @update:endpoint-protocol="form.endpoint_protocol = $event; errors.endpoint_protocol = ''"
-          @update:endpoint-container-port="form.endpoint_container_port = $event; errors.endpoint_container_port = ''"
-          @update:listen-port="form.listen_port = $event; errors.listen_port = ''"
+          @update:endpoint-protocol="
+            form.endpoint_protocol = $event;
+            errors.endpoint_protocol = '';
+          "
+          @update:endpoint-container-port="
+            form.endpoint_container_port = $event;
+            errors.endpoint_container_port = '';
+          "
+          @update:listen-port="
+            form.listen_port = $event;
+            errors.listen_port = '';
+          "
         />
       </template>
       <template v-if="form.protocol === 'http'">
@@ -343,8 +349,14 @@
           :endpoint-error="errors.endpoint_protocol || errors.endpoint_container_port"
           @update:service-id="form.service_id = $event"
           @update:component-name="form.component_name = $event"
-          @update:endpoint-protocol="form.endpoint_protocol = $event; errors.endpoint_protocol = ''"
-          @update:endpoint-container-port="form.endpoint_container_port = $event; errors.endpoint_container_port = ''"
+          @update:endpoint-protocol="
+            form.endpoint_protocol = $event;
+            errors.endpoint_protocol = '';
+          "
+          @update:endpoint-container-port="
+            form.endpoint_container_port = $event;
+            errors.endpoint_container_port = '';
+          "
         />
         <label class="flex cursor-pointer items-center gap-3">
           <SwitchRoot
@@ -477,9 +489,18 @@
           :listen-port-error="editErrors.listen_port"
           @update:service-id="editForm.service_id = $event"
           @update:component-name="editForm.component_name = $event"
-          @update:endpoint-protocol="editForm.endpoint_protocol = $event; editErrors.endpoint_protocol = ''"
-          @update:endpoint-container-port="editForm.endpoint_container_port = $event; editErrors.endpoint_container_port = ''"
-          @update:listen-port="editForm.listen_port = $event; editErrors.listen_port = ''"
+          @update:endpoint-protocol="
+            editForm.endpoint_protocol = $event;
+            editErrors.endpoint_protocol = '';
+          "
+          @update:endpoint-container-port="
+            editForm.endpoint_container_port = $event;
+            editErrors.endpoint_container_port = '';
+          "
+          @update:listen-port="
+            editForm.listen_port = $event;
+            editErrors.listen_port = '';
+          "
         />
       </template>
       <div v-if="editForm.protocol === 'http'" class="space-y-1.5">
@@ -508,8 +529,14 @@
           :endpoint-error="editErrors.endpoint_protocol || editErrors.endpoint_container_port"
           @update:service-id="editForm.service_id = $event"
           @update:component-name="editForm.component_name = $event"
-          @update:endpoint-protocol="editForm.endpoint_protocol = $event; editErrors.endpoint_protocol = ''"
-          @update:endpoint-container-port="editForm.endpoint_container_port = $event; editErrors.endpoint_container_port = ''"
+          @update:endpoint-protocol="
+            editForm.endpoint_protocol = $event;
+            editErrors.endpoint_protocol = '';
+          "
+          @update:endpoint-container-port="
+            editForm.endpoint_container_port = $event;
+            editErrors.endpoint_container_port = '';
+          "
         />
         <label class="flex cursor-pointer items-center gap-3">
           <SwitchRoot
@@ -603,6 +630,7 @@
   const traefikRoutes = ref<TraefikRouterResp[]>([]);
   const routeSearchText = ref('');
   const traefikSearchText = ref('');
+  const appliedTraefikSearch = ref('');
   const isCreateDialogOpen = ref(false);
   const isEditDialogOpen = ref(false);
   const editingRoute = ref<RouteResp>();
@@ -610,10 +638,10 @@
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
   const filteredTraefikRoutes = computed(() => {
-    if (!traefikSearchText.value.trim()) {
+    if (!appliedTraefikSearch.value.trim()) {
       return traefikRoutes.value;
     }
-    const search = traefikSearchText.value.toLowerCase();
+    const search = appliedTraefikSearch.value.toLowerCase();
     return traefikRoutes.value.filter(
       (router) =>
         router.name.toLowerCase().includes(search) ||
@@ -802,6 +830,11 @@
     fetchRoutes();
   }
 
+  function handleTraefikSearch() {
+    appliedTraefikSearch.value = traefikSearchText.value;
+    void fetchTraefikRoutes();
+  }
+
   function goPage(page: number) {
     pagination.current = page;
     fetchRoutes();
@@ -954,11 +987,16 @@
             path_prefix: form.protocol === 'http' ? form.path_prefix : '',
             target_url: form.protocol === 'http' && form.custom_target ? form.target_url : '',
             listen_port: form.protocol === 'tcp' ? form.listen_port : undefined,
-            service_id: form.protocol === 'tcp' || !form.custom_target ? form.service_id.trim() : '',
-            component_name: form.protocol === 'tcp' || !form.custom_target ? form.component_name.trim() : '',
-            endpoint_protocol: form.protocol === 'tcp' || !form.custom_target ? form.endpoint_protocol.trim() : '',
+            service_id:
+              form.protocol === 'tcp' || !form.custom_target ? form.service_id.trim() : '',
+            component_name:
+              form.protocol === 'tcp' || !form.custom_target ? form.component_name.trim() : '',
+            endpoint_protocol:
+              form.protocol === 'tcp' || !form.custom_target ? form.endpoint_protocol.trim() : '',
             endpoint_container_port:
-              form.protocol === 'tcp' || !form.custom_target ? form.endpoint_container_port : undefined,
+              form.protocol === 'tcp' || !form.custom_target
+                ? form.endpoint_container_port
+                : undefined,
             enabled: form.enabled,
           },
           { project_id: projectId }
@@ -989,13 +1027,17 @@
             editForm.protocol === 'http' && editForm.custom_target ? editForm.target_url : '',
           listen_port: editForm.protocol === 'tcp' ? editForm.listen_port : undefined,
           service_id:
-            editForm.protocol === 'tcp' || !editForm.custom_target ? editForm.service_id.trim() : '',
+            editForm.protocol === 'tcp' || !editForm.custom_target
+              ? editForm.service_id.trim()
+              : '',
           component_name:
             editForm.protocol === 'tcp' || !editForm.custom_target
               ? editForm.component_name.trim()
               : '',
           endpoint_protocol:
-            editForm.protocol === 'tcp' || !editForm.custom_target ? editForm.endpoint_protocol.trim() : '',
+            editForm.protocol === 'tcp' || !editForm.custom_target
+              ? editForm.endpoint_protocol.trim()
+              : '',
           endpoint_container_port:
             editForm.protocol === 'tcp' || !editForm.custom_target
               ? editForm.endpoint_container_port

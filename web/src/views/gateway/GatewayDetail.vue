@@ -102,8 +102,17 @@
       </DetailInfoCard>
 
       <DetailInfoCard :title="t('gateway.exposures.title')">
+        <template #actions>
+          <SearchControl
+            v-model="exposureSearchText"
+            :placeholder="t('gateway.exposures.searchPlaceholder')"
+            :loading="loading"
+            class="shrink-0"
+            @search="handleExposureSearch"
+          />
+        </template>
         <div class="px-5 py-4">
-          <AppEmptyState v-if="!(gateway.exposures || []).length" size="compact" />
+          <AppEmptyState v-if="filteredExposures.length === 0" size="compact" />
           <div v-else class="overflow-x-auto">
             <table class="app-data-table min-w-[720px]">
               <thead>
@@ -118,7 +127,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(row, idx) in gateway.exposures" :key="idx">
+                <tr v-for="(row, idx) in filteredExposures" :key="idx">
                   <td class="text-foreground">{{ row.application_code }}</td>
                   <td class="text-foreground">{{ row.component_name }}</td>
                   <td>
@@ -364,6 +373,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import SearchControl from '@/components/SearchControl.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
@@ -379,12 +389,32 @@
   const route = useRoute();
   const router = useRouter();
   usePageBreadcrumbs([]);
-  const { status, execute } = useStatusAsync();
+  const { status, loading, execute } = useStatusAsync();
   const { status: opStatus, execute: executeOp } = useStatusAsync();
 
   const gateway = ref<GatewayResp | null>(null);
   const services = ref<ServiceResp[]>([]);
   const versions = ref<VersionResp[]>([]);
+  const exposureSearchText = ref('');
+  const appliedExposureSearch = ref('');
+
+  const filteredExposures = computed(() => {
+    const exposures = gateway.value?.exposures ?? [];
+    const keyword = appliedExposureSearch.value.trim().toLowerCase();
+    if (!keyword) {
+      return exposures;
+    }
+    return exposures.filter(
+      (row) =>
+        row.application_code.toLowerCase().includes(keyword) ||
+        row.component_name.toLowerCase().includes(keyword) ||
+        row.protocol.toLowerCase().includes(keyword) ||
+        row.access.toLowerCase().includes(keyword) ||
+        String(row.listen_port).includes(keyword) ||
+        row.internal_dns.toLowerCase().includes(keyword) ||
+        row.client_hint.toLowerCase().includes(keyword)
+    );
+  });
 
   const isDeployDialogOpen = ref(false);
   const deployErrors = reactive({ version_id: '', instance_key: '' });
@@ -504,6 +534,11 @@
       editSubmitError.value =
         error instanceof Error ? error.message : t('gateway.toast.saveFailed');
     }
+  }
+
+  function handleExposureSearch() {
+    appliedExposureSearch.value = exposureSearchText.value;
+    void loadGateway();
   }
 
   async function loadGateway() {

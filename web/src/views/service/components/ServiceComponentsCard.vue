@@ -1,6 +1,15 @@
 <template>
   <DetailInfoCard :title="t('application.detail.fields.components')">
-    <AppEmptyState v-if="service.components.length === 0" size="compact" />
+    <template #actions>
+      <SearchControl
+        v-model="searchText"
+        :placeholder="t('service.searchComponentsPlaceholder')"
+        :loading="loading"
+        class="shrink-0"
+        @search="handleSearch"
+      />
+    </template>
+    <AppEmptyState v-if="filteredComponents.length === 0" size="compact" />
     <div v-else class="overflow-x-auto">
       <table class="app-data-table min-w-[1180px]">
         <thead>
@@ -13,7 +22,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="component in service.components" :key="component.id">
+          <tr v-for="component in filteredComponents" :key="component.id">
             <td>
               <router-link
                 :to="`/service/${service.id}/component/${component.id}`"
@@ -75,18 +84,49 @@
 </template>
 
 <script setup lang="ts">
+  import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import SearchControl from '@/components/SearchControl.vue';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { publishedServiceComponentEndpoints } from './serviceComponentPorts';
 
-  defineProps<{ service: ServiceResp }>();
+  const props = withDefaults(
+    defineProps<{
+      service: ServiceResp;
+      loading?: boolean;
+    }>(),
+    {
+      loading: false,
+    }
+  );
 
   const emit = defineEmits<{
     'view-logs': [component: string];
+    search: [];
   }>();
 
   const { t } = useI18n();
+  const searchText = ref('');
+  const appliedSearch = ref('');
+
+  const filteredComponents = computed(() => {
+    const keyword = appliedSearch.value.trim().toLowerCase();
+    if (!keyword) {
+      return props.service.components;
+    }
+    return props.service.components.filter(
+      (component) =>
+        component.component_name.toLowerCase().includes(keyword) ||
+        component.container_name.toLowerCase().includes(keyword) ||
+        component.image.toLowerCase().includes(keyword)
+    );
+  });
+
+  function handleSearch() {
+    appliedSearch.value = searchText.value;
+    emit('search');
+  }
 </script>

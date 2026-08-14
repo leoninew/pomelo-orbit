@@ -186,6 +186,7 @@ export default {
     selectUser: 'Select User',
     selectUserRequired: 'Select a user',
     searchUser: 'Search users',
+    searchMembersPlaceholder: 'Search username/email',
     noAvailableUsers: 'No available users',
     loadProjectFailed: 'Failed to load project',
     loadMembersFailed: 'Failed to load members',
@@ -272,6 +273,8 @@ export default {
     },
     detail: {
       title: 'Application Details',
+      searchVersionsPlaceholder: 'Search version name/note',
+      searchComponentsPlaceholder: 'Search component name/image',
       sections: {
         basicInfo: 'Basic Info',
         versions: 'Versions',
@@ -599,6 +602,7 @@ export default {
   service: {
     toolbar: 'Services toolbar',
     searchPlaceholder: 'Search app / service code / instance / version',
+    searchComponentsPlaceholder: 'Search component name/image/container',
     viewMode: 'Service view',
     cardView: 'Card view',
     tableView: 'Table view',
@@ -764,6 +768,7 @@ export default {
     },
     exposures: {
       title: 'Network exposures',
+      searchPlaceholder: 'Search app/component/protocol',
       empty: 'No active local/public exposures.',
       app: 'Application',
       component: 'Component',
@@ -1071,6 +1076,9 @@ export default {
   },
   pipelineRun: {
     toolbar: 'Pipeline run toolbar',
+    searchPlaceholder: 'Search pipeline/repository/ref/status',
+    searchStagesPlaceholder: 'Search stage name/image',
+    searchArtifactsPlaceholder: 'Search artifact name/stage',
     filterRepository: 'Filter repository',
     filterTemplate: 'Filter template',
     detailTitle: 'Pipeline Details',

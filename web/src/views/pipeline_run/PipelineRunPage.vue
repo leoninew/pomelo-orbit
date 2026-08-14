@@ -1,6 +1,13 @@
 <template>
   <div class="space-y-6">
     <div class="app-toolbar-simple">
+      <SearchControl
+        v-model="searchText"
+        :placeholder="t('pipelineRun.searchPlaceholder')"
+        :loading="status === 'loading'"
+        class="shrink-0"
+        @search="handleSearch"
+      />
       <ComboboxSelect
         v-model="pipelineId"
         :options="pipelineOptions"
@@ -15,7 +22,7 @@
       <p v-else-if="status === 'error'" class="py-16 text-center text-sm text-destructive">
         {{ error || '加载运行记录失败' }}
       </p>
-      <AppEmptyState v-else-if="runs.length === 0" />
+      <AppEmptyState v-else-if="filteredRuns.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-data-table min-w-[1020px]">
           <thead>
@@ -31,7 +38,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="run in runs" :key="run.id">
+            <tr v-for="run in filteredRuns" :key="run.id">
               <td class="max-w-52 truncate font-mono text-xs">
                 <router-link :to="`/pipeline-run/${run.id}`" class="app-link">
                   {{ run.id }}
@@ -78,6 +85,7 @@
 
 <script setup lang="ts">
   import { computed, onMounted, reactive, ref } from 'vue';
+  import { useI18n } from 'vue-i18n';
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import AppBadge from '@/components/AppBadge.vue';
@@ -85,6 +93,7 @@
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
+  import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
@@ -95,10 +104,13 @@
 
   const projectStore = useProjectStore();
   const toast = useToast();
+  const { t } = useI18n();
   const { status, error, execute } = useStatusAsync();
   const runs = ref<PipelineRunResp[]>([]);
   const pipelines = ref<PipelineResp[]>([]);
   const pipelineId = ref('');
+  const searchText = ref('');
+  const appliedSearch = ref('');
   const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const pipelineOptions = computed(() =>
@@ -108,6 +120,20 @@
       description: `v${pipeline.version}`,
     }))
   );
+  const filteredRuns = computed(() => {
+    const keyword = appliedSearch.value.trim().toLowerCase();
+    if (!keyword) {
+      return runs.value;
+    }
+    return runs.value.filter(
+      (run) =>
+        run.pipeline_name.toLowerCase().includes(keyword) ||
+        run.repository_name.toLowerCase().includes(keyword) ||
+        run.repository_ref.toLowerCase().includes(keyword) ||
+        run.status.toLowerCase().includes(keyword) ||
+        run.id.toLowerCase().includes(keyword)
+    );
+  });
 
   async function fetchRuns() {
     const projectId = projectStore.activeProjectId;
@@ -141,6 +167,11 @@
     pipelines.value = response.items;
   }
   function searchRuns() {
+    pagination.current = 1;
+    void fetchRuns();
+  }
+  function handleSearch() {
+    appliedSearch.value = searchText.value;
     pagination.current = 1;
     void fetchRuns();
   }

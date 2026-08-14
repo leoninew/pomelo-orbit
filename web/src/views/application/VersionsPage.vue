@@ -13,12 +13,6 @@
           :disabled="loadingApplications"
           @update:model-value="handleApplicationChange"
         />
-        <SearchControl
-          v-model="search"
-          :placeholder="t('application.searchPlaceholder')"
-          class="shrink-0"
-          @search="handleSearch"
-        />
       </div>
     </ToolbarRoot>
 
@@ -33,9 +27,8 @@
     <AppEmptyState v-else-if="applications.length === 0" />
     <ApplicationDetail
       v-else-if="applicationId"
-      :key="`${applicationId}:${search}`"
+      :key="applicationId"
       :application-id="applicationId"
-      :version-search="search"
       versions-only
     />
   </div>
@@ -50,7 +43,6 @@
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
-  import SearchControl from '@/components/SearchControl.vue';
   import { useToast } from '@/composables/useToast';
   import { applicationVersionsApplicationIdKey } from '@/constants/application';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
@@ -67,7 +59,6 @@
   const applications = ref<ApplicationResp[]>([]);
   const loadingApplications = ref(false);
   const loadError = ref('');
-  const search = ref('');
 
   const applicationId = computed(() => String(route.query.application_id || ''));
   const applicationOptions = computed(() =>
@@ -136,7 +127,6 @@
 
   function handleApplicationChange(value: ComboboxOptionValue) {
     const id = String(value || '');
-    search.value = '';
     const projectId = projectStore.activeProjectId;
     if (projectId && id) {
       rememberApplication(projectId, id);
@@ -144,12 +134,9 @@
     void syncApplicationQuery(id);
   }
 
-  function handleSearch() {}
-
   watch(
     () => projectStore.activeProjectId,
     () => {
-      search.value = '';
       void loadApplications();
     }
   );

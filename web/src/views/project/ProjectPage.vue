@@ -189,6 +189,7 @@
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
   const searchText = ref('');
+  const appliedSearch = ref('');
   const isDialogOpen = ref(false);
   const isDeprecateDialogOpen = ref(false);
   const editingProject = ref<ProjectResp | null>(null);
@@ -200,7 +201,7 @@
   const deprecateSubmitError = ref('');
 
   const filteredProjects = computed(() => {
-    const keyword = searchText.value.trim().toLowerCase();
+    const keyword = appliedSearch.value.trim().toLowerCase();
     if (!keyword) {
       return projectStore.projects;
     }
@@ -252,7 +253,9 @@
   }
 
   function handleSearch() {
+    appliedSearch.value = searchText.value;
     pagination.current = 1;
+    void fetchProjects();
   }
 
   function goPage(page: number) {

@@ -5,6 +5,7 @@
         v-model="searchText"
         :placeholder="t('settings.searchPlaceholder')"
         :loading="configLoading"
+        @search="handleSearch"
       />
     </ToolbarRoot>
 
@@ -170,6 +171,7 @@
 
   const config = ref<SystemConfigResp>();
   const searchText = ref('');
+  const appliedSearch = ref('');
   const {
     status: configStatus,
     error: configError,
@@ -184,10 +186,10 @@
     if (!config.value?.items) {
       return [];
     }
-    if (!searchText.value.trim()) {
+    if (!appliedSearch.value.trim()) {
       return config.value.items;
     }
-    const search = searchText.value.toLowerCase();
+    const search = appliedSearch.value.toLowerCase();
     return config.value.items.filter(
       (item) =>
         item.key.toLowerCase().includes(search) || item.description?.toLowerCase().includes(search)
@@ -237,6 +239,11 @@
     } catch {
       toast.error(t('settings.loadFailed'));
     }
+  }
+
+  function handleSearch() {
+    appliedSearch.value = searchText.value;
+    void fetchConfig();
   }
 
   function startEdit(record: ConfigItemResp) {

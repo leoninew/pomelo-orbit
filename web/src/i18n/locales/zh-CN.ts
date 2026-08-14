@@ -185,6 +185,7 @@ export default {
     selectUser: '选择用户',
     selectUserRequired: '请选择用户',
     searchUser: '搜索用户',
+    searchMembersPlaceholder: '搜索用户名/邮箱',
     noAvailableUsers: '暂无可用用户',
     loadProjectFailed: '加载项目失败',
     loadMembersFailed: '加载成员失败',
@@ -265,6 +266,8 @@ export default {
     },
     detail: {
       title: '应用详情',
+      searchVersionsPlaceholder: '搜索版本名称/备注',
+      searchComponentsPlaceholder: '搜索组件名称/镜像',
       sections: {
         basicInfo: '基本信息',
         versions: '版本',
@@ -585,6 +588,7 @@ export default {
   service: {
     toolbar: '服务工具栏',
     searchPlaceholder: '搜索应用 / 服务编码 / 实例 / 版本',
+    searchComponentsPlaceholder: '搜索组件名称/镜像/容器',
     viewMode: '服务视图',
     cardView: '卡片视图',
     tableView: '表格视图',
@@ -746,6 +750,7 @@ export default {
     },
     exposures: {
       title: '网络出口',
+      searchPlaceholder: '搜索应用/组件/协议',
       empty: '当前无活跃 local/public 出口。',
       app: '应用',
       component: '组件',
@@ -1049,6 +1054,9 @@ export default {
   },
   pipelineRun: {
     toolbar: '流水线记录工具栏',
+    searchPlaceholder: '搜索流水线/仓库/Ref/状态',
+    searchStagesPlaceholder: '搜索阶段名称/镜像',
+    searchArtifactsPlaceholder: '搜索制品名称/阶段',
     filterRepository: '筛选仓库',
     filterTemplate: '筛选模板',
     detailTitle: '流水线详情',

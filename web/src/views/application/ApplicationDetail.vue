@@ -71,6 +71,13 @@
       <!-- 版本 -->
       <DetailInfoCard :title="t('application.detail.sections.versions')">
         <template #actions>
+          <SearchControl
+            v-model="versionSearchText"
+            :placeholder="t('application.detail.searchVersionsPlaceholder')"
+            :loading="versionListLoading"
+            class="shrink-0"
+            @search="handleVersionSearch"
+          />
           <button class="app-button-primary h-9 px-3" @click="openCreateVersionModal">
             <Plus class="size-4" />
             {{ t('application.detail.actions.createVersion') }}
@@ -669,6 +676,7 @@
   import ListPagination from '@/components/ListPagination.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
+  import SearchControl from '@/components/SearchControl.vue';
   import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -683,14 +691,9 @@
     emptyComponentForm,
   } from './componentForm';
 
-  const {
-    versionsOnly = false,
-    applicationId: applicationIdProp = '',
-    versionSearch = '',
-  } = defineProps<{
+  const { versionsOnly = false, applicationId: applicationIdProp = '' } = defineProps<{
     versionsOnly?: boolean;
     applicationId?: string;
-    versionSearch?: string;
   }>();
 
   const route = useRoute();
@@ -707,6 +710,7 @@
 
   const application = ref<ApplicationResp>();
   const versions = ref<VersionResp[]>([]);
+  const versionSearchText = ref('');
   const expandedVersionIds = ref<string[]>([]);
   const versionComponents = reactive<Record<string, VersionComponentResp[]>>({});
   const versionComponentLoadState = reactive<Record<string, 'loading' | 'loaded' | 'error'>>({});
@@ -778,7 +782,7 @@
         const resp = await applicationApi.listVersions(applicationId, {
           page: versionsOnly ? versionPagination.current : 1,
           per_page: versionsOnly ? versionPagination.pageSize : 100,
-          search: versionsOnly ? versionSearch : '',
+          search: versionSearchText.value.trim() || undefined,
         });
         versions.value = resp.items ?? [];
         if (versionsOnly) {
@@ -819,6 +823,11 @@
     }
     expandedVersionIds.value = [...expandedVersionIds.value, versionId];
     void loadVersionComponents(versionId);
+  }
+
+  function handleVersionSearch() {
+    versionPagination.current = 1;
+    void loadVersions();
   }
 
   function handleVersionPageChange(page: number) {

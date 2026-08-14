@@ -62,6 +62,13 @@
 
     <DetailInfoCard :title="t('project.members')">
       <template #actions>
+        <SearchControl
+          v-model="memberSearchText"
+          :placeholder="t('project.searchMembersPlaceholder')"
+          :loading="loadingMembers"
+          class="shrink-0"
+          @search="handleMemberSearch"
+        />
         <button class="app-button-primary h-9 px-3" :disabled="operating" @click="openMemberModal">
           <UserPlus class="size-4" />
           {{ t('common.add') }}
@@ -69,7 +76,7 @@
       </template>
 
       <AppLoadingState v-if="loadingMembers" size="section" />
-      <AppEmptyState v-else-if="members.length === 0" size="compact" />
+      <AppEmptyState v-else-if="filteredMembers.length === 0" size="compact" />
       <div v-else class="px-5 py-4">
         <table class="app-data-table">
           <thead>
@@ -83,7 +90,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="member in members" :key="member.id">
+            <tr v-for="member in filteredMembers" :key="member.id">
               <td>{{ member.username }}</td>
               <td>{{ member.email }}</td>
               <td>
@@ -220,6 +227,7 @@
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
+  import SearchControl from '@/components/SearchControl.vue';
   import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -241,6 +249,8 @@
   const isEditModalOpen = ref(false);
   const isMemberModalOpen = ref(false);
   const members = ref<ProjectMemberResp[]>([]);
+  const memberSearchText = ref('');
+  const appliedMemberSearch = ref('');
   const users = ref<UserListResp[]>([]);
   const selectedUserId = ref('');
   const form = reactive({ name: '', code: '' });
@@ -262,6 +272,18 @@
       description: u.email || undefined,
     }))
   );
+
+  const filteredMembers = computed(() => {
+    const keyword = appliedMemberSearch.value.trim().toLowerCase();
+    if (!keyword) {
+      return members.value;
+    }
+    return members.value.filter(
+      (member) =>
+        member.username.toLowerCase().includes(keyword) ||
+        (member.email || '').toLowerCase().includes(keyword)
+    );
+  });
 
   function resetForm() {
     form.name = project.value?.name ?? '';
@@ -300,6 +322,11 @@
     } catch {
       toast.error(t('project.loadMembersFailed'));
     }
+  }
+
+  function handleMemberSearch() {
+    appliedMemberSearch.value = memberSearchText.value;
+    void fetchMembers();
   }
 
   function openEditModal() {

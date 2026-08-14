@@ -9,6 +9,13 @@
           width-class="app-toolbar-select"
           @update:model-value="handleApplicationChange"
         />
+        <SearchControl
+          v-model="searchText"
+          :placeholder="t('deployment.searchPlaceholder')"
+          :loading="status === 'loading'"
+          class="shrink-0"
+          @search="handleSearch"
+        />
         <button class="app-button h-9 px-3" type="button" @click="router.push('/dialogue')">
           <MessageSquareText :size="16" aria-hidden="true" />
           <span>{{ t('deploymentDialogue.open') }}</span>
@@ -113,6 +120,7 @@
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
+  import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -130,6 +138,7 @@
   const { status, error, execute } = useStatusAsync();
 
   const deployments = ref<DeploymentResp[]>([]);
+  const searchText = ref('');
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
@@ -170,6 +179,7 @@
           page: pagination.current,
           per_page: pagination.pageSize,
           application_id: query.application_id || undefined,
+          search: searchText.value.trim() || undefined,
           project_id: projectId,
         });
         deployments.value = res.items;
@@ -178,6 +188,11 @@
     } catch {
       toast.error(t('deployment.toast.loadFailed'));
     }
+  }
+
+  function handleSearch() {
+    pagination.current = 1;
+    fetchDeployments();
   }
 
   function handleApplicationChange(value: string | number | boolean) {

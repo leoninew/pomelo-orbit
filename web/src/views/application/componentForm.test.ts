@@ -149,9 +149,7 @@ describe('componentForm', () => {
     expect(componentEndpointsRequestFromForm(form)).toEqual({
       valid: true,
       value: {
-        endpoints: [
-          { protocol: 'tcp', container_port: 80, mode: 'host', listen_port: 8080 },
-        ],
+        endpoints: [{ protocol: 'tcp', container_port: 80, mode: 'host', listen_port: 8080 }],
       },
     });
     expect(componentEnvRequestFromForm(form)).toEqual({

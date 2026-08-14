@@ -114,12 +114,10 @@
       : ''
   );
   const serviceOptions = computed(() =>
-    props.services
-      .filter(hasSelectableEndpoint)
-      .map((service) => ({
-        value: service.id,
-        label: service.application_name,
-      }))
+    props.services.filter(hasSelectableEndpoint).map((service) => ({
+      value: service.id,
+      label: service.application_name,
+    }))
   );
   const componentOptions = computed(() =>
     (selectedService.value?.components ?? [])
@@ -133,12 +131,10 @@
     const component = selectedService.value?.components.find(
       (item) => item.component_name === props.componentName
     );
-    return (component?.effective_endpoints ?? [])
-      .filter(isSelectableEndpoint)
-      .map((endpoint) => ({
-        value: `${endpoint.protocol}:${endpoint.container_port}`,
-        label: `${endpoint.protocol}${endpoint.container_port}`,
-      }));
+    return (component?.effective_endpoints ?? []).filter(isSelectableEndpoint).map((endpoint) => ({
+      value: `${endpoint.protocol}:${endpoint.container_port}`,
+      label: `${endpoint.protocol}${endpoint.container_port}`,
+    }));
   });
 
   function handleServiceChange(value: ComboboxOptionValue) {
@@ -175,7 +171,9 @@
   }
 
   function hasSelectableEndpoint(service: ServiceResp) {
-    return service.components.some((component) => component.effective_endpoints.some(isSelectableEndpoint));
+    return service.components.some((component) =>
+      component.effective_endpoints.some(isSelectableEndpoint)
+    );
   }
 
   function isSelectableEndpoint(endpoint: { protocol: string; mode: string }) {

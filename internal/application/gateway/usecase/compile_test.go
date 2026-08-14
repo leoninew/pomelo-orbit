@@ -31,6 +31,7 @@ func TestBuildManagedGatewayComponentExposesDashboardApiOnLoopback(t *testing.T)
 	}
 	if api == nil {
 		t.Fatal("managed gateway does not declare an API endpoint")
+		return
 	}
 	if api.Protocol != "http" || api.ContainerPort != 8080 || api.Mode != "local" {
 		t.Fatalf("unexpected API endpoint: %#v", *api)

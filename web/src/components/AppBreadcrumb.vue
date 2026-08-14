@@ -2,10 +2,14 @@
   <nav
     v-if="items.length > 0"
     :aria-label="t('app.breadcrumbAria')"
-    class="min-w-0 overflow-x-auto text-xs leading-5 text-muted-foreground"
+    class="min-w-0 overflow-x-auto py-0.5 text-[11px] leading-4 text-muted-foreground"
   >
-    <ol class="flex min-w-max items-center gap-1">
-      <li v-for="(item, index) in items" :key="item.label ?? item.labelKey" class="flex items-center gap-1.5">
+    <ol class="flex min-w-max items-center gap-1.5 whitespace-nowrap">
+      <li
+        v-for="(item, index) in items"
+        :key="item.label ?? item.labelKey"
+        class="flex items-center gap-1.5"
+      >
         <ChevronRight v-if="index > 0" class="size-3 shrink-0" aria-hidden="true" />
         <RouterLink
           v-if="item.to"

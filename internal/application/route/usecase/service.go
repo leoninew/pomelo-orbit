@@ -146,9 +146,10 @@ func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string,
 	}
 	if input.Protocol != nil {
 		route.Protocol = strings.TrimSpace(*input.Protocol)
-		if route.Protocol == routeProtocolHTTP {
+		switch route.Protocol {
+		case routeProtocolHTTP:
 			route.ListenPort, route.ServiceId, route.ComponentName, route.EndpointProtocol, route.EndpointContainerPort = nil, nil, nil, nil, nil
-		} else if route.Protocol == routeProtocolTCP {
+		case routeProtocolTCP:
 			route.PathPrefix, route.TargetUrl = "", ""
 			route.HTTPSEnabled, route.CertPEM, route.CertKey, route.CertType = false, nil, nil, certTypeManual
 		}

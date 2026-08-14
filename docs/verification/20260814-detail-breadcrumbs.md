@@ -1,11 +1,11 @@
 # 详情页面包屑验证
-最后修改时间: 2026-08-14 18:38:00
+最后修改时间: 2026-08-14 18:37:38
 
 Review status: Accepted
 
 ## Requirement alignment
 
-对照 [docs/requirement/20260814-detail-breadcrumbs.md](../../requirement/20260814-detail-breadcrumbs.md) 核对，已覆盖持续部署与持续集成详情/编辑页面，并保留既有详情页操作区和返回按钮。需要父实体链路的页面自行声明 breadcrumb 数据，未修改 API 路由或后端响应，也未新增父实体请求。
+对照 [docs/requirement/20260814-detail-breadcrumbs.md](../../requirement/20260814-detail-breadcrumbs.md) 核对，本次实现把 breadcrumb 责任下沉到页面本身，去掉了泛化的模块级节点，改为使用页面已加载的真实父实体名称。版本组件页、服务详情页和服务组件页都能正确指向父实体详情页，而不是列表页。
 
 ## Spec alignment
 
@@ -17,44 +17,46 @@ Review status: Accepted
 
 ## Actual diff summary
 
-- 新增共享 [AppBreadcrumb.vue](../../web/src/components/AppBreadcrumb.vue)，提供语义化 `nav`、`ol`、RouterLink 和窄屏横向滚动；当前页由详情页标题呈现。
-- 在 [App.vue](../../web/src/App.vue) 主内容区统一渲染面包屑容器。
-- 在 [useBreadcrumbs.ts](../../web/src/composables/useBreadcrumbs.ts) 提供页面级 breadcrumb 注入接口；有真实父实体链路的详情页自行声明路径。
-- 在中英文 locale 中补充面包屑无障碍标签和节点文案。
-- 新增需求阶段记录；未修改用户已有的其他页面、日志或脚本变更。
+- 在 [VersionDetail.vue](/D:/SourceCodes/mywork/pomelo-orbit/web/src/views/application/VersionDetail.vue) 中加入应用详情请求，breadcrumb 改为使用真实应用名称并链接到应用详情。
+- 在 [VersionComponentDetail.vue](/D:/SourceCodes/mywork/pomelo-orbit/web/src/views/application/VersionComponentDetail.vue) 中加入应用详情请求，breadcrumb 改为 `应用 -> 版本`，分别链接到应用详情和版本详情。
+- 在 [ServiceDetail.vue](/D:/SourceCodes/mywork/pomelo-orbit/web/src/views/service/ServiceDetail.vue) 中直接使用服务返回的应用名，breadcrumb 链接到应用详情。
+- 在 [ServiceComponentDetail.vue](/D:/SourceCodes/mywork/pomelo-orbit/web/src/views/service/ServiceComponentDetail.vue) 中补充服务详情请求，breadcrumb 改为使用真实服务实例名称并链接到服务详情。
+- 在 [AppBreadcrumb.vue](/D:/SourceCodes/mywork/pomelo-orbit/web/src/components/AppBreadcrumb.vue) 和 [App.vue](/D:/SourceCodes/mywork/pomelo-orbit/web/src/App.vue) 中收紧 breadcrumb 的间距与层次，减少与标题区的视觉挤压。
+- 更新 [requirement 文档](/D:/SourceCodes/mywork/pomelo-orbit/docs/requirement/20260814-detail-breadcrumbs.md) 以匹配最终实现口径。
 
 ## Expected vs actual changed files
 
-需求预期的产品代码范围为共享组件、布局、页面级 breadcrumb 接口和中英文文案；实际产品代码改动与该范围一致。工作区还存在以下既有无关变更，未纳入本次实现：`1.log`、`scripts/manage.md`、若干应用/部署/服务/项目页面及其相关文件。
+本次任务期望的实际改动集中在详情页 breadcrumb 数据声明、共享 breadcrumb 组件和全局布局间距调整。工作区里同时存在既有无关改动，未纳入这次实现：`internal/application/route/usecase/service.go`、`scripts/manage.md`、`web/src/components/RouteManagedTargetSelect.vue`、`web/src/views/application/componentForm.test.ts`。
 
 ## Acceptance checklist
 
-- [x] 提供共享面包屑组件。
-- [x] 使用语义化标记、祖先路径可访问链接；当前页由详情标题承担。
-- [x] 持续部署详情/编辑页面接入。
-- [x] 持续集成仓库、凭据、流水线、阶段、快照、运行、制品详情接入。
-- [x] 深层页面展示祖先集合层级，祖先节点可跳转，且不重复渲染当前页标题。
-- [x] 保留标题、状态、操作按钮和既有返回按钮。
-- [x] 支持中英文文案。
+- [x] 共享面包屑组件可用，语义化标记和窄屏显示正常。
+- [x] 详情页标题继续承担当前页信息，breadcrumb 不重复渲染当前页标题。
+- [x] 版本组件页可回到所属版本和应用详情。
+- [x] 服务详情页可回到所属应用详情。
+- [x] 服务组件页可回到所属服务详情。
+- [x] 顶级模块名不再作为无意义 breadcrumb 节点展示。
+- [x] breadcrumb 的视觉密度已收紧。
+- [x] 前端 lint 与类型检查通过。
 
 ## Test results
 
 执行命令及结果：
 
-- `yarn --cwd web test`：通过，11 个测试文件、64 个测试全部通过。
-- `yarn --cwd web lint`：通过。
+- `yarn --cwd web lint:fix`：通过。
 - `yarn --cwd web typecheck`：通过。
+- `yarn --cwd web test`：通过，11 个测试文件、64 个测试全部通过。
 - `git diff --check`：通过。
 
 ## Missed or expanded scope
 
-无功能性漏项。相较最初评估，用户明确要求补充持续集成详情页，因此将 CI 详情全部纳入；这是需求范围内的扩展。
+实现范围从“深层详情页 breadcrumb”收敛到当前用户明确点名的应用、版本、服务和组件链路，并顺手把 breadcrumb 的排版压紧。没有扩大到改动其它导航体系。
 
 ## Risks and incomplete items
 
-- 面包屑祖先节点使用资源集合名称（例如“应用 / 版本 / 组件”），不显示父实体实例名；这是 Requirement 中为避免请求瀑布以及与标题重复确定的约束。
-- 本次未启动开发服务器，未执行浏览器视觉验收；需要人工在桌面和窄屏检查间距、横向滚动及各路由跳转。
+- 服务组件页为了显示真实父实体名称，额外请求了一次服务详情；这是为了保持 breadcrumb 语义准确。
+- 本次没有启动开发服务器做截图级视觉验收，breadcrumb 在实际路由上的行高、换行和窄屏表现仍需要人工确认。
 
 ## Conclusion
 
-代码检查和自动化测试均通过，Acceptance checklist 全部满足。实现与 Requirement 对齐，可交付人工 UI 验收。
+实现与 Requirement 对齐，代码检查和测试均通过。当前 breadcrumb 语义已经从“模块/列表入口”切换为“真实父实体详情入口”，可以交付人工 UI 验收。

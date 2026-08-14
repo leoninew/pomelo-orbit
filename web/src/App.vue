@@ -8,7 +8,7 @@
       <AppTopBar :current-module="currentPrimaryModule" />
 
       <div
-        class="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 md:flex-row md:gap-4 md:p-4"
+        class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-3 md:flex-row md:gap-4 md:p-4"
       >
         <!-- Sidebar -->
         <aside
@@ -33,7 +33,7 @@
 
         <!-- Main content -->
         <main
-          class="flex min-w-0 flex-1 flex-col gap-1"
+          class="flex min-w-0 flex-1 flex-col gap-2"
           :class="isDeploymentDialogue ? 'overflow-visible' : 'overflow-x-hidden overflow-y-auto'"
         >
           <AppBreadcrumb :items="breadcrumbItems" />

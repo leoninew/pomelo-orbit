@@ -445,9 +445,9 @@
   import { ArrowLeft, FileCode2, RotateCcw, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-import { useRoute, useRouter } from 'vue-router';
-import { applicationApi } from '@/api/application/application';
-import AppBadge from '@/components/AppBadge.vue';
+  import { useRoute, useRouter } from 'vue-router';
+  import { applicationApi } from '@/api/application/application';
+  import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
@@ -460,10 +460,10 @@ import AppBadge from '@/components/AppBadge.vue';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { VersionComponentResp, VersionResp } from '@/gen/proto/orbit/v1/application/version';
-import { versionStatusTone } from '@/utils/status';
-import { formatTime } from '@/utils/time';
-import DetailInfoCard from '@/components/DetailInfoCard.vue';
-import VersionComponentsCard from './components/VersionComponentsCard.vue';
+  import { versionStatusTone } from '@/utils/status';
+  import { formatTime } from '@/utils/time';
+  import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import VersionComponentsCard from './components/VersionComponentsCard.vue';
   import {
     componentBasicRequestFromForm,
     componentCreateRequestFromForm,

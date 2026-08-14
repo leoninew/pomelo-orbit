@@ -104,6 +104,7 @@ func TestServiceCodeMCPContract(t *testing.T) {
 	createTool := byName["orbit_create_service"]
 	if createTool == nil {
 		t.Fatal("create service tool not found")
+		return
 	}
 	var createSchema struct {
 		Properties map[string]json.RawMessage `json:"properties"`

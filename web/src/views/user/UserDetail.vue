@@ -272,6 +272,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
@@ -289,6 +290,7 @@
   const authStore = useAuthStore();
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
+  usePageBreadcrumbs([]);
 
   const user = ref<UserResp>();
   const roleOptions = ref<RoleResp[]>([]);

@@ -1400,8 +1400,10 @@
   import EnvironmentVariableListEditor from '@/components/EnvironmentVariableListEditor.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type {
     VersionComponentAdvancedUpdateReq,
     VersionComponentResp,
@@ -1454,6 +1456,26 @@
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const version = ref<VersionResp>();
+  const application = ref<ApplicationResp>();
+  usePageBreadcrumbs(
+    computed(() => {
+      const currentVersion = version.value;
+      const currentApplication = application.value;
+      if (!currentVersion || !currentApplication) {
+        return [];
+      }
+      return [
+        {
+          label: currentApplication.name,
+          to: `/application/${currentApplication.id}`,
+        },
+        {
+          label: currentVersion.label,
+          to: `/version/${currentVersion.id}`,
+        },
+      ];
+    })
+  );
   const component = ref<VersionComponentResp>();
   const form = reactive(emptyComponentForm());
   const environmentRows = ref<EnvironmentVariableListRow[]>([]);
@@ -1658,8 +1680,7 @@
       const mode = portForm.mode || 'host';
       const needsListenPort = mode === 'local' || mode === 'host';
       recordErrors.protocol =
-        endpointProtocolValues.includes(protocol) &&
-        !(mode === 'gateway' && protocol !== 'http')
+        endpointProtocolValues.includes(protocol) && !(mode === 'gateway' && protocol !== 'http')
           ? ''
           : t('application.componentDetail.validation.invalidEndpoint');
       recordErrors.endpoint_mode = endpointModeValues(protocol).includes(mode)
@@ -1768,6 +1789,7 @@
       await execute(async () => {
         const loadedVersion = await applicationApi.getVersion(versionId);
         version.value = loadedVersion;
+        application.value = await applicationApi.get(loadedVersion.application_id);
         if (isNew) {
           assignForm(emptyComponentForm());
           return;

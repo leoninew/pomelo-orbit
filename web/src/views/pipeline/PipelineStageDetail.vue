@@ -289,6 +289,7 @@
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect, { type RawValue } from '@/components/RawValueSelect.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type {
@@ -302,6 +303,7 @@
   const route = useRoute();
   const router = useRouter();
   const toast = useToast();
+  usePageBreadcrumbs([]);
   const { status, error, execute } = useStatusAsync();
   const { loading: saving, execute: executeSave } = useStatusAsync();
   const stage = ref<PipelineStageResp>();

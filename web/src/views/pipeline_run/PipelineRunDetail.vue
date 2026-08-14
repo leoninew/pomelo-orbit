@@ -363,6 +363,7 @@
   import AppDrawer from '@/components/AppDrawer.vue';
   import ViewModeToggle from '@/components/ViewModeToggle.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ArtifactResp } from '@/gen/proto/orbit/v1/pipeline_run/artifact';
@@ -383,6 +384,7 @@
   const runId = computed(() => route.params.id as string);
   const { t } = useI18n();
   const toast = useToast();
+  usePageBreadcrumbs([]);
 
   const { loading, execute } = useStatusAsync();
   const { loading: artifactsLoading, execute: executeArtifacts } = useStatusAsync();

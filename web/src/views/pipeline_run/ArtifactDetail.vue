@@ -169,6 +169,7 @@
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ArtifactResp } from '@/gen/proto/orbit/v1/pipeline_run/artifact';
@@ -177,6 +178,7 @@
   const route = useRoute();
   const router = useRouter();
   const toast = useToast();
+  usePageBreadcrumbs([]);
   const artifactId = computed(() => route.params.id as string);
   const artifact = ref<ArtifactResp>();
   const { loading, execute } = useStatusAsync();

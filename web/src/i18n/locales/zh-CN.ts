@@ -63,6 +63,14 @@ export default {
     primaryNavAria: '一级模块导航',
     globalToolbarAria: '全局工具',
     userMenuAria: '用户菜单',
+    breadcrumbAria: '页面路径',
+  },
+  breadcrumb: {
+    detail: '详情',
+    edit: '编辑',
+    components: '组件',
+    componentSettings: '组件配置',
+    snapshot: '执行快照',
   },
   toast: {
     providerLabel: '通知',

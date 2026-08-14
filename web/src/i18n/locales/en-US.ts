@@ -63,6 +63,14 @@ export default {
     primaryNavAria: 'Primary module navigation',
     globalToolbarAria: 'Global tools',
     userMenuAria: 'User menu',
+    breadcrumbAria: 'Page path',
+  },
+  breadcrumb: {
+    detail: 'Details',
+    edit: 'Edit',
+    components: 'Components',
+    componentSettings: 'Component Settings',
+    snapshot: 'Execution Snapshot',
   },
   toast: {
     providerLabel: 'Notifications',

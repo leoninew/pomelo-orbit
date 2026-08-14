@@ -150,6 +150,7 @@
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import SensitiveValue from '@/components/SensitiveValue.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { CredentialDetailResp } from '@/gen/proto/orbit/v1/credential/credential';
@@ -158,6 +159,7 @@
   const props = defineProps<{ id: string }>();
   const $router = useRouter();
   const toast = useToast();
+  usePageBreadcrumbs([]);
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 

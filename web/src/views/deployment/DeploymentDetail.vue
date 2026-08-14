@@ -246,6 +246,7 @@
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { DeploymentResp } from '@/gen/proto/orbit/v1/deployment/deployment';
@@ -256,6 +257,7 @@
   const route = useRoute();
   const router = useRouter();
   const { t } = useI18n();
+  usePageBreadcrumbs([]);
   const deploymentId = computed(() => String(route.params.id ?? ''));
   const toast = useToast();
   const { status, execute } = useStatusAsync();

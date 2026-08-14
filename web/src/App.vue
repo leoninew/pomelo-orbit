@@ -33,10 +33,13 @@
 
         <!-- Main content -->
         <main
-          class="min-w-0 flex-1"
+          class="flex min-w-0 flex-1 flex-col gap-1"
           :class="isDeploymentDialogue ? 'overflow-visible' : 'overflow-x-hidden overflow-y-auto'"
         >
-          <RouterView />
+          <AppBreadcrumb :items="breadcrumbItems" />
+          <div class="min-h-0 flex-1">
+            <RouterView />
+          </div>
         </main>
       </div>
     </div>
@@ -51,9 +54,11 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute } from 'vue-router';
   import AppToaster from '@/components/AppToaster.vue';
+  import AppBreadcrumb from '@/components/AppBreadcrumb.vue';
   import AppTopBar from '@/components/AppTopBar.vue';
   import AppVerticalNav from '@/components/AppVerticalNav.vue';
   import { useTheme } from '@/composables/useTheme';
+  import { provideBreadcrumbItems } from '@/composables/useBreadcrumbs';
   import {
     getNavigationScope,
     getPrimaryNavigationKey,
@@ -67,6 +72,7 @@
   useTheme();
 
   const collapsed = ref(false);
+  const breadcrumbItems = provideBreadcrumbItems();
   const currentScope = computed(() => getNavigationScope(route.path));
   const selectedKey = computed(() => (route.meta.menuKey as string) ?? '');
   const currentPrimaryModule = computed(() => getPrimaryNavigationKey(route.path));

@@ -316,7 +316,9 @@
             <tbody>
               <tr v-for="endpoint in endpointRows" :key="endpoint.identity">
                 <td class="max-w-0 text-foreground">
-                  <span class="block truncate" :title="endpoint.identity">{{ endpoint.identity }}</span>
+                  <span class="block truncate" :title="endpoint.identity">
+                    {{ endpoint.identity }}
+                  </span>
                 </td>
                 <td>
                   <AppBadge variant="pill">{{ endpoint.protocol }}</AppBadge>
@@ -590,11 +592,13 @@
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type {
     ServiceComponentDetailResp,
     ServiceComponentOverlayUpdateReq,
+    ServiceResp,
   } from '@/gen/proto/orbit/v1/service/service';
 
   type EnvRow = {
@@ -669,7 +673,22 @@
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const serviceId = String(route.params.id || '');
   const componentId = String(route.params.componentId || '');
+  const service = ref<ServiceResp>();
   const detail = ref<ServiceComponentDetailResp>();
+  usePageBreadcrumbs(
+    computed(() => {
+      const currentService = service.value;
+      if (!currentService || !detail.value) {
+        return [];
+      }
+      return [
+        {
+          label: `${currentService.application_name} / ${currentService.instance_key || 'default'}`,
+          to: `/service/${currentService.id}`,
+        },
+      ];
+    })
+  );
   const environmentRows = ref<EnvRow[]>([]);
   const editingEnvironmentKey = ref<string | null>(null);
   const editingEnvironmentValue = ref('');
@@ -1076,7 +1095,11 @@
   async function load() {
     try {
       await execute(async () => {
-        const value = await serviceApi.getComponent(serviceId, componentId);
+        const [serviceValue, value] = await Promise.all([
+          serviceApi.get(serviceId),
+          serviceApi.getComponent(serviceId, componentId),
+        ]);
+        service.value = serviceValue;
         detail.value = value;
         draftFromResponse(value);
       });

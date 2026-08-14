@@ -438,6 +438,7 @@
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ViewModeToggle from '@/components/ViewModeToggle.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
@@ -455,6 +456,7 @@
   const router = useRouter();
   const toast = useToast();
   const projectStore = useProjectStore();
+  usePageBreadcrumbs([]);
   const { status, execute } = useStatusAsync();
   const { loading: saving, execute: executeSave } = useStatusAsync();
   const pipelineId = computed(() => String(route.params.id));

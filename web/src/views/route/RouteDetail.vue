@@ -238,8 +238,14 @@
             :endpoint-error="errors.endpoint_protocol || errors.endpoint_container_port"
             @update:service-id="form.service_id = $event"
             @update:component-name="form.component_name = $event"
-            @update:endpoint-protocol="form.endpoint_protocol = $event; errors.endpoint_protocol = ''"
-            @update:endpoint-container-port="form.endpoint_container_port = $event; errors.endpoint_container_port = ''"
+            @update:endpoint-protocol="
+              form.endpoint_protocol = $event;
+              errors.endpoint_protocol = '';
+            "
+            @update:endpoint-container-port="
+              form.endpoint_container_port = $event;
+              errors.endpoint_container_port = '';
+            "
           />
           <label class="flex cursor-pointer items-center gap-3">
             <SwitchRoot
@@ -283,9 +289,18 @@
             :listen-port-error="errors.listen_port"
             @update:service-id="form.service_id = $event"
             @update:component-name="form.component_name = $event"
-            @update:endpoint-protocol="form.endpoint_protocol = $event; errors.endpoint_protocol = ''"
-            @update:endpoint-container-port="form.endpoint_container_port = $event; errors.endpoint_container_port = ''"
-            @update:listen-port="form.listen_port = $event; errors.listen_port = ''"
+            @update:endpoint-protocol="
+              form.endpoint_protocol = $event;
+              errors.endpoint_protocol = '';
+            "
+            @update:endpoint-container-port="
+              form.endpoint_container_port = $event;
+              errors.endpoint_container_port = '';
+            "
+            @update:listen-port="
+              form.listen_port = $event;
+              errors.listen_port = '';
+            "
           />
         </template>
         <label class="flex cursor-pointer items-center gap-3">
@@ -342,6 +357,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useRouteTargetServices } from '@/composables/useRouteTargetServices';
   import { useProjectStore } from '@/stores/project';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -354,6 +370,7 @@
   const toast = useToast();
   const projectStore = useProjectStore();
   const { t } = useI18n();
+  usePageBreadcrumbs([]);
   const targetUrlPattern = /^https?:\/\/[a-zA-Z0-9.-]+(?::\d+)?$/;
 
   const { loading: basicInfoLoading, execute } = useStatusAsync();
@@ -524,11 +541,14 @@
           target_url: form.protocol === 'http' && form.custom_target ? form.target_url : '',
           listen_port: form.protocol === 'tcp' ? form.listen_port : undefined,
           service_id: form.protocol === 'tcp' || !form.custom_target ? form.service_id.trim() : '',
-          component_name: form.protocol === 'tcp' || !form.custom_target ? form.component_name.trim() : '',
+          component_name:
+            form.protocol === 'tcp' || !form.custom_target ? form.component_name.trim() : '',
           endpoint_protocol:
             form.protocol === 'tcp' || !form.custom_target ? form.endpoint_protocol.trim() : '',
           endpoint_container_port:
-            form.protocol === 'tcp' || !form.custom_target ? form.endpoint_container_port : undefined,
+            form.protocol === 'tcp' || !form.custom_target
+              ? form.endpoint_container_port
+              : undefined,
           enabled: form.enabled,
         });
         routeData.value = updated;

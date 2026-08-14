@@ -103,7 +103,12 @@
           </div>
         </dl>
       </DetailInfoCard>
-      <ServiceComponentsCard :service="service" @view-logs="openLogsDrawer" />
+      <ServiceComponentsCard
+        :service="service"
+        :loading="loading"
+        @view-logs="openLogsDrawer"
+        @search="load"
+      />
       <ServiceEnvironmentCard
         :rows="environmentRows"
         :saved-rows="savedEnvironmentRows"
@@ -396,6 +401,7 @@
   import type { editor } from 'monaco-editor';
   import ServiceComponentsCard from './components/ServiceComponentsCard.vue';
   import ServiceEnvironmentCard from './components/ServiceEnvironmentCard.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
 
   const route = useRoute();
   const router = useRouter();
@@ -405,6 +411,20 @@
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const { loading: previewLoading, execute: executePreview } = useStatusAsync();
   const service = ref<ServiceResp>();
+  usePageBreadcrumbs(
+    computed(() => {
+      const currentService = service.value;
+      if (!currentService) {
+        return [];
+      }
+      return [
+        {
+          label: currentService.application_name,
+          to: `/application/${currentService.application_id}`,
+        },
+      ];
+    })
+  );
   const isBasicEditDialogOpen = ref(false);
   const basicEditVersions = ref<VersionResp[]>([]);
   const basicEditForm = reactive({

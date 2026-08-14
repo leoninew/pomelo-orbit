@@ -204,6 +204,7 @@
   import { roleApi } from '@/api/role/role';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
@@ -220,6 +221,7 @@
   const authStore = useAuthStore();
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
+  usePageBreadcrumbs([]);
 
   const role = ref<RoleResp>();
   const permissions = ref<PermissionResp[]>([]);

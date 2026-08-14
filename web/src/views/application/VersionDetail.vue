@@ -97,9 +97,11 @@
         :components="version.components"
         :editable="isEditable"
         :disabled="operating"
+        :loading="loading"
         @add="openComponentDialog"
         @edit="openComponentEditDialog"
         @delete="openComponentDeleteDialog"
+        @search="fetchVersion"
       />
     </template>
 
@@ -443,9 +445,9 @@
   import { ArrowLeft, FileCode2, RotateCcw, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRoute, useRouter } from 'vue-router';
-  import { applicationApi } from '@/api/application/application';
-  import AppBadge from '@/components/AppBadge.vue';
+import { useRoute, useRouter } from 'vue-router';
+import { applicationApi } from '@/api/application/application';
+import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
@@ -453,13 +455,15 @@
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { VersionComponentResp, VersionResp } from '@/gen/proto/orbit/v1/application/version';
-  import { versionStatusTone } from '@/utils/status';
-  import { formatTime } from '@/utils/time';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import VersionComponentsCard from './components/VersionComponentsCard.vue';
+import { versionStatusTone } from '@/utils/status';
+import { formatTime } from '@/utils/time';
+import DetailInfoCard from '@/components/DetailInfoCard.vue';
+import VersionComponentsCard from './components/VersionComponentsCard.vue';
   import {
     componentBasicRequestFromForm,
     componentCreateRequestFromForm,
@@ -472,12 +476,27 @@
   const { t } = useI18n();
   const toast = useToast();
   const versionId = route.params.id as string;
-
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
   const { loading: previewLoading, execute: executePreview } = useStatusAsync();
 
   const version = ref<VersionResp>();
+  const application = ref<ApplicationResp>();
+  usePageBreadcrumbs(
+    computed(() => {
+      const currentVersion = version.value;
+      const currentApplication = application.value;
+      if (!currentVersion || !currentApplication) {
+        return [];
+      }
+      return [
+        {
+          label: currentApplication.name,
+          to: `/application/${currentApplication.id}`,
+        },
+      ];
+    })
+  );
   const previewOpen = ref(false);
   const previewContent = ref('');
   const previewError = ref('');
@@ -515,7 +534,9 @@
   async function fetchVersion() {
     try {
       await execute(async () => {
-        version.value = await applicationApi.getVersion(versionId);
+        const currentVersion = await applicationApi.getVersion(versionId);
+        version.value = currentVersion;
+        application.value = await applicationApi.get(currentVersion.application_id);
       });
     } catch {
       toast.error(t('application.toast.loadVersionsFailed'));

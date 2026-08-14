@@ -111,6 +111,7 @@
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ViewModeToggle from '@/components/ViewModeToggle.vue';
+  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineSnapshotResp } from '@/gen/proto/orbit/v1/pipeline/snapshot';
@@ -121,6 +122,7 @@
   const route = useRoute();
   const router = useRouter();
   const toast = useToast();
+  usePageBreadcrumbs([]);
   const { status, execute } = useStatusAsync();
   const snapshot = ref<PipelineSnapshotResp>();
   const stagesView = ref<'list' | 'dag'>('list');

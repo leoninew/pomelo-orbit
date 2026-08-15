@@ -64,6 +64,7 @@ func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (
 	if err := applyEffectiveEndpoints(services, input.Plan); err != nil {
 		return RenderResult{}, err
 	}
+	joinTraefikNetwork := input.Plan.Application.Kind == status.ApplicationKindGateway || input.Plan.JoinsTraefikNetwork()
 	switch input.Plan.Application.Kind {
 	case status.ApplicationKindGateway:
 		for _, raw := range services {
@@ -73,8 +74,10 @@ func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (
 			return RenderResult{}, err
 		}
 	case status.ApplicationKindStandard:
-		if err := injectAllComponentsPlatformNetwork(services, input.Plan.Application.Code); err != nil {
-			return RenderResult{}, err
+		if joinTraefikNetwork {
+			if err := injectAllComponentsPlatformNetwork(services, input.Plan.Application.Code); err != nil {
+				return RenderResult{}, err
+			}
 		}
 	default:
 		return RenderResult{}, fmt.Errorf("unsupported application kind %q", input.Plan.Application.Kind)
@@ -85,7 +88,7 @@ func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (
 	}
 	if input.Plan.Application.Kind == status.ApplicationKindGateway {
 		data["networks"] = map[string]any{gatewayNetworkKey: map[string]any{"name": defaultGatewayNetworkName, "driver": "bridge"}}
-	} else {
+	} else if joinTraefikNetwork {
 		data["networks"] = map[string]any{consumerPlatformNetworkKey: map[string]any{"name": defaultGatewayNetworkName, "external": true}}
 	}
 	content, err := yaml.Marshal(data)
@@ -126,6 +129,9 @@ func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServic
 				}
 				appendString(service, "ports", fmt.Sprintf("%s:%d:%d", address, *endpoint.ListenPort, endpoint.ContainerPort))
 			case "gateway":
+				if plan.Application.Kind == status.ApplicationKindStandard && !plan.JoinsTraefikNetwork() {
+					continue
+				}
 				if endpoint.Protocol != "http" {
 					return fmt.Errorf("gateway endpoint %s/%s must use http", component.Name, model.EndpointDisplayName(endpoint.Protocol, endpoint.ContainerPort))
 				}

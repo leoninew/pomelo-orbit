@@ -229,6 +229,13 @@
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('service.deploy.forceRecreate') }}</span>
         </label>
+        <label
+          v-if="selectedService?.application_kind === 'standard'"
+          class="flex items-center gap-2"
+        >
+          <input v-model="deployForm.join_traefik_network" type="checkbox" class="app-checkbox" />
+          <span class="text-sm text-foreground">{{ t('service.deploy.joinTraefikNetwork') }}</span>
+        </label>
       </div>
       <p v-if="deploySubmitError" class="app-field-error mt-3" role="alert">
         {{ deploySubmitError }}
@@ -417,6 +424,7 @@
   const isDeployDialogOpen = ref(false);
   const deployForm = reactive({
     force_recreate: false,
+    join_traefik_network: true,
   });
   const deploySubmitError = ref('');
   const isStopDialogOpen = ref(false);
@@ -643,6 +651,7 @@
   async function openDeployDialog(service: ServiceResp) {
     selectedService.value = service;
     deployForm.force_recreate = false;
+    deployForm.join_traefik_network = true;
     deploySubmitError.value = '';
     isDeployDialogOpen.value = true;
   }
@@ -657,6 +666,7 @@
       await executeOp(async () => {
         const result = await serviceApi.deploy(service.id, {
           force_recreate: deployForm.force_recreate,
+          join_traefik_network: deployForm.join_traefik_network,
         });
         for (const warning of result.warnings) toast.error(warning);
         toast.success(t('service.toast.deployQueued'));

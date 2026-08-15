@@ -110,6 +110,7 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
 	}
+	setPlanJoinTraefikNetwork(&plan, input.JoinTraefikNetwork)
 	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, err
@@ -121,7 +122,7 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 	}
 	deployment := newDeployment(app, "deploy")
 	deployment.VersionId = &version.Id
-	opts := deploymentdto.DeployOptionsJSON{ForceRecreate: input.ForceRecreate, InstanceKey: service.InstanceKey}
+	opts := deploymentdto.DeployOptionsJSON{ForceRecreate: input.ForceRecreate, InstanceKey: service.InstanceKey, JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan)}
 	if err := setDeploymentOptions(&deployment, opts); err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
@@ -221,6 +222,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
+	setPlanJoinTraefikNetwork(&plan, nil)
 	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
 		return "", err
@@ -233,7 +235,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	deployment := newDeployment(app, "restart")
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &version.Id
-	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey}); err != nil {
+	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey, JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan)}); err != nil {
 		return "", err
 	}
 	deployment.EffectivePlanHash = &planHash

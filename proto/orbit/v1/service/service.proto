@@ -182,7 +182,9 @@ message ServiceComponentEndpointOverlay {
   string state = 8;
 }
 
-message ServicePreviewReq {}
+message ServicePreviewReq {
+  optional bool join_traefik_network = 1;
+}
 
 message ServicePreviewResp {
   string compose_yaml = 1;
@@ -190,6 +192,7 @@ message ServicePreviewResp {
 
 message ServiceDeployReq {
   bool force_recreate = 1;
+  optional bool join_traefik_network = 2;
 }
 
 message ServiceDeployResp {

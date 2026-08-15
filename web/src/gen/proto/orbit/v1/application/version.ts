@@ -206,6 +206,7 @@ export interface VersionPaginatedResp {
 }
 
 export interface VersionPreviewReq {
+  join_traefik_network?: boolean | undefined;
 }
 
 export interface VersionPreviewResp {

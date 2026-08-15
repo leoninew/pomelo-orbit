@@ -1898,9 +1898,10 @@ func (x *VersionPaginatedResp) GetPages() int32 {
 }
 
 type VersionPreviewReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	JoinTraefikNetwork *bool                  `protobuf:"varint,1,opt,name=join_traefik_network,json=joinTraefikNetwork,proto3,oneof" json:"join_traefik_network,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *VersionPreviewReq) Reset() {
@@ -1931,6 +1932,13 @@ func (x *VersionPreviewReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use VersionPreviewReq.ProtoReflect.Descriptor instead.
 func (*VersionPreviewReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_application_version_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *VersionPreviewReq) GetJoinTraefikNetwork() bool {
+	if x != nil && x.JoinTraefikNetwork != nil {
+		return *x.JoinTraefikNetwork
+	}
+	return false
 }
 
 type VersionPreviewResp struct {
@@ -2191,8 +2199,10 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pages\"\x13\n" +
-	"\x11VersionPreviewReq\"7\n" +
+	"\x05pages\x18\x05 \x01(\x05R\x05pages\"c\n" +
+	"\x11VersionPreviewReq\x125\n" +
+	"\x14join_traefik_network\x18\x01 \x01(\bH\x00R\x12joinTraefikNetwork\x88\x01\x01B\x17\n" +
+	"\x15_join_traefik_network\"7\n" +
 	"\x12VersionPreviewResp\x12!\n" +
 	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYamlB\xe4\x01\n" +
 	"\x18com.orbit.v1.applicationB\fVersionProtoP\x01ZHgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application\xa2\x02\x03OVA\xaa\x02\x14Orbit.V1.Application\xca\x02\x14Orbit\\V1\\Application\xe2\x02 Orbit\\V1\\Application\\GPBMetadata\xea\x02\x16Orbit::V1::Applicationb\x06proto3"
@@ -2293,6 +2303,7 @@ func file_orbit_v1_application_version_proto_init() {
 	file_orbit_v1_application_version_proto_msgTypes[20].OneofWrappers = []any{}
 	file_orbit_v1_application_version_proto_msgTypes[21].OneofWrappers = []any{}
 	file_orbit_v1_application_version_proto_msgTypes[23].OneofWrappers = []any{}
+	file_orbit_v1_application_version_proto_msgTypes[25].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

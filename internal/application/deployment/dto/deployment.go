@@ -19,7 +19,14 @@ type DeploymentListInput struct {
 
 // DeployServiceInput describes a user-requested deployment of saved Service configuration.
 type DeployServiceInput struct {
-	ForceRecreate bool
+	ForceRecreate      bool
+	JoinTraefikNetwork *bool
+}
+
+// PreviewComposeInput controls a Compose preview without persisting a
+// deployment. Nil uses the product default of joining the platform network.
+type PreviewComposeInput struct {
+	JoinTraefikNetwork *bool
 }
 
 type DeployServiceResult struct {
@@ -35,9 +42,10 @@ type ServiceTargetInput struct {
 
 // DeployOptionsJSON is persisted with a deployment and consumed by the worker.
 type DeployOptionsJSON struct {
-	ForceRecreate bool   `json:"force_recreate"`
-	InstanceKey   string `json:"instance_key"`
-	RemoveVolumes bool   `json:"remove_volumes"`
+	ForceRecreate      bool   `json:"force_recreate"`
+	InstanceKey        string `json:"instance_key"`
+	RemoveVolumes      bool   `json:"remove_volumes"`
+	JoinTraefikNetwork *bool  `json:"join_traefik_network"`
 }
 
 type DeployDispatchInput struct {

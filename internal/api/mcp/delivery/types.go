@@ -71,7 +71,7 @@ type ServiceService interface {
 
 type DeploymentService interface {
 	DeleteApplication(context.Context, string, string) error
-	PreviewService(context.Context, string, string) (string, error)
+	PreviewService(context.Context, string, string, deploymentdto.PreviewComposeInput) (string, error)
 	DeployService(context.Context, string, string, deploymentdto.DeployServiceInput) (deploymentdto.DeployServiceResult, error)
 	StopApplication(context.Context, string, string, deploymentdto.ServiceTargetInput) (string, error)
 	RestartApplication(context.Context, string, string, deploymentdto.ServiceTargetInput) (string, error)

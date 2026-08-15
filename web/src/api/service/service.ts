@@ -7,6 +7,7 @@ import type {
   ServiceDeployResp,
   ServiceEnvUpdateReq,
   ServicePaginatedResp,
+  ServicePreviewReq,
   ServicePreviewResp,
   ServiceResp,
   ServiceCreateReq,
@@ -57,8 +58,8 @@ export const serviceApi = {
     return request.put(`/api/service/${id}/env`, payload);
   },
 
-  preview(id: string): Promise<ServicePreviewResp> {
-    return request.post(`/api/service/${id}/preview`, {});
+  preview(id: string, data: ServicePreviewReq): Promise<ServicePreviewResp> {
+    return request.post(`/api/service/${id}/preview`, data);
   },
 
   deploy(id: string, payload: ServiceDeployReq): Promise<ServiceDeployResp> {

@@ -212,7 +212,9 @@ message VersionPaginatedResp {
   int32 pages = 5;
 }
 
-message VersionPreviewReq {}
+message VersionPreviewReq {
+  optional bool join_traefik_network = 1;
+}
 
 message VersionPreviewResp {
   string compose_yaml = 1;

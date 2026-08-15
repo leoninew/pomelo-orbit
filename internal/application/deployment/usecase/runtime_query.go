@@ -91,7 +91,7 @@ func (s Service) ApplicationLogs(ctx context.Context, userId string, application
 }
 
 // PreviewService renders a saved service configuration without creating a deployment.
-func (s Service) PreviewService(ctx context.Context, userId string, serviceId string) (string, error) {
+func (s Service) PreviewService(ctx context.Context, userId string, serviceId string, input deploymentdto.PreviewComposeInput) (string, error) {
 	if s.commandStore == nil || s.executionStore == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment stores are not configured")
 	}
@@ -122,6 +122,7 @@ func (s Service) PreviewService(ctx context.Context, userId string, serviceId st
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
+	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
 	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, service.Code)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical service dir", err)
@@ -139,7 +140,7 @@ func (s Service) PreviewService(ctx context.Context, userId string, serviceId st
 }
 
 // PreviewVersion renders version declarations without reading Service runtime configuration.
-func (s Service) PreviewVersion(ctx context.Context, userId string, versionId string) (string, error) {
+func (s Service) PreviewVersion(ctx context.Context, userId string, versionId string, input deploymentdto.PreviewComposeInput) (string, error) {
 	if s.commandStore == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment command store is not configured")
 	}
@@ -162,6 +163,7 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
+	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
 	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, plan.Service.Code)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical preview dir", err)

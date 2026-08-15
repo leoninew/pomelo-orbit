@@ -107,6 +107,15 @@
       @update:open="setPreviewOpen"
     >
       <div class="flex h-full flex-col gap-3 p-6">
+        <label v-if="isStandardApplication" class="flex shrink-0 items-center gap-2">
+          <input
+            v-model="previewJoinTraefikNetwork"
+            type="checkbox"
+            class="app-checkbox"
+            @change="refreshPreview"
+          />
+          <span class="text-sm text-foreground">{{ t('service.deploy.joinTraefikNetwork') }}</span>
+        </label>
         <AppLoadingState v-if="previewLoading" class="flex-1 items-center" size="section" />
         <div
           v-else-if="previewError"
@@ -491,6 +500,7 @@
   const previewOpen = ref(false);
   const previewContent = ref('');
   const previewError = ref('');
+  const previewJoinTraefikNetwork = ref(true);
 
   const isBasicDialogOpen = ref(false);
   const isComponentDialogOpen = ref(false);
@@ -521,6 +531,7 @@
   const restartPolicyValues = ['no', 'unless-stopped'];
   const isEditable = computed(() => version.value?.status === 'unpublished');
   const isPublished = computed(() => version.value?.status === 'published');
+  const isStandardApplication = computed(() => application.value?.kind === 'standard');
 
   async function fetchVersion() {
     try {
@@ -545,12 +556,19 @@
   }
 
   async function preview() {
+    previewJoinTraefikNetwork.value = true;
+    await refreshPreview();
+  }
+
+  async function refreshPreview() {
     previewContent.value = '';
     previewError.value = '';
     previewOpen.value = true;
     try {
       await executePreview(async () => {
-        const result = await applicationApi.previewVersion(versionId, {});
+        const result = await applicationApi.previewVersion(versionId, {
+          join_traefik_network: previewJoinTraefikNetwork.value,
+        });
         previewContent.value = result.compose_yaml;
       });
     } catch (error) {

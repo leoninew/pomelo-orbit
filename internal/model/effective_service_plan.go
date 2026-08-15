@@ -9,6 +9,13 @@ type EffectiveServicePlan struct {
 	Service     Service
 	Components  []EffectiveServiceComponent
 	Gateway     *GatewayConfig
+	// JoinTraefikNetwork controls the shared platform network projection for a
+	// standard Service. Nil retains the product default of joining it.
+	JoinTraefikNetwork *bool
+}
+
+func (p EffectiveServicePlan) JoinsTraefikNetwork() bool {
+	return p.JoinTraefikNetwork == nil || *p.JoinTraefikNetwork
 }
 
 type EffectiveServiceComponent struct {

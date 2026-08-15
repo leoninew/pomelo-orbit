@@ -195,6 +195,10 @@
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('service.deploy.forceRecreate') }}</span>
         </label>
+        <label v-if="isStandardService" class="flex items-center gap-2">
+          <input v-model="deployForm.join_traefik_network" type="checkbox" class="app-checkbox" />
+          <span class="text-sm text-foreground">{{ t('service.deploy.joinTraefikNetwork') }}</span>
+        </label>
       </div>
       <p v-if="deploySubmitError" class="app-field-error mt-3" role="alert">
         {{ deploySubmitError }}
@@ -270,6 +274,15 @@
       @update:open="setPreviewOpen"
     >
       <div class="flex h-full flex-col gap-3 p-6">
+        <label v-if="isStandardService" class="flex shrink-0 items-center gap-2">
+          <input
+            v-model="previewJoinTraefikNetwork"
+            type="checkbox"
+            class="app-checkbox"
+            @change="refreshPreview"
+          />
+          <span class="text-sm text-foreground">{{ t('service.deploy.joinTraefikNetwork') }}</span>
+        </label>
         <AppLoadingState v-if="previewLoading" class="flex-1 items-center" size="section" />
         <div
           v-else-if="previewError"
@@ -416,7 +429,7 @@
   });
   const basicEditSubmitError = ref('');
   const isDeployDialogOpen = ref(false);
-  const deployForm = reactive({ force_recreate: false });
+  const deployForm = reactive({ force_recreate: false, join_traefik_network: true });
   const deploySubmitError = ref('');
   const isStopDialogOpen = ref(false);
   const stopRemoveVolumes = ref(false);
@@ -426,6 +439,7 @@
   const previewOpen = ref(false);
   const previewContent = ref('');
   const previewError = ref('');
+  const previewJoinTraefikNetwork = ref(true);
   const serviceId = String(route.params.id || '');
   const environmentRows = ref<EnvironmentVariableListRow[]>([]);
   const savedEnvironmentRows = ref<EnvironmentVariableListRow[]>([]);
@@ -467,6 +481,7 @@
       !service.value.active_deployment &&
       (service.value.status === 'running' || service.value.status === 'faulted')
   );
+  const isStandardService = computed(() => service.value?.application_kind === 'standard');
   const basicEditVersionSelectOptions = computed(() =>
     basicEditVersions.value.map((version) => ({
       value: version.id,
@@ -584,12 +599,19 @@
   }
 
   async function preview() {
+    previewJoinTraefikNetwork.value = true;
+    await refreshPreview();
+  }
+
+  async function refreshPreview() {
     previewContent.value = '';
     previewError.value = '';
     previewOpen.value = true;
     try {
       await executePreview(async () => {
-        const result = await serviceApi.preview(serviceId);
+        const result = await serviceApi.preview(serviceId, {
+          join_traefik_network: previewJoinTraefikNetwork.value,
+        });
         previewContent.value = result.compose_yaml;
       });
     } catch (error) {
@@ -727,6 +749,7 @@
 
   function openDeployDialog() {
     deployForm.force_recreate = false;
+    deployForm.join_traefik_network = true;
     deploySubmitError.value = '';
     isDeployDialogOpen.value = true;
   }
@@ -751,6 +774,7 @@
       await executeOperation(async () => {
         const result = await serviceApi.deploy(serviceId, {
           force_recreate: deployForm.force_recreate,
+          join_traefik_network: deployForm.join_traefik_network,
         });
         for (const warning of result.warnings) toast.error(warning);
         toast.success(t('service.toast.deployQueued'));

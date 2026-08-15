@@ -111,7 +111,7 @@ func (h Handler) DeployService(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	result, err := h.service.DeployService(c.Request.Context(), current.Id, c.Param("service_id"), deploymentdto.DeployServiceInput{ForceRecreate: req.ForceRecreate})
+	result, err := h.service.DeployService(c.Request.Context(), current.Id, c.Param("service_id"), deploymentdto.DeployServiceInput{ForceRecreate: req.ForceRecreate, JoinTraefikNetwork: req.JoinTraefikNetwork})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -191,7 +191,7 @@ func (h Handler) PreviewService(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	compose, err := h.service.PreviewService(c.Request.Context(), current.Id, c.Param("service_id"))
+	compose, err := h.service.PreviewService(c.Request.Context(), current.Id, c.Param("service_id"), deploymentdto.PreviewComposeInput{JoinTraefikNetwork: req.JoinTraefikNetwork})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -209,7 +209,7 @@ func (h Handler) PreviewVersion(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	compose, err := h.service.PreviewVersion(c.Request.Context(), current.Id, c.Param("version_id"))
+	compose, err := h.service.PreviewVersion(c.Request.Context(), current.Id, c.Param("version_id"), deploymentdto.PreviewComposeInput{JoinTraefikNetwork: req.JoinTraefikNetwork})
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return

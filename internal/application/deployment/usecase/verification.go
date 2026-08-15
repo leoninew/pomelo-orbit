@@ -52,7 +52,7 @@ func (s Service) VerifyDeployment(ctx context.Context, userId, applicationId, de
 	if err != nil {
 		return deploymentdto.DeploymentVerificationResult{}, err
 	}
-	preview, err := s.PreviewService(ctx, userId, service.Id)
+	preview, err := s.PreviewService(ctx, userId, service.Id, deploymentdto.PreviewComposeInput{})
 	if err != nil {
 		return deploymentdto.DeploymentVerificationResult{}, err
 	}

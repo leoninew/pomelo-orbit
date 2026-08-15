@@ -85,6 +85,15 @@ func TestEffectiveServicePlanHashExcludesGatewayConfiguration(t *testing.T) {
 	if withGateway != withoutGateway {
 		t.Fatalf("gateway configuration changed plan hash: without=%s with=%s", withoutGateway, withGateway)
 	}
+	disabled := false
+	plan.JoinTraefikNetwork = &disabled
+	withoutNetwork, err := EffectiveServicePlanHash(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withoutNetwork == withGateway {
+		t.Fatalf("Traefik network option did not change plan hash: enabled=%s disabled=%s", withGateway, withoutNetwork)
+	}
 }
 
 func TestBuildVersionPreviewPlanUsesVersionDeclarations(t *testing.T) {

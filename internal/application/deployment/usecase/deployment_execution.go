@@ -78,6 +78,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
+	setPlanJoinTraefikNetwork(&plan, opts.JoinTraefikNetwork)
 	if err := s.ensureSingleRuntime(ctx, app, opts.InstanceKey); err != nil {
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -132,7 +133,6 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	_ = restartOpts
 	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
 	if err != nil {
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
@@ -163,6 +163,7 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
+	setPlanJoinTraefikNetwork(&plan, restartOpts.JoinTraefikNetwork)
 	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())

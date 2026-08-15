@@ -190,6 +190,7 @@ export interface ServiceComponentEndpointOverlay {
 }
 
 export interface ServicePreviewReq {
+  join_traefik_network?: boolean | undefined;
 }
 
 export interface ServicePreviewResp {
@@ -198,6 +199,7 @@ export interface ServicePreviewResp {
 
 export interface ServiceDeployReq {
   force_recreate: boolean;
+  join_traefik_network?: boolean | undefined;
 }
 
 export interface ServiceDeployResp {

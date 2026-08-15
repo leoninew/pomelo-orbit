@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
@@ -377,7 +378,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	addTool(server, "orbit_preview_service", "Render a saved Service configuration without deploying it.", func(ctx context.Context, input struct {
 		ServiceId string `json:"service_id" jsonschema:"required"`
 	}) (map[string]any, error) {
-		preview, err := c.deps.Deployment.PreviewService(ctx, c.deps.ActorUserId, input.ServiceId)
+		preview, err := c.deps.Deployment.PreviewService(ctx, c.deps.ActorUserId, input.ServiceId, deploymentdto.PreviewComposeInput{})
 		if err != nil {
 			return nil, err
 		}

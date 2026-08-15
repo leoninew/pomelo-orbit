@@ -1594,9 +1594,10 @@ func (x *ServiceComponentEndpointOverlay) GetState() string {
 }
 
 type ServicePreviewReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	JoinTraefikNetwork *bool                  `protobuf:"varint,1,opt,name=join_traefik_network,json=joinTraefikNetwork,proto3,oneof" json:"join_traefik_network,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ServicePreviewReq) Reset() {
@@ -1627,6 +1628,13 @@ func (x *ServicePreviewReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ServicePreviewReq.ProtoReflect.Descriptor instead.
 func (*ServicePreviewReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ServicePreviewReq) GetJoinTraefikNetwork() bool {
+	if x != nil && x.JoinTraefikNetwork != nil {
+		return *x.JoinTraefikNetwork
+	}
+	return false
 }
 
 type ServicePreviewResp struct {
@@ -1674,10 +1682,11 @@ func (x *ServicePreviewResp) GetComposeYaml() string {
 }
 
 type ServiceDeployReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ForceRecreate bool                   `protobuf:"varint,1,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	ForceRecreate      bool                   `protobuf:"varint,1,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
+	JoinTraefikNetwork *bool                  `protobuf:"varint,2,opt,name=join_traefik_network,json=joinTraefikNetwork,proto3,oneof" json:"join_traefik_network,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ServiceDeployReq) Reset() {
@@ -1713,6 +1722,13 @@ func (*ServiceDeployReq) Descriptor() ([]byte, []int) {
 func (x *ServiceDeployReq) GetForceRecreate() bool {
 	if x != nil {
 		return x.ForceRecreate
+	}
+	return false
+}
+
+func (x *ServiceDeployReq) GetJoinTraefikNetwork() bool {
+	if x != nil && x.JoinTraefikNetwork != nil {
+		return *x.JoinTraefikNetwork
 	}
 	return false
 }
@@ -2047,12 +2063,16 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\r_bind_addressB\x0e\n" +
 	"\f_listen_portB\r\n" +
 	"\v_entrypointB\x0e\n" +
-	"\f_path_prefix\"\x13\n" +
-	"\x11ServicePreviewReq\"7\n" +
+	"\f_path_prefix\"c\n" +
+	"\x11ServicePreviewReq\x125\n" +
+	"\x14join_traefik_network\x18\x01 \x01(\bH\x00R\x12joinTraefikNetwork\x88\x01\x01B\x17\n" +
+	"\x15_join_traefik_network\"7\n" +
 	"\x12ServicePreviewResp\x12!\n" +
-	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"9\n" +
+	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"\x89\x01\n" +
 	"\x10ServiceDeployReq\x12%\n" +
-	"\x0eforce_recreate\x18\x01 \x01(\bR\rforceRecreate\"T\n" +
+	"\x0eforce_recreate\x18\x01 \x01(\bR\rforceRecreate\x125\n" +
+	"\x14join_traefik_network\x18\x02 \x01(\bH\x00R\x12joinTraefikNetwork\x88\x01\x01B\x17\n" +
+	"\x15_join_traefik_network\"T\n" +
 	"\x11ServiceDeployResp\x12#\n" +
 	"\rdeployment_id\x18\x01 \x01(\tR\fdeploymentId\x12\x1a\n" +
 	"\bwarnings\x18\x02 \x03(\tR\bwarnings\"7\n" +
@@ -2143,6 +2163,8 @@ func file_orbit_v1_service_service_proto_init() {
 	file_orbit_v1_service_service_proto_msgTypes[16].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[17].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[18].OneofWrappers = []any{}
+	file_orbit_v1_service_service_proto_msgTypes[19].OneofWrappers = []any{}
+	file_orbit_v1_service_service_proto_msgTypes[21].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

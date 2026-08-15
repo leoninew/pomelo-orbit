@@ -48,3 +48,7 @@ type MCPClient interface {
 type MCPClientFactory interface {
 	Connect(context.Context, string) (MCPClient, error)
 }
+
+type TransactionRunner interface {
+	RunInTransaction(context.Context, func(context.Context) error) error
+}

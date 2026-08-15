@@ -88,6 +88,23 @@ type Deployment struct {
 	CommandText              string         `db:"command_text"`
 }
 
+type DeploymentDialogueConversation struct {
+	ID              string    `db:"id"`
+	ProjectID       string    `db:"project_id"`
+	CreatedByUserID string    `db:"created_by_user_id"`
+	Title           string    `db:"title"`
+	CreatedAt       time.Time `db:"created_at"`
+	UpdatedAt       time.Time `db:"updated_at"`
+}
+
+type DeploymentDialogueMessage struct {
+	ID             string    `db:"id"`
+	ConversationID string    `db:"conversation_id"`
+	Role           string    `db:"role"`
+	Content        string    `db:"content"`
+	CreatedAt      time.Time `db:"created_at"`
+}
+
 type GatewayConfig struct {
 	ApplicationID     string    `db:"application_id"`
 	RestApiUrl        string    `db:"rest_api_url"`

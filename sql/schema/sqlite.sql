@@ -1,5 +1,5 @@
 -- SQLC schema snapshot for the complete SQLite database.
--- It mirrors numbered DDL migrations through 000031. Business data migrations are excluded.
+-- It mirrors numbered DDL migrations through 000030. Business data migrations are excluded.
 
 CREATE TABLE IF NOT EXISTS background_task (
     id TEXT PRIMARY KEY,
@@ -688,3 +688,28 @@ CREATE INDEX IF NOT EXISTS idx_route_domain ON route(domain);
 CREATE INDEX IF NOT EXISTS idx_route_enabled ON route(enabled);
 CREATE INDEX IF NOT EXISTS idx_route_project ON route(project_id);
 CREATE INDEX IF NOT EXISTS idx_route_tcp_listen ON route(protocol, listen_port);
+
+CREATE TABLE IF NOT EXISTS deployment_dialogue_conversation (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    created_by_user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by_user_id) REFERENCES user(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS deployment_dialogue_message (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+    content TEXT NOT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (conversation_id) REFERENCES deployment_dialogue_conversation(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_deployment_dialogue_conversation_project_updated
+    ON deployment_dialogue_conversation(project_id, updated_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_deployment_dialogue_message_conversation_created
+    ON deployment_dialogue_message(conversation_id, created_at ASC, id ASC);

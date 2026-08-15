@@ -7,6 +7,7 @@ import (
 	authrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/auth"
 	credentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/credential"
 	deploymentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/deployment"
+	dialoguerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/dialogue"
 	gatewayrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/gateway"
 	pipelinerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/pipeline"
 	pipelinerunrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/pipeline_run"
@@ -32,6 +33,7 @@ type domainStores struct {
 	application applicationrepo.Repository
 	service     servicerepo.Repository
 	deployment  deploymentrepo.Repository
+	dialogue    dialoguerepo.Repository
 	gateway     gatewayrepo.Repository
 	route       routerepo.Repository
 }
@@ -49,6 +51,7 @@ func newDomainStores(database *sql.DB) domainStores {
 		application: applicationrepo.NewRepository(database),
 		service:     servicerepo.NewRepository(database),
 		deployment:  deploymentrepo.NewRepository(database),
+		dialogue:    dialoguerepo.NewRepository(database),
 		gateway:     gatewayrepo.NewRepository(database),
 		route:       routerepo.NewRepository(database),
 	}

@@ -22,3 +22,5 @@ data/*
 data/exports/*
 bin/
 __pycache__/
+.gocache/
+.gotmp/

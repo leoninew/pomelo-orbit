@@ -15,3 +15,5 @@ web/coverage
 bin/
 data/
 logs/
+.gocache/
+.gotmp/

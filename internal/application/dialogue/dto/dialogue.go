@@ -1,13 +1,16 @@
 package dto
 
+import "time"
+
 type Message struct {
 	Role    string
 	Content string
 }
 
 type TurnInput struct {
-	ProjectId string
-	Messages  []Message
+	ProjectId      string
+	ConversationId string
+	Messages       []Message
 }
 
 type ToolCall struct {
@@ -18,8 +21,22 @@ type ToolCall struct {
 }
 
 type TurnResult struct {
-	Message   string
-	ToolCalls []ToolCall
+	Message      string
+	ToolCalls    []ToolCall
+	Conversation Conversation
+}
+
+type Conversation struct {
+	Id        string
+	ProjectId string
+	Title     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type ConversationDetail struct {
+	Conversation Conversation
+	Messages     []Message
 }
 
 const (

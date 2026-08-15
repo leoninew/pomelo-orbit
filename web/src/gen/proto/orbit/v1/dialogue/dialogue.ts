@@ -8,10 +8,15 @@
 
 export const protobufPackage = "orbit.v1.dialogue";
 
-/**
- * DeploymentDialogueMessage is one user or assistant message kept by the
- * deployment dialogue page for the current browser session.
- */
+export interface DeploymentDialogueConversation {
+  id: string;
+  project_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** DeploymentDialogueMessage is one persisted user or assistant message. */
 export interface DeploymentDialogueMessage {
   role: string;
   content: string;
@@ -20,6 +25,7 @@ export interface DeploymentDialogueMessage {
 export interface DeploymentDialogueTurnReq {
   project_id: string;
   messages: DeploymentDialogueMessage[];
+  conversation_id?: string | undefined;
 }
 
 export interface DeploymentDialogueToolCall {
@@ -32,6 +38,15 @@ export interface DeploymentDialogueToolCall {
 export interface DeploymentDialogueTurnResp {
   message: string;
   tool_calls: DeploymentDialogueToolCall[];
+}
+
+export interface DeploymentDialogueConversationListResp {
+  items: DeploymentDialogueConversation[];
+}
+
+export interface DeploymentDialogueConversationDetailResp {
+  conversation: DeploymentDialogueConversation | undefined;
+  messages: DeploymentDialogueMessage[];
 }
 
 /**

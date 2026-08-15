@@ -1,4 +1,6 @@
 import type {
+  DeploymentDialogueConversationDetailResp,
+  DeploymentDialogueConversationListResp,
   DeploymentDialogueStreamEvent,
   DeploymentDialogueTurnReq,
   DeploymentDialogueTurnResp,
@@ -11,6 +13,20 @@ import request, { ApiError, toApiError } from '@/utils/request';
 const STREAM_TIMEOUT = 120000;
 
 export const dialogueApi = {
+  listConversations(projectId: string): Promise<DeploymentDialogueConversationListResp> {
+    return request.get('/api/deployment-dialogue/conversation', {
+      params: { project_id: projectId },
+    });
+  },
+
+  getConversation(conversationId: string): Promise<DeploymentDialogueConversationDetailResp> {
+    return request.get(`/api/deployment-dialogue/conversation/${conversationId}`);
+  },
+
+  deleteConversation(conversationId: string): Promise<void> {
+    return request.delete(`/api/deployment-dialogue/conversation/${conversationId}`);
+  },
+
   completeTurn(data: DeploymentDialogueTurnReq): Promise<DeploymentDialogueTurnResp> {
     return request.post('/api/deployment-dialogue/turn', data, { timeout: 120000 });
   },

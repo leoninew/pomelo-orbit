@@ -15,7 +15,8 @@ import (
 )
 
 func (h Handler) CompleteTurn(c *gin.Context) {
-	if _, ok := h.authenticator.CurrentUser(c); !ok {
+	current, ok := h.authenticator.RequirePermission(c, "dialogue:write")
+	if !ok {
 		return
 	}
 	var req dialoguev1.DeploymentDialogueTurnReq
@@ -23,7 +24,7 @@ func (h Handler) CompleteTurn(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	result, err := h.service.CompleteTurn(c.Request.Context(), c.GetHeader("Authorization"), dialogueTurnInput(&req))
+	result, err := h.service.CompleteTurn(c.Request.Context(), current.User.Id, c.GetHeader("Authorization"), dialogueTurnInput(&req))
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -32,7 +33,8 @@ func (h Handler) CompleteTurn(c *gin.Context) {
 }
 
 func (h Handler) StreamTurn(c *gin.Context) {
-	if _, ok := h.authenticator.CurrentUser(c); !ok {
+	current, ok := h.authenticator.RequirePermission(c, "dialogue:write")
+	if !ok {
 		return
 	}
 	var req dialoguev1.DeploymentDialogueTurnReq
@@ -61,7 +63,7 @@ func (h Handler) StreamTurn(c *gin.Context) {
 		}
 	}
 
-	result, err := h.service.CompleteTurnWithProgress(c.Request.Context(), c.GetHeader("Authorization"), dialogueTurnInput(&req), func(event dialoguedto.StreamEvent) {
+	result, err := h.service.CompleteTurnWithProgress(c.Request.Context(), current.User.Id, c.GetHeader("Authorization"), dialogueTurnInput(&req), func(event dialoguedto.StreamEvent) {
 		emit(dialogueStreamEvent(event))
 	})
 	if err != nil {
@@ -81,6 +83,52 @@ func (h Handler) StreamTurn(c *gin.Context) {
 	}
 
 	emit(&dialoguev1.DeploymentDialogueStreamEvent{Type: "complete", Message: result.Message})
+}
+
+func (h Handler) ListConversations(c *gin.Context) {
+	current, ok := h.authenticator.RequirePermission(c, "dialogue:read")
+	if !ok {
+		return
+	}
+	items, err := h.service.ListConversations(c.Request.Context(), current.User.Id, c.Request.URL.Query().Get("project_id"))
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	result := make([]dialoguev1.DeploymentDialogueConversation, 0, len(items))
+	for _, item := range items {
+		result = append(result, *dialogueConversationResponse(item))
+	}
+	transportresponse.ProtoJSON(c, http.StatusOK, &dialoguev1.DeploymentDialogueConversationListResp{Items: transportresponse.Ptrs(result)})
+}
+
+func (h Handler) Conversation(c *gin.Context) {
+	current, ok := h.authenticator.RequirePermission(c, "dialogue:read")
+	if !ok {
+		return
+	}
+	detail, err := h.service.Conversation(c.Request.Context(), current.User.Id, c.Param("conversation_id"))
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	messages := make([]dialoguev1.DeploymentDialogueMessage, 0, len(detail.Messages))
+	for _, message := range detail.Messages {
+		messages = append(messages, dialogueMessageResponse(message))
+	}
+	transportresponse.ProtoJSON(c, http.StatusOK, &dialoguev1.DeploymentDialogueConversationDetailResp{Conversation: dialogueConversationResponse(detail.Conversation), Messages: transportresponse.Ptrs(messages)})
+}
+
+func (h Handler) DeleteConversation(c *gin.Context) {
+	current, ok := h.authenticator.RequirePermission(c, "dialogue:write")
+	if !ok {
+		return
+	}
+	if err := h.service.DeleteConversation(c.Request.Context(), current.User.Id, c.Param("conversation_id")); err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func writeStreamEvent(c *gin.Context, event *dialoguev1.DeploymentDialogueStreamEvent) error {
@@ -112,7 +160,7 @@ func dialogueTurnInput(req *dialoguev1.DeploymentDialogueTurnReq) dialoguedto.Tu
 	if req == nil {
 		return dialoguedto.TurnInput{}
 	}
-	result := dialoguedto.TurnInput{ProjectId: req.ProjectId, Messages: make([]dialoguedto.Message, 0, len(req.Messages))}
+	result := dialoguedto.TurnInput{ProjectId: req.ProjectId, ConversationId: req.GetConversationId(), Messages: make([]dialoguedto.Message, 0, len(req.Messages))}
 	for _, message := range req.Messages {
 		if message != nil {
 			result.Messages = append(result.Messages, dialoguedto.Message{Role: message.Role, Content: message.Content})
@@ -127,4 +175,21 @@ func dialogueTurnResponse(result dialoguedto.TurnResult) *dialoguev1.DeploymentD
 		toolCalls = append(toolCalls, &dialoguev1.DeploymentDialogueToolCall{Name: call.Name, ArgumentsJson: call.ArgumentsJSON, ResultJson: call.ResultJSON, IsError: call.IsError})
 	}
 	return &dialoguev1.DeploymentDialogueTurnResp{Message: result.Message, ToolCalls: toolCalls}
+}
+
+func dialogueConversationResponse(conversation dialoguedto.Conversation) *dialoguev1.DeploymentDialogueConversation {
+	if conversation.Id == "" {
+		return nil
+	}
+	return &dialoguev1.DeploymentDialogueConversation{
+		Id:        conversation.Id,
+		ProjectId: conversation.ProjectId,
+		Title:     conversation.Title,
+		CreatedAt: transportresponse.FormatTime(conversation.CreatedAt),
+		UpdatedAt: transportresponse.FormatTime(conversation.UpdatedAt),
+	}
+}
+
+func dialogueMessageResponse(message dialoguedto.Message) dialoguev1.DeploymentDialogueMessage {
+	return dialoguev1.DeploymentDialogueMessage{Role: message.Role, Content: message.Content}
 }

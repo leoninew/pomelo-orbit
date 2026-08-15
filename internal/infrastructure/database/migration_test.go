@@ -61,7 +61,7 @@ func TestMigrateDataSQLite(t *testing.T) {
 	for table, want := range map[string]int{
 		"user":                     1,
 		"project":                  1,
-		"permission":               7,
+		"permission":               9,
 		"role":                     1,
 		"pipeline":                 2,
 		"pipeline_stage":           5,
@@ -155,6 +155,8 @@ func TestMigrateUpSQLiteCreatesPipelineSchema(t *testing.T) {
 		"pipeline_run",
 		"pipeline_run_version_binding",
 		"artifact",
+		"deployment_dialogue_conversation",
+		"deployment_dialogue_message",
 	} {
 		var count int
 		if err := database.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?", table).Scan(&count); err != nil {
@@ -165,7 +167,7 @@ func TestMigrateUpSQLiteCreatesPipelineSchema(t *testing.T) {
 		}
 	}
 	for table, want := range map[string]int{
-		"permission":     7,
+		"permission":     9,
 		"role":           1,
 		"user_role":      1,
 		"project_member": 1,

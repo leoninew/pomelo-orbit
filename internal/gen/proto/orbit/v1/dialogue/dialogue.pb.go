@@ -21,8 +21,83 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DeploymentDialogueMessage is one user or assistant message kept by the
-// deployment dialogue page for the current browser session.
+type DeploymentDialogueConversation struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId     string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     string                 `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeploymentDialogueConversation) Reset() {
+	*x = DeploymentDialogueConversation{}
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeploymentDialogueConversation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeploymentDialogueConversation) ProtoMessage() {}
+
+func (x *DeploymentDialogueConversation) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeploymentDialogueConversation.ProtoReflect.Descriptor instead.
+func (*DeploymentDialogueConversation) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *DeploymentDialogueConversation) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *DeploymentDialogueConversation) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *DeploymentDialogueConversation) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *DeploymentDialogueConversation) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *DeploymentDialogueConversation) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+// DeploymentDialogueMessage is one persisted user or assistant message.
 type DeploymentDialogueMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Role          string                 `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
@@ -33,7 +108,7 @@ type DeploymentDialogueMessage struct {
 
 func (x *DeploymentDialogueMessage) Reset() {
 	*x = DeploymentDialogueMessage{}
-	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[0]
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +120,7 @@ func (x *DeploymentDialogueMessage) String() string {
 func (*DeploymentDialogueMessage) ProtoMessage() {}
 
 func (x *DeploymentDialogueMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[0]
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +133,7 @@ func (x *DeploymentDialogueMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeploymentDialogueMessage.ProtoReflect.Descriptor instead.
 func (*DeploymentDialogueMessage) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{0}
+	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *DeploymentDialogueMessage) GetRole() string {
@@ -76,16 +151,17 @@ func (x *DeploymentDialogueMessage) GetContent() string {
 }
 
 type DeploymentDialogueTurnReq struct {
-	state         protoimpl.MessageState       `protogen:"open.v1"`
-	ProjectId     string                       `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Messages      []*DeploymentDialogueMessage `protobuf:"bytes,2,rep,name=messages,proto3" json:"messages,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState       `protogen:"open.v1"`
+	ProjectId      string                       `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Messages       []*DeploymentDialogueMessage `protobuf:"bytes,2,rep,name=messages,proto3" json:"messages,omitempty"`
+	ConversationId *string                      `protobuf:"bytes,3,opt,name=conversation_id,json=conversationId,proto3,oneof" json:"conversation_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *DeploymentDialogueTurnReq) Reset() {
 	*x = DeploymentDialogueTurnReq{}
-	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[1]
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -97,7 +173,7 @@ func (x *DeploymentDialogueTurnReq) String() string {
 func (*DeploymentDialogueTurnReq) ProtoMessage() {}
 
 func (x *DeploymentDialogueTurnReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[1]
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -110,7 +186,7 @@ func (x *DeploymentDialogueTurnReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeploymentDialogueTurnReq.ProtoReflect.Descriptor instead.
 func (*DeploymentDialogueTurnReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{1}
+	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *DeploymentDialogueTurnReq) GetProjectId() string {
@@ -127,6 +203,13 @@ func (x *DeploymentDialogueTurnReq) GetMessages() []*DeploymentDialogueMessage {
 	return nil
 }
 
+func (x *DeploymentDialogueTurnReq) GetConversationId() string {
+	if x != nil && x.ConversationId != nil {
+		return *x.ConversationId
+	}
+	return ""
+}
+
 type DeploymentDialogueToolCall struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -139,7 +222,7 @@ type DeploymentDialogueToolCall struct {
 
 func (x *DeploymentDialogueToolCall) Reset() {
 	*x = DeploymentDialogueToolCall{}
-	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[2]
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -151,7 +234,7 @@ func (x *DeploymentDialogueToolCall) String() string {
 func (*DeploymentDialogueToolCall) ProtoMessage() {}
 
 func (x *DeploymentDialogueToolCall) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[2]
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -164,7 +247,7 @@ func (x *DeploymentDialogueToolCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeploymentDialogueToolCall.ProtoReflect.Descriptor instead.
 func (*DeploymentDialogueToolCall) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{2}
+	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *DeploymentDialogueToolCall) GetName() string {
@@ -205,7 +288,7 @@ type DeploymentDialogueTurnResp struct {
 
 func (x *DeploymentDialogueTurnResp) Reset() {
 	*x = DeploymentDialogueTurnResp{}
-	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[3]
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -217,7 +300,7 @@ func (x *DeploymentDialogueTurnResp) String() string {
 func (*DeploymentDialogueTurnResp) ProtoMessage() {}
 
 func (x *DeploymentDialogueTurnResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[3]
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -230,7 +313,7 @@ func (x *DeploymentDialogueTurnResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeploymentDialogueTurnResp.ProtoReflect.Descriptor instead.
 func (*DeploymentDialogueTurnResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{3}
+	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *DeploymentDialogueTurnResp) GetMessage() string {
@@ -243,6 +326,102 @@ func (x *DeploymentDialogueTurnResp) GetMessage() string {
 func (x *DeploymentDialogueTurnResp) GetToolCalls() []*DeploymentDialogueToolCall {
 	if x != nil {
 		return x.ToolCalls
+	}
+	return nil
+}
+
+type DeploymentDialogueConversationListResp struct {
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Items         []*DeploymentDialogueConversation `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeploymentDialogueConversationListResp) Reset() {
+	*x = DeploymentDialogueConversationListResp{}
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeploymentDialogueConversationListResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeploymentDialogueConversationListResp) ProtoMessage() {}
+
+func (x *DeploymentDialogueConversationListResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeploymentDialogueConversationListResp.ProtoReflect.Descriptor instead.
+func (*DeploymentDialogueConversationListResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *DeploymentDialogueConversationListResp) GetItems() []*DeploymentDialogueConversation {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type DeploymentDialogueConversationDetailResp struct {
+	state         protoimpl.MessageState          `protogen:"open.v1"`
+	Conversation  *DeploymentDialogueConversation `protobuf:"bytes,1,opt,name=conversation,proto3" json:"conversation,omitempty"`
+	Messages      []*DeploymentDialogueMessage    `protobuf:"bytes,2,rep,name=messages,proto3" json:"messages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeploymentDialogueConversationDetailResp) Reset() {
+	*x = DeploymentDialogueConversationDetailResp{}
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeploymentDialogueConversationDetailResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeploymentDialogueConversationDetailResp) ProtoMessage() {}
+
+func (x *DeploymentDialogueConversationDetailResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeploymentDialogueConversationDetailResp.ProtoReflect.Descriptor instead.
+func (*DeploymentDialogueConversationDetailResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *DeploymentDialogueConversationDetailResp) GetConversation() *DeploymentDialogueConversation {
+	if x != nil {
+		return x.Conversation
+	}
+	return nil
+}
+
+func (x *DeploymentDialogueConversationDetailResp) GetMessages() []*DeploymentDialogueMessage {
+	if x != nil {
+		return x.Messages
 	}
 	return nil
 }
@@ -262,7 +441,7 @@ type DeploymentDialogueStreamEvent struct {
 
 func (x *DeploymentDialogueStreamEvent) Reset() {
 	*x = DeploymentDialogueStreamEvent{}
-	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[4]
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -274,7 +453,7 @@ func (x *DeploymentDialogueStreamEvent) String() string {
 func (*DeploymentDialogueStreamEvent) ProtoMessage() {}
 
 func (x *DeploymentDialogueStreamEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[4]
+	mi := &file_orbit_v1_dialogue_dialogue_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,7 +466,7 @@ func (x *DeploymentDialogueStreamEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeploymentDialogueStreamEvent.ProtoReflect.Descriptor instead.
 func (*DeploymentDialogueStreamEvent) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{4}
+	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *DeploymentDialogueStreamEvent) GetType() string {
@@ -329,14 +508,25 @@ var File_orbit_v1_dialogue_dialogue_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_dialogue_dialogue_proto_rawDesc = "" +
 	"\n" +
-	" orbit/v1/dialogue/dialogue.proto\x12\x11orbit.v1.dialogue\"I\n" +
+	" orbit/v1/dialogue/dialogue.proto\x12\x11orbit.v1.dialogue\"\xa3\x01\n" +
+	"\x1eDeploymentDialogueConversation\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\x05 \x01(\tR\tupdatedAt\"I\n" +
 	"\x19DeploymentDialogueMessage\x12\x12\n" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\"\x84\x01\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\"\xc6\x01\n" +
 	"\x19DeploymentDialogueTurnReq\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12H\n" +
-	"\bmessages\x18\x02 \x03(\v2,.orbit.v1.dialogue.DeploymentDialogueMessageR\bmessages\"\x93\x01\n" +
+	"\bmessages\x18\x02 \x03(\v2,.orbit.v1.dialogue.DeploymentDialogueMessageR\bmessages\x12,\n" +
+	"\x0fconversation_id\x18\x03 \x01(\tH\x00R\x0econversationId\x88\x01\x01B\x12\n" +
+	"\x10_conversation_id\"\x93\x01\n" +
 	"\x1aDeploymentDialogueToolCall\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12%\n" +
 	"\x0earguments_json\x18\x02 \x01(\tR\rargumentsJson\x12\x1f\n" +
@@ -346,7 +536,12 @@ const file_orbit_v1_dialogue_dialogue_proto_rawDesc = "" +
 	"\x1aDeploymentDialogueTurnResp\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12L\n" +
 	"\n" +
-	"tool_calls\x18\x02 \x03(\v2-.orbit.v1.dialogue.DeploymentDialogueToolCallR\ttoolCalls\"\xcc\x01\n" +
+	"tool_calls\x18\x02 \x03(\v2-.orbit.v1.dialogue.DeploymentDialogueToolCallR\ttoolCalls\"q\n" +
+	"&DeploymentDialogueConversationListResp\x12G\n" +
+	"\x05items\x18\x01 \x03(\v21.orbit.v1.dialogue.DeploymentDialogueConversationR\x05items\"\xcb\x01\n" +
+	"(DeploymentDialogueConversationDetailResp\x12U\n" +
+	"\fconversation\x18\x01 \x01(\v21.orbit.v1.dialogue.DeploymentDialogueConversationR\fconversation\x12H\n" +
+	"\bmessages\x18\x02 \x03(\v2,.orbit.v1.dialogue.DeploymentDialogueMessageR\bmessages\"\xcc\x01\n" +
 	"\x1dDeploymentDialogueStreamEvent\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12J\n" +
@@ -368,23 +563,29 @@ func file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_dialogue_dialogue_proto_rawDescData
 }
 
-var file_orbit_v1_dialogue_dialogue_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_orbit_v1_dialogue_dialogue_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_orbit_v1_dialogue_dialogue_proto_goTypes = []any{
-	(*DeploymentDialogueMessage)(nil),     // 0: orbit.v1.dialogue.DeploymentDialogueMessage
-	(*DeploymentDialogueTurnReq)(nil),     // 1: orbit.v1.dialogue.DeploymentDialogueTurnReq
-	(*DeploymentDialogueToolCall)(nil),    // 2: orbit.v1.dialogue.DeploymentDialogueToolCall
-	(*DeploymentDialogueTurnResp)(nil),    // 3: orbit.v1.dialogue.DeploymentDialogueTurnResp
-	(*DeploymentDialogueStreamEvent)(nil), // 4: orbit.v1.dialogue.DeploymentDialogueStreamEvent
+	(*DeploymentDialogueConversation)(nil),           // 0: orbit.v1.dialogue.DeploymentDialogueConversation
+	(*DeploymentDialogueMessage)(nil),                // 1: orbit.v1.dialogue.DeploymentDialogueMessage
+	(*DeploymentDialogueTurnReq)(nil),                // 2: orbit.v1.dialogue.DeploymentDialogueTurnReq
+	(*DeploymentDialogueToolCall)(nil),               // 3: orbit.v1.dialogue.DeploymentDialogueToolCall
+	(*DeploymentDialogueTurnResp)(nil),               // 4: orbit.v1.dialogue.DeploymentDialogueTurnResp
+	(*DeploymentDialogueConversationListResp)(nil),   // 5: orbit.v1.dialogue.DeploymentDialogueConversationListResp
+	(*DeploymentDialogueConversationDetailResp)(nil), // 6: orbit.v1.dialogue.DeploymentDialogueConversationDetailResp
+	(*DeploymentDialogueStreamEvent)(nil),            // 7: orbit.v1.dialogue.DeploymentDialogueStreamEvent
 }
 var file_orbit_v1_dialogue_dialogue_proto_depIdxs = []int32{
-	0, // 0: orbit.v1.dialogue.DeploymentDialogueTurnReq.messages:type_name -> orbit.v1.dialogue.DeploymentDialogueMessage
-	2, // 1: orbit.v1.dialogue.DeploymentDialogueTurnResp.tool_calls:type_name -> orbit.v1.dialogue.DeploymentDialogueToolCall
-	2, // 2: orbit.v1.dialogue.DeploymentDialogueStreamEvent.tool_call:type_name -> orbit.v1.dialogue.DeploymentDialogueToolCall
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	1, // 0: orbit.v1.dialogue.DeploymentDialogueTurnReq.messages:type_name -> orbit.v1.dialogue.DeploymentDialogueMessage
+	3, // 1: orbit.v1.dialogue.DeploymentDialogueTurnResp.tool_calls:type_name -> orbit.v1.dialogue.DeploymentDialogueToolCall
+	0, // 2: orbit.v1.dialogue.DeploymentDialogueConversationListResp.items:type_name -> orbit.v1.dialogue.DeploymentDialogueConversation
+	0, // 3: orbit.v1.dialogue.DeploymentDialogueConversationDetailResp.conversation:type_name -> orbit.v1.dialogue.DeploymentDialogueConversation
+	1, // 4: orbit.v1.dialogue.DeploymentDialogueConversationDetailResp.messages:type_name -> orbit.v1.dialogue.DeploymentDialogueMessage
+	3, // 5: orbit.v1.dialogue.DeploymentDialogueStreamEvent.tool_call:type_name -> orbit.v1.dialogue.DeploymentDialogueToolCall
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_dialogue_dialogue_proto_init() }
@@ -392,13 +593,14 @@ func file_orbit_v1_dialogue_dialogue_proto_init() {
 	if File_orbit_v1_dialogue_dialogue_proto != nil {
 		return
 	}
+	file_orbit_v1_dialogue_dialogue_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_dialogue_dialogue_proto_rawDesc), len(file_orbit_v1_dialogue_dialogue_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -2,8 +2,15 @@ syntax = "proto3";
 
 package orbit.v1.dialogue;
 
-// DeploymentDialogueMessage is one user or assistant message kept by the
-// deployment dialogue page for the current browser session.
+message DeploymentDialogueConversation {
+  string id = 1;
+  string project_id = 2;
+  string title = 3;
+  string created_at = 4;
+  string updated_at = 5;
+}
+
+// DeploymentDialogueMessage is one persisted user or assistant message.
 message DeploymentDialogueMessage {
   string role = 1;
   string content = 2;
@@ -12,6 +19,7 @@ message DeploymentDialogueMessage {
 message DeploymentDialogueTurnReq {
   string project_id = 1;
   repeated DeploymentDialogueMessage messages = 2;
+  optional string conversation_id = 3;
 }
 
 message DeploymentDialogueToolCall {
@@ -24,6 +32,15 @@ message DeploymentDialogueToolCall {
 message DeploymentDialogueTurnResp {
   string message = 1;
   repeated DeploymentDialogueToolCall tool_calls = 2;
+}
+
+message DeploymentDialogueConversationListResp {
+  repeated DeploymentDialogueConversation items = 1;
+}
+
+message DeploymentDialogueConversationDetailResp {
+  DeploymentDialogueConversation conversation = 1;
+  repeated DeploymentDialogueMessage messages = 2;
 }
 
 // DeploymentDialogueStreamEvent is sent as the JSON data of one SSE event

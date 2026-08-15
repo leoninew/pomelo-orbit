@@ -175,10 +175,7 @@ WHERE a.project_id = CAST(sqlc.arg(project_id) AS TEXT)
   AND (
     CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
     OR a.name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR a.code LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
     OR s.code LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR s.instance_key LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR v.label LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
   );
 
 -- name: ListServicesByProject :many
@@ -200,10 +197,7 @@ WHERE a.project_id = CAST(sqlc.arg(project_id) AS TEXT)
   AND (
     CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
     OR a.name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR a.code LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
     OR s.code LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR s.instance_key LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR v.label LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
   )
 ORDER BY s.id DESC
 LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);

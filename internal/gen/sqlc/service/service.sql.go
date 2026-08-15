@@ -28,10 +28,7 @@ WHERE a.project_id = CAST(?1 AS TEXT)
   AND (
     CAST(?4 AS TEXT) IS NULL
     OR a.name LIKE CAST(?4 AS TEXT)
-    OR a.code LIKE CAST(?4 AS TEXT)
     OR s.code LIKE CAST(?4 AS TEXT)
-    OR s.instance_key LIKE CAST(?4 AS TEXT)
-    OR v.label LIKE CAST(?4 AS TEXT)
   )
 `
 
@@ -375,10 +372,7 @@ WHERE a.project_id = CAST(?1 AS TEXT)
   AND (
     CAST(?4 AS TEXT) IS NULL
     OR a.name LIKE CAST(?4 AS TEXT)
-    OR a.code LIKE CAST(?4 AS TEXT)
     OR s.code LIKE CAST(?4 AS TEXT)
-    OR s.instance_key LIKE CAST(?4 AS TEXT)
-    OR v.label LIKE CAST(?4 AS TEXT)
   )
 ORDER BY s.id DESC
 LIMIT ?6 OFFSET ?5

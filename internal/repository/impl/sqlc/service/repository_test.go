@@ -46,7 +46,7 @@ func TestDeleteServicePreservesDeploymentHistory(t *testing.T) {
 	}
 }
 
-func TestListServicesByProjectBindsNamedSearchParams(t *testing.T) {
+func TestListServicesByProjectSearchesApplicationNameAndServiceCode(t *testing.T) {
 	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
@@ -58,10 +58,10 @@ func TestListServicesByProjectBindsNamedSearchParams(t *testing.T) {
 	ctx := context.Background()
 	for _, statement := range []string{
 		`INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`,
-		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'Application', 'app', 'standard', 'project-1')`,
-		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`,
-		`INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'app-1', 'version-1', 'one', 'app-one', 'stopped')`,
-		`INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-2', 'app-1', 'version-1', 'two', 'app-two', 'stopped')`,
+		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'Application', 'application-code', 'standard', 'project-1')`,
+		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'version-label', 'unpublished')`,
+		`INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'app-1', 'version-1', 'instance-one', 'service-one', 'stopped')`,
+		`INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-2', 'app-1', 'version-1', 'instance-two', 'service-two', 'stopped')`,
 	} {
 		if _, err := database.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)
@@ -77,11 +77,29 @@ func TestListServicesByProjectBindsNamedSearchParams(t *testing.T) {
 		t.Fatalf("unfiltered services = %#v", all)
 	}
 
-	matched, err := repository.ListServicesByProject(ctx, "project-1", "", "", "app-two", 1, 20)
+	matched, err := repository.ListServicesByProject(ctx, "project-1", "", "", "Application", 1, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if matched.Total != 1 || len(matched.Items) != 1 || matched.Items[0].Code != "app-two" {
+	if matched.Total != 2 || len(matched.Items) != 2 {
+		t.Fatalf("application name search = %#v", matched)
+	}
+
+	matched, err = repository.ListServicesByProject(ctx, "project-1", "", "", "service-two", 1, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if matched.Total != 1 || len(matched.Items) != 1 || matched.Items[0].Code != "service-two" {
 		t.Fatalf("service code search = %#v", matched)
+	}
+
+	for _, search := range []string{"application-code", "instance-one", "version-label"} {
+		matched, err = repository.ListServicesByProject(ctx, "project-1", "", "", search, 1, 20)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if matched.Total != 0 || len(matched.Items) != 0 {
+			t.Fatalf("search %q unexpectedly matched %#v", search, matched)
+		}
 	}
 }

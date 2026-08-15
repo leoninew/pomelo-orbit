@@ -67,18 +67,16 @@ CREATE TABLE IF NOT EXISTS version_component_env (
 
 CREATE TABLE IF NOT EXISTS version_component_endpoint (
     component_id TEXT NOT NULL,
-    name TEXT NOT NULL,
     protocol TEXT NOT NULL CHECK (protocol IN ('http', 'tcp')),
     container_port INTEGER NOT NULL CHECK (container_port BETWEEN 1 AND 65535),
-    mode TEXT NOT NULL DEFAULT 'internal' CHECK (mode IN ('internal', 'local', 'host', 'gateway_http', 'gateway_tcp')),
+    mode TEXT NOT NULL DEFAULT 'internal' CHECK (mode IN ('internal', 'local', 'host', 'gateway')),
     bind_address TEXT,
     listen_port INTEGER CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
     entrypoint TEXT,
     path_prefix TEXT,
     position INTEGER NOT NULL CHECK (position >= 0),
-    PRIMARY KEY (component_id, name),
+    PRIMARY KEY (component_id, protocol, container_port),
     UNIQUE (component_id, position),
-    UNIQUE (component_id, protocol, container_port),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
 );
 

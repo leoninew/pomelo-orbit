@@ -30,22 +30,50 @@ CREATE INDEX IF NOT EXISTS idx_pipeline_repository ON pipeline(repository_id);
 
 CREATE TABLE IF NOT EXISTS pipeline_stage (
     id TEXT PRIMARY KEY,
-    pipeline_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    pipeline_id TEXT,
     name TEXT NOT NULL,
     image TEXT NOT NULL,
     script TEXT NOT NULL DEFAULT '',
-    artifacts TEXT,
-    depends_on TEXT NOT NULL DEFAULT '[]',
-    sort_order INTEGER NOT NULL DEFAULT 0,
     description TEXT NOT NULL DEFAULT '',
+    version INTEGER,
+    source_template_stage_id TEXT,
+    source_template_stage_name TEXT,
+    source_template_stage_version INTEGER,
+    source_template_stage_description TEXT,
+    artifacts TEXT,
+    depends_on TEXT,
+    sort_order INTEGER,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (pipeline_id) REFERENCES pipeline(id) ON DELETE CASCADE,
     UNIQUE (pipeline_id, name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_pipeline_stage_pipeline ON pipeline_stage(pipeline_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_stage_pipeline_sort ON pipeline_stage(pipeline_id, sort_order);
+CREATE UNIQUE INDEX uq_pipeline_stage_template_project_name
+    ON pipeline_stage(project_id, name) WHERE kind = 'template';
+CREATE INDEX idx_pipeline_stage_project_kind_name ON pipeline_stage(project_id, kind, name);
+
+CREATE TABLE pipeline_stage_reference (
+    id TEXT PRIMARY KEY,
+    pipeline_id TEXT NOT NULL,
+    source_template_stage_id TEXT NOT NULL,
+    source_template_stage_name TEXT NOT NULL,
+    source_template_stage_version INTEGER NOT NULL,
+    source_template_stage_description TEXT NOT NULL,
+    name TEXT NOT NULL,
+    image TEXT NOT NULL,
+    script TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    artifacts TEXT NOT NULL DEFAULT '[]',
+    depends_on TEXT NOT NULL DEFAULT '[]',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (pipeline_id) REFERENCES pipeline(id) ON DELETE CASCADE,
+    UNIQUE (pipeline_id, name)
+);
 
 CREATE TABLE IF NOT EXISTS pipeline_snapshot (
     id TEXT PRIMARY KEY,

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS pipeline_run (
     pipeline_name TEXT NOT NULL,
     pipeline_version INTEGER NOT NULL,
     trigger TEXT NOT NULL,
-    trigger_ref TEXT NOT NULL,
+    repository_ref TEXT NOT NULL,
     variables_snapshot TEXT NOT NULL DEFAULT '[]',
     status TEXT NOT NULL,
     retry_of TEXT,
@@ -77,12 +77,7 @@ CREATE TABLE IF NOT EXISTS artifact (
     local_image_sha256 TEXT,
     source_artifact_id TEXT,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (source_artifact_id) REFERENCES artifact(id) ON DELETE SET NULL,
-    CHECK (
-        (collector = 'file' AND location IS NOT NULL AND value IS NULL AND value_format IS NULL AND image_ref IS NULL AND local_image_sha256 IS NULL AND source_artifact_id IS NULL) OR
-        (collector = 'command' AND location IS NULL AND value IS NOT NULL AND value_format IN ('text', 'git_object_id') AND image_ref IS NULL AND local_image_sha256 IS NULL AND source_artifact_id IS NULL) OR
-        (collector = 'docker_image' AND location IS NULL AND value IS NULL AND value_format IS NULL AND image_ref IS NOT NULL AND local_image_sha256 IS NOT NULL)
-    )
+    FOREIGN KEY (source_artifact_id) REFERENCES artifact(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_artifact_run ON artifact(pipeline_run_id);

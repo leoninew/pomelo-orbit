@@ -32,6 +32,10 @@ CREATE TABLE IF NOT EXISTS service_component (
     service_id TEXT NOT NULL,
     source_version_component_id TEXT NOT NULL,
     component_name TEXT NOT NULL,
+    entrypoint_json TEXT,
+    command_json TEXT,
+    pull_policy TEXT CHECK (pull_policy IS NULL OR pull_policy IN ('always', 'missing', 'never')),
+    restart_policy TEXT CHECK (restart_policy IS NULL OR restart_policy IN ('no', 'unless-stopped')),
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active')),
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
@@ -87,15 +91,17 @@ CREATE TABLE IF NOT EXISTS service_component_resource (
 );
 
 CREATE TABLE IF NOT EXISTS service_component_endpoint (
+    id TEXT PRIMARY KEY,
     service_component_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    mode TEXT CHECK (mode IS NULL OR mode IN ('internal', 'local', 'host', 'gateway_http', 'gateway_tcp')),
+    protocol TEXT NOT NULL CHECK (protocol IN ('http', 'tcp')),
+    container_port INTEGER NOT NULL CHECK (container_port BETWEEN 1 AND 65535),
+    mode TEXT CHECK (mode IS NULL OR mode IN ('internal', 'local', 'host', 'gateway')),
     bind_address TEXT,
     listen_port INTEGER CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
     entrypoint TEXT,
     path_prefix TEXT,
     state TEXT NOT NULL CHECK (state IN ('override', 'deleted')),
-    PRIMARY KEY (service_component_id, name),
+    UNIQUE (service_component_id, protocol, container_port),
     FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE,
     CHECK (
         (state = 'deleted' AND mode IS NULL AND bind_address IS NULL AND listen_port IS NULL AND entrypoint IS NULL AND path_prefix IS NULL)

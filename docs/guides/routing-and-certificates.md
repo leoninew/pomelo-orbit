@@ -65,14 +65,7 @@ Endpoint mode 仅有：`internal`、`local`、`host`、`gateway`。
 - TCP Route 可引用任意声明的 TCP Endpoint；Endpoint mode 不影响路由资格。
 - `local` 与 `host` 是直接的宿主机端口映射，不能与 TCP Route 监听端口重叠。
 
-在部署包含此枚举的新二进制前，先执行同版本交付的离线转换脚本：
-
-- SQLite: `sql/migration/offline/000033_endpoint_mode_rename.sqlite.sql`
-- MySQL: `sql/migration/offline/000033_endpoint_mode_rename.mysql.sql`
-
-它将 `gateway_http` 转换为 `gateway`，并将 `gateway_tcp` 与旧的 `tcp` mode 转换为 `internal`。脚本不由应用启动或业务 usecase 调用；请在执行前备份数据库。
-
-Endpoint 不保存名称，身份为同一 Component 内的 `(protocol, container_port)`，界面派生显示 `http<container_port>` 或 `tcp<container_port>`。升级到 `000034_endpoint_identity` 前，先执行对应的 `sql/migration/offline/000034_endpoint_identity.{sqlite,mysql}.sql`：该脚本清空旧 Service Endpoint overlay 与受管 Route，随后再执行结构迁移；不在运行时转换旧数据。
+Endpoint 不保存名称，身份为同一 Component 内的 `(protocol, container_port)`，界面派生显示 `http<container_port>` 或 `tcp<container_port>`。该结构和 mode 枚举已合并到当前迁移基线；开发数据库升级时重建，不提供离线转换脚本或运行时兼容路径。
 
 ## 排查
 

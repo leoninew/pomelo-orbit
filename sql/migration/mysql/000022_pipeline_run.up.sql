@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS pipeline_run (
     pipeline_name VARCHAR(255) NOT NULL,
     pipeline_version INT NOT NULL,
     `trigger` VARCHAR(64) NOT NULL,
-    trigger_ref VARCHAR(255) NOT NULL,
+    repository_ref VARCHAR(255) NOT NULL,
     variables_snapshot LONGTEXT NOT NULL,
     status VARCHAR(32) NOT NULL,
     retry_of VARCHAR(26),
@@ -77,12 +77,7 @@ CREATE TABLE IF NOT EXISTS artifact (
     source_artifact_id VARCHAR(26),
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     FOREIGN KEY (project_id) REFERENCES project(id),
-    CONSTRAINT fk_artifact_source FOREIGN KEY (source_artifact_id) REFERENCES artifact(id) ON DELETE SET NULL,
-    CONSTRAINT chk_artifact_collector_payload CHECK (
-        (collector = 'file' AND location IS NOT NULL AND value IS NULL AND value_format IS NULL AND image_ref IS NULL AND local_image_sha256 IS NULL AND source_artifact_id IS NULL) OR
-        (collector = 'command' AND location IS NULL AND value IS NOT NULL AND value_format IN ('text', 'git_object_id') AND image_ref IS NULL AND local_image_sha256 IS NULL AND source_artifact_id IS NULL) OR
-        (collector = 'docker_image' AND location IS NULL AND value IS NULL AND value_format IS NULL AND image_ref IS NOT NULL AND local_image_sha256 IS NOT NULL)
-    )
+    CONSTRAINT fk_artifact_source FOREIGN KEY (source_artifact_id) REFERENCES artifact(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX idx_artifact_run ON artifact(pipeline_run_id);

@@ -69,7 +69,6 @@ CREATE TABLE IF NOT EXISTS version_component_env (
 
 CREATE TABLE IF NOT EXISTS version_component_endpoint (
     component_id VARCHAR(26) NOT NULL,
-    name VARCHAR(255) NOT NULL,
     protocol VARCHAR(16) NOT NULL,
     container_port INT NOT NULL,
     mode VARCHAR(32) NOT NULL DEFAULT 'internal',
@@ -78,13 +77,12 @@ CREATE TABLE IF NOT EXISTS version_component_endpoint (
     entrypoint VARCHAR(128) NULL,
     path_prefix VARCHAR(512) NULL,
     position INT NOT NULL,
-    PRIMARY KEY (component_id, name),
+    PRIMARY KEY (component_id, protocol, container_port),
     UNIQUE KEY uq_version_component_endpoint_position (component_id, position),
-    UNIQUE KEY uq_version_component_endpoint_contract (component_id, protocol, container_port),
     CONSTRAINT fk_version_component_endpoint_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_version_component_endpoint_protocol CHECK (protocol IN ('http', 'tcp')),
     CONSTRAINT chk_version_component_endpoint_port CHECK (container_port BETWEEN 1 AND 65535),
-    CONSTRAINT chk_version_component_endpoint_mode CHECK (mode IN ('internal', 'local', 'host', 'gateway_http', 'gateway_tcp')),
+    CONSTRAINT chk_version_component_endpoint_mode CHECK (mode IN ('internal', 'local', 'host', 'gateway')),
     CONSTRAINT chk_version_component_endpoint_listen CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
     CONSTRAINT chk_version_component_endpoint_position CHECK (position >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -114,12 +112,12 @@ CREATE TABLE IF NOT EXISTS version_component_mount (
 CREATE TABLE IF NOT EXISTS version_component_dependency (
     component_id VARCHAR(26) NOT NULL,
     depends_on_name VARCHAR(255) NOT NULL,
-    condition VARCHAR(64) NOT NULL,
+    `condition` VARCHAR(64) NOT NULL,
     position INT NOT NULL,
     PRIMARY KEY (component_id, depends_on_name),
     UNIQUE KEY uq_version_component_dependency_position (component_id, position),
     CONSTRAINT fk_version_component_dependency_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
-    CONSTRAINT chk_version_component_dependency_condition CHECK (condition IN ('service_started', 'service_healthy', 'service_completed_successfully')),
+    CONSTRAINT chk_version_component_dependency_condition CHECK (`condition` IN ('service_started', 'service_healthy', 'service_completed_successfully')),
     CONSTRAINT chk_version_component_dependency_position CHECK (position >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -127,7 +125,7 @@ CREATE TABLE IF NOT EXISTS version_component_healthcheck (
     component_id VARCHAR(26) PRIMARY KEY,
     test_mode VARCHAR(16),
     test TEXT NOT NULL,
-    interval VARCHAR(64),
+    `interval` VARCHAR(64),
     timeout VARCHAR(64),
     retries INT,
     start_period VARCHAR(64),
@@ -149,7 +147,7 @@ CREATE TABLE IF NOT EXISTS version_component_resource (
 
 CREATE TABLE IF NOT EXISTS version_component_tmpfs (
     component_id VARCHAR(26) NOT NULL,
-    target VARCHAR(1024) NOT NULL,
+    target VARCHAR(512) NOT NULL,
     size_bytes BIGINT NOT NULL,
     mode VARCHAR(8) NOT NULL,
     position INT NOT NULL,

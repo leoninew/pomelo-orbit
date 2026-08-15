@@ -1032,7 +1032,6 @@ export default {
     dependency: 'Dependency',
     artifact: 'Artifact',
     pathOrImage: 'Path / Image',
-    updated: 'Updated',
     noDescription: 'None',
     missingGitCredential: 'No Git credential configured',
     cycleDetected: 'Circular dependency detected: {cycle}',

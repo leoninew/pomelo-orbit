@@ -192,4 +192,28 @@ func TestSourceCommitArtifactForStageUsesTransitiveDependency(t *testing.T) {
 	}
 }
 
+func TestTemplateDifferencesOnlyIncludesChangedFields(t *testing.T) {
+	t.Parallel()
+
+	differences := templateDifferences(model.PipelineStageNode{
+		SourceTemplateStageName:        "Build image",
+		Image:                          "docker:26",
+		Script:                         "docker build .",
+		SourceTemplateStageDescription: "build stage",
+		Artifacts:                      stringPointer("[]"),
+	}, model.PipelineStage{
+		Name:        "Build image",
+		Image:       "docker:27",
+		Script:      "docker build .",
+		Description: "build stage",
+		Artifacts:   stringPointer("[]"),
+	})
+	if len(differences) != 1 || differences[0].Field != "image" {
+		t.Fatalf("differences = %#v, want only image", differences)
+	}
+	if differences[0].Current != "docker:26" || differences[0].Target != "docker:27" {
+		t.Fatalf("image difference = %#v", differences[0])
+	}
+}
+
 func stringPointer(value string) *string { return &value }

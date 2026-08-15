@@ -50,8 +50,10 @@
           <template v-if="!isTemplate">
             <div class="flex gap-2">
               <dt>来源模板</dt>
-              <dd class="text-foreground">
-                {{ pipeline.source_template_name }} v{{ pipeline.source_template_version }}
+              <dd>
+                <router-link :to="`/pipeline/${pipeline.source_pipeline_id}`" class="app-link">
+                  {{ pipeline.source_template_name }} v{{ pipeline.source_template_version }}
+                </router-link>
               </dd>
             </div>
             <div class="flex gap-2">
@@ -95,7 +97,7 @@
             {{
               updatingStages
                 ? `正在更新 ${updatedStageCount}/${stagesToUpdateCount} 个构建阶段`
-                : `更新 ${outdatedStages.length} 个构建阶段`
+                : '更新'
             }}
           </button>
           <ViewModeToggle v-if="pipeline.stage_nodes.length > 0" v-model="stagesView" />
@@ -112,7 +114,7 @@
                 <th>#</th>
                 <th>名称</th>
                 <th>镜像</th>
-                <th>来源阶段版本</th>
+                <th>版本</th>
                 <th>依赖</th>
                 <th v-if="hasApplicationBinding">组件映射</th>
                 <th class="w-32">操作</th>
@@ -125,7 +127,14 @@
                 <td class="max-w-xs truncate text-foreground" :title="stage.image">
                   {{ stage.image }}
                 </td>
-                <td>v{{ stage.source_template_stage_version }}</td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <span>v{{ stage.source_template_stage_version }}</span>
+                    <AppBadge v-if="isStageOutdated(stage)" variant="pill" tone="warning">
+                      v{{ stage.latest_template_stage_version }}
+                    </AppBadge>
+                  </div>
+                </td>
                 <td>
                   <div class="flex flex-wrap gap-1">
                     <AppBadge v-for="dependency in stage.depends_on" :key="dependency">
@@ -478,12 +487,7 @@
       (left, right) => left.sort_order - right.sort_order
     )
   );
-  const outdatedStages = computed(() =>
-    orderedStages.value.filter(
-      (stage) =>
-        stage.latest_template_stage_version !== undefined && stage.latest_template_stage_version > 0
-    )
-  );
+  const outdatedStages = computed(() => orderedStages.value.filter(isStageOutdated));
   const otherStages = computed(() =>
     orderedStages.value.filter((stage) => stage.id !== editingStage.value?.id)
   );
@@ -516,19 +520,17 @@
   function stageName(id: string) {
     return pipeline.value?.stage_nodes.find((stage) => stage.id === id)?.name || id;
   }
+  function isStageOutdated(stage: PipelineStageNodeResp) {
+    return (
+      stage.latest_template_stage_version !== undefined && stage.latest_template_stage_version > 0
+    );
+  }
   function mappedArtifacts(stage: PipelineStageNodeResp) {
     return stage.artifacts.filter((artifact) => artifact.component_name);
   }
   function displayVariableValue(value: unknown) {
     return value == null ? '' : String(value);
   }
-
-
-
-
-
-
-
 
   async function fetchPipeline() {
     try {
@@ -649,6 +651,7 @@
     variableError.value = '';
     variableOpen.value = true;
   }
+
   function openOverrideVariableDialog(name: string) {
     const variable = pipelineVariables.value.find(
       (item) => item.name === name && item.source === 'pipeline_stage'
@@ -837,11 +840,11 @@
           completedCount > 0 ? `，已更新 ${completedCount} 个构建阶段` : ''
         }`
       );
-      await fetchPipeline();
     } finally {
       updatingStages.value = false;
       updatedStageCount.value = 0;
       stagesToUpdateCount.value = 0;
+      await fetchPipeline();
     }
   }
 
@@ -895,7 +898,6 @@
     }
   }
 
-
   async function runPipeline() {
     try {
       await executeSave(async () => {
@@ -911,7 +913,6 @@
   function goToInstantiation() {
     router.push({ path: '/pipeline', query: { instantiate: pipelineId.value } });
   }
-
 
   async function deletePipeline() {
     deleteError.value = '';

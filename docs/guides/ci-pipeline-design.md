@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-08-12 11:29:20
+最后修改时间: 2026-08-15 14:30:51
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -30,7 +30,7 @@ Application Pipeline 必须从同项目 Template 创建。实例化只读取 Tem
 
 `PipelineStage(kind=application)` 归属于单个 Application Pipeline，包含私有名称、执行镜像、脚本、制品声明、`depends_on`、排序和说明，并强制保存非空的来源模板阶段 ID、名称、已应用版本和说明快照。依赖只能引用同一 Pipeline 的本地节点。
 
-Template Pipeline 的 `PipelineStageReference` 与 Application Stage 都可对来源模板版本执行显式更新。普通保存不会同步模板；更新前预览来源名称、镜像、脚本、制品声明和模板说明差异。引用会直接替换制品声明；应用阶段按制品名称保留仍有效的 Docker 组件映射，并保留私有名称、说明、DAG、排序和 Pipeline 的来源 Version 策略。
+Template Pipeline 的 `PipelineStageReference` 与 Application Stage 都可对来源模板版本执行显式更新。普通保存不会同步模板；当来源模板存在更高版本时，Pipeline 详情的构建阶段列表会在阶段名称后展示“有更新”标签，悬停可查看实际变更字段及当前值到模板值的差异，卡片右上角提供“更新”命令。更新前预览来源名称、镜像、脚本、制品声明和模板说明差异。引用会直接替换制品声明；应用阶段按制品名称保留仍有效的 Docker 组件映射，并保留私有名称、说明、DAG、排序和 Pipeline 的来源 Version 策略。
 
 `ArtifactConfig` 的 `component_name` 只允许用于 `docker_image`：
 

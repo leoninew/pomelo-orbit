@@ -777,13 +777,20 @@ func (s Service) withLatestTemplateStageVersion(ctx context.Context, node pipeli
 }
 
 func templateDifferences(node model.PipelineStageNode, template model.PipelineStage) []pipelinedto.PipelineStageTemplateFieldDifference {
-	return []pipelinedto.PipelineStageTemplateFieldDifference{
+	candidates := []pipelinedto.PipelineStageTemplateFieldDifference{
 		{Field: "name", Current: node.SourceTemplateStageName, Target: template.Name},
 		{Field: "image", Current: node.Image, Target: template.Image},
 		{Field: "script", Current: node.Script, Target: template.Script},
 		{Field: "description", Current: node.SourceTemplateStageDescription, Target: template.Description},
 		{Field: "artifacts", Current: artifactJSON(node.Artifacts), Target: artifactJSON(template.Artifacts)},
 	}
+	differences := make([]pipelinedto.PipelineStageTemplateFieldDifference, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate.Current != candidate.Target {
+			differences = append(differences, candidate)
+		}
+	}
+	return differences
 }
 
 func artifactJSON(value *string) string {

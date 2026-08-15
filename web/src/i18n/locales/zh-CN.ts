@@ -1011,7 +1011,6 @@ export default {
     dependency: '依赖',
     artifact: '制品',
     pathOrImage: '路径/镜像',
-    updated: '有更新',
     noDescription: '无',
     missingGitCredential: '未配置 Git 凭据',
     cycleDetected: '检测到循环依赖: {cycle}',

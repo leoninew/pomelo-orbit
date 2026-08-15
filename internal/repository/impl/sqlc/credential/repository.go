@@ -39,17 +39,17 @@ func (r Repository) ListCredentials(ctx context.Context, projectId string, page 
 	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
 	q := r.q(ctx)
 	total, err := q.CountCredentials(ctx, credentialsqlc.CountCredentialsParams{
-		ProjectID:     projectID,
+		ProjectID:     sql.NullString{String: projectID, Valid: true},
 		SearchPattern: searchPattern,
 	})
 	if err != nil {
 		return repository.Page[model.Credential]{}, fmt.Errorf("count credentials: %w", err)
 	}
 	rows, err := q.ListCredentials(ctx, credentialsqlc.ListCredentialsParams{
-		ProjectID:     projectID,
+		ProjectID:     sql.NullString{String: projectID, Valid: true},
 		SearchPattern: searchPattern,
-		Limit:         int64(perPage),
-		Offset:        int64((page - 1) * perPage),
+		Limit:         int32(perPage),
+		Offset:        int32((page - 1) * perPage),
 	})
 	if err != nil {
 		return repository.Page[model.Credential]{}, fmt.Errorf("list credentials: %w", err)

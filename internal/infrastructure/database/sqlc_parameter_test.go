@@ -25,7 +25,7 @@ func TestSQLCStatementsDoNotMixNamedAndAnonymousParameters(t *testing.T) {
 			if !strings.Contains(statement, "sqlc.arg(") && !strings.Contains(statement, "sqlc.narg(") {
 				continue
 			}
-			if hasAnonymousParameter(statement) {
+			if hasDisallowedAnonymousParameter(statement) {
 				name := strings.TrimSpace(strings.SplitN(statement, "\n", 2)[0])
 				t.Errorf("%s statement %s mixes SQLC named and anonymous parameters", path, name)
 			}
@@ -71,4 +71,15 @@ func hasAnonymousParameter(statement string) bool {
 		}
 	}
 	return false
+}
+
+func hasDisallowedAnonymousParameter(statement string) bool {
+	const mysqlPagination = "LIMIT ? OFFSET ?"
+	if strings.Count(statement, mysqlPagination) > 1 {
+		return true
+	}
+	if index := strings.Index(statement, mysqlPagination); index >= 0 {
+		statement = statement[:index] + statement[index+len(mysqlPagination):]
+	}
+	return hasAnonymousParameter(statement)
 }

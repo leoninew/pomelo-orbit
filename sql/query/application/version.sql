@@ -7,20 +7,20 @@ ORDER BY id DESC;
 -- name: CountVersions :one
 SELECT COUNT(*)
 FROM version
-WHERE application_id = CAST(sqlc.arg(application_id) AS TEXT)
-  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
-    OR label LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR note LIKE CAST(sqlc.narg(search_pattern) AS TEXT));
+WHERE application_id = sqlc.arg(application_id)
+  AND (sqlc.narg(search_pattern) IS NULL
+    OR label LIKE sqlc.narg(search_pattern)
+    OR note LIKE sqlc.narg(search_pattern));
 
 -- name: ListVersionsPage :many
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
-WHERE application_id = CAST(sqlc.arg(application_id) AS TEXT)
-  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
-    OR label LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR note LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
+WHERE application_id = sqlc.arg(application_id)
+  AND (sqlc.narg(search_pattern) IS NULL
+    OR label LIKE sqlc.narg(search_pattern)
+    OR note LIKE sqlc.narg(search_pattern))
 ORDER BY id DESC
-LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
+LIMIT ? OFFSET ?;
 
 -- name: VersionByID :one
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
@@ -151,11 +151,11 @@ DELETE FROM version_component_mount
 WHERE component_id = ?;
 
 -- name: InsertVersionComponentDependency :exec
-INSERT INTO version_component_dependency (component_id, depends_on_name, condition, position)
+INSERT INTO version_component_dependency (component_id, depends_on_name, `condition`, position)
 VALUES (?, ?, ?, ?);
 
 -- name: VersionComponentDependenciesByComponent :many
-SELECT component_id, depends_on_name, condition, position
+SELECT component_id, depends_on_name, `condition`, position
 FROM version_component_dependency
 WHERE component_id = ?
 ORDER BY position;
@@ -166,11 +166,11 @@ WHERE component_id = ?;
 
 -- name: InsertVersionComponentHealthcheck :exec
 INSERT INTO version_component_healthcheck (
-  component_id, test_mode, test, interval, timeout, retries, start_period, start_interval, disabled
+  component_id, test_mode, test, `interval`, timeout, retries, start_period, start_interval, disabled
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: VersionComponentHealthcheckByComponent :one
-SELECT component_id, test_mode, test, interval, timeout, retries, start_period, start_interval, disabled
+SELECT component_id, test_mode, test, `interval`, timeout, retries, start_period, start_interval, disabled
 FROM version_component_healthcheck
 WHERE component_id = ?;
 

@@ -6,11 +6,10 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 )
 
 type Querier interface {
-	CountLoginHistory(ctx context.Context, searchPattern sql.NullString) (int64, error)
+	CountLoginHistory(ctx context.Context, arg CountLoginHistoryParams) (int64, error)
 	ListLoginHistory(ctx context.Context, arg ListLoginHistoryParams) ([]LoginHistory, error)
 	SaveLoginHistory(ctx context.Context, arg SaveLoginHistoryParams) error
 }

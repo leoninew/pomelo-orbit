@@ -47,8 +47,8 @@ func (r Repository) ListRepositories(ctx context.Context, projectId *string, pag
 	rows, err := q.ListRepositories(ctx, reposqlc.ListRepositoriesParams{
 		ProjectID:     optionalNarg(projectId),
 		SearchPattern: searchPattern,
-		Offset:        int64((page - 1) * perPage),
-		Limit:         int64(perPage),
+		Offset:        int32((page - 1) * perPage),
+		Limit:         int32(perPage),
 	})
 	if err != nil {
 		return repository.Page[model.Repository]{}, fmt.Errorf("list repositories: %w", err)

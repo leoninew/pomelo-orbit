@@ -163,19 +163,19 @@ SELECT COUNT(*)
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
-WHERE a.project_id = CAST(sqlc.arg(project_id) AS TEXT)
+WHERE a.project_id = sqlc.arg(project_id)
   AND (
-    CAST(sqlc.narg(application_id) AS TEXT) IS NULL
-    OR s.application_id = CAST(sqlc.narg(application_id) AS TEXT)
+    sqlc.narg(application_id) IS NULL
+    OR s.application_id = sqlc.narg(application_id)
   )
   AND (
-    CAST(sqlc.narg(status) AS TEXT) IS NULL
-    OR s.status = CAST(sqlc.narg(status) AS TEXT)
+    sqlc.narg(status) IS NULL
+    OR s.status = sqlc.narg(status)
   )
   AND (
-    CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
-    OR a.name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR s.code LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    sqlc.narg(search_pattern) IS NULL
+    OR a.name LIKE sqlc.narg(search_pattern)
+    OR s.code LIKE sqlc.narg(search_pattern)
   );
 
 -- name: ListServicesByProject :many
@@ -185,22 +185,22 @@ SELECT s.id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
-WHERE a.project_id = CAST(sqlc.arg(project_id) AS TEXT)
+WHERE a.project_id = sqlc.arg(project_id)
   AND (
-    CAST(sqlc.narg(application_id) AS TEXT) IS NULL
-    OR s.application_id = CAST(sqlc.narg(application_id) AS TEXT)
+    sqlc.narg(application_id) IS NULL
+    OR s.application_id = sqlc.narg(application_id)
   )
   AND (
-    CAST(sqlc.narg(status) AS TEXT) IS NULL
-    OR s.status = CAST(sqlc.narg(status) AS TEXT)
+    sqlc.narg(status) IS NULL
+    OR s.status = sqlc.narg(status)
   )
   AND (
-    CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
-    OR a.name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR s.code LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
+    sqlc.narg(search_pattern) IS NULL
+    OR a.name LIKE sqlc.narg(search_pattern)
+    OR s.code LIKE sqlc.narg(search_pattern)
   )
 ORDER BY s.id DESC
-LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
+LIMIT ? OFFSET ?;
 
 -- name: ServiceListItemByID :one
 SELECT s.id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,

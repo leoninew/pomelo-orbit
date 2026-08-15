@@ -32,8 +32,8 @@ func (r Repository) ListPipelineRuns(ctx context.Context, projectID, repositoryI
 		PipelineID:   nullableArgument(pipelineID),
 		FromAt:       nullableTimeArgument(from),
 		ToAt:         nullableTimeArgument(to),
-		Limit:        int64(perPage),
-		Offset:       int64((page - 1) * perPage),
+		Limit:        int32(perPage),
+		Offset:       int32((page - 1) * perPage),
 	}
 	count, err := r.q(ctx).CountPipelineRuns(ctx, pipelinerunsqlc.CountPipelineRunsParams{
 		ProjectID:    params.ProjectID,
@@ -107,8 +107,8 @@ func (r Repository) ListArtifacts(ctx context.Context, projectID, repositoryID, 
 		RepositoryID:  nullableArgument(repositoryID),
 		PipelineID:    nullableArgument(pipelineID),
 		SearchPattern: searchPattern,
-		Limit:         int64(perPage),
-		Offset:        int64((page - 1) * perPage),
+		Limit:         int32(perPage),
+		Offset:        int32((page - 1) * perPage),
 	}
 	count, err := r.q(ctx).CountArtifacts(ctx, pipelinerunsqlc.CountArtifactsParams{
 		ProjectID:     params.ProjectID,

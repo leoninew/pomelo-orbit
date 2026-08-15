@@ -14,7 +14,7 @@ import (
 const clearVersionForkRefs = `-- name: ClearVersionForkRefs :exec
 UPDATE version
 SET created_from_version_id = NULL
-WHERE created_from_version_id = ?1
+WHERE created_from_version_id = ?
 `
 
 func (q *Queries) ClearVersionForkRefs(ctx context.Context, versionID sql.NullString) error {
@@ -24,7 +24,7 @@ func (q *Queries) ClearVersionForkRefs(ctx context.Context, versionID sql.NullSt
 
 const countVersionRuntimeRefs = `-- name: CountVersionRuntimeRefs :one
 SELECT (
-  SELECT COUNT(*) FROM service WHERE service.version_id = ?1
+  SELECT COUNT(*) FROM service WHERE service.version_id = ?
 )
 `
 
@@ -38,10 +38,10 @@ func (q *Queries) CountVersionRuntimeRefs(ctx context.Context, versionID string)
 const countVersions = `-- name: CountVersions :one
 SELECT COUNT(*)
 FROM version
-WHERE application_id = CAST(?1 AS TEXT)
-  AND (CAST(?2 AS TEXT) IS NULL
-    OR label LIKE CAST(?2 AS TEXT)
-    OR note LIKE CAST(?2 AS TEXT))
+WHERE application_id = ?
+  AND (? IS NULL
+    OR label LIKE ?
+    OR note LIKE ?)
 `
 
 type CountVersionsParams struct {
@@ -50,7 +50,12 @@ type CountVersionsParams struct {
 }
 
 func (q *Queries) CountVersions(ctx context.Context, arg CountVersionsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countVersions, arg.ApplicationID, arg.SearchPattern)
+	row := q.db.QueryRowContext(ctx, countVersions,
+		arg.ApplicationID,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.SearchPattern,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -254,7 +259,7 @@ func (q *Queries) InsertVersionComponent(ctx context.Context, arg InsertVersionC
 }
 
 const insertVersionComponentDependency = `-- name: InsertVersionComponentDependency :exec
-INSERT INTO version_component_dependency (component_id, depends_on_name, condition, position)
+INSERT INTO version_component_dependency (component_id, depends_on_name, ` + "`" + `condition` + "`" + `, position)
 VALUES (?, ?, ?, ?)
 `
 
@@ -356,7 +361,7 @@ func (q *Queries) InsertVersionComponentEnv(ctx context.Context, arg InsertVersi
 
 const insertVersionComponentHealthcheck = `-- name: InsertVersionComponentHealthcheck :exec
 INSERT INTO version_component_healthcheck (
-  component_id, test_mode, test, interval, timeout, retries, start_period, start_interval, disabled
+  component_id, test_mode, test, ` + "`" + `interval` + "`" + `, timeout, retries, start_period, start_interval, disabled
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
@@ -563,27 +568,29 @@ func (q *Queries) ListVersions(ctx context.Context, applicationID string) ([]Ver
 const listVersionsPage = `-- name: ListVersionsPage :many
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
-WHERE application_id = CAST(?1 AS TEXT)
-  AND (CAST(?2 AS TEXT) IS NULL
-    OR label LIKE CAST(?2 AS TEXT)
-    OR note LIKE CAST(?2 AS TEXT))
+WHERE application_id = ?
+  AND (? IS NULL
+    OR label LIKE ?
+    OR note LIKE ?)
 ORDER BY id DESC
-LIMIT ?4 OFFSET ?3
+LIMIT ? OFFSET ?
 `
 
 type ListVersionsPageParams struct {
 	ApplicationID string         `db:"application_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
-	Offset        int64          `db:"offset"`
-	Limit         int64          `db:"limit"`
+	Limit         int32          `db:"limit"`
+	Offset        int32          `db:"offset"`
 }
 
 func (q *Queries) ListVersionsPage(ctx context.Context, arg ListVersionsPageParams) ([]Version, error) {
 	rows, err := q.db.QueryContext(ctx, listVersionsPage,
 		arg.ApplicationID,
 		arg.SearchPattern,
-		arg.Offset,
+		arg.SearchPattern,
+		arg.SearchPattern,
 		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err
@@ -618,11 +625,11 @@ func (q *Queries) ListVersionsPage(ctx context.Context, arg ListVersionsPagePara
 
 const renameVersionComponentDependencies = `-- name: RenameVersionComponentDependencies :exec
 UPDATE version_component_dependency
-SET depends_on_name = ?1
+SET depends_on_name = ?
 WHERE component_id IN (
-  SELECT id FROM version_component WHERE version_id = ?2
+  SELECT id FROM version_component WHERE version_id = ?
 )
-  AND depends_on_name = ?3
+  AND depends_on_name = ?
 `
 
 type RenameVersionComponentDependenciesParams struct {
@@ -828,7 +835,7 @@ func (q *Queries) VersionComponentByID(ctx context.Context, id string) (VersionC
 }
 
 const versionComponentDependenciesByComponent = `-- name: VersionComponentDependenciesByComponent :many
-SELECT component_id, depends_on_name, condition, position
+SELECT component_id, depends_on_name, ` + "`" + `condition` + "`" + `, position
 FROM version_component_dependency
 WHERE component_id = ?
 ORDER BY position
@@ -974,7 +981,7 @@ func (q *Queries) VersionComponentEnvByComponent(ctx context.Context, componentI
 }
 
 const versionComponentHealthcheckByComponent = `-- name: VersionComponentHealthcheckByComponent :one
-SELECT component_id, test_mode, test, interval, timeout, retries, start_period, start_interval, disabled
+SELECT component_id, test_mode, test, ` + "`" + `interval` + "`" + `, timeout, retries, start_period, start_interval, disabled
 FROM version_component_healthcheck
 WHERE component_id = ?
 `

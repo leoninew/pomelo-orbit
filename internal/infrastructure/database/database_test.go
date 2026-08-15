@@ -1,6 +1,8 @@
 package db
 
 import (
+	"context"
+	"database/sql/driver"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -38,4 +40,49 @@ func TestOpenSQLiteConfiguresPragmas(t *testing.T) {
 	if foreignKeys != 1 {
 		t.Fatalf("expected foreign_keys on, got %d", foreignKeys)
 	}
+}
+
+func TestMySQLModeConnectorEnablesANSIQuotes(t *testing.T) {
+	connection := &mysqlModeTestConnection{}
+	connector := mysqlModeConnector{Connector: mysqlModeTestConnector{connection: connection}}
+
+	if _, err := connector.Connect(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(connection.statement, "ANSI_QUOTES") {
+		t.Fatalf("expected ANSI_QUOTES session setup, got %q", connection.statement)
+	}
+}
+
+type mysqlModeTestConnector struct {
+	connection driver.Conn
+}
+
+func (c mysqlModeTestConnector) Connect(context.Context) (driver.Conn, error) {
+	return c.connection, nil
+}
+
+func (mysqlModeTestConnector) Driver() driver.Driver {
+	return nil
+}
+
+type mysqlModeTestConnection struct {
+	statement string
+}
+
+func (c *mysqlModeTestConnection) Prepare(string) (driver.Stmt, error) {
+	return nil, driver.ErrSkip
+}
+
+func (c *mysqlModeTestConnection) Close() error {
+	return nil
+}
+
+func (c *mysqlModeTestConnection) Begin() (driver.Tx, error) {
+	return nil, driver.ErrSkip
+}
+
+func (c *mysqlModeTestConnection) ExecContext(_ context.Context, statement string, _ []driver.NamedValue) (driver.Result, error) {
+	c.statement = statement
+	return driver.RowsAffected(0), nil
 }

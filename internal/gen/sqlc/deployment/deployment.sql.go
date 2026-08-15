@@ -71,18 +71,18 @@ func (q *Queries) CancelDeployment(ctx context.Context, arg CancelDeploymentPara
 
 const completeDeployment = `-- name: CompleteDeployment :execrows
 UPDATE deployment
-SET status = ?1,
-    finished_at = ?2,
-    duration_ms = ?3,
-    error_message = NULLIF(CAST(?4 AS TEXT), '')
-WHERE id = ?5 AND status = ?6
+SET status = ?,
+    finished_at = ?,
+    duration_ms = ?,
+    error_message = NULLIF(?, '')
+WHERE id = ? AND status = ?
 `
 
 type CompleteDeploymentParams struct {
 	Status        string        `db:"status"`
 	FinishedAt    sql.NullTime  `db:"finished_at"`
 	DurationMs    sql.NullInt64 `db:"duration_ms"`
-	ErrorMessage  string        `db:"error_message"`
+	ErrorMessage  interface{}   `db:"error_message"`
 	ID            string        `db:"id"`
 	CurrentStatus string        `db:"current_status"`
 }
@@ -124,25 +124,25 @@ func (q *Queries) CountActiveDeploymentsByService(ctx context.Context, arg Count
 const countDeployments = `-- name: CountDeployments :one
 SELECT COUNT(*)
 FROM deployment
-WHERE project_id = CAST(?1 AS TEXT)
+WHERE project_id = ?
   AND (
-    CAST(?2 AS TEXT) IS NULL
-    OR application_id = CAST(?2 AS TEXT)
+    ? IS NULL
+    OR application_id = ?
   )
   AND (
-    CAST(?3 AS TEXT) IS NULL
-    OR status = CAST(?3 AS TEXT)
+    ? IS NULL
+    OR status = ?
   )
   AND (
-    CAST(?4 AS TEXT) IS NULL
-    OR application_name LIKE CAST(?4 AS TEXT)
+    ? IS NULL
+    OR application_name LIKE ?
   )
-  AND (CAST(?5 AS DATETIME) IS NULL OR started_at >= ?5)
-  AND (CAST(?6 AS DATETIME) IS NULL OR started_at < ?6)
+  AND (? IS NULL OR started_at >= ?)
+  AND (? IS NULL OR started_at < ?)
 `
 
 type CountDeploymentsParams struct {
-	ProjectID              string         `db:"project_id"`
+	ProjectID              sql.NullString `db:"project_id"`
 	ApplicationID          sql.NullString `db:"application_id"`
 	Status                 sql.NullString `db:"status"`
 	ApplicationNamePattern sql.NullString `db:"application_name_pattern"`
@@ -154,9 +154,14 @@ func (q *Queries) CountDeployments(ctx context.Context, arg CountDeploymentsPara
 	row := q.db.QueryRowContext(ctx, countDeployments,
 		arg.ProjectID,
 		arg.ApplicationID,
+		arg.ApplicationID,
+		arg.Status,
 		arg.Status,
 		arg.ApplicationNamePattern,
+		arg.ApplicationNamePattern,
 		arg.DateFrom,
+		arg.DateFrom,
+		arg.DateTo,
 		arg.DateTo,
 	)
 	var count int64
@@ -318,34 +323,34 @@ SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
 FROM deployment d
 LEFT JOIN service s ON s.id = d.service_id
-WHERE d.project_id = CAST(?1 AS TEXT)
+WHERE d.project_id = ?
   AND (
-    CAST(?2 AS TEXT) IS NULL
-    OR d.application_id = CAST(?2 AS TEXT)
+    ? IS NULL
+    OR d.application_id = ?
   )
   AND (
-    CAST(?3 AS TEXT) IS NULL
-    OR d.status = CAST(?3 AS TEXT)
+    ? IS NULL
+    OR d.status = ?
   )
   AND (
-    CAST(?4 AS TEXT) IS NULL
-    OR d.application_name LIKE CAST(?4 AS TEXT)
+    ? IS NULL
+    OR d.application_name LIKE ?
   )
-  AND (CAST(?5 AS DATETIME) IS NULL OR d.started_at >= ?5)
-  AND (CAST(?6 AS DATETIME) IS NULL OR d.started_at < ?6)
+  AND (? IS NULL OR d.started_at >= ?)
+  AND (? IS NULL OR d.started_at < ?)
 ORDER BY d.id DESC
-LIMIT ?8 OFFSET ?7
+LIMIT ? OFFSET ?
 `
 
 type ListDeploymentsParams struct {
-	ProjectID              string         `db:"project_id"`
+	ProjectID              sql.NullString `db:"project_id"`
 	ApplicationID          sql.NullString `db:"application_id"`
 	Status                 sql.NullString `db:"status"`
 	ApplicationNamePattern sql.NullString `db:"application_name_pattern"`
 	DateFrom               sql.NullTime   `db:"date_from"`
 	DateTo                 sql.NullTime   `db:"date_to"`
-	Offset                 int64          `db:"offset"`
-	Limit                  int64          `db:"limit"`
+	Limit                  int32          `db:"limit"`
+	Offset                 int32          `db:"offset"`
 }
 
 type ListDeploymentsRow struct {
@@ -375,12 +380,17 @@ func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams
 	rows, err := q.db.QueryContext(ctx, listDeployments,
 		arg.ProjectID,
 		arg.ApplicationID,
+		arg.ApplicationID,
+		arg.Status,
 		arg.Status,
 		arg.ApplicationNamePattern,
+		arg.ApplicationNamePattern,
+		arg.DateFrom,
 		arg.DateFrom,
 		arg.DateTo,
-		arg.Offset,
+		arg.DateTo,
 		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err

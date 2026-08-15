@@ -75,14 +75,14 @@ func (r Repository) ListUsers(ctx context.Context, page int, perPage int, search
 	raw, pattern := dbmodel.LowerSearchPattern(search)
 	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
 	q := r.q(ctx)
-	total, err := q.CountUsers(ctx, searchPattern)
+	total, err := q.CountUsers(ctx, usersqlc.CountUsersParams{SearchPattern: searchPattern})
 	if err != nil {
 		return repository.Page[model.User]{}, fmt.Errorf("count users: %w", err)
 	}
 	rows, err := q.ListUsers(ctx, usersqlc.ListUsersParams{
 		SearchPattern: searchPattern,
-		Limit:         int64(perPage),
-		Offset:        int64((page - 1) * perPage),
+		Limit:         int32(perPage),
+		Offset:        int32((page - 1) * perPage),
 	})
 	if err != nil {
 		return repository.Page[model.User]{}, fmt.Errorf("list users: %w", err)

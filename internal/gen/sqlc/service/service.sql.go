@@ -16,24 +16,24 @@ SELECT COUNT(*)
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
-WHERE a.project_id = CAST(?1 AS TEXT)
+WHERE a.project_id = ?
   AND (
-    CAST(?2 AS TEXT) IS NULL
-    OR s.application_id = CAST(?2 AS TEXT)
+    ? IS NULL
+    OR s.application_id = ?
   )
   AND (
-    CAST(?3 AS TEXT) IS NULL
-    OR s.status = CAST(?3 AS TEXT)
+    ? IS NULL
+    OR s.status = ?
   )
   AND (
-    CAST(?4 AS TEXT) IS NULL
-    OR a.name LIKE CAST(?4 AS TEXT)
-    OR s.code LIKE CAST(?4 AS TEXT)
+    ? IS NULL
+    OR a.name LIKE ?
+    OR s.code LIKE ?
   )
 `
 
 type CountServicesByProjectParams struct {
-	ProjectID     string         `db:"project_id"`
+	ProjectID     sql.NullString `db:"project_id"`
 	ApplicationID sql.NullString `db:"application_id"`
 	Status        sql.NullString `db:"status"`
 	SearchPattern sql.NullString `db:"search_pattern"`
@@ -43,7 +43,11 @@ func (q *Queries) CountServicesByProject(ctx context.Context, arg CountServicesB
 	row := q.db.QueryRowContext(ctx, countServicesByProject,
 		arg.ProjectID,
 		arg.ApplicationID,
+		arg.ApplicationID,
 		arg.Status,
+		arg.Status,
+		arg.SearchPattern,
+		arg.SearchPattern,
 		arg.SearchPattern,
 	)
 	var count int64
@@ -360,31 +364,31 @@ SELECT s.id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
-WHERE a.project_id = CAST(?1 AS TEXT)
+WHERE a.project_id = ?
   AND (
-    CAST(?2 AS TEXT) IS NULL
-    OR s.application_id = CAST(?2 AS TEXT)
+    ? IS NULL
+    OR s.application_id = ?
   )
   AND (
-    CAST(?3 AS TEXT) IS NULL
-    OR s.status = CAST(?3 AS TEXT)
+    ? IS NULL
+    OR s.status = ?
   )
   AND (
-    CAST(?4 AS TEXT) IS NULL
-    OR a.name LIKE CAST(?4 AS TEXT)
-    OR s.code LIKE CAST(?4 AS TEXT)
+    ? IS NULL
+    OR a.name LIKE ?
+    OR s.code LIKE ?
   )
 ORDER BY s.id DESC
-LIMIT ?6 OFFSET ?5
+LIMIT ? OFFSET ?
 `
 
 type ListServicesByProjectParams struct {
-	ProjectID     string         `db:"project_id"`
+	ProjectID     sql.NullString `db:"project_id"`
 	ApplicationID sql.NullString `db:"application_id"`
 	Status        sql.NullString `db:"status"`
 	SearchPattern sql.NullString `db:"search_pattern"`
-	Offset        int64          `db:"offset"`
-	Limit         int64          `db:"limit"`
+	Limit         int32          `db:"limit"`
+	Offset        int32          `db:"offset"`
 }
 
 type ListServicesByProjectRow struct {
@@ -406,10 +410,14 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 	rows, err := q.db.QueryContext(ctx, listServicesByProject,
 		arg.ProjectID,
 		arg.ApplicationID,
+		arg.ApplicationID,
+		arg.Status,
 		arg.Status,
 		arg.SearchPattern,
-		arg.Offset,
+		arg.SearchPattern,
+		arg.SearchPattern,
 		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err

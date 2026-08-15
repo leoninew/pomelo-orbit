@@ -50,7 +50,7 @@ func (r Repository) ListServicesByProject(ctx context.Context, projectId, applic
 	searchPattern := sql.NullString{String: searchValue, Valid: searchRaw != ""}
 	q := r.q(ctx)
 	params := servicesqlc.CountServicesByProjectParams{
-		ProjectID:     strings.TrimSpace(projectId),
+		ProjectID:     sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
 		ApplicationID: applicationID,
 		Status:        serviceStatus,
 		SearchPattern: searchPattern,
@@ -64,8 +64,8 @@ func (r Repository) ListServicesByProject(ctx context.Context, projectId, applic
 		ApplicationID: applicationID,
 		Status:        serviceStatus,
 		SearchPattern: searchPattern,
-		Limit:         int64(perPage),
-		Offset:        int64((page - 1) * perPage),
+		Limit:         int32(perPage),
+		Offset:        int32((page - 1) * perPage),
 	})
 	if err != nil {
 		return repository.Page[model.ServiceListItem]{}, fmt.Errorf("list services by project: %w", err)

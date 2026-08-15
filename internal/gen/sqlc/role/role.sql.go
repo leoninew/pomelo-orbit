@@ -15,14 +15,23 @@ import (
 const countRoles = `-- name: CountRoles :one
 SELECT COUNT(*)
 FROM role
-WHERE (CAST(?1 AS TEXT) IS NULL
-  OR LOWER(code) LIKE CAST(?1 AS TEXT)
-  OR LOWER(name) LIKE CAST(?1 AS TEXT)
-  OR LOWER(COALESCE(description, '')) LIKE CAST(?1 AS TEXT))
+WHERE (? IS NULL
+  OR LOWER(code) LIKE ?
+  OR LOWER(name) LIKE ?
+  OR LOWER(COALESCE(description, '')) LIKE ?)
 `
 
-func (q *Queries) CountRoles(ctx context.Context, searchPattern sql.NullString) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRoles, searchPattern)
+type CountRolesParams struct {
+	SearchPattern sql.NullString `db:"search_pattern"`
+}
+
+func (q *Queries) CountRoles(ctx context.Context, arg CountRolesParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countRoles,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.SearchPattern,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -129,22 +138,29 @@ func (q *Queries) ListPermissions(ctx context.Context) ([]Permission, error) {
 const listRoles = `-- name: ListRoles :many
 SELECT id, code, name, description, created_at, updated_at
 FROM role
-WHERE (CAST(?1 AS TEXT) IS NULL
-  OR LOWER(code) LIKE CAST(?1 AS TEXT)
-  OR LOWER(name) LIKE CAST(?1 AS TEXT)
-  OR LOWER(COALESCE(description, '')) LIKE CAST(?1 AS TEXT))
+WHERE (? IS NULL
+  OR LOWER(code) LIKE ?
+  OR LOWER(name) LIKE ?
+  OR LOWER(COALESCE(description, '')) LIKE ?)
 ORDER BY id DESC
-LIMIT ?3 OFFSET ?2
+LIMIT ? OFFSET ?
 `
 
 type ListRolesParams struct {
 	SearchPattern sql.NullString `db:"search_pattern"`
-	Offset        int64          `db:"offset"`
-	Limit         int64          `db:"limit"`
+	Limit         int32          `db:"limit"`
+	Offset        int32          `db:"offset"`
 }
 
 func (q *Queries) ListRoles(ctx context.Context, arg ListRolesParams) ([]Role, error) {
-	rows, err := q.db.QueryContext(ctx, listRoles, arg.SearchPattern, arg.Offset, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, listRoles,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}

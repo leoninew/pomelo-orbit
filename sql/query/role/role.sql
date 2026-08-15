@@ -16,20 +16,20 @@ WHERE name = ?;
 -- name: CountRoles :one
 SELECT COUNT(*)
 FROM role
-WHERE (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
-  OR LOWER(code) LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-  OR LOWER(name) LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-  OR LOWER(COALESCE(description, '')) LIKE CAST(sqlc.narg(search_pattern) AS TEXT));
+WHERE (sqlc.narg(search_pattern) IS NULL
+  OR LOWER(code) LIKE sqlc.narg(search_pattern)
+  OR LOWER(name) LIKE sqlc.narg(search_pattern)
+  OR LOWER(COALESCE(description, '')) LIKE sqlc.narg(search_pattern));
 
 -- name: ListRoles :many
 SELECT id, code, name, description, created_at, updated_at
 FROM role
-WHERE (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
-  OR LOWER(code) LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-  OR LOWER(name) LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-  OR LOWER(COALESCE(description, '')) LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
+WHERE (sqlc.narg(search_pattern) IS NULL
+  OR LOWER(code) LIKE sqlc.narg(search_pattern)
+  OR LOWER(name) LIKE sqlc.narg(search_pattern)
+  OR LOWER(COALESCE(description, '')) LIKE sqlc.narg(search_pattern))
 ORDER BY id DESC
-LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
+LIMIT ? OFFSET ?;
 
 -- name: ListPermissions :many
 SELECT id, code, name, description, created_at, updated_at

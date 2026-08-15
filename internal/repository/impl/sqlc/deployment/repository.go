@@ -101,7 +101,7 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	projectID := strings.TrimSpace(projectId)
 	q := r.q(ctx)
 	total, err := q.CountDeployments(ctx, deploymentsqlc.CountDeploymentsParams{
-		ProjectID:              projectID,
+		ProjectID:              sql.NullString{String: projectID, Valid: true},
 		ApplicationID:          appNS,
 		Status:                 statusValue,
 		ApplicationNamePattern: applicationNamePattern,
@@ -112,14 +112,14 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 		return repository.Page[model.Deployment]{}, fmt.Errorf("count deployments: %w", err)
 	}
 	rows, err := q.ListDeployments(ctx, deploymentsqlc.ListDeploymentsParams{
-		ProjectID:              projectID,
+		ProjectID:              sql.NullString{String: projectID, Valid: true},
 		ApplicationID:          appNS,
 		Status:                 statusValue,
 		ApplicationNamePattern: applicationNamePattern,
 		DateFrom:               optionalTime(dateFrom),
 		DateTo:                 optionalTime(dateTo),
-		Offset:                 int64((page - 1) * perPage),
-		Limit:                  int64(perPage),
+		Offset:                 int32((page - 1) * perPage),
+		Limit:                  int32(perPage),
 	})
 	if err != nil {
 		return repository.Page[model.Deployment]{}, fmt.Errorf("list deployments: %w", err)

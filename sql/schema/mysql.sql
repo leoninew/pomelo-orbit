@@ -1,4 +1,4 @@
--- SQLC schema snapshot for the complete SQLite database.
+-- SQLC schema snapshot for the complete MySQL database.
 -- It mirrors numbered DDL migrations through 000031. Business data migrations are excluded.
 
 CREATE TABLE IF NOT EXISTS background_task (
@@ -6,28 +6,25 @@ CREATE TABLE IF NOT EXISTS background_task (
     task_type TEXT NOT NULL,
     payload_json TEXT NOT NULL,
     status TEXT NOT NULL,
-    attempts INTEGER NOT NULL,
-    max_attempts INTEGER NOT NULL,
+    attempts BIGINT NOT NULL,
+    max_attempts BIGINT NOT NULL,
     locked_by TEXT,
     locked_at DATETIME,
     started_at DATETIME,
     finished_at DATETIME,
     error_message TEXT,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_background_task_status_created ON background_task(status, created_at);
-CREATE INDEX IF NOT EXISTS idx_background_task_locked_at ON background_task(locked_at);
-CREATE INDEX IF NOT EXISTS idx_background_task_type ON background_task(task_type);
 
 CREATE TABLE IF NOT EXISTS role (
     id TEXT PRIMARY KEY,
     code TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL UNIQUE,
     description TEXT,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS permission (
@@ -35,31 +32,26 @@ CREATE TABLE IF NOT EXISTS permission (
     code TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     description TEXT,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS role_permission (
     role_id TEXT NOT NULL,
     permission_id TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (role_id, permission_id),
     FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE CASCADE,
     FOREIGN KEY (permission_id) REFERENCES permission(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_role_code ON role(code);
-CREATE INDEX IF NOT EXISTS idx_role_name ON role(name);
-CREATE INDEX IF NOT EXISTS idx_permission_code ON permission(code);
-CREATE INDEX IF NOT EXISTS idx_role_permission_role_id ON role_permission(role_id);
-CREATE INDEX IF NOT EXISTS idx_role_permission_permission_id ON role_permission(permission_id);
 
 CREATE TABLE IF NOT EXISTS user (
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login_at DATETIME,
     oauth_provider TEXT NOT NULL DEFAULT '',
     oauth_provider_id TEXT NOT NULL DEFAULT '',
@@ -68,24 +60,16 @@ CREATE TABLE IF NOT EXISTS user (
     status TEXT NOT NULL DEFAULT 'enabled' CHECK (status IN ('enabled', 'disabled'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_email ON user(email);
-CREATE INDEX IF NOT EXISTS idx_user_status ON user(status);
-CREATE INDEX IF NOT EXISTS idx_user_oauth_account ON user(oauth_provider, oauth_provider_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_user_email ON user(email) WHERE email IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uq_user_oauth_account ON user(oauth_provider, oauth_provider_id)
-WHERE oauth_provider != '' AND oauth_provider_id != '';
 
 CREATE TABLE IF NOT EXISTS user_role (
     user_id TEXT NOT NULL,
     role_id TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, role_id),
     FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_role_user_id ON user_role(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_role_role_id ON user_role(role_id);
 
 CREATE TABLE IF NOT EXISTS login_history (
     id TEXT PRIMARY KEY,
@@ -94,59 +78,50 @@ CREATE TABLE IF NOT EXISTS login_history (
     ip_address TEXT,
     user_agent TEXT,
     login_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    success INTEGER NOT NULL,
+    success BIGINT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history(user_id);
-CREATE INDEX IF NOT EXISTS idx_login_history_login_at ON login_history(login_at DESC);
 
 CREATE TABLE IF NOT EXISTS login_attempt (
     id TEXT PRIMARY KEY,
     username TEXT,
     ip_address TEXT NOT NULL,
     user_agent TEXT,
-    success INTEGER NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+    success BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_login_attempt_ip_created ON login_attempt(ip_address, created_at);
-CREATE INDEX IF NOT EXISTS idx_login_attempt_username_created ON login_attempt(username, created_at);
-CREATE INDEX IF NOT EXISTS idx_login_attempt_created ON login_attempt(created_at);
 
 CREATE TABLE IF NOT EXISTS project (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     code TEXT NOT NULL UNIQUE,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN NOT NULL DEFAULT 1
 );
 
-CREATE INDEX IF NOT EXISTS idx_project_code ON project(code);
 
 CREATE TABLE IF NOT EXISTS project_member (
     project_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (project_id, user_id),
     FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_project_member_user_id ON project_member(user_id);
 
 CREATE TABLE IF NOT EXISTS credential (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     type TEXT NOT NULL,
     encrypted_data TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     project_id TEXT REFERENCES project(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_credential_name ON credential(name);
-CREATE INDEX IF NOT EXISTS idx_credential_project ON credential(project_id);
 
 CREATE TABLE IF NOT EXISTS pipeline (
     id TEXT PRIMARY KEY,
@@ -154,7 +129,7 @@ CREATE TABLE IF NOT EXISTS pipeline (
     kind TEXT NOT NULL,
     source_pipeline_id TEXT,
     source_template_name TEXT,
-    source_template_version INTEGER,
+    source_template_version BIGINT,
     application_id TEXT,
     application_name TEXT,
     repository_id TEXT,
@@ -165,17 +140,12 @@ CREATE TABLE IF NOT EXISTS pipeline (
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     variable_declarations TEXT NOT NULL DEFAULT '[]',
-    version INTEGER NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    version BIGINT NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (project_id, name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_pipeline_project ON pipeline(project_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_kind ON pipeline(kind);
-CREATE INDEX IF NOT EXISTS idx_pipeline_source_pipeline ON pipeline(source_pipeline_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_application ON pipeline(application_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_repository ON pipeline(repository_id);
 
 CREATE TABLE IF NOT EXISTS pipeline_stage (
     id TEXT PRIMARY KEY,
@@ -186,30 +156,27 @@ CREATE TABLE IF NOT EXISTS pipeline_stage (
     image TEXT NOT NULL,
     script TEXT NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '',
-    version INTEGER,
+    version BIGINT,
     source_template_stage_id TEXT,
     source_template_stage_name TEXT,
-    source_template_stage_version INTEGER,
+    source_template_stage_version BIGINT,
     source_template_stage_description TEXT,
     artifacts TEXT,
     depends_on TEXT,
-    sort_order INTEGER,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    sort_order BIGINT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (pipeline_id) REFERENCES pipeline(id) ON DELETE CASCADE,
     UNIQUE (pipeline_id, name)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_pipeline_stage_template_project_name
-    ON pipeline_stage(project_id, name) WHERE kind = 'template';
-CREATE INDEX IF NOT EXISTS idx_pipeline_stage_project_kind_name ON pipeline_stage(project_id, kind, name);
 
 CREATE TABLE IF NOT EXISTS pipeline_stage_reference (
     id TEXT PRIMARY KEY,
     pipeline_id TEXT NOT NULL,
     source_template_stage_id TEXT NOT NULL,
     source_template_stage_name TEXT NOT NULL,
-    source_template_stage_version INTEGER NOT NULL,
+    source_template_stage_version BIGINT NOT NULL,
     source_template_stage_description TEXT NOT NULL,
     name TEXT NOT NULL,
     image TEXT NOT NULL,
@@ -217,9 +184,9 @@ CREATE TABLE IF NOT EXISTS pipeline_stage_reference (
     description TEXT NOT NULL DEFAULT '',
     artifacts TEXT NOT NULL DEFAULT '[]',
     depends_on TEXT NOT NULL DEFAULT '[]',
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    sort_order BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (pipeline_id) REFERENCES pipeline(id) ON DELETE CASCADE,
     UNIQUE (pipeline_id, name)
 );
@@ -230,10 +197,10 @@ CREATE TABLE IF NOT EXISTS pipeline_snapshot (
     project_id TEXT,
     pipeline_id TEXT NOT NULL,
     pipeline_name TEXT NOT NULL,
-    pipeline_version INTEGER NOT NULL,
+    pipeline_version BIGINT NOT NULL,
     source_pipeline_id TEXT NOT NULL,
     source_template_name TEXT NOT NULL,
-    source_template_version INTEGER NOT NULL,
+    source_template_version BIGINT NOT NULL,
     application_id TEXT,
     application_name TEXT,
     repository_id TEXT NOT NULL,
@@ -243,12 +210,10 @@ CREATE TABLE IF NOT EXISTS pipeline_snapshot (
     fixed_version_label TEXT,
     stages_snapshot TEXT NOT NULL DEFAULT '[]',
     variables_snapshot TEXT NOT NULL DEFAULT '[]',
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (pipeline_id, pipeline_version)
 );
 
-CREATE INDEX IF NOT EXISTS idx_pipeline_snapshot_pipeline ON pipeline_snapshot(pipeline_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_snapshot_project ON pipeline_snapshot(project_id);
 
 CREATE TABLE IF NOT EXISTS repository (
     id TEXT PRIMARY KEY,
@@ -259,16 +224,12 @@ CREATE TABLE IF NOT EXISTS repository (
     git_credential_id TEXT,
     variable_overrides TEXT NOT NULL DEFAULT '[]',
     default_branch TEXT NOT NULL DEFAULT 'master',
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     project_id TEXT REFERENCES project(id),
     FOREIGN KEY (git_credential_id) REFERENCES credential(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_repository_name ON repository(name);
-CREATE INDEX IF NOT EXISTS idx_repository_code ON repository(code);
-CREATE INDEX IF NOT EXISTS idx_repository_credential ON repository(git_credential_id);
-CREATE INDEX IF NOT EXISTS idx_repository_project ON repository(project_id);
 
 CREATE TABLE IF NOT EXISTS pipeline_run (
     id TEXT PRIMARY KEY,
@@ -278,8 +239,8 @@ CREATE TABLE IF NOT EXISTS pipeline_run (
     snapshot_id TEXT NOT NULL,
     pipeline_id TEXT NOT NULL,
     pipeline_name TEXT NOT NULL,
-    pipeline_version INTEGER NOT NULL,
-    trigger TEXT NOT NULL,
+    pipeline_version BIGINT NOT NULL,
+    `trigger` TEXT NOT NULL,
     repository_ref TEXT NOT NULL,
     variables_snapshot TEXT NOT NULL DEFAULT '[]',
     status TEXT NOT NULL,
@@ -287,15 +248,9 @@ CREATE TABLE IF NOT EXISTS pipeline_run (
     started_at DATETIME,
     finished_at DATETIME,
     error_message TEXT,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_pipeline_run_pipeline_created ON pipeline_run(pipeline_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_pipeline_run_status ON pipeline_run(status);
-CREATE INDEX IF NOT EXISTS idx_pipeline_run_snapshot ON pipeline_run(snapshot_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_run_retry_of ON pipeline_run(retry_of);
-CREATE INDEX IF NOT EXISTS idx_pipeline_run_project ON pipeline_run(project_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_run_repository_status ON pipeline_run(repository_id, status);
 
 CREATE TABLE IF NOT EXISTS pipeline_stage_run (
     id TEXT PRIMARY KEY,
@@ -305,14 +260,10 @@ CREATE TABLE IF NOT EXISTS pipeline_stage_run (
     status TEXT NOT NULL,
     started_at DATETIME,
     finished_at DATETIME,
-    exit_code INTEGER,
+    exit_code BIGINT,
     error_message TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_pipeline_stage_run_run ON pipeline_stage_run(pipeline_run_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_stage_run_status ON pipeline_stage_run(status);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_pipeline_stage_run_run_stage
-    ON pipeline_stage_run(pipeline_run_id, stage_id);
 
 CREATE TABLE IF NOT EXISTS pipeline_run_version_binding (
     pipeline_run_id TEXT PRIMARY KEY,
@@ -324,10 +275,6 @@ CREATE TABLE IF NOT EXISTS pipeline_run_version_binding (
     generated_version_label TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_pipeline_run_version_binding_source_version
-    ON pipeline_run_version_binding(source_version_id);
-CREATE INDEX IF NOT EXISTS idx_pipeline_run_version_binding_generated_version
-    ON pipeline_run_version_binding(generated_version_id);
 
 CREATE TABLE IF NOT EXISTS artifact (
     id TEXT PRIMARY KEY,
@@ -347,32 +294,21 @@ CREATE TABLE IF NOT EXISTS artifact (
     image_ref TEXT,
     local_image_sha256 TEXT,
     source_artifact_id TEXT,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (source_artifact_id) REFERENCES artifact(id) ON DELETE SET NULL,
-    CHECK (
-        (collector = 'file' AND location IS NOT NULL AND value IS NULL AND value_format IS NULL AND image_ref IS NULL AND local_image_sha256 IS NULL AND source_artifact_id IS NULL) OR
-        (collector = 'command' AND location IS NULL AND value IS NOT NULL AND value_format IN ('text', 'git_object_id') AND image_ref IS NULL AND local_image_sha256 IS NULL AND source_artifact_id IS NULL) OR
-        (collector = 'docker_image' AND location IS NULL AND value IS NULL AND value_format IS NULL AND image_ref IS NOT NULL AND local_image_sha256 IS NOT NULL)
-    )
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (source_artifact_id) REFERENCES artifact(id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_artifact_run ON artifact(pipeline_run_id);
-CREATE INDEX IF NOT EXISTS idx_artifact_run_stage ON artifact(pipeline_run_id, pipeline_stage_id);
-CREATE INDEX IF NOT EXISTS idx_artifact_repository ON artifact(repository_id);
-CREATE INDEX IF NOT EXISTS idx_artifact_project ON artifact(project_id);
-CREATE INDEX IF NOT EXISTS idx_artifact_pipeline ON artifact(pipeline_id);
 
 CREATE TABLE IF NOT EXISTS application (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     code TEXT NOT NULL,
     kind TEXT NOT NULL DEFAULT 'standard',
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     project_id TEXT REFERENCES project(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_application_project ON application(project_id);
 
 CREATE TABLE IF NOT EXISTS version (
     id TEXT PRIMARY KEY,
@@ -382,15 +318,13 @@ CREATE TABLE IF NOT EXISTS version (
     created_from_version_id TEXT,
     note TEXT,
     component_summary TEXT NOT NULL DEFAULT '',
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
     FOREIGN KEY (created_from_version_id) REFERENCES version(id),
     UNIQUE(application_id, label)
 );
 
-CREATE INDEX IF NOT EXISTS idx_version_application ON version(application_id);
-CREATE INDEX IF NOT EXISTS idx_version_status ON version(status);
 
 CREATE TABLE IF NOT EXISTS version_component (
     id TEXT PRIMARY KEY,
@@ -401,8 +335,8 @@ CREATE TABLE IF NOT EXISTS version_component (
     command_json TEXT NOT NULL DEFAULT '[]',
     pull_policy TEXT NOT NULL CHECK (pull_policy IN ('always', 'missing', 'never')),
     restart_policy TEXT,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     entrypoint_json TEXT NOT NULL DEFAULT '[]',
     artifact_name TEXT,
     artifact_image_ref TEXT,
@@ -412,14 +346,12 @@ CREATE TABLE IF NOT EXISTS version_component (
     UNIQUE(version_id, name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_version_component_version ON version_component(version_id);
-CREATE INDEX IF NOT EXISTS idx_version_component_artifact_id ON version_component(artifact_id);
 
 CREATE TABLE IF NOT EXISTS version_component_env (
     component_id TEXT NOT NULL,
     env_key TEXT NOT NULL,
     value TEXT NOT NULL,
-    position INTEGER NOT NULL CHECK (position >= 0),
+    position BIGINT NOT NULL CHECK (position >= 0),
     PRIMARY KEY (component_id, env_key),
     UNIQUE (component_id, position),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
@@ -428,13 +360,13 @@ CREATE TABLE IF NOT EXISTS version_component_env (
 CREATE TABLE IF NOT EXISTS version_component_endpoint (
     component_id TEXT NOT NULL,
     protocol TEXT NOT NULL CHECK (protocol IN ('http', 'tcp')),
-    container_port INTEGER NOT NULL CHECK (container_port BETWEEN 1 AND 65535),
+    container_port BIGINT NOT NULL CHECK (container_port BETWEEN 1 AND 65535),
     mode TEXT NOT NULL DEFAULT 'internal' CHECK (mode IN ('internal', 'local', 'host', 'gateway')),
     bind_address TEXT,
-    listen_port INTEGER CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
+    listen_port BIGINT CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
     entrypoint TEXT,
     path_prefix TEXT,
-    position INTEGER NOT NULL CHECK (position >= 0),
+    position BIGINT NOT NULL CHECK (position >= 0),
     PRIMARY KEY (component_id, protocol, container_port),
     UNIQUE (component_id, position),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
@@ -445,13 +377,13 @@ CREATE TABLE IF NOT EXISTS version_component_mount (
     source_type TEXT NOT NULL CHECK (source_type IN ('directory', 'file', 'named_volume', 'controlled_file')),
     source TEXT NOT NULL,
     target TEXT NOT NULL,
-    read_only INTEGER NOT NULL DEFAULT 0 CHECK (read_only IN (0, 1)),
-    source_is_host_path INTEGER NOT NULL DEFAULT 0 CHECK (source_is_host_path IN (0, 1)),
+    read_only BIGINT NOT NULL DEFAULT 0 CHECK (read_only IN (0, 1)),
+    source_is_host_path BIGINT NOT NULL DEFAULT 0 CHECK (source_is_host_path IN (0, 1)),
     content TEXT,
-    content_masked INTEGER NOT NULL DEFAULT 0 CHECK (content_masked IN (0, 1)),
+    content_masked BIGINT NOT NULL DEFAULT 0 CHECK (content_masked IN (0, 1)),
     mode TEXT NOT NULL DEFAULT '',
-    ignore_if_exists INTEGER NOT NULL DEFAULT 0 CHECK (ignore_if_exists IN (0, 1)),
-    position INTEGER NOT NULL CHECK (position >= 0),
+    ignore_if_exists BIGINT NOT NULL DEFAULT 0 CHECK (ignore_if_exists IN (0, 1)),
+    position BIGINT NOT NULL CHECK (position >= 0),
     PRIMARY KEY (component_id, position),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
 );
@@ -459,8 +391,8 @@ CREATE TABLE IF NOT EXISTS version_component_mount (
 CREATE TABLE IF NOT EXISTS version_component_dependency (
     component_id TEXT NOT NULL,
     depends_on_name TEXT NOT NULL,
-    condition TEXT NOT NULL CHECK (condition IN ('service_started', 'service_healthy', 'service_completed_successfully')),
-    position INTEGER NOT NULL CHECK (position >= 0),
+    `condition` TEXT NOT NULL CHECK (`condition` IN ('service_started', 'service_healthy', 'service_completed_successfully')),
+    position BIGINT NOT NULL CHECK (position >= 0),
     PRIMARY KEY (component_id, depends_on_name),
     UNIQUE (component_id, position),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
@@ -470,12 +402,12 @@ CREATE TABLE IF NOT EXISTS version_component_healthcheck (
     component_id TEXT PRIMARY KEY,
     test_mode TEXT CHECK (test_mode IN ('CMD', 'CMD-SHELL')),
     test TEXT NOT NULL DEFAULT '',
-    interval TEXT,
+    `interval` TEXT,
     timeout TEXT,
-    retries INTEGER,
+    retries BIGINT,
     start_period TEXT,
     start_interval TEXT,
-    disabled INTEGER NOT NULL DEFAULT 0 CHECK (disabled IN (0, 1)),
+    disabled BIGINT NOT NULL DEFAULT 0 CHECK (disabled IN (0, 1)),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
 );
 
@@ -491,9 +423,9 @@ CREATE TABLE IF NOT EXISTS version_component_resource (
 CREATE TABLE IF NOT EXISTS version_component_tmpfs (
     component_id TEXT NOT NULL,
     target TEXT NOT NULL,
-    size_bytes INTEGER NOT NULL,
+    size_bytes BIGINT NOT NULL,
     mode TEXT NOT NULL,
-    position INTEGER NOT NULL CHECK (position >= 0),
+    position BIGINT NOT NULL CHECK (position >= 0),
     PRIMARY KEY (component_id, position),
     UNIQUE (component_id, target),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
@@ -502,9 +434,9 @@ CREATE TABLE IF NOT EXISTS version_component_tmpfs (
 CREATE TABLE IF NOT EXISTS version_component_ulimit (
     component_id TEXT NOT NULL,
     name TEXT NOT NULL,
-    soft INTEGER NOT NULL,
-    hard INTEGER NOT NULL,
-    position INTEGER NOT NULL CHECK (position >= 0),
+    soft BIGINT NOT NULL,
+    hard BIGINT NOT NULL,
+    position BIGINT NOT NULL CHECK (position >= 0),
     PRIMARY KEY (component_id, name),
     UNIQUE (component_id, position),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
@@ -515,7 +447,7 @@ CREATE TABLE IF NOT EXISTS version_component_device (
     driver TEXT NOT NULL,
     device_count TEXT NOT NULL,
     capabilities_json TEXT NOT NULL,
-    position INTEGER NOT NULL CHECK (position >= 0),
+    position BIGINT NOT NULL CHECK (position >= 0),
     PRIMARY KEY (component_id, position),
     FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
 );
@@ -526,8 +458,8 @@ CREATE TABLE IF NOT EXISTS gateway_config (
     base_domain TEXT NOT NULL,
     default_entrypoint TEXT NOT NULL DEFAULT 'web',
     tls_mode TEXT NOT NULL DEFAULT 'none',
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE
 );
 
@@ -538,15 +470,13 @@ CREATE TABLE IF NOT EXISTS service (
     code TEXT NOT NULL UNIQUE,
     version_id TEXT NOT NULL,
     status TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
     FOREIGN KEY (version_id) REFERENCES version(id),
     UNIQUE(application_id, instance_key)
 );
 
-CREATE INDEX IF NOT EXISTS idx_service_version ON service(version_id);
-CREATE INDEX IF NOT EXISTS idx_service_application ON service(application_id);
 
 CREATE TABLE IF NOT EXISTS service_env (
     service_id TEXT NOT NULL,
@@ -566,15 +496,14 @@ CREATE TABLE IF NOT EXISTS service_component (
     pull_policy TEXT CHECK (pull_policy IS NULL OR pull_policy IN ('always', 'missing', 'never')),
     restart_policy TEXT CHECK (restart_policy IS NULL OR restart_policy IN ('no', 'unless-stopped')),
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active')),
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (service_id, source_version_component_id),
     UNIQUE (service_id, component_name),
     FOREIGN KEY (service_id) REFERENCES service(id) ON DELETE CASCADE,
     FOREIGN KEY (source_version_component_id) REFERENCES version_component(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_service_component_service ON service_component(service_id);
 
 CREATE TABLE IF NOT EXISTS service_component_env (
     service_component_id TEXT NOT NULL,
@@ -594,12 +523,11 @@ CREATE TABLE IF NOT EXISTS service_component_mount (
     service_component_id TEXT NOT NULL,
     target TEXT NOT NULL,
     source TEXT,
-    source_is_host_path INTEGER,
+    source_is_host_path BIGINT,
     state TEXT NOT NULL CHECK (state IN ('override', 'deleted')),
     FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_service_component_mount_component ON service_component_mount(service_component_id);
 
 CREATE TABLE IF NOT EXISTS service_component_resource (
     service_component_id TEXT PRIMARY KEY,
@@ -619,10 +547,10 @@ CREATE TABLE IF NOT EXISTS service_component_endpoint (
     id TEXT PRIMARY KEY,
     service_component_id TEXT NOT NULL,
     protocol TEXT NOT NULL CHECK (protocol IN ('http', 'tcp')),
-    container_port INTEGER NOT NULL CHECK (container_port BETWEEN 1 AND 65535),
+    container_port BIGINT NOT NULL CHECK (container_port BETWEEN 1 AND 65535),
     mode TEXT CHECK (mode IS NULL OR mode IN ('internal', 'local', 'host', 'gateway')),
     bind_address TEXT,
-    listen_port INTEGER CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
+    listen_port BIGINT CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
     entrypoint TEXT,
     path_prefix TEXT,
     state TEXT NOT NULL CHECK (state IN ('override', 'deleted')),
@@ -634,7 +562,6 @@ CREATE TABLE IF NOT EXISTS service_component_endpoint (
     )
 );
 
-CREATE INDEX IF NOT EXISTS idx_service_component_endpoint_listen ON service_component_endpoint(listen_port);
 
 CREATE TABLE IF NOT EXISTS deployment (
     id TEXT PRIMARY KEY,
@@ -644,12 +571,12 @@ CREATE TABLE IF NOT EXISTS deployment (
     trigger_type TEXT NOT NULL,
     env_file TEXT,
     status TEXT NOT NULL,
-    started_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     finished_at DATETIME,
-    duration_ms INTEGER,
+    duration_ms BIGINT,
     log_text TEXT,
     error_message TEXT,
-    is_rollback INTEGER NOT NULL,
+    is_rollback BIGINT NOT NULL,
     rollback_from_deployment_id TEXT,
     project_id TEXT REFERENCES project(id),
     version_id TEXT,
@@ -660,12 +587,6 @@ CREATE TABLE IF NOT EXISTS deployment (
     FOREIGN KEY (rollback_from_deployment_id) REFERENCES deployment(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_deployment_app ON deployment(application_id);
-CREATE INDEX IF NOT EXISTS idx_deployment_app_name ON deployment(application_name);
-CREATE INDEX IF NOT EXISTS idx_deployment_status ON deployment(status);
-CREATE INDEX IF NOT EXISTS idx_deployment_started ON deployment(started_at);
-CREATE INDEX IF NOT EXISTS idx_deployment_project ON deployment(project_id);
-CREATE INDEX IF NOT EXISTS idx_deployment_service_success_hash ON deployment(service_id, status, effective_plan_hash, finished_at);
 
 CREATE TABLE IF NOT EXISTS route (
     id TEXT PRIMARY KEY,
@@ -674,22 +595,17 @@ CREATE TABLE IF NOT EXISTS route (
     domain TEXT NOT NULL,
     path_prefix TEXT NOT NULL,
     target_url TEXT NOT NULL,
-    listen_port INTEGER CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
+    listen_port BIGINT CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
     service_id TEXT,
     component_name TEXT,
     endpoint_protocol TEXT,
-    endpoint_container_port INTEGER CHECK (endpoint_container_port IS NULL OR endpoint_container_port BETWEEN 1 AND 65535),
-    enabled INTEGER NOT NULL,
-    https_enabled INTEGER NOT NULL DEFAULT 0,
+    endpoint_container_port BIGINT CHECK (endpoint_container_port IS NULL OR endpoint_container_port BETWEEN 1 AND 65535),
+    enabled BIGINT NOT NULL,
+    https_enabled BIGINT NOT NULL DEFAULT 0,
     cert_pem TEXT,
     cert_key TEXT,
     cert_type TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     project_id TEXT REFERENCES project(id)
 );
-
-CREATE INDEX IF NOT EXISTS idx_route_domain ON route(domain);
-CREATE INDEX IF NOT EXISTS idx_route_enabled ON route(enabled);
-CREATE INDEX IF NOT EXISTS idx_route_project ON route(project_id);
-CREATE INDEX IF NOT EXISTS idx_route_tcp_listen ON route(protocol, listen_port);

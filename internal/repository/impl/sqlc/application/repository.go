@@ -63,8 +63,8 @@ func (r Repository) ListApplications(ctx context.Context, projectId *string, pag
 		ProjectID:     optionalProjectId(projectId),
 		SearchPattern: searchPattern,
 		Kind:          kindValue,
-		Limit:         int64(perPage),
-		Offset:        int64((page - 1) * perPage),
+		Limit:         int32(perPage),
+		Offset:        int32((page - 1) * perPage),
 	})
 	if err != nil {
 		return repository.Page[model.Application]{}, fmt.Errorf("list applications: %w", err)
@@ -225,8 +225,8 @@ func (r Repository) ListVersionsPage(ctx context.Context, applicationId string, 
 	rows, err := q.ListVersionsPage(ctx, applicationsqlc.ListVersionsPageParams{
 		ApplicationID: applicationId,
 		SearchPattern: searchPattern,
-		Limit:         int64(perPage),
-		Offset:        int64((page - 1) * perPage),
+		Limit:         int32(perPage),
+		Offset:        int32((page - 1) * perPage),
 	})
 	if err != nil {
 		return repository.Page[model.Version]{}, fmt.Errorf("list versions page: %w", err)

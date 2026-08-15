@@ -107,9 +107,9 @@ func (q *Queries) ApplicationByName(ctx context.Context, name string) (Applicati
 const countApplications = `-- name: CountApplications :one
 SELECT COUNT(*)
 FROM application
-WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
-  AND (CAST(?2 AS TEXT) IS NULL OR name LIKE CAST(?2 AS TEXT) OR code LIKE CAST(?2 AS TEXT))
-  AND (CAST(?3 AS TEXT) IS NULL OR kind = CAST(?3 AS TEXT))
+WHERE (? IS NULL OR project_id = ?)
+  AND (? IS NULL OR name LIKE ? OR code LIKE ?)
+  AND (? IS NULL OR kind = ?)
 `
 
 type CountApplicationsParams struct {
@@ -119,7 +119,15 @@ type CountApplicationsParams struct {
 }
 
 func (q *Queries) CountApplications(ctx context.Context, arg CountApplicationsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countApplications, arg.ProjectID, arg.SearchPattern, arg.Kind)
+	row := q.db.QueryRowContext(ctx, countApplications,
+		arg.ProjectID,
+		arg.ProjectID,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.Kind,
+		arg.Kind,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -196,19 +204,19 @@ func (q *Queries) DeleteVersionsByApplication(ctx context.Context, applicationID
 const listApplications = `-- name: ListApplications :many
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
-WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
-  AND (CAST(?2 AS TEXT) IS NULL OR name LIKE CAST(?2 AS TEXT) OR code LIKE CAST(?2 AS TEXT))
-  AND (CAST(?3 AS TEXT) IS NULL OR kind = CAST(?3 AS TEXT))
+WHERE (? IS NULL OR project_id = ?)
+  AND (? IS NULL OR name LIKE ? OR code LIKE ?)
+  AND (? IS NULL OR kind = ?)
 ORDER BY id DESC
-LIMIT ?5 OFFSET ?4
+LIMIT ? OFFSET ?
 `
 
 type ListApplicationsParams struct {
 	ProjectID     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 	Kind          sql.NullString `db:"kind"`
-	Offset        int64          `db:"offset"`
-	Limit         int64          `db:"limit"`
+	Limit         int32          `db:"limit"`
+	Offset        int32          `db:"offset"`
 }
 
 type ListApplicationsRow struct {
@@ -224,10 +232,14 @@ type ListApplicationsRow struct {
 func (q *Queries) ListApplications(ctx context.Context, arg ListApplicationsParams) ([]ListApplicationsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listApplications,
 		arg.ProjectID,
+		arg.ProjectID,
+		arg.SearchPattern,
+		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.Kind,
-		arg.Offset,
+		arg.Kind,
 		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err

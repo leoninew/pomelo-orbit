@@ -63,9 +63,9 @@ func (q *Queries) ApplicationPipelineStages(ctx context.Context, pipelineID sql.
 
 const countPipelineStageTemplates = `-- name: CountPipelineStageTemplates :one
 SELECT COUNT(*) FROM pipeline_stage
-WHERE project_id = CAST(?1 AS TEXT)
+WHERE project_id = ?
   AND kind = 'template'
-  AND (CAST(?2 AS TEXT) IS NULL OR name LIKE CAST(?2 AS TEXT))
+  AND (? IS NULL OR name LIKE ?)
 `
 
 type CountPipelineStageTemplatesParams struct {
@@ -74,7 +74,7 @@ type CountPipelineStageTemplatesParams struct {
 }
 
 func (q *Queries) CountPipelineStageTemplates(ctx context.Context, arg CountPipelineStageTemplatesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countPipelineStageTemplates, arg.ProjectID, arg.SearchPattern)
+	row := q.db.QueryRowContext(ctx, countPipelineStageTemplates, arg.ProjectID, arg.SearchPattern, arg.SearchPattern)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -82,19 +82,25 @@ func (q *Queries) CountPipelineStageTemplates(ctx context.Context, arg CountPipe
 
 const countPipelines = `-- name: CountPipelines :one
 SELECT COUNT(*) FROM pipeline
-WHERE project_id = CAST(?1 AS TEXT)
-  AND (CAST(?2 AS TEXT) IS NULL OR kind = CAST(?2 AS TEXT))
-  AND (CAST(?3 AS TEXT) IS NULL OR name LIKE CAST(?3 AS TEXT))
+WHERE project_id = ?
+  AND (? IS NULL OR kind = ?)
+  AND (? IS NULL OR name LIKE ?)
 `
 
 type CountPipelinesParams struct {
-	ProjectID     string         `db:"project_id"`
+	ProjectID     sql.NullString `db:"project_id"`
 	Kind          sql.NullString `db:"kind"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountPipelines(ctx context.Context, arg CountPipelinesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countPipelines, arg.ProjectID, arg.Kind, arg.SearchPattern)
+	row := q.db.QueryRowContext(ctx, countPipelines,
+		arg.ProjectID,
+		arg.Kind,
+		arg.Kind,
+		arg.SearchPattern,
+		arg.SearchPattern,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -408,25 +414,26 @@ SELECT id, project_id, kind, pipeline_id, name, image, script, description, vers
        source_template_stage_version, source_template_stage_description, artifacts, depends_on, sort_order,
        created_at, updated_at
 FROM pipeline_stage
-WHERE project_id = CAST(?1 AS TEXT)
+WHERE project_id = ?
   AND kind = 'template'
-  AND (CAST(?2 AS TEXT) IS NULL OR name LIKE CAST(?2 AS TEXT))
-ORDER BY id DESC LIMIT ?4 OFFSET ?3
+  AND (? IS NULL OR name LIKE ?)
+ORDER BY id DESC LIMIT ? OFFSET ?
 `
 
 type ListPipelineStageTemplatesParams struct {
 	ProjectID     string         `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
-	Offset        int64          `db:"offset"`
-	Limit         int64          `db:"limit"`
+	Limit         int32          `db:"limit"`
+	Offset        int32          `db:"offset"`
 }
 
 func (q *Queries) ListPipelineStageTemplates(ctx context.Context, arg ListPipelineStageTemplatesParams) ([]PipelineStage, error) {
 	rows, err := q.db.QueryContext(ctx, listPipelineStageTemplates,
 		arg.ProjectID,
 		arg.SearchPattern,
-		arg.Offset,
+		arg.SearchPattern,
 		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err
@@ -471,27 +478,29 @@ func (q *Queries) ListPipelineStageTemplates(ctx context.Context, arg ListPipeli
 const listPipelines = `-- name: ListPipelines :many
 SELECT id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at
 FROM pipeline
-WHERE project_id = CAST(?1 AS TEXT)
-  AND (CAST(?2 AS TEXT) IS NULL OR kind = CAST(?2 AS TEXT))
-  AND (CAST(?3 AS TEXT) IS NULL OR name LIKE CAST(?3 AS TEXT))
-ORDER BY id DESC LIMIT ?5 OFFSET ?4
+WHERE project_id = ?
+  AND (? IS NULL OR kind = ?)
+  AND (? IS NULL OR name LIKE ?)
+ORDER BY id DESC LIMIT ? OFFSET ?
 `
 
 type ListPipelinesParams struct {
-	ProjectID     string         `db:"project_id"`
+	ProjectID     sql.NullString `db:"project_id"`
 	Kind          sql.NullString `db:"kind"`
 	SearchPattern sql.NullString `db:"search_pattern"`
-	Offset        int64          `db:"offset"`
-	Limit         int64          `db:"limit"`
+	Limit         int32          `db:"limit"`
+	Offset        int32          `db:"offset"`
 }
 
 func (q *Queries) ListPipelines(ctx context.Context, arg ListPipelinesParams) ([]Pipeline, error) {
 	rows, err := q.db.QueryContext(ctx, listPipelines,
 		arg.ProjectID,
 		arg.Kind,
+		arg.Kind,
 		arg.SearchPattern,
-		arg.Offset,
+		arg.SearchPattern,
 		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err

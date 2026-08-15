@@ -1,22 +1,22 @@
 -- name: CountRoutes :one
 SELECT COUNT(*)
 FROM route
-WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
-  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
-    OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR domain LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR target_url LIKE CAST(sqlc.narg(search_pattern) AS TEXT));
+WHERE project_id = sqlc.arg(project_id)
+  AND (sqlc.narg(search_pattern) IS NULL
+    OR name LIKE sqlc.narg(search_pattern)
+    OR domain LIKE sqlc.narg(search_pattern)
+    OR target_url LIKE sqlc.narg(search_pattern));
 
 -- name: ListRoutes :many
 SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
 FROM route
-WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
-  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL
-    OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR domain LIKE CAST(sqlc.narg(search_pattern) AS TEXT)
-    OR target_url LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
+WHERE project_id = sqlc.arg(project_id)
+  AND (sqlc.narg(search_pattern) IS NULL
+    OR name LIKE sqlc.narg(search_pattern)
+    OR domain LIKE sqlc.narg(search_pattern)
+    OR target_url LIKE sqlc.narg(search_pattern))
 ORDER BY id DESC
-LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
+LIMIT ? OFFSET ?;
 
 -- name: ListAllRoutes :many
 SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at

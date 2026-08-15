@@ -319,10 +319,10 @@ func (q *Queries) CountActivePipelineRunsByRepository(ctx context.Context, arg C
 
 const countArtifacts = `-- name: CountArtifacts :one
 SELECT COUNT(*) FROM artifact
-WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
-  AND (CAST(?2 AS TEXT) IS NULL OR repository_id = CAST(?2 AS TEXT))
-  AND (CAST(?3 AS TEXT) IS NULL OR pipeline_id = CAST(?3 AS TEXT))
-  AND (CAST(?4 AS TEXT) IS NULL OR name LIKE CAST(?4 AS TEXT) OR stage_name LIKE CAST(?4 AS TEXT))
+WHERE (? IS NULL OR project_id = ?)
+  AND (? IS NULL OR repository_id = ?)
+  AND (? IS NULL OR pipeline_id = ?)
+  AND (? IS NULL OR name LIKE ? OR stage_name LIKE ?)
 `
 
 type CountArtifactsParams struct {
@@ -335,8 +335,13 @@ type CountArtifactsParams struct {
 func (q *Queries) CountArtifacts(ctx context.Context, arg CountArtifactsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countArtifacts,
 		arg.ProjectID,
+		arg.ProjectID,
+		arg.RepositoryID,
 		arg.RepositoryID,
 		arg.PipelineID,
+		arg.PipelineID,
+		arg.SearchPattern,
+		arg.SearchPattern,
 		arg.SearchPattern,
 	)
 	var count int64
@@ -346,11 +351,11 @@ func (q *Queries) CountArtifacts(ctx context.Context, arg CountArtifactsParams) 
 
 const countPipelineRuns = `-- name: CountPipelineRuns :one
 SELECT COUNT(*) FROM pipeline_run
-WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
-  AND (CAST(?2 AS TEXT) IS NULL OR repository_id = CAST(?2 AS TEXT))
-  AND (CAST(?3 AS TEXT) IS NULL OR pipeline_id = CAST(?3 AS TEXT))
-  AND (CAST(?4 AS DATETIME) IS NULL OR created_at >= ?4)
-  AND (CAST(?5 AS DATETIME) IS NULL OR created_at <= ?5)
+WHERE (? IS NULL OR project_id = ?)
+  AND (? IS NULL OR repository_id = ?)
+  AND (? IS NULL OR pipeline_id = ?)
+  AND (? IS NULL OR created_at >= ?)
+  AND (? IS NULL OR created_at <= ?)
 `
 
 type CountPipelineRunsParams struct {
@@ -364,9 +369,14 @@ type CountPipelineRunsParams struct {
 func (q *Queries) CountPipelineRuns(ctx context.Context, arg CountPipelineRunsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countPipelineRuns,
 		arg.ProjectID,
+		arg.ProjectID,
+		arg.RepositoryID,
 		arg.RepositoryID,
 		arg.PipelineID,
+		arg.PipelineID,
 		arg.FromAt,
+		arg.FromAt,
+		arg.ToAt,
 		arg.ToAt,
 	)
 	var count int64
@@ -465,7 +475,7 @@ func (q *Queries) InsertArtifact(ctx context.Context, arg InsertArtifactParams) 
 }
 
 const insertPipelineRun = `-- name: InsertPipelineRun :exec
-INSERT INTO pipeline_run (id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at)
+INSERT INTO pipeline_run (id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
@@ -578,11 +588,11 @@ FROM artifact
 LEFT JOIN artifact AS source_artifact ON source_artifact.id = artifact.source_artifact_id AND source_artifact.value_format = 'git_object_id'
 LEFT JOIN pipeline_run_version_binding AS binding ON binding.pipeline_run_id = artifact.pipeline_run_id
 LEFT JOIN version_component ON version_component.artifact_id = artifact.id
-WHERE (CAST(?1 AS TEXT) IS NULL OR artifact.project_id = CAST(?1 AS TEXT))
-  AND (CAST(?2 AS TEXT) IS NULL OR artifact.repository_id = CAST(?2 AS TEXT))
-  AND (CAST(?3 AS TEXT) IS NULL OR artifact.pipeline_id = CAST(?3 AS TEXT))
-  AND (CAST(?4 AS TEXT) IS NULL OR artifact.name LIKE CAST(?4 AS TEXT) OR artifact.stage_name LIKE CAST(?4 AS TEXT))
-ORDER BY artifact.id DESC LIMIT ?6 OFFSET ?5
+WHERE (? IS NULL OR artifact.project_id = ?)
+  AND (? IS NULL OR artifact.repository_id = ?)
+  AND (? IS NULL OR artifact.pipeline_id = ?)
+  AND (? IS NULL OR artifact.name LIKE ? OR artifact.stage_name LIKE ?)
+ORDER BY artifact.id DESC LIMIT ? OFFSET ?
 `
 
 type ListArtifactsParams struct {
@@ -590,8 +600,8 @@ type ListArtifactsParams struct {
 	RepositoryID  sql.NullString `db:"repository_id"`
 	PipelineID    sql.NullString `db:"pipeline_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
-	Offset        int64          `db:"offset"`
-	Limit         int64          `db:"limit"`
+	Limit         int32          `db:"limit"`
+	Offset        int32          `db:"offset"`
 }
 
 type ListArtifactsRow struct {
@@ -627,11 +637,16 @@ type ListArtifactsRow struct {
 func (q *Queries) ListArtifacts(ctx context.Context, arg ListArtifactsParams) ([]ListArtifactsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listArtifacts,
 		arg.ProjectID,
+		arg.ProjectID,
+		arg.RepositoryID,
 		arg.RepositoryID,
 		arg.PipelineID,
+		arg.PipelineID,
 		arg.SearchPattern,
-		arg.Offset,
+		arg.SearchPattern,
+		arg.SearchPattern,
 		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err
@@ -688,8 +703,8 @@ FROM artifact
 LEFT JOIN artifact AS source_artifact ON source_artifact.id = artifact.source_artifact_id AND source_artifact.value_format = 'git_object_id'
 LEFT JOIN pipeline_run_version_binding AS binding ON binding.pipeline_run_id = artifact.pipeline_run_id
 LEFT JOIN version_component ON version_component.artifact_id = artifact.id
-WHERE artifact.pipeline_run_id = CAST(?1 AS TEXT)
-  AND (CAST(?2 AS TEXT) IS NULL OR artifact.project_id = CAST(?2 AS TEXT))
+WHERE artifact.pipeline_run_id = ?
+  AND (? IS NULL OR artifact.project_id = ?)
 ORDER BY artifact.created_at, artifact.id
 `
 
@@ -729,7 +744,7 @@ type ListArtifactsByRunRow struct {
 }
 
 func (q *Queries) ListArtifactsByRun(ctx context.Context, arg ListArtifactsByRunParams) ([]ListArtifactsByRunRow, error) {
-	rows, err := q.db.QueryContext(ctx, listArtifactsByRun, arg.PipelineRunID, arg.ProjectID)
+	rows, err := q.db.QueryContext(ctx, listArtifactsByRun, arg.PipelineRunID, arg.ProjectID, arg.ProjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -780,14 +795,14 @@ func (q *Queries) ListArtifactsByRun(ctx context.Context, arg ListArtifactsByRun
 }
 
 const listPipelineRuns = `-- name: ListPipelineRuns :many
-SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
+SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run
-WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
-  AND (CAST(?2 AS TEXT) IS NULL OR repository_id = CAST(?2 AS TEXT))
-  AND (CAST(?3 AS TEXT) IS NULL OR pipeline_id = CAST(?3 AS TEXT))
-  AND (CAST(?4 AS DATETIME) IS NULL OR created_at >= ?4)
-  AND (CAST(?5 AS DATETIME) IS NULL OR created_at <= ?5)
-ORDER BY id DESC LIMIT ?7 OFFSET ?6
+WHERE (? IS NULL OR project_id = ?)
+  AND (? IS NULL OR repository_id = ?)
+  AND (? IS NULL OR pipeline_id = ?)
+  AND (? IS NULL OR created_at >= ?)
+  AND (? IS NULL OR created_at <= ?)
+ORDER BY id DESC LIMIT ? OFFSET ?
 `
 
 type ListPipelineRunsParams struct {
@@ -796,19 +811,24 @@ type ListPipelineRunsParams struct {
 	PipelineID   sql.NullString `db:"pipeline_id"`
 	FromAt       sql.NullTime   `db:"from_at"`
 	ToAt         sql.NullTime   `db:"to_at"`
-	Offset       int64          `db:"offset"`
-	Limit        int64          `db:"limit"`
+	Limit        int32          `db:"limit"`
+	Offset       int32          `db:"offset"`
 }
 
 func (q *Queries) ListPipelineRuns(ctx context.Context, arg ListPipelineRunsParams) ([]PipelineRun, error) {
 	rows, err := q.db.QueryContext(ctx, listPipelineRuns,
 		arg.ProjectID,
+		arg.ProjectID,
+		arg.RepositoryID,
 		arg.RepositoryID,
 		arg.PipelineID,
+		arg.PipelineID,
+		arg.FromAt,
 		arg.FromAt,
 		arg.ToAt,
-		arg.Offset,
+		arg.ToAt,
 		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err
@@ -888,7 +908,7 @@ func (q *Queries) ListPipelineStageRuns(ctx context.Context, pipelineRunID strin
 }
 
 const pipelineRunByID = `-- name: PipelineRunByID :one
-SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
+SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run WHERE id = ?
 `
 

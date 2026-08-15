@@ -15,13 +15,17 @@ import (
 const countUsers = `-- name: CountUsers :one
 SELECT COUNT(*)
 FROM user
-WHERE (CAST(?1 AS TEXT) IS NULL
-  OR LOWER(username) LIKE CAST(?1 AS TEXT)
-  OR LOWER(COALESCE(email, '')) LIKE CAST(?1 AS TEXT))
+WHERE (? IS NULL
+  OR LOWER(username) LIKE ?
+  OR LOWER(COALESCE(email, '')) LIKE ?)
 `
 
-func (q *Queries) CountUsers(ctx context.Context, searchPattern sql.NullString) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countUsers, searchPattern)
+type CountUsersParams struct {
+	SearchPattern sql.NullString `db:"search_pattern"`
+}
+
+func (q *Queries) CountUsers(ctx context.Context, arg CountUsersParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsers, arg.SearchPattern, arg.SearchPattern, arg.SearchPattern)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -103,17 +107,17 @@ const listUsers = `-- name: ListUsers :many
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
 FROM user
-WHERE (CAST(?1 AS TEXT) IS NULL
-  OR LOWER(username) LIKE CAST(?1 AS TEXT)
-  OR LOWER(COALESCE(email, '')) LIKE CAST(?1 AS TEXT))
+WHERE (? IS NULL
+  OR LOWER(username) LIKE ?
+  OR LOWER(COALESCE(email, '')) LIKE ?)
 ORDER BY id DESC
-LIMIT ?3 OFFSET ?2
+LIMIT ? OFFSET ?
 `
 
 type ListUsersParams struct {
 	SearchPattern sql.NullString `db:"search_pattern"`
-	Offset        int64          `db:"offset"`
-	Limit         int64          `db:"limit"`
+	Limit         int32          `db:"limit"`
+	Offset        int32          `db:"offset"`
 }
 
 type ListUsersRow struct {
@@ -131,7 +135,13 @@ type ListUsersRow struct {
 }
 
 func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUsers, arg.SearchPattern, arg.Offset, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, listUsers,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}

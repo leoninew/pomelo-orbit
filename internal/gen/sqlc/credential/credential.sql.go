@@ -14,19 +14,24 @@ import (
 const countCredentials = `-- name: CountCredentials :one
 SELECT COUNT(*)
 FROM credential
-WHERE project_id = CAST(?1 AS TEXT)
-  AND (CAST(?2 AS TEXT) IS NULL
-    OR name LIKE CAST(?2 AS TEXT)
-    OR type LIKE CAST(?2 AS TEXT))
+WHERE project_id = ?
+  AND (? IS NULL
+    OR name LIKE ?
+    OR type LIKE ?)
 `
 
 type CountCredentialsParams struct {
-	ProjectID     string         `db:"project_id"`
+	ProjectID     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountCredentials(ctx context.Context, arg CountCredentialsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countCredentials, arg.ProjectID, arg.SearchPattern)
+	row := q.db.QueryRowContext(ctx, countCredentials,
+		arg.ProjectID,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.SearchPattern,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -178,19 +183,19 @@ func (q *Queries) DeleteCredential(ctx context.Context, id string) error {
 const listCredentials = `-- name: ListCredentials :many
 SELECT id, project_id, name, type, encrypted_data, created_at
 FROM credential
-WHERE project_id = CAST(?1 AS TEXT)
-  AND (CAST(?2 AS TEXT) IS NULL
-    OR name LIKE CAST(?2 AS TEXT)
-    OR type LIKE CAST(?2 AS TEXT))
+WHERE project_id = ?
+  AND (? IS NULL
+    OR name LIKE ?
+    OR type LIKE ?)
 ORDER BY id DESC
-LIMIT ?4 OFFSET ?3
+LIMIT ? OFFSET ?
 `
 
 type ListCredentialsParams struct {
-	ProjectID     string         `db:"project_id"`
+	ProjectID     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
-	Offset        int64          `db:"offset"`
-	Limit         int64          `db:"limit"`
+	Limit         int32          `db:"limit"`
+	Offset        int32          `db:"offset"`
 }
 
 type ListCredentialsRow struct {
@@ -206,8 +211,10 @@ func (q *Queries) ListCredentials(ctx context.Context, arg ListCredentialsParams
 	rows, err := q.db.QueryContext(ctx, listCredentials,
 		arg.ProjectID,
 		arg.SearchPattern,
-		arg.Offset,
+		arg.SearchPattern,
+		arg.SearchPattern,
 		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err

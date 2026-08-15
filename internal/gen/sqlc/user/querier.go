@@ -10,7 +10,7 @@ import (
 )
 
 type Querier interface {
-	CountUsers(ctx context.Context, searchPattern sql.NullString) (int64, error)
+	CountUsers(ctx context.Context, arg CountUsersParams) (int64, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	DeleteUser(ctx context.Context, id string) error
 	DeleteUserRoles(ctx context.Context, userID string) error

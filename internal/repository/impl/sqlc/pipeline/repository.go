@@ -38,8 +38,9 @@ func (r Repository) ListPipelines(ctx context.Context, projectID, kind string, p
 	search = strings.TrimSpace(search)
 	searchPattern := sql.NullString{String: "%" + search + "%", Valid: search != ""}
 	kindValue := sql.NullString{String: kind, Valid: kind != ""}
-	args := pipelinesqlc.ListPipelinesParams{ProjectID: projectID, Kind: kindValue, SearchPattern: searchPattern, Limit: int64(perPage), Offset: int64((page - 1) * perPage)}
-	count, err := r.q(ctx).CountPipelines(ctx, pipelinesqlc.CountPipelinesParams{ProjectID: projectID, Kind: kindValue, SearchPattern: searchPattern})
+	projectIDArg := sql.NullString{String: projectID, Valid: true}
+	args := pipelinesqlc.ListPipelinesParams{ProjectID: projectIDArg, Kind: kindValue, SearchPattern: searchPattern, Limit: int32(perPage), Offset: int32((page - 1) * perPage)}
+	count, err := r.q(ctx).CountPipelines(ctx, pipelinesqlc.CountPipelinesParams{ProjectID: projectIDArg, Kind: kindValue, SearchPattern: searchPattern})
 	if err != nil {
 		return repository.Page[model.Pipeline]{}, translate(err)
 	}
@@ -66,7 +67,7 @@ func (r Repository) ListPipelineStageTemplates(ctx context.Context, projectID st
 	page, perPage = repository.NormalizePage(page, perPage)
 	projectID, search = strings.TrimSpace(projectID), strings.TrimSpace(search)
 	searchPattern := sql.NullString{String: "%" + search + "%", Valid: search != ""}
-	args := pipelinesqlc.ListPipelineStageTemplatesParams{ProjectID: projectID, SearchPattern: searchPattern, Offset: int64((page - 1) * perPage), Limit: int64(perPage)}
+	args := pipelinesqlc.ListPipelineStageTemplatesParams{ProjectID: projectID, SearchPattern: searchPattern, Offset: int32((page - 1) * perPage), Limit: int32(perPage)}
 	count, err := r.q(ctx).CountPipelineStageTemplates(ctx, pipelinesqlc.CountPipelineStageTemplatesParams{ProjectID: projectID, SearchPattern: searchPattern})
 	if err != nil {
 		return repository.Page[model.PipelineStage]{}, translate(err)

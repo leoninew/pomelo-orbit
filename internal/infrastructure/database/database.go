@@ -1,7 +1,9 @@
 package db
 
 import (
+	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -63,10 +65,15 @@ func openMySQL(cfg config.MySQLConfig) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	database, err := sql.Open("mysql", dsn)
+	mysqlConfig, err := gomysql.ParseDSN(dsn)
 	if err != nil {
-		return nil, fmt.Errorf("open mysql database: %w", err)
+		return nil, fmt.Errorf("parse mysql dsn: %w", err)
 	}
+	connector, err := gomysql.NewConnector(mysqlConfig)
+	if err != nil {
+		return nil, fmt.Errorf("create mysql connector: %w", err)
+	}
+	database := sql.OpenDB(mysqlModeConnector{Connector: connector})
 	database.SetMaxOpenConns(20)
 	database.SetMaxIdleConns(5)
 	database.SetConnMaxLifetime(30 * time.Minute)
@@ -75,6 +82,28 @@ func openMySQL(cfg config.MySQLConfig) (*sql.DB, error) {
 		return nil, fmt.Errorf("ping mysql database: %w", err)
 	}
 	return database, nil
+}
+
+type mysqlModeConnector struct {
+	driver.Connector
+}
+
+func (c mysqlModeConnector) Connect(ctx context.Context) (driver.Conn, error) {
+	connection, err := c.Connector.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	executor, ok := connection.(driver.ExecerContext)
+	if !ok {
+		_ = connection.Close()
+		return nil, fmt.Errorf("mysql driver connection does not support session configuration")
+	}
+	if _, err := executor.ExecContext(ctx, "SET SESSION sql_mode = IF(FIND_IN_SET('ANSI_QUOTES', @@SESSION.sql_mode), @@SESSION.sql_mode, CONCAT_WS(',', @@SESSION.sql_mode, 'ANSI_QUOTES'))", nil); err != nil {
+		_ = connection.Close()
+		return nil, fmt.Errorf("enable mysql ANSI_QUOTES mode: %w", err)
+	}
+	return connection, nil
 }
 
 func mysqlDsn(dsn string) (string, error) {

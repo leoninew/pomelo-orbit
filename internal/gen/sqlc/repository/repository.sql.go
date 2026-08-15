@@ -14,12 +14,12 @@ import (
 const countRepositories = `-- name: CountRepositories :one
 SELECT COUNT(*)
 FROM repository
-WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
+WHERE (? IS NULL OR project_id = ?)
   AND (
-    CAST(?2 AS TEXT) IS NULL
-    OR name LIKE CAST(?2 AS TEXT)
-    OR code LIKE CAST(?2 AS TEXT)
-    OR repository_url LIKE CAST(?2 AS TEXT)
+    ? IS NULL
+    OR name LIKE ?
+    OR code LIKE ?
+    OR repository_url LIKE ?
   )
 `
 
@@ -29,7 +29,14 @@ type CountRepositoriesParams struct {
 }
 
 func (q *Queries) CountRepositories(ctx context.Context, arg CountRepositoriesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRepositories, arg.ProjectID, arg.SearchPattern)
+	row := q.db.QueryRowContext(ctx, countRepositories,
+		arg.ProjectID,
+		arg.ProjectID,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.SearchPattern,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -85,22 +92,22 @@ const listRepositories = `-- name: ListRepositories :many
 SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
-WHERE (CAST(?1 AS TEXT) IS NULL OR project_id = CAST(?1 AS TEXT))
+WHERE (? IS NULL OR project_id = ?)
   AND (
-    CAST(?2 AS TEXT) IS NULL
-    OR name LIKE CAST(?2 AS TEXT)
-    OR code LIKE CAST(?2 AS TEXT)
-    OR repository_url LIKE CAST(?2 AS TEXT)
+    ? IS NULL
+    OR name LIKE ?
+    OR code LIKE ?
+    OR repository_url LIKE ?
   )
 ORDER BY id DESC
-LIMIT ?4 OFFSET ?3
+LIMIT ? OFFSET ?
 `
 
 type ListRepositoriesParams struct {
 	ProjectID     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
-	Offset        int64          `db:"offset"`
-	Limit         int64          `db:"limit"`
+	Limit         int32          `db:"limit"`
+	Offset        int32          `db:"offset"`
 }
 
 type ListRepositoriesRow struct {
@@ -120,9 +127,13 @@ type ListRepositoriesRow struct {
 func (q *Queries) ListRepositories(ctx context.Context, arg ListRepositoriesParams) ([]ListRepositoriesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRepositories,
 		arg.ProjectID,
+		arg.ProjectID,
 		arg.SearchPattern,
-		arg.Offset,
+		arg.SearchPattern,
+		arg.SearchPattern,
+		arg.SearchPattern,
 		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err
@@ -161,8 +172,8 @@ const repositoryByCode = `-- name: RepositoryByCode :one
 SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
-WHERE code = CAST(?1 AS TEXT)
-  AND (CAST(?2 AS TEXT) IS NULL OR project_id = CAST(?2 AS TEXT))
+WHERE code = ?
+  AND (? IS NULL OR project_id = ?)
 `
 
 type RepositoryByCodeParams struct {
@@ -185,7 +196,7 @@ type RepositoryByCodeRow struct {
 }
 
 func (q *Queries) RepositoryByCode(ctx context.Context, arg RepositoryByCodeParams) (RepositoryByCodeRow, error) {
-	row := q.db.QueryRowContext(ctx, repositoryByCode, arg.Code, arg.ProjectID)
+	row := q.db.QueryRowContext(ctx, repositoryByCode, arg.Code, arg.ProjectID, arg.ProjectID)
 	var i RepositoryByCodeRow
 	err := row.Scan(
 		&i.ID,

@@ -8,17 +8,17 @@ FROM pipeline WHERE project_id = ? AND name = ?;
 
 -- name: CountPipelines :one
 SELECT COUNT(*) FROM pipeline
-WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
-  AND (CAST(sqlc.narg(kind) AS TEXT) IS NULL OR kind = CAST(sqlc.narg(kind) AS TEXT))
-  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT));
+WHERE project_id = sqlc.arg(project_id)
+  AND (sqlc.narg(kind) IS NULL OR kind = sqlc.narg(kind))
+  AND (sqlc.narg(search_pattern) IS NULL OR name LIKE sqlc.narg(search_pattern));
 
 -- name: ListPipelines :many
 SELECT id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at
 FROM pipeline
-WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
-  AND (CAST(sqlc.narg(kind) AS TEXT) IS NULL OR kind = CAST(sqlc.narg(kind) AS TEXT))
-  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
-ORDER BY id DESC LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
+WHERE project_id = sqlc.arg(project_id)
+  AND (sqlc.narg(kind) IS NULL OR kind = sqlc.narg(kind))
+  AND (sqlc.narg(search_pattern) IS NULL OR name LIKE sqlc.narg(search_pattern))
+ORDER BY id DESC LIMIT ? OFFSET ?;
 
 -- name: CreatePipeline :exec
 INSERT INTO pipeline (id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at)
@@ -32,9 +32,9 @@ DELETE FROM pipeline WHERE id = ?;
 
 -- name: CountPipelineStageTemplates :one
 SELECT COUNT(*) FROM pipeline_stage
-WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
+WHERE project_id = sqlc.arg(project_id)
   AND kind = 'template'
-  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT));
+  AND (sqlc.narg(search_pattern) IS NULL OR name LIKE sqlc.narg(search_pattern));
 
 -- name: ListPipelineStageTemplates :many
 SELECT id, project_id, kind, pipeline_id, name, image, script, description, version,
@@ -42,10 +42,10 @@ SELECT id, project_id, kind, pipeline_id, name, image, script, description, vers
        source_template_stage_version, source_template_stage_description, artifacts, depends_on, sort_order,
        created_at, updated_at
 FROM pipeline_stage
-WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
+WHERE project_id = sqlc.arg(project_id)
   AND kind = 'template'
-  AND (CAST(sqlc.narg(search_pattern) AS TEXT) IS NULL OR name LIKE CAST(sqlc.narg(search_pattern) AS TEXT))
-ORDER BY id DESC LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
+  AND (sqlc.narg(search_pattern) IS NULL OR name LIKE sqlc.narg(search_pattern))
+ORDER BY id DESC LIMIT ? OFFSET ?;
 
 -- name: PipelineStageTemplateByID :one
 SELECT id, project_id, kind, pipeline_id, name, image, script, description, version,

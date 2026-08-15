@@ -20,21 +20,21 @@ WHERE id = ?;
 -- name: CountDeployments :one
 SELECT COUNT(*)
 FROM deployment
-WHERE project_id = CAST(sqlc.arg(project_id) AS TEXT)
+WHERE project_id = sqlc.arg(project_id)
   AND (
-    CAST(sqlc.narg(application_id) AS TEXT) IS NULL
-    OR application_id = CAST(sqlc.narg(application_id) AS TEXT)
+    sqlc.narg(application_id) IS NULL
+    OR application_id = sqlc.narg(application_id)
   )
   AND (
-    CAST(sqlc.narg(status) AS TEXT) IS NULL
-    OR status = CAST(sqlc.narg(status) AS TEXT)
+    sqlc.narg(status) IS NULL
+    OR status = sqlc.narg(status)
   )
   AND (
-    CAST(sqlc.narg(application_name_pattern) AS TEXT) IS NULL
-    OR application_name LIKE CAST(sqlc.narg(application_name_pattern) AS TEXT)
+    sqlc.narg(application_name_pattern) IS NULL
+    OR application_name LIKE sqlc.narg(application_name_pattern)
   )
-  AND (CAST(sqlc.narg(date_from) AS DATETIME) IS NULL OR started_at >= sqlc.narg(date_from))
-  AND (CAST(sqlc.narg(date_to) AS DATETIME) IS NULL OR started_at < sqlc.narg(date_to));
+  AND (sqlc.narg(date_from) IS NULL OR started_at >= sqlc.narg(date_from))
+  AND (sqlc.narg(date_to) IS NULL OR started_at < sqlc.narg(date_to));
 
 -- name: ListDeployments :many
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
@@ -43,23 +43,23 @@ SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
 FROM deployment d
 LEFT JOIN service s ON s.id = d.service_id
-WHERE d.project_id = CAST(sqlc.arg(project_id) AS TEXT)
+WHERE d.project_id = sqlc.arg(project_id)
   AND (
-    CAST(sqlc.narg(application_id) AS TEXT) IS NULL
-    OR d.application_id = CAST(sqlc.narg(application_id) AS TEXT)
+    sqlc.narg(application_id) IS NULL
+    OR d.application_id = sqlc.narg(application_id)
   )
   AND (
-    CAST(sqlc.narg(status) AS TEXT) IS NULL
-    OR d.status = CAST(sqlc.narg(status) AS TEXT)
+    sqlc.narg(status) IS NULL
+    OR d.status = sqlc.narg(status)
   )
   AND (
-    CAST(sqlc.narg(application_name_pattern) AS TEXT) IS NULL
-    OR d.application_name LIKE CAST(sqlc.narg(application_name_pattern) AS TEXT)
+    sqlc.narg(application_name_pattern) IS NULL
+    OR d.application_name LIKE sqlc.narg(application_name_pattern)
   )
-  AND (CAST(sqlc.narg(date_from) AS DATETIME) IS NULL OR d.started_at >= sqlc.narg(date_from))
-  AND (CAST(sqlc.narg(date_to) AS DATETIME) IS NULL OR d.started_at < sqlc.narg(date_to))
+  AND (sqlc.narg(date_from) IS NULL OR d.started_at >= sqlc.narg(date_from))
+  AND (sqlc.narg(date_to) IS NULL OR d.started_at < sqlc.narg(date_to))
 ORDER BY d.id DESC
-LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
+LIMIT ? OFFSET ?;
 
 -- name: CancelDeployment :execrows
 UPDATE deployment
@@ -85,7 +85,7 @@ UPDATE deployment
 SET status = sqlc.arg(status),
     finished_at = sqlc.arg(finished_at),
     duration_ms = sqlc.arg(duration_ms),
-    error_message = NULLIF(CAST(sqlc.arg(error_message) AS TEXT), '')
+    error_message = NULLIF(sqlc.arg(error_message), '')
 WHERE id = sqlc.arg(id) AND status = sqlc.arg(current_status);
 
 -- name: CountActiveDeploymentsByService :one

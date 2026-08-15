@@ -2,19 +2,19 @@
   <ToggleGroupRoot
     v-model="internalValue"
     type="single"
-    class="flex h-8 overflow-hidden rounded-md border border-border bg-background"
+    class="flex h-9 shrink-0 overflow-hidden rounded-md border border-border bg-background"
     aria-label="视图模式"
   >
     <ToggleGroupItem
       value="list"
-      class="px-3 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+      class="px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
       aria-label="列表视图"
     >
       列表
     </ToggleGroupItem>
     <ToggleGroupItem
       value="dag"
-      class="px-3 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+      class="px-3 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
       aria-label="DAG视图"
     >
       DAG

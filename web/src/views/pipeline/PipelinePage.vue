@@ -8,11 +8,12 @@
         @search="searchPipelines"
       />
       <div class="flex flex-wrap items-center gap-3">
-        <select v-model="kind" class="app-input h-10 w-36" @change="searchPipelines">
-          <option value="">全部类型</option>
-          <option value="template">模板</option>
-          <option value="application">应用流水线</option>
-        </select>
+        <SelectControl
+          :model-value="kind"
+          :options="pipelineKindOptions"
+          width-class="w-36"
+          @update:model-value="updatePipelineKind"
+        />
         <button class="app-button-primary h-10 px-4" @click="openCreateDialog">
           <Plus class="size-4" />
           新建模板
@@ -337,6 +338,7 @@
   import ListPagination from '@/components/ListPagination.vue';
   import RawValueSelect, { type RawValue } from '@/components/RawValueSelect.vue';
   import SearchControl from '@/components/SearchControl.vue';
+  import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
@@ -360,7 +362,12 @@
   const sourceVersionLoading = ref(false);
   const sourceVersionError = ref('');
   const search = ref('');
-  const kind = ref('');
+  const kind = ref<'all' | 'template' | 'application'>('all');
+  const pipelineKindOptions = [
+    { value: 'all', label: '全部类型' },
+    { value: 'template', label: '模板' },
+    { value: 'application', label: '应用流水线' },
+  ];
   const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
   const createOpen = ref(false);
   const editOpen = ref(false);
@@ -464,7 +471,7 @@
       await execute(async () => {
         const response = await pipelineApi.list({
           project_id: projectId,
-          kind: kind.value || undefined,
+          kind: kind.value === 'all' ? undefined : kind.value,
           search: search.value.trim() || undefined,
           page: pagination.current,
           per_page: pagination.pageSize,
@@ -491,6 +498,14 @@
   function searchPipelines() {
     pagination.current = 1;
     void fetchPipelines();
+  }
+
+  function updatePipelineKind(value: string | number) {
+    if (value !== 'all' && value !== 'template' && value !== 'application') {
+      return;
+    }
+    kind.value = value;
+    searchPipelines();
   }
 
   function goPage(page: number) {

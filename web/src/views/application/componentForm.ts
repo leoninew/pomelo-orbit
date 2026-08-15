@@ -301,10 +301,12 @@ function buildPorts(rows: PortRow[]): ComponentEndpoint[] | null {
       protocol,
       container_port: containerPort,
       mode,
-      listen_port: hostPort,
-      bind_address: optionalText(row.bind_address ?? ''),
-      entrypoint: optionalText(row.entrypoint ?? ''),
-      path_prefix: optionalText(row.path_prefix ?? ''),
+      listen_port: requiresListenPort ? hostPort : undefined,
+      bind_address: requiresListenPort ? optionalText(row.bind_address ?? '') : undefined,
+      entrypoint:
+        protocol === 'http' && mode === 'gateway' ? optionalText(row.entrypoint ?? '') : undefined,
+      path_prefix:
+        protocol === 'http' && mode === 'gateway' ? optionalText(row.path_prefix ?? '') : undefined,
     });
   }
   return endpoints;

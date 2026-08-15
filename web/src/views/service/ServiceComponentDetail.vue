@@ -326,7 +326,7 @@
                 <td class="max-w-0 text-muted-foreground">
                   <dl class="space-y-1">
                     <div
-                      v-for="field in endpointFields"
+                      v-for="field in endpointFields(endpoint.protocol, endpoint.base.mode)"
                       :key="field.key"
                       class="flex min-w-0 gap-2"
                     >
@@ -338,28 +338,10 @@
                   </dl>
                 </td>
                 <td class="max-w-0">
-                  <div v-if="editingEndpointIdentity === endpoint.identity" class="space-y-2">
-                    <label
-                      v-for="field in endpointFields"
-                      :key="field.key"
-                      class="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-2"
-                    >
-                      <span class="text-muted-foreground">{{ field.label }}</span>
-                      <RawValueSelect
-                        v-if="field.key === 'mode'"
-                        v-model="editingEndpoint[field.key]"
-                        :values="endpointModeValues(endpoint.protocol)"
-                        width-class="h-9 w-full"
-                      />
-                      <input v-else v-model="editingEndpoint[field.key]" class="app-input h-9" />
-                    </label>
-                  </div>
-                  <span v-else-if="endpoint.deleted" class="text-amber-600 dark:text-amber-400">
-                    -
-                  </span>
+                  <span v-if="endpoint.deleted" class="text-amber-600 dark:text-amber-400">-</span>
                   <dl v-else class="space-y-1">
                     <div
-                      v-for="field in endpointFields"
+                      v-for="field in endpointFields(endpoint.protocol, endpoint.value.mode)"
                       :key="field.key"
                       class="flex min-w-0 gap-2"
                     >
@@ -379,25 +361,11 @@
                   </dl>
                 </td>
                 <td>
-                  <div
-                    v-if="editingEndpointIdentity === endpoint.identity"
-                    class="flex h-9 items-center gap-2"
-                  >
-                    <button class="app-link" @click="applyEndpointEdit(endpoint)">
-                      {{ t('common.save') }}
-                    </button>
-                    <button
-                      class="text-muted-foreground hover:text-foreground"
-                      @click="cancelEndpointEdit"
-                    >
-                      {{ t('common.cancel') }}
-                    </button>
-                  </div>
-                  <div v-else class="flex h-9 items-center gap-2">
+                  <div class="flex h-9 items-center gap-2">
                     <button
                       v-if="!endpoint.deleted"
                       class="app-link"
-                      @click="startEndpointEdit(endpoint)"
+                      @click="openEndpointDialog(endpoint)"
                     >
                       {{ t('common.edit') }}
                     </button>
@@ -575,6 +543,98 @@
         />
       </template>
     </AppDialog>
+
+    <AppDialog
+      :open="endpointDialogOpen"
+      :title="t('common.edit')"
+      width-class="w-[min(640px,calc(100vw-32px))]"
+      body-class="space-y-4 px-6 py-4 text-sm"
+      @update:open="setEndpointDialogOpen"
+    >
+      <div v-if="editingEndpointRow" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.protocol') }}
+          </label>
+          <input
+            :value="editingEndpointRow.protocol"
+            class="app-input bg-muted"
+            :aria-label="t('application.componentDetail.fields.protocol')"
+            readonly
+          />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.containerPort') }}
+          </label>
+          <input
+            :value="editingEndpointRow.container_port"
+            class="app-input bg-muted"
+            :aria-label="t('application.componentDetail.fields.containerPort')"
+            readonly
+          />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.endpointMode') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <RawValueSelect
+            v-model="editingEndpoint.mode"
+            :invalid="Boolean(endpointDialogErrors.mode)"
+            :values="endpointModeValues(editingEndpointRow.protocol)"
+            @update:model-value="normalizeEditingEndpoint"
+          />
+          <p v-if="endpointDialogErrors.mode" class="app-field-error" role="alert">
+            {{ endpointDialogErrors.mode }}
+          </p>
+        </div>
+        <div v-if="editingEndpointRequiresListenPort">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.listenPort') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="editingEndpoint.listen_port"
+            class="app-input"
+            :class="endpointDialogErrors.listen_port ? 'app-input-error' : ''"
+            inputmode="numeric"
+            type="text"
+            :aria-invalid="endpointDialogErrors.listen_port ? 'true' : undefined"
+            @input="endpointDialogErrors.listen_port = ''"
+          />
+          <p v-if="endpointDialogErrors.listen_port" class="app-field-error" role="alert">
+            {{ endpointDialogErrors.listen_port }}
+          </p>
+        </div>
+        <div v-if="editingEndpointRequiresListenPort">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.bindAddress') }}
+          </label>
+          <input v-model="editingEndpoint.bind_address" class="app-input" type="text" />
+        </div>
+        <div v-if="editingEndpointUsesGateway">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.entrypoint') }}
+          </label>
+          <input v-model="editingEndpoint.entrypoint" class="app-input" type="text" />
+        </div>
+        <div v-if="editingEndpointUsesGateway" class="sm:col-span-2">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.pathPrefix') }}
+          </label>
+          <input v-model="editingEndpoint.path_prefix" class="app-input" type="text" />
+        </div>
+      </div>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.save')"
+          @cancel="closeEndpointDialog"
+          @confirm="saveEndpointDialog"
+        />
+      </template>
+    </AppDialog>
   </div>
 </template>
 
@@ -699,8 +759,10 @@
   const runtimeDraft = reactive<RuntimeOverlayDraft>(emptyRuntimeOverlayDraft());
   const editingRuntimeKey = ref<RuntimeFieldKey | null>(null);
   const editingRuntimeValue = ref('');
+  const endpointDialogOpen = ref(false);
   const editingEndpointIdentity = ref<string | null>(null);
   const editingEndpoint = ref<EndpointValues>(emptyEndpointValues());
+  const endpointDialogErrors = reactive({ mode: '', listen_port: '' });
   const resourceDeleted = ref(false);
   const resourceFields = ref<ResourceField[]>([]);
   const editingResourceKey = ref<ResourceField['key'] | null>(null);
@@ -712,16 +774,35 @@
   }
   const pullPolicyValues = ['always', 'missing', 'never'];
   const restartPolicyValues = ['no', 'unless-stopped'];
-  const endpointFields: EndpointField[] = [
-    { key: 'mode', label: '模式' },
-    { key: 'bind_address', label: '监听地址' },
-    { key: 'listen_port', label: '监听端口' },
-    { key: 'entrypoint', label: '入口' },
-    { key: 'path_prefix', label: '路径' },
+  const endpointValueKeys: Array<keyof EndpointValues> = [
+    'mode',
+    'bind_address',
+    'listen_port',
+    'entrypoint',
+    'path_prefix',
   ];
 
   function emptyEndpointValues(): EndpointValues {
     return { mode: '', bind_address: '', listen_port: '', entrypoint: '', path_prefix: '' };
+  }
+  function endpointRequiresListenPort(mode: string) {
+    return mode === 'local' || mode === 'host';
+  }
+  function endpointUsesGateway(protocol: string, mode: string) {
+    return protocol === 'http' && mode === 'gateway';
+  }
+  function endpointFields(protocol: string, mode: string): EndpointField[] {
+    const fields: EndpointField[] = [{ key: 'mode', label: '模式' }];
+    if (endpointRequiresListenPort(mode)) {
+      fields.push(
+        { key: 'bind_address', label: '监听地址' },
+        { key: 'listen_port', label: '监听端口' }
+      );
+    }
+    if (endpointUsesGateway(protocol, mode)) {
+      fields.push({ key: 'entrypoint', label: '入口' }, { key: 'path_prefix', label: '路径' });
+    }
+    return fields;
   }
   function emptyRuntimeOverlayDraft(): RuntimeOverlayDraft {
     return {
@@ -941,26 +1022,90 @@
   function mountHasChanges(row: MountRow) {
     return row.source !== row.base || row.source_is_host_path !== row.base_source_is_host_path;
   }
-  function startEndpointEdit(row: EndpointRow) {
+  const editingEndpointRow = computed(() =>
+    endpointRows.value.find((row) => row.identity === editingEndpointIdentity.value)
+  );
+  const editingEndpointRequiresListenPort = computed(() =>
+    endpointRequiresListenPort(editingEndpoint.value.mode)
+  );
+  const editingEndpointUsesGateway = computed(() => {
+    const row = editingEndpointRow.value;
+    return row ? endpointUsesGateway(row.protocol, editingEndpoint.value.mode) : false;
+  });
+  function openEndpointDialog(row: EndpointRow) {
     editingEndpointIdentity.value = row.identity;
     editingEndpoint.value = { ...row.value };
+    endpointDialogErrors.mode = '';
+    endpointDialogErrors.listen_port = '';
+    normalizeEditingEndpoint();
+    endpointDialogOpen.value = true;
   }
-  function applyEndpointEdit(row: EndpointRow) {
-    row.value = { ...editingEndpoint.value };
-    row.deleted = false;
-    cancelEndpointEdit();
-  }
-  function cancelEndpointEdit() {
+  function closeEndpointDialog() {
+    endpointDialogOpen.value = false;
     editingEndpointIdentity.value = null;
     editingEndpoint.value = emptyEndpointValues();
+    endpointDialogErrors.mode = '';
+    endpointDialogErrors.listen_port = '';
+  }
+  function setEndpointDialogOpen(open: boolean) {
+    if (open) {
+      endpointDialogOpen.value = true;
+      return;
+    }
+    closeEndpointDialog();
+  }
+  function normalizeEditingEndpoint() {
+    const row = editingEndpointRow.value;
+    if (!row) {
+      return;
+    }
+    if (!endpointModeValues(row.protocol).includes(editingEndpoint.value.mode)) {
+      editingEndpoint.value.mode = 'internal';
+    }
+    if (!endpointRequiresListenPort(editingEndpoint.value.mode)) {
+      editingEndpoint.value.bind_address = '';
+      editingEndpoint.value.listen_port = '';
+    }
+    if (!endpointUsesGateway(row.protocol, editingEndpoint.value.mode)) {
+      editingEndpoint.value.entrypoint = '';
+      editingEndpoint.value.path_prefix = '';
+    }
+    endpointDialogErrors.mode = '';
+    endpointDialogErrors.listen_port = '';
+  }
+  function validateEndpointDialog() {
+    const row = editingEndpointRow.value;
+    if (!row) {
+      return false;
+    }
+    const mode = editingEndpoint.value.mode;
+    endpointDialogErrors.mode = endpointModeValues(row.protocol).includes(mode)
+      ? ''
+      : t('application.componentDetail.validation.invalidEndpoint');
+    const listenPort = editingEndpoint.value.listen_port;
+    endpointDialogErrors.listen_port =
+      !endpointRequiresListenPort(mode) ||
+      (/^\d+$/.test(listenPort) && Number(listenPort) >= 1 && Number(listenPort) <= 65535)
+        ? ''
+        : t('application.componentDetail.validation.invalidPort');
+    return !endpointDialogErrors.mode && !endpointDialogErrors.listen_port;
+  }
+  function saveEndpointDialog() {
+    const row = editingEndpointRow.value;
+    if (!row || !validateEndpointDialog()) {
+      return;
+    }
+    row.value = { ...editingEndpoint.value };
+    row.deleted = false;
+    closeEndpointDialog();
   }
   function endpointHasChanges(row: EndpointRow) {
-    return endpointFields.some((field) => row.value[field.key] !== row.base[field.key]);
+    return endpointValueKeys.some((key) => row.value[key] !== row.base[key]);
   }
   function resetEndpointToVersion(row: EndpointRow) {
     row.value = { ...row.base };
     row.deleted = false;
-    cancelEndpointEdit();
+    closeEndpointDialog();
   }
   function displayValue(value: string) {
     return value || '-';
@@ -1073,20 +1218,26 @@
                 reservation_cpus: resourceOverride('reservation_cpus'),
                 reservation_memory: resourceOverride('reservation_memory'),
               },
-      endpoints: endpointRows.value.map((row) =>
-        row.deleted
-          ? { protocol: row.protocol, container_port: row.container_port, state: 'deleted' }
-          : {
-              protocol: row.protocol,
-              container_port: row.container_port,
-              state: 'override',
-              mode: row.value.mode,
-              bind_address: optional(row.value.bind_address),
-              listen_port: row.value.listen_port === '' ? undefined : Number(row.value.listen_port),
-              entrypoint: optional(row.value.entrypoint),
-              path_prefix: optional(row.value.path_prefix),
-            }
-      ),
+      endpoints: endpointRows.value.map((row) => {
+        if (row.deleted) {
+          return { protocol: row.protocol, container_port: row.container_port, state: 'deleted' };
+        }
+        const requiresListenPort = endpointRequiresListenPort(row.value.mode);
+        const usesGateway = endpointUsesGateway(row.protocol, row.value.mode);
+        return {
+          protocol: row.protocol,
+          container_port: row.container_port,
+          state: 'override',
+          mode: row.value.mode,
+          bind_address: requiresListenPort ? optional(row.value.bind_address) : undefined,
+          listen_port:
+            requiresListenPort && row.value.listen_port !== ''
+              ? Number(row.value.listen_port)
+              : undefined,
+          entrypoint: usesGateway ? optional(row.value.entrypoint) : undefined,
+          path_prefix: usesGateway ? optional(row.value.path_prefix) : undefined,
+        };
+      }),
     };
   }
   async function load() {

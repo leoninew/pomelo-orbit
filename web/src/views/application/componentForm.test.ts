@@ -206,6 +206,34 @@ describe('componentForm', () => {
     });
   });
 
+  it('omits HTTP routing settings from TCP endpoints', () => {
+    const form = emptyComponentForm();
+    form.ports.push({
+      protocol: 'tcp',
+      host_port: '5432',
+      container_port: '5432',
+      mode: 'host',
+      bind_address: '127.0.0.1',
+      entrypoint: 'web',
+      path_prefix: '/database',
+    });
+
+    expect(componentEndpointsRequestFromForm(form)).toEqual({
+      valid: true,
+      value: {
+        endpoints: [
+          {
+            protocol: 'tcp',
+            container_port: 5432,
+            mode: 'host',
+            listen_port: 5432,
+            bind_address: '127.0.0.1',
+          },
+        ],
+      },
+    });
+  });
+
   it('serializes resources with advanced configuration', () => {
     const form = emptyComponentForm();
     form.resources.limit_memory = '512m';

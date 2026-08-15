@@ -255,28 +255,31 @@
 
   <AppDialog v-model:open="isCreateDialogOpen" :title="t('route.addRoute')">
     <div class="space-y-4">
-      <div class="space-y-1.5">
-        <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
-        <select v-model="form.protocol" class="app-input" @change="resetProtocolFields(form)">
-          <option value="http">HTTP</option>
-          <option value="tcp">TCP</option>
-        </select>
-      </div>
-      <div class="space-y-1.5">
-        <label class="app-field-label block">
-          {{ t('route.fields.name') }}
-          <span class="text-destructive">*</span>
-        </label>
-        <input
-          v-model="form.name"
-          type="text"
-          class="app-input"
-          :class="errors.name ? 'app-input-error' : ''"
-          :placeholder="t('route.hints.name')"
-          :aria-invalid="errors.name ? 'true' : undefined"
-          @input="errors.name = ''"
-        />
-        <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5">
+          <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
+          <SelectControl
+            :model-value="form.protocol"
+            :options="protocolOptions"
+            @update:model-value="updateProtocol(form, $event)"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block">
+            {{ t('route.fields.name') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="form.name"
+            type="text"
+            class="app-input"
+            :class="errors.name ? 'app-input-error' : ''"
+            :placeholder="t('route.hints.name')"
+            :aria-invalid="errors.name ? 'true' : undefined"
+            @input="errors.name = ''"
+          />
+          <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+        </div>
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">
@@ -410,41 +413,40 @@
     @update:open="handleEditDialogOpenChange"
   >
     <form class="space-y-4" novalidate @submit.prevent="handleEditSave">
-      <div class="space-y-1.5">
-        <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
-        <select
-          v-model="editForm.protocol"
-          class="app-input"
-          @change="resetProtocolFields(editForm)"
-        >
-          <option value="http">HTTP</option>
-          <option value="tcp">TCP</option>
-        </select>
-      </div>
-      <div class="space-y-1.5">
-        <label for="edit-route-name" class="app-field-label block">
-          {{ t('route.fields.name') }}
-          <span class="text-destructive">*</span>
-        </label>
-        <input
-          id="edit-route-name"
-          v-model="editForm.name"
-          type="text"
-          class="app-input"
-          :class="editErrors.name ? 'app-input-error' : ''"
-          :placeholder="t('route.hints.name')"
-          :aria-invalid="editErrors.name ? 'true' : undefined"
-          :aria-describedby="editErrors.name ? 'edit-route-name-error' : undefined"
-          @input="clearEditError('name')"
-        />
-        <p
-          v-if="editErrors.name"
-          id="edit-route-name-error"
-          class="app-field-error text-xs"
-          role="alert"
-        >
-          {{ editErrors.name }}
-        </p>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5">
+          <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
+          <SelectControl
+            :model-value="editForm.protocol"
+            :options="protocolOptions"
+            @update:model-value="updateProtocol(editForm, $event)"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label for="edit-route-name" class="app-field-label block">
+            {{ t('route.fields.name') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="edit-route-name"
+            v-model="editForm.name"
+            type="text"
+            class="app-input"
+            :class="editErrors.name ? 'app-input-error' : ''"
+            :placeholder="t('route.hints.name')"
+            :aria-invalid="editErrors.name ? 'true' : undefined"
+            :aria-describedby="editErrors.name ? 'edit-route-name-error' : undefined"
+            @input="clearEditError('name')"
+          />
+          <p
+            v-if="editErrors.name"
+            id="edit-route-name-error"
+            class="app-field-error text-xs"
+            role="alert"
+          >
+            {{ editErrors.name }}
+          </p>
+        </div>
       </div>
       <div class="space-y-1.5">
         <label for="edit-route-domain" class="app-field-label block">
@@ -605,6 +607,7 @@
   import ListPagination from '@/components/ListPagination.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
   import SearchControl from '@/components/SearchControl.vue';
+  import SelectControl from '@/components/SelectControl.vue';
   import { useRouteTargetServices } from '@/composables/useRouteTargetServices';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
@@ -622,6 +625,10 @@
   const { loading: routeOperating, execute: executeRouteOperation } = useStatusAsync();
   const { status: traefikStatus, error: traefikError, execute: executeTraefik } = useStatusAsync();
   const { services: targetServices, load: loadTargetServices } = useRouteTargetServices();
+  const protocolOptions = [
+    { value: 'http', label: 'HTTP' },
+    { value: 'tcp', label: 'TCP' },
+  ];
 
   const routes = ref<RouteResp[]>([]);
   const traefikRoutes = ref<TraefikRouterResp[]>([]);
@@ -761,6 +768,14 @@
     routeForm.custom_target = false;
   }
 
+  function updateProtocol(routeForm: RouteForm, value: string | number) {
+    if (value !== 'http' && value !== 'tcp') {
+      return;
+    }
+    routeForm.protocol = value;
+    resetProtocolFields(routeForm);
+  }
+
   function setManagedTargetErrors(routeForm: RouteForm, routeErrors: RouteErrors) {
     const error = t('route.validation.managedTargetRequired');
     routeErrors.service_id = routeForm.service_id.trim() ? '' : error;
@@ -893,7 +908,7 @@
       domain: editingRoute.value.domain,
       path_prefix: editingRoute.value.path_prefix,
       target_url: editingRoute.value.target_url,
-      custom_target: Boolean(editingRoute.value.target_url),
+      custom_target: editingRoute.value.protocol === 'http' && !editingRoute.value.service_id,
       listen_port: editingRoute.value.listen_port,
       service_id: editingRoute.value.service_id ?? '',
       component_name: editingRoute.value.component_name ?? '',
@@ -1109,14 +1124,7 @@
   }
 
   function routeTarget(route: RouteResp): string {
-    if (route.target_url) {
-      return route.target_url;
-    }
-    const endpoint =
-      route.endpoint_protocol && route.endpoint_container_port !== undefined
-        ? `${route.endpoint_protocol}${route.endpoint_container_port}`
-        : '';
-    return [route.service_id, route.component_name, endpoint].filter(Boolean).join('/');
+    return route.target_url;
   }
 
   async function openDashboard() {

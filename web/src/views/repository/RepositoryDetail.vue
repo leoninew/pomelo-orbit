@@ -102,15 +102,12 @@
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label for="edit-repository-type" class="app-field-label block">仓库类型</label>
-          <select
+          <SelectControl
             id="edit-repository-type"
-            v-model="editForm.repository_type"
-            class="app-input"
-            @change="handleEditRepositoryTypeChange"
-          >
-            <option value="remote_git">远程 Git</option>
-            <option value="local_directory">本地目录</option>
-          </select>
+            :model-value="editForm.repository_type"
+            :options="repositoryTypeOptions"
+            @update:model-value="updateEditRepositoryType"
+          />
         </div>
 
         <div class="space-y-1.5">
@@ -346,6 +343,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
+  import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -421,6 +419,10 @@
       description: credential.type,
     }))
   );
+  const repositoryTypeOptions = [
+    { value: 'remote_git', label: '远程 Git' },
+    { value: 'local_directory', label: '本地目录' },
+  ];
   const repositoryVariables = computed(() => repository.value?.variable_declarations ?? []);
   const repositoryCustomVariables = computed(() =>
     repositoryVariables.value.filter((variable) => variable.source === 'repository_custom')
@@ -471,6 +473,14 @@
   function handleEditRepositoryTypeChange() {
     clearEditError('repository_url');
     editFormError.value = '';
+  }
+
+  function updateEditRepositoryType(value: string | number) {
+    if (value !== 'remote_git' && value !== 'local_directory') {
+      return;
+    }
+    editForm.repository_type = value;
+    handleEditRepositoryTypeChange();
   }
 
   function handleEditDialogOpenChange(open: boolean) {

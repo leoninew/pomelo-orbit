@@ -1,11 +1,11 @@
 <template>
-  <DetailInfoCard :title="t('application.detail.fields.components')">
+  <DetailInfoCard :title="t('application.detail.fields.components')" actions-class="flex-nowrap">
     <template #actions>
       <SearchControl
         v-model="searchText"
         :placeholder="t('application.detail.searchComponentsPlaceholder')"
         :loading="loading"
-        class="shrink-0"
+        class="min-w-0 flex-1"
         @search="handleSearch"
       />
       <button

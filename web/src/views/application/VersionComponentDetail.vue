@@ -939,15 +939,16 @@
               v-model="portForm.mode"
               :invalid="Boolean(recordErrors.endpoint_mode)"
               :values="endpointModeValues(portForm.protocol)"
+              @update:model-value="normalizePortMode"
             />
             <p v-if="recordErrors.endpoint_mode" class="app-field-error" role="alert">
               {{ recordErrors.endpoint_mode }}
             </p>
           </div>
-          <div>
+          <div v-if="portRequiresListenPort">
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.hostPort') }}
-              <span v-if="portRequiresListenPort" class="text-destructive">*</span>
+              <span class="text-destructive">*</span>
             </label>
             <input
               v-model="portForm.host_port"
@@ -984,19 +985,19 @@
           </div>
         </div>
         <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
+          <div v-if="portRequiresListenPort">
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.bindAddress') }}
             </label>
             <input v-model="portForm.bind_address" class="app-input" type="text" />
           </div>
-          <div>
+          <div v-if="portUsesGateway">
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.entrypoint') }}
             </label>
             <input v-model="portForm.entrypoint" class="app-input" type="text" />
           </div>
-          <div class="sm:col-span-2">
+          <div v-if="portUsesGateway" class="sm:col-span-2">
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.pathPrefix') }}
             </label>
@@ -1387,8 +1388,8 @@
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import AppDialog from '@/components/AppDialog.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
+  import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
@@ -1501,7 +1502,7 @@
     protocol: 'http',
     host_port: '',
     container_port: '',
-    mode: 'host',
+    mode: 'local',
     bind_address: '',
     entrypoint: '',
     path_prefix: '',
@@ -1559,6 +1560,9 @@
   }
   const portRequiresListenPort = computed(() =>
     ['local', 'host'].includes(portForm.mode || 'host')
+  );
+  const portUsesGateway = computed(
+    () => portForm.protocol === 'http' && portForm.mode === 'gateway'
   );
   const dependencyConditions = [
     'service_started',
@@ -1656,6 +1660,14 @@
   function normalizePortMode() {
     if (!endpointModeValues(portForm.protocol).includes(portForm.mode || '')) {
       portForm.mode = 'internal';
+    }
+    if (!portRequiresListenPort.value) {
+      portForm.host_port = '';
+      portForm.bind_address = '';
+    }
+    if (!portUsesGateway.value) {
+      portForm.entrypoint = '';
+      portForm.path_prefix = '';
     }
     recordErrors.protocol = '';
     recordErrors.endpoint_mode = '';
@@ -2102,7 +2114,7 @@
               protocol: 'http',
               host_port: '',
               container_port: '',
-              mode: 'host',
+              mode: 'local',
               bind_address: '',
               entrypoint: '',
               path_prefix: '',

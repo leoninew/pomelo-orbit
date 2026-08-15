@@ -5,6 +5,7 @@
     @update:model-value="emit('update:modelValue', $event as SelectOptionValue)"
   >
     <SelectTrigger
+      :id="id"
       class="app-select-trigger"
       :class="[widthClass, invalid ? 'app-input-error' : '']"
     >
@@ -63,6 +64,7 @@
     defineProps<{
       modelValue?: SelectOptionValue;
       options: SelectOption[];
+      id?: string;
       placeholder?: string;
       disabled?: boolean;
       invalid?: boolean;

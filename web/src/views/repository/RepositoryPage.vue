@@ -86,15 +86,12 @@
     <div v-else class="space-y-4">
       <div class="space-y-1.5">
         <label for="create-repository-type" class="app-field-label block">仓库类型</label>
-        <select
+        <SelectControl
           id="create-repository-type"
-          v-model="form.repository_type"
-          class="app-input"
-          @change="handleRepositoryTypeChange"
-        >
-          <option value="remote_git">远程 Git</option>
-          <option value="local_directory">本地目录</option>
-        </select>
+          :model-value="form.repository_type"
+          :options="repositoryTypeOptions"
+          @update:model-value="updateCreateRepositoryType"
+        />
       </div>
 
       <div class="space-y-1.5">
@@ -235,15 +232,12 @@
     <form v-else class="space-y-4" novalidate @submit.prevent="handleEditOk">
       <div class="space-y-1.5">
         <label for="edit-repository-type" class="app-field-label block">仓库类型</label>
-        <select
+        <SelectControl
           id="edit-repository-type"
-          v-model="editForm.repository_type"
-          class="app-input"
-          @change="handleEditRepositoryTypeChange"
-        >
-          <option value="remote_git">远程 Git</option>
-          <option value="local_directory">本地目录</option>
-        </select>
+          :model-value="editForm.repository_type"
+          :options="repositoryTypeOptions"
+          @update:model-value="updateEditRepositoryType"
+        />
       </div>
 
       <div class="space-y-1.5">
@@ -405,6 +399,7 @@
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
+  import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -439,6 +434,10 @@
       label: cred.name,
     }))
   );
+  const repositoryTypeOptions = [
+    { value: 'remote_git', label: '远程 Git' },
+    { value: 'local_directory', label: '本地目录' },
+  ];
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const searchText = ref('');
@@ -501,6 +500,14 @@
     createFormError.value = '';
   }
 
+  function updateCreateRepositoryType(value: string | number) {
+    if (value !== 'remote_git' && value !== 'local_directory') {
+      return;
+    }
+    form.repository_type = value;
+    handleRepositoryTypeChange();
+  }
+
   function resetEditForm() {
     if (!editingRepository.value) {
       return;
@@ -536,6 +543,14 @@
   function handleEditRepositoryTypeChange() {
     clearEditError('repository_url');
     editFormError.value = '';
+  }
+
+  function updateEditRepositoryType(value: string | number) {
+    if (value !== 'remote_git' && value !== 'local_directory') {
+      return;
+    }
+    editForm.repository_type = value;
+    handleEditRepositoryTypeChange();
   }
 
   function handleCreateModalOpenChange(open: boolean) {

@@ -5,6 +5,24 @@
       <DetailPageHeader :items="[]" :title="routeData?.name ?? t('route.detailTitle')" />
       <div class="flex flex-wrap items-center gap-2">
         <button
+          v-if="routeData && !routeData.enabled"
+          class="app-button-primary h-9 px-3"
+          :disabled="operating"
+          @click="handleEnable"
+        >
+          <Play class="size-4" />
+          {{ t('route.status.enabled') }}
+        </button>
+        <button
+          v-else-if="routeData"
+          class="app-button-warning h-9 px-3"
+          :disabled="operating"
+          @click="handleDisable"
+        >
+          <PowerOff class="size-4" />
+          {{ t('route.status.disabled') }}
+        </button>
+        <button
           v-if="routeData"
           class="app-button-danger h-9 px-3"
           :disabled="operating"
@@ -49,9 +67,7 @@
                 {{ routeData.domain }}
                 <ExternalLink class="size-3" />
               </a>
-              <span v-else class="text-foreground">
-                {{ routeData.domain }}:{{ routeData.listen_port }}
-              </span>
+              <span v-else class="text-foreground">{{ routeData.domain }}</span>
             </dd>
           </div>
           <div class="flex gap-2">
@@ -62,30 +78,14 @@
             <dt>{{ t('route.fields.pathPrefix') }}</dt>
             <dd class="text-foreground">{{ routeData.path_prefix }}</dd>
           </div>
+          <div v-if="routeData.protocol === 'tcp'" class="flex gap-2">
+            <dt>{{ t('route.fields.listenPort') }}</dt>
+            <dd class="text-foreground">{{ routeData.listen_port }}</dd>
+          </div>
           <div v-if="routeData.target_url" class="flex gap-2">
             <dt>{{ t('route.fields.targetUrl') }}</dt>
             <dd class="text-foreground">{{ routeData.target_url }}</dd>
           </div>
-          <template v-if="routeData.service_id">
-            <div class="flex gap-2">
-              <dt>{{ t('route.fields.listenPort') }}</dt>
-              <dd class="text-foreground">{{ routeData.listen_port }}</dd>
-            </div>
-            <div class="flex gap-2">
-              <dt>{{ t('route.fields.serviceId') }}</dt>
-              <dd class="text-foreground">{{ routeData.service_id }}</dd>
-            </div>
-            <div class="flex gap-2">
-              <dt>{{ t('route.fields.componentName') }}</dt>
-              <dd class="text-foreground">{{ routeData.component_name }}</dd>
-            </div>
-            <div class="flex gap-2">
-              <dt>{{ t('route.fields.endpointName') }}</dt>
-              <dd class="text-foreground">
-                {{ routeData.endpoint_protocol }}{{ routeData.endpoint_container_port }}
-              </dd>
-            </div>
-          </template>
           <div class="flex gap-2">
             <dt>{{ t('common.status') }}</dt>
             <dd>
@@ -107,44 +107,125 @@
 
       <!-- HTTPS Config Card -->
       <DetailInfoCard v-if="routeData.protocol === 'http'" :title="t('route.httpsConfig')">
-        <div class="space-y-4 px-5 py-4">
-          <div class="flex items-center justify-between rounded-md bg-muted/30 p-3">
-            <div>
-              <p class="text-sm text-foreground">{{ t('route.currentStatus') }}</p>
-              <p class="text-sm text-muted-foreground">
-                {{ routeData.https_enabled ? t('route.httpsEnabled') : t('route.httpsDisabled') }}
-              </p>
+        <div class="space-y-5 p-5 sm:p-6">
+          <div
+            class="flex flex-wrap items-center justify-between gap-4 rounded-md border border-border bg-muted/20 px-4 py-3"
+          >
+            <div class="flex min-w-0 items-center gap-3">
+              <span
+                class="flex size-9 shrink-0 items-center justify-center rounded-md"
+                :class="
+                  routeData.https_enabled
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-muted text-muted-foreground'
+                "
+              >
+                <ShieldCheck v-if="routeData.https_enabled" class="size-5" />
+                <ShieldOff v-else class="size-5" />
+              </span>
+              <div>
+                <p class="text-sm font-medium text-foreground">{{ t('route.currentStatus') }}</p>
+                <p class="text-sm text-muted-foreground">
+                  {{ routeData.https_enabled ? t('route.httpsEnabled') : t('route.httpsDisabled') }}
+                </p>
+              </div>
             </div>
-            <AppBadge variant="status" :tone="routeData.https_enabled ? 'info' : 'default'">
-              {{ routeData.https_enabled ? 'HTTPS' : 'HTTP' }}
-            </AppBadge>
+            <div class="flex items-center gap-2">
+              <AppBadge variant="status" :tone="routeData.https_enabled ? 'info' : 'default'">
+                {{ routeData.https_enabled ? 'HTTPS' : 'HTTP' }}
+              </AppBadge>
+              <button
+                v-if="routeData.https_enabled"
+                class="app-button-danger h-9 px-3"
+                :disabled="operating"
+                @click="handleDisableHttps"
+              >
+                <X class="size-4" />
+                {{ t('route.disableHttps') }}
+              </button>
+            </div>
           </div>
 
-          <div v-if="!routeData.https_enabled" class="space-y-2">
+          <div
+            v-if="!routeData.https_enabled"
+            class="grid gap-3"
+            :class="canUseLetsencrypt ? 'lg:grid-cols-3' : 'md:grid-cols-2'"
+          >
             <button
               v-if="canUseLetsencrypt"
-              class="app-action-item"
+              class="app-action-item flex min-h-28 items-start gap-3 p-4"
               :disabled="operating"
               @click="handleEnableLetsencrypt"
             >
-              <p class="text-sm text-foreground">{{ t('route.enableLetsencrypt') }}</p>
-              <p class="text-sm text-muted-foreground">{{ t('route.letsencryptHint') }}</p>
+              <span
+                class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+              >
+                <ShieldCheck class="size-5" />
+              </span>
+              <span class="min-w-0 flex-1 text-left">
+                <span class="block font-medium text-foreground">
+                  {{ t('route.enableLetsencrypt') }}
+                </span>
+                <span class="mt-1 block text-muted-foreground">
+                  {{ t('route.letsencryptHint') }}
+                </span>
+              </span>
+              <ChevronRight class="mt-1 size-4 shrink-0 text-muted-foreground" />
             </button>
-            <button class="app-action-item" :disabled="operating" @click="handleEnableMkcert">
-              <p class="text-sm text-foreground">{{ t('route.enableMkcert') }}</p>
-              <p class="text-sm text-muted-foreground">{{ t('route.mkcertHint') }}</p>
+            <button
+              class="app-action-item flex min-h-28 items-start gap-3 p-4"
+              :disabled="operating"
+              @click="handleEnableMkcert"
+            >
+              <span
+                class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+              >
+                <Key class="size-5" />
+              </span>
+              <span class="min-w-0 flex-1 text-left">
+                <span class="block font-medium text-foreground">{{ t('route.enableMkcert') }}</span>
+                <span class="mt-1 block text-muted-foreground">{{ t('route.mkcertHint') }}</span>
+              </span>
+              <ChevronRight class="mt-1 size-4 shrink-0 text-muted-foreground" />
             </button>
-            <label class="app-action-item cursor-pointer">
-              <p class="text-sm text-foreground">{{ t('route.uploadCustomCert') }}</p>
-              <p class="text-sm text-muted-foreground">{{ t('route.uploadCustomCertHint') }}</p>
-              <input type="file" accept=".pem" class="hidden" @change="handleCertUpload" />
-            </label>
-          </div>
-
-          <div v-else class="flex justify-end">
-            <button class="app-button-danger" :disabled="operating" @click="handleDisableHttps">
-              {{ t('route.disableHttps') }}
-            </button>
+            <div
+              class="flex min-h-28 flex-col justify-between gap-3 rounded-md border border-border bg-muted/20 p-4"
+            >
+              <div class="flex items-start gap-3">
+                <span
+                  class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+                >
+                  <Upload class="size-5" />
+                </span>
+                <div class="min-w-0">
+                  <p class="font-medium text-foreground">{{ t('route.uploadCustomCert') }}</p>
+                  <p class="mt-1 text-sm text-muted-foreground">
+                    {{ t('route.uploadCustomCertHint') }}
+                  </p>
+                </div>
+              </div>
+              <div
+                class="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center"
+              >
+                <p class="min-w-0 text-xs text-muted-foreground">{{ t('route.pemFileHint') }}</p>
+                <button
+                  type="button"
+                  class="app-button h-9 shrink-0 px-3"
+                  :disabled="operating"
+                  @click="selectCertFile"
+                >
+                  <Upload class="size-4" />
+                  {{ t('route.selectPemFile') }}
+                </button>
+              </div>
+              <input
+                ref="certFileInput"
+                type="file"
+                accept=".pem"
+                class="hidden"
+                @change="handleCertUpload"
+              />
+            </div>
           </div>
         </div>
       </DetailInfoCard>
@@ -155,28 +236,31 @@
 
     <AppDialog v-model:open="isEditDialogOpen" :title="t('route.editRoute')">
       <div class="space-y-4">
-        <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
-          <select v-model="form.protocol" class="app-input" @change="resetProtocolFields">
-            <option value="http">HTTP</option>
-            <option value="tcp">TCP</option>
-          </select>
-        </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label block">
-            {{ t('route.fields.name') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="form.name"
-            type="text"
-            class="app-input"
-            :class="errors.name ? 'app-input-error' : ''"
-            :placeholder="t('route.hints.name')"
-            :aria-invalid="errors.name ? 'true' : undefined"
-            @input="errors.name = ''"
-          />
-          <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="space-y-1.5">
+            <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
+            <SelectControl
+              :model-value="form.protocol"
+              :options="protocolOptions"
+              @update:model-value="updateProtocol"
+            />
+          </div>
+          <div class="space-y-1.5">
+            <label class="app-field-label block">
+              {{ t('route.fields.name') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <input
+              v-model="form.name"
+              type="text"
+              class="app-input"
+              :class="errors.name ? 'app-input-error' : ''"
+              :placeholder="t('route.hints.name')"
+              :aria-invalid="errors.name ? 'true' : undefined"
+              @input="errors.name = ''"
+            />
+            <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+          </div>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">
@@ -253,7 +337,7 @@
           />
           <p v-if="errors.target_url" class="app-field-error text-xs">{{ errors.target_url }}</p>
         </div>
-        <template v-else>
+        <template v-if="form.protocol === 'tcp'">
           <RouteManagedTargetSelect
             protocol="tcp"
             :services="targetServices"
@@ -322,7 +406,19 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ExternalLink, Trash2 } from '@lucide/vue';
+  import {
+    ArrowLeft,
+    ChevronRight,
+    ExternalLink,
+    Key,
+    Play,
+    PowerOff,
+    ShieldCheck,
+    ShieldOff,
+    Trash2,
+    Upload,
+    X,
+  } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { SwitchRoot, SwitchThumb } from 'reka-ui';
   import { useRoute, useRouter } from 'vue-router';
@@ -336,6 +432,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
+  import SelectControl from '@/components/SelectControl.vue';
   import { useRouteTargetServices } from '@/composables/useRouteTargetServices';
   import { useProjectStore } from '@/stores/project';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -353,10 +450,15 @@
   const { loading: basicInfoLoading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
   const { services: targetServices, load: loadTargetServices } = useRouteTargetServices();
+  const protocolOptions = [
+    { value: 'http', label: 'HTTP' },
+    { value: 'tcp', label: 'TCP' },
+  ];
 
   const routeData = ref<RouteResp>();
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
+  const certFileInput = ref<HTMLInputElement>();
 
   const form = reactive({
     name: '',
@@ -409,7 +511,7 @@
           domain: data.domain,
           path_prefix: data.path_prefix,
           target_url: data.target_url,
-          custom_target: Boolean(data.target_url),
+          custom_target: data.protocol === 'http' && !data.service_id,
           listen_port: data.listen_port,
           service_id: data.service_id ?? '',
           component_name: data.component_name ?? '',
@@ -445,7 +547,7 @@
       domain: routeData.value.domain,
       path_prefix: routeData.value.path_prefix,
       target_url: routeData.value.target_url,
-      custom_target: Boolean(routeData.value.target_url),
+      custom_target: routeData.value.protocol === 'http' && !routeData.value.service_id,
       listen_port: routeData.value.listen_port,
       service_id: routeData.value.service_id ?? '',
       component_name: routeData.value.component_name ?? '',
@@ -554,6 +656,14 @@
     form.custom_target = false;
   }
 
+  function updateProtocol(value: string | number) {
+    if (value !== 'http' && value !== 'tcp') {
+      return;
+    }
+    form.protocol = value;
+    resetProtocolFields();
+  }
+
   function setManagedTargetErrors() {
     const error = t('route.validation.managedTargetRequired');
     errors.service_id = form.service_id.trim() ? '' : error;
@@ -593,6 +703,30 @@
     }
   }
 
+  async function handleEnable() {
+    try {
+      await executeOp(async () => {
+        await routeApi.enable(routeId, {});
+        toast.success(t('route.toast.enableSuccess'));
+        await fetchRoute();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('route.toast.enableFailed'));
+    }
+  }
+
+  async function handleDisable() {
+    try {
+      await executeOp(async () => {
+        await routeApi.disable(routeId, {});
+        toast.success(t('route.toast.disableSuccess'));
+        await fetchRoute();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('route.toast.disableFailed'));
+    }
+  }
+
   async function handleCertUpload(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) {
@@ -606,7 +740,13 @@
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.certUploadFailed'));
+    } finally {
+      (event.target as HTMLInputElement).value = '';
     }
+  }
+
+  function selectCertFile() {
+    certFileInput.value?.click();
   }
 
   async function handleDisableHttps() {

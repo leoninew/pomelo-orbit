@@ -1,5 +1,5 @@
 # Pomelo Orbit 目录挂载原理
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-08-15 12:48:49
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -116,7 +116,7 @@ traefik/
 5. Traefik rest provider 生效
 ```
 
-网关静态配置（含 `providers.rest`）由 Gateway compile 生成到 Version 挂载 `traefik.yml`（logical + content_mode=sync），Deploy 时物化。
+创建 Gateway 时，初始 Traefik Version 写入 `traefik.yml`、Docker socket 与 `traefik.cert_dir` 对应的证书/ACME 目录挂载。它们是普通 Version 数据：用户可在 Application/Version 中编辑，Gateway Deploy、Route 保存与同步不会重新生成或覆盖。
 
 ## 证书文件同步
 

@@ -1,5 +1,5 @@
 # CD 部署原理（How-to / 概览）
-最后修改时间: 2026-08-08 12:35:00
+最后修改时间: 2026-08-15 12:48:49
 
 Doc role: living guide  
 权威领域模型见 [CD 领域模型](../product/cd-model.md)、[CD 运行时](../architecture/cd-runtime.md)。与代码冲突时以代码为准。
@@ -39,10 +39,11 @@ Deployment 是操作状态；Service 只表达实际运行态。取消会立即�
 ## Gateway
 
 - 产品面：`Application(kind=gateway)` + `gateway_config`  
-- 与 standard 共用 Version / Deploy 管线  
+- 创建时还会原子生成初始可编辑 Version/Traefik Component，以及停止态 default Service（`<application-code>-default`）
+- 与 standard 共用 Version / Service / Deployment 管线；Gateway 部署只操作已有 Service，不在部署时创建或改绑 Service
 - 平台 Route：`providers.rest` PUT 到 `rest_api_url`  
 - 应用 public Host：`{app_code}.{gateway.base_domain}`  
-- 同时仅一个实际 `running` 的 gateway Service，或另一 gateway Service 的活跃 Deployment
+- 同 Application 的多个 Service instance 与普通应用一样只能有一个运行态实例；端口或网络冲突由 Compose 报告
 
 ## 相关指南
 

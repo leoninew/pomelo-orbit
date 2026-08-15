@@ -325,22 +325,26 @@ func (x *GatewayExposureItem) GetClientHint() string {
 }
 
 type GatewayResp struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId         string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Code              string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
-	Name              string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Kind              string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
-	RestApiUrl        string                 `protobuf:"bytes,6,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
-	BaseDomain        string                 `protobuf:"bytes,7,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
-	CreatedAt         string                 `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt         string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	ConfigUpdatedAt   string                 `protobuf:"bytes,11,opt,name=config_updated_at,json=configUpdatedAt,proto3" json:"config_updated_at,omitempty"`
-	DefaultEntrypoint string                 `protobuf:"bytes,13,opt,name=default_entrypoint,json=defaultEntrypoint,proto3" json:"default_entrypoint,omitempty"`
-	TlsMode           string                 `protobuf:"bytes,15,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
-	Exposures         []*GatewayExposureItem `protobuf:"bytes,16,rep,name=exposures,proto3" json:"exposures,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	Id                        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId                 string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Code                      string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
+	Name                      string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Kind                      string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
+	RestApiUrl                string                 `protobuf:"bytes,6,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
+	BaseDomain                string                 `protobuf:"bytes,7,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	CreatedAt                 string                 `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt                 string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ConfigUpdatedAt           string                 `protobuf:"bytes,11,opt,name=config_updated_at,json=configUpdatedAt,proto3" json:"config_updated_at,omitempty"`
+	DefaultEntrypoint         string                 `protobuf:"bytes,13,opt,name=default_entrypoint,json=defaultEntrypoint,proto3" json:"default_entrypoint,omitempty"`
+	TlsMode                   string                 `protobuf:"bytes,15,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
+	Exposures                 []*GatewayExposureItem `protobuf:"bytes,16,rep,name=exposures,proto3" json:"exposures,omitempty"`
+	DefaultServiceId          string                 `protobuf:"bytes,17,opt,name=default_service_id,json=defaultServiceId,proto3" json:"default_service_id,omitempty"`
+	DefaultServiceInstanceKey string                 `protobuf:"bytes,18,opt,name=default_service_instance_key,json=defaultServiceInstanceKey,proto3" json:"default_service_instance_key,omitempty"`
+	DefaultServiceCode        string                 `protobuf:"bytes,19,opt,name=default_service_code,json=defaultServiceCode,proto3" json:"default_service_code,omitempty"`
+	DefaultServiceStatus      string                 `protobuf:"bytes,20,opt,name=default_service_status,json=defaultServiceStatus,proto3" json:"default_service_status,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *GatewayResp) Reset() {
@@ -462,6 +466,34 @@ func (x *GatewayResp) GetExposures() []*GatewayExposureItem {
 		return x.Exposures
 	}
 	return nil
+}
+
+func (x *GatewayResp) GetDefaultServiceId() string {
+	if x != nil {
+		return x.DefaultServiceId
+	}
+	return ""
+}
+
+func (x *GatewayResp) GetDefaultServiceInstanceKey() string {
+	if x != nil {
+		return x.DefaultServiceInstanceKey
+	}
+	return ""
+}
+
+func (x *GatewayResp) GetDefaultServiceCode() string {
+	if x != nil {
+		return x.DefaultServiceCode
+	}
+	return ""
+}
+
+func (x *GatewayResp) GetDefaultServiceStatus() string {
+	if x != nil {
+		return x.DefaultServiceStatus
+	}
+	return ""
 }
 
 type GatewayPaginatedResp struct {
@@ -589,7 +621,7 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\finternal_dns\x18\t \x01(\tR\vinternalDns\x12\x1f\n" +
 	"\vclient_hint\x18\n" +
 	" \x01(\tR\n" +
-	"clientHint\"\xc0\x03\n" +
+	"clientHint\"\x97\x05\n" +
 	"\vGatewayResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -609,7 +641,11 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\x11config_updated_at\x18\v \x01(\tR\x0fconfigUpdatedAt\x12-\n" +
 	"\x12default_entrypoint\x18\r \x01(\tR\x11defaultEntrypoint\x12\x19\n" +
 	"\btls_mode\x18\x0f \x01(\tR\atlsMode\x12C\n" +
-	"\texposures\x18\x10 \x03(\v2%.orbit.v1.gateway.GatewayExposureItemR\texposuresJ\x04\b\b\x10\tJ\x04\b\f\x10\r\"\xa6\x01\n" +
+	"\texposures\x18\x10 \x03(\v2%.orbit.v1.gateway.GatewayExposureItemR\texposures\x12,\n" +
+	"\x12default_service_id\x18\x11 \x01(\tR\x10defaultServiceId\x12?\n" +
+	"\x1cdefault_service_instance_key\x18\x12 \x01(\tR\x19defaultServiceInstanceKey\x120\n" +
+	"\x14default_service_code\x18\x13 \x01(\tR\x12defaultServiceCode\x124\n" +
+	"\x16default_service_status\x18\x14 \x01(\tR\x14defaultServiceStatusJ\x04\b\b\x10\tJ\x04\b\f\x10\r\"\xa6\x01\n" +
 	"\x14GatewayPaginatedResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.gateway.GatewayRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +

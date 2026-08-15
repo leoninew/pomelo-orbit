@@ -3,7 +3,6 @@ package gatewaysvc
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
@@ -12,57 +11,10 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-// EnsureGatewayRunning rejects standard application commands until the Gateway
-// that owns their required external network has reached the running state.
-func (s Service) EnsureGatewayRunning(ctx context.Context, app model.Application) error {
-	if strings.TrimSpace(app.Kind) == status.ApplicationKindGateway {
-		return nil
-	}
-	cfg, err := s.config.ResolveActiveGatewayConfig(ctx)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return apperror.New(apperror.KindValidation,
-				"no gateway configured: create, configure, and deploy a gateway before deploying application "+app.Code)
-		}
-		return apperror.Wrap(apperror.KindInternal, "Failed to resolve gateway config", err)
-	}
-	services, err := s.service.ListServicesByApplication(ctx, cfg.ApplicationId)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to load gateway service state", err)
-	}
-	for _, item := range services {
-		if item.Status == status.ServiceStatusRunning {
-			return nil
-		}
-	}
-	gatewayApp, err := s.application.Application(ctx, cfg.ApplicationId)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to load gateway application", err)
-	}
-	state := "no service has been deployed"
-	if len(services) > 0 {
-		states := make([]string, 0, len(services))
-		for _, item := range services {
-			states = append(states, item.Status)
-		}
-		state = "service status: " + strings.Join(states, ", ")
-	}
-	return apperror.New(
-		apperror.KindValidation,
-		fmt.Sprintf(
-			"gateway %q (%s) is configured but not running (%s); deploy the gateway before deploying application %q",
-			gatewayApp.Code,
-			gatewayApp.Id,
-			state,
-			app.Code,
-		),
-	)
-}
-
 // GatewayForDeployment resolves the Gateway configuration required to render
 // an application's Compose definition.
 func (s Service) GatewayForDeployment(ctx context.Context, app model.Application, plan model.EffectiveServicePlan) (*model.GatewayConfig, error) {
-	if strings.TrimSpace(app.Kind) != status.ApplicationKindGateway && !hasGatewayEndpoint(plan) {
+	if strings.TrimSpace(app.Kind) != status.ApplicationKindGateway && (!plan.JoinsTraefikNetwork() || !hasGatewayEndpoint(plan)) {
 		return nil, nil
 	}
 	if strings.TrimSpace(app.Kind) == status.ApplicationKindGateway {

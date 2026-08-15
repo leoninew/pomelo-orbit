@@ -6,11 +6,9 @@ import (
 	"errors"
 	"net/http"
 	"testing"
-	"time"
 
 	_ "modernc.org/sqlite"
 
-	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
@@ -19,7 +17,6 @@ import (
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
-	deploymentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/deployment"
 	gatewayrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/gateway"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	routerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/route"
@@ -151,10 +148,6 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 		servicerepo.NewRepository(database),
 		routerepo.NewRepository(database),
 		gatewayrepo.NewRepository(database),
-		gatewaysvc.New(projectrepo.NewRepository(database), applicationrepo.NewRepository(database), gatewayrepo.NewRepository(database), servicerepo.NewRepository(database), deploymentrepo.NewRepository(database), config.TraefikConfig{
-			CertDir: "data/deployment/traefik/data/certs", Image: "traefik:3.6",
-			RestApiUrl: "http://localhost:8080", BaseDomain: "lvh.me", RestReadyTimeout: 20 * time.Millisecond,
-		}),
 		cfg,
 		publisher,
 		recordingCertificateGenerator{},
@@ -204,12 +197,24 @@ func TestRouteServiceCreatesManagedHTTPRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if route.TargetUrl != "" || route.ServiceId == nil || *route.ServiceId != target.Id {
+	if route.TargetUrl != "api-default/api/http8080" || route.ServiceId == nil || *route.ServiceId != target.Id {
 		t.Fatalf("unexpected managed HTTP route: %+v", route)
 	}
 	snapshot := publisher.snapshots[len(publisher.snapshots)-1]
 	if len(snapshot) != 1 || snapshot[0].TargetAddress != "api-api" || snapshot[0].TargetPort != 8080 {
 		t.Fatalf("unexpected resolved HTTP snapshot: %+v", snapshot)
+	}
+	updatedName := "app-route-edited"
+	emptyTargetURL := ""
+	updated, err := service.UpdateRoute(ctx, routeTestUserId, route.Id, routedto.RouteUpdateInput{
+		Name:      &updatedName,
+		TargetUrl: &emptyTargetURL,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.TargetUrl != "api-default/api/http8080" {
+		t.Fatalf("managed HTTP target URL after update = %q, want service-code display address", updated.TargetUrl)
 	}
 
 	_, err = service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
@@ -220,12 +225,15 @@ func TestRouteServiceCreatesManagedHTTPRoute(t *testing.T) {
 		t.Fatalf("HTTP target protocol error = %v, want validation", err)
 	}
 
-	_, err = service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+	mixed, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
 		Name: "mixed-http-route", Protocol: routeProtocolHTTP, Domain: "mixed.example.test", PathPrefix: "/", TargetUrl: "http://example.test:8080",
 		ServiceId: target.Id, ComponentName: "api", EndpointProtocol: "http", EndpointContainerPort: intPtr(8080), Enabled: false,
 	})
-	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
-		t.Fatalf("mixed HTTP target error = %v, want validation", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mixed.TargetUrl != "api-default/api/http8080" {
+		t.Fatalf("managed HTTP target URL = %q, want service-code display address", mixed.TargetUrl)
 	}
 }
 
@@ -246,6 +254,9 @@ func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
 	if route.Protocol != routeProtocolTCP || route.ListenPort == nil || *route.ListenPort != listenPort {
 		t.Fatalf("unexpected TCP route: %+v", route)
 	}
+	if route.TargetUrl != "redis-default/redis/tcp6379" {
+		t.Fatalf("TCP target URL = %q, want service-code display address", route.TargetUrl)
+	}
 	if len(publisher.snapshots) == 0 {
 		t.Fatal("expected TCP Route snapshot publication")
 	}
@@ -253,15 +264,13 @@ func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
 	if len(snapshot) != 1 || snapshot[0].TargetAddress != "redis-redis" || snapshot[0].TargetPort != 6379 {
 		t.Fatalf("unexpected resolved TCP snapshot: %+v", snapshot)
 	}
-	assertGatewayTCPListener(t, database, listenPort)
-
 	hostEndpointPort := 16381
 	_, err = service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
-		Name: "host-target", Protocol: routeProtocolTCP, Domain: "host-target.example.test", ListenPort: &hostEndpointPort,
+		Name: "local-target", Protocol: routeProtocolTCP, Domain: "local-target.example.test", ListenPort: &hostEndpointPort,
 		ServiceId: target.Id, ComponentName: "redis", EndpointProtocol: "tcp", EndpointContainerPort: intPtr(6380), Enabled: false,
 	})
-	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
-		t.Fatalf("TCP host endpoint target error = %v, want validation", err)
+	if err != nil {
+		t.Fatalf("TCP local endpoint target error = %v", err)
 	}
 
 	_, err = service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
@@ -316,7 +325,7 @@ func seedTCPRouteTarget(t *testing.T, database *sql.DB, projectID, appID, versio
 		Id: "01KROUTETARGETCOMPONENT00001", VersionId: version.Id, Name: "redis", Image: "redis:7", PullPolicy: "missing",
 		Endpoints: []model.VersionComponentEndpoint{
 			{Protocol: "tcp", ContainerPort: 6379, Mode: "internal"},
-			{Protocol: "tcp", ContainerPort: 6380, Mode: "host", ListenPort: &conflictingPort},
+			{Protocol: "tcp", ContainerPort: 6380, Mode: "local", ListenPort: &conflictingPort},
 		},
 	}
 	if err := appRepo.CreateVersionWithVersionComponents(ctx, version, []model.VersionComponent{component}); err != nil {
@@ -362,31 +371,6 @@ func seedHTTPRouteTarget(t *testing.T, database *sql.DB, projectID, appID, versi
 		t.Fatalf("seed HTTP target service: %v", err)
 	}
 	return target
-}
-
-func assertGatewayTCPListener(t *testing.T, database *sql.DB, listenPort int) {
-	t.Helper()
-	versions, err := applicationrepo.NewRepository(database).ListVersions(context.Background(), "01KROUTEGATEWAYAPP000000001")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, version := range versions {
-		if version.Status != status.VersionStatusUnpublished {
-			continue
-		}
-		components, err := applicationrepo.NewRepository(database).VersionComponentsByVersion(context.Background(), version.Id)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, component := range components {
-			for _, endpoint := range component.Endpoints {
-				if endpoint.Protocol == "tcp" && endpoint.ContainerPort == listenPort && endpoint.ListenPort != nil && *endpoint.ListenPort == listenPort && endpoint.Mode == "host" {
-					return
-				}
-			}
-		}
-	}
-	t.Fatalf("gateway does not contain TCP listener %d", listenPort)
 }
 
 func intPtr(value int) *int {

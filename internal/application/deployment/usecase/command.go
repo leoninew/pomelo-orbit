@@ -82,9 +82,6 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 	if err := s.ensureNoActiveDeployment(ctx, service.Id); err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
-	if err := s.ensureBusinessGatewayRunning(ctx, app); err != nil {
-		return deploymentdto.DeployServiceResult{}, err
-	}
 	version, err := s.commandStore.Version(ctx, service.VersionId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -99,15 +96,6 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 	for _, component := range components {
 		if err := validateVersionComponent(component); err != nil {
 			return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
-		}
-	}
-	if app.Kind == status.ApplicationKindGateway {
-		active, err := s.commandStore.HasActiveGatewayService(ctx, app.Id)
-		if err != nil {
-			return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to check active gateway", err)
-		}
-		if active {
-			return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, "another gateway is already deploying or running; multiple gateways are not supported")
 		}
 	}
 	overlays, err := s.commandStore.ServiceComponentsByService(ctx, service.Id)
@@ -187,16 +175,6 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	return deployment.Id, nil
 }
 
-func (s Service) ensureBusinessGatewayRunning(ctx context.Context, app model.Application) error {
-	if app.Kind == status.ApplicationKindGateway {
-		return nil
-	}
-	if s.gatewayCoordinator == nil {
-		return apperror.New(apperror.KindInternal, "gateway deployment coordinator is not configured")
-	}
-	return s.gatewayCoordinator.EnsureGatewayRunning(ctx, app)
-}
-
 func (s Service) ensureNoActiveDeployment(ctx context.Context, serviceID string) error {
 	active, err := s.commandStore.HasActiveDeployment(ctx, serviceID)
 	if err != nil {
@@ -211,9 +189,6 @@ func (s Service) ensureNoActiveDeployment(ctx context.Context, serviceID string)
 func (s Service) RestartApplication(ctx context.Context, userId string, applicationId string, input deploymentdto.ServiceTargetInput) (string, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
-		return "", err
-	}
-	if err := s.ensureBusinessGatewayRunning(ctx, app); err != nil {
 		return "", err
 	}
 	service, err := s.resolveServiceTarget(ctx, app.Id, input)

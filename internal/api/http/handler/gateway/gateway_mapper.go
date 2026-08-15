@@ -60,19 +60,30 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 			ClientHint:      item.ClientHint,
 		})
 	}
+	defaultServiceID, defaultServiceInstanceKey, defaultServiceCode, defaultServiceStatus := "", "", "", ""
+	if view.DefaultService != nil {
+		defaultServiceID = view.DefaultService.Id
+		defaultServiceInstanceKey = view.DefaultService.InstanceKey
+		defaultServiceCode = view.DefaultService.Code
+		defaultServiceStatus = view.DefaultService.Status
+	}
 	return gatewayv1.GatewayResp{
-		Id:                app.Id,
-		ProjectId:         projectId,
-		Code:              app.Code,
-		Name:              app.Name,
-		Kind:              app.Kind,
-		RestApiUrl:        cfg.RestApiUrl,
-		BaseDomain:        cfg.BaseDomain,
-		CreatedAt:         transportresponse.FormatTime(app.CreatedAt),
-		UpdatedAt:         transportresponse.FormatTime(app.UpdatedAt),
-		ConfigUpdatedAt:   transportresponse.FormatTime(cfg.UpdatedAt),
-		DefaultEntrypoint: cfg.DefaultEntrypoint,
-		TlsMode:           cfg.TLSMode,
-		Exposures:         exposures,
+		Id:                        app.Id,
+		ProjectId:                 projectId,
+		Code:                      app.Code,
+		Name:                      app.Name,
+		Kind:                      app.Kind,
+		RestApiUrl:                cfg.RestApiUrl,
+		BaseDomain:                cfg.BaseDomain,
+		CreatedAt:                 transportresponse.FormatTime(app.CreatedAt),
+		UpdatedAt:                 transportresponse.FormatTime(app.UpdatedAt),
+		ConfigUpdatedAt:           transportresponse.FormatTime(cfg.UpdatedAt),
+		DefaultEntrypoint:         cfg.DefaultEntrypoint,
+		TlsMode:                   cfg.TLSMode,
+		Exposures:                 exposures,
+		DefaultServiceId:          defaultServiceID,
+		DefaultServiceInstanceKey: defaultServiceInstanceKey,
+		DefaultServiceCode:        defaultServiceCode,
+		DefaultServiceStatus:      defaultServiceStatus,
 	}
 }

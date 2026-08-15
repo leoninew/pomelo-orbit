@@ -1,5 +1,5 @@
 # CD 领域模型（现行）
-最后修改时间: 2026-08-13 19:10:01
+最后修改时间: 2026-08-15 12:48:49
 
 Doc role: living SoT  
 代码锚点：`internal/model/cd.go`、`internal/common/constant/status.go`、`internal/application/cd/usecase/*`、`sql/migration/*/…_cd_schema*.sql`（以仓库当前迁移文件为准）。
@@ -57,7 +57,7 @@ Project
 - Version 挂载声明类型、默认源路径和容器目标；普通 Version 编辑不设置宿主机路径模式。
 - Service 组件的稀疏覆盖拥有实际源路径及其宿主机路径模式。目录和文件在该模式下必须使用绝对路径；逻辑源路径仍须为相对路径。
 - 服务工作目录固定为 `data/deployment/<service-code>/`；逻辑目录源直接相对此根解析。组件应以自身 code 开始组织数据，例如 `mysql`、`redis`、`tei/cache`，不使用 `data/` 或 `instance_key` 作为目录层级。
-- Gateway compile 生成的托管挂载属于内部实现，不构成 Version 编辑页的用户配置项。
+- Gateway 创建会写入一个可编辑的 Traefik Component 初始模板（socket、静态配置、证书目录、端点等）。保存后它就是普通 Version 规格；Gateway、Route 与部署过程均不得覆盖它。
 
 ### 异步操作（Deployment / Pipeline Run / Pipeline Stage Run）
 
@@ -87,16 +87,16 @@ Project
 5. **apply**（`docker compose …`）。
 6. 更新 Service / Deployment / 观测。
 
-Gateway 部署与 standard 共用 Version/Deploy 管线；保存 Gateway 时可 compile 未发布 Version（托管 traefik 组件与静态配置）。同一时刻仅允许一个实际 `running` 的 gateway Service，或另一 gateway Service 的活跃 Deployment。
+Gateway 创建在同一事务内生成 `Application(kind=gateway)`、`GatewayConfig`、初始 `unpublished` Version/Traefik Component，以及 `instance_key=default`、code 为 `<application-code>-default` 的停止态 Service 与 Component mapping。Gateway 部署与 standard 共用 Service/Deployment 管线；部署只使用选中 Service 已绑定的 Version 和 overlays，不会编译或覆盖 Version。Gateway 的多个候选 Service 与所有 Application 一样受同 Application 单运行实例规则约束；端口、网络和容器冲突由 Compose 执行结果反馈。
 
 ## 暴露与接入
 
 | 概念 | 现行规则 |
 |------|----------|
-| Endpoint mode | `internal`、`local`、`host`、`gateway`。`gateway` 仅用于组件派生 HTTP Host；TCP Route 引用 `internal` TCP Endpoint |
+| Endpoint mode | `internal`、`local`、`host`、`gateway`。`gateway` 仅用于组件派生 HTTP Host；TCP Route 可引用任意声明的 TCP Endpoint，端点 mode 不影响路由资格 |
 | local / host | 直接生成宿主机端口映射；其监听端口不能与 TCP Route 冲突 |
 | 平台 HTTP Route | 独立 `route` 表，默认按 domain/path → 项目内 Service Component 的 HTTP Endpoint，经 active Gateway 的 `rest_api_url` 全量 PUT `http` rest namespace；直接 HTTP(S) URL 仅为高级自定义下游 |
-| 平台 TCP Route | 独立 `route` 表，按 `domain:listen_port` → 项目内 Service Component 的 `internal` TCP Endpoint；每个启用监听端口唯一，经 Gateway entrypoint 与 `tcp` rest namespace 转发 |
+| 平台 TCP Route | 独立 `route` 表，按 `domain:listen_port` → 项目内 Service Component 的 TCP Endpoint；每个启用监听端口唯一，经 Gateway entrypoint 与 `tcp` rest namespace 转发 |
 | Endpoint identity | Version Endpoint、Service Endpoint overlay 与 Route 受管 target 都以 `(protocol, container_port)` 关联；旧 overlay/受管 Route 只允许离线清理后迁移 |
 | 存量转换 | `gateway_http → gateway`、`gateway_tcp → internal`、`tcp → internal` 由发布前离线 SQL 处理；运行时不兼容旧值 |
 | 废止 | `attach_ingress` / `service.is_ingress` / EnvironmentBinding 用户 SoT / 全局 `traefik.api_url`·`domain_suffix` 产品路径 / Application 级 route 当应用暴露 SoT |

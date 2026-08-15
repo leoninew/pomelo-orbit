@@ -309,20 +309,31 @@ func gatewayOutput(value gatewaydto.GatewayView) map[string]any {
 	for _, item := range value.Exposures {
 		exposures = append(exposures, map[string]any{"application_id": item.ApplicationId, "application_code": item.ApplicationCode, "component_name": item.ComponentName, "protocol": item.Protocol, "access": item.Access, "container_port": item.ContainerPort, "listen_port": item.ListenPort, "public_host": item.PublicHost, "internal_dns": item.InternalDns, "client_hint": item.ClientHint})
 	}
-	return map[string]any{"id": value.Application.Id, "project_id": projectId, "code": value.Application.Code, "name": value.Application.Name, "kind": value.Application.Kind, "rest_api_url": value.Config.RestApiUrl, "base_domain": value.Config.BaseDomain, "default_entrypoint": value.Config.DefaultEntrypoint, "tls_mode": value.Config.TLSMode, "exposures": exposures, "created_at": formatTime(value.Application.CreatedAt), "updated_at": formatTime(value.Application.UpdatedAt), "config_updated_at": formatTime(value.Config.UpdatedAt)}
+	services := make([]map[string]any, 0, len(value.Services))
+	for _, service := range value.Services {
+		services = append(services, gatewayServiceOutput(service))
+	}
+	output := map[string]any{"id": value.Application.Id, "project_id": projectId, "code": value.Application.Code, "name": value.Application.Name, "kind": value.Application.Kind, "rest_api_url": value.Config.RestApiUrl, "base_domain": value.Config.BaseDomain, "default_entrypoint": value.Config.DefaultEntrypoint, "tls_mode": value.Config.TLSMode, "services": services, "exposures": exposures, "created_at": formatTime(value.Application.CreatedAt), "updated_at": formatTime(value.Application.UpdatedAt), "config_updated_at": formatTime(value.Config.UpdatedAt)}
+	if value.DefaultService != nil {
+		output["default_service"] = gatewayServiceOutput(*value.DefaultService)
+	}
+	return output
 }
 
 func provisionGatewayOutput(value gatewaydto.ProvisionGatewayResult) map[string]any {
-	resourceIds := map[string]string{"gateway_id": value.Gateway.Application.Id, "application_id": value.Gateway.Application.Id, "version_id": value.Version.Id, "service_id": value.Service.Id, "deployment_id": value.Deployment.Id}
+	resourceIds := map[string]string{"gateway_id": value.Gateway.Application.Id, "application_id": value.Gateway.Application.Id, "service_id": value.Service.Id}
 	return map[string]any{
-		"operation":    "provision_gateway",
-		"ready":        value.Ready,
-		"resource_ids": resourceIds,
-		"created":      map[string]any{"gateway": value.GatewayCreated, "service": value.ServiceCreated, "version_published": value.VersionPublished},
-		"network":      map[string]any{"name": value.Network.Name, "driver": value.Network.Driver, "ready": value.Network.Ready, "status": value.Network.Status},
-		"timed_out":    value.TimedOut,
-		"steps":        value.Steps,
+		"operation":           "provision_gateway",
+		"resource_ids":        resourceIds,
+		"created":             map[string]any{"gateway": value.GatewayCreated, "service": value.ServiceCreated},
+		"service":             gatewayServiceOutput(value.Service),
+		"deployment_required": true,
+		"steps":               value.Steps,
 	}
+}
+
+func gatewayServiceOutput(value model.Service) map[string]any {
+	return map[string]any{"id": value.Id, "application_id": value.ApplicationId, "instance_key": value.InstanceKey, "code": value.Code, "version_id": value.VersionId, "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 }
 
 func formatTime(value time.Time) string {

@@ -673,6 +673,7 @@ export default {
       description: '向当前实例部署所选版本；部署时会维护服务运行绑定。',
       selectVersion: '选择版本',
       forceRecreate: '强制重建容器',
+      joinTraefikNetwork: '加入 Traefik 网络',
       versionRequired: '请选择版本',
     },
     stop: {
@@ -721,11 +722,9 @@ export default {
     },
     deploy: {
       dialogTitle: '部署网关',
-      description: '选择已发布版本与实例，触发与普通应用相同的部署流水线。',
-      version: '版本',
-      instanceKey: '实例键',
-      instanceKeyPlaceholder: 'default',
-      selectVersion: '选择版本',
+      description: '选择已有网关服务，触发与普通应用相同的服务部署流水线。',
+      service: '服务实例',
+      selectService: '选择服务实例',
       forceRecreate: '强制重建',
     },
     stop: {

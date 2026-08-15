@@ -29,7 +29,6 @@ type CommandStore interface {
 	UpdateServiceStatus(ctx context.Context, id string, status string) error
 	CreateDeployment(ctx context.Context, deployment model.Deployment) error
 	HasActiveDeployment(ctx context.Context, serviceId string) (bool, error)
-	HasActiveGatewayService(ctx context.Context, excludeApplicationId string) (bool, error)
 	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
 }
 

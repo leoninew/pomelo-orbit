@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
-	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	gatewayport "github.com/leoninew/pomelo-orbit/internal/application/gateway/port"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
 	servicesvc "github.com/leoninew/pomelo-orbit/internal/application/service/usecase"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
@@ -43,14 +43,10 @@ type Service struct {
 	config          gatewayport.ConfigStore
 	service         gatewayport.ServiceReader
 	serviceCommands servicesvc.Service
-	deployer        gatewayDeployer
+	transaction     gatewayport.TransactionRunner
 	traefik         config.TraefikConfig
-}
-
-type gatewayDeployer interface {
-	DeployService(context.Context, string, string, deploymentdto.DeployServiceInput) (deploymentdto.DeployServiceResult, error)
-	WaitDeployment(context.Context, string, string, *time.Duration) (deploymentdto.DeploymentWaitResult, error)
-	ExternalNetworkInspect(context.Context, string) (deploymentdto.RuntimeNetwork, error)
+	cert            config.CertConfig
+	orbitRoot       string
 }
 
 func New(
@@ -59,13 +55,17 @@ func New(
 	configStore gatewayport.ConfigStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
-	traefik config.TraefikConfig,
+	cfg config.Config,
+	transaction gatewayport.TransactionRunner,
 ) Service {
 	return Service{
 		project: project, application: application, config: configStore,
 		service:         service,
 		serviceCommands: servicesvc.New(project, application, service, deployment),
-		traefik:         traefik,
+		transaction:     transaction,
+		traefik:         cfg.Traefik,
+		cert:            cfg.Cert,
+		orbitRoot:       cfg.OrbitRoot(),
 	}
 }
 
@@ -82,14 +82,6 @@ func (s Service) CreateDefaults() gatewaydto.GatewayCreateDefaults {
 		DefaultEntrypoint:          managedGatewayEntrypoint,
 		TLSMode:                    managedGatewayTLSMode,
 	}
-}
-
-// WithDeployer completes the one-way dependency injection for the Gateway
-// workflow. Deployment only depends on the gateway port, so this avoids an
-// application-package import cycle.
-func (s Service) WithDeployer(deployer gatewayDeployer) Service {
-	s.deployer = deployer
-	return s
 }
 
 func (s Service) ListGateways(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[gatewaydto.GatewayView], error) {
@@ -113,7 +105,11 @@ func (s Service) ListGateways(ctx context.Context, userId string, projectId stri
 			}
 			return repository.Page[gatewaydto.GatewayView]{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
 		}
-		items = append(items, gatewaydto.GatewayView{Application: app, Config: cfg})
+		view, err := s.gatewayView(ctx, app, cfg, false)
+		if err != nil {
+			return repository.Page[gatewaydto.GatewayView]{}, err
+		}
+		items = append(items, view)
 	}
 	return repository.Page[gatewaydto.GatewayView]{Items: items, Total: apps.Total, Page: apps.Page, PerPage: apps.PerPage}, nil
 }
@@ -172,24 +168,35 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 		DefaultEntrypoint: policy.DefaultEntrypoint,
 		TLSMode:           policy.TLSMode,
 	}
-	if err := s.application.CreateApplication(ctx, app); err != nil {
-		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway application", err)
-	}
-	if err := s.config.UpsertGatewayConfig(ctx, cfg); err != nil {
-		_ = s.application.DeleteApplication(ctx, app.Id)
-		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway config", err)
-	}
 	version := model.Version{Id: idutil.NewId(), ApplicationId: app.Id, Label: *image, Status: status.VersionStatusUnpublished}
-	if err := s.application.CreateVersion(ctx, version); err != nil {
-		_ = s.application.DeleteApplication(ctx, app.Id)
-		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway version", err)
+	component, err := s.initialGatewayComponent(version.Id, *image, imagePullPolicy, cfg)
+	if err != nil {
+		return gatewaydto.GatewayView{}, err
 	}
-	if err := s.application.ReplaceVersionComponents(ctx, version.Id, []model.VersionComponent{{Id: idutil.NewId(), VersionId: version.Id, Name: managedGatewayComponentName, Image: *image, PullPolicy: imagePullPolicy}}); err != nil {
-		_ = s.application.DeleteApplication(ctx, app.Id)
-		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway component", err)
+	if s.transaction == nil {
+		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "gateway transaction runner is not configured")
 	}
-	if _, err := s.CompileGatewayToVersion(ctx, app, cfg); err != nil {
-		_ = s.application.DeleteApplication(ctx, app.Id)
+	if err := s.transaction.RunInTransaction(ctx, func(txCtx context.Context) error {
+		if err := s.application.CreateApplication(txCtx, app); err != nil {
+			return apperror.Wrap(apperror.KindInternal, "Failed to create gateway application", err)
+		}
+		if err := s.config.UpsertGatewayConfig(txCtx, cfg); err != nil {
+			return apperror.Wrap(apperror.KindInternal, "Failed to create gateway config", err)
+		}
+		if err := s.application.CreateVersion(txCtx, version); err != nil {
+			return apperror.Wrap(apperror.KindInternal, "Failed to create gateway version", err)
+		}
+		if err := s.application.ReplaceVersionComponents(txCtx, version.Id, []model.VersionComponent{component}); err != nil {
+			return apperror.Wrap(apperror.KindInternal, "Failed to create gateway component", err)
+		}
+		_, err := s.serviceCommands.CreateService(txCtx, userId, servicedto.ServiceCreateInput{
+			ApplicationId: app.Id,
+			VersionId:     version.Id,
+			InstanceKey:   "default",
+			Code:          app.Code + "-default",
+		})
+		return err
+	}); err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
 	return s.GatewayForUser(ctx, userId, app.Id)
@@ -210,11 +217,45 @@ func (s Service) GatewayForUser(ctx context.Context, userId string, applicationI
 		}
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
 	}
+	return s.gatewayView(ctx, app, cfg, true)
+}
+
+func (s Service) gatewayView(ctx context.Context, app model.Application, cfg model.GatewayConfig, includeExposures bool) (gatewaydto.GatewayView, error) {
+	services, err := s.service.ListServicesByApplication(ctx, app.Id)
+	if err != nil {
+		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway services", err)
+	}
+	var defaultService *model.Service
+	for index := range services {
+		if services[index].InstanceKey != "default" {
+			continue
+		}
+		if defaultService != nil {
+			return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "Gateway has multiple default services")
+		}
+		defaultService = &services[index]
+	}
+	if defaultService == nil {
+		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "Gateway default service is missing")
+	}
+	view := gatewaydto.GatewayView{Application: app, Config: cfg, DefaultService: defaultService, Services: services}
+	if !includeExposures {
+		return view, nil
+	}
 	exposures, err := s.listActiveGatewayExposures(ctx, &cfg)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	return gatewaydto.GatewayView{Application: app, Config: cfg, Exposures: exposures}, nil
+	view.Exposures = exposures
+	return view, nil
+}
+
+func (s Service) initialGatewayComponent(versionID, image, pullPolicy string, cfg model.GatewayConfig) (model.VersionComponent, error) {
+	certDirectory := s.traefik.CertDir
+	if !filepath.IsAbs(certDirectory) {
+		certDirectory = filepath.Join(s.orbitRoot, certDirectory)
+	}
+	return buildInitialGatewayComponent(versionID, image, pullPolicy, cfg, s.cert, certDirectory)
 }
 
 func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId string, input gatewaydto.GatewayUpdateInput) (gatewaydto.GatewayView, error) {

@@ -60,6 +60,10 @@ export interface GatewayResp {
   default_entrypoint: string;
   tls_mode: string;
   exposures: GatewayExposureItem[];
+  default_service_id: string;
+  default_service_instance_key: string;
+  default_service_code: string;
+  default_service_status: string;
 }
 
 export interface GatewayPaginatedResp {

@@ -1,5 +1,5 @@
 # MCP 直接操作
-最后修改时间: 2026-08-13 19:10:01
+最后修改时间: 2026-08-15 12:48:49
 
 ## 命名与启动约定
 
@@ -20,7 +20,7 @@ Codex 注册名为 `pomelo_delivery`，本地 stdio 入口为 `go run ./cmd/serv
 
 `orbit_wait_deployment` 的 deployment 终态和 `timed_out`，以及 `verify_deployment` 的 `failed`、`drift`、`inconclusive`，都是正常领域结果。Orbit API、Docker、runtime target、输入校验和内部失败则统一返回结构化 MCP error result。
 
-`orbit_create_gateway` 只创建低层 Gateway 配置；`orbit_provision_gateway` 是明确的高层生命周期工作流。后者会按 `project_id` 与 `code=traefik` 查找 Gateway：零个时创建，恰好一个时复用，多个时返回冲突。它随后准备同一 `instance_key` 的 Service、发布 Version、部署、等待，并检查固定的 `traefik` bridge 网络。部署失败或超时时不会继续网络检查，也不会自动删除已经创建的资源。
+`orbit_create_gateway` 创建完整 Gateway 资源组：Application、GatewayConfig、初始可编辑 Version/Traefik Component 和默认停止态 Service。`orbit_provision_gateway` 是幂等资源准备工具：它按 `project_id` 与 `code=traefik` 查找 Gateway，零个时创建、恰好一个时复用、多个时返回冲突；指定实例不存在时按通用 Service 创建语义新增停止态 binding。它不会发布 Version、部署、等待或检查 Docker 网络。需要运行 Gateway 时，随后显式调用 `orbit_deploy(service_id)`，并按需调用 `orbit_wait_deployment`。
 
 没有受管 Application target 时，使用 `runtime_doctor(network_name="traefik")` 进行只读预检。该参数只接受 `traefik`，不能与 Application 或 Gateway target 组合；`runtime_network_inspect` 仍只允许读取从受管 Compose target 派生的网络。
 

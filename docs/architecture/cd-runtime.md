@@ -1,5 +1,5 @@
 # CD 运行时与渲染
-最后修改时间: 2026-08-13 19:10:01
+最后修改时间: 2026-08-15 12:48:49
 
 Doc role: living SoT  
 代码锚点：`internal/application/cd/usecase/compose_renderer.go`、`deployment_execution*.go`、`gateway*.go`、`expose_*.go`、`internal/infrastructure/runner/cd`、`internal/infrastructure/storage/local/cdworkspace`、`internal/infrastructure/external/traefik`。
@@ -35,7 +35,7 @@ HTTP Deploy/Stop/Restart
 | kind | 行为 |
 |------|------|
 | `standard` | 渲染业务 services；按 Endpoint mode 注入 HTTP labels 或直接端口映射 |
-| `gateway` | 网关 compose（托管 Traefik 组件、静态配置、socket 挂载等） |
+| `gateway` | 使用选中 Version/Service 的通用 compose 渲染；Gateway 不在 Render 时注入或恢复 Traefik Component、静态配置或挂载 |
 
 输出写入 CD workspace（物理数据根下 `deployment/<service-code>/`），再执行 compose。
 
@@ -51,17 +51,16 @@ HTTP Deploy/Stop/Restart
 | `base_domain` | 业务 public Host 后缀 |
 | `default_entrypoint` | HTTP 入口名（如 web） |
 | `tls_mode` | `none` / `tls` / `letsencrypt` 等（以实现枚举为准） |
-| `image` | 可选覆盖网关镜像 |
+进程配置 `traefik.*` 与 `cert.letsencrypt.*` 只生成初始 Traefik Version 模板：镜像、REST 地址、域名、证书目录、就绪等待、ACME email/challenge/provider 均从既有配置取得。拉取策略 `missing`、入口 `web`、TLS `none` 和共享网络 `traefik` 保持当前默认，不新增配置项。创建后的镜像、端点、挂载、静态文件和拉取策略均由 Application/Version 编辑保存；`GatewayConfig` 只保存 REST、域名、默认入口和 TLS 路由语义。
 
-进程配置 `traefik.*` 只保留基础设施：`cert_dir`、`image`、`rest_api_url`、`base_domain`、`rest_ready_timeout`。产品身份（`code=traefik`、组件名、Docker 网络名）与展示默认（名称、entrypoint、tls_mode、pull policy）是代码常量，不进配置。创建时 Version label 直接用所选 image（默认即 `traefik.image`）。创建后的 per-gateway 运行时字段写入 `GatewayConfig`，可再改。
-
-- 保存/编译：可生成未发布 Version（compile）。  
-- Route 保存、启停、删除或同步时，按完整启用 TCP Route 集合 reconcile Gateway 静态 `tcp<listen_port>` entrypoints 与宿主机端口映射；HTTP/TCP 的受管目标均在同步时从 Service 当前有效 Endpoint 解析为稳定容器别名和 container port，HTTP 高级自定义下游才使用持久化 URL；实际静态端口变更须部署 Gateway。
-- **单 active gateway**：已有 `running` gateway Service，或另一 gateway Service 存在 `waiting_to_run` / `running` Deployment 时拒绝冲突部署。
+- 创建：同一事务写入 Application、GatewayConfig、初始 `unpublished` Version/Component、默认停止态 Service 和 Service Component mappings；默认 Service code 为 `<application-code>-default`。
+- Provision：`orbit_provision_gateway` 只幂等准备上述资源或指定实例的 Service，不发布 Version、不创建 Deployment、不等待运行态，也不重绑既有 Service。
+- Route 保存、启停、删除和同步只发布 HTTP/TCP 动态 REST 快照，不修改 Gateway Version。新增 TCP `entrypoint` 或宿主机端口时，用户先在目标 Gateway Version 中显式配置并部署。
+- 同 Application 的 Gateway Service instance 与普通 Application 一样遵从单运行实例规则；没有 Gateway 专用 active/readiness 前置检查。
 
 ## 部署结果
 
-- Deploy/Restart 使用 `docker compose up -d` 的零退出码作为成功条件。Gateway Service 在写入 `running` 后、Deployment 标记成功前，先等待 Traefik REST 控制面（`rest_api_url`，默认本机 8080）就绪，再发布完整 HTTP/TCP Route REST 动态快照；不在部署后 compile/重写 Gateway Version。`compose up` 成功不代表 API 已监听。发布失败时 Service 与 Deployment 均标记为 `faulted`。TCP 静态 entrypoint 仍由 Route 变更路径 reconcile，并在下一次 Gateway 部署时生效。
+- Deploy/Restart 使用 `docker compose up -d` 的零退出码作为成功条件。Gateway Service 在写入 `running` 后、Deployment 标记成功前，先等待 Traefik REST 控制面（`rest_api_url`，默认本机 8080）就绪，再发布完整 HTTP/TCP Route REST 动态快照；不在部署后编译或重写 Gateway Version。`compose up` 成功不代表 API 已监听。发布失败时 Service 与 Deployment 均标记为 `faulted`；缺失 TCP 静态 entrypoint 走用户保存的 Version/Compose 或 Route 发布错误路径。
 - Component Healthcheck 会渲染到 Compose，`depends_on.condition=service_healthy` 可影响 Compose 内启动顺序，但不决定 Deployment 主状态。独立验证接口才读取容器运行态与 Health 状态。
 - Pipeline 的 `execution_timeout` 超时属于失败：Run 和仍在运行的 Stage 写为 `faulted`，错误原因包含 timeout；关联 task 进入 `failed`。
 

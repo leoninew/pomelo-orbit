@@ -22,7 +22,6 @@ type Service struct {
 	service              repository.ServiceStore
 	route                repository.RouteStore
 	gateway              repository.GatewayStore
-	gatewayCompiler      routeport.GatewayCompiler
 	cfg                  config.Config
 	routePublisher       routeport.RouteConfigPublisher
 	certificateGenerator routeport.RouteCertificateGenerator
@@ -35,14 +34,13 @@ func New(
 	service repository.ServiceStore,
 	route repository.RouteStore,
 	gateway repository.GatewayStore,
-	gatewayCompiler routeport.GatewayCompiler,
 	cfg config.Config,
 	routePublisher routeport.RouteConfigPublisher,
 	certificateGenerator routeport.RouteCertificateGenerator,
 	traefikRouterClient routeport.TraefikRouterClient,
 ) Service {
 	return Service{
-		project: project, application: application, service: service, route: route, gateway: gateway, gatewayCompiler: gatewayCompiler, cfg: cfg,
+		project: project, application: application, service: service, route: route, gateway: gateway, cfg: cfg,
 		routePublisher: routePublisher, certificateGenerator: certificateGenerator,
 		traefikRouterClient: traefikRouterClient,
 	}
@@ -187,7 +185,7 @@ func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string,
 	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
 		route.PathPrefix = "/"
 	}
-	if err := s.validateRoute(ctx, route, route.Id); err != nil {
+	if err := s.validateRoute(ctx, &route, route.Id); err != nil {
 		return model.Route{}, err
 	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
@@ -233,7 +231,7 @@ func (s Service) EnableRoute(ctx context.Context, userId string, routeId string)
 		return model.Route{}, err
 	}
 	route.Enabled = true
-	if err := s.validateRoute(ctx, route, route.Id); err != nil {
+	if err := s.validateRoute(ctx, &route, route.Id); err != nil {
 		return model.Route{}, err
 	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
@@ -487,15 +485,10 @@ func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId st
 }
 
 // publishRouteSnapshot rebuilds the full platform rest config from all enabled
-// routes. Route mutations also reconcile Gateway TCP static listeners into the
-// unpublished Gateway Version; that static change takes effect on the next
-// Gateway deploy.
+// routes. Static Gateway entrypoints remain Version data owned by the user.
 func (s Service) publishRouteSnapshot(ctx context.Context) error {
 	routes, err := s.listEnabledRoutesForPublish(ctx)
 	if err != nil {
-		return err
-	}
-	if err := s.reconcileGatewayTCPListeners(ctx, routes); err != nil {
 		return err
 	}
 	return s.applyRouteSnapshot(ctx, routes, false)

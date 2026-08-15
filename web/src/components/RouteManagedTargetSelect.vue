@@ -176,10 +176,7 @@
     );
   }
 
-  function isSelectableEndpoint(endpoint: { protocol: string; mode: string }) {
-    return (
-      endpoint.protocol === props.protocol &&
-      (props.protocol !== 'tcp' || endpoint.mode === 'internal')
-    );
+  function isSelectableEndpoint(endpoint: { protocol: string }) {
+    return endpoint.protocol === props.protocol;
   }
 </script>

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
@@ -37,13 +36,13 @@ func (s Service) routeFromCreateInput(ctx context.Context, projectID string, inp
 	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
 		route.PathPrefix = "/"
 	}
-	if err := s.validateRoute(ctx, route, ""); err != nil {
+	if err := s.validateRoute(ctx, &route, ""); err != nil {
 		return model.Route{}, err
 	}
 	return route, nil
 }
 
-func (s Service) validateRoute(ctx context.Context, route model.Route, excludeID string) error {
+func (s Service) validateRoute(ctx context.Context, route *model.Route, excludeID string) error {
 	switch route.Protocol {
 	case routeProtocolHTTP:
 		if !validRouteIdentity(route.Name, route.Domain, route.PathPrefix) {
@@ -52,16 +51,13 @@ func (s Service) validateRoute(ctx context.Context, route model.Route, excludeID
 		if route.ListenPort != nil {
 			return apperror.New(apperror.KindValidation, "HTTP route cannot declare a TCP listen port")
 		}
-		if hasManagedRouteTarget(route) {
-			if strings.TrimSpace(route.TargetUrl) != "" {
-				return apperror.New(apperror.KindValidation, "HTTP route cannot combine a managed target and custom target URL")
-			}
-			if err := s.resolveManagedRouteTarget(ctx, &route); err != nil {
+		if hasManagedRouteTarget(*route) {
+			if err := s.resolveManagedRouteTarget(ctx, route); err != nil {
 				return err
 			}
 			return nil
 		}
-		if !hasEmptyManagedRouteTarget(route) || !routeTargetUrlPattern.MatchString(route.TargetUrl) {
+		if !hasEmptyManagedRouteTarget(*route) || !routeTargetUrlPattern.MatchString(route.TargetUrl) {
 			return apperror.New(apperror.KindValidation, "HTTP route requires a managed HTTP endpoint or custom target URL")
 		}
 	case routeProtocolTCP:
@@ -71,14 +67,14 @@ func (s Service) validateRoute(ctx context.Context, route model.Route, excludeID
 		if reservedTCPRoutePort(*route.ListenPort) {
 			return apperror.New(apperror.KindValidation, fmt.Sprintf("TCP listen port %d is reserved by Gateway", *route.ListenPort))
 		}
-		if strings.TrimSpace(route.PathPrefix) != "" || strings.TrimSpace(route.TargetUrl) != "" || route.HTTPSEnabled || route.CertPEM != nil || route.CertKey != nil || route.CertType != "" && route.CertType != certTypeManual {
+		if strings.TrimSpace(route.PathPrefix) != "" || route.HTTPSEnabled || route.CertPEM != nil || route.CertKey != nil || route.CertType != "" && route.CertType != certTypeManual {
 			return apperror.New(apperror.KindValidation, "TCP route cannot declare HTTP or certificate fields")
 		}
-		if err := s.resolveManagedRouteTarget(ctx, &route); err != nil {
+		if err := s.resolveManagedRouteTarget(ctx, route); err != nil {
 			return err
 		}
 		if route.Enabled {
-			if err := s.ensureTCPListenerAvailable(ctx, route, excludeID); err != nil {
+			if err := s.ensureTCPListenerAvailable(ctx, *route, excludeID); err != nil {
 				return err
 			}
 		}
@@ -132,12 +128,13 @@ func (s Service) resolveManagedRouteTarget(ctx context.Context, route *model.Rou
 			return apperror.New(apperror.KindValidation, "HTTP route target must reference a declared HTTP endpoint")
 		}
 	case routeProtocolTCP:
-		if endpoint.Protocol != "tcp" || endpoint.Mode != "internal" {
-			return apperror.New(apperror.KindValidation, "TCP route target must reference a declared internal TCP endpoint")
+		if endpoint.Protocol != "tcp" {
+			return apperror.New(apperror.KindValidation, "TCP route target must reference a declared TCP endpoint")
 		}
 	default:
 		return apperror.New(apperror.KindValidation, "route protocol must be http or tcp")
 	}
+	route.TargetUrl = service.Code + "/" + component.Name + "/" + model.EndpointDisplayName(endpoint.Protocol, endpoint.ContainerPort)
 	route.TargetAddress = model.RuntimeContainerName(app.Code, component.Name)
 	route.TargetPort = endpoint.ContainerPort
 	return nil
@@ -194,24 +191,6 @@ func (s Service) componentPortConflict(ctx context.Context, listenPort int) (str
 		}
 	}
 	return "", nil
-}
-
-func (s Service) reconcileGatewayTCPListeners(ctx context.Context, routes []model.Route) error {
-	if s.gatewayCompiler == nil {
-		return apperror.New(apperror.KindInternal, "gateway TCP listener compiler is not configured")
-	}
-	gw, err := s.resolveGatewayForRender(ctx)
-	if err != nil {
-		return err
-	}
-	listens := make([]int, 0)
-	for _, route := range routes {
-		if route.Protocol == routeProtocolTCP && route.ListenPort != nil {
-			listens = append(listens, *route.ListenPort)
-		}
-	}
-	sort.Ints(listens)
-	return s.gatewayCompiler.CompileTCPRouteListeners(ctx, *gw, listens)
 }
 
 func (s Service) effectiveServicePlan(ctx context.Context, app model.Application, service model.Service) (model.EffectiveServicePlan, error) {

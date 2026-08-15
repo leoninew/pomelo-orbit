@@ -9,7 +9,6 @@ import (
 )
 
 type Querier interface {
-	CountActiveGatewayServices(ctx context.Context, arg CountActiveGatewayServicesParams) (int64, error)
 	GatewayConfigByApplication(ctx context.Context, applicationID string) (GatewayConfig, error)
 	InsertGatewayConfig(ctx context.Context, arg InsertGatewayConfigParams) error
 	ListAllGatewayApplications(ctx context.Context, kind string) ([]ListAllGatewayApplicationsRow, error)

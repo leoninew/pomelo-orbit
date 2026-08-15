@@ -457,11 +457,8 @@ func writeWorkingDirectory(w io.Writer, dir string) error {
 	return err
 }
 
-// ensureSingleRuntime rejects a second active service binding for the same standard app.
+// ensureSingleRuntime rejects a second active service binding for the same Application.
 func (s Service) ensureSingleRuntime(ctx context.Context, app model.Application, instanceKey string) error {
-	if app.Kind == status.ApplicationKindGateway {
-		return nil
-	}
 	if s.store == nil {
 		return nil
 	}

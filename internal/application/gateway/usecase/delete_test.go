@@ -56,9 +56,10 @@ func TestDeleteGatewayDeletesStoppedServiceResources(t *testing.T) {
 		nil,
 		application,
 		gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: "gateway-1"}},
-		gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", Status: status.ServiceStatusStopped}}},
+		gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", InstanceKey: "default", Status: status.ServiceStatusStopped}}},
 		nil,
-		testTraefikConfig(),
+		testGatewayConfig(),
+		nil,
 	)
 
 	if err := service.DeleteGateway(context.Background(), "user-1", "gateway-1"); err != nil {
@@ -77,9 +78,10 @@ func TestDeleteGatewayRejectsNonStoppedService(t *testing.T) {
 				nil,
 				application,
 				gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: "gateway-1"}},
-				gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", Code: "gateway-default", Status: serviceStatus}}},
+				gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", InstanceKey: "default", Code: "gateway-default", Status: serviceStatus}}},
 				nil,
-				testTraefikConfig(),
+				testGatewayConfig(),
+				nil,
 			)
 
 			err := service.DeleteGateway(context.Background(), "user-1", "gateway-1")

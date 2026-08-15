@@ -13,6 +13,12 @@ type ProjectReader interface {
 	IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error)
 }
 
+// TransactionRunner groups Gateway resource creation into one database unit of
+// work while reusing an existing request transaction when present.
+type TransactionRunner interface {
+	RunInTransaction(ctx context.Context, fn func(context.Context) error) error
+}
+
 // ApplicationStore is the narrow application/version persistence surface used by gateway.
 type ApplicationStore interface {
 	ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error)
@@ -41,12 +47,12 @@ type ConfigStore interface {
 // ServiceReader exposes only runtime bindings needed by gateway projections and conflict checks.
 type ServiceReader interface {
 	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
+	ServiceByKey(ctx context.Context, applicationId string, instanceKey string) (model.Service, error)
 	ServiceComponentsByService(ctx context.Context, serviceId string) ([]model.ServiceComponent, error)
 }
 
 // DeploymentCoordinator resolves the explicit Gateway configuration required to
 // render a Service deployment. It never mutates or deploys Gateway resources.
 type DeploymentCoordinator interface {
-	EnsureGatewayRunning(ctx context.Context, app model.Application) error
 	GatewayForDeployment(ctx context.Context, app model.Application, plan model.EffectiveServicePlan) (*model.GatewayConfig, error)
 }

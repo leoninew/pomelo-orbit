@@ -166,37 +166,18 @@
         <p class="text-sm text-muted-foreground">{{ t('gateway.deploy.description') }}</p>
         <div>
           <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.deploy.version') }}
+            {{ t('gateway.deploy.service') }}
             <span class="text-destructive">*</span>
           </label>
           <SelectControl
-            v-model="deployForm.version_id"
-            :options="versionSelectOptions"
-            :placeholder="t('gateway.deploy.selectVersion')"
-            :invalid="Boolean(deployErrors.version_id)"
-            @update:model-value="deployErrors.version_id = ''"
+            v-model="deployForm.service_id"
+            :options="deployServiceSelectOptions"
+            :placeholder="t('gateway.deploy.selectService')"
+            :invalid="Boolean(deployErrors.service_id)"
+            @update:model-value="deployErrors.service_id = ''"
           />
-          <p v-if="deployErrors.version_id" class="app-field-error" role="alert">
-            {{ deployErrors.version_id }}
-          </p>
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.deploy.instanceKey') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="deployForm.instance_key"
-            type="text"
-            required
-            class="app-input"
-            :class="deployErrors.instance_key ? 'app-input-error' : ''"
-            :placeholder="t('gateway.deploy.instanceKeyPlaceholder')"
-            :aria-invalid="deployErrors.instance_key ? 'true' : undefined"
-            @input="deployErrors.instance_key = ''"
-          />
-          <p v-if="deployErrors.instance_key" class="app-field-error" role="alert">
-            {{ deployErrors.instance_key }}
+          <p v-if="deployErrors.service_id" class="app-field-error" role="alert">
+            {{ deployErrors.service_id }}
           </p>
         </div>
         <label class="flex items-center gap-2">
@@ -378,7 +359,6 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
-  import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { formatTime } from '@/utils/time';
 
@@ -391,7 +371,6 @@
 
   const gateway = ref<GatewayResp | null>(null);
   const services = ref<ServiceResp[]>([]);
-  const versions = ref<VersionResp[]>([]);
   const exposureSearchText = ref('');
   const appliedExposureSearch = ref('');
 
@@ -414,11 +393,10 @@
   });
 
   const isDeployDialogOpen = ref(false);
-  const deployErrors = reactive({ version_id: '', instance_key: '' });
+  const deployErrors = reactive({ service_id: '' });
   const deploySubmitError = ref('');
   const deployForm = reactive({
-    version_id: '',
-    instance_key: 'default',
+    service_id: '',
     force_recreate: false,
   });
 
@@ -453,15 +431,11 @@
     )
   );
   const canStop = computed(() => stoppableServices.value.length > 0);
-  const primaryService = computed(() => services.value[0] ?? null);
   const entrypointValues = ['web', 'websecure'];
   const tlsModeValues = ['none', 'letsencrypt', 'tls'];
 
-  const versionSelectOptions = computed(() =>
-    versions.value.map((item) => ({
-      value: item.id,
-      label: item.status === 'published' ? item.label : `${item.label} (${item.status})`,
-    }))
+  const deployServiceSelectOptions = computed(() =>
+    services.value.map((item) => ({ value: item.id, label: serviceOptionLabel(item) }))
   );
 
   const stopServiceSelectOptions = computed(() =>
@@ -567,61 +541,21 @@
     }
   }
 
-  async function loadDeployOptions() {
+  async function openDeployDialog() {
     const current = gateway.value;
     if (!current) {
-      versions.value = [];
       return;
     }
-    const versionResp = await applicationApi.listVersions(current.id, { per_page: 100 });
-    versions.value = selectDeployableVersions(versionResp.items ?? []);
-  }
-
-  /** Prefer published versions; if none, fall back to all versions newest-first. */
-  function selectDeployableVersions(items: VersionResp[]): VersionResp[] {
-    const published = items.filter((item) => item.status === 'published');
-    return sortVersionsByNewest(published.length > 0 ? published : items);
-  }
-
-  function sortVersionsByNewest(items: VersionResp[]): VersionResp[] {
-    return [...items].sort((a, b) => {
-      const ta = Date.parse(a.created_at) || 0;
-      const tb = Date.parse(b.created_at) || 0;
-      if (tb !== ta) {
-        return tb - ta;
-      }
-      return b.id.localeCompare(a.id);
-    });
-  }
-
-  function defaultVersionId() {
-    const bound = primaryService.value?.version_id;
-    if (bound && versions.value.some((item) => item.id === bound)) {
-      return bound;
-    }
-    // versions already newest-first when falling back to unpublished.
-    return versions.value[0]?.id || '';
-  }
-
-  async function openDeployDialog() {
-    if (!gateway.value) {
-      return;
-    }
-    Object.assign(deployErrors, { version_id: '', instance_key: '' });
+    Object.assign(deployErrors, { service_id: '' });
     deploySubmitError.value = '';
     deployForm.force_recreate = false;
-    deployForm.instance_key = 'default';
-    try {
-      await loadDeployOptions();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t('gateway.toast.loadDeployOptionsFailed'));
+    if (services.value.length === 0) {
+      toast.error(t('gateway.toast.noService'));
       return;
     }
-    if (versions.value.length === 0) {
-      toast.error(t('gateway.toast.noVersion'));
-      return;
-    }
-    deployForm.version_id = defaultVersionId();
+    deployForm.service_id =
+      services.value.find((item) => item.id === current.default_service_id)?.id ||
+      services.value[0].id;
     isDeployDialogOpen.value = true;
   }
 
@@ -631,39 +565,14 @@
     if (!current) {
       return;
     }
-    if (!deployForm.version_id) {
-      deployErrors.version_id = t('gateway.toast.versionRequired');
+    if (!deployForm.service_id) {
+      deployErrors.service_id = t('gateway.toast.deployServiceRequired');
       return;
     }
-    deployErrors.version_id = '';
-    deployErrors.instance_key = '';
-    const instanceKey = deployForm.instance_key.trim();
-    if (!instanceKey) {
-      deployErrors.instance_key = t('gateway.toast.instanceKeyRequired');
-      return;
-    }
+    deployErrors.service_id = '';
     try {
       await executeOp(async () => {
-        const existing = services.value.find((item) => item.instance_key === instanceKey);
-        let serviceId = existing?.id;
-        if (serviceId) {
-          const detail = await serviceApi.get(serviceId);
-          if (detail.version_id !== deployForm.version_id) {
-            await serviceApi.updateBasic(serviceId, {
-              version_id: deployForm.version_id,
-              instance_key: detail.instance_key,
-            });
-          }
-        } else {
-          const created = await serviceApi.create({
-            application_id: current.id,
-            version_id: deployForm.version_id,
-            instance_key: instanceKey,
-            code: `${current.code}-${instanceKey}`,
-          });
-          serviceId = created.id;
-        }
-        const result = await serviceApi.deploy(serviceId, {
+        const result = await serviceApi.deploy(deployForm.service_id, {
           force_recreate: deployForm.force_recreate,
         });
         for (const warning of result.warnings) toast.error(warning);

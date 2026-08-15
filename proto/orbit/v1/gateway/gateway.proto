@@ -55,6 +55,10 @@ message GatewayResp {
   string default_entrypoint = 13;
   string tls_mode = 15;
   repeated GatewayExposureItem exposures = 16;
+  string default_service_id = 17;
+  string default_service_instance_key = 18;
+  string default_service_code = 19;
+  string default_service_status = 20;
 }
 
 message GatewayPaginatedResp {

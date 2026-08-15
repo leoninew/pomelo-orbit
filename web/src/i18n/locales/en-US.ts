@@ -690,6 +690,7 @@ export default {
         'Deploy the selected version to this instance. Deploy maintains the service binding.',
       selectVersion: 'Select version',
       forceRecreate: 'Force recreate containers',
+      joinTraefikNetwork: 'Join Traefik network',
       versionRequired: 'Version is required',
     },
     stop: {
@@ -738,12 +739,9 @@ export default {
     },
     deploy: {
       dialogTitle: 'Deploy gateway',
-      description:
-        'Pick a published version and instance. Uses the same deploy pipeline as standard apps.',
-      version: 'Version',
-      instanceKey: 'Instance key',
-      instanceKeyPlaceholder: 'default',
-      selectVersion: 'Select version',
+      description: 'Deploy an existing Gateway service through the standard service pipeline.',
+      service: 'Service instance',
+      selectService: 'Select service instance',
       forceRecreate: 'Force recreate',
     },
     stop: {

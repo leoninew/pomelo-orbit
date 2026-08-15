@@ -11,44 +11,6 @@ import (
 	"time"
 )
 
-const countActiveGatewayServices = `-- name: CountActiveGatewayServices :one
-SELECT COUNT(*)
-FROM service s
-INNER JOIN application a ON a.id = s.application_id
-WHERE a.kind = CAST(?1 AS TEXT)
-  AND (CAST(?2 AS TEXT) IS NULL OR s.application_id <> CAST(?2 AS TEXT))
-  AND (
-    s.status = CAST(?3 AS TEXT)
-    OR EXISTS (
-      SELECT 1
-      FROM deployment d
-      WHERE d.service_id = s.id
-        AND d.status IN (CAST(?4 AS TEXT), CAST(?5 AS TEXT))
-    )
-  )
-`
-
-type CountActiveGatewayServicesParams struct {
-	Kind                 string         `db:"kind"`
-	ExcludeApplicationID sql.NullString `db:"exclude_application_id"`
-	ServiceStatus        string         `db:"service_status"`
-	WaitingStatus        string         `db:"waiting_status"`
-	RunningStatus        string         `db:"running_status"`
-}
-
-func (q *Queries) CountActiveGatewayServices(ctx context.Context, arg CountActiveGatewayServicesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countActiveGatewayServices,
-		arg.Kind,
-		arg.ExcludeApplicationID,
-		arg.ServiceStatus,
-		arg.WaitingStatus,
-		arg.RunningStatus,
-	)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const gatewayConfigByApplication = `-- name: GatewayConfigByApplication :one
 SELECT application_id, rest_api_url, base_domain, default_entrypoint, tls_mode, created_at, updated_at
 FROM gateway_config

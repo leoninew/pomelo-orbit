@@ -179,17 +179,15 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return writeResult("create_gateway", map[string]string{"gateway_id": gateway.Application.Id, "application_id": gateway.Application.Id}, "POST", "/api/gateway", map[string]any{"gateway": gatewayOutput(gateway)}), nil
 	})
 
-	addTool(server, "orbit_provision_gateway", "Ensure one managed traefik Gateway is deployed and its external network is ready.", func(ctx context.Context, input struct {
-		ProjectId      string `json:"project_id" jsonschema:"required"`
-		InstanceKey    string `json:"instance_key,omitempty"`
-		ForceRecreate  bool   `json:"force_recreate,omitempty"`
-		TimeoutSeconds *int   `json:"timeout_seconds,omitempty"`
+	addTool(server, "orbit_provision_gateway", "Prepare one managed traefik Gateway and return its stopped Service. Deploy it explicitly with orbit_deploy.", func(ctx context.Context, input struct {
+		ProjectId   string `json:"project_id" jsonschema:"required"`
+		InstanceKey string `json:"instance_key,omitempty"`
 	}) (map[string]any, error) {
 		instanceKey := input.InstanceKey
 		if instanceKey == "" {
 			instanceKey = "default"
 		}
-		result, err := c.deps.Gateway.ProvisionGateway(ctx, c.deps.ActorUserId, gatewaydto.ProvisionGatewayInput{ProjectId: input.ProjectId, InstanceKey: instanceKey, ForceRecreate: input.ForceRecreate, TimeoutSeconds: input.TimeoutSeconds})
+		result, err := c.deps.Gateway.ProvisionGateway(ctx, c.deps.ActorUserId, gatewaydto.ProvisionGatewayInput{ProjectId: input.ProjectId, InstanceKey: instanceKey})
 		if err != nil {
 			return nil, err
 		}

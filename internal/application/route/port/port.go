@@ -23,12 +23,6 @@ type SnapshotPublisher interface {
 	PublishSnapshot(ctx context.Context) error
 }
 
-// GatewayCompiler derives the managed Gateway static TCP listeners from the
-// complete enabled custom Route set.
-type GatewayCompiler interface {
-	CompileTCPRouteListeners(ctx context.Context, cfg model.GatewayConfig, listens []int) error
-}
-
 type RouteCertificateGenerator interface {
 	Generate(ctx context.Context, domain string) (string, string, error)
 }

@@ -9,20 +9,15 @@ import (
 )
 
 func TestPublishSnapshotDoesNotCompileGatewayListeners(t *testing.T) {
-	compiler := &countingGatewayCompiler{}
 	publisher := &recordingRoutePublisher{}
 	service := Service{
-		route:           routeListFake{routes: []model.Route{{Id: "route-1", Name: "api", Protocol: "http", Domain: "api.example.test", PathPrefix: "/", TargetUrl: "http://example:80", Enabled: true}}},
-		gateway:         gatewayConfigFake{cfg: model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: "http://localhost:8080"}},
-		gatewayCompiler: compiler,
-		routePublisher:  publisher,
+		route:          routeListFake{routes: []model.Route{{Id: "route-1", Name: "api", Protocol: "http", Domain: "api.example.test", PathPrefix: "/", TargetUrl: "http://example:80", Enabled: true}}},
+		gateway:        gatewayConfigFake{cfg: model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: "http://localhost:8080"}},
+		routePublisher: publisher,
 	}
 
 	if err := service.PublishSnapshot(context.Background()); err != nil {
 		t.Fatal(err)
-	}
-	if compiler.calls != 0 {
-		t.Fatalf("PublishSnapshot compiled gateway listeners %d time(s)", compiler.calls)
 	}
 	if publisher.readyWaits != 1 {
 		t.Fatalf("PublishSnapshot WaitUntilReady calls = %d, want 1", publisher.readyWaits)
@@ -32,21 +27,16 @@ func TestPublishSnapshotDoesNotCompileGatewayListeners(t *testing.T) {
 	}
 }
 
-func TestPublishRouteSnapshotCompilesGatewayListeners(t *testing.T) {
-	compiler := &countingGatewayCompiler{}
+func TestPublishRouteSnapshotDoesNotCompileGatewayListeners(t *testing.T) {
 	publisher := &recordingRoutePublisher{}
 	service := Service{
-		route:           routeListFake{routes: []model.Route{{Id: "route-1", Name: "api", Protocol: "http", Domain: "api.example.test", PathPrefix: "/", TargetUrl: "http://example:80", Enabled: true}}},
-		gateway:         gatewayConfigFake{cfg: model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: "http://localhost:8080"}},
-		gatewayCompiler: compiler,
-		routePublisher:  publisher,
+		route:          routeListFake{routes: []model.Route{{Id: "route-1", Name: "api", Protocol: "http", Domain: "api.example.test", PathPrefix: "/", TargetUrl: "http://example:80", Enabled: true}}},
+		gateway:        gatewayConfigFake{cfg: model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: "http://localhost:8080"}},
+		routePublisher: publisher,
 	}
 
 	if err := service.publishRouteSnapshot(context.Background()); err != nil {
 		t.Fatal(err)
-	}
-	if compiler.calls != 1 {
-		t.Fatalf("publishRouteSnapshot compiled gateway listeners %d time(s), want 1", compiler.calls)
 	}
 	if publisher.readyWaits != 0 {
 		t.Fatalf("publishRouteSnapshot WaitUntilReady calls = %d, want 0", publisher.readyWaits)
@@ -54,15 +44,6 @@ func TestPublishRouteSnapshotCompilesGatewayListeners(t *testing.T) {
 	if len(publisher.snapshots) != 1 {
 		t.Fatalf("snapshots = %d, want 1", len(publisher.snapshots))
 	}
-}
-
-type countingGatewayCompiler struct {
-	calls int
-}
-
-func (c *countingGatewayCompiler) CompileTCPRouteListeners(context.Context, model.GatewayConfig, []int) error {
-	c.calls++
-	return nil
 }
 
 type routeListFake struct {

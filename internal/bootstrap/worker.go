@@ -31,7 +31,8 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
 	localSource := repositorysource.New(runtimepath.ResolvePhysicalPath)
 	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
-	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, cfg.Traefik)
+	transactionRunner := databasetx.NewTransactionRunner(database)
+	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, cfg, transactionRunner)
 	routeManager := traefik.NewRouteManager(cfg)
 	routeService := routesvc.New(
 		stores.project,
@@ -39,15 +40,12 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		stores.service,
 		stores.route,
 		stores.gateway,
-		gatewayService,
 		cfg,
 		routeManager,
 		traefik.MkcertGenerator{},
 		routeManager,
 	)
 	applicationService := applicationsvc.New(stores.project, stores.application)
-	transactionRunner := databasetx.NewTransactionRunner(database)
-
 	pipelineRunService := pipelinerunsvc.NewExecutionService(
 		stores.project,
 		stores.credential,

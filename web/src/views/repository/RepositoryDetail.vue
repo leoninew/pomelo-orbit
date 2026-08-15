@@ -1,9 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="app-detail-page-title break-words">
-        {{ repository?.name ?? '仓库详情' }}
-      </h1>
+      <DetailPageHeader :items="[]" :title="repository?.name ?? '仓库详情'" />
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="repository"
@@ -344,10 +342,10 @@
   import { repositoryApi } from '@/api/repository/repository';
   import AppDialog from '@/components/AppDialog.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -368,7 +366,6 @@
   const repositoryId = route.params.id as string;
   const toast = useToast();
   const projectStore = useProjectStore();
-  usePageBreadcrumbs([]);
 
   const { status, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();

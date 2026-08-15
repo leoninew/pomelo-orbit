@@ -1,14 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div v-if="!versionsOnly" class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="app-detail-page-title min-w-0 break-words">
-          {{ application?.name || t('application.detail.title') }}
-        </h1>
-        <DetailHeaderMeta v-if="application">
-          <AppBadge :tone="applicationKindTone(application.kind)">{{ application.kind }}</AppBadge>
-        </DetailHeaderMeta>
-      </div>
+      <DetailPageHeader :items="[]" :title="application?.name || t('application.detail.title')" />
       <div class="flex flex-wrap items-center gap-2">
         <button v-if="application" class="app-button h-9 px-3" @click="handleExport">
           <Download class="size-4" />
@@ -69,13 +62,16 @@
       </DetailInfoCard>
 
       <!-- 版本 -->
-      <DetailInfoCard :title="t('application.detail.sections.versions')">
+      <DetailInfoCard
+        :title="t('application.detail.sections.versions')"
+        actions-class="flex-nowrap"
+      >
         <template #actions>
           <SearchControl
             v-model="versionSearchText"
             :placeholder="t('application.detail.searchVersionsPlaceholder')"
             :loading="versionListLoading"
-            class="shrink-0"
+            class="min-w-0 flex-1"
             @search="handleVersionSearch"
           />
           <button class="app-button-primary h-9 px-3" @click="openCreateVersionModal">
@@ -667,7 +663,7 @@
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
   import AppBadge from '@/components/AppBadge.vue';
-  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
@@ -677,7 +673,6 @@
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import SearchControl from '@/components/SearchControl.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
@@ -701,7 +696,6 @@
   const { t } = useI18n();
   const applicationId = applicationIdProp || (route.params.id as string);
   const toast = useToast();
-  usePageBreadcrumbs([]);
 
   const { loading: basicInfoLoading, execute: executeBasicInfo } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();

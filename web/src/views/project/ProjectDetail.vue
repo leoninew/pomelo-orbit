@@ -1,19 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="app-detail-page-title min-w-0 break-words">
-          {{ project?.name ?? t('project.detailTitle') }}
-        </h1>
-        <DetailHeaderMeta v-if="project">
-          <AppBadge v-if="project.is_active" variant="status" tone="success">
-            {{ t('project.active') }}
-          </AppBadge>
-          <AppBadge v-else variant="status" tone="default">
-            {{ t('project.deprecated') }}
-          </AppBadge>
-        </DetailHeaderMeta>
-      </div>
+      <DetailPageHeader :items="[]" :title="project?.name ?? t('project.detailTitle')" />
       <div class="flex flex-wrap items-center gap-2">
         <button class="app-button h-9 px-4" @click="router.push('/projects')">
           <ArrowLeft class="size-4" />
@@ -60,13 +48,13 @@
       </dl>
     </DetailInfoCard>
 
-    <DetailInfoCard :title="t('project.members')">
+    <DetailInfoCard :title="t('project.members')" actions-class="flex-nowrap">
       <template #actions>
         <SearchControl
           v-model="memberSearchText"
           :placeholder="t('project.searchMembersPlaceholder')"
           :loading="loadingMembers"
-          class="shrink-0"
+          class="min-w-0 flex-1"
           @search="handleMemberSearch"
         />
         <button class="app-button-primary h-9 px-3" :disabled="operating" @click="openMemberModal">
@@ -221,14 +209,13 @@
   import { userApi } from '@/api/user/user';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import SearchControl from '@/components/SearchControl.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -241,7 +228,6 @@
   const router = useRouter();
   const toast = useToast();
   const projectStore = useProjectStore();
-  usePageBreadcrumbs([]);
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 

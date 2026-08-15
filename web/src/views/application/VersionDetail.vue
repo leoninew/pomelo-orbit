@@ -1,16 +1,10 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="app-detail-page-title min-w-0 break-words">
-          {{ version?.label || t('application.versionDetail.title') }}
-        </h1>
-        <DetailHeaderMeta v-if="version">
-          <AppBadge variant="status" :tone="versionStatusTone(version.status)">
-            {{ version.status }}
-          </AppBadge>
-        </DetailHeaderMeta>
-      </div>
+      <DetailPageHeader
+        :items="breadcrumbs"
+        :title="version?.label || t('application.versionDetail.title')"
+      />
       <div class="flex flex-wrap items-center gap-2">
         <button v-if="version" class="app-button h-9 px-3" :disabled="operating" @click="preview">
           <FileCode2 class="size-4" />
@@ -448,14 +442,13 @@
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
   import AppBadge from '@/components/AppBadge.vue';
-  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
@@ -482,21 +475,19 @@
 
   const version = ref<VersionResp>();
   const application = ref<ApplicationResp>();
-  usePageBreadcrumbs(
-    computed(() => {
-      const currentVersion = version.value;
-      const currentApplication = application.value;
-      if (!currentVersion || !currentApplication) {
-        return [];
-      }
-      return [
-        {
-          label: currentApplication.name,
-          to: `/application/${currentApplication.id}`,
-        },
-      ];
-    })
-  );
+  const breadcrumbs = computed(() => {
+    const currentVersion = version.value;
+    const currentApplication = application.value;
+    if (!currentVersion || !currentApplication) {
+      return [];
+    }
+    return [
+      {
+        label: currentApplication.name,
+        to: `/application/${currentApplication.id}`,
+      },
+    ];
+  });
   const previewOpen = ref(false);
   const previewContent = ref('');
   const previewError = ref('');

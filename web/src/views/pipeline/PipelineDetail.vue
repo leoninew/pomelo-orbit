@@ -1,10 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 items-center gap-2">
-        <h1 class="app-detail-page-title break-words">{{ pipeline?.name || '流水线详情' }}</h1>
-        <AppBadge v-if="pipeline && isTemplate" tone="info" variant="status">模板</AppBadge>
-      </div>
+      <DetailPageHeader :items="[]" :title="pipeline?.name || '流水线详情'" />
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="pipeline && !isTemplate"
@@ -432,13 +429,13 @@
   import { useProjectStore } from '@/stores/project';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ViewModeToggle from '@/components/ViewModeToggle.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
@@ -456,7 +453,6 @@
   const router = useRouter();
   const toast = useToast();
   const projectStore = useProjectStore();
-  usePageBreadcrumbs([]);
   const { status, execute } = useStatusAsync();
   const { loading: saving, execute: executeSave } = useStatusAsync();
   const pipelineId = computed(() => String(route.params.id));

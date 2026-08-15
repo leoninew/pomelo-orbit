@@ -1,14 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="app-detail-page-title min-w-0 break-words">
-          {{ credential?.name ?? '凭据详情' }}
-        </h1>
-        <DetailHeaderMeta v-if="credential">
-          <AppBadge>{{ credential.type }}</AppBadge>
-        </DetailHeaderMeta>
-      </div>
+      <DetailPageHeader :items="[]" :title="credential?.name ?? '凭据详情'" />
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="credential"
@@ -148,9 +141,8 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import SensitiveValue from '@/components/SensitiveValue.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { CredentialDetailResp } from '@/gen/proto/orbit/v1/credential/credential';
@@ -159,7 +151,6 @@
   const props = defineProps<{ id: string }>();
   const $router = useRouter();
   const toast = useToast();
-  usePageBreadcrumbs([]);
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 

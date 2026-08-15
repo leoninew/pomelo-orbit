@@ -1,8 +1,8 @@
 <template>
   <div class="space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="app-detail-page-title break-words">{{ stage?.name || '阶段详情' }}</h1>
-      <div class="flex items-center gap-2">
+      <DetailPageHeader :items="[]" :title="stage?.name || '阶段详情'" />
+      <div class="flex flex-wrap items-center gap-2">
         <button v-if="stage" class="app-button-danger h-9 px-3" @click="openDelete">
           <Trash2 class="size-4" />
           删除
@@ -282,6 +282,7 @@
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
@@ -289,7 +290,6 @@
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect, { type RawValue } from '@/components/RawValueSelect.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type {
@@ -303,7 +303,6 @@
   const route = useRoute();
   const router = useRouter();
   const toast = useToast();
-  usePageBreadcrumbs([]);
   const { status, error, execute } = useStatusAsync();
   const { loading: saving, execute: executeSave } = useStatusAsync();
   const stage = ref<PipelineStageResp>();

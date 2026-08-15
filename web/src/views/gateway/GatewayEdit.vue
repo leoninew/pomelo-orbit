@@ -1,11 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="min-w-0">
-        <h1 class="truncate text-base font-semibold text-foreground">
-          {{ t('gateway.dialog.edit') }}
-        </h1>
-      </div>
+      <DetailPageHeader :items="[]" :title="t('gateway.dialog.edit')" />
       <div class="flex flex-wrap items-center gap-2">
         <button class="app-button-primary h-9 px-3" :disabled="operating" @click="handleSave">
           <Save class="size-4" />
@@ -112,8 +108,8 @@
   import { useRoute, useRouter } from 'vue-router';
   import { gatewayApi } from '@/api/gateway/gateway';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
@@ -122,7 +118,6 @@
   const { t } = useI18n();
   const route = useRoute();
   const router = useRouter();
-  usePageBreadcrumbs([]);
   const { status, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 

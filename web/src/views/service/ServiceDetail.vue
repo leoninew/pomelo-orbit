@@ -1,16 +1,10 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="app-detail-page-title min-w-0 break-words">
-          {{ t('service.detail.title') }}
-        </h1>
-        <DetailHeaderMeta v-if="service">
-          <AppBadge variant="status" :tone="appStatusTone(service.status)">
-            {{ service.status }}
-          </AppBadge>
-        </DetailHeaderMeta>
-      </div>
+      <DetailPageHeader
+        :items="[]"
+        :title="service?.application_name || t('service.detail.title')"
+      />
       <div class="flex flex-wrap items-center gap-2">
         <button v-if="service" class="app-button h-9 px-3" :disabled="operating" @click="preview">
           <FileCode2 class="size-4" />
@@ -378,7 +372,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
-  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
@@ -401,7 +395,6 @@
   import type { editor } from 'monaco-editor';
   import ServiceComponentsCard from './components/ServiceComponentsCard.vue';
   import ServiceEnvironmentCard from './components/ServiceEnvironmentCard.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
 
   const route = useRoute();
   const router = useRouter();
@@ -411,20 +404,6 @@
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const { loading: previewLoading, execute: executePreview } = useStatusAsync();
   const service = ref<ServiceResp>();
-  usePageBreadcrumbs(
-    computed(() => {
-      const currentService = service.value;
-      if (!currentService) {
-        return [];
-      }
-      return [
-        {
-          label: currentService.application_name,
-          to: `/application/${currentService.application_id}`,
-        },
-      ];
-    })
-  );
   const isBasicEditDialogOpen = ref(false);
   const basicEditVersions = ref<VersionResp[]>([]);
   const basicEditForm = reactive({

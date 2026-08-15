@@ -276,7 +276,7 @@ export default {
       actions: {
         restart: '重启',
         export: '导出',
-        createVersion: '新建版本',
+        createVersion: '新建',
         addComponent: '添加组件',
         addExpose: '添加暴露',
         preview: '预览',
@@ -714,7 +714,7 @@ export default {
     create: '创建网关',
     detailTitle: '网关详情',
     backToList: '返回网关列表',
-    openWorkload: '版本与部署',
+    openWorkload: '应用',
     actions: {
       deploy: '部署',
       stop: '停止',

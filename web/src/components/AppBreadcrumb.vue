@@ -2,7 +2,7 @@
   <nav
     v-if="items.length > 0"
     :aria-label="t('app.breadcrumbAria')"
-    class="min-w-0 overflow-x-auto py-0.5 text-[11px] leading-4 text-muted-foreground"
+    class="min-w-0 max-w-full overflow-x-auto py-0.5 text-[11px] leading-4 text-muted-foreground"
   >
     <ol class="flex min-w-max items-center gap-1.5 whitespace-nowrap">
       <li
@@ -14,11 +14,13 @@
         <RouterLink
           v-if="item.to"
           :to="item.to"
-          class="rounded-sm outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          class="block max-w-60 truncate rounded-sm outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
           {{ item.label ?? t(item.labelKey!) }}
         </RouterLink>
-        <span v-else>{{ item.label ?? t(item.labelKey!) }}</span>
+        <span v-if="!item.to" class="block max-w-60 truncate">
+          {{ item.label ?? t(item.labelKey!) }}
+        </span>
       </li>
     </ol>
   </nav>

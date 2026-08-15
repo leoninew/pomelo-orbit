@@ -2,28 +2,7 @@
   <div class="flex flex-col gap-4">
     <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="app-detail-page-title min-w-0 break-words">
-          {{ routeData?.name ?? t('route.detailTitle') }}
-        </h1>
-        <DetailHeaderMeta v-if="routeData">
-          <AppBadge variant="status" :tone="routeData.enabled ? 'success' : 'default'">
-            {{ routeData.enabled ? t('route.status.enabled') : t('route.status.disabled') }}
-          </AppBadge>
-          <AppBadge
-            variant="status"
-            :tone="
-              routeData.protocol === 'tcp'
-                ? 'warning'
-                : routeData.https_enabled
-                  ? 'info'
-                  : 'default'
-            "
-          >
-            {{ routeData.protocol === 'tcp' ? 'TCP' : routeData.https_enabled ? 'HTTPS' : 'HTTP' }}
-          </AppBadge>
-        </DetailHeaderMeta>
-      </div>
+      <DetailPageHeader :items="[]" :title="routeData?.name ?? t('route.detailTitle')" />
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="routeData"
@@ -352,12 +331,11 @@
   import { routeApi } from '@/api/route/route';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useRouteTargetServices } from '@/composables/useRouteTargetServices';
   import { useProjectStore } from '@/stores/project';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -370,7 +348,6 @@
   const toast = useToast();
   const projectStore = useProjectStore();
   const { t } = useI18n();
-  usePageBreadcrumbs([]);
   const targetUrlPattern = /^https?:\/\/[a-zA-Z0-9.-]+(?::\d+)?$/;
 
   const { loading: basicInfoLoading, execute } = useStatusAsync();

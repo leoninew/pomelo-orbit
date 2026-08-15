@@ -1,11 +1,10 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 items-center gap-2">
-        <h1 class="app-detail-page-title break-words">
-          {{ detail?.version_component?.name || '组件配置' }}
-        </h1>
-      </div>
+      <DetailPageHeader
+        :items="breadcrumbs"
+        :title="detail?.version_component?.name || '组件配置'"
+      />
       <div class="flex flex-wrap items-center gap-2">
         <button class="app-button-primary h-9 px-3" :disabled="operating || !detail" @click="save">
           <Save class="size-4" />
@@ -587,12 +586,12 @@
   import { serviceApi } from '@/api/service/service';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type {
@@ -675,20 +674,18 @@
   const componentId = String(route.params.componentId || '');
   const service = ref<ServiceResp>();
   const detail = ref<ServiceComponentDetailResp>();
-  usePageBreadcrumbs(
-    computed(() => {
-      const currentService = service.value;
-      if (!currentService || !detail.value) {
-        return [];
-      }
-      return [
-        {
-          label: `${currentService.application_name} / ${currentService.instance_key || 'default'}`,
-          to: `/service/${currentService.id}`,
-        },
-      ];
-    })
-  );
+  const breadcrumbs = computed(() => {
+    const currentService = service.value;
+    if (!currentService || !detail.value) {
+      return [];
+    }
+    return [
+      {
+        label: `${currentService.application_name} / ${currentService.instance_key || 'default'}`,
+        to: `/service/${currentService.id}`,
+      },
+    ];
+  });
   const environmentRows = ref<EnvRow[]>([]);
   const editingEnvironmentKey = ref<string | null>(null);
   const editingEnvironmentValue = ref('');

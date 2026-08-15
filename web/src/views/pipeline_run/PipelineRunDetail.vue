@@ -1,14 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="app-detail-page-title min-w-0 break-words">
-          {{ t('pipelineRun.detailTitle') }}
-        </h1>
-        <DetailHeaderMeta v-if="run">
-          <AppBadge variant="status" :tone="pipelineStatusTone">{{ run.status }}</AppBadge>
-        </DetailHeaderMeta>
-      </div>
+      <DetailPageHeader :items="[]" :title="t('pipelineRun.detailTitle')" />
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="run?.status === 'faulted'"
@@ -157,13 +150,13 @@
       </DetailInfoCard>
 
       <!-- Stage List -->
-      <DetailInfoCard :title="t('pipelineRun.stageOrchestration')">
+      <DetailInfoCard :title="t('pipelineRun.stageOrchestration')" actions-class="flex-nowrap">
         <template #actions>
           <SearchControl
             v-model="stageSearchText"
             :placeholder="t('pipelineRun.searchStagesPlaceholder')"
             :loading="loading"
-            class="shrink-0"
+            class="min-w-0 flex-1"
             @search="handleStageSearch"
           />
           <ViewModeToggle v-model="stagesView" />
@@ -400,7 +393,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
@@ -408,7 +401,6 @@
   import AppDrawer from '@/components/AppDrawer.vue';
   import ViewModeToggle from '@/components/ViewModeToggle.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ArtifactResp } from '@/gen/proto/orbit/v1/pipeline_run/artifact';
@@ -429,7 +421,6 @@
   const runId = computed(() => route.params.id as string);
   const { t } = useI18n();
   const toast = useToast();
-  usePageBreadcrumbs([]);
 
   const { loading, execute } = useStatusAsync();
   const { loading: artifactsLoading, execute: executeArtifacts } = useStatusAsync();

@@ -1,11 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="min-w-0">
-        <h1 class="app-detail-page-title break-words">
-          {{ gateway?.name || t('gateway.detailTitle') }}
-        </h1>
-      </div>
+      <DetailPageHeader :items="[]" :title="gateway?.name || t('gateway.detailTitle')" />
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="gateway"
@@ -25,10 +21,6 @@
           <Square class="size-4" />
           {{ t('gateway.actions.stop') }}
         </button>
-        <button v-if="gateway" class="app-button h-9 px-3" @click="goWorkload">
-          <Layers class="size-4" />
-          {{ t('gateway.openWorkload') }}
-        </button>
         <button class="app-button h-9 px-4" @click="router.push('/gateways')">
           <ArrowLeft class="size-4" />
           {{ t('common.back') }}
@@ -45,6 +37,12 @@
         :disabled="operating"
         @edit="openEditDialog"
       >
+        <template #actions>
+          <button class="app-button h-9 px-3" @click="goWorkload">
+            <Layers class="size-4" />
+            {{ t('gateway.openWorkload') }}
+          </button>
+        </template>
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>{{ t('gateway.fields.name') }}</dt>
@@ -369,6 +367,7 @@
   import { gatewayApi } from '@/api/gateway/gateway';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
@@ -376,7 +375,6 @@
   import SearchControl from '@/components/SearchControl.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import SelectControl from '@/components/SelectControl.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
@@ -388,7 +386,6 @@
   const { t } = useI18n();
   const route = useRoute();
   const router = useRouter();
-  usePageBreadcrumbs([]);
   const { status, loading, execute } = useStatusAsync();
   const { status: opStatus, execute: executeOp } = useStatusAsync();
 

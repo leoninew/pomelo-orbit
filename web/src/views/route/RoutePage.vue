@@ -1,19 +1,19 @@
 <template>
   <div class="flex flex-col gap-4">
-    <DetailInfoCard :title="t('route.sections.traefikRouters')" actions-class="w-full lg:w-auto">
+    <DetailInfoCard :title="t('route.sections.traefikRouters')" actions-class="flex-nowrap">
       <template #actions>
         <ToolbarRoot
-          class="flex w-full flex-wrap items-center justify-between gap-3 lg:w-auto lg:flex-nowrap"
+          class="flex min-w-0 flex-1 items-center justify-end gap-3"
           :aria-label="t('traefikRoute.toolbar')"
         >
           <SearchControl
             v-model="traefikSearchText"
-            class="w-full sm:w-[360px]"
+            class="min-w-0 flex-1"
             :placeholder="t('traefikRoute.searchPlaceholder')"
             :loading="traefikStatus === 'loading'"
             @search="handleTraefikSearch"
           />
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="flex shrink-0 items-center gap-2">
             <button class="app-button-primary h-9 px-3" @click="openDashboard">
               <ExternalLink class="size-4" />
               {{ t('traefikRoute.openDashboard') }}
@@ -114,23 +114,20 @@
       </div>
     </DetailInfoCard>
 
-    <DetailInfoCard
-      :title="t('route.sections.customConfiguration')"
-      actions-class="w-full lg:w-auto"
-    >
+    <DetailInfoCard :title="t('route.sections.customConfiguration')" actions-class="flex-nowrap">
       <template #actions>
         <ToolbarRoot
-          class="flex w-full flex-wrap items-center justify-between gap-3 lg:w-auto lg:flex-nowrap"
+          class="flex min-w-0 flex-1 items-center justify-end gap-3"
           :aria-label="t('route.toolbar')"
         >
           <SearchControl
             v-model="routeSearchText"
-            class="w-full sm:w-[360px]"
+            class="min-w-0 flex-1"
             :placeholder="t('route.searchPlaceholder')"
             :loading="routeStatus === 'loading'"
             @search="handleRouteSearch"
           />
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="flex shrink-0 items-center gap-2">
             <button
               class="app-button-primary h-9 px-3"
               :disabled="routeOperating"

@@ -102,7 +102,11 @@
   }
 
   .app-detail-section-header {
-    @apply flex flex-wrap items-center justify-between gap-3;
+    @apply grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center;
+  }
+
+  .app-detail-section-actions {
+    @apply flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2;
   }
 
   .app-detail-page-title {

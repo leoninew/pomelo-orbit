@@ -1,9 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="app-detail-page-title break-words">
-        {{ role?.name ?? '角色详情' }}
-      </h1>
+      <DetailPageHeader :items="[]" :title="role?.name ?? '角色详情'" />
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="role && canWriteRoles"
@@ -204,7 +202,7 @@
   import { roleApi } from '@/api/role/role';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
@@ -221,7 +219,6 @@
   const authStore = useAuthStore();
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
-  usePageBreadcrumbs([]);
 
   const role = ref<RoleResp>();
   const permissions = ref<PermissionResp[]>([]);

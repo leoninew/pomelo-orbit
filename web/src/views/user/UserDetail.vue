@@ -1,16 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="app-detail-page-title min-w-0 break-words">
-          {{ user?.username ?? '用户详情' }}
-        </h1>
-        <DetailHeaderMeta v-if="user">
-          <AppBadge variant="status" :tone="user.status === 'enabled' ? 'success' : 'default'">
-            {{ user.status }}
-          </AppBadge>
-        </DetailHeaderMeta>
-      </div>
+      <DetailPageHeader :items="[]" :title="user?.username ?? '用户详情'" />
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="user && canWriteUsers && user.status === 'enabled'"
@@ -268,11 +259,10 @@
   import { roleApi } from '@/api/role/role';
   import { userApi } from '@/api/user/user';
   import AppBadge from '@/components/AppBadge.vue';
-  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
@@ -290,7 +280,6 @@
   const authStore = useAuthStore();
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
-  usePageBreadcrumbs([]);
 
   const user = ref<UserResp>();
   const roleOptions = ref<RoleResp[]>([]);

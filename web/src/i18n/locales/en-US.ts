@@ -283,7 +283,7 @@ export default {
       actions: {
         restart: 'Restart',
         export: 'Export',
-        createVersion: 'Create Version',
+        createVersion: 'Create',
         addComponent: 'Add Component',
         addExpose: 'Add Expose',
         preview: 'Preview',
@@ -731,7 +731,7 @@ export default {
     create: 'Create Gateway',
     detailTitle: 'Gateway detail',
     backToList: 'Back to gateways',
-    openWorkload: 'Versions & deploy',
+    openWorkload: 'Application',
     actions: {
       deploy: 'Deploy',
       stop: 'Stop',

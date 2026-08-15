@@ -1,12 +1,7 @@
 <template>
   <div class="flex h-full min-h-0 flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 class="app-detail-page-title min-w-0 break-words">部署详情</h1>
-        <DetailHeaderMeta v-if="deployment">
-          <AppBadge variant="status" :tone="deploymentStatusTone">{{ deployment.status }}</AppBadge>
-        </DetailHeaderMeta>
-      </div>
+      <DetailPageHeader :items="[]" title="部署详情" />
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="isCancelable"
@@ -273,11 +268,10 @@
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
-  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { DeploymentResp } from '@/gen/proto/orbit/v1/deployment/deployment';
@@ -288,7 +282,6 @@
   const route = useRoute();
   const router = useRouter();
   const { t } = useI18n();
-  usePageBreadcrumbs([]);
   const deploymentId = computed(() => String(route.params.id ?? ''));
   const toast = useToast();
   const { status, execute } = useStatusAsync();

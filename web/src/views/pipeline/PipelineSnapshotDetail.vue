@@ -1,11 +1,13 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="app-detail-page-title">执行快照</h1>
-      <button class="app-button h-9 px-3" @click="router.back()">
-        <ArrowLeft class="size-4" />
-        返回
-      </button>
+      <DetailPageHeader :items="breadcrumbs" title="执行快照" />
+      <div class="flex flex-wrap items-center gap-2">
+        <button class="app-button h-9 px-3" @click="router.back()">
+          <ArrowLeft class="size-4" />
+          返回
+        </button>
+      </div>
     </div>
     <AppLoadingState v-if="status === 'loading'" size="section" />
     <template v-else-if="snapshot">
@@ -108,10 +110,10 @@
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ViewModeToggle from '@/components/ViewModeToggle.vue';
-  import { usePageBreadcrumbs } from '@/composables/useBreadcrumbs';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineSnapshotResp } from '@/gen/proto/orbit/v1/pipeline/snapshot';
@@ -122,9 +124,20 @@
   const route = useRoute();
   const router = useRouter();
   const toast = useToast();
-  usePageBreadcrumbs([]);
   const { status, execute } = useStatusAsync();
   const snapshot = ref<PipelineSnapshotResp>();
+  const breadcrumbs = computed(() => {
+    const currentSnapshot = snapshot.value;
+    if (!currentSnapshot) {
+      return [];
+    }
+    return [
+      {
+        label: currentSnapshot.pipeline_name,
+        to: `/pipeline/${currentSnapshot.pipeline_id}`,
+      },
+    ];
+  });
   const stagesView = ref<'list' | 'dag'>('list');
   const snapshotId = computed(() => String(route.params.id));
   function stageName(id: string) {

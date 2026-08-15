@@ -5,7 +5,7 @@
         <h2 v-if="title" class="app-detail-section-title">{{ title }}</h2>
         <div
           v-if="editable || hasActionsSlot"
-          class="flex flex-wrap items-center gap-2"
+          class="app-detail-section-actions"
           :class="actionsClass"
         >
           <button

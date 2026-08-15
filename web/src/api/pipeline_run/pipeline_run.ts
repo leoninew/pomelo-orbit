@@ -5,9 +5,6 @@ import type {
   PipelineRunResp,
   PipelineRunRetryReq,
   PipelineStageLogResp,
-  PipelineRunTriggerReq,
-  PipelineRunVariablePreviewReq,
-  PipelineRunVariablePreviewResp,
 } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
 import request, { type AxiosRequestConfig } from '@/utils/request';
 
@@ -33,15 +30,8 @@ export const pipelineRunApi = {
     return request.delete(`/api/pipeline-run/${id}`);
   },
 
-  trigger(id: string, data: PipelineRunTriggerReq): Promise<PipelineRunResp> {
-    return request.post(`/api/pipeline/${id}/trigger`, data);
-  },
-
-  previewVariables(
-    id: string,
-    data: PipelineRunVariablePreviewReq
-  ): Promise<PipelineRunVariablePreviewResp> {
-    return request.post(`/api/pipeline/${id}/variable-preview`, data);
+  trigger(id: string): Promise<PipelineRunResp> {
+    return request.post(`/api/pipeline/${id}/trigger`, {});
   },
 
   retry(id: string, data: PipelineRunRetryReq): Promise<PipelineRunResp> {

@@ -12,7 +12,10 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-var pipelineVariablePattern = regexp.MustCompile(`\{\{\s*([A-Za-z][A-Za-z0-9_]*)(?:\s*\|\s*default\s*:\s*['"]([^'"]*)['"])?\s*\}\}`)
+var (
+	pipelineVariablePattern     = regexp.MustCompile(`\{\{\s*([A-Za-z][A-Za-z0-9_]*)(?:\s*\|\s*default\s*:\s*['"]([^'"]*)['"])?\s*\}\}`)
+	pipelineVariableNamePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+)
 
 // RuntimeVariableDeclarations builds the declarations used by a run. Snapshot
 // declarations are historical data; callers must provide the current
@@ -26,6 +29,10 @@ func RuntimeVariableDeclarations(repo model.Repository, pipeline model.Pipeline,
 	if err != nil {
 		return nil, err
 	}
+	pipelineVariables, err = NormalizePipelineVariables(pipelineVariables)
+	if err != nil {
+		return nil, err
+	}
 	stageVariables := extractStageVariableDeclarations(stages)
 
 	byName := make(map[string]model.VariableDeclaration)
@@ -33,7 +40,7 @@ func RuntimeVariableDeclarations(repo model.Repository, pipeline model.Pipeline,
 	for _, declaration := range repositoryVariables {
 		byName[declaration.Name] = declaration
 	}
-	for _, raw := range SanitizePipelineVariables(pipelineVariables) {
+	for _, raw := range pipelineVariables {
 		declaration, err := variableDeclarationFromMap(raw, "pipeline")
 		if err != nil {
 			return nil, err
@@ -59,7 +66,7 @@ func RuntimeVariableDeclarations(repo model.Repository, pipeline model.Pipeline,
 		result = append(result, byName[name])
 	}
 	result = append(result,
-		model.VariableDeclaration{Name: "repository_ref", Description: PipelineBuiltinVariableSpecs()["repository_ref"], Default: repo.DefaultBranch, Source: "runtime", Editable: true},
+		model.VariableDeclaration{Name: "repository_ref", Description: PipelineBuiltinVariableSpecs()["repository_ref"], Default: repo.DefaultBranch, Source: "runtime", Editable: false},
 	)
 	for _, name := range SortedPipelineBuiltinVariableNames() {
 		if name == "repository_ref" {
@@ -70,9 +77,9 @@ func RuntimeVariableDeclarations(repo model.Repository, pipeline model.Pipeline,
 	return result, nil
 }
 
-// ResolveRuntimeVariables applies the complete form -> repository -> pipeline
-// -> stage-default chain and injects the immutable system context.
-func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, stages []model.StageDefinition, form map[string]string, requireCompleteForm bool) ([]model.VariableDeclaration, map[string]any, error) {
+// ResolveRuntimeVariables applies internal retry overrides -> repository ->
+// pipeline -> stage-default and injects the immutable system context.
+func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, stages []model.StageDefinition, overrides map[string]string) ([]model.VariableDeclaration, map[string]any, error) {
 	declarations, err := RuntimeVariableDeclarations(repo, pipeline, stages)
 	if err != nil {
 		return nil, nil, err
@@ -81,7 +88,7 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 	for _, declaration := range declarations {
 		declarationByName[declaration.Name] = declaration
 	}
-	for name := range form {
+	for name := range overrides {
 		if _, ok := declarationByName[name]; !ok {
 			return nil, nil, apperror.New(apperror.KindValidation, "Unknown variable: "+name)
 		}
@@ -89,28 +96,13 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 			return nil, nil, apperror.New(apperror.KindValidation, "System variable cannot be overridden: "+name)
 		}
 	}
-	if requireCompleteForm {
-		for _, declaration := range declarations {
-			if declaration.Source == "system" {
-				continue
-			}
-			if value, ok := form[declaration.Name]; ok && HasRuntimeValue(value) {
-				continue
-			}
-			if declaration.Name == "repository_ref" {
-				return nil, nil, apperror.New(apperror.KindValidation, "repository_ref is required")
-			}
-			return nil, nil, apperror.New(apperror.KindValidation, "Missing variable value: "+declaration.Name)
-		}
-	}
-
 	values := make(map[string]any, len(declarations))
 	for _, declaration := range declarations {
 		switch declaration.Source {
 		case "system":
 			values[declaration.Name] = systemVariableValue(repo, declaration.Name)
 		default:
-			if value, ok := form[declaration.Name]; ok && HasRuntimeValue(value) {
+			if value, ok := overrides[declaration.Name]; ok && HasRuntimeValue(value) {
 				values[declaration.Name] = value
 			} else if value, ok := EffectiveVariableValue(declaration); ok {
 				values[declaration.Name] = value
@@ -118,14 +110,14 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 		}
 	}
 	for _, declaration := range declarations {
-		if requireCompleteForm && declaration.Source != "system" && !HasRuntimeValue(values[declaration.Name]) {
+		if declaration.Source != "system" && !HasRuntimeValue(values[declaration.Name]) {
 			return nil, nil, apperror.New(apperror.KindValidation, "Missing variable value: "+declaration.Name)
 		}
 	}
 	return declarations, values, nil
 }
 
-func ResolveRuntimeVariablesFromPipelineStages(repo model.Repository, pipeline model.Pipeline, stages []model.PipelineStage, form map[string]string, requireCompleteForm bool) ([]model.VariableDeclaration, map[string]any, error) {
+func ResolveRuntimeVariablesFromPipelineStages(repo model.Repository, pipeline model.Pipeline, stages []model.PipelineStage, overrides map[string]string) ([]model.VariableDeclaration, map[string]any, error) {
 	definitions := make([]model.StageDefinition, 0, len(stages))
 	for _, stage := range stages {
 		definition := model.StageDefinition{Id: stage.Id, Name: stage.Name, Image: stage.Image, Script: stage.Script, Description: stage.Description}
@@ -144,7 +136,7 @@ func ResolveRuntimeVariablesFromPipelineStages(repo model.Repository, pipeline m
 		}
 		definitions = append(definitions, definition)
 	}
-	return ResolveRuntimeVariables(repo, pipeline, definitions, form, requireCompleteForm)
+	return ResolveRuntimeVariables(repo, pipeline, definitions, overrides)
 }
 
 func UnmarshalRuntimeVariableSnapshot(value string) ([]model.VariableDeclaration, map[string]any, error) {
@@ -309,14 +301,18 @@ func VariableDeclarationsFromMaps(values []map[string]any) ([]model.VariableDecl
 	return declarations, nil
 }
 
-// ResolvePipelineVariableDeclarations combines pipeline custom declarations
-// with variables extracted from the pipeline stages.
+// ResolvePipelineVariableDeclarations returns the variables displayed by an
+// application pipeline: its managed declarations plus read-only built-ins.
 func ResolvePipelineVariableDeclarations(stages []model.PipelineStage, pipelineVariables string) ([]model.VariableDeclaration, error) {
 	custom, err := PipelineVariables(pipelineVariables)
 	if err != nil {
 		return nil, err
 	}
-	return VariableDeclarationsFromMaps(ResolvePipelineVariables(stages, custom))
+	variables, err := ResolvePipelineVariables(stages, custom)
+	if err != nil {
+		return nil, err
+	}
+	return VariableDeclarationsFromMaps(variables)
 }
 
 func PipelineVariables(value string) ([]map[string]any, error) {
@@ -330,7 +326,9 @@ func PipelineVariables(value string) ([]map[string]any, error) {
 	return variables, nil
 }
 
-func SanitizePipelineVariables(variables []map[string]any) []map[string]any {
+// SanitizeTemplatePipelineVariables preserves the template pipeline storage
+// contract. Application pipeline management uses NormalizePipelineVariables.
+func SanitizeTemplatePipelineVariables(variables []map[string]any) []map[string]any {
 	result := make([]map[string]any, 0, len(variables))
 	for _, variable := range variables {
 		name, _ := variable["name"].(string)
@@ -356,7 +354,44 @@ func SanitizePipelineVariables(variables []map[string]any) []map[string]any {
 	return result
 }
 
-func ResolvePipelineVariablesFromStageDefinitions(stages []model.StageDefinition, custom []map[string]any) []map[string]any {
+func NormalizePipelineVariables(variables []map[string]any) ([]map[string]any, error) {
+	result := make([]map[string]any, 0, len(variables))
+	seen := make(map[string]struct{}, len(variables))
+	for _, variable := range variables {
+		name, _ := variable["name"].(string)
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return nil, apperror.New(apperror.KindValidation, "Pipeline variable name is required")
+		}
+		if !pipelineVariableNamePattern.MatchString(name) {
+			return nil, apperror.New(apperror.KindValidation, "Invalid pipeline variable name: "+name)
+		}
+		if IsPipelineBuiltinVariable(name) {
+			return nil, apperror.New(apperror.KindValidation, "Pipeline variable cannot override system context: "+name)
+		}
+		if _, exists := seen[name]; exists {
+			return nil, apperror.New(apperror.KindValidation, "Duplicate pipeline variable: "+name)
+		}
+		seen[name] = struct{}{}
+		source, _ := variable["source"].(string)
+		if source == "" {
+			source = "pipeline_custom"
+		}
+		if source != "pipeline_custom" && source != "pipeline_stage" {
+			return nil, apperror.New(apperror.KindValidation, "Invalid pipeline variable source: "+source)
+		}
+		copy := map[string]any{}
+		maps.Copy(copy, variable)
+		copy["name"], copy["source"], copy["editable"] = name, "pipeline_custom", true
+		if _, exists := copy["secret"]; !exists {
+			copy["secret"] = false
+		}
+		result = append(result, copy)
+	}
+	return result, nil
+}
+
+func ResolvePipelineVariablesFromStageDefinitions(stages []model.StageDefinition, custom []map[string]any) ([]map[string]any, error) {
 	converted := make([]model.PipelineStage, 0, len(stages))
 	for _, stage := range stages {
 		artifacts, _ := json.Marshal(stage.Artifacts)
@@ -366,7 +401,7 @@ func ResolvePipelineVariablesFromStageDefinitions(stages []model.StageDefinition
 	return ResolvePipelineVariables(converted, custom)
 }
 
-func ResolvePipelineVariables(stages []model.PipelineStage, custom []map[string]any) []map[string]any {
+func ResolvePipelineVariables(stages []model.PipelineStage, custom []map[string]any) ([]map[string]any, error) {
 	extracted := map[string]any{}
 	for _, stage := range stages {
 		extractPipelineVariables(stage.Script, extracted)
@@ -383,7 +418,70 @@ func ResolvePipelineVariables(stages []model.PipelineStage, custom []map[string]
 			extractPipelineVariables(artifact.Command, extracted)
 		}
 	}
-	custom = SanitizePipelineVariables(custom)
+	var err error
+	custom, err = NormalizePipelineVariables(custom)
+	if err != nil {
+		return nil, err
+	}
+	customByName := map[string]map[string]any{}
+	for _, variable := range custom {
+		name, _ := variable["name"].(string)
+		customByName[name] = variable
+	}
+	result := make([]map[string]any, 0, len(extracted)+len(custom)+len(PipelineBuiltinVariableSpecs()))
+	for _, name := range SortedPipelineBuiltinVariableNames() {
+		result = append(result, PipelineBuiltinVariable(name))
+	}
+	names := make([]string, 0, len(extracted))
+	for name := range extracted {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if IsPipelineBuiltinVariable(name) {
+			continue
+		}
+		if existing, ok := customByName[name]; ok {
+			copy := map[string]any{}
+			maps.Copy(copy, existing)
+			if !HasRuntimeValue(existing["value"]) && !HasRuntimeValue(existing["default"]) && extracted[name] != nil {
+				copy["default"] = extracted[name]
+			}
+			result = append(result, copy)
+			continue
+		}
+		result = append(result, map[string]any{"name": name, "description": "", "default": extracted[name], "value": nil, "secret": false, "source": "pipeline_stage", "editable": false})
+	}
+	for _, variable := range custom {
+		name, _ := variable["name"].(string)
+		if _, exists := extracted[name]; !exists {
+			result = append(result, variable)
+		}
+	}
+	return result, nil
+}
+
+// ResolveTemplatePipelineVariables preserves the existing template detail
+// response. Template variables are not part of Application Pipeline variable
+// management.
+func ResolveTemplatePipelineVariables(stages []model.PipelineStage, custom []map[string]any) []map[string]any {
+	extracted := map[string]any{}
+	for _, stage := range stages {
+		extractPipelineVariables(stage.Script, extracted)
+		if stage.Artifacts == nil || strings.TrimSpace(*stage.Artifacts) == "" {
+			continue
+		}
+		var artifacts []model.ArtifactConfig
+		if json.Unmarshal([]byte(*stage.Artifacts), &artifacts) != nil {
+			continue
+		}
+		for _, artifact := range artifacts {
+			extractPipelineVariables(artifact.Reference, extracted)
+			extractPipelineVariables(artifact.Name, extracted)
+			extractPipelineVariables(artifact.Command, extracted)
+		}
+	}
+	custom = SanitizeTemplatePipelineVariables(custom)
 	customByName := map[string]map[string]any{}
 	for _, variable := range custom {
 		name, _ := variable["name"].(string)

@@ -179,7 +179,7 @@ func (s stores) CompletePipelineRunVersionBinding(ctx context.Context, runID, ve
 	return s.pipelineRun.CompletePipelineRunVersionBinding(ctx, runID, versionID, label)
 }
 
-func (s Service) TriggerPipeline(ctx context.Context, userId, pipelineId string, input pipelinerundto.PipelineRunTriggerInput) (pipelinerundto.PipelineRunDetail, error) {
+func (s Service) TriggerPipeline(ctx context.Context, userId, pipelineId string) (pipelinerundto.PipelineRunDetail, error) {
 	pipeline, err := s.pipelineForUser(ctx, userId, pipelineId)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
@@ -187,38 +187,7 @@ func (s Service) TriggerPipeline(ctx context.Context, userId, pipelineId string,
 	if pipeline.Kind != model.PipelineKindApplication {
 		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "template pipelines cannot run")
 	}
-	return s.createPipelineRun(ctx, pipeline, input.Variables, nil)
-}
-
-// PreviewPipelineRunVariables resolves a manual trigger's variable values
-// without creating a snapshot, run, task, or version binding.
-func (s Service) PreviewPipelineRunVariables(ctx context.Context, userID, pipelineID string, input pipelinerundto.PipelineRunVariablePreviewInput) (pipelinerundto.PipelineRunVariablePreview, error) {
-	pipeline, err := s.pipelineForUser(ctx, userID, pipelineID)
-	if err != nil {
-		return pipelinerundto.PipelineRunVariablePreview{}, err
-	}
-	if pipeline.Kind != model.PipelineKindApplication {
-		return pipelinerundto.PipelineRunVariablePreview{}, apperror.New(apperror.KindValidation, "template pipelines cannot run")
-	}
-	if pipeline.RepositoryId == nil {
-		return pipelinerundto.PipelineRunVariablePreview{}, apperror.New(apperror.KindValidation, "application pipeline identity is incomplete")
-	}
-	repo, err := s.repositoryForPipeline(ctx, pipeline)
-	if err != nil {
-		return pipelinerundto.PipelineRunVariablePreview{}, err
-	}
-	stages, err := s.store.ApplicationPipelineStages(ctx, pipeline.Id)
-	if err != nil {
-		return pipelinerundto.PipelineRunVariablePreview{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
-	}
-	declarations, values, err := pipelinevariable.ResolveRuntimeVariablesFromPipelineStages(repo, pipeline, stages, input.Variables, false)
-	if err != nil {
-		return pipelinerundto.PipelineRunVariablePreview{}, err
-	}
-	for index := range declarations {
-		declarations[index].Value = values[declarations[index].Name]
-	}
-	return pipelinerundto.PipelineRunVariablePreview{VariableDeclarations: declarations}, nil
+	return s.createPipelineRun(ctx, pipeline, nil, nil)
 }
 
 func (s Service) RetryPipelineRun(ctx context.Context, userId, runId string) (pipelinerundto.PipelineRunDetail, error) {
@@ -252,6 +221,13 @@ func (s Service) createPipelineRun(ctx context.Context, pipeline model.Pipeline,
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
 	if err := s.ensureRepositoryHasNoRunningPipelineRun(ctx, repo.Id); err != nil {
+		return pipelinerundto.PipelineRunDetail{}, err
+	}
+	stages, err := s.store.ApplicationPipelineStages(ctx, pipeline.Id)
+	if err != nil {
+		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
+	}
+	if _, _, err := pipelinevariable.ResolveRuntimeVariablesFromPipelineStages(repo, pipeline, stages, overrides); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
 	snapshot, err := pipelinesvc.GetOrCreatePipelineSnapshot(ctx, s.store, pipeline, repo)
@@ -613,7 +589,7 @@ func buildPipelineRunVariables(repo model.Repository, pipeline model.Pipeline, s
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
 		return "", "", apperror.New(apperror.KindInternal, "Invalid pipeline snapshot stages")
 	}
-	declarations, variables, err := pipelinevariable.ResolveRuntimeVariables(repo, pipeline, stages, overrides, true)
+	declarations, variables, err := pipelinevariable.ResolveRuntimeVariables(repo, pipeline, stages, overrides)
 	if err != nil {
 		return "", "", err
 	}

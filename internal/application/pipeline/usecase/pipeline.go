@@ -182,7 +182,7 @@ func (s Service) CreatePipeline(ctx context.Context, userId string, input pipeli
 	if err := s.ensurePipelineNameAvailable(ctx, projectId, name, ""); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	variables, err := marshalPipelineVariables(pipelinevariable.SanitizePipelineVariables(input.VariableDeclarations))
+	variables, err := marshalPipelineVariables(pipelinevariable.SanitizeTemplatePipelineVariables(input.VariableDeclarations))
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
@@ -225,7 +225,15 @@ func (s Service) UpdatePipeline(ctx context.Context, userId string, pipelineId s
 		changed = true
 	}
 	if input.VariableDeclarations != nil {
-		variables, err := marshalPipelineVariables(pipelinevariable.SanitizePipelineVariables(*input.VariableDeclarations))
+		variablesToStore := pipelinevariable.SanitizeTemplatePipelineVariables(*input.VariableDeclarations)
+		if pipeline.Kind == model.PipelineKindApplication {
+			var err error
+			variablesToStore, err = pipelinevariable.NormalizePipelineVariables(*input.VariableDeclarations)
+			if err != nil {
+				return pipelinedto.PipelineDetail{}, err
+			}
+		}
+		variables, err := marshalPipelineVariables(variablesToStore)
 		if err != nil {
 			return pipelinedto.PipelineDetail{}, err
 		}
@@ -475,7 +483,14 @@ func (s Service) pipelineDetail(ctx context.Context, pipeline model.Pipeline) (p
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	return pipelinedto.PipelineDetail{Pipeline: pipeline, StageNodes: nodes, VariableDeclarations: pipelinevariable.ResolvePipelineVariables(stageViews, variables)}, nil
+	if pipeline.Kind == model.PipelineKindTemplate {
+		return pipelinedto.PipelineDetail{Pipeline: pipeline, StageNodes: nodes, VariableDeclarations: pipelinevariable.ResolveTemplatePipelineVariables(stageViews, variables)}, nil
+	}
+	managedVariables, err := pipelinevariable.ResolvePipelineVariables(stageViews, variables)
+	if err != nil {
+		return pipelinedto.PipelineDetail{}, err
+	}
+	return pipelinedto.PipelineDetail{Pipeline: pipeline, StageNodes: nodes, VariableDeclarations: managedVariables}, nil
 }
 
 // applyVersionForkStrategy changes the version selection captured while an

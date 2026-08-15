@@ -2,18 +2,6 @@ package dto
 
 import "github.com/leoninew/pomelo-orbit/internal/model"
 
-type PipelineRunTriggerInput struct {
-	Variables map[string]string
-}
-
-type PipelineRunVariablePreviewInput struct {
-	Variables map[string]string
-}
-
-type PipelineRunVariablePreview struct {
-	VariableDeclarations []model.VariableDeclaration
-}
-
 type PipelineRunDispatchInput struct {
 	PipelineRunId string
 }

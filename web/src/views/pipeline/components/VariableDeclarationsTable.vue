@@ -43,6 +43,13 @@
               >
                 {{ t('common.reset') }}
               </button>
+              <button
+                v-if="canOverride(decl)"
+                class="app-link"
+                @click="emit('override', decl.name)"
+              >
+                覆盖
+              </button>
             </div>
           </td>
         </tr>
@@ -58,13 +65,15 @@
   import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
   import { getSourceTone, isVariableEditable } from '@/utils/variableSource';
 
-  withDefaults(
+  const props = withDefaults(
     defineProps<{
       declarations: VariableDeclarationResp[];
       readonly?: boolean;
+      allowOverride?: boolean;
     }>(),
     {
       readonly: false,
+      allowOverride: false,
     }
   );
 
@@ -73,6 +82,7 @@
   const emit = defineEmits<{
     (e: 'edit', name: string): void;
     (e: 'delete', name: string): void;
+    (e: 'override', name: string): void;
   }>();
 
   function hasDisplayValue(value: unknown) {
@@ -94,6 +104,10 @@
       return decl.editable;
     }
     return isVariableEditable(requireSource(decl));
+  }
+
+  function canOverride(decl: VariableDeclarationResp) {
+    return !props.readonly && props.allowOverride && requireSource(decl) === 'pipeline_stage';
   }
 
   function requireSource(decl: VariableDeclarationResp) {

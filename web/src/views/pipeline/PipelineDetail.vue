@@ -6,7 +6,8 @@
         <button
           v-if="pipeline && !isTemplate"
           class="app-button-primary h-9 px-3"
-          @click="openRunDialog"
+          :disabled="saving"
+          @click="runPipeline"
         >
           <Play class="size-4" />
           运行
@@ -160,23 +161,20 @@
         </div>
       </DetailInfoCard>
 
-      <DetailInfoCard title="变量配置">
+      <DetailInfoCard :title="isTemplate ? '变量配置' : '变量管理'">
         <template #actions>
           <button class="app-button-primary h-9 px-3" @click="openAddVariableDialog">
             <Plus class="size-4" />
             添加自定义变量
           </button>
         </template>
-        <AppLoadingState v-if="pipelineVariablePreviewLoading" size="compact" />
-        <p v-else-if="pipelineVariablePreviewError" class="py-4 text-sm text-destructive">
-          {{ pipelineVariablePreviewError }}
-        </p>
         <VariableDeclarationsTable
-          v-else
           :declarations="pipelineVariableRows"
           :readonly="false"
+          :allow-override="!isTemplate"
           @edit="openEditVariableDialog"
           @delete="deleteVariable"
+          @override="openOverrideVariableDialog"
         />
       </DetailInfoCard>
     </template>
@@ -325,47 +323,15 @@
       </template>
     </AppDialog>
 
-    <AppDialog v-model:open="runOpen" title="运行流水线">
-      <AppLoadingState v-if="runPreviewLoading && !runPreview" size="compact" />
-      <form v-else class="space-y-4" @submit.prevent="runPipeline">
-        <div v-for="variable in runVariableDeclarations" :key="variable.name" class="space-y-1.5">
-          <label class="app-field-label">{{ variable.name }}</label>
-          <input
-            v-if="variable.editable"
-            v-model="runForm.variables[variable.name]"
-            :type="variable.secret ? 'password' : 'text'"
-            class="app-input"
-            :class="runFieldErrors[variable.name] ? 'app-input-error' : ''"
-            :aria-invalid="Boolean(runFieldErrors[variable.name])"
-            @input="clearRunFieldError(variable.name)"
-          />
-          <input
-            v-else
-            :value="displayVariableValue(variable.value ?? variable.default)"
-            type="text"
-            class="app-input"
-            disabled
-          />
-          <p v-if="runFieldErrors[variable.name]" class="app-field-error">
-            {{ runFieldErrors[variable.name] }}
-          </p>
-        </div>
-        <p v-if="runPreviewError" class="app-field-error">{{ runPreviewError }}</p>
-        <p v-if="runError" class="app-field-error">{{ runError }}</p>
-      </form>
-      <template #footer>
-        <AppDialogActions
-          :busy="saving"
-          :confirm-disabled="!runPreview || runPreviewLoading || Boolean(runPreviewError)"
-          @cancel="runOpen = false"
-          @confirm="runPipeline"
-        />
-      </template>
-    </AppDialog>
-
     <AppDialog
       v-model:open="variableOpen"
-      :title="editingVariableName ? '编辑自定义变量' : '添加自定义变量'"
+      :title="
+        editingVariableName
+          ? '编辑自定义变量'
+          : overridingVariableName
+            ? '覆盖阶段变量'
+            : '添加自定义变量'
+      "
     >
       <form class="space-y-4" @submit.prevent="saveVariable">
         <div class="space-y-1.5">
@@ -376,7 +342,7 @@
           <input
             v-model="variableForm.name"
             class="app-input"
-            :disabled="Boolean(editingVariableName)"
+            :disabled="Boolean(editingVariableName || overridingVariableName)"
             :class="variableError ? 'app-input-error' : ''"
           />
           <p v-if="variableError" class="app-field-error">{{ variableError }}</p>
@@ -420,7 +386,7 @@
 
 <script setup lang="ts">
   import { ArrowLeft, CopyPlus, Play, Plus, RefreshCw, Trash2 } from '@lucide/vue';
-  import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+  import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
   import { pipelineApi } from '@/api/pipeline/pipeline';
@@ -445,7 +411,6 @@
   } from '@/gen/proto/orbit/v1/pipeline/pipeline_stage';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
-  import type { PipelineRunVariablePreviewResp } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
   import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
 
@@ -466,7 +431,6 @@
   const templateUpdateOpen = ref(false);
   const templateUpdateLoading = ref(false);
   const templateUpdatePreview = ref<PipelineStageTemplateUpdatePreviewResp>();
-  const runOpen = ref(false);
   const variableOpen = ref(false);
   const deleteOpen = ref(false);
   const editingStage = ref<PipelineStageNodeResp>();
@@ -477,15 +441,6 @@
   const infoErrors = reactive({ name: '', applicationId: '' });
   const applications = ref<ApplicationResp[]>([]);
   const stageError = ref('');
-  const runError = ref('');
-  const runPreview = ref<PipelineRunVariablePreviewResp>();
-  const runPreviewLoading = ref(false);
-  const runPreviewError = ref('');
-  const runFieldErrors = reactive<Record<string, string>>({});
-  const pipelineVariablePreview = ref<PipelineRunVariablePreviewResp>();
-  const pipelineVariablePreviewLoading = ref(false);
-  const pipelineVariablePreviewError = ref('');
-  const initialRunVariableValues = ref<Record<string, string>>({});
   const variableError = ref('');
   const deleteError = ref('');
   const infoForm = reactive({ name: '', description: '', applicationId: '' });
@@ -496,9 +451,9 @@
     sort_order: 0,
     description: '',
   });
-  const runForm = reactive({ variables: {} as Record<string, string> });
   const variableForm = reactive({ name: '', value: '', description: '', secret: false });
   const editingVariableName = ref('');
+  const overridingVariableName = ref('');
 
   const isTemplate = computed(() => pipeline.value?.kind === 'template');
   const hasApplicationBinding = computed(() =>
@@ -545,18 +500,17 @@
         ? '最新版本'
         : '未绑定组件制品'
   );
-  const runVariableDeclarations = computed(() => runPreview.value?.variable_declarations || []);
   const pipelineVariables = computed(() => pipeline.value?.variable_declarations || []);
   const pipelineCustomVariables = computed(() =>
     pipelineVariables.value.filter((variable) => variable.source === 'pipeline_custom')
   );
   const pipelineVariableRows = computed(() =>
-    (pipelineVariablePreview.value?.variable_declarations || pipelineVariables.value).map(
-      (variable) => ({
-        ...variable,
-        editable: variable.source === 'pipeline_custom',
-      })
-    )
+    isTemplate.value
+      ? pipelineVariables.value.map((variable) => ({
+          ...variable,
+          editable: variable.source === 'pipeline_custom',
+        }))
+      : pipelineVariables.value
   );
 
   function stageName(id: string) {
@@ -569,111 +523,18 @@
     return value == null ? '' : String(value);
   }
 
-  function buildRunVariableForm() {
-    const variables: Record<string, string> = {};
-    for (const variable of runVariableDeclarations.value) {
-      if (!variable.editable) continue;
-      variables[variable.name] = runForm.variables[variable.name] || '';
-    }
-    return variables;
-  }
 
-  function clearRunFieldError(name: string) {
-    delete runFieldErrors[name];
-  }
 
-  function setRunFieldErrorFromMessage(message: string) {
-    const missing = message.match(/Missing variable value:\s*(\S+)/i);
-    const requiredRef = /repository_ref is required/i.test(message);
-    if (missing) {
-      runFieldErrors[missing[1]] = `请输入变量值: ${missing[1]}`;
-      return true;
-    }
-    if (requiredRef) {
-      runFieldErrors.repository_ref = '请输入分支或标签';
-      return true;
-    }
-    return false;
-  }
 
-  let runPreviewRequest = 0;
-  let runPreviewTimer: ReturnType<typeof setTimeout> | undefined;
-  let pipelineVariablePreviewRequest = 0;
 
-  function previewPipelineVariables(variables: Record<string, string>) {
-    return pipelineRunApi.previewVariables(pipelineId.value, {
-      variables,
-    });
-  }
 
-  async function loadPipelineVariablePreview() {
-    if (pipeline.value?.kind !== 'application') {
-      pipelineVariablePreview.value = undefined;
-      pipelineVariablePreviewLoading.value = false;
-      pipelineVariablePreviewError.value = '';
-      return;
-    }
-    const request = ++pipelineVariablePreviewRequest;
-    pipelineVariablePreviewLoading.value = true;
-    pipelineVariablePreviewError.value = '';
-    try {
-      const preview = await previewPipelineVariables({});
-      if (request !== pipelineVariablePreviewRequest) return;
-      pipelineVariablePreview.value = preview;
-    } catch (reason) {
-      if (request !== pipelineVariablePreviewRequest) return;
-      pipelineVariablePreview.value = undefined;
-      pipelineVariablePreviewError.value =
-        reason instanceof Error ? reason.message : '解析运行时变量失败';
-    } finally {
-      if (request === pipelineVariablePreviewRequest) pipelineVariablePreviewLoading.value = false;
-    }
-  }
 
-  async function loadRunVariablePreview(initializeValues = false) {
-    const request = ++runPreviewRequest;
-    runPreviewLoading.value = true;
-    runPreviewError.value = '';
-    try {
-      const preview = await previewPipelineVariables(buildRunVariableForm());
-      if (request !== runPreviewRequest) return;
-      runPreview.value = preview;
-      if (initializeValues) {
-        const values: Record<string, string> = {};
-        for (const variable of preview.variable_declarations) {
-          if (variable.editable)
-            values[variable.name] = displayVariableValue(variable.value ?? variable.default);
-        }
-        runForm.variables = values;
-        initialRunVariableValues.value = { ...values };
-      }
-    } catch (reason) {
-      if (request === runPreviewRequest) {
-        const message = reason instanceof Error ? reason.message : '解析运行时变量失败';
-        runPreviewError.value = setRunFieldErrorFromMessage(message) ? '' : message;
-      }
-    } finally {
-      if (request === runPreviewRequest) runPreviewLoading.value = false;
-    }
-  }
 
-  function scheduleRunVariablePreview() {
-    if (!runOpen.value) return;
-    if (runPreviewTimer) clearTimeout(runPreviewTimer);
-    runPreviewTimer = setTimeout(() => void loadRunVariablePreview(), 250);
-  }
   async function fetchPipeline() {
-    pipelineVariablePreviewRequest += 1;
-    pipelineVariablePreview.value = undefined;
-    pipelineVariablePreviewLoading.value = false;
-    pipelineVariablePreviewError.value = '';
     try {
       await execute(async () => {
         pipeline.value = await pipelineApi.get(pipelineId.value);
       });
-      if (pipeline.value?.kind === 'application') {
-        await loadPipelineVariablePreview();
-      }
       await loadStageTemplates();
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : '加载流水线失败');
@@ -751,7 +612,6 @@
     try {
       await executeSave(async () => {
         pipeline.value = await pipelineApi.update(pipelineId.value, payload);
-        await loadPipelineVariablePreview();
         infoOpen.value = false;
         toast.success('流水线信息已保存');
       });
@@ -770,6 +630,7 @@
   function openAddVariableDialog() {
     Object.assign(variableForm, { name: '', value: '', description: '', secret: false });
     editingVariableName.value = '';
+    overridingVariableName.value = '';
     variableError.value = '';
     variableOpen.value = true;
   }
@@ -784,6 +645,23 @@
       secret: variable.secret,
     });
     editingVariableName.value = name;
+    overridingVariableName.value = '';
+    variableError.value = '';
+    variableOpen.value = true;
+  }
+  function openOverrideVariableDialog(name: string) {
+    const variable = pipelineVariables.value.find(
+      (item) => item.name === name && item.source === 'pipeline_stage'
+    );
+    if (!variable) return;
+    Object.assign(variableForm, {
+      name: variable.name,
+      value: displayVariableValue(variable.value ?? variable.default),
+      description: variable.description,
+      secret: variable.secret,
+    });
+    editingVariableName.value = '';
+    overridingVariableName.value = name;
     variableError.value = '';
     variableOpen.value = true;
   }
@@ -793,6 +671,7 @@
     variableError.value = !name
       ? '请输入变量名'
       : !editingVariableName.value &&
+          !overridingVariableName.value &&
           pipelineVariables.value.some((variable) => variable.name === name)
         ? '变量名已存在'
         : '';
@@ -811,9 +690,14 @@
         pipeline.value = await pipelineApi.update(pipelineId.value, {
           variable_declarations: { items: pipelineVariablesWith(variable) },
         });
-        await loadPipelineVariablePreview();
         variableOpen.value = false;
-        toast.success(editingVariableName.value ? '变量已更新' : '变量已添加');
+        toast.success(
+          editingVariableName.value
+            ? '变量已更新'
+            : overridingVariableName.value
+              ? '变量已覆盖'
+              : '变量已添加'
+        );
       });
     } catch (reason) {
       variableError.value = reason instanceof Error ? reason.message : '保存变量失败';
@@ -828,7 +712,6 @@
             items: pipelineCustomVariables.value.filter((variable) => variable.name !== name),
           },
         });
-        await loadPipelineVariablePreview();
         toast.success('变量已重置');
       });
     } catch (reason) {
@@ -907,7 +790,6 @@
           expected_source_template_stage_version: preview.expected_source_template_stage_version,
           target_template_stage_version: preview.target_template_stage_version,
         });
-        await loadPipelineVariablePreview();
         templateUpdateOpen.value = false;
         stageOpen.value = false;
         toast.success('阶段已更新至模板版本');
@@ -941,7 +823,6 @@
           });
           updatedStageCount.value += 1;
         }
-        await loadPipelineVariablePreview();
       });
       const updatedCount = stages.length - skippedCount;
       toast.success(
@@ -995,7 +876,6 @@
             depends_on: payload.depends_on,
             sort_order: payload.sort_order,
           });
-        await loadPipelineVariablePreview();
         stageOpen.value = false;
         toast.success('阶段已保存');
       });
@@ -1008,7 +888,6 @@
     try {
       await executeSave(async () => {
         pipeline.value = await pipelineApi.deleteStage(pipelineId.value, stage.id);
-        await loadPipelineVariablePreview();
         toast.success('阶段已删除');
       });
     } catch (reason) {
@@ -1016,46 +895,16 @@
     }
   }
 
-  function openRunDialog() {
-    runForm.variables = {};
-    for (const name of Object.keys(runFieldErrors)) delete runFieldErrors[name];
-    runPreview.value = undefined;
-    initialRunVariableValues.value = {};
-    runError.value = '';
-    runPreviewError.value = '';
-    runOpen.value = true;
-    void loadRunVariablePreview(true);
-  }
 
   async function runPipeline() {
-    for (const name of Object.keys(runFieldErrors)) delete runFieldErrors[name];
-    const missingVariable = runVariableDeclarations.value.find((variable) => {
-      if (!variable.editable || runForm.variables[variable.name]?.trim()) return false;
-      runFieldErrors[variable.name] =
-        variable.name === 'repository_ref' ? '请输入分支或标签' : `请输入变量值: ${variable.name}`;
-      return true;
-    });
-    runError.value =
-      !runPreview.value || runPreviewLoading.value
-        ? '正在解析运行时变量'
-        : runPreviewError.value
-          ? '运行时变量解析失败'
-          : missingVariable
-            ? '请完善必填变量'
-            : '';
-    if (runError.value) return;
     try {
       await executeSave(async () => {
-        const run = await pipelineRunApi.trigger(pipelineId.value, {
-          variables: buildRunVariableForm(),
-        });
-        runOpen.value = false;
+        const run = await pipelineRunApi.trigger(pipelineId.value);
         toast.success('流水线已触发');
         await router.push(`/pipeline-run/${run.id}`);
       });
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : '触发流水线失败';
-      runError.value = setRunFieldErrorFromMessage(message) ? '请完善必填变量' : message;
+      toast.error(reason instanceof Error ? reason.message : '触发流水线失败');
     }
   }
 
@@ -1063,18 +912,6 @@
     router.push({ path: '/pipeline', query: { instantiate: pipelineId.value } });
   }
 
-  function resetRunDialog() {
-    runPreviewRequest += 1;
-    if (runPreviewTimer) clearTimeout(runPreviewTimer);
-    runPreviewTimer = undefined;
-    runPreview.value = undefined;
-    runPreviewLoading.value = false;
-    runPreviewError.value = '';
-    runError.value = '';
-    initialRunVariableValues.value = {};
-    runForm.variables = {};
-    for (const name of Object.keys(runFieldErrors)) delete runFieldErrors[name];
-  }
 
   async function deletePipeline() {
     deleteError.value = '';
@@ -1089,24 +926,8 @@
     }
   }
 
-  watch(
-    () => runForm.variables,
-    () => {
-      if (Object.keys(initialRunVariableValues.value).length > 0) scheduleRunVariablePreview();
-    },
-    { deep: true }
-  );
-  watch(runOpen, (open) => {
-    if (open) return;
-    resetRunDialog();
-  });
   watch(pipelineId, () => {
-    runOpen.value = false;
-    resetRunDialog();
     void fetchPipeline();
   });
   onMounted(fetchPipeline);
-  onBeforeUnmount(() => {
-    resetRunDialog();
-  });
 </script>

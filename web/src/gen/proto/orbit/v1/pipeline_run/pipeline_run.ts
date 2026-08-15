@@ -12,25 +12,6 @@ import type { PipelineStageRunResp } from "./pipeline_stage_run";
 export const protobufPackage = "orbit.v1.pipeline_run";
 
 export interface PipelineRunTriggerReq {
-  variables: { [key: string]: string };
-}
-
-export interface PipelineRunTriggerReq_VariablesEntry {
-  key: string;
-  value: string;
-}
-
-export interface PipelineRunVariablePreviewReq {
-  variables: { [key: string]: string };
-}
-
-export interface PipelineRunVariablePreviewReq_VariablesEntry {
-  key: string;
-  value: string;
-}
-
-export interface PipelineRunVariablePreviewResp {
-  variable_declarations: VariableDeclarationResp[];
 }
 
 export interface PipelineRunRetryReq {

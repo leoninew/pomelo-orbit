@@ -10,10 +10,14 @@ export type VariableSource =
   | 'global'
   | 'repository'
   | 'repository_custom'
+  | 'pipeline'
+  | 'pipeline_custom'
+  | 'pipeline_stage'
   | 'template'
   | 'template_stage'
   | 'template_custom'
-  | 'runtime';
+  | 'runtime'
+  | 'system';
 
 /**
  * 获取变量来源的显示标签
@@ -27,10 +31,14 @@ export function getSourceLabel(source: VariableSource): string {
     global: '全局',
     repository: '项目运行时',
     repository_custom: '项目自定义',
+    pipeline: '流水线配置',
+    pipeline_custom: '流水线自定义',
+    pipeline_stage: '流水线 Stage',
     template: '模板运行时',
     template_stage: '模板 Stage',
     template_custom: '模板自定义',
     runtime: '触发时',
+    system: '系统',
   };
   return labels[source];
 }
@@ -43,10 +51,14 @@ export function getSourceTone(source: string): BadgeTone {
     global: 'primary',
     repository: 'info',
     repository_custom: 'warning',
+    pipeline: 'info',
+    pipeline_custom: 'warning',
+    pipeline_stage: 'success',
     template: 'primary',
     template_stage: 'success',
     template_custom: 'warning',
     runtime: 'default',
+    system: 'default',
   };
   return tones[source as VariableSource] ?? 'default';
 }
@@ -57,6 +69,9 @@ export function getSourceTone(source: string): BadgeTone {
  */
 export function isVariableEditable(source: string): boolean {
   return (
-    source === 'repository_custom' || source === 'template_custom' || source === 'template_stage'
+    source === 'repository_custom' ||
+    source === 'pipeline_custom' ||
+    source === 'template_custom' ||
+    source === 'template_stage'
   );
 }

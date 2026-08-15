@@ -7,7 +7,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-func TestResolvePipelineVariableDeclarationsUsesPipelineAndStageDeclarations(t *testing.T) {
+func TestResolvePipelineVariableDeclarationsKeepsPipelineConfigurationAndStageDeclarations(t *testing.T) {
 	stages := []model.PipelineStage{{Name: "build", Script: "cd {{ working_dir }}\ndocker build -f {{ repository_dockerfile }} ."}}
 	declarations, err := ResolvePipelineVariableDeclarations(stages, `[{"name":"working_dir","default":".","source":"pipeline_custom","editable":true}]`)
 	if err != nil {
@@ -17,26 +17,47 @@ func TestResolvePipelineVariableDeclarationsUsesPipelineAndStageDeclarations(t *
 	for _, declaration := range declarations {
 		byName[declaration.Name] = declaration
 	}
-	if got := byName["working_dir"].Default; got != "." {
-		t.Fatalf("working_dir default = %#v, want .", got)
+	if got := byName["working_dir"].Default; got != "." || byName["working_dir"].Source != "pipeline_custom" {
+		t.Fatalf("working_dir = %#v", byName["working_dir"])
 	}
-	if _, ok := byName["repository_dockerfile"]; !ok {
-		t.Fatal("repository_dockerfile was not extracted from the stage")
+	if declaration, ok := byName["repository_dockerfile"]; !ok || declaration.Source != "pipeline_stage" || declaration.Editable {
+		t.Fatalf("repository_dockerfile = %#v", declaration)
+	}
+	if declaration, ok := byName["repository_ref"]; !ok || declaration.Source != "pipeline" || declaration.Editable {
+		t.Fatalf("repository_ref = %#v", declaration)
 	}
 }
 
-func TestResolveRuntimeVariablesKeepsAllDeclarationsAndAppliesPrecedence(t *testing.T) {
+func TestResolvePipelineVariableDeclarationsUsesStageDefaultAfterPipelineConfigurationIsDeleted(t *testing.T) {
+	stages := []model.PipelineStage{{Name: "build", Script: `echo {{ IMAGE_TAG | default: "stage" }}`}}
+	declarations, err := ResolvePipelineVariableDeclarations(stages, `[]`)
+	if err != nil {
+		t.Fatalf("ResolvePipelineVariableDeclarations returned error: %v", err)
+	}
+	byName := make(map[string]model.VariableDeclaration, len(declarations))
+	for _, declaration := range declarations {
+		byName[declaration.Name] = declaration
+	}
+	if declaration := byName["IMAGE_TAG"]; declaration.Default != "stage" || declaration.Source != "pipeline_stage" {
+		t.Fatalf("declarations = %#v", declarations)
+	}
+	if declaration, ok := byName["repository_ref"]; !ok || declaration.Editable {
+		t.Fatalf("repository_ref = %#v", declaration)
+	}
+}
+
+func TestResolveRuntimeVariablesKeepsAllDeclarationsAndAppliesPersistedPrecedence(t *testing.T) {
 	repo := model.Repository{
 		Id: "repo-1", Name: "Repo", Code: "repo", RepositoryUrl: "https://example.invalid/repo.git", DefaultBranch: "main",
 		VariableOverrides: `[{"name":"IMAGE_TAG","value":"repo"}]`,
 	}
 	pipeline := model.Pipeline{Id: "pipeline-1", Name: "Pipeline", Version: 3, VariableDeclarations: `[{"name":"IMAGE_TAG","default":"pipeline","value":null},{"name":"UNUSED","default":"kept"}]`}
 	stages := []model.StageDefinition{{Name: "build", Script: `echo {{ IMAGE_TAG | default: "stage" }}`}}
-	declarations, values, err := ResolveRuntimeVariables(repo, pipeline, stages, map[string]string{"repository_ref": "release", "IMAGE_TAG": "form", "UNUSED": "kept"}, true)
+	declarations, values, err := ResolveRuntimeVariables(repo, pipeline, stages, nil)
 	if err != nil {
 		t.Fatalf("resolve runtime variables: %v", err)
 	}
-	if values["IMAGE_TAG"] != "form" || values["UNUSED"] != "kept" || values["repository_ref"] != "release" {
+	if values["IMAGE_TAG"] != "repo" || values["UNUSED"] != "kept" || values["repository_ref"] != "main" {
 		t.Fatalf("resolved values=%#v", values)
 	}
 	byName := make(map[string]model.VariableDeclaration, len(declarations))
@@ -46,15 +67,15 @@ func TestResolveRuntimeVariablesKeepsAllDeclarationsAndAppliesPrecedence(t *test
 		}
 		byName[declaration.Name] = declaration
 	}
-	if byName["IMAGE_TAG"].Source != "repository" || byName["UNUSED"].Source != "pipeline" || byName["repository_ref"].Source != "runtime" || byName["runtime_datetime"].Editable {
+	if byName["IMAGE_TAG"].Source != "repository" || byName["UNUSED"].Source != "pipeline" || byName["repository_ref"].Source != "runtime" || byName["repository_ref"].Editable || byName["runtime_datetime"].Editable {
 		t.Fatalf("declarations=%#v", byName)
 	}
 }
 
-func TestResolveRuntimeVariablesUsesLowerPriorityDeclarationWhenHigherHasNoValue(t *testing.T) {
+func TestResolveRuntimeVariablesUsesLowerPriorityDeclarationWhenRepositoryHasNoValue(t *testing.T) {
 	repo := model.Repository{Id: "repo-1", DefaultBranch: "main", VariableOverrides: `[{"name":"IMAGE_TAG"}]`}
 	pipeline := model.Pipeline{Id: "pipeline-1", VariableDeclarations: `[{"name":"IMAGE_TAG","value":"pipeline"}]`}
-	declarations, values, err := ResolveRuntimeVariables(repo, pipeline, nil, map[string]string{}, false)
+	declarations, values, err := ResolveRuntimeVariables(repo, pipeline, nil, nil)
 	if err != nil {
 		t.Fatalf("resolve runtime variables: %v", err)
 	}
@@ -68,27 +89,38 @@ func TestResolveRuntimeVariablesUsesLowerPriorityDeclarationWhenHigherHasNoValue
 	}
 }
 
-func TestResolveRuntimeVariablesRejectsSystemAndUnknownFormKeys(t *testing.T) {
+func TestResolveRuntimeVariablesRejectsUnknownAndSystemRetryOverrides(t *testing.T) {
 	repo := model.Repository{Id: "repo-1", DefaultBranch: "main"}
 	pipeline := model.Pipeline{Id: "pipeline-1", Name: "Pipeline", Version: 1}
-	stages := []model.StageDefinition{}
-	for _, form := range []map[string]string{{"runtime_datetime": "bad"}, {"UNKNOWN": "bad"}} {
-		if _, _, err := ResolveRuntimeVariables(repo, pipeline, stages, form, false); err == nil {
-			t.Fatalf("form %#v should be rejected", form)
+	for _, overrides := range []map[string]string{{"runtime_datetime": "bad"}, {"UNKNOWN": "bad"}} {
+		if _, _, err := ResolveRuntimeVariables(repo, pipeline, nil, overrides); err == nil {
+			t.Fatalf("overrides %#v should be rejected", overrides)
 		}
 	}
 }
 
-func TestResolveRuntimeVariablesUsesStageDefaultAndIncludesRuntimeAndSystemValues(t *testing.T) {
+func TestResolveRuntimeVariablesAllowsInternalRetryToPreserveRepositoryRef(t *testing.T) {
+	repo := model.Repository{Id: "repo-1", DefaultBranch: "main"}
+	pipeline := model.Pipeline{Id: "pipeline-1"}
+	_, values, err := ResolveRuntimeVariables(repo, pipeline, nil, map[string]string{"repository_ref": "release"})
+	if err != nil {
+		t.Fatalf("resolve runtime variables: %v", err)
+	}
+	if values["repository_ref"] != "release" {
+		t.Fatalf("repository_ref=%#v, want release", values["repository_ref"])
+	}
+}
+
+func TestResolveRuntimeVariablesUsesStageDefaultAndIncludesSystemValues(t *testing.T) {
 	repo := model.Repository{Id: "repo-1", Name: "Repo", Code: "repo", RepositoryUrl: "https://example.invalid/repo.git", DefaultBranch: "main"}
 	pipeline := model.Pipeline{Id: "pipeline-1", Name: "Pipeline", Version: 2, VariableDeclarations: `[{"name":"UNUSED","default":"pipeline-default"}]`}
 	stages := []model.StageDefinition{{Name: "build", Script: `echo {{ IMAGE_TAG | default: "latest" }}`}}
 
-	declarations, values, err := ResolveRuntimeVariables(repo, pipeline, stages, map[string]string{"repository_ref": "release"}, false)
+	declarations, values, err := ResolveRuntimeVariables(repo, pipeline, stages, nil)
 	if err != nil {
 		t.Fatalf("resolve runtime variables: %v", err)
 	}
-	if values["IMAGE_TAG"] != "latest" || values["UNUSED"] != "pipeline-default" || values["repository_ref"] != "release" {
+	if values["IMAGE_TAG"] != "latest" || values["UNUSED"] != "pipeline-default" || values["repository_ref"] != "main" {
 		t.Fatalf("resolved values=%#v", values)
 	}
 	if values["repository_code"] != repo.Code || !HasRuntimeValue(values["runtime_datetime"]) {
@@ -102,25 +134,62 @@ func TestResolveRuntimeVariablesUsesStageDefaultAndIncludesRuntimeAndSystemValue
 	if err != nil {
 		t.Fatalf("unmarshal runtime snapshot: %v", err)
 	}
-	if len(snapshot) != len(declarations) || persisted["repository_ref"] != "release" || persisted["repository_code"] != repo.Code {
+	if len(snapshot) != len(declarations) || persisted["repository_ref"] != "main" || persisted["repository_code"] != repo.Code {
 		t.Fatalf("persisted runtime snapshot=%#v, values=%#v", snapshot, persisted)
 	}
 }
 
-func TestResolveRuntimeVariablesRequiresEveryConfigurableValueForTrigger(t *testing.T) {
+func TestResolveRuntimeVariablesRequiresFinalValue(t *testing.T) {
 	repo := model.Repository{Id: "repo-1", DefaultBranch: "main"}
 	pipeline := model.Pipeline{Id: "pipeline-1", VariableDeclarations: `[{"name":"IMAGE_TAG"}]`}
-	_, _, err := ResolveRuntimeVariables(repo, pipeline, nil, map[string]string{"repository_ref": "main"}, true)
+	_, _, err := ResolveRuntimeVariables(repo, pipeline, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "Missing variable value: IMAGE_TAG") {
-		t.Fatalf("expected missing configurable variable error, got %v", err)
+		t.Fatalf("expected missing resolved variable error, got %v", err)
 	}
 }
 
-func TestResolveRuntimeVariablesRejectsAnEmptySubmittedValueForTrigger(t *testing.T) {
+func TestResolveRuntimeVariablesFromPipelineStagesUsesPersistedConfiguration(t *testing.T) {
 	repo := model.Repository{Id: "repo-1", DefaultBranch: "main"}
-	pipeline := model.Pipeline{Id: "pipeline-1", VariableDeclarations: `[{"name":"IMAGE_TAG","default":"latest"}]`}
-	_, _, err := ResolveRuntimeVariables(repo, pipeline, nil, map[string]string{"repository_ref": "main", "IMAGE_TAG": ""}, true)
-	if err == nil || !strings.Contains(err.Error(), "Missing variable value: IMAGE_TAG") {
-		t.Fatalf("expected empty submitted value error, got %v", err)
+	pipeline := model.Pipeline{Id: "pipeline-1", VariableDeclarations: `[{"name":"IMAGE_TAG","value":"pipeline"}]`}
+	stages := []model.PipelineStage{{Name: "build", Script: `echo {{ IMAGE_TAG | default: "stage" }}`}}
+	_, values, err := ResolveRuntimeVariablesFromPipelineStages(repo, pipeline, stages, nil)
+	if err != nil {
+		t.Fatalf("resolve runtime variables from pipeline stages: %v", err)
+	}
+	if values["IMAGE_TAG"] != "pipeline" || values["repository_ref"] != "main" {
+		t.Fatalf("resolved values=%#v", values)
+	}
+}
+
+func TestNormalizePipelineVariablesRejectsInvalidNamesAndDuplicates(t *testing.T) {
+	for _, variables := range [][]map[string]any{
+		{{"name": "repository_ref"}},
+		{{"name": "bad-name"}},
+		{{"name": "IMAGE_TAG"}, {"name": "IMAGE_TAG"}},
+	} {
+		if _, err := NormalizePipelineVariables(variables); err == nil {
+			t.Fatalf("variables %#v should be rejected", variables)
+		}
+	}
+}
+
+func TestResolveTemplatePipelineVariablesPreservesTemplateDetailContract(t *testing.T) {
+	stages := []model.PipelineStage{{Name: "build", Script: "echo {{ IMAGE_TAG }}"}}
+	variables := []map[string]any{{"name": "invalid-name", "value": "allowed-for-template"}}
+
+	resolved := ResolveTemplatePipelineVariables(stages, variables)
+	byName := make(map[string]map[string]any, len(resolved))
+	for _, variable := range resolved {
+		name, _ := variable["name"].(string)
+		byName[name] = variable
+	}
+	if byName["IMAGE_TAG"]["source"] != "pipeline_stage" || byName["IMAGE_TAG"]["editable"] != true {
+		t.Fatalf("stage declaration=%#v", byName["IMAGE_TAG"])
+	}
+	if _, exists := byName["repository_ref"]; !exists {
+		t.Fatalf("template declarations=%#v", byName)
+	}
+	if byName["invalid-name"]["value"] != "allowed-for-template" {
+		t.Fatalf("template custom declaration=%#v", byName["invalid-name"])
 	}
 }

@@ -65,6 +65,22 @@ func (r Repository) PipelineRun(ctx context.Context, id string) (model.PipelineR
 	return pipelineRunModel(item), translate(err)
 }
 
+func (r Repository) DeletePipelineRun(ctx context.Context, id string) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		if err := q.DeletePipelineRunArtifacts(txCtx, id); err != nil {
+			return translate(err)
+		}
+		if err := q.DeletePipelineStageRuns(txCtx, id); err != nil {
+			return translate(err)
+		}
+		if err := q.DeletePipelineRunVersionBinding(txCtx, id); err != nil {
+			return translate(err)
+		}
+		return translate(q.DeletePipelineRun(txCtx, id))
+	})
+}
+
 func (r Repository) ListPipelineStageRuns(ctx context.Context, runID string) ([]model.PipelineStageRun, error) {
 	rows, err := r.q(ctx).ListPipelineStageRuns(ctx, runID)
 	if err != nil {

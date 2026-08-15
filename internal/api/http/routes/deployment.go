@@ -13,5 +13,6 @@ func (r Router) registerDeployment(engine *gin.Engine) {
 	engine.GET("/api/deployment/:deployment_id", handler.GetDeployment)
 	engine.GET("/api/deployment/:deployment_id/logs", handler.GetDeploymentLogs)
 	engine.GET("/api/deployment/:deployment_id/container-logs", handler.GetDeploymentContainerLogs)
+	engine.DELETE("/api/deployment/:deployment_id", handler.DeleteDeployment)
 	engine.POST("/api/deployment/:deployment_id/cancel", handler.CancelDeployment)
 }

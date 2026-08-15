@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"strings"
 	"time"
@@ -122,6 +123,9 @@ func (s stores) ListPipelineRunsByPipeline(ctx context.Context, pipelineID strin
 }
 func (s stores) PipelineRun(ctx context.Context, id string) (model.PipelineRun, error) {
 	return s.pipelineRun.PipelineRun(ctx, id)
+}
+func (s stores) DeletePipelineRun(ctx context.Context, id string) error {
+	return s.pipelineRun.DeletePipelineRun(ctx, id)
 }
 func (s stores) ListPipelineStageRuns(ctx context.Context, id string) ([]model.PipelineStageRun, error) {
 	return s.pipelineRun.ListPipelineStageRuns(ctx, id)
@@ -315,6 +319,30 @@ func (s Service) PipelineRunForUser(ctx context.Context, userId, runId string) (
 	return s.pipelineRunDetail(ctx, run, true)
 }
 
+func (s Service) DeletePipelineRun(ctx context.Context, userId, runId string) error {
+	run, err := s.loadPipelineRunForUser(ctx, userId, runId)
+	if err != nil {
+		return err
+	}
+	if !status.WorkStatusIsComplete(run.Status) {
+		return apperror.New(apperror.KindValidation, "Cannot delete pipeline run with status "+run.Status)
+	}
+	if s.workspace == nil {
+		return apperror.New(apperror.KindInternal, "pipeline workspace is not configured")
+	}
+	if err := s.workspace.RemoveRunFiles(run.Id); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			s.warnPipelineRunFileCleanupSkipped(run.Id, "pipeline run file or directory does not exist")
+		} else {
+			return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run files", err)
+		}
+	}
+	if err := s.store.DeletePipelineRun(ctx, run.Id); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run", err)
+	}
+	return nil
+}
+
 func (s Service) ListPipelineRunArtifacts(ctx context.Context, userId, runId string) ([]model.Artifact, error) {
 	run, err := s.loadPipelineRunForUser(ctx, userId, runId)
 	if err != nil {
@@ -387,6 +415,12 @@ func (s Service) loadPipelineRunForUser(ctx context.Context, userId, runID strin
 		return model.PipelineRun{}, err
 	}
 	return run, nil
+}
+
+func (s Service) warnPipelineRunFileCleanupSkipped(runId string, reason string) {
+	if s.logger != nil {
+		s.logger.Warn("skipped pipeline run file cleanup", "run_id", runId, "reason", reason)
+	}
 }
 
 func (s Service) pipelineForUser(ctx context.Context, userID, pipelineID string) (model.Pipeline, error) {

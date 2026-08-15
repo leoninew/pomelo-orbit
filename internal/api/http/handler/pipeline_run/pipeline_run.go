@@ -77,6 +77,17 @@ func (h Handler) GetPipelineRun(c *gin.Context) {
 	response := pipelineRunResponse(detail)
 	transportresponse.ProtoJSON(c, http.StatusOK, response)
 }
+func (h Handler) DeletePipelineRun(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	if err := h.service.DeletePipelineRun(c.Request.Context(), current.Id, c.Param("run_id")); err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
 func (h Handler) ListPipelineRunArtifacts(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {

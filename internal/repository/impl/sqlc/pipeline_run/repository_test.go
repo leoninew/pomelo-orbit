@@ -144,3 +144,36 @@ func TestBeginPipelineStageRunRequiresRunningParentRun(t *testing.T) {
 		t.Fatalf("stage status = %q, want %q", stageStatus, status.WorkStatusRunning)
 	}
 }
+
+func TestDeletePipelineRunDeletesRelatedRecords(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if _, err := database.Exec(`
+		CREATE TABLE pipeline_run (id TEXT PRIMARY KEY);
+		CREATE TABLE pipeline_stage_run (id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL);
+		CREATE TABLE pipeline_run_version_binding (pipeline_run_id TEXT PRIMARY KEY);
+		CREATE TABLE artifact (id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL);
+		INSERT INTO pipeline_run (id) VALUES ('run-1');
+		INSERT INTO pipeline_stage_run (id, pipeline_run_id) VALUES ('stage-run-1', 'run-1');
+		INSERT INTO pipeline_run_version_binding (pipeline_run_id) VALUES ('run-1');
+		INSERT INTO artifact (id, pipeline_run_id) VALUES ('artifact-1', 'run-1');
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := NewRepository(database).DeletePipelineRun(context.Background(), "run-1"); err != nil {
+		t.Fatalf("DeletePipelineRun returned error: %v", err)
+	}
+	for _, table := range []string{"pipeline_run", "pipeline_stage_run", "pipeline_run_version_binding", "artifact"} {
+		var count int
+		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		if count != 0 {
+			t.Fatalf("%s count = %d, want 0", table, count)
+		}
+	}
+}

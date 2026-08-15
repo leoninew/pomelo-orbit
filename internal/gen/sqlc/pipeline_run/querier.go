@@ -21,6 +21,10 @@ type Querier interface {
 	CountActivePipelineRunsByRepository(ctx context.Context, arg CountActivePipelineRunsByRepositoryParams) (int64, error)
 	CountArtifacts(ctx context.Context, arg CountArtifactsParams) (int64, error)
 	CountPipelineRuns(ctx context.Context, arg CountPipelineRunsParams) (int64, error)
+	DeletePipelineRun(ctx context.Context, id string) error
+	DeletePipelineRunArtifacts(ctx context.Context, pipelineRunID string) error
+	DeletePipelineRunVersionBinding(ctx context.Context, pipelineRunID string) error
+	DeletePipelineStageRuns(ctx context.Context, pipelineRunID string) error
 	InsertArtifact(ctx context.Context, arg InsertArtifactParams) error
 	InsertPipelineRun(ctx context.Context, arg InsertPipelineRunParams) error
 	InsertPipelineRunVersionBinding(ctx context.Context, arg InsertPipelineRunVersionBindingParams) error

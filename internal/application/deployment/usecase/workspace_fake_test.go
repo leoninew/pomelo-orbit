@@ -2,6 +2,7 @@ package deploymentsvc
 
 import (
 	"context"
+	"io/fs"
 	"path/filepath"
 )
 
@@ -17,6 +18,13 @@ type workspaceFake struct {
 	physicalErr   error
 	hasServiceDir bool
 	writes        []workspaceWrite
+	removedLog    workspaceRemovedLog
+	removeLogErr  error
+}
+
+type workspaceRemovedLog struct {
+	serviceCode  string
+	deploymentID string
 }
 
 func testWorkspace(dataRoot string) *workspaceFake {
@@ -37,6 +45,11 @@ func (w *workspaceFake) ServiceDirExists(string) (bool, error) {
 
 func (w *workspaceFake) DeploymentLogPath(serviceCode string, deploymentId string) string {
 	return filepath.Join(w.ServiceDir(serviceCode), "deployments", deploymentId+".log")
+}
+
+func (w *workspaceFake) RemoveDeploymentLog(serviceCode string, deploymentID string) error {
+	w.removedLog = workspaceRemovedLog{serviceCode: serviceCode, deploymentID: deploymentID}
+	return w.removeLogErr
 }
 
 func (w *workspaceFake) PhysicalDir(context.Context) (string, error) {
@@ -61,6 +74,10 @@ func (w *workspaceFake) WriteConfig(serviceCode string, path string, content str
 		content:     content,
 	})
 	return nil
+}
+
+func (w *workspaceFake) SetMissingDeploymentLog() {
+	w.removeLogErr = fs.ErrNotExist
 }
 
 func (w *workspaceFake) Config(serviceCode string, path string) (string, bool) {

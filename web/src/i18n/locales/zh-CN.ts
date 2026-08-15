@@ -829,6 +829,8 @@ export default {
     dialog: {
       confirmCancel: '确认取消',
       cancelConfirm: '确定要取消「{name}」的部署吗？',
+      confirmDelete: '确认删除',
+      deleteConfirm: '确定要删除部署记录「{id}」及其日志文件吗？此操作不可恢复。',
       currentApplication: '该应用',
       currentService: '该服务',
     },
@@ -836,6 +838,8 @@ export default {
       loadFailed: '获取部署记录失败',
       cancelSuccess: '已取消部署',
       cancelFailed: '取消失败',
+      deleteSuccess: '部署记录已删除',
+      deleteFailed: '删除部署记录失败',
     },
   },
   deploymentDialogue: {
@@ -1081,6 +1085,8 @@ export default {
     logLoadFailed: '日志加载失败',
     confirmCancel: '确认取消',
     cancelConfirm: '确定要取消此流水线运行吗？',
+    confirmDelete: '确认删除',
+    deleteConfirm: '确定要删除流水线运行「{id}」及其关联文件吗？此操作不可恢复。',
     fields: {
       runId: '运行 ID',
       repository: '仓库',
@@ -1106,6 +1112,8 @@ export default {
       retryFailed: '重试失败',
       cancelSuccess: '已取消',
       cancelFailed: '取消失败',
+      deleteSuccess: '流水线运行已删除',
+      deleteFailed: '删除流水线运行失败',
     },
   },
   variableDeclaration: {

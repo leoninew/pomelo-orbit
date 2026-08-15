@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
@@ -122,6 +124,23 @@ func (s Service) CancelDeployment(ctx context.Context, userId string, deployment
 	return updated, nil
 }
 
+func (s Service) DeleteDeployment(ctx context.Context, userId string, deploymentId string) error {
+	deployment, err := s.loadDeploymentForUser(ctx, userId, deploymentId)
+	if err != nil {
+		return err
+	}
+	if !status.WorkStatusIsComplete(deployment.Status) {
+		return apperror.New(apperror.KindValidation, "Cannot delete deployment with status "+deployment.Status)
+	}
+	if err := s.removeDeploymentLog(ctx, deployment); err != nil {
+		return err
+	}
+	if err := s.deployment.DeleteDeployment(ctx, deployment.Id); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to delete deployment", err)
+	}
+	return nil
+}
+
 func (s Service) DeploymentContainerLog(ctx context.Context, userId string, deploymentId string, tail int) (deploymentdto.DeploymentContainerLog, error) {
 	if tail < 1 || tail > 1000 {
 		return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindValidation, "tail must be between 1 and 1000")
@@ -194,6 +213,42 @@ func (s Service) loadDeploymentForUser(ctx context.Context, userId string, deplo
 		}
 	}
 	return deployment, nil
+}
+
+func (s Service) removeDeploymentLog(ctx context.Context, deployment model.Deployment) error {
+	if deployment.ServiceId == nil || strings.TrimSpace(*deployment.ServiceId) == "" {
+		s.warnDeploymentLogCleanupSkipped(deployment.Id, "deployment has no associated service")
+		return nil
+	}
+	service, err := s.service.Service(ctx, *deployment.ServiceId)
+	if errors.Is(err, repository.ErrNotFound) {
+		s.warnDeploymentLogCleanupSkipped(deployment.Id, "associated service no longer exists")
+		return nil
+	}
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to load deployment service", err)
+	}
+	if strings.TrimSpace(service.Code) == "" {
+		s.warnDeploymentLogCleanupSkipped(deployment.Id, "associated service has no code")
+		return nil
+	}
+	if s.workspace == nil {
+		return apperror.New(apperror.KindInternal, "deployment workspace is not configured")
+	}
+	if err := s.workspace.RemoveDeploymentLog(service.Code, deployment.Id); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			s.warnDeploymentLogCleanupSkipped(deployment.Id, "deployment log file or directory does not exist")
+			return nil
+		}
+		return apperror.Wrap(apperror.KindInternal, "Failed to delete deployment log", err)
+	}
+	return nil
+}
+
+func (s Service) warnDeploymentLogCleanupSkipped(deploymentId string, reason string) {
+	if s.logger != nil {
+		s.logger.Warn("skipped deployment log cleanup", "deployment_id", deploymentId, "reason", reason)
+	}
 }
 
 func (s Service) ensureProjectMembership(ctx context.Context, projectId string, userId string) error {

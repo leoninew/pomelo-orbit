@@ -29,6 +29,10 @@ export const pipelineRunApi = {
     return request.get(`/api/pipeline-run/${id}`);
   },
 
+  delete(id: string): Promise<void> {
+    return request.delete(`/api/pipeline-run/${id}`);
+  },
+
   trigger(id: string, data: PipelineRunTriggerReq): Promise<PipelineRunResp> {
     return request.post(`/api/pipeline/${id}/trigger`, data);
   },

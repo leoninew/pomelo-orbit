@@ -31,7 +31,7 @@
       </div>
       <AppEmptyState v-else-if="deployments.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-data-table min-w-[1040px]">
+        <table class="app-data-table min-w-[1120px]">
           <thead>
             <tr>
               <th>ID</th>
@@ -41,6 +41,7 @@
               <th>{{ t('common.status') }}</th>
               <th>{{ t('deployment.fields.startTime') }}</th>
               <th>{{ t('deployment.fields.duration') }}</th>
+              <th>{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -91,6 +92,16 @@
               <td class="text-foreground">
                 {{ formatDuration(deployment.started_at, deployment.finished_at) }}
               </td>
+              <td class="whitespace-nowrap">
+                <button
+                  v-if="isComplete(deployment.status)"
+                  class="app-link-danger"
+                  :disabled="operating"
+                  @click="openDeleteDialog(deployment)"
+                >
+                  {{ t('common.delete') }}
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -105,6 +116,28 @@
         @change-page-size="handlePageSizeChange"
       />
     </div>
+
+    <AppDialog
+      v-model:open="isDeleteDialogOpen"
+      :title="t('deployment.dialog.confirmDelete')"
+      width-class="w-[min(420px,calc(100vw-32px))]"
+    >
+      <p class="text-sm text-foreground">
+        {{ t('deployment.dialog.deleteConfirm', { id: pendingDelete?.id ?? '' }) }}
+      </p>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.delete')"
+          variant="destructive"
+          @cancel="closeDeleteDialog"
+          @confirm="handleDelete"
+        />
+      </template>
+    </AppDialog>
   </div>
 </template>
 
@@ -116,6 +149,8 @@
   import { applicationApi } from '@/api/application/application';
   import { deploymentApi } from '@/api/deployment/deployment';
   import AppBadge from '@/components/AppBadge.vue';
+  import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
@@ -126,7 +161,7 @@
   import { useProjectStore } from '@/stores/project';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { DeploymentResp } from '@/gen/proto/orbit/v1/deployment/deployment';
-  import { statusTone } from '@/utils/status';
+  import { isComplete, statusTone } from '@/utils/status';
   import { formatDuration, formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 
@@ -136,8 +171,12 @@
   const toast = useToast();
   const projectStore = useProjectStore();
   const { status, error, execute } = useStatusAsync();
+  const { loading: operating, execute: executeOperation } = useStatusAsync();
 
   const deployments = ref<DeploymentResp[]>([]);
+  const isDeleteDialogOpen = ref(false);
+  const pendingDelete = ref<DeploymentResp>();
+  const deleteSubmitError = ref('');
   const searchText = ref('');
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
@@ -214,6 +253,40 @@
     pagination.pageSize = pageSize;
     pagination.current = 1;
     fetchDeployments();
+  }
+
+  function openDeleteDialog(deployment: DeploymentResp) {
+    pendingDelete.value = deployment;
+    deleteSubmitError.value = '';
+    isDeleteDialogOpen.value = true;
+  }
+
+  function closeDeleteDialog() {
+    isDeleteDialogOpen.value = false;
+    pendingDelete.value = undefined;
+    deleteSubmitError.value = '';
+  }
+
+  async function handleDelete() {
+    const deployment = pendingDelete.value;
+    if (!deployment) {
+      return;
+    }
+    deleteSubmitError.value = '';
+    try {
+      await executeOperation(async () => {
+        await deploymentApi.delete(deployment.id);
+        toast.success(t('deployment.toast.deleteSuccess'));
+        if (deployments.value.length === 1 && pagination.current > 1) {
+          pagination.current -= 1;
+        }
+        closeDeleteDialog();
+        await fetchDeployments();
+      });
+    } catch (err: unknown) {
+      deleteSubmitError.value =
+        err instanceof Error ? err.message : t('deployment.toast.deleteFailed');
+    }
   }
 
   onMounted(async () => {

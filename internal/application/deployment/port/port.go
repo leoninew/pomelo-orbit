@@ -73,6 +73,7 @@ type Workspace interface {
 	ServiceDir(serviceCode string) string
 	ServiceDirExists(serviceCode string) (bool, error)
 	DeploymentLogPath(serviceCode string, deploymentId string) string
+	RemoveDeploymentLog(serviceCode string, deploymentId string) error
 	PhysicalDir(ctx context.Context) (string, error)
 	PhysicalServiceDir(ctx context.Context, serviceCode string) (string, error)
 	WriteConfig(serviceCode string, path string, content string) error

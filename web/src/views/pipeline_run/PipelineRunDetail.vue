@@ -29,6 +29,15 @@
           {{ t('common.cancel') }}
         </button>
         <button
+          v-if="run && isComplete(run.status)"
+          :disabled="deleting"
+          class="app-button-danger h-9 px-3"
+          @click="openDeleteDialog"
+        >
+          <Trash2 class="size-4" />
+          {{ t('common.delete') }}
+        </button>
+        <button
           v-if="run && !isComplete(run.status)"
           class="app-button inline-flex h-9 items-center gap-2 px-3"
           :class="isPolling ? 'text-primary' : ''"
@@ -355,11 +364,33 @@
         />
       </template>
     </AppDialog>
+
+    <AppDialog
+      v-model:open="isDeleteDialogOpen"
+      :title="t('pipelineRun.confirmDelete')"
+      width-class="w-[min(420px,calc(100vw-32px))]"
+    >
+      <p class="text-sm text-foreground">
+        {{ t('pipelineRun.deleteConfirm', { id: runId }) }}
+      </p>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="deleting"
+          :confirm-label="t('common.delete')"
+          variant="destructive"
+          @cancel="closeDeleteDialog"
+          @confirm="handleDelete"
+        />
+      </template>
+    </AppDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Loader2, RotateCcw, X } from '@lucide/vue';
+  import { ArrowLeft, Loader2, RotateCcw, Trash2, X } from '@lucide/vue';
   import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -404,6 +435,7 @@
   const { loading: artifactsLoading, execute: executeArtifacts } = useStatusAsync();
   const { loading: retrying, execute: executeRetry } = useStatusAsync();
   const { loading: canceling, execute: executeCancel } = useStatusAsync();
+  const { loading: deleting, execute: executeDelete } = useStatusAsync();
 
   const run = ref<PipelineRunResp>();
   const snapshot = ref<PipelineSnapshotResp>();
@@ -412,6 +444,8 @@
   const showLogsDrawer = ref(false);
   const isCancelDialogOpen = ref(false);
   const cancelSubmitError = ref('');
+  const isDeleteDialogOpen = ref(false);
+  const deleteSubmitError = ref('');
   const stagesView = ref<'list' | 'dag'>('list');
   const stageSearchText = ref('');
   const appliedStageSearch = ref('');
@@ -652,6 +686,32 @@
   function openCancelDialog() {
     cancelSubmitError.value = '';
     isCancelDialogOpen.value = true;
+  }
+
+  function openDeleteDialog() {
+    deleteSubmitError.value = '';
+    isDeleteDialogOpen.value = true;
+  }
+
+  function closeDeleteDialog() {
+    isDeleteDialogOpen.value = false;
+    deleteSubmitError.value = '';
+  }
+
+  async function handleDelete() {
+    deleteSubmitError.value = '';
+    try {
+      await executeDelete(async () => {
+        stopPolling();
+        logPollAbort?.abort();
+        await pipelineRunApi.delete(runId.value);
+        toast.success(t('pipelineRun.toast.deleteSuccess'));
+        await router.replace('/pipeline-run');
+      });
+    } catch (error) {
+      deleteSubmitError.value =
+        error instanceof Error ? error.message : t('pipelineRun.toast.deleteFailed');
+    }
   }
 
   async function startPolling() {

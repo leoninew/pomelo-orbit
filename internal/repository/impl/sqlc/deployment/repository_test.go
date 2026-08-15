@@ -3,6 +3,7 @@ package deploymentrepo
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -11,6 +12,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 func TestRepositoryPersistsEffectivePlanHash(t *testing.T) {
@@ -63,6 +65,31 @@ func TestRepositoryPersistsEffectivePlanHash(t *testing.T) {
 	}
 	if latest == nil || *latest != hash {
 		t.Fatalf("latest successful plan hash = %#v, want %q", latest, hash)
+	}
+}
+
+func TestRepositoryDeletesDeployment(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate database: %v", err)
+	}
+	if _, err := database.Exec(`
+		INSERT INTO deployment (id, application_name, operation_type, trigger_type, status, is_rollback)
+		VALUES ('deployment-1', 'Example', 'deploy', 'manual', 'ran_to_completion', 0)
+	`); err != nil {
+		t.Fatalf("seed deployment: %v", err)
+	}
+
+	repo := NewRepository(database)
+	if err := repo.DeleteDeployment(context.Background(), "deployment-1"); err != nil {
+		t.Fatalf("DeleteDeployment returned error: %v", err)
+	}
+	if _, err := repo.Deployment(context.Background(), "deployment-1"); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("Deployment error = %v, want ErrNotFound", err)
 	}
 }
 

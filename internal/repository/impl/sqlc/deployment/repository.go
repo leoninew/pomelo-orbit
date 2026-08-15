@@ -147,6 +147,13 @@ func (r Repository) Deployment(ctx context.Context, id string) (model.Deployment
 	), nil
 }
 
+func (r Repository) DeleteDeployment(ctx context.Context, id string) error {
+	if err := r.q(ctx).DeleteDeployment(ctx, id); err != nil {
+		return fmt.Errorf("delete deployment %s: %w", id, sqlcommon.TranslateError(err))
+	}
+	return nil
+}
+
 func (r Repository) CancelDeployment(ctx context.Context, id string) (bool, error) {
 	q := r.q(ctx)
 	startedAt, err := q.DeploymentStartedAt(ctx, id)

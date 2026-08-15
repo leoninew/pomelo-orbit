@@ -848,6 +848,8 @@ export default {
     dialog: {
       confirmCancel: 'Confirm Cancel',
       cancelConfirm: 'Cancel deployment for "{name}"?',
+      confirmDelete: 'Confirm Delete',
+      deleteConfirm: 'Delete deployment record "{id}" and its log file? This cannot be undone.',
       currentApplication: 'this application',
       currentService: 'this service',
     },
@@ -855,6 +857,8 @@ export default {
       loadFailed: 'Failed to load deployments',
       cancelSuccess: 'Deployment canceled',
       cancelFailed: 'Failed to cancel',
+      deleteSuccess: 'Deployment record deleted',
+      deleteFailed: 'Failed to delete deployment record',
     },
   },
   deploymentDialogue: {
@@ -1103,6 +1107,8 @@ export default {
     logLoadFailed: 'Failed to load logs',
     confirmCancel: 'Confirm Cancel',
     cancelConfirm: 'Cancel this pipeline run?',
+    confirmDelete: 'Confirm Delete',
+    deleteConfirm: 'Delete pipeline run "{id}" and its related files? This cannot be undone.',
     fields: {
       runId: 'Run ID',
       repository: 'Repository',
@@ -1128,6 +1134,8 @@ export default {
       retryFailed: 'Failed to retry',
       cancelSuccess: 'Canceled',
       cancelFailed: 'Failed to cancel',
+      deleteSuccess: 'Pipeline run deleted',
+      deleteFailed: 'Failed to delete pipeline run',
     },
   },
   variableDeclaration: {

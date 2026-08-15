@@ -374,6 +374,46 @@ func (q *Queries) CountPipelineRuns(ctx context.Context, arg CountPipelineRunsPa
 	return count, err
 }
 
+const deletePipelineRun = `-- name: DeletePipelineRun :exec
+DELETE FROM pipeline_run
+WHERE id = ?
+`
+
+func (q *Queries) DeletePipelineRun(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deletePipelineRun, id)
+	return err
+}
+
+const deletePipelineRunArtifacts = `-- name: DeletePipelineRunArtifacts :exec
+DELETE FROM artifact
+WHERE pipeline_run_id = ?
+`
+
+func (q *Queries) DeletePipelineRunArtifacts(ctx context.Context, pipelineRunID string) error {
+	_, err := q.db.ExecContext(ctx, deletePipelineRunArtifacts, pipelineRunID)
+	return err
+}
+
+const deletePipelineRunVersionBinding = `-- name: DeletePipelineRunVersionBinding :exec
+DELETE FROM pipeline_run_version_binding
+WHERE pipeline_run_id = ?
+`
+
+func (q *Queries) DeletePipelineRunVersionBinding(ctx context.Context, pipelineRunID string) error {
+	_, err := q.db.ExecContext(ctx, deletePipelineRunVersionBinding, pipelineRunID)
+	return err
+}
+
+const deletePipelineStageRuns = `-- name: DeletePipelineStageRuns :exec
+DELETE FROM pipeline_stage_run
+WHERE pipeline_run_id = ?
+`
+
+func (q *Queries) DeletePipelineStageRuns(ctx context.Context, pipelineRunID string) error {
+	_, err := q.db.ExecContext(ctx, deletePipelineStageRuns, pipelineRunID)
+	return err
+}
+
 const insertArtifact = `-- name: InsertArtifact :exec
 INSERT INTO artifact (id, project_id, pipeline_run_id, repository_id, repository_name, pipeline_id, pipeline_name, pipeline_stage_id, stage_name, collector, name, location, value, value_format, image_ref, local_image_sha256, source_artifact_id, created_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

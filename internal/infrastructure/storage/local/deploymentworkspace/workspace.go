@@ -44,6 +44,10 @@ func (w *Workspace) DeploymentLogPath(serviceCode string, deploymentId string) s
 	return filepath.Join(w.ServiceDir(serviceCode), "deployments", deploymentId+".log")
 }
 
+func (w *Workspace) RemoveDeploymentLog(serviceCode string, deploymentId string) error {
+	return os.Remove(w.DeploymentLogPath(serviceCode, deploymentId))
+}
+
 func (w *Workspace) WriteConfig(serviceCode string, path string, content string) error {
 	path = filepath.Join(w.ServiceDir(serviceCode), path)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

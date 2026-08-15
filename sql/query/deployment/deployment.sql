@@ -13,6 +13,10 @@ FROM deployment d
 LEFT JOIN service s ON s.id = d.service_id
 WHERE d.id = ?;
 
+-- name: DeleteDeployment :exec
+DELETE FROM deployment
+WHERE id = ?;
+
 -- name: CountDeployments :one
 SELECT COUNT(*)
 FROM deployment

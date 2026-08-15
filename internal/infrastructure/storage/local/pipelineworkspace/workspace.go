@@ -76,6 +76,14 @@ func (w *Workspace) StageLogPath(runId string, pipelineStageRunId string) string
 	return filepath.Join(w.logicalDataRoot, pipelineDataDir, "runs", runId, "stages", pipelineStageRunId+".log")
 }
 
+func (w *Workspace) RemoveRunFiles(runId string) error {
+	runPath := filepath.Dir(w.ArtifactsPath(runId))
+	if _, err := os.Lstat(runPath); err != nil {
+		return err
+	}
+	return os.RemoveAll(runPath)
+}
+
 func (w *Workspace) DockerStageMounts(ctx context.Context, projectCode string, runId string) ([]pipelinerunport.VolumeMount, error) {
 	physicalDataRoot, err := w.PhysicalDataRoot(ctx)
 	if err != nil {

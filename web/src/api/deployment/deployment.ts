@@ -28,6 +28,11 @@ export const deploymentApi = {
     return request.get(`/api/deployment/${id}`, config);
   },
 
+  // 删除已完成的部署记录及日志文件
+  delete(id: string): Promise<void> {
+    return request.delete(`/api/deployment/${id}`);
+  },
+
   // 取消部署
   cancel(id: string, data: DeploymentCancelReq): Promise<DeploymentResp> {
     return request.post(`/api/deployment/${id}/cancel`, data);

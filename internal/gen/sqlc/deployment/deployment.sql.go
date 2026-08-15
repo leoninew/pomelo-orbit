@@ -210,6 +210,16 @@ func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentPara
 	return err
 }
 
+const deleteDeployment = `-- name: DeleteDeployment :exec
+DELETE FROM deployment
+WHERE id = ?
+`
+
+func (q *Queries) DeleteDeployment(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteDeployment, id)
+	return err
+}
+
 const deploymentByID = `-- name: DeploymentByID :one
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
        s.instance_key AS service_instance_key, d.options_json, d.effective_plan_hash,

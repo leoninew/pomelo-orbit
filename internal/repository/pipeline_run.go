@@ -12,6 +12,7 @@ type PipelineRunStore interface {
 	ListPipelineRuns(ctx context.Context, projectId string, repositoryId string, pipelineId string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (Page[model.PipelineRun], error)
 	ListPipelineRunsByPipeline(ctx context.Context, pipelineId string, page int, perPage int) (Page[model.PipelineRun], error)
 	PipelineRun(ctx context.Context, id string) (model.PipelineRun, error)
+	DeletePipelineRun(ctx context.Context, id string) error
 	ListPipelineStageRuns(ctx context.Context, runId string) ([]model.PipelineStageRun, error)
 	PipelineStageRun(ctx context.Context, id string) (model.PipelineStageRun, error)
 	ListArtifacts(ctx context.Context, projectId string, repositoryId string, pipelineId string, page int, perPage int, search string) (Page[model.Artifact], error)

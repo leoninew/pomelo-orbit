@@ -24,7 +24,7 @@
       </p>
       <AppEmptyState v-else-if="filteredRuns.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-data-table min-w-[1020px]">
+        <table class="app-data-table min-w-[1120px]">
           <thead>
             <tr>
               <th>ID</th>
@@ -35,6 +35,7 @@
               <th>状态</th>
               <th>开始时间</th>
               <th>耗时</th>
+              <th>{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -67,6 +68,16 @@
               <td class="whitespace-nowrap text-foreground">
                 {{ formatDuration(run.started_at, run.finished_at) }}
               </td>
+              <td class="whitespace-nowrap">
+                <button
+                  v-if="isComplete(run.status)"
+                  class="app-link-danger"
+                  :disabled="operating"
+                  @click="openDeleteDialog(run)"
+                >
+                  {{ t('common.delete') }}
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -80,6 +91,28 @@
         @change-page-size="changePageSize"
       />
     </div>
+
+    <AppDialog
+      v-model:open="isDeleteDialogOpen"
+      :title="t('pipelineRun.confirmDelete')"
+      width-class="w-[min(420px,calc(100vw-32px))]"
+    >
+      <p class="text-sm text-foreground">
+        {{ t('pipelineRun.deleteConfirm', { id: pendingDelete?.id ?? '' }) }}
+      </p>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.delete')"
+          variant="destructive"
+          @cancel="closeDeleteDialog"
+          @confirm="handleDelete"
+        />
+      </template>
+    </AppDialog>
   </div>
 </template>
 
@@ -89,6 +122,8 @@
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import AppBadge from '@/components/AppBadge.vue';
+  import AppDialog from '@/components/AppDialog.vue';
+  import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
@@ -99,18 +134,22 @@
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
   import type { PipelineRunResp } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
   import { useProjectStore } from '@/stores/project';
-  import { statusTone } from '@/utils/status';
+  import { isComplete, statusTone } from '@/utils/status';
   import { formatDuration, formatTime } from '@/utils/time';
 
   const projectStore = useProjectStore();
   const toast = useToast();
   const { t } = useI18n();
   const { status, error, execute } = useStatusAsync();
+  const { loading: operating, execute: executeOperation } = useStatusAsync();
   const runs = ref<PipelineRunResp[]>([]);
   const pipelines = ref<PipelineResp[]>([]);
   const pipelineId = ref('');
   const searchText = ref('');
   const appliedSearch = ref('');
+  const isDeleteDialogOpen = ref(false);
+  const pendingDelete = ref<PipelineRunResp>();
+  const deleteSubmitError = ref('');
   const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const pipelineOptions = computed(() =>
@@ -183,6 +222,37 @@
     pagination.pageSize = pageSize;
     pagination.current = 1;
     void fetchRuns();
+  }
+  function openDeleteDialog(run: PipelineRunResp) {
+    pendingDelete.value = run;
+    deleteSubmitError.value = '';
+    isDeleteDialogOpen.value = true;
+  }
+  function closeDeleteDialog() {
+    isDeleteDialogOpen.value = false;
+    pendingDelete.value = undefined;
+    deleteSubmitError.value = '';
+  }
+  async function handleDelete() {
+    const run = pendingDelete.value;
+    if (!run) {
+      return;
+    }
+    deleteSubmitError.value = '';
+    try {
+      await executeOperation(async () => {
+        await pipelineRunApi.delete(run.id);
+        toast.success(t('pipelineRun.toast.deleteSuccess'));
+        if (runs.value.length === 1 && pagination.current > 1) {
+          pagination.current -= 1;
+        }
+        closeDeleteDialog();
+        await fetchRuns();
+      });
+    } catch (error) {
+      deleteSubmitError.value =
+        error instanceof Error ? error.message : t('pipelineRun.toast.deleteFailed');
+    }
   }
   onMounted(async () => {
     try {

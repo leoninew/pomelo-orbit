@@ -17,6 +17,15 @@
           <X class="size-4" />
           取消
         </button>
+        <button
+          v-if="deployment && isCompleteDeployment"
+          class="app-button-danger h-9 px-3"
+          :disabled="isDeleting"
+          @click="openDeleteDialog"
+        >
+          <Trash2 class="size-4" />
+          {{ t('common.delete') }}
+        </button>
         <button class="app-button h-9 px-4" @click="goBack">
           <ArrowLeft class="size-4" />
           {{ backButtonText }}
@@ -228,11 +237,33 @@
         />
       </template>
     </AppDialog>
+
+    <AppDialog
+      v-model:open="isDeleteDialogOpen"
+      :title="t('deployment.dialog.confirmDelete')"
+      width-class="w-[min(420px,calc(100vw-32px))]"
+    >
+      <p class="text-sm text-foreground">
+        {{ t('deployment.dialog.deleteConfirm', { id: deploymentId }) }}
+      </p>
+      <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">
+        {{ deleteSubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="isDeleting"
+          :confirm-label="t('common.delete')"
+          variant="destructive"
+          @cancel="closeDeleteDialog"
+          @confirm="handleDelete"
+        />
+      </template>
+    </AppDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Loader2, X } from '@lucide/vue';
+  import { ArrowLeft, Loader2, Trash2, X } from '@lucide/vue';
   import { computed, onMounted, onUnmounted, ref } from 'vue';
   import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
@@ -262,6 +293,7 @@
   const toast = useToast();
   const { status, execute } = useStatusAsync();
   const { loading: isCancelling, execute: executeCancel } = useStatusAsync();
+  const { loading: isDeleting, execute: executeDelete } = useStatusAsync();
 
   const deployment = ref<DeploymentResp>();
   const deploymentServiceLabel = computed(
@@ -288,6 +320,8 @@
   const containerLogStatus = ref<LogStatus>('loading');
   const isCancelDialogOpen = ref(false);
   const cancelSubmitError = ref('');
+  const isDeleteDialogOpen = ref(false);
+  const deleteSubmitError = ref('');
   const isAutoRefreshing = ref(false);
   let refreshAbort: AbortController | null = null;
   let refreshGeneration = 0;
@@ -467,6 +501,7 @@
     containerLogSource.value = 'since';
     containerLogStatus.value = 'loading';
     isCancelDialogOpen.value = false;
+    isDeleteDialogOpen.value = false;
   }
 
   async function loadDeployment() {
@@ -502,6 +537,31 @@
   function openCancelDialog() {
     cancelSubmitError.value = '';
     isCancelDialogOpen.value = true;
+  }
+
+  function openDeleteDialog() {
+    deleteSubmitError.value = '';
+    isDeleteDialogOpen.value = true;
+  }
+
+  function closeDeleteDialog() {
+    isDeleteDialogOpen.value = false;
+    deleteSubmitError.value = '';
+  }
+
+  async function handleDelete() {
+    deleteSubmitError.value = '';
+    try {
+      await executeDelete(async () => {
+        await deploymentApi.delete(deploymentId.value);
+        stopAutoRefresh();
+        toast.success(t('deployment.toast.deleteSuccess'));
+        await router.replace('/deployments');
+      });
+    } catch (error) {
+      deleteSubmitError.value =
+        error instanceof Error ? error.message : t('deployment.toast.deleteFailed');
+    }
   }
 
   function revealLastLine(ed: editor.IStandaloneCodeEditor | null) {

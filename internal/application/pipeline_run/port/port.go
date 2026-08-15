@@ -36,6 +36,7 @@ type Workspace interface {
 	ArtifactsPath(runId string) string
 	ArtifactExists(runId string, artifactPath string) (bool, error)
 	StageLogPath(runId string, pipelineStageRunId string) string
+	RemoveRunFiles(runId string) error
 	DockerStageMounts(ctx context.Context, projectCode string, runId string) ([]VolumeMount, error)
 }
 

@@ -42,6 +42,18 @@ func (h Handler) GetDeployment(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
+func (h Handler) DeleteDeployment(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	if err := h.service.DeleteDeployment(c.Request.Context(), current.Id, c.Param("deployment_id")); err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (h Handler) GetDeploymentLogs(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {

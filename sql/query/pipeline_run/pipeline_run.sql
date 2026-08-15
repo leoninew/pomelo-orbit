@@ -20,6 +20,22 @@ WHERE (CAST(sqlc.narg(project_id) AS TEXT) IS NULL OR project_id = CAST(sqlc.nar
 SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run WHERE id = ?;
 
+-- name: DeletePipelineRunArtifacts :exec
+DELETE FROM artifact
+WHERE pipeline_run_id = ?;
+
+-- name: DeletePipelineStageRuns :exec
+DELETE FROM pipeline_stage_run
+WHERE pipeline_run_id = ?;
+
+-- name: DeletePipelineRunVersionBinding :exec
+DELETE FROM pipeline_run_version_binding
+WHERE pipeline_run_id = ?;
+
+-- name: DeletePipelineRun :exec
+DELETE FROM pipeline_run
+WHERE id = ?;
+
 -- name: ListPipelineStageRuns :many
 SELECT id, pipeline_run_id, stage_id, stage_name, status, started_at, finished_at, exit_code, error_message
 FROM pipeline_stage_run WHERE pipeline_run_id = ? ORDER BY started_at, id;

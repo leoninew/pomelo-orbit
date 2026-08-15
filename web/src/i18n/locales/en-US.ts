@@ -633,7 +633,7 @@ export default {
         editBasic: 'Edit service basic information',
         confirmDelete: 'Delete service',
         deleteConfirm:
-          'Delete service instance "{instance}"? Only stopped services can be deleted.',
+          'Delete service instance "{instance}"? Only stopped or faulted services can be deleted.',
       },
     },
     componentDetail: {

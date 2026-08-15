@@ -618,7 +618,7 @@ export default {
       dialog: {
         editBasic: '编辑服务基本信息',
         confirmDelete: '删除服务',
-        deleteConfirm: '确定删除服务实例“{instance}”吗？仅已停止的服务可删除。',
+        deleteConfirm: '确定删除服务实例“{instance}”吗？仅已停止或失败的服务可删除。',
       },
     },
     componentDetail: {

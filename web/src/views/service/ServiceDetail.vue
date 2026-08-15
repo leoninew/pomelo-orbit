@@ -31,7 +31,7 @@
         <button
           v-if="service"
           class="app-button-danger h-9 px-3"
-          :disabled="operating || service.status !== 'stopped'"
+          :disabled="operating || !canDeleteService"
           @click="openDeleteDialog"
         >
           <Trash2 class="size-4" />
@@ -481,6 +481,9 @@
       !service.value.active_deployment &&
       (service.value.status === 'running' || service.value.status === 'faulted')
   );
+  const canDeleteService = computed(
+    () => service.value?.status === 'stopped' || service.value?.status === 'faulted'
+  );
   const isStandardService = computed(() => service.value?.application_kind === 'standard');
   const basicEditVersionSelectOptions = computed(() =>
     basicEditVersions.value.map((version) => ({
@@ -823,7 +826,7 @@
   }
 
   function openDeleteDialog() {
-    if (service.value?.status !== 'stopped') return;
+    if (!canDeleteService.value) return;
     deleteError.value = '';
     isDeleteDialogOpen.value = true;
   }

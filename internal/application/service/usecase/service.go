@@ -44,8 +44,8 @@ func (s Service) DeleteService(ctx context.Context, userId, serviceId string) er
 	if err != nil {
 		return err
 	}
-	if item.Status != status.ServiceStatusStopped {
-		return apperror.New(apperror.KindValidation, "Only stopped services can be deleted")
+	if item.Status != status.ServiceStatusStopped && item.Status != status.ServiceStatusFaulted {
+		return apperror.New(apperror.KindValidation, "Only stopped or faulted services can be deleted")
 	}
 	if err := s.service.DeleteService(ctx, item.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete service", err)

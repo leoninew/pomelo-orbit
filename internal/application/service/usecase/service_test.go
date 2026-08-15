@@ -59,12 +59,61 @@ type deploymentStoreFake struct {
 	active   bool
 }
 
+type deleteServiceStoreFake struct {
+	repository.ServiceStore
+	service   model.Service
+	deletedId string
+}
+
+func (f *deleteServiceStoreFake) Service(_ context.Context, _ string) (model.Service, error) {
+	return f.service, nil
+}
+
+func (f *deleteServiceStoreFake) DeleteService(_ context.Context, id string) error {
+	f.deletedId = id
+	return nil
+}
+
 func (f deploymentStoreFake) HasActiveDeployment(_ context.Context, _ string) (bool, error) {
 	return f.active, nil
 }
 
 func (f deploymentStoreFake) LatestSuccessfulDeploymentPlanHash(_ context.Context, _ string) (*string, error) {
 	return f.planHash, nil
+}
+
+func TestDeleteServiceAllowsStoppedAndFaultedService(t *testing.T) {
+	for _, serviceStatus := range []string{status.ServiceStatusStopped, status.ServiceStatusFaulted} {
+		t.Run(serviceStatus, func(t *testing.T) {
+			store := &deleteServiceStoreFake{service: model.Service{Id: "service-1", ApplicationId: "application-1", Status: serviceStatus}}
+			usecase := Service{
+				application: serviceApplicationFake{app: model.Application{Id: "application-1"}},
+				service:     store,
+			}
+
+			if err := usecase.DeleteService(context.Background(), "user-1", "service-1"); err != nil {
+				t.Fatalf("DeleteService() error = %v", err)
+			}
+			if store.deletedId != "service-1" {
+				t.Fatalf("deleted service = %q, want service-1", store.deletedId)
+			}
+		})
+	}
+}
+
+func TestDeleteServiceRejectsRunningService(t *testing.T) {
+	store := &deleteServiceStoreFake{service: model.Service{Id: "service-1", ApplicationId: "application-1", Status: status.ServiceStatusRunning}}
+	usecase := Service{
+		application: serviceApplicationFake{app: model.Application{Id: "application-1"}},
+		service:     store,
+	}
+
+	if err := usecase.DeleteService(context.Background(), "user-1", "service-1"); err == nil {
+		t.Fatal("DeleteService() error = nil, want validation error")
+	}
+	if store.deletedId != "" {
+		t.Fatalf("deleted service = %q, want none", store.deletedId)
+	}
 }
 
 func TestServiceViewPendingDeployComparesEffectivePlanHash(t *testing.T) {

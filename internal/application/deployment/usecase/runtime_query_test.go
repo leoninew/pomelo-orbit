@@ -171,10 +171,6 @@ func (s *runtimeQueryStore) HasActiveDeployment(context.Context, string) (bool, 
 	return false, nil
 }
 
-func (s *runtimeQueryStore) HasActiveGatewayService(context.Context, string) (bool, error) {
-	return false, nil
-}
-
 func (s *runtimeQueryStore) ResolveActiveGatewayConfig(context.Context) (model.GatewayConfig, error) {
 	return model.GatewayConfig{}, repository.ErrNotFound
 }

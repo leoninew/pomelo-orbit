@@ -10,10 +10,6 @@ import type {
   DeploymentActionResp,
 } from '@/gen/proto/orbit/v1/application/application';
 import type {
-  ApplicationExportResp,
-  ApplicationImportReq,
-} from '@/gen/proto/orbit/v1/application/application_bundle';
-import type {
   VersionComponentAdvancedUpdateReq,
   VersionComponentBasicUpdateReq,
   VersionComponentCreateReq,
@@ -84,17 +80,6 @@ export const applicationApi = {
     config?: AxiosRequestConfig
   ): Promise<ApplicationLogsResp> {
     return request.get(`/api/application/${id}/logs`, { ...config, params });
-  },
-
-  exportApplication(id: string): Promise<ApplicationExportResp> {
-    return request.get(`/api/application/${id}/export`);
-  },
-
-  importApplication(
-    data: ApplicationImportReq,
-    params: { project_id: string }
-  ): Promise<ApplicationResp> {
-    return request.post('/api/application/import', data, { params });
   },
 
   listServices(id: string): Promise<ServiceListResp> {

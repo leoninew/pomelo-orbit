@@ -101,22 +101,3 @@ type VersionView struct {
 	Version    model.Version
 	Components []model.VersionComponent
 }
-
-// ApplicationImportInput imports an application with an initial version.
-type ApplicationImportInput struct {
-	ProjectId    string
-	Name         string
-	Code         string
-	Kind         string
-	VersionLabel string
-	VersionNote  *string
-	Components   []VersionComponentInput
-}
-
-// ApplicationExport bundles application/version data. Runtime services are
-// attached by the HTTP adapter through the service domain.
-type ApplicationExport struct {
-	Application model.Application
-	Versions    []VersionView
-	Services    []model.Service
-}

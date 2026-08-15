@@ -17,17 +17,6 @@
           <Plus class="size-4" />
           {{ t('application.createApplication') }}
         </button>
-        <button class="app-button px-5" @click="triggerImport">
-          <Upload class="size-4" />
-          {{ t('application.import') }}
-        </button>
-        <input
-          ref="fileInput"
-          type="file"
-          accept=".json"
-          class="hidden"
-          @change="handleFileImport"
-        />
       </div>
     </ToolbarRoot>
 
@@ -185,34 +174,11 @@
         />
       </template>
     </AppDialog>
-
-    <AppDialog v-model:open="isImportDialogOpen" :title="t('application.importApplication')">
-      <ApplicationFormFields
-        :form="importForm"
-        :errors="importErrors"
-        @clear-error="clearImportError"
-        @update:form="Object.assign(importForm, $event)"
-      />
-      <div class="app-tip">
-        {{ importSummary }}
-      </div>
-      <p v-if="importSubmitError" class="app-field-error mt-3" role="alert">
-        {{ importSubmitError }}
-      </p>
-      <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          :confirm-label="t('common.import')"
-          @cancel="isImportDialogOpen = false"
-          @confirm="handleImportOk"
-        />
-      </template>
-    </AppDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { Plus, Upload } from '@lucide/vue';
+  import { Plus } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
@@ -232,7 +198,6 @@
     ApplicationCreateReq,
     ApplicationResp,
   } from '@/gen/proto/orbit/v1/application/application';
-  import type { ApplicationImportReq } from '@/gen/proto/orbit/v1/application/application_bundle';
   import { applicationKindTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
@@ -249,8 +214,6 @@
   const isCreateDialogOpen = ref(false);
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
-  const isImportDialogOpen = ref(false);
-  const fileInput = ref<HTMLInputElement>();
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const createForm = reactive<ApplicationCreateReq>({
@@ -266,22 +229,6 @@
   const editErrors = reactive({ name: '' });
   const editSubmitError = ref('');
   const deleteSubmitError = ref('');
-  const importForm = reactive<ApplicationImportReq>({
-    name: '',
-    code: '',
-    kind: 'standard',
-    version_label: 'v1',
-    version_note: undefined,
-    components: [],
-  });
-  const importErrors = reactive({ name: '', code: '' });
-  const importSubmitError = ref('');
-  const importSummary = computed(() =>
-    t('application.importSummary', {
-      versionLabel: importForm.version_label || '-',
-      components: importForm.components.length,
-    })
-  );
 
   async function fetchApplications() {
     const projectId = projectStore.activeProjectId;
@@ -324,14 +271,6 @@
   function validateCreateForm(errors: { name: string; code: string }) {
     errors.name = createForm.name.trim() ? '' : t('application.validation.nameRequired');
     errors.code = /^[a-z][a-z0-9-]*$/.test(createForm.code)
-      ? ''
-      : t('application.validation.codeInvalid');
-    return !errors.name && !errors.code;
-  }
-
-  function validateImportForm(errors: { name: string; code: string }) {
-    errors.name = importForm.name.trim() ? '' : t('application.validation.nameRequired');
-    errors.code = /^[a-z][a-z0-9-]*$/.test(importForm.code)
       ? ''
       : t('application.validation.codeInvalid');
     return !errors.name && !errors.code;
@@ -409,10 +348,6 @@
     createErrors[field] = '';
   }
 
-  function clearImportError(field: 'name' | 'code') {
-    importErrors[field] = '';
-  }
-
   async function handleCreateOk() {
     createSubmitError.value = '';
     if (!validateCreateForm(createErrors)) {
@@ -440,56 +375,6 @@
     } catch (error) {
       createSubmitError.value =
         error instanceof Error ? error.message : t('application.toast.createFailed');
-    }
-  }
-
-  function triggerImport() {
-    fileInput.value?.click();
-  }
-
-  async function handleFileImport(event: Event) {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (!file) {
-      return;
-    }
-    try {
-      const data = JSON.parse(await file.text()) as ApplicationImportReq;
-      if (!data.name || !data.code) {
-        toast.error(t('application.validation.importMissingRequiredFields'));
-        return;
-      }
-      Object.assign(importForm, data);
-      Object.assign(importErrors, { name: '', code: '' });
-      importSubmitError.value = '';
-      isImportDialogOpen.value = true;
-    } catch {
-      toast.error(t('application.toast.parseImportFailed'));
-    } finally {
-      target.value = '';
-    }
-  }
-
-  async function handleImportOk() {
-    importSubmitError.value = '';
-    if (!validateImportForm(importErrors)) {
-      return;
-    }
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      importSubmitError.value = t('application.toast.selectProjectRequired');
-      return;
-    }
-    try {
-      await executeOp(async () => {
-        await applicationApi.importApplication(importForm, { project_id: projectId });
-        toast.success(t('application.toast.importSuccess'));
-        isImportDialogOpen.value = false;
-        await fetchApplications();
-      });
-    } catch (error) {
-      importSubmitError.value =
-        error instanceof Error ? error.message : t('application.toast.importFailed');
     }
   }
 

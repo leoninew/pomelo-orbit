@@ -3,10 +3,6 @@
     <div v-if="!versionsOnly" class="flex flex-wrap items-center justify-between gap-3">
       <DetailPageHeader :items="[]" :title="application?.name || t('application.detail.title')" />
       <div class="flex flex-wrap items-center gap-2">
-        <button v-if="application" class="app-button h-9 px-3" @click="handleExport">
-          <Download class="size-4" />
-          {{ t('application.detail.actions.export') }}
-        </button>
         <button
           v-if="application"
           :disabled="operating"
@@ -657,7 +653,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ChevronDown, Download, Plus, Trash2 } from '@lucide/vue';
+  import { ArrowLeft, ChevronDown, Plus, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -833,24 +829,6 @@
     versionPagination.pageSize = pageSize;
     versionPagination.current = 1;
     void loadVersions();
-  }
-
-  async function handleExport() {
-    try {
-      const data = await applicationApi.exportApplication(applicationId);
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: 'application/json',
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${data.code || 'application'}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success(t('application.toast.exportSuccess'));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.exportFailed'));
-    }
   }
 
   async function previewVersion(versionId: string) {

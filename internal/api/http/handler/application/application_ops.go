@@ -9,44 +9,6 @@ import (
 	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
 )
 
-func (h Handler) ImportApplication(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	var req applicationv1.ApplicationImportReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
-		return
-	}
-	app, err := h.service.ImportApplication(c.Request.Context(), current.Id, applicationImportInput(c.Request.URL.Query().Get("project_id"), &req))
-	if err != nil {
-		transportresponse.WriteError(c, err)
-		return
-	}
-	resp := applicationResponse(app)
-	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
-}
-
-func (h Handler) ExportApplication(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	exported, err := h.service.ExportApplication(c.Request.Context(), current.Id, c.Param("app_id"))
-	if err != nil {
-		transportresponse.WriteError(c, err)
-		return
-	}
-	services, err := h.runtimeService.ListServicesByApplication(c.Request.Context(), current.Id, exported.Application.Id)
-	if err != nil {
-		transportresponse.WriteError(c, err)
-		return
-	}
-	exported.Services = services
-	transportresponse.ProtoJSON(c, http.StatusOK, applicationExportResponse(exported))
-}
-
 func (h Handler) ListVersions(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {

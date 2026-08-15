@@ -203,8 +203,6 @@ export default {
     toolbar: 'Application toolbar',
     searchPlaceholder: 'Search application name',
     createApplication: 'Create Application',
-    importApplication: 'Import Application',
-    import: 'Import',
     create: 'Create',
     view: 'View',
     deploy: 'Deploy',
@@ -221,7 +219,6 @@ export default {
     codeHint:
       'Application code is used to generate the working directory and cannot be changed after creation',
     imagePullPolicyPlaceholder: 'Select image pull policy',
-    importSummary: 'Version {versionLabel} / Components {components} / Exposes {exposes}',
     createWizard: {
       title: 'Create Application',
       description:
@@ -282,7 +279,6 @@ export default {
       },
       actions: {
         restart: 'Restart',
-        export: 'Export',
         createVersion: 'Create',
         addComponent: 'Add Component',
         addExpose: 'Add Expose',
@@ -538,7 +534,6 @@ export default {
       nameRequired: 'Application name is required',
       codeInvalid:
         'Must start with a lowercase letter and only contain lowercase letters, numbers, and hyphens',
-      importMissingRequiredFields: 'Invalid file format: missing required field name or code',
       versionLabelRequired: 'Name is required',
       componentRequired: 'At least one component is required',
       componentNameImageRequired: 'Component name and image are required',
@@ -563,9 +558,6 @@ export default {
       loadFailed: 'Failed to load applications',
       createSuccess: 'Created successfully',
       createFailed: 'Failed to create',
-      importSuccess: 'Imported successfully',
-      importFailed: 'Failed to import',
-      parseImportFailed: 'Failed to parse file',
       deployTriggered: '{name} deployment triggered',
       deployFailed: 'Failed to deploy',
       deployVersionRequired: 'Create and select a version before deploying',
@@ -579,8 +571,6 @@ export default {
       restartSubmitted: 'Restart operation submitted',
       restartFailed: 'Failed to restart',
       stopSubmitted: 'Stop operation submitted',
-      exportSuccess: 'Exported successfully',
-      exportFailed: 'Failed to export',
       updateSuccess: 'Updated successfully',
       updateFailed: 'Failed to update',
       deleteSuccess: 'Deleted successfully',

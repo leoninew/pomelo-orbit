@@ -14,6 +14,14 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
+func optionalText(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	text := *value
+	return &text
+}
+
 func (s Service) ListVersions(ctx context.Context, userId string, applicationId string) ([]applicationdto.VersionView, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {

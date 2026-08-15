@@ -301,7 +301,7 @@ func (e Executor) saveArtifacts(ctx context.Context, run model.PipelineRun, stag
 			}
 			created := artifactForRun(run, stage, artifact)
 			created.Location = &location
-			if err := e.store.CreateArtifact(ctx, created); err != nil {
+			if err := e.createArtifact(ctx, created); err != nil {
 				return err
 			}
 		case "command":
@@ -335,7 +335,7 @@ func (e Executor) archiveCommandArtifact(ctx context.Context, run model.Pipeline
 	created := artifactForRun(run, stage, artifact)
 	created.Value = &value
 	created.ValueFormat = &artifact.Format
-	if err := e.store.CreateArtifact(ctx, created); err != nil {
+	if err := e.createArtifact(ctx, created); err != nil {
 		return err
 	}
 	return nil
@@ -368,7 +368,7 @@ func (e Executor) archiveContainerImageArtifact(ctx context.Context, run model.P
 		created.SourceArtifactId = &sourceArtifact.Id
 		created.SourceCommitSha = sourceArtifact.Value
 	}
-	return e.store.CreateArtifact(ctx, created)
+	return e.createArtifact(ctx, created)
 }
 
 type forkBuildVersionStore interface {
@@ -481,6 +481,33 @@ func artifactForRun(run model.PipelineRun, stage model.StageDefinition, config m
 		PipelineId: run.PipelineId, PipelineName: run.PipelineName, PipelineStageId: stage.Id, StageName: stage.Name,
 		Collector: config.Collector, Name: config.Name, CreatedAt: now(),
 	}
+}
+
+func (e Executor) createArtifact(ctx context.Context, artifact model.Artifact) error {
+	if err := validateArtifactPayload(artifact); err != nil {
+		return err
+	}
+	return e.store.CreateArtifact(ctx, artifact)
+}
+
+func validateArtifactPayload(artifact model.Artifact) error {
+	switch artifact.Collector {
+	case "file":
+		if artifact.Location == nil || artifact.Value != nil || artifact.ValueFormat != nil || artifact.ImageRef != nil || artifact.LocalImageSha256 != nil {
+			return fmt.Errorf("invalid file artifact payload")
+		}
+	case "command":
+		if artifact.Location != nil || artifact.Value == nil || artifact.ImageRef != nil || artifact.LocalImageSha256 != nil || artifact.ValueFormat == nil || (*artifact.ValueFormat != "text" && *artifact.ValueFormat != "git_object_id") {
+			return fmt.Errorf("invalid command artifact payload")
+		}
+	case "docker_image":
+		if artifact.Location != nil || artifact.Value != nil || artifact.ValueFormat != nil || artifact.ImageRef == nil || artifact.LocalImageSha256 == nil {
+			return fmt.Errorf("invalid docker image artifact payload")
+		}
+	default:
+		return fmt.Errorf("unsupported artifact collector %s", artifact.Collector)
+	}
+	return nil
 }
 
 func topologicalLayers(stages []model.StageDefinition) ([][]string, error) {

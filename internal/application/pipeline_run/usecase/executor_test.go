@@ -36,6 +36,64 @@ func TestForkBuildVersionCompletesBindingInForkTransaction(t *testing.T) {
 	}
 }
 
+func TestValidateArtifactPayload(t *testing.T) {
+	tests := []struct {
+		name     string
+		artifact model.Artifact
+		wantErr  bool
+	}{
+		{
+			name:     "file",
+			artifact: model.Artifact{Collector: "file", Location: stringRef("/data/report.txt")},
+		},
+		{
+			name: "command",
+			artifact: model.Artifact{
+				Collector: "command", Value: stringRef("abc"), ValueFormat: stringRef("text"),
+			},
+		},
+		{
+			name: "docker image",
+			artifact: model.Artifact{
+				Collector: "docker_image", ImageRef: stringRef("registry.example/api:build"), LocalImageSha256: stringRef("sha256:abc"),
+			},
+		},
+		{
+			name: "file cannot include a value",
+			artifact: model.Artifact{
+				Collector: "file", Location: stringRef("/data/report.txt"), Value: stringRef("unexpected"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "command requires a supported value format",
+			artifact: model.Artifact{
+				Collector: "command", Value: stringRef("abc"), ValueFormat: stringRef("json"),
+			},
+			wantErr: true,
+		},
+		{
+			name:     "docker image requires its digest",
+			artifact: model.Artifact{Collector: "docker_image", ImageRef: stringRef("registry.example/api:build")},
+			wantErr:  true,
+		},
+		{
+			name:     "unknown collector",
+			artifact: model.Artifact{Collector: "archive"},
+			wantErr:  true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := validateArtifactPayload(test.artifact)
+			if (err != nil) != test.wantErr {
+				t.Fatalf("validateArtifactPayload() error = %v, wantErr %t", err, test.wantErr)
+			}
+		})
+	}
+}
+
 type transactionContextKey struct{}
 
 type forkBuildVersionStoreStub struct {

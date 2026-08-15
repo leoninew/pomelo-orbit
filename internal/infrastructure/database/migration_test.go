@@ -317,6 +317,23 @@ func TestMigrateUpSQLiteLeavesPipelineStageShapesToBusinessValidation(t *testing
 	}
 }
 
+func TestMigrateUpSQLiteLeavesArtifactPayloadsToBusinessValidation(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+
+	if _, err := database.Exec(`
+		INSERT INTO artifact (
+			id, pipeline_run_id, pipeline_stage_id, stage_name, collector, name, location, value
+		) VALUES (
+			'artifact-1', 'run-1', 'stage-1', 'build', 'file', 'report', '/workspace/report.txt', 'unexpected'
+		)
+	`); err != nil {
+		t.Fatalf("artifact shapes must be validated by the business layer: %v", err)
+	}
+}
+
 func TestSQLiteTemplateLibraryDataMigration(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {

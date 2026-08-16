@@ -13,4 +13,4 @@ CREATE TABLE IF NOT EXISTS gateway_config (
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     CONSTRAINT fk_gateway_config_application
         FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;

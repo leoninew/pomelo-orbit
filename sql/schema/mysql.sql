@@ -83,16 +83,6 @@ CREATE TABLE IF NOT EXISTS login_history (
 );
 
 
-CREATE TABLE IF NOT EXISTS login_attempt (
-    id TEXT PRIMARY KEY,
-    username TEXT,
-    ip_address TEXT NOT NULL,
-    user_agent TEXT,
-    success BIGINT NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-
 CREATE TABLE IF NOT EXISTS project (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,

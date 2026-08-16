@@ -35,7 +35,7 @@
 
 | 领域 | 职责 | 逻辑实体 / 数据 |
 |---|---|---|
-| `auth` | 认证会话与安全审计：登录、Token、OAuth、CSRF、Turnstile、改密、登录审计。 | login_history、login_attempt；读取 user 身份和 role 授权结果。 |
+| `auth` | 认证会话与安全审计：登录、Token、OAuth、CSRF、Turnstile、改密、登录审计。 | login_history；读取 user 身份和 role 授权结果。 |
 | `user` | 用户账户、密码、状态和用户角色分配。 | user、user_role。 |
 | `role` | RBAC 策略定义。 | role、permission、role_permission。 |
 | `project` | 租户边界与项目成员管理。 | project、project_member。 |
@@ -141,7 +141,7 @@ Schema 以领域归属命名表和后续 migration；migration 可以将同一 F
 
 | 领域 | 目标表 / 非表资源 | Schema 说明 |
 |---|---|---|
-| `auth` | login_history、login_attempt | 认证审计从 user 账户表中拆出。 |
+| `auth` | login_history | 认证审计从 user 账户表中拆出。 |
 | `user` | user、user_role | user_role 的写入语义属于用户角色分配。 |
 | `role` | role、permission、role_permission | 权限策略与角色一起维护。 |
 | `project` | project、project_member | project_member 由 project 拥有。 |
@@ -173,7 +173,7 @@ sqlc query 文件和实现包按下表领域拆分，禁止继续用 `ci`、`cd`
 
 | 领域 | query 文件 / 实现切片 | 说明 |
 |---|---|---|
-| `auth` | `auth.sql` / `sqlc/auth` | 管理 login_history、login_attempt；通过账户身份读取端口与授权读取端口读取 user / role。 |
+| `auth` | `auth.sql` / `sqlc/auth` | 管理 login_history；通过账户身份读取端口与授权读取端口读取 user / role。 |
 | `user` | `user.sql` / `sqlc/user` | 管理 user、user_role；分配角色前读取 role 校验。 |
 | `role` | `role.sql` / `sqlc/role` | 管理 role、permission、role_permission。 |
 | `project` | `project.sql` / `sqlc/project` | 管理 project、project_member；读取 user 用于成员校验和展示。 |

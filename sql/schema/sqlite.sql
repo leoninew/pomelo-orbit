@@ -101,19 +101,6 @@ CREATE TABLE IF NOT EXISTS login_history (
 CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_login_history_login_at ON login_history(login_at DESC);
 
-CREATE TABLE IF NOT EXISTS login_attempt (
-    id TEXT PRIMARY KEY,
-    username TEXT,
-    ip_address TEXT NOT NULL,
-    user_agent TEXT,
-    success INTEGER NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_login_attempt_ip_created ON login_attempt(ip_address, created_at);
-CREATE INDEX IF NOT EXISTS idx_login_attempt_username_created ON login_attempt(username, created_at);
-CREATE INDEX IF NOT EXISTS idx_login_attempt_created ON login_attempt(created_at);
-
 CREATE TABLE IF NOT EXISTS project (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,

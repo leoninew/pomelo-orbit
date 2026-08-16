@@ -32,7 +32,7 @@ func RunMigrations(database *sql.DB, driver string, logger *slog.Logger) error {
 		"applied", after.Version != before.Version,
 		"dirty", after.Dirty,
 	)
-	return db.MigrateData(database, driver, logger)
+	return nil
 }
 
 func MigrationVersion(database *sql.DB, driver string) (db.MigrationVersion, error) {

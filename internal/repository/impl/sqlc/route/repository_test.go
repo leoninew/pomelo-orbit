@@ -26,7 +26,7 @@ func TestListRoutesBindsSearchAndPaginationForSQLite(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	const projectID = "01KRRKK0K3T519ZQZES3M4QA9Z"
+	const projectID = "route-project"
 	if _, err := database.ExecContext(ctx, "INSERT INTO project (id, name, code) VALUES (?, ?, ?)", projectID, "Route Test", "route-test"); err != nil {
 		t.Fatal(err)
 	}

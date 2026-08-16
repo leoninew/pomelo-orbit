@@ -16,7 +16,6 @@ import (
 	pipelinerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/pipeline"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	vcsrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/repository"
-	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
 const (
@@ -176,7 +175,6 @@ func newPipelineTemplateUpdateService(t *testing.T) (Service, repository.Pipelin
 		_ = database.Close()
 		t.Fatal(err)
 	}
-	testseed.ApplySQLiteSystemSeed(t, database)
 	pipelineStore := pipelinerepo.NewRepository(database)
 	service := New(
 		projectrepo.NewRepository(database),

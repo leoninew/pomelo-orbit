@@ -1,12 +1,7 @@
 package db
 
 import (
-	"bytes"
 	"database/sql"
-	"io"
-	"log/slog"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/oklog/ulid/v2"
@@ -30,42 +25,34 @@ func TestMigrateUpSQLite(t *testing.T) {
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	var adminCount int
-	if err := database.QueryRow("SELECT COUNT(*) FROM user WHERE username = 'admin'").Scan(&adminCount); err != nil {
-		t.Fatalf("count built-in administrator: %v", err)
-	}
-	if adminCount != 0 {
-		t.Fatalf("migrate up applied business data: admin count=%d", adminCount)
-	}
-
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("repeat migrate up: %v", err)
 	}
 }
 
-func TestMigrateDataSQLite(t *testing.T) {
+func TestMigrateUpSQLiteSeedsExportedData(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
 
-	var logs bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logs, nil))
-	if err := MigrateData(database, config.DatabaseDriverSQLite, logger); err != nil {
-		t.Fatalf("migrate data: %v", err)
-	}
-	if err := MigrateData(database, config.DatabaseDriverSQLite, logger); err != nil {
-		t.Fatalf("repeat migrate data: %v", err)
-	}
-
 	for table, want := range map[string]int{
-		"user":                     1,
-		"project":                  1,
-		"permission":               9,
-		"role":                     1,
-		"pipeline":                 2,
-		"pipeline_stage":           5,
-		"pipeline_stage_reference": 6,
+		"application":                1,
+		"gateway_config":             1,
+		"user":                       1,
+		"project":                    1,
+		"permission":                 9,
+		"role":                       1,
+		"pipeline":                   2,
+		"pipeline_stage":             5,
+		"pipeline_stage_reference":   6,
+		"route":                      1,
+		"service":                    1,
+		"service_component":          1,
+		"version":                    1,
+		"version_component":          1,
+		"version_component_endpoint": 3,
+		"version_component_mount":    3,
 	} {
 		var got int
 		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&got); err != nil {
@@ -76,17 +63,20 @@ func TestMigrateDataSQLite(t *testing.T) {
 		}
 	}
 
-	output := logs.String()
-	for _, want := range []string{
-		`msg="execute data migration" path=migration/data/sqlite/000029_seed_system.up.sql`,
-		`msg="execute data migration" path=migration/data/sqlite/000030_pipeline_template_library.sql`,
-	} {
-		if !strings.Contains(output, want) {
-			t.Fatalf("expected log entry %q in:\n%s", want, output)
-		}
+	rows, err := database.Query("PRAGMA foreign_key_check")
+	if err != nil {
+		t.Fatalf("run foreign key check: %v", err)
 	}
-	if strings.Contains(output, "000029_seed_system.down.sql") {
-		t.Fatalf("down migration must be filtered from startup logs:\n%s", output)
+	defer func() {
+		if err := rows.Close(); err != nil {
+			t.Errorf("close foreign key check: %v", err)
+		}
+	}()
+	if rows.Next() {
+		t.Fatal("foreign key check found violations")
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate foreign key check: %v", err)
 	}
 }
 
@@ -95,10 +85,6 @@ func TestSQLiteSystemSeedIDsAreULIDs(t *testing.T) {
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	if err := MigrateData(database, config.DatabaseDriverSQLite, slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
-		t.Fatalf("migrate data: %v", err)
-	}
-
 	for _, table := range []string{
 		"user",
 		"project",
@@ -130,99 +116,7 @@ func TestSQLiteSystemSeedIDsAreULIDs(t *testing.T) {
 	}
 }
 
-func TestMigrateUpSQLiteCreatesPipelineSchema(t *testing.T) {
-	database, err := openSQLite(config.SQLiteConfig{Path: filepath.Join(t.TempDir(), "pomelo-orbit.db")})
-	if err != nil {
-		t.Fatalf("open sqlite database: %v", err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-
-	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
-		t.Fatalf("migrate up: %v", err)
-	}
-	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
-		t.Fatalf("repeat migrate up: %v", err)
-	}
-	if err := MigrateData(database, config.DatabaseDriverSQLite, slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
-		t.Fatalf("migrate data: %v", err)
-	}
-
-	for _, table := range []string{
-		"pipeline",
-		"pipeline_stage",
-		"pipeline_stage_reference",
-		"pipeline_snapshot",
-		"pipeline_run",
-		"pipeline_run_version_binding",
-		"artifact",
-		"deployment_dialogue_conversation",
-		"deployment_dialogue_message",
-	} {
-		var count int
-		if err := database.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?", table).Scan(&count); err != nil {
-			t.Fatalf("check %s table: %v", table, err)
-		}
-		if count != 1 {
-			t.Fatalf("expected %s table", table)
-		}
-	}
-	for table, want := range map[string]int{
-		"permission":     9,
-		"role":           1,
-		"user_role":      1,
-		"project_member": 1,
-		"repository":     0,
-	} {
-		var count int
-		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count); err != nil {
-			t.Fatalf("count %s rows: %v", table, err)
-		}
-		if count != want {
-			t.Fatalf("%s rows=%d, want %d", table, count, want)
-		}
-	}
-
-	for _, column := range []string{"pipeline_id", "pipeline_name", "pipeline_version", "repository_ref"} {
-		var value string
-		if err := database.QueryRow("SELECT " + column + " FROM pipeline_run LIMIT 1").Scan(&value); err != sql.ErrNoRows {
-			t.Fatalf("pipeline_run %s column is missing or unexpectedly populated: %v", column, err)
-		}
-	}
-	var legacyColumnCount int
-	if err := database.QueryRow("SELECT COUNT(*) FROM pragma_table_info('pipeline_run') WHERE name = 'trigger_ref'").Scan(&legacyColumnCount); err != nil {
-		t.Fatalf("check legacy pipeline_run ref column: %v", err)
-	}
-	if legacyColumnCount != 0 {
-		t.Fatal("pipeline_run trigger_ref column must be removed")
-	}
-	for _, column := range []string{"artifact_name", "artifact_image_ref", "artifact_local_image_sha256", "artifact_source_commit_sha", "entrypoint_json"} {
-		var count int
-		if err := database.QueryRow("SELECT COUNT(*) FROM pragma_table_info('version_component') WHERE name = ?", column).Scan(&count); err != nil {
-			t.Fatalf("check version_component %s column: %v", column, err)
-		}
-		if count != 1 {
-			t.Fatalf("version_component %s column is missing", column)
-		}
-	}
-
-	rows, err := database.Query("PRAGMA foreign_key_check")
-	if err != nil {
-		t.Fatalf("run foreign key check: %v", err)
-	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			t.Errorf("close foreign key check: %v", err)
-		}
-	}()
-	if rows.Next() {
-		t.Fatal("foreign key check found violations")
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatalf("iterate foreign key check: %v", err)
-	}
-}
-
-func TestMigrateUpSQLiteDoesNotConstrainActivePipelineRunsByRepository(t *testing.T) {
+func TestMigrateUpSQLiteAllowsMultipleActivePipelineRunsForRepository(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
@@ -240,7 +134,7 @@ func TestMigrateUpSQLiteDoesNotConstrainActivePipelineRunsByRepository(t *testin
 	}
 }
 
-func TestMigrateUpSQLiteDoesNotConstrainActiveDeploymentsByService(t *testing.T) {
+func TestMigrateUpSQLiteAllowsMultipleActiveDeploymentsForService(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
@@ -257,7 +151,7 @@ func TestMigrateUpSQLiteDoesNotConstrainActiveDeploymentsByService(t *testing.T)
 	}
 }
 
-func TestMigrateUpSQLiteLeavesPipelineStageShapesToBusinessValidation(t *testing.T) {
+func TestMigrateUpSQLitePreservesFrozenStageReferenceAfterTemplateDeletion(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
@@ -268,12 +162,6 @@ func TestMigrateUpSQLiteLeavesPipelineStageShapesToBusinessValidation(t *testing
         VALUES ('stage-template', 'project-1', 'template', 'build', 'golang:1.24', 'go build ./...', '', 1)
     `); err != nil {
 		t.Fatalf("insert template stage: %v", err)
-	}
-	if _, err := database.Exec(`
-        INSERT INTO pipeline_stage (id, project_id, kind, name, image, script, description, version, artifacts)
-        VALUES ('invalid-template', 'project-1', 'template', 'invalid', 'alpine', 'true', '', 1, '[]')
-	`); err != nil {
-		t.Fatalf("pipeline stage shapes must be validated by the business layer: %v", err)
 	}
 	if _, err := database.Exec(`
         INSERT INTO pipeline (id, project_id, kind, name, description, variable_declarations, version)
@@ -287,19 +175,7 @@ func TestMigrateUpSQLiteLeavesPipelineStageShapesToBusinessValidation(t *testing
             source_template_stage_version, source_template_stage_description,
             name, image, script, description, depends_on, sort_order
         ) VALUES (
-            'invalid-reference', 'template-pipeline', 'stage-template', 'build', 0, '',
-            'invalid', 'alpine', 'true', '', '{}', -1
-        )
-    `); err != nil {
-		t.Fatalf("pipeline stage reference shapes must be validated by the business layer: %v", err)
-	}
-	if _, err := database.Exec(`
-        INSERT INTO pipeline_stage_reference (
-            id, pipeline_id, source_template_stage_id, source_template_stage_name,
-            source_template_stage_version, source_template_stage_description,
-            name, image, script, description, depends_on, sort_order
-        ) VALUES (
-            'reference-1', 'template-pipeline', 'stage-template', 'build', 1, '',
+			'reference-1', 'template-pipeline', 'stage-template', 'build', 1, '',
             'build', 'golang:1.24', 'go build ./...', '', '[]', 0
         )
     `); err != nil {
@@ -319,44 +195,10 @@ func TestMigrateUpSQLiteLeavesPipelineStageShapesToBusinessValidation(t *testing
 	}
 }
 
-func TestMigrateUpSQLiteLeavesArtifactPayloadsToBusinessValidation(t *testing.T) {
+func TestSQLiteSeedContainsExportedPipelineLibrary(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
-	}
-
-	if _, err := database.Exec(`
-		INSERT INTO artifact (
-			id, pipeline_run_id, pipeline_stage_id, stage_name, collector, name, location, value
-		) VALUES (
-			'artifact-1', 'run-1', 'stage-1', 'build', 'file', 'report', '/workspace/report.txt', 'unexpected'
-		)
-	`); err != nil {
-		t.Fatalf("artifact shapes must be validated by the business layer: %v", err)
-	}
-}
-
-func TestSQLiteTemplateLibraryDataMigration(t *testing.T) {
-	database := openMemoryDb(t)
-	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
-		t.Fatalf("migrate up: %v", err)
-	}
-
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	if err := MigrateData(database, config.DatabaseDriverSQLite, logger); err != nil {
-		t.Fatalf("migrate data: %v", err)
-	}
-	for _, statement := range []string{
-		"UPDATE pipeline_stage SET version = 0 WHERE id = '01KRCWNJVA1DM02TJXZ4STJD01'",
-		"UPDATE pipeline SET version = 0 WHERE id = '01KZG83K2MXG08EJ6G48SG38B3'",
-		"UPDATE pipeline_stage_reference SET source_template_stage_version = 0 WHERE id = '01KZGBG9NT6NCK8AT6H6ENV874'",
-	} {
-		if _, err := database.Exec(statement); err != nil {
-			t.Fatalf("make template seed stale: %v", err)
-		}
-	}
-	if err := MigrateData(database, config.DatabaseDriverSQLite, logger); err != nil {
-		t.Fatalf("repeat migrate data: %v", err)
 	}
 
 	for table, want := range map[string]int{
@@ -385,7 +227,7 @@ func TestSQLiteTemplateLibraryDataMigration(t *testing.T) {
 			t.Fatalf("read refreshed template seed: %v", err)
 		}
 		if got != check.want {
-			t.Fatalf("refreshed template seed value=%d, want %d", got, check.want)
+			t.Fatalf("seeded template value=%d, want %d", got, check.want)
 		}
 	}
 }

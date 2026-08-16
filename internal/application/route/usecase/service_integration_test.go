@@ -136,7 +136,7 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	testseed.ApplySQLiteSystemSeed(t, database)
+	testseed.RemoveSQLiteExportedGatewaySeed(t, database)
 	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
 	cfg.Cert.LetsEncrypt.Enabled = true
 	cfg.Cert.LetsEncrypt.Email = "admin@example.test"

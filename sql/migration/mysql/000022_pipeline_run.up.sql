@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS pipeline_run (
     finished_at DATETIME(3),
     error_message TEXT,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE INDEX idx_pipeline_run_pipeline_created ON pipeline_run(pipeline_id, created_at DESC);
 CREATE INDEX idx_pipeline_run_status ON pipeline_run(status);
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS pipeline_stage_run (
     exit_code INT,
     error_message TEXT,
     UNIQUE KEY uq_pipeline_stage_run_run_stage (pipeline_run_id, stage_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE INDEX idx_pipeline_stage_run_run ON pipeline_stage_run(pipeline_run_id);
 CREATE INDEX idx_pipeline_stage_run_status ON pipeline_stage_run(status);
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS pipeline_run_version_binding (
     source_version_label VARCHAR(255) NOT NULL,
     generated_version_id VARCHAR(26),
     generated_version_label VARCHAR(255)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE INDEX idx_pipeline_run_version_binding_source_version
     ON pipeline_run_version_binding(source_version_id);
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS artifact (
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     FOREIGN KEY (project_id) REFERENCES project(id),
     CONSTRAINT fk_artifact_source FOREIGN KEY (source_artifact_id) REFERENCES artifact(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE INDEX idx_artifact_run ON artifact(pipeline_run_id);
 CREATE INDEX idx_artifact_run_stage ON artifact(pipeline_run_id, pipeline_stage_id);

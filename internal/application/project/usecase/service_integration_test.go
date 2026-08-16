@@ -13,7 +13,6 @@ import (
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
-	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
 const projectTestUserId = "01KKX2YNPF6VJ9N7QYCWG61KVK"
@@ -103,7 +102,6 @@ func newProjectIntegrationService(t *testing.T) (Service, *sql.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	testseed.ApplySQLiteSystemSeed(t, database)
 	service := New(
 		projectrepo.NewRepository(database),
 		userrepo.NewRepository(database),

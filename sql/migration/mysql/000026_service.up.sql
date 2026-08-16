@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS service (
     KEY idx_service_application (application_id),
     CONSTRAINT fk_service_application FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
     CONSTRAINT fk_service_version FOREIGN KEY (version_id) REFERENCES version(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS service_env (
     service_id VARCHAR(26) NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS service_env (
     value TEXT NOT NULL,
     PRIMARY KEY (service_id, env_key),
     CONSTRAINT fk_service_env_service FOREIGN KEY (service_id) REFERENCES service(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS service_component (
     id VARCHAR(128) NOT NULL PRIMARY KEY,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS service_component (
     CONSTRAINT chk_service_component_pull_policy CHECK (pull_policy IS NULL OR pull_policy IN ('always', 'missing', 'never')),
     CONSTRAINT chk_service_component_restart_policy CHECK (restart_policy IS NULL OR restart_policy IN ('no', 'unless-stopped')),
     CONSTRAINT chk_service_component_status CHECK (status = 'active')
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS service_component_env (
     service_component_id VARCHAR(128) NOT NULL,
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS service_component_env (
         (state = 'override' AND value IS NOT NULL)
         OR (state = 'deleted' AND value IS NULL)
     )
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS service_component_mount (
     id VARCHAR(160) NOT NULL PRIMARY KEY,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS service_component_mount (
         (state = 'override' AND source IS NOT NULL)
         OR (state = 'deleted' AND source IS NULL)
     )
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS service_component_resource (
     service_component_id VARCHAR(128) NOT NULL PRIMARY KEY,
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS service_component_resource (
         (state = 'deleted' AND limit_cpus IS NULL AND limit_memory IS NULL AND reservation_cpus IS NULL AND reservation_memory IS NULL)
         OR (state = 'override' AND (limit_cpus IS NOT NULL OR limit_memory IS NOT NULL OR reservation_cpus IS NOT NULL OR reservation_memory IS NOT NULL))
     )
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS service_component_endpoint (
     id VARCHAR(26) NOT NULL,
@@ -114,4 +114,4 @@ CREATE TABLE IF NOT EXISTS service_component_endpoint (
         (state = 'deleted' AND mode IS NULL AND bind_address IS NULL AND listen_port IS NULL AND entrypoint IS NULL AND path_prefix IS NULL)
         OR (state = 'override' AND (mode IS NOT NULL OR bind_address IS NOT NULL OR listen_port IS NOT NULL OR entrypoint IS NOT NULL OR path_prefix IS NOT NULL))
     )
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;

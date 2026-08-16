@@ -113,7 +113,7 @@ func TestCreateGatewayRollsBackWhenGatewayConfigWriteFails(t *testing.T) {
 	if err := databasepkg.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	testseed.ApplySQLiteSystemSeed(t, database)
+	testseed.RemoveSQLiteExportedGatewaySeed(t, database)
 	applications := applicationrepo.NewRepository(database)
 	service := New(
 		projectrepo.NewRepository(database),
@@ -154,7 +154,7 @@ func newGatewayFactoryService(t *testing.T, configStore gatewayport.ConfigStore)
 		_ = database.Close()
 		t.Fatal(err)
 	}
-	testseed.ApplySQLiteSystemSeed(t, database)
+	testseed.RemoveSQLiteExportedGatewaySeed(t, database)
 	applications := applicationrepo.NewRepository(database)
 	services := servicerepo.NewRepository(database)
 	if configStore == nil {

@@ -2,9 +2,6 @@ package testseed
 
 import (
 	"database/sql"
-	"os"
-	"path/filepath"
-	"runtime"
 	"testing"
 )
 
@@ -25,22 +22,21 @@ func ApplySQLitePipelineDemo(t testing.TB, database *sql.DB) {
 	}
 }
 
-func ApplySQLiteSystemSeed(t testing.TB, database *sql.DB) {
+func RemoveSQLiteExportedGatewaySeed(t testing.TB, database *sql.DB) {
 	t.Helper()
-	applySQLiteDataMigration(t, database, "000029_seed_system.up.sql")
-}
-
-func applySQLiteDataMigration(t testing.TB, database *sql.DB, name string) {
-	t.Helper()
-	_, path, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("locate test seed package")
-	}
-	contents, err := os.ReadFile(filepath.Join(filepath.Dir(path), "..", "..", "..", "sql", "migration", "data", "sqlite", name))
-	if err != nil {
-		t.Fatalf("read %s: %v", name, err)
-	}
-	if _, err := database.Exec(string(contents)); err != nil {
-		t.Fatalf("apply %s: %v", name, err)
+	for _, statement := range []string{
+		"DELETE FROM route WHERE id = '01M01ZNW6CPQCB7P5PN669HWJ9'",
+		"DELETE FROM service_component WHERE id = '01M01RHDXW3ZXC7YKNT8GDNQNB'",
+		"DELETE FROM service WHERE id = '01M01RHDXW3ZXC7YKNT54RWM1M'",
+		"DELETE FROM version_component_mount WHERE component_id = '01M01MP096R73Z3MG28P91CSPN'",
+		"DELETE FROM version_component_endpoint WHERE component_id = '01M01MP096R73Z3MG28P91CSPN'",
+		"DELETE FROM version_component WHERE id = '01M01MP096R73Z3MG28P91CSPN'",
+		"DELETE FROM gateway_config WHERE application_id = '01M01MP0950ECGK2DS1FWYNC0B'",
+		"DELETE FROM version WHERE id = '01M01MP0950ECGK2DS1J4N4P50'",
+		"DELETE FROM application WHERE id = '01M01MP0950ECGK2DS1FWYNC0B'",
+	} {
+		if _, err := database.Exec(statement); err != nil {
+			t.Fatalf("remove exported gateway seed: %v", err)
+		}
 	}
 }

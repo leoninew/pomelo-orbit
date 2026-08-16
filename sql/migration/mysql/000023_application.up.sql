@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS version_component_env (
     UNIQUE KEY uq_version_component_env_position (component_id, position),
     CONSTRAINT fk_version_component_env_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_version_component_env_position CHECK (position >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS version_component_endpoint (
     component_id VARCHAR(26) NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS version_component_endpoint (
     CONSTRAINT chk_version_component_endpoint_mode CHECK (mode IN ('internal', 'local', 'host', 'gateway')),
     CONSTRAINT chk_version_component_endpoint_listen CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
     CONSTRAINT chk_version_component_endpoint_position CHECK (position >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS version_component_mount (
     component_id VARCHAR(26) NOT NULL,
@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS version_component_mount (
     CONSTRAINT chk_version_component_mount_content_masked CHECK (content_masked IN (0, 1)),
     CONSTRAINT chk_version_component_mount_ignore_if_exists CHECK (ignore_if_exists IN (0, 1)),
     CONSTRAINT chk_version_component_mount_position CHECK (position >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS version_component_dependency (
     component_id VARCHAR(26) NOT NULL,
@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS version_component_dependency (
     CONSTRAINT fk_version_component_dependency_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_version_component_dependency_condition CHECK (`condition` IN ('service_started', 'service_healthy', 'service_completed_successfully')),
     CONSTRAINT chk_version_component_dependency_position CHECK (position >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS version_component_healthcheck (
     component_id VARCHAR(26) PRIMARY KEY,
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS version_component_healthcheck (
     CONSTRAINT fk_version_component_healthcheck_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_version_component_healthcheck_mode CHECK (test_mode IN ('CMD', 'CMD-SHELL')),
     CONSTRAINT chk_version_component_healthcheck_disabled CHECK (disabled IN (0, 1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS version_component_resource (
     component_id VARCHAR(26) PRIMARY KEY,
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS version_component_resource (
     reservation_cpus VARCHAR(64),
     reservation_memory VARCHAR(64),
     CONSTRAINT fk_version_component_resource_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS version_component_tmpfs (
     component_id VARCHAR(26) NOT NULL,
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS version_component_tmpfs (
     UNIQUE KEY uq_version_component_tmpfs_target (component_id, target),
     CONSTRAINT fk_version_component_tmpfs_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_version_component_tmpfs_position CHECK (position >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS version_component_ulimit (
     component_id VARCHAR(26) NOT NULL,
@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS version_component_ulimit (
     UNIQUE KEY uq_version_component_ulimit_position (component_id, position),
     CONSTRAINT fk_version_component_ulimit_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_version_component_ulimit_position CHECK (position >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS version_component_device (
     component_id VARCHAR(26) NOT NULL,
@@ -178,4 +178,4 @@ CREATE TABLE IF NOT EXISTS version_component_device (
     PRIMARY KEY (component_id, position),
     CONSTRAINT fk_version_component_device_component FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_version_component_device_position CHECK (position >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;

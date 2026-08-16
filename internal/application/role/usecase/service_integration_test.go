@@ -13,7 +13,6 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	rolerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/role"
-	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
 func TestRoleServiceCreateUpdateAndDelete(t *testing.T) {
@@ -70,6 +69,5 @@ func newRoleIntegrationService(t *testing.T) (Service, *sql.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	testseed.ApplySQLiteSystemSeed(t, database)
 	return New(rolerepo.NewRepository(database)), database
 }

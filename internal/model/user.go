@@ -55,12 +55,3 @@ type LoginHistory struct {
 	LoginAt   time.Time `db:"login_at"`
 	Success   bool      `db:"success"`
 }
-
-type LoginAttempt struct {
-	Id        string    `db:"id"`
-	Username  *string   `db:"username"`
-	IpAddress string    `db:"ip_address"`
-	UserAgent *string   `db:"user_agent"`
-	Success   bool      `db:"success"`
-	CreatedAt time.Time `db:"created_at"`
-}

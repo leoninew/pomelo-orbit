@@ -16,7 +16,6 @@ import (
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	authrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/auth"
 	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
-	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
 const authTestSecretKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -94,7 +93,6 @@ func newAuthIntegrationService(t *testing.T) (Service, *sql.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	testseed.ApplySQLiteSystemSeed(t, database)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	service := New(userrepo.NewRepository(database), authrepo.NewRepository(database), jwt.NewTokenService(authTestSecretKey), logger, authTestSecretKey)
 	return service, database

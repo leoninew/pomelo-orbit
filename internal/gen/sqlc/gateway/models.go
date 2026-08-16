@@ -115,15 +115,6 @@ type GatewayConfig struct {
 	UpdatedAt         time.Time `db:"updated_at"`
 }
 
-type LoginAttempt struct {
-	ID        string         `db:"id"`
-	Username  sql.NullString `db:"username"`
-	IpAddress string         `db:"ip_address"`
-	UserAgent sql.NullString `db:"user_agent"`
-	Success   int64          `db:"success"`
-	CreatedAt time.Time      `db:"created_at"`
-}
-
 type LoginHistory struct {
 	ID        string         `db:"id"`
 	UserID    string         `db:"user_id"`

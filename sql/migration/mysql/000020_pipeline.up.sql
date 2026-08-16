@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS pipeline (
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     UNIQUE KEY uq_pipeline_project_name (project_id, name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE INDEX idx_pipeline_project ON pipeline(project_id);
 CREATE INDEX idx_pipeline_kind ON pipeline(kind);
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS pipeline_stage (
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     CONSTRAINT fk_pipeline_stage_pipeline FOREIGN KEY (pipeline_id) REFERENCES pipeline(id) ON DELETE CASCADE,
     CONSTRAINT uq_pipeline_stage_pipeline_name UNIQUE (pipeline_id, name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE UNIQUE INDEX uq_pipeline_stage_template_project_name ON pipeline_stage(project_id, template_name);
 CREATE INDEX idx_pipeline_stage_project_kind_name ON pipeline_stage(project_id, kind, name);
@@ -75,7 +75,7 @@ CREATE TABLE pipeline_stage_reference (
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     CONSTRAINT fk_pipeline_stage_reference_pipeline FOREIGN KEY (pipeline_id) REFERENCES pipeline(id) ON DELETE CASCADE,
     CONSTRAINT uq_pipeline_stage_reference_name UNIQUE (pipeline_id, name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS pipeline_snapshot (
     id VARCHAR(26) PRIMARY KEY,
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS pipeline_snapshot (
     variables_snapshot LONGTEXT NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     UNIQUE KEY uq_pipeline_snapshot_pipeline_version (pipeline_id, pipeline_version)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB;
 
 CREATE INDEX idx_pipeline_snapshot_pipeline ON pipeline_snapshot(pipeline_id);
 CREATE INDEX idx_pipeline_snapshot_project ON pipeline_snapshot(project_id);

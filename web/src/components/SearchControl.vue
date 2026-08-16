@@ -25,6 +25,7 @@
       </button>
     </div>
     <button
+      v-if="showButton"
       type="button"
       class="app-search-button"
       :disabled="disabled || loading"
@@ -47,10 +48,12 @@
       placeholder?: string;
       disabled?: boolean;
       loading?: boolean;
+      showButton?: boolean;
     }>(),
     {
       disabled: false,
       loading: false,
+      showButton: true,
     }
   );
 

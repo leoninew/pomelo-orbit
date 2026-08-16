@@ -104,8 +104,40 @@
         </div>
       </DetailInfoCard>
 
-      <DetailInfoCard class="order-2" :title="t('environment.title')">
+      <DetailInfoCard class="order-2">
+        <template #header>
+          <h2 class="app-detail-section-title">{{ t('environment.title') }}</h2>
+          <div v-if="environmentRows.length > 0" class="app-detail-section-actions">
+            <div class="relative w-64 max-w-full">
+              <Search
+                class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <input
+                v-model="environmentSearch"
+                type="text"
+                class="app-input-search"
+                :placeholder="t('environment.searchPlaceholder')"
+                :aria-label="t('environment.searchPlaceholder')"
+              />
+              <button
+                v-if="environmentSearch"
+                type="button"
+                class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+                :aria-label="t('common.clearSearch')"
+                @click="environmentSearch = ''"
+              >
+                <X class="size-4" />
+              </button>
+            </div>
+          </div>
+        </template>
         <AppEmptyState v-if="environmentRows.length === 0" size="compact" />
+        <div
+          v-else-if="filteredEnvironmentRows.length === 0"
+          class="py-8 text-center text-sm text-muted-foreground"
+        >
+          {{ t('environment.noResults') }}
+        </div>
         <div v-else class="overflow-x-auto">
           <table class="app-data-table table-fixed min-w-[760px]">
             <colgroup>
@@ -123,7 +155,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="entry in environmentRows" :key="entry.key">
+              <tr v-for="entry in filteredEnvironmentRows" :key="entry.key">
                 <td class="max-w-0 text-foreground">
                   <span class="block truncate" :title="entry.key">{{ entry.key }}</span>
                 </td>
@@ -133,57 +165,25 @@
                   </span>
                 </td>
                 <td class="max-w-0">
-                  <div v-if="editingEnvironmentKey === entry.key">
-                    <input
-                      v-model="editingEnvironmentValue"
-                      type="text"
-                      class="app-input h-9"
-                      :aria-label="t('service.componentDetail.currentValue')"
-                      :disabled="operating"
-                    />
-                  </div>
+                  <input
+                    v-if="!entry.deleted"
+                    :value="entry.value"
+                    type="text"
+                    class="app-input h-9"
+                    :aria-label="t('service.componentDetail.currentValue')"
+                    :disabled="operating"
+                    @input="updateEnvironmentValue(entry, $event)"
+                  />
                   <span
                     v-else
-                    class="block h-9 truncate leading-9"
-                    :class="
-                      entry.deleted || entry.overridden
-                        ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-foreground'
-                    "
-                    :title="entry.deleted ? '-' : displayValue(entry.value)"
+                    class="block h-9 truncate leading-9 text-amber-600 dark:text-amber-400"
+                    title="-"
                   >
-                    {{ entry.deleted ? '-' : displayValue(entry.value) }}
+                    -
                   </span>
                 </td>
                 <td class="whitespace-nowrap">
-                  <div
-                    v-if="editingEnvironmentKey === entry.key"
-                    class="flex h-9 items-center gap-2"
-                  >
-                    <button
-                      class="app-link"
-                      :disabled="operating"
-                      @click="applyEnvironmentEdit(entry)"
-                    >
-                      {{ t('common.save') }}
-                    </button>
-                    <button
-                      class="text-muted-foreground hover:text-foreground"
-                      :disabled="operating"
-                      @click="cancelEnvironmentEdit"
-                    >
-                      {{ t('common.cancel') }}
-                    </button>
-                  </div>
-                  <div v-else class="flex h-9 items-center gap-2">
-                    <button
-                      v-if="!entry.deleted"
-                      class="app-link"
-                      :disabled="operating"
-                      @click="startEnvironmentEdit(entry)"
-                    >
-                      {{ t('common.edit') }}
-                    </button>
+                  <div class="flex h-9 items-center gap-2">
                     <button
                       v-if="entry.deleted"
                       class="app-link"
@@ -639,7 +639,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Save } from '@lucide/vue';
+  import { ArrowLeft, Save, Search, X } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -747,8 +747,19 @@
     ];
   });
   const environmentRows = ref<EnvRow[]>([]);
-  const editingEnvironmentKey = ref<string | null>(null);
-  const editingEnvironmentValue = ref('');
+  const environmentSearch = ref('');
+  const filteredEnvironmentRows = computed(() => {
+    const keyword = environmentSearch.value.trim().toLowerCase();
+    if (!keyword) {
+      return environmentRows.value;
+    }
+    return environmentRows.value.filter(
+      (entry) =>
+        entry.key.toLowerCase().includes(keyword) ||
+        entry.base.toLowerCase().includes(keyword) ||
+        entry.value.toLowerCase().includes(keyword)
+    );
+  });
   const mountRows = ref<MountRow[]>([]);
   const mountDialogOpen = ref(false);
   const editingMountTarget = ref<string | null>(null);
@@ -929,25 +940,15 @@
         ]
       : [];
   }
-  function startEnvironmentEdit(row: EnvRow) {
-    editingEnvironmentKey.value = row.key;
-    editingEnvironmentValue.value = row.value;
-  }
-  function applyEnvironmentEdit(row: EnvRow) {
-    row.value = editingEnvironmentValue.value;
+  function updateEnvironmentValue(row: EnvRow, event: Event) {
+    row.value = (event.target as HTMLInputElement).value;
     row.deleted = false;
     row.overridden = row.value !== row.inheritedValue;
-    cancelEnvironmentEdit();
-  }
-  function cancelEnvironmentEdit() {
-    editingEnvironmentKey.value = null;
-    editingEnvironmentValue.value = '';
   }
   function resetEnvironmentToVersion(row: EnvRow) {
     row.value = row.inheritedValue;
     row.deleted = false;
     row.overridden = false;
-    cancelEnvironmentEdit();
   }
   function startResourceEdit(field: ResourceField) {
     editingResourceKey.value = field.key;

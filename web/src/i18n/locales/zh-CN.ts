@@ -50,6 +50,8 @@ export default {
       showValue: '显示值',
       hideValue: '隐藏值',
     },
+    searchPlaceholder: '搜索变量名/值',
+    noResults: '无匹配的环境变量',
     validation: {
       required: '请输入变量名',
       duplicate: '变量名不能重复',

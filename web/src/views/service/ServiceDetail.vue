@@ -97,12 +97,7 @@
           </div>
         </dl>
       </DetailInfoCard>
-      <ServiceComponentsCard
-        :service="service"
-        :loading="loading"
-        @view-logs="openLogsDrawer"
-        @search="load"
-      />
+      <ServiceComponentsCard :service="service" :loading="loading" @view-logs="openLogsDrawer" />
       <ServiceEnvironmentCard
         :rows="environmentRows"
         :saved-rows="savedEnvironmentRows"

@@ -50,6 +50,8 @@ export default {
       showValue: 'Show value',
       hideValue: 'Hide value',
     },
+    searchPlaceholder: 'Search variable name or value',
+    noResults: 'No matching environment variables',
     validation: {
       required: 'Enter a variable name',
       duplicate: 'Variable names must be unique',

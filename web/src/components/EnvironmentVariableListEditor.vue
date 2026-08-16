@@ -2,24 +2,38 @@
   <form class="app-surface app-detail-card space-y-4" @submit.prevent="submit">
     <div class="app-section-header app-detail-section-header">
       <h2 class="app-detail-section-title">{{ title }}</h2>
-      <div v-if="editable" class="flex shrink-0 items-center gap-2">
-        <button
-          type="button"
-          class="app-button h-9 px-3"
-          :disabled="disabled || editingRowId !== null"
-          @click="addRow"
-        >
-          <Plus class="size-4" />
-          {{ t('common.add') }}
-        </button>
-        <button
-          type="submit"
-          class="app-button-primary h-9 px-3"
-          :disabled="disabled || !dirty || editingRowId !== null"
-        >
-          <Save class="size-4" />
-          {{ t('common.save') }}
-        </button>
+      <div class="app-detail-section-actions">
+        <div v-if="rows.length > 0" class="relative w-64 max-w-full">
+          <Search
+            class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            v-model="search"
+            type="text"
+            class="app-input-search"
+            :placeholder="t('environment.searchPlaceholder')"
+            :aria-label="t('environment.searchPlaceholder')"
+          />
+          <button
+            v-if="search"
+            type="button"
+            class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+            :aria-label="t('common.clearSearch')"
+            @click="clearSearch"
+          >
+            <X class="size-4" />
+          </button>
+        </div>
+        <div v-if="editable" class="flex shrink-0 items-center gap-2">
+          <button
+            type="submit"
+            class="app-button-primary h-9 px-3"
+            :disabled="disabled || !dirty || hasEditingRows"
+          >
+            <Save class="size-4" />
+            {{ t('common.save') }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -28,6 +42,12 @@
     </p>
 
     <AppEmptyState v-if="rows.length === 0" size="compact" />
+    <div
+      v-else-if="filteredRows.length === 0"
+      class="px-6 py-8 text-center text-sm text-muted-foreground"
+    >
+      {{ t('environment.noResults') }}
+    </div>
     <div v-else class="overflow-x-auto">
       <table class="app-data-table min-w-[640px] table-fixed">
         <colgroup>
@@ -46,19 +66,19 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="row.id">
+          <tr v-for="row in filteredRows" :key="row.id">
             <td>
-              <template v-if="editingRowId === row.id && newRowId === row.id">
+              <template v-if="isEditing(row.id) && isNewRow(row.id)">
                 <input
                   :id="keyInputId(row.id)"
-                  :value="editingKey"
+                  :value="editingRows[row.id]?.key || ''"
                   class="app-input h-9"
                   :class="errors[row.id] ? 'app-input-error' : ''"
                   :aria-label="t('environment.fields.key')"
                   :aria-invalid="errors[row.id] ? 'true' : undefined"
                   :aria-describedby="errors[row.id] ? keyErrorId(row.id) : undefined"
                   :disabled="disabled"
-                  @input="updateEditingKey"
+                  @input="updateEditingKey(row.id, $event)"
                 />
                 <p
                   v-if="errors[row.id]"
@@ -76,14 +96,14 @@
             <td>
               <div class="relative min-h-9">
                 <input
-                  v-if="editingRowId === row.id"
-                  :value="editingValue"
+                  v-if="isEditing(row.id)"
+                  :value="editingRows[row.id]?.value || ''"
                   :type="maskValues && !valueVisible[row.id] ? 'password' : 'text'"
                   class="app-input h-9"
                   :class="maskValues ? 'pr-10' : ''"
                   :aria-label="t('environment.fields.value')"
                   :disabled="disabled"
-                  @input="updateEditingValue"
+                  @input="updateEditingValue(row.id, $event)"
                 />
                 <span v-else class="flex min-h-9 items-center break-all text-foreground">
                   {{
@@ -113,7 +133,7 @@
               </div>
             </td>
             <td v-if="editable" class="whitespace-nowrap">
-              <div v-if="editingRowId === row.id" class="flex h-9 items-center gap-2">
+              <div v-if="isEditing(row.id)" class="flex h-9 items-center gap-2">
                 <button type="button" class="app-link" :disabled="disabled" @click="applyEdit(row)">
                   {{ t('common.save') }}
                 </button>
@@ -127,18 +147,13 @@
                 </button>
               </div>
               <div v-else class="flex h-9 items-center gap-2">
-                <button
-                  type="button"
-                  class="app-link"
-                  :disabled="disabled || editingRowId !== null"
-                  @click="startEdit(row)"
-                >
+                <button type="button" class="app-link" :disabled="disabled" @click="startEdit(row)">
                   {{ t('common.edit') }}
                 </button>
                 <button
                   type="button"
                   class="app-link-danger"
-                  :disabled="disabled || editingRowId !== null"
+                  :disabled="disabled"
                   :aria-label="t('common.delete')"
                   :title="t('common.delete')"
                   @click="removeRow(row.id)"
@@ -149,7 +164,33 @@
             </td>
           </tr>
         </tbody>
+        <tfoot v-if="editable">
+          <tr>
+            <td :colspan="editable ? 3 : 2">
+              <button
+                type="button"
+                class="app-link inline-flex items-center gap-1"
+                :disabled="disabled"
+                @click="addRow"
+              >
+                <Plus class="size-3.5" />
+                {{ t('common.add') }}
+              </button>
+            </td>
+          </tr>
+        </tfoot>
       </table>
+    </div>
+    <div v-if="editable && (rows.length === 0 || filteredRows.length === 0)" class="px-6 pb-6">
+      <button
+        type="button"
+        class="app-link inline-flex items-center gap-1"
+        :disabled="disabled"
+        @click="addRow"
+      >
+        <Plus class="size-3.5" />
+        {{ t('common.add') }}
+      </button>
     </div>
   </form>
 </template>
@@ -157,7 +198,7 @@
 <script setup lang="ts">
   import { computed, nextTick, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { Eye, EyeOff, Plus, Save } from '@lucide/vue';
+  import { Eye, EyeOff, Plus, Save, Search, X } from '@lucide/vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import {
     environmentVariableRowsEqual,
@@ -196,19 +237,33 @@
   const errors = reactive<Record<string, string>>({});
   const valueVisible = reactive<Record<string, boolean>>({});
   const maskValue = '********';
-  const editingRowId = ref<string | null>(null);
-  const editingKey = ref('');
-  const editingValue = ref('');
-  const editingValueWasVisible = ref(false);
-  const newRowId = ref<string | null>(null);
+  const editingRows = reactive<
+    Record<string, { key: string; value: string; isNew: boolean; valueWasVisible: boolean }>
+  >({});
   let newRowIndex = 0;
 
   const dirty = computed(() => !environmentVariableRowsEqual(props.rows, props.savedRows));
+  const hasEditingRows = computed(() => Object.keys(editingRows).length > 0);
+  const search = ref('');
+  const filteredRows = computed(() => {
+    const keyword = search.value.trim().toLowerCase();
+    if (!keyword) {
+      return props.rows;
+    }
+    return props.rows.filter(
+      (row) => row.key.toLowerCase().includes(keyword) || row.value.toLowerCase().includes(keyword)
+    );
+  });
+
+  function clearSearch() {
+    search.value = '';
+  }
 
   watch(
     () => props.savedRows,
     () => {
       Object.keys(errors).forEach((id) => delete errors[id]);
+      Object.keys(editingRows).forEach((id) => clearEditState(id));
     }
   );
 
@@ -238,27 +293,33 @@
     clearError(id);
   }
 
-  function updateEditingKey(event: Event) {
-    editingKey.value = (event.target as HTMLInputElement).value;
-    if (editingRowId.value) {
-      clearError(editingRowId.value);
-    }
+  function isEditing(id: string) {
+    return Boolean(editingRows[id]);
   }
 
-  function updateEditingValue(event: Event) {
-    editingValue.value = (event.target as HTMLInputElement).value;
-    if (editingRowId.value) {
-      clearError(editingRowId.value);
-    }
+  function isNewRow(id: string) {
+    return editingRows[id]?.isNew ?? false;
+  }
+
+  function updateEditingKey(id: string, event: Event) {
+    const row = editingRows[id];
+    if (!row) return;
+    row.key = (event.target as HTMLInputElement).value;
+    clearError(id);
+  }
+
+  function updateEditingValue(id: string, event: Event) {
+    const row = editingRows[id];
+    if (!row) return;
+    row.value = (event.target as HTMLInputElement).value;
+    clearError(id);
   }
 
   function addRow() {
+    search.value = '';
     const id = `environment-variable-new-${newRowIndex++}`;
+    editingRows[id] = { key: '', value: '', isNew: true, valueWasVisible: false };
     emit('update:rows', [...props.rows, { id, key: '', value: '' }]);
-    editingRowId.value = id;
-    editingKey.value = '';
-    editingValue.value = '';
-    newRowId.value = id;
     void nextTick(() => document.getElementById(keyInputId(id))?.focus());
   }
 
@@ -269,57 +330,65 @@
     );
     clearError(id);
     delete valueVisible[id];
-    if (editingRowId.value === id) {
-      clearEditState();
-    }
+    clearEditState(id);
   }
 
-  function clearEditState() {
-    const id = editingRowId.value;
-    if (id && props.maskValues && !editingValueWasVisible.value) {
+  function clearEditState(id: string) {
+    const row = editingRows[id];
+    if (row && props.maskValues && !row.valueWasVisible) {
       valueVisible[id] = false;
     }
-    editingRowId.value = null;
-    editingKey.value = '';
-    editingValue.value = '';
-    editingValueWasVisible.value = false;
-    newRowId.value = null;
+    delete editingRows[id];
   }
 
   function startEdit(row: EnvironmentVariableListRow) {
-    const isNewRow = newRowId.value === row.id;
-    editingValueWasVisible.value = Boolean(valueVisible[row.id]);
+    if (editingRows[row.id]) return;
+    const valueWasVisible = Boolean(valueVisible[row.id]);
     if (props.maskValues) {
       valueVisible[row.id] = true;
     }
-    editingRowId.value = row.id;
-    editingKey.value = row.key;
-    editingValue.value = row.value;
-    newRowId.value = isNewRow ? row.id : null;
+    editingRows[row.id] = {
+      key: row.key,
+      value: row.value,
+      isNew: false,
+      valueWasVisible,
+    };
     clearError(row.id);
   }
 
   function cancelEdit(id: string) {
-    if (newRowId.value === id) {
+    if (editingRows[id]?.isNew) {
       removeRow(id);
       return;
     }
-    clearEditState();
+    clearEditState(id);
+  }
+
+  function rowsWithEditingDrafts() {
+    return props.rows.map((row) => {
+      const draft = editingRows[row.id];
+      if (!draft) return row;
+      return {
+        ...row,
+        key: draft.isNew ? draft.key : row.key,
+        value: draft.value,
+      };
+    });
   }
 
   function applyEdit(row: EnvironmentVariableListRow) {
-    const key = newRowId.value === row.id ? editingKey.value : row.key;
-    const rows = props.rows.map((item) =>
-      item.id === row.id ? { ...item, key, value: editingValue.value } : item
-    );
+    const draft = editingRows[row.id];
+    if (!draft) return;
+    const rows = rowsWithEditingDrafts();
     const result = validateEnvironmentVariableRows(rows, props.validateKey);
     Object.keys(errors).forEach((id) => delete errors[id]);
     Object.assign(errors, result.errors);
-    if (errors[row.id]) {
-      return;
-    }
-    updateRow(row.id, { key, value: editingValue.value });
-    clearEditState();
+    if (errors[row.id]) return;
+    updateRow(row.id, {
+      key: draft.isNew ? draft.key : row.key,
+      value: draft.value,
+    });
+    clearEditState(row.id);
   }
 
   function toggleValueVisibility(id: string) {
@@ -333,10 +402,6 @@
     if (!result.valid) {
       const firstInvalidId = Object.keys(result.errors)[0];
       if (firstInvalidId) {
-        const row = props.rows.find((item) => item.id === firstInvalidId);
-        if (row) {
-          startEdit(row);
-        }
         void nextTick(() => document.getElementById(keyInputId(firstInvalidId))?.focus());
       }
       return;

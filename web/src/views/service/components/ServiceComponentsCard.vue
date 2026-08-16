@@ -5,8 +5,8 @@
         v-model="searchText"
         :placeholder="t('service.searchComponentsPlaceholder')"
         :loading="loading"
+        :show-button="false"
         class="shrink-0"
-        @search="handleSearch"
       />
     </template>
     <AppEmptyState v-if="filteredComponents.length === 0" size="compact" />
@@ -105,15 +105,13 @@
 
   const emit = defineEmits<{
     'view-logs': [component: string];
-    search: [];
   }>();
 
   const { t } = useI18n();
   const searchText = ref('');
-  const appliedSearch = ref('');
 
   const filteredComponents = computed(() => {
-    const keyword = appliedSearch.value.trim().toLowerCase();
+    const keyword = searchText.value.trim().toLowerCase();
     if (!keyword) {
       return props.service.components;
     }
@@ -124,9 +122,4 @@
         component.image.toLowerCase().includes(keyword)
     );
   });
-
-  function handleSearch() {
-    appliedSearch.value = searchText.value;
-    emit('search');
-  }
 </script>

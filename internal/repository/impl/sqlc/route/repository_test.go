@@ -21,12 +21,12 @@ func TestListRoutesBindsSearchAndPaginationForSQLite(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = database.Close() })
 	database.SetMaxOpenConns(1)
-	if err := databaseinfra.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+	if err := databaseinfra.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
 		t.Fatal(err)
 	}
 
 	ctx := context.Background()
-	const projectID = "route-project"
+	const projectID = "01KRRKK0K3T519ZQZES3M4QA9Z"
 	if _, err := database.ExecContext(ctx, "INSERT INTO project (id, name, code) VALUES (?, ?, ?)", projectID, "Route Test", "route-test"); err != nil {
 		t.Fatal(err)
 	}

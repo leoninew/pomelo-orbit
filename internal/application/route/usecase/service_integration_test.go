@@ -21,7 +21,6 @@ import (
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	routerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/route"
 	servicerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/service"
-	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
 const (
@@ -133,10 +132,9 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 33); err != nil {
 		t.Fatal(err)
 	}
-	testseed.RemoveSQLiteExportedGatewaySeed(t, database)
 	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
 	cfg.Cert.LetsEncrypt.Enabled = true
 	cfg.Cert.LetsEncrypt.Email = "admin@example.test"

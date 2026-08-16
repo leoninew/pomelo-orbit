@@ -21,7 +21,6 @@ import (
 	gatewayrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/gateway"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	servicerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/service"
-	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
 const gatewayFactoryUserID = "01KKX2YNPF6VJ9N7QYCWG61KVK"
@@ -110,10 +109,9 @@ func TestCreateGatewayRollsBackWhenGatewayConfigWriteFails(t *testing.T) {
 	}
 	defer func() { _ = database.Close() }()
 	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 33); err != nil {
 		t.Fatal(err)
 	}
-	testseed.RemoveSQLiteExportedGatewaySeed(t, database)
 	applications := applicationrepo.NewRepository(database)
 	service := New(
 		projectrepo.NewRepository(database),
@@ -150,11 +148,10 @@ func newGatewayFactoryService(t *testing.T, configStore gatewayport.ConfigStore)
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 33); err != nil {
 		_ = database.Close()
 		t.Fatal(err)
 	}
-	testseed.RemoveSQLiteExportedGatewaySeed(t, database)
 	applications := applicationrepo.NewRepository(database)
 	services := servicerepo.NewRepository(database)
 	if configStore == nil {

@@ -1,28 +1,10 @@
 -- pipeline seed captured from data/mysql-transfer-20260816-103803.mysql.sql.
--- Upserts support databases previously initialized by the removed data-migration loader.
 
 -- pipeline: 2 row(s).
 INSERT INTO "pipeline" ("id", "project_id", "kind", "source_pipeline_id", "source_template_name", "source_template_version", "application_id", "application_name", "repository_id", "repository_name", "version_fork_strategy", "fixed_version_id", "fixed_version_label", "name", "description", "variable_declarations", "version") VALUES
     ('01KNVEJPWVK757139NMNNNCEFE', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Go 构建流水线', '- test & lint
 - build', '[{"default":null,"editable":true,"name":"working_dir","secret":false,"source":"pipeline_custom","value":".","description":""}]', 12),
-    ('01KZG83K2MXG08EJ6G48SG38B3', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '镜像构建流水线', '适用于使用 Dockerfile 进制镜像构建的仓库', '[]', 10)
-ON CONFLICT DO UPDATE SET
-    "project_id" = excluded."project_id",
-    "kind" = excluded."kind",
-    "source_pipeline_id" = excluded."source_pipeline_id",
-    "source_template_name" = excluded."source_template_name",
-    "source_template_version" = excluded."source_template_version",
-    "application_id" = excluded."application_id",
-    "application_name" = excluded."application_name",
-    "repository_id" = excluded."repository_id",
-    "repository_name" = excluded."repository_name",
-    "version_fork_strategy" = excluded."version_fork_strategy",
-    "fixed_version_id" = excluded."fixed_version_id",
-    "fixed_version_label" = excluded."fixed_version_label",
-    "name" = excluded."name",
-    "description" = excluded."description",
-    "variable_declarations" = excluded."variable_declarations",
-    "version" = excluded."version";
+    ('01KZG83K2MXG08EJ6G48SG38B3', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '镜像构建流水线', '适用于使用 Dockerfile 进制镜像构建的仓库', '[]', 10);
 
 -- pipeline_stage: 5 row(s).
 INSERT INTO "pipeline_stage" ("id", "project_id", "kind", "pipeline_id", "name", "image", "script", "description", "version", "source_template_stage_id", "source_template_stage_name", "source_template_stage_version", "source_template_stage_description", "artifacts", "depends_on", "sort_order") VALUES
@@ -68,23 +50,7 @@ docker build -f {{ repository_dockerfile }} \
   --build-arg VERSION="${VERSION}" \
   --build-arg COMMIT="${COMMIT}" \
   --build-arg BUILD_TIME="${BUILD_TIME}" \
-  .', 'Build container image', 2, NULL, NULL, NULL, NULL, '[{"collector":"docker_image","reference":"{{ repository_code }}:{{ runtime_datetime }}","name":"{{ repository_code }}"}]', NULL, NULL)
-ON CONFLICT DO UPDATE SET
-    "project_id" = excluded."project_id",
-    "kind" = excluded."kind",
-    "pipeline_id" = excluded."pipeline_id",
-    "name" = excluded."name",
-    "image" = excluded."image",
-    "script" = excluded."script",
-    "description" = excluded."description",
-    "version" = excluded."version",
-    "source_template_stage_id" = excluded."source_template_stage_id",
-    "source_template_stage_name" = excluded."source_template_stage_name",
-    "source_template_stage_version" = excluded."source_template_stage_version",
-    "source_template_stage_description" = excluded."source_template_stage_description",
-    "artifacts" = excluded."artifacts",
-    "depends_on" = excluded."depends_on",
-    "sort_order" = excluded."sort_order";
+  .', 'Build container image', 2, NULL, NULL, NULL, NULL, '[{"collector":"docker_image","reference":"{{ repository_code }}:{{ runtime_datetime }}","name":"{{ repository_code }}"}]', NULL, NULL);
 
 -- pipeline_stage_reference: 6 row(s).
 INSERT INTO "pipeline_stage_reference" ("id", "pipeline_id", "source_template_stage_id", "source_template_stage_name", "source_template_stage_version", "source_template_stage_description", "name", "image", "script", "description", "artifacts", "depends_on", "sort_order") VALUES
@@ -130,17 +96,4 @@ git checkout -B {{ repository_ref }} FETCH_HEAD', '克隆代码仓库', '[]', '[
 cd {{ working_dir }}
 mkdir -p dist
 go env -w GOPROXY=https://goproxy.cn,direct
-go build -o dist/', '运行 Go 构建', '[]', '["4smvyi2oq4n2kzrio4zmcqykge"]', 3)
-ON CONFLICT DO UPDATE SET
-    "pipeline_id" = excluded."pipeline_id",
-    "source_template_stage_id" = excluded."source_template_stage_id",
-    "source_template_stage_name" = excluded."source_template_stage_name",
-    "source_template_stage_version" = excluded."source_template_stage_version",
-    "source_template_stage_description" = excluded."source_template_stage_description",
-    "name" = excluded."name",
-    "image" = excluded."image",
-    "script" = excluded."script",
-    "description" = excluded."description",
-    "artifacts" = excluded."artifacts",
-    "depends_on" = excluded."depends_on",
-    "sort_order" = excluded."sort_order";
+go build -o dist/', '运行 Go 构建', '[]', '["4smvyi2oq4n2kzrio4zmcqykge"]', 3);

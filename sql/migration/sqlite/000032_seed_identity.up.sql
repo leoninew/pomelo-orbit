@@ -1,26 +1,12 @@
 -- identity seed captured from data/mysql-transfer-20260816-103803.mysql.sql.
--- Upserts support databases previously initialized by the removed data-migration loader.
 
 -- user: 1 row(s).
 INSERT INTO "user" ("id", "username", "password_hash", "last_login_at", "oauth_provider", "oauth_provider_id", "email", "auth_source", "status") VALUES
-    ('01KKX2YNPF6VJ9N7QYCWG61KVK', 'admin', '$2b$12$/lPw6VtrhLqQqlhm/fbay.yAXhxj.Ru4qIJapLWQGlRzPz8gmE1vW', NULL, '', '', NULL, 'password', 'enabled')
-ON CONFLICT DO UPDATE SET
-    "username" = excluded."username",
-    "password_hash" = excluded."password_hash",
-    "last_login_at" = excluded."last_login_at",
-    "oauth_provider" = excluded."oauth_provider",
-    "oauth_provider_id" = excluded."oauth_provider_id",
-    "email" = excluded."email",
-    "auth_source" = excluded."auth_source",
-    "status" = excluded."status";
+    ('01KKX2YNPF6VJ9N7QYCWG61KVK', 'admin', '$2b$12$/lPw6VtrhLqQqlhm/fbay.yAXhxj.Ru4qIJapLWQGlRzPz8gmE1vW', NULL, '', '', NULL, 'password', 'enabled');
 
 -- project: 1 row(s).
 INSERT INTO "project" ("id", "name", "code", "is_active") VALUES
-    ('01KRRKK0K3T519ZQZES3M4QA9Z', '默认项目', 'default', 1)
-ON CONFLICT DO UPDATE SET
-    "name" = excluded."name",
-    "code" = excluded."code",
-    "is_active" = excluded."is_active";
+    ('01KRRKK0K3T519ZQZES3M4QA9Z', '默认项目', 'default', 1);
 
 -- permission: 9 row(s).
 INSERT INTO "permission" ("id", "code", "name", "description") VALUES
@@ -32,24 +18,15 @@ INSERT INTO "permission" ("id", "code", "name", "description") VALUES
     ('01KRXJXVPC6MQ75SZPWYZJSSAD', 'setting:read', 'View Settings', 'View system configuration'),
     ('01KRXJXVPC6MQ75SZPWYZJSSAE', 'setting:write', 'Manage Settings', 'Update and reset system configuration'),
     ('01KZCQ5XSK2VC5BMC3M0QJTX9A', 'dialogue:read', 'View Deployment Dialogues', 'View deployment dialogue history'),
-    ('01KZCQ5XSK2VC5BMC3M0QJTX9B', 'dialogue:write', 'Manage Deployment Dialogues', 'Create, continue and delete deployment dialogues')
-ON CONFLICT DO UPDATE SET
-    "code" = excluded."code",
-    "name" = excluded."name",
-    "description" = excluded."description";
+    ('01KZCQ5XSK2VC5BMC3M0QJTX9B', 'dialogue:write', 'Manage Deployment Dialogues', 'Create, continue and delete deployment dialogues');
 
 -- role: 1 row(s).
 INSERT INTO "role" ("id", "code", "name", "description") VALUES
-    ('01KRXJXVPC6MQ75SZPWYZJSSAB', 'admin', 'Admin', 'System administrator')
-ON CONFLICT DO UPDATE SET
-    "code" = excluded."code",
-    "name" = excluded."name",
-    "description" = excluded."description";
+    ('01KRXJXVPC6MQ75SZPWYZJSSAB', 'admin', 'Admin', 'System administrator');
 
 -- project_member: 1 row(s).
 INSERT INTO "project_member" ("project_id", "user_id") VALUES
-    ('01KRRKK0K3T519ZQZES3M4QA9Z', '01KKX2YNPF6VJ9N7QYCWG61KVK')
-ON CONFLICT DO NOTHING;
+    ('01KRRKK0K3T519ZQZES3M4QA9Z', '01KKX2YNPF6VJ9N7QYCWG61KVK');
 
 -- role_permission: 9 row(s).
 INSERT INTO "role_permission" ("role_id", "permission_id") VALUES
@@ -61,10 +38,8 @@ INSERT INTO "role_permission" ("role_id", "permission_id") VALUES
     ('01KRXJXVPC6MQ75SZPWYZJSSAB', '01KRXJXVPC6MQ75SZPWYZJSSAD'),
     ('01KRXJXVPC6MQ75SZPWYZJSSAB', '01KRXJXVPC6MQ75SZPWYZJSSAE'),
     ('01KRXJXVPC6MQ75SZPWYZJSSAB', '01KZCQ5XSK2VC5BMC3M0QJTX9A'),
-    ('01KRXJXVPC6MQ75SZPWYZJSSAB', '01KZCQ5XSK2VC5BMC3M0QJTX9B')
-ON CONFLICT DO NOTHING;
+    ('01KRXJXVPC6MQ75SZPWYZJSSAB', '01KZCQ5XSK2VC5BMC3M0QJTX9B');
 
 -- user_role: 1 row(s).
 INSERT INTO "user_role" ("user_id", "role_id") VALUES
-    ('01KKX2YNPF6VJ9N7QYCWG61KVK', '01KRXJXVPC6MQ75SZPWYZJSSAB')
-ON CONFLICT DO NOTHING;
+    ('01KKX2YNPF6VJ9N7QYCWG61KVK', '01KRXJXVPC6MQ75SZPWYZJSSAB');

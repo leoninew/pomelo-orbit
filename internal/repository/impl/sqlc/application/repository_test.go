@@ -18,7 +18,7 @@ func TestListApplicationsBindsTypedFilters(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = database.Close() }()
-	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
@@ -58,7 +58,7 @@ func TestListApplicationsBindsTypedFilters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if all.Total != 3 || len(all.Items) != 3 {
+	if all.Total != 2 || len(all.Items) != 2 {
 		t.Fatalf("unexpected unfiltered page: %+v", all)
 	}
 }
@@ -69,7 +69,7 @@ func TestDeleteApplicationCleansApplicationResources(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = database.Close() }()
-	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
@@ -110,7 +110,7 @@ func TestDeleteGatewayApplicationDeletesStoppedResources(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = database.Close() }()
-	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
@@ -128,21 +128,13 @@ func TestDeleteGatewayApplicationDeletesStoppedResources(t *testing.T) {
 	if err := NewRepository(database).DeleteGatewayApplication(ctx, "gateway-1"); err != nil {
 		t.Fatal(err)
 	}
-	for _, check := range []struct {
-		table string
-		where string
-	}{
-		{table: "application", where: "id = 'gateway-1'"},
-		{table: "gateway_config", where: "application_id = 'gateway-1'"},
-		{table: "version", where: "application_id = 'gateway-1'"},
-		{table: "service", where: "application_id = 'gateway-1'"},
-	} {
+	for _, table := range []string{"application", "gateway_config", "version", "service"} {
 		var count int
-		if err := database.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+check.table+" WHERE "+check.where).Scan(&count); err != nil {
+		if err := database.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+table).Scan(&count); err != nil {
 			t.Fatal(err)
 		}
 		if count != 0 {
-			t.Fatalf("expected gateway-1 %s to be deleted, found %d rows", check.table, count)
+			t.Fatalf("expected %s to be deleted, found %d rows", table, count)
 		}
 	}
 }
@@ -153,7 +145,7 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 		t.Fatal(err)
 	}
 	defer func() { _ = database.Close() }()
-	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
@@ -234,7 +226,7 @@ func TestDeleteApplicationAllowsForkLineage(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = database.Close() }()
-	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()

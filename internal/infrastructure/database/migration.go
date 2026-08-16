@@ -38,6 +38,19 @@ func MigrateUp(sqlDb *sql.DB, driver string) error {
 	return nil
 }
 
+func MigrateTo(sqlDb *sql.DB, driver string, version uint) error {
+	runner, err := newMigrationRunner(sqlDb, driver)
+	if err != nil {
+		return err
+	}
+	defer func() { _, _ = runner.Close() }()
+
+	if err := runner.Migrate(version); err != nil && !errors.Is(err, gomigrate.ErrNoChange) {
+		return fmt.Errorf("migrate to version %d: %w", version, err)
+	}
+	return nil
+}
+
 func ReadMigrationVersion(sqlDb *sql.DB, driver string) (MigrationVersion, error) {
 	databaseDriver, err := migrationDatabaseDriver(sqlDb, driver)
 	if err != nil {

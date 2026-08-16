@@ -1,27 +1,9 @@
 -- pipeline seed captured from data/mysql-transfer-20260816-103803.mysql.sql.
--- Upserts support databases previously initialized by the removed data-migration loader.
 
 -- pipeline: 2 row(s).
 INSERT INTO `pipeline` (`id`, `project_id`, `kind`, `source_pipeline_id`, `source_template_name`, `source_template_version`, `application_id`, `application_name`, `repository_id`, `repository_name`, `version_fork_strategy`, `fixed_version_id`, `fixed_version_label`, `name`, `description`, `variable_declarations`, `version`) VALUES
     ('01KNVEJPWVK757139NMNNNCEFE', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Go 构建流水线', '- test & lint\n- build', '[{"default":null,"editable":true,"name":"working_dir","secret":false,"source":"pipeline_custom","value":".","description":""}]', 12),
-    ('01KZG83K2MXG08EJ6G48SG38B3', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '镜像构建流水线', '适用于使用 Dockerfile 进制镜像构建的仓库', '[]', 10)
-ON DUPLICATE KEY UPDATE
-    `project_id` = VALUES(`project_id`),
-    `kind` = VALUES(`kind`),
-    `source_pipeline_id` = VALUES(`source_pipeline_id`),
-    `source_template_name` = VALUES(`source_template_name`),
-    `source_template_version` = VALUES(`source_template_version`),
-    `application_id` = VALUES(`application_id`),
-    `application_name` = VALUES(`application_name`),
-    `repository_id` = VALUES(`repository_id`),
-    `repository_name` = VALUES(`repository_name`),
-    `version_fork_strategy` = VALUES(`version_fork_strategy`),
-    `fixed_version_id` = VALUES(`fixed_version_id`),
-    `fixed_version_label` = VALUES(`fixed_version_label`),
-    `name` = VALUES(`name`),
-    `description` = VALUES(`description`),
-    `variable_declarations` = VALUES(`variable_declarations`),
-    `version` = VALUES(`version`);
+    ('01KZG83K2MXG08EJ6G48SG38B3', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '镜像构建流水线', '适用于使用 Dockerfile 进制镜像构建的仓库', '[]', 10);
 
 -- pipeline_stage: 5 row(s).
 INSERT INTO `pipeline_stage` (`id`, `project_id`, `kind`, `pipeline_id`, `name`, `image`, `script`, `description`, `version`, `source_template_stage_id`, `source_template_stage_name`, `source_template_stage_version`, `source_template_stage_description`, `artifacts`, `depends_on`, `sort_order`) VALUES
@@ -29,23 +11,7 @@ INSERT INTO `pipeline_stage` (`id`, `project_id`, `kind`, `pipeline_id`, `name`,
     ('01KNRDSSJ7RNND7110175N4NR2', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'golang:1.25 build', 'golang:1.25-alpine', 'set -e\ncd {{ working_dir }}\nmkdir -p dist\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo build -o dist/', '运行 Go 构建', 6, NULL, NULL, NULL, NULL, '[]', NULL, NULL),
     ('01KNRKNAHG3EBS07VBK2YY5ZQN', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'golang:1.25 lint', 'golang:1.25-alpine', 'set -e\ncd {{ working_dir }}\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo install golang.org/x/lint/golint@latest\ngolint ./...', '运行 Go 代码质量', 4, NULL, NULL, NULL, NULL, '[]', NULL, NULL),
     ('01KRCWNJVA1DM02TJXZ4STJD01', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'git clone', 'alpine/git', 'set -e\n# 强制全局关闭 SSL 验证\ngit config --global http.sslVerify "false"\ngit config --system http.sslVerify "false"\n# 信任工作区目录\ngit config --global --add safe.directory /workspace\n# 初始化仓库\ngit init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ repository_url }}\n# 拉取代码\ngit fetch --depth=1 origin {{ repository_ref }}\ngit checkout -B {{ repository_ref }} FETCH_HEAD', 'Clone source repository', 2, NULL, NULL, NULL, NULL, '[{"collector":"command","command":"git rev-parse HEAD","format":"git_object_id","name":"source_commit"}]', NULL, NULL),
-    ('01KRCWNJVA1DM02TJXZ4STJD06', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'docker build', 'docker:29.4', 'set -e\n\ncd {{ working_dir }}\n\n# shallow clone 下不要用 build-version.sh（几乎只会得到 dev-1-g...）\nCOMMIT="$(git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"\nBUILD_TIME="{{ runtime_datetime }}"\n# 放弃语义 version：与镜像 tag 对齐即可（或固定 dev）\nVERSION="{{ runtime_datetime }}"\n\ndocker build -f {{ repository_dockerfile }} \\\n  -t {{ repository_code }}:{{ runtime_datetime }} \\\n  --build-arg VERSION="${VERSION}" \\\n  --build-arg COMMIT="${COMMIT}" \\\n  --build-arg BUILD_TIME="${BUILD_TIME}" \\\n  .', 'Build container image', 2, NULL, NULL, NULL, NULL, '[{"collector":"docker_image","reference":"{{ repository_code }}:{{ runtime_datetime }}","name":"{{ repository_code }}"}]', NULL, NULL)
-ON DUPLICATE KEY UPDATE
-    `project_id` = VALUES(`project_id`),
-    `kind` = VALUES(`kind`),
-    `pipeline_id` = VALUES(`pipeline_id`),
-    `name` = VALUES(`name`),
-    `image` = VALUES(`image`),
-    `script` = VALUES(`script`),
-    `description` = VALUES(`description`),
-    `version` = VALUES(`version`),
-    `source_template_stage_id` = VALUES(`source_template_stage_id`),
-    `source_template_stage_name` = VALUES(`source_template_stage_name`),
-    `source_template_stage_version` = VALUES(`source_template_stage_version`),
-    `source_template_stage_description` = VALUES(`source_template_stage_description`),
-    `artifacts` = VALUES(`artifacts`),
-    `depends_on` = VALUES(`depends_on`),
-    `sort_order` = VALUES(`sort_order`);
+    ('01KRCWNJVA1DM02TJXZ4STJD06', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'docker build', 'docker:29.4', 'set -e\n\ncd {{ working_dir }}\n\n# shallow clone 下不要用 build-version.sh（几乎只会得到 dev-1-g...）\nCOMMIT="$(git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"\nBUILD_TIME="{{ runtime_datetime }}"\n# 放弃语义 version：与镜像 tag 对齐即可（或固定 dev）\nVERSION="{{ runtime_datetime }}"\n\ndocker build -f {{ repository_dockerfile }} \\\n  -t {{ repository_code }}:{{ runtime_datetime }} \\\n  --build-arg VERSION="${VERSION}" \\\n  --build-arg COMMIT="${COMMIT}" \\\n  --build-arg BUILD_TIME="${BUILD_TIME}" \\\n  .', 'Build container image', 2, NULL, NULL, NULL, NULL, '[{"collector":"docker_image","reference":"{{ repository_code }}:{{ runtime_datetime }}","name":"{{ repository_code }}"}]', NULL, NULL);
 
 -- pipeline_stage_reference: 6 row(s).
 INSERT INTO `pipeline_stage_reference` (`id`, `pipeline_id`, `source_template_stage_id`, `source_template_stage_name`, `source_template_stage_version`, `source_template_stage_description`, `name`, `image`, `script`, `description`, `artifacts`, `depends_on`, `sort_order`) VALUES
@@ -54,17 +20,4 @@ INSERT INTO `pipeline_stage_reference` (`id`, `pipeline_id`, `source_template_st
     ('4smvyi2oq4n2kzrio4zmcqykge', '01KNVEJPWVK757139NMNNNCEFE', '01KNRANZDR4PASATAXKTBBTRX9', 'golang:1.23 test', 3, '运行 Go 单元测试', 'golang:1.25 test', 'golang:1.23-alpine', 'set -e\ncd {{ working_dir }}\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo test ./...', '运行 Go 单元测试', '[]', '["vb37nbzugq6pljhkbxm3hiij24"]', 1),
     ('cirr32qhvah2rbv2obb76f7fte', '01KNVEJPWVK757139NMNNNCEFE', '01KNRKNAHG3EBS07VBK2YY5ZQN', 'golang:1.23 lint', 3, '运行 Go 代码质量', 'golang:1.25 lint', 'golang:1.23-alpine', 'set -e\ncd {{ working_dir }}\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo install golang.org/x/lint/golint@latest\ngolint ./...', '运行 Go 代码质量', '[]', '["vb37nbzugq6pljhkbxm3hiij24"]', 2),
     ('vb37nbzugq6pljhkbxm3hiij24', '01KNVEJPWVK757139NMNNNCEFE', '01KZ5A17696GZ6NS5BS6VJGR9B', 'git clone (backup VJGR9B)', 8, '克隆代码仓库', 'git clone', 'alpine/git', 'set -e\n# 强制全局关闭 SSL 验证\ngit config --global http.sslVerify "false"\ngit config --system http.sslVerify "false"\n# 信任工作区目录\ngit config --global --add safe.directory /workspace\n# 初始化仓库\ngit init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ repository_url }}\n# 拉取代码\ngit fetch --depth=1 origin {{ repository_ref }}\ngit checkout -B {{ repository_ref }} FETCH_HEAD', '克隆代码仓库', '[]', '[]', 0),
-    ('yrkdm4fc4wlupvd3ne6ea2ywpe', '01KNVEJPWVK757139NMNNNCEFE', '01KNRDSSJ7RNND7110175N4NR2', 'golang:1.23 build', 5, '运行 Go 构建', 'golang:1.25 build', 'golang:1.23-alpine', 'set -e\ncd {{ working_dir }}\nmkdir -p dist\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo build -o dist/', '运行 Go 构建', '[]', '["4smvyi2oq4n2kzrio4zmcqykge"]', 3)
-ON DUPLICATE KEY UPDATE
-    `pipeline_id` = VALUES(`pipeline_id`),
-    `source_template_stage_id` = VALUES(`source_template_stage_id`),
-    `source_template_stage_name` = VALUES(`source_template_stage_name`),
-    `source_template_stage_version` = VALUES(`source_template_stage_version`),
-    `source_template_stage_description` = VALUES(`source_template_stage_description`),
-    `name` = VALUES(`name`),
-    `image` = VALUES(`image`),
-    `script` = VALUES(`script`),
-    `description` = VALUES(`description`),
-    `artifacts` = VALUES(`artifacts`),
-    `depends_on` = VALUES(`depends_on`),
-    `sort_order` = VALUES(`sort_order`);
+    ('yrkdm4fc4wlupvd3ne6ea2ywpe', '01KNVEJPWVK757139NMNNNCEFE', '01KNRDSSJ7RNND7110175N4NR2', 'golang:1.23 build', 5, '运行 Go 构建', 'golang:1.25 build', 'golang:1.23-alpine', 'set -e\ncd {{ working_dir }}\nmkdir -p dist\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo build -o dist/', '运行 Go 构建', '[]', '["4smvyi2oq4n2kzrio4zmcqykge"]', 3);

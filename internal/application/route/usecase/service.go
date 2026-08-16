@@ -421,14 +421,16 @@ func (s Service) TraefikRouteConfig(ctx context.Context, userId string, projectI
 		return routedto.TraefikConfigView{}, err
 	}
 	dashboardDomain := fmt.Sprintf("traefik.%s", gw.BaseDomain)
+	configView := routedto.TraefikConfigView{DashboardDomain: dashboardDomain, HTTPSEnabled: false, BaseDomain: gw.BaseDomain}
 	route, err := s.route.RouteByDomain(ctx, dashboardDomain)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return routedto.TraefikConfigView{DashboardDomain: dashboardDomain, HTTPSEnabled: false}, nil
+			return configView, nil
 		}
 		return routedto.TraefikConfigView{}, apperror.Wrap(apperror.KindInternal, "Failed to load Traefik route config", err)
 	}
-	return routedto.TraefikConfigView{DashboardDomain: dashboardDomain, HTTPSEnabled: route.Enabled && route.HTTPSEnabled}, nil
+	configView.HTTPSEnabled = route.Enabled && route.HTTPSEnabled
+	return configView, nil
 }
 
 // ListTraefikRoutes fetches routers from the Traefik API.

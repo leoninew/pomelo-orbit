@@ -864,7 +864,9 @@
       toast.error(t('route.toast.selectProjectRequired'));
       return;
     }
+    let config;
     try {
+      config = await traefikRouteApi.getConfig({ project_id: projectId });
       await loadTargetServices(projectId);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.loadFailed'));
@@ -873,7 +875,7 @@
     Object.assign(form, {
       name: '',
       protocol: 'http',
-      domain: '',
+      domain: config?.base_domain ?? '',
       path_prefix: '/',
       target_url: '',
       custom_target: false,

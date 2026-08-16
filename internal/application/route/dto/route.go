@@ -32,4 +32,5 @@ type RouteUpdateInput struct {
 type TraefikConfigView struct {
 	DashboardDomain string
 	HTTPSEnabled    bool
+	BaseDomain      string
 }

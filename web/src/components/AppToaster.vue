@@ -1,5 +1,10 @@
 <template>
-  <ToastProvider :label="t('toast.providerLabel')" swipe-direction="right" :duration="3000">
+  <ToastProvider
+    :label="t('toast.providerLabel')"
+    swipe-direction="right"
+    disable-swipe
+    :duration="3000"
+  >
     <ToastRoot
       v-for="toast in toasts"
       :key="toast.id"

@@ -16,6 +16,7 @@ message TraefikRouterResp {
 message TraefikConfigResp {
   string dashboard_domain = 1;
   bool https_enabled = 2;
+  string base_domain = 3;
 }
 
 message TraefikRouteListResp {

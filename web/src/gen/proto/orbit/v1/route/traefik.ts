@@ -21,6 +21,7 @@ export interface TraefikRouterResp {
 export interface TraefikConfigResp {
   dashboard_domain: string;
   https_enabled: boolean;
+  base_domain: string;
 }
 
 export interface TraefikRouteListResp {

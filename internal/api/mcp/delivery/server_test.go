@@ -17,7 +17,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func TestToolListIncludesPythonSurfaceAndFlatCollectionSchemas(t *testing.T) {
+func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 	server, err := NewServer(Dependencies{ActorUserId: "actor"})
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
@@ -27,15 +27,15 @@ func TestToolListIncludesPythonSurfaceAndFlatCollectionSchemas(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(tools.Tools) != 48 {
-		t.Fatalf("tool count = %d, want 48", len(tools.Tools))
+	if len(tools.Tools) != 54 {
+		t.Fatalf("tool count = %d, want 54", len(tools.Tools))
 	}
 
 	byName := make(map[string]*mcp.Tool, len(tools.Tools))
 	for _, tool := range tools.Tools {
 		byName[tool.Name] = tool
 	}
-	for _, name := range pythonDeliveryToolNames {
+	for _, name := range deliveryToolNames {
 		if byName[name] == nil {
 			t.Errorf("missing tool %q", name)
 		}
@@ -274,7 +274,7 @@ func (s *actorProjectService) ListByMember(_ context.Context, actorUserId string
 	return []model.Project{}, nil
 }
 
-var pythonDeliveryToolNames = []string{
+var deliveryToolNames = []string{
 	"orbit_list_projects", "orbit_list_applications", "orbit_list_application_services", "orbit_list_gateways",
 	"orbit_create_gateway", "orbit_provision_gateway", "orbit_get_gateway", "orbit_update_gateway",
 	"orbit_create_application", "orbit_get_application", "orbit_delete_application", "orbit_list_versions", "orbit_get_version",
@@ -283,6 +283,7 @@ var pythonDeliveryToolNames = []string{
 	"orbit_update_version_component_env", "orbit_update_version_component_mounts", "orbit_update_version_component_dependencies",
 	"orbit_update_version_component_devices", "orbit_update_version_component_advanced", "orbit_update_version_component_resources",
 	"orbit_update_version_component_tmpfs", "orbit_update_version_component_ulimits", "orbit_publish_version", "orbit_delete_version",
+	"orbit_list_routes", "orbit_get_route", "orbit_create_route", "orbit_update_route", "orbit_enable_route", "orbit_disable_route",
 	"orbit_preview_service", "orbit_create_service", "orbit_update_service_component_overlay", "orbit_update_service_env",
 	"orbit_update_service_basic", "orbit_deploy", "orbit_stop", "orbit_restart", "orbit_deployment_status", "orbit_deployment_logs",
 	"orbit_wait_deployment", "runtime_doctor", "runtime_compose_config", "runtime_compose_ps", "runtime_compose_logs",
@@ -376,8 +377,8 @@ func TestStreamableHTTPUsesTheSharedToolRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(tools.Tools) != 48 {
-		t.Fatalf("HTTP tool count = %d, want 48", len(tools.Tools))
+	if len(tools.Tools) != 54 {
+		t.Fatalf("HTTP tool count = %d, want 54", len(tools.Tools))
 	}
 }
 

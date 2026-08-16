@@ -355,6 +355,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	})
 
 	c.registerVersionComponentTools(server)
+	c.registerRouteTools(server)
 
 	addTool(server, "orbit_publish_version", "Mark a Version published through Orbit; publication does not lock later edits or deletion.", func(ctx context.Context, input struct {
 		VersionId string `json:"version_id" jsonschema:"required"`

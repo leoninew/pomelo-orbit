@@ -1,5 +1,5 @@
 # MCP 直接操作
-最后修改时间: 2026-08-15 12:48:49
+最后修改时间: 2026-08-16 22:49:05
 
 ## 命名与启动约定
 
@@ -11,6 +11,10 @@ Codex 注册名为 `pomelo_delivery`，本地 stdio 入口为 `go run ./cmd/serv
 | --- | --- | --- |
 | 供应或复用 Traefik Gateway | `orbit_provision_gateway` | 修改已有 Gateway 配置、覆盖已有 Service runtime configuration、删除失败资源 |
 | 查看 Application 的 Service | `orbit_list_application_services` | deploy、stop、delete |
+| 查看或编辑自定义 Route | `orbit_list_routes`、`orbit_get_route`、`orbit_update_route` | enable、disable、删除或同步 |
+| 创建自定义 Route | `orbit_create_route` | enable、deploy Gateway、删除或同步 |
+| 启用自定义 Route | `orbit_enable_route` | deploy Gateway、停用、删除或同步 |
+| 停用自定义 Route | `orbit_disable_route` | 删除、同步或重新部署 Gateway |
 | 部署 | `orbit_deploy` | wait、verify、stop、delete |
 | 等待 Deployment | `orbit_wait_deployment` | verify、stop、delete |
 | 验证 Deployment | `verify_deployment` | stop、delete |
@@ -21,6 +25,8 @@ Codex 注册名为 `pomelo_delivery`，本地 stdio 入口为 `go run ./cmd/serv
 `orbit_wait_deployment` 的 deployment 终态和 `timed_out`，以及 `verify_deployment` 的 `failed`、`drift`、`inconclusive`，都是正常领域结果。Orbit API、Docker、runtime target、输入校验和内部失败则统一返回结构化 MCP error result。
 
 `orbit_create_gateway` 创建完整 Gateway 资源组：Application、GatewayConfig、初始可编辑 Version/Traefik Component 和默认停止态 Service。`orbit_provision_gateway` 是幂等资源准备工具：它按 `project_id` 与 `code=traefik` 查找 Gateway，零个时创建、恰好一个时复用、多个时返回冲突；指定实例不存在时按通用 Service 创建语义新增停止态 binding。它不会发布 Version、部署、等待或检查 Docker 网络。需要运行 Gateway 时，随后显式调用 `orbit_deploy(service_id)`，并按需调用 `orbit_wait_deployment`。
+
+Route 工具使用 Route 表单的持久化字段。HTTP Route 的 `path_prefix` 可省略并默认 `/`，且必须提供受管 HTTP target（`service_id`、`component_name`、`endpoint_protocol`、`endpoint_container_port`）或高级 `target_url` 之一；两种 target 互斥。TCP Route 必须提供受管 TCP target 与 `listen_port`，不能使用 `path_prefix` 或 `target_url`。启用 TCP Route 前，目标 Gateway Version 必须已经声明并部署对应的 `tcp<listen_port>` entrypoint 与宿主机端口。
 
 没有受管 Application target 时，使用 `runtime_doctor(network_name="traefik")` 进行只读预检。该参数只接受 `traefik`，不能与 Application 或 Gateway target 组合；`runtime_network_inspect` 仍只允许读取从受管 Compose target 派生的网络。
 

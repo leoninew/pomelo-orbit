@@ -77,6 +77,7 @@ func newDeliveryMCPServer(actorUserId string, deps routes.Dependencies) (*mcp.Se
 		Service:     deps.ServiceService,
 		Deployment:  deps.DeploymentService,
 		Gateway:     deps.GatewayService,
+		Route:       deps.RouteService,
 	})
 }
 

@@ -336,6 +336,21 @@ func gatewayServiceOutput(value model.Service) map[string]any {
 	return map[string]any{"id": value.Id, "application_id": value.ApplicationId, "instance_key": value.InstanceKey, "code": value.Code, "version_id": value.VersionId, "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 }
 
+func routeOutput(value model.Route) map[string]any {
+	projectId := ""
+	if value.ProjectId != nil {
+		projectId = *value.ProjectId
+	}
+	return map[string]any{
+		"id": value.Id, "project_id": projectId, "name": value.Name, "protocol": value.Protocol,
+		"domain": value.Domain, "path_prefix": value.PathPrefix, "target_url": value.TargetUrl,
+		"listen_port": value.ListenPort, "service_id": value.ServiceId, "component_name": value.ComponentName,
+		"endpoint_protocol": value.EndpointProtocol, "endpoint_container_port": value.EndpointContainerPort,
+		"enabled": value.Enabled, "https_enabled": value.HTTPSEnabled, "cert_type": value.CertType,
+		"created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt),
+	}
+}
+
 func formatTime(value time.Time) string {
 	if value.IsZero() {
 		return ""

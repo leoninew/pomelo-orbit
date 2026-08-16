@@ -114,6 +114,7 @@ func (a App) RunMCP(ctx context.Context) error {
 		Service:     deps.ServiceService,
 		Deployment:  deps.DeploymentService,
 		Gateway:     deps.GatewayService,
+		Route:       deps.RouteService,
 	})
 	if err != nil {
 		return err

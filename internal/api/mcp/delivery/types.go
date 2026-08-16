@@ -12,6 +12,8 @@ import (
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	projectsvc "github.com/leoninew/pomelo-orbit/internal/application/project/usecase"
+	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
+	routesvc "github.com/leoninew/pomelo-orbit/internal/application/route/usecase"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
 	servicesvc "github.com/leoninew/pomelo-orbit/internal/application/service/usecase"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -29,6 +31,7 @@ type Dependencies struct {
 	Service         ServiceService
 	Deployment      DeploymentService
 	Gateway         GatewayService
+	Route           RouteService
 }
 
 // ActorAuthorizer binds a stdio MCP session to an Orbit user on its first
@@ -97,10 +100,20 @@ type GatewayService interface {
 	ProvisionGateway(context.Context, string, gatewaydto.ProvisionGatewayInput) (gatewaydto.ProvisionGatewayResult, error)
 }
 
+type RouteService interface {
+	ListRoutes(context.Context, string, string, int, int, string) (repository.Page[model.Route], error)
+	CreateRoute(context.Context, string, string, routedto.RouteCreateInput) (model.Route, error)
+	RouteForUser(context.Context, string, string) (model.Route, error)
+	UpdateRoute(context.Context, string, string, routedto.RouteUpdateInput) (model.Route, error)
+	EnableRoute(context.Context, string, string) (model.Route, error)
+	DisableRoute(context.Context, string, string) (model.Route, error)
+}
+
 var (
 	_ ProjectService     = projectsvc.Service{}
 	_ ApplicationService = applicationsvc.Service{}
 	_ ServiceService     = servicesvc.Service{}
 	_ DeploymentService  = deploymentsvc.Service{}
 	_ GatewayService     = gatewaysvc.Service{}
+	_ RouteService       = routesvc.Service{}
 )

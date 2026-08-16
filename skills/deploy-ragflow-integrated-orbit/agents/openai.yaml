@@ -1,4 +1,4 @@
 interface:
-  display_name: "Deploy Integrated RAGFlow + TEI"
-  short_description: "Initialize and deploy only integrated RAGFlow."
-  default_prompt: "Use $deploy-ragflow-integrated-orbit to initialize only ragflow-integrated and deploy its integrated GPU or CPU Version with Pomelo Delivery MCP."
+  display_name: "部署集成式 RAGFlow + TEI / Deploy Integrated"
+  short_description: "仅初始化和部署集成式 RAGFlow / Integrated RAGFlow only."
+  default_prompt: "使用 $deploy-ragflow-integrated-orbit 仅初始化 ragflow-integrated，并通过首选 Orbit 控制面部署 GPU 或 CPU Version。 Use $deploy-ragflow-integrated-orbit to initialize only ragflow-integrated and deploy its GPU or CPU Version with Orbit as the preferred control plane."

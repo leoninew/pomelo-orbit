@@ -1,4 +1,4 @@
 interface:
-  display_name: "Deploy Split RAGFlow + TEI"
-  short_description: "Initialize and deploy only split RAGFlow."
-  default_prompt: "Use $deploy-ragflow-split-orbit to initialize ragflow-split and its backing Applications, then deploy split RAGFlow with Pomelo Delivery MCP."
+  display_name: "部署拆分式 RAGFlow + TEI / Deploy Split"
+  short_description: "仅初始化和部署拆分式 RAGFlow / Split RAGFlow only."
+  default_prompt: "使用 $deploy-ragflow-split-orbit 初始化 ragflow-split 及后端 Application，再通过首选 Orbit 控制面部署拆分式 RAGFlow。 Use $deploy-ragflow-split-orbit to initialize ragflow-split and its backing Applications, then deploy with Orbit as the preferred control plane."

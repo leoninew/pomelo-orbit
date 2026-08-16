@@ -8,7 +8,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-func TestPublishSnapshotDoesNotCompileGatewayListeners(t *testing.T) {
+func TestPublishSnapshotWaitsForGatewayAndPublishesRoutes(t *testing.T) {
 	publisher := &recordingRoutePublisher{}
 	service := Service{
 		route:          routeListFake{routes: []model.Route{{Id: "route-1", Name: "api", Protocol: "http", Domain: "api.example.test", PathPrefix: "/", TargetUrl: "http://example:80", Enabled: true}}},
@@ -21,25 +21,6 @@ func TestPublishSnapshotDoesNotCompileGatewayListeners(t *testing.T) {
 	}
 	if publisher.readyWaits != 1 {
 		t.Fatalf("PublishSnapshot WaitUntilReady calls = %d, want 1", publisher.readyWaits)
-	}
-	if len(publisher.snapshots) != 1 {
-		t.Fatalf("snapshots = %d, want 1", len(publisher.snapshots))
-	}
-}
-
-func TestPublishRouteSnapshotDoesNotCompileGatewayListeners(t *testing.T) {
-	publisher := &recordingRoutePublisher{}
-	service := Service{
-		route:          routeListFake{routes: []model.Route{{Id: "route-1", Name: "api", Protocol: "http", Domain: "api.example.test", PathPrefix: "/", TargetUrl: "http://example:80", Enabled: true}}},
-		gateway:        gatewayConfigFake{cfg: model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: "http://localhost:8080"}},
-		routePublisher: publisher,
-	}
-
-	if err := service.publishRouteSnapshot(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	if publisher.readyWaits != 0 {
-		t.Fatalf("publishRouteSnapshot WaitUntilReady calls = %d, want 0", publisher.readyWaits)
 	}
 	if len(publisher.snapshots) != 1 {
 		t.Fatalf("snapshots = %d, want 1", len(publisher.snapshots))

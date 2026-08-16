@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import router from './index';
 
-describe('domain route cutover', () => {
+describe('domain routes', () => {
   it.each([
     ['/pipeline', 'Pipelines'],
     ['/pipeline-run/42', 'PipelineRunDetail'],

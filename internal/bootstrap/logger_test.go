@@ -10,7 +10,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/config"
 )
 
-func TestNewLoggerReturnsLogger(t *testing.T) {
+func TestNewLoggerConfiguresLogLevel(t *testing.T) {
 	restoreDefaultLogger(t)
 	cases := []struct {
 		level       string

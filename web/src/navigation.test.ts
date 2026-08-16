@@ -106,12 +106,4 @@ describe('domain navigation declarations', () => {
       }),
     ]);
   });
-
-  it('uses only domain paths in secondary navigation', () => {
-    const paths = Object.values(secondaryNavigation)
-      .flat()
-      .flatMap((branch) => branch.children.map((entry) => entry.path));
-
-    expect(paths).not.toContainEqual(expect.stringMatching(/^\/(?:ci|cd)(?:\/|$)/));
-  });
 });

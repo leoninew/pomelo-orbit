@@ -28,7 +28,7 @@ func TestFernetRoundTrip(t *testing.T) {
 	}
 }
 
-func TestFernetDecryptsPythonToken(t *testing.T) {
+func TestFernetDecryptsStandardFixture(t *testing.T) {
 	decrypted, err := DecryptString(testFernetKey, "gAAAAABqL5rGh6HKnarq88jxOU1OrtgAbPNhO1Nou6se8sBpEEZaLthcXas2P22i5XrIu6ZCRc77o2nhb2gldVGrwaMrqCeFlcKK28VHhNx2m2B1bPZRimo=")
 	if err != nil {
 		t.Fatal(err)

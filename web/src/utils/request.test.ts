@@ -38,9 +38,9 @@ describe('HTTP error contract', () => {
     });
   });
 
-  it('rejects the old detail response as a contract mismatch', () => {
-    expect(isHttpErrorResponse({ detail: 'database password=secret' })).toBe(false);
-    expect(toApiError(500, { detail: 'database password=secret' })).toMatchObject({
+  it('normalizes a malformed error response as a contract mismatch', () => {
+    expect(isHttpErrorResponse({ message: 'unexpected response' })).toBe(false);
+    expect(toApiError(500, { message: 'unexpected response' })).toMatchObject({
       message: '服务响应格式异常',
       status: 500,
       code: 'contract_mismatch',

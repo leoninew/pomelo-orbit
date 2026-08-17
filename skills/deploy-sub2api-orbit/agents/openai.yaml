@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deploy Sub2API with Orbit"
+  short_description: "Deploy Sub2API through the Orbit control plane"
+  default_prompt: "Use $deploy-sub2api-orbit to deploy Sub2API without direct host ports and expose its HTTP service through a custom Route."

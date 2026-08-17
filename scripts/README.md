@@ -1,6 +1,6 @@
 # 脚本工具
 
-本目录包含本地开发、远程运维、发布支持与一次性迁移脚本。每个 Python 脚本都必须有同名 Markdown 参考文档；文档描述用途、前置条件、支持的用法和安全边界。与文档冲突时以脚本代码为准。
+本目录包含本地开发、远程运维、发布支持与一次性迁移脚本。每个 Python 脚本都必须有同名 Markdown 参考文档，或由 `skills/` 中的专项技能说明其用途、前置条件、支持的用法和安全边界。与文档或技能冲突时以脚本代码为准。
 
 ## 本地开发工具
 
@@ -16,7 +16,6 @@
 | --- | --- |
 | [`version-calc.py`](./version-calc.md) | 从 Git 历史计算并按需写入发布版本。 |
 | [`manage.py`](./manage.md) | 远程部署、SSH、Compose、文件复制、备份与 Docker 可回收空间清理入口。 |
-| [`database_transfer.py`](./database_transfer.md) | 通用 SQLite/MySQL 表数据导入、导出与双向文件转换。 |
 | [`reconcile_compose_proxies.py`](./reconcile_compose_proxies.md) | 协调手工 CD Compose 项目的代理配置。 |
 
 ## 一次性迁移与生成工具

@@ -20,9 +20,22 @@ CREATE TABLE child (id TEXT PRIMARY KEY, parent_id TEXT NOT NULL REFERENCES pare
 CREATE TABLE record (id TEXT PRIMARY KEY, parent_id TEXT NOT NULL REFERENCES parent(id), status TEXT NOT NULL);
 """
 
-SERVICE_CONFIGURATION_SCHEMA = "\n".join(
-    f'CREATE TABLE "{name}" (id TEXT PRIMARY KEY, raw_value TEXT NOT NULL);'
-    for name in transfer.SERVICE_CONFIG_TABLES
+SERVICE_SELECTION_SCHEMA = """
+CREATE TABLE project (id TEXT PRIMARY KEY);
+CREATE TABLE application (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES project(id));
+CREATE TABLE version (id TEXT PRIMARY KEY, application_id TEXT NOT NULL REFERENCES application(id), created_from_version_id TEXT REFERENCES version(id));
+CREATE TABLE version_component (id TEXT PRIMARY KEY, version_id TEXT NOT NULL REFERENCES version(id));
+CREATE TABLE gateway_config (application_id TEXT PRIMARY KEY REFERENCES application(id), raw_value TEXT NOT NULL);
+CREATE TABLE service (id TEXT PRIMARY KEY, application_id TEXT NOT NULL REFERENCES application(id), version_id TEXT NOT NULL REFERENCES version(id), code TEXT NOT NULL);
+CREATE TABLE service_env (service_id TEXT NOT NULL REFERENCES service(id), raw_value TEXT NOT NULL);
+CREATE TABLE service_component (id TEXT PRIMARY KEY, service_id TEXT NOT NULL REFERENCES service(id), source_version_component_id TEXT NOT NULL REFERENCES version_component(id));
+CREATE TABLE route (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES project(id), service_id TEXT REFERENCES service(id), raw_value TEXT NOT NULL);
+""" + "\n".join(
+    f'CREATE TABLE "{name}" (component_id TEXT NOT NULL REFERENCES version_component(id), raw_value TEXT NOT NULL);'
+    for name in transfer.VERSION_COMPONENT_CHILD_TABLES
+) + "\n" + "\n".join(
+    f'CREATE TABLE "{name}" (service_component_id TEXT NOT NULL REFERENCES service_component(id), raw_value TEXT NOT NULL);'
+    for name in transfer.SERVICE_COMPONENT_CHILD_TABLES
 )
 
 
@@ -33,9 +46,10 @@ def connect(path: Path) -> sqlite3.Connection:
     return connection
 
 
-def connect_service_configuration(path: Path) -> sqlite3.Connection:
+def connect_service_selection(path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(path)
-    connection.executescript(SERVICE_CONFIGURATION_SCHEMA)
+    connection.executescript(SERVICE_SELECTION_SCHEMA)
+    connection.execute("PRAGMA foreign_keys = ON")
     return connection
 
 
@@ -61,6 +75,7 @@ class DatabaseTransferTests(unittest.TestCase):
             self.assertEqual([table["name"] for table in archive["tables"]], ["child", "parent", "record"])
             rendered = transfer.render_sql_file(archive, "sqlite")
             self.assertIn("PRAGMA foreign_keys = OFF;", rendered)
+            self.assertIn('DELETE FROM "record";', rendered)
             self.assertIn("plain-text", rendered)
             self.assertIn("X'0062696E6172792D76616C7565'", rendered)
             self.assertIn(transfer.ARCHIVE_PREFIX, rendered)
@@ -88,40 +103,102 @@ class DatabaseTransferTests(unittest.TestCase):
             finally:
                 restored.close()
 
-    def test_service_config_scope_restores_all_configuration_tables_without_value_changes(self) -> None:
+    def test_export_and_import_service_transfer_deployment_closure_without_deletes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            source_path = root / "source.db"
-            source = connect_service_configuration(source_path)
+            source_path = Path(directory) / "source.db"
+            source = connect_service_selection(source_path)
             try:
-                for name in transfer.SERVICE_CONFIG_TABLES:
-                    source.execute(
-                        f'INSERT INTO "{name}" (id, raw_value) VALUES (?, ?)',
-                        (name, f"{name}: exact value; ${{TOKEN}}; 2026-08-17 10:40:42.2778562 +0800 CST"),
+                source.executemany("INSERT INTO project VALUES (?)", (("project-target",), ("project-other",)))
+                source.executemany(
+                    "INSERT INTO application VALUES (?, ?)",
+                    (("application-target", "project-target"), ("application-other", "project-other")),
+                )
+                source.executemany(
+                    "INSERT INTO version VALUES (?, ?, ?)",
+                    (("version-target-base", "application-target", None), ("version-target-current", "application-target", "version-target-base"), ("version-other", "application-other", None)),
+                )
+                source.executemany(
+                    "INSERT INTO version_component VALUES (?, ?)",
+                    (("component-target-base", "version-target-base"), ("component-target-current", "version-target-current"), ("component-other", "version-other")),
+                )
+                for table_name in transfer.VERSION_COMPONENT_CHILD_TABLES:
+                    source.executemany(
+                        f'INSERT INTO "{table_name}" VALUES (?, ?)',
+                        (("component-target-base", "target-base"), ("component-target-current", "target-current"), ("component-other", "other")),
                     )
+                source.executemany(
+                    "INSERT INTO gateway_config VALUES (?, ?)",
+                    (("application-target", "gateway-target"), ("application-other", "gateway-other")),
+                )
+                source.executemany(
+                    "INSERT INTO service VALUES (?, ?, ?, ?)",
+                    (("service-target", "application-target", "version-target-current", "sub2api-default"), ("service-other", "application-other", "version-other", "other-default")),
+                )
+                source.executemany(
+                    "INSERT INTO service_env VALUES (?, ?)",
+                    (("service-target", "target"), ("service-other", "other")),
+                )
+                source.executemany(
+                    "INSERT INTO service_component VALUES (?, ?, ?)",
+                    (("service-component-target", "service-target", "component-target-current"), ("service-component-other", "service-other", "component-other")),
+                )
+                for table_name in transfer.SERVICE_COMPONENT_CHILD_TABLES:
+                    source.executemany(
+                        f'INSERT INTO "{table_name}" VALUES (?, ?)',
+                        (("service-component-target", "target"), ("service-component-other", "other")),
+                    )
+                source.executemany(
+                    "INSERT INTO route VALUES (?, ?, ?, ?)",
+                    (("route-target", "project-target", "service-target", "target"), ("route-other", "project-other", "service-other", "other")),
+                )
                 source.commit()
             finally:
                 source.close()
 
-            transfer_file = root / "service-config.sqlite.sql"
-            exported = transfer.export_command(
-                argparse.Namespace(source="sqlite", sqlite_path=source_path, output=transfer_file, scope="service-config")
+            output_path = Path(directory) / "sub2api-default.sqlite.sql"
+            transfer.export_service_command(
+                argparse.Namespace(
+                    sqlite_path=source_path,
+                    output=output_path,
+                    service_code="sub2api-default",
+                )
             )
-            self.assertEqual(exported, transfer_file.resolve())
-            archive = transfer.load_archive(transfer_file)
-            self.assertEqual([table["name"] for table in archive["tables"]], list(transfer.SERVICE_CONFIG_TABLES))
+            self.assertNotIn("DELETE FROM", output_path.read_text(encoding="utf-8"))
+            archive = transfer.load_archive(output_path)
+            tables = {table["name"]: table for table in archive["tables"]}
 
-            target_path = root / "target.db"
-            target = connect_service_configuration(target_path)
+            def values(table_name: str, column_name: str) -> set[str]:
+                table = tables[table_name]
+                index = table["columns"].index(column_name)
+                return {str(row[index]) for row in table["rows"]}
+
+            self.assertEqual(set(tables), set(transfer.SERVICE_TABLES))
+            self.assertEqual(values("project", "id"), {"project-target"})
+            self.assertEqual(values("application", "id"), {"application-target"})
+            self.assertEqual(values("version", "id"), {"version-target-base", "version-target-current"})
+            self.assertEqual(values("version_component", "id"), {"component-target-base", "component-target-current"})
+            self.assertEqual(values("gateway_config", "application_id"), {"application-target"})
+            self.assertEqual(values("service", "code"), {"sub2api-default"})
+            self.assertEqual(values("service_env", "service_id"), {"service-target"})
+            self.assertEqual(values("service_component", "id"), {"service-component-target"})
+            self.assertEqual(values("route", "service_id"), {"service-target"})
+            for table_name in transfer.VERSION_COMPONENT_CHILD_TABLES:
+                self.assertEqual(values(table_name, "component_id"), {"component-target-base", "component-target-current"})
+            for table_name in transfer.SERVICE_COMPONENT_CHILD_TABLES:
+                self.assertEqual(values(table_name, "service_component_id"), {"service-component-target"})
+
+            target_path = Path(directory) / "target.db"
+            target = connect_service_selection(target_path)
+            target.close()
+            transfer.import_service_command(argparse.Namespace(sqlite_path=target_path, input=output_path))
+            restored = sqlite3.connect(target_path)
             try:
-                for name in transfer.SERVICE_CONFIG_TABLES:
-                    target.execute(f'INSERT INTO "{name}" (id, raw_value) VALUES (?, ?)', (name, "replace me"))
-                target.commit()
+                self.assertEqual(restored.execute("SELECT code FROM service").fetchall(), [("sub2api-default",)])
+                self.assertEqual(restored.execute("SELECT COUNT(*) FROM version_component").fetchone()[0], 2)
+                self.assertEqual(restored.execute("SELECT COUNT(*) FROM route").fetchone()[0], 1)
+                self.assertEqual(list(restored.execute("PRAGMA foreign_key_check")), [])
             finally:
-                target.close()
-
-            transfer.import_into_sqlite(archive, target_path, replace=True)
-            self.assertEqual(transfer.archive_from_sqlite(target_path, "service-config"), archive)
+                restored.close()
 
     def test_file_conversion_preserves_payload_and_changes_target_dialect(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

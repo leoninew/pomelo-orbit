@@ -20,7 +20,7 @@ ARCHIVE_FORMAT = "database-transfer/v1"
 ARCHIVE_PREFIX = "-- database-transfer-payload: "
 IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-SERVICE_CONFIG_TABLES = (
+SERVICE_TABLES = (
     "project",
     "application",
     "version",
@@ -44,7 +44,23 @@ SERVICE_CONFIG_TABLES = (
     "service_component_endpoint",
     "route",
 )
-TRANSFER_SCOPES = ("all", "service-config")
+VERSION_COMPONENT_CHILD_TABLES = (
+    "version_component_env",
+    "version_component_endpoint",
+    "version_component_mount",
+    "version_component_dependency",
+    "version_component_healthcheck",
+    "version_component_resource",
+    "version_component_tmpfs",
+    "version_component_ulimit",
+    "version_component_device",
+)
+SERVICE_COMPONENT_CHILD_TABLES = (
+    "service_component_env",
+    "service_component_mount",
+    "service_component_resource",
+    "service_component_endpoint",
+)
 
 
 class TransferError(RuntimeError):
@@ -58,12 +74,6 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     export = subcommands.add_parser("export", help="export all table data from SQLite or MySQL")
     export.add_argument("--source", choices=("sqlite", "mysql"), required=True)
     export.add_argument("--output", type=Path, required=True)
-    export.add_argument(
-        "--scope",
-        choices=TRANSFER_SCOPES,
-        default="all",
-        help="select all tables or the complete service configuration table set",
-    )
     add_connection_arguments(export)
 
     importer = subcommands.add_parser("import", help="import a generated table-data file into SQLite or MySQL")
@@ -71,6 +81,15 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     importer.add_argument("--input", type=Path, required=True)
     importer.add_argument("--replace", action="store_true", help="delete the exported tables before inserting data")
     add_connection_arguments(importer)
+
+    service_export = subcommands.add_parser("export-service", help="export one SQLite service deployment closure")
+    service_export.add_argument("--sqlite-path", type=Path, required=True)
+    service_export.add_argument("--service-code", required=True)
+    service_export.add_argument("--output", type=Path, required=True)
+
+    service_import = subcommands.add_parser("import-service", help="import one SQLite service deployment closure without deleting data")
+    service_import.add_argument("--sqlite-path", type=Path, required=True)
+    service_import.add_argument("--input", type=Path, required=True)
 
     converter = subcommands.add_parser("convert", help="convert a generated SQLite or MySQL file to the other SQL dialect")
     converter.add_argument("--from", dest="source_format", choices=("sqlite", "mysql"), required=True)
@@ -171,19 +190,123 @@ def decode_value(value: Any) -> Any:
     raise TransferError("invalid typed value in database transfer file")
 
 
-def tables_for_scope(table_names: Sequence[str], scope: str) -> tuple[str, ...]:
-    if scope == "all":
-        return tuple(sorted(table_names))
-    if scope != "service-config":
-        raise TransferError(f"unsupported transfer scope: {scope}")
+def service_table_names(table_names: Sequence[str]) -> tuple[str, ...]:
     available = set(table_names)
-    missing = [name for name in SERVICE_CONFIG_TABLES if name not in available]
+    missing = [name for name in SERVICE_TABLES if name not in available]
     if missing:
-        raise TransferError("service-config scope is missing required tables: " + ", ".join(missing))
-    return SERVICE_CONFIG_TABLES
+        raise TransferError("service export is missing required tables: " + ", ".join(missing))
+    return SERVICE_TABLES
 
 
-def archive_from_sqlite(path: Path, scope: str = "all") -> dict[str, Any]:
+def sqlite_table_archive(
+    connection: sqlite3.Connection,
+    table_name: str,
+    *,
+    where_column: str | None = None,
+    values: Sequence[str] = (),
+) -> dict[str, Any]:
+    columns = tuple(str(column[1]) for column in connection.execute(f"PRAGMA table_info({quote_identifier(table_name, 'sqlite')})"))
+    if not columns:
+        raise TransferError(f"SQLite table has no columns: {table_name}")
+    query = f"SELECT {', '.join(quote_identifier(column, 'sqlite') for column in columns)} FROM {quote_identifier(table_name, 'sqlite')}"
+    parameters: tuple[str, ...] = ()
+    if where_column is not None:
+        if where_column not in columns:
+            raise TransferError(f"SQLite table {table_name} has no {where_column} column")
+        unique_values = tuple(dict.fromkeys(values))
+        if unique_values:
+            query += f" WHERE {quote_identifier(where_column, 'sqlite')} IN ({', '.join('?' for _ in unique_values)})"
+            parameters = unique_values
+        else:
+            query += " WHERE 1 = 0"
+    data = [[encode_value(record[column]) for column in columns] for record in connection.execute(query, parameters)]
+    return {"name": table_name, "columns": list(columns), "rows": data}
+
+
+def sqlite_service_archive(
+    connection: sqlite3.Connection,
+    table_names: Sequence[str],
+    service_code: str,
+) -> list[dict[str, Any]]:
+    service_table_names(table_names)
+    service_rows = list(
+        connection.execute(
+            'SELECT "id", "application_id", "version_id" FROM "service" WHERE "code" = ?',
+            (service_code,),
+        )
+    )
+    if not service_rows:
+        raise TransferError(f"service does not exist: {service_code}")
+    if len(service_rows) > 1:
+        raise TransferError(f"service code is not unique: {service_code}")
+    service = service_rows[0]
+    application_id = str(service["application_id"])
+    application = connection.execute('SELECT "project_id" FROM "application" WHERE "id" = ?', (application_id,)).fetchone()
+    if application is None:
+        raise TransferError(f"service {service_code} references a missing application")
+    project_id = str(application["project_id"])
+
+    version_ids: list[str] = []
+    version_id: str | None = str(service["version_id"])
+    while version_id is not None:
+        if version_id in version_ids:
+            raise TransferError(f"service {service_code} has a cyclic version lineage")
+        version = connection.execute(
+            'SELECT "application_id", "created_from_version_id" FROM "version" WHERE "id" = ?',
+            (version_id,),
+        ).fetchone()
+        if version is None:
+            raise TransferError(f"service {service_code} references a missing version")
+        if str(version["application_id"]) != application_id:
+            raise TransferError(f"service {service_code} version lineage crosses applications")
+        version_ids.append(version_id)
+        parent_id = version["created_from_version_id"]
+        version_id = str(parent_id) if parent_id else None
+    version_ids.reverse()
+
+    version_component_ids = [
+        str(row[0])
+        for row in connection.execute(
+            f'SELECT "id" FROM "version_component" WHERE "version_id" IN ({", ".join("?" for _ in version_ids)})',
+            tuple(version_ids),
+        )
+    ]
+    service_id = str(service["id"])
+    service_component_ids = [
+        str(row[0])
+        for row in connection.execute('SELECT "id" FROM "service_component" WHERE "service_id" = ?', (service_id,))
+    ]
+
+    archives: list[dict[str, Any]] = []
+    for table_name in SERVICE_TABLES:
+        if table_name == "project":
+            archives.append(sqlite_table_archive(connection, table_name, where_column="id", values=(project_id,)))
+        elif table_name == "application":
+            archives.append(sqlite_table_archive(connection, table_name, where_column="id", values=(application_id,)))
+        elif table_name == "version":
+            archives.append(sqlite_table_archive(connection, table_name, where_column="id", values=version_ids))
+        elif table_name == "version_component":
+            archives.append(sqlite_table_archive(connection, table_name, where_column="id", values=version_component_ids))
+        elif table_name in VERSION_COMPONENT_CHILD_TABLES:
+            archives.append(sqlite_table_archive(connection, table_name, where_column="component_id", values=version_component_ids))
+        elif table_name == "gateway_config":
+            archives.append(sqlite_table_archive(connection, table_name, where_column="application_id", values=(application_id,)))
+        elif table_name == "service":
+            archives.append(sqlite_table_archive(connection, table_name, where_column="id", values=(service_id,)))
+        elif table_name == "service_env":
+            archives.append(sqlite_table_archive(connection, table_name, where_column="service_id", values=(service_id,)))
+        elif table_name == "service_component":
+            archives.append(sqlite_table_archive(connection, table_name, where_column="id", values=service_component_ids))
+        elif table_name in SERVICE_COMPONENT_CHILD_TABLES:
+            archives.append(sqlite_table_archive(connection, table_name, where_column="service_component_id", values=service_component_ids))
+        elif table_name == "route":
+            archives.append(sqlite_table_archive(connection, table_name, where_column="service_id", values=(service_id,)))
+        else:
+            raise TransferError(f"service deployment table has no export rule: {table_name}")
+    return archives
+
+
+def archive_from_sqlite(path: Path) -> dict[str, Any]:
     connection = connect_sqlite_read_only(path)
     try:
         connection.execute("BEGIN")
@@ -192,27 +315,35 @@ def archive_from_sqlite(path: Path, scope: str = "all") -> dict[str, Any]:
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
         )
         table_names = tuple(str(row[0]) for row in rows)
-        tables = []
-        for name in tables_for_scope(table_names, scope):
-            columns = tuple(str(column[1]) for column in connection.execute(f"PRAGMA table_info({quote_identifier(name, 'sqlite')})"))
-            if not columns:
-                raise TransferError(f"SQLite table has no columns: {name}")
-            query = f"SELECT {', '.join(quote_identifier(column, 'sqlite') for column in columns)} FROM {quote_identifier(name, 'sqlite')}"
-            data = [[encode_value(record[column]) for column in columns] for record in connection.execute(query)]
-            tables.append({"name": name, "columns": list(columns), "rows": data})
+        tables = [sqlite_table_archive(connection, name) for name in sorted(table_names)]
     finally:
         connection.close()
     return {"format": ARCHIVE_FORMAT, "driver": "sqlite", "tables": tables}
 
 
-def archive_from_mysql(args: argparse.Namespace, scope: str = "all") -> dict[str, Any]:
+def archive_service_from_sqlite(path: Path, service_code: str) -> dict[str, Any]:
+    connection = connect_sqlite_read_only(path)
+    try:
+        connection.execute("BEGIN")
+        ensure_sqlite_integrity(connection)
+        rows = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        )
+        table_names = tuple(str(row[0]) for row in rows)
+        tables = sqlite_service_archive(connection, table_names, service_code)
+    finally:
+        connection.close()
+    return {"format": ARCHIVE_FORMAT, "driver": "sqlite", "tables": tables}
+
+
+def archive_from_mysql(args: argparse.Namespace) -> dict[str, Any]:
     connection = mysql_connection(args)
     try:
         with connection.cursor() as cursor:
             cursor.execute(
                 "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name"
             )
-            table_names = tables_for_scope(tuple(str(row[0]) for row in cursor.fetchall()), scope)
+            table_names = tuple(str(row[0]) for row in cursor.fetchall())
             tables = []
             for name in table_names:
                 cursor.execute(
@@ -249,6 +380,19 @@ def validate_archive(archive: Any) -> dict[str, Any]:
         for row in table["rows"]:
             if not isinstance(row, list) or len(row) != len(table["columns"]):
                 raise TransferError("database transfer file has an invalid row")
+    return archive
+
+
+def validate_service_archive(archive: Any) -> dict[str, Any]:
+    archive = validate_archive(archive)
+    if archive["driver"] != "sqlite":
+        raise TransferError("service transfer file must use the SQLite format")
+    tables = archive["tables"]
+    if [table["name"] for table in tables] != list(SERVICE_TABLES):
+        raise TransferError("service transfer file has an unexpected table set")
+    service_table = tables[SERVICE_TABLES.index("service")]
+    if "code" not in service_table["columns"] or len(service_table["rows"]) != 1:
+        raise TransferError("service transfer file must contain exactly one service")
     return archive
 
 
@@ -291,7 +435,7 @@ def mysql_sql_value(value: Any) -> str:
     return "'" + escaped + "'"
 
 
-def render_sql_file(archive: dict[str, Any], driver: str) -> str:
+def render_sql_file(archive: dict[str, Any], driver: str, *, include_deletes: bool = True) -> str:
     archive = dict(validate_archive(archive))
     archive["driver"] = driver
     tables = archive["tables"]
@@ -303,7 +447,8 @@ def render_sql_file(archive: dict[str, Any], driver: str) -> str:
         lines.extend(("PRAGMA foreign_keys = OFF;", "BEGIN;"))
     else:
         lines.append("SET FOREIGN_KEY_CHECKS = 0;")
-    lines.extend(f"DELETE FROM {quote_identifier(table['name'], driver)};" for table in reversed(tables))
+    if include_deletes:
+        lines.extend(f"DELETE FROM {quote_identifier(table['name'], driver)};" for table in reversed(tables))
     value_renderer = sqlite_sql_value if driver == "sqlite" else mysql_sql_value
     for table in tables:
         columns = table["columns"]
@@ -397,11 +542,18 @@ def export_command(args: argparse.Namespace) -> Path:
     if args.source == "sqlite":
         if args.sqlite_path is None:
             raise TransferError("--sqlite-path is required for SQLite operations")
-        archive = archive_from_sqlite(args.sqlite_path.resolve(), args.scope)
+        archive = archive_from_sqlite(args.sqlite_path.resolve())
     else:
-        archive = archive_from_mysql(args, args.scope)
+        archive = archive_from_mysql(args)
     output = args.output.resolve()
     write_output(output, render_sql_file(archive, args.source))
+    return output
+
+
+def export_service_command(args: argparse.Namespace) -> Path:
+    archive = archive_service_from_sqlite(args.sqlite_path.resolve(), args.service_code)
+    output = args.output.resolve()
+    write_output(output, render_sql_file(archive, "sqlite", include_deletes=False))
     return output
 
 
@@ -415,6 +567,11 @@ def import_command(args: argparse.Namespace) -> None:
         import_into_sqlite(archive, args.sqlite_path.resolve(), args.replace)
     else:
         import_into_mysql(archive, args, args.replace)
+
+
+def import_service_command(args: argparse.Namespace) -> None:
+    archive = validate_service_archive(load_archive(args.input.resolve()))
+    import_into_sqlite(archive, args.sqlite_path.resolve(), replace=False)
 
 
 def convert_command(args: argparse.Namespace) -> Path:
@@ -434,9 +591,15 @@ def main(argv: Sequence[str]) -> int:
         if args.command == "export":
             output = export_command(args)
             print(f"database transfer file written: {output}")
+        elif args.command == "export-service":
+            output = export_service_command(args)
+            print(f"service transfer file written: {output}")
         elif args.command == "import":
             import_command(args)
             print("database transfer file imported")
+        elif args.command == "import-service":
+            import_service_command(args)
+            print("service transfer file imported")
         else:
             output = convert_command(args)
             print(f"database transfer file converted: {output}")

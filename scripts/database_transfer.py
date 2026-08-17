@@ -10,7 +10,7 @@ import re
 import sqlite3
 import sys
 import tempfile
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Sequence
@@ -19,9 +19,32 @@ from typing import Any, Sequence
 ARCHIVE_FORMAT = "database-transfer/v1"
 ARCHIVE_PREFIX = "-- database-transfer-payload: "
 IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-OFFSET_TIMESTAMP = re.compile(
-    r"^(?P<date>\d{4}-\d{2}-\d{2}) (?P<time>\d{2}:\d{2}:\d{2})(?:\.(?P<fraction>\d{1,9}))? (?P<offset>[+-]\d{4}) [A-Za-z]+$"
+
+SERVICE_CONFIG_TABLES = (
+    "project",
+    "application",
+    "version",
+    "version_component",
+    "version_component_env",
+    "version_component_endpoint",
+    "version_component_mount",
+    "version_component_dependency",
+    "version_component_healthcheck",
+    "version_component_resource",
+    "version_component_tmpfs",
+    "version_component_ulimit",
+    "version_component_device",
+    "gateway_config",
+    "service",
+    "service_env",
+    "service_component",
+    "service_component_env",
+    "service_component_mount",
+    "service_component_resource",
+    "service_component_endpoint",
+    "route",
 )
+TRANSFER_SCOPES = ("all", "service-config")
 
 
 class TransferError(RuntimeError):
@@ -35,6 +58,12 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     export = subcommands.add_parser("export", help="export all table data from SQLite or MySQL")
     export.add_argument("--source", choices=("sqlite", "mysql"), required=True)
     export.add_argument("--output", type=Path, required=True)
+    export.add_argument(
+        "--scope",
+        choices=TRANSFER_SCOPES,
+        default="all",
+        help="select all tables or the complete service configuration table set",
+    )
     add_connection_arguments(export)
 
     importer = subcommands.add_parser("import", help="import a generated table-data file into SQLite or MySQL")
@@ -142,26 +171,19 @@ def decode_value(value: Any) -> Any:
     raise TransferError("invalid typed value in database transfer file")
 
 
-def mysql_value(value: Any) -> Any:
-    value = decode_value(value)
-    if not isinstance(value, str):
-        return value
-    match = OFFSET_TIMESTAMP.fullmatch(value)
-    if match is not None:
-        fraction = (match.group("fraction") or "")[:6].ljust(6, "0")
-        parsed = datetime.strptime(
-            f"{match.group('date')} {match.group('time')}.{fraction} {match.group('offset')}",
-            "%Y-%m-%d %H:%M:%S.%f %z",
-        )
-    else:
-        try:
-            parsed = datetime.fromisoformat(value.removesuffix("Z") + "+00:00" if value.endswith("Z") else value)
-        except ValueError:
-            return value
-    return parsed.astimezone(timezone.utc).replace(tzinfo=None) if parsed.tzinfo is not None else parsed
+def tables_for_scope(table_names: Sequence[str], scope: str) -> tuple[str, ...]:
+    if scope == "all":
+        return tuple(sorted(table_names))
+    if scope != "service-config":
+        raise TransferError(f"unsupported transfer scope: {scope}")
+    available = set(table_names)
+    missing = [name for name in SERVICE_CONFIG_TABLES if name not in available]
+    if missing:
+        raise TransferError("service-config scope is missing required tables: " + ", ".join(missing))
+    return SERVICE_CONFIG_TABLES
 
 
-def archive_from_sqlite(path: Path) -> dict[str, Any]:
+def archive_from_sqlite(path: Path, scope: str = "all") -> dict[str, Any]:
     connection = connect_sqlite_read_only(path)
     try:
         connection.execute("BEGIN")
@@ -169,9 +191,9 @@ def archive_from_sqlite(path: Path) -> dict[str, Any]:
         rows = connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
         )
+        table_names = tuple(str(row[0]) for row in rows)
         tables = []
-        for row in rows:
-            name = str(row[0])
+        for name in tables_for_scope(table_names, scope):
             columns = tuple(str(column[1]) for column in connection.execute(f"PRAGMA table_info({quote_identifier(name, 'sqlite')})"))
             if not columns:
                 raise TransferError(f"SQLite table has no columns: {name}")
@@ -183,18 +205,18 @@ def archive_from_sqlite(path: Path) -> dict[str, Any]:
     return {"format": ARCHIVE_FORMAT, "driver": "sqlite", "tables": tables}
 
 
-def archive_from_mysql(args: argparse.Namespace) -> dict[str, Any]:
+def archive_from_mysql(args: argparse.Namespace, scope: str = "all") -> dict[str, Any]:
     connection = mysql_connection(args)
     try:
         with connection.cursor() as cursor:
             cursor.execute(
                 "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name"
             )
-            table_names = tuple(str(row[0]) for row in cursor.fetchall())
+            table_names = tables_for_scope(tuple(str(row[0]) for row in cursor.fetchall()), scope)
             tables = []
             for name in table_names:
                 cursor.execute(
-                    "SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = %s AND extra NOT LIKE '%%GENERATED%%' ORDER BY ordinal_position",
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = %s AND extra NOT LIKE '%% GENERATED' ORDER BY ordinal_position",
                     (name,),
                 )
                 columns = tuple(str(row[0]) for row in cursor.fetchall())
@@ -250,7 +272,7 @@ def sqlite_sql_value(value: Any) -> str:
 
 
 def mysql_sql_value(value: Any) -> str:
-    value = mysql_value(value)
+    value = decode_value(value)
     if value is None:
         return "NULL"
     if isinstance(value, bytes):
@@ -361,7 +383,7 @@ def import_into_mysql(archive: dict[str, Any], args: argparse.Namespace, replace
             for table in archive["tables"]:
                 columns = table["columns"]
                 query = f"INSERT INTO {quote_identifier(table['name'], 'mysql')} ({', '.join(quote_identifier(column, 'mysql') for column in columns)}) VALUES ({', '.join('%s' for _ in columns)})"
-                cursor.executemany(query, [tuple(mysql_value(value) for value in row) for row in table["rows"]])
+                cursor.executemany(query, [tuple(decode_value(value) for value in row) for row in table["rows"]])
             cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
         connection.commit()
     except Exception as error:
@@ -375,9 +397,9 @@ def export_command(args: argparse.Namespace) -> Path:
     if args.source == "sqlite":
         if args.sqlite_path is None:
             raise TransferError("--sqlite-path is required for SQLite operations")
-        archive = archive_from_sqlite(args.sqlite_path.resolve())
+        archive = archive_from_sqlite(args.sqlite_path.resolve(), args.scope)
     else:
-        archive = archive_from_mysql(args)
+        archive = archive_from_mysql(args, args.scope)
     output = args.output.resolve()
     write_output(output, render_sql_file(archive, args.source))
     return output

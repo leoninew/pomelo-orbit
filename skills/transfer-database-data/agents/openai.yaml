@@ -1,4 +1,4 @@
 interface:
   display_name: "传输 SQLite / MySQL 数据 / Transfer Database Data"
-  short_description: "安全导出、转换和导入 SQLite/MySQL 表数据"
-  default_prompt: "使用 $transfer-database-data 安全地导出、转换或导入 SQLite/MySQL 表数据。 Use $transfer-database-data to safely export, convert, or import SQLite/MySQL table data."
+  short_description: "安全传输 SQLite/MySQL 表数据或服务配置"
+  default_prompt: "使用 $transfer-database-data 安全地导出、转换或导入 SQLite/MySQL 表数据或完整服务配置。 Use $transfer-database-data to safely export, convert, or import SQLite/MySQL table data or complete service configuration."

@@ -7,7 +7,6 @@ import sqlite3
 import sys
 import tempfile
 import unittest
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -21,11 +20,22 @@ CREATE TABLE child (id TEXT PRIMARY KEY, parent_id TEXT NOT NULL REFERENCES pare
 CREATE TABLE record (id TEXT PRIMARY KEY, parent_id TEXT NOT NULL REFERENCES parent(id), status TEXT NOT NULL);
 """
 
+SERVICE_CONFIGURATION_SCHEMA = "\n".join(
+    f'CREATE TABLE "{name}" (id TEXT PRIMARY KEY, raw_value TEXT NOT NULL);'
+    for name in transfer.SERVICE_CONFIG_TABLES
+)
+
 
 def connect(path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(path)
     connection.executescript(SCHEMA)
     connection.execute("PRAGMA foreign_keys = ON")
+    return connection
+
+
+def connect_service_configuration(path: Path) -> sqlite3.Connection:
+    connection = sqlite3.connect(path)
+    connection.executescript(SERVICE_CONFIGURATION_SCHEMA)
     return connection
 
 
@@ -78,6 +88,41 @@ class DatabaseTransferTests(unittest.TestCase):
             finally:
                 restored.close()
 
+    def test_service_config_scope_restores_all_configuration_tables_without_value_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_path = root / "source.db"
+            source = connect_service_configuration(source_path)
+            try:
+                for name in transfer.SERVICE_CONFIG_TABLES:
+                    source.execute(
+                        f'INSERT INTO "{name}" (id, raw_value) VALUES (?, ?)',
+                        (name, f"{name}: exact value; ${{TOKEN}}; 2026-08-17 10:40:42.2778562 +0800 CST"),
+                    )
+                source.commit()
+            finally:
+                source.close()
+
+            transfer_file = root / "service-config.sqlite.sql"
+            exported = transfer.export_command(
+                argparse.Namespace(source="sqlite", sqlite_path=source_path, output=transfer_file, scope="service-config")
+            )
+            self.assertEqual(exported, transfer_file.resolve())
+            archive = transfer.load_archive(transfer_file)
+            self.assertEqual([table["name"] for table in archive["tables"]], list(transfer.SERVICE_CONFIG_TABLES))
+
+            target_path = root / "target.db"
+            target = connect_service_configuration(target_path)
+            try:
+                for name in transfer.SERVICE_CONFIG_TABLES:
+                    target.execute(f'INSERT INTO "{name}" (id, raw_value) VALUES (?, ?)', (name, "replace me"))
+                target.commit()
+            finally:
+                target.close()
+
+            transfer.import_into_sqlite(archive, target_path, replace=True)
+            self.assertEqual(transfer.archive_from_sqlite(target_path, "service-config"), archive)
+
     def test_file_conversion_preserves_payload_and_changes_target_dialect(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -108,11 +153,12 @@ class DatabaseTransferTests(unittest.TestCase):
             self.assertIn("PRAGMA foreign_keys = OFF;", restored_sqlite_file.read_text(encoding="utf-8"))
 
     def test_mysql_export_and_import_use_all_tables_without_domain_rules(self) -> None:
+        timestamp = "2026-08-15 10:40:42.2778562 +0800 CST"
         archive = {
             "format": transfer.ARCHIVE_FORMAT,
             "driver": "mysql",
             "tables": [
-                {"name": "child", "columns": ["id", "parent_id", "binary_value"], "rows": [["child", "parent", {"type": "blob", "base64": "AGJpbmFyeS12YWx1ZQ=="}]]},
+                {"name": "child", "columns": ["id", "parent_id", "binary_value", "created_at"], "rows": [["child", "parent", {"type": "blob", "base64": "AGJpbmFyeS12YWx1ZQ=="}, timestamp]]},
                 {"name": "parent", "columns": ["id", "name"], "rows": [["parent", "Parent"]]},
             ],
         }
@@ -127,16 +173,17 @@ class DatabaseTransferTests(unittest.TestCase):
             transfer.mysql_connection = original_connection
 
         self.assertTrue(connection.closed)
-        self.assertTrue(any("extra NOT LIKE" in statement for statement in connection.statements))
+        self.assertTrue(any("extra NOT LIKE '%% GENERATED'" in statement for statement in connection.statements))
         self.assertIn("DELETE FROM `parent`", connection.statements)
         self.assertIn("DELETE FROM `child`", connection.statements)
-        self.assertEqual(connection.inserted[0][1][0], ("child", "parent", b"\x00binary-value"))
+        self.assertEqual(connection.inserted[0][1][0], ("child", "parent", b"\x00binary-value", timestamp))
 
-    def test_mysql_value_normalizes_go_timestamp_text(self) -> None:
-        value = transfer.mysql_value("2026-08-15 10:40:42.2778562 +0800 CST")
-        self.assertEqual(value, datetime(2026, 8, 15, 2, 40, 42, 277856))
-        self.assertEqual(transfer.mysql_value("2024-03-16T00:00:00Z"), datetime(2024, 3, 16))
-        self.assertEqual(transfer.mysql_sql_value("2026-08-15 02:40:42 +0000 UTC"), "'2026-08-15 02:40:42'")
+    def test_mysql_values_preserve_original_timestamp_text(self) -> None:
+        self.assertEqual(
+            transfer.mysql_sql_value("2026-08-15 10:40:42.2778562 +0800 CST"),
+            "'2026-08-15 10:40:42.2778562 +0800 CST'",
+        )
+        self.assertEqual(transfer.mysql_sql_value("2024-03-16T00:00:00Z"), "'2024-03-16T00:00:00Z'")
 
 
 class FakeMySQLCursor:

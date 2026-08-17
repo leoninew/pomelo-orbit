@@ -190,6 +190,7 @@
     DeploymentDialogueToolCall,
   } from '@/gen/proto/orbit/v1/dialogue/dialogue';
   import DeploymentDialogueHistory from '@/views/deployment/DeploymentDialogueHistory.vue';
+  import { newDeploymentDialogueConversationId } from '@/views/deployment/deploymentDialogueConversationId';
   import {
     type DeploymentDialogueConversationMessage,
     useDeploymentDialogueStore,
@@ -421,7 +422,7 @@
   }
 
   function newConversationId() {
-    return crypto.randomUUID().replace(/-/g, '').slice(0, 26).toUpperCase();
+    return newDeploymentDialogueConversationId();
   }
 
   function startThinkingDots() {

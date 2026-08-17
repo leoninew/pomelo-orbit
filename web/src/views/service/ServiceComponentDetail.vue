@@ -104,109 +104,24 @@
         </div>
       </DetailInfoCard>
 
-      <DetailInfoCard class="order-2">
-        <template #header>
-          <h2 class="app-detail-section-title">{{ t('environment.title') }}</h2>
-          <div v-if="environmentRows.length > 0" class="app-detail-section-actions">
-            <div class="relative w-64 max-w-full">
-              <Search
-                class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-              <input
-                v-model="environmentSearch"
-                type="text"
-                class="app-input-search"
-                :placeholder="t('environment.searchPlaceholder')"
-                :aria-label="t('environment.searchPlaceholder')"
-              />
-              <button
-                v-if="environmentSearch"
-                type="button"
-                class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
-                :aria-label="t('common.clearSearch')"
-                @click="environmentSearch = ''"
-              >
-                <X class="size-4" />
-              </button>
-            </div>
-          </div>
-        </template>
-        <AppEmptyState v-if="environmentRows.length === 0" size="compact" />
-        <div
-          v-else-if="filteredEnvironmentRows.length === 0"
-          class="py-8 text-center text-sm text-muted-foreground"
-        >
-          {{ t('environment.noResults') }}
-        </div>
-        <div v-else class="overflow-x-auto">
-          <table class="app-data-table table-fixed min-w-[760px]">
-            <colgroup>
-              <col class="w-[25%]" />
-              <col class="w-[30%]" />
-              <col class="w-[30%]" />
-              <col class="w-[15%]" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>{{ t('environment.fields.key') }}</th>
-                <th>{{ t('service.componentDetail.defaultValue') }}</th>
-                <th>{{ t('service.componentDetail.currentValue') }}</th>
-                <th>{{ t('common.operation') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="entry in filteredEnvironmentRows" :key="entry.key">
-                <td class="max-w-0 text-foreground">
-                  <span class="block truncate" :title="entry.key">{{ entry.key }}</span>
-                </td>
-                <td class="max-w-0 text-muted-foreground">
-                  <span class="block truncate" :title="entry.base || '-'">
-                    {{ entry.base || '-' }}
-                  </span>
-                </td>
-                <td class="max-w-0">
-                  <input
-                    v-if="!entry.deleted"
-                    :value="entry.value"
-                    type="text"
-                    class="app-input h-9"
-                    :aria-label="t('service.componentDetail.currentValue')"
-                    :disabled="operating"
-                    @input="updateEnvironmentValue(entry, $event)"
-                  />
-                  <span
-                    v-else
-                    class="block h-9 truncate leading-9 text-amber-600 dark:text-amber-400"
-                    title="-"
-                  >
-                    -
-                  </span>
-                </td>
-                <td class="whitespace-nowrap">
-                  <div class="flex h-9 items-center gap-2">
-                    <button
-                      v-if="entry.deleted"
-                      class="app-link"
-                      :disabled="operating"
-                      @click="resetEnvironmentToVersion(entry)"
-                    >
-                      {{ t('service.componentDetail.reset') }}
-                    </button>
-                    <button
-                      v-else-if="entry.overridden"
-                      class="text-muted-foreground hover:text-foreground"
-                      :disabled="operating"
-                      @click="resetEnvironmentToVersion(entry)"
-                    >
-                      {{ t('service.componentDetail.reset') }}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </DetailInfoCard>
+      <ServiceEnvironmentCard
+        class="order-2"
+        :rows="environmentEditorRows"
+        :saved-rows="savedEnvironmentEditorRows"
+        :disabled="operating"
+        :allow-add="false"
+        :allow-remove="false"
+        :default-values="environmentDefaultValues"
+        :default-value-label="t('service.componentDetail.defaultValue')"
+        :value-label="t('service.componentDetail.currentValue')"
+        :deleted-row-ids="deletedEnvironmentRowIds"
+        :resettable-row-ids="resettableEnvironmentRowIds"
+        :reset-label="t('service.componentDetail.reset')"
+        :dirty="environmentDirty"
+        @update:rows="updateEnvironmentRows"
+        @reset:row="resetEnvironmentRow"
+        @save="persistComponentEnvironment"
+      />
 
       <DetailInfoCard class="order-4" title="资源配额">
         <template #actions>
@@ -639,7 +554,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Save, Search, X } from '@lucide/vue';
+  import { ArrowLeft, Save } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -652,6 +567,7 @@
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
+  import type { EnvironmentVariableListRow } from '@/components/environmentVariableList';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type {
@@ -659,15 +575,16 @@
     ServiceComponentOverlayUpdateReq,
     ServiceResp,
   } from '@/gen/proto/orbit/v1/service/service';
+  import ServiceEnvironmentCard from './components/ServiceEnvironmentCard.vue';
+  import {
+    componentEnvironmentListRows,
+    componentEnvironmentOverlays,
+    componentEnvironmentRowsEqual,
+    resetComponentEnvironmentRow,
+    updateComponentEnvironmentRows,
+    type ServiceComponentEnvironmentRow,
+  } from './serviceComponentEnvironment';
 
-  type EnvRow = {
-    key: string;
-    base: string;
-    inheritedValue: string;
-    value: string;
-    deleted: boolean;
-    overridden: boolean;
-  };
   type MountRow = {
     target: string;
     source_type: string;
@@ -746,20 +663,24 @@
       },
     ];
   });
-  const environmentRows = ref<EnvRow[]>([]);
-  const environmentSearch = ref('');
-  const filteredEnvironmentRows = computed(() => {
-    const keyword = environmentSearch.value.trim().toLowerCase();
-    if (!keyword) {
-      return environmentRows.value;
-    }
-    return environmentRows.value.filter(
-      (entry) =>
-        entry.key.toLowerCase().includes(keyword) ||
-        entry.base.toLowerCase().includes(keyword) ||
-        entry.value.toLowerCase().includes(keyword)
-    );
-  });
+  const environmentRows = ref<ServiceComponentEnvironmentRow[]>([]);
+  const savedEnvironmentRows = ref<ServiceComponentEnvironmentRow[]>([]);
+  const environmentEditorRows = computed(() => componentEnvironmentListRows(environmentRows.value));
+  const savedEnvironmentEditorRows = computed(() =>
+    componentEnvironmentListRows(savedEnvironmentRows.value)
+  );
+  const environmentDefaultValues = computed(() =>
+    Object.fromEntries(environmentRows.value.map((row) => [row.key, row.base]))
+  );
+  const deletedEnvironmentRowIds = computed(() =>
+    environmentRows.value.filter((row) => row.deleted).map((row) => row.key)
+  );
+  const resettableEnvironmentRowIds = computed(() =>
+    environmentRows.value.filter((row) => row.deleted || row.overridden).map((row) => row.key)
+  );
+  const environmentDirty = computed(
+    () => !componentEnvironmentRowsEqual(environmentRows.value, savedEnvironmentRows.value)
+  );
   const mountRows = ref<MountRow[]>([]);
   const mountDialogOpen = ref(false);
   const editingMountTarget = ref<string | null>(null);
@@ -856,7 +777,7 @@
       value: component.restart_policy ?? '',
       overridden: component.restart_policy !== undefined,
     });
-    environmentRows.value = declaration.env.map((item) => {
+    const rows = declaration.env.map((item) => {
       const overlay = overlayByKey(component.env, item.key, (candidate) => candidate.key);
       const inheritedValue = item.value;
       return {
@@ -868,6 +789,8 @@
         overridden: overlay?.state === 'override',
       };
     });
+    environmentRows.value = rows;
+    savedEnvironmentRows.value = rows.map((row) => ({ ...row }));
     mountRows.value = declaration.mounts.map((item) => {
       const overlay = component.mounts.find((candidate) => candidate.target === item.target);
       return {
@@ -940,15 +863,44 @@
         ]
       : [];
   }
-  function updateEnvironmentValue(row: EnvRow, event: Event) {
-    row.value = (event.target as HTMLInputElement).value;
-    row.deleted = false;
-    row.overridden = row.value !== row.inheritedValue;
+  function updateEnvironmentRows(rows: EnvironmentVariableListRow[]) {
+    environmentRows.value = updateComponentEnvironmentRows(environmentRows.value, rows);
   }
-  function resetEnvironmentToVersion(row: EnvRow) {
-    row.value = row.inheritedValue;
-    row.deleted = false;
-    row.overridden = false;
+
+  function resetEnvironmentRow(editorRow: EnvironmentVariableListRow) {
+    environmentRows.value = resetComponentEnvironmentRow(environmentRows.value, editorRow.id);
+  }
+  function componentEnvironmentPayload(): ServiceComponentOverlayUpdateReq {
+    const component = detail.value?.service_component;
+    if (!component) throw new Error('service component detail is incomplete');
+    return {
+      entrypoint: component.entrypoint,
+      command: component.command,
+      pull_policy: component.pull_policy,
+      restart_policy: component.restart_policy,
+      env: componentEnvironmentOverlays(environmentRows.value),
+      mounts: component.mounts,
+      resources: component.resources,
+      endpoints: component.endpoints,
+    };
+  }
+  async function persistComponentEnvironment() {
+    try {
+      await executeOperation(async () => {
+        const updated = await serviceApi.updateComponent(
+          serviceId,
+          componentId,
+          componentEnvironmentPayload()
+        );
+        if (detail.value) {
+          detail.value = { ...detail.value, service_component: updated };
+        }
+        savedEnvironmentRows.value = environmentRows.value.map((row) => ({ ...row }));
+        toast.success(t('environment.saved'));
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('environment.saveFailed'));
+    }
   }
   function startResourceEdit(field: ResourceField) {
     editingResourceKey.value = field.key;

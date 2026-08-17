@@ -28,7 +28,7 @@
           <button
             type="submit"
             class="app-button-primary h-9 px-3"
-            :disabled="disabled || !dirty || hasEditingRows"
+            :disabled="disabled || !isDirty || hasEditingRows"
           >
             <Save class="size-4" />
             {{ t('common.save') }}
@@ -51,17 +51,19 @@
     <div v-else class="overflow-x-auto">
       <table class="app-data-table min-w-[640px] table-fixed">
         <colgroup>
-          <col :class="editable ? 'w-[32%]' : 'w-[40%]'" />
-          <col :class="editable ? 'w-[52%]' : 'w-[60%]'" />
+          <col :class="hasDefaultValues ? 'w-[24%]' : editable ? 'w-[32%]' : 'w-[40%]'" />
+          <col v-if="hasDefaultValues" class="w-[28%]" />
+          <col :class="hasDefaultValues ? 'w-[32%]' : editable ? 'w-[52%]' : 'w-[60%]'" />
           <col v-if="editable" class="w-[16%]" />
         </colgroup>
         <thead>
           <tr>
             <th>
               {{ t('environment.fields.key') }}
-              <span class="ml-1 text-destructive">*</span>
+              <span v-if="allowAdd" class="ml-1 text-destructive">*</span>
             </th>
-            <th>{{ t('environment.fields.value') }}</th>
+            <th v-if="hasDefaultValues">{{ defaultValueLabel }}</th>
+            <th>{{ valueLabel || t('environment.fields.value') }}</th>
             <th v-if="editable" class="w-20">{{ t('common.operation') }}</th>
           </tr>
         </thead>
@@ -93,6 +95,11 @@
                 {{ row.key }}
               </span>
             </td>
+            <td v-if="hasDefaultValues" class="text-muted-foreground">
+              <span class="flex min-h-9 items-center break-all">
+                {{ defaultValues?.[row.id] || '-' }}
+              </span>
+            </td>
             <td>
               <div class="relative min-h-9">
                 <input
@@ -105,10 +112,14 @@
                   :disabled="disabled"
                   @input="updateEditingValue(row.id, $event)"
                 />
-                <span v-else class="flex min-h-9 items-center break-all text-foreground">
-                  {{
-                    maskValues && row.value && !valueVisible[row.id] ? maskValue : row.value || '-'
-                  }}
+                <span
+                  v-else
+                  class="flex min-h-9 items-center break-all"
+                  :class="
+                    isResettable(row.id) ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
+                  "
+                >
+                  {{ displayValue(row) }}
                 </span>
                 <button
                   v-if="maskValues"
@@ -147,10 +158,26 @@
                 </button>
               </div>
               <div v-else class="flex h-9 items-center gap-2">
-                <button type="button" class="app-link" :disabled="disabled" @click="startEdit(row)">
+                <button
+                  v-if="!isDeleted(row.id)"
+                  type="button"
+                  class="app-link"
+                  :disabled="disabled"
+                  @click="startEdit(row)"
+                >
                   {{ t('common.edit') }}
                 </button>
                 <button
+                  v-if="isResettable(row.id)"
+                  type="button"
+                  class="text-muted-foreground hover:text-foreground"
+                  :disabled="disabled"
+                  @click="emit('reset:row', row)"
+                >
+                  {{ resetLabel }}
+                </button>
+                <button
+                  v-if="allowRemove && !isDeleted(row.id)"
                   type="button"
                   class="app-link-danger"
                   :disabled="disabled"
@@ -164,9 +191,9 @@
             </td>
           </tr>
         </tbody>
-        <tfoot v-if="editable">
+        <tfoot v-if="editable && allowAdd">
           <tr>
-            <td :colspan="editable ? 3 : 2">
+            <td :colspan="columnCount">
               <button
                 type="button"
                 class="app-link inline-flex items-center gap-1"
@@ -181,7 +208,10 @@
         </tfoot>
       </table>
     </div>
-    <div v-if="editable && (rows.length === 0 || filteredRows.length === 0)" class="px-6 pb-6">
+    <div
+      v-if="editable && allowAdd && (rows.length === 0 || filteredRows.length === 0)"
+      class="px-6 pb-6"
+    >
       <button
         type="button"
         class="app-link inline-flex items-center gap-1"
@@ -218,6 +248,15 @@
       maskValues?: boolean;
       validateKey?: EnvironmentVariableKeyValidator;
       formError?: string;
+      allowAdd?: boolean;
+      allowRemove?: boolean;
+      defaultValues?: Record<string, string>;
+      defaultValueLabel?: string;
+      valueLabel?: string;
+      deletedRowIds?: string[];
+      resettableRowIds?: string[];
+      resetLabel?: string;
+      dirty?: boolean;
     }>(),
     {
       disabled: false,
@@ -225,12 +264,22 @@
       maskValues: false,
       validateKey: undefined,
       formError: undefined,
+      allowAdd: true,
+      allowRemove: true,
+      defaultValues: undefined,
+      defaultValueLabel: '',
+      valueLabel: '',
+      deletedRowIds: () => [],
+      resettableRowIds: () => [],
+      resetLabel: '',
+      dirty: undefined,
     }
   );
 
   const emit = defineEmits<{
     'update:rows': [rows: EnvironmentVariableListRow[]];
     save: [entries: EnvironmentVariableEntry[]];
+    'reset:row': [row: EnvironmentVariableListRow];
   }>();
 
   const { t } = useI18n();
@@ -242,7 +291,11 @@
   >({});
   let newRowIndex = 0;
 
-  const dirty = computed(() => !environmentVariableRowsEqual(props.rows, props.savedRows));
+  const isDirty = computed(
+    () => props.dirty ?? !environmentVariableRowsEqual(props.rows, props.savedRows)
+  );
+  const hasDefaultValues = computed(() => props.defaultValues !== undefined);
+  const columnCount = computed(() => 2 + Number(hasDefaultValues.value) + Number(props.editable));
   const hasEditingRows = computed(() => Object.keys(editingRows).length > 0);
   const search = ref('');
   const filteredRows = computed(() => {
@@ -251,12 +304,29 @@
       return props.rows;
     }
     return props.rows.filter(
-      (row) => row.key.toLowerCase().includes(keyword) || row.value.toLowerCase().includes(keyword)
+      (row) =>
+        row.key.toLowerCase().includes(keyword) ||
+        row.value.toLowerCase().includes(keyword) ||
+        (props.defaultValues?.[row.id] ?? '').toLowerCase().includes(keyword)
     );
   });
 
   function clearSearch() {
     search.value = '';
+  }
+
+  function isDeleted(id: string) {
+    return props.deletedRowIds.includes(id);
+  }
+
+  function isResettable(id: string) {
+    return props.resettableRowIds.includes(id);
+  }
+
+  function displayValue(row: EnvironmentVariableListRow) {
+    if (isDeleted(row.id)) return '-';
+    if (props.maskValues && row.value && !valueVisible[row.id]) return maskValue;
+    return row.value || '-';
   }
 
   watch(

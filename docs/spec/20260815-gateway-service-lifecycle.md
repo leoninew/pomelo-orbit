@@ -53,7 +53,7 @@ resolve target Gateway Service (default when no instance is specified)
   -> Gateway post-deploy route publication
 ```
 
-Gateway 页面不得在 Deploy 点击处理器内创建 Service 或在选择 Version 时改绑 Service。Version 选择、Version 发布、Component/endpoint/mount 编辑和 Service binding 的修改均属于普通 Application/Version/Service 操作；Gateway Config 保存不改变 Version。页面可以选择已有 Gateway Service instance，但不能把 instance 选择实现为即时创建或更新 binding。
+Gateway 页面不得在 Deploy 点击处理器内创建 Service。部署对话框列出既有 Service 和其 Application 的 Version，并默认选中该 Service 当前绑定版本；仅在用户确认部署且版本不同的情况下，按普通 Service 更新规则重绑 Version 和组件覆盖，再调用通用 DeployService。Gateway Config 保存不改变 Version。页面可以选择已有 Gateway Service instance，但不能把 instance 选择实现为即时创建或更新 binding。
 
 `orbit_provision_gateway` 保留为幂等资源准备入口：若资源组不存在则调用 factory，若已存在则按传入的 `instance_key` 解析 Service，未传入时使用 `default`。它为显式 Provision 的缺失实例创建 Service 时必须复用通用 Service 创建/组件 mapping 语义，并返回停止态 Service；不得发布 Version、调用部署命令或等待 Deployment。部署由用户或 MCP 随后的显式通用 `DeployService` 调用完成。
 

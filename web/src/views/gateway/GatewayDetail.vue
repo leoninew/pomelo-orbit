@@ -174,10 +174,26 @@
             :options="deployServiceSelectOptions"
             :placeholder="t('gateway.deploy.selectService')"
             :invalid="Boolean(deployErrors.service_id)"
-            @update:model-value="deployErrors.service_id = ''"
+            @update:model-value="handleDeployServiceChange"
           />
           <p v-if="deployErrors.service_id" class="app-field-error" role="alert">
             {{ deployErrors.service_id }}
+          </p>
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('gateway.deploy.version') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <SelectControl
+            v-model="deployForm.version_id"
+            :options="deployVersionSelectOptions"
+            :placeholder="t('gateway.deploy.selectVersion')"
+            :invalid="Boolean(deployErrors.version_id)"
+            @update:model-value="deployErrors.version_id = ''"
+          />
+          <p v-if="deployErrors.version_id" class="app-field-error" role="alert">
+            {{ deployErrors.version_id }}
           </p>
         </div>
         <label class="flex items-center gap-2">
@@ -358,6 +374,7 @@
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { formatTime } from '@/utils/time';
@@ -371,6 +388,7 @@
 
   const gateway = ref<GatewayResp | null>(null);
   const services = ref<ServiceResp[]>([]);
+  const deployVersions = ref<VersionResp[]>([]);
   const exposureSearchText = ref('');
   const appliedExposureSearch = ref('');
 
@@ -393,10 +411,11 @@
   });
 
   const isDeployDialogOpen = ref(false);
-  const deployErrors = reactive({ service_id: '' });
+  const deployErrors = reactive({ service_id: '', version_id: '' });
   const deploySubmitError = ref('');
   const deployForm = reactive({
     service_id: '',
+    version_id: '',
     force_recreate: false,
   });
 
@@ -436,6 +455,9 @@
 
   const deployServiceSelectOptions = computed(() =>
     services.value.map((item) => ({ value: item.id, label: serviceOptionLabel(item) }))
+  );
+  const deployVersionSelectOptions = computed(() =>
+    deployVersions.value.map((item) => ({ value: item.id, label: item.label }))
   );
 
   const stopServiceSelectOptions = computed(() =>
@@ -546,17 +568,40 @@
     if (!current) {
       return;
     }
-    Object.assign(deployErrors, { service_id: '' });
+    Object.assign(deployErrors, { service_id: '', version_id: '' });
     deploySubmitError.value = '';
     deployForm.force_recreate = false;
     if (services.value.length === 0) {
       toast.error(t('gateway.toast.noService'));
       return;
     }
-    deployForm.service_id =
+    const serviceId =
       services.value.find((item) => item.id === current.default_service_id)?.id ||
       services.value[0].id;
-    isDeployDialogOpen.value = true;
+    const selectedService = services.value.find((item) => item.id === serviceId);
+    if (!selectedService) {
+      return;
+    }
+    try {
+      const page = await applicationApi.listVersions(current.id, { per_page: 100 });
+      deployVersions.value = page.items ?? [];
+      deployForm.service_id = selectedService.id;
+      deployForm.version_id = selectedService.version_id;
+      isDeployDialogOpen.value = true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('service.toast.loadFailed'));
+    }
+  }
+
+  function handleDeployServiceChange(value: string | number) {
+    const serviceId = String(value);
+    deployForm.service_id = serviceId;
+    deployErrors.service_id = '';
+    const selectedService = services.value.find((item) => item.id === serviceId);
+    if (selectedService) {
+      deployForm.version_id = selectedService.version_id;
+      deployErrors.version_id = '';
+    }
   }
 
   async function handleDeployOk() {
@@ -569,10 +614,30 @@
       deployErrors.service_id = t('gateway.toast.deployServiceRequired');
       return;
     }
+    if (!deployForm.version_id) {
+      deployErrors.version_id = t('gateway.deploy.versionRequired');
+      return;
+    }
     deployErrors.service_id = '';
+    deployErrors.version_id = '';
     try {
       await executeOp(async () => {
-        const result = await serviceApi.deploy(deployForm.service_id, {
+        const selectedService = services.value.find((item) => item.id === deployForm.service_id);
+        if (!selectedService) {
+          throw new Error(t('gateway.toast.deployServiceRequired'));
+        }
+        let serviceForDeploy = selectedService;
+        if (deployForm.version_id !== selectedService.version_id) {
+          serviceForDeploy = await serviceApi.updateBasic(selectedService.id, {
+            version_id: deployForm.version_id,
+            instance_key: selectedService.instance_key,
+          });
+          const index = services.value.findIndex((item) => item.id === serviceForDeploy.id);
+          if (index >= 0) {
+            services.value[index] = serviceForDeploy;
+          }
+        }
+        const result = await serviceApi.deploy(serviceForDeploy.id, {
           force_recreate: deployForm.force_recreate,
         });
         for (const warning of result.warnings) toast.error(warning);

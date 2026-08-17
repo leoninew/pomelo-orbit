@@ -722,6 +722,9 @@ export default {
       description: '选择已有网关服务，触发与普通应用相同的服务部署流水线。',
       service: '服务实例',
       selectService: '选择服务实例',
+      version: '版本',
+      selectVersion: '选择版本',
+      versionRequired: '请选择版本',
       forceRecreate: '强制重建',
     },
     stop: {

@@ -1,5 +1,5 @@
 # CD 领域模型（现行）
-最后修改时间: 2026-08-15 12:48:49
+最后修改时间: 2026-08-17 20:19:00
 
 Doc role: living SoT  
 代码锚点：`internal/model/cd.go`、`internal/common/constant/status.go`、`internal/application/cd/usecase/*`、`sql/migration/*/…_cd_schema*.sql`（以仓库当前迁移文件为准）。
@@ -80,8 +80,8 @@ Project
 
 ## 部署顺序（标准路径）
 
-1. 选定 **Version**（部署前置，不可省略）。  
-2. 确保 **Service** 绑定（app + env + instance）。  
+1. 部署对话框列出 Application 的 **Version**，默认选中 Service 当前绑定版本。
+2. 若选中版本不同，先按普通 Service 更新规则重绑 Version 和组件覆盖，再创建 Deployment。
 3. 创建 Deployment 时快照完整 Service 运行时配置；worker 只读取该快照。
 4. **Render(Version)** → 以快照解析 `${KEY}` / `${KEY:-default}`，生成 compose 等工作区文件（kind 分支）。
 5. **apply**（`docker compose …`）。

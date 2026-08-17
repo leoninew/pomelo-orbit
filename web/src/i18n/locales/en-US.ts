@@ -739,6 +739,9 @@ export default {
       description: 'Deploy an existing Gateway service through the standard service pipeline.',
       service: 'Service instance',
       selectService: 'Select service instance',
+      version: 'Version',
+      selectVersion: 'Select a version',
+      versionRequired: 'Select a version',
       forceRecreate: 'Force recreate',
     },
     stop: {

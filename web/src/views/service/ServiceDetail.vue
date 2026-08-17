@@ -186,6 +186,24 @@
         <p class="text-sm text-muted-foreground">
           {{ deployTargetLabel }}
         </p>
+        <div class="space-y-1.5">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('service.deploy.selectVersion') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <ComboboxSelect
+            :model-value="deployForm.version_id"
+            :options="deployVersionSelectOptions"
+            :placeholder="t('service.deploy.selectVersion')"
+            :invalid="Boolean(deployVersionError)"
+            description-inline
+            width-class="w-full"
+            @update:model-value="handleDeployVersionChange"
+          />
+          <p v-if="deployVersionError" class="app-field-error" role="alert">
+            {{ deployVersionError }}
+          </p>
+        </div>
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('service.deploy.forceRecreate') }}</span>
@@ -424,7 +442,13 @@
   });
   const basicEditSubmitError = ref('');
   const isDeployDialogOpen = ref(false);
-  const deployForm = reactive({ force_recreate: false, join_traefik_network: true });
+  const deployVersions = ref<VersionResp[]>([]);
+  const deployForm = reactive({
+    version_id: '',
+    force_recreate: false,
+    join_traefik_network: true,
+  });
+  const deployVersionError = ref('');
   const deploySubmitError = ref('');
   const isStopDialogOpen = ref(false);
   const stopRemoveVolumes = ref(false);
@@ -482,6 +506,13 @@
   const isStandardService = computed(() => service.value?.application_kind === 'standard');
   const basicEditVersionSelectOptions = computed(() =>
     basicEditVersions.value.map((version) => ({
+      value: version.id,
+      label: version.label,
+      description: version.status,
+    }))
+  );
+  const deployVersionSelectOptions = computed(() =>
+    deployVersions.value.map((version) => ({
       value: version.id,
       label: version.label,
       description: version.status,
@@ -745,15 +776,34 @@
     );
   }
 
-  function openDeployDialog() {
-    deployForm.force_recreate = false;
-    deployForm.join_traefik_network = true;
-    deploySubmitError.value = '';
-    isDeployDialogOpen.value = true;
+  async function openDeployDialog() {
+    const current = service.value;
+    if (!current) return;
+    try {
+      const page = await applicationApi.listVersions(current.application_id, { per_page: 100 });
+      deployVersions.value = page.items ?? [];
+      Object.assign(deployForm, {
+        version_id: current.version_id,
+        force_recreate: false,
+        join_traefik_network: true,
+      });
+      deployVersionError.value = '';
+      deploySubmitError.value = '';
+      isDeployDialogOpen.value = true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('service.toast.loadFailed'));
+    }
+  }
+
+  function handleDeployVersionChange(value: ComboboxOptionValue) {
+    deployForm.version_id = String(value || '');
+    deployVersionError.value = '';
   }
 
   function closeDeployDialog() {
     isDeployDialogOpen.value = false;
+    deployVersions.value = [];
+    deployVersionError.value = '';
     deploySubmitError.value = '';
   }
 
@@ -766,11 +816,22 @@
   }
 
   async function handleDeployOk() {
-    if (!service.value) return;
+    const current = service.value;
+    if (!current) return;
     deploySubmitError.value = '';
+    deployVersionError.value = deployForm.version_id ? '' : t('service.deploy.versionRequired');
+    if (deployVersionError.value) return;
     try {
       await executeOperation(async () => {
-        const result = await serviceApi.deploy(serviceId, {
+        let serviceForDeploy = current;
+        if (deployForm.version_id !== current.version_id) {
+          serviceForDeploy = await serviceApi.updateBasic(serviceId, {
+            version_id: deployForm.version_id,
+            instance_key: current.instance_key,
+          });
+          setService(serviceForDeploy);
+        }
+        const result = await serviceApi.deploy(serviceForDeploy.id, {
           force_recreate: deployForm.force_recreate,
           join_traefik_network: deployForm.join_traefik_network,
         });

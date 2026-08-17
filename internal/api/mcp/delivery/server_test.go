@@ -360,6 +360,26 @@ func TestMountToolDocumentsAndMapsControlledFile(t *testing.T) {
 	}
 }
 
+func TestDeployToolDocumentsServiceBoundVersion(t *testing.T) {
+	server, err := NewServer(Dependencies{ActorUserId: "actor"})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	tools, err := connectInMemory(t, server).ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("ListTools() error = %v", err)
+	}
+	for _, tool := range tools.Tools {
+		if tool.Name == "orbit_deploy" {
+			if !strings.Contains(tool.Description, "Service's currently selected Version") {
+				t.Fatalf("deploy description = %q", tool.Description)
+			}
+			return
+		}
+	}
+	t.Fatal("deploy tool not found")
+}
+
 func TestStreamableHTTPUsesTheSharedToolRegistry(t *testing.T) {
 	server, err := NewServer(Dependencies{ActorUserId: "actor"})
 	if err != nil {

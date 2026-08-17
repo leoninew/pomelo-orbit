@@ -29,7 +29,7 @@ Review status: Accepted
 ## User scenarios
 
 1. 用户创建 Gateway 后，详情页即可看到一个 `instance_key=default`、code 为 `<application-code>-default`、状态为 `stopped` 的 Gateway Service，不必先发起部署才能拥有运行绑定。
-2. 用户从 Gateway 详情页部署选定的 Gateway Service 时，系统只对该 Service 调用通用 `DeployService`；Deployment 详情、日志、取消和故障状态与标准 Service 一致。
+2. 用户从 Gateway 详情页部署选定的 Gateway Service 时，系统默认使用其已绑定 Version；选择其他 Version 时先按普通 Service 规则更新绑定，再调用通用 `DeployService`。Deployment 详情、日志、取消和故障状态与标准 Service 一致。
 3. 用户显式创建 `instance_key=staging` 的 Gateway Service 时，其 code 为 `<application-code>-staging`。它可作为另一个 Service binding 保存或部署；当同 Application 的 default 实例正在运行时，由与常规应用相同的单运行实例规则拒绝并发启动，而不是 Gateway 专用校验。
 4. MCP 在空项目调用 `orbit_provision_gateway` 时创建完整 Gateway 资源组并返回默认停止态 Service；重复调用复用同一资源组和同一 Service。用户可先在 Application/Version 中配置，随后显式调用通用 Service 部署；指定非默认实例的显式 Provision 使用通用 Service 创建/查询语义。
 5. Gateway Compose 启动成功后，系统等待 Traefik REST 控制面可用，再发布完整 HTTP/TCP Route 快照；任一步失败均以通用 Service/Deployment faulted 结果呈现。

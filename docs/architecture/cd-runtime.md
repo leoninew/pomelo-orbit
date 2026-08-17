@@ -1,5 +1,5 @@
 # CD 运行时与渲染
-最后修改时间: 2026-08-15 12:48:49
+最后修改时间: 2026-08-17 20:19:00
 
 Doc role: living SoT  
 代码锚点：`internal/application/cd/usecase/compose_renderer.go`、`deployment_execution*.go`、`gateway*.go`、`expose_*.go`、`internal/infrastructure/runner/cd`、`internal/infrastructure/storage/local/cdworkspace`、`internal/infrastructure/external/traefik`。
@@ -8,7 +8,8 @@ Doc role: living SoT
 
 ```text
 HTTP Deploy/Stop/Restart
-  → usecase 校验 Service/Version 匹配，快照 Service RuntimeConfig 到 Deployment.options_json
+  → Deploy 对话框必要时先更新 Service.Version；部署请求只指定 Service
+  → usecase 读取 Service 当前 Version，快照 Service RuntimeConfig 到 Deployment.options_json
   → 写 Deployment / Task（Service 不表达操作进行态）
   → worker 拾取 task
   → deployment_execution：只读 Deployment 快照，解析占位符 → Render → 工作区 → docker compose

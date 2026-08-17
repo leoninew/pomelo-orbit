@@ -1,5 +1,9 @@
 version: '3'
 
+vars:
+  VERSION:
+    sh: cat VERSION
+
 tasks:
   default:
     desc: Show available tasks
@@ -81,8 +85,50 @@ tasks:
         docker build -f "$DOCKERFILE" -t "pomelo-orbit:$TAG" .
         printf "image built: pomelo-orbit:%s\n" "$TAG"
 
+  version:
+    desc: Calculate the release version from Git history
+    cmds:
+      - python scripts/version-calc.py
+
+  version:apply:
+    desc: Calculate and apply the release version to tracked metadata
+    cmds:
+      - python scripts/version-calc.py --quiet --apply
+
+  package:
+    desc: Build Windows, Linux, and macOS x64 direct-run zip packages in dist/
+    env:
+      CGO_ENABLED: '0'
+    vars:
+      WINDOWS_ROOT: 'dist/package/pomelo-orbit-v{{.VERSION}}-windows-x64'
+      LINUX_ROOT: 'dist/package/pomelo-orbit-v{{.VERSION}}-linux-x64'
+      MACOS_ROOT: 'dist/package/pomelo-orbit-v{{.VERSION}}-macos-x64'
+    cmds:
+      - rm -rf {{.WINDOWS_ROOT}} {{.LINUX_ROOT}} {{.MACOS_ROOT}} "dist/pomelo-orbit-v{{.VERSION}}-windows-x64.zip" "dist/pomelo-orbit-v{{.VERSION}}-linux-x64.zip" "dist/pomelo-orbit-v{{.VERSION}}-macos-x64.zip"
+      - mkdir -p {{.WINDOWS_ROOT}}/static {{.WINDOWS_ROOT}}/configs {{.LINUX_ROOT}}/static {{.LINUX_ROOT}}/configs {{.MACOS_ROOT}}/static {{.MACOS_ROOT}}/configs
+      - yarn --cwd web build
+      - env GOOS=windows GOARCH=amd64 go build -trimpath -o {{.WINDOWS_ROOT}}/pomelo-orbit.exe ./cmd/server
+      - env GOOS=linux GOARCH=amd64 go build -trimpath -o {{.LINUX_ROOT}}/pomelo-orbit ./cmd/server
+      - env GOOS=darwin GOARCH=amd64 go build -trimpath -o {{.MACOS_ROOT}}/pomelo-orbit ./cmd/server
+      - cp -R web/dist/. {{.WINDOWS_ROOT}}/static/
+      - cp -R web/dist/. {{.LINUX_ROOT}}/static/
+      - cp -R web/dist/. {{.MACOS_ROOT}}/static/
+      - cp configs/config.yaml {{.WINDOWS_ROOT}}/configs/config.yaml
+      - cp configs/config.yaml {{.LINUX_ROOT}}/configs/config.yaml
+      - cp configs/config.yaml {{.MACOS_ROOT}}/configs/config.yaml
+      - cp .env.example VERSION {{.WINDOWS_ROOT}}/
+      - cp .env.example VERSION {{.LINUX_ROOT}}/
+      - cp .env.example VERSION {{.MACOS_ROOT}}/
+      - cp configs/package.env {{.WINDOWS_ROOT}}/.env
+      - cp configs/package.env {{.LINUX_ROOT}}/.env
+      - cp configs/package.env {{.MACOS_ROOT}}/.env
+      - chmod +x {{.LINUX_ROOT}}/pomelo-orbit {{.MACOS_ROOT}}/pomelo-orbit
+      - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-windows-x64.zip pomelo-orbit-v{{.VERSION}}-windows-x64
+      - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-linux-x64.zip pomelo-orbit-v{{.VERSION}}-linux-x64
+      - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-macos-x64.zip pomelo-orbit-v{{.VERSION}}-macos-x64
+
   clean:
     desc: Remove local build artifacts
     cmds:
-      - rm -rf bin web/dist web/coverage
+      - rm -rf bin dist web/dist web/coverage
       - printf "clean complete\n"

@@ -1,0 +1,53 @@
+name: Package
+
+on:
+  push:
+    branches: [ci, master]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: web/yarn.lock
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install web dependencies
+        run: yarn --cwd web install --immutable
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Set up Task
+        uses: go-task/setup-task@v1
+        with:
+          version: 3.x
+
+      - name: Build packages
+        run: task package
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: pomelo-orbit-packages-${{ github.sha }}
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 14

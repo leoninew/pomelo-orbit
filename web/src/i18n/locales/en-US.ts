@@ -66,6 +66,10 @@ export default {
     globalToolbarAria: 'Global tools',
     userMenuAria: 'User menu',
     breadcrumbAria: 'Page path',
+    about: 'About',
+    versionLabel: 'Version {version}',
+    repository: 'Repository',
+    documentation: 'Documentation',
   },
   breadcrumb: {
     detail: 'Details',

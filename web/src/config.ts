@@ -1,7 +1,11 @@
+import packageJson from '../package.json';
+
 export interface RuntimeConfig {
   // Public API URL prefix injected by the backend while serving index.html.
   // Empty means same-origin /api.
   publicUrl?: string;
+  // Release version injected by the backend while serving index.html.
+  appVersion?: string;
 }
 
 declare global {
@@ -25,6 +29,14 @@ export function getPublicUrl(): string {
   return normalizePublicUrl(import.meta.env.VITE_PUBLIC_URL);
 }
 
+export function getAppVersion(): string {
+  if (typeof window !== 'undefined' && window.__CONFIG__?.appVersion !== undefined) {
+    return window.__CONFIG__.appVersion.trim();
+  }
+
+  return packageJson.version;
+}
+
 export function buildApiUrl(path: string): string {
   assertApiPath(path, apiPathPrefixes);
 
@@ -42,6 +54,9 @@ function assertApiPath(path: string, prefixes: string[]): void {
 export const config = {
   get publicUrl() {
     return getPublicUrl();
+  },
+  get appVersion() {
+    return getAppVersion();
   },
   envLabel: import.meta.env.VITE_ENV_LABEL,
 };

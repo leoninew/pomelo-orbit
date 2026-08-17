@@ -159,6 +159,21 @@ func TestStaticFilesInjectRuntimeConfigPublicUrl(t *testing.T) {
 	}
 }
 
+func TestStaticFilesInjectRuntimeConfigAppVersion(t *testing.T) {
+	server := newServerForServerTest(config.Config{App: config.AppConfig{Version: "0.251.0"}})
+	withStaticDir(t, "<html><head><!-- __RUNTIME_CONFIG__ --></head><body>app</body></html>", nil)
+
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	if !strings.Contains(recorder.Body.String(), `<script>window.__CONFIG__ = {"appVersion":"0.251.0"};</script>`) {
+		t.Fatalf("expected runtime config app version, got: %s", recorder.Body.String())
+	}
+}
+
 func TestStaticFilesInjectRuntimeConfigEmptyObject(t *testing.T) {
 	server := newServerForServerTest(config.Config{})
 	withStaticDir(t, "<html><head><!-- __RUNTIME_CONFIG__ --></head><body>app</body></html>", nil)

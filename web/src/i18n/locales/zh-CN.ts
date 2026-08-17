@@ -66,6 +66,10 @@ export default {
     globalToolbarAria: '全局工具',
     userMenuAria: '用户菜单',
     breadcrumbAria: '页面路径',
+    about: '关于',
+    versionLabel: '版本 v{version}',
+    repository: '代码仓库',
+    documentation: '文档',
   },
   breadcrumb: {
     detail: '详情',

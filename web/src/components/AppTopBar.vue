@@ -129,6 +129,13 @@
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
+          <DropdownMenuItem
+            class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+            @select="isAboutDialogOpen = true"
+          >
+            <CircleHelp class="size-4" />
+            {{ t('app.about') }}
+          </DropdownMenuItem>
           <div class="my-1 h-px bg-border" />
           <DropdownMenuItem
             class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
@@ -208,18 +215,71 @@
       />
     </template>
   </AppDialog>
+
+  <AppDialog
+    v-model:open="isAboutDialogOpen"
+    :title="t('app.about')"
+    width-class="w-[min(400px,calc(100vw-32px))]"
+    body-class="space-y-4 px-6 py-5"
+  >
+    <div class="flex items-center justify-center gap-4">
+      <img src="/logo-128.png" alt="Pomelo Orbit Logo" class="size-14" width="56" height="56" />
+      <div>
+        <p class="text-base font-semibold text-foreground">Pomelo Orbit</p>
+        <p class="mt-1 font-mono text-sm text-muted-foreground">
+          {{ t('app.versionLabel', { version: runtimeConfig.appVersion }) }}
+        </p>
+      </div>
+    </div>
+
+    <div
+      class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-border pt-4 text-sm"
+    >
+      <a
+        class="app-link inline-flex items-center gap-1.5"
+        href="https://github.com/leoninew/pomelo-orbit"
+        target="_blank"
+        rel="noreferrer"
+      >
+        <Code2 class="size-4" aria-hidden="true" />
+        {{ t('app.repository') }}
+      </a>
+      <a
+        class="app-link inline-flex items-center gap-1.5"
+        href="https://github.com/leoninew/pomelo-orbit/tree/develop/docs"
+        target="_blank"
+        rel="noreferrer"
+      >
+        <BookOpenText class="size-4" aria-hidden="true" />
+        {{ t('app.documentation') }}
+      </a>
+      <a
+        class="app-link inline-flex items-center gap-1.5"
+        href="https://github.com/leoninew/pomelo-orbit/blob/develop/LICENSE"
+        target="_blank"
+        rel="noreferrer"
+      >
+        <Scale class="size-4" aria-hidden="true" />
+        MIT License
+      </a>
+    </div>
+  </AppDialog>
 </template>
 
 <script setup lang="ts">
   import {
+    BookOpenText,
     ChevronDown,
     ChevronRight,
+    CircleHelp,
+    Code2,
     FolderKanban,
     KeyRound,
     Languages,
     LogOut,
     Monitor,
     Moon,
+    Scale,
     Sun,
   } from '@lucide/vue';
   import { computed, reactive, ref } from 'vue';
@@ -265,6 +325,7 @@
   const { loading: passwordLoading, execute: executeChangePassword } = useStatusAsync();
 
   const isPasswordDialogOpen = ref(false);
+  const isAboutDialogOpen = ref(false);
   const passwordForm = reactive({
     old_password: '',
     new_password: '',

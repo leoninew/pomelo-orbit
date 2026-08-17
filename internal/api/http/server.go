@@ -149,15 +149,18 @@ func (s Server) serveIndexHTML(c *gin.Context, indexPath string) bool {
 	if c.Request.Method == http.MethodHead {
 		return true
 	}
-	_, _ = c.Writer.Write(injectRuntimeConfig(content, s.appCfg.Server.PublicUrl))
+	_, _ = c.Writer.Write(injectRuntimeConfig(content, s.appCfg.Server.PublicUrl, s.appCfg.App.Version))
 	return true
 }
 
-func injectRuntimeConfig(content []byte, publicUrl string) []byte {
+func injectRuntimeConfig(content []byte, publicUrl string, appVersion string) []byte {
 	configValue := map[string]string{}
 	publicUrl = strings.TrimRight(strings.TrimSpace(publicUrl), "/")
 	if publicUrl != "" {
 		configValue["publicUrl"] = publicUrl
+	}
+	if appVersion = strings.TrimSpace(appVersion); appVersion != "" {
+		configValue["appVersion"] = appVersion
 	}
 	configJSON, err := json.Marshal(configValue)
 	if err != nil {

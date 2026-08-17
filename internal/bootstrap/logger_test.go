@@ -1,11 +1,13 @@
 package bootstrap
 
 import (
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
 )
@@ -81,6 +83,72 @@ func TestNewLoggerCreatesLogDirectory(t *testing.T) {
 	}
 }
 
+func TestNewLoggerRollsBySize(t *testing.T) {
+	restoreDefaultLogger(t)
+	cfg := config.Config{Logging: config.LoggingConfig{Level: "INFO", File: filepath.Join(t.TempDir(), "pomelo-orbit.log"), MaxSizeMB: 1, MaxBackups: 7}}
+	logger, closeLogger, err := newLoggerWithNow(cfg, io.Discard, time.Now)
+	if err != nil {
+		t.Fatalf("newLoggerWithNow() error = %v", err)
+	}
+
+	payload := strings.Repeat("x", 600*1024)
+	logger.Info("first entry", "payload", payload)
+	logger.Info("second entry", "payload", payload)
+	if err := closeLogger(); err != nil {
+		t.Fatal(err)
+	}
+
+	assertRotatedLog(t, cfg.Logging.File, "second entry", "first entry")
+}
+
+func TestNewLoggerRollsAtDayBoundary(t *testing.T) {
+	restoreDefaultLogger(t)
+	cfg := config.Config{Logging: config.LoggingConfig{Level: "INFO", File: filepath.Join(t.TempDir(), "pomelo-orbit.log"), MaxSizeMB: 10, MaxBackups: 7}}
+	current := time.Date(2026, 8, 16, 23, 59, 0, 0, time.Local)
+	logger, closeLogger, err := newLoggerWithNow(cfg, io.Discard, func() time.Time { return current })
+	if err != nil {
+		t.Fatalf("newLoggerWithNow() error = %v", err)
+	}
+
+	logger.Info("day one")
+	current = current.Add(2 * time.Minute)
+	logger.Info("day two")
+	if err := closeLogger(); err != nil {
+		t.Fatal(err)
+	}
+
+	assertRotatedLog(t, cfg.Logging.File, "day two", "day one")
+}
+
+func TestNewLoggerRollsAtDayBoundaryAfterRestart(t *testing.T) {
+	restoreDefaultLogger(t)
+	cfg := config.Config{Logging: config.LoggingConfig{Level: "INFO", File: filepath.Join(t.TempDir(), "pomelo-orbit.log"), MaxSizeMB: 10, MaxBackups: 7}}
+	dayOne := time.Date(2026, 8, 16, 23, 59, 0, 0, time.Local)
+	logger, closeLogger, err := newLoggerWithNow(cfg, io.Discard, func() time.Time { return dayOne })
+	if err != nil {
+		t.Fatalf("newLoggerWithNow() error = %v", err)
+	}
+	logger.Info("day one")
+	if err := closeLogger(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(cfg.Logging.File, dayOne, dayOne); err != nil {
+		t.Fatal(err)
+	}
+
+	dayTwo := dayOne.Add(2 * time.Minute)
+	logger, closeLogger, err = newLoggerWithNow(cfg, io.Discard, func() time.Time { return dayTwo })
+	if err != nil {
+		t.Fatalf("newLoggerWithNow() error = %v", err)
+	}
+	logger.Info("day two")
+	if err := closeLogger(); err != nil {
+		t.Fatal(err)
+	}
+
+	assertRotatedLog(t, cfg.Logging.File, "day two", "day one")
+}
+
 func TestNewLoggerSetsDefaultLogger(t *testing.T) {
 	restoreDefaultLogger(t)
 	cfg := testLoggerConfig(t, "INFO")
@@ -133,4 +201,34 @@ func restoreDefaultLogger(t *testing.T) {
 func testLoggerConfig(t *testing.T, level string) config.Config {
 	t.Helper()
 	return config.Config{Logging: config.LoggingConfig{Level: level, File: filepath.Join(t.TempDir(), "pomelo-orbit.log"), MaxSizeMB: 100, MaxBackups: 7}}
+}
+
+func assertRotatedLog(t *testing.T, activePath string, activeMessage string, rotatedMessage string) {
+	t.Helper()
+	ext := filepath.Ext(activePath)
+	base := strings.TrimSuffix(filepath.Base(activePath), ext)
+	rotated, err := filepath.Glob(filepath.Join(filepath.Dir(activePath), base+"-*"+ext))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rotated) == 0 {
+		t.Fatalf("expected rotated log alongside %s", activePath)
+	}
+	active, err := os.ReadFile(activePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(active), activeMessage) {
+		t.Fatalf("active log does not contain %q", activeMessage)
+	}
+	for _, path := range rotated {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(content), rotatedMessage) {
+			return
+		}
+	}
+	t.Fatalf("rotated logs do not contain %q", rotatedMessage)
 }

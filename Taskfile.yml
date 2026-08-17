@@ -23,6 +23,7 @@ tasks:
       - go install github.com/bufbuild/buf/cmd/buf@v1.59.0
       - go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
       - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+      - go install github.com/air-verse/air@v1.66.0
       - go mod download
       - go mod tidy
 
@@ -45,7 +46,7 @@ tasks:
     env:
       POMELO_ORBIT_APP__ENV: development
     cmds:
-      - air -c .air.server.toml
+      - ./bin/air -c .air.server.toml
 
   dev:web:
     desc: Start the frontend development server

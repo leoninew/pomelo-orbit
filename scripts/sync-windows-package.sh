@@ -14,4 +14,13 @@ if [ ! -d "$source_dir" ]; then
 fi
 
 mkdir -p "$target_dir"
-rsync -av --exclude='/.env' "$source_dir" "$target_dir"
+if command -v rsync >/dev/null 2>&1; then
+	rsync -av --exclude='/.env' "$source_dir" "$target_dir"
+	exit 0
+fi
+
+for source_path in "$source_dir"* "$source_dir".[!.]*; do
+	[ -e "$source_path" ] || continue
+	[ "${source_path##*/}" = ".env" ] && continue
+	cp -a "$source_path" "$target_dir"
+done

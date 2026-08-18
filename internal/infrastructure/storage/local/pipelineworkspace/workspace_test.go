@@ -10,8 +10,8 @@ import (
 	"testing"
 )
 
-func TestWorkspaceResolvesRelativeDataRootToAbsolutePhysicalMounts(t *testing.T) {
-	workspace := NewWithResolver("data", resolveAbsolutePhysicalDataRoot)
+func TestWorkspaceResolvesRelativeRootToAbsolutePhysicalMounts(t *testing.T) {
+	workspace := NewWithResolver("workspace", resolveAbsolutePhysicalWorkspaceRoot)
 	mounts, err := workspace.DockerStageMounts(context.Background(), "repo", "run-1")
 	if err != nil {
 		t.Fatal(err)
@@ -23,8 +23,8 @@ func TestWorkspaceResolvesRelativeDataRootToAbsolutePhysicalMounts(t *testing.T)
 		if !filepath.IsAbs(mount.HostPath) {
 			t.Fatalf("expected absolute host path, got %q", mount.HostPath)
 		}
-		if strings.HasPrefix(filepath.ToSlash(mount.HostPath), "data/"+pipelineDataDir+"/") {
-			t.Fatalf("expected physical host path, got relative data path %q", mount.HostPath)
+		if strings.HasPrefix(filepath.ToSlash(mount.HostPath), "workspace/") {
+			t.Fatalf("expected physical host path, got relative workspace path %q", mount.HostPath)
 		}
 	}
 	if mounts[0].ContainerPath != "/workspace" || mounts[1].ContainerPath != "/artifacts" {
@@ -32,26 +32,41 @@ func TestWorkspaceResolvesRelativeDataRootToAbsolutePhysicalMounts(t *testing.T)
 	}
 }
 
-func TestWorkspaceKeepsAbsolutePhysicalDataRootSemantics(t *testing.T) {
-	dataRoot := t.TempDir()
-	workspace := NewWithResolver(dataRoot, resolveAbsolutePhysicalDataRoot)
+func TestWorkspaceKeepsAbsolutePhysicalWorkspaceRootSemantics(t *testing.T) {
+	workspaceRoot := t.TempDir()
+	workspace := NewWithResolver(workspaceRoot, resolveAbsolutePhysicalWorkspaceRoot)
 	mounts, err := workspace.DockerStageMounts(context.Background(), "repo", "run-1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantWorkspace := filepath.Join(dataRoot, pipelineDataDir, "repo", "workspace")
-	wantArtifacts := filepath.Join(dataRoot, pipelineDataDir, "runs", "run-1", "artifacts")
+	wantWorkspace := filepath.Join(workspaceRoot, "repo", "workspace")
+	wantArtifacts := filepath.Join(workspaceRoot, "runs", "run-1", "artifacts")
 	if mounts[0].HostPath != wantWorkspace || mounts[1].HostPath != wantArtifacts {
 		t.Fatalf("unexpected mounts: %+v", mounts)
 	}
 }
 
-func TestWorkspaceUsesResolvedPhysicalDataRootForDockerMounts(t *testing.T) {
-	logicalRoot := filepath.Join(string(filepath.Separator), "app", "data")
-	physicalRoot := filepath.Join(t.TempDir(), "data")
-	workspace := NewWithResolver(logicalRoot, func(ctx context.Context, logicalDataRoot string) (string, error) {
-		if logicalDataRoot != filepath.Clean(logicalRoot) {
-			t.Fatalf("unexpected logical data root: %s", logicalDataRoot)
+func TestWorkspaceUsesLogicalRootWithoutDockerResolver(t *testing.T) {
+	workspaceRoot := t.TempDir()
+	workspace := NewWithResolver(workspaceRoot, nil)
+	mounts, err := workspace.DockerStageMounts(context.Background(), "repo", "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mounts[0].HostPath != filepath.Join(workspaceRoot, "repo", "workspace") {
+		t.Fatalf("workspace mount source = %q", mounts[0].HostPath)
+	}
+	if mounts[1].HostPath != filepath.Join(workspaceRoot, "runs", "run-1", "artifacts") {
+		t.Fatalf("artifacts mount source = %q", mounts[1].HostPath)
+	}
+}
+
+func TestWorkspaceUsesResolvedPhysicalWorkspaceRootForDockerMounts(t *testing.T) {
+	logicalRoot := filepath.Join(string(filepath.Separator), "app", "ci")
+	physicalRoot := filepath.Join(t.TempDir(), "ci")
+	workspace := NewWithResolver(logicalRoot, func(ctx context.Context, logicalWorkspaceRoot string) (string, error) {
+		if logicalWorkspaceRoot != filepath.Clean(logicalRoot) {
+			t.Fatalf("unexpected logical workspace root: %s", logicalWorkspaceRoot)
 		}
 		return physicalRoot, nil
 	})
@@ -65,8 +80,8 @@ func TestWorkspaceUsesResolvedPhysicalDataRootForDockerMounts(t *testing.T) {
 }
 
 func TestRemoveRunFilesRemovesOnlyRunDirectory(t *testing.T) {
-	dataRoot := t.TempDir()
-	workspace := NewWithResolver(dataRoot, nil)
+	workspaceRoot := t.TempDir()
+	workspace := NewWithResolver(workspaceRoot, nil)
 	stageLog := workspace.StageLogPath("run-1", "stage-run-1")
 	artifact := filepath.Join(workspace.ArtifactsPath("run-1"), "output.tar")
 	projectWorkspaceFile := filepath.Join(workspace.WorkspacePath("repo-1"), "source.txt")
@@ -94,6 +109,6 @@ func TestRemoveRunFilesRemovesOnlyRunDirectory(t *testing.T) {
 	}
 }
 
-func resolveAbsolutePhysicalDataRoot(ctx context.Context, logicalDataRoot string) (string, error) {
-	return filepath.Abs(logicalDataRoot)
+func resolveAbsolutePhysicalWorkspaceRoot(ctx context.Context, logicalWorkspaceRoot string) (string, error) {
+	return filepath.Abs(logicalWorkspaceRoot)
 }

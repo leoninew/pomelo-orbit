@@ -113,6 +113,47 @@ func TestValidatePipelineConfigurationRejectsComponentMappingWithoutApplicationB
 	}
 }
 
+func TestValidatePipelineConfigurationRequiresComponentBindingForDockerArtifact(t *testing.T) {
+	t.Parallel()
+
+	sourcePipelineID, sourceTemplateName := "template-1", "Build template"
+	sourceTemplateVersion := 1
+	repositoryID, repositoryName := "repository-1", "source"
+	artifacts, err := json.Marshal([]model.ArtifactConfig{{
+		Name:      "image",
+		Collector: "docker_image",
+		Reference: "registry.example/api:build",
+	}})
+	if err != nil {
+		t.Fatalf("marshal artifacts: %v", err)
+	}
+	pipeline := model.Pipeline{
+		Kind:                  model.PipelineKindApplication,
+		SourcePipelineId:      &sourcePipelineID,
+		SourceTemplateName:    &sourceTemplateName,
+		SourceTemplateVersion: &sourceTemplateVersion,
+		RepositoryId:          &repositoryID,
+		RepositoryName:        &repositoryName,
+	}
+	pipelineID, sourceID, sourceName, sourceDescription, dependsOn := "pipeline-1", "template-stage-1", "build", "template description", "[]"
+	sortOrder, sourceVersion := 0, 1
+	stages := []model.PipelineStage{{
+		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineID, Name: "build", Image: "builder", Script: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: &dependsOn, SortOrder: &sortOrder, SourceTemplateStageId: &sourceID, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
+	}}
+
+	err = (Service{}).validatePipelineConfiguration(context.Background(), pipeline, stages)
+	if err == nil || !strings.Contains(err.Error(), "Docker image artifacts require an application binding") {
+		t.Fatalf("expected application binding rejection, got %v", err)
+	}
+
+	applicationID, applicationName := "application-1", "API"
+	pipeline.ApplicationId, pipeline.ApplicationName = &applicationID, &applicationName
+	err = (Service{}).validatePipelineConfiguration(context.Background(), pipeline, stages)
+	if err == nil || !strings.Contains(err.Error(), "every Docker image artifact requires a component binding") {
+		t.Fatalf("expected component binding rejection, got %v", err)
+	}
+}
+
 func TestPipelineStageDefinitionsRejectsInvalidApplicationStageShape(t *testing.T) {
 	t.Parallel()
 

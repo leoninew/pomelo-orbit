@@ -309,7 +309,7 @@ func TestNormalizeServiceEnv(t *testing.T) {
 }
 
 func TestNormalizeOverlayAcceptsAbsoluteHostPathMountSource(t *testing.T) {
-	source := "D:/SourceCodes/mywork/PomeloOrbit-go/data/backup/bge-m3"
+	source := "D:/var/lib/pomelo-models/bge-m3"
 	sourceIsHostPath := true
 	component := model.ServiceComponent{Mounts: []model.ServiceComponentMount{{
 		Target: "/models", Source: &source, SourceIsHostPath: &sourceIsHostPath, State: model.ServiceComponentOverlayOverride,
@@ -326,7 +326,7 @@ func TestNormalizeOverlayAcceptsAbsoluteHostPathMountSource(t *testing.T) {
 }
 
 func TestNormalizeOverlayRejectsAbsoluteLogicalMountSource(t *testing.T) {
-	source := "D:/SourceCodes/mywork/PomeloOrbit-go/data/backup/bge-m3"
+	source := "D:/var/lib/pomelo-models/bge-m3"
 	sourceIsHostPath := false
 	component := model.ServiceComponent{Mounts: []model.ServiceComponentMount{{
 		Target: "/models", Source: &source, SourceIsHostPath: &sourceIsHostPath, State: model.ServiceComponentOverlayOverride,

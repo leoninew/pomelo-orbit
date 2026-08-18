@@ -20,7 +20,7 @@ Every Component joins the external `traefik` network. Hostnames and Version labe
 
 Run the selected CPU or GPU TEI preflight against every path below before deployment:
 
-- `data/deployment/<service-code>/tei/cache/bge-m3`
+- `<workspace.deployment>/<service-code>/tei/cache/bge-m3`
 
 ## Runtime Config Primitive
 

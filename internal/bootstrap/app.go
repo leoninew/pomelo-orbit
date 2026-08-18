@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	database "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	mcpinfra "github.com/leoninew/pomelo-orbit/internal/infrastructure/mcp"
+	runtimepath "github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local"
 	"github.com/leoninew/pomelo-orbit/internal/queue/worker"
 	taskrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/task"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -35,6 +37,9 @@ func (a App) Migrate() error {
 }
 
 func (a App) RunWorker(ctx context.Context) error {
+	if err := a.validateContainerWorkspaceMounts(ctx); err != nil {
+		return err
+	}
 	database, err := OpenDatabase(a.cfg)
 	if err != nil {
 		return err
@@ -60,6 +65,9 @@ func (a App) RunWorker(ctx context.Context) error {
 // service composition as HTTP but never proxies MCP calls through /api.
 func (a App) RunMCP(ctx context.Context) error {
 	if err := a.cfg.ValidateMCPClient(); err != nil {
+		return err
+	}
+	if err := a.validateContainerWorkspaceMounts(ctx); err != nil {
 		return err
 	}
 	database, err := OpenDatabase(a.cfg)
@@ -136,6 +144,9 @@ func (a App) MigrationVersion() (database.MigrationVersion, error) {
 }
 
 func (a App) Serve(ctx context.Context) error {
+	if err := a.validateContainerWorkspaceMounts(ctx); err != nil {
+		return err
+	}
 	database, err := OpenDatabase(a.cfg)
 	if err != nil {
 		return err
@@ -158,4 +169,40 @@ func (a App) Serve(ctx context.Context) error {
 	})
 
 	return runHTTPServerAndWorker(ctx, a.logger, server.Addr(), httpServer, backgroundWorker)
+}
+
+type dockerDaemonPathResolverFn func(context.Context, string) (string, error)
+
+func dockerDaemonPathResolver() func(context.Context, string) (string, error) {
+	if !runtimepath.IsRunningInContainer() {
+		return nil
+	}
+	return runtimepath.ResolveDockerDaemonPath
+}
+
+func (a App) validateContainerWorkspaceMounts(ctx context.Context) error {
+	return validateContainerWorkspaceMounts(
+		ctx,
+		a.cfg,
+		runtimepath.IsRunningInContainer(),
+		runtimepath.ResolveDockerDaemonPath,
+	)
+}
+
+func validateContainerWorkspaceMounts(ctx context.Context, cfg config.Config, runningInContainer bool, resolver dockerDaemonPathResolverFn) error {
+	if !runningInContainer {
+		return nil
+	}
+	for _, workspace := range []struct {
+		key  string
+		path string
+	}{
+		{key: "workspace.pipeline", path: cfg.Workspace.Pipeline},
+		{key: "workspace.deployment", path: cfg.Workspace.Deployment},
+	} {
+		if _, err := resolver(ctx, workspace.path); err != nil {
+			return fmt.Errorf("%s must be bind mounted when Orbit runs in a container: %w", workspace.key, err)
+		}
+	}
+	return nil
 }

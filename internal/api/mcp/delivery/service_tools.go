@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"context"
+	"strings"
 
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
 	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
@@ -10,13 +11,17 @@ import (
 )
 
 func (c *core) registerServiceTools(server *mcp.Server) {
-	addTool(server, "orbit_create_service", "Create a stopped Service whose Component overlays initially inherit the Version. code must be a globally unique lowercase DNS label (a-z, 0-9, and internal hyphens only; it cannot start or end with a hyphen and is 63 characters maximum) and cannot be changed after creation.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_create_service", "Create a stopped Service whose Component overlays initially inherit the Version. The Service code is derived as <application-code>-<instance-key> and cannot be changed after creation.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 		VersionId     string `json:"version_id" jsonschema:"required"`
 		InstanceKey   string `json:"instance_key" jsonschema:"required"`
-		Code          string `json:"code" jsonschema:"required"`
 	}) (map[string]any, error) {
-		service, err := c.deps.Service.CreateService(ctx, c.deps.ActorUserId, servicedto.ServiceCreateInput{ApplicationId: input.ApplicationId, VersionId: input.VersionId, InstanceKey: input.InstanceKey, Code: input.Code})
+		application, err := c.deps.Application.ApplicationForUser(ctx, c.deps.ActorUserId, input.ApplicationId)
+		if err != nil {
+			return nil, err
+		}
+		instanceKey := strings.TrimSpace(input.InstanceKey)
+		service, err := c.deps.Service.CreateService(ctx, c.deps.ActorUserId, servicedto.ServiceCreateInput{ApplicationId: input.ApplicationId, VersionId: input.VersionId, InstanceKey: instanceKey, Code: application.Code + "-" + instanceKey})
 		if err != nil {
 			return nil, err
 		}

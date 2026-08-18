@@ -14,7 +14,7 @@
     "Each bundled component owns a separate directory directly below the Service workspace."
   ],
   "model_cache_paths": [
-    "data/deployment/<service-code>/tei/cache/bge-m3"
+    "<workspace.deployment>/<service-code>/tei/cache/bge-m3"
   ],
   "runtime_config": {
     "name": "IntegratedRuntimeConfig",

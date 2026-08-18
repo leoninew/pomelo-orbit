@@ -90,7 +90,7 @@ func TestServiceComponentDetailResponseReturnsVersionAndServiceValues(t *testing
 }
 
 func TestServiceComponentMountOverlayMapsHostPathMode(t *testing.T) {
-	source := "D:/SourceCodes/mywork/PomeloOrbit-go/data/backup/bge-m3"
+	source := "D:/var/lib/pomelo-models/bge-m3"
 	sourceIsHostPath := true
 	input := serviceComponentOverlayInput(&servicev1.ServiceComponentOverlayUpdateReq{
 		Mounts: []*servicev1.ServiceComponentMountOverlay{{

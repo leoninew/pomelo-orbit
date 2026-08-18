@@ -11,8 +11,8 @@ func TestValidateMountSource(t *testing.T) {
 		valid      bool
 	}{
 		{name: "logical directory", sourceType: "directory", source: "models/bge-m3", valid: true},
-		{name: "host directory", sourceType: "directory", source: "D:/SourceCodes/mywork/PomeloOrbit-go/data/backup/bge-m3", hostPath: true, valid: true},
-		{name: "absolute logical directory", sourceType: "directory", source: "D:/SourceCodes/mywork/PomeloOrbit-go/data/backup/bge-m3"},
+		{name: "host directory", sourceType: "directory", source: "D:/var/lib/pomelo-models/bge-m3", hostPath: true, valid: true},
+		{name: "absolute logical directory", sourceType: "directory", source: "D:/var/lib/pomelo-models/bge-m3"},
 		{name: "relative host directory", sourceType: "directory", source: "models/bge-m3", hostPath: true},
 	}
 	for _, test := range tests {

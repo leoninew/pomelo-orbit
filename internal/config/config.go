@@ -31,6 +31,7 @@ type Config struct {
 	Server      ServerConfig      `mapstructure:"server" yaml:"server"`
 	Logging     LoggingConfig     `mapstructure:"logging" yaml:"logging"`
 	Database    DatabaseConfig    `mapstructure:"database" yaml:"database"`
+	Workspace   WorkspaceConfig   `mapstructure:"workspace" yaml:"workspace"`
 	PipelineRun PipelineRunConfig `mapstructure:"pipeline_run" yaml:"pipeline_run"`
 	Worker      WorkerConfig      `mapstructure:"worker" yaml:"worker"`
 	Orbit       OrbitConfig       `mapstructure:"orbit" yaml:"orbit"`
@@ -94,6 +95,14 @@ type MySQLConfig struct {
 	Dsn string `mapstructure:"dsn" yaml:"dsn"`
 }
 
+// WorkspaceConfig contains Orbit-managed runtime workspace roots. Relative
+// values resolve against orbit.root; absolute values may be outside orbit.root.
+// Both are normalized once to absolute Orbit-visible paths during config loading.
+type WorkspaceConfig struct {
+	Pipeline   string `mapstructure:"pipeline" yaml:"pipeline"`
+	Deployment string `mapstructure:"deployment" yaml:"deployment"`
+}
+
 type WorkerConfig struct {
 	Id            string        `mapstructure:"id" yaml:"id"`
 	PollInterval  time.Duration `mapstructure:"poll_interval" yaml:"poll_interval"`
@@ -121,7 +130,6 @@ type JwtConfig struct {
 // Fields are normalized and validated during config Load; callers consume them as-is.
 // Per-gateway runtime fields after create live in GatewayConfig.
 type TraefikConfig struct {
-	CertDir          string        `mapstructure:"cert_dir" yaml:"cert_dir"`
 	Image            string        `mapstructure:"image" yaml:"image"`
 	RestApiUrl       string        `mapstructure:"rest_api_url" yaml:"rest_api_url"`
 	BaseDomain       string        `mapstructure:"base_domain" yaml:"base_domain"`
@@ -196,7 +204,11 @@ func Load() (Config, error) {
 
 	normalizeServerRuntimeOriginConfig(&cfg.Server)
 	normalizeLogHTTPConfig(&cfg.Logging.HTTP)
+	if err := normalizeWorkspaceConfig(&cfg.Workspace, cfg.OrbitRoot()); err != nil {
+		return Config{}, err
+	}
 	normalizeTraefikConfig(&cfg.Traefik)
+	normalizeCertConfig(&cfg.Cert)
 	if cfg.Worker.Id == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -237,6 +249,9 @@ func loadBaseConfig(envName string) (Config, error) {
 	}
 	normalizeServerRuntimeOriginConfig(&base.Server)
 	normalizeLogHTTPConfig(&base.Logging.HTTP)
+	if err := normalizeWorkspaceConfig(&base.Workspace, base.OrbitRoot()); err != nil {
+		return Config{}, err
+	}
 	return base, nil
 }
 
@@ -305,10 +320,11 @@ func bindEnv(loader *viper.Viper) {
 		"database.driver",
 		"database.sqlite.path",
 		"database.mysql.dsn",
+		"workspace.pipeline",
+		"workspace.deployment",
 		"pipeline_run.execution_timeout",
 		"orbit.root",
 		"jwt.secret_key",
-		"traefik.cert_dir",
 		"traefik.image",
 		"traefik.rest_api_url",
 		"traefik.base_domain",
@@ -423,6 +439,9 @@ func (c Config) Validate() error {
 	if c.PipelineRun.ExecutionTimeout <= 0 {
 		return errors.New("pipeline_run.execution_timeout must be positive")
 	}
+	if err := validateWorkspaceConfig(c.Workspace); err != nil {
+		return err
+	}
 	if c.Worker.LeaseDuration <= c.PipelineRun.ExecutionTimeout {
 		return errors.New("worker.lease_duration must exceed pipeline_run.execution_timeout")
 	}
@@ -438,22 +457,21 @@ func (c Config) Validate() error {
 	if err := validateTraefikConfig(c.Traefik); err != nil {
 		return err
 	}
+	if err := validateCertConfig(c.Cert); err != nil {
+		return err
+	}
 	return nil
 }
 
 // normalizeTraefikConfig trims and canonicalizes load-time values so runtime
 // code can read TraefikConfig fields without further config-stage work.
 func normalizeTraefikConfig(cfg *TraefikConfig) {
-	cfg.CertDir = strings.TrimSpace(cfg.CertDir)
 	cfg.Image = strings.TrimSpace(cfg.Image)
 	cfg.RestApiUrl = strings.TrimRight(strings.TrimSpace(cfg.RestApiUrl), "/")
 	cfg.BaseDomain = strings.ToLower(strings.TrimSpace(cfg.BaseDomain))
 }
 
 func validateTraefikConfig(cfg TraefikConfig) error {
-	if cfg.CertDir == "" {
-		return errors.New("traefik.cert_dir is required")
-	}
 	if cfg.Image == "" {
 		return errors.New("traefik.image is required")
 	}
@@ -473,6 +491,99 @@ func validateTraefikConfig(cfg TraefikConfig) error {
 		return errors.New("traefik.rest_ready_timeout must be positive")
 	}
 	return nil
+}
+
+func normalizeCertConfig(cfg *CertConfig) {
+	cfg.LetsEncrypt.Email = strings.TrimSpace(cfg.LetsEncrypt.Email)
+	cfg.LetsEncrypt.Challenge = strings.ToLower(strings.TrimSpace(cfg.LetsEncrypt.Challenge))
+	cfg.LetsEncrypt.DNSProvider = strings.TrimSpace(cfg.LetsEncrypt.DNSProvider)
+}
+
+func validateCertConfig(cfg CertConfig) error {
+	letsEncrypt := cfg.LetsEncrypt
+	if !letsEncrypt.Enabled {
+		return nil
+	}
+	if letsEncrypt.Email == "" {
+		return errors.New("cert.letsencrypt.email is required when cert.letsencrypt is enabled")
+	}
+	switch letsEncrypt.Challenge {
+	case "http":
+		return nil
+	case "dns":
+		if letsEncrypt.DNSProvider == "" {
+			return errors.New("cert.letsencrypt.dns_provider is required for dns challenge")
+		}
+		return nil
+	default:
+		return errors.New("cert.letsencrypt.challenge must be http or dns")
+	}
+}
+
+// ValidateForTLSMode validates the optional process certificate configuration
+// only when the caller selects a TLS mode that needs it.
+func (c CertConfig) ValidateForTLSMode(tlsMode string) error {
+	if !strings.EqualFold(strings.TrimSpace(tlsMode), "letsencrypt") {
+		return nil
+	}
+	if !c.LetsEncrypt.Enabled {
+		return errors.New("cert.letsencrypt.enabled is required for tls_mode=letsencrypt")
+	}
+	return validateCertConfig(c)
+}
+
+func normalizeWorkspaceConfig(cfg *WorkspaceConfig, orbitRoot string) error {
+	pipeline, err := normalizeWorkspacePath(orbitRoot, cfg.Pipeline)
+	if err != nil {
+		return fmt.Errorf("workspace.pipeline: %w", err)
+	}
+	deployment, err := normalizeWorkspacePath(orbitRoot, cfg.Deployment)
+	if err != nil {
+		return fmt.Errorf("workspace.deployment: %w", err)
+	}
+	cfg.Pipeline = pipeline
+	cfg.Deployment = deployment
+	return nil
+}
+
+func normalizeWorkspacePath(orbitRoot string, value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", errors.New("is required")
+	}
+	if !filepath.IsAbs(value) {
+		value = filepath.Join(orbitRoot, value)
+	}
+	path, err := filepath.Abs(value)
+	if err != nil {
+		return "", fmt.Errorf("resolve absolute path: %w", err)
+	}
+	return filepath.Clean(path), nil
+}
+
+func validateWorkspaceConfig(cfg WorkspaceConfig) error {
+	if cfg.Pipeline == "" {
+		return errors.New("workspace.pipeline is required")
+	}
+	if cfg.Deployment == "" {
+		return errors.New("workspace.deployment is required")
+	}
+	if workspacePathsOverlap(cfg.Pipeline, cfg.Deployment) {
+		return errors.New("workspace.pipeline and workspace.deployment must not overlap")
+	}
+	return nil
+}
+
+func workspacePathsOverlap(first string, second string) bool {
+	return pathContains(first, second) || pathContains(second, first)
+}
+
+func pathContains(parent string, child string) bool {
+	relative, err := filepath.Rel(parent, child)
+	if err != nil {
+		return false
+	}
+	return relative == "." || (relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative))
 }
 
 func validateLLMConfig(cfg LLMConfig) error {
@@ -606,10 +717,6 @@ func validateJwtSecretKey(secretKey string) error {
 
 func (c Config) OrbitRoot() string {
 	return filepath.Clean(c.Orbit.Root)
-}
-
-func (c Config) DataRoot() string {
-	return filepath.Join(c.OrbitRoot(), "data")
 }
 
 func (c Config) SQLitePath() string {

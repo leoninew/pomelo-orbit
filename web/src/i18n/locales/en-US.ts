@@ -345,7 +345,8 @@ export default {
         stopTarget: 'Stop Service Instance',
         restartTarget: 'Restart Service Instance',
         deleteApplicationConfirm: 'Delete application "{name}"? This action cannot be undone.',
-        deleteWorkDir: 'Also delete application working directory (data/deployment/{code})',
+        deleteWorkDir:
+          'Also delete the application directory managed by the deployment workspace ({code})',
         deleteVersion: 'Delete Version',
         deleteVersionConfirm: 'Delete version "{label}"? This cannot be undone.',
       },
@@ -460,6 +461,7 @@ export default {
         startInterval: 'Start interval',
         disabled: 'Disable health check',
         pullPolicy: 'Image pull policy',
+        imageSha256: 'SHA256',
         restartPolicy: 'Restart policy',
         limitCpus: 'CPU limit',
         limitMemory: 'Memory limit',

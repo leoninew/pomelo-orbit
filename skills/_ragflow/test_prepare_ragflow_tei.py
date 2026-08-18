@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import redirect_stderr
 import io
 import json
 import tarfile
@@ -16,12 +17,6 @@ import prepare_ragflow_tei as preparation
 
 
 class PreparationArchiveTests(unittest.TestCase):
-    def test_default_archive_directory_is_under_data_backup(self) -> None:
-        self.assertEqual(
-            preparation.default_archive_dir(),
-            preparation.repository_root() / "data" / "backup",
-        )
-
     def create_model(self, root: Path) -> Path:
         model_dir = root / "bge-m3"
         (model_dir / "onnx").mkdir(parents=True)
@@ -52,6 +47,10 @@ class PreparationArchiveTests(unittest.TestCase):
             restored = preparation.restore_model_action(self.restore_args(target, archive))
             self.assertTrue(restored.ok)
             self.assertEqual(preparation.validate_model(target), (True, "verified 5 files"))
+
+    def test_backup_parser_requires_explicit_archive(self) -> None:
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            preparation.parse_args(["backup-model", "--model-dir", "model-cache"])
 
     def test_restore_rejects_corrupt_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

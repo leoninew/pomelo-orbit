@@ -47,7 +47,9 @@ services:
       - traefik
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./data:/app/data
+      - /srv/pomelo-orbit/db:/app/data/db
+      - /srv/pomelo-orbit/ci:/app/data/pipeline
+      - /srv/pomelo-orbit/cd:/app/data/deployment
     ports:
       - "9003:80"
     environment:
@@ -62,6 +64,8 @@ networks:
   traefik:
     external: true
 ```
+
+默认 `workspace.pipeline=data/pipeline`、`workspace.deployment=data/deployment` 在容器内分别解析为 `/app/data/pipeline`、`/app/data/deployment`；Docker daemon 实际收到的 bind source 会从当前容器挂载表解析为 `/srv/pomelo-orbit/ci` 和 `/srv/pomelo-orbit/cd`。不要只挂 Docker socket，也不要让当前配置的 workspace 指向未挂载目录。
 
 ### 2.3 Pomelo Orbit 部署 Traefik
 

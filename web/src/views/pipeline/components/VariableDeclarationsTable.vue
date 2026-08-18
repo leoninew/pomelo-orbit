@@ -48,7 +48,7 @@
                 class="app-link"
                 @click="emit('override', decl.name)"
               >
-                覆盖
+                {{ t('common.edit') }}
               </button>
             </div>
           </td>

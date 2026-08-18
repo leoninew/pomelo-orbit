@@ -133,7 +133,6 @@ func settingDefinitions(cfg config.Config) []settingsdto.Definition {
 		{Key: "database__sqlite__path", Default: cfg.Database.SQLite.Path, Description: "SQLite database file path"},
 		{Key: "database__mysql__dsn", Default: cfg.Database.MySQL.Dsn, Description: "MySQL DSN"},
 		{Key: "jwt__secret_key", Default: cfg.Jwt.SecretKey, Description: "JWT signing secret"},
-		{Key: "traefik__cert_dir", Default: cfg.Traefik.CertDir, Description: "Directory for route certificate PEM materialization"},
 		{Key: "traefik__image", Default: cfg.Traefik.Image, Description: "Managed gateway container image pin"},
 		{Key: "traefik__rest_api_url", Default: cfg.Traefik.RestApiUrl, Description: "Default Traefik REST control-plane URL for new gateways"},
 		{Key: "traefik__base_domain", Default: cfg.Traefik.BaseDomain, Description: "Default gateway base domain for new gateways"},

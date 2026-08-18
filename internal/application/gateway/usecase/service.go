@@ -46,7 +46,8 @@ type Service struct {
 	transaction     gatewayport.TransactionRunner
 	traefik         config.TraefikConfig
 	cert            config.CertConfig
-	orbitRoot       string
+	deploymentRoot  string
+	resolvePath     gatewayport.PhysicalPathResolver
 }
 
 func New(
@@ -56,6 +57,7 @@ func New(
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
 	cfg config.Config,
+	resolvePath gatewayport.PhysicalPathResolver,
 	transaction gatewayport.TransactionRunner,
 ) Service {
 	return Service{
@@ -65,7 +67,8 @@ func New(
 		transaction:     transaction,
 		traefik:         cfg.Traefik,
 		cert:            cfg.Cert,
-		orbitRoot:       cfg.OrbitRoot(),
+		deploymentRoot:  cfg.Workspace.Deployment,
+		resolvePath:     resolvePath,
 	}
 }
 
@@ -169,7 +172,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 		TLSMode:           policy.TLSMode,
 	}
 	version := model.Version{Id: idutil.NewId(), ApplicationId: app.Id, Label: *image, Status: status.VersionStatusUnpublished}
-	component, err := s.initialGatewayComponent(version.Id, *image, imagePullPolicy, cfg)
+	component, err := s.initialGatewayComponent(ctx, version.Id, *image, imagePullPolicy, cfg)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
@@ -250,12 +253,20 @@ func (s Service) gatewayView(ctx context.Context, app model.Application, cfg mod
 	return view, nil
 }
 
-func (s Service) initialGatewayComponent(versionID, image, pullPolicy string, cfg model.GatewayConfig) (model.VersionComponent, error) {
-	certDirectory := s.traefik.CertDir
-	if !filepath.IsAbs(certDirectory) {
-		certDirectory = filepath.Join(s.orbitRoot, certDirectory)
+func (s Service) initialGatewayComponent(ctx context.Context, versionID, image, pullPolicy string, cfg model.GatewayConfig) (model.VersionComponent, error) {
+	if err := s.cert.ValidateForTLSMode(cfg.TLSMode); err != nil {
+		return model.VersionComponent{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	return buildInitialGatewayComponent(versionID, image, pullPolicy, cfg, s.cert, certDirectory)
+	logicalCertDirectory := filepath.Join(s.deploymentRoot, managedGatewayCode, "data", "certs")
+	physicalCertDirectory := logicalCertDirectory
+	if s.resolvePath != nil {
+		resolvedPath, err := s.resolvePath(ctx, logicalCertDirectory)
+		if err != nil {
+			return model.VersionComponent{}, fmt.Errorf("resolve gateway certificate directory: %w", err)
+		}
+		physicalCertDirectory = resolvedPath
+	}
+	return buildInitialGatewayComponent(versionID, image, pullPolicy, cfg, s.cert, physicalCertDirectory), nil
 }
 
 func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId string, input gatewaydto.GatewayUpdateInput) (gatewaydto.GatewayView, error) {

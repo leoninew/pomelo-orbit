@@ -11,21 +11,19 @@ import (
 	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
 )
 
-const pipelineDataDir = "pipeline"
-
-type PhysicalDataRootResolver func(ctx context.Context, logicalDataRoot string) (string, error)
+type PhysicalWorkspaceResolver func(ctx context.Context, logicalWorkspaceRoot string) (string, error)
 
 type Workspace struct {
-	logicalDataRoot string
-	resolver        PhysicalDataRootResolver
+	logicalWorkspaceRoot string
+	resolver             PhysicalWorkspaceResolver
 
-	physicalOnce     sync.Once
-	physicalDataRoot string
-	physicalErr      error
+	physicalOnce          sync.Once
+	physicalWorkspaceRoot string
+	physicalErr           error
 }
 
-func NewWithResolver(dataRoot string, resolver PhysicalDataRootResolver) *Workspace {
-	return &Workspace{logicalDataRoot: filepath.Clean(dataRoot), resolver: resolver}
+func NewWithResolver(workspaceRoot string, resolver PhysicalWorkspaceResolver) *Workspace {
+	return &Workspace{logicalWorkspaceRoot: filepath.Clean(workspaceRoot), resolver: resolver}
 }
 
 func (w *Workspace) CreateRunDirectories(projectCode string, runId string) error {
@@ -42,11 +40,11 @@ func (w *Workspace) CreateRunDirectories(projectCode string, runId string) error
 }
 
 func (w *Workspace) WorkspacePath(projectCode string) string {
-	return filepath.Join(w.logicalDataRoot, pipelineDataDir, projectCode, "workspace")
+	return filepath.Join(w.logicalWorkspaceRoot, projectCode, "workspace")
 }
 
 func (w *Workspace) ArtifactsPath(runId string) string {
-	return filepath.Join(w.logicalDataRoot, pipelineDataDir, "runs", runId, "artifacts")
+	return filepath.Join(w.logicalWorkspaceRoot, "runs", runId, "artifacts")
 }
 
 func (w *Workspace) ArtifactExists(runId string, artifactPath string) (bool, error) {
@@ -73,7 +71,7 @@ func (w *Workspace) artifactPath(runId string, artifactPath string) (string, err
 }
 
 func (w *Workspace) StageLogPath(runId string, pipelineStageRunId string) string {
-	return filepath.Join(w.logicalDataRoot, pipelineDataDir, "runs", runId, "stages", pipelineStageRunId+".log")
+	return filepath.Join(w.logicalWorkspaceRoot, "runs", runId, "stages", pipelineStageRunId+".log")
 }
 
 func (w *Workspace) RemoveRunFiles(runId string) error {
@@ -85,19 +83,23 @@ func (w *Workspace) RemoveRunFiles(runId string) error {
 }
 
 func (w *Workspace) DockerStageMounts(ctx context.Context, projectCode string, runId string) ([]pipelinerunport.VolumeMount, error) {
-	physicalDataRoot, err := w.PhysicalDataRoot(ctx)
+	physicalWorkspaceRoot, err := w.PhysicalWorkspaceRoot(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return []pipelinerunport.VolumeMount{
-		{HostPath: filepath.Join(physicalDataRoot, pipelineDataDir, projectCode, "workspace"), ContainerPath: "/workspace", Mode: "rw"},
-		{HostPath: filepath.Join(physicalDataRoot, pipelineDataDir, "runs", runId, "artifacts"), ContainerPath: "/artifacts", Mode: "rw"},
+		{HostPath: filepath.Join(physicalWorkspaceRoot, projectCode, "workspace"), ContainerPath: "/workspace", Mode: "rw"},
+		{HostPath: filepath.Join(physicalWorkspaceRoot, "runs", runId, "artifacts"), ContainerPath: "/artifacts", Mode: "rw"},
 	}, nil
 }
 
-func (w *Workspace) PhysicalDataRoot(ctx context.Context) (string, error) {
+func (w *Workspace) PhysicalWorkspaceRoot(ctx context.Context) (string, error) {
 	w.physicalOnce.Do(func() {
-		w.physicalDataRoot, w.physicalErr = w.resolver(ctx, w.logicalDataRoot)
+		if w.resolver == nil {
+			w.physicalWorkspaceRoot = w.logicalWorkspaceRoot
+			return
+		}
+		w.physicalWorkspaceRoot, w.physicalErr = w.resolver(ctx, w.logicalWorkspaceRoot)
 	})
-	return w.physicalDataRoot, w.physicalErr
+	return w.physicalWorkspaceRoot, w.physicalErr
 }

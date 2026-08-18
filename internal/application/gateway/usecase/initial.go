@@ -1,7 +1,6 @@
 package gatewaysvc
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -22,24 +21,7 @@ const (
 
 // buildInitialGatewayComponent creates the first editable Version declaration.
 // Later Gateway, Route, and deployment operations deliberately do not call it.
-func buildInitialGatewayComponent(versionID, image, pullPolicy string, gateway model.GatewayConfig, cert config.CertConfig, certDirectory string) (model.VersionComponent, error) {
-	if strings.TrimSpace(image) == "" {
-		return model.VersionComponent{}, fmt.Errorf("gateway version must declare a traefik image")
-	}
-	if strings.TrimSpace(certDirectory) == "" {
-		return model.VersionComponent{}, fmt.Errorf("traefik.cert_dir is required")
-	}
-	if strings.EqualFold(strings.TrimSpace(gateway.TLSMode), "letsencrypt") {
-		if !cert.LetsEncrypt.Enabled {
-			return model.VersionComponent{}, fmt.Errorf("cert.letsencrypt.enabled is required for tls_mode=letsencrypt")
-		}
-		if strings.TrimSpace(cert.LetsEncrypt.Email) == "" {
-			return model.VersionComponent{}, fmt.Errorf("cert.letsencrypt.email is required for tls_mode=letsencrypt")
-		}
-		if strings.EqualFold(strings.TrimSpace(cert.LetsEncrypt.Challenge), "dns") && strings.TrimSpace(cert.LetsEncrypt.DNSProvider) == "" {
-			return model.VersionComponent{}, fmt.Errorf("cert.letsencrypt.dns_provider is required for dns challenge")
-		}
-	}
+func buildInitialGatewayComponent(versionID, image, pullPolicy string, gateway model.GatewayConfig, cert config.CertConfig, certDirectory string) model.VersionComponent {
 	return model.VersionComponent{
 		Id:         idutil.NewId(),
 		VersionId:  versionID,
@@ -57,7 +39,7 @@ func buildInitialGatewayComponent(versionID, image, pullPolicy string, gateway m
 			{SourceType: mountSourceDirectory, Source: certDirectory, SourceIsHostPath: true, Target: gatewayMountTargetCertDir},
 			{SourceType: mountSourceDirectory, Source: certDirectory, SourceIsHostPath: true, Target: gatewayMountTargetAcmeDir},
 		},
-	}, nil
+	}
 }
 
 func buildInitialTraefikStaticConfig(gateway model.GatewayConfig, cert config.CertConfig) string {

@@ -226,7 +226,7 @@
       <label class="mt-4 flex cursor-pointer items-center gap-2">
         <input v-model="deleteWorkspace" type="checkbox" class="size-4 accent-destructive" />
         <span class="text-sm text-foreground">
-          同时删除工作目录（data/pipeline/{{ repository?.code }}）
+          同时删除由 CI 工作区管理的源码目录（{{ repository?.code }}）
         </span>
       </label>
       <p v-if="deleteSubmitError" class="app-field-error mt-3" role="alert">

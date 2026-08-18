@@ -35,7 +35,6 @@
 | CI Pipeline 变量 | [guides/ci-pipeline-vars-design.md](./guides/ci-pipeline-vars-design.md) |
 | 权限 RBAC | [guides/permissions.md](./guides/permissions.md) |
 | Google OAuth（国内网络） | [guides/google-oauth-china-network.md](./guides/google-oauth-china-network.md) |
-| Traefik file watch（Windows Docker） | [guides/traefik-file-watch-windows-docker.md](./guides/traefik-file-watch-windows-docker.md) |
 | AntDV icons 笔记 | [guides/antdv-icons.md](./guides/antdv-icons.md) |
 
 ## 工程约束

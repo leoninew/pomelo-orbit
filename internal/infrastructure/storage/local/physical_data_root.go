@@ -11,24 +11,28 @@ import (
 	"strings"
 )
 
-// ResolvePhysicalDataRoot resolves the backend logical data root to the host path
-// Docker should use as a bind-mount source.
-func ResolvePhysicalDataRoot(ctx context.Context, logicalDataRoot string) (string, error) {
-	return ResolvePhysicalPath(ctx, logicalDataRoot)
+// IsRunningInContainer reports whether Orbit runs inside a Docker container.
+func IsRunningInContainer() bool {
+	_, ok := currentContainerId()
+	return ok
 }
 
-// ResolvePhysicalPath resolves a path visible to the backend process to its host path
-// when the backend itself runs inside Docker.
-func ResolvePhysicalPath(ctx context.Context, logicalPath string) (string, error) {
-	absolutePath, err := filepath.Abs(logicalPath)
-	if err != nil {
-		return "", fmt.Errorf("resolve physical path %s: %w", logicalPath, err)
+// ResolveDockerDaemonPath maps an absolute path visible to Orbit to the path
+// visible to the Docker daemon. A native Orbit process shares the daemon's
+// filesystem namespace, so the input path is returned unchanged.
+func ResolveDockerDaemonPath(ctx context.Context, orbitPath string) (string, error) {
+	containerId, inContainer := currentContainerId()
+	return resolveDockerDaemonPath(ctx, orbitPath, containerId, inContainer)
+}
+
+func resolveDockerDaemonPath(ctx context.Context, orbitPath string, containerId string, inContainer bool) (string, error) {
+	if !inContainer {
+		return orbitPath, nil
 	}
-	containerId, ok := currentContainerId()
-	if !ok {
-		return absolutePath, nil
+	if !filepath.IsAbs(orbitPath) {
+		return "", fmt.Errorf("resolve Docker daemon path %s: Orbit path must be absolute", orbitPath)
 	}
-	physicalPath, err := currentContainerPathSource(ctx, containerId, absolutePath)
+	physicalPath, err := currentContainerPathSource(ctx, containerId, orbitPath)
 	if err != nil {
 		return "", err
 	}
@@ -88,12 +92,16 @@ type dockerInspectMount struct {
 func currentContainerPathSource(ctx context.Context, containerId string, containerPath string) (string, error) {
 	output, err := exec.CommandContext(ctx, "docker", "inspect", containerId, "--format", "{{json .Mounts}}").Output()
 	if err != nil {
-		return "", fmt.Errorf("resolve physical data root: inspect current container %s: %w", containerId, err)
+		return "", fmt.Errorf("resolve physical path: inspect current container %s: %w", containerId, err)
 	}
 	var mounts []dockerInspectMount
 	if err := json.Unmarshal(output, &mounts); err != nil {
-		return "", fmt.Errorf("resolve physical data root: parse current container mounts: %w", err)
+		return "", fmt.Errorf("resolve physical path: parse current container mounts: %w", err)
 	}
+	return resolveMountedContainerPath(containerPath, mounts)
+}
+
+func resolveMountedContainerPath(containerPath string, mounts []dockerInspectMount) (string, error) {
 	wanted := cleanContainerPath(containerPath)
 	matchedDestination := ""
 	matchedSource := ""

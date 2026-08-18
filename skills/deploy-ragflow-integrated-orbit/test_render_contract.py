@@ -39,7 +39,7 @@ class RAGFlowIntegratedContractRendererTests(unittest.TestCase):
         self.assertEqual(application_codes, {"ragflow-integrated"})
         self.assertEqual(
             self.contract["model_cache_paths"],
-            ["data/deployment/<service-code>/tei/cache/bge-m3"],
+            ["<workspace.deployment>/<service-code>/tei/cache/bge-m3"],
         )
 
     def test_check_reports_a_changed_generated_artifact(self) -> None:

@@ -46,7 +46,7 @@ Review status: Accepted
 6. Gateway 成功启动后仍执行 REST readiness 和 Route 全量快照发布；发布失败时 Service 与 Deployment 都为 `faulted`。
 7. Gateway Service 部署严格使用选定 Version 及其 Service overlays 的通用有效计划；Gateway usecase、Route usecase 和 worker 不得在部署中重新编译、替换或补回 Version Component 的端点、挂载、镜像或静态文件。
 8. Web、HTTP、MCP、Proto、Go usecase 与测试对默认 Gateway Service 的识别和部署行为保持一致。
-9. Gateway 创建所生成的初始 Version 默认值可追溯到既有配置：`traefik.image`、REST 地址、域名、证书目录、就绪超时和 `cert.letsencrypt.*` 必须接入。拉取策略、默认入口/TLS 和共享网络保持当前默认值，但创建后的实际部署规格始终以用户保存的 Version 为准，不能再以进程配置覆盖。
+9. Gateway 创建所生成的初始 Version 默认值可追溯到既有配置：`traefik.image`、REST 地址、域名、就绪超时和 `cert.letsencrypt.*` 必须接入；证书目录固定从 `workspace.deployment/traefik/data/certs` 派生。拉取策略、默认入口/TLS 和共享网络保持当前默认值，但创建后的实际部署规格始终以用户保存的 Version 为准，不能再以进程配置覆盖。
 
 ## Open questions
 
@@ -59,7 +59,7 @@ Review status: Accepted
 3. Gateway 的专用业务只能通过通用部署链路的 Render/后置扩展实现，不新增平行的 Gateway deploy executor 或 Gateway 专用部署前状态预检。
 4. 本需求是独立的 `20260815-` SpecFlow 任务；既有 Gateway runtime、TCP Route 和删除任务文档不改写历史结论。
 5. 初始 `traefik.yml`、ACME 挂载、TCP entrypoint、共享网络和 Dashboard 相关规格在 Gateway 创建时写入初始 Version Component，之后由标准 Application/Version 编辑与发布流程所有。Gateway Deploy 不注入、覆盖或恢复这些内容；Route 变更也不隐式编译 Gateway Version。Version 发布前置遵从所有 Service 共用的规则；本任务不为 Gateway 增加例外，Provision 也不隐式发布或部署。
-6. `traefik.image`、`rest_api_url`、`base_domain`、`cert_dir`、`rest_ready_timeout` 和 `cert.letsencrypt.*` 是既有配置来源，必须进入创建初始 Version 或部署后等待的对应环节。GatewayConfig 持久化每个 Gateway 的 REST 地址、域名、默认入口和 TLS 模式。`missing`、`web`、`none` 与 `traefik` 保持当前默认；Docker socket、默认端口、静态文件路径和 provider 细节作为可编辑 Version 默认模板，不扩张为进程配置。
+6. `traefik.image`、`rest_api_url`、`base_domain`、`rest_ready_timeout` 和 `cert.letsencrypt.*` 是既有配置来源，必须进入创建初始 Version 或部署后等待的对应环节；证书目录固定从 `workspace.deployment/traefik/data/certs` 派生。GatewayConfig 持久化每个 Gateway 的 REST 地址、域名、默认入口和 TLS 模式。`missing`、`web`、`none` 与 `traefik` 保持当前默认；Docker socket、默认端口、静态文件路径和 provider 细节作为可编辑 Version 默认模板，不扩张为进程配置。
 
 ## Risk
 

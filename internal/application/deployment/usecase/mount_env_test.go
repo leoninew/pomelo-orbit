@@ -73,12 +73,13 @@ func TestResolveMountSpecsDoesNotMaterializePlainFile(t *testing.T) {
 }
 
 func TestResolveMountSpecsMaterializesLogicalDirectoryAtServiceRoot(t *testing.T) {
-	physicalServiceDir := filepath.Join(t.TempDir(), "deployment", "sc")
-	resolved, err := resolveMountSpecs([]MountSpec{{
+	logicalServiceDir := filepath.Join(t.TempDir(), "deployment", "sc")
+	composeMountSourceDir := filepath.Join(t.TempDir(), "host", "deployment", "sc")
+	resolved, err := resolveMountSpecsForPaths([]MountSpec{{
 		SourceType: mountSourceDirectory,
 		Source:     "mysql",
 		Target:     "/var/lib/mysql",
-	}}, physicalServiceDir)
+	}}, logicalServiceDir, composeMountSourceDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,11 +89,35 @@ func TestResolveMountSpecsMaterializesLogicalDirectoryAtServiceRoot(t *testing.T
 	if !resolved[0].ShouldMaterialize || resolved[0].IsFile {
 		t.Fatalf("directory mount materialization = %+v", resolved[0])
 	}
+	if resolved[0].HostSource != filepath.ToSlash(filepath.Join(composeMountSourceDir, "mysql")) {
+		t.Fatalf("compose host source = %q", resolved[0].HostSource)
+	}
+	if resolved[0].LogicalSource != filepath.Join(logicalServiceDir, "mysql") {
+		t.Fatalf("logical source = %q", resolved[0].LogicalSource)
+	}
 	if err := MaterializeLogicalMountSources(resolved); err != nil {
 		t.Fatal(err)
 	}
-	if info, err := os.Stat(filepath.Join(physicalServiceDir, "mysql")); err != nil || !info.IsDir() {
+	if info, err := os.Stat(filepath.Join(logicalServiceDir, "mysql")); err != nil || !info.IsDir() {
 		t.Fatalf("mysql mount source was not created: info=%v err=%v", info, err)
+	}
+}
+
+func TestResolveMountSpecsKeepsRelativeDirectorySourceForNativeCompose(t *testing.T) {
+	logicalServiceDir := filepath.Join(t.TempDir(), "deployment", "mysql-default")
+	resolved, err := resolveMountSpecsForPaths([]MountSpec{{
+		SourceType: mountSourceDirectory,
+		Source:     "data",
+		Target:     "/var/lib/mysql",
+	}}, logicalServiceDir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved[0].Compose != "./data:/var/lib/mysql" || resolved[0].HostSource != "" {
+		t.Fatalf("native compose mount = %+v", resolved[0])
+	}
+	if resolved[0].LogicalSource != filepath.Join(logicalServiceDir, "data") || !resolved[0].ShouldMaterialize {
+		t.Fatalf("native logical mount = %+v", resolved[0])
 	}
 }
 
@@ -115,7 +140,7 @@ func TestMaterializeControlledFileRespectsIgnoreIfExists(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := MaterializeLogicalMountSources([]ResolvedMount{{
-		HostSource:        path,
+		LogicalSource:     path,
 		IsFile:            true,
 		ShouldMaterialize: true,
 		SourceType:        mountSourceControlledFile,
@@ -145,13 +170,13 @@ func TestMaterializeControlledFileRespectsIgnoreIfExists(t *testing.T) {
 
 func TestCountLogicalMountsIncludesControlledFiles(t *testing.T) {
 	items := []ResolvedMount{
-		{SourceType: mountSourceDirectory},
-		{SourceType: mountSourceFile},
-		{SourceType: mountSourceControlledFile},
+		{SourceType: mountSourceDirectory, ShouldMaterialize: true},
+		{SourceType: mountSourceFile, ShouldMaterialize: false},
+		{SourceType: mountSourceControlledFile, ShouldMaterialize: true},
 		{SourceType: mountSourceNamedVolume},
 	}
 
-	if got, want := countLogicalMounts(items), 3; got != want {
+	if got, want := countLogicalMounts(items), 2; got != want {
 		t.Fatalf("countLogicalMounts() = %d, want %d", got, want)
 	}
 }

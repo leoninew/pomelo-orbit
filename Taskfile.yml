@@ -120,10 +120,14 @@ tasks:
       - cp .env.example VERSION {{.WINDOWS_ROOT}}/
       - cp .env.example VERSION {{.LINUX_ROOT}}/
       - cp .env.example VERSION {{.MACOS_ROOT}}/
-      - cp configs/package.env {{.WINDOWS_ROOT}}/.env
-      - cp configs/package.env {{.LINUX_ROOT}}/.env
-      - cp configs/package.env {{.MACOS_ROOT}}/.env
-      - chmod +x {{.LINUX_ROOT}}/pomelo-orbit {{.MACOS_ROOT}}/pomelo-orbit
+      - cp scripts/relesae.env {{.WINDOWS_ROOT}}/.env.release
+      - cp scripts/relesae.env {{.LINUX_ROOT}}/.env.release
+      - cp scripts/relesae.env {{.MACOS_ROOT}}/.env.release
+      - cp scripts/pomelo-orbit.cmd {{.WINDOWS_ROOT}}/
+      - cp scripts/pomelo-orbit.sh {{.WINDOWS_ROOT}}/
+      - cp scripts/pomelo-orbit.sh {{.LINUX_ROOT}}/
+      - cp scripts/pomelo-orbit.sh {{.MACOS_ROOT}}/
+      - chmod +x {{.WINDOWS_ROOT}}/pomelo-orbit.sh {{.LINUX_ROOT}}/pomelo-orbit {{.MACOS_ROOT}}/pomelo-orbit {{.LINUX_ROOT}}/pomelo-orbit.sh {{.MACOS_ROOT}}/pomelo-orbit.sh
       - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-windows-x64.zip pomelo-orbit-v{{.VERSION}}-windows-x64
       - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-linux-x64.zip pomelo-orbit-v{{.VERSION}}-linux-x64
       - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-macos-x64.zip pomelo-orbit-v{{.VERSION}}-macos-x64

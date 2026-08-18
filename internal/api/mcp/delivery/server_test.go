@@ -87,8 +87,9 @@ func TestApplicationErrorBecomesClassifiedMCPToolError(t *testing.T) {
 }
 
 func TestServiceCodeMCPContract(t *testing.T) {
-	service := &serviceToolService{services: []model.Service{{Id: "service-1", ApplicationId: "application-1", InstanceKey: "default", Code: "ragflow-service", VersionId: "version-1", Status: "stopped"}}}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Service: service})
+	application := &serviceApplicationToolService{application: model.Application{Id: "application-1", Code: "ragflow"}}
+	service := &serviceToolService{services: []model.Service{{Id: "service-1", ApplicationId: "application-1", InstanceKey: "default", Code: "ragflow-default", VersionId: "version-1", Status: "stopped"}}}
+	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: application, Service: service})
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -117,11 +118,11 @@ func TestServiceCodeMCPContract(t *testing.T) {
 	if err := json.Unmarshal(encodedSchema, &createSchema); err != nil {
 		t.Fatalf("unmarshal create schema: %v", err)
 	}
-	if _, ok := createSchema.Properties["code"]; !ok || !containsString(createSchema.Required, "code") {
-		t.Fatalf("create schema must require code: %s", encodedSchema)
+	if _, ok := createSchema.Properties["code"]; ok || containsString(createSchema.Required, "code") {
+		t.Fatalf("create schema must derive code: %s", encodedSchema)
 	}
 	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_create_service", Arguments: map[string]any{
-		"application_id": "application-1", "version_id": "version-1", "instance_key": "default", "code": "ragflow-service",
+		"application_id": "application-1", "version_id": "version-1", "instance_key": "default",
 	}})
 	if err != nil {
 		t.Fatalf("CallTool(create service) error = %v", err)
@@ -129,12 +130,12 @@ func TestServiceCodeMCPContract(t *testing.T) {
 	if result.IsError {
 		t.Fatalf("CallTool(create service) returned tool error: %#v", result.Content)
 	}
-	if service.createInput.Code != "ragflow-service" {
+	if service.createInput.Code != "ragflow-default" {
 		t.Fatalf("create input code = %q", service.createInput.Code)
 	}
 	created := structuredOutput(t, result)
 	createdService, ok := created["service"].(map[string]any)
-	if !ok || createdService["code"] != "ragflow-service" {
+	if !ok || createdService["code"] != "ragflow-default" {
 		t.Fatalf("create output service = %#v", created["service"])
 	}
 
@@ -151,7 +152,7 @@ func TestServiceCodeMCPContract(t *testing.T) {
 		t.Fatalf("list output services = %#v", listed["services"])
 	}
 	listedService, ok := services[0].(map[string]any)
-	if !ok || listedService["code"] != "ragflow-service" {
+	if !ok || listedService["code"] != "ragflow-default" {
 		t.Fatalf("list output service = %#v", services[0])
 	}
 }
@@ -527,6 +528,15 @@ type serviceToolService struct {
 	ServiceService
 	createInput servicedto.ServiceCreateInput
 	services    []model.Service
+}
+
+type serviceApplicationToolService struct {
+	ApplicationService
+	application model.Application
+}
+
+func (s *serviceApplicationToolService) ApplicationForUser(context.Context, string, string) (model.Application, error) {
+	return s.application, nil
 }
 
 type serviceOverlayToolService struct {

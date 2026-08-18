@@ -16,8 +16,8 @@ Every Component joins the external `traefik` network. Hostnames and Version labe
 
 Run the selected CPU or GPU TEI preflight against every path below before deployment:
 
-- `data/deployment/ragflow-integrated/default/tei/cache/bge-m3`
-- `data/deployment/ragflow-split/default/tei/cache/bge-m3`
+- `<workspace.deployment>/ragflow-integrated-default/tei/cache/bge-m3`
+- `<workspace.deployment>/ragflow-split-default/tei/cache/bge-m3`
 
 ## Runtime Config Primitive
 

@@ -44,7 +44,7 @@ TEI 是同一 Service 内部组件，不发布独立宿主机端口。RAGFlow �
 目标路径为：
 
 ```text
-data/deployment/<service-code>/tei/cache/bge-m3
+<workspace.deployment>/<service-code>/tei/cache/bge-m3
 ```
 
 TEI 挂载其父目录 `tei/cache` 到 `/data`，启动参数为：
@@ -58,14 +58,14 @@ TEI 挂载其父目录 `tei/cache` 到 `/data`，启动参数为：
 已有独立 TEI 的 Git LFS 缓存通过校验时，优先使用前置脚本复制到 RAGFlow 的新管理路径，而不是重新下载或移动原目录：
 
 ```powershell
-python skills/_ragflow/prepare_ragflow_tei.py stage-model --model-dir data/deployment/<service-code>/tei/cache/bge-m3 --source-dir data/deployment/<source-service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py stage-model --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3 --source-dir <workspace.deployment>/<source-service-code>/tei/cache/bge-m3
 ```
 
 该命令要求目标目录为空，复制时忽略 Git 元数据和下载缓存，创建逐文件 SHA-256 manifest，并保留原始 Git LFS checkout 不变。
 
 ### 压缩备份与反复测试
 
-在 Git LFS 工作树通过 `git lfs fsck` 和文件预检后，使用前置脚本创建 `tar.gz` 归档及逐文件 SHA-256 manifest。默认归档路径为项目根 `data/backup/bge-m3-<revision>.tar.gz`；归档只包含供 TEI 使用的模型工作树，不包含重复的 `.git` 或 `.cache` 内容。权重文件本身通常已压缩，归档未必显著减小体积，必须记录脚本报告的实际大小和耗时。
+在 Git LFS 工作树通过 `git lfs fsck` 和文件预检后，使用前置脚本创建 `tar.gz` 归档及逐文件 SHA-256 manifest。归档路径由调用方通过必填 `--archive` 指定；归档只包含供 TEI 使用的模型工作树，不包含重复的 `.git` 或 `.cache` 内容。权重文件本身通常已压缩，归档未必显著减小体积，必须记录脚本报告的实际大小和耗时。
 
 恢复只允许写入空目标目录，恢复后使用 manifest 和文件清单重新校验。恢复目录不含 Git 元数据，因此用归档 SHA-256 代替 `git lfs fsck`；原始 Git LFS 工作树继续用 `git lfs fsck` 验证。脚本不得自动覆盖非空缓存、移动或删除原始独立缓存。
 
@@ -75,8 +75,8 @@ Git LFS 可续传，并可用 `git lfs fsck` 校验 LFS 对象，适合作为默
 
 ```powershell
 git lfs install
-git lfs clone https://huggingface.co/BAAI/bge-m3 data/deployment/<service-code>/tei/cache/bge-m3
-git -C data/deployment/<service-code>/tei/cache/bge-m3 lfs fsck
+git lfs clone https://huggingface.co/BAAI/bge-m3 <workspace.deployment>/<service-code>/tei/cache/bge-m3
+git -C <workspace.deployment>/<service-code>/tei/cache/bge-m3 lfs fsck
 ```
 
 当目录已经是有效 Git checkout 时，使用 `git lfs pull` 恢复中断下载。不要删除或覆盖非空缓存来“修复”它；先执行预检并处理结果。
@@ -86,7 +86,7 @@ git -C data/deployment/<service-code>/tei/cache/bge-m3 lfs fsck
 Hugging Face CLI 适合固定 revision 下载和 dry-run 盘点：
 
 ```powershell
-hf download BAAI/bge-m3 --revision 5617a9f61b028005a4858fdac845db406aefb181 --local-dir data/deployment/<service-code>/tei/cache/bge-m3 --dry-run
+hf download BAAI/bge-m3 --revision 5617a9f61b028005a4858fdac845db406aefb181 --local-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3 --dry-run
 ```
 
 实际下载只应在空目标目录中执行。`--dry-run` 也可能创建 `.cache` 和空目录，不能以“目录存在”判定就绪。已安装 CLI 为 `1.9.2`，当前 PyPI 的 `huggingface_hub` 为 `1.26.0`；前置脚本应检测 `hf download --dry-run` 能力，而非假设机器安装的确切版本。
@@ -146,23 +146,23 @@ SQL 基线应只记录停机状态的 Application、CPU/GPU Version、Gateway、
 
 ```powershell
 # 只读：检查工具、缓存、镜像 digest 和指定 Host 的 CPU/GPU 条件
-python skills/_ragflow/prepare_ragflow_tei.py check --profile cpu --model-dir data/deployment/<service-code>/tei/cache/bge-m3
-python skills/_ragflow/prepare_ragflow_tei.py check --profile gpu --model-dir data/deployment/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py check --profile cpu --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py check --profile gpu --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
 
 # 显式执行：按 Git LFS 或 HF CLI 准备固定 revision 的模型
-python skills/_ragflow/prepare_ragflow_tei.py prepare-model --source git-lfs --model-dir data/deployment/<service-code>/tei/cache/bge-m3
-python skills/_ragflow/prepare_ragflow_tei.py prepare-model --source hf-cli --model-dir data/deployment/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py prepare-model --source git-lfs --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py prepare-model --source hf-cli --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
 
 # 显式压缩备份已校验模型，并恢复到空缓存目录供下一轮测试
-python skills/_ragflow/prepare_ragflow_tei.py backup-model --model-dir data/deployment/<service-code>/tei/cache/bge-m3
-python skills/_ragflow/prepare_ragflow_tei.py restore-model --archive data/backup/bge-m3-<revision>.tar.gz --model-dir data/deployment/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py backup-model --archive /srv/orbit-backups/bge-m3-<revision>.tar.gz --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py restore-model --archive /srv/orbit-backups/bge-m3-<revision>.tar.gz --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
 
 # 显式拉取已验证的 TEI image digest，并检查备用镜像站
-python skills/_ragflow/prepare_ragflow_tei.py prepare-image --profile cpu --model-dir data/deployment/<service-code>/tei/cache/bge-m3
-python skills/_ragflow/prepare_ragflow_tei.py prepare-image --profile gpu --model-dir data/deployment/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py prepare-image --profile cpu --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py prepare-image --profile gpu --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
 
 # 按 profile 执行所有经明确授权的准备步骤
-python skills/_ragflow/prepare_ragflow_tei.py prepare --profile cpu --model-dir data/deployment/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py prepare --profile cpu --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
 ```
 
 脚本不会启动或停止容器，不执行 Docker Compose，也不会创建或修改 Orbit Application、Version、Service 或 Deployment。通过 `check` 后，集成式使用 `deploy-ragflow-integrated-orbit`，显式拆分式使用 `deploy-ragflow-split-orbit` 执行 Orbit 生命周期操作。

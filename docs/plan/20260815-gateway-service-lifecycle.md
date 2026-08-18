@@ -11,7 +11,7 @@ Review status: Accepted
 
 1. 整理 Gateway 初始 Version 模板与既有配置接线。
    - 在 `internal/application/gateway` 将现有 Traefik Component 生成逻辑改为仅供 `CreateGateway` 建立初始 `unpublished` Version 使用。
-   - 保持当前 `missing`、`web`、`none`、`traefik` 默认，不新增配置字段；接入已有 `traefik.image`、`rest_api_url`、`base_domain`、`cert_dir`、`rest_ready_timeout` 和 `cert.letsencrypt.*`。
+   - 保持当前 `missing`、`web`、`none`、`traefik` 默认，不新增配置字段；接入已有 `traefik.image`、`rest_api_url`、`base_domain`、`rest_ready_timeout` 和 `cert.letsencrypt.*`，并从 `workspace.deployment/traefik/data/certs` 派生证书/ACME 目录。
    - 初始 Version 写入后不再由 Gateway usecase、worker 或 Route usecase 覆盖其 image、pull policy、endpoint、mount 或静态文件。
 
 2. 实现跨 Application/Gateway/Service 的原子 Gateway factory。

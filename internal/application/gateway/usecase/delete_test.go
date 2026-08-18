@@ -60,6 +60,7 @@ func TestDeleteGatewayDeletesStoppedServiceResources(t *testing.T) {
 		nil,
 		testGatewayConfig(),
 		nil,
+		nil,
 	)
 
 	if err := service.DeleteGateway(context.Background(), "user-1", "gateway-1"); err != nil {
@@ -81,6 +82,7 @@ func TestDeleteGatewayRejectsNonStoppedService(t *testing.T) {
 				gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", InstanceKey: "default", Code: "gateway-default", Status: serviceStatus}}},
 				nil,
 				testGatewayConfig(),
+				nil,
 				nil,
 			)
 

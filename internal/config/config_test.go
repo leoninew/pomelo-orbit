@@ -66,8 +66,8 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Jwt.SecretKey != testJwtSecret {
 		t.Fatalf("unexpected jwt secret key: %s", cfg.Jwt.SecretKey)
 	}
-	if cfg.Traefik.CertDir != "data/deployment/traefik/data/certs" {
-		t.Fatalf("unexpected traefik cert dir: %s", cfg.Traefik.CertDir)
+	if !filepath.IsAbs(cfg.Workspace.Pipeline) || !filepath.IsAbs(cfg.Workspace.Deployment) {
+		t.Fatalf("workspace roots must be absolute: %#v", cfg.Workspace)
 	}
 	if cfg.Traefik.Image != "traefik:3.6" {
 		t.Fatalf("unexpected traefik image: %q", cfg.Traefik.Image)
@@ -227,11 +227,15 @@ worker:
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SITE_KEY", "site-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SECRET_KEY", "secret-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__VERIFY_URL", "https://turnstile.example.test")
-	t.Setenv("POMELO_ORBIT_TRAEFIK__CERT_DIR", "data/custom/certs")
 	t.Setenv("POMELO_ORBIT_TRAEFIK__IMAGE", "traefik:v3.9")
 	t.Setenv("POMELO_ORBIT_TRAEFIK__REST_API_URL", "http://127.0.0.1:9080")
 	t.Setenv("POMELO_ORBIT_TRAEFIK__REST_READY_TIMEOUT", "45s")
-	t.Setenv("POMELO_ORBIT_ORBIT__ROOT", "/srv/pomelo-orbit")
+	orbitRoot := t.TempDir()
+	t.Setenv("POMELO_ORBIT_ORBIT__ROOT", orbitRoot)
+	workspacePipeline := t.TempDir()
+	workspaceDeployment := t.TempDir()
+	t.Setenv("POMELO_ORBIT_WORKSPACE__PIPELINE", workspacePipeline)
+	t.Setenv("POMELO_ORBIT_WORKSPACE__DEPLOYMENT", workspaceDeployment)
 	t.Setenv("POMELO_ORBIT_WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_WORKER__POLL_INTERVAL", "2s")
 	t.Setenv("POMELO_ORBIT_WORKER__LEASE_DURATION", "3h")
@@ -289,14 +293,14 @@ worker:
 	if cfg.Turnstile.VerifyUrl != "https://turnstile.example.test" {
 		t.Fatalf("unexpected turnstile verify url: %s", cfg.Turnstile.VerifyUrl)
 	}
-	if cfg.Traefik.CertDir != "data/custom/certs" {
-		t.Fatalf("unexpected traefik cert dir: %s", cfg.Traefik.CertDir)
-	}
 	if cfg.Traefik.Image != "traefik:v3.9" || cfg.Traefik.RestApiUrl != "http://127.0.0.1:9080" || cfg.Traefik.RestReadyTimeout != 45*time.Second {
 		t.Fatalf("unexpected Traefik env overrides: %#v", cfg.Traefik)
 	}
-	if cfg.Orbit.Root != "/srv/pomelo-orbit" {
+	if cfg.Orbit.Root != orbitRoot {
 		t.Fatalf("unexpected orbit root: %s", cfg.Orbit.Root)
+	}
+	if cfg.Workspace.Pipeline != workspacePipeline || cfg.Workspace.Deployment != workspaceDeployment {
+		t.Fatalf("unexpected workspace env overrides: %#v", cfg.Workspace)
 	}
 	if cfg.Worker.Concurrency != 4 {
 		t.Fatalf("unexpected worker concurrency: %d", cfg.Worker.Concurrency)
@@ -309,6 +313,72 @@ worker:
 	}
 	if cfg.PipelineRun.ExecutionTimeout != 2*time.Hour {
 		t.Fatalf("unexpected pipeline execution timeout: %s", cfg.PipelineRun.ExecutionTimeout)
+	}
+}
+
+func TestLoadConfigNormalizesAndValidatesWorkspaceRoots(t *testing.T) {
+	t.Run("normalizes relative roots against orbit root", func(t *testing.T) {
+		setupDefaultConfig(t)
+		root := t.TempDir()
+		writeEnvConfig(t, "develop", fmt.Sprintf(`orbit:
+  root: %q
+workspace:
+  pipeline: " ci "
+  deployment: cd
+`, root))
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.Workspace.Pipeline != filepath.Join(root, "ci") || cfg.Workspace.Deployment != filepath.Join(root, "cd") {
+			t.Fatalf("unexpected normalized workspace roots: %#v", cfg.Workspace)
+		}
+	})
+
+	t.Run("keeps absolute roots outside orbit root", func(t *testing.T) {
+		setupDefaultConfig(t)
+		root := t.TempDir()
+		pipeline := t.TempDir()
+		deployment := t.TempDir()
+		writeEnvConfig(t, "develop", fmt.Sprintf(`orbit:
+  root: %q
+workspace:
+  pipeline: %q
+  deployment: %q
+`, root, pipeline, deployment))
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.Workspace.Pipeline != pipeline || cfg.Workspace.Deployment != deployment {
+			t.Fatalf("absolute workspace roots changed: %#v", cfg.Workspace)
+		}
+	})
+
+	for _, tc := range []struct {
+		name       string
+		pipeline   string
+		deployment string
+		want       string
+	}{
+		{name: "empty pipeline", pipeline: " ", deployment: "cd", want: "workspace.pipeline: is required"},
+		{name: "same root", pipeline: "workspace", deployment: "workspace", want: "workspace.pipeline and workspace.deployment must not overlap"},
+		{name: "nested root", pipeline: "workspace", deployment: "workspace/cd", want: "workspace.pipeline and workspace.deployment must not overlap"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			setupDefaultConfig(t)
+			writeEnvConfig(t, "develop", fmt.Sprintf(`workspace:
+  pipeline: %q
+  deployment: %q
+`, tc.pipeline, tc.deployment))
+
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("expected %q, got %v", tc.want, err)
+			}
+		})
 	}
 }
 
@@ -690,6 +760,71 @@ func TestLoadConfigValidatesTurnstile(t *testing.T) {
 	}
 }
 
+func TestLoadConfigValidatesLetsEncrypt(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{name: "missing email", content: `cert:
+  letsencrypt:
+    enabled: true
+    email: ""
+`, want: "cert.letsencrypt.email is required"},
+		{name: "invalid challenge", content: `cert:
+  letsencrypt:
+    enabled: true
+    email: ops@example.test
+    challenge: tls
+`, want: "cert.letsencrypt.challenge must be http or dns"},
+		{name: "dns without provider", content: `cert:
+  letsencrypt:
+    enabled: true
+    email: ops@example.test
+    challenge: dns
+    dns_provider: ""
+`, want: "cert.letsencrypt.dns_provider is required for dns challenge"},
+		{name: "normalized dns", content: `cert:
+  letsencrypt:
+    enabled: true
+    email: " ops@example.test "
+    challenge: " DNS "
+    dns_provider: " cloudflare "
+`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			setupDefaultConfig(t)
+			writeEnvConfig(t, "develop", tc.content)
+
+			cfg, err := Load()
+			if tc.want != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("expected %q, got %v", tc.want, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.Cert.LetsEncrypt.Email != "ops@example.test" || cfg.Cert.LetsEncrypt.Challenge != "dns" || cfg.Cert.LetsEncrypt.DNSProvider != "cloudflare" {
+				t.Fatalf("unexpected normalized letsencrypt config: %#v", cfg.Cert.LetsEncrypt)
+			}
+		})
+	}
+}
+
+func TestCertConfigValidatesTLSMode(t *testing.T) {
+	cfg := CertConfig{LetsEncrypt: LetsEncryptConfig{Enabled: false}}
+	if err := cfg.ValidateForTLSMode("letsencrypt"); err == nil || !strings.Contains(err.Error(), "cert.letsencrypt.enabled") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := cfg.ValidateForTLSMode("none"); err != nil {
+		t.Fatalf("optional certificate config should not be required: %v", err)
+	}
+}
+
 func setupDefaultConfig(t *testing.T) {
 	t.Helper()
 	dir := t.TempDir()
@@ -802,12 +937,14 @@ database:
     path: data/db/pomelo-repository.db
   mysql:
     dsn: ""
+workspace:
+  pipeline: data/pipeline
+  deployment: data/deployment
 orbit:
   root: .
 jwt:
   secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 traefik:
-  cert_dir: data/deployment/traefik/data/certs
   image: traefik:3.6
   rest_api_url: http://localhost:8080
   base_domain: lvh.me

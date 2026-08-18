@@ -1,5 +1,5 @@
 <template>
-  <nav class="flex min-h-0 flex-1 flex-col" :aria-label="t('deploymentDialogue.history')">
+  <nav class="flex min-h-0 min-w-0 flex-1 flex-col" :aria-label="t('deploymentDialogue.history')">
     <div class="flex h-12 shrink-0 items-center justify-between border-b border-border px-3">
       <span class="text-sm font-medium text-foreground">{{ t('deploymentDialogue.history') }}</span>
       <button
@@ -38,7 +38,7 @@
           class="min-w-0 flex-1 px-2.5 py-2 text-left text-sm"
           @click="emit('select', conversation.id)"
         >
-          <span class="block truncate">{{ conversation.title }}</span>
+          <span class="block truncate" :title="conversation.title">{{ conversation.title }}</span>
           <span class="mt-0.5 block text-xs text-muted-foreground">
             {{ formatRelativeTime(conversation.updated_at) }}
           </span>

@@ -6,16 +6,41 @@ import (
 	"testing"
 )
 
-func TestResolvePhysicalDataRootResolvesRelativeRootToAbsolutePath(t *testing.T) {
-	got, err := ResolvePhysicalDataRoot(context.Background(), "data")
+func TestResolveDockerDaemonPathLeavesNativePathUnchanged(t *testing.T) {
+	got, err := resolveDockerDaemonPath(context.Background(), "workspace", "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !filepath.IsAbs(got) {
-		t.Fatalf("expected absolute physical data root, got %q", got)
+	if got != "workspace" {
+		t.Fatalf("native Docker daemon path = %q, want unchanged path", got)
 	}
-	if filepath.Base(got) != "data" {
-		t.Fatalf("expected data root suffix, got %q", got)
+}
+
+func TestResolveDockerDaemonPathRequiresAbsoluteOrbitPathInContainer(t *testing.T) {
+	_, err := resolveDockerDaemonPath(context.Background(), "workspace", "container-id", true)
+	if err == nil {
+		t.Fatal("expected relative Orbit path to be rejected in a container")
+	}
+}
+
+func TestResolveMountedContainerPathUsesLongestDestination(t *testing.T) {
+	got, err := resolveMountedContainerPath("/app/data/deployment/traefik/data/certs", []dockerInspectMount{
+		{Source: "/srv/orbit", Destination: "/app/data"},
+		{Source: "/srv/orbit/cd", Destination: "/app/data/deployment"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join("/srv/orbit/cd", "traefik", "data", "certs")
+	if got != want {
+		t.Fatalf("resolved path = %q, want %q", got, want)
+	}
+}
+
+func TestResolveMountedContainerPathRejectsUnmappedPath(t *testing.T) {
+	_, err := resolveMountedContainerPath("/tmp/orbit-ci", []dockerInspectMount{{Source: "/srv/orbit", Destination: "/work"}})
+	if err == nil {
+		t.Fatal("expected unmapped path to fail")
 	}
 }
 

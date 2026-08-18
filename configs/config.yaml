@@ -29,6 +29,10 @@ database:
   mysql:
     dsn: ""
 
+workspace:
+  pipeline: data/pipeline
+  deployment: data/deployment
+
 orbit:
   root: .
 
@@ -37,7 +41,6 @@ jwt:
 
 traefik:
   # Infrastructure only. Product identity (code/component/network) is fixed in code.
-  cert_dir: data/deployment/traefik/data/certs
   image: traefik:3.6
   rest_api_url: http://localhost:8080
   base_domain: lvh.me

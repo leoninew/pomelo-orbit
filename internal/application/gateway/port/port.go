@@ -19,6 +19,10 @@ type TransactionRunner interface {
 	RunInTransaction(ctx context.Context, fn func(context.Context) error) error
 }
 
+// PhysicalPathResolver maps a path visible to Orbit to the path visible to the
+// Docker daemon. For a native Orbit process, both paths are identical.
+type PhysicalPathResolver func(ctx context.Context, logicalPath string) (string, error)
+
 // ApplicationStore is the narrow application/version persistence surface used by gateway.
 type ApplicationStore interface {
 	ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error)

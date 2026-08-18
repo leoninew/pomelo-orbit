@@ -114,7 +114,7 @@
   <AppDialog v-model:open="createOpen" title="新建流水线模板">
     <form class="space-y-4" @submit.prevent="createTemplate">
       <div class="space-y-1.5">
-        <label class="app-field-label">
+        <label class="app-field-label block">
           名称
           <span class="text-destructive">*</span>
         </label>
@@ -126,7 +126,7 @@
         <p v-if="createError" class="app-field-error" role="alert">{{ createError }}</p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label">说明</label>
+        <label class="app-field-label block">说明</label>
         <input v-model="createForm.description" class="app-input" />
       </div>
     </form>
@@ -138,7 +138,7 @@
   <AppDialog v-model:open="editOpen" title="编辑流水线信息">
     <form class="space-y-4" @submit.prevent="savePipelineInfo">
       <div class="space-y-1.5">
-        <label class="app-field-label">
+        <label class="app-field-label block">
           名称
           <span class="text-destructive">*</span>
         </label>
@@ -146,20 +146,22 @@
           v-model="editForm.name"
           class="app-input"
           :class="editError ? 'app-input-error' : ''"
+          :aria-invalid="editError ? 'true' : undefined"
+          @input="editError = ''"
         />
         <p v-if="editError" class="app-field-error" role="alert">{{ editError }}</p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label">说明</label>
+        <label class="app-field-label block">说明</label>
         <input v-model="editForm.description" class="app-input" />
       </div>
       <div v-if="editingPipeline?.kind === 'application'" class="space-y-1.5">
-        <label class="app-field-label">应用</label>
+        <label class="app-field-label block">应用</label>
         <ComboboxSelect
           v-model="editForm.applicationId"
           :options="editApplicationOptions"
           :disabled="!canEditBindApplication"
-          placeholder="可选；绑定后不可更改"
+          :placeholder="canEditBindApplication ? '可选' : '未绑定'"
         />
       </div>
     </form>
@@ -176,7 +178,7 @@
   >
     <form class="space-y-4" @submit.prevent="instantiate">
       <div class="space-y-1.5">
-        <label class="app-field-label">
+        <label class="app-field-label block">
           名称
           <span class="text-destructive">*</span>
         </label>
@@ -192,7 +194,7 @@
         </p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label">
+        <label class="app-field-label block">
           代码仓库
           <span class="text-destructive">*</span>
         </label>
@@ -208,12 +210,15 @@
         </p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label">应用</label>
+        <label class="app-field-label block">
+          应用
+          <span v-if="dockerArtifacts.length" class="text-destructive">*</span>
+        </label>
         <ComboboxSelect
           v-model="instantiateForm.applicationId"
           :options="applicationOptions"
           :invalid="Boolean(instantiateErrors.applicationId)"
-          placeholder="可选；绑定镜像制品到组件时需要"
+          :placeholder="dockerArtifacts.length ? '选择应用' : '可选'"
           @update:model-value="changeInstantiationApplication"
         />
         <p v-if="instantiateErrors.applicationId" class="app-field-error" role="alert">
@@ -222,10 +227,15 @@
       </div>
       <template v-if="dockerArtifacts.length && instantiateForm.applicationId">
         <div class="grid gap-4 sm:grid-cols-2">
-          <div class="space-y-1.5">
-            <label class="app-field-label">
+          <div
+            :class="[
+              'space-y-1.5',
+              instantiateForm.versionForkStrategy === 'fixed' ? '' : 'sm:col-span-2',
+            ]"
+          >
+            <label class="app-field-label block">
               来源版本策略
-              <span v-if="hasArtifactBindings" class="text-destructive">*</span>
+              <span class="text-destructive">*</span>
             </label>
             <RawValueSelect
               :model-value="instantiateForm.versionForkStrategy"
@@ -238,7 +248,7 @@
             </p>
           </div>
           <div v-if="instantiateForm.versionForkStrategy === 'fixed'" class="space-y-1.5">
-            <label class="app-field-label">
+            <label class="app-field-label block">
               来源版本
               <span class="text-destructive">*</span>
             </label>
@@ -255,40 +265,28 @@
             </p>
           </div>
         </div>
-        <div class="space-y-3 border-t border-border pt-4">
-          <div>
-            <h3 class="app-field-label">Docker 制品绑定</h3>
-            <p class="mt-1 text-sm text-muted-foreground">
-              可选。绑定后该镜像制品会在成功 Run 时更新目标组件；不绑定则只作追溯。
-            </p>
-          </div>
+        <div class="space-y-4">
           <AppLoadingState v-if="sourceVersionLoading" size="compact" />
           <p v-else-if="sourceVersionError" class="app-field-error" role="alert">
             {{ sourceVersionError }}
           </p>
-          <div v-else class="space-y-3">
-            <div
-              v-for="artifact in dockerArtifacts"
-              :key="artifact.key"
-              class="grid gap-2 border-b border-border pb-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_minmax(220px,1fr)] sm:items-center"
-            >
-              <div class="min-w-0">
-                <p class="truncate text-sm font-medium text-foreground">{{ artifact.name }}</p>
-                <p class="truncate text-xs text-muted-foreground">{{ artifact.stageName }}</p>
-              </div>
-              <div class="space-y-1.5">
-                <ComboboxSelect
-                  v-model="artifactBindings[artifact.key]"
-                  :options="componentOptions"
-                  :invalid="Boolean(artifactBindingErrors[artifact.key])"
-                  :disabled="componentOptions.length === 0"
-                  placeholder="不绑定组件"
-                  @update:model-value="clearArtifactBindingError(artifact.key)"
-                />
-                <p v-if="artifactBindingErrors[artifact.key]" class="app-field-error" role="alert">
-                  {{ artifactBindingErrors[artifact.key] }}
-                </p>
-              </div>
+          <div v-else class="space-y-4">
+            <div v-for="artifact in dockerArtifacts" :key="artifact.key" class="space-y-1.5">
+              <label class="app-field-label block">
+                {{ dockerArtifacts.length === 1 ? '组件' : `${artifact.name} 的组件` }}
+                <span class="text-destructive">*</span>
+              </label>
+              <ComboboxSelect
+                v-model="artifactBindings[artifact.key]"
+                :options="componentOptions"
+                :invalid="Boolean(artifactBindingErrors[artifact.key])"
+                :disabled="componentOptions.length === 0"
+                placeholder="选择组件"
+                @update:model-value="clearArtifactBindingError(artifact.key)"
+              />
+              <p v-if="artifactBindingErrors[artifact.key]" class="app-field-error" role="alert">
+                {{ artifactBindingErrors[artifact.key] }}
+              </p>
             </div>
           </div>
         </div>
@@ -414,8 +412,8 @@
     }));
     const currentId = editingPipeline.value?.application_id;
     const currentName = editingPipeline.value?.application_name;
-    if (currentId && currentName && !options.some((option) => option.value === currentId)) {
-      options.unshift({ value: currentId, label: currentName });
+    if (currentId && !options.some((option) => option.value === currentId)) {
+      options.unshift({ value: currentId, label: currentName || currentId });
     }
     return options;
   });
@@ -459,8 +457,6 @@
       }))
       .filter((binding) => binding.component_name)
   );
-  const hasArtifactBindings = computed(() => selectedArtifactBindings.value.length > 0);
-
   async function fetchPipelines() {
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
@@ -534,7 +530,7 @@
     });
     editError.value = '';
     editApplications.value = [];
-    if (pipeline.kind === 'application') {
+    if (pipeline.kind === 'application' && !pipeline.application_id) {
       const projectId = projectStore.activeProjectId || pipeline.project_id;
       if (!projectId) {
         toast.error('请先选择项目');
@@ -688,7 +684,7 @@
         ? instantiateForm.fixedVersionId
         : versions.value[0]?.id;
     if (!versionId) {
-      sourceVersionError.value = '应用尚无可用版本，无法绑定 Docker 制品。';
+      sourceVersionError.value = '应用尚无可用版本，无法选择组件。';
       return;
     }
     sourceVersionLoading.value = true;
@@ -728,7 +724,10 @@
     const selectedComponents = new Map<string, string>();
     for (const artifact of dockerArtifacts.value) {
       const componentName = String(artifactBindings[artifact.key] || '').trim();
-      if (!componentName) continue;
+      if (!componentName) {
+        artifactBindingErrors[artifact.key] = '请选择组件';
+        continue;
+      }
       if (selectedComponents.has(componentName)) {
         artifactBindingErrors[artifact.key] = '同一组件只能绑定一个 Docker 制品';
       } else {
@@ -736,13 +735,12 @@
       }
     }
     const bindings = selectedArtifactBindings.value;
-    const needsApplication = bindings.length > 0;
+    const needsApplication = dockerArtifacts.value.length > 0;
 
     instantiateErrors.name = instantiateForm.name.trim() ? '' : '请输入流水线名称';
     instantiateErrors.repositoryId = instantiateForm.repositoryId ? '' : '请选择代码仓库';
-    // Application is optional unless component-bound docker artifacts are selected.
     instantiateErrors.applicationId =
-      needsApplication && !instantiateForm.applicationId ? '绑定 Docker 制品时请选择应用' : '';
+      needsApplication && !instantiateForm.applicationId ? '请选择应用' : '';
     instantiateErrors.versionForkStrategy =
       needsApplication && !instantiateForm.versionForkStrategy ? '请选择来源版本策略' : '';
     instantiateErrors.fixedVersionId =
@@ -753,9 +751,7 @@
         : '';
     if (needsApplication && instantiateForm.applicationId && !sourceVersion.value) {
       for (const artifact of dockerArtifacts.value) {
-        if (String(artifactBindings[artifact.key] || '').trim()) {
-          artifactBindingErrors[artifact.key] = '请先加载包含目标组件的来源版本';
-        }
+        artifactBindingErrors[artifact.key] = '请先加载包含目标组件的来源版本';
       }
     }
     instantiateError.value = '';

@@ -349,7 +349,7 @@ HTTP path 和 SPA 页面地址同样必须表达资源领域；`ci`、`cd` 是�
 
 | 项目 | 完成结果 |
 |---|---|
-| 运维数据路径 | `scripts/cert.py` 已改用 `data/deployment/traefik/data/certs`；备份脚本仅排除 `data/pipeline/*/workspace`，不读取旧目录。 |
+| 运维数据路径 | `scripts/cert.py` 使用调用方传入的证书目录；备份脚本仅排除调用方显式传入的 workspace 路径。 |
 | 前端状态 | `web/src/constants/application.ts` 提供 `applicationVersionsApplicationIdKey`，键为 `pomelo_orbit_application_versions_application_id:<projectId>`；版本页只读写新键。 |
 | Pipeline 变量规则 | `civariable` 已迁为 `pipelinevariable`，pipeline、pipeline_run 和 repository use case 均使用新 import 与 package 名。 |
 | Application 最小依赖 | deployment command / execution service 及测试辅助构造器均已移除未使用的 `config.Config` 依赖。 |

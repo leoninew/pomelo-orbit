@@ -44,7 +44,7 @@ func TestSourceValidatesRepositoryAndResolvesRevision(t *testing.T) {
 	}
 }
 
-func TestSourceAcceptsRepositoryOutsideDataRoot(t *testing.T) {
+func TestSourceAcceptsRepositoryOutsideManagedWorkspace(t *testing.T) {
 	dataRoot := t.TempDir()
 	repositoryPath := filepath.Join(t.TempDir(), "source")
 	createGitRepository(t, repositoryPath)

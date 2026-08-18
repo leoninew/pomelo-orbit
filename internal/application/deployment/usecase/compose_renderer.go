@@ -15,8 +15,9 @@ import (
 // RenderInput contains the already-merged desired state for one Service.
 // Rendering never reads Version defaults and Service overlays independently.
 type RenderInput struct {
-	Plan           model.EffectiveServicePlan
-	PhysicalSvcDir string
+	Plan                  model.EffectiveServicePlan
+	LogicalSvcDir         string
+	ComposeMountSourceDir string
 }
 
 type RenderResult struct {
@@ -49,7 +50,7 @@ func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (
 		if err := validateVersionComponent(component); err != nil {
 			return RenderResult{}, err
 		}
-		service, mounts, err := renderVersionComponentService(component, input.Plan.Application.Code, input.PhysicalSvcDir, nil, false)
+		service, mounts, err := renderVersionComponentServiceForPaths(component, input.Plan.Application.Code, input.LogicalSvcDir, input.ComposeMountSourceDir, nil, false)
 		if err != nil {
 			return RenderResult{}, fmt.Errorf("component %s: %w", component.Name, err)
 		}
@@ -259,7 +260,11 @@ func validateVersionComponent(component model.VersionComponent) error {
 	return nil
 }
 
-func renderVersionComponentService(component model.VersionComponent, appCode, physicalServiceDir string, runtime map[string]string, _ bool) (map[string]any, []ResolvedMount, error) {
+func renderVersionComponentService(component model.VersionComponent, appCode, composeMountSourceDir string, runtime map[string]string, _ bool) (map[string]any, []ResolvedMount, error) {
+	return renderVersionComponentServiceForPaths(component, appCode, composeMountSourceDir, composeMountSourceDir, runtime, false)
+}
+
+func renderVersionComponentServiceForPaths(component model.VersionComponent, appCode, logicalServiceDir, composeMountSourceDir string, runtime map[string]string, _ bool) (map[string]any, []ResolvedMount, error) {
 	service := map[string]any{"image": component.Image, "container_name": model.RuntimeContainerName(appCode, component.Name)}
 	if len(component.Entrypoint) > 0 {
 		service["entrypoint"] = append([]string(nil), component.Entrypoint...)
@@ -273,7 +278,7 @@ func renderVersionComponentService(component model.VersionComponent, appCode, ph
 	if err := applyComponentRuntimeFields(service, component); err != nil {
 		return nil, nil, err
 	}
-	resolved, err := resolveMountSpecs(component.Mounts, physicalServiceDir)
+	resolved, err := resolveMountSpecsForPaths(component.Mounts, logicalServiceDir, composeMountSourceDir)
 	if err != nil {
 		return nil, nil, err
 	}

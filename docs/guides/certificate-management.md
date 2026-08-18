@@ -8,10 +8,10 @@ Doc role: living guide。与代码冲突时以代码为准。
 Traefik 负责 TLS 终止，证书以 PEM 格式通过 pomelo-orbit UI 上传后：
 
 1. 后端解析合并 PEM，拆分为 `{route_name}.pem`（证书）和 `{route_name}-key.pem`（私钥）分别落盘
-2. 文件存储路径：`backend/data/applications/traefik/data/certs/`
+2. 文件存储路径：`workspace.deployment/traefik/data/certs/`
 3. 证书内容同时入库（`route.cert_pem` / `route.cert_key`），支持同步时从数据库重建文件
-4. Traefik 动态配置（`dynamic/{route_name}.yml`）引用 `/certs/{route_name}.pem` 和 `/certs/{route_name}-key.pem`
-5. Docker volume 挂载：`data/certs:/certs:ro`
+4. Route 同步的 `providers.rest` 完整快照在顶层 `tls.certificates` 引用 `/etc/traefik/certs/{route_name}.pem` 和 `/etc/traefik/certs/{route_name}-key.pem`
+5. Gateway 初始 Version 将这个目录的 Docker daemon 可见宿主路径挂载到 `/etc/traefik/certs`；同一目录还挂载到 `/letsencrypt` 以持久化 ACME 数据
 
 ## 上传格式
 
@@ -34,16 +34,16 @@ Traefik 负责 TLS 终止，证书以 PEM 格式通过 pomelo-orbit UI 上传后
 # 查看帮助
 python scripts/cert.py -h
 
-# 生成证书（输出到 data/deployment/traefik/data/certs/{domain}.pem）
-python scripts/cert.py new -n pomelo-orbit.localhost
+# 生成证书（目录通常取 workspace.deployment/traefik/data/certs）
+python scripts/cert.py new -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 
 # 检查证书信任链（CA → 叶证书 → TLS 握手，模拟浏览器）
-python scripts/cert.py check -n pomelo-orbit.localhost
+python scripts/cert.py check -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 ```
 
 ### new
 
-生成 mkcert 证书并输出合并 PEM 到 `data/deployment/traefik/data/certs/` 目录：
+生成 mkcert 证书并输出合并 PEM 到调用方显式提供的 `--cert-dir` 目录。Gateway 的受管目录为 `workspace.deployment/traefik/data/certs/`：
 - `{domain}.pem` — cert + key 合并，用于上传到 pomelo-orbit UI
 
 ### check
@@ -52,7 +52,7 @@ python scripts/cert.py check -n pomelo-orbit.localhost
 
 1. mkcert 根 CA 文件是否存在
 2. mkcert CA 是否已导入 Windows 系统信任库（Root store）
-3. 本地 `data/deployment/traefik/data/certs/{domain}.pem` 文件内容（有效期、SAN、签发者）
+3. `--cert-dir/{domain}.pem` 文件内容（有效期、SAN、签发者）
 4. 叶证书是否由当前 mkcert CA 签名（离线验证）
 5. 实际 TLS 握手，使用系统信任库验证（与浏览器行为一致）
 
@@ -77,8 +77,8 @@ python scripts/cert.py check -n pomelo-orbit.localhost
 ### 1. 生成证书
 
 ```bash
-# 生成证书（输出到 data/deployment/traefik/data/certs/{domain}.pem）
-python scripts/cert.py new -n app.localhost
+# 生成证书（证书目录由部署工作区配置派生）
+python scripts/cert.py new -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 ```
 
 ### 2. 上传证书到 Pomelo Orbit
@@ -87,14 +87,14 @@ python scripts/cert.py new -n app.localhost
 2. 进入路由管理页面
 3. 选择要启用 HTTPS 的路由
 4. 点击"上传证书"按钮
-5. 选择生成的 `data/deployment/traefik/data/certs/{domain}.pem` 文件
+5. 选择 `--cert-dir/{domain}.pem` 文件
 6. 上传完成后，路由自动启用 HTTPS
 
 ### 3. 验证证书
 
 ```bash
 # 检查证书是否正确安装
-python scripts/cert.py check -n app.localhost
+python scripts/cert.py check -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 ```
 
 ### 4. 访问应用
@@ -106,7 +106,7 @@ python scripts/cert.py check -n app.localhost
 ### 证书存储
 
 - **数据库**: 证书内容存储在 `route.cert_pem` 和 `route.cert_key` 字段
-- **文件系统**: 证书文件存储在 `backend/data/applications/traefik/data/certs/` 目录
+- **文件系统**: 证书文件存储在 `workspace.deployment/traefik/data/certs/` 目录
 - **同步**: 执行"同步路由"操作时，会从数据库重建证书文件
 
 ### 证书更新
@@ -116,7 +116,7 @@ python scripts/cert.py check -n app.localhost
 1. 生成新证书（使用相同域名）
 2. 在 UI 中重新上传证书
 3. 系统自动替换旧证书文件
-4. Traefik 自动重新加载配置
+4. Route 同步通过 REST provider 更新 Traefik 的 TLS 配置
 
 ### 证书删除
 
@@ -130,16 +130,9 @@ python scripts/cert.py check -n app.localhost
 2. 为每个路由分别上传证书
 3. 每个路由独立管理证书
 
-## Docker Label 路由的证书管理
+## Docker Label 路由
 
-从 v0.4.0 开始，支持为 Docker Label 路由上传证书：
-
-1. Docker Label 路由在数据库中有记录（`source_type='docker_label'`）
-2. 可以为这些路由上传证书
-3. 证书通过集中式 `tls.yml` 配置文件应用
-4. 路由规则由 Docker Labels 管理，证书由 File Provider 管理
-
-**注意**: Docker Label 路由本身是只读的（不能编辑域名、路径等），但可以上传和管理证书。
+平台 Route 的手工证书由 `providers.rest` 管理。Docker Label 路由是 Traefik Docker provider 的用户配置，不是 Orbit 可编辑的 Route 资源；不要通过禁用的占位 Route、`tls.yml` 或直接复制 PEM 的方式为它注册证书。
 
 ## Chrome 缓存清理
 

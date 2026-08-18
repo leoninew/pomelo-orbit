@@ -85,12 +85,12 @@ GatewayConfig 只保存 Gateway 领域字段：REST 地址、基础域名、默�
 |---|---|
 | Gateway 的 REST 地址、基础域名、默认入口、TLS 模式 | `GatewayConfig`；创建时采用已存在的 `traefik.rest_api_url`、`traefik.base_domain`，并保持当前 `web`/`none` 默认；保存后以 GatewayConfig 为准 |
 | 镜像、镜像拉取策略 | `traefik.image`；拉取策略保持当前 `missing` 默认。二者在 Version Component 中均可由用户修改 |
-| REST 就绪等待、ACME 持久化、Let's Encrypt | `traefik.rest_ready_timeout` 直接供部署后等待使用；`traefik.cert_dir`、`cert.letsencrypt.enabled/email/challenge/dns_provider` 写入初始 Version 的相关挂载与静态配置。现有字段当前没有完整使用，实施必须接入；不得继续写死 `admin@localhost` 或固定 HTTP challenge |
+| REST 就绪等待、ACME 持久化、Let's Encrypt | `traefik.rest_ready_timeout` 直接供部署后等待使用；证书/ACME 目录固定从 `workspace.deployment/traefik/data/certs` 派生，`cert.letsencrypt.enabled/email/challenge/dns_provider` 写入初始 Version 的静态配置。不得继续写死 `admin@localhost` 或固定 HTTP challenge |
 | 共享网络 | 保持当前固定 `traefik` 网络。它同时被初始 Gateway Version 与需要 gateway endpoint 的通用 Compose Render 使用，因此不提供单个 Version 的私有覆盖 |
 | Docker socket、provider endpoint、web/websecure/REST 的默认端口与监听地址、静态配置/ACME 容器路径、Dashboard/API 开关、日志等级 | 不新增进程配置。它们作为初始 Version 的 Traefik 模板内容保存，用户可在 Application/Version 中按普通能力修改；部署不得重新注入这些值 |
 | Gateway code/name/component 等受管资源识别名称 | 代码识别常量；它们不是环境运行参数，也不进入 GatewayConfig |
 
-`traefik.cert_dir` 必须成为初始 Version 中持久 ACME/证书目录的实际来源，不能继续声明后闲置。具体的物理路径解析沿用现有 workspace/physical-data-root 机制。初始 Version 保存后，后续部署快照由通用 EffectiveServicePlan 覆盖其 Component/mount/endpoint 值；worker 不得重新读取进程配置来替换用户保存的 Version。
+初始 Version 中持久 ACME/证书目录固定从 `workspace.deployment/traefik/data/certs` 派生，具体的物理路径解析沿用现有 workspace/physical-data-root 机制。初始 Version 保存后，后续部署快照由通用 EffectiveServicePlan 覆盖其 Component/mount/endpoint 值；worker 不得重新读取进程配置来替换用户保存的 Version。
 
 Route 的动态快照继续在 Gateway 就绪后读取最新启用 Route 集合。它不再 reconcile 或编译 Gateway TCP listener；需要新增静态 TCP entrypoint/宿主机端口时，用户先在目标 Gateway Version 中显式配置并部署，再启用相应 Route。缺失 entrypoint 的问题走 Traefik/Compose 或 Route 发布的普通错误路径，不引入 Gateway Version 自动修复。
 
@@ -130,7 +130,7 @@ Service create/update 继续复用全局 code 唯一性和 `(application_id, ins
 3. 多个 Gateway Service 的 Service code、工作目录和 Compose project 可以独立，但受管容器名不含 instance key；通用单运行实例规则必须覆盖 Gateway，测试需覆盖同 Application 的实例互斥和停止后切换。
 4. 去掉 Gateway 状态预检后，缺失外部网络或端口冲突会在 Compose 执行期失败；日志和 HTTP/MCP 错误需要能直接指出 Docker 原因。
 5. Route snapshot 使用最新动态路由而 Version 静态规格使用已选 Version 的通用部署快照是有意的双时点模型，日志必须能说明两者来源，避免运维误判。
-6. `traefik.cert_dir` 当前没有实际挂载消费，且 `cert.letsencrypt.*` 没有完整参与初始静态配置；实施必须先纠正这一配置接线问题，且不得演变为覆盖用户 Version 的第二套 SoT。
+6. 证书/ACME 目录必须从 `workspace.deployment` 单一派生，并作为 Docker daemon 可见 host-path mount 写入初始 Version；不得演变为覆盖用户 Version 的第二套 SoT。
 
 ## Alternatives
 

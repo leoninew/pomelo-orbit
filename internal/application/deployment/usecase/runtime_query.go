@@ -123,16 +123,16 @@ func (s Service) PreviewService(ctx context.Context, userId string, serviceId st
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
 	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
-	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, service.Code)
+	composeMountSourceDir, err := s.workspace.ComposeMountSourceDir(ctx, service.Code)
 	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical service dir", err)
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve compose mount source dir", err)
 	}
 	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
 		return "", err
 	}
 	plan.Gateway = gateway
-	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, PhysicalSvcDir: physicalDir})
+	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, LogicalSvcDir: s.workspace.ServiceDir(service.Code), ComposeMountSourceDir: composeMountSourceDir})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
@@ -164,16 +164,16 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
 	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
-	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, plan.Service.Code)
+	composeMountSourceDir, err := s.workspace.ComposeMountSourceDir(ctx, plan.Service.Code)
 	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical preview dir", err)
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve compose mount source dir", err)
 	}
 	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
 		return "", err
 	}
 	plan.Gateway = gateway
-	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, PhysicalSvcDir: physicalDir})
+	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, LogicalSvcDir: s.workspace.ServiceDir(plan.Service.Code), ComposeMountSourceDir: composeMountSourceDir})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}

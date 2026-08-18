@@ -20,11 +20,12 @@
     </template>
     <AppEmptyState v-if="filteredComponents.length === 0" size="compact" />
     <div v-else class="overflow-x-auto">
-      <table class="app-data-table min-w-[840px]">
+      <table class="app-data-table min-w-[960px]">
         <thead>
           <tr>
             <th>{{ t('application.detail.fields.component') }}</th>
             <th>{{ t('application.detail.fields.image') }}</th>
+            <th>{{ t('application.componentDetail.fields.imageSha256') }}</th>
             <th>{{ t('application.componentDetail.fields.pullPolicy') }}</th>
             <th>{{ t('application.componentDetail.fields.restartPolicy') }}</th>
             <th>{{ t('common.operation') }}</th>
@@ -37,23 +38,14 @@
                 {{ component.name }}
               </router-link>
             </td>
-            <td class="max-w-md whitespace-normal break-all text-muted-foreground">
-              <div>{{ component.image }}</div>
-              <div v-if="component.artifact_name" class="mt-1 text-xs">
-                {{ component.artifact_name }}
-              </div>
-              <div
-                v-if="component.artifact_local_image_sha256"
-                class="mt-1 font-mono text-xs text-muted-foreground"
-              >
-                {{ component.artifact_local_image_sha256 }}
-              </div>
-              <div
-                v-if="component.artifact_source_commit_sha"
-                class="font-mono text-xs text-muted-foreground"
-              >
-                {{ component.artifact_source_commit_sha }}
-              </div>
+            <td class="max-w-xs truncate text-muted-foreground" :title="component.image">
+              {{ component.image }}
+            </td>
+            <td
+              class="max-w-xs truncate text-muted-foreground"
+              :title="component.artifact_local_image_sha256 || ''"
+            >
+              {{ component.artifact_local_image_sha256 || '-' }}
             </td>
             <td class="text-muted-foreground">{{ component.pull_policy }}</td>
             <td class="text-muted-foreground">{{ component.restart_policy }}</td>

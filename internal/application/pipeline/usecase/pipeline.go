@@ -779,17 +779,21 @@ func (s Service) validatePipelineConfiguration(ctx context.Context, pipeline mod
 	if (pipeline.ApplicationId == nil) != (pipeline.ApplicationName == nil) {
 		return apperror.New(apperror.KindValidation, "application pipeline application binding is incomplete")
 	}
-	if len(mappings) == 0 {
+	dockerArtifacts := dockerImageArtifacts(definitions)
+	if len(dockerArtifacts) == 0 {
 		if pipeline.VersionForkStrategy != nil || pipeline.FixedVersionId != nil {
-			return apperror.New(apperror.KindValidation, "version strategy requires a component-bound image artifact")
+			return apperror.New(apperror.KindValidation, "version strategy requires a Docker image artifact")
 		}
 		return nil
 	}
 	if pipeline.ApplicationId == nil {
-		return apperror.New(apperror.KindValidation, "component-bound image artifacts require an application binding")
+		return apperror.New(apperror.KindValidation, "Docker image artifacts require an application binding")
+	}
+	if len(mappings) != len(dockerArtifacts) {
+		return apperror.New(apperror.KindValidation, "every Docker image artifact requires a component binding")
 	}
 	if pipeline.VersionForkStrategy == nil {
-		return apperror.New(apperror.KindValidation, "component-bound image artifacts require a version strategy")
+		return apperror.New(apperror.KindValidation, "Docker image artifacts require a version strategy")
 	}
 	switch *pipeline.VersionForkStrategy {
 	case model.VersionForkStrategyLatest:
@@ -842,6 +846,18 @@ func componentMappings(stages []model.StageDefinition) []componentMapping {
 		for _, artifact := range stage.Artifacts {
 			if artifact.Collector == "docker_image" && artifact.ComponentName != nil {
 				result = append(result, componentMapping{Stage: stage, Artifact: artifact, ComponentName: *artifact.ComponentName})
+			}
+		}
+	}
+	return result
+}
+
+func dockerImageArtifacts(stages []model.StageDefinition) []model.ArtifactConfig {
+	result := make([]model.ArtifactConfig, 0)
+	for _, stage := range stages {
+		for _, artifact := range stage.Artifacts {
+			if artifact.Collector == "docker_image" {
+				result = append(result, artifact)
 			}
 		}
 	}

@@ -15,7 +15,6 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/traefik"
 	deploymentrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/deployment"
 	pipelinerunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/pipeline"
-	runtimepath "github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/deploymentworkspace"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/executionlog"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/pipelineworkspace"
@@ -28,11 +27,12 @@ import (
 func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *worker.Router {
 	stores := newDomainStores(database)
 	logStore := executionlog.Store{}
-	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
-	localSource := repositorysource.New(runtimepath.ResolvePhysicalPath)
-	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
+	dockerPathResolver := dockerDaemonPathResolver()
+	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.Workspace.Pipeline, dockerPathResolver)
+	localSource := repositorysource.New(dockerPathResolver)
+	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.Workspace.Deployment, dockerPathResolver)
 	transactionRunner := databasetx.NewTransactionRunner(database)
-	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, cfg, transactionRunner)
+	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, cfg, dockerPathResolver, transactionRunner)
 	routeManager := traefik.NewRouteManager(cfg)
 	routeService := routesvc.New(
 		stores.project,

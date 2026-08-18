@@ -36,7 +36,6 @@ import (
 	deliverymcpclient "github.com/leoninew/pomelo-orbit/internal/infrastructure/mcp/delivery"
 	deploymentrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/deployment"
 	pipelinerunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/pipeline"
-	runtimepath "github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/deploymentworkspace"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/envfile"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/executionlog"
@@ -90,11 +89,12 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	authService := authsvc.New(stores.user, stores.auth, tokenService, logger, cfg.Jwt.SecretKey)
 	transactionRunner := databasetx.NewTransactionRunner(database)
 	logStore := executionlog.Store{}
-	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
-	localSource := repositorysource.New(runtimepath.ResolvePhysicalPath)
-	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
+	dockerPathResolver := dockerDaemonPathResolver()
+	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.Workspace.Pipeline, dockerPathResolver)
+	localSource := repositorysource.New(dockerPathResolver)
+	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.Workspace.Deployment, dockerPathResolver)
 	routeManager := traefik.NewRouteManager(cfg)
-	gatewayCore := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, cfg, transactionRunner)
+	gatewayCore := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, cfg, dockerPathResolver, transactionRunner)
 	deploymentService := deploymentsvc.NewCommandService(
 		stores.project,
 		stores.application,

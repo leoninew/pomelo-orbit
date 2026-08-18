@@ -8,25 +8,23 @@ import (
 	"sync"
 )
 
-const deploymentDataDir = "deployment"
-
-type PhysicalDataRootResolver func(ctx context.Context, logicalDataRoot string) (string, error)
+type PhysicalWorkspaceResolver func(ctx context.Context, logicalWorkspaceRoot string) (string, error)
 
 type Workspace struct {
-	logicalDataRoot string
-	resolver        PhysicalDataRootResolver
+	logicalWorkspaceRoot string
+	resolver             PhysicalWorkspaceResolver
 
-	physicalOnce     sync.Once
-	physicalDataRoot string
-	physicalErr      error
+	physicalOnce          sync.Once
+	physicalWorkspaceRoot string
+	physicalErr           error
 }
 
-func NewWithResolver(dataRoot string, resolver PhysicalDataRootResolver) *Workspace {
-	return &Workspace{logicalDataRoot: dataRoot, resolver: resolver}
+func NewWithResolver(workspaceRoot string, resolver PhysicalWorkspaceResolver) *Workspace {
+	return &Workspace{logicalWorkspaceRoot: filepath.Clean(workspaceRoot), resolver: resolver}
 }
 
 func (w *Workspace) ServiceDir(serviceCode string) string {
-	return filepath.Join(w.logicalDataRoot, deploymentDataDir, serviceCode)
+	return filepath.Join(w.logicalWorkspaceRoot, serviceCode)
 }
 
 func (w *Workspace) ServiceDirExists(serviceCode string) (bool, error) {
@@ -62,25 +60,29 @@ func (w *Workspace) WriteConfig(serviceCode string, path string, content string)
 	return nil
 }
 
-func (w *Workspace) PhysicalDataRoot(ctx context.Context) (string, error) {
+func (w *Workspace) PhysicalWorkspaceRoot(ctx context.Context) (string, error) {
 	w.physicalOnce.Do(func() {
-		w.physicalDataRoot, w.physicalErr = w.resolver(ctx, w.logicalDataRoot)
+		if w.resolver == nil {
+			w.physicalWorkspaceRoot = w.logicalWorkspaceRoot
+			return
+		}
+		w.physicalWorkspaceRoot, w.physicalErr = w.resolver(ctx, w.logicalWorkspaceRoot)
 	})
-	return w.physicalDataRoot, w.physicalErr
-}
-
-func (w *Workspace) PhysicalDir(ctx context.Context) (string, error) {
-	physicalDataRoot, err := w.PhysicalDataRoot(ctx)
-	if err != nil {
-		return "", err
-	}
-	return filepath.ToSlash(physicalDataRoot), nil
+	return w.physicalWorkspaceRoot, w.physicalErr
 }
 
 func (w *Workspace) PhysicalServiceDir(ctx context.Context, serviceCode string) (string, error) {
-	physicalDataRoot, err := w.PhysicalDataRoot(ctx)
+	physicalWorkspaceRoot, err := w.PhysicalWorkspaceRoot(ctx)
 	if err != nil {
 		return "", err
 	}
-	return filepath.ToSlash(filepath.Join(physicalDataRoot, deploymentDataDir, serviceCode)), nil
+	return filepath.ToSlash(filepath.Join(physicalWorkspaceRoot, serviceCode)), nil
+}
+
+// ComposeMountSourceDir returns a host path only when Orbit runs in a container.
+func (w *Workspace) ComposeMountSourceDir(ctx context.Context, serviceCode string) (string, error) {
+	if w.resolver == nil {
+		return "", nil
+	}
+	return w.PhysicalServiceDir(ctx, serviceCode)
 }

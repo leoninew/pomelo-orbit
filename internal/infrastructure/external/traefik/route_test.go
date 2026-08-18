@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -172,6 +173,45 @@ func TestRouteManagerApplySnapshotClearsWithEmptyMaps(t *testing.T) {
 	}
 }
 
+func TestRouteManagerApplySnapshotPublishesStoredCertificate(t *testing.T) {
+	var gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		raw, _ := io.ReadAll(request.Body)
+		gotBody = string(raw)
+		writer.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	deploymentRoot := t.TempDir()
+	certificate := "certificate"
+	key := "private key"
+	manager := NewRouteManager(config.Config{Workspace: config.WorkspaceConfig{Deployment: deploymentRoot}})
+	err := manager.ApplySnapshot(context.Background(), server.URL, []model.Route{{
+		Name: "secure", Protocol: "http", Domain: "secure.example.test", PathPrefix: "/", TargetUrl: "http://app:8080", Enabled: true,
+		HTTPSEnabled: true, CertType: "manual", CertPEM: &certificate, CertKey: &key,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	certificatePath := filepath.Join(deploymentRoot, "traefik", "data", "certs", "secure.pem")
+	if content, err := os.ReadFile(certificatePath); err != nil || string(content) != certificate {
+		t.Fatalf("stored certificate = %q, err=%v", content, err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(gotBody), &payload); err != nil {
+		t.Fatal(err)
+	}
+	certificates := payload["tls"].(map[string]any)["certificates"].([]any)
+	if len(certificates) != 1 {
+		t.Fatalf("TLS certificates = %#v", certificates)
+	}
+	entry := certificates[0].(map[string]any)
+	if entry["certFile"] != "/etc/traefik/certs/secure.pem" || entry["keyFile"] != "/etc/traefik/certs/secure-key.pem" {
+		t.Fatalf("TLS certificate entry = %#v", entry)
+	}
+}
+
 func TestBuildRestSnapshotSkipsDisabled(t *testing.T) {
 	snapshot := buildRestSnapshot([]model.Route{
 		{Name: "a", Protocol: "http", Domain: "a.test", PathPrefix: "/", TargetUrl: "http://a:1", Enabled: true},
@@ -197,8 +237,9 @@ func TestBuildRestSnapshotUsesResolvedManagedHTTPTarget(t *testing.T) {
 
 func TestRouteManagerUsesDeploymentCertificateDirectory(t *testing.T) {
 	root := t.TempDir()
-	manager := NewRouteManager(config.Config{Orbit: config.OrbitConfig{Root: root}})
-	want := filepath.Join(root, "data", deploymentDataDir, "traefik", "data", "certs")
+	deploymentRoot := filepath.Join(root, "cd")
+	manager := NewRouteManager(config.Config{Workspace: config.WorkspaceConfig{Deployment: deploymentRoot}})
+	want := filepath.Join(deploymentRoot, "traefik", "data", "certs")
 	if got := manager.routeCertDir(); got != want {
 		t.Fatalf("certificate directory = %q, want %q", got, want)
 	}

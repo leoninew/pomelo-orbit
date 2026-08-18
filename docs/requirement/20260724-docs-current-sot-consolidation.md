@@ -308,7 +308,7 @@ docs/
 | `docs/guides/ci-pipeline-vars-design.md` | 同上 | 待处理 |
 | `docs/guides/permissions.md` | 校准后 kept-live | 待处理 |
 | `docs/guides/google-oauth-china-network.md` | 校准后 kept-live（运维向） | 待处理 |
-| `docs/guides/traefik-file-watch-windows-docker.md` | 校准后 kept-live（环境笔记） | 待处理 |
+| `docs/guides/traefik-file-watch-windows-docker.md` | 已删除：file provider watch 已由 REST provider 全量快照取代 | 已完成 |
 | `docs/guides/antdv-icons.md` | 校准后 kept-live 或并入 frontend | 待处理 |
 
 ### 3. designs（5）
@@ -471,4 +471,3 @@ docs/
 | 未触碰 | 一切未进 HEAD 的 docs（含本文件同目录其他 untracked / staged 任务文） |
 
 已提交清单各行处置原则：过程库 = `archived`（CD 主线精华已 absorbed 进 product/architecture/decisions）；guides = kept-live-calibrated 或 archived；designs/analyze = archived+absorbed。  
-

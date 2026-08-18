@@ -14,7 +14,7 @@
     "Do not combine with the integrated RAGFlow Compose reference."
   ],
   "model_cache_paths": [
-    "data/deployment/<service-code>/tei/cache/bge-m3"
+    "<workspace.deployment>/<service-code>/tei/cache/bge-m3"
   ],
   "runtime_config": {
     "name": "RagflowRuntimeConfig",

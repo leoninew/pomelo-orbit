@@ -138,6 +138,7 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
 	cfg.Cert.LetsEncrypt.Enabled = true
 	cfg.Cert.LetsEncrypt.Email = "admin@example.test"
+	cfg.Cert.LetsEncrypt.Challenge = "http"
 	publisher := &recordingRoutePublisher{}
 	client := &recordingTraefikClient{}
 	service := New(

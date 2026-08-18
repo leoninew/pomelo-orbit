@@ -1,9 +1,12 @@
 package bootstrap
 
 import (
+	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
@@ -35,5 +38,38 @@ func TestMigrateAppliesSchemaAndSeedData(t *testing.T) {
 	}
 	if version.Version == 0 || version.Dirty {
 		t.Fatalf("unexpected migration version: %+v", version)
+	}
+}
+
+func TestValidateContainerWorkspaceMountsIncludesConfigurationKey(t *testing.T) {
+	cfg := config.Config{Workspace: config.WorkspaceConfig{Pipeline: "/app/data/pipeline", Deployment: "/app/data/deployment"}}
+	var resolved []string
+	err := validateContainerWorkspaceMounts(context.Background(), cfg, true, func(_ context.Context, path string) (string, error) {
+		resolved = append(resolved, path)
+		if path == cfg.Workspace.Deployment {
+			return "", errors.New("not mounted")
+		}
+		return "/srv/orbit/ci", nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "workspace.deployment must be bind mounted when Orbit runs in a container") {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
+	if len(resolved) != 2 || resolved[0] != cfg.Workspace.Pipeline || resolved[1] != cfg.Workspace.Deployment {
+		t.Fatalf("resolved paths = %#v", resolved)
+	}
+}
+
+func TestValidateContainerWorkspaceMountsSkipsNativeOrbit(t *testing.T) {
+	cfg := config.Config{Workspace: config.WorkspaceConfig{Pipeline: "relative-ci", Deployment: "relative-cd"}}
+	resolverCalls := 0
+	err := validateContainerWorkspaceMounts(context.Background(), cfg, false, func(context.Context, string) (string, error) {
+		resolverCalls++
+		return "", errors.New("resolver must not run")
+	})
+	if err != nil {
+		t.Fatalf("native Orbit validation returned error: %v", err)
+	}
+	if resolverCalls != 0 {
+		t.Fatalf("native Orbit invoked Docker workspace resolver %d times", resolverCalls)
 	}
 }

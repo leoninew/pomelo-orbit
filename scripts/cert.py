@@ -3,8 +3,8 @@
 cert.py - 证书工具
 
 用法:
-  python scripts/cert.py new -n <domain>
-  python scripts/cert.py check -n <domain>
+  python scripts/cert.py new -n <domain> --cert-dir <directory>
+  python scripts/cert.py check -n <domain> --cert-dir <directory>
 """
 
 import argparse
@@ -19,10 +19,6 @@ from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
-
-SCRIPT_DIR = Path(__file__).parent.resolve()
-CERT_DIR = SCRIPT_DIR.parent / "data/deployment/traefik/data/certs"
-
 
 def run(
     cmd: list[str],
@@ -140,14 +136,14 @@ def _print_cert_info(cert, domain: str) -> tuple[bool, bool]:
     return san_ok, is_mkcert
 
 
-def cmd_new(domain: str) -> None:
-    CERT_DIR.mkdir(parents=True, exist_ok=True)
-    out_file = CERT_DIR / f"{domain}.pem"
+def cmd_new(domain: str, cert_dir: Path) -> None:
+    cert_dir.mkdir(parents=True, exist_ok=True)
+    out_file = cert_dir / f"{domain}.pem"
 
     logger.info(f"生成证书: {domain}")
-    logger.info(f"输出目录: {CERT_DIR}")
+    logger.info(f"输出目录: {cert_dir}")
 
-    with tempfile.TemporaryDirectory(dir=CERT_DIR) as tmp:
+    with tempfile.TemporaryDirectory(dir=cert_dir) as tmp:
         tmp_path = Path(tmp)
         cert_file = tmp_path / "cert.pem"
         key_file = tmp_path / "key.pem"
@@ -184,7 +180,7 @@ def cmd_new(domain: str) -> None:
     )
 
 
-def cmd_check(domain: str) -> None:
+def cmd_check(domain: str, cert_dir: Path) -> None:
     from cryptography import x509  # noqa: PLC0415
     from cryptography.hazmat.backends import default_backend  # noqa: PLC0415
 
@@ -208,11 +204,11 @@ def cmd_check(domain: str) -> None:
             logger.info(f'修复: certutil -addstore "Root" "{ca_path}"')
 
     logger.info("\n2. 本地证书文件")
-    pem_file = CERT_DIR / f"{domain}.pem"
+    pem_file = cert_dir / f"{domain}.pem"
     leaf_cert = None
     if not pem_file.exists():
         logger.warning(f"文件不存在: {pem_file}")
-        logger.info(f"修复: python scripts/cert.py new -n {domain}")
+        logger.info(f"修复: python scripts/cert.py new -n {domain} --cert-dir {cert_dir}")
     else:
         logger.info(f"文件: {pem_file}")
         pem_text = pem_file.read_text(encoding="utf-8")
@@ -275,31 +271,38 @@ def cmd_check(domain: str) -> None:
         logger.error(f"TLS 握手失败: {e}")
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cert.py",
         description="mkcert 证书工具",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "示例:\n"
-            "  python scripts/cert.py new -n pomelo-orbit.localhost\n"
-            "  python scripts/cert.py check -n pomelo-orbit.localhost"
+            "  python scripts/cert.py new -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs\n"
+            "  python scripts/cert.py check -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs"
         ),
     )
     sub = parser.add_subparsers(dest="cmd")
 
     p_new = sub.add_parser("new", help="生成 mkcert 证书并输出合并 PEM")
     p_new.add_argument("-n", dest="domain", required=True, metavar="domain")
+    p_new.add_argument("--cert-dir", required=True, type=Path, help="PEM output directory")
 
     p_check = sub.add_parser("check", help="检查证书信任链（CA → 叶证书 → TLS 握手）")
     p_check.add_argument("-n", dest="domain", required=True, metavar="domain")
+    p_check.add_argument("--cert-dir", required=True, type=Path, help="PEM directory")
+    return parser
+
+
+def main() -> None:
+    parser = build_parser()
 
     args = parser.parse_args()
 
     if args.cmd == "new":
-        cmd_new(args.domain)
+        cmd_new(args.domain, args.cert_dir.expanduser().resolve())
     elif args.cmd == "check":
-        cmd_check(args.domain)
+        cmd_check(args.domain, args.cert_dir.expanduser().resolve())
     else:
         parser.print_help()
 

@@ -120,6 +120,7 @@ func TestCreateGatewayRollsBackWhenGatewayConfigWriteFails(t *testing.T) {
 		servicerepo.NewRepository(database),
 		deploymentrepo.NewRepository(database),
 		testGatewayConfig(),
+		resolveGatewayPathForTest,
 		databasetx.NewTransactionRunner(database),
 	)
 
@@ -164,8 +165,13 @@ func newGatewayFactoryService(t *testing.T, configStore gatewayport.ConfigStore)
 		services,
 		deploymentrepo.NewRepository(database),
 		testGatewayConfig(),
+		resolveGatewayPathForTest,
 		databasetx.NewTransactionRunner(database),
 	), applications, services, database
+}
+
+func resolveGatewayPathForTest(_ context.Context, logicalPath string) (string, error) {
+	return logicalPath, nil
 }
 
 func managedGatewayCreateInput() gatewaydto.GatewayCreateInput {

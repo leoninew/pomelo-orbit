@@ -17,16 +17,16 @@ Doc role: local script reference。与代码冲突时以代码为准。
 
 ```bash
 # 生成合并 PEM（证书与私钥）
-python scripts/cert.py new -n app.localhost
+python scripts/cert.py new -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 
 # 检查 CA、PEM 内容、签名链与实际 TLS 握手
-python scripts/cert.py check -n app.localhost
+python scripts/cert.py check -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 ```
 
 `new` 的输出文件为：
 
 ```text
-data/deployment/traefik/data/certs/<domain>.pem
+<cert-dir>/<domain>.pem
 ```
 
 ## 安全边界

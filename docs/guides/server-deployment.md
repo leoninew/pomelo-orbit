@@ -35,7 +35,9 @@ services:
       - traefik
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /opt/pomelo-orbit/data:/app/data
+      - /opt/pomelo-orbit/data/db:/app/data/db
+      - /opt/pomelo-orbit/ci:/app/data/pipeline
+      - /opt/pomelo-orbit/cd:/app/data/deployment
     ports:
       - "9003:80"
     env_file:
@@ -137,9 +139,9 @@ docker compose up -d
 /opt/pomelo-orbit/
 ├── docker-compose.yml   # 容器编排配置（手动维护）
 ├── .env                 # 宿主机环境变量，通过 env_file 注入容器
-└── data/                # 持久化数据目录（挂载到容器 /app/data）
-    └── db/
-        └── pomelo-orbit.db
+├── data/db/             # SQLite 数据库（挂载到容器 /app/data/db）
+├── ci/                  # CI workspace（挂载到容器 /app/data/pipeline）
+└── cd/                  # CD workspace（挂载到容器 /app/data/deployment）
 ```
 
 `.env` 有两个层面，但内容相同：
@@ -147,3 +149,5 @@ docker compose up -d
 - Pomelo Orbit 管理的应用配置模板（`v0.4.3` 迁移写入）：部署时由系统渲染写入，路径由系统管理
 
 首次手动部署时只需关注宿主机的 `.env`。
+
+默认 YAML 的 `data/pipeline` 和 `data/deployment` 在容器内分别解析为 `/app/data/pipeline` 和 `/app/data/deployment`。由于 Docker daemon 运行在宿主机，Orbit 会通过自己的容器挂载表将它们转换为 `/opt/pomelo-orbit/ci` 和 `/opt/pomelo-orbit/cd`；缺少任意 workspace 挂载会导致服务启动失败。

@@ -40,7 +40,7 @@ Review status: Accepted
 
 1. 在 `proto/orbit/v1/service/service.proto` 为 `ServiceResp` 和 `ServiceCreateReq` 添加 `code`；不要向 `ServiceBasicUpdateReq` 添加 code。执行 `task proto` 更新 Go/TypeScript 生成物。
 2. 更新 `internal/api/http/handler/service/service_mapper.go` 与 mapper 测试，使 list、get、create、update 返回同一只读 code；创建 handler 映射请求中的 code。
-3. MCP 的 `orbit_create_service` 保留必填 `code`，用于首次持久化前的用户指定编码；`orbit_update_service_basic` 不接收 code。创建及 Service 更新工具的输出、`orbit_list_application_services` 的摘要都应返回只读 code，便于后续部署和路由工具使用稳定身份。
+3. MCP 的 `orbit_create_service` 不接收 `code`，而是按 Application code 与 `instance_key` 生成 `<application-code>-<instance-key>`；`orbit_update_service_basic` 不接收 code。创建及 Service 更新工具的输出、`orbit_list_application_services` 的摘要都应返回只读 code，便于后续部署和路由工具使用稳定身份。
 4. 在 `web/src/views/service/components/ServiceBasicInfoCard.vue` 显示 Service code；`ServiceDetail.vue` 的基本信息弹窗只读展示 code，仅保留 Version 和 instance key 可编辑，code 不进入响应式编辑表单或保存请求。
 5. 在 `web/src/views/service/ServicePage.vue` 的创建窗展示可编辑 code，选中 Application 或修改 instance key 时以 `<application_code>-<instance_key>` 预填；将后端 code 校验或冲突错误归属到编码控件。列表/卡片继续呈现 code，并补充中英文 `service.fields.code` 文案。
 

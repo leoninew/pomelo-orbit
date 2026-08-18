@@ -1,5 +1,5 @@
 # CD 运行时与渲染
-最后修改时间: 2026-08-17 20:19:00
+最后修改时间: 2026-08-18
 
 Doc role: living SoT  
 代码锚点：`internal/application/cd/usecase/compose_renderer.go`、`deployment_execution*.go`、`gateway*.go`、`expose_*.go`、`internal/infrastructure/runner/cd`、`internal/infrastructure/storage/local/cdworkspace`、`internal/infrastructure/external/traefik`。
@@ -38,7 +38,7 @@ HTTP Deploy/Stop/Restart
 | `standard` | 渲染业务 services；按 Endpoint mode 注入 HTTP labels 或直接端口映射 |
 | `gateway` | 使用选中 Version/Service 的通用 compose 渲染；Gateway 不在 Render 时注入或恢复 Traefik Component、静态配置或挂载 |
 
-输出写入 CD workspace（物理数据根下 `deployment/<service-code>/`），再执行 compose。
+输出写入 `workspace.deployment/<service-code>/`，再执行 compose。逻辑目录由 Orbit 进程写入；原生运行时，组件相对 bind source 保持相对并由 Compose 相对该目录的 `docker-compose.yml` 解析。DooD 运行时才改为 Docker daemon 可见的宿主路径。
 
 预览（Preview）与部署应走同一套渲染语义（测试与 usecase 对齐）。
 
@@ -52,7 +52,7 @@ HTTP Deploy/Stop/Restart
 | `base_domain` | 业务 public Host 后缀 |
 | `default_entrypoint` | HTTP 入口名（如 web） |
 | `tls_mode` | `none` / `tls` / `letsencrypt` 等（以实现枚举为准） |
-进程配置 `traefik.*` 与 `cert.letsencrypt.*` 只生成初始 Traefik Version 模板：镜像、REST 地址、域名、证书目录、就绪等待、ACME email/challenge/provider 均从既有配置取得。拉取策略 `missing`、入口 `web`、TLS `none` 和共享网络 `traefik` 保持当前默认，不新增配置项。创建后的镜像、端点、挂载、静态文件和拉取策略均由 Application/Version 编辑保存；`GatewayConfig` 只保存 REST、域名、默认入口和 TLS 路由语义。
+进程配置 `traefik.*` 与 `cert.letsencrypt.*` 只生成初始 Traefik Version 模板：镜像、REST 地址、域名、就绪等待、ACME email/challenge/provider 均从既有配置取得。证书/ACME 目录固定派生为 `workspace.deployment/traefik/data/certs`，并以 Docker daemon 可见宿主路径写入初始 host-path mount。拉取策略 `missing`、入口 `web`、TLS `none` 和共享网络 `traefik` 保持当前默认，不新增配置项。创建后的镜像、端点、挂载、静态文件和拉取策略均由 Application/Version 编辑保存；`GatewayConfig` 只保存 REST、域名、默认入口和 TLS 路由语义。
 
 - 创建：同一事务写入 Application、GatewayConfig、初始 `unpublished` Version/Component、默认停止态 Service 和 Service Component mappings；默认 Service code 为 `<application-code>-default`。
 - Provision：`orbit_provision_gateway` 只幂等准备上述资源或指定实例的 Service，不发布 Version、不创建 Deployment、不等待运行态，也不重绑既有 Service。
@@ -74,12 +74,13 @@ HTTP Deploy/Stop/Restart
 | 域名 | HTTP 使用用户 domain/path；TCP 使用 `domain:listen_port` | `gateway` 为 `{component_name}.{service.code}.{gateway.base_domain}` |
 | TCP | 仅一个启用 Route 独占一个监听端口，动态 rule 为 `HostSNI(*)` | `internal` TCP Endpoint 可作为 Route target；`local`/`host` 是直接映射 |
 
-证书：平台 Route 可存 PEM；应用 HTTPS/ACME 与 Gateway `tls_mode`、证书目录配置相关——细节见 `docs/guides/routing-and-certificates.md` 与代码（以代码为准）。
+证书：平台 Route 可存 PEM；同步时写入 `workspace.deployment/traefik/data/certs`，并在 REST snapshot 的 `tls.certificates` 中以 Gateway 容器内 `/etc/traefik/certs` 路径引用。应用 HTTPS/ACME 与 Gateway `tls_mode` 及该目录相关。
 
 ## 工作区与物理路径
 
-- 数据根与服务目录由配置 / `physical_data_root` 等决定；Service code 是工作目录唯一键，不使用 Application code 或 instance key。
-- 挂载物化：logical mount → 宿主机目录/文件（含 content seed）；逻辑 `directory` 挂载会在 Compose 执行前创建，组件数据目录直接相对服务根组织。
+- `workspace.pipeline` 与 `workspace.deployment` 是后端拥有、会写入且会作为 Docker source 使用的唯一 CI/CD 根目录；Service code 是 Deployment 工作目录唯一键，不使用 Application code 或 instance key。SQLite、日志、导出和外部 Repository 不属于此配置组。
+- 配置加载时，相对 workspace 值仅相对 `orbit.root` 解析一次；绝对值原样保留，可位于项目外。两个根目录不得相同或相互嵌套。
+- Orbit 原生运行时，逻辑 workspace 路径用于文件读写，不调用 Docker inspect 或进行路径转换；平台相对的目录、文件和 controlled-file 挂载源保持相对，Compose 以生成的 `docker-compose.yml` 目录解析它们。DooD 下，两个 workspace root 必须分别 bind mount 进 Orbit 容器；启动会以 Docker inspect 验证映射。逻辑目录/controlled-file 挂载在 Orbit 可见的 Service 目录物化，Compose 接收对应的宿主机 source。显式 `source_is_host_path=true` 的绝对源在两种模式中均保持绝对路径。
 
 ## 相关
 

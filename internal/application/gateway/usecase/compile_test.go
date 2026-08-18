@@ -1,6 +1,7 @@
 package gatewaysvc
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,9 +12,10 @@ import (
 
 func testGatewayConfig() config.Config {
 	return config.Config{
-		Orbit: config.OrbitConfig{Root: "/orbit"},
+		Orbit:     config.OrbitConfig{Root: "/orbit"},
+		Workspace: config.WorkspaceConfig{Deployment: "/orbit/work/cd"},
 		Traefik: config.TraefikConfig{
-			CertDir: "data/deployment/traefik/data/certs", Image: "traefik:3.6",
+			Image:      "traefik:3.6",
 			RestApiUrl: "http://localhost:8080", BaseDomain: "lvh.me",
 		},
 		Cert: config.CertConfig{LetsEncrypt: config.LetsEncryptConfig{
@@ -24,14 +26,11 @@ func testGatewayConfig() config.Config {
 
 func TestBuildInitialGatewayComponentExposesDashboardApiAndConfiguredCertDirectory(t *testing.T) {
 	cfg := testGatewayConfig()
-	component, err := buildInitialGatewayComponent(
+	component := buildInitialGatewayComponent(
 		"version-1", "traefik:3.6", "missing",
 		model.GatewayConfig{TLSMode: "letsencrypt"}, cfg.Cert,
-		filepath.Join(cfg.OrbitRoot(), cfg.Traefik.CertDir),
+		"/srv/orbit/cd/traefik/data/certs",
 	)
-	if err != nil {
-		t.Fatalf("build managed gateway component: %v", err)
-	}
 
 	var api *model.VersionComponentEndpoint
 	for index := range component.Endpoints {
@@ -56,11 +55,48 @@ func TestBuildInitialGatewayComponentExposesDashboardApiAndConfiguredCertDirecto
 	if len(component.Mounts) != 4 {
 		t.Fatalf("mounts = %#v", component.Mounts)
 	}
-	if component.Mounts[2].Source != filepath.Join(cfg.OrbitRoot(), cfg.Traefik.CertDir) || !component.Mounts[2].SourceIsHostPath {
+	if component.Mounts[2].Source != "/srv/orbit/cd/traefik/data/certs" || !component.Mounts[2].SourceIsHostPath {
 		t.Fatalf("certificate directory mount = %#v", component.Mounts[2])
 	}
 	if content := component.Mounts[1].Content; !containsAll(content, "ops@example.test", "dnsChallenge", "cloudflare") {
 		t.Fatalf("static config did not use letsencrypt config: %q", content)
+	}
+}
+
+func TestInitialGatewayComponentResolvesDeploymentCertificateDirectoryToHost(t *testing.T) {
+	cfg := testGatewayConfig()
+	var resolved string
+	service := Service{
+		cert:           cfg.Cert,
+		deploymentRoot: cfg.Workspace.Deployment,
+		resolvePath: func(_ context.Context, logicalPath string) (string, error) {
+			resolved = logicalPath
+			return "/srv/orbit/cd/traefik/data/certs", nil
+		},
+	}
+	component, err := service.initialGatewayComponent(context.Background(), "version-1", "traefik:3.6", "missing", model.GatewayConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantLogical := filepath.Join(cfg.Workspace.Deployment, "traefik", "data", "certs")
+	if resolved != wantLogical {
+		t.Fatalf("resolved logical certificate directory = %q, want %q", resolved, wantLogical)
+	}
+	if component.Mounts[2].Source != "/srv/orbit/cd/traefik/data/certs" {
+		t.Fatalf("certificate mount source = %q", component.Mounts[2].Source)
+	}
+}
+
+func TestInitialGatewayComponentUsesLogicalCertificateDirectoryWithoutDockerResolver(t *testing.T) {
+	cfg := testGatewayConfig()
+	service := Service{cert: cfg.Cert, deploymentRoot: cfg.Workspace.Deployment}
+	component, err := service.initialGatewayComponent(context.Background(), "version-1", "traefik:3.6", "missing", model.GatewayConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(cfg.Workspace.Deployment, "traefik", "data", "certs")
+	if component.Mounts[2].Source != want {
+		t.Fatalf("certificate mount source = %q, want %q", component.Mounts[2].Source, want)
 	}
 }
 

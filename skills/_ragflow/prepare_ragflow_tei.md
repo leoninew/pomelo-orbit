@@ -9,14 +9,14 @@ Doc role: local script reference。与代码冲突时以代码为准。
 模型缓存目录由不可变的 Service code 明确指定：
 
 ```text
-data/deployment/<service-code>/tei/cache/bge-m3
+<workspace.deployment>/<service-code>/tei/cache/bge-m3
 ```
 
 ## 先只读检查
 
 ```bash
-python skills/_ragflow/prepare_ragflow_tei.py check --profile cpu --model-dir data/deployment/<service-code>/tei/cache/bge-m3
-python skills/_ragflow/prepare_ragflow_tei.py check --profile gpu --model-dir data/deployment/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py check --profile cpu --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py check --profile gpu --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
 ```
 
 `check` 验证 Git、Git LFS、Hugging Face CLI、模型缓存、镜像 registry manifest、Docker；GPU profile 额外验证 `nvidia-smi` 与 Docker NVIDIA runtime。可追加全局 `--json` 输出结构化结果。
@@ -28,25 +28,25 @@ python skills/_ragflow/prepare_ragflow_tei.py check --profile gpu --model-dir da
 python skills/_ragflow/prepare_ragflow_tei.py prepare-cli [--install-hf-cli]
 
 # 下载固定 revision 的模型缓存
-python skills/_ragflow/prepare_ragflow_tei.py prepare-model --source git-lfs --model-dir data/deployment/<service-code>/tei/cache/bge-m3
-python skills/_ragflow/prepare_ragflow_tei.py prepare-model --source hf-cli --model-dir data/deployment/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py prepare-model --source git-lfs --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py prepare-model --source hf-cli --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
 
 # 复用已通过 Git LFS 校验的独立缓存，复制到 RAGFlow 管理目录
-python skills/_ragflow/prepare_ragflow_tei.py stage-model --model-dir data/deployment/<service-code>/tei/cache/bge-m3 --source-dir data/deployment/<source-service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py stage-model --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3 --source-dir <workspace.deployment>/<source-service-code>/tei/cache/bge-m3
 
 # 拉取固定 digest 的 CPU/GPU 镜像
-python skills/_ragflow/prepare_ragflow_tei.py prepare-image --profile cpu --model-dir data/deployment/<service-code>/tei/cache/bge-m3
-python skills/_ragflow/prepare_ragflow_tei.py prepare-image --profile gpu --model-dir data/deployment/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py prepare-image --profile cpu --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py prepare-image --profile gpu --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
 
-# 创建默认位置 `data/backup/bge-m3-<revision>.tar.gz` 的模型归档，或从归档恢复
-python skills/_ragflow/prepare_ragflow_tei.py backup-model --model-dir data/deployment/<service-code>/tei/cache/bge-m3
-python skills/_ragflow/prepare_ragflow_tei.py restore-model --archive data/backup/bge-m3-<revision>.tar.gz --model-dir data/deployment/<service-code>/tei/cache/bge-m3
+# 创建到调用方指定位置的模型归档，或从归档恢复
+python skills/_ragflow/prepare_ragflow_tei.py backup-model --archive /srv/orbit-backups/bge-m3-<revision>.tar.gz --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py restore-model --archive /srv/orbit-backups/bge-m3-<revision>.tar.gz --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
 
 # 依次准备 CLI、模型和镜像，再运行检查
-python skills/_ragflow/prepare_ragflow_tei.py prepare --profile cpu --model-dir data/deployment/<service-code>/tei/cache/bge-m3
+python skills/_ragflow/prepare_ragflow_tei.py prepare --profile cpu --model-dir <workspace.deployment>/<service-code>/tei/cache/bge-m3
 ```
 
-所有操作均要求 `--model-dir` 指向目标 Service 的模型缓存目录。`prepare-model` 还可指定 `--source git-lfs|hf-cli` 与受限的 `--resume`。`stage-model` 先校验源缓存和 Git LFS，再复制模型文件与创建 SHA-256 manifest；源目录不会移动、修改或删除。`prepare-image`、`check` 和 `prepare` 支持 `--image` 覆盖镜像引用以进行探测或拉取。`backup-model` 默认写入 `data/backup/bge-m3-<revision>.tar.gz`，也支持 `--archive` 与显式 `--replace`；`restore-model` 仅恢复到空目标目录。
+所有操作均要求 `--model-dir` 指向目标 Service 的模型缓存目录。`prepare-model` 还可指定 `--source git-lfs|hf-cli` 与受限的 `--resume`。`stage-model` 先校验源缓存和 Git LFS，再复制模型文件与创建 SHA-256 manifest；源目录不会移动、修改或删除。`prepare-image`、`check` 和 `prepare` 支持 `--image` 覆盖镜像引用以进行探测或拉取。`backup-model` 要求调用方传入 `--archive`，并用显式 `--replace` 覆盖既有归档；`restore-model` 仅恢复到空目标目录。
 
 ## 安全边界
 

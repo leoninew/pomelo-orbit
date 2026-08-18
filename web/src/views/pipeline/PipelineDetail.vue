@@ -191,7 +191,7 @@
     <AppDialog v-model:open="infoOpen" title="编辑流水线信息">
       <form class="space-y-4" @submit.prevent="saveInfo">
         <div class="space-y-1.5">
-          <label class="app-field-label">
+          <label class="app-field-label block">
             名称
             <span class="text-destructive">*</span>
           </label>
@@ -199,21 +199,25 @@
             v-model="infoForm.name"
             class="app-input"
             :class="infoErrors.name ? 'app-input-error' : ''"
+            :aria-invalid="infoErrors.name ? 'true' : undefined"
+            @input="infoErrors.name = ''"
           />
-          <p v-if="infoErrors.name" class="app-field-error" role="alert">{{ infoErrors.name }}</p>
+          <p v-if="infoErrors.name" class="app-field-error" role="alert">
+            {{ infoErrors.name }}
+          </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label">说明</label>
+          <label class="app-field-label block">说明</label>
           <input v-model="infoForm.description" class="app-input" />
         </div>
         <div v-if="!isTemplate" class="space-y-1.5">
-          <label class="app-field-label">应用</label>
+          <label class="app-field-label block">应用</label>
           <ComboboxSelect
             v-model="infoForm.applicationId"
             :options="applicationOptions"
             :disabled="!canBindApplication"
-            placeholder="可选；绑定后不可更改"
             :invalid="Boolean(infoErrors.applicationId)"
+            :placeholder="canBindApplication ? '可选' : '未绑定'"
             @update:model-value="infoErrors.applicationId = ''"
           />
           <p v-if="infoErrors.applicationId" class="app-field-error" role="alert">
@@ -468,17 +472,18 @@
   const hasApplicationBinding = computed(() =>
     Boolean(pipeline.value?.application_id && pipeline.value.application_name)
   );
-  const canBindApplication = computed(() => !isTemplate.value && !hasApplicationBinding.value);
+  const canBindApplication = computed(() => !isTemplate.value && !pipeline.value?.application_id);
   const applicationOptions = computed(() => {
     const options = applications.value.map((application) => ({
       value: application.id,
       label: application.name,
     }));
-    // Ensure the currently bound application remains visible when the control is read-only.
-    const currentId = pipeline.value?.application_id;
-    const currentName = pipeline.value?.application_name;
-    if (currentId && currentName && !options.some((option) => option.value === currentId)) {
-      options.unshift({ value: currentId, label: currentName });
+    const currentID = pipeline.value?.application_id;
+    if (currentID && !options.some((option) => option.value === currentID)) {
+      options.unshift({
+        value: currentID,
+        label: pipeline.value?.application_name || currentID,
+      });
     }
     return options;
   });
@@ -575,7 +580,7 @@
     Object.assign(infoErrors, { name: '', applicationId: '' });
     infoError.value = '';
     applications.value = [];
-    if (!isTemplate.value) {
+    if (!isTemplate.value && !pipeline.value.application_id) {
       const projectId = pipeline.value.project_id || projectStore.activeProjectId || '';
       if (!projectId) {
         toast.error('请先选择项目');

@@ -1,331 +1,53 @@
-# Pomelo Orbit 目录挂载原理
-最后修改时间: 2026-08-15 12:48:49
+# Pomelo Orbit 工作目录与挂载
+最后修改时间: 2026-08-18
 
 Doc role: living guide。与代码冲突时以代码为准。
 
-## 概述
+## 目录边界
 
-Pomelo Orbit 通过目录挂载实现数据持久化和容器间数据共享。所有应用数据、路由配置和证书文件都通过挂载机制在宿主机和容器之间同步。
+Orbit 只管理两个可配置的运行工作根：
 
-## 整体目录结构
+| 配置 | 内容 |
+| --- | --- |
+| `workspace.pipeline` | Repository checkout、Run artifacts 与 Stage logs |
+| `workspace.deployment` | Service Compose、部署日志、组件 logical mount、Gateway 证书与 ACME 数据 |
 
-```
-backend/data/                           # 宿主机数据根目录
-├── db/
-│   └── pomelo-orbit.db                # SQLite 数据库
-├── applications/                       # 应用部署目录
-│   ├── traefik/                       # Traefik 应用
-│   ├── nginx/                         # Nginx 应用
-│   └── pomelo-orbit/                  # Pomelo Orbit 自身
-└── migrations/                         # 数据库迁移脚本
-```
+相对值相对 `orbit.root` 解析，绝对值可位于项目外。SQLite 数据库、进程日志、环境文件、用户本地 Repository 和导出文件由各自配置或调用方管理，均不属于 workspace。
 
-## Pomelo Orbit 容器挂载
+Pipeline 内部路径保持为 `<workspace.pipeline>/<repository-code>/workspace` 及 `<workspace.pipeline>/runs/<run-id>/...`。Deployment 以 Service code 为根：`<workspace.deployment>/<service-code>/`，其中包含 `docker-compose.yml`、`deployments/*.log` 与组件相对挂载源。
 
-### 挂载配置
+## Docker 路径
+
+Orbit 原生运行时，workspace 的绝对路径用于 Orbit 文件读写；组件的相对挂载源在 Version 中保存为 `data`，渲染为 `./data:/var/lib/mysql`，由 Compose 相对生成的 `docker-compose.yml` 解析为 bind mount。显式 `source_is_host_path=true` 的源保持其绝对路径。
+
+在 Docker-outside-of-Docker 部署中，配置值是 Orbit 容器内路径，两个 workspace root 必须各自从 Docker daemon 主机 bind mount 进容器。启动时 Orbit 用 Docker inspect 验证映射；Compose 和 Pipeline Stage 只接收解析后的主机路径，而逻辑目录和 controlled file 仍在 Orbit 可见目录物化。
 
 ```yaml
-volumes:
-  - /var/run/docker.sock:/var/run/docker.sock  # Docker 控制
-  - ${POMELO_ORBIT_DATA_DIR}:/app/data         # 数据目录
+services:
+  pomelo-orbit:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/pomelo-orbit/ci:/app/data/pipeline
+      - /srv/pomelo-orbit/cd:/app/data/deployment
 ```
 
-### 挂载映射
+这与默认 `configs/config.yaml` 的 `data/pipeline`、`data/deployment` 一致，无需额外的环境变量。只有刻意修改 workspace 配置为其他容器内路径时，才同时调整其 bind mount。
 
-```
-宿主机                                    容器内
-/path/to/backend/data          →        /app/data
-├── db/pomelo-orbit.db         →        /app/data/db/pomelo-orbit.db
-├── applications/              →        /app/data/applications/
-└── migrations/                →        /app/data/migrations/
-```
+## Traefik 证书
 
-## 应用数据目录
+手工上传或 mkcert 生成的 Route 证书遵循一条固定链路：
 
-### 目录结构
+1. Route 的 PEM 和私钥保存到数据库。
+2. 同步 Route 时，Orbit 将它们写入 `<workspace.deployment>/traefik/data/certs/<route-name>.pem` 与 `<route-name>-key.pem`。
+3. 同一 REST snapshot 在顶层 `tls.certificates` 中引用 Traefik 容器内的 `/etc/traefik/certs/<route-name>.pem` 与对应私钥。
+4. 初始 Gateway Version 把该目录作为 Docker daemon 可见 host path 同时挂载到 `/etc/traefik/certs` 和 `/letsencrypt`。后者保存 ACME 的 `acme.json`。
 
-每个应用在 `applications/` 下有独立目录：
+Route 同步使用 `providers.rest` 的全量 PUT，不使用 `dynamic/routes.yml`、`tls.yml` 或 file provider watch。手工复制 PEM 或设置 `POMELO_TRAEFIK_DATA_DIR` 不会将证书登记到 REST snapshot。
 
-```
-applications/{app_name}/
-├── docker-compose.yml         # 从数据库同步
-├── .env.linux                 # 从数据库同步
-├── .env.windows               # 从数据库同步
-├── init.sh                    # 从数据库同步（可选）
-├── data/                      # 应用运行时数据
-└── deployments/               # 部署日志
-    └── {deployment_id}.log
-```
-
-### 数据流向
-
-```
-数据库 (application_config_file)
-  ↓ 部署时读取
-容器内 /app/data/applications/{app_name}/
-  ↓ 挂载映射
-宿主机 backend/data/applications/{app_name}/
-```
-
-## Traefik 特殊挂载
-
-### 挂载配置
-
-```yaml
-volumes:
-  # 静态配置
-  - ${POMELO_TRAEFIK_DATA_DIR}/data/traefik.yml:/etc/traefik/traefik.yml
-
-  # 动态路由配置（只读）
-  - ${POMELO_TRAEFIK_DATA_DIR}/data/dynamic:/etc/traefik/dynamic:ro
-
-  # 证书目录（只读）
-  - ${POMELO_TRAEFIK_DATA_DIR}/data/certs:/certs:ro
-```
-
-### 目录结构
-
-```
-traefik/
-├── data/
-│   ├── traefik.yml           # 静态配置（入口点、日志等）
-│   ├── dynamic/              # 动态路由配置
-│   │   └── routes.yml        # Pomelo Orbit 生成的路由规则
-│   └── certs/                # 证书文件
-│       ├── example.com.crt
-│       └── example.com.key
-├── docker-compose.yml
-└── .env.linux
-```
-
-## 路由配置同步
-
-平台路由 **不再** 依赖 `dynamic/routes.yml` 文件 watch。
-
-### 同步流程（E5/E6）
-
-```
-1. 用户在 Web UI 配置路由
-   ↓
-2. 保存到数据库 route 表
-   ↓
-3. 解析当前 Gateway → gateway_config.rest_api_url
-   ↓
-4. PUT {rest_api_url}/api/providers/rest 全量快照
-   ↓
-5. Traefik rest provider 生效
-```
-
-创建 Gateway 时，初始 Traefik Version 写入 `traefik.yml`、Docker socket 与 `traefik.cert_dir` 对应的证书/ACME 目录挂载。它们是普通 Version 数据：用户可在 Application/Version 中编辑，Gateway Deploy、Route 保存与同步不会重新生成或覆盖。
-
-## 证书文件同步
-
-### 同步流程
-
-```
-1. 证书存储在数据库
-   route.cert_pem  - 证书内容
-   route.cert_key  - 私钥内容
-   ↓
-2. Pomelo Orbit 同步到文件系统
-   /app/data/applications/traefik/data/certs/
-   ├── {domain}.crt  ← route.cert_pem
-   └── {domain}.key  ← route.cert_key
-   ↓
-3. 挂载到 Traefik 容器
-   /certs/{domain}.crt
-   /certs/{domain}.key
-   ↓
-4. Traefik 动态配置引用
-   tls:
-     certificates:
-       - certFile: /certs/example.com.crt
-         keyFile: /certs/example.com.key
-```
-
-## 环境变量路径适配
-
-### Windows + WSL2
-
-```bash
-POMELO_TRAEFIK_DATA_DIR=/d/SourceCodes/mywork/pkg/creativity/others/pomelo-orbit/backend/data/applications/traefik
-```
-
-### Linux
-
-```bash
-POMELO_TRAEFIK_DATA_DIR=/opt/pomelo-orbit/data/applications/traefik
-```
-
-部署时选择对应的 `.env.linux` 或 `.env.windows` 文件。
-
-## 只读挂载保护
-
-### 为什么使用只读挂载
-
-```yaml
-# 动态配置和证书使用只读挂载，防止容器修改
-- ${POMELO_TRAEFIK_DATA_DIR}/data/dynamic:/etc/traefik/dynamic:ro
-- ${POMELO_TRAEFIK_DATA_DIR}/data/certs:/certs:ro
-```
-
-**优势**：
-- 防止容器意外修改配置
-- 提高安全性
-- 配置只能通过 Pomelo Orbit 管理
-
-## 部署日志持久化
-
-### 日志存储
-
-```
-/app/data/applications/{app_name}/deployments/{deployment_id}.log
-```
-
-每次部署的日志都保存在应用目录下，便于追溯和调试。
-
-### 日志内容
-
-- 配置文件写入日志
-- init.sh 执行输出
-- docker compose 命令输出
-- 错误信息和堆栈跟踪
-
-## 数据持久化策略
-
-### 持久化数据
-
-✅ 以下数据持久化在宿主机：
-- 数据库文件：`db/pomelo-orbit.db`
-- 应用配置：`applications/{app}/docker-compose.yml`
-- 路由配置：`applications/traefik/data/dynamic/`
-- 证书文件：`applications/traefik/data/certs/`
-- 部署日志：`applications/{app}/deployments/`
-
-### 临时数据
-
-❌ 以下数据不持久化：
-- 容器内部状态（容器重启后丢失）
-- 容器日志（使用 `docker logs` 查看）
-
-## 完整数据流示意图
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ Pomelo Orbit 容器                                        │
-│                                                          │
-│  /app/data/                                             │
-│  ├── db/pomelo-orbit.db          ← 数据库              │
-│  ├── applications/                                      │
-│  │   ├── traefik/                                      │
-│  │   │   ├── data/                                     │
-│  │   │   │   ├── dynamic/        ← 路由配置           │
-│  │   │   │   └── certs/          ← 证书文件           │
-│  │   │   └── docker-compose.yml  ← 应用配置           │
-│  │   └── nginx/                                        │
-│  └── migrations/                                        │
-│                                                          │
-│  ↕ 挂载映射                                             │
-│                                                          │
-│  宿主机: backend/data/                                  │
-└─────────────────────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────────────────────┐
-│ Traefik 容器                                             │
-│                                                          │
-│  /etc/traefik/                                          │
-│  ├── traefik.yml                ← 静态配置              │
-│  └── dynamic/                   ← 动态路由（只读）      │
-│                                                          │
-│  /certs/                        ← 证书目录（只读）      │
-└─────────────────────────────────────────────────────────┘
-```
-
-## 关键设计特点
-
-### 1. 双向数据流
-
-```
-数据库 ←→ 文件系统 ←→ 容器
-  ↑                    ↑
-  配置存储            运行时
-```
-
-### 2. 配置集中管理
-
-所有配置存储在数据库，通过挂载同步到容器。
-
-### 3. 数据持久化
-
-数据库、配置、证书都持久化在宿主机，容器重启不丢失。
-
-### 4. 动态更新
-
-Traefik 监听配置文件变化，自动重载路由，无需重启容器。
-
-### 5. 安全隔离
-
-使用只读挂载保护关键配置，防止容器意外修改。
+Gateway 的 Version 是可编辑的普通资源。若用户变更或移除上述挂载，Route 证书同步不会重写 Version；恢复此约定后重新部署 Gateway，再同步 Route。
 
 ## 故障排查
 
-### 挂载路径不存在
-
-**问题**：容器启动失败，提示挂载路径不存在
-
-**解决**：
-1. 检查 `.env` 文件中的路径配置
-2. 确保宿主机路径存在
-3. 检查路径权限
-
-### 配置文件未同步
-
-**问题**：修改平台路由后 Traefik 未生效
-
-**解决**：
-1. 确认 Gateway `rest_api_url` 可达（平台 PUT `/api/providers/rest`）
-2. 确认网关 Version 已 compile 并部署含 `providers.rest` 的 `traefik.yml`
-3. 检查 Traefik 日志：`docker logs <gateway-container>`
-
-### 证书文件无法访问
-
-**问题**：HTTPS 访问失败，提示证书错误
-
-**解决**：
-1. 检查证书文件是否存在：`ls /app/data/applications/traefik/data/certs/`
-2. 检查文件权限
-3. 检查证书内容是否正确
-
-## 最佳实践
-
-### 1. 使用绝对路径
-
-环境变量中使用绝对路径，避免相对路径问题：
-
-```bash
-POMELO_ORBIT_DATA_DIR=/opt/pomelo-orbit/data
-```
-
-### 2. 定期备份
-
-定期备份数据目录：
-
-```bash
-tar -czf backup-$(date +%Y%m%d).tar.gz backend/data/
-```
-
-### 3. 权限管理
-
-确保容器有权限访问挂载目录：
-
-```bash
-chmod 755 backend/data/applications/
-```
-
-### 4. 监控磁盘空间
-
-定期检查磁盘空间，避免日志文件占满磁盘：
-
-```bash
-du -sh backend/data/applications/*/deployments/
-```
+- 容器启动时报 `workspace.pipeline` 或 `workspace.deployment must be bind mounted`：将对应宿主目录显式 bind mount 到 Orbit 容器，使它覆盖当前配置的 workspace 路径。
+- DooD 部署后 Compose 找不到挂载源：检查 Docker daemon 可见的主机路径，而不是 Orbit 进程看到的容器内路径。原生运行时检查 Service 目录下与 `docker-compose.yml` 同级的相对源。
+- 手工证书未生效：确认 Gateway Version 挂载 `/etc/traefik/certs`，确认 Route 已启用并同步，再检查 `<workspace.deployment>/traefik/data/certs/` 中的 PEM 文件和 Traefik REST API 日志。

@@ -381,7 +381,7 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, plan model.Effe
 		return err
 	}
 
-	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, svc.Code)
+	composeMountSourceDir, err := s.workspace.ComposeMountSourceDir(ctx, svc.Code)
 	if err != nil {
 		return err
 	}
@@ -389,7 +389,7 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, plan model.Effe
 		version.Label, version.Id, len(plan.Components), svc.Code); err != nil {
 		return err
 	}
-	result, err := s.RenderComposeDetailed(ctx, RenderInput{Plan: plan, PhysicalSvcDir: physicalDir})
+	result, err := s.RenderComposeDetailed(ctx, RenderInput{Plan: plan, LogicalSvcDir: serviceDir, ComposeMountSourceDir: composeMountSourceDir})
 	if err != nil {
 		return err
 	}
@@ -435,7 +435,7 @@ func verifyDeploymentPlanHash(deployment model.Deployment, plan model.EffectiveS
 func countLogicalMounts(items []ResolvedMount) int {
 	n := 0
 	for _, item := range items {
-		if item.SourceType == mountSourceDirectory || item.SourceType == mountSourceFile || item.SourceType == mountSourceControlledFile {
+		if item.ShouldMaterialize {
 			n++
 		}
 	}

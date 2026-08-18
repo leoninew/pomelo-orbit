@@ -26,7 +26,6 @@ var _ routeport.RouteConfigPublisher = (*RouteManager)(nil)
 var _ routeport.TraefikRouterClient = (*RouteManager)(nil)
 
 const (
-	deploymentDataDir        = "deployment"
 	restApiReadyPollInterval = 500 * time.Millisecond
 )
 
@@ -234,18 +233,7 @@ func (m *RouteManager) writeCertificateUnlocked(routeName string, certPEM string
 }
 
 func (m *RouteManager) routeCertDir() string {
-	if strings.TrimSpace(m.cfg.Traefik.CertDir) == "" {
-		return filepath.Join(m.cfg.DataRoot(), deploymentDataDir, "traefik", "data", "certs")
-	}
-	return cleanConfigPath(m.cfg.OrbitRoot(), m.cfg.Traefik.CertDir)
-}
-
-func cleanConfigPath(root string, path string) string {
-	path = filepath.Clean(strings.TrimSpace(path))
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(root, path)
+	return filepath.Join(m.cfg.Workspace.Deployment, "traefik", "data", "certs")
 }
 
 // buildRestSnapshot assembles a full providers.rest HTTP and TCP config (full replace semantics).
@@ -254,6 +242,7 @@ func buildRestSnapshot(routes []model.Route) map[string]any {
 	httpServices := map[string]any{}
 	tcpRouters := map[string]any{}
 	tcpServices := map[string]any{}
+	tlsCertificates := make([]map[string]string, 0)
 	for _, route := range routes {
 		if !route.Enabled {
 			continue
@@ -281,6 +270,12 @@ func buildRestSnapshot(routes []model.Route) map[string]any {
 		}
 		if strings.TrimSpace(targetUrl) == "" {
 			continue
+		}
+		if routeHasStoredCertificate(route) {
+			tlsCertificates = append(tlsCertificates, map[string]string{
+				"certFile": "/etc/traefik/certs/" + route.Name + ".pem",
+				"keyFile":  "/etc/traefik/certs/" + route.Name + "-key.pem",
+			})
 		}
 		serviceName := sanitizeTraefikName(route.Name) + "-service"
 		routerName := sanitizeTraefikName(route.Name) + "-route"
@@ -319,7 +314,14 @@ func buildRestSnapshot(routes []model.Route) map[string]any {
 			"routers":  tcpRouters,
 			"services": tcpServices,
 		},
+		"tls": map[string]any{
+			"certificates": tlsCertificates,
+		},
 	}
+}
+
+func routeHasStoredCertificate(route model.Route) bool {
+	return route.HTTPSEnabled && route.CertPEM != nil && route.CertKey != nil && strings.TrimSpace(*route.CertPEM) != "" && strings.TrimSpace(*route.CertKey) != ""
 }
 
 func sanitizeTraefikName(name string) string {

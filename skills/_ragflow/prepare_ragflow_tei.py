@@ -83,14 +83,6 @@ class Result:
         }
 
 
-def repository_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def default_archive_dir() -> Path:
-    return repository_root() / "data" / "backup"
-
-
 def run(command: list[str], *, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
     LOGGER.info("Running command: %s", " ".join(command[:3]))
     try:
@@ -464,7 +456,7 @@ def backup_model_action(args: argparse.Namespace) -> Result:
     lfs_ok, lfs_detail = check_lfs(model_dir)
     if not lfs_ok:
         raise PreparationError(lfs_detail)
-    archive = Path(args.archive).resolve() if args.archive else default_archive_dir() / f"bge-m3-{MODEL_REVISION}.tar.gz"
+    archive = Path(args.archive).resolve()
     if archive.exists() and not args.replace:
         raise PreparationError(f"archive already exists: {archive}; use --replace to explicitly overwrite it")
     LOGGER.info("Creating tar.gz model archive: %s", archive)
@@ -592,7 +584,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
     backup_parser = subparsers.add_parser("backup-model", help="Create a tar.gz model archive with hashes")
     add_common_arguments(backup_parser)
-    backup_parser.add_argument("--archive", help="Output tar.gz path")
+    backup_parser.add_argument("--archive", required=True, help="Output tar.gz path")
     backup_parser.add_argument("--replace", action="store_true", help="Explicitly replace an existing archive")
 
     restore_parser = subparsers.add_parser("restore-model", help="Restore a tar.gz model archive to an empty target")

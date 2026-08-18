@@ -52,19 +52,19 @@ func (w *workspaceFake) RemoveDeploymentLog(serviceCode string, deploymentID str
 	return w.removeLogErr
 }
 
-func (w *workspaceFake) PhysicalDir(context.Context) (string, error) {
+func (w *workspaceFake) PhysicalWorkspaceRoot(context.Context) (string, error) {
 	if w.physicalErr != nil {
 		return "", w.physicalErr
 	}
 	return filepath.ToSlash(w.physicalRoot), nil
 }
 
-func (w *workspaceFake) PhysicalServiceDir(ctx context.Context, serviceCode string) (string, error) {
-	physicalRoot, err := w.PhysicalDir(ctx)
+func (w *workspaceFake) ComposeMountSourceDir(ctx context.Context, serviceCode string) (string, error) {
+	physicalRoot, err := w.PhysicalWorkspaceRoot(ctx)
 	if err != nil {
 		return "", err
 	}
-	return filepath.ToSlash(filepath.Join(physicalRoot, "cd", serviceCode)), nil
+	return filepath.ToSlash(filepath.Join(physicalRoot, serviceCode)), nil
 }
 
 func (w *workspaceFake) WriteConfig(serviceCode string, path string, content string) error {

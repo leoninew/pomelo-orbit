@@ -36,6 +36,7 @@ type EnvVar struct {
 type ResolvedMount struct {
 	Compose           string
 	HostSource        string
+	LogicalSource     string
 	IsFile            bool
 	ShouldMaterialize bool
 	SourceType        string
@@ -169,7 +170,11 @@ func hasParentMountSegment(source string) bool {
 	return false
 }
 
-func resolveMountSpecs(mounts []MountSpec, physicalServiceDir string) ([]ResolvedMount, error) {
+func resolveMountSpecs(mounts []MountSpec, composeMountSourceDir string) ([]ResolvedMount, error) {
+	return resolveMountSpecsForPaths(mounts, composeMountSourceDir, composeMountSourceDir)
+}
+
+func resolveMountSpecsForPaths(mounts []MountSpec, logicalServiceDir string, composeMountSourceDir string) ([]ResolvedMount, error) {
 	out := make([]ResolvedMount, 0, len(mounts))
 	for _, mount := range mounts {
 		if err := validateMountSpec(mount); err != nil {
@@ -191,13 +196,18 @@ func resolveMountSpecs(mounts []MountSpec, physicalServiceDir string) ([]Resolve
 				item.Compose = item.HostSource + ":" + mount.Target
 				break
 			}
-			if physicalServiceDir == "" {
-				return nil, fmt.Errorf("physical service dir required for %s mount %s", mount.SourceType, mount.Source)
+			if logicalServiceDir == "" {
+				return nil, fmt.Errorf("logical service dir required for %s mount %s", mount.SourceType, mount.Source)
 			}
-			item.HostSource = filepath.ToSlash(filepath.Join(physicalServiceDir, filepath.FromSlash(mount.Source)))
+			item.LogicalSource = filepath.Join(logicalServiceDir, filepath.FromSlash(mount.Source))
 			item.IsFile = mount.SourceType == mountSourceFile || mount.SourceType == mountSourceControlledFile
 			item.ShouldMaterialize = mount.SourceType == mountSourceDirectory || mount.SourceType == mountSourceControlledFile
-			item.Compose = item.HostSource + ":" + mount.Target
+			if composeMountSourceDir == "" {
+				item.Compose = "./" + mount.Source + ":" + mount.Target
+			} else {
+				item.HostSource = filepath.ToSlash(filepath.Join(composeMountSourceDir, filepath.FromSlash(mount.Source)))
+				item.Compose = item.HostSource + ":" + mount.Target
+			}
 		case mountSourceNamedVolume:
 			item.Compose = mount.Source + ":" + mount.Target
 			item.NamedVolumeName = mount.Source
@@ -212,18 +222,21 @@ func resolveMountSpecs(mounts []MountSpec, physicalServiceDir string) ([]Resolve
 
 func MaterializeLogicalMountSources(resolved []ResolvedMount) error {
 	for _, item := range resolved {
-		if !item.ShouldMaterialize || item.HostSource == "" {
+		if !item.ShouldMaterialize {
 			continue
 		}
-		host := filepath.FromSlash(item.HostSource)
+		if item.LogicalSource == "" {
+			return fmt.Errorf("logical mount source is required for materialization")
+		}
+		logicalSource := filepath.FromSlash(item.LogicalSource)
 		if item.IsFile {
-			if err := materializeFile(host, item.Content, item.IgnoreIfExists, item.FileMode); err != nil {
+			if err := materializeFile(logicalSource, item.Content, item.IgnoreIfExists, item.FileMode); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := os.MkdirAll(host, 0o755); err != nil {
-			return fmt.Errorf("create mount directory %s: %w", host, err)
+		if err := os.MkdirAll(logicalSource, 0o755); err != nil {
+			return fmt.Errorf("create mount directory %s: %w", logicalSource, err)
 		}
 	}
 	return nil

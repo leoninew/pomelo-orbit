@@ -54,7 +54,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 # 配置日志
 logging.basicConfig(
@@ -481,7 +481,7 @@ class Deployer:
         logger.info("服务重启完成\n")
 
 
-def backup(cfg: "Config", remote_dir: str) -> None:
+def backup(cfg: "Config", remote_dir: str, workspace_excludes: list[str]) -> None:
     """将远程目录打包压缩后下载到本地 scripts/backup/"""
     date_str = datetime.now().strftime("%Y%m%d-%H%M%S")
     remote_archive = f"/tmp/pomelo-orbit-backup-{date_str}.tar.gz"
@@ -490,18 +490,12 @@ def backup(cfg: "Config", remote_dir: str) -> None:
     local_archive = local_backup_dir / f"data-{date_str}.tar.gz"
 
     logger.info(f"备份远程目录: {remote_dir}")
-    logger.info(
-        "排除: 源码工作区 "
-        "(pipeline/*/workspace, ci/*/workspace, deployment/*/workspace)"
+    exclude_args = " ".join(
+        f"--exclude={shlex.quote(normalize_workspace_exclude(path))}"
+        for path in workspace_excludes
     )
-
-    # 源码 checkout 目录（含完整 .git），不属于运行态备份范围
-    excludes = [
-        "./data/pipeline/*/workspace",
-        "./data/ci/*/workspace",
-        "./data/deployment/*/workspace",
-    ]
-    exclude_args = " ".join(f"--exclude={shlex.quote(pattern)}" for pattern in excludes)
+    if workspace_excludes:
+        logger.info("排除调用方提供的工作区路径: %s", ", ".join(workspace_excludes))
 
     run_ssh_command(
         f"tar --ignore-failed-read -czf {remote_archive} {exclude_args} -C {remote_dir} .",
@@ -514,6 +508,14 @@ def backup(cfg: "Config", remote_dir: str) -> None:
     )
     run_ssh_command(f"rm -f {remote_archive}", "清理远程临时文件")
     logger.info(f"备份完成: {local_archive}")
+
+
+def normalize_workspace_exclude(value: str) -> str:
+    value = value.strip()
+    path = PurePosixPath(value)
+    if not value or path.is_absolute() or ".." in path.parts:
+        raise ValueError("--exclude-workspace must be a non-empty path relative to --remote-dir")
+    return f"./{path.as_posix()}"
 
 
 def clean(cfg: "Config", remote_dir: str, days: int) -> None:
@@ -702,6 +704,13 @@ def main():
         "--remote-dir",
         help="远程备份目录(默认: REMOTE_DEPLOY_DIR)",
     )
+    backup_parser.add_argument(
+        "--exclude-workspace",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="相对 --remote-dir 的 tar 排除路径，可重复指定",
+    )
 
     # clean 命令
     clean_parser = subparsers.add_parser("clean", help="分析远程数据目录并清理旧日志")
@@ -777,7 +786,10 @@ def main():
     elif args.command == "ssh":
         os.system(f"ssh {config.ssh_target}")
     elif args.command == "backup":
-        backup(config, args.remote_dir or config.remote_deploy_dir)
+        try:
+            backup(config, args.remote_dir or config.remote_deploy_dir, args.exclude_workspace)
+        except ValueError as error:
+            backup_parser.error(str(error))
     elif args.command == "clean":
         clean(config, f"{config.remote_deploy_dir}/data", args.days)
     elif args.command == "docker-clean":

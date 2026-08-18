@@ -344,11 +344,8 @@ func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, rout
 	if err := requireHTTPRoute(route); err != nil {
 		return model.Route{}, err
 	}
-	if !s.cfg.Cert.LetsEncrypt.Enabled {
-		return model.Route{}, apperror.New(apperror.KindValidation, "Let's Encrypt not enabled. Please set cert.letsencrypt.enabled=true and configure email in config")
-	}
-	if strings.TrimSpace(s.cfg.Cert.LetsEncrypt.Email) == "" {
-		return model.Route{}, apperror.New(apperror.KindValidation, "请在配置中设置 cert.letsencrypt.email")
+	if err := s.cfg.Cert.ValidateForTLSMode(certTypeLetsEncrypt); err != nil {
+		return model.Route{}, apperror.New(apperror.KindValidation, err.Error())
 	}
 	if route.HTTPSEnabled && route.CertType == certTypeLetsEncrypt {
 		return model.Route{}, apperror.New(apperror.KindValidation, "Let's Encrypt 证书已启用")

@@ -1,5 +1,5 @@
 # CD 领域模型（现行）
-最后修改时间: 2026-08-17 20:19:00
+最后修改时间: 2026-08-18
 
 Doc role: living SoT  
 代码锚点：`internal/model/cd.go`、`internal/common/constant/status.go`、`internal/application/cd/usecase/*`、`sql/migration/*/…_cd_schema*.sql`（以仓库当前迁移文件为准）。
@@ -56,7 +56,7 @@ Project
 
 - Version 挂载声明类型、默认源路径和容器目标；普通 Version 编辑不设置宿主机路径模式。
 - Service 组件的稀疏覆盖拥有实际源路径及其宿主机路径模式。目录和文件在该模式下必须使用绝对路径；逻辑源路径仍须为相对路径。
-- 服务工作目录固定为 `data/deployment/<service-code>/`；逻辑目录源直接相对此根解析。组件应以自身 code 开始组织数据，例如 `mysql`、`redis`、`tei/cache`，不使用 `data/` 或 `instance_key` 作为目录层级。
+- 服务工作目录为 `workspace.deployment/<service-code>/`；逻辑目录源直接相对此根解析。组件应以自身 code 开始组织数据，例如 `mysql`、`redis`、`tei/cache`，不使用 `data/` 或 `instance_key` 作为目录层级。workspace 的相对配置值相对 `orbit.root` 解析，绝对值可位于项目外。Orbit 原生运行时，组件相对源原样写入 Compose，由 Compose 相对生成的 `docker-compose.yml` 解析；仅 DooD 运行时才转换为 Docker daemon 可见的宿主路径。
 - Gateway 创建会写入一个可编辑的 Traefik Component 初始模板（socket、静态配置、证书目录、端点等）。保存后它就是普通 Version 规格；Gateway、Route 与部署过程均不得覆盖它。
 
 ### 异步操作（Deployment / Pipeline Run / Pipeline Stage Run）
@@ -71,7 +71,7 @@ Project
 
 - `PipelineStage(kind=template)` 是项目内可复用的执行定义，包含名称、镜像、脚本、制品声明、说明和版本；不保存 DAG、排序或 Application/Component 绑定。模板制品声明不得带 `component_name`。
 - Template Pipeline 用 `PipelineStageReference` 保存引入时的来源快照、制品声明及本地 DAG/排序；Application Pipeline 由该引用快照物化自己的 `PipelineStage(kind=application)`，并保留非空来源阶段 ID、名称、版本与说明快照。
-- Application Pipeline 在实例化时选择 Application、来源 Version 策略及 Docker 制品到 Component 的绑定。Snapshot/Run 只读取应用私有阶段的冻结定义，绝不在运行时回读可变阶段库。
+- Application Pipeline 若模板声明 Docker 制品，实例化时必须选择 Application、来源 Version 策略，并为每个 Docker 制品绑定唯一的 Component。Snapshot/Run 只读取应用私有阶段的冻结定义，绝不在运行时回读可变阶段库。
 - 阶段库的修改不会自动同步引用或应用阶段。用户可在节点编辑器预览差异后显式更新来源版本；模板删除不影响既有引用、应用阶段、Snapshot、Run 或 Artifact。
 
 ### Application

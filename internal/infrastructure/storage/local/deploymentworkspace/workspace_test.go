@@ -1,12 +1,36 @@
 package deploymentworkspace
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestPhysicalWorkspaceRootUsesLogicalRootWithoutDockerResolver(t *testing.T) {
+	workspaceRoot := t.TempDir()
+	workspace := NewWithResolver(workspaceRoot, nil)
+	got, err := workspace.PhysicalWorkspaceRoot(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != workspaceRoot {
+		t.Fatalf("workspace root = %q, want %q", got, workspaceRoot)
+	}
+}
+
+func TestComposeMountSourceDirKeepsNativeComposeRelative(t *testing.T) {
+	workspace := NewWithResolver(t.TempDir(), nil)
+	got, err := workspace.ComposeMountSourceDir(context.Background(), "demo-default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "" {
+		t.Fatalf("native compose mount source dir = %q, want empty", got)
+	}
+}
 
 func TestRemoveDeploymentLogRemovesOnlyDeploymentLog(t *testing.T) {
 	dataRoot := t.TempDir()

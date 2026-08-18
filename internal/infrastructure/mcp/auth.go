@@ -201,16 +201,14 @@ func (a BrowserAuthorizer) callbackHandler(state string, result chan<- callbackR
 		code := strings.TrimSpace(request.URL.Query().Get("code"))
 		returnedState := request.URL.Query().Get("state")
 		if code == "" || subtle.ConstantTimeCompare([]byte(returnedState), []byte(state)) != 1 {
-			http.Error(writer, "MCP authorization callback was rejected", http.StatusBadRequest)
+			http.Redirect(writer, request, a.webURL+"/mcp/callback?status=error", http.StatusSeeOther)
 			select {
 			case result <- callbackResult{err: errors.New("MCP authorization callback state did not match")}:
 			default:
 			}
 			return
 		}
-		writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-		writer.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(writer, "<!doctype html><title>MCP authorization complete</title><p>MCP authorization complete. You may close this window.</p>")
+		http.Redirect(writer, request, a.webURL+"/mcp/callback", http.StatusSeeOther)
 		select {
 		case result <- callbackResult{code: code}:
 		default:

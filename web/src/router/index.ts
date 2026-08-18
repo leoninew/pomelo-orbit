@@ -27,6 +27,12 @@ const router = createRouter({
       meta: { title: 'MCP 授权' },
     },
     {
+      path: '/mcp/callback',
+      name: 'MCPCallback',
+      component: () => import('@/views/auth/MCPCallback.vue'),
+      meta: { title: 'MCP 授权', public: true, standalone: true },
+    },
+    {
       path: '/403',
       name: 'Forbidden',
       component: () => import('@/views/auth/ForbiddenPage.vue'),

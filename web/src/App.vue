@@ -1,7 +1,7 @@
 <template>
   <div class="h-dvh min-h-0 bg-background text-foreground">
-    <!-- Login page: no layout -->
-    <RouterView v-if="isLoginPage" />
+    <!-- Standalone auth handoff pages: no application chrome -->
+    <RouterView v-if="isStandalonePage" />
 
     <!-- Main layout -->
     <div v-else class="flex h-full min-h-0 flex-col">
@@ -84,5 +84,5 @@
     });
   });
 
-  const isLoginPage = computed(() => route.name === 'Login');
+  const isStandalonePage = computed(() => route.meta.standalone === true || route.name === 'Login');
 </script>

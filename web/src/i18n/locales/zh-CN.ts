@@ -71,6 +71,14 @@ export default {
     repository: '代码仓库',
     documentation: '文档',
   },
+  mcpCallback: {
+    authorized: '授权完成',
+    authorizedTitle: 'MCP 访问已就绪。',
+    authorizedDescription: '你可以关闭此窗口并返回 MCP 客户端。',
+    rejected: '授权被拒绝',
+    rejectedTitle: 'MCP 授权未能完成。',
+    rejectedDescription: '请返回发起授权的应用后重试。',
+  },
   breadcrumb: {
     detail: '详情',
     edit: '编辑',

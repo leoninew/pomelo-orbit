@@ -71,6 +71,14 @@ export default {
     repository: 'Repository',
     documentation: 'Documentation',
   },
+  mcpCallback: {
+    authorized: 'Authorization complete',
+    authorizedTitle: 'MCP access is ready.',
+    authorizedDescription: 'You can close this window and return to your MCP client.',
+    rejected: 'Authorization rejected',
+    rejectedTitle: 'The MCP authorization could not be completed.',
+    rejectedDescription: 'Return to the application that started the authorization and try again.',
+  },
   breadcrumb: {
     detail: 'Details',
     edit: 'Edit',

@@ -1,6 +1,10 @@
 version: "2"
 
 linters:
+  exclusions:
+    generated: strict
+    paths:
+      - internal/gen/
   settings:
     revive:
       rules:
@@ -17,6 +21,10 @@ linters:
     - unused
 
 formatters:
+  exclusions:
+    generated: strict
+    paths:
+      - internal/gen/
   enable:
     - gofmt
     - goimports

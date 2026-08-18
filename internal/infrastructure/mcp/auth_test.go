@@ -62,13 +62,20 @@ func TestBrowserAuthorizerDeliversLoopbackCodeAndExchangesIt(t *testing.T) {
 				return err
 			}
 			callbackURL.RawQuery = url.Values{"code": {"one-time-code"}, "state": {browserURL.Query().Get("state")}}.Encode()
-			response, err := http.Get(callbackURL.String())
+			response, err := (&http.Client{
+				CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+					return http.ErrUseLastResponse
+				},
+			}).Get(callbackURL.String())
 			if err != nil {
 				return err
 			}
 			defer func() { _ = response.Body.Close() }()
-			if response.StatusCode != http.StatusOK {
+			if response.StatusCode != http.StatusSeeOther {
 				t.Fatalf("callback status = %d", response.StatusCode)
+			}
+			if location := response.Header.Get("Location"); location != "https://orbit.example/mcp/callback" {
+				t.Fatalf("callback location = %q", location)
 			}
 			return nil
 		}),
@@ -79,6 +86,44 @@ func TestBrowserAuthorizerDeliversLoopbackCodeAndExchangesIt(t *testing.T) {
 	token, err := authorizer.Authorize(context.Background())
 	if err != nil || token != "bearer-token" || exchangedCode != "one-time-code" {
 		t.Fatalf("Authorize() = %q, %v; exchanged = %q", token, err, exchangedCode)
+	}
+}
+
+func TestBrowserAuthorizerCallbackRedirectsToFrontend(t *testing.T) {
+	result := make(chan callbackResult, 1)
+	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:48123/mcp/callback?code=one-time-code&state=expected-state", nil)
+	request.RemoteAddr = "127.0.0.1:48123"
+	response := httptest.NewRecorder()
+
+	BrowserAuthorizer{webURL: "https://orbit.example"}.callbackHandler("expected-state", result).ServeHTTP(response, request)
+
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("callback status = %d, want %d", response.Code, http.StatusSeeOther)
+	}
+	if location := response.Header().Get("Location"); location != "https://orbit.example/mcp/callback" {
+		t.Fatalf("callback location = %q", location)
+	}
+	if callback := <-result; callback.code != "one-time-code" {
+		t.Fatalf("callback code = %q", callback.code)
+	}
+}
+
+func TestBrowserAuthorizerRejectedCallbackRedirectsToFrontend(t *testing.T) {
+	result := make(chan callbackResult, 1)
+	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:48123/mcp/callback?code=one-time-code&state=unexpected-state", nil)
+	request.RemoteAddr = "127.0.0.1:48123"
+	response := httptest.NewRecorder()
+
+	BrowserAuthorizer{webURL: "https://orbit.example"}.callbackHandler("expected-state", result).ServeHTTP(response, request)
+
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("callback status = %d, want %d", response.Code, http.StatusSeeOther)
+	}
+	if location := response.Header().Get("Location"); location != "https://orbit.example/mcp/callback?status=error" {
+		t.Fatalf("callback location = %q", location)
+	}
+	if callback := <-result; callback.err == nil {
+		t.Fatal("callback error = nil")
 	}
 }
 

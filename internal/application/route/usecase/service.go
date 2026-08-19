@@ -112,6 +112,9 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 	if err != nil {
 		return model.Route{}, err
 	}
+	if err := s.ensureRestSnapshotIsManaged(ctx, route); err != nil {
+		return model.Route{}, err
+	}
 	route.Id = idutil.NewId()
 	route.ProjectId = &projectId
 	if err := s.route.CreateRoute(ctx, route); err != nil {
@@ -188,6 +191,9 @@ func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string,
 	if err := s.validateRoute(ctx, &route, route.Id); err != nil {
 		return model.Route{}, err
 	}
+	if err := s.ensureRestSnapshotIsManaged(ctx, route); err != nil {
+		return model.Route{}, err
+	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to update route", err)
 	}
@@ -215,6 +221,9 @@ func (s Service) DeleteRoute(ctx context.Context, userId string, routeId string)
 	if route.Enabled {
 		return apperror.New(apperror.KindValidation, "Cannot delete enabled route. Please disable it first.")
 	}
+	if err := s.ensureRestSnapshotIsManaged(ctx, route); err != nil {
+		return err
+	}
 	if err := s.route.DeleteRoute(ctx, route.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete route", err)
 	}
@@ -232,6 +241,9 @@ func (s Service) EnableRoute(ctx context.Context, userId string, routeId string)
 	}
 	route.Enabled = true
 	if err := s.validateRoute(ctx, &route, route.Id); err != nil {
+		return model.Route{}, err
+	}
+	if err := s.ensureRestSnapshotIsManaged(ctx, route); err != nil {
 		return model.Route{}, err
 	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
@@ -254,6 +266,9 @@ func (s Service) DisableRoute(ctx context.Context, userId string, routeId string
 		return model.Route{}, err
 	}
 	route.Enabled = false
+	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
+		return model.Route{}, err
+	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to disable route", err)
 	}
@@ -276,6 +291,9 @@ func (s Service) SyncRoutes(ctx context.Context, userId string, projectId string
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return err
 	}
+	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
+		return err
+	}
 	return s.publishRouteSnapshot(ctx)
 }
 
@@ -292,6 +310,9 @@ func (s Service) UploadRouteCert(ctx context.Context, userId string, routeId str
 	route.CertPEM = &certPEM
 	route.CertKey = &certKey
 	route.CertType = certTypeManual
+	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
+		return model.Route{}, err
+	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to update route certificate", err)
 	}
@@ -319,6 +340,9 @@ func (s Service) DisableRouteHTTPS(ctx context.Context, userId string, routeId s
 	route.CertPEM = nil
 	route.CertKey = nil
 	route.CertType = certTypeManual
+	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
+		return model.Route{}, err
+	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to disable route HTTPS", err)
 	}
@@ -358,6 +382,9 @@ func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, rout
 	route.CertPEM = nil
 	route.CertKey = nil
 	route.CertType = certTypeLetsEncrypt
+	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
+		return model.Route{}, err
+	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to enable Let's Encrypt", err)
 	}
@@ -391,6 +418,9 @@ func (s Service) EnableRouteMkcert(ctx context.Context, userId string, routeId s
 	route.CertPEM = &certPEM
 	route.CertKey = &keyPEM
 	route.CertType = certTypeMkcert
+	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
+		return model.Route{}, err
+	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to enable mkcert", err)
 	}
@@ -503,6 +533,9 @@ func (s Service) PublishSnapshot(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if err := s.ensureRestSnapshotIsManagedForRoutes(ctx, routes); err != nil {
+		return err
+	}
 	return s.applyRouteSnapshot(ctx, routes, true)
 }
 
@@ -512,6 +545,63 @@ func (s Service) listEnabledRoutesForPublish(ctx context.Context) ([]model.Route
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
 	}
 	return routes, nil
+}
+
+// ensureRestSnapshotIsManaged prevents a full REST provider PUT from deleting
+// a route that was configured outside Orbit's Route store.
+func (s Service) ensureRestSnapshotIsManaged(ctx context.Context, expected ...model.Route) error {
+	routes, err := s.listEnabledRoutesForPublish(ctx)
+	if err != nil {
+		return err
+	}
+	managedRouteIDs := make(map[string]struct{}, len(routes))
+	for _, route := range routes {
+		managedRouteIDs[route.Id] = struct{}{}
+	}
+	for _, route := range expected {
+		// A new or newly enabled Route may take over a legacy @rest router with
+		// the same name. An already enabled Route must not take over a router
+		// introduced under a new name while it is being renamed.
+		if route.Enabled {
+			if _, exists := managedRouteIDs[route.Id]; !exists {
+				routes = append(routes, route)
+			}
+		}
+	}
+	return s.ensureRestSnapshotIsManagedForRoutes(ctx, routes)
+}
+
+func (s Service) ensureRestSnapshotIsManagedForRoutes(ctx context.Context, routes []model.Route) error {
+	gw, err := s.resolveGatewayForRender(ctx)
+	if err != nil {
+		return err
+	}
+	items, err := s.traefikRouterClient.ListRouters(ctx, gw.RestApiUrl)
+	if err != nil {
+		if s.traefikRouterClient.IsConnectionError(err) {
+			return apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
+		}
+		return apperror.Wrap(apperror.KindInternal, "Failed to inspect Traefik routes", err)
+	}
+	managed := make(map[string]struct{}, len(routes))
+	for _, route := range routes {
+		if route.Enabled {
+			managed[route.Name+"-route@rest"] = struct{}{}
+		}
+	}
+	for _, item := range items {
+		if item.Provider != "rest" {
+			continue
+		}
+		if _, found := managed[item.Name]; !found {
+			return apperror.NewWithCode(
+				apperror.KindConflict,
+				"unmanaged_traefik_route",
+				"Traefik contains a route that is not managed by Orbit. Register or remove it before changing routes.",
+			)
+		}
+	}
+	return nil
 }
 
 func (s Service) applyRouteSnapshot(ctx context.Context, routes []model.Route, waitReady bool) error {

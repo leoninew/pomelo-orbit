@@ -56,7 +56,7 @@ HTTP Deploy/Stop/Restart
 
 - 创建：同一事务写入 Application、GatewayConfig、初始 `unpublished` Version/Component、默认停止态 Service 和 Service Component mappings；默认 Service code 为 `<application-code>-default`。
 - Provision：`orbit_provision_gateway` 只幂等准备上述资源或指定实例的 Service，不发布 Version、不创建 Deployment、不等待运行态，也不重绑既有 Service。
-- Route 保存、启停、删除和同步只发布 HTTP/TCP 动态 REST 快照，不修改 Gateway Version。新增 TCP `entrypoint` 或宿主机端口时，用户先在目标 Gateway Version 中显式配置并部署。
+- Route 保存、启停、删除和同步只发布 HTTP/TCP 动态 REST 快照，不修改 Gateway Version。发布前若 Traefik 存在未登记的 `@rest` router，则以 `409/unmanaged_traefik_route` 拒绝，避免全量 PUT 清除该路由；自定义 HTTP 路由须先作为 Route（含高级 URL target）持久化。新增 TCP `entrypoint` 或宿主机端口时，用户先在目标 Gateway Version 中显式配置并部署。
 - 同 Application 的 Gateway Service instance 与普通 Application 一样遵从单运行实例规则；没有 Gateway 专用 active/readiness 前置检查。
 
 ## 部署结果

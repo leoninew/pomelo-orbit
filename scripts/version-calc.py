@@ -1,5 +1,29 @@
 #!/usr/bin/env python3
-"""Derive a semantic version from Git history and optionally apply it."""
+"""Walk git history from the first commit and derive x.y.z.
+
+Rules (x is fixed at 0):
+  * y, z start at 0
+  * a commit whose subject starts with "feat"  -> y += 1, z = 0
+  * any other commit                          -> z += 1
+  * print one line every time y or z changes:
+        <commit-date>  <sha8>  <subject-first-50-chars>  <x>.<y>.<z>
+
+After calculation, optionally apply the final version to:
+  * VERSION                         (package version source)
+  * configs/config.yaml             (app.version)
+  * .env.example                    (app version example)
+  * web/package.json                ("version" field)
+
+When applying from a clean worktree, create the matching lightweight Git tag
+on HEAD. A dirty worktree still receives the version-file updates, but skips
+tag creation with a warning.
+
+Run from any directory inside the target git repository:
+
+    python scripts/version-calc.py
+    python scripts/version-calc.py --apply
+    python scripts/version-calc.py --quiet --apply
+"""
 
 from __future__ import annotations
 
@@ -8,7 +32,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 VERSION_FILE = REPO_ROOT / "VERSION"
@@ -31,7 +55,7 @@ ENV_APP_VERSION_RE = re.compile(
 
 
 def run_git(*args: str) -> str:
-    result = subprocess.run(
+    proc = subprocess.run(
         ["git", *args],
         cwd=REPO_ROOT,
         stdout=subprocess.PIPE,
@@ -39,63 +63,136 @@ def run_git(*args: str) -> str:
         check=True,
         text=True,
     )
-    return result.stdout
+    return proc.stdout
 
 
-def iter_commits() -> Iterator[tuple[str, str, str]]:
-    """Yield (full_hash, ISO date, subject) from oldest to newest."""
-    log = run_git("log", "--reverse", "--pretty=format:%H%x1f%aI%x1f%s")
+def is_feature(subject: str) -> bool:
+    return subject.lstrip().lower().startswith("feat")
+
+
+def iter_commits() -> Iterator[Tuple[str, str, str]]:
+    """Yield (full_hash, iso_date, subject) from oldest to newest."""
+    log = run_git(
+        "log",
+        "--reverse",
+        "--pretty=format:%H%x1f%aI%x1f%s",
+    )
     for line in log.splitlines():
         parts = line.split("\x1f", 2)
-        if len(parts) == 3:
-            yield parts[0], parts[1], parts[2]
+        if len(parts) != 3:
+            continue
+        full_hash, date, subject = parts
+        yield full_hash, date, subject
 
 
 def calculate_version(*, print_history: bool = True) -> str:
-    major = 0
-    minor = 0
-    patch = 0
-    found_commit = False
+    """Walk history and return final x.y.z. Optionally print each step."""
+    x = 0
+    y = 0
+    z = 0
+    saw_commit = False
 
     for full_hash, date, subject in iter_commits():
-        found_commit = True
-        if subject.lstrip().lower().startswith("feat"):
-            minor += 1
-            patch = 0
+        saw_commit = True
+        short = full_hash[:8]
+        if is_feature(subject):
+            y += 1
+            z = 0
         else:
-            patch += 1
+            z += 1
         if print_history:
-            print(f"{date}  {full_hash[:8]}  {subject[:50]}  {major}.{minor}.{patch}")
+            headline = subject.split("\n", 1)[0][:50]
+            print(f"{date}  {short}  {headline}  {x}.{y}.{z}")
 
-    if not found_commit:
+    if not saw_commit:
         raise RuntimeError("no commits found; cannot derive version")
-    return f"{major}.{minor}.{patch}"
+
+    return f"{x}.{y}.{z}"
 
 
-def replace_version(path: Path, pattern: re.Pattern[bytes], version: str, label: str) -> None:
+def apply_version(version: str) -> None:
+    """Write the release version to every tracked consumer."""
+    previous = VERSION_FILE.read_text(encoding="utf-8").strip() if VERSION_FILE.exists() else ""
+    replacements = (
+        _prepare_version_replacement(CONFIG_FILE, APP_VERSION_RE, version, "app.version"),
+        _prepare_version_replacement(
+            ENV_EXAMPLE_FILE,
+            ENV_APP_VERSION_RE,
+            version,
+            "app version example",
+        ),
+        _prepare_version_replacement(PACKAGE_JSON, PACKAGE_JSON_VERSION_RE, version, "package version"),
+    )
+
+    # Read and validate every target before changing any of them.
+    VERSION_FILE.write_text(version + "\n", encoding="utf-8")
+    print(f"updated {VERSION_FILE.relative_to(REPO_ROOT)}: {previous} -> {version}")
+    for path, previous, updated, label in replacements:
+        if updated == path.read_bytes():
+            print(f"unchanged {path.relative_to(REPO_ROOT)} -> {label} = {version!r}")
+            continue
+        path.write_bytes(updated)
+        print(
+            f"updated {path.relative_to(REPO_ROOT)} -> "
+            f"{label} {previous!r} -> {version!r}"
+        )
+
+
+def is_worktree_clean() -> bool:
+    """Return whether the index and worktree, including untracked files, are clean."""
+    return not run_git("status", "--porcelain=v1", "--untracked-files=all").strip()
+
+
+def create_version_tag(version: str) -> None:
+    """Create the lightweight release tag for the current HEAD."""
+    tag = f"v{version}"
+    run_git("tag", tag)
+    print(f"created tag: {tag}")
+
+
+def is_version_tag_creation_needed(version: str) -> bool:
+    """Reject conflicting release tags and skip tags already on the current HEAD."""
+    tag = f"v{version}"
+    if not run_git("tag", "--list", tag).strip():
+        return True
+
+    tag_head = run_git("rev-list", "-n", "1", tag).strip()
+    head = run_git("rev-parse", "HEAD").strip()
+    if tag_head != head:
+        raise RuntimeError(f"release tag {tag} already points to {tag_head[:8]}, not {head[:8]}")
+    print(f"tag already exists on HEAD: {tag}")
+    return False
+
+
+def _prepare_version_replacement(
+    path: Path,
+    pattern: re.Pattern[bytes],
+    version: str,
+    label: str,
+) -> Tuple[Path, str, bytes, str]:
+    """Prepare one replacement while preserving the source encoding and newlines."""
     raw = path.read_bytes()
     match = pattern.search(raw)
     if match is None:
         raise RuntimeError(f"could not find {label} in {path}")
     previous = match.group(2).decode("utf-8")
-    updated = raw[: match.start(2)] + version.encode("utf-8") + raw[match.end(2) :]
-    path.write_bytes(updated)
-    print(f"updated {path.relative_to(REPO_ROOT)}: {previous} -> {version}")
-
-
-def apply_version(version: str) -> None:
-    previous = VERSION_FILE.read_text(encoding="utf-8").strip() if VERSION_FILE.exists() else ""
-    VERSION_FILE.write_text(version + "\n", encoding="utf-8")
-    print(f"updated {VERSION_FILE.relative_to(REPO_ROOT)}: {previous} -> {version}")
-    replace_version(CONFIG_FILE, APP_VERSION_RE, version, "app.version")
-    replace_version(ENV_EXAMPLE_FILE, ENV_APP_VERSION_RE, version, "app version example")
-    replace_version(PACKAGE_JSON, PACKAGE_JSON_VERSION_RE, version, "package version")
+    version_bytes = version.encode("utf-8")
+    updated = raw[: match.start(2)] + version_bytes + raw[match.end(2) :]
+    return path, previous, updated, label
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Derive 0.y.z from Git history")
-    parser.add_argument("--apply", action="store_true", help="update release version metadata")
-    parser.add_argument("--quiet", action="store_true", help="do not print per-commit history")
+    parser = argparse.ArgumentParser(description="Derive x.y.z from git history")
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="write final version and tag HEAD when the worktree is clean",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="do not print per-commit history lines",
+    )
     return parser.parse_args(argv)
 
 
@@ -106,18 +203,29 @@ def main(argv: list[str] | None = None) -> int:
         print()
     print(f"version: {version}")
     if args.apply:
+        worktree_was_clean = is_worktree_clean()
+        tag_creation_needed = worktree_was_clean and is_version_tag_creation_needed(version)
         apply_version(version)
+        if tag_creation_needed:
+            create_version_tag(version)
+        else:
+            if not worktree_was_clean:
+                print(
+                    "warning: worktree was not clean before --apply; "
+                    f"skipped tag v{version}",
+                    file=sys.stderr,
+                )
     return 0
 
 
 if __name__ == "__main__":
     try:
-        raise SystemExit(main())
+        sys.exit(main())
     except subprocess.CalledProcessError as exc:
         sys.stderr.write(f"git failed: {exc.stderr.strip() or exc}\n")
-        raise SystemExit(1)
-    except (OSError, RuntimeError, UnicodeError, re.error) as exc:
+        sys.exit(1)
+    except (OSError, RuntimeError, ValueError, re.error) as exc:
         sys.stderr.write(f"{exc}\n")
-        raise SystemExit(1)
+        sys.exit(1)
     except KeyboardInterrupt:
-        raise SystemExit(130)
+        sys.exit(130)

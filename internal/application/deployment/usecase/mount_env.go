@@ -203,7 +203,7 @@ func resolveMountSpecsForPaths(mounts []MountSpec, logicalServiceDir string, com
 			item.IsFile = mount.SourceType == mountSourceFile || mount.SourceType == mountSourceControlledFile
 			item.ShouldMaterialize = mount.SourceType == mountSourceDirectory || mount.SourceType == mountSourceControlledFile
 			if composeMountSourceDir == "" {
-				item.Compose = "./" + mount.Source + ":" + mount.Target
+				item.Compose = mount.Source + ":" + mount.Target
 			} else {
 				item.HostSource = filepath.ToSlash(filepath.Join(composeMountSourceDir, filepath.FromSlash(mount.Source)))
 				item.Compose = item.HostSource + ":" + mount.Target

@@ -14,15 +14,20 @@ After calculation, optionally apply the final version to:
   * .env.example                    (app version example)
   * web/package.json                ("version" field)
 
-When applying from a clean worktree, create the matching lightweight Git tag
-on HEAD. A dirty worktree still receives the version-file updates, but skips
-tag creation with a warning.
+When applying from a clean worktree, --apply creates the matching lightweight
+Git tag on the current HEAD. A dirty worktree still receives the version-file
+updates, but skips tag creation with a warning.
+
+--apply-amend is the release-commit workflow: it requires an unpushed HEAD,
+writes and stages the version metadata, amends HEAD without changing its
+message, then creates the matching lightweight Git tag.
 
 Run from any directory inside the target git repository:
 
     python scripts/version-calc.py
     python scripts/version-calc.py --apply
     python scripts/version-calc.py --quiet --apply
+    python scripts/version-calc.py --quiet --apply-amend
 """
 
 from __future__ import annotations
@@ -52,6 +57,10 @@ ENV_APP_VERSION_RE = re.compile(
     rb"^(#\s*POMELO_ORBIT_APP__VERSION=)([^\r\n]*)",
     re.MULTILINE,
 )
+
+
+def version_files() -> Tuple[Path, ...]:
+    return (VERSION_FILE, CONFIG_FILE, ENV_EXAMPLE_FILE, PACKAGE_JSON)
 
 
 def run_git(*args: str) -> str:
@@ -112,16 +121,24 @@ def calculate_version(*, print_history: bool = True) -> str:
 
 def apply_version(version: str) -> None:
     """Write the release version to every tracked consumer."""
-    previous = VERSION_FILE.read_text(encoding="utf-8").strip() if VERSION_FILE.exists() else ""
+    previous = (
+        VERSION_FILE.read_text(encoding="utf-8").strip()
+        if VERSION_FILE.exists()
+        else ""
+    )
     replacements = (
-        _prepare_version_replacement(CONFIG_FILE, APP_VERSION_RE, version, "app.version"),
+        _prepare_version_replacement(
+            CONFIG_FILE, APP_VERSION_RE, version, "app.version"
+        ),
         _prepare_version_replacement(
             ENV_EXAMPLE_FILE,
             ENV_APP_VERSION_RE,
             version,
             "app version example",
         ),
-        _prepare_version_replacement(PACKAGE_JSON, PACKAGE_JSON_VERSION_RE, version, "package version"),
+        _prepare_version_replacement(
+            PACKAGE_JSON, PACKAGE_JSON_VERSION_RE, version, "package version"
+        ),
     )
 
     # Read and validate every target before changing any of them.
@@ -143,11 +160,68 @@ def is_worktree_clean() -> bool:
     return not run_git("status", "--porcelain=v1", "--untracked-files=all").strip()
 
 
+def require_unpushed_head() -> None:
+    """Require HEAD to be ahead of its configured upstream branch."""
+    try:
+        upstream = run_git(
+            "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"
+        ).strip()
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(
+            "--apply-amend requires the current branch to track an upstream"
+        ) from exc
+    if not upstream:
+        raise RuntimeError(
+            "--apply-amend requires the current branch to track an upstream"
+        )
+    ahead = int(run_git("rev-list", "--count", f"{upstream}..HEAD").strip())
+    if ahead == 0:
+        raise RuntimeError(
+            f"HEAD is already present on upstream {upstream}; --apply-amend requires an unpushed HEAD"
+        )
+    print(f"HEAD is {ahead} commit(s) ahead of {upstream}")
+
+
 def create_version_tag(version: str) -> None:
     """Create the lightweight release tag for the current HEAD."""
     tag = f"v{version}"
     run_git("tag", tag)
     print(f"created tag: {tag}")
+
+
+def version_tag_is_on_head(version: str) -> bool:
+    """Reject conflicting tags and report whether the tag currently names HEAD."""
+    tag = f"v{version}"
+    if not run_git("tag", "--list", tag).strip():
+        return False
+    tag_head = run_git("rev-list", "-n", "1", tag).strip()
+    head = run_git("rev-parse", "HEAD").strip()
+    if tag_head != head:
+        raise RuntimeError(
+            f"release tag {tag} already points to {tag_head[:8]}, not {head[:8]}"
+        )
+    return True
+
+
+def stage_version_files() -> bool:
+    """Stage version metadata and report whether it changed the index."""
+    paths = tuple(path.relative_to(REPO_ROOT).as_posix() for path in version_files())
+    run_git("add", "--", *paths)
+    return bool(run_git("diff", "--cached", "--name-only", "--", *paths).strip())
+
+
+def amend_head_with_version() -> None:
+    """Amend only version metadata while retaining HEAD's message and parent."""
+    paths = tuple(path.relative_to(REPO_ROOT).as_posix() for path in version_files())
+    run_git("commit", "--amend", "--no-edit", "--only", "--", *paths)
+    print("amended HEAD with version metadata")
+
+
+def move_version_tag_to_head(version: str) -> None:
+    """Move an existing local release tag to the amended HEAD."""
+    tag = f"v{version}"
+    run_git("tag", "--force", tag)
+    print(f"moved tag to amended HEAD: {tag}")
 
 
 def is_version_tag_creation_needed(version: str) -> bool:
@@ -159,7 +233,9 @@ def is_version_tag_creation_needed(version: str) -> bool:
     tag_head = run_git("rev-list", "-n", "1", tag).strip()
     head = run_git("rev-parse", "HEAD").strip()
     if tag_head != head:
-        raise RuntimeError(f"release tag {tag} already points to {tag_head[:8]}, not {head[:8]}")
+        raise RuntimeError(
+            f"release tag {tag} already points to {tag_head[:8]}, not {head[:8]}"
+        )
     print(f"tag already exists on HEAD: {tag}")
     return False
 
@@ -183,10 +259,16 @@ def _prepare_version_replacement(
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Derive x.y.z from git history")
-    parser.add_argument(
+    apply_group = parser.add_mutually_exclusive_group()
+    apply_group.add_argument(
         "--apply",
         action="store_true",
         help="write final version and tag HEAD when the worktree is clean",
+    )
+    apply_group.add_argument(
+        "--apply-amend",
+        action="store_true",
+        help="write, stage, and amend final version into an unpushed HEAD before tagging it",
     )
     parser.add_argument(
         "--quiet",
@@ -204,7 +286,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"version: {version}")
     if args.apply:
         worktree_was_clean = is_worktree_clean()
-        tag_creation_needed = worktree_was_clean and is_version_tag_creation_needed(version)
+        tag_creation_needed = worktree_was_clean and is_version_tag_creation_needed(
+            version
+        )
         apply_version(version)
         if tag_creation_needed:
             create_version_tag(version)
@@ -215,6 +299,24 @@ def main(argv: list[str] | None = None) -> int:
                     f"skipped tag v{version}",
                     file=sys.stderr,
                 )
+    elif args.apply_amend:
+        require_unpushed_head()
+        tag_was_on_head = version_tag_is_on_head(version)
+        apply_version(version)
+        if stage_version_files():
+            amend_head_with_version()
+            if tag_was_on_head:
+                move_version_tag_to_head(version)
+            else:
+                create_version_tag(version)
+        else:
+            print(
+                "version metadata already matches the calculated version; skipped amend"
+            )
+            if tag_was_on_head:
+                print(f"tag already exists on HEAD: v{version}")
+            else:
+                create_version_tag(version)
     return 0
 
 

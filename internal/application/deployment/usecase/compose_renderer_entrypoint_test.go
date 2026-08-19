@@ -29,7 +29,7 @@ func TestRenderComposeIncludesComponentEntrypoint(t *testing.T) {
 	}
 }
 
-func TestRenderComposeKeepsRelativeDirectorySourceForNativeOrbit(t *testing.T) {
+func TestRenderComposePreservesDirectorySourceForNativeOrbit(t *testing.T) {
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
 		Plan: model.EffectiveServicePlan{
 			Application: model.Application{Code: "mysql", Kind: status.ApplicationKindStandard},
@@ -39,7 +39,7 @@ func TestRenderComposeKeepsRelativeDirectorySourceForNativeOrbit(t *testing.T) {
 				Image: "mysql:8",
 				Mounts: []model.VersionComponentMount{{
 					SourceType: "directory",
-					Source:     "data",
+					Source:     "./data",
 					Target:     "/var/lib/mysql",
 				}},
 			}},
@@ -49,7 +49,7 @@ func TestRenderComposeKeepsRelativeDirectorySourceForNativeOrbit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(compose, "- ./data:/var/lib/mysql") {
-		t.Fatalf("native compose must keep the relative mount source:\n%s", compose)
+	if !strings.Contains(compose, "- ./data:/var/lib/mysql") || strings.Contains(compose, "././data") {
+		t.Fatalf("native compose must preserve the mount source:\n%s", compose)
 	}
 }

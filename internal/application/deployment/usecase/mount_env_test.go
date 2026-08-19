@@ -103,21 +103,31 @@ func TestResolveMountSpecsMaterializesLogicalDirectoryAtServiceRoot(t *testing.T
 	}
 }
 
-func TestResolveMountSpecsKeepsRelativeDirectorySourceForNativeCompose(t *testing.T) {
+func TestResolveMountSpecsPreservesDirectorySourceForNativeCompose(t *testing.T) {
 	logicalServiceDir := filepath.Join(t.TempDir(), "deployment", "mysql-default")
-	resolved, err := resolveMountSpecsForPaths([]MountSpec{{
-		SourceType: mountSourceDirectory,
-		Source:     "data",
-		Target:     "/var/lib/mysql",
-	}}, logicalServiceDir, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resolved[0].Compose != "./data:/var/lib/mysql" || resolved[0].HostSource != "" {
-		t.Fatalf("native compose mount = %+v", resolved[0])
-	}
-	if resolved[0].LogicalSource != filepath.Join(logicalServiceDir, "data") || !resolved[0].ShouldMaterialize {
-		t.Fatalf("native logical mount = %+v", resolved[0])
+	for _, test := range []struct {
+		source string
+		want   string
+	}{
+		{source: "./data", want: "./data:/var/lib/mysql"},
+		{source: "data", want: "data:/var/lib/mysql"},
+	} {
+		t.Run(test.source, func(t *testing.T) {
+			resolved, err := resolveMountSpecsForPaths([]MountSpec{{
+				SourceType: mountSourceDirectory,
+				Source:     test.source,
+				Target:     "/var/lib/mysql",
+			}}, logicalServiceDir, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resolved[0].Compose != test.want || resolved[0].HostSource != "" {
+				t.Fatalf("native compose mount = %+v", resolved[0])
+			}
+			if resolved[0].LogicalSource != filepath.Join(logicalServiceDir, "data") || !resolved[0].ShouldMaterialize {
+				t.Fatalf("native logical mount = %+v", resolved[0])
+			}
+		})
 	}
 }
 

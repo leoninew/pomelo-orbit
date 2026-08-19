@@ -18,7 +18,7 @@ Pipeline 内部路径保持为 `<workspace.pipeline>/<repository-code>/workspace
 
 ## Docker 路径
 
-Orbit 原生运行时，workspace 的绝对路径用于 Orbit 文件读写；组件的相对挂载源在 Version 中保存为 `data`，渲染为 `./data:/var/lib/mysql`，由 Compose 相对生成的 `docker-compose.yml` 解析为 bind mount。显式 `source_is_host_path=true` 的源保持其绝对路径。
+Orbit 原生运行时，workspace 的绝对路径用于 Orbit 文件读写；组件挂载源按 Version 中保存的值原样渲染到 Compose，例如 `./data` 渲染为 `./data:/var/lib/mysql`，由 Compose 相对生成的 `docker-compose.yml` 解析。显式 `source_is_host_path=true` 的源保持其绝对路径。
 
 在 Docker-outside-of-Docker 部署中，配置值是 Orbit 容器内路径，两个 workspace root 必须各自从 Docker daemon 主机 bind mount 进容器。启动时 Orbit 用 Docker inspect 验证映射；Compose 和 Pipeline Stage 只接收解析后的主机路径，而逻辑目录和 controlled file 仍在 Orbit 可见目录物化。
 

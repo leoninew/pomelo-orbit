@@ -37,7 +37,9 @@ orbit:
   root: .
 
 jwt:
-  secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  # Set through .env.release or POMELO_ORBIT_JWT__SECRET_KEY at runtime.
+  # Generate with: python -c "import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())"
+  secret_key: ""
 
 traefik:
   # Infrastructure only. Product identity (code/component/network) is fixed in code.

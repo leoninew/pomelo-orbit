@@ -1,5 +1,5 @@
 # 服务器首次部署指南
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-08-19 10:43:40
 
 Doc role: living guide（运维向）。与代码冲突时以代码为准。
 
@@ -64,7 +64,7 @@ EOF
 ```bash
 cat > /opt/pomelo-orbit/.env << 'EOF'
 # JWT 密钥（同时用于凭据加密，必须使用 Fernet 格式）
-# 生成方法: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# 生成方法: python -c "import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())"
 POMELO_ORBIT_JWT__SECRET_KEY=00000000000000000000000000000000000000000000
 EOF
 ```

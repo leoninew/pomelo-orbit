@@ -45,16 +45,12 @@ CREATE TABLE IF NOT EXISTS pipeline_stage (
     artifacts LONGTEXT,
     depends_on LONGTEXT,
     sort_order INT,
-    template_name VARCHAR(255) GENERATED ALWAYS AS (
-        CASE WHEN kind = 'template' THEN name ELSE NULL END
-    ) STORED,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     CONSTRAINT fk_pipeline_stage_pipeline FOREIGN KEY (pipeline_id) REFERENCES pipeline(id) ON DELETE CASCADE,
     CONSTRAINT uq_pipeline_stage_pipeline_name UNIQUE (pipeline_id, name)
 ) ENGINE=InnoDB;
 
-CREATE UNIQUE INDEX uq_pipeline_stage_template_project_name ON pipeline_stage(project_id, template_name);
 CREATE INDEX idx_pipeline_stage_project_kind_name ON pipeline_stage(project_id, kind, name);
 
 CREATE TABLE pipeline_stage_reference (

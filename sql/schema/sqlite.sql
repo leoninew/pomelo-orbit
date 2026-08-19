@@ -187,8 +187,6 @@ CREATE TABLE IF NOT EXISTS pipeline_stage (
     UNIQUE (pipeline_id, name)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_pipeline_stage_template_project_name
-    ON pipeline_stage(project_id, name) WHERE kind = 'template';
 CREATE INDEX IF NOT EXISTS idx_pipeline_stage_project_kind_name ON pipeline_stage(project_id, kind, name);
 
 CREATE TABLE IF NOT EXISTS pipeline_stage_reference (

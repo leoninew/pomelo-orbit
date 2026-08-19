@@ -1,4 +1,4 @@
 interface:
   display_name: "传输 SQLite / MySQL 数据 / Transfer Database Data"
   short_description: "Safely transfer database data and services"
-  default_prompt: "Use $transfer-database-data to export, import, convert, or move database data or a SQLite service."
+  default_prompt: "Use $transfer-database-data to export, import, convert, or move SQLite/MySQL database data or a service."

@@ -1,6 +1,6 @@
 ---
 name: transfer-database-data
-description: "Use scripts/database_transfer.py to safely export, import, or convert complete SQLite/MySQL database data, or export and import one SQLite service deployment closure. Trigger for full database transfer, SQLite/MySQL conversion, replacing a target database, or moving a named service and its deployable version components to another machine."
+description: "Use scripts/database_transfer.py to safely export, import, or convert complete SQLite/MySQL database data, or export and import one SQLite/MySQL service deployment closure. Trigger for full database transfer, SQLite/MySQL conversion, replacing a target database, or moving a named service and its deployable version components to another machine."
 ---
 
 # Transfer Database Data
@@ -25,14 +25,17 @@ python scripts/database_transfer.py convert --from sqlite --to mysql --input <tr
 python scripts/database_transfer.py convert --from mysql --to sqlite --input <transfer.mysql.sql> --output <transfer.sqlite.sql>
 ```
 
-Use the dedicated SQLite service commands for cross-machine deployment:
+Use the dedicated SQLite/MySQL service commands for cross-machine deployment:
 
 ```powershell
-python scripts/database_transfer.py export-service --sqlite-path <source.db> --service-code <service-code> --output <service-transfer.sqlite.sql>
-python scripts/database_transfer.py import-service --sqlite-path <target.db> --input <service-transfer.sqlite.sql>
+python scripts/database_transfer.py export-service --source sqlite --sqlite-path <source.db> --service-code <service-code> --output <service-transfer.sqlite.sql>
+python scripts/database_transfer.py export-service --source mysql --mysql-host <host> --mysql-port <port> --mysql-user <user> --mysql-password <password> --mysql-database <database> --service-code <service-code> --output <service-transfer.mysql.sql>
+
+python scripts/database_transfer.py import-service --target sqlite --sqlite-path <target.db> --input <service-transfer.sqlite.sql>
+python scripts/database_transfer.py import-service --target mysql --mysql-host <host> --mysql-port <port> --mysql-user <user> --mysql-password <password> --mysql-database <database> --input <service-transfer.mysql.sql>
 ```
 
-Do not add `--scope` or `service-config` options. Service transfer is SQLite-only.
+Use `convert` before importing a service package into the other driver. Do not add `--scope` or `service-config` options.
 
 ## Service Transfer Content
 
@@ -44,7 +47,7 @@ Do not add `--scope` or `service-config` options. Service transfer is SQLite-onl
 - service env and component overrides; and
 - routes targeting that service.
 
-It excludes records for other services. It writes no `DELETE` statements. `import-service` accepts only this exact SQLite table set and always appends; it has no `--replace` option.
+It excludes records for other services. It writes no `DELETE` statements, including after cross-driver conversion. `import-service` accepts only this exact table set for SQLite or MySQL and always appends; it has no `--replace` option.
 
 ## Safety And Verification
 

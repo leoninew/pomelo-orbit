@@ -102,6 +102,9 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Worker.MaxAttempts != 1 {
 		t.Fatalf("unexpected worker max attempts: %d", cfg.Worker.MaxAttempts)
 	}
+	if cfg.LLM.MaxToolCallRounds != 32 {
+		t.Fatalf("unexpected deployment dialogue tool-call rounds: %d", cfg.LLM.MaxToolCallRounds)
+	}
 	if cfg.EnvFilePath != filepath.Join(currentDir(t), ".env") {
 		t.Fatalf("unexpected env file path: %s", cfg.EnvFilePath)
 	}
@@ -119,6 +122,31 @@ func TestValidateMCPClientRejectsAPIURLPath(t *testing.T) {
 	err := cfg.ValidateMCPClient()
 	if err == nil || !strings.Contains(err.Error(), "mcp.api_url must not include path") {
 		t.Fatalf("ValidateMCPClient() error = %v", err)
+	}
+}
+
+func TestLoadConfigReadsLLMMaxToolCallRoundsFromEnvironment(t *testing.T) {
+	setupDefaultConfig(t)
+	t.Setenv("POMELO_ORBIT_LLM__MAX_TOOL_CALL_ROUNDS", "48")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.LLM.MaxToolCallRounds != 48 {
+		t.Fatalf("unexpected deployment dialogue tool-call rounds: %d", cfg.LLM.MaxToolCallRounds)
+	}
+}
+
+func TestLoadConfigRejectsNonPositiveLLMMaxToolCallRounds(t *testing.T) {
+	setupDefaultConfig(t)
+	writeEnvConfig(t, "develop", `llm:
+  max_tool_call_rounds: 0
+`)
+
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "llm.max_tool_call_rounds must be at least 1") {
+		t.Fatalf("Load error = %v", err)
 	}
 }
 
@@ -965,6 +993,8 @@ settings:
     - database__mysql__dsn
     - jwt__secret_key
     - turnstile__secret_key
+llm:
+  max_tool_call_rounds: 32
 pipeline_run:
   execution_timeout: 1h
 worker:

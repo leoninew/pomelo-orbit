@@ -53,6 +53,31 @@ func TestConfigUpdateAndResetPersistEnvOverrides(t *testing.T) {
 	}
 }
 
+func TestConfigIncludesDeploymentDialogueToolCallRounds(t *testing.T) {
+	envFilePath := filepath.Join(t.TempDir(), ".env")
+	cfg := config.Config{EnvFilePath: envFilePath, LLM: config.LLMConfig{MaxToolCallRounds: 32}}
+	service := New(cfg, envfile.NewStore(envFilePath))
+	ctx := context.Background()
+
+	initial, err := service.Config(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, ok := findConfigItem(initial.Items, "llm__max_tool_call_rounds")
+	if !ok || item.Value != 32 || item.IsOverridden {
+		t.Fatalf("unexpected deployment dialogue tool-call rounds: %+v", item)
+	}
+
+	updated, err := service.Update(ctx, "llm__max_tool_call_rounds", 48)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, ok = findConfigItem(updated.Items, "llm__max_tool_call_rounds")
+	if !ok || item.Value != 48 || !item.IsOverridden {
+		t.Fatalf("unexpected updated deployment dialogue tool-call rounds: %+v", item)
+	}
+}
+
 func findConfigItem(items []settingsdto.ConfigItem, key string) (settingsdto.ConfigItem, bool) {
 	for _, item := range items {
 		if item.Key == key {

@@ -22,7 +22,7 @@ func TestCompleteTurnRunsMCPToolCallsUntilAssistantReply(t *testing.T) {
 		{ToolCalls: []port.ToolCall{{Id: "call-1", Name: "orbit_list_applications", Arguments: json.RawMessage(`{"project_id":"project-1"}`)}}},
 		{Content: "项目中有两个应用。"},
 	}}
-	service := New(fakeDialogueProject{}, store, fakeDialogueTransaction{}, llm, factory)
+	service := New(fakeDialogueProject{}, store, fakeDialogueTransaction{}, 32, llm, factory)
 
 	result, err := service.CompleteTurn(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{
 		ProjectId: "project-1",
@@ -62,6 +62,7 @@ func TestCompleteTurnDoesNotPersistWithoutFinalAssistantReply(t *testing.T) {
 		fakeDialogueProject{},
 		store,
 		fakeDialogueTransaction{},
+		32,
 		&fakeLLM{configured: true, responses: []port.CompletionResponse{
 			{ToolCalls: []port.ToolCall{{Id: "call-1", Name: "orbit_list_applications", Arguments: json.RawMessage(`{}`)}}},
 		}},
@@ -89,6 +90,7 @@ func TestCompleteTurnCreatesConversationWithClientConversationID(t *testing.T) {
 		fakeDialogueProject{},
 		store,
 		fakeDialogueTransaction{},
+		32,
 		&fakeLLM{configured: true, responses: []port.CompletionResponse{{Content: "回答"}}},
 		&fakeMCPFactory{client: &fakeMCPClient{}},
 	)
@@ -124,6 +126,7 @@ func TestCompleteTurnAppendsToExistingConversationAfterFinalAssistantReply(t *te
 		fakeDialogueProject{},
 		store,
 		fakeDialogueTransaction{},
+		32,
 		&fakeLLM{configured: true, responses: []port.CompletionResponse{{Content: "新回答"}}},
 		&fakeMCPFactory{client: &fakeMCPClient{}},
 	)
@@ -154,7 +157,7 @@ func TestConversationHistoryCanBeReadAndDeleted(t *testing.T) {
 	conversation := model.DeploymentDialogueConversation{Id: "conversation-1", ProjectId: "project-1", Title: "问题"}
 	store.conversations[conversation.Id] = conversation
 	store.messages[conversation.Id] = []model.DeploymentDialogueMessage{{Id: "message-1", ConversationId: conversation.Id, Role: "user", Content: "问题"}}
-	service := New(fakeDialogueProject{}, store, fakeDialogueTransaction{}, &fakeLLM{}, &fakeMCPFactory{})
+	service := New(fakeDialogueProject{}, store, fakeDialogueTransaction{}, 32, &fakeLLM{}, &fakeMCPFactory{})
 
 	items, err := service.ListConversations(context.Background(), "user-1", "project-1")
 	if err != nil || len(items) != 1 || items[0].Id != conversation.Id {
@@ -280,6 +283,31 @@ func TestCompleteTurnRejectsDuplicateDeploymentForService(t *testing.T) {
 	}
 }
 
+func TestCompleteTurnStopsAfterConfiguredToolCallRounds(t *testing.T) {
+	mcp := &fakeMCPClient{tools: []port.ToolDefinition{{Name: "orbit_list_applications"}}}
+	service := New(
+		fakeDialogueProject{},
+		newFakeDialogueStore(),
+		fakeDialogueTransaction{},
+		1,
+		&fakeLLM{configured: true, responses: []port.CompletionResponse{
+			{ToolCalls: []port.ToolCall{{Id: "call-1", Name: "orbit_list_applications", Arguments: json.RawMessage(`{}`)}}},
+		}},
+		&fakeMCPFactory{client: mcp},
+	)
+
+	result, err := service.CompleteTurn(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "列出应用"}}})
+	if err != nil {
+		t.Fatalf("CompleteTurn() error = %v", err)
+	}
+	if !strings.Contains(result.Message, "exceeded 1 tool-call rounds") {
+		t.Fatalf("Message = %q", result.Message)
+	}
+	if len(mcp.calls) != 1 {
+		t.Fatalf("MCP calls = %#v", mcp.calls)
+	}
+}
+
 type fakeLLM struct {
 	configured bool
 	requests   []port.CompletionRequest
@@ -329,7 +357,7 @@ func (f *fakeMCPClient) CallTool(_ context.Context, name string, _ json.RawMessa
 func (*fakeMCPClient) Close() error { return nil }
 
 func newDialogueService(llm port.LLMClient, factory port.MCPClientFactory) Service {
-	return New(fakeDialogueProject{}, newFakeDialogueStore(), fakeDialogueTransaction{}, llm, factory)
+	return New(fakeDialogueProject{}, newFakeDialogueStore(), fakeDialogueTransaction{}, 32, llm, factory)
 }
 
 type fakeDialogueProject struct{}

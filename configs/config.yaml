@@ -73,6 +73,7 @@ llm:
   api_key: ""
   model: ""
   timeout: 60s
+  max_tool_call_rounds: 64
 
 # Local Codex MCP browser authorization. Production deployments should set
 # mcp.web_url to the externally reachable Orbit UI origin.

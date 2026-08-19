@@ -159,10 +159,11 @@ type SettingsConfig struct {
 }
 
 type LLMConfig struct {
-	BaseUrl string        `mapstructure:"base_url" yaml:"base_url"`
-	ApiKey  string        `mapstructure:"api_key" yaml:"api_key"`
-	Model   string        `mapstructure:"model" yaml:"model"`
-	Timeout time.Duration `mapstructure:"timeout" yaml:"timeout"`
+	BaseUrl           string        `mapstructure:"base_url" yaml:"base_url"`
+	ApiKey            string        `mapstructure:"api_key" yaml:"api_key"`
+	Model             string        `mapstructure:"model" yaml:"model"`
+	Timeout           time.Duration `mapstructure:"timeout" yaml:"timeout"`
+	MaxToolCallRounds int           `mapstructure:"max_tool_call_rounds" yaml:"max_tool_call_rounds"`
 }
 
 // MCPConfig configures the local stdio MCP client handoff. APIUrl is optional
@@ -347,6 +348,7 @@ func bindEnv(loader *viper.Viper) {
 		"llm.api_key",
 		"llm.model",
 		"llm.timeout",
+		"llm.max_tool_call_rounds",
 		"mcp.api_url",
 		"mcp.web_url",
 		"mcp.auth_timeout",
@@ -587,6 +589,9 @@ func pathContains(parent string, child string) bool {
 }
 
 func validateLLMConfig(cfg LLMConfig) error {
+	if cfg.MaxToolCallRounds < 1 {
+		return errors.New("llm.max_tool_call_rounds must be at least 1")
+	}
 	configured := strings.TrimSpace(cfg.BaseUrl) != "" || strings.TrimSpace(cfg.ApiKey) != "" || strings.TrimSpace(cfg.Model) != ""
 	if !configured {
 		return nil

@@ -16,8 +16,6 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-const maxToolCallRounds = 12
-
 type Service interface {
 	ListConversations(context.Context, string, string) ([]dialoguedto.Conversation, error)
 	Conversation(context.Context, string, string) (dialoguedto.ConversationDetail, error)
@@ -27,15 +25,16 @@ type Service interface {
 }
 
 type service struct {
-	llm         port.LLMClient
-	mcpFactory  port.MCPClientFactory
-	project     repository.ProjectReader
-	dialogue    repository.DeploymentDialogueStore
-	transaction port.TransactionRunner
+	llm               port.LLMClient
+	mcpFactory        port.MCPClientFactory
+	project           repository.ProjectReader
+	dialogue          repository.DeploymentDialogueStore
+	transaction       port.TransactionRunner
+	maxToolCallRounds int
 }
 
-func New(project repository.ProjectReader, dialogue repository.DeploymentDialogueStore, transaction port.TransactionRunner, llm port.LLMClient, mcpFactory port.MCPClientFactory) Service {
-	return service{project: project, dialogue: dialogue, transaction: transaction, llm: llm, mcpFactory: mcpFactory}
+func New(project repository.ProjectReader, dialogue repository.DeploymentDialogueStore, transaction port.TransactionRunner, maxToolCallRounds int, llm port.LLMClient, mcpFactory port.MCPClientFactory) Service {
+	return service{project: project, dialogue: dialogue, transaction: transaction, maxToolCallRounds: maxToolCallRounds, llm: llm, mcpFactory: mcpFactory}
 }
 
 func (s service) ListConversations(ctx context.Context, userId, projectId string) ([]dialoguedto.Conversation, error) {
@@ -148,7 +147,7 @@ func (s service) completeTurn(ctx context.Context, userId, authorization string,
 	notifyProgress(progress, dialoguedto.StreamEvent{Type: dialoguedto.StreamEventReady})
 	result := dialoguedto.TurnResult{}
 	execution := newTurnExecution()
-	for range maxToolCallRounds {
+	for range s.maxToolCallRounds {
 		completion, err := s.llm.Complete(ctx, port.CompletionRequest{Messages: messages, Tools: tools})
 		if err != nil {
 			return partialTurnResult(result, err)
@@ -205,7 +204,7 @@ func (s service) completeTurn(ctx context.Context, userId, authorization string,
 		}
 	}
 
-	return partialTurnResult(result, apperror.New(apperror.KindUnavailable, fmt.Sprintf("Deployment dialogue exceeded %d tool-call rounds", maxToolCallRounds)))
+	return partialTurnResult(result, apperror.New(apperror.KindUnavailable, fmt.Sprintf("Deployment dialogue exceeded %d tool-call rounds", s.maxToolCallRounds)))
 }
 
 func (s service) persistTurn(ctx context.Context, userId, projectId string, conversation model.DeploymentDialogueConversation, userContent, assistantContent string) (model.DeploymentDialogueConversation, error) {

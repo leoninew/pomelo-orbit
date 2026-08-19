@@ -110,7 +110,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	)
 	gatewayService := gatewayCore
 	applicationService := applicationsvc.New(stores.project, stores.application, stores.service)
-	dialogueService := dialoguesvc.New(stores.project, stores.dialogue, transactionRunner, llmclient.New(cfg.LLM), deliverymcpclient.NewFactory(deliveryMCPEndpoint(cfg)))
+	dialogueService := dialoguesvc.New(stores.project, stores.dialogue, transactionRunner, cfg.LLM.MaxToolCallRounds, llmclient.New(cfg.LLM), deliverymcpclient.NewFactory(deliveryMCPEndpoint(cfg)))
 	return routes.Dependencies{
 		Database:          database,
 		Authenticator:     security.New(logger, authService),

@@ -152,6 +152,7 @@ func settingDefinitions(cfg config.Config) []settingsdto.Definition {
 		{Key: "worker__lease_duration", Default: cfg.Worker.LeaseDuration.String(), Description: "Background task lease duration"},
 		{Key: "worker__max_attempts", Default: cfg.Worker.MaxAttempts, Description: "Attempts frozen into each new background task"},
 		{Key: "worker__concurrency", Default: cfg.Worker.Concurrency, Description: "Background worker concurrency"},
+		{Key: "llm__max_tool_call_rounds", Default: cfg.LLM.MaxToolCallRounds, Description: "Maximum LLM-to-MCP tool-call rounds per deployment dialogue turn"},
 	}
 	for index := range definitions {
 		definitions[index] = markSecret(definitions[index])

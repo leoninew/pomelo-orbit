@@ -1,5 +1,5 @@
 # 可配置 CI/CD 工作目录与 DooD 宿主路径解析计划
-最后修改时间: 2026-08-18 22:53:53
+最后修改时间: 2026-08-19 10:52:44
 
 Review status: Accepted
 
@@ -50,7 +50,7 @@ Mode: strict
 
 | Area | Primary paths |
 | --- | --- |
-| Config | `configs/config.yaml`, `.env.example`, `scripts/relesae.env`, `internal/config/{config.go,config_test.go}` |
+| Config | `configs/config.yaml`, `scripts/package/env.release`, `.env.example`, `internal/config/{config.go,config_test.go}` |
 | Bootstrap and DooD | `internal/bootstrap/{app,http,worker,*_test.go}`, `internal/infrastructure/storage/local/{physical_data_root.go,physical_data_root_test.go}` |
 | Workspace storage | `internal/infrastructure/storage/local/{pipelineworkspace,deploymentworkspace}/**` and affected port/fake tests |
 | Deployment/Gateway/Route | `internal/application/gateway/{port,usecase}/**`, `internal/infrastructure/external/traefik/{route.go,route_test.go}`, deployment and pipeline-run tests |

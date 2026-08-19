@@ -8,6 +8,8 @@ Doc role: living guide
 
 Pomelo Orbit 使用受管 Gateway 的 Traefik `providers.rest` 管理平台 Route。每次同步均对 REST provider 发出完整快照，快照同时包含顶层 `http` 与 `tcp` namespace，因此禁用、删除 Route 或 Gateway 重建后不会遗留旧动态配置。
 
+在覆盖前，Orbit 会检查 Traefik 当前的 `@rest` router 是否都对应 Route 表中的启用 Route。发现未登记的 `@rest` router 时，操作会以 `409/unmanaged_traefik_route` 拒绝，数据库和 Traefik 均不变。Traefik REST provider 只支持全量 PUT，无法保留未知规则；遗留的自定义 HTTP 路由必须先在 Orbit 中创建同等 Route（可使用“高级：自定义下游地址”），或由运维迁移到非 REST provider。
+
 | 类型 | 地址 | Target | Traefik 动态规则 |
 |------|------|--------|------------------|
 | HTTP Route | `https?://domain/path_prefix` | 默认同项目 Service Component 的 HTTP Endpoint；高级模式可填 HTTP(S) URL | `Host(...)`，可附加 `PathPrefix(...)` |

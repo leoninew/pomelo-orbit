@@ -125,6 +125,111 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	}
 }
 
+func TestRouteServiceDoesNotReplaceUnmanagedTraefikRestRoute(t *testing.T) {
+	service, publisher, client, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	managed, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "managed-route", Protocol: "http", Domain: "managed.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8082", Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.routers = []routeport.TraefikRouter{{Name: "legacy-route@rest", Provider: "rest", Status: "enabled"}}
+	published := len(publisher.snapshots)
+
+	if _, err := service.DisableRoute(ctx, routeTestUserId, managed.Id); err == nil || apperror.StatusCode(err) != http.StatusConflict || apperror.Classify(err).Code != "unmanaged_traefik_route" {
+		t.Fatalf("expected unmanaged route conflict, got %v", err)
+	}
+	stored, err := service.RouteForUser(ctx, routeTestUserId, managed.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stored.Enabled {
+		t.Fatalf("route was disabled despite unmanaged Traefik router: %+v", stored)
+	}
+	if len(publisher.snapshots) != published {
+		t.Fatalf("expected no snapshot publication, got %+v", publisher.snapshots[published:])
+	}
+}
+
+func TestRouteServiceCanAdoptUnmanagedTraefikRestRoute(t *testing.T) {
+	service, publisher, client, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	client.routers = []routeport.TraefikRouter{{Name: "legacy-route@rest", Provider: "rest", Status: "enabled"}}
+
+	created, err := service.CreateRoute(context.Background(), routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "legacy", Protocol: "http", Domain: "legacy.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8090", Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !created.Enabled {
+		t.Fatalf("expected adopted route to be enabled: %+v", created)
+	}
+	snapshot := publisher.snapshots[len(publisher.snapshots)-1]
+	if len(snapshot) != 1 || snapshot[0].Id != created.Id {
+		t.Fatalf("expected adopted route in the snapshot, got %+v", snapshot)
+	}
+}
+
+func TestRouteServiceDoesNotAdoptUnmanagedRouteDuringRename(t *testing.T) {
+	service, publisher, client, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "managed-route", Protocol: "http", Domain: "managed.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8082", Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.routers = []routeport.TraefikRouter{{Name: "renamed-route@rest", Provider: "rest", Status: "enabled"}}
+	published := len(publisher.snapshots)
+	newName := "renamed-route"
+
+	if _, err := service.UpdateRoute(ctx, routeTestUserId, route.Id, routedto.RouteUpdateInput{Name: &newName}); err == nil || apperror.StatusCode(err) != http.StatusConflict || apperror.Classify(err).Code != "unmanaged_traefik_route" {
+		t.Fatalf("expected unmanaged route conflict, got %v", err)
+	}
+	stored, err := service.RouteForUser(ctx, routeTestUserId, route.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Name != "managed-route" {
+		t.Fatalf("route was renamed despite unmanaged Traefik router: %+v", stored)
+	}
+	if len(publisher.snapshots) != published {
+		t.Fatalf("expected no snapshot publication, got %+v", publisher.snapshots[published:])
+	}
+}
+
+func TestRouteServiceKeepsEnabledCustomTargetWhenAnotherRouteIsDisabled(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	custom, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "custom-route", Protocol: "http", Domain: "custom.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8090", Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "other-route", Protocol: "http", Domain: "other.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8091", Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.DisableRoute(ctx, routeTestUserId, other.Id); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := publisher.snapshots[len(publisher.snapshots)-1]
+	if len(snapshot) != 1 || snapshot[0].Id != custom.Id || snapshot[0].TargetUrl != "http://host.docker.internal:8090" {
+		t.Fatalf("expected custom target to remain in the snapshot, got %+v", snapshot)
+	}
+}
+
 func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher, *recordingTraefikClient, *sql.DB) {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")

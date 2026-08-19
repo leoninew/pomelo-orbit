@@ -1,58 +1,65 @@
 ---
 name: transfer-database-data
-description: "Use scripts/database_transfer.py to safely export, import, or convert complete SQLite/MySQL database data, or export and import one SQLite/MySQL service deployment closure. Trigger for full database transfer, SQLite/MySQL conversion, replacing a target database, or moving a named service and its deployable version components to another machine."
+description: "Export or import one Pomelo Orbit service deployment closure through the installed Housekeeper database JSONL CLI."
 ---
 
-# Transfer Database Data
+# Transfer An Orbit Service
 
-Run `scripts/database_transfer.py` from the repository root. Treat this skill as the LLM operating guide; script behavior is authoritative if it differs.
+Use `scripts/database_transfer.py` from the Orbit repository root. This
+skill moves one service deployment closure; it is not a general database
+backup or schema migration tool.
 
-## Commands
+## Preconditions
 
-Use the existing full-database commands without changing their behavior:
+- Install a published Housekeeper package so `housekeeper database export` and
+  `housekeeper database import` are available on `PATH`.
+- Initialize the target Orbit schema with the normal Orbit migration command
+  before importing. The transfer file contains data only, never DDL, indexes,
+  triggers, routines, or permissions.
+- Keep MySQL credentials in an environment variable and pass its name with
+  `--mysql-dsn-env`. Do not place a password in the command line or transfer
+  file.
 
-```powershell
-# Full SQLite/MySQL export
-python scripts/database_transfer.py export --source sqlite --sqlite-path <source.db> --output <transfer.sqlite.sql>
-python scripts/database_transfer.py export --source mysql --mysql-host <host> --mysql-port <port> --mysql-user <user> --mysql-password <password> --mysql-database <database> --output <transfer.mysql.sql>
+## Export
 
-# Full SQLite/MySQL import; use --replace only when explicitly authorized
-python scripts/database_transfer.py import --target sqlite --sqlite-path <target.db> --input <transfer.sqlite.sql> [--replace]
-python scripts/database_transfer.py import --target mysql --mysql-host <host> --mysql-port <port> --mysql-user <user> --mysql-password <password> --mysql-database <database> --input <transfer.mysql.sql> [--replace]
-
-# Cross-driver conversion
-python scripts/database_transfer.py convert --from sqlite --to mysql --input <transfer.sqlite.sql> --output <transfer.mysql.sql>
-python scripts/database_transfer.py convert --from mysql --to sqlite --input <transfer.mysql.sql> --output <transfer.sqlite.sql>
+```bash
+python scripts/database_transfer.py export \
+  --source sqlite --sqlite-path data/db/pomelo-orbit.db \
+  --service-code <service-code> --output service.jsonl --tz UTC
 ```
 
-Use the dedicated SQLite/MySQL service commands for cross-machine deployment:
+For MySQL, use `--source mysql --mysql-dsn-env <ENV_NAME>`. Orbit asks
+Housekeeper for a temporary full JSONL export, selects the requested service's
+project, application, version lineage, components, Gateway configuration,
+service overrides, and routes, then writes the service JSONL file. The full
+temporary export is removed automatically.
 
-```powershell
-python scripts/database_transfer.py export-service --source sqlite --sqlite-path <source.db> --service-code <service-code> --output <service-transfer.sqlite.sql>
-python scripts/database_transfer.py export-service --source mysql --mysql-host <host> --mysql-port <port> --mysql-user <user> --mysql-password <password> --mysql-database <database> --service-code <service-code> --output <service-transfer.mysql.sql>
+## Import
 
-python scripts/database_transfer.py import-service --target sqlite --sqlite-path <target.db> --input <service-transfer.sqlite.sql>
-python scripts/database_transfer.py import-service --target mysql --mysql-host <host> --mysql-port <port> --mysql-user <user> --mysql-password <password> --mysql-database <database> --input <service-transfer.mysql.sql>
+```bash
+python scripts/database_transfer.py import \
+  --target sqlite --sqlite-path data/db/pomelo-orbit.db \
+  --input service.jsonl --mode upsert --tz UTC
 ```
 
-Use `convert` before importing a service package into the other driver. Do not add `--scope` or `service-config` options.
+`--mode` is required. `insert` fails on any database constraint conflict;
+`upsert` updates existing primary-key rows. A schema initialized by the normal
+Orbit migration already has the seed Project, so the standard service-migration
+flow uses `upsert`. The adapter validates that the file describes exactly one
+closed Orbit service deployment before invoking Housekeeper. Housekeeper owns
+primary-key checks, date/time conversion, and table-level transaction behavior.
 
-## Service Transfer Content
+Orbit always excludes `schema_migrations` from the temporary full export. The
+final service file does not contain that table, so it must not be excluded again
+on import: Housekeeper rejects exclusions that are absent from the JSONL file.
 
-`export-service` selects only the named service's minimum deployable closure:
+Use `--tz <IANA name>` consistently for export and import when temporal values
+are involved. Orbit does not reinterpret or render JSONL values itself.
 
-- its project and application;
-- the active version and version lineage;
-- version components and env, endpoint, mount, dependency, healthcheck, resource, tmpfs, ulimit, and device data;
-- service env and component overrides; and
-- routes targeting that service.
+## Boundary
 
-It excludes records for other services. It writes no `DELETE` statements, including after cross-driver conversion. `import-service` accepts only this exact table set for SQLite or MySQL and always appends; it has no `--replace` option.
-
-## Safety And Verification
-
-1. Resolve the source database, target database, and output path before writing. Do not overwrite an existing export unless the user explicitly requests it.
-2. Treat export files as sensitive. They preserve env values, secrets, certificates, JSON, controlled-file contents, and timestamps. Report paths and row counts, not contents.
-3. Ensure the target database has the current compatible schema. For a service import, use a new or otherwise non-conflicting target because IDs are preserved and import is append-only.
-4. For `import --replace`, confirm the exact target and deletion impact. Never add `--replace` to `import-service`.
-5. Verify service exports contain exactly one requested service, the expected service-table set, and no `DELETE FROM` statement. After any SQLite import, run `PRAGMA integrity_check` and `PRAGMA foreign_key_check`.
+For full-database transfer, JSONL format details, database-specific conversion,
+and import semantics, use Housekeeper's database-transfer skill. The examples
+there use `uv run housekeeper` inside the Housekeeper source checkout; Orbit
+uses the installed `housekeeper` CLI. Do not restore the removed Orbit-wide SQL
+or SQLite/MySQL implementation.

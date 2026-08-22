@@ -28,17 +28,17 @@ Traefik 负责 TLS 终止，证书以 PEM 格式通过 pomelo-orbit UI 上传后
 
 ## cert.py 工具
 
-`scripts/cert.py` 提供两个子命令，使用 Python 运行：
+`scripts/cert.py` 提供两个子命令，使用 uv 运行：
 
 ```bash
 # 查看帮助
-python scripts/cert.py -h
+uv run --project scripts python scripts/cert.py -h
 
 # 生成证书（目录通常取 workspace.deployment/traefik/data/certs）
-python scripts/cert.py new -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
+uv run --project scripts python scripts/cert.py new -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 
 # 检查证书信任链（CA → 叶证书 → TLS 握手，模拟浏览器）
-python scripts/cert.py check -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
+uv run --project scripts python scripts/cert.py check -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 ```
 
 ### new
@@ -67,7 +67,8 @@ python scripts/cert.py check -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/
    # Windows 额外执行（将 CA 导入系统信任库）：
    certutil -addstore "Root" "$LOCALAPPDATA/mkcert/rootCA.pem"
    ```
-3. 配置 hosts 文件：
+3. 安装 uv：https://docs.astral.sh/uv/
+4. 配置 hosts 文件：
    ```
    127.0.0.1  pomelo-orbit.localhost
    ```
@@ -78,7 +79,7 @@ python scripts/cert.py check -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/
 
 ```bash
 # 生成证书（证书目录由部署工作区配置派生）
-python scripts/cert.py new -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
+uv run --project scripts python scripts/cert.py new -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 ```
 
 ### 2. 上传证书到 Pomelo Orbit
@@ -94,7 +95,7 @@ python scripts/cert.py new -n app.localhost --cert-dir /srv/orbit/cd/traefik/dat
 
 ```bash
 # 检查证书是否正确安装
-python scripts/cert.py check -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
+uv run --project scripts python scripts/cert.py check -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 ```
 
 ### 4. 访问应用

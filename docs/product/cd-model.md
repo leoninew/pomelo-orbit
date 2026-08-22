@@ -54,9 +54,9 @@ Project
 
 ### Component Mount
 
-- Version 挂载声明类型、默认源路径和容器目标；普通 Version 编辑不设置宿主机路径模式。
-- Service 组件的稀疏覆盖拥有实际源路径及其宿主机路径模式。目录和文件在该模式下必须使用绝对路径；逻辑源路径仍须为相对路径。
-- 服务工作目录为 `workspace.deployment/<service-code>/`；逻辑目录源直接相对此根解析。组件应以自身 code 开始组织数据，例如 `mysql`、`redis`、`tei/cache`，不使用 `data/` 或 `instance_key` 作为目录层级。workspace 的相对配置值相对 `orbit.root` 解析，绝对值可位于项目外。Orbit 原生运行时，组件相对源原样写入 Compose，由 Compose 相对生成的 `docker-compose.yml` 解析；仅 DooD 运行时才转换为 Docker daemon 可见的宿主路径。
+- Version 挂载声明类型、默认源路径和容器目标；除 `named_volume` 外，目录、文件和 controlled file 的 source 必须是绝对路径或显式以 `./` 开头的相对路径，普通 Version 编辑不设置宿主机路径模式。
+- Service 组件的稀疏覆盖拥有实际源路径及其宿主机路径模式，并遵从同一 source 规则；`source_is_host_path=true` 只表示绝对宿主机目录/文件源，`named_volume` 仍使用裸卷名。
+- 服务工作目录为 `workspace.deployment/<service-code>/`；相对逻辑目录源直接相对此根解析。组件应以自身 code 开始组织数据，例如 `mysql`、`redis`、`tei/cache`，不使用 `data/` 或 `instance_key` 作为目录层级。workspace 的相对配置值相对 `orbit.root` 解析，绝对值可位于项目外。Orbit 原生运行时，组件 source 原样写入 Compose，由 Compose 相对生成的 `docker-compose.yml` 解析相对 source；仅 DooD 运行时才将相对 source 转换为 Docker daemon 可见的宿主路径，绝对 source 保持原值。
 - Gateway 创建会写入一个可编辑的 Traefik Component 初始模板（socket、静态配置、证书目录、端点等）。保存后它就是普通 Version 规格；Gateway、Route 与部署过程均不得覆盖它。
 
 ### 异步操作（Deployment / Pipeline Run / Pipeline Stage Run）

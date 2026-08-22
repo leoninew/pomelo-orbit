@@ -315,7 +315,7 @@ func TestNormalizeOverlayAcceptsAbsoluteHostPathMountSource(t *testing.T) {
 		Target: "/models", Source: &source, SourceIsHostPath: &sourceIsHostPath, State: model.ServiceComponentOverlayOverride,
 	}}}
 	declaration := model.VersionComponent{Name: "tei", Mounts: []model.VersionComponentMount{{
-		SourceType: "directory", Source: "models/bge-m3", Target: "/models",
+		SourceType: "directory", Source: "./models/bge-m3", Target: "/models",
 	}}}
 	if err := normalizeOverlay(&component, declaration); err != nil {
 		t.Fatalf("normalizeOverlay() error = %v", err)
@@ -325,18 +325,21 @@ func TestNormalizeOverlayAcceptsAbsoluteHostPathMountSource(t *testing.T) {
 	}
 }
 
-func TestNormalizeOverlayRejectsAbsoluteLogicalMountSource(t *testing.T) {
+func TestNormalizeOverlayAcceptsAbsoluteLogicalMountSource(t *testing.T) {
 	source := "D:/var/lib/pomelo-models/bge-m3"
 	sourceIsHostPath := false
 	component := model.ServiceComponent{Mounts: []model.ServiceComponentMount{{
 		Target: "/models", Source: &source, SourceIsHostPath: &sourceIsHostPath, State: model.ServiceComponentOverlayOverride,
 	}}}
 	declaration := model.VersionComponent{Name: "tei", Mounts: []model.VersionComponentMount{{
-		SourceType: "directory", Source: "models/bge-m3", Target: "/models",
+		SourceType: "directory", Source: "./models/bge-m3", Target: "/models",
 	}}}
 	err := normalizeOverlay(&component, declaration)
-	if err == nil || !strings.Contains(err.Error(), "component tei mount /models: source must be a relative path") {
+	if err != nil {
 		t.Fatalf("normalizeOverlay() error = %v", err)
+	}
+	if len(component.Mounts) != 1 || component.Mounts[0].Source == nil || *component.Mounts[0].Source != source || component.Mounts[0].SourceIsHostPath == nil || *component.Mounts[0].SourceIsHostPath {
+		t.Fatalf("absolute logical mount overlay = %#v", component.Mounts)
 	}
 }
 
@@ -350,8 +353,8 @@ func TestRemapServiceComponentsKeepsMountOverlayWithItsTargetAfterReorder(t *tes
 	declarations := []model.VersionComponent{{
 		Id: "component-v2", Name: "web", Image: "nginx:latest",
 		Mounts: []model.VersionComponentMount{
-			{SourceType: "directory", Source: "cache", Target: "/cache"},
-			{SourceType: "directory", Source: "data", Target: "/data"},
+			{SourceType: "directory", Source: "./cache", Target: "/cache"},
+			{SourceType: "directory", Source: "./data", Target: "/data"},
 		},
 	}}
 
@@ -373,7 +376,7 @@ func TestRemapServiceComponentsKeepsMountOverlayWithItsTargetAfterReorder(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if plan.Components[0].Mounts[0].Target != "/cache" || plan.Components[0].Mounts[0].Source != "cache" {
+	if plan.Components[0].Mounts[0].Target != "/cache" || plan.Components[0].Mounts[0].Source != "./cache" {
 		t.Fatalf("cache mount received the data overlay: %#v", plan.Components[0].Mounts)
 	}
 	if plan.Components[0].Mounts[1].Target != "/data" || plan.Components[0].Mounts[1].Source != overrideSource {
@@ -486,7 +489,7 @@ func TestRemapServiceComponentsRejectsMissingMountTarget(t *testing.T) {
 	}}
 	declarations := []model.VersionComponent{{
 		Id: "component-v2", Name: "web", Image: "nginx:latest",
-		Mounts: []model.VersionComponentMount{{SourceType: "directory", Source: "data", Target: "/data"}},
+		Mounts: []model.VersionComponentMount{{SourceType: "directory", Source: "./data", Target: "/data"}},
 	}}
 
 	err := remapServiceComponents(mappings, declarations)

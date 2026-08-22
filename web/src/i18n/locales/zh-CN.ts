@@ -368,7 +368,7 @@ export default {
         listenPort: '监听端口',
         serviceInstance: '选择服务实例',
         mountSourceType: '源类型',
-        mountSource: '源（相对路径 / 绝对路径 / 卷名）',
+        mountSource: '源（./相对路径 / 绝对路径 / 卷名）',
         mountTarget: '容器路径，例如 /data',
         mountContent: '正文，例如 traefik.yml 内容',
       },
@@ -644,6 +644,7 @@ export default {
       reset: '重置',
       validation: {
         sourceRequired: '请填写源路径',
+        sourceMustStartWithDotSlash: '挂载源必须是绝对路径或以 ./ 开头的相对路径',
       },
     },
     runtimeConfig: {

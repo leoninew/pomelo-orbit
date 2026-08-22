@@ -1738,10 +1738,30 @@
     Object.assign(mountErrors, { source_type: '', source: '', target: '' });
   }
 
+  function isAbsoluteMountSource(source: string): boolean {
+    return source.startsWith('/') || /^[A-Za-z]:\//.test(source);
+  }
+
+  function isExplicitMountSource(source: string): boolean {
+    if (isAbsoluteMountSource(source)) {
+      return true;
+    }
+    return source.startsWith('./') && !source.includes('\\') && !source.split('/').includes('..');
+  }
+
   function validateMountForm() {
     const message = messageFor('mounts');
     mountErrors.source_type = mountSourceTypes.includes(mountForm.source_type) ? '' : message;
-    mountErrors.source = mountForm.source.trim() ? '' : message;
+    const source = mountForm.source.trim();
+    mountErrors.source = source ? '' : message;
+    if (
+      source &&
+      ['directory', 'file', 'controlled_file'].includes(mountForm.source_type) &&
+      (!isExplicitMountSource(source) ||
+        (mountForm.source_is_host_path && !isAbsoluteMountSource(source)))
+    ) {
+      mountErrors.source = message;
+    }
     mountErrors.target = mountForm.target.trim() ? '' : message;
     return !mountErrors.source_type && !mountErrors.source && !mountErrors.target;
   }

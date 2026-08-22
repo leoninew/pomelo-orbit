@@ -24,7 +24,7 @@ describe('componentForm', () => {
     form.env.push({ key: ' TOKEN ', value: ' ${TOKEN} ' });
     form.mounts.push({
       source_type: 'controlled_file',
-      source: 'config/app.conf',
+      source: './config/app.conf',
       target: '/etc/app.conf',
       read_only: true,
       source_is_host_path: false,
@@ -47,6 +47,73 @@ describe('componentForm', () => {
       mode: '0644',
       ignore_if_exists: false,
     });
+  });
+
+  it('rejects managed mount sources without the explicit compose prefix', () => {
+    const form = emptyComponentForm();
+    form.mounts.push({
+      source_type: 'controlled_file',
+      source: 'config/app.conf',
+      target: '/etc/app.conf',
+      read_only: true,
+      source_is_host_path: false,
+      content: 'key=value',
+      mode: '0644',
+      ignore_if_exists: false,
+    });
+
+    expect(componentMountsRequestFromForm(form)).toEqual({ valid: false, error: 'mounts' });
+  });
+
+  it('accepts absolute paths for non-volume mounts', () => {
+    const form = emptyComponentForm();
+    form.mounts.push({
+      source_type: 'controlled_file',
+      source: '/etc/app/app.env',
+      target: '/app/.env',
+      read_only: true,
+      source_is_host_path: false,
+      content: 'key=value',
+      mode: '0644',
+      ignore_if_exists: false,
+    });
+
+    expect(componentMountsRequestFromForm(form)).toMatchObject({
+      valid: true,
+      value: { mounts: [{ source: '/etc/app/app.env' }] },
+    });
+  });
+
+  it('rejects backslash mount paths', () => {
+    const form = emptyComponentForm();
+    form.mounts.push({
+      source_type: 'directory',
+      source: 'C:\\data',
+      target: '/var/lib/app',
+      read_only: false,
+      source_is_host_path: false,
+      content: '',
+      mode: '',
+      ignore_if_exists: false,
+    });
+
+    expect(componentMountsRequestFromForm(form)).toEqual({ valid: false, error: 'mounts' });
+  });
+
+  it('rejects bare paths for directory mounts because Compose treats them as volumes', () => {
+    const form = emptyComponentForm();
+    form.mounts.push({
+      source_type: 'directory',
+      source: 'data',
+      target: '/var/lib/app',
+      read_only: false,
+      source_is_host_path: false,
+      content: '',
+      mode: '',
+      ignore_if_exists: false,
+    });
+
+    expect(componentMountsRequestFromForm(form)).toEqual({ valid: false, error: 'mounts' });
   });
 
   it('rejects incomplete rows instead of dropping them', () => {
@@ -136,7 +203,7 @@ describe('componentForm', () => {
     form.env.push({ key: 'TOKEN', value: '${TOKEN}' });
     form.mounts.push({
       source_type: 'directory',
-      source: 'data',
+      source: './data',
       target: '/var/lib/app',
       read_only: false,
       source_is_host_path: false,
@@ -162,7 +229,7 @@ describe('componentForm', () => {
         mounts: [
           {
             source_type: 'directory',
-            source: 'data',
+            source: './data',
             target: '/var/lib/app',
             read_only: false,
             source_is_host_path: false,

@@ -58,8 +58,8 @@ func validateMountSpec(m MountSpec) error {
 			return fmt.Errorf("host path source must be an absolute path")
 		}
 	} else if m.SourceType == mountSourceDirectory || m.SourceType == mountSourceFile || m.SourceType == mountSourceControlledFile {
-		if isAbsoluteMountSource(m.Source) || hasParentMountSegment(m.Source) {
-			return fmt.Errorf("source must be a relative path without parent directory segments")
+		if !isExplicitMountSource(m.Source) {
+			return fmt.Errorf("source must be an absolute path or a relative path starting with ./ without parent directory segments")
 		}
 	}
 	switch m.SourceType {
@@ -76,7 +76,7 @@ func validateMountSpec(m MountSpec) error {
 		}
 	case mountSourceControlledFile:
 		if m.SourceIsHostPath {
-			return fmt.Errorf("controlled_file source must be platform-relative")
+			return fmt.Errorf("controlled_file source_is_host_path must be false")
 		}
 		if len(m.Content) > maxMountContentBytes {
 			return fmt.Errorf("content exceeds %d bytes", maxMountContentBytes)
@@ -88,6 +88,13 @@ func validateMountSpec(m MountSpec) error {
 		return fmt.Errorf("unsupported source_type %q", m.SourceType)
 	}
 	return nil
+}
+
+func isExplicitMountSource(source string) bool {
+	if isAbsoluteMountSource(source) {
+		return true
+	}
+	return strings.HasPrefix(source, "./") && !strings.Contains(source, "\\") && !hasParentMountSegment(source)
 }
 
 func parseUnixFileMode(mode string) (os.FileMode, error) {
@@ -149,16 +156,16 @@ func isAbsoluteMountSource(source string) bool {
 	if source == "" {
 		return false
 	}
-	if filepath.IsAbs(source) || strings.HasPrefix(source, "/") {
+	if strings.HasPrefix(source, "/") {
 		return true
 	}
-	if len(source) >= 2 && source[1] == ':' {
+	if len(source) >= 3 && source[1] == ':' && source[2] == '/' {
 		letter := source[0]
 		if (letter >= 'A' && letter <= 'Z') || (letter >= 'a' && letter <= 'z') {
 			return true
 		}
 	}
-	return strings.HasPrefix(source, `\\`) || strings.HasPrefix(source, `//`)
+	return false
 }
 
 func hasParentMountSegment(source string) bool {
@@ -196,14 +203,22 @@ func resolveMountSpecsForPaths(mounts []MountSpec, logicalServiceDir string, com
 				item.Compose = item.HostSource + ":" + mount.Target
 				break
 			}
-			if logicalServiceDir == "" {
-				return nil, fmt.Errorf("logical service dir required for %s mount %s", mount.SourceType, mount.Source)
+			absoluteSource := isAbsoluteMountSource(mount.Source)
+			if absoluteSource {
+				item.LogicalSource = filepath.FromSlash(mount.Source)
+			} else {
+				if logicalServiceDir == "" {
+					return nil, fmt.Errorf("logical service dir required for %s mount %s", mount.SourceType, mount.Source)
+				}
+				item.LogicalSource = filepath.Join(logicalServiceDir, filepath.FromSlash(mount.Source))
 			}
-			item.LogicalSource = filepath.Join(logicalServiceDir, filepath.FromSlash(mount.Source))
 			item.IsFile = mount.SourceType == mountSourceFile || mount.SourceType == mountSourceControlledFile
 			item.ShouldMaterialize = mount.SourceType == mountSourceDirectory || mount.SourceType == mountSourceControlledFile
 			if composeMountSourceDir == "" {
 				item.Compose = mount.Source + ":" + mount.Target
+			} else if absoluteSource {
+				item.HostSource = mount.Source
+				item.Compose = item.HostSource + ":" + mount.Target
 			} else {
 				item.HostSource = filepath.ToSlash(filepath.Join(composeMountSourceDir, filepath.FromSlash(mount.Source)))
 				item.Compose = item.HostSource + ":" + mount.Target

@@ -35,7 +35,7 @@ func buildInitialGatewayComponent(versionID, image, pullPolicy string, gateway m
 		},
 		Mounts: []model.VersionComponentMount{
 			{SourceType: mountSourceFile, Source: gatewayDockerSocketPath, SourceIsHostPath: true, Target: gatewayDockerSocketPath, ReadOnly: true},
-			{SourceType: mountSourceControlledFile, Source: "traefik.yml", Target: gatewayMountTargetTraefikYml, Content: buildInitialTraefikStaticConfig(gateway, cert), Mode: "0644"},
+			{SourceType: mountSourceControlledFile, Source: "./traefik.yml", Target: gatewayMountTargetTraefikYml, Content: buildInitialTraefikStaticConfig(gateway, cert), Mode: "0644"},
 			{SourceType: mountSourceDirectory, Source: certDirectory, SourceIsHostPath: true, Target: gatewayMountTargetCertDir},
 			{SourceType: mountSourceDirectory, Source: certDirectory, SourceIsHostPath: true, Target: gatewayMountTargetAcmeDir},
 		},

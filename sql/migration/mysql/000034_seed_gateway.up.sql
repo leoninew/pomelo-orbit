@@ -25,8 +25,8 @@ INSERT INTO `version_component_endpoint` (`component_id`, `protocol`, `container
 -- version_component_mount: 3 row(s).
 INSERT INTO `version_component_mount` (`component_id`, `source_type`, `source`, `target`, `read_only`, `source_is_host_path`, `content`, `content_masked`, `mode`, `ignore_if_exists`, `position`) VALUES
     ('01M01MP096R73Z3MG28P91CSPN', 'file', '/var/run/docker.sock', '/var/run/docker.sock', 1, 1, NULL, 0, '', 0, 0),
-    ('01M01MP096R73Z3MG28P91CSPN', 'controlled_file', 'traefik.yml', '/etc/traefik/traefik.yml', 0, 0, 'api:\n  dashboard: true\n  insecure: true\n\nentryPoints:\n  web:\n    address: ":80"\n  websecure:\n    address: ":443"\nproviders:\n  docker:\n    endpoint: "unix:///var/run/docker.sock"\n    exposedByDefault: false\n    network: traefik\n  rest:\n    insecure: true\n\nlog:\n  level: INFO\n', 0, '0644', 0, 1),
-    ('01M01MP096R73Z3MG28P91CSPN', 'controlled_file', 'acme.json', '/letsencrypt/acme.json', 0, 0, '{}', 0, '0600', 1, 2);
+    ('01M01MP096R73Z3MG28P91CSPN', 'controlled_file', './traefik.yml', '/etc/traefik/traefik.yml', 0, 0, 'api:\n  dashboard: true\n  insecure: true\n\nentryPoints:\n  web:\n    address: ":80"\n  websecure:\n    address: ":443"\nproviders:\n  docker:\n    endpoint: "unix:///var/run/docker.sock"\n    exposedByDefault: false\n    network: traefik\n  rest:\n    insecure: true\n\nlog:\n  level: INFO\n', 0, '0644', 0, 1),
+    ('01M01MP096R73Z3MG28P91CSPN', 'controlled_file', './acme.json', '/letsencrypt/acme.json', 0, 0, '{}', 0, '0600', 1, 2);
 
 -- service: 1 row(s).
 INSERT INTO `service` (`id`, `application_id`, `instance_key`, `code`, `version_id`, `status`) VALUES

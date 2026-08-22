@@ -55,6 +55,9 @@ func TestBuildInitialGatewayComponentExposesDashboardApiAndConfiguredCertDirecto
 	if len(component.Mounts) != 4 {
 		t.Fatalf("mounts = %#v", component.Mounts)
 	}
+	if component.Mounts[1].Source != "./traefik.yml" || component.Mounts[1].SourceIsHostPath {
+		t.Fatalf("controlled Traefik config mount = %#v", component.Mounts[1])
+	}
 	if component.Mounts[2].Source != "/srv/orbit/cd/traefik/data/certs" || !component.Mounts[2].SourceIsHostPath {
 		t.Fatalf("certificate directory mount = %#v", component.Mounts[2])
 	}

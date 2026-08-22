@@ -181,8 +181,8 @@ func validateComponentMount(mount model.VersionComponentMount) error {
 			return fmt.Errorf("host path source must be an absolute path")
 		}
 	} else if mount.SourceType == "directory" || mount.SourceType == "file" || mount.SourceType == "controlled_file" {
-		if isAbsoluteMountSource(mount.Source) || strings.Contains(mount.Source, "\\") || hasParentDirectory(mount.Source) {
-			return fmt.Errorf("source must be a relative path without parent segments")
+		if !isExplicitMountSource(mount.Source) {
+			return fmt.Errorf("source must be an absolute path or a relative path starting with ./ without parent segments")
 		}
 	}
 	switch mount.SourceType {
@@ -199,7 +199,7 @@ func validateComponentMount(mount model.VersionComponentMount) error {
 		}
 	case "controlled_file":
 		if mount.SourceIsHostPath {
-			return fmt.Errorf("controlled_file source must be platform-relative")
+			return fmt.Errorf("controlled_file source_is_host_path must be false")
 		}
 		if len(mount.Content) > maxMountContent {
 			return fmt.Errorf("controlled_file content exceeds %d bytes", maxMountContent)
@@ -211,6 +211,13 @@ func validateComponentMount(mount model.VersionComponentMount) error {
 		return fmt.Errorf("unsupported source_type %s", mount.SourceType)
 	}
 	return nil
+}
+
+func isExplicitMountSource(source string) bool {
+	if isAbsoluteMountSource(source) {
+		return true
+	}
+	return strings.HasPrefix(source, "./") && !strings.Contains(source, "\\") && !hasParentDirectory(source)
 }
 
 func validUnixFileMode(mode string) bool {
@@ -235,10 +242,10 @@ func hasParentDirectory(source string) bool {
 }
 
 func isAbsoluteMountSource(source string) bool {
-	if strings.HasPrefix(source, "/") || strings.HasPrefix(source, `\\`) || strings.HasPrefix(source, `//`) {
+	if strings.HasPrefix(source, "/") {
 		return true
 	}
-	if len(source) < 2 || source[1] != ':' {
+	if len(source) < 3 || source[1] != ':' || source[2] != '/' {
 		return false
 	}
 	letter := source[0]

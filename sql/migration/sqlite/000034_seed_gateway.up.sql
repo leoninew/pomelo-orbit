@@ -25,7 +25,7 @@ INSERT INTO "version_component_endpoint" ("component_id", "protocol", "container
 -- version_component_mount: 3 row(s).
 INSERT INTO "version_component_mount" ("component_id", "source_type", "source", "target", "read_only", "source_is_host_path", "content", "content_masked", "mode", "ignore_if_exists", "position") VALUES
     ('01M01MP096R73Z3MG28P91CSPN', 'file', '/var/run/docker.sock', '/var/run/docker.sock', 1, 1, NULL, 0, '', 0, 0),
-    ('01M01MP096R73Z3MG28P91CSPN', 'controlled_file', 'traefik.yml', '/etc/traefik/traefik.yml', 0, 0, 'api:
+    ('01M01MP096R73Z3MG28P91CSPN', 'controlled_file', './traefik.yml', '/etc/traefik/traefik.yml', 0, 0, 'api:
   dashboard: true
   insecure: true
 
@@ -45,7 +45,7 @@ providers:
 log:
   level: INFO
 ', 0, '0644', 0, 1),
-    ('01M01MP096R73Z3MG28P91CSPN', 'controlled_file', 'acme.json', '/letsencrypt/acme.json', 0, 0, '{}', 0, '0600', 1, 2);
+    ('01M01MP096R73Z3MG28P91CSPN', 'controlled_file', './acme.json', '/letsencrypt/acme.json', 0, 0, '{}', 0, '0600', 1, 2);
 
 -- service: 1 row(s).
 INSERT INTO "service" ("id", "application_id", "instance_key", "code", "version_id", "status") VALUES

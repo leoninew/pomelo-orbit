@@ -38,7 +38,7 @@ HTTP Deploy/Stop/Restart
 | `standard` | 渲染业务 services；按 Endpoint mode 注入 HTTP labels 或直接端口映射 |
 | `gateway` | 使用选中 Version/Service 的通用 compose 渲染；Gateway 不在 Render 时注入或恢复 Traefik Component、静态配置或挂载 |
 
-输出写入 `workspace.deployment/<service-code>/`，再执行 compose。逻辑目录由 Orbit 进程写入；原生运行时，组件相对 bind source 保持相对并由 Compose 相对该目录的 `docker-compose.yml` 解析。DooD 运行时才改为 Docker daemon 可见的宿主路径。
+输出写入 `workspace.deployment/<service-code>/`，再执行 compose。逻辑目录由 Orbit 进程写入；原生运行时，相对组件 bind source 保持相对并由 Compose 相对该目录的 `docker-compose.yml` 解析，绝对 source 保持原值。DooD 运行时才把相对 source 转为 Docker daemon 可见的宿主路径。
 
 预览（Preview）与部署应走同一套渲染语义（测试与 usecase 对齐）。
 
@@ -80,7 +80,7 @@ HTTP Deploy/Stop/Restart
 
 - `workspace.pipeline` 与 `workspace.deployment` 是后端拥有、会写入且会作为 Docker source 使用的唯一 CI/CD 根目录；Service code 是 Deployment 工作目录唯一键，不使用 Application code 或 instance key。SQLite、日志、导出和外部 Repository 不属于此配置组。
 - 配置加载时，相对 workspace 值仅相对 `orbit.root` 解析一次；绝对值原样保留，可位于项目外。两个根目录不得相同或相互嵌套。
-- Orbit 原生运行时，逻辑 workspace 路径用于文件读写，不调用 Docker inspect 或进行路径转换；平台相对的目录、文件和 controlled-file 挂载源保持相对，Compose 以生成的 `docker-compose.yml` 目录解析它们。DooD 下，两个 workspace root 必须分别 bind mount 进 Orbit 容器；启动会以 Docker inspect 验证映射。逻辑目录/controlled-file 挂载在 Orbit 可见的 Service 目录物化，Compose 接收对应的宿主机 source。显式 `source_is_host_path=true` 的绝对源在两种模式中均保持绝对路径。
+- Orbit 原生运行时，逻辑 workspace 路径用于文件读写，不调用 Docker inspect 或进行路径转换；非 `named_volume` 的目录、文件和 controlled-file 挂载源必须是绝对路径或显式以 `./` 开头的相对路径，并由 Compose 以生成的 `docker-compose.yml` 目录解析相对源。DooD 下，两个 workspace root 必须分别 bind mount 进 Orbit 容器；启动会以 Docker inspect 验证映射。相对逻辑目录/controlled-file 挂载在 Orbit 可见的 Service 目录物化，Compose 接收对应的宿主机 source；绝对源直接使用原值，不再拼接 Service 目录。`named_volume` 保持裸卷名，`source_is_host_path=true` 的绝对源在两种模式中均保持绝对路径。
 
 ## 相关
 

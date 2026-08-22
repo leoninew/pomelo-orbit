@@ -312,6 +312,17 @@ function buildPorts(rows: PortRow[]): ComponentEndpoint[] | null {
   return endpoints;
 }
 
+function isAbsoluteMountSource(source: string): boolean {
+  return source.startsWith('/') || /^[A-Za-z]:\//.test(source);
+}
+
+function isExplicitMountSource(source: string): boolean {
+  if (isAbsoluteMountSource(source)) {
+    return true;
+  }
+  return source.startsWith('./') && !source.includes('\\') && !source.split('/').includes('..');
+}
+
 function buildMounts(rows: MountRow[]): ComponentMount[] | null {
   const mounts: ComponentMount[] = [];
   for (const row of rows) {
@@ -323,6 +334,13 @@ function buildMounts(rows: MountRow[]): ComponentMount[] | null {
       return null;
     }
     if (row.source_is_host_path && row.source_type !== 'directory' && row.source_type !== 'file') {
+      return null;
+    }
+    if (
+      ['directory', 'file', 'controlled_file'].includes(row.source_type) &&
+      (!isExplicitMountSource(row.source) ||
+        (row.source_is_host_path && !isAbsoluteMountSource(row.source)))
+    ) {
       return null;
     }
     if (contentOptionsAllowed && !/^0[0-7]{3}$/.test(row.mode)) {

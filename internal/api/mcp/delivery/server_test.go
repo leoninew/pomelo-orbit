@@ -300,7 +300,7 @@ func TestFlatMountToolMapsCollectionToApplicationInput(t *testing.T) {
 	session := connectInMemory(t, server)
 	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_version_component_mounts", Arguments: map[string]any{
 		"version_id": "version-1", "component_id": "component-1",
-		"mounts": []any{map[string]any{"source_type": "directory", "source": "data", "target": "/var/lib/app"}},
+		"mounts": []any{map[string]any{"source_type": "directory", "source": "./data", "target": "/var/lib/app"}},
 	}})
 	if err != nil {
 		t.Fatalf("CallTool() error = %v", err)
@@ -337,14 +337,14 @@ func TestMountToolDocumentsAndMapsControlledFile(t *testing.T) {
 	if mountTool == nil {
 		t.Fatal("mount tool not found")
 	}
-	for _, term := range []string{"controlled_file", "source_is_host_path", "262144", "four-digit Unix octal", "empty string"} {
+	for _, term := range []string{"controlled_file", "source_is_host_path", "./", "absolute path", "bare relative", "named_volume", "262144", "four-digit Unix octal", "empty string"} {
 		if !strings.Contains(mountTool.Description, term) {
 			t.Errorf("mount description does not document %q: %s", term, mountTool.Description)
 		}
 	}
 	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_version_component_mounts", Arguments: map[string]any{
 		"version_id": "version-1", "component_id": "component-1",
-		"mounts": []any{map[string]any{"source_type": "controlled_file", "source": "config/app.env", "target": "/app/.env", "content": "", "mode": "0644", "source_is_host_path": false, "ignore_if_exists": true}},
+		"mounts": []any{map[string]any{"source_type": "controlled_file", "source": "./config/app.env", "target": "/app/.env", "content": "", "mode": "0644", "source_is_host_path": false, "ignore_if_exists": true}},
 	}})
 	if err != nil {
 		t.Fatalf("CallTool() error = %v", err)
@@ -356,8 +356,21 @@ func TestMountToolDocumentsAndMapsControlledFile(t *testing.T) {
 		t.Fatalf("mounts = %#v", application.mounts)
 	}
 	mount := application.mounts[0]
-	if mount.SourceType != "controlled_file" || mount.Source != "config/app.env" || mount.Content != "" || mount.Mode != "0644" || mount.SourceIsHostPath || !mount.IgnoreIfExists {
+	if mount.SourceType != "controlled_file" || mount.Source != "./config/app.env" || mount.Content != "" || mount.Mode != "0644" || mount.SourceIsHostPath || !mount.IgnoreIfExists {
 		t.Fatalf("controlled file mount = %#v", mount)
+	}
+	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_version_component_mounts", Arguments: map[string]any{
+		"version_id": "version-1", "component_id": "component-1",
+		"mounts": []any{map[string]any{"source_type": "controlled_file", "source": "/etc/orbit/app.env", "target": "/app/.env", "content": "", "mode": "0644", "source_is_host_path": false, "ignore_if_exists": true}},
+	}})
+	if err != nil {
+		t.Fatalf("CallTool() error for absolute controlled file: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("CallTool() returned tool error for absolute controlled file: %#v", result.Content)
+	}
+	if application.mounts[0].Source != "/etc/orbit/app.env" || application.mounts[0].SourceIsHostPath {
+		t.Fatalf("absolute controlled file mount = %#v", application.mounts[0])
 	}
 }
 

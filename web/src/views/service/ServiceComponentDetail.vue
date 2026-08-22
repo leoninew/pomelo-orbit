@@ -952,16 +952,37 @@
   function clearMountSourceError() {
     mountSourceError.value = '';
   }
+
+  function isAbsoluteMountSource(source: string): boolean {
+    return source.startsWith('/') || /^[A-Za-z]:\//.test(source);
+  }
+
+  function isExplicitMountSource(source: string): boolean {
+    if (isAbsoluteMountSource(source)) {
+      return true;
+    }
+    return source.startsWith('./') && !source.includes('\\') && !source.split('/').includes('..');
+  }
+
   function saveMountDialog() {
     const row = editingMount.value;
     if (!row) {
       return;
     }
-    if (!editingMountSource.value.trim()) {
+    const source = editingMountSource.value.trim();
+    if (!source) {
       mountSourceError.value = t('service.componentDetail.validation.sourceRequired');
       return;
     }
-    row.source = editingMountSource.value;
+    if (
+      ['directory', 'file', 'controlled_file'].includes(row.source_type) &&
+      (!isExplicitMountSource(source) ||
+        (editingMountSourceIsHostPath.value && !isAbsoluteMountSource(source)))
+    ) {
+      mountSourceError.value = t('service.componentDetail.validation.sourceMustStartWithDotSlash');
+      return;
+    }
+    row.source = source;
     row.source_is_host_path = editingMountSourceIsHostPath.value;
     row.deleted = false;
     closeMountDialog();

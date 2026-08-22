@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 )
 
@@ -23,8 +22,8 @@ func ValidateMountSource(sourceType, source string, sourceIsHostPath bool) error
 	}
 	switch sourceType {
 	case "directory", "file", "controlled_file":
-		if isAbsoluteMountSource(source) || strings.Contains(source, "\\") || hasParentMountSegment(source) {
-			return fmt.Errorf("source must be a relative path without parent directory segments")
+		if !isExplicitMountSource(source) {
+			return fmt.Errorf("source must be an absolute path or a relative path starting with ./ without parent directory segments")
 		}
 	case "named_volume":
 		if strings.ContainsAny(source, `/\\`) {
@@ -36,17 +35,24 @@ func ValidateMountSource(sourceType, source string, sourceIsHostPath bool) error
 	return nil
 }
 
-func isAbsoluteMountSource(source string) bool {
-	if filepath.IsAbs(source) || strings.HasPrefix(source, "/") {
+func isExplicitMountSource(source string) bool {
+	if isAbsoluteMountSource(source) {
 		return true
 	}
-	if len(source) >= 2 && source[1] == ':' {
+	return strings.HasPrefix(source, "./") && !strings.Contains(source, "\\") && !hasParentMountSegment(source)
+}
+
+func isAbsoluteMountSource(source string) bool {
+	if strings.HasPrefix(source, "/") {
+		return true
+	}
+	if len(source) >= 3 && source[1] == ':' && source[2] == '/' {
 		letter := source[0]
 		if (letter >= 'A' && letter <= 'Z') || (letter >= 'a' && letter <= 'z') {
 			return true
 		}
 	}
-	return strings.HasPrefix(source, `\\`) || strings.HasPrefix(source, `//`)
+	return false
 }
 
 func hasParentMountSegment(source string) bool {

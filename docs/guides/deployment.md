@@ -15,7 +15,7 @@ Pomelo Orbit 可在本机 Docker 上部署 **standard** 业务应用与 **gatewa
 3. **Deployment 是操作流水**：API 入队，同进程 worker 执行 Docker。  
 4. **Gateway 配置即接入 SoT**：`rest_api_url`、`base_domain`、TLS/入口；非全局 traefik env 产品路径。
 
-运行目录由 `workspace.deployment` 配置。Orbit 写入逻辑目录；原生运行时组件相对挂载源原样写入 Compose，由 Compose 相对生成的文件解析。仅当 Orbit 运行在容器中时，才使用 Docker daemon 可见的宿主路径，且必须同时挂入 Docker socket 和 Deployment workspace。
+运行目录由 `workspace.deployment` 配置。除 `named_volume` 外，组件挂载源必须是绝对路径或显式以 `./` 开头的相对路径；Orbit 写入相对逻辑目录，原生运行时 source 原样写入 Compose，由 Compose 相对生成的文件解析。仅当 Orbit 运行在容器中时，才把相对 source 转为 Docker daemon 可见的宿主路径，绝对 source 保持原值，且必须同时挂入 Docker socket 和 Deployment workspace。
 
 ## 部署流程（逻辑）
 

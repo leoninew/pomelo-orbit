@@ -61,7 +61,7 @@ func TestResolveMountSpecsPreservesMountTarget(t *testing.T) {
 func TestResolveMountSpecsDoesNotMaterializePlainFile(t *testing.T) {
 	resolved, err := resolveMountSpecs([]MountSpec{{
 		SourceType: mountSourceFile,
-		Source:     "app.conf",
+		Source:     "./app.conf",
 		Target:     "/etc/app.conf",
 	}}, "/srv/orbit/demo-service")
 	if err != nil {
@@ -72,12 +72,37 @@ func TestResolveMountSpecsDoesNotMaterializePlainFile(t *testing.T) {
 	}
 }
 
+func TestResolveMountSpecsRejectsBarePathForNonVolumeMounts(t *testing.T) {
+	tests := []MountSpec{
+		{SourceType: mountSourceDirectory, Source: "data", Target: "/var/lib/app"},
+		{SourceType: mountSourceFile, Source: "app.conf", Target: "/etc/app.conf"},
+		{SourceType: mountSourceControlledFile, Source: "config/app.env", Target: "/app/.env", Content: "", Mode: "0644"},
+	}
+	for _, mount := range tests {
+		if err := validateMountSpec(mount); err == nil {
+			t.Fatalf("bare source %q for %s mount must be rejected", mount.Source, mount.SourceType)
+		}
+	}
+}
+
+func TestResolveMountSpecsRejectsBackslashMountSources(t *testing.T) {
+	tests := []MountSpec{
+		{SourceType: mountSourceDirectory, Source: `D:\data`, Target: "/var/lib/app"},
+		{SourceType: mountSourceFile, Source: `\\server\share\app.conf`, Target: "/etc/app.conf"},
+	}
+	for _, mount := range tests {
+		if err := validateMountSpec(mount); err == nil {
+			t.Fatalf("backslash source %q for %s mount must be rejected", mount.Source, mount.SourceType)
+		}
+	}
+}
+
 func TestResolveMountSpecsMaterializesLogicalDirectoryAtServiceRoot(t *testing.T) {
 	logicalServiceDir := filepath.Join(t.TempDir(), "deployment", "sc")
 	composeMountSourceDir := filepath.Join(t.TempDir(), "host", "deployment", "sc")
 	resolved, err := resolveMountSpecsForPaths([]MountSpec{{
 		SourceType: mountSourceDirectory,
-		Source:     "mysql",
+		Source:     "./mysql",
 		Target:     "/var/lib/mysql",
 	}}, logicalServiceDir, composeMountSourceDir)
 	if err != nil {
@@ -110,7 +135,6 @@ func TestResolveMountSpecsPreservesDirectorySourceForNativeCompose(t *testing.T)
 		want   string
 	}{
 		{source: "./data", want: "./data:/var/lib/mysql"},
-		{source: "data", want: "data:/var/lib/mysql"},
 	} {
 		t.Run(test.source, func(t *testing.T) {
 			resolved, err := resolveMountSpecsForPaths([]MountSpec{{
@@ -131,16 +155,77 @@ func TestResolveMountSpecsPreservesDirectorySourceForNativeCompose(t *testing.T)
 	}
 }
 
+func TestResolveMountSpecsPreservesAbsoluteControlledFileSource(t *testing.T) {
+	source := filepath.ToSlash(filepath.Join(t.TempDir(), "etc", "app.env"))
+	logicalServiceDir := filepath.Join(t.TempDir(), "deployment", "service")
+	composeMountSourceDir := filepath.Join(t.TempDir(), "host", "deployment", "service")
+	resolved, err := resolveMountSpecsForPaths([]MountSpec{{
+		SourceType: mountSourceControlledFile,
+		Source:     source,
+		Target:     "/app/.env",
+		Content:    "KEY=value\n",
+		Mode:       "0644",
+	}}, logicalServiceDir, composeMountSourceDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved[0].Compose != source+":/app/.env" {
+		t.Fatalf("absolute compose mount = %q, want %q", resolved[0].Compose, source+":/app/.env")
+	}
+	if resolved[0].HostSource != source || resolved[0].LogicalSource != filepath.FromSlash(source) {
+		t.Fatalf("absolute controlled file paths = %+v", resolved[0])
+	}
+	if !resolved[0].ShouldMaterialize || !resolved[0].IsFile {
+		t.Fatalf("absolute controlled file materialization = %+v", resolved[0])
+	}
+}
+
+func TestResolveMountSpecsKeepsControlledFileAsNativeBindMount(t *testing.T) {
+	logicalServiceDir := filepath.Join(t.TempDir(), "deployment", "traefik-default")
+	resolved, err := resolveMountSpecsForPaths([]MountSpec{{
+		SourceType: mountSourceControlledFile,
+		Source:     "./traefik.yml",
+		Target:     "/etc/traefik/traefik.yml",
+		Content:    "api:\n  dashboard: true\n",
+		Mode:       "0644",
+	}}, logicalServiceDir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resolved) != 1 {
+		t.Fatalf("resolved mount count = %d, want 1", len(resolved))
+	}
+	if resolved[0].Compose != "./traefik.yml:/etc/traefik/traefik.yml" {
+		t.Fatalf("compose mount = %q, want native bind mount", resolved[0].Compose)
+	}
+	if resolved[0].LogicalSource != filepath.Join(logicalServiceDir, "traefik.yml") || !resolved[0].ShouldMaterialize {
+		t.Fatalf("native logical mount = %+v", resolved[0])
+	}
+}
+
 func TestResolveMountSpecsRejectsInvalidControlledFileMode(t *testing.T) {
 	_, err := resolveMountSpecs([]MountSpec{{
 		SourceType: mountSourceControlledFile,
-		Source:     "config/app.conf",
+		Source:     "./config/app.conf",
 		Target:     "/etc/app.conf",
 		Content:    "key=value",
 		Mode:       "644",
 	}}, "/srv/orbit/demo-service")
 	if err == nil {
 		t.Fatal("controlled file without a four-digit Unix mode must be rejected")
+	}
+}
+
+func TestResolveMountSpecsRejectsLogicalSourceWithoutComposePrefix(t *testing.T) {
+	_, err := resolveMountSpecs([]MountSpec{{
+		SourceType: mountSourceControlledFile,
+		Source:     "traefik.yml",
+		Target:     "/etc/traefik/traefik.yml",
+		Content:    "api:\n  dashboard: true\n",
+		Mode:       "0644",
+	}}, filepath.Join(t.TempDir(), "deployment", "traefik-default"))
+	if err == nil {
+		t.Fatal("controlled file source without ./ must be rejected")
 	}
 }
 

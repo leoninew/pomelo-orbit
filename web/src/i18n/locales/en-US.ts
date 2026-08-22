@@ -376,7 +376,7 @@ export default {
         listenPort: 'Listen port',
         serviceInstance: 'Select service instance',
         mountSourceType: 'Source type',
-        mountSource: 'Source (relative path / absolute path / volume name)',
+        mountSource: 'Source (./relative path / absolute path / volume name)',
         mountTarget: 'Container path, for example /data',
         mountContent: 'Body, for example traefik.yml content',
       },
@@ -660,6 +660,8 @@ export default {
       reset: 'Reset',
       validation: {
         sourceRequired: 'Enter a source path.',
+        sourceMustStartWithDotSlash:
+          'Mount source must be an absolute path or a relative path starting with ./',
       },
     },
     runtimeConfig: {

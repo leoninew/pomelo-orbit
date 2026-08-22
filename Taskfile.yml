@@ -62,6 +62,14 @@ tasks:
       - ./bin/golangci-lint fmt ./cmd/... ./internal/... ./sql
       - ./bin/golangci-lint run ./cmd/... ./internal/... ./sql
 
+  scripts:check:
+    desc: Run Python script format, lint, type, and test checks
+    cmds:
+      - uv --directory scripts run ruff format --check .
+      - uv --directory scripts run ruff check .
+      - uv --directory scripts run mypy
+      - uv --directory scripts run pytest
+
   test:
     desc: Run web and Go tests
     cmds:
@@ -89,12 +97,12 @@ tasks:
   version:
     desc: Calculate the release version from Git history
     cmds:
-      - python scripts/version-calc.py
+      - uv run --project scripts python scripts/version-calc.py
 
   version:apply:
     desc: Calculate and apply the release version to tracked metadata
     cmds:
-      - python scripts/version-calc.py --quiet --apply
+      - uv run --project scripts python scripts/version-calc.py --quiet --apply
 
   package:
     desc: Build Windows, Linux, and macOS x64 direct-run zip packages in dist/

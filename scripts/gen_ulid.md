@@ -8,16 +8,17 @@ Doc role: local script reference。与代码冲突时以代码为准。
 
 ## 前置条件
 
-Python 环境需要安装 `ulid` 包。
+依赖由 `scripts/pyproject.toml` 管理；从仓库根目录使用 uv 运行时会自动安装
+`ulid-py`。
 
 ## 用法
 
 ```bash
 # 生成一个 ULID
-python scripts/gen_ulid.py
+uv run --project scripts python scripts/gen_ulid.py
 
 # 生成 10 个 ULID
-python scripts/gen_ulid.py -n 10
+uv run --project scripts python scripts/gen_ulid.py -n 10
 ```
 
 `-n` 指定生成数量，默认值为 `1`。

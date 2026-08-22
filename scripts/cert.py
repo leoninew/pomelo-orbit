@@ -3,8 +3,8 @@
 cert.py - 证书工具
 
 用法:
-  python scripts/cert.py new -n <domain> --cert-dir <directory>
-  python scripts/cert.py check -n <domain> --cert-dir <directory>
+  uv run --project scripts python scripts/cert.py new -n <domain> --cert-dir <directory>
+  uv run --project scripts python scripts/cert.py check -n <domain> --cert-dir <directory>
 """
 
 import argparse
@@ -19,6 +19,7 @@ from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
+
 
 def run(
     cmd: list[str],
@@ -208,7 +209,9 @@ def cmd_check(domain: str, cert_dir: Path) -> None:
     leaf_cert = None
     if not pem_file.exists():
         logger.warning(f"文件不存在: {pem_file}")
-        logger.info(f"修复: python scripts/cert.py new -n {domain} --cert-dir {cert_dir}")
+        logger.info(
+            f"修复: uv run --project scripts python scripts/cert.py new -n {domain} --cert-dir {cert_dir}"
+        )
     else:
         logger.info(f"文件: {pem_file}")
         pem_text = pem_file.read_text(encoding="utf-8")
@@ -278,15 +281,17 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "示例:\n"
-            "  python scripts/cert.py new -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs\n"
-            "  python scripts/cert.py check -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs"
+            "  uv run --project scripts python scripts/cert.py new -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs\n"
+            "  uv run --project scripts python scripts/cert.py check -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs"
         ),
     )
     sub = parser.add_subparsers(dest="cmd")
 
     p_new = sub.add_parser("new", help="生成 mkcert 证书并输出合并 PEM")
     p_new.add_argument("-n", dest="domain", required=True, metavar="domain")
-    p_new.add_argument("--cert-dir", required=True, type=Path, help="PEM output directory")
+    p_new.add_argument(
+        "--cert-dir", required=True, type=Path, help="PEM output directory"
+    )
 
     p_check = sub.add_parser("check", help="检查证书信任链（CA → 叶证书 → TLS 握手）")
     p_check.add_argument("-n", dest="domain", required=True, metavar="domain")

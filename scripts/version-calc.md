@@ -4,9 +4,9 @@
 increments the minor version; every other commit increments the patch version.
 
 ```bash
-python scripts/version-calc.py
-python scripts/version-calc.py --apply
-python scripts/version-calc.py --quiet --apply-amend
+uv run --project scripts python scripts/version-calc.py
+uv run --project scripts python scripts/version-calc.py --apply
+uv run --project scripts python scripts/version-calc.py --quiet --apply-amend
 ```
 
 `--apply` writes the calculated version to `VERSION`, `configs/config.yaml`,

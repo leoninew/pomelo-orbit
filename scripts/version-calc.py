@@ -24,10 +24,10 @@ message, then creates the matching lightweight Git tag.
 
 Run from any directory inside the target git repository:
 
-    python scripts/version-calc.py
-    python scripts/version-calc.py --apply
-    python scripts/version-calc.py --quiet --apply
-    python scripts/version-calc.py --quiet --apply-amend
+    uv run --project scripts python scripts/version-calc.py
+    uv run --project scripts python scripts/version-calc.py --apply
+    uv run --project scripts python scripts/version-calc.py --quiet --apply
+    uv run --project scripts python scripts/version-calc.py --quiet --apply-amend
 """
 
 from __future__ import annotations

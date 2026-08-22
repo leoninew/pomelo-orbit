@@ -9,7 +9,7 @@ Doc role: local script reference。与代码冲突时以代码为准。
 ## 前置条件
 
 - 已安装 `mkcert`；首次使用通常需要执行 `mkcert -install`。
-- Python 环境需要 `cryptography`。
+- 已安装 uv；`cryptography` 由 `scripts/pyproject.toml` 管理。
 - `check` 在 Windows 上使用 `certutil -store Root` 检查系统 Root 信任库。
 - `check` 会连接 `<domain>:443` 执行系统信任库校验的 TLS 握手；目标域名必须可解析并提供 HTTPS 服务。
 
@@ -17,10 +17,10 @@ Doc role: local script reference。与代码冲突时以代码为准。
 
 ```bash
 # 生成合并 PEM（证书与私钥）
-python scripts/cert.py new -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
+uv run --project scripts python scripts/cert.py new -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 
 # 检查 CA、PEM 内容、签名链与实际 TLS 握手
-python scripts/cert.py check -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
+uv run --project scripts python scripts/cert.py check -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
 ```
 
 `new` 的输出文件为：

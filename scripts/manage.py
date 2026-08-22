@@ -514,7 +514,9 @@ def normalize_workspace_exclude(value: str) -> str:
     value = value.strip()
     path = PurePosixPath(value)
     if not value or path.is_absolute() or ".." in path.parts:
-        raise ValueError("--exclude-workspace must be a non-empty path relative to --remote-dir")
+        raise ValueError(
+            "--exclude-workspace must be a non-empty path relative to --remote-dir"
+        )
     return f"./{path.as_posix()}"
 
 
@@ -624,7 +626,9 @@ def docker_clean(cfg: "Config", execute: bool) -> None:
 
         if not execute:
             logger.info("dry run complete; no Docker data was removed")
-            logger.info("rerun with docker-clean --execute to remove cache and unused images")
+            logger.info(
+                "rerun with docker-clean --execute to remove cache and unused images"
+            )
             return
 
         logger.warning("removing all reclaimable BuildKit cache")
@@ -787,7 +791,11 @@ def main():
         os.system(f"ssh {config.ssh_target}")
     elif args.command == "backup":
         try:
-            backup(config, args.remote_dir or config.remote_deploy_dir, args.exclude_workspace)
+            backup(
+                config,
+                args.remote_dir or config.remote_deploy_dir,
+                args.exclude_workspace,
+            )
         except ValueError as error:
             backup_parser.error(str(error))
     elif args.command == "clean":

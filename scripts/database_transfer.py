@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Transfer one Orbit service deployment closure through Housekeeper JSONL."""
+"""Transfer one Orbit service deployment closure through dbtalk JSONL."""
 
 from __future__ import annotations
 
@@ -16,31 +16,31 @@ from pathlib import Path
 from typing import Any, Sequence
 
 
-TRANSFER_FORMAT = "housekeeper.database-transfer/v1"
-SERVICE_EXPORT_EXCLUDED_TABLES = ("schema_migrations",)
+TRANSFER_FORMAT = "dbtalk.database-transfer/v1"
+# Keep this order aligned with dbtalk's target-schema foreign-key ordering.
 SERVICE_TABLES = (
     "project",
     "application",
-    "version",
-    "version_component",
-    "version_component_env",
-    "version_component_endpoint",
-    "version_component_mount",
-    "version_component_dependency",
-    "version_component_healthcheck",
-    "version_component_resource",
-    "version_component_tmpfs",
-    "version_component_ulimit",
-    "version_component_device",
     "gateway_config",
+    "route",
+    "version",
     "service",
     "service_env",
+    "version_component",
     "service_component",
+    "service_component_endpoint",
     "service_component_env",
     "service_component_mount",
     "service_component_resource",
-    "service_component_endpoint",
-    "route",
+    "version_component_dependency",
+    "version_component_device",
+    "version_component_endpoint",
+    "version_component_env",
+    "version_component_healthcheck",
+    "version_component_mount",
+    "version_component_resource",
+    "version_component_tmpfs",
+    "version_component_ulimit",
 )
 VERSION_COMPONENT_CHILD_TABLES = (
     "version_component_env",
@@ -97,10 +97,11 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     exporter.add_argument("--source", choices=("sqlite", "mysql"), required=True)
     exporter.add_argument("--service-code", required=True)
     exporter.add_argument("--output", type=Path, required=True)
-    exporter.add_argument("--sqlite-path", type=Path)
-    exporter.add_argument("--mysql-dsn-env")
+    connection = exporter.add_mutually_exclusive_group(required=True)
+    connection.add_argument("--dsn")
+    connection.add_argument("--dsn-env")
     exporter.add_argument("--tz", default="UTC")
-    exporter.add_argument("--housekeeper-command", default="housekeeper")
+    exporter.add_argument("--dbtalk-command", default="dbtalk")
 
     importer = subcommands.add_parser(
         "import", help="import one service deployment closure"
@@ -108,10 +109,11 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     importer.add_argument("--target", choices=("sqlite", "mysql"), required=True)
     importer.add_argument("--input", type=Path, required=True)
     importer.add_argument("--mode", choices=("insert", "upsert"), required=True)
-    importer.add_argument("--sqlite-path", type=Path)
-    importer.add_argument("--mysql-dsn-env")
+    connection = importer.add_mutually_exclusive_group(required=True)
+    connection.add_argument("--dsn")
+    connection.add_argument("--dsn-env")
     importer.add_argument("--tz", default="UTC")
-    importer.add_argument("--housekeeper-command", default="housekeeper")
+    importer.add_argument("--dbtalk-command", default="dbtalk")
 
     return parser.parse_args(argv)
 
@@ -140,7 +142,7 @@ def load_transfer(path: Path) -> TransferFile:
                 if header is not None or tables or current is not None:
                     raise ServiceTransferError("JSONL header must be the first record")
                 if record.get("format") != TRANSFER_FORMAT:
-                    raise ServiceTransferError("unsupported Housekeeper JSONL format")
+                    raise ServiceTransferError("unsupported dbtalk JSONL format")
                 if record.get("source") not in ("sqlite", "mysql"):
                     raise ServiceTransferError("JSONL header has an invalid source")
                 header = record
@@ -360,7 +362,7 @@ def service_tables(transfer: TransferFile, service_code: str) -> TransferFile:
 
     version_table = require_table(available, "version")
     version_ids: list[str] = []
-    current_version = version_id
+    current_version: str | None = version_id
     while current_version is not None:
         if current_version in version_ids:
             raise ServiceTransferError(
@@ -477,36 +479,33 @@ def validate_service_transfer(transfer: TransferFile) -> str:
     return service_code
 
 
-def housekeeper_command(command: str) -> str:
+def dbtalk_command(command: str) -> str:
     resolved = shutil.which(command)
     if resolved:
         return resolved
     if Path(command).is_file():
         return str(Path(command).resolve())
     raise ServiceTransferError(
-        "housekeeper CLI was not found; install Housekeeper and ensure "
-        "the command is on PATH"
+        "dbtalk CLI was not found; install dbtalk and ensure the command is on PATH"
     )
 
 
-def connection_arguments(
-    driver: str, sqlite_path: Path | None, mysql_dsn_env: str | None
-) -> list[str]:
-    if driver == "sqlite":
-        if sqlite_path is None:
-            raise ServiceTransferError("--sqlite-path is required for SQLite")
-        return ["--sqlite-path", str(sqlite_path)]
-    if not mysql_dsn_env:
-        raise ServiceTransferError("--mysql-dsn-env is required for MySQL")
-    if mysql_dsn_env not in os.environ:
-        raise ServiceTransferError(
-            f"MySQL DSN environment variable is not set: {mysql_dsn_env}"
-        )
-    return ["--mysql-dsn-env", mysql_dsn_env]
+def connection_arguments(dsn: str | None, dsn_env: str | None) -> list[str]:
+    if (dsn is None) == (dsn_env is None):
+        raise ServiceTransferError("provide exactly one of --dsn or --dsn-env")
+    if dsn_env is not None:
+        if not dsn_env or dsn_env not in os.environ:
+            raise ServiceTransferError(
+                f"DSN environment variable is not set: {dsn_env}"
+            )
+        return ["--dsn-env", dsn_env]
+    if not dsn:
+        raise ServiceTransferError("--dsn must not be empty")
+    return ["--dsn", dsn]
 
 
-def run_housekeeper(command: str, arguments: Sequence[str], *, operation: str) -> None:
-    executable = housekeeper_command(command)
+def run_dbtalk(command: str, arguments: Sequence[str], *, operation: str) -> None:
+    executable = dbtalk_command(command)
     result = subprocess.run(
         [executable, *arguments],
         check=False,
@@ -515,36 +514,36 @@ def run_housekeeper(command: str, arguments: Sequence[str], *, operation: str) -
     )
     if result.returncode:
         raise ServiceTransferError(
-            f"housekeeper {operation} failed with exit code {result.returncode}"
+            f"dbtalk {operation} failed with exit code {result.returncode}"
         )
 
 
 def export_service(args: argparse.Namespace) -> Path:
     output = args.output.resolve()
-    connection = connection_arguments(args.source, args.sqlite_path, args.mysql_dsn_env)
+    connection = connection_arguments(args.dsn, args.dsn_env)
     with tempfile.TemporaryDirectory(prefix="orbit-service-transfer-") as directory:
-        full_export = Path(directory) / "full.jsonl"
-        run_housekeeper(
-            args.housekeeper_command,
+        service_export = Path(directory) / "service.jsonl"
+        run_dbtalk(
+            args.dbtalk_command,
             [
                 "database",
                 "export",
                 "--source",
                 args.source,
                 "--output",
-                str(full_export),
+                str(service_export),
                 *connection,
                 *(
                     argument
-                    for table_name in SERVICE_EXPORT_EXCLUDED_TABLES
-                    for argument in ("--exclude-table", table_name)
+                    for table_name in SERVICE_TABLES
+                    for argument in ("--include-table", table_name)
                 ),
                 "--tz",
                 args.tz,
             ],
             operation="export",
         )
-        selected = service_tables(load_transfer(full_export), args.service_code)
+        selected = service_tables(load_transfer(service_export), args.service_code)
         write_transfer(output, selected)
     return output
 
@@ -553,9 +552,9 @@ def import_service(args: argparse.Namespace) -> str:
     input_path = args.input.resolve()
     transfer = load_transfer(input_path)
     service_code = validate_service_transfer(transfer)
-    connection = connection_arguments(args.target, args.sqlite_path, args.mysql_dsn_env)
-    run_housekeeper(
-        args.housekeeper_command,
+    connection = connection_arguments(args.dsn, args.dsn_env)
+    run_dbtalk(
+        args.dbtalk_command,
         [
             "database",
             "import",

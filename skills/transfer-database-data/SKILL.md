@@ -1,44 +1,45 @@
 ---
 name: transfer-database-data
-description: "Export or import one Pomelo Orbit service deployment closure through the installed Housekeeper database JSONL CLI."
+description: "Export or import one Pomelo Orbit service deployment closure through the installed dbtalk database JSONL CLI."
 ---
 
 # Transfer An Orbit Service
 
-Use `scripts/database_transfer.py` from the Orbit repository root. This
-skill moves one service deployment closure; it is not a general database
-backup or schema migration tool.
+Use `scripts/database_transfer.py` from the Orbit repository root. This skill
+moves one service deployment closure through dbtalk; it is not a schema
+migration tool or a remote filesystem backup.
 
 ## Preconditions
 
-- Install a published Housekeeper package so `housekeeper database export` and
-  `housekeeper database import` are available on `PATH`.
+- Install dbtalk so `dbtalk database export` and `dbtalk database import` are
+  available on `PATH`.
+- Install uv so the Orbit scripts run with the locked `scripts/` environment.
 - Initialize the target Orbit schema with the normal Orbit migration command
   before importing. The transfer file contains data only, never DDL, indexes,
   triggers, routines, or permissions.
-- Keep MySQL credentials in an environment variable and pass its name with
-  `--mysql-dsn-env`. Do not place a password in the command line or transfer
-  file.
+- Use dbtalk's canonical `--dsn` or `--dsn-env` connection option. Keep
+  credentials in an environment variable and pass its name with `--dsn-env`;
+  do not place a password in the command line or transfer file.
 
 ## Export
 
 ```bash
-python scripts/database_transfer.py export \
-  --source sqlite --sqlite-path data/db/pomelo-orbit.db \
+uv run --project scripts python scripts/database_transfer.py export \
+  --source sqlite --dsn sqlite:///./data/db/pomelo-orbit.db \
   --service-code <service-code> --output service.jsonl --tz UTC
 ```
 
-For MySQL, use `--source mysql --mysql-dsn-env <ENV_NAME>`. Orbit asks
-Housekeeper for a temporary full JSONL export, selects the requested service's
-project, application, version lineage, components, Gateway configuration,
-service overrides, and routes, then writes the service JSONL file. The full
-temporary export is removed automatically.
+For MySQL, use `--source mysql --dsn-env <ENV_NAME>`. Orbit asks dbtalk
+for the service closure tables, selects the requested service's project,
+application, version lineage, components, Gateway configuration, service
+overrides, and routes, then writes the service JSONL file. The temporary
+dbtalk export is removed automatically.
 
 ## Import
 
 ```bash
-python scripts/database_transfer.py import \
-  --target sqlite --sqlite-path data/db/pomelo-orbit.db \
+uv run --project scripts python scripts/database_transfer.py import \
+  --target sqlite --dsn sqlite:///./data/db/pomelo-orbit.db \
   --input service.jsonl --mode upsert --tz UTC
 ```
 
@@ -46,20 +47,18 @@ python scripts/database_transfer.py import \
 `upsert` updates existing primary-key rows. A schema initialized by the normal
 Orbit migration already has the seed Project, so the standard service-migration
 flow uses `upsert`. The adapter validates that the file describes exactly one
-closed Orbit service deployment before invoking Housekeeper. Housekeeper owns
-primary-key checks, date/time conversion, and table-level transaction behavior.
+closed Orbit service deployment before invoking dbtalk. dbtalk owns primary-key
+checks, date/time conversion, and table-level transaction behavior.
 
-Orbit always excludes `schema_migrations` from the temporary full export. The
-final service file does not contain that table, so it must not be excluded again
-on import: Housekeeper rejects exclusions that are absent from the JSONL file.
+The service export requests only the tables in the Orbit deployment closure.
+The final service file does not contain `schema_migrations` or unrelated tables;
+the import command therefore does not pass table exclusions.
 
 Use `--tz <IANA name>` consistently for export and import when temporal values
-are involved. Orbit does not reinterpret or render JSONL values itself.
+are involved. Orbit does not reinterpret or render dbtalk JSONL values itself.
 
 ## Boundary
 
-For full-database transfer, JSONL format details, database-specific conversion,
-and import semantics, use Housekeeper's database-transfer skill. The examples
-there use `uv run housekeeper` inside the Housekeeper source checkout; Orbit
-uses the installed `housekeeper` CLI. Do not restore the removed Orbit-wide SQL
-or SQLite/MySQL implementation.
+For general database transfer, JSONL format details, database-specific
+conversion, and import semantics, use dbtalk's `dbtalk-database` skill. Do not
+restore the removed Orbit-wide SQL or SQLite/MySQL implementation.

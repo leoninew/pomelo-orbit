@@ -1,4 +1,4 @@
-"""Focused tests for Orbit's service-closure Housekeeper adapter."""
+"""Focused tests for Orbit's service-closure dbtalk adapter."""
 
 from __future__ import annotations
 
@@ -130,6 +130,35 @@ def fixture_transfer(
 
 
 class ServiceDatabaseTransferTests(unittest.TestCase):
+    def test_service_tables_follow_dbtalk_foreign_key_order(self) -> None:
+        self.assertEqual(
+            transfer.SERVICE_TABLES,
+            (
+                "project",
+                "application",
+                "gateway_config",
+                "route",
+                "version",
+                "service",
+                "service_env",
+                "version_component",
+                "service_component",
+                "service_component_endpoint",
+                "service_component_env",
+                "service_component_mount",
+                "service_component_resource",
+                "version_component_dependency",
+                "version_component_device",
+                "version_component_endpoint",
+                "version_component_env",
+                "version_component_healthcheck",
+                "version_component_mount",
+                "version_component_resource",
+                "version_component_tmpfs",
+                "version_component_ulimit",
+            ),
+        )
+
     def test_selects_complete_closure_from_arbitrary_full_export_order(self) -> None:
         default = fixture_transfer()
         source = fixture_transfer(
@@ -225,7 +254,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
             transfer.write_transfer(input_path, selected)
             with (
                 patch.dict(os.environ, {}, clear=True),
-                patch.object(transfer.shutil, "which", return_value="housekeeper"),
+                patch.object(transfer.shutil, "which", return_value="dbtalk"),
                 patch.object(
                     transfer.subprocess,
                     "run",
@@ -237,17 +266,19 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                         target="sqlite",
                         input=input_path,
                         mode="insert",
-                        sqlite_path=Path(directory) / "target.db",
-                        mysql_dsn_env=None,
+                        dsn="sqlite:///./target.db",
+                        dsn_env=None,
                         tz="UTC",
-                        housekeeper_command="housekeeper",
+                        dbtalk_command="dbtalk",
                     )
                 )
         self.assertEqual(code, "target")
         command = run.call_args.args[0]
         self.assertEqual(
-            command[0:5], ["housekeeper", "database", "import", "--target", "sqlite"]
+            command[0:5], ["dbtalk", "database", "import", "--target", "sqlite"]
         )
+        self.assertIn("--dsn", command)
+        self.assertIn("sqlite:///./target.db", command)
         self.assertIn("--mode", command)
         self.assertIn("insert", command)
         self.assertIn("--tz", command)
@@ -263,12 +294,39 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                         "sqlite",
                         "--input",
                         "service.jsonl",
-                        "--sqlite-path",
-                        "target.db",
+                        "--dsn",
+                        "sqlite:///./target.db",
                     ]
                 )
 
-    def test_import_forwards_upsert_and_mysql_dsn_variable_name(self) -> None:
+    def test_cli_defaults_to_dbtalk_command(self) -> None:
+        args = transfer.parse_args(
+            [
+                "import",
+                "--target",
+                "sqlite",
+                "--input",
+                "service.jsonl",
+                "--mode",
+                "upsert",
+                "--dsn",
+                "sqlite:///./target.db",
+            ]
+        )
+        self.assertEqual(args.dbtalk_command, "dbtalk")
+
+    def test_connection_arguments_require_one_available_dsn_source(self) -> None:
+        with self.assertRaisesRegex(transfer.ServiceTransferError, "exactly one"):
+            transfer.connection_arguments(None, None)
+        with self.assertRaisesRegex(transfer.ServiceTransferError, "exactly one"):
+            transfer.connection_arguments("sqlite:///./target.db", "ORBIT_TEST_DSN")
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(
+                transfer.ServiceTransferError, "DSN environment variable is not set"
+            ):
+                transfer.connection_arguments(None, "ORBIT_TEST_DSN")
+
+    def test_import_forwards_upsert_and_dsn_variable_name(self) -> None:
         selected = transfer.service_tables(fixture_transfer(), "target")
         with tempfile.TemporaryDirectory() as directory:
             input_path = Path(directory) / "service.jsonl"
@@ -276,10 +334,10 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
             with (
                 patch.dict(
                     os.environ,
-                    {"ORBIT_TEST_MYSQL_DSN": "root:secret@tcp(localhost)/orbit"},
+                    {"ORBIT_TEST_DSN": "mysql+pymysql://root:secret@localhost/orbit"},
                     clear=True,
                 ),
-                patch.object(transfer.shutil, "which", return_value="housekeeper"),
+                patch.object(transfer.shutil, "which", return_value="dbtalk"),
                 patch.object(
                     transfer.subprocess,
                     "run",
@@ -291,19 +349,20 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                         target="mysql",
                         input=input_path,
                         mode="upsert",
-                        sqlite_path=None,
-                        mysql_dsn_env="ORBIT_TEST_MYSQL_DSN",
+                        dsn=None,
+                        dsn_env="ORBIT_TEST_DSN",
                         tz="Asia/Shanghai",
-                        housekeeper_command="housekeeper",
+                        dbtalk_command="dbtalk",
                     )
                 )
         command = run.call_args.args[0]
         self.assertIn("upsert", command)
-        self.assertIn("ORBIT_TEST_MYSQL_DSN", command)
-        self.assertNotIn("root:secret@tcp(localhost)/orbit", command)
+        self.assertIn("--dsn-env", command)
+        self.assertIn("ORBIT_TEST_DSN", command)
+        self.assertNotIn("root:secret@localhost/orbit", command)
         self.assertIn("Asia/Shanghai", command)
 
-    def test_invalid_input_is_rejected_before_housekeeper_runs(self) -> None:
+    def test_invalid_input_is_rejected_before_dbtalk_runs(self) -> None:
         selected = transfer.service_tables(fixture_transfer(), "target")
         service = next(table for table in selected.tables if table.name == "service")
         multiple_services = table(
@@ -331,27 +390,27 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                             target="sqlite",
                             input=input_path,
                             mode="insert",
-                            sqlite_path=Path(directory) / "target.db",
-                            mysql_dsn_env=None,
+                            dsn="sqlite:///./target.db",
+                            dsn_env=None,
                             tz="UTC",
-                            housekeeper_command="housekeeper",
+                            dbtalk_command="dbtalk",
                         )
                     )
         run.assert_not_called()
 
-    def test_export_filters_full_export_and_cleans_temporary_file(self) -> None:
+    def test_export_filters_service_tables_and_cleans_temporary_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "service.jsonl"
-            full_export_paths: list[Path] = []
+            service_export_paths: list[Path] = []
 
             def fake_run(command: list[str], **_: object) -> SimpleNamespace:
-                full_path = Path(command[command.index("--output") + 1])
-                full_export_paths.append(full_path)
-                transfer.write_transfer(full_path, fixture_transfer())
+                service_path = Path(command[command.index("--output") + 1])
+                service_export_paths.append(service_path)
+                transfer.write_transfer(service_path, fixture_transfer())
                 return SimpleNamespace(returncode=0)
 
             with (
-                patch.object(transfer.shutil, "which", return_value="housekeeper"),
+                patch.object(transfer.shutil, "which", return_value="dbtalk"),
                 patch.object(transfer.subprocess, "run", side_effect=fake_run) as run,
             ):
                 result = transfer.export_service(
@@ -359,19 +418,27 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                         source="sqlite",
                         service_code="target",
                         output=output,
-                        sqlite_path=Path(directory) / "source.db",
-                        mysql_dsn_env=None,
+                        dsn="sqlite:///./source.db",
+                        dsn_env=None,
                         tz="Asia/Shanghai",
-                        housekeeper_command="housekeeper",
+                        dbtalk_command="dbtalk",
                     )
                 )
             self.assertEqual(result, output.resolve())
             self.assertTrue(output.is_file())
-            self.assertTrue(full_export_paths)
-            self.assertFalse(full_export_paths[0].exists())
+            self.assertTrue(service_export_paths)
+            self.assertFalse(service_export_paths[0].exists())
             export_command = run.call_args.args[0]
-            self.assertIn("--exclude-table", export_command)
-            self.assertIn("schema_migrations", export_command)
+            self.assertEqual(
+                export_command.count("--include-table"), len(transfer.SERVICE_TABLES)
+            )
+            included_tables = [
+                export_command[index + 1]
+                for index, argument in enumerate(export_command)
+                if argument == "--include-table"
+            ]
+            self.assertEqual(included_tables, list(transfer.SERVICE_TABLES))
+            self.assertNotIn("--exclude-table", export_command)
             self.assertEqual(
                 transfer.validate_service_transfer(transfer.load_transfer(output)),
                 "target",
@@ -384,9 +451,9 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
             with self.assertRaisesRegex(transfer.ServiceTransferError, "unsupported"):
                 transfer.load_transfer(path)
 
-    def test_housekeeper_failure_does_not_echo_stderr(self) -> None:
+    def test_dbtalk_failure_does_not_echo_stderr(self) -> None:
         with (
-            patch.object(transfer.shutil, "which", return_value="housekeeper"),
+            patch.object(transfer.shutil, "which", return_value="dbtalk"),
             patch.object(
                 transfer.subprocess,
                 "run",
@@ -396,7 +463,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 transfer.ServiceTransferError, "exit code 1"
             ) as error:
-                transfer.run_housekeeper("housekeeper", [], operation="import")
+                transfer.run_dbtalk("dbtalk", [], operation="import")
         self.assertNotIn("secret", str(error.exception))
 
 

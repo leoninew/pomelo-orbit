@@ -1,5 +1,5 @@
 # 文档主题索引
-最后修改时间: 2026-08-07 16:35:00
+最后修改时间: 2026-08-22 21:01:18
 
 独立索引文件（与 [README.md](./README.md) 分工：README 讲规则与阅读顺序，本页讲主题 → 路径）。
 
@@ -33,7 +33,7 @@
 | 卷挂载 | [guides/volume-mounting.md](./guides/volume-mounting.md) |
 | CI Pipeline（模板、应用流水线、制品与运行） | [guides/ci-pipeline-design.md](./guides/ci-pipeline-design.md) |
 | CI Pipeline 变量 | [guides/ci-pipeline-vars-design.md](./guides/ci-pipeline-vars-design.md) |
-| 服务数据迁移（Housekeeper JSONL） | [guides/service-data-transfer.md](./guides/service-data-transfer.md) |
+| 服务导出导入（dbtalk JSONL） | [guides/service-data-transfer.md](./guides/service-data-transfer.md) |
 | 权限 RBAC | [guides/permissions.md](./guides/permissions.md) |
 | Google OAuth（国内网络） | [guides/google-oauth-china-network.md](./guides/google-oauth-china-network.md) |
 | AntDV icons 笔记 | [guides/antdv-icons.md](./guides/antdv-icons.md) |
@@ -42,7 +42,7 @@
 
 | 主题 | 位置 |
 |------|------|
-| 项目硬约束 | [CLAUDE.md](../CLAUDE.md) |
+| 项目硬约束 | [AGENTS.md](../AGENTS.md) |
 
 ## SpecFlow 过程文档
 
@@ -53,21 +53,6 @@
 
 ## 归档索引（无须采信）
 
-| 内容 | 路径 |
-|------|------|
-| 归档说明 | [archive/README.md](./archive/README.md) |
-| SpecFlow 历史四件套 | `archive/specflow/{requirement,spec,plan,verification}/` |
-| 旧 designs（含 Python 架构稿） | `archive/designs/` |
-| 旧 discussions / specs | `archive/discussions/`、`archive/specs/` |
-| 旧 guides（如 Application 状态机） | `archive/guides/` |
-| 旧 analyze | `archive/analyze/` |
-
-### 常见废止主题 → 现行替代
-
-| 旧主题（归档内可搜） | 现行 |
-|----------------------|------|
-| Application undeployed/deployed 状态机 | [cd-model.md](./product/cd-model.md) Service 状态 |
-| compose 文件包 / application_config_file | Version + Component + Render |
-| attach_ingress / is_ingress | kind + Expose |
-| 全局 traefik api/domain env | GatewayConfig |
-| Python/FastAPI 架构 | [architecture/backend.md](./architecture/backend.md) |
+归档内容仅供历史追溯，不作为实现或验收依据。目录说明和使用约束见
+[archive/README.md](./archive/README.md)；废止主题及其替代方案见
+[decisions/ledger.md](./decisions/ledger.md)。

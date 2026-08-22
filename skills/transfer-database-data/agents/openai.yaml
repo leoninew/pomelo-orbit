@@ -1,4 +1,4 @@
 interface:
   display_name: "Transfer An Orbit Service"
-  short_description: "Move one Orbit service through Housekeeper JSONL"
-  default_prompt: "Use $transfer-database-data to export or import one Orbit service deployment closure through the Housekeeper CLI."
+  short_description: "Move one Orbit service through dbtalk JSONL"
+  default_prompt: "Use $transfer-database-data to export or import one Orbit service deployment closure through the dbtalk CLI."

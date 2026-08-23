@@ -58,7 +58,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_endpoints", input.VersionId, input.ComponentId, "/endpoints", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_env", "Replace a Component's environment collection.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_update_version_component_env", "Replace a Component's environment collection. Use exact ${KEY} placeholders for values owned by the Service runtime configuration; set each concrete value with orbit_update_service_env instead of storing credentials in the Version.", func(ctx context.Context, input struct {
 		VersionId   string                        `json:"version_id" jsonschema:"required"`
 		ComponentId string                        `json:"component_id" jsonschema:"required"`
 		Env         []*applicationv1.ComponentEnv `json:"env" jsonschema:"required"`

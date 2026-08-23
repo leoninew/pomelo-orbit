@@ -42,7 +42,7 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 
 	// env is a top-level collection by design. This avoids the Python wrapper's
 	// env: { env: [...] } shape while retaining the same application DTO.
-	addTool(server, "orbit_update_service_env", "Replace the Service environment shared by declared Components.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_update_service_env", "Replace the Service environment shared by declared Components and resolve their Version ${KEY} placeholders. Generate credentials securely once and keep them stable. Database bootstrap credentials apply only to an empty data volume, so changing a value here and redeploying does not rotate an initialized database credential; require an explicit in-place rotation or volume-reset decision.", func(ctx context.Context, input struct {
 		ServiceId string                  `json:"service_id" jsonschema:"required"`
 		Env       []*servicev1.ServiceEnv `json:"env" jsonschema:"required"`
 	}) (map[string]any, error) {

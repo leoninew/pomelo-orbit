@@ -19,6 +19,8 @@ import (
 
 const implementationVersion = "0.1.0"
 
+const deliveryInstructions = `For stateful services, declare Service-owned Component environment values with exact ${KEY} placeholders in the Version and set their concrete values through orbit_update_service_env. Generate credentials securely once, keep them stable, and do not expose them. Bootstrap credentials apply only to empty data volumes: redeploying does not rotate an initialized database credential; obtain explicit authorization for in-place rotation or volume reset.`
+
 // NewServer creates the shared Delivery MCP Core. Streamable HTTP supplies an
 // actor when the connection is accepted; stdio can bind one lazily on its
 // first tools/call request.
@@ -26,7 +28,7 @@ func NewServer(deps Dependencies) (*mcp.Server, error) {
 	if strings.TrimSpace(deps.ActorUserId) == "" && deps.ActorAuthorizer == nil {
 		return nil, errors.New("mcp actor_user_id or actor authorizer is required")
 	}
-	server := mcp.NewServer(&mcp.Implementation{Name: "pomelo-delivery", Version: implementationVersion}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "pomelo-delivery", Version: implementationVersion}, &mcp.ServerOptions{Instructions: deliveryInstructions})
 	core := &core{deps: deps}
 	if deps.ActorAuthorizer != nil {
 		server.AddReceivingMiddleware(core.authorizeToolCalls)

@@ -61,6 +61,37 @@ func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 	assertFlatObjectProperty(t, byName["orbit_update_version_component_resources"], "resources")
 }
 
+func TestServerInstructionsAndRuntimeConfigToolsDocumentStatefulServiceBoundary(t *testing.T) {
+	server, err := NewServer(Dependencies{ActorUserId: "actor"})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	session := connectInMemory(t, server)
+	instructions := session.InitializeResult().Instructions
+	for _, term := range []string{"${KEY}", "orbit_update_service_env", "empty data volume", "in-place rotation", "volume reset"} {
+		if !strings.Contains(instructions, term) {
+			t.Errorf("instructions do not document %q: %s", term, instructions)
+		}
+	}
+
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("ListTools() error = %v", err)
+	}
+	byName := make(map[string]*mcp.Tool, len(tools.Tools))
+	for _, tool := range tools.Tools {
+		byName[tool.Name] = tool
+	}
+	for name, term := range map[string]string{
+		"orbit_update_version_component_env": "${KEY}",
+		"orbit_update_service_env":           "empty data volume",
+	} {
+		if tool := byName[name]; tool == nil || !strings.Contains(tool.Description, term) {
+			t.Errorf("tool %q does not document %q", name, term)
+		}
+	}
+}
+
 func TestApplicationErrorBecomesClassifiedMCPToolError(t *testing.T) {
 	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: errorApplicationService{}})
 	if err != nil {

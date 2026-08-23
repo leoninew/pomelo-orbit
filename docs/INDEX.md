@@ -34,6 +34,7 @@
 | CI Pipeline（模板、应用流水线、制品与运行） | [guides/ci-pipeline-design.md](./guides/ci-pipeline-design.md) |
 | CI Pipeline 变量 | [guides/ci-pipeline-vars-design.md](./guides/ci-pipeline-vars-design.md) |
 | 服务导出导入（dbtalk JSONL） | [guides/service-data-transfer.md](./guides/service-data-transfer.md) |
+| Agent Plugin 与 Skill 发布 | [guides/plugin-release.md](./guides/plugin-release.md) |
 | 权限 RBAC | [guides/permissions.md](./guides/permissions.md) |
 | Google OAuth（国内网络） | [guides/google-oauth-china-network.md](./guides/google-oauth-china-network.md) |
 | AntDV icons 笔记 | [guides/antdv-icons.md](./guides/antdv-icons.md) |

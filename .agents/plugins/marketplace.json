@@ -1,0 +1,20 @@
+{
+  "name": "pomelo-orbit-local",
+  "interface": {
+    "displayName": "Pomelo Orbit"
+  },
+  "plugins": [
+    {
+      "name": "pomelo-orbit",
+      "source": {
+        "source": "local",
+        "path": "."
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

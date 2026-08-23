@@ -104,6 +104,12 @@ tasks:
     cmds:
       - uv run --project scripts python scripts/version-calc.py --quiet --apply
 
+  skill:
+    desc: Preflight and apply the local agent skills plugin
+    cmds:
+      - python scripts/release.py plugin check
+      - python scripts/release.py plugin apply
+
   package:
     desc: Build Windows, Linux, and macOS x64 direct-run zip packages in dist/
     env:

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "pomelo-orbit-local",
+  "description": "Local Pomelo Orbit operational skills.",
+  "owner": {
+    "name": "Local developer"
+  },
+  "metadata": {
+    "version": "0.261.3"
+  },
+  "plugins": [
+    {
+      "name": "pomelo-orbit",
+      "description": "Pomelo Orbit deployment, data transfer, and service operations skills.",
+      "author": {
+        "name": "Local developer"
+      },
+      "source": ".",
+      "category": "developer-tools"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "pomelo-orbit",
+  "version": "0.261.3",
+  "description": "Pomelo Orbit deployment, data transfer, and service operations skills.",
+  "author": {
+    "name": "Local developer"
+  }
+}

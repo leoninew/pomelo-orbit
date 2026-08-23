@@ -1,0 +1,16 @@
+{
+  "name": "pomelo-orbit",
+  "version": "0.261.3",
+  "description": "Pomelo Orbit deployment, data transfer, and service operations skills.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Pomelo Orbit",
+    "shortDescription": "Operate Pomelo Orbit deployments and services",
+    "longDescription": "Use the Pomelo Orbit skills for controlled RAGFlow and Sub2API deployment, service transfer, and runtime operations.",
+    "category": "Developer Tools",
+    "capabilities": ["Read"]
+  }
+}

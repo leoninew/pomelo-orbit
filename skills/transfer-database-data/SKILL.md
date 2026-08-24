@@ -26,7 +26,8 @@ migration tool or a remote filesystem backup.
 ```bash
 uv run --project scripts python scripts/database_transfer.py export \
   --source sqlite --dsn sqlite:///./data/db/pomelo-orbit.db \
-  --service-code <service-code> --output service.jsonl --tz UTC
+  --service-code <service-code> \
+  --output data/<service-code>-<timestamp>.jsonl --tz UTC
 ```
 
 For MySQL, use `--source mysql --dsn-env <ENV_NAME>`. Orbit asks dbtalk
@@ -34,6 +35,17 @@ for the service closure tables, selects the requested service's project,
 application, version lineage, components, Gateway configuration, service
 overrides, and routes, then writes the service JSONL file. The temporary
 dbtalk export is removed automatically.
+
+## Export File Names
+
+Direct `dbtalk database export` accepts either an output file or an existing
+directory. When `--output` is omitted, dbtalk writes
+`data/<source>-<timestamp>.jsonl`.
+
+This Orbit wrapper intentionally differs: its final `--output` is required,
+while its internal dbtalk export is a temporary `service.jsonl` file. Give the
+final service transfer an explicit, service-specific path such as
+`data/<service-code>-<timestamp>.jsonl`.
 
 ## Import
 

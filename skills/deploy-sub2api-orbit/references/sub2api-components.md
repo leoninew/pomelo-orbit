@@ -8,7 +8,7 @@ Use these declarations with `pomelo_delivery`. This is the source of truth for t
 | --- | --- | --- | --- |
 | `sub2api` (`standard`) | `postgres`, `redis`, `app` | `default` | Custom HTTP Route -> `app` / `http:8080` |
 
-All components use `pull_policy=always` and `restart_policy=unless-stopped`. Use platform-relative `directory` mounts; the source names below resolve under the Service workspace.
+All components use `pull_policy=always` and `restart_policy=unless-stopped`. Use explicit Service-workspace-relative `directory` mounts; every source must begin with `./` and resolves under the Service workspace.
 
 ## Runtime Configuration
 
@@ -32,7 +32,7 @@ Use the exact Orbit placeholders `${KEY}` in component environment values. Orbit
 | --- | --- |
 | Image | `postgres:18-alpine` |
 | Environment | `PGDATA=/var/lib/postgresql/data`, `POSTGRES_USER=sub2api`, `POSTGRES_PASSWORD=${POSTGRES_PASSWORD}`, `POSTGRES_DB=sub2api`, `TZ=Asia/Shanghai` |
-| Mount | `directory` source `postgres` -> `/var/lib/postgresql/data` |
+| Mount | `directory` source `./postgres` -> `/var/lib/postgresql/data` |
 | Health check | `CMD-SHELL` `pg_isready -U sub2api -d sub2api`; interval `10s`, timeout `5s`, retries `5`, start period `10s` |
 | Endpoint | None |
 
@@ -43,7 +43,7 @@ Use the exact Orbit placeholders `${KEY}` in component environment values. Orbit
 | Image | `redis:8-alpine` |
 | Command | `sh -c 'exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"'` |
 | Environment | `REDIS_PASSWORD=${REDIS_PASSWORD}`, `REDISCLI_AUTH=${REDIS_PASSWORD}`, `TZ=Asia/Shanghai` |
-| Mount | `directory` source `redis` -> `/data` |
+| Mount | `directory` source `./redis` -> `/data` |
 | Health check | `CMD-SHELL` `redis-cli ping`; interval `10s`, timeout `5s`, retries `5`, start period `5s` |
 | Endpoint | None |
 
@@ -53,7 +53,7 @@ Use the exact Orbit placeholders `${KEY}` in component environment values. Orbit
 | --- | --- |
 | Image | `weishaw/sub2api:latest` |
 | Environment | `AUTO_SETUP=true`, `SERVER_HOST=0.0.0.0`, `SERVER_PORT=8080`, `DATABASE_HOST=postgres`, `DATABASE_PORT=5432`, `DATABASE_USER=sub2api`, `DATABASE_PASSWORD=${POSTGRES_PASSWORD}`, `DATABASE_DBNAME=sub2api`, `DATABASE_SSLMODE=disable`, `REDIS_HOST=redis`, `REDIS_PORT=6379`, `REDIS_PASSWORD=${REDIS_PASSWORD}`, `ADMIN_EMAIL=admin@sub2api.local`, `ADMIN_PASSWORD=${ADMIN_PASSWORD}`, `JWT_SECRET=${JWT_SECRET}`, `JWT_EXPIRE_HOUR=24`, `TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY}`, `TZ=Asia/Shanghai` |
-| Mount | `directory` source `app` -> `/app/data` |
+| Mount | `directory` source `./app` -> `/app/data` |
 | Dependencies | `postgres: service_healthy`; `redis: service_healthy` |
 | Health check | `CMD-SHELL` `wget -q -T 5 -O /dev/null http://localhost:8080/health`; interval `30s`, timeout `10s`, retries `3`, start period `30s` |
 | Endpoint | protocol `http`, container port `8080`, mode `internal`; do not set bind address or listen port |

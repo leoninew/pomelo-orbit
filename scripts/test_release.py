@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -73,7 +72,10 @@ class PluginSyncTest(unittest.TestCase):
         )
 
         self.assertEqual([target.name for target in targets], ["claude"])
-        self.assertEqual([(outcome.client, outcome.status) for outcome in outcomes], [("codex", "skipped"), ("grok", "skipped")])
+        self.assertEqual(
+            [(outcome.client, outcome.status) for outcome in outcomes],
+            [("codex", "skipped"), ("grok", "skipped")],
+        )
 
     def test_explicit_targets_fail_before_writes_when_a_client_is_missing(self) -> None:
         with self.assertRaisesRegex(sync.SyncError, "required client commands"):
@@ -93,8 +95,12 @@ class PluginSyncTest(unittest.TestCase):
             {
                 ("claude", ("plugin", "marketplace", "list", "--json")): [],
                 ("claude", ("plugin", "list", "--json")): [],
-                ("codex", ("plugin", "marketplace", "list", "--json")): {"marketplaces": []},
-                ("grok", ("plugin", "list", "--json")): [{"name": "example-plugin-extra"}],
+                ("codex", ("plugin", "marketplace", "list", "--json")): {
+                    "marketplaces": []
+                },
+                ("grok", ("plugin", "list", "--json")): [
+                    {"name": "example-plugin-extra"}
+                ],
             }
         )
 
@@ -106,7 +112,13 @@ class PluginSyncTest(unittest.TestCase):
             [command.arguments for command in claude_plan.commands],
             [
                 ("plugin", "marketplace", "add", str(self.root), "--scope", "user"),
-                ("plugin", "install", "example-plugin@example-plugin-local", "--scope", "user"),
+                (
+                    "plugin",
+                    "install",
+                    "example-plugin@example-plugin-local",
+                    "--scope",
+                    "user",
+                ),
             ],
         )
         self.assertEqual(
@@ -118,24 +130,58 @@ class PluginSyncTest(unittest.TestCase):
         )
         self.assertEqual(
             grok_plan.commands[0].arguments,
-            ("plugin", "install", str(self.root / "plugins" / "example-plugin"), "--trust"),
+            (
+                "plugin",
+                "install",
+                str(self.root / "plugins" / "example-plugin"),
+                "--trust",
+            ),
         )
 
     def test_removal_uses_exact_plugin_identity(self) -> None:
         runner = FakeRunner(
             {
-                ("claude", ("plugin", "list", "--json")): [{"id": "example-plugin@example-plugin-local"}],
-                ("codex", ("plugin", "list", "--json")): {"installed": [{"name": "example-plugin", "marketplaceName": "example-plugin-local"}]},
-                ("grok", ("plugin", "list", "--json")): [{"name": "example-plugin-extra"}],
+                ("claude", ("plugin", "list", "--json")): [
+                    {"id": "example-plugin@example-plugin-local"}
+                ],
+                ("codex", ("plugin", "list", "--json")): {
+                    "installed": [
+                        {
+                            "name": "example-plugin",
+                            "marketplaceName": "example-plugin-local",
+                        }
+                    ]
+                },
+                ("grok", ("plugin", "list", "--json")): [
+                    {"name": "example-plugin-extra"}
+                ],
             }
         )
 
-        claude_plan = sync.plan_plugin_removal(self.config, sync.ClientTarget("claude", "claude"), runner)
-        codex_plan = sync.plan_plugin_removal(self.config, sync.ClientTarget("codex", "codex"), runner)
-        grok_plan = sync.plan_plugin_removal(self.config, sync.ClientTarget("grok", "grok"), runner)
+        claude_plan = sync.plan_plugin_removal(
+            self.config, sync.ClientTarget("claude", "claude"), runner
+        )
+        codex_plan = sync.plan_plugin_removal(
+            self.config, sync.ClientTarget("codex", "codex"), runner
+        )
+        grok_plan = sync.plan_plugin_removal(
+            self.config, sync.ClientTarget("grok", "grok"), runner
+        )
 
-        self.assertEqual(claude_plan.commands[0].arguments, ("plugin", "uninstall", "example-plugin@example-plugin-local", "--scope", "user"))
-        self.assertEqual(codex_plan.commands[0].arguments, ("plugin", "remove", "example-plugin@example-plugin-local", "--json"))
+        self.assertEqual(
+            claude_plan.commands[0].arguments,
+            (
+                "plugin",
+                "uninstall",
+                "example-plugin@example-plugin-local",
+                "--scope",
+                "user",
+            ),
+        )
+        self.assertEqual(
+            codex_plan.commands[0].arguments,
+            ("plugin", "remove", "example-plugin@example-plugin-local", "--json"),
+        )
         self.assertEqual(grok_plan.commands, ())
 
     def test_reinstalls_grok_plugin_when_the_source_changes(self) -> None:
@@ -153,7 +199,12 @@ class PluginSyncTest(unittest.TestCase):
             [command.arguments for command in plan.commands],
             [
                 ("plugin", "uninstall", "example-plugin", "--confirm"),
-                ("plugin", "install", str(self.root / "plugins" / "example-plugin"), "--trust"),
+                (
+                    "plugin",
+                    "install",
+                    str(self.root / "plugins" / "example-plugin"),
+                    "--trust",
+                ),
             ],
         )
 
@@ -162,15 +213,54 @@ class PluginSyncTest(unittest.TestCase):
         (package / ".claude-plugin").mkdir(parents=True)
         (package / ".codex-plugin").mkdir()
         (package / "skills" / "example-skill").mkdir(parents=True)
-        (package / ".claude-plugin" / "plugin.json").write_text(json.dumps({"name": "example-plugin"}), encoding="utf-8")
-        (package / ".codex-plugin" / "plugin.json").write_text(json.dumps({"name": "example-plugin", "skills": "./skills/"}), encoding="utf-8")
-        (package / "skills" / "example-skill" / "SKILL.md").write_text("---\nname: example-skill\ndescription: Example.\n---\n", encoding="utf-8")
+        (package / ".claude-plugin" / "plugin.json").write_text(
+            json.dumps({"name": "example-plugin"}), encoding="utf-8"
+        )
+        (package / ".codex-plugin" / "plugin.json").write_text(
+            json.dumps({"name": "example-plugin", "skills": "./skills/"}),
+            encoding="utf-8",
+        )
+        (package / "skills" / "example-skill" / "SKILL.md").write_text(
+            "---\nname: example-skill\ndescription: Example.\n---\n", encoding="utf-8"
+        )
         (root / ".claude-plugin").mkdir()
         (root / ".agents" / "plugins").mkdir(parents=True)
-        (root / ".claude-plugin" / "marketplace.json").write_text(json.dumps({"name": "example-plugin-local", "plugins": [{"name": "example-plugin", "source": "./plugins/example-plugin"}]}), encoding="utf-8")
-        (root / ".agents" / "plugins" / "marketplace.json").write_text(json.dumps({"name": "example-plugin-local", "plugins": [{"name": "example-plugin", "source": {"source": "local", "path": "./plugins/example-plugin"}}]}), encoding="utf-8")
+        (root / ".claude-plugin" / "marketplace.json").write_text(
+            json.dumps(
+                {
+                    "name": "example-plugin-local",
+                    "plugins": [
+                        {"name": "example-plugin", "source": "./plugins/example-plugin"}
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        (root / ".agents" / "plugins" / "marketplace.json").write_text(
+            json.dumps(
+                {
+                    "name": "example-plugin-local",
+                    "plugins": [
+                        {
+                            "name": "example-plugin",
+                            "source": {
+                                "source": "local",
+                                "path": "./plugins/example-plugin",
+                            },
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
         marketplace = sync.Marketplace("example-plugin-local", root)
-        return sync.PluginConfig(root, "example-plugin", package, {"claude": marketplace, "codex": marketplace}, {client: client for client in sync.CLIENTS})
+        return sync.PluginConfig(
+            root,
+            "example-plugin",
+            package,
+            {"claude": marketplace, "codex": marketplace},
+            {client: client for client in sync.CLIENTS},
+        )
 
 
 class StandaloneSkillSyncTest(unittest.TestCase):
@@ -181,8 +271,12 @@ class StandaloneSkillSyncTest(unittest.TestCase):
         self.home_patch.start()
         source = self.root / "source" / "example-skill"
         source.mkdir(parents=True)
-        (source / "SKILL.md").write_text("---\nname: example-skill\ndescription: Example.\n---\n", encoding="utf-8")
-        self.config = sync.SkillConfig("example-skill", source, {client: client for client in sync.CLIENTS})
+        (source / "SKILL.md").write_text(
+            "---\nname: example-skill\ndescription: Example.\n---\n", encoding="utf-8"
+        )
+        self.config = sync.SkillConfig(
+            "example-skill", source, {client: client for client in sync.CLIENTS}
+        )
 
     def tearDown(self) -> None:
         self.home_patch.stop()
@@ -207,7 +301,9 @@ class StandaloneSkillSyncTest(unittest.TestCase):
         self.assertTrue((other_skill / "SKILL.md").is_file())
 
     def test_dry_run_does_not_create_a_home(self) -> None:
-        result = sync.apply_skill(self.config, sync.ClientTarget("grok", "grok"), dry_run=True)
+        result = sync.apply_skill(
+            self.config, sync.ClientTarget("grok", "grok"), dry_run=True
+        )
         self.assertEqual(result.status, "planned")
         self.assertFalse((self.root / ".grok").exists())
 
@@ -220,7 +316,10 @@ class StandaloneSkillSyncTest(unittest.TestCase):
             find_command=lambda name: name if name == "claude" else None,
         )
         self.assertEqual([target.name for target in targets], ["claude"])
-        self.assertEqual([(outcome.client, outcome.status) for outcome in outcomes], [("codex", "skipped"), ("grok", "skipped")])
+        self.assertEqual(
+            [(outcome.client, outcome.status) for outcome in outcomes],
+            [("codex", "skipped"), ("grok", "skipped")],
+        )
 
 
 if __name__ == "__main__":

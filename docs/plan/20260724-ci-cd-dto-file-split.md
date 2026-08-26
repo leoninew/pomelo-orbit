@@ -79,7 +79,7 @@ Accepted
 
 ### Step 0: 基线
 
-1. 确认 `task install` 后 `bin/buf`、`bin/protoc-gen-go` 可用。  
+1. 确认 `task deps` 后 `bin/buf`、`bin/protoc-gen-go` 可用。
 2. 记录当前 `rg` 命中：`BuildStage`、`StageRunResp`、`config_file`、`service_config`、`TraefikConfigResp`（application dto）、`internal/gen/proto/orbit/v1` 扁平 import。  
 3. 不改 `buf.yaml` module path（仍为 `proto`）。
 
@@ -231,7 +231,7 @@ task proto
 
 ## Blockers
 
-无。工具链依赖本地 `task install`。
+无。工具链依赖本地 `task deps`。
 
 ## Assumptions
 

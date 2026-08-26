@@ -11,7 +11,7 @@ Pomelo Orbit 是一个面向本地容器环境的轻量级 CI/CD 平台，提供
 ## 快速开始
 
 ```bash
-task install
+task deps
 task dev:webapi
 task dev:web
 ```
@@ -24,9 +24,11 @@ task dev:web
 task check   # 类型检查、格式化和 lint
 task test    # 前后端测试
 task build   # 构建 Docker 镜像
-task package # 构建直接运行发布包（dist/）
+task release # 构建直接运行发布包（dist/）
 task version # 从 Git 历史计算版本
 ```
+
+`task release` 及清理任务依赖 POSIX 兼容 shell，请在 Cygwin、Git Bash 或 MSYS2 中执行。
 
 更多产品、架构和操作文档见 [`docs/`](./docs/)。脚本说明见 [`scripts/README.md`](./scripts/README.md)。
 

@@ -1,8 +1,16 @@
 version: '3'
 
+# This Taskfile requires a POSIX-compatible shell (Cygwin, Git Bash, or MSYS2)
+# for shell scripts and release packaging commands.
 vars:
   VERSION:
     sh: cat VERSION
+  FIX_ENABLED: '{{if contains "--fix" .CLI_ARGS}}1{{end}}'
+  FIX_FORMAT_ARGS: '{{if eq .FIX_ENABLED "1"}}{{else}}--diff{{end}}'
+  FIX_LINT_ARGS: '{{if eq .FIX_ENABLED "1"}}--fix{{end}}'
+  COVER_ENABLED: '{{if contains "--cov" .CLI_ARGS}}1{{end}}'
+  COVER_ARGS: '{{if eq .COVER_ENABLED "1"}}-cover -coverprofile=coverage.out{{end}}'
+  WEB_TEST_TASK: '{{if eq .COVER_ENABLED "1"}}test:cov{{else}}test{{end}}'
 
 tasks:
   default:
@@ -10,14 +18,15 @@ tasks:
     cmds:
       - task --list
 
-  install:
-    desc: Install web and Go dependencies
+  deps:
+    desc: Install locked web and script dependencies plus pinned Go tools
     env:
       CGO_ENABLED: '0'
       GOBIN: '{{.TASKFILE_DIR}}/bin'
-      PATH: '{{.TASKFILE_DIR}}/bin:${PATH}'
+      PATH: '{{.TASKFILE_DIR}}/bin:{{.PATH}}'
     cmds:
-      - yarn --cwd web install
+      - yarn --cwd web install --frozen-lockfile
+      - uv --directory scripts sync --locked
       - mkdir -p bin
       - go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
       - go install github.com/bufbuild/buf/cmd/buf@v1.59.0
@@ -25,7 +34,6 @@ tasks:
       - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
       - go install github.com/air-verse/air@v1.66.0
       - go mod download
-      - go mod tidy
 
   sqlc:
     desc: Generate sqlc query code
@@ -35,7 +43,7 @@ tasks:
   proto:
     desc: Generate Go and TypeScript proto DTOs
     env:
-      PATH: '{{.TASKFILE_DIR}}/bin:$PATH'
+      PATH: '{{.TASKFILE_DIR}}/bin:{{.PATH}}'
     cmds:
       - ./bin/buf dep update
       - ./bin/buf generate
@@ -54,13 +62,14 @@ tasks:
       - yarn --cwd web dev
 
   check:
-    desc: Run web and Go checks
+    desc: Check web and Go formatting, lint, and types; use -- --fix to apply fixes
     cmds:
       - yarn --cwd web typecheck
-      - yarn --cwd web lint:fix
-      - yarn --cwd web format:fix
-      - ./bin/golangci-lint fmt ./cmd/... ./internal/... ./sql
-      - ./bin/golangci-lint run ./cmd/... ./internal/... ./sql
+      - yarn --cwd web lint
+      - yarn --cwd web format
+      - ./bin/golangci-lint config verify
+      - ./bin/golangci-lint fmt {{.FIX_FORMAT_ARGS}} ./cmd/... ./internal/... ./sql
+      - ./bin/golangci-lint run {{.FIX_LINT_ARGS}} ./cmd/... ./internal/... ./sql
 
   scripts:check:
     desc: Run Python script format, lint, type, and test checks
@@ -71,10 +80,10 @@ tasks:
       - uv --directory scripts run pytest
 
   test:
-    desc: Run web and Go tests
+    desc: Run web and Go tests; use -- --cov to collect coverage
     cmds:
-      - yarn --cwd web test
-      - go test ./cmd/... ./internal/... ./sql
+      - yarn --cwd web {{.WEB_TEST_TASK}}
+      - go test {{.COVER_ARGS}} ./cmd/... ./internal/... ./sql
 
   build:
     desc: Build the Docker image, optionally with TAG=<tag> and cn=1
@@ -97,21 +106,21 @@ tasks:
   version:
     desc: Calculate the release version from Git history
     cmds:
-      - uv run --project scripts python scripts/version-calc.py
+      - uv --directory scripts run version-calc.py
 
   version:apply:
     desc: Calculate and apply the release version to tracked metadata
     cmds:
-      - uv run --project scripts python scripts/version-calc.py --quiet --apply
+      - uv --directory scripts run version-calc.py --quiet --apply
 
-  skill:
-    desc: Preflight and apply the local agent skills plugin
+  install:
+    desc: Install or refresh the local agent plugin
     cmds:
-      - python scripts/release.py plugin check
-      - python scripts/release.py plugin apply
+      - uv --directory scripts run install.py plugin check
+      - uv --directory scripts run install.py plugin apply
 
-  package:
-    desc: Build Windows, Linux, and macOS x64 direct-run zip packages in dist/
+  release:
+    desc: Build Windows, Linux, and macOS x64 zip packages in dist/ (POSIX shell required)
     env:
       CGO_ENABLED: '0'
     vars:
@@ -122,9 +131,18 @@ tasks:
       - rm -rf {{.WINDOWS_ROOT}} {{.LINUX_ROOT}} {{.MACOS_ROOT}} "dist/pomelo-orbit-v{{.VERSION}}-windows-x64.zip" "dist/pomelo-orbit-v{{.VERSION}}-linux-x64.zip" "dist/pomelo-orbit-v{{.VERSION}}-macos-x64.zip"
       - mkdir -p {{.WINDOWS_ROOT}}/static {{.WINDOWS_ROOT}}/configs {{.LINUX_ROOT}}/static {{.LINUX_ROOT}}/configs {{.MACOS_ROOT}}/static {{.MACOS_ROOT}}/configs
       - yarn --cwd web build
-      - env GOOS=windows GOARCH=amd64 go build -trimpath -o {{.WINDOWS_ROOT}}/pomelo-orbit.exe ./cmd/server
-      - env GOOS=linux GOARCH=amd64 go build -trimpath -o {{.LINUX_ROOT}}/pomelo-orbit ./cmd/server
-      - env GOOS=darwin GOARCH=amd64 go build -trimpath -o {{.MACOS_ROOT}}/pomelo-orbit ./cmd/server
+      - cmd: go build -trimpath -o {{.WINDOWS_ROOT}}/pomelo-orbit.exe ./cmd/server
+        env:
+          GOOS: windows
+          GOARCH: amd64
+      - cmd: go build -trimpath -o {{.LINUX_ROOT}}/pomelo-orbit ./cmd/server
+        env:
+          GOOS: linux
+          GOARCH: amd64
+      - cmd: go build -trimpath -o {{.MACOS_ROOT}}/pomelo-orbit ./cmd/server
+        env:
+          GOOS: darwin
+          GOARCH: amd64
       - cp -R web/dist/. {{.WINDOWS_ROOT}}/static/
       - cp -R web/dist/. {{.LINUX_ROOT}}/static/
       - cp -R web/dist/. {{.MACOS_ROOT}}/static/
@@ -147,7 +165,7 @@ tasks:
       - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-macos-x64.zip pomelo-orbit-v{{.VERSION}}-macos-x64
 
   clean:
-    desc: Remove local build artifacts
+    desc: Remove local build artifacts (POSIX shell required)
     cmds:
       - rm -rf bin dist web/dist web/coverage
       - printf "clean complete\n"

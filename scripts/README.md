@@ -23,7 +23,7 @@ uv --directory scripts run pytest
 | 脚本 | 用途 |
 | --- | --- |
 | [`version-calc.py`](./version-calc.md) | 从 Git 历史计算并按需写入发布版本。 |
-| [`release.py`](./release.py) | 通过 Claude、Codex 和 Grok 原生 CLI 发布本地 plugin；项目无 standalone skill。 |
+| [`install.py`](./install.py) | 通过 Claude、Codex 和 Grok 原生 CLI 安装或更新本地 plugin；项目无 standalone skill。 |
 
 ## 远程运维
 

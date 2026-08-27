@@ -1,4 +1,4 @@
-"""Integration tests for the release version calculator."""
+"""Integration tests for the version calculator."""
 
 from __future__ import annotations
 
@@ -31,9 +31,7 @@ class VersionCalcTests(unittest.TestCase):
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name)
-        self.remote = self.root / "remote.git"
         self.repository = self.root / "repository"
-        git(self.root, "init", "--bare", str(self.remote))
         git(self.root, "init", str(self.repository))
         git(self.repository, "config", "user.name", "Version Test")
         git(self.repository, "config", "user.email", "version-test@example.test")
@@ -52,8 +50,6 @@ class VersionCalcTests(unittest.TestCase):
         git(self.repository, "add", ".")
         git(self.repository, "commit", "-m", "chore: bootstrap")
         git(self.repository, "branch", "-M", "develop")
-        git(self.repository, "remote", "add", "origin", str(self.remote))
-        git(self.repository, "push", "-u", "origin", "develop")
 
         self.original_paths = (
             version_calc.REPO_ROOT,
@@ -78,25 +74,23 @@ class VersionCalcTests(unittest.TestCase):
         ) = self.original_paths
         self.directory.cleanup()
 
-    def test_apply_amend_updates_version_files_amends_unpushed_head_and_tags(
-        self,
-    ) -> None:
-        (self.repository / "change.txt").write_text("change\n", encoding="utf-8")
-        git(self.repository, "add", "change.txt")
-        git(self.repository, "commit", "-m", "fix: change source")
+    def test_apply_updates_version_files_without_mutating_git(self) -> None:
         before = git(self.repository, "rev-parse", "HEAD")
-        parent = git(self.repository, "rev-parse", "HEAD^")
         expected = version_calc.calculate_version(print_history=False)
-        git(self.repository, "tag", f"v{expected}")
 
-        self.assertEqual(0, version_calc.main(["--quiet", "--apply-amend"]))
+        self.assertEqual(0, version_calc.main(["--quiet", "--apply"]))
 
-        self.assertNotEqual(before, git(self.repository, "rev-parse", "HEAD"))
-        self.assertEqual(parent, git(self.repository, "rev-parse", "HEAD^"))
+        self.assertEqual(before, git(self.repository, "rev-parse", "HEAD"))
+        self.assertEqual("", git(self.repository, "tag", "--list", f"v{expected}"))
         self.assertEqual(
-            "fix: change source", git(self.repository, "log", "-1", "--format=%s")
+            "",
+            git(
+                self.repository,
+                "diff",
+                "--cached",
+                "--name-only",
+            ),
         )
-        self.assertEqual("", git(self.repository, "status", "--porcelain=v1"))
         self.assertEqual(
             expected, (self.repository / "VERSION").read_text(encoding="utf-8").strip()
         )
@@ -111,74 +105,10 @@ class VersionCalcTests(unittest.TestCase):
             expected,
             (self.repository / "web" / "package.json").read_text(encoding="utf-8"),
         )
-        self.assertEqual(
-            git(self.repository, "rev-parse", "HEAD"),
-            git(self.repository, "rev-list", "-n", "1", f"v{expected}"),
-        )
 
-    def test_apply_amend_includes_pre_staged_version_metadata(self) -> None:
-        (self.repository / "change.txt").write_text("change\n", encoding="utf-8")
-        git(self.repository, "add", "change.txt")
-        git(self.repository, "commit", "-m", "fix: change source")
-        expected = version_calc.calculate_version(print_history=False)
-        version_calc.apply_version(expected)
-        version_calc.stage_version_files()
-        before = git(self.repository, "rev-parse", "HEAD")
-        git(self.repository, "tag", f"v{expected}")
-
-        self.assertEqual(0, version_calc.main(["--quiet", "--apply-amend"]))
-
-        self.assertNotEqual(before, git(self.repository, "rev-parse", "HEAD"))
-        self.assertEqual("", git(self.repository, "status", "--porcelain=v1"))
-        self.assertEqual(
-            git(self.repository, "rev-parse", "HEAD"),
-            git(self.repository, "rev-list", "-n", "1", f"v{expected}"),
-        )
-
-    def test_apply_amend_preserves_unrelated_index_and_worktree_changes(self) -> None:
-        (self.repository / "tracked.txt").write_text("before\n", encoding="utf-8")
-        git(self.repository, "add", "tracked.txt")
-        git(self.repository, "commit", "-m", "chore: add tracked file")
-        (self.repository / "change.txt").write_text("change\n", encoding="utf-8")
-        git(self.repository, "add", "change.txt")
-        git(self.repository, "commit", "-m", "fix: change source")
-        (self.repository / "staged.txt").write_text("staged\n", encoding="utf-8")
-        (self.repository / "tracked.txt").write_text("after\n", encoding="utf-8")
-        git(self.repository, "add", "staged.txt")
-
-        self.assertEqual(0, version_calc.main(["--quiet", "--apply-amend"]))
-
-        self.assertEqual(
-            "staged.txt", git(self.repository, "diff", "--cached", "--name-only")
-        )
-        self.assertEqual("tracked.txt", git(self.repository, "diff", "--name-only"))
-        self.assertEqual(
-            "",
-            git(
-                self.repository,
-                "show",
-                "--format=",
-                "--name-only",
-                "HEAD",
-                "--",
-                "staged.txt",
-            ),
-        )
-
-    def test_apply_amend_rejects_head_already_on_upstream(self) -> None:
-        before = (self.repository / "VERSION").read_text(encoding="utf-8")
-
-        with self.assertRaisesRegex(RuntimeError, "requires an unpushed HEAD"):
-            version_calc.main(["--quiet", "--apply-amend"])
-
-        self.assertEqual(
-            before, (self.repository / "VERSION").read_text(encoding="utf-8")
-        )
-        self.assertEqual("", git(self.repository, "status", "--porcelain=v1"))
-
-    def test_apply_and_apply_amend_are_mutually_exclusive(self) -> None:
+    def test_apply_amend_is_not_a_supported_option(self) -> None:
         with self.assertRaises(SystemExit):
-            version_calc.parse_args(["--apply", "--apply-amend"])
+            version_calc.parse_args(["--apply-amend"])
 
 
 if __name__ == "__main__":

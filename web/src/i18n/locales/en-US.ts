@@ -486,6 +486,7 @@ export default {
       },
       actions: {
         edit: 'Edit',
+        content: 'Content',
         addRow: 'Add row',
         cancel: 'Discard changes',
         save: 'Save component',
@@ -744,6 +745,7 @@ export default {
     openWorkload: 'Application',
     actions: {
       deploy: 'Deploy',
+      logs: 'Traefik logs',
       stop: 'Stop',
     },
     deploy: {
@@ -765,6 +767,9 @@ export default {
     },
     sections: {
       config: 'Gateway configuration',
+      controlPlane: 'Basics, initial carrier, and control plane',
+      ingressDefaults: 'Component ingress defaults',
+      routeCertificates: 'Custom Route certificates',
     },
     fields: {
       name: 'Name',
@@ -775,9 +780,21 @@ export default {
       tlsMode: 'TLS mode',
       imagePullPolicy: 'Image pull policy',
       image: 'Image',
+      traefikComponentName: 'Traefik component name',
+      restReadyTimeout: 'REST readiness timeout',
+      acmeProfile: 'ACME profile',
+      acmeEmail: 'ACME email',
+      dnsApiToken: 'Cloudflare DNS API token',
+    },
+    acmeProfiles: {
+      none: 'ACME disabled',
+      http: 'HTTP-01',
+      dns: 'DNS-01',
+      httpDns: 'HTTP-01 + DNS-01',
     },
     exposures: {
       title: 'Network exposures',
+      selectGateway: 'Select Gateway',
       searchPlaceholder: 'Search app/component/protocol',
       empty: 'No active local/public exposures.',
       app: 'Application',
@@ -790,19 +807,11 @@ export default {
     },
     dialog: {
       create: 'Create Gateway',
-      edit: 'Edit Gateway',
+      editControlPlane: 'Edit control plane',
+      editIngressDefaults: 'Edit ingress defaults',
+      editRouteCertificates: 'Edit Route certificates',
       delete: 'Confirm Delete',
       deleteConfirm: 'Delete gateway "{name}"? This action cannot be undone.',
-    },
-    hints: {
-      code: 'Start with a lowercase letter; letters, digits, and hyphens only. Immutable after create.',
-      restApiUrl: 'Base URL for Traefik providers.rest PUT/GET, e.g. http://traefik:8080',
-      baseDomain: 'App host is derived as {app_code}.{base_domain}',
-      defaultEntrypoint:
-        'Traefik HTTP entryPoints name (web / websecure); drives Docker label entrypoints=',
-      image: 'Compiled into the managed Version component, e.g. traefik:3.6',
-      compileOnSave:
-        'Saving updates the unpublished Version (component traefik: ports, docker.sock, traefik.yml). Use Versions & deploy for advanced mounts and deploy.',
     },
     placeholders: {
       code: 'e.g. traefik',
@@ -812,6 +821,8 @@ export default {
       defaultEntrypoint: 'web',
       tlsMode: 'none',
       image: 'traefik:3.6',
+      traefikComponentName: 'e.g. traefik',
+      acmeEmail: 'e.g. ops@example.com',
     },
     validation: {
       codeInvalid:
@@ -820,6 +831,18 @@ export default {
       restApiUrlRequired: 'Rest API URL is required',
       baseDomainRequired: 'Base domain is required',
       imageRequired: 'Image is required',
+      pullPolicyInvalid: 'Select a valid image pull policy',
+      componentNameInvalid:
+        'Component name must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens',
+      restApiUrlInvalid: 'Enter a valid HTTP or HTTPS URL',
+      baseDomainInvalid: 'Enter a valid base domain',
+      restReadyTimeoutInvalid: 'Enter seconds from 1 through 300',
+      defaultEntrypointInvalid: 'Select web or websecure',
+      tlsModeInvalid: 'Select a valid TLS mode',
+      tlsModeRequiresHttpProfile: 'Component TLS with letsencrypt requires an HTTP-01 ACME profile',
+      acmeProfileInvalid: 'Select a valid ACME profile',
+      acmeEmailInvalid: 'Enter a valid ACME email when a certificate challenge is enabled',
+      dnsApiTokenRequired: 'DNS-01 requires a Cloudflare DNS API token',
       requiredFields: 'Name, Rest API URL, base domain and image are required',
     },
     toast: {
@@ -840,6 +863,7 @@ export default {
       saveSuccess: 'Saved successfully',
       saveCompiled: 'Saved and compiled into unpublished Version',
       saveFailed: 'Failed to save',
+      createFailed: 'Failed to create Gateway',
       deleteSuccess: 'Deleted successfully',
       deleteFailed: 'Failed to delete',
     },
@@ -903,7 +927,7 @@ export default {
     toolbar: 'Route toolbar',
     sections: {
       traefikRouters: 'Traefik Routers',
-      customConfiguration: 'Custom Route Configuration',
+      customConfiguration: 'Custom Routes',
     },
     searchPlaceholder: 'Search name/domain/target URL',
     addRoute: 'Add Route',
@@ -911,6 +935,9 @@ export default {
     syncSuccess: 'Synced successfully',
     syncFailed: 'Failed to sync',
     detailTitle: 'Route Details',
+    actions: {
+      logs: 'Traefik logs',
+    },
     basicInfo: 'Basic Info',
     httpsConfig: 'HTTPS Config',
     currentStatus: 'Current Status',
@@ -918,6 +945,11 @@ export default {
     httpsDisabled: 'HTTPS disabled',
     enableLetsencrypt: "Let's Encrypt automatic certificate",
     letsencryptHint: 'Automatically request and renew a free SSL certificate',
+    chooseLetsencryptChallenge: "Choose Let's Encrypt challenge",
+    letsencryptChallengeHint:
+      'Available challenges come from the current Gateway configuration. Confirm issuance in Traefik runtime logs.',
+    letsencryptHttpChallenge: 'HTTP-01',
+    letsencryptDnsChallenge: 'DNS-01',
     enableMkcert: 'mkcert local certificate',
     mkcertHint: 'Generate a self-signed certificate for local development',
     uploadCustomCert: 'Upload custom certificate',
@@ -970,6 +1002,8 @@ export default {
       serviceIdRequired: 'Service ID is required',
       componentNameRequired: 'Component name is required',
       endpointNameRequired: 'Endpoint is required',
+      letsencryptChallengeUnavailable:
+        "No Let's Encrypt challenge is available from the current Gateway",
     },
     toast: {
       selectProjectRequired: 'Please select a project first',

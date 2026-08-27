@@ -6,6 +6,7 @@ import (
 
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 func TestGatewayForDeploymentDoesNotRequireGatewayForInternalTCPEndpoint(t *testing.T) {
@@ -21,6 +22,50 @@ func TestGatewayForDeploymentDoesNotRequireGatewayForInternalTCPEndpoint(t *test
 	if hasGatewayEndpoint(plan) {
 		t.Fatal("internal TCP endpoint must not be treated as a Gateway endpoint")
 	}
+}
+
+func TestGatewayForDeploymentFindsCarrierEvenWhenNetworkWasRequestedDisabled(t *testing.T) {
+	disabled := false
+	app := model.Application{Id: "gateway-app", Kind: status.ApplicationKindStandard}
+	plan := model.EffectiveServicePlan{
+		Application: app, JoinTraefikNetwork: &disabled,
+	}
+	service := Service{config: gatewayConfigStore{cfg: model.GatewayConfig{ApplicationId: app.Id}}}
+
+	config, err := service.GatewayForDeployment(context.Background(), app, plan)
+	if err != nil {
+		t.Fatalf("GatewayForDeployment() error = %v", err)
+	}
+	if config == nil || config.ApplicationId != app.Id {
+		t.Fatalf("GatewayForDeployment() = %#v, want GatewayConfig for %q", config, app.Id)
+	}
+}
+
+type gatewayConfigStore struct {
+	cfg model.GatewayConfig
+}
+
+func (s gatewayConfigStore) GatewayConfig(_ context.Context, applicationID string) (model.GatewayConfig, error) {
+	if applicationID != s.cfg.ApplicationId {
+		return model.GatewayConfig{}, repository.ErrNotFound
+	}
+	return s.cfg, nil
+}
+
+func (s gatewayConfigStore) ResolveActiveGatewayConfig(context.Context) (model.GatewayConfig, error) {
+	return s.cfg, nil
+}
+
+func (gatewayConfigStore) ListGatewayApplications(context.Context, string) ([]model.Application, error) {
+	return nil, nil
+}
+
+func (gatewayConfigStore) UpsertGatewayConfig(context.Context, model.GatewayConfig) error {
+	return nil
+}
+
+func (gatewayConfigStore) ReplaceGatewayVersionBindings(context.Context, string, []model.GatewayVersionBinding) error {
+	return nil
 }
 
 func TestGatewayForDeploymentSkipsGatewayConfigWhenTraefikNetworkDisabled(t *testing.T) {

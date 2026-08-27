@@ -2,6 +2,7 @@ package deploymentsvc
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
@@ -9,22 +10,30 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func TestRenderGatewayComposeUsesStableTraefikNetworkKey(t *testing.T) {
-	listenPort := 8080
+func TestRenderGatewayComposeUsesDeclaredVersionTopology(t *testing.T) {
+	baseVersionID := "version-1"
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
+		LogicalSvcDir:         t.TempDir(),
+		ComposeMountSourceDir: t.TempDir(),
 		Plan: model.EffectiveServicePlan{
-			Application: model.Application{Code: "traefik", Kind: status.ApplicationKindGateway},
-			Version:     model.Version{Id: "version-1"},
+			Application: model.Application{Id: "gateway-1", Code: "traefik", Kind: status.ApplicationKindStandard},
+			Version:     model.Version{Id: baseVersionID},
 			Service:     model.Service{InstanceKey: "default"},
 			Gateway: &model.GatewayConfig{
-				BaseDomain:        "example.test",
-				DefaultEntrypoint: "web",
+				ApplicationId: "gateway-1", TraefikComponentName: "traefik",
+				BaseDomain: "example.test", DefaultEntrypoint: "web",
+				VersionBindings: []model.GatewayVersionBinding{{Profile: "base", VersionId: baseVersionID}},
 			},
 			Components: []model.EffectiveServiceComponent{{
-				Name: "traefik", Image: "traefik:3.6",
-				Endpoints: []model.VersionComponentEndpoint{{
-					Protocol: "tcp", ContainerPort: 8080, Mode: "host", ListenPort: &listenPort,
+				Name: "traefik", Image: "traefik:3.6", PullPolicy: "missing",
+				Mounts: []model.VersionComponentMount{{
+					SourceType: "controlled_file", Source: "./traefik.yml", Target: gatewayMountTargetTraefikYml, Content: "entryPoints: {}\n", Mode: "0644",
 				}},
+				Endpoints: []model.VersionComponentEndpoint{
+					{Protocol: "tcp", ContainerPort: 80, Mode: "host", BindAddress: stringPointer("0.0.0.0"), ListenPort: intPointer(80)},
+					{Protocol: "tcp", ContainerPort: 443, Mode: "host", BindAddress: stringPointer("0.0.0.0"), ListenPort: intPointer(443)},
+					{Protocol: "http", ContainerPort: 8080, Mode: "local", BindAddress: stringPointer("127.0.0.1"), ListenPort: intPointer(8080)},
+				},
 			}},
 		},
 	})
@@ -47,16 +56,19 @@ func TestRenderGatewayComposeUsesStableTraefikNetworkKey(t *testing.T) {
 	}
 
 	network, ok := document.Networks[consumerPlatformNetworkKey]
-	if !ok {
-		t.Fatalf("gateway networks = %#v, want key %q", document.Networks, consumerPlatformNetworkKey)
+	if !ok || network.Name != defaultGatewayNetworkName || network.Driver != "bridge" {
+		t.Fatalf("gateway network = %#v", document.Networks)
 	}
-	if network.Name != defaultGatewayNetworkName || network.Driver != "bridge" {
-		t.Fatalf("gateway network = %#v", network)
-	}
-	if got := document.Services["traefik"].Networks; len(got) != 1 || got[0] != consumerPlatformNetworkKey {
+	if got := document.Services["traefik"].Networks; len(got) != 1 || got[0] != gatewayNetworkKey {
 		t.Fatalf("gateway service networks = %#v", got)
 	}
-	if got := document.Services["traefik"].Ports; len(got) != 1 || got[0] != "0.0.0.0:8080:8080" {
-		t.Fatalf("gateway api port mapping = %#v", got)
+	ports := strings.Join(document.Services["traefik"].Ports, "\n")
+	for _, want := range []string{"0.0.0.0:80:80", "0.0.0.0:443:443", "127.0.0.1:8080:8080"} {
+		if !strings.Contains(ports, want) {
+			t.Fatalf("gateway ports = %#v, missing %q", document.Services["traefik"].Ports, want)
+		}
 	}
 }
+
+func stringPointer(value string) *string { return &value }
+func intPointer(value int) *int          { return &value }

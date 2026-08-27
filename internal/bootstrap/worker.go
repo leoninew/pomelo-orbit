@@ -32,7 +32,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	localSource := repositorysource.New(dockerPathResolver)
 	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.Workspace.Deployment, dockerPathResolver)
 	transactionRunner := databasetx.NewTransactionRunner(database)
-	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, cfg, dockerPathResolver, transactionRunner)
+	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, cfg, dockerPathResolver, transactionRunner)
 	routeManager := traefik.NewRouteManager(cfg)
 	routeService := routesvc.New(
 		stores.project,
@@ -40,7 +40,6 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		stores.service,
 		stores.route,
 		stores.gateway,
-		cfg,
 		routeManager,
 		traefik.MkcertGenerator{},
 		routeManager,
@@ -72,7 +71,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		gatewayService,
 		logger,
 		deploymentWorkspace,
-		deploymentrunner.ShellRunner{},
+		deploymentrunner.NewShellRunner(),
 		logStore,
 		cfg.Worker.PollInterval,
 		routeService,

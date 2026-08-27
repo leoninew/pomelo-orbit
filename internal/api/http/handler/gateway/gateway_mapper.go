@@ -11,22 +11,32 @@ func gatewayCreateInput(req *gatewayv1.GatewayCreateReq) gatewaydto.GatewayCreat
 		ProjectId:                  req.ProjectId,
 		Code:                       req.Code,
 		Name:                       req.Name,
+		TraefikComponentName:       req.TraefikComponentName,
 		RestApiUrl:                 req.RestApiUrl,
+		RestReadyTimeoutSeconds:    intPointer(req.RestReadyTimeoutSeconds),
 		BaseDomain:                 req.BaseDomain,
 		InitialComponentImage:      req.InitialComponentImage,
 		InitialComponentPullPolicy: req.InitialComponentPullPolicy,
 		DefaultEntrypoint:          req.DefaultEntrypoint,
 		TLSMode:                    req.TlsMode,
+		AcmeProfile:                req.AcmeProfile,
+		AcmeEmail:                  req.AcmeEmail,
+		DNSApiToken:                req.DnsApiToken,
 	}
 }
 
 func gatewayUpdateInput(req *gatewayv1.GatewayUpdateReq) gatewaydto.GatewayUpdateInput {
 	return gatewaydto.GatewayUpdateInput{
-		Name:              req.Name,
-		RestApiUrl:        req.RestApiUrl,
-		BaseDomain:        req.BaseDomain,
-		DefaultEntrypoint: req.DefaultEntrypoint,
-		TLSMode:           req.TlsMode,
+		Name:                    req.Name,
+		TraefikComponentName:    req.TraefikComponentName,
+		RestApiUrl:              req.RestApiUrl,
+		RestReadyTimeoutSeconds: intPointer(req.RestReadyTimeoutSeconds),
+		BaseDomain:              req.BaseDomain,
+		DefaultEntrypoint:       req.DefaultEntrypoint,
+		TLSMode:                 req.TlsMode,
+		AcmeProfile:             req.AcmeProfile,
+		AcmeEmail:               req.AcmeEmail,
+		DNSApiToken:             req.DnsApiToken,
 	}
 }
 
@@ -60,6 +70,10 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 			ClientHint:      item.ClientHint,
 		})
 	}
+	bindings := make([]*gatewayv1.GatewayVersionBinding, 0, len(cfg.VersionBindings))
+	for _, binding := range cfg.VersionBindings {
+		bindings = append(bindings, &gatewayv1.GatewayVersionBinding{Profile: binding.Profile, VersionId: binding.VersionId})
+	}
 	defaultServiceID, defaultServiceInstanceKey, defaultServiceCode, defaultServiceStatus := "", "", "", ""
 	if view.DefaultService != nil {
 		defaultServiceID = view.DefaultService.Id
@@ -85,5 +99,19 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 		DefaultServiceInstanceKey: defaultServiceInstanceKey,
 		DefaultServiceCode:        defaultServiceCode,
 		DefaultServiceStatus:      defaultServiceStatus,
+		TraefikComponentName:      cfg.TraefikComponentName,
+		RestReadyTimeoutSeconds:   int32(cfg.RestReadyTimeoutSeconds),
+		AcmeEmail:                 cfg.AcmeEmail,
+		AcmeProfile:               cfg.AcmeProfile,
+		DnsApiToken:               cfg.DNSApiToken,
+		VersionBindings:           bindings,
 	}
+}
+
+func intPointer(value *int32) *int {
+	if value == nil {
+		return nil
+	}
+	result := int(*value)
+	return &result
 }

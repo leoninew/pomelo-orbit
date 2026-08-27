@@ -8,7 +8,7 @@ describe('domain routes', () => {
     ['/pipeline-run/42', 'PipelineRunDetail'],
     ['/pipeline-run/artifact/42', 'ArtifactDetail'],
     ['/application/42', 'ApplicationDetail'],
-    ['/gateway/edit/42', 'GatewayEdit'],
+    ['/gateway/42', 'GatewayDetail'],
     ['/routes', 'Route'],
   ])('resolves %s to %s', (path, name) => {
     expect(router.resolve(path).name).toBe(name);

@@ -12,4 +12,5 @@ type GatewayStore interface {
 	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
 	ListGatewayApplications(ctx context.Context, projectId string) ([]model.Application, error)
 	UpsertGatewayConfig(ctx context.Context, cfg model.GatewayConfig) error
+	ReplaceGatewayVersionBindings(ctx context.Context, applicationId string, bindings []model.GatewayVersionBinding) error
 }

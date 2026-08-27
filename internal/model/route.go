@@ -22,6 +22,11 @@ type Route struct {
 	CertPEM               *string   `db:"cert_pem"`
 	CertKey               *string   `db:"cert_key"`
 	CertType              string    `db:"cert_type"`
+	AcmeChallenge         string    `db:"acme_challenge"`
+	GatewayApplicationId  string    `db:"-"`
+	HTTP01Available       bool      `db:"-"`
+	DNS01Available        bool      `db:"-"`
+	ACMEChallengeHint     string    `db:"-"`
 	CreatedAt             time.Time `db:"created_at"`
 	UpdatedAt             time.Time `db:"updated_at"`
 }

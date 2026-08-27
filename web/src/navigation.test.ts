@@ -27,7 +27,7 @@ describe('domain navigation declarations', () => {
     ['/pipeline/example', 'pipeline'],
     ['/pipeline-run/artifact', 'pipeline'],
     ['/application/example', 'deployment'],
-    ['/gateway/edit/example', 'deployment'],
+    ['/gateway/example', 'deployment'],
     ['/route/traefik', 'deployment'],
   ] as const)('classifies %s as the %s scope', (path, scope) => {
     expect(getNavigationScope(path)).toBe(scope);

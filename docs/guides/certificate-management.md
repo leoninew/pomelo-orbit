@@ -1,146 +1,18 @@
-# 证书机制说明
-最后修改时间: 2026-07-24 10:47:37
+# 证书管理
+最后修改时间: 2026-08-26 23:01:37
 
-Doc role: living guide。与代码冲突时以代码为准。
+Doc role: living guide
 
-## 架构
+自定义 HTTP Route 支持 `manual`、`mkcert` 与 `letsencrypt`。TCP Route 不属于证书管理范围。
 
-Traefik 负责 TLS 终止，证书以 PEM 格式通过 pomelo-orbit UI 上传后：
+手工 PEM 和 mkcert 文件由 Route 同步到 Gateway runtime service 的 `gateway/certs` 目录；Gateway Version 的 Traefik component 已声明该目录挂载到 `/etc/traefik/certs`。
 
-1. 后端解析合并 PEM，拆分为 `{route_name}.pem`（证书）和 `{route_name}-key.pem`（私钥）分别落盘
-2. 文件存储路径：`workspace.deployment/traefik/data/certs/`
-3. 证书内容同时入库（`route.cert_pem` / `route.cert_key`），支持同步时从数据库重建文件
-4. Route 同步的 `providers.rest` 完整快照在顶层 `tls.certificates` 引用 `/etc/traefik/certs/{route_name}.pem` 和 `/etc/traefik/certs/{route_name}-key.pem`
-5. Gateway 初始 Version 将这个目录的 Docker daemon 可见宿主路径挂载到 `/etc/traefik/certs`；同一目录还挂载到 `/letsencrypt` 以持久化 ACME 数据
+Let's Encrypt resolver 由 Gateway profile 对应的普通 Version 固化：
 
-## 上传格式
+- `http`: `letsencrypt`，HTTP-01。
+- `dns`: `letsencrypt-dns`，Cloudflare DNS-01。
+- `http-dns`: 两个 resolver。
 
-上传的 PEM 文件需同时包含证书和私钥两个块（顺序不限），后端自动拆分：
+选择 profile 后填写 ACME email；DNS profile 还填写 Cloudflare token。DNS profile 在创建 TXT 后固定等待 60 秒，再执行传播检查并通知 ACME，避免跨网络 DNS 未收敛时过早验证。保存并部署 Gateway 后，worker 只补写 resolver email，并把 token 作为 `CF_DNS_API_TOKEN` 传给 Traefik。token 需要实际 zone 的 `Zone:Read` 与 `DNS:Edit` 权限。
 
-```
------BEGIN CERTIFICATE-----
-...
------END CERTIFICATE-----
------BEGIN PRIVATE KEY-----
-...
------END PRIVATE KEY-----
-```
-
-## cert.py 工具
-
-`scripts/cert.py` 提供两个子命令，使用 uv 运行：
-
-```bash
-# 查看帮助
-uv run --project scripts python scripts/cert.py -h
-
-# 生成证书（目录通常取 workspace.deployment/traefik/data/certs）
-uv run --project scripts python scripts/cert.py new -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
-
-# 检查证书信任链（CA → 叶证书 → TLS 握手，模拟浏览器）
-uv run --project scripts python scripts/cert.py check -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
-```
-
-### new
-
-生成 mkcert 证书并输出合并 PEM 到调用方显式提供的 `--cert-dir` 目录。Gateway 的受管目录为 `workspace.deployment/traefik/data/certs/`：
-- `{domain}.pem` — cert + key 合并，用于上传到 pomelo-orbit UI
-
-### check
-
-依次验证以下链路，任一失败均会标红：
-
-1. mkcert 根 CA 文件是否存在
-2. mkcert CA 是否已导入 Windows 系统信任库（Root store）
-3. `--cert-dir/{domain}.pem` 文件内容（有效期、SAN、签发者）
-4. 叶证书是否由当前 mkcert CA 签名（离线验证）
-5. 实际 TLS 握手，使用系统信任库验证（与浏览器行为一致）
-
-第 5 步通过 = 浏览器不报红。
-
-## 前置条件
-
-1. 安装 mkcert：https://github.com/FiloSottile/mkcert
-2. 安装本地 CA（只需执行一次）：
-   ```bash
-   mkcert -install
-   # Windows 额外执行（将 CA 导入系统信任库）：
-   certutil -addstore "Root" "$LOCALAPPDATA/mkcert/rootCA.pem"
-   ```
-3. 安装 uv：https://docs.astral.sh/uv/
-4. 配置 hosts 文件：
-   ```
-   127.0.0.1  pomelo-orbit.localhost
-   ```
-
-## 使用流程
-
-### 1. 生成证书
-
-```bash
-# 生成证书（证书目录由部署工作区配置派生）
-uv run --project scripts python scripts/cert.py new -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
-```
-
-### 2. 上传证书到 Pomelo Orbit
-
-1. 打开 Pomelo Orbit UI
-2. 进入路由管理页面
-3. 选择要启用 HTTPS 的路由
-4. 点击"上传证书"按钮
-5. 选择 `--cert-dir/{domain}.pem` 文件
-6. 上传完成后，路由自动启用 HTTPS
-
-### 3. 验证证书
-
-```bash
-# 检查证书是否正确安装
-uv run --project scripts python scripts/cert.py check -n app.localhost --cert-dir /srv/orbit/cd/traefik/data/certs
-```
-
-### 4. 访问应用
-
-在浏览器中访问 `https://app.localhost`，应该看到绿色锁图标，表示证书有效。
-
-## 证书管理最佳实践
-
-### 证书存储
-
-- **数据库**: 证书内容存储在 `route.cert_pem` 和 `route.cert_key` 字段
-- **文件系统**: 证书文件存储在 `workspace.deployment/traefik/data/certs/` 目录
-- **同步**: 执行"同步路由"操作时，会从数据库重建证书文件
-
-### 证书更新
-
-当证书过期或需要更新时：
-
-1. 生成新证书（使用相同域名）
-2. 在 UI 中重新上传证书
-3. 系统自动替换旧证书文件
-4. Route 同步通过 REST provider 更新 Traefik 的 TLS 配置
-
-### 证书删除
-
-删除路由时，相关证书文件会自动删除。
-
-### 多域名证书
-
-如果需要为多个域名使用同一证书（通配符证书）：
-
-1. 生成通配符证书：`mkcert "*.localhost"`
-2. 为每个路由分别上传证书
-3. 每个路由独立管理证书
-
-## Docker Label 路由
-
-平台 Route 的手工证书由 `providers.rest` 管理。Docker Label 路由是 Traefik Docker provider 的用户配置，不是 Orbit 可编辑的 Route 资源；不要通过禁用的占位 Route、`tls.yml` 或直接复制 PEM 的方式为它注册证书。
-
-## Chrome 缓存清理
-
-若 Chrome 显示不受信任但隐身模式正常：
-
-1. `chrome://net-internals/#hsts` → Delete domain security policies 输入域名删除
-2. `chrome://net-internals/#dns` → Clear host cache
-3. 重新访问域名
-
-要是都不能解决，可能要清除浏览器数据了。
+Route 保存不表示证书已签发。排查时确认 Gateway 已重新部署、Route profile capability、Cloudflare TXT propagation 和 Traefik ACME 日志。

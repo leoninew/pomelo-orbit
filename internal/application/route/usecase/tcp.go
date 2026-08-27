@@ -32,6 +32,7 @@ func (s Service) routeFromCreateInput(ctx context.Context, projectID string, inp
 		EndpointContainerPort: input.EndpointContainerPort,
 		Enabled:               input.Enabled,
 		CertType:              certTypeManual,
+		AcmeChallenge:         acmeChallengeHTTP,
 	}
 	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
 		route.PathPrefix = "/"

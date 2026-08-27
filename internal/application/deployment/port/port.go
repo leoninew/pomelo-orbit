@@ -82,3 +82,11 @@ type Workspace interface {
 type GatewayRoutePublisher interface {
 	PublishSnapshot(ctx context.Context) error
 }
+
+// GatewayDeploymentCoordinator resolves and selects Gateway state required by
+// a deployment. The deployment domain owns this outbound port because both
+// operations are mandatory before a Gateway deployment is snapshotted.
+type GatewayDeploymentCoordinator interface {
+	GatewayForDeployment(ctx context.Context, app model.Application, plan model.EffectiveServicePlan) (*model.GatewayConfig, error)
+	SelectGatewayDeploymentVersion(ctx context.Context, app model.Application, service model.Service) (model.Service, error)
+}

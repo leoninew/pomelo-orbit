@@ -105,14 +105,25 @@ type DeploymentDialogueMessage struct {
 	CreatedAt      time.Time `db:"created_at"`
 }
 
+type GatewayAcmeProfileVersion struct {
+	ApplicationID string `db:"application_id"`
+	Profile       string `db:"profile"`
+	VersionID     string `db:"version_id"`
+}
+
 type GatewayConfig struct {
-	ApplicationID     string    `db:"application_id"`
-	RestApiUrl        string    `db:"rest_api_url"`
-	BaseDomain        string    `db:"base_domain"`
-	DefaultEntrypoint string    `db:"default_entrypoint"`
-	TlsMode           string    `db:"tls_mode"`
-	CreatedAt         time.Time `db:"created_at"`
-	UpdatedAt         time.Time `db:"updated_at"`
+	ApplicationID           string    `db:"application_id"`
+	TraefikComponentName    string    `db:"traefik_component_name"`
+	RestApiUrl              string    `db:"rest_api_url"`
+	RestReadyTimeoutSeconds int64     `db:"rest_ready_timeout_seconds"`
+	BaseDomain              string    `db:"base_domain"`
+	DefaultEntrypoint       string    `db:"default_entrypoint"`
+	TlsMode                 string    `db:"tls_mode"`
+	AcmeProfile             string    `db:"acme_profile"`
+	AcmeEmail               string    `db:"acme_email"`
+	DnsApiToken             string    `db:"dns_api_token"`
+	CreatedAt               time.Time `db:"created_at"`
+	UpdatedAt               time.Time `db:"updated_at"`
 }
 
 type LoginHistory struct {
@@ -319,6 +330,7 @@ type Route struct {
 	CertPem               sql.NullString `db:"cert_pem"`
 	CertKey               sql.NullString `db:"cert_key"`
 	CertType              string         `db:"cert_type"`
+	AcmeChallenge         string         `db:"acme_challenge"`
 	CreatedAt             time.Time      `db:"created_at"`
 	UpdatedAt             time.Time      `db:"updated_at"`
 	ProjectID             sql.NullString `db:"project_id"`

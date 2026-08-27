@@ -477,6 +477,7 @@ export default {
       },
       actions: {
         edit: '编辑',
+        content: '内容',
         addRow: '添加一行',
         cancel: '取消修改',
         save: '保存组件',
@@ -725,6 +726,7 @@ export default {
     openWorkload: '应用',
     actions: {
       deploy: '部署',
+      logs: 'Traefik 日志',
       stop: '停止',
     },
     deploy: {
@@ -746,6 +748,9 @@ export default {
     },
     sections: {
       config: '网关配置',
+      controlPlane: '基本、初始承载与控制面',
+      ingressDefaults: '组件入口默认策略',
+      routeCertificates: '自定义 Route 证书',
     },
     fields: {
       name: '名称',
@@ -756,9 +761,21 @@ export default {
       tlsMode: 'TLS 模式',
       imagePullPolicy: '镜像拉取策略',
       image: '镜像',
+      traefikComponentName: 'Traefik 组件名',
+      restReadyTimeout: 'REST 就绪超时',
+      acmeProfile: 'ACME 配置',
+      acmeEmail: 'ACME 邮箱',
+      dnsApiToken: 'Cloudflare DNS API Token',
+    },
+    acmeProfiles: {
+      none: '未启用 ACME',
+      http: 'HTTP-01',
+      dns: 'DNS-01',
+      httpDns: 'HTTP-01 + DNS-01',
     },
     exposures: {
       title: '网络出口',
+      selectGateway: '选择网关',
       searchPlaceholder: '搜索应用/组件/协议',
       empty: '当前无活跃 local/public 出口。',
       app: '应用',
@@ -771,19 +788,11 @@ export default {
     },
     dialog: {
       create: '创建网关',
-      edit: '编辑网关',
+      editControlPlane: '编辑控制面',
+      editIngressDefaults: '编辑入口默认策略',
+      editRouteCertificates: '编辑 Route 证书',
       delete: '确认删除',
       deleteConfirm: '确定删除网关「{name}」吗？此操作不可恢复。',
-    },
-    hints: {
-      code: '以小写字母开头，可含数字和连字符；创建后不可修改',
-      restApiUrl: '平台 PUT/GET Traefik providers.rest 的基址，例如 http://traefik:8080',
-      baseDomain: '应用 Host 推导为 {app_code}.{base_domain}',
-      defaultEntrypoint:
-        'Traefik HTTP entryPoints 名（web / websecure），决定 HTTP Docker labels 的 entrypoints=',
-      image: '保存时编译进托管 Version 组件，例如 traefik:3.6',
-      compileOnSave:
-        '保存会更新未发布 Version（组件 traefik：端口、docker.sock、traefik.yml）。高级挂载与部署请进入「版本与部署」。',
     },
     placeholders: {
       code: '例如: traefik',
@@ -793,6 +802,8 @@ export default {
       defaultEntrypoint: 'web',
       tlsMode: 'none',
       image: 'traefik:3.6',
+      traefikComponentName: '例如: traefik',
+      acmeEmail: '例如: ops@example.com',
     },
     validation: {
       codeInvalid: '必须以小写字母开头，只能包含小写字母、数字和连字符',
@@ -800,6 +811,18 @@ export default {
       restApiUrlRequired: '请输入 Rest API URL',
       baseDomainRequired: '请输入基础域名',
       imageRequired: '请输入镜像',
+      pullPolicyInvalid: '请选择有效的镜像拉取策略',
+      componentNameInvalid: '组件名必须以小写字母开头，只能包含小写字母、数字和连字符',
+      restApiUrlInvalid: '请输入有效的 HTTP 或 HTTPS URL',
+      baseDomainInvalid: '请输入有效的基础域名',
+      restReadyTimeoutInvalid: '请输入 1 到 300 之间的秒数',
+      defaultEntrypointInvalid: '请选择 web 或 websecure',
+      tlsModeInvalid: '请选择有效的 TLS 模式',
+      tlsModeRequiresHttpProfile:
+        'Component TLS 使用 letsencrypt 时必须选择包含 HTTP-01 的 ACME 配置',
+      acmeProfileInvalid: '请选择有效的 ACME 配置',
+      acmeEmailInvalid: '启用证书验证时请输入有效的 ACME 邮箱',
+      dnsApiTokenRequired: 'DNS-01 配置需要 Cloudflare DNS API Token',
       requiredFields: '请填写名称、Rest API URL、基础域名与镜像',
     },
     toast: {
@@ -820,6 +843,7 @@ export default {
       saveSuccess: '保存成功',
       saveCompiled: '已保存并编译到未发布 Version',
       saveFailed: '保存失败',
+      createFailed: '创建网关失败',
       deleteSuccess: '删除成功',
       deleteFailed: '删除失败',
     },
@@ -882,8 +906,8 @@ export default {
   route: {
     toolbar: '路由工具栏',
     sections: {
-      traefikRouters: 'Traefik Routers',
-      customConfiguration: '自定义路由配置',
+      traefikRouters: 'Traefik 路由',
+      customConfiguration: '自定义路由',
     },
     searchPlaceholder: '搜索名称/域名/目标地址',
     addRoute: '添加路由',
@@ -891,6 +915,9 @@ export default {
     syncSuccess: '同步成功',
     syncFailed: '同步失败',
     detailTitle: '路由详情',
+    actions: {
+      logs: 'Traefik 日志',
+    },
     basicInfo: '基本信息',
     httpsConfig: 'HTTPS 配置',
     currentStatus: '当前状态',
@@ -898,6 +925,11 @@ export default {
     httpsDisabled: 'HTTPS 未启用',
     enableLetsencrypt: "Let's Encrypt 自动证书",
     letsencryptHint: '自动申请并续期免费 SSL 证书',
+    chooseLetsencryptChallenge: "选择 Let's Encrypt 验证方式",
+    letsencryptChallengeHint:
+      '可用方式由当前 Gateway 配置决定；证书签发状态请在 Traefik 运行日志中确认。',
+    letsencryptHttpChallenge: 'HTTP-01',
+    letsencryptDnsChallenge: 'DNS-01',
     enableMkcert: 'mkcert 本地证书',
     mkcertHint: '生成本地开发用的自签名证书',
     uploadCustomCert: '上传自定义证书',
@@ -948,6 +980,7 @@ export default {
       serviceIdRequired: '请输入服务 ID',
       componentNameRequired: '请输入组件名称',
       endpointNameRequired: '请选择端点',
+      letsencryptChallengeUnavailable: "当前 Gateway 没有可用的 Let's Encrypt 验证方式",
     },
     toast: {
       selectProjectRequired: '请先选择项目',

@@ -27,7 +27,7 @@ func (s *gatewayDeleteApplicationStore) ListApplications(_ context.Context, _ *s
 	return repository.Page[model.Application]{}, nil
 }
 
-func (s *gatewayDeleteApplicationStore) DeleteGatewayApplication(_ context.Context, id string) error {
+func (s *gatewayDeleteApplicationStore) DeleteApplication(_ context.Context, id string) error {
 	s.deleteId = id
 	return s.deleteErr
 }
@@ -58,6 +58,7 @@ func TestDeleteGatewayDeletesStoppedServiceResources(t *testing.T) {
 		gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: "gateway-1"}},
 		gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", InstanceKey: "default", Status: status.ServiceStatusStopped}}},
 		nil,
+		nil,
 		testGatewayConfig(),
 		nil,
 		nil,
@@ -80,6 +81,7 @@ func TestDeleteGatewayRejectsNonStoppedService(t *testing.T) {
 				application,
 				gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: "gateway-1"}},
 				gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", InstanceKey: "default", Code: "gateway-default", Status: serviceStatus}}},
+				nil,
 				nil,
 				testGatewayConfig(),
 				nil,

@@ -143,12 +143,6 @@ const router = createRouter({
       meta: { title: '网关', menuKey: 'gateways' },
     },
     {
-      path: '/gateway/edit/:id',
-      name: 'GatewayEdit',
-      component: () => import('@/views/gateway/GatewayEdit.vue'),
-      meta: { title: '编辑网关', menuKey: 'gateways' },
-    },
-    {
       path: '/gateway/:id',
       name: 'GatewayDetail',
       component: () => import('@/views/gateway/GatewayDetail.vue'),

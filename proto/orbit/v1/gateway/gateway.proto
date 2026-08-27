@@ -2,6 +2,11 @@ syntax = "proto3";
 
 package orbit.v1.gateway;
 
+message GatewayVersionBinding {
+  string profile = 1;
+  string version_id = 2;
+}
+
 message GatewayCreateReq {
   string project_id = 1;
   string code = 2;
@@ -13,16 +18,25 @@ message GatewayCreateReq {
   // Traefik entryPoints name: web|websecure (default web when empty on create)
   optional string default_entrypoint = 8;
   // none|letsencrypt|tls (default none when empty on create)
-  optional string tls_mode = 10;
+  optional string tls_mode = 9;
+  optional string traefik_component_name = 10;
+  optional int32 rest_ready_timeout_seconds = 11;
+  optional string acme_profile = 12;
+  optional string acme_email = 13;
+  optional string dns_api_token = 14;
 }
 
 message GatewayUpdateReq {
   optional string name = 1;
   optional string rest_api_url = 2;
   optional string base_domain = 3;
-  reserved 4, 5;
-  optional string default_entrypoint = 6;
-  optional string tls_mode = 8;
+  optional string default_entrypoint = 4;
+  optional string tls_mode = 5;
+  optional string traefik_component_name = 6;
+  optional int32 rest_ready_timeout_seconds = 7;
+  optional string acme_profile = 8;
+  optional string acme_email = 9;
+  optional string dns_api_token = 10;
 }
 
 // Read-only active exit / cluster DNS row (not a CRUD resource).
@@ -47,18 +61,22 @@ message GatewayResp {
   string kind = 5;
   string rest_api_url = 6;
   string base_domain = 7;
-  reserved 8;
-  string created_at = 9;
-  string updated_at = 10;
-  string config_updated_at = 11;
-  reserved 12;
-  string default_entrypoint = 13;
-  string tls_mode = 15;
-  repeated GatewayExposureItem exposures = 16;
-  string default_service_id = 17;
-  string default_service_instance_key = 18;
-  string default_service_code = 19;
-  string default_service_status = 20;
+  string created_at = 8;
+  string updated_at = 9;
+  string config_updated_at = 10;
+  string default_entrypoint = 11;
+  string tls_mode = 12;
+  repeated GatewayExposureItem exposures = 13;
+  string default_service_id = 14;
+  string default_service_instance_key = 15;
+  string default_service_code = 16;
+  string default_service_status = 17;
+  string traefik_component_name = 18;
+  int32 rest_ready_timeout_seconds = 19;
+  string acme_profile = 20;
+  string acme_email = 21;
+  string dns_api_token = 22;
+  repeated GatewayVersionBinding version_bindings = 23;
 }
 
 message GatewayPaginatedResp {

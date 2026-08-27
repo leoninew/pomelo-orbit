@@ -14,9 +14,14 @@ import (
 // maxErrorOutputBytes keeps error_message diagnostic without storing full command dumps.
 const maxErrorOutputBytes = 4 * 1024
 
-type ShellRunner struct{}
+type ShellRunner struct {
+}
 
-func (ShellRunner) Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error {
+func NewShellRunner() ShellRunner {
+	return ShellRunner{}
+}
+
+func (r ShellRunner) Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error {
 	commandText := commandDisplayText(name, args...)
 	if _, err := fmt.Fprintf(log, "Running: %s\n", commandText); err != nil {
 		return err

@@ -58,6 +58,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
+	svc.VersionId = version.Id
 	components, err := s.executionStore.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
@@ -83,12 +84,17 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	gateway, err := s.gatewayForDeployment(ctx, app, plan)
-	if err != nil {
+	plan.Gateway = cloneGatewayConfig(opts.GatewayConfig)
+	setPlanJoinTraefikNetwork(&plan, opts.JoinTraefikNetwork)
+	if requiresGatewayConfig(plan) && plan.Gateway == nil {
+		err := fmt.Errorf("deployment %s is missing Gateway configuration snapshot", deployment.Id)
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	plan.Gateway = gateway
+	if err := enrichGatewayPlan(&plan); err != nil {
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
 	if err := verifyDeploymentPlanHash(deployment, plan); err != nil {
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -105,7 +111,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
-	if err := s.publishGatewayRoutes(ctx, app); err != nil {
+	if err := s.publishGatewayRoutes(ctx, plan); err != nil {
 		_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusFaulted)
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -138,11 +144,17 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	version, err := s.executionStore.Version(ctx, svc.VersionId)
+	if deployment.VersionId == nil || *deployment.VersionId == "" {
+		err := fmt.Errorf("deployment %s missing version_id", deployment.Id)
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	version, err := s.executionStore.Version(ctx, *deployment.VersionId)
 	if err != nil {
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
+	svc.VersionId = version.Id
 	components, err := s.executionStore.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
@@ -164,12 +176,17 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		return err
 	}
 	setPlanJoinTraefikNetwork(&plan, restartOpts.JoinTraefikNetwork)
-	gateway, err := s.gatewayForDeployment(ctx, app, plan)
-	if err != nil {
+	plan.Gateway = cloneGatewayConfig(restartOpts.GatewayConfig)
+	setPlanJoinTraefikNetwork(&plan, restartOpts.JoinTraefikNetwork)
+	if requiresGatewayConfig(plan) && plan.Gateway == nil {
+		err := fmt.Errorf("deployment %s is missing Gateway configuration snapshot", deployment.Id)
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	plan.Gateway = gateway
+	if err := enrichGatewayPlan(&plan); err != nil {
+		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
 	if err := verifyDeploymentPlanHash(deployment, plan); err != nil {
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -186,7 +203,7 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
-	if err := s.publishGatewayRoutes(ctx, app); err != nil {
+	if err := s.publishGatewayRoutes(ctx, plan); err != nil {
 		_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusFaulted)
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -194,8 +211,8 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 	return s.completeDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
 
-func (s Service) publishGatewayRoutes(ctx context.Context, app model.Application) error {
-	if app.Kind != status.ApplicationKindGateway {
+func (s Service) publishGatewayRoutes(ctx context.Context, plan model.EffectiveServicePlan) error {
+	if !isGatewayCarrier(plan) {
 		return nil
 	}
 	if s.gatewayRoutePublisher == nil {

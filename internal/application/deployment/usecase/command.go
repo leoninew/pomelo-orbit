@@ -10,7 +10,6 @@ import (
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
-	gatewayport "github.com/leoninew/pomelo-orbit/internal/application/gateway/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
@@ -31,7 +30,7 @@ func NewCommandService(
 	workspace deploymentport.Workspace,
 	queryRunner deploymentport.CommandQueryRunner,
 	logStore deploymentport.LogReader,
-	gatewayCoordinator gatewayport.DeploymentCoordinator,
+	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
 ) Service {
 	store := &stores{
 		project: project, application: application,
@@ -52,7 +51,7 @@ func NewExecutionService(
 	application repository.ApplicationStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
-	gatewayCoordinator gatewayport.DeploymentCoordinator,
+	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
 	logger *slog.Logger,
 	workspace deploymentport.Workspace,
 	runner deploymentport.CommandRunner,
@@ -80,6 +79,10 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 		return deploymentdto.DeployServiceResult{}, err
 	}
 	if err := s.ensureNoActiveDeployment(ctx, service.Id); err != nil {
+		return deploymentdto.DeployServiceResult{}, err
+	}
+	service, err = s.selectGatewayVersionForDeployment(ctx, app, service)
+	if err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
 	version, err := s.commandStore.Version(ctx, service.VersionId)
@@ -116,13 +119,20 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 		return deploymentdto.DeployServiceResult{}, err
 	}
 	plan.Gateway = gateway
+	setPlanJoinTraefikNetwork(&plan, input.JoinTraefikNetwork)
+	if err := enrichGatewayPlan(&plan); err != nil {
+		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
+	}
 	planHash, err := EffectiveServicePlanHash(plan)
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to hash deployment plan", err)
 	}
 	deployment := newDeployment(app, "deploy")
 	deployment.VersionId = &version.Id
-	opts := deploymentdto.DeployOptionsJSON{ForceRecreate: input.ForceRecreate, InstanceKey: service.InstanceKey, JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan)}
+	opts := deploymentdto.DeployOptionsJSON{
+		ForceRecreate: input.ForceRecreate, InstanceKey: service.InstanceKey,
+		JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan), GatewayConfig: cloneGatewayConfig(gateway),
+	}
 	if err := setDeploymentOptions(&deployment, opts); err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
@@ -228,6 +238,10 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 		return "", err
 	}
 	plan.Gateway = gateway
+	setPlanJoinTraefikNetwork(&plan, nil)
+	if err := enrichGatewayPlan(&plan); err != nil {
+		return "", apperror.New(apperror.KindValidation, err.Error())
+	}
 	planHash, err := EffectiveServicePlanHash(plan)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to hash deployment plan", err)
@@ -235,7 +249,9 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	deployment := newDeployment(app, "restart")
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &version.Id
-	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey, JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan)}); err != nil {
+	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{
+		InstanceKey: service.InstanceKey, JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan), GatewayConfig: cloneGatewayConfig(gateway),
+	}); err != nil {
 		return "", err
 	}
 	deployment.EffectivePlanHash = &planHash

@@ -200,7 +200,7 @@ func (h Handler) EnableRouteLetsEncrypt(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	route, err := h.service.EnableRouteLetsEncrypt(c.Request.Context(), current.Id, c.Param("route_id"))
+	route, err := h.service.EnableRouteLetsEncrypt(c.Request.Context(), current.Id, c.Param("route_id"), req.Challenge)
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return

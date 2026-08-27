@@ -12,7 +12,6 @@ import (
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
-	gatewayport "github.com/leoninew/pomelo-orbit/internal/application/gateway/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -35,7 +34,7 @@ type Service struct {
 	pollInterval          time.Duration
 	runner                deploymentport.CommandRunner
 	commandStore          deploymentport.CommandStore
-	gatewayCoordinator    gatewayport.DeploymentCoordinator
+	gatewayCoordinator    deploymentport.GatewayDeploymentCoordinator
 	gatewayRoutePublisher deploymentport.GatewayRoutePublisher
 }
 
@@ -47,7 +46,7 @@ func New(
 	workspace deploymentport.Workspace,
 	logStore deploymentport.LogReader,
 	queryRunner deploymentport.CommandQueryRunner,
-	gatewayCoordinator gatewayport.DeploymentCoordinator,
+	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
 ) Service {
 	store := &stores{
 		project: project, application: application,

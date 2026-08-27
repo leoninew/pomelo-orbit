@@ -38,16 +38,13 @@ func (r Repository) GatewayConfig(ctx context.Context, applicationId string) (mo
 	if err != nil {
 		return model.GatewayConfig{}, fmt.Errorf("load gateway config %s: %w", applicationId, sqlcommon.TranslateError(err))
 	}
-	return gatewayFrom(row), nil
+	return r.gatewayFrom(ctx, row)
 }
 
 func (r Repository) ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error) {
-	row, err := r.q(ctx).ResolveActiveGatewayConfig(ctx, gatewaysqlc.ResolveActiveGatewayConfigParams{
-		Kind:   status.ApplicationKindGateway,
-		Status: status.ServiceStatusRunning,
-	})
+	row, err := r.q(ctx).ResolveActiveGatewayConfig(ctx, status.ServiceStatusRunning)
 	if err == nil {
-		return gatewayFrom(row), nil
+		return r.gatewayFrom(ctx, row)
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		translated := sqlcommon.TranslateError(err)
@@ -76,7 +73,7 @@ func (r Repository) ListGatewayApplications(ctx context.Context, projectId strin
 	var rows []gatewaysqlc.ListGatewayApplicationsRow
 	var err error
 	if trimmed == "" {
-		all, listErr := r.q(ctx).ListAllGatewayApplications(ctx, status.ApplicationKindGateway)
+		all, listErr := r.q(ctx).ListAllGatewayApplications(ctx)
 		if listErr != nil {
 			return nil, fmt.Errorf("list all gateway applications: %w", listErr)
 		}
@@ -94,10 +91,7 @@ func (r Repository) ListGatewayApplications(ctx context.Context, projectId strin
 		}
 		return items, nil
 	}
-	rows, err = r.q(ctx).ListGatewayApplications(ctx, gatewaysqlc.ListGatewayApplicationsParams{
-		ProjectID: sql.NullString{String: trimmed, Valid: true},
-		Kind:      status.ApplicationKindGateway,
-	})
+	rows, err = r.q(ctx).ListGatewayApplications(ctx, sql.NullString{String: trimmed, Valid: true})
 	if err != nil {
 		return nil, fmt.Errorf("list gateway applications: %w", err)
 	}
@@ -132,39 +126,88 @@ func (r Repository) UpsertGatewayConfig(ctx context.Context, cfg model.GatewayCo
 			updatedAt = now
 		}
 		if err := q.InsertGatewayConfig(ctx, gatewaysqlc.InsertGatewayConfigParams{
-			ApplicationID:     cfg.ApplicationId,
-			RestApiUrl:        cfg.RestApiUrl,
-			BaseDomain:        cfg.BaseDomain,
-			DefaultEntrypoint: cfg.DefaultEntrypoint,
-			TlsMode:           cfg.TLSMode,
-			CreatedAt:         createdAt,
-			UpdatedAt:         updatedAt,
+			ApplicationID:           cfg.ApplicationId,
+			TraefikComponentName:    cfg.TraefikComponentName,
+			RestApiUrl:              cfg.RestApiUrl,
+			RestReadyTimeoutSeconds: int64(cfg.RestReadyTimeoutSeconds),
+			BaseDomain:              cfg.BaseDomain,
+			DefaultEntrypoint:       cfg.DefaultEntrypoint,
+			TlsMode:                 cfg.TLSMode,
+			AcmeProfile:             cfg.AcmeProfile,
+			AcmeEmail:               cfg.AcmeEmail,
+			DnsApiToken:             cfg.DNSApiToken,
+			CreatedAt:               createdAt,
+			UpdatedAt:               updatedAt,
 		}); err != nil {
 			return fmt.Errorf("insert gateway config %s: %w", cfg.ApplicationId, err)
 		}
-		return nil
-	}
-	if err := q.UpdateGatewayConfig(ctx, gatewaysqlc.UpdateGatewayConfigParams{
-		RestApiUrl:        cfg.RestApiUrl,
-		BaseDomain:        cfg.BaseDomain,
-		DefaultEntrypoint: cfg.DefaultEntrypoint,
-		TlsMode:           cfg.TLSMode,
-		UpdatedAt:         now,
-		ApplicationID:     cfg.ApplicationId,
+	} else if err := q.UpdateGatewayConfig(ctx, gatewaysqlc.UpdateGatewayConfigParams{
+		TraefikComponentName:    cfg.TraefikComponentName,
+		RestApiUrl:              cfg.RestApiUrl,
+		RestReadyTimeoutSeconds: int64(cfg.RestReadyTimeoutSeconds),
+		BaseDomain:              cfg.BaseDomain,
+		DefaultEntrypoint:       cfg.DefaultEntrypoint,
+		TlsMode:                 cfg.TLSMode,
+		AcmeProfile:             cfg.AcmeProfile,
+		AcmeEmail:               cfg.AcmeEmail,
+		DnsApiToken:             cfg.DNSApiToken,
+		UpdatedAt:               now,
+		ApplicationID:           cfg.ApplicationId,
 	}); err != nil {
 		return fmt.Errorf("update gateway config %s: %w", cfg.ApplicationId, err)
 	}
 	return nil
 }
 
-func gatewayFrom(row gatewaysqlc.GatewayConfig) model.GatewayConfig {
-	return model.GatewayConfig{
-		ApplicationId:     row.ApplicationID,
-		RestApiUrl:        row.RestApiUrl,
-		BaseDomain:        row.BaseDomain,
-		DefaultEntrypoint: row.DefaultEntrypoint,
-		TLSMode:           row.TlsMode,
-		CreatedAt:         row.CreatedAt,
-		UpdatedAt:         row.UpdatedAt,
+func (r Repository) ReplaceGatewayVersionBindings(ctx context.Context, applicationId string, bindings []model.GatewayVersionBinding) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		if err := q.DeleteGatewayVersionBindings(txCtx, applicationId); err != nil {
+			return fmt.Errorf("delete gateway Version bindings %s: %w", applicationId, err)
+		}
+		for _, binding := range bindings {
+			if err := q.InsertGatewayVersionBinding(txCtx, gatewaysqlc.InsertGatewayVersionBindingParams{
+				ApplicationID: applicationId,
+				Profile:       binding.Profile,
+				VersionID:     binding.VersionId,
+			}); err != nil {
+				return fmt.Errorf("insert gateway Version binding %s/%s: %w", applicationId, binding.Profile, err)
+			}
+		}
+		return nil
+	})
+}
+
+func (r Repository) gatewayFrom(ctx context.Context, row gatewaysqlc.GatewayConfig) (model.GatewayConfig, error) {
+	bindings, err := r.q(ctx).GatewayVersionBindingsByApplication(ctx, row.ApplicationID)
+	if err != nil {
+		return model.GatewayConfig{}, fmt.Errorf("load gateway Version bindings %s: %w", row.ApplicationID, sqlcommon.TranslateError(err))
 	}
+	result := model.GatewayConfig{
+		ApplicationId:           row.ApplicationID,
+		TraefikComponentName:    row.TraefikComponentName,
+		RestApiUrl:              row.RestApiUrl,
+		RestReadyTimeoutSeconds: int(row.RestReadyTimeoutSeconds),
+		BaseDomain:              row.BaseDomain,
+		DefaultEntrypoint:       row.DefaultEntrypoint,
+		TLSMode:                 row.TlsMode,
+		AcmeProfile:             row.AcmeProfile,
+		AcmeEmail:               row.AcmeEmail,
+		DNSApiToken:             row.DnsApiToken,
+		VersionBindings:         make([]model.GatewayVersionBinding, 0, len(bindings)),
+		CreatedAt:               row.CreatedAt,
+		UpdatedAt:               row.UpdatedAt,
+	}
+	for _, binding := range bindings {
+		result.VersionBindings = append(result.VersionBindings, model.GatewayVersionBinding{
+			Profile: binding.Profile, VersionId: binding.VersionID,
+		})
+	}
+	serviceCode, err := r.q(ctx).GatewayRuntimeServiceCode(ctx, row.ApplicationID)
+	if err == nil {
+		result.RuntimeServiceCode = serviceCode
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return model.GatewayConfig{}, fmt.Errorf("load gateway service code %s: %w", row.ApplicationID, sqlcommon.TranslateError(err))
+	}
+	return result, nil
 }

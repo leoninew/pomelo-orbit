@@ -15,6 +15,13 @@ func (s Service) gatewayForDeployment(ctx context.Context, app model.Application
 	return s.gatewayCoordinator.GatewayForDeployment(ctx, app, plan)
 }
 
+func (s Service) selectGatewayVersionForDeployment(ctx context.Context, app model.Application, service model.Service) (model.Service, error) {
+	if s.gatewayCoordinator == nil {
+		return model.Service{}, apperror.New(apperror.KindInternal, "gateway deployment coordinator is not configured")
+	}
+	return s.gatewayCoordinator.SelectGatewayDeploymentVersion(ctx, app, service)
+}
+
 func isActiveServiceStatus(statusValue string) bool {
 	switch statusValue {
 	case status.ServiceStatusRunning:

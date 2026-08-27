@@ -319,78 +319,17 @@
       </template>
     </AppDrawer>
 
-    <AppDrawer
-      :open="logsDrawerOpen"
-      :title="logsDrawerTitle"
-      width-class="w-[min(960px,100vw)]"
-      body-class="min-h-0 flex-1 overflow-hidden p-0"
-      @update:open="handleLogsDrawerOpenChange"
-    >
-      <div class="flex h-full min-h-[420px] flex-col gap-3 p-6">
-        <div class="flex shrink-0 justify-end">
-          <button
-            class="app-button inline-flex h-9 items-center gap-2 px-3"
-            :class="isLogsAutoRefreshing ? 'text-primary' : ''"
-            @click="toggleLogsAutoRefresh"
-          >
-            <Loader2 class="size-4" :class="isLogsAutoRefreshing ? 'animate-spin' : ''" />
-            {{
-              isLogsAutoRefreshing
-                ? t('service.logs.autoRefreshing')
-                : t('service.logs.refreshPaused')
-            }}
-          </button>
-        </div>
-        <div class="min-h-0 flex-1">
-          <div
-            v-if="!logText"
-            class="flex h-full min-h-[320px] items-center justify-center text-muted-foreground"
-          >
-            <div class="text-center">
-              <AppSpinner v-if="logStatus === 'loading' || logStatus === 'streaming'" />
-              <p v-if="logStatus === 'loading'" class="mt-2 text-sm">
-                {{ t('service.logs.loading') }}
-              </p>
-              <p v-else-if="logStatus === 'streaming'" class="mt-2 text-sm">
-                {{ t('service.logs.streaming') }}
-              </p>
-              <p v-else-if="logStatus === 'empty'" class="text-sm">{{ t('service.logs.empty') }}</p>
-              <div v-else-if="logStatus === 'error'">
-                <p class="text-sm text-destructive">
-                  {{ logError || t('service.logs.loadFailed') }}
-                </p>
-                <button type="button" class="app-link mt-2 text-sm" @click="retryLogs">
-                  {{ t('service.logs.retry') }}
-                </button>
-              </div>
-            </div>
-          </div>
-          <MonacoEditor
-            v-else
-            :model-value="logText"
-            language="plaintext"
-            height="100%"
-            :readonly="true"
-            @mount="handleLogEditorMount"
-          />
-        </div>
-      </div>
-      <template #footer>
-        <button class="app-button" @click="handleLogsDrawerOpenChange(false)">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" :disabled="logStatus === 'loading'" @click="retryLogs">
-          <RefreshCw class="size-4" :class="{ 'animate-spin': logStatus === 'loading' }" />
-          {{ t('common.refresh') }}
-        </button>
-      </template>
-    </AppDrawer>
+    <RuntimeContainerLogsDrawer
+      v-if="runtimeLogTarget"
+      v-model:open="logsDrawerOpen"
+      :target="runtimeLogTarget"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, FileCode2, Loader2, RefreshCw, Rocket, Square, Trash2 } from '@lucide/vue';
-  import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+  import { ArrowLeft, FileCode2, Rocket, Square, Trash2 } from '@lucide/vue';
+  import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
@@ -401,8 +340,8 @@
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import RuntimeContainerLogsDrawer from '@/components/RuntimeContainerLogsDrawer.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import {
     cloneEnvironmentVariableRows,
@@ -415,10 +354,10 @@
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { appStatusTone } from '@/utils/status';
-  import { delayAsync, formatTime } from '@/utils/time';
+  import { formatTime } from '@/utils/time';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import type { editor } from 'monaco-editor';
+  import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
   import ServiceComponentsCard from './components/ServiceComponentsCard.vue';
   import ServiceEnvironmentCard from './components/ServiceEnvironmentCard.vue';
 
@@ -464,27 +403,7 @@
   const savedEnvironmentRows = ref<EnvironmentVariableListRow[]>([]);
   const environmentKeyPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
   const logsDrawerOpen = ref(false);
-  const logsComponent = ref('');
-  const logText = ref('');
-  const logStatus = ref<LogStatus>('loading');
-  const logError = ref('');
-  const isLogsAutoRefreshing = ref(false);
-  let logsRefreshAbort: AbortController | null = null;
-  let logsRefreshGeneration = 0;
-  let logEditor: editor.IStandaloneCodeEditor | null = null;
-
-  type LogStatus = 'loading' | 'streaming' | 'done' | 'empty' | 'error';
-
-  const logsDrawerTitle = computed(() => {
-    if (!service.value) return t('service.logs.title');
-    const app = service.value.application_name;
-    const instance = service.value.instance_key || 'default';
-    return t('service.logs.titleWithComponent', {
-      app,
-      instance,
-      component: logsComponent.value,
-    });
-  });
+  const runtimeLogTarget = ref<RuntimeContainerLogTarget>();
   const deployTargetLabel = computed(() => {
     const current = service.value;
     if (!current) return '';
@@ -657,123 +576,20 @@
     }
   }
 
-  function isCurrentLogsRefresh(generation: number, signal: AbortSignal) {
-    return !signal.aborted && generation === logsRefreshGeneration;
-  }
-
-  async function fetchServiceLogs(generation?: number, signal?: AbortSignal) {
+  function openLogsDrawer(component: string) {
     const current = service.value;
     if (!current) return;
-    if (generation === undefined) {
-      logStatus.value = logText.value ? 'streaming' : 'loading';
-      logError.value = '';
-    }
-    try {
-      const data = await applicationApi.getLogs(
-        current.application_id,
-        {
-          tail: 200,
-          service_id: current.id,
-          component: logsComponent.value,
-        },
-        { signal }
-      );
-      if (generation !== undefined && signal && !isCurrentLogsRefresh(generation, signal)) return;
-      logText.value = data.logs || '';
-      logStatus.value = logText.value
-        ? isLogsAutoRefreshing.value
-          ? 'streaming'
-          : 'done'
-        : 'empty';
-      revealLastLine(logEditor);
-    } catch (error) {
-      if (signal?.aborted) {
-        return;
-      }
-      if (generation === undefined || !signal || isCurrentLogsRefresh(generation, signal)) {
-        logStatus.value = 'error';
-        logError.value = error instanceof Error ? error.message : t('service.logs.loadFailed');
-      }
-    }
-  }
-
-  function revealLastLine(ed: editor.IStandaloneCodeEditor | null) {
-    if (!ed) return;
-    const n = ed.getModel()?.getLineCount() ?? 0;
-    if (n > 0) ed.revealLine(n);
-  }
-
-  function handleLogEditorMount(ed: editor.IStandaloneCodeEditor) {
-    logEditor = ed;
-    revealLastLine(ed);
-  }
-
-  function stopLogsAutoRefresh() {
-    logsRefreshGeneration++;
-    logsRefreshAbort?.abort();
-    logsRefreshAbort = null;
-    isLogsAutoRefreshing.value = false;
-  }
-
-  function startLogsAutoRefresh() {
-    if (isLogsAutoRefreshing.value || !service.value) return;
-    const generation = ++logsRefreshGeneration;
-    const controller = new AbortController();
-    const { signal } = controller;
-    logsRefreshAbort = controller;
-    isLogsAutoRefreshing.value = true;
-    void (async () => {
-      while (isCurrentLogsRefresh(generation, signal)) {
-        await delayAsync(2000, signal);
-        if (!isCurrentLogsRefresh(generation, signal)) break;
-        await fetchServiceLogs(generation, signal);
-      }
-      if (isCurrentLogsRefresh(generation, signal)) {
-        logsRefreshAbort = null;
-        isLogsAutoRefreshing.value = false;
-        if (logText.value && logStatus.value === 'streaming') logStatus.value = 'done';
-      }
-    })();
-  }
-
-  function toggleLogsAutoRefresh() {
-    if (isLogsAutoRefreshing.value) {
-      stopLogsAutoRefresh();
-      if (logText.value && logStatus.value === 'streaming') logStatus.value = 'done';
-      return;
-    }
-    startLogsAutoRefresh();
-  }
-
-  function openLogsDrawer(component: string) {
-    stopLogsAutoRefresh();
-    logsComponent.value = component.trim();
-    logText.value = '';
-    logError.value = '';
-    logStatus.value = 'loading';
-    logEditor = null;
+    runtimeLogTarget.value = {
+      applicationId: current.application_id,
+      serviceId: current.id,
+      component: component.trim(),
+      title: t('service.logs.titleWithComponent', {
+        app: current.application_name,
+        instance: current.instance_key,
+        component: component.trim(),
+      }),
+    };
     logsDrawerOpen.value = true;
-    // Start refresh first so the initial load does not clear an in-flight loop.
-    startLogsAutoRefresh();
-    void fetchServiceLogs(logsRefreshGeneration, logsRefreshAbort?.signal);
-  }
-
-  function handleLogsDrawerOpenChange(open: boolean) {
-    logsDrawerOpen.value = open;
-    if (open) return;
-    stopLogsAutoRefresh();
-    logsComponent.value = '';
-    logText.value = '';
-    logError.value = '';
-    logStatus.value = 'loading';
-    logEditor = null;
-  }
-
-  function retryLogs() {
-    void fetchServiceLogs(
-      isLogsAutoRefreshing.value ? logsRefreshGeneration : undefined,
-      isLogsAutoRefreshing.value ? (logsRefreshAbort?.signal ?? undefined) : undefined
-    );
   }
 
   async function openDeployDialog() {
@@ -906,5 +722,4 @@
   }
 
   onMounted(load);
-  onUnmounted(stopLogsAutoRefresh);
 </script>

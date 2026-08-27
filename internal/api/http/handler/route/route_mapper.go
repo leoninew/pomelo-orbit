@@ -64,6 +64,11 @@ func routeResponse(route model.Route) routev1.RouteResp {
 		Enabled:               route.Enabled,
 		HttpsEnabled:          route.HTTPSEnabled,
 		CertType:              route.CertType,
+		AcmeChallenge:         route.AcmeChallenge,
+		GatewayApplicationId:  route.GatewayApplicationId,
+		Http01Available:       route.HTTP01Available,
+		Dns01Available:        route.DNS01Available,
+		AcmeChallengeHint:     route.ACMEChallengeHint,
 		CreatedAt:             transportresponse.FormatTime(route.CreatedAt),
 		UpdatedAt:             transportresponse.FormatTime(route.UpdatedAt),
 	}

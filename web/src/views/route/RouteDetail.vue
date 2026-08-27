@@ -23,6 +23,15 @@
           {{ t('route.status.disabled') }}
         </button>
         <button
+          v-if="gatewayRuntimeLogTarget"
+          class="app-button h-9 px-3"
+          :disabled="operating"
+          @click="openGatewayLogs"
+        >
+          <ScrollText class="size-4" />
+          {{ t('route.actions.logs') }}
+        </button>
+        <button
           v-if="routeData"
           class="app-button-danger h-9 px-3"
           :disabled="operating"
@@ -155,7 +164,7 @@
               v-if="canUseLetsencrypt"
               class="app-action-item flex min-h-28 items-start gap-3 p-4"
               :disabled="operating"
-              @click="handleEnableLetsencrypt"
+              @click="openLetsEncryptDialog"
             >
               <span
                 class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
@@ -402,6 +411,49 @@
         />
       </template>
     </AppDialog>
+
+    <AppDialog
+      v-model:open="isLetsEncryptDialogOpen"
+      :title="t('route.chooseLetsencryptChallenge')"
+      width-class="w-[min(460px,calc(100vw-32px))]"
+    >
+      <div class="space-y-4">
+        <div>
+          <p class="app-field-hint mb-2">{{ t('route.letsencryptChallengeHint') }}</p>
+          <SelectControl
+            id="route-letsencrypt-challenge"
+            :model-value="letsEncryptChallenge"
+            :options="letsEncryptChallengeOptions"
+            :disabled="!hasAvailableLetsEncryptChallenge"
+            :invalid="Boolean(letsEncryptChallengeError)"
+            @update:model-value="updateLetsEncryptChallenge"
+          />
+          <p v-if="letsEncryptChallengeError" class="app-field-error mt-1" role="alert">
+            {{ letsEncryptChallengeError }}
+          </p>
+        </div>
+        <p v-if="routeData?.acme_challenge_hint" class="text-sm text-muted-foreground">
+          {{ routeData.acme_challenge_hint }}
+        </p>
+        <p v-if="letsEncryptSubmitError" class="app-field-error" role="alert">
+          {{ letsEncryptSubmitError }}
+        </p>
+      </div>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-disabled="!hasAvailableLetsEncryptChallenge"
+          @cancel="closeLetsEncryptDialog"
+          @confirm="handleEnableLetsencrypt"
+        />
+      </template>
+    </AppDialog>
+
+    <RuntimeContainerLogsDrawer
+      v-if="gatewayRuntimeLogTarget"
+      v-model:open="isGatewayLogsDrawerOpen"
+      :target="gatewayRuntimeLogTarget"
+    />
   </div>
 </template>
 
@@ -413,6 +465,7 @@
     Key,
     Play,
     PowerOff,
+    ScrollText,
     ShieldCheck,
     ShieldOff,
     Trash2,
@@ -423,13 +476,16 @@
   import { SwitchRoot, SwitchThumb } from 'reka-ui';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
+  import { gatewayApi } from '@/api/gateway/gateway';
   import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
+  import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
   import { routeApi } from '@/api/route/route';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
+  import RuntimeContainerLogsDrawer from '@/components/RuntimeContainerLogsDrawer.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
   import SelectControl from '@/components/SelectControl.vue';
@@ -438,6 +494,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
+  import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
 
   const currentRoute = useRoute();
   const router = useRouter();
@@ -458,7 +515,13 @@
   const routeData = ref<RouteResp>();
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
+  const isLetsEncryptDialogOpen = ref(false);
+  const letsEncryptChallenge = ref<'http' | 'dns'>('http');
+  const letsEncryptChallengeError = ref('');
+  const letsEncryptSubmitError = ref('');
   const certFileInput = ref<HTMLInputElement>();
+  const gatewayForLogs = ref<GatewayResp>();
+  const isGatewayLogsDrawerOpen = ref(false);
 
   const form = reactive({
     name: '',
@@ -499,6 +562,42 @@
       !/^\d+\.\d+\.\d+\.\d+$/.test(d)
     );
   });
+  const letsEncryptChallengeOptions = computed(() => [
+    {
+      value: 'http',
+      label: t('route.letsencryptHttpChallenge'),
+      disabled: !routeData.value?.http01_available,
+    },
+    {
+      value: 'dns',
+      label: t('route.letsencryptDnsChallenge'),
+      disabled: !routeData.value?.dns01_available,
+    },
+  ]);
+  const hasAvailableLetsEncryptChallenge = computed(() =>
+    Boolean(routeData.value?.http01_available || routeData.value?.dns01_available)
+  );
+  const gatewayRuntimeLogTarget = computed<RuntimeContainerLogTarget | undefined>(() => {
+    const current = gatewayForLogs.value;
+    if (
+      !current ||
+      !current.default_service_id ||
+      !current.default_service_instance_key ||
+      !current.traefik_component_name
+    ) {
+      return undefined;
+    }
+    return {
+      applicationId: current.id,
+      serviceId: current.default_service_id,
+      component: current.traefik_component_name,
+      title: t('service.logs.titleWithComponent', {
+        app: current.name,
+        instance: current.default_service_instance_key,
+        component: current.traefik_component_name,
+      }),
+    };
+  });
 
   async function fetchRoute() {
     try {
@@ -519,10 +618,21 @@
           endpoint_container_port: data.endpoint_container_port,
           enabled: data.enabled,
         });
+        await loadGatewayForLogs(data.gateway_application_id);
       });
     } catch {
       toast.error(t('route.toast.loadDetailFailed'));
       router.push('/routes');
+    }
+  }
+
+  async function loadGatewayForLogs(applicationId: string) {
+    gatewayForLogs.value = undefined;
+    if (!applicationId) return;
+    try {
+      gatewayForLogs.value = await gatewayApi.get(applicationId);
+    } catch {
+      // Route detail remains available when its Gateway runtime is unavailable.
     }
   }
 
@@ -634,6 +744,7 @@
         toast.success(t('route.toast.updateSuccess'));
         isEditDialogOpen.value = false;
         await fetchRoute();
+        await openGatewayLogs();
       });
     } catch (error) {
       editSubmitError.value =
@@ -709,6 +820,7 @@
         await routeApi.enable(routeId, {});
         toast.success(t('route.toast.enableSuccess'));
         await fetchRoute();
+        await openGatewayLogs();
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.enableFailed'));
@@ -721,6 +833,7 @@
         await routeApi.disable(routeId, {});
         toast.success(t('route.toast.disableSuccess'));
         await fetchRoute();
+        await openGatewayLogs();
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.disableFailed'));
@@ -736,7 +849,8 @@
       await executeOp(async () => {
         await routeApi.uploadCert(routeId, file);
         toast.success(t('route.toast.certUploadSuccess'));
-        fetchRoute();
+        await fetchRoute();
+        await openGatewayLogs();
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.certUploadFailed'));
@@ -754,22 +868,65 @@
       await executeOp(async () => {
         await routeApi.disableHttps(routeId);
         toast.success(t('route.toast.httpsDisabled'));
-        fetchRoute();
+        await fetchRoute();
+        await openGatewayLogs();
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.operationFailed'));
     }
   }
 
+  function openLetsEncryptDialog() {
+    const current = routeData.value;
+    if (current?.acme_challenge === 'dns' && current.dns01_available) {
+      letsEncryptChallenge.value = 'dns';
+    } else if (current?.http01_available) {
+      letsEncryptChallenge.value = 'http';
+    } else if (current?.dns01_available) {
+      letsEncryptChallenge.value = 'dns';
+    }
+    letsEncryptChallengeError.value = '';
+    letsEncryptSubmitError.value = '';
+    isLetsEncryptDialogOpen.value = true;
+  }
+
+  function closeLetsEncryptDialog() {
+    letsEncryptChallengeError.value = '';
+    letsEncryptSubmitError.value = '';
+    isLetsEncryptDialogOpen.value = false;
+  }
+
+  function updateLetsEncryptChallenge(value: string | number) {
+    if (value !== 'http' && value !== 'dns') {
+      return;
+    }
+    letsEncryptChallenge.value = value;
+    letsEncryptChallengeError.value = '';
+    letsEncryptSubmitError.value = '';
+  }
+
+  async function openGatewayLogs() {
+    if (!gatewayRuntimeLogTarget.value) return;
+    isGatewayLogsDrawerOpen.value = true;
+  }
+
   async function handleEnableLetsencrypt() {
+    letsEncryptSubmitError.value = '';
+    if (!hasAvailableLetsEncryptChallenge.value) {
+      letsEncryptChallengeError.value = t('route.validation.letsencryptChallengeUnavailable');
+      return;
+    }
     try {
       await executeOp(async () => {
-        await routeApi.enableLetsencrypt(routeId, {});
+        await routeApi.enableLetsencrypt(routeId, { challenge: letsEncryptChallenge.value });
         toast.success(t('route.toast.letsencryptEnabled'));
-        fetchRoute();
+        closeLetsEncryptDialog();
+        await fetchRoute();
+        await openGatewayLogs();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.operationFailed'));
+      letsEncryptSubmitError.value =
+        error instanceof Error ? error.message : t('route.toast.operationFailed');
     }
   }
 
@@ -778,7 +935,8 @@
       await executeOp(async () => {
         await routeApi.enableMkcert(routeId, {});
         toast.success(t('route.toast.mkcertEnabled'));
-        fetchRoute();
+        await fetchRoute();
+        await openGatewayLogs();
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.operationFailed'));

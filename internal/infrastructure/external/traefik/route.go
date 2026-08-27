@@ -47,14 +47,16 @@ func NewRouteManager(cfg config.Config) *RouteManager {
 
 // WaitUntilReady polls the Traefik API until it responds successfully.
 // compose up -d returning zero does not mean the REST control plane is listening yet.
-// RestReadyTimeout comes from process config (validated at load).
-func (m *RouteManager) WaitUntilReady(ctx context.Context, restApiUrl string) error {
+func (m *RouteManager) WaitUntilReady(ctx context.Context, restApiUrl string, timeout time.Duration) error {
 	base := strings.TrimRight(strings.TrimSpace(restApiUrl), "/")
 	if base == "" {
 		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
 	}
 	url := base + "/api/overview"
-	deadline := time.Now().Add(m.cfg.Traefik.RestReadyTimeout)
+	if timeout <= 0 {
+		return apperror.New(apperror.KindValidation, "gateway rest_ready_timeout_seconds is required")
+	}
+	deadline := time.Now().Add(timeout)
 	var lastErr error
 	for {
 		if err := ctx.Err(); err != nil {
@@ -95,14 +97,13 @@ func (m *RouteManager) WaitUntilReady(ctx context.Context, restApiUrl string) er
 }
 
 // ApplySnapshot replaces the entire @rest HTTP and TCP configuration with the given enabled routes.
-// restAPIURL is the Gateway config control-plane base URL (required).
-func (m *RouteManager) ApplySnapshot(ctx context.Context, restApiUrl string, routes []model.Route) error {
+func (m *RouteManager) ApplySnapshot(ctx context.Context, gateway model.GatewayConfig, routes []model.Route) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	for _, route := range routes {
 		if route.HTTPSEnabled && route.CertPEM != nil && route.CertKey != nil && strings.TrimSpace(*route.CertPEM) != "" {
-			if err := m.writeCertificateUnlocked(route.Name, *route.CertPEM, *route.CertKey); err != nil {
+			if err := m.writeCertificateUnlocked(gateway, route.Name, *route.CertPEM, *route.CertKey); err != nil {
 				return err
 			}
 		}
@@ -112,20 +113,20 @@ func (m *RouteManager) ApplySnapshot(ctx context.Context, restApiUrl string, rou
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to marshal traefik rest snapshot", err)
 	}
-	return m.putRestConfig(ctx, restApiUrl, body)
+	return m.putRestConfig(ctx, gateway.RestApiUrl, body)
 }
 
-func (m *RouteManager) WriteCertificate(_ context.Context, routeName string, certPEM string, certKey string) error {
+func (m *RouteManager) WriteCertificate(_ context.Context, gateway model.GatewayConfig, routeName string, certPEM string, certKey string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.writeCertificateUnlocked(routeName, certPEM, certKey)
+	return m.writeCertificateUnlocked(gateway, routeName, certPEM, certKey)
 }
 
-func (m *RouteManager) RevokeCertificate(_ context.Context, routeName string) error {
+func (m *RouteManager) RevokeCertificate(_ context.Context, gateway model.GatewayConfig, routeName string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, suffix := range []string{".pem", "-key.pem"} {
-		path := filepath.Join(m.routeCertDir(), routeName+suffix)
+		path := filepath.Join(m.routeCertDir(gateway), routeName+suffix)
 		if err := removeIfExists(path); err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to revoke route certificate", err)
 		}
@@ -218,8 +219,8 @@ func (m *RouteManager) putRestConfig(ctx context.Context, restApiUrl string, bod
 	return nil
 }
 
-func (m *RouteManager) writeCertificateUnlocked(routeName string, certPEM string, certKey string) error {
-	certDir := m.routeCertDir()
+func (m *RouteManager) writeCertificateUnlocked(gateway model.GatewayConfig, routeName string, certPEM string, certKey string) error {
+	certDir := m.routeCertDir(gateway)
 	if err := os.MkdirAll(certDir, 0o755); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to create route cert directory", err)
 	}
@@ -232,8 +233,8 @@ func (m *RouteManager) writeCertificateUnlocked(routeName string, certPEM string
 	return nil
 }
 
-func (m *RouteManager) routeCertDir() string {
-	return filepath.Join(m.cfg.Workspace.Deployment, "traefik", "data", "certs")
+func (m *RouteManager) routeCertDir(gateway model.GatewayConfig) string {
+	return filepath.Join(m.cfg.Workspace.Deployment, gateway.RuntimeServiceCode, "gateway", "certs")
 }
 
 // buildRestSnapshot assembles a full providers.rest HTTP and TCP config (full replace semantics).
@@ -290,7 +291,11 @@ func buildRestSnapshot(routes []model.Route) map[string]any {
 		if route.HTTPSEnabled {
 			router["entryPoints"] = []string{"websecure"}
 			if route.CertType == "letsencrypt" {
-				router["tls"] = map[string]any{"certResolver": "letsencrypt"}
+				resolver := "letsencrypt"
+				if route.AcmeChallenge == "dns" {
+					resolver = "letsencrypt-dns"
+				}
+				router["tls"] = map[string]any{"certResolver": resolver}
 			} else {
 				router["tls"] = map[string]any{}
 			}

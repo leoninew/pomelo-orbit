@@ -176,13 +176,18 @@
           <tbody>
             <tr v-for="route in routes" :key="route.id">
               <td>
-                <router-link :to="`/route/${route.id}`" class="app-link whitespace-nowrap">
+                <router-link
+                  v-if="route.enabled"
+                  :to="`/route/${route.id}`"
+                  class="app-link whitespace-nowrap"
+                >
                   {{ route.name }}
                 </router-link>
+                <span v-else class="whitespace-nowrap text-foreground">{{ route.name }}</span>
               </td>
               <td>
                 <a
-                  v-if="route.protocol === 'http'"
+                  v-if="route.enabled && route.protocol === 'http'"
                   :href="`${route.https_enabled ? 'https' : 'http'}://${route.domain}`"
                   target="_blank"
                   rel="noopener noreferrer"

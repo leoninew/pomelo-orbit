@@ -132,6 +132,7 @@ func (s Service) PreviewService(ctx context.Context, userId string, serviceId st
 		return "", err
 	}
 	plan.Gateway = gateway
+	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
 	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, LogicalSvcDir: s.workspace.ServiceDir(service.Code), ComposeMountSourceDir: composeMountSourceDir})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
@@ -173,6 +174,7 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 		return "", err
 	}
 	plan.Gateway = gateway
+	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
 	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, LogicalSvcDir: s.workspace.ServiceDir(plan.Service.Code), ComposeMountSourceDir: composeMountSourceDir})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())

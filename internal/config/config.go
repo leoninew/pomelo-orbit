@@ -38,7 +38,6 @@ type Config struct {
 	Jwt         JwtConfig         `mapstructure:"jwt" yaml:"jwt"`
 	Traefik     TraefikConfig     `mapstructure:"traefik" yaml:"traefik"`
 	Turnstile   TurnstileConfig   `mapstructure:"turnstile" yaml:"turnstile"`
-	Cert        CertConfig        `mapstructure:"cert" yaml:"cert"`
 	Settings    SettingsConfig    `mapstructure:"settings" yaml:"settings"`
 	LLM         LLMConfig         `mapstructure:"llm" yaml:"llm"`
 	MCP         MCPConfig         `mapstructure:"mcp" yaml:"mcp"`
@@ -143,17 +142,6 @@ type TurnstileConfig struct {
 	VerifyUrl string `mapstructure:"verify_url" yaml:"verify_url"`
 }
 
-type CertConfig struct {
-	LetsEncrypt LetsEncryptConfig `mapstructure:"letsencrypt" yaml:"letsencrypt"`
-}
-
-type LetsEncryptConfig struct {
-	Enabled     bool   `mapstructure:"enabled" yaml:"enabled"`
-	Email       string `mapstructure:"email" yaml:"email"`
-	Challenge   string `mapstructure:"challenge" yaml:"challenge"`
-	DNSProvider string `mapstructure:"dns_provider" yaml:"dns_provider"`
-}
-
 type SettingsConfig struct {
 	SecretKeys []string `mapstructure:"secret_keys" yaml:"secret_keys"`
 }
@@ -209,7 +197,6 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	normalizeTraefikConfig(&cfg.Traefik)
-	normalizeCertConfig(&cfg.Cert)
 	if cfg.Worker.Id == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -334,10 +321,6 @@ func bindEnv(loader *viper.Viper) {
 		"turnstile.site_key",
 		"turnstile.secret_key",
 		"turnstile.verify_url",
-		"cert.letsencrypt.enabled",
-		"cert.letsencrypt.email",
-		"cert.letsencrypt.challenge",
-		"cert.letsencrypt.dns_provider",
 		"worker.id",
 		"worker.poll_interval",
 		"worker.lease_duration",
@@ -459,9 +442,6 @@ func (c Config) Validate() error {
 	if err := validateTraefikConfig(c.Traefik); err != nil {
 		return err
 	}
-	if err := validateCertConfig(c.Cert); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -493,45 +473,6 @@ func validateTraefikConfig(cfg TraefikConfig) error {
 		return errors.New("traefik.rest_ready_timeout must be positive")
 	}
 	return nil
-}
-
-func normalizeCertConfig(cfg *CertConfig) {
-	cfg.LetsEncrypt.Email = strings.TrimSpace(cfg.LetsEncrypt.Email)
-	cfg.LetsEncrypt.Challenge = strings.ToLower(strings.TrimSpace(cfg.LetsEncrypt.Challenge))
-	cfg.LetsEncrypt.DNSProvider = strings.TrimSpace(cfg.LetsEncrypt.DNSProvider)
-}
-
-func validateCertConfig(cfg CertConfig) error {
-	letsEncrypt := cfg.LetsEncrypt
-	if !letsEncrypt.Enabled {
-		return nil
-	}
-	if letsEncrypt.Email == "" {
-		return errors.New("cert.letsencrypt.email is required when cert.letsencrypt is enabled")
-	}
-	switch letsEncrypt.Challenge {
-	case "http":
-		return nil
-	case "dns":
-		if letsEncrypt.DNSProvider == "" {
-			return errors.New("cert.letsencrypt.dns_provider is required for dns challenge")
-		}
-		return nil
-	default:
-		return errors.New("cert.letsencrypt.challenge must be http or dns")
-	}
-}
-
-// ValidateForTLSMode validates the optional process certificate configuration
-// only when the caller selects a TLS mode that needs it.
-func (c CertConfig) ValidateForTLSMode(tlsMode string) error {
-	if !strings.EqualFold(strings.TrimSpace(tlsMode), "letsencrypt") {
-		return nil
-	}
-	if !c.LetsEncrypt.Enabled {
-		return errors.New("cert.letsencrypt.enabled is required for tls_mode=letsencrypt")
-	}
-	return validateCertConfig(c)
 }
 
 func normalizeWorkspaceConfig(cfg *WorkspaceConfig, orbitRoot string) error {

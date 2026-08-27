@@ -94,7 +94,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	localSource := repositorysource.New(dockerPathResolver)
 	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.Workspace.Deployment, dockerPathResolver)
 	routeManager := traefik.NewRouteManager(cfg)
-	gatewayCore := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.deployment, cfg, dockerPathResolver, transactionRunner)
+	gatewayCore := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, cfg, dockerPathResolver, transactionRunner)
 	deploymentService := deploymentsvc.NewCommandService(
 		stores.project,
 		stores.application,
@@ -151,7 +151,6 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			stores.service,
 			stores.route,
 			stores.gateway,
-			cfg,
 			routeManager,
 			traefik.MkcertGenerator{},
 			routeManager,

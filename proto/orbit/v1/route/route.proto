@@ -20,6 +20,11 @@ message RouteResp {
   optional string component_name = 14;
   optional string endpoint_protocol = 15;
   optional int32 endpoint_container_port = 16;
+  string acme_challenge = 17;
+  string gateway_application_id = 18;
+  bool http01_available = 19;
+  bool dns01_available = 20;
+  string acme_challenge_hint = 21;
 }
 
 message RouteCreateReq {
@@ -56,7 +61,9 @@ message RouteDisableReq {}
 
 message RouteSyncReq {}
 
-message RouteLetsEncryptEnableReq {}
+message RouteLetsEncryptEnableReq {
+  string challenge = 1;
+}
 
 message RouteMkcertEnableReq {}
 

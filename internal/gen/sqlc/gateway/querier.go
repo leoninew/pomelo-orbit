@@ -6,14 +6,19 @@ package gateway
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
+	DeleteGatewayVersionBindings(ctx context.Context, applicationID string) error
 	GatewayConfigByApplication(ctx context.Context, applicationID string) (GatewayConfig, error)
+	GatewayRuntimeServiceCode(ctx context.Context, applicationID string) (string, error)
+	GatewayVersionBindingsByApplication(ctx context.Context, applicationID string) ([]GatewayAcmeProfileVersion, error)
 	InsertGatewayConfig(ctx context.Context, arg InsertGatewayConfigParams) error
-	ListAllGatewayApplications(ctx context.Context, kind string) ([]ListAllGatewayApplicationsRow, error)
-	ListGatewayApplications(ctx context.Context, arg ListGatewayApplicationsParams) ([]ListGatewayApplicationsRow, error)
-	ResolveActiveGatewayConfig(ctx context.Context, arg ResolveActiveGatewayConfigParams) (GatewayConfig, error)
+	InsertGatewayVersionBinding(ctx context.Context, arg InsertGatewayVersionBindingParams) error
+	ListAllGatewayApplications(ctx context.Context) ([]ListAllGatewayApplicationsRow, error)
+	ListGatewayApplications(ctx context.Context, projectID sql.NullString) ([]ListGatewayApplicationsRow, error)
+	ResolveActiveGatewayConfig(ctx context.Context, status string) (GatewayConfig, error)
 	UpdateGatewayConfig(ctx context.Context, arg UpdateGatewayConfigParams) error
 }
 

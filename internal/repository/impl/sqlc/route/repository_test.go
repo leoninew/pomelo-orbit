@@ -21,21 +21,21 @@ func TestListRoutesBindsSearchAndPaginationForSQLite(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = database.Close() })
 	database.SetMaxOpenConns(1)
-	if err := databaseinfra.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
+	if err := databaseinfra.MigrateTo(database, config.DatabaseDriverSQLite, 35); err != nil {
 		t.Fatal(err)
 	}
 
 	ctx := context.Background()
-	const projectID = "01KRRKK0K3T519ZQZES3M4QA9Z"
+	const projectID = "01KROUTEREPOSITORYTEST0001"
 	if _, err := database.ExecContext(ctx, "INSERT INTO project (id, name, code) VALUES (?, ?, ?)", projectID, "Route Test", "route-test"); err != nil {
 		t.Fatal(err)
 	}
 
 	repository := NewRepository(database)
 	for _, route := range []model.Route{
-		{Id: "route-1", ProjectId: stringPtr(projectID), Name: "match alpha", Protocol: "http", Domain: "alpha.example.test", PathPrefix: "/", TargetUrl: "http://alpha.example.test", CertType: "manual"},
-		{Id: "route-2", ProjectId: stringPtr(projectID), Name: "match beta", Protocol: "http", Domain: "beta.example.test", PathPrefix: "/", TargetUrl: "http://beta.example.test", CertType: "manual"},
-		{Id: "route-3", ProjectId: stringPtr(projectID), Name: "other", Protocol: "http", Domain: "other.example.test", PathPrefix: "/", TargetUrl: "http://other.example.test", CertType: "manual"},
+		{Id: "route-1", ProjectId: stringPtr(projectID), Name: "match alpha", Protocol: "http", Domain: "alpha.example.test", PathPrefix: "/", TargetUrl: "http://alpha.example.test", CertType: "manual", AcmeChallenge: "http"},
+		{Id: "route-2", ProjectId: stringPtr(projectID), Name: "match beta", Protocol: "http", Domain: "beta.example.test", PathPrefix: "/", TargetUrl: "http://beta.example.test", CertType: "manual", AcmeChallenge: "http"},
+		{Id: "route-3", ProjectId: stringPtr(projectID), Name: "other", Protocol: "http", Domain: "other.example.test", PathPrefix: "/", TargetUrl: "http://other.example.test", CertType: "manual", AcmeChallenge: "http"},
 	} {
 		if err := repository.CreateRoute(ctx, route); err != nil {
 			t.Fatal(err)

@@ -167,40 +167,14 @@
             <p v-if="containerLogSource === 'tail'" class="mt-1 text-xs text-muted-foreground">
               当前展示最近容器日志，可能包含本次操作前的历史输出。
             </p>
-            <div
-              v-if="!containerLogText"
-              class="flex h-full min-h-[240px] items-center justify-center text-muted-foreground"
-            >
-              <div class="text-center">
-                <AppSpinner
-                  v-if="containerLogStatus === 'loading' || containerLogStatus === 'streaming'"
-                />
-                <p v-if="containerLogStatus === 'not_applicable'" class="text-sm">
-                  停止操作不展示容器日志。
-                </p>
-                <p v-else-if="containerLogStatus === 'waiting_for_operation'" class="text-sm">
-                  等待操作完成后拉取容器日志。
-                </p>
-                <p v-else-if="containerLogStatus === 'loading'" class="mt-2 text-sm">
-                  加载容器日志中...
-                </p>
-                <p v-else-if="containerLogStatus === 'streaming'" class="mt-2 text-sm">
-                  容器日志刷新中...
-                </p>
-                <p v-else-if="containerLogStatus === 'empty'" class="text-sm">暂无容器日志输出</p>
-                <div v-else-if="containerLogStatus === 'error'">
-                  <p class="text-sm text-destructive">容器日志加载失败</p>
-                  <button class="app-link mt-2 text-sm" @click="retryContainerLogs">重试</button>
-                </div>
-              </div>
-            </div>
-            <MonacoEditor
-              v-else
-              :model-value="containerLogText"
-              language="plaintext"
-              height="100%"
-              :readonly="true"
-              @mount="handleContainerLogEditorMount"
+            <ContainerLogView
+              :logs="containerLogText"
+              :status="containerLogViewStatus"
+              :error="containerLogError"
+              :message="containerLogMessage"
+              :auto-refreshing="false"
+              :show-auto-refresh="false"
+              @retry="retryContainerLogs"
             />
           </TabsContent>
         </DetailInfoCard>
@@ -271,6 +245,7 @@
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
+  import ContainerLogView from '@/components/ContainerLogView.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -319,7 +294,6 @@
   let refreshAbort: AbortController | null = null;
   let refreshGeneration = 0;
   let operationLogEditor: editor.IStandaloneCodeEditor | null = null;
-  let containerLogEditor: editor.IStandaloneCodeEditor | null = null;
 
   const backButtonText = computed(() => {
     if (route.query.from === 'application') {
@@ -353,6 +327,25 @@
   const isCompleteDeployment = computed(() => isComplete(deployment.value?.status ?? ''));
   const isCancelable = computed(() =>
     deployment.value ? !isComplete(deployment.value.status) : false
+  );
+  const containerLogViewStatus = computed<'loading' | 'streaming' | 'done' | 'empty' | 'error'>(
+    () => {
+      if (
+        containerLogStatus.value === 'waiting_for_operation' ||
+        containerLogStatus.value === 'not_applicable'
+      ) {
+        return 'empty';
+      }
+      return containerLogStatus.value;
+    }
+  );
+  const containerLogMessage = computed(() => {
+    if (containerLogStatus.value === 'not_applicable') return '停止操作不展示容器日志。';
+    if (containerLogStatus.value === 'waiting_for_operation') return '等待操作完成后拉取容器日志。';
+    return '';
+  });
+  const containerLogError = computed(() =>
+    containerLogStatus.value === 'error' ? '容器日志加载失败' : ''
   );
 
   function isCurrentRefresh(generation: number, signal: AbortSignal) {
@@ -408,7 +401,6 @@
       containerLogSource.value = data.source;
       // Container logs are only fetched after WorkStatus is_complete.
       containerLogStatus.value = containerLogText.value ? 'done' : 'empty';
-      revealLastLine(containerLogEditor);
     } catch {
       if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {
         containerLogStatus.value = 'error';
@@ -565,11 +557,6 @@
 
   function handleOperationLogEditorMount(ed: editor.IStandaloneCodeEditor) {
     operationLogEditor = ed;
-    revealLastLine(ed);
-  }
-
-  function handleContainerLogEditorMount(ed: editor.IStandaloneCodeEditor) {
-    containerLogEditor = ed;
     revealLastLine(ed);
   }
 

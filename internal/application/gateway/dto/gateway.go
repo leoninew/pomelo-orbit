@@ -6,32 +6,47 @@ type GatewayCreateInput struct {
 	ProjectId                  string
 	Code                       string
 	Name                       string
+	TraefikComponentName       *string
 	RestApiUrl                 string
+	RestReadyTimeoutSeconds    *int
 	BaseDomain                 string
 	InitialComponentImage      *string
 	InitialComponentPullPolicy string
 	DefaultEntrypoint          *string
 	TLSMode                    *string
+	AcmeProfile                *string
+	AcmeEmail                  *string
+	DNSApiToken                *string
 }
 
 // GatewayCreateDefaults is the process-level default set for managed gateway create.
 type GatewayCreateDefaults struct {
 	Code                       string
 	Name                       string
+	TraefikComponentName       string
 	RestApiUrl                 string
+	RestReadyTimeoutSeconds    int
 	BaseDomain                 string
 	InitialComponentImage      string
 	InitialComponentPullPolicy string
 	DefaultEntrypoint          string
 	TLSMode                    string
+	AcmeProfile                string
+	AcmeEmail                  string
+	DNSApiToken                string
 }
 
 type GatewayUpdateInput struct {
-	Name              *string
-	RestApiUrl        *string
-	BaseDomain        *string
-	DefaultEntrypoint *string
-	TLSMode           *string
+	Name                    *string
+	TraefikComponentName    *string
+	RestApiUrl              *string
+	RestReadyTimeoutSeconds *int
+	BaseDomain              *string
+	DefaultEntrypoint       *string
+	TLSMode                 *string
+	AcmeProfile             *string
+	AcmeEmail               *string
+	DNSApiToken             *string
 }
 
 // GatewayExposureItem is an active local or public application exposure.

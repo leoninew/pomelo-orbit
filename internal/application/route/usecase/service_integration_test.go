@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -80,7 +82,7 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if !certRoute.HTTPSEnabled || certRoute.CertType != "manual" {
 		t.Fatalf("unexpected manual cert route: %+v", certRoute)
 	}
-	certRoute, err = service.EnableRouteLetsEncrypt(ctx, routeTestUserId, disabled.Id)
+	certRoute, err = service.EnableRouteLetsEncrypt(ctx, routeTestUserId, disabled.Id, acmeChallengeHTTP)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +94,7 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	}
 
 	dashboardProject := routeTestProjectId
-	if err := service.route.CreateRoute(ctx, model.Route{Id: "01KTRAETFIKROUTE0000000001", ProjectId: &dashboardProject, Name: "traefik-dashboard", Protocol: "http", Domain: "traefik.lvh.me", PathPrefix: "/", TargetUrl: "http://traefik:8080", Enabled: true, HTTPSEnabled: true, CertType: "manual"}); err != nil {
+	if err := service.route.CreateRoute(ctx, model.Route{Id: "01KTRAETFIKROUTE0000000001", ProjectId: &dashboardProject, Name: "traefik-dashboard", Protocol: "http", Domain: "traefik.lvh.me", PathPrefix: "/", TargetUrl: "http://traefik:8080", Enabled: true, HTTPSEnabled: true, CertType: "manual", AcmeChallenge: acmeChallengeHTTP}); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := service.TraefikRouteConfig(ctx, routeTestUserId, routeTestProjectId)
@@ -122,6 +124,42 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	client.err = errors.New("connection refused")
 	if _, err := service.ListTraefikRoutes(ctx, routeTestUserId, routeTestProjectId); err == nil || apperror.StatusCode(err) != http.StatusServiceUnavailable || apperror.Classify(err).Message != "Traefik is unavailable." {
 		t.Fatalf("expected safe traefik unavailable error, got %v", err)
+	}
+}
+
+func TestRouteServiceRequiresTokenAndGatewayCapabilityForDNSLetsEncrypt(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "dns-route", Protocol: "http", Domain: "dns.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8084", Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, route.Id, acmeChallengeDNS); err == nil || !strings.Contains(err.Error(), "Gateway DNS API token") {
+		t.Fatalf("missing DNS token error = %v", err)
+	}
+	stored, err := service.route.Route(ctx, route.Id)
+	if err != nil || stored.HTTPSEnabled || stored.CertType != certTypeManual {
+		t.Fatalf("route changed after token refusal: %+v, err=%v", stored, err)
+	}
+	gateway, err := service.gateway.ResolveActiveGatewayConfig(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gateway.DNSApiToken = "cfat_test_token"
+	if err := service.gateway.UpsertGatewayConfig(ctx, gateway); err != nil {
+		t.Fatal(err)
+	}
+	enabled, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, route.Id, acmeChallengeDNS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if enabled.AcmeChallenge != acmeChallengeDNS || !enabled.HTTPSEnabled || enabled.CertType != certTypeLetsEncrypt {
+		t.Fatalf("DNS route = %+v", enabled)
+	}
+	snapshot := publisher.snapshots[len(publisher.snapshots)-1]
+	if len(snapshot) != 1 || snapshot[0].AcmeChallenge != acmeChallengeDNS {
+		t.Fatalf("DNS snapshot = %+v", snapshot)
 	}
 }
 
@@ -237,13 +275,10 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 33); err != nil {
+	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 36); err != nil {
 		t.Fatal(err)
 	}
-	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
-	cfg.Cert.LetsEncrypt.Enabled = true
-	cfg.Cert.LetsEncrypt.Email = "admin@example.test"
-	cfg.Cert.LetsEncrypt.Challenge = "http"
+	clearRouteGatewaySeed(t, database)
 	publisher := &recordingRoutePublisher{}
 	client := &recordingTraefikClient{}
 	service := New(
@@ -252,7 +287,6 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 		servicerepo.NewRepository(database),
 		routerepo.NewRepository(database),
 		gatewayrepo.NewRepository(database),
-		cfg,
 		publisher,
 		recordingCertificateGenerator{},
 		client,
@@ -481,32 +515,53 @@ func intPtr(value int) *int {
 	return &value
 }
 
+func clearRouteGatewaySeed(t *testing.T, database *sql.DB) {
+	t.Helper()
+	if _, err := database.Exec("DELETE FROM route WHERE id = '01M01ZNW6CPQCB7P5PN669HWJ9'"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec("DELETE FROM service_component WHERE service_id = '01M01RHDXW3ZXC7YKNT54RWM1M'"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec("DELETE FROM service WHERE application_id = '01M01MP0950ECGK2DS1FWYNC0B'"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec("DELETE FROM application WHERE id = '01M01MP0950ECGK2DS1FWYNC0B'"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 	t.Helper()
 	ctx := context.Background()
 	appRepo := applicationrepo.NewRepository(database)
 	gwRepo := gatewayrepo.NewRepository(database)
+	serviceRepo := servicerepo.NewRepository(database)
 	projectId := routeTestProjectId
 	app := model.Application{
 		Id:        "01KROUTEGATEWAYAPP000000001",
 		ProjectId: &projectId,
 		Name:      "Test Gateway",
 		Code:      "test-gateway",
-		Kind:      status.ApplicationKindGateway,
+		Kind:      status.ApplicationKindStandard,
 	}
 	if err := appRepo.CreateApplication(ctx, app); err != nil {
 		t.Fatalf("seed gateway app: %v", err)
 	}
 	version := model.Version{Id: "01KROUTEGATEWAYVERSION00001", ApplicationId: app.Id, Label: "managed", Status: status.VersionStatusPublished}
-	if err := appRepo.CreateVersionWithVersionComponents(ctx, version, []model.VersionComponent{{Id: "01KROUTEGATEWAYCOMPONENT01", VersionId: version.Id, Name: "traefik", Image: "traefik:3.6", PullPolicy: "missing"}}); err != nil {
+	component := model.VersionComponent{Id: "01KROUTEGATEWAYCOMPONENT01", VersionId: version.Id, Name: "traefik", Image: "traefik:3.6", PullPolicy: "missing"}
+	if err := appRepo.CreateVersionWithVersionComponents(ctx, version, []model.VersionComponent{component}); err != nil {
 		t.Fatalf("seed gateway version: %v", err)
 	}
+	gatewayService := model.Service{Id: "01KROUTEGATEWAYSERVICE0000001", ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "test-gateway-default", Status: status.ServiceStatusStopped}
+	if err := serviceRepo.CreateServiceWithComponents(ctx, gatewayService, []model.ServiceComponent{{Id: "01KROUTEGATEWAYSERVICECOMP0001", ServiceId: gatewayService.Id, SourceVersionComponentId: component.Id, ComponentName: component.Name, Status: "active"}}); err != nil {
+		t.Fatalf("seed gateway service: %v", err)
+	}
 	if err := gwRepo.UpsertGatewayConfig(ctx, model.GatewayConfig{
-		ApplicationId:     app.Id,
-		RestApiUrl:        "http://traefik:8080",
-		BaseDomain:        "lvh.me",
-		DefaultEntrypoint: "websecure",
-		TLSMode:           "optional",
+		ApplicationId: app.Id, TraefikComponentName: "traefik",
+		RestApiUrl: "http://traefik:8080", RestReadyTimeoutSeconds: 20,
+		BaseDomain: "lvh.me", DefaultEntrypoint: "websecure", TLSMode: "none",
+		AcmeProfile: "http-dns", AcmeEmail: "admin@example.test",
 	}); err != nil {
 		t.Fatalf("seed gateway config: %v", err)
 	}
@@ -518,21 +573,21 @@ type recordingRoutePublisher struct {
 	readyWaits   int
 }
 
-func (p *recordingRoutePublisher) WaitUntilReady(context.Context, string) error {
+func (p *recordingRoutePublisher) WaitUntilReady(context.Context, string, time.Duration) error {
 	p.readyWaits++
 	return nil
 }
 
-func (p *recordingRoutePublisher) ApplySnapshot(_ context.Context, _ string, routes []model.Route) error {
+func (p *recordingRoutePublisher) ApplySnapshot(_ context.Context, _ model.GatewayConfig, routes []model.Route) error {
 	p.snapshots = append(p.snapshots, append([]model.Route(nil), routes...))
 	return nil
 }
 
-func (p *recordingRoutePublisher) WriteCertificate(_ context.Context, _ string, _ string, _ string) error {
+func (p *recordingRoutePublisher) WriteCertificate(_ context.Context, _ model.GatewayConfig, _ string, _ string, _ string) error {
 	return nil
 }
 
-func (p *recordingRoutePublisher) RevokeCertificate(_ context.Context, routeName string) error {
+func (p *recordingRoutePublisher) RevokeCertificate(_ context.Context, _ model.GatewayConfig, routeName string) error {
 	p.revokedCerts = append(p.revokedCerts, routeName)
 	return nil
 }

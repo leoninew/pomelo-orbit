@@ -4,14 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
+	"time"
+
+	"golang.org/x/net/publicsuffix"
 
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
-	"github.com/leoninew/pomelo-orbit/internal/config"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
@@ -22,7 +25,6 @@ type Service struct {
 	service              repository.ServiceStore
 	route                repository.RouteStore
 	gateway              repository.GatewayStore
-	cfg                  config.Config
 	routePublisher       routeport.RouteConfigPublisher
 	certificateGenerator routeport.RouteCertificateGenerator
 	traefikRouterClient  routeport.TraefikRouterClient
@@ -34,13 +36,12 @@ func New(
 	service repository.ServiceStore,
 	route repository.RouteStore,
 	gateway repository.GatewayStore,
-	cfg config.Config,
 	routePublisher routeport.RouteConfigPublisher,
 	certificateGenerator routeport.RouteCertificateGenerator,
 	traefikRouterClient routeport.TraefikRouterClient,
 ) Service {
 	return Service{
-		project: project, application: application, service: service, route: route, gateway: gateway, cfg: cfg,
+		project: project, application: application, service: service, route: route, gateway: gateway,
 		routePublisher: routePublisher, certificateGenerator: certificateGenerator,
 		traefikRouterClient: traefikRouterClient,
 	}
@@ -74,10 +75,43 @@ func (s Service) resolveGatewayForRender(ctx context.Context) (*model.GatewayCon
 	return &cfg, nil
 }
 
+func (s Service) resolveGatewayForRoute(ctx context.Context) (*model.GatewayConfig, error) {
+	return s.resolveGatewayForRender(ctx)
+}
+
+func (s Service) withRouteACMECapabilities(ctx context.Context, route model.Route) model.Route {
+	gateway, err := s.resolveGatewayForRoute(ctx)
+	if err != nil {
+		route.ACMEChallengeHint = "Gateway configuration is required before enabling Let's Encrypt"
+		return route
+	}
+	if route.ProjectId == nil {
+		route.ACMEChallengeHint = "Route project is required"
+		return route
+	}
+	gatewayApp, err := s.application.Application(ctx, gateway.ApplicationId)
+	if err != nil || gatewayApp.ProjectId == nil || *gatewayApp.ProjectId != *route.ProjectId {
+		route.ACMEChallengeHint = "The active Gateway must belong to this project"
+		return route
+	}
+	route.GatewayApplicationId = gateway.ApplicationId
+	route.HTTP01Available = gatewaySupportsHTTP01(gateway.AcmeProfile)
+	route.DNS01Available = gatewaySupportsDNS01(gateway.AcmeProfile) && strings.TrimSpace(gateway.DNSApiToken) != ""
+	switch {
+	case !route.HTTP01Available && !gatewaySupportsDNS01(gateway.AcmeProfile):
+		route.ACMEChallengeHint = "Select an ACME profile in Gateway settings"
+	case gatewaySupportsDNS01(gateway.AcmeProfile) && !route.DNS01Available:
+		route.ACMEChallengeHint = "Gateway DNS API token is required for DNS-01"
+	}
+	return route
+}
+
 const (
 	certTypeManual      = "manual"
 	certTypeLetsEncrypt = "letsencrypt"
 	certTypeMkcert      = "mkcert"
+	acmeChallengeHTTP   = "http"
+	acmeChallengeDNS    = "dns"
 )
 
 var routeNamePattern = regexp.MustCompile(`^[a-z][a-z0-9._-]*$`)
@@ -132,7 +166,11 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 
 // RouteForUser loads a route visible to the current user.
 func (s Service) RouteForUser(ctx context.Context, userId string, routeId string) (model.Route, error) {
-	return s.loadRouteForUser(ctx, userId, routeId)
+	route, err := s.loadRouteForUser(ctx, userId, routeId)
+	if err != nil {
+		return model.Route{}, err
+	}
+	return s.withRouteACMECapabilities(ctx, route), nil
 }
 
 // UpdateRoute updates a route and synchronizes its files.
@@ -152,7 +190,7 @@ func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string,
 			route.ListenPort, route.ServiceId, route.ComponentName, route.EndpointProtocol, route.EndpointContainerPort = nil, nil, nil, nil, nil
 		case routeProtocolTCP:
 			route.PathPrefix, route.TargetUrl = "", ""
-			route.HTTPSEnabled, route.CertPEM, route.CertKey, route.CertType = false, nil, nil, certTypeManual
+			route.HTTPSEnabled, route.CertPEM, route.CertKey, route.CertType, route.AcmeChallenge = false, nil, nil, certTypeManual, acmeChallengeHTTP
 		}
 	}
 	if input.Domain != nil {
@@ -310,6 +348,7 @@ func (s Service) UploadRouteCert(ctx context.Context, userId string, routeId str
 	route.CertPEM = &certPEM
 	route.CertKey = &certKey
 	route.CertType = certTypeManual
+	route.AcmeChallenge = acmeChallengeHTTP
 	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
 		return model.Route{}, err
 	}
@@ -340,6 +379,7 @@ func (s Service) DisableRouteHTTPS(ctx context.Context, userId string, routeId s
 	route.CertPEM = nil
 	route.CertKey = nil
 	route.CertType = certTypeManual
+	route.AcmeChallenge = acmeChallengeHTTP
 	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
 		return model.Route{}, err
 	}
@@ -360,7 +400,7 @@ func (s Service) DisableRouteHTTPS(ctx context.Context, userId string, routeId s
 }
 
 // EnableRouteLetsEncrypt enables Let's Encrypt for the route.
-func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, routeId string) (model.Route, error) {
+func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, routeId string, challenge string) (model.Route, error) {
 	route, err := s.loadRouteForUser(ctx, userId, routeId)
 	if err != nil {
 		return model.Route{}, err
@@ -368,20 +408,25 @@ func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, rout
 	if err := requireHTTPRoute(route); err != nil {
 		return model.Route{}, err
 	}
-	if err := s.cfg.Cert.ValidateForTLSMode(certTypeLetsEncrypt); err != nil {
-		return model.Route{}, apperror.New(apperror.KindValidation, err.Error())
+	challenge = strings.ToLower(strings.TrimSpace(challenge))
+	if challenge != acmeChallengeHTTP && challenge != acmeChallengeDNS {
+		return model.Route{}, apperror.New(apperror.KindValidation, "challenge must be http or dns")
 	}
 	if route.HTTPSEnabled && route.CertType == certTypeLetsEncrypt {
 		return model.Route{}, apperror.New(apperror.KindValidation, "Let's Encrypt 证书已启用")
 	}
-	if route.Domain == "localhost" || strings.HasSuffix(route.Domain, ".local") {
-		return model.Route{}, apperror.New(apperror.KindValidation, "Let's Encrypt 不支持内网域名,请使用手动证书或 mkcert")
+	if err := validatePublicACMEDomain(route.Domain); err != nil {
+		return model.Route{}, err
+	}
+	if _, err := s.validateGatewayACMECapability(ctx, route, challenge); err != nil {
+		return model.Route{}, err
 	}
 	oldName := route.Name
 	route.HTTPSEnabled = true
 	route.CertPEM = nil
 	route.CertKey = nil
 	route.CertType = certTypeLetsEncrypt
+	route.AcmeChallenge = challenge
 	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
 		return model.Route{}, err
 	}
@@ -401,6 +446,53 @@ func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, rout
 	return updated, nil
 }
 
+func validatePublicACMEDomain(domain string) error {
+	domain = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(domain)), ".")
+	if domain == "localhost" || strings.HasSuffix(domain, ".local") || net.ParseIP(domain) != nil {
+		return apperror.New(apperror.KindValidation, "Let's Encrypt requires a publicly registered DNS name; use a manual certificate or mkcert for local names")
+	}
+	if _, err := publicsuffix.EffectiveTLDPlusOne(domain); err != nil {
+		return apperror.New(apperror.KindValidation, "Let's Encrypt requires a publicly registered DNS name")
+	}
+	return nil
+}
+
+func (s Service) validateGatewayACMECapability(ctx context.Context, route model.Route, challenge string) (*model.GatewayConfig, error) {
+	gatewayConfig, err := s.resolveGatewayForRoute(ctx)
+	if err != nil {
+		return nil, err
+	}
+	gatewayApp, err := s.application.Application(ctx, gatewayConfig.ApplicationId)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load active gateway", err)
+	}
+	if gatewayApp.ProjectId == nil || route.ProjectId == nil || *gatewayApp.ProjectId != *route.ProjectId {
+		return nil, apperror.New(apperror.KindValidation, "active gateway must belong to the Route project")
+	}
+	switch challenge {
+	case acmeChallengeHTTP:
+		if !gatewaySupportsHTTP01(gatewayConfig.AcmeProfile) {
+			return nil, apperror.New(apperror.KindValidation, "HTTP-01 requires the Gateway http or http-dns ACME profile")
+		}
+	case acmeChallengeDNS:
+		if !gatewaySupportsDNS01(gatewayConfig.AcmeProfile) {
+			return nil, apperror.New(apperror.KindValidation, "DNS-01 requires the Gateway dns or http-dns ACME profile")
+		}
+		if strings.TrimSpace(gatewayConfig.DNSApiToken) == "" {
+			return nil, apperror.New(apperror.KindValidation, "Gateway DNS API token is required for DNS-01")
+		}
+	}
+	return gatewayConfig, nil
+}
+
+func gatewaySupportsHTTP01(profile string) bool {
+	return profile == "http" || profile == "http-dns"
+}
+
+func gatewaySupportsDNS01(profile string) bool {
+	return profile == "dns" || profile == "http-dns"
+}
+
 // EnableRouteMkcert generates a certificate with mkcert.
 func (s Service) EnableRouteMkcert(ctx context.Context, userId string, routeId string) (model.Route, error) {
 	route, err := s.loadRouteForUser(ctx, userId, routeId)
@@ -418,6 +510,7 @@ func (s Service) EnableRouteMkcert(ctx context.Context, userId string, routeId s
 	route.CertPEM = &certPEM
 	route.CertKey = &keyPEM
 	route.CertType = certTypeMkcert
+	route.AcmeChallenge = acmeChallengeHTTP
 	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
 		return model.Route{}, err
 	}
@@ -513,8 +606,8 @@ func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId st
 	return route, nil
 }
 
-// publishRouteSnapshot rebuilds the full platform rest config from all enabled
-// routes. Static Gateway entrypoints remain Version data owned by the user.
+// publishRouteSnapshot rebuilds the full platform REST config from all enabled routes.
+// Gateway Versions provide static entrypoints and resolver layouts; GatewayConfig selects the active profile.
 func (s Service) publishRouteSnapshot(ctx context.Context) error {
 	routes, err := s.listEnabledRoutesForPublish(ctx)
 	if err != nil {
@@ -533,10 +626,20 @@ func (s Service) PublishSnapshot(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	gateway, err := s.resolveGatewayForRender(ctx)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(gateway.RestApiUrl) == "" {
+		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for route publish")
+	}
+	if err := s.routePublisher.WaitUntilReady(ctx, gateway.RestApiUrl, time.Duration(gateway.RestReadyTimeoutSeconds)*time.Second); err != nil {
+		return err
+	}
 	if err := s.ensureRestSnapshotIsManagedForRoutes(ctx, routes); err != nil {
 		return err
 	}
-	return s.applyRouteSnapshot(ctx, routes, true)
+	return s.applyRouteSnapshot(ctx, routes, false)
 }
 
 func (s Service) listEnabledRoutesForPublish(ctx context.Context) ([]model.Route, error) {
@@ -613,21 +716,25 @@ func (s Service) applyRouteSnapshot(ctx context.Context, routes []model.Route, w
 		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for route publish")
 	}
 	if waitReady {
-		if err := s.routePublisher.WaitUntilReady(ctx, gw.RestApiUrl); err != nil {
+		if err := s.routePublisher.WaitUntilReady(ctx, gw.RestApiUrl, time.Duration(gw.RestReadyTimeoutSeconds)*time.Second); err != nil {
 			return err
 		}
 	}
 	if err := s.resolveManagedRouteTargets(ctx, routes); err != nil {
 		return err
 	}
-	if err := s.routePublisher.ApplySnapshot(ctx, gw.RestApiUrl, routes); err != nil {
+	if err := s.routePublisher.ApplySnapshot(ctx, *gw, routes); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to publish traefik rest snapshot", err)
 	}
 	return nil
 }
 
 func (s Service) revokeRouteCertFiles(ctx context.Context, routeName string) error {
-	return s.routePublisher.RevokeCertificate(ctx, routeName)
+	gateway, err := s.resolveGatewayForRender(ctx)
+	if err != nil {
+		return err
+	}
+	return s.routePublisher.RevokeCertificate(ctx, *gateway, routeName)
 }
 
 func validRouteIdentity(name string, domain string, pathPrefix string) bool {

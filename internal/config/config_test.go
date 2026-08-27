@@ -788,71 +788,6 @@ func TestLoadConfigValidatesTurnstile(t *testing.T) {
 	}
 }
 
-func TestLoadConfigValidatesLetsEncrypt(t *testing.T) {
-	cases := []struct {
-		name    string
-		content string
-		want    string
-	}{
-		{name: "missing email", content: `cert:
-  letsencrypt:
-    enabled: true
-    email: ""
-`, want: "cert.letsencrypt.email is required"},
-		{name: "invalid challenge", content: `cert:
-  letsencrypt:
-    enabled: true
-    email: ops@example.test
-    challenge: tls
-`, want: "cert.letsencrypt.challenge must be http or dns"},
-		{name: "dns without provider", content: `cert:
-  letsencrypt:
-    enabled: true
-    email: ops@example.test
-    challenge: dns
-    dns_provider: ""
-`, want: "cert.letsencrypt.dns_provider is required for dns challenge"},
-		{name: "normalized dns", content: `cert:
-  letsencrypt:
-    enabled: true
-    email: " ops@example.test "
-    challenge: " DNS "
-    dns_provider: " cloudflare "
-`},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			setupDefaultConfig(t)
-			writeEnvConfig(t, "develop", tc.content)
-
-			cfg, err := Load()
-			if tc.want != "" {
-				if err == nil || !strings.Contains(err.Error(), tc.want) {
-					t.Fatalf("expected %q, got %v", tc.want, err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			if cfg.Cert.LetsEncrypt.Email != "ops@example.test" || cfg.Cert.LetsEncrypt.Challenge != "dns" || cfg.Cert.LetsEncrypt.DNSProvider != "cloudflare" {
-				t.Fatalf("unexpected normalized letsencrypt config: %#v", cfg.Cert.LetsEncrypt)
-			}
-		})
-	}
-}
-
-func TestCertConfigValidatesTLSMode(t *testing.T) {
-	cfg := CertConfig{LetsEncrypt: LetsEncryptConfig{Enabled: false}}
-	if err := cfg.ValidateForTLSMode("letsencrypt"); err == nil || !strings.Contains(err.Error(), "cert.letsencrypt.enabled") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if err := cfg.ValidateForTLSMode("none"); err != nil {
-		t.Fatalf("optional certificate config should not be required: %v", err)
-	}
-}
-
 func setupDefaultConfig(t *testing.T) {
 	t.Helper()
 	dir := t.TempDir()
@@ -982,12 +917,6 @@ turnstile:
   site_key: "1x00000000000000000000AA"
   secret_key: "1x0000000000000000000000000000000AA"
   verify_url: "https://challenges.cloudflare.com/turnstile/v0/siteverify"
-cert:
-  letsencrypt:
-    enabled: false
-    email: ""
-    challenge: http
-    dns_provider: ""
 settings:
   secret_keys:
     - database__mysql__dsn

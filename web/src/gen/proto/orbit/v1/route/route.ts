@@ -25,6 +25,11 @@ export interface RouteResp {
   component_name?: string | undefined;
   endpoint_protocol?: string | undefined;
   endpoint_container_port?: number | undefined;
+  acme_challenge: string;
+  gateway_application_id: string;
+  http01_available: boolean;
+  dns01_available: boolean;
+  acme_challenge_hint: string;
 }
 
 export interface RouteCreateReq {
@@ -65,6 +70,7 @@ export interface RouteSyncReq {
 }
 
 export interface RouteLetsEncryptEnableReq {
+  challenge: string;
 }
 
 export interface RouteMkcertEnableReq {

@@ -77,7 +77,7 @@ func TestRouteManagerWaitUntilReadyPollsUntilApiAccepts(t *testing.T) {
 	defer server.Close()
 
 	manager := NewRouteManager(config.Config{Traefik: config.TraefikConfig{RestReadyTimeout: 5 * time.Second}})
-	if err := manager.WaitUntilReady(context.Background(), server.URL); err != nil {
+	if err := manager.WaitUntilReady(context.Background(), server.URL, 5*time.Second); err != nil {
 		t.Fatal(err)
 	}
 	if attempts < 3 {
@@ -100,7 +100,7 @@ func TestRouteManagerApplySnapshotPutsFullRestConfig(t *testing.T) {
 	defer server.Close()
 
 	manager := NewRouteManager(config.Config{})
-	err := manager.ApplySnapshot(context.Background(), server.URL, []model.Route{
+	err := manager.ApplySnapshot(context.Background(), model.GatewayConfig{RestApiUrl: server.URL, RuntimeServiceCode: "traefik-default"}, []model.Route{
 		{Name: "api", Protocol: "http", Domain: "api.example.test", PathPrefix: "/v1", TargetUrl: "http://app:8080", Enabled: true},
 		{Name: "off", Protocol: "http", Domain: "off.example.test", PathPrefix: "/", TargetUrl: "http://app:8081", Enabled: false},
 		{Name: "secure", Protocol: "http", Domain: "secure.example.test", PathPrefix: "/", TargetUrl: "http://app:8082", Enabled: true, HTTPSEnabled: true, CertType: "letsencrypt"},
@@ -156,7 +156,7 @@ func TestRouteManagerApplySnapshotClearsWithEmptyMaps(t *testing.T) {
 	defer server.Close()
 
 	manager := NewRouteManager(config.Config{})
-	if err := manager.ApplySnapshot(context.Background(), server.URL, nil); err != nil {
+	if err := manager.ApplySnapshot(context.Background(), model.GatewayConfig{RestApiUrl: server.URL, RuntimeServiceCode: "traefik-default"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	var payload map[string]any
@@ -186,7 +186,7 @@ func TestRouteManagerApplySnapshotPublishesStoredCertificate(t *testing.T) {
 	certificate := "certificate"
 	key := "private key"
 	manager := NewRouteManager(config.Config{Workspace: config.WorkspaceConfig{Deployment: deploymentRoot}})
-	err := manager.ApplySnapshot(context.Background(), server.URL, []model.Route{{
+	err := manager.ApplySnapshot(context.Background(), model.GatewayConfig{RestApiUrl: server.URL, RuntimeServiceCode: "traefik-default"}, []model.Route{{
 		Name: "secure", Protocol: "http", Domain: "secure.example.test", PathPrefix: "/", TargetUrl: "http://app:8080", Enabled: true,
 		HTTPSEnabled: true, CertType: "manual", CertPEM: &certificate, CertKey: &key,
 	}})
@@ -194,7 +194,7 @@ func TestRouteManagerApplySnapshotPublishesStoredCertificate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	certificatePath := filepath.Join(deploymentRoot, "traefik", "data", "certs", "secure.pem")
+	certificatePath := filepath.Join(deploymentRoot, "traefik-default", "gateway", "certs", "secure.pem")
 	if content, err := os.ReadFile(certificatePath); err != nil || string(content) != certificate {
 		t.Fatalf("stored certificate = %q, err=%v", content, err)
 	}
@@ -223,6 +223,17 @@ func TestBuildRestSnapshotSkipsDisabled(t *testing.T) {
 	}
 }
 
+func TestBuildRestSnapshotUsesDNSResolverForDNSChallenge(t *testing.T) {
+	snapshot := buildRestSnapshot([]model.Route{{
+		Name: "dns", Protocol: "http", Domain: "dns.example.test", PathPrefix: "/", TargetUrl: "http://app:8080", Enabled: true,
+		HTTPSEnabled: true, CertType: "letsencrypt", AcmeChallenge: "dns",
+	}})
+	router := snapshot["http"].(map[string]any)["routers"].(map[string]any)["dns-route"].(map[string]any)
+	if got := router["tls"].(map[string]any)["certResolver"]; got != "letsencrypt-dns" {
+		t.Fatalf("DNS cert resolver = %#v", got)
+	}
+}
+
 func TestBuildRestSnapshotUsesResolvedManagedHTTPTarget(t *testing.T) {
 	snapshot := buildRestSnapshot([]model.Route{{
 		Name: "api", Protocol: "http", Domain: "api.test", PathPrefix: "/", TargetAddress: "api-api", TargetPort: 8080, Enabled: true,
@@ -239,8 +250,8 @@ func TestRouteManagerUsesDeploymentCertificateDirectory(t *testing.T) {
 	root := t.TempDir()
 	deploymentRoot := filepath.Join(root, "cd")
 	manager := NewRouteManager(config.Config{Workspace: config.WorkspaceConfig{Deployment: deploymentRoot}})
-	want := filepath.Join(deploymentRoot, "traefik", "data", "certs")
-	if got := manager.routeCertDir(); got != want {
+	want := filepath.Join(deploymentRoot, "traefik-default", "gateway", "certs")
+	if got := manager.routeCertDir(model.GatewayConfig{RuntimeServiceCode: "traefik-default"}); got != want {
 		t.Fatalf("certificate directory = %q, want %q", got, want)
 	}
 }

@@ -138,3 +138,7 @@ func (s stores) ListGatewayApplications(ctx context.Context, projectId string) (
 func (s stores) UpsertGatewayConfig(ctx context.Context, cfg model.GatewayConfig) error {
 	return s.gateway.UpsertGatewayConfig(ctx, cfg)
 }
+
+func (s stores) ReplaceGatewayVersionBindings(ctx context.Context, applicationId string, bindings []model.GatewayVersionBinding) error {
+	return s.gateway.ReplaceGatewayVersionBindings(ctx, applicationId, bindings)
+}

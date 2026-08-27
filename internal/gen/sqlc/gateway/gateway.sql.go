@@ -11,8 +11,20 @@ import (
 	"time"
 )
 
+const deleteGatewayVersionBindings = `-- name: DeleteGatewayVersionBindings :exec
+DELETE FROM gateway_acme_profile_version
+WHERE application_id = ?
+`
+
+func (q *Queries) DeleteGatewayVersionBindings(ctx context.Context, applicationID string) error {
+	_, err := q.db.ExecContext(ctx, deleteGatewayVersionBindings, applicationID)
+	return err
+}
+
 const gatewayConfigByApplication = `-- name: GatewayConfigByApplication :one
-SELECT application_id, rest_api_url, base_domain, default_entrypoint, tls_mode, created_at, updated_at
+SELECT application_id, traefik_component_name, rest_api_url, rest_ready_timeout_seconds,
+       base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
+       dns_api_token, created_at, updated_at
 FROM gateway_config
 WHERE application_id = ?
 `
@@ -22,49 +34,138 @@ func (q *Queries) GatewayConfigByApplication(ctx context.Context, applicationID 
 	var i GatewayConfig
 	err := row.Scan(
 		&i.ApplicationID,
+		&i.TraefikComponentName,
 		&i.RestApiUrl,
+		&i.RestReadyTimeoutSeconds,
 		&i.BaseDomain,
 		&i.DefaultEntrypoint,
 		&i.TlsMode,
+		&i.AcmeProfile,
+		&i.AcmeEmail,
+		&i.DnsApiToken,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
+const gatewayRuntimeServiceCode = `-- name: GatewayRuntimeServiceCode :one
+SELECT code
+FROM service
+WHERE application_id = ?
+ORDER BY CASE WHEN status = 'running' THEN 0 ELSE 1 END,
+         CASE WHEN instance_key = 'default' THEN 0 ELSE 1 END,
+         updated_at DESC,
+         id
+LIMIT 1
+`
+
+func (q *Queries) GatewayRuntimeServiceCode(ctx context.Context, applicationID string) (string, error) {
+	row := q.db.QueryRowContext(ctx, gatewayRuntimeServiceCode, applicationID)
+	var code string
+	err := row.Scan(&code)
+	return code, err
+}
+
+const gatewayVersionBindingsByApplication = `-- name: GatewayVersionBindingsByApplication :many
+SELECT application_id, profile, version_id
+FROM gateway_acme_profile_version
+WHERE application_id = ?
+ORDER BY CASE profile
+    WHEN 'base' THEN 0
+    WHEN 'http' THEN 1
+    WHEN 'dns' THEN 2
+    WHEN 'http-dns' THEN 3
+    ELSE 4
+END
+`
+
+func (q *Queries) GatewayVersionBindingsByApplication(ctx context.Context, applicationID string) ([]GatewayAcmeProfileVersion, error) {
+	rows, err := q.db.QueryContext(ctx, gatewayVersionBindingsByApplication, applicationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GatewayAcmeProfileVersion
+	for rows.Next() {
+		var i GatewayAcmeProfileVersion
+		if err := rows.Scan(&i.ApplicationID, &i.Profile, &i.VersionID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertGatewayConfig = `-- name: InsertGatewayConfig :exec
-INSERT INTO gateway_config (application_id, rest_api_url, base_domain, default_entrypoint, tls_mode, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO gateway_config (
+  application_id, traefik_component_name, rest_api_url, rest_ready_timeout_seconds,
+  base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
+  dns_api_token, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertGatewayConfigParams struct {
-	ApplicationID     string    `db:"application_id"`
-	RestApiUrl        string    `db:"rest_api_url"`
-	BaseDomain        string    `db:"base_domain"`
-	DefaultEntrypoint string    `db:"default_entrypoint"`
-	TlsMode           string    `db:"tls_mode"`
-	CreatedAt         time.Time `db:"created_at"`
-	UpdatedAt         time.Time `db:"updated_at"`
+	ApplicationID           string    `db:"application_id"`
+	TraefikComponentName    string    `db:"traefik_component_name"`
+	RestApiUrl              string    `db:"rest_api_url"`
+	RestReadyTimeoutSeconds int64     `db:"rest_ready_timeout_seconds"`
+	BaseDomain              string    `db:"base_domain"`
+	DefaultEntrypoint       string    `db:"default_entrypoint"`
+	TlsMode                 string    `db:"tls_mode"`
+	AcmeProfile             string    `db:"acme_profile"`
+	AcmeEmail               string    `db:"acme_email"`
+	DnsApiToken             string    `db:"dns_api_token"`
+	CreatedAt               time.Time `db:"created_at"`
+	UpdatedAt               time.Time `db:"updated_at"`
 }
 
 func (q *Queries) InsertGatewayConfig(ctx context.Context, arg InsertGatewayConfigParams) error {
 	_, err := q.db.ExecContext(ctx, insertGatewayConfig,
 		arg.ApplicationID,
+		arg.TraefikComponentName,
 		arg.RestApiUrl,
+		arg.RestReadyTimeoutSeconds,
 		arg.BaseDomain,
 		arg.DefaultEntrypoint,
 		arg.TlsMode,
+		arg.AcmeProfile,
+		arg.AcmeEmail,
+		arg.DnsApiToken,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
 	return err
 }
 
+const insertGatewayVersionBinding = `-- name: InsertGatewayVersionBinding :exec
+INSERT INTO gateway_acme_profile_version (application_id, profile, version_id)
+VALUES (?, ?, ?)
+`
+
+type InsertGatewayVersionBindingParams struct {
+	ApplicationID string `db:"application_id"`
+	Profile       string `db:"profile"`
+	VersionID     string `db:"version_id"`
+}
+
+func (q *Queries) InsertGatewayVersionBinding(ctx context.Context, arg InsertGatewayVersionBindingParams) error {
+	_, err := q.db.ExecContext(ctx, insertGatewayVersionBinding, arg.ApplicationID, arg.Profile, arg.VersionID)
+	return err
+}
+
 const listAllGatewayApplications = `-- name: ListAllGatewayApplications :many
-SELECT id, project_id, name, code, kind, created_at, updated_at
-FROM application
-WHERE kind = ?
-ORDER BY created_at, id
+SELECT a.id, a.project_id, a.name, a.code, a.kind, a.created_at, a.updated_at
+FROM application a
+INNER JOIN gateway_config gc ON gc.application_id = a.id
+ORDER BY a.created_at, a.id
 `
 
 type ListAllGatewayApplicationsRow struct {
@@ -77,8 +178,8 @@ type ListAllGatewayApplicationsRow struct {
 	UpdatedAt time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) ListAllGatewayApplications(ctx context.Context, kind string) ([]ListAllGatewayApplicationsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAllGatewayApplications, kind)
+func (q *Queries) ListAllGatewayApplications(ctx context.Context) ([]ListAllGatewayApplicationsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAllGatewayApplications)
 	if err != nil {
 		return nil, err
 	}
@@ -109,16 +210,12 @@ func (q *Queries) ListAllGatewayApplications(ctx context.Context, kind string) (
 }
 
 const listGatewayApplications = `-- name: ListGatewayApplications :many
-SELECT id, project_id, name, code, kind, created_at, updated_at
-FROM application
-WHERE project_id = ? AND kind = ?
-ORDER BY id DESC
+SELECT a.id, a.project_id, a.name, a.code, a.kind, a.created_at, a.updated_at
+FROM application a
+INNER JOIN gateway_config gc ON gc.application_id = a.id
+WHERE a.project_id = ?
+ORDER BY a.id DESC
 `
-
-type ListGatewayApplicationsParams struct {
-	ProjectID sql.NullString `db:"project_id"`
-	Kind      string         `db:"kind"`
-}
 
 type ListGatewayApplicationsRow struct {
 	ID        string         `db:"id"`
@@ -130,8 +227,8 @@ type ListGatewayApplicationsRow struct {
 	UpdatedAt time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) ListGatewayApplications(ctx context.Context, arg ListGatewayApplicationsParams) ([]ListGatewayApplicationsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listGatewayApplications, arg.ProjectID, arg.Kind)
+func (q *Queries) ListGatewayApplications(ctx context.Context, projectID sql.NullString) ([]ListGatewayApplicationsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listGatewayApplications, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -162,29 +259,30 @@ func (q *Queries) ListGatewayApplications(ctx context.Context, arg ListGatewayAp
 }
 
 const resolveActiveGatewayConfig = `-- name: ResolveActiveGatewayConfig :one
-SELECT gc.application_id, gc.rest_api_url, gc.base_domain, gc.default_entrypoint, gc.tls_mode, gc.created_at, gc.updated_at
+SELECT gc.application_id, gc.traefik_component_name, gc.rest_api_url, gc.rest_ready_timeout_seconds,
+       gc.base_domain, gc.default_entrypoint, gc.tls_mode, gc.acme_profile, gc.acme_email,
+       gc.dns_api_token, gc.created_at, gc.updated_at
 FROM gateway_config gc
 INNER JOIN service s ON s.application_id = gc.application_id
-INNER JOIN application a ON a.id = gc.application_id
-WHERE a.kind = ? AND s.status = ?
+WHERE s.status = ?
 ORDER BY s.updated_at DESC, gc.application_id
 LIMIT 1
 `
 
-type ResolveActiveGatewayConfigParams struct {
-	Kind   string `db:"kind"`
-	Status string `db:"status"`
-}
-
-func (q *Queries) ResolveActiveGatewayConfig(ctx context.Context, arg ResolveActiveGatewayConfigParams) (GatewayConfig, error) {
-	row := q.db.QueryRowContext(ctx, resolveActiveGatewayConfig, arg.Kind, arg.Status)
+func (q *Queries) ResolveActiveGatewayConfig(ctx context.Context, status string) (GatewayConfig, error) {
+	row := q.db.QueryRowContext(ctx, resolveActiveGatewayConfig, status)
 	var i GatewayConfig
 	err := row.Scan(
 		&i.ApplicationID,
+		&i.TraefikComponentName,
 		&i.RestApiUrl,
+		&i.RestReadyTimeoutSeconds,
 		&i.BaseDomain,
 		&i.DefaultEntrypoint,
 		&i.TlsMode,
+		&i.AcmeProfile,
+		&i.AcmeEmail,
+		&i.DnsApiToken,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -193,25 +291,37 @@ func (q *Queries) ResolveActiveGatewayConfig(ctx context.Context, arg ResolveAct
 
 const updateGatewayConfig = `-- name: UpdateGatewayConfig :exec
 UPDATE gateway_config
-SET rest_api_url = ?, base_domain = ?, default_entrypoint = ?, tls_mode = ?, updated_at = ?
+SET traefik_component_name = ?, rest_api_url = ?, rest_ready_timeout_seconds = ?,
+    base_domain = ?, default_entrypoint = ?, tls_mode = ?, acme_profile = ?, acme_email = ?,
+    dns_api_token = ?, updated_at = ?
 WHERE application_id = ?
 `
 
 type UpdateGatewayConfigParams struct {
-	RestApiUrl        string    `db:"rest_api_url"`
-	BaseDomain        string    `db:"base_domain"`
-	DefaultEntrypoint string    `db:"default_entrypoint"`
-	TlsMode           string    `db:"tls_mode"`
-	UpdatedAt         time.Time `db:"updated_at"`
-	ApplicationID     string    `db:"application_id"`
+	TraefikComponentName    string    `db:"traefik_component_name"`
+	RestApiUrl              string    `db:"rest_api_url"`
+	RestReadyTimeoutSeconds int64     `db:"rest_ready_timeout_seconds"`
+	BaseDomain              string    `db:"base_domain"`
+	DefaultEntrypoint       string    `db:"default_entrypoint"`
+	TlsMode                 string    `db:"tls_mode"`
+	AcmeProfile             string    `db:"acme_profile"`
+	AcmeEmail               string    `db:"acme_email"`
+	DnsApiToken             string    `db:"dns_api_token"`
+	UpdatedAt               time.Time `db:"updated_at"`
+	ApplicationID           string    `db:"application_id"`
 }
 
 func (q *Queries) UpdateGatewayConfig(ctx context.Context, arg UpdateGatewayConfigParams) error {
 	_, err := q.db.ExecContext(ctx, updateGatewayConfig,
+		arg.TraefikComponentName,
 		arg.RestApiUrl,
+		arg.RestReadyTimeoutSeconds,
 		arg.BaseDomain,
 		arg.DefaultEntrypoint,
 		arg.TlsMode,
+		arg.AcmeProfile,
+		arg.AcmeEmail,
+		arg.DnsApiToken,
 		arg.UpdatedAt,
 		arg.ApplicationID,
 	)

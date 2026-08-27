@@ -54,13 +54,6 @@ turnstile:
   secret_key: "1x0000000000000000000000000000000AA"
   verify_url: "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
-cert:
-  letsencrypt:
-    enabled: false
-    email: ""
-    challenge: http
-    dns_provider: ""
-
 settings:
   secret_keys:
     - database__mysql__dsn

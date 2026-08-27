@@ -1,34 +1,74 @@
 -- name: GatewayConfigByApplication :one
-SELECT application_id, rest_api_url, base_domain, default_entrypoint, tls_mode, created_at, updated_at
+SELECT application_id, traefik_component_name, rest_api_url, rest_ready_timeout_seconds,
+       base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
+       dns_api_token, created_at, updated_at
 FROM gateway_config
 WHERE application_id = ?;
 
+-- name: GatewayVersionBindingsByApplication :many
+SELECT application_id, profile, version_id
+FROM gateway_acme_profile_version
+WHERE application_id = ?
+ORDER BY CASE profile
+    WHEN 'base' THEN 0
+    WHEN 'http' THEN 1
+    WHEN 'dns' THEN 2
+    WHEN 'http-dns' THEN 3
+    ELSE 4
+END;
+
+-- name: GatewayRuntimeServiceCode :one
+SELECT code
+FROM service
+WHERE application_id = ?
+ORDER BY CASE WHEN status = 'running' THEN 0 ELSE 1 END,
+         CASE WHEN instance_key = 'default' THEN 0 ELSE 1 END,
+         updated_at DESC,
+         id
+LIMIT 1;
+
 -- name: ListGatewayApplications :many
-SELECT id, project_id, name, code, kind, created_at, updated_at
-FROM application
-WHERE project_id = ? AND kind = ?
-ORDER BY id DESC;
+SELECT a.id, a.project_id, a.name, a.code, a.kind, a.created_at, a.updated_at
+FROM application a
+INNER JOIN gateway_config gc ON gc.application_id = a.id
+WHERE a.project_id = ?
+ORDER BY a.id DESC;
 
 -- name: ListAllGatewayApplications :many
-SELECT id, project_id, name, code, kind, created_at, updated_at
-FROM application
-WHERE kind = ?
-ORDER BY created_at, id;
+SELECT a.id, a.project_id, a.name, a.code, a.kind, a.created_at, a.updated_at
+FROM application a
+INNER JOIN gateway_config gc ON gc.application_id = a.id
+ORDER BY a.created_at, a.id;
 
 -- name: ResolveActiveGatewayConfig :one
-SELECT gc.application_id, gc.rest_api_url, gc.base_domain, gc.default_entrypoint, gc.tls_mode, gc.created_at, gc.updated_at
+SELECT gc.application_id, gc.traefik_component_name, gc.rest_api_url, gc.rest_ready_timeout_seconds,
+       gc.base_domain, gc.default_entrypoint, gc.tls_mode, gc.acme_profile, gc.acme_email,
+       gc.dns_api_token, gc.created_at, gc.updated_at
 FROM gateway_config gc
 INNER JOIN service s ON s.application_id = gc.application_id
-INNER JOIN application a ON a.id = gc.application_id
-WHERE a.kind = ? AND s.status = ?
+WHERE s.status = ?
 ORDER BY s.updated_at DESC, gc.application_id
 LIMIT 1;
 
 -- name: InsertGatewayConfig :exec
-INSERT INTO gateway_config (application_id, rest_api_url, base_domain, default_entrypoint, tls_mode, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO gateway_config (
+  application_id, traefik_component_name, rest_api_url, rest_ready_timeout_seconds,
+  base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
+  dns_api_token, created_at, updated_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateGatewayConfig :exec
 UPDATE gateway_config
-SET rest_api_url = ?, base_domain = ?, default_entrypoint = ?, tls_mode = ?, updated_at = ?
+SET traefik_component_name = ?, rest_api_url = ?, rest_ready_timeout_seconds = ?,
+    base_domain = ?, default_entrypoint = ?, tls_mode = ?, acme_profile = ?, acme_email = ?,
+    dns_api_token = ?, updated_at = ?
 WHERE application_id = ?;
+
+-- name: DeleteGatewayVersionBindings :exec
+DELETE FROM gateway_acme_profile_version
+WHERE application_id = ?;
+
+-- name: InsertGatewayVersionBinding :exec
+INSERT INTO gateway_acme_profile_version (application_id, profile, version_id)
+VALUES (?, ?, ?);

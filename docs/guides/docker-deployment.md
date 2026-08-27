@@ -1,102 +1,23 @@
 # Docker 部署指南
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-08-26 23:01:37
 
-Doc role: living guide（运维向）。领域模型见 [CD 模型](../product/cd-model.md)。与代码冲突时以代码为准。
+Doc role: living guide（运维向）。领域模型见 [CD 模型](../product/cd-model.md)。
 
-本文档介绍如何通过 Docker 部署 Pomelo Orbit 系统。
-
-## 架构概览
-
-```
-用户浏览器 ──→ Traefik ──→ Pomelo Orbit (Web UI)
-                    │
-                    └──→ 应用容器 (用户部署的应用)
-```
-
-核心组件：
-- Traefik：反向代理和负载均衡器，负责动态路由
-- Pomelo Orbit：持续部署系统，通过 Docker Socket 管理容器
-
-## 1. 准备环境
-
-确保 Docker 服务运行中：
-
-```bash
-docker --version
-docker compose version
-```
-
-## 2. 部署步骤
-
-### 2.1 关键配置
-
-首次运行时，系统会自动创建 SQLite 数据库并初始化默认应用（Traefik 和 Pomelo Orbit 自身），其他配置可以使用 .env 管理，参考 `backend/.env.example` 
-
-- POMELO_ORBIT_JWT__SECRET_KEY： JWT 密钥，用于 JWT 认证和凭据加密，必须使用 Fernet 格式
-- Traefik rest URL / 业务域名：在 CD **Gateway** 中配置（`rest_api_url`、`base_domain`）
-
-### 2.2 docker-compose 启动 Pomelo Orbit
+Pomelo Orbit 需要 Docker socket、数据库目录、pipeline workspace 与 deployment workspace。Docker-outside-of-Docker 部署示例：
 
 ```yaml
 services:
   pomelo-orbit:
     image: pomelo-orbit:latest
-    container_name: pomelo-orbit
-    restart: unless-stopped
-    networks:
-      - traefik
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /srv/pomelo-orbit/db:/app/data/db
       - /srv/pomelo-orbit/ci:/app/data/pipeline
       - /srv/pomelo-orbit/cd:/app/data/deployment
-    ports:
-      - "9003:80"
     environment:
       - POMELO_ORBIT_JWT__SECRET_KEY=${POMELO_ORBIT_JWT__SECRET_KEY}
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.pomelo-orbit.rule=Host(`pomelo-orbit.lvh.me`)"
-      - "traefik.http.routers.pomelo-orbit.entrypoints=web"
-      - "traefik.http.services.pomelo-orbit.loadbalancer.server.port=80"
-
-networks:
-  traefik:
-    external: true
 ```
 
-默认 `workspace.pipeline=data/pipeline`、`workspace.deployment=data/deployment` 在容器内分别解析为 `/app/data/pipeline`、`/app/data/deployment`；Docker daemon 实际收到的 bind source 会从当前容器挂载表解析为 `/srv/pomelo-orbit/ci` 和 `/srv/pomelo-orbit/cd`。不要只挂 Docker socket，也不要让当前配置的 workspace 指向未挂载目录。
+默认 `workspace.pipeline=data/pipeline` 与 `workspace.deployment=data/deployment` 分别解析为 `/app/data/pipeline` 和 `/app/data/deployment`。不要只挂 Docker socket，也不要让 workspace 指向未挂载路径。
 
-### 2.3 Pomelo Orbit 部署 Traefik
-
-在 Pomelo Orbit Web UI 的应用管理页面部署 Traefik，需要先部署此组件。
-
-### 2.4 Pomelo Orbit 管理和部署其他应用
-
-通过 Pomelo Orbit Web UI 管理其他应用、配置文件和路由。
-
-### 2.5 路由管理
-
-Pomelo Orbit 提供两种路由管理方式：
-
-- Docker Label：在 docker-compose.yml 中声明路由规则，Traefik 自动发现
-- 手动配置：通过 Web UI 手动创建路由规则
-
-### 2.6 Let's Encrypt
-
-Let's Encrypt 自动证书功能代码已实现并经过测试，你需要修改 .env 启用配置
-
-```ini
-POMELO_ORBIT_CERT__LETSENCRYPT__ENABLED=true
-POMELO_ORBIT_CERT__LETSENCRYPT__EMAIL=your-email@example.com
-```
-
-## 3. 已知问题
-
-### 3.1 mkcert
-
-本地开发推荐使用 [mkcert](https://github.com/FiloSottile/mkcert) 生成受信任的本地证书，容器还没有集成。
-
-### 3.2 自举部署
-
-理论上支持通过 Web UI 重新部署 Pomelo Orbit 自身实现零停机更新，但尚未经过充分测试。
+在 Gateway 创建或编辑时选择 ACME profile。DNS-01 token 在 Gateway 配置中填写，部署 DNS profile 时由 Orbit 作为 `CF_DNS_API_TOKEN` 写入 Traefik Compose environment；无需为 Orbit 配置全局 Cloudflare token。

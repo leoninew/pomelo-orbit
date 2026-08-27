@@ -314,6 +314,15 @@ func cloneInt(value *int) *int {
 	return &copy
 }
 
+func cloneGatewayConfig(value *model.GatewayConfig) *model.GatewayConfig {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	copy.VersionBindings = append([]model.GatewayVersionBinding(nil), value.VersionBindings...)
+	return &copy
+}
+
 // EffectiveServicePlanHash excludes identifiers, timestamps, and gateway
 // configuration so it describes service configuration rather than persistence
 // history or shared gateway state.

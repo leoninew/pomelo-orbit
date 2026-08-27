@@ -21,6 +21,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type GatewayVersionBinding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Profile       string                 `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
+	VersionId     string                 `protobuf:"bytes,2,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GatewayVersionBinding) Reset() {
+	*x = GatewayVersionBinding{}
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GatewayVersionBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GatewayVersionBinding) ProtoMessage() {}
+
+func (x *GatewayVersionBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GatewayVersionBinding.ProtoReflect.Descriptor instead.
+func (*GatewayVersionBinding) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_gateway_gateway_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *GatewayVersionBinding) GetProfile() string {
+	if x != nil {
+		return x.Profile
+	}
+	return ""
+}
+
+func (x *GatewayVersionBinding) GetVersionId() string {
+	if x != nil {
+		return x.VersionId
+	}
+	return ""
+}
+
 type GatewayCreateReq struct {
 	state                      protoimpl.MessageState `protogen:"open.v1"`
 	ProjectId                  string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
@@ -33,14 +85,19 @@ type GatewayCreateReq struct {
 	// Traefik entryPoints name: web|websecure (default web when empty on create)
 	DefaultEntrypoint *string `protobuf:"bytes,8,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
 	// none|letsencrypt|tls (default none when empty on create)
-	TlsMode       *string `protobuf:"bytes,10,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	TlsMode                 *string `protobuf:"bytes,9,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
+	TraefikComponentName    *string `protobuf:"bytes,10,opt,name=traefik_component_name,json=traefikComponentName,proto3,oneof" json:"traefik_component_name,omitempty"`
+	RestReadyTimeoutSeconds *int32  `protobuf:"varint,11,opt,name=rest_ready_timeout_seconds,json=restReadyTimeoutSeconds,proto3,oneof" json:"rest_ready_timeout_seconds,omitempty"`
+	AcmeProfile             *string `protobuf:"bytes,12,opt,name=acme_profile,json=acmeProfile,proto3,oneof" json:"acme_profile,omitempty"`
+	AcmeEmail               *string `protobuf:"bytes,13,opt,name=acme_email,json=acmeEmail,proto3,oneof" json:"acme_email,omitempty"`
+	DnsApiToken             *string `protobuf:"bytes,14,opt,name=dns_api_token,json=dnsApiToken,proto3,oneof" json:"dns_api_token,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *GatewayCreateReq) Reset() {
 	*x = GatewayCreateReq{}
-	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[0]
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -52,7 +109,7 @@ func (x *GatewayCreateReq) String() string {
 func (*GatewayCreateReq) ProtoMessage() {}
 
 func (x *GatewayCreateReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[0]
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -65,7 +122,7 @@ func (x *GatewayCreateReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayCreateReq.ProtoReflect.Descriptor instead.
 func (*GatewayCreateReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_gateway_gateway_proto_rawDescGZIP(), []int{0}
+	return file_orbit_v1_gateway_gateway_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GatewayCreateReq) GetProjectId() string {
@@ -131,20 +188,60 @@ func (x *GatewayCreateReq) GetTlsMode() string {
 	return ""
 }
 
+func (x *GatewayCreateReq) GetTraefikComponentName() string {
+	if x != nil && x.TraefikComponentName != nil {
+		return *x.TraefikComponentName
+	}
+	return ""
+}
+
+func (x *GatewayCreateReq) GetRestReadyTimeoutSeconds() int32 {
+	if x != nil && x.RestReadyTimeoutSeconds != nil {
+		return *x.RestReadyTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *GatewayCreateReq) GetAcmeProfile() string {
+	if x != nil && x.AcmeProfile != nil {
+		return *x.AcmeProfile
+	}
+	return ""
+}
+
+func (x *GatewayCreateReq) GetAcmeEmail() string {
+	if x != nil && x.AcmeEmail != nil {
+		return *x.AcmeEmail
+	}
+	return ""
+}
+
+func (x *GatewayCreateReq) GetDnsApiToken() string {
+	if x != nil && x.DnsApiToken != nil {
+		return *x.DnsApiToken
+	}
+	return ""
+}
+
 type GatewayUpdateReq struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Name              *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	RestApiUrl        *string                `protobuf:"bytes,2,opt,name=rest_api_url,json=restApiUrl,proto3,oneof" json:"rest_api_url,omitempty"`
-	BaseDomain        *string                `protobuf:"bytes,3,opt,name=base_domain,json=baseDomain,proto3,oneof" json:"base_domain,omitempty"`
-	DefaultEntrypoint *string                `protobuf:"bytes,6,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
-	TlsMode           *string                `protobuf:"bytes,8,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	Name                    *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	RestApiUrl              *string                `protobuf:"bytes,2,opt,name=rest_api_url,json=restApiUrl,proto3,oneof" json:"rest_api_url,omitempty"`
+	BaseDomain              *string                `protobuf:"bytes,3,opt,name=base_domain,json=baseDomain,proto3,oneof" json:"base_domain,omitempty"`
+	DefaultEntrypoint       *string                `protobuf:"bytes,4,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
+	TlsMode                 *string                `protobuf:"bytes,5,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
+	TraefikComponentName    *string                `protobuf:"bytes,6,opt,name=traefik_component_name,json=traefikComponentName,proto3,oneof" json:"traefik_component_name,omitempty"`
+	RestReadyTimeoutSeconds *int32                 `protobuf:"varint,7,opt,name=rest_ready_timeout_seconds,json=restReadyTimeoutSeconds,proto3,oneof" json:"rest_ready_timeout_seconds,omitempty"`
+	AcmeProfile             *string                `protobuf:"bytes,8,opt,name=acme_profile,json=acmeProfile,proto3,oneof" json:"acme_profile,omitempty"`
+	AcmeEmail               *string                `protobuf:"bytes,9,opt,name=acme_email,json=acmeEmail,proto3,oneof" json:"acme_email,omitempty"`
+	DnsApiToken             *string                `protobuf:"bytes,10,opt,name=dns_api_token,json=dnsApiToken,proto3,oneof" json:"dns_api_token,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *GatewayUpdateReq) Reset() {
 	*x = GatewayUpdateReq{}
-	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[1]
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -156,7 +253,7 @@ func (x *GatewayUpdateReq) String() string {
 func (*GatewayUpdateReq) ProtoMessage() {}
 
 func (x *GatewayUpdateReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[1]
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -169,7 +266,7 @@ func (x *GatewayUpdateReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayUpdateReq.ProtoReflect.Descriptor instead.
 func (*GatewayUpdateReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_gateway_gateway_proto_rawDescGZIP(), []int{1}
+	return file_orbit_v1_gateway_gateway_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GatewayUpdateReq) GetName() string {
@@ -207,6 +304,41 @@ func (x *GatewayUpdateReq) GetTlsMode() string {
 	return ""
 }
 
+func (x *GatewayUpdateReq) GetTraefikComponentName() string {
+	if x != nil && x.TraefikComponentName != nil {
+		return *x.TraefikComponentName
+	}
+	return ""
+}
+
+func (x *GatewayUpdateReq) GetRestReadyTimeoutSeconds() int32 {
+	if x != nil && x.RestReadyTimeoutSeconds != nil {
+		return *x.RestReadyTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *GatewayUpdateReq) GetAcmeProfile() string {
+	if x != nil && x.AcmeProfile != nil {
+		return *x.AcmeProfile
+	}
+	return ""
+}
+
+func (x *GatewayUpdateReq) GetAcmeEmail() string {
+	if x != nil && x.AcmeEmail != nil {
+		return *x.AcmeEmail
+	}
+	return ""
+}
+
+func (x *GatewayUpdateReq) GetDnsApiToken() string {
+	if x != nil && x.DnsApiToken != nil {
+		return *x.DnsApiToken
+	}
+	return ""
+}
+
 // Read-only active exit / cluster DNS row (not a CRUD resource).
 type GatewayExposureItem struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
@@ -226,7 +358,7 @@ type GatewayExposureItem struct {
 
 func (x *GatewayExposureItem) Reset() {
 	*x = GatewayExposureItem{}
-	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[2]
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -238,7 +370,7 @@ func (x *GatewayExposureItem) String() string {
 func (*GatewayExposureItem) ProtoMessage() {}
 
 func (x *GatewayExposureItem) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[2]
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -251,7 +383,7 @@ func (x *GatewayExposureItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayExposureItem.ProtoReflect.Descriptor instead.
 func (*GatewayExposureItem) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_gateway_gateway_proto_rawDescGZIP(), []int{2}
+	return file_orbit_v1_gateway_gateway_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GatewayExposureItem) GetApplicationId() string {
@@ -325,31 +457,37 @@ func (x *GatewayExposureItem) GetClientHint() string {
 }
 
 type GatewayResp struct {
-	state                     protoimpl.MessageState `protogen:"open.v1"`
-	Id                        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId                 string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Code                      string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
-	Name                      string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Kind                      string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
-	RestApiUrl                string                 `protobuf:"bytes,6,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
-	BaseDomain                string                 `protobuf:"bytes,7,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
-	CreatedAt                 string                 `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt                 string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	ConfigUpdatedAt           string                 `protobuf:"bytes,11,opt,name=config_updated_at,json=configUpdatedAt,proto3" json:"config_updated_at,omitempty"`
-	DefaultEntrypoint         string                 `protobuf:"bytes,13,opt,name=default_entrypoint,json=defaultEntrypoint,proto3" json:"default_entrypoint,omitempty"`
-	TlsMode                   string                 `protobuf:"bytes,15,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
-	Exposures                 []*GatewayExposureItem `protobuf:"bytes,16,rep,name=exposures,proto3" json:"exposures,omitempty"`
-	DefaultServiceId          string                 `protobuf:"bytes,17,opt,name=default_service_id,json=defaultServiceId,proto3" json:"default_service_id,omitempty"`
-	DefaultServiceInstanceKey string                 `protobuf:"bytes,18,opt,name=default_service_instance_key,json=defaultServiceInstanceKey,proto3" json:"default_service_instance_key,omitempty"`
-	DefaultServiceCode        string                 `protobuf:"bytes,19,opt,name=default_service_code,json=defaultServiceCode,proto3" json:"default_service_code,omitempty"`
-	DefaultServiceStatus      string                 `protobuf:"bytes,20,opt,name=default_service_status,json=defaultServiceStatus,proto3" json:"default_service_status,omitempty"`
+	state                     protoimpl.MessageState   `protogen:"open.v1"`
+	Id                        string                   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId                 string                   `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Code                      string                   `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
+	Name                      string                   `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Kind                      string                   `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
+	RestApiUrl                string                   `protobuf:"bytes,6,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
+	BaseDomain                string                   `protobuf:"bytes,7,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	CreatedAt                 string                   `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt                 string                   `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ConfigUpdatedAt           string                   `protobuf:"bytes,10,opt,name=config_updated_at,json=configUpdatedAt,proto3" json:"config_updated_at,omitempty"`
+	DefaultEntrypoint         string                   `protobuf:"bytes,11,opt,name=default_entrypoint,json=defaultEntrypoint,proto3" json:"default_entrypoint,omitempty"`
+	TlsMode                   string                   `protobuf:"bytes,12,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
+	Exposures                 []*GatewayExposureItem   `protobuf:"bytes,13,rep,name=exposures,proto3" json:"exposures,omitempty"`
+	DefaultServiceId          string                   `protobuf:"bytes,14,opt,name=default_service_id,json=defaultServiceId,proto3" json:"default_service_id,omitempty"`
+	DefaultServiceInstanceKey string                   `protobuf:"bytes,15,opt,name=default_service_instance_key,json=defaultServiceInstanceKey,proto3" json:"default_service_instance_key,omitempty"`
+	DefaultServiceCode        string                   `protobuf:"bytes,16,opt,name=default_service_code,json=defaultServiceCode,proto3" json:"default_service_code,omitempty"`
+	DefaultServiceStatus      string                   `protobuf:"bytes,17,opt,name=default_service_status,json=defaultServiceStatus,proto3" json:"default_service_status,omitempty"`
+	TraefikComponentName      string                   `protobuf:"bytes,18,opt,name=traefik_component_name,json=traefikComponentName,proto3" json:"traefik_component_name,omitempty"`
+	RestReadyTimeoutSeconds   int32                    `protobuf:"varint,19,opt,name=rest_ready_timeout_seconds,json=restReadyTimeoutSeconds,proto3" json:"rest_ready_timeout_seconds,omitempty"`
+	AcmeProfile               string                   `protobuf:"bytes,20,opt,name=acme_profile,json=acmeProfile,proto3" json:"acme_profile,omitempty"`
+	AcmeEmail                 string                   `protobuf:"bytes,21,opt,name=acme_email,json=acmeEmail,proto3" json:"acme_email,omitempty"`
+	DnsApiToken               string                   `protobuf:"bytes,22,opt,name=dns_api_token,json=dnsApiToken,proto3" json:"dns_api_token,omitempty"`
+	VersionBindings           []*GatewayVersionBinding `protobuf:"bytes,23,rep,name=version_bindings,json=versionBindings,proto3" json:"version_bindings,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *GatewayResp) Reset() {
 	*x = GatewayResp{}
-	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[3]
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -361,7 +499,7 @@ func (x *GatewayResp) String() string {
 func (*GatewayResp) ProtoMessage() {}
 
 func (x *GatewayResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[3]
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -374,7 +512,7 @@ func (x *GatewayResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayResp.ProtoReflect.Descriptor instead.
 func (*GatewayResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_gateway_gateway_proto_rawDescGZIP(), []int{3}
+	return file_orbit_v1_gateway_gateway_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GatewayResp) GetId() string {
@@ -496,6 +634,48 @@ func (x *GatewayResp) GetDefaultServiceStatus() string {
 	return ""
 }
 
+func (x *GatewayResp) GetTraefikComponentName() string {
+	if x != nil {
+		return x.TraefikComponentName
+	}
+	return ""
+}
+
+func (x *GatewayResp) GetRestReadyTimeoutSeconds() int32 {
+	if x != nil {
+		return x.RestReadyTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *GatewayResp) GetAcmeProfile() string {
+	if x != nil {
+		return x.AcmeProfile
+	}
+	return ""
+}
+
+func (x *GatewayResp) GetAcmeEmail() string {
+	if x != nil {
+		return x.AcmeEmail
+	}
+	return ""
+}
+
+func (x *GatewayResp) GetDnsApiToken() string {
+	if x != nil {
+		return x.DnsApiToken
+	}
+	return ""
+}
+
+func (x *GatewayResp) GetVersionBindings() []*GatewayVersionBinding {
+	if x != nil {
+		return x.VersionBindings
+	}
+	return nil
+}
+
 type GatewayPaginatedResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*GatewayResp         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -509,7 +689,7 @@ type GatewayPaginatedResp struct {
 
 func (x *GatewayPaginatedResp) Reset() {
 	*x = GatewayPaginatedResp{}
-	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[4]
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -521,7 +701,7 @@ func (x *GatewayPaginatedResp) String() string {
 func (*GatewayPaginatedResp) ProtoMessage() {}
 
 func (x *GatewayPaginatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[4]
+	mi := &file_orbit_v1_gateway_gateway_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -534,7 +714,7 @@ func (x *GatewayPaginatedResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayPaginatedResp.ProtoReflect.Descriptor instead.
 func (*GatewayPaginatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_gateway_gateway_proto_rawDescGZIP(), []int{4}
+	return file_orbit_v1_gateway_gateway_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GatewayPaginatedResp) GetItems() []*GatewayResp {
@@ -576,7 +756,11 @@ var File_orbit_v1_gateway_gateway_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorbit/v1/gateway/gateway.proto\x12\x10orbit.v1.gateway\"\xb0\x03\n" +
+	"\x1eorbit/v1/gateway/gateway.proto\x12\x10orbit.v1.gateway\"P\n" +
+	"\x15GatewayVersionBinding\x12\x18\n" +
+	"\aprofile\x18\x01 \x01(\tR\aprofile\x12\x1d\n" +
+	"\n" +
+	"version_id\x18\x02 \x01(\tR\tversionId\"\x8e\x06\n" +
 	"\x10GatewayCreateReq\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x12\n" +
@@ -589,24 +773,47 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\x17initial_component_image\x18\x06 \x01(\tH\x00R\x15initialComponentImage\x88\x01\x01\x12A\n" +
 	"\x1dinitial_component_pull_policy\x18\a \x01(\tR\x1ainitialComponentPullPolicy\x122\n" +
 	"\x12default_entrypoint\x18\b \x01(\tH\x01R\x11defaultEntrypoint\x88\x01\x01\x12\x1e\n" +
-	"\btls_mode\x18\n" +
-	" \x01(\tH\x02R\atlsMode\x88\x01\x01B\x1a\n" +
+	"\btls_mode\x18\t \x01(\tH\x02R\atlsMode\x88\x01\x01\x129\n" +
+	"\x16traefik_component_name\x18\n" +
+	" \x01(\tH\x03R\x14traefikComponentName\x88\x01\x01\x12@\n" +
+	"\x1arest_ready_timeout_seconds\x18\v \x01(\x05H\x04R\x17restReadyTimeoutSeconds\x88\x01\x01\x12&\n" +
+	"\facme_profile\x18\f \x01(\tH\x05R\vacmeProfile\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"acme_email\x18\r \x01(\tH\x06R\tacmeEmail\x88\x01\x01\x12'\n" +
+	"\rdns_api_token\x18\x0e \x01(\tH\aR\vdnsApiToken\x88\x01\x01B\x1a\n" +
 	"\x18_initial_component_imageB\x15\n" +
 	"\x13_default_entrypointB\v\n" +
-	"\t_tls_mode\"\xa6\x02\n" +
+	"\t_tls_modeB\x19\n" +
+	"\x17_traefik_component_nameB\x1d\n" +
+	"\x1b_rest_ready_timeout_secondsB\x0f\n" +
+	"\r_acme_profileB\r\n" +
+	"\v_acme_emailB\x10\n" +
+	"\x0e_dns_api_token\"\xf8\x04\n" +
 	"\x10GatewayUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12%\n" +
 	"\frest_api_url\x18\x02 \x01(\tH\x01R\n" +
 	"restApiUrl\x88\x01\x01\x12$\n" +
 	"\vbase_domain\x18\x03 \x01(\tH\x02R\n" +
 	"baseDomain\x88\x01\x01\x122\n" +
-	"\x12default_entrypoint\x18\x06 \x01(\tH\x03R\x11defaultEntrypoint\x88\x01\x01\x12\x1e\n" +
-	"\btls_mode\x18\b \x01(\tH\x04R\atlsMode\x88\x01\x01B\a\n" +
+	"\x12default_entrypoint\x18\x04 \x01(\tH\x03R\x11defaultEntrypoint\x88\x01\x01\x12\x1e\n" +
+	"\btls_mode\x18\x05 \x01(\tH\x04R\atlsMode\x88\x01\x01\x129\n" +
+	"\x16traefik_component_name\x18\x06 \x01(\tH\x05R\x14traefikComponentName\x88\x01\x01\x12@\n" +
+	"\x1arest_ready_timeout_seconds\x18\a \x01(\x05H\x06R\x17restReadyTimeoutSeconds\x88\x01\x01\x12&\n" +
+	"\facme_profile\x18\b \x01(\tH\aR\vacmeProfile\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"acme_email\x18\t \x01(\tH\bR\tacmeEmail\x88\x01\x01\x12'\n" +
+	"\rdns_api_token\x18\n" +
+	" \x01(\tH\tR\vdnsApiToken\x88\x01\x01B\a\n" +
 	"\x05_nameB\x0f\n" +
 	"\r_rest_api_urlB\x0e\n" +
 	"\f_base_domainB\x15\n" +
 	"\x13_default_entrypointB\v\n" +
-	"\t_tls_modeJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06\"\xef\x02\n" +
+	"\t_tls_modeB\x19\n" +
+	"\x17_traefik_component_nameB\x1d\n" +
+	"\x1b_rest_ready_timeout_secondsB\x0f\n" +
+	"\r_acme_profileB\r\n" +
+	"\v_acme_emailB\x10\n" +
+	"\x0e_dns_api_token\"\xef\x02\n" +
 	"\x13GatewayExposureItem\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12)\n" +
 	"\x10application_code\x18\x02 \x01(\tR\x0fapplicationCode\x12%\n" +
@@ -621,7 +828,7 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\finternal_dns\x18\t \x01(\tR\vinternalDns\x12\x1f\n" +
 	"\vclient_hint\x18\n" +
 	" \x01(\tR\n" +
-	"clientHint\"\x97\x05\n" +
+	"clientHint\"\xb8\a\n" +
 	"\vGatewayResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -634,18 +841,25 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\vbase_domain\x18\a \x01(\tR\n" +
 	"baseDomain\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\t \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\n" +
-	" \x01(\tR\tupdatedAt\x12*\n" +
-	"\x11config_updated_at\x18\v \x01(\tR\x0fconfigUpdatedAt\x12-\n" +
-	"\x12default_entrypoint\x18\r \x01(\tR\x11defaultEntrypoint\x12\x19\n" +
-	"\btls_mode\x18\x0f \x01(\tR\atlsMode\x12C\n" +
-	"\texposures\x18\x10 \x03(\v2%.orbit.v1.gateway.GatewayExposureItemR\texposures\x12,\n" +
-	"\x12default_service_id\x18\x11 \x01(\tR\x10defaultServiceId\x12?\n" +
-	"\x1cdefault_service_instance_key\x18\x12 \x01(\tR\x19defaultServiceInstanceKey\x120\n" +
-	"\x14default_service_code\x18\x13 \x01(\tR\x12defaultServiceCode\x124\n" +
-	"\x16default_service_status\x18\x14 \x01(\tR\x14defaultServiceStatusJ\x04\b\b\x10\tJ\x04\b\f\x10\r\"\xa6\x01\n" +
+	"updated_at\x18\t \x01(\tR\tupdatedAt\x12*\n" +
+	"\x11config_updated_at\x18\n" +
+	" \x01(\tR\x0fconfigUpdatedAt\x12-\n" +
+	"\x12default_entrypoint\x18\v \x01(\tR\x11defaultEntrypoint\x12\x19\n" +
+	"\btls_mode\x18\f \x01(\tR\atlsMode\x12C\n" +
+	"\texposures\x18\r \x03(\v2%.orbit.v1.gateway.GatewayExposureItemR\texposures\x12,\n" +
+	"\x12default_service_id\x18\x0e \x01(\tR\x10defaultServiceId\x12?\n" +
+	"\x1cdefault_service_instance_key\x18\x0f \x01(\tR\x19defaultServiceInstanceKey\x120\n" +
+	"\x14default_service_code\x18\x10 \x01(\tR\x12defaultServiceCode\x124\n" +
+	"\x16default_service_status\x18\x11 \x01(\tR\x14defaultServiceStatus\x124\n" +
+	"\x16traefik_component_name\x18\x12 \x01(\tR\x14traefikComponentName\x12;\n" +
+	"\x1arest_ready_timeout_seconds\x18\x13 \x01(\x05R\x17restReadyTimeoutSeconds\x12!\n" +
+	"\facme_profile\x18\x14 \x01(\tR\vacmeProfile\x12\x1d\n" +
+	"\n" +
+	"acme_email\x18\x15 \x01(\tR\tacmeEmail\x12\"\n" +
+	"\rdns_api_token\x18\x16 \x01(\tR\vdnsApiToken\x12R\n" +
+	"\x10version_bindings\x18\x17 \x03(\v2'.orbit.v1.gateway.GatewayVersionBindingR\x0fversionBindings\"\xa6\x01\n" +
 	"\x14GatewayPaginatedResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.gateway.GatewayRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
@@ -666,22 +880,24 @@ func file_orbit_v1_gateway_gateway_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_gateway_gateway_proto_rawDescData
 }
 
-var file_orbit_v1_gateway_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_orbit_v1_gateway_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_orbit_v1_gateway_gateway_proto_goTypes = []any{
-	(*GatewayCreateReq)(nil),     // 0: orbit.v1.gateway.GatewayCreateReq
-	(*GatewayUpdateReq)(nil),     // 1: orbit.v1.gateway.GatewayUpdateReq
-	(*GatewayExposureItem)(nil),  // 2: orbit.v1.gateway.GatewayExposureItem
-	(*GatewayResp)(nil),          // 3: orbit.v1.gateway.GatewayResp
-	(*GatewayPaginatedResp)(nil), // 4: orbit.v1.gateway.GatewayPaginatedResp
+	(*GatewayVersionBinding)(nil), // 0: orbit.v1.gateway.GatewayVersionBinding
+	(*GatewayCreateReq)(nil),      // 1: orbit.v1.gateway.GatewayCreateReq
+	(*GatewayUpdateReq)(nil),      // 2: orbit.v1.gateway.GatewayUpdateReq
+	(*GatewayExposureItem)(nil),   // 3: orbit.v1.gateway.GatewayExposureItem
+	(*GatewayResp)(nil),           // 4: orbit.v1.gateway.GatewayResp
+	(*GatewayPaginatedResp)(nil),  // 5: orbit.v1.gateway.GatewayPaginatedResp
 }
 var file_orbit_v1_gateway_gateway_proto_depIdxs = []int32{
-	2, // 0: orbit.v1.gateway.GatewayResp.exposures:type_name -> orbit.v1.gateway.GatewayExposureItem
-	3, // 1: orbit.v1.gateway.GatewayPaginatedResp.items:type_name -> orbit.v1.gateway.GatewayResp
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 0: orbit.v1.gateway.GatewayResp.exposures:type_name -> orbit.v1.gateway.GatewayExposureItem
+	0, // 1: orbit.v1.gateway.GatewayResp.version_bindings:type_name -> orbit.v1.gateway.GatewayVersionBinding
+	4, // 2: orbit.v1.gateway.GatewayPaginatedResp.items:type_name -> orbit.v1.gateway.GatewayResp
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_gateway_gateway_proto_init() }
@@ -689,15 +905,15 @@ func file_orbit_v1_gateway_gateway_proto_init() {
 	if File_orbit_v1_gateway_gateway_proto != nil {
 		return
 	}
-	file_orbit_v1_gateway_gateway_proto_msgTypes[0].OneofWrappers = []any{}
 	file_orbit_v1_gateway_gateway_proto_msgTypes[1].OneofWrappers = []any{}
+	file_orbit_v1_gateway_gateway_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_gateway_gateway_proto_rawDesc), len(file_orbit_v1_gateway_gateway_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

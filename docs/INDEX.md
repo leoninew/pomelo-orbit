@@ -25,6 +25,7 @@
 | 主题 | 活文档 |
 |------|--------|
 | CD 部署概念 | [guides/deployment.md](./guides/deployment.md) |
+| 客户端与云端调用机制 | [guides/client-cloud-invocation.md](./guides/client-cloud-invocation.md) |
 | Docker 部署 | [guides/docker-deployment.md](./guides/docker-deployment.md) |
 | 服务器首次部署 | [guides/server-deployment.md](./guides/server-deployment.md) |
 | 路由与证书 | [guides/routing-and-certificates.md](./guides/routing-and-certificates.md) |

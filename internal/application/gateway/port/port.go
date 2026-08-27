@@ -45,7 +45,9 @@ type ApplicationStore interface {
 type ConfigStore interface {
 	GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error)
 	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
+	ListGatewayApplications(ctx context.Context, projectId string) ([]model.Application, error)
 	UpsertGatewayConfig(ctx context.Context, cfg model.GatewayConfig) error
+	ReplaceGatewayVersionBindings(ctx context.Context, applicationId string, bindings []model.GatewayVersionBinding) error
 }
 
 // ServiceReader exposes only runtime bindings needed by gateway projections and conflict checks.
@@ -53,10 +55,5 @@ type ServiceReader interface {
 	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
 	ServiceByKey(ctx context.Context, applicationId string, instanceKey string) (model.Service, error)
 	ServiceComponentsByService(ctx context.Context, serviceId string) ([]model.ServiceComponent, error)
-}
-
-// DeploymentCoordinator resolves the explicit Gateway configuration required to
-// render a Service deployment. It never mutates or deploys Gateway resources.
-type DeploymentCoordinator interface {
-	GatewayForDeployment(ctx context.Context, app model.Application, plan model.EffectiveServicePlan) (*model.GatewayConfig, error)
+	UpdateServiceConfiguration(ctx context.Context, svc model.Service, components []model.ServiceComponent) error
 }

@@ -39,6 +39,9 @@ func (s Service) RenderCompose(ctx context.Context, input RenderInput) (string, 
 
 func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (RenderResult, error) {
 	_ = ctx
+	if err := enrichGatewayPlan(&input.Plan); err != nil {
+		return RenderResult{}, err
+	}
 	if len(input.Plan.Components) == 0 {
 		return RenderResult{}, fmt.Errorf("service %s has no effective components", input.Plan.Service.Id)
 	}
@@ -65,17 +68,18 @@ func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (
 	if err := applyEffectiveEndpoints(services, input.Plan); err != nil {
 		return RenderResult{}, err
 	}
-	joinTraefikNetwork := input.Plan.Application.Kind == status.ApplicationKindGateway || input.Plan.JoinsTraefikNetwork()
+	gatewayCarrier := isGatewayCarrier(input.Plan)
+	joinTraefikNetwork := gatewayCarrier || input.Plan.JoinsTraefikNetwork()
 	switch input.Plan.Application.Kind {
-	case status.ApplicationKindGateway:
-		for _, raw := range services {
-			raw.(map[string]any)["networks"] = []string{gatewayNetworkKey}
-		}
-		if err := injectGatewayDashboardLabels(services, input.Plan); err != nil {
-			return RenderResult{}, err
-		}
-	case status.ApplicationKindStandard:
-		if joinTraefikNetwork {
+	case status.ApplicationKindStandard, status.ApplicationKindGateway:
+		if gatewayCarrier {
+			for _, raw := range services {
+				raw.(map[string]any)["networks"] = []string{gatewayNetworkKey}
+			}
+			if err := injectGatewayDashboardLabels(services, input.Plan); err != nil {
+				return RenderResult{}, err
+			}
+		} else if joinTraefikNetwork {
 			if err := injectAllComponentsPlatformNetwork(services, input.Plan.Application.Code); err != nil {
 				return RenderResult{}, err
 			}
@@ -87,7 +91,7 @@ func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (
 	if len(volumes) > 0 {
 		data["volumes"] = volumes
 	}
-	if input.Plan.Application.Kind == status.ApplicationKindGateway {
+	if gatewayCarrier {
 		data["networks"] = map[string]any{gatewayNetworkKey: map[string]any{"name": defaultGatewayNetworkName, "driver": "bridge"}}
 	} else if joinTraefikNetwork {
 		data["networks"] = map[string]any{consumerPlatformNetworkKey: map[string]any{"name": defaultGatewayNetworkName, "external": true}}
@@ -130,7 +134,7 @@ func applyEffectiveEndpoints(services map[string]any, plan model.EffectiveServic
 				}
 				appendString(service, "ports", fmt.Sprintf("%s:%d:%d", address, *endpoint.ListenPort, endpoint.ContainerPort))
 			case "gateway":
-				if plan.Application.Kind == status.ApplicationKindStandard && !plan.JoinsTraefikNetwork() {
+				if !isGatewayCarrier(plan) && !plan.JoinsTraefikNetwork() {
 					continue
 				}
 				if endpoint.Protocol != "http" {

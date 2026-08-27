@@ -90,7 +90,8 @@ func (s Service) Reset(ctx context.Context, keys []string) (settingsdto.SystemCo
 	for _, key := range keys {
 		key = strings.TrimSpace(key)
 		if key != "" {
-			envKeys = append(envKeys, settingEnvKey(key))
+			envKey := settingEnvKey(key)
+			envKeys = append(envKeys, envKey)
 		}
 	}
 	if err := s.envStore.Delete(ctx, envKeys); err != nil {
@@ -142,10 +143,6 @@ func settingDefinitions(cfg config.Config) []settingsdto.Definition {
 		{Key: "turnstile__secret_key", Default: cfg.Turnstile.SecretKey, Description: "Cloudflare Turnstile secret key"},
 		{Key: "turnstile__verify_url", Default: cfg.Turnstile.VerifyUrl, Description: "Cloudflare Turnstile siteverify URL"},
 		{Key: "settings__secret_keys", Default: cfg.Settings.SecretKeys, Description: "Settings fields marked as secret"},
-		{Key: "cert__letsencrypt__enabled", Default: cfg.Cert.LetsEncrypt.Enabled, Description: "Enable Let's Encrypt certificates"},
-		{Key: "cert__letsencrypt__email", Default: cfg.Cert.LetsEncrypt.Email, Description: "Let's Encrypt account email"},
-		{Key: "cert__letsencrypt__challenge", Default: cfg.Cert.LetsEncrypt.Challenge, Description: "Let's Encrypt challenge type"},
-		{Key: "cert__letsencrypt__dns_provider", Default: cfg.Cert.LetsEncrypt.DNSProvider, Description: "Let's Encrypt DNS challenge provider"},
 		{Key: "pipeline_run__execution_timeout", Default: cfg.PipelineRun.ExecutionTimeout.String(), Description: "Maximum pipeline execution duration"},
 		{Key: "worker__id", Default: cfg.Worker.Id, Description: "Background worker ID"},
 		{Key: "worker__poll_interval", Default: cfg.Worker.PollInterval.String(), Description: "Background worker poll interval"},

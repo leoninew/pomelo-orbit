@@ -39,6 +39,11 @@ type RouteResp struct {
 	ComponentName         *string                `protobuf:"bytes,14,opt,name=component_name,json=componentName,proto3,oneof" json:"component_name,omitempty"`
 	EndpointProtocol      *string                `protobuf:"bytes,15,opt,name=endpoint_protocol,json=endpointProtocol,proto3,oneof" json:"endpoint_protocol,omitempty"`
 	EndpointContainerPort *int32                 `protobuf:"varint,16,opt,name=endpoint_container_port,json=endpointContainerPort,proto3,oneof" json:"endpoint_container_port,omitempty"`
+	AcmeChallenge         string                 `protobuf:"bytes,17,opt,name=acme_challenge,json=acmeChallenge,proto3" json:"acme_challenge,omitempty"`
+	GatewayApplicationId  string                 `protobuf:"bytes,18,opt,name=gateway_application_id,json=gatewayApplicationId,proto3" json:"gateway_application_id,omitempty"`
+	Http01Available       bool                   `protobuf:"varint,19,opt,name=http01_available,json=http01Available,proto3" json:"http01_available,omitempty"`
+	Dns01Available        bool                   `protobuf:"varint,20,opt,name=dns01_available,json=dns01Available,proto3" json:"dns01_available,omitempty"`
+	AcmeChallengeHint     string                 `protobuf:"bytes,21,opt,name=acme_challenge_hint,json=acmeChallengeHint,proto3" json:"acme_challenge_hint,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -183,6 +188,41 @@ func (x *RouteResp) GetEndpointContainerPort() int32 {
 		return *x.EndpointContainerPort
 	}
 	return 0
+}
+
+func (x *RouteResp) GetAcmeChallenge() string {
+	if x != nil {
+		return x.AcmeChallenge
+	}
+	return ""
+}
+
+func (x *RouteResp) GetGatewayApplicationId() string {
+	if x != nil {
+		return x.GatewayApplicationId
+	}
+	return ""
+}
+
+func (x *RouteResp) GetHttp01Available() bool {
+	if x != nil {
+		return x.Http01Available
+	}
+	return false
+}
+
+func (x *RouteResp) GetDns01Available() bool {
+	if x != nil {
+		return x.Dns01Available
+	}
+	return false
+}
+
+func (x *RouteResp) GetAcmeChallengeHint() string {
+	if x != nil {
+		return x.AcmeChallengeHint
+	}
+	return ""
 }
 
 type RouteCreateReq struct {
@@ -543,6 +583,7 @@ func (*RouteSyncReq) Descriptor() ([]byte, []int) {
 
 type RouteLetsEncryptEnableReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	Challenge     string                 `protobuf:"bytes,1,opt,name=challenge,proto3" json:"challenge,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -575,6 +616,13 @@ func (x *RouteLetsEncryptEnableReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use RouteLetsEncryptEnableReq.ProtoReflect.Descriptor instead.
 func (*RouteLetsEncryptEnableReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RouteLetsEncryptEnableReq) GetChallenge() string {
+	if x != nil {
+		return x.Challenge
+	}
+	return ""
 }
 
 type RouteMkcertEnableReq struct {
@@ -825,7 +873,7 @@ var File_orbit_v1_route_route_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"\n" +
-	"\x1aorbit/v1/route/route.proto\x12\x0eorbit.v1.route\"\x86\x05\n" +
+	"\x1aorbit/v1/route/route.proto\x12\x0eorbit.v1.route\"\xe7\x06\n" +
 	"\tRouteResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -849,7 +897,12 @@ const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"service_id\x18\r \x01(\tH\x01R\tserviceId\x88\x01\x01\x12*\n" +
 	"\x0ecomponent_name\x18\x0e \x01(\tH\x02R\rcomponentName\x88\x01\x01\x120\n" +
 	"\x11endpoint_protocol\x18\x0f \x01(\tH\x03R\x10endpointProtocol\x88\x01\x01\x12;\n" +
-	"\x17endpoint_container_port\x18\x10 \x01(\x05H\x04R\x15endpointContainerPort\x88\x01\x01B\x0e\n" +
+	"\x17endpoint_container_port\x18\x10 \x01(\x05H\x04R\x15endpointContainerPort\x88\x01\x01\x12%\n" +
+	"\x0eacme_challenge\x18\x11 \x01(\tR\racmeChallenge\x124\n" +
+	"\x16gateway_application_id\x18\x12 \x01(\tR\x14gatewayApplicationId\x12)\n" +
+	"\x10http01_available\x18\x13 \x01(\bR\x0fhttp01Available\x12'\n" +
+	"\x0fdns01_available\x18\x14 \x01(\bR\x0edns01Available\x12.\n" +
+	"\x13acme_challenge_hint\x18\x15 \x01(\tR\x11acmeChallengeHintB\x0e\n" +
 	"\f_listen_portB\r\n" +
 	"\v_service_idB\x11\n" +
 	"\x0f_component_nameB\x14\n" +
@@ -909,8 +962,9 @@ const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"\x18_endpoint_container_port\"\x10\n" +
 	"\x0eRouteEnableReq\"\x11\n" +
 	"\x0fRouteDisableReq\"\x0e\n" +
-	"\fRouteSyncReq\"\x1b\n" +
-	"\x19RouteLetsEncryptEnableReq\"\x16\n" +
+	"\fRouteSyncReq\"9\n" +
+	"\x19RouteLetsEncryptEnableReq\x12\x1c\n" +
+	"\tchallenge\x18\x01 \x01(\tR\tchallenge\"\x16\n" +
 	"\x14RouteMkcertEnableReq\"+\n" +
 	"\x0fRouteEnableResp\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\",\n" +

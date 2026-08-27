@@ -40,8 +40,8 @@ func (q *Queries) CountRoutes(ctx context.Context, arg CountRoutesParams) (int64
 }
 
 const createRoute = `-- name: CreateRoute :exec
-INSERT INTO route (id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO route (id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRouteParams struct {
@@ -62,6 +62,7 @@ type CreateRouteParams struct {
 	CertPem               sql.NullString `db:"cert_pem"`
 	CertKey               sql.NullString `db:"cert_key"`
 	CertType              string         `db:"cert_type"`
+	AcmeChallenge         string         `db:"acme_challenge"`
 	CreatedAt             time.Time      `db:"created_at"`
 	UpdatedAt             time.Time      `db:"updated_at"`
 }
@@ -85,6 +86,7 @@ func (q *Queries) CreateRoute(ctx context.Context, arg CreateRouteParams) error 
 		arg.CertPem,
 		arg.CertKey,
 		arg.CertType,
+		arg.AcmeChallenge,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -102,7 +104,7 @@ func (q *Queries) DeleteRoute(ctx context.Context, id string) error {
 }
 
 const listAllRoutes = `-- name: ListAllRoutes :many
-SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
 FROM route
 WHERE project_id = ?
 ORDER BY id DESC
@@ -126,6 +128,7 @@ type ListAllRoutesRow struct {
 	CertPem               sql.NullString `db:"cert_pem"`
 	CertKey               sql.NullString `db:"cert_key"`
 	CertType              string         `db:"cert_type"`
+	AcmeChallenge         string         `db:"acme_challenge"`
 	CreatedAt             time.Time      `db:"created_at"`
 	UpdatedAt             time.Time      `db:"updated_at"`
 }
@@ -157,6 +160,7 @@ func (q *Queries) ListAllRoutes(ctx context.Context, projectID sql.NullString) (
 			&i.CertPem,
 			&i.CertKey,
 			&i.CertType,
+			&i.AcmeChallenge,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -174,7 +178,7 @@ func (q *Queries) ListAllRoutes(ctx context.Context, projectID sql.NullString) (
 }
 
 const listEnabledRoutes = `-- name: ListEnabledRoutes :many
-SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
 FROM route
 WHERE enabled = ?
 ORDER BY name ASC, id ASC
@@ -198,6 +202,7 @@ type ListEnabledRoutesRow struct {
 	CertPem               sql.NullString `db:"cert_pem"`
 	CertKey               sql.NullString `db:"cert_key"`
 	CertType              string         `db:"cert_type"`
+	AcmeChallenge         string         `db:"acme_challenge"`
 	CreatedAt             time.Time      `db:"created_at"`
 	UpdatedAt             time.Time      `db:"updated_at"`
 }
@@ -229,6 +234,7 @@ func (q *Queries) ListEnabledRoutes(ctx context.Context, enabled int64) ([]ListE
 			&i.CertPem,
 			&i.CertKey,
 			&i.CertType,
+			&i.AcmeChallenge,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -246,7 +252,7 @@ func (q *Queries) ListEnabledRoutes(ctx context.Context, enabled int64) ([]ListE
 }
 
 const listRoutes = `-- name: ListRoutes :many
-SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
 FROM route
 WHERE project_id = ?
   AND (? IS NULL
@@ -282,6 +288,7 @@ type ListRoutesRow struct {
 	CertPem               sql.NullString `db:"cert_pem"`
 	CertKey               sql.NullString `db:"cert_key"`
 	CertType              string         `db:"cert_type"`
+	AcmeChallenge         string         `db:"acme_challenge"`
 	CreatedAt             time.Time      `db:"created_at"`
 	UpdatedAt             time.Time      `db:"updated_at"`
 }
@@ -321,6 +328,7 @@ func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListR
 			&i.CertPem,
 			&i.CertKey,
 			&i.CertType,
+			&i.AcmeChallenge,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -338,7 +346,7 @@ func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListR
 }
 
 const routeByDomain = `-- name: RouteByDomain :one
-SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
 FROM route
 WHERE domain = ?
 `
@@ -361,6 +369,7 @@ type RouteByDomainRow struct {
 	CertPem               sql.NullString `db:"cert_pem"`
 	CertKey               sql.NullString `db:"cert_key"`
 	CertType              string         `db:"cert_type"`
+	AcmeChallenge         string         `db:"acme_challenge"`
 	CreatedAt             time.Time      `db:"created_at"`
 	UpdatedAt             time.Time      `db:"updated_at"`
 }
@@ -386,6 +395,7 @@ func (q *Queries) RouteByDomain(ctx context.Context, domain string) (RouteByDoma
 		&i.CertPem,
 		&i.CertKey,
 		&i.CertType,
+		&i.AcmeChallenge,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -393,7 +403,7 @@ func (q *Queries) RouteByDomain(ctx context.Context, domain string) (RouteByDoma
 }
 
 const routeByID = `-- name: RouteByID :one
-SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
 FROM route
 WHERE id = ?
 `
@@ -416,6 +426,7 @@ type RouteByIDRow struct {
 	CertPem               sql.NullString `db:"cert_pem"`
 	CertKey               sql.NullString `db:"cert_key"`
 	CertType              string         `db:"cert_type"`
+	AcmeChallenge         string         `db:"acme_challenge"`
 	CreatedAt             time.Time      `db:"created_at"`
 	UpdatedAt             time.Time      `db:"updated_at"`
 }
@@ -441,6 +452,7 @@ func (q *Queries) RouteByID(ctx context.Context, id string) (RouteByIDRow, error
 		&i.CertPem,
 		&i.CertKey,
 		&i.CertType,
+		&i.AcmeChallenge,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -449,7 +461,7 @@ func (q *Queries) RouteByID(ctx context.Context, id string) (RouteByIDRow, error
 
 const updateRoute = `-- name: UpdateRoute :exec
 UPDATE route
-SET name = ?, protocol = ?, domain = ?, path_prefix = ?, target_url = ?, listen_port = ?, service_id = ?, component_name = ?, endpoint_protocol = ?, endpoint_container_port = ?, enabled = ?, https_enabled = ?, cert_pem = ?, cert_key = ?, cert_type = ?, updated_at = ?
+SET name = ?, protocol = ?, domain = ?, path_prefix = ?, target_url = ?, listen_port = ?, service_id = ?, component_name = ?, endpoint_protocol = ?, endpoint_container_port = ?, enabled = ?, https_enabled = ?, cert_pem = ?, cert_key = ?, cert_type = ?, acme_challenge = ?, updated_at = ?
 WHERE id = ?
 `
 
@@ -469,6 +481,7 @@ type UpdateRouteParams struct {
 	CertPem               sql.NullString `db:"cert_pem"`
 	CertKey               sql.NullString `db:"cert_key"`
 	CertType              string         `db:"cert_type"`
+	AcmeChallenge         string         `db:"acme_challenge"`
 	UpdatedAt             time.Time      `db:"updated_at"`
 	ID                    string         `db:"id"`
 }
@@ -490,6 +503,7 @@ func (q *Queries) UpdateRoute(ctx context.Context, arg UpdateRouteParams) error 
 		arg.CertPem,
 		arg.CertKey,
 		arg.CertType,
+		arg.AcmeChallenge,
 		arg.UpdatedAt,
 		arg.ID,
 	)

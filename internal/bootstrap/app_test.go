@@ -42,7 +42,10 @@ func TestMigrateAppliesSchemaAndSeedData(t *testing.T) {
 }
 
 func TestValidateContainerWorkspaceMountsIncludesConfigurationKey(t *testing.T) {
-	cfg := config.Config{Workspace: config.WorkspaceConfig{Pipeline: "/app/data/pipeline", Deployment: "/app/data/deployment"}}
+	cfg := config.Config{Workspace: config.WorkspaceConfig{
+		Pipeline:   "/app/data/pipeline",
+		Deployment: "/app/data/deployment",
+	}}
 	var resolved []string
 	err := validateContainerWorkspaceMounts(context.Background(), cfg, true, func(_ context.Context, path string) (string, error) {
 		resolved = append(resolved, path)

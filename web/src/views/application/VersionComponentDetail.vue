@@ -427,7 +427,7 @@
                           :disabled="operating"
                           @click="openMountContentDrawer(index)"
                         >
-                          {{ t('application.componentDetail.fields.content') }}
+                          {{ t('application.componentDetail.actions.content') }}
                         </button>
                         <button
                           v-if="canEdit"

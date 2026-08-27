@@ -14,6 +14,15 @@
         </button>
         <button
           v-if="gateway"
+          class="app-button h-9 px-3"
+          :disabled="!gatewayRuntimeLogTarget"
+          @click="openGatewayLogs"
+        >
+          <ScrollText class="size-4" />
+          {{ t('gateway.actions.logs') }}
+        </button>
+        <button
+          v-if="gateway"
           class="app-button-danger h-9 px-3"
           :disabled="operating || !canStop"
           @click="openStopDialog"
@@ -21,7 +30,7 @@
           <Square class="size-4" />
           {{ t('gateway.actions.stop') }}
         </button>
-        <button class="app-button h-9 px-4" @click="router.push('/gateways')">
+        <button class="app-button h-9 px-4" @click="goBack">
           <ArrowLeft class="size-4" />
           {{ t('common.back') }}
         </button>
@@ -32,10 +41,10 @@
 
     <template v-else-if="gateway">
       <DetailInfoCard
-        :title="t('gateway.sections.config')"
+        :title="t('gateway.sections.controlPlane')"
         editable
         :disabled="operating"
-        @edit="openEditDialog"
+        @edit="openControlPlaneEditDialog"
       >
         <template #actions>
           <button class="app-button h-9 px-3" @click="goWorkload">
@@ -75,18 +84,12 @@
             <dd class="text-foreground">{{ gateway.base_domain }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt>
-              {{ t('gateway.fields.defaultEntrypoint') }}
-            </dt>
-            <dd>
-              <AppBadge variant="pill">{{ gateway.default_entrypoint }}</AppBadge>
-            </dd>
+            <dt>{{ t('gateway.fields.traefikComponentName') }}</dt>
+            <dd class="text-foreground">{{ gateway.traefik_component_name }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt>{{ t('gateway.fields.tlsMode') }}</dt>
-            <dd>
-              <AppBadge variant="pill">{{ gateway.tls_mode }}</AppBadge>
-            </dd>
+            <dt>{{ t('gateway.fields.restReadyTimeout') }}</dt>
+            <dd class="text-foreground">{{ gateway.rest_ready_timeout_seconds }}s</dd>
           </div>
           <div class="flex gap-2">
             <dt>{{ t('common.createdAt') }}</dt>
@@ -99,63 +102,329 @@
         </dl>
       </DetailInfoCard>
 
-      <DetailInfoCard :title="t('gateway.exposures.title')">
-        <template #actions>
-          <SearchControl
-            v-model="exposureSearchText"
-            :placeholder="t('gateway.exposures.searchPlaceholder')"
-            :loading="loading"
-            class="shrink-0"
-            @search="handleExposureSearch"
-          />
-        </template>
-        <div class="px-5 py-4">
-          <AppEmptyState v-if="filteredExposures.length === 0" size="compact" />
-          <div v-else class="overflow-x-auto">
-            <table class="app-data-table min-w-[720px]">
-              <thead>
-                <tr>
-                  <th>{{ t('gateway.exposures.app') }}</th>
-                  <th>{{ t('gateway.exposures.component') }}</th>
-                  <th>{{ t('gateway.exposures.protocol') }}</th>
-                  <th>{{ t('gateway.exposures.access') }}</th>
-                  <th>{{ t('gateway.exposures.listen') }}</th>
-                  <th>{{ t('gateway.exposures.internalDns') }}</th>
-                  <th>{{ t('gateway.exposures.clientHint') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(row, idx) in filteredExposures" :key="idx">
-                  <td class="text-foreground">{{ row.application_code }}</td>
-                  <td class="text-foreground">{{ row.component_name }}</td>
-                  <td>
-                    <AppBadge variant="pill">{{ row.protocol }}</AppBadge>
-                  </td>
-                  <td>
-                    <AppBadge variant="pill">{{ row.access }}</AppBadge>
-                  </td>
-                  <td class="text-foreground">{{ row.listen_port }}:{{ row.container_port }}</td>
-                  <td class="text-foreground">{{ row.internal_dns }}</td>
-                  <td class="text-foreground">
-                    <a
-                      v-if="isHttpAddress(row.client_hint)"
-                      :href="row.client_hint"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="app-link inline-flex items-center gap-1"
-                    >
-                      {{ row.client_hint }}
-                      <ExternalLink class="size-3.5 shrink-0" />
-                    </a>
-                    <template v-else>{{ row.client_hint }}</template>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+      <DetailInfoCard
+        :title="t('gateway.sections.ingressDefaults')"
+        editable
+        :disabled="operating"
+        @edit="openIngressEditDialog"
+      >
+        <div class="space-y-3 px-5 py-4">
+          <dl class="app-detail-info-grid">
+            <div class="flex gap-2">
+              <dt>{{ t('gateway.fields.defaultEntrypoint') }}</dt>
+              <dd>
+                <AppBadge variant="pill">{{ gateway.default_entrypoint }}</AppBadge>
+              </dd>
+            </div>
+            <div class="flex gap-2">
+              <dt>{{ t('gateway.fields.tlsMode') }}</dt>
+              <dd>
+                <AppBadge variant="pill">{{ gateway.tls_mode }}</AppBadge>
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </DetailInfoCard>
+
+      <DetailInfoCard
+        :title="t('gateway.sections.routeCertificates')"
+        editable
+        :disabled="operating"
+        @edit="openCertificateEditDialog"
+      >
+        <div class="space-y-3 px-5 py-4">
+          <dl class="app-detail-info-grid">
+            <div class="flex gap-2">
+              <dt>{{ t('gateway.fields.acmeProfile') }}</dt>
+              <dd>
+                <AppBadge variant="pill">{{ acmeProfileLabel(gateway.acme_profile) }}</AppBadge>
+              </dd>
+            </div>
+            <div v-if="gateway.acme_profile" class="flex gap-2">
+              <dt>{{ t('gateway.fields.acmeEmail') }}</dt>
+              <dd class="text-foreground">{{ gateway.acme_email }}</dd>
+            </div>
+            <div v-if="usesDNSProfile(gateway.acme_profile)" class="flex gap-2">
+              <dt>{{ t('gateway.fields.dnsApiToken') }}</dt>
+              <dd class="min-w-0 flex-1">
+                <SensitiveValue
+                  :value="gateway.dns_api_token"
+                  :label="t('gateway.fields.dnsApiToken')"
+                  :show-label="t('common.showValue')"
+                  :hide-label="t('common.hideValue')"
+                />
+              </dd>
+            </div>
+          </dl>
         </div>
       </DetailInfoCard>
     </template>
+
+    <AppDialog
+      v-model:open="isControlPlaneEditDialogOpen"
+      :title="t('gateway.dialog.editControlPlane')"
+      width-class="w-[min(640px,calc(100vw-32px))]"
+    >
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="gateway-edit-name">
+            {{ t('gateway.fields.name') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="gateway-edit-name"
+            v-model="controlPlaneForm.name"
+            type="text"
+            class="app-input"
+            :class="controlPlaneErrors.name ? 'app-input-error' : ''"
+            :aria-invalid="controlPlaneErrors.name ? 'true' : undefined"
+            @input="delete controlPlaneErrors.name"
+          />
+          <p v-if="controlPlaneErrors.name" class="app-field-error" role="alert">
+            {{ validationMessage(controlPlaneErrors.name) }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="gateway-edit-code">
+            {{ t('gateway.fields.code') }}
+          </label>
+          <input
+            id="gateway-edit-code"
+            :value="gateway?.code || ''"
+            type="text"
+            class="app-input"
+            readonly
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="gateway-edit-traefik-component-name">
+            {{ t('gateway.fields.traefikComponentName') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="gateway-edit-traefik-component-name"
+            v-model="controlPlaneForm.traefik_component_name"
+            type="text"
+            class="app-input"
+            :class="controlPlaneErrors.traefik_component_name ? 'app-input-error' : ''"
+            :aria-invalid="controlPlaneErrors.traefik_component_name ? 'true' : undefined"
+            @input="delete controlPlaneErrors.traefik_component_name"
+          />
+          <p v-if="controlPlaneErrors.traefik_component_name" class="app-field-error" role="alert">
+            {{ validationMessage(controlPlaneErrors.traefik_component_name) }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="gateway-edit-rest-api-url">
+            {{ t('gateway.fields.restApiUrl') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="gateway-edit-rest-api-url"
+            v-model="controlPlaneForm.rest_api_url"
+            type="url"
+            class="app-input"
+            :class="controlPlaneErrors.rest_api_url ? 'app-input-error' : ''"
+            :aria-invalid="controlPlaneErrors.rest_api_url ? 'true' : undefined"
+            @input="delete controlPlaneErrors.rest_api_url"
+          />
+          <p v-if="controlPlaneErrors.rest_api_url" class="app-field-error" role="alert">
+            {{ validationMessage(controlPlaneErrors.rest_api_url) }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="gateway-edit-rest-ready-timeout">
+            {{ t('gateway.fields.restReadyTimeout') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="gateway-edit-rest-ready-timeout"
+            v-model="controlPlaneForm.rest_ready_timeout_seconds"
+            type="number"
+            min="1"
+            max="300"
+            class="app-input"
+            :class="controlPlaneErrors.rest_ready_timeout_seconds ? 'app-input-error' : ''"
+            :aria-invalid="controlPlaneErrors.rest_ready_timeout_seconds ? 'true' : undefined"
+            @input="delete controlPlaneErrors.rest_ready_timeout_seconds"
+          />
+          <p
+            v-if="controlPlaneErrors.rest_ready_timeout_seconds"
+            class="app-field-error"
+            role="alert"
+          >
+            {{ validationMessage(controlPlaneErrors.rest_ready_timeout_seconds) }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="gateway-edit-base-domain">
+            {{ t('gateway.fields.baseDomain') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="gateway-edit-base-domain"
+            v-model="controlPlaneForm.base_domain"
+            type="text"
+            class="app-input"
+            :class="controlPlaneErrors.base_domain ? 'app-input-error' : ''"
+            :aria-invalid="controlPlaneErrors.base_domain ? 'true' : undefined"
+            @input="delete controlPlaneErrors.base_domain"
+          />
+          <p v-if="controlPlaneErrors.base_domain" class="app-field-error" role="alert">
+            {{ validationMessage(controlPlaneErrors.base_domain) }}
+          </p>
+        </div>
+      </div>
+      <p v-if="controlPlaneSubmitError" class="app-field-error mt-3" role="alert">
+        {{ controlPlaneSubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isControlPlaneEditDialogOpen = false"
+          @confirm="saveControlPlane"
+        />
+      </template>
+    </AppDialog>
+
+    <AppDialog
+      v-model:open="isIngressEditDialogOpen"
+      :title="t('gateway.dialog.editIngressDefaults')"
+      width-class="w-[min(520px,calc(100vw-32px))]"
+    >
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="gateway-edit-entrypoint">
+            {{ t('gateway.fields.defaultEntrypoint') }}
+          </label>
+          <SelectControl
+            id="gateway-edit-entrypoint"
+            :model-value="ingressForm.default_entrypoint"
+            :options="entrypointOptions"
+            :invalid="Boolean(ingressErrors.default_entrypoint)"
+            @update:model-value="
+              ingressForm.default_entrypoint = String($event);
+              delete ingressErrors.default_entrypoint;
+            "
+          />
+          <p v-if="ingressErrors.default_entrypoint" class="app-field-error" role="alert">
+            {{ validationMessage(ingressErrors.default_entrypoint) }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="gateway-edit-tls-mode">
+            {{ t('gateway.fields.tlsMode') }}
+          </label>
+          <SelectControl
+            id="gateway-edit-tls-mode"
+            :model-value="ingressForm.tls_mode"
+            :options="tlsModeOptions"
+            :invalid="Boolean(ingressErrors.tls_mode)"
+            @update:model-value="
+              ingressForm.tls_mode = String($event);
+              delete ingressErrors.tls_mode;
+            "
+          />
+          <p v-if="ingressErrors.tls_mode" class="app-field-error" role="alert">
+            {{ validationMessage(ingressErrors.tls_mode) }}
+          </p>
+        </div>
+      </div>
+      <p v-if="ingressSubmitError" class="app-field-error mt-3" role="alert">
+        {{ ingressSubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isIngressEditDialogOpen = false"
+          @confirm="saveIngressDefaults"
+        />
+      </template>
+    </AppDialog>
+
+    <AppDialog
+      v-model:open="isCertificateEditDialogOpen"
+      :title="t('gateway.dialog.editRouteCertificates')"
+      width-class="w-[min(640px,calc(100vw-32px))]"
+    >
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="gateway-edit-acme-profile">
+            {{ t('gateway.fields.acmeProfile') }}
+          </label>
+          <SelectControl
+            id="gateway-edit-acme-profile"
+            :model-value="certificateAcmeProfileValue"
+            :options="acmeProfileOptions"
+            :invalid="Boolean(certificateErrors.acme_profile)"
+            @update:model-value="handleCertificateAcmeProfileChange"
+          />
+          <p v-if="certificateErrors.acme_profile" class="app-field-error" role="alert">
+            {{ validationMessage(certificateErrors.acme_profile) }}
+          </p>
+        </div>
+        <div v-if="certificateForm.acme_profile" class="space-y-1.5">
+          <label class="app-field-label block" for="gateway-edit-acme-email">
+            {{ t('gateway.fields.acmeEmail') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="gateway-edit-acme-email"
+            v-model="certificateForm.acme_email"
+            type="email"
+            class="app-input"
+            :class="certificateErrors.acme_email ? 'app-input-error' : ''"
+            :aria-invalid="certificateErrors.acme_email ? 'true' : undefined"
+            @input="delete certificateErrors.acme_email"
+          />
+          <p v-if="certificateErrors.acme_email" class="app-field-error" role="alert">
+            {{ validationMessage(certificateErrors.acme_email) }}
+          </p>
+        </div>
+        <div v-if="certificateUsesDNSProfile" class="space-y-1.5">
+          <label class="app-field-label block" for="gateway-edit-dns-api-token">
+            {{ t('gateway.fields.dnsApiToken') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <div class="relative">
+            <input
+              id="gateway-edit-dns-api-token"
+              v-model="certificateForm.dns_api_token"
+              :type="isCertificateTokenVisible ? 'text' : 'password'"
+              class="app-input pr-10"
+              :class="certificateErrors.dns_api_token ? 'app-input-error' : ''"
+              :aria-invalid="certificateErrors.dns_api_token ? 'true' : undefined"
+              @input="delete certificateErrors.dns_api_token"
+            />
+            <button
+              type="button"
+              class="absolute right-1 top-1/2 inline-flex size-9 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground"
+              :aria-label="
+                isCertificateTokenVisible ? t('common.hideValue') : t('common.showValue')
+              "
+              :title="isCertificateTokenVisible ? t('common.hideValue') : t('common.showValue')"
+              @click="isCertificateTokenVisible = !isCertificateTokenVisible"
+            >
+              <EyeOff v-if="isCertificateTokenVisible" class="size-4" />
+              <Eye v-else class="size-4" />
+            </button>
+          </div>
+          <p v-if="certificateErrors.dns_api_token" class="app-field-error" role="alert">
+            {{ validationMessage(certificateErrors.dns_api_token) }}
+          </p>
+        </div>
+      </div>
+      <p v-if="certificateSubmitError" class="app-field-error mt-3" role="alert">
+        {{ certificateSubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isCertificateEditDialogOpen = false"
+          @confirm="saveRouteCertificates"
+        />
+      </template>
+    </AppDialog>
 
     <AppDialog
       v-model:open="isDeployDialogOpen"
@@ -178,22 +447,6 @@
           />
           <p v-if="deployErrors.service_id" class="app-field-error" role="alert">
             {{ deployErrors.service_id }}
-          </p>
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.deploy.version') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <SelectControl
-            v-model="deployForm.version_id"
-            :options="deployVersionSelectOptions"
-            :placeholder="t('gateway.deploy.selectVersion')"
-            :invalid="Boolean(deployErrors.version_id)"
-            @update:model-value="deployErrors.version_id = ''"
-          />
-          <p v-if="deployErrors.version_id" class="app-field-error" role="alert">
-            {{ deployErrors.version_id }}
           </p>
         </div>
         <label class="flex items-center gap-2">
@@ -252,109 +505,25 @@
       </template>
     </AppDialog>
 
-    <AppDialog
-      v-model:open="isEditDialogOpen"
-      :title="t('gateway.dialog.edit')"
-      width-class="w-[min(720px,calc(100vw-32px))]"
-      body-class="space-y-4 px-6 py-4 text-sm"
-    >
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.fields.name') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="editForm.name"
-            type="text"
-            class="app-input"
-            :class="editErrors.name ? 'app-input-error' : ''"
-            :placeholder="t('gateway.placeholders.name')"
-            :aria-invalid="editErrors.name ? 'true' : undefined"
-            @input="editErrors.name = ''"
-          />
-          <p v-if="editErrors.name" class="app-field-error mt-1 text-xs">{{ editErrors.name }}</p>
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">{{ t('gateway.fields.code') }}</label>
-          <input :value="gateway?.code" type="text" class="app-input" disabled />
-          <p class="app-field-hint mt-1">{{ t('gateway.hints.code') }}</p>
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.fields.restApiUrl') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="editForm.rest_api_url"
-            type="text"
-            class="app-input"
-            :class="editErrors.rest_api_url ? 'app-input-error' : ''"
-            :placeholder="t('gateway.placeholders.restApiUrl')"
-            :aria-invalid="editErrors.rest_api_url ? 'true' : undefined"
-            @input="editErrors.rest_api_url = ''"
-          />
-          <p v-if="editErrors.rest_api_url" class="app-field-error mt-1 text-xs">
-            {{ editErrors.rest_api_url }}
-          </p>
-          <p v-else class="app-field-hint mt-1">{{ t('gateway.hints.restApiUrl') }}</p>
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.fields.baseDomain') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="editForm.base_domain"
-            type="text"
-            class="app-input"
-            :class="editErrors.base_domain ? 'app-input-error' : ''"
-            :placeholder="t('gateway.placeholders.baseDomain')"
-            :aria-invalid="editErrors.base_domain ? 'true' : undefined"
-            @input="editErrors.base_domain = ''"
-          />
-          <p v-if="editErrors.base_domain" class="app-field-error mt-1 text-xs">
-            {{ editErrors.base_domain }}
-          </p>
-          <p v-else class="app-field-hint mt-1">{{ t('gateway.hints.baseDomain') }}</p>
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.fields.defaultEntrypoint') }}
-          </label>
-          <RawValueSelect
-            v-model="editForm.default_entrypoint"
-            :values="entrypointValues"
-            :placeholder="t('gateway.placeholders.defaultEntrypoint')"
-          />
-          <p class="app-field-hint mt-1">{{ t('gateway.hints.defaultEntrypoint') }}</p>
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">{{ t('gateway.fields.tlsMode') }}</label>
-          <RawValueSelect
-            v-model="editForm.tls_mode"
-            :values="tlsModeValues"
-            :placeholder="t('gateway.placeholders.tlsMode')"
-          />
-        </div>
-      </div>
-      <p class="text-sm text-muted-foreground">{{ t('gateway.hints.compileOnSave') }}</p>
-      <p v-if="editSubmitError" class="app-field-error" role="alert">
-        {{ editSubmitError }}
-      </p>
-      <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          @cancel="isEditDialogOpen = false"
-          @confirm="saveGateway"
-        />
-      </template>
-    </AppDialog>
+    <RuntimeContainerLogsDrawer
+      v-if="runtimeLogTarget"
+      v-model:open="isGatewayLogsDrawerOpen"
+      :target="runtimeLogTarget"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ExternalLink, Layers, Rocket, Square } from '@lucide/vue';
+  import {
+    ArrowLeft,
+    ExternalLink,
+    Eye,
+    EyeOff,
+    Layers,
+    Rocket,
+    ScrollText,
+    Square,
+  } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -367,56 +536,99 @@
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
+  import RuntimeContainerLogsDrawer from '@/components/RuntimeContainerLogsDrawer.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import SearchControl from '@/components/SearchControl.vue';
-  import RawValueSelect from '@/components/RawValueSelect.vue';
   import SelectControl from '@/components/SelectControl.vue';
+  import SensitiveValue from '@/components/SensitiveValue.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
+  import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
   import { formatTime } from '@/utils/time';
+  import {
+    gatewayConfigFormFromResponse,
+    type GatewayAcmeProfile,
+    type GatewayConfigForm,
+    type GatewayConfigFormErrors,
+    validateGatewayConfigForm,
+  } from './gatewayConfigForm';
 
   const toast = useToast();
   const { t } = useI18n();
   const route = useRoute();
   const router = useRouter();
-  const { status, loading, execute } = useStatusAsync();
+  const { status, execute } = useStatusAsync();
   const { status: opStatus, execute: executeOp } = useStatusAsync();
 
   const gateway = ref<GatewayResp | null>(null);
   const services = ref<ServiceResp[]>([]);
-  const deployVersions = ref<VersionResp[]>([]);
-  const exposureSearchText = ref('');
-  const appliedExposureSearch = ref('');
-
-  const filteredExposures = computed(() => {
-    const exposures = gateway.value?.exposures ?? [];
-    const keyword = appliedExposureSearch.value.trim().toLowerCase();
-    if (!keyword) {
-      return exposures;
-    }
-    return exposures.filter(
-      (row) =>
-        row.application_code.toLowerCase().includes(keyword) ||
-        row.component_name.toLowerCase().includes(keyword) ||
-        row.protocol.toLowerCase().includes(keyword) ||
-        row.access.toLowerCase().includes(keyword) ||
-        String(row.listen_port).includes(keyword) ||
-        row.internal_dns.toLowerCase().includes(keyword) ||
-        row.client_hint.toLowerCase().includes(keyword)
-    );
+  const isControlPlaneEditDialogOpen = ref(false);
+  const controlPlaneForm = reactive<
+    Pick<
+      GatewayConfigForm,
+      | 'name'
+      | 'traefik_component_name'
+      | 'rest_api_url'
+      | 'rest_ready_timeout_seconds'
+      | 'base_domain'
+    >
+  >({
+    name: '',
+    traefik_component_name: '',
+    rest_api_url: '',
+    rest_ready_timeout_seconds: '',
+    base_domain: '',
   });
-
+  const controlPlaneErrors = reactive<GatewayConfigFormErrors>({});
+  const controlPlaneSubmitError = ref('');
+  const isIngressEditDialogOpen = ref(false);
+  const ingressForm = reactive<Pick<GatewayConfigForm, 'default_entrypoint' | 'tls_mode'>>({
+    default_entrypoint: '',
+    tls_mode: '',
+  });
+  const ingressErrors = reactive<GatewayConfigFormErrors>({});
+  const ingressSubmitError = ref('');
+  const isCertificateEditDialogOpen = ref(false);
+  const certificateForm = reactive<
+    Pick<GatewayConfigForm, 'acme_profile' | 'acme_email' | 'dns_api_token'>
+  >({
+    acme_profile: '',
+    acme_email: '',
+    dns_api_token: '',
+  });
+  const certificateErrors = reactive<GatewayConfigFormErrors>({});
+  const certificateSubmitError = ref('');
+  const isCertificateTokenVisible = ref(false);
   const isDeployDialogOpen = ref(false);
-  const deployErrors = reactive({ service_id: '', version_id: '' });
+  const deployErrors = reactive({ service_id: '' });
   const deploySubmitError = ref('');
   const deployForm = reactive({
     service_id: '',
-    version_id: '',
     force_recreate: false,
+  });
+  const runtimeLogTarget = ref<RuntimeContainerLogTarget>();
+  const isGatewayLogsDrawerOpen = computed({
+    get: () => runtimeLogTarget.value !== undefined,
+    set: (open) => {
+      if (!open) runtimeLogTarget.value = undefined;
+    },
+  });
+  const gatewayRuntimeLogTarget = computed(() => {
+    const current = gateway.value;
+    if (
+      !current ||
+      !current.default_service_id ||
+      !current.default_service_instance_key ||
+      !current.traefik_component_name
+    ) {
+      return undefined;
+    }
+    return runtimeTargetForService(
+      current,
+      current.default_service_id,
+      current.default_service_instance_key
+    );
   });
 
   const isStopDialogOpen = ref(false);
@@ -426,21 +638,6 @@
     service_id: '',
     remove_volumes: false,
   });
-  const isEditDialogOpen = ref(false);
-  const editForm = reactive({
-    name: '',
-    rest_api_url: '',
-    base_domain: '',
-    default_entrypoint: 'web',
-    tls_mode: 'none',
-  });
-  const editErrors = reactive({
-    name: '',
-    rest_api_url: '',
-    base_domain: '',
-  });
-  const editSubmitError = ref('');
-
   const gatewayId = () => String(route.params.id || '');
   const operating = computed(() => opStatus.value === 'loading');
   const isDeploying = computed(() => services.value.some((item) => item.active_deployment));
@@ -450,14 +647,8 @@
     )
   );
   const canStop = computed(() => stoppableServices.value.length > 0);
-  const entrypointValues = ['web', 'websecure'];
-  const tlsModeValues = ['none', 'letsencrypt', 'tls'];
-
   const deployServiceSelectOptions = computed(() =>
     services.value.map((item) => ({ value: item.id, label: serviceOptionLabel(item) }))
-  );
-  const deployVersionSelectOptions = computed(() =>
-    deployVersions.value.map((item) => ({ value: item.id, label: item.label }))
   );
 
   const stopServiceSelectOptions = computed(() =>
@@ -466,72 +657,185 @@
       label: serviceOptionLabel(item),
     }))
   );
+  const noAcmeProfileValue = '__acme_disabled__';
+  const entrypointOptions = [
+    { value: 'web', label: 'web' },
+    { value: 'websecure', label: 'websecure' },
+  ];
+  const tlsModeOptions = [
+    { value: 'none', label: 'none' },
+    { value: 'tls', label: 'tls' },
+    { value: 'letsencrypt', label: 'letsencrypt' },
+  ];
+  const acmeProfileOptions = computed(() => [
+    { value: noAcmeProfileValue, label: t('gateway.acmeProfiles.none') },
+    { value: 'http', label: t('gateway.acmeProfiles.http') },
+    { value: 'dns', label: t('gateway.acmeProfiles.dns') },
+    { value: 'http-dns', label: t('gateway.acmeProfiles.httpDns') },
+  ]);
+  const certificateAcmeProfileValue = computed(
+    () => certificateForm.acme_profile || noAcmeProfileValue
+  );
+  const certificateUsesDNSProfile = computed(() => usesDNSProfile(certificateForm.acme_profile));
 
   function serviceOptionLabel(item: ServiceResp) {
     const instance = item.instance_key || 'default';
     return `${instance} (${item.status})`;
   }
 
-  function isHttpAddress(value: string) {
-    return /^https?:\/\//i.test(value);
+  function replaceErrors(target: GatewayConfigFormErrors, next: GatewayConfigFormErrors) {
+    for (const field of Object.keys(target)) delete target[field];
+    Object.assign(target, next);
   }
 
-  function openEditDialog() {
-    const current = gateway.value;
-    if (!current) {
-      return;
+  function keepSectionErrors(
+    target: GatewayConfigFormErrors,
+    errors: GatewayConfigFormErrors,
+    fields: string[]
+  ) {
+    const next: GatewayConfigFormErrors = {};
+    for (const field of fields) {
+      if (errors[field]) next[field] = errors[field];
     }
-    Object.assign(editForm, {
-      name: current.name,
-      rest_api_url: current.rest_api_url || '',
-      base_domain: current.base_domain || '',
-      default_entrypoint: current.default_entrypoint,
-      tls_mode: current.tls_mode,
+    replaceErrors(target, next);
+  }
+
+  function validationMessage(error: string) {
+    return t(`gateway.validation.${error}`);
+  }
+
+  function openControlPlaneEditDialog() {
+    const current = gateway.value;
+    if (!current) return;
+    const form = gatewayConfigFormFromResponse(current);
+    Object.assign(controlPlaneForm, {
+      name: form.name,
+      traefik_component_name: form.traefik_component_name,
+      rest_api_url: form.rest_api_url,
+      rest_ready_timeout_seconds: form.rest_ready_timeout_seconds,
+      base_domain: form.base_domain,
     });
-    Object.assign(editErrors, { name: '', rest_api_url: '', base_domain: '' });
-    editSubmitError.value = '';
-    isEditDialogOpen.value = true;
+    replaceErrors(controlPlaneErrors, {});
+    controlPlaneSubmitError.value = '';
+    isControlPlaneEditDialogOpen.value = true;
   }
 
-  function validateEditForm() {
-    editErrors.name = editForm.name.trim() ? '' : t('gateway.validation.nameRequired');
-    editErrors.rest_api_url = editForm.rest_api_url.trim()
-      ? ''
-      : t('gateway.validation.restApiUrlRequired');
-    editErrors.base_domain = editForm.base_domain.trim()
-      ? ''
-      : t('gateway.validation.baseDomainRequired');
-    return !editErrors.name && !editErrors.rest_api_url && !editErrors.base_domain;
-  }
-
-  async function saveGateway() {
+  async function saveControlPlane() {
     const current = gateway.value;
-    editSubmitError.value = '';
-    if (!current || !validateEditForm()) {
-      return;
-    }
+    if (!current) return;
+    controlPlaneSubmitError.value = '';
+    const form = gatewayConfigFormFromResponse(current);
+    Object.assign(form, controlPlaneForm);
+    const errors = validateGatewayConfigForm(form, 'edit');
+    keepSectionErrors(controlPlaneErrors, errors, [
+      'name',
+      'traefik_component_name',
+      'rest_api_url',
+      'rest_ready_timeout_seconds',
+      'base_domain',
+    ]);
+    if (Object.keys(controlPlaneErrors).length > 0) return;
     try {
       await executeOp(async () => {
         gateway.value = await gatewayApi.update(current.id, {
-          name: editForm.name.trim(),
-          rest_api_url: editForm.rest_api_url.trim(),
-          base_domain: editForm.base_domain.trim(),
-          default_entrypoint: editForm.default_entrypoint,
-          tls_mode: editForm.tls_mode,
+          name: controlPlaneForm.name.trim(),
+          traefik_component_name: controlPlaneForm.traefik_component_name.trim(),
+          rest_api_url: controlPlaneForm.rest_api_url.trim(),
+          rest_ready_timeout_seconds: Number(controlPlaneForm.rest_ready_timeout_seconds),
+          base_domain: controlPlaneForm.base_domain.trim(),
         });
-        isEditDialogOpen.value = false;
-        toast.success(t('gateway.toast.saveCompiled'));
-        await loadRuntimeContext();
+        isControlPlaneEditDialogOpen.value = false;
+        toast.success(t('gateway.toast.saveSuccess'));
       });
     } catch (error) {
-      editSubmitError.value =
+      controlPlaneSubmitError.value =
         error instanceof Error ? error.message : t('gateway.toast.saveFailed');
     }
   }
 
-  function handleExposureSearch() {
-    appliedExposureSearch.value = exposureSearchText.value;
-    void loadGateway();
+  function openIngressEditDialog() {
+    const current = gateway.value;
+    if (!current) return;
+    Object.assign(ingressForm, {
+      default_entrypoint: current.default_entrypoint,
+      tls_mode: current.tls_mode,
+    });
+    replaceErrors(ingressErrors, {});
+    ingressSubmitError.value = '';
+    isIngressEditDialogOpen.value = true;
+  }
+
+  async function saveIngressDefaults() {
+    const current = gateway.value;
+    if (!current) return;
+    ingressSubmitError.value = '';
+    const form = gatewayConfigFormFromResponse(current);
+    Object.assign(form, ingressForm);
+    const errors = validateGatewayConfigForm(form, 'edit');
+    keepSectionErrors(ingressErrors, errors, ['default_entrypoint', 'tls_mode']);
+    if (Object.keys(ingressErrors).length > 0) return;
+    try {
+      await executeOp(async () => {
+        gateway.value = await gatewayApi.update(current.id, {
+          default_entrypoint: ingressForm.default_entrypoint,
+          tls_mode: ingressForm.tls_mode,
+        });
+        isIngressEditDialogOpen.value = false;
+        toast.success(t('gateway.toast.saveSuccess'));
+      });
+    } catch (error) {
+      ingressSubmitError.value =
+        error instanceof Error ? error.message : t('gateway.toast.saveFailed');
+    }
+  }
+
+  function openCertificateEditDialog() {
+    const current = gateway.value;
+    if (!current) return;
+    Object.assign(certificateForm, {
+      acme_profile: current.acme_profile as GatewayAcmeProfile,
+      acme_email: current.acme_email,
+      dns_api_token: current.dns_api_token,
+    });
+    replaceErrors(certificateErrors, {});
+    certificateSubmitError.value = '';
+    isCertificateTokenVisible.value = false;
+    isCertificateEditDialogOpen.value = true;
+  }
+
+  function handleCertificateAcmeProfileChange(value: string | number) {
+    const profile = String(value);
+    certificateForm.acme_profile =
+      profile === noAcmeProfileValue ? '' : (profile as GatewayAcmeProfile);
+    delete certificateErrors.acme_profile;
+  }
+
+  async function saveRouteCertificates() {
+    const current = gateway.value;
+    if (!current) return;
+    certificateSubmitError.value = '';
+    const form = gatewayConfigFormFromResponse(current);
+    Object.assign(form, certificateForm);
+    const errors = validateGatewayConfigForm(form, 'edit');
+    if (errors.tls_mode) errors.acme_profile = errors.tls_mode;
+    keepSectionErrors(certificateErrors, errors, ['acme_profile', 'acme_email', 'dns_api_token']);
+    if (Object.keys(certificateErrors).length > 0) return;
+    try {
+      await executeOp(async () => {
+        gateway.value = await gatewayApi.update(current.id, {
+          acme_profile: certificateForm.acme_profile,
+          acme_email: certificateForm.acme_profile ? certificateForm.acme_email.trim() : '',
+          dns_api_token: usesDNSProfile(certificateForm.acme_profile)
+            ? certificateForm.dns_api_token.trim()
+            : '',
+        });
+        isCertificateEditDialogOpen.value = false;
+        toast.success(t('gateway.toast.saveSuccess'));
+      });
+    } catch (error) {
+      certificateSubmitError.value =
+        error instanceof Error ? error.message : t('gateway.toast.saveFailed');
+    }
   }
 
   async function loadGateway() {
@@ -568,7 +872,7 @@
     if (!current) {
       return;
     }
-    Object.assign(deployErrors, { service_id: '', version_id: '' });
+    Object.assign(deployErrors, { service_id: '' });
     deploySubmitError.value = '';
     deployForm.force_recreate = false;
     if (services.value.length === 0) {
@@ -582,26 +886,14 @@
     if (!selectedService) {
       return;
     }
-    try {
-      const page = await applicationApi.listVersions(current.id, { per_page: 100 });
-      deployVersions.value = page.items ?? [];
-      deployForm.service_id = selectedService.id;
-      deployForm.version_id = selectedService.version_id;
-      isDeployDialogOpen.value = true;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('service.toast.loadFailed'));
-    }
+    deployForm.service_id = selectedService.id;
+    isDeployDialogOpen.value = true;
   }
 
   function handleDeployServiceChange(value: string | number) {
     const serviceId = String(value);
     deployForm.service_id = serviceId;
     deployErrors.service_id = '';
-    const selectedService = services.value.find((item) => item.id === serviceId);
-    if (selectedService) {
-      deployForm.version_id = selectedService.version_id;
-      deployErrors.version_id = '';
-    }
   }
 
   async function handleDeployOk() {
@@ -614,45 +906,50 @@
       deployErrors.service_id = t('gateway.toast.deployServiceRequired');
       return;
     }
-    if (!deployForm.version_id) {
-      deployErrors.version_id = t('gateway.deploy.versionRequired');
-      return;
-    }
     deployErrors.service_id = '';
-    deployErrors.version_id = '';
     try {
       await executeOp(async () => {
         const selectedService = services.value.find((item) => item.id === deployForm.service_id);
         if (!selectedService) {
           throw new Error(t('gateway.toast.deployServiceRequired'));
         }
-        let serviceForDeploy = selectedService;
-        if (deployForm.version_id !== selectedService.version_id) {
-          serviceForDeploy = await serviceApi.updateBasic(selectedService.id, {
-            version_id: deployForm.version_id,
-            instance_key: selectedService.instance_key,
-          });
-          const index = services.value.findIndex((item) => item.id === serviceForDeploy.id);
-          if (index >= 0) {
-            services.value[index] = serviceForDeploy;
-          }
-        }
-        const result = await serviceApi.deploy(serviceForDeploy.id, {
+        const result = await serviceApi.deploy(selectedService.id, {
           force_recreate: deployForm.force_recreate,
         });
         for (const warning of result.warnings) toast.error(warning);
         toast.success(t('gateway.toast.deployQueued'));
         isDeployDialogOpen.value = false;
-        if (result.deployment_id) {
-          router.push(`/deployment/${result.deployment_id}`);
-          return;
-        }
-        await loadRuntimeContext();
+        runtimeLogTarget.value = runtimeTargetForService(
+          current,
+          selectedService.id,
+          selectedService.instance_key
+        );
       });
     } catch (err: unknown) {
       deploySubmitError.value =
         err instanceof Error ? err.message : t('gateway.toast.deployFailed');
     }
+  }
+
+  function openGatewayLogs() {
+    runtimeLogTarget.value = gatewayRuntimeLogTarget.value;
+  }
+
+  function runtimeTargetForService(
+    current: GatewayResp,
+    serviceId: string,
+    instanceKey: string
+  ): RuntimeContainerLogTarget {
+    return {
+      applicationId: current.id,
+      serviceId,
+      component: current.traefik_component_name,
+      title: t('service.logs.titleWithComponent', {
+        app: current.name,
+        instance: instanceKey,
+        component: current.traefik_component_name,
+      }),
+    };
   }
 
   function openStopDialog() {
@@ -703,6 +1000,28 @@
       return;
     }
     router.push(`/application/${gateway.value.id}`);
+  }
+
+  function goBack() {
+    router.push('/gateways');
+  }
+
+  function usesDNSProfile(profile: string) {
+    return profile === 'dns' || profile === 'http-dns';
+  }
+
+  function acmeProfileLabel(profile: string) {
+    switch (profile) {
+      case 'http':
+        return t('gateway.acmeProfiles.http');
+      case 'dns':
+        return t('gateway.acmeProfiles.dns');
+      case 'http-dns':
+        return t('gateway.acmeProfiles.httpDns');
+      case 'base':
+      default:
+        return t('gateway.acmeProfiles.none');
+    }
   }
 
   watch(

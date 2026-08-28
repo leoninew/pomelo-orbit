@@ -2,6 +2,8 @@ package db
 
 import (
 	"database/sql"
+	"io/fs"
+	"path"
 	"strings"
 	"testing"
 
@@ -9,6 +11,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
+	migrationfiles "github.com/leoninew/pomelo-orbit/sql"
 )
 
 const (
@@ -18,6 +21,67 @@ const (
 	seededGatewayServiceID     = "01M10RRA8F863EJ2N9TTG49G6S"
 	seededGatewayRouteID       = "01M10RRA8F863EJ2N9TYPF0CV7"
 )
+
+func TestSQLiteAndMySQLMigrationFilesAlign(t *testing.T) {
+	t.Helper()
+
+	sqliteMigrations := migrationDirections(t, config.DatabaseDriverSQLite)
+	mysqlMigrations := migrationDirections(t, config.DatabaseDriverMySQL)
+
+	for migration, directions := range sqliteMigrations {
+		if _, ok := mysqlMigrations[migration]; !ok {
+			t.Errorf("MySQL is missing SQLite migration %s", migration)
+		}
+		assertMigrationDirections(t, config.DatabaseDriverSQLite, migration, directions)
+	}
+	for migration, directions := range mysqlMigrations {
+		if _, ok := sqliteMigrations[migration]; !ok {
+			t.Errorf("SQLite is missing MySQL migration %s", migration)
+		}
+		assertMigrationDirections(t, config.DatabaseDriverMySQL, migration, directions)
+	}
+}
+
+func migrationDirections(t *testing.T, driver string) map[string]map[string]struct{} {
+	t.Helper()
+
+	entries, err := fs.ReadDir(migrationfiles.Files, path.Join(migrationsRoot, driver))
+	if err != nil {
+		t.Fatalf("read %s migrations: %v", driver, err)
+	}
+
+	migrations := make(map[string]map[string]struct{}, len(entries)/2)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			t.Fatalf("unexpected migration directory %s", entry.Name())
+		}
+		parts := strings.Split(entry.Name(), ".")
+		if len(parts) != 3 || parts[2] != "sql" || !strings.Contains(parts[0], "_") {
+			t.Fatalf("invalid migration file %s", entry.Name())
+		}
+		direction := parts[1]
+		if direction != "up" && direction != "down" {
+			t.Fatalf("invalid migration direction in %s", entry.Name())
+		}
+		if migrations[parts[0]] == nil {
+			migrations[parts[0]] = make(map[string]struct{}, 2)
+		}
+		if _, exists := migrations[parts[0]][direction]; exists {
+			t.Fatalf("duplicate %s migration %s", direction, parts[0])
+		}
+		migrations[parts[0]][direction] = struct{}{}
+	}
+	return migrations
+}
+
+func assertMigrationDirections(t *testing.T, driver, migration string, directions map[string]struct{}) {
+	t.Helper()
+	for _, direction := range []string{"up", "down"} {
+		if _, ok := directions[direction]; !ok {
+			t.Errorf("%s migration %s is missing %s", driver, migration, direction)
+		}
+	}
+}
 
 func openMemoryDb(t *testing.T) *sql.DB {
 	t.Helper()

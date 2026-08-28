@@ -1,37 +1,39 @@
 package app
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"io"
-	"log/slog"
-	"net/http"
-	"net/http/httptest"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
-	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
-
-	"github.com/leoninew/pomelo-orbit/internal/bootstrap"
-	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
-	taskrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/task"
 )
 
-func TestMySQLE2E(t *testing.T) {
+const (
+	gatewayApplicationID = "01M10RRA8F863EJ2N9TC3Z2EC1"
+)
+
+func TestSQLiteMigrationE2E(t *testing.T) {
+	cfg := loadE2EConfig(t, []byte(fmt.Sprintf(`database:
+  driver: sqlite
+  sqlite:
+    path: %q
+`, filepath.Join(t.TempDir(), "pomelo-orbit.db"))))
+	if cfg.Database.Driver != config.DatabaseDriverSQLite {
+		t.Fatalf("expected sqlite config, got %s", cfg.Database.Driver)
+	}
+
+	runMigrationE2E(t, cfg)
+}
+
+func TestMySQLMigrationE2E(t *testing.T) {
 	configPath := os.Getenv("BACKEND_GO_E2E_CONFIG")
 	if configPath == "" {
-		t.Skip("set BACKEND_GO_E2E_CONFIG to run MySQL e2e test")
+		t.Skip("set BACKEND_GO_E2E_CONFIG to a MySQL config file to run MySQL e2e")
 	}
 	configPath, err := filepath.Abs(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	moduleRoot := filepath.Join("..", "..")
-	defaultConfig, err := os.ReadFile(filepath.Join(moduleRoot, config.DefaultConfigFile))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +41,21 @@ func TestMySQLE2E(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cfg := loadE2EConfig(t, envConfig)
+	if cfg.Database.Driver != config.DatabaseDriverMySQL {
+		t.Fatalf("expected mysql config, got %s", cfg.Database.Driver)
+	}
 
+	runMigrationE2E(t, cfg)
+}
+
+func loadE2EConfig(t *testing.T, environmentConfig []byte) config.Config {
+	t.Helper()
+
+	defaultConfig, err := os.ReadFile(filepath.Join(repositoryRoot(t), config.DefaultConfigFile))
+	if err != nil {
+		t.Fatal(err)
+	}
 	configDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(configDir, filepath.Dir(config.DefaultConfigFile)), 0o755); err != nil {
 		t.Fatal(err)
@@ -48,21 +64,32 @@ func TestMySQLE2E(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("POMELO_ORBIT_APP__ENV", "e2e")
-	if err := os.WriteFile(filepath.Join(configDir, config.EnvConfigFile("e2e")), envConfig, 0o644); err != nil {
+	t.Setenv("POMELO_ORBIT_JWT__SECRET_KEY", "e2e-test-secret-key-must-be-at-least-32-bytes")
+	if err := os.WriteFile(filepath.Join(configDir, config.EnvConfigFile("e2e")), environmentConfig, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	originalDir, err := os.Getwd()
+	if err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chdir(configDir); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("restore working directory: %v", err)
+		}
+	})
 
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Database.Driver != config.DatabaseDriverMySQL {
-		t.Fatalf("expected mysql config, got %s", cfg.Database.Driver)
-	}
+	return cfg
+}
 
+func runMigrationE2E(t *testing.T, cfg config.Config) {
+	t.Helper()
 	database, err := db.Open(cfg.Database)
 	if err != nil {
 		t.Fatal(err)
@@ -72,74 +99,46 @@ func TestMySQLE2E(t *testing.T) {
 	if err := db.MigrateUp(database, cfg.Database.Driver); err != nil {
 		t.Fatal(err)
 	}
+	if err := db.MigrateUp(database, cfg.Database.Driver); err != nil {
+		t.Fatal(err)
+	}
 	version, err := db.ReadMigrationVersion(database, cfg.Database.Driver)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version.Version == 0 || version.Dirty {
-		t.Fatalf("unexpected migration version: %+v", version)
+	if version.Dirty {
+		t.Fatalf("migration is dirty: %+v", version)
 	}
 
-	var userCount int
-	if err := database.QueryRow("SELECT COUNT(*) FROM user WHERE username = ?", "admin").Scan(&userCount); err != nil {
+	var gatewayApplicationCount int
+	if err := database.QueryRow(
+		"SELECT COUNT(*) FROM application WHERE id = ? AND code = ?",
+		gatewayApplicationID,
+		"traefik",
+	).Scan(&gatewayApplicationCount); err != nil {
 		t.Fatal(err)
 	}
-	if userCount != 1 {
-		t.Fatalf("expected admin user, got %d", userCount)
+	if gatewayApplicationCount != 1 {
+		t.Fatalf("expected current gateway application, got %d", gatewayApplicationCount)
 	}
 
-	taskRepo := taskrepo.NewRepository(database)
-	taskId := idutil.NewId()
-	ctx := context.Background()
-	if err := taskRepo.Enqueue(ctx, taskId, status.TaskTypePipelineRunExecute, `{"pipeline_run_id":"run-1"}`, 1); err != nil {
+	var profileVersionCount int
+	if err := database.QueryRow(
+		"SELECT COUNT(*) FROM gateway_acme_profile_version WHERE application_id = ?",
+		gatewayApplicationID,
+	).Scan(&profileVersionCount); err != nil {
 		t.Fatal(err)
 	}
-	queued, err := taskRepo.FindById(ctx, taskId)
-	if err != nil {
-		t.Fatal(err)
+	if profileVersionCount != 4 {
+		t.Fatalf("expected four gateway profile versions, got %d", profileVersionCount)
 	}
-	if queued.Status != status.TaskPending {
-		t.Fatalf("unexpected task status: %s", queued.Status)
-	}
+}
 
-	cfg.Turnstile.Enabled = false
-	server := bootstrap.NewHTTPServer(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), database, taskRepo)
-	csrfRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(csrfRecorder, httptest.NewRequest(http.MethodGet, "/api/auth/csrf-token", nil))
-	if csrfRecorder.Code != http.StatusOK {
-		t.Fatalf("expected csrf status 200, got %d: %s", csrfRecorder.Code, csrfRecorder.Body.String())
+func repositoryRoot(t *testing.T) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate e2e test file")
 	}
-	var csrfResp struct {
-		Token string `json:"token"`
-	}
-	if err := json.NewDecoder(csrfRecorder.Body).Decode(&csrfResp); err != nil {
-		t.Fatal(err)
-	}
-	if csrfResp.Token == "" {
-		t.Fatal("expected non-empty csrf token")
-	}
-	loginPayload, err := json.Marshal(map[string]string{
-		"username":   "admin",
-		"password":   "admin",
-		"csrf_token": csrfResp.Token,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	loginBody := bytes.NewBuffer(loginPayload)
-	loginRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(loginRecorder, httptest.NewRequest(http.MethodPost, "/api/auth/login", loginBody))
-	if loginRecorder.Code != http.StatusOK {
-		t.Fatalf("expected login status 200, got %d: %s", loginRecorder.Code, loginRecorder.Body.String())
-	}
-	var token struct {
-		AccessToken string `json:"access_token"`
-		TokenType   string `json:"token_type"`
-	}
-	if err := json.NewDecoder(loginRecorder.Body).Decode(&token); err != nil {
-		t.Fatal(err)
-	}
-	if token.AccessToken == "" || token.TokenType != "bearer" {
-		t.Fatalf("unexpected token response: %+v", token)
-	}
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
 }

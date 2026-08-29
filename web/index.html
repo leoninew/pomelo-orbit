@@ -16,10 +16,15 @@
 <body data-theme="light">
   <div id="app"></div>
   <script type="module" src="/src/main.ts"></script>
-  <!-- Cloudflare Web Analytics -->
-  <script defer src='https://static.cloudflareinsights.com/beacon.min.js'
-    data-cf-beacon='{"token": "610de703360d4a4eb4282807cb379be9"}'></script>
-  <!-- End Cloudflare Web Analytics -->
+  <script>
+    if (!['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)) {
+      const beacon = document.createElement('script');
+      beacon.defer = true;
+      beacon.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+      beacon.dataset.cfBeacon = '{"token":"610de703360d4a4eb4282807cb379be9"}';
+      document.head.appendChild(beacon);
+    }
+  </script>
 </body>
 
 </html>

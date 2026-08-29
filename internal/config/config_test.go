@@ -595,13 +595,13 @@ func TestLoadConfigJwtEnvOverride(t *testing.T) {
 jwt:
   secret_key: "from-yaml"
 `)
-	t.Setenv("POMELO_ORBIT_JWT__SECRET_KEY", standardBase64JwtSecret)
+	t.Setenv("POMELO_ORBIT_JWT__SECRET_KEY", testJwtSecret)
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if cfg.Jwt.SecretKey != standardBase64JwtSecret {
+	if cfg.Jwt.SecretKey != testJwtSecret {
 		t.Fatalf("unexpected jwt secret: %s", cfg.Jwt.SecretKey)
 	}
 }
@@ -665,18 +665,31 @@ func TestLoadConfigValidatesJwtSecretKey(t *testing.T) {
 	}
 }
 
-func TestLoadConfigAcceptsStandardBase64JwtSecretKey(t *testing.T) {
+func TestLoadConfigRejectsStandardBase64JwtSecretKey(t *testing.T) {
 	setupDefaultConfig(t)
 	writeEnvConfig(t, "develop", fmt.Sprintf(`jwt:
   secret_key: %q
 `, standardBase64JwtSecret))
 
-	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("Load returned error: %v", err)
+	if _, err := Load(); err == nil {
+		t.Fatal("Load accepted a standard Base64 key that is not a Fernet key")
 	}
-	if cfg.Jwt.SecretKey != standardBase64JwtSecret {
-		t.Fatalf("unexpected jwt secret: %s", cfg.Jwt.SecretKey)
+}
+
+func TestValidateJwtSecretKeyRejectsInvalidFernetKeys(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+	}{
+		{name: "invalid encoding", value: strings.Repeat("!", 44)},
+		{name: "wrong decoded length", value: strings.Repeat("A", 40)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := validateJwtSecretKey(tc.value); err == nil {
+				t.Fatal("validateJwtSecretKey accepted an invalid Fernet key")
+			}
+		})
 	}
 }
 

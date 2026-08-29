@@ -14,12 +14,13 @@ import (
 	mapstructure "github.com/go-viper/mapstructure/v2"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
+
+	security "github.com/leoninew/pomelo-orbit/internal/common/crypto"
 )
 
 const (
-	DefaultConfigFile     = "configs/config.yaml"
-	DefaultLLMTimeout     = 60 * time.Second
-	jwtSecretKeyMinLength = 32
+	DefaultConfigFile = "configs/config.yaml"
+	DefaultLLMTimeout = 60 * time.Second
 )
 
 func EnvConfigFile(env string) string {
@@ -655,8 +656,8 @@ func validateJwtSecretKey(secretKey string) error {
 	if secretKey == "" {
 		return errors.New("jwt.secret_key is required")
 	}
-	if len(secretKey) < jwtSecretKeyMinLength {
-		return fmt.Errorf("jwt.secret_key must be at least %d characters", jwtSecretKeyMinLength)
+	if err := security.ValidateFernetKey(secretKey); err != nil {
+		return fmt.Errorf("jwt.secret_key must be a valid Fernet key: %w", err)
 	}
 	return nil
 }

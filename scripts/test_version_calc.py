@@ -74,7 +74,7 @@ class VersionCalcTests(unittest.TestCase):
         ) = self.original_paths
         self.directory.cleanup()
 
-    def test_apply_updates_version_files_without_mutating_git(self) -> None:
+    def test_apply_writes_version_metadata_without_mutating_git(self) -> None:
         before = git(self.repository, "rev-parse", "HEAD")
         expected = version_calc.calculate_version(print_history=False)
 

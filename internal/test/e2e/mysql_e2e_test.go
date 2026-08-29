@@ -64,7 +64,7 @@ func loadE2EConfig(t *testing.T, environmentConfig []byte) config.Config {
 		t.Fatal(err)
 	}
 	t.Setenv("POMELO_ORBIT_APP__ENV", "e2e")
-	t.Setenv("POMELO_ORBIT_JWT__SECRET_KEY", "e2e-test-secret-key-must-be-at-least-32-bytes")
+	t.Setenv("POMELO_ORBIT_JWT__SECRET_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
 	if err := os.WriteFile(filepath.Join(configDir, config.EnvConfigFile("e2e")), environmentConfig, 0o644); err != nil {
 		t.Fatal(err)
 	}

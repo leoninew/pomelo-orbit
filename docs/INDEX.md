@@ -31,6 +31,7 @@
 | 路由与证书 | [guides/routing-and-certificates.md](./guides/routing-and-certificates.md) |
 | 证书管理 | [guides/certificate-management.md](./guides/certificate-management.md) |
 | Docker labels 路由 | [guides/docker-label-routing.md](./guides/docker-label-routing.md) |
+| RAGFlow 部署 | [guides/ragflow-deployment.md](./guides/ragflow-deployment.md) |
 | 卷挂载 | [guides/volume-mounting.md](./guides/volume-mounting.md) |
 | CI Pipeline（模板、应用流水线、制品与运行） | [guides/ci-pipeline-design.md](./guides/ci-pipeline-design.md) |
 | CI Pipeline 变量 | [guides/ci-pipeline-vars-design.md](./guides/ci-pipeline-vars-design.md) |

@@ -22,6 +22,12 @@ const (
 	fernetIVSize   = aes.BlockSize
 )
 
+// ValidateFernetKey checks the encoded key format without exposing key bytes.
+func ValidateFernetKey(secretKey string) error {
+	_, err := parseFernetKey(secretKey)
+	return err
+}
+
 func EncryptString(secretKey string, plainValue string) (string, error) {
 	key, err := parseFernetKey(secretKey)
 	if err != nil {

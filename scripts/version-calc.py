@@ -8,7 +8,7 @@ Rules (x is fixed at 0):
   * print one line every time y or z changes:
         <commit-date>  <sha8>  <subject-first-50-chars>  <x>.<y>.<z>
 
-After calculation, optionally apply the final version to:
+After calculation, ``--apply`` writes the final version to:
   * VERSION                         (package version source)
   * configs/config.yaml             (app.version)
   * .env.example                    (app version example)
@@ -107,12 +107,7 @@ def calculate_version(*, print_history: bool = True) -> str:
 
 
 def apply_version(version: str) -> None:
-    """Write the release version to every tracked consumer."""
-    previous = (
-        VERSION_FILE.read_text(encoding="utf-8").strip()
-        if VERSION_FILE.exists()
-        else ""
-    )
+    """Write the calculated version to the version metadata files."""
     replacements = (
         _prepare_version_replacement(
             CONFIG_FILE, APP_VERSION_RE, version, "app.version"
@@ -128,35 +123,23 @@ def apply_version(version: str) -> None:
         ),
     )
 
-    # Read and validate every target before changing any of them.
+    # Validate every target before changing any of them.
     VERSION_FILE.write_text(version + "\n", encoding="utf-8")
-    print(f"updated {VERSION_FILE.relative_to(REPO_ROOT)}: {previous} -> {version}")
-    for path, previous, updated, label in replacements:
-        if updated == path.read_bytes():
-            print(f"unchanged {path.relative_to(REPO_ROOT)} -> {label} = {version!r}")
-            continue
+    for path, updated in replacements:
         path.write_bytes(updated)
-        print(
-            f"updated {path.relative_to(REPO_ROOT)} -> "
-            f"{label} {previous!r} -> {version!r}"
-        )
 
 
 def _prepare_version_replacement(
-    path: Path,
-    pattern: re.Pattern[bytes],
-    version: str,
-    label: str,
-) -> tuple[Path, str, bytes, str]:
-    """Prepare one replacement while preserving the source encoding and newlines."""
+    path: Path, pattern: re.Pattern[bytes], version: str, label: str
+) -> tuple[Path, bytes]:
+    """Return the updated bytes for one version consumer."""
     raw = path.read_bytes()
     match = pattern.search(raw)
     if match is None:
         raise RuntimeError(f"could not find {label} in {path}")
-    previous = match.group(2).decode("utf-8")
     version_bytes = version.encode("utf-8")
     updated = raw[: match.start(2)] + version_bytes + raw[match.end(2) :]
-    return path, previous, updated, label
+    return path, updated
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

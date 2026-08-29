@@ -1,5 +1,5 @@
 # 局域网 DNS-01 HTTPS 与 Gateway 配置收敛实施计划
-最后修改时间: 2026-08-27 12:58:30
+最后修改时间: 2026-08-29 15:14:37
 
 Review status: Accepted
 
@@ -65,3 +65,4 @@ Review status: Accepted
 - 2026-08-26：确认按“Version/Component 为 Compose 拓扑来源，Gateway 为业务属性和 profile 选择器”实施。
 - 2026-08-26：确认移除 `POMELO_ORBIT_CF_DNS_API_TOKEN`，DNS token 交由 Traefik Gateway 管理。
 - 2026-08-27：确认历史 Gateway seed 文件直接删除，不保留占位 migration；完整新 seed 使用递增的 `000037`。
+- 2026-08-29：确认将 Route 与 Traefik REST provider 的同步拆分为独立轻量 SpecFlow 任务；本计划不实现其 API、前端交互或验收，见 [Route REST 快照防误删](../requirement/20260819-route-rest-snapshot-safety.md)。

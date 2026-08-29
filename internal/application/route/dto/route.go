@@ -28,6 +28,32 @@ type RouteUpdateInput struct {
 	Enabled               *bool
 }
 
+type RouteSyncChange struct {
+	RouteId string
+	Enabled bool
+}
+
+type RouteSyncConfirmInput struct {
+	Changes      []RouteSyncChange
+	BusinessHash string
+	TraefikHash  string
+}
+
+type RouteSyncDiff struct {
+	Action        string
+	RouteName     string
+	Field         string
+	BusinessValue string
+	TraefikValue  string
+}
+
+type RouteSyncPreview struct {
+	BusinessHash string
+	TraefikHash  string
+	Matched      bool
+	Differences  []RouteSyncDiff
+}
+
 // TraefikConfigView is the application-layer dashboard route state (not an API DTO).
 type TraefikConfigView struct {
 	DashboardDomain string

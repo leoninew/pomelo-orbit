@@ -30,7 +30,7 @@ func TestPublishSnapshotWaitsForGatewayAndPublishesRoutes(t *testing.T) {
 	if len(publisher.snapshots) != 1 {
 		t.Fatalf("snapshots = %d, want 1", len(publisher.snapshots))
 	}
-	if got, want := strings.Join(events, ","), "wait,routers,apply"; got != want {
+	if got, want := strings.Join(events, ","), "wait,apply"; got != want {
 		t.Fatalf("PublishSnapshot order = %q, want %q", got, want)
 	}
 }
@@ -74,6 +74,10 @@ type snapshotOrderRouterClient struct {
 
 func (c snapshotOrderRouterClient) ListRouters(context.Context, string) ([]routeport.TraefikRouter, error) {
 	*c.events = append(*c.events, "routers")
+	return nil, nil
+}
+
+func (snapshotOrderRouterClient) ListServices(context.Context, string) ([]routeport.TraefikService, error) {
 	return nil, nil
 }
 

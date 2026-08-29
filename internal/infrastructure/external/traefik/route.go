@@ -113,23 +113,11 @@ func (m *RouteManager) ApplySnapshot(ctx context.Context, gateway model.GatewayC
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to marshal traefik rest snapshot", err)
 	}
-	return m.putRestConfig(ctx, gateway.RestApiUrl, body)
-}
-
-func (m *RouteManager) WriteCertificate(_ context.Context, gateway model.GatewayConfig, routeName string, certPEM string, certKey string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.writeCertificateUnlocked(gateway, routeName, certPEM, certKey)
-}
-
-func (m *RouteManager) RevokeCertificate(_ context.Context, gateway model.GatewayConfig, routeName string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for _, suffix := range []string{".pem", "-key.pem"} {
-		path := filepath.Join(m.routeCertDir(gateway), routeName+suffix)
-		if err := removeIfExists(path); err != nil {
-			return apperror.Wrap(apperror.KindInternal, "Failed to revoke route certificate", err)
-		}
+	if err := m.putRestConfig(ctx, gateway.RestApiUrl, body); err != nil {
+		return err
+	}
+	if err := m.pruneCertificatesUnlocked(gateway, routes); err != nil {
+		return err
 	}
 	return nil
 }
@@ -185,10 +173,94 @@ func (m *RouteManager) listRouters(ctx context.Context, restApiUrl string, proto
 			Rule:        router.Rule,
 			Service:     router.Service,
 			Entrypoints: append([]string(nil), router.Entrypoints...),
-			TLS:         router.TLS != nil && string(*router.TLS) != "null",
+			TLSConfig:   normalizeJSON(router.TLS),
+			TLS:         normalizeJSON(router.TLS) != "",
 		})
 	}
 	return items, nil
+}
+
+func (m *RouteManager) ListServices(ctx context.Context, restApiUrl string) ([]routeport.TraefikService, error) {
+	httpServices, err := m.listServices(ctx, restApiUrl, "http")
+	if err != nil {
+		return nil, err
+	}
+	tcpServices, err := m.listServices(ctx, restApiUrl, "tcp")
+	if err != nil {
+		return nil, err
+	}
+	return append(httpServices, tcpServices...), nil
+}
+
+func (m *RouteManager) listServices(ctx context.Context, restApiUrl string, protocol string) ([]routeport.TraefikService, error) {
+	base := strings.TrimRight(strings.TrimSpace(restApiUrl), "/")
+	if base == "" {
+		return nil, apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
+	}
+	url := base + "/api/" + protocol + "/services"
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create traefik request: %w", err)
+	}
+	response, err := m.client.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("request traefik services: %w", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("traefik returned status %d", response.StatusCode)
+	}
+	var services []struct {
+		Name         string `json:"name"`
+		Provider     string `json:"provider"`
+		Status       string `json:"status"`
+		LoadBalancer *struct {
+			Servers []struct {
+				Url     string `json:"url"`
+				Address string `json:"address"`
+			} `json:"servers"`
+		} `json:"loadBalancer"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&services); err != nil {
+		return nil, fmt.Errorf("decode traefik services: %w", err)
+	}
+	items := make([]routeport.TraefikService, 0, len(services))
+	for _, service := range services {
+		servers := make([]string, 0)
+		if service.LoadBalancer != nil {
+			servers = make([]string, 0, len(service.LoadBalancer.Servers))
+			for _, server := range service.LoadBalancer.Servers {
+				value := server.Url
+				if value == "" {
+					value = server.Address
+				}
+				servers = append(servers, value)
+			}
+		}
+		items = append(items, routeport.TraefikService{
+			Name:     service.Name,
+			Provider: service.Provider,
+			Status:   service.Status,
+			Protocol: protocol,
+			Servers:  servers,
+		})
+	}
+	return items, nil
+}
+
+func normalizeJSON(raw *json.RawMessage) string {
+	if raw == nil {
+		return ""
+	}
+	var value any
+	if err := json.Unmarshal(*raw, &value); err != nil || value == nil {
+		return ""
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return ""
+	}
+	return string(encoded)
 }
 
 func (m *RouteManager) IsConnectionError(err error) bool {
@@ -229,6 +301,37 @@ func (m *RouteManager) writeCertificateUnlocked(gateway model.GatewayConfig, rou
 	}
 	if err := os.WriteFile(filepath.Join(certDir, routeName+"-key.pem"), []byte(certKey), 0o600); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to write route certificate key", err)
+	}
+	return nil
+}
+
+func (m *RouteManager) pruneCertificatesUnlocked(gateway model.GatewayConfig, routes []model.Route) error {
+	certDir := m.routeCertDir(gateway)
+	entries, err := os.ReadDir(certDir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to inspect route certificate directory", err)
+	}
+	keep := make(map[string]struct{})
+	for _, route := range routes {
+		if !route.Enabled || !routeHasStoredCertificate(route) {
+			continue
+		}
+		keep[route.Name+".pem"] = struct{}{}
+		keep[route.Name+"-key.pem"] = struct{}{}
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".pem" {
+			continue
+		}
+		if _, found := keep[entry.Name()]; found {
+			continue
+		}
+		if err := os.Remove(filepath.Join(certDir, entry.Name())); err != nil {
+			return apperror.Wrap(apperror.KindInternal, "Failed to prune route certificate", err)
+		}
 	}
 	return nil
 }
@@ -335,11 +438,4 @@ func sanitizeTraefikName(name string) string {
 		return "route"
 	}
 	return name
-}
-
-func removeIfExists(path string) error {
-	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	return nil
 }

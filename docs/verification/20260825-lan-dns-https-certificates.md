@@ -1,5 +1,5 @@
 # 局域网 DNS-01 HTTPS 与 Gateway 配置收敛验收记录
-最后修改时间: 2026-08-27 12:58:30
+最后修改时间: 2026-08-29 15:14:37
 
 Review status: Draft
 
@@ -79,6 +79,7 @@ Review status: Draft
 ## Scope Expansion And Missed Scope
 
 - 用户在实现期间追加了 Gateway/Route/Service 的 Traefik runtime 日志抽屉、部署及 Route 操作后的自动展开，以及日志区域高度修复；这部分不在原 plan 中，已纳入本次实际交付。
+- Route 与 Traefik REST provider 的统一全量同步、前端启停草稿和 preview/confirm 模态窗已拆分为独立轻量任务，见 [Route REST 快照防误删](../verification/20260819-route-rest-snapshot-safety.md)。它不计入本 DNS-01 验收的范围或未完成项。
 - `docs/requirement/20260825-project-automation-review.md` 是独立的 Taskfile 审查，不属于 LAN DNS-01/Gateway feature，当前仅因共用暂存区而出现。
 - 未发现需求、规格或计划中遗漏而未实现的功能项。
 

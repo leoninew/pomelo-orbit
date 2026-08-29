@@ -1,5 +1,5 @@
 # 自定义 TCP 路由实施计划
-最后修改时间: 2026-08-13 19:25:34
+最后修改时间: 2026-08-29 14:46:35
 
 Review status: Accepted
 
@@ -27,7 +27,7 @@ Review status: Accepted
    - 扩展 Route DTO、Proto、HTTP handler/mapper、repository port 和 usecase。
    - 对 TCP Route 解析 Service 当前 Version 的 Component/Endpoint，校验项目归属、TCP 协议和 `internal` mode。
    - 在 create/update/enable 前检查已启用 TCP Route 的唯一 `listen_port`、80/443/8080 保留端口，以及正在运行受管 Service 的有效 `local`/`host` 映射端口；停止或故障 Service 不占用宿主机端口。
-   - Route 的 disable/delete/更新继续使用现有 `publishRouteSnapshot` 控制流；基于完整 enabled TCP Route 集合触发 Gateway compile。
+   - Route 的 create/update/disable/delete 和证书操作只写入业务数据；详情页和列表页启停都只保留前端草稿，统一交由同步入口预览并确认提交。
 
 3a. 将 HTTP Route 收敛为默认受管 Endpoint，并保留高级自定义下游。
    - 使用 `service_id`、`component_name`、`endpoint_protocol`、`endpoint_container_port` 保存受管 HTTP/TCP target；HTTP 受管 target 校验有效 HTTP Endpoint，并在 Route snapshot 生成时解析 `container-alias:container-port`。
@@ -40,7 +40,7 @@ Review status: Accepted
    - 移除组件 Endpoint 表单的名称输入，所有 UI 以 `http<port>` / `tcp<port>` 派生展示和作为稳定列表 key。
 
 4. 扩展 Traefik REST 发布与 Gateway compile。
-   - 将 RouteManager full snapshot 同时渲染 HTTP 和 TCP router/service map；TCP 生成 `HostSNI(*)`、`tcp<listen_port>` entrypoint 和 `container-alias:container-port` server address。
+   - 将 RouteManager full snapshot 同时渲染 HTTP 和 TCP router/service map；TCP 生成 `HostSNI(*)`、`tcp<listen_port>` entrypoint 和 `container-alias:container-port` server address。同步预览读取全部 REST routers/services，按 router 及其 service 聚合为一条逻辑 Route，以新增、修改或删除及“协议 规则 -> 上游”生成可读差异；仅使用 TLS 布尔值判定 HTTP/HTTPS，不比较证书或 TLS 内部配置。确认和 Gateway deploy/restart 都覆盖完整 REST snapshot。
    - Route dashboard 的 Traefik client 同时读取 HTTP/TCP routers，DTO/UI 依协议展示链接或 `domain:listen_port`。
    - Gateway compile 的 TCP 监听端口来源切换为 enabled TCP Routes。利用已有 `buildManagedGatewayComponent`、`buildTraefikStaticConfig` 和 Compose endpoint 渲染生成 entrypoint 与端口映射。
 
@@ -51,7 +51,7 @@ Review status: Accepted
    - 发布失败应使 Deployment 进入 `faulted`，并记录 REST publish 错误。
 
 6. 完成前端、文档和生成物。
-   - 更新 RoutePage/RouteDetail：类型选择、HTTP/TCP 受管 Service/Component/Endpoint Combobox 选择、HTTP 高级自定义下游开关和 TCP 地址展示；HTTPS 证书操作仅对 HTTP Route 可用。
+   - 更新 RoutePage/RouteDetail：类型选择、HTTP/TCP 受管 Service/Component/Endpoint Combobox 选择、HTTP 高级自定义下游开关和 TCP 地址展示；两页启停均为同步草稿，复用预览确认弹窗。预览差异表格使用“操作 / 规则”两列，在规则中仅显示有值的业务数据和 Traefik 数据；HTTPS 证书操作仅对 HTTP Route 可用。
    - 更新 Version/Service Component detail 页的 endpoint mode 文案与模式驱动字段可见性。
    - 更新活文档 `docs/product/cd-model.md`、`docs/architecture/cd-runtime.md`、`docs/guides/routing-and-certificates.md`，移除 `gateway_tcp`，记录 Route TCP/Gateway sync 行为。
    - 使用 `task sqlc` / `task proto` 或等效项目命令更新 SQLC、Go Proto 和 Web TypeScript 生成物。

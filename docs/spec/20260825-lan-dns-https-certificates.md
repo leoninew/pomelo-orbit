@@ -1,5 +1,5 @@
 # 局域网 DNS-01 HTTPS 与 Gateway 配置收敛规格
-最后修改时间: 2026-08-26 23:01:37
+最后修改时间: 2026-08-29 15:14:37
 
 Review status: Accepted
 
@@ -73,6 +73,10 @@ Route challenge options derive from the active GatewayConfig profile:
 - `dns` is available for `dns` and `http-dns` only when `dns_api_token` is non-empty.
 
 REST snapshots continue using `letsencrypt` and `letsencrypt-dns`. Manual and mkcert routes need no profile. Route save/enable neither changes GatewayConfig nor switches a Gateway Version.
+
+## Scope Boundary
+
+本规格只约束 Gateway profile 对 Route challenge capability、resolver 和 TCP Version endpoint 的影响。Route 业务数据与 Traefik REST provider 的全量同步、前端启停草稿及预览/确认交互属于独立轻量任务，见 [Route REST 快照防误删](../requirement/20260819-route-rest-snapshot-safety.md) 及其验收记录；它不改变本规格的 Gateway 拓扑和 profile 设计。
 
 ## Interfaces And Cutover
 

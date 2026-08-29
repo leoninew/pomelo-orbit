@@ -136,9 +136,18 @@
               <Plus class="size-4" />
               {{ t('route.addRoute') }}
             </button>
-            <button class="app-button h-9 px-3" :disabled="routeOperating" @click="handleSync">
+            <button
+              class="h-9 px-3"
+              :class="hasPendingChanges ? 'app-button-warning' : 'app-button'"
+              :disabled="routeOperating || isSyncDialogOpen"
+              @click="openSyncModal"
+            >
               <RefreshCw class="size-4" :class="{ 'animate-spin': routeOperating }" />
-              {{ t('route.syncAll') }}
+              {{
+                hasPendingChanges
+                  ? t('route.syncPending', { count: pendingChangeCount })
+                  : t('route.syncAll')
+              }}
             </button>
           </div>
         </ToolbarRoot>
@@ -176,18 +185,13 @@
           <tbody>
             <tr v-for="route in routes" :key="route.id">
               <td>
-                <router-link
-                  v-if="route.enabled"
-                  :to="`/route/${route.id}`"
-                  class="app-link whitespace-nowrap"
-                >
+                <router-link :to="`/route/${route.id}`" class="app-link whitespace-nowrap">
                   {{ route.name }}
                 </router-link>
-                <span v-else class="whitespace-nowrap text-foreground">{{ route.name }}</span>
               </td>
               <td>
                 <a
-                  v-if="route.enabled && route.protocol === 'http'"
+                  v-if="routeEnabled(route) && route.protocol === 'http'"
                   :href="`${route.https_enabled ? 'https' : 'http'}://${route.domain}`"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -209,8 +213,8 @@
                 {{ routeTarget(route) }}
               </td>
               <td>
-                <AppBadge variant="status" :tone="route.enabled ? 'success' : 'default'">
-                  {{ route.enabled ? t('route.status.enabled') : t('route.status.disabled') }}
+                <AppBadge variant="status" :tone="routeEnabled(route) ? 'success' : 'default'">
+                  {{ routeEnabled(route) ? t('route.status.enabled') : t('route.status.disabled') }}
                 </AppBadge>
               </td>
               <td>
@@ -225,18 +229,18 @@
                     {{ t('common.edit') }}
                   </button>
                   <button
-                    v-if="!route.enabled"
+                    v-if="!routeEnabled(route)"
                     class="app-link-success"
-                    :disabled="routeOperating"
-                    @click="handleEnable(route.id)"
+                    :disabled="routeOperating || isSyncDialogOpen"
+                    @click="setPendingEnabled(route, true)"
                   >
                     {{ t('route.status.enabled') }}
                   </button>
                   <button
                     v-else
                     class="app-link-warning"
-                    :disabled="routeOperating"
-                    @click="handleDisable(route.id)"
+                    :disabled="routeOperating || isSyncDialogOpen"
+                    @click="setPendingEnabled(route, false)"
                   >
                     {{ t('route.status.disabled') }}
                   </button>
@@ -257,6 +261,12 @@
       />
     </DetailInfoCard>
   </div>
+
+  <RouteSyncDialog
+    v-model:open="isSyncDialogOpen"
+    :changes="syncChanges"
+    @synced="handleSyncComplete"
+  />
 
   <AppDialog v-model:open="isCreateDialogOpen" :title="t('route.addRoute')">
     <div class="space-y-4">
@@ -392,12 +402,6 @@
           {{ errors.target_url }}
         </p>
       </div>
-      <label class="flex cursor-pointer items-center gap-3">
-        <SwitchRoot v-model="form.enabled" class="app-switch-root">
-          <SwitchThumb class="app-switch-thumb" />
-        </SwitchRoot>
-        <span class="text-sm text-foreground">{{ t('route.status.enabled') }}</span>
-      </label>
     </div>
     <p v-if="createSubmitError" class="app-field-error mt-3" role="alert">
       {{ createSubmitError }}
@@ -578,12 +582,6 @@
           {{ editErrors.target_url }}
         </p>
       </div>
-      <label class="flex cursor-pointer items-center gap-3">
-        <SwitchRoot v-model="editForm.enabled" class="app-switch-root">
-          <SwitchThumb class="app-switch-thumb" />
-        </SwitchRoot>
-        <span class="text-sm text-foreground">{{ t('route.status.enabled') }}</span>
-      </label>
     </form>
     <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
       {{ editSubmitError }}
@@ -597,7 +595,7 @@
 
 <script setup lang="ts">
   import { ExternalLink, Plus, RefreshCw } from '@lucide/vue';
-  import { computed, onMounted, reactive, ref } from 'vue';
+  import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
@@ -611,6 +609,7 @@
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
+  import RouteSyncDialog from '@/components/RouteSyncDialog.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import { useRouteTargetServices } from '@/composables/useRouteTargetServices';
@@ -642,9 +641,19 @@
   const appliedTraefikSearch = ref('');
   const isCreateDialogOpen = ref(false);
   const isEditDialogOpen = ref(false);
+  const isSyncDialogOpen = ref(false);
   const editingRoute = ref<RouteResp>();
+  const pendingEnabled = reactive<Record<string, boolean>>({});
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+  const pendingChangeCount = computed(() => Object.keys(pendingEnabled).length);
+  const hasPendingChanges = computed(() => pendingChangeCount.value > 0);
+  const syncChanges = computed(() =>
+    Object.entries(pendingEnabled).map(([routeId, enabled]) => ({
+      route_id: routeId,
+      enabled,
+    }))
+  );
 
   const filteredTraefikRoutes = computed(() => {
     if (!appliedTraefikSearch.value.trim()) {
@@ -672,7 +681,6 @@
     component_name: '',
     endpoint_protocol: '',
     endpoint_container_port: undefined as number | undefined,
-    enabled: false,
   });
   const errors = reactive({
     name: '',
@@ -696,7 +704,6 @@
     component_name: '',
     endpoint_protocol: '',
     endpoint_container_port: undefined as number | undefined,
-    enabled: false,
   });
   const editErrors = reactive({
     name: '',
@@ -804,6 +811,24 @@
     }
   }
 
+  function routeEnabled(route: RouteResp): boolean {
+    return route.id in pendingEnabled ? pendingEnabled[route.id] : route.enabled;
+  }
+
+  function setPendingEnabled(route: RouteResp, enabled: boolean) {
+    if (enabled === route.enabled) {
+      delete pendingEnabled[route.id];
+      return;
+    }
+    pendingEnabled[route.id] = enabled;
+  }
+
+  function clearPendingEnabled() {
+    for (const routeId of Object.keys(pendingEnabled)) {
+      delete pendingEnabled[routeId];
+    }
+  }
+
   async function fetchRoutes() {
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
@@ -889,7 +914,6 @@
       component_name: '',
       endpoint_protocol: '',
       endpoint_container_port: undefined,
-      enabled: false,
     });
     Object.assign(errors, {
       name: '',
@@ -921,7 +945,6 @@
       component_name: editingRoute.value.component_name ?? '',
       endpoint_protocol: editingRoute.value.endpoint_protocol ?? '',
       endpoint_container_port: editingRoute.value.endpoint_container_port,
-      enabled: editingRoute.value.enabled,
     });
     Object.assign(editErrors, {
       name: '',
@@ -1016,7 +1039,7 @@
               form.protocol === 'tcp' || !form.custom_target
                 ? form.endpoint_container_port
                 : undefined,
-            enabled: form.enabled,
+            enabled: false,
           },
           { project_id: projectId }
         );
@@ -1061,7 +1084,6 @@
             editForm.protocol === 'tcp' || !editForm.custom_target
               ? editForm.endpoint_container_port
               : undefined,
-          enabled: editForm.enabled,
         });
         routes.value = routes.value.map((item) => (item.id === updated.id ? updated : item));
         editingRoute.value = updated;
@@ -1076,46 +1098,13 @@
     }
   }
 
-  async function handleEnable(id: string) {
-    try {
-      await executeRouteOperation(async () => {
-        await routeApi.enable(id, {});
-        toast.success(t('route.toast.enableSuccess'));
-        fetchRoutes();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.enableFailed'));
-    }
+  function openSyncModal() {
+    isSyncDialogOpen.value = true;
   }
 
-  async function handleDisable(id: string) {
-    try {
-      await executeRouteOperation(async () => {
-        await routeApi.disable(id, {});
-        toast.success(t('route.toast.disableSuccess'));
-        fetchRoutes();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.disableFailed'));
-    }
-  }
-
-  async function handleSync() {
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      toast.error(t('route.toast.selectProjectRequired'));
-      return;
-    }
-    try {
-      await executeRouteOperation(async () => {
-        await routeApi.sync({}, { project_id: projectId });
-        toast.success(t('route.syncSuccess'));
-        fetchRoutes();
-        fetchTraefikRoutes();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.syncFailed'));
-    }
+  async function handleSyncComplete() {
+    clearPendingEnabled();
+    await Promise.all([fetchRoutes(), fetchTraefikRoutes()]);
   }
 
   function buildRouteUrl(rule: string, tls: boolean): string | null {
@@ -1155,4 +1144,18 @@
     fetchTraefikRoutes();
     fetchRoutes();
   });
+
+  watch(
+    () => projectStore.activeProjectId,
+    (projectId, previousProjectId) => {
+      if (!projectId || projectId === previousProjectId) {
+        return;
+      }
+      clearPendingEnabled();
+      isSyncDialogOpen.value = false;
+      pagination.current = 1;
+      void fetchTraefikRoutes();
+      void fetchRoutes();
+    }
+  );
 </script>

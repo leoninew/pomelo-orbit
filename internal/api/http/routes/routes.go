@@ -87,7 +87,11 @@ func (r Router) Handler() http.Handler {
 	r.registerDialogue(engine)
 	if r.deps.Database != nil {
 		// Request-scoped UoW for mutating API routes (health is registered above).
-		engine.Use(tx.Middleware(r.deps.Database))
+		engine.Use(tx.Middleware(
+			r.deps.Database,
+			"/api/route/sync/preview",
+			"/api/route/sync/confirm",
+		))
 	}
 	r.registerAuth(engine)
 	r.registerUser(engine)

@@ -28,6 +28,7 @@ type Service struct {
 	routePublisher       routeport.RouteConfigPublisher
 	certificateGenerator routeport.RouteCertificateGenerator
 	traefikRouterClient  routeport.TraefikRouterClient
+	transactionRunner    routeport.TransactionRunner
 }
 
 func New(
@@ -39,11 +40,12 @@ func New(
 	routePublisher routeport.RouteConfigPublisher,
 	certificateGenerator routeport.RouteCertificateGenerator,
 	traefikRouterClient routeport.TraefikRouterClient,
+	transactionRunner routeport.TransactionRunner,
 ) Service {
 	return Service{
 		project: project, application: application, service: service, route: route, gateway: gateway,
 		routePublisher: routePublisher, certificateGenerator: certificateGenerator,
-		traefikRouterClient: traefikRouterClient,
+		traefikRouterClient: traefikRouterClient, transactionRunner: transactionRunner,
 	}
 }
 
@@ -146,9 +148,6 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 	if err != nil {
 		return model.Route{}, err
 	}
-	if err := s.ensureRestSnapshotIsManaged(ctx, route); err != nil {
-		return model.Route{}, err
-	}
 	route.Id = idutil.NewId()
 	route.ProjectId = &projectId
 	if err := s.route.CreateRoute(ctx, route); err != nil {
@@ -157,9 +156,6 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 	created, err := s.route.Route(ctx, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
-	}
-	if err := s.publishRouteSnapshot(ctx); err != nil {
-		return model.Route{}, err
 	}
 	return created, nil
 }
@@ -173,13 +169,13 @@ func (s Service) RouteForUser(ctx context.Context, userId string, routeId string
 	return s.withRouteACMECapabilities(ctx, route), nil
 }
 
-// UpdateRoute updates a route and synchronizes its files.
+// UpdateRoute updates the business route record. Traefik is updated by the
+// explicit full-sync flow.
 func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string, input routedto.RouteUpdateInput) (model.Route, error) {
 	route, err := s.loadRouteForUser(ctx, userId, routeId)
 	if err != nil {
 		return model.Route{}, err
 	}
-	oldName := route.Name
 	if input.Name != nil {
 		route.Name = strings.TrimSpace(*input.Name)
 	}
@@ -229,23 +225,12 @@ func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string,
 	if err := s.validateRoute(ctx, &route, route.Id); err != nil {
 		return model.Route{}, err
 	}
-	if err := s.ensureRestSnapshotIsManaged(ctx, route); err != nil {
-		return model.Route{}, err
-	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to update route", err)
 	}
 	updated, err := s.route.Route(ctx, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
-	}
-	if oldName != updated.Name {
-		if err := s.revokeRouteCertFiles(ctx, oldName); err != nil {
-			return model.Route{}, err
-		}
-	}
-	if err := s.publishRouteSnapshot(ctx); err != nil {
-		return model.Route{}, err
 	}
 	return updated, nil
 }
@@ -259,19 +244,14 @@ func (s Service) DeleteRoute(ctx context.Context, userId string, routeId string)
 	if route.Enabled {
 		return apperror.New(apperror.KindValidation, "Cannot delete enabled route. Please disable it first.")
 	}
-	if err := s.ensureRestSnapshotIsManaged(ctx, route); err != nil {
-		return err
-	}
 	if err := s.route.DeleteRoute(ctx, route.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete route", err)
 	}
-	if err := s.revokeRouteCertFiles(ctx, route.Name); err != nil {
-		return err
-	}
-	return s.publishRouteSnapshot(ctx)
+	return nil
 }
 
-// EnableRoute marks a route enabled and deploys its config.
+// EnableRoute marks a route enabled in business data. Traefik is updated by
+// the explicit full-sync flow.
 func (s Service) EnableRoute(ctx context.Context, userId string, routeId string) (model.Route, error) {
 	route, err := s.loadRouteForUser(ctx, userId, routeId)
 	if err != nil {
@@ -281,9 +261,6 @@ func (s Service) EnableRoute(ctx context.Context, userId string, routeId string)
 	if err := s.validateRoute(ctx, &route, route.Id); err != nil {
 		return model.Route{}, err
 	}
-	if err := s.ensureRestSnapshotIsManaged(ctx, route); err != nil {
-		return model.Route{}, err
-	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to enable route", err)
 	}
@@ -291,22 +268,17 @@ func (s Service) EnableRoute(ctx context.Context, userId string, routeId string)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
-	if err := s.publishRouteSnapshot(ctx); err != nil {
-		return model.Route{}, err
-	}
 	return updated, nil
 }
 
-// DisableRoute marks a route disabled and removes its config.
+// DisableRoute marks a route disabled in business data. Traefik is updated by
+// the explicit full-sync flow.
 func (s Service) DisableRoute(ctx context.Context, userId string, routeId string) (model.Route, error) {
 	route, err := s.loadRouteForUser(ctx, userId, routeId)
 	if err != nil {
 		return model.Route{}, err
 	}
 	route.Enabled = false
-	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
-		return model.Route{}, err
-	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to disable route", err)
 	}
@@ -314,25 +286,7 @@ func (s Service) DisableRoute(ctx context.Context, userId string, routeId string
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
-	if err := s.publishRouteSnapshot(ctx); err != nil {
-		return model.Route{}, err
-	}
 	return updated, nil
-}
-
-// SyncRoutes republishes the platform rest snapshot (all enabled routes).
-func (s Service) SyncRoutes(ctx context.Context, userId string, projectId string) error {
-	projectId = strings.TrimSpace(projectId)
-	if projectId == "" {
-		return apperror.New(apperror.KindValidation, "project_id is required")
-	}
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return err
-	}
-	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
-		return err
-	}
-	return s.publishRouteSnapshot(ctx)
 }
 
 // UploadRouteCert stores a manual certificate and updates the route.
@@ -349,9 +303,6 @@ func (s Service) UploadRouteCert(ctx context.Context, userId string, routeId str
 	route.CertKey = &certKey
 	route.CertType = certTypeManual
 	route.AcmeChallenge = acmeChallengeHTTP
-	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
-		return model.Route{}, err
-	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to update route certificate", err)
 	}
@@ -359,13 +310,11 @@ func (s Service) UploadRouteCert(ctx context.Context, userId string, routeId str
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
-	if err := s.publishRouteSnapshot(ctx); err != nil {
-		return model.Route{}, err
-	}
 	return updated, nil
 }
 
-// DisableRouteHTTPS clears HTTPS settings and removes certificate files.
+// DisableRouteHTTPS clears HTTPS settings. Certificate files are reconciled by
+// the next full snapshot publication.
 func (s Service) DisableRouteHTTPS(ctx context.Context, userId string, routeId string) (model.Route, error) {
 	route, err := s.loadRouteForUser(ctx, userId, routeId)
 	if err != nil {
@@ -374,27 +323,17 @@ func (s Service) DisableRouteHTTPS(ctx context.Context, userId string, routeId s
 	if err := requireHTTPRoute(route); err != nil {
 		return model.Route{}, err
 	}
-	oldName := route.Name
 	route.HTTPSEnabled = false
 	route.CertPEM = nil
 	route.CertKey = nil
 	route.CertType = certTypeManual
 	route.AcmeChallenge = acmeChallengeHTTP
-	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
-		return model.Route{}, err
-	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to disable route HTTPS", err)
-	}
-	if err := s.revokeRouteCertFiles(ctx, oldName); err != nil {
-		return model.Route{}, err
 	}
 	updated, err := s.route.Route(ctx, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
-	}
-	if err := s.publishRouteSnapshot(ctx); err != nil {
-		return model.Route{}, err
 	}
 	return updated, nil
 }
@@ -421,27 +360,17 @@ func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, rout
 	if _, err := s.validateGatewayACMECapability(ctx, route, challenge); err != nil {
 		return model.Route{}, err
 	}
-	oldName := route.Name
 	route.HTTPSEnabled = true
 	route.CertPEM = nil
 	route.CertKey = nil
 	route.CertType = certTypeLetsEncrypt
 	route.AcmeChallenge = challenge
-	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
-		return model.Route{}, err
-	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to enable Let's Encrypt", err)
-	}
-	if err := s.revokeRouteCertFiles(ctx, oldName); err != nil {
-		return model.Route{}, err
 	}
 	updated, err := s.route.Route(ctx, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
-	}
-	if err := s.publishRouteSnapshot(ctx); err != nil {
-		return model.Route{}, err
 	}
 	return updated, nil
 }
@@ -511,18 +440,12 @@ func (s Service) EnableRouteMkcert(ctx context.Context, userId string, routeId s
 	route.CertKey = &keyPEM
 	route.CertType = certTypeMkcert
 	route.AcmeChallenge = acmeChallengeHTTP
-	if err := s.ensureRestSnapshotIsManaged(ctx); err != nil {
-		return model.Route{}, err
-	}
 	if err := s.route.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to enable mkcert", err)
 	}
 	updated, err := s.route.Route(ctx, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
-	}
-	if err := s.publishRouteSnapshot(ctx); err != nil {
-		return model.Route{}, err
 	}
 	return updated, nil
 }
@@ -606,16 +529,6 @@ func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId st
 	return route, nil
 }
 
-// publishRouteSnapshot rebuilds the full platform REST config from all enabled routes.
-// Gateway Versions provide static entrypoints and resolver layouts; GatewayConfig selects the active profile.
-func (s Service) publishRouteSnapshot(ctx context.Context) error {
-	routes, err := s.listEnabledRoutesForPublish(ctx)
-	if err != nil {
-		return err
-	}
-	return s.applyRouteSnapshot(ctx, routes, false)
-}
-
 // PublishSnapshot is the worker-facing hook used after a Gateway deployment.
 // It only pushes the dynamic HTTP/TCP REST snapshot. Static entrypoint compile
 // belongs to Route mutations and must not rewrite Version components mid-deploy.
@@ -636,9 +549,6 @@ func (s Service) PublishSnapshot(ctx context.Context) error {
 	if err := s.routePublisher.WaitUntilReady(ctx, gateway.RestApiUrl, time.Duration(gateway.RestReadyTimeoutSeconds)*time.Second); err != nil {
 		return err
 	}
-	if err := s.ensureRestSnapshotIsManagedForRoutes(ctx, routes); err != nil {
-		return err
-	}
 	return s.applyRouteSnapshot(ctx, routes, false)
 }
 
@@ -648,63 +558,6 @@ func (s Service) listEnabledRoutesForPublish(ctx context.Context) ([]model.Route
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
 	}
 	return routes, nil
-}
-
-// ensureRestSnapshotIsManaged prevents a full REST provider PUT from deleting
-// a route that was configured outside Orbit's Route store.
-func (s Service) ensureRestSnapshotIsManaged(ctx context.Context, expected ...model.Route) error {
-	routes, err := s.listEnabledRoutesForPublish(ctx)
-	if err != nil {
-		return err
-	}
-	managedRouteIDs := make(map[string]struct{}, len(routes))
-	for _, route := range routes {
-		managedRouteIDs[route.Id] = struct{}{}
-	}
-	for _, route := range expected {
-		// A new or newly enabled Route may take over a legacy @rest router with
-		// the same name. An already enabled Route must not take over a router
-		// introduced under a new name while it is being renamed.
-		if route.Enabled {
-			if _, exists := managedRouteIDs[route.Id]; !exists {
-				routes = append(routes, route)
-			}
-		}
-	}
-	return s.ensureRestSnapshotIsManagedForRoutes(ctx, routes)
-}
-
-func (s Service) ensureRestSnapshotIsManagedForRoutes(ctx context.Context, routes []model.Route) error {
-	gw, err := s.resolveGatewayForRender(ctx)
-	if err != nil {
-		return err
-	}
-	items, err := s.traefikRouterClient.ListRouters(ctx, gw.RestApiUrl)
-	if err != nil {
-		if s.traefikRouterClient.IsConnectionError(err) {
-			return apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
-		}
-		return apperror.Wrap(apperror.KindInternal, "Failed to inspect Traefik routes", err)
-	}
-	managed := make(map[string]struct{}, len(routes))
-	for _, route := range routes {
-		if route.Enabled {
-			managed[route.Name+"-route@rest"] = struct{}{}
-		}
-	}
-	for _, item := range items {
-		if item.Provider != "rest" {
-			continue
-		}
-		if _, found := managed[item.Name]; !found {
-			return apperror.NewWithCode(
-				apperror.KindConflict,
-				"unmanaged_traefik_route",
-				"Traefik contains a route that is not managed by Orbit. Register or remove it before changing routes.",
-			)
-		}
-	}
-	return nil
 }
 
 func (s Service) applyRouteSnapshot(ctx context.Context, routes []model.Route, waitReady bool) error {
@@ -727,14 +580,6 @@ func (s Service) applyRouteSnapshot(ctx context.Context, routes []model.Route, w
 		return apperror.Wrap(apperror.KindInternal, "Failed to publish traefik rest snapshot", err)
 	}
 	return nil
-}
-
-func (s Service) revokeRouteCertFiles(ctx context.Context, routeName string) error {
-	gateway, err := s.resolveGatewayForRender(ctx)
-	if err != nil {
-		return err
-	}
-	return s.routePublisher.RevokeCertificate(ctx, *gateway, routeName)
 }
 
 func validRouteIdentity(name string, domain string, pathPrefix string) bool {

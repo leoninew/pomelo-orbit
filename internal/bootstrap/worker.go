@@ -43,6 +43,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		routeManager,
 		traefik.MkcertGenerator{},
 		routeManager,
+		transactionRunner,
 	)
 	applicationService := applicationsvc.New(stores.project, stores.application)
 	pipelineRunService := pipelinerunsvc.NewExecutionService(

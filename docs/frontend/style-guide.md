@@ -54,7 +54,7 @@ Doc role: living guide。范围：`web/`。与代码冲突时以代码为准。
   - 普通提交用 `app-button-primary`。
   - 危险确认用 `app-button-destructive`。
 - 列表页新建弹窗按钮文案用“创建”；详情页编辑弹窗用“保存”；导入弹窗用“导入”；删除/取消确认用对应危险操作文案。
-- `AppDialog` 统一阻止打开和关闭时的自动 focus。
+- `AppDialog` 打开时使用 Reka UI 默认的 focus 管理，确保焦点进入弹窗；关闭时保留统一的 focus 策略。
 
 ## 抽屉
 
@@ -64,7 +64,7 @@ Doc role: living guide。范围：`web/`。与代码冲突时以代码为准。
 - 脚本、日志、文件编辑等宽内容抽屉统一使用 `w-[min(960px,100vw)]`；业务确需更窄时再显式说明。
 - 抽屉 footer 规则与 `AppDialog` 一致：取消用 `app-button`，保存/创建用 `app-button-primary`。
 - 脚本编辑抽屉主按钮统一使用“保存”。
-- `AppDrawer` 统一阻止打开和关闭时的自动 focus。
+- `AppDrawer` 打开时使用 Reka UI 默认的 focus 管理，确保焦点进入抽屉；关闭时保留统一的 focus 策略。
 
 ## Toast
 
@@ -73,5 +73,5 @@ Doc role: living guide。范围：`web/`。与代码冲突时以代码为准。
 
 ## Focus 与弹出行为
 
-- `AppDialog` / `AppDrawer` 打开和关闭时都 prevent auto focus，避免弹窗打开后自动展开下拉或抢焦点。
+- `AppDialog` / `AppDrawer` 打开时不要阻止 auto focus，否则触发按钮仍会在被 `aria-hidden` 的背景中保持焦点；关闭行为由共享组件统一管理。
 - `ComboboxSelect` 默认只点击展开，不支持 focus 自动展开。

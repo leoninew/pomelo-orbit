@@ -154,6 +154,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			routeManager,
 			traefik.MkcertGenerator{},
 			routeManager,
+			transactionRunner,
 		),
 		ApplicationService: applicationService,
 		ServiceService: servicesvc.New(

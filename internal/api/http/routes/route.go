@@ -11,7 +11,8 @@ func (r Router) registerRoute(engine *gin.Engine) {
 
 	engine.GET("/api/route", handler.ListRoutes)
 	engine.POST("/api/route", handler.CreateRoute)
-	engine.POST("/api/route/sync", handler.SyncRoutes)
+	engine.POST("/api/route/sync/preview", handler.PreviewRouteSync)
+	engine.POST("/api/route/sync/confirm", handler.ConfirmRouteSync)
 	engine.GET("/api/route/:route_id", handler.GetRoute)
 	engine.PUT("/api/route/:route_id", handler.UpdateRoute)
 	engine.DELETE("/api/route/:route_id", handler.DeleteRoute)

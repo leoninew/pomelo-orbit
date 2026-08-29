@@ -8,8 +8,10 @@ import type {
   RouteMkcertEnableReq,
   RoutePaginatedResp,
   RouteResp,
-  RouteSyncReq,
-  RouteSyncResp,
+  RouteSyncConfirmReq,
+  RouteSyncConfirmResp,
+  RouteSyncPreviewReq,
+  RouteSyncPreviewResp,
   RouteUpdateReq,
 } from '@/gen/proto/orbit/v1/route/route';
 import request from '@/utils/request';
@@ -48,8 +50,18 @@ export const routeApi = {
     return request.post(`/api/route/${id}/disable`, data);
   },
 
-  sync(data: RouteSyncReq, params: { project_id: string }): Promise<RouteSyncResp> {
-    return request.post('/api/route/sync', data, { params });
+  previewSync(
+    data: RouteSyncPreviewReq,
+    params: { project_id: string }
+  ): Promise<RouteSyncPreviewResp> {
+    return request.post('/api/route/sync/preview', data, { params });
+  },
+
+  confirmSync(
+    data: RouteSyncConfirmReq,
+    params: { project_id: string }
+  ): Promise<RouteSyncConfirmResp> {
+    return request.post('/api/route/sync/confirm', data, { params });
   },
 
   uploadCert(id: string, certFile: File): Promise<RouteResp> {

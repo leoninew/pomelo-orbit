@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
+	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	routev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/route"
 
@@ -128,21 +129,44 @@ func (h Handler) DisableRoute(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &routev1.RouteDisableResp{Message: "Route disabled successfully"})
 }
 
-func (h Handler) SyncRoutes(c *gin.Context) {
+func (h Handler) PreviewRouteSync(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	var req routev1.RouteSyncReq
+	var req routev1.RouteSyncPreviewReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	if err := h.service.SyncRoutes(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id")); err != nil {
+	preview, err := h.service.PreviewRouteSync(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routeSyncChanges(req.Changes))
+	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &routev1.RouteSyncResp{Message: "Routes synced successfully"})
+	response := routeSyncPreviewResponse(preview)
+	transportresponse.ProtoJSON(c, http.StatusOK, &response)
+}
+
+func (h Handler) ConfirmRouteSync(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var req routev1.RouteSyncConfirmReq
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	if err := h.service.ConfirmRouteSync(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routedto.RouteSyncConfirmInput{
+		Changes:      routeSyncChanges(req.Changes),
+		BusinessHash: req.BusinessHash,
+		TraefikHash:  req.TraefikHash,
+	}); err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	transportresponse.ProtoJSON(c, http.StatusOK, &routev1.RouteSyncConfirmResp{Message: "Routes synced successfully"})
 }
 
 func (h Handler) UploadRouteCert(c *gin.Context) {

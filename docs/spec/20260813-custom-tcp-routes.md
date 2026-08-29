@@ -1,5 +1,5 @@
 # 自定义 TCP 路由规格
-最后修改时间: 2026-08-13 19:25:34
+最后修改时间: 2026-08-29 14:31:44
 
 Review status: Accepted
 
@@ -16,7 +16,8 @@ Route (HTTP/TCP) changes
   -> persist Route
   -> collect enabled TCP Route listen ports
   -> compile Gateway unpublished Version with tcp<port> entrypoints
-  -> existing Route full snapshot publish (http + tcp)
+  -> /routes sync preview and confirmation
+  -> replace the complete REST snapshot (http + tcp)
 
 Gateway Service deploy/restart succeeds
   -> publish the complete enabled Route snapshot (http + tcp)
@@ -113,7 +114,7 @@ Gateway compile 的 `tcpListens` 输入改为由所有 enabled TCP Route 的 `li
 - 增加同端口 `0.0.0.0:<listen_port>:<listen_port>` 的 Gateway Compose port mapping；
 - 在没有任何 enabled TCP Route 引用时移除该端口。
 
-Route 的 create/update/enable/disable/delete 在写入后复用既有同步流程，先确保 Gateway 未发布 Version 已按完整 enabled TCP Route 集合 compile；其余 Route HTTP/TCP 内容均由同一次全量 REST snapshot 发布。不增加 Route 专属后台任务或状态机。
+Route 的 create/update/enable/disable/delete 只写入业务数据，不直接调用 Traefik。`/routes` 列表页和详情页的启停操作都只保留前端草稿，统一通过同步入口预览并确认；同步确认后以完整 enabled Route 集合覆盖 REST provider。Gateway 的静态 TCP entrypoint 和宿主机端口映射在 Gateway 后续 deploy/restart 时按完整 Route 集合生效。不增加 Route 专属后台任务或状态机。
 
 ### 5. Gateway deploy/restart route sync
 

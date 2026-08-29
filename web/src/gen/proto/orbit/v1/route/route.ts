@@ -66,7 +66,34 @@ export interface RouteEnableReq {
 export interface RouteDisableReq {
 }
 
-export interface RouteSyncReq {
+export interface RouteSyncChange {
+  route_id: string;
+  enabled: boolean;
+}
+
+export interface RouteSyncPreviewReq {
+  changes: RouteSyncChange[];
+}
+
+export interface RouteSyncDiffResp {
+  action: string;
+  route_name: string;
+  field: string;
+  business_value: string;
+  traefik_value: string;
+}
+
+export interface RouteSyncPreviewResp {
+  business_hash: string;
+  traefik_hash: string;
+  matched: boolean;
+  differences: RouteSyncDiffResp[];
+}
+
+export interface RouteSyncConfirmReq {
+  changes: RouteSyncChange[];
+  business_hash: string;
+  traefik_hash: string;
 }
 
 export interface RouteLetsEncryptEnableReq {
@@ -84,7 +111,7 @@ export interface RouteDisableResp {
   message: string;
 }
 
-export interface RouteSyncResp {
+export interface RouteSyncConfirmResp {
   message: string;
 }
 

@@ -59,7 +59,35 @@ message RouteEnableReq {}
 
 message RouteDisableReq {}
 
-message RouteSyncReq {}
+message RouteSyncChange {
+  string route_id = 1;
+  bool enabled = 2;
+}
+
+message RouteSyncPreviewReq {
+  repeated RouteSyncChange changes = 1;
+}
+
+message RouteSyncDiffResp {
+  string action = 1;
+  string route_name = 2;
+  string field = 3;
+  string business_value = 4;
+  string traefik_value = 5;
+}
+
+message RouteSyncPreviewResp {
+  string business_hash = 1;
+  string traefik_hash = 2;
+  bool matched = 3;
+  repeated RouteSyncDiffResp differences = 4;
+}
+
+message RouteSyncConfirmReq {
+  repeated RouteSyncChange changes = 1;
+  string business_hash = 2;
+  string traefik_hash = 3;
+}
 
 message RouteLetsEncryptEnableReq {
   string challenge = 1;
@@ -75,7 +103,7 @@ message RouteDisableResp {
   string message = 1;
 }
 
-message RouteSyncResp {
+message RouteSyncConfirmResp {
   string message = 1;
 }
 

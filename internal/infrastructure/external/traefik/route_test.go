@@ -37,7 +37,7 @@ func TestRouteManagerListRoutersMapsTraefikResponse(t *testing.T) {
 	if len(routers) != 3 {
 		t.Fatalf("expected two routers, got %+v", routers)
 	}
-	if routers[0].Name != "api@docker" || routers[0].Provider != "docker" || routers[0].Status != "enabled" || routers[0].Rule != "Host(api.example.test)" || routers[0].Service != "api-service" || len(routers[0].Entrypoints) != 1 || routers[0].Entrypoints[0] != "websecure" || !routers[0].TLS {
+	if routers[0].Name != "api@docker" || routers[0].Provider != "docker" || routers[0].Status != "enabled" || routers[0].Rule != "Host(api.example.test)" || routers[0].Service != "api-service" || len(routers[0].Entrypoints) != 1 || routers[0].Entrypoints[0] != "websecure" || !routers[0].TLS || routers[0].TLSConfig != "{}" {
 		t.Fatalf("unexpected first router: %+v", routers[0])
 	}
 	if routers[1].Name != "dashboard@file" || routers[1].TLS || len(routers[1].Entrypoints) != 1 || routers[1].Entrypoints[0] != "web" {
@@ -45,6 +45,36 @@ func TestRouteManagerListRoutersMapsTraefikResponse(t *testing.T) {
 	}
 	if routers[2].Name != "redis@rest" || routers[2].TLS || routers[2].Rule != "HostSNI(`*`)" || routers[2].Entrypoints[0] != "tcp16379" {
 		t.Fatalf("unexpected TCP router: %+v", routers[2])
+	}
+}
+
+func TestRouteManagerListServicesMapsHTTPAndTCPResponses(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || (request.URL.Path != "/api/http/services" && request.URL.Path != "/api/tcp/services") {
+			t.Fatalf("unexpected request: %s %s", request.Method, request.URL.Path)
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		if request.URL.Path == "/api/tcp/services" {
+			_, _ = writer.Write([]byte(`[{"name":"redis-service@rest","provider":"rest","status":"enabled","loadBalancer":{"servers":[{"address":"redis:6379"}]}}]`))
+			return
+		}
+		_, _ = writer.Write([]byte(`[{"name":"api-service@rest","provider":"rest","status":"enabled","loadBalancer":{"servers":[{"url":"http://api:8080"}]}},{"name":"docker-service@docker","provider":"docker","status":"enabled","loadBalancer":{"servers":[{"url":"http://docker:8080"}]}}]`))
+	}))
+	defer server.Close()
+
+	manager := NewRouteManager(config.Config{})
+	services, err := manager.ListServices(context.Background(), server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(services) != 3 {
+		t.Fatalf("services = %+v, want 3 items", services)
+	}
+	if services[0].Name != "api-service@rest" || services[0].Protocol != "http" || len(services[0].Servers) != 1 || services[0].Servers[0] != "http://api:8080" {
+		t.Fatalf("unexpected HTTP service: %+v", services[0])
+	}
+	if services[2].Name != "redis-service@rest" || services[2].Protocol != "tcp" || len(services[2].Servers) != 1 || services[2].Servers[0] != "redis:6379" {
+		t.Fatalf("unexpected TCP service: %+v", services[2])
 	}
 }
 
@@ -173,7 +203,7 @@ func TestRouteManagerApplySnapshotClearsWithEmptyMaps(t *testing.T) {
 	}
 }
 
-func TestRouteManagerApplySnapshotPublishesStoredCertificate(t *testing.T) {
+func TestRouteManagerApplySnapshotPublishesAndPrunesStoredCertificate(t *testing.T) {
 	var gotBody string
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		raw, _ := io.ReadAll(request.Body)
@@ -209,6 +239,19 @@ func TestRouteManagerApplySnapshotPublishesStoredCertificate(t *testing.T) {
 	entry := certificates[0].(map[string]any)
 	if entry["certFile"] != "/etc/traefik/certs/secure.pem" || entry["keyFile"] != "/etc/traefik/certs/secure-key.pem" {
 		t.Fatalf("TLS certificate entry = %#v", entry)
+	}
+	stalePath := filepath.Join(deploymentRoot, "traefik-default", "gateway", "certs", "stale.pem")
+	if err := os.WriteFile(stalePath, []byte("stale"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.ApplySnapshot(context.Background(), model.GatewayConfig{RestApiUrl: server.URL, RuntimeServiceCode: "traefik-default"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(certificatePath); !os.IsNotExist(err) {
+		t.Fatalf("expected secure certificate to be pruned, err=%v", err)
+	}
+	if _, err := os.Stat(stalePath); !os.IsNotExist(err) {
+		t.Fatalf("expected stale certificate to be pruned, err=%v", err)
 	}
 }
 

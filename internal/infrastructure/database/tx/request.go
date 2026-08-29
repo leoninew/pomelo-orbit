@@ -15,9 +15,18 @@ const unwrittenResponseSize = -1
 
 // Middleware begins a request-scoped transaction for API writes. Successful
 // responses stay buffered until the transaction commits.
-func Middleware(db *sql.DB) gin.HandlerFunc {
+
+func Middleware(db *sql.DB, skipPaths ...string) gin.HandlerFunc {
+	skipped := make(map[string]struct{}, len(skipPaths))
+	for _, path := range skipPaths {
+		skipped[path] = struct{}{}
+	}
 	return func(c *gin.Context) {
 		if !isWriteRequest(c.Request.Method) {
+			c.Next()
+			return
+		}
+		if _, ok := skipped[c.Request.URL.Path]; ok {
 			c.Next()
 			return
 		}

@@ -1,5 +1,5 @@
 # 自定义 TCP 路由
-最后修改时间: 2026-08-13 19:25:34
+最后修改时间: 2026-08-29 14:31:44
 
 Review status: Accepted
 
@@ -53,13 +53,15 @@ Review status: Accepted
 - [ ] 同一 `listen_port` 不得同时被 Gateway TCP Route 与正在运行的业务 Component 的 `host` / `local` Endpoint 绑定；停止的 Service 不占用宿主机端口。错误信息说明冲突资源和端口。
 - [ ] `gateway_tcp` 从 Endpoint mode、产品/API/渲染主路径直接删除；已有库表数据在发布前离线更新为 `internal`，该存量转换不进入业务逻辑。
 - [ ] `gateway_http` 从 Endpoint mode、产品/API/渲染主路径直接重命名为 `gateway`；已有库表数据在发布前离线更新为 `gateway`，该存量转换不进入业务逻辑。
-- [ ] TCP Route 的保存、启停、删除复用既有 Route 全量同步发布逻辑；不新增 Route 状态机、异步协调或额外事务模型。
+- [ ] Route 创建、编辑和证书只写入业务数据，不直接发布 Traefik；列表页和详情页的启停只保留前端未提交草稿；不新增 Route 状态机或异步协调模型。
+- [ ] `/routes` 列表页和详情页启用/禁用都保留前端未提交草稿；同步入口先预览业务数据与 Traefik 数据的差异，确认后以完整 enabled Route 集合覆盖 REST provider。
+- [ ] 同步确认校验预览期间的业务数据与 Traefik 数据未变化；预览失败、数据过期或覆盖失败时不误报成功。
 - [ ] 每次 Gateway Service 的 deploy/restart 成功后，均在同一异步部署流程中发布全量 HTTP/TCP Route 快照；Gateway 详情页发起的部署不例外。
 - [ ] 对 HTTP 路由、独占端口 TCP、端口冲突、Gateway reconcile、权限和目标有效性提供覆盖测试。
 
 ## Open questions
 
-不适用。本需求已确认：`gateway_tcp` 直接删除，历史数据离线转换为 `internal`；`gateway_http` 重命名为 `gateway`，历史数据离线转换；Route 变更沿用既有同步逻辑；Gateway 成功部署后同步全量自定义 Route。TLS/SNI、异步协调、HTTP target 收敛、端口策略和防火墙不扩展本需求范围。
+不适用。本需求已确认：`gateway_tcp` 直接删除，历史数据离线转换为 `internal`；`gateway_http` 重命名为 `gateway`，历史数据离线转换；Route 变更先写业务数据，由统一同步入口预览并确认后全量覆盖 Traefik；Gateway 成功部署后自动同步全量自定义 Route。TLS/SNI、异步协调、HTTP target 收敛、端口策略和防火墙不扩展本需求范围。
 
 ## Decisions
 
@@ -69,7 +71,8 @@ Review status: Accepted
 - 采纳：Gateway entrypoint、宿主机端口映射和 Traefik TCP 动态配置由 Route 控制面统一 reconcile。
 - 采纳：直接删除 `gateway_tcp`；发布前对现有 Version 与 Service Endpoint 表执行离线数据更新，将值改为 `internal`，不在业务逻辑中承载迁移或兼容。
 - 采纳：将 `gateway_http` 直接更名为 `gateway`；发布前对现有 Version 与 Service Endpoint 表执行离线数据更新，将值改为 `gateway`，不保留旧枚举值。
-- 采纳：TCP Route 变更沿用既有 Route 保存、启停、删除后的同步发布逻辑；不引入额外状态或协调机制。
+- 采纳：Route 发布入口统一为全量同步；Route 创建、编辑和证书只更新业务数据，列表页和详情页启停都只更新前端草稿，不调用 Traefik 增量启停接口。
+- 采纳：同步使用预览/确认两阶段；预览返回业务与 Traefik 的 hash 及差异列表，确认时校验 hash，确认后覆盖完整 REST provider 数据。
 - 采纳：Gateway Service 的 deploy/restart 成功后调用 Route 全量同步；此步骤位于异步部署执行路径，覆盖 Gateway 详情页和其他调用通道。
 
 ## Risks

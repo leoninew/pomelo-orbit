@@ -1,5 +1,5 @@
 # Route REST 快照防误删验证
-最后修改时间: 2026-08-19 18:21:40
+最后修改时间: 2026-08-29 14:53:32
 
 Review status: Accepted
 
@@ -7,56 +7,54 @@ Flow mode: light
 
 ## Requirement Alignment
 
-- Route 发布前读取 Traefik HTTP/TCP router，只检查 `provider=rest` 的项。
-- 发现未登记 `@rest` router 时，应用服务返回 `409/unmanaged_traefik_route`，写操作发生前中止。
-- 新建或从禁用状态启用的同名 Route 可接管历史 router；已启用 Route 改名遇到未知同名 router 会拒绝。
-- Gateway 部署完成后的 `PublishSnapshot` 也使用相同保护。
-
-## Spec / Plan Alignment
-
-不适用。light 模式按 Requirement 实现，未创建 Spec 或 Plan。
+原“未登记 router 阻断”方案已由统一 Route 全量同步方案取代。当前验证依据是：Route 业务变更以及列表、详情页的启停草稿不直接发布 Traefik；同步先预览业务/Traefik 对等性，再经 hash 校验确认覆盖；Gateway deploy/restart 继续自动发布完整快照。
 
 ## Actual Diff Summary
 
-- Route use case 在创建、更新、删除、启停、同步、证书变更和部署后发布前检查 REST router 归属。
-- 未受管 router 使用现有统一 HTTP 错误契约输出 `409/unmanaged_traefik_route`。
-- 补充集成测试：拒绝禁用时覆盖未知 router、允许同名接管、拒绝改名接管，以及保留高级自定义 target。
-- 路由指南和 CD 运行时文档说明保护和迁移方式。
+- 新增 Route sync preview/confirm HTTP API、Proto 和前端同步模态窗。
+- 列表页和详情页启停均改为前端草稿；禁用 Route 名称始终可进入详情，详情页提供同一同步入口。
+- Route 创建、编辑、证书及启停不再直接发布 REST snapshot。
+- 移除发布路径中“发现未登记 router 即返回 `unmanaged_traefik_route`”的阻断逻辑，确认后允许完整覆盖。
+- 同步预览比较业务快照与全部 Traefik REST routers/services；router 及其 service 聚合为一条逻辑 Route，以“操作 / 规则”两列展示新增、修改、删除及有值一侧的“协议 规则 -> 上游”，不比较证书或 TLS 内部配置，确认前校验双方 hash。
 
 ## Expected And Actual Files
 
-| 预期文件 | 实际文件 | 结果 |
+| 预期范围 | 实际文件 | 结果 |
 | --- | --- | --- |
-| Route use case / tests | `internal/application/route/usecase/service.go`、相关测试 | 符合 |
-| 活路由文档 | `docs/guides/routing-and-certificates.md`、`docs/architecture/cd-runtime.md` | 符合 |
-| light 过程记录 | 本 Requirement 与 Verification | 符合 |
+| Route sync use case / tests | `internal/application/route/usecase/sync.go`、相关测试 | 符合 |
+| HTTP/Proto/Web | `internal/api/http/handler/route/*`、`proto/orbit/v1/route/route.proto`、`web/src/views/route/*`、生成物 | 符合 |
+| Route publish / Gateway hook | `internal/application/route/usecase/service.go`、Traefik adapter、worker 注入 | 符合 |
+| 活文档与决策 | Route guide、CD runtime、`docs/decisions/ledger.md` | 符合 |
 
 ## Acceptance Checklist
 
-- [x] 未登记的 `@rest` router 不会因 Route 操作被静默清除。
-- [x] 冲突操作不更新数据库且不发布快照。
-- [x] 同名历史 router 可被新的启用 Route 接管。
-- [x] 已启用 Route 改名不会接管同名未知 router。
-- [x] 高级 URL target Route 在禁用其他 Route 后保留在快照中。
-- [x] 文档说明限制、错误码与迁移要求。
+- [x] 禁用 Route 名称可点击进入详情。
+- [x] 列表页和详情页启停都不调用后端 enable/disable 接口，只保留前端草稿。
+- [x] 详情页同步按钮会反映启停草稿，基本信息编辑表单不包含启停字段。
+- [x] Route 变更不直接发布 Traefik，全量发布统一由同步确认或 Gateway deploy/restart 完成。
+- [x] 同步弹窗执行只读预览，以一条逻辑 Route 一行的“操作 / 规则”表格展示业务/Traefik 值；未受管 REST 项不输出 JSON。
+- [x] 确认阶段校验预览 hash，过期预览返回冲突且不发布。
+- [x] 确认后以完整 Route 集合覆盖 Traefik REST provider。
+- [x] 未登记 router 不再被静默合并；其差异会在确认前展示，确认后按全量覆盖语义处理。
 
 ## Command Results
 
 | 命令 | 结果 |
 | --- | --- |
-| `go test ./internal/application/route/usecase ./internal/infrastructure/external/traefik` | PASS |
 | `go test ./cmd/... ./internal/...` | PASS |
-| `task check` | 未完成：运行 124 秒后工具超时，未输出诊断信息 |
+| `task check` | PASS：typecheck、ESLint、Prettier、golangci-lint 均通过 |
+| `git diff --check` | PASS |
+| Pomelo PW | 未完成最新版视觉核验：先前进程仍提供旧前端资源；随后 `localhost:9020` 返回 `502`。未确认同步。 |
 
-## Scope Deviation
+## Scope Deviations
 
-无。未修改迁移、Gateway 静态配置或 Traefik REST provider 的全量 PUT 语义。
+初版“未知 router 返回 `409/unmanaged_traefik_route`”保护按用户最新决策废止；该偏差已同步写入决策账本和本记录的 Superseded 说明。
 
 ## Risks And Incomplete Items
 
-- 外部直接写入 Traefik 与预检查后的全量 PUT 之间仍有竞态；受管路径应避免绕过 Orbit 写入 `@rest`。
-- `task check` 未能在当前会话完成，需在本地 CI 或更长执行预算下复跑。
+- 未确认同步或执行真实 Gateway deploy/restart；运行中的本地页面未能加载最新版前端资源，需待用户恢复服务后重新核验同步预览表格。
+- 同步确认在数据库提交后执行外部 PUT，外部 PUT 失败时需要用户重新执行同步；该一致性边界已在 usecase 注释和活文档中说明。
 
 ## Conclusion
 
-实现满足 Requirement。定向和完整 Go 测试通过；`task check` 的超时作为未完成验证项保留。
+统一 Route 全量同步入口、列表/详情页前端启停草稿和同步预览/确认流程已实现，未受管 REST 配置会以可读差异展示，既定检查全部通过。初版未知 router 阻断策略已明确废止并完成文档回写。

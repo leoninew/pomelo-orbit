@@ -545,26 +545,28 @@ func (*RouteDisableReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{4}
 }
 
-type RouteSyncReq struct {
+type RouteSyncChange struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	RouteId       string                 `protobuf:"bytes,1,opt,name=route_id,json=routeId,proto3" json:"route_id,omitempty"`
+	Enabled       bool                   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RouteSyncReq) Reset() {
-	*x = RouteSyncReq{}
+func (x *RouteSyncChange) Reset() {
+	*x = RouteSyncChange{}
 	mi := &file_orbit_v1_route_route_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RouteSyncReq) String() string {
+func (x *RouteSyncChange) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RouteSyncReq) ProtoMessage() {}
+func (*RouteSyncChange) ProtoMessage() {}
 
-func (x *RouteSyncReq) ProtoReflect() protoreflect.Message {
+func (x *RouteSyncChange) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_route_route_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -576,9 +578,271 @@ func (x *RouteSyncReq) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RouteSyncReq.ProtoReflect.Descriptor instead.
-func (*RouteSyncReq) Descriptor() ([]byte, []int) {
+// Deprecated: Use RouteSyncChange.ProtoReflect.Descriptor instead.
+func (*RouteSyncChange) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RouteSyncChange) GetRouteId() string {
+	if x != nil {
+		return x.RouteId
+	}
+	return ""
+}
+
+func (x *RouteSyncChange) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+type RouteSyncPreviewReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Changes       []*RouteSyncChange     `protobuf:"bytes,1,rep,name=changes,proto3" json:"changes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RouteSyncPreviewReq) Reset() {
+	*x = RouteSyncPreviewReq{}
+	mi := &file_orbit_v1_route_route_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RouteSyncPreviewReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RouteSyncPreviewReq) ProtoMessage() {}
+
+func (x *RouteSyncPreviewReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_route_route_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RouteSyncPreviewReq.ProtoReflect.Descriptor instead.
+func (*RouteSyncPreviewReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RouteSyncPreviewReq) GetChanges() []*RouteSyncChange {
+	if x != nil {
+		return x.Changes
+	}
+	return nil
+}
+
+type RouteSyncDiffResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Action        string                 `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
+	RouteName     string                 `protobuf:"bytes,2,opt,name=route_name,json=routeName,proto3" json:"route_name,omitempty"`
+	Field         string                 `protobuf:"bytes,3,opt,name=field,proto3" json:"field,omitempty"`
+	BusinessValue string                 `protobuf:"bytes,4,opt,name=business_value,json=businessValue,proto3" json:"business_value,omitempty"`
+	TraefikValue  string                 `protobuf:"bytes,5,opt,name=traefik_value,json=traefikValue,proto3" json:"traefik_value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RouteSyncDiffResp) Reset() {
+	*x = RouteSyncDiffResp{}
+	mi := &file_orbit_v1_route_route_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RouteSyncDiffResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RouteSyncDiffResp) ProtoMessage() {}
+
+func (x *RouteSyncDiffResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_route_route_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RouteSyncDiffResp.ProtoReflect.Descriptor instead.
+func (*RouteSyncDiffResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *RouteSyncDiffResp) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *RouteSyncDiffResp) GetRouteName() string {
+	if x != nil {
+		return x.RouteName
+	}
+	return ""
+}
+
+func (x *RouteSyncDiffResp) GetField() string {
+	if x != nil {
+		return x.Field
+	}
+	return ""
+}
+
+func (x *RouteSyncDiffResp) GetBusinessValue() string {
+	if x != nil {
+		return x.BusinessValue
+	}
+	return ""
+}
+
+func (x *RouteSyncDiffResp) GetTraefikValue() string {
+	if x != nil {
+		return x.TraefikValue
+	}
+	return ""
+}
+
+type RouteSyncPreviewResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BusinessHash  string                 `protobuf:"bytes,1,opt,name=business_hash,json=businessHash,proto3" json:"business_hash,omitempty"`
+	TraefikHash   string                 `protobuf:"bytes,2,opt,name=traefik_hash,json=traefikHash,proto3" json:"traefik_hash,omitempty"`
+	Matched       bool                   `protobuf:"varint,3,opt,name=matched,proto3" json:"matched,omitempty"`
+	Differences   []*RouteSyncDiffResp   `protobuf:"bytes,4,rep,name=differences,proto3" json:"differences,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RouteSyncPreviewResp) Reset() {
+	*x = RouteSyncPreviewResp{}
+	mi := &file_orbit_v1_route_route_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RouteSyncPreviewResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RouteSyncPreviewResp) ProtoMessage() {}
+
+func (x *RouteSyncPreviewResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_route_route_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RouteSyncPreviewResp.ProtoReflect.Descriptor instead.
+func (*RouteSyncPreviewResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *RouteSyncPreviewResp) GetBusinessHash() string {
+	if x != nil {
+		return x.BusinessHash
+	}
+	return ""
+}
+
+func (x *RouteSyncPreviewResp) GetTraefikHash() string {
+	if x != nil {
+		return x.TraefikHash
+	}
+	return ""
+}
+
+func (x *RouteSyncPreviewResp) GetMatched() bool {
+	if x != nil {
+		return x.Matched
+	}
+	return false
+}
+
+func (x *RouteSyncPreviewResp) GetDifferences() []*RouteSyncDiffResp {
+	if x != nil {
+		return x.Differences
+	}
+	return nil
+}
+
+type RouteSyncConfirmReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Changes       []*RouteSyncChange     `protobuf:"bytes,1,rep,name=changes,proto3" json:"changes,omitempty"`
+	BusinessHash  string                 `protobuf:"bytes,2,opt,name=business_hash,json=businessHash,proto3" json:"business_hash,omitempty"`
+	TraefikHash   string                 `protobuf:"bytes,3,opt,name=traefik_hash,json=traefikHash,proto3" json:"traefik_hash,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RouteSyncConfirmReq) Reset() {
+	*x = RouteSyncConfirmReq{}
+	mi := &file_orbit_v1_route_route_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RouteSyncConfirmReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RouteSyncConfirmReq) ProtoMessage() {}
+
+func (x *RouteSyncConfirmReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_route_route_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RouteSyncConfirmReq.ProtoReflect.Descriptor instead.
+func (*RouteSyncConfirmReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *RouteSyncConfirmReq) GetChanges() []*RouteSyncChange {
+	if x != nil {
+		return x.Changes
+	}
+	return nil
+}
+
+func (x *RouteSyncConfirmReq) GetBusinessHash() string {
+	if x != nil {
+		return x.BusinessHash
+	}
+	return ""
+}
+
+func (x *RouteSyncConfirmReq) GetTraefikHash() string {
+	if x != nil {
+		return x.TraefikHash
+	}
+	return ""
 }
 
 type RouteLetsEncryptEnableReq struct {
@@ -590,7 +854,7 @@ type RouteLetsEncryptEnableReq struct {
 
 func (x *RouteLetsEncryptEnableReq) Reset() {
 	*x = RouteLetsEncryptEnableReq{}
-	mi := &file_orbit_v1_route_route_proto_msgTypes[6]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -602,7 +866,7 @@ func (x *RouteLetsEncryptEnableReq) String() string {
 func (*RouteLetsEncryptEnableReq) ProtoMessage() {}
 
 func (x *RouteLetsEncryptEnableReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_route_route_proto_msgTypes[6]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -615,7 +879,7 @@ func (x *RouteLetsEncryptEnableReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouteLetsEncryptEnableReq.ProtoReflect.Descriptor instead.
 func (*RouteLetsEncryptEnableReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{6}
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RouteLetsEncryptEnableReq) GetChallenge() string {
@@ -633,7 +897,7 @@ type RouteMkcertEnableReq struct {
 
 func (x *RouteMkcertEnableReq) Reset() {
 	*x = RouteMkcertEnableReq{}
-	mi := &file_orbit_v1_route_route_proto_msgTypes[7]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -645,7 +909,7 @@ func (x *RouteMkcertEnableReq) String() string {
 func (*RouteMkcertEnableReq) ProtoMessage() {}
 
 func (x *RouteMkcertEnableReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_route_route_proto_msgTypes[7]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -658,7 +922,7 @@ func (x *RouteMkcertEnableReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouteMkcertEnableReq.ProtoReflect.Descriptor instead.
 func (*RouteMkcertEnableReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{7}
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{11}
 }
 
 type RouteEnableResp struct {
@@ -670,7 +934,7 @@ type RouteEnableResp struct {
 
 func (x *RouteEnableResp) Reset() {
 	*x = RouteEnableResp{}
-	mi := &file_orbit_v1_route_route_proto_msgTypes[8]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -682,7 +946,7 @@ func (x *RouteEnableResp) String() string {
 func (*RouteEnableResp) ProtoMessage() {}
 
 func (x *RouteEnableResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_route_route_proto_msgTypes[8]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -695,7 +959,7 @@ func (x *RouteEnableResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouteEnableResp.ProtoReflect.Descriptor instead.
 func (*RouteEnableResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{8}
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RouteEnableResp) GetMessage() string {
@@ -714,7 +978,7 @@ type RouteDisableResp struct {
 
 func (x *RouteDisableResp) Reset() {
 	*x = RouteDisableResp{}
-	mi := &file_orbit_v1_route_route_proto_msgTypes[9]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -726,7 +990,7 @@ func (x *RouteDisableResp) String() string {
 func (*RouteDisableResp) ProtoMessage() {}
 
 func (x *RouteDisableResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_route_route_proto_msgTypes[9]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -739,7 +1003,7 @@ func (x *RouteDisableResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RouteDisableResp.ProtoReflect.Descriptor instead.
 func (*RouteDisableResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{9}
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RouteDisableResp) GetMessage() string {
@@ -749,28 +1013,28 @@ func (x *RouteDisableResp) GetMessage() string {
 	return ""
 }
 
-type RouteSyncResp struct {
+type RouteSyncConfirmResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RouteSyncResp) Reset() {
-	*x = RouteSyncResp{}
-	mi := &file_orbit_v1_route_route_proto_msgTypes[10]
+func (x *RouteSyncConfirmResp) Reset() {
+	*x = RouteSyncConfirmResp{}
+	mi := &file_orbit_v1_route_route_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RouteSyncResp) String() string {
+func (x *RouteSyncConfirmResp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RouteSyncResp) ProtoMessage() {}
+func (*RouteSyncConfirmResp) ProtoMessage() {}
 
-func (x *RouteSyncResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_route_route_proto_msgTypes[10]
+func (x *RouteSyncConfirmResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_route_route_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -781,12 +1045,12 @@ func (x *RouteSyncResp) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RouteSyncResp.ProtoReflect.Descriptor instead.
-func (*RouteSyncResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{10}
+// Deprecated: Use RouteSyncConfirmResp.ProtoReflect.Descriptor instead.
+func (*RouteSyncConfirmResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{14}
 }
 
-func (x *RouteSyncResp) GetMessage() string {
+func (x *RouteSyncConfirmResp) GetMessage() string {
 	if x != nil {
 		return x.Message
 	}
@@ -806,7 +1070,7 @@ type RoutePaginatedResp struct {
 
 func (x *RoutePaginatedResp) Reset() {
 	*x = RoutePaginatedResp{}
-	mi := &file_orbit_v1_route_route_proto_msgTypes[11]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -818,7 +1082,7 @@ func (x *RoutePaginatedResp) String() string {
 func (*RoutePaginatedResp) ProtoMessage() {}
 
 func (x *RoutePaginatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_route_route_proto_msgTypes[11]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -831,7 +1095,7 @@ func (x *RoutePaginatedResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoutePaginatedResp.ProtoReflect.Descriptor instead.
 func (*RoutePaginatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{11}
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *RoutePaginatedResp) GetItems() []*RouteResp {
@@ -961,16 +1225,36 @@ const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"\x12_endpoint_protocolB\x1a\n" +
 	"\x18_endpoint_container_port\"\x10\n" +
 	"\x0eRouteEnableReq\"\x11\n" +
-	"\x0fRouteDisableReq\"\x0e\n" +
-	"\fRouteSyncReq\"9\n" +
+	"\x0fRouteDisableReq\"F\n" +
+	"\x0fRouteSyncChange\x12\x19\n" +
+	"\broute_id\x18\x01 \x01(\tR\arouteId\x12\x18\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\"P\n" +
+	"\x13RouteSyncPreviewReq\x129\n" +
+	"\achanges\x18\x01 \x03(\v2\x1f.orbit.v1.route.RouteSyncChangeR\achanges\"\xac\x01\n" +
+	"\x11RouteSyncDiffResp\x12\x16\n" +
+	"\x06action\x18\x01 \x01(\tR\x06action\x12\x1d\n" +
+	"\n" +
+	"route_name\x18\x02 \x01(\tR\trouteName\x12\x14\n" +
+	"\x05field\x18\x03 \x01(\tR\x05field\x12%\n" +
+	"\x0ebusiness_value\x18\x04 \x01(\tR\rbusinessValue\x12#\n" +
+	"\rtraefik_value\x18\x05 \x01(\tR\ftraefikValue\"\xbd\x01\n" +
+	"\x14RouteSyncPreviewResp\x12#\n" +
+	"\rbusiness_hash\x18\x01 \x01(\tR\fbusinessHash\x12!\n" +
+	"\ftraefik_hash\x18\x02 \x01(\tR\vtraefikHash\x12\x18\n" +
+	"\amatched\x18\x03 \x01(\bR\amatched\x12C\n" +
+	"\vdifferences\x18\x04 \x03(\v2!.orbit.v1.route.RouteSyncDiffRespR\vdifferences\"\x98\x01\n" +
+	"\x13RouteSyncConfirmReq\x129\n" +
+	"\achanges\x18\x01 \x03(\v2\x1f.orbit.v1.route.RouteSyncChangeR\achanges\x12#\n" +
+	"\rbusiness_hash\x18\x02 \x01(\tR\fbusinessHash\x12!\n" +
+	"\ftraefik_hash\x18\x03 \x01(\tR\vtraefikHash\"9\n" +
 	"\x19RouteLetsEncryptEnableReq\x12\x1c\n" +
 	"\tchallenge\x18\x01 \x01(\tR\tchallenge\"\x16\n" +
 	"\x14RouteMkcertEnableReq\"+\n" +
 	"\x0fRouteEnableResp\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\",\n" +
 	"\x10RouteDisableResp\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\")\n" +
-	"\rRouteSyncResp\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"0\n" +
+	"\x14RouteSyncConfirmResp\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"\xa0\x01\n" +
 	"\x12RoutePaginatedResp\x12/\n" +
 	"\x05items\x18\x01 \x03(\v2\x19.orbit.v1.route.RouteRespR\x05items\x12\x14\n" +
@@ -993,28 +1277,35 @@ func file_orbit_v1_route_route_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_route_route_proto_rawDescData
 }
 
-var file_orbit_v1_route_route_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_orbit_v1_route_route_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_orbit_v1_route_route_proto_goTypes = []any{
 	(*RouteResp)(nil),                 // 0: orbit.v1.route.RouteResp
 	(*RouteCreateReq)(nil),            // 1: orbit.v1.route.RouteCreateReq
 	(*RouteUpdateReq)(nil),            // 2: orbit.v1.route.RouteUpdateReq
 	(*RouteEnableReq)(nil),            // 3: orbit.v1.route.RouteEnableReq
 	(*RouteDisableReq)(nil),           // 4: orbit.v1.route.RouteDisableReq
-	(*RouteSyncReq)(nil),              // 5: orbit.v1.route.RouteSyncReq
-	(*RouteLetsEncryptEnableReq)(nil), // 6: orbit.v1.route.RouteLetsEncryptEnableReq
-	(*RouteMkcertEnableReq)(nil),      // 7: orbit.v1.route.RouteMkcertEnableReq
-	(*RouteEnableResp)(nil),           // 8: orbit.v1.route.RouteEnableResp
-	(*RouteDisableResp)(nil),          // 9: orbit.v1.route.RouteDisableResp
-	(*RouteSyncResp)(nil),             // 10: orbit.v1.route.RouteSyncResp
-	(*RoutePaginatedResp)(nil),        // 11: orbit.v1.route.RoutePaginatedResp
+	(*RouteSyncChange)(nil),           // 5: orbit.v1.route.RouteSyncChange
+	(*RouteSyncPreviewReq)(nil),       // 6: orbit.v1.route.RouteSyncPreviewReq
+	(*RouteSyncDiffResp)(nil),         // 7: orbit.v1.route.RouteSyncDiffResp
+	(*RouteSyncPreviewResp)(nil),      // 8: orbit.v1.route.RouteSyncPreviewResp
+	(*RouteSyncConfirmReq)(nil),       // 9: orbit.v1.route.RouteSyncConfirmReq
+	(*RouteLetsEncryptEnableReq)(nil), // 10: orbit.v1.route.RouteLetsEncryptEnableReq
+	(*RouteMkcertEnableReq)(nil),      // 11: orbit.v1.route.RouteMkcertEnableReq
+	(*RouteEnableResp)(nil),           // 12: orbit.v1.route.RouteEnableResp
+	(*RouteDisableResp)(nil),          // 13: orbit.v1.route.RouteDisableResp
+	(*RouteSyncConfirmResp)(nil),      // 14: orbit.v1.route.RouteSyncConfirmResp
+	(*RoutePaginatedResp)(nil),        // 15: orbit.v1.route.RoutePaginatedResp
 }
 var file_orbit_v1_route_route_proto_depIdxs = []int32{
-	0, // 0: orbit.v1.route.RoutePaginatedResp.items:type_name -> orbit.v1.route.RouteResp
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	5, // 0: orbit.v1.route.RouteSyncPreviewReq.changes:type_name -> orbit.v1.route.RouteSyncChange
+	7, // 1: orbit.v1.route.RouteSyncPreviewResp.differences:type_name -> orbit.v1.route.RouteSyncDiffResp
+	5, // 2: orbit.v1.route.RouteSyncConfirmReq.changes:type_name -> orbit.v1.route.RouteSyncChange
+	0, // 3: orbit.v1.route.RoutePaginatedResp.items:type_name -> orbit.v1.route.RouteResp
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_route_route_proto_init() }
@@ -1031,7 +1322,7 @@ func file_orbit_v1_route_route_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_route_route_proto_rawDesc), len(file_orbit_v1_route_route_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

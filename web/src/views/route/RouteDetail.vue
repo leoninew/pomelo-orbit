@@ -5,9 +5,9 @@
       <DetailPageHeader :items="[]" :title="routeData?.name ?? t('route.detailTitle')" />
       <div class="flex flex-wrap items-center gap-2">
         <button
-          v-if="routeData && !routeData.enabled"
+          v-if="routeData && !routeEnabled"
           class="app-button-primary h-9 px-3"
-          :disabled="operating"
+          :disabled="operating || isSyncDialogOpen"
           @click="handleEnable"
         >
           <Play class="size-4" />
@@ -16,11 +16,21 @@
         <button
           v-else-if="routeData"
           class="app-button-warning h-9 px-3"
-          :disabled="operating"
+          :disabled="operating || isSyncDialogOpen"
           @click="handleDisable"
         >
           <PowerOff class="size-4" />
           {{ t('route.status.disabled') }}
+        </button>
+        <button
+          v-if="routeData"
+          class="h-9 px-3"
+          :class="hasPendingEnabledChange ? 'app-button-warning' : 'app-button'"
+          :disabled="operating || isSyncDialogOpen"
+          @click="openSyncModal"
+        >
+          <RefreshCw class="size-4" />
+          {{ hasPendingEnabledChange ? t('route.syncPending', { count: 1 }) : t('route.syncAll') }}
         </button>
         <button
           v-if="gatewayRuntimeLogTarget"
@@ -68,7 +78,7 @@
             <dt>{{ t('route.fields.domain') }}</dt>
             <dd>
               <a
-                v-if="routeData.protocol === 'http'"
+                v-if="routeEnabled && routeData.protocol === 'http'"
                 :href="`${routeData.https_enabled ? 'https' : 'http'}://${routeData.domain}`"
                 target="_blank"
                 class="app-link inline-flex items-center gap-1"
@@ -98,8 +108,8 @@
           <div class="flex gap-2">
             <dt>{{ t('common.status') }}</dt>
             <dd>
-              <AppBadge variant="status" :tone="routeData.enabled ? 'success' : 'default'">
-                {{ routeData.enabled ? t('route.status.enabled') : t('route.status.disabled') }}
+              <AppBadge variant="status" :tone="routeEnabled ? 'success' : 'default'">
+                {{ routeEnabled ? t('route.status.enabled') : t('route.status.disabled') }}
               </AppBadge>
             </dd>
           </div>
@@ -375,12 +385,6 @@
             "
           />
         </template>
-        <label class="flex cursor-pointer items-center gap-3">
-          <SwitchRoot v-model="form.enabled" class="app-switch-root">
-            <SwitchThumb class="app-switch-thumb" />
-          </SwitchRoot>
-          <span class="text-sm text-foreground">{{ t('route.status.enabled') }}</span>
-        </label>
       </div>
       <template #footer>
         <AppDialogActions
@@ -454,6 +458,12 @@
       v-model:open="isGatewayLogsDrawerOpen"
       :target="gatewayRuntimeLogTarget"
     />
+
+    <RouteSyncDialog
+      v-model:open="isSyncDialogOpen"
+      :changes="syncChanges"
+      @synced="handleSyncComplete"
+    />
   </div>
 </template>
 
@@ -465,6 +475,7 @@
     Key,
     Play,
     PowerOff,
+    RefreshCw,
     ScrollText,
     ShieldCheck,
     ShieldOff,
@@ -488,6 +499,7 @@
   import RuntimeContainerLogsDrawer from '@/components/RuntimeContainerLogsDrawer.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
+  import RouteSyncDialog from '@/components/RouteSyncDialog.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import { useRouteTargetServices } from '@/composables/useRouteTargetServices';
   import { useProjectStore } from '@/stores/project';
@@ -516,6 +528,8 @@
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
   const isLetsEncryptDialogOpen = ref(false);
+  const isSyncDialogOpen = ref(false);
+  const pendingEnabled = ref<boolean>();
   const letsEncryptChallenge = ref<'http' | 'dns'>('http');
   const letsEncryptChallengeError = ref('');
   const letsEncryptSubmitError = ref('');
@@ -535,7 +549,6 @@
     component_name: '',
     endpoint_protocol: '',
     endpoint_container_port: undefined as number | undefined,
-    enabled: false,
   });
   const errors = reactive({
     name: '',
@@ -549,6 +562,17 @@
   });
   const editSubmitError = ref('');
   const deleteSubmitError = ref('');
+
+  const routeEnabled = computed(() => pendingEnabled.value ?? routeData.value?.enabled ?? false);
+  const hasPendingEnabledChange = computed(
+    () => routeData.value !== undefined && pendingEnabled.value !== undefined
+  );
+  const syncChanges = computed(() => {
+    if (!routeData.value || pendingEnabled.value === undefined) {
+      return [];
+    }
+    return [{ route_id: routeData.value.id, enabled: pendingEnabled.value }];
+  });
 
   const canUseLetsencrypt = computed(() => {
     if (!routeData.value) {
@@ -616,7 +640,6 @@
           component_name: data.component_name ?? '',
           endpoint_protocol: data.endpoint_protocol ?? '',
           endpoint_container_port: data.endpoint_container_port,
-          enabled: data.enabled,
         });
         await loadGatewayForLogs(data.gateway_application_id);
       });
@@ -663,7 +686,6 @@
       component_name: routeData.value.component_name ?? '',
       endpoint_protocol: routeData.value.endpoint_protocol ?? '',
       endpoint_container_port: routeData.value.endpoint_container_port,
-      enabled: routeData.value.enabled,
     });
     Object.assign(errors, {
       name: '',
@@ -738,7 +760,6 @@
             form.protocol === 'tcp' || !form.custom_target
               ? form.endpoint_container_port
               : undefined,
-          enabled: form.enabled,
         });
         routeData.value = updated;
         toast.success(t('route.toast.updateSuccess'));
@@ -814,30 +835,29 @@
     }
   }
 
-  async function handleEnable() {
-    try {
-      await executeOp(async () => {
-        await routeApi.enable(routeId, {});
-        toast.success(t('route.toast.enableSuccess'));
-        await fetchRoute();
-        await openGatewayLogs();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.enableFailed'));
-    }
+  function handleEnable() {
+    setPendingEnabled(true);
   }
 
-  async function handleDisable() {
-    try {
-      await executeOp(async () => {
-        await routeApi.disable(routeId, {});
-        toast.success(t('route.toast.disableSuccess'));
-        await fetchRoute();
-        await openGatewayLogs();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.disableFailed'));
+  function handleDisable() {
+    setPendingEnabled(false);
+  }
+
+  function setPendingEnabled(enabled: boolean) {
+    if (!routeData.value || enabled === routeData.value.enabled) {
+      pendingEnabled.value = undefined;
+      return;
     }
+    pendingEnabled.value = enabled;
+  }
+
+  function openSyncModal() {
+    isSyncDialogOpen.value = true;
+  }
+
+  async function handleSyncComplete() {
+    pendingEnabled.value = undefined;
+    await fetchRoute();
   }
 
   async function handleCertUpload(event: Event) {

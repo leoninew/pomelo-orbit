@@ -1,5 +1,5 @@
 # Docker Label 路由指南
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-08-29 10:57:17
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -132,7 +132,7 @@ labels:
 |------|--------------|--------------|
 | 配置位置 | 数据库 | `docker-compose.yml` |
 | 管理方式 | UI/MCP 后同步完整 REST snapshot | 代码管理 |
-| 动态更新 | Route 同步立即 PUT 到 Traefik REST API | 容器标签变化后由 Docker provider 发现 |
+| 动态更新 | 通过 `/routes` 同步入口预览并确认后全量 PUT 到 Traefik REST API | 容器标签变化后由 Docker provider 发现 |
 | 证书管理 | 手工 PEM、mkcert 或 Let's Encrypt | 由 Label Router 所属 Traefik 配置负责 |
 | 适用场景 | 外部服务、静态路由 | 容器化应用 |
 | 可编辑性 | 通过 Orbit 管理 | 修改 docker-compose.yml |

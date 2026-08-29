@@ -17,6 +17,7 @@ import (
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
 	gatewayrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/gateway"
@@ -53,12 +54,8 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if !enabled.Enabled {
 		t.Fatalf("expected created route to preserve enabled=true, got %+v", enabled)
 	}
-	if len(publisher.snapshots) == 0 {
-		t.Fatal("expected rest snapshot after enabling route")
-	}
-	lastSnap := publisher.snapshots[len(publisher.snapshots)-1]
-	if len(lastSnap) != 1 || lastSnap[0].Id != enabled.Id {
-		t.Fatalf("expected enabled route in snapshot, got %+v", lastSnap)
+	if len(publisher.snapshots) != 0 {
+		t.Fatalf("expected no snapshot publication before explicit sync, got %+v", publisher.snapshots)
 	}
 	if err := service.DeleteRoute(ctx, routeTestUserId, enabled.Id); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("expected enabled route delete validation error, got %v", err)
@@ -70,9 +67,8 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if disabled.Enabled {
 		t.Fatalf("expected disabled route, got %+v", disabled)
 	}
-	lastSnap = publisher.snapshots[len(publisher.snapshots)-1]
-	if len(lastSnap) != 0 {
-		t.Fatalf("expected empty snapshot after disable, got %+v", lastSnap)
+	if len(publisher.snapshots) != 0 {
+		t.Fatalf("expected no snapshot publication after disable, got %+v", publisher.snapshots)
 	}
 
 	certRoute, err := service.UploadRouteCert(ctx, routeTestUserId, disabled.Id, "CERT", "KEY")
@@ -89,10 +85,6 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if !certRoute.HTTPSEnabled || certRoute.CertType != "letsencrypt" || certRoute.CertPEM != nil || certRoute.CertKey != nil {
 		t.Fatalf("unexpected letsencrypt route: %+v", certRoute)
 	}
-	if len(publisher.revokedCerts) == 0 || publisher.revokedCerts[len(publisher.revokedCerts)-1] != "enabled-route" {
-		t.Fatalf("expected cert revoke, got %+v", publisher.revokedCerts)
-	}
-
 	dashboardProject := routeTestProjectId
 	if err := service.route.CreateRoute(ctx, model.Route{Id: "01KTRAETFIKROUTE0000000001", ProjectId: &dashboardProject, Name: "traefik-dashboard", Protocol: "http", Domain: "traefik.lvh.me", PathPrefix: "/", TargetUrl: "http://traefik:8080", Enabled: true, HTTPSEnabled: true, CertType: "manual", AcmeChallenge: acmeChallengeHTTP}); err != nil {
 		t.Fatal(err)
@@ -157,13 +149,12 @@ func TestRouteServiceRequiresTokenAndGatewayCapabilityForDNSLetsEncrypt(t *testi
 	if enabled.AcmeChallenge != acmeChallengeDNS || !enabled.HTTPSEnabled || enabled.CertType != certTypeLetsEncrypt {
 		t.Fatalf("DNS route = %+v", enabled)
 	}
-	snapshot := publisher.snapshots[len(publisher.snapshots)-1]
-	if len(snapshot) != 1 || snapshot[0].AcmeChallenge != acmeChallengeDNS {
-		t.Fatalf("DNS snapshot = %+v", snapshot)
+	if len(publisher.snapshots) != 0 {
+		t.Fatalf("expected no snapshot publication after certificate change, got %+v", publisher.snapshots)
 	}
 }
 
-func TestRouteServiceDoesNotReplaceUnmanagedTraefikRestRoute(t *testing.T) {
+func TestRouteServiceMutationsDoNotPublishWhenTraefikHasUnmanagedRestRoute(t *testing.T) {
 	service, publisher, client, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
@@ -177,22 +168,22 @@ func TestRouteServiceDoesNotReplaceUnmanagedTraefikRestRoute(t *testing.T) {
 	client.routers = []routeport.TraefikRouter{{Name: "legacy-route@rest", Provider: "rest", Status: "enabled"}}
 	published := len(publisher.snapshots)
 
-	if _, err := service.DisableRoute(ctx, routeTestUserId, managed.Id); err == nil || apperror.StatusCode(err) != http.StatusConflict || apperror.Classify(err).Code != "unmanaged_traefik_route" {
-		t.Fatalf("expected unmanaged route conflict, got %v", err)
+	if _, err := service.DisableRoute(ctx, routeTestUserId, managed.Id); err != nil {
+		t.Fatalf("expected route change to ignore unmanaged router, got %v", err)
 	}
 	stored, err := service.RouteForUser(ctx, routeTestUserId, managed.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !stored.Enabled {
-		t.Fatalf("route was disabled despite unmanaged Traefik router: %+v", stored)
+	if stored.Enabled {
+		t.Fatalf("route was not disabled: %+v", stored)
 	}
 	if len(publisher.snapshots) != published {
 		t.Fatalf("expected no snapshot publication, got %+v", publisher.snapshots[published:])
 	}
 }
 
-func TestRouteServiceCanAdoptUnmanagedTraefikRestRoute(t *testing.T) {
+func TestRouteServiceFullSyncReplacesUnmanagedTraefikRestRoute(t *testing.T) {
 	service, publisher, client, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	client.routers = []routeport.TraefikRouter{{Name: "legacy-route@rest", Provider: "rest", Status: "enabled"}}
@@ -206,13 +197,96 @@ func TestRouteServiceCanAdoptUnmanagedTraefikRestRoute(t *testing.T) {
 	if !created.Enabled {
 		t.Fatalf("expected adopted route to be enabled: %+v", created)
 	}
-	snapshot := publisher.snapshots[len(publisher.snapshots)-1]
-	if len(snapshot) != 1 || snapshot[0].Id != created.Id {
-		t.Fatalf("expected adopted route in the snapshot, got %+v", snapshot)
+	if len(publisher.snapshots) != 0 {
+		t.Fatalf("expected no snapshot before explicit sync, got %+v", publisher.snapshots)
+	}
+	preview, err := service.PreviewRouteSync(context.Background(), routeTestUserId, routeTestProjectId, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.Matched || len(preview.Differences) == 0 {
+		t.Fatalf("expected unmanaged router differences before replacement, got %+v", preview)
+	}
+	if err := service.ConfirmRouteSync(context.Background(), routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
+		BusinessHash: preview.BusinessHash,
+		TraefikHash:  preview.TraefikHash,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(publisher.snapshots) != 1 || len(publisher.snapshots[0]) != 1 || publisher.snapshots[0][0].Id != created.Id {
+		t.Fatalf("expected explicit sync to replace the snapshot, got %+v", publisher.snapshots)
 	}
 }
 
-func TestRouteServiceDoesNotAdoptUnmanagedRouteDuringRename(t *testing.T) {
+func TestRouteServiceSyncAppliesPendingEnableChange(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "pending-route", Protocol: "http", Domain: "pending.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8091", Enabled: false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, []routedto.RouteSyncChange{{RouteId: route.Id, Enabled: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.Matched || len(preview.Differences) != 1 || preview.Differences[0].Action != "added" || preview.Differences[0].Field != "route" || preview.Differences[0].BusinessValue != "HTTP Host(`pending.example.test`) -> http://host.docker.internal:8091" || preview.Differences[0].TraefikValue != "" {
+		t.Fatalf("pending enable preview = %+v", preview)
+	}
+	if stored, err := service.route.Route(ctx, route.Id); err != nil || stored.Enabled {
+		t.Fatalf("preview changed business state: route=%+v err=%v", stored, err)
+	}
+	if err := service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
+		Changes:      []routedto.RouteSyncChange{{RouteId: route.Id, Enabled: true}},
+		BusinessHash: preview.BusinessHash,
+		TraefikHash:  preview.TraefikHash,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := service.route.Route(ctx, route.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stored.Enabled || len(publisher.snapshots) != 1 || publisher.snapshots[0][0].Id != route.Id {
+		t.Fatalf("sync result = route=%+v snapshots=%+v", stored, publisher.snapshots)
+	}
+}
+
+func TestRouteServiceRejectsStaleSyncPreview(t *testing.T) {
+	service, publisher, client, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "stale-route", Protocol: "http", Domain: "stale.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8092", Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.routers = []routeport.TraefikRouter{{Name: "stale-route-route@rest", Provider: "rest"}}
+	if err := service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
+		BusinessHash: preview.BusinessHash,
+		TraefikHash:  preview.TraefikHash,
+	}); err == nil || apperror.StatusCode(err) != http.StatusConflict || apperror.Classify(err).Code != routeSyncPreviewExpiredCode {
+		t.Fatalf("stale preview error = %v", err)
+	}
+	stored, err := service.route.Route(ctx, route.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stored.Enabled || len(publisher.snapshots) != 0 {
+		t.Fatalf("stale sync changed state: route=%+v snapshots=%+v", stored, publisher.snapshots)
+	}
+}
+
+func TestRouteServiceRenameWaitsForFullSync(t *testing.T) {
 	service, publisher, client, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
@@ -227,15 +301,15 @@ func TestRouteServiceDoesNotAdoptUnmanagedRouteDuringRename(t *testing.T) {
 	published := len(publisher.snapshots)
 	newName := "renamed-route"
 
-	if _, err := service.UpdateRoute(ctx, routeTestUserId, route.Id, routedto.RouteUpdateInput{Name: &newName}); err == nil || apperror.StatusCode(err) != http.StatusConflict || apperror.Classify(err).Code != "unmanaged_traefik_route" {
-		t.Fatalf("expected unmanaged route conflict, got %v", err)
+	if _, err := service.UpdateRoute(ctx, routeTestUserId, route.Id, routedto.RouteUpdateInput{Name: &newName}); err != nil {
+		t.Fatalf("expected rename to ignore unmanaged router, got %v", err)
 	}
 	stored, err := service.RouteForUser(ctx, routeTestUserId, route.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored.Name != "managed-route" {
-		t.Fatalf("route was renamed despite unmanaged Traefik router: %+v", stored)
+	if stored.Name != newName {
+		t.Fatalf("route was not renamed: %+v", stored)
 	}
 	if len(publisher.snapshots) != published {
 		t.Fatalf("expected no snapshot publication, got %+v", publisher.snapshots[published:])
@@ -247,7 +321,7 @@ func TestRouteServiceKeepsEnabledCustomTargetWhenAnotherRouteIsDisabled(t *testi
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 
-	custom, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+	_, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
 		Name: "custom-route", Protocol: "http", Domain: "custom.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8090", Enabled: true,
 	})
 	if err != nil {
@@ -262,9 +336,8 @@ func TestRouteServiceKeepsEnabledCustomTargetWhenAnotherRouteIsDisabled(t *testi
 	if _, err := service.DisableRoute(ctx, routeTestUserId, other.Id); err != nil {
 		t.Fatal(err)
 	}
-	snapshot := publisher.snapshots[len(publisher.snapshots)-1]
-	if len(snapshot) != 1 || snapshot[0].Id != custom.Id || snapshot[0].TargetUrl != "http://host.docker.internal:8090" {
-		t.Fatalf("expected custom target to remain in the snapshot, got %+v", snapshot)
+	if len(publisher.snapshots) != 0 {
+		t.Fatalf("expected no snapshot before explicit sync, got %+v", publisher.snapshots)
 	}
 }
 
@@ -290,6 +363,7 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 		publisher,
 		recordingCertificateGenerator{},
 		client,
+		databasetx.NewTransactionRunner(database),
 	)
 	seedRouteTestGateway(t, database)
 	return service, publisher, client, database
@@ -337,6 +411,19 @@ func TestRouteServiceCreatesManagedHTTPRoute(t *testing.T) {
 	}
 	if route.TargetUrl != "api-default/api/http8080" || route.ServiceId == nil || *route.ServiceId != target.Id {
 		t.Fatalf("unexpected managed HTTP route: %+v", route)
+	}
+	if len(publisher.snapshots) != 0 {
+		t.Fatalf("expected no HTTP snapshot before explicit sync, got %+v", publisher.snapshots)
+	}
+	preview, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
+		BusinessHash: preview.BusinessHash,
+		TraefikHash:  preview.TraefikHash,
+	}); err != nil {
+		t.Fatal(err)
 	}
 	snapshot := publisher.snapshots[len(publisher.snapshots)-1]
 	if len(snapshot) != 1 || snapshot[0].TargetAddress != "api-api" || snapshot[0].TargetPort != 8080 {
@@ -395,8 +482,18 @@ func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
 	if route.TargetUrl != "redis-default/redis/tcp6379" {
 		t.Fatalf("TCP target URL = %q, want service-code display address", route.TargetUrl)
 	}
-	if len(publisher.snapshots) == 0 {
-		t.Fatal("expected TCP Route snapshot publication")
+	if len(publisher.snapshots) != 0 {
+		t.Fatalf("expected no TCP snapshot before explicit sync, got %+v", publisher.snapshots)
+	}
+	preview, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
+		BusinessHash: preview.BusinessHash,
+		TraefikHash:  preview.TraefikHash,
+	}); err != nil {
+		t.Fatal(err)
 	}
 	snapshot := publisher.snapshots[len(publisher.snapshots)-1]
 	if len(snapshot) != 1 || snapshot[0].TargetAddress != "redis-redis" || snapshot[0].TargetPort != 6379 {
@@ -568,9 +665,8 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 }
 
 type recordingRoutePublisher struct {
-	snapshots    [][]model.Route
-	revokedCerts []string
-	readyWaits   int
+	snapshots  [][]model.Route
+	readyWaits int
 }
 
 func (p *recordingRoutePublisher) WaitUntilReady(context.Context, string, time.Duration) error {
@@ -583,15 +679,6 @@ func (p *recordingRoutePublisher) ApplySnapshot(_ context.Context, _ model.Gatew
 	return nil
 }
 
-func (p *recordingRoutePublisher) WriteCertificate(_ context.Context, _ model.GatewayConfig, _ string, _ string, _ string) error {
-	return nil
-}
-
-func (p *recordingRoutePublisher) RevokeCertificate(_ context.Context, _ model.GatewayConfig, routeName string) error {
-	p.revokedCerts = append(p.revokedCerts, routeName)
-	return nil
-}
-
 type recordingCertificateGenerator struct{}
 
 func (recordingCertificateGenerator) Generate(context.Context, string) (string, string, error) {
@@ -599,8 +686,9 @@ func (recordingCertificateGenerator) Generate(context.Context, string) (string, 
 }
 
 type recordingTraefikClient struct {
-	routers []routeport.TraefikRouter
-	err     error
+	routers  []routeport.TraefikRouter
+	services []routeport.TraefikService
+	err      error
 }
 
 func (c *recordingTraefikClient) ListRouters(_ context.Context, _ string) ([]routeport.TraefikRouter, error) {
@@ -608,6 +696,13 @@ func (c *recordingTraefikClient) ListRouters(_ context.Context, _ string) ([]rou
 		return nil, c.err
 	}
 	return c.routers, nil
+}
+
+func (c *recordingTraefikClient) ListServices(_ context.Context, _ string) ([]routeport.TraefikService, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	return c.services, nil
 }
 
 func (c *recordingTraefikClient) IsConnectionError(err error) bool {

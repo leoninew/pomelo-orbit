@@ -27,8 +27,8 @@ func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(tools.Tools) != 54 {
-		t.Fatalf("tool count = %d, want 54", len(tools.Tools))
+	if len(tools.Tools) != 56 {
+		t.Fatalf("tool count = %d, want 56", len(tools.Tools))
 	}
 
 	byName := make(map[string]*mcp.Tool, len(tools.Tools))
@@ -315,7 +315,7 @@ var deliveryToolNames = []string{
 	"orbit_update_version_component_env", "orbit_update_version_component_mounts", "orbit_update_version_component_dependencies",
 	"orbit_update_version_component_devices", "orbit_update_version_component_advanced", "orbit_update_version_component_resources",
 	"orbit_update_version_component_tmpfs", "orbit_update_version_component_ulimits", "orbit_publish_version", "orbit_delete_version",
-	"orbit_list_routes", "orbit_get_route", "orbit_create_route", "orbit_update_route", "orbit_enable_route", "orbit_disable_route",
+	"orbit_list_routes", "orbit_get_route", "orbit_create_route", "orbit_update_route", "orbit_enable_route", "orbit_disable_route", "orbit_preview_route_sync", "orbit_confirm_route_sync",
 	"orbit_preview_service", "orbit_create_service", "orbit_update_service_component_overlay", "orbit_update_service_env",
 	"orbit_update_service_basic", "orbit_deploy", "orbit_stop", "orbit_restart", "orbit_deployment_status", "orbit_deployment_logs",
 	"orbit_wait_deployment", "runtime_doctor", "runtime_compose_config", "runtime_compose_ps", "runtime_compose_logs",
@@ -442,8 +442,8 @@ func TestStreamableHTTPUsesTheSharedToolRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(tools.Tools) != 54 {
-		t.Fatalf("HTTP tool count = %d, want 54", len(tools.Tools))
+	if len(tools.Tools) != 56 {
+		t.Fatalf("HTTP tool count = %d, want 56", len(tools.Tools))
 	}
 }
 

@@ -27,7 +27,7 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 	for _, tool := range tools.Tools {
 		byName[tool.Name] = tool
 	}
-	for _, name := range []string{"orbit_list_routes", "orbit_get_route", "orbit_create_route", "orbit_update_route", "orbit_enable_route", "orbit_disable_route"} {
+	for _, name := range []string{"orbit_list_routes", "orbit_get_route", "orbit_create_route", "orbit_update_route", "orbit_enable_route", "orbit_disable_route", "orbit_preview_route_sync", "orbit_confirm_route_sync"} {
 		if byName[name] == nil {
 			t.Errorf("missing route tool %q", name)
 		}
@@ -88,6 +88,37 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 		t.Fatalf("enable/disable IDs = %q/%q", routeService.enableRouteId, routeService.disableRouteId)
 	}
 
+	syncChanges := []any{map[string]any{"route_id": "route-1", "enabled": true}}
+	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_preview_route_sync", Arguments: map[string]any{
+		"project_id": "project-1", "changes": syncChanges,
+	}})
+	if err != nil {
+		t.Fatalf("CallTool(preview route sync) error = %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("CallTool(preview route sync) returned tool error: %#v", result.Content)
+	}
+	if routeService.previewUserId != "actor" || routeService.previewProjectId != "project-1" || len(routeService.previewChanges) != 1 || routeService.previewChanges[0] != (routedto.RouteSyncChange{RouteId: "route-1", Enabled: true}) {
+		t.Fatalf("preview input = %q/%q/%#v", routeService.previewUserId, routeService.previewProjectId, routeService.previewChanges)
+	}
+	previewOutput := structuredOutput(t, result)
+	if previewOutput["business_hash"] != "business-hash" || previewOutput["traefik_hash"] != "traefik-hash" || previewOutput["matched"] != false {
+		t.Fatalf("preview output = %#v", previewOutput)
+	}
+
+	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_confirm_route_sync", Arguments: map[string]any{
+		"project_id": "project-1", "changes": syncChanges, "business_hash": "business-hash", "traefik_hash": "traefik-hash",
+	}})
+	if err != nil {
+		t.Fatalf("CallTool(confirm route sync) error = %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("CallTool(confirm route sync) returned tool error: %#v", result.Content)
+	}
+	if routeService.confirmUserId != "actor" || routeService.confirmProjectId != "project-1" || routeService.confirmInput.BusinessHash != "business-hash" || routeService.confirmInput.TraefikHash != "traefik-hash" || len(routeService.confirmInput.Changes) != 1 || routeService.confirmInput.Changes[0] != (routedto.RouteSyncChange{RouteId: "route-1", Enabled: true}) {
+		t.Fatalf("confirm input = %q/%q/%#v", routeService.confirmUserId, routeService.confirmProjectId, routeService.confirmInput)
+	}
+
 	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_list_routes", Arguments: map[string]any{"project_id": "project-1"}})
 	if err != nil {
 		t.Fatalf("CallTool(list routes) error = %v", err)
@@ -106,16 +137,22 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 
 type routeToolService struct {
 	RouteService
-	createUserId    string
-	createProjectId string
-	createInput     routedto.RouteCreateInput
-	updateInput     routedto.RouteUpdateInput
-	enableRouteId   string
-	disableRouteId  string
-	listProjectId   string
-	listPage        int
-	listPerPage     int
-	getRouteId      string
+	createUserId     string
+	createProjectId  string
+	createInput      routedto.RouteCreateInput
+	updateInput      routedto.RouteUpdateInput
+	enableRouteId    string
+	disableRouteId   string
+	listProjectId    string
+	listPage         int
+	listPerPage      int
+	getRouteId       string
+	previewUserId    string
+	previewProjectId string
+	previewChanges   []routedto.RouteSyncChange
+	confirmUserId    string
+	confirmProjectId string
+	confirmInput     routedto.RouteSyncConfirmInput
 }
 
 func (s *routeToolService) ListRoutes(_ context.Context, _ string, projectId string, page, perPage int, _ string) (repository.Page[model.Route], error) {
@@ -148,6 +185,28 @@ func (s *routeToolService) EnableRoute(_ context.Context, _ string, routeId stri
 func (s *routeToolService) DisableRoute(_ context.Context, _ string, routeId string) (model.Route, error) {
 	s.disableRouteId = routeId
 	return s.route(routeId, false), nil
+}
+
+func (s *routeToolService) PreviewRouteSync(_ context.Context, userId, projectId string, changes []routedto.RouteSyncChange) (routedto.RouteSyncPreview, error) {
+	s.previewUserId, s.previewProjectId = userId, projectId
+	s.previewChanges = append([]routedto.RouteSyncChange(nil), changes...)
+	return routedto.RouteSyncPreview{
+		BusinessHash: "business-hash",
+		TraefikHash:  "traefik-hash",
+		Differences: []routedto.RouteSyncDiff{{
+			Action: "added", RouteName: "api-route", Field: "route", BusinessValue: "HTTP Host(`api.example.test`) -> https://origin.example.test:8443",
+		}},
+	}, nil
+}
+
+func (s *routeToolService) ConfirmRouteSync(_ context.Context, userId, projectId string, input routedto.RouteSyncConfirmInput) error {
+	s.confirmUserId, s.confirmProjectId = userId, projectId
+	s.confirmInput = routedto.RouteSyncConfirmInput{
+		Changes:      append([]routedto.RouteSyncChange(nil), input.Changes...),
+		BusinessHash: input.BusinessHash,
+		TraefikHash:  input.TraefikHash,
+	}
+	return nil
 }
 
 func (s *routeToolService) route(routeId string, enabled bool) model.Route {

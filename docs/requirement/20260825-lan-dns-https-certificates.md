@@ -1,5 +1,5 @@
 # 局域网 DNS-01 HTTPS 与 Gateway 配置收敛需求
-最后修改时间: 2026-08-26 23:01:37
+最后修改时间: 2026-08-29 15:14:37
 
 Review status: Accepted
 
@@ -67,3 +67,4 @@ Traefik Gateway 已由普通 Application、Version、Component、Service 与 Dep
 - 2026-08-26：确认不实现通用 controlled-file 变量能力；email 由 Gateway deployment 专项处理。
 - 2026-08-26：确认 DNS token 不再使用 `POMELO_ORBIT_CF_DNS_API_TOKEN`，改由 Traefik Gateway 自行管理。
 - 2026-08-26：确认 TCP entrypoint/端口为 Version 现有能力，不纳入 Gateway 动态 listener 配置。
+- 2026-08-29：确认将 Traefik 全量同步从本 DNS-01 需求拆分为独立的轻量 SpecFlow 任务，见 [Route REST 快照防误删](../requirement/20260819-route-rest-snapshot-safety.md)。本任务只保留 Gateway profile、DNS-01 和 Route capability 约束。

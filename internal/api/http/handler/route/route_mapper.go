@@ -113,3 +113,33 @@ func traefikRouterResponse(router routeport.TraefikRouter) routev1.TraefikRouter
 		Tls:         router.TLS,
 	}
 }
+
+func routeSyncChanges(items []*routev1.RouteSyncChange) []routedto.RouteSyncChange {
+	changes := make([]routedto.RouteSyncChange, 0, len(items))
+	for _, item := range items {
+		if item == nil {
+			continue
+		}
+		changes = append(changes, routedto.RouteSyncChange{RouteId: item.RouteId, Enabled: item.Enabled})
+	}
+	return changes
+}
+
+func routeSyncPreviewResponse(preview routedto.RouteSyncPreview) routev1.RouteSyncPreviewResp {
+	differences := make([]*routev1.RouteSyncDiffResp, 0, len(preview.Differences))
+	for _, difference := range preview.Differences {
+		differences = append(differences, &routev1.RouteSyncDiffResp{
+			Action:        difference.Action,
+			RouteName:     difference.RouteName,
+			Field:         difference.Field,
+			BusinessValue: difference.BusinessValue,
+			TraefikValue:  difference.TraefikValue,
+		})
+	}
+	return routev1.RouteSyncPreviewResp{
+		BusinessHash: preview.BusinessHash,
+		TraefikHash:  preview.TraefikHash,
+		Matched:      preview.Matched,
+		Differences:  differences,
+	}
+}

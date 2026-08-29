@@ -1,5 +1,5 @@
 # 自定义 TCP 路由验证记录
-最后修改时间: 2026-08-13 22:53:46
+最后修改时间: 2026-08-29 14:31:44
 
 Review status: Draft
 
@@ -12,7 +12,7 @@ Mode: strict
 - Route 模型、SQL、Proto、HTTP API 和 Web 表单均区分 `http` 与 `tcp`；TCP Route 使用受管 Service Component 的 `(protocol, container_port)` Endpoint，持久化公开 `listen_port`。
 - Route usecase 校验跨项目权限、受管 Component/Endpoint 存在性、TCP 的 `internal` mode、保留端口、启用 TCP Route 的端口独占，以及运行中 Service 的 `host` / `local` 宿主机端口冲突。
 - Traefik REST 快照同时包含顶层 `http` 与 `tcp` namespace；TCP 生成 `HostSNI(*)`、`tcp<listen_port>` entrypoint 和受管容器别名上游，空 map 会被发送以清理历史动态配置。
-- Gateway compile 根据所有启用 TCP Route 收集监听端口，生成静态 entrypoint 和 Compose 端口映射；Route 写入后的全量快照流程会触发该 reconcile。
+- Gateway compile 根据所有启用 TCP Route 收集监听端口，生成静态 entrypoint 和 Compose 端口映射；Route 写入只保存业务数据，静态端口在 Gateway 后续部署/重启时按完整 Route 集合生效。
 - Gateway deploy/restart 成功路径在标记部署成功前调用 Route 全量快照发布；发布失败会使部署失败。
 - Endpoint mode 已收敛为 `internal`、`local`、`host`、`gateway`；业务代码不接受 `gateway_http` 或 `gateway_tcp`，Endpoint 名称已改为由协议与容器端口派生。
 
@@ -20,7 +20,7 @@ RAGFlow integrated/split 的手工维护 contract 已改为 `gateway`，生成�
 
 ## Spec Alignment
 
-实现与 Spec 的核心设计一致：TCP Route 一端口一条启用路由、动态 TCP REST 配置与 Gateway 静态监听分离、受管 HTTP/TCP target 以 Service/Component/Endpoint 三级选择、以及 Gateway worker 成功后同步全量 Route。新增 `000033`、`000034`、`000035` SQLite/MySQL 迁移和对应离线转换/清理脚本，没有改动已执行迁移。
+实现与 Spec 的核心设计一致：TCP Route 一端口一条启用路由、动态 TCP REST 配置与 Gateway 静态监听分离、受管 HTTP/TCP target 以 Service/Component/Endpoint 三级选择、Route 发布统一使用同步预览/确认两阶段、以及 Gateway worker 成功后同步全量 Route。新增 `000033`、`000034`、`000035` SQLite/MySQL 迁移和对应离线转换/清理脚本，没有改动已执行迁移。
 
 未完成真实部署验证，故无法在实际 Traefik/Gateway 环境中确认静态端口切换、REST 快照恢复和端口冲突反馈；代码级测试已覆盖这些行为的主要分支。
 
@@ -47,7 +47,7 @@ Plan 中的交付前人工核验未执行：不主动启动开发服务器，也
 | --- | --- |
 | SQLite/MySQL 迁移、离线脚本、schema、query、SQLC | 已修改；生成命令成功，SQLite 路由集成测试通过。 |
 | Endpoint mode、有效计划与 Compose | 已修改；`gateway_tcp` 业务渲染已删除，Gateway TCP 监听改由 Route 集合驱动。 |
-| Route、Traefik 与 Gateway | 已修改；包含 TCP target/端口校验、HTTP/TCP REST 快照、Gateway compile 及部署后同步测试。 |
+| Route、Traefik 与 Gateway | 已修改；包含 TCP target/端口校验、HTTP/TCP REST 快照、同步预览/确认、Gateway compile 及部署后同步测试。 |
 | HTTP、MCP、Proto | 已修改；Go 与 TypeScript 生成物由 `task proto` 重新生成。 |
 | Route Web UI 与 Endpoint 展示 | 已修改；lint、typecheck 与现有前端测试通过。 |
 | 活文档与 RAGFlow 契约 | 已更新；手工 contract、生成 primitives 与 `AGENTS.md` 均已使用 `gateway`，旧 mode 搜索无结果。 |
@@ -61,7 +61,8 @@ Plan 中的交付前人工核验未执行：不主动启动开发服务器，也
 - [x] Route Web UI 通过项目范围 Service 查询与 Service 详情构建 Service/Component/Endpoint Combobox，而非当前分页列表。
 - [x] Endpoint identity 收敛为 `protocol + container_port`，Web 派生 `http<port>` / `tcp<port>` 显示。
 - [x] HTTP/TCP Route 都生成对应顶层 Traefik REST namespace；TCP 使用独占 entrypoint 和 `HostSNI(*)`。
-- [x] Gateway compile 使用启用 TCP Route 的端口集合，Route 写入会触发全量 snapshot 与 Gateway listener compile。
+- [x] Gateway compile 使用启用 TCP Route 的端口集合；Route 写入不直接发布，Gateway listener 在后续部署/重启时按完整 Route 集合生效。
+- [x] Route 列表页和详情页启停都只保留前端草稿；同步预览返回业务/Traefik hash 和可读差异，确认时校验 hash 后全量覆盖 REST provider。
 - [x] Gateway deploy/restart 成功路径会发布全量 Route snapshot，发布错误会使 Deployment 失败。
 - [x] 迁移、路由校验、Traefik snapshot、Gateway compile 和 worker hook 已有 Go 自动化覆盖；Gateway 默认配置调用方、测试 fixture 与配置 fixture 已补齐。`TraefikConfig` 已收敛为五项运行时字段，环境变量绑定不再保留已移入代码常量的 Gateway 身份与展示字段；全量 Go 测试通过。
 - [x] 旧 `gateway_http` / `gateway_tcp` 已从全部非归档的可执行 RAGFlow 部署输入和仓库约束移除；contract 重渲染与测试通过。

@@ -1,5 +1,5 @@
 # 后端架构（现行）
-最后修改时间: 2026-08-16 11:05:00
+最后修改时间: 2026-08-30 22:39:51
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。  
@@ -13,7 +13,7 @@ Doc role: living SoT
 | HTTP | Gin |
 | API 契约 | Protobuf（`proto/orbit`）+ 生成代码 `internal/gen/proto`；HTTP 映射在 handler |
 | 配置 | Viper + 环境变量；启动校验（`internal/config`） |
-| DB | SQLite / MySQL；**golang-migrate** embed（`sql/migration`） |
+| DB | SQLite / MySQL / PostgreSQL；**golang-migrate** embed（`sql/migration`） |
 | SQL | **sqlc**（部分域）+ **sqlx**（CD 等仍用 sqlx 实现，以 `internal/repository/impl` 为准） |
 | 队列 | DB 后台任务 + 同进程 worker（单节点；API 与 worker 可同启） |
 | 模板 | Liquid（CI/部分渲染路径） |
@@ -49,7 +49,7 @@ cmd/server, cmd/migrate
 
 ## 数据与迁移
 
-- Schema 与 seed 均为普通编号迁移，统一位于 `sql/migration/{sqlite,mysql}/`，由 `MigrateUp` 按版本顺序执行和跟踪；不设独立 data migration 加载流程。
+- Schema 与 seed 均为普通编号迁移，统一位于 `sql/migration/{sqlite,mysql,postgres}/`，由 `MigrateUp` 按版本顺序执行和跟踪；不设独立 data migration 加载流程。
 - **不修改已执行的迁移文件**（项目约束）。开发期重建库可接受时，以当前迁移链终态为准。  
 - 终态 CD 表见 `*_cd_schema*` 类迁移（application/version/component/expose/environment/gateway_config/service/deployment/route 等）；**无** 旧表 `application_config_file`、`application_service`、`application_route`、`environment_binding` 作为现行 schema。
 

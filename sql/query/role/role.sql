@@ -16,7 +16,7 @@ WHERE name = ?;
 -- name: CountRoles :one
 SELECT COUNT(*)
 FROM role
-WHERE (sqlc.narg(search_pattern) IS NULL
+WHERE (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
   OR LOWER(code) LIKE sqlc.narg(search_pattern)
   OR LOWER(name) LIKE sqlc.narg(search_pattern)
   OR LOWER(COALESCE(description, '')) LIKE sqlc.narg(search_pattern));
@@ -24,7 +24,7 @@ WHERE (sqlc.narg(search_pattern) IS NULL
 -- name: ListRoles :many
 SELECT id, code, name, description, created_at, updated_at
 FROM role
-WHERE (sqlc.narg(search_pattern) IS NULL
+WHERE (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
   OR LOWER(code) LIKE sqlc.narg(search_pattern)
   OR LOWER(name) LIKE sqlc.narg(search_pattern)
   OR LOWER(COALESCE(description, '')) LIKE sqlc.narg(search_pattern))

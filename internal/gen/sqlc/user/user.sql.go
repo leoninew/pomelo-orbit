@@ -14,8 +14,8 @@ import (
 
 const countUsers = `-- name: CountUsers :one
 SELECT COUNT(*)
-FROM user
-WHERE (? IS NULL
+FROM ` + "`" + `user` + "`" + `
+WHERE (CAST(? AS CHAR) IS NULL
   OR LOWER(username) LIKE ?
   OR LOWER(COALESCE(email, '')) LIKE ?)
 `
@@ -32,7 +32,7 @@ func (q *Queries) CountUsers(ctx context.Context, arg CountUsersParams) (int64, 
 }
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO user (id, username, password_hash, status, oauth_provider, oauth_provider_id, email, auth_source, created_at, updated_at, last_login_at)
+INSERT INTO ` + "`" + `user` + "`" + ` (id, username, password_hash, status, oauth_provider, oauth_provider_id, email, auth_source, created_at, updated_at, last_login_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
@@ -68,7 +68,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 }
 
 const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM user
+DELETE FROM ` + "`" + `user` + "`" + `
 WHERE id = ?
 `
 
@@ -106,8 +106,8 @@ func (q *Queries) InsertUserRole(ctx context.Context, arg InsertUserRoleParams) 
 const listUsers = `-- name: ListUsers :many
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
-FROM user
-WHERE (? IS NULL
+FROM ` + "`" + `user` + "`" + `
+WHERE (CAST(? AS CHAR) IS NULL
   OR LOWER(username) LIKE ?
   OR LOWER(COALESCE(email, '')) LIKE ?)
 ORDER BY id DESC
@@ -176,7 +176,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUse
 }
 
 const markUserLoggedIn = `-- name: MarkUserLoggedIn :exec
-UPDATE user
+UPDATE ` + "`" + `user` + "`" + `
 SET last_login_at = ?, updated_at = ?
 WHERE id = ?
 `
@@ -193,7 +193,7 @@ func (q *Queries) MarkUserLoggedIn(ctx context.Context, arg MarkUserLoggedInPara
 }
 
 const setUserStatus = `-- name: SetUserStatus :exec
-UPDATE user
+UPDATE ` + "`" + `user` + "`" + `
 SET status = ?, updated_at = ?
 WHERE id = ?
 `
@@ -210,7 +210,7 @@ func (q *Queries) SetUserStatus(ctx context.Context, arg SetUserStatusParams) er
 }
 
 const touchUserUpdatedAt = `-- name: TouchUserUpdatedAt :exec
-UPDATE user
+UPDATE ` + "`" + `user` + "`" + `
 SET updated_at = ?
 WHERE id = ?
 `
@@ -226,7 +226,7 @@ func (q *Queries) TouchUserUpdatedAt(ctx context.Context, arg TouchUserUpdatedAt
 }
 
 const updateUser = `-- name: UpdateUser :exec
-UPDATE user
+UPDATE ` + "`" + `user` + "`" + `
 SET username = ?, password_hash = ?, status = ?, email = ?, auth_source = ?,
     oauth_provider = ?, oauth_provider_id = ?, updated_at = ?
 WHERE id = ?
@@ -262,7 +262,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 const userByEmail = `-- name: UserByEmail :one
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
-FROM user
+FROM ` + "`" + `user` + "`" + `
 WHERE email = ?
 `
 
@@ -302,7 +302,7 @@ func (q *Queries) UserByEmail(ctx context.Context, email sql.NullString) (UserBy
 const userByID = `-- name: UserByID :one
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
-FROM user
+FROM ` + "`" + `user` + "`" + `
 WHERE id = ?
 `
 
@@ -342,7 +342,7 @@ func (q *Queries) UserByID(ctx context.Context, id string) (UserByIDRow, error) 
 const userByUsername = `-- name: UserByUsername :one
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
-FROM user
+FROM ` + "`" + `user` + "`" + `
 WHERE username = ?
 `
 

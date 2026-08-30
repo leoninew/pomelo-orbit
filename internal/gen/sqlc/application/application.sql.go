@@ -107,9 +107,9 @@ func (q *Queries) ApplicationByName(ctx context.Context, name string) (Applicati
 const countApplications = `-- name: CountApplications :one
 SELECT COUNT(*)
 FROM application
-WHERE (? IS NULL OR project_id = ?)
-  AND (? IS NULL OR name LIKE ? OR code LIKE ?)
-  AND (? IS NULL OR kind = ?)
+WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR name LIKE ? OR code LIKE ?)
+  AND (CAST(? AS CHAR) IS NULL OR kind = ?)
 `
 
 type CountApplicationsParams struct {
@@ -204,9 +204,9 @@ func (q *Queries) DeleteVersionsByApplication(ctx context.Context, applicationID
 const listApplications = `-- name: ListApplications :many
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
-WHERE (? IS NULL OR project_id = ?)
-  AND (? IS NULL OR name LIKE ? OR code LIKE ?)
-  AND (? IS NULL OR kind = ?)
+WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR name LIKE ? OR code LIKE ?)
+  AND (CAST(? AS CHAR) IS NULL OR kind = ?)
 ORDER BY id DESC
 LIMIT ? OFFSET ?
 `

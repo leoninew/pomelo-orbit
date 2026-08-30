@@ -28,6 +28,8 @@ database:
     path: data/db/pomelo-orbit.db
   mysql:
     dsn: ""
+  postgres:
+    dsn: ""
 
 workspace:
   pipeline: data/pipeline
@@ -57,6 +59,7 @@ turnstile:
 settings:
   secret_keys:
     - database__mysql__dsn
+    - database__postgres__dsn
     - jwt__secret_key
     - turnstile__secret_key
     - llm__api_key

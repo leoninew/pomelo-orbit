@@ -15,7 +15,7 @@ const countRoutes = `-- name: CountRoutes :one
 SELECT COUNT(*)
 FROM route
 WHERE project_id = ?
-  AND (? IS NULL
+  AND (CAST(? AS CHAR) IS NULL
     OR name LIKE ?
     OR domain LIKE ?
     OR target_url LIKE ?)
@@ -255,7 +255,7 @@ const listRoutes = `-- name: ListRoutes :many
 SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
 FROM route
 WHERE project_id = ?
-  AND (? IS NULL
+  AND (CAST(? AS CHAR) IS NULL
     OR name LIKE ?
     OR domain LIKE ?
     OR target_url LIKE ?)

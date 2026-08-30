@@ -2,7 +2,7 @@
 SELECT COUNT(*)
 FROM route
 WHERE project_id = sqlc.arg(project_id)
-  AND (sqlc.narg(search_pattern) IS NULL
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR name LIKE sqlc.narg(search_pattern)
     OR domain LIKE sqlc.narg(search_pattern)
     OR target_url LIKE sqlc.narg(search_pattern));
@@ -11,7 +11,7 @@ WHERE project_id = sqlc.arg(project_id)
 SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
 FROM route
 WHERE project_id = sqlc.arg(project_id)
-  AND (sqlc.narg(search_pattern) IS NULL
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR name LIKE sqlc.narg(search_pattern)
     OR domain LIKE sqlc.narg(search_pattern)
     OR target_url LIKE sqlc.narg(search_pattern))

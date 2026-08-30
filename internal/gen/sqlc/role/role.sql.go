@@ -15,7 +15,7 @@ import (
 const countRoles = `-- name: CountRoles :one
 SELECT COUNT(*)
 FROM role
-WHERE (? IS NULL
+WHERE (CAST(? AS CHAR) IS NULL
   OR LOWER(code) LIKE ?
   OR LOWER(name) LIKE ?
   OR LOWER(COALESCE(description, '')) LIKE ?)
@@ -138,7 +138,7 @@ func (q *Queries) ListPermissions(ctx context.Context) ([]Permission, error) {
 const listRoles = `-- name: ListRoles :many
 SELECT id, code, name, description, created_at, updated_at
 FROM role
-WHERE (? IS NULL
+WHERE (CAST(? AS CHAR) IS NULL
   OR LOWER(code) LIKE ?
   OR LOWER(name) LIKE ?
   OR LOWER(COALESCE(description, '')) LIKE ?)

@@ -22,23 +22,23 @@ const (
 	seededGatewayRouteID       = "01M10RRA8F863EJ2N9TYPF0CV7"
 )
 
-func TestSQLiteAndMySQLMigrationFilesAlign(t *testing.T) {
+func TestDatabaseMigrationFilesAlign(t *testing.T) {
 	t.Helper()
 
-	sqliteMigrations := migrationDirections(t, config.DatabaseDriverSQLite)
-	mysqlMigrations := migrationDirections(t, config.DatabaseDriverMySQL)
-
-	for migration, directions := range sqliteMigrations {
-		if _, ok := mysqlMigrations[migration]; !ok {
-			t.Errorf("MySQL is missing SQLite migration %s", migration)
-		}
-		assertMigrationDirections(t, config.DatabaseDriverSQLite, migration, directions)
+	migrationsByDriver := map[string]map[string]map[string]struct{}{
+		config.DatabaseDriverSQLite:   migrationDirections(t, config.DatabaseDriverSQLite),
+		config.DatabaseDriverMySQL:    migrationDirections(t, config.DatabaseDriverMySQL),
+		config.DatabaseDriverPostgres: migrationDirections(t, config.DatabaseDriverPostgres),
 	}
-	for migration, directions := range mysqlMigrations {
-		if _, ok := sqliteMigrations[migration]; !ok {
-			t.Errorf("SQLite is missing MySQL migration %s", migration)
+	for driver, migrations := range migrationsByDriver {
+		for migration, directions := range migrations {
+			for otherDriver, otherMigrations := range migrationsByDriver {
+				if _, ok := otherMigrations[migration]; !ok {
+					t.Errorf("%s is missing %s migration %s", otherDriver, driver, migration)
+				}
+			}
+			assertMigrationDirections(t, driver, migration, directions)
 		}
-		assertMigrationDirections(t, config.DatabaseDriverMySQL, migration, directions)
 	}
 }
 

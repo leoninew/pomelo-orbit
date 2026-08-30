@@ -4,7 +4,7 @@ Pomelo Orbit 是一个面向本地容器环境的轻量级 CI/CD 平台，提供
 
 ## 技术栈
 
-- 后端：Go、Gin、sqlc、SQLite/MySQL
+- 后端：Go、Gin、sqlc、SQLite/MySQL/PostgreSQL
 - 前端：Vue 3、TypeScript、Vite、Tailwind CSS
 - 运行环境：Docker、Traefik
 

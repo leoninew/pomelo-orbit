@@ -8,7 +8,7 @@ ORDER BY id DESC;
 SELECT COUNT(*)
 FROM version
 WHERE application_id = sqlc.arg(application_id)
-  AND (sqlc.narg(search_pattern) IS NULL
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR label LIKE sqlc.narg(search_pattern)
     OR note LIKE sqlc.narg(search_pattern));
 
@@ -16,7 +16,7 @@ WHERE application_id = sqlc.arg(application_id)
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = sqlc.arg(application_id)
-  AND (sqlc.narg(search_pattern) IS NULL
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR label LIKE sqlc.narg(search_pattern)
     OR note LIKE sqlc.narg(search_pattern))
 ORDER BY id DESC

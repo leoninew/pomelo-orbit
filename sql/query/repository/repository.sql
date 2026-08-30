@@ -9,14 +9,14 @@ SELECT id, project_id, name, code, repository_type, repository_url, git_credenti
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
 WHERE code = sqlc.arg(code)
-  AND (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id));
+  AND (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(project_id));
 
 -- name: CountRepositories :one
 SELECT COUNT(*)
 FROM repository
-WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
+WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(project_id))
   AND (
-    sqlc.narg(search_pattern) IS NULL
+    CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR name LIKE sqlc.narg(search_pattern)
     OR code LIKE sqlc.narg(search_pattern)
     OR repository_url LIKE sqlc.narg(search_pattern)
@@ -26,9 +26,9 @@ WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
 SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
-WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
+WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(project_id))
   AND (
-    sqlc.narg(search_pattern) IS NULL
+    CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR name LIKE sqlc.narg(search_pattern)
     OR code LIKE sqlc.narg(search_pattern)
     OR repository_url LIKE sqlc.narg(search_pattern)

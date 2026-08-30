@@ -39,7 +39,7 @@ const countVersions = `-- name: CountVersions :one
 SELECT COUNT(*)
 FROM version
 WHERE application_id = ?
-  AND (? IS NULL
+  AND (CAST(? AS CHAR) IS NULL
     OR label LIKE ?
     OR note LIKE ?)
 `
@@ -569,7 +569,7 @@ const listVersionsPage = `-- name: ListVersionsPage :many
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
-  AND (? IS NULL
+  AND (CAST(? AS CHAR) IS NULL
     OR label LIKE ?
     OR note LIKE ?)
 ORDER BY id DESC

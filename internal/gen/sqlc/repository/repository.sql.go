@@ -14,9 +14,9 @@ import (
 const countRepositories = `-- name: CountRepositories :one
 SELECT COUNT(*)
 FROM repository
-WHERE (? IS NULL OR project_id = ?)
+WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR name LIKE ?
     OR code LIKE ?
     OR repository_url LIKE ?
@@ -92,9 +92,9 @@ const listRepositories = `-- name: ListRepositories :many
 SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
-WHERE (? IS NULL OR project_id = ?)
+WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR name LIKE ?
     OR code LIKE ?
     OR repository_url LIKE ?
@@ -173,7 +173,7 @@ SELECT id, project_id, name, code, repository_type, repository_url, git_credenti
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
 WHERE code = ?
-  AND (? IS NULL OR project_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR project_id = ?)
 `
 
 type RepositoryByCodeParams struct {

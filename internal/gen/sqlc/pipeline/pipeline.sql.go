@@ -65,7 +65,7 @@ const countPipelineStageTemplates = `-- name: CountPipelineStageTemplates :one
 SELECT COUNT(*) FROM pipeline_stage
 WHERE project_id = ?
   AND kind = 'template'
-  AND (? IS NULL OR name LIKE ?)
+  AND (CAST(? AS CHAR) IS NULL OR name LIKE ?)
 `
 
 type CountPipelineStageTemplatesParams struct {
@@ -83,8 +83,8 @@ func (q *Queries) CountPipelineStageTemplates(ctx context.Context, arg CountPipe
 const countPipelines = `-- name: CountPipelines :one
 SELECT COUNT(*) FROM pipeline
 WHERE project_id = ?
-  AND (? IS NULL OR kind = ?)
-  AND (? IS NULL OR name LIKE ?)
+  AND (CAST(? AS CHAR) IS NULL OR kind = ?)
+  AND (CAST(? AS CHAR) IS NULL OR name LIKE ?)
 `
 
 type CountPipelinesParams struct {
@@ -416,7 +416,7 @@ SELECT id, project_id, kind, pipeline_id, name, image, script, description, vers
 FROM pipeline_stage
 WHERE project_id = ?
   AND kind = 'template'
-  AND (? IS NULL OR name LIKE ?)
+  AND (CAST(? AS CHAR) IS NULL OR name LIKE ?)
 ORDER BY id DESC LIMIT ? OFFSET ?
 `
 
@@ -479,8 +479,8 @@ const listPipelines = `-- name: ListPipelines :many
 SELECT id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at
 FROM pipeline
 WHERE project_id = ?
-  AND (? IS NULL OR kind = ?)
-  AND (? IS NULL OR name LIKE ?)
+  AND (CAST(? AS CHAR) IS NULL OR kind = ?)
+  AND (CAST(? AS CHAR) IS NULL OR name LIKE ?)
 ORDER BY id DESC LIMIT ? OFFSET ?
 `
 

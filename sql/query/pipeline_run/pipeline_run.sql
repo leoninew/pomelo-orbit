@@ -1,20 +1,20 @@
 -- name: ListPipelineRuns :many
 SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, `trigger`, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run
-WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
-  AND (sqlc.narg(repository_id) IS NULL OR repository_id = sqlc.narg(repository_id))
-  AND (sqlc.narg(pipeline_id) IS NULL OR pipeline_id = sqlc.narg(pipeline_id))
-  AND (sqlc.narg(from_at) IS NULL OR created_at >= sqlc.narg(from_at))
-  AND (sqlc.narg(to_at) IS NULL OR created_at <= sqlc.narg(to_at))
+WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(project_id))
+  AND (CAST(sqlc.narg(repository_id) AS CHAR) IS NULL OR repository_id = sqlc.narg(repository_id))
+  AND (CAST(sqlc.narg(pipeline_id) AS CHAR) IS NULL OR pipeline_id = sqlc.narg(pipeline_id))
+  AND (CAST(sqlc.narg(from_at) AS DATE) IS NULL OR created_at >= sqlc.narg(from_at))
+  AND (CAST(sqlc.narg(to_at) AS DATE) IS NULL OR created_at <= sqlc.narg(to_at))
 ORDER BY id DESC LIMIT ? OFFSET ?;
 
 -- name: CountPipelineRuns :one
 SELECT COUNT(*) FROM pipeline_run
-WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
-  AND (sqlc.narg(repository_id) IS NULL OR repository_id = sqlc.narg(repository_id))
-  AND (sqlc.narg(pipeline_id) IS NULL OR pipeline_id = sqlc.narg(pipeline_id))
-  AND (sqlc.narg(from_at) IS NULL OR created_at >= sqlc.narg(from_at))
-  AND (sqlc.narg(to_at) IS NULL OR created_at <= sqlc.narg(to_at));
+WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(project_id))
+  AND (CAST(sqlc.narg(repository_id) AS CHAR) IS NULL OR repository_id = sqlc.narg(repository_id))
+  AND (CAST(sqlc.narg(pipeline_id) AS CHAR) IS NULL OR pipeline_id = sqlc.narg(pipeline_id))
+  AND (CAST(sqlc.narg(from_at) AS DATE) IS NULL OR created_at >= sqlc.narg(from_at))
+  AND (CAST(sqlc.narg(to_at) AS DATE) IS NULL OR created_at <= sqlc.narg(to_at));
 
 -- name: PipelineRunByID :one
 SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, `trigger`, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
@@ -116,18 +116,18 @@ FROM artifact
 LEFT JOIN artifact AS source_artifact ON source_artifact.id = artifact.source_artifact_id AND source_artifact.value_format = 'git_object_id'
 LEFT JOIN pipeline_run_version_binding AS binding ON binding.pipeline_run_id = artifact.pipeline_run_id
 LEFT JOIN version_component ON version_component.artifact_id = artifact.id
-WHERE (sqlc.narg(project_id) IS NULL OR artifact.project_id = sqlc.narg(project_id))
-  AND (sqlc.narg(repository_id) IS NULL OR artifact.repository_id = sqlc.narg(repository_id))
-  AND (sqlc.narg(pipeline_id) IS NULL OR artifact.pipeline_id = sqlc.narg(pipeline_id))
-  AND (sqlc.narg(search_pattern) IS NULL OR artifact.name LIKE sqlc.narg(search_pattern) OR artifact.stage_name LIKE sqlc.narg(search_pattern))
+WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR artifact.project_id = sqlc.narg(project_id))
+  AND (CAST(sqlc.narg(repository_id) AS CHAR) IS NULL OR artifact.repository_id = sqlc.narg(repository_id))
+  AND (CAST(sqlc.narg(pipeline_id) AS CHAR) IS NULL OR artifact.pipeline_id = sqlc.narg(pipeline_id))
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL OR artifact.name LIKE sqlc.narg(search_pattern) OR artifact.stage_name LIKE sqlc.narg(search_pattern))
 ORDER BY artifact.id DESC LIMIT ? OFFSET ?;
 
 -- name: CountArtifacts :one
 SELECT COUNT(*) FROM artifact
-WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
-  AND (sqlc.narg(repository_id) IS NULL OR repository_id = sqlc.narg(repository_id))
-  AND (sqlc.narg(pipeline_id) IS NULL OR pipeline_id = sqlc.narg(pipeline_id))
-  AND (sqlc.narg(search_pattern) IS NULL OR name LIKE sqlc.narg(search_pattern) OR stage_name LIKE sqlc.narg(search_pattern));
+WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(project_id))
+  AND (CAST(sqlc.narg(repository_id) AS CHAR) IS NULL OR repository_id = sqlc.narg(repository_id))
+  AND (CAST(sqlc.narg(pipeline_id) AS CHAR) IS NULL OR pipeline_id = sqlc.narg(pipeline_id))
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL OR name LIKE sqlc.narg(search_pattern) OR stage_name LIKE sqlc.narg(search_pattern));
 
 -- name: ListArtifactsByRun :many
 SELECT artifact.id, artifact.project_id, artifact.pipeline_run_id, artifact.repository_id, artifact.repository_name, artifact.pipeline_id, artifact.pipeline_name, artifact.pipeline_stage_id, artifact.stage_name, artifact.collector, artifact.name, artifact.location, artifact.value, artifact.value_format, artifact.image_ref, artifact.local_image_sha256, artifact.source_artifact_id, source_artifact.value AS source_commit_sha, binding.application_id, binding.application_name, binding.source_version_id, binding.source_version_label, binding.generated_version_id, binding.generated_version_label, version_component.id AS version_component_id, version_component.name AS version_component_name, artifact.created_at
@@ -136,7 +136,7 @@ LEFT JOIN artifact AS source_artifact ON source_artifact.id = artifact.source_ar
 LEFT JOIN pipeline_run_version_binding AS binding ON binding.pipeline_run_id = artifact.pipeline_run_id
 LEFT JOIN version_component ON version_component.artifact_id = artifact.id
 WHERE artifact.pipeline_run_id = sqlc.arg(pipeline_run_id)
-  AND (sqlc.narg(project_id) IS NULL OR artifact.project_id = sqlc.narg(project_id))
+  AND (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR artifact.project_id = sqlc.narg(project_id))
 ORDER BY artifact.created_at, artifact.id;
 
 -- name: ArtifactByID :one

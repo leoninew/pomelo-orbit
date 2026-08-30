@@ -14,7 +14,7 @@ import (
 const countLoginHistory = `-- name: CountLoginHistory :one
 SELECT COUNT(*)
 FROM login_history
-WHERE (? IS NULL
+WHERE (CAST(? AS CHAR) IS NULL
   OR LOWER(username) LIKE ?)
 `
 
@@ -32,7 +32,7 @@ func (q *Queries) CountLoginHistory(ctx context.Context, arg CountLoginHistoryPa
 const listLoginHistory = `-- name: ListLoginHistory :many
 SELECT id, user_id, username, ip_address, user_agent, login_at, success
 FROM login_history
-WHERE (? IS NULL
+WHERE (CAST(? AS CHAR) IS NULL
   OR LOWER(username) LIKE ?)
 ORDER BY id DESC
 LIMIT ? OFFSET ?

@@ -9,15 +9,15 @@ FROM pipeline WHERE project_id = ? AND name = ?;
 -- name: CountPipelines :one
 SELECT COUNT(*) FROM pipeline
 WHERE project_id = sqlc.arg(project_id)
-  AND (sqlc.narg(kind) IS NULL OR kind = sqlc.narg(kind))
-  AND (sqlc.narg(search_pattern) IS NULL OR name LIKE sqlc.narg(search_pattern));
+  AND (CAST(sqlc.narg(kind) AS CHAR) IS NULL OR kind = sqlc.narg(kind))
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL OR name LIKE sqlc.narg(search_pattern));
 
 -- name: ListPipelines :many
 SELECT id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at
 FROM pipeline
 WHERE project_id = sqlc.arg(project_id)
-  AND (sqlc.narg(kind) IS NULL OR kind = sqlc.narg(kind))
-  AND (sqlc.narg(search_pattern) IS NULL OR name LIKE sqlc.narg(search_pattern))
+  AND (CAST(sqlc.narg(kind) AS CHAR) IS NULL OR kind = sqlc.narg(kind))
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL OR name LIKE sqlc.narg(search_pattern))
 ORDER BY id DESC LIMIT ? OFFSET ?;
 
 -- name: CreatePipeline :exec
@@ -34,7 +34,7 @@ DELETE FROM pipeline WHERE id = ?;
 SELECT COUNT(*) FROM pipeline_stage
 WHERE project_id = sqlc.arg(project_id)
   AND kind = 'template'
-  AND (sqlc.narg(search_pattern) IS NULL OR name LIKE sqlc.narg(search_pattern));
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL OR name LIKE sqlc.narg(search_pattern));
 
 -- name: ListPipelineStageTemplates :many
 SELECT id, project_id, kind, pipeline_id, name, image, script, description, version,
@@ -44,7 +44,7 @@ SELECT id, project_id, kind, pipeline_id, name, image, script, description, vers
 FROM pipeline_stage
 WHERE project_id = sqlc.arg(project_id)
   AND kind = 'template'
-  AND (sqlc.narg(search_pattern) IS NULL OR name LIKE sqlc.narg(search_pattern))
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL OR name LIKE sqlc.narg(search_pattern))
 ORDER BY id DESC LIMIT ? OFFSET ?;
 
 -- name: PipelineStageTemplateByID :one

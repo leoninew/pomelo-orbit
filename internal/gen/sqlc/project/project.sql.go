@@ -81,7 +81,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) er
 
 const deprecateProject = `-- name: DeprecateProject :exec
 UPDATE project
-SET is_active = 0, updated_at = ?
+SET is_active = FALSE, updated_at = ?
 WHERE id = ?
 `
 
@@ -117,7 +117,7 @@ const listActiveProjectsByMember = `-- name: ListActiveProjectsByMember :many
 SELECT project.id, project.name, project.code, project.is_active, project.created_at, project.updated_at
 FROM project
 JOIN project_member ON project_member.project_id = project.id
-WHERE project_member.user_id = ? AND project.is_active = 1
+WHERE project_member.user_id = ? AND project.is_active = TRUE
 ORDER BY project.id DESC
 `
 
@@ -266,12 +266,12 @@ func (q *Queries) ProjectByID(ctx context.Context, id string) (ProjectByIDRow, e
 }
 
 const projectMembers = `-- name: ProjectMembers :many
-SELECT user.id, user.username, user.password_hash, user.status, user.oauth_provider, user.oauth_provider_id,
-       user.email, user.auth_source, user.created_at, user.updated_at, user.last_login_at
-FROM user
-JOIN project_member ON project_member.user_id = user.id
+SELECT u.id, u.username, u.password_hash, u.status, u.oauth_provider, u.oauth_provider_id,
+       u.email, u.auth_source, u.created_at, u.updated_at, u.last_login_at
+FROM ` + "`" + `user` + "`" + ` AS u
+JOIN project_member ON project_member.user_id = u.id
 WHERE project_member.project_id = ?
-ORDER BY user.username
+ORDER BY u.username
 `
 
 type ProjectMembersRow struct {

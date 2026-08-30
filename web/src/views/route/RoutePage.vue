@@ -597,7 +597,7 @@
   import { ExternalLink, Plus, RefreshCw } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRouter } from 'vue-router';
+  import { useRoute, useRouter } from 'vue-router';
   import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
   import { routeApi } from '@/api/route/route';
   import { traefikRouteApi } from '@/api/route/traefik';
@@ -622,6 +622,7 @@
 
   const toast = useToast();
   const { t } = useI18n();
+  const currentRoute = useRoute();
   const router = useRouter();
   const targetUrlPattern = /^https?:\/\/[a-zA-Z0-9.-]+(?::\d+)?$/;
   const projectStore = useProjectStore();
@@ -644,9 +645,15 @@
   const isSyncDialogOpen = ref(false);
   const editingRoute = ref<RouteResp>();
   const pendingEnabled = reactive<Record<string, boolean>>({});
+  const hasPendingRouteChanges = ref(currentRoute.query.pending_sync === '1');
+  if (hasPendingRouteChanges.value) {
+    void router.replace({ query: { ...currentRoute.query, pending_sync: undefined } });
+  }
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-  const pendingChangeCount = computed(() => Object.keys(pendingEnabled).length);
+  const pendingChangeCount = computed(
+    () => Object.keys(pendingEnabled).length + (hasPendingRouteChanges.value ? 1 : 0)
+  );
   const hasPendingChanges = computed(() => pendingChangeCount.value > 0);
   const syncChanges = computed(() =>
     Object.entries(pendingEnabled).map(([routeId, enabled]) => ({
@@ -823,10 +830,11 @@
     pendingEnabled[route.id] = enabled;
   }
 
-  function clearPendingEnabled() {
+  function clearPendingChanges() {
     for (const routeId of Object.keys(pendingEnabled)) {
       delete pendingEnabled[routeId];
     }
+    hasPendingRouteChanges.value = false;
   }
 
   async function fetchRoutes() {
@@ -1043,9 +1051,13 @@
           },
           { project_id: projectId }
         );
+        hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.addSuccess'));
         isCreateDialogOpen.value = false;
-        await router.push(`/route/${created.id}`);
+        await router.push({
+          path: `/route/${created.id}`,
+          query: { pending_sync: '1' },
+        });
       });
     } catch (error) {
       createSubmitError.value = error instanceof Error ? error.message : t('route.toast.addFailed');
@@ -1087,6 +1099,7 @@
         });
         routes.value = routes.value.map((item) => (item.id === updated.id ? updated : item));
         editingRoute.value = updated;
+        hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.updateSuccess'));
         closeEditModal();
         await fetchRoutes();
@@ -1103,7 +1116,7 @@
   }
 
   async function handleSyncComplete() {
-    clearPendingEnabled();
+    clearPendingChanges();
     await Promise.all([fetchRoutes(), fetchTraefikRoutes()]);
   }
 
@@ -1151,7 +1164,7 @@
       if (!projectId || projectId === previousProjectId) {
         return;
       }
-      clearPendingEnabled();
+      clearPendingChanges();
       isSyncDialogOpen.value = false;
       pagination.current = 1;
       void fetchTraefikRoutes();

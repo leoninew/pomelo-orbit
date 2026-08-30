@@ -920,7 +920,7 @@ export default {
     syncMatched: '业务数据与 Traefik 数据一致',
     syncDifferencesFound: '业务数据与 Traefik 数据不一致',
     syncOverwriteWarning: '确认同步后将以业务数据覆盖 Traefik 路由数据。',
-    syncPendingChanges: '待提交的启停变更：{count} 项',
+    syncPendingChanges: '待提交的路由变更：{count} 项',
     syncAction: '操作',
     syncRule: '规则',
     syncBusinessValue: '业务数据：',

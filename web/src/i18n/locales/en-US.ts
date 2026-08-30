@@ -940,7 +940,7 @@ export default {
     syncMatched: 'Business and Traefik data match',
     syncDifferencesFound: 'Business and Traefik data differ',
     syncOverwriteWarning: 'Confirming will replace Traefik route data with business data.',
-    syncPendingChanges: 'Pending enable/disable changes: {count}',
+    syncPendingChanges: 'Pending route changes: {count}',
     syncAction: 'Action',
     syncRule: 'Rule',
     syncBusinessValue: 'Business data:',

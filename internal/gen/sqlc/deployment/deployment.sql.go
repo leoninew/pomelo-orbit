@@ -126,19 +126,19 @@ SELECT COUNT(*)
 FROM deployment
 WHERE project_id = ?
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR application_id = ?
   )
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR status = ?
   )
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR application_name LIKE ?
   )
-  AND (? IS NULL OR started_at >= ?)
-  AND (? IS NULL OR started_at < ?)
+  AND (CAST(? AS DATE) IS NULL OR started_at >= ?)
+  AND (CAST(? AS DATE) IS NULL OR started_at < ?)
 `
 
 type CountDeploymentsParams struct {
@@ -325,19 +325,19 @@ FROM deployment d
 LEFT JOIN service s ON s.id = d.service_id
 WHERE d.project_id = ?
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR d.application_id = ?
   )
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR d.status = ?
   )
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR d.application_name LIKE ?
   )
-  AND (? IS NULL OR d.started_at >= ?)
-  AND (? IS NULL OR d.started_at < ?)
+  AND (CAST(? AS DATE) IS NULL OR d.started_at >= ?)
+  AND (CAST(? AS DATE) IS NULL OR d.started_at < ?)
 ORDER BY d.id DESC
 LIMIT ? OFFSET ?
 `

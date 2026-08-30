@@ -15,7 +15,7 @@ const countCredentials = `-- name: CountCredentials :one
 SELECT COUNT(*)
 FROM credential
 WHERE project_id = ?
-  AND (? IS NULL
+  AND (CAST(? AS CHAR) IS NULL
     OR name LIKE ?
     OR type LIKE ?)
 `
@@ -184,7 +184,7 @@ const listCredentials = `-- name: ListCredentials :many
 SELECT id, project_id, name, type, encrypted_data, created_at
 FROM credential
 WHERE project_id = ?
-  AND (? IS NULL
+  AND (CAST(? AS CHAR) IS NULL
     OR name LIKE ?
     OR type LIKE ?)
 ORDER BY id DESC

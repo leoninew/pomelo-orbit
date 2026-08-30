@@ -16,16 +16,16 @@ WHERE code = ?;
 -- name: CountApplications :one
 SELECT COUNT(*)
 FROM application
-WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
-  AND (sqlc.narg(search_pattern) IS NULL OR name LIKE sqlc.narg(search_pattern) OR code LIKE sqlc.narg(search_pattern))
-  AND (sqlc.narg(kind) IS NULL OR kind = sqlc.narg(kind));
+WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(project_id))
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL OR name LIKE sqlc.narg(search_pattern) OR code LIKE sqlc.narg(search_pattern))
+  AND (CAST(sqlc.narg(kind) AS CHAR) IS NULL OR kind = sqlc.narg(kind));
 
 -- name: ListApplications :many
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
-WHERE (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
-  AND (sqlc.narg(search_pattern) IS NULL OR name LIKE sqlc.narg(search_pattern) OR code LIKE sqlc.narg(search_pattern))
-  AND (sqlc.narg(kind) IS NULL OR kind = sqlc.narg(kind))
+WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(project_id))
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL OR name LIKE sqlc.narg(search_pattern) OR code LIKE sqlc.narg(search_pattern))
+  AND (CAST(sqlc.narg(kind) AS CHAR) IS NULL OR kind = sqlc.narg(kind))
 ORDER BY id DESC
 LIMIT ? OFFSET ?;
 

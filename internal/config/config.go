@@ -77,14 +77,16 @@ type LogHTTPConfig struct {
 }
 
 const (
-	DatabaseDriverSQLite = "sqlite"
-	DatabaseDriverMySQL  = "mysql"
+	DatabaseDriverSQLite   = "sqlite"
+	DatabaseDriverMySQL    = "mysql"
+	DatabaseDriverPostgres = "postgres"
 )
 
 type DatabaseConfig struct {
-	Driver string       `mapstructure:"driver" yaml:"driver"`
-	SQLite SQLiteConfig `mapstructure:"sqlite" yaml:"sqlite"`
-	MySQL  MySQLConfig  `mapstructure:"mysql" yaml:"mysql"`
+	Driver   string         `mapstructure:"driver" yaml:"driver"`
+	SQLite   SQLiteConfig   `mapstructure:"sqlite" yaml:"sqlite"`
+	MySQL    MySQLConfig    `mapstructure:"mysql" yaml:"mysql"`
+	Postgres PostgresConfig `mapstructure:"postgres" yaml:"postgres"`
 }
 
 type SQLiteConfig struct {
@@ -92,6 +94,10 @@ type SQLiteConfig struct {
 }
 
 type MySQLConfig struct {
+	Dsn string `mapstructure:"dsn" yaml:"dsn"`
+}
+
+type PostgresConfig struct {
 	Dsn string `mapstructure:"dsn" yaml:"dsn"`
 }
 
@@ -309,6 +315,7 @@ func bindEnv(loader *viper.Viper) {
 		"database.driver",
 		"database.sqlite.path",
 		"database.mysql.dsn",
+		"database.postgres.dsn",
 		"workspace.pipeline",
 		"workspace.deployment",
 		"pipeline_run.execution_timeout",
@@ -390,8 +397,12 @@ func (c Config) Validate() error {
 		if c.Database.MySQL.Dsn == "" {
 			return errors.New("database.mysql.dsn is required")
 		}
+	case DatabaseDriverPostgres:
+		if c.Database.Postgres.Dsn == "" {
+			return errors.New("database.postgres.dsn is required")
+		}
 	default:
-		return fmt.Errorf("database.driver must be %s or %s", DatabaseDriverSQLite, DatabaseDriverMySQL)
+		return fmt.Errorf("database.driver must be %s, %s or %s", DatabaseDriverSQLite, DatabaseDriverMySQL, DatabaseDriverPostgres)
 	}
 	if strings.TrimSpace(c.Logging.File) == "" {
 		return errors.New("logging.file is required")

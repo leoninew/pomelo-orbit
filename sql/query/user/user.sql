@@ -1,33 +1,33 @@
 -- name: UserByUsername :one
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
-FROM user
+FROM `user`
 WHERE username = ?;
 
 -- name: UserByID :one
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
-FROM user
+FROM `user`
 WHERE id = ?;
 
 -- name: UserByEmail :one
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
-FROM user
+FROM `user`
 WHERE email = ?;
 
 -- name: CountUsers :one
 SELECT COUNT(*)
-FROM user
-WHERE (sqlc.narg(search_pattern) IS NULL
+FROM `user`
+WHERE (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
   OR LOWER(username) LIKE sqlc.narg(search_pattern)
   OR LOWER(COALESCE(email, '')) LIKE sqlc.narg(search_pattern));
 
 -- name: ListUsers :many
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
-FROM user
-WHERE (sqlc.narg(search_pattern) IS NULL
+FROM `user`
+WHERE (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
   OR LOWER(username) LIKE sqlc.narg(search_pattern)
   OR LOWER(COALESCE(email, '')) LIKE sqlc.narg(search_pattern))
 ORDER BY id DESC
@@ -63,27 +63,27 @@ WHERE user_role.user_id IN (sqlc.slice('user_ids'))
 ORDER BY user_role.user_id, role.code;
 
 -- name: CreateUser :exec
-INSERT INTO user (id, username, password_hash, status, oauth_provider, oauth_provider_id, email, auth_source, created_at, updated_at, last_login_at)
+INSERT INTO `user` (id, username, password_hash, status, oauth_provider, oauth_provider_id, email, auth_source, created_at, updated_at, last_login_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateUser :exec
-UPDATE user
+UPDATE `user`
 SET username = ?, password_hash = ?, status = ?, email = ?, auth_source = ?,
     oauth_provider = ?, oauth_provider_id = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: SetUserStatus :exec
-UPDATE user
+UPDATE `user`
 SET status = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: MarkUserLoggedIn :exec
-UPDATE user
+UPDATE `user`
 SET last_login_at = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DeleteUser :exec
-DELETE FROM user
+DELETE FROM `user`
 WHERE id = ?;
 
 -- name: DeleteUserRoles :exec
@@ -95,6 +95,6 @@ INSERT INTO user_role (user_id, role_id, created_at)
 VALUES (?, ?, ?);
 
 -- name: TouchUserUpdatedAt :exec
-UPDATE user
+UPDATE `user`
 SET updated_at = ?
 WHERE id = ?;

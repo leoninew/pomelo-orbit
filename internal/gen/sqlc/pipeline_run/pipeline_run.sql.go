@@ -319,10 +319,10 @@ func (q *Queries) CountActivePipelineRunsByRepository(ctx context.Context, arg C
 
 const countArtifacts = `-- name: CountArtifacts :one
 SELECT COUNT(*) FROM artifact
-WHERE (? IS NULL OR project_id = ?)
-  AND (? IS NULL OR repository_id = ?)
-  AND (? IS NULL OR pipeline_id = ?)
-  AND (? IS NULL OR name LIKE ? OR stage_name LIKE ?)
+WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR repository_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR pipeline_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR name LIKE ? OR stage_name LIKE ?)
 `
 
 type CountArtifactsParams struct {
@@ -351,11 +351,11 @@ func (q *Queries) CountArtifacts(ctx context.Context, arg CountArtifactsParams) 
 
 const countPipelineRuns = `-- name: CountPipelineRuns :one
 SELECT COUNT(*) FROM pipeline_run
-WHERE (? IS NULL OR project_id = ?)
-  AND (? IS NULL OR repository_id = ?)
-  AND (? IS NULL OR pipeline_id = ?)
-  AND (? IS NULL OR created_at >= ?)
-  AND (? IS NULL OR created_at <= ?)
+WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR repository_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR pipeline_id = ?)
+  AND (CAST(? AS DATE) IS NULL OR created_at >= ?)
+  AND (CAST(? AS DATE) IS NULL OR created_at <= ?)
 `
 
 type CountPipelineRunsParams struct {
@@ -588,10 +588,10 @@ FROM artifact
 LEFT JOIN artifact AS source_artifact ON source_artifact.id = artifact.source_artifact_id AND source_artifact.value_format = 'git_object_id'
 LEFT JOIN pipeline_run_version_binding AS binding ON binding.pipeline_run_id = artifact.pipeline_run_id
 LEFT JOIN version_component ON version_component.artifact_id = artifact.id
-WHERE (? IS NULL OR artifact.project_id = ?)
-  AND (? IS NULL OR artifact.repository_id = ?)
-  AND (? IS NULL OR artifact.pipeline_id = ?)
-  AND (? IS NULL OR artifact.name LIKE ? OR artifact.stage_name LIKE ?)
+WHERE (CAST(? AS CHAR) IS NULL OR artifact.project_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR artifact.repository_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR artifact.pipeline_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR artifact.name LIKE ? OR artifact.stage_name LIKE ?)
 ORDER BY artifact.id DESC LIMIT ? OFFSET ?
 `
 
@@ -704,7 +704,7 @@ LEFT JOIN artifact AS source_artifact ON source_artifact.id = artifact.source_ar
 LEFT JOIN pipeline_run_version_binding AS binding ON binding.pipeline_run_id = artifact.pipeline_run_id
 LEFT JOIN version_component ON version_component.artifact_id = artifact.id
 WHERE artifact.pipeline_run_id = ?
-  AND (? IS NULL OR artifact.project_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR artifact.project_id = ?)
 ORDER BY artifact.created_at, artifact.id
 `
 
@@ -797,11 +797,11 @@ func (q *Queries) ListArtifactsByRun(ctx context.Context, arg ListArtifactsByRun
 const listPipelineRuns = `-- name: ListPipelineRuns :many
 SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run
-WHERE (? IS NULL OR project_id = ?)
-  AND (? IS NULL OR repository_id = ?)
-  AND (? IS NULL OR pipeline_id = ?)
-  AND (? IS NULL OR created_at >= ?)
-  AND (? IS NULL OR created_at <= ?)
+WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR repository_id = ?)
+  AND (CAST(? AS CHAR) IS NULL OR pipeline_id = ?)
+  AND (CAST(? AS DATE) IS NULL OR created_at >= ?)
+  AND (CAST(? AS DATE) IS NULL OR created_at <= ?)
 ORDER BY id DESC LIMIT ? OFFSET ?
 `
 

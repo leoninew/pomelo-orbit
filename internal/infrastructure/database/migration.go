@@ -11,6 +11,7 @@ import (
 	gomigrate "github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
 	migratemysql "github.com/golang-migrate/migrate/v4/database/mysql"
+	migratepostgres "github.com/golang-migrate/migrate/v4/database/postgres"
 	migratesqlite "github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 
@@ -106,6 +107,17 @@ func migrationDatabaseDriver(sqlDb *sql.DB, driver string) (database.Driver, err
 			return nil, err
 		}
 		driver, err := migratemysql.WithConnection(context.Background(), connection, &migratemysql.Config{})
+		if err != nil {
+			_ = connection.Close()
+			return nil, err
+		}
+		return driver, nil
+	case config.DatabaseDriverPostgres:
+		connection, err := sqlDb.Conn(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		driver, err := migratepostgres.WithConnection(context.Background(), connection, &migratepostgres.Config{})
 		if err != nil {
 			_ = connection.Close()
 			return nil, err

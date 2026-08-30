@@ -22,19 +22,19 @@ SELECT COUNT(*)
 FROM deployment
 WHERE project_id = sqlc.arg(project_id)
   AND (
-    sqlc.narg(application_id) IS NULL
+    CAST(sqlc.narg(application_id) AS CHAR) IS NULL
     OR application_id = sqlc.narg(application_id)
   )
   AND (
-    sqlc.narg(status) IS NULL
+    CAST(sqlc.narg(status) AS CHAR) IS NULL
     OR status = sqlc.narg(status)
   )
   AND (
-    sqlc.narg(application_name_pattern) IS NULL
+    CAST(sqlc.narg(application_name_pattern) AS CHAR) IS NULL
     OR application_name LIKE sqlc.narg(application_name_pattern)
   )
-  AND (sqlc.narg(date_from) IS NULL OR started_at >= sqlc.narg(date_from))
-  AND (sqlc.narg(date_to) IS NULL OR started_at < sqlc.narg(date_to));
+  AND (CAST(sqlc.narg(date_from) AS DATE) IS NULL OR started_at >= sqlc.narg(date_from))
+  AND (CAST(sqlc.narg(date_to) AS DATE) IS NULL OR started_at < sqlc.narg(date_to));
 
 -- name: ListDeployments :many
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
@@ -45,19 +45,19 @@ FROM deployment d
 LEFT JOIN service s ON s.id = d.service_id
 WHERE d.project_id = sqlc.arg(project_id)
   AND (
-    sqlc.narg(application_id) IS NULL
+    CAST(sqlc.narg(application_id) AS CHAR) IS NULL
     OR d.application_id = sqlc.narg(application_id)
   )
   AND (
-    sqlc.narg(status) IS NULL
+    CAST(sqlc.narg(status) AS CHAR) IS NULL
     OR d.status = sqlc.narg(status)
   )
   AND (
-    sqlc.narg(application_name_pattern) IS NULL
+    CAST(sqlc.narg(application_name_pattern) AS CHAR) IS NULL
     OR d.application_name LIKE sqlc.narg(application_name_pattern)
   )
-  AND (sqlc.narg(date_from) IS NULL OR d.started_at >= sqlc.narg(date_from))
-  AND (sqlc.narg(date_to) IS NULL OR d.started_at < sqlc.narg(date_to))
+  AND (CAST(sqlc.narg(date_from) AS DATE) IS NULL OR d.started_at >= sqlc.narg(date_from))
+  AND (CAST(sqlc.narg(date_to) AS DATE) IS NULL OR d.started_at < sqlc.narg(date_to))
 ORDER BY d.id DESC
 LIMIT ? OFFSET ?;
 

@@ -133,6 +133,7 @@ func settingDefinitions(cfg config.Config) []settingsdto.Definition {
 		{Key: "database__driver", Default: cfg.Database.Driver, Description: "Database driver"},
 		{Key: "database__sqlite__path", Default: cfg.Database.SQLite.Path, Description: "SQLite database file path"},
 		{Key: "database__mysql__dsn", Default: cfg.Database.MySQL.Dsn, Description: "MySQL DSN"},
+		{Key: "database__postgres__dsn", Default: cfg.Database.Postgres.Dsn, Description: "PostgreSQL DSN"},
 		{Key: "jwt__secret_key", Default: cfg.Jwt.SecretKey, Description: "JWT signing secret"},
 		{Key: "traefik__image", Default: cfg.Traefik.Image, Description: "Managed gateway container image pin"},
 		{Key: "traefik__rest_api_url", Default: cfg.Traefik.RestApiUrl, Description: "Default Traefik REST control-plane URL for new gateways"},

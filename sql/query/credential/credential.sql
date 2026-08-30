@@ -22,7 +22,7 @@ WHERE id = ?;
 SELECT COUNT(*)
 FROM credential
 WHERE project_id = sqlc.arg(project_id)
-  AND (sqlc.narg(search_pattern) IS NULL
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR name LIKE sqlc.narg(search_pattern)
     OR type LIKE sqlc.narg(search_pattern));
 
@@ -30,7 +30,7 @@ WHERE project_id = sqlc.arg(project_id)
 SELECT id, project_id, name, type, encrypted_data, created_at
 FROM credential
 WHERE project_id = sqlc.arg(project_id)
-  AND (sqlc.narg(search_pattern) IS NULL
+  AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR name LIKE sqlc.narg(search_pattern)
     OR type LIKE sqlc.narg(search_pattern))
 ORDER BY id DESC

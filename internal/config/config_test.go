@@ -713,6 +713,39 @@ func TestLoadConfigMySQL(t *testing.T) {
 	}
 }
 
+func TestLoadConfigPostgres(t *testing.T) {
+	setupDefaultConfig(t)
+	writeEnvConfig(t, "develop", `database:
+  driver: postgres
+  postgres:
+    dsn: "postgres://user:pass@127.0.0.1:5432/pomelo_orbit?sslmode=disable"
+`)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Database.Driver != DatabaseDriverPostgres {
+		t.Fatalf("unexpected database driver: %s", cfg.Database.Driver)
+	}
+	if cfg.Database.Postgres.Dsn == "" {
+		t.Fatal("expected postgres dsn")
+	}
+}
+
+func TestLoadConfigRequiresPostgresDsn(t *testing.T) {
+	setupDefaultConfig(t)
+	writeEnvConfig(t, "develop", `database:
+  driver: postgres
+  postgres:
+    dsn: ""
+`)
+
+	if _, err := Load(); err == nil {
+		t.Fatal("expected error for empty postgres dsn")
+	}
+}
+
 func TestLoadConfigRequiresSQLitePath(t *testing.T) {
 	setupDefaultConfig(t)
 	writeEnvConfig(t, "develop", `database:
@@ -913,6 +946,8 @@ database:
     path: data/db/pomelo-repository.db
   mysql:
     dsn: ""
+  postgres:
+    dsn: ""
 workspace:
   pipeline: data/pipeline
   deployment: data/deployment
@@ -933,6 +968,7 @@ turnstile:
 settings:
   secret_keys:
     - database__mysql__dsn
+    - database__postgres__dsn
     - jwt__secret_key
     - turnstile__secret_key
 llm:

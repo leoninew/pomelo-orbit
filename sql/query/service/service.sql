@@ -165,15 +165,15 @@ INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
 WHERE a.project_id = sqlc.arg(project_id)
   AND (
-    sqlc.narg(application_id) IS NULL
+    CAST(sqlc.narg(application_id) AS CHAR) IS NULL
     OR s.application_id = sqlc.narg(application_id)
   )
   AND (
-    sqlc.narg(status) IS NULL
+    CAST(sqlc.narg(status) AS CHAR) IS NULL
     OR s.status = sqlc.narg(status)
   )
   AND (
-    sqlc.narg(search_pattern) IS NULL
+    CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR a.name LIKE sqlc.narg(search_pattern)
     OR s.code LIKE sqlc.narg(search_pattern)
   );
@@ -187,15 +187,15 @@ INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
 WHERE a.project_id = sqlc.arg(project_id)
   AND (
-    sqlc.narg(application_id) IS NULL
+    CAST(sqlc.narg(application_id) AS CHAR) IS NULL
     OR s.application_id = sqlc.narg(application_id)
   )
   AND (
-    sqlc.narg(status) IS NULL
+    CAST(sqlc.narg(status) AS CHAR) IS NULL
     OR s.status = sqlc.narg(status)
   )
   AND (
-    sqlc.narg(search_pattern) IS NULL
+    CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR a.name LIKE sqlc.narg(search_pattern)
     OR s.code LIKE sqlc.narg(search_pattern)
   )

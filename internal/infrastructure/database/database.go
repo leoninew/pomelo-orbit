@@ -10,6 +10,7 @@ import (
 	"time"
 
 	gomysql "github.com/go-sql-driver/mysql"
+	"github.com/lib/pq"
 	_ "modernc.org/sqlite"
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
@@ -21,6 +22,8 @@ func Open(cfg config.DatabaseConfig) (*sql.DB, error) {
 		return openSQLite(cfg.SQLite)
 	case config.DatabaseDriverMySQL:
 		return openMySQL(cfg.MySQL)
+	case config.DatabaseDriverPostgres:
+		return openPostgres(cfg.Postgres)
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Driver)
 	}
@@ -80,6 +83,22 @@ func openMySQL(cfg config.MySQLConfig) (*sql.DB, error) {
 	if err := database.Ping(); err != nil {
 		_ = database.Close()
 		return nil, fmt.Errorf("ping mysql database: %w", err)
+	}
+	return database, nil
+}
+
+func openPostgres(cfg config.PostgresConfig) (*sql.DB, error) {
+	connector, err := pq.NewConnector(cfg.Dsn)
+	if err != nil {
+		return nil, fmt.Errorf("parse postgres dsn: %w", err)
+	}
+	database := sql.OpenDB(postgresPlaceholderConnector{Connector: connector})
+	database.SetMaxOpenConns(20)
+	database.SetMaxIdleConns(5)
+	database.SetConnMaxLifetime(30 * time.Minute)
+	if err := database.Ping(); err != nil {
+		_ = database.Close()
+		return nil, fmt.Errorf("ping postgres database: %w", err)
 	}
 	return database, nil
 }

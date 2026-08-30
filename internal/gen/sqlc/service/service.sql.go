@@ -18,15 +18,15 @@ INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
 WHERE a.project_id = ?
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR s.application_id = ?
   )
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR s.status = ?
   )
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR a.name LIKE ?
     OR s.code LIKE ?
   )
@@ -366,15 +366,15 @@ INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
 WHERE a.project_id = ?
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR s.application_id = ?
   )
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR s.status = ?
   )
   AND (
-    ? IS NULL
+    CAST(? AS CHAR) IS NULL
     OR a.name LIKE ?
     OR s.code LIKE ?
   )

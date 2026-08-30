@@ -25,12 +25,16 @@
         <button
           v-if="routeData"
           class="h-9 px-3"
-          :class="hasPendingEnabledChange ? 'app-button-warning' : 'app-button'"
+          :class="hasPendingChanges ? 'app-button-warning' : 'app-button'"
           :disabled="operating || isSyncDialogOpen"
           @click="openSyncModal"
         >
           <RefreshCw class="size-4" />
-          {{ hasPendingEnabledChange ? t('route.syncPending', { count: 1 }) : t('route.syncAll') }}
+          {{
+            hasPendingChanges
+              ? t('route.syncPending', { count: pendingChangeCount })
+              : t('route.syncAll')
+          }}
         </button>
         <button
           v-if="gatewayRuntimeLogTarget"
@@ -50,7 +54,7 @@
           <Trash2 class="size-4" />
           {{ t('common.delete') }}
         </button>
-        <button class="app-button h-9 px-4" @click="router.push('/routes')">
+        <button class="app-button h-9 px-4" @click="goToRoutes">
           <ArrowLeft class="size-4" />
           {{ t('common.back') }}
         </button>
@@ -530,6 +534,10 @@
   const isLetsEncryptDialogOpen = ref(false);
   const isSyncDialogOpen = ref(false);
   const pendingEnabled = ref<boolean>();
+  const hasPendingRouteChanges = ref(currentRoute.query.pending_sync === '1');
+  if (hasPendingRouteChanges.value) {
+    void router.replace({ query: { ...currentRoute.query, pending_sync: undefined } });
+  }
   const letsEncryptChallenge = ref<'http' | 'dns'>('http');
   const letsEncryptChallengeError = ref('');
   const letsEncryptSubmitError = ref('');
@@ -566,6 +574,12 @@
   const routeEnabled = computed(() => pendingEnabled.value ?? routeData.value?.enabled ?? false);
   const hasPendingEnabledChange = computed(
     () => routeData.value !== undefined && pendingEnabled.value !== undefined
+  );
+  const hasPendingChanges = computed(
+    () => hasPendingRouteChanges.value || hasPendingEnabledChange.value
+  );
+  const pendingChangeCount = computed(
+    () => Number(hasPendingRouteChanges.value) + Number(hasPendingEnabledChange.value)
   );
   const syncChanges = computed(() => {
     if (!routeData.value || pendingEnabled.value === undefined) {
@@ -762,6 +776,7 @@
               : undefined,
         });
         routeData.value = updated;
+        hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.updateSuccess'));
         isEditDialogOpen.value = false;
         await fetchRoute();
@@ -826,8 +841,9 @@
     try {
       await executeOp(async () => {
         await routeApi.delete(routeId);
+        hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.deleteSuccess'));
-        router.push('/routes');
+        router.push({ path: '/routes', query: { pending_sync: '1' } });
       });
     } catch (error) {
       deleteSubmitError.value =
@@ -855,8 +871,17 @@
     isSyncDialogOpen.value = true;
   }
 
+  function goToRoutes() {
+    if (hasPendingRouteChanges.value) {
+      void router.push({ path: '/routes', query: { pending_sync: '1' } });
+      return;
+    }
+    void router.push('/routes');
+  }
+
   async function handleSyncComplete() {
     pendingEnabled.value = undefined;
+    hasPendingRouteChanges.value = false;
     await fetchRoute();
   }
 
@@ -868,6 +893,7 @@
     try {
       await executeOp(async () => {
         await routeApi.uploadCert(routeId, file);
+        hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.certUploadSuccess'));
         await fetchRoute();
         await openGatewayLogs();
@@ -887,6 +913,7 @@
     try {
       await executeOp(async () => {
         await routeApi.disableHttps(routeId);
+        hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.httpsDisabled'));
         await fetchRoute();
         await openGatewayLogs();
@@ -939,6 +966,7 @@
     try {
       await executeOp(async () => {
         await routeApi.enableLetsencrypt(routeId, { challenge: letsEncryptChallenge.value });
+        hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.letsencryptEnabled'));
         closeLetsEncryptDialog();
         await fetchRoute();
@@ -954,6 +982,7 @@
     try {
       await executeOp(async () => {
         await routeApi.enableMkcert(routeId, {});
+        hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.mkcertEnabled'));
         await fetchRoute();
         await openGatewayLogs();

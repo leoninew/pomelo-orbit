@@ -243,12 +243,17 @@
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.restartPolicy') }}
+            <span class="text-destructive">*</span>
           </label>
           <RawValueSelect
             v-model="componentForm.restart_policy"
-            :placeholder="t('common.notSet')"
+            :invalid="Boolean(componentFormErrors.restartPolicy)"
             :values="restartPolicyValues"
+            @update:model-value="componentFormErrors.restartPolicy = ''"
           />
+          <p v-if="componentFormErrors.restartPolicy" class="app-field-error" role="alert">
+            {{ componentFormErrors.restartPolicy }}
+          </p>
         </div>
         <div class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">
@@ -325,12 +330,17 @@
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.restartPolicy') }}
+            <span class="text-destructive">*</span>
           </label>
           <RawValueSelect
             v-model="componentEditForm.restart_policy"
-            :placeholder="t('common.notSet')"
+            :invalid="Boolean(componentEditErrors.restartPolicy)"
             :values="restartPolicyValues"
+            @update:model-value="componentEditErrors.restartPolicy = ''"
           />
+          <p v-if="componentEditErrors.restartPolicy" class="app-field-error" role="alert">
+            {{ componentEditErrors.restartPolicy }}
+          </p>
         </div>
         <div class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">
@@ -518,8 +528,8 @@
   const forkLabelError = ref('');
   const forkSubmitError = ref('');
   const basicFormError = ref('');
-  const componentFormErrors = reactive({ name: '', image: '' });
-  const componentEditErrors = reactive({ name: '', image: '' });
+  const componentFormErrors = reactive({ name: '', image: '', restartPolicy: '' });
+  const componentEditErrors = reactive({ name: '', image: '', restartPolicy: '' });
 
   const basicForm = reactive({
     label: '',
@@ -528,7 +538,7 @@
   const componentForm = reactive(emptyComponentForm());
   const componentEditForm = reactive(emptyComponentForm());
   const pullPolicyValues = ['always', 'missing', 'never'];
-  const restartPolicyValues = ['no', 'unless-stopped'];
+  const restartPolicyValues = ['no', 'on-failure', 'always', 'unless-stopped'];
   const isEditable = computed(() => version.value?.status === 'unpublished');
   const isPublished = computed(() => version.value?.status === 'published');
   const isStandardApplication = computed(() => application.value?.kind === 'standard');
@@ -620,14 +630,14 @@
 
   function openComponentDialog() {
     Object.assign(componentForm, emptyComponentForm());
-    Object.assign(componentFormErrors, { name: '', image: '' });
+    Object.assign(componentFormErrors, { name: '', image: '', restartPolicy: '' });
     componentCreateError.value = '';
     isComponentDialogOpen.value = true;
   }
 
   function closeComponentDialog() {
     isComponentDialogOpen.value = false;
-    Object.assign(componentFormErrors, { name: '', image: '' });
+    Object.assign(componentFormErrors, { name: '', image: '', restartPolicy: '' });
     componentCreateError.value = '';
   }
 
@@ -645,6 +655,10 @@
         result.error === 'nameImage' && !componentForm.image.trim()
           ? t('application.componentDetail.validation.imageRequired')
           : '';
+      componentFormErrors.restartPolicy =
+        result.error === 'restartPolicy'
+          ? t('application.componentDetail.validation.restartPolicy')
+          : '';
       return;
     }
     try {
@@ -661,7 +675,7 @@
   }
 
   function resetComponentEditErrors() {
-    Object.assign(componentEditErrors, { name: '', image: '' });
+    Object.assign(componentEditErrors, { name: '', image: '', restartPolicy: '' });
   }
 
   function openComponentEditDialog(component: VersionComponentResp) {
@@ -700,10 +714,17 @@
           ? componentEditForm.name.trim()
             ? ''
             : t('application.componentDetail.validation.componentNameRequired')
-          : t('application.componentDetail.validation.componentName');
-      componentEditErrors.image = componentEditForm.image.trim()
-        ? ''
-        : t('application.componentDetail.validation.imageRequired');
+          : result.error === 'componentName'
+            ? t('application.componentDetail.validation.componentName')
+            : '';
+      componentEditErrors.image =
+        result.error === 'nameImage' && !componentEditForm.image.trim()
+          ? t('application.componentDetail.validation.imageRequired')
+          : '';
+      componentEditErrors.restartPolicy =
+        result.error === 'restartPolicy'
+          ? t('application.componentDetail.validation.restartPolicy')
+          : '';
       return;
     }
     try {

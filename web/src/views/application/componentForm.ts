@@ -102,6 +102,7 @@ export type ComponentFormError =
   | 'nameImage'
   | 'componentName'
   | 'pullPolicy'
+  | 'restartPolicy'
   | 'command'
   | 'env'
   | 'ports'
@@ -136,7 +137,7 @@ export function emptyComponentForm(): ComponentForm {
     healthcheck_start_period: '',
     healthcheck_start_interval: '',
     pull_policy: 'missing',
-    restart_policy: '',
+    restart_policy: 'unless-stopped',
     resources: {
       limit_cpus: '',
       limit_memory: '',
@@ -507,6 +508,9 @@ export function componentBasicRequestFromForm(
   if (!['always', 'missing', 'never'].includes(form.pull_policy)) {
     return { valid: false, error: 'pullPolicy' };
   }
+  if (!['no', 'on-failure', 'always', 'unless-stopped'].includes(form.restart_policy)) {
+    return { valid: false, error: 'restartPolicy' };
+  }
   return {
     valid: true,
     value: {
@@ -515,7 +519,7 @@ export function componentBasicRequestFromForm(
       entrypoint: form.entrypoint,
       command: form.command,
       pull_policy: form.pull_policy,
-      restart_policy: optionalText(form.restart_policy),
+      restart_policy: form.restart_policy,
     },
   };
 }
@@ -532,6 +536,9 @@ export function componentCreateRequestFromForm(
   if (!['always', 'missing', 'never'].includes(form.pull_policy)) {
     return { valid: false, error: 'pullPolicy' };
   }
+  if (!['no', 'on-failure', 'always', 'unless-stopped'].includes(form.restart_policy)) {
+    return { valid: false, error: 'restartPolicy' };
+  }
   return {
     valid: true,
     value: {
@@ -540,7 +547,7 @@ export function componentCreateRequestFromForm(
       entrypoint: form.entrypoint,
       command: form.command,
       pull_policy: form.pull_policy,
-      restart_policy: optionalText(form.restart_policy),
+      restart_policy: form.restart_policy,
     },
   };
 }

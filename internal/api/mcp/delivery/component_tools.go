@@ -12,19 +12,20 @@ import (
 
 func (c *core) registerVersionComponentTools(server *mcp.Server) {
 	addTool(server, "orbit_update_version_component_basic", "Replace a Component's name, image, command, pull policy, and restart policy.", func(ctx context.Context, input struct {
-		VersionId     string  `json:"version_id" jsonschema:"required"`
-		ComponentId   string  `json:"component_id" jsonschema:"required"`
-		Name          string  `json:"name" jsonschema:"required"`
-		Image         string  `json:"image" jsonschema:"required"`
-		Command       string  `json:"command,omitempty"`
-		PullPolicy    string  `json:"pull_policy" jsonschema:"required"`
-		RestartPolicy *string `json:"restart_policy,omitempty"`
+		VersionId     string `json:"version_id" jsonschema:"required"`
+		ComponentId   string `json:"component_id" jsonschema:"required"`
+		Name          string `json:"name" jsonschema:"required"`
+		Image         string `json:"image" jsonschema:"required"`
+		Command       string `json:"command,omitempty"`
+		PullPolicy    string `json:"pull_policy" jsonschema:"required"`
+		RestartPolicy string `json:"restart_policy" jsonschema:"required"`
 	}) (map[string]any, error) {
 		command, err := commandInput(input.Command)
 		if err != nil {
 			return nil, err
 		}
-		component, err := c.deps.Application.UpdateVersionComponentBasic(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentBasicUpdateInput{Name: input.Name, Image: input.Image, Command: command, PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy})
+		restartPolicy := input.RestartPolicy
+		component, err := c.deps.Application.UpdateVersionComponentBasic(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentBasicUpdateInput{Name: input.Name, Image: input.Image, Command: command, PullPolicy: input.PullPolicy, RestartPolicy: &restartPolicy})
 		if err != nil {
 			return nil, err
 		}

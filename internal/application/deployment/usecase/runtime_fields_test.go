@@ -34,6 +34,27 @@ func TestRenderComposeIncludesStructuredRuntimeFields(t *testing.T) {
 	}
 }
 
+func TestRenderComposeSupportsRestartPolicies(t *testing.T) {
+	for _, policy := range []string{"on-failure", "always", "unless-stopped"} {
+		policy := policy
+		service := map[string]any{}
+		if err := applyComponentRuntimeFields(service, model.VersionComponent{RestartPolicy: &policy}); err != nil {
+			t.Fatalf("policy %q: applyComponentRuntimeFields() error = %v", policy, err)
+		}
+		if service["restart"] != policy {
+			t.Fatalf("policy %q rendered restart = %#v", policy, service["restart"])
+		}
+	}
+	no := "no"
+	service := map[string]any{}
+	if err := applyComponentRuntimeFields(service, model.VersionComponent{RestartPolicy: &no}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := service["restart"]; ok {
+		t.Fatalf("no policy should omit restart: %#v", service)
+	}
+}
+
 func TestRenderComponentHealthcheckUsesSingleCommandText(t *testing.T) {
 	tests := []struct {
 		name        string

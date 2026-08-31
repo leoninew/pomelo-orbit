@@ -305,7 +305,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return map[string]any{"version": versionOutput(version)}, nil
 	})
 
-	addTool(server, "orbit_create_version_component", "Add a Component with basic configuration to an unpublished Version.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_create_version_component", "Add a Component with basic configuration to an unpublished Version. pull_policy and restart_policy are required and validated by the application.", func(ctx context.Context, input struct {
 		VersionId string                             `json:"version_id" jsonschema:"required"`
 		Component *applicationv1.VersionComponentReq `json:"component" jsonschema:"required"`
 	}) (map[string]any, error) {
@@ -320,7 +320,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return writeResult("create_version_component", map[string]string{"version_id": input.VersionId, "component_id": component.Id}, "POST", "/api/version/"+input.VersionId+"/component", map[string]any{"component": componentOutput(component)}), nil
 	})
 
-	addTool(server, "orbit_create_version", "Create a Version using a complete Component collection.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_create_version", "Create a Version using a complete Component collection. Each component must include valid pull_policy and restart_policy values.", func(ctx context.Context, input struct {
 		ApplicationId string                               `json:"application_id" jsonschema:"required"`
 		Label         string                               `json:"label" jsonschema:"required"`
 		Components    []*applicationv1.VersionComponentReq `json:"components" jsonschema:"required"`

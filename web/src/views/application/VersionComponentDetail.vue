@@ -109,12 +109,17 @@
               <div>
                 <label class="app-field-label mb-1.5 block">
                   {{ t('application.componentDetail.fields.restartPolicy') }}
+                  <span class="text-destructive">*</span>
                 </label>
                 <RawValueSelect
                   v-model="form.restart_policy"
-                  :placeholder="t('common.notSet')"
+                  :invalid="Boolean(basicErrors.restartPolicy)"
                   :values="restartPolicyValues"
+                  @update:model-value="basicErrors.restartPolicy = ''"
                 />
+                <p v-if="basicErrors.restartPolicy" class="app-field-error" role="alert">
+                  {{ basicErrors.restartPolicy }}
+                </p>
               </div>
               <div class="sm:col-span-2">
                 <label class="app-field-label mb-1.5 block">
@@ -706,12 +711,17 @@
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.restartPolicy') }}
+            <span class="text-destructive">*</span>
           </label>
           <RawValueSelect
             v-model="form.restart_policy"
-            :placeholder="t('common.notSet')"
+            :invalid="Boolean(basicErrors.restartPolicy)"
             :values="restartPolicyValues"
+            @update:model-value="basicErrors.restartPolicy = ''"
           />
+          <p v-if="basicErrors.restartPolicy" class="app-field-error" role="alert">
+            {{ basicErrors.restartPolicy }}
+          </p>
         </div>
         <div class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">
@@ -1475,7 +1485,7 @@
   const savedEnvironmentRows = ref<EnvironmentVariableListRow[]>([]);
   const activeTab = ref<ComponentTab>('runtime');
   const basicDialogOpen = ref(false);
-  const basicErrors = reactive({ name: '', image: '', pullPolicy: '' });
+  const basicErrors = reactive({ name: '', image: '', pullPolicy: '', restartPolicy: '' });
   const healthcheckDialogOpen = ref(false);
   const healthcheckErrors = reactive({ test_mode: '', test: '', retries: '' });
   const resourcesDialogOpen = ref(false);
@@ -1550,7 +1560,7 @@
     ];
   });
   const pullPolicyValues = ['always', 'missing', 'never'];
-  const restartPolicyValues = ['no', 'unless-stopped'];
+  const restartPolicyValues = ['no', 'on-failure', 'always', 'unless-stopped'];
   const mountSourceTypes = ['directory', 'file', 'named_volume', 'controlled_file'];
   const endpointProtocolValues = ['http', 'tcp'];
   function endpointModeValues(protocol?: string) {
@@ -1597,7 +1607,7 @@
   }
 
   function resetBasicErrors() {
-    Object.assign(basicErrors, { name: '', image: '', pullPolicy: '' });
+    Object.assign(basicErrors, { name: '', image: '', pullPolicy: '', restartPolicy: '' });
   }
 
   function validateBasicForm() {
@@ -1613,7 +1623,15 @@
     basicErrors.pullPolicy = ['always', 'missing', 'never'].includes(form.pull_policy)
       ? ''
       : t('application.componentDetail.validation.pullPolicy');
-    return !basicErrors.name && !basicErrors.image && !basicErrors.pullPolicy;
+    basicErrors.restartPolicy = restartPolicyValues.includes(form.restart_policy)
+      ? ''
+      : t('application.componentDetail.validation.restartPolicy');
+    return (
+      !basicErrors.name &&
+      !basicErrors.image &&
+      !basicErrors.pullPolicy &&
+      !basicErrors.restartPolicy
+    );
   }
 
   function resetHealthcheckErrors() {
@@ -2402,7 +2420,12 @@
   }
 
   function tabForError(error: ComponentFormError): ComponentTab {
-    if (error === 'nameImage' || error === 'componentName' || error === 'pullPolicy') {
+    if (
+      error === 'nameImage' ||
+      error === 'componentName' ||
+      error === 'pullPolicy' ||
+      error === 'restartPolicy'
+    ) {
       return 'runtime';
     }
     if (error === 'command' || error === 'healthcheck') {
@@ -2429,6 +2452,9 @@
     }
     if (error === 'pullPolicy') {
       return t('application.componentDetail.validation.pullPolicy');
+    }
+    if (error === 'restartPolicy') {
+      return t('application.componentDetail.validation.restartPolicy');
     }
     if (error === 'ports') {
       return t('application.componentDetail.validation.invalidPort');

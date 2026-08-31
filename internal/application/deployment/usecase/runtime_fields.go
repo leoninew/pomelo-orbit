@@ -19,8 +19,8 @@ func applyComponentRuntimeFields(service map[string]any, component model.Version
 	if err := validateComponentRuntimeFields(component); err != nil {
 		return err
 	}
-	if component.RestartPolicy != nil && *component.RestartPolicy == "unless-stopped" {
-		service["restart"] = "unless-stopped"
+	if component.RestartPolicy != nil && *component.RestartPolicy != "no" {
+		service["restart"] = *component.RestartPolicy
 	}
 	if len(component.Tmpfs) > 0 {
 		tmpfs, _ := renderRuntimeTmpfs(component.Tmpfs)
@@ -37,9 +37,11 @@ func validateComponentRuntimeFields(component model.VersionComponent) error {
 	if component.RestartPolicy != nil {
 		switch *component.RestartPolicy {
 		case "no":
+		case "on-failure":
+		case "always":
 		case "unless-stopped":
 		default:
-			return fmt.Errorf("restart_policy must be no or unless-stopped")
+			return fmt.Errorf("restart_policy must be no, on-failure, always or unless-stopped")
 		}
 	}
 	if len(component.Tmpfs) > 0 {

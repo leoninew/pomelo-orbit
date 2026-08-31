@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   componentBasicRequestFromForm,
+  componentCreateRequestFromForm,
   componentDependenciesRequestFromForm,
   componentEnvRequestFromForm,
   componentMountsRequestFromForm,
@@ -139,7 +140,7 @@ describe('componentForm', () => {
         entrypoint: '',
         command: '',
         pull_policy: 'missing',
-        restart_policy: undefined,
+        restart_policy: 'unless-stopped',
       },
     });
   });
@@ -157,7 +158,25 @@ describe('componentForm', () => {
         entrypoint: '',
         command: '',
         pull_policy: 'missing',
-        restart_policy: undefined,
+        restart_policy: 'unless-stopped',
+      },
+    });
+  });
+
+  it('uses the missing default in a new component create request', () => {
+    const form = emptyComponentForm();
+    form.name = 'api';
+    form.image = 'nginx:1.27';
+
+    expect(componentCreateRequestFromForm(form)).toEqual({
+      valid: true,
+      value: {
+        name: 'api',
+        image: 'nginx:1.27',
+        entrypoint: '',
+        command: '',
+        pull_policy: 'missing',
+        restart_policy: 'unless-stopped',
       },
     });
   });
@@ -172,6 +191,18 @@ describe('componentForm', () => {
 
     form.pull_policy = 'on-demand';
     expect(componentBasicRequestFromForm(form)).toEqual({ valid: false, error: 'pullPolicy' });
+  });
+
+  it('rejects an omitted or unsupported restart policy', () => {
+    const form = emptyComponentForm();
+    form.name = 'api';
+    form.image = 'nginx:1.27';
+
+    form.restart_policy = '';
+    expect(componentBasicRequestFromForm(form)).toEqual({ valid: false, error: 'restartPolicy' });
+
+    form.restart_policy = 'on-demand';
+    expect(componentBasicRequestFromForm(form)).toEqual({ valid: false, error: 'restartPolicy' });
   });
 
   it('keeps a health check as one command field', () => {

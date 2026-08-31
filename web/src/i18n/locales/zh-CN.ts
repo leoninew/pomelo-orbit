@@ -504,6 +504,7 @@ export default {
         invalidUlimit: 'Ulimit 需要填写名称、软限制和硬限制',
         invalidDevice: '设备请求需填写驱动、all 或正整数数量和不重复的能力；NVIDIA 必须包含 gpu',
         healthcheckTest: '健康检查需要选择测试方式并填写测试命令',
+        restartPolicy: '重启策略必须是 no、on-failure、always 或 unless-stopped',
       },
       deleteDescription: '确定要删除组件「{name}」吗？此操作不可恢复。',
     },

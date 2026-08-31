@@ -61,6 +61,28 @@ func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 	assertFlatObjectProperty(t, byName["orbit_update_version_component_resources"], "resources")
 }
 
+func TestCreateVersionComponentPassesPolicies(t *testing.T) {
+	application := &versionComponentApplicationService{}
+	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: application})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	session := connectInMemory(t, server)
+	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "orbit_create_version_component",
+		Arguments: map[string]any{"version_id": "version-1", "component": map[string]any{"name": "api", "image": "nginx:1.27", "pull_policy": "missing", "restart_policy": "unless-stopped"}},
+	})
+	if err != nil {
+		t.Fatalf("CallTool() error = %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("CallTool() returned tool error: %#v", result.Content)
+	}
+	if application.input.PullPolicy != "missing" || application.input.RestartPolicy == nil || *application.input.RestartPolicy != "unless-stopped" {
+		t.Fatalf("component input policies = pull %q, restart %#v; want submitted values", application.input.PullPolicy, application.input.RestartPolicy)
+	}
+}
+
 func TestServerInstructionsAndRuntimeConfigToolsDocumentStatefulServiceBoundary(t *testing.T) {
 	server, err := NewServer(Dependencies{ActorUserId: "actor"})
 	if err != nil {
@@ -566,6 +588,16 @@ type mountApplicationService struct {
 	versionId   string
 	componentId string
 	mounts      []model.VersionComponentMount
+}
+
+type versionComponentApplicationService struct {
+	ApplicationService
+	input applicationdto.VersionComponentInput
+}
+
+func (s *versionComponentApplicationService) CreateVersionComponent(_ context.Context, _ string, _ string, input applicationdto.VersionComponentInput) (model.VersionComponent, error) {
+	s.input = input
+	return model.VersionComponent{Id: "component-1", PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy}, nil
 }
 
 type serviceToolService struct {

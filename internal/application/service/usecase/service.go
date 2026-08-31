@@ -408,7 +408,7 @@ func normalizeOverlay(component *model.ServiceComponent, declaration model.Versi
 	}
 	if component.RestartPolicy != nil {
 		if !validServiceRestartPolicy(*component.RestartPolicy) {
-			return fmt.Errorf("restart_policy must be no or unless-stopped")
+			return fmt.Errorf("restart_policy must be no, on-failure, always or unless-stopped")
 		}
 		if declaration.RestartPolicy != nil && *component.RestartPolicy == *declaration.RestartPolicy {
 			component.RestartPolicy = nil
@@ -557,7 +557,7 @@ func validServicePullPolicy(value string) bool {
 }
 
 func validServiceRestartPolicy(value string) bool {
-	return value == "no" || value == "unless-stopped"
+	return value == "no" || value == "on-failure" || value == "always" || value == "unless-stopped"
 }
 
 func normalizeServiceEnv(env []model.ServiceEnv) ([]model.ServiceEnv, error) {

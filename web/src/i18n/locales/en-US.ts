@@ -516,6 +516,7 @@ export default {
         invalidDevice:
           'Use a driver, all or a positive count, and unique capabilities; NVIDIA requires gpu',
         healthcheckTest: 'Health checks need a test mode and a test command',
+        restartPolicy: 'Restart policy must be no, on-failure, always, or unless-stopped',
       },
       deleteDescription: 'Delete component "{name}"? This action cannot be undone.',
     },

@@ -32,9 +32,9 @@ INSERT INTO "version_component" (
     "entrypoint_json", "artifact_name", "artifact_image_ref", "artifact_local_image_sha256", "artifact_source_commit_sha"
 ) VALUES
     ('01M10RRA8F863EJ2N9TN8CWTEY', '01M10RRA8F863EJ2N9TDN9JSBW', 'traefik', 'traefik:3.6', NULL, '[]', 'missing', 'unless-stopped', '[]', NULL, NULL, NULL, NULL),
-    ('01M10RRA8F863EJ2N9TPPNAAN1', '01M10RRA8F863EJ2N9TFH32002', 'traefik', 'traefik:3.6', NULL, '[]', 'missing', NULL, '[]', NULL, NULL, NULL, NULL),
-    ('01M10RRA8F863EJ2N9TSRZBPC3', '01M10RRA8F863EJ2N9TH6R2HSB', 'traefik', 'traefik:3.6', NULL, '[]', 'missing', NULL, '[]', NULL, NULL, NULL, NULL),
-    ('01M10RRA8F863EJ2N9TT9T3NK7', '01M10RRA8F863EJ2N9TKGXYZXE', 'traefik', 'traefik:3.6', NULL, '[]', 'missing', NULL, '[]', NULL, NULL, NULL, NULL);
+    ('01M10RRA8F863EJ2N9TPPNAAN1', '01M10RRA8F863EJ2N9TFH32002', 'traefik', 'traefik:3.6', NULL, '[]', 'missing', 'unless-stopped', '[]', NULL, NULL, NULL, NULL),
+    ('01M10RRA8F863EJ2N9TSRZBPC3', '01M10RRA8F863EJ2N9TH6R2HSB', 'traefik', 'traefik:3.6', NULL, '[]', 'missing', 'unless-stopped', '[]', NULL, NULL, NULL, NULL),
+    ('01M10RRA8F863EJ2N9TT9T3NK7', '01M10RRA8F863EJ2N9TKGXYZXE', 'traefik', 'traefik:3.6', NULL, '[]', 'missing', 'unless-stopped', '[]', NULL, NULL, NULL, NULL);
 
 INSERT INTO "version_component_endpoint" (
     "component_id", "protocol", "container_port", "mode", "bind_address", "listen_port", "entrypoint", "path_prefix", "position"

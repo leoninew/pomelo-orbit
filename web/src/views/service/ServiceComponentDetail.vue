@@ -705,7 +705,7 @@
       : ['internal', 'local', 'host'];
   }
   const pullPolicyValues = ['always', 'missing', 'never'];
-  const restartPolicyValues = ['no', 'unless-stopped'];
+  const restartPolicyValues = ['no', 'on-failure', 'always', 'unless-stopped'];
   const endpointValueKeys: Array<keyof EndpointValues> = [
     'mode',
     'bind_address',

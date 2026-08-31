@@ -1,6 +1,6 @@
 app:
   name: Pomelo Orbit Backend Go
-  version: 0.267.0
+  version: 0.268.0
   debug: false
 
 server:

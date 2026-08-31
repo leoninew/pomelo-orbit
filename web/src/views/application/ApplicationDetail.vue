@@ -480,12 +480,17 @@
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.restartPolicy') }}
+            <span class="text-destructive">*</span>
           </label>
           <RawValueSelect
             v-model="componentForm.restart_policy"
-            :placeholder="t('common.notSet')"
+            :invalid="Boolean(componentErrors.restartPolicy)"
             :values="componentRestartPolicyValues"
+            @update:model-value="componentErrors.restartPolicy = ''"
           />
+          <p v-if="componentErrors.restartPolicy" class="app-field-error" role="alert">
+            {{ componentErrors.restartPolicy }}
+          </p>
         </div>
         <div class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">
@@ -746,9 +751,9 @@
   });
   const versionFormErrors = reactive({ label: '' });
   const componentForm = reactive(emptyComponentForm());
-  const componentErrors = reactive({ name: '', image: '' });
+  const componentErrors = reactive({ name: '', image: '', restartPolicy: '' });
   const componentPullPolicyValues = ['always', 'missing', 'never'];
-  const componentRestartPolicyValues = ['no', 'unless-stopped'];
+  const componentRestartPolicyValues = ['no', 'on-failure', 'always', 'unless-stopped'];
 
   async function fetchApplication() {
     try {
@@ -998,7 +1003,7 @@
   }
 
   function resetComponentErrors() {
-    Object.assign(componentErrors, { name: '', image: '' });
+    Object.assign(componentErrors, { name: '', image: '', restartPolicy: '' });
   }
 
   function resetComponentForm() {
@@ -1046,6 +1051,10 @@
       componentErrors.image = componentForm.image.trim()
         ? ''
         : t('application.componentDetail.validation.imageRequired');
+      componentErrors.restartPolicy =
+        result.error === 'restartPolicy'
+          ? t('application.componentDetail.validation.restartPolicy')
+          : '';
       return;
     }
     try {

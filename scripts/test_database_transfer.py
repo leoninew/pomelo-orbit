@@ -274,9 +274,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                 )
         self.assertEqual(code, "target")
         command = run.call_args.args[0]
-        self.assertEqual(
-            command[0:5], ["dbtalk", "database", "import", "--target", "sqlite"]
-        )
+        self.assertEqual(command[0:4], ["dbtalk", "import", "--target", "sqlite"])
         self.assertIn("--dsn", command)
         self.assertIn("sqlite:///./target.db", command)
         self.assertIn("--mode", command)
@@ -429,6 +427,10 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
             self.assertTrue(service_export_paths)
             self.assertFalse(service_export_paths[0].exists())
             export_command = run.call_args.args[0]
+            self.assertEqual(
+                export_command[0:5],
+                ["dbtalk", "export", "--source", "sqlite", "--output"],
+            )
             self.assertEqual(
                 export_command.count("--include-table"), len(transfer.SERVICE_TABLES)
             )

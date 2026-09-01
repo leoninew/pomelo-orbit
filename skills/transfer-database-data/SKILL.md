@@ -30,11 +30,13 @@ uv run --project scripts python scripts/database_transfer.py export \
   --output data/<service-code>-<timestamp>.jsonl --tz UTC
 ```
 
-For MySQL, use `--source mysql --dsn-env <ENV_NAME>`. Orbit asks dbtalk
-for the service closure tables, selects the requested service's project,
+For MySQL or PostgreSQL, use `--source mysql --dsn-env <ENV_NAME>` or
+`--source postgresql --dsn-env <ENV_NAME>`. PostgreSQL DSNs use
+`postgresql+psycopg://user:password@host:5432/database`. Orbit asks dbtalk for
+the service closure tables, selects the requested service's project,
 application, version lineage, components, Gateway configuration, service
-overrides, and routes, then writes the service JSONL file. The temporary
-dbtalk export is removed automatically.
+overrides, and routes, then writes the service JSONL file. The temporary dbtalk
+export is removed automatically.
 
 ## Export File Names
 
@@ -54,6 +56,9 @@ uv run --project scripts python scripts/database_transfer.py import \
   --target sqlite --dsn sqlite:///./data/db/pomelo-orbit.db \
   --input service.jsonl --mode upsert --tz UTC
 ```
+
+For PostgreSQL, use `--target postgresql --dsn-env <ENV_NAME>` with a
+`postgresql+psycopg://user:password@host:5432/database` DSN.
 
 `--mode` is required. `insert` fails on any database constraint conflict;
 `upsert` updates existing primary-key rows. A schema initialized by the normal

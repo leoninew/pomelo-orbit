@@ -10,7 +10,7 @@ import { useAuthStore } from '@/stores/auth';
 import { handleUnauthorized } from '@/utils/handle-unauthorized';
 import request, { ApiError, toApiError } from '@/utils/request';
 
-const STREAM_TIMEOUT = 120000;
+const DIALOGUE_TIMEOUT = 600000;
 
 export const dialogueApi = {
   listConversations(projectId: string): Promise<DeploymentDialogueConversationListResp> {
@@ -28,7 +28,7 @@ export const dialogueApi = {
   },
 
   completeTurn(data: DeploymentDialogueTurnReq): Promise<DeploymentDialogueTurnResp> {
-    return request.post('/api/deployment-dialogue/turn', data, { timeout: 120000 });
+    return request.post('/api/deployment-dialogue/turn', data, { timeout: DIALOGUE_TIMEOUT });
   },
 
   async completeTurnStream(
@@ -36,7 +36,7 @@ export const dialogueApi = {
     onEvent: (event: DeploymentDialogueStreamEvent) => void
   ): Promise<void> {
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), STREAM_TIMEOUT);
+    const timeoutId = window.setTimeout(() => controller.abort(), DIALOGUE_TIMEOUT);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const token = useAuthStore().token;
     if (token) {

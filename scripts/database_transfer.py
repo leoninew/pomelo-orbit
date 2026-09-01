@@ -94,7 +94,9 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     exporter = subcommands.add_parser(
         "export", help="export one service deployment closure"
     )
-    exporter.add_argument("--source", choices=("sqlite", "mysql"), required=True)
+    exporter.add_argument(
+        "--source", choices=("sqlite", "mysql", "postgresql"), required=True
+    )
     exporter.add_argument("--service-code", required=True)
     exporter.add_argument("--output", type=Path, required=True)
     connection = exporter.add_mutually_exclusive_group(required=True)
@@ -106,7 +108,9 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     importer = subcommands.add_parser(
         "import", help="import one service deployment closure"
     )
-    importer.add_argument("--target", choices=("sqlite", "mysql"), required=True)
+    importer.add_argument(
+        "--target", choices=("sqlite", "mysql", "postgresql"), required=True
+    )
     importer.add_argument("--input", type=Path, required=True)
     importer.add_argument("--mode", choices=("insert", "upsert"), required=True)
     connection = importer.add_mutually_exclusive_group(required=True)
@@ -143,7 +147,7 @@ def load_transfer(path: Path) -> TransferFile:
                     raise ServiceTransferError("JSONL header must be the first record")
                 if record.get("format") != TRANSFER_FORMAT:
                     raise ServiceTransferError("unsupported dbtalk JSONL format")
-                if record.get("source") not in ("sqlite", "mysql"):
+                if record.get("source") not in ("sqlite", "mysql", "postgresql"):
                     raise ServiceTransferError("JSONL header has an invalid source")
                 header = record
             elif kind == "table":

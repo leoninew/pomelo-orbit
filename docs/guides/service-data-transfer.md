@@ -1,7 +1,7 @@
 # Orbit 服务导出导入
 
 Orbit 的服务迁移只处理一个 Service 的部署闭包，不承担通用数据库传输。
-底层 SQLite/MySQL 连接、JSONL 解析、日期时间转换、主键冲突策略和事务由已安装的
+底层 SQLite/MySQL/PostgreSQL 连接、JSONL 解析、日期时间转换、主键冲突策略和事务由已安装的
 dbtalk CLI 提供。Orbit 与 dbtalk 通过根级 `dbtalk export` / `dbtalk import` 命令通信，不导入 dbtalk
 Python 包。
 
@@ -21,9 +21,11 @@ uv run --project scripts python scripts/database_transfer.py export \
   --service-code <service-code> --output service.jsonl --tz UTC
 ```
 
-对于 MySQL，将 canonical DSN 放在环境变量中，并使用
-`--source mysql --dsn-env <ENV_NAME>`；环境变量值应使用
-`mysql+pymysql://user:password@host:3306/database` 形式。
+对于 MySQL 或 PostgreSQL，将 canonical DSN 放在环境变量中，并分别使用
+`--source mysql --dsn-env <ENV_NAME>` 或
+`--source postgresql --dsn-env <ENV_NAME>`；环境变量值应分别使用
+`mysql+pymysql://user:password@host:3306/database` 或
+`postgresql+psycopg://user:password@host:5432/database` 形式。
 
 导出脚本让 dbtalk 读取服务闭包所需表并生成临时 JSONL，然后按 Orbit 领域规则裁剪为
 目标服务的 Project、Application、完整 Version lineage、Version/Service components、
@@ -37,6 +39,10 @@ uv run --project scripts python scripts/database_transfer.py import \
   --target sqlite --dsn sqlite:///./data/db/pomelo-orbit.db \
   --input service.jsonl --mode upsert --tz UTC
 ```
+
+对于 PostgreSQL，使用
+`--target postgresql --dsn-env <ENV_NAME>`，其中环境变量值为
+`postgresql+psycopg://user:password@host:5432/database`。
 
 必须显式指定 `--mode`。`insert` 遇到主键、唯一键或其他约束冲突时失败；`upsert`
 按文件中声明的主键或联合主键更新已有行。目标执行正常 Orbit 迁移后已包含种子

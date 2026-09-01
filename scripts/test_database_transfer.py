@@ -313,6 +313,36 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
         )
         self.assertEqual(args.dbtalk_command, "dbtalk")
 
+    def test_cli_accepts_postgresql_source_and_target(self) -> None:
+        import_args = transfer.parse_args(
+            [
+                "import",
+                "--target",
+                "postgresql",
+                "--input",
+                "service.jsonl",
+                "--mode",
+                "upsert",
+                "--dsn-env",
+                "ORBIT_TEST_DSN",
+            ]
+        )
+        export_args = transfer.parse_args(
+            [
+                "export",
+                "--source",
+                "postgresql",
+                "--service-code",
+                "target",
+                "--output",
+                "service.jsonl",
+                "--dsn-env",
+                "ORBIT_TEST_DSN",
+            ]
+        )
+        self.assertEqual(import_args.target, "postgresql")
+        self.assertEqual(export_args.source, "postgresql")
+
     def test_connection_arguments_require_one_available_dsn_source(self) -> None:
         with self.assertRaisesRegex(transfer.ServiceTransferError, "exactly one"):
             transfer.connection_arguments(None, None)

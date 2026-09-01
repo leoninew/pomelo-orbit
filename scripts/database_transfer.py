@@ -526,7 +526,6 @@ def export_service(args: argparse.Namespace) -> Path:
         run_dbtalk(
             args.dbtalk_command,
             [
-                "database",
                 "export",
                 "--source",
                 args.source,
@@ -556,7 +555,6 @@ def import_service(args: argparse.Namespace) -> str:
     run_dbtalk(
         args.dbtalk_command,
         [
-            "database",
             "import",
             "--target",
             args.target,

@@ -2,13 +2,13 @@
 
 Orbit 的服务迁移只处理一个 Service 的部署闭包，不承担通用数据库传输。
 底层 SQLite/MySQL 连接、JSONL 解析、日期时间转换、主键冲突策略和事务由已安装的
-dbtalk CLI 提供。Orbit 与 dbtalk 通过 `dbtalk database` 子命令通信，不导入 dbtalk
+dbtalk CLI 提供。Orbit 与 dbtalk 通过根级 `dbtalk export` / `dbtalk import` 命令通信，不导入 dbtalk
 Python 包。
 
 ## 前置条件
 
 1. 在本机安装 uv：https://docs.astral.sh/uv/
-2. 在本机安装 dbtalk，并确认 `dbtalk database --help` 可用。
+2. 在本机安装 dbtalk，并确认 `dbtalk export --help` 与 `dbtalk import --help` 可用。
 3. 目标 Orbit 数据库先执行当前版本的迁移初始化。服务文件不包含 schema、索引、
    触发器、函数、存储过程或权限。
 4. 数据库连接使用 dbtalk 的 canonical DSN；优先将 DSN 放在环境变量中，只把变量名传给脚本。

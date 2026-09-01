@@ -11,7 +11,7 @@ migration tool or a remote filesystem backup.
 
 ## Preconditions
 
-- Install dbtalk so `dbtalk database export` and `dbtalk database import` are
+- Install dbtalk so `dbtalk export` and `dbtalk import` are
   available on `PATH`.
 - Install uv so the Orbit scripts run with the locked `scripts/` environment.
 - Initialize the target Orbit schema with the normal Orbit migration command
@@ -38,7 +38,7 @@ dbtalk export is removed automatically.
 
 ## Export File Names
 
-Direct `dbtalk database export` accepts either an output file or an existing
+Direct `dbtalk export` accepts either an output file or an existing
 directory. When `--output` is omitted, dbtalk writes
 `data/<source>-<timestamp>.jsonl`.
 

@@ -116,7 +116,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		Authenticator:     security.New(logger, authService),
 		AuthService:       authService,
 		RoleService:       rolesvc.New(stores.role),
-		UserService:       usersvc.New(stores.user, stores.role),
+		UserService:       usersvc.New(stores.user, stores.role, stores.project),
 		ProjectService:    projectsvc.New(stores.project, stores.user),
 		SettingsService:   settingssvc.New(cfg, envfile.NewStore(cfg.EnvFilePath)),
 		CredentialService: credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey),

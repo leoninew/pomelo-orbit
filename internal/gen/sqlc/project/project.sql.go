@@ -275,17 +275,17 @@ ORDER BY u.username
 `
 
 type ProjectMembersRow struct {
-	ID              string         `db:"id"`
-	Username        string         `db:"username"`
-	PasswordHash    string         `db:"password_hash"`
-	Status          string         `db:"status"`
-	OauthProvider   string         `db:"oauth_provider"`
-	OauthProviderID string         `db:"oauth_provider_id"`
-	Email           sql.NullString `db:"email"`
-	AuthSource      string         `db:"auth_source"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
-	LastLoginAt     sql.NullTime   `db:"last_login_at"`
+	ID              string       `db:"id"`
+	Username        string       `db:"username"`
+	PasswordHash    string       `db:"password_hash"`
+	Status          string       `db:"status"`
+	OauthProvider   string       `db:"oauth_provider"`
+	OauthProviderID string       `db:"oauth_provider_id"`
+	Email           string       `db:"email"`
+	AuthSource      string       `db:"auth_source"`
+	CreatedAt       time.Time    `db:"created_at"`
+	UpdatedAt       time.Time    `db:"updated_at"`
+	LastLoginAt     sql.NullTime `db:"last_login_at"`
 }
 
 func (q *Queries) ProjectMembers(ctx context.Context, projectID string) ([]ProjectMembersRow, error) {
@@ -335,6 +335,16 @@ type RemoveProjectMemberParams struct {
 
 func (q *Queries) RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error {
 	_, err := q.db.ExecContext(ctx, removeProjectMember, arg.ProjectID, arg.UserID)
+	return err
+}
+
+const removeUserFromAllProjects = `-- name: RemoveUserFromAllProjects :exec
+DELETE FROM project_member
+WHERE user_id = ?
+`
+
+func (q *Queries) RemoveUserFromAllProjects(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, removeUserFromAllProjects, userID)
 	return err
 }
 

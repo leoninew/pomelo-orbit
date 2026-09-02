@@ -185,7 +185,7 @@ func (r Repository) ProjectMembers(ctx context.Context, projectId string) ([]mod
 			Status:          row.Status,
 			OAuthProvider:   row.OauthProvider,
 			OAuthProviderId: row.OauthProviderID,
-			Email:           dbmodel.StringPtr(row.Email),
+			Email:           row.Email,
 			AuthSource:      row.AuthSource,
 			CreatedAt:       row.CreatedAt,
 			UpdatedAt:       row.UpdatedAt,
@@ -220,6 +220,13 @@ func (r Repository) RemoveProjectMember(ctx context.Context, projectId string, u
 	})
 	if err != nil {
 		return fmt.Errorf("remove project member %s/%s: %w", projectId, userId, err)
+	}
+	return nil
+}
+
+func (r Repository) RemoveUserFromAllProjects(ctx context.Context, userId string) error {
+	if err := r.q(ctx).RemoveUserFromAllProjects(ctx, userId); err != nil {
+		return fmt.Errorf("remove user %s from all projects: %w", userId, err)
 	}
 	return nil
 }

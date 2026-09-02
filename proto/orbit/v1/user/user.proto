@@ -13,7 +13,7 @@ message UserRoleResp {
 message UserListResp {
   string id = 1;
   string username = 2;
-  optional string email = 3;
+  string email = 3;
   string auth_source = 4;
   string created_at = 5;
   optional string last_login_at = 6;
@@ -25,7 +25,7 @@ message UserListResp {
 message UserResp {
   string id = 1;
   string username = 2;
-  optional string email = 3;
+  string email = 3;
   string auth_source = 4;
   string created_at = 5;
   optional string last_login_at = 6;
@@ -39,13 +39,14 @@ message UserResp {
 message UserCreateReq {
   string username = 1;
   string password = 2;
-  optional string email = 3;
+  string email = 3;
 }
 
 message UserUpdateReq {
   optional string username = 1;
   optional string password = 2;
   optional string status = 3;
+  optional string email = 4;
 }
 
 message UserRoleUpdateReq {

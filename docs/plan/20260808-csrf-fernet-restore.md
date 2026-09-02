@@ -37,7 +37,7 @@ Review status: Accepted
    - 增加字段 `secretKey string`；
    - `New(..., secretKey string)` 注入密钥（bootstrap / 测试全部改签名）；
    - `NewCSRFToken()` 调用 `csrf.Issue(s.secretKey)`；
-   - `Login`：在用户名密码校验**之前**调用 `csrf.Verify`；失败返回明确 validation 错误（文案建议：`请求令牌无效或已过期，请刷新页面重试` 或英文等价，与 HTTP 错误契约一致），**不得**落成凭据错误以免掩盖 CSRF 问题。
+   - `Login`：在邮箱密码校验**之前**调用 `csrf.Verify`；失败返回明确 validation 错误（文案建议：`请求令牌无效或已过期，请刷新页面重试` 或英文等价，与 HTTP 错误契约一致），**不得**落成凭据错误以免掩盖 CSRF 问题。
 3. `ValidateLoginInput` 仍要求 `csrf_token` 非空；真实校验在 `Login`（或抽出 `ValidateAndConsume` 仅校验，无服务端消费存储）。
 4. 删除 usecase 内重复的 `crypto/rand`+hex 生成逻辑；禁止保留“非空即过”路径。
 5. 错误类型：新增 `ErrInvalidCSRFToken`（`KindValidation` 或项目惯例的 400），handler 走现有 `WriteError`，不单独泄露密钥/内部解密细节。

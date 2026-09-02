@@ -131,18 +131,28 @@
           </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block" for="email">{{ t('userManagement.email') }}</label>
+          <label class="app-field-label block" for="email">
+            {{ t('userManagement.email') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
             id="email"
             v-model="form.email"
             type="email"
             class="app-input"
             :class="formErrors.email ? 'app-input-error' : ''"
-            maxlength="255"
+            maxlength="36"
+            required
             :aria-invalid="formErrors.email ? 'true' : undefined"
+            :aria-describedby="formErrors.email ? 'create-user-email-error' : undefined"
             @input="formErrors.email = ''"
           />
-          <p v-if="formErrors.email" class="app-field-error" role="alert">
+          <p
+            v-if="formErrors.email"
+            id="create-user-email-error"
+            class="app-field-error"
+            role="alert"
+          >
             {{ formErrors.email }}
           </p>
         </div>
@@ -158,7 +168,7 @@
             class="app-input"
             :class="formErrors.password ? 'app-input-error' : ''"
             minlength="6"
-            maxlength="255"
+            maxlength="36"
             required
             :aria-invalid="formErrors.password ? 'true' : undefined"
             @input="formErrors.password = ''"
@@ -201,6 +211,32 @@
           />
           <p v-if="editFormErrors.username" class="app-field-error" role="alert">
             {{ editFormErrors.username }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="edit-email">
+            {{ t('userManagement.email') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="edit-email"
+            v-model="editForm.email"
+            type="email"
+            class="app-input"
+            :class="editFormErrors.email ? 'app-input-error' : ''"
+            maxlength="255"
+            required
+            :aria-invalid="editFormErrors.email ? 'true' : undefined"
+            :aria-describedby="editFormErrors.email ? 'edit-user-email-error' : undefined"
+            @input="editFormErrors.email = ''"
+          />
+          <p
+            v-if="editFormErrors.email"
+            id="edit-user-email-error"
+            class="app-field-error"
+            role="alert"
+          >
+            {{ editFormErrors.email }}
           </p>
         </div>
         <div class="space-y-1.5">
@@ -288,7 +324,7 @@
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
-  import type { UserListResp } from '@/gen/proto/orbit/v1/user/user';
+  import type { UserListResp, UserResp } from '@/gen/proto/orbit/v1/user/user';
   import { formatTime } from '@/utils/time';
 
   const { t } = useI18n();
@@ -311,10 +347,11 @@
   const formErrors = reactive({ username: '', email: '', password: '' });
   const editForm = reactive({
     username: '',
+    email: '',
     password: '',
     status: '',
   });
-  const editFormErrors = reactive({ username: '', password: '', status: '' });
+  const editFormErrors = reactive({ username: '', email: '', password: '', status: '' });
   const createSubmitError = ref('');
   const editSubmitError = ref('');
   const confirmSubmitError = ref('');
@@ -343,8 +380,9 @@
 
   function validateCreateForm() {
     formErrors.username = form.username.trim() ? '' : t('userManagement.usernameRequired');
-    formErrors.email =
-      !form.email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+    formErrors.email = !form.email.trim()
+      ? t('userManagement.emailRequired')
+      : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
         ? ''
         : t('userManagement.emailInvalid');
     formErrors.password =
@@ -354,6 +392,11 @@
 
   function validateEditForm() {
     editFormErrors.username = editForm.username.trim() ? '' : t('userManagement.usernameRequired');
+    editFormErrors.email = !editForm.email.trim()
+      ? t('userManagement.emailRequired')
+      : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email.trim())
+        ? ''
+        : t('userManagement.emailInvalid');
     editFormErrors.password =
       !editForm.password || editForm.password.trim().length >= 6
         ? ''
@@ -361,7 +404,12 @@
     editFormErrors.status = userStatusValues.includes(editForm.status)
       ? ''
       : t('userManagement.statusRequired');
-    return !editFormErrors.username && !editFormErrors.password && !editFormErrors.status;
+    return (
+      !editFormErrors.username &&
+      !editFormErrors.email &&
+      !editFormErrors.password &&
+      !editFormErrors.status
+    );
   }
 
   function formatRoleNames(user: UserListResp) {
@@ -421,6 +469,22 @@
     users.value = users.value.map((user) => (user.id === userId ? { ...user, status } : user));
   }
 
+  function updateUserSummary(updated: UserResp) {
+    users.value = users.value.map((user) =>
+      user.id === updated.id
+        ? {
+            ...user,
+            username: updated.username,
+            email: updated.email,
+            status: updated.status,
+            auth_source: updated.auth_source,
+            updated_at: updated.updated_at,
+            role_items: updated.role_items,
+          }
+        : user
+    );
+  }
+
   async function handleSave() {
     createSubmitError.value = '';
     if (!validateCreateForm()) {
@@ -430,7 +494,7 @@
       await executeOp(async () => {
         const user = await userApi.create({
           username: form.username.trim(),
-          email: form.email.trim() || undefined,
+          email: form.email.trim(),
           password: form.password.trim(),
         });
         toast.success(t('userManagement.created'));
@@ -445,9 +509,10 @@
   function openEditDialog(user: UserListResp) {
     editingUser.value = user;
     editForm.username = user.username;
+    editForm.email = user.email;
     editForm.password = '';
     editForm.status = user.status;
-    Object.assign(editFormErrors, { username: '', password: '', status: '' });
+    Object.assign(editFormErrors, { username: '', email: '', password: '', status: '' });
     editSubmitError.value = '';
     isEditDialogOpen.value = true;
   }
@@ -468,12 +533,13 @@
     }
     try {
       await executeOp(async () => {
-        await userApi.update(user.id, {
+        const updated = await userApi.update(user.id, {
           username: editForm.username.trim(),
+          email: editForm.email.trim(),
           password: editForm.password.trim() || undefined,
           status: editForm.status,
         });
-        updateUserStatus(user.id, editForm.status);
+        updateUserSummary(updated);
         if (user.id === authStore.user?.id) {
           await authStore.fetchUser();
         }

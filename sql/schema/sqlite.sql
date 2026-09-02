@@ -63,24 +63,21 @@ CREATE TABLE IF NOT EXISTS user (
     last_login_at DATETIME,
     oauth_provider TEXT NOT NULL DEFAULT '',
     oauth_provider_id TEXT NOT NULL DEFAULT '',
-    email TEXT DEFAULT NULL,
+    email TEXT NOT NULL,
     auth_source TEXT NOT NULL DEFAULT 'password',
-    status TEXT NOT NULL DEFAULT 'enabled' CHECK (status IN ('enabled', 'disabled'))
+    status TEXT NOT NULL DEFAULT 'enabled'
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_email ON user(email);
 CREATE INDEX IF NOT EXISTS idx_user_status ON user(status);
 CREATE INDEX IF NOT EXISTS idx_user_oauth_account ON user(oauth_provider, oauth_provider_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_user_email ON user(email) WHERE email IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uq_user_oauth_account ON user(oauth_provider, oauth_provider_id)
-WHERE oauth_provider != '' AND oauth_provider_id != '';
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_email ON user(email);
 
 CREATE TABLE IF NOT EXISTS user_role (
     user_id TEXT NOT NULL,
     role_id TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, role_id),
-    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE CASCADE
 );
 
@@ -94,8 +91,7 @@ CREATE TABLE IF NOT EXISTS login_history (
     ip_address TEXT,
     user_agent TEXT,
     login_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    success INTEGER NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+    success INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history(user_id);
@@ -117,8 +113,7 @@ CREATE TABLE IF NOT EXISTS project_member (
     user_id TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (project_id, user_id),
-    FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+    FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_project_member_user_id ON project_member(user_id);
@@ -697,8 +692,7 @@ CREATE TABLE IF NOT EXISTS deployment_dialogue_conversation (
     title TEXT NOT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by_user_id) REFERENCES user(id) ON DELETE RESTRICT
+    FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS deployment_dialogue_message (

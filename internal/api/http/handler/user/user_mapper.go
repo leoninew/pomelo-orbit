@@ -13,7 +13,7 @@ func userCreateInput(req *userv1.UserCreateReq) userdto.CreateInput {
 }
 
 func userUpdateInput(req *userv1.UserUpdateReq) userdto.UpdateInput {
-	return userdto.UpdateInput{Username: req.Username, Password: req.Password, Status: req.Status}
+	return userdto.UpdateInput{Username: req.Username, Password: req.Password, Status: req.Status, Email: req.Email}
 }
 
 func actor(current security.CurrentUserContext) userdto.Actor {

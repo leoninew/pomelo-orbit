@@ -20,7 +20,7 @@ export interface ProjectResp {
 export interface ProjectMemberResp {
   id: string;
   username: string;
-  email?: string | undefined;
+  email: string;
   status: string;
   auth_source: string;
   last_login_at?: string | undefined;

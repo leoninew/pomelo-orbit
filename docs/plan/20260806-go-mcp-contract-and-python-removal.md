@@ -21,7 +21,7 @@ stdio 启动时从用户私有凭据存储读取 Bearer token，并用现有认�
 2. 使用可替换的浏览器启动器打开已配置的 Web `mcp-authorize` 路由，携带 callback URL 与 `state`。
 3. 未登录用户先经现有登录页认证；登录页保留原始 redirect，授权页面使用当前浏览器 Bearer token 向后端申请短时、一次性的 MCP 授权码。
 4. 授权页仅将授权码和 `state` 重定向至经过 loopback 校验的 callback。stdio 进程以授权码调用专用交换接口取得 Bearer token，写入用户配置目录中的私有凭据文件，然后启动 MCP server。
-5. token 失效、回调超时、state 不匹配、授权码重放或浏览器无法启动均返回明确错误并停止启动；不读取浏览器 localStorage、不要求用户复制 token、不回退到 Python 用户名/密码登录。
+5. token 失效、回调超时、state 不匹配、授权码重放或浏览器无法启动均返回明确错误并停止启动；不读取浏览器 localStorage、不要求用户复制 token、不回退到 Python 邮箱/密码登录。
 
 浏览器授权码只处理认证。直接 MCP tool 调用继续由已认证 actor 的 Go Core 处理，保持当前 application-usecase 边界。
 

@@ -34,7 +34,7 @@ export interface TokenResp {
 export interface UserInfoResp {
   id: string;
   username: string;
-  email?: string | undefined;
+  email: string;
   auth_source: string;
   created_at: string;
   last_login_at?: string | undefined;
@@ -47,7 +47,7 @@ export interface CSRFTokenResp {
 }
 
 export interface LoginReq {
-  username: string;
+  email: string;
   password: string;
   csrf_token: string;
   turnstile_token: string;

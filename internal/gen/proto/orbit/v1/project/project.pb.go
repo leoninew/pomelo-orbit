@@ -109,7 +109,7 @@ type ProjectMemberResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Email         *string                `protobuf:"bytes,3,opt,name=email,proto3,oneof" json:"email,omitempty"`
+	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
 	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
 	AuthSource    string                 `protobuf:"bytes,5,opt,name=auth_source,json=authSource,proto3" json:"auth_source,omitempty"`
 	LastLoginAt   *string                `protobuf:"bytes,6,opt,name=last_login_at,json=lastLoginAt,proto3,oneof" json:"last_login_at,omitempty"`
@@ -162,8 +162,8 @@ func (x *ProjectMemberResp) GetUsername() string {
 }
 
 func (x *ProjectMemberResp) GetEmail() string {
-	if x != nil && x.Email != nil {
-		return *x.Email
+	if x != nil {
+		return x.Email
 	}
 	return ""
 }
@@ -422,16 +422,15 @@ const file_orbit_v1_project_project_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x06 \x01(\tR\tupdatedAt\"\xd8\x01\n" +
+	"updated_at\x18\x06 \x01(\tR\tupdatedAt\"\xc9\x01\n" +
 	"\x11ProjectMemberResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\x12\x19\n" +
-	"\x05email\x18\x03 \x01(\tH\x00R\x05email\x88\x01\x01\x12\x16\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\x12\x16\n" +
 	"\x06status\x18\x04 \x01(\tR\x06status\x12\x1f\n" +
 	"\vauth_source\x18\x05 \x01(\tR\n" +
 	"authSource\x12'\n" +
-	"\rlast_login_at\x18\x06 \x01(\tH\x01R\vlastLoginAt\x88\x01\x01B\b\n" +
-	"\x06_emailB\x10\n" +
+	"\rlast_login_at\x18\x06 \x01(\tH\x00R\vlastLoginAt\x88\x01\x01B\x10\n" +
 	"\x0e_last_login_at\"F\n" +
 	"\x0fProjectListResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.project.ProjectRespR\x05items\"R\n" +

@@ -62,6 +62,10 @@ func (s fakeAuthStore) DeleteUser(context.Context, string) error {
 	panic("unexpected call")
 }
 
+func (s fakeAuthStore) DeleteUserRoles(context.Context, string) error {
+	panic("unexpected call")
+}
+
 func (s fakeAuthStore) MarkUserLoggedIn(context.Context, string) error {
 	panic("unexpected call")
 }

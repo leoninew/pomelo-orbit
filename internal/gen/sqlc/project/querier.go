@@ -22,6 +22,7 @@ type Querier interface {
 	ProjectByID(ctx context.Context, id string) (ProjectByIDRow, error)
 	ProjectMembers(ctx context.Context, projectID string) ([]ProjectMembersRow, error)
 	RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error
+	RemoveUserFromAllProjects(ctx context.Context, userID string) error
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) error
 }
 

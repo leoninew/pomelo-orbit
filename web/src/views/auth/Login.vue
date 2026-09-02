@@ -11,18 +11,28 @@
 
         <form class="space-y-4" @submit.prevent="handleLogin">
           <div class="space-y-1.5">
-            <label for="username" class="app-field-label block">{{ t('login.username') }}</label>
+            <label for="email" class="app-field-label block">{{ t('login.email') }}</label>
             <input
-              id="username"
-              v-model="form.username"
-              type="text"
+              id="email"
+              v-model="form.email"
+              type="email"
+              autocomplete="username"
               class="app-input"
-              :class="errors.username ? 'app-input-error' : ''"
-              :placeholder="t('login.usernamePlaceholder')"
+              :class="errors.email ? 'app-input-error' : ''"
+              :placeholder="t('login.emailPlaceholder')"
               :disabled="sessionExpired"
-              @input="errors.username = ''"
+              :aria-invalid="errors.email ? 'true' : undefined"
+              :aria-describedby="errors.email ? 'login-email-error' : undefined"
+              @input="errors.email = ''"
             />
-            <p v-if="errors.username" class="app-field-error text-xs">{{ errors.username }}</p>
+            <p
+              v-if="errors.email"
+              id="login-email-error"
+              class="app-field-error text-xs"
+              role="alert"
+            >
+              {{ errors.email }}
+            </p>
           </div>
 
           <div class="space-y-1.5">
@@ -32,10 +42,14 @@
                 id="password"
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
+                autocomplete="current-password"
                 class="app-input pr-10"
+                maxlength="36"
                 :class="errors.password ? 'app-input-error' : ''"
                 :placeholder="t('login.passwordPlaceholder')"
                 :disabled="sessionExpired"
+                :aria-invalid="errors.password ? 'true' : undefined"
+                :aria-describedby="errors.password ? 'login-password-error' : undefined"
                 @input="errors.password = ''"
                 @keydown.enter="handleLogin"
               />
@@ -49,7 +63,14 @@
                 <EyeOff v-else class="size-4" />
               </button>
             </div>
-            <p v-if="errors.password" class="app-field-error text-xs">{{ errors.password }}</p>
+            <p
+              v-if="errors.password"
+              id="login-password-error"
+              class="app-field-error text-xs"
+              role="alert"
+            >
+              {{ errors.password }}
+            </p>
           </div>
 
           <div v-if="turnstileEnabled" class="space-y-1.5">
@@ -142,12 +163,12 @@
   const toast = useToast();
 
   const form = reactive({
-    username: '',
+    email: '',
     password: '',
   });
 
   const errors = reactive({
-    username: '',
+    email: '',
     password: '',
     verification: '',
   });
@@ -298,11 +319,11 @@
   }
 
   function validate() {
-    errors.username = form.username.trim() ? '' : t('login.usernameRequired');
+    errors.email = form.email.trim() ? '' : t('login.emailRequired');
     errors.password = form.password.trim() ? '' : t('login.passwordRequired');
     errors.verification =
       turnstileEnabled.value && !turnstileToken.value ? t('login.verificationRequired') : '';
-    return !errors.username && !errors.password && !errors.verification;
+    return !errors.email && !errors.password && !errors.verification;
   }
 
   async function handleLogin() {
@@ -320,7 +341,12 @@
 
     loading.value = true;
     try {
-      await authStore.login(form.username, form.password, csrfToken.value, turnstileToken.value);
+      await authStore.login(
+        form.email.trim(),
+        form.password,
+        csrfToken.value,
+        turnstileToken.value
+      );
       toast.success(t('login.loginSuccess'));
       await router.push(redirectTarget());
     } catch (err: unknown) {

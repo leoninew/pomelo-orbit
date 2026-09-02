@@ -9,8 +9,7 @@ CREATE TABLE IF NOT EXISTS login_history (
     ip_address TEXT,
     user_agent TEXT,
     login_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    success INTEGER NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+    success INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history(user_id);

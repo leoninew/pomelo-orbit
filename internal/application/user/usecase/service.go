@@ -3,6 +3,7 @@ package usersvc
 import (
 	"context"
 	"errors"
+	"net/mail"
 	"slices"
 	"strings"
 	"time"
@@ -18,12 +19,13 @@ import (
 )
 
 type Service struct {
-	repo  repository.UserStore
-	roles repository.RoleStore
+	repo     repository.UserStore
+	roles    repository.RoleStore
+	projects repository.ProjectStore
 }
 
-func New(repo repository.UserStore, roles repository.RoleStore) Service {
-	return Service{repo: repo, roles: roles}
+func New(repo repository.UserStore, roles repository.RoleStore, projects repository.ProjectStore) Service {
+	return Service{repo: repo, roles: roles, projects: projects}
 }
 
 func (s Service) List(ctx context.Context, page int, perPage int, search string) (repository.Page[userdto.ListItem], error) {
@@ -72,8 +74,8 @@ func (s Service) Detail(ctx context.Context, userId string) (userdto.Detail, err
 
 func (s Service) Create(ctx context.Context, input userdto.CreateInput) (model.User, error) {
 	username := strings.TrimSpace(input.Username)
-	email := normalizeEmail(input.Email)
-	if username == "" || len(username) > 50 || len(input.Password) < 6 || len(input.Password) > 255 || (email != nil && len(*email) > 255) {
+	email, err := normalizeEmail(input.Email)
+	if err != nil || username == "" || len(username) > 50 || len(input.Password) < 6 || len(input.Password) > 36 {
 		return model.User{}, ErrInvalidUserFields
 	}
 	if _, err := s.repo.UserByUsername(ctx, username); err == nil {
@@ -81,12 +83,10 @@ func (s Service) Create(ctx context.Context, input userdto.CreateInput) (model.U
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return model.User{}, err
 	}
-	if email != nil {
-		if _, err := s.repo.UserByEmail(ctx, *email); err == nil {
-			return model.User{}, apperror.New(apperror.KindConflict, "Email "+*email+" already exists")
-		} else if !errors.Is(err, repository.ErrNotFound) {
-			return model.User{}, err
-		}
+	if _, err := s.repo.UserByEmail(ctx, email); err == nil {
+		return model.User{}, apperror.New(apperror.KindConflict, "Email "+email+" already exists")
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return model.User{}, err
 	}
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -187,6 +187,12 @@ func (s Service) DeleteByActor(ctx context.Context, actor userdto.Actor, userId 
 	if actor.UserId == user.Id {
 		return ErrCannotDeleteCurrentUser
 	}
+	if err := s.repo.DeleteUserRoles(ctx, user.Id); err != nil {
+		return err
+	}
+	if err := s.projects.RemoveUserFromAllProjects(ctx, user.Id); err != nil {
+		return err
+	}
 	return s.repo.DeleteUser(ctx, user.Id)
 }
 
@@ -209,7 +215,7 @@ func (s Service) update(ctx context.Context, user model.User, input userdto.Upda
 	}
 	if input.Password != nil && *input.Password != "" {
 		password := *input.Password
-		if len(password) < 6 || len(password) > 255 {
+		if len(password) < 6 || len(password) > 36 {
 			return model.User{}, ErrInvalidUserFields
 		}
 		passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -217,6 +223,22 @@ func (s Service) update(ctx context.Context, user model.User, input userdto.Upda
 			return model.User{}, err
 		}
 		user.PasswordHash = string(passwordHash)
+	}
+	if input.Email != nil {
+		email, err := normalizeEmail(*input.Email)
+		if err != nil {
+			return model.User{}, ErrInvalidUserFields
+		}
+		if email != user.Email {
+			existing, err := s.repo.UserByEmail(ctx, email)
+			if err == nil && existing.Id != user.Id {
+				return model.User{}, apperror.New(apperror.KindConflict, "Email "+email+" already exists")
+			}
+			if err != nil && !errors.Is(err, repository.ErrNotFound) {
+				return model.User{}, err
+			}
+		}
+		user.Email = email
 	}
 	if input.Status != nil {
 		status := strings.TrimSpace(*input.Status)
@@ -295,15 +317,16 @@ func emptyStrings(values []string) []string {
 	return values
 }
 
-func normalizeEmail(email *string) *string {
-	if email == nil {
-		return nil
+func normalizeEmail(value string) (string, error) {
+	email := strings.ToLower(strings.TrimSpace(value))
+	if email == "" || len(email) > 255 {
+		return "", ErrInvalidUserFields
 	}
-	trimmed := strings.TrimSpace(*email)
-	if trimmed == "" {
-		return nil
+	parsed, err := mail.ParseAddress(email)
+	if err != nil || parsed.Address != email {
+		return "", ErrInvalidUserFields
 	}
-	return &trimmed
+	return email, nil
 }
 
 var (

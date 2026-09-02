@@ -29,25 +29,25 @@ func TestLoginChangePasswordAndHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := service.Login(ctx, authdto.LoginInput{Username: "admin", Password: "admin", CSRFToken: csrfToken, IP: "127.0.0.1", UserAgent: "test"})
+	token, err := service.Login(ctx, authdto.LoginInput{Email: "ADMIN@LVH.ME", Password: "admin@lvh.me", CSRFToken: csrfToken, IP: "127.0.0.1", UserAgent: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if token == "" {
 		t.Fatal("expected login token")
 	}
-	user, err := userrepo.NewRepository(database).UserByUsername(ctx, "admin")
+	user, err := userrepo.NewRepository(database).UserByEmail(ctx, "admin@lvh.me")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := service.ChangePassword(ctx, authdto.ChangePasswordInput{User: user, OldPassword: "admin", NewPassword: "newpass1"}); err != nil {
+	if err := service.ChangePassword(ctx, authdto.ChangePasswordInput{User: user, OldPassword: "admin@lvh.me", NewPassword: "newpass1"}); err != nil {
 		t.Fatal(err)
 	}
 	csrfToken, err = service.NewCSRFToken()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Login(ctx, authdto.LoginInput{Username: "admin", Password: "newpass1", CSRFToken: csrfToken}); err != nil {
+	if _, err := service.Login(ctx, authdto.LoginInput{Email: "admin@lvh.me", Password: "newpass1", CSRFToken: csrfToken}); err != nil {
 		t.Fatal(err)
 	}
 	history, err := service.ListLoginHistory(ctx, 1, 10, "admin")
@@ -64,9 +64,22 @@ func TestLoginRejectsInvalidCSRFToken(t *testing.T) {
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 
-	_, err := service.Login(ctx, authdto.LoginInput{Username: "admin", Password: "admin", CSRFToken: "csrf"})
+	_, err := service.Login(ctx, authdto.LoginInput{Email: "admin@lvh.me", Password: "admin@lvh.me", CSRFToken: "csrf"})
 	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected invalid csrf validation error, got %v", err)
+	}
+}
+
+func TestLoginDoesNotAcceptUsername(t *testing.T) {
+	service, database := newAuthIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	csrfToken, err := service.NewCSRFToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = service.Login(context.Background(), authdto.LoginInput{Email: "admin", Password: "admin@lvh.me", CSRFToken: csrfToken})
+	if err == nil || !apperror.IsKind(err, apperror.KindUnauthorized) {
+		t.Fatalf("expected username login to be rejected, got %v", err)
 	}
 }
 
@@ -74,7 +87,7 @@ func TestChangePasswordRejectsWrongOldPassword(t *testing.T) {
 	service, database := newAuthIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
-	user, err := userrepo.NewRepository(database).UserByUsername(ctx, "admin")
+	user, err := userrepo.NewRepository(database).UserByEmail(ctx, "admin@lvh.me")
 	if err != nil {
 		t.Fatal(err)
 	}

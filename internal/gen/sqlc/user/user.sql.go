@@ -37,17 +37,17 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateUserParams struct {
-	ID              string         `db:"id"`
-	Username        string         `db:"username"`
-	PasswordHash    string         `db:"password_hash"`
-	Status          string         `db:"status"`
-	OauthProvider   string         `db:"oauth_provider"`
-	OauthProviderID string         `db:"oauth_provider_id"`
-	Email           sql.NullString `db:"email"`
-	AuthSource      string         `db:"auth_source"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
-	LastLoginAt     sql.NullTime   `db:"last_login_at"`
+	ID              string       `db:"id"`
+	Username        string       `db:"username"`
+	PasswordHash    string       `db:"password_hash"`
+	Status          string       `db:"status"`
+	OauthProvider   string       `db:"oauth_provider"`
+	OauthProviderID string       `db:"oauth_provider_id"`
+	Email           string       `db:"email"`
+	AuthSource      string       `db:"auth_source"`
+	CreatedAt       time.Time    `db:"created_at"`
+	UpdatedAt       time.Time    `db:"updated_at"`
+	LastLoginAt     sql.NullTime `db:"last_login_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
@@ -121,17 +121,17 @@ type ListUsersParams struct {
 }
 
 type ListUsersRow struct {
-	ID              string         `db:"id"`
-	Username        string         `db:"username"`
-	PasswordHash    string         `db:"password_hash"`
-	Status          string         `db:"status"`
-	OauthProvider   string         `db:"oauth_provider"`
-	OauthProviderID string         `db:"oauth_provider_id"`
-	Email           sql.NullString `db:"email"`
-	AuthSource      string         `db:"auth_source"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
-	LastLoginAt     sql.NullTime   `db:"last_login_at"`
+	ID              string       `db:"id"`
+	Username        string       `db:"username"`
+	PasswordHash    string       `db:"password_hash"`
+	Status          string       `db:"status"`
+	OauthProvider   string       `db:"oauth_provider"`
+	OauthProviderID string       `db:"oauth_provider_id"`
+	Email           string       `db:"email"`
+	AuthSource      string       `db:"auth_source"`
+	CreatedAt       time.Time    `db:"created_at"`
+	UpdatedAt       time.Time    `db:"updated_at"`
+	LastLoginAt     sql.NullTime `db:"last_login_at"`
 }
 
 func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error) {
@@ -233,15 +233,15 @@ WHERE id = ?
 `
 
 type UpdateUserParams struct {
-	Username        string         `db:"username"`
-	PasswordHash    string         `db:"password_hash"`
-	Status          string         `db:"status"`
-	Email           sql.NullString `db:"email"`
-	AuthSource      string         `db:"auth_source"`
-	OauthProvider   string         `db:"oauth_provider"`
-	OauthProviderID string         `db:"oauth_provider_id"`
-	UpdatedAt       time.Time      `db:"updated_at"`
-	ID              string         `db:"id"`
+	Username        string    `db:"username"`
+	PasswordHash    string    `db:"password_hash"`
+	Status          string    `db:"status"`
+	Email           string    `db:"email"`
+	AuthSource      string    `db:"auth_source"`
+	OauthProvider   string    `db:"oauth_provider"`
+	OauthProviderID string    `db:"oauth_provider_id"`
+	UpdatedAt       time.Time `db:"updated_at"`
+	ID              string    `db:"id"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
@@ -267,20 +267,20 @@ WHERE email = ?
 `
 
 type UserByEmailRow struct {
-	ID              string         `db:"id"`
-	Username        string         `db:"username"`
-	PasswordHash    string         `db:"password_hash"`
-	Status          string         `db:"status"`
-	OauthProvider   string         `db:"oauth_provider"`
-	OauthProviderID string         `db:"oauth_provider_id"`
-	Email           sql.NullString `db:"email"`
-	AuthSource      string         `db:"auth_source"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
-	LastLoginAt     sql.NullTime   `db:"last_login_at"`
+	ID              string       `db:"id"`
+	Username        string       `db:"username"`
+	PasswordHash    string       `db:"password_hash"`
+	Status          string       `db:"status"`
+	OauthProvider   string       `db:"oauth_provider"`
+	OauthProviderID string       `db:"oauth_provider_id"`
+	Email           string       `db:"email"`
+	AuthSource      string       `db:"auth_source"`
+	CreatedAt       time.Time    `db:"created_at"`
+	UpdatedAt       time.Time    `db:"updated_at"`
+	LastLoginAt     sql.NullTime `db:"last_login_at"`
 }
 
-func (q *Queries) UserByEmail(ctx context.Context, email sql.NullString) (UserByEmailRow, error) {
+func (q *Queries) UserByEmail(ctx context.Context, email string) (UserByEmailRow, error) {
 	row := q.db.QueryRowContext(ctx, userByEmail, email)
 	var i UserByEmailRow
 	err := row.Scan(
@@ -307,17 +307,17 @@ WHERE id = ?
 `
 
 type UserByIDRow struct {
-	ID              string         `db:"id"`
-	Username        string         `db:"username"`
-	PasswordHash    string         `db:"password_hash"`
-	Status          string         `db:"status"`
-	OauthProvider   string         `db:"oauth_provider"`
-	OauthProviderID string         `db:"oauth_provider_id"`
-	Email           sql.NullString `db:"email"`
-	AuthSource      string         `db:"auth_source"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
-	LastLoginAt     sql.NullTime   `db:"last_login_at"`
+	ID              string       `db:"id"`
+	Username        string       `db:"username"`
+	PasswordHash    string       `db:"password_hash"`
+	Status          string       `db:"status"`
+	OauthProvider   string       `db:"oauth_provider"`
+	OauthProviderID string       `db:"oauth_provider_id"`
+	Email           string       `db:"email"`
+	AuthSource      string       `db:"auth_source"`
+	CreatedAt       time.Time    `db:"created_at"`
+	UpdatedAt       time.Time    `db:"updated_at"`
+	LastLoginAt     sql.NullTime `db:"last_login_at"`
 }
 
 func (q *Queries) UserByID(ctx context.Context, id string) (UserByIDRow, error) {
@@ -347,17 +347,17 @@ WHERE username = ?
 `
 
 type UserByUsernameRow struct {
-	ID              string         `db:"id"`
-	Username        string         `db:"username"`
-	PasswordHash    string         `db:"password_hash"`
-	Status          string         `db:"status"`
-	OauthProvider   string         `db:"oauth_provider"`
-	OauthProviderID string         `db:"oauth_provider_id"`
-	Email           sql.NullString `db:"email"`
-	AuthSource      string         `db:"auth_source"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
-	LastLoginAt     sql.NullTime   `db:"last_login_at"`
+	ID              string       `db:"id"`
+	Username        string       `db:"username"`
+	PasswordHash    string       `db:"password_hash"`
+	Status          string       `db:"status"`
+	OauthProvider   string       `db:"oauth_provider"`
+	OauthProviderID string       `db:"oauth_provider_id"`
+	Email           string       `db:"email"`
+	AuthSource      string       `db:"auth_source"`
+	CreatedAt       time.Time    `db:"created_at"`
+	UpdatedAt       time.Time    `db:"updated_at"`
+	LastLoginAt     sql.NullTime `db:"last_login_at"`
 }
 
 func (q *Queries) UserByUsername(ctx context.Context, username string) (UserByUsernameRow, error) {

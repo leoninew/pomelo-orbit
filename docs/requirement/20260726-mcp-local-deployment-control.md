@@ -42,7 +42,7 @@ Pomelo Orbit 当前将 Application、Version、Component、Expose、Service 与 
 3. 用户要求排障时，Agent 读取 `docker compose logs`、容器 inspect 和 Orbit 部署日志，说明“领域状态显示运行但容器已退出”等差异。
 4. 用户要求验证产品行为时，Agent 通过 Orbit 发起创建、发布、部署、停止和重启；Docker / Docker Compose 只用于读取日志和运行时实态，并回查产品状态。
 5. 多用户或长期使用时，MCP 以配置用户的 JWT 调用 Orbit API；Docker Socket/CLI 的本机权限不自动扩大 Orbit 用户对其他应用或环境的操作范围。
-6. MCP 执行 Orbit 操作时，优先使用本地缓存且未过期的 JWT；JWT 缺失或已过期时，使用环境配置中的用户名和密码登录并更新缓存。
+6. MCP 执行 Orbit 操作时，优先使用本地缓存且未过期的 JWT；JWT 缺失或已过期时，使用环境配置中的邮箱和密码登录并更新缓存。
 
 ## Acceptance
 
@@ -52,15 +52,15 @@ Pomelo Orbit 当前将 Application、Version、Component、Expose、Service 与 
 4. MCP 至少提供一个部署验证工具，报告以下各层的匹配或差异：Version / Compose 预期、Docker 容器实态、Service 状态、Deployment 状态与日志。
 5. 运行时查询结果可用于定位镜像拉取失败、容器退出、重启循环、端口/网络/Label 不一致等常见问题；本地部署数据不作脱敏处理，但认证凭据本身不得输出。
 6. 任何会创建、发布、部署、停止、重启或删除的工具都有明确操作语义、目标范围和审计关联；无需增加确认步骤，MCP 必须即时展示已发起的关键业务步骤及命令/请求摘要。只读诊断工具不触发写操作。
-7. MCP 配置由 Dynaconf 从本地环境文件和进程环境加载；用户名、密码和 JWT 不提交到仓库、不写入日志或 MCP 工具响应。
-8. 每次 Orbit 操作前检查已存 JWT 的有效期；有效时直接作为 Bearer Token 使用，缺失或过期时使用配置用户名密码登录并存储新的 JWT。
+7. MCP 配置由 Dynaconf 从本地环境文件和进程环境加载；邮箱、密码和 JWT 不提交到仓库、不写入日志或 MCP 工具响应。
+8. 每次 Orbit 操作前检查已存 JWT 的有效期；有效时直接作为 Bearer Token 使用，缺失或过期时使用配置邮箱密码登录并存储新的 JWT。
 9. 单元测试覆盖 Orbit HTTP 客户端、JWT 有效期判断、登录与缓存刷新、Docker/Compose 命令构造、目标范围解析和预期/实际对账逻辑；Docker 集成测试在显式标记的本机环境运行。
 
 ## Authentication baseline
 
-当前认证基线为用户名密码登录后签发 Bearer JWT，JWT 固定 24 小时有效期，`logout` 不会撤销已发 JWT。MCP 不新增 Token/PAT，而是通过 Dynaconf 从本地环境文件和进程环境读取 Orbit 地址、用户名、密码与缓存 JWT。
+当前认证基线为邮箱密码登录后签发 Bearer JWT，JWT 固定 24 小时有效期，`logout` 不会撤销已发 JWT。MCP 不新增 Token/PAT，而是通过 Dynaconf 从本地环境文件和进程环境读取 Orbit 地址、邮箱、密码与缓存 JWT。
 
-每次需要调用 Orbit 时，MCP 先检查缓存 JWT 是否存在且 `exp` 未过期。满足条件时直接使用该 JWT；否则使用配置中的用户名密码调用登录接口，并将新 JWT 回写到本地配置缓存。现有 Project 成员资格检查继续决定该用户可以操作的 Application、Environment 和 Deployment。
+每次需要调用 Orbit 时，MCP 先检查缓存 JWT 是否存在且 `exp` 未过期。满足条件时直接使用该 JWT；否则使用配置中的邮箱密码调用登录接口，并将新 JWT 回写到本地配置缓存。现有 Project 成员资格检查继续决定该用户可以操作的 Application、Environment 和 Deployment。
 
 ## Open questions
 
@@ -76,7 +76,7 @@ Pomelo Orbit 当前将 Application、Version、Component、Expose、Service 与 
 6. 首版仅支持已有 Environment 中的 `kind=standard` 应用；Gateway、public TCP、证书和高级挂载延后。
 7. MCP 与 Docker CLI、Pomelo Orbit 数据目录使用同一台本机/WSL Docker context；远程 Docker 另立需求。
 8. 首版不增加确认步骤；所有工具返回必须展示关键业务步骤与实际命令/请求摘要，认证凭据除外。
-9. MCP 不实现 Token/PAT 管理，认证配置使用 Dynaconf + 本地环境文件；操作前复用未过期 JWT，否则使用配置用户名密码登录并更新 JWT 缓存。
+9. MCP 不实现 Token/PAT 管理，认证配置使用 Dynaconf + 本地环境文件；操作前复用未过期 JWT，否则使用配置邮箱密码登录并更新 JWT 缓存。
 10. MCP 优先复用既有 Orbit HTTP API；现有接口无法表达已确认能力时，修正或补充产品实现，不以数据库直连或 Docker 生命周期写操作绕过产品模型。
 11. Version 的状态仅是产品标记，MCP 不以 Version 是否 published 限制创建、编辑、发布、预览、部署、停止、重启或删除等操作。
 12. 部署工具即时返回已发起操作及可获得的命令/请求摘要，并提供基于既有 Deployment 状态 API 的观察/等待能力；不等待 worker 日志才返回。
@@ -92,7 +92,7 @@ Pomelo Orbit 当前将 Application、Version、Component、Expose、Service 与 
 - 未来若开放直接 Compose 写操作，可能使 Service / Deployment 数据与容器现实漂移；这是后续功能必须检测的产品风险，不能被隐藏。
 - 仅以 `docker compose up -d` 进程退出码判断成功不足以证明容器健康；验证工具需显式呈现 readiness / health 的缺口。
 - 现有 HTTP API 可能未覆盖 Version 编辑、预览、运行时路径解析或登录会话管理的全部契约，后续 Spec 需要列出缺口并决定后端改动。
-- 本地环境文件包含用户名密码和 JWT，必须纳入 `.gitignore`，限制文件权限，且不得在日志、异常或工具响应中输出。
+- 本地环境文件包含邮箱密码和 JWT，必须纳入 `.gitignore`，限制文件权限，且不得在日志、异常或工具响应中输出。
 - JWT 缓存只按到期时间判断有效；服务端若提前拒绝 JWT，MCP 需要清除缓存并重新登录后再报告失败。
 - 本地部署数据不脱敏会使 Component 环境变量、Compose 配置和容器日志可见；这是用户为本地验证场景明确接受的边界，不得扩展到远程或多租户场景。
 
@@ -102,7 +102,7 @@ Pomelo Orbit 当前将 Application、Version、Component、Expose、Service 与 
 - 2026-07-26：用户指定新建 `mcp/` 目录，并使用 uv + Python 实现。
 - 2026-07-26：用户明确本地 Docker / Docker Compose 操作（特别是日志）属于允许且有价值的能力；MCP 的主要价值是评估 Pomelo Orbit 产品和功能设计的合理性、正确性。
 - 2026-07-26：用户确认首版生命周期操作全部通过 Orbit，Docker / Docker Compose 用于日志和排查；首版仅 standard + 既有 Environment，运行在同一本机/WSL Docker context；不增加确认步骤，但要展示关键操作和命令。
-- 2026-07-26：用户指定 MCP 使用 Dynaconf + 环境文件管理配置；不投入 MCP Token。每次操作优先复用未过期 JWT，缺失或过期时使用配置用户名密码登录并缓存新 JWT。
+- 2026-07-26：用户指定 MCP 使用 Dynaconf + 环境文件管理配置；不投入 MCP Token。每次操作优先复用未过期 JWT，缺失或过期时使用配置邮箱密码登录并缓存新 JWT。
 - 2026-07-26：用户确认开发环境 Turnstile 关闭；Requirement 进入 Accepted，开始 Spec。
 - 2026-07-26：用户要求回到 Requirement 明确仍会影响产品范围和验收的事项；Requirement 恢复为 Draft，Spec 暂不推进。
 - 2026-07-26：将创建工具粒度、Version 生命周期、异步等待、验证深度、秘密输出、异步命令展示和破坏性能力列为待确认需求决策。

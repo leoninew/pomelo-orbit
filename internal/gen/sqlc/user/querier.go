@@ -6,7 +6,6 @@ package user
 
 import (
 	"context"
-	"database/sql"
 )
 
 type Querier interface {
@@ -20,7 +19,7 @@ type Querier interface {
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error
 	TouchUserUpdatedAt(ctx context.Context, arg TouchUserUpdatedAtParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
-	UserByEmail(ctx context.Context, email sql.NullString) (UserByEmailRow, error)
+	UserByEmail(ctx context.Context, email string) (UserByEmailRow, error)
 	UserByID(ctx context.Context, id string) (UserByIDRow, error)
 	UserByUsername(ctx context.Context, username string) (UserByUsernameRow, error)
 	UserPermissions(ctx context.Context, userID string) ([]string, error)

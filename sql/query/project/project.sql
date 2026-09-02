@@ -66,3 +66,7 @@ VALUES (?, ?, ?);
 -- name: RemoveProjectMember :exec
 DELETE FROM project_member
 WHERE project_id = ? AND user_id = ?;
+
+-- name: RemoveUserFromAllProjects :exec
+DELETE FROM project_member
+WHERE user_id = ?;

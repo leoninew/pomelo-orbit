@@ -18,7 +18,7 @@ export interface UserRoleResp {
 export interface UserListResp {
   id: string;
   username: string;
-  email?: string | undefined;
+  email: string;
   auth_source: string;
   created_at: string;
   last_login_at?: string | undefined;
@@ -30,7 +30,7 @@ export interface UserListResp {
 export interface UserResp {
   id: string;
   username: string;
-  email?: string | undefined;
+  email: string;
   auth_source: string;
   created_at: string;
   last_login_at?: string | undefined;
@@ -44,13 +44,14 @@ export interface UserResp {
 export interface UserCreateReq {
   username: string;
   password: string;
-  email?: string | undefined;
+  email: string;
 }
 
 export interface UserUpdateReq {
   username?: string | undefined;
   password?: string | undefined;
   status?: string | undefined;
+  email?: string | undefined;
 }
 
 export interface UserRoleUpdateReq {

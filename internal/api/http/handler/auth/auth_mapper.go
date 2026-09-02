@@ -8,7 +8,7 @@ import (
 )
 
 func loginInput(req *authv1.LoginReq, ip string, userAgent string) authdto.LoginInput {
-	return authdto.LoginInput{Username: req.Username, Password: req.Password, CSRFToken: req.CsrfToken, IP: ip, UserAgent: userAgent}
+	return authdto.LoginInput{Email: req.Email, Password: req.Password, CSRFToken: req.CsrfToken, IP: ip, UserAgent: userAgent}
 }
 
 func changePasswordInput(user model.User, req *authv1.PasswordChangeReq) authdto.ChangePasswordInput {

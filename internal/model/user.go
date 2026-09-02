@@ -9,7 +9,7 @@ type User struct {
 	Status          string     `db:"status"`
 	OAuthProvider   string     `db:"oauth_provider"`
 	OAuthProviderId string     `db:"oauth_provider_id"`
-	Email           *string    `db:"email"`
+	Email           string     `db:"email"`
 	AuthSource      string     `db:"auth_source"`
 	CreatedAt       time.Time  `db:"created_at"`
 	UpdatedAt       time.Time  `db:"updated_at"`

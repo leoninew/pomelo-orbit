@@ -35,13 +35,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 登录
   async function login(
-    username: string,
+    email: string,
     password: string,
     csrfToken: string,
     turnstileToken?: string
   ) {
     const response = await authApi.login({
-      username,
+      email,
       password,
       csrf_token: csrfToken,
       turnstile_token: turnstileToken ?? '',

@@ -26,4 +26,5 @@ type ProjectStore interface {
 	ProjectMembers(ctx context.Context, projectId string) ([]model.User, error)
 	AddProjectMember(ctx context.Context, projectId string, userId string) error
 	RemoveProjectMember(ctx context.Context, projectId string, userId string) error
+	RemoveUserFromAllProjects(ctx context.Context, userId string) error
 }

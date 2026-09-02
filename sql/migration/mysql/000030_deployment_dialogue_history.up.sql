@@ -6,7 +6,6 @@ CREATE TABLE deployment_dialogue_conversation (
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     CONSTRAINT fk_deployment_dialogue_conversation_project FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE,
-    CONSTRAINT fk_deployment_dialogue_conversation_creator FOREIGN KEY (created_by_user_id) REFERENCES user(id) ON DELETE RESTRICT,
     INDEX idx_deployment_dialogue_conversation_project_updated (project_id, updated_at DESC, id DESC)
 );
 

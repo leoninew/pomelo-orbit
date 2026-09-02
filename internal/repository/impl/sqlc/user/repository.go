@@ -47,7 +47,7 @@ func (r Repository) UserById(ctx context.Context, id string) (model.User, error)
 }
 
 func (r Repository) UserByEmail(ctx context.Context, email string) (model.User, error) {
-	user, err := r.q(ctx).UserByEmail(ctx, sql.NullString{String: email, Valid: true})
+	user, err := r.q(ctx).UserByEmail(ctx, email)
 	if err != nil {
 		return model.User{}, fmt.Errorf("load user by email %s: %w", email, sqlcommon.TranslateError(err))
 	}
@@ -146,7 +146,7 @@ func (r Repository) CreateUser(ctx context.Context, user model.User) error {
 		Status:          user.Status,
 		OauthProvider:   user.OAuthProvider,
 		OauthProviderID: user.OAuthProviderId,
-		Email:           dbmodel.NullString(user.Email),
+		Email:           user.Email,
 		AuthSource:      user.AuthSource,
 		CreatedAt:       user.CreatedAt,
 		UpdatedAt:       user.UpdatedAt,
@@ -163,7 +163,7 @@ func (r Repository) UpdateUser(ctx context.Context, user model.User) error {
 		Username:        user.Username,
 		PasswordHash:    user.PasswordHash,
 		Status:          user.Status,
-		Email:           dbmodel.NullString(user.Email),
+		Email:           user.Email,
 		AuthSource:      user.AuthSource,
 		OauthProvider:   user.OAuthProvider,
 		OauthProviderID: user.OAuthProviderId,
@@ -219,6 +219,13 @@ func (r Repository) DeleteUser(ctx context.Context, userId string) error {
 	return nil
 }
 
+func (r Repository) DeleteUserRoles(ctx context.Context, userId string) error {
+	if err := r.q(ctx).DeleteUserRoles(ctx, userId); err != nil {
+		return fmt.Errorf("delete user roles %s: %w", userId, err)
+	}
+	return nil
+}
+
 func (r Repository) MarkUserLoggedIn(ctx context.Context, userId string) error {
 	now := time.Now().UTC()
 	err := r.q(ctx).MarkUserLoggedIn(ctx, usersqlc.MarkUserLoggedInParams{
@@ -234,7 +241,7 @@ func (r Repository) MarkUserLoggedIn(ctx context.Context, userId string) error {
 
 func userFromRow(
 	id, username, passwordHash, status, oauthProvider, oauthProviderId string,
-	email sql.NullString,
+	email string,
 	authSource string,
 	createdAt, updatedAt time.Time,
 	lastLoginAt sql.NullTime,
@@ -246,7 +253,7 @@ func userFromRow(
 		Status:          status,
 		OAuthProvider:   oauthProvider,
 		OAuthProviderId: oauthProviderId,
-		Email:           dbmodel.StringPtr(email),
+		Email:           email,
 		AuthSource:      authSource,
 		CreatedAt:       createdAt,
 		UpdatedAt:       updatedAt,

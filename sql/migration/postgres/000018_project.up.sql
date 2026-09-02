@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS project_member (
     user_id TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP),
     PRIMARY KEY (project_id, user_id),
-    FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE
+    FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_project_member_user_id ON project_member(user_id);

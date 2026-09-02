@@ -33,9 +33,7 @@ describe('resolveLoginRedirect', () => {
         router,
         '/mcp-authorize?callback=http%3A%2F%2F127.0.0.1%3A48123%2Fmcp%2Fcallback&state=state-1'
       )
-    ).toBe(
-      '/mcp-authorize?callback=http%3A%2F%2F127.0.0.1%3A48123%2Fmcp%2Fcallback&state=state-1'
-    );
+    ).toBe('/mcp-authorize?callback=http%3A%2F%2F127.0.0.1%3A48123%2Fmcp%2Fcallback&state=state-1');
   });
 
   it.each([

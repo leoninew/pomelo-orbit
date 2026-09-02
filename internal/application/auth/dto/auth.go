@@ -3,7 +3,7 @@ package dto
 import "github.com/leoninew/pomelo-orbit/internal/model"
 
 type LoginInput struct {
-	Username  string
+	Email     string
 	Password  string
 	CSRFToken string
 	IP        string

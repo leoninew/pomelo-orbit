@@ -93,7 +93,7 @@ type UserListResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Email         *string                `protobuf:"bytes,3,opt,name=email,proto3,oneof" json:"email,omitempty"`
+	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
 	AuthSource    string                 `protobuf:"bytes,4,opt,name=auth_source,json=authSource,proto3" json:"auth_source,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	LastLoginAt   *string                `protobuf:"bytes,6,opt,name=last_login_at,json=lastLoginAt,proto3,oneof" json:"last_login_at,omitempty"`
@@ -149,8 +149,8 @@ func (x *UserListResp) GetUsername() string {
 }
 
 func (x *UserListResp) GetEmail() string {
-	if x != nil && x.Email != nil {
-		return *x.Email
+	if x != nil {
+		return x.Email
 	}
 	return ""
 }
@@ -201,7 +201,7 @@ type UserResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Email         *string                `protobuf:"bytes,3,opt,name=email,proto3,oneof" json:"email,omitempty"`
+	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
 	AuthSource    string                 `protobuf:"bytes,4,opt,name=auth_source,json=authSource,proto3" json:"auth_source,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	LastLoginAt   *string                `protobuf:"bytes,6,opt,name=last_login_at,json=lastLoginAt,proto3,oneof" json:"last_login_at,omitempty"`
@@ -259,8 +259,8 @@ func (x *UserResp) GetUsername() string {
 }
 
 func (x *UserResp) GetEmail() string {
-	if x != nil && x.Email != nil {
-		return *x.Email
+	if x != nil {
+		return x.Email
 	}
 	return ""
 }
@@ -325,7 +325,7 @@ type UserCreateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
-	Email         *string                `protobuf:"bytes,3,opt,name=email,proto3,oneof" json:"email,omitempty"`
+	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -375,8 +375,8 @@ func (x *UserCreateReq) GetPassword() string {
 }
 
 func (x *UserCreateReq) GetEmail() string {
-	if x != nil && x.Email != nil {
-		return *x.Email
+	if x != nil {
+		return x.Email
 	}
 	return ""
 }
@@ -386,6 +386,7 @@ type UserUpdateReq struct {
 	Username      *string                `protobuf:"bytes,1,opt,name=username,proto3,oneof" json:"username,omitempty"`
 	Password      *string                `protobuf:"bytes,2,opt,name=password,proto3,oneof" json:"password,omitempty"`
 	Status        *string                `protobuf:"bytes,3,opt,name=status,proto3,oneof" json:"status,omitempty"`
+	Email         *string                `protobuf:"bytes,4,opt,name=email,proto3,oneof" json:"email,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -437,6 +438,13 @@ func (x *UserUpdateReq) GetPassword() string {
 func (x *UserUpdateReq) GetStatus() string {
 	if x != nil && x.Status != nil {
 		return *x.Status
+	}
+	return ""
+}
+
+func (x *UserUpdateReq) GetEmail() string {
+	if x != nil && x.Email != nil {
+		return *x.Email
 	}
 	return ""
 }
@@ -642,32 +650,31 @@ const file_orbit_v1_user_user_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12)\n" +
-	"\x10permission_codes\x18\x04 \x03(\tR\x0fpermissionCodes\"\xcd\x02\n" +
+	"\x10permission_codes\x18\x04 \x03(\tR\x0fpermissionCodes\"\xbe\x02\n" +
 	"\fUserListResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\x12\x19\n" +
-	"\x05email\x18\x03 \x01(\tH\x00R\x05email\x88\x01\x01\x12\x1f\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1f\n" +
 	"\vauth_source\x18\x04 \x01(\tR\n" +
 	"authSource\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12'\n" +
-	"\rlast_login_at\x18\x06 \x01(\tH\x01R\vlastLoginAt\x88\x01\x01\x12\x16\n" +
+	"\rlast_login_at\x18\x06 \x01(\tH\x00R\vlastLoginAt\x88\x01\x01\x12\x16\n" +
 	"\x06status\x18\a \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\b \x01(\tR\tupdatedAt\x12:\n" +
 	"\n" +
-	"role_items\x18\t \x03(\v2\x1b.orbit.v1.user.UserRoleRespR\troleItemsB\b\n" +
-	"\x06_emailB\x10\n" +
-	"\x0e_last_login_at\"\x81\x03\n" +
+	"role_items\x18\t \x03(\v2\x1b.orbit.v1.user.UserRoleRespR\troleItemsB\x10\n" +
+	"\x0e_last_login_at\"\xf2\x02\n" +
 	"\bUserResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\x12\x19\n" +
-	"\x05email\x18\x03 \x01(\tH\x00R\x05email\x88\x01\x01\x12\x1f\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1f\n" +
 	"\vauth_source\x18\x04 \x01(\tR\n" +
 	"authSource\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12'\n" +
-	"\rlast_login_at\x18\x06 \x01(\tH\x01R\vlastLoginAt\x88\x01\x01\x12\x14\n" +
+	"\rlast_login_at\x18\x06 \x01(\tH\x00R\vlastLoginAt\x88\x01\x01\x12\x14\n" +
 	"\x05roles\x18\a \x03(\tR\x05roles\x12 \n" +
 	"\vpermissions\x18\b \x03(\tR\vpermissions\x12\x16\n" +
 	"\x06status\x18\t \x01(\tR\x06status\x12\x1d\n" +
@@ -675,21 +682,21 @@ const file_orbit_v1_user_user_proto_rawDesc = "" +
 	"updated_at\x18\n" +
 	" \x01(\tR\tupdatedAt\x12:\n" +
 	"\n" +
-	"role_items\x18\v \x03(\v2\x1b.orbit.v1.user.UserRoleRespR\troleItemsB\b\n" +
-	"\x06_emailB\x10\n" +
-	"\x0e_last_login_at\"l\n" +
+	"role_items\x18\v \x03(\v2\x1b.orbit.v1.user.UserRoleRespR\troleItemsB\x10\n" +
+	"\x0e_last_login_at\"]\n" +
 	"\rUserCreateReq\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x19\n" +
-	"\x05email\x18\x03 \x01(\tH\x00R\x05email\x88\x01\x01B\b\n" +
-	"\x06_email\"\x93\x01\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x14\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\"\xb8\x01\n" +
 	"\rUserUpdateReq\x12\x1f\n" +
 	"\busername\x18\x01 \x01(\tH\x00R\busername\x88\x01\x01\x12\x1f\n" +
 	"\bpassword\x18\x02 \x01(\tH\x01R\bpassword\x88\x01\x01\x12\x1b\n" +
-	"\x06status\x18\x03 \x01(\tH\x02R\x06status\x88\x01\x01B\v\n" +
+	"\x06status\x18\x03 \x01(\tH\x02R\x06status\x88\x01\x01\x12\x19\n" +
+	"\x05email\x18\x04 \x01(\tH\x03R\x05email\x88\x01\x01B\v\n" +
 	"\t_usernameB\v\n" +
 	"\t_passwordB\t\n" +
-	"\a_status\".\n" +
+	"\a_statusB\b\n" +
+	"\x06_email\".\n" +
 	"\x11UserRoleUpdateReq\x12\x19\n" +
 	"\brole_ids\x18\x01 \x03(\tR\aroleIds\"\x10\n" +
 	"\x0eUserDisableReq\"\x0f\n" +
@@ -744,7 +751,6 @@ func file_orbit_v1_user_user_proto_init() {
 	}
 	file_orbit_v1_user_user_proto_msgTypes[1].OneofWrappers = []any{}
 	file_orbit_v1_user_user_proto_msgTypes[2].OneofWrappers = []any{}
-	file_orbit_v1_user_user_proto_msgTypes[3].OneofWrappers = []any{}
 	file_orbit_v1_user_user_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

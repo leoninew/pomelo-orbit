@@ -11,10 +11,9 @@ CREATE TABLE IF NOT EXISTS user (
     last_login_at DATETIME(3),
     oauth_provider VARCHAR(64) NOT NULL DEFAULT '',
     oauth_provider_id VARCHAR(255) NOT NULL DEFAULT '',
-    email VARCHAR(255) DEFAULT NULL,
+    email VARCHAR(255) NOT NULL,
     auth_source VARCHAR(64) NOT NULL DEFAULT 'password',
-    status VARCHAR(32) NOT NULL DEFAULT 'enabled',
-    CHECK (status IN ('enabled', 'disabled'))
+    status VARCHAR(32) NOT NULL DEFAULT 'enabled'
 );
 
 CREATE INDEX idx_user_email ON user(email);
@@ -27,7 +26,6 @@ CREATE TABLE IF NOT EXISTS user_role (
     role_id VARCHAR(26) NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     PRIMARY KEY (user_id, role_id),
-    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE CASCADE
 );
 

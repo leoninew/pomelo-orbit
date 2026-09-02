@@ -47,7 +47,7 @@ func TestProjectServiceCreateUpdateMembersAndDeprecate(t *testing.T) {
 	if len(members) != 1 || members[0].Username != "admin" {
 		t.Fatalf("unexpected project members: %+v", members)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO user (id, username, password_hash, status, oauth_provider, oauth_provider_id, auth_source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`, "member-user", "member", "hash", "enabled", "", "", "password"); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO user (id, username, password_hash, status, oauth_provider, oauth_provider_id, email, auth_source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`, "member-user", "member", "hash", "enabled", "", "", "member@example.test", "password"); err != nil {
 		t.Fatal(err)
 	}
 	members, err = service.AddMember(ctx, updated.Id, "member-user")

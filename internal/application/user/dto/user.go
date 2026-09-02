@@ -5,13 +5,14 @@ import "github.com/leoninew/pomelo-orbit/internal/model"
 type CreateInput struct {
 	Username string
 	Password string
-	Email    *string
+	Email    string
 }
 
 type UpdateInput struct {
 	Username *string
 	Password *string
 	Status   *string
+	Email    *string
 }
 
 // Actor identifies the account making an actor-sensitive user change.

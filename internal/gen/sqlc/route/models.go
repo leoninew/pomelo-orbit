@@ -406,17 +406,17 @@ type ServiceEnv struct {
 }
 
 type User struct {
-	ID              string         `db:"id"`
-	Username        string         `db:"username"`
-	PasswordHash    string         `db:"password_hash"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
-	LastLoginAt     sql.NullTime   `db:"last_login_at"`
-	OauthProvider   string         `db:"oauth_provider"`
-	OauthProviderID string         `db:"oauth_provider_id"`
-	Email           sql.NullString `db:"email"`
-	AuthSource      string         `db:"auth_source"`
-	Status          string         `db:"status"`
+	ID              string       `db:"id"`
+	Username        string       `db:"username"`
+	PasswordHash    string       `db:"password_hash"`
+	CreatedAt       time.Time    `db:"created_at"`
+	UpdatedAt       time.Time    `db:"updated_at"`
+	LastLoginAt     sql.NullTime `db:"last_login_at"`
+	OauthProvider   string       `db:"oauth_provider"`
+	OauthProviderID string       `db:"oauth_provider_id"`
+	Email           string       `db:"email"`
+	AuthSource      string       `db:"auth_source"`
+	Status          string       `db:"status"`
 }
 
 type UserRole struct {

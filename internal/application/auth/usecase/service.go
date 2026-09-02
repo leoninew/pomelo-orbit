@@ -38,8 +38,8 @@ func (s Service) Login(ctx context.Context, input authdto.LoginInput) (string, e
 	if err := csrf.Verify(s.secretKey, input.CSRFToken); err != nil {
 		return "", ErrInvalidCSRFToken
 	}
-	username := strings.TrimSpace(input.Username)
-	user, err := s.repo.UserByUsername(ctx, username)
+	email := strings.ToLower(strings.TrimSpace(input.Email))
+	user, err := s.repo.UserByEmail(ctx, email)
 	if err != nil || user.Status != "enabled" || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)) != nil {
 		return "", ErrInvalidCredentials
 	}
@@ -87,7 +87,7 @@ func (s Service) UserPermissions(ctx context.Context, userId string) ([]string, 
 }
 
 func (s Service) ChangePassword(ctx context.Context, input authdto.ChangePasswordInput) error {
-	if input.OldPassword == "" || len(input.NewPassword) < 6 {
+	if input.OldPassword == "" || len(input.NewPassword) < 6 || len(input.NewPassword) > 36 {
 		return ErrInvalidPasswordFields
 	}
 	if bcrypt.CompareHashAndPassword([]byte(input.User.PasswordHash), []byte(input.OldPassword)) != nil {
@@ -110,7 +110,7 @@ func (s Service) NewCSRFToken() (string, error) {
 }
 
 func ValidateLoginInput(input authdto.LoginInput) error {
-	if strings.TrimSpace(input.Username) == "" || input.Password == "" || strings.TrimSpace(input.CSRFToken) == "" {
+	if strings.TrimSpace(input.Email) == "" || input.Password == "" || strings.TrimSpace(input.CSRFToken) == "" {
 		return ErrMissingLoginFields
 	}
 	return nil
@@ -134,5 +134,5 @@ var (
 	ErrMissingLoginFields    = apperror.New(apperror.KindValidation, "Missing required login fields")
 	ErrInvalidCSRFToken      = apperror.New(apperror.KindValidation, "Request token is invalid or expired, please refresh the page")
 	ErrInvalidPasswordFields = apperror.New(apperror.KindValidation, "Invalid password fields")
-	ErrInvalidCredentials    = apperror.New(apperror.KindUnauthorized, "Invalid username or password")
+	ErrInvalidCredentials    = apperror.New(apperror.KindUnauthorized, "Invalid email or password")
 )

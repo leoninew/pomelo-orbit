@@ -5,8 +5,7 @@ CREATE TABLE deployment_dialogue_conversation (
     title TEXT NOT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by_user_id) REFERENCES user(id) ON DELETE RESTRICT
+    FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
 );
 
 CREATE TABLE deployment_dialogue_message (

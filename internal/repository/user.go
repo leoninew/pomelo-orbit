@@ -15,6 +15,7 @@ type UserStore interface {
 	UpdateUser(ctx context.Context, user model.User) error
 	SetUserStatus(ctx context.Context, userId string, status string) error
 	DeleteUser(ctx context.Context, userId string) error
+	DeleteUserRoles(ctx context.Context, userId string) error
 	MarkUserLoggedIn(ctx context.Context, id string) error
 	UserRoles(ctx context.Context, userId string) ([]string, error)
 	UserPermissions(ctx context.Context, userId string) ([]string, error)

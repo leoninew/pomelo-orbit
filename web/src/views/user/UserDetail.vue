@@ -51,7 +51,7 @@
         </div>
         <div class="flex gap-2">
           <dt>{{ t('userManagement.email') }}</dt>
-          <dd class="text-foreground">{{ user.email || '-' }}</dd>
+          <dd class="text-foreground">{{ user.email }}</dd>
         </div>
         <div class="flex gap-2">
           <dt>{{ t('common.status') }}</dt>
@@ -115,6 +115,33 @@
           />
           <p v-if="formErrors.username" class="app-field-error" role="alert">
             {{ formErrors.username }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="email">
+            {{ t('userManagement.email') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="email"
+            v-model="form.email"
+            type="email"
+            class="app-input"
+            :class="formErrors.email ? 'app-input-error' : ''"
+            maxlength="36"
+            required
+            :disabled="operating"
+            :aria-invalid="formErrors.email ? 'true' : undefined"
+            :aria-describedby="formErrors.email ? 'user-detail-email-error' : undefined"
+            @input="formErrors.email = ''"
+          />
+          <p
+            v-if="formErrors.email"
+            id="user-detail-email-error"
+            class="app-field-error"
+            role="alert"
+          >
+            {{ formErrors.email }}
           </p>
         </div>
         <div class="space-y-1.5">
@@ -289,10 +316,11 @@
   const isDeleteModalOpen = ref(false);
   const form = reactive({
     username: '',
+    email: '',
     password: '',
     status: '',
   });
-  const formErrors = reactive({ username: '', password: '', status: '' });
+  const formErrors = reactive({ username: '', email: '', password: '', status: '' });
   const roleForm = reactive<{ roleIds: string[] }>({ roleIds: [] });
   const editSubmitError = ref('');
   const roleSubmitError = ref('');
@@ -331,18 +359,24 @@
 
   function openEditModal() {
     form.username = user.value?.username ?? '';
+    form.email = user.value?.email ?? '';
     form.password = '';
     if (!user.value) {
       throw new Error('User detail is not loaded');
     }
     form.status = user.value.status;
-    Object.assign(formErrors, { username: '', password: '', status: '' });
+    Object.assign(formErrors, { username: '', email: '', password: '', status: '' });
     editSubmitError.value = '';
     isEditModalOpen.value = true;
   }
 
   function validateEditForm() {
     formErrors.username = form.username.trim() ? '' : t('userManagement.usernameRequired');
+    formErrors.email = !form.email.trim()
+      ? t('userManagement.emailRequired')
+      : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+        ? ''
+        : t('userManagement.emailInvalid');
     formErrors.password =
       !form.password || form.password.trim().length >= 6
         ? ''
@@ -350,7 +384,7 @@
     formErrors.status = userStatusValues.includes(form.status)
       ? ''
       : t('userManagement.statusRequired');
-    return !formErrors.username && !formErrors.password && !formErrors.status;
+    return !formErrors.username && !formErrors.email && !formErrors.password && !formErrors.status;
   }
 
   function openRoleModal() {
@@ -368,6 +402,7 @@
       await executeOp(async () => {
         await userApi.update(props.id, {
           username: form.username.trim(),
+          email: form.email.trim(),
           password: form.password.trim() || undefined,
           status: form.status,
         });

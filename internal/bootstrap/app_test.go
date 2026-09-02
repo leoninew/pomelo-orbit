@@ -26,7 +26,7 @@ func TestMigrateAppliesSchemaAndSeedData(t *testing.T) {
 	}
 	defer func() { _ = database.Close() }()
 	var adminCount int
-	if err := database.QueryRow("SELECT COUNT(*) FROM user WHERE username = 'admin'").Scan(&adminCount); err != nil {
+	if err := database.QueryRow("SELECT COUNT(*) FROM user WHERE username = 'admin' AND email = 'admin@lvh.me'").Scan(&adminCount); err != nil {
 		t.Fatal(err)
 	}
 	if adminCount != 1 {

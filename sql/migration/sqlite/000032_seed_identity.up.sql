@@ -2,7 +2,7 @@
 
 -- user: 1 row(s).
 INSERT INTO "user" ("id", "username", "password_hash", "last_login_at", "oauth_provider", "oauth_provider_id", "email", "auth_source", "status") VALUES
-    ('01KKX2YNPF6VJ9N7QYCWG61KVK', 'admin', '$2b$12$/lPw6VtrhLqQqlhm/fbay.yAXhxj.Ru4qIJapLWQGlRzPz8gmE1vW', NULL, '', '', NULL, 'password', 'enabled');
+    ('01KKX2YNPF6VJ9N7QYCWG61KVK', 'admin', '$2a$10$YZKUsKzahDjcrEpK5bFK.OL6zkm8.Zaf5avFkBo7ma8DuSTXb5ZRu', NULL, '', '', 'admin@lvh.me', 'password', 'enabled');
 
 -- project: 1 row(s).
 INSERT INTO "project" ("id", "name", "code", "is_active") VALUES

@@ -126,6 +126,7 @@
   import { buildApiUrl } from '@/config';
   import { useAuthStore } from '@/stores/auth';
   import { useToast } from '@/composables/useToast';
+  import { resolveLoginRedirect } from '@/utils/login-redirect';
   import { ApiError } from '@/utils/request';
   import type { TurnstileConfigResp } from '@/gen/proto/orbit/v1/auth/auth';
 
@@ -348,10 +349,6 @@
   }
 
   function redirectTarget() {
-    const redirect = route.query.redirect;
-    if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
-      return redirect;
-    }
-    return '/';
+    return resolveLoginRedirect(router, route.query.redirect);
   }
 </script>

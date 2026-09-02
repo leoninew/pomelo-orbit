@@ -3,6 +3,7 @@ import i18n from '@/i18n';
 import { getNavigationScope, getSecondaryNavigationTitle } from '@/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { PERMISSIONS } from '@/constants/permissions';
+import { resolveLoginRedirect } from '@/utils/login-redirect';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -295,14 +296,16 @@ router.beforeEach(async (to, _from, next) => {
 
   const authStore = useAuthStore();
   if (!authStore.isAuthenticated) {
-    next({ name: 'Login', query: { redirect: to.fullPath } });
+    const redirect = resolveLoginRedirect(router, to.fullPath);
+    next({ name: 'Login', query: redirect === '/' ? {} : { redirect } });
     return;
   }
 
   if (!authStore.user) {
     await authStore.fetchUser();
     if (!authStore.user) {
-      next({ name: 'Login', query: { redirect: to.fullPath } });
+      const redirect = resolveLoginRedirect(router, to.fullPath);
+      next({ name: 'Login', query: redirect === '/' ? {} : { redirect } });
       return;
     }
   }

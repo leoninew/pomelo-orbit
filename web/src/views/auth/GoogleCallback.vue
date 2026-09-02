@@ -18,6 +18,7 @@
   import { authApi } from '@/api/auth/auth';
   import { useAuthStore } from '@/stores/auth';
   import { useToast } from '@/composables/useToast';
+  import { resolveLoginRedirect } from '@/utils/login-redirect';
 
   const { t } = useI18n();
   const router = useRouter();
@@ -51,10 +52,6 @@
   });
 
   function redirectTarget() {
-    const redirect = route.query.redirect;
-    if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
-      return redirect;
-    }
-    return '/';
+    return resolveLoginRedirect(router, route.query.redirect);
   }
 </script>

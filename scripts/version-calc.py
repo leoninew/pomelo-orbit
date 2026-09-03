@@ -1,34 +1,20 @@
 #!/usr/bin/env python3
-"""Walk Git history from the first commit and derive x.y.z.
+"""Print or synchronize release version metadata from ``VERSION``.
 
-Rules (x is fixed at 0):
-  * y, z start at 0
-  * a commit whose subject starts with "feat"  -> y += 1, z = 0
-  * any other commit                          -> z += 1
-  * print one line every time y or z changes:
-        <commit-date>  <sha8>  <subject-first-50-chars>  <x>.<y>.<z>
-
-After calculation, ``--apply`` writes the final version to:
-  * VERSION                         (package version source)
-  * configs/config.yaml             (app.version)
-  * .env.example                    (app version example)
-  * web/package.json                ("version" field)
-
-Run from any directory inside the target git repository:
+By default, print the repository version without writing files. Pass
+``--no-dry-run`` to synchronize the version metadata consumed by the app.
+The script never invokes Git.
 
     uv --directory scripts run version-calc.py
-    uv --directory scripts run version-calc.py --apply
-    uv --directory scripts run version-calc.py --quiet --apply
+    uv --directory scripts run version-calc.py --no-dry-run
 """
 
 from __future__ import annotations
 
 import argparse
 import re
-import subprocess
 import sys
 from pathlib import Path
-from typing import Iterator
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 VERSION_FILE = REPO_ROOT / "VERSION"
@@ -36,6 +22,7 @@ CONFIG_FILE = REPO_ROOT / "configs" / "config.yaml"
 ENV_EXAMPLE_FILE = REPO_ROOT / ".env.example"
 PACKAGE_JSON = REPO_ROOT / "web" / "package.json"
 
+VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
 APP_VERSION_RE = re.compile(
     rb"^(app:\r?\n(?:^[ \t]+[^\r\n]*\r?\n)*?^[ \t]+version:[ \t]*)([^\s#\r\n]+)",
     re.MULTILINE,
@@ -50,64 +37,16 @@ ENV_APP_VERSION_RE = re.compile(
 )
 
 
-def run_git(*args: str) -> str:
-    proc = subprocess.run(
-        ["git", *args],
-        cwd=REPO_ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=True,
-        text=True,
-    )
-    return proc.stdout
-
-
-def is_feature(subject: str) -> bool:
-    return subject.lstrip().lower().startswith("feat")
-
-
-def iter_commits() -> Iterator[tuple[str, str, str]]:
-    """Yield (full_hash, iso_date, subject) from oldest to newest."""
-    log = run_git(
-        "log",
-        "--reverse",
-        "--pretty=format:%H%x1f%aI%x1f%s",
-    )
-    for line in log.splitlines():
-        parts = line.split("\x1f", 2)
-        if len(parts) != 3:
-            continue
-        full_hash, date, subject = parts
-        yield full_hash, date, subject
-
-
-def calculate_version(*, print_history: bool = True) -> str:
-    """Walk history and return final x.y.z. Optionally print each step."""
-    x = 0
-    y = 0
-    z = 0
-    saw_commit = False
-
-    for full_hash, date, subject in iter_commits():
-        saw_commit = True
-        short = full_hash[:8]
-        if is_feature(subject):
-            y += 1
-            z = 0
-        else:
-            z += 1
-        if print_history:
-            headline = subject.split("\n", 1)[0][:50]
-            print(f"{date}  {short}  {headline}  {x}.{y}.{z}")
-
-    if not saw_commit:
-        raise RuntimeError("no commits found; cannot derive version")
-
-    return f"{x}.{y}.{z}"
+def read_version() -> str:
+    """Read the release version from the repository source of truth."""
+    version = VERSION_FILE.read_text(encoding="utf-8").strip()
+    if not VERSION_RE.fullmatch(version):
+        raise ValueError(f"invalid version in {VERSION_FILE}: {version!r}")
+    return version
 
 
 def apply_version(version: str) -> None:
-    """Write the calculated version to the version metadata files."""
+    """Synchronize the version metadata that derives from ``VERSION``."""
     replacements = (
         _prepare_version_replacement(
             CONFIG_FILE, APP_VERSION_RE, version, "app.version"
@@ -124,7 +63,6 @@ def apply_version(version: str) -> None:
     )
 
     # Validate every target before changing any of them.
-    VERSION_FILE.write_text(version + "\n", encoding="utf-8")
     for path, updated in replacements:
         path.write_bytes(updated)
 
@@ -143,27 +81,21 @@ def _prepare_version_replacement(
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Derive x.y.z from git history")
+    parser = argparse.ArgumentParser(description="Print or synchronize release version")
     parser.add_argument(
-        "--apply",
-        action="store_true",
-        help="write the calculated version to version metadata files",
-    )
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="do not print per-commit history lines",
+        "--no-dry-run",
+        action="store_false",
+        dest="dry_run",
+        help="synchronize version metadata files",
     )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    version = calculate_version(print_history=not args.quiet)
-    if not args.quiet:
-        print()
+    version = read_version()
     print(f"version: {version}")
-    if args.apply:
+    if not args.dry_run:
         apply_version(version)
     return 0
 
@@ -171,9 +103,6 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except subprocess.CalledProcessError as exc:
-        sys.stderr.write(f"git failed: {exc.stderr.strip() or exc}\n")
-        sys.exit(1)
     except (OSError, RuntimeError, ValueError, re.error) as exc:
         sys.stderr.write(f"{exc}\n")
         sys.exit(1)

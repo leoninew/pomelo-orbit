@@ -25,7 +25,7 @@ task check   # 类型检查、格式化和 lint
 task test    # 前后端测试
 task build   # 构建 Docker 镜像
 task release # 构建直接运行发布包（dist/）
-task version # 从 Git 历史计算版本
+task version # 显示当前发布版本
 ```
 
 `task release` 及清理任务依赖 POSIX 兼容 shell，请在 Cygwin、Git Bash 或 MSYS2 中执行。

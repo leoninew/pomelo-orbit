@@ -104,14 +104,14 @@ tasks:
         printf "image built: pomelo-orbit:%s\n" "$TAG"
 
   version:
-    desc: Calculate the release version from Git history
+    desc: Print the release version from VERSION
     cmds:
       - uv --directory scripts run version-calc.py
 
   version:apply:
-    desc: Calculate and apply the release version to tracked metadata
+    desc: Synchronize the release version to tracked metadata
     cmds:
-      - uv --directory scripts run version-calc.py --quiet --apply
+      - uv --directory scripts run version-calc.py --no-dry-run
 
   install:
     desc: Install or refresh the local agent plugin

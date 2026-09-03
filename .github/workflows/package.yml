@@ -1,34 +1,64 @@
-name: Package
+name: Release packages
+
+env:
+  PROJECT_NAME: pomelo-orbit
+  NODE_VERSION: "22"
 
 on:
   push:
-    branches: [ci, master]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing Git tag to release
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: package-release-${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+  cancel-in-progress: false
 
 jobs:
-  package:
+  build:
+    name: Build packages
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Verify checked out tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
+          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$(git rev-parse HEAD)"
+
+      - name: Verify release tag matches VERSION
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RELEASE_TAG#v}" = "$(tr -d '\r\n' < VERSION)"
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: yarn
           cache-dependency-path: web/yarn.lock
 
       - name: Enable Corepack
         run: corepack enable
 
-      - name: Install web dependencies
-        run: yarn --cwd web install --immutable
+      - name: Install locked web dependencies
+        run: yarn --cwd web install --frozen-lockfile
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -36,26 +66,81 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
+      - name: Verify Go module dependencies
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+
+      - name: Verify generated sqlc code
+        run: |
+          "$(go env GOPATH)/bin/sqlc" generate
+          git diff --exit-code -- internal/gen/sqlc
+
       - name: Set up Task
         uses: go-task/setup-task@v1
         with:
           version: 3.x
 
       - name: Build packages
-        run: task package
+        run: task release
 
-      - name: Upload packages
-        uses: actions/upload-artifact@v4
+      - name: Verify release packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          for platform in windows linux macos; do
+            root="${PROJECT_NAME}-v${version}-${platform}-x64"
+            archive="dist/${root}.zip"
+            test -f "$archive"
+            unzip -t "$archive" >/dev/null
+            test "$(unzip -p "$archive" "$root/VERSION")" = "$version"
+            zipinfo -1 "$archive" | grep -Fx "$root/configs/config.yaml"
+            zipinfo -1 "$archive" | grep -Fx "$root/static/index.html"
+            zipinfo -1 "$archive" | grep -Fx "$root/.env.example"
+            zipinfo -1 "$archive" | grep -Fx "$root/pomelo-orbit.sh"
+          done
+          zipinfo -1 "dist/${PROJECT_NAME}-v${version}-windows-x64.zip" | grep -Fx \
+            "${PROJECT_NAME}-v${version}-windows-x64/pomelo-orbit.exe"
+          for platform in linux macos; do
+            zipinfo -1 "dist/${PROJECT_NAME}-v${version}-${platform}-x64.zip" | grep -Fx \
+              "${PROJECT_NAME}-v${version}-${platform}-x64/pomelo-orbit"
+          done
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: pomelo-orbit-packages-${{ github.sha }}
+          name: ${{ env.PROJECT_NAME }}-packages-${{ env.RELEASE_TAG }}
           path: dist/*.zip
           if-no-files-found: error
           retention-days: 14
 
-      - name: Publish release assets
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+  publish:
+    name: Create Release and upload packages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/download-artifact@v4
         with:
-          files: dist/*.zip
-          fail_on_unmatched_files: true
-          generate_release_notes: true
+          name: ${{ env.PROJECT_NAME }}-packages-${{ env.RELEASE_TAG }}
+          path: dist
+
+      - name: Create Release and upload packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/*.zip \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$RELEASE_TAG" dist/*.zip \
+              --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+          fi

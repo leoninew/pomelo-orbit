@@ -15,7 +15,7 @@ Pomelo Orbit 已具备完整的持续集成领域能力：流水线阶段与模�
 
 1. CI 领域以可复用 `PipelineStage`、编排 `PipelineTemplate`、不可变 `PipelineSnapshot` 和可追溯 `PipelineRun` 为核心；运行以后台任务异步执行，已有单元和集成测试覆盖触发、执行、日志及制品读取。
 2. 当前 HTTP API 已提供模板和阶段的列出、创建、读取、更新、删除、复制与变量解析；还提供按仓库触发运行、列出/读取运行、读取制品与增量日志、取消和重试。实际路由位于 `internal/api/http/routes/pipeline.go` 和 `internal/api/http/routes/pipeline_run.go`。
-3. 仓库自身 GitHub Actions 包含 Go 代码生成、格式化、lint、vet、测试及镜像构建发布工作流。这些是仓库验证/发布自动化，不是 Pomelo Orbit 面向用户的 PipelineRun 控制接口。
+3. 仓库自身 GitHub Actions 包含 Go 代码生成、格式化、lint、vet、前后端测试，以及直接运行 ZIP 制品构建和发布工作流。这些是仓库验证/发布自动化，不是 Pomelo Orbit 面向用户的 PipelineRun 控制接口。
 4. 本次会话发现的 `pomelo_delivery` MCP 暴露 `orbit_*` 控制面工具和 `runtime_*`、`verify_deployment` 运行态只读工具。MCP resources 仅包含终端服务信息与文件传输状态，不包含 CI 的项目、模板、运行或日志资源。
 
 ## MCP 能力与集成边界

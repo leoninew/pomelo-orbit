@@ -16,7 +16,7 @@ Review status: Accepted
 1. CI HTTP 层已暴露 PipelineStage、PipelineTemplate、PipelineSnapshot、PipelineRun、制品和阶段日志的操作；触发、取消和重试由 `pipeline_run` 应用服务处理，执行经后台 task 派发。
 2. 现有 CI 设计依赖模板版本/快照、变量优先级与项目成员授权，因此 MCP 只能适配现有 API，不能直连数据库或手工构造运行状态。
 3. 当前可用 `pomelo_delivery` 工具覆盖 `orbit_list_*`、`orbit_get_*`、生命周期写操作、`runtime_*` 诊断和 `verify_deployment`，不含 CI 工具或资源。现有 MCP resource 也没有 CI 数据源。
-4. GitHub Actions 的 `go-verify.yml` 与 `docker-publish.yml` 验证本仓库并发布镜像；它们不等价于产品的 PipelineRun，后续 MCP 不纳入其运行控制。
+4. GitHub Actions 的 `go-verify.yml` 与 `package.yml` 分别执行本仓库的 CI 验证和直接运行 ZIP 制品发布；它们不等价于产品的 PipelineRun，后续 MCP 不纳入其运行控制。
 
 ## 推荐集成设计
 
@@ -69,7 +69,7 @@ Review status: Accepted
 
 1. 更新 MCP README、操作指南与 Codex 注册说明，明确两个 Server 的用途、启动方式、工具前缀、会话重启和 CI/CD 的显式交接。
 2. 将 API/MCP schema 测试加入 pipeline MCP 的默认检查；工具或 schema 变更后以新 stdio 会话重新发现工具，不假设热加载。
-3. 不改变 GitHub Actions 的 Go 验证与镜像发布职责；必要时只为 MCP 项目增加其自身的静态检查/测试工作流。
+3. 不改变 GitHub Actions 的 Go/Web 验证与直接运行 ZIP 制品发布职责；必要时只为 MCP 项目增加其自身的静态检查/测试工作流。
 
 ## 预期涉及文件
 

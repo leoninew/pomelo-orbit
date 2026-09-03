@@ -1,26 +1,45 @@
-name: Verify Go
+name: CI
 
 on:
-  push:
-    branches: [develop]
   pull_request:
-    branches: [develop]
+  push:
+    branches: [develop, ci]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  verify:
+  quality:
+    name: Quality
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: web/yarn.lock
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install locked web dependencies
+        run: yarn --cwd web install --frozen-lockfile
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
+
+      - name: Verify Go module dependencies
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
 
       - name: Install sqlc
         run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
@@ -29,6 +48,12 @@ jobs:
         run: |
           "$(go env GOPATH)/bin/sqlc" generate
           git diff --exit-code -- internal/gen/sqlc
+
+      - name: Verify frontend quality
+        run: |
+          yarn --cwd web typecheck
+          yarn --cwd web lint
+          yarn --cwd web format
 
       - name: Verify Go formatting
         run: |
@@ -45,5 +70,15 @@ jobs:
       - name: Run Go vet
         run: go vet ./cmd/... ./internal/... ./sql
 
-      - name: Run Go tests
-        run: go test ./cmd/... ./internal/... ./sql
+      - name: Run tests
+        run: |
+          yarn --cwd web test
+          go test ./cmd/... ./internal/... ./sql
+
+      - name: Set up Task
+        uses: go-task/setup-task@v1
+        with:
+          version: 3.x
+
+      - name: Build release packages
+        run: task release

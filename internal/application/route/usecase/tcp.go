@@ -142,7 +142,11 @@ func (s Service) resolveManagedRouteTarget(ctx context.Context, route *model.Rou
 }
 
 func (s Service) ensureTCPListenerAvailable(ctx context.Context, candidate model.Route, excludeID string) error {
-	routes, err := s.route.ListEnabledRoutes(ctx)
+	if candidate.ProjectId == nil || strings.TrimSpace(*candidate.ProjectId) == "" {
+		return apperror.New(apperror.KindValidation, "Route project is required")
+	}
+	projectID := strings.TrimSpace(*candidate.ProjectId)
+	routes, err := s.route.ListEnabledRoutesByProject(ctx, projectID)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
 	}
@@ -154,7 +158,7 @@ func (s Service) ensureTCPListenerAvailable(ctx context.Context, candidate model
 			return apperror.New(apperror.KindConflict, fmt.Sprintf("TCP listen port %d is already used by route %s", *candidate.ListenPort, route.Name))
 		}
 	}
-	conflict, err := s.componentPortConflict(ctx, *candidate.ListenPort)
+	conflict, err := s.componentPortConflict(ctx, projectID, *candidate.ListenPort)
 	if err != nil {
 		return err
 	}
@@ -164,8 +168,12 @@ func (s Service) ensureTCPListenerAvailable(ctx context.Context, candidate model
 	return nil
 }
 
-func (s Service) componentPortConflict(ctx context.Context, listenPort int) (string, error) {
-	apps, err := s.application.ListApplications(ctx, nil, 1, 10000, "", "")
+func (s Service) componentPortConflict(ctx context.Context, projectID string, listenPort int) (string, error) {
+	projectID = strings.TrimSpace(projectID)
+	if projectID == "" {
+		return "", apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	apps, err := s.application.ListApplications(ctx, &projectID, 1, 10000, "", "")
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list applications for TCP port validation", err)
 	}

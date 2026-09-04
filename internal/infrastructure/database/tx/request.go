@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
@@ -26,7 +27,7 @@ func Middleware(db *sql.DB, skipPaths ...string) gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		if _, ok := skipped[c.Request.URL.Path]; ok {
+		if skipPath(c.Request.URL.Path, skipped) {
 			c.Next()
 			return
 		}
@@ -78,6 +79,37 @@ func Middleware(db *sql.DB, skipPaths ...string) gin.HandlerFunc {
 	}
 }
 
+func skipPath(path string, skipped map[string]struct{}) bool {
+	if _, ok := skipped[path]; ok {
+		return true
+	}
+	for pattern := range skipped {
+		if matchesPathTemplate(path, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesPathTemplate(path string, pattern string) bool {
+	pathSegments := strings.Split(strings.Trim(path, "/"), "/")
+	patternSegments := strings.Split(strings.Trim(pattern, "/"), "/")
+	if len(pathSegments) != len(patternSegments) {
+		return false
+	}
+	for index, segment := range patternSegments {
+		if strings.HasPrefix(segment, ":") {
+			if pathSegments[index] == "" {
+				return false
+			}
+			continue
+		}
+		if pathSegments[index] != segment {
+			return false
+		}
+	}
+	return true
+}
 func isWriteRequest(method string) bool {
 	switch method {
 	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:

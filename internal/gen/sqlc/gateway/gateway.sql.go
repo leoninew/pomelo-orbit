@@ -21,6 +21,26 @@ func (q *Queries) DeleteGatewayVersionBindings(ctx context.Context, applicationI
 	return err
 }
 
+const gatewayBindingByProjectID = `-- name: GatewayBindingByProjectID :one
+SELECT gc.application_id, e.code AS environment_code
+FROM environment e
+INNER JOIN gateway_config gc ON gc.application_id = e.gateway_application_id
+INNER JOIN application a ON a.id = gc.application_id AND a.project_id = e.project_id
+WHERE e.project_id = ?
+`
+
+type GatewayBindingByProjectIDRow struct {
+	ApplicationID   string `db:"application_id"`
+	EnvironmentCode string `db:"environment_code"`
+}
+
+func (q *Queries) GatewayBindingByProjectID(ctx context.Context, projectID string) (GatewayBindingByProjectIDRow, error) {
+	row := q.db.QueryRowContext(ctx, gatewayBindingByProjectID, projectID)
+	var i GatewayBindingByProjectIDRow
+	err := row.Scan(&i.ApplicationID, &i.EnvironmentCode)
+	return i, err
+}
+
 const gatewayConfigByApplication = `-- name: GatewayConfigByApplication :one
 SELECT application_id, traefik_component_name, rest_api_url, rest_ready_timeout_seconds,
        base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
@@ -161,54 +181,6 @@ func (q *Queries) InsertGatewayVersionBinding(ctx context.Context, arg InsertGat
 	return err
 }
 
-const listAllGatewayApplications = `-- name: ListAllGatewayApplications :many
-SELECT a.id, a.project_id, a.name, a.code, a.kind, a.created_at, a.updated_at
-FROM application a
-INNER JOIN gateway_config gc ON gc.application_id = a.id
-ORDER BY a.created_at, a.id
-`
-
-type ListAllGatewayApplicationsRow struct {
-	ID        string         `db:"id"`
-	ProjectID sql.NullString `db:"project_id"`
-	Name      string         `db:"name"`
-	Code      string         `db:"code"`
-	Kind      string         `db:"kind"`
-	CreatedAt time.Time      `db:"created_at"`
-	UpdatedAt time.Time      `db:"updated_at"`
-}
-
-func (q *Queries) ListAllGatewayApplications(ctx context.Context) ([]ListAllGatewayApplicationsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAllGatewayApplications)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListAllGatewayApplicationsRow
-	for rows.Next() {
-		var i ListAllGatewayApplicationsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
-			&i.Name,
-			&i.Code,
-			&i.Kind,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listGatewayApplications = `-- name: ListGatewayApplications :many
 SELECT a.id, a.project_id, a.name, a.code, a.kind, a.created_at, a.updated_at
 FROM application a
@@ -256,37 +228,6 @@ func (q *Queries) ListGatewayApplications(ctx context.Context, projectID sql.Nul
 		return nil, err
 	}
 	return items, nil
-}
-
-const resolveActiveGatewayConfig = `-- name: ResolveActiveGatewayConfig :one
-SELECT gc.application_id, gc.traefik_component_name, gc.rest_api_url, gc.rest_ready_timeout_seconds,
-       gc.base_domain, gc.default_entrypoint, gc.tls_mode, gc.acme_profile, gc.acme_email,
-       gc.dns_api_token, gc.created_at, gc.updated_at
-FROM gateway_config gc
-INNER JOIN service s ON s.application_id = gc.application_id
-WHERE s.status = ?
-ORDER BY s.updated_at DESC, gc.application_id
-LIMIT 1
-`
-
-func (q *Queries) ResolveActiveGatewayConfig(ctx context.Context, status string) (GatewayConfig, error) {
-	row := q.db.QueryRowContext(ctx, resolveActiveGatewayConfig, status)
-	var i GatewayConfig
-	err := row.Scan(
-		&i.ApplicationID,
-		&i.TraefikComponentName,
-		&i.RestApiUrl,
-		&i.RestReadyTimeoutSeconds,
-		&i.BaseDomain,
-		&i.DefaultEntrypoint,
-		&i.TlsMode,
-		&i.AcmeProfile,
-		&i.AcmeEmail,
-		&i.DnsApiToken,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
 }
 
 const updateGatewayConfig = `-- name: UpdateGatewayConfig :exec

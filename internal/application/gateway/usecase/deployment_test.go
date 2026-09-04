@@ -26,17 +26,18 @@ func TestGatewayForDeploymentDoesNotRequireGatewayForInternalTCPEndpoint(t *test
 
 func TestGatewayForDeploymentFindsCarrierEvenWhenNetworkWasRequestedDisabled(t *testing.T) {
 	disabled := false
-	app := model.Application{Id: "gateway-app", Kind: status.ApplicationKindStandard}
+	projectID := "project-1"
+	app := model.Application{Id: "gateway-app", ProjectId: &projectID, Kind: status.ApplicationKindStandard}
 	plan := model.EffectiveServicePlan{
 		Application: app, JoinTraefikNetwork: &disabled,
 	}
-	service := Service{config: gatewayConfigStore{cfg: model.GatewayConfig{ApplicationId: app.Id}}}
+	service := Service{config: gatewayConfigStore{cfg: model.GatewayConfig{ApplicationId: app.Id, NetworkName: "orbit-project-1-traefik"}}}
 
 	config, err := service.GatewayForDeployment(context.Background(), app, plan)
 	if err != nil {
 		t.Fatalf("GatewayForDeployment() error = %v", err)
 	}
-	if config == nil || config.ApplicationId != app.Id {
+	if config == nil || config.ApplicationId != app.Id || config.NetworkName != "orbit-project-1-traefik" {
 		t.Fatalf("GatewayForDeployment() = %#v, want GatewayConfig for %q", config, app.Id)
 	}
 }
@@ -52,7 +53,10 @@ func (s gatewayConfigStore) GatewayConfig(_ context.Context, applicationID strin
 	return s.cfg, nil
 }
 
-func (s gatewayConfigStore) ResolveActiveGatewayConfig(context.Context) (model.GatewayConfig, error) {
+func (s gatewayConfigStore) GatewayConfigByProject(_ context.Context, projectID string) (model.GatewayConfig, error) {
+	if projectID == "" {
+		return model.GatewayConfig{}, repository.ErrNotFound
+	}
 	return s.cfg, nil
 }
 

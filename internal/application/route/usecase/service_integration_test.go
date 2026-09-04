@@ -20,6 +20,7 @@ import (
 	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
+	environmentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/environment"
 	gatewayrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/gateway"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	routerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/route"
@@ -134,7 +135,7 @@ func TestRouteServiceRequiresTokenAndGatewayCapabilityForDNSLetsEncrypt(t *testi
 	if err != nil || stored.HTTPSEnabled || stored.CertType != certTypeManual {
 		t.Fatalf("route changed after token refusal: %+v, err=%v", stored, err)
 	}
-	gateway, err := service.gateway.ResolveActiveGatewayConfig(ctx)
+	gateway, err := service.gateway.GatewayConfigByProject(ctx, routeTestProjectId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +349,7 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 36); err != nil {
+	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 39); err != nil {
 		t.Fatal(err)
 	}
 	clearRouteGatewaySeed(t, database)
@@ -526,7 +527,7 @@ func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
 	}
 
 	conflictingPort := 16380
-	conflict, err := service.componentPortConflict(ctx, conflictingPort)
+	conflict, err := service.componentPortConflict(ctx, routeTestProjectId, conflictingPort)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -632,6 +633,7 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 	t.Helper()
 	ctx := context.Background()
 	appRepo := applicationrepo.NewRepository(database)
+	environmentRepo := environmentrepo.NewRepository(database)
 	gwRepo := gatewayrepo.NewRepository(database)
 	serviceRepo := servicerepo.NewRepository(database)
 	projectId := routeTestProjectId
@@ -662,6 +664,31 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 	}); err != nil {
 		t.Fatalf("seed gateway config: %v", err)
 	}
+	environment := model.Environment{
+		Id:                    "01KROUTEENVIRONMENT0000001",
+		ProjectId:             projectId,
+		Code:                  "route-test",
+		State:                 model.EnvironmentStateActive,
+		Platform:              model.EnvironmentPlatformLinux,
+		Host:                  "192.0.2.10",
+		Port:                  22,
+		Username:              "deploy",
+		WorkspaceRoot:         "/srv/pomelo-orbit",
+		SSHCredentialId:       "route-test-credential",
+		SSHCredentialRevision: 1,
+		HostKeyFingerprint:    "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+		TargetRevision:        1,
+	}
+	if err := environmentRepo.CreateEnvironment(ctx, environment); err != nil {
+		t.Fatalf("seed route environment: %v", err)
+	}
+	bound, err := environmentRepo.BindGatewayApplication(ctx, environment.Id, app.Id)
+	if err != nil {
+		t.Fatalf("bind route gateway environment: %v", err)
+	}
+	if !bound {
+		t.Fatal("route gateway environment was already bound")
+	}
 }
 
 type recordingRoutePublisher struct {
@@ -669,12 +696,12 @@ type recordingRoutePublisher struct {
 	readyWaits int
 }
 
-func (p *recordingRoutePublisher) WaitUntilReady(context.Context, string, time.Duration) error {
+func (p *recordingRoutePublisher) WaitUntilReady(context.Context, string, model.GatewayConfig, time.Duration) error {
 	p.readyWaits++
 	return nil
 }
 
-func (p *recordingRoutePublisher) ApplySnapshot(_ context.Context, _ model.GatewayConfig, routes []model.Route) error {
+func (p *recordingRoutePublisher) ApplySnapshot(_ context.Context, _ string, _ model.GatewayConfig, routes []model.Route) error {
 	p.snapshots = append(p.snapshots, append([]model.Route(nil), routes...))
 	return nil
 }
@@ -691,14 +718,14 @@ type recordingTraefikClient struct {
 	err      error
 }
 
-func (c *recordingTraefikClient) ListRouters(_ context.Context, _ string) ([]routeport.TraefikRouter, error) {
+func (c *recordingTraefikClient) ListRouters(_ context.Context, _ string, _ model.GatewayConfig) ([]routeport.TraefikRouter, error) {
 	if c.err != nil {
 		return nil, c.err
 	}
 	return c.routers, nil
 }
 
-func (c *recordingTraefikClient) ListServices(_ context.Context, _ string) ([]routeport.TraefikService, error) {
+func (c *recordingTraefikClient) ListServices(_ context.Context, _ string, _ model.GatewayConfig) ([]routeport.TraefikService, error) {
 	if c.err != nil {
 		return nil, c.err
 	}

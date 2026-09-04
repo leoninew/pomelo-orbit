@@ -30,15 +30,26 @@ func TestRenderComposeSkipsTraefikNetworkWhenDisabled(t *testing.T) {
 	}
 }
 
-func TestRenderComposeJoinsTraefikNetworkByDefault(t *testing.T) {
+func TestRenderComposeJoinsEnvironmentGatewayNetworkByDefault(t *testing.T) {
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
+		Gateway:     &model.GatewayConfig{NetworkName: "orbit-demo-traefik"},
 		Components:  []model.EffectiveServiceComponent{{Name: "api", Image: "nginx:latest"}},
 	}})
 	if err != nil {
 		t.Fatalf("RenderCompose() error = %v", err)
 	}
-	if !strings.Contains(compose, "traefik:") || !strings.Contains(compose, "external: true") {
-		t.Fatalf("default Traefik network missing from compose:\n%s", compose)
+	if !strings.Contains(compose, "name: orbit-demo-traefik") || !strings.Contains(compose, "external: true") {
+		t.Fatalf("environment Gateway network missing from compose:\n%s", compose)
+	}
+}
+
+func TestRenderComposeRejectsMissingEnvironmentGatewayNetwork(t *testing.T) {
+	_, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
+		Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
+		Components:  []model.EffectiveServiceComponent{{Name: "api", Image: "nginx:latest"}},
+	}})
+	if err == nil || !strings.Contains(err.Error(), "project gateway network is required") {
+		t.Fatalf("RenderCompose() error = %v", err)
 	}
 }

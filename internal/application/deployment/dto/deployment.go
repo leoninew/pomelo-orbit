@@ -116,6 +116,7 @@ type RuntimeTarget struct {
 	ServiceCode      string
 	WorkingDirectory string
 	ComposeProject   string
+	ProjectId        string
 }
 
 type RuntimeComposePSResult struct {

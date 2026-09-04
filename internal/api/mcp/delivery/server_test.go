@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -26,8 +27,8 @@ func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(tools.Tools) != 56 {
-		t.Fatalf("tool count = %d, want 56", len(tools.Tools))
+	if len(tools.Tools) != 59 {
+		t.Fatalf("tool count = %d, want 59", len(tools.Tools))
 	}
 
 	byName := make(map[string]*mcp.Tool, len(tools.Tools))
@@ -69,6 +70,49 @@ func TestServerReportsPomeloMCPImplementation(t *testing.T) {
 	serverInfo := connectInMemory(t, server).InitializeResult().ServerInfo
 	if serverInfo == nil || serverInfo.Name != "pomelo-orbit-mcp" {
 		t.Fatalf("InitializeResult().ServerInfo = %#v, want name pomelo-orbit-mcp", serverInfo)
+	}
+}
+
+func TestProjectEnvironmentToolsUseProjectScopeAndKeepPrivateKeyWriteOnly(t *testing.T) {
+	environment := &environmentToolService{environment: model.Environment{Id: "environment-1", ProjectId: "project-1", Code: "project", State: model.EnvironmentStateActive, Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit", WorkspaceRoot: "/srv/orbit", SSHCredentialId: "credential-1", SSHCredentialRevision: 2, HostKeyFingerprint: "SHA256:abc", TargetRevision: 3}}
+	server, err := NewServer(Dependencies{ActorUserId: "actor", Environment: environment})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	session := connectInMemory(t, server)
+
+	getResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_get_project_environment", Arguments: map[string]any{"project_id": "project-1"}})
+	if err != nil || getResult.IsError {
+		t.Fatalf("CallTool(get environment) result=%#v err=%v", getResult, err)
+	}
+	getOutput := structuredOutput(t, getResult)
+	if getOutput["project_id"] != "project-1" || environment.userID != "actor" || environment.projectID != "project-1" {
+		t.Fatalf("get environment scope = output %#v service %#v", getOutput, environment)
+	}
+
+	privateKey := "private-key-material"
+	workspaceRoot := "/srv/orbit-next"
+	updateResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_project_environment", Arguments: map[string]any{"project_id": "project-1", "workspace_root": workspaceRoot, "deployment_ssh_private_key": privateKey}})
+	if err != nil || updateResult.IsError {
+		t.Fatalf("CallTool(update environment) result=%#v err=%v", updateResult, err)
+	}
+	if environment.update.WorkspaceRoot == nil || *environment.update.WorkspaceRoot != workspaceRoot || environment.update.DeploymentSSHPrivateKey == nil || *environment.update.DeploymentSSHPrivateKey != privateKey {
+		t.Fatalf("update input = %#v", environment.update)
+	}
+	encodedUpdate, err := json.Marshal(structuredOutput(t, updateResult))
+	if err != nil {
+		t.Fatalf("marshal update output: %v", err)
+	}
+	if strings.Contains(string(encodedUpdate), privateKey) {
+		t.Fatalf("update output exposed private key: %s", encodedUpdate)
+	}
+
+	probeResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_probe_project_environment", Arguments: map[string]any{"project_id": "project-1"}})
+	if err != nil || probeResult.IsError {
+		t.Fatalf("CallTool(probe environment) result=%#v err=%v", probeResult, err)
+	}
+	if environment.probeCalls != 1 || environment.projectID != "project-1" || environment.userID != "actor" {
+		t.Fatalf("probe scope = service %#v", environment)
 	}
 }
 
@@ -407,6 +451,30 @@ func TestActorAuthenticatorKeepsConcurrentCallsBoundToOneActor(t *testing.T) {
 	}
 }
 
+type environmentToolService struct {
+	EnvironmentService
+	environment model.Environment
+	userID      string
+	projectID   string
+	update      environmentdto.UpdateInput
+	probeCalls  int
+}
+
+func (s *environmentToolService) EnvironmentForUser(_ context.Context, userID, projectID string) (model.Environment, error) {
+	s.userID, s.projectID = userID, projectID
+	return s.environment, nil
+}
+
+func (s *environmentToolService) UpdateForUser(_ context.Context, userID, projectID string, input environmentdto.UpdateInput) (model.Environment, error) {
+	s.userID, s.projectID, s.update = userID, projectID, input
+	return s.environment, nil
+}
+
+func (s *environmentToolService) ProbeForUser(_ context.Context, userID, projectID string) (model.Environment, error) {
+	s.userID, s.projectID, s.probeCalls = userID, projectID, s.probeCalls+1
+	return s.environment, nil
+}
+
 type actorProjectService struct {
 	mu          sync.Mutex
 	actorUserId string
@@ -428,7 +496,8 @@ func (s *actorProjectService) snapshot() (string, int) {
 }
 
 var deliveryToolNames = []string{
-	"orbit_list_projects", "orbit_list_applications", "orbit_list_application_services", "orbit_list_gateways",
+	"orbit_list_projects", "orbit_get_project_environment", "orbit_update_project_environment", "orbit_probe_project_environment",
+	"orbit_list_applications", "orbit_list_application_services", "orbit_list_gateways",
 	"orbit_create_gateway", "orbit_provision_gateway", "orbit_get_gateway", "orbit_update_gateway",
 	"orbit_create_application", "orbit_get_application", "orbit_delete_application", "orbit_list_versions", "orbit_get_version",
 	"orbit_create_version_component", "orbit_create_version", "orbit_update_version",

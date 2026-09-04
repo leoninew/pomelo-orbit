@@ -89,11 +89,11 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 		return err
 	}
 
-	updatedRoutes, err := s.listEnabledRoutesForPublish(ctx)
+	updatedRoutes, err := s.listEnabledRoutesForPublish(ctx, projectId)
 	if err != nil {
 		return err
 	}
-	return s.applyRouteSnapshot(ctx, updatedRoutes, false)
+	return s.applyRouteSnapshot(ctx, projectId, updatedRoutes, false)
 }
 
 func (s Service) loadSyncState(ctx context.Context, userId string, projectId string, changes []routedto.RouteSyncChange) ([]model.Route, []routeport.TraefikRouter, []routeport.TraefikService, error) {
@@ -111,18 +111,18 @@ func (s Service) loadSyncState(ctx context.Context, userId string, projectId str
 	if err := s.prepareSyncRoutes(ctx, routes); err != nil {
 		return nil, nil, nil, err
 	}
-	gateway, err := s.resolveGatewayForRender(ctx)
+	gateway, err := s.resolveGatewayForRender(ctx, projectId)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	items, err := s.traefikRouterClient.ListRouters(ctx, gateway.RestApiUrl)
+	items, err := s.traefikRouterClient.ListRouters(ctx, projectId, *gateway)
 	if err != nil {
 		if s.traefikRouterClient.IsConnectionError(err) {
 			return nil, nil, nil, apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
 		}
 		return nil, nil, nil, apperror.Wrap(apperror.KindInternal, "Failed to inspect Traefik routers", err)
 	}
-	services, err := s.traefikRouterClient.ListServices(ctx, gateway.RestApiUrl)
+	services, err := s.traefikRouterClient.ListServices(ctx, projectId, *gateway)
 	if err != nil {
 		if s.traefikRouterClient.IsConnectionError(err) {
 			return nil, nil, nil, apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
@@ -133,7 +133,7 @@ func (s Service) loadSyncState(ctx context.Context, userId string, projectId str
 }
 
 func (s Service) syncCandidateRoutes(ctx context.Context, projectId string, changes []routedto.RouteSyncChange) ([]model.Route, error) {
-	enabledRoutes, err := s.route.ListEnabledRoutes(ctx)
+	enabledRoutes, err := s.route.ListEnabledRoutesByProject(ctx, projectId)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
 	}
@@ -200,7 +200,10 @@ func (s Service) prepareSyncRoutes(ctx context.Context, routes []model.Route) er
 		if err := s.resolveManagedRouteTarget(ctx, route); err != nil {
 			return err
 		}
-		if conflict, err := s.componentPortConflict(ctx, *route.ListenPort); err != nil {
+		if route.ProjectId == nil || strings.TrimSpace(*route.ProjectId) == "" {
+			return apperror.New(apperror.KindValidation, "Route project is required")
+		}
+		if conflict, err := s.componentPortConflict(ctx, *route.ProjectId, *route.ListenPort); err != nil {
 			return err
 		} else if conflict != "" {
 			return apperror.New(apperror.KindConflict, fmt.Sprintf("TCP listen port %d conflicts with component endpoint %s", *route.ListenPort, conflict))

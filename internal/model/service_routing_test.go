@@ -41,3 +41,12 @@ func TestRuntimeContainerName(t *testing.T) {
 		t.Fatalf("container name = %q, want %q", got, want)
 	}
 }
+
+func TestGatewayNetworkName(t *testing.T) {
+	if got, want := GatewayNetworkName("RAGFlow_Prod"), "orbit-ragflow-prod-traefik"; got != want {
+		t.Fatalf("gateway network name = %q, want %q", got, want)
+	}
+	if got := GatewayNetworkName("---"); got != "" {
+		t.Fatalf("gateway network name = %q, want empty", got)
+	}
+}

@@ -171,27 +171,33 @@ func (q *Queries) CountDeployments(ctx context.Context, arg CountDeploymentsPara
 
 const createDeployment = `-- name: CreateDeployment :exec
 INSERT INTO deployment (
-  id, project_id, application_id, application_name, version_id, service_id, options_json, effective_plan_hash,
-  operation_type, trigger_type, command_text, status, started_at, is_rollback, rollback_from_deployment_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  id, project_id, application_id, application_name, version_id, service_id,
+  environment_id, environment_target_revision, ssh_credential_id, ssh_credential_revision, gateway_application_id,
+  options_json, effective_plan_hash, operation_type, trigger_type, command_text, status, started_at, is_rollback, rollback_from_deployment_id
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateDeploymentParams struct {
-	ID                       string         `db:"id"`
-	ProjectID                sql.NullString `db:"project_id"`
-	ApplicationID            sql.NullString `db:"application_id"`
-	ApplicationName          string         `db:"application_name"`
-	VersionID                sql.NullString `db:"version_id"`
-	ServiceID                sql.NullString `db:"service_id"`
-	OptionsJson              sql.NullString `db:"options_json"`
-	EffectivePlanHash        sql.NullString `db:"effective_plan_hash"`
-	OperationType            string         `db:"operation_type"`
-	TriggerType              string         `db:"trigger_type"`
-	CommandText              string         `db:"command_text"`
-	Status                   string         `db:"status"`
-	StartedAt                time.Time      `db:"started_at"`
-	IsRollback               int64          `db:"is_rollback"`
-	RollbackFromDeploymentID sql.NullString `db:"rollback_from_deployment_id"`
+	ID                        string         `db:"id"`
+	ProjectID                 sql.NullString `db:"project_id"`
+	ApplicationID             sql.NullString `db:"application_id"`
+	ApplicationName           string         `db:"application_name"`
+	VersionID                 sql.NullString `db:"version_id"`
+	ServiceID                 sql.NullString `db:"service_id"`
+	EnvironmentID             sql.NullString `db:"environment_id"`
+	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
+	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
+	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
+	GatewayApplicationID      sql.NullString `db:"gateway_application_id"`
+	OptionsJson               sql.NullString `db:"options_json"`
+	EffectivePlanHash         sql.NullString `db:"effective_plan_hash"`
+	OperationType             string         `db:"operation_type"`
+	TriggerType               string         `db:"trigger_type"`
+	CommandText               string         `db:"command_text"`
+	Status                    string         `db:"status"`
+	StartedAt                 time.Time      `db:"started_at"`
+	IsRollback                int64          `db:"is_rollback"`
+	RollbackFromDeploymentID  sql.NullString `db:"rollback_from_deployment_id"`
 }
 
 func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentParams) error {
@@ -202,6 +208,11 @@ func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentPara
 		arg.ApplicationName,
 		arg.VersionID,
 		arg.ServiceID,
+		arg.EnvironmentID,
+		arg.EnvironmentTargetRevision,
+		arg.SshCredentialID,
+		arg.SshCredentialRevision,
+		arg.GatewayApplicationID,
 		arg.OptionsJson,
 		arg.EffectivePlanHash,
 		arg.OperationType,
@@ -227,7 +238,9 @@ func (q *Queries) DeleteDeployment(ctx context.Context, id string) error {
 
 const deploymentByID = `-- name: DeploymentByID :one
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
-       s.instance_key AS service_instance_key, d.options_json, d.effective_plan_hash,
+       s.instance_key AS service_instance_key,
+       d.environment_id, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
+       d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
 FROM deployment d
@@ -236,26 +249,31 @@ WHERE d.id = ?
 `
 
 type DeploymentByIDRow struct {
-	ID                       string         `db:"id"`
-	ProjectID                sql.NullString `db:"project_id"`
-	ApplicationID            sql.NullString `db:"application_id"`
-	ApplicationName          string         `db:"application_name"`
-	VersionID                sql.NullString `db:"version_id"`
-	ServiceID                sql.NullString `db:"service_id"`
-	ServiceInstanceKey       sql.NullString `db:"service_instance_key"`
-	OptionsJson              sql.NullString `db:"options_json"`
-	EffectivePlanHash        sql.NullString `db:"effective_plan_hash"`
-	OperationType            string         `db:"operation_type"`
-	TriggerType              string         `db:"trigger_type"`
-	CommandText              string         `db:"command_text"`
-	Status                   string         `db:"status"`
-	StartedAt                time.Time      `db:"started_at"`
-	FinishedAt               sql.NullTime   `db:"finished_at"`
-	DurationMs               sql.NullInt64  `db:"duration_ms"`
-	LogText                  sql.NullString `db:"log_text"`
-	ErrorMessage             sql.NullString `db:"error_message"`
-	IsRollback               int64          `db:"is_rollback"`
-	RollbackFromDeploymentID sql.NullString `db:"rollback_from_deployment_id"`
+	ID                        string         `db:"id"`
+	ProjectID                 sql.NullString `db:"project_id"`
+	ApplicationID             sql.NullString `db:"application_id"`
+	ApplicationName           string         `db:"application_name"`
+	VersionID                 sql.NullString `db:"version_id"`
+	ServiceID                 sql.NullString `db:"service_id"`
+	ServiceInstanceKey        sql.NullString `db:"service_instance_key"`
+	EnvironmentID             sql.NullString `db:"environment_id"`
+	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
+	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
+	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
+	GatewayApplicationID      sql.NullString `db:"gateway_application_id"`
+	OptionsJson               sql.NullString `db:"options_json"`
+	EffectivePlanHash         sql.NullString `db:"effective_plan_hash"`
+	OperationType             string         `db:"operation_type"`
+	TriggerType               string         `db:"trigger_type"`
+	CommandText               string         `db:"command_text"`
+	Status                    string         `db:"status"`
+	StartedAt                 time.Time      `db:"started_at"`
+	FinishedAt                sql.NullTime   `db:"finished_at"`
+	DurationMs                sql.NullInt64  `db:"duration_ms"`
+	LogText                   sql.NullString `db:"log_text"`
+	ErrorMessage              sql.NullString `db:"error_message"`
+	IsRollback                int64          `db:"is_rollback"`
+	RollbackFromDeploymentID  sql.NullString `db:"rollback_from_deployment_id"`
 }
 
 func (q *Queries) DeploymentByID(ctx context.Context, id string) (DeploymentByIDRow, error) {
@@ -269,6 +287,11 @@ func (q *Queries) DeploymentByID(ctx context.Context, id string) (DeploymentByID
 		&i.VersionID,
 		&i.ServiceID,
 		&i.ServiceInstanceKey,
+		&i.EnvironmentID,
+		&i.EnvironmentTargetRevision,
+		&i.SshCredentialID,
+		&i.SshCredentialRevision,
+		&i.GatewayApplicationID,
 		&i.OptionsJson,
 		&i.EffectivePlanHash,
 		&i.OperationType,
@@ -318,7 +341,9 @@ func (q *Queries) LatestSuccessfulDeploymentPlanHash(ctx context.Context, servic
 
 const listDeployments = `-- name: ListDeployments :many
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
-       s.instance_key AS service_instance_key, d.options_json, d.effective_plan_hash,
+       s.instance_key AS service_instance_key,
+       d.environment_id, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
+       d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
 FROM deployment d
@@ -354,26 +379,31 @@ type ListDeploymentsParams struct {
 }
 
 type ListDeploymentsRow struct {
-	ID                       string         `db:"id"`
-	ProjectID                sql.NullString `db:"project_id"`
-	ApplicationID            sql.NullString `db:"application_id"`
-	ApplicationName          string         `db:"application_name"`
-	VersionID                sql.NullString `db:"version_id"`
-	ServiceID                sql.NullString `db:"service_id"`
-	ServiceInstanceKey       sql.NullString `db:"service_instance_key"`
-	OptionsJson              sql.NullString `db:"options_json"`
-	EffectivePlanHash        sql.NullString `db:"effective_plan_hash"`
-	OperationType            string         `db:"operation_type"`
-	TriggerType              string         `db:"trigger_type"`
-	CommandText              string         `db:"command_text"`
-	Status                   string         `db:"status"`
-	StartedAt                time.Time      `db:"started_at"`
-	FinishedAt               sql.NullTime   `db:"finished_at"`
-	DurationMs               sql.NullInt64  `db:"duration_ms"`
-	LogText                  sql.NullString `db:"log_text"`
-	ErrorMessage             sql.NullString `db:"error_message"`
-	IsRollback               int64          `db:"is_rollback"`
-	RollbackFromDeploymentID sql.NullString `db:"rollback_from_deployment_id"`
+	ID                        string         `db:"id"`
+	ProjectID                 sql.NullString `db:"project_id"`
+	ApplicationID             sql.NullString `db:"application_id"`
+	ApplicationName           string         `db:"application_name"`
+	VersionID                 sql.NullString `db:"version_id"`
+	ServiceID                 sql.NullString `db:"service_id"`
+	ServiceInstanceKey        sql.NullString `db:"service_instance_key"`
+	EnvironmentID             sql.NullString `db:"environment_id"`
+	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
+	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
+	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
+	GatewayApplicationID      sql.NullString `db:"gateway_application_id"`
+	OptionsJson               sql.NullString `db:"options_json"`
+	EffectivePlanHash         sql.NullString `db:"effective_plan_hash"`
+	OperationType             string         `db:"operation_type"`
+	TriggerType               string         `db:"trigger_type"`
+	CommandText               string         `db:"command_text"`
+	Status                    string         `db:"status"`
+	StartedAt                 time.Time      `db:"started_at"`
+	FinishedAt                sql.NullTime   `db:"finished_at"`
+	DurationMs                sql.NullInt64  `db:"duration_ms"`
+	LogText                   sql.NullString `db:"log_text"`
+	ErrorMessage              sql.NullString `db:"error_message"`
+	IsRollback                int64          `db:"is_rollback"`
+	RollbackFromDeploymentID  sql.NullString `db:"rollback_from_deployment_id"`
 }
 
 func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams) ([]ListDeploymentsRow, error) {
@@ -407,6 +437,11 @@ func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams
 			&i.VersionID,
 			&i.ServiceID,
 			&i.ServiceInstanceKey,
+			&i.EnvironmentID,
+			&i.EnvironmentTargetRevision,
+			&i.SshCredentialID,
+			&i.SshCredentialRevision,
+			&i.GatewayApplicationID,
 			&i.OptionsJson,
 			&i.EffectivePlanHash,
 			&i.OperationType,

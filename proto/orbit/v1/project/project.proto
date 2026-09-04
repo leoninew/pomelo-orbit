@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package orbit.v1.project;
 
+import "orbit/v1/environment/environment.proto";
 
 message ProjectResp {
   string id = 1;
@@ -29,9 +30,14 @@ message ProjectMemberListResp {
   repeated ProjectMemberResp items = 1;
 }
 
-message ProjectSaveReq {
+message ProjectCreateReq {
   string name = 1;
   string code = 2;
+  orbit.v1.environment.ProjectEnvironmentCreateReq environment = 3;
+}
+
+message ProjectSaveReq {
+  string name = 1;
 }
 
 message ProjectMemberReq {

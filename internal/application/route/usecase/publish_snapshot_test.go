@@ -21,7 +21,7 @@ func TestPublishSnapshotWaitsForGatewayAndPublishesRoutes(t *testing.T) {
 		traefikRouterClient: snapshotOrderRouterClient{events: &events},
 	}
 
-	if err := service.PublishSnapshot(context.Background()); err != nil {
+	if err := service.PublishSnapshot(context.Background(), "project-1"); err != nil {
 		t.Fatal(err)
 	}
 	if publisher.readyWaits != 1 {
@@ -40,7 +40,7 @@ type routeListFake struct {
 	routes []model.Route
 }
 
-func (f routeListFake) ListEnabledRoutes(context.Context) ([]model.Route, error) {
+func (f routeListFake) ListEnabledRoutesByProject(context.Context, string) ([]model.Route, error) {
 	return append([]model.Route(nil), f.routes...), nil
 }
 
@@ -49,7 +49,7 @@ type gatewayConfigFake struct {
 	cfg model.GatewayConfig
 }
 
-func (f gatewayConfigFake) ResolveActiveGatewayConfig(context.Context) (model.GatewayConfig, error) {
+func (f gatewayConfigFake) GatewayConfigByProject(context.Context, string) (model.GatewayConfig, error) {
 	return f.cfg, nil
 }
 
@@ -58,26 +58,26 @@ type snapshotOrderPublisher struct {
 	events *[]string
 }
 
-func (p *snapshotOrderPublisher) WaitUntilReady(ctx context.Context, restAPIURL string, timeout time.Duration) error {
+func (p *snapshotOrderPublisher) WaitUntilReady(ctx context.Context, projectID string, gateway model.GatewayConfig, timeout time.Duration) error {
 	*p.events = append(*p.events, "wait")
-	return p.recordingRoutePublisher.WaitUntilReady(ctx, restAPIURL, timeout)
+	return p.recordingRoutePublisher.WaitUntilReady(ctx, projectID, gateway, timeout)
 }
 
-func (p *snapshotOrderPublisher) ApplySnapshot(ctx context.Context, gateway model.GatewayConfig, routes []model.Route) error {
+func (p *snapshotOrderPublisher) ApplySnapshot(ctx context.Context, projectID string, gateway model.GatewayConfig, routes []model.Route) error {
 	*p.events = append(*p.events, "apply")
-	return p.recordingRoutePublisher.ApplySnapshot(ctx, gateway, routes)
+	return p.recordingRoutePublisher.ApplySnapshot(ctx, projectID, gateway, routes)
 }
 
 type snapshotOrderRouterClient struct {
 	events *[]string
 }
 
-func (c snapshotOrderRouterClient) ListRouters(context.Context, string) ([]routeport.TraefikRouter, error) {
+func (c snapshotOrderRouterClient) ListRouters(context.Context, string, model.GatewayConfig) ([]routeport.TraefikRouter, error) {
 	*c.events = append(*c.events, "routers")
 	return nil, nil
 }
 
-func (snapshotOrderRouterClient) ListServices(context.Context, string) ([]routeport.TraefikService, error) {
+func (snapshotOrderRouterClient) ListServices(context.Context, string, model.GatewayConfig) ([]routeport.TraefikService, error) {
 	return nil, nil
 }
 

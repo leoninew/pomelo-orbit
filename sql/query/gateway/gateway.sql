@@ -34,21 +34,12 @@ INNER JOIN gateway_config gc ON gc.application_id = a.id
 WHERE a.project_id = ?
 ORDER BY a.id DESC;
 
--- name: ListAllGatewayApplications :many
-SELECT a.id, a.project_id, a.name, a.code, a.kind, a.created_at, a.updated_at
-FROM application a
-INNER JOIN gateway_config gc ON gc.application_id = a.id
-ORDER BY a.created_at, a.id;
-
--- name: ResolveActiveGatewayConfig :one
-SELECT gc.application_id, gc.traefik_component_name, gc.rest_api_url, gc.rest_ready_timeout_seconds,
-       gc.base_domain, gc.default_entrypoint, gc.tls_mode, gc.acme_profile, gc.acme_email,
-       gc.dns_api_token, gc.created_at, gc.updated_at
-FROM gateway_config gc
-INNER JOIN service s ON s.application_id = gc.application_id
-WHERE s.status = ?
-ORDER BY s.updated_at DESC, gc.application_id
-LIMIT 1;
+-- name: GatewayBindingByProjectID :one
+SELECT gc.application_id, e.code AS environment_code
+FROM environment e
+INNER JOIN gateway_config gc ON gc.application_id = e.gateway_application_id
+INNER JOIN application a ON a.id = gc.application_id AND a.project_id = e.project_id
+WHERE e.project_id = ?;
 
 -- name: InsertGatewayConfig :exec
 INSERT INTO gateway_config (

@@ -5,6 +5,7 @@ import (
 	"io"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -29,7 +30,6 @@ type CommandStore interface {
 	UpdateServiceStatus(ctx context.Context, id string, status string) error
 	CreateDeployment(ctx context.Context, deployment model.Deployment) error
 	HasActiveDeployment(ctx context.Context, serviceId string) (bool, error)
-	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
 }
 
 // ExecutionStore is the worker's narrow persistence view. It deliberately
@@ -47,40 +47,45 @@ type ExecutionStore interface {
 	BeginDeployment(ctx context.Context, id string) (bool, error)
 	CompleteDeployment(ctx context.Context, id string, status string, message string) (bool, error)
 	GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error)
-	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
-}
-
-type LogReader interface {
-	Read(logPath string, offset int) ([]byte, int, error)
-}
-
-type CommandQueryRunner interface {
-	Run(ctx context.Context, cwd string, name string, args ...string) (string, error)
-}
-
-type CommandRunner interface {
-	Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error
 }
 
 type ExecutionLogStore interface {
-	LogReader
-	Writer(logPath string) (io.WriteCloser, error)
+	Read(serviceCode string, deploymentID string, offset int) ([]byte, int, error)
+	Writer(serviceCode string, deploymentID string) (io.WriteCloser, error)
+	Remove(serviceCode string, deploymentID string) error
 }
 
-// Workspace is the deployment runtime filesystem boundary.
-type Workspace interface {
-	ServiceDir(serviceCode string) string
-	ServiceDirExists(serviceCode string) (bool, error)
-	DeploymentLogPath(serviceCode string, deploymentId string) string
-	RemoveDeploymentLog(serviceCode string, deploymentId string) error
-	ComposeMountSourceDir(ctx context.Context, serviceCode string) (string, error)
-	WriteConfig(serviceCode string, path string, content string) error
+type RemoteFile struct {
+	Path           string
+	Content        []byte
+	Mode           uint32
+	IgnoreIfExists bool
+}
+
+type RemoteWorkspace struct {
+	ServiceCode  string
+	Directories  []string
+	Files        []RemoteFile
+	Compose      string
+	DeploymentID string
+}
+
+// RemoteRuntime is the only deployment execution boundary. Every operation
+// receives an explicit Project Environment target; no local fallback exists.
+type RemoteRuntime interface {
+	ServiceDir(target environmentport.SSHTarget, serviceCode string) (string, error)
+	ServiceDirExists(ctx context.Context, target environmentport.SSHTarget, serviceCode string) (bool, error)
+	StageWorkspace(ctx context.Context, target environmentport.SSHTarget, workspace RemoteWorkspace) error
+	Run(ctx context.Context, target environmentport.SSHTarget, serviceCode string, log io.Writer, name string, args ...string) error
+	Query(ctx context.Context, target environmentport.SSHTarget, serviceCode string, name string, args ...string) (string, error)
+	QueryAtEnvironmentRoot(ctx context.Context, target environmentport.SSHTarget, name string, args ...string) (string, error)
+	SyncFiles(ctx context.Context, target environmentport.SSHTarget, directory string, files []RemoteFile, pruneSuffix string) error
 }
 
 // GatewayRoutePublisher restores the complete custom Route snapshot after a
 // Gateway Compose deployment has replaced the Traefik REST provider state.
 type GatewayRoutePublisher interface {
-	PublishSnapshot(ctx context.Context) error
+	PublishSnapshot(ctx context.Context, projectId string) error
 }
 
 // GatewayDeploymentCoordinator resolves and selects Gateway state required by

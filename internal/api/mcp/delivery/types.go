@@ -9,6 +9,8 @@ import (
 	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
+	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	projectsvc "github.com/leoninew/pomelo-orbit/internal/application/project/usecase"
@@ -30,6 +32,7 @@ type Dependencies struct {
 	Application        ApplicationService
 	Service            ServiceService
 	Deployment         DeploymentService
+	Environment        EnvironmentService
 	Gateway            GatewayService
 	Route              RouteService
 }
@@ -82,7 +85,7 @@ type DeploymentService interface {
 	DeploymentLog(context.Context, string, string, int) (deploymentdto.DeploymentLog, error)
 	WaitDeployment(context.Context, string, string, *time.Duration) (deploymentdto.DeploymentWaitResult, error)
 	ResolveRuntimeTarget(context.Context, string, string, string, bool) (deploymentdto.RuntimeTarget, error)
-	RuntimeDoctor(context.Context, *deploymentdto.RuntimeTarget, string) (map[string]any, error)
+	RuntimeDoctor(context.Context, *deploymentdto.RuntimeTarget) (map[string]any, error)
 	RuntimeComposeConfig(context.Context, deploymentdto.RuntimeTarget) (deploymentdto.RuntimeTextResult, error)
 	RuntimeComposePS(context.Context, deploymentdto.RuntimeTarget) (deploymentdto.RuntimeComposePSResult, error)
 	RuntimeComposeLogs(context.Context, deploymentdto.RuntimeTarget, int, string, []string) (deploymentdto.RuntimeTextResult, error)
@@ -90,6 +93,12 @@ type DeploymentService interface {
 	RuntimeNetworkInspect(context.Context, deploymentdto.RuntimeTarget, string) (deploymentdto.RuntimeInspectResult, error)
 	RuntimeHTTPProbe(context.Context, deploymentdto.RuntimeTarget, string, int, string) (deploymentdto.RuntimeTextResult, error)
 	VerifyDeployment(context.Context, string, string, string, deploymentdto.DeploymentVerificationInput) (deploymentdto.DeploymentVerificationResult, error)
+}
+
+type EnvironmentService interface {
+	EnvironmentForUser(context.Context, string, string) (model.Environment, error)
+	UpdateForUser(context.Context, string, string, environmentdto.UpdateInput) (model.Environment, error)
+	ProbeForUser(context.Context, string, string) (model.Environment, error)
 }
 
 type GatewayService interface {
@@ -116,6 +125,7 @@ var (
 	_ ApplicationService = applicationsvc.Service{}
 	_ ServiceService     = servicesvc.Service{}
 	_ DeploymentService  = deploymentsvc.Service{}
+	_ EnvironmentService = environmentsvc.Service{}
 	_ GatewayService     = gatewaysvc.Service{}
 	_ RouteService       = routesvc.Service{}
 )

@@ -16,6 +16,7 @@ import (
 	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	dialoguesvc "github.com/leoninew/pomelo-orbit/internal/application/dialogue/usecase"
+	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
 	pipelinerunsvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/usecase"
@@ -49,6 +50,7 @@ type Dependencies struct {
 	ServiceService     servicesvc.Service
 	DeploymentService  deploymentsvc.Service
 	DialogueService    dialoguesvc.Service
+	EnvironmentService environmentsvc.Service
 	GatewayService     gatewaysvc.Service
 	TaskService        tasksvc.Service
 	TurnstileVerifier  authhandler.TurnstileVerifier
@@ -91,6 +93,7 @@ func (r Router) Handler() http.Handler {
 			r.deps.Database,
 			"/api/route/sync/preview",
 			"/api/route/sync/confirm",
+			"/api/project/:project_id/environment/probe",
 		))
 	}
 	r.registerAuth(engine)
@@ -98,6 +101,7 @@ func (r Router) Handler() http.Handler {
 	r.registerRole(engine)
 	r.registerSettings(engine)
 	r.registerProject(engine)
+	r.registerEnvironment(engine)
 	r.registerCredential(engine)
 	r.registerRepository(engine)
 	r.registerPipeline(engine)

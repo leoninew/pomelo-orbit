@@ -13,7 +13,7 @@ func TestRenderComposeUsesComponentServiceHosts(t *testing.T) {
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application: model.Application{Code: "ragflow", Kind: status.ApplicationKindStandard},
 		Service:     model.Service{Code: "ragflow-service"},
-		Gateway:     &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web"},
+		Gateway:     &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web", NetworkName: "orbit-routing-test-traefik"},
 		Components: []model.EffectiveServiceComponent{
 			{Name: "minio", Image: "minio:latest", Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 9000, Mode: "gateway"}}},
 			{Name: "ragflow", Image: "ragflow:latest", Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 80, Mode: "gateway"}}},
@@ -33,7 +33,7 @@ func TestRenderComposeDoesNotPublishTCPDeclaration(t *testing.T) {
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application: model.Application{Code: "mysql", Kind: status.ApplicationKindStandard},
 		Service:     model.Service{Code: "mysql-default"},
-		Gateway:     &model.GatewayConfig{},
+		Gateway:     &model.GatewayConfig{NetworkName: "orbit-routing-test-traefik"},
 		Components: []model.EffectiveServiceComponent{{
 			Name: "mysql", Image: "mysql:8",
 			Endpoints: []model.VersionComponentEndpoint{{Protocol: "tcp", ContainerPort: 3306, Mode: "internal"}},
@@ -54,7 +54,7 @@ func TestRenderComposeRejectsDuplicateGatewayHTTPRoute(t *testing.T) {
 	_, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application: model.Application{Code: "api", Kind: status.ApplicationKindStandard},
 		Service:     model.Service{Code: "api-default"},
-		Gateway:     &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web"},
+		Gateway:     &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web", NetworkName: "orbit-routing-test-traefik"},
 		Components: []model.EffectiveServiceComponent{{
 			Name: "api", Image: "api:latest",
 			Endpoints: []model.VersionComponentEndpoint{

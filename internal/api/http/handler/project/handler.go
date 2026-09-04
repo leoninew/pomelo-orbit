@@ -49,12 +49,12 @@ func (h Handler) CreateProject(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req projectv1.ProjectSaveReq
+	var req projectv1.ProjectCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	project, err := h.service.Create(c.Request.Context(), current.Id, projectSaveInput(&req))
+	project, err := h.service.Create(c.Request.Context(), current.Id, projectCreateInput(&req))
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return

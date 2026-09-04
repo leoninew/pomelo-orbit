@@ -15,7 +15,7 @@ func testGatewayConfig() config.Config {
 }
 
 func TestBuildInitialGatewayVersionsDeclareStaticTopology(t *testing.T) {
-	versions := buildInitialGatewayVersions("gateway-1", "traefik:3.6", "missing", "traefik")
+	versions := buildInitialGatewayVersions("gateway-1", "traefik:3.6", "missing", "traefik", "orbit-gateway-1-traefik")
 	if len(versions) != 4 {
 		t.Fatalf("initial versions = %#v", versions)
 	}
@@ -41,6 +41,11 @@ func TestInitialGatewayProfileStaticConfigsAreValidYAML(t *testing.T) {
 	for _, role := range []string{gatewayVersionProfileHTTP, gatewayVersionProfileDNS, gatewayVersionProfileBoth} {
 		t.Run(role, func(t *testing.T) {
 			var document struct {
+				Providers struct {
+					Docker struct {
+						Network string `yaml:"network"`
+					} `yaml:"docker"`
+				} `yaml:"providers"`
 				CertificatesResolvers map[string]struct {
 					ACME struct {
 						DNSChallenge struct {
@@ -53,8 +58,11 @@ func TestInitialGatewayProfileStaticConfigsAreValidYAML(t *testing.T) {
 					} `yaml:"acme"`
 				} `yaml:"certificatesResolvers"`
 			}
-			if err := yaml.Unmarshal([]byte(initialTraefikStaticConfig(role)), &document); err != nil {
+			if err := yaml.Unmarshal([]byte(initialTraefikStaticConfig(role, "orbit-gateway-1-traefik")), &document); err != nil {
 				t.Fatalf("parse static config: %v", err)
+			}
+			if document.Providers.Docker.Network != "orbit-gateway-1-traefik" {
+				t.Fatalf("Docker provider network = %q", document.Providers.Docker.Network)
 			}
 			if role == gatewayVersionProfileHTTP {
 				return

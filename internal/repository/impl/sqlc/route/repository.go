@@ -71,10 +71,13 @@ func (r Repository) ListAllRoutes(ctx context.Context, projectId string) ([]mode
 	return items, nil
 }
 
-func (r Repository) ListEnabledRoutes(ctx context.Context) ([]model.Route, error) {
-	rows, err := r.q(ctx).ListEnabledRoutes(ctx, 1)
+func (r Repository) ListEnabledRoutesByProject(ctx context.Context, projectID string) ([]model.Route, error) {
+	rows, err := r.q(ctx).ListEnabledRoutesByProjectID(ctx, routesqlc.ListEnabledRoutesByProjectIDParams{
+		ProjectID: sql.NullString{String: projectID, Valid: true},
+		Enabled:   1,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("list enabled routes: %w", err)
+		return nil, fmt.Errorf("list enabled routes for project %s: %w", projectID, err)
 	}
 	items := make([]model.Route, 0, len(rows))
 	for _, row := range rows {
@@ -91,12 +94,15 @@ func (r Repository) Route(ctx context.Context, id string) (model.Route, error) {
 	return routeFromById(row), nil
 }
 
-func (r Repository) RouteByDomain(ctx context.Context, domain string) (model.Route, error) {
-	row, err := r.q(ctx).RouteByDomain(ctx, strings.TrimSpace(domain))
+func (r Repository) RouteByProjectAndDomain(ctx context.Context, projectID string, domain string) (model.Route, error) {
+	row, err := r.q(ctx).RouteByProjectIDAndDomain(ctx, routesqlc.RouteByProjectIDAndDomainParams{
+		ProjectID: sql.NullString{String: strings.TrimSpace(projectID), Valid: true},
+		Domain:    strings.TrimSpace(domain),
+	})
 	if err != nil {
-		return model.Route{}, fmt.Errorf("load route by domain %s: %w", domain, sqlcommon.TranslateError(err))
+		return model.Route{}, fmt.Errorf("load route by project %s and domain %s: %w", projectID, domain, sqlcommon.TranslateError(err))
 	}
-	return routeFromByDomain(row), nil
+	return routeFromByProjectAndDomain(row), nil
 }
 
 func (r Repository) CreateRoute(ctx context.Context, route model.Route) error {
@@ -150,12 +156,12 @@ func routeFromRow(row routesqlc.ListRoutesRow) model.Route {
 func routeFromAll(row routesqlc.ListAllRoutesRow) model.Route {
 	return routeCommon(row.ID, row.ProjectID, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceID, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.AcmeChallenge, row.CreatedAt, row.UpdatedAt)
 }
-func routeFromEnabled(row routesqlc.ListEnabledRoutesRow) model.Route {
+func routeFromEnabled(row routesqlc.ListEnabledRoutesByProjectIDRow) model.Route {
 	return routeCommon(row.ID, row.ProjectID, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceID, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.AcmeChallenge, row.CreatedAt, row.UpdatedAt)
 }
 func routeFromById(row routesqlc.RouteByIDRow) model.Route {
 	return routeCommon(row.ID, row.ProjectID, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceID, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.AcmeChallenge, row.CreatedAt, row.UpdatedAt)
 }
-func routeFromByDomain(row routesqlc.RouteByDomainRow) model.Route {
+func routeFromByProjectAndDomain(row routesqlc.RouteByProjectIDAndDomainRow) model.Route {
 	return routeCommon(row.ID, row.ProjectID, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceID, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.AcmeChallenge, row.CreatedAt, row.UpdatedAt)
 }

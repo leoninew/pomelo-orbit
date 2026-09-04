@@ -11,12 +11,14 @@ import (
 
 func TestRenderComposeIncludesStructuredRuntimeFields(t *testing.T) {
 	restartPolicy := "unless-stopped"
+	disabled := false
 	service := Service{}
 	compose, err := service.RenderCompose(context.Background(), RenderInput{
 		Plan: model.EffectiveServicePlan{
-			Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
-			Version:     model.Version{Id: "version-1"},
-			Service:     model.Service{InstanceKey: "default"},
+			Application:        model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
+			JoinTraefikNetwork: &disabled,
+			Version:            model.Version{Id: "version-1"},
+			Service:            model.Service{InstanceKey: "default"},
 			Components: []model.EffectiveServiceComponent{{
 				Name: "web", Image: "nginx", RestartPolicy: &restartPolicy,
 				Tmpfs:   []model.VersionComponentTmpfs{{Target: "/tmp", SizeBytes: 1048576, Mode: "1777"}},

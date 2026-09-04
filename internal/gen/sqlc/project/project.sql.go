@@ -350,23 +350,17 @@ func (q *Queries) RemoveUserFromAllProjects(ctx context.Context, userID string) 
 
 const updateProject = `-- name: UpdateProject :exec
 UPDATE project
-SET name = ?, code = ?, updated_at = ?
+SET name = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateProjectParams struct {
 	Name      string    `db:"name"`
-	Code      string    `db:"code"`
 	UpdatedAt time.Time `db:"updated_at"`
 	ID        string    `db:"id"`
 }
 
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) error {
-	_, err := q.db.ExecContext(ctx, updateProject,
-		arg.Name,
-		arg.Code,
-		arg.UpdatedAt,
-		arg.ID,
-	)
+	_, err := q.db.ExecContext(ctx, updateProject, arg.Name, arg.UpdatedAt, arg.ID)
 	return err
 }

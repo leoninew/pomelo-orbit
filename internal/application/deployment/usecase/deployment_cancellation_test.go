@@ -2,11 +2,11 @@ package deploymentsvc
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -41,20 +41,18 @@ func TestReconcileCanceledServiceUsesObservedRuntimeWithoutChangingDeployment(t 
 	}{
 		{name: "running", workspace: true, output: `[{"State":"running"}]`, want: status.ServiceStatusRunning},
 		{name: "stopped", workspace: true, output: "[]", want: status.ServiceStatusStopped},
-		{name: "unobservable", workspace: true, runErr: errors.New("compose ps failed"), want: status.ServiceStatusFaulted},
+		{name: "unobservable", workspace: true, runErr: context.Canceled, want: status.ServiceStatusFaulted},
 		{name: "workspace absent", want: status.ServiceStatusStopped},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			store := &canceledServiceStore{}
-			workspace := testWorkspace(t.TempDir())
-			workspace.hasServiceDir = test.workspace
-			service := Service{
-				executionStore: store,
-				workspace:      workspace,
-				queryRunner:    composePsQueryRunner{output: test.output, err: test.runErr},
-			}
-			service.reconcileCanceledService(context.Background(), model.Application{Code: "demo"}, model.Service{Id: "service-1", InstanceKey: "default"})
+			runtime := testWorkspace(t.TempDir())
+			runtime.hasServiceDir = test.workspace
+			runtime.queryOutput = test.output
+			runtime.queryErr = test.runErr
+			service := Service{executionStore: store, remoteRuntime: runtime}
+			service.reconcileCanceledService(context.Background(), environmentport.SSHTarget{}, model.Application{Code: "demo"}, model.Service{Id: "service-1", InstanceKey: "default"})
 			if store.status != test.want {
 				t.Fatalf("service status = %q, want %q", store.status, test.want)
 			}
@@ -70,13 +68,4 @@ type canceledServiceStore struct {
 func (s *canceledServiceStore) UpdateServiceStatus(_ context.Context, _ string, value string) error {
 	s.status = value
 	return nil
-}
-
-type composePsQueryRunner struct {
-	output string
-	err    error
-}
-
-func (r composePsQueryRunner) Run(context.Context, string, string, ...string) (string, error) {
-	return r.output, r.err
 }

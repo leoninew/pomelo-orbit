@@ -134,7 +134,6 @@ func (r Repository) CreateProject(ctx context.Context, project model.Project, us
 func (r Repository) UpdateProject(ctx context.Context, project model.Project) error {
 	err := r.q(ctx).UpdateProject(ctx, projectsqlc.UpdateProjectParams{
 		Name:      project.Name,
-		Code:      project.Code,
 		UpdatedAt: time.Now().UTC(),
 		ID:        project.Id,
 	})

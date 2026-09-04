@@ -13,6 +13,7 @@ import (
 	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	dialoguesvc "github.com/leoninew/pomelo-orbit/internal/application/dialogue/usecase"
+	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
 	pipelinerunsvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/usecase"
@@ -30,9 +31,10 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/traefik"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/turnstile"
 	deliverymcpclient "github.com/leoninew/pomelo-orbit/internal/infrastructure/mcp/delivery"
-	deploymentrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/deployment"
+
 	pipelinerunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/pipeline"
-	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/deploymentworkspace"
+	sshrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/ssh"
+
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/envfile"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/executionlog"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/pipelineworkspace"
@@ -55,6 +57,7 @@ type applicationServices struct {
 	ProjectService     projectsvc.Service
 	SettingsService    settingssvc.Service
 	CredentialService  credentialsvc.Service
+	EnvironmentService environmentsvc.Service
 	RepositoryService  repositorysvc.Service
 	PipelineService    pipelinesvc.Service
 	PipelineRunService pipelinerunsvc.Service
@@ -79,6 +82,7 @@ func newDeliveryMCPDependencies(services applicationServices) deliverymcp.Depend
 		Application: services.ApplicationService,
 		Service:     services.ServiceService,
 		Deployment:  services.DeploymentService,
+		Environment: services.EnvironmentService,
 		Gateway:     services.GatewayService,
 		Route:       services.RouteService,
 	}
@@ -92,13 +96,18 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	deploymentDispatcher := queuedispatch.NewDeploymentDispatcher(taskService)
 	authService := authsvc.New(stores.user, stores.auth, tokenService, logger, cfg.Jwt.SecretKey)
 	transactionRunner := databasetx.NewTransactionRunner(database)
-	logStore := executionlog.Store{}
+	credentialService := credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey)
+	environmentService := environmentsvc.New(stores.environment, stores.project, credentialService, credentialService, sshrunner.NewEnvironmentProber())
+	projectService := projectsvc.New(stores.project, stores.user, stores.environment, credentialService, environmentService)
+	pipelineLogStore := executionlog.Store{}
+	deploymentLogStore := executionlog.NewDeploymentStore(cfg.Workspace.Deployment)
 	dockerPathResolver := dockerDaemonPathResolver()
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.Workspace.Pipeline, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
-	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.Workspace.Deployment, dockerPathResolver)
-	routeManager := traefik.NewRouteManager(cfg)
-	gatewayCore := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, cfg, dockerPathResolver, transactionRunner)
+	targetResolver := environmentsvc.NewTargetResolver(stores.environment, credentialService)
+	remoteRuntime := sshrunner.NewRuntime()
+	routeManager := traefik.NewRouteManager(targetResolver, remoteRuntime)
+	gatewayCore := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, cfg, dockerPathResolver, transactionRunner)
 	deploymentService := deploymentsvc.NewCommandService(
 		stores.project,
 		stores.application,
@@ -107,21 +116,22 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		stores.gateway,
 		deploymentDispatcher,
 		logger,
-		deploymentWorkspace,
-		deploymentrunner.CommandQueryRunner{},
-		logStore,
+		targetResolver,
+		remoteRuntime,
+		deploymentLogStore,
 		gatewayCore,
 	)
 	gatewayService := gatewayCore
 	applicationService := applicationsvc.New(stores.project, stores.application, stores.service)
 
 	services := applicationServices{
-		AuthService:       authService,
-		RoleService:       rolesvc.New(stores.role),
-		UserService:       usersvc.New(stores.user, stores.role, stores.project),
-		ProjectService:    projectsvc.New(stores.project, stores.user),
-		SettingsService:   settingssvc.New(cfg, envfile.NewStore(cfg.EnvFilePath)),
-		CredentialService: credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey),
+		AuthService:        authService,
+		RoleService:        rolesvc.New(stores.role),
+		UserService:        usersvc.New(stores.user, stores.role, stores.project),
+		ProjectService:     projectService,
+		SettingsService:    settingssvc.New(cfg, envfile.NewStore(cfg.EnvFilePath)),
+		CredentialService:  credentialService,
+		EnvironmentService: environmentService,
 		RepositoryService: repositorysvc.New(
 			stores.project,
 			stores.credential,
@@ -144,7 +154,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 			cfg.Jwt.SecretKey,
 			logger,
 			pipelinerunner.DockerRunner{},
-			logStore,
+			pipelineLogStore,
 			localSource,
 		),
 		RouteService: routesvc.New(
@@ -193,6 +203,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		ProjectService:     services.ProjectService,
 		SettingsService:    services.SettingsService,
 		CredentialService:  services.CredentialService,
+		EnvironmentService: services.EnvironmentService,
 		RepositoryService:  services.RepositoryService,
 		PipelineService:    services.PipelineService,
 		PipelineRunService: services.PipelineRunService,

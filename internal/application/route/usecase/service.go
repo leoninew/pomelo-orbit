@@ -66,34 +66,29 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectId string, 
 	return nil
 }
 
-func (s Service) resolveGatewayForRender(ctx context.Context) (*model.GatewayConfig, error) {
-	cfg, err := s.gateway.ResolveActiveGatewayConfig(ctx)
+func (s Service) resolveGatewayForRender(ctx context.Context, projectID string) (*model.GatewayConfig, error) {
+	cfg, err := s.gateway.GatewayConfigByProject(ctx, strings.TrimSpace(projectID))
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return nil, apperror.New(apperror.KindValidation, "no gateway configured: create and configure a gateway first")
+			return nil, apperror.New(apperror.KindValidation, "no gateway provisioned for this project environment")
 		}
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to resolve gateway config", err)
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to resolve project gateway config", err)
 	}
 	return &cfg, nil
 }
 
-func (s Service) resolveGatewayForRoute(ctx context.Context) (*model.GatewayConfig, error) {
-	return s.resolveGatewayForRender(ctx)
+func (s Service) resolveGatewayForRoute(ctx context.Context, projectID string) (*model.GatewayConfig, error) {
+	return s.resolveGatewayForRender(ctx, projectID)
 }
 
 func (s Service) withRouteACMECapabilities(ctx context.Context, route model.Route) model.Route {
-	gateway, err := s.resolveGatewayForRoute(ctx)
-	if err != nil {
-		route.ACMEChallengeHint = "Gateway configuration is required before enabling Let's Encrypt"
-		return route
-	}
 	if route.ProjectId == nil {
 		route.ACMEChallengeHint = "Route project is required"
 		return route
 	}
-	gatewayApp, err := s.application.Application(ctx, gateway.ApplicationId)
-	if err != nil || gatewayApp.ProjectId == nil || *gatewayApp.ProjectId != *route.ProjectId {
-		route.ACMEChallengeHint = "The active Gateway must belong to this project"
+	gateway, err := s.resolveGatewayForRoute(ctx, *route.ProjectId)
+	if err != nil {
+		route.ACMEChallengeHint = "Gateway configuration is required before enabling Let's Encrypt"
 		return route
 	}
 	route.GatewayApplicationId = gateway.ApplicationId
@@ -387,16 +382,12 @@ func validatePublicACMEDomain(domain string) error {
 }
 
 func (s Service) validateGatewayACMECapability(ctx context.Context, route model.Route, challenge string) (*model.GatewayConfig, error) {
-	gatewayConfig, err := s.resolveGatewayForRoute(ctx)
+	if route.ProjectId == nil {
+		return nil, apperror.New(apperror.KindValidation, "Route project is required")
+	}
+	gatewayConfig, err := s.resolveGatewayForRoute(ctx, *route.ProjectId)
 	if err != nil {
 		return nil, err
-	}
-	gatewayApp, err := s.application.Application(ctx, gatewayConfig.ApplicationId)
-	if err != nil {
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load active gateway", err)
-	}
-	if gatewayApp.ProjectId == nil || route.ProjectId == nil || *gatewayApp.ProjectId != *route.ProjectId {
-		return nil, apperror.New(apperror.KindValidation, "active gateway must belong to the Route project")
 	}
 	switch challenge {
 	case acmeChallengeHTTP:
@@ -459,13 +450,13 @@ func (s Service) TraefikRouteConfig(ctx context.Context, userId string, projectI
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return routedto.TraefikConfigView{}, err
 	}
-	gw, err := s.resolveGatewayForRender(ctx)
+	gw, err := s.resolveGatewayForRender(ctx, projectId)
 	if err != nil {
 		return routedto.TraefikConfigView{}, err
 	}
 	dashboardDomain := fmt.Sprintf("traefik.%s", gw.BaseDomain)
 	configView := routedto.TraefikConfigView{DashboardDomain: dashboardDomain, HTTPSEnabled: false, BaseDomain: gw.BaseDomain}
-	route, err := s.route.RouteByDomain(ctx, dashboardDomain)
+	route, err := s.route.RouteByProjectAndDomain(ctx, projectId, dashboardDomain)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return configView, nil
@@ -485,11 +476,11 @@ func (s Service) ListTraefikRoutes(ctx context.Context, userId string, projectId
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return nil, err
 	}
-	gw, err := s.resolveGatewayForRender(ctx)
+	gw, err := s.resolveGatewayForRender(ctx, projectId)
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.traefikRouterClient.ListRouters(ctx, gw.RestApiUrl)
+	items, err := s.traefikRouterClient.ListRouters(ctx, projectId, *gw)
 	if err != nil {
 		if s.traefikRouterClient.IsConnectionError(err) {
 			return nil, apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
@@ -534,34 +525,38 @@ func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId st
 // belongs to Route mutations and must not rewrite Version components mid-deploy.
 // compose up success is not sufficient: the Traefik REST control plane must
 // accept requests before the snapshot PUT.
-func (s Service) PublishSnapshot(ctx context.Context) error {
-	routes, err := s.listEnabledRoutesForPublish(ctx)
+func (s Service) PublishSnapshot(ctx context.Context, projectID string) error {
+	projectID = strings.TrimSpace(projectID)
+	if projectID == "" {
+		return apperror.New(apperror.KindValidation, "project_id is required for route publish")
+	}
+	routes, err := s.listEnabledRoutesForPublish(ctx, projectID)
 	if err != nil {
 		return err
 	}
-	gateway, err := s.resolveGatewayForRender(ctx)
+	gateway, err := s.resolveGatewayForRender(ctx, projectID)
 	if err != nil {
 		return err
 	}
 	if strings.TrimSpace(gateway.RestApiUrl) == "" {
 		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for route publish")
 	}
-	if err := s.routePublisher.WaitUntilReady(ctx, gateway.RestApiUrl, time.Duration(gateway.RestReadyTimeoutSeconds)*time.Second); err != nil {
+	if err := s.routePublisher.WaitUntilReady(ctx, projectID, *gateway, time.Duration(gateway.RestReadyTimeoutSeconds)*time.Second); err != nil {
 		return err
 	}
-	return s.applyRouteSnapshot(ctx, routes, false)
+	return s.applyRouteSnapshot(ctx, projectID, routes, false)
 }
 
-func (s Service) listEnabledRoutesForPublish(ctx context.Context) ([]model.Route, error) {
-	routes, err := s.route.ListEnabledRoutes(ctx)
+func (s Service) listEnabledRoutesForPublish(ctx context.Context, projectID string) ([]model.Route, error) {
+	routes, err := s.route.ListEnabledRoutesByProject(ctx, projectID)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
 	}
 	return routes, nil
 }
 
-func (s Service) applyRouteSnapshot(ctx context.Context, routes []model.Route, waitReady bool) error {
-	gw, err := s.resolveGatewayForRender(ctx)
+func (s Service) applyRouteSnapshot(ctx context.Context, projectID string, routes []model.Route, waitReady bool) error {
+	gw, err := s.resolveGatewayForRender(ctx, projectID)
 	if err != nil {
 		return err
 	}
@@ -569,14 +564,14 @@ func (s Service) applyRouteSnapshot(ctx context.Context, routes []model.Route, w
 		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for route publish")
 	}
 	if waitReady {
-		if err := s.routePublisher.WaitUntilReady(ctx, gw.RestApiUrl, time.Duration(gw.RestReadyTimeoutSeconds)*time.Second); err != nil {
+		if err := s.routePublisher.WaitUntilReady(ctx, projectID, *gw, time.Duration(gw.RestReadyTimeoutSeconds)*time.Second); err != nil {
 			return err
 		}
 	}
 	if err := s.resolveManagedRouteTargets(ctx, routes); err != nil {
 		return err
 	}
-	if err := s.routePublisher.ApplySnapshot(ctx, *gw, routes); err != nil {
+	if err := s.routePublisher.ApplySnapshot(ctx, projectID, *gw, routes); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to publish traefik rest snapshot", err)
 	}
 	return nil

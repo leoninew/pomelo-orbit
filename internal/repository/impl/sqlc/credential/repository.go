@@ -56,7 +56,7 @@ func (r Repository) ListCredentials(ctx context.Context, projectId string, page 
 	}
 	items := make([]model.Credential, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, credentialFrom(row.ID, row.ProjectID, row.Name, row.Type, row.EncryptedData, row.CreatedAt))
+		items = append(items, credentialFrom(row.ID, row.ProjectID, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt))
 	}
 	return repository.Page[model.Credential]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
@@ -66,7 +66,7 @@ func (r Repository) Credential(ctx context.Context, id string) (model.Credential
 	if err != nil {
 		return model.Credential{}, fmt.Errorf("load credential %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return credentialFrom(row.ID, row.ProjectID, row.Name, row.Type, row.EncryptedData, row.CreatedAt), nil
+	return credentialFrom(row.ID, row.ProjectID, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt), nil
 }
 
 func (r Repository) CredentialByName(ctx context.Context, projectId string, name string) (model.Credential, error) {
@@ -77,7 +77,7 @@ func (r Repository) CredentialByName(ctx context.Context, projectId string, name
 	if err != nil {
 		return model.Credential{}, fmt.Errorf("load credential by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
-	return credentialFrom(row.ID, row.ProjectID, row.Name, row.Type, row.EncryptedData, row.CreatedAt), nil
+	return credentialFrom(row.ID, row.ProjectID, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt), nil
 }
 
 func (r Repository) CredentialExists(ctx context.Context, id string) (bool, error) {
@@ -106,6 +106,7 @@ func (r Repository) CreateCredential(ctx context.Context, credential model.Crede
 		Name:          credential.Name,
 		Type:          credential.Type,
 		EncryptedData: credential.EncryptedData,
+		Revision:      credential.Revision,
 		CreatedAt:     credential.CreatedAt,
 	})
 	if err != nil {
@@ -118,6 +119,7 @@ func (r Repository) UpdateCredential(ctx context.Context, credential model.Crede
 	err := r.q(ctx).UpdateCredential(ctx, credentialsqlc.UpdateCredentialParams{
 		Name:          credential.Name,
 		EncryptedData: credential.EncryptedData,
+		Revision:      credential.Revision,
 		ID:            credential.Id,
 	})
 	if err != nil {
@@ -144,13 +146,14 @@ func (r Repository) CredentialReferencedByRepositories(ctx context.Context, proj
 	return count > 0, nil
 }
 
-func credentialFrom(id string, projectId sql.NullString, name, typ, encryptedData string, createdAt time.Time) model.Credential {
+func credentialFrom(id string, projectId sql.NullString, name, typ, encryptedData string, revision int64, createdAt time.Time) model.Credential {
 	return model.Credential{
 		Id:            id,
 		ProjectId:     dbmodel.StringPtr(projectId),
 		Name:          name,
 		Type:          typ,
 		EncryptedData: encryptedData,
+		Revision:      revision,
 		CreatedAt:     createdAt,
 	}
 }

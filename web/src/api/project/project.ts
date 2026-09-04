@@ -1,4 +1,5 @@
 import type {
+  ProjectCreateReq,
   ProjectDeprecateReq,
   ProjectListResp,
   ProjectMemberListResp,
@@ -17,7 +18,7 @@ export const projectApi = {
     return request.get(`/api/project/${id}`);
   },
 
-  create(data: ProjectSaveReq): Promise<ProjectResp> {
+  create(data: ProjectCreateReq): Promise<ProjectResp> {
     return request.post('/api/project', data);
   },
 

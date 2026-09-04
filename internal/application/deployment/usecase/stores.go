@@ -129,9 +129,7 @@ func (s stores) HasActiveDeployment(ctx context.Context, serviceID string) (bool
 func (s stores) GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error) {
 	return s.gateway.GatewayConfig(ctx, applicationId)
 }
-func (s stores) ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error) {
-	return s.gateway.ResolveActiveGatewayConfig(ctx)
-}
+
 func (s stores) ListGatewayApplications(ctx context.Context, projectId string) ([]model.Application, error) {
 	return s.gateway.ListGatewayApplications(ctx, projectId)
 }

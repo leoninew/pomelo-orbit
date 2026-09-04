@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
+	"os"
+
 	"log/slog"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -19,20 +21,20 @@ import (
 )
 
 type Service struct {
-	project               repository.ProjectReader
-	application           repository.ApplicationStore
-	service               repository.ServiceStore
-	deployment            repository.DeploymentStore
-	workspace             deploymentport.Workspace
-	logStore              deploymentport.LogReader
-	queryRunner           deploymentport.CommandQueryRunner
-	store                 *stores
-	executionStore        deploymentport.ExecutionStore
-	dispatcher            deploymentport.Dispatcher
-	executionLogStore     deploymentport.ExecutionLogStore
-	logger                *slog.Logger
-	pollInterval          time.Duration
-	runner                deploymentport.CommandRunner
+	project        repository.ProjectReader
+	application    repository.ApplicationStore
+	service        repository.ServiceStore
+	deployment     repository.DeploymentStore
+	logStore       deploymentport.ExecutionLogStore
+	targetResolver environmentport.TargetResolver
+	remoteRuntime  deploymentport.RemoteRuntime
+	store          *stores
+	executionStore deploymentport.ExecutionStore
+	dispatcher     deploymentport.Dispatcher
+
+	logger       *slog.Logger
+	pollInterval time.Duration
+
 	commandStore          deploymentport.CommandStore
 	gatewayCoordinator    deploymentport.GatewayDeploymentCoordinator
 	gatewayRoutePublisher deploymentport.GatewayRoutePublisher
@@ -43,9 +45,9 @@ func New(
 	application repository.ApplicationStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
-	workspace deploymentport.Workspace,
-	logStore deploymentport.LogReader,
-	queryRunner deploymentport.CommandQueryRunner,
+	targetResolver environmentport.TargetResolver,
+	remoteRuntime deploymentport.RemoteRuntime,
+	logStore deploymentport.ExecutionLogStore,
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
 ) Service {
 	store := &stores{
@@ -54,8 +56,8 @@ func New(
 	}
 	return Service{
 		project: project, application: application,
-		service: service, deployment: deployment, workspace: workspace,
-		logStore: logStore, queryRunner: queryRunner, store: store, executionStore: store,
+		service: service, deployment: deployment,
+		logStore: logStore, targetResolver: targetResolver, remoteRuntime: remoteRuntime, store: store, executionStore: store,
 		gatewayCoordinator: gatewayCoordinator,
 	}
 }
@@ -168,15 +170,18 @@ func (s Service) DeploymentContainerLog(ctx context.Context, userId string, depl
 	if err != nil {
 		return deploymentdto.DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	serviceDir := s.workspace.ServiceDir(svc.Code)
+	target, err := s.resolveProjectTarget(ctx, app)
+	if err != nil {
+		return deploymentdto.DeploymentContainerLog{}, err
+	}
 	projectName := composeProjectName(app.Code, svc.InstanceKey)
 	sinceCommand := containerLogsSinceCommand(projectName, deployment.StartedAt.UTC().Format(time.RFC3339))
-	output, err := s.queryRunner.Run(ctx, serviceDir, sinceCommand.Name, sinceCommand.Args...)
+	output, err := s.remoteRuntime.Query(ctx, target, svc.Code, sinceCommand.Name, sinceCommand.Args...)
 	if err == nil {
 		return deploymentdto.DeploymentContainerLog{Logs: output, Source: "since", IsRealtimeSupported: true}, nil
 	}
 	tailCommand := containerLogsTailCommand(projectName, strconv.Itoa(tail))
-	output, tailErr := s.queryRunner.Run(ctx, serviceDir, tailCommand.Name, tailCommand.Args...)
+	output, tailErr := s.remoteRuntime.Query(ctx, target, svc.Code, tailCommand.Name, tailCommand.Args...)
 	if tailErr != nil {
 		return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindInternal, outputOrError(output, tailErr))
 	}
@@ -231,19 +236,18 @@ func (s Service) removeDeploymentLog(ctx context.Context, deployment model.Deplo
 		s.warnDeploymentLogCleanupSkipped(deployment.Id, "associated service has no code")
 		return nil
 	}
-	if s.workspace == nil {
-		return apperror.New(apperror.KindInternal, "deployment workspace is not configured")
+	if s.logStore == nil {
+		return apperror.New(apperror.KindInternal, "deployment log store is not configured")
 	}
-	if err := s.workspace.RemoveDeploymentLog(service.Code, deployment.Id); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			s.warnDeploymentLogCleanupSkipped(deployment.Id, "deployment log file or directory does not exist")
+	if err := s.logStore.Remove(service.Code, deployment.Id); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			s.warnDeploymentLogCleanupSkipped(deployment.Id, "deployment log file does not exist")
 			return nil
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete deployment log", err)
 	}
 	return nil
 }
-
 func (s Service) warnDeploymentLogCleanupSkipped(deploymentId string, reason string) {
 	if s.logger != nil {
 		s.logger.Warn("skipped deployment log cleanup", "deployment_id", deploymentId, "reason", reason)
@@ -289,8 +293,7 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 	if err != nil {
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	logPath := s.workspace.DeploymentLogPath(svc.Code, deployment.Id)
-	content, newOffset, err := s.logStore.Read(logPath, offset)
+	content, newOffset, err := s.logStore.Read(svc.Code, deployment.Id, offset)
 	if err != nil {
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to read deployment log", err)
 	}

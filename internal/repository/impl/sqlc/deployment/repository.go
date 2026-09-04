@@ -40,27 +40,46 @@ func optionalTime(t *time.Time) sql.NullTime {
 	return sql.NullTime{Time: *t, Valid: true}
 }
 
+func optionalInt64(value *int64) sql.NullInt64 {
+	if value == nil {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: *value, Valid: true}
+}
+
+func int64Pointer(value sql.NullInt64) *int64 {
+	if !value.Valid {
+		return nil
+	}
+	return &value.Int64
+}
+
 func (r Repository) CreateDeployment(ctx context.Context, deployment model.Deployment) error {
 	startedAt := deployment.StartedAt
 	if startedAt.IsZero() {
 		startedAt = time.Now().UTC()
 	}
 	err := r.q(ctx).CreateDeployment(ctx, deploymentsqlc.CreateDeploymentParams{
-		ID:                       deployment.Id,
-		ProjectID:                dbmodel.NullString(deployment.ProjectId),
-		ApplicationID:            dbmodel.NullString(deployment.ApplicationId),
-		ApplicationName:          deployment.ApplicationName,
-		VersionID:                dbmodel.NullString(deployment.VersionId),
-		ServiceID:                dbmodel.NullString(deployment.ServiceId),
-		OptionsJson:              dbmodel.NullString(deployment.OptionsJSON),
-		EffectivePlanHash:        dbmodel.NullString(deployment.EffectivePlanHash),
-		OperationType:            deployment.OperationType,
-		TriggerType:              deployment.TriggerType,
-		CommandText:              deployment.CommandText,
-		Status:                   deployment.Status,
-		StartedAt:                startedAt,
-		IsRollback:               dbmodel.BoolInt(deployment.IsRollback),
-		RollbackFromDeploymentID: dbmodel.NullString(deployment.RollbackFromDeploymentId),
+		ID:                        deployment.Id,
+		ProjectID:                 dbmodel.NullString(deployment.ProjectId),
+		ApplicationID:             dbmodel.NullString(deployment.ApplicationId),
+		ApplicationName:           deployment.ApplicationName,
+		VersionID:                 dbmodel.NullString(deployment.VersionId),
+		ServiceID:                 dbmodel.NullString(deployment.ServiceId),
+		EnvironmentID:             dbmodel.NullString(deployment.EnvironmentId),
+		EnvironmentTargetRevision: optionalInt64(deployment.EnvironmentTargetRevision),
+		SshCredentialID:           dbmodel.NullString(deployment.SSHCredentialId),
+		SshCredentialRevision:     optionalInt64(deployment.SSHCredentialRevision),
+		GatewayApplicationID:      dbmodel.NullString(deployment.GatewayApplicationId),
+		OptionsJson:               dbmodel.NullString(deployment.OptionsJSON),
+		EffectivePlanHash:         dbmodel.NullString(deployment.EffectivePlanHash),
+		OperationType:             deployment.OperationType,
+		TriggerType:               deployment.TriggerType,
+		CommandText:               deployment.CommandText,
+		Status:                    deployment.Status,
+		StartedAt:                 startedAt,
+		IsRollback:                dbmodel.BoolInt(deployment.IsRollback),
+		RollbackFromDeploymentID:  dbmodel.NullString(deployment.RollbackFromDeploymentId),
 	})
 	if err != nil {
 		return fmt.Errorf("create deployment %s: %w", deployment.Id, err)
@@ -128,7 +147,8 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	for _, row := range rows {
 		items = append(items, deploymentFrom(
 			row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
-			row.ServiceInstanceKey, row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
+			row.ServiceInstanceKey, row.EnvironmentID, row.EnvironmentTargetRevision, row.SshCredentialID, row.SshCredentialRevision, row.GatewayApplicationID,
+			row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 			row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
 		))
 	}
@@ -142,7 +162,8 @@ func (r Repository) Deployment(ctx context.Context, id string) (model.Deployment
 	}
 	return deploymentFrom(
 		row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
-		row.ServiceInstanceKey, row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
+		row.ServiceInstanceKey, row.EnvironmentID, row.EnvironmentTargetRevision, row.SshCredentialID, row.SshCredentialRevision, row.GatewayApplicationID,
+		row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 		row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
 	), nil
 }
@@ -215,31 +236,38 @@ func (r Repository) LatestSuccessfulDeploymentPlanHash(ctx context.Context, serv
 
 func deploymentFrom(
 	id string, projectId, applicationId sql.NullString, applicationName string,
-	versionId, serviceId, serviceInstanceKey, optionsJSON, effectivePlanHash sql.NullString,
+	versionId, serviceId, serviceInstanceKey, environmentID sql.NullString,
+	environmentTargetRevision sql.NullInt64, sshCredentialID sql.NullString, sshCredentialRevision sql.NullInt64,
+	gatewayApplicationID, optionsJSON, effectivePlanHash sql.NullString,
 	operationType, triggerType, commandText, deployStatus string,
 	startedAt time.Time, finishedAt sql.NullTime, durationMs sql.NullInt64,
 	logText, errorMessage sql.NullString, isRollback int64, rollbackFrom sql.NullString,
 ) model.Deployment {
 	return model.Deployment{
-		Id:                       id,
-		ProjectId:                dbmodel.StringPtr(projectId),
-		ApplicationId:            dbmodel.StringPtr(applicationId),
-		ApplicationName:          applicationName,
-		VersionId:                dbmodel.StringPtr(versionId),
-		ServiceId:                dbmodel.StringPtr(serviceId),
-		ServiceInstanceKey:       dbmodel.StringPtr(serviceInstanceKey),
-		OptionsJSON:              dbmodel.StringPtr(optionsJSON),
-		EffectivePlanHash:        dbmodel.StringPtr(effectivePlanHash),
-		OperationType:            operationType,
-		TriggerType:              triggerType,
-		CommandText:              commandText,
-		Status:                   deployStatus,
-		StartedAt:                startedAt,
-		FinishedAt:               dbmodel.TimePtr(finishedAt),
-		DurationMs:               dbmodel.IntPtrFromNullInt64(durationMs),
-		LogText:                  dbmodel.StringPtr(logText),
-		ErrorMessage:             dbmodel.StringPtr(errorMessage),
-		IsRollback:               dbmodel.IntBool(isRollback),
-		RollbackFromDeploymentId: dbmodel.StringPtr(rollbackFrom),
+		Id:                        id,
+		ProjectId:                 dbmodel.StringPtr(projectId),
+		ApplicationId:             dbmodel.StringPtr(applicationId),
+		ApplicationName:           applicationName,
+		VersionId:                 dbmodel.StringPtr(versionId),
+		ServiceId:                 dbmodel.StringPtr(serviceId),
+		ServiceInstanceKey:        dbmodel.StringPtr(serviceInstanceKey),
+		EnvironmentId:             dbmodel.StringPtr(environmentID),
+		EnvironmentTargetRevision: int64Pointer(environmentTargetRevision),
+		SSHCredentialId:           dbmodel.StringPtr(sshCredentialID),
+		SSHCredentialRevision:     int64Pointer(sshCredentialRevision),
+		GatewayApplicationId:      dbmodel.StringPtr(gatewayApplicationID),
+		OptionsJSON:               dbmodel.StringPtr(optionsJSON),
+		EffectivePlanHash:         dbmodel.StringPtr(effectivePlanHash),
+		OperationType:             operationType,
+		TriggerType:               triggerType,
+		CommandText:               commandText,
+		Status:                    deployStatus,
+		StartedAt:                 startedAt,
+		FinishedAt:                dbmodel.TimePtr(finishedAt),
+		DurationMs:                dbmodel.IntPtrFromNullInt64(durationMs),
+		LogText:                   dbmodel.StringPtr(logText),
+		ErrorMessage:              dbmodel.StringPtr(errorMessage),
+		IsRollback:                dbmodel.IntBool(isRollback),
+		RollbackFromDeploymentId:  dbmodel.StringPtr(rollbackFrom),
 	}
 }

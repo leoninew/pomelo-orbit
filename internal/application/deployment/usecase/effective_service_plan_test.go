@@ -63,27 +63,39 @@ func TestBuildEffectiveServicePlanMergesSparseOverrides(t *testing.T) {
 	}
 }
 
-func TestEffectiveServicePlanHashExcludesGatewayConfiguration(t *testing.T) {
+func TestEffectiveServicePlanHashTracksGatewayNetworkIdentity(t *testing.T) {
 	plan := model.EffectiveServicePlan{
 		Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
 		Version:     model.Version{Label: "v1"},
 		Service:     model.Service{InstanceKey: "default"},
+		Gateway: &model.GatewayConfig{
+			NetworkName: "orbit-demo-traefik", RestApiUrl: "http://127.0.0.1:8080",
+			BaseDomain: "example.com", DefaultEntrypoint: "websecure", TLSMode: "letsencrypt",
+		},
 		Components: []model.EffectiveServiceComponent{{
 			Name: "web", Image: "nginx:latest",
 			Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 80, Mode: "gateway"}},
 		}},
 	}
-	withoutGateway, err := EffectiveServicePlanHash(plan)
+	original, err := EffectiveServicePlanHash(plan)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan.Gateway = &model.GatewayConfig{RestApiUrl: "http://127.0.0.1:8080", BaseDomain: "example.com", DefaultEntrypoint: "websecure", TLSMode: "letsencrypt"}
-	withGateway, err := EffectiveServicePlanHash(plan)
+	plan.Gateway.BaseDomain = "changed.example.com"
+	withGatewayPolicyChange, err := EffectiveServicePlanHash(plan)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if withGateway != withoutGateway {
-		t.Fatalf("gateway configuration changed plan hash: without=%s with=%s", withoutGateway, withGateway)
+	if withGatewayPolicyChange != original {
+		t.Fatalf("gateway policy changed plan hash: original=%s changed=%s", original, withGatewayPolicyChange)
+	}
+	plan.Gateway.NetworkName = "orbit-other-traefik"
+	withOtherNetwork, err := EffectiveServicePlanHash(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withOtherNetwork == original {
+		t.Fatalf("Gateway network identity did not change plan hash: original=%s other=%s", original, withOtherNetwork)
 	}
 	disabled := false
 	plan.JoinTraefikNetwork = &disabled
@@ -91,8 +103,8 @@ func TestEffectiveServicePlanHashExcludesGatewayConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if withoutNetwork == withGateway {
-		t.Fatalf("Traefik network option did not change plan hash: enabled=%s disabled=%s", withGateway, withoutNetwork)
+	if withoutNetwork == withOtherNetwork {
+		t.Fatalf("Traefik network option did not change plan hash: enabled=%s disabled=%s", withOtherNetwork, withoutNetwork)
 	}
 }
 
@@ -124,6 +136,8 @@ func TestBuildVersionPreviewPlanUsesVersionDeclarations(t *testing.T) {
 		t.Fatalf("preview endpoints = %+v", component.Endpoints)
 	}
 
+	disabled := false
+	plan.JoinTraefikNetwork = &disabled
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: plan})
 	if err != nil {
 		t.Fatalf("RenderCompose returned error: %v", err)
@@ -141,7 +155,7 @@ func TestBuildVersionPreviewPlanRendersGatewayHTTPHost(t *testing.T) {
 		Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 80, Mode: "gateway"}},
 	}}
 
-	plan, err := BuildVersionPreviewPlan(app, version, declarations, &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web"})
+	plan, err := BuildVersionPreviewPlan(app, version, declarations, &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web", NetworkName: "orbit-demo-traefik"})
 	if err != nil {
 		t.Fatalf("BuildVersionPreviewPlan returned error: %v", err)
 	}

@@ -1,12 +1,15 @@
 -- name: CreateDeployment :exec
 INSERT INTO deployment (
-  id, project_id, application_id, application_name, version_id, service_id, options_json, effective_plan_hash,
-  operation_type, trigger_type, command_text, status, started_at, is_rollback, rollback_from_deployment_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  id, project_id, application_id, application_name, version_id, service_id,
+  environment_id, environment_target_revision, ssh_credential_id, ssh_credential_revision, gateway_application_id,
+  options_json, effective_plan_hash, operation_type, trigger_type, command_text, status, started_at, is_rollback, rollback_from_deployment_id
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: DeploymentByID :one
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
-       s.instance_key AS service_instance_key, d.options_json, d.effective_plan_hash,
+       s.instance_key AS service_instance_key,
+       d.environment_id, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
+       d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
 FROM deployment d
@@ -38,7 +41,9 @@ WHERE project_id = sqlc.arg(project_id)
 
 -- name: ListDeployments :many
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
-       s.instance_key AS service_instance_key, d.options_json, d.effective_plan_hash,
+       s.instance_key AS service_instance_key,
+       d.environment_id, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
+       d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
 FROM deployment d

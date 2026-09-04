@@ -35,11 +35,19 @@ func TestRepositoryPersistsEffectivePlanHash(t *testing.T) {
 	}
 
 	hash := "f4d6ed0b5af0c349"
+	environmentID := "environment-1"
+	targetRevision := int64(3)
+	credentialID := "credential-1"
+	credentialRevision := int64(2)
+	gatewayApplicationID := "gateway-app-1"
 	repository := NewRepository(database)
 	if err := repository.CreateDeployment(context.Background(), model.Deployment{
 		Id: "deployment-1", ApplicationId: stringPtr("app-1"), ApplicationName: "Example",
 		VersionId: stringPtr("version-1"), ServiceId: stringPtr("service-1"),
-		EffectivePlanHash: &hash, OperationType: "deploy", TriggerType: "manual",
+		EnvironmentId: &environmentID, EnvironmentTargetRevision: &targetRevision,
+		SSHCredentialId: &credentialID, SSHCredentialRevision: &credentialRevision,
+		GatewayApplicationId: &gatewayApplicationID,
+		EffectivePlanHash:    &hash, OperationType: "deploy", TriggerType: "manual",
 		CommandText: "docker compose up", Status: status.WorkStatusWaitingToRun,
 	}); err != nil {
 		t.Fatalf("create deployment: %v", err)
@@ -58,6 +66,13 @@ func TestRepositoryPersistsEffectivePlanHash(t *testing.T) {
 	}
 	if stored.EffectivePlanHash == nil || *stored.EffectivePlanHash != hash {
 		t.Fatalf("stored effective plan hash = %#v, want %q", stored.EffectivePlanHash, hash)
+	}
+	if stored.EnvironmentId == nil || *stored.EnvironmentId != environmentID ||
+		stored.EnvironmentTargetRevision == nil || *stored.EnvironmentTargetRevision != targetRevision ||
+		stored.SSHCredentialId == nil || *stored.SSHCredentialId != credentialID ||
+		stored.SSHCredentialRevision == nil || *stored.SSHCredentialRevision != credentialRevision ||
+		stored.GatewayApplicationId == nil || *stored.GatewayApplicationId != gatewayApplicationID {
+		t.Fatalf("stored deployment target snapshot = %#v", stored)
 	}
 	latest, err := repository.LatestSuccessfulDeploymentPlanHash(context.Background(), "service-1")
 	if err != nil {

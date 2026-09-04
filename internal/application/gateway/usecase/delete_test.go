@@ -12,11 +12,32 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
+type gatewayDeleteProjectStore struct {
+	gatewayport.ProjectReader
+	project model.Project
+}
+
+func (s gatewayDeleteProjectStore) Project(context.Context, string) (model.Project, error) {
+	return s.project, nil
+}
+
+func (gatewayDeleteProjectStore) IsProjectMember(context.Context, string, string) (bool, error) {
+	return true, nil
+}
+
+type gatewayDeleteEnvironmentStore struct {
+	gatewayport.EnvironmentStore
+	environment model.Environment
+}
+
+func (s gatewayDeleteEnvironmentStore) EnvironmentByProject(context.Context, string) (model.Environment, error) {
+	return s.environment, nil
+}
+
 type gatewayDeleteApplicationStore struct {
 	gatewayport.ApplicationStore
 	application model.Application
-	deleteId    string
-	deleteErr   error
+	deleteID    string
 }
 
 func (s *gatewayDeleteApplicationStore) Application(_ context.Context, _ string) (model.Application, error) {
@@ -28,8 +49,8 @@ func (s *gatewayDeleteApplicationStore) ListApplications(_ context.Context, _ *s
 }
 
 func (s *gatewayDeleteApplicationStore) DeleteApplication(_ context.Context, id string) error {
-	s.deleteId = id
-	return s.deleteErr
+	s.deleteID = id
+	return nil
 }
 
 type gatewayDeleteConfigStore struct {
@@ -50,12 +71,15 @@ func (s gatewayDeleteServiceStore) ListServicesByApplication(_ context.Context, 
 	return s.services, nil
 }
 
-func TestDeleteGatewayDeletesStoppedServiceResources(t *testing.T) {
-	application := &gatewayDeleteApplicationStore{application: model.Application{Id: "gateway-1", Kind: status.ApplicationKindGateway}}
+func TestDeleteGatewayRejectsBoundGateway(t *testing.T) {
+	projectID := "project-1"
+	gatewayID := "gateway-1"
+	application := &gatewayDeleteApplicationStore{application: model.Application{Id: gatewayID, ProjectId: &projectID, Kind: status.ApplicationKindGateway}}
 	service := New(
-		nil,
+		gatewayDeleteProjectStore{project: model.Project{Id: projectID}},
+		gatewayDeleteEnvironmentStore{environment: model.Environment{ProjectId: projectID, GatewayApplicationId: &gatewayID}},
 		application,
-		gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: "gateway-1"}},
+		gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: gatewayID}},
 		gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", InstanceKey: "default", Status: status.ServiceStatusStopped}}},
 		nil,
 		nil,
@@ -64,41 +88,15 @@ func TestDeleteGatewayDeletesStoppedServiceResources(t *testing.T) {
 		nil,
 	)
 
-	if err := service.DeleteGateway(context.Background(), "user-1", "gateway-1"); err != nil {
-		t.Fatal(err)
+	err := service.DeleteGateway(context.Background(), "user-1", gatewayID)
+	classification := apperror.Classify(err)
+	if classification.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d; error = %v", classification.StatusCode, http.StatusBadRequest, err)
 	}
-	if application.deleteId != "gateway-1" {
-		t.Fatalf("deleted application = %q, want gateway-1", application.deleteId)
+	if classification.Message != "Gateway cannot be deleted after it is bound to a project environment" {
+		t.Fatalf("message = %q", classification.Message)
 	}
-}
-
-func TestDeleteGatewayRejectsNonStoppedService(t *testing.T) {
-	for _, serviceStatus := range []string{status.ServiceStatusRunning, status.ServiceStatusFaulted} {
-		t.Run(serviceStatus, func(t *testing.T) {
-			application := &gatewayDeleteApplicationStore{application: model.Application{Id: "gateway-1", Kind: status.ApplicationKindGateway}}
-			service := New(
-				nil,
-				application,
-				gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: "gateway-1"}},
-				gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", InstanceKey: "default", Code: "gateway-default", Status: serviceStatus}}},
-				nil,
-				nil,
-				testGatewayConfig(),
-				nil,
-				nil,
-			)
-
-			err := service.DeleteGateway(context.Background(), "user-1", "gateway-1")
-			classification := apperror.Classify(err)
-			if classification.StatusCode != http.StatusBadRequest {
-				t.Fatalf("status = %d, want %d; error = %v", classification.StatusCode, http.StatusBadRequest, err)
-			}
-			if classification.Message != "网关存在未停止的服务 gateway-default, 请先停止后再删除" {
-				t.Fatalf("message = %q", classification.Message)
-			}
-			if application.deleteId != "" {
-				t.Fatalf("unexpected deletion of %q", application.deleteId)
-			}
-		})
+	if application.deleteID != "" {
+		t.Fatalf("unexpected deletion of %q", application.deleteID)
 	}
 }

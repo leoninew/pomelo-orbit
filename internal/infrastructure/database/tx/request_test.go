@@ -122,19 +122,19 @@ func TestMiddlewareDoesNotOpenTransactionForReadRequest(t *testing.T) {
 	}
 }
 
-func TestMiddlewareSkipsConfiguredWritePath(t *testing.T) {
+func TestMiddlewareSkipsConfiguredParameterizedWritePath(t *testing.T) {
 	db, mock := openMock(t)
 	r := gin.New()
 	addRequestId(r)
-	r.Use(Middleware(db, "/api/route/sync/preview"))
-	r.POST("/api/route/sync/preview", func(c *gin.Context) {
+	r.Use(Middleware(db, "/api/project/:project_id/environment/probe"))
+	r.POST("/api/project/:project_id/environment/probe", func(c *gin.Context) {
 		if _, ok := TxFrom(c.Request.Context()); ok {
 			t.Fatal("expected no request transaction")
 		}
 		c.Status(http.StatusOK)
 	})
 
-	w := serve(t, r, http.MethodPost, "/api/route/sync/preview")
+	w := serve(t, r, http.MethodPost, "/api/project/project-1/environment/probe")
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d", w.Code)
 	}

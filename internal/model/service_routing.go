@@ -26,6 +26,27 @@ func RuntimeContainerName(applicationCode, componentName string) string {
 	return strings.Trim(name, "-")
 }
 
+// GatewayNetworkName derives the Docker network owned by one Environment.
+// Environment code is immutable, so this identity is stable across deployments.
+func GatewayNetworkName(environmentCode string) string {
+	var code strings.Builder
+	for _, char := range strings.ToLower(strings.TrimSpace(environmentCode)) {
+		switch {
+		case char >= 'a' && char <= 'z', char >= '0' && char <= '9':
+			code.WriteRune(char)
+		case char == '-', char == '_', char == '.':
+			if code.Len() == 0 || !strings.HasSuffix(code.String(), "-") {
+				code.WriteByte('-')
+			}
+		}
+	}
+	value := strings.Trim(code.String(), "-")
+	if value == "" {
+		return ""
+	}
+	return "orbit-" + value + "-traefik"
+}
+
 // DeriveServiceComponentHost returns the public host for one Service component.
 func DeriveServiceComponentHost(gateway *GatewayConfig, service Service, componentName string) (string, error) {
 	if gateway == nil {

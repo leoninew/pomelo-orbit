@@ -102,7 +102,7 @@ func newDeploymentDeletionService(store *deploymentDeletionStore, serviceStore *
 		project:    deploymentDeletionProjectStore{},
 		service:    serviceStore,
 		deployment: store,
-		workspace:  workspace,
+		logStore:   workspace,
 		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 }

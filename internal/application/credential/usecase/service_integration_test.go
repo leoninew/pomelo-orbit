@@ -2,12 +2,18 @@ package credentialsvc
 
 import (
 	"context"
+	"crypto/ed25519"
+	cryptorand "crypto/rand"
 	"database/sql"
+	"encoding/pem"
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 
+	"golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite"
 
 	credentialdto "github.com/leoninew/pomelo-orbit/internal/application/credential/dto"
@@ -15,6 +21,7 @@ import (
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 	credentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/credential"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
@@ -109,6 +116,53 @@ func TestCreateCredentialAcceptsGiteaTokenAndRejectsUnknownType(t *testing.T) {
 	})
 	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("expected unknown credential type to be rejected, got %v", err)
+	}
+}
+
+func TestDeploymentSSHCredentialPlaceholderRequiresReplacement(t *testing.T) {
+	service, database := newCredentialIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+	credentialID := "01M00000000000000000000001"
+
+	if _, err := database.ExecContext(ctx, `
+		INSERT INTO credential (id, project_id, name, type, encrypted_data, revision, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, credentialID, ciTestProjectId, "deployment-ssh-reconfiguration", model.CredentialTypeDeploymentSSHPrivateKey, model.DeploymentSSHCredentialReconfigurationPlaceholder, 1, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err := service.DeploymentSSHCredential(ctx, credentialID); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("expected placeholder credential validation error, got %v", err)
+	}
+	if _, err := service.UpdateDeploymentSSHCredential(ctx, credentialID, nil, nil); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("expected placeholder replacement validation error, got %v", err)
+	}
+
+	_, privateKey, err := ed25519.GenerateKey(cryptorand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	privateKeyBlock, err := ssh.MarshalPrivateKey(privateKey, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	privateKeyPEM := strings.TrimSpace(string(pem.EncodeToMemory(privateKeyBlock)))
+
+	updated, err := service.UpdateDeploymentSSHCredential(ctx, credentialID, &privateKeyPEM, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Revision != 2 || updated.RequiresDeploymentSSHCredentialReconfiguration() {
+		t.Fatalf("unexpected replacement result: %+v", updated)
+	}
+
+	_, payload, err := service.DeploymentSSHCredential(ctx, credentialID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if payload.PrivateKey != privateKeyPEM || payload.Passphrase != "" {
+		t.Fatalf("unexpected replacement payload: %+v", payload)
 	}
 }
 

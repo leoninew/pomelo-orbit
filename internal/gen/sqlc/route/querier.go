@@ -14,10 +14,10 @@ type Querier interface {
 	CreateRoute(ctx context.Context, arg CreateRouteParams) error
 	DeleteRoute(ctx context.Context, id string) error
 	ListAllRoutes(ctx context.Context, projectID sql.NullString) ([]ListAllRoutesRow, error)
-	ListEnabledRoutes(ctx context.Context, enabled int64) ([]ListEnabledRoutesRow, error)
+	ListEnabledRoutesByProjectID(ctx context.Context, arg ListEnabledRoutesByProjectIDParams) ([]ListEnabledRoutesByProjectIDRow, error)
 	ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListRoutesRow, error)
-	RouteByDomain(ctx context.Context, domain string) (RouteByDomainRow, error)
 	RouteByID(ctx context.Context, id string) (RouteByIDRow, error)
+	RouteByProjectIDAndDomain(ctx context.Context, arg RouteByProjectIDAndDomainParams) (RouteByProjectIDAndDomainRow, error)
 	UpdateRoute(ctx context.Context, arg UpdateRouteParams) error
 }
 

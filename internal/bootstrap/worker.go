@@ -5,7 +5,9 @@ import (
 	"log/slog"
 
 	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
+	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
+	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	pipelinerunsvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/usecase"
 	routesvc "github.com/leoninew/pomelo-orbit/internal/application/route/usecase"
@@ -13,9 +15,8 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/traefik"
-	deploymentrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/deployment"
 	pipelinerunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/pipeline"
-	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/deploymentworkspace"
+	sshrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/ssh"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/executionlog"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/pipelineworkspace"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/repositorysource"
@@ -26,14 +27,17 @@ import (
 
 func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *worker.Router {
 	stores := newDomainStores(database)
-	logStore := executionlog.Store{}
+	pipelineLogStore := executionlog.Store{}
+	deploymentLogStore := executionlog.NewDeploymentStore(cfg.Workspace.Deployment)
 	dockerPathResolver := dockerDaemonPathResolver()
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.Workspace.Pipeline, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
-	deploymentWorkspace := deploymentworkspace.NewWithResolver(cfg.Workspace.Deployment, dockerPathResolver)
 	transactionRunner := databasetx.NewTransactionRunner(database)
-	gatewayService := gatewaysvc.New(stores.project, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, cfg, dockerPathResolver, transactionRunner)
-	routeManager := traefik.NewRouteManager(cfg)
+	credentialService := credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey)
+	targetResolver := environmentsvc.NewTargetResolver(stores.environment, credentialService)
+	remoteRuntime := sshrunner.NewRuntime()
+	gatewayService := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, cfg, dockerPathResolver, transactionRunner)
+	routeManager := traefik.NewRouteManager(targetResolver, remoteRuntime)
 	routeService := routesvc.New(
 		stores.project,
 		stores.application,
@@ -61,7 +65,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		cfg.PipelineRun.ExecutionTimeout,
 		cfg.Worker.PollInterval,
 		pipelinerunner.DockerRunner{},
-		logStore,
+		pipelineLogStore,
 		localSource,
 	)
 	deploymentService := deploymentsvc.NewExecutionService(
@@ -71,9 +75,9 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		stores.deployment,
 		gatewayService,
 		logger,
-		deploymentWorkspace,
-		deploymentrunner.NewShellRunner(),
-		logStore,
+		targetResolver,
+		remoteRuntime,
+		deploymentLogStore,
 		cfg.Worker.PollInterval,
 		routeService,
 	)

@@ -192,6 +192,32 @@ func projectOutput(value model.Project) map[string]any {
 	return map[string]any{"id": value.Id, "name": value.Name, "code": value.Code, "is_active": value.IsActive, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 }
 
+func environmentOutput(value model.Environment) map[string]any {
+	result := map[string]any{
+		"id": value.Id, "project_id": value.ProjectId, "code": value.Code, "state": value.State,
+		"platform": value.Platform, "host": value.Host, "port": value.Port, "username": value.Username,
+		"workspace_root": value.WorkspaceRoot, "ssh_credential_id": value.SSHCredentialId,
+		"ssh_credential_revision": value.SSHCredentialRevision, "host_key_fingerprint": value.HostKeyFingerprint,
+		"target_revision": value.TargetRevision, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt),
+	}
+	if value.LastProbeRevision != nil {
+		result["last_probe_revision"] = *value.LastProbeRevision
+	}
+	if value.LastProbeStatus != nil {
+		result["last_probe_status"] = *value.LastProbeStatus
+	}
+	if value.LastProbeAt != nil {
+		result["last_probe_at"] = formatTime(*value.LastProbeAt)
+	}
+	if value.LastProbeDiagnostic != nil {
+		result["last_probe_diagnostic"] = *value.LastProbeDiagnostic
+	}
+	if value.GatewayApplicationId != nil {
+		result["gateway_application_id"] = *value.GatewayApplicationId
+	}
+	return result
+}
+
 func versionOutput(value applicationdto.VersionView) map[string]any {
 	components := make([]map[string]any, 0, len(value.Components))
 	for _, component := range value.Components {

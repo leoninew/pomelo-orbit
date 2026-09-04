@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/http"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -11,6 +13,7 @@ import (
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	gatewayport "github.com/leoninew/pomelo-orbit/internal/application/gateway/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	databasepkg "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
@@ -18,6 +21,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
 	deploymentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/deployment"
+	environmentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/environment"
 	gatewayrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/gateway"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	routerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/route"
@@ -77,6 +81,23 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 	if len(components) != 1 || components[0].Image != "traefik:3.6" || components[0].PullPolicy != "missing" {
 		t.Fatalf("initial components = %#v", components)
 	}
+	gatewayConfig, err := gatewayrepo.NewRepository(database).GatewayConfigByProject(context.Background(), gatewayFactoryProjectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gatewayConfig.NetworkName != "orbit-gateway-factory-traefik" {
+		t.Fatalf("gateway network = %q", gatewayConfig.NetworkName)
+	}
+	var staticConfig string
+	for _, mount := range components[0].Mounts {
+		if mount.Target == "/etc/traefik/traefik.yml" {
+			staticConfig = mount.Content
+			break
+		}
+	}
+	if !strings.Contains(staticConfig, "network: orbit-gateway-factory-traefik") {
+		t.Fatalf("initial Traefik config missing environment network: %q", staticConfig)
+	}
 	mappings, err := services.ServiceComponentsByService(context.Background(), created.DefaultService.Id)
 	if err != nil {
 		t.Fatal(err)
@@ -100,6 +121,18 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 	}
 }
 
+func TestCreateGatewayRequiresFreshEnvironmentProbe(t *testing.T) {
+	service, _, _, database := newGatewayFactoryService(t, nil)
+	defer func() { _ = database.Close() }()
+	if _, err := database.Exec(`UPDATE environment SET last_probe_revision = NULL, last_probe_status = NULL WHERE project_id = ?`, gatewayFactoryProjectID); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := service.CreateGateway(context.Background(), gatewayFactoryUserID, managedGatewayCreateInput())
+	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest || !strings.Contains(err.Error(), "must pass probe") {
+		t.Fatalf("CreateGateway error = %v, want fresh Probe validation", err)
+	}
+}
 func TestProvisionGatewayOnlyPreparesStoppedServices(t *testing.T) {
 	service, applications, _, database := newGatewayFactoryService(t, nil)
 	defer func() { _ = database.Close() }()
@@ -123,15 +156,9 @@ func TestProvisionGatewayOnlyPreparesStoppedServices(t *testing.T) {
 		t.Fatalf("provision published version: %#v", version)
 	}
 
-	stagingResult, err := service.ProvisionGateway(context.Background(), gatewayFactoryUserID, gatewaydto.ProvisionGatewayInput{ProjectId: gatewayFactoryProjectID, InstanceKey: "staging"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !stagingResult.ServiceCreated || stagingResult.Service.InstanceKey != "staging" || stagingResult.Service.Code != "traefik-staging" || stagingResult.Service.Status != status.ServiceStatusStopped {
-		t.Fatalf("staging provision result = %#v", stagingResult)
-	}
-	if stagingResult.Service.VersionId != created.DefaultService.VersionId {
-		t.Fatalf("staging version = %q, want %q", stagingResult.Service.VersionId, created.DefaultService.VersionId)
+	_, err = service.ProvisionGateway(context.Background(), gatewayFactoryUserID, gatewaydto.ProvisionGatewayInput{ProjectId: gatewayFactoryProjectID, InstanceKey: "staging"})
+	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("staging gateway provision error = %v, want validation error", err)
 	}
 }
 
@@ -176,13 +203,15 @@ func TestCreateGatewayRollsBackWhenGatewayConfigWriteFails(t *testing.T) {
 	}
 	defer func() { _ = database.Close() }()
 	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 37); err != nil {
+	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 39); err != nil {
 		t.Fatal(err)
 	}
 	removeSeededGateway(t, database)
+	seedGatewayFactoryEnvironment(t, database)
 	applications := applicationrepo.NewRepository(database)
 	service := New(
 		projectrepo.NewRepository(database),
+		environmentrepo.NewRepository(database),
 		applications,
 		failingGatewayConfigStore{GatewayStore: gatewayrepo.NewRepository(database), err: errors.New("gateway config write failed")},
 		servicerepo.NewRepository(database),
@@ -209,13 +238,15 @@ func TestCreateGatewayRollsBackWhenDashboardRouteWriteFails(t *testing.T) {
 	}
 	defer func() { _ = database.Close() }()
 	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 37); err != nil {
+	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 39); err != nil {
 		t.Fatal(err)
 	}
 	removeSeededGateway(t, database)
+	seedGatewayFactoryEnvironment(t, database)
 	applications := applicationrepo.NewRepository(database)
 	service := New(
 		projectrepo.NewRepository(database),
+		environmentrepo.NewRepository(database),
 		applications,
 		gatewayrepo.NewRepository(database),
 		servicerepo.NewRepository(database),
@@ -259,11 +290,12 @@ func newGatewayFactoryService(t *testing.T, configStore gatewayport.ConfigStore)
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 37); err != nil {
+	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 39); err != nil {
 		_ = database.Close()
 		t.Fatal(err)
 	}
 	removeSeededGateway(t, database)
+	seedGatewayFactoryEnvironment(t, database)
 	applications := applicationrepo.NewRepository(database)
 	services := servicerepo.NewRepository(database)
 	if configStore == nil {
@@ -271,6 +303,7 @@ func newGatewayFactoryService(t *testing.T, configStore gatewayport.ConfigStore)
 	}
 	return New(
 		projectrepo.NewRepository(database),
+		environmentrepo.NewRepository(database),
 		applications,
 		configStore,
 		services,
@@ -284,6 +317,32 @@ func newGatewayFactoryService(t *testing.T, configStore gatewayport.ConfigStore)
 
 func resolveGatewayPathForTest(_ context.Context, logicalPath string) (string, error) {
 	return logicalPath, nil
+}
+
+func seedGatewayFactoryEnvironment(t *testing.T, database *sql.DB) {
+	t.Helper()
+	probeRevision := int64(1)
+	probeStatus := model.EnvironmentProbeStatusSucceeded
+	environment := model.Environment{
+		Id:                    "01KROUTEGATEWAYENV00000001",
+		ProjectId:             gatewayFactoryProjectID,
+		Code:                  "gateway-factory",
+		State:                 model.EnvironmentStateActive,
+		Platform:              model.EnvironmentPlatformLinux,
+		Host:                  "192.0.2.10",
+		Port:                  22,
+		Username:              "deploy",
+		WorkspaceRoot:         "/srv/pomelo-orbit",
+		SSHCredentialId:       "gateway-factory-credential",
+		SSHCredentialRevision: 1,
+		HostKeyFingerprint:    "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+		TargetRevision:        1,
+		LastProbeRevision:     &probeRevision,
+		LastProbeStatus:       &probeStatus,
+	}
+	if err := environmentrepo.NewRepository(database).CreateEnvironment(context.Background(), environment); err != nil {
+		t.Fatalf("seed gateway factory environment: %v", err)
+	}
 }
 
 func removeSeededGateway(t *testing.T, database *sql.DB) {

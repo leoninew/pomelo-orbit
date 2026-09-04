@@ -5,6 +5,7 @@
 // source: orbit/v1/project/project.proto
 
 /* eslint-disable */
+import type { ProjectEnvironmentCreateReq } from "../environment/environment";
 
 export const protobufPackage = "orbit.v1.project";
 
@@ -34,9 +35,14 @@ export interface ProjectMemberListResp {
   items: ProjectMemberResp[];
 }
 
-export interface ProjectSaveReq {
+export interface ProjectCreateReq {
   name: string;
   code: string;
+  environment: ProjectEnvironmentCreateReq | undefined;
+}
+
+export interface ProjectSaveReq {
+  name: string;
 }
 
 export interface ProjectMemberReq {

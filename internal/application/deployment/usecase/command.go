@@ -10,6 +10,7 @@ import (
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
@@ -27,9 +28,9 @@ func NewCommandService(
 	gateway repository.GatewayStore,
 	dispatcher deploymentport.Dispatcher,
 	logger *slog.Logger,
-	workspace deploymentport.Workspace,
-	queryRunner deploymentport.CommandQueryRunner,
-	logStore deploymentport.LogReader,
+	targetResolver environmentport.TargetResolver,
+	remoteRuntime deploymentport.RemoteRuntime,
+	logStore deploymentport.ExecutionLogStore,
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
 ) Service {
 	store := &stores{
@@ -39,8 +40,8 @@ func NewCommandService(
 	return Service{
 		project: project, application: application,
 		service: service, deployment: deployment, store: store, executionStore: store,
-		dispatcher: dispatcher, commandStore: store, logger: logger, workspace: workspace,
-		queryRunner: queryRunner, logStore: logStore,
+		dispatcher: dispatcher, commandStore: store, logger: logger,
+		targetResolver: targetResolver, remoteRuntime: remoteRuntime, logStore: logStore,
 		gatewayCoordinator: gatewayCoordinator,
 	}
 }
@@ -53,8 +54,8 @@ func NewExecutionService(
 	deployment repository.DeploymentStore,
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
 	logger *slog.Logger,
-	workspace deploymentport.Workspace,
-	runner deploymentport.CommandRunner,
+	targetResolver environmentport.TargetResolver,
+	remoteRuntime deploymentport.RemoteRuntime,
 	logStore deploymentport.ExecutionLogStore,
 	pollInterval time.Duration,
 	gatewayRoutePublisher deploymentport.GatewayRoutePublisher,
@@ -66,8 +67,8 @@ func NewExecutionService(
 	return Service{
 		project: project, application: application,
 		service: service, deployment: deployment, store: store, executionStore: store,
-		logger: logger, workspace: workspace, runner: runner, pollInterval: pollInterval,
-		logStore: logStore, executionLogStore: logStore,
+		logger: logger, targetResolver: targetResolver, remoteRuntime: remoteRuntime, pollInterval: pollInterval,
+		logStore:              logStore,
 		gatewayCoordinator:    gatewayCoordinator,
 		gatewayRoutePublisher: gatewayRoutePublisher,
 	}
@@ -123,6 +124,10 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 	if err := enrichGatewayPlan(&plan); err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
 	}
+	target, err := s.resolveProjectTarget(ctx, app)
+	if err != nil {
+		return deploymentdto.DeployServiceResult{}, err
+	}
 	planHash, err := EffectiveServicePlanHash(plan)
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to hash deployment plan", err)
@@ -133,6 +138,7 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 		ForceRecreate: input.ForceRecreate, InstanceKey: service.InstanceKey,
 		JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan), GatewayConfig: cloneGatewayConfig(gateway),
 	}
+	applyDeploymentTargetSnapshot(&deployment, target, gateway)
 	if err := setDeploymentOptions(&deployment, opts); err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
@@ -167,10 +173,16 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	if service.Status != status.ServiceStatusRunning && service.Status != status.ServiceStatusFaulted && !canRemoveStoppedVolumes {
 		return "", apperror.New(apperror.KindValidation, "应用未在运行中, 无法停止")
 	}
+	target, err := s.resolveProjectTarget(ctx, app)
+	if err != nil {
+		return "", err
+	}
 	deployment := newDeployment(app, "stop")
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &service.VersionId
-	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey, RemoveVolumes: input.RemoveVolumes}); err != nil {
+	options := deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey, RemoveVolumes: input.RemoveVolumes}
+	applyDeploymentTargetSnapshot(&deployment, target, nil)
+	if err := setDeploymentOptions(&deployment, options); err != nil {
 		return "", err
 	}
 	deployment.CommandText = stopComposeCommand(composeProjectName(app.Code, service.InstanceKey), input.RemoveVolumes).String()
@@ -242,6 +254,10 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	if err := enrichGatewayPlan(&plan); err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
+	target, err := s.resolveProjectTarget(ctx, app)
+	if err != nil {
+		return "", err
+	}
 	planHash, err := EffectiveServicePlanHash(plan)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to hash deployment plan", err)
@@ -249,9 +265,11 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	deployment := newDeployment(app, "restart")
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &version.Id
-	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{
+	restartOptions := deploymentdto.DeployOptionsJSON{
 		InstanceKey: service.InstanceKey, JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan), GatewayConfig: cloneGatewayConfig(gateway),
-	}); err != nil {
+	}
+	applyDeploymentTargetSnapshot(&deployment, target, gateway)
+	if err := setDeploymentOptions(&deployment, restartOptions); err != nil {
 		return "", err
 	}
 	deployment.EffectivePlanHash = &planHash

@@ -15,6 +15,7 @@ const countCredentials = `-- name: CountCredentials :one
 SELECT COUNT(*)
 FROM credential
 WHERE project_id = ?
+  AND type <> 'deployment_ssh_private_key'
   AND (CAST(? AS CHAR) IS NULL
     OR name LIKE ?
     OR type LIKE ?)
@@ -38,8 +39,8 @@ func (q *Queries) CountCredentials(ctx context.Context, arg CountCredentialsPara
 }
 
 const createCredential = `-- name: CreateCredential :exec
-INSERT INTO credential (id, project_id, name, type, encrypted_data, created_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO credential (id, project_id, name, type, encrypted_data, revision, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateCredentialParams struct {
@@ -48,6 +49,7 @@ type CreateCredentialParams struct {
 	Name          string         `db:"name"`
 	Type          string         `db:"type"`
 	EncryptedData string         `db:"encrypted_data"`
+	Revision      int64          `db:"revision"`
 	CreatedAt     time.Time      `db:"created_at"`
 }
 
@@ -58,13 +60,14 @@ func (q *Queries) CreateCredential(ctx context.Context, arg CreateCredentialPara
 		arg.Name,
 		arg.Type,
 		arg.EncryptedData,
+		arg.Revision,
 		arg.CreatedAt,
 	)
 	return err
 }
 
 const credentialByID = `-- name: CredentialByID :one
-SELECT id, project_id, name, type, encrypted_data, created_at
+SELECT id, project_id, name, type, encrypted_data, revision, created_at
 FROM credential
 WHERE id = ?
 `
@@ -75,6 +78,7 @@ type CredentialByIDRow struct {
 	Name          string         `db:"name"`
 	Type          string         `db:"type"`
 	EncryptedData string         `db:"encrypted_data"`
+	Revision      int64          `db:"revision"`
 	CreatedAt     time.Time      `db:"created_at"`
 }
 
@@ -87,13 +91,14 @@ func (q *Queries) CredentialByID(ctx context.Context, id string) (CredentialByID
 		&i.Name,
 		&i.Type,
 		&i.EncryptedData,
+		&i.Revision,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const credentialByName = `-- name: CredentialByName :one
-SELECT id, project_id, name, type, encrypted_data, created_at
+SELECT id, project_id, name, type, encrypted_data, revision, created_at
 FROM credential
 WHERE project_id = ? AND name = ?
 `
@@ -109,6 +114,7 @@ type CredentialByNameRow struct {
 	Name          string         `db:"name"`
 	Type          string         `db:"type"`
 	EncryptedData string         `db:"encrypted_data"`
+	Revision      int64          `db:"revision"`
 	CreatedAt     time.Time      `db:"created_at"`
 }
 
@@ -121,6 +127,7 @@ func (q *Queries) CredentialByName(ctx context.Context, arg CredentialByNamePara
 		&i.Name,
 		&i.Type,
 		&i.EncryptedData,
+		&i.Revision,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -181,9 +188,10 @@ func (q *Queries) DeleteCredential(ctx context.Context, id string) error {
 }
 
 const listCredentials = `-- name: ListCredentials :many
-SELECT id, project_id, name, type, encrypted_data, created_at
+SELECT id, project_id, name, type, encrypted_data, revision, created_at
 FROM credential
 WHERE project_id = ?
+  AND type <> 'deployment_ssh_private_key'
   AND (CAST(? AS CHAR) IS NULL
     OR name LIKE ?
     OR type LIKE ?)
@@ -204,6 +212,7 @@ type ListCredentialsRow struct {
 	Name          string         `db:"name"`
 	Type          string         `db:"type"`
 	EncryptedData string         `db:"encrypted_data"`
+	Revision      int64          `db:"revision"`
 	CreatedAt     time.Time      `db:"created_at"`
 }
 
@@ -229,6 +238,7 @@ func (q *Queries) ListCredentials(ctx context.Context, arg ListCredentialsParams
 			&i.Name,
 			&i.Type,
 			&i.EncryptedData,
+			&i.Revision,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -246,17 +256,23 @@ func (q *Queries) ListCredentials(ctx context.Context, arg ListCredentialsParams
 
 const updateCredential = `-- name: UpdateCredential :exec
 UPDATE credential
-SET name = ?, encrypted_data = ?
+SET name = ?, encrypted_data = ?, revision = ?
 WHERE id = ?
 `
 
 type UpdateCredentialParams struct {
 	Name          string `db:"name"`
 	EncryptedData string `db:"encrypted_data"`
+	Revision      int64  `db:"revision"`
 	ID            string `db:"id"`
 }
 
 func (q *Queries) UpdateCredential(ctx context.Context, arg UpdateCredentialParams) error {
-	_, err := q.db.ExecContext(ctx, updateCredential, arg.Name, arg.EncryptedData, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateCredential,
+		arg.Name,
+		arg.EncryptedData,
+		arg.Revision,
+		arg.ID,
+	)
 	return err
 }

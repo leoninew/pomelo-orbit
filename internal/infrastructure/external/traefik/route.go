@@ -1,84 +1,56 @@
 package traefik
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
-	"os"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
-	"github.com/leoninew/pomelo-orbit/internal/config"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 var _ routeport.RouteConfigPublisher = (*RouteManager)(nil)
 var _ routeport.TraefikRouterClient = (*RouteManager)(nil)
 
-const (
-	restApiReadyPollInterval = 500 * time.Millisecond
-)
+const restApiReadyPollInterval = 500 * time.Millisecond
 
-// RouteManager publishes platform routes via Traefik providers.rest full PUT.
 type RouteManager struct {
-	cfg    config.Config
-	client *http.Client
-	mu     sync.Mutex
+	targetResolver environmentport.TargetResolver
+	runtime        deploymentport.RemoteRuntime
+	mu             sync.Mutex
 }
 
-func NewRouteManager(cfg config.Config) *RouteManager {
-	return &RouteManager{
-		cfg: cfg,
-		client: &http.Client{
-			Timeout: 15 * time.Second,
-		},
-	}
+func NewRouteManager(targetResolver environmentport.TargetResolver, runtime deploymentport.RemoteRuntime) *RouteManager {
+	return &RouteManager{targetResolver: targetResolver, runtime: runtime}
 }
 
-// WaitUntilReady polls the Traefik API until it responds successfully.
-// compose up -d returning zero does not mean the REST control plane is listening yet.
-func (m *RouteManager) WaitUntilReady(ctx context.Context, restApiUrl string, timeout time.Duration) error {
-	base := strings.TrimRight(strings.TrimSpace(restApiUrl), "/")
-	if base == "" {
-		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
+func (m *RouteManager) WaitUntilReady(ctx context.Context, projectID string, gateway model.GatewayConfig, timeout time.Duration) error {
+	base, err := traefikBaseURL(gateway.RestApiUrl)
+	if err != nil {
+		return err
 	}
-	url := base + "/api/overview"
 	if timeout <= 0 {
 		return apperror.New(apperror.KindValidation, "gateway rest_ready_timeout_seconds is required")
+	}
+	target, err := m.resolveTarget(ctx, projectID)
+	if err != nil {
+		return err
 	}
 	deadline := time.Now().Add(timeout)
 	var lastErr error
 	for {
-		if err := ctx.Err(); err != nil {
-			if lastErr != nil {
-				return apperror.Wrap(apperror.KindInternal, "Traefik REST API readiness canceled", lastErr)
-			}
-			return apperror.Wrap(apperror.KindInternal, "Traefik REST API readiness canceled", err)
-		}
-		request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		if err != nil {
-			return apperror.Wrap(apperror.KindInternal, "Failed to create Traefik readiness request", err)
-		}
-		response, err := m.client.Do(request)
-		if err == nil {
-			_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 512))
-			_ = response.Body.Close()
-			if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
-				return nil
-			}
-			lastErr = fmt.Errorf("traefik readiness returned status %d", response.StatusCode)
-		} else {
-			lastErr = err
+		_, lastErr = m.runtime.QueryAtEnvironmentRoot(ctx, target, "curl", "-fsS", "--max-time", "5", base+"/api/overview")
+		if lastErr == nil {
+			return nil
 		}
 		if !time.Now().Before(deadline) {
 			return apperror.Wrap(apperror.KindInternal, "Traefik REST API not ready within timeout", lastErr)
@@ -87,70 +59,73 @@ func (m *RouteManager) WaitUntilReady(ctx context.Context, restApiUrl string, ti
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			if lastErr != nil {
-				return apperror.Wrap(apperror.KindInternal, "Traefik REST API readiness canceled", lastErr)
-			}
-			return apperror.Wrap(apperror.KindInternal, "Traefik REST API readiness canceled", ctx.Err())
+			return apperror.Wrap(apperror.KindInternal, "Traefik REST API readiness canceled", lastErr)
 		case <-timer.C:
 		}
 	}
 }
 
-// ApplySnapshot replaces the entire @rest HTTP and TCP configuration with the given enabled routes.
-func (m *RouteManager) ApplySnapshot(ctx context.Context, gateway model.GatewayConfig, routes []model.Route) error {
+func (m *RouteManager) ApplySnapshot(ctx context.Context, projectID string, gateway model.GatewayConfig, routes []model.Route) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
-	for _, route := range routes {
-		if route.HTTPSEnabled && route.CertPEM != nil && route.CertKey != nil && strings.TrimSpace(*route.CertPEM) != "" {
-			if err := m.writeCertificateUnlocked(gateway, route.Name, *route.CertPEM, *route.CertKey); err != nil {
-				return err
-			}
-		}
+	base, err := traefikBaseURL(gateway.RestApiUrl)
+	if err != nil {
+		return err
 	}
-
+	target, err := m.resolveTarget(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	serviceDir, err := m.runtime.ServiceDir(target, gateway.RuntimeServiceCode)
+	if err != nil {
+		return err
+	}
+	certDir := path.Join(strings.ReplaceAll(serviceDir, "\\", "/"), "gateway", "certs")
+	certFiles := make([]deploymentport.RemoteFile, 0)
+	for _, route := range routes {
+		if !routeHasStoredCertificate(route) {
+			continue
+		}
+		certFiles = append(certFiles,
+			deploymentport.RemoteFile{Path: path.Join(certDir, route.Name+".pem"), Content: []byte(*route.CertPEM), Mode: 0o600},
+			deploymentport.RemoteFile{Path: path.Join(certDir, route.Name+"-key.pem"), Content: []byte(*route.CertKey), Mode: 0o600},
+		)
+	}
+	if err := m.runtime.SyncFiles(ctx, target, certDir, certFiles, ".pem"); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to sync remote route certificates", err)
+	}
 	body, err := json.Marshal(buildRestSnapshot(routes))
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to marshal traefik rest snapshot", err)
 	}
-	if err := m.putRestConfig(ctx, gateway.RestApiUrl, body); err != nil {
-		return err
+	stateDir := path.Join(strings.ReplaceAll(serviceDir, "\\", "/"), ".orbit")
+	snapshotPath := path.Join(stateDir, "traefik-rest.json")
+	if err := m.runtime.SyncFiles(ctx, target, stateDir, []deploymentport.RemoteFile{{Path: snapshotPath, Content: body, Mode: 0o600}}, ""); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to stage remote traefik snapshot", err)
 	}
-	if err := m.pruneCertificatesUnlocked(gateway, routes); err != nil {
-		return err
+	output, err := m.runtime.QueryAtEnvironmentRoot(ctx, target, "curl", "-fsS", "--max-time", "15", "-X", "PUT", "-H", "Content-Type: application/json", "--data-binary", "@"+snapshotPath, base+"/api/providers/rest")
+	if err != nil {
+		return apperror.New(apperror.KindInternal, outputOrRemoteError("Failed to put traefik rest config", output, err))
 	}
 	return nil
 }
 
-func (m *RouteManager) ListRouters(ctx context.Context, restApiUrl string) ([]routeport.TraefikRouter, error) {
-	httpRouters, err := m.listRouters(ctx, restApiUrl, "http")
+func (m *RouteManager) ListRouters(ctx context.Context, projectID string, gateway model.GatewayConfig) ([]routeport.TraefikRouter, error) {
+	httpRouters, err := m.listRouters(ctx, projectID, gateway, "http")
 	if err != nil {
 		return nil, err
 	}
-	tcpRouters, err := m.listRouters(ctx, restApiUrl, "tcp")
+	tcpRouters, err := m.listRouters(ctx, projectID, gateway, "tcp")
 	if err != nil {
 		return nil, err
 	}
 	return append(httpRouters, tcpRouters...), nil
 }
 
-func (m *RouteManager) listRouters(ctx context.Context, restApiUrl string, protocol string) ([]routeport.TraefikRouter, error) {
-	base := strings.TrimRight(strings.TrimSpace(restApiUrl), "/")
-	if base == "" {
-		return nil, apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
-	}
-	url := base + "/api/" + protocol + "/routers"
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func (m *RouteManager) listRouters(ctx context.Context, projectID string, gateway model.GatewayConfig, protocol string) ([]routeport.TraefikRouter, error) {
+	body, err := m.get(ctx, projectID, gateway, "/api/"+protocol+"/routers")
 	if err != nil {
-		return nil, fmt.Errorf("create traefik request: %w", err)
-	}
-	response, err := m.client.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("request traefik routers: %w", err)
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return nil, fmt.Errorf("traefik returned status %d", response.StatusCode)
+		return nil, err
 	}
 	var routers []struct {
 		Name        string           `json:"name"`
@@ -161,54 +136,33 @@ func (m *RouteManager) listRouters(ctx context.Context, restApiUrl string, proto
 		Entrypoints []string         `json:"entryPoints"`
 		TLS         *json.RawMessage `json:"tls"`
 	}
-	if err := json.NewDecoder(response.Body).Decode(&routers); err != nil {
+	if err := json.Unmarshal([]byte(body), &routers); err != nil {
 		return nil, fmt.Errorf("decode traefik routers: %w", err)
 	}
 	items := make([]routeport.TraefikRouter, 0, len(routers))
 	for _, router := range routers {
-		items = append(items, routeport.TraefikRouter{
-			Name:        router.Name,
-			Provider:    router.Provider,
-			Status:      router.Status,
-			Rule:        router.Rule,
-			Service:     router.Service,
-			Entrypoints: append([]string(nil), router.Entrypoints...),
-			TLSConfig:   normalizeJSON(router.TLS),
-			TLS:         normalizeJSON(router.TLS) != "",
-		})
+		tlsConfig := normalizeJSON(router.TLS)
+		items = append(items, routeport.TraefikRouter{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: append([]string(nil), router.Entrypoints...), TLS: tlsConfig != "", TLSConfig: tlsConfig})
 	}
 	return items, nil
 }
 
-func (m *RouteManager) ListServices(ctx context.Context, restApiUrl string) ([]routeport.TraefikService, error) {
-	httpServices, err := m.listServices(ctx, restApiUrl, "http")
+func (m *RouteManager) ListServices(ctx context.Context, projectID string, gateway model.GatewayConfig) ([]routeport.TraefikService, error) {
+	httpServices, err := m.listServices(ctx, projectID, gateway, "http")
 	if err != nil {
 		return nil, err
 	}
-	tcpServices, err := m.listServices(ctx, restApiUrl, "tcp")
+	tcpServices, err := m.listServices(ctx, projectID, gateway, "tcp")
 	if err != nil {
 		return nil, err
 	}
 	return append(httpServices, tcpServices...), nil
 }
 
-func (m *RouteManager) listServices(ctx context.Context, restApiUrl string, protocol string) ([]routeport.TraefikService, error) {
-	base := strings.TrimRight(strings.TrimSpace(restApiUrl), "/")
-	if base == "" {
-		return nil, apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
-	}
-	url := base + "/api/" + protocol + "/services"
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func (m *RouteManager) listServices(ctx context.Context, projectID string, gateway model.GatewayConfig, protocol string) ([]routeport.TraefikService, error) {
+	body, err := m.get(ctx, projectID, gateway, "/api/"+protocol+"/services")
 	if err != nil {
-		return nil, fmt.Errorf("create traefik request: %w", err)
-	}
-	response, err := m.client.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("request traefik services: %w", err)
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return nil, fmt.Errorf("traefik returned status %d", response.StatusCode)
+		return nil, err
 	}
 	var services []struct {
 		Name         string `json:"name"`
@@ -216,36 +170,64 @@ func (m *RouteManager) listServices(ctx context.Context, restApiUrl string, prot
 		Status       string `json:"status"`
 		LoadBalancer *struct {
 			Servers []struct {
-				Url     string `json:"url"`
+				URL     string `json:"url"`
 				Address string `json:"address"`
 			} `json:"servers"`
 		} `json:"loadBalancer"`
 	}
-	if err := json.NewDecoder(response.Body).Decode(&services); err != nil {
+	if err := json.Unmarshal([]byte(body), &services); err != nil {
 		return nil, fmt.Errorf("decode traefik services: %w", err)
 	}
 	items := make([]routeport.TraefikService, 0, len(services))
 	for _, service := range services {
 		servers := make([]string, 0)
 		if service.LoadBalancer != nil {
-			servers = make([]string, 0, len(service.LoadBalancer.Servers))
 			for _, server := range service.LoadBalancer.Servers {
-				value := server.Url
+				value := server.URL
 				if value == "" {
 					value = server.Address
 				}
 				servers = append(servers, value)
 			}
 		}
-		items = append(items, routeport.TraefikService{
-			Name:     service.Name,
-			Provider: service.Provider,
-			Status:   service.Status,
-			Protocol: protocol,
-			Servers:  servers,
-		})
+		items = append(items, routeport.TraefikService{Name: service.Name, Provider: service.Provider, Status: service.Status, Protocol: protocol, Servers: servers})
 	}
 	return items, nil
+}
+
+func (m *RouteManager) get(ctx context.Context, projectID string, gateway model.GatewayConfig, endpoint string) (string, error) {
+	base, err := traefikBaseURL(gateway.RestApiUrl)
+	if err != nil {
+		return "", err
+	}
+	target, err := m.resolveTarget(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	output, err := m.runtime.QueryAtEnvironmentRoot(ctx, target, "curl", "-fsS", "--max-time", "15", base+endpoint)
+	if err != nil {
+		return output, fmt.Errorf("request traefik API: %w", err)
+	}
+	return output, nil
+}
+
+func (m *RouteManager) resolveTarget(ctx context.Context, projectID string) (environmentport.SSHTarget, error) {
+	if m == nil || m.targetResolver == nil || m.runtime == nil {
+		return environmentport.SSHTarget{}, apperror.New(apperror.KindInternal, "remote Traefik client is not configured")
+	}
+	return m.targetResolver.ResolveProjectTarget(ctx, projectID)
+}
+
+func (m *RouteManager) IsConnectionError(err error) bool {
+	return err != nil
+}
+
+func traefikBaseURL(value string) (string, error) {
+	base := strings.TrimRight(strings.TrimSpace(value), "/")
+	if base == "" {
+		return "", apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
+	}
+	return base, nil
 }
 
 func normalizeJSON(raw *json.RawMessage) string {
@@ -263,81 +245,12 @@ func normalizeJSON(raw *json.RawMessage) string {
 	return string(encoded)
 }
 
-func (m *RouteManager) IsConnectionError(err error) bool {
-	var netErr net.Error
-	return errors.As(err, &netErr)
-}
-
-func (m *RouteManager) putRestConfig(ctx context.Context, restApiUrl string, body []byte) error {
-	base := strings.TrimRight(strings.TrimSpace(restApiUrl), "/")
-	if base == "" {
-		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for rest route publish")
+func outputOrRemoteError(prefix string, output string, err error) string {
+	output = strings.TrimSpace(output)
+	if output != "" {
+		return prefix + ": " + output
 	}
-	url := base + "/api/providers/rest"
-	request, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(body))
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to create traefik rest request", err)
-	}
-	request.Header.Set("Content-Type", "application/json")
-	response, err := m.client.Do(request)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to put traefik rest config", err)
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		snippet, _ := io.ReadAll(io.LimitReader(response.Body, 512))
-		return apperror.New(apperror.KindInternal, fmt.Sprintf("traefik rest PUT returned status %d: %s", response.StatusCode, strings.TrimSpace(string(snippet))))
-	}
-	return nil
-}
-
-func (m *RouteManager) writeCertificateUnlocked(gateway model.GatewayConfig, routeName string, certPEM string, certKey string) error {
-	certDir := m.routeCertDir(gateway)
-	if err := os.MkdirAll(certDir, 0o755); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to create route cert directory", err)
-	}
-	if err := os.WriteFile(filepath.Join(certDir, routeName+".pem"), []byte(certPEM), 0o600); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to write route certificate", err)
-	}
-	if err := os.WriteFile(filepath.Join(certDir, routeName+"-key.pem"), []byte(certKey), 0o600); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to write route certificate key", err)
-	}
-	return nil
-}
-
-func (m *RouteManager) pruneCertificatesUnlocked(gateway model.GatewayConfig, routes []model.Route) error {
-	certDir := m.routeCertDir(gateway)
-	entries, err := os.ReadDir(certDir)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to inspect route certificate directory", err)
-	}
-	keep := make(map[string]struct{})
-	for _, route := range routes {
-		if !route.Enabled || !routeHasStoredCertificate(route) {
-			continue
-		}
-		keep[route.Name+".pem"] = struct{}{}
-		keep[route.Name+"-key.pem"] = struct{}{}
-	}
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".pem" {
-			continue
-		}
-		if _, found := keep[entry.Name()]; found {
-			continue
-		}
-		if err := os.Remove(filepath.Join(certDir, entry.Name())); err != nil {
-			return apperror.Wrap(apperror.KindInternal, "Failed to prune route certificate", err)
-		}
-	}
-	return nil
-}
-
-func (m *RouteManager) routeCertDir(gateway model.GatewayConfig) string {
-	return filepath.Join(m.cfg.Workspace.Deployment, gateway.RuntimeServiceCode, "gateway", "certs")
+	return prefix + ": " + err.Error()
 }
 
 // buildRestSnapshot assembles a full providers.rest HTTP and TCP config (full replace semantics).

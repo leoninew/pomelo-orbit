@@ -16,6 +16,11 @@ type CredentialUpdateInput struct {
 	Data *string
 }
 
+type DeploymentSSHPrivateKey struct {
+	PrivateKey string `json:"private_key"`
+	Passphrase string `json:"passphrase"`
+}
+
 type CredentialExport struct {
 	Version string
 	Name    string

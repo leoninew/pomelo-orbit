@@ -135,6 +135,7 @@ CREATE TABLE IF NOT EXISTS credential (
     name TEXT NOT NULL,
     type TEXT NOT NULL,
     encrypted_data TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     project_id TEXT REFERENCES project(id)
 );
@@ -656,6 +657,11 @@ CREATE TABLE IF NOT EXISTS deployment (
     project_id TEXT REFERENCES project(id),
     version_id TEXT,
     service_id TEXT,
+    environment_id TEXT,
+    environment_target_revision BIGINT,
+    ssh_credential_id TEXT,
+    ssh_credential_revision BIGINT,
+    gateway_application_id TEXT,
     options_json TEXT,
     effective_plan_hash TEXT,
     command_text TEXT NOT NULL DEFAULT '',
@@ -720,3 +726,25 @@ CREATE INDEX IF NOT EXISTS idx_deployment_dialogue_conversation_project_updated
     ON deployment_dialogue_conversation(project_id, updated_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_deployment_dialogue_message_conversation_created
     ON deployment_dialogue_message(conversation_id, created_at ASC, id ASC);
+CREATE TABLE IF NOT EXISTS environment (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL UNIQUE,
+    state TEXT NOT NULL CHECK (state IN ('active', 'disabled')),
+    platform TEXT NOT NULL CHECK (platform IN ('linux', 'windows')),
+    host TEXT NOT NULL,
+    port INTEGER NOT NULL CHECK (port BETWEEN 1 AND 65535),
+    username TEXT NOT NULL,
+    workspace_root TEXT NOT NULL,
+    ssh_credential_id TEXT NOT NULL,
+    ssh_credential_revision INTEGER NOT NULL CHECK (ssh_credential_revision >= 1),
+    host_key_fingerprint TEXT NOT NULL,
+    target_revision INTEGER NOT NULL CHECK (target_revision >= 1),
+    last_probe_revision INTEGER,
+    last_probe_status TEXT,
+    last_probe_at DATETIME,
+    last_probe_diagnostic TEXT,
+    gateway_application_id TEXT UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+);

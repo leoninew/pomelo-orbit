@@ -55,3 +55,29 @@ func (Store) Read(logPath string, offset int) ([]byte, int, error) {
 	}
 	return content, offset + len(content), nil
 }
+
+// DeploymentStore keeps control-plane execution logs separate from the remote
+// service workspace. Docker and deployment files never use this local root.
+type DeploymentStore struct {
+	Root string
+}
+
+func NewDeploymentStore(root string) DeploymentStore {
+	return DeploymentStore{Root: filepath.Clean(root)}
+}
+
+func (s DeploymentStore) Writer(serviceCode string, deploymentID string) (io.WriteCloser, error) {
+	return Store{}.Writer(s.path(serviceCode, deploymentID))
+}
+
+func (s DeploymentStore) Read(serviceCode string, deploymentID string, offset int) ([]byte, int, error) {
+	return Store{}.Read(s.path(serviceCode, deploymentID), offset)
+}
+
+func (s DeploymentStore) Remove(serviceCode string, deploymentID string) error {
+	return os.Remove(s.path(serviceCode, deploymentID))
+}
+
+func (s DeploymentStore) path(serviceCode string, deploymentID string) string {
+	return filepath.Join(s.Root, "logs", serviceCode, deploymentID+".log")
+}

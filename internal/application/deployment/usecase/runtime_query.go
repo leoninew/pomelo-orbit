@@ -20,7 +20,11 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, applicati
 	if err != nil {
 		return nil, err
 	}
-	exists, err := s.workspace.ServiceDirExists(service.Code)
+	target, err := s.resolveProjectTarget(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	exists, err := s.remoteRuntime.ServiceDirExists(ctx, target, service.Code)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
 	}
@@ -28,7 +32,7 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, applicati
 		return []deploymentdto.RuntimeContainer{}, nil
 	}
 	command := containerPsCommand(composeProjectName(app.Code, service.InstanceKey))
-	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(service.Code), command.Name, command.Args...)
+	output, err := s.remoteRuntime.Query(ctx, target, service.Code, command.Name, command.Args...)
 	if err != nil {
 		return nil, apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -78,12 +82,16 @@ func (s Service) ApplicationLogs(ctx context.Context, userId string, application
 	if err != nil {
 		return "", err
 	}
+	target, err := s.resolveProjectTarget(ctx, app)
+	if err != nil {
+		return "", err
+	}
 	projectName := composeProjectName(app.Code, service.InstanceKey)
 	command := containerLogsTailCommand(projectName, strconv.Itoa(tail))
 	if component != "" {
 		command = containerLogsTailCommand(projectName, strconv.Itoa(tail), component)
 	}
-	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(service.Code), command.Name, command.Args...)
+	output, err := s.remoteRuntime.Query(ctx, target, service.Code, command.Name, command.Args...)
 	if err != nil {
 		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -123,9 +131,13 @@ func (s Service) PreviewService(ctx context.Context, userId string, serviceId st
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
 	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
-	composeMountSourceDir, err := s.workspace.ComposeMountSourceDir(ctx, service.Code)
+	target, err := s.resolveProjectTarget(ctx, app)
 	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve compose mount source dir", err)
+		return "", err
+	}
+	serviceDir, err := s.remoteRuntime.ServiceDir(target, service.Code)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve remote service directory", err)
 	}
 	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
@@ -133,7 +145,7 @@ func (s Service) PreviewService(ctx context.Context, userId string, serviceId st
 	}
 	plan.Gateway = gateway
 	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
-	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, LogicalSvcDir: s.workspace.ServiceDir(service.Code), ComposeMountSourceDir: composeMountSourceDir})
+	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, LogicalSvcDir: serviceDir})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
@@ -165,9 +177,13 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
 	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
-	composeMountSourceDir, err := s.workspace.ComposeMountSourceDir(ctx, plan.Service.Code)
+	target, err := s.resolveProjectTarget(ctx, app)
 	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve compose mount source dir", err)
+		return "", err
+	}
+	serviceDir, err := s.remoteRuntime.ServiceDir(target, plan.Service.Code)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve remote service directory", err)
 	}
 	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
@@ -175,7 +191,7 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 	}
 	plan.Gateway = gateway
 	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
-	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, LogicalSvcDir: s.workspace.ServiceDir(plan.Service.Code), ComposeMountSourceDir: composeMountSourceDir})
+	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, LogicalSvcDir: serviceDir})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}

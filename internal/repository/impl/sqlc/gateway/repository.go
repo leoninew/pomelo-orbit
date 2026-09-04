@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	gatewaysqlc "github.com/leoninew/pomelo-orbit/internal/gen/sqlc/gateway"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -41,57 +40,28 @@ func (r Repository) GatewayConfig(ctx context.Context, applicationId string) (mo
 	return r.gatewayFrom(ctx, row)
 }
 
-func (r Repository) ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error) {
-	row, err := r.q(ctx).ResolveActiveGatewayConfig(ctx, status.ServiceStatusRunning)
-	if err == nil {
-		return r.gatewayFrom(ctx, row)
+func (r Repository) GatewayConfigByProject(ctx context.Context, projectID string) (model.GatewayConfig, error) {
+	binding, err := r.q(ctx).GatewayBindingByProjectID(ctx, strings.TrimSpace(projectID))
+	if err != nil {
+		return model.GatewayConfig{}, fmt.Errorf("load gateway binding for project %s: %w", projectID, sqlcommon.TranslateError(err))
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		translated := sqlcommon.TranslateError(err)
-		if !errors.Is(translated, repository.ErrNotFound) {
-			return model.GatewayConfig{}, fmt.Errorf("resolve active gateway config: %w", err)
-		}
+	cfg, err := r.GatewayConfig(ctx, binding.ApplicationID)
+	if err != nil {
+		return model.GatewayConfig{}, err
 	}
-
-	// Fallback: when no gateway service is running/deploying, use the sole
-	// gateway application config so routes/certs can render before first deploy.
-	apps, listErr := r.ListGatewayApplications(ctx, "")
-	if listErr != nil {
-		return model.GatewayConfig{}, fmt.Errorf("list gateways for resolve: %w", listErr)
+	cfg.NetworkName = model.GatewayNetworkName(binding.EnvironmentCode)
+	if cfg.NetworkName == "" {
+		return model.GatewayConfig{}, fmt.Errorf("gateway environment code is invalid for project %s", projectID)
 	}
-	if len(apps) == 0 {
-		return model.GatewayConfig{}, fmt.Errorf("no gateway configured: %w", repository.ErrNotFound)
-	}
-	if len(apps) > 1 {
-		return model.GatewayConfig{}, fmt.Errorf("multiple gateways exist and none is active; deploy one or remove extras: %w", repository.ErrNotFound)
-	}
-	return r.GatewayConfig(ctx, apps[0].Id)
+	return cfg, nil
 }
 
 func (r Repository) ListGatewayApplications(ctx context.Context, projectId string) ([]model.Application, error) {
 	trimmed := strings.TrimSpace(projectId)
-	var rows []gatewaysqlc.ListGatewayApplicationsRow
-	var err error
 	if trimmed == "" {
-		all, listErr := r.q(ctx).ListAllGatewayApplications(ctx)
-		if listErr != nil {
-			return nil, fmt.Errorf("list all gateway applications: %w", listErr)
-		}
-		items := make([]model.Application, 0, len(all))
-		for _, row := range all {
-			items = append(items, model.Application{
-				Id:        row.ID,
-				ProjectId: dbmodel.StringPtr(row.ProjectID),
-				Name:      row.Name,
-				Code:      row.Code,
-				Kind:      row.Kind,
-				CreatedAt: row.CreatedAt,
-				UpdatedAt: row.UpdatedAt,
-			})
-		}
-		return items, nil
+		return nil, fmt.Errorf("project id is required")
 	}
-	rows, err = r.q(ctx).ListGatewayApplications(ctx, sql.NullString{String: trimmed, Valid: true})
+	rows, err := r.q(ctx).ListGatewayApplications(ctx, sql.NullString{String: trimmed, Valid: true})
 	if err != nil {
 		return nil, fmt.Errorf("list gateway applications: %w", err)
 	}

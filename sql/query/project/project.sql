@@ -33,7 +33,7 @@ VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: UpdateProject :exec
 UPDATE project
-SET name = ?, code = ?, updated_at = ?
+SET name = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DeprecateProject :exec

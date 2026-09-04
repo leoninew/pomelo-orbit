@@ -48,6 +48,8 @@
       </dl>
     </DetailInfoCard>
 
+    <ProjectEnvironmentCard :project-id="id" />
+
     <DetailInfoCard :title="t('project.members')" actions-class="flex-nowrap">
       <template #actions>
         <SearchControl
@@ -133,27 +135,6 @@
           />
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label block" for="project-code">
-            {{ t('project.code') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            id="project-code"
-            v-model="form.code"
-            type="text"
-            class="app-input"
-            :class="errors.code ? 'app-input-error' : ''"
-            maxlength="50"
-            pattern="[a-z0-9_-]+"
-            required
-            :disabled="operating"
-            :aria-invalid="errors.code ? 'true' : undefined"
-            @input="errors.code = ''"
-          />
-          <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
-          <p v-else class="app-field-hint">{{ t('project.codeHint') }}</p>
-        </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
       <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
@@ -210,6 +191,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
+  import ProjectEnvironmentCard from './components/ProjectEnvironmentCard.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
@@ -239,8 +221,8 @@
   const appliedMemberSearch = ref('');
   const users = ref<UserListResp[]>([]);
   const selectedUserId = ref('');
-  const form = reactive({ name: '', code: '' });
-  const errors = reactive({ name: '', code: '' });
+  const form = reactive({ name: '' });
+  const errors = reactive({ name: '' });
   const memberErrors = reactive({ userId: '' });
   const editSubmitError = ref('');
   const memberSubmitError = ref('');
@@ -273,16 +255,13 @@
 
   function resetForm() {
     form.name = project.value?.name ?? '';
-    form.code = project.value?.code ?? '';
     errors.name = '';
-    errors.code = '';
     editSubmitError.value = '';
   }
 
   function validate() {
     errors.name = form.name.trim() ? '' : t('project.nameRequired');
-    errors.code = /^[a-z0-9_-]+$/.test(form.code) ? '' : t('project.codeInvalid');
-    return !errors.name && !errors.code;
+    return !errors.name;
   }
 
   async function fetchProject() {
@@ -329,7 +308,6 @@
       await executeOp(async () => {
         project.value = await projectStore.updateProject(props.id, {
           name: form.name.trim(),
-          code: form.code.trim(),
         });
         toast.success(t('project.updated'));
         isEditModalOpen.value = false;

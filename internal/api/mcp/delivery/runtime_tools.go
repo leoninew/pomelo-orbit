@@ -11,12 +11,11 @@ import (
 )
 
 func (c *core) registerRuntimeTools(server *mcp.Server) {
-	addTool(server, "runtime_doctor", "Check Docker prerequisites, one managed target, or the fixed external traefik network. Supply application_id and instance_key together for an Application target, or gateway_application_id and gateway_instance_key together for a Gateway target. Do not combine those target pairs. network_name is an alternative with the only valid value traefik and cannot be combined with either target pair.", func(ctx context.Context, input struct {
+	addTool(server, "runtime_doctor", "Check Docker prerequisites for one managed runtime target. Supply application_id and instance_key together for an Application target, or gateway_application_id and gateway_instance_key together for a Gateway target. Do not combine those target pairs.", func(ctx context.Context, input struct {
 		ApplicationId        string `json:"application_id,omitempty"`
 		InstanceKey          string `json:"instance_key,omitempty"`
 		GatewayApplicationId string `json:"gateway_application_id,omitempty"`
 		GatewayInstanceKey   string `json:"gateway_instance_key,omitempty"`
-		NetworkName          string `json:"network_name,omitempty"`
 	}) (map[string]any, error) {
 		hasApplication := input.ApplicationId != "" || input.InstanceKey != ""
 		hasGateway := input.GatewayApplicationId != "" || input.GatewayInstanceKey != ""
@@ -29,11 +28,8 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 		if hasApplication && hasGateway {
 			return nil, apperror.New(apperror.KindValidation, "application target and gateway target cannot be requested together")
 		}
-		if input.NetworkName != "" && (hasApplication || hasGateway) {
-			return nil, apperror.New(apperror.KindValidation, "network_name cannot be combined with an application or gateway target")
-		}
-		if input.NetworkName != "" && input.NetworkName != "traefik" {
-			return nil, apperror.New(apperror.KindValidation, "network_name must be traefik")
+		if !hasApplication && !hasGateway {
+			return nil, apperror.New(apperror.KindValidation, "a managed runtime target is required")
 		}
 		var target *deploymentdto.RuntimeTarget
 		if hasApplication {
@@ -50,7 +46,7 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 			}
 			target = &resolved
 		}
-		result, err := c.deps.Deployment.RuntimeDoctor(ctx, target, input.NetworkName)
+		result, err := c.deps.Deployment.RuntimeDoctor(ctx, target)
 		if err != nil {
 			return nil, err
 		}
@@ -186,7 +182,8 @@ func (c *core) runtimeTarget(ctx context.Context, applicationId, instanceKey str
 }
 
 func runtimeOutput(target deploymentdto.RuntimeTarget, data map[string]any) map[string]any {
-	result := map[string]any{"target": map[string]any{"application_id": target.ApplicationId, "service_id": target.ServiceId, "instance_key": target.InstanceKey, "service_code": target.ServiceCode, "working_directory": target.WorkingDirectory, "compose_project": target.ComposeProject}, "working_directory": target.WorkingDirectory}
+	targetOutput := map[string]any{"project_id": target.ProjectId, "application_id": target.ApplicationId, "service_id": target.ServiceId, "instance_key": target.InstanceKey, "service_code": target.ServiceCode, "working_directory": target.WorkingDirectory, "compose_project": target.ComposeProject}
+	result := map[string]any{"project_id": target.ProjectId, "target": targetOutput, "working_directory": target.WorkingDirectory}
 	for key, value := range data {
 		result[key] = value
 	}

@@ -41,7 +41,15 @@ func (s Service) ResolveRuntimeTarget(ctx context.Context, userId, applicationId
 	if !safeRuntimeSegment(service.Code) {
 		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindInternal, "invalid managed service code")
 	}
-	return deploymentdto.RuntimeTarget{ApplicationId: app.Id, ServiceId: service.Id, InstanceKey: service.InstanceKey, ServiceCode: service.Code, WorkingDirectory: s.workspace.ServiceDir(service.Code), ComposeProject: composeProjectName(app.Code, service.InstanceKey)}, nil
+	target, err := s.resolveProjectTarget(ctx, app)
+	if err != nil {
+		return deploymentdto.RuntimeTarget{}, err
+	}
+	workingDirectory, err := s.remoteRuntime.ServiceDir(target, service.Code)
+	if err != nil {
+		return deploymentdto.RuntimeTarget{}, apperror.Wrap(apperror.KindInternal, "Failed to resolve remote runtime directory", err)
+	}
+	return deploymentdto.RuntimeTarget{ApplicationId: app.Id, ServiceId: service.Id, InstanceKey: service.InstanceKey, ServiceCode: service.Code, WorkingDirectory: workingDirectory, ComposeProject: composeProjectName(app.Code, service.InstanceKey), ProjectId: *app.ProjectId}, nil
 }
 
 func safeRuntimeSegment(value string) bool {
@@ -220,49 +228,38 @@ func (s Service) RuntimeHTTPProbe(ctx context.Context, target deploymentdto.Runt
 	return deploymentdto.RuntimeTextResult{Target: target, Text: output}, nil
 }
 
-func (s Service) RuntimeDoctor(ctx context.Context, target *deploymentdto.RuntimeTarget, networkName string) (map[string]any, error) {
-	if target == nil && networkName == "" {
-		if s.queryRunner == nil {
-			return nil, apperror.New(apperror.KindInternal, "deployment query runner is not configured")
-		}
-		output, err := s.queryRunner.Run(ctx, "", "docker", "version", "--format", "json")
-		if err != nil {
-			return nil, apperror.New(apperror.KindUnavailable, outputOrError(output, err))
-		}
-		return map[string]any{"docker": strings.TrimSpace(output)}, nil
+func (s Service) RuntimeDoctor(ctx context.Context, target *deploymentdto.RuntimeTarget) (map[string]any, error) {
+	if target == nil {
+		return nil, apperror.New(apperror.KindValidation, "managed runtime target is required")
 	}
-	if networkName != "" {
-		network, err := s.ExternalNetworkInspect(ctx, networkName)
-		if err != nil {
-			return nil, err
-		}
-		return map[string]any{"network": map[string]any{"id": network.Id, "name": network.Name, "driver": network.Driver}}, nil
-	}
-	ps, err := s.RuntimeComposePS(ctx, *target)
+	output, err := s.runRuntimeCommand(ctx, *target, composeCommand{Name: "docker", Args: []string{"version", "--format", "json"}})
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"containers": ps.Containers}, nil
+	return map[string]any{"docker": strings.TrimSpace(output)}, nil
 }
 
 func (s Service) runRuntimeCommand(ctx context.Context, target deploymentdto.RuntimeTarget, command composeCommand) (string, error) {
-	if s.queryRunner == nil {
-		return "", apperror.New(apperror.KindInternal, "deployment query runner is not configured")
+	if s.remoteRuntime == nil || s.targetResolver == nil {
+		return "", apperror.New(apperror.KindInternal, "remote deployment runtime is not configured")
 	}
-	exists, err := s.workspace.ServiceDirExists(target.ServiceCode)
+	sshTarget, err := s.targetResolver.ResolveProjectTarget(ctx, target.ProjectId)
 	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
+		return "", err
+	}
+	exists, err := s.remoteRuntime.ServiceDirExists(ctx, sshTarget, target.ServiceCode)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to inspect remote service workspace", err)
 	}
 	if !exists {
 		return "", apperror.New(apperror.KindNotFound, "managed runtime workspace does not exist")
 	}
-	output, err := s.queryRunner.Run(ctx, target.WorkingDirectory, command.Name, command.Args...)
+	output, err := s.remoteRuntime.Query(ctx, sshTarget, target.ServiceCode, command.Name, command.Args...)
 	if err != nil {
 		return output, apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
 	return output, nil
 }
-
 func (s Service) ensureRuntimeServiceNames(ctx context.Context, serviceId string, names []string) error {
 	if len(names) == 0 {
 		return nil

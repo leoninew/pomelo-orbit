@@ -96,46 +96,190 @@
     <AppDialog
       v-model:open="isDialogOpen"
       :title="editingProject ? t('project.editProject') : t('project.createProject')"
+      width-class="w-[min(760px,calc(100vw-32px))]"
+      body-class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4"
+      content-class="max-h-[calc(100vh-32px)] flex flex-col"
     >
-      <div class="space-y-4">
+      <form class="space-y-4" novalidate @submit.prevent="handleSave">
         <div class="space-y-1.5">
-          <label class="app-field-label block">
+          <label class="app-field-label block" for="project-name">
             {{ t('project.name') }}
             <span class="text-destructive">*</span>
           </label>
           <input
+            id="project-name"
             v-model="form.name"
             type="text"
             class="app-input"
             :class="errors.name ? 'app-input-error' : ''"
-            placeholder="Default Project"
             :aria-invalid="errors.name ? 'true' : undefined"
             @input="errors.name = ''"
           />
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label block">
-            {{ t('project.code') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="form.code"
-            type="text"
-            class="app-input"
-            :class="errors.code ? 'app-input-error' : ''"
-            placeholder="default"
-            :aria-invalid="errors.code ? 'true' : undefined"
-            @input="errors.code = ''"
-          />
-          <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
-          <p v-else class="app-field-hint">{{ t('project.codeHint') }}</p>
-        </div>
-      </div>
-      <p v-if="submitError" class="app-field-error mt-3" role="alert">
-        {{ submitError }}
-      </p>
-
+        <template v-if="!editingProject">
+          <div class="space-y-1.5">
+            <label class="app-field-label block" for="project-code">
+              {{ t('project.code') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <input
+              id="project-code"
+              v-model="form.code"
+              type="text"
+              class="app-input"
+              :class="errors.code ? 'app-input-error' : ''"
+              :aria-invalid="errors.code ? 'true' : undefined"
+              @input="errors.code = ''"
+            />
+            <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
+            <p v-else class="app-field-hint">{{ t('project.codeHint') }}</p>
+          </div>
+          <div class="border-t border-border pt-4">
+            <h3 class="text-sm font-semibold text-foreground">
+              {{ t('project.environment.createTitle') }}
+            </h3>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+              <div class="space-y-1.5">
+                <label class="app-field-label block">{{ t('project.environment.state') }}</label>
+                <SelectControl
+                  v-model="form.environment.state"
+                  :options="environmentStateOptions"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label class="app-field-label block">{{ t('project.environment.platform') }}</label>
+                <SelectControl
+                  v-model="form.environment.platform"
+                  :options="environmentPlatformOptions"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label class="app-field-label block">
+                  {{ t('project.environment.host') }}
+                  <span class="text-destructive">*</span>
+                </label>
+                <input
+                  v-model="form.environment.host"
+                  type="text"
+                  class="app-input"
+                  :class="errors.host ? 'app-input-error' : ''"
+                  @input="errors.host = ''"
+                />
+                <p v-if="errors.host" class="app-field-error text-xs">{{ errors.host }}</p>
+              </div>
+              <div class="space-y-1.5">
+                <label class="app-field-label block">
+                  {{ t('project.environment.port') }}
+                  <span class="text-destructive">*</span>
+                </label>
+                <input
+                  v-model.number="form.environment.port"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  class="app-input"
+                  :class="errors.port ? 'app-input-error' : ''"
+                  @input="errors.port = ''"
+                />
+                <p v-if="errors.port" class="app-field-error text-xs">{{ errors.port }}</p>
+              </div>
+              <div class="space-y-1.5">
+                <label class="app-field-label block">
+                  {{ t('project.environment.username') }}
+                  <span class="text-destructive">*</span>
+                </label>
+                <input
+                  v-model="form.environment.username"
+                  type="text"
+                  class="app-input"
+                  :class="errors.username ? 'app-input-error' : ''"
+                  @input="errors.username = ''"
+                />
+                <p v-if="errors.username" class="app-field-error text-xs">{{ errors.username }}</p>
+              </div>
+              <div class="space-y-1.5">
+                <label class="app-field-label block">
+                  {{ t('project.environment.workspaceRoot') }}
+                  <span class="text-destructive">*</span>
+                </label>
+                <input
+                  v-model="form.environment.workspaceRoot"
+                  type="text"
+                  class="app-input"
+                  :class="errors.workspaceRoot ? 'app-input-error' : ''"
+                  :placeholder="workspaceRootPlaceholder"
+                  @input="errors.workspaceRoot = ''"
+                />
+                <p v-if="errors.workspaceRoot" class="app-field-error text-xs">
+                  {{ errors.workspaceRoot }}
+                </p>
+              </div>
+              <div class="space-y-1.5 sm:col-span-2">
+                <label class="app-field-label block">
+                  {{ t('project.environment.hostKeyFingerprint') }}
+                  <span class="text-destructive">*</span>
+                </label>
+                <input
+                  v-model="form.environment.hostKeyFingerprint"
+                  type="text"
+                  class="app-input"
+                  :class="errors.hostKeyFingerprint ? 'app-input-error' : ''"
+                  placeholder="SHA256:..."
+                  @input="errors.hostKeyFingerprint = ''"
+                />
+                <p v-if="errors.hostKeyFingerprint" class="app-field-error text-xs">
+                  {{ errors.hostKeyFingerprint }}
+                </p>
+              </div>
+              <div class="space-y-1.5">
+                <label class="app-field-label block">
+                  {{ t('project.environment.deploymentSSHKeyName') }}
+                  <span class="text-destructive">*</span>
+                </label>
+                <input
+                  v-model="form.environment.deploymentSSHKeyName"
+                  type="text"
+                  class="app-input"
+                  :class="errors.deploymentSSHKeyName ? 'app-input-error' : ''"
+                  @input="errors.deploymentSSHKeyName = ''"
+                />
+                <p v-if="errors.deploymentSSHKeyName" class="app-field-error text-xs">
+                  {{ errors.deploymentSSHKeyName }}
+                </p>
+              </div>
+              <div class="space-y-1.5">
+                <label class="app-field-label block">
+                  {{ t('project.environment.deploymentSSHKeyPassphrase') }}
+                </label>
+                <input
+                  v-model="form.environment.deploymentSSHKeyPassphrase"
+                  type="password"
+                  autocomplete="new-password"
+                  class="app-input"
+                />
+              </div>
+              <div class="space-y-1.5 sm:col-span-2">
+                <label class="app-field-label block">
+                  {{ t('project.environment.deploymentSSHPrivateKey') }}
+                  <span class="text-destructive">*</span>
+                </label>
+                <textarea
+                  v-model="form.environment.deploymentSSHPrivateKey"
+                  class="app-textarea min-h-40 font-mono text-xs"
+                  :class="errors.deploymentSSHPrivateKey ? 'app-input-error' : ''"
+                  @input="errors.deploymentSSHPrivateKey = ''"
+                />
+                <p v-if="errors.deploymentSSHPrivateKey" class="app-field-error text-xs">
+                  {{ errors.deploymentSSHPrivateKey }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </template>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
+      </form>
+      <p v-if="submitError" class="app-field-error mt-3" role="alert">{{ submitError }}</p>
       <template #footer>
         <AppDialogActions :busy="operating" @cancel="isDialogOpen = false" @confirm="handleSave" />
       </template>
@@ -176,6 +320,7 @@
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
+  import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -195,10 +340,49 @@
   const editingProject = ref<ProjectResp | null>(null);
   const deprecatingProject = ref<ProjectResp | null>(null);
   const pagination = reactive({ current: 1, pageSize: 10 });
-  const form = reactive({ name: '', code: '' });
-  const errors = reactive({ name: '', code: '' });
+  const form = reactive({
+    name: '',
+    code: '',
+    environment: {
+      state: 'active',
+      platform: 'linux',
+      host: '',
+      port: 22,
+      username: '',
+      workspaceRoot: '/srv/pomelo-orbit',
+      deploymentSSHKeyName: 'project-deploy-key',
+      deploymentSSHPrivateKey: '',
+      deploymentSSHKeyPassphrase: '',
+      hostKeyFingerprint: '',
+    },
+  });
+  const errors = reactive({
+    name: '',
+    code: '',
+    host: '',
+    port: '',
+    username: '',
+    workspaceRoot: '',
+    deploymentSSHKeyName: '',
+    deploymentSSHPrivateKey: '',
+    hostKeyFingerprint: '',
+  });
   const submitError = ref('');
   const deprecateSubmitError = ref('');
+
+  const environmentStateOptions = computed(() => [
+    { value: 'active', label: t('project.environment.states.active') },
+    { value: 'disabled', label: t('project.environment.states.disabled') },
+  ]);
+  const environmentPlatformOptions = computed(() => [
+    { value: 'linux', label: t('project.environment.platforms.linux') },
+    { value: 'windows', label: t('project.environment.platforms.windows') },
+  ]);
+  const workspaceRootPlaceholder = computed(() =>
+    form.environment.platform === 'windows'
+      ? t('project.environment.windowsWorkspacePlaceholder')
+      : t('project.environment.linuxWorkspacePlaceholder')
+  );
 
   const filteredProjects = computed(() => {
     const keyword = appliedSearch.value.trim().toLowerCase();
@@ -221,15 +405,60 @@
   function resetForm(project?: ProjectResp) {
     form.name = project?.name ?? '';
     form.code = project?.code ?? '';
-    errors.name = '';
-    errors.code = '';
+    form.environment = {
+      state: 'active',
+      platform: 'linux',
+      host: '',
+      port: 22,
+      username: '',
+      workspaceRoot: '/srv/pomelo-orbit',
+      deploymentSSHKeyName: 'project-deploy-key',
+      deploymentSSHPrivateKey: '',
+      deploymentSSHKeyPassphrase: '',
+      hostKeyFingerprint: '',
+    };
+    Object.keys(errors).forEach((key) => {
+      errors[key as keyof typeof errors] = '';
+    });
     submitError.value = '';
   }
 
   function validate() {
     errors.name = form.name.trim() ? '' : t('project.nameRequired');
+    if (editingProject.value) return !errors.name;
+    const environment = form.environment;
     errors.code = /^[a-z0-9_-]+$/.test(form.code) ? '' : t('project.codeInvalid');
-    return !errors.name && !errors.code;
+    errors.host =
+      environment.host.trim() && !/\s/.test(environment.host)
+        ? ''
+        : t('project.environment.validation.host');
+    errors.port =
+      Number.isInteger(environment.port) && environment.port >= 1 && environment.port <= 65535
+        ? ''
+        : t('project.environment.validation.port');
+    errors.username =
+      environment.username.trim() && !/[\r\n]/.test(environment.username)
+        ? ''
+        : t('project.environment.validation.username');
+    const workspaceRootValid =
+      environment.platform === 'linux'
+        ? environment.workspaceRoot.trim().startsWith('/')
+        : /^[A-Za-z]:\\/.test(environment.workspaceRoot.trim());
+    errors.workspaceRoot = workspaceRootValid
+      ? ''
+      : t('project.environment.validation.workspaceRoot');
+    errors.deploymentSSHKeyName = environment.deploymentSSHKeyName.trim()
+      ? ''
+      : t('project.environment.validation.deploymentSSHKeyName');
+    errors.deploymentSSHPrivateKey = environment.deploymentSSHPrivateKey.trim()
+      ? ''
+      : t('project.environment.validation.deploymentSSHPrivateKey');
+    errors.hostKeyFingerprint = /^SHA256:[A-Za-z0-9+/]+={0,2}$/.test(
+      environment.hostKeyFingerprint.trim()
+    )
+      ? ''
+      : t('project.environment.validation.hostKeyFingerprint');
+    return !Object.values(errors).some(Boolean);
   }
 
   function openCreateDialog() {
@@ -281,16 +510,26 @@
     try {
       await executeOp(async () => {
         if (editingProject.value) {
-          await projectStore.updateProject(editingProject.value.id, {
-            name: form.name.trim(),
-            code: form.code.trim(),
-          });
+          await projectStore.updateProject(editingProject.value.id, { name: form.name.trim() });
           toast.success(t('project.updated'));
           isDialogOpen.value = false;
         } else {
+          const environment = form.environment;
           const project = await projectStore.createProject({
             name: form.name.trim(),
             code: form.code.trim(),
+            environment: {
+              state: environment.state,
+              platform: environment.platform,
+              host: environment.host.trim(),
+              port: environment.port,
+              username: environment.username.trim(),
+              workspace_root: environment.workspaceRoot.trim(),
+              deployment_ssh_key_name: environment.deploymentSSHKeyName.trim(),
+              deployment_ssh_private_key: environment.deploymentSSHPrivateKey.trim(),
+              deployment_ssh_key_passphrase: environment.deploymentSSHKeyPassphrase || undefined,
+              host_key_fingerprint: environment.hostKeyFingerprint.trim(),
+            },
           });
           toast.success(t('project.created'));
           isDialogOpen.value = false;

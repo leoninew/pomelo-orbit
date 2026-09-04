@@ -1,10 +1,10 @@
 -- name: CredentialByID :one
-SELECT id, project_id, name, type, encrypted_data, created_at
+SELECT id, project_id, name, type, encrypted_data, revision, created_at
 FROM credential
 WHERE id = ?;
 
 -- name: CredentialByName :one
-SELECT id, project_id, name, type, encrypted_data, created_at
+SELECT id, project_id, name, type, encrypted_data, revision, created_at
 FROM credential
 WHERE project_id = ? AND name = ?;
 
@@ -22,14 +22,16 @@ WHERE id = ?;
 SELECT COUNT(*)
 FROM credential
 WHERE project_id = sqlc.arg(project_id)
+  AND type <> 'deployment_ssh_private_key'
   AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR name LIKE sqlc.narg(search_pattern)
     OR type LIKE sqlc.narg(search_pattern));
 
 -- name: ListCredentials :many
-SELECT id, project_id, name, type, encrypted_data, created_at
+SELECT id, project_id, name, type, encrypted_data, revision, created_at
 FROM credential
 WHERE project_id = sqlc.arg(project_id)
+  AND type <> 'deployment_ssh_private_key'
   AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR name LIKE sqlc.narg(search_pattern)
     OR type LIKE sqlc.narg(search_pattern))
@@ -37,12 +39,12 @@ ORDER BY id DESC
 LIMIT ? OFFSET ?;
 
 -- name: CreateCredential :exec
-INSERT INTO credential (id, project_id, name, type, encrypted_data, created_at)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO credential (id, project_id, name, type, encrypted_data, revision, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateCredential :exec
 UPDATE credential
-SET name = ?, encrypted_data = ?
+SET name = ?, encrypted_data = ?, revision = ?
 WHERE id = ?;
 
 -- name: DeleteCredential :exec

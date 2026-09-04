@@ -11,22 +11,12 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-type statusQueryRunner struct {
-	called bool
-}
-
-func (r *statusQueryRunner) Run(context.Context, string, string, ...string) (string, error) {
-	r.called = true
-	return "", context.Canceled
-}
-
 func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T) {
 	service, store := newRuntimeQueryService()
 	store.service.Status = status.ServiceStatusStopped
 	workspace := testWorkspace(t.TempDir())
-	runner := &statusQueryRunner{}
-	service.workspace = workspace
-	service.queryRunner = runner
+	service.remoteRuntime = workspace
+	service.targetResolver = staticTargetResolver{target: testSSHTarget("project-1")}
 
 	containers, err := service.ApplicationStatus(context.Background(), "user-1", "app-1", deploymentdto.ServiceTargetInput{
 		ServiceId: "service-1",
@@ -37,7 +27,7 @@ func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T)
 	if len(containers) != 0 {
 		t.Fatalf("containers = %+v, want none", containers)
 	}
-	if runner.called {
+	if workspace.queryCalled {
 		t.Fatal("status query must not run without a deployment workspace")
 	}
 }
@@ -169,10 +159,6 @@ func (s *runtimeQueryStore) CreateDeployment(context.Context, model.Deployment) 
 
 func (s *runtimeQueryStore) HasActiveDeployment(context.Context, string) (bool, error) {
 	return false, nil
-}
-
-func (s *runtimeQueryStore) ResolveActiveGatewayConfig(context.Context) (model.GatewayConfig, error) {
-	return model.GatewayConfig{}, repository.ErrNotFound
 }
 
 func TestApplyContainerComponentIds(t *testing.T) {

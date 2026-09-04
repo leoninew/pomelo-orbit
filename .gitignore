@@ -6,6 +6,9 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Local Codex configuration
+.codex/config.toml
+
 # Environment
 .env
 .env.*

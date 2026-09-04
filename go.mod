@@ -14,6 +14,7 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/osteele/liquid v1.8.1
+	github.com/pkg/sftp v1.13.9
 	github.com/spf13/viper v1.20.1
 	github.com/sqlc-dev/sqlc v1.30.0
 	golang.org/x/crypto v0.49.0
@@ -56,6 +57,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/kr/fs v0.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect

@@ -61,31 +61,37 @@ type Credential struct {
 	Name          string         `db:"name"`
 	Type          string         `db:"type"`
 	EncryptedData string         `db:"encrypted_data"`
+	Revision      int64          `db:"revision"`
 	CreatedAt     time.Time      `db:"created_at"`
 	ProjectID     sql.NullString `db:"project_id"`
 }
 
 type Deployment struct {
-	ID                       string         `db:"id"`
-	ApplicationID            sql.NullString `db:"application_id"`
-	ApplicationName          string         `db:"application_name"`
-	OperationType            string         `db:"operation_type"`
-	TriggerType              string         `db:"trigger_type"`
-	EnvFile                  sql.NullString `db:"env_file"`
-	Status                   string         `db:"status"`
-	StartedAt                time.Time      `db:"started_at"`
-	FinishedAt               sql.NullTime   `db:"finished_at"`
-	DurationMs               sql.NullInt64  `db:"duration_ms"`
-	LogText                  sql.NullString `db:"log_text"`
-	ErrorMessage             sql.NullString `db:"error_message"`
-	IsRollback               int64          `db:"is_rollback"`
-	RollbackFromDeploymentID sql.NullString `db:"rollback_from_deployment_id"`
-	ProjectID                sql.NullString `db:"project_id"`
-	VersionID                sql.NullString `db:"version_id"`
-	ServiceID                sql.NullString `db:"service_id"`
-	OptionsJson              sql.NullString `db:"options_json"`
-	EffectivePlanHash        sql.NullString `db:"effective_plan_hash"`
-	CommandText              string         `db:"command_text"`
+	ID                        string         `db:"id"`
+	ApplicationID             sql.NullString `db:"application_id"`
+	ApplicationName           string         `db:"application_name"`
+	OperationType             string         `db:"operation_type"`
+	TriggerType               string         `db:"trigger_type"`
+	EnvFile                   sql.NullString `db:"env_file"`
+	Status                    string         `db:"status"`
+	StartedAt                 time.Time      `db:"started_at"`
+	FinishedAt                sql.NullTime   `db:"finished_at"`
+	DurationMs                sql.NullInt64  `db:"duration_ms"`
+	LogText                   sql.NullString `db:"log_text"`
+	ErrorMessage              sql.NullString `db:"error_message"`
+	IsRollback                int64          `db:"is_rollback"`
+	RollbackFromDeploymentID  sql.NullString `db:"rollback_from_deployment_id"`
+	ProjectID                 sql.NullString `db:"project_id"`
+	VersionID                 sql.NullString `db:"version_id"`
+	ServiceID                 sql.NullString `db:"service_id"`
+	EnvironmentID             sql.NullString `db:"environment_id"`
+	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
+	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
+	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
+	GatewayApplicationID      sql.NullString `db:"gateway_application_id"`
+	OptionsJson               sql.NullString `db:"options_json"`
+	EffectivePlanHash         sql.NullString `db:"effective_plan_hash"`
+	CommandText               string         `db:"command_text"`
 }
 
 type DeploymentDialogueConversation struct {
@@ -103,6 +109,29 @@ type DeploymentDialogueMessage struct {
 	Role           string    `db:"role"`
 	Content        string    `db:"content"`
 	CreatedAt      time.Time `db:"created_at"`
+}
+
+type Environment struct {
+	ID                    string         `db:"id"`
+	ProjectID             string         `db:"project_id"`
+	Code                  string         `db:"code"`
+	State                 string         `db:"state"`
+	Platform              string         `db:"platform"`
+	Host                  string         `db:"host"`
+	Port                  int64          `db:"port"`
+	Username              string         `db:"username"`
+	WorkspaceRoot         string         `db:"workspace_root"`
+	SshCredentialID       string         `db:"ssh_credential_id"`
+	SshCredentialRevision int64          `db:"ssh_credential_revision"`
+	HostKeyFingerprint    string         `db:"host_key_fingerprint"`
+	TargetRevision        int64          `db:"target_revision"`
+	LastProbeRevision     sql.NullInt64  `db:"last_probe_revision"`
+	LastProbeStatus       sql.NullString `db:"last_probe_status"`
+	LastProbeAt           sql.NullTime   `db:"last_probe_at"`
+	LastProbeDiagnostic   sql.NullString `db:"last_probe_diagnostic"`
+	GatewayApplicationID  sql.NullString `db:"gateway_application_id"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
 type GatewayAcmeProfileVersion struct {

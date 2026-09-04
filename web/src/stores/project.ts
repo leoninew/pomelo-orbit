@@ -3,7 +3,11 @@ import { computed, ref } from 'vue';
 import { projectApi } from '@/api/project/project';
 import { ACTIVE_PROJECT_ID_KEY } from '@/constants/project';
 import { useStorageStore } from '@/stores/storage';
-import type { ProjectResp, ProjectSaveReq } from '@/gen/proto/orbit/v1/project/project';
+import type {
+  ProjectCreateReq,
+  ProjectResp,
+  ProjectSaveReq,
+} from '@/gen/proto/orbit/v1/project/project';
 
 export const useProjectStore = defineStore('project', () => {
   const storageStore = useStorageStore();
@@ -49,7 +53,7 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function createProject(data: ProjectSaveReq) {
+  async function createProject(data: ProjectCreateReq) {
     const project = await projectApi.create(data);
     await fetchProjects();
     return project;

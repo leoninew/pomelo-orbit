@@ -8,40 +8,85 @@ import (
 	"strings"
 	"time"
 
-	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
-
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	projectdto "github.com/leoninew/pomelo-orbit/internal/application/project/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 var projectCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
-type Service struct {
-	repo  repository.ProjectStore
-	users repository.UserStore
+type deploymentKeyCreator interface {
+	CreateDeploymentSSHCredential(ctx context.Context, projectID string, name string, privateKey string, passphrase string) (model.Credential, error)
 }
 
-func New(repo repository.ProjectStore, users repository.UserStore) Service {
-	return Service{repo: repo, users: users}
+type environmentBootstrapper interface {
+	BootstrapForProject(ctx context.Context, project model.Project, credential model.Credential, input environmentdto.BootstrapInput) (model.Environment, error)
+}
+
+type Service struct {
+	repo            repository.ProjectStore
+	users           repository.UserStore
+	environments    repository.EnvironmentStore
+	deploymentKey   deploymentKeyCreator
+	environmentInit environmentBootstrapper
+}
+
+func New(
+	repo repository.ProjectStore,
+	users repository.UserStore,
+	environments repository.EnvironmentStore,
+	deploymentKey deploymentKeyCreator,
+	environmentInit environmentBootstrapper,
+) Service {
+	return Service{
+		repo: repo, users: users, environments: environments,
+		deploymentKey: deploymentKey, environmentInit: environmentInit,
+	}
 }
 
 func (s Service) ListByMember(ctx context.Context, userId string) ([]model.Project, error) {
 	return s.repo.ListProjectsByMember(ctx, userId)
 }
 
-func (s Service) Create(ctx context.Context, userId string, input projectdto.SaveInput) (model.Project, error) {
-	name, code, err := normalizeAndValidate(input)
+func (s Service) Create(ctx context.Context, userId string, input projectdto.CreateInput) (model.Project, error) {
+	name, code, err := normalizeAndValidateCreate(input)
 	if err != nil {
 		return model.Project{}, err
 	}
 	if err := s.ensureCodeAvailable(ctx, code, ""); err != nil {
 		return model.Project{}, err
 	}
+	if s.deploymentKey == nil || s.environmentInit == nil {
+		return model.Project{}, apperror.New(apperror.KindInternal, "Project environment bootstrap is not configured")
+	}
+
 	now := time.Now().UTC()
 	project := model.Project{Id: idutil.NewId(), Name: name, Code: code, IsActive: true, CreatedAt: now, UpdatedAt: now}
 	if err := s.repo.CreateProject(ctx, project, userId); err != nil {
+		return model.Project{}, err
+	}
+	credential, err := s.deploymentKey.CreateDeploymentSSHCredential(
+		ctx,
+		project.Id,
+		input.Environment.DeploymentSSHKeyName,
+		input.Environment.DeploymentSSHPrivateKey,
+		input.Environment.DeploymentSSHKeyPassphrase,
+	)
+	if err != nil {
+		return model.Project{}, err
+	}
+	if _, err := s.environmentInit.BootstrapForProject(ctx, project, credential, environmentdto.BootstrapInput{
+		State:              input.Environment.State,
+		Platform:           input.Environment.Platform,
+		Host:               input.Environment.Host,
+		Port:               input.Environment.Port,
+		Username:           input.Environment.Username,
+		WorkspaceRoot:      input.Environment.WorkspaceRoot,
+		HostKeyFingerprint: input.Environment.HostKeyFingerprint,
+	}); err != nil {
 		return model.Project{}, err
 	}
 	return project, nil
@@ -66,15 +111,11 @@ func (s Service) LoadForUser(ctx context.Context, projectId string, userId strin
 }
 
 func (s Service) Update(ctx context.Context, project model.Project, input projectdto.SaveInput) (model.Project, error) {
-	name, code, err := normalizeAndValidate(input)
+	name, err := normalizeAndValidateUpdate(input)
 	if err != nil {
 		return model.Project{}, err
 	}
-	if err := s.ensureCodeAvailable(ctx, code, project.Id); err != nil {
-		return model.Project{}, err
-	}
 	project.Name = name
-	project.Code = code
 	if err := s.repo.UpdateProject(ctx, project); err != nil {
 		return model.Project{}, err
 	}
@@ -92,6 +133,19 @@ func (s Service) Deprecate(ctx context.Context, project model.Project, userId st
 	}
 	if len(activeProjects) <= 1 {
 		return apperror.New(apperror.KindValidation, "Cannot deprecate the last active project")
+	}
+	if s.environments == nil {
+		return apperror.New(apperror.KindInternal, "project environment store is not configured")
+	}
+	environment, err := s.environments.EnvironmentByProject(ctx, project.Id)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return apperror.New(apperror.KindValidation, "Project environment is missing")
+		}
+		return fmt.Errorf("load project environment %s: %w", project.Id, err)
+	}
+	if environment.IsActive() {
+		return apperror.New(apperror.KindValidation, "Disable the project environment before deprecating the project")
 	}
 	repoCount, err := s.repo.CountProjectRepositories(ctx, project.Id)
 	if err != nil {
@@ -152,13 +206,21 @@ func (s Service) ensureCodeAvailable(ctx context.Context, code string, currentPr
 	return nil
 }
 
-func normalizeAndValidate(input projectdto.SaveInput) (string, string, error) {
+func normalizeAndValidateCreate(input projectdto.CreateInput) (string, string, error) {
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
 	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !projectCodePattern.MatchString(code) {
 		return "", "", ErrInvalidProjectFields
 	}
 	return name, code, nil
+}
+
+func normalizeAndValidateUpdate(input projectdto.SaveInput) (string, error) {
+	name := strings.TrimSpace(input.Name)
+	if name == "" || len(name) > 100 {
+		return "", ErrInvalidProjectFields
+	}
+	return name, nil
 }
 
 var ErrInvalidProjectFields = apperror.New(apperror.KindValidation, "Invalid project fields")

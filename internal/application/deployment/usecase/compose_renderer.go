@@ -25,7 +25,6 @@ type RenderResult struct {
 	ResolvedMounts []ResolvedMount
 }
 
-const defaultGatewayNetworkName = "traefik"
 const gatewayNetworkKey = "traefik"
 const consumerPlatformNetworkKey = "traefik"
 
@@ -70,6 +69,13 @@ func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (
 	}
 	gatewayCarrier := isGatewayCarrier(input.Plan)
 	joinTraefikNetwork := gatewayCarrier || input.Plan.JoinsTraefikNetwork()
+	networkName := ""
+	if joinTraefikNetwork {
+		if input.Plan.Gateway == nil || strings.TrimSpace(input.Plan.Gateway.NetworkName) == "" {
+			return RenderResult{}, fmt.Errorf("project gateway network is required when joining the Traefik network")
+		}
+		networkName = input.Plan.Gateway.NetworkName
+	}
 	switch input.Plan.Application.Kind {
 	case status.ApplicationKindStandard, status.ApplicationKindGateway:
 		if gatewayCarrier {
@@ -92,9 +98,9 @@ func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (
 		data["volumes"] = volumes
 	}
 	if gatewayCarrier {
-		data["networks"] = map[string]any{gatewayNetworkKey: map[string]any{"name": defaultGatewayNetworkName, "driver": "bridge"}}
+		data["networks"] = map[string]any{gatewayNetworkKey: map[string]any{"name": networkName, "driver": "bridge"}}
 	} else if joinTraefikNetwork {
-		data["networks"] = map[string]any{consumerPlatformNetworkKey: map[string]any{"name": defaultGatewayNetworkName, "external": true}}
+		data["networks"] = map[string]any{consumerPlatformNetworkKey: map[string]any{"name": networkName, "external": true}}
 	}
 	content, err := yaml.Marshal(data)
 	if err != nil {

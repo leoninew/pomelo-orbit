@@ -44,13 +44,18 @@ type ApplicationStore interface {
 // ConfigStore persists gateway configuration and resolves the active gateway.
 type ConfigStore interface {
 	GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error)
-	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
+	GatewayConfigByProject(ctx context.Context, projectId string) (model.GatewayConfig, error)
 	ListGatewayApplications(ctx context.Context, projectId string) ([]model.Application, error)
 	UpsertGatewayConfig(ctx context.Context, cfg model.GatewayConfig) error
 	ReplaceGatewayVersionBindings(ctx context.Context, applicationId string, bindings []model.GatewayVersionBinding) error
 }
 
 // ServiceReader exposes only runtime bindings needed by gateway projections and conflict checks.
+type EnvironmentStore interface {
+	EnvironmentByProject(ctx context.Context, projectId string) (model.Environment, error)
+	BindGatewayApplication(ctx context.Context, environmentID string, gatewayApplicationID string) (bool, error)
+}
+
 type ServiceReader interface {
 	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
 	ServiceByKey(ctx context.Context, applicationId string, instanceKey string) (model.Service, error)

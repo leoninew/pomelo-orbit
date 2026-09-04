@@ -351,6 +351,7 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 		InstanceKey        string
 		ServiceCode        string
 		JoinTraefikNetwork bool
+		GatewayNetworkName string
 		Components         []fingerprintComponent
 	}
 	components := make([]fingerprintComponent, 0, len(plan.Components))
@@ -358,7 +359,11 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 		components = append(components, fingerprintComponent{Name: component.Name, Image: component.Image, Entrypoint: component.Entrypoint, Command: component.Command, Env: component.Env, Mounts: component.Mounts, Dependencies: component.Dependencies, Healthcheck: component.Healthcheck, Resources: component.Resources, PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: component.Tmpfs, Ulimits: component.Ulimits, Devices: component.Devices, Endpoints: component.Endpoints})
 	}
 	sort.Slice(components, func(i, j int) bool { return components[i].Name < components[j].Name })
-	data := fingerprint{AppCode: plan.Application.Code, AppKind: plan.Application.Kind, VersionLabel: plan.Version.Label, InstanceKey: plan.Service.InstanceKey, ServiceCode: plan.Service.Code, JoinTraefikNetwork: plan.JoinsTraefikNetwork(), Components: components}
+	gatewayNetworkName := ""
+	if plan.JoinsTraefikNetwork() && plan.Gateway != nil {
+		gatewayNetworkName = plan.Gateway.NetworkName
+	}
+	data := fingerprint{AppCode: plan.Application.Code, AppKind: plan.Application.Kind, VersionLabel: plan.Version.Label, InstanceKey: plan.Service.InstanceKey, ServiceCode: plan.Service.Code, JoinTraefikNetwork: plan.JoinsTraefikNetwork(), GatewayNetworkName: gatewayNetworkName, Components: components}
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return "", fmt.Errorf("encode effective service plan: %w", err)

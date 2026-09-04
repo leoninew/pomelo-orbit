@@ -20,7 +20,7 @@ func TestRenderGatewayComposeUsesDeclaredVersionTopology(t *testing.T) {
 			Version:     model.Version{Id: baseVersionID},
 			Service:     model.Service{InstanceKey: "default"},
 			Gateway: &model.GatewayConfig{
-				ApplicationId: "gateway-1", TraefikComponentName: "traefik",
+				ApplicationId: "gateway-1", TraefikComponentName: "traefik", NetworkName: "orbit-gateway-test-traefik",
 				BaseDomain: "example.test", DefaultEntrypoint: "web",
 				VersionBindings: []model.GatewayVersionBinding{{Profile: "base", VersionId: baseVersionID}},
 			},
@@ -56,7 +56,7 @@ func TestRenderGatewayComposeUsesDeclaredVersionTopology(t *testing.T) {
 	}
 
 	network, ok := document.Networks[consumerPlatformNetworkKey]
-	if !ok || network.Name != defaultGatewayNetworkName || network.Driver != "bridge" {
+	if !ok || network.Name != "orbit-gateway-test-traefik" || network.Driver != "bridge" {
 		t.Fatalf("gateway network = %#v", document.Networks)
 	}
 	if got := document.Services["traefik"].Networks; len(got) != 1 || got[0] != gatewayNetworkKey {

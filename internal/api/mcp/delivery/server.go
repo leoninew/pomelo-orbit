@@ -17,7 +17,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-const implementationVersion = "0.1.0"
+const implementationVersion = "0.2.0"
 
 const deliveryInstructions = `For stateful services, declare Service-owned Component environment values with exact ${KEY} placeholders in the Version and set their concrete values through orbit_update_service_env. Generate credentials securely once, keep them stable, and do not expose them. Bootstrap credentials apply only to empty data volumes: redeploying does not rotate an initialized database credential; obtain explicit authorization for in-place rotation or volume reset.`
 
@@ -111,6 +111,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		}
 		return map[string]any{"projects": items}, nil
 	})
+	c.registerEnvironmentTools(server)
 
 	addTool(server, "orbit_list_applications", "List Orbit Applications in a Project, optionally limited to one application kind.", func(ctx context.Context, input struct {
 		ProjectId string `json:"project_id" jsonschema:"required"`

@@ -17,27 +17,50 @@ func (s Service) GatewayForDeployment(ctx context.Context, app model.Application
 	if s.config == nil {
 		return nil, nil
 	}
-	cfg, err := s.config.GatewayConfig(ctx, app.Id)
-	if err == nil {
-		return &cfg, nil
-	}
-	if !errors.Is(err, repository.ErrNotFound) {
+	applicationConfig, err := s.config.GatewayConfig(ctx, app.Id)
+	isGateway := err == nil
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
 	}
-	if !plan.JoinsTraefikNetwork() {
+	if !isGateway && !plan.JoinsTraefikNetwork() {
 		return nil, nil
 	}
-	if !hasGatewayEndpoint(plan) {
-		return nil, nil
+	projectID, err := projectIDForGateway(app)
+	if err != nil {
+		return nil, err
 	}
-	cfg, err = s.config.ResolveActiveGatewayConfig(ctx)
+	cfg, err := s.config.GatewayConfigByProject(ctx, projectID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return nil, apperror.New(apperror.KindValidation, "no gateway configured: create and configure a gateway first")
+			return nil, apperror.New(apperror.KindValidation, "no gateway provisioned for this project environment")
 		}
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to resolve gateway config", err)
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to resolve project gateway config", err)
+	}
+	if isGateway && cfg.ApplicationId != applicationConfig.ApplicationId {
+		return nil, apperror.New(apperror.KindValidation, "Gateway is not bound to this project environment")
 	}
 	return &cfg, nil
+}
+
+func projectIDForGateway(app model.Application) (string, error) {
+	if app.ProjectId == nil || strings.TrimSpace(*app.ProjectId) == "" {
+		return "", apperror.New(apperror.KindValidation, "Application must belong to a project before using a gateway")
+	}
+	return strings.TrimSpace(*app.ProjectId), nil
+}
+
+func (s Service) ensureGatewayConfigBoundToProject(ctx context.Context, cfg model.GatewayConfig, projectID string) error {
+	bound, err := s.config.GatewayConfigByProject(ctx, projectID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return apperror.New(apperror.KindValidation, "Gateway is not bound to this project environment")
+		}
+		return apperror.Wrap(apperror.KindInternal, "Failed to resolve project gateway config", err)
+	}
+	if bound.ApplicationId != cfg.ApplicationId {
+		return apperror.New(apperror.KindValidation, "Gateway is not bound to this project environment")
+	}
+	return nil
 }
 
 // SelectGatewayDeploymentVersion makes the default Gateway Service point at
@@ -53,6 +76,13 @@ func (s Service) SelectGatewayDeploymentVersion(ctx context.Context, app model.A
 	}
 	if err != nil {
 		return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
+	}
+	projectID, err := projectIDForGateway(app)
+	if err != nil {
+		return model.Service{}, err
+	}
+	if err := s.ensureGatewayConfigBoundToProject(ctx, cfg, projectID); err != nil {
+		return model.Service{}, err
 	}
 	if service.InstanceKey != "default" {
 		return service, nil

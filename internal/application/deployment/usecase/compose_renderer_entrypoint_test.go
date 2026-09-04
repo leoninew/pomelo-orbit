@@ -10,10 +10,12 @@ import (
 )
 
 func TestRenderComposeIncludesComponentEntrypoint(t *testing.T) {
+	disabled := false
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
 		Plan: model.EffectiveServicePlan{
-			Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
-			Version:     model.Version{Id: "version-1"},
+			Application:        model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
+			JoinTraefikNetwork: &disabled,
+			Version:            model.Version{Id: "version-1"},
 			Components: []model.EffectiveServiceComponent{{
 				Name: "api", Image: "example/api:latest",
 				Entrypoint: []string{"/app/entrypoint", "serve"},
@@ -30,10 +32,12 @@ func TestRenderComposeIncludesComponentEntrypoint(t *testing.T) {
 }
 
 func TestRenderComposePreservesDirectorySourceForNativeOrbit(t *testing.T) {
+	disabled := false
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
 		Plan: model.EffectiveServicePlan{
-			Application: model.Application{Code: "mysql", Kind: status.ApplicationKindStandard},
-			Service:     model.Service{Code: "mysql-default"},
+			Application:        model.Application{Code: "mysql", Kind: status.ApplicationKindStandard},
+			JoinTraefikNetwork: &disabled,
+			Service:            model.Service{Code: "mysql-default"},
 			Components: []model.EffectiveServiceComponent{{
 				Name:  "mysql",
 				Image: "mysql:8",

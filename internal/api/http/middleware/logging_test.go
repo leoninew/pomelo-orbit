@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -357,6 +358,36 @@ func TestLogRequestTruncatesResponseBodyByConfiguredBytes(t *testing.T) {
 	assertTruncatedBody(t, loggedBody)
 }
 
+func TestLogRequestRedactsDeploymentSSHSecrets(t *testing.T) {
+	privateKey := "private-key-material"
+	passphrase := "private-key-passphrase"
+	requestBody := `{"deployment_ssh_private_key":"` + privateKey + `","deployment_ssh_key_passphrase":"` + passphrase + `"}`
+	var handlerBody string
+	entries, recorder := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 48}, http.MethodPost, "/api/project", "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		handlerBody = string(body)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	started, _ := assertStartedAndCompleted(t, entries)
+	loggedBody, ok := started["request_body"].(string)
+	if !ok {
+		t.Fatalf("expected request_body string: %+v", started)
+	}
+	if !strings.Contains(loggedBody, redactedLogValue) {
+		t.Fatalf("expected a redacted deployment secret, got %q", loggedBody)
+	}
+	for _, secret := range []string{privateKey, passphrase} {
+		if strings.Contains(loggedBody, secret) {
+			t.Fatalf("deployment secret leaked into request log: %q", loggedBody)
+		}
+	}
+	if handlerBody != requestBody {
+		t.Fatalf("expected handler body %q, got %q", requestBody, handlerBody)
+	}
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status=%d", recorder.Code)
+	}
+}
 func TestLogRequestTruncatesRequestBodyByConfiguredBytesAndRestoresBody(t *testing.T) {
 	requestBody := `{"value":"` + strings.Repeat("好", testBodyMaxBytes) + `"}`
 	var handlerBody string

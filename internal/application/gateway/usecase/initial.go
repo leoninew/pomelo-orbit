@@ -25,7 +25,7 @@ type initialGatewayVersion struct {
 	Component model.VersionComponent
 }
 
-func buildInitialGatewayVersions(applicationID, image, pullPolicy, componentName string) []initialGatewayVersion {
+func buildInitialGatewayVersions(applicationID, image, pullPolicy, componentName, networkName string) []initialGatewayVersion {
 	roles := []string{gatewayVersionRoleBase, gatewayVersionProfileHTTP, gatewayVersionProfileDNS, gatewayVersionProfileBoth}
 	items := make([]initialGatewayVersion, 0, len(roles))
 	for _, role := range roles {
@@ -43,7 +43,7 @@ func buildInitialGatewayVersions(applicationID, image, pullPolicy, componentName
 		items = append(items, initialGatewayVersion{
 			Role:      role,
 			Version:   version,
-			Component: buildInitialGatewayComponent(version.Id, image, pullPolicy, componentName, role),
+			Component: buildInitialGatewayComponent(version.Id, image, pullPolicy, componentName, role, networkName),
 		})
 	}
 	return items
@@ -51,7 +51,7 @@ func buildInitialGatewayVersions(applicationID, image, pullPolicy, componentName
 
 // buildInitialGatewayComponent creates an ordinary Version declaration. The
 // resolver layout is fixed per profile and never derived from GatewayConfig.
-func buildInitialGatewayComponent(versionID, image, pullPolicy, componentName, role string) model.VersionComponent {
+func buildInitialGatewayComponent(versionID, image, pullPolicy, componentName, role, networkName string) model.VersionComponent {
 	return model.VersionComponent{
 		Id:         idutil.NewId(),
 		VersionId:  versionID,
@@ -65,14 +65,14 @@ func buildInitialGatewayComponent(versionID, image, pullPolicy, componentName, r
 		},
 		Mounts: []model.VersionComponentMount{
 			{SourceType: "file", Source: gatewayDockerSocketPath, SourceIsHostPath: true, Target: gatewayDockerSocketPath, ReadOnly: true},
-			{SourceType: "controlled_file", Source: "./traefik.yml", Target: gatewayMountTargetTraefikYml, Content: initialTraefikStaticConfig(role), Mode: "0644"},
+			{SourceType: "controlled_file", Source: "./traefik.yml", Target: gatewayMountTargetTraefikYml, Content: initialTraefikStaticConfig(role, networkName), Mode: "0644"},
 			{SourceType: "directory", Source: "./gateway/certs", Target: gatewayMountTargetCertDir},
 			{SourceType: "directory", Source: "./gateway/acme", Target: gatewayMountTargetAcmeDir},
 		},
 	}
 }
 
-func initialTraefikStaticConfig(role string) string {
+func initialTraefikStaticConfig(role, networkName string) string {
 	var builder strings.Builder
 	builder.WriteString(`api:
   dashboard: true
@@ -87,7 +87,7 @@ providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
-    network: traefik
+    network: ` + networkName + `
   rest:
     insecure: true
 

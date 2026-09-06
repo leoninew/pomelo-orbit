@@ -217,8 +217,8 @@ func (e Executor) authenticatedRepositoryUrl(repositoryUrl string, credential mo
 	switch credential.Type {
 	case "github_token":
 		return buildAuthenticatedRepositoryUrl(repositoryUrl, credentialData)
-	case "gitee_token":
-		username, token, err := splitGiteeCredential(credentialData)
+	case "gitee_token", "gitea_token":
+		username, token, err := splitUsernameTokenCredential(credential.Type, credentialData)
 		if err != nil {
 			return "", err
 		}
@@ -230,11 +230,11 @@ func (e Executor) authenticatedRepositoryUrl(repositoryUrl string, credential mo
 	}
 }
 
-func splitGiteeCredential(value string) (string, string, error) {
+func splitUsernameTokenCredential(credentialType, value string) (string, string, error) {
 	username, token, ok := strings.Cut(value, ":")
 	username = strings.TrimSpace(username)
 	if !ok || username == "" || token == "" {
-		return "", "", fmt.Errorf("gitee_token credential must be username:token")
+		return "", "", fmt.Errorf("%s credential must be username:token", credentialType)
 	}
 	return username, token, nil
 }

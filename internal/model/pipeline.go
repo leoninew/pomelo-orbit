@@ -151,12 +151,21 @@ type ArtifactConfig struct {
 	ComponentName *string `json:"component_name,omitempty"`
 }
 
+type StageVariableDefault struct {
+	StageId   string `json:"stage_id"`
+	StageName string `json:"stage_name"`
+	Default   any    `json:"default"`
+}
+
 type VariableDeclaration struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Default     any    `json:"default"`
-	Value       any    `json:"value"`
-	Secret      bool   `json:"secret"`
-	Source      string `json:"source"`
-	Editable    bool   `json:"editable"`
+	Name          string                 `json:"name"`
+	StageId       string                 `json:"stage_id,omitempty"`
+	StageName     string                 `json:"stage_name,omitempty"`
+	Description   string                 `json:"description"`
+	Default       any                    `json:"default"`
+	Value         any                    `json:"value"`
+	Secret        bool                   `json:"secret"`
+	Source        string                 `json:"source"`
+	Editable      bool                   `json:"editable"`
+	StageDefaults []StageVariableDefault `json:"stage_defaults,omitempty"`
 }

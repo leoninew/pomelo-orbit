@@ -14,6 +14,7 @@ import (
 	"time"
 
 	applicationport "github.com/leoninew/pomelo-orbit/internal/application/application/port"
+	pipelinevariable "github.com/leoninew/pomelo-orbit/internal/application/pipeline/rule/pipelinevariable"
 	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
 	repositoryport "github.com/leoninew/pomelo-orbit/internal/application/repository/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
@@ -38,7 +39,7 @@ type Executor struct {
 	localSource       repositoryport.LocalDirectorySource
 }
 
-func (e Executor) Execute(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stages []model.StageDefinition, stageRuns map[string]model.PipelineStageRun) (bool, string) {
+func (e Executor) Execute(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, runtime pipelinevariable.RuntimeVariables, stages []model.StageDefinition, stageRuns map[string]model.PipelineStageRun) (bool, string) {
 	layers, err := topologicalLayers(stages)
 	if err != nil {
 		e.logger.Error("cyclic dependency", "run", run.Id, "error", err)
@@ -51,7 +52,7 @@ func (e Executor) Execute(ctx context.Context, executionCtx context.Context, run
 
 	for layerIndex, layer := range layers {
 		e.logger.Info("executing layer", "index", layerIndex+1, "total", len(layers), "run", run.Id, "stages", layer)
-		results := e.executeLayer(ctx, executionCtx, run, repo, variables, layer, stageById, stageRuns)
+		results := e.executeLayer(ctx, executionCtx, run, repo, runtime, layer, stageById, stageRuns)
 		failed := make([]string, 0)
 		for _, stageId := range layer {
 			stage := stageById[stageId]
@@ -63,20 +64,20 @@ func (e Executor) Execute(ctx context.Context, executionCtx context.Context, run
 			return false, fmt.Sprintf("Stage(s) failed: %s", strings.Join(failed, ", "))
 		}
 	}
-	if err := e.forkBuildVersion(ctx, run, stages, fmt.Sprint(variables["runtime_datetime"])); err != nil {
+	if err := e.forkBuildVersion(ctx, run, stages, fmt.Sprint(runtime.Global["runtime_datetime"])); err != nil {
 		return false, err.Error()
 	}
 	return true, ""
 }
 
-func (e Executor) executeLayer(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, layer []string, stages map[string]model.StageDefinition, stageRuns map[string]model.PipelineStageRun) map[string]bool {
+func (e Executor) executeLayer(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, runtime pipelinevariable.RuntimeVariables, layer []string, stages map[string]model.StageDefinition, stageRuns map[string]model.PipelineStageRun) map[string]bool {
 	results := make(map[string]bool, len(layer))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for _, stageId := range layer {
 		stage := stages[stageId]
 		wg.Go(func() {
-			ok := e.executeStage(ctx, executionCtx, run, repo, variables, stage, stages, stageRuns[stage.Id])
+			ok := e.executeStage(ctx, executionCtx, run, repo, runtime, stage, stages, stageRuns[stage.Id])
 			mu.Lock()
 			results[stage.Name] = ok
 			mu.Unlock()
@@ -86,7 +87,7 @@ func (e Executor) executeLayer(ctx context.Context, executionCtx context.Context
 	return results
 }
 
-func (e Executor) executeStage(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stage model.StageDefinition, stages map[string]model.StageDefinition, pipelineStageRun model.PipelineStageRun) bool {
+func (e Executor) executeStage(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, runtime pipelinevariable.RuntimeVariables, stage model.StageDefinition, stages map[string]model.StageDefinition, pipelineStageRun model.PipelineStageRun) bool {
 	if pipelineStageRun.Id == "" {
 		e.logger.Error("pipeline stage run is missing", "run", run.Id, "stage", stage.Name)
 		return false
@@ -128,7 +129,7 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 		volumes = append(volumes, pipelinerunport.VolumeMount{HostPath: sourcePath, ContainerPath: "/source", Mode: "ro"})
 	}
 
-	script, environment, err := e.pipelineStageRunConfig(ctx, repo, variables, stage)
+	script, environment, err := e.pipelineStageRunConfig(ctx, repo, runtime, stage)
 	if err != nil {
 		return e.failStage(ctx, pipelineStageRun, err.Error())
 	}
@@ -168,7 +169,7 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 	pipelineStageRun.FinishedAt = &finished
 	pipelineStageRun.Status = status.WorkStatusRanToCompletion
 	pipelineStageRun.ExitCode = &exitCode
-	runtimeDatetime, _ := variables["runtime_datetime"].(string)
+	runtimeDatetime, _ := runtime.Global["runtime_datetime"].(string)
 	if err := e.saveArtifacts(executionCtx, run, stage, stages, runOptions, runtimeDatetime); err != nil {
 		return e.failStage(ctx, pipelineStageRun, err.Error())
 	}
@@ -187,9 +188,9 @@ func (e Executor) executionErrorMessage(err error) string {
 	return fmt.Sprintf("pipeline execution canceled: %v", err)
 }
 
-func (e Executor) pipelineStageRunConfig(ctx context.Context, repo model.Repository, variables map[string]any, stage model.StageDefinition) (string, []string, error) {
+func (e Executor) pipelineStageRunConfig(ctx context.Context, repo model.Repository, runtime pipelinevariable.RuntimeVariables, stage model.StageDefinition) (string, []string, error) {
 	script := commandLines(stage.Script)
-	environment := envMap(variables)
+	environment := envMap(runtime.ValuesForStage(stage))
 	if repo.RepositoryType == model.RepositoryTypeLocalDirectory || repo.GitCredentialId == nil || !stageUsesRepositoryUrl(stage.Script, repo.RepositoryUrl) {
 		return script, environment, nil
 	}

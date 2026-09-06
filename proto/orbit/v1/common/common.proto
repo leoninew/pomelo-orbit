@@ -13,6 +13,12 @@ message StringListResp {
   repeated string items = 1;
 }
 
+message StageVariableDefaultResp {
+  string stage_id = 1;
+  string stage_name = 2;
+  google.protobuf.Value default = 3;
+}
+
 message VariableDeclarationResp {
   string name = 1;
   string description = 2;
@@ -21,6 +27,9 @@ message VariableDeclarationResp {
   bool secret = 5;
   string source = 6;
   bool editable = 7;
+  repeated StageVariableDefaultResp stage_defaults = 8;
+  string stage_id = 9;
+  string stage_name = 10;
 }
 
 message VariableDeclarationReq {
@@ -31,6 +40,7 @@ message VariableDeclarationReq {
   bool secret = 5;
   string source = 6;
   bool editable = 7;
+  string stage_id = 8;
 }
 
 message VariableDeclarationListReq {

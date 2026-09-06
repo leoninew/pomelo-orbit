@@ -187,7 +187,7 @@ func (s Service) TriggerPipeline(ctx context.Context, userId, pipelineId string)
 	if pipeline.Kind != model.PipelineKindApplication {
 		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "template pipelines cannot run")
 	}
-	return s.createPipelineRun(ctx, pipeline, nil, nil)
+	return s.createPipelineRun(ctx, pipeline, pipelinevariable.RuntimeVariableOverrides{}, nil)
 }
 
 func (s Service) RetryPipelineRun(ctx context.Context, userId, runId string) (pipelinerundto.PipelineRunDetail, error) {
@@ -203,16 +203,24 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId, runId string) (pi
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Invalid pipeline run variables", err)
 	}
-	overrides := make(map[string]string, len(declarations))
+	overrides := pipelinevariable.RuntimeVariableOverrides{Global: make(map[string]string), Stage: make(map[string]map[string]string)}
 	for _, declaration := range declarations {
-		if declaration.Source != "system" && pipelinevariable.HasRuntimeValue(declaration.Value) {
-			overrides[declaration.Name] = fmt.Sprint(declaration.Value)
+		if declaration.Source == "system" || !pipelinevariable.HasRuntimeValue(declaration.Value) {
+			continue
+		}
+		if declaration.StageId != "" {
+			if overrides.Stage[declaration.StageId] == nil {
+				overrides.Stage[declaration.StageId] = make(map[string]string)
+			}
+			overrides.Stage[declaration.StageId][declaration.Name] = fmt.Sprint(declaration.Value)
+		} else {
+			overrides.Global[declaration.Name] = fmt.Sprint(declaration.Value)
 		}
 	}
 	return s.createPipelineRun(ctx, pipeline, overrides, &original.Id)
 }
 
-func (s Service) createPipelineRun(ctx context.Context, pipeline model.Pipeline, overrides map[string]string, retryOf *string) (pipelinerundto.PipelineRunDetail, error) {
+func (s Service) createPipelineRun(ctx context.Context, pipeline model.Pipeline, overrides pipelinevariable.RuntimeVariableOverrides, retryOf *string) (pipelinerundto.PipelineRunDetail, error) {
 	if pipeline.RepositoryId == nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "application pipeline identity is incomplete")
 	}
@@ -584,7 +592,7 @@ func parseOptionalRunTime(value, name string) (*time.Time, error) {
 	}
 	return &parsed, nil
 }
-func buildPipelineRunVariables(repo model.Repository, pipeline model.Pipeline, snapshot model.PipelineSnapshot, overrides map[string]string) (string, string, error) {
+func buildPipelineRunVariables(repo model.Repository, pipeline model.Pipeline, snapshot model.PipelineSnapshot, overrides pipelinevariable.RuntimeVariableOverrides) (string, string, error) {
 	var stages []model.StageDefinition
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
 		return "", "", apperror.New(apperror.KindInternal, "Invalid pipeline snapshot stages")
@@ -597,7 +605,7 @@ func buildPipelineRunVariables(repo model.Repository, pipeline model.Pipeline, s
 	if err != nil {
 		return "", "", err
 	}
-	ref := fmt.Sprint(variables["repository_ref"])
+	ref := fmt.Sprint(variables.Global["repository_ref"])
 	return data, ref, nil
 }
 

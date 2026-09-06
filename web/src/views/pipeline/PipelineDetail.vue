@@ -417,7 +417,10 @@
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
+  import type {
+    VariableDeclarationReq,
+    VariableDeclarationResp,
+  } from '@/gen/proto/orbit/v1/common/common';
   import type {
     PipelineStageNodeResp,
     PipelineStageTemplateUpdatePreviewResp,
@@ -426,6 +429,7 @@
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
   import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
+  import { toVariableDeclarationRequest } from '@/utils/variableDeclaration';
 
   const route = useRoute();
   const router = useRouter();
@@ -464,7 +468,14 @@
     sort_order: 0,
     description: '',
   });
-  const variableForm = reactive({ name: '', value: '', description: '', secret: false });
+  const variableForm = reactive({
+    name: '',
+    value: '',
+    description: '',
+    secret: false,
+    stageId: '',
+    stageName: '',
+  });
   const editingVariableName = ref('');
   const overridingVariableName = ref('');
 
@@ -627,49 +638,64 @@
     }
   }
 
-  function pipelineVariablesWith(nextVariable?: VariableDeclarationResp) {
+  function variableScopeKey(variable: Pick<VariableDeclarationResp, 'name' | 'stage_id'>) {
+    return variable.name + '\x00' + (variable.stage_id || '');
+  }
+
+  function pipelineVariableRequestsWith(nextVariable?: VariableDeclarationReq) {
     const next = pipelineCustomVariables.value.filter(
-      (variable) => variable.name !== nextVariable?.name
+      (variable) => !nextVariable || variableScopeKey(variable) !== variableScopeKey(nextVariable)
     );
-    return nextVariable ? [...next, nextVariable] : next;
+    const requests = next.map(toVariableDeclarationRequest);
+    return nextVariable ? [...requests, nextVariable] : requests;
   }
 
   function openAddVariableDialog() {
-    Object.assign(variableForm, { name: '', value: '', description: '', secret: false });
+    Object.assign(variableForm, {
+      name: '',
+      value: '',
+      description: '',
+      secret: false,
+      stageId: '',
+      stageName: '',
+    });
     editingVariableName.value = '';
     overridingVariableName.value = '';
     variableError.value = '';
     variableOpen.value = true;
   }
 
-  function openEditVariableDialog(name: string) {
-    const variable = pipelineCustomVariables.value.find((item) => item.name === name);
-    if (!variable) return;
-    Object.assign(variableForm, {
-      name: variable.name,
-      value: displayVariableValue(variable.value ?? variable.default),
-      description: variable.description,
-      secret: variable.secret,
-    });
-    editingVariableName.value = name;
-    overridingVariableName.value = '';
-    variableError.value = '';
-    variableOpen.value = true;
-  }
-
-  function openOverrideVariableDialog(name: string) {
-    const variable = pipelineVariables.value.find(
-      (item) => item.name === name && item.source === 'pipeline_stage'
+  function openEditVariableDialog(variable: VariableDeclarationResp) {
+    const saved = pipelineCustomVariables.value.find(
+      (item) => variableScopeKey(item) === variableScopeKey(variable)
     );
-    if (!variable) return;
+    if (!saved) return;
+    Object.assign(variableForm, {
+      name: saved.name,
+      value: displayVariableValue(saved.value ?? saved.default),
+      description: saved.description,
+      secret: saved.secret,
+      stageId: saved.stage_id,
+      stageName: saved.stage_name,
+    });
+    editingVariableName.value = saved.name;
+    overridingVariableName.value = '';
+    variableError.value = '';
+    variableOpen.value = true;
+  }
+
+  function openOverrideVariableDialog(variable: VariableDeclarationResp) {
+    if (variable.source !== 'pipeline_stage') return;
     Object.assign(variableForm, {
       name: variable.name,
       value: displayVariableValue(variable.value ?? variable.default),
       description: variable.description,
       secret: variable.secret,
+      stageId: variable.stage_id,
+      stageName: variable.stage_name,
     });
     editingVariableName.value = '';
-    overridingVariableName.value = name;
+    overridingVariableName.value = variable.name;
     variableError.value = '';
     variableOpen.value = true;
   }
@@ -680,11 +706,13 @@
       ? '请输入变量名'
       : !editingVariableName.value &&
           !overridingVariableName.value &&
-          pipelineVariables.value.some((variable) => variable.name === name)
+          pipelineCustomVariables.value.some(
+            (variable) => variable.name === name && variable.stage_id === variableForm.stageId
+          )
         ? '变量名已存在'
         : '';
     if (variableError.value) return;
-    const variable: VariableDeclarationResp = {
+    const variable: VariableDeclarationReq = {
       name,
       description: variableForm.description.trim(),
       default: undefined,
@@ -692,11 +720,12 @@
       secret: variableForm.secret,
       source: 'pipeline_custom',
       editable: true,
+      stage_id: variableForm.stageId,
     };
     try {
       await executeSave(async () => {
         pipeline.value = await pipelineApi.update(pipelineId.value, {
-          variable_declarations: { items: pipelineVariablesWith(variable) },
+          variable_declarations: { items: pipelineVariableRequestsWith(variable) },
         });
         variableOpen.value = false;
         toast.success(
@@ -712,12 +741,14 @@
     }
   }
 
-  async function deleteVariable(name: string) {
+  async function deleteVariable(variable: VariableDeclarationResp) {
     try {
       await executeSave(async () => {
         pipeline.value = await pipelineApi.update(pipelineId.value, {
           variable_declarations: {
-            items: pipelineCustomVariables.value.filter((variable) => variable.name !== name),
+            items: pipelineCustomVariables.value
+              .filter((item) => variableScopeKey(item) !== variableScopeKey(variable))
+              .map(toVariableDeclarationRequest),
           },
         });
         toast.success('变量已重置');

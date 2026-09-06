@@ -349,8 +349,12 @@
   import { useProjectStore } from '@/stores/project';
   import type { CredentialResp } from '@/gen/proto/orbit/v1/credential/credential';
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
-  import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
+  import type {
+    VariableDeclarationReq,
+    VariableDeclarationResp,
+  } from '@/gen/proto/orbit/v1/common/common';
   import { formatTime } from '@/utils/time';
+  import { toVariableDeclarationRequest } from '@/utils/variableDeclaration';
   import {
     repositoryFormFeedback,
     type RepositoryFormErrors,
@@ -508,11 +512,12 @@
     return true;
   }
 
-  function variableOverridesWith(nextVariable?: VariableDeclarationResp) {
+  function variableOverridesWith(nextVariable?: VariableDeclarationReq) {
     const next = repositoryCustomVariables.value.filter(
       (variable) => variable.name !== nextVariable?.name
     );
-    return nextVariable ? [...next, nextVariable] : next;
+    const requests = next.map(toVariableDeclarationRequest);
+    return nextVariable ? [...requests, nextVariable] : requests;
   }
 
   async function fetchRepository() {
@@ -607,17 +612,17 @@
     isAddVariableDialogOpen.value = true;
   }
 
-  function openEditVariableDialog(name: string) {
-    const variable = repositoryCustomVariables.value.find((item) => item.name === name);
-    if (!variable) {
+  function openEditVariableDialog(variable: VariableDeclarationResp) {
+    const saved = repositoryCustomVariables.value.find((item) => item.name === variable.name);
+    if (!saved) {
       return;
     }
-    editingVariableName.value = variable.name;
+    editingVariableName.value = saved.name;
     Object.assign(variableForm, {
-      name: variable.name,
-      value: normalizeValue(variable.value ?? variable.default),
-      description: variable.description ?? '',
-      secret: variable.secret,
+      name: saved.name,
+      value: normalizeValue(saved.value ?? saved.default),
+      description: saved.description ?? '',
+      secret: saved.secret,
     });
     Object.assign(variableErrors, { name: '' });
     editVariableSubmitError.value = '';
@@ -642,7 +647,7 @@
     }
     try {
       await executeOp(async () => {
-        const nextVariable: VariableDeclarationResp = {
+        const nextVariable: VariableDeclarationReq = {
           name: variableForm.name.trim(),
           description: variableForm.description.trim(),
           default: undefined,
@@ -650,6 +655,7 @@
           secret: variableForm.secret,
           source: 'repository_custom',
           editable: true,
+          stage_id: '',
         };
         const updated = await repositoryApi.update(repositoryId, {
           variable_overrides: { items: variableOverridesWith(nextVariable) },
@@ -683,12 +689,14 @@
         }
         const updated = await repositoryApi.update(repositoryId, {
           variable_overrides: {
-            items: variableOverridesWith({
-              ...current,
-              value: variableForm.value,
-              description: variableForm.description.trim(),
-              secret: variableForm.secret,
-            }),
+            items: variableOverridesWith(
+              toVariableDeclarationRequest({
+                ...current,
+                value: variableForm.value,
+                description: variableForm.description.trim(),
+                secret: variableForm.secret,
+              })
+            ),
           },
         });
         repository.value = updated;
@@ -700,7 +708,7 @@
     }
   }
 
-  async function deleteVariable(name: string) {
+  async function deleteVariable(variable: VariableDeclarationResp) {
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
       toast.error('请先选择项目');
@@ -710,7 +718,9 @@
       await executeOp(async () => {
         const updated = await repositoryApi.update(repositoryId, {
           variable_overrides: {
-            items: repositoryCustomVariables.value.filter((variable) => variable.name !== name),
+            items: repositoryCustomVariables.value
+              .filter((item) => item.name !== variable.name)
+              .map(toVariableDeclarationRequest),
           },
         });
         repository.value = updated;

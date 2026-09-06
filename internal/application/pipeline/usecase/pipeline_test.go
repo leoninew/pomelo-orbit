@@ -212,6 +212,28 @@ func TestApplicationStageDeletionDependencyFindsDependentStage(t *testing.T) {
 	}
 }
 
+func TestPipelineVariableScopedToStageBlocksDeletion(t *testing.T) {
+	t.Parallel()
+
+	variableName, err := pipelineVariableScopedToStage(`[{"name":"working_dir","stage_id":"frontend"}]`, "frontend")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if variableName != "working_dir" {
+		t.Fatalf("variable name = %q, want working_dir", variableName)
+	}
+}
+
+func TestValidatePipelineVariableScopesRejectsUnknownStage(t *testing.T) {
+	t.Parallel()
+
+	pipeline := model.Pipeline{Kind: model.PipelineKindApplication, VariableDeclarations: `[{"name":"working_dir","stage_id":"missing-stage","value":"web"}]`}
+	err := validatePipelineVariableScopes(pipeline, []model.StageDefinition{{Id: "stage-build", Name: "build"}})
+	if err == nil || !strings.Contains(err.Error(), "stage_id does not exist: missing-stage") {
+		t.Fatalf("expected unknown stage scope error, got %v", err)
+	}
+}
+
 func TestSourceCommitArtifactForStageUsesTransitiveDependency(t *testing.T) {
 	t.Parallel()
 

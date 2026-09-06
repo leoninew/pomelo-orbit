@@ -263,7 +263,13 @@
     type: 'github_token' as string,
     data: '',
   });
-  const credentialTypeValues = ['github_token', 'gitee_token', 'git_ssh', 'registry_token'];
+  const credentialTypeValues = [
+    'github_token',
+    'gitee_token',
+    'gitea_token',
+    'git_ssh',
+    'registry_token',
+  ];
   const errors = reactive({ name: '', data: '' });
   const credentialSubmitError = ref('');
   const deleteSubmitError = ref('');
@@ -419,6 +425,9 @@
     }
     if (type === 'gitee_token') {
       return 'your_username:your_gitee_token';
+    }
+    if (type === 'gitea_token') {
+      return 'your_username:your_gitea_token';
     }
     return 'registry_token_here';
   }

@@ -82,6 +82,36 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 	}
 }
 
+func TestCreateCredentialAcceptsGiteaTokenAndRejectsUnknownType(t *testing.T) {
+	service, database := newCredentialIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	created, err := service.CreateCredential(ctx, ciTestUserId, credentialdto.CredentialCreateInput{
+		ProjectId: ciTestProjectId, Name: "Gitea Token", Type: "gitea_token", Data: "alice:gitea-access-token",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Type != "gitea_token" {
+		t.Fatalf("created type=%q", created.Type)
+	}
+	exported, err := service.ExportCredential(ctx, ciTestUserId, created.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exported.Type != "gitea_token" || exported.Data != "alice:gitea-access-token" {
+		t.Fatalf("exported=%+v", exported)
+	}
+
+	_, err = service.CreateCredential(ctx, ciTestUserId, credentialdto.CredentialCreateInput{
+		ProjectId: ciTestProjectId, Name: "Unknown Token", Type: "unknown_token", Data: "alice:token",
+	})
+	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("expected unknown credential type to be rejected, got %v", err)
+	}
+}
+
 func newCredentialIntegrationService(t *testing.T) (Service, *sql.DB) {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")

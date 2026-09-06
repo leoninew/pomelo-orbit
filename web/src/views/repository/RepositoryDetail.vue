@@ -409,7 +409,8 @@
       (credential) =>
         credential.type === 'git_ssh' ||
         credential.type === 'github_token' ||
-        credential.type === 'gitee_token'
+        credential.type === 'gitee_token' ||
+        credential.type === 'gitea_token'
     )
   );
   const gitCredentialOptions = computed(() =>

@@ -247,6 +247,9 @@
     if (type === 'gitee_token') {
       return 'your_username:your_gitee_token';
     }
+    if (type === 'gitea_token') {
+      return 'your_username:your_gitea_token';
+    }
     return 'registry_token_here';
   }
 

@@ -425,7 +425,11 @@
   const credentials = ref<CredentialResp[]>([]);
   const gitCredentials = computed(() =>
     credentials.value.filter(
-      (c) => c.type === 'git_ssh' || c.type === 'github_token' || c.type === 'gitee_token'
+      (c) =>
+        c.type === 'git_ssh' ||
+        c.type === 'github_token' ||
+        c.type === 'gitee_token' ||
+        c.type === 'gitea_token'
     )
   );
   const gitCredentialOptions = computed(() =>

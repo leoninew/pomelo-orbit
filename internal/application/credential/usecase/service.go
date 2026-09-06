@@ -224,7 +224,7 @@ func credentialProjectId(item model.Credential) string {
 
 func validCredentialType(value string) bool {
 	switch value {
-	case "git_ssh", "github_token", "gitee_token", "registry_token":
+	case "git_ssh", "github_token", "gitee_token", "gitea_token", "registry_token":
 		return true
 	default:
 		return false

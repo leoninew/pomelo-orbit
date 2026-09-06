@@ -2,9 +2,11 @@ package pipelinerunsvc
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	applicationport "github.com/leoninew/pomelo-orbit/internal/application/application/port"
+	security "github.com/leoninew/pomelo-orbit/internal/common/crypto"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -136,3 +138,36 @@ func (s *buildVersionForkerStub) ForkVersionForBuild(ctx context.Context, input 
 }
 
 func stringRef(value string) *string { return &value }
+
+func TestAuthenticatedRepositoryUrlRewritesGiteaToken(t *testing.T) {
+	const secretKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	encrypted, err := security.EncryptString(secretKey, "alice:gitea-access-token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	executor := Executor{secretKey: secretKey}
+	credential := model.Credential{Type: "gitea_token", EncryptedData: encrypted}
+
+	got, err := executor.authenticatedRepositoryUrl("https://git.example.com:3000/org/repo.git", credential)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "https://alice:gitea-access-token@git.example.com:3000/org/repo.git"
+	if got != want {
+		t.Fatalf("url=%q want %q", got, want)
+	}
+
+	_, err = executor.authenticatedRepositoryUrl("https://git.example.com/org/repo.git", model.Credential{Type: "gitea_token", EncryptedData: mustEncrypt(t, secretKey, "gitea-access-token")})
+	if err == nil || !strings.Contains(err.Error(), "gitea_token credential must be username:token") {
+		t.Fatalf("expected username:token validation error, got %v", err)
+	}
+}
+
+func mustEncrypt(t *testing.T, secretKey, plain string) string {
+	t.Helper()
+	encrypted, err := security.EncryptString(secretKey, plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return encrypted
+}

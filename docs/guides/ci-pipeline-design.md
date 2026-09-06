@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-08-15 14:30:51
+最后修改时间: 2026-09-06 09:44:06
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -59,6 +59,19 @@ Retry 与手动触发共享 Run 创建路径。Retry 创建新 Run；`latest` �
 ## Runtime workspace
 
 Pipeline checkout、Stage log 和 Run artifact 都位于 `workspace.pipeline`。配置值表示 Orbit 进程可见路径；Pipeline 容器的 `/workspace` 与 `/artifacts` bind mount 会解析为 Docker daemon 可见的宿主路径。因此 DooD 部署必须将该根目录显式挂入 Orbit 容器，不能把容器内路径直接传给 Docker。
+
+## Git 凭据
+
+远程仓库的 `git clone` 阶段只接受 HTTPS URL，不识别托管平台。Stage 脚本包含仓库 URL 且仓库绑定了凭据时，执行器用 `GIT_CONFIG ... insteadOf` 把明文 URL 改写成认证 URL，不把 token 写入脚本。
+
+| 类型 | 凭据内容 | 执行时改写 |
+|---|---|---|
+| `github_token` | token | `https://<token>@host/owner/repo.git` |
+| `gitee_token` | `username:token` | `https://<username>:<token>@host/owner/repo.git` |
+| `gitea_token` | Gitea 登录用户名:`token` | 与 `gitee_token` 相同 |
+| `git_ssh` | 私钥 | 可保存，流水线执行拒绝 |
+
+`gitea_token` 来自 Gitea 用户设置 → Applications → Manage Access Tokens，不是同页 OAuth2 Application，也不是仓库 Deploy Key。非 `https://` 的仓库 URL 执行失败。公开 HTTPS 仓库可以不绑定凭据。
 
 `PipelineRun` 和 `Artifact` 保存 `pipeline_id`、名称和版本快照。`PipelineRunVersionBinding` 保存 Application、来源 Version 与生成 Version 的 ID 和展示标签。Version Component 写入 Artifact ID 及镜像、SHA、source commit 等展示快照。
 

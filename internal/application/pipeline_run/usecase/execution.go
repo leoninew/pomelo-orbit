@@ -123,13 +123,13 @@ func stageRunByStageID(stageRuns []model.PipelineStageRun) map[string]model.Pipe
 	return byStageID
 }
 
-func (s Service) pipelineRunExecutionVariables(run model.PipelineRun) (map[string]any, error) {
+func (s Service) pipelineRunExecutionVariables(run model.PipelineRun) (pipelinevariable.RuntimeVariables, error) {
 	_, variables, err := pipelinevariable.UnmarshalRuntimeVariableSnapshot(run.VariablesSnapshot)
 	if err != nil {
-		return nil, err
+		return pipelinevariable.RuntimeVariables{}, err
 	}
-	if ref, ok := variables["repository_ref"].(string); !ok || ref != run.RepositoryRef {
-		return nil, fmt.Errorf("repository_ref does not match pipeline run")
+	if ref, ok := variables.Global["repository_ref"].(string); !ok || ref != run.RepositoryRef {
+		return pipelinevariable.RuntimeVariables{}, fmt.Errorf("repository_ref does not match pipeline run")
 	}
 	return variables, nil
 }

@@ -1214,7 +1214,10 @@ export default {
     noVariable: 'No variables',
     name: 'Variable Name',
     description: 'Description',
-    value: 'Variable Value',
+    value: 'Current Value',
+    stage: 'Stage',
+    global: 'Global',
+    stageDefaults: 'Default Value',
     source: 'Source',
   },
   userManagement: {

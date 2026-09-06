@@ -1190,7 +1190,10 @@ export default {
     noVariable: '暂无变量',
     name: '变量名',
     description: '说明',
-    value: '变量值',
+    value: '当前值',
+    stage: '阶段',
+    global: '全局',
+    stageDefaults: '默认值',
     source: '来源',
   },
   userManagement: {

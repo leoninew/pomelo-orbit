@@ -16,6 +16,12 @@ export interface StringListResp {
   items: string[];
 }
 
+export interface StageVariableDefaultResp {
+  stage_id: string;
+  stage_name: string;
+  default: any | undefined;
+}
+
 export interface VariableDeclarationResp {
   name: string;
   description: string;
@@ -24,6 +30,9 @@ export interface VariableDeclarationResp {
   secret: boolean;
   source: string;
   editable: boolean;
+  stage_defaults: StageVariableDefaultResp[];
+  stage_id: string;
+  stage_name: string;
 }
 
 export interface VariableDeclarationReq {
@@ -34,6 +43,7 @@ export interface VariableDeclarationReq {
   secret: boolean;
   source: string;
   editable: boolean;
+  stage_id: string;
 }
 
 export interface VariableDeclarationListReq {

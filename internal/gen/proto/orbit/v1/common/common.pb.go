@@ -110,22 +110,85 @@ func (x *StringListResp) GetItems() []string {
 	return nil
 }
 
-type VariableDeclarationResp struct {
+type StageVariableDefaultResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	StageId       string                 `protobuf:"bytes,1,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	StageName     string                 `protobuf:"bytes,2,opt,name=stage_name,json=stageName,proto3" json:"stage_name,omitempty"`
 	Default       *structpb.Value        `protobuf:"bytes,3,opt,name=default,proto3" json:"default,omitempty"`
-	Value         *structpb.Value        `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
-	Secret        bool                   `protobuf:"varint,5,opt,name=secret,proto3" json:"secret,omitempty"`
-	Source        string                 `protobuf:"bytes,6,opt,name=source,proto3" json:"source,omitempty"`
-	Editable      bool                   `protobuf:"varint,7,opt,name=editable,proto3" json:"editable,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StageVariableDefaultResp) Reset() {
+	*x = StageVariableDefaultResp{}
+	mi := &file_orbit_v1_common_common_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StageVariableDefaultResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StageVariableDefaultResp) ProtoMessage() {}
+
+func (x *StageVariableDefaultResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_common_common_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StageVariableDefaultResp.ProtoReflect.Descriptor instead.
+func (*StageVariableDefaultResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *StageVariableDefaultResp) GetStageId() string {
+	if x != nil {
+		return x.StageId
+	}
+	return ""
+}
+
+func (x *StageVariableDefaultResp) GetStageName() string {
+	if x != nil {
+		return x.StageName
+	}
+	return ""
+}
+
+func (x *StageVariableDefaultResp) GetDefault() *structpb.Value {
+	if x != nil {
+		return x.Default
+	}
+	return nil
+}
+
+type VariableDeclarationResp struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Name          string                      `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                      `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	Default       *structpb.Value             `protobuf:"bytes,3,opt,name=default,proto3" json:"default,omitempty"`
+	Value         *structpb.Value             `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
+	Secret        bool                        `protobuf:"varint,5,opt,name=secret,proto3" json:"secret,omitempty"`
+	Source        string                      `protobuf:"bytes,6,opt,name=source,proto3" json:"source,omitempty"`
+	Editable      bool                        `protobuf:"varint,7,opt,name=editable,proto3" json:"editable,omitempty"`
+	StageDefaults []*StageVariableDefaultResp `protobuf:"bytes,8,rep,name=stage_defaults,json=stageDefaults,proto3" json:"stage_defaults,omitempty"`
+	StageId       string                      `protobuf:"bytes,9,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	StageName     string                      `protobuf:"bytes,10,opt,name=stage_name,json=stageName,proto3" json:"stage_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *VariableDeclarationResp) Reset() {
 	*x = VariableDeclarationResp{}
-	mi := &file_orbit_v1_common_common_proto_msgTypes[2]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -137,7 +200,7 @@ func (x *VariableDeclarationResp) String() string {
 func (*VariableDeclarationResp) ProtoMessage() {}
 
 func (x *VariableDeclarationResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_common_common_proto_msgTypes[2]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -150,7 +213,7 @@ func (x *VariableDeclarationResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VariableDeclarationResp.ProtoReflect.Descriptor instead.
 func (*VariableDeclarationResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{2}
+	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *VariableDeclarationResp) GetName() string {
@@ -202,6 +265,27 @@ func (x *VariableDeclarationResp) GetEditable() bool {
 	return false
 }
 
+func (x *VariableDeclarationResp) GetStageDefaults() []*StageVariableDefaultResp {
+	if x != nil {
+		return x.StageDefaults
+	}
+	return nil
+}
+
+func (x *VariableDeclarationResp) GetStageId() string {
+	if x != nil {
+		return x.StageId
+	}
+	return ""
+}
+
+func (x *VariableDeclarationResp) GetStageName() string {
+	if x != nil {
+		return x.StageName
+	}
+	return ""
+}
+
 type VariableDeclarationReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -211,13 +295,14 @@ type VariableDeclarationReq struct {
 	Secret        bool                   `protobuf:"varint,5,opt,name=secret,proto3" json:"secret,omitempty"`
 	Source        string                 `protobuf:"bytes,6,opt,name=source,proto3" json:"source,omitempty"`
 	Editable      bool                   `protobuf:"varint,7,opt,name=editable,proto3" json:"editable,omitempty"`
+	StageId       string                 `protobuf:"bytes,8,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *VariableDeclarationReq) Reset() {
 	*x = VariableDeclarationReq{}
-	mi := &file_orbit_v1_common_common_proto_msgTypes[3]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -229,7 +314,7 @@ func (x *VariableDeclarationReq) String() string {
 func (*VariableDeclarationReq) ProtoMessage() {}
 
 func (x *VariableDeclarationReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_common_common_proto_msgTypes[3]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -242,7 +327,7 @@ func (x *VariableDeclarationReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VariableDeclarationReq.ProtoReflect.Descriptor instead.
 func (*VariableDeclarationReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{3}
+	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *VariableDeclarationReq) GetName() string {
@@ -294,6 +379,13 @@ func (x *VariableDeclarationReq) GetEditable() bool {
 	return false
 }
 
+func (x *VariableDeclarationReq) GetStageId() string {
+	if x != nil {
+		return x.StageId
+	}
+	return ""
+}
+
 type VariableDeclarationListReq struct {
 	state         protoimpl.MessageState    `protogen:"open.v1"`
 	Items         []*VariableDeclarationReq `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -303,7 +395,7 @@ type VariableDeclarationListReq struct {
 
 func (x *VariableDeclarationListReq) Reset() {
 	*x = VariableDeclarationListReq{}
-	mi := &file_orbit_v1_common_common_proto_msgTypes[4]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -315,7 +407,7 @@ func (x *VariableDeclarationListReq) String() string {
 func (*VariableDeclarationListReq) ProtoMessage() {}
 
 func (x *VariableDeclarationListReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_common_common_proto_msgTypes[4]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -328,7 +420,7 @@ func (x *VariableDeclarationListReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VariableDeclarationListReq.ProtoReflect.Descriptor instead.
 func (*VariableDeclarationListReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{4}
+	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *VariableDeclarationListReq) GetItems() []*VariableDeclarationReq {
@@ -347,7 +439,7 @@ type RawJsonReq struct {
 
 func (x *RawJsonReq) Reset() {
 	*x = RawJsonReq{}
-	mi := &file_orbit_v1_common_common_proto_msgTypes[5]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -359,7 +451,7 @@ func (x *RawJsonReq) String() string {
 func (*RawJsonReq) ProtoMessage() {}
 
 func (x *RawJsonReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_common_common_proto_msgTypes[5]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -372,7 +464,7 @@ func (x *RawJsonReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RawJsonReq.ProtoReflect.Descriptor instead.
 func (*RawJsonReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{5}
+	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *RawJsonReq) GetFields() *structpb.Struct {
@@ -391,7 +483,12 @@ const file_orbit_v1_common_common_proto_rawDesc = "" +
 	"HealthResp\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\"&\n" +
 	"\x0eStringListResp\x12\x14\n" +
-	"\x05items\x18\x01 \x03(\tR\x05items\"\xfb\x01\n" +
+	"\x05items\x18\x01 \x03(\tR\x05items\"\x86\x01\n" +
+	"\x18StageVariableDefaultResp\x12\x19\n" +
+	"\bstage_id\x18\x01 \x01(\tR\astageId\x12\x1d\n" +
+	"\n" +
+	"stage_name\x18\x02 \x01(\tR\tstageName\x120\n" +
+	"\adefault\x18\x03 \x01(\v2\x16.google.protobuf.ValueR\adefault\"\x87\x03\n" +
 	"\x17VariableDeclarationResp\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x120\n" +
@@ -399,7 +496,12 @@ const file_orbit_v1_common_common_proto_rawDesc = "" +
 	"\x05value\x18\x04 \x01(\v2\x16.google.protobuf.ValueR\x05value\x12\x16\n" +
 	"\x06secret\x18\x05 \x01(\bR\x06secret\x12\x16\n" +
 	"\x06source\x18\x06 \x01(\tR\x06source\x12\x1a\n" +
-	"\beditable\x18\a \x01(\bR\beditable\"\xfa\x01\n" +
+	"\beditable\x18\a \x01(\bR\beditable\x12P\n" +
+	"\x0estage_defaults\x18\b \x03(\v2).orbit.v1.common.StageVariableDefaultRespR\rstageDefaults\x12\x19\n" +
+	"\bstage_id\x18\t \x01(\tR\astageId\x12\x1d\n" +
+	"\n" +
+	"stage_name\x18\n" +
+	" \x01(\tR\tstageName\"\x95\x02\n" +
 	"\x16VariableDeclarationReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x120\n" +
@@ -407,7 +509,8 @@ const file_orbit_v1_common_common_proto_rawDesc = "" +
 	"\x05value\x18\x04 \x01(\v2\x16.google.protobuf.ValueR\x05value\x12\x16\n" +
 	"\x06secret\x18\x05 \x01(\bR\x06secret\x12\x16\n" +
 	"\x06source\x18\x06 \x01(\tR\x06source\x12\x1a\n" +
-	"\beditable\x18\a \x01(\bR\beditable\"[\n" +
+	"\beditable\x18\a \x01(\bR\beditable\x12\x19\n" +
+	"\bstage_id\x18\b \x01(\tR\astageId\"[\n" +
 	"\x1aVariableDeclarationListReq\x12=\n" +
 	"\x05items\x18\x01 \x03(\v2'.orbit.v1.common.VariableDeclarationReqR\x05items\"=\n" +
 	"\n" +
@@ -427,29 +530,32 @@ func file_orbit_v1_common_common_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_common_common_proto_rawDescData
 }
 
-var file_orbit_v1_common_common_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_orbit_v1_common_common_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_orbit_v1_common_common_proto_goTypes = []any{
 	(*HealthResp)(nil),                 // 0: orbit.v1.common.HealthResp
 	(*StringListResp)(nil),             // 1: orbit.v1.common.StringListResp
-	(*VariableDeclarationResp)(nil),    // 2: orbit.v1.common.VariableDeclarationResp
-	(*VariableDeclarationReq)(nil),     // 3: orbit.v1.common.VariableDeclarationReq
-	(*VariableDeclarationListReq)(nil), // 4: orbit.v1.common.VariableDeclarationListReq
-	(*RawJsonReq)(nil),                 // 5: orbit.v1.common.RawJsonReq
-	(*structpb.Value)(nil),             // 6: google.protobuf.Value
-	(*structpb.Struct)(nil),            // 7: google.protobuf.Struct
+	(*StageVariableDefaultResp)(nil),   // 2: orbit.v1.common.StageVariableDefaultResp
+	(*VariableDeclarationResp)(nil),    // 3: orbit.v1.common.VariableDeclarationResp
+	(*VariableDeclarationReq)(nil),     // 4: orbit.v1.common.VariableDeclarationReq
+	(*VariableDeclarationListReq)(nil), // 5: orbit.v1.common.VariableDeclarationListReq
+	(*RawJsonReq)(nil),                 // 6: orbit.v1.common.RawJsonReq
+	(*structpb.Value)(nil),             // 7: google.protobuf.Value
+	(*structpb.Struct)(nil),            // 8: google.protobuf.Struct
 }
 var file_orbit_v1_common_common_proto_depIdxs = []int32{
-	6, // 0: orbit.v1.common.VariableDeclarationResp.default:type_name -> google.protobuf.Value
-	6, // 1: orbit.v1.common.VariableDeclarationResp.value:type_name -> google.protobuf.Value
-	6, // 2: orbit.v1.common.VariableDeclarationReq.default:type_name -> google.protobuf.Value
-	6, // 3: orbit.v1.common.VariableDeclarationReq.value:type_name -> google.protobuf.Value
-	3, // 4: orbit.v1.common.VariableDeclarationListReq.items:type_name -> orbit.v1.common.VariableDeclarationReq
-	7, // 5: orbit.v1.common.RawJsonReq.fields:type_name -> google.protobuf.Struct
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	7, // 0: orbit.v1.common.StageVariableDefaultResp.default:type_name -> google.protobuf.Value
+	7, // 1: orbit.v1.common.VariableDeclarationResp.default:type_name -> google.protobuf.Value
+	7, // 2: orbit.v1.common.VariableDeclarationResp.value:type_name -> google.protobuf.Value
+	2, // 3: orbit.v1.common.VariableDeclarationResp.stage_defaults:type_name -> orbit.v1.common.StageVariableDefaultResp
+	7, // 4: orbit.v1.common.VariableDeclarationReq.default:type_name -> google.protobuf.Value
+	7, // 5: orbit.v1.common.VariableDeclarationReq.value:type_name -> google.protobuf.Value
+	4, // 6: orbit.v1.common.VariableDeclarationListReq.items:type_name -> orbit.v1.common.VariableDeclarationReq
+	8, // 7: orbit.v1.common.RawJsonReq.fields:type_name -> google.protobuf.Struct
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_common_common_proto_init() }
@@ -463,7 +569,7 @@ func file_orbit_v1_common_common_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_common_common_proto_rawDesc), len(file_orbit_v1_common_common_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

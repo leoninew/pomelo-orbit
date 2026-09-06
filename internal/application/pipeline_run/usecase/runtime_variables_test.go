@@ -16,10 +16,10 @@ func TestBuildPipelineRunVariablesIgnoresSnapshotVariableValues(t *testing.T) {
 		VariablesSnapshot: `[{"name":"IMAGE_TAG","value":"stale-snapshot","source":"pipeline","editable":true}]`,
 	}
 
-	data, ref, err := buildPipelineRunVariables(repo, pipeline, snapshot, map[string]string{
+	data, ref, err := buildPipelineRunVariables(repo, pipeline, snapshot, pipelinevariable.RuntimeVariableOverrides{Global: map[string]string{
 		"repository_ref": "release",
 		"IMAGE_TAG":      "submitted",
-	})
+	}})
 	if err != nil {
 		t.Fatalf("build run variables: %v", err)
 	}
@@ -27,7 +27,7 @@ func TestBuildPipelineRunVariablesIgnoresSnapshotVariableValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode run variable snapshot: %v", err)
 	}
-	if ref != "release" || values["repository_ref"] != "release" || values["IMAGE_TAG"] != "submitted" {
+	if ref != "release" || values.Global["repository_ref"] != "release" || values.Global["IMAGE_TAG"] != "submitted" {
 		t.Fatalf("run values=%#v, ref=%q", values, ref)
 	}
 }
@@ -37,10 +37,10 @@ func TestPipelineRunExecutionVariablesRequiresMatchingRepositoryRef(t *testing.T
 		{Name: "repository_ref", Value: "release", Source: "runtime", Editable: true},
 		{Name: "repository_code", Value: "repo", Source: "system"},
 	}
-	data, err := pipelinevariable.MarshalRuntimeVariableSnapshot(map[string]any{
+	data, err := pipelinevariable.MarshalRuntimeVariableSnapshot(pipelinevariable.RuntimeVariables{Global: map[string]any{
 		"repository_ref":  "release",
 		"repository_code": "repo",
-	}, variables)
+	}}, variables)
 	if err != nil {
 		t.Fatalf("marshal run variable snapshot: %v", err)
 	}

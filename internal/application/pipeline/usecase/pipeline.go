@@ -484,7 +484,11 @@ func (s Service) pipelineDetail(ctx context.Context, pipeline model.Pipeline) (p
 		return pipelinedto.PipelineDetail{}, err
 	}
 	if pipeline.Kind == model.PipelineKindTemplate {
-		return pipelinedto.PipelineDetail{Pipeline: pipeline, StageNodes: nodes, VariableDeclarations: pipelinevariable.ResolveTemplatePipelineVariables(stageViews, variables)}, nil
+		resolved, err := pipelinevariable.ResolveTemplatePipelineVariables(stageViews, variables)
+		if err != nil {
+			return pipelinedto.PipelineDetail{}, err
+		}
+		return pipelinedto.PipelineDetail{Pipeline: pipeline, StageNodes: nodes, VariableDeclarations: resolved}, nil
 	}
 	managedVariables, err := pipelinevariable.ResolvePipelineVariables(stageViews, variables)
 	if err != nil {
@@ -763,6 +767,9 @@ func (s Service) validatePipelineConfiguration(ctx context.Context, pipeline mod
 	if err := validatePipelineDAG(definitions); err != nil {
 		return apperror.New(apperror.KindValidation, err.Error())
 	}
+	if err := validatePipelineVariableScopes(pipeline, definitions); err != nil {
+		return err
+	}
 	mappings := componentMappings(definitions)
 	if pipeline.Kind == model.PipelineKindTemplate {
 		if pipeline.ApplicationId != nil || pipeline.RepositoryId != nil || pipeline.SourcePipelineId != nil || pipeline.VersionForkStrategy != nil || pipeline.FixedVersionId != nil {
@@ -870,6 +877,21 @@ func componentMappingsForStages(stages []model.PipelineStage) ([]componentMappin
 		return nil, err
 	}
 	return componentMappings(definitions), nil
+}
+
+func validatePipelineVariableScopes(pipeline model.Pipeline, stages []model.StageDefinition) error {
+	if pipeline.Kind != model.PipelineKindApplication {
+		return nil
+	}
+	variables, err := pipelinevariable.PipelineVariables(pipeline.VariableDeclarations)
+	if err != nil {
+		return err
+	}
+	variables, err = pipelinevariable.NormalizePipelineVariables(variables)
+	if err != nil {
+		return err
+	}
+	return pipelinevariable.ValidatePipelineVariableScopes(variables, stages)
 }
 
 func pipelineStageDefinitions(stages []model.PipelineStage) ([]model.StageDefinition, error) {

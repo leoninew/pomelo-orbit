@@ -4,7 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	pipelinev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline"
 	repositoryv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/repository"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestMarshalProtoJSONUsesProtoNames(t *testing.T) {
@@ -39,5 +41,30 @@ func TestUnmarshalProtoJSONRejectsUnknownFields(t *testing.T) {
 	err := UnmarshalProtoJSON([]byte(`{"name":"repo","unknown_field":"x"}`), &req)
 	if err == nil {
 		t.Fatal("UnmarshalProtoJSON() error = nil, want unknown field error")
+	}
+}
+
+func TestUnmarshalProtoJSONAllowsNullVariableDefault(t *testing.T) {
+	var req pipelinev1.PipelineUpdateReq
+	err := UnmarshalProtoJSON([]byte(`{
+		"variable_declarations": {
+			"items": [{
+				"name": "repository_dockerfile",
+				"description": "",
+				"default": null,
+				"value": "Dockerfile.cn",
+				"secret": false,
+				"source": "pipeline_custom",
+				"editable": true,
+				"stage_id": ""
+			}]
+		}
+	}`), &req)
+	if err != nil {
+		t.Fatalf("UnmarshalProtoJSON() error = %v", err)
+	}
+	item := req.GetVariableDeclarations().GetItems()[0]
+	if item.GetDefault() == nil || item.GetDefault().GetNullValue() != structpb.NullValue_NULL_VALUE || item.GetValue().GetStringValue() != "Dockerfile.cn" {
+		t.Fatalf("variable declaration = %#v", item)
 	}
 }

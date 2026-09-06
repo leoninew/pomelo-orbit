@@ -1,6 +1,8 @@
 package pipelinehandler
 
 import (
+	"encoding/json"
+
 	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	pipelinedto "github.com/leoninew/pomelo-orbit/internal/application/pipeline/dto"
 	commonv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
@@ -64,7 +66,7 @@ func variableRequestMaps(items []*commonv1.VariableDeclarationReq) []map[string]
 	result := make([]map[string]any, 0, len(items))
 	for _, item := range items {
 		if item != nil {
-			result = append(result, map[string]any{"name": item.Name, "description": item.Description, "default": transportresponse.NativeValue(item.Default), "value": transportresponse.NativeValue(item.Value), "secret": item.Secret, "source": item.Source, "editable": item.Editable})
+			result = append(result, map[string]any{"name": item.Name, "description": item.Description, "default": transportresponse.NativeValue(item.Default), "value": transportresponse.NativeValue(item.Value), "secret": item.Secret, "source": item.Source, "editable": item.Editable, "stage_id": item.StageId})
 		}
 	}
 	return result
@@ -73,23 +75,51 @@ func variableResponses(items []map[string]any) []*commonv1.VariableDeclarationRe
 	declarations, _ := variableDeclarations(items)
 	result := make([]*commonv1.VariableDeclarationResp, 0, len(declarations))
 	for _, item := range declarations {
-		result = append(result, &commonv1.VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: transportresponse.ProtoValue(item.Default), Value: transportresponse.ProtoValue(item.Value), Secret: item.Secret, Source: item.Source, Editable: item.Editable})
+		result = append(result, variableDeclarationResponse(item))
 	}
 	return result
 }
 func variableDeclarationResponses(items []model.VariableDeclaration) []*commonv1.VariableDeclarationResp {
 	result := make([]*commonv1.VariableDeclarationResp, 0, len(items))
 	for _, item := range items {
-		result = append(result, &commonv1.VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: transportresponse.ProtoValue(item.Default), Value: transportresponse.ProtoValue(item.Value), Secret: item.Secret, Source: item.Source, Editable: item.Editable})
+		result = append(result, variableDeclarationResponse(item))
 	}
 	return result
 }
+
+func variableDeclarationResponse(item model.VariableDeclaration) *commonv1.VariableDeclarationResp {
+	return &commonv1.VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: transportresponse.ProtoValue(item.Default), Value: transportresponse.ProtoValue(item.Value), Secret: item.Secret, Source: item.Source, Editable: item.Editable, StageDefaults: stageVariableDefaultResponses(item.StageDefaults), StageId: item.StageId, StageName: item.StageName}
+}
+
+func stageVariableDefaultResponses(items []model.StageVariableDefault) []*commonv1.StageVariableDefaultResp {
+	result := make([]*commonv1.StageVariableDefaultResp, 0, len(items))
+	for _, item := range items {
+		result = append(result, &commonv1.StageVariableDefaultResp{StageId: item.StageId, StageName: item.StageName, Default: transportresponse.ProtoValue(item.Default)})
+	}
+	return result
+}
+
 func variableDeclarations(values []map[string]any) ([]model.VariableDeclaration, error) {
 	result := make([]model.VariableDeclaration, 0, len(values))
 	for _, value := range values {
-		result = append(result, model.VariableDeclaration{Name: stringValue(value["name"]), Description: stringValue(value["description"]), Default: value["default"], Value: value["value"], Secret: boolValue(value["secret"]), Source: stringValue(value["source"]), Editable: boolValue(value["editable"])})
+		result = append(result, model.VariableDeclaration{Name: stringValue(value["name"]), Description: stringValue(value["description"]), Default: value["default"], Value: value["value"], Secret: boolValue(value["secret"]), Source: stringValue(value["source"]), Editable: boolValue(value["editable"]), StageDefaults: stageVariableDefaults(value["stage_defaults"]), StageId: stringValue(value["stage_id"]), StageName: stringValue(value["stage_name"])})
 	}
 	return result, nil
+}
+
+func stageVariableDefaults(value any) []model.StageVariableDefault {
+	if value == nil {
+		return nil
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil
+	}
+	var result []model.StageVariableDefault
+	if json.Unmarshal(data, &result) != nil {
+		return nil
+	}
+	return result
 }
 func stringValue(value any) string { result, _ := value.(string); return result }
 func boolValue(value any) bool     { result, _ := value.(bool); return result }

@@ -304,6 +304,9 @@ func sanitizeRepositoryVariables(values []map[string]any) []map[string]any {
 		}
 		copy := map[string]any{}
 		maps.Copy(copy, value)
+		delete(copy, "stage_id")
+		delete(copy, "stage_name")
+		delete(copy, "stage_defaults")
 		copy["name"], copy["source"], copy["editable"] = name, "repository_custom", true
 		if _, exists := copy["secret"]; !exists {
 			copy["secret"] = false

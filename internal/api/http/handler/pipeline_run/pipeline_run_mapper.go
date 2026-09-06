@@ -19,7 +19,15 @@ func pipelineRunResponse(detail pipelinerundto.PipelineRunDetail) *pipelinerunv1
 func pipelineRunVariableDeclarationResponses(items []model.VariableDeclaration) []*commonv1.VariableDeclarationResp {
 	response := make([]*commonv1.VariableDeclarationResp, 0, len(items))
 	for _, item := range items {
-		response = append(response, &commonv1.VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: transportresponse.ProtoValue(item.Default), Value: transportresponse.ProtoValue(item.Value), Secret: item.Secret, Source: item.Source, Editable: item.Editable})
+		response = append(response, &commonv1.VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: transportresponse.ProtoValue(item.Default), Value: transportresponse.ProtoValue(item.Value), Secret: item.Secret, Source: item.Source, Editable: item.Editable, StageDefaults: pipelineRunStageVariableDefaultResponses(item.StageDefaults), StageId: item.StageId, StageName: item.StageName})
+	}
+	return response
+}
+
+func pipelineRunStageVariableDefaultResponses(items []model.StageVariableDefault) []*commonv1.StageVariableDefaultResp {
+	response := make([]*commonv1.StageVariableDefaultResp, 0, len(items))
+	for _, item := range items {
+		response = append(response, &commonv1.StageVariableDefaultResp{StageId: item.StageId, StageName: item.StageName, Default: transportresponse.ProtoValue(item.Default)})
 	}
 	return response
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	pipelinedto "github.com/leoninew/pomelo-orbit/internal/application/pipeline/dto"
+	pipelinevariable "github.com/leoninew/pomelo-orbit/internal/application/pipeline/rule/pipelinevariable"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -304,6 +305,13 @@ func (s Service) DeletePipelineStageNode(ctx context.Context, userId, pipelineId
 	if dependentStageName != "" {
 		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "Cannot delete stage "+stageName+" because stage "+dependentStageName+" depends on it")
 	}
+	variableName, err := pipelineVariableScopedToStage(pipeline.VariableDeclarations, stageId)
+	if err != nil {
+		return pipelinedto.PipelineDetail{}, err
+	}
+	if variableName != "" {
+		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "Cannot delete stage "+stageName+" because pipeline variable "+variableName+" is scoped to it")
+	}
 	remaining, found := removeApplicationStage(stages, stageId)
 	if !found {
 		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindNotFound, "Pipeline stage "+stageId+" not found")
@@ -323,6 +331,26 @@ func (s Service) DeletePipelineStageNode(ctx context.Context, userId, pipelineId
 		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline stage", err)
 	}
 	return s.pipelineDetail(ctx, pipeline)
+}
+
+func pipelineVariableScopedToStage(value, stageID string) (string, error) {
+	variables, err := pipelinevariable.PipelineVariables(value)
+	if err != nil {
+		return "", err
+	}
+	variables, err = pipelinevariable.NormalizePipelineVariables(variables)
+	if err != nil {
+		return "", err
+	}
+	for _, variable := range variables {
+		variableStageID, _ := variable["stage_id"].(string)
+		if strings.TrimSpace(variableStageID) != stageID {
+			continue
+		}
+		name, _ := variable["name"].(string)
+		return strings.TrimSpace(name), nil
+	}
+	return "", nil
 }
 
 func templateStageDeletionDependency(references []model.PipelineStageReference, stageId string) (string, string, error) {

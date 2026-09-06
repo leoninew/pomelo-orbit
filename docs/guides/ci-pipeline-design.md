@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-09-06 09:44:06
+最后修改时间: 2026-09-06 15:12:00
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -41,9 +41,15 @@ Template Pipeline 的 `PipelineStageReference` 与 Application Stage 都可对�
 
 来源 Version 策略归 Pipeline 所有：`latest` 在 Run 创建时读取该 Application 的最新 Version，`fixed` 固定一个该 Application 的 Version。模板含 Docker 制品时，它与制品组件映射在 Template Pipeline 实例化为 Application Pipeline 时一并保存，避免出现不能运行的中间配置。
 
+## 阶段变量
+
+Stage 的 `script` 以及 Artifact 的 `reference`、`name`、`command` 使用同一套 Liquid 变量语法：`{{ NAME }}` 是必填变量，`{{ NAME | default: "value" }}` 是当前位置的阶段默认值。`${NAME:-value}` 等 shell 风格默认表达式不受支持。
+
+Repository 的 `value/default` 是全局覆盖；Application Pipeline 可以保存带 `stage_id` 的 Stage 覆盖，也可以保存不带 `stage_id` 的全局覆盖。缺少覆盖时，每个 Stage 独立应用自身 Liquid default。变量详情按 `(name, stage_id)` 展示，因此前端和后端 Stage 可以共用 `working_dir` 但分别默认 `web` 与 `webapi`，并可分别设置值。
+
 ## Snapshot、Run 与 Version
 
-只有 `kind=application` 的 Pipeline 会在运行前按 Pipeline 版本创建或复用 Snapshot。Snapshot 冻结完整阶段定义、创建时可获得的 Repository/Pipeline/Stage 变量声明、来源 Template、Repository，以及可选的 Application 和 Version 策略，并保存 runtime/system 的声明元数据。Snapshot 的变量声明仅用于历史展示与追溯；变量在每次 Run 和 Retry 时由当前 Repository、当前 Pipeline 配置及冻结阶段定义解析，最终执行值只保存到 Run。手动运行没有变量预览或表单，`repository_ref` 使用绑定 Repository 的默认分支。Template 有自己的 `version` 用于来源追溯，但不拥有 Snapshot。
+只有 `kind=application` 的 Pipeline 会在运行前按 Pipeline 版本创建或复用 Snapshot。Snapshot 冻结完整阶段定义、创建时可获得的 Repository/Pipeline/Stage 变量声明、来源 Template、Repository，以及可选的 Application 和 Version 策略，并保存 runtime/system 的声明元数据和阶段默认值来源。Snapshot 的变量声明仅用于历史展示与追溯；变量在每次 Run 和 Retry 时由当前 Repository、当前 Pipeline 配置及冻结阶段定义解析。全局有效值和带 `stage_id` 的 Stage 有效值分别保存到 Run，阶段默认值保留在变量元数据并由冻结 Stage 文本独立渲染，因此不存在多阶段同名变量被压缩为一个 Run 全局值的情况。手动运行没有变量预览或表单，`repository_ref` 使用绑定 Repository 的默认分支。Template 有自己的 `version` 用于来源追溯，但不拥有 Snapshot。
 
 ```text
 应用流水线

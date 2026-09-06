@@ -22,6 +22,8 @@ func variableDeclarationResponse(item map[string]any) commonv1.VariableDeclarati
 		Secret:      boolFromMap(item, "secret"),
 		Source:      stringFromMap(item, "source"),
 		Editable:    boolFromMap(item, "editable"),
+		StageId:     stringFromMap(item, "stage_id"),
+		StageName:   stringFromMap(item, "stage_name"),
 	}
 }
 
@@ -45,6 +47,7 @@ func variableDeclarationRequestMap(item *commonv1.VariableDeclarationReq) map[st
 		"secret":      item.Secret,
 		"source":      item.Source,
 		"editable":    item.Editable,
+		"stage_id":    item.StageId,
 	}
 }
 

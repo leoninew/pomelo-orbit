@@ -40,3 +40,7 @@ func userInfoResponse(user model.User, roles []string, permissions []string) aut
 func loginHistoryResponse(history model.LoginHistory) authv1.LoginHistoryResp {
 	return authv1.LoginHistoryResp{Id: history.Id, UserId: history.UserId, Username: history.Username, IpAddress: history.IpAddress, UserAgent: history.UserAgent, LoginAt: transportresponse.FormatTime(history.LoginAt), Success: history.Success}
 }
+
+func mcpAccessTokenResponse(token model.MCPAccessToken) authv1.MCPAccessTokenResp {
+	return authv1.MCPAccessTokenResp{Id: token.Id, Name: token.Name, ExpiresAt: transportresponse.FormatOptionalTime(token.ExpiresAt), CreatedAt: transportresponse.FormatTime(token.CreatedAt)}
+}

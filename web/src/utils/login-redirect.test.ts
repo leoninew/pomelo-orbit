@@ -10,7 +10,6 @@ const router = createRouter({
     { path: '/login', name: 'Login', component: {}, meta: { public: true } },
     { path: '/google/callback', name: 'GoogleCallback', component: {}, meta: { public: true } },
     { path: '/gateways', name: 'Gateways', component: {} },
-    { path: '/mcp-authorize', name: 'MCPAuthorize', component: {} },
   ],
 });
 
@@ -25,15 +24,6 @@ describe('resolveLoginRedirect', () => {
     expect(
       resolveLoginRedirect(router, '/login?redirect=/login?redirect=/login?redirect=/gateways')
     ).toBe('/gateways');
-  });
-
-  it('preserves the protected MCP authorization route and its callback query', () => {
-    expect(
-      resolveLoginRedirect(
-        router,
-        '/mcp-authorize?callback=http%3A%2F%2F127.0.0.1%3A48123%2Fmcp%2Fcallback&state=state-1'
-      )
-    ).toBe('/mcp-authorize?callback=http%3A%2F%2F127.0.0.1%3A48123%2Fmcp%2Fcallback&state=state-1');
   });
 
   it.each([

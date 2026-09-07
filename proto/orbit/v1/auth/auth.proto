@@ -63,3 +63,24 @@ message TurnstileConfigResp {
   bool enabled = 1;
   string site_key = 2;
 }
+
+message MCPAccessTokenResp {
+  string id = 1;
+  string name = 2;
+  optional string expires_at = 3;
+  string created_at = 4;
+}
+
+message MCPAccessTokenCreateReq {
+  string name = 1;
+  int32 expires_in_days = 2;
+}
+
+message MCPAccessTokenCreatedResp {
+  MCPAccessTokenResp access_token = 1;
+  string token = 2;
+}
+
+message MCPAccessTokenListResp {
+  repeated MCPAccessTokenResp items = 1;
+}

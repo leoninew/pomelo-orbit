@@ -29,6 +29,42 @@ func (q *Queries) CountLoginHistory(ctx context.Context, arg CountLoginHistoryPa
 	return count, err
 }
 
+const createMCPAccessToken = `-- name: CreateMCPAccessToken :exec
+INSERT INTO mcp_access_token (id, user_id, name, token_hash, expires_at, created_at)
+VALUES (?, ?, ?, ?, ?, ?)
+`
+
+type CreateMCPAccessTokenParams struct {
+	ID        string       `db:"id"`
+	UserID    string       `db:"user_id"`
+	Name      string       `db:"name"`
+	TokenHash string       `db:"token_hash"`
+	ExpiresAt sql.NullTime `db:"expires_at"`
+	CreatedAt time.Time    `db:"created_at"`
+}
+
+func (q *Queries) CreateMCPAccessToken(ctx context.Context, arg CreateMCPAccessTokenParams) error {
+	_, err := q.db.ExecContext(ctx, createMCPAccessToken,
+		arg.ID,
+		arg.UserID,
+		arg.Name,
+		arg.TokenHash,
+		arg.ExpiresAt,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const deleteMCPAccessToken = `-- name: DeleteMCPAccessToken :exec
+DELETE FROM mcp_access_token
+WHERE id = ?
+`
+
+func (q *Queries) DeleteMCPAccessToken(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteMCPAccessToken, id)
+	return err
+}
+
 const listLoginHistory = `-- name: ListLoginHistory :many
 SELECT id, user_id, username, ip_address, user_agent, login_at, success
 FROM login_history
@@ -78,6 +114,88 @@ func (q *Queries) ListLoginHistory(ctx context.Context, arg ListLoginHistoryPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const listMCPAccessTokens = `-- name: ListMCPAccessTokens :many
+SELECT id, user_id, name, token_hash, expires_at, created_at
+FROM mcp_access_token
+WHERE user_id = ?
+ORDER BY created_at DESC, id DESC
+`
+
+func (q *Queries) ListMCPAccessTokens(ctx context.Context, userID string) ([]McpAccessToken, error) {
+	rows, err := q.db.QueryContext(ctx, listMCPAccessTokens, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []McpAccessToken
+	for rows.Next() {
+		var i McpAccessToken
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.TokenHash,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const mCPAccessTokenByHash = `-- name: MCPAccessTokenByHash :one
+SELECT id, user_id, name, token_hash, expires_at, created_at
+FROM mcp_access_token
+WHERE token_hash = ?
+`
+
+func (q *Queries) MCPAccessTokenByHash(ctx context.Context, tokenHash string) (McpAccessToken, error) {
+	row := q.db.QueryRowContext(ctx, mCPAccessTokenByHash, tokenHash)
+	var i McpAccessToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const mCPAccessTokenForUser = `-- name: MCPAccessTokenForUser :one
+SELECT id, user_id, name, token_hash, expires_at, created_at
+FROM mcp_access_token
+WHERE id = ? AND user_id = ?
+`
+
+type MCPAccessTokenForUserParams struct {
+	ID     string `db:"id"`
+	UserID string `db:"user_id"`
+}
+
+func (q *Queries) MCPAccessTokenForUser(ctx context.Context, arg MCPAccessTokenForUserParams) (McpAccessToken, error) {
+	row := q.db.QueryRowContext(ctx, mCPAccessTokenForUser, arg.ID, arg.UserID)
+	var i McpAccessToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const saveLoginHistory = `-- name: SaveLoginHistory :exec

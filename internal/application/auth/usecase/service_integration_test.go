@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -14,6 +15,7 @@ import (
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 	authrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/auth"
 	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
 )
@@ -93,6 +95,64 @@ func TestChangePasswordRejectsWrongOldPassword(t *testing.T) {
 	}
 	if err := service.ChangePassword(ctx, authdto.ChangePasswordInput{User: user, OldPassword: "wrong", NewPassword: "newpass1"}); err == nil || apperror.StatusCode(err) != 401 {
 		t.Fatalf("expected wrong old password to be unauthorized, got %v", err)
+	}
+}
+
+func TestMCPAccessTokenLifecycle(t *testing.T) {
+	service, database := newAuthIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+	users := userrepo.NewRepository(database)
+	user, err := users.UserByEmail(ctx, "admin@lvh.me")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	created, err := service.CreateMCPAccessToken(ctx, user.Id, authdto.MCPAccessTokenCreateInput{Name: "local Codex"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Token == "" || created.Token == created.AccessToken.TokenHash {
+		t.Fatalf("created MCP access token must return a distinct raw token and persisted hash: %#v", created)
+	}
+	var persistedHash string
+	if err := database.QueryRowContext(ctx, "SELECT token_hash FROM mcp_access_token WHERE id = ?", created.AccessToken.Id).Scan(&persistedHash); err != nil {
+		t.Fatal(err)
+	}
+	if persistedHash != created.AccessToken.TokenHash || persistedHash == created.Token {
+		t.Fatalf("persisted MCP token hash = %q, want stored digest only", persistedHash)
+	}
+	if _, err := service.AuthenticateMCPAccessToken(ctx, created.Token); err != nil {
+		t.Fatalf("AuthenticateMCPAccessToken() error = %v", err)
+	}
+	if _, err := service.AuthenticateMCPAccessToken(ctx, created.Token+"x"); err == nil || !apperror.IsKind(err, apperror.KindUnauthorized) {
+		t.Fatalf("tampered MCP access token error = %v, want unauthorized", err)
+	}
+	if err := service.RevokeMCPAccessToken(ctx, user.Id, created.AccessToken.Id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.AuthenticateMCPAccessToken(ctx, created.Token); err == nil || !apperror.IsKind(err, apperror.KindUnauthorized) {
+		t.Fatalf("revoked MCP access token error = %v, want unauthorized", err)
+	}
+
+	expiredRaw := "orbit_mcp_pat_expired_test_token"
+	expiresAt := time.Now().UTC().Add(-time.Second)
+	if err := authrepo.NewRepository(database).CreateMCPAccessToken(ctx, model.MCPAccessToken{Id: "expired-token", UserId: user.Id, Name: "expired", TokenHash: hashMCPAccessToken(expiredRaw), ExpiresAt: &expiresAt, CreatedAt: time.Now().UTC()}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.AuthenticateMCPAccessToken(ctx, expiredRaw); err == nil || !apperror.IsKind(err, apperror.KindUnauthorized) {
+		t.Fatalf("expired MCP access token error = %v, want unauthorized", err)
+	}
+
+	active, err := service.CreateMCPAccessToken(ctx, user.Id, authdto.MCPAccessTokenCreateInput{Name: "disabled user"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := users.SetUserStatus(ctx, user.Id, "disabled"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.AuthenticateMCPAccessToken(ctx, active.Token); err == nil || !apperror.IsKind(err, apperror.KindUnauthorized) {
+		t.Fatalf("disabled user MCP access token error = %v, want unauthorized", err)
 	}
 }
 

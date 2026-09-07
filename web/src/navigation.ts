@@ -92,6 +92,12 @@ const settingsNavigation: NavigationBranch[] = [
         permission: PERMISSIONS.LOGIN_READ,
       },
       {
+        key: 'mcpAccessTokens',
+        label: '访问令牌',
+        labelKey: 'nav.mcpAccessTokens',
+        path: '/mcp-access-token',
+      },
+      {
         key: 'settings',
         label: '系统设置',
         labelKey: 'nav.settings',
@@ -299,6 +305,7 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path === '/roles' ||
     path.startsWith('/role/') ||
     path === '/login-history' ||
+    path === '/mcp-access-token' ||
     path === '/settings'
   ) {
     return path === '/' || path === '/home' ? 'home' : 'settings';

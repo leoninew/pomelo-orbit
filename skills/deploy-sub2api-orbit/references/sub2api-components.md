@@ -1,6 +1,6 @@
 # Sub2API Orbit Component Contract
 
-Use these declarations with `pomelo_delivery`. This is the source of truth for the Orbit Version, Service runtime configuration, and Route target.
+Use these declarations with `pomelo-orbit-mcp`. This is the source of truth for the Orbit Version, Service runtime configuration, and Route target.
 
 ## Topology
 

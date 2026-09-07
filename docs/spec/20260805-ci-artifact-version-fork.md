@@ -142,7 +142,7 @@ BuildVersionBinding {
 
 PipelineStage Artifact 声明响应公开 collector 配置；Artifact 运行记录公开 `pipeline_stage_id`、`collector`、`location`、可选 `value`/`value_format`，镜像制品额外公开 `image_ref`、`local_image_sha256`、通过血缘投影的 `source_commit_sha` 和关联的 Version/Component ID。Version Component 详情增加其关联制品的只读来源信息。
 
-不新增 CI 到 CD 的自动动作，不扩展 `pomelo_delivery`，也不要求 Pipeline MCP 获得写权限。
+不新增 CI 到 CD 的自动动作，不扩展 `pomelo-orbit-mcp`，也不要求 Pipeline MCP 获得写权限。
 
 ## Technical questions
 

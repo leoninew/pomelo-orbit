@@ -9,13 +9,13 @@ Review status: Accepted
 
 - [持续集成 MCP 集成评估](../requirement/20260804-ci-mcp-integration-evaluation.md) 已于 2026-08-04 接受。
 - 本计划只定义后续实现与验证路径；本轮不写入 MCP、应用 API、数据库、任务队列或部署环境。
-- 当前 `pomelo_delivery` 仍专属 Orbit Application、Version、Service、Gateway 生命周期和受管运行态诊断。CI MCP 必须是独立 Server，不能复用 `orbit_*` 的资源模型或把 CI 成功隐式转换为部署。
+- 当前 `pomelo-orbit-mcp` 仍专属 Orbit Application、Version、Service、Gateway 生命周期和受管运行态诊断。CI MCP 必须是独立 Server，不能复用 `orbit_*` 的资源模型或把 CI 成功隐式转换为部署。
 
 ## 现状与能力盘点
 
 1. CI HTTP 层已暴露 PipelineStage、PipelineTemplate、PipelineSnapshot、PipelineRun、制品和阶段日志的操作；触发、取消和重试由 `pipeline_run` 应用服务处理，执行经后台 task 派发。
 2. 现有 CI 设计依赖模板版本/快照、变量优先级与项目成员授权，因此 MCP 只能适配现有 API，不能直连数据库或手工构造运行状态。
-3. 当前可用 `pomelo_delivery` 工具覆盖 `orbit_list_*`、`orbit_get_*`、生命周期写操作、`runtime_*` 诊断和 `verify_deployment`，不含 CI 工具或资源。现有 MCP resource 也没有 CI 数据源。
+3. 当前可用 `pomelo-orbit-mcp` 工具覆盖 `orbit_list_*`、`orbit_get_*`、生命周期写操作、`runtime_*` 诊断和 `verify_deployment`，不含 CI 工具或资源。现有 MCP resource 也没有 CI 数据源。
 4. GitHub Actions 的 `go-verify.yml` 与 `package.yml` 分别执行本仓库的 CI 验证和直接运行 ZIP 制品发布；它们不等价于产品的 PipelineRun，后续 MCP 不纳入其运行控制。
 
 ## 推荐集成设计
@@ -29,7 +29,7 @@ Review status: Accepted
 | 只读 | `pipeline_list_stages`、`pipeline_get_stage`、`pipeline_list_templates`、`pipeline_get_template`、`pipeline_resolve_template_variables`、`pipeline_list_runs`、`pipeline_get_run`、`pipeline_list_artifacts`、`pipeline_get_stage_log` | 只返回调用者有权查看的投影；变量、脚本、日志按字段和字节数脱敏/截断，日志维持 offset 分页。 |
 | 受控写入 | `pipeline_create_stage`、`pipeline_update_stage`、`pipeline_create_template`、`pipeline_update_template`、`pipeline_trigger_run`、`pipeline_cancel_run`、`pipeline_retry_run` | 每次动作独立且显式；需认证、项目范围、输入校验、审计请求 ID 和明确状态结果。删除工具延后，待恢复策略和引用约束评审后再决定。 |
 
-跨 MCP 的行为保持显式：读取 CI 成功后，只有用户明确要求，才可在单独的 `pomelo_delivery` 调用中执行部署。CI MCP 不调用 `orbit_deploy`，Delivery MCP 也不接受 PipelineRun ID 作为部署授权。
+跨 MCP 的行为保持显式：读取 CI 成功后，只有用户明确要求，才可在单独的 `pomelo-orbit-mcp` 调用中执行部署。CI MCP 不调用 `orbit_deploy`，Delivery MCP 也不接受 PipelineRun ID 作为部署授权。
 
 ## 实施进度
 
@@ -49,7 +49,7 @@ Review status: Accepted
 
 ### 2. 建立独立 MCP 的认证与传输边界
 
-1. 在 `mcp/src/pipeline-mcp/` 确认现有预留工程的真实布局；添加独立的配置、HTTP client、server 注册和测试入口，但不改变 `pomelo_delivery` 的命令或工具表。
+1. 在 `mcp/src/pipeline-mcp/` 确认现有预留工程的真实布局；添加独立的配置、HTTP client、server 注册和测试入口，但不改变 `pomelo-orbit-mcp` 的命令或工具表。
 2. 使用短期、用户范围的身份上下文调用 CI API；禁止将管理员凭据、数据库路径、Docker socket 或运行时目录暴露给 MCP。
 3. 为每次工具调用注入可关联的 request ID，并把 HTTP 错误统一映射为稳定 MCP 错误；不向客户端回显服务端堆栈、认证材料或未脱敏响应。
 
@@ -92,11 +92,11 @@ Review status: Accepted
 4. 对模板/阶段写工具验证引用约束、变量解析、快照不可变性和服务层授权继续生效；不以 MCP 侧重复业务校验替代后端。
 5. 运行 pipeline MCP 项目的格式、lint、类型检查和测试，以及受影响的 Go `fmt`、`vet`、`test` 与生成代码校验。具体命令以实施时项目入口为准。
 6. 在隔离的测试项目中，以新 stdio 会话核对工具注册表、参数 schema、默认响应脱敏和审计 request ID；不连接生产数据库、不打印凭据、不执行部署。
-7. 仅在用户明确授权的环境中进行一次端到端 CI MCP 试运行；部署验证须另行取得用户明确授权并使用 `pomelo_delivery` 的既有受控流程。
+7. 仅在用户明确授权的环境中进行一次端到端 CI MCP 试运行；部署验证须另行取得用户明确授权并使用 `pomelo-orbit-mcp` 的既有受控流程。
 
 ## 回滚与风险
 
-1. 新 MCP 仅在注册后对客户端可见；出现问题时撤回其注册并重启 stdio 会话。既有 CI HTTP API、`pomelo_delivery` 和 GitHub Actions 不应受影响。
+1. 新 MCP 仅在注册后对客户端可见；出现问题时撤回其注册并重启 stdio 会话。既有 CI HTTP API、`pomelo-orbit-mcp` 和 GitHub Actions 不应受影响。
 2. 已触发的 PipelineRun 不因 MCP 回滚而自动取消或删除；后续操作须由用户明确指示并走既有 CI 服务路径。
 3. 最高风险是服务身份绕过用户权限或响应泄露变量、脚本、日志和凭据引用。先完成身份、字段投影和审计设计，再暴露任何写工具。
 4. 并发触发和客户端重试可能重复消耗 CI 资源；未确认幂等语义前，首版写工具不得上线。
@@ -105,6 +105,6 @@ Review status: Accepted
 ## 审查记录
 
 1. 2026-08-04：根据已接受 Requirement 创建并接受本计划；不进入 Implementation。
-2. 2026-08-04：确认现有 `pomelo_delivery` 只提供交付控制面和运行诊断，不包含 CI MCP 工具或资源。
+2. 2026-08-04：确认现有 `pomelo-orbit-mcp` 只提供交付控制面和运行诊断，不包含 CI MCP 工具或资源。
 3. 2026-08-04：确认后续实现以独立 pipeline MCP、只读优先、受控写入和显式 CI->CD 交接为基线。
 4. 2026-08-04：完成首期固定 GET 的 CI 查询 MCP；变量预览因现有 POST 契约而延期，未注册 Codex Server，未实现写工具或部署交接。

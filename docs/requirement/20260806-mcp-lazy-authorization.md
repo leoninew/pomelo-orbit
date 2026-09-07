@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## Background
 
-`pomelo_delivery` 作为 Codex stdio MCP 在初始化时即启动。当前 `RunMCP` 在 Server 创建前同步验证本地凭据，并在令牌缺失或失效时立即打开浏览器授权页；仅进行工具发现也会产生登录副作用。
+`pomelo-orbit-mcp` 作为 Codex stdio MCP 在初始化时即启动。当前 `RunMCP` 在 Server 创建前同步验证本地凭据，并在令牌缺失或失效时立即打开浏览器授权页；仅进行工具发现也会产生登录副作用。
 
 同时，Go 程序统一通过 `internal/config.Load` 读取 typed `Config`。本地开发环境由进程环境变量 `POMELO_ORBIT_APP__ENV=development` 选择 `.env.development`，但 Codex MCP 入口直接运行 `go run ./cmd/server mcp`，未继承该选择变量，导致 `mcp.web_url` 回退到基线配置。
 
@@ -15,7 +15,7 @@ Review status: Accepted
 
 1. stdio MCP 的 `initialize` 与 `tools/list` 不打开浏览器、不读取或验证用户凭据。
 2. 首次真实 `tools/call` 才验证本地令牌；令牌缺失或失效时再执行现有浏览器授权，并将成功用户绑定到该 stdio 会话。
-3. Codex 的 `pomelo_delivery` 启动环境明确选择 `development`，让 `mcp.api_url`、`mcp.web_url` 与 `mcp.auth_timeout` 继续通过现有 typed `Config.MCP` 读取 `.env.development`。
+3. Codex 的 `pomelo-orbit-mcp` 启动环境明确选择 `development`，让 `mcp.api_url`、`mcp.web_url` 与 `mcp.auth_timeout` 继续通过现有 typed `Config.MCP` 读取 `.env.development`。
 
 ## Non-goal
 
@@ -25,7 +25,7 @@ Review status: Accepted
 
 ## User scenarios
 
-1. Codex 打开仓库并初始化 `pomelo_delivery` 时，MCP 工具可被发现但不会打开 Orbit 页面。
+1. Codex 打开仓库并初始化 `pomelo-orbit-mcp` 时，MCP 工具可被发现但不会打开 Orbit 页面。
 2. 用户首次实际调用任一持续部署或运行态工具时，缓存令牌可用则直接执行；不可用时才打开配置的 Orbit Web UI 完成授权。
 3. 本地开发的 Codex MCP 使用 `.env.development` 中配置的 Orbit URL，而不是 `configs/config.yaml` 的通用基线。
 

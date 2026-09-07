@@ -80,6 +80,18 @@ CREATE TABLE IF NOT EXISTS login_history (
     success BIGINT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS mcp_access_token (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_mcp_access_token_user_created ON mcp_access_token(user_id, created_at DESC);
+
 
 CREATE TABLE IF NOT EXISTS project (
     id TEXT PRIMARY KEY,

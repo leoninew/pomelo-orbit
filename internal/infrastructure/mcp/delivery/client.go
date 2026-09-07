@@ -3,8 +3,8 @@ package deliverymcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/leoninew/pomelo-orbit/internal/application/dialogue/port"
@@ -14,28 +14,47 @@ import (
 
 const implementationVersion = "0.1.0"
 
+type ServerForActor func(string) (*mcp.Server, error)
+
+// Factory creates a short-lived in-memory MCP session for one Dialogue turn.
+// The Core is constructed by bootstrap so this infrastructure adapter never
+// imports the delivery API package.
 type Factory struct {
-	endpoint string
+	serverForActor ServerForActor
 }
 
-func NewFactory(endpoint string) Factory {
-	return Factory{endpoint: strings.TrimSpace(endpoint)}
+func NewFactory(serverForActor ServerForActor) Factory {
+	return Factory{serverForActor: serverForActor}
 }
 
-func (f Factory) Connect(ctx context.Context, authorization string) (port.MCPClient, error) {
-	if f.endpoint == "" {
-		return nil, fmt.Errorf("delivery MCP endpoint is required")
+func (f Factory) Connect(ctx context.Context, actorUserId string) (port.MCPClient, error) {
+	actorUserId = strings.TrimSpace(actorUserId)
+	if actorUserId == "" {
+		return nil, errors.New("delivery MCP actor user ID is required")
 	}
-	client := mcp.NewClient(&mcp.Implementation{Name: "pomelo-orbit-http", Version: implementationVersion}, nil)
-	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: f.endpoint, HTTPClient: authorizationHTTPClient(authorization)}, nil)
+	if f.serverForActor == nil {
+		return nil, errors.New("delivery MCP server factory is required")
+	}
+	server, err := f.serverForActor(actorUserId)
 	if err != nil {
 		return nil, err
 	}
-	return sessionClient{session: session}, nil
+	clientTransport, serverTransport := mcp.NewInMemoryTransports()
+	serverSession, err := server.Connect(ctx, serverTransport, nil)
+	if err != nil {
+		return nil, err
+	}
+	client := mcp.NewClient(&mcp.Implementation{Name: "pomelo-orbit-mcp", Version: implementationVersion}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		return nil, errors.Join(err, serverSession.Close())
+	}
+	return sessionClient{session: session, serverSession: serverSession}, nil
 }
 
 type sessionClient struct {
-	session *mcp.ClientSession
+	session       *mcp.ClientSession
+	serverSession *mcp.ServerSession
 }
 
 func (c sessionClient) ListTools(ctx context.Context) ([]port.ToolDefinition, error) {
@@ -72,20 +91,5 @@ func (c sessionClient) CallTool(ctx context.Context, name string, arguments json
 }
 
 func (c sessionClient) Close() error {
-	return c.session.Close()
-}
-
-func authorizationHTTPClient(authorization string) *http.Client {
-	if strings.TrimSpace(authorization) == "" {
-		return nil
-	}
-	return &http.Client{Transport: authorizationTransport{authorization: authorization}}
-}
-
-type authorizationTransport struct{ authorization string }
-
-func (t authorizationTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	request = request.Clone(request.Context())
-	request.Header.Set("Authorization", t.authorization)
-	return http.DefaultTransport.RoundTrip(request)
+	return errors.Join(c.session.Close(), c.serverSession.Close())
 }

@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求对齐
 
-- 对照已接受的 [持续集成 MCP 集成评估](../requirement/20260804-ci-mcp-integration-evaluation.md) 及其 2026-08-04 的实施决策，本次交付实现独立、只读的 `pomelo-pipeline-mcp`，不扩展 `pomelo_delivery`。
+- 对照已接受的 [持续集成 MCP 集成评估](../requirement/20260804-ci-mcp-integration-evaluation.md) 及其 2026-08-04 的实施决策，本次交付实现独立、只读的 `pomelo-pipeline-mcp`，不扩展 `pomelo-orbit-mcp`。
 - MCP client 仅发起固定的受鉴权 `GET` 请求；没有触发、取消、重试、部署或其他写操作。
 - Server 未注册进 `.codex/config.toml`，不会自动加入现有 stdio 会话，也不会把 CI 成功自动衔接为 Orbit 部署。
 - 响应投影排除阶段/模板脚本、变量 default/value、运行错误文本和制品物理路径；阶段日志会进行常见凭据遮蔽，并通过受限 `max_bytes` 与 `offset` 支持续读。
@@ -30,7 +30,7 @@ Review status: Accepted
 | `pomelo_pipeline_mcp` 源码 | 新增 settings、HTTP client、错误映射、响应投影、Server 与只读工具注册。 |
 | `pomelo_pipeline_mcp/tools/pipeline.py` | 注册 11 个 `pipeline_*` 查询工具，限制分页大小、日志 offset 和日志字节窗口。 |
 | `mcp/src/pipeline-mcp/tests/` | 新增 client、投影与脱敏、工具 schema、配置读取测试。 |
-| Codex 注册、Go CI API、`pomelo_delivery` | 未改动。 |
+| Codex 注册、Go CI API、`pomelo-orbit-mcp` | 未改动。 |
 
 已暂存 MCP diff 共 20 个文件，新增 2,124 行、删除 6 行。实现包含：
 
@@ -42,7 +42,7 @@ Review status: Accepted
 
 ## 验收清单
 
-- [x] 独立 CI MCP 与 `pomelo_delivery` 保持职责和注册边界；没有 CI 到 CD 的自动调用。
+- [x] 独立 CI MCP 与 `pomelo-orbit-mcp` 保持职责和注册边界；没有 CI 到 CD 的自动调用。
 - [x] 查询工具覆盖阶段、模板、快照、运行、制品与增量阶段日志。
 - [x] client 使用固定 GET 路由和 Bearer JWT，不直连数据库、日志文件、Docker 或任务队列。
 - [x] 工具 schema 要求资源范围标识，并限制分页大小、日志 offset 和单次日志读取窗口。

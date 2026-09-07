@@ -1,6 +1,6 @@
 ---
 name: deploy-sub2api-orbit
-description: "Initialize, repair, preview, or deploy the three-component Sub2API stack through the pomelo_delivery control plane. Use when Sub2API needs PostgreSQL and Redis, persistent Orbit-managed storage, no direct host ports, and a custom HTTP Route to its main service."
+description: "Initialize, repair, preview, or deploy the three-component Sub2API stack through the pomelo-orbit-mcp control plane. Use when Sub2API needs PostgreSQL and Redis, persistent Orbit-managed storage, no direct host ports, and a custom HTTP Route to its main service."
 ---
 
 # Deploy Sub2API Through Orbit
@@ -9,7 +9,7 @@ Use this skill only for an Orbit-managed Sub2API deployment. Read [the component
 
 ## Control Plane
 
-- Use the `pomelo_delivery` MCP server for every lifecycle write. Inspect the live tool schema immediately before each write.
+- Use the `pomelo-orbit-mcp` MCP server for every lifecycle write. Inspect the live tool schema immediately before each write.
 - Do not run `docker compose` as a normal deployment path. If MCP is unavailable, perform read-only diagnosis, explain the gap and ownership risk, and obtain explicit authorization before using the bundled Compose reference.
 - Keep runtime configuration in memory. Do not print, persist, infer, rotate, or report secret values.
 - Treat existing Applications, Services, Route records, mounts, and data as user-owned. Read and compare them first; do not overwrite or delete them without explicit authorization.

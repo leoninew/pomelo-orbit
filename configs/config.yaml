@@ -71,12 +71,10 @@ llm:
   timeout: 60s
   max_tool_call_rounds: 64
 
-# Local Codex MCP browser authorization. Production deployments should set
-# mcp.web_url to the externally reachable Orbit UI origin.
+# Local Codex stdio MCP PAT. Set POMELO_ORBIT_MCP__ACCESS_TOKEN only in the
+# parent process environment; do not store a real token in this file.
 mcp:
-  api_url: "http://127.0.0.1:9021"
-  web_url: "http://localhost:9020"
-  auth_timeout: 3m
+  access_token: ""
 
 pipeline_run:
   execution_timeout: 1h

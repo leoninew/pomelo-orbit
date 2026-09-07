@@ -10,6 +10,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 	"github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/dbmodel"
+	"github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlcommon"
 )
 
 var _ repository.AuthStore = Repository{}
@@ -74,4 +75,65 @@ func (r Repository) ListLoginHistory(ctx context.Context, page int, perPage int,
 		})
 	}
 	return repository.Page[model.LoginHistory]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
+}
+
+func (r Repository) CreateMCPAccessToken(ctx context.Context, token model.MCPAccessToken) error {
+	err := r.q(ctx).CreateMCPAccessToken(ctx, authsqlc.CreateMCPAccessTokenParams{
+		ID:        token.Id,
+		UserID:    token.UserId,
+		Name:      token.Name,
+		TokenHash: token.TokenHash,
+		ExpiresAt: dbmodel.NullTime(token.ExpiresAt),
+		CreatedAt: token.CreatedAt,
+	})
+	if err != nil {
+		return fmt.Errorf("create MCP access token %s: %w", token.Id, err)
+	}
+	return nil
+}
+
+func (r Repository) ListMCPAccessTokens(ctx context.Context, userId string) ([]model.MCPAccessToken, error) {
+	rows, err := r.q(ctx).ListMCPAccessTokens(ctx, userId)
+	if err != nil {
+		return nil, fmt.Errorf("list MCP access tokens for user %s: %w", userId, err)
+	}
+	items := make([]model.MCPAccessToken, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, mcpAccessTokenFrom(row))
+	}
+	return items, nil
+}
+
+func (r Repository) MCPAccessTokenByHash(ctx context.Context, tokenHash string) (model.MCPAccessToken, error) {
+	row, err := r.q(ctx).MCPAccessTokenByHash(ctx, tokenHash)
+	if err != nil {
+		return model.MCPAccessToken{}, fmt.Errorf("load MCP access token by hash: %w", sqlcommon.TranslateError(err))
+	}
+	return mcpAccessTokenFrom(row), nil
+}
+
+func (r Repository) MCPAccessTokenForUser(ctx context.Context, userId string, tokenId string) (model.MCPAccessToken, error) {
+	row, err := r.q(ctx).MCPAccessTokenForUser(ctx, authsqlc.MCPAccessTokenForUserParams{ID: tokenId, UserID: userId})
+	if err != nil {
+		return model.MCPAccessToken{}, fmt.Errorf("load MCP access token %s for user %s: %w", tokenId, userId, sqlcommon.TranslateError(err))
+	}
+	return mcpAccessTokenFrom(row), nil
+}
+
+func (r Repository) DeleteMCPAccessToken(ctx context.Context, tokenId string) error {
+	if err := r.q(ctx).DeleteMCPAccessToken(ctx, tokenId); err != nil {
+		return fmt.Errorf("delete MCP access token %s: %w", tokenId, err)
+	}
+	return nil
+}
+
+func mcpAccessTokenFrom(row authsqlc.McpAccessToken) model.MCPAccessToken {
+	return model.MCPAccessToken{
+		Id:        row.ID,
+		UserId:    row.UserID,
+		Name:      row.Name,
+		TokenHash: row.TokenHash,
+		ExpiresAt: dbmodel.TimePtr(row.ExpiresAt),
+		CreatedAt: row.CreatedAt,
+	}
 }

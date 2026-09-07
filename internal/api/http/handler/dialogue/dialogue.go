@@ -24,7 +24,7 @@ func (h Handler) CompleteTurn(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	result, err := h.service.CompleteTurn(c.Request.Context(), current.User.Id, c.GetHeader("Authorization"), dialogueTurnInput(&req))
+	result, err := h.service.CompleteTurn(c.Request.Context(), current.User.Id, dialogueTurnInput(&req))
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
@@ -63,7 +63,7 @@ func (h Handler) StreamTurn(c *gin.Context) {
 		}
 	}
 
-	result, err := h.service.CompleteTurnWithProgress(c.Request.Context(), current.User.Id, c.GetHeader("Authorization"), dialogueTurnInput(&req), func(event dialoguedto.StreamEvent) {
+	result, err := h.service.CompleteTurnWithProgress(c.Request.Context(), current.User.Id, dialogueTurnInput(&req), func(event dialoguedto.StreamEvent) {
 		emit(dialogueStreamEvent(event))
 	})
 	if err != nil {

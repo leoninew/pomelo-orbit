@@ -1,6 +1,9 @@
 import type {
   CSRFTokenResp,
   GoogleCallbackReq,
+  MCPAccessTokenCreatedResp,
+  MCPAccessTokenCreateReq,
+  MCPAccessTokenListResp,
   LoginHistoryPaginatedResp,
   LoginReq,
   LogoutReq,
@@ -10,11 +13,6 @@ import type {
   UserInfoResp,
 } from '@/gen/proto/orbit/v1/auth/auth';
 import request from '@/utils/request';
-
-export interface MCPGrantResponse {
-  code: string;
-  expires_at: string;
-}
 
 // 认证相关 API
 export const authApi = {
@@ -38,10 +36,6 @@ export const authApi = {
     return request.post('/api/auth/logout', data);
   },
 
-  createMcpGrant(data: { callback_url: string; state: string }): Promise<MCPGrantResponse> {
-    return request.post('/api/auth/mcp-grant', data);
-  },
-
   // 获取当前用户信息
   getCurrentUser(): Promise<UserInfoResp> {
     return request.get('/api/auth/me');
@@ -59,6 +53,18 @@ export const authApi = {
     search?: string;
   }): Promise<LoginHistoryPaginatedResp> {
     return request.get('/api/auth/login-history', { params });
+  },
+
+  listMcpAccessTokens(): Promise<MCPAccessTokenListResp> {
+    return request.get('/api/auth/mcp-access-token');
+  },
+
+  createMcpAccessToken(data: MCPAccessTokenCreateReq): Promise<MCPAccessTokenCreatedResp> {
+    return request.post('/api/auth/mcp-access-token', data);
+  },
+
+  revokeMcpAccessToken(id: string): Promise<void> {
+    return request.delete(`/api/auth/mcp-access-token/${id}`);
   },
 
   // Google OAuth 回调

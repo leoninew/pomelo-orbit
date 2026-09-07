@@ -24,7 +24,7 @@ func TestCompleteTurnRunsMCPToolCallsUntilAssistantReply(t *testing.T) {
 	}}
 	service := New(fakeDialogueProject{}, store, fakeDialogueTransaction{}, 32, llm, factory)
 
-	result, err := service.CompleteTurn(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{
+	result, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
 		ProjectId: "project-1",
 		Messages:  []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
 	})
@@ -40,8 +40,8 @@ func TestCompleteTurnRunsMCPToolCallsUntilAssistantReply(t *testing.T) {
 	if len(result.ToolCalls) != 1 || result.ToolCalls[0].Name != "orbit_list_applications" {
 		t.Fatalf("ToolCalls = %#v", result.ToolCalls)
 	}
-	if factory.authorization != "Bearer current-user" {
-		t.Fatalf("authorization = %q", factory.authorization)
+	if factory.actorUserId != "user-1" {
+		t.Fatalf("actor user ID = %q", factory.actorUserId)
 	}
 	if len(mcp.calls) != 1 || mcp.calls[0].name != "orbit_list_applications" {
 		t.Fatalf("MCP calls = %#v", mcp.calls)
@@ -69,7 +69,7 @@ func TestCompleteTurnDoesNotPersistWithoutFinalAssistantReply(t *testing.T) {
 		&fakeMCPFactory{client: mcp},
 	)
 
-	result, err := service.CompleteTurn(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{
+	result, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
 		ProjectId: "project-1",
 		Messages:  []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
 	})
@@ -95,7 +95,7 @@ func TestCompleteTurnCreatesConversationWithClientConversationID(t *testing.T) {
 		&fakeMCPFactory{client: &fakeMCPClient{}},
 	)
 
-	result, err := service.CompleteTurn(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{
+	result, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
 		ProjectId:      "project-1",
 		ConversationId: "client-created-conversation",
 		Messages:       []dialoguedto.Message{{Role: "user", Content: "问题"}},
@@ -131,7 +131,7 @@ func TestCompleteTurnAppendsToExistingConversationAfterFinalAssistantReply(t *te
 		&fakeMCPFactory{client: &fakeMCPClient{}},
 	)
 
-	result, err := service.CompleteTurn(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{
+	result, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
 		ProjectId:      "project-1",
 		ConversationId: conversation.Id,
 		Messages: []dialoguedto.Message{
@@ -184,7 +184,7 @@ func TestCompleteTurnWithProgressReportsToolLifecycle(t *testing.T) {
 	service := newDialogueService(llm, &fakeMCPFactory{client: mcp})
 	var events []dialoguedto.StreamEvent
 
-	_, err := service.CompleteTurnWithProgress(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{
+	_, err := service.CompleteTurnWithProgress(context.Background(), "user-1", dialoguedto.TurnInput{
 		ProjectId: "project-1",
 		Messages:  []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
 	}, func(event dialoguedto.StreamEvent) {
@@ -209,7 +209,7 @@ func TestCompleteTurnWithProgressReportsToolLifecycle(t *testing.T) {
 
 func TestCompleteTurnRequiresUserAsLastMessage(t *testing.T) {
 	service := newDialogueService(&fakeLLM{}, &fakeMCPFactory{client: &fakeMCPClient{}})
-	_, err := service.CompleteTurn(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{
+	_, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
 		ProjectId: "project-1",
 		Messages:  []dialoguedto.Message{{Role: "assistant", Content: "hello"}},
 	})
@@ -222,7 +222,7 @@ func TestCompleteTurnReturnsConfigurationPromptBeforeMCPConnect(t *testing.T) {
 	factory := &fakeMCPFactory{client: &fakeMCPClient{}}
 	service := newDialogueService(&fakeLLM{}, factory)
 
-	_, err := service.CompleteTurn(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{
+	_, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
 		ProjectId: "project-1",
 		Messages:  []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
 	})
@@ -233,8 +233,8 @@ func TestCompleteTurnReturnsConfigurationPromptBeforeMCPConnect(t *testing.T) {
 	if !ok || appErr.Kind != apperror.KindUnavailable || appErr.Code != "deployment_dialogue_not_configured" {
 		t.Fatalf("error = %#v", err)
 	}
-	if factory.authorization != "" {
-		t.Fatalf("MCP Connect() was called with authorization %q", factory.authorization)
+	if factory.actorUserId != "" {
+		t.Fatalf("MCP Connect() was called with actor user ID %q", factory.actorUserId)
 	}
 }
 
@@ -248,7 +248,7 @@ func TestCompleteTurnRequiresVersionReadBeforeDeploy(t *testing.T) {
 		{Content: "已完成。"},
 	}}
 
-	result, err := newDialogueService(llm, &fakeMCPFactory{client: mcp}).CompleteTurn(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "更新并部署"}}})
+	result, err := newDialogueService(llm, &fakeMCPFactory{client: mcp}).CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "更新并部署"}}})
 	if err != nil {
 		t.Fatalf("CompleteTurn() error = %v", err)
 	}
@@ -271,7 +271,7 @@ func TestCompleteTurnRejectsDuplicateDeploymentForService(t *testing.T) {
 		{Content: "已提交一次部署。"},
 	}}
 
-	result, err := newDialogueService(llm, &fakeMCPFactory{client: mcp}).CompleteTurn(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "部署"}}})
+	result, err := newDialogueService(llm, &fakeMCPFactory{client: mcp}).CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "部署"}}})
 	if err != nil {
 		t.Fatalf("CompleteTurn() error = %v", err)
 	}
@@ -296,7 +296,7 @@ func TestCompleteTurnStopsAfterConfiguredToolCallRounds(t *testing.T) {
 		&fakeMCPFactory{client: mcp},
 	)
 
-	result, err := service.CompleteTurn(context.Background(), "user-1", "Bearer current-user", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "列出应用"}}})
+	result, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "列出应用"}}})
 	if err != nil {
 		t.Fatalf("CompleteTurn() error = %v", err)
 	}
@@ -327,12 +327,12 @@ func (f *fakeLLM) Complete(_ context.Context, request port.CompletionRequest) (p
 }
 
 type fakeMCPFactory struct {
-	authorization string
-	client        port.MCPClient
+	actorUserId string
+	client      port.MCPClient
 }
 
-func (f *fakeMCPFactory) Connect(_ context.Context, authorization string) (port.MCPClient, error) {
-	f.authorization = authorization
+func (f *fakeMCPFactory) Connect(_ context.Context, actorUserId string) (port.MCPClient, error) {
+	f.actorUserId = actorUserId
 	return f.client, nil
 }
 

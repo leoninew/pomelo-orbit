@@ -37,7 +37,7 @@ TEI 是同一 Service 内部组件，不发布独立宿主机端口。RAGFlow �
 
 `scripts/ragflow-bundled/docker-compose.yml` 与 `scripts/ragflow-split/docker-compose.ragflow.yml` 是 CPU 参考。对应的 `*.gpu.yml` 是仅覆盖 `tei` 的 GPU 参考：固定 CUDA digest 并声明 `nvidia`、全部 GPU、`gpu` capability。Docker Compose 的规范化输出将 `count: all` 表示为 `count: -1`，两者等价。
 
-这些文件只用于审阅和 `docker compose ... config` 预览；实际创建、更新、部署和停止仍通过 Pomelo Delivery MCP（`pomelo_delivery`）完成。
+这些文件只用于审阅和 `docker compose ... config` 预览；实际创建、更新、部署和停止仍通过 Pomelo Orbit MCP（`pomelo-orbit-mcp`）完成。
 
 ## 模型缓存准备
 

@@ -127,7 +127,7 @@ func (r Repository) DeleteMCPAccessToken(ctx context.Context, tokenId string) er
 	return nil
 }
 
-func mcpAccessTokenFrom(row authsqlc.McpAccessToken) model.MCPAccessToken {
+func mcpAccessTokenFrom(row authsqlc.MCPAccessToken) model.MCPAccessToken {
 	return model.MCPAccessToken{
 		Id:        row.ID,
 		UserId:    row.UserID,

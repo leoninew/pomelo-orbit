@@ -123,15 +123,15 @@ WHERE user_id = ?
 ORDER BY created_at DESC, id DESC
 `
 
-func (q *Queries) ListMCPAccessTokens(ctx context.Context, userID string) ([]McpAccessToken, error) {
+func (q *Queries) ListMCPAccessTokens(ctx context.Context, userID string) ([]MCPAccessToken, error) {
 	rows, err := q.db.QueryContext(ctx, listMCPAccessTokens, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []McpAccessToken
+	var items []MCPAccessToken
 	for rows.Next() {
-		var i McpAccessToken
+		var i MCPAccessToken
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -159,9 +159,9 @@ FROM mcp_access_token
 WHERE token_hash = ?
 `
 
-func (q *Queries) MCPAccessTokenByHash(ctx context.Context, tokenHash string) (McpAccessToken, error) {
+func (q *Queries) MCPAccessTokenByHash(ctx context.Context, tokenHash string) (MCPAccessToken, error) {
 	row := q.db.QueryRowContext(ctx, mCPAccessTokenByHash, tokenHash)
-	var i McpAccessToken
+	var i MCPAccessToken
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -184,9 +184,9 @@ type MCPAccessTokenForUserParams struct {
 	UserID string `db:"user_id"`
 }
 
-func (q *Queries) MCPAccessTokenForUser(ctx context.Context, arg MCPAccessTokenForUserParams) (McpAccessToken, error) {
+func (q *Queries) MCPAccessTokenForUser(ctx context.Context, arg MCPAccessTokenForUserParams) (MCPAccessToken, error) {
 	row := q.db.QueryRowContext(ctx, mCPAccessTokenForUser, arg.ID, arg.UserID)
-	var i McpAccessToken
+	var i MCPAccessToken
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,

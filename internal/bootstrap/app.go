@@ -72,24 +72,18 @@ func (a App) RunMCP(ctx context.Context) error {
 	defer func() { _ = database.Close() }()
 
 	taskRepo := taskrepo.NewRepository(database)
-	deps := newHTTPServerDependencies(a.cfg, a.logger, database, taskRepo)
+	services := newApplicationServices(a.cfg, a.logger, database, taskRepo)
 
 	accessToken := a.cfg.MCP.AccessToken
-	server, err := deliverymcp.NewServer(deliverymcp.Dependencies{
-		ActorAuthenticator: func(ctx context.Context) (string, error) {
-			authenticated, err := deps.AuthService.AuthenticateMCPAccessToken(ctx, accessToken)
-			if err != nil {
-				return "", err
-			}
-			return authenticated.User.Id, nil
-		},
-		Project:     deps.ProjectService,
-		Application: deps.ApplicationService,
-		Service:     deps.ServiceService,
-		Deployment:  deps.DeploymentService,
-		Gateway:     deps.GatewayService,
-		Route:       deps.RouteService,
-	})
+	mcpDeps := newDeliveryMCPDependencies(services)
+	mcpDeps.ActorAuthenticator = func(ctx context.Context) (string, error) {
+		authenticated, err := services.AuthService.AuthenticateMCPAccessToken(ctx, accessToken)
+		if err != nil {
+			return "", err
+		}
+		return authenticated.User.Id, nil
+	}
+	server, err := deliverymcp.NewServer(mcpDeps)
 	if err != nil {
 		return err
 	}

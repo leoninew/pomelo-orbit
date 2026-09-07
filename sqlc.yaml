@@ -11,6 +11,8 @@ sql:
         emit_db_tags: true
         emit_json_tags: false
         emit_interface: true
+        rename:
+          mcp_access_token: MCPAccessToken
   - engine: "mysql"
     schema: "sql/schema/mysql.sql"
     queries: "sql/query/user"

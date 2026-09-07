@@ -333,7 +333,7 @@ func (s Service) DeletePipelineStageNode(ctx context.Context, userId, pipelineId
 	return s.pipelineDetail(ctx, pipeline)
 }
 
-func pipelineVariableScopedToStage(value, stageID string) (string, error) {
+func pipelineVariableScopedToStage(value, stageId string) (string, error) {
 	variables, err := pipelinevariable.PipelineVariables(value)
 	if err != nil {
 		return "", err
@@ -343,8 +343,8 @@ func pipelineVariableScopedToStage(value, stageID string) (string, error) {
 		return "", err
 	}
 	for _, variable := range variables {
-		variableStageID, _ := variable["stage_id"].(string)
-		if strings.TrimSpace(variableStageID) != stageID {
+		variableStageId, _ := variable["stage_id"].(string)
+		if strings.TrimSpace(variableStageId) != stageId {
 			continue
 		}
 		name, _ := variable["name"].(string)
@@ -354,10 +354,10 @@ func pipelineVariableScopedToStage(value, stageID string) (string, error) {
 }
 
 func templateStageDeletionDependency(references []model.PipelineStageReference, stageId string) (string, string, error) {
-	targetID := strings.TrimSpace(stageId)
+	targetId := strings.TrimSpace(stageId)
 	targetName := ""
 	for _, reference := range references {
-		if reference.Id == targetID {
+		if reference.Id == targetId {
 			targetName = reference.Name
 			break
 		}
@@ -366,7 +366,7 @@ func templateStageDeletionDependency(references []model.PipelineStageReference, 
 		return "", "", nil
 	}
 	for _, reference := range references {
-		if reference.Id == targetID {
+		if reference.Id == targetId {
 			continue
 		}
 		dependsOn, err := dependsOnFromJSON(reference.DependsOn)
@@ -374,7 +374,7 @@ func templateStageDeletionDependency(references []model.PipelineStageReference, 
 			return "", "", err
 		}
 		for _, dependency := range dependsOn {
-			if dependency == targetID {
+			if dependency == targetId {
 				return targetName, reference.Name, nil
 			}
 		}
@@ -383,10 +383,10 @@ func templateStageDeletionDependency(references []model.PipelineStageReference, 
 }
 
 func applicationStageDeletionDependency(stages []model.PipelineStage, stageId string) (string, string, error) {
-	targetID := strings.TrimSpace(stageId)
+	targetId := strings.TrimSpace(stageId)
 	targetName := ""
 	for _, stage := range stages {
-		if stage.Id == targetID {
+		if stage.Id == targetId {
 			targetName = stage.Name
 			break
 		}
@@ -395,7 +395,7 @@ func applicationStageDeletionDependency(stages []model.PipelineStage, stageId st
 		return "", "", nil
 	}
 	for _, stage := range stages {
-		if stage.Id == targetID {
+		if stage.Id == targetId {
 			continue
 		}
 		dependsOn, err := stageDependsOn(stage)
@@ -403,7 +403,7 @@ func applicationStageDeletionDependency(stages []model.PipelineStage, stageId st
 			return "", "", err
 		}
 		for _, dependency := range dependsOn {
-			if dependency == targetID {
+			if dependency == targetId {
 				return targetName, stage.Name, nil
 			}
 		}

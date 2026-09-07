@@ -40,7 +40,7 @@ func resolveStages(stages []model.StageDefinition, runtime pipelinevariable.Runt
 }
 
 func renderStageField(stage model.StageDefinition, field, text string, variables map[string]any) (string, error) {
-	if _, err := templatex.ExtractPipelineVariableReferences(text); err != nil {
+	if err := pipelinevariable.ValidateStageVariableExpressions(text); err != nil {
 		return "", fmt.Errorf("stage %s %s: %w", stage.Name, field, err)
 	}
 	value, err := templatex.Render(text, variables)

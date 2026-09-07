@@ -23,7 +23,7 @@ Review status: Accepted
 
 ## Non-goal
 
-1. 不将 `pipeline-mcp` 的 11 个只读 CI 工具改写为 Go，也不把它们并入 `pomelo_delivery`。
+1. 不将 `pipeline-mcp` 的 11 个只读 CI 工具改写为 Go，也不把它们并入 `pomelo-orbit-mcp`。
 2. 不复刻 Python delivery 的 HTTP client、JWT 缓存、Docker runtime 实现、工具包装形状或旧的 stdio 启动方式。
 3. 不改变 Application、Version、Service、Gateway、Deployment 的领域模型、数据库 schema、HTTP API、异步 worker 或 Docker Compose 生命周期语义。
 4. 不删除与 MCP 无关的 `scripts/*.py`。
@@ -33,7 +33,7 @@ Review status: Accepted
 
 1. 用户通过持续部署对话要求创建或修复组件配置，包含受控文件挂载和 Gateway HTTP 暴露；模型能使用 MCP 的真实字段契约完成配置并说明结果。
 2. 目标 Application、Version 或 Service 已存在但配置不符合请求时，对话先读取差异、更新对应声明或 overlay、回读验证，再部署一次并等待终态。
-3. 用户在 Codex 中使用 `pomelo_delivery` 时，注册不依赖已删除的 Python/uv 项目，并以 Go `/mcp` 所要求的认证方式连接。
+3. 用户在 Codex 中使用 `pomelo-orbit-mcp` 时，注册不依赖已删除的 Python/uv 项目，并以 Go `/mcp` 所要求的认证方式连接。
 4. 仓库不再包含可运行的 Python delivery 或 pipeline MCP 工程、其测试、锁文件、启动命令或活文档引用。
 
 ## Acceptance
@@ -62,7 +62,7 @@ Review status: Accepted
 
 ## Risk
 
-1. 当前 `.codex/config.toml` 仍启动 Python delivery MCP。删除 `mcp/` 前必须完成以浏览器登录和本地凭据为基础的 Go MCP 注册切换，否则外部 `pomelo_delivery` 调用会失效。
+1. 当前 `.codex/config.toml` 仍启动 Python delivery MCP。删除 `mcp/` 前必须完成以浏览器登录和本地凭据为基础的 Go MCP 注册切换，否则外部 `pomelo-orbit-mcp` 调用会失效。
 2. Go MCP 的通用 proto schema 对条件字段和枚举的表达有限；若只增加宽泛文字说明，模型仍可能误用字段，需要同时定义可测试的工具契约与对话复核规则。
 3. 对话工具调用是有副作用的多轮过程，单纯提高轮次上限会放大重复部署风险，不能替代显式的阶段状态和结果收敛。
 4. 浏览器认证和本地凭据持久化必须避免密码、JWT 或其他敏感值写入仓库、过程文档和应用日志，并需要处理凭据失效后的重新登录。

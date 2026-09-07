@@ -5,7 +5,7 @@ Review status: Draft
 
 ## 需求对齐
 
-- Delivery MCP 已与 Pomelo Orbit 控制面产品名区分：分发和命令使用 `pomelo-delivery-mcp`，Codex Server 使用 `pomelo_delivery`，工具仍保留 `orbit_*`。
+- Pomelo Orbit MCP 已与 Pomelo Orbit 控制面产品名区分：分发、命令与 Codex Server 均使用 `pomelo-orbit-mcp`，工具仍保留 `orbit_*`。
 - `mcp/src/` 已按职责形成两个独立项目：已实现的 `delivery-mcp` 与预留的 `pipeline-mcp`。
 - RAGFlow 部署已按集成式和拆分式路径分为两个 skill；二者初始化同一份完整库存，但只部署各自的 Application 和 Service。
 - 本记录只覆盖 MCP 与 RAGFlow 部署方式重组，不包含其他工作区变更。
@@ -14,10 +14,10 @@ Review status: Draft
 
 | 预期区域 | 实际结果 |
 | --- | --- |
-| `mcp/src/delivery-mcp/` | 承载 pyproject、lock、源码、测试、Makefile、README、`.env.example` 和本地配置忽略规则；Python 包为 `pomelo_delivery_mcp`。 |
+| `mcp/src/delivery-mcp/` | 承载 pyproject、lock、源码、测试、Makefile、README、`.env.example` 和本地配置忽略规则；Python 包为 `pomelo_orbit_mcp`。 |
 | `mcp/src/pipeline-mcp/` | 承载独立 `pomelo-pipeline-mcp` 空包与 lock；没有 scripts、MCP Server 或 Codex 注册。 |
-| `.codex/config.toml` | 以 `uv --directory mcp/src/delivery-mcp run pomelo-delivery-mcp` 注册 `pomelo_delivery`。 |
-| AGENTS、指南与技能 | 明确新注册名、命令与 `mcp__pomelo_delivery__orbit_*` 工具前缀；保留 `orbit_*` 的控制面适配语义。 |
+| `.codex/config.toml` | 以 `uv --directory mcp/src/delivery-mcp run pomelo-orbit-mcp` 注册 `pomelo-orbit-mcp`。 |
+| AGENTS、指南与技能 | 明确新注册名、命令与 `mcp__pomelo-orbit-mcp__orbit_*` 工具前缀；保留 `orbit_*` 的控制面适配语义。 |
 | 本地交付配置 | `.env` 与 JWT 缓存移动到 delivery 项目目录，未读取或输出内容；默认数据根仍解析为仓库 `data/`。 |
 | RAGFlow 部署方式 | 新增集成式和拆分式 skill 及共享库存：集成式拥有一个六组件 Application，拆分式拥有一个两组件 RAGFlow Application 与四个独立 backing Applications。 |
 
@@ -47,10 +47,10 @@ Review status: Draft
 ## 风险与未完成项
 
 - Pipeline MCP 仍是刻意空置的工程，后续实现前不具备可调用能力。
-- 需要在新的 Codex 会话中重新发现 `pomelo_delivery`；已打开的 stdio MCP session 不会热加载本次注册变更。
+- 需要在新的 Codex 会话中重新发现 `pomelo-orbit-mcp`；已打开的 stdio MCP session 不会热加载本次注册变更。
 - GPU 路径只在具备 NVIDIA 条件且完成预检的 Host 上部署；无 GPU 或预检失败时按技能规则选择或阻断。
 - 本次记录和技能重组不替代目标 Host 的实际 RAGFlow 健康、模型推理和数据完整性验收。
 
 ## 结论
 
-本次交付满足已接受的 MCP 命名、目录边界与 RAGFlow 部署方式重组需求。Delivery MCP 在新项目目录通过完整检查，Pipeline MCP 保持可构建但未注册的预留状态；两个 RAGFlow skill 已形成可区分、可初始化且数据隔离的部署约束。
+本次交付满足已接受的 MCP 命名、目录边界与 RAGFlow 部署方式重组需求。Pomelo Orbit MCP 在新项目目录通过完整检查，Pipeline MCP 保持可构建但未注册的预留状态；两个 RAGFlow skill 已形成可区分、可初始化且数据隔离的部署约束。

@@ -21,16 +21,15 @@ const implementationVersion = "0.1.0"
 
 const deliveryInstructions = `For stateful services, declare Service-owned Component environment values with exact ${KEY} placeholders in the Version and set their concrete values through orbit_update_service_env. Generate credentials securely once, keep them stable, and do not expose them. Bootstrap credentials apply only to empty data volumes: redeploying does not rotate an initialized database credential; obtain explicit authorization for in-place rotation or volume reset.`
 
-// NewServer creates the shared Delivery MCP Core. Streamable HTTP supplies an
-// actor when the connection is accepted; stdio can bind one lazily on its
-// first tools/call request.
+// NewServer creates the shared Delivery MCP Core. In-process callers supply a
+// fixed actor; stdio validates its configured credential before every tool call.
 func NewServer(deps Dependencies) (*mcp.Server, error) {
-	if strings.TrimSpace(deps.ActorUserId) == "" && deps.ActorAuthorizer == nil {
-		return nil, errors.New("mcp actor_user_id or actor authorizer is required")
+	if strings.TrimSpace(deps.ActorUserId) == "" && deps.ActorAuthenticator == nil {
+		return nil, errors.New("mcp actor_user_id or actor authenticator is required")
 	}
-	server := mcp.NewServer(&mcp.Implementation{Name: "pomelo-delivery", Version: implementationVersion}, &mcp.ServerOptions{Instructions: deliveryInstructions})
+	server := mcp.NewServer(&mcp.Implementation{Name: "pomelo-orbit-mcp", Version: implementationVersion}, &mcp.ServerOptions{Instructions: deliveryInstructions})
 	core := &core{deps: deps}
-	if deps.ActorAuthorizer != nil {
+	if deps.ActorAuthenticator != nil {
 		server.AddReceivingMiddleware(core.authorizeToolCalls)
 	}
 	core.registerOrbitTools(server)
@@ -46,10 +45,7 @@ func (c *core) authorizeToolCalls(next mcp.MethodHandler) mcp.MethodHandler {
 	return func(ctx context.Context, method string, request mcp.Request) (mcp.Result, error) {
 		if method == "tools/call" {
 			if err := c.ensureActor(ctx); err != nil {
-				return &mcp.CallToolResult{
-					Content: []mcp.Content{&mcp.TextContent{Text: "unauthorized: MCP authorization is required before tools can be used"}},
-					IsError: true,
-				}, nil
+				return authenticationToolError(err), nil
 			}
 		}
 		return next(ctx, method, request)
@@ -57,21 +53,32 @@ func (c *core) authorizeToolCalls(next mcp.MethodHandler) mcp.MethodHandler {
 }
 
 func (c *core) ensureActor(ctx context.Context) error {
-	c.authorizationMu.Lock()
-	defer c.authorizationMu.Unlock()
-
-	if strings.TrimSpace(c.deps.ActorUserId) != "" {
-		return nil
-	}
-	actorUserId, err := c.deps.ActorAuthorizer(ctx)
+	actorUserId, err := c.deps.ActorAuthenticator(ctx)
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(actorUserId) == "" {
-		return errors.New("MCP actor authorizer returned an empty user ID")
+	actorUserId = strings.TrimSpace(actorUserId)
+	if actorUserId == "" {
+		return errors.New("MCP actor authenticator returned an empty user ID")
 	}
-	c.deps.ActorUserId = actorUserId
+
+	c.authorizationMu.Lock()
+	defer c.authorizationMu.Unlock()
+	if sessionActorUserId := strings.TrimSpace(c.deps.ActorUserId); sessionActorUserId == "" {
+		c.deps.ActorUserId = actorUserId
+		return nil
+	} else if sessionActorUserId != actorUserId {
+		return errors.New("MCP credential actor does not match this session")
+	}
 	return nil
+}
+
+func authenticationToolError(err error) *mcp.CallToolResult {
+	message := "internal_error: MCP authentication is unavailable"
+	if apperror.IsKind(err, apperror.KindUnauthorized) {
+		message = "unauthorized: MCP authentication is required before tools can be used"
+	}
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: message}}, IsError: true}
 }
 
 func addTool[In any](server *mcp.Server, name, description string, handler func(context.Context, In) (map[string]any, error)) {

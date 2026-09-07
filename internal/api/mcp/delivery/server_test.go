@@ -4,9 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
@@ -59,6 +58,18 @@ func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 	}
 	assertFlatObjectProperty(t, byName["orbit_update_version_component_advanced"], "resources")
 	assertFlatObjectProperty(t, byName["orbit_update_version_component_resources"], "resources")
+}
+
+func TestServerReportsPomeloMCPImplementation(t *testing.T) {
+	server, err := NewServer(Dependencies{ActorUserId: "actor"})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+
+	serverInfo := connectInMemory(t, server).InitializeResult().ServerInfo
+	if serverInfo == nil || serverInfo.Name != "pomelo-orbit-mcp" {
+		t.Fatalf("InitializeResult().ServerInfo = %#v, want name pomelo-orbit-mcp", serverInfo)
+	}
 }
 
 func TestCreateVersionComponentPassesPolicies(t *testing.T) {
@@ -257,12 +268,12 @@ func TestServiceComponentOverlayToolMapsRuntimeAndHostPathFields(t *testing.T) {
 	}
 }
 
-func TestActorAuthorizerRunsOnlyForToolCallsAndBindsTheSession(t *testing.T) {
+func TestActorAuthenticatorRunsOnlyForToolCallsAndRevalidatesTheSession(t *testing.T) {
 	project := &actorProjectService{}
-	authorizations := 0
+	authentications := 0
 	server, err := NewServer(Dependencies{
-		ActorAuthorizer: func(context.Context) (string, error) {
-			authorizations++
+		ActorAuthenticator: func(context.Context) (string, error) {
+			authentications++
 			return "current-user", nil
 		},
 		Project: project,
@@ -274,8 +285,8 @@ func TestActorAuthorizerRunsOnlyForToolCallsAndBindsTheSession(t *testing.T) {
 	if _, err := session.ListTools(context.Background(), nil); err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if authorizations != 0 {
-		t.Fatalf("authorizations after ListTools() = %d, want 0", authorizations)
+	if authentications != 0 {
+		t.Fatalf("authentications after ListTools() = %d, want 0", authentications)
 	}
 	for range 2 {
 		result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_list_projects"})
@@ -286,19 +297,19 @@ func TestActorAuthorizerRunsOnlyForToolCallsAndBindsTheSession(t *testing.T) {
 			t.Fatalf("CallTool() returned tool error: %#v", result.Content)
 		}
 	}
-	if authorizations != 1 {
-		t.Fatalf("authorizations after tool calls = %d, want 1", authorizations)
+	if authentications != 2 {
+		t.Fatalf("authentications after tool calls = %d, want 2", authentications)
 	}
 	if project.actorUserId != "current-user" || project.calls != 2 {
 		t.Fatalf("project calls = actor %q, count %d; want current-user, 2", project.actorUserId, project.calls)
 	}
 }
 
-func TestActorAuthorizationFailureStopsToolExecution(t *testing.T) {
+func TestActorAuthenticationFailureStopsToolExecution(t *testing.T) {
 	project := &actorProjectService{}
 	server, err := NewServer(Dependencies{
-		ActorAuthorizer: func(context.Context) (string, error) {
-			return "", errors.New("browser authorization canceled")
+		ActorAuthenticator: func(context.Context) (string, error) {
+			return "", apperror.New(apperror.KindUnauthorized, "Invalid token")
 		},
 		Project: project,
 	})
@@ -317,15 +328,103 @@ func TestActorAuthorizationFailureStopsToolExecution(t *testing.T) {
 	}
 }
 
+func TestActorAuthenticatorRejectsActorChangesWithinOneSession(t *testing.T) {
+	project := &actorProjectService{}
+	actorUserIds := []string{"current-user", "other-user"}
+	server, err := NewServer(Dependencies{
+		ActorAuthenticator: func(context.Context) (string, error) {
+			actorUserId := actorUserIds[0]
+			actorUserIds = actorUserIds[1:]
+			return actorUserId, nil
+		},
+		Project: project,
+	})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	session := connectInMemory(t, server)
+	for index := range 2 {
+		result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_list_projects"})
+		if err != nil {
+			t.Fatalf("CallTool() error = %v", err)
+		}
+		if index == 0 && result.IsError {
+			t.Fatalf("first CallTool() returned tool error: %#v", result.Content)
+		}
+		if index == 1 && !result.IsError {
+			t.Fatal("second CallTool() IsError = false, want true")
+		}
+	}
+	if project.calls != 1 || project.actorUserId != "current-user" {
+		t.Fatalf("project calls = actor %q, count %d; want current-user, 1", project.actorUserId, project.calls)
+	}
+}
+
+func TestActorAuthenticatorKeepsConcurrentCallsBoundToOneActor(t *testing.T) {
+	project := &actorProjectService{}
+	var mu sync.Mutex
+	authentications := 0
+	server, err := NewServer(Dependencies{
+		ActorAuthenticator: func(context.Context) (string, error) {
+			mu.Lock()
+			authentications++
+			mu.Unlock()
+			return "current-user", nil
+		},
+		Project: project,
+	})
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	session := connectInMemory(t, server)
+	var wait sync.WaitGroup
+	errs := make(chan error, 2)
+	for range 2 {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_list_projects"})
+			if err != nil {
+				errs <- err
+				return
+			}
+			if result.IsError {
+				errs <- errors.New("concurrent tool call returned an error")
+			}
+		}()
+	}
+	wait.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	gotAuthentications := authentications
+	mu.Unlock()
+	actorUserId, calls := project.snapshot()
+	if gotAuthentications != 2 || calls != 2 || actorUserId != "current-user" {
+		t.Fatalf("authentications=%d calls=%d actor=%q; want 2, 2, current-user", gotAuthentications, calls, actorUserId)
+	}
+}
+
 type actorProjectService struct {
+	mu          sync.Mutex
 	actorUserId string
 	calls       int
 }
 
 func (s *actorProjectService) ListByMember(_ context.Context, actorUserId string) ([]model.Project, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.actorUserId = actorUserId
 	s.calls++
 	return []model.Project{}, nil
+}
+
+func (s *actorProjectService) snapshot() (string, int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.actorUserId, s.calls
 }
 
 var deliveryToolNames = []string{
@@ -445,28 +544,6 @@ func TestDeployToolDocumentsServiceBoundVersion(t *testing.T) {
 		}
 	}
 	t.Fatal("deploy tool not found")
-}
-
-func TestStreamableHTTPUsesTheSharedToolRegistry(t *testing.T) {
-	server, err := NewServer(Dependencies{ActorUserId: "actor"})
-	if err != nil {
-		t.Fatalf("NewServer() error = %v", err)
-	}
-	httpServer := httptest.NewServer(mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, nil))
-	defer httpServer.Close()
-	client := mcp.NewClient(&mcp.Implementation{Name: "delivery-http-test", Version: "1.0.0"}, nil)
-	session, err := client.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: httpServer.URL, DisableStandaloneSSE: true}, nil)
-	if err != nil {
-		t.Fatalf("client.Connect() error = %v", err)
-	}
-	defer func() { _ = session.Close() }()
-	tools, err := session.ListTools(context.Background(), nil)
-	if err != nil {
-		t.Fatalf("ListTools() error = %v", err)
-	}
-	if len(tools.Tools) != 56 {
-		t.Fatalf("HTTP tool count = %d, want 56", len(tools.Tools))
-	}
 }
 
 func connectInMemory(t *testing.T, server *mcp.Server) *mcp.ClientSession {

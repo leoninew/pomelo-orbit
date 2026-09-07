@@ -1,4 +1,4 @@
-# Reference only: use pomelo_delivery for normal lifecycle operations.
+# Reference only: use pomelo-orbit-mcp for normal lifecycle operations.
 # This shows the equivalent Sub2API topology for review or an explicitly
 # authorized fallback. Orbit materializes the three relative mount sources
 # beneath the Service workspace and supplies the runtime values itself.

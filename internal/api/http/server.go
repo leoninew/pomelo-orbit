@@ -26,26 +26,14 @@ type Server struct {
 	cfg    config.ServerConfig
 	logger *slog.Logger
 	deps   routes.Dependencies
-	mcp    http.Handler
 }
 
-func New(cfg config.Config, logger *slog.Logger, deps routes.Dependencies, mcpHandlers ...http.Handler) Server {
-	var mcpHandler http.Handler
-	if len(mcpHandlers) > 0 {
-		mcpHandler = mcpHandlers[0]
-	}
-	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, deps: deps, mcp: mcpHandler}
+func New(cfg config.Config, logger *slog.Logger, deps routes.Dependencies) Server {
+	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, deps: deps}
 }
 
 func (s Server) Handler() http.Handler {
-	webHandler := routes.New(s.appCfg, s.logger, s.deps, s.registerFallbackRoutes).Handler()
-	if s.mcp == nil {
-		return webHandler
-	}
-	mux := http.NewServeMux()
-	mux.Handle("/mcp", s.mcp)
-	mux.Handle("/", webHandler)
-	return mux
+	return routes.New(s.appCfg, s.logger, s.deps, s.registerFallbackRoutes).Handler()
 }
 
 func (s Server) registerFallbackRoutes(r *gin.Engine) {

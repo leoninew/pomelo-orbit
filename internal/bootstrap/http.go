@@ -1,12 +1,8 @@
 package bootstrap
 
 import (
-	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
-	"net/http"
-	"strings"
 
 	transporthttp "github.com/leoninew/pomelo-orbit/internal/api/http"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/routes"
@@ -49,23 +45,7 @@ import (
 
 func NewHTTPServer(cfg config.Config, logger *slog.Logger, database *sql.DB, taskRepo taskrepo.Repository) transporthttp.Server {
 	deps := newHTTPServerDependencies(cfg, logger, database, taskRepo)
-	return transporthttp.New(cfg, logger, deps, newDeliveryMCPHTTPHandler(deps))
-}
-
-func newDeliveryMCPHTTPHandler(deps routes.Dependencies) http.Handler {
-	return deliverymcp.NewAuthenticatedStreamableHTTPHandler(
-		func(ctx context.Context, authorization string) (*mcp.Server, error) {
-			token := strings.TrimSpace(strings.TrimPrefix(authorization, "Bearer "))
-			if token == "" {
-				return nil, deliverymcp.UnauthenticatedError()
-			}
-			authenticated, err := deps.AuthService.Authenticate(ctx, token)
-			if err != nil {
-				return nil, err
-			}
-			return newDeliveryMCPServer(authenticated.User.Id, deps)
-		},
-	)
+	return transporthttp.New(cfg, logger, deps)
 }
 
 func newDeliveryMCPServer(actorUserId string, deps routes.Dependencies) (*mcp.Server, error) {
@@ -110,8 +90,8 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	)
 	gatewayService := gatewayCore
 	applicationService := applicationsvc.New(stores.project, stores.application, stores.service)
-	dialogueService := dialoguesvc.New(stores.project, stores.dialogue, transactionRunner, cfg.LLM.MaxToolCallRounds, llmclient.New(cfg.LLM), deliverymcpclient.NewFactory(deliveryMCPEndpoint(cfg)))
-	return routes.Dependencies{
+
+	deps := routes.Dependencies{
 		Database:          database,
 		Authenticator:     security.New(logger, authService),
 		AuthService:       authService,
@@ -164,16 +144,19 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			stores.deployment,
 		),
 		DeploymentService: deploymentService,
-		DialogueService:   dialogueService,
 		GatewayService:    gatewayService,
 		TaskService:       taskService,
 		TurnstileVerifier: turnstile.NewVerifier(cfg.Turnstile),
 	}
-}
-
-func deliveryMCPEndpoint(cfg config.Config) string {
-	if publicUrl := strings.TrimRight(strings.TrimSpace(cfg.Server.PublicUrl), "/"); publicUrl != "" {
-		return publicUrl + "/mcp"
-	}
-	return fmt.Sprintf("http://127.0.0.1:%d/mcp", cfg.Server.Port)
+	deps.DialogueService = dialoguesvc.New(
+		stores.project,
+		stores.dialogue,
+		transactionRunner,
+		cfg.LLM.MaxToolCallRounds,
+		llmclient.New(cfg.LLM),
+		deliverymcpclient.NewFactory(func(actorUserId string) (*mcp.Server, error) {
+			return newDeliveryMCPServer(actorUserId, deps)
+		}),
+	)
+	return deps
 }

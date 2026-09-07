@@ -46,7 +46,7 @@ stdio 启动时从用户私有凭据存储读取 Bearer token，并用现有认�
 2. 实现浏览器授权码交接。
    - 在 auth application/HTTP 边界增加短时单次 MCP grant 的签发和交换能力，包含过期、哈希存储或等价的不可逆校验、一次性消费和用户绑定；不得在 URL、响应日志或错误中暴露 Bearer token。
    - 新增 Web `mcp-authorize` 路由与页面，校验 callback 仅为 loopback，调用 grant 接口后重定向。登录成功和 Google 登录完成后均恢复原始 redirect，而不是无条件跳转首页。
-   - 在 `.codex/config.toml` 将 `pomelo_delivery` 从 `uv ... pomelo-delivery-mcp` 切换为 Go `cmd/server mcp` 命令，保留注册名和合理的启动/工具超时。
+   - 在 `.codex/config.toml` 将统一命名的 MCP 从 Python `uv` 入口切换为 Go `cmd/server mcp` 命令，保留注册名和合理的启动/工具超时。
 
 3. 补齐 Go MCP 的模型可发现契约。
    - 重构 `internal/api/mcp/delivery` 的工具注册辅助函数，使其可保留类型安全的 proto 解码，同时为需要领域条件的工具附加自定义 JSON Schema、enum、description 和示例。
@@ -86,7 +86,7 @@ stdio 启动时从用户私有凭据存储读取 Bearer token，并用现有认�
 3. Dialogue tests覆盖：已有资源的差异纠偏、回读、同一 Service 的单次 deployment、wait 后的终态说明，以及轮次耗尽时保留部分 tool/result。
 4. 认证授权页和登录 redirect 的前端类型检查与针对性测试；人工验证一次浏览器登录、stdio MCP 重启复用凭据、token 失效重新认证，确认 stdout 不含日志或凭据。
 5. 执行项目约定的 `go fmt ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`，以及修改前端后的 `yarn --cwd web lint:fix`、`yarn --cwd web typecheck`。
-6. 删除后用 `rg` 确认活配置、AGENTS、guide 和 skill 不再引用 `mcp/`、`uv --directory mcp`、`pomelo-delivery-mcp` 或 `pomelo-pipeline-mcp`；archive 历史引用不作为失败条件。
+6. 删除后用 `rg` 确认活配置、AGENTS、guide 和 skill 不再引用已删除的 `mcp/` Python 项目、其 `uv` 启动入口或 Pipeline MCP 命令；archive 历史引用不作为失败条件。
 
 ## Assumptions and blockers
 

@@ -22,3 +22,13 @@ type AuthenticatedUser struct {
 	Roles       []string
 	Permissions []string
 }
+
+type MCPAccessTokenCreateInput struct {
+	Name          string
+	ExpiresInDays int32
+}
+
+type MCPAccessTokenCreated struct {
+	AccessToken model.MCPAccessToken
+	Token       string
+}

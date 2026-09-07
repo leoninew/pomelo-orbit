@@ -10,7 +10,12 @@ import (
 
 type Querier interface {
 	CountLoginHistory(ctx context.Context, arg CountLoginHistoryParams) (int64, error)
+	CreateMCPAccessToken(ctx context.Context, arg CreateMCPAccessTokenParams) error
+	DeleteMCPAccessToken(ctx context.Context, id string) error
 	ListLoginHistory(ctx context.Context, arg ListLoginHistoryParams) ([]LoginHistory, error)
+	ListMCPAccessTokens(ctx context.Context, userID string) ([]McpAccessToken, error)
+	MCPAccessTokenByHash(ctx context.Context, tokenHash string) (McpAccessToken, error)
+	MCPAccessTokenForUser(ctx context.Context, arg MCPAccessTokenForUserParams) (McpAccessToken, error)
 	SaveLoginHistory(ctx context.Context, arg SaveLoginHistoryParams) error
 }
 

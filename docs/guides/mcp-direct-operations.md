@@ -1,11 +1,11 @@
 # MCP 直接操作
-最后修改时间: 2026-08-23
+最后修改时间: 2026-09-07 13:31:14
 
 ## 命名与启动约定
 
-Codex 注册名为 `pomelo_delivery`，本地 stdio 入口为 `go run ./cmd/server mcp`，工具在客户端中显示为 `mcp__pomelo_delivery__orbit_*`。它直接构造绑定当前用户的 Go delivery MCP Core，工具调用不会回环到 Orbit HTTP API。Server 初始化和工具发现不会读取或验证本地凭据；首次实际 `tools/call` 时，缓存凭据缺失或失效才会打开配置的 Orbit 浏览器登录页。浏览器以短时一次性授权码回调本机 loopback，stdio 进程交换并将 bearer credential 保存到用户配置目录。不要复制浏览器 localStorage token，也不要使用已移除的 `pomelo_orbit` 注册名或 Python MCP 命令。
+Codex 注册名为 `pomelo-orbit-mcp`，本地 stdio 入口为 `go run ./cmd/server mcp`，工具在客户端中显示为 `mcp__pomelo-orbit-mcp__orbit_*`。它直接构造 Orbit Go delivery MCP Core，工具调用不会回环到 Orbit HTTP API，也不提供远程 `/mcp` 端点。先在已登录的 Orbit Web 控制台“系统管理 / 访问令牌”创建一个命名 PAT，并在创建窗口中复制一次。`initialize` 和 `tools/list` 不读取或验证凭据；每次实际 `tools/call` 都使用 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 调用同一 Auth Service 查找 PAT 摘要、校验未撤销/未过期及用户 enabled 状态，并把 session 固定到首次通过校验的用户。父进程通过项目 `.codex/config.toml` 的 `env_vars` 将变量传给 stdio 子进程；不要将 token 写入配置文件、浏览器 localStorage 或用户配置目录。PAT 默认不过期，也可创建为有限有效期；撤销、到期或替换后，更新父进程环境并重启 MCP session。stdio 仍需运行在可访问同一 Orbit 数据库、签名配置、Docker 和 workspace 的可信环境。不要使用已废弃的注册名、浏览器授权页面或 Python MCP 命令。
 
-`pomelo_delivery` 只执行用户明确要求的独立动作。调用结果为 `isError=true` 时，该调用失败；不要自动执行依赖它的后续动作。
+`pomelo-orbit-mcp` 只执行用户明确要求的独立动作。调用结果为 `isError=true` 时，该调用失败；不要自动执行依赖它的后续动作。
 
 对于带持久卷的状态服务，MCP Server instructions 和环境变量工具共同约束：Version 中由 Service 决定的环境值必须使用精确 `${KEY}` 占位，具体值只通过 `orbit_update_service_env` 保存；新 Service 的口令、令牌和密钥一次安全随机生成后跨重部署保持稳定且不在报告中暴露。数据库镜像的 bootstrap 环境变量只在空数据卷生效，因此修改 Service 值后重部署不会轮换既有数据库凭据；必须取得用户对原地轮换或重置卷的明确授权。
 

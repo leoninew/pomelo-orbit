@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
@@ -154,6 +153,55 @@ func (h Handler) ListLoginHistory(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &authv1.LoginHistoryPaginatedResp{Items: transportresponse.Ptrs(items), Total: int32(history.Total), Page: int32(history.Page), PerPage: int32(history.PerPage), Pages: int32(transportresponse.PageCount(history.Total, history.PerPage))})
 }
 
+func (h Handler) ListMCPAccessTokens(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	items, err := h.service.ListMCPAccessTokens(c.Request.Context(), current.Id)
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	response := make([]authv1.MCPAccessTokenResp, 0, len(items))
+	for _, item := range items {
+		response = append(response, mcpAccessTokenResponse(item))
+	}
+	transportresponse.ProtoJSON(c, http.StatusOK, &authv1.MCPAccessTokenListResp{Items: transportresponse.Ptrs(response)})
+}
+
+func (h Handler) CreateMCPAccessToken(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var req authv1.MCPAccessTokenCreateReq
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	created, err := h.service.CreateMCPAccessToken(c.Request.Context(), current.Id, authdto.MCPAccessTokenCreateInput{Name: req.Name, ExpiresInDays: req.ExpiresInDays})
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	accessToken := mcpAccessTokenResponse(created.AccessToken)
+	resp := authv1.MCPAccessTokenCreatedResp{AccessToken: &accessToken, Token: created.Token}
+	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
+}
+
+func (h Handler) RevokeMCPAccessToken(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	if err := h.service.RevokeMCPAccessToken(c.Request.Context(), current.Id, c.Param("token_id")); err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (h Handler) GoogleOAuth(c *gin.Context) {
 	transportresponse.WriteStatusError(c, http.StatusServiceUnavailable, "Google OAuth is not configured")
 }
@@ -165,47 +213,6 @@ func (h Handler) GoogleCallback(c *gin.Context) {
 		return
 	}
 	transportresponse.WriteStatusError(c, http.StatusServiceUnavailable, "Google OAuth is not configured")
-}
-
-// CreateMCPGrant exchanges the authenticated browser session for a short-lived
-// code that can only be delivered to the local stdio process callback.
-func (h Handler) CreateMCPGrant(c *gin.Context) {
-	user, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	var request struct {
-		CallbackURL string `json:"callback_url"`
-		State       string `json:"state"`
-	}
-	if err := binding.DecodeJSON(c, &request); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
-		return
-	}
-	grant, err := h.service.IssueMCPGrant(c.Request.Context(), user, authdto.MCPGrantInput{CallbackURL: request.CallbackURL, State: request.State})
-	if err != nil {
-		transportresponse.WriteError(c, err)
-		return
-	}
-	c.JSON(http.StatusCreated, map[string]string{"code": grant.Code, "expires_at": grant.ExpiresAt.Format(time.RFC3339)})
-}
-
-// ExchangeMCPGrant deliberately accepts no bearer token. Possession of the
-// high-entropy, one-time code is the authentication proof for loopback stdio.
-func (h Handler) ExchangeMCPGrant(c *gin.Context) {
-	var request struct {
-		Code string `json:"code"`
-	}
-	if err := binding.DecodeJSON(c, &request); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
-		return
-	}
-	token, err := h.service.ExchangeMCPGrant(c.Request.Context(), request.Code)
-	if err != nil {
-		transportresponse.WriteError(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, map[string]string{"access_token": token, "token_type": "bearer"})
 }
 
 func clientIP(c *gin.Context) string {

@@ -82,6 +82,26 @@ func (s fakeAuthStore) ListLoginHistory(context.Context, int, int, string) (repo
 	panic("unexpected call")
 }
 
+func (s fakeAuthStore) CreateMCPAccessToken(context.Context, model.MCPAccessToken) error {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) ListMCPAccessTokens(context.Context, string) ([]model.MCPAccessToken, error) {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) MCPAccessTokenByHash(context.Context, string) (model.MCPAccessToken, error) {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) MCPAccessTokenForUser(context.Context, string, string) (model.MCPAccessToken, error) {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) DeleteMCPAccessToken(context.Context, string) error {
+	panic("unexpected call")
+}
+
 func (s fakeAuthStore) UserRolesByUserIds(context.Context, []string) (map[string][]model.Role, error) {
 	panic("unexpected call")
 }

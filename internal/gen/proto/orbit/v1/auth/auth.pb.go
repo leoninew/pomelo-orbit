@@ -637,6 +637,222 @@ func (x *TurnstileConfigResp) GetSiteKey() string {
 	return ""
 }
 
+type MCPAccessTokenResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	ExpiresAt     *string                `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3,oneof" json:"expires_at,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MCPAccessTokenResp) Reset() {
+	*x = MCPAccessTokenResp{}
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MCPAccessTokenResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MCPAccessTokenResp) ProtoMessage() {}
+
+func (x *MCPAccessTokenResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MCPAccessTokenResp.ProtoReflect.Descriptor instead.
+func (*MCPAccessTokenResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *MCPAccessTokenResp) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MCPAccessTokenResp) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *MCPAccessTokenResp) GetExpiresAt() string {
+	if x != nil && x.ExpiresAt != nil {
+		return *x.ExpiresAt
+	}
+	return ""
+}
+
+func (x *MCPAccessTokenResp) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type MCPAccessTokenCreateReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	ExpiresInDays int32                  `protobuf:"varint,2,opt,name=expires_in_days,json=expiresInDays,proto3" json:"expires_in_days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MCPAccessTokenCreateReq) Reset() {
+	*x = MCPAccessTokenCreateReq{}
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MCPAccessTokenCreateReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MCPAccessTokenCreateReq) ProtoMessage() {}
+
+func (x *MCPAccessTokenCreateReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MCPAccessTokenCreateReq.ProtoReflect.Descriptor instead.
+func (*MCPAccessTokenCreateReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *MCPAccessTokenCreateReq) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *MCPAccessTokenCreateReq) GetExpiresInDays() int32 {
+	if x != nil {
+		return x.ExpiresInDays
+	}
+	return 0
+}
+
+type MCPAccessTokenCreatedResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   *MCPAccessTokenResp    `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MCPAccessTokenCreatedResp) Reset() {
+	*x = MCPAccessTokenCreatedResp{}
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MCPAccessTokenCreatedResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MCPAccessTokenCreatedResp) ProtoMessage() {}
+
+func (x *MCPAccessTokenCreatedResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MCPAccessTokenCreatedResp.ProtoReflect.Descriptor instead.
+func (*MCPAccessTokenCreatedResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *MCPAccessTokenCreatedResp) GetAccessToken() *MCPAccessTokenResp {
+	if x != nil {
+		return x.AccessToken
+	}
+	return nil
+}
+
+func (x *MCPAccessTokenCreatedResp) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type MCPAccessTokenListResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*MCPAccessTokenResp  `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MCPAccessTokenListResp) Reset() {
+	*x = MCPAccessTokenListResp{}
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MCPAccessTokenListResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MCPAccessTokenListResp) ProtoMessage() {}
+
+func (x *MCPAccessTokenListResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MCPAccessTokenListResp.ProtoReflect.Descriptor instead.
+func (*MCPAccessTokenListResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *MCPAccessTokenListResp) GetItems() []*MCPAccessTokenResp {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 var File_orbit_v1_auth_auth_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_auth_auth_proto_rawDesc = "" +
@@ -692,7 +908,23 @@ const file_orbit_v1_auth_auth_proto_rawDesc = "" +
 	"\x04code\x18\x01 \x01(\tR\x04code\"J\n" +
 	"\x13TurnstileConfigResp\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x19\n" +
-	"\bsite_key\x18\x02 \x01(\tR\asiteKeyB\xb7\x01\n" +
+	"\bsite_key\x18\x02 \x01(\tR\asiteKey\"\x8a\x01\n" +
+	"\x12MCPAccessTokenResp\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\"\n" +
+	"\n" +
+	"expires_at\x18\x03 \x01(\tH\x00R\texpiresAt\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x04 \x01(\tR\tcreatedAtB\r\n" +
+	"\v_expires_at\"U\n" +
+	"\x17MCPAccessTokenCreateReq\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12&\n" +
+	"\x0fexpires_in_days\x18\x02 \x01(\x05R\rexpiresInDays\"w\n" +
+	"\x19MCPAccessTokenCreatedResp\x12D\n" +
+	"\faccess_token\x18\x01 \x01(\v2!.orbit.v1.auth.MCPAccessTokenRespR\vaccessToken\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"Q\n" +
+	"\x16MCPAccessTokenListResp\x127\n" +
+	"\x05items\x18\x01 \x03(\v2!.orbit.v1.auth.MCPAccessTokenRespR\x05itemsB\xb7\x01\n" +
 	"\x11com.orbit.v1.authB\tAuthProtoP\x01ZAgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/auth\xa2\x02\x03OVA\xaa\x02\rOrbit.V1.Auth\xca\x02\rOrbit\\V1\\Auth\xe2\x02\x19Orbit\\V1\\Auth\\GPBMetadata\xea\x02\x0fOrbit::V1::Authb\x06proto3"
 
 var (
@@ -707,7 +939,7 @@ func file_orbit_v1_auth_auth_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_auth_auth_proto_rawDescData
 }
 
-var file_orbit_v1_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_orbit_v1_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_orbit_v1_auth_auth_proto_goTypes = []any{
 	(*LoginHistoryResp)(nil),          // 0: orbit.v1.auth.LoginHistoryResp
 	(*LoginHistoryPaginatedResp)(nil), // 1: orbit.v1.auth.LoginHistoryPaginatedResp
@@ -719,14 +951,20 @@ var file_orbit_v1_auth_auth_proto_goTypes = []any{
 	(*PasswordChangeReq)(nil),         // 7: orbit.v1.auth.PasswordChangeReq
 	(*GoogleCallbackReq)(nil),         // 8: orbit.v1.auth.GoogleCallbackReq
 	(*TurnstileConfigResp)(nil),       // 9: orbit.v1.auth.TurnstileConfigResp
+	(*MCPAccessTokenResp)(nil),        // 10: orbit.v1.auth.MCPAccessTokenResp
+	(*MCPAccessTokenCreateReq)(nil),   // 11: orbit.v1.auth.MCPAccessTokenCreateReq
+	(*MCPAccessTokenCreatedResp)(nil), // 12: orbit.v1.auth.MCPAccessTokenCreatedResp
+	(*MCPAccessTokenListResp)(nil),    // 13: orbit.v1.auth.MCPAccessTokenListResp
 }
 var file_orbit_v1_auth_auth_proto_depIdxs = []int32{
-	0, // 0: orbit.v1.auth.LoginHistoryPaginatedResp.items:type_name -> orbit.v1.auth.LoginHistoryResp
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0,  // 0: orbit.v1.auth.LoginHistoryPaginatedResp.items:type_name -> orbit.v1.auth.LoginHistoryResp
+	10, // 1: orbit.v1.auth.MCPAccessTokenCreatedResp.access_token:type_name -> orbit.v1.auth.MCPAccessTokenResp
+	10, // 2: orbit.v1.auth.MCPAccessTokenListResp.items:type_name -> orbit.v1.auth.MCPAccessTokenResp
+	3,  // [3:3] is the sub-list for method output_type
+	3,  // [3:3] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_auth_auth_proto_init() }
@@ -736,13 +974,14 @@ func file_orbit_v1_auth_auth_proto_init() {
 	}
 	file_orbit_v1_auth_auth_proto_msgTypes[0].OneofWrappers = []any{}
 	file_orbit_v1_auth_auth_proto_msgTypes[3].OneofWrappers = []any{}
+	file_orbit_v1_auth_auth_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_auth_auth_proto_rawDesc), len(file_orbit_v1_auth_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

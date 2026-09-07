@@ -1,6 +1,6 @@
 # 客户端与云端调用机制
 
-最后修改时间: 2026-08-25
+最后修改时间: 2026-09-07 13:31:14
 
 ## 业务定位
 
@@ -13,7 +13,7 @@ Pomelo Orbit 是一个自托管的 CI/CD 与平台管理控制面。用户通过
 ```mermaid
 flowchart LR
     A[浏览器 Web 客户端] -->|HTTPS REST API| B[Orbit 服务端]
-    C[AI / MCP 客户端] -->|本地 stdio 或远程 MCP| B
+    C[AI / MCP 客户端] -->|本地 stdio MCP| B
 
     B --> D[认证与 RBAC]
     B --> E[业务服务层]
@@ -66,59 +66,31 @@ sequenceDiagram
 
 ### 本地 stdio 模式
 
-本地 AI 客户端启动 Orbit MCP 进程，通过标准输入输出调用工具。首次实际调用时，MCP 进程打开浏览器完成授权：浏览器使用已有登录态申请一次性授权码，MCP 进程通过本机 loopback 回调接收授权码并交换 Bearer Token，随后将凭据保存到本地配置目录。
+本地 AI 客户端启动 Orbit MCP 进程，并只通过标准输入输出调用工具。客户端初始化和工具发现没有认证交互或副作用。stdio 进程从 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 读取启动时的 MCP PAT；每次 `tools/call` 都按其 SHA-256 摘要查找 token，并校验 token 未撤销、未到期、用户存在且 enabled，首次成功后还会固定 session actor，后续凭据不可切换到另一用户。token 缺失、撤销、过期、篡改或用户禁用时，工具返回安全的 MCP error，业务用例不会执行。PAT 不可作为 Web API 的 Bearer JWT 使用。
 
-本地 stdio 工具直接复用 Orbit 的 Go 业务服务，不再回环调用 Orbit HTTP API；但仍使用相同的权限和业务规则。
+本地 stdio 工具直接复用 Orbit 的 Go 业务服务、项目成员检查和领域授权规则，不回环 Orbit HTTP API，也不打开浏览器、监听 loopback、交换授权码或缓存凭据。运行该进程的主机必须能够访问目标 Orbit 的同一数据库、签名配置、Docker 和 workspace；这不是远程 MCP bridge。
 
 ```mermaid
 sequenceDiagram
     participant C as AI/MCP 客户端
     participant S as 本地 MCP 进程
-    participant B as 浏览器
-    participant O as Orbit 服务端
-    participant D as Docker
+    participant A as Auth Service
+    participant D as Orbit 业务服务 / Docker
 
-    C->>S: 启动 stdio MCP Server
-    C->>S: 第一次实际调用工具
-    S->>B: 打开授权页面
-    B->>O: 使用浏览器登录态申请授权码
-    O-->>B: 返回一次性授权码
-    B-->>S: loopback 回调传递授权码
-    S->>O: 交换 Bearer Token
-    O-->>S: 返回访问令牌
-    C->>S: 调用 orbit_deploy 等工具
-    S->>D: 通过部署用例创建任务或执行运行时操作
-    S-->>C: 返回结构化结果
+    C->>S: initialize / tools/list
+    S-->>C: 返回 MCP 能力（无认证交互）
+    C->>S: tools/call
+    S->>A: 校验启动时显式 token
+    A-->>S: 当前用户
+    S->>D: 以固定 actor 调用业务用例
+    D-->>S: 结构化结果
+    S-->>C: 返回结果或安全 tool error
 ```
 
-### 远程 MCP 模式
-
-远程客户端连接 Orbit 的 `/mcp` 端点，使用 Bearer Token 建立 Streamable HTTP 会话。服务端在连接时校验身份，并创建绑定当前用户的 MCP 工具集合。
-
-```mermaid
-sequenceDiagram
-    participant C as 远程 MCP 客户端
-    participant M as Orbit /mcp
-    participant A as 认证服务
-    participant S as 业务服务
-    participant Q as Worker
-
-    C->>M: Streamable HTTP + Bearer Token
-    M->>A: 校验 Token 和用户身份
-    A-->>M: 当前用户
-    C->>M: 调用 orbit_deploy
-    M->>S: 执行业务用例
-    S->>Q: 创建 Deployment 任务
-    M-->>C: 返回部署 ID 和操作摘要
-    C->>M: 调用 orbit_wait_deployment
-    M-->>C: 返回终态和日志摘要
-```
-
-MCP 工具覆盖应用、版本、服务、Gateway、Route、Preview、Deploy、Stop、Restart、日志和运行时验证。客户端不能直接执行任意 Docker 命令，只能通过受管工具访问部署能力。
-
+父进程更新 token 后必须重启 MCP session；运行中的 session 不热读环境、不续期，也不会自动撤销仍有效的旧 token。
 ## 对话式部署
 
-部署对话页面由 Orbit 服务端连接 LLM，并把受管 MCP 工具作为模型工具提供。浏览器只调用对话 API，不直接连接 LLM、MCP 或 Docker。
+部署对话页面由 Orbit 服务端连接 LLM，并把受管 MCP 工具作为模型工具提供。浏览器只调用对话 API，不直接连接 LLM、MCP 或 Docker。HTTP 入站认证得到的当前用户会为每个 turn 创建固定 actor 的内存 MCP session；不会把浏览器 `Authorization` 转发给 `/mcp`，模型输入也无法覆盖该 actor。
 
 ```mermaid
 flowchart LR

@@ -110,21 +110,18 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	}
 }
 
-func TestValidateMCPClientRejectsAPIURLPath(t *testing.T) {
-	cfg := Config{
-		MCP: MCPConfig{
-			APIUrl:      "http://127.0.0.1:9021/api",
-			WebUrl:      "http://localhost:9020",
-			AuthTimeout: time.Minute,
-		},
-	}
+func TestLoadConfigReadsMCPAccessTokenFromEnvironment(t *testing.T) {
+	setupDefaultConfig(t)
+	t.Setenv("POMELO_ORBIT_MCP__ACCESS_TOKEN", "test-access-token")
 
-	err := cfg.ValidateMCPClient()
-	if err == nil || !strings.Contains(err.Error(), "mcp.api_url must not include path") {
-		t.Fatalf("ValidateMCPClient() error = %v", err)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.MCP.AccessToken != "test-access-token" {
+		t.Fatalf("MCP access token = %q", cfg.MCP.AccessToken)
 	}
 }
-
 func TestLoadConfigReadsLLMMaxToolCallRoundsFromEnvironment(t *testing.T) {
 	setupDefaultConfig(t)
 	t.Setenv("POMELO_ORBIT_LLM__MAX_TOOL_CALL_ROUNDS", "48")

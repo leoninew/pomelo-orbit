@@ -22,18 +22,6 @@ const router = createRouter({
     },
 
     {
-      path: '/mcp-authorize',
-      name: 'MCPAuthorize',
-      component: () => import('@/views/auth/MCPAuthorize.vue'),
-      meta: { title: 'MCP 授权' },
-    },
-    {
-      path: '/mcp/callback',
-      name: 'MCPCallback',
-      component: () => import('@/views/auth/MCPCallback.vue'),
-      meta: { title: 'MCP 授权', public: true, standalone: true },
-    },
-    {
       path: '/403',
       name: 'Forbidden',
       component: () => import('@/views/auth/ForbiddenPage.vue'),
@@ -269,6 +257,12 @@ const router = createRouter({
       name: 'LoginHistory',
       component: () => import('@/views/auth/LoginHistoryPage.vue'),
       meta: { title: '登录历史', menuKey: 'loginhistory', permission: PERMISSIONS.LOGIN_READ },
+    },
+    {
+      path: '/mcp-access-token',
+      name: 'MCPAccessTokens',
+      component: () => import('@/views/auth/MCPAccessTokensPage.vue'),
+      meta: { title: '访问令牌', menuKey: 'mcpAccessTokens' },
     },
     {
       path: '/settings',

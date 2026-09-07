@@ -15,14 +15,14 @@ Pomelo Orbit 的领域规则、资源状态、Deployment 创建和异步执行�
 
 Web API 和 HTTP handler 正常：前端将 `VersionComponentMountsUpdateReq` 直接作为 body 发送，实际请求为 `{ "mounts": [ ... ] }`，后端 JSON 解码没有额外嵌套。
 
-问题仅在 Python MCP 的公开 tool schema。`mcp/src/delivery-mcp/src/pomelo_delivery_mcp/version_specs.py` 中的 `VersionComponentMountsUpdate` 定义了 `mounts: list[LogicalMount]`，同时 `orbit_update_version_component_mounts` 又将该 model 作为名为 `mounts` 的 tool 参数接收。因此 MCP 调用参数必须是 `{ "mounts": { "mounts": [ ... ] } }`；工具调用 `mounts.model_dump()` 后，实际发往 Web 的 body 仍是正确的一层 `{ "mounts": [ ... ] }`。
+问题仅在 Python MCP 的公开 tool schema。`mcp/src/delivery-mcp/src/pomelo_orbit_mcp/version_specs.py` 中的 `VersionComponentMountsUpdate` 定义了 `mounts: list[LogicalMount]`，同时 `orbit_update_version_component_mounts` 又将该 model 作为名为 `mounts` 的 tool 参数接收。因此 MCP 调用参数必须是 `{ "mounts": { "mounts": [ ... ] } }`；工具调用 `mounts.model_dump()` 后，实际发往 Web 的 body 仍是正确的一层 `{ "mounts": [ ... ] }`。
 
 这不是 Web API 缺陷，也不要求变更 HTTP request DTO。Go 改写须以该 Python 包装器行为为兼容性例外：公开 MCP schema 改为扁平集合参数，application DTO 保持既有单层集合字段。`env`、`endpoints`、`dependencies` 等同类工具按相同原则处理。
 
 ## Goal
 
 1. 使用官方 `github.com/modelcontextprotocol/go-sdk` 实现 Go 版持续部署 MCP Server。
-2. 迁移当前 Python `pomelo_delivery` 的工具表、工具名称、结果语义和结构化错误契约，保留 `pomelo_delivery` 注册名与 `orbit_*` 工具前缀；同名集合更新参数按本需求的扁平 schema 修正。
+2. 迁移当前 Python `pomelo-orbit-mcp` 的工具表、工具名称、结果语义和结构化错误契约，保留 `pomelo-orbit-mcp` 注册名与 `orbit_*` 工具前缀；同名集合更新参数按本需求的扁平 schema 修正。
 3. 每个业务工具直接调用对应的 `internal/application` usecase；禁止 Go MCP 通过本项目 `/api/*` HTTP 路由回环调用业务能力。
 4. 提供供项目内 HTTP 服务以 Go MCP Client 集成的 Streamable HTTP MCP transport；每个 MCP session 使用发起网页请求的当前用户。
 5. 保持持续部署领域行为不变：Application、Version、Component、Service、Gateway 与 Deployment 仍由现有 Go 用例和异步 worker 管理。
@@ -33,7 +33,7 @@ Web API 和 HTTP handler 正常：前端将 `VersionComponentMountsUpdateReq` �
 
 1. 不改变持续部署领域模型、HTTP API 对外契约、数据库 schema、Deployment worker 或 Docker Compose 生命周期规则。
 2. 不迁移独立的 `pipeline-mcp`，也不混合 CI 与 CD 工具。
-3. 不新增未在 Python `pomelo_delivery` 中存在的 MCP 工具或隐式编排流程。
+3. 不新增未在 Python `pomelo-orbit-mcp` 中存在的 MCP 工具或隐式编排流程。
 4. 不让 MCP tool handler 直接访问 repository、SQLC、数据库连接或绕过 application usecase。
 5. 不在本阶段为无网页的 Codex、Claude Code stdio MCP 设计或实现认证方案。
 6. 对话历史暂由页面随请求提交，不在本阶段新增持久化会话、消息表或跨设备历史同步。
@@ -51,7 +51,7 @@ Web API 和 HTTP handler 正常：前端将 `VersionComponentMountsUpdateReq` �
 ## Acceptance
 
 1. Go MCP 使用 `github.com/modelcontextprotocol/go-sdk`，认证后的 Streamable HTTP 能完成 `tools/list` 和 `tools/call`。
-2. 当前 Python `pomelo_delivery` 所注册的 `orbit_*`、`runtime_*` 和 `verify_deployment` 全部保留为等价的 Go 工具；不得以删减运行态或验证能力作为迁移方案。
+2. 当前 Python `pomelo-orbit-mcp` 所注册的 `orbit_*`、`runtime_*` 和 `verify_deployment` 全部保留为等价的 Go 工具；不得以删减运行态或验证能力作为迁移方案。
 3. 保留工具的名称、默认值、主要响应字段、领域终态语义和结构化错误类别与 Python 版兼容；Version Component 和 Service Environment 的同名集合更新工具使用扁平 MCP 参数，不保留 Python 的重复外层包装。`orbit_update_version_component_mounts` 必须接受 `{ "mounts": [ ... ] }`，并映射为 application DTO 的 `{ Mounts: [...] }`。
 4. 所有 Application、Version、Component、Service、Gateway 和 Deployment 工具通过 `internal/application` usecase 执行业务操作；代码和测试中不存在对本项目 `/api/*` 的 HTTP 回环调用。
 5. 运行态与验证工具不扩大其现有受管目标和 Docker 操作范围。
@@ -72,7 +72,7 @@ Web API 和 HTTP handler 正常：前端将 `VersionComponentMountsUpdateReq` �
 2. Go MCP 以现有 Go application usecase 为唯一业务入口；不通过本项目 HTTP API 回环。
 3. 当前阶段只提供网页登录后的 Streamable HTTP transport；HTTP 服务通过官方 Go MCP Client 集成 HTTP transport，不经过本项目 `/api/*` 路由，并透传当前用户的 `Authorization`。
 4. 选择官方 Go MCP SDK，避免同时引入多套 MCP SDK。
-5. Python 与 Go MCP 的工具契约在过渡期间持续对照；无网页 stdio 认证方案明确后，再决定 `pomelo_delivery` 的注册切换和 Python 实现删除。
+5. Python 与 Go MCP 的工具契约在过渡期间持续对照；无网页 stdio 认证方案明确后，再决定 `pomelo-orbit-mcp` 的注册切换和 Python 实现删除。
 6. `runtime_*` 与 `verify_deployment` 完整迁移。现有 application usecase 未覆盖的 Docker 运行态能力，先补充为最小 application usecase，再由 MCP tool 调用；不得把该逻辑直接放入 tool handler。
 7. 保留 `orbit_provision_gateway` 的完整高层语义；其组合流程应迁移为 Gateway application usecase，再由 MCP tool 调用。
 8. 现有 HTTP server 在 `/mcp` 挂载 Streamable HTTP handler；handler 用当前请求 Bearer token 创建绑定该用户的 MCP Core。`cmd/server mcp` 在无网页认证方案确定前不暴露。
@@ -85,7 +85,7 @@ Web API 和 HTTP handler 正常：前端将 `VersionComponentMountsUpdateReq` �
 
 1. Python MCP 包含 Docker 运行态与验证逻辑，完整迁移将要求补充 application usecase。若直接将 Docker 代码放进 MCP tool handler，将违反本需求的分层目标。
 2. 工具的默认参数、字段投影和错误语义存在兼容性风险；仅按工具名称迁移不足以保证 Codex 和后续 Go Agent 的行为一致。
-3. 迁移期间同时存在两个实现时，必须避免它们使用同一 `pomelo_delivery` 注册名造成调用方不确定性。
+3. 迁移期间同时存在两个实现时，必须避免它们使用同一 `pomelo-orbit-mcp` 注册名造成调用方不确定性。
 4. Web 对话服务的 MCP client 必须透传当前请求的 `Authorization`；漏传时 `/mcp` 返回未认证，不能以默认用户继续调用。
 5. LLM 端点、模型或密钥未配置时，对话 API 应明确返回服务不可用；不得在代码或示例配置中写入实际密钥。
 

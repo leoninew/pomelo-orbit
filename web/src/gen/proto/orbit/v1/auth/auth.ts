@@ -69,3 +69,24 @@ export interface TurnstileConfigResp {
   enabled: boolean;
   site_key: string;
 }
+
+export interface MCPAccessTokenResp {
+  id: string;
+  name: string;
+  expires_at?: string | undefined;
+  created_at: string;
+}
+
+export interface MCPAccessTokenCreateReq {
+  name: string;
+  expires_in_days: number;
+}
+
+export interface MCPAccessTokenCreatedResp {
+  access_token: MCPAccessTokenResp | undefined;
+  token: string;
+}
+
+export interface MCPAccessTokenListResp {
+  items: MCPAccessTokenResp[];
+}

@@ -136,6 +136,15 @@ type LoginHistory struct {
 	Success   int64          `db:"success"`
 }
 
+type McpAccessToken struct {
+	ID        string       `db:"id"`
+	UserID    string       `db:"user_id"`
+	Name      string       `db:"name"`
+	TokenHash string       `db:"token_hash"`
+	ExpiresAt sql.NullTime `db:"expires_at"`
+	CreatedAt time.Time    `db:"created_at"`
+}
+
 type Permission struct {
 	ID          string         `db:"id"`
 	Code        string         `db:"code"`

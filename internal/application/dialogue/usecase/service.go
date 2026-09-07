@@ -19,8 +19,8 @@ import (
 type Service interface {
 	ListConversations(context.Context, string, string) ([]dialoguedto.Conversation, error)
 	Conversation(context.Context, string, string) (dialoguedto.ConversationDetail, error)
-	CompleteTurn(context.Context, string, string, dialoguedto.TurnInput) (dialoguedto.TurnResult, error)
-	CompleteTurnWithProgress(context.Context, string, string, dialoguedto.TurnInput, func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error)
+	CompleteTurn(context.Context, string, dialoguedto.TurnInput) (dialoguedto.TurnResult, error)
+	CompleteTurnWithProgress(context.Context, string, dialoguedto.TurnInput, func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error)
 	DeleteConversation(context.Context, string, string) error
 }
 
@@ -68,12 +68,12 @@ func (s service) Conversation(ctx context.Context, userId, conversationId string
 	return result, nil
 }
 
-func (s service) CompleteTurn(ctx context.Context, userId, authorization string, input dialoguedto.TurnInput) (dialoguedto.TurnResult, error) {
-	return s.completeTurn(ctx, userId, authorization, input, nil)
+func (s service) CompleteTurn(ctx context.Context, userId string, input dialoguedto.TurnInput) (dialoguedto.TurnResult, error) {
+	return s.completeTurn(ctx, userId, input, nil)
 }
 
-func (s service) CompleteTurnWithProgress(ctx context.Context, userId, authorization string, input dialoguedto.TurnInput, progress func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error) {
-	return s.completeTurn(ctx, userId, authorization, input, progress)
+func (s service) CompleteTurnWithProgress(ctx context.Context, userId string, input dialoguedto.TurnInput, progress func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error) {
+	return s.completeTurn(ctx, userId, input, progress)
 }
 
 func (s service) DeleteConversation(ctx context.Context, userId, conversationId string) error {
@@ -87,7 +87,7 @@ func (s service) DeleteConversation(ctx context.Context, userId, conversationId 
 	return nil
 }
 
-func (s service) completeTurn(ctx context.Context, userId, authorization string, input dialoguedto.TurnInput, progress func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error) {
+func (s service) completeTurn(ctx context.Context, userId string, input dialoguedto.TurnInput, progress func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error) {
 	input.ProjectId = strings.TrimSpace(input.ProjectId)
 	input.ConversationId = strings.TrimSpace(input.ConversationId)
 	if input.ProjectId == "" {
@@ -134,7 +134,7 @@ func (s service) completeTurn(ctx context.Context, userId, authorization string,
 		)
 	}
 
-	mcpClient, err := s.mcpFactory.Connect(ctx, authorization)
+	mcpClient, err := s.mcpFactory.Connect(ctx, userId)
 	if err != nil {
 		return dialoguedto.TurnResult{}, apperror.Wrap(apperror.KindUnavailable, "Deployment dialogue MCP is unavailable", err)
 	}

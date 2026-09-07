@@ -7,10 +7,8 @@ import (
 	"net/http"
 
 	deliverymcp "github.com/leoninew/pomelo-orbit/internal/api/mcp/delivery"
-	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	database "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
-	mcpinfra "github.com/leoninew/pomelo-orbit/internal/infrastructure/mcp"
 	runtimepath "github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local"
 	"github.com/leoninew/pomelo-orbit/internal/queue/worker"
 	taskrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/task"
@@ -64,9 +62,6 @@ func (a App) RunWorker(ctx context.Context) error {
 // RunMCP starts the local stdio transport. It reuses the same application
 // service composition as HTTP but never proxies MCP calls through /api.
 func (a App) RunMCP(ctx context.Context) error {
-	if err := a.cfg.ValidateMCPClient(); err != nil {
-		return err
-	}
 	if err := a.validateContainerWorkspaceMounts(ctx); err != nil {
 		return err
 	}
@@ -79,40 +74,11 @@ func (a App) RunMCP(ctx context.Context) error {
 	taskRepo := taskrepo.NewRepository(database)
 	deps := newHTTPServerDependencies(a.cfg, a.logger, database, taskRepo)
 
+	accessToken := a.cfg.MCP.AccessToken
 	server, err := deliverymcp.NewServer(deliverymcp.Dependencies{
-		ActorAuthorizer: func(ctx context.Context) (string, error) {
-			tokenStore, err := mcpinfra.NewDefaultTokenStore()
+		ActorAuthenticator: func(ctx context.Context) (string, error) {
+			authenticated, err := deps.AuthService.AuthenticateMCPAccessToken(ctx, accessToken)
 			if err != nil {
-				return "", err
-			}
-			token, err := tokenStore.Load()
-			if err != nil {
-				return "", err
-			}
-			authenticated, err := deps.AuthService.Authenticate(ctx, token)
-			if err == nil {
-				return authenticated.User.Id, nil
-			}
-			if !apperror.IsKind(err, apperror.KindUnauthorized) {
-				return "", err
-			}
-			authorizer, err := mcpinfra.NewBrowserAuthorizer(mcpinfra.AuthorizerConfig{
-				APIURL:  a.cfg.MCPAPIUrl(),
-				WebURL:  a.cfg.MCP.WebUrl,
-				Timeout: a.cfg.MCP.AuthTimeout,
-			})
-			if err != nil {
-				return "", err
-			}
-			token, err = authorizer.Authorize(ctx)
-			if err != nil {
-				return "", err
-			}
-			authenticated, err = deps.AuthService.Authenticate(ctx, token)
-			if err != nil {
-				return "", err
-			}
-			if err := tokenStore.Save(token); err != nil {
 				return "", err
 			}
 			return authenticated.User.Id, nil

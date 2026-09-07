@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求依据
 
-本计划实施已接受的 [Go 持续部署 MCP 改写](../requirement/20260805-go-delivery-mcp.md)。目标是将 Python `pomelo_delivery` 迁移为 Go MCP，同时保持 stdio 与 Streamable HTTP 两种标准 transport、完整工具兼容性，以及所有业务 tool 直接调用 application usecase 的分层边界。
+本计划实施已接受的 [Go 持续部署 MCP 改写](../requirement/20260805-go-delivery-mcp.md)。目标是将 Python 持续部署 MCP 迁移为 Go 实现，并统一对外名称为 `pomelo-orbit-mcp`，同时保持 stdio 与 Streamable HTTP 两种标准 transport、完整工具兼容性，以及所有业务 tool 直接调用 application usecase 的分层边界。
 
 ## 实施架构
 
@@ -149,7 +149,7 @@ Go MCP 对 Version Component 的 `env`、`endpoints`、`mounts`、`dependencies`
    - 为 MCP Core 建立 in-memory transport 测试，覆盖 `tools/list`、所有工具 schema、关键读取/写入映射和错误投影；断言同名集合更新工具只暴露一层集合参数。
    - 为 Streamable HTTP 建立 `httptest` 覆盖，证明其工具表与 stdio Core 相同；为 `cmd/server mcp` 建立 stdio 启动测试。
    - 使用 Python 实现作为过渡基线，生成或维护 tool schema/响应 fixture，并以不同命令运行 Python/Go MCP 做对照。需要 Docker 的运行态测试沿用现有 docker marker 或隔离环境。
-   - 将 `.codex/config.toml` 的 `pomelo_delivery` 由 Python `uv` 命令切换为 Go `mcp` 子命令；更新 MCP 指南、README、AGENTS 与 Claude Code 配置示例。
+   - 将 `.codex/config.toml` 的 `pomelo-orbit-mcp` 由 Python `uv` 命令切换为 Go `mcp` 子命令；更新 MCP 指南、README、AGENTS 与 Claude Code 配置示例。
    - 确认 Go MCP 的注册与契约后，删除 `mcp/src/delivery-mcp/` 的 Python 实现及其 Python 专属工具链；保留 `mcp/src/pipeline-mcp/`。
 
 ## 预期文件
@@ -178,7 +178,7 @@ Go MCP 对 Version Component 的 `env`、`endpoints`、`mounts`、`dependencies`
 ## 风险与回滚
 
 1. Python 与 Go 的 schema 或结果字段不一致时，保持 Python MCP 注册不切换，修正 Go fixture 对照后重试。
-2. Gateway 编排和 runtime/verification 新 usecase 仅移动现有行为；发现行为偏差时回退到 Python `pomelo_delivery` 注册，不改变既有 HTTP API、Deployment worker 或持久化数据。
+2. Gateway 编排和 runtime/verification 新 usecase 仅移动现有行为；发现行为偏差时回退到 Python MCP 实现，不改变既有 HTTP API、Deployment worker 或持久化数据。
 3. 删除 Python 实现只发生在无网页 MCP 认证方案、Go transport 契约和隔离端到端检查均完成之后；切换前保留 Python 源码和独立启动命令以支持回退。
 
 ## User review notes

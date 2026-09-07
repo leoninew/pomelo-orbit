@@ -1140,7 +1140,6 @@ export default {
     invalidViewMode: '无效的视图模式',
     variableSnapshot: '变量快照',
     artifacts: '制品',
-    artifactsAfterCompletion: '运行完成后展示',
     log: '日志',
     logLoading: '加载日志中...',
     logWaiting: '等待日志输出...',

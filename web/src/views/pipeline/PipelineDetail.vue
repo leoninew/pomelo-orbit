@@ -7,7 +7,7 @@
           v-if="pipeline && !isTemplate"
           class="app-button-primary h-9 px-3"
           :disabled="saving"
-          @click="runPipeline"
+          @click="openRunDialog"
         >
           <Play class="size-4" />
           运行
@@ -336,6 +336,45 @@
       </template>
     </AppDialog>
 
+    <AppDialog v-model:open="runOpen" title="运行流水线">
+      <AppLoadingState v-if="runLoading" size="compact" />
+      <form v-else class="space-y-4" @submit.prevent="runPipeline">
+        <div class="space-y-1.5">
+          <label for="pipeline-run-repository-ref" class="app-field-label block">
+            分支或标签
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="pipeline-run-repository-ref"
+            v-model="runForm.repositoryRef"
+            class="app-input"
+            :class="runFieldError ? 'app-input-error' : ''"
+            :aria-describedby="runFieldError ? 'pipeline-run-repository-ref-error' : undefined"
+            :aria-invalid="Boolean(runFieldError)"
+            @input="clearRunFieldError"
+          />
+          <p
+            v-if="runFieldError"
+            id="pipeline-run-repository-ref-error"
+            class="app-field-error"
+            role="alert"
+          >
+            {{ runFieldError }}
+          </p>
+        </div>
+        <p v-if="runLoadError" class="app-field-error" role="alert">{{ runLoadError }}</p>
+        <p v-if="runError" class="app-field-error" role="alert">{{ runError }}</p>
+      </form>
+      <template #footer>
+        <AppDialogActions
+          :busy="saving"
+          :confirm-disabled="runLoading || Boolean(runLoadError)"
+          @cancel="runOpen = false"
+          @confirm="runPipeline"
+        />
+      </template>
+    </AppDialog>
+
     <AppDialog
       v-model:open="variableOpen"
       :title="
@@ -405,6 +444,7 @@
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
+  import { repositoryApi } from '@/api/repository/repository';
   import { useProjectStore } from '@/stores/project';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
@@ -448,6 +488,8 @@
   const templateUpdateOpen = ref(false);
   const templateUpdateLoading = ref(false);
   const templateUpdatePreview = ref<PipelineStageTemplateUpdatePreviewResp>();
+  const runOpen = ref(false);
+  const runLoading = ref(false);
   const variableOpen = ref(false);
   const deleteOpen = ref(false);
   const editingStage = ref<PipelineStageNodeResp>();
@@ -460,6 +502,9 @@
   const stageError = ref('');
   const variableError = ref('');
   const deleteError = ref('');
+  const runFieldError = ref('');
+  const runLoadError = ref('');
+  const runError = ref('');
   const infoForm = reactive({ name: '', description: '', applicationId: '' });
   const stageForm = reactive({
     source_template_stage_id: '',
@@ -468,6 +513,7 @@
     sort_order: 0,
     description: '',
   });
+  const runForm = reactive({ repositoryRef: '' });
   const variableForm = reactive({
     name: '',
     value: '',
@@ -546,6 +592,10 @@
   }
   function displayVariableValue(value: unknown) {
     return value == null ? '' : String(value);
+  }
+
+  function clearRunFieldError() {
+    runFieldError.value = '';
   }
 
   async function fetchPipeline() {
@@ -934,15 +984,50 @@
     }
   }
 
+  let runDialogRequest = 0;
+
+  async function openRunDialog() {
+    const repositoryId = pipeline.value?.repository_id;
+    if (!repositoryId) return;
+
+    const request = ++runDialogRequest;
+    runForm.repositoryRef = '';
+    runFieldError.value = '';
+    runLoadError.value = '';
+    runError.value = '';
+    runLoading.value = true;
+    runOpen.value = true;
+    try {
+      const repository = await repositoryApi.get(repositoryId);
+      if (request !== runDialogRequest) return;
+      const repositoryRef = repository.variable_declarations.find(
+        (variable) => variable.name === 'repository_ref'
+      );
+      runForm.repositoryRef = displayVariableValue(repositoryRef?.value ?? repositoryRef?.default);
+    } catch (reason) {
+      if (request === runDialogRequest)
+        runLoadError.value = reason instanceof Error ? reason.message : '加载仓库分支失败';
+    } finally {
+      if (request === runDialogRequest) runLoading.value = false;
+    }
+  }
+
   async function runPipeline() {
+    const repositoryRef = runForm.repositoryRef.trim();
+    runFieldError.value = repositoryRef ? '' : '请输入分支或标签';
+    runError.value = '';
+    if (runLoading.value || runLoadError.value || runFieldError.value) return;
     try {
       await executeSave(async () => {
-        const run = await pipelineRunApi.trigger(pipelineId.value);
+        const run = await pipelineRunApi.trigger(pipelineId.value, {
+          repository_ref: repositoryRef,
+        });
+        runOpen.value = false;
         toast.success('流水线已触发');
         await router.push(`/pipeline-run/${run.id}`);
       });
     } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : '触发流水线失败');
+      runError.value = reason instanceof Error ? reason.message : '触发流水线失败';
     }
   }
 
@@ -965,6 +1050,14 @@
 
   watch(pipelineId, () => {
     void fetchPipeline();
+  });
+  watch(runOpen, (open) => {
+    if (open) return;
+    runDialogRequest += 1;
+    runForm.repositoryRef = '';
+    runFieldError.value = '';
+    runLoadError.value = '';
+    runError.value = '';
   });
   onMounted(fetchPipeline);
 </script>

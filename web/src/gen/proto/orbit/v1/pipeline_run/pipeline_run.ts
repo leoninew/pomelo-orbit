@@ -12,6 +12,7 @@ import type { PipelineStageRunResp } from "./pipeline_stage_run";
 export const protobufPackage = "orbit.v1.pipeline_run";
 
 export interface PipelineRunTriggerReq {
+  repository_ref: string;
 }
 
 export interface PipelineRunRetryReq {

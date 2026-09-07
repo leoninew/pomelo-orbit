@@ -1164,7 +1164,6 @@ export default {
     invalidViewMode: 'Invalid view mode',
     variableSnapshot: 'Variable Snapshot',
     artifacts: 'Artifacts',
-    artifactsAfterCompletion: 'Shown after run completion',
     log: 'Log',
     logLoading: 'Loading logs...',
     logWaiting: 'Waiting for log output...',

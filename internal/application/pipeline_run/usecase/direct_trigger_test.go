@@ -26,7 +26,7 @@ func TestTriggerPipelineRejectsMissingVariableBeforeCreatingSnapshot(t *testing.
 		pipelineRun: directTriggerPipelineRunStore{},
 	}}
 
-	_, err := service.TriggerPipeline(context.Background(), "user-1", pipeline.Id)
+	_, err := service.TriggerPipeline(context.Background(), "user-1", pipeline.Id, "release")
 	if err == nil || !strings.Contains(err.Error(), "Missing variable value: IMAGE_TAG") {
 		t.Fatalf("TriggerPipeline error = %v, want missing-variable validation", err)
 	}

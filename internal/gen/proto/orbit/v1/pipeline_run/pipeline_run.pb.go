@@ -24,6 +24,7 @@ const (
 
 type PipelineRunTriggerReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	RepositoryRef string                 `protobuf:"bytes,1,opt,name=repository_ref,json=repositoryRef,proto3" json:"repository_ref,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -56,6 +57,13 @@ func (x *PipelineRunTriggerReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use PipelineRunTriggerReq.ProtoReflect.Descriptor instead.
 func (*PipelineRunTriggerReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *PipelineRunTriggerReq) GetRepositoryRef() string {
+	if x != nil {
+		return x.RepositoryRef
+	}
+	return ""
 }
 
 type PipelineRunRetryReq struct {
@@ -622,8 +630,9 @@ var File_orbit_v1_pipeline_run_pipeline_run_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_pipeline_run_pipeline_run_proto_rawDesc = "" +
 	"\n" +
-	"(orbit/v1/pipeline_run/pipeline_run.proto\x12\x15orbit.v1.pipeline_run\x1a\x1corbit/v1/common/common.proto\x1a$orbit/v1/pipeline_run/artifact.proto\x1a.orbit/v1/pipeline_run/pipeline_stage_run.proto\"\x17\n" +
-	"\x15PipelineRunTriggerReq\"\x15\n" +
+	"(orbit/v1/pipeline_run/pipeline_run.proto\x12\x15orbit.v1.pipeline_run\x1a\x1corbit/v1/common/common.proto\x1a$orbit/v1/pipeline_run/artifact.proto\x1a.orbit/v1/pipeline_run/pipeline_stage_run.proto\">\n" +
+	"\x15PipelineRunTriggerReq\x12%\n" +
+	"\x0erepository_ref\x18\x01 \x01(\tR\rrepositoryRef\"\x15\n" +
 	"\x13PipelineRunRetryReq\"\x16\n" +
 	"\x14PipelineRunCancelReq\"\xf8\x02\n" +
 	"\x1dPipelineRunVersionBindingResp\x12%\n" +

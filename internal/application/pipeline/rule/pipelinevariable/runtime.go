@@ -127,7 +127,7 @@ func RuntimeVariableDeclarations(repo model.Repository, pipeline model.Pipeline,
 		return unmatchedPipelineStages[i].StageId < unmatchedPipelineStages[j].StageId
 	})
 	result = append(result, unmatchedPipelineStages...)
-	result = append(result, model.VariableDeclaration{Name: "repository_ref", Description: PipelineBuiltinVariableSpecs()["repository_ref"], Default: repo.DefaultBranch, Source: "runtime", Editable: false})
+	result = append(result, model.VariableDeclaration{Name: "repository_ref", Description: PipelineBuiltinVariableSpecs()["repository_ref"], Default: repo.DefaultBranch, Source: "runtime", Editable: true})
 	for _, name := range SortedPipelineBuiltinVariableNames() {
 		if name == "repository_ref" {
 			continue

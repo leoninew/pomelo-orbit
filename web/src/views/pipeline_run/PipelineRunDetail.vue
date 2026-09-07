@@ -168,16 +168,14 @@
         <!-- List View -->
         <div v-else-if="stagesView === 'list'">
           <div class="overflow-x-auto">
-            <table class="app-data-table min-w-[960px]">
+            <table class="app-data-table min-w-[800px]">
               <thead>
                 <tr>
                   <th>#</th>
                   <th>{{ t('pipelineRun.stage') }}</th>
                   <th>{{ t('pipelineRun.fields.version') }}</th>
                   <th>{{ t('pipelineRun.dependency') }}</th>
-                  <th>{{ t('pipelineRun.artifact') }}</th>
                   <th>{{ t('common.status') }}</th>
-                  <th>{{ t('pipelineRun.fields.errorMessage') }}</th>
                   <th>{{ t('common.operation') }}</th>
                 </tr>
               </thead>
@@ -195,25 +193,14 @@
                       </AppBadge>
                     </div>
                   </td>
-                  <td class="text-foreground">
-                    {{ stage.artifacts?.length }}
-                  </td>
                   <td>
                     <AppBadge
                       variant="pill"
                       :tone="stageStatusTone(stageRunMap[stage.id]?.status ?? 'waiting_to_run')"
+                      :title="stageRunMap[stage.id]?.error_message || undefined"
                     >
                       {{ stageRunMap[stage.id]?.status ?? 'waiting_to_run' }}
                     </AppBadge>
-                  </td>
-                  <td class="max-w-xs">
-                    <span
-                      v-if="stageRunMap[stage.id]?.error_message"
-                      class="block truncate text-destructive"
-                      :title="stageRunMap[stage.id]?.error_message"
-                    >
-                      {{ stageRunMap[stage.id]?.error_message }}
-                    </span>
                   </td>
                   <td>
                     <button
@@ -262,11 +249,6 @@
           />
         </template>
         <AppLoadingState v-if="artifactsLoading" />
-        <AppEmptyState
-          v-else-if="!isComplete(run.status)"
-          :message="t('pipelineRun.artifactsAfterCompletion')"
-          size="compact"
-        />
         <AppEmptyState v-else-if="filteredArtifacts.length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
           <table class="app-data-table min-w-[640px]">
@@ -619,12 +601,18 @@
     }
   }
 
-  async function fetchArtifacts() {
+  async function fetchArtifacts(silent = false) {
+    const fetch = async () => {
+      const resp = await pipelineRunApi.listArtifacts(runId.value);
+      artifacts.value = resp.items;
+    };
+
     try {
-      await executeArtifacts(async () => {
-        const resp = await pipelineRunApi.listArtifacts(runId.value);
-        artifacts.value = resp.items;
-      });
+      if (silent) {
+        await fetch();
+      } else {
+        await executeArtifacts(fetch);
+      }
     } catch {
       // Artifact load failure does not block the main flow
     }
@@ -712,9 +700,9 @@
     while (!signal.aborted) {
       try {
         run.value = await pipelineRunApi.get(runId.value);
+        await fetchArtifacts(true);
         if (isComplete(run.value.status)) {
           isPolling.value = false;
-          void fetchArtifacts();
           break;
         }
       } catch {
@@ -749,9 +737,8 @@
     if (!currentRun) {
       return;
     }
-    if (isComplete(currentRun.status)) {
-      await fetchArtifacts();
-    } else {
+    await fetchArtifacts();
+    if (!isComplete(currentRun.status)) {
       startPolling();
     }
   }

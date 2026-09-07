@@ -21,7 +21,7 @@ func (h Handler) TriggerPipeline(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.TriggerPipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"))
+	detail, err := h.service.TriggerPipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"), req.RepositoryRef)
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return

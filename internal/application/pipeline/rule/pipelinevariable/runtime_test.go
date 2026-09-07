@@ -91,7 +91,7 @@ func TestResolveRuntimeVariablesKeepsAllDeclarationsAndAppliesPersistedPrecedenc
 		}
 		byScope[key] = declaration
 	}
-	if byScope["IMAGE_TAG\x00"].Source != "repository" || byScope["UNUSED\x00"].Source != "pipeline" || byScope["repository_ref\x00"].Source != "runtime" || byScope["repository_ref\x00"].Editable || byScope["runtime_datetime\x00"].Editable {
+	if byScope["IMAGE_TAG\x00"].Source != "repository" || byScope["UNUSED\x00"].Source != "pipeline" || byScope["repository_ref\x00"].Source != "runtime" || !byScope["repository_ref\x00"].Editable || byScope["runtime_datetime\x00"].Editable {
 		t.Fatalf("declarations=%#v", byScope)
 	}
 }

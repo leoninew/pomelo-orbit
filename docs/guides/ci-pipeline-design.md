@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-09-06 15:12:00
+最后修改时间: 2026-09-07
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -49,7 +49,7 @@ Repository 的 `value/default` 是全局覆盖；Application Pipeline 可以保�
 
 ## Snapshot、Run 与 Version
 
-只有 `kind=application` 的 Pipeline 会在运行前按 Pipeline 版本创建或复用 Snapshot。Snapshot 冻结完整阶段定义、创建时可获得的 Repository/Pipeline/Stage 变量声明、来源 Template、Repository，以及可选的 Application 和 Version 策略，并保存 runtime/system 的声明元数据和阶段默认值来源。Snapshot 的变量声明仅用于历史展示与追溯；变量在每次 Run 和 Retry 时由当前 Repository、当前 Pipeline 配置及冻结阶段定义解析。全局有效值和带 `stage_id` 的 Stage 有效值分别保存到 Run，阶段默认值保留在变量元数据并由冻结 Stage 文本独立渲染，因此不存在多阶段同名变量被压缩为一个 Run 全局值的情况。手动运行没有变量预览或表单，`repository_ref` 使用绑定 Repository 的默认分支。Template 有自己的 `version` 用于来源追溯，但不拥有 Snapshot。
+只有 `kind=application` 的 Pipeline 会在运行前按 Pipeline 版本创建或复用 Snapshot。Snapshot 冻结完整阶段定义、创建时可获得的 Repository/Pipeline/Stage 变量声明、来源 Template、Repository，以及可选的 Application 和 Version 策略，并保存 runtime/system 的声明元数据和阶段默认值来源。Snapshot 的变量声明仅用于历史展示与追溯；变量在每次 Run 和 Retry 时由当前 Repository、当前 Pipeline 配置及冻结阶段定义解析。全局有效值和带 `stage_id` 的 Stage 有效值分别保存到 Run，阶段默认值保留在变量元数据并由冻结 Stage 文本独立渲染，因此不存在多阶段同名变量被压缩为一个 Run 全局值的情况。手动运行会打开分支或标签弹窗，默认读取绑定 Repository 的 `repository_ref`，并允许用户在触发前修改。Template 有自己的 `version` 用于来源追溯，但不拥有 Snapshot。
 
 ```text
 应用流水线

@@ -179,7 +179,7 @@ func (s stores) CompletePipelineRunVersionBinding(ctx context.Context, runID, ve
 	return s.pipelineRun.CompletePipelineRunVersionBinding(ctx, runID, versionID, label)
 }
 
-func (s Service) TriggerPipeline(ctx context.Context, userId, pipelineId string) (pipelinerundto.PipelineRunDetail, error) {
+func (s Service) TriggerPipeline(ctx context.Context, userId, pipelineId, repositoryRef string) (pipelinerundto.PipelineRunDetail, error) {
 	pipeline, err := s.pipelineForUser(ctx, userId, pipelineId)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
@@ -187,7 +187,11 @@ func (s Service) TriggerPipeline(ctx context.Context, userId, pipelineId string)
 	if pipeline.Kind != model.PipelineKindApplication {
 		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "template pipelines cannot run")
 	}
-	return s.createPipelineRun(ctx, pipeline, pipelinevariable.RuntimeVariableOverrides{}, nil)
+	overrides := pipelinevariable.RuntimeVariableOverrides{}
+	if ref := strings.TrimSpace(repositoryRef); ref != "" {
+		overrides.Global = map[string]string{"repository_ref": ref}
+	}
+	return s.createPipelineRun(ctx, pipeline, overrides, nil)
 }
 
 func (s Service) RetryPipelineRun(ctx context.Context, userId, runId string) (pipelinerundto.PipelineRunDetail, error) {

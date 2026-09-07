@@ -73,6 +73,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
+  import { effectiveVariableValue } from '@/utils/variableDeclaration';
   import { getSourceTone, isVariableEditable } from '@/utils/variableSource';
 
   const props = withDefaults(
@@ -106,7 +107,7 @@
   }
 
   function effectiveValue(decl: VariableDeclarationResp) {
-    return decl.value ?? decl.default;
+    return effectiveVariableValue(decl);
   }
 
   function displayValue(value: unknown) {

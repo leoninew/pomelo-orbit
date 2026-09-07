@@ -452,8 +452,10 @@ func TestSQLiteSeedContainsExportedPipelineLibrary(t *testing.T) {
 		want  int
 	}{
 		{"SELECT version FROM pipeline_stage WHERE id = '01KRCWNJVA1DM02TJXZ4STJD01'", 2},
-		{"SELECT version FROM pipeline WHERE id = '01KZG83K2MXG08EJ6G48SG38B3'", 10},
+		{"SELECT version FROM pipeline_stage WHERE id = '01KRCWNJVA1DM02TJXZ4STJD06'", 3},
+		{"SELECT version FROM pipeline WHERE id = '01KZG83K2MXG08EJ6G48SG38B3'", 11},
 		{"SELECT source_template_stage_version FROM pipeline_stage_reference WHERE id = '01KZGBG9NT6NCK8AT6H6ENV874'", 2},
+		{"SELECT source_template_stage_version FROM pipeline_stage_reference WHERE id = '01KZGBGDK1G249681EVBDA9035'", 3},
 	} {
 		var got int
 		if err := database.QueryRow(check.query).Scan(&got); err != nil {

@@ -6,7 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	pipelinedto "github.com/leoninew/pomelo-orbit/internal/application/pipeline/dto"
 	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 func TestClonePipelineStageReferencesRemapsDependenciesAndKeepsSourceSnapshots(t *testing.T) {
@@ -232,6 +234,64 @@ func TestValidatePipelineVariableScopesRejectsUnknownStage(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "stage_id does not exist: missing-stage") {
 		t.Fatalf("expected unknown stage scope error, got %v", err)
 	}
+}
+
+func TestUpdatePipelineRejectsInvalidNestedVariableBeforePersisting(t *testing.T) {
+	projectID := "project-1"
+	stored := model.Pipeline{
+		Id:                   "pipeline-1",
+		ProjectId:            &projectID,
+		Kind:                 model.PipelineKindTemplate,
+		Name:                 "Build template",
+		VariableDeclarations: `[{"name":"IMAGE","value":"base"}]`,
+		Version:              3,
+	}
+	pipelineStore := &nestedVariableUpdatePipelineStore{pipeline: stored}
+	service := Service{store: stores{
+		project:  nestedVariableUpdateProjectStore{},
+		pipeline: pipelineStore,
+	}}
+	variables := []map[string]any{{"name": "IMAGE", "value": "{{ MISSING }}"}}
+	_, err := service.UpdatePipeline(context.Background(), "user-1", stored.Id, pipelinedto.PipelineUpdateInput{VariableDeclarations: &variables})
+	if err == nil || !strings.Contains(err.Error(), "MISSING") {
+		t.Fatalf("expected unknown nested variable error, got %v", err)
+	}
+	if pipelineStore.updated {
+		t.Fatal("invalid variables must not be persisted")
+	}
+	if pipelineStore.pipeline.Version != 3 || pipelineStore.pipeline.VariableDeclarations != stored.VariableDeclarations {
+		t.Fatalf("stored pipeline changed: %#v", pipelineStore.pipeline)
+	}
+}
+
+type nestedVariableUpdateProjectStore struct{}
+
+func (nestedVariableUpdateProjectStore) Project(context.Context, string) (model.Project, error) {
+	return model.Project{Id: "project-1"}, nil
+}
+
+func (nestedVariableUpdateProjectStore) IsProjectMember(context.Context, string, string) (bool, error) {
+	return true, nil
+}
+
+type nestedVariableUpdatePipelineStore struct {
+	repository.PipelineStore
+	pipeline model.Pipeline
+	updated  bool
+}
+
+func (s *nestedVariableUpdatePipelineStore) Pipeline(context.Context, string) (model.Pipeline, error) {
+	return s.pipeline, nil
+}
+
+func (*nestedVariableUpdatePipelineStore) TemplatePipelineStageReferences(context.Context, string) ([]model.PipelineStageReference, error) {
+	return []model.PipelineStageReference{}, nil
+}
+
+func (s *nestedVariableUpdatePipelineStore) UpdatePipeline(_ context.Context, pipeline model.Pipeline) error {
+	s.updated = true
+	s.pipeline = pipeline
+	return nil
 }
 
 func TestSourceCommitArtifactForStageUsesTransitiveDependency(t *testing.T) {

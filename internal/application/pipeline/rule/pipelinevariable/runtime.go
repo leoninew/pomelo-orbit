@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -13,8 +12,6 @@ import (
 	templatex "github.com/leoninew/pomelo-orbit/internal/common/template"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
-
-var pipelineVariableNamePattern = regexp.MustCompile("^[A-Za-z][A-Za-z0-9_]*$")
 
 type RuntimeVariableOverrides struct {
 	Global map[string]string
@@ -153,6 +150,9 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 	if err != nil {
 		return nil, RuntimeVariables{}, err
 	}
+	if err := ValidateNestedVariableValues(&repo, pipeline, stages); err != nil {
+		return nil, RuntimeVariables{}, err
+	}
 	knownNames := map[string]struct{}{}
 	knownStages := map[string]struct{}{}
 	for _, declaration := range declarations {
@@ -187,6 +187,9 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 	if err != nil {
 		return nil, RuntimeVariables{}, err
 	}
+	if err := validateNestedVariableDefaults(repositoryVariables); err != nil {
+		return nil, RuntimeVariables{}, err
+	}
 	pipelineVariables, err := PipelineVariables(pipeline.VariableDeclarations)
 	if err != nil {
 		return nil, RuntimeVariables{}, err
@@ -207,6 +210,9 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 	for _, raw := range pipelineVariables {
 		declaration, err := variableDeclarationFromMap(raw, "pipeline")
 		if err != nil {
+			return nil, RuntimeVariables{}, err
+		}
+		if err := validateNestedVariableDefault(declaration); err != nil {
 			return nil, RuntimeVariables{}, err
 		}
 		if declaration.StageId == "" {
@@ -242,14 +248,18 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 	if value, ok := overrides.Global["repository_ref"]; ok && HasRuntimeValue(value) {
 		runtime.Global["repository_ref"] = value
 	}
+	rawGlobal := maps.Clone(runtime.Global)
+	systemRoots := runtimeSystemRoots(rawGlobal)
+	runtime.Global, err = resolveNestedRuntimeValues(rawGlobal, systemRoots)
+	if err != nil {
+		return nil, RuntimeVariables{}, err
+	}
 
 	for _, stage := range stages {
 		stageId := stageScopeId(stage)
 		stageValues := make(map[string]any)
-		for name, value := range runtime.Global {
-			if name == "repository_code" || name == "repository_url" || name == "runtime_datetime" || name == "repository_ref" {
-				stageValues[name] = value
-			}
+		for name, value := range systemRoots {
+			stageValues[name] = value
 		}
 		for name := range knownNames {
 			if value, ok := overrides.Stage[stageId][name]; ok && HasRuntimeValue(value) {
@@ -273,12 +283,16 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 				}
 			}
 			if _, exists := stageValues[name]; !exists {
-				if value, ok := runtime.Global[name]; ok {
+				if value, ok := rawGlobal[name]; ok {
 					stageValues[name] = value
 				}
 			}
 		}
-		runtime.Stage[stageId] = stageValues
+		resolved, err := resolveNestedRuntimeValues(stageValues, systemRoots)
+		if err != nil {
+			return nil, RuntimeVariables{}, apperror.New(apperror.KindValidation, fmt.Sprintf("Stage %s variables: %v", stage.Name, err))
+		}
+		runtime.Stage[stageId] = resolved
 	}
 	if err := validateStageTemplates(stages, runtime); err != nil {
 		return nil, RuntimeVariables{}, err
@@ -410,7 +424,7 @@ func extractStageVariableDeclarations(stages []model.StageDefinition) ([]model.V
 }
 
 func collectStageVariableReferences(stage model.StageDefinition, text, field string, found map[string]*model.VariableDeclaration) error {
-	references, err := extractStageVariableReferences(text)
+	references, err := templatex.ExtractVariableReferences(text)
 	if err != nil {
 		return apperror.New(apperror.KindValidation, fmt.Sprintf("Stage %s %s: %v", stage.Name, field, err))
 	}
@@ -454,7 +468,7 @@ func validateStageTemplates(stages []model.StageDefinition, runtime RuntimeVaria
 }
 
 func validateStageTemplateField(stage model.StageDefinition, field, text string, values map[string]any) error {
-	if err := ValidateStageVariableExpressions(text); err != nil {
+	if err := templatex.ValidateVariableExpressions(text); err != nil {
 		return apperror.New(apperror.KindValidation, fmt.Sprintf("Stage %s %s: %v", stage.Name, field, err))
 	}
 	if _, err := templatex.Render(text, values); err != nil {
@@ -511,6 +525,212 @@ func EffectiveVariableValue(declaration model.VariableDeclaration) (any, bool) {
 		return declaration.Default, true
 	}
 	return nil, false
+}
+
+func validateNestedVariableDefaults(declarations []model.VariableDeclaration) error {
+	for _, declaration := range declarations {
+		if err := validateNestedVariableDefault(declaration); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ValidateNestedVariableValues validates configured variable values in the
+// same global and Stage visibility scopes used at runtime. It intentionally
+// does not render Stage fields or apply their occurrence defaults.
+func ValidateNestedVariableValues(repo *model.Repository, pipeline model.Pipeline, stages []model.StageDefinition) error {
+	repositoryVariables := []model.VariableDeclaration{}
+	if repo != nil {
+		var err error
+		repositoryVariables, err = repositoryVariableDeclarations(repo.VariableOverrides)
+		if err != nil {
+			return err
+		}
+	}
+	if err := validateNestedVariableDefaults(repositoryVariables); err != nil {
+		return err
+	}
+
+	pipelineVariables, err := PipelineVariables(pipeline.VariableDeclarations)
+	if err != nil {
+		return err
+	}
+	if pipeline.Kind == model.PipelineKindApplication {
+		pipelineVariables, err = NormalizePipelineVariables(pipelineVariables)
+		if err != nil {
+			return err
+		}
+		if err := ValidatePipelineVariableScopes(pipelineVariables, stages); err != nil {
+			return err
+		}
+	}
+
+	repositoryByName := make(map[string]model.VariableDeclaration, len(repositoryVariables))
+	for _, declaration := range repositoryVariables {
+		repositoryByName[declaration.Name] = declaration
+	}
+	pipelineGlobals := make(map[string]model.VariableDeclaration)
+	pipelineStages := make(map[string]model.VariableDeclaration)
+	globalCandidates := make([]model.VariableDeclaration, 0, len(repositoryVariables)+len(pipelineVariables))
+	for _, raw := range pipelineVariables {
+		declaration, err := variableDeclarationFromMap(raw, "pipeline")
+		if err != nil {
+			return err
+		}
+		if err := validateNestedVariableDefault(declaration); err != nil {
+			return err
+		}
+		if declaration.StageId == "" {
+			pipelineGlobals[declaration.Name] = declaration
+			globalCandidates = append(globalCandidates, declaration)
+			continue
+		}
+		pipelineStages[declarationScopeKey(declaration.Name, declaration.StageId)] = declaration
+	}
+
+	globalValues := make(map[string]any, len(repositoryByName)+len(pipelineGlobals))
+	for name, declaration := range repositoryByName {
+		if value, ok := EffectiveVariableValue(declaration); ok {
+			globalValues[name] = value
+		}
+	}
+	for name, declaration := range pipelineGlobals {
+		if _, exists := globalValues[name]; exists {
+			continue
+		}
+		if value, ok := EffectiveVariableValue(declaration); ok {
+			globalValues[name] = value
+		}
+	}
+	globalCandidates = append(globalCandidates, repositoryVariables...)
+	if err := validateNestedValueCandidates(globalValues, globalCandidates, validationSystemRoots()); err != nil {
+		return err
+	}
+	if _, err := resolveNestedRuntimeValues(globalValues, validationSystemRoots()); err != nil {
+		return apperror.New(apperror.KindValidation, fmt.Sprintf("Pipeline variables: %v", err))
+	}
+
+	knownNames := make(map[string]struct{}, len(repositoryByName)+len(pipelineGlobals)+len(pipelineStages))
+	for name := range repositoryByName {
+		knownNames[name] = struct{}{}
+	}
+	for name := range pipelineGlobals {
+		knownNames[name] = struct{}{}
+	}
+	for _, declaration := range pipelineStages {
+		knownNames[declaration.Name] = struct{}{}
+	}
+	for _, stage := range stages {
+		stageId := stageScopeId(stage)
+		values := make(map[string]any, len(knownNames))
+		stageCandidates := make([]model.VariableDeclaration, 0)
+		for name := range knownNames {
+			if declaration, exists := repositoryByName[name]; exists {
+				if value, ok := EffectiveVariableValue(declaration); ok {
+					values[name] = value
+					continue
+				}
+			}
+			if declaration, exists := pipelineStages[declarationScopeKey(name, stageId)]; exists {
+				if value, ok := EffectiveVariableValue(declaration); ok {
+					values[name] = value
+					continue
+				}
+			}
+			if declaration, exists := pipelineGlobals[name]; exists {
+				if value, ok := EffectiveVariableValue(declaration); ok {
+					values[name] = value
+				}
+			}
+		}
+		for _, declaration := range pipelineStages {
+			if declaration.StageId == stageId {
+				stageCandidates = append(stageCandidates, declaration)
+			}
+		}
+		if err := validateNestedValueCandidates(values, stageCandidates, validationSystemRoots()); err != nil {
+			return apperror.New(apperror.KindValidation, fmt.Sprintf("Stage %s variables: %v", stage.Name, err))
+		}
+		if _, err := resolveNestedRuntimeValues(values, validationSystemRoots()); err != nil {
+			return apperror.New(apperror.KindValidation, fmt.Sprintf("Stage %s variables: %v", stage.Name, err))
+		}
+	}
+	return nil
+}
+
+func validateNestedVariableDefault(declaration model.VariableDeclaration) error {
+	value, ok := declaration.Default.(string)
+	if !ok {
+		return nil
+	}
+	if err := templatex.ValidateLiteralValue(value); err != nil {
+		return apperror.New(apperror.KindValidation, fmt.Sprintf("Variable %s default: %v", declaration.Name, err))
+	}
+	return nil
+}
+
+func validateNestedValueCandidates(values map[string]any, declarations []model.VariableDeclaration, roots map[string]any) error {
+	for _, declaration := range declarations {
+		value, ok := declaration.Value.(string)
+		if !ok || !HasRuntimeValue(value) {
+			continue
+		}
+		candidateValues := maps.Clone(values)
+		candidateValues[declaration.Name] = value
+		if _, err := resolveNestedRuntimeValues(candidateValues, roots); err != nil {
+			return apperror.New(apperror.KindValidation, fmt.Sprintf("Variable %s value: %v", declaration.Name, err))
+		}
+	}
+	return nil
+}
+
+func runtimeSystemRoots(values map[string]any) map[string]any {
+	return map[string]any{
+		"repository_code":  values["repository_code"],
+		"repository_url":   values["repository_url"],
+		"repository_ref":   values["repository_ref"],
+		"runtime_datetime": values["runtime_datetime"],
+	}
+}
+
+func validationSystemRoots() map[string]any {
+	return map[string]any{
+		"repository_code":  "",
+		"repository_url":   "",
+		"repository_ref":   "",
+		"runtime_datetime": "",
+	}
+}
+
+func resolveNestedRuntimeValues(values map[string]any, roots map[string]any) (map[string]any, error) {
+	result := make(map[string]any, len(values))
+	templates := make(map[string]string, len(values))
+	stringRoots := make(map[string]string, len(values)+len(roots))
+	for name, value := range roots {
+		result[name] = value
+		stringRoots[name] = fmt.Sprint(value)
+	}
+	for name, value := range values {
+		if _, isRoot := roots[name]; isRoot {
+			continue
+		}
+		text, isString := value.(string)
+		if !isString {
+			result[name] = value
+			stringRoots[name] = fmt.Sprint(value)
+			continue
+		}
+		templates[name] = text
+	}
+	resolved, err := templatex.ResolveNestedValues(templates, stringRoots)
+	if err != nil {
+		return nil, apperror.New(apperror.KindValidation, err.Error())
+	}
+	for name, value := range resolved {
+		result[name] = value
+	}
+	return result, nil
 }
 
 func MarshalRuntimeVariableSnapshot(runtime RuntimeVariables, declarations []model.VariableDeclaration) (string, error) {
@@ -617,7 +837,7 @@ func NormalizePipelineVariables(variables []map[string]any) ([]map[string]any, e
 		if name == "" {
 			return nil, apperror.New(apperror.KindValidation, "Pipeline variable name is required")
 		}
-		if !pipelineVariableNamePattern.MatchString(name) {
+		if !templatex.IsVariableName(name) {
 			return nil, apperror.New(apperror.KindValidation, "Invalid pipeline variable name: "+name)
 		}
 		if IsPipelineBuiltinVariable(name) {

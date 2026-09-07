@@ -701,7 +701,7 @@ func validateTemplatePipelineConfiguration(pipeline model.Pipeline, references [
 	if err := validatePipelineDAG(definitions); err != nil {
 		return apperror.New(apperror.KindValidation, err.Error())
 	}
-	return nil
+	return pipelinevariable.ValidateNestedVariableValues(nil, pipeline, definitions)
 }
 
 func (s Service) pipelineStageNodes(ctx context.Context, pipeline model.Pipeline) ([]pipelinedto.PipelineStageNodeDetail, []model.PipelineStage, error) {

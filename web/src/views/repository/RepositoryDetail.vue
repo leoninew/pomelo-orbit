@@ -354,7 +354,10 @@
     VariableDeclarationResp,
   } from '@/gen/proto/orbit/v1/common/common';
   import { formatTime } from '@/utils/time';
-  import { toVariableDeclarationRequest } from '@/utils/variableDeclaration';
+  import {
+    effectiveVariableValue,
+    toVariableDeclarationRequest,
+  } from '@/utils/variableDeclaration';
   import {
     repositoryFormFeedback,
     type RepositoryFormErrors,
@@ -620,7 +623,7 @@
     editingVariableName.value = saved.name;
     Object.assign(variableForm, {
       name: saved.name,
-      value: normalizeValue(saved.value ?? saved.default),
+      value: normalizeValue(effectiveVariableValue(variable)),
       description: saved.description ?? '',
       secret: saved.secret,
     });

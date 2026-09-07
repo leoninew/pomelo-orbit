@@ -8,6 +8,15 @@ type VariableDeclarationRequestSource = Pick<
   'name' | 'description' | 'default' | 'value' | 'secret' | 'source' | 'editable' | 'stage_id'
 >;
 
+type VariableValueSource = Pick<VariableDeclarationResp, 'default' | 'value'>;
+
+export function effectiveVariableValue(variable: VariableValueSource) {
+  if (typeof variable.value === 'string' && variable.value.trim() === '') {
+    return variable.default;
+  }
+  return variable.value ?? variable.default;
+}
+
 export function toVariableDeclarationRequest(
   variable: VariableDeclarationRequestSource
 ): VariableDeclarationReq {

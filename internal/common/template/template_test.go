@@ -1,6 +1,7 @@
 package templatex
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -130,5 +131,88 @@ func TestRenderUnknownFilterReturnsError(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "nginx") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestExtractVariableReferences(t *testing.T) {
+	references, err := ExtractVariableReferences("cd {{ working_dir | default: \"frontend|admin\" }}\necho {{ IMAGE_TAG }}\necho {{ name | upcase }}")
+	if err != nil {
+		t.Fatalf("extract references: %v", err)
+	}
+	want := []VariableReference{{Name: "working_dir", HasDefault: true, Default: "frontend|admin"}, {Name: "IMAGE_TAG"}}
+	if !reflect.DeepEqual(references, want) {
+		t.Fatalf("references = %#v, want %#v", references, want)
+	}
+}
+
+func TestExtractVariableReferencesRejectsUnsupportedDefaults(t *testing.T) {
+	for _, input := range []string{
+		"echo ${working_dir:-frontend}",
+		"echo {{ working_dir | default: frontend }}",
+	} {
+		if err := ValidateVariableExpressions(input); err == nil {
+			t.Fatalf("expected unsupported expression error for %q", input)
+		}
+	}
+}
+
+func TestResolveNestedValues(t *testing.T) {
+	resolved, err := ResolveNestedValues(map[string]string{
+		"IMAGE":            "registry/{{ IMAGE_REPOSITORY }}:{{ IMAGE_TAG }}",
+		"IMAGE_REPOSITORY": "{{ repository_code }}-web",
+		"IMAGE_TAG":        "20260907",
+		"LITERAL":          "${repository_code}",
+	}, map[string]string{"repository_code": "k12-ai-publishing-os"})
+	if err != nil {
+		t.Fatalf("resolve nested values: %v", err)
+	}
+	want := map[string]string{
+		"IMAGE":            "registry/k12-ai-publishing-os-web:20260907",
+		"IMAGE_REPOSITORY": "k12-ai-publishing-os-web",
+		"IMAGE_TAG":        "20260907",
+		"LITERAL":          "${repository_code}",
+	}
+	if !reflect.DeepEqual(resolved, want) {
+		t.Fatalf("resolved = %#v, want %#v", resolved, want)
+	}
+}
+
+func TestResolveNestedValuesRejectsInvalidDependencies(t *testing.T) {
+	cases := []struct {
+		name      string
+		templates map[string]string
+		contains  []string
+	}{
+		{name: "unknown", templates: map[string]string{"IMAGE": "{{ MISSING }}"}, contains: []string{"IMAGE", "MISSING"}},
+		{name: "direct cycle", templates: map[string]string{"IMAGE": "{{ IMAGE }}"}, contains: []string{"cycle", "IMAGE -> IMAGE"}},
+		{name: "indirect cycle", templates: map[string]string{"BASE": "{{ IMAGE }}", "IMAGE": "{{ BASE }}"}, contains: []string{"cycle", "BASE -> IMAGE -> BASE"}},
+		{name: "filter", templates: map[string]string{"IMAGE": "{{ BASE | upcase }}"}, contains: []string{"IMAGE", "simple"}},
+		{name: "dotted path", templates: map[string]string{"IMAGE": "{{ app.code }}"}, contains: []string{"IMAGE", "simple"}},
+		{name: "tag", templates: map[string]string{"IMAGE": "{% if BASE %}x{% endif %}"}, contains: []string{"IMAGE", "simple"}},
+		{name: "incomplete", templates: map[string]string{"IMAGE": "{{ BASE"}, contains: []string{"IMAGE", "incomplete"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := ResolveNestedValues(tc.templates, nil)
+			if err == nil {
+				t.Fatal("expected nested value resolution error")
+			}
+			for _, expected := range tc.contains {
+				if !strings.Contains(err.Error(), expected) {
+					t.Fatalf("error = %q, expected %q", err, expected)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateLiteralValueRejectsLiquidSyntax(t *testing.T) {
+	for _, input := range []string{"{{ IMAGE }}", "{% if IMAGE %}x{% endif %}", "prefix }}"} {
+		if err := ValidateLiteralValue(input); err == nil {
+			t.Fatalf("expected literal validation error for %q", input)
+		}
+	}
+	if err := ValidateLiteralValue("${IMAGE}"); err != nil {
+		t.Fatalf("shell-style text remains literal: %v", err)
 	}
 }

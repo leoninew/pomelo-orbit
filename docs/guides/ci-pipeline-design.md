@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-09-07
+最后修改时间: 2026-09-07 22:04:24
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -46,6 +46,8 @@ Template Pipeline 的 `PipelineStageReference` 与 Application Stage 都可对�
 Stage 的 `script` 以及 Artifact 的 `reference`、`name`、`command` 使用同一套 Liquid 变量语法：`{{ NAME }}` 是必填变量，`{{ NAME | default: "value" }}` 是当前位置的阶段默认值。`${NAME:-value}` 等 shell 风格默认表达式不受支持。
 
 Repository 的 `value/default` 是全局覆盖；Application Pipeline 可以保存带 `stage_id` 的 Stage 覆盖，也可以保存不带 `stage_id` 的全局覆盖。缺少覆盖时，每个 Stage 独立应用自身 Liquid default。变量详情按 `(name, stage_id)` 展示，因此前端和后端 Stage 可以共用 `working_dir` 但分别默认 `web` 与 `webapi`，并可分别设置值。
+
+变量配置的 `value` 还可由简单 `{{ NAME }}` 引用和文本拼接组成，并在 Run 创建前递归展开；例如 `image_repository = {{ repository_code }}-web`。这不是阶段字段的完整 Liquid 模板：变量 `value` 不接受 filter、tag、条件、循环、dotted path 或 Shell 插值，`default` 必须是无 Liquid 标记的字面量。保存时检查未知引用和循环，Stage 值只可读取同 Stage 和全局可见值。Liquid 的渲染、引用提取及嵌套解析均由通用模板模块负责，Pipeline 仅提供来源优先级与作用域。
 
 ## Snapshot、Run 与 Version
 

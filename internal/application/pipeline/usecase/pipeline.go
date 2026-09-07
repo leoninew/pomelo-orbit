@@ -375,23 +375,23 @@ func applyPipelineArtifactBindings(stages []model.PipelineStage, references []mo
 	if len(stages) != len(references) {
 		return apperror.New(apperror.KindInternal, "pipeline stage references could not be materialized")
 	}
-	stageIndexByReferenceID := make(map[string]int, len(references))
+	stageIndexByReferenceId := make(map[string]int, len(references))
 	for index, reference := range references {
-		stageIndexByReferenceID[reference.Id] = index
+		stageIndexByReferenceId[reference.Id] = index
 	}
 	seen := make(map[string]struct{}, len(bindings))
 	for _, binding := range bindings {
-		stageID, artifactName := strings.TrimSpace(binding.StageId), strings.TrimSpace(binding.ArtifactName)
+		stageId, artifactName := strings.TrimSpace(binding.StageId), strings.TrimSpace(binding.ArtifactName)
 		componentName, err := optionalComponentName(stageTemplateStringPointer(binding.ComponentName))
-		if err != nil || componentName == nil || stageID == "" || artifactName == "" {
+		if err != nil || componentName == nil || stageId == "" || artifactName == "" {
 			return apperror.New(apperror.KindValidation, "invalid pipeline artifact binding")
 		}
-		key := stageID + "\x00" + artifactName
+		key := stageId + "\x00" + artifactName
 		if _, exists := seen[key]; exists {
 			return apperror.New(apperror.KindValidation, "pipeline artifact may only be bound once")
 		}
 		seen[key] = struct{}{}
-		index, exists := stageIndexByReferenceID[stageID]
+		index, exists := stageIndexByReferenceId[stageId]
 		if !exists {
 			return apperror.New(apperror.KindValidation, "pipeline artifact binding stage does not exist")
 		}

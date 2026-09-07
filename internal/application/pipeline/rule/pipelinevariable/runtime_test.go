@@ -1,11 +1,34 @@
 package pipelinevariable
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+func TestExtractStageVariableReferences(t *testing.T) {
+	references, err := extractStageVariableReferences("cd {{ working_dir | default: \"frontend|admin\" }}\necho {{ IMAGE_TAG }}\necho {{ name | upcase }}")
+	if err != nil {
+		t.Fatalf("extract references: %v", err)
+	}
+	want := []stageVariableReference{{Name: "working_dir", HasDefault: true, Default: "frontend|admin"}, {Name: "IMAGE_TAG"}}
+	if !reflect.DeepEqual(references, want) {
+		t.Fatalf("references = %#v, want %#v", references, want)
+	}
+}
+
+func TestValidateStageVariableExpressionsRejectsUnsupportedDefaults(t *testing.T) {
+	for _, input := range []string{
+		"echo ${working_dir:-frontend}",
+		"echo {{ working_dir | default: frontend }}",
+	} {
+		if err := ValidateStageVariableExpressions(input); err == nil {
+			t.Fatalf("expected unsupported expression error for %q", input)
+		}
+	}
+}
 
 func TestResolvePipelineVariableDeclarationsKeepsPipelineConfigurationAndStageDeclarations(t *testing.T) {
 	stages := []model.PipelineStage{{Name: "build", Script: "cd {{ working_dir }}\ndocker build -f {{ repository_dockerfile }} ."}}

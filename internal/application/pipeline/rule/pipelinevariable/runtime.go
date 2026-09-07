@@ -27,24 +27,24 @@ type RuntimeVariables struct {
 }
 
 func (r RuntimeVariables) ValuesForStage(stage model.StageDefinition) map[string]any {
-	values := make(map[string]any, len(r.Global)+len(r.Stage[stageScopeID(stage)]))
+	values := make(map[string]any, len(r.Global)+len(r.Stage[stageScopeId(stage)]))
 	maps.Copy(values, r.Global)
-	maps.Copy(values, r.Stage[stageScopeID(stage)])
+	maps.Copy(values, r.Stage[stageScopeId(stage)])
 	return values
 }
 
-func stageScopeID(stage model.StageDefinition) string {
+func stageScopeId(stage model.StageDefinition) string {
 	if strings.TrimSpace(stage.Id) != "" {
 		return stage.Id
 	}
 	return stage.Name
 }
 
-func declarationScopeKey(name, stageID string) string {
-	return name + "\x00" + stageID
+func declarationScopeKey(name, stageId string) string {
+	return name + "\x00" + stageId
 }
 
-func declarationScopeID(declaration model.VariableDeclaration) string {
+func declarationScopeId(declaration model.VariableDeclaration) string {
 	return declaration.StageId
 }
 
@@ -137,9 +137,9 @@ func RuntimeVariableDeclarations(repo model.Repository, pipeline model.Pipeline,
 	return result, nil
 }
 
-func containsStageVariable(declarations []model.VariableDeclaration, name, stageID string) bool {
+func containsStageVariable(declarations []model.VariableDeclaration, name, stageId string) bool {
 	for _, declaration := range declarations {
-		if declaration.Name == name && declaration.StageId == stageID {
+		if declaration.Name == name && declaration.StageId == stageId {
 			return true
 		}
 	}
@@ -169,9 +169,9 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 			return nil, RuntimeVariables{}, apperror.New(apperror.KindValidation, "System variable cannot be overridden: "+name)
 		}
 	}
-	for stageID, values := range overrides.Stage {
-		if _, ok := knownStages[stageID]; !ok {
-			return nil, RuntimeVariables{}, apperror.New(apperror.KindValidation, "Unknown pipeline stage: "+stageID)
+	for stageId, values := range overrides.Stage {
+		if _, ok := knownStages[stageId]; !ok {
+			return nil, RuntimeVariables{}, apperror.New(apperror.KindValidation, "Unknown pipeline stage: "+stageId)
 		}
 		for name := range values {
 			if _, ok := knownNames[name]; !ok {
@@ -244,7 +244,7 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 	}
 
 	for _, stage := range stages {
-		stageID := stageScopeID(stage)
+		stageId := stageScopeId(stage)
 		stageValues := make(map[string]any)
 		for name, value := range runtime.Global {
 			if name == "repository_code" || name == "repository_url" || name == "runtime_datetime" || name == "repository_ref" {
@@ -252,7 +252,7 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 			}
 		}
 		for name := range knownNames {
-			if value, ok := overrides.Stage[stageID][name]; ok && HasRuntimeValue(value) {
+			if value, ok := overrides.Stage[stageId][name]; ok && HasRuntimeValue(value) {
 				stageValues[name] = value
 				continue
 			}
@@ -266,7 +266,7 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 					continue
 				}
 			}
-			if configured, ok := pipelineStageByKey[declarationScopeKey(name, stageID)]; ok {
+			if configured, ok := pipelineStageByKey[declarationScopeKey(name, stageId)]; ok {
 				if value, ok := EffectiveVariableValue(configured); ok {
 					stageValues[name] = value
 					continue
@@ -278,7 +278,7 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 				}
 			}
 		}
-		runtime.Stage[stageID] = stageValues
+		runtime.Stage[stageId] = stageValues
 	}
 	if err := validateStageTemplates(stages, runtime); err != nil {
 		return nil, RuntimeVariables{}, err
@@ -330,7 +330,7 @@ func UnmarshalRuntimeVariableSnapshot(value string) ([]model.VariableDeclaration
 		if declaration.Name == "" || declaration.Source == "" {
 			return nil, RuntimeVariables{}, apperror.New(apperror.KindValidation, "Invalid pipeline run variable declaration")
 		}
-		key := declarationScopeKey(declaration.Name, declarationScopeID(declaration))
+		key := declarationScopeKey(declaration.Name, declarationScopeId(declaration))
 		if _, exists := seen[key]; exists {
 			return nil, RuntimeVariables{}, apperror.New(apperror.KindValidation, "Duplicate pipeline run variable: "+key)
 		}
@@ -410,23 +410,23 @@ func extractStageVariableDeclarations(stages []model.StageDefinition) ([]model.V
 }
 
 func collectStageVariableReferences(stage model.StageDefinition, text, field string, found map[string]*model.VariableDeclaration) error {
-	references, err := templatex.ExtractPipelineVariableReferences(text)
+	references, err := extractStageVariableReferences(text)
 	if err != nil {
 		return apperror.New(apperror.KindValidation, fmt.Sprintf("Stage %s %s: %v", stage.Name, field, err))
 	}
-	stageID := stageScopeID(stage)
+	stageId := stageScopeId(stage)
 	for _, reference := range references {
 		if IsPipelineBuiltinVariable(reference.Name) {
 			continue
 		}
-		key := declarationScopeKey(reference.Name, stageID)
+		key := declarationScopeKey(reference.Name, stageId)
 		declaration, exists := found[key]
 		if !exists {
-			declaration = &model.VariableDeclaration{Name: reference.Name, Source: "pipeline_stage", Editable: true, StageId: stageID, StageName: stage.Name}
+			declaration = &model.VariableDeclaration{Name: reference.Name, Source: "pipeline_stage", Editable: true, StageId: stageId, StageName: stage.Name}
 			found[key] = declaration
 		}
 		if reference.HasDefault {
-			declaration.StageDefaults = append(declaration.StageDefaults, model.StageVariableDefault{StageId: stageID, StageName: stage.Name, Default: reference.Default})
+			declaration.StageDefaults = append(declaration.StageDefaults, model.StageVariableDefault{StageId: stageId, StageName: stage.Name, Default: reference.Default})
 		}
 	}
 	return nil
@@ -454,7 +454,7 @@ func validateStageTemplates(stages []model.StageDefinition, runtime RuntimeVaria
 }
 
 func validateStageTemplateField(stage model.StageDefinition, field, text string, values map[string]any) error {
-	if _, err := templatex.ExtractPipelineVariableReferences(text); err != nil {
+	if err := ValidateStageVariableExpressions(text); err != nil {
 		return apperror.New(apperror.KindValidation, fmt.Sprintf("Stage %s %s: %v", stage.Name, field, err))
 	}
 	if _, err := templatex.Render(text, values); err != nil {
@@ -623,14 +623,14 @@ func NormalizePipelineVariables(variables []map[string]any) ([]map[string]any, e
 		if IsPipelineBuiltinVariable(name) {
 			return nil, apperror.New(apperror.KindValidation, "Pipeline variable cannot override system context: "+name)
 		}
-		stageID, exists := variable["stage_id"].(string)
+		stageId, exists := variable["stage_id"].(string)
 		if _, provided := variable["stage_id"]; provided && !exists {
 			return nil, apperror.New(apperror.KindValidation, "Pipeline variable stage_id must be a string")
 		}
-		stageID = strings.TrimSpace(stageID)
-		key := declarationScopeKey(name, stageID)
+		stageId = strings.TrimSpace(stageId)
+		key := declarationScopeKey(name, stageId)
 		if _, exists := seen[key]; exists {
-			return nil, apperror.New(apperror.KindValidation, "Duplicate pipeline variable: "+name+" in scope "+stageID)
+			return nil, apperror.New(apperror.KindValidation, "Duplicate pipeline variable: "+name+" in scope "+stageId)
 		}
 		seen[key] = struct{}{}
 		source, _ := variable["source"].(string)
@@ -645,10 +645,10 @@ func NormalizePipelineVariables(variables []map[string]any) ([]map[string]any, e
 		delete(copy, "stage_defaults")
 		delete(copy, "stage_name")
 		copy["name"], copy["source"], copy["editable"] = name, "pipeline_custom", true
-		if stageID == "" {
+		if stageId == "" {
 			delete(copy, "stage_id")
 		} else {
-			copy["stage_id"] = stageID
+			copy["stage_id"] = stageId
 		}
 		if _, exists := copy["secret"]; !exists {
 			copy["secret"] = false
@@ -661,18 +661,18 @@ func NormalizePipelineVariables(variables []map[string]any) ([]map[string]any, e
 // ValidatePipelineVariableScopes ensures every stage-scoped Pipeline variable
 // references one of the Pipeline's current stage IDs.
 func ValidatePipelineVariableScopes(variables []map[string]any, stages []model.StageDefinition) error {
-	stageIDs := make(map[string]struct{}, len(stages))
+	stageIds := make(map[string]struct{}, len(stages))
 	for _, stage := range stages {
-		stageIDs[stageScopeID(stage)] = struct{}{}
+		stageIds[stageScopeId(stage)] = struct{}{}
 	}
 	for _, variable := range variables {
-		stageID, _ := variable["stage_id"].(string)
-		stageID = strings.TrimSpace(stageID)
-		if stageID == "" {
+		stageId, _ := variable["stage_id"].(string)
+		stageId = strings.TrimSpace(stageId)
+		if stageId == "" {
 			continue
 		}
-		if _, exists := stageIDs[stageID]; !exists {
-			return apperror.New(apperror.KindValidation, "Pipeline variable stage_id does not exist: "+stageID)
+		if _, exists := stageIds[stageId]; !exists {
+			return apperror.New(apperror.KindValidation, "Pipeline variable stage_id does not exist: "+stageId)
 		}
 	}
 	return nil
@@ -710,8 +710,8 @@ func ResolvePipelineVariables(stages []model.PipelineStage, custom []map[string]
 	customByKey := map[string]map[string]any{}
 	for _, variable := range custom {
 		name, _ := variable["name"].(string)
-		stageID, _ := variable["stage_id"].(string)
-		customByKey[declarationScopeKey(name, strings.TrimSpace(stageID))] = variable
+		stageId, _ := variable["stage_id"].(string)
+		customByKey[declarationScopeKey(name, strings.TrimSpace(stageId))] = variable
 	}
 	result := make([]map[string]any, 0, len(extracted)+len(custom)+len(PipelineBuiltinVariableSpecs()))
 	for _, name := range SortedPipelineBuiltinVariableNames() {
@@ -732,8 +732,8 @@ func ResolvePipelineVariables(stages []model.PipelineStage, custom []map[string]
 	}
 	for _, variable := range custom {
 		name, _ := variable["name"].(string)
-		stageID, _ := variable["stage_id"].(string)
-		key := declarationScopeKey(name, strings.TrimSpace(stageID))
+		stageId, _ := variable["stage_id"].(string)
+		key := declarationScopeKey(name, strings.TrimSpace(stageId))
 		if _, exists := consumed[key]; !exists {
 			result = append(result, variable)
 		}
@@ -750,8 +750,8 @@ func ResolveTemplatePipelineVariables(stages []model.PipelineStage, custom []map
 	customByKey := map[string]map[string]any{}
 	for _, variable := range custom {
 		name, _ := variable["name"].(string)
-		stageID, _ := variable["stage_id"].(string)
-		customByKey[declarationScopeKey(name, strings.TrimSpace(stageID))] = variable
+		stageId, _ := variable["stage_id"].(string)
+		customByKey[declarationScopeKey(name, strings.TrimSpace(stageId))] = variable
 	}
 	result := make([]map[string]any, 0, len(extracted)+len(custom)+len(PipelineBuiltinVariableSpecs()))
 	for _, name := range SortedPipelineBuiltinVariableNames() {
@@ -773,8 +773,8 @@ func ResolveTemplatePipelineVariables(stages []model.PipelineStage, custom []map
 	}
 	for _, variable := range custom {
 		name, _ := variable["name"].(string)
-		stageID, _ := variable["stage_id"].(string)
-		key := declarationScopeKey(name, strings.TrimSpace(stageID))
+		stageId, _ := variable["stage_id"].(string)
+		key := declarationScopeKey(name, strings.TrimSpace(stageId))
 		if _, exists := consumed[key]; !exists {
 			result = append(result, variable)
 		}

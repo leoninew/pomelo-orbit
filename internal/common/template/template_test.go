@@ -1,7 +1,6 @@
 package templatex
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -131,27 +130,5 @@ func TestRenderUnknownFilterReturnsError(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "nginx") {
 		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestExtractPipelineVariableReferences(t *testing.T) {
-	references, err := ExtractPipelineVariableReferences("cd {{ working_dir | default: \"frontend|admin\" }}\necho {{ IMAGE_TAG }}\necho {{ name | upcase }}")
-	if err != nil {
-		t.Fatalf("extract references: %v", err)
-	}
-	want := []VariableReference{{Name: "working_dir", HasDefault: true, Default: "frontend|admin"}, {Name: "IMAGE_TAG"}}
-	if !reflect.DeepEqual(references, want) {
-		t.Fatalf("references = %#v, want %#v", references, want)
-	}
-}
-
-func TestExtractPipelineVariableReferencesRejectsUnsupportedDefaults(t *testing.T) {
-	for _, input := range []string{
-		"echo ${working_dir:-frontend}",
-		"echo {{ working_dir | default: frontend }}",
-	} {
-		if _, err := ExtractPipelineVariableReferences(input); err == nil {
-			t.Fatalf("expected unsupported expression error for %q", input)
-		}
 	}
 }

@@ -112,14 +112,14 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 
 	cases := []struct {
 		name       string
-		pipelineID string
-		stageID    string
+		pipelineId string
+		stageId    string
 		stored     func() (int, error)
 	}{
 		{
 			name:       "template pipeline reference",
-			pipelineID: templatePipeline.Id,
-			stageID:    "template-pipeline-stage-build",
+			pipelineId: templatePipeline.Id,
+			stageId:    "template-pipeline-stage-build",
 			stored: func() (int, error) {
 				references, err := store.TemplatePipelineStageReferences(ctx, templatePipeline.Id)
 				if err != nil || len(references) != 1 {
@@ -130,8 +130,8 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 		},
 		{
 			name:       "application pipeline stage",
-			pipelineID: applicationPipeline.Id,
-			stageID:    "application-pipeline-stage-build",
+			pipelineId: applicationPipeline.Id,
+			stageId:    "application-pipeline-stage-build",
 			stored: func() (int, error) {
 				stages, err := store.ApplicationPipelineStages(ctx, applicationPipeline.Id)
 				if err != nil || len(stages) != 1 || stages[0].SourceTemplateStageVersion == nil {
@@ -143,7 +143,7 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			detail, err := service.ApplyPipelineStageTemplateUpdate(ctx, pipelineTemplateUpdateUserID, testCase.pipelineID, testCase.stageID, pipelinedto.PipelineStageTemplateApplyUpdateInput{
+			detail, err := service.ApplyPipelineStageTemplateUpdate(ctx, pipelineTemplateUpdateUserID, testCase.pipelineId, testCase.stageId, pipelinedto.PipelineStageTemplateApplyUpdateInput{
 				ExpectedSourceTemplateStageVersion: 1,
 				TargetTemplateStageVersion:         templateVersion,
 			})

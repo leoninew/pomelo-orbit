@@ -48,19 +48,43 @@ func NewHTTPServer(cfg config.Config, logger *slog.Logger, database *sql.DB, tas
 	return transporthttp.New(cfg, logger, deps)
 }
 
-func newDeliveryMCPServer(actorUserId string, deps routes.Dependencies) (*mcp.Server, error) {
-	return deliverymcp.NewServer(deliverymcp.Dependencies{
-		ActorUserId: actorUserId,
-		Project:     deps.ProjectService,
-		Application: deps.ApplicationService,
-		Service:     deps.ServiceService,
-		Deployment:  deps.DeploymentService,
-		Gateway:     deps.GatewayService,
-		Route:       deps.RouteService,
-	})
+type applicationServices struct {
+	AuthService        authsvc.Service
+	RoleService        rolesvc.Service
+	UserService        usersvc.Service
+	ProjectService     projectsvc.Service
+	SettingsService    settingssvc.Service
+	CredentialService  credentialsvc.Service
+	RepositoryService  repositorysvc.Service
+	PipelineService    pipelinesvc.Service
+	PipelineRunService pipelinerunsvc.Service
+	RouteService       routesvc.Service
+	ApplicationService applicationsvc.Service
+	ServiceService     servicesvc.Service
+	DeploymentService  deploymentsvc.Service
+	DialogueService    dialoguesvc.Service
+	GatewayService     gatewaysvc.Service
+	TaskService        tasksvc.Service
 }
 
-func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database *sql.DB, taskRepo taskrepo.Repository) routes.Dependencies {
+func newDeliveryMCPServer(actorUserId string, services applicationServices) (*mcp.Server, error) {
+	deps := newDeliveryMCPDependencies(services)
+	deps.ActorUserId = actorUserId
+	return deliverymcp.NewServer(deps)
+}
+
+func newDeliveryMCPDependencies(services applicationServices) deliverymcp.Dependencies {
+	return deliverymcp.Dependencies{
+		Project:     services.ProjectService,
+		Application: services.ApplicationService,
+		Service:     services.ServiceService,
+		Deployment:  services.DeploymentService,
+		Gateway:     services.GatewayService,
+		Route:       services.RouteService,
+	}
+}
+
+func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sql.DB, taskRepo taskrepo.Repository) applicationServices {
 	stores := newDomainStores(database)
 	tokenService := jwt.NewTokenService(cfg.Jwt.SecretKey)
 	taskService := tasksvc.New(taskRepo, cfg.Worker.MaxAttempts)
@@ -91,9 +115,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	gatewayService := gatewayCore
 	applicationService := applicationsvc.New(stores.project, stores.application, stores.service)
 
-	deps := routes.Dependencies{
-		Database:          database,
-		Authenticator:     security.New(logger, authService),
+	services := applicationServices{
 		AuthService:       authService,
 		RoleService:       rolesvc.New(stores.role),
 		UserService:       usersvc.New(stores.user, stores.role, stores.project),
@@ -146,17 +168,41 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		DeploymentService: deploymentService,
 		GatewayService:    gatewayService,
 		TaskService:       taskService,
-		TurnstileVerifier: turnstile.NewVerifier(cfg.Turnstile),
 	}
-	deps.DialogueService = dialoguesvc.New(
+	services.DialogueService = dialoguesvc.New(
 		stores.project,
 		stores.dialogue,
 		transactionRunner,
 		cfg.LLM.MaxToolCallRounds,
 		llmclient.New(cfg.LLM),
 		deliverymcpclient.NewFactory(func(actorUserId string) (*mcp.Server, error) {
-			return newDeliveryMCPServer(actorUserId, deps)
+			return newDeliveryMCPServer(actorUserId, services)
 		}),
 	)
-	return deps
+	return services
+}
+
+func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database *sql.DB, taskRepo taskrepo.Repository) routes.Dependencies {
+	services := newApplicationServices(cfg, logger, database, taskRepo)
+	return routes.Dependencies{
+		Database:           database,
+		Authenticator:      security.New(logger, services.AuthService),
+		AuthService:        services.AuthService,
+		RoleService:        services.RoleService,
+		UserService:        services.UserService,
+		ProjectService:     services.ProjectService,
+		SettingsService:    services.SettingsService,
+		CredentialService:  services.CredentialService,
+		RepositoryService:  services.RepositoryService,
+		PipelineService:    services.PipelineService,
+		PipelineRunService: services.PipelineRunService,
+		RouteService:       services.RouteService,
+		ApplicationService: services.ApplicationService,
+		ServiceService:     services.ServiceService,
+		DeploymentService:  services.DeploymentService,
+		DialogueService:    services.DialogueService,
+		GatewayService:     services.GatewayService,
+		TaskService:        services.TaskService,
+		TurnstileVerifier:  turnstile.NewVerifier(cfg.Turnstile),
+	}
 }

@@ -136,7 +136,7 @@ type LoginHistory struct {
 	Success   int64          `db:"success"`
 }
 
-type McpAccessToken struct {
+type MCPAccessToken struct {
 	ID        string       `db:"id"`
 	UserID    string       `db:"user_id"`
 	Name      string       `db:"name"`

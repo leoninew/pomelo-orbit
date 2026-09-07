@@ -187,6 +187,9 @@ func (s Service) CreatePipeline(ctx context.Context, userId string, input pipeli
 		return pipelinedto.PipelineDetail{}, err
 	}
 	pipeline := model.Pipeline{Id: idutil.NewId(), ProjectId: &projectId, Kind: model.PipelineKindTemplate, Name: name, Description: input.Description, VariableDeclarations: variables, Version: 1}
+	if err := pipelinevariable.ValidateNestedVariableValues(nil, pipeline, nil); err != nil {
+		return pipelinedto.PipelineDetail{}, err
+	}
 	if err := s.store.CreatePipeline(ctx, pipeline); err != nil {
 		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline", err)
 	}
@@ -778,13 +781,26 @@ func (s Service) validatePipelineConfiguration(ctx context.Context, pipeline mod
 		if len(mappings) != 0 {
 			return apperror.New(apperror.KindValidation, "template artifact component_name must be empty")
 		}
-		return nil
+		return pipelinevariable.ValidateNestedVariableValues(nil, pipeline, definitions)
 	}
 	if pipeline.Kind != model.PipelineKindApplication || pipeline.RepositoryId == nil || pipeline.RepositoryName == nil || pipeline.SourcePipelineId == nil || pipeline.SourceTemplateName == nil || pipeline.SourceTemplateVersion == nil {
 		return apperror.New(apperror.KindValidation, "application pipeline requires template and repository bindings")
 	}
 	if (pipeline.ApplicationId == nil) != (pipeline.ApplicationName == nil) {
 		return apperror.New(apperror.KindValidation, "application pipeline application binding is incomplete")
+	}
+	var repo *model.Repository
+	if s.store.repository != nil {
+		value, err := s.store.Repository(ctx, *pipeline.RepositoryId)
+		if err != nil && !errors.Is(err, repository.ErrNotFound) {
+			return apperror.Wrap(apperror.KindInternal, "Failed to load pipeline repository", err)
+		}
+		if err == nil {
+			repo = &value
+		}
+	}
+	if err := pipelinevariable.ValidateNestedVariableValues(repo, pipeline, definitions); err != nil {
+		return err
 	}
 	dockerArtifacts := dockerImageArtifacts(definitions)
 	if len(dockerArtifacts) == 0 {

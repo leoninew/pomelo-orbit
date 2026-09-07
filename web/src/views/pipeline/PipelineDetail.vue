@@ -469,7 +469,10 @@
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
   import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
-  import { toVariableDeclarationRequest } from '@/utils/variableDeclaration';
+  import {
+    effectiveVariableValue,
+    toVariableDeclarationRequest,
+  } from '@/utils/variableDeclaration';
 
   const route = useRoute();
   const router = useRouter();
@@ -722,7 +725,7 @@
     if (!saved) return;
     Object.assign(variableForm, {
       name: saved.name,
-      value: displayVariableValue(saved.value ?? saved.default),
+      value: displayVariableValue(effectiveVariableValue(variable)),
       description: saved.description,
       secret: saved.secret,
       stageId: saved.stage_id,
@@ -738,7 +741,7 @@
     if (variable.source !== 'pipeline_stage') return;
     Object.assign(variableForm, {
       name: variable.name,
-      value: displayVariableValue(variable.value ?? variable.default),
+      value: displayVariableValue(effectiveVariableValue(variable)),
       description: variable.description,
       secret: variable.secret,
       stageId: variable.stage_id,

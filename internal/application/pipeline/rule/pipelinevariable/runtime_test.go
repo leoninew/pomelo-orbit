@@ -1,34 +1,11 @@
 package pipelinevariable
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
-
-func TestExtractStageVariableReferences(t *testing.T) {
-	references, err := extractStageVariableReferences("cd {{ working_dir | default: \"frontend|admin\" }}\necho {{ IMAGE_TAG }}\necho {{ name | upcase }}")
-	if err != nil {
-		t.Fatalf("extract references: %v", err)
-	}
-	want := []stageVariableReference{{Name: "working_dir", HasDefault: true, Default: "frontend|admin"}, {Name: "IMAGE_TAG"}}
-	if !reflect.DeepEqual(references, want) {
-		t.Fatalf("references = %#v, want %#v", references, want)
-	}
-}
-
-func TestValidateStageVariableExpressionsRejectsUnsupportedDefaults(t *testing.T) {
-	for _, input := range []string{
-		"echo ${working_dir:-frontend}",
-		"echo {{ working_dir | default: frontend }}",
-	} {
-		if err := ValidateStageVariableExpressions(input); err == nil {
-			t.Fatalf("expected unsupported expression error for %q", input)
-		}
-	}
-}
 
 func TestResolvePipelineVariableDeclarationsKeepsPipelineConfigurationAndStageDeclarations(t *testing.T) {
 	stages := []model.PipelineStage{{Name: "build", Script: "cd {{ working_dir }}\ndocker build -f {{ repository_dockerfile }} ."}}
@@ -260,6 +237,98 @@ func TestResolveRuntimeVariablesRetryOverridesTakePrecedenceOverRepositoryVariab
 	}
 	if got := values.ValuesForStage(stages[1])["working_dir"]; got != "retry-global" {
 		t.Fatalf("backend working_dir=%#v, want retry-global", got)
+	}
+}
+
+func TestResolveRuntimeVariablesExpandsNestedValuesInEachStageScope(t *testing.T) {
+	repo := model.Repository{Id: "repo-1", Code: "k12-ai-publishing-os", DefaultBranch: "main"}
+	pipeline := model.Pipeline{Id: "pipeline-1", VariableDeclarations: `[
+		{"name":"IMAGE_BASE","value":"{{ repository_code }}"},
+		{"name":"IMAGE_REPOSITORY","stage_id":"stage-frontend","value":"{{ IMAGE_BASE }}-web"},
+		{"name":"IMAGE_REPOSITORY","stage_id":"stage-backend","value":"{{ IMAGE_BASE }}-api"},
+		{"name":"IMAGE_TAG","default":"20260907"}
+	]`}
+	stages := []model.StageDefinition{
+		{Id: "stage-frontend", Name: "frontend", Script: `echo {{ IMAGE_REPOSITORY }}:{{ IMAGE_TAG }}`},
+		{Id: "stage-backend", Name: "backend", Script: `echo {{ IMAGE_REPOSITORY }}:{{ IMAGE_TAG }}`},
+	}
+
+	declarations, runtime, err := ResolveRuntimeVariables(repo, pipeline, stages, RuntimeVariableOverrides{})
+	if err != nil {
+		t.Fatalf("resolve runtime variables: %v", err)
+	}
+	if got := runtime.Global["IMAGE_BASE"]; got != "k12-ai-publishing-os" {
+		t.Fatalf("IMAGE_BASE=%#v", got)
+	}
+	if got := runtime.ValuesForStage(stages[0])["IMAGE_REPOSITORY"]; got != "k12-ai-publishing-os-web" {
+		t.Fatalf("frontend image repository=%#v", got)
+	}
+	if got := runtime.ValuesForStage(stages[1])["IMAGE_REPOSITORY"]; got != "k12-ai-publishing-os-api" {
+		t.Fatalf("backend image repository=%#v", got)
+	}
+	if got := runtime.ValuesForStage(stages[0])["IMAGE_TAG"]; got != "20260907" {
+		t.Fatalf("IMAGE_TAG leaf default=%#v", got)
+	}
+	snapshot, err := MarshalRuntimeVariableSnapshot(runtime, declarations)
+	if err != nil {
+		t.Fatalf("marshal runtime snapshot: %v", err)
+	}
+	if strings.Contains(snapshot, "{{") {
+		t.Fatalf("snapshot must contain final values: %s", snapshot)
+	}
+}
+
+func TestValidateNestedVariableValuesRejectsPrivateAndInvalidReferences(t *testing.T) {
+	stages := []model.StageDefinition{{Id: "stage-frontend", Name: "frontend"}, {Id: "stage-backend", Name: "backend"}}
+	cases := []struct {
+		name      string
+		variables string
+		contains  string
+	}{
+		{
+			name: "global cannot read stage private value",
+			variables: `[
+				{"name":"IMAGE","value":"{{ IMAGE_REPOSITORY }}"},
+				{"name":"IMAGE_REPOSITORY","stage_id":"stage-frontend","value":"frontend"}
+			]`,
+			contains: "IMAGE_REPOSITORY",
+		},
+		{
+			name: "stage cannot read another stage private value",
+			variables: `[
+				{"name":"IMAGE","stage_id":"stage-frontend","value":"{{ IMAGE_REPOSITORY }}"},
+				{"name":"IMAGE_REPOSITORY","stage_id":"stage-backend","value":"backend"}
+			]`,
+			contains: "Stage frontend variables",
+		},
+		{
+			name:      "default must be literal",
+			variables: `[{"name":"IMAGE","default":"{{ repository_code }}"}]`,
+			contains:  "default",
+		},
+		{
+			name:      "indirect cycle",
+			variables: `[{"name":"IMAGE","value":"{{ IMAGE_BASE }}"},{"name":"IMAGE_BASE","value":"{{ IMAGE }}"}]`,
+			contains:  "IMAGE -> IMAGE_BASE -> IMAGE",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pipeline := model.Pipeline{Kind: model.PipelineKindApplication, VariableDeclarations: tc.variables}
+			err := ValidateNestedVariableValues(nil, pipeline, stages)
+			if err == nil || !strings.Contains(err.Error(), tc.contains) {
+				t.Fatalf("error = %v, expected %q", err, tc.contains)
+			}
+		})
+	}
+}
+
+func TestValidateNestedVariableValuesChecksValuesHiddenByRepositoryOverrides(t *testing.T) {
+	repo := &model.Repository{VariableOverrides: `[{"name":"IMAGE","value":"repository"}]`}
+	pipeline := model.Pipeline{Kind: model.PipelineKindApplication, VariableDeclarations: `[{"name":"IMAGE","value":"{{ IMAGE_BASE | upcase }}"}]`}
+	err := ValidateNestedVariableValues(repo, pipeline, nil)
+	if err == nil || !strings.Contains(err.Error(), "Variable IMAGE value") || !strings.Contains(err.Error(), "simple") {
+		t.Fatalf("expected hidden invalid value rejection, got %v", err)
 	}
 }
 

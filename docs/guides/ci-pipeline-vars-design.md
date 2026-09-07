@@ -1,5 +1,5 @@
 # CI Pipeline 变量设计
-最后修改时间: 2026-09-06 15:12:00
+最后修改时间: 2026-09-07 22:04:24
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -18,6 +18,19 @@ Repository 配置不显示也不能在 Pipeline 中覆盖。删除一个覆盖�
 Repository 变量只在 Repository 管理，不出现在 Application Pipeline 的管理列表，也保持更高优先级。`runtime` 和 `system` 上下文由服务端生成，不可在 Pipeline 管理。
 
 `default` 是 Repository 或 Pipeline 配置的全局回退值，`value` 是持久化配置值，`secret` 只影响展示元数据，不改变变量解析顺序。
+
+## 配置值嵌套引用
+
+Repository 与 Pipeline 变量的 `value` 可使用普通文本和简单 Liquid 引用组合：
+
+```liquid
+image_repository = {{ repository_code }}-web
+image = {{ image_repository }}:{{ runtime_datetime }}
+```
+
+只接受 `{{ NAME }}` 形式的简单变量名；不支持 `${NAME}`、filter、tag、条件、循环、dotted path 或不完整标签。`${NAME}` 仍是普通文本。`default` 始终是字面量，只在所选变量没有 `value` 时作为解析链叶子回退，不能包含任何 Liquid 语法。
+
+保存 Pipeline 配置时，服务端在持久化前校验嵌套引用的语法、可见变量、直接或间接循环以及字面量 default。全局值只可引用系统、Repository 和 Pipeline 全局值；某个 Stage 的值额外可引用该 Stage 自身的覆盖值，不能读取另一 Stage 的私有值。最终 Run 变量快照保存展开后的值，不保存可继续解析的 `{{ NAME }}`。
 
 ## 阶段 Liquid 变量
 
@@ -53,7 +66,7 @@ Repository 自定义变量的全局 value/default
   -> 当前 Stage 表达式的 Liquid default
 ```
 
-Repository 值进入全局运行时变量；Pipeline 值根据是否带 `stage_id` 进入当前 Stage 或全局运行时变量；不同 Stage 的 Liquid default 不会被压缩为一个全局值。系统上下文不参与覆盖链。手动 Trigger 不再接受变量表单，`POST /api/pipeline/{pipeline_id}/trigger` 使用空请求体；服务端以当前 Repository、当前 Application Pipeline 配置和冻结阶段定义解析最终变量。仅使用阶段 default 的变量无需补齐 Pipeline 配置；某个表达式使用 `{{ NAME }}` 且没有更高优先级值时，Trigger 返回包含变量名和 Stage 的 validation error。
+Repository 值进入全局运行时变量；Pipeline 值根据是否带 `stage_id` 进入当前 Stage 或全局运行时变量；不同 Stage 的 Liquid default 不会被压缩为一个全局值。系统上下文不参与覆盖链。完成来源优先级选择后，变量 `value` 仅在其可见作用域内展开一次依赖图；阶段字段仍由完整 Liquid 渲染器处理。手动 Trigger 不再接受变量表单，`POST /api/pipeline/{pipeline_id}/trigger` 使用空请求体；服务端以当前 Repository、当前 Application Pipeline 配置和冻结阶段定义解析最终变量。仅使用阶段 default 的变量无需补齐 Pipeline 配置；某个表达式使用 `{{ NAME }}` 且没有更高优先级值时，Trigger 返回包含变量名和 Stage 的 validation error。
 
 应用流水线运行没有变量预览 API、运行弹窗、配置表单或配置列表。
 

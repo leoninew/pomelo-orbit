@@ -75,7 +75,7 @@ func (a App) RunMCP(ctx context.Context) error {
 	services := newApplicationServices(a.cfg, a.logger, database, taskRepo)
 
 	accessToken := a.cfg.MCP.AccessToken
-	mcpDeps := newDeliveryMCPDependencies(services, a.cfg.Workspace.Deployment)
+	mcpDeps := newDeliveryMCPDependencies(services)
 	mcpDeps.ActorAuthenticator = func(ctx context.Context) (string, error) {
 		authenticated, err := services.AuthService.AuthenticateMCPAccessToken(ctx, accessToken)
 		if err != nil {
@@ -158,7 +158,7 @@ func validateContainerWorkspaceMounts(ctx context.Context, cfg config.Config, ru
 		path string
 	}{
 		{key: "workspace.pipeline", path: cfg.Workspace.Pipeline},
-		{key: "workspace.deployment", path: cfg.Workspace.Deployment},
+		{key: "logging.deployment_root", path: cfg.Logging.DeploymentRoot},
 	} {
 		if _, err := resolver(ctx, workspace.path); err != nil {
 			return fmt.Errorf("%s must be bind mounted when Orbit runs in a container: %w", workspace.key, err)

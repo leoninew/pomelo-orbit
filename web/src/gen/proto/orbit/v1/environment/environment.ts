@@ -54,6 +54,11 @@ export interface ProjectEnvironmentUpdateReq {
   state?: string | undefined;
   target_type?: string | undefined;
   ssh?: EnvironmentSSHTargetReq | undefined;
+  local?: EnvironmentLocalTargetReq | undefined;
+}
+
+export interface EnvironmentLocalTargetReq {
+  workspace_root: string;
 }
 
 export interface ProjectEnvironmentInitializeReq {

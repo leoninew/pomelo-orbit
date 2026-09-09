@@ -27,14 +27,14 @@ import (
 func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *worker.Router {
 	stores := newDomainStores(database)
 	pipelineLogStore := executionlog.Store{}
-	deploymentLogStore := executionlog.NewDeploymentStore(cfg.Workspace.Deployment)
+	deploymentLogStore := executionlog.NewDeploymentStore(cfg.Logging.DeploymentRoot)
 	dockerPathResolver := dockerDaemonPathResolver()
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.Workspace.Pipeline, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
 	transactionRunner := databasetx.NewTransactionRunner(database)
 	credentialService := credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey)
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, credentialService)
-	_, runtime := newDeploymentRuntime(cfg.Workspace.Deployment, dockerPathResolver)
+	_, runtime := newDeploymentRuntime(dockerPathResolver)
 	gatewayService := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, cfg.Traefik, dockerPathResolver, transactionRunner)
 	routeManager := traefik.NewRouteManager(targetResolver, runtime)
 	routeService := routesvc.New(

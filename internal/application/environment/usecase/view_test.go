@@ -31,7 +31,7 @@ func TestToViewLeavesLocalDisplayEmptyWithoutSnapshot(t *testing.T) {
 func TestToViewOmitsSSHCredential(t *testing.T) {
 	item := testProbeEnvironment("project-1")
 	view := New(nil, nil, nil, nil, nil, nil).toView(item)
-	if view.SSH == nil || view.SSH.Host != item.SSH.Host || view.SSH.WorkspaceRoot != item.SSH.WorkspaceRoot || view.Local != nil {
+	if view.SSH == nil || view.SSH.Host != item.SSH.Host || view.SSH.WorkspaceRoot != item.WorkspaceRoot || view.Local != nil {
 		t.Fatalf("ssh view = %#v", view)
 	}
 }

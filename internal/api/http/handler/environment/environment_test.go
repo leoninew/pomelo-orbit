@@ -26,6 +26,15 @@ func TestEnvironmentResponseIncludesOnlyApplicableTargetFields(t *testing.T) {
 	}
 }
 
+func TestProjectEnvironmentUpdateInputMapsLocalWorkspace(t *testing.T) {
+	input := projectEnvironmentUpdateInput(&environmentv1.ProjectEnvironmentUpdateReq{
+		Local: &environmentv1.EnvironmentLocalTargetReq{WorkspaceRoot: "/srv/orbit/deployment"},
+	})
+	if input.Local == nil || input.Local.WorkspaceRoot != "/srv/orbit/deployment" || input.SSH != nil {
+		t.Fatalf("update input = %#v", input)
+	}
+}
+
 func TestProjectEnvironmentInitializeInputKeepsTemporaryAuthenticationInRequestMapping(t *testing.T) {
 	input := projectEnvironmentInitializeInput(&environmentv1.ProjectEnvironmentInitializeReq{
 		Username:             "bootstrap-user",

@@ -34,6 +34,9 @@ func (r TargetResolver) ResolveProjectTarget(ctx context.Context, projectID stri
 	if !environment.IsActive() {
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment is disabled")
 	}
+	if strings.TrimSpace(environment.WorkspaceRoot) == "" {
+		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment workspace_root must be configured before deployment")
+	}
 	if !environment.HasFreshSuccessfulProbe() {
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment must pass probe after its latest configuration change")
 	}

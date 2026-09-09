@@ -1,5 +1,5 @@
 # CD 部署原理
-最后修改时间: 2026-09-09 17:04:54
+最后修改时间: 2026-09-09 20:22:00
 
 Doc role: living guide。权威模型见 [CD 领域模型](../product/cd-model.md) 与 [CD 运行时](../architecture/cd-runtime.md)。
 
@@ -12,8 +12,8 @@ Project -> Environment -> Gateway
 Application + Version + Service
   -> Deployment snapshot
   -> target runtime
-     local -> control-plane workspace.deployment + Docker daemon
-     ssh   -> remote workspace + docker compose over SSH
+     local -> Environment.workspace_root + Docker daemon
+     ssh   -> Environment.workspace_root + docker compose over SSH
 ```
 
 一个 Environment 只能部署一个 Gateway。Environment 与已绑定 Gateway 不能删除；它们与 Project、Gateway Application 的关系均为逻辑外键。
@@ -22,8 +22,8 @@ Application + Version + Service
 
 Environment 的 target type 是显式 `local | ssh`：
 
-- `local` 直接在 Orbit 控制面宿主机的 Docker daemon 执行，工作目录固定为控制面 `workspace.deployment`。页面显示该目录和 Gateway 入口，不显示 SSH 表单、主机指纹或初始化入口。
-- `ssh` 支持 Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它在目标端 materialize workspace，并使用受管私钥和 pinned host key 执行。
+- `local` 直接在 Orbit 控制面宿主机的 Docker daemon 执行，工作目录为 Environment 保存的 `workspace_root`。页面显示该目录和 Gateway 入口，不显示 SSH 表单、主机指纹或初始化入口。
+- `ssh` 支持 Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它在目标端按 Environment 保存的 `workspace_root` materialize workspace，并使用受管私钥和 pinned host key 执行。
 
 `ssh` 到 `127.0.0.1` 仍是 SSH，不会被解释为 local。没有 hostname heuristic 或 local/SSH fallback。两类目标的 Compose 生命周期、运行时查询、证书同步、Gateway network 与 Traefik REST publish 均通过同一 target runtime 执行。
 

@@ -13,10 +13,10 @@ import (
 
 func TestRuntimeStagesLocalWorkspaceAndResolvesDockerPath(t *testing.T) {
 	root := t.TempDir()
-	runtime := NewRuntime(root, func(_ context.Context, source string) (string, error) {
+	runtime := NewRuntime(func(_ context.Context, source string) (string, error) {
 		return "/daemon/" + filepath.Base(source), nil
 	})
-	target := localTarget()
+	target := localTarget(root)
 	serviceDir, err := runtime.ServiceDir(target, "api-default")
 	if err != nil {
 		t.Fatal(err)
@@ -56,15 +56,15 @@ func TestRuntimeRejectsNonLocalTargetsAndMissingResolver(t *testing.T) {
 		TargetType: model.EnvironmentTargetTypeSSH,
 		SSH:        &model.EnvironmentSSHTarget{Platform: model.EnvironmentPlatformLinux},
 	}}
-	runtime := NewRuntime(t.TempDir(), nil)
+	runtime := NewRuntime(nil)
 	if _, err := runtime.ServiceDir(sshTarget, "api-default"); err == nil {
 		t.Fatal("expected non-local target to be rejected")
 	}
-	if _, err := runtime.ComposeMountSourceDir(context.Background(), localTarget(), "api-default"); err == nil {
+	if _, err := runtime.ComposeMountSourceDir(context.Background(), localTarget(t.TempDir()), "api-default"); err == nil {
 		t.Fatal("expected missing Docker daemon path resolver to be rejected")
 	}
 }
 
-func localTarget() environmentport.Target {
-	return environmentport.Target{Environment: model.Environment{TargetType: model.EnvironmentTargetTypeLocal}}
+func localTarget(root string) environmentport.Target {
+	return environmentport.Target{Environment: model.Environment{TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: root}}
 }

@@ -99,9 +99,9 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	transactionRunner := databasetx.NewTransactionRunner(database)
 	credentialService := credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey)
 	pipelineLogStore := executionlog.Store{}
-	deploymentLogStore := executionlog.NewDeploymentStore(cfg.Workspace.Deployment)
+	deploymentLogStore := executionlog.NewDeploymentStore(cfg.Logging.DeploymentRoot)
 	dockerPathResolver := dockerDaemonPathResolver()
-	localRuntime, runtime := newDeploymentRuntime(cfg.Workspace.Deployment, dockerPathResolver)
+	localRuntime, runtime := newDeploymentRuntime(dockerPathResolver)
 	environmentService := environmentsvc.New(stores.environment, stores.project, credentialService, credentialService, environmentrunner.NewProber(localRuntime, sshrunner.NewEnvironmentProber()), sshrunner.NewEnvironmentBootstrapper()).WithLocalDisplay(localEnvironmentDisplay())
 	projectService := projectsvc.New(stores.project, stores.user, stores.environment, environmentService)
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.Workspace.Pipeline, dockerPathResolver)

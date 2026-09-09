@@ -20,11 +20,14 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 		return map[string]any{"project_id": input.ProjectId, "environment": environmentOutput(environment)}, nil
 	})
 
-	addTool(server, "orbit_update_project_environment", "Update the explicit local or SSH target of a Project's unique deployment Environment. SSH requires the nested ssh object; local must not include it.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_update_project_environment", "Update the explicit local or SSH target of a Project's unique deployment Environment. Local requires the nested local object; SSH requires the nested ssh object.", func(ctx context.Context, input struct {
 		ProjectId  string  `json:"project_id" jsonschema:"required"`
 		State      *string `json:"state,omitempty"`
 		TargetType *string `json:"target_type,omitempty"`
-		SSH        *struct {
+		Local      *struct {
+			WorkspaceRoot string `json:"workspace_root"`
+		} `json:"local,omitempty"`
+		SSH *struct {
 			Platform      string `json:"platform"`
 			Host          string `json:"host"`
 			Port          int    `json:"port"`
@@ -32,15 +35,19 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 			WorkspaceRoot string `json:"workspace_root"`
 		} `json:"ssh,omitempty"`
 	}) (map[string]any, error) {
-		if input.State == nil && input.TargetType == nil && input.SSH == nil {
+		if input.State == nil && input.TargetType == nil && input.Local == nil && input.SSH == nil {
 			return nil, apperror.New(apperror.KindValidation, "at least one Environment field must be supplied")
 		}
 		var ssh *environmentdto.SSHTargetInput
+		var local *environmentdto.LocalTargetInput
+		if input.Local != nil {
+			local = &environmentdto.LocalTargetInput{WorkspaceRoot: input.Local.WorkspaceRoot}
+		}
 		if input.SSH != nil {
 			ssh = &environmentdto.SSHTargetInput{Platform: input.SSH.Platform, Host: input.SSH.Host, Port: input.SSH.Port, Username: input.SSH.Username, WorkspaceRoot: input.SSH.WorkspaceRoot}
 		}
 		environment, err := c.deps.Environment.UpdateForUser(ctx, c.deps.ActorUserId, input.ProjectId, environmentdto.UpdateInput{
-			State: input.State, TargetType: input.TargetType, SSH: ssh,
+			State: input.State, TargetType: input.TargetType, Local: local, SSH: ssh,
 		})
 		if err != nil {
 			return nil, err

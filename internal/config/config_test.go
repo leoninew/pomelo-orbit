@@ -66,7 +66,7 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Jwt.SecretKey != testJwtSecret {
 		t.Fatalf("unexpected jwt secret key: %s", cfg.Jwt.SecretKey)
 	}
-	if !filepath.IsAbs(cfg.Workspace.Pipeline) || !filepath.IsAbs(cfg.Workspace.Deployment) {
+	if !filepath.IsAbs(cfg.Workspace.Pipeline) || !filepath.IsAbs(cfg.Logging.DeploymentRoot) {
 		t.Fatalf("workspace roots must be absolute: %#v", cfg.Workspace)
 	}
 	if cfg.Traefik.Image != "traefik:3.6" {
@@ -258,9 +258,9 @@ worker:
 	orbitRoot := t.TempDir()
 	t.Setenv("POMELO_ORBIT_ORBIT__ROOT", orbitRoot)
 	workspacePipeline := t.TempDir()
-	workspaceDeployment := t.TempDir()
+	deploymentLogRoot := t.TempDir()
 	t.Setenv("POMELO_ORBIT_WORKSPACE__PIPELINE", workspacePipeline)
-	t.Setenv("POMELO_ORBIT_WORKSPACE__DEPLOYMENT", workspaceDeployment)
+	t.Setenv("POMELO_ORBIT_LOGGING__DEPLOYMENT_ROOT", deploymentLogRoot)
 	t.Setenv("POMELO_ORBIT_WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_WORKER__POLL_INTERVAL", "2s")
 	t.Setenv("POMELO_ORBIT_WORKER__LEASE_DURATION", "3h")
@@ -324,8 +324,8 @@ worker:
 	if cfg.Orbit.Root != orbitRoot {
 		t.Fatalf("unexpected orbit root: %s", cfg.Orbit.Root)
 	}
-	if cfg.Workspace.Pipeline != workspacePipeline || cfg.Workspace.Deployment != workspaceDeployment {
-		t.Fatalf("unexpected workspace env overrides: %#v", cfg.Workspace)
+	if cfg.Workspace.Pipeline != workspacePipeline || cfg.Logging.DeploymentRoot != deploymentLogRoot {
+		t.Fatalf("unexpected workspace/logging env overrides: workspace=%#v logging=%#v", cfg.Workspace, cfg.Logging)
 	}
 	if cfg.Worker.Concurrency != 4 {
 		t.Fatalf("unexpected worker concurrency: %d", cfg.Worker.Concurrency)
@@ -349,15 +349,16 @@ func TestLoadConfigNormalizesAndValidatesWorkspaceRoots(t *testing.T) {
   root: %q
 workspace:
   pipeline: " ci "
-  deployment: cd
+logging:
+  deployment_root: logs
 `, root))
 
 		cfg, err := Load()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cfg.Workspace.Pipeline != filepath.Join(root, "ci") || cfg.Workspace.Deployment != filepath.Join(root, "cd") {
-			t.Fatalf("unexpected normalized workspace roots: %#v", cfg.Workspace)
+		if cfg.Workspace.Pipeline != filepath.Join(root, "ci") || cfg.Logging.DeploymentRoot != filepath.Join(root, "logs") {
+			t.Fatalf("unexpected normalized roots: workspace=%#v logging=%#v", cfg.Workspace, cfg.Logging)
 		}
 	})
 
@@ -365,39 +366,36 @@ workspace:
 		setupDefaultConfig(t)
 		root := t.TempDir()
 		pipeline := t.TempDir()
-		deployment := t.TempDir()
+		deploymentLogRoot := t.TempDir()
 		writeEnvConfig(t, "develop", fmt.Sprintf(`orbit:
   root: %q
 workspace:
   pipeline: %q
-  deployment: %q
-`, root, pipeline, deployment))
+logging:
+  deployment_root: %q
+`, root, pipeline, deploymentLogRoot))
 
 		cfg, err := Load()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cfg.Workspace.Pipeline != pipeline || cfg.Workspace.Deployment != deployment {
-			t.Fatalf("absolute workspace roots changed: %#v", cfg.Workspace)
+		if cfg.Workspace.Pipeline != pipeline || cfg.Logging.DeploymentRoot != deploymentLogRoot {
+			t.Fatalf("absolute roots changed: workspace=%#v logging=%#v", cfg.Workspace, cfg.Logging)
 		}
 	})
 
 	for _, tc := range []struct {
-		name       string
-		pipeline   string
-		deployment string
-		want       string
+		name     string
+		pipeline string
+		want     string
 	}{
-		{name: "empty pipeline", pipeline: " ", deployment: "cd", want: "workspace.pipeline: is required"},
-		{name: "same root", pipeline: "workspace", deployment: "workspace", want: "workspace.pipeline and workspace.deployment must not overlap"},
-		{name: "nested root", pipeline: "workspace", deployment: "workspace/cd", want: "workspace.pipeline and workspace.deployment must not overlap"},
+		{name: "empty pipeline", pipeline: " ", want: "workspace.pipeline: is required"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			setupDefaultConfig(t)
 			writeEnvConfig(t, "develop", fmt.Sprintf(`workspace:
   pipeline: %q
-  deployment: %q
-`, tc.pipeline, tc.deployment))
+`, tc.pipeline))
 
 			_, err := Load()
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -930,6 +928,7 @@ server:
 logging:
   level: info
   file: logs/pomelo-orbit.log
+  deployment_root: data/deployment-logs
   max_size_mb: 100
   max_backups: 7
   http:
@@ -947,7 +946,6 @@ database:
     dsn: ""
 workspace:
   pipeline: data/pipeline
-  deployment: data/deployment
 orbit:
   root: .
 jwt:

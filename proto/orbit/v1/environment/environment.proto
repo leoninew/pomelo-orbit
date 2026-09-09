@@ -2,50 +2,57 @@ syntax = "proto3";
 
 package orbit.v1.environment;
 
+message EnvironmentSSHTargetResp {
+  string platform = 1;
+  string host = 2;
+  int32 port = 3;
+  string username = 4;
+  string workspace_root = 5;
+  string host_key_fingerprint = 6;
+}
+
+message EnvironmentSSHTargetReq {
+  string platform = 1;
+  string host = 2;
+  int32 port = 3;
+  string username = 4;
+  string workspace_root = 5;
+}
+
+message EnvironmentLocalTargetResp {
+  string workspace_root = 1;
+  string platform = 2;
+  string host = 3;
+  string username = 4;
+}
+
 message EnvironmentResp {
   string id = 1;
   string project_id = 2;
   string code = 3;
   string state = 4;
-  string platform = 5;
-  string host = 6;
-  int32 port = 7;
-  string username = 8;
-  string workspace_root = 9;
-  string ssh_credential_id = 10;
-  int64 ssh_credential_revision = 11;
-  string host_key_fingerprint = 12;
-  int64 target_revision = 13;
-  optional int64 last_probe_revision = 14;
-  optional string last_probe_status = 15;
-  optional string last_probe_at = 16;
-  optional string last_probe_diagnostic = 17;
-  optional string gateway_application_id = 18;
-  string created_at = 19;
-  string updated_at = 20;
-}
-
-message ProjectEnvironmentCreateReq {
-  string state = 1;
-  string platform = 2;
-  string host = 3;
-  int32 port = 4;
-  string username = 5;
-  string workspace_root = 6;
-  string deployment_ssh_key_name = 7;
-  string deployment_ssh_private_key = 8;
-  optional string deployment_ssh_key_passphrase = 9;
-  string host_key_fingerprint = 10;
+  string target_type = 5;
+  EnvironmentSSHTargetResp ssh = 6;
+  int64 target_revision = 7;
+  optional int64 last_probe_revision = 8;
+  optional string last_probe_status = 9;
+  optional string last_probe_at = 10;
+  optional string last_probe_diagnostic = 11;
+  optional string gateway_application_id = 12;
+  string created_at = 13;
+  string updated_at = 14;
+  EnvironmentLocalTargetResp local = 15;
 }
 
 message ProjectEnvironmentUpdateReq {
   optional string state = 1;
-  optional string platform = 2;
-  optional string host = 3;
-  optional int32 port = 4;
-  optional string username = 5;
-  optional string workspace_root = 6;
-  optional string deployment_ssh_private_key = 7;
-  optional string deployment_ssh_key_passphrase = 8;
-  optional string host_key_fingerprint = 9;
+  optional string target_type = 2;
+  optional EnvironmentSSHTargetReq ssh = 3;
+}
+
+message ProjectEnvironmentInitializeReq {
+  string username = 1;
+  string password = 2;
+  string private_key = 3;
+  string private_key_passphrase = 4;
 }

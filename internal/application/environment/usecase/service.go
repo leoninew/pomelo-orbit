@@ -9,6 +9,7 @@ import (
 	"time"
 
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -18,49 +19,37 @@ import (
 var hostKeyFingerprintPattern = regexp.MustCompile(`^SHA256:[A-Za-z0-9+/]+={0,2}$`)
 var windowsWorkspacePattern = regexp.MustCompile(`^[A-Za-z]:\\`)
 
-type deploymentKeyUpdater interface {
-	UpdateDeploymentSSHCredential(ctx context.Context, credentialID string, privateKey *string, passphrase *string) (model.Credential, error)
+type deploymentKeyManager interface {
+	CreateDeploymentSSHCredential(ctx context.Context, projectID string, name string) (model.Credential, error)
+	EnsureGeneratedDeploymentSSHCredential(ctx context.Context, credentialID string) (model.Credential, error)
+	DeploymentSSHPublicKey(ctx context.Context, credentialID string) (string, error)
 }
 
 type Service struct {
 	environments         repository.EnvironmentStore
 	projects             repository.ProjectReader
-	deploymentKey        deploymentKeyUpdater
+	deploymentKey        deploymentKeyManager
 	deploymentCredential deploymentCredentialReader
 	prober               environmentProber
+	bootstrapper         environmentport.Bootstrapper
 }
 
-func New(environments repository.EnvironmentStore, projects repository.ProjectReader, deploymentKey deploymentKeyUpdater, deploymentCredential deploymentCredentialReader, prober environmentProber) Service {
+func New(environments repository.EnvironmentStore, projects repository.ProjectReader, deploymentKey deploymentKeyManager, deploymentCredential deploymentCredentialReader, prober environmentProber, bootstrapper environmentport.Bootstrapper) Service {
 	return Service{
-		environments:         environments,
-		projects:             projects,
-		deploymentKey:        deploymentKey,
-		deploymentCredential: deploymentCredential,
-		prober:               prober,
+		environments: environments, projects: projects, deploymentKey: deploymentKey,
+		deploymentCredential: deploymentCredential, prober: prober, bootstrapper: bootstrapper,
 	}
 }
 
-// BootstrapForProject creates the one Environment owned by a newly created
-// Project. Its caller owns the surrounding Project/Credential transaction.
-func (s Service) BootstrapForProject(ctx context.Context, project model.Project, credential model.Credential, input environmentdto.BootstrapInput) (model.Environment, error) {
+// BootstrapForProject creates the active local Environment owned by a newly
+// created Project. SSH configuration is managed from the Environment page.
+func (s Service) BootstrapForProject(ctx context.Context, project model.Project) (model.Environment, error) {
 	item := model.Environment{
-		Id:                    idutil.NewId(),
-		ProjectId:             project.Id,
-		Code:                  project.Code,
-		State:                 strings.TrimSpace(input.State),
-		Platform:              strings.TrimSpace(input.Platform),
-		Host:                  strings.TrimSpace(input.Host),
-		Port:                  input.Port,
-		Username:              strings.TrimSpace(input.Username),
-		WorkspaceRoot:         strings.TrimSpace(input.WorkspaceRoot),
-		SSHCredentialId:       credential.Id,
-		SSHCredentialRevision: credential.Revision,
-		HostKeyFingerprint:    strings.TrimSpace(input.HostKeyFingerprint),
-		TargetRevision:        1,
-		CreatedAt:             time.Now().UTC(),
-		UpdatedAt:             time.Now().UTC(),
+		Id: idutil.NewId(), ProjectId: project.Id, Code: project.Code,
+		State: model.EnvironmentStateActive, TargetType: model.EnvironmentTargetTypeLocal,
+		TargetRevision: 1, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 	}
-	if err := validateBootstrap(project, credential, item); err != nil {
+	if err := validateBootstrap(project, item); err != nil {
 		return model.Environment{}, err
 	}
 	if err := s.environments.CreateEnvironment(ctx, item); err != nil {
@@ -73,7 +62,11 @@ func (s Service) EnvironmentForUser(ctx context.Context, userID string, projectI
 	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
 		return model.Environment{}, err
 	}
-	return s.environmentForProject(ctx, projectID)
+	item, err := s.environmentForProject(ctx, projectID)
+	if err != nil {
+		return model.Environment{}, err
+	}
+	return s.hydrateEnvironment(ctx, item)
 }
 
 func (s Service) UpdateForUser(ctx context.Context, userID string, projectID string, input environmentdto.UpdateInput) (model.Environment, error) {
@@ -85,27 +78,18 @@ func (s Service) UpdateForUser(ctx context.Context, userID string, projectID str
 		return model.Environment{}, err
 	}
 	previous := item
-	applyUpdate(&item, input)
-	if input.DeploymentSSHPrivateKey != nil || input.DeploymentSSHKeyPassphrase != nil {
-		if s.deploymentKey == nil {
-			return model.Environment{}, apperror.New(apperror.KindInternal, "deployment SSH key manager is not configured")
-		}
-		credential, err := s.deploymentKey.UpdateDeploymentSSHCredential(
-			ctx,
-			item.SSHCredentialId,
-			input.DeploymentSSHPrivateKey,
-			input.DeploymentSSHKeyPassphrase,
-		)
-		if err != nil {
-			return model.Environment{}, err
-		}
-		item.SSHCredentialRevision = credential.Revision
+	if err := applyUpdate(&item, input); err != nil {
+		return model.Environment{}, err
 	}
-	if item.IsActive() {
+	item, err = s.ensureGeneratedCredential(ctx, item)
+	if err != nil {
+		return model.Environment{}, err
+	}
+	if item.IsActive() && item.IsSSH() {
 		if s.deploymentCredential == nil {
 			return model.Environment{}, apperror.New(apperror.KindInternal, "deployment SSH credential reader is not configured")
 		}
-		credential, _, err := s.deploymentCredential.DeploymentSSHCredential(ctx, item.SSHCredentialId)
+		credential, _, err := s.deploymentCredential.DeploymentSSHCredential(ctx, item.SSH.CredentialId)
 		if err != nil || !matchesEnvironmentCredential(item, credential) {
 			return model.Environment{}, apperror.New(apperror.KindValidation, "Environment deployment SSH credential must be configured before it can be active")
 		}
@@ -113,13 +97,63 @@ func (s Service) UpdateForUser(ctx context.Context, userID string, projectID str
 	if err := validateEnvironment(item); err != nil {
 		return model.Environment{}, err
 	}
-	if targetChanged(previous, item) {
+	if environmentTargetChanged(previous, item) {
+		if item.SSH != nil {
+			item.SSH.HostKeyFingerprint = ""
+		}
 		item.TargetRevision++
 	}
 	if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
 		return model.Environment{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
 	}
-	return s.environmentForProject(ctx, projectID)
+	item, err = s.environmentForProject(ctx, projectID)
+	if err != nil {
+		return model.Environment{}, err
+	}
+	return item, nil
+}
+
+func (s Service) hydrateEnvironment(ctx context.Context, item model.Environment) (model.Environment, error) {
+	if !item.IsSSH() {
+		return item, nil
+	}
+	previous := item
+	item, err := s.ensureGeneratedCredential(ctx, item)
+	if err != nil {
+		return model.Environment{}, err
+	}
+	if environmentTargetChanged(previous, item) {
+		item.SSH.HostKeyFingerprint = ""
+		item.TargetRevision++
+		if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
+			return model.Environment{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
+		}
+	}
+	return item, nil
+}
+
+func (s Service) ensureGeneratedCredential(ctx context.Context, item model.Environment) (model.Environment, error) {
+	if !item.IsSSH() || s.deploymentKey == nil {
+		return item, nil
+	}
+	if strings.TrimSpace(item.SSH.CredentialId) == "" {
+		credential, err := s.deploymentKey.CreateDeploymentSSHCredential(ctx, item.ProjectId, "")
+		if err != nil {
+			return model.Environment{}, err
+		}
+		item.SSH.CredentialId = credential.Id
+		item.SSH.CredentialRevision = credential.Revision
+		return item, nil
+	}
+	credential, err := s.deploymentKey.EnsureGeneratedDeploymentSSHCredential(ctx, item.SSH.CredentialId)
+	if err != nil {
+		return model.Environment{}, err
+	}
+	if credential.Revision != item.SSH.CredentialRevision {
+		item.SSH.CredentialRevision = credential.Revision
+		item.SSH.HostKeyFingerprint = ""
+	}
+	return item, nil
 }
 
 func (s Service) environmentForProject(ctx context.Context, projectID string) (model.Environment, error) {
@@ -154,8 +188,8 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectID string, 
 	return nil
 }
 
-func validateBootstrap(project model.Project, credential model.Credential, item model.Environment) error {
-	if project.Id == "" || project.Code == "" || credential.Id == "" || credential.ProjectId == nil || *credential.ProjectId != project.Id || !credential.IsDeploymentSSHPrivateKey() {
+func validateBootstrap(project model.Project, item model.Environment) error {
+	if project.Id == "" || project.Code == "" {
 		return apperror.New(apperror.KindInternal, "Project environment bootstrap binding is invalid")
 	}
 	return validateEnvironment(item)
@@ -168,51 +202,92 @@ func validateEnvironment(item model.Environment) error {
 	if item.State != model.EnvironmentStateActive && item.State != model.EnvironmentStateDisabled {
 		return apperror.New(apperror.KindValidation, "Environment state must be active or disabled")
 	}
-	if item.Platform != model.EnvironmentPlatformLinux && item.Platform != model.EnvironmentPlatformWindows {
-		return apperror.New(apperror.KindValidation, "Environment platform must be linux or windows")
-	}
-	if item.Host == "" || strings.ContainsAny(item.Host, " \t\r\n") || item.Port < 1 || item.Port > 65535 || item.Username == "" || strings.ContainsAny(item.Username, "\r\n") {
-		return apperror.New(apperror.KindValidation, "Environment SSH target is invalid")
-	}
-	if !validWorkspaceRoot(item.Platform, item.WorkspaceRoot) {
-		return apperror.New(apperror.KindValidation, "Environment workspace_root is invalid for its platform")
-	}
-	if item.SSHCredentialId == "" || item.SSHCredentialRevision < 1 {
-		return apperror.New(apperror.KindValidation, "Environment SSH credential binding is invalid")
-	}
-	if !hostKeyFingerprintPattern.MatchString(item.HostKeyFingerprint) {
-		return apperror.New(apperror.KindValidation, "Environment host_key_fingerprint must use SHA256 format")
+	switch item.TargetType {
+	case model.EnvironmentTargetTypeLocal:
+		if item.SSH != nil {
+			return apperror.New(apperror.KindValidation, "Local environment must not include an SSH target")
+		}
+	case model.EnvironmentTargetTypeSSH:
+		if item.SSH == nil {
+			return apperror.New(apperror.KindValidation, "SSH environment target is required")
+		}
+		if item.SSH.Platform != model.EnvironmentPlatformLinux && item.SSH.Platform != model.EnvironmentPlatformWindows {
+			return apperror.New(apperror.KindValidation, "Environment SSH platform must be linux or windows")
+		}
+		if item.SSH.Host == "" || strings.ContainsAny(item.SSH.Host, " \t\r\n") || item.SSH.Port < 1 || item.SSH.Port > 65535 || item.SSH.Username == "" || strings.ContainsAny(item.SSH.Username, "\r\n") {
+			return apperror.New(apperror.KindValidation, "Environment SSH target is invalid")
+		}
+		if !validWorkspaceRoot(item.SSH.Platform, item.SSH.WorkspaceRoot) {
+			return apperror.New(apperror.KindValidation, "Environment SSH workspace_root is invalid for its platform")
+		}
+		if item.SSH.CredentialId == "" || item.SSH.CredentialRevision < 1 {
+			return apperror.New(apperror.KindValidation, "Environment SSH credential binding is invalid")
+		}
+		if item.SSH.HostKeyFingerprint != "" && !hostKeyFingerprintPattern.MatchString(item.SSH.HostKeyFingerprint) {
+			return apperror.New(apperror.KindValidation, "Environment host_key_fingerprint must use SHA256 format")
+		}
+	default:
+		return apperror.New(apperror.KindValidation, "Environment target_type must be local or ssh")
 	}
 	return nil
 }
 
-func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) {
+func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) error {
 	if input.State != nil {
 		item.State = strings.TrimSpace(*input.State)
 	}
-	if input.Platform != nil {
-		item.Platform = strings.TrimSpace(*input.Platform)
+	if input.TargetType != nil {
+		targetType := strings.TrimSpace(*input.TargetType)
+		switch targetType {
+		case model.EnvironmentTargetTypeLocal:
+			item.TargetType = targetType
+			item.SSH = nil
+		case model.EnvironmentTargetTypeSSH:
+			if input.SSH == nil {
+				return apperror.New(apperror.KindValidation, "SSH target is required when target_type is ssh")
+			}
+			ssh := sshTargetFromInput(input.SSH, nil)
+			if item.IsSSH() {
+				ssh.CredentialId = item.SSH.CredentialId
+				ssh.CredentialRevision = item.SSH.CredentialRevision
+			}
+			item.TargetType = targetType
+			item.SSH = ssh
+		default:
+			return apperror.New(apperror.KindValidation, "Environment target_type must be local or ssh")
+		}
+	} else if input.SSH != nil {
+		if !item.IsSSH() {
+			return apperror.New(apperror.KindValidation, "SSH target is only valid for an ssh environment")
+		}
+		credentialID, credentialRevision := item.SSH.CredentialId, item.SSH.CredentialRevision
+		item.SSH = sshTargetFromInput(input.SSH, nil)
+		item.SSH.CredentialId, item.SSH.CredentialRevision = credentialID, credentialRevision
 	}
-	if input.Host != nil {
-		item.Host = strings.TrimSpace(*input.Host)
+	return nil
+}
+
+func sshTargetFromInput(input *environmentdto.SSHTargetInput, credential *model.Credential) *model.EnvironmentSSHTarget {
+	if input == nil {
+		return nil
 	}
-	if input.Port != nil {
-		item.Port = *input.Port
+	target := &model.EnvironmentSSHTarget{
+		Platform: strings.TrimSpace(input.Platform), Host: strings.TrimSpace(input.Host), Port: input.Port,
+		Username: strings.TrimSpace(input.Username), WorkspaceRoot: strings.TrimSpace(input.WorkspaceRoot),
 	}
-	if input.Username != nil {
-		item.Username = strings.TrimSpace(*input.Username)
+	if credential != nil {
+		target.CredentialId = credential.Id
+		target.CredentialRevision = credential.Revision
 	}
-	if input.WorkspaceRoot != nil {
-		item.WorkspaceRoot = strings.TrimSpace(*input.WorkspaceRoot)
-	}
-	if input.HostKeyFingerprint != nil {
-		item.HostKeyFingerprint = strings.TrimSpace(*input.HostKeyFingerprint)
-	}
+	return target
 }
 
 func validWorkspaceRoot(platform string, workspaceRoot string) bool {
 	if workspaceRoot == "" || strings.ContainsAny(workspaceRoot, "\r\n") {
 		return false
+	}
+	if workspaceRoot == "~" || strings.HasPrefix(workspaceRoot, "~/") {
+		return true
 	}
 	switch platform {
 	case model.EnvironmentPlatformLinux:
@@ -224,13 +299,18 @@ func validWorkspaceRoot(platform string, workspaceRoot string) bool {
 	}
 }
 
-func targetChanged(before, after model.Environment) bool {
-	return before.Platform != after.Platform ||
-		before.Host != after.Host ||
-		before.Port != after.Port ||
-		before.Username != after.Username ||
-		before.WorkspaceRoot != after.WorkspaceRoot ||
-		before.SSHCredentialId != after.SSHCredentialId ||
-		before.SSHCredentialRevision != after.SSHCredentialRevision ||
-		before.HostKeyFingerprint != after.HostKeyFingerprint
+func environmentTargetChanged(before, after model.Environment) bool {
+	if before.TargetType != after.TargetType {
+		return true
+	}
+	if before.SSH == nil || after.SSH == nil {
+		return before.SSH != after.SSH
+	}
+	return before.SSH.Platform != after.SSH.Platform ||
+		before.SSH.Host != after.SSH.Host ||
+		before.SSH.Port != after.SSH.Port ||
+		before.SSH.Username != after.SSH.Username ||
+		before.SSH.WorkspaceRoot != after.SSH.WorkspaceRoot ||
+		before.SSH.CredentialId != after.SSH.CredentialId ||
+		before.SSH.CredentialRevision != after.SSH.CredentialRevision
 }

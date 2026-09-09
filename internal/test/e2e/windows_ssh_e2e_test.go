@@ -53,17 +53,23 @@ type e2eProjectResponse struct {
 }
 
 type e2eEnvironmentResponse struct {
-	ProjectID           string  `json:"project_id"`
-	State               string  `json:"state"`
-	Platform            string  `json:"platform"`
-	Host                string  `json:"host"`
-	Port                int     `json:"port"`
-	Username            string  `json:"username"`
-	WorkspaceRoot       string  `json:"workspace_root"`
-	TargetRevision      int64   `json:"target_revision,string"`
-	LastProbeRevision   *int64  `json:"last_probe_revision,string"`
-	LastProbeStatus     *string `json:"last_probe_status"`
-	LastProbeDiagnostic *string `json:"last_probe_diagnostic"`
+	ProjectID           string                   `json:"project_id"`
+	State               string                   `json:"state"`
+	TargetType          string                   `json:"target_type"`
+	SSH                 *e2eEnvironmentSSHTarget `json:"ssh"`
+	TargetRevision      int64                    `json:"target_revision,string"`
+	LastProbeRevision   *int64                   `json:"last_probe_revision,string"`
+	LastProbeStatus     *string                  `json:"last_probe_status"`
+	LastProbeDiagnostic *string                  `json:"last_probe_diagnostic"`
+}
+
+type e2eEnvironmentSSHTarget struct {
+	Platform           string `json:"platform"`
+	Host               string `json:"host"`
+	Port               int    `json:"port"`
+	Username           string `json:"username"`
+	WorkspaceRoot      string `json:"workspace_root"`
+	HostKeyFingerprint string `json:"host_key_fingerprint"`
 }
 
 func TestWindowsSSHEnvironmentHTTPIntegration(t *testing.T) {
@@ -110,25 +116,31 @@ func TestWindowsSSHEnvironmentHTTPIntegration(t *testing.T) {
 	handler := bootstrap.NewHTTPServer(cfg, logger, database, taskrepo.NewRepository(database)).Handler()
 
 	code := "windows-ssh-e2e-" + strconv.FormatInt(time.Now().UnixNano(), 36)
-	project := createE2EWindowsSSHProject(t, handler, token, code, target)
-	assertDeploymentCredentialEncrypted(t, database, project.ID, target.privateKey)
+	project := createE2EWindowsSSHProject(t, handler, token, code)
+	updateE2EWindowsSSHEnvironment(t, handler, token, project.ID, target)
+	assertDeploymentCredentialEncrypted(t, database, project.ID)
 
 	environment := getE2EEnvironment(t, handler, token, project.ID)
-	if environment.ProjectID != project.ID || environment.State != model.EnvironmentStateActive || environment.Platform != model.EnvironmentPlatformWindows {
+	if environment.ProjectID != project.ID || environment.State != model.EnvironmentStateActive || environment.TargetType != model.EnvironmentTargetTypeSSH || environment.SSH == nil || environment.SSH.Platform != model.EnvironmentPlatformWindows {
 		t.Fatalf("unexpected created environment: %+v", environment)
 	}
-	if environment.Host != target.host || environment.Port != target.port || environment.Username != target.username || environment.WorkspaceRoot != target.workspaceRoot {
+	if environment.SSH.Host != target.host || environment.SSH.Port != target.port || environment.SSH.Username != target.username || environment.SSH.WorkspaceRoot != target.workspaceRoot {
 		t.Fatalf("environment target = %+v, want %+v", environment, target)
 	}
-	if environment.TargetRevision != 1 || environment.LastProbeStatus != nil || environment.LastProbeRevision != nil {
+	if environment.TargetRevision != 2 || environment.LastProbeStatus != nil || environment.LastProbeRevision != nil {
 		t.Fatalf("unexpected initial environment probe state: %+v", environment)
 	}
-
+	if environment.SSH.HostKeyFingerprint != "" {
+		t.Fatalf("expected empty host key fingerprint before probe, got %q", environment.SSH.HostKeyFingerprint)
+	}
 	probed := probeE2EEnvironment(t, handler, token, project.ID)
 	if probed.LastProbeStatus == nil || *probed.LastProbeStatus != model.EnvironmentProbeStatusSucceeded ||
 		probed.LastProbeRevision == nil || *probed.LastProbeRevision != probed.TargetRevision ||
 		probed.LastProbeDiagnostic == nil || strings.TrimSpace(*probed.LastProbeDiagnostic) == "" {
 		t.Fatalf("unexpected probe result: %+v", probed)
+	}
+	if probed.SSH == nil || probed.SSH.HostKeyFingerprint != target.hostKeyFingerprint {
+		t.Fatalf("probe fingerprint = %#v, want %q", probed.SSH, target.hostKeyFingerprint)
 	}
 }
 
@@ -141,18 +153,7 @@ func TestWindowsSSHRuntimeQueryIntegration(t *testing.T) {
 	}
 
 	targetConfig := loadWindowsSSHTarget(t)
-	target := environmentport.SSHTarget{
-		Environment: model.Environment{
-			Id:                 "environment-query-e2e",
-			Platform:           model.EnvironmentPlatformWindows,
-			Host:               targetConfig.host,
-			Port:               targetConfig.port,
-			Username:           targetConfig.username,
-			WorkspaceRoot:      targetConfig.workspaceRoot,
-			HostKeyFingerprint: targetConfig.hostKeyFingerprint,
-		},
-		PrivateKey: credentialdto.DeploymentSSHPrivateKey{PrivateKey: targetConfig.privateKey},
-	}
+	target := windowsSSHRuntimeTarget("environment-query-e2e", "", targetConfig)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -180,19 +181,7 @@ func TestWindowsSSHTraefikRouterQueryIntegration(t *testing.T) {
 	}
 
 	targetConfig := loadWindowsSSHTarget(t)
-	target := environmentport.SSHTarget{
-		Environment: model.Environment{
-			Id:                 "environment-traefik-e2e",
-			ProjectId:          "project-traefik-e2e",
-			Platform:           model.EnvironmentPlatformWindows,
-			Host:               targetConfig.host,
-			Port:               targetConfig.port,
-			Username:           targetConfig.username,
-			WorkspaceRoot:      targetConfig.workspaceRoot,
-			HostKeyFingerprint: targetConfig.hostKeyFingerprint,
-		},
-		PrivateKey: credentialdto.DeploymentSSHPrivateKey{PrivateKey: targetConfig.privateKey},
-	}
+	target := windowsSSHRuntimeTarget("environment-traefik-e2e", "project-traefik-e2e", targetConfig)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -223,22 +212,11 @@ func TestWindowsSSHRuntimeComposeIntegration(t *testing.T) {
 	testID := strconv.FormatInt(time.Now().UnixNano(), 36)
 	serviceCode := "windows-ssh-runtime-e2e-" + testID
 	composeProject := "orbit-e2e-" + testID
-	target := environmentport.SSHTarget{
-		Environment: model.Environment{
-			Id:                 "environment-" + testID,
-			Platform:           model.EnvironmentPlatformWindows,
-			Host:               targetConfig.host,
-			Port:               targetConfig.port,
-			Username:           targetConfig.username,
-			WorkspaceRoot:      targetConfig.workspaceRoot,
-			HostKeyFingerprint: targetConfig.hostKeyFingerprint,
-		},
-		PrivateKey: credentialdto.DeploymentSSHPrivateKey{PrivateKey: targetConfig.privateKey},
-	}
+	target := windowsSSHRuntimeTarget("environment-"+testID, "", targetConfig)
 	runtime := sshrunner.NewRuntime()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	workspace := deploymentport.RemoteWorkspace{
+	workspace := deploymentport.Workspace{
 		ServiceCode:  serviceCode,
 		DeploymentID: testID,
 		Compose: `services:
@@ -254,7 +232,7 @@ func TestWindowsSSHRuntimeComposeIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolve remote service directory: %v", err)
 	}
-	t.Cleanup(func() { cleanupE2ERemoteWorkspace(t, targetConfig, serviceDir) })
+	t.Cleanup(func() { cleanupE2EWorkspace(t, targetConfig, serviceDir) })
 	t.Cleanup(func() {
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cleanupCancel()
@@ -276,7 +254,7 @@ func TestWindowsSSHRuntimeComposeIntegration(t *testing.T) {
 	}
 }
 
-func cleanupE2ERemoteWorkspace(t *testing.T, target windowsSSHTarget, serviceDir string) {
+func cleanupE2EWorkspace(t *testing.T, target windowsSSHTarget, serviceDir string) {
 	t.Helper()
 	signer, err := ssh.ParsePrivateKey([]byte(target.privateKey))
 	if err != nil {
@@ -386,14 +364,28 @@ func windowsSSHTraefikRestAPIURL() string {
 }
 
 type windowsSSHTargetResolver struct {
-	target environmentport.SSHTarget
+	target environmentport.Target
 }
 
-func (r windowsSSHTargetResolver) ResolveProjectTarget(_ context.Context, projectID string) (environmentport.SSHTarget, error) {
+func (r windowsSSHTargetResolver) ResolveProjectTarget(_ context.Context, projectID string) (environmentport.Target, error) {
 	if projectID != r.target.Environment.ProjectId {
-		return environmentport.SSHTarget{}, errors.New("unexpected Project target")
+		return environmentport.Target{}, errors.New("unexpected Project target")
 	}
 	return r.target, nil
+}
+
+func windowsSSHRuntimeTarget(environmentID string, projectID string, target windowsSSHTarget) environmentport.Target {
+	return environmentport.Target{
+		Environment: model.Environment{
+			Id: environmentID, ProjectId: projectID, TargetType: model.EnvironmentTargetTypeSSH,
+			SSH: &model.EnvironmentSSHTarget{
+				Platform: model.EnvironmentPlatformWindows, Host: target.host, Port: target.port,
+				Username: target.username, WorkspaceRoot: target.workspaceRoot,
+				HostKeyFingerprint: target.hostKeyFingerprint,
+			},
+		},
+		PrivateKey: &credentialdto.DeploymentSSHPrivateKey{PrivateKey: target.privateKey},
+	}
 }
 
 func localWindowsHostKeyFingerprint(t *testing.T) string {
@@ -413,22 +405,11 @@ func localWindowsHostKeyFingerprint(t *testing.T) string {
 	return ssh.FingerprintSHA256(key)
 }
 
-func createE2EWindowsSSHProject(t *testing.T, handler http.Handler, token, code string, target windowsSSHTarget) e2eProjectResponse {
+func createE2EWindowsSSHProject(t *testing.T, handler http.Handler, token, code string) e2eProjectResponse {
 	t.Helper()
 	payload, err := json.Marshal(map[string]any{
 		"name": "Windows SSH E2E",
 		"code": code,
-		"environment": map[string]any{
-			"state":                      model.EnvironmentStateActive,
-			"platform":                   model.EnvironmentPlatformWindows,
-			"host":                       target.host,
-			"port":                       target.port,
-			"username":                   target.username,
-			"workspace_root":             target.workspaceRoot,
-			"deployment_ssh_key_name":    "Windows SSH E2E deploy key",
-			"deployment_ssh_private_key": target.privateKey,
-			"host_key_fingerprint":       target.hostKeyFingerprint,
-		},
 	})
 	if err != nil {
 		t.Fatalf("encode project create request: %v", err)
@@ -450,13 +431,35 @@ func createE2EWindowsSSHProject(t *testing.T, handler http.Handler, token, code 
 	return project
 }
 
-func assertDeploymentCredentialEncrypted(t *testing.T, database *sql.DB, projectID string, privateKey string) {
+func updateE2EWindowsSSHEnvironment(t *testing.T, handler http.Handler, token, projectID string, target windowsSSHTarget) {
+	t.Helper()
+	payload, err := json.Marshal(map[string]any{
+		"state":       model.EnvironmentStateActive,
+		"target_type": model.EnvironmentTargetTypeSSH,
+		"ssh": map[string]any{
+			"platform":       model.EnvironmentPlatformWindows,
+			"host":           target.host,
+			"port":           target.port,
+			"username":       target.username,
+			"workspace_root": target.workspaceRoot,
+		},
+	})
+	if err != nil {
+		t.Fatalf("encode Windows SSH environment: %v", err)
+	}
+	status, body := doE2ERequest(t, handler, token, http.MethodPut, "/api/project/"+projectID+"/environment", payload)
+	if status != http.StatusOK {
+		t.Fatalf("update environment status=%d body=%s", status, body)
+	}
+}
+
+func assertDeploymentCredentialEncrypted(t *testing.T, database *sql.DB, projectID string) {
 	t.Helper()
 	var credentialID, encryptedData string
 	if err := database.QueryRowContext(context.Background(), `SELECT id, encrypted_data FROM credential WHERE project_id = ? AND type = ?`, projectID, model.CredentialTypeDeploymentSSHPrivateKey).Scan(&credentialID, &encryptedData); err != nil {
 		t.Fatalf("load deployment credential: %v", err)
 	}
-	if credentialID == "" || encryptedData == "" || strings.Contains(encryptedData, privateKey) || strings.Contains(encryptedData, "PRIVATE KEY") {
+	if credentialID == "" || encryptedData == "" || encryptedData == model.DeploymentSSHCredentialReconfigurationPlaceholder || strings.Contains(encryptedData, "PRIVATE KEY") {
 		t.Fatal("deployment credential was not stored as encrypted private data")
 	}
 }

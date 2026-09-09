@@ -264,10 +264,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 		if environment.GatewayApplicationId != nil {
 			return apperror.New(apperror.KindConflict, "Project environment already has a gateway")
 		}
-		networkName := model.GatewayNetworkName(environment.Code)
-		if networkName == "" {
-			return apperror.New(apperror.KindInternal, "Project environment network identity is invalid")
-		}
+		networkName := model.GatewayNetworkName()
 		versions := buildInitialGatewayVersions(app.Id, *image, imagePullPolicy, componentName, networkName)
 		cfg.VersionBindings = make([]model.GatewayVersionBinding, 0, len(versions))
 		for _, item := range versions {

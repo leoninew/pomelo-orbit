@@ -1,71 +1,87 @@
-# 远程 SSH 部署环境规格
-最后修改时间: 2026-09-04 08:02:27
+# 部署环境目标规格
+最后修改时间: 2026-09-09 17:04:54
 
 Review status: Accepted
 
 ## Requirement basis
 
-依据远程 SSH 部署环境需求。本规格保留 Project 作为租户边界，并定义 Project 1:1 Environment 1:1 Gateway 的 SSH-only CD 模型。
+依据“部署环境目标需求”。Project 1:1 Environment 1:1 Gateway 不变；Environment 的执行目标从 SSH-only 扩展为 explicit `local | ssh`。
 
 ## Overview
 
-Project 是 membership 和资源隔离边界。Project 解析其唯一 Environment，Environment 解析其唯一 Gateway。Project-scoped Application、Service 和 Route 创建 Deployment snapshot 后，SSH executor 在该 Environment 的远程 Docker Compose target 执行操作。
+Environment 是目标的鉴别联合：公共 identity/state/revision/Gateway binding 与 target-specific configuration 分离。应用层只解析明确的 `environmentport.Target`；基础设施组合根把它交给 local 或 SSH runtime。调用者不会也不应按 hostname、空字段或运行环境猜测执行位置。
 
-## Project as tenant boundary
+```text
+Project -> Environment(target_type)
+  local -> control-plane workspace.deployment + Docker daemon
+  ssh   -> SSH target + SFTP workspace + Docker daemon
+                 -> Gateway / Traefik REST
+```
 
-Project 保留现有 project_member 授权语义。Application、Repository、Credential、Pipeline、PipelineRun、Deployment、Route、Gateway backing Application 与所有列表/详情/写入操作均维持 project_id scope。HTTP、MCP 和 Web active-project 继续显式传递或保存当前 Project；资源 ID 查找后必须校验 membership。
+## Target model
 
-Project code 变为创建后不可变的基础设施 identity。它用于派生 Environment code、Compose namespace、remote workspace segment 和 Gateway network 名，避免修改代码导致已部署运行时漂移。Project 名称与 active 状态仍可更新；停用 Project 前必须先 disabled Environment。
+Environment 公共字段：`id`、`project_id`、`code`、`state`、`target_type`、`target_revision`、Probe 状态、Gateway binding 与审计时间。
 
-## Environment relationship and lifecycle
+- `local`：没有目标配置列。运行时由控制面 config 的 `workspace.deployment` 与本机 Docker CLI 定义。
+- `ssh`：`platform`、`host`、`port`、`username`、`workspace_root`、SSH credential identity/revision、host-key fingerprint。只支持 Linux OpenSSH，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。
 
-Environment 增加 project_id NOT NULL UNIQUE 逻辑引用。一个 Environment 只能属于一个 Project，一个 Project 只能有一条 Environment 记录。Environment 没有独立 create/delete surface：
+Environment target type 可显式更新。任何 type 或适用 target configuration 改变均清空 Probe、递增 revision。local 不产生 SSH credential；ssh 产生受管部署密钥，首次成功 Probe 写入 host-key fingerprint。
 
-- POST /api/project 使用一个请求级事务创建 Project、deployment_ssh_private_key Credential 与 Environment。
-- GET 和 PUT /api/project/:project_id/environment 读取或更新该唯一 Environment。
-- POST /api/project/:project_id/environment/probe 运行显式 Probe。
-- Environment 只可 active 或 disabled，不能删除，也不能迁移到另一 Project。
+Linux `POST /api/project/:id/environment/initialize` 接收 bootstrap SSH username 与恰好一种一次性认证（密码或私钥，私钥口令可选）。它们仅用于本次 SSH session，绝不持久化、返回或记录。runner 首先验证配置部署 user 的 Docker daemon/Compose，再要求 bootstrap user 的 `sudo -n`、验证现有 OpenSSH 配置支持公钥认证，最后仅按需写入部署公钥和工作目录。它不安装、启停或配置 Docker/Compose/Docker Desktop/WSL，不修改 Docker 用户组、sshd、firewall 或 Docker 网络。操作成功后调用原有 Probe，以受管私钥验证连接并 pin host key。Windows 不提供该 endpoint 的可用操作，因为普通 SSH 无法可靠触发 UAC。
 
-Environment code 等于 Project code，并由服务端填充；外部请求不能修改。字段继续保存 platform、host、port、username、workspace root、credential ID/revision、host-key fingerprint、target revision、Probe metadata 与可选 gateway_application_id。
+Project creation 不接受 Environment payload。Project service 先创建 Project，再以同一 request transaction 调用 Environment bootstrap，固定写入 active local Environment；因此新 Project 的 Environment 页面始终有可继续编辑的记录。仅当用户在该页切为 ssh 时，Environment service 才创建部署 SSH credential。
 
-Project create 的 Environment payload 必须完整，包含专用 deploy key 名称、private key material、可选 passphrase 和 SSH target。使用既有事务模式：先写 Project，再加密写 Credential，再写 Environment；任一步失败即回滚。private key 仅在此写入路径出现，不进入响应、日志或 snapshot。
+## Runtime boundary
 
-## Gateway and Route relationship
+`environmentport.Target` 保存 Environment 与仅 SSH 所需的 transient private key。`deploymentport.Runtime` 的所有 workspace、Compose、query、file sync 操作都接收该 Target。
 
-Environment 的 gateway_application_id 是唯一且不可被第二个 Gateway 覆盖的逻辑引用。Gateway provision 在同一事务中校验 Project membership、Environment active/probed、无现有 binding，然后创建 Project-scoped backing Application/Version/Service，并绑定 Environment。Gateway 的 Application project_id 必须等于 Environment project_id。
+组合根注入一个 explicit dispatcher：
 
-Route 保留 Project scope。创建、更新、enabled list、preview/confirm 和 certificate materialization 均通过 Project 解析 Environment；managed target Application/Service 必须属于同 Project。Gateway deploy/restart 只发布该 Project Environment 的 route snapshot。全局 active Gateway 和全局 traefik network 被移除。
+- local runtime 复用历史本机执行语义，materialize `workspace.deployment/<service-code>`，使用本机进程运行 Docker Compose，并在该目录查询 Docker。
+- SSH runtime 继续用 SFTP materialize remote workspace，并在 pinned SSH target 运行受控命令。
+- dispatcher 仅按 `target_type` 路由；缺少适用 runtime 是配置错误，不尝试另一种运行时。
 
-## Service, Deployment and runtime identity
+环境 Probe 使用相同 target discriminator：local 执行本机 Docker/Compose prerequisites；ssh 使用私钥、host key verification 和原有 Docker prerequisites。Gateway network、Gateway REST、Route preview/publish 与 deployment/runtime query 都使用相同 Runtime，因此目标语义一致。
 
-Service 不保存重复的 environment_id，因为 Application 的 Project 已唯一确定 Environment。部署、运行时查询、compose preview、logs、inspect、network doctor 和 HTTP probe 先验证 Project membership，再解析 Environment。
+## Deployment snapshot
 
-Deployment 以正式列保存不可变的 project_id、environment_id、Environment target revision、deploy credential ID/revision、可选 Gateway Application ID 与 effective plan hash；`options_json` 只保存命令选项和 Gateway 配置快照。执行时缺少目标列、Environment disabled、Probe 过期或 revision 不一致均 fail closed，不从控制面本机或其他 Project 推断目标。
-
-## SSH and platform contract
-
-只使用 golang.org/x/crypto/ssh、private-key authentication、严格 host-key fingerprint 校验与 SFTP。Linux 使用受控 POSIX sh 和 curl；Windows 使用 `powershell.exe -NoProfile -NonInteractive` 调用宿主机 `docker.exe` 与 `curl.exe`，由 WSL2 Docker Desktop 提供 Linux container engine。禁止 password auth、PTY、forwarding、系统 ssh/scp、用户 command input、Cygwin/MSYS/Git Bash/WSL SSH server 与 Windows Containers。
-
-registry login、CA、DNS、网络及多 registry 配置由目标宿主机维护，Executor 不保存或改变 Docker login 状态。
+Deployment 正式保存 `environment_id`、`environment_target_type`、`environment_target_revision`、Gateway application identity。SSH deployment 另外保存 SSH credential id/revision；local deployment 这两个字段为空。worker 重新解析当前 Target 后同时校验 type、revision 与 SSH-specific snapshot，任一不一致都失败。
 
 ## API, MCP and Web
 
-保留 Project API、Project selector、Project detail 和 membership 管理。Environment 在 Project detail 中呈现和配置，而不是作为跨 Project 的独立导航资源。当前 Project 切换后，资源页面继续用既有 project_id query contract，Environment 状态/平台可作为上下文展示。
+Environment request/response 以 `target_type` 为 discriminator：
 
-MCP tools 保留 project_id 作为授权和目标 scope。部署、Gateway 和 Route 工具在服务器端根据 Project 解析唯一 Environment；不得接受任意 environment_id 绕过 tenant scope。
+- Project create request 仅有 name 和 code；创建成功后 Web 设置 active project 并进入 `/environment`。
+- local update request 仅有 target type 与 state；response 返回 local target、控制面 workspace、运行平台、主机名、当前用户和 Probe 状态。编辑当前 local target 切到 ssh 时，Web 只在所选 SSH 平台与该平台相同的情况下带入主机名和当前用户。
+- ssh update request 在 SSH target object 内提交 platform/host/port/username/workspace root；response 只返回这些配置与 fingerprint。Linux initialization request 额外提交一次性连接认证，成功 response 是完成受管 key Probe 的 Environment；MCP 不接受或输出这类认证。
+
+Web 编辑器切换 type 时仅显示对应表单。active Linux SSH target 显示“初始化部署主机”表单，用户选择密码或私钥并提交；对话框关闭或成功后立即清空一次性认证。Windows 与 local 不显示自动初始化入口。Gateway 仍使用直接跳转到 `/gateway/:id` 的链接，不展示内部 application id。
 
 ## Data and migration boundary
 
-不修改已执行 migration。新增三数据库 migration 在 existing Project schema 上创建 environment.project_id 唯一逻辑引用及 Deployment snapshot 字段；不删除 Project 或任何既有 project_id。旧数据库升级必须先为每个 active Project 生成完整 Environment 配置或 fail closed，不允许无 target 的 Project 进入可部署状态。
+新增 schema migration 使 Environment SSH-specific columns nullable，并新增 `target_type` 与 Deployment `environment_target_type`。migration 将已有 Environment 事实性地标为 `ssh`，这是数据模型升级；应用层不读取 legacy/null data 来决定执行器。default seed 在 migration 后收敛为 local，不创建 placeholder deployment SSH credential。
+
+## Affected components
+
+- Environment model、repository/SQLC、project bootstrap、credential creation、Probe、HTTP/MCP/proto 与 Web form。
+- Environment target port、deployment runtime port、execution/query/log paths、Route manager 和 bootstrap composition。
+- Local runtime/workspace/command runner、SSH runtime type signatures及其测试。
+- MySQL/PostgreSQL/SQLite migration、default seed 与 generated SQLC/proto output。
 
 ## Risks
 
-- Project create 的 atomic Environment bootstrap 是跨聚合事务，必须先覆盖 rollback 和 sensitive-data redaction。
-- Project code immutability 是破坏性 API 行为，现有 code 更新请求必须被明确拒绝。
-- 任何 Route/Gateway 跨 Project target 校验遗漏都会破坏租户隔离。
-- 真正支持 Linux/Windows SSH 仍依赖可复现的 integration hosts。
+- local runtime 恢复时必须保留容器化控制面所需的 Docker daemon path resolver 与 workspace mount validation。
+- 从 ssh 切到 local 会废弃旧排队任务和 SSH deployment credential；这符合不可变 snapshot contract。
+- 不把任何 local 成功路径当作 SSH integration 的替代验证。
+- Docker prerequisites 是外部依赖；初始化将拒绝未就绪目标，而不是尝试自动修复 Windows Docker Desktop/WSL 或 Linux Docker 安装。
+
+## Alternatives
+
+- 将 host 为 `127.0.0.1` 的 SSH Environment 转为 local：拒绝，丢失认证和 host-key 语义。
+- 单个 SSH runtime 内按空 host/credential 切 local：拒绝，字段隐式、故障难诊断且与产品模型冲突。
+- 保留 SSH-only response 并为 local 填哑值：拒绝，表单与目标状态会继续误导用户。
 
 ## User review notes
 
-- 用户明确将 Project 定义为类似租户的边界，而非删除的遗留领域。
-- 用户明确一 Project 一 Environment、一 Environment 一 Gateway，Project 切换即环境切换。
+- local 与 ssh 是复用模型的两个显式类型，SSH loopback 不特殊处理。
+- 历史本机实现现在恢复，不等单独提交后再回看历史。

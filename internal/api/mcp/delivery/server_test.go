@@ -73,8 +73,15 @@ func TestServerReportsPomeloMCPImplementation(t *testing.T) {
 	}
 }
 
-func TestProjectEnvironmentToolsUseProjectScopeAndKeepPrivateKeyWriteOnly(t *testing.T) {
-	environment := &environmentToolService{environment: model.Environment{Id: "environment-1", ProjectId: "project-1", Code: "project", State: model.EnvironmentStateActive, Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit", WorkspaceRoot: "/srv/orbit", SSHCredentialId: "credential-1", SSHCredentialRevision: 2, HostKeyFingerprint: "SHA256:abc", TargetRevision: 3}}
+func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(t *testing.T) {
+	environment := &environmentToolService{environment: model.Environment{
+		Id: "environment-1", ProjectId: "project-1", Code: "project", State: model.EnvironmentStateActive,
+		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: 3,
+		SSH: &model.EnvironmentSSHTarget{
+			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit", WorkspaceRoot: "/srv/orbit",
+			CredentialId: "credential-1", CredentialRevision: 2, HostKeyFingerprint: "SHA256:abc",
+		},
+	}}
 	server, err := NewServer(Dependencies{ActorUserId: "actor", Environment: environment})
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
@@ -90,21 +97,27 @@ func TestProjectEnvironmentToolsUseProjectScopeAndKeepPrivateKeyWriteOnly(t *tes
 		t.Fatalf("get environment scope = output %#v service %#v", getOutput, environment)
 	}
 
-	privateKey := "private-key-material"
 	workspaceRoot := "/srv/orbit-next"
-	updateResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_project_environment", Arguments: map[string]any{"project_id": "project-1", "workspace_root": workspaceRoot, "deployment_ssh_private_key": privateKey}})
+	updateResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_project_environment", Arguments: map[string]any{"project_id": "project-1", "ssh": map[string]any{"platform": "linux", "host": "host.example.test", "port": 22, "username": "orbit", "workspace_root": workspaceRoot}}})
 	if err != nil || updateResult.IsError {
 		t.Fatalf("CallTool(update environment) result=%#v err=%v", updateResult, err)
 	}
-	if environment.update.WorkspaceRoot == nil || *environment.update.WorkspaceRoot != workspaceRoot || environment.update.DeploymentSSHPrivateKey == nil || *environment.update.DeploymentSSHPrivateKey != privateKey {
+	if environment.update.SSH == nil || environment.update.SSH.WorkspaceRoot != workspaceRoot {
 		t.Fatalf("update input = %#v", environment.update)
 	}
 	encodedUpdate, err := json.Marshal(structuredOutput(t, updateResult))
 	if err != nil {
 		t.Fatalf("marshal update output: %v", err)
 	}
-	if strings.Contains(string(encodedUpdate), privateKey) {
+	if strings.Contains(string(encodedUpdate), "PRIVATE KEY") || strings.Contains(strings.ToLower(string(encodedUpdate)), "private_key") {
 		t.Fatalf("update output exposed private key: %s", encodedUpdate)
+	}
+	getEncoded, err := json.Marshal(getOutput)
+	if err != nil {
+		t.Fatalf("marshal get output: %v", err)
+	}
+	if strings.Contains(string(getEncoded), "authorized_keys") || strings.Contains(strings.ToLower(string(getEncoded)), "private_key") {
+		t.Fatalf("get output exposed initialization credentials: %s", getEncoded)
 	}
 
 	probeResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_probe_project_environment", Arguments: map[string]any{"project_id": "project-1"}})
@@ -113,6 +126,37 @@ func TestProjectEnvironmentToolsUseProjectScopeAndKeepPrivateKeyWriteOnly(t *tes
 	}
 	if environment.probeCalls != 1 || environment.projectID != "project-1" || environment.userID != "actor" {
 		t.Fatalf("probe scope = service %#v", environment)
+	}
+}
+
+func TestProjectEnvironmentToolsReturnLocalWorkspaceWithoutSSHFields(t *testing.T) {
+	environment := &environmentToolService{environment: model.Environment{
+		Id: "environment-1", ProjectId: "project-1", Code: "project", State: model.EnvironmentStateActive,
+		TargetType: model.EnvironmentTargetTypeLocal,
+	}}
+	server, err := NewServer(Dependencies{
+		ActorUserId: "actor", Environment: environment, LocalWorkspaceRoot: "/srv/orbit/deployment",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := connectInMemory(t, server).CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "orbit_get_project_environment", Arguments: map[string]any{"project_id": "project-1"},
+	})
+	if err != nil || result.IsError {
+		t.Fatalf("CallTool(get local environment) result=%#v err=%v", result, err)
+	}
+	output := structuredOutput(t, result)
+	environmentOutput, ok := output["environment"].(map[string]any)
+	if !ok {
+		t.Fatalf("environment output = %#v", output["environment"])
+	}
+	local, ok := environmentOutput["local"].(map[string]any)
+	if !ok || local["workspace_root"] != "/srv/orbit/deployment" {
+		t.Fatalf("local output = %#v", environmentOutput["local"])
+	}
+	if _, found := environmentOutput["ssh"]; found {
+		t.Fatalf("local environment exposed SSH fields: %#v", environmentOutput)
 	}
 }
 

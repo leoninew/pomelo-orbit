@@ -11,6 +11,7 @@ type Deployment struct {
 	ServiceId                 *string    `db:"service_id"`
 	ServiceInstanceKey        *string    `db:"service_instance_key"`
 	EnvironmentId             *string    `db:"environment_id"`
+	EnvironmentTargetType     *string    `db:"environment_target_type"`
 	EnvironmentTargetRevision *int64     `db:"environment_target_revision"`
 	SSHCredentialId           *string    `db:"ssh_credential_id"`
 	SSHCredentialRevision     *int64     `db:"ssh_credential_revision"`

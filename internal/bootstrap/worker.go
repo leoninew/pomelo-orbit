@@ -15,8 +15,10 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/traefik"
+	localrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/local"
 	pipelinerunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/pipeline"
 	sshrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/ssh"
+	targetrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/target"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/executionlog"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/pipelineworkspace"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/repositorysource"
@@ -35,9 +37,10 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	transactionRunner := databasetx.NewTransactionRunner(database)
 	credentialService := credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey)
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, credentialService)
-	remoteRuntime := sshrunner.NewRuntime()
+	localRuntime := localrunner.NewRuntime(cfg.Workspace.Deployment, dockerPathResolver)
+	runtime := targetrunner.New(localRuntime, sshrunner.NewRuntime())
 	gatewayService := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, cfg, dockerPathResolver, transactionRunner)
-	routeManager := traefik.NewRouteManager(targetResolver, remoteRuntime)
+	routeManager := traefik.NewRouteManager(targetResolver, runtime)
 	routeService := routesvc.New(
 		stores.project,
 		stores.application,
@@ -76,7 +79,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		gatewayService,
 		logger,
 		targetResolver,
-		remoteRuntime,
+		runtime,
 		deploymentLogStore,
 		cfg.Worker.PollInterval,
 		routeService,

@@ -44,7 +44,7 @@ func testGatewayEnrichmentPlan(profile, email, token string) model.EffectiveServ
 		Application: model.Application{Id: "gateway-1", Code: "traefik"},
 		Version:     model.Version{Id: versionID},
 		Gateway: &model.GatewayConfig{
-			ApplicationId: "gateway-1", TraefikComponentName: "traefik", AcmeProfile: profile, AcmeEmail: email, DNSApiToken: token,
+			ApplicationId: "gateway-1", TraefikComponentName: "traefik", NetworkName: "traefik", AcmeProfile: profile, AcmeEmail: email, DNSApiToken: token,
 			VersionBindings: []model.GatewayVersionBinding{{Profile: role, VersionId: versionID}},
 		},
 		Components: []model.EffectiveServiceComponent{{

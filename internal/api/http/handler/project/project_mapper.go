@@ -8,34 +8,11 @@ import (
 )
 
 func projectCreateInput(req *projectv1.ProjectCreateReq) projectdto.CreateInput {
-	input := projectdto.CreateInput{Name: req.Name, Code: req.Code}
-	if req.Environment == nil {
-		return input
-	}
-	input.Environment = projectdto.EnvironmentCreateInput{
-		State:                      req.Environment.State,
-		Platform:                   req.Environment.Platform,
-		Host:                       req.Environment.Host,
-		Port:                       int(req.Environment.Port),
-		Username:                   req.Environment.Username,
-		WorkspaceRoot:              req.Environment.WorkspaceRoot,
-		DeploymentSSHKeyName:       req.Environment.DeploymentSshKeyName,
-		DeploymentSSHPrivateKey:    req.Environment.DeploymentSshPrivateKey,
-		DeploymentSSHKeyPassphrase: optionalString(req.Environment.DeploymentSshKeyPassphrase),
-		HostKeyFingerprint:         req.Environment.HostKeyFingerprint,
-	}
-	return input
+	return projectdto.CreateInput{Name: req.Name, Code: req.Code}
 }
 
 func projectSaveInput(req *projectv1.ProjectSaveReq) projectdto.SaveInput {
 	return projectdto.SaveInput{Name: req.Name}
-}
-
-func optionalString(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
 }
 
 func projectResponse(project model.Project) projectv1.ProjectResp {

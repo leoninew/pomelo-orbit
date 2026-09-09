@@ -32,8 +32,11 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/turnstile"
 	deliverymcpclient "github.com/leoninew/pomelo-orbit/internal/infrastructure/mcp/delivery"
 
+	environmentrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/environment"
+	localrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/local"
 	pipelinerunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/pipeline"
 	sshrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/ssh"
+	targetrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/target"
 
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/envfile"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/executionlog"
@@ -70,21 +73,22 @@ type applicationServices struct {
 	TaskService        tasksvc.Service
 }
 
-func newDeliveryMCPServer(actorUserId string, services applicationServices) (*mcp.Server, error) {
-	deps := newDeliveryMCPDependencies(services)
+func newDeliveryMCPServer(actorUserId string, services applicationServices, localWorkspaceRoot string) (*mcp.Server, error) {
+	deps := newDeliveryMCPDependencies(services, localWorkspaceRoot)
 	deps.ActorUserId = actorUserId
 	return deliverymcp.NewServer(deps)
 }
 
-func newDeliveryMCPDependencies(services applicationServices) deliverymcp.Dependencies {
+func newDeliveryMCPDependencies(services applicationServices, localWorkspaceRoot string) deliverymcp.Dependencies {
 	return deliverymcp.Dependencies{
-		Project:     services.ProjectService,
-		Application: services.ApplicationService,
-		Service:     services.ServiceService,
-		Deployment:  services.DeploymentService,
-		Environment: services.EnvironmentService,
-		Gateway:     services.GatewayService,
-		Route:       services.RouteService,
+		Project:            services.ProjectService,
+		Application:        services.ApplicationService,
+		Service:            services.ServiceService,
+		Deployment:         services.DeploymentService,
+		Environment:        services.EnvironmentService,
+		LocalWorkspaceRoot: localWorkspaceRoot,
+		Gateway:            services.GatewayService,
+		Route:              services.RouteService,
 	}
 }
 
@@ -97,16 +101,17 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	authService := authsvc.New(stores.user, stores.auth, tokenService, logger, cfg.Jwt.SecretKey)
 	transactionRunner := databasetx.NewTransactionRunner(database)
 	credentialService := credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey)
-	environmentService := environmentsvc.New(stores.environment, stores.project, credentialService, credentialService, sshrunner.NewEnvironmentProber())
-	projectService := projectsvc.New(stores.project, stores.user, stores.environment, credentialService, environmentService)
 	pipelineLogStore := executionlog.Store{}
 	deploymentLogStore := executionlog.NewDeploymentStore(cfg.Workspace.Deployment)
 	dockerPathResolver := dockerDaemonPathResolver()
+	localRuntime := localrunner.NewRuntime(cfg.Workspace.Deployment, dockerPathResolver)
+	runtime := targetrunner.New(localRuntime, sshrunner.NewRuntime())
+	environmentService := environmentsvc.New(stores.environment, stores.project, credentialService, credentialService, environmentrunner.NewProber(localRuntime, sshrunner.NewEnvironmentProber()), sshrunner.NewEnvironmentBootstrapper())
+	projectService := projectsvc.New(stores.project, stores.user, stores.environment, environmentService)
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.Workspace.Pipeline, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, credentialService)
-	remoteRuntime := sshrunner.NewRuntime()
-	routeManager := traefik.NewRouteManager(targetResolver, remoteRuntime)
+	routeManager := traefik.NewRouteManager(targetResolver, runtime)
 	gatewayCore := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, cfg, dockerPathResolver, transactionRunner)
 	deploymentService := deploymentsvc.NewCommandService(
 		stores.project,
@@ -117,7 +122,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		deploymentDispatcher,
 		logger,
 		targetResolver,
-		remoteRuntime,
+		runtime,
 		deploymentLogStore,
 		gatewayCore,
 	)
@@ -186,7 +191,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		cfg.LLM.MaxToolCallRounds,
 		llmclient.New(cfg.LLM),
 		deliverymcpclient.NewFactory(func(actorUserId string) (*mcp.Server, error) {
-			return newDeliveryMCPServer(actorUserId, services)
+			return newDeliveryMCPServer(actorUserId, services, cfg.Workspace.Deployment)
 		}),
 	)
 	return services

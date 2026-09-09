@@ -1,5 +1,5 @@
-# 远程 SSH 部署环境验证记录
-最后修改时间: 2026-09-04 21:57:05
+# 部署环境目标验证记录
+最后修改时间: 2026-09-09 17:22:10
 
 Review status: Draft
 
@@ -7,89 +7,89 @@ Mode: strict
 
 ## Requirement alignment
 
-- Project 继续作为 membership、资源隔离和部署目标切换边界；Project 1:1 Environment 1:1 Gateway 已由领域模型、应用服务、HTTP、MCP 和 Web active-project 流程共同约束。
-- Environment 在 Project 创建事务中与专用 deployment SSH Credential 一起创建；Environment 只有 active/disabled 状态，没有独立 create/delete/rebind surface。
-- Service、Gateway、Route、Deployment 和 runtime operations 从 Project 解析唯一 Environment，外部 API/MCP 不接受可漂移的 `environment_id`。
-- 支持边界收敛为 Linux OpenSSH + Linux containers，以及 Windows native OpenSSH + WSL2 Docker Desktop Linux containers；部署、运行时查询和 Traefik REST 均使用 SSH/SFTP。
-- registry 登录、CA、DNS、网络和多 registry 配置仍由目标宿主机负责；不引入控制面本机 Docker fallback 或兼容双路径。
+- Project 仍是资源归属和 active-project scope；每个 Project 在创建事务中获得一个 active `local` Environment，并绑定默认 Gateway。Project create 不再携带 SSH 环境配置或创建部署私钥。
+- Environment 使用显式 `local | ssh` target type。local response 只给出控制面 workspace、平台、主机和用户；ssh response 才包含 SSH target、credential 与 host-key fingerprint。SSH loopback 未被重新解释为 local。
+- local runtime、SSH runtime、Probe、Compose、runtime/log 查询、Gateway network 和 Traefik Route 操作都经同一 target runtime dispatcher 执行。
+- Linux SSH 初始化接受一次性密码或私钥认证；runner 只检查 Docker/Compose、无交互 sudo 和 OpenSSH 公钥能力，按需写入 Orbit 部署公钥和工作目录，随后用受管私钥 Probe。认证不会持久化或回传；实现未安装/管理 Docker、Docker Compose、Desktop、WSL、Docker 用户组、sshd、firewall 或网络规则。Windows 不显示该入口。
 
 ## Spec alignment
 
-- Environment 使用 `project_id` 唯一逻辑引用；Gateway 使用 Environment 的唯一 logical binding，跨聚合关系由应用层校验同一 Project 归属。
-- Deployment 以正式字段保存 Project、Environment、target revision、deploy credential revision 与 Gateway Application snapshot；执行前校验目标是否仍可用，发生漂移时 fail closed。
-- SSH runtime 使用 `golang.org/x/crypto/ssh`、私钥认证、host-key fingerprint 校验与 SFTP。Windows adapter 通过 noninteractive PowerShell 调用宿主机 `docker.exe` 和 `curl.exe`，并验证 Docker Server OS 为 Linux。
-- Project detail 页面复用既有 Project scope、共享表单组件和 active-project store，在 Project 内编辑、禁用和 Probe Environment；没有新增跨 Project Environment 导航。
-- MCP 增加按 Project scope 的 Environment get/update/probe 工具；private key 与 passphrase 只可写入，响应和日志均不回显。
+- `environmentport.Target`、target runtime dispatcher、local runner/workspace 与 SSH runner 已替换旧 SSH-only 运行时边界；没有根据 host、空 SSH 字段或失败路径隐式 fallback。
+- Deployment snapshot 保存 `environment_target_type` 和 revision；SSH credential snapshot 仅用于 ssh target。target type/revision 不匹配会使任务失败。
+- HTTP、Proto、MCP 与 Web 环境编辑器均以 target type 为 discriminator；Gateway 入口改为直达 Gateway 页面，不展示内部 application ID。
+- SQLC 和 Proto 已按当前 schema/proto 重新生成。
 
 ## Plan alignment
 
-- 已恢复和保持 Project resource/membership scope，未将资源全局化。
-- 已完成 Environment、Gateway、Route、Deployment snapshot 与远程 SSH runtime 的主线实现，并移除控制面本机 deployment runner 和 deployment workspace adapter。
-- 已新增 MySQL/PostgreSQL/SQLite `000039_environment_foundation` migration、SQLC 查询与 v37 到 v38 的 MySQL/PostgreSQL 演练脚本。
-- 已更新 CD runtime、部署、MCP 直接操作和卷挂载活文档，并新增 Windows OpenSSH 本地集成环境配置脚本。
+计划中的目标模型、运行时收敛、一次性 Linux 初始化、HTTP/MCP/Web、活文档和自动化测试均已在当前 diff 中覆盖。
+
+本轮验证前用户提出将 `000041` 合并进 `000040` 并同步开发库；该数据迁移整理已按指示暂缓。当前迁移仍保持 `000040` seed 加 `000041` target-type 演进，开发库仍为 clean version 41；本次暂存不把它表述为已完成的迁移合并。
 
 ## Actual diff summary
 
-- 后端：新增 Environment model/repository/usecase/HTTP route/handler/proto/SQLC，实现 Project create 的 Project + Credential + Environment 请求事务、Probe 以及 Project-derived target resolution。
-- 远端运行时：新增 SSH environment probe 和 runtime adapter；部署、Compose stage、runtime query、Gateway/Route snapshot 与 Traefik REST 从控制面本机执行切换为目标宿主机 SSH/SFTP 执行。
-- 隔离和快照：Gateway、Route、Service 与 Deployment 均按 Project 校验；Deployment 固化 remote target identity/revision，target 变更或 Probe 不新鲜时拒绝执行。
-- 前端和 MCP：Project 页面增加 Environment 配置/Probe 卡片与 API；MCP 增加 Project-scoped Environment tools，runtime 输出携带派生 Project identity。
-- 平台工具和测试：新增 Windows OpenSSH 配置脚本、MySQL/PostgreSQL v37 到 v38 迁移脚本、SSH unit/integration tests 及 Windows native OpenSSH + WSL2 Docker Desktop live-host E2E。
+- Environment 与 Deployment 模型、SQL query/schema/repository/SQLC 改为显式目标类型和仅 SSH 可选字段；默认 seed Project 直接获得 local Environment，不再保留 placeholder 部署 credential。
+- Project bootstrap、Environment target validation/Probe/initialize、credential 生命周期和 deployment snapshot 迁移到新模型。
+- 新增 local command/workspace runtime 与 target dispatcher；现有 SSH runtime 接收显式 SSH target。
+- 删除复制安装命令的 Proto/API/MCP/Web 输出，改为 Linux SSH 初始化对话框；一次性表单认证关闭或成功时清空。
+- 更新 Environment 页面、Project 创建后跳转、i18n 与 CD runtime/deployment/MCP/volume 文档。
 
 ## Expected vs actual changed files
 
-| Expected scope | Actual files and result |
+| Expected scope | Result |
 | --- | --- |
-| Project/Environment domain and transaction | `internal/model/environment.go`、`internal/application/environment/**`、`internal/repository/environment.go`、`internal/infrastructure/database/tx/request.go`、Project/Credential usecases and tests; completed. |
-| HTTP/Proto/SQL/Schema migration | Environment HTTP handler/routes, `proto/orbit/v1/environment/**`, `sql/migration/*/000039_environment_foundation.*`, `sql/query/environment/environment.sql`, SQLC generated outputs; completed. |
-| SSH-only deployment/runtime and Traefik | `internal/infrastructure/runner/ssh/**`, deployment/gateway/route usecases, Traefik adapter; completed. Deleted control-plane-local runner/workspace implementation is intentional. |
-| Web and MCP | `web/src/views/project/**`, Project environment API/store/i18n, MCP delivery tools/server/types; completed. |
-| Operations and migration drill assets | `scripts/setup-windows-openssh.ps1`, `scripts/migrate_v37_to_v38.mysql.sql`, `scripts/migrate_v37_to_v38.postgres.sql`, relevant active documentation; completed. |
-| Unrelated workspace configuration | `.codex/config.toml` is modified but excluded from this feature verification and any later feature commit. |
+| Environment/Deployment target model、三方言迁移、SQLC | 已实现；`000041` 到 `000040` 的后续合并暂缓 |
+| local/ssh runtime dispatch、Gateway/Route 一致执行 | 已实现并有 unit/integration coverage |
+| Linux SSH 一次性初始化与受管 key Probe | 已实现并有 runner/use case/HTTP 测试 |
+| Proto/HTTP/MCP/Web target discriminator | 已实现并已重新生成 Proto |
+| 活文档与环境 UI | 已更新 |
 
 ## Acceptance checklist
 
-- [x] Project remains the resource-isolation and membership boundary; active-project scope remains in HTTP, MCP and Web paths.
-- [x] Each Project has one non-deletable Environment using a unique logical `project_id` relation; Project code is immutable and provides the stable derived infrastructure identity.
-- [x] Project creation writes Project, encrypted deployment SSH Credential and Environment atomically; rollback/redaction coverage is present.
-- [x] Gateway is uniquely bound to its Project Environment; Gateway backing application/service and Route managed targets are checked for the same Project.
-- [x] Deployment snapshots store Environment/credential/gateway identity and revisions; runtime operation targets are derived rather than supplied by callers.
-- [x] CD, runtime and Traefik REST implementation uses SSH/SFTP only, with no local executor fallback; Windows real-host Probe, Compose execution and Traefik router query passed.
-- [x] Required automated quality gates passed.
-- [ ] Linux OpenSSH + Linux containers has not yet been exercised against a real target.
-- [ ] Traefik REST readiness and full recoverable `providers.rest` snapshot PUT have not yet been exercised on a provisioned Gateway.
+- [x] Environment 公开 target type；local/ssh API 和 UI 只出现适用字段。
+- [x] local CD 经控制面 Docker/workspace 与 target dispatcher 执行；ssh loopback 仍保留 SSH 语义。
+- [x] local 不创建部署 SSH credential；SSH 私钥、bootstrap 密码/私钥/口令不进入 API、MCP 或日志。
+- [x] local Probe 检查本机 Docker prerequisites；SSH Probe 继续 pin host key。
+- [x] Linux SSH 初始化只执行前置检查、部署公钥和工作目录配置；不管理 Docker、sshd、firewall 或网络。
+- [x] Deployment snapshot 校验 target type/revision，SSH credential snapshot 只在 ssh 使用。
+- [x] default seed Project 为 local Environment，Gateway binding 保留且没有占位 SSH credential。
+- [x] Project create 只接受名称和编码，并创建可继续配置的 local Environment。
+- [x] local response 直接取控制面平台/主机/用户；Web 仅在同平台 local-to-SSH 转换时预填主机和用户。
+- [x] 质量门与全量 Go 包测试通过。
+- [ ] Linux SSH 真实目标的写入式初始化与受管 key Probe。
+- [ ] Windows native OpenSSH + WSL2 Docker Desktop 的实机运行验证。
+- [ ] `000041` 合并进 `000040`，并将开发库迁移记录从 version 41 收敛到 version 40。
 
 ## Validation results
 
 | Command | Result |
 | --- | --- |
-| `yarn --cwd web lint:fix` | passed |
-| `yarn --cwd web typecheck` | passed |
-| `yarn --cwd web test` | passed: 18 files, 91 tests |
-| `task check` | passed: 0 issues |
-| `go test ./cmd/... ./internal/...` | passed |
-| `$env:POMELO_ORBIT_WINDOWS_SSH_E2E = '1'; go test -count=1 -run '^TestWindowsSSH' -v ./internal/test/e2e` | passed: Project/Environment HTTP transaction + Probe, Docker JSON query, Traefik router query, Compose stage/run/cleanup |
-| `git diff HEAD --check` | passed |
+| `task sqlc` | Passed |
+| `task proto` | Passed |
+| `yarn --cwd web lint:fix` | Passed |
+| `yarn --cwd web typecheck` | Passed |
+| `task check` | Web type/lint/format、Go lint configuration 与 format checks passed; final static analysis separately rerun below |
+| `./bin/golangci-lint run ./cmd/... ./internal/... ./sql` | Passed, 0 issues |
+| `go test ./cmd/... ./internal/...` | Passed |
+| `git diff --check HEAD` | Passed |
 
-Windows live-host E2E covered the real path `TargetResolver -> RouteManager -> SSH Runtime -> PowerShell curl -> JSON decode`. The PowerShell adapter suppresses progress/CLIXML output, and the SSH runtime separates stdout from stderr so Traefik JSON is not corrupted or truncated.
+验证期间修正了一处 Staticcheck `ST1005`：Linux SSH bootstrap 的无效 target 错误文案改为小写开头；没有行为变更。
 
 ## Scope deviation
 
-- No requirement or spec scope was removed.
-- MCP Environment tools and the Windows setup script expand the planned operational surface only to make the Project-scoped Environment configurable and testable; they preserve the specified authorization and platform boundaries.
-- Full Traefik snapshot publication is intentionally not executed against the current target because it replaces `providers.rest`; it requires a recoverable test window and snapshot restore plan.
+- 相比旧验证记录，已移除“生成并复制安装命令”的实现与验收描述；当前行为是 Orbit 用用户一次性认证直接完成 Linux SSH 部署 key/workspace 初始化。
+- 数据迁移合并与开发库就地收敛是用户后续提出且暂缓的整理工作，不在本次验证完成范围内。
 
 ## Risks
 
-- Linux support is implemented and unit-tested but lacks live-host evidence; a Linux-specific shell/SSH/Docker variance may still exist.
-- Full Traefik REST PUT validation can alter active routing. It must be exercised only with a known snapshot backup and a prepared restore path.
-- Existing deployments created before `000039` need the supplied migration/drill flow and a subsequently configured Environment; incomplete target configuration remains fail closed by design.
+- 自动化测试不替代 SSH 目标的真实 Docker daemon、passwordless sudo、OpenSSH 配置和网络可达性验证。
+- local runtime 依赖控制面 Docker daemon path 与 `workspace.deployment` 挂载正确；Probe 在部署前会报告不满足的前置条件。
 
 ## Incomplete items
 
-1. Provision or select a Linux OpenSSH + Docker host, configure one Project Environment, and run the same Probe/Compose/runtime/Traefik E2E coverage.
-2. In a recoverable Gateway test window, record the current `providers.rest` snapshot, verify Traefik readiness, PUT a controlled full snapshot, verify the rendered routers, then restore the recorded snapshot.
+1. 在经授权的 Linux SSH 主机实际执行一次初始化和受管 key Probe。
+2. 在 Windows native OpenSSH + WSL2 Docker Desktop 主机实际执行部署与运行时查询。
+3. 合并 `000041` 到 `000040`，使用 dbtalk 将开发库 schema/migration 记录同步至合并后的版本。
 
 ## Conclusion
 
-Implementation and automated verification are complete for the verified Windows target and all repository quality gates. This record remains `Draft` because the two real-environment validation items above are intentionally outstanding. `.codex/config.toml` remains outside this feature's verified change set.
+当前实现通过代码生成、格式、类型、静态分析和 Go 全量包测试，严格模式 Verification 记录保持 `Draft`，等待实机初始化验证及暂缓的数据迁移整理完成后再接受。

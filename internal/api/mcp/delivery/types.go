@@ -33,6 +33,7 @@ type Dependencies struct {
 	Service            ServiceService
 	Deployment         DeploymentService
 	Environment        EnvironmentService
+	LocalWorkspaceRoot string
 	Gateway            GatewayService
 	Route              RouteService
 }

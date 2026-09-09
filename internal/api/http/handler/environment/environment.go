@@ -22,8 +22,8 @@ func (h Handler) GetProjectEnvironment(c *gin.Context) {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	response := environmentResponse(item)
-	transportresponse.ProtoJSON(c, http.StatusOK, &response)
+	response := environmentResponse(item, h.localTarget)
+	transportresponse.ProtoJSON(c, http.StatusOK, response)
 }
 
 func (h Handler) UpdateProjectEnvironment(c *gin.Context) {
@@ -41,8 +41,8 @@ func (h Handler) UpdateProjectEnvironment(c *gin.Context) {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	response := environmentResponse(item)
-	transportresponse.ProtoJSON(c, http.StatusOK, &response)
+	response := environmentResponse(item, h.localTarget)
+	transportresponse.ProtoJSON(c, http.StatusOK, response)
 }
 
 func (h Handler) ProbeProjectEnvironment(c *gin.Context) {
@@ -55,48 +55,82 @@ func (h Handler) ProbeProjectEnvironment(c *gin.Context) {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	response := environmentResponse(item)
-	transportresponse.ProtoJSON(c, http.StatusOK, &response)
+	response := environmentResponse(item, h.localTarget)
+	transportresponse.ProtoJSON(c, http.StatusOK, response)
 }
+
+func (h Handler) InitializeProjectEnvironment(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var req environmentv1.ProjectEnvironmentInitializeReq
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	item, err := h.service.InitializeForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), projectEnvironmentInitializeInput(&req))
+	if err != nil {
+		transportresponse.WriteError(c, err)
+		return
+	}
+	response := environmentResponse(item, h.localTarget)
+	transportresponse.ProtoJSON(c, http.StatusOK, response)
+}
+
 func projectEnvironmentUpdateInput(req *environmentv1.ProjectEnvironmentUpdateReq) environmentdto.UpdateInput {
 	input := environmentdto.UpdateInput{
-		State:                      req.State,
-		Platform:                   req.Platform,
-		Host:                       req.Host,
-		Username:                   req.Username,
-		WorkspaceRoot:              req.WorkspaceRoot,
-		DeploymentSSHPrivateKey:    req.DeploymentSshPrivateKey,
-		DeploymentSSHKeyPassphrase: req.DeploymentSshKeyPassphrase,
-		HostKeyFingerprint:         req.HostKeyFingerprint,
+		State:      req.State,
+		TargetType: req.TargetType,
 	}
-	if req.Port != nil {
-		value := int(*req.Port)
-		input.Port = &value
+	if req.Ssh != nil {
+		input.SSH = &environmentdto.SSHTargetInput{
+			Platform: req.Ssh.Platform, Host: req.Ssh.Host, Port: int(req.Ssh.Port),
+			Username: req.Ssh.Username, WorkspaceRoot: req.Ssh.WorkspaceRoot,
+		}
 	}
 	return input
 }
 
-func environmentResponse(item model.Environment) environmentv1.EnvironmentResp {
-	return environmentv1.EnvironmentResp{
-		Id:                    item.Id,
-		ProjectId:             item.ProjectId,
-		Code:                  item.Code,
-		State:                 item.State,
-		Platform:              item.Platform,
-		Host:                  item.Host,
-		Port:                  int32(item.Port),
-		Username:              item.Username,
-		WorkspaceRoot:         item.WorkspaceRoot,
-		SshCredentialId:       item.SSHCredentialId,
-		SshCredentialRevision: item.SSHCredentialRevision,
-		HostKeyFingerprint:    item.HostKeyFingerprint,
-		TargetRevision:        item.TargetRevision,
-		LastProbeRevision:     item.LastProbeRevision,
-		LastProbeStatus:       item.LastProbeStatus,
-		LastProbeAt:           transportresponse.FormatOptionalTime(item.LastProbeAt),
-		LastProbeDiagnostic:   item.LastProbeDiagnostic,
-		GatewayApplicationId:  item.GatewayApplicationId,
-		CreatedAt:             transportresponse.FormatTime(item.CreatedAt),
-		UpdatedAt:             transportresponse.FormatTime(item.UpdatedAt),
+func projectEnvironmentInitializeInput(req *environmentv1.ProjectEnvironmentInitializeReq) environmentdto.InitializeInput {
+	return environmentdto.InitializeInput{
+		Username:             req.Username,
+		Password:             req.Password,
+		PrivateKey:           req.PrivateKey,
+		PrivateKeyPassphrase: req.PrivateKeyPassphrase,
 	}
+}
+
+func environmentResponse(item model.Environment, localTarget localTargetInfo) *environmentv1.EnvironmentResp {
+	response := &environmentv1.EnvironmentResp{
+		Id:                   item.Id,
+		ProjectId:            item.ProjectId,
+		Code:                 item.Code,
+		State:                item.State,
+		TargetType:           item.TargetType,
+		TargetRevision:       item.TargetRevision,
+		LastProbeRevision:    item.LastProbeRevision,
+		LastProbeStatus:      item.LastProbeStatus,
+		LastProbeAt:          transportresponse.FormatOptionalTime(item.LastProbeAt),
+		LastProbeDiagnostic:  item.LastProbeDiagnostic,
+		GatewayApplicationId: item.GatewayApplicationId,
+		CreatedAt:            transportresponse.FormatTime(item.CreatedAt),
+		UpdatedAt:            transportresponse.FormatTime(item.UpdatedAt),
+	}
+	if item.SSH != nil {
+		response.Ssh = &environmentv1.EnvironmentSSHTargetResp{
+			Platform: item.SSH.Platform, Host: item.SSH.Host, Port: int32(item.SSH.Port),
+			Username: item.SSH.Username, WorkspaceRoot: item.SSH.WorkspaceRoot,
+			HostKeyFingerprint: item.SSH.HostKeyFingerprint,
+		}
+	}
+	if item.IsLocal() {
+		response.Local = &environmentv1.EnvironmentLocalTargetResp{
+			WorkspaceRoot: localTarget.WorkspaceRoot,
+			Platform:      localTarget.Platform,
+			Host:          localTarget.Host,
+			Username:      localTarget.Username,
+		}
+	}
+	return response
 }

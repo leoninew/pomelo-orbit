@@ -85,7 +85,7 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gatewayConfig.NetworkName != "orbit-gateway-factory-traefik" {
+	if gatewayConfig.NetworkName != "traefik" {
 		t.Fatalf("gateway network = %q", gatewayConfig.NetworkName)
 	}
 	var staticConfig string
@@ -95,8 +95,8 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 			break
 		}
 	}
-	if !strings.Contains(staticConfig, "network: orbit-gateway-factory-traefik") {
-		t.Fatalf("initial Traefik config missing environment network: %q", staticConfig)
+	if !strings.Contains(staticConfig, "network: traefik") {
+		t.Fatalf("initial Traefik config missing shared network: %q", staticConfig)
 	}
 	mappings, err := services.ServiceComponentsByService(context.Background(), created.DefaultService.Id)
 	if err != nil {
@@ -203,7 +203,7 @@ func TestCreateGatewayRollsBackWhenGatewayConfigWriteFails(t *testing.T) {
 	}
 	defer func() { _ = database.Close() }()
 	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 39); err != nil {
+	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 41); err != nil {
 		t.Fatal(err)
 	}
 	removeSeededGateway(t, database)
@@ -238,7 +238,7 @@ func TestCreateGatewayRollsBackWhenDashboardRouteWriteFails(t *testing.T) {
 	}
 	defer func() { _ = database.Close() }()
 	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 39); err != nil {
+	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 41); err != nil {
 		t.Fatal(err)
 	}
 	removeSeededGateway(t, database)
@@ -290,7 +290,7 @@ func newGatewayFactoryService(t *testing.T, configStore gatewayport.ConfigStore)
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 39); err != nil {
+	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 41); err != nil {
 		_ = database.Close()
 		t.Fatal(err)
 	}
@@ -324,21 +324,19 @@ func seedGatewayFactoryEnvironment(t *testing.T, database *sql.DB) {
 	probeRevision := int64(1)
 	probeStatus := model.EnvironmentProbeStatusSucceeded
 	environment := model.Environment{
-		Id:                    "01KROUTEGATEWAYENV00000001",
-		ProjectId:             gatewayFactoryProjectID,
-		Code:                  "gateway-factory",
-		State:                 model.EnvironmentStateActive,
-		Platform:              model.EnvironmentPlatformLinux,
-		Host:                  "192.0.2.10",
-		Port:                  22,
-		Username:              "deploy",
-		WorkspaceRoot:         "/srv/pomelo-orbit",
-		SSHCredentialId:       "gateway-factory-credential",
-		SSHCredentialRevision: 1,
-		HostKeyFingerprint:    "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-		TargetRevision:        1,
-		LastProbeRevision:     &probeRevision,
-		LastProbeStatus:       &probeStatus,
+		Id:                "01KROUTEGATEWAYENV00000001",
+		ProjectId:         gatewayFactoryProjectID,
+		Code:              "gateway-factory",
+		State:             model.EnvironmentStateActive,
+		TargetType:        model.EnvironmentTargetTypeSSH,
+		TargetRevision:    1,
+		LastProbeRevision: &probeRevision,
+		LastProbeStatus:   &probeStatus,
+		SSH: &model.EnvironmentSSHTarget{
+			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22, Username: "deploy", WorkspaceRoot: "/srv/pomelo-orbit",
+			CredentialId: "gateway-factory-credential", CredentialRevision: 1,
+			HostKeyFingerprint: "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+		},
 	}
 	if err := environmentrepo.NewRepository(database).CreateEnvironment(context.Background(), environment); err != nil {
 		t.Fatalf("seed gateway factory environment: %v", err)
@@ -357,6 +355,9 @@ func removeSeededGateway(t *testing.T, database *sql.DB) {
 		t.Fatal(err)
 	}
 	if _, err := database.Exec("DELETE FROM application WHERE id = ?", seededGatewayApplicationID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec("DELETE FROM environment WHERE project_id = ?", gatewayFactoryProjectID); err != nil {
 		t.Fatal(err)
 	}
 }

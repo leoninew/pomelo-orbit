@@ -41,7 +41,8 @@ func TestTargetResolverRejectsUnavailableTargets(t *testing.T) {
 	}{
 		{name: "disabled environment", environment: withEnvironmentState(base, model.EnvironmentStateDisabled), credential: matchingTargetCredential(base), want: "disabled"},
 		{name: "stale probe", environment: withProbeRevision(base, 1), credential: matchingTargetCredential(base), want: "must pass probe"},
-		{name: "credential revision mismatch", environment: base, credential: withCredentialRevision(matchingTargetCredential(base), base.SSHCredentialRevision+1), want: "credential binding is invalid"},
+		{name: "missing host key fingerprint", environment: withHostKeyFingerprint(base, ""), credential: matchingTargetCredential(base), want: "must pass probe"},
+		{name: "credential revision mismatch", environment: base, credential: withCredentialRevision(matchingTargetCredential(base), base.SSH.CredentialRevision+1), want: "credential binding is invalid"},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -66,8 +67,25 @@ func TestTargetResolverReturnsPinnedPrivateKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveProjectTarget returned error: %v", err)
 	}
-	if target.Environment.Id != environment.Id || target.PrivateKey != privateKey {
+	if target.Environment.Id != environment.Id || target.PrivateKey == nil || *target.PrivateKey != privateKey {
 		t.Fatalf("resolved target = %#v", target)
+	}
+}
+
+func TestTargetResolverReturnsLocalTargetWithoutCredential(t *testing.T) {
+	revision := int64(2)
+	status := model.EnvironmentProbeStatusSucceeded
+	environment := model.Environment{
+		Id: "environment-1", ProjectId: "project-1", State: model.EnvironmentStateActive,
+		TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: revision,
+		LastProbeRevision: &revision, LastProbeStatus: &status,
+	}
+	target, err := NewTargetResolver(targetEnvironmentStore{environment: environment}, nil).ResolveProjectTarget(context.Background(), environment.ProjectId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if target.Environment != environment || target.PrivateKey != nil {
+		t.Fatalf("local target = %#v", target)
 	}
 }
 
@@ -84,16 +102,20 @@ func readyTargetEnvironment() model.Environment {
 	status := model.EnvironmentProbeStatusSucceeded
 	return model.Environment{
 		Id: "environment-1", ProjectId: "project-1", State: model.EnvironmentStateActive,
-		SSHCredentialId: "credential-1", SSHCredentialRevision: revision, TargetRevision: revision,
+		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: revision,
 		LastProbeRevision: &revision, LastProbeStatus: &status,
+		SSH: &model.EnvironmentSSHTarget{
+			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit", WorkspaceRoot: "/srv/orbit",
+			CredentialId: "credential-1", CredentialRevision: revision, HostKeyFingerprint: "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=",
+		},
 	}
 }
 
 func matchingTargetCredential(environment model.Environment) model.Credential {
 	projectID := environment.ProjectId
 	return model.Credential{
-		Id: environment.SSHCredentialId, ProjectId: &projectID,
-		Type: model.CredentialTypeDeploymentSSHPrivateKey, Revision: environment.SSHCredentialRevision,
+		Id: environment.SSH.CredentialId, ProjectId: &projectID,
+		Type: model.CredentialTypeDeploymentSSHPrivateKey, Revision: environment.SSH.CredentialRevision,
 	}
 }
 
@@ -110,4 +132,11 @@ func withProbeRevision(environment model.Environment, revision int64) model.Envi
 func withCredentialRevision(credential model.Credential, revision int64) model.Credential {
 	credential.Revision = revision
 	return credential
+}
+
+func withHostKeyFingerprint(environment model.Environment, fingerprint string) model.Environment {
+	ssh := *environment.SSH
+	ssh.HostKeyFingerprint = fingerprint
+	environment.SSH = &ssh
+	return environment
 }

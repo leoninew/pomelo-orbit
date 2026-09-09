@@ -172,9 +172,9 @@ func (q *Queries) CountDeployments(ctx context.Context, arg CountDeploymentsPara
 const createDeployment = `-- name: CreateDeployment :exec
 INSERT INTO deployment (
   id, project_id, application_id, application_name, version_id, service_id,
-  environment_id, environment_target_revision, ssh_credential_id, ssh_credential_revision, gateway_application_id,
+  environment_id, environment_target_type, environment_target_revision, ssh_credential_id, ssh_credential_revision, gateway_application_id,
   options_json, effective_plan_hash, operation_type, trigger_type, command_text, status, started_at, is_rollback, rollback_from_deployment_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateDeploymentParams struct {
@@ -185,6 +185,7 @@ type CreateDeploymentParams struct {
 	VersionID                 sql.NullString `db:"version_id"`
 	ServiceID                 sql.NullString `db:"service_id"`
 	EnvironmentID             sql.NullString `db:"environment_id"`
+	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
 	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
 	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
 	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
@@ -209,6 +210,7 @@ func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentPara
 		arg.VersionID,
 		arg.ServiceID,
 		arg.EnvironmentID,
+		arg.EnvironmentTargetType,
 		arg.EnvironmentTargetRevision,
 		arg.SshCredentialID,
 		arg.SshCredentialRevision,
@@ -239,7 +241,7 @@ func (q *Queries) DeleteDeployment(ctx context.Context, id string) error {
 const deploymentByID = `-- name: DeploymentByID :one
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
        s.instance_key AS service_instance_key,
-       d.environment_id, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
+       d.environment_id, d.environment_target_type, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
        d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
@@ -257,6 +259,7 @@ type DeploymentByIDRow struct {
 	ServiceID                 sql.NullString `db:"service_id"`
 	ServiceInstanceKey        sql.NullString `db:"service_instance_key"`
 	EnvironmentID             sql.NullString `db:"environment_id"`
+	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
 	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
 	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
 	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
@@ -288,6 +291,7 @@ func (q *Queries) DeploymentByID(ctx context.Context, id string) (DeploymentByID
 		&i.ServiceID,
 		&i.ServiceInstanceKey,
 		&i.EnvironmentID,
+		&i.EnvironmentTargetType,
 		&i.EnvironmentTargetRevision,
 		&i.SshCredentialID,
 		&i.SshCredentialRevision,
@@ -342,7 +346,7 @@ func (q *Queries) LatestSuccessfulDeploymentPlanHash(ctx context.Context, servic
 const listDeployments = `-- name: ListDeployments :many
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
        s.instance_key AS service_instance_key,
-       d.environment_id, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
+       d.environment_id, d.environment_target_type, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
        d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
@@ -387,6 +391,7 @@ type ListDeploymentsRow struct {
 	ServiceID                 sql.NullString `db:"service_id"`
 	ServiceInstanceKey        sql.NullString `db:"service_instance_key"`
 	EnvironmentID             sql.NullString `db:"environment_id"`
+	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
 	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
 	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
 	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
@@ -438,6 +443,7 @@ func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams
 			&i.ServiceID,
 			&i.ServiceInstanceKey,
 			&i.EnvironmentID,
+			&i.EnvironmentTargetType,
 			&i.EnvironmentTargetRevision,
 			&i.SshCredentialID,
 			&i.SshCredentialRevision,

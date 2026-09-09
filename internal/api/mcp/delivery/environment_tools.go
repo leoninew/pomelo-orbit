@@ -10,55 +10,51 @@ import (
 )
 
 func (c *core) registerEnvironmentTools(server *mcp.Server) {
-	addTool(server, "orbit_get_project_environment", "Read the unique SSH deployment Environment for one Project. The response never includes the deployment SSH private key.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_get_project_environment", "Read the unique local or SSH deployment Environment for one Project. SSH responses never include private keys or initialization credentials.", func(ctx context.Context, input struct {
 		ProjectId string `json:"project_id" jsonschema:"required"`
 	}) (map[string]any, error) {
 		environment, err := c.deps.Environment.EnvironmentForUser(ctx, c.deps.ActorUserId, input.ProjectId)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"project_id": input.ProjectId, "environment": environmentOutput(environment)}, nil
+		return map[string]any{"project_id": input.ProjectId, "environment": environmentOutput(environment, c.deps.LocalWorkspaceRoot)}, nil
 	})
 
-	addTool(server, "orbit_update_project_environment", "Update configured fields of a Project's unique SSH deployment Environment. Use only project_id; the server keeps the Environment scoped to that Project. deployment_ssh_private_key and deployment_ssh_key_passphrase are write-only and never returned.", func(ctx context.Context, input struct {
-		ProjectId                  string  `json:"project_id" jsonschema:"required"`
-		State                      *string `json:"state,omitempty"`
-		Platform                   *string `json:"platform,omitempty"`
-		Host                       *string `json:"host,omitempty"`
-		Port                       *int    `json:"port,omitempty"`
-		Username                   *string `json:"username,omitempty"`
-		WorkspaceRoot              *string `json:"workspace_root,omitempty"`
-		DeploymentSSHPrivateKey    *string `json:"deployment_ssh_private_key,omitempty"`
-		DeploymentSSHKeyPassphrase *string `json:"deployment_ssh_key_passphrase,omitempty"`
-		HostKeyFingerprint         *string `json:"host_key_fingerprint,omitempty"`
+	addTool(server, "orbit_update_project_environment", "Update the explicit local or SSH target of a Project's unique deployment Environment. SSH requires the nested ssh object; local must not include it.", func(ctx context.Context, input struct {
+		ProjectId  string  `json:"project_id" jsonschema:"required"`
+		State      *string `json:"state,omitempty"`
+		TargetType *string `json:"target_type,omitempty"`
+		SSH        *struct {
+			Platform      string `json:"platform"`
+			Host          string `json:"host"`
+			Port          int    `json:"port"`
+			Username      string `json:"username"`
+			WorkspaceRoot string `json:"workspace_root"`
+		} `json:"ssh,omitempty"`
 	}) (map[string]any, error) {
-		if input.State == nil && input.Platform == nil && input.Host == nil && input.Port == nil && input.Username == nil && input.WorkspaceRoot == nil && input.DeploymentSSHPrivateKey == nil && input.DeploymentSSHKeyPassphrase == nil && input.HostKeyFingerprint == nil {
+		if input.State == nil && input.TargetType == nil && input.SSH == nil {
 			return nil, apperror.New(apperror.KindValidation, "at least one Environment field must be supplied")
 		}
+		var ssh *environmentdto.SSHTargetInput
+		if input.SSH != nil {
+			ssh = &environmentdto.SSHTargetInput{Platform: input.SSH.Platform, Host: input.SSH.Host, Port: input.SSH.Port, Username: input.SSH.Username, WorkspaceRoot: input.SSH.WorkspaceRoot}
+		}
 		environment, err := c.deps.Environment.UpdateForUser(ctx, c.deps.ActorUserId, input.ProjectId, environmentdto.UpdateInput{
-			State:                      input.State,
-			Platform:                   input.Platform,
-			Host:                       input.Host,
-			Port:                       input.Port,
-			Username:                   input.Username,
-			WorkspaceRoot:              input.WorkspaceRoot,
-			DeploymentSSHPrivateKey:    input.DeploymentSSHPrivateKey,
-			DeploymentSSHKeyPassphrase: input.DeploymentSSHKeyPassphrase,
-			HostKeyFingerprint:         input.HostKeyFingerprint,
+			State: input.State, TargetType: input.TargetType, SSH: ssh,
 		})
 		if err != nil {
 			return nil, err
 		}
-		return writeResult("update_project_environment", map[string]string{"project_id": input.ProjectId, "environment_id": environment.Id}, "PUT", "/api/project/"+input.ProjectId+"/environment", map[string]any{"environment": environmentOutput(environment)}), nil
+		return writeResult("update_project_environment", map[string]string{"project_id": input.ProjectId, "environment_id": environment.Id}, "PUT", "/api/project/"+input.ProjectId+"/environment", map[string]any{"environment": environmentOutput(environment, c.deps.LocalWorkspaceRoot)}), nil
 	})
 
-	addTool(server, "orbit_probe_project_environment", "Probe SSH, host-key authentication, Docker Compose, and platform prerequisites for a Project's active Environment.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_probe_project_environment", "Probe Docker Compose prerequisites for a Project's active local or SSH Environment. SSH also verifies key authentication and host-key pinning.", func(ctx context.Context, input struct {
 		ProjectId string `json:"project_id" jsonschema:"required"`
 	}) (map[string]any, error) {
 		environment, err := c.deps.Environment.ProbeForUser(ctx, c.deps.ActorUserId, input.ProjectId)
 		if err != nil {
 			return nil, err
 		}
-		return writeResult("probe_project_environment", map[string]string{"project_id": input.ProjectId, "environment_id": environment.Id}, "POST", "/api/project/"+input.ProjectId+"/environment/probe", map[string]any{"environment": environmentOutput(environment)}), nil
+		return writeResult("probe_project_environment", map[string]string{"project_id": input.ProjectId, "environment_id": environment.Id}, "POST", "/api/project/"+input.ProjectId+"/environment/probe", map[string]any{"environment": environmentOutput(environment, c.deps.LocalWorkspaceRoot)}), nil
 	})
 }

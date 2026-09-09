@@ -25,11 +25,11 @@ const restApiReadyPollInterval = 500 * time.Millisecond
 
 type RouteManager struct {
 	targetResolver environmentport.TargetResolver
-	runtime        deploymentport.RemoteRuntime
+	runtime        deploymentport.Runtime
 	mu             sync.Mutex
 }
 
-func NewRouteManager(targetResolver environmentport.TargetResolver, runtime deploymentport.RemoteRuntime) *RouteManager {
+func NewRouteManager(targetResolver environmentport.TargetResolver, runtime deploymentport.Runtime) *RouteManager {
 	return &RouteManager{targetResolver: targetResolver, runtime: runtime}
 }
 
@@ -81,14 +81,14 @@ func (m *RouteManager) ApplySnapshot(ctx context.Context, projectID string, gate
 		return err
 	}
 	certDir := path.Join(strings.ReplaceAll(serviceDir, "\\", "/"), "gateway", "certs")
-	certFiles := make([]deploymentport.RemoteFile, 0)
+	certFiles := make([]deploymentport.WorkspaceFile, 0)
 	for _, route := range routes {
 		if !routeHasStoredCertificate(route) {
 			continue
 		}
 		certFiles = append(certFiles,
-			deploymentport.RemoteFile{Path: path.Join(certDir, route.Name+".pem"), Content: []byte(*route.CertPEM), Mode: 0o600},
-			deploymentport.RemoteFile{Path: path.Join(certDir, route.Name+"-key.pem"), Content: []byte(*route.CertKey), Mode: 0o600},
+			deploymentport.WorkspaceFile{Path: path.Join(certDir, route.Name+".pem"), Content: []byte(*route.CertPEM), Mode: 0o600},
+			deploymentport.WorkspaceFile{Path: path.Join(certDir, route.Name+"-key.pem"), Content: []byte(*route.CertKey), Mode: 0o600},
 		)
 	}
 	if err := m.runtime.SyncFiles(ctx, target, certDir, certFiles, ".pem"); err != nil {
@@ -100,7 +100,7 @@ func (m *RouteManager) ApplySnapshot(ctx context.Context, projectID string, gate
 	}
 	stateDir := path.Join(strings.ReplaceAll(serviceDir, "\\", "/"), ".orbit")
 	snapshotPath := path.Join(stateDir, "traefik-rest.json")
-	if err := m.runtime.SyncFiles(ctx, target, stateDir, []deploymentport.RemoteFile{{Path: snapshotPath, Content: body, Mode: 0o600}}, ""); err != nil {
+	if err := m.runtime.SyncFiles(ctx, target, stateDir, []deploymentport.WorkspaceFile{{Path: snapshotPath, Content: body, Mode: 0o600}}, ""); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to stage remote traefik snapshot", err)
 	}
 	output, err := m.runtime.QueryAtEnvironmentRoot(ctx, target, "curl", "-fsS", "--max-time", "15", "-X", "PUT", "-H", "Content-Type: application/json", "--data-binary", "@"+snapshotPath, base+"/api/providers/rest")
@@ -211,9 +211,9 @@ func (m *RouteManager) get(ctx context.Context, projectID string, gateway model.
 	return output, nil
 }
 
-func (m *RouteManager) resolveTarget(ctx context.Context, projectID string) (environmentport.SSHTarget, error) {
+func (m *RouteManager) resolveTarget(ctx context.Context, projectID string) (environmentport.Target, error) {
 	if m == nil || m.targetResolver == nil || m.runtime == nil {
-		return environmentport.SSHTarget{}, apperror.New(apperror.KindInternal, "remote Traefik client is not configured")
+		return environmentport.Target{}, apperror.New(apperror.KindInternal, "remote Traefik client is not configured")
 	}
 	return m.targetResolver.ResolveProjectTarget(ctx, projectID)
 }

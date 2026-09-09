@@ -60,14 +60,15 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 		ProjectID:             environment.ProjectId,
 		Code:                  environment.Code,
 		State:                 environment.State,
-		Platform:              environment.Platform,
-		Host:                  environment.Host,
-		Port:                  int64(environment.Port),
-		Username:              environment.Username,
-		WorkspaceRoot:         environment.WorkspaceRoot,
-		SshCredentialID:       environment.SSHCredentialId,
-		SshCredentialRevision: environment.SSHCredentialRevision,
-		HostKeyFingerprint:    environment.HostKeyFingerprint,
+		TargetType:            environment.TargetType,
+		Platform:              environmentSSHPlatform(environment),
+		Host:                  environmentSSHHost(environment),
+		Port:                  environmentSSHPort(environment),
+		Username:              environmentSSHUsername(environment),
+		WorkspaceRoot:         environmentSSHWorkspaceRoot(environment),
+		SshCredentialID:       environmentSSHCredentialID(environment),
+		SshCredentialRevision: environmentSSHCredentialRevision(environment),
+		HostKeyFingerprint:    environmentSSHHostKeyFingerprint(environment),
 		TargetRevision:        environment.TargetRevision,
 		LastProbeRevision:     nullableInt64(environment.LastProbeRevision),
 		LastProbeStatus:       dbmodel.NullString(environment.LastProbeStatus),
@@ -85,14 +86,15 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 func (r Repository) UpdateEnvironment(ctx context.Context, environment model.Environment) error {
 	if err := r.q(ctx).UpdateEnvironment(ctx, environmentsqlc.UpdateEnvironmentParams{
 		State:                 environment.State,
-		Platform:              environment.Platform,
-		Host:                  environment.Host,
-		Port:                  int64(environment.Port),
-		Username:              environment.Username,
-		WorkspaceRoot:         environment.WorkspaceRoot,
-		SshCredentialID:       environment.SSHCredentialId,
-		SshCredentialRevision: environment.SSHCredentialRevision,
-		HostKeyFingerprint:    environment.HostKeyFingerprint,
+		TargetType:            environment.TargetType,
+		Platform:              environmentSSHPlatform(environment),
+		Host:                  environmentSSHHost(environment),
+		Port:                  environmentSSHPort(environment),
+		Username:              environmentSSHUsername(environment),
+		WorkspaceRoot:         environmentSSHWorkspaceRoot(environment),
+		SshCredentialID:       environmentSSHCredentialID(environment),
+		SshCredentialRevision: environmentSSHCredentialRevision(environment),
+		HostKeyFingerprint:    environmentSSHHostKeyFingerprint(environment),
 		TargetRevision:        environment.TargetRevision,
 		UpdatedAt:             time.Now().UTC(),
 		ID:                    environment.Id,
@@ -130,28 +132,78 @@ func (r Repository) BindGatewayApplication(ctx context.Context, environmentID st
 }
 
 func environmentFrom(row environmentsqlc.Environment) model.Environment {
-	return model.Environment{
-		Id:                    row.ID,
-		ProjectId:             row.ProjectID,
-		Code:                  row.Code,
-		State:                 row.State,
-		Platform:              row.Platform,
-		Host:                  row.Host,
-		Port:                  int(row.Port),
-		Username:              row.Username,
-		WorkspaceRoot:         row.WorkspaceRoot,
-		SSHCredentialId:       row.SshCredentialID,
-		SSHCredentialRevision: row.SshCredentialRevision,
-		HostKeyFingerprint:    row.HostKeyFingerprint,
-		TargetRevision:        row.TargetRevision,
-		LastProbeRevision:     int64Ptr(row.LastProbeRevision),
-		LastProbeStatus:       dbmodel.StringPtr(row.LastProbeStatus),
-		LastProbeAt:           dbmodel.TimePtr(row.LastProbeAt),
-		LastProbeDiagnostic:   dbmodel.StringPtr(row.LastProbeDiagnostic),
-		GatewayApplicationId:  dbmodel.StringPtr(row.GatewayApplicationID),
-		CreatedAt:             row.CreatedAt,
-		UpdatedAt:             row.UpdatedAt,
+	item := model.Environment{
+		Id: row.ID, ProjectId: row.ProjectID, Code: row.Code, State: row.State, TargetType: row.TargetType,
+		TargetRevision: row.TargetRevision, LastProbeRevision: int64Ptr(row.LastProbeRevision),
+		LastProbeStatus: dbmodel.StringPtr(row.LastProbeStatus), LastProbeAt: dbmodel.TimePtr(row.LastProbeAt),
+		LastProbeDiagnostic: dbmodel.StringPtr(row.LastProbeDiagnostic), GatewayApplicationId: dbmodel.StringPtr(row.GatewayApplicationID),
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
+	if item.TargetType == model.EnvironmentTargetTypeSSH {
+		item.SSH = &model.EnvironmentSSHTarget{
+			Platform: row.Platform.String, Host: row.Host.String, Port: int(row.Port.Int64),
+			Username: row.Username.String, WorkspaceRoot: row.WorkspaceRoot.String,
+			CredentialId: row.SshCredentialID.String, CredentialRevision: row.SshCredentialRevision.Int64,
+			HostKeyFingerprint: row.HostKeyFingerprint.String,
+		}
+	}
+	return item
+}
+
+func environmentSSHPlatform(value model.Environment) sql.NullString {
+	if value.SSH == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: value.SSH.Platform, Valid: true}
+}
+
+func environmentSSHHost(value model.Environment) sql.NullString {
+	if value.SSH == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: value.SSH.Host, Valid: true}
+}
+
+func environmentSSHPort(value model.Environment) sql.NullInt64 {
+	if value.SSH == nil {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: int64(value.SSH.Port), Valid: true}
+}
+
+func environmentSSHUsername(value model.Environment) sql.NullString {
+	if value.SSH == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: value.SSH.Username, Valid: true}
+}
+
+func environmentSSHWorkspaceRoot(value model.Environment) sql.NullString {
+	if value.SSH == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: value.SSH.WorkspaceRoot, Valid: true}
+}
+
+func environmentSSHCredentialID(value model.Environment) sql.NullString {
+	if value.SSH == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: value.SSH.CredentialId, Valid: true}
+}
+
+func environmentSSHCredentialRevision(value model.Environment) sql.NullInt64 {
+	if value.SSH == nil {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: value.SSH.CredentialRevision, Valid: true}
+}
+
+func environmentSSHHostKeyFingerprint(value model.Environment) sql.NullString {
+	if value.SSH == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: value.SSH.HostKeyFingerprint, Valid: value.SSH.HostKeyFingerprint != ""}
 }
 
 func nullableInt64(value *int64) sql.NullInt64 {

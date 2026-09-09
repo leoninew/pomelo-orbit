@@ -8,19 +8,37 @@
 
 export const protobufPackage = "orbit.v1.environment";
 
-export interface EnvironmentResp {
-  id: string;
-  project_id: string;
-  code: string;
-  state: string;
+export interface EnvironmentSSHTargetResp {
   platform: string;
   host: string;
   port: number;
   username: string;
   workspace_root: string;
-  ssh_credential_id: string;
-  ssh_credential_revision: number;
   host_key_fingerprint: string;
+}
+
+export interface EnvironmentSSHTargetReq {
+  platform: string;
+  host: string;
+  port: number;
+  username: string;
+  workspace_root: string;
+}
+
+export interface EnvironmentLocalTargetResp {
+  workspace_root: string;
+  platform: string;
+  host: string;
+  username: string;
+}
+
+export interface EnvironmentResp {
+  id: string;
+  project_id: string;
+  code: string;
+  state: string;
+  target_type: string;
+  ssh: EnvironmentSSHTargetResp | undefined;
   target_revision: number;
   last_probe_revision?: number | undefined;
   last_probe_status?: string | undefined;
@@ -29,29 +47,18 @@ export interface EnvironmentResp {
   gateway_application_id?: string | undefined;
   created_at: string;
   updated_at: string;
-}
-
-export interface ProjectEnvironmentCreateReq {
-  state: string;
-  platform: string;
-  host: string;
-  port: number;
-  username: string;
-  workspace_root: string;
-  deployment_ssh_key_name: string;
-  deployment_ssh_private_key: string;
-  deployment_ssh_key_passphrase?: string | undefined;
-  host_key_fingerprint: string;
+  local: EnvironmentLocalTargetResp | undefined;
 }
 
 export interface ProjectEnvironmentUpdateReq {
   state?: string | undefined;
-  platform?: string | undefined;
-  host?: string | undefined;
-  port?: number | undefined;
-  username?: string | undefined;
-  workspace_root?: string | undefined;
-  deployment_ssh_private_key?: string | undefined;
-  deployment_ssh_key_passphrase?: string | undefined;
-  host_key_fingerprint?: string | undefined;
+  target_type?: string | undefined;
+  ssh?: EnvironmentSSHTargetReq | undefined;
+}
+
+export interface ProjectEnvironmentInitializeReq {
+  username: string;
+  password: string;
+  private_key: string;
+  private_key_passphrase: string;
 }

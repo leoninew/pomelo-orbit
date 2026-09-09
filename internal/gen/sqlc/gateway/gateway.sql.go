@@ -22,23 +22,18 @@ func (q *Queries) DeleteGatewayVersionBindings(ctx context.Context, applicationI
 }
 
 const gatewayBindingByProjectID = `-- name: GatewayBindingByProjectID :one
-SELECT gc.application_id, e.code AS environment_code
+SELECT gc.application_id
 FROM environment e
 INNER JOIN gateway_config gc ON gc.application_id = e.gateway_application_id
 INNER JOIN application a ON a.id = gc.application_id AND a.project_id = e.project_id
 WHERE e.project_id = ?
 `
 
-type GatewayBindingByProjectIDRow struct {
-	ApplicationID   string `db:"application_id"`
-	EnvironmentCode string `db:"environment_code"`
-}
-
-func (q *Queries) GatewayBindingByProjectID(ctx context.Context, projectID string) (GatewayBindingByProjectIDRow, error) {
+func (q *Queries) GatewayBindingByProjectID(ctx context.Context, projectID string) (string, error) {
 	row := q.db.QueryRowContext(ctx, gatewayBindingByProjectID, projectID)
-	var i GatewayBindingByProjectIDRow
-	err := row.Scan(&i.ApplicationID, &i.EnvironmentCode)
-	return i, err
+	var application_id string
+	err := row.Scan(&application_id)
+	return application_id, err
 }
 
 const gatewayConfigByApplication = `-- name: GatewayConfigByApplication :one

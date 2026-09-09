@@ -51,8 +51,8 @@ func TestReconcileCanceledServiceUsesObservedRuntimeWithoutChangingDeployment(t 
 			runtime.hasServiceDir = test.workspace
 			runtime.queryOutput = test.output
 			runtime.queryErr = test.runErr
-			service := Service{executionStore: store, remoteRuntime: runtime}
-			service.reconcileCanceledService(context.Background(), environmentport.SSHTarget{}, model.Application{Code: "demo"}, model.Service{Id: "service-1", InstanceKey: "default"})
+			service := Service{executionStore: store, runtime: runtime}
+			service.reconcileCanceledService(context.Background(), environmentport.Target{}, model.Application{Code: "demo"}, model.Service{Id: "service-1", InstanceKey: "default"})
 			if store.status != test.want {
 				t.Fatalf("service status = %q, want %q", store.status, test.want)
 			}

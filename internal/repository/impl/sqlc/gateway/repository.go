@@ -45,14 +45,11 @@ func (r Repository) GatewayConfigByProject(ctx context.Context, projectID string
 	if err != nil {
 		return model.GatewayConfig{}, fmt.Errorf("load gateway binding for project %s: %w", projectID, sqlcommon.TranslateError(err))
 	}
-	cfg, err := r.GatewayConfig(ctx, binding.ApplicationID)
+	cfg, err := r.GatewayConfig(ctx, binding)
 	if err != nil {
 		return model.GatewayConfig{}, err
 	}
-	cfg.NetworkName = model.GatewayNetworkName(binding.EnvironmentCode)
-	if cfg.NetworkName == "" {
-		return model.GatewayConfig{}, fmt.Errorf("gateway environment code is invalid for project %s", projectID)
-	}
+	cfg.NetworkName = model.GatewayNetworkName()
 	return cfg, nil
 }
 

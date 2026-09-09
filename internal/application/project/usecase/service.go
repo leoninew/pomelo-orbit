@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	projectdto "github.com/leoninew/pomelo-orbit/internal/application/project/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
@@ -18,19 +17,14 @@ import (
 
 var projectCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
-type deploymentKeyCreator interface {
-	CreateDeploymentSSHCredential(ctx context.Context, projectID string, name string, privateKey string, passphrase string) (model.Credential, error)
-}
-
 type environmentBootstrapper interface {
-	BootstrapForProject(ctx context.Context, project model.Project, credential model.Credential, input environmentdto.BootstrapInput) (model.Environment, error)
+	BootstrapForProject(ctx context.Context, project model.Project) (model.Environment, error)
 }
 
 type Service struct {
 	repo            repository.ProjectStore
 	users           repository.UserStore
 	environments    repository.EnvironmentStore
-	deploymentKey   deploymentKeyCreator
 	environmentInit environmentBootstrapper
 }
 
@@ -38,12 +32,11 @@ func New(
 	repo repository.ProjectStore,
 	users repository.UserStore,
 	environments repository.EnvironmentStore,
-	deploymentKey deploymentKeyCreator,
 	environmentInit environmentBootstrapper,
 ) Service {
 	return Service{
 		repo: repo, users: users, environments: environments,
-		deploymentKey: deploymentKey, environmentInit: environmentInit,
+		environmentInit: environmentInit,
 	}
 }
 
@@ -59,7 +52,7 @@ func (s Service) Create(ctx context.Context, userId string, input projectdto.Cre
 	if err := s.ensureCodeAvailable(ctx, code, ""); err != nil {
 		return model.Project{}, err
 	}
-	if s.deploymentKey == nil || s.environmentInit == nil {
+	if s.environmentInit == nil {
 		return model.Project{}, apperror.New(apperror.KindInternal, "Project environment bootstrap is not configured")
 	}
 
@@ -68,25 +61,7 @@ func (s Service) Create(ctx context.Context, userId string, input projectdto.Cre
 	if err := s.repo.CreateProject(ctx, project, userId); err != nil {
 		return model.Project{}, err
 	}
-	credential, err := s.deploymentKey.CreateDeploymentSSHCredential(
-		ctx,
-		project.Id,
-		input.Environment.DeploymentSSHKeyName,
-		input.Environment.DeploymentSSHPrivateKey,
-		input.Environment.DeploymentSSHKeyPassphrase,
-	)
-	if err != nil {
-		return model.Project{}, err
-	}
-	if _, err := s.environmentInit.BootstrapForProject(ctx, project, credential, environmentdto.BootstrapInput{
-		State:              input.Environment.State,
-		Platform:           input.Environment.Platform,
-		Host:               input.Environment.Host,
-		Port:               input.Environment.Port,
-		Username:           input.Environment.Username,
-		WorkspaceRoot:      input.Environment.WorkspaceRoot,
-		HostKeyFingerprint: input.Environment.HostKeyFingerprint,
-	}); err != nil {
+	if _, err := s.environmentInit.BootstrapForProject(ctx, project); err != nil {
 		return model.Project{}, err
 	}
 	return project, nil

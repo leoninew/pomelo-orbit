@@ -349,7 +349,7 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 39); err != nil {
+	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 41); err != nil {
 		t.Fatal(err)
 	}
 	clearRouteGatewaySeed(t, database)
@@ -627,6 +627,9 @@ func clearRouteGatewaySeed(t *testing.T, database *sql.DB) {
 	if _, err := database.Exec("DELETE FROM application WHERE id = '01M01MP0950ECGK2DS1FWYNC0B'"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := database.Exec("DELETE FROM environment WHERE project_id = ?", routeTestProjectId); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func seedRouteTestGateway(t *testing.T, database *sql.DB) {
@@ -665,19 +668,17 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 		t.Fatalf("seed gateway config: %v", err)
 	}
 	environment := model.Environment{
-		Id:                    "01KROUTEENVIRONMENT0000001",
-		ProjectId:             projectId,
-		Code:                  "route-test",
-		State:                 model.EnvironmentStateActive,
-		Platform:              model.EnvironmentPlatformLinux,
-		Host:                  "192.0.2.10",
-		Port:                  22,
-		Username:              "deploy",
-		WorkspaceRoot:         "/srv/pomelo-orbit",
-		SSHCredentialId:       "route-test-credential",
-		SSHCredentialRevision: 1,
-		HostKeyFingerprint:    "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-		TargetRevision:        1,
+		Id:             "01KROUTEENVIRONMENT0000001",
+		ProjectId:      projectId,
+		Code:           "route-test",
+		State:          model.EnvironmentStateActive,
+		TargetType:     model.EnvironmentTargetTypeSSH,
+		TargetRevision: 1,
+		SSH: &model.EnvironmentSSHTarget{
+			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22, Username: "deploy", WorkspaceRoot: "/srv/pomelo-orbit",
+			CredentialId: "route-test-credential", CredentialRevision: 1,
+			HostKeyFingerprint: "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+		},
 	}
 	if err := environmentRepo.CreateEnvironment(ctx, environment); err != nil {
 		t.Fatalf("seed route environment: %v", err)

@@ -32,10 +32,11 @@ func TestSelectGatewayVersionForDeploymentUsesRequiredCoordinator(t *testing.T) 
 type gatewayDeploymentCoordinatorFake struct {
 	selected    model.Service
 	selectCalls int
+	gateway     *model.GatewayConfig
 }
 
 func (f *gatewayDeploymentCoordinatorFake) GatewayForDeployment(context.Context, model.Application, model.EffectiveServicePlan) (*model.GatewayConfig, error) {
-	return nil, nil
+	return f.gateway, nil
 }
 
 func (f *gatewayDeploymentCoordinatorFake) SelectGatewayDeploymentVersion(_ context.Context, _ model.Application, _ model.Service) (model.Service, error) {

@@ -41,6 +41,25 @@ func TestRemoteCommandQuotesLinuxArguments(t *testing.T) {
 	}
 }
 
+func TestRemoteCommandResolvesSSHHomeWorkspace(t *testing.T) {
+	linuxCommand, _, err := remoteCommand(model.EnvironmentPlatformLinux, "~/.pomelo-orbit/service", "docker", "compose", "config")
+	if err != nil {
+		t.Fatalf("remoteCommand returned error: %v", err)
+	}
+	if !strings.Contains(linuxCommand, "$HOME") || !strings.Contains(linuxCommand, "/.pomelo-orbit/service") {
+		t.Fatalf("Linux command does not resolve SSH home: %q", linuxCommand)
+	}
+
+	windowsCommand, _, err := remoteCommand(model.EnvironmentPlatformWindows, "~/.pomelo-orbit/service", "docker", "compose", "config")
+	if err != nil {
+		t.Fatalf("remoteCommand returned error: %v", err)
+	}
+	windowsScript := decodePowerShellEncodedCommand(t, windowsCommand)
+	if !strings.Contains(windowsScript, "Set-Location -LiteralPath (Join-Path -Path $HOME -ChildPath '.pomelo-orbit/service')") {
+		t.Fatalf("Windows command does not resolve SSH home: %q", windowsScript)
+	}
+}
+
 func TestRemoteCommandUsesWindowsCurlExecutable(t *testing.T) {
 	command, _, err := remoteCommand(model.EnvironmentPlatformWindows, `C:\orbit\gateway`, "curl", "-fsS", "http://127.0.0.1:8080/api/overview")
 	if err != nil {

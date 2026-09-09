@@ -2,7 +2,6 @@ package repositorysvc
 
 import (
 	"context"
-	"net/http"
 	"strings"
 	"testing"
 
@@ -26,8 +25,8 @@ func TestDeleteRepositoryRejectsRunningPipelinesWithValidation(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected validation error")
 	}
-	if apperror.StatusCode(err) != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", apperror.StatusCode(err), http.StatusBadRequest)
+	if !apperror.IsKind(err, apperror.KindValidation) {
+		t.Fatalf("error = %v, want validation", err)
 	}
 	if !strings.Contains(err.Error(), "Cancel or wait") {
 		t.Fatalf("error = %q, want actionable guidance", err)

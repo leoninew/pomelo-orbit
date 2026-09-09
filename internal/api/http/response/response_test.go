@@ -144,3 +144,29 @@ func containsAny(value string, candidates ...string) bool {
 	}
 	return false
 }
+
+func TestHTTPStatusMapsKinds(t *testing.T) {
+	cases := []struct {
+		name   string
+		err    error
+		status int
+	}{
+		{name: "validation", err: apperror.New(apperror.KindValidation, "Invalid JSON body"), status: http.StatusBadRequest},
+		{name: "unauthorized", err: apperror.New(apperror.KindUnauthorized, ""), status: http.StatusUnauthorized},
+		{name: "forbidden", err: apperror.New(apperror.KindForbidden, ""), status: http.StatusForbidden},
+		{name: "not found", err: apperror.New(apperror.KindNotFound, ""), status: http.StatusNotFound},
+		{name: "conflict", err: apperror.New(apperror.KindConflict, ""), status: http.StatusConflict},
+		{name: "method not allowed", err: apperror.New(apperror.KindMethodNotAllowed, ""), status: http.StatusMethodNotAllowed},
+		{name: "rate limited", err: apperror.New(apperror.KindRateLimited, ""), status: http.StatusTooManyRequests},
+		{name: "unavailable", err: apperror.New(apperror.KindUnavailable, ""), status: http.StatusServiceUnavailable},
+		{name: "internal", err: apperror.New(apperror.KindInternal, "secret"), status: http.StatusInternalServerError},
+		{name: "unknown", err: assertError("database password"), status: http.StatusInternalServerError},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := HTTPStatus(tc.err); got != tc.status {
+				t.Fatalf("HTTPStatus() = %d, want %d", got, tc.status)
+			}
+		})
+	}
+}

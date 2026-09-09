@@ -8,10 +8,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func testGatewayConfig() config.Config {
-	return config.Config{Traefik: config.TraefikConfig{
+func testGatewayConfig() config.TraefikConfig {
+	return config.TraefikConfig{
 		Image: "traefik:3.6", RestApiUrl: "http://localhost:8080", BaseDomain: "example.test", RestReadyTimeout: 20 * time.Second,
-	}}
+	}
 }
 
 func TestBuildInitialGatewayVersionsDeclareStaticTopology(t *testing.T) {

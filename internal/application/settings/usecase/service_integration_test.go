@@ -15,7 +15,7 @@ func TestConfigUpdateAndResetPersistEnvOverrides(t *testing.T) {
 	envFilePath := filepath.Join(t.TempDir(), ".env")
 	cfg := config.Config{EnvFilePath: envFilePath}
 	cfg.Logging.Level = "info"
-	service := New(cfg, envfile.NewStore(envFilePath))
+	service := New(Definitions(cfg), envfile.NewStore(envFilePath))
 	ctx := context.Background()
 
 	initial, err := service.Config(ctx)
@@ -56,7 +56,7 @@ func TestConfigUpdateAndResetPersistEnvOverrides(t *testing.T) {
 func TestConfigIncludesDeploymentDialogueToolCallRounds(t *testing.T) {
 	envFilePath := filepath.Join(t.TempDir(), ".env")
 	cfg := config.Config{EnvFilePath: envFilePath, LLM: config.LLMConfig{MaxToolCallRounds: 32}}
-	service := New(cfg, envfile.NewStore(envFilePath))
+	service := New(Definitions(cfg), envfile.NewStore(envFilePath))
 	ctx := context.Background()
 
 	initial, err := service.Config(ctx)

@@ -9,7 +9,6 @@ import (
 	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	environmentv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/environment"
-	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func (h Handler) GetProjectEnvironment(c *gin.Context) {
@@ -22,7 +21,7 @@ func (h Handler) GetProjectEnvironment(c *gin.Context) {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	response := environmentResponse(item, h.localTarget)
+	response := environmentResponse(item)
 	transportresponse.ProtoJSON(c, http.StatusOK, response)
 }
 
@@ -41,7 +40,7 @@ func (h Handler) UpdateProjectEnvironment(c *gin.Context) {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	response := environmentResponse(item, h.localTarget)
+	response := environmentResponse(item)
 	transportresponse.ProtoJSON(c, http.StatusOK, response)
 }
 
@@ -55,7 +54,7 @@ func (h Handler) ProbeProjectEnvironment(c *gin.Context) {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	response := environmentResponse(item, h.localTarget)
+	response := environmentResponse(item)
 	transportresponse.ProtoJSON(c, http.StatusOK, response)
 }
 
@@ -74,7 +73,7 @@ func (h Handler) InitializeProjectEnvironment(c *gin.Context) {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	response := environmentResponse(item, h.localTarget)
+	response := environmentResponse(item)
 	transportresponse.ProtoJSON(c, http.StatusOK, response)
 }
 
@@ -101,7 +100,7 @@ func projectEnvironmentInitializeInput(req *environmentv1.ProjectEnvironmentInit
 	}
 }
 
-func environmentResponse(item model.Environment, localTarget localTargetInfo) *environmentv1.EnvironmentResp {
+func environmentResponse(item environmentdto.View) *environmentv1.EnvironmentResp {
 	response := &environmentv1.EnvironmentResp{
 		Id:                   item.Id,
 		ProjectId:            item.ProjectId,
@@ -124,12 +123,12 @@ func environmentResponse(item model.Environment, localTarget localTargetInfo) *e
 			HostKeyFingerprint: item.SSH.HostKeyFingerprint,
 		}
 	}
-	if item.IsLocal() {
+	if item.Local != nil {
 		response.Local = &environmentv1.EnvironmentLocalTargetResp{
-			WorkspaceRoot: localTarget.WorkspaceRoot,
-			Platform:      localTarget.Platform,
-			Host:          localTarget.Host,
-			Username:      localTarget.Username,
+			WorkspaceRoot: item.Local.WorkspaceRoot,
+			Platform:      item.Local.Platform,
+			Host:          item.Local.Host,
+			Username:      item.Local.Username,
 		}
 	}
 	return response

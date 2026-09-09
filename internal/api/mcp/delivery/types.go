@@ -33,7 +33,6 @@ type Dependencies struct {
 	Service            ServiceService
 	Deployment         DeploymentService
 	Environment        EnvironmentService
-	LocalWorkspaceRoot string
 	Gateway            GatewayService
 	Route              RouteService
 }
@@ -97,9 +96,9 @@ type DeploymentService interface {
 }
 
 type EnvironmentService interface {
-	EnvironmentForUser(context.Context, string, string) (model.Environment, error)
-	UpdateForUser(context.Context, string, string, environmentdto.UpdateInput) (model.Environment, error)
-	ProbeForUser(context.Context, string, string) (model.Environment, error)
+	EnvironmentForUser(context.Context, string, string) (environmentdto.View, error)
+	UpdateForUser(context.Context, string, string, environmentdto.UpdateInput) (environmentdto.View, error)
+	ProbeForUser(context.Context, string, string) (environmentdto.View, error)
 }
 
 type GatewayService interface {

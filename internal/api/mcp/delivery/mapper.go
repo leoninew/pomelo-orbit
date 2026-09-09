@@ -6,6 +6,7 @@ import (
 
 	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
 	"github.com/leoninew/pomelo-orbit/internal/common/commandline"
@@ -192,7 +193,7 @@ func projectOutput(value model.Project) map[string]any {
 	return map[string]any{"id": value.Id, "name": value.Name, "code": value.Code, "is_active": value.IsActive, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 }
 
-func environmentOutput(value model.Environment, localWorkspaceRoot string) map[string]any {
+func environmentOutput(value environmentdto.View) map[string]any {
 	result := map[string]any{
 		"id": value.Id, "project_id": value.ProjectId, "code": value.Code, "state": value.State,
 		"target_type": value.TargetType, "target_revision": value.TargetRevision,
@@ -208,8 +209,11 @@ func environmentOutput(value model.Environment, localWorkspaceRoot string) map[s
 			"host_key_fingerprint": value.SSH.HostKeyFingerprint,
 		}
 	}
-	if value.IsLocal() {
-		result["local"] = map[string]any{"workspace_root": localWorkspaceRoot}
+	if value.Local != nil {
+		result["local"] = map[string]any{
+			"workspace_root": value.Local.WorkspaceRoot, "platform": value.Local.Platform,
+			"host": value.Local.Host, "username": value.Local.Username,
+		}
 	}
 	if value.LastProbeRevision != nil {
 		result["last_probe_revision"] = *value.LastProbeRevision

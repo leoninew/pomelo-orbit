@@ -17,7 +17,7 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"project_id": input.ProjectId, "environment": environmentOutput(environment, c.deps.LocalWorkspaceRoot)}, nil
+		return map[string]any{"project_id": input.ProjectId, "environment": environmentOutput(environment)}, nil
 	})
 
 	addTool(server, "orbit_update_project_environment", "Update the explicit local or SSH target of a Project's unique deployment Environment. SSH requires the nested ssh object; local must not include it.", func(ctx context.Context, input struct {
@@ -45,7 +45,7 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 		if err != nil {
 			return nil, err
 		}
-		return writeResult("update_project_environment", map[string]string{"project_id": input.ProjectId, "environment_id": environment.Id}, "PUT", "/api/project/"+input.ProjectId+"/environment", map[string]any{"environment": environmentOutput(environment, c.deps.LocalWorkspaceRoot)}), nil
+		return writeResult("update_project_environment", map[string]string{"project_id": input.ProjectId, "environment_id": environment.Id}, "PUT", "/api/project/"+input.ProjectId+"/environment", map[string]any{"environment": environmentOutput(environment)}), nil
 	})
 
 	addTool(server, "orbit_probe_project_environment", "Probe Docker Compose prerequisites for a Project's active local or SSH Environment. SSH also verifies key authentication and host-key pinning.", func(ctx context.Context, input struct {
@@ -55,6 +55,6 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 		if err != nil {
 			return nil, err
 		}
-		return writeResult("probe_project_environment", map[string]string{"project_id": input.ProjectId, "environment_id": environment.Id}, "POST", "/api/project/"+input.ProjectId+"/environment/probe", map[string]any{"environment": environmentOutput(environment, c.deps.LocalWorkspaceRoot)}), nil
+		return writeResult("probe_project_environment", map[string]string{"project_id": input.ProjectId, "environment_id": environment.Id}, "POST", "/api/project/"+input.ProjectId+"/environment/probe", map[string]any{"environment": environmentOutput(environment)}), nil
 	})
 }

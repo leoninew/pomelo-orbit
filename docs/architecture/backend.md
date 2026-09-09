@@ -1,5 +1,5 @@
 # 后端架构（现行）
-最后修改时间: 2026-09-07 13:31:14
+最后修改时间: 2026-09-09 17:52:42
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。  
@@ -43,9 +43,22 @@ cmd/server, cmd/migrate
 
 | 包 | 职责 |
 |----|------|
-| `application/cd` | 应用、版本、环境、网关、服务、部署、平台路由、compose 渲染 |
-| `application/ci` | 仓库、模板、快照、运行、产物、凭证、变量 |
-| `application/auth` / `user` / `role` / `project` / `settings` | 平台能力 |
+| `application/application` | 应用与版本 |
+| `application/auth` | 认证 |
+| `application/credential` | 凭证 |
+| `application/deployment` | 部署与 compose 执行 |
+| `application/dialogue` | 部署对话 |
+| `application/environment` | 部署环境目标 |
+| `application/gateway` | 网关 |
+| `application/pipeline` | 流水线定义 |
+| `application/pipeline_run` | 流水线运行与产物 |
+| `application/project` | 项目 |
+| `application/repository` | 仓库 |
+| `application/role` | 角色 |
+| `application/route` | 平台路由 |
+| `application/service` | 服务实例 |
+| `application/settings` | 系统设置 |
+| `application/user` | 用户 |
 
 ## 数据与迁移
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -58,7 +57,7 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if len(publisher.snapshots) != 0 {
 		t.Fatalf("expected no snapshot publication before explicit sync, got %+v", publisher.snapshots)
 	}
-	if err := service.DeleteRoute(ctx, routeTestUserId, enabled.Id); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+	if err := service.DeleteRoute(ctx, routeTestUserId, enabled.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected enabled route delete validation error, got %v", err)
 	}
 	disabled, err := service.DisableRoute(ctx, routeTestUserId, enabled.Id)
@@ -115,7 +114,7 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 		t.Fatalf("expected port data to be independent from the application view, got %+v", client.routers)
 	}
 	client.err = errors.New("connection refused")
-	if _, err := service.ListTraefikRoutes(ctx, routeTestUserId, routeTestProjectId); err == nil || apperror.StatusCode(err) != http.StatusServiceUnavailable || apperror.Classify(err).Message != "Traefik is unavailable." {
+	if _, err := service.ListTraefikRoutes(ctx, routeTestUserId, routeTestProjectId); err == nil || !apperror.IsKind(err, apperror.KindUnavailable) || apperror.Classify(err).Message != "Traefik is unavailable." {
 		t.Fatalf("expected safe traefik unavailable error, got %v", err)
 	}
 }
@@ -275,7 +274,7 @@ func TestRouteServiceRejectsStaleSyncPreview(t *testing.T) {
 	if err := service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
 		BusinessHash: preview.BusinessHash,
 		TraefikHash:  preview.TraefikHash,
-	}); err == nil || apperror.StatusCode(err) != http.StatusConflict || apperror.Classify(err).Code != routeSyncPreviewExpiredCode {
+	}); err == nil || !apperror.IsKind(err, apperror.KindConflict) || apperror.Classify(err).Code != routeSyncPreviewExpiredCode {
 		t.Fatalf("stale preview error = %v", err)
 	}
 	stored, err := service.route.Route(ctx, route.Id)
@@ -447,7 +446,7 @@ func TestRouteServiceCreatesManagedHTTPRoute(t *testing.T) {
 		Name: "invalid-http-route", Protocol: routeProtocolHTTP, Domain: "invalid.example.test", PathPrefix: "/",
 		ServiceId: target.Id, ComponentName: "api", EndpointProtocol: "tcp", EndpointContainerPort: intPtr(9090), Enabled: false,
 	})
-	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("HTTP target protocol error = %v, want validation", err)
 	}
 
@@ -513,7 +512,7 @@ func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
 		Name: "duplicate-port", Protocol: routeProtocolTCP, Domain: "another.example.test", ListenPort: &listenPort,
 		ServiceId: target.Id, ComponentName: "redis", EndpointProtocol: "tcp", EndpointContainerPort: intPtr(6379), Enabled: true,
 	})
-	if err == nil || apperror.StatusCode(err) != http.StatusConflict {
+	if err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("duplicate TCP listener error = %v, want conflict", err)
 	}
 
@@ -522,7 +521,7 @@ func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
 		Name: "reserved-port", Protocol: routeProtocolTCP, Domain: "reserved.example.test", ListenPort: &reservedPort,
 		ServiceId: target.Id, ComponentName: "redis", EndpointProtocol: "tcp", EndpointContainerPort: intPtr(6379), Enabled: false,
 	})
-	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("reserved TCP listener error = %v, want validation", err)
 	}
 
@@ -541,7 +540,7 @@ func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
 		Name: "host-conflict", Protocol: routeProtocolTCP, Domain: "conflict.example.test", ListenPort: &conflictingPort,
 		ServiceId: target.Id, ComponentName: "redis", EndpointProtocol: "tcp", EndpointContainerPort: intPtr(6379), Enabled: true,
 	})
-	if err == nil || apperror.StatusCode(err) != http.StatusConflict {
+	if err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("host endpoint conflict error = %v, want conflict", err)
 	}
 }
@@ -673,9 +672,10 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 		Code:           "route-test",
 		State:          model.EnvironmentStateActive,
 		TargetType:     model.EnvironmentTargetTypeSSH,
+		WorkspaceRoot:  "/srv/pomelo-orbit",
 		TargetRevision: 1,
 		SSH: &model.EnvironmentSSHTarget{
-			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22, Username: "deploy", WorkspaceRoot: "/srv/pomelo-orbit",
+			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22, Username: "deploy",
 			CredentialId: "route-test-credential", CredentialRevision: 1,
 			HostKeyFingerprint: "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
 		},

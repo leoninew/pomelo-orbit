@@ -34,7 +34,7 @@ func TestEnvironmentForUserReturnsLocalSeedWithoutDeploymentSSHCredential(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !item.IsLocal() || item.SSH != nil {
+	if item.TargetType != "local" || item.SSH != nil {
 		t.Fatalf("seed environment = %+v, want local target without SSH configuration", item)
 	}
 

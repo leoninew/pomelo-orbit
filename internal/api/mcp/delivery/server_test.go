@@ -74,12 +74,12 @@ func TestServerReportsPomeloMCPImplementation(t *testing.T) {
 }
 
 func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(t *testing.T) {
-	environment := &environmentToolService{environment: model.Environment{
+	environment := &environmentToolService{environment: environmentdto.View{
 		Id: "environment-1", ProjectId: "project-1", Code: "project", State: model.EnvironmentStateActive,
 		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: 3,
-		SSH: &model.EnvironmentSSHTarget{
+		SSH: &environmentdto.SSHTargetView{
 			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit", WorkspaceRoot: "/srv/orbit",
-			CredentialId: "credential-1", CredentialRevision: 2, HostKeyFingerprint: "SHA256:abc",
+			HostKeyFingerprint: "SHA256:abc",
 		},
 	}}
 	server, err := NewServer(Dependencies{ActorUserId: "actor", Environment: environment})
@@ -130,12 +130,13 @@ func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(
 }
 
 func TestProjectEnvironmentToolsReturnLocalWorkspaceWithoutSSHFields(t *testing.T) {
-	environment := &environmentToolService{environment: model.Environment{
+	environment := &environmentToolService{environment: environmentdto.View{
 		Id: "environment-1", ProjectId: "project-1", Code: "project", State: model.EnvironmentStateActive,
 		TargetType: model.EnvironmentTargetTypeLocal,
+		Local:      &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit/deployment", Platform: "linux", Host: "orbit-host", Username: "orbit"},
 	}}
 	server, err := NewServer(Dependencies{
-		ActorUserId: "actor", Environment: environment, LocalWorkspaceRoot: "/srv/orbit/deployment",
+		ActorUserId: "actor", Environment: environment,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -497,24 +498,24 @@ func TestActorAuthenticatorKeepsConcurrentCallsBoundToOneActor(t *testing.T) {
 
 type environmentToolService struct {
 	EnvironmentService
-	environment model.Environment
+	environment environmentdto.View
 	userID      string
 	projectID   string
 	update      environmentdto.UpdateInput
 	probeCalls  int
 }
 
-func (s *environmentToolService) EnvironmentForUser(_ context.Context, userID, projectID string) (model.Environment, error) {
+func (s *environmentToolService) EnvironmentForUser(_ context.Context, userID, projectID string) (environmentdto.View, error) {
 	s.userID, s.projectID = userID, projectID
 	return s.environment, nil
 }
 
-func (s *environmentToolService) UpdateForUser(_ context.Context, userID, projectID string, input environmentdto.UpdateInput) (model.Environment, error) {
+func (s *environmentToolService) UpdateForUser(_ context.Context, userID, projectID string, input environmentdto.UpdateInput) (environmentdto.View, error) {
 	s.userID, s.projectID, s.update = userID, projectID, input
 	return s.environment, nil
 }
 
-func (s *environmentToolService) ProbeForUser(_ context.Context, userID, projectID string) (model.Environment, error) {
+func (s *environmentToolService) ProbeForUser(_ context.Context, userID, projectID string) (environmentdto.View, error) {
 	s.userID, s.projectID, s.probeCalls = userID, projectID, s.probeCalls+1
 	return s.environment, nil
 }

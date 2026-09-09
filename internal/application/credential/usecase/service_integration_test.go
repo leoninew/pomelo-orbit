@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"io"
 	"log/slog"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -64,7 +63,7 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 		t.Fatalf("unexpected exported credential: %+v", exported)
 	}
 
-	if _, err := service.CreateCredential(ctx, ciTestUserId, credentialdto.CredentialCreateInput{ProjectId: ciTestProjectId, Name: "GitHub Token", Type: "github_token", Data: "other"}); err == nil || apperror.StatusCode(err) != http.StatusConflict {
+	if _, err := service.CreateCredential(ctx, ciTestUserId, credentialdto.CredentialCreateInput{ProjectId: ciTestProjectId, Name: "GitHub Token", Type: "github_token", Data: "other"}); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate credential create conflict, got %v", err)
 	}
 
@@ -73,14 +72,14 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 		t.Fatal(err)
 	}
 	name := "GitHub Token"
-	if _, err := service.UpdateCredential(ctx, ciTestUserId, other.Id, credentialdto.CredentialUpdateInput{Name: &name}); err == nil || apperror.StatusCode(err) != http.StatusConflict {
+	if _, err := service.UpdateCredential(ctx, ciTestUserId, other.Id, credentialdto.CredentialUpdateInput{Name: &name}); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate credential update conflict, got %v", err)
 	}
 
 	if _, err := database.ExecContext(ctx, `UPDATE repository SET git_credential_id = ? WHERE id = ?`, created.Id, "01KNNRBH52BQJYT9487B2H8N62"); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.DeleteCredential(ctx, ciTestUserId, created.Id); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+	if err := service.DeleteCredential(ctx, ciTestUserId, created.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected referenced credential delete validation error, got %v", err)
 	}
 }
@@ -110,7 +109,7 @@ func TestCreateCredentialAcceptsGiteaTokenAndRejectsUnknownType(t *testing.T) {
 	_, err = service.CreateCredential(ctx, ciTestUserId, credentialdto.CredentialCreateInput{
 		ProjectId: ciTestProjectId, Name: "Unknown Token", Type: "unknown_token", Data: "alice:token",
 	})
-	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected unknown credential type to be rejected, got %v", err)
 	}
 }
@@ -128,7 +127,7 @@ func TestDeploymentSSHCredentialPlaceholderRequiresReplacement(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, _, err := service.DeploymentSSHCredential(ctx, credentialID); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+	if _, _, err := service.DeploymentSSHCredential(ctx, credentialID); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected placeholder credential validation error, got %v", err)
 	}
 

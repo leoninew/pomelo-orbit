@@ -57,7 +57,7 @@ func New(
 	service repository.ServiceStore,
 	route repository.RouteStore,
 	deployment repository.DeploymentStore,
-	cfg config.Config,
+	traefik config.TraefikConfig,
 	resolvePath gatewayport.PhysicalPathResolver,
 	transaction gatewayport.TransactionRunner,
 ) Service {
@@ -67,7 +67,7 @@ func New(
 		route:           route,
 		serviceCommands: servicesvc.New(project, application, service, deployment),
 		transaction:     transaction,
-		traefik:         cfg.Traefik,
+		traefik:         traefik,
 	}
 }
 

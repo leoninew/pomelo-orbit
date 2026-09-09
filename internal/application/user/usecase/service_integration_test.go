@@ -98,10 +98,10 @@ func TestUserServiceRejectsDuplicateUsernameAndEmail(t *testing.T) {
 	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator", Password: "secret1", Email: email}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator", Password: "secret1", Email: "other@example.test"}); err == nil || apperror.StatusCode(err) != 409 {
+	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator", Password: "secret1", Email: "other@example.test"}); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate username conflict, got %v", err)
 	}
-	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator2", Password: "secret1", Email: email}); err == nil || apperror.StatusCode(err) != 409 {
+	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator2", Password: "secret1", Email: email}); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate email conflict, got %v", err)
 	}
 	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator3", Password: "secret1"}); err == nil || !apperror.IsKind(err, apperror.KindValidation) {

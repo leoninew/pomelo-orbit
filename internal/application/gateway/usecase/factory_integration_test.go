@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net/http"
 	"strings"
 	"testing"
 
@@ -129,7 +128,7 @@ func TestCreateGatewayRequiresFreshEnvironmentProbe(t *testing.T) {
 	}
 
 	_, err := service.CreateGateway(context.Background(), gatewayFactoryUserID, managedGatewayCreateInput())
-	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest || !strings.Contains(err.Error(), "must pass probe") {
+	if err == nil || !apperror.IsKind(err, apperror.KindValidation) || !strings.Contains(err.Error(), "must pass probe") {
 		t.Fatalf("CreateGateway error = %v, want fresh Probe validation", err)
 	}
 }
@@ -157,7 +156,7 @@ func TestProvisionGatewayOnlyPreparesStoppedServices(t *testing.T) {
 	}
 
 	_, err = service.ProvisionGateway(context.Background(), gatewayFactoryUserID, gatewaydto.ProvisionGatewayInput{ProjectId: gatewayFactoryProjectID, InstanceKey: "staging"})
-	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("staging gateway provision error = %v, want validation error", err)
 	}
 }
@@ -329,11 +328,12 @@ func seedGatewayFactoryEnvironment(t *testing.T, database *sql.DB) {
 		Code:              "gateway-factory",
 		State:             model.EnvironmentStateActive,
 		TargetType:        model.EnvironmentTargetTypeSSH,
+		WorkspaceRoot:     "/srv/pomelo-orbit",
 		TargetRevision:    1,
 		LastProbeRevision: &probeRevision,
 		LastProbeStatus:   &probeStatus,
 		SSH: &model.EnvironmentSSHTarget{
-			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22, Username: "deploy", WorkspaceRoot: "/srv/pomelo-orbit",
+			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22, Username: "deploy",
 			CredentialId: "gateway-factory-credential", CredentialRevision: 1,
 			HostKeyFingerprint: "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
 		},

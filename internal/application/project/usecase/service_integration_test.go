@@ -85,7 +85,7 @@ func TestProjectServiceCreateUpdateMembersAndDeprecate(t *testing.T) {
 	if len(members) != 1 {
 		t.Fatalf("unexpected members after remove: %+v", members)
 	}
-	if err := service.Deprecate(ctx, updated, projectTestUserId); err == nil || apperror.StatusCode(err) != 400 {
+	if err := service.Deprecate(ctx, updated, projectTestUserId); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected active environment deprecation validation error, got %v", err)
 	}
 	if _, err := database.ExecContext(ctx, `UPDATE environment SET state = ? WHERE project_id = ?`, "disabled", updated.Id); err != nil {
@@ -107,7 +107,7 @@ func TestProjectServiceRejectsDuplicateCodeAndLastActiveDeprecation(t *testing.T
 	service, database := newProjectIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
-	if _, err := service.Create(ctx, projectTestUserId, testProjectCreateInput(t, "Duplicate", "default")); err == nil || apperror.StatusCode(err) != 409 {
+	if _, err := service.Create(ctx, projectTestUserId, testProjectCreateInput(t, "Duplicate", "default")); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate code conflict, got %v", err)
 	}
 	defaultProject, err := service.LoadForUser(ctx, "01KRRKK0K3T519ZQZES3M4QA9Z", projectTestUserId)
@@ -122,7 +122,7 @@ func TestProjectServiceRejectsDuplicateCodeAndLastActiveDeprecation(t *testing.T
 		t.Fatalf("unexpected default environment: %+v", defaultEnvironment)
 	}
 	assertCount(t, database, `SELECT COUNT(*) FROM credential WHERE id = ?`, "01M202WNXY6FPPFGTJWCF6CP81", 0)
-	if err := service.Deprecate(ctx, defaultProject, projectTestUserId); err == nil || apperror.StatusCode(err) != 400 {
+	if err := service.Deprecate(ctx, defaultProject, projectTestUserId); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected last active project deprecation validation error, got %v", err)
 	}
 }

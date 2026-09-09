@@ -2,7 +2,6 @@ package gatewaysvc
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	gatewayport "github.com/leoninew/pomelo-orbit/internal/application/gateway/port"
@@ -89,12 +88,11 @@ func TestDeleteGatewayRejectsBoundGateway(t *testing.T) {
 	)
 
 	err := service.DeleteGateway(context.Background(), "user-1", gatewayID)
-	classification := apperror.Classify(err)
-	if classification.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d; error = %v", classification.StatusCode, http.StatusBadRequest, err)
+	if !apperror.IsKind(err, apperror.KindValidation) {
+		t.Fatalf("error = %v, want validation", err)
 	}
-	if classification.Message != "Gateway cannot be deleted after it is bound to a project environment" {
-		t.Fatalf("message = %q", classification.Message)
+	if apperror.Classify(err).Message != "Gateway cannot be deleted after it is bound to a project environment" {
+		t.Fatalf("message = %q", apperror.Classify(err).Message)
 	}
 	if application.deleteID != "" {
 		t.Fatalf("unexpected deletion of %q", application.deleteID)

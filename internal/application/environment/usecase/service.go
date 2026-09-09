@@ -30,15 +30,21 @@ type Service struct {
 	projects             repository.ProjectReader
 	deploymentKey        deploymentKeyManager
 	deploymentCredential deploymentCredentialReader
-	prober               environmentProber
+	prober               environmentport.Prober
 	bootstrapper         environmentport.Bootstrapper
+	localDisplay         environmentdto.LocalDisplaySnapshot
 }
 
-func New(environments repository.EnvironmentStore, projects repository.ProjectReader, deploymentKey deploymentKeyManager, deploymentCredential deploymentCredentialReader, prober environmentProber, bootstrapper environmentport.Bootstrapper) Service {
+func New(environments repository.EnvironmentStore, projects repository.ProjectReader, deploymentKey deploymentKeyManager, deploymentCredential deploymentCredentialReader, prober environmentport.Prober, bootstrapper environmentport.Bootstrapper) Service {
 	return Service{
 		environments: environments, projects: projects, deploymentKey: deploymentKey,
 		deploymentCredential: deploymentCredential, prober: prober, bootstrapper: bootstrapper,
 	}
+}
+
+func (s Service) WithLocalDisplay(snapshot environmentdto.LocalDisplaySnapshot) Service {
+	s.localDisplay = snapshot
+	return s
 }
 
 // BootstrapForProject creates the active local Environment owned by a newly
@@ -58,44 +64,48 @@ func (s Service) BootstrapForProject(ctx context.Context, project model.Project)
 	return item, nil
 }
 
-func (s Service) EnvironmentForUser(ctx context.Context, userID string, projectID string) (model.Environment, error) {
+func (s Service) EnvironmentForUser(ctx context.Context, userID string, projectID string) (environmentdto.View, error) {
 	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	item, err := s.environmentForProject(ctx, projectID)
 	if err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
-	return s.hydrateEnvironment(ctx, item)
+	item, err = s.hydrateEnvironment(ctx, item)
+	if err != nil {
+		return environmentdto.View{}, err
+	}
+	return s.toView(item), nil
 }
 
-func (s Service) UpdateForUser(ctx context.Context, userID string, projectID string, input environmentdto.UpdateInput) (model.Environment, error) {
+func (s Service) UpdateForUser(ctx context.Context, userID string, projectID string, input environmentdto.UpdateInput) (environmentdto.View, error) {
 	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	item, err := s.environmentForProject(ctx, projectID)
 	if err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	previous := item
 	if err := applyUpdate(&item, input); err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	item, err = s.ensureGeneratedCredential(ctx, item)
 	if err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	if item.IsActive() && item.IsSSH() {
 		if s.deploymentCredential == nil {
-			return model.Environment{}, apperror.New(apperror.KindInternal, "deployment SSH credential reader is not configured")
+			return environmentdto.View{}, apperror.New(apperror.KindInternal, "deployment SSH credential reader is not configured")
 		}
 		credential, _, err := s.deploymentCredential.DeploymentSSHCredential(ctx, item.SSH.CredentialId)
 		if err != nil || !matchesEnvironmentCredential(item, credential) {
-			return model.Environment{}, apperror.New(apperror.KindValidation, "Environment deployment SSH credential must be configured before it can be active")
+			return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment deployment SSH credential must be configured before it can be active")
 		}
 	}
 	if err := validateEnvironment(item); err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	if environmentTargetChanged(previous, item) {
 		if item.SSH != nil {
@@ -104,13 +114,13 @@ func (s Service) UpdateForUser(ctx context.Context, userID string, projectID str
 		item.TargetRevision++
 	}
 	if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
-		return model.Environment{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
+		return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
 	}
 	item, err = s.environmentForProject(ctx, projectID)
 	if err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
-	return item, nil
+	return s.toView(item), nil
 }
 
 func (s Service) hydrateEnvironment(ctx context.Context, item model.Environment) (model.Environment, error) {

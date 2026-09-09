@@ -207,8 +207,11 @@ func TestUpdateForUserKeepsDeploymentCredentialForSSHTargetChange(t *testing.T) 
 	if keyManager.createCalls != 0 || keyManager.ensuredCredentialID != environment.SSH.CredentialId {
 		t.Fatalf("credential calls = %#v", keyManager)
 	}
-	if !store.updated || updated.SSH == nil || updated.SSH.Host != "198.51.100.10" || updated.SSH.CredentialId != environment.SSH.CredentialId || updated.SSH.CredentialRevision != environment.SSH.CredentialRevision {
+	if !store.updated || updated.SSH == nil || updated.SSH.Host != "198.51.100.10" {
 		t.Fatalf("updated environment = %#v", updated)
+	}
+	if store.environment.SSH == nil || store.environment.SSH.CredentialId != environment.SSH.CredentialId || store.environment.SSH.CredentialRevision != environment.SSH.CredentialRevision {
+		t.Fatalf("stored credential binding = %#v", store.environment.SSH)
 	}
 }
 
@@ -434,6 +437,10 @@ func (p *localProbeEnvironmentProber) Probe(context.Context, model.Environment, 
 
 func (p *localProbeEnvironmentProber) ProbeLocal(context.Context) error {
 	p.localCalled = true
+	return p.err
+}
+
+func (p *probeEnvironmentProber) ProbeLocal(context.Context) error {
 	return p.err
 }
 

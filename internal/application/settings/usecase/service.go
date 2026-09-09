@@ -16,12 +16,19 @@ import (
 const envPrefix = "POMELO_ORBIT_"
 
 type Service struct {
-	cfg      config.Config
-	envStore settingsport.EnvStore
+	definitions []settingsdto.Definition
+	envStore    settingsport.EnvStore
 }
 
-func New(cfg config.Config, envStore settingsport.EnvStore) Service {
-	return Service{cfg: cfg, envStore: envStore}
+func New(definitions []settingsdto.Definition, envStore settingsport.EnvStore) Service {
+	return Service{definitions: definitions, envStore: envStore}
+}
+
+func Definitions(cfg config.Config) []settingsdto.Definition {
+	if cfg.Base != nil {
+		return settingDefinitions(*cfg.Base)
+	}
+	return settingDefinitions(cfg)
 }
 
 func (s Service) Config(ctx context.Context) (settingsdto.SystemConfig, error) {
@@ -29,7 +36,7 @@ func (s Service) Config(ctx context.Context) (settingsdto.SystemConfig, error) {
 	if err != nil {
 		return settingsdto.SystemConfig{}, err
 	}
-	definitions := settingDefinitions(s.baseConfig())
+	definitions := s.definitions
 	definitionByKey := make(map[string]settingsdto.Definition, len(definitions))
 	orderedKeys := make([]string, 0, len(definitions))
 	for _, definition := range definitions {
@@ -98,13 +105,6 @@ func (s Service) Reset(ctx context.Context, keys []string) (settingsdto.SystemCo
 		return settingsdto.SystemConfig{}, err
 	}
 	return s.Config(ctx)
-}
-
-func (s Service) baseConfig() config.Config {
-	if s.cfg.Base != nil {
-		return *s.cfg.Base
-	}
-	return s.cfg
 }
 
 func settingDefinitions(cfg config.Config) []settingsdto.Definition {

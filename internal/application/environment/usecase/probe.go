@@ -25,14 +25,6 @@ type deploymentCredentialReader interface {
 	DeploymentSSHCredential(context.Context, string) (model.Credential, credentialdto.DeploymentSSHPrivateKey, error)
 }
 
-type environmentProber interface {
-	Probe(context.Context, model.Environment, credentialdto.DeploymentSSHPrivateKey) (string, error)
-}
-
-type localEnvironmentProber interface {
-	ProbeLocal(context.Context) error
-}
-
 type probeDiagnosticError interface {
 	ProbeDiagnostic() string
 }
@@ -40,29 +32,29 @@ type probeDiagnosticError interface {
 // ProbeForUser verifies the configured SSH target outside a request transaction.
 // Its single conditional update records a result only for the target revision
 // that was actually probed, preventing stale observations after an edit.
-func (s Service) ProbeForUser(ctx context.Context, userID string, projectID string) (model.Environment, error) {
+func (s Service) ProbeForUser(ctx context.Context, userID string, projectID string) (environmentdto.View, error) {
 	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	item, err := s.environmentForProject(ctx, projectID)
 	if err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	if !item.IsActive() {
-		return model.Environment{}, apperror.New(apperror.KindValidation, "Environment must be active before it can be probed")
+		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment must be active before it can be probed")
 	}
 
 	if item.IsSSH() {
 		previous := item
 		item, err = s.ensureGeneratedCredential(ctx, item)
 		if err != nil {
-			return model.Environment{}, err
+			return environmentdto.View{}, err
 		}
 		if environmentTargetChanged(previous, item) {
 			item.SSH.HostKeyFingerprint = ""
 			item.TargetRevision++
 			if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
-				return model.Environment{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
+				return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
 			}
 		}
 	}
@@ -75,7 +67,7 @@ func (s Service) ProbeForUser(ctx context.Context, userID string, projectID stri
 		} else {
 			item.SSH.HostKeyFingerprint = observedFingerprint
 			if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
-				return model.Environment{}, apperror.Wrap(apperror.KindInternal, "Failed to record host key fingerprint", err)
+				return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to record host key fingerprint", err)
 			}
 		}
 	}
@@ -83,10 +75,10 @@ func (s Service) ProbeForUser(ctx context.Context, userID string, projectID stri
 	probedAt := time.Now().UTC()
 	recorded, err := s.environments.RecordProbe(ctx, item.Id, item.TargetRevision, statusValue, probedAt, diagnostic)
 	if err != nil {
-		return model.Environment{}, apperror.Wrap(apperror.KindInternal, "Failed to record environment probe", err)
+		return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to record environment probe", err)
 	}
 	if !recorded {
-		return model.Environment{}, apperror.New(apperror.KindConflict, "Environment changed during probe; probe it again")
+		return environmentdto.View{}, apperror.New(apperror.KindConflict, "Environment changed during probe; probe it again")
 	}
 
 	revision := item.TargetRevision
@@ -94,7 +86,7 @@ func (s Service) ProbeForUser(ctx context.Context, userID string, projectID stri
 	item.LastProbeStatus = stringPointer(statusValue)
 	item.LastProbeAt = &probedAt
 	item.LastProbeDiagnostic = stringPointer(diagnostic)
-	return item, nil
+	return s.toView(item), nil
 }
 
 type bootstrapDiagnosticError interface {
@@ -105,52 +97,52 @@ type bootstrapDiagnosticError interface {
 // deployment public key on a configured Linux target. The temporary
 // credentials are never stored and the target is probed with the generated
 // key immediately after bootstrap.
-func (s Service) InitializeForUser(ctx context.Context, userID string, projectID string, input environmentdto.InitializeInput) (model.Environment, error) {
+func (s Service) InitializeForUser(ctx context.Context, userID string, projectID string, input environmentdto.InitializeInput) (environmentdto.View, error) {
 	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	item, err := s.environmentForProject(ctx, projectID)
 	if err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	if !item.IsActive() {
-		return model.Environment{}, apperror.New(apperror.KindValidation, "Environment must be active before it can be initialized")
+		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment must be active before it can be initialized")
 	}
 	if !item.IsSSH() {
-		return model.Environment{}, apperror.New(apperror.KindValidation, "Only an SSH environment can be initialized")
+		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Only an SSH environment can be initialized")
 	}
 	if item.SSH.Platform != model.EnvironmentPlatformLinux {
-		return model.Environment{}, apperror.New(apperror.KindValidation, "Automatic SSH initialization is available only for Linux environments")
+		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Automatic SSH initialization is available only for Linux environments")
 	}
 	if s.bootstrapper == nil {
-		return model.Environment{}, apperror.New(apperror.KindInternal, "SSH environment bootstrap is not configured")
+		return environmentdto.View{}, apperror.New(apperror.KindInternal, "SSH environment bootstrap is not configured")
 	}
 	if s.deploymentKey == nil {
-		return model.Environment{}, apperror.New(apperror.KindInternal, "deployment SSH credential manager is not configured")
+		return environmentdto.View{}, apperror.New(apperror.KindInternal, "deployment SSH credential manager is not configured")
 	}
 	auth, err := bootstrapAuth(input)
 	if err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 
 	previous := item
 	item, err = s.ensureGeneratedCredential(ctx, item)
 	if err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	if environmentTargetChanged(previous, item) {
 		item.SSH.HostKeyFingerprint = ""
 		item.TargetRevision++
 		if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
-			return model.Environment{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
+			return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
 		}
 	}
 	publicKey, err := s.deploymentKey.DeploymentSSHPublicKey(ctx, item.SSH.CredentialId)
 	if err != nil {
-		return model.Environment{}, err
+		return environmentdto.View{}, err
 	}
 	if err := s.bootstrapper.Bootstrap(ctx, item, publicKey, auth); err != nil {
-		return model.Environment{}, apperror.New(apperror.KindValidation, safeBootstrapDiagnostic(err))
+		return environmentdto.View{}, apperror.New(apperror.KindValidation, safeBootstrapDiagnostic(err))
 	}
 	return s.ProbeForUser(ctx, userID, projectID)
 }
@@ -191,11 +183,10 @@ func safeBootstrapDiagnostic(err error) string {
 
 func (s Service) probeOutcome(ctx context.Context, item model.Environment) (string, string, string) {
 	if item.IsLocal() {
-		prober, ok := s.prober.(localEnvironmentProber)
-		if !ok || prober == nil {
+		if s.prober == nil {
 			return model.EnvironmentProbeStatusFailed, localProbeUnavailableDiagnostic, ""
 		}
-		if err := prober.ProbeLocal(ctx); err != nil {
+		if err := s.prober.ProbeLocal(ctx); err != nil {
 			return model.EnvironmentProbeStatusFailed, localProbeDiagnostic(err), ""
 		}
 		return model.EnvironmentProbeStatusSucceeded, "Local Docker and Docker Compose prerequisites are ready.", ""

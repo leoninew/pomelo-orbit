@@ -7,7 +7,7 @@ import (
 )
 
 func (r Router) registerEnvironment(engine *gin.Engine) {
-	handler := environmenthandler.New(r.logger, r.deps.EnvironmentService, r.deps.Authenticator, r.cfg.Workspace.Deployment)
+	handler := environmenthandler.New(r.logger, r.deps.EnvironmentService, r.deps.Authenticator)
 	engine.GET("/api/project/:project_id/environment", handler.GetProjectEnvironment)
 	engine.PUT("/api/project/:project_id/environment", handler.UpdateProjectEnvironment)
 	engine.POST("/api/project/:project_id/environment/initialize", handler.InitializeProjectEnvironment)

@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"database/sql"
 	"log/slog"
 	"net/http"
 
@@ -29,12 +28,11 @@ import (
 	usersvc "github.com/leoninew/pomelo-orbit/internal/application/user/usecase"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	commonv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
-	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
 )
 
 type Dependencies struct {
-	Database           *sql.DB
+	MutatingUnitOfWork gin.HandlerFunc
 	Authenticator      security.Authenticator
 	AuthService        authsvc.Service
 	RoleService        rolesvc.Service
@@ -87,14 +85,9 @@ func (r Router) Handler() http.Handler {
 	// Dialogue requests can run external LLM and MCP calls. The MCP server owns
 	// transactions for its tool writes, so this route must not hold a request UoW.
 	r.registerDialogue(engine)
-	if r.deps.Database != nil {
+	if r.deps.MutatingUnitOfWork != nil {
 		// Request-scoped UoW for mutating API routes (health is registered above).
-		engine.Use(tx.Middleware(
-			r.deps.Database,
-			"/api/route/sync/preview",
-			"/api/route/sync/confirm",
-			"/api/project/:project_id/environment/probe",
-		))
+		engine.Use(r.deps.MutatingUnitOfWork)
 	}
 	r.registerAuth(engine)
 	r.registerUser(engine)

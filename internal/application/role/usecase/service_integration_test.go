@@ -51,10 +51,10 @@ func TestRoleServiceRejectsMissingPermissionAndDuplicatePermissions(t *testing.T
 	service, database := newRoleIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
-	if _, err := service.Create(ctx, roledto.SaveInput{Code: "bad", Name: "Bad", PermissionCodes: []string{"missing:permission"}}); err == nil || apperror.StatusCode(err) != 404 {
+	if _, err := service.Create(ctx, roledto.SaveInput{Code: "bad", Name: "Bad", PermissionCodes: []string{"missing:permission"}}); err == nil || !apperror.IsKind(err, apperror.KindNotFound) {
 		t.Fatalf("expected missing permission to return 404, got %v", err)
 	}
-	if _, err := service.Create(ctx, roledto.SaveInput{Code: "bad", Name: "Bad", PermissionCodes: []string{"user:read", "user:read"}}); err == nil || apperror.StatusCode(err) != 400 {
+	if _, err := service.Create(ctx, roledto.SaveInput{Code: "bad", Name: "Bad", PermissionCodes: []string{"user:read", "user:read"}}); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected duplicate permissions to return 400, got %v", err)
 	}
 }

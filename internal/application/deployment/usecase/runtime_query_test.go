@@ -2,10 +2,12 @@ package deploymentsvc
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
@@ -15,7 +17,7 @@ func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T)
 	service, store := newRuntimeQueryService()
 	store.service.Status = status.ServiceStatusStopped
 	workspace := testWorkspace(t.TempDir())
-	service.remoteRuntime = workspace
+	service.runtime = workspace
 	service.targetResolver = staticTargetResolver{target: testSSHTarget("project-1")}
 
 	containers, err := service.ApplicationStatus(context.Background(), "user-1", "app-1", deploymentdto.ServiceTargetInput{
@@ -29,6 +31,44 @@ func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T)
 	}
 	if workspace.queryCalled {
 		t.Fatal("status query must not run without a deployment workspace")
+	}
+}
+
+func TestComposePreviewsDoNotRequireConfiguredProjectEnvironment(t *testing.T) {
+	projectID := "project-1"
+	store := &runtimeQueryStore{
+		application: model.Application{Id: "app-1", ProjectId: &projectID, Code: "demo", Kind: status.ApplicationKindStandard},
+		service:     model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-1", InstanceKey: "default", Code: "demo-default"},
+		version:     model.Version{Id: "version-1", ApplicationId: "app-1"},
+		components: []model.VersionComponent{{
+			Id: "component-1", VersionId: "version-1", Name: "web", Image: "nginx:latest",
+			Mounts: []model.VersionComponentMount{{SourceType: "directory", Source: "./data", Target: "/var/lib/app"}},
+		}},
+		serviceComponents: []model.ServiceComponent{{
+			Id: "service-component-1", ServiceId: "service-1", SourceVersionComponentId: "component-1", ComponentName: "web",
+		}},
+	}
+	service := Service{
+		commandStore:       store,
+		executionStore:     store,
+		targetResolver:     staticTargetResolver{err: errors.New("Project environment is disabled")},
+		gatewayCoordinator: &gatewayDeploymentCoordinatorFake{gateway: &model.GatewayConfig{NetworkName: "traefik"}},
+	}
+
+	servicePreview, err := service.PreviewService(context.Background(), "user-1", "service-1", deploymentdto.PreviewComposeInput{})
+	if err != nil {
+		t.Fatalf("PreviewService returned error: %v", err)
+	}
+	if !strings.Contains(servicePreview, "./data:/var/lib/app") {
+		t.Fatalf("PreviewService did not render relative mount:\n%s", servicePreview)
+	}
+
+	versionPreview, err := service.PreviewVersion(context.Background(), "user-1", "version-1", deploymentdto.PreviewComposeInput{})
+	if err != nil {
+		t.Fatalf("PreviewVersion returned error: %v", err)
+	}
+	if !strings.Contains(versionPreview, "./data:/var/lib/app") {
+		t.Fatalf("PreviewVersion did not render relative mount:\n%s", versionPreview)
 	}
 }
 
@@ -109,12 +149,17 @@ func newRuntimeQueryService() (Service, *runtimeQueryStore) {
 }
 
 type runtimeQueryStore struct {
-	application model.Application
-	service     model.Service
+	deploymentport.ExecutionStore
+	application       model.Application
+	service           model.Service
+	version           model.Version
+	components        []model.VersionComponent
+	serviceComponents []model.ServiceComponent
+	serviceEnv        []model.ServiceEnv
 }
 
 func (s *runtimeQueryStore) ServiceEnvByService(_ context.Context, _ string) ([]model.ServiceEnv, error) {
-	return nil, nil
+	return s.serviceEnv, nil
 }
 
 func (s *runtimeQueryStore) Project(context.Context, string) (model.Project, error) {
@@ -129,12 +174,18 @@ func (s *runtimeQueryStore) Application(context.Context, string) (model.Applicat
 	return s.application, nil
 }
 
-func (s *runtimeQueryStore) Version(context.Context, string) (model.Version, error) {
-	return model.Version{}, repository.ErrNotFound
+func (s *runtimeQueryStore) Version(_ context.Context, id string) (model.Version, error) {
+	if s.version.Id != id {
+		return model.Version{}, repository.ErrNotFound
+	}
+	return s.version, nil
 }
 
-func (s *runtimeQueryStore) VersionComponentsByVersion(context.Context, string) ([]model.VersionComponent, error) {
-	return nil, nil
+func (s *runtimeQueryStore) VersionComponentsByVersion(_ context.Context, versionID string) ([]model.VersionComponent, error) {
+	if s.version.Id != versionID {
+		return nil, repository.ErrNotFound
+	}
+	return s.components, nil
 }
 
 func (s *runtimeQueryStore) Service(context.Context, string) (model.Service, error) {
@@ -146,7 +197,7 @@ func (s *runtimeQueryStore) ListServicesByApplication(context.Context, string) (
 }
 
 func (s *runtimeQueryStore) ServiceComponentsByService(context.Context, string) ([]model.ServiceComponent, error) {
-	return nil, nil
+	return s.serviceComponents, nil
 }
 
 func (s *runtimeQueryStore) UpdateServiceStatus(context.Context, string, string) error {

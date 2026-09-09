@@ -55,31 +55,32 @@ type ExecutionLogStore interface {
 	Remove(serviceCode string, deploymentID string) error
 }
 
-type RemoteFile struct {
+type WorkspaceFile struct {
 	Path           string
 	Content        []byte
 	Mode           uint32
 	IgnoreIfExists bool
 }
 
-type RemoteWorkspace struct {
+type Workspace struct {
 	ServiceCode  string
 	Directories  []string
-	Files        []RemoteFile
+	Files        []WorkspaceFile
 	Compose      string
 	DeploymentID string
 }
 
-// RemoteRuntime is the only deployment execution boundary. Every operation
-// receives an explicit Project Environment target; no local fallback exists.
-type RemoteRuntime interface {
-	ServiceDir(target environmentport.SSHTarget, serviceCode string) (string, error)
-	ServiceDirExists(ctx context.Context, target environmentport.SSHTarget, serviceCode string) (bool, error)
-	StageWorkspace(ctx context.Context, target environmentport.SSHTarget, workspace RemoteWorkspace) error
-	Run(ctx context.Context, target environmentport.SSHTarget, serviceCode string, log io.Writer, name string, args ...string) error
-	Query(ctx context.Context, target environmentport.SSHTarget, serviceCode string, name string, args ...string) (string, error)
-	QueryAtEnvironmentRoot(ctx context.Context, target environmentport.SSHTarget, name string, args ...string) (string, error)
-	SyncFiles(ctx context.Context, target environmentport.SSHTarget, directory string, files []RemoteFile, pruneSuffix string) error
+// Runtime is the only deployment execution boundary. Every operation receives
+// an explicit Project Environment target and dispatches only by target type.
+type Runtime interface {
+	ServiceDir(target environmentport.Target, serviceCode string) (string, error)
+	ServiceDirExists(ctx context.Context, target environmentport.Target, serviceCode string) (bool, error)
+	ComposeMountSourceDir(ctx context.Context, target environmentport.Target, serviceCode string) (string, error)
+	StageWorkspace(ctx context.Context, target environmentport.Target, workspace Workspace) error
+	Run(ctx context.Context, target environmentport.Target, serviceCode string, log io.Writer, name string, args ...string) error
+	Query(ctx context.Context, target environmentport.Target, serviceCode string, name string, args ...string) (string, error)
+	QueryAtEnvironmentRoot(ctx context.Context, target environmentport.Target, name string, args ...string) (string, error)
+	SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []WorkspaceFile, pruneSuffix string) error
 }
 
 // GatewayRoutePublisher restores the complete custom Route snapshot after a

@@ -43,9 +43,27 @@ func TestDeploymentTargetSnapshotPinsGatewayApplication(t *testing.T) {
 	}
 }
 
-func deploymentTestTarget(revision int64) environmentport.SSHTarget {
-	return environmentport.SSHTarget{Environment: model.Environment{
+func TestDeploymentTargetSnapshotForLocalTargetHasNoSSHCredential(t *testing.T) {
+	revision := int64(2)
+	target := environmentport.Target{Environment: model.Environment{
+		Id: "environment-local", ProjectId: "project-1", TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: revision,
+	}}
+	deployment := model.Deployment{Id: "deployment-1"}
+	applyDeploymentTargetSnapshot(&deployment, target, nil)
+	if deployment.SSHCredentialId != nil || deployment.SSHCredentialRevision != nil {
+		t.Fatalf("local deployment SSH snapshot = %#v", deployment)
+	}
+	if err := verifyDeploymentTargetSnapshot(deployment, deploymentdto.DeployOptionsJSON{}, target); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func deploymentTestTarget(revision int64) environmentport.Target {
+	return environmentport.Target{Environment: model.Environment{
 		Id: "environment-1", ProjectId: "project-1", TargetRevision: revision,
-		SSHCredentialId: "credential-1", SSHCredentialRevision: revision,
+		TargetType: model.EnvironmentTargetTypeSSH,
+		SSH: &model.EnvironmentSSHTarget{
+			CredentialId: "credential-1", CredentialRevision: revision,
+		},
 	}}
 }

@@ -45,7 +45,7 @@ func (s Service) ResolveRuntimeTarget(ctx context.Context, userId, applicationId
 	if err != nil {
 		return deploymentdto.RuntimeTarget{}, err
 	}
-	workingDirectory, err := s.remoteRuntime.ServiceDir(target, service.Code)
+	workingDirectory, err := s.runtime.ServiceDir(target, service.Code)
 	if err != nil {
 		return deploymentdto.RuntimeTarget{}, apperror.Wrap(apperror.KindInternal, "Failed to resolve remote runtime directory", err)
 	}
@@ -240,21 +240,21 @@ func (s Service) RuntimeDoctor(ctx context.Context, target *deploymentdto.Runtim
 }
 
 func (s Service) runRuntimeCommand(ctx context.Context, target deploymentdto.RuntimeTarget, command composeCommand) (string, error) {
-	if s.remoteRuntime == nil || s.targetResolver == nil {
+	if s.runtime == nil || s.targetResolver == nil {
 		return "", apperror.New(apperror.KindInternal, "remote deployment runtime is not configured")
 	}
 	sshTarget, err := s.targetResolver.ResolveProjectTarget(ctx, target.ProjectId)
 	if err != nil {
 		return "", err
 	}
-	exists, err := s.remoteRuntime.ServiceDirExists(ctx, sshTarget, target.ServiceCode)
+	exists, err := s.runtime.ServiceDirExists(ctx, sshTarget, target.ServiceCode)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to inspect remote service workspace", err)
 	}
 	if !exists {
 		return "", apperror.New(apperror.KindNotFound, "managed runtime workspace does not exist")
 	}
-	output, err := s.remoteRuntime.Query(ctx, sshTarget, target.ServiceCode, command.Name, command.Args...)
+	output, err := s.runtime.Query(ctx, sshTarget, target.ServiceCode, command.Name, command.Args...)
 	if err != nil {
 		return output, apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}

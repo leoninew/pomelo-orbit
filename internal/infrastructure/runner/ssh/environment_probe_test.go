@@ -28,6 +28,27 @@ func TestStrictHostKeyCallbackAcceptsOnlyConfiguredFingerprint(t *testing.T) {
 	}
 }
 
+func TestProbeHostKeyCallbackAcceptsEmptyExpectedAndRecordsFingerprint(t *testing.T) {
+	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer, err := ssh.NewSignerFromKey(privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var observed string
+	if err := probeHostKeyCallback("", &observed)("example.test:22", nil, signer.PublicKey()); err != nil {
+		t.Fatalf("empty expected fingerprint rejected: %v", err)
+	}
+	if observed != ssh.FingerprintSHA256(signer.PublicKey()) {
+		t.Fatalf("observed fingerprint = %q", observed)
+	}
+	if err := probeHostKeyCallback("SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", &observed)("example.test:22", nil, signer.PublicKey()); err == nil {
+		t.Fatal("mismatched expected fingerprint accepted")
+	}
+}
+
 func TestProbeCommandIsFixedPerSupportedPlatform(t *testing.T) {
 	linux, err := probeCommand(model.EnvironmentPlatformLinux)
 	if err != nil || !strings.HasPrefix(linux, "sh -lc ") || !strings.Contains(linux, "docker compose version") {

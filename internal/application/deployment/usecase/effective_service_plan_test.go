@@ -63,13 +63,13 @@ func TestBuildEffectiveServicePlanMergesSparseOverrides(t *testing.T) {
 	}
 }
 
-func TestEffectiveServicePlanHashTracksGatewayNetworkIdentity(t *testing.T) {
+func TestEffectiveServicePlanHashTracksTraefikNetworkOption(t *testing.T) {
 	plan := model.EffectiveServicePlan{
 		Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
 		Version:     model.Version{Label: "v1"},
 		Service:     model.Service{InstanceKey: "default"},
 		Gateway: &model.GatewayConfig{
-			NetworkName: "orbit-demo-traefik", RestApiUrl: "http://127.0.0.1:8080",
+			NetworkName: "traefik", RestApiUrl: "http://127.0.0.1:8080",
 			BaseDomain: "example.com", DefaultEntrypoint: "websecure", TLSMode: "letsencrypt",
 		},
 		Components: []model.EffectiveServiceComponent{{
@@ -89,22 +89,14 @@ func TestEffectiveServicePlanHashTracksGatewayNetworkIdentity(t *testing.T) {
 	if withGatewayPolicyChange != original {
 		t.Fatalf("gateway policy changed plan hash: original=%s changed=%s", original, withGatewayPolicyChange)
 	}
-	plan.Gateway.NetworkName = "orbit-other-traefik"
-	withOtherNetwork, err := EffectiveServicePlanHash(plan)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if withOtherNetwork == original {
-		t.Fatalf("Gateway network identity did not change plan hash: original=%s other=%s", original, withOtherNetwork)
-	}
 	disabled := false
 	plan.JoinTraefikNetwork = &disabled
 	withoutNetwork, err := EffectiveServicePlanHash(plan)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if withoutNetwork == withOtherNetwork {
-		t.Fatalf("Traefik network option did not change plan hash: enabled=%s disabled=%s", withOtherNetwork, withoutNetwork)
+	if withoutNetwork == original {
+		t.Fatalf("Traefik network option did not change plan hash: enabled=%s disabled=%s", original, withoutNetwork)
 	}
 }
 
@@ -155,7 +147,7 @@ func TestBuildVersionPreviewPlanRendersGatewayHTTPHost(t *testing.T) {
 		Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 80, Mode: "gateway"}},
 	}}
 
-	plan, err := BuildVersionPreviewPlan(app, version, declarations, &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web", NetworkName: "orbit-demo-traefik"})
+	plan, err := BuildVersionPreviewPlan(app, version, declarations, &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web", NetworkName: "traefik"})
 	if err != nil {
 		t.Fatalf("BuildVersionPreviewPlan returned error: %v", err)
 	}

@@ -67,6 +67,7 @@ func (r Repository) CreateDeployment(ctx context.Context, deployment model.Deplo
 		VersionID:                 dbmodel.NullString(deployment.VersionId),
 		ServiceID:                 dbmodel.NullString(deployment.ServiceId),
 		EnvironmentID:             dbmodel.NullString(deployment.EnvironmentId),
+		EnvironmentTargetType:     dbmodel.NullString(deployment.EnvironmentTargetType),
 		EnvironmentTargetRevision: optionalInt64(deployment.EnvironmentTargetRevision),
 		SshCredentialID:           dbmodel.NullString(deployment.SSHCredentialId),
 		SshCredentialRevision:     optionalInt64(deployment.SSHCredentialRevision),
@@ -147,7 +148,7 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	for _, row := range rows {
 		items = append(items, deploymentFrom(
 			row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
-			row.ServiceInstanceKey, row.EnvironmentID, row.EnvironmentTargetRevision, row.SshCredentialID, row.SshCredentialRevision, row.GatewayApplicationID,
+			row.ServiceInstanceKey, row.EnvironmentID, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SshCredentialID, row.SshCredentialRevision, row.GatewayApplicationID,
 			row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 			row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
 		))
@@ -162,7 +163,7 @@ func (r Repository) Deployment(ctx context.Context, id string) (model.Deployment
 	}
 	return deploymentFrom(
 		row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
-		row.ServiceInstanceKey, row.EnvironmentID, row.EnvironmentTargetRevision, row.SshCredentialID, row.SshCredentialRevision, row.GatewayApplicationID,
+		row.ServiceInstanceKey, row.EnvironmentID, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SshCredentialID, row.SshCredentialRevision, row.GatewayApplicationID,
 		row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 		row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
 	), nil
@@ -236,7 +237,7 @@ func (r Repository) LatestSuccessfulDeploymentPlanHash(ctx context.Context, serv
 
 func deploymentFrom(
 	id string, projectId, applicationId sql.NullString, applicationName string,
-	versionId, serviceId, serviceInstanceKey, environmentID sql.NullString,
+	versionId, serviceId, serviceInstanceKey, environmentID, environmentTargetType sql.NullString,
 	environmentTargetRevision sql.NullInt64, sshCredentialID sql.NullString, sshCredentialRevision sql.NullInt64,
 	gatewayApplicationID, optionsJSON, effectivePlanHash sql.NullString,
 	operationType, triggerType, commandText, deployStatus string,
@@ -252,6 +253,7 @@ func deploymentFrom(
 		ServiceId:                 dbmodel.StringPtr(serviceId),
 		ServiceInstanceKey:        dbmodel.StringPtr(serviceInstanceKey),
 		EnvironmentId:             dbmodel.StringPtr(environmentID),
+		EnvironmentTargetType:     dbmodel.StringPtr(environmentTargetType),
 		EnvironmentTargetRevision: int64Pointer(environmentTargetRevision),
 		SSHCredentialId:           dbmodel.StringPtr(sshCredentialID),
 		SSHCredentialRevision:     int64Pointer(sshCredentialRevision),

@@ -2,17 +2,13 @@ package projectsvc
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/rand"
 	"database/sql"
-	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
-	"golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite"
 
 	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
@@ -22,6 +18,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 	credentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/credential"
 	environmentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/environment"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
@@ -45,6 +42,14 @@ func TestProjectServiceCreateUpdateMembersAndDeprecate(t *testing.T) {
 	if created.Id == "" || created.Code != "second" || !created.IsActive {
 		t.Fatalf("unexpected created project: %+v", created)
 	}
+	environment, err := environmentrepo.NewRepository(database).EnvironmentByProject(ctx, created.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if environment.State != model.EnvironmentStateActive || environment.TargetType != model.EnvironmentTargetTypeLocal || environment.SSH != nil {
+		t.Fatalf("unexpected created environment: %+v", environment)
+	}
+	assertCount(t, database, `SELECT COUNT(*) FROM credential WHERE project_id = ?`, created.Id, 0)
 	loaded, err := service.LoadForUser(ctx, created.Id, projectTestUserId)
 	if err != nil {
 		t.Fatal(err)
@@ -109,6 +114,14 @@ func TestProjectServiceRejectsDuplicateCodeAndLastActiveDeprecation(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
+	defaultEnvironment, err := environmentrepo.NewRepository(database).EnvironmentByProject(ctx, defaultProject.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if defaultEnvironment.State != model.EnvironmentStateActive || defaultEnvironment.TargetType != model.EnvironmentTargetTypeLocal || defaultEnvironment.SSH != nil {
+		t.Fatalf("unexpected default environment: %+v", defaultEnvironment)
+	}
+	assertCount(t, database, `SELECT COUNT(*) FROM credential WHERE id = ?`, "01M202WNXY6FPPFGTJWCF6CP81", 0)
 	if err := service.Deprecate(ctx, defaultProject, projectTestUserId); err == nil || apperror.StatusCode(err) != 400 {
 		t.Fatalf("expected last active project deprecation validation error, got %v", err)
 	}
@@ -118,8 +131,7 @@ func TestProjectCreateRollsBackBootstrapThroughRequestTransaction(t *testing.T) 
 	service, database := newProjectIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	input := testProjectCreateInput(t, "Rollback", "rollback")
-	input.Environment.Platform = "unsupported"
-	input.Environment.DeploymentSSHKeyName = "rollback-deploy-key"
+	service.environmentInit = failingEnvironmentBootstrapper{err: apperror.New(apperror.KindValidation, "bootstrap failed")}
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -138,7 +150,7 @@ func TestProjectCreateRollsBackBootstrapThroughRequestTransaction(t *testing.T) 
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusBadRequest)
 	}
 	assertCount(t, database, `SELECT COUNT(*) FROM project WHERE code = ?`, "rollback", 0)
-	assertCount(t, database, `SELECT COUNT(*) FROM credential WHERE name = ?`, "rollback-deploy-key", 0)
+	assertCount(t, database, `SELECT COUNT(*) FROM credential WHERE name = ?`, "deployment-ssh", 0)
 	assertCount(t, database, `SELECT COUNT(*) FROM environment WHERE code = ?`, "rollback", 0)
 }
 func newProjectIntegrationService(t *testing.T) (Service, *sql.DB) {
@@ -153,8 +165,8 @@ func newProjectIntegrationService(t *testing.T) (Service, *sql.DB) {
 	}
 	projectStore := projectrepo.NewRepository(database)
 	credentialService := credentialsvc.New(projectStore, credentialrepo.NewRepository(database), projectTestFernetKey)
-	environmentService := environmentsvc.New(environmentrepo.NewRepository(database), projectStore, credentialService, credentialService, nil)
-	return New(projectStore, userrepo.NewRepository(database), environmentrepo.NewRepository(database), credentialService, environmentService), database
+	environmentService := environmentsvc.New(environmentrepo.NewRepository(database), projectStore, credentialService, credentialService, nil, nil)
+	return New(projectStore, userrepo.NewRepository(database), environmentrepo.NewRepository(database), environmentService), database
 }
 
 func testProjectCreateInput(t *testing.T, name string, code string) projectdto.CreateInput {
@@ -162,31 +174,15 @@ func testProjectCreateInput(t *testing.T, name string, code string) projectdto.C
 	return projectdto.CreateInput{
 		Name: name,
 		Code: code,
-		Environment: projectdto.EnvironmentCreateInput{
-			State:                   "active",
-			Platform:                "linux",
-			Host:                    "192.0.2.10",
-			Port:                    22,
-			Username:                "deploy",
-			WorkspaceRoot:           "/srv/pomelo-orbit",
-			DeploymentSSHKeyName:    "project-deploy-key",
-			DeploymentSSHPrivateKey: testDeploymentSSHPrivateKey(t),
-			HostKeyFingerprint:      "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-		},
 	}
 }
 
-func testDeploymentSSHPrivateKey(t *testing.T) string {
-	t.Helper()
-	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	block, err := ssh.MarshalPrivateKey(privateKey, "project-service-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(pem.EncodeToMemory(block))
+type failingEnvironmentBootstrapper struct {
+	err error
+}
+
+func (s failingEnvironmentBootstrapper) BootstrapForProject(context.Context, model.Project) (model.Environment, error) {
+	return model.Environment{}, s.err
 }
 
 func assertCount(t *testing.T, database *sql.DB, query string, value string, want int) {

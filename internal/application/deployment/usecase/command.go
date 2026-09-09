@@ -29,7 +29,7 @@ func NewCommandService(
 	dispatcher deploymentport.Dispatcher,
 	logger *slog.Logger,
 	targetResolver environmentport.TargetResolver,
-	remoteRuntime deploymentport.RemoteRuntime,
+	runtime deploymentport.Runtime,
 	logStore deploymentport.ExecutionLogStore,
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
 ) Service {
@@ -41,7 +41,7 @@ func NewCommandService(
 		project: project, application: application,
 		service: service, deployment: deployment, store: store, executionStore: store,
 		dispatcher: dispatcher, commandStore: store, logger: logger,
-		targetResolver: targetResolver, remoteRuntime: remoteRuntime, logStore: logStore,
+		targetResolver: targetResolver, runtime: runtime, logStore: logStore,
 		gatewayCoordinator: gatewayCoordinator,
 	}
 }
@@ -55,7 +55,7 @@ func NewExecutionService(
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
 	logger *slog.Logger,
 	targetResolver environmentport.TargetResolver,
-	remoteRuntime deploymentport.RemoteRuntime,
+	runtime deploymentport.Runtime,
 	logStore deploymentport.ExecutionLogStore,
 	pollInterval time.Duration,
 	gatewayRoutePublisher deploymentport.GatewayRoutePublisher,
@@ -67,7 +67,7 @@ func NewExecutionService(
 	return Service{
 		project: project, application: application,
 		service: service, deployment: deployment, store: store, executionStore: store,
-		logger: logger, targetResolver: targetResolver, remoteRuntime: remoteRuntime, pollInterval: pollInterval,
+		logger: logger, targetResolver: targetResolver, runtime: runtime, pollInterval: pollInterval,
 		logStore:              logStore,
 		gatewayCoordinator:    gatewayCoordinator,
 		gatewayRoutePublisher: gatewayRoutePublisher,

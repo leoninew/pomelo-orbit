@@ -134,8 +134,8 @@ func testGateway() model.GatewayConfig {
 
 type routeTargetResolver struct{}
 
-func (routeTargetResolver) ResolveProjectTarget(_ context.Context, projectID string) (environmentport.SSHTarget, error) {
-	return environmentport.SSHTarget{Environment: model.Environment{Id: "environment-1", ProjectId: projectID, WorkspaceRoot: "/srv/orbit"}}, nil
+func (routeTargetResolver) ResolveProjectTarget(_ context.Context, projectID string) (environmentport.Target, error) {
+	return environmentport.Target{Environment: model.Environment{Id: "environment-1", ProjectId: projectID, TargetType: model.EnvironmentTargetTypeLocal}}, nil
 }
 
 type routeRuntimeFake struct {
@@ -145,7 +145,7 @@ type routeRuntimeFake struct {
 	files              map[string][]byte
 	putBody            []byte
 	putURL             string
-	lastTarget         environmentport.SSHTarget
+	lastTarget         environmentport.Target
 	environmentQueries int
 }
 
@@ -153,26 +153,29 @@ func newRouteRuntimeFake() *routeRuntimeFake {
 	return &routeRuntimeFake{responses: map[string]string{}, failures: map[string]int{}, attempts: map[string]int{}, files: map[string][]byte{}}
 }
 
-func (r *routeRuntimeFake) ServiceDir(_ environmentport.SSHTarget, serviceCode string) (string, error) {
+func (r *routeRuntimeFake) ServiceDir(_ environmentport.Target, serviceCode string) (string, error) {
 	return "/srv/orbit/" + serviceCode, nil
 }
-func (r *routeRuntimeFake) ServiceDirExists(context.Context, environmentport.SSHTarget, string) (bool, error) {
+func (r *routeRuntimeFake) ServiceDirExists(context.Context, environmentport.Target, string) (bool, error) {
 	return true, nil
 }
-func (r *routeRuntimeFake) StageWorkspace(context.Context, environmentport.SSHTarget, deploymentport.RemoteWorkspace) error {
+func (r *routeRuntimeFake) ComposeMountSourceDir(_ context.Context, target environmentport.Target, serviceCode string) (string, error) {
+	return r.ServiceDir(target, serviceCode)
+}
+func (r *routeRuntimeFake) StageWorkspace(context.Context, environmentport.Target, deploymentport.Workspace) error {
 	return nil
 }
-func (r *routeRuntimeFake) Run(context.Context, environmentport.SSHTarget, string, io.Writer, string, ...string) error {
+func (r *routeRuntimeFake) Run(context.Context, environmentport.Target, string, io.Writer, string, ...string) error {
 	return nil
 }
-func (r *routeRuntimeFake) Query(_ context.Context, target environmentport.SSHTarget, _ string, _ string, args ...string) (string, error) {
+func (r *routeRuntimeFake) Query(_ context.Context, target environmentport.Target, _ string, _ string, args ...string) (string, error) {
 	return r.query(target, args...)
 }
-func (r *routeRuntimeFake) QueryAtEnvironmentRoot(_ context.Context, target environmentport.SSHTarget, _ string, args ...string) (string, error) {
+func (r *routeRuntimeFake) QueryAtEnvironmentRoot(_ context.Context, target environmentport.Target, _ string, args ...string) (string, error) {
 	r.environmentQueries++
 	return r.query(target, args...)
 }
-func (r *routeRuntimeFake) query(target environmentport.SSHTarget, args ...string) (string, error) {
+func (r *routeRuntimeFake) query(target environmentport.Target, args ...string) (string, error) {
 	r.lastTarget = target
 	endpoint := args[len(args)-1]
 	for suffix, response := range r.responses {
@@ -202,7 +205,7 @@ func (r *routeRuntimeFake) query(target environmentport.SSHTarget, args ...strin
 	}
 	return "", errors.New("unexpected remote curl endpoint")
 }
-func (r *routeRuntimeFake) SyncFiles(_ context.Context, _ environmentport.SSHTarget, directory string, files []deploymentport.RemoteFile, pruneSuffix string) error {
+func (r *routeRuntimeFake) SyncFiles(_ context.Context, _ environmentport.Target, directory string, files []deploymentport.WorkspaceFile, pruneSuffix string) error {
 	keep := map[string]struct{}{}
 	for _, file := range files {
 		r.files[file.Path] = append([]byte(nil), file.Content...)

@@ -281,7 +281,7 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	serviceDir, err := s.remoteRuntime.ServiceDir(target, svc.Code)
+	serviceDir, err := s.runtime.ServiceDir(target, svc.Code)
 	if err != nil {
 		return err
 	}
@@ -306,7 +306,7 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 	}
 	projectName := composeProjectName(app.Code, svc.InstanceKey)
 	command := stopComposeCommand(projectName, removeVolumes)
-	if err := s.remoteRuntime.Run(executionCtx, target, svc.Code, logWriter, command.Name, command.Args...); err != nil {
+	if err := s.runtime.Run(executionCtx, target, svc.Code, logWriter, command.Name, command.Args...); err != nil {
 		if s.deploymentCanceled(ctx, deployment.Id) {
 			s.reconcileCanceledService(ctx, target, app, svc)
 			return nil
@@ -327,15 +327,15 @@ func (s Service) deploymentCanceled(ctx context.Context, deploymentID string) bo
 
 // reconcileCanceledService records the actual Compose runtime after a canceled
 // command. The Deployment remains canceled regardless of observation failures.
-func (s Service) reconcileCanceledService(ctx context.Context, target environmentport.SSHTarget, app model.Application, svc model.Service) {
+func (s Service) reconcileCanceledService(ctx context.Context, target environmentport.Target, app model.Application, svc model.Service) {
 	serviceStatus := status.ServiceStatusFaulted
-	if s.remoteRuntime != nil {
-		exists, err := s.remoteRuntime.ServiceDirExists(ctx, target, svc.Code)
+	if s.runtime != nil {
+		exists, err := s.runtime.ServiceDirExists(ctx, target, svc.Code)
 		if err == nil && !exists {
 			serviceStatus = status.ServiceStatusStopped
 		} else if err == nil {
 			command := containerPsCommand(composeProjectName(app.Code, svc.InstanceKey))
-			output, runErr := s.remoteRuntime.Query(ctx, target, svc.Code, command.Name, command.Args...)
+			output, runErr := s.runtime.Query(ctx, target, svc.Code, command.Name, command.Args...)
 			if runErr == nil {
 				containers, parseErr := parseComposePsOutput(output)
 				if parseErr == nil {
@@ -420,12 +420,12 @@ func (s Service) resolveServiceFromDeployment(ctx context.Context, applicationId
 	return svc, nil
 }
 
-func (s Service) renderAndDeployWithOptions(ctx context.Context, target environmentport.SSHTarget, plan model.EffectiveServicePlan, deploymentId string, forceRecreate bool) error {
+func (s Service) renderAndDeployWithOptions(ctx context.Context, target environmentport.Target, plan model.EffectiveServicePlan, deploymentId string, forceRecreate bool) error {
 	app, version, svc := plan.Application, plan.Version, plan.Service
-	if s.remoteRuntime == nil {
-		return fmt.Errorf("remote deployment runtime is not configured")
+	if s.runtime == nil {
+		return fmt.Errorf("deployment runtime is not configured")
 	}
-	serviceDir, err := s.remoteRuntime.ServiceDir(target, svc.Code)
+	serviceDir, err := s.runtime.ServiceDir(target, svc.Code)
 	if err != nil {
 		return err
 	}
@@ -444,7 +444,11 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, target environm
 		version.Label, version.Id, len(plan.Components), svc.Code); err != nil {
 		return err
 	}
-	result, err := s.RenderComposeDetailed(ctx, RenderInput{Plan: plan, LogicalSvcDir: serviceDir})
+	composeMountSourceDir, err := s.runtime.ComposeMountSourceDir(ctx, target, svc.Code)
+	if err != nil {
+		return err
+	}
+	result, err := s.RenderComposeDetailed(ctx, RenderInput{Plan: plan, LogicalSvcDir: serviceDir, ComposeMountSourceDir: composeMountSourceDir})
 	if err != nil {
 		return err
 	}
@@ -455,7 +459,7 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, target environm
 	if _, err := fmt.Fprintln(logWriter, "Staging deployment configuration on project environment"); err != nil {
 		return err
 	}
-	if err := s.remoteRuntime.StageWorkspace(ctx, target, workspace); err != nil {
+	if err := s.runtime.StageWorkspace(ctx, target, workspace); err != nil {
 		return err
 	}
 	projectName := composeProjectName(app.Code, svc.InstanceKey)
@@ -463,20 +467,20 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, target environm
 	if _, err := fmt.Fprintln(logWriter, "Starting services"); err != nil {
 		return err
 	}
-	return s.remoteRuntime.Run(ctx, target, svc.Code, logWriter, command.Name, command.Args...)
+	return s.runtime.Run(ctx, target, svc.Code, logWriter, command.Name, command.Args...)
 }
 
-func remoteWorkspaceFromRender(serviceCode string, deploymentID string, result RenderResult) (deploymentport.RemoteWorkspace, error) {
-	workspace := deploymentport.RemoteWorkspace{ServiceCode: serviceCode, DeploymentID: deploymentID, Compose: result.Compose}
+func remoteWorkspaceFromRender(serviceCode string, deploymentID string, result RenderResult) (deploymentport.Workspace, error) {
+	workspace := deploymentport.Workspace{ServiceCode: serviceCode, DeploymentID: deploymentID, Compose: result.Compose}
 	for _, item := range result.ResolvedMounts {
 		if !item.ShouldMaterialize {
 			continue
 		}
 		if strings.TrimSpace(item.LogicalSource) == "" {
-			return deploymentport.RemoteWorkspace{}, fmt.Errorf("logical mount source is required for remote materialization")
+			return deploymentport.Workspace{}, fmt.Errorf("logical mount source is required for workspace materialization")
 		}
 		if item.IsFile {
-			workspace.Files = append(workspace.Files, deploymentport.RemoteFile{
+			workspace.Files = append(workspace.Files, deploymentport.WorkspaceFile{
 				Path: item.LogicalSource, Content: []byte(item.Content), Mode: uint32(item.FileMode.Perm()), IgnoreIfExists: item.IgnoreIfExists,
 			})
 			continue

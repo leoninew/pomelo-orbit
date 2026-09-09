@@ -1,5 +1,5 @@
 # MCP 直接操作
-最后修改时间: 2026-09-07 13:31:14
+最后修改时间: 2026-09-09 17:04:54
 
 ## 命名与启动约定
 
@@ -31,7 +31,7 @@ Codex 注册名为 `pomelo-orbit-mcp`，本地 stdio 入口为 `go run ./cmd/ser
 
 `orbit_create_gateway` 创建完整 Gateway 资源组：Application、GatewayConfig、初始可编辑 Version/Traefik Component 和默认停止态 Service。`orbit_provision_gateway` 是幂等资源准备工具：它按 `project_id` 与 `code=traefik` 查找 Gateway，零个时创建、恰好一个时复用、多个时返回冲突；指定实例不存在时按通用 Service 创建语义新增停止态 binding。它不会发布 Version、部署、等待或检查 Docker 网络。需要运行 Gateway 时，随后显式调用 `orbit_deploy(service_id)`，并按需调用 `orbit_wait_deployment`。
 
-每个 Project 只有一个 SSH deployment Environment。`orbit_get_project_environment`、`orbit_update_project_environment` 与 `orbit_probe_project_environment` 始终以 `project_id` 作为授权和目标 scope，不接受 `environment_id`。Environment 更新中的 `deployment_ssh_private_key` 与 `deployment_ssh_key_passphrase` 是只写字段，任何 MCP 输出都不会返回它们。编辑 target 后必须显式 Probe 成功，才能 provision Gateway 或创建新的部署。
+每个 Project 只有一个 deployment Environment，target type 为 `local` 或 `ssh`。`orbit_get_project_environment`、`orbit_update_project_environment` 与 `orbit_probe_project_environment` 始终以 `project_id` 作为授权和目标 scope，不接受 `environment_id`。local 输出仅包含控制面工作目录；SSH 输入/输出使用 nested `ssh` object 和主机指纹。MCP 不接受或输出部署私钥、bootstrap 密码、bootstrap 私钥或初始化命令。SSH 第一次探测成功后记下主机密钥指纹。`ssh` 到 `127.0.0.1` 仍按 SSH 执行。编辑 target 后必须显式 Probe 成功，才能 provision Gateway 或创建新的部署。
 
 通过 `orbit_create_version` 或 `orbit_create_version_component` 创建 Component 时，必须显式提交 `pull_policy` 和 `restart_policy`；策略分别只能是 `missing`、`always`、`never` 和 `no`、`on-failure`、`always`、`unless-stopped`。
 

@@ -138,6 +138,12 @@ const deploymentNavigation: NavigationBranch[] = [
         labelKey: 'nav.deployments',
         path: '/deployments',
       },
+      {
+        key: 'environment',
+        label: '环境',
+        labelKey: 'nav.environment',
+        path: '/environment',
+      },
     ],
   },
   {
@@ -337,6 +343,7 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path === '/deployment' ||
     path.startsWith('/deployment/') ||
     path === '/deployments' ||
+    path === '/environment' ||
     path === '/dialogue' ||
     path === '/gateway' ||
     path.startsWith('/gateway/') ||

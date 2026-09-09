@@ -192,13 +192,24 @@ func projectOutput(value model.Project) map[string]any {
 	return map[string]any{"id": value.Id, "name": value.Name, "code": value.Code, "is_active": value.IsActive, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 }
 
-func environmentOutput(value model.Environment) map[string]any {
+func environmentOutput(value model.Environment, localWorkspaceRoot string) map[string]any {
 	result := map[string]any{
 		"id": value.Id, "project_id": value.ProjectId, "code": value.Code, "state": value.State,
-		"platform": value.Platform, "host": value.Host, "port": value.Port, "username": value.Username,
-		"workspace_root": value.WorkspaceRoot, "ssh_credential_id": value.SSHCredentialId,
-		"ssh_credential_revision": value.SSHCredentialRevision, "host_key_fingerprint": value.HostKeyFingerprint,
-		"target_revision": value.TargetRevision, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt),
+		"target_type": value.TargetType, "target_revision": value.TargetRevision,
+		"last_probe_revision": value.LastProbeRevision, "last_probe_status": value.LastProbeStatus,
+		"last_probe_at": formatTimePointer(value.LastProbeAt), "last_probe_diagnostic": value.LastProbeDiagnostic,
+		"gateway_application_id": value.GatewayApplicationId,
+		"created_at":             formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt),
+	}
+	if value.SSH != nil {
+		result["ssh"] = map[string]any{
+			"platform": value.SSH.Platform, "host": value.SSH.Host, "port": value.SSH.Port,
+			"username": value.SSH.Username, "workspace_root": value.SSH.WorkspaceRoot,
+			"host_key_fingerprint": value.SSH.HostKeyFingerprint,
+		}
+	}
+	if value.IsLocal() {
+		result["local"] = map[string]any{"workspace_root": localWorkspaceRoot}
 	}
 	if value.LastProbeRevision != nil {
 		result["last_probe_revision"] = *value.LastProbeRevision
@@ -382,4 +393,11 @@ func formatTime(value time.Time) string {
 		return ""
 	}
 	return value.UTC().Format(time.RFC3339)
+}
+
+func formatTimePointer(value *time.Time) string {
+	if value == nil {
+		return ""
+	}
+	return formatTime(*value)
 }

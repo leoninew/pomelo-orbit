@@ -27,7 +27,7 @@ type Service struct {
 	deployment     repository.DeploymentStore
 	logStore       deploymentport.ExecutionLogStore
 	targetResolver environmentport.TargetResolver
-	remoteRuntime  deploymentport.RemoteRuntime
+	runtime        deploymentport.Runtime
 	store          *stores
 	executionStore deploymentport.ExecutionStore
 	dispatcher     deploymentport.Dispatcher
@@ -46,7 +46,7 @@ func New(
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
 	targetResolver environmentport.TargetResolver,
-	remoteRuntime deploymentport.RemoteRuntime,
+	runtime deploymentport.Runtime,
 	logStore deploymentport.ExecutionLogStore,
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
 ) Service {
@@ -57,7 +57,7 @@ func New(
 	return Service{
 		project: project, application: application,
 		service: service, deployment: deployment,
-		logStore: logStore, targetResolver: targetResolver, remoteRuntime: remoteRuntime, store: store, executionStore: store,
+		logStore: logStore, targetResolver: targetResolver, runtime: runtime, store: store, executionStore: store,
 		gatewayCoordinator: gatewayCoordinator,
 	}
 }
@@ -176,12 +176,12 @@ func (s Service) DeploymentContainerLog(ctx context.Context, userId string, depl
 	}
 	projectName := composeProjectName(app.Code, svc.InstanceKey)
 	sinceCommand := containerLogsSinceCommand(projectName, deployment.StartedAt.UTC().Format(time.RFC3339))
-	output, err := s.remoteRuntime.Query(ctx, target, svc.Code, sinceCommand.Name, sinceCommand.Args...)
+	output, err := s.runtime.Query(ctx, target, svc.Code, sinceCommand.Name, sinceCommand.Args...)
 	if err == nil {
 		return deploymentdto.DeploymentContainerLog{Logs: output, Source: "since", IsRealtimeSupported: true}, nil
 	}
 	tailCommand := containerLogsTailCommand(projectName, strconv.Itoa(tail))
-	output, tailErr := s.remoteRuntime.Query(ctx, target, svc.Code, tailCommand.Name, tailCommand.Args...)
+	output, tailErr := s.runtime.Query(ctx, target, svc.Code, tailCommand.Name, tailCommand.Args...)
 	if tailErr != nil {
 		return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindInternal, outputOrError(output, tailErr))
 	}

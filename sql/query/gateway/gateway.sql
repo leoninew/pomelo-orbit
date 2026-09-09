@@ -35,7 +35,7 @@ WHERE a.project_id = ?
 ORDER BY a.id DESC;
 
 -- name: GatewayBindingByProjectID :one
-SELECT gc.application_id, e.code AS environment_code
+SELECT gc.application_id
 FROM environment e
 INNER JOIN gateway_config gc ON gc.application_id = e.gateway_application_id
 INNER JOIN application a ON a.id = gc.application_id AND a.project_id = e.project_id

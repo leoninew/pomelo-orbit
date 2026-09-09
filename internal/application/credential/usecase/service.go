@@ -60,7 +60,7 @@ func (s Service) ImportCredential(ctx context.Context, userId string, input cred
 // CreateDeploymentSSHCredential is intentionally an internal application
 // surface. Project bootstrap calls it inside its transaction; public credential
 // routes cannot create this credential type.
-func (s Service) CreateDeploymentSSHCredential(ctx context.Context, projectID string, name string, privateKey string, passphrase string) (model.Credential, error) {
+func (s Service) CreateDeploymentSSHCredential(ctx context.Context, projectID string, name string) (model.Credential, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
 		return model.Credential{}, apperror.New(apperror.KindValidation, "project_id is required")
@@ -71,20 +71,22 @@ func (s Service) CreateDeploymentSSHCredential(ctx context.Context, projectID st
 		}
 		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
 	}
-	payload, err := normalizeDeploymentSSHPrivateKey(privateKey, passphrase)
+	payload, err := generateDeploymentSSHKeypair()
 	if err != nil {
 		return model.Credential{}, err
 	}
-	encoded, err := json.Marshal(payload)
+	encoded, err := encodeDeploymentSSHPayload(payload)
 	if err != nil {
-		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to encode deployment SSH credential", err)
+		return model.Credential{}, err
 	}
-	return s.createCredentialRecord(ctx, projectID, strings.TrimSpace(name), model.CredentialTypeDeploymentSSHPrivateKey, string(encoded))
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = defaultDeploymentSSHKeyName
+	}
+	return s.createCredentialRecord(ctx, projectID, name, model.CredentialTypeDeploymentSSHPrivateKey, encoded)
 }
 
-// UpdateDeploymentSSHCredential rotates the system-managed deploy key without
-// ever returning its decrypted contents to an API caller.
-func (s Service) UpdateDeploymentSSHCredential(ctx context.Context, credentialID string, privateKey *string, passphrase *string) (model.Credential, error) {
+func (s Service) EnsureGeneratedDeploymentSSHCredential(ctx context.Context, credentialID string) (model.Credential, error) {
 	credential, err := s.credential.Credential(ctx, strings.TrimSpace(credentialID))
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -95,37 +97,30 @@ func (s Service) UpdateDeploymentSSHCredential(ctx context.Context, credentialID
 	if !credential.IsDeploymentSSHPrivateKey() {
 		return model.Credential{}, apperror.New(apperror.KindValidation, "Credential is not a deployment SSH private key")
 	}
-
-	var payload credentialdto.DeploymentSSHPrivateKey
-	if credential.RequiresDeploymentSSHCredentialReconfiguration() {
-		if privateKey == nil {
-			return model.Credential{}, apperror.New(apperror.KindValidation, "Deployment SSH private key must be configured before this environment can be used")
-		}
-		payload.PrivateKey = *privateKey
-		if passphrase != nil {
-			payload.Passphrase = *passphrase
-		}
-	} else {
-		payload, err = s.deploymentPayload(credential)
-		if err != nil {
-			return model.Credential{}, err
-		}
-		if privateKey != nil {
-			payload.PrivateKey = *privateKey
-		}
-		if passphrase != nil {
-			payload.Passphrase = *passphrase
-		}
+	if !credential.RequiresDeploymentSSHCredentialReconfiguration() {
+		return credential, nil
 	}
-	payload, err = normalizeDeploymentSSHPrivateKey(payload.PrivateKey, payload.Passphrase)
+	return s.replaceDeploymentSSHKeypair(ctx, credential)
+}
+
+func (s Service) DeploymentSSHPublicKey(ctx context.Context, credentialID string) (string, error) {
+	_, payload, err := s.DeploymentSSHCredential(ctx, credentialID)
+	if err != nil {
+		return "", err
+	}
+	return payload.PublicKey, nil
+}
+
+func (s Service) replaceDeploymentSSHKeypair(ctx context.Context, credential model.Credential) (model.Credential, error) {
+	payload, err := generateDeploymentSSHKeypair()
 	if err != nil {
 		return model.Credential{}, err
 	}
-	encoded, err := json.Marshal(payload)
+	encoded, err := encodeDeploymentSSHPayload(payload)
 	if err != nil {
-		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to encode deployment SSH credential", err)
+		return model.Credential{}, err
 	}
-	encrypted, err := s.encryptCredentialData(string(encoded))
+	encrypted, err := s.encryptCredentialData(encoded)
 	if err != nil {
 		return model.Credential{}, err
 	}
@@ -290,16 +285,23 @@ func normalizeDeploymentSSHPrivateKey(privateKey string, passphrase string) (cre
 	if privateKey == "" {
 		return credentialdto.DeploymentSSHPrivateKey{}, apperror.New(apperror.KindValidation, "Deployment SSH private key is required")
 	}
-	var err error
+	var (
+		signer ssh.Signer
+		err    error
+	)
 	if passphrase == "" {
-		_, err = ssh.ParsePrivateKey([]byte(privateKey))
+		signer, err = ssh.ParsePrivateKey([]byte(privateKey))
 	} else {
-		_, err = ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase))
+		signer, err = ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase))
 	}
 	if err != nil {
 		return credentialdto.DeploymentSSHPrivateKey{}, apperror.New(apperror.KindValidation, "Deployment SSH private key is invalid")
 	}
-	return credentialdto.DeploymentSSHPrivateKey{PrivateKey: privateKey, Passphrase: passphrase}, nil
+	return credentialdto.DeploymentSSHPrivateKey{
+		PrivateKey: privateKey,
+		Passphrase: passphrase,
+		PublicKey:  strings.TrimSpace(string(ssh.MarshalAuthorizedKey(signer.PublicKey()))),
+	}, nil
 }
 
 func managedDeploymentKeyError() error {

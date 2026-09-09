@@ -3,6 +3,10 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
       <DetailPageHeader :items="[]" :title="project?.name ?? t('project.detailTitle')" />
       <div class="flex flex-wrap items-center gap-2">
+        <button v-if="project?.is_active" class="app-button h-9 px-4" @click="openEnvironment">
+          <Server class="size-4" />
+          {{ t('project.environment.title') }}
+        </button>
         <button class="app-button h-9 px-4" @click="router.push('/projects')">
           <ArrowLeft class="size-4" />
           {{ t('common.back') }}
@@ -47,8 +51,6 @@
         </div>
       </dl>
     </DetailInfoCard>
-
-    <ProjectEnvironmentCard :project-id="id" />
 
     <DetailInfoCard :title="t('project.members')" actions-class="flex-nowrap">
       <template #actions>
@@ -182,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, UserPlus } from '@lucide/vue';
+  import { ArrowLeft, Server, UserPlus } from '@lucide/vue';
   import { onMounted, reactive, ref, computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
@@ -191,7 +193,6 @@
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import ProjectEnvironmentCard from './components/ProjectEnvironmentCard.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
@@ -297,6 +298,11 @@
   function openEditModal() {
     resetForm();
     isEditModalOpen.value = true;
+  }
+
+  function openEnvironment() {
+    projectStore.setActiveProject(props.id);
+    void router.push('/environment');
   }
 
   async function handleEditOk() {

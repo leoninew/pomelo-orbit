@@ -7,7 +7,6 @@
 package project
 
 import (
-	environment "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/environment"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -279,10 +278,9 @@ func (x *ProjectMemberListResp) GetItems() []*ProjectMemberResp {
 }
 
 type ProjectCreateReq struct {
-	state         protoimpl.MessageState                   `protogen:"open.v1"`
-	Name          string                                   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Code          string                                   `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	Environment   *environment.ProjectEnvironmentCreateReq `protobuf:"bytes,3,opt,name=environment,proto3" json:"environment,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -329,13 +327,6 @@ func (x *ProjectCreateReq) GetCode() string {
 		return x.Code
 	}
 	return ""
-}
-
-func (x *ProjectCreateReq) GetEnvironment() *environment.ProjectEnvironmentCreateReq {
-	if x != nil {
-		return x.Environment
-	}
-	return nil
 }
 
 type ProjectSaveReq struct {
@@ -466,7 +457,7 @@ var File_orbit_v1_project_project_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_project_project_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorbit/v1/project/project.proto\x12\x10orbit.v1.project\x1a&orbit/v1/environment/environment.proto\"\xa0\x01\n" +
+	"\x1eorbit/v1/project/project.proto\x12\x10orbit.v1.project\"\xa0\x01\n" +
 	"\vProjectResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -488,11 +479,10 @@ const file_orbit_v1_project_project_proto_rawDesc = "" +
 	"\x0fProjectListResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.project.ProjectRespR\x05items\"R\n" +
 	"\x15ProjectMemberListResp\x129\n" +
-	"\x05items\x18\x01 \x03(\v2#.orbit.v1.project.ProjectMemberRespR\x05items\"\x8f\x01\n" +
+	"\x05items\x18\x01 \x03(\v2#.orbit.v1.project.ProjectMemberRespR\x05items\":\n" +
 	"\x10ProjectCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04code\x18\x02 \x01(\tR\x04code\x12S\n" +
-	"\venvironment\x18\x03 \x01(\v21.orbit.v1.environment.ProjectEnvironmentCreateReqR\venvironment\"$\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\"$\n" +
 	"\x0eProjectSaveReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"+\n" +
 	"\x10ProjectMemberReq\x12\x17\n" +
@@ -514,25 +504,23 @@ func file_orbit_v1_project_project_proto_rawDescGZIP() []byte {
 
 var file_orbit_v1_project_project_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_orbit_v1_project_project_proto_goTypes = []any{
-	(*ProjectResp)(nil),                             // 0: orbit.v1.project.ProjectResp
-	(*ProjectMemberResp)(nil),                       // 1: orbit.v1.project.ProjectMemberResp
-	(*ProjectListResp)(nil),                         // 2: orbit.v1.project.ProjectListResp
-	(*ProjectMemberListResp)(nil),                   // 3: orbit.v1.project.ProjectMemberListResp
-	(*ProjectCreateReq)(nil),                        // 4: orbit.v1.project.ProjectCreateReq
-	(*ProjectSaveReq)(nil),                          // 5: orbit.v1.project.ProjectSaveReq
-	(*ProjectMemberReq)(nil),                        // 6: orbit.v1.project.ProjectMemberReq
-	(*ProjectDeprecateReq)(nil),                     // 7: orbit.v1.project.ProjectDeprecateReq
-	(*environment.ProjectEnvironmentCreateReq)(nil), // 8: orbit.v1.environment.ProjectEnvironmentCreateReq
+	(*ProjectResp)(nil),           // 0: orbit.v1.project.ProjectResp
+	(*ProjectMemberResp)(nil),     // 1: orbit.v1.project.ProjectMemberResp
+	(*ProjectListResp)(nil),       // 2: orbit.v1.project.ProjectListResp
+	(*ProjectMemberListResp)(nil), // 3: orbit.v1.project.ProjectMemberListResp
+	(*ProjectCreateReq)(nil),      // 4: orbit.v1.project.ProjectCreateReq
+	(*ProjectSaveReq)(nil),        // 5: orbit.v1.project.ProjectSaveReq
+	(*ProjectMemberReq)(nil),      // 6: orbit.v1.project.ProjectMemberReq
+	(*ProjectDeprecateReq)(nil),   // 7: orbit.v1.project.ProjectDeprecateReq
 }
 var file_orbit_v1_project_project_proto_depIdxs = []int32{
 	0, // 0: orbit.v1.project.ProjectListResp.items:type_name -> orbit.v1.project.ProjectResp
 	1, // 1: orbit.v1.project.ProjectMemberListResp.items:type_name -> orbit.v1.project.ProjectMemberResp
-	8, // 2: orbit.v1.project.ProjectCreateReq.environment:type_name -> orbit.v1.environment.ProjectEnvironmentCreateReq
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_project_project_proto_init() }

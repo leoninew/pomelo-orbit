@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
+import { getNavigationScope } from '@/navigation';
 import router from './index';
 
 describe('domain routes', () => {
@@ -10,7 +11,12 @@ describe('domain routes', () => {
     ['/application/42', 'ApplicationDetail'],
     ['/gateway/42', 'GatewayDetail'],
     ['/routes', 'Route'],
+    ['/environment', 'Environment'],
   ])('resolves %s to %s', (path, name) => {
     expect(router.resolve(path).name).toBe(name);
+  });
+
+  it('places environment in the deployment navigation scope', () => {
+    expect(getNavigationScope('/environment')).toBe('deployment');
   });
 });

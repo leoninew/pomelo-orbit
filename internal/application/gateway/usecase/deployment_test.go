@@ -31,13 +31,13 @@ func TestGatewayForDeploymentFindsCarrierEvenWhenNetworkWasRequestedDisabled(t *
 	plan := model.EffectiveServicePlan{
 		Application: app, JoinTraefikNetwork: &disabled,
 	}
-	service := Service{config: gatewayConfigStore{cfg: model.GatewayConfig{ApplicationId: app.Id, NetworkName: "orbit-project-1-traefik"}}}
+	service := Service{config: gatewayConfigStore{cfg: model.GatewayConfig{ApplicationId: app.Id, NetworkName: "traefik"}}}
 
 	config, err := service.GatewayForDeployment(context.Background(), app, plan)
 	if err != nil {
 		t.Fatalf("GatewayForDeployment() error = %v", err)
 	}
-	if config == nil || config.ApplicationId != app.Id || config.NetworkName != "orbit-project-1-traefik" {
+	if config == nil || config.ApplicationId != app.Id || config.NetworkName != "traefik" {
 		t.Fatalf("GatewayForDeployment() = %#v, want GatewayConfig for %q", config, app.Id)
 	}
 }

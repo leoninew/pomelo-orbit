@@ -1,5 +1,5 @@
-# 远程 SSH 部署环境计划
-最后修改时间: 2026-09-04 08:02:27
+# 部署环境目标计划
+最后修改时间: 2026-09-09 17:04:54
 
 Review status: Accepted
 
@@ -7,64 +7,60 @@ Mode: strict
 
 ## Basis
 
-- Requirement: 远程 SSH 部署环境需求
-- Spec: 远程 SSH 部署环境规格
-- Current evidence: Project/member、active-project store 与 Project-scoped SQL/usecase/HTTP/MCP 保持资源隔离；CD、runtime query 和 Traefik REST 已切换为显式 Project Environment SSH target，剩余工作以完整验证和真实目标集成为主。
+- Requirement: 部署环境目标需求
+- Spec: 部署环境目标规格
+- 保留 Project 1:1 Environment 1:1 Gateway、Project scope 与 Gateway shared `traefik` network。
 
 ## Delivery boundary
 
-Project 是轻量租户边界，必须保留。交付目标是 Project 1:1 Environment 1:1 Gateway，并把所有部署和 Gateway/Route 操作迁移到该 Project 的 SSH target。不会发布全局资源、跨 Project Environment selector、local executor、共享 Gateway 或兼容双路径。
+实现 explicit `local | ssh` target，恢复历史本机 Docker/workspace execution。删除 SSH-only 端口、模型和 UI 假设；不以 loopback、空 SSH 字段或失败重试做两类目标之间的 fallback。现有 SSH 功能继续存在，但仅属于 `ssh`。
 
 ## Implementation steps
 
-1. 恢复并冻结 Project scope
-   - 恢复 Project model/repository/usecase/HTTP/MCP/Web/Proto/SQLC 的既有 contract，撤回全局化 resource、删除 membership 与移除 active-project 的未提交变更。
-   - 保持 Application、Repository、Credential、Pipeline、PipelineRun、Deployment、Route 和 Gateway backing Application 的 project_id、列表过滤、ownership validation 与 membership checks。
-   - 使 Project code 创建后不可变；Project deprecate 前要求其 Environment 已 disabled。
+1. 扩展 Environment/Deployment schema、SQL query、model、repository 与 generated SQLC：Environment target type 与 optional SSH fields；Deployment target type 与 optional SSH snapshot。新增三方言 migration，将既有 Environment 标记 ssh；default seed 收敛为 local，无 credential placeholder。
+2. 以 `environmentport.Target` 替换 `SSHTarget`，按 target type 生成/校验 SSH credential、target revision 和 Probe；Project bootstrap 固定创建 active local Environment，SSH key 仅在 Environment 页面切为 ssh 后创建。
+3. 将 `RemoteRuntime` 改为 target-neutral Runtime；恢复 local workspace/shell runner，新增 explicit runtime dispatcher，同时让 deployment、runtime query、container logs、Gateway/Route Traefik calls 共用。
+4. 将 proto/HTTP/MCP DTO 变为 target discriminator 与 SSH nested target；Project create DTO 只保留名称和编码，Web 创建完成后切换 active Project 并进入 Environment 页面。local 不显示 SSH 表单/初始化入口；Linux SSH 以一次性密码或私钥直接初始化，先检查现成 Docker/Compose、`sudo -n` 与 OpenSSH 公钥能力，再按需写入部署 key 和工作目录，不管理 Docker/Compose/Desktop/WSL、Docker 用户组、sshd、firewall 或网络。
+5. 更新产品模型、CD runtime、部署与 MCP guide，移除 SSH-only/local-fallback 描述。
+6. 补充 local/ssh target resolution、snapshot validation、runtime dispatch、Probe、project bootstrap、seed 与 UI form tests；重新生成 SQLC/proto 并运行质量门。
 
-2. 以 Project 作为 Environment 唯一归属
-   - 新增 environment.project_id 非空唯一逻辑引用；Environment code 从 Project code 派生且不可改。
-   - 将 Environment create 收敛到 Project create 事务，创建 Project、deployment SSH Credential 与 Environment；移除独立 Environment create，禁止 Environment delete 和跨 Project rebinding。
-   - 在现有 Project handler/route/detail 页中增加 Environment get/update/disable/probe；复用现有 Project membership guard、AppDialog、表单控件与 active-project store。
+## Files to change
 
-3. 补齐 Deployment/Gateway/Route identity
-   - Deployment 以正式列固化 Project 与解析后的 Environment/credential revision、Gateway Application identity snapshot；Service/Route/Gateway 一律由 Project 推导 Environment，不接受可漂移的 Environment selector。
-   - Gateway provision 使用请求级事务创建 Project-scoped backing Application/Service 并唯一绑定 Environment；Route managed target、enabled list、sync preview/confirm 和 certificate snapshot 均校验同 Project。
-   - 将 global active Gateway 和 global traefik network 替换为以 Project/Environment code 派生的 remote namespace。
-
-4. 实现 SSH executor
-   - 以 deployment port 隔离 Probe、remote file set、Compose/runtime operations、Traefik REST publish 与 log stream。
-   - 使用 x/crypto/ssh + SFTP、严格 host key、Linux POSIX adapter 与 Windows PowerShell adapter；删除对控制面 Docker workspace、Docker socket 和 remote localhost 访问的业务依赖。
-   - 实现 staging、lock、atomic commit、relative mount materialization、cancel close-session + bounded Compose ps reconciliation。
-
-5. 接入 Pipeline image contract 和 Web/MCP
-   - 强制 linux/amd64 digest Component image，保持 registry 为宿主机责任。
-   - MCP 继续接受 project_id 并在服务端解析唯一 Environment；按 HTTP 相同 membership 权限保护。
-   - Project detail 和顶栏显示当前 Environment 状态；Service/Deployment/Route/Gateway 页面展示派生的 Environment，不新建跨 Project selector。
-
-6. 迁移、测试与文档
-   - 新增 SQLite/MySQL/PostgreSQL migration，保持 Project schema，增加 Environment/Gateway/Deployment snapshot 字段；旧库无完整 Environment 配置时 fail closed。
-   - 覆盖 Project create rollback、Environment uniqueness/disable/probe、Gateway uniqueness、跨 Project route target rejection、credential redaction、Linux/Windows executor contracts。
-   - 更新活 SoT 和运维指南后，运行 task check、go test ./cmd/... ./internal/...、yarn --cwd web lint:fix、yarn --cwd web typecheck。
+- `sql/migration/*/000041_*`、`sql/migration/*/000040_seed_environment.up.sql`、`sql/query/environment/*`、`sql/query/deployment/*`、`sql/schema/*`。
+- `internal/model/environment.go`、`internal/model/deployment.go`、Environment/Project/Deployment/Route ports and use cases、SQLC repositories。
+- `internal/infrastructure/runner/local/*`、`internal/infrastructure/runner/ssh/*`、target runtime dispatcher、`internal/bootstrap/*`。
+- `proto/orbit/v1/environment/environment.proto`、generated Go/TypeScript、HTTP/MCP mapper 和 `web/src/views/environment/EnvironmentPage.vue`、Project form/i18n.
+- `docs/product/cd-model.md`、`docs/architecture/cd-runtime.md`、relevant deployment/MCP guides。
 
 ## Verification plan
 
-| Scope | Evidence |
-| --- | --- |
-| Tenant boundary | Project membership 继续控制每个资源；任何跨 Project resource/route/gateway 访问均被拒绝。 |
-| Project/Environment | Project 恰有一个 Environment；Project create 事务失败不留下 Project/Credential/Environment 部分数据；Environment 不可删除。 |
-| Gateway | 一个 Environment 只能 provision 一个同 Project Gateway；Gateway/Route snapshot 不跨 Project。 |
-| Snapshot | Deployment 固化 Project、Environment target revision、deploy-key revision 与 Gateway revision。 |
-| SSH | Linux 与 Windows target 覆盖 Probe、stage、deploy/restart/stop、logs、inspect、network、HTTP probe、cancel 对账和 SSH 内 Traefik REST。 |
-| Quality gates | task check、go test ./cmd/... ./internal/...、yarn --cwd web lint:fix、yarn --cwd web typecheck。 |
+- Project creation transaction writes an active local Environment with no deployment SSH credential; Environment target validation rejects invalid/mixed type payloads and never reinterprets SSH loopback as local.
+- Linux 自动初始化先检查 Docker/Compose、无交互 sudo 与 OpenSSH 公钥能力，再按需写入部署公钥和工作目录；一次性认证不进入持久化、响应、MCP 或日志，且操作不包含 Docker 安装/服务管理、Docker group、WSL、Docker Desktop、sshd、firewall 或网络管理。
+- Local runtime writes/uses configured control-plane workspace and invokes Docker commands; SSH runtime receives only SSH targets.
+- Local/SSH Probe and deployment snapshot checks cover type and revision behavior.
+- Environment HTTP response exposes direct control-plane local platform/host/user values; the Web editor uses them only for a matching local-to-SSH platform transition.
+- Gateway network and Route publish are exercised through common runtime selection.
+- `task sqlc`、`task proto`、`yarn --cwd web lint:fix`、`yarn --cwd web typecheck`、`task check`、`go test ./cmd/... ./internal/...`。
+
+## Blockers
+
+无。
+
+## Assumptions
+
+- 控制面部署环境的 `workspace.deployment` 与 Docker daemon path mount 配置正确；本机 Probe 会验证 Docker prerequisites。
+- 用户将按说明重新部署受影响环境；不会添加业务逻辑兼容分支处理旧 SSH-only payload。
 
 ## Risks
 
-- 先前的全局化未提交改动必须完整回退，避免遗留无 Project scope 的路径。
-- 需要真实 Linux OpenSSH+Docker 与 Windows native OpenSSH+WSL2 Docker Desktop target，缺失时不能宣称平台支持完成。
-- Project code 不能再修改，现有 UI/API 需要显式反映此限制。
+- 三方言 migration 的 nullable/seed 更新与 SQLC type 映射需要同时验证。
+- 本机 runner 运行在控制面容器时，物理 Docker daemon path resolver 不能退化为容器内路径。
+
+## Rollback
+
+回退本次提交和新的 migration；不通过重新引入 hostname heuristic 或 SSH fallback 回滚。
 
 ## User review notes
 
-- 用户最新决定：Project 具有类似租户的意义，不能移除。
-- 用户确认：一 Project 一 Environment，一 Environment 一 Gateway，Project 切换即 Environment 切换。
+- 本机模式现在恢复，以便和历史本机实现直接比对。
+- 用户明确要求拒绝兼容层、reserved proto 字段与业务侧隐式适配。

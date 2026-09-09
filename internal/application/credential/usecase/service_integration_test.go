@@ -2,10 +2,7 @@ package credentialsvc
 
 import (
 	"context"
-	"crypto/ed25519"
-	cryptorand "crypto/rand"
 	"database/sql"
-	"encoding/pem"
 	"io"
 	"log/slog"
 	"net/http"
@@ -13,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/crypto/ssh"
 	_ "modernc.org/sqlite"
 
 	credentialdto "github.com/leoninew/pomelo-orbit/internal/application/credential/dto"
@@ -135,34 +131,21 @@ func TestDeploymentSSHCredentialPlaceholderRequiresReplacement(t *testing.T) {
 	if _, _, err := service.DeploymentSSHCredential(ctx, credentialID); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("expected placeholder credential validation error, got %v", err)
 	}
-	if _, err := service.UpdateDeploymentSSHCredential(ctx, credentialID, nil, nil); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
-		t.Fatalf("expected placeholder replacement validation error, got %v", err)
-	}
 
-	_, privateKey, err := ed25519.GenerateKey(cryptorand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	privateKeyBlock, err := ssh.MarshalPrivateKey(privateKey, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	privateKeyPEM := strings.TrimSpace(string(pem.EncodeToMemory(privateKeyBlock)))
-
-	updated, err := service.UpdateDeploymentSSHCredential(ctx, credentialID, &privateKeyPEM, nil)
+	updated, err := service.EnsureGeneratedDeploymentSSHCredential(ctx, credentialID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if updated.Revision != 2 || updated.RequiresDeploymentSSHCredentialReconfiguration() {
-		t.Fatalf("unexpected replacement result: %+v", updated)
+		t.Fatalf("unexpected generated replacement: %+v", updated)
 	}
 
 	_, payload, err := service.DeploymentSSHCredential(ctx, credentialID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if payload.PrivateKey != privateKeyPEM || payload.Passphrase != "" {
-		t.Fatalf("unexpected replacement payload: %+v", payload)
+	if payload.PrivateKey == "" || payload.PublicKey == "" || !strings.HasPrefix(payload.PublicKey, "ssh-ed25519 ") {
+		t.Fatalf("unexpected generated payload: %+v", payload)
 	}
 }
 

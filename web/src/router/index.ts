@@ -144,6 +144,12 @@ const router = createRouter({
       meta: { title: '部署记录', menuKey: 'deployments' },
     },
     {
+      path: '/environment',
+      name: 'Environment',
+      component: () => import('@/views/environment/EnvironmentPage.vue'),
+      meta: { title: '部署环境', menuKey: 'environment' },
+    },
+    {
       path: '/dialogue',
       name: 'DeploymentDialogue',
       component: () => import('@/views/deployment/DeploymentDialoguePage.vue'),

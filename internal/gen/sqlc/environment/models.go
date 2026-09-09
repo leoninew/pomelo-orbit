@@ -85,6 +85,7 @@ type Deployment struct {
 	VersionID                 sql.NullString `db:"version_id"`
 	ServiceID                 sql.NullString `db:"service_id"`
 	EnvironmentID             sql.NullString `db:"environment_id"`
+	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
 	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
 	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
 	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
@@ -116,14 +117,15 @@ type Environment struct {
 	ProjectID             string         `db:"project_id"`
 	Code                  string         `db:"code"`
 	State                 string         `db:"state"`
-	Platform              string         `db:"platform"`
-	Host                  string         `db:"host"`
-	Port                  int64          `db:"port"`
-	Username              string         `db:"username"`
-	WorkspaceRoot         string         `db:"workspace_root"`
-	SshCredentialID       string         `db:"ssh_credential_id"`
-	SshCredentialRevision int64          `db:"ssh_credential_revision"`
-	HostKeyFingerprint    string         `db:"host_key_fingerprint"`
+	TargetType            string         `db:"target_type"`
+	Platform              sql.NullString `db:"platform"`
+	Host                  sql.NullString `db:"host"`
+	Port                  sql.NullInt64  `db:"port"`
+	Username              sql.NullString `db:"username"`
+	WorkspaceRoot         sql.NullString `db:"workspace_root"`
+	SshCredentialID       sql.NullString `db:"ssh_credential_id"`
+	SshCredentialRevision sql.NullInt64  `db:"ssh_credential_revision"`
+	HostKeyFingerprint    sql.NullString `db:"host_key_fingerprint"`
 	TargetRevision        int64          `db:"target_revision"`
 	LastProbeRevision     sql.NullInt64  `db:"last_probe_revision"`
 	LastProbeStatus       sql.NullString `db:"last_probe_status"`
@@ -163,6 +165,15 @@ type LoginHistory struct {
 	UserAgent sql.NullString `db:"user_agent"`
 	LoginAt   time.Time      `db:"login_at"`
 	Success   int64          `db:"success"`
+}
+
+type McpAccessToken struct {
+	ID        string       `db:"id"`
+	UserID    string       `db:"user_id"`
+	Name      string       `db:"name"`
+	TokenHash string       `db:"token_hash"`
+	ExpiresAt sql.NullTime `db:"expires_at"`
+	CreatedAt time.Time    `db:"created_at"`
 }
 
 type Permission struct {

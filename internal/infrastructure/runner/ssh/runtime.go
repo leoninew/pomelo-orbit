@@ -34,18 +34,28 @@ func NewRuntime() *Runtime {
 	return &Runtime{dialContext: dialer.DialContext}
 }
 
-func (r *Runtime) ServiceDir(target environmentport.SSHTarget, serviceCode string) (string, error) {
+func (r *Runtime) ServiceDir(target environmentport.Target, serviceCode string) (string, error) {
+	if !target.Environment.IsSSH() {
+		return "", errors.New("SSH deployment runtime received a non-SSH environment")
+	}
 	if !safePathSegment(serviceCode) {
 		return "", errors.New("invalid service code")
 	}
-	root := normalizeRemotePath(target.Environment.WorkspaceRoot)
+	root := normalizeRemotePath(target.Environment.SSH.WorkspaceRoot)
 	if root == "" {
 		return "", errors.New("environment workspace root is required")
 	}
 	return path.Join(root, serviceCode), nil
 }
 
-func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.SSHTarget, serviceCode string) (bool, error) {
+func (r *Runtime) ComposeMountSourceDir(_ context.Context, target environmentport.Target, serviceCode string) (string, error) {
+	if _, err := r.ServiceDir(target, serviceCode); err != nil {
+		return "", err
+	}
+	return "", nil
+}
+
+func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.Target, serviceCode string) (bool, error) {
 	serviceDir, err := r.ServiceDir(target, serviceCode)
 	if err != nil {
 		return false, err
@@ -55,6 +65,10 @@ func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.S
 		return false, err
 	}
 	defer cleanup()
+	serviceDir, err = newSFTPPathResolver(client).resolve(serviceDir)
+	if err != nil {
+		return false, err
+	}
 	info, err := client.Stat(serviceDir)
 	if err == nil {
 		return info.IsDir(), nil
@@ -65,8 +79,8 @@ func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.S
 	return false, fmt.Errorf("inspect remote service workspace: %w", err)
 }
 
-func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.SSHTarget, workspace deploymentport.RemoteWorkspace) error {
-	serviceDir, err := r.ServiceDir(target, workspace.ServiceCode)
+func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Target, workspace deploymentport.Workspace) error {
+	logicalServiceDir, err := r.ServiceDir(target, workspace.ServiceCode)
 	if err != nil {
 		return err
 	}
@@ -78,36 +92,46 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.SSH
 		return err
 	}
 	defer cleanup()
+	pathResolver := newSFTPPathResolver(client)
+	serviceDir, err := pathResolver.resolve(logicalServiceDir)
+	if err != nil {
+		return err
+	}
 	if err := client.MkdirAll(serviceDir); err != nil {
 		return fmt.Errorf("create remote service workspace: %w", err)
 	}
 	for _, directory := range workspace.Directories {
-		directory = normalizeRemotePath(directory)
-		if directory == "" {
-			return errors.New("remote materialized directory path is required")
+		directory, err = pathResolver.resolve(directory)
+		if err != nil {
+			return err
 		}
 		if err := client.MkdirAll(directory); err != nil {
 			return fmt.Errorf("create remote mount directory: %w", err)
 		}
 	}
 	for _, file := range workspace.Files {
-		if err := writeRemoteFile(client, target.Environment.Platform, file.Path, file.Content, file.Mode, file.IgnoreIfExists, workspace.DeploymentID); err != nil {
+		file.Path, err = pathResolver.resolve(file.Path)
+		if err != nil {
+			return err
+		}
+		if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, file.Path, file.Content, file.Mode, file.IgnoreIfExists, workspace.DeploymentID); err != nil {
 			return err
 		}
 	}
 	composePath := path.Join(serviceDir, "docker-compose.yml")
-	if err := writeRemoteFile(client, target.Environment.Platform, composePath, []byte(workspace.Compose), 0o644, false, workspace.DeploymentID); err != nil {
+	compose := strings.ReplaceAll(workspace.Compose, logicalServiceDir, serviceDir)
+	if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, composePath, []byte(compose), 0o644, false, workspace.DeploymentID); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *Runtime) Run(ctx context.Context, target environmentport.SSHTarget, serviceCode string, log io.Writer, name string, args ...string) error {
+func (r *Runtime) Run(ctx context.Context, target environmentport.Target, serviceCode string, log io.Writer, name string, args ...string) error {
 	serviceDir, err := r.ServiceDir(target, serviceCode)
 	if err != nil {
 		return err
 	}
-	command, display, err := remoteCommand(target.Environment.Platform, serviceDir, name, args...)
+	command, display, err := remoteCommand(target.Environment.SSH.Platform, serviceDir, name, args...)
 	if err != nil {
 		return err
 	}
@@ -137,7 +161,7 @@ func (r *Runtime) Run(ctx context.Context, target environmentport.SSHTarget, ser
 	return nil
 }
 
-func (r *Runtime) Query(ctx context.Context, target environmentport.SSHTarget, serviceCode string, name string, args ...string) (string, error) {
+func (r *Runtime) Query(ctx context.Context, target environmentport.Target, serviceCode string, name string, args ...string) (string, error) {
 	serviceDir, err := r.ServiceDir(target, serviceCode)
 	if err != nil {
 		return "", err
@@ -145,16 +169,22 @@ func (r *Runtime) Query(ctx context.Context, target environmentport.SSHTarget, s
 	return r.queryAt(ctx, target, serviceDir, name, args...)
 }
 
-func (r *Runtime) QueryAtEnvironmentRoot(ctx context.Context, target environmentport.SSHTarget, name string, args ...string) (string, error) {
-	root := normalizeRemotePath(target.Environment.WorkspaceRoot)
+func (r *Runtime) QueryAtEnvironmentRoot(ctx context.Context, target environmentport.Target, name string, args ...string) (string, error) {
+	if !target.Environment.IsSSH() {
+		return "", errors.New("SSH deployment runtime received a non-SSH environment")
+	}
+	root := normalizeRemotePath(target.Environment.SSH.WorkspaceRoot)
 	if root == "" {
 		return "", errors.New("environment workspace root is required")
 	}
 	return r.queryAt(ctx, target, root, name, args...)
 }
 
-func (r *Runtime) queryAt(ctx context.Context, target environmentport.SSHTarget, workingDirectory string, name string, args ...string) (string, error) {
-	command, _, err := remoteCommand(target.Environment.Platform, workingDirectory, name, args...)
+func (r *Runtime) queryAt(ctx context.Context, target environmentport.Target, workingDirectory string, name string, args ...string) (string, error) {
+	if !target.Environment.IsSSH() {
+		return "", errors.New("SSH deployment runtime received a non-SSH environment")
+	}
+	command, _, err := remoteCommand(target.Environment.SSH.Platform, workingDirectory, name, args...)
 	if err != nil {
 		return "", err
 	}
@@ -177,7 +207,7 @@ func (r *Runtime) queryAt(ctx context.Context, target environmentport.SSHTarget,
 	return stdout.String(), nil
 }
 
-func (r *Runtime) openSFTP(ctx context.Context, target environmentport.SSHTarget) (*sftp.Client, func(), error) {
+func (r *Runtime) openSFTP(ctx context.Context, target environmentport.Target) (*sftp.Client, func(), error) {
 	sshClient, closeSSH, err := r.openSSH(ctx, target)
 	if err != nil {
 		return nil, nil, err
@@ -193,15 +223,18 @@ func (r *Runtime) openSFTP(ctx context.Context, target environmentport.SSHTarget
 	}, nil
 }
 
-func (r *Runtime) openSSH(ctx context.Context, target environmentport.SSHTarget) (*ssh.Client, func(), error) {
+func (r *Runtime) openSSH(ctx context.Context, target environmentport.Target) (*ssh.Client, func(), error) {
 	if r == nil || r.dialContext == nil {
 		return nil, nil, errors.New("SSH runtime dialer is not configured")
 	}
-	signer, err := parseSigner(target.PrivateKey)
+	if !target.Environment.IsSSH() || target.PrivateKey == nil {
+		return nil, nil, errors.New("SSH deployment runtime received an invalid SSH target")
+	}
+	signer, err := parseSigner(*target.PrivateKey)
 	if err != nil {
 		return nil, nil, err
 	}
-	environment := target.Environment
+	environment := target.Environment.SSH
 	address := net.JoinHostPort(strings.TrimSpace(environment.Host), strconv.Itoa(environment.Port))
 	connection, err := r.dialContext(ctx, "tcp", address)
 	if err != nil {
@@ -233,7 +266,7 @@ func (r *Runtime) lock(key string) func() {
 	return mutex.Unlock
 }
 
-func writeRemoteFile(client *sftp.Client, platform string, filePath string, content []byte, mode uint32, ignoreIfExists bool, revision string) error {
+func writeWorkspaceFile(client *sftp.Client, platform string, filePath string, content []byte, mode uint32, ignoreIfExists bool, revision string) error {
 	filePath = normalizeRemotePath(filePath)
 	if filePath == "" {
 		return errors.New("remote file path is required")
@@ -294,14 +327,14 @@ func remoteCommand(platform string, workingDirectory string, name string, args .
 		parts := make([]string, 0, len(args)+1)
 		parts = append(parts, posixQuote(name))
 		for _, arg := range args {
-			parts = append(parts, posixQuote(arg))
+			parts = append(parts, posixRemoteArgument(arg))
 		}
-		script := "cd " + posixQuote(workingDirectory) + " && exec " + strings.Join(parts, " ")
+		script := "cd " + posixRemotePath(workingDirectory) + " && exec " + strings.Join(parts, " ")
 		return "sh -lc " + posixQuote(script), display, nil
 	case model.EnvironmentPlatformWindows:
 		psArgs := make([]string, 0, len(args))
 		for _, arg := range args {
-			psArgs = append(psArgs, powerShellQuote(arg))
+			psArgs = append(psArgs, powerShellRemoteArgument(arg))
 		}
 		commandName := name
 		switch {
@@ -310,7 +343,7 @@ func remoteCommand(platform string, workingDirectory string, name string, args .
 		case strings.EqualFold(name, "curl"):
 			commandName = "curl.exe"
 		}
-		script := "$ErrorActionPreference = 'Stop'; Set-Location -LiteralPath " + powerShellQuote(workingDirectory) + "; & " + powerShellQuote(commandName)
+		script := "$ErrorActionPreference = 'Stop'; Set-Location -LiteralPath " + powerShellRemotePath(workingDirectory) + "; & " + powerShellQuote(commandName)
 		if len(psArgs) > 0 {
 			script += " @(" + strings.Join(psArgs, ",") + ")"
 		}
@@ -327,6 +360,85 @@ func normalizeRemotePath(value string) string {
 		return ""
 	}
 	return path.Clean(value)
+}
+
+type sftpPathResolver struct {
+	client *sftp.Client
+	home   string
+}
+
+func newSFTPPathResolver(client *sftp.Client) *sftpPathResolver {
+	return &sftpPathResolver{client: client}
+}
+
+func (r *sftpPathResolver) resolve(value string) (string, error) {
+	value = normalizeRemotePath(value)
+	if value == "" {
+		return "", errors.New("remote path is required")
+	}
+	if !isRemoteHomePath(value) {
+		return value, nil
+	}
+	if r.home == "" {
+		home, err := r.client.RealPath(".")
+		if err != nil {
+			return "", fmt.Errorf("resolve remote SSH home directory: %w", err)
+		}
+		r.home = normalizeRemotePath(home)
+		if r.home == "" {
+			return "", errors.New("remote SSH home directory is empty")
+		}
+	}
+	if value == "~" {
+		return r.home, nil
+	}
+	return path.Join(r.home, strings.TrimPrefix(value, "~/")), nil
+}
+
+func isRemoteHomePath(value string) bool {
+	return value == "~" || strings.HasPrefix(value, "~/")
+}
+
+func posixRemotePath(value string) string {
+	value = normalizeRemotePath(value)
+	if !isRemoteHomePath(value) {
+		return posixQuote(value)
+	}
+	if value == "~" {
+		return `"$HOME"`
+	}
+	return `"$HOME"` + posixQuote(strings.TrimPrefix(value, "~"))
+}
+
+func posixRemoteArgument(value string) string {
+	if strings.HasPrefix(value, "@") && isRemoteHomePath(strings.TrimPrefix(value, "@")) {
+		return posixQuote("@") + posixRemotePath(strings.TrimPrefix(value, "@"))
+	}
+	if isRemoteHomePath(value) {
+		return posixRemotePath(value)
+	}
+	return posixQuote(value)
+}
+
+func powerShellRemotePath(value string) string {
+	value = normalizeRemotePath(value)
+	if !isRemoteHomePath(value) {
+		return powerShellQuote(value)
+	}
+	if value == "~" {
+		return "$HOME"
+	}
+	return "(Join-Path -Path $HOME -ChildPath " + powerShellQuote(strings.TrimPrefix(value, "~/")) + ")"
+}
+
+func powerShellRemoteArgument(value string) string {
+	if strings.HasPrefix(value, "@") && isRemoteHomePath(strings.TrimPrefix(value, "@")) {
+		return "('@' + " + powerShellRemotePath(strings.TrimPrefix(value, "@")) + ")"
+	}
+	if isRemoteHomePath(value) {
+		return powerShellRemotePath(value)
+	}
+	return powerShellQuote(value)
 }
 
 func safePathSegment(value string) bool {
@@ -386,7 +498,7 @@ func boundedRemoteOutput(output string) string {
 	return "...\n" + output[len(output)-maxRemoteErrorOutputBytes:]
 }
 
-func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.SSHTarget, directory string, files []deploymentport.RemoteFile, pruneSuffix string) error {
+func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []deploymentport.WorkspaceFile, pruneSuffix string) error {
 	directory = normalizeRemotePath(directory)
 	if directory == "" {
 		return errors.New("remote sync directory is required")
@@ -398,17 +510,25 @@ func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.SSHTarge
 		return err
 	}
 	defer cleanup()
+	pathResolver := newSFTPPathResolver(client)
+	directory, err = pathResolver.resolve(directory)
+	if err != nil {
+		return err
+	}
 	if err := client.MkdirAll(directory); err != nil {
 		return fmt.Errorf("create remote sync directory: %w", err)
 	}
 	keep := make(map[string]struct{}, len(files))
 	for _, file := range files {
-		file.Path = normalizeRemotePath(file.Path)
+		file.Path, err = pathResolver.resolve(file.Path)
+		if err != nil {
+			return err
+		}
 		if path.Dir(file.Path) != directory || !safePathSegment(path.Base(file.Path)) {
 			return errors.New("remote sync file must be a direct child of the sync directory")
 		}
 		keep[path.Base(file.Path)] = struct{}{}
-		if err := writeRemoteFile(client, target.Environment.Platform, file.Path, file.Content, file.Mode, file.IgnoreIfExists, "sync"); err != nil {
+		if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, file.Path, file.Content, file.Mode, file.IgnoreIfExists, "sync"); err != nil {
 			return err
 		}
 	}

@@ -1,5 +1,6 @@
 import type {
   EnvironmentResp,
+  ProjectEnvironmentInitializeReq,
   ProjectEnvironmentUpdateReq,
 } from '@/gen/proto/orbit/v1/environment/environment';
 import request from '@/utils/request';
@@ -15,5 +16,9 @@ export const projectEnvironmentApi = {
 
   probe(projectId: string): Promise<EnvironmentResp> {
     return request.post(`/api/project/${projectId}/environment/probe`);
+  },
+
+  initialize(projectId: string, data: ProjectEnvironmentInitializeReq): Promise<EnvironmentResp> {
+    return request.post(`/api/project/${projectId}/environment/initialize`, data);
   },
 };

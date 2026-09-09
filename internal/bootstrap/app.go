@@ -75,7 +75,7 @@ func (a App) RunMCP(ctx context.Context) error {
 	services := newApplicationServices(a.cfg, a.logger, database, taskRepo)
 
 	accessToken := a.cfg.MCP.AccessToken
-	mcpDeps := newDeliveryMCPDependencies(services)
+	mcpDeps := newDeliveryMCPDependencies(services, a.cfg.Workspace.Deployment)
 	mcpDeps.ActorAuthenticator = func(ctx context.Context) (string, error) {
 		authenticated, err := services.AuthService.AuthenticateMCPAccessToken(ctx, accessToken)
 		if err != nil {

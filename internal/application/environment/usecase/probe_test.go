@@ -9,6 +9,7 @@ import (
 
 	credentialdto "github.com/leoninew/pomelo-orbit/internal/application/credential/dto"
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
@@ -23,7 +24,7 @@ func TestProbeForUserRecordsSuccessfulProbeForCurrentTargetRevision(t *testing.T
 	service := New(store, probeProjectReader{}, nil, probeCredentialReader{
 		credential: testProbeCredential(projectID, environment),
 		privateKey: privateKey,
-	}, prober)
+	}, prober, nil)
 
 	result, err := service.ProbeForUser(context.Background(), "user-1", projectID)
 	if err != nil {
@@ -51,7 +52,7 @@ func TestProbeForUserRecordsSanitizedFailure(t *testing.T) {
 	service := New(store, probeProjectReader{}, nil, probeCredentialReader{
 		credential: testProbeCredential(projectID, environment),
 		privateKey: credentialdto.DeploymentSSHPrivateKey{PrivateKey: secret},
-	}, &probeEnvironmentProber{err: errors.New(secret)})
+	}, &probeEnvironmentProber{err: errors.New(secret)}, nil)
 
 	result, err := service.ProbeForUser(context.Background(), "user-1", projectID)
 	if err != nil {
@@ -65,6 +66,82 @@ func TestProbeForUserRecordsSanitizedFailure(t *testing.T) {
 	}
 }
 
+func TestProbeForUserProbesLocalEnvironmentWithoutDeploymentCredential(t *testing.T) {
+	projectID := "project-1"
+	environment := model.Environment{
+		Id: "environment-local", ProjectId: projectID, State: model.EnvironmentStateActive,
+		TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: 1,
+	}
+	store := &probeEnvironmentStore{environment: environment}
+	prober := &localProbeEnvironmentProber{}
+	service := New(store, probeProjectReader{}, nil, nil, prober, nil)
+
+	result, err := service.ProbeForUser(context.Background(), "user-1", projectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !prober.localCalled || store.status != model.EnvironmentProbeStatusSucceeded {
+		t.Fatalf("local probe = %#v store=%#v", prober, store)
+	}
+	if result.LastProbeDiagnostic == nil || *result.LastProbeDiagnostic != "Local Docker and Docker Compose prerequisites are ready." {
+		t.Fatalf("local probe result = %#v", result)
+	}
+}
+
+func TestProbeForUserRecordsSafeRunnerDiagnostic(t *testing.T) {
+	projectID := "project-1"
+	environment := testProbeEnvironment(projectID)
+	store := &probeEnvironmentStore{environment: environment}
+	service := New(store, probeProjectReader{}, nil, probeCredentialReader{
+		credential: testProbeCredential(projectID, environment),
+		privateKey: credentialdto.DeploymentSSHPrivateKey{PrivateKey: "private-key"},
+	}, &probeEnvironmentProber{err: testProbeDiagnosticError("SSH key authentication failed for the configured user.")}, nil)
+
+	result, err := service.ProbeForUser(context.Background(), "user-1", projectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.LastProbeDiagnostic == nil || *result.LastProbeDiagnostic != "SSH key authentication failed for the configured user." {
+		t.Fatalf("probe diagnostic = %#v", result.LastProbeDiagnostic)
+	}
+}
+
+type testProbeDiagnosticError string
+
+func (e testProbeDiagnosticError) Error() string {
+	return string(e)
+}
+
+func (e testProbeDiagnosticError) ProbeDiagnostic() string {
+	return string(e)
+}
+
+func TestProbeForUserRecordsHostKeyFingerprintOnFirstSuccess(t *testing.T) {
+	projectID := "project-1"
+	environment := testProbeEnvironment(projectID)
+	environment.SSH.HostKeyFingerprint = ""
+	store := &probeEnvironmentStore{environment: environment}
+	fingerprint := "SHA256:recordedhostkeyfingerprintvalueabcdefghijk="
+	service := New(store, probeProjectReader{}, nil, probeCredentialReader{
+		credential: testProbeCredential(projectID, environment),
+		privateKey: credentialdto.DeploymentSSHPrivateKey{PrivateKey: "private-key"},
+	}, &probeEnvironmentProber{fingerprint: fingerprint}, nil)
+
+	result, err := service.ProbeForUser(context.Background(), "user-1", projectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !store.updated || store.environment.SSH.HostKeyFingerprint != fingerprint {
+		t.Fatalf("recorded fingerprint = %#v", store)
+	}
+	if result.SSH.HostKeyFingerprint != fingerprint || result.TargetRevision != environment.TargetRevision {
+		t.Fatalf("probe result = %#v", result)
+	}
+	if !store.recorded || store.status != model.EnvironmentProbeStatusSucceeded {
+		t.Fatalf("recorded probe = %#v", store)
+	}
+}
+
 func TestProbeForUserRejectsDisabledEnvironmentWithoutSSH(t *testing.T) {
 	environment := testProbeEnvironment("project-1")
 	environment.State = model.EnvironmentStateDisabled
@@ -72,7 +149,7 @@ func TestProbeForUserRejectsDisabledEnvironmentWithoutSSH(t *testing.T) {
 	prober := &probeEnvironmentProber{}
 	service := New(store, probeProjectReader{}, nil, probeCredentialReader{
 		credential: testProbeCredential(environment.ProjectId, environment),
-	}, prober)
+	}, prober, nil)
 
 	_, err := service.ProbeForUser(context.Background(), "user-1", environment.ProjectId)
 	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
@@ -89,7 +166,7 @@ func TestUpdateForUserRejectsActivationWithoutConfiguredDeploymentCredential(t *
 	environment.State = model.EnvironmentStateDisabled
 	store := &updateEnvironmentStore{environment: environment}
 	active := model.EnvironmentStateActive
-	service := New(store, probeProjectReader{}, nil, probeCredentialReader{err: errors.New("credential requires reconfiguration")}, nil)
+	service := New(store, probeProjectReader{}, nil, probeCredentialReader{err: errors.New("credential requires reconfiguration")}, nil, nil)
 
 	_, err := service.UpdateForUser(context.Background(), "user-1", projectID, environmentdto.UpdateInput{State: &active})
 	if err == nil || !apperror.IsKind(err, apperror.KindValidation) || !strings.Contains(err.Error(), "must be configured") {
@@ -99,16 +176,141 @@ func TestUpdateForUserRejectsActivationWithoutConfiguredDeploymentCredential(t *
 		t.Fatal("environment update must not be persisted without a configured deployment SSH credential")
 	}
 }
+
+func TestUpdateForUserKeepsDeploymentCredentialForSSHTargetChange(t *testing.T) {
+	projectID := "project-1"
+	environment := testProbeEnvironment(projectID)
+	environment.Code = "environment"
+	store := &updateEnvironmentStore{environment: environment}
+	credential := testProbeCredential(projectID, environment)
+	keyManager := &updateDeploymentKeyManager{credential: credential}
+	targetType := model.EnvironmentTargetTypeSSH
+	service := New(
+		store,
+		probeProjectReader{},
+		keyManager,
+		probeCredentialReader{credential: credential},
+		nil,
+		nil,
+	)
+
+	updated, err := service.UpdateForUser(context.Background(), "user-1", projectID, environmentdto.UpdateInput{
+		TargetType: &targetType,
+		SSH: &environmentdto.SSHTargetInput{
+			Platform: model.EnvironmentPlatformLinux, Host: "198.51.100.10", Port: 22,
+			Username: "deploy", WorkspaceRoot: "/srv/pomelo-orbit",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if keyManager.createCalls != 0 || keyManager.ensuredCredentialID != environment.SSH.CredentialId {
+		t.Fatalf("credential calls = %#v", keyManager)
+	}
+	if !store.updated || updated.SSH == nil || updated.SSH.Host != "198.51.100.10" || updated.SSH.CredentialId != environment.SSH.CredentialId || updated.SSH.CredentialRevision != environment.SSH.CredentialRevision {
+		t.Fatalf("updated environment = %#v", updated)
+	}
+}
+
 func TestProbeForUserRejectsStaleResult(t *testing.T) {
 	environment := testProbeEnvironment("project-1")
 	store := &probeEnvironmentStore{environment: environment, stale: true}
 	service := New(store, probeProjectReader{}, nil, probeCredentialReader{
 		credential: testProbeCredential(environment.ProjectId, environment),
-	}, &probeEnvironmentProber{})
+	}, &probeEnvironmentProber{}, nil)
 
 	_, err := service.ProbeForUser(context.Background(), "user-1", environment.ProjectId)
 	if err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("ProbeForUser error = %v", err)
+	}
+}
+
+func TestInitializeForUserBootstrapsWithEphemeralPasswordAndProbesGeneratedKey(t *testing.T) {
+	projectID := "project-1"
+	environment := testProbeEnvironment(projectID)
+	environment.SSH.HostKeyFingerprint = ""
+	store := &probeEnvironmentStore{environment: environment}
+	credential := testProbeCredential(projectID, environment)
+	keyManager := &updateDeploymentKeyManager{credential: credential}
+	prober := &probeEnvironmentProber{}
+	bootstrapper := &testEnvironmentBootstrapper{}
+	service := New(
+		store,
+		probeProjectReader{},
+		keyManager,
+		probeCredentialReader{credential: credential, privateKey: credentialdto.DeploymentSSHPrivateKey{PrivateKey: "generated-private-key"}},
+		prober,
+		bootstrapper,
+	)
+
+	result, err := service.InitializeForUser(context.Background(), "user-1", projectID, environmentdto.InitializeInput{
+		Username: "opc", Password: "bootstrap-password",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bootstrapper.called || bootstrapper.environment.Id != environment.Id || bootstrapper.publicKey == "" || bootstrapper.auth.Username != "opc" || bootstrapper.auth.Password != "bootstrap-password" || bootstrapper.auth.PrivateKey != "" {
+		t.Fatalf("bootstrap invocation = %#v", bootstrapper)
+	}
+	if !prober.called || !store.recorded || result.LastProbeStatus == nil || *result.LastProbeStatus != model.EnvironmentProbeStatusSucceeded {
+		t.Fatalf("initialization result = %#v probe=%#v store=%#v", result, prober, store)
+	}
+}
+
+func TestInitializeForUserRejectsUnsupportedTargetAndAmbiguousCredentials(t *testing.T) {
+	projectID := "project-1"
+	environment := testProbeEnvironment(projectID)
+	environment.SSH.Platform = model.EnvironmentPlatformWindows
+	bootstrapper := &testEnvironmentBootstrapper{}
+	service := New(
+		&probeEnvironmentStore{environment: environment},
+		probeProjectReader{},
+		&updateDeploymentKeyManager{credential: testProbeCredential(projectID, environment)},
+		probeCredentialReader{credential: testProbeCredential(projectID, environment)},
+		&probeEnvironmentProber{},
+		bootstrapper,
+	)
+	_, err := service.InitializeForUser(context.Background(), "user-1", projectID, environmentdto.InitializeInput{
+		Username: "administrator", Password: "password", PrivateKey: "private-key",
+	})
+	if err == nil || !apperror.IsKind(err, apperror.KindValidation) || bootstrapper.called {
+		t.Fatalf("InitializeForUser() error = %v bootstrap=%#v", err, bootstrapper)
+	}
+
+	environment.SSH.Platform = model.EnvironmentPlatformLinux
+	service = New(
+		&probeEnvironmentStore{environment: environment},
+		probeProjectReader{},
+		&updateDeploymentKeyManager{credential: testProbeCredential(projectID, environment)},
+		probeCredentialReader{credential: testProbeCredential(projectID, environment)},
+		&probeEnvironmentProber{},
+		bootstrapper,
+	)
+	_, err = service.InitializeForUser(context.Background(), "user-1", projectID, environmentdto.InitializeInput{
+		Username: "opc", Password: "password", PrivateKey: "private-key",
+	})
+	if err == nil || !apperror.IsKind(err, apperror.KindValidation) || bootstrapper.called {
+		t.Fatalf("InitializeForUser() ambiguous auth error = %v bootstrap=%#v", err, bootstrapper)
+	}
+}
+
+func TestInitializeForUserDoesNotExposeBootstrapSecret(t *testing.T) {
+	projectID := "project-1"
+	environment := testProbeEnvironment(projectID)
+	secret := "bootstrap-private-key-must-not-appear"
+	service := New(
+		&probeEnvironmentStore{environment: environment},
+		probeProjectReader{},
+		&updateDeploymentKeyManager{credential: testProbeCredential(projectID, environment)},
+		probeCredentialReader{credential: testProbeCredential(projectID, environment)},
+		&probeEnvironmentProber{},
+		&testEnvironmentBootstrapper{err: errors.New(secret)},
+	)
+	_, err := service.InitializeForUser(context.Background(), "user-1", projectID, environmentdto.InitializeInput{
+		Username: "opc", PrivateKey: secret,
+	})
+	if err == nil || strings.Contains(err.Error(), secret) {
+		t.Fatalf("bootstrap error leaks secret: %v", err)
 	}
 }
 
@@ -122,15 +324,37 @@ func (s *updateEnvironmentStore) EnvironmentByProject(context.Context, string) (
 	return s.environment, nil
 }
 
-func (s *updateEnvironmentStore) UpdateEnvironment(context.Context, model.Environment) error {
+func (s *updateEnvironmentStore) UpdateEnvironment(_ context.Context, environment model.Environment) error {
 	s.updated = true
+	s.environment = environment
 	return nil
+}
+
+type updateDeploymentKeyManager struct {
+	credential          model.Credential
+	createCalls         int
+	ensuredCredentialID string
+}
+
+func (m *updateDeploymentKeyManager) CreateDeploymentSSHCredential(context.Context, string, string) (model.Credential, error) {
+	m.createCalls++
+	return model.Credential{}, errors.New("deployment credential creation must not be called")
+}
+
+func (m *updateDeploymentKeyManager) EnsureGeneratedDeploymentSSHCredential(_ context.Context, credentialID string) (model.Credential, error) {
+	m.ensuredCredentialID = credentialID
+	return m.credential, nil
+}
+
+func (m *updateDeploymentKeyManager) DeploymentSSHPublicKey(context.Context, string) (string, error) {
+	return "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample comment", nil
 }
 
 type probeEnvironmentStore struct {
 	repository.EnvironmentStore
 	environment    model.Environment
 	recorded       bool
+	updated        bool
 	stale          bool
 	targetRevision int64
 	status         string
@@ -139,6 +363,12 @@ type probeEnvironmentStore struct {
 
 func (s *probeEnvironmentStore) EnvironmentByProject(context.Context, string) (model.Environment, error) {
 	return s.environment, nil
+}
+
+func (s *probeEnvironmentStore) UpdateEnvironment(_ context.Context, environment model.Environment) error {
+	s.updated = true
+	s.environment = environment
+	return nil
 }
 
 func (s *probeEnvironmentStore) RecordProbe(_ context.Context, _ string, targetRevision int64, status string, _ time.Time, diagnostic string) (bool, error) {
@@ -173,37 +403,74 @@ type probeEnvironmentProber struct {
 	called      bool
 	environment model.Environment
 	privateKey  credentialdto.DeploymentSSHPrivateKey
+	fingerprint string
 	err         error
 }
 
-func (p *probeEnvironmentProber) Probe(_ context.Context, environment model.Environment, privateKey credentialdto.DeploymentSSHPrivateKey) error {
+type testEnvironmentBootstrapper struct {
+	called      bool
+	environment model.Environment
+	publicKey   string
+	auth        environmentport.BootstrapAuth
+	err         error
+}
+
+func (b *testEnvironmentBootstrapper) Bootstrap(_ context.Context, environment model.Environment, publicKey string, auth environmentport.BootstrapAuth) error {
+	b.called = true
+	b.environment = environment
+	b.publicKey = publicKey
+	b.auth = auth
+	return b.err
+}
+
+type localProbeEnvironmentProber struct {
+	localCalled bool
+	err         error
+}
+
+func (p *localProbeEnvironmentProber) Probe(context.Context, model.Environment, credentialdto.DeploymentSSHPrivateKey) (string, error) {
+	return "", p.err
+}
+
+func (p *localProbeEnvironmentProber) ProbeLocal(context.Context) error {
+	p.localCalled = true
+	return p.err
+}
+
+func (p *probeEnvironmentProber) Probe(_ context.Context, environment model.Environment, privateKey credentialdto.DeploymentSSHPrivateKey) (string, error) {
 	p.called = true
 	p.environment = environment
 	p.privateKey = privateKey
-	return p.err
+	if p.err != nil {
+		return "", p.err
+	}
+	if p.fingerprint != "" {
+		return p.fingerprint, nil
+	}
+	return "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=", nil
 }
 
 func testProbeEnvironment(projectID string) model.Environment {
 	return model.Environment{
-		Id:                    "environment-1",
-		ProjectId:             projectID,
-		State:                 model.EnvironmentStateActive,
-		Platform:              model.EnvironmentPlatformLinux,
-		Host:                  "192.0.2.10",
-		Port:                  22,
-		Username:              "deploy",
-		WorkspaceRoot:         "/srv/pomelo-orbit",
-		SSHCredentialId:       "credential-1",
-		SSHCredentialRevision: 3,
-		TargetRevision:        7,
+		Id:             "environment-1",
+		ProjectId:      projectID,
+		State:          model.EnvironmentStateActive,
+		TargetType:     model.EnvironmentTargetTypeSSH,
+		TargetRevision: 7,
+		SSH: &model.EnvironmentSSHTarget{
+			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22,
+			Username: "deploy", WorkspaceRoot: "/srv/pomelo-orbit",
+			CredentialId: "credential-1", CredentialRevision: 3,
+			HostKeyFingerprint: "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=",
+		},
 	}
 }
 
 func testProbeCredential(projectID string, environment model.Environment) model.Credential {
 	return model.Credential{
-		Id:        environment.SSHCredentialId,
+		Id:        environment.SSH.CredentialId,
 		ProjectId: &projectID,
 		Type:      model.CredentialTypeDeploymentSSHPrivateKey,
-		Revision:  environment.SSHCredentialRevision,
+		Revision:  environment.SSH.CredentialRevision,
 	}
 }

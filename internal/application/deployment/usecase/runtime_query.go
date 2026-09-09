@@ -3,10 +3,12 @@ package deploymentsvc
 import (
 	"context"
 	"errors"
+	"path"
 	"strconv"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
@@ -24,7 +26,7 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, applicati
 	if err != nil {
 		return nil, err
 	}
-	exists, err := s.remoteRuntime.ServiceDirExists(ctx, target, service.Code)
+	exists, err := s.runtime.ServiceDirExists(ctx, target, service.Code)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
 	}
@@ -32,7 +34,7 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, applicati
 		return []deploymentdto.RuntimeContainer{}, nil
 	}
 	command := containerPsCommand(composeProjectName(app.Code, service.InstanceKey))
-	output, err := s.remoteRuntime.Query(ctx, target, service.Code, command.Name, command.Args...)
+	output, err := s.runtime.Query(ctx, target, service.Code, command.Name, command.Args...)
 	if err != nil {
 		return nil, apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -91,7 +93,7 @@ func (s Service) ApplicationLogs(ctx context.Context, userId string, application
 	if component != "" {
 		command = containerLogsTailCommand(projectName, strconv.Itoa(tail), component)
 	}
-	output, err := s.remoteRuntime.Query(ctx, target, service.Code, command.Name, command.Args...)
+	output, err := s.runtime.Query(ctx, target, service.Code, command.Name, command.Args...)
 	if err != nil {
 		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -131,25 +133,7 @@ func (s Service) PreviewService(ctx context.Context, userId string, serviceId st
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
 	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
-	target, err := s.resolveProjectTarget(ctx, app)
-	if err != nil {
-		return "", err
-	}
-	serviceDir, err := s.remoteRuntime.ServiceDir(target, service.Code)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve remote service directory", err)
-	}
-	gateway, err := s.gatewayForDeployment(ctx, app, plan)
-	if err != nil {
-		return "", err
-	}
-	plan.Gateway = gateway
-	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
-	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, LogicalSvcDir: serviceDir})
-	if err != nil {
-		return "", apperror.New(apperror.KindValidation, err.Error())
-	}
-	return content, nil
+	return s.renderComposePreview(ctx, app, plan)
 }
 
 // PreviewVersion renders version declarations without reading Service runtime configuration.
@@ -177,21 +161,21 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
 	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
-	target, err := s.resolveProjectTarget(ctx, app)
-	if err != nil {
-		return "", err
-	}
-	serviceDir, err := s.remoteRuntime.ServiceDir(target, plan.Service.Code)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve remote service directory", err)
-	}
+	return s.renderComposePreview(ctx, app, plan)
+}
+
+// renderComposePreview renders desired state only. SSH target validation and
+// remote workspace resolution apply to execution, not to a Compose preview.
+func (s Service) renderComposePreview(ctx context.Context, app model.Application, plan model.EffectiveServicePlan) (string, error) {
 	gateway, err := s.gatewayForDeployment(ctx, app, plan)
 	if err != nil {
 		return "", err
 	}
 	plan.Gateway = gateway
-	setPlanJoinTraefikNetwork(&plan, previewJoinTraefikNetwork(input))
-	content, err := s.RenderCompose(ctx, RenderInput{Plan: plan, LogicalSvcDir: serviceDir})
+	content, err := s.RenderCompose(ctx, RenderInput{
+		Plan:          plan,
+		LogicalSvcDir: path.Join("/.pomelo-orbit-preview", plan.Service.Code),
+	})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}

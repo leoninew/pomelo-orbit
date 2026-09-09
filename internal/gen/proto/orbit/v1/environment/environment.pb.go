@@ -21,35 +21,258 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type EnvironmentSSHTargetResp struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Platform           string                 `protobuf:"bytes,1,opt,name=platform,proto3" json:"platform,omitempty"`
+	Host               string                 `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
+	Port               int32                  `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	Username           string                 `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
+	WorkspaceRoot      string                 `protobuf:"bytes,5,opt,name=workspace_root,json=workspaceRoot,proto3" json:"workspace_root,omitempty"`
+	HostKeyFingerprint string                 `protobuf:"bytes,6,opt,name=host_key_fingerprint,json=hostKeyFingerprint,proto3" json:"host_key_fingerprint,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *EnvironmentSSHTargetResp) Reset() {
+	*x = EnvironmentSSHTargetResp{}
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnvironmentSSHTargetResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnvironmentSSHTargetResp) ProtoMessage() {}
+
+func (x *EnvironmentSSHTargetResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnvironmentSSHTargetResp.ProtoReflect.Descriptor instead.
+func (*EnvironmentSSHTargetResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *EnvironmentSSHTargetResp) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
+func (x *EnvironmentSSHTargetResp) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *EnvironmentSSHTargetResp) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+func (x *EnvironmentSSHTargetResp) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *EnvironmentSSHTargetResp) GetWorkspaceRoot() string {
+	if x != nil {
+		return x.WorkspaceRoot
+	}
+	return ""
+}
+
+func (x *EnvironmentSSHTargetResp) GetHostKeyFingerprint() string {
+	if x != nil {
+		return x.HostKeyFingerprint
+	}
+	return ""
+}
+
+type EnvironmentSSHTargetReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Platform      string                 `protobuf:"bytes,1,opt,name=platform,proto3" json:"platform,omitempty"`
+	Host          string                 `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
+	Port          int32                  `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	Username      string                 `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
+	WorkspaceRoot string                 `protobuf:"bytes,5,opt,name=workspace_root,json=workspaceRoot,proto3" json:"workspace_root,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnvironmentSSHTargetReq) Reset() {
+	*x = EnvironmentSSHTargetReq{}
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnvironmentSSHTargetReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnvironmentSSHTargetReq) ProtoMessage() {}
+
+func (x *EnvironmentSSHTargetReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnvironmentSSHTargetReq.ProtoReflect.Descriptor instead.
+func (*EnvironmentSSHTargetReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *EnvironmentSSHTargetReq) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
+func (x *EnvironmentSSHTargetReq) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *EnvironmentSSHTargetReq) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+func (x *EnvironmentSSHTargetReq) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *EnvironmentSSHTargetReq) GetWorkspaceRoot() string {
+	if x != nil {
+		return x.WorkspaceRoot
+	}
+	return ""
+}
+
+type EnvironmentLocalTargetResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceRoot string                 `protobuf:"bytes,1,opt,name=workspace_root,json=workspaceRoot,proto3" json:"workspace_root,omitempty"`
+	Platform      string                 `protobuf:"bytes,2,opt,name=platform,proto3" json:"platform,omitempty"`
+	Host          string                 `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"`
+	Username      string                 `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnvironmentLocalTargetResp) Reset() {
+	*x = EnvironmentLocalTargetResp{}
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnvironmentLocalTargetResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnvironmentLocalTargetResp) ProtoMessage() {}
+
+func (x *EnvironmentLocalTargetResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnvironmentLocalTargetResp.ProtoReflect.Descriptor instead.
+func (*EnvironmentLocalTargetResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *EnvironmentLocalTargetResp) GetWorkspaceRoot() string {
+	if x != nil {
+		return x.WorkspaceRoot
+	}
+	return ""
+}
+
+func (x *EnvironmentLocalTargetResp) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
+func (x *EnvironmentLocalTargetResp) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *EnvironmentLocalTargetResp) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
 type EnvironmentResp struct {
-	state                 protoimpl.MessageState `protogen:"open.v1"`
-	Id                    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId             string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Code                  string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
-	State                 string                 `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
-	Platform              string                 `protobuf:"bytes,5,opt,name=platform,proto3" json:"platform,omitempty"`
-	Host                  string                 `protobuf:"bytes,6,opt,name=host,proto3" json:"host,omitempty"`
-	Port                  int32                  `protobuf:"varint,7,opt,name=port,proto3" json:"port,omitempty"`
-	Username              string                 `protobuf:"bytes,8,opt,name=username,proto3" json:"username,omitempty"`
-	WorkspaceRoot         string                 `protobuf:"bytes,9,opt,name=workspace_root,json=workspaceRoot,proto3" json:"workspace_root,omitempty"`
-	SshCredentialId       string                 `protobuf:"bytes,10,opt,name=ssh_credential_id,json=sshCredentialId,proto3" json:"ssh_credential_id,omitempty"`
-	SshCredentialRevision int64                  `protobuf:"varint,11,opt,name=ssh_credential_revision,json=sshCredentialRevision,proto3" json:"ssh_credential_revision,omitempty"`
-	HostKeyFingerprint    string                 `protobuf:"bytes,12,opt,name=host_key_fingerprint,json=hostKeyFingerprint,proto3" json:"host_key_fingerprint,omitempty"`
-	TargetRevision        int64                  `protobuf:"varint,13,opt,name=target_revision,json=targetRevision,proto3" json:"target_revision,omitempty"`
-	LastProbeRevision     *int64                 `protobuf:"varint,14,opt,name=last_probe_revision,json=lastProbeRevision,proto3,oneof" json:"last_probe_revision,omitempty"`
-	LastProbeStatus       *string                `protobuf:"bytes,15,opt,name=last_probe_status,json=lastProbeStatus,proto3,oneof" json:"last_probe_status,omitempty"`
-	LastProbeAt           *string                `protobuf:"bytes,16,opt,name=last_probe_at,json=lastProbeAt,proto3,oneof" json:"last_probe_at,omitempty"`
-	LastProbeDiagnostic   *string                `protobuf:"bytes,17,opt,name=last_probe_diagnostic,json=lastProbeDiagnostic,proto3,oneof" json:"last_probe_diagnostic,omitempty"`
-	GatewayApplicationId  *string                `protobuf:"bytes,18,opt,name=gateway_application_id,json=gatewayApplicationId,proto3,oneof" json:"gateway_application_id,omitempty"`
-	CreatedAt             string                 `protobuf:"bytes,19,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt             string                 `protobuf:"bytes,20,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	state                protoimpl.MessageState      `protogen:"open.v1"`
+	Id                   string                      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId            string                      `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Code                 string                      `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
+	State                string                      `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
+	TargetType           string                      `protobuf:"bytes,5,opt,name=target_type,json=targetType,proto3" json:"target_type,omitempty"`
+	Ssh                  *EnvironmentSSHTargetResp   `protobuf:"bytes,6,opt,name=ssh,proto3" json:"ssh,omitempty"`
+	TargetRevision       int64                       `protobuf:"varint,7,opt,name=target_revision,json=targetRevision,proto3" json:"target_revision,omitempty"`
+	LastProbeRevision    *int64                      `protobuf:"varint,8,opt,name=last_probe_revision,json=lastProbeRevision,proto3,oneof" json:"last_probe_revision,omitempty"`
+	LastProbeStatus      *string                     `protobuf:"bytes,9,opt,name=last_probe_status,json=lastProbeStatus,proto3,oneof" json:"last_probe_status,omitempty"`
+	LastProbeAt          *string                     `protobuf:"bytes,10,opt,name=last_probe_at,json=lastProbeAt,proto3,oneof" json:"last_probe_at,omitempty"`
+	LastProbeDiagnostic  *string                     `protobuf:"bytes,11,opt,name=last_probe_diagnostic,json=lastProbeDiagnostic,proto3,oneof" json:"last_probe_diagnostic,omitempty"`
+	GatewayApplicationId *string                     `protobuf:"bytes,12,opt,name=gateway_application_id,json=gatewayApplicationId,proto3,oneof" json:"gateway_application_id,omitempty"`
+	CreatedAt            string                      `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt            string                      `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Local                *EnvironmentLocalTargetResp `protobuf:"bytes,15,opt,name=local,proto3" json:"local,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *EnvironmentResp) Reset() {
 	*x = EnvironmentResp{}
-	mi := &file_orbit_v1_environment_environment_proto_msgTypes[0]
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -61,7 +284,7 @@ func (x *EnvironmentResp) String() string {
 func (*EnvironmentResp) ProtoMessage() {}
 
 func (x *EnvironmentResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_environment_environment_proto_msgTypes[0]
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -74,7 +297,7 @@ func (x *EnvironmentResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnvironmentResp.ProtoReflect.Descriptor instead.
 func (*EnvironmentResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{0}
+	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *EnvironmentResp) GetId() string {
@@ -105,60 +328,18 @@ func (x *EnvironmentResp) GetState() string {
 	return ""
 }
 
-func (x *EnvironmentResp) GetPlatform() string {
+func (x *EnvironmentResp) GetTargetType() string {
 	if x != nil {
-		return x.Platform
+		return x.TargetType
 	}
 	return ""
 }
 
-func (x *EnvironmentResp) GetHost() string {
+func (x *EnvironmentResp) GetSsh() *EnvironmentSSHTargetResp {
 	if x != nil {
-		return x.Host
+		return x.Ssh
 	}
-	return ""
-}
-
-func (x *EnvironmentResp) GetPort() int32 {
-	if x != nil {
-		return x.Port
-	}
-	return 0
-}
-
-func (x *EnvironmentResp) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *EnvironmentResp) GetWorkspaceRoot() string {
-	if x != nil {
-		return x.WorkspaceRoot
-	}
-	return ""
-}
-
-func (x *EnvironmentResp) GetSshCredentialId() string {
-	if x != nil {
-		return x.SshCredentialId
-	}
-	return ""
-}
-
-func (x *EnvironmentResp) GetSshCredentialRevision() int64 {
-	if x != nil {
-		return x.SshCredentialRevision
-	}
-	return 0
-}
-
-func (x *EnvironmentResp) GetHostKeyFingerprint() string {
-	if x != nil {
-		return x.HostKeyFingerprint
-	}
-	return ""
+	return nil
 }
 
 func (x *EnvironmentResp) GetTargetRevision() int64 {
@@ -217,140 +398,25 @@ func (x *EnvironmentResp) GetUpdatedAt() string {
 	return ""
 }
 
-type ProjectEnvironmentCreateReq struct {
-	state                      protoimpl.MessageState `protogen:"open.v1"`
-	State                      string                 `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
-	Platform                   string                 `protobuf:"bytes,2,opt,name=platform,proto3" json:"platform,omitempty"`
-	Host                       string                 `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"`
-	Port                       int32                  `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`
-	Username                   string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
-	WorkspaceRoot              string                 `protobuf:"bytes,6,opt,name=workspace_root,json=workspaceRoot,proto3" json:"workspace_root,omitempty"`
-	DeploymentSshKeyName       string                 `protobuf:"bytes,7,opt,name=deployment_ssh_key_name,json=deploymentSshKeyName,proto3" json:"deployment_ssh_key_name,omitempty"`
-	DeploymentSshPrivateKey    string                 `protobuf:"bytes,8,opt,name=deployment_ssh_private_key,json=deploymentSshPrivateKey,proto3" json:"deployment_ssh_private_key,omitempty"`
-	DeploymentSshKeyPassphrase *string                `protobuf:"bytes,9,opt,name=deployment_ssh_key_passphrase,json=deploymentSshKeyPassphrase,proto3,oneof" json:"deployment_ssh_key_passphrase,omitempty"`
-	HostKeyFingerprint         string                 `protobuf:"bytes,10,opt,name=host_key_fingerprint,json=hostKeyFingerprint,proto3" json:"host_key_fingerprint,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
-}
-
-func (x *ProjectEnvironmentCreateReq) Reset() {
-	*x = ProjectEnvironmentCreateReq{}
-	mi := &file_orbit_v1_environment_environment_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ProjectEnvironmentCreateReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ProjectEnvironmentCreateReq) ProtoMessage() {}
-
-func (x *ProjectEnvironmentCreateReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_environment_environment_proto_msgTypes[1]
+func (x *EnvironmentResp) GetLocal() *EnvironmentLocalTargetResp {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+		return x.Local
 	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ProjectEnvironmentCreateReq.ProtoReflect.Descriptor instead.
-func (*ProjectEnvironmentCreateReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *ProjectEnvironmentCreateReq) GetState() string {
-	if x != nil {
-		return x.State
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentCreateReq) GetPlatform() string {
-	if x != nil {
-		return x.Platform
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentCreateReq) GetHost() string {
-	if x != nil {
-		return x.Host
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentCreateReq) GetPort() int32 {
-	if x != nil {
-		return x.Port
-	}
-	return 0
-}
-
-func (x *ProjectEnvironmentCreateReq) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentCreateReq) GetWorkspaceRoot() string {
-	if x != nil {
-		return x.WorkspaceRoot
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentCreateReq) GetDeploymentSshKeyName() string {
-	if x != nil {
-		return x.DeploymentSshKeyName
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentCreateReq) GetDeploymentSshPrivateKey() string {
-	if x != nil {
-		return x.DeploymentSshPrivateKey
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentCreateReq) GetDeploymentSshKeyPassphrase() string {
-	if x != nil && x.DeploymentSshKeyPassphrase != nil {
-		return *x.DeploymentSshKeyPassphrase
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentCreateReq) GetHostKeyFingerprint() string {
-	if x != nil {
-		return x.HostKeyFingerprint
-	}
-	return ""
+	return nil
 }
 
 type ProjectEnvironmentUpdateReq struct {
-	state                      protoimpl.MessageState `protogen:"open.v1"`
-	State                      *string                `protobuf:"bytes,1,opt,name=state,proto3,oneof" json:"state,omitempty"`
-	Platform                   *string                `protobuf:"bytes,2,opt,name=platform,proto3,oneof" json:"platform,omitempty"`
-	Host                       *string                `protobuf:"bytes,3,opt,name=host,proto3,oneof" json:"host,omitempty"`
-	Port                       *int32                 `protobuf:"varint,4,opt,name=port,proto3,oneof" json:"port,omitempty"`
-	Username                   *string                `protobuf:"bytes,5,opt,name=username,proto3,oneof" json:"username,omitempty"`
-	WorkspaceRoot              *string                `protobuf:"bytes,6,opt,name=workspace_root,json=workspaceRoot,proto3,oneof" json:"workspace_root,omitempty"`
-	DeploymentSshPrivateKey    *string                `protobuf:"bytes,7,opt,name=deployment_ssh_private_key,json=deploymentSshPrivateKey,proto3,oneof" json:"deployment_ssh_private_key,omitempty"`
-	DeploymentSshKeyPassphrase *string                `protobuf:"bytes,8,opt,name=deployment_ssh_key_passphrase,json=deploymentSshKeyPassphrase,proto3,oneof" json:"deployment_ssh_key_passphrase,omitempty"`
-	HostKeyFingerprint         *string                `protobuf:"bytes,9,opt,name=host_key_fingerprint,json=hostKeyFingerprint,proto3,oneof" json:"host_key_fingerprint,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	State         *string                  `protobuf:"bytes,1,opt,name=state,proto3,oneof" json:"state,omitempty"`
+	TargetType    *string                  `protobuf:"bytes,2,opt,name=target_type,json=targetType,proto3,oneof" json:"target_type,omitempty"`
+	Ssh           *EnvironmentSSHTargetReq `protobuf:"bytes,3,opt,name=ssh,proto3,oneof" json:"ssh,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProjectEnvironmentUpdateReq) Reset() {
 	*x = ProjectEnvironmentUpdateReq{}
-	mi := &file_orbit_v1_environment_environment_proto_msgTypes[2]
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -362,7 +428,7 @@ func (x *ProjectEnvironmentUpdateReq) String() string {
 func (*ProjectEnvironmentUpdateReq) ProtoMessage() {}
 
 func (x *ProjectEnvironmentUpdateReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_environment_environment_proto_msgTypes[2]
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -375,7 +441,7 @@ func (x *ProjectEnvironmentUpdateReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectEnvironmentUpdateReq.ProtoReflect.Descriptor instead.
 func (*ProjectEnvironmentUpdateReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{2}
+	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ProjectEnvironmentUpdateReq) GetState() string {
@@ -385,58 +451,84 @@ func (x *ProjectEnvironmentUpdateReq) GetState() string {
 	return ""
 }
 
-func (x *ProjectEnvironmentUpdateReq) GetPlatform() string {
-	if x != nil && x.Platform != nil {
-		return *x.Platform
+func (x *ProjectEnvironmentUpdateReq) GetTargetType() string {
+	if x != nil && x.TargetType != nil {
+		return *x.TargetType
 	}
 	return ""
 }
 
-func (x *ProjectEnvironmentUpdateReq) GetHost() string {
-	if x != nil && x.Host != nil {
-		return *x.Host
+func (x *ProjectEnvironmentUpdateReq) GetSsh() *EnvironmentSSHTargetReq {
+	if x != nil {
+		return x.Ssh
+	}
+	return nil
+}
+
+type ProjectEnvironmentInitializeReq struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Username             string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Password             string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	PrivateKey           string                 `protobuf:"bytes,3,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
+	PrivateKeyPassphrase string                 `protobuf:"bytes,4,opt,name=private_key_passphrase,json=privateKeyPassphrase,proto3" json:"private_key_passphrase,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *ProjectEnvironmentInitializeReq) Reset() {
+	*x = ProjectEnvironmentInitializeReq{}
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProjectEnvironmentInitializeReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProjectEnvironmentInitializeReq) ProtoMessage() {}
+
+func (x *ProjectEnvironmentInitializeReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProjectEnvironmentInitializeReq.ProtoReflect.Descriptor instead.
+func (*ProjectEnvironmentInitializeReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ProjectEnvironmentInitializeReq) GetUsername() string {
+	if x != nil {
+		return x.Username
 	}
 	return ""
 }
 
-func (x *ProjectEnvironmentUpdateReq) GetPort() int32 {
-	if x != nil && x.Port != nil {
-		return *x.Port
-	}
-	return 0
-}
-
-func (x *ProjectEnvironmentUpdateReq) GetUsername() string {
-	if x != nil && x.Username != nil {
-		return *x.Username
+func (x *ProjectEnvironmentInitializeReq) GetPassword() string {
+	if x != nil {
+		return x.Password
 	}
 	return ""
 }
 
-func (x *ProjectEnvironmentUpdateReq) GetWorkspaceRoot() string {
-	if x != nil && x.WorkspaceRoot != nil {
-		return *x.WorkspaceRoot
+func (x *ProjectEnvironmentInitializeReq) GetPrivateKey() string {
+	if x != nil {
+		return x.PrivateKey
 	}
 	return ""
 }
 
-func (x *ProjectEnvironmentUpdateReq) GetDeploymentSshPrivateKey() string {
-	if x != nil && x.DeploymentSshPrivateKey != nil {
-		return *x.DeploymentSshPrivateKey
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentUpdateReq) GetDeploymentSshKeyPassphrase() string {
-	if x != nil && x.DeploymentSshKeyPassphrase != nil {
-		return *x.DeploymentSshKeyPassphrase
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentUpdateReq) GetHostKeyFingerprint() string {
-	if x != nil && x.HostKeyFingerprint != nil {
-		return *x.HostKeyFingerprint
+func (x *ProjectEnvironmentInitializeReq) GetPrivateKeyPassphrase() string {
+	if x != nil {
+		return x.PrivateKeyPassphrase
 	}
 	return ""
 }
@@ -445,69 +537,65 @@ var File_orbit_v1_environment_environment_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_environment_environment_proto_rawDesc = "" +
 	"\n" +
-	"&orbit/v1/environment/environment.proto\x12\x14orbit.v1.environment\"\xe6\x06\n" +
+	"&orbit/v1/environment/environment.proto\x12\x14orbit.v1.environment\"\xd3\x01\n" +
+	"\x18EnvironmentSSHTargetResp\x12\x1a\n" +
+	"\bplatform\x18\x01 \x01(\tR\bplatform\x12\x12\n" +
+	"\x04host\x18\x02 \x01(\tR\x04host\x12\x12\n" +
+	"\x04port\x18\x03 \x01(\x05R\x04port\x12\x1a\n" +
+	"\busername\x18\x04 \x01(\tR\busername\x12%\n" +
+	"\x0eworkspace_root\x18\x05 \x01(\tR\rworkspaceRoot\x120\n" +
+	"\x14host_key_fingerprint\x18\x06 \x01(\tR\x12hostKeyFingerprint\"\xa0\x01\n" +
+	"\x17EnvironmentSSHTargetReq\x12\x1a\n" +
+	"\bplatform\x18\x01 \x01(\tR\bplatform\x12\x12\n" +
+	"\x04host\x18\x02 \x01(\tR\x04host\x12\x12\n" +
+	"\x04port\x18\x03 \x01(\x05R\x04port\x12\x1a\n" +
+	"\busername\x18\x04 \x01(\tR\busername\x12%\n" +
+	"\x0eworkspace_root\x18\x05 \x01(\tR\rworkspaceRoot\"\x8f\x01\n" +
+	"\x1aEnvironmentLocalTargetResp\x12%\n" +
+	"\x0eworkspace_root\x18\x01 \x01(\tR\rworkspaceRoot\x12\x1a\n" +
+	"\bplatform\x18\x02 \x01(\tR\bplatform\x12\x12\n" +
+	"\x04host\x18\x03 \x01(\tR\x04host\x12\x1a\n" +
+	"\busername\x18\x04 \x01(\tR\busername\"\xf4\x05\n" +
 	"\x0fEnvironmentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x12\n" +
 	"\x04code\x18\x03 \x01(\tR\x04code\x12\x14\n" +
-	"\x05state\x18\x04 \x01(\tR\x05state\x12\x1a\n" +
-	"\bplatform\x18\x05 \x01(\tR\bplatform\x12\x12\n" +
-	"\x04host\x18\x06 \x01(\tR\x04host\x12\x12\n" +
-	"\x04port\x18\a \x01(\x05R\x04port\x12\x1a\n" +
-	"\busername\x18\b \x01(\tR\busername\x12%\n" +
-	"\x0eworkspace_root\x18\t \x01(\tR\rworkspaceRoot\x12*\n" +
-	"\x11ssh_credential_id\x18\n" +
-	" \x01(\tR\x0fsshCredentialId\x126\n" +
-	"\x17ssh_credential_revision\x18\v \x01(\x03R\x15sshCredentialRevision\x120\n" +
-	"\x14host_key_fingerprint\x18\f \x01(\tR\x12hostKeyFingerprint\x12'\n" +
-	"\x0ftarget_revision\x18\r \x01(\x03R\x0etargetRevision\x123\n" +
-	"\x13last_probe_revision\x18\x0e \x01(\x03H\x00R\x11lastProbeRevision\x88\x01\x01\x12/\n" +
-	"\x11last_probe_status\x18\x0f \x01(\tH\x01R\x0flastProbeStatus\x88\x01\x01\x12'\n" +
-	"\rlast_probe_at\x18\x10 \x01(\tH\x02R\vlastProbeAt\x88\x01\x01\x127\n" +
-	"\x15last_probe_diagnostic\x18\x11 \x01(\tH\x03R\x13lastProbeDiagnostic\x88\x01\x01\x129\n" +
-	"\x16gateway_application_id\x18\x12 \x01(\tH\x04R\x14gatewayApplicationId\x88\x01\x01\x12\x1d\n" +
+	"\x05state\x18\x04 \x01(\tR\x05state\x12\x1f\n" +
+	"\vtarget_type\x18\x05 \x01(\tR\n" +
+	"targetType\x12@\n" +
+	"\x03ssh\x18\x06 \x01(\v2..orbit.v1.environment.EnvironmentSSHTargetRespR\x03ssh\x12'\n" +
+	"\x0ftarget_revision\x18\a \x01(\x03R\x0etargetRevision\x123\n" +
+	"\x13last_probe_revision\x18\b \x01(\x03H\x00R\x11lastProbeRevision\x88\x01\x01\x12/\n" +
+	"\x11last_probe_status\x18\t \x01(\tH\x01R\x0flastProbeStatus\x88\x01\x01\x12'\n" +
+	"\rlast_probe_at\x18\n" +
+	" \x01(\tH\x02R\vlastProbeAt\x88\x01\x01\x127\n" +
+	"\x15last_probe_diagnostic\x18\v \x01(\tH\x03R\x13lastProbeDiagnostic\x88\x01\x01\x129\n" +
+	"\x16gateway_application_id\x18\f \x01(\tH\x04R\x14gatewayApplicationId\x88\x01\x01\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x13 \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"created_at\x18\r \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x14 \x01(\tR\tupdatedAtB\x16\n" +
+	"updated_at\x18\x0e \x01(\tR\tupdatedAt\x12F\n" +
+	"\x05local\x18\x0f \x01(\v20.orbit.v1.environment.EnvironmentLocalTargetRespR\x05localB\x16\n" +
 	"\x14_last_probe_revisionB\x14\n" +
 	"\x12_last_probe_statusB\x10\n" +
 	"\x0e_last_probe_atB\x18\n" +
 	"\x16_last_probe_diagnosticB\x19\n" +
-	"\x17_gateway_application_id\"\xca\x03\n" +
-	"\x1bProjectEnvironmentCreateReq\x12\x14\n" +
-	"\x05state\x18\x01 \x01(\tR\x05state\x12\x1a\n" +
-	"\bplatform\x18\x02 \x01(\tR\bplatform\x12\x12\n" +
-	"\x04host\x18\x03 \x01(\tR\x04host\x12\x12\n" +
-	"\x04port\x18\x04 \x01(\x05R\x04port\x12\x1a\n" +
-	"\busername\x18\x05 \x01(\tR\busername\x12%\n" +
-	"\x0eworkspace_root\x18\x06 \x01(\tR\rworkspaceRoot\x125\n" +
-	"\x17deployment_ssh_key_name\x18\a \x01(\tR\x14deploymentSshKeyName\x12;\n" +
-	"\x1adeployment_ssh_private_key\x18\b \x01(\tR\x17deploymentSshPrivateKey\x12F\n" +
-	"\x1ddeployment_ssh_key_passphrase\x18\t \x01(\tH\x00R\x1adeploymentSshKeyPassphrase\x88\x01\x01\x120\n" +
-	"\x14host_key_fingerprint\x18\n" +
-	" \x01(\tR\x12hostKeyFingerprintB \n" +
-	"\x1e_deployment_ssh_key_passphrase\"\xbc\x04\n" +
+	"\x17_gateway_application_id\"\xc6\x01\n" +
 	"\x1bProjectEnvironmentUpdateReq\x12\x19\n" +
-	"\x05state\x18\x01 \x01(\tH\x00R\x05state\x88\x01\x01\x12\x1f\n" +
-	"\bplatform\x18\x02 \x01(\tH\x01R\bplatform\x88\x01\x01\x12\x17\n" +
-	"\x04host\x18\x03 \x01(\tH\x02R\x04host\x88\x01\x01\x12\x17\n" +
-	"\x04port\x18\x04 \x01(\x05H\x03R\x04port\x88\x01\x01\x12\x1f\n" +
-	"\busername\x18\x05 \x01(\tH\x04R\busername\x88\x01\x01\x12*\n" +
-	"\x0eworkspace_root\x18\x06 \x01(\tH\x05R\rworkspaceRoot\x88\x01\x01\x12@\n" +
-	"\x1adeployment_ssh_private_key\x18\a \x01(\tH\x06R\x17deploymentSshPrivateKey\x88\x01\x01\x12F\n" +
-	"\x1ddeployment_ssh_key_passphrase\x18\b \x01(\tH\aR\x1adeploymentSshKeyPassphrase\x88\x01\x01\x125\n" +
-	"\x14host_key_fingerprint\x18\t \x01(\tH\bR\x12hostKeyFingerprint\x88\x01\x01B\b\n" +
-	"\x06_stateB\v\n" +
-	"\t_platformB\a\n" +
-	"\x05_hostB\a\n" +
-	"\x05_portB\v\n" +
-	"\t_usernameB\x11\n" +
-	"\x0f_workspace_rootB\x1d\n" +
-	"\x1b_deployment_ssh_private_keyB \n" +
-	"\x1e_deployment_ssh_key_passphraseB\x17\n" +
-	"\x15_host_key_fingerprintB\xe8\x01\n" +
+	"\x05state\x18\x01 \x01(\tH\x00R\x05state\x88\x01\x01\x12$\n" +
+	"\vtarget_type\x18\x02 \x01(\tH\x01R\n" +
+	"targetType\x88\x01\x01\x12D\n" +
+	"\x03ssh\x18\x03 \x01(\v2-.orbit.v1.environment.EnvironmentSSHTargetReqH\x02R\x03ssh\x88\x01\x01B\b\n" +
+	"\x06_stateB\x0e\n" +
+	"\f_target_typeB\x06\n" +
+	"\x04_ssh\"\xb0\x01\n" +
+	"\x1fProjectEnvironmentInitializeReq\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x1f\n" +
+	"\vprivate_key\x18\x03 \x01(\tR\n" +
+	"privateKey\x124\n" +
+	"\x16private_key_passphrase\x18\x04 \x01(\tR\x14privateKeyPassphraseB\xe8\x01\n" +
 	"\x18com.orbit.v1.environmentB\x10EnvironmentProtoP\x01ZHgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/environment\xa2\x02\x03OVE\xaa\x02\x14Orbit.V1.Environment\xca\x02\x14Orbit\\V1\\Environment\xe2\x02 Orbit\\V1\\Environment\\GPBMetadata\xea\x02\x16Orbit::V1::Environmentb\x06proto3"
 
 var (
@@ -522,18 +610,24 @@ func file_orbit_v1_environment_environment_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_environment_environment_proto_rawDescData
 }
 
-var file_orbit_v1_environment_environment_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_orbit_v1_environment_environment_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_orbit_v1_environment_environment_proto_goTypes = []any{
-	(*EnvironmentResp)(nil),             // 0: orbit.v1.environment.EnvironmentResp
-	(*ProjectEnvironmentCreateReq)(nil), // 1: orbit.v1.environment.ProjectEnvironmentCreateReq
-	(*ProjectEnvironmentUpdateReq)(nil), // 2: orbit.v1.environment.ProjectEnvironmentUpdateReq
+	(*EnvironmentSSHTargetResp)(nil),        // 0: orbit.v1.environment.EnvironmentSSHTargetResp
+	(*EnvironmentSSHTargetReq)(nil),         // 1: orbit.v1.environment.EnvironmentSSHTargetReq
+	(*EnvironmentLocalTargetResp)(nil),      // 2: orbit.v1.environment.EnvironmentLocalTargetResp
+	(*EnvironmentResp)(nil),                 // 3: orbit.v1.environment.EnvironmentResp
+	(*ProjectEnvironmentUpdateReq)(nil),     // 4: orbit.v1.environment.ProjectEnvironmentUpdateReq
+	(*ProjectEnvironmentInitializeReq)(nil), // 5: orbit.v1.environment.ProjectEnvironmentInitializeReq
 }
 var file_orbit_v1_environment_environment_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: orbit.v1.environment.EnvironmentResp.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetResp
+	2, // 1: orbit.v1.environment.EnvironmentResp.local:type_name -> orbit.v1.environment.EnvironmentLocalTargetResp
+	1, // 2: orbit.v1.environment.ProjectEnvironmentUpdateReq.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetReq
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_environment_environment_proto_init() }
@@ -541,16 +635,15 @@ func file_orbit_v1_environment_environment_proto_init() {
 	if File_orbit_v1_environment_environment_proto != nil {
 		return
 	}
-	file_orbit_v1_environment_environment_proto_msgTypes[0].OneofWrappers = []any{}
-	file_orbit_v1_environment_environment_proto_msgTypes[1].OneofWrappers = []any{}
-	file_orbit_v1_environment_environment_proto_msgTypes[2].OneofWrappers = []any{}
+	file_orbit_v1_environment_environment_proto_msgTypes[3].OneofWrappers = []any{}
+	file_orbit_v1_environment_environment_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_environment_environment_proto_rawDesc), len(file_orbit_v1_environment_environment_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

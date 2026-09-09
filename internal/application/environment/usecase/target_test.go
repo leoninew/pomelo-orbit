@@ -77,7 +77,7 @@ func TestTargetResolverReturnsLocalTargetWithoutCredential(t *testing.T) {
 	status := model.EnvironmentProbeStatusSucceeded
 	environment := model.Environment{
 		Id: "environment-1", ProjectId: "project-1", State: model.EnvironmentStateActive,
-		TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: revision,
+		TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: "/srv/pomelo-orbit", TargetRevision: revision,
 		LastProbeRevision: &revision, LastProbeStatus: &status,
 	}
 	target, err := NewTargetResolver(targetEnvironmentStore{environment: environment}, nil).ResolveProjectTarget(context.Background(), environment.ProjectId)
@@ -86,6 +86,20 @@ func TestTargetResolverReturnsLocalTargetWithoutCredential(t *testing.T) {
 	}
 	if target.Environment != environment || target.PrivateKey != nil {
 		t.Fatalf("local target = %#v", target)
+	}
+}
+
+func TestTargetResolverRejectsLocalTargetWithoutWorkspaceRoot(t *testing.T) {
+	revision := int64(2)
+	status := model.EnvironmentProbeStatusSucceeded
+	environment := model.Environment{
+		Id: "environment-1", ProjectId: "project-1", State: model.EnvironmentStateActive,
+		TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: revision,
+		LastProbeRevision: &revision, LastProbeStatus: &status,
+	}
+	_, err := NewTargetResolver(targetEnvironmentStore{environment: environment}, nil).ResolveProjectTarget(context.Background(), environment.ProjectId)
+	if err == nil || !strings.Contains(err.Error(), "workspace_root must be configured") {
+		t.Fatalf("ResolveProjectTarget error = %v", err)
 	}
 }
 
@@ -103,9 +117,10 @@ func readyTargetEnvironment() model.Environment {
 	return model.Environment{
 		Id: "environment-1", ProjectId: "project-1", State: model.EnvironmentStateActive,
 		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: revision,
+		WorkspaceRoot:     "/srv/orbit",
 		LastProbeRevision: &revision, LastProbeStatus: &status,
 		SSH: &model.EnvironmentSSHTarget{
-			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit", WorkspaceRoot: "/srv/orbit",
+			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit",
 			CredentialId: "credential-1", CredentialRevision: revision, HostKeyFingerprint: "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=",
 		},
 	}

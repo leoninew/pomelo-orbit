@@ -1,5 +1,5 @@
 # CD 产品模型
-最后修改时间: 2026-09-09 17:04:54
+最后修改时间: 2026-09-09 20:22:00
 
 Doc role: living product model
 
@@ -24,8 +24,8 @@ Environment 与已绑定的 Gateway 不提供删除能力。Project code 同时�
 
 Environment 的 target type 是显式联合：
 
-- `local`：在 Orbit 控制面宿主机的 Docker daemon 上执行，CD 工作目录为控制面 `workspace.deployment`。它不保存 SSH host、用户、私钥、host key 或 SSH 初始化认证。
-- `ssh`：Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它保存平台、SSH target、受管私钥 binding 与 host-key fingerprint。
+- `local`：在 Orbit 控制面宿主机的 Docker daemon 上执行，工作目录为该 Environment 保存的 `workspace_root`。它不保存 SSH host、用户、私钥、host key 或 SSH 初始化认证。
+- `ssh`：Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它保存平台、SSH target、受管私钥 binding 与 host-key fingerprint，工作目录同样由该 Environment 保存的 `workspace_root` 提供。
 
 `ssh` 到 `127.0.0.1` 仍是 SSH target，必须使用密钥认证和 host-key pinning，不会转换为 `local`。不支持 macOS、其他 Windows Docker 形态或任意 SSH command 执行。部署私钥只属于 SSH Environment，不能通过凭据 API、MCP 或日志读取。SSH 连接不支持密码认证、交互式 shell、PTY 或端口转发。
 

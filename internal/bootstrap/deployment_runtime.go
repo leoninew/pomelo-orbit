@@ -7,7 +7,7 @@ import (
 	targetrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/target"
 )
 
-func newDeploymentRuntime(workspaceRoot string, resolvePath localrunner.PhysicalPathResolver) (*localrunner.Runtime, deploymentport.Runtime) {
-	localRuntime := localrunner.NewRuntime(workspaceRoot, resolvePath)
+func newDeploymentRuntime(resolvePath localrunner.PhysicalPathResolver) (*localrunner.Runtime, deploymentport.Runtime) {
+	localRuntime := localrunner.NewRuntime(resolvePath)
 	return localRuntime, targetrunner.New(localRuntime, sshrunner.NewRuntime())
 }

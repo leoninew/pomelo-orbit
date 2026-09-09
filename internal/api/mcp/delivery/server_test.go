@@ -159,6 +159,19 @@ func TestProjectEnvironmentToolsReturnLocalWorkspaceWithoutSSHFields(t *testing.
 	if _, found := environmentOutput["ssh"]; found {
 		t.Fatalf("local environment exposed SSH fields: %#v", environmentOutput)
 	}
+	updateResult, err := connectInMemory(t, server).CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "orbit_update_project_environment",
+		Arguments: map[string]any{
+			"project_id": "project-1",
+			"local":      map[string]any{"workspace_root": "/srv/orbit/next"},
+		},
+	})
+	if err != nil || updateResult.IsError {
+		t.Fatalf("CallTool(update local environment) result=%#v err=%v", updateResult, err)
+	}
+	if environment.update.Local == nil || environment.update.Local.WorkspaceRoot != "/srv/orbit/next" || environment.update.SSH != nil {
+		t.Fatalf("local update input = %#v", environment.update)
+	}
 }
 
 func TestCreateVersionComponentPassesPolicies(t *testing.T) {

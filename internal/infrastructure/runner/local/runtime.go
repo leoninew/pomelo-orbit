@@ -15,6 +15,7 @@ import (
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 // PhysicalPathResolver maps a control-plane-visible path to the equivalent
@@ -22,23 +23,23 @@ import (
 type PhysicalPathResolver func(context.Context, string) (string, error)
 
 type Runtime struct {
-	workspaceRoot string
-	pathResolver  PhysicalPathResolver
-	locks         sync.Map
+	pathResolver PhysicalPathResolver
+	locks        sync.Map
 }
 
-func NewRuntime(workspaceRoot string, pathResolver PhysicalPathResolver) *Runtime {
-	return &Runtime{workspaceRoot: filepath.Clean(workspaceRoot), pathResolver: pathResolver}
+func NewRuntime(pathResolver PhysicalPathResolver) *Runtime {
+	return &Runtime{pathResolver: pathResolver}
 }
 
 func (r *Runtime) ServiceDir(target environmentport.Target, serviceCode string) (string, error) {
-	if err := r.requireLocal(target); err != nil {
+	root, err := r.localWorkspaceRoot(target)
+	if err != nil {
 		return "", err
 	}
 	if !safePathSegment(serviceCode) {
 		return "", errors.New("invalid service code")
 	}
-	return filepath.Join(r.workspaceRoot, serviceCode), nil
+	return filepath.Join(root, serviceCode), nil
 }
 
 func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.Target, serviceCode string) (bool, error) {
@@ -113,21 +114,23 @@ func (r *Runtime) Query(ctx context.Context, target environmentport.Target, serv
 }
 
 func (r *Runtime) QueryAtEnvironmentRoot(ctx context.Context, target environmentport.Target, name string, args ...string) (string, error) {
-	if err := r.requireLocal(target); err != nil {
+	root, err := r.localWorkspaceRoot(target)
+	if err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(r.workspaceRoot, 0o750); err != nil {
+	if err := os.MkdirAll(root, 0o750); err != nil {
 		return "", fmt.Errorf("create local environment workspace: %w", err)
 	}
-	return query(ctx, r.workspaceRoot, name, args...)
+	return query(ctx, root, name, args...)
 }
 
 func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []deploymentport.WorkspaceFile, pruneSuffix string) error {
-	if err := r.requireLocal(target); err != nil {
+	root, err := r.localWorkspaceRoot(target)
+	if err != nil {
 		return err
 	}
 	directory = filepath.Clean(directory)
-	if directory == "." || !pathWithin(r.workspaceRoot, directory) {
+	if directory == "." || !pathWithin(root, directory) {
 		return errors.New("local sync directory is outside the deployment workspace")
 	}
 	unlock := r.lock(directory)
@@ -166,18 +169,19 @@ func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, 
 	return nil
 }
 
-func (r *Runtime) ProbeLocal(ctx context.Context) error {
-	if r == nil || strings.TrimSpace(r.workspaceRoot) == "" {
-		return localProbeError{diagnostic: "Local deployment workspace is not configured."}
+func (r *Runtime) ProbeLocal(ctx context.Context, environment model.Environment) error {
+	root, err := r.localWorkspaceRoot(environmentport.Target{Environment: environment})
+	if err != nil {
+		return localProbeError{diagnostic: "Local Environment workspace_root must be configured."}
 	}
-	if err := os.MkdirAll(r.workspaceRoot, 0o750); err != nil {
+	if err := os.MkdirAll(root, 0o750); err != nil {
 		return localProbeError{diagnostic: "Local deployment workspace is unavailable."}
 	}
-	output, err := query(ctx, r.workspaceRoot, "docker", "version", "--format", "{{.Server.Version}}")
+	output, err := query(ctx, root, "docker", "version", "--format", "{{.Server.Version}}")
 	if err != nil {
 		return localProbeError{diagnostic: "Local Docker daemon is unavailable: " + strings.TrimSpace(output)}
 	}
-	output, err = query(ctx, r.workspaceRoot, "docker", "compose", "version")
+	output, err = query(ctx, root, "docker", "compose", "version")
 	if err != nil {
 		return localProbeError{diagnostic: "Local Docker Compose is unavailable: " + strings.TrimSpace(output)}
 	}
@@ -189,14 +193,18 @@ type localProbeError struct{ diagnostic string }
 func (e localProbeError) Error() string           { return e.diagnostic }
 func (e localProbeError) ProbeDiagnostic() string { return e.diagnostic }
 
-func (r *Runtime) requireLocal(target environmentport.Target) error {
-	if r == nil || strings.TrimSpace(r.workspaceRoot) == "" {
-		return errors.New("local deployment runtime is not configured")
+func (r *Runtime) localWorkspaceRoot(target environmentport.Target) (string, error) {
+	if r == nil {
+		return "", errors.New("local deployment runtime is not configured")
 	}
 	if !target.Environment.IsLocal() {
-		return errors.New("local deployment runtime received a non-local environment")
+		return "", errors.New("local deployment runtime received a non-local environment")
 	}
-	return nil
+	root := strings.TrimSpace(target.Environment.WorkspaceRoot)
+	if root == "" {
+		return "", errors.New("local Environment workspace_root is required")
+	}
+	return filepath.Clean(root), nil
 }
 
 func (r *Runtime) writeFile(serviceDir string, file deploymentport.WorkspaceFile) error {

@@ -60,11 +60,12 @@ type ServerConfig struct {
 }
 
 type LoggingConfig struct {
-	Level      string        `mapstructure:"level" yaml:"level"`
-	File       string        `mapstructure:"file" yaml:"file"`
-	MaxSizeMB  int           `mapstructure:"max_size_mb" yaml:"max_size_mb"`
-	MaxBackups int           `mapstructure:"max_backups" yaml:"max_backups"`
-	HTTP       LogHTTPConfig `mapstructure:"http" yaml:"http"`
+	Level          string        `mapstructure:"level" yaml:"level"`
+	File           string        `mapstructure:"file" yaml:"file"`
+	DeploymentRoot string        `mapstructure:"deployment_root" yaml:"deployment_root"`
+	MaxSizeMB      int           `mapstructure:"max_size_mb" yaml:"max_size_mb"`
+	MaxBackups     int           `mapstructure:"max_backups" yaml:"max_backups"`
+	HTTP           LogHTTPConfig `mapstructure:"http" yaml:"http"`
 }
 
 type LogHTTPConfig struct {
@@ -103,8 +104,7 @@ type PostgresConfig struct {
 // values resolve against orbit.root; absolute values may be outside orbit.root.
 // Both are normalized once to absolute Orbit-visible paths during config loading.
 type WorkspaceConfig struct {
-	Pipeline   string `mapstructure:"pipeline" yaml:"pipeline"`
-	Deployment string `mapstructure:"deployment" yaml:"deployment"`
+	Pipeline string `mapstructure:"pipeline" yaml:"pipeline"`
 }
 
 type WorkerConfig struct {
@@ -195,6 +195,9 @@ func Load() (Config, error) {
 
 	normalizeServerRuntimeOriginConfig(&cfg.Server)
 	normalizeLogHTTPConfig(&cfg.Logging.HTTP)
+	if err := normalizeLoggingConfig(&cfg.Logging, cfg.OrbitRoot()); err != nil {
+		return Config{}, err
+	}
 	if err := normalizeWorkspaceConfig(&cfg.Workspace, cfg.OrbitRoot()); err != nil {
 		return Config{}, err
 	}
@@ -239,6 +242,9 @@ func loadBaseConfig(envName string) (Config, error) {
 	}
 	normalizeServerRuntimeOriginConfig(&base.Server)
 	normalizeLogHTTPConfig(&base.Logging.HTTP)
+	if err := normalizeLoggingConfig(&base.Logging, base.OrbitRoot()); err != nil {
+		return Config{}, err
+	}
 	if err := normalizeWorkspaceConfig(&base.Workspace, base.OrbitRoot()); err != nil {
 		return Config{}, err
 	}
@@ -301,6 +307,7 @@ func bindEnv(loader *viper.Viper) {
 		"server.public_url",
 		"logging.level",
 		"logging.file",
+		"logging.deployment_root",
 		"logging.max_size_mb",
 		"logging.max_backups",
 		"logging.http.enabled",
@@ -312,7 +319,6 @@ func bindEnv(loader *viper.Viper) {
 		"database.mysql.dsn",
 		"database.postgres.dsn",
 		"workspace.pipeline",
-		"workspace.deployment",
 		"pipeline_run.execution_timeout",
 		"orbit.root",
 		"jwt.secret_key",
@@ -365,6 +371,9 @@ func (c Config) Validate() error {
 	}
 	if strings.TrimSpace(c.Logging.File) == "" {
 		return errors.New("logging.file is required")
+	}
+	if strings.TrimSpace(c.Logging.DeploymentRoot) == "" {
+		return errors.New("logging.deployment_root is required")
 	}
 	if c.Logging.MaxSizeMB <= 0 {
 		return errors.New("logging.max_size_mb must be positive")
@@ -451,12 +460,16 @@ func normalizeWorkspaceConfig(cfg *WorkspaceConfig, orbitRoot string) error {
 	if err != nil {
 		return fmt.Errorf("workspace.pipeline: %w", err)
 	}
-	deployment, err := normalizeWorkspacePath(orbitRoot, cfg.Deployment)
-	if err != nil {
-		return fmt.Errorf("workspace.deployment: %w", err)
-	}
 	cfg.Pipeline = pipeline
-	cfg.Deployment = deployment
+	return nil
+}
+
+func normalizeLoggingConfig(cfg *LoggingConfig, orbitRoot string) error {
+	deploymentRoot, err := normalizeWorkspacePath(orbitRoot, cfg.DeploymentRoot)
+	if err != nil {
+		return fmt.Errorf("logging.deployment_root: %w", err)
+	}
+	cfg.DeploymentRoot = deploymentRoot
 	return nil
 }
 
@@ -479,25 +492,7 @@ func validateWorkspaceConfig(cfg WorkspaceConfig) error {
 	if cfg.Pipeline == "" {
 		return errors.New("workspace.pipeline is required")
 	}
-	if cfg.Deployment == "" {
-		return errors.New("workspace.deployment is required")
-	}
-	if workspacePathsOverlap(cfg.Pipeline, cfg.Deployment) {
-		return errors.New("workspace.pipeline and workspace.deployment must not overlap")
-	}
 	return nil
-}
-
-func workspacePathsOverlap(first string, second string) bool {
-	return pathContains(first, second) || pathContains(second, first)
-}
-
-func pathContains(parent string, child string) bool {
-	relative, err := filepath.Rel(parent, child)
-	if err != nil {
-		return false
-	}
-	return relative == "." || (relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative))
 }
 
 func validateLLMConfig(cfg LLMConfig) error {

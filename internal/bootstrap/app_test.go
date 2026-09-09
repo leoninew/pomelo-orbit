@@ -42,28 +42,25 @@ func TestMigrateAppliesSchemaAndSeedData(t *testing.T) {
 }
 
 func TestValidateContainerWorkspaceMountsIncludesConfigurationKey(t *testing.T) {
-	cfg := config.Config{Workspace: config.WorkspaceConfig{
-		Pipeline:   "/app/data/pipeline",
-		Deployment: "/app/data/deployment",
-	}}
+	cfg := config.Config{Workspace: config.WorkspaceConfig{Pipeline: "/app/data/pipeline"}, Logging: config.LoggingConfig{DeploymentRoot: "/app/data/deployment-logs"}}
 	var resolved []string
 	err := validateContainerWorkspaceMounts(context.Background(), cfg, true, func(_ context.Context, path string) (string, error) {
 		resolved = append(resolved, path)
-		if path == cfg.Workspace.Deployment {
+		if path == cfg.Logging.DeploymentRoot {
 			return "", errors.New("not mounted")
 		}
 		return "/srv/orbit/ci", nil
 	})
-	if err == nil || !strings.Contains(err.Error(), "workspace.deployment must be bind mounted when Orbit runs in a container") {
+	if err == nil || !strings.Contains(err.Error(), "logging.deployment_root must be bind mounted when Orbit runs in a container") {
 		t.Fatalf("unexpected validation error: %v", err)
 	}
-	if len(resolved) != 2 || resolved[0] != cfg.Workspace.Pipeline || resolved[1] != cfg.Workspace.Deployment {
+	if len(resolved) != 2 || resolved[0] != cfg.Workspace.Pipeline || resolved[1] != cfg.Logging.DeploymentRoot {
 		t.Fatalf("resolved paths = %#v", resolved)
 	}
 }
 
 func TestValidateContainerWorkspaceMountsSkipsNativeOrbit(t *testing.T) {
-	cfg := config.Config{Workspace: config.WorkspaceConfig{Pipeline: "relative-ci", Deployment: "relative-cd"}}
+	cfg := config.Config{Workspace: config.WorkspaceConfig{Pipeline: "relative-ci"}, Logging: config.LoggingConfig{DeploymentRoot: "relative-cd"}}
 	resolverCalls := 0
 	err := validateContainerWorkspaceMounts(context.Background(), cfg, false, func(context.Context, string) (string, error) {
 		resolverCalls++

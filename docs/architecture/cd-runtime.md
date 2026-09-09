@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-09-09 11:52:41
+最后修改时间: 2026-09-09 20:22:00
 
 Doc role: living architecture
 
@@ -14,11 +14,11 @@ Project
   -> Deployment snapshot
   -> Version/Component effective plan
   -> target runtime
-     local -> workspace.deployment + control-plane Docker daemon
-     ssh   -> remote workspace + docker compose over SSH
+     local -> Environment.workspace_root + control-plane Docker daemon
+     ssh   -> Environment.workspace_root + docker compose over SSH
 ```
 
-组合根按持久化的 `target_type` 注入 local 与 SSH runtime dispatcher；不会根据 hostname、空 SSH 字段或执行失败猜测另一种 runtime。local 使用控制面 Docker daemon 和 `workspace.deployment` materialize Service workspace。SSH 支持 Linux OpenSSH + Docker，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers，并维持私钥与 host-key pinning。`ssh` 到 loopback 也走 SSH runtime。
+组合根按持久化的 `target_type` 注入 local 与 SSH runtime dispatcher；不会根据 hostname、空 SSH 字段或执行失败猜测另一种 runtime。两类 runtime 都从 Environment 保存的 `workspace_root` materialize Service workspace；local 使用控制面 Docker daemon，SSH 通过 SSH 执行。SSH 支持 Linux OpenSSH + Docker，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers，并维持私钥与 host-key pinning。`ssh` 到 loopback 也走 SSH runtime。控制面部署执行日志使用独立的 `logging.deployment_root`，不属于 Environment workspace。
 
 Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志、证书同步和 Traefik REST 通过同一个 target runtime 执行。local Probe 只验证控制面 Docker/Compose；SSH Probe 验证认证、pinned host key 和目标 Docker prerequisites。
 

@@ -104,7 +104,7 @@ func (s Service) UpdateForUser(ctx context.Context, userID string, projectID str
 			return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment deployment SSH credential must be configured before it can be active")
 		}
 	}
-	if err := validateEnvironment(item); err != nil {
+	if err := validateEnvironment(item, s.localDisplay.Platform, false); err != nil {
 		return environmentdto.View{}, err
 	}
 	if environmentTargetChanged(previous, item) {
@@ -202,10 +202,10 @@ func validateBootstrap(project model.Project, item model.Environment) error {
 	if project.Id == "" || project.Code == "" {
 		return apperror.New(apperror.KindInternal, "Project environment bootstrap binding is invalid")
 	}
-	return validateEnvironment(item)
+	return validateEnvironment(item, "", true)
 }
 
-func validateEnvironment(item model.Environment) error {
+func validateEnvironment(item model.Environment, localPlatform string, allowEmptyLocalWorkspace bool) error {
 	if item.ProjectId == "" || item.Code == "" {
 		return apperror.New(apperror.KindValidation, "Project environment identity is invalid")
 	}
@@ -217,6 +217,12 @@ func validateEnvironment(item model.Environment) error {
 		if item.SSH != nil {
 			return apperror.New(apperror.KindValidation, "Local environment must not include an SSH target")
 		}
+		if item.WorkspaceRoot == "" && allowEmptyLocalWorkspace {
+			return nil
+		}
+		if !validLocalWorkspaceRoot(localPlatform, item.WorkspaceRoot) {
+			return apperror.New(apperror.KindValidation, "Environment local workspace_root is invalid for the control-plane platform")
+		}
 	case model.EnvironmentTargetTypeSSH:
 		if item.SSH == nil {
 			return apperror.New(apperror.KindValidation, "SSH environment target is required")
@@ -227,7 +233,7 @@ func validateEnvironment(item model.Environment) error {
 		if item.SSH.Host == "" || strings.ContainsAny(item.SSH.Host, " \t\r\n") || item.SSH.Port < 1 || item.SSH.Port > 65535 || item.SSH.Username == "" || strings.ContainsAny(item.SSH.Username, "\r\n") {
 			return apperror.New(apperror.KindValidation, "Environment SSH target is invalid")
 		}
-		if !validWorkspaceRoot(item.SSH.Platform, item.SSH.WorkspaceRoot) {
+		if !validWorkspaceRoot(item.SSH.Platform, item.WorkspaceRoot) {
 			return apperror.New(apperror.KindValidation, "Environment SSH workspace_root is invalid for its platform")
 		}
 		if item.SSH.CredentialId == "" || item.SSH.CredentialRevision < 1 {
@@ -250,10 +256,14 @@ func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) erro
 		targetType := strings.TrimSpace(*input.TargetType)
 		switch targetType {
 		case model.EnvironmentTargetTypeLocal:
+			if input.Local == nil || input.SSH != nil {
+				return apperror.New(apperror.KindValidation, "Local target is required when target_type is local")
+			}
 			item.TargetType = targetType
+			item.WorkspaceRoot = strings.TrimSpace(input.Local.WorkspaceRoot)
 			item.SSH = nil
 		case model.EnvironmentTargetTypeSSH:
-			if input.SSH == nil {
+			if input.SSH == nil || input.Local != nil {
 				return apperror.New(apperror.KindValidation, "SSH target is required when target_type is ssh")
 			}
 			ssh := sshTargetFromInput(input.SSH, nil)
@@ -262,17 +272,28 @@ func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) erro
 				ssh.CredentialRevision = item.SSH.CredentialRevision
 			}
 			item.TargetType = targetType
+			item.WorkspaceRoot = strings.TrimSpace(input.SSH.WorkspaceRoot)
 			item.SSH = ssh
 		default:
 			return apperror.New(apperror.KindValidation, "Environment target_type must be local or ssh")
 		}
-	} else if input.SSH != nil {
-		if !item.IsSSH() {
+	} else if item.IsLocal() {
+		if input.SSH != nil {
 			return apperror.New(apperror.KindValidation, "SSH target is only valid for an ssh environment")
 		}
-		credentialID, credentialRevision := item.SSH.CredentialId, item.SSH.CredentialRevision
-		item.SSH = sshTargetFromInput(input.SSH, nil)
-		item.SSH.CredentialId, item.SSH.CredentialRevision = credentialID, credentialRevision
+		if input.Local != nil {
+			item.WorkspaceRoot = strings.TrimSpace(input.Local.WorkspaceRoot)
+		}
+	} else if item.IsSSH() {
+		if input.Local != nil {
+			return apperror.New(apperror.KindValidation, "Local target is only valid for a local environment")
+		}
+		if input.SSH != nil {
+			credentialID, credentialRevision := item.SSH.CredentialId, item.SSH.CredentialRevision
+			item.SSH = sshTargetFromInput(input.SSH, nil)
+			item.SSH.CredentialId, item.SSH.CredentialRevision = credentialID, credentialRevision
+			item.WorkspaceRoot = strings.TrimSpace(input.SSH.WorkspaceRoot)
+		}
 	}
 	return nil
 }
@@ -283,13 +304,27 @@ func sshTargetFromInput(input *environmentdto.SSHTargetInput, credential *model.
 	}
 	target := &model.EnvironmentSSHTarget{
 		Platform: strings.TrimSpace(input.Platform), Host: strings.TrimSpace(input.Host), Port: input.Port,
-		Username: strings.TrimSpace(input.Username), WorkspaceRoot: strings.TrimSpace(input.WorkspaceRoot),
+		Username: strings.TrimSpace(input.Username),
 	}
 	if credential != nil {
 		target.CredentialId = credential.Id
 		target.CredentialRevision = credential.Revision
 	}
 	return target
+}
+
+func validLocalWorkspaceRoot(platform string, workspaceRoot string) bool {
+	if workspaceRoot == "" || strings.ContainsAny(workspaceRoot, "\r\n") {
+		return false
+	}
+	switch platform {
+	case model.EnvironmentPlatformLinux:
+		return path.IsAbs(workspaceRoot)
+	case model.EnvironmentPlatformWindows:
+		return windowsWorkspacePattern.MatchString(workspaceRoot)
+	default:
+		return false
+	}
 }
 
 func validWorkspaceRoot(platform string, workspaceRoot string) bool {
@@ -313,6 +348,9 @@ func environmentTargetChanged(before, after model.Environment) bool {
 	if before.TargetType != after.TargetType {
 		return true
 	}
+	if before.WorkspaceRoot != after.WorkspaceRoot {
+		return true
+	}
 	if before.SSH == nil || after.SSH == nil {
 		return before.SSH != after.SSH
 	}
@@ -320,7 +358,6 @@ func environmentTargetChanged(before, after model.Environment) bool {
 		before.SSH.Host != after.SSH.Host ||
 		before.SSH.Port != after.SSH.Port ||
 		before.SSH.Username != after.SSH.Username ||
-		before.SSH.WorkspaceRoot != after.SSH.WorkspaceRoot ||
 		before.SSH.CredentialId != after.SSH.CredentialId ||
 		before.SSH.CredentialRevision != after.SSH.CredentialRevision
 }

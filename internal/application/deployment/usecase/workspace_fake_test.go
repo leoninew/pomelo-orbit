@@ -101,9 +101,10 @@ func testSSHTarget(projectID string) environmentport.Target {
 	return environmentport.Target{Environment: model.Environment{
 		Id: "environment-1", ProjectId: projectID, State: model.EnvironmentStateActive,
 		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: revision,
+		WorkspaceRoot:     "/srv/orbit",
 		LastProbeRevision: &revision, LastProbeStatus: &status,
 		SSH: &model.EnvironmentSSHTarget{
-			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit", WorkspaceRoot: "/srv/orbit",
+			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit",
 			CredentialId: "credential-1", CredentialRevision: revision, HostKeyFingerprint: "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=",
 		},
 	}}

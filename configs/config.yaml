@@ -14,6 +14,7 @@ server:
 logging:
   level: info
   file: logs/pomelo-orbit.log
+  deployment_root: data/deployment-logs
   max_size_mb: 100
   max_backups: 7
   http:
@@ -33,7 +34,6 @@ database:
 
 workspace:
   pipeline: data/pipeline
-  deployment: data/deployment
 
 orbit:
   root: .

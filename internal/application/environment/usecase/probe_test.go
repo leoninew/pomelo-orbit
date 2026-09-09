@@ -70,7 +70,7 @@ func TestProbeForUserProbesLocalEnvironmentWithoutDeploymentCredential(t *testin
 	projectID := "project-1"
 	environment := model.Environment{
 		Id: "environment-local", ProjectId: projectID, State: model.EnvironmentStateActive,
-		TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: 1,
+		TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: "/srv/pomelo-orbit", TargetRevision: 1,
 	}
 	store := &probeEnvironmentStore{environment: environment}
 	prober := &localProbeEnvironmentProber{}
@@ -212,6 +212,37 @@ func TestUpdateForUserKeepsDeploymentCredentialForSSHTargetChange(t *testing.T) 
 	}
 	if store.environment.SSH == nil || store.environment.SSH.CredentialId != environment.SSH.CredentialId || store.environment.SSH.CredentialRevision != environment.SSH.CredentialRevision {
 		t.Fatalf("stored credential binding = %#v", store.environment.SSH)
+	}
+}
+
+func TestUpdateForUserChangesLocalWorkspaceAndInvalidatesProbeFreshness(t *testing.T) {
+	projectID := "project-1"
+	revision := int64(5)
+	probeStatus := model.EnvironmentProbeStatusSucceeded
+	environment := model.Environment{
+		Id: "environment-local", ProjectId: projectID, Code: "project", State: model.EnvironmentStateActive,
+		TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: "/srv/orbit/previous", TargetRevision: revision,
+		LastProbeRevision: &revision, LastProbeStatus: &probeStatus,
+	}
+	store := &updateEnvironmentStore{environment: environment}
+	targetType := model.EnvironmentTargetTypeLocal
+	updated, err := New(store, probeProjectReader{}, nil, nil, nil, nil).
+		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: model.EnvironmentPlatformLinux}).
+		UpdateForUser(context.Background(), "user-1", projectID, environmentdto.UpdateInput{
+			TargetType: &targetType,
+			Local:      &environmentdto.LocalTargetInput{WorkspaceRoot: "/srv/orbit/next"},
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !store.updated || store.environment.WorkspaceRoot != "/srv/orbit/next" || store.environment.TargetRevision != revision+1 {
+		t.Fatalf("stored environment = %#v", store.environment)
+	}
+	if store.environment.HasFreshSuccessfulProbe() {
+		t.Fatalf("workspace update retained fresh probe: %#v", store.environment)
+	}
+	if updated.Local == nil || updated.Local.WorkspaceRoot != "/srv/orbit/next" {
+		t.Fatalf("updated view = %#v", updated)
 	}
 }
 
@@ -435,12 +466,12 @@ func (p *localProbeEnvironmentProber) Probe(context.Context, model.Environment, 
 	return "", p.err
 }
 
-func (p *localProbeEnvironmentProber) ProbeLocal(context.Context) error {
+func (p *localProbeEnvironmentProber) ProbeLocal(context.Context, model.Environment) error {
 	p.localCalled = true
 	return p.err
 }
 
-func (p *probeEnvironmentProber) ProbeLocal(context.Context) error {
+func (p *probeEnvironmentProber) ProbeLocal(context.Context, model.Environment) error {
 	return p.err
 }
 
@@ -463,10 +494,11 @@ func testProbeEnvironment(projectID string) model.Environment {
 		ProjectId:      projectID,
 		State:          model.EnvironmentStateActive,
 		TargetType:     model.EnvironmentTargetTypeSSH,
+		WorkspaceRoot:  "/srv/pomelo-orbit",
 		TargetRevision: 7,
 		SSH: &model.EnvironmentSSHTarget{
 			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22,
-			Username: "deploy", WorkspaceRoot: "/srv/pomelo-orbit",
+			Username:     "deploy",
 			CredentialId: "credential-1", CredentialRevision: 3,
 			HostKeyFingerprint: "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=",
 		},

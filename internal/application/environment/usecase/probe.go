@@ -43,6 +43,9 @@ func (s Service) ProbeForUser(ctx context.Context, userID string, projectID stri
 	if !item.IsActive() {
 		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment must be active before it can be probed")
 	}
+	if strings.TrimSpace(item.WorkspaceRoot) == "" {
+		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment workspace_root must be configured before it can be probed")
+	}
 
 	if item.IsSSH() {
 		previous := item
@@ -110,6 +113,9 @@ func (s Service) InitializeForUser(ctx context.Context, userID string, projectID
 	}
 	if !item.IsSSH() {
 		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Only an SSH environment can be initialized")
+	}
+	if strings.TrimSpace(item.WorkspaceRoot) == "" {
+		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment workspace_root must be configured before it can be initialized")
 	}
 	if item.SSH.Platform != model.EnvironmentPlatformLinux {
 		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Automatic SSH initialization is available only for Linux environments")
@@ -186,7 +192,7 @@ func (s Service) probeOutcome(ctx context.Context, item model.Environment) (stri
 		if s.prober == nil {
 			return model.EnvironmentProbeStatusFailed, localProbeUnavailableDiagnostic, ""
 		}
-		if err := s.prober.ProbeLocal(ctx); err != nil {
+		if err := s.prober.ProbeLocal(ctx, item); err != nil {
 			return model.EnvironmentProbeStatusFailed, localProbeDiagnostic(err), ""
 		}
 		return model.EnvironmentProbeStatusSucceeded, "Local Docker and Docker Compose prerequisites are ready.", ""

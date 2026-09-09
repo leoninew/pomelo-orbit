@@ -89,11 +89,11 @@ func TestWindowsSSHEnvironmentHTTPIntegration(t *testing.T) {
 			SQLite: config.SQLiteConfig{Path: filepath.Join(t.TempDir(), "pomelo-orbit-e2e.db")},
 		},
 		Workspace: config.WorkspaceConfig{
-			Pipeline:   t.TempDir(),
-			Deployment: t.TempDir(),
+			Pipeline: t.TempDir(),
 		},
-		Worker: config.WorkerConfig{MaxAttempts: 1},
-		Jwt:    config.JwtConfig{SecretKey: windowsSSHE2ESecret},
+		Logging: config.LoggingConfig{DeploymentRoot: t.TempDir()},
+		Worker:  config.WorkerConfig{MaxAttempts: 1},
+		Jwt:     config.JwtConfig{SecretKey: windowsSSHE2ESecret},
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	if err := bootstrap.New(cfg, logger).Migrate(); err != nil {
@@ -377,10 +377,10 @@ func (r windowsSSHTargetResolver) ResolveProjectTarget(_ context.Context, projec
 func windowsSSHRuntimeTarget(environmentID string, projectID string, target windowsSSHTarget) environmentport.Target {
 	return environmentport.Target{
 		Environment: model.Environment{
-			Id: environmentID, ProjectId: projectID, TargetType: model.EnvironmentTargetTypeSSH,
+			Id: environmentID, ProjectId: projectID, TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: target.workspaceRoot,
 			SSH: &model.EnvironmentSSHTarget{
 				Platform: model.EnvironmentPlatformWindows, Host: target.host, Port: target.port,
-				Username: target.username, WorkspaceRoot: target.workspaceRoot,
+				Username:           target.username,
 				HostKeyFingerprint: target.hostKeyFingerprint,
 			},
 		},

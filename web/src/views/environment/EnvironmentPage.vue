@@ -297,6 +297,25 @@
           <label class="app-field-label block">{{ t('project.environment.state') }}</label>
           <SelectControl v-model="form.state" :options="stateOptions" :disabled="operating" />
         </div>
+        <template v-if="form.targetType === 'local'">
+          <div class="space-y-1.5 sm:col-span-2">
+            <label class="app-field-label block">
+              {{ t('project.environment.workspaceRoot') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <input
+              v-model="form.workspaceRoot"
+              class="app-input"
+              :class="errors.workspaceRoot ? 'app-input-error' : ''"
+              :placeholder="workspaceRootPlaceholder"
+              :disabled="operating"
+              @input="errors.workspaceRoot = ''"
+            />
+            <p v-if="errors.workspaceRoot" class="app-field-error text-xs">
+              {{ errors.workspaceRoot }}
+            </p>
+          </div>
+        </template>
         <template v-if="form.targetType === 'ssh'">
           <div class="space-y-1.5">
             <label class="app-field-label block">{{ t('project.environment.platform') }}</label>
@@ -473,11 +492,17 @@
     form.state = environment.value.state;
     form.targetType = environment.value.target_type;
     const ssh = environment.value.ssh;
-    form.platform = ssh?.platform || 'linux';
+    form.platform =
+      environment.value.target_type === 'local'
+        ? environment.value.local?.platform || 'linux'
+        : ssh?.platform || 'linux';
     form.host = ssh?.host || '';
     form.port = ssh?.port || 22;
     form.username = ssh?.username || '';
-    form.workspaceRoot = ssh?.workspace_root || defaultDeploymentWorkspaceRoot();
+    form.workspaceRoot =
+      environment.value.target_type === 'local'
+        ? environment.value.local?.workspace_root || ''
+        : ssh?.workspace_root || defaultDeploymentWorkspaceRoot();
     Object.keys(errors).forEach((key) => {
       errors[key as keyof typeof errors] = '';
     });
@@ -519,10 +544,13 @@
 
   function validate() {
     if (form.targetType === 'local') {
-      Object.keys(errors).forEach((key) => {
-        errors[key as keyof typeof errors] = '';
-      });
-      return true;
+      errors.host = '';
+      errors.port = '';
+      errors.username = '';
+      errors.workspaceRoot = isPlatformWorkspaceRoot(form.platform, form.workspaceRoot)
+        ? ''
+        : t('project.environment.validation.workspaceRoot');
+      return !errors.workspaceRoot;
     }
     errors.host =
       form.host.trim() && !/\s/.test(form.host) ? '' : t('project.environment.validation.host');
@@ -641,6 +669,8 @@
     const input: ProjectEnvironmentUpdateReq = {
       state: form.state,
       target_type: form.targetType,
+      local:
+        form.targetType === 'local' ? { workspace_root: form.workspaceRoot.trim() } : undefined,
       ssh:
         form.targetType === 'ssh'
           ? {

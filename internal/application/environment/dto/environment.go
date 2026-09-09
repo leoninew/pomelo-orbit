@@ -5,7 +5,12 @@ import "time"
 type UpdateInput struct {
 	State      *string
 	TargetType *string
+	Local      *LocalTargetInput
 	SSH        *SSHTargetInput
+}
+
+type LocalTargetInput struct {
+	WorkspaceRoot string
 }
 
 type SSHTargetInput struct {

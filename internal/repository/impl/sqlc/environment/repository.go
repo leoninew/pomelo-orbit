@@ -65,7 +65,7 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 		Host:                  environmentSSHHost(environment),
 		Port:                  environmentSSHPort(environment),
 		Username:              environmentSSHUsername(environment),
-		WorkspaceRoot:         environmentSSHWorkspaceRoot(environment),
+		WorkspaceRoot:         environmentWorkspaceRoot(environment),
 		SshCredentialID:       environmentSSHCredentialID(environment),
 		SshCredentialRevision: environmentSSHCredentialRevision(environment),
 		HostKeyFingerprint:    environmentSSHHostKeyFingerprint(environment),
@@ -91,7 +91,7 @@ func (r Repository) UpdateEnvironment(ctx context.Context, environment model.Env
 		Host:                  environmentSSHHost(environment),
 		Port:                  environmentSSHPort(environment),
 		Username:              environmentSSHUsername(environment),
-		WorkspaceRoot:         environmentSSHWorkspaceRoot(environment),
+		WorkspaceRoot:         environmentWorkspaceRoot(environment),
 		SshCredentialID:       environmentSSHCredentialID(environment),
 		SshCredentialRevision: environmentSSHCredentialRevision(environment),
 		HostKeyFingerprint:    environmentSSHHostKeyFingerprint(environment),
@@ -134,7 +134,7 @@ func (r Repository) BindGatewayApplication(ctx context.Context, environmentID st
 func environmentFrom(row environmentsqlc.Environment) model.Environment {
 	item := model.Environment{
 		Id: row.ID, ProjectId: row.ProjectID, Code: row.Code, State: row.State, TargetType: row.TargetType,
-		TargetRevision: row.TargetRevision, LastProbeRevision: int64Ptr(row.LastProbeRevision),
+		WorkspaceRoot: row.WorkspaceRoot.String, TargetRevision: row.TargetRevision, LastProbeRevision: int64Ptr(row.LastProbeRevision),
 		LastProbeStatus: dbmodel.StringPtr(row.LastProbeStatus), LastProbeAt: dbmodel.TimePtr(row.LastProbeAt),
 		LastProbeDiagnostic: dbmodel.StringPtr(row.LastProbeDiagnostic), GatewayApplicationId: dbmodel.StringPtr(row.GatewayApplicationID),
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
@@ -142,7 +142,7 @@ func environmentFrom(row environmentsqlc.Environment) model.Environment {
 	if item.TargetType == model.EnvironmentTargetTypeSSH {
 		item.SSH = &model.EnvironmentSSHTarget{
 			Platform: row.Platform.String, Host: row.Host.String, Port: int(row.Port.Int64),
-			Username: row.Username.String, WorkspaceRoot: row.WorkspaceRoot.String,
+			Username:     row.Username.String,
 			CredentialId: row.SshCredentialID.String, CredentialRevision: row.SshCredentialRevision.Int64,
 			HostKeyFingerprint: row.HostKeyFingerprint.String,
 		}
@@ -178,11 +178,11 @@ func environmentSSHUsername(value model.Environment) sql.NullString {
 	return sql.NullString{String: value.SSH.Username, Valid: true}
 }
 
-func environmentSSHWorkspaceRoot(value model.Environment) sql.NullString {
-	if value.SSH == nil {
+func environmentWorkspaceRoot(value model.Environment) sql.NullString {
+	if value.WorkspaceRoot == "" {
 		return sql.NullString{}
 	}
-	return sql.NullString{String: value.SSH.WorkspaceRoot, Valid: true}
+	return sql.NullString{String: value.WorkspaceRoot, Valid: true}
 }
 
 func environmentSSHCredentialID(value model.Environment) sql.NullString {

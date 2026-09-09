@@ -11,5 +11,5 @@ import (
 // Probe is SSH-only; ProbeLocal checks the control-plane Docker host.
 type Prober interface {
 	Probe(context.Context, model.Environment, credentialdto.DeploymentSSHPrivateKey) (string, error)
-	ProbeLocal(context.Context) error
+	ProbeLocal(context.Context, model.Environment) error
 }

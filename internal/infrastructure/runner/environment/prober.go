@@ -28,9 +28,9 @@ func (p Prober) Probe(ctx context.Context, environment model.Environment, privat
 	return p.SSH.Probe(ctx, environment, privateKey)
 }
 
-func (p Prober) ProbeLocal(ctx context.Context) error {
+func (p Prober) ProbeLocal(ctx context.Context, environment model.Environment) error {
 	if p.Local == nil {
 		return errors.New("local environment probe is not configured")
 	}
-	return p.Local.ProbeLocal(ctx)
+	return p.Local.ProbeLocal(ctx, environment)
 }

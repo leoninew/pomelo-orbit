@@ -65,8 +65,8 @@ func TestBootstrapUsesTOFUOrPinnedHostKeyCallback(t *testing.T) {
 
 func TestLinuxEnvironmentBootstrapCommandChecksPrerequisitesBeforeWriting(t *testing.T) {
 	command, err := linuxEnvironmentBootstrapCommand(model.EnvironmentSSHTarget{
-		Platform: model.EnvironmentPlatformLinux, Username: "deploy", WorkspaceRoot: "~/.pomelo-orbit",
-	}, "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample comment")
+		Platform: model.EnvironmentPlatformLinux, Username: "deploy",
+	}, "~/.pomelo-orbit", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample comment")
 	if err != nil {
 		t.Fatal(err)
 	}

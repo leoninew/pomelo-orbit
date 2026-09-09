@@ -27,6 +27,7 @@ type Environment struct {
 	Code                 string                `db:"code"`
 	State                string                `db:"state"`
 	TargetType           string                `db:"target_type"`
+	WorkspaceRoot        string                `db:"workspace_root"`
 	SSH                  *EnvironmentSSHTarget `db:"-"`
 	TargetRevision       int64                 `db:"target_revision"`
 	LastProbeRevision    *int64                `db:"last_probe_revision"`
@@ -44,7 +45,6 @@ type EnvironmentSSHTarget struct {
 	Host               string
 	Port               int
 	Username           string
-	WorkspaceRoot      string
 	CredentialId       string
 	CredentialRevision int64
 	HostKeyFingerprint string

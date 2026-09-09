@@ -41,7 +41,7 @@ func (r *Runtime) ServiceDir(target environmentport.Target, serviceCode string) 
 	if !safePathSegment(serviceCode) {
 		return "", errors.New("invalid service code")
 	}
-	root := normalizeRemotePath(target.Environment.SSH.WorkspaceRoot)
+	root := normalizeRemotePath(target.Environment.WorkspaceRoot)
 	if root == "" {
 		return "", errors.New("environment workspace root is required")
 	}
@@ -173,7 +173,7 @@ func (r *Runtime) QueryAtEnvironmentRoot(ctx context.Context, target environment
 	if !target.Environment.IsSSH() {
 		return "", errors.New("SSH deployment runtime received a non-SSH environment")
 	}
-	root := normalizeRemotePath(target.Environment.SSH.WorkspaceRoot)
+	root := normalizeRemotePath(target.Environment.WorkspaceRoot)
 	if root == "" {
 		return "", errors.New("environment workspace root is required")
 	}

@@ -15,14 +15,14 @@ func (s Service) toView(item model.Environment) environmentdto.View {
 	}
 	if item.IsLocal() {
 		view.Local = &environmentdto.LocalTargetView{
-			WorkspaceRoot: "",
+			WorkspaceRoot: item.WorkspaceRoot,
 			Platform:      s.localDisplay.Platform, Host: s.localDisplay.Host, Username: s.localDisplay.Username,
 		}
 	}
 	if item.SSH != nil {
 		view.SSH = &environmentdto.SSHTargetView{
 			Platform: item.SSH.Platform, Host: item.SSH.Host, Port: item.SSH.Port,
-			Username: item.SSH.Username, WorkspaceRoot: item.SSH.WorkspaceRoot,
+			Username: item.SSH.Username, WorkspaceRoot: item.WorkspaceRoot,
 			HostKeyFingerprint: item.SSH.HostKeyFingerprint,
 		}
 	}

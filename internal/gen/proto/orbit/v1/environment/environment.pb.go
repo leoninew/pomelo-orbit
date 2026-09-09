@@ -406,10 +406,11 @@ func (x *EnvironmentResp) GetLocal() *EnvironmentLocalTargetResp {
 }
 
 type ProjectEnvironmentUpdateReq struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	State         *string                  `protobuf:"bytes,1,opt,name=state,proto3,oneof" json:"state,omitempty"`
-	TargetType    *string                  `protobuf:"bytes,2,opt,name=target_type,json=targetType,proto3,oneof" json:"target_type,omitempty"`
-	Ssh           *EnvironmentSSHTargetReq `protobuf:"bytes,3,opt,name=ssh,proto3,oneof" json:"ssh,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	State         *string                    `protobuf:"bytes,1,opt,name=state,proto3,oneof" json:"state,omitempty"`
+	TargetType    *string                    `protobuf:"bytes,2,opt,name=target_type,json=targetType,proto3,oneof" json:"target_type,omitempty"`
+	Ssh           *EnvironmentSSHTargetReq   `protobuf:"bytes,3,opt,name=ssh,proto3,oneof" json:"ssh,omitempty"`
+	Local         *EnvironmentLocalTargetReq `protobuf:"bytes,4,opt,name=local,proto3,oneof" json:"local,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -465,6 +466,57 @@ func (x *ProjectEnvironmentUpdateReq) GetSsh() *EnvironmentSSHTargetReq {
 	return nil
 }
 
+func (x *ProjectEnvironmentUpdateReq) GetLocal() *EnvironmentLocalTargetReq {
+	if x != nil {
+		return x.Local
+	}
+	return nil
+}
+
+type EnvironmentLocalTargetReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceRoot string                 `protobuf:"bytes,1,opt,name=workspace_root,json=workspaceRoot,proto3" json:"workspace_root,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnvironmentLocalTargetReq) Reset() {
+	*x = EnvironmentLocalTargetReq{}
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnvironmentLocalTargetReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnvironmentLocalTargetReq) ProtoMessage() {}
+
+func (x *EnvironmentLocalTargetReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnvironmentLocalTargetReq.ProtoReflect.Descriptor instead.
+func (*EnvironmentLocalTargetReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *EnvironmentLocalTargetReq) GetWorkspaceRoot() string {
+	if x != nil {
+		return x.WorkspaceRoot
+	}
+	return ""
+}
+
 type ProjectEnvironmentInitializeReq struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	Username             string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
@@ -477,7 +529,7 @@ type ProjectEnvironmentInitializeReq struct {
 
 func (x *ProjectEnvironmentInitializeReq) Reset() {
 	*x = ProjectEnvironmentInitializeReq{}
-	mi := &file_orbit_v1_environment_environment_proto_msgTypes[5]
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -489,7 +541,7 @@ func (x *ProjectEnvironmentInitializeReq) String() string {
 func (*ProjectEnvironmentInitializeReq) ProtoMessage() {}
 
 func (x *ProjectEnvironmentInitializeReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_environment_environment_proto_msgTypes[5]
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -502,7 +554,7 @@ func (x *ProjectEnvironmentInitializeReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectEnvironmentInitializeReq.ProtoReflect.Descriptor instead.
 func (*ProjectEnvironmentInitializeReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{5}
+	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ProjectEnvironmentInitializeReq) GetUsername() string {
@@ -581,15 +633,19 @@ const file_orbit_v1_environment_environment_proto_rawDesc = "" +
 	"\x12_last_probe_statusB\x10\n" +
 	"\x0e_last_probe_atB\x18\n" +
 	"\x16_last_probe_diagnosticB\x19\n" +
-	"\x17_gateway_application_id\"\xc6\x01\n" +
+	"\x17_gateway_application_id\"\x9c\x02\n" +
 	"\x1bProjectEnvironmentUpdateReq\x12\x19\n" +
 	"\x05state\x18\x01 \x01(\tH\x00R\x05state\x88\x01\x01\x12$\n" +
 	"\vtarget_type\x18\x02 \x01(\tH\x01R\n" +
 	"targetType\x88\x01\x01\x12D\n" +
-	"\x03ssh\x18\x03 \x01(\v2-.orbit.v1.environment.EnvironmentSSHTargetReqH\x02R\x03ssh\x88\x01\x01B\b\n" +
+	"\x03ssh\x18\x03 \x01(\v2-.orbit.v1.environment.EnvironmentSSHTargetReqH\x02R\x03ssh\x88\x01\x01\x12J\n" +
+	"\x05local\x18\x04 \x01(\v2/.orbit.v1.environment.EnvironmentLocalTargetReqH\x03R\x05local\x88\x01\x01B\b\n" +
 	"\x06_stateB\x0e\n" +
 	"\f_target_typeB\x06\n" +
-	"\x04_ssh\"\xb0\x01\n" +
+	"\x04_sshB\b\n" +
+	"\x06_local\"B\n" +
+	"\x19EnvironmentLocalTargetReq\x12%\n" +
+	"\x0eworkspace_root\x18\x01 \x01(\tR\rworkspaceRoot\"\xb0\x01\n" +
 	"\x1fProjectEnvironmentInitializeReq\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x1f\n" +
@@ -610,24 +666,26 @@ func file_orbit_v1_environment_environment_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_environment_environment_proto_rawDescData
 }
 
-var file_orbit_v1_environment_environment_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_orbit_v1_environment_environment_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_orbit_v1_environment_environment_proto_goTypes = []any{
 	(*EnvironmentSSHTargetResp)(nil),        // 0: orbit.v1.environment.EnvironmentSSHTargetResp
 	(*EnvironmentSSHTargetReq)(nil),         // 1: orbit.v1.environment.EnvironmentSSHTargetReq
 	(*EnvironmentLocalTargetResp)(nil),      // 2: orbit.v1.environment.EnvironmentLocalTargetResp
 	(*EnvironmentResp)(nil),                 // 3: orbit.v1.environment.EnvironmentResp
 	(*ProjectEnvironmentUpdateReq)(nil),     // 4: orbit.v1.environment.ProjectEnvironmentUpdateReq
-	(*ProjectEnvironmentInitializeReq)(nil), // 5: orbit.v1.environment.ProjectEnvironmentInitializeReq
+	(*EnvironmentLocalTargetReq)(nil),       // 5: orbit.v1.environment.EnvironmentLocalTargetReq
+	(*ProjectEnvironmentInitializeReq)(nil), // 6: orbit.v1.environment.ProjectEnvironmentInitializeReq
 }
 var file_orbit_v1_environment_environment_proto_depIdxs = []int32{
 	0, // 0: orbit.v1.environment.EnvironmentResp.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetResp
 	2, // 1: orbit.v1.environment.EnvironmentResp.local:type_name -> orbit.v1.environment.EnvironmentLocalTargetResp
 	1, // 2: orbit.v1.environment.ProjectEnvironmentUpdateReq.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetReq
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	5, // 3: orbit.v1.environment.ProjectEnvironmentUpdateReq.local:type_name -> orbit.v1.environment.EnvironmentLocalTargetReq
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_environment_environment_proto_init() }
@@ -643,7 +701,7 @@ func file_orbit_v1_environment_environment_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_environment_environment_proto_rawDesc), len(file_orbit_v1_environment_environment_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

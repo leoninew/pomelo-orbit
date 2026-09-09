@@ -64,6 +64,7 @@ describe('domain navigation declarations', () => {
           expect.objectContaining({ key: 'applications', path: '/applications' }),
           expect.objectContaining({ key: 'services', path: '/services' }),
           expect.objectContaining({ key: 'deployments', path: '/deployments' }),
+          expect.objectContaining({ key: 'environment', path: '/environment' }),
         ],
       }),
       expect.objectContaining({

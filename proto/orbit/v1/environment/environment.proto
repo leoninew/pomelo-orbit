@@ -48,6 +48,11 @@ message ProjectEnvironmentUpdateReq {
   optional string state = 1;
   optional string target_type = 2;
   optional EnvironmentSSHTargetReq ssh = 3;
+  optional EnvironmentLocalTargetReq local = 4;
+}
+
+message EnvironmentLocalTargetReq {
+  string workspace_root = 1;
 }
 
 message ProjectEnvironmentInitializeReq {

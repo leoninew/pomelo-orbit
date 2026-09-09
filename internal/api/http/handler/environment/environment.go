@@ -82,6 +82,9 @@ func projectEnvironmentUpdateInput(req *environmentv1.ProjectEnvironmentUpdateRe
 		State:      req.State,
 		TargetType: req.TargetType,
 	}
+	if req.Local != nil {
+		input.Local = &environmentdto.LocalTargetInput{WorkspaceRoot: req.Local.WorkspaceRoot}
+	}
 	if req.Ssh != nil {
 		input.SSH = &environmentdto.SSHTargetInput{
 			Platform: req.Ssh.Platform, Host: req.Ssh.Host, Port: int(req.Ssh.Port),

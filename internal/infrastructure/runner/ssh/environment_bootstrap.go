@@ -52,7 +52,7 @@ func (b EnvironmentBootstrapper) Bootstrap(ctx context.Context, environment mode
 	if b.dialContext == nil {
 		return errors.New("SSH bootstrap dialer is not configured")
 	}
-	command, err := linuxEnvironmentBootstrapCommand(*environment.SSH, publicKey)
+	command, err := linuxEnvironmentBootstrapCommand(*environment.SSH, environment.WorkspaceRoot, publicKey)
 	if err != nil {
 		return err
 	}
@@ -165,9 +165,9 @@ func bootstrapFailureDiagnostic(stderr string) string {
 	}
 }
 
-func linuxEnvironmentBootstrapCommand(target model.EnvironmentSSHTarget, publicKey string) (string, error) {
+func linuxEnvironmentBootstrapCommand(target model.EnvironmentSSHTarget, workspaceRoot string, publicKey string) (string, error) {
 	username := strings.TrimSpace(target.Username)
-	workspaceRoot := strings.TrimSpace(target.WorkspaceRoot)
+	workspaceRoot = strings.TrimSpace(workspaceRoot)
 	publicKey = strings.TrimSpace(publicKey)
 	if username == "" || workspaceRoot == "" || publicKey == "" {
 		return "", errors.New("linux SSH bootstrap target is invalid")

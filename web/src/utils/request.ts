@@ -50,9 +50,16 @@ export function toApiError(status: number | undefined, value: unknown): ApiError
   );
 }
 
+export const DEFAULT_REQUEST_TIMEOUT = 30_000;
+export const REMOTE_OPERATION_TIMEOUT = 120_000;
+
+export function remoteRequestConfig(config: AxiosRequestConfig = {}): AxiosRequestConfig {
+  return { ...config, timeout: REMOTE_OPERATION_TIMEOUT };
+}
+
 const request = axios.create({
   baseURL: runtimeConfig.publicUrl,
-  timeout: 30000,
+  timeout: DEFAULT_REQUEST_TIMEOUT,
 });
 
 // 请求拦截器 - 添加 token

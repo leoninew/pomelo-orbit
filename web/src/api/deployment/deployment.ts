@@ -5,7 +5,7 @@ import type {
   DeploymentPaginatedResp,
   DeploymentResp,
 } from '@/gen/proto/orbit/v1/deployment/deployment';
-import request, { type AxiosRequestConfig } from '@/utils/request';
+import request, { remoteRequestConfig, type AxiosRequestConfig } from '@/utils/request';
 
 // 部署记录相关 API
 export const deploymentApi = {
@@ -56,6 +56,9 @@ export const deploymentApi = {
     params?: { tail?: number },
     config?: AxiosRequestConfig
   ): Promise<DeploymentContainerLogsResp> {
-    return request.get(`/api/deployment/${id}/container-logs`, { ...config, params });
+    return request.get(
+      `/api/deployment/${id}/container-logs`,
+      remoteRequestConfig({ ...config, params })
+    );
   },
 };

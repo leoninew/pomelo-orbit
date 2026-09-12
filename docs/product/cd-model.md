@@ -27,13 +27,15 @@ Environment 的 target type 是显式联合：
 - `local`：在 Orbit 控制面宿主机的 Docker daemon 上执行，工作目录为该 Environment 保存的 `workspace_root`；`~` / `~/...` 在使用时展开为控制面进程用户主目录。它不保存 SSH host、用户、私钥、host key 或 SSH 初始化认证。
 - `ssh`：Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它保存平台、SSH target、受管私钥 binding 与 host-key fingerprint，工作目录同样由该 Environment 保存的 `workspace_root` 提供；`~` / `~/...` 在使用时展开为远端登录用户主目录。
 
+一个 Docker target 只能绑定一个 Project。`local` target 全局独占；`ssh` target 按精确的 host + port 独占。Gateway 使用固定端口和共享 `traefik` 网络，保存 Environment 时若发现其他 Project 已绑定同一 target 会直接拒绝。
+
 `ssh` 到 `127.0.0.1` 仍是 SSH target，必须使用密钥认证和 host-key pinning，不会转换为 `local`。不支持 macOS、其他 Windows Docker 形态或任意 SSH command 执行。部署私钥只属于 SSH Environment，不能通过凭据 API、MCP 或日志读取。SSH 连接不支持密码认证、交互式 shell、PTY 或端口转发。
 
 镜像 registry、登录方式和多 registry 配置是宿主机责任，不属于 Orbit Project 或 Environment 配置。
 
 ## Gateway
 
-Gateway 是一个绑定到 Project Environment 的普通 Application。每个 Environment 仅允许一个 Gateway 和一个停止态 `default` Service。Application name/code 是产品身份 `Traefik` / `traefik`，不把 Project code 拼进名称；default Service code 为 `traefik-default`。工作目录和 Compose project 都使用 Service code。创建时生成 `base`、`http`、`dns`、`http-dns` 四个普通 Version；它们与普通 Version/Component 一样可以查看、编辑、fork 和部署。
+Gateway 是一个绑定到 Project Environment 的普通 Application。每个 Environment 仅允许一个 Gateway 和一个停止态 `default` Service。Application name/code 是 Project 内唯一的产品身份 `Traefik` / `traefik`，不把 Project code 拼进名称；default Service code 为 Project 内唯一的 `traefik-default`。工作目录和 Compose project 都使用 Service code。创建时生成 `base`、`http`、`dns`、`http-dns` 四个普通 Version；它们与普通 Version/Component 一样可以查看、编辑、fork 和部署。
 
 GatewayConfig 保存控制面 REST URL/readiness、base domain、Component label 默认策略、ACME profile、email 和 DNS token。它不保存 Component 名称、镜像、mount、endpoint、TCP listener 或 resolver 布局。profile 选择对应的绑定 Version；空 profile 使用 `base` Version。
 

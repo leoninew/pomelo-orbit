@@ -142,6 +142,37 @@ func TestProbeForUserRecordsHostKeyFingerprintOnFirstSuccess(t *testing.T) {
 	}
 }
 
+func TestUpdateForUserWorkspaceChangeKeepsSSHIdentity(t *testing.T) {
+	projectID := "project-1"
+	environment := testProbeEnvironment(projectID)
+	environment.Code = "demo"
+	store := &updateEnvironmentStore{environment: environment}
+	credential := testProbeCredential(projectID, environment)
+	keyManager := &updateDeploymentKeyManager{credential: credential}
+	targetType := model.EnvironmentTargetTypeSSH
+	service := New(store, probeProjectReader{}, keyManager, probeCredentialReader{credential: credential}, nil, nil)
+
+	updated, err := service.UpdateForUser(context.Background(), "user-1", projectID, environmentdto.UpdateInput{
+		TargetType: &targetType,
+		SSH: &environmentdto.SSHTargetInput{
+			Platform: model.EnvironmentPlatformLinux, Host: environment.SSH.Host, Port: environment.SSH.Port,
+			Username: environment.SSH.Username, WorkspaceRoot: "/srv/pomelo-orbit/next",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !store.updated || store.environment.TargetRevision != environment.TargetRevision+1 || store.environment.WorkspaceRoot != "/srv/pomelo-orbit/next" {
+		t.Fatalf("stored environment = %#v", store.environment)
+	}
+	if store.environment.SSH == nil || store.environment.SSH.HostKeyFingerprint != environment.SSH.HostKeyFingerprint || store.environment.SSH.CredentialId != environment.SSH.CredentialId {
+		t.Fatalf("SSH identity was not preserved: %#v", store.environment.SSH)
+	}
+	if updated.SSH == nil || updated.SSH.HostKeyFingerprint != environment.SSH.HostKeyFingerprint {
+		t.Fatalf("updated view = %#v", updated)
+	}
+}
+
 func TestProbeForUserRejectsDisabledEnvironmentWithoutSSH(t *testing.T) {
 	environment := testProbeEnvironment("project-1")
 	environment.State = model.EnvironmentStateDisabled
@@ -212,6 +243,9 @@ func TestUpdateForUserKeepsDeploymentCredentialForSSHTargetChange(t *testing.T) 
 	}
 	if store.environment.SSH == nil || store.environment.SSH.CredentialId != environment.SSH.CredentialId || store.environment.SSH.CredentialRevision != environment.SSH.CredentialRevision {
 		t.Fatalf("stored credential binding = %#v", store.environment.SSH)
+	}
+	if store.environment.SSH.HostKeyFingerprint != "" {
+		t.Fatalf("SSH target change retained host key fingerprint: %#v", store.environment.SSH)
 	}
 }
 

@@ -36,7 +36,7 @@ Project 继续承担资源归属、成员授权、HTTP/Proto/MCP scope 和 Web a
 2. Linux SSH Environment：成员选择 `ssh` 并填写平台、host、port、user、workspace root；若能以自己的密码或私钥连接目标，成员在页面输入一次性认证，Orbit 先确认现成 Docker/Compose、无交互 `sudo` 和 OpenSSH 公钥能力，再写入受管部署公钥与工作目录，随后 Probe 并 pin host key。所有 CD 操作仍在该目标端执行。
 3. 回环 SSH：成员配置 `ssh` / `127.0.0.1`，系统按 SSH 连接、认证和 host-key contract 执行，不转为 local。
 4. 创建 Project：同一事务创建 Project 与 active local Environment，不创建部署私钥；Web 将新 Project 设为当前 Project 并转到 Environment 页面。空库 seed 的 default Project 获得 local Environment 与其绑定 Gateway。
-5. 目标变更：将 local 改为 ssh 或反向修改会递增 target revision、清除旧 Probe；已排队的 deployment 因快照不一致失败，不能落到另一台机器。
+5. 目标变更：将 local 改为 ssh 或反向修改会递增 target revision、清除旧 Probe；SSH 仅修改 `workspace_root` 时也需要对新目录重新 Probe，但保留既有部署 credential 与 pinned host key，不要求再次填写一次性 bootstrap 私钥；已排队的 deployment 因快照不一致失败，不能落到另一台机器。
 
 ## Acceptance
 

@@ -4,7 +4,7 @@ import type {
   ProjectInitializationGatewayReq,
   ProjectInitializationStatusResp,
 } from '@/gen/proto/orbit/v1/project_initialization/project_initialization';
-import request from '@/utils/request';
+import request, { remoteRequestConfig } from '@/utils/request';
 
 export const projectInitializationApi = {
   getStatus(projectId: string): Promise<ProjectInitializationStatusResp> {
@@ -15,7 +15,11 @@ export const projectInitializationApi = {
     projectId: string,
     data: ProjectInitializationEnvironmentReq
   ): Promise<{ ok: boolean }> {
-    return request.post(`/api/project/${projectId}/initialization/environment/test`, data);
+    return request.post(
+      `/api/project/${projectId}/initialization/environment/test`,
+      data,
+      remoteRequestConfig()
+    );
   },
 
   saveEnvironment(
@@ -33,11 +37,19 @@ export const projectInitializationApi = {
     projectId: string,
     data: ProjectInitializationBootstrapReq
   ): Promise<ProjectInitializationStatusResp> {
-    return request.post(`/api/project/${projectId}/initialization/bootstrap`, data);
+    return request.post(
+      `/api/project/${projectId}/initialization/bootstrap`,
+      data,
+      remoteRequestConfig()
+    );
   },
 
   probeEnvironment(projectId: string): Promise<ProjectInitializationStatusResp> {
-    return request.post(`/api/project/${projectId}/initialization/probe`);
+    return request.post(
+      `/api/project/${projectId}/initialization/probe`,
+      undefined,
+      remoteRequestConfig()
+    );
   },
 
   createGateway(

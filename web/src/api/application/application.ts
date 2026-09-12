@@ -29,7 +29,7 @@ import type {
   VersionUpdateReq,
 } from '@/gen/proto/orbit/v1/application/version';
 import type { ServiceListResp } from '@/gen/proto/orbit/v1/service/service';
-import request, { type AxiosRequestConfig } from '@/utils/request';
+import request, { remoteRequestConfig, type AxiosRequestConfig } from '@/utils/request';
 
 export const applicationApi = {
   list(params?: {
@@ -67,7 +67,7 @@ export const applicationApi = {
   },
 
   getStatus(id: string, params?: { service_id?: string }): Promise<ApplicationStatusResp> {
-    return request.get(`/api/application/${id}/status`, { params });
+    return request.get(`/api/application/${id}/status`, remoteRequestConfig({ params }));
   },
 
   getLogs(
@@ -79,7 +79,7 @@ export const applicationApi = {
     },
     config?: AxiosRequestConfig
   ): Promise<ApplicationLogsResp> {
-    return request.get(`/api/application/${id}/logs`, { ...config, params });
+    return request.get(`/api/application/${id}/logs`, remoteRequestConfig({ ...config, params }));
   },
 
   listServices(id: string): Promise<ServiceListResp> {

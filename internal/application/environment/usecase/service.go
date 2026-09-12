@@ -96,6 +96,16 @@ func (s Service) SaveInitialization(ctx context.Context, userID string, projectI
 	if reader, ok := s.environments.(environmentTargetReader); ok {
 		host, port := "", 0
 		if item.SSH != nil {
+			host, port = strings.TrimSpace(item.SSH.Host), item.SSH.Port
+		}
+		if _, err := reader.EnvironmentByTarget(ctx, project.Id, item.TargetType, host, port); err == nil {
+			return environmentdto.View{}, apperror.New(apperror.KindConflict, "The Docker target is already bound to another project")
+		} else if !errors.Is(err, repository.ErrNotFound) {
+			return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to check environment target", err)
+		}
+	}
+	if !creating && environmentTargetChanged(previous, item) {
+		if item.SSH != nil && environmentIdentityChanged(previous, item) {
 			item.SSH.HostKeyFingerprint = ""
 		}
 		item.TargetRevision++
@@ -214,7 +224,7 @@ func (s Service) UpdateForUser(ctx context.Context, userID string, projectID str
 		return environmentdto.View{}, err
 	}
 	if environmentTargetChanged(previous, item) {
-		if item.SSH != nil {
+		if item.SSH != nil && environmentIdentityChanged(previous, item) {
 			item.SSH.HostKeyFingerprint = ""
 		}
 		item.TargetRevision++
@@ -239,7 +249,9 @@ func (s Service) hydrateEnvironment(ctx context.Context, item model.Environment)
 		return model.Environment{}, err
 	}
 	if environmentTargetChanged(previous, item) {
-		item.SSH.HostKeyFingerprint = ""
+		if environmentIdentityChanged(previous, item) {
+			item.SSH.HostKeyFingerprint = ""
+		}
 		item.TargetRevision++
 		if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
 			return model.Environment{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
@@ -369,6 +381,7 @@ func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) erro
 			if item.IsSSH() {
 				ssh.CredentialId = item.SSH.CredentialId
 				ssh.CredentialRevision = item.SSH.CredentialRevision
+				ssh.HostKeyFingerprint = item.SSH.HostKeyFingerprint
 			}
 			item.TargetType = targetType
 			item.WorkspaceRoot = strings.TrimSpace(input.SSH.WorkspaceRoot)
@@ -389,8 +402,10 @@ func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) erro
 		}
 		if input.SSH != nil {
 			credentialID, credentialRevision := item.SSH.CredentialId, item.SSH.CredentialRevision
+			hostKeyFingerprint := item.SSH.HostKeyFingerprint
 			item.SSH = sshTargetFromInput(input.SSH, nil)
 			item.SSH.CredentialId, item.SSH.CredentialRevision = credentialID, credentialRevision
+			item.SSH.HostKeyFingerprint = hostKeyFingerprint
 			item.WorkspaceRoot = strings.TrimSpace(input.SSH.WorkspaceRoot)
 		}
 	}
@@ -434,6 +449,25 @@ func environmentTargetChanged(before, after model.Environment) bool {
 		return true
 	}
 	if before.WorkspaceRoot != after.WorkspaceRoot {
+		return true
+	}
+	if before.SSH == nil || after.SSH == nil {
+		return before.SSH != after.SSH
+	}
+	return before.SSH.Platform != after.SSH.Platform ||
+		before.SSH.Host != after.SSH.Host ||
+		before.SSH.Port != after.SSH.Port ||
+		before.SSH.Username != after.SSH.Username ||
+		before.SSH.CredentialId != after.SSH.CredentialId ||
+		before.SSH.CredentialRevision != after.SSH.CredentialRevision
+}
+
+// environmentIdentityChanged distinguishes SSH connection identity from the
+// workspace path. A workspace edit invalidates the probe revision, but the
+// pinned host key remains valid and the existing deployment credential can be
+// reused.
+func environmentIdentityChanged(before, after model.Environment) bool {
+	if before.TargetType != after.TargetType {
 		return true
 	}
 	if before.SSH == nil || after.SSH == nil {

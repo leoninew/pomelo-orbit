@@ -1,17 +1,19 @@
-import type { GatewayCreateReq, GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
+import type { GatewayResp, GatewayUpdateReq } from '@/gen/proto/orbit/v1/gateway/gateway';
+import type {
+  ProjectInitializationDefaults,
+  ProjectInitializationGatewayReq,
+} from '@/gen/proto/orbit/v1/project_initialization/project_initialization';
 
-export type GatewayConfigFormMode = 'create' | 'edit';
+export type GatewayConfigFormMode = 'initialize' | 'edit';
 export type GatewayAcmeProfile = '' | 'http' | 'dns' | 'http-dns';
 
 export interface GatewayConfigForm {
   name: string;
   code: string;
-  traefik_component_name: string;
   rest_api_url: string;
   rest_ready_timeout_seconds: string;
   base_domain: string;
   initial_component_image: string;
-  initial_component_pull_policy: string;
   default_entrypoint: string;
   tls_mode: string;
   acme_profile: GatewayAcmeProfile;
@@ -23,14 +25,12 @@ export type GatewayConfigFormErrors = Record<string, string>;
 
 export function emptyGatewayConfigForm(): GatewayConfigForm {
   return {
-    name: 'Traefik',
-    code: 'traefik',
-    traefik_component_name: 'traefik',
-    rest_api_url: 'http://localhost:8080',
+    name: '',
+    code: '',
+    rest_api_url: '',
     rest_ready_timeout_seconds: '20',
-    base_domain: 'lvh.me',
-    initial_component_image: 'traefik:3.6',
-    initial_component_pull_policy: 'missing',
+    base_domain: '',
+    initial_component_image: '',
     default_entrypoint: 'web',
     tls_mode: 'none',
     acme_profile: '',
@@ -43,17 +43,32 @@ export function gatewayConfigFormFromResponse(value: GatewayResp): GatewayConfig
   return {
     name: value.name,
     code: value.code,
-    traefik_component_name: value.traefik_component_name,
     rest_api_url: value.rest_api_url,
     rest_ready_timeout_seconds: String(value.rest_ready_timeout_seconds),
     base_domain: value.base_domain,
     initial_component_image: '',
-    initial_component_pull_policy: 'missing',
     default_entrypoint: value.default_entrypoint,
     tls_mode: value.tls_mode,
     acme_profile: isGatewayAcmeProfile(value.acme_profile) ? value.acme_profile : '',
     acme_email: value.acme_email,
     dns_api_token: value.dns_api_token,
+  };
+}
+
+export function gatewayConfigFormFromDefaults(
+  defaults: ProjectInitializationDefaults
+): GatewayConfigForm {
+  return {
+    ...emptyGatewayConfigForm(),
+    rest_api_url: defaults.rest_api_url,
+    rest_ready_timeout_seconds: String(defaults.rest_ready_timeout_seconds),
+    base_domain: defaults.base_domain,
+    initial_component_image: defaults.image,
+    default_entrypoint: defaults.default_entrypoint,
+    tls_mode: defaults.tls_mode,
+    acme_profile: isGatewayAcmeProfile(defaults.acme_profile) ? defaults.acme_profile : '',
+    acme_email: defaults.acme_email,
+    dns_api_token: defaults.dns_api_token,
   };
 }
 
@@ -66,6 +81,10 @@ function profileUsesHTTP(profile: GatewayAcmeProfile): boolean {
 }
 
 function profileUsesDNS(profile: GatewayAcmeProfile): boolean {
+  return profile === 'dns' || profile === 'http-dns';
+}
+
+export function usesDNSProfile(profile: string): boolean {
   return profile === 'dns' || profile === 'http-dns';
 }
 
@@ -98,16 +117,9 @@ export function validateGatewayConfigForm(
   mode: GatewayConfigFormMode
 ): GatewayConfigFormErrors {
   const errors: GatewayConfigFormErrors = {};
-  if (!form.name.trim()) errors.name = 'nameRequired';
-  if (mode === 'create') {
-    if (!/^[a-z][a-z0-9-]*$/.test(form.code.trim())) errors.code = 'codeInvalid';
-    if (!form.initial_component_image.trim()) errors.initial_component_image = 'imageRequired';
-    if (!['always', 'missing', 'never'].includes(form.initial_component_pull_policy)) {
-      errors.initial_component_pull_policy = 'pullPolicyInvalid';
-    }
-  }
-  if (!/^[a-z][a-z0-9-]*$/.test(form.traefik_component_name.trim())) {
-    errors.traefik_component_name = 'componentNameInvalid';
+  if (mode === 'edit' && !form.name.trim()) errors.name = 'nameRequired';
+  if (mode === 'initialize' && !form.initial_component_image.trim()) {
+    errors.initial_component_image = 'imageRequired';
   }
   if (!isValidURL(form.rest_api_url.trim())) errors.rest_api_url = 'restApiUrlInvalid';
   if (!isValidBaseDomain(form.base_domain.trim())) errors.base_domain = 'baseDomainInvalid';
@@ -133,8 +145,6 @@ export function validateGatewayConfigForm(
 
 function configRequest(form: GatewayConfigForm) {
   return {
-    name: form.name.trim(),
-    traefik_component_name: form.traefik_component_name.trim(),
     rest_api_url: form.rest_api_url.trim(),
     rest_ready_timeout_seconds: Number(form.rest_ready_timeout_seconds),
     base_domain: form.base_domain.trim(),
@@ -146,15 +156,18 @@ function configRequest(form: GatewayConfigForm) {
   };
 }
 
-export function gatewayCreateRequestFromForm(
-  form: GatewayConfigForm,
-  projectID: string
-): GatewayCreateReq {
+export function gatewayUpdateRequestFromForm(form: GatewayConfigForm): GatewayUpdateReq {
   return {
-    project_id: projectID,
-    code: form.code.trim(),
-    initial_component_image: form.initial_component_image.trim(),
-    initial_component_pull_policy: form.initial_component_pull_policy,
+    name: form.name.trim(),
+    ...configRequest(form),
+  };
+}
+
+export function gatewayInitializeRequestFromForm(
+  form: GatewayConfigForm
+): ProjectInitializationGatewayReq {
+  return {
+    image: form.initial_component_image.trim(),
     ...configRequest(form),
   };
 }

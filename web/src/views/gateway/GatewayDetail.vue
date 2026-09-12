@@ -84,10 +84,6 @@
             <dd class="text-foreground">{{ gateway.base_domain }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt>{{ t('gateway.fields.traefikComponentName') }}</dt>
-            <dd class="text-foreground">{{ gateway.traefik_component_name }}</dd>
-          </div>
-          <div class="flex gap-2">
             <dt>{{ t('gateway.fields.restReadyTimeout') }}</dt>
             <dd class="text-foreground">{{ gateway.rest_ready_timeout_seconds }}s</dd>
           </div>
@@ -195,24 +191,6 @@
             class="app-input"
             readonly
           />
-        </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label block" for="gateway-edit-traefik-component-name">
-            {{ t('gateway.fields.traefikComponentName') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            id="gateway-edit-traefik-component-name"
-            v-model="controlPlaneForm.traefik_component_name"
-            type="text"
-            class="app-input"
-            :class="controlPlaneErrors.traefik_component_name ? 'app-input-error' : ''"
-            :aria-invalid="controlPlaneErrors.traefik_component_name ? 'true' : undefined"
-            @input="delete controlPlaneErrors.traefik_component_name"
-          />
-          <p v-if="controlPlaneErrors.traefik_component_name" class="app-field-error" role="alert">
-            {{ validationMessage(controlPlaneErrors.traefik_component_name) }}
-          </p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block" for="gateway-edit-rest-api-url">
@@ -546,6 +524,7 @@
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
   import { formatTime } from '@/utils/time';
+  import { MANAGED_GATEWAY_COMPONENT_NAME } from '@/constants/gateway';
   import {
     gatewayConfigFormFromResponse,
     type GatewayAcmeProfile,
@@ -565,17 +544,9 @@
   const services = ref<ServiceResp[]>([]);
   const isControlPlaneEditDialogOpen = ref(false);
   const controlPlaneForm = reactive<
-    Pick<
-      GatewayConfigForm,
-      | 'name'
-      | 'traefik_component_name'
-      | 'rest_api_url'
-      | 'rest_ready_timeout_seconds'
-      | 'base_domain'
-    >
+    Pick<GatewayConfigForm, 'name' | 'rest_api_url' | 'rest_ready_timeout_seconds' | 'base_domain'>
   >({
     name: '',
-    traefik_component_name: '',
     rest_api_url: '',
     rest_ready_timeout_seconds: '',
     base_domain: '',
@@ -616,12 +587,7 @@
   });
   const gatewayRuntimeLogTarget = computed(() => {
     const current = gateway.value;
-    if (
-      !current ||
-      !current.default_service_id ||
-      !current.default_service_instance_key ||
-      !current.traefik_component_name
-    ) {
+    if (!current || !current.default_service_id || !current.default_service_instance_key) {
       return undefined;
     }
     return runtimeTargetForService(
@@ -710,7 +676,6 @@
     const form = gatewayConfigFormFromResponse(current);
     Object.assign(controlPlaneForm, {
       name: form.name,
-      traefik_component_name: form.traefik_component_name,
       rest_api_url: form.rest_api_url,
       rest_ready_timeout_seconds: form.rest_ready_timeout_seconds,
       base_domain: form.base_domain,
@@ -729,7 +694,6 @@
     const errors = validateGatewayConfigForm(form, 'edit');
     keepSectionErrors(controlPlaneErrors, errors, [
       'name',
-      'traefik_component_name',
       'rest_api_url',
       'rest_ready_timeout_seconds',
       'base_domain',
@@ -739,7 +703,6 @@
       await executeOp(async () => {
         gateway.value = await gatewayApi.update(current.id, {
           name: controlPlaneForm.name.trim(),
-          traefik_component_name: controlPlaneForm.traefik_component_name.trim(),
           rest_api_url: controlPlaneForm.rest_api_url.trim(),
           rest_ready_timeout_seconds: Number(controlPlaneForm.rest_ready_timeout_seconds),
           base_domain: controlPlaneForm.base_domain.trim(),
@@ -943,11 +906,11 @@
     return {
       applicationId: current.id,
       serviceId,
-      component: current.traefik_component_name,
+      component: MANAGED_GATEWAY_COMPONENT_NAME,
       title: t('service.logs.titleWithComponent', {
         app: current.name,
         instance: instanceKey,
-        component: current.traefik_component_name,
+        component: MANAGED_GATEWAY_COMPONENT_NAME,
       }),
     };
   }

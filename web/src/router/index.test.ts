@@ -12,6 +12,7 @@ describe('domain routes', () => {
     ['/gateway/42', 'GatewayDetail'],
     ['/routes', 'Route'],
     ['/environment', 'Environment'],
+    ['/project/abc/initialization', 'ProjectInitialization'],
   ])('resolves %s to %s', (path, name) => {
     expect(router.resolve(path).name).toBe(name);
   });

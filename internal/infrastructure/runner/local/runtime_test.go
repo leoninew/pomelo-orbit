@@ -62,7 +62,7 @@ func TestRuntimeExpandsHomeWorkspaceRootAtUseTime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(home, ".pomelo-orbit", "api-default")
+	want := filepath.Join(home, ".pomelo-orbit", "deployment", "api-default")
 	if serviceDir != want {
 		t.Fatalf("service dir = %q, want %q", serviceDir, want)
 	}

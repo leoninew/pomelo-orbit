@@ -40,6 +40,13 @@ type Workspace interface {
 	DockerStageMounts(ctx context.Context, projectCode string, runId string) ([]VolumeMount, error)
 }
 
+// ProjectWorkspaceResolver selects the control-plane pipeline workspace for a
+// project. Production wiring resolves this from the project's Environment;
+// tests and embedded callers may continue to provide a fixed Workspace.
+type ProjectWorkspaceResolver interface {
+	WorkspaceForProject(ctx context.Context, projectID string) (Workspace, error)
+}
+
 type RunOptions struct {
 	ContainerName string
 	Image         string

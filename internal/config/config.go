@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/viper"
 
 	security "github.com/leoninew/pomelo-orbit/internal/common/crypto"
+	"github.com/leoninew/pomelo-orbit/internal/common/workspacepath"
 )
 
 const (
@@ -104,11 +105,11 @@ type PostgresConfig struct {
 	Dsn string `mapstructure:"dsn" yaml:"dsn"`
 }
 
-// WorkspaceConfig contains Orbit-managed runtime workspace roots. Relative
-// values resolve against orbit.root; absolute values may be outside orbit.root.
-// Both are normalized once to absolute Orbit-visible paths during config loading.
+// WorkspaceConfig contains the Orbit workspace root. Relative values resolve
+// against orbit.root; absolute values may be outside orbit.root. The runtime
+// derives pipeline and deployment child directories from this single root.
 type WorkspaceConfig struct {
-	Pipeline string `mapstructure:"pipeline" yaml:"pipeline"`
+	Root string `mapstructure:"root" yaml:"root"`
 }
 
 type WorkerConfig struct {
@@ -344,7 +345,7 @@ func bindEnv(loader *viper.Viper) {
 		"database.sqlite.path",
 		"database.mysql.dsn",
 		"database.postgres.dsn",
-		"workspace.pipeline",
+		"workspace.root",
 		"pipeline_run.execution_timeout",
 		"orbit.root",
 		"jwt.secret_key",
@@ -484,7 +485,7 @@ func normalizeInitializationWorkspaceRoot(value string) (string, error) {
 	if strings.ContainsAny(value, "\r\n") {
 		return "", errors.New("must not contain newlines")
 	}
-	if isHomeWorkspaceRoot(value) {
+	if workspacepath.IsHomeWorkspaceRoot(value) {
 		return value, nil
 	}
 	if !filepath.IsAbs(value) {
@@ -538,7 +539,7 @@ func validInitializationLocalWorkspaceRoot(workspaceRoot string) bool {
 	if workspaceRoot == "" || strings.ContainsAny(workspaceRoot, "\r\n") {
 		return false
 	}
-	if isHomeWorkspaceRoot(workspaceRoot) {
+	if workspacepath.IsHomeWorkspaceRoot(workspaceRoot) {
 		return true
 	}
 	switch runtime.GOOS {
@@ -549,16 +550,12 @@ func validInitializationLocalWorkspaceRoot(workspaceRoot string) bool {
 	}
 }
 
-func isHomeWorkspaceRoot(workspaceRoot string) bool {
-	return workspaceRoot == "~" || strings.HasPrefix(workspaceRoot, "~/")
-}
-
 func normalizeWorkspaceConfig(cfg *WorkspaceConfig, orbitRoot string) error {
-	pipeline, err := normalizeWorkspacePath(orbitRoot, cfg.Pipeline)
+	root, err := normalizeWorkspacePath(orbitRoot, cfg.Root)
 	if err != nil {
-		return fmt.Errorf("workspace.pipeline: %w", err)
+		return fmt.Errorf("workspace.root: %w", err)
 	}
-	cfg.Pipeline = pipeline
+	cfg.Root = root
 	return nil
 }
 
@@ -587,8 +584,8 @@ func normalizeWorkspacePath(orbitRoot string, value string) (string, error) {
 }
 
 func validateWorkspaceConfig(cfg WorkspaceConfig) error {
-	if cfg.Pipeline == "" {
-		return errors.New("workspace.pipeline is required")
+	if cfg.Root == "" {
+		return errors.New("workspace.root is required")
 	}
 	return nil
 }

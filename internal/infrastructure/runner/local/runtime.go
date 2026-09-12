@@ -15,6 +15,7 @@ import (
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
+	"github.com/leoninew/pomelo-orbit/internal/common/workspacepath"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -39,7 +40,7 @@ func (r *Runtime) ServiceDir(target environmentport.Target, serviceCode string) 
 	if !safePathSegment(serviceCode) {
 		return "", errors.New("invalid service code")
 	}
-	return filepath.Join(root, serviceCode), nil
+	return workspacepath.ServiceRoot(root, serviceCode), nil
 }
 
 func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.Target, serviceCode string) (bool, error) {
@@ -215,33 +216,11 @@ func (r *Runtime) localWorkspaceRoot(target environmentport.Target) (string, err
 	if root == "" {
 		return "", errors.New("local Environment workspace_root is required")
 	}
-	expanded, err := expandLocalHomePath(root)
+	expanded, err := workspacepath.ExpandLocalHomePath(root)
 	if err != nil {
 		return "", err
 	}
 	return expanded, nil
-}
-
-func expandLocalHomePath(value string) (string, error) {
-	if !isHomeWorkspaceRoot(value) {
-		return filepath.Clean(value), nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("resolve user home: %w", err)
-	}
-	home = strings.TrimSpace(home)
-	if home == "" {
-		return "", errors.New("user home directory is required")
-	}
-	if value == "~" {
-		return filepath.Clean(home), nil
-	}
-	return filepath.Clean(filepath.Join(home, strings.TrimPrefix(value, "~/"))), nil
-}
-
-func isHomeWorkspaceRoot(value string) bool {
-	return value == "~" || strings.HasPrefix(value, "~/")
 }
 
 func (r *Runtime) writeFile(serviceDir string, file deploymentport.WorkspaceFile) error {

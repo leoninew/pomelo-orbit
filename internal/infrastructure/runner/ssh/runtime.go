@@ -17,6 +17,7 @@ import (
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
+	"github.com/leoninew/pomelo-orbit/internal/common/workspacepath"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -45,7 +46,7 @@ func (r *Runtime) ServiceDir(target environmentport.Target, serviceCode string) 
 	if root == "" {
 		return "", errors.New("environment workspace root is required")
 	}
-	return path.Join(root, serviceCode), nil
+	return workspacepath.RemoteServiceRoot(root, serviceCode), nil
 }
 
 func (r *Runtime) ComposeMountSourceDir(_ context.Context, target environmentport.Target, serviceCode string) (string, error) {

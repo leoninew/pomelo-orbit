@@ -9,13 +9,16 @@ import (
 	"sync"
 
 	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
+	"github.com/leoninew/pomelo-orbit/internal/common/workspacepath"
 )
 
 type PhysicalWorkspaceResolver func(ctx context.Context, logicalWorkspaceRoot string) (string, error)
+type ProjectWorkspaceRootResolver func(ctx context.Context, projectID string) (string, error)
 
 type Workspace struct {
 	logicalWorkspaceRoot string
 	resolver             PhysicalWorkspaceResolver
+	projectRootResolver  ProjectWorkspaceRootResolver
 
 	physicalOnce          sync.Once
 	physicalWorkspaceRoot string
@@ -24,6 +27,37 @@ type Workspace struct {
 
 func NewWithResolver(workspaceRoot string, resolver PhysicalWorkspaceResolver) *Workspace {
 	return &Workspace{logicalWorkspaceRoot: filepath.Clean(workspaceRoot), resolver: resolver}
+}
+
+// NewWithProjectResolver creates a workspace whose pipeline child is selected
+// from the project's Environment root at execution time. The supplied root is
+// used only as a fixed-root fallback for focused callers without a project
+// resolver; production bootstrap always injects one.
+func NewWithProjectResolver(workspaceRoot string, resolver PhysicalWorkspaceResolver, projectResolver ProjectWorkspaceRootResolver) *Workspace {
+	return &Workspace{
+		logicalWorkspaceRoot: workspacepath.PipelineRoot(workspaceRoot),
+		resolver:             resolver,
+		projectRootResolver:  projectResolver,
+	}
+}
+
+func (w *Workspace) WorkspaceForProject(ctx context.Context, projectID string) (pipelinerunport.Workspace, error) {
+	if w.projectRootResolver == nil {
+		return w, nil
+	}
+	root, err := w.projectRootResolver(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	root = strings.TrimSpace(root)
+	if root == "" {
+		return nil, fmt.Errorf("project Environment workspace root is required")
+	}
+	root, err = workspacepath.ExpandLocalHomePath(root)
+	if err != nil {
+		return nil, err
+	}
+	return NewWithResolver(workspacepath.PipelineRoot(root), w.resolver), nil
 }
 
 func (w *Workspace) CreateRunDirectories(projectCode string, runId string) error {

@@ -39,7 +39,6 @@ import (
 
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/envfile"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/executionlog"
-	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/pipelineworkspace"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/repositorysource"
 	queuedispatch "github.com/leoninew/pomelo-orbit/internal/queue/dispatch"
 	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
@@ -109,7 +108,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	localDisplay := localEnvironmentDisplay()
 	environmentService := environmentsvc.New(stores.environment, stores.project, credentialService, credentialService, environmentrunner.NewProber(localRuntime, sshrunner.NewEnvironmentProber()), sshrunner.NewEnvironmentBootstrapper()).WithLocalDisplay(localDisplay)
 	projectService := projectsvc.New(stores.project, stores.user, stores.environment)
-	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.Workspace.Pipeline, dockerPathResolver)
+	pipelineWorkspace := newPipelineWorkspace(cfg, stores, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, credentialService)
 	routeManager := traefik.NewRouteManager(targetResolver, runtime)

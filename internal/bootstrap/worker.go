@@ -17,7 +17,6 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/traefik"
 	pipelinerunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/pipeline"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/executionlog"
-	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/pipelineworkspace"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/repositorysource"
 	"github.com/leoninew/pomelo-orbit/internal/queue/worker"
 	deploymentworker "github.com/leoninew/pomelo-orbit/internal/queue/worker/handler/deployment"
@@ -29,7 +28,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	pipelineLogStore := executionlog.Store{}
 	deploymentLogStore := executionlog.NewDeploymentStore(cfg.Logging.DeploymentRoot)
 	dockerPathResolver := dockerDaemonPathResolver()
-	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.Workspace.Pipeline, dockerPathResolver)
+	pipelineWorkspace := newPipelineWorkspace(cfg, stores, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
 	transactionRunner := databasetx.NewTransactionRunner(database)
 	credentialService := credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey)

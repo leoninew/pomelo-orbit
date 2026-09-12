@@ -66,7 +66,7 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Jwt.SecretKey != testJwtSecret {
 		t.Fatalf("unexpected jwt secret key: %s", cfg.Jwt.SecretKey)
 	}
-	if !filepath.IsAbs(cfg.Workspace.Pipeline) || !filepath.IsAbs(cfg.Logging.DeploymentRoot) {
+	if !filepath.IsAbs(cfg.Workspace.Root) || !filepath.IsAbs(cfg.Logging.DeploymentRoot) {
 		t.Fatalf("workspace roots must be absolute: %#v", cfg.Workspace)
 	}
 	if cfg.ProjectInitialization.Environment.LocalWorkspaceRoot != "~/.pomelo-orbit" {
@@ -265,7 +265,7 @@ worker:
 	t.Setenv("POMELO_ORBIT_ORBIT__ROOT", orbitRoot)
 	workspacePipeline := t.TempDir()
 	deploymentLogRoot := t.TempDir()
-	t.Setenv("POMELO_ORBIT_WORKSPACE__PIPELINE", workspacePipeline)
+	t.Setenv("POMELO_ORBIT_WORKSPACE__ROOT", workspacePipeline)
 	t.Setenv("POMELO_ORBIT_LOGGING__DEPLOYMENT_ROOT", deploymentLogRoot)
 	t.Setenv("POMELO_ORBIT_WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_WORKER__POLL_INTERVAL", "2s")
@@ -330,7 +330,7 @@ worker:
 	if cfg.Orbit.Root != orbitRoot {
 		t.Fatalf("unexpected orbit root: %s", cfg.Orbit.Root)
 	}
-	if cfg.Workspace.Pipeline != workspacePipeline || cfg.Logging.DeploymentRoot != deploymentLogRoot {
+	if cfg.Workspace.Root != workspacePipeline || cfg.Logging.DeploymentRoot != deploymentLogRoot {
 		t.Fatalf("unexpected workspace/logging env overrides: workspace=%#v logging=%#v", cfg.Workspace, cfg.Logging)
 	}
 	if cfg.Worker.Concurrency != 4 {
@@ -354,7 +354,7 @@ func TestLoadConfigNormalizesAndValidatesWorkspaceRoots(t *testing.T) {
 		writeEnvConfig(t, "develop", fmt.Sprintf(`orbit:
   root: %q
 workspace:
-  pipeline: " ci "
+  root: " ci "
 logging:
   deployment_root: logs
 `, root))
@@ -363,7 +363,7 @@ logging:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cfg.Workspace.Pipeline != filepath.Join(root, "ci") || cfg.Logging.DeploymentRoot != filepath.Join(root, "logs") {
+		if cfg.Workspace.Root != filepath.Join(root, "ci") || cfg.Logging.DeploymentRoot != filepath.Join(root, "logs") {
 			t.Fatalf("unexpected normalized roots: workspace=%#v logging=%#v", cfg.Workspace, cfg.Logging)
 		}
 	})
@@ -376,7 +376,7 @@ logging:
 		writeEnvConfig(t, "develop", fmt.Sprintf(`orbit:
   root: %q
 workspace:
-  pipeline: %q
+  root: %q
 logging:
   deployment_root: %q
 `, root, pipeline, deploymentLogRoot))
@@ -385,7 +385,7 @@ logging:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cfg.Workspace.Pipeline != pipeline || cfg.Logging.DeploymentRoot != deploymentLogRoot {
+		if cfg.Workspace.Root != pipeline || cfg.Logging.DeploymentRoot != deploymentLogRoot {
 			t.Fatalf("absolute roots changed: workspace=%#v logging=%#v", cfg.Workspace, cfg.Logging)
 		}
 	})
@@ -422,12 +422,12 @@ logging:
 		pipeline string
 		want     string
 	}{
-		{name: "empty pipeline", pipeline: " ", want: "workspace.pipeline: is required"},
+		{name: "empty root", pipeline: " ", want: "workspace.root: is required"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			setupDefaultConfig(t)
 			writeEnvConfig(t, "develop", fmt.Sprintf(`workspace:
-  pipeline: %q
+  root: %q
 `, tc.pipeline))
 
 			_, err := Load()
@@ -978,7 +978,7 @@ database:
   postgres:
     dsn: ""
 workspace:
-  pipeline: data/pipeline
+  root: data
 orbit:
   root: .
 jwt:

@@ -16,6 +16,8 @@ type ApplicationStore interface {
 	ApplicationReader
 	ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string, kind string) (Page[model.Application], error)
 	ApplicationByName(ctx context.Context, name string) (model.Application, error)
+	ApplicationByProjectAndName(ctx context.Context, projectId string, name string) (model.Application, error)
+	ApplicationByProjectAndCode(ctx context.Context, projectId string, code string) (model.Application, error)
 	ApplicationByCode(ctx context.Context, code string) (model.Application, error)
 	CreateApplication(ctx context.Context, app model.Application) error
 	UpdateApplication(ctx context.Context, app model.Application) error

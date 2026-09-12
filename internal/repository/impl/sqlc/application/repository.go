@@ -92,6 +92,25 @@ func (r Repository) ApplicationByName(ctx context.Context, name string) (model.A
 	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
 }
 
+func (r Repository) ApplicationByProjectAndName(ctx context.Context, projectId string, name string) (model.Application, error) {
+	row, err := r.q(ctx).ApplicationByProjectAndName(ctx, applicationsqlc.ApplicationByProjectAndNameParams{
+		ProjectID: optionalProjectId(&projectId),
+		Name:      name,
+	})
+	if err != nil {
+		return model.Application{}, fmt.Errorf("load application by project and name %s/%s: %w", projectId, name, sqlcommon.TranslateError(err))
+	}
+	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
+}
+
+func (r Repository) ApplicationByProjectAndCode(ctx context.Context, projectId string, code string) (model.Application, error) {
+	row, err := r.q(ctx).ApplicationByProjectAndCode(ctx, applicationsqlc.ApplicationByProjectAndCodeParams{ProjectID: optionalProjectId(&projectId), Code: code})
+	if err != nil {
+		return model.Application{}, fmt.Errorf("load application by project and code %s/%s: %w", projectId, code, sqlcommon.TranslateError(err))
+	}
+	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
+}
+
 func (r Repository) ApplicationByCode(ctx context.Context, code string) (model.Application, error) {
 	row, err := r.q(ctx).ApplicationByCode(ctx, code)
 	if err != nil {

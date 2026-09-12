@@ -1,3 +1,7 @@
+DROP INDEX IF EXISTS uq_application_project_name;
+DROP INDEX IF EXISTS uq_application_project_code;
+ALTER TABLE application ADD CONSTRAINT application_name_key UNIQUE (name);
+
 UPDATE environment e
 SET gateway_application_id = NULL,
     updated_at = CURRENT_TIMESTAMP

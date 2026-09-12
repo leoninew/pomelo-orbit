@@ -41,6 +41,14 @@ func (s stores) ApplicationByName(ctx context.Context, name string) (model.Appli
 	return s.application.ApplicationByName(ctx, name)
 }
 
+func (s stores) ApplicationByProjectAndName(ctx context.Context, projectId string, name string) (model.Application, error) {
+	return s.application.ApplicationByProjectAndName(ctx, projectId, name)
+}
+
+func (s stores) ApplicationByProjectAndCode(ctx context.Context, projectId string, code string) (model.Application, error) {
+	return s.application.ApplicationByProjectAndCode(ctx, projectId, code)
+}
+
 func (s stores) ApplicationByCode(ctx context.Context, code string) (model.Application, error) {
 	return s.application.ApplicationByCode(ctx, code)
 }

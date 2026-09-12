@@ -1,23 +1,23 @@
 -- name: ListServicesByApplication :many
-SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = ?
 ORDER BY instance_key;
 
 -- name: ServiceByID :one
-SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE id = ?;
 
 -- name: ServiceByKey :one
-SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = ? AND instance_key = ?;
 
--- name: ServiceByCode :one
-SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
+-- name: ServiceByProjectAndCode :one
+SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
-WHERE code = ?;
+WHERE project_id = ? AND code = ?;
 
 -- name: ServiceIDByKey :one
 SELECT id
@@ -25,8 +25,8 @@ FROM service
 WHERE application_id = ? AND instance_key = ?;
 
 -- name: InsertService :exec
-INSERT INTO service (id, application_id, instance_key, code, version_id, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO service (id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateService :exec
 UPDATE service
@@ -179,7 +179,7 @@ WHERE a.project_id = sqlc.arg(project_id)
   );
 
 -- name: ListServicesByProject :many
-SELECT s.id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.project_id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
@@ -203,7 +203,7 @@ ORDER BY s.id DESC
 LIMIT ? OFFSET ?;
 
 -- name: ServiceListItemByID :one
-SELECT s.id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.project_id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s

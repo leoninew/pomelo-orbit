@@ -301,13 +301,17 @@ CREATE TABLE IF NOT EXISTS artifact (
 
 CREATE TABLE IF NOT EXISTS application (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     code TEXT NOT NULL,
     kind TEXT NOT NULL DEFAULT 'standard',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    project_id TEXT REFERENCES project(id)
+    project_id VARCHAR(26) REFERENCES project(id)
 );
+
+CREATE INDEX idx_application_project ON application(project_id);
+CREATE UNIQUE INDEX uq_application_project_name ON application(project_id, name);
+CREATE UNIQUE INDEX uq_application_project_code ON application(project_id, code);
 
 
 CREATE TABLE IF NOT EXISTS version (
@@ -479,9 +483,10 @@ CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
 
 CREATE TABLE IF NOT EXISTS service (
     id TEXT PRIMARY KEY,
+    project_id VARCHAR(26) NOT NULL,
     application_id TEXT NOT NULL,
     instance_key TEXT NOT NULL DEFAULT 'default',
-    code TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL,
     version_id TEXT NOT NULL,
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -490,6 +495,7 @@ CREATE TABLE IF NOT EXISTS service (
     FOREIGN KEY (version_id) REFERENCES version(id),
     UNIQUE(application_id, instance_key)
 );
+CREATE UNIQUE INDEX uq_service_project_code ON service(project_id, code);
 
 
 CREATE TABLE IF NOT EXISTS service_env (

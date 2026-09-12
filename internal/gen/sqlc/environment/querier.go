@@ -13,6 +13,7 @@ type Querier interface {
 	CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) error
 	EnvironmentByID(ctx context.Context, id string) (Environment, error)
 	EnvironmentByProjectID(ctx context.Context, projectID string) (Environment, error)
+	EnvironmentByTarget(ctx context.Context, arg EnvironmentByTargetParams) (Environment, error)
 	RecordEnvironmentProbe(ctx context.Context, arg RecordEnvironmentProbeParams) (int64, error)
 	UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) error
 }

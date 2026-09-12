@@ -27,7 +27,7 @@ func TestDeleteServicePreservesDeploymentHistory(t *testing.T) {
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'app-1', 'version-1', 'default', 'app-default', 'stopped')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO service (id, project_id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'default', 'app-default', 'stopped')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO deployment (id, application_name, operation_type, trigger_type, status, is_rollback, service_id) VALUES ('deployment-1', 'App', 'deploy', 'manual', 'succeeded', 0, 'service-1')`); err != nil {
@@ -60,8 +60,8 @@ func TestListServicesByProjectSearchesApplicationNameAndServiceCode(t *testing.T
 		`INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`,
 		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'Application', 'application-code', 'standard', 'project-1')`,
 		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'version-label', 'unpublished')`,
-		`INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'app-1', 'version-1', 'instance-one', 'service-one', 'stopped')`,
-		`INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-2', 'app-1', 'version-1', 'instance-two', 'service-two', 'stopped')`,
+		`INSERT INTO service (id, project_id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'instance-one', 'service-one', 'stopped')`,
+		`INSERT INTO service (id, project_id, application_id, version_id, instance_key, code, status) VALUES ('service-2', 'project-1', 'app-1', 'version-1', 'instance-two', 'service-two', 'stopped')`,
 	} {
 		if _, err := database.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)

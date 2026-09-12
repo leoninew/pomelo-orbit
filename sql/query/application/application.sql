@@ -8,10 +8,20 @@ SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE name = ?;
 
+-- name: ApplicationByProjectAndName :one
+SELECT id, project_id, name, code, kind, created_at, updated_at
+FROM application
+WHERE project_id = ? AND name = ?;
+
 -- name: ApplicationByCode :one
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE code = ?;
+
+-- name: ApplicationByProjectAndCode :one
+SELECT id, project_id, name, code, kind, created_at, updated_at
+FROM application
+WHERE project_id = ? AND code = ?;
 
 -- name: CountApplications :one
 SELECT COUNT(*)

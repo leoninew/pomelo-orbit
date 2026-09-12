@@ -164,7 +164,10 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
+	if err := s.ensureApplicationNameAvailable(ctx, projectId, name); err != nil {
+		return gatewaydto.GatewayView{}, err
+	}
+	if err := s.ensureApplicationCodeAvailable(ctx, projectId, code); err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
 
@@ -343,7 +346,11 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 			return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "Invalid gateway name")
 		}
 		if name != app.Name {
-			if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
+			projectId := ""
+			if app.ProjectId != nil {
+				projectId = *app.ProjectId
+			}
+			if err := s.ensureApplicationNameAvailable(ctx, projectId, name); err != nil {
 				return gatewaydto.GatewayView{}, err
 			}
 			app.Name = name
@@ -458,13 +465,24 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectId string, 
 	return nil
 }
 
-func (s Service) ensureApplicationNameAvailable(ctx context.Context, name string) error {
-	existing, err := s.application.ApplicationByName(ctx, name)
+func (s Service) ensureApplicationNameAvailable(ctx context.Context, projectId string, name string) error {
+	existing, err := s.application.ApplicationByProjectAndName(ctx, projectId, name)
 	if err == nil {
 		return apperror.New(apperror.KindValidation, "Application '"+existing.Name+"' already exists")
 	}
 	if !errors.Is(err, repository.ErrNotFound) {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check application name", err)
+	}
+	return nil
+}
+
+func (s Service) ensureApplicationCodeAvailable(ctx context.Context, projectId string, code string) error {
+	existing, err := s.application.ApplicationByProjectAndCode(ctx, projectId, code)
+	if err == nil {
+		return apperror.New(apperror.KindValidation, "Application code '"+existing.Code+"' already exists")
+	}
+	if !errors.Is(err, repository.ErrNotFound) {
+		return apperror.Wrap(apperror.KindInternal, "Failed to check application code", err)
 	}
 	return nil
 }

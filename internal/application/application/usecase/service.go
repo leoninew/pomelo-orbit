@@ -55,7 +55,10 @@ func (s Service) CreateApplication(ctx context.Context, userId string, input app
 	if err != nil {
 		return model.Application{}, err
 	}
-	if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
+	if err := s.ensureApplicationNameAvailable(ctx, projectId, name); err != nil {
+		return model.Application{}, err
+	}
+	if err := s.ensureApplicationCodeAvailable(ctx, projectId, code); err != nil {
 		return model.Application{}, err
 	}
 	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: kind}
@@ -96,6 +99,11 @@ func (s Service) UpdateApplication(ctx context.Context, userId string, applicati
 			return model.Application{}, apperror.New(apperror.KindValidation, "Invalid application fields")
 		}
 		app.Code = code
+	}
+	if app.ProjectId != nil {
+		if err := s.ensureApplicationCodeAvailableExcept(ctx, *app.ProjectId, app.Code, app.Id); err != nil {
+			return model.Application{}, err
+		}
 	}
 	if err := s.store.UpdateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to update application", err)
@@ -141,13 +149,28 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectId string, 
 	return nil
 }
 
-func (s Service) ensureApplicationNameAvailable(ctx context.Context, name string) error {
-	existing, err := s.store.ApplicationByName(ctx, name)
+func (s Service) ensureApplicationNameAvailable(ctx context.Context, projectId string, name string) error {
+	existing, err := s.store.ApplicationByProjectAndName(ctx, projectId, name)
 	if err == nil {
 		return apperror.New(apperror.KindValidation, "Application '"+existing.Name+"' already exists")
 	}
 	if !errors.Is(err, repository.ErrNotFound) {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check application name", err)
+	}
+	return nil
+}
+
+func (s Service) ensureApplicationCodeAvailable(ctx context.Context, projectId string, code string) error {
+	return s.ensureApplicationCodeAvailableExcept(ctx, projectId, code, "")
+}
+
+func (s Service) ensureApplicationCodeAvailableExcept(ctx context.Context, projectId, code, exceptID string) error {
+	existing, err := s.store.ApplicationByProjectAndCode(ctx, projectId, code)
+	if err == nil && existing.Id != exceptID {
+		return apperror.New(apperror.KindValidation, "Application code '"+existing.Code+"' already exists")
+	}
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return apperror.Wrap(apperror.KindInternal, "Failed to check application code", err)
 	}
 	return nil
 }

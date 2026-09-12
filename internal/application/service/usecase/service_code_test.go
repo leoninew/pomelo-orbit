@@ -12,17 +12,26 @@ import (
 
 type serviceCreateStoreFake struct {
 	repository.ServiceStore
-	serviceByKeyErr  error
-	serviceByCodeErr error
-	created          model.Service
+	serviceByKeyErr            error
+	serviceByProjectAndCodeErr error
+	created                    model.Service
+}
+
+type serviceCreateProjectFake struct{}
+
+func (serviceCreateProjectFake) Project(context.Context, string) (model.Project, error) {
+	return model.Project{Id: "project-1"}, nil
+}
+func (serviceCreateProjectFake) IsProjectMember(context.Context, string, string) (bool, error) {
+	return true, nil
 }
 
 func (f *serviceCreateStoreFake) ServiceByKey(context.Context, string, string) (model.Service, error) {
 	return model.Service{}, f.serviceByKeyErr
 }
 
-func (f *serviceCreateStoreFake) ServiceByCode(context.Context, string) (model.Service, error) {
-	return model.Service{}, f.serviceByCodeErr
+func (f *serviceCreateStoreFake) ServiceByProjectAndCode(context.Context, string, string) (model.Service, error) {
+	return model.Service{}, f.serviceByProjectAndCodeErr
 }
 
 func (f *serviceCreateStoreFake) CreateServiceWithComponents(_ context.Context, service model.Service, _ []model.ServiceComponent) error {
@@ -46,10 +55,11 @@ func (f *serviceCreateStoreFake) ServiceComponentsByService(context.Context, str
 }
 
 func TestCreateServiceUsesSubmittedCode(t *testing.T) {
-	store := &serviceCreateStoreFake{serviceByKeyErr: repository.ErrNotFound, serviceByCodeErr: repository.ErrNotFound}
+	store := &serviceCreateStoreFake{serviceByKeyErr: repository.ErrNotFound, serviceByProjectAndCodeErr: repository.ErrNotFound}
 	service := Service{
+		project: serviceCreateProjectFake{},
 		application: serviceApplicationFake{
-			app:     model.Application{Id: "app-1", Code: "ragflow"},
+			app:     model.Application{Id: "app-1", ProjectId: stringPtr("project-1"), Code: "ragflow"},
 			version: model.Version{Id: "version-1", ApplicationId: "app-1"},
 			declarations: []model.VersionComponent{{
 				Id: "component-1", Name: "ragflow", Image: "ragflow:latest",
@@ -70,8 +80,9 @@ func TestCreateServiceUsesSubmittedCode(t *testing.T) {
 func TestCreateServiceReportsExistingCodeConflict(t *testing.T) {
 	store := &serviceCreateStoreFake{serviceByKeyErr: repository.ErrNotFound}
 	service := Service{
+		project: serviceCreateProjectFake{},
 		application: serviceApplicationFake{
-			app: model.Application{Id: "app-1", Code: "ragflow"}, version: model.Version{Id: "version-1", ApplicationId: "app-1"},
+			app: model.Application{Id: "app-1", ProjectId: stringPtr("project-1"), Code: "ragflow"}, version: model.Version{Id: "version-1", ApplicationId: "app-1"},
 		},
 		service: store,
 	}

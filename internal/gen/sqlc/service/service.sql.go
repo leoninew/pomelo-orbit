@@ -126,12 +126,13 @@ func (q *Queries) DeleteServiceEnv(ctx context.Context, serviceID string) error 
 }
 
 const insertService = `-- name: InsertService :exec
-INSERT INTO service (id, application_id, instance_key, code, version_id, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO service (id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertServiceParams struct {
 	ID            string    `db:"id"`
+	ProjectID     string    `db:"project_id"`
 	ApplicationID string    `db:"application_id"`
 	InstanceKey   string    `db:"instance_key"`
 	Code          string    `db:"code"`
@@ -144,6 +145,7 @@ type InsertServiceParams struct {
 func (q *Queries) InsertService(ctx context.Context, arg InsertServiceParams) error {
 	_, err := q.db.ExecContext(ctx, insertService,
 		arg.ID,
+		arg.ProjectID,
 		arg.ApplicationID,
 		arg.InstanceKey,
 		arg.Code,
@@ -319,7 +321,7 @@ func (q *Queries) InsertServiceEnv(ctx context.Context, arg InsertServiceEnvPara
 }
 
 const listServicesByApplication = `-- name: ListServicesByApplication :many
-SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = ?
 ORDER BY instance_key
@@ -336,6 +338,7 @@ func (q *Queries) ListServicesByApplication(ctx context.Context, applicationID s
 		var i Service
 		if err := rows.Scan(
 			&i.ID,
+			&i.ProjectID,
 			&i.ApplicationID,
 			&i.InstanceKey,
 			&i.Code,
@@ -358,7 +361,7 @@ func (q *Queries) ListServicesByApplication(ctx context.Context, applicationID s
 }
 
 const listServicesByProject = `-- name: ListServicesByProject :many
-SELECT s.id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.project_id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
@@ -393,6 +396,7 @@ type ListServicesByProjectParams struct {
 
 type ListServicesByProjectRow struct {
 	ID              string    `db:"id"`
+	ProjectID       string    `db:"project_id"`
 	ApplicationID   string    `db:"application_id"`
 	InstanceKey     string    `db:"instance_key"`
 	Code            string    `db:"code"`
@@ -428,6 +432,7 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 		var i ListServicesByProjectRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.ProjectID,
 			&i.ApplicationID,
 			&i.InstanceKey,
 			&i.Code,
@@ -453,30 +458,8 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 	return items, nil
 }
 
-const serviceByCode = `-- name: ServiceByCode :one
-SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
-FROM service
-WHERE code = ?
-`
-
-func (q *Queries) ServiceByCode(ctx context.Context, code string) (Service, error) {
-	row := q.db.QueryRowContext(ctx, serviceByCode, code)
-	var i Service
-	err := row.Scan(
-		&i.ID,
-		&i.ApplicationID,
-		&i.InstanceKey,
-		&i.Code,
-		&i.VersionID,
-		&i.Status,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const serviceByID = `-- name: ServiceByID :one
-SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE id = ?
 `
@@ -486,6 +469,7 @@ func (q *Queries) ServiceByID(ctx context.Context, id string) (Service, error) {
 	var i Service
 	err := row.Scan(
 		&i.ID,
+		&i.ProjectID,
 		&i.ApplicationID,
 		&i.InstanceKey,
 		&i.Code,
@@ -498,7 +482,7 @@ func (q *Queries) ServiceByID(ctx context.Context, id string) (Service, error) {
 }
 
 const serviceByKey = `-- name: ServiceByKey :one
-SELECT id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = ? AND instance_key = ?
 `
@@ -513,6 +497,35 @@ func (q *Queries) ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Ser
 	var i Service
 	err := row.Scan(
 		&i.ID,
+		&i.ProjectID,
+		&i.ApplicationID,
+		&i.InstanceKey,
+		&i.Code,
+		&i.VersionID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const serviceByProjectAndCode = `-- name: ServiceByProjectAndCode :one
+SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
+FROM service
+WHERE project_id = ? AND code = ?
+`
+
+type ServiceByProjectAndCodeParams struct {
+	ProjectID string `db:"project_id"`
+	Code      string `db:"code"`
+}
+
+func (q *Queries) ServiceByProjectAndCode(ctx context.Context, arg ServiceByProjectAndCodeParams) (Service, error) {
+	row := q.db.QueryRowContext(ctx, serviceByProjectAndCode, arg.ProjectID, arg.Code)
+	var i Service
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
 		&i.ApplicationID,
 		&i.InstanceKey,
 		&i.Code,
@@ -780,7 +793,7 @@ func (q *Queries) ServiceIDByKey(ctx context.Context, arg ServiceIDByKeyParams) 
 }
 
 const serviceListItemByID = `-- name: ServiceListItemByID :one
-SELECT s.id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.project_id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
@@ -791,6 +804,7 @@ WHERE s.id = ?
 
 type ServiceListItemByIDRow struct {
 	ID              string    `db:"id"`
+	ProjectID       string    `db:"project_id"`
 	ApplicationID   string    `db:"application_id"`
 	InstanceKey     string    `db:"instance_key"`
 	Code            string    `db:"code"`
@@ -809,6 +823,7 @@ func (q *Queries) ServiceListItemByID(ctx context.Context, id string) (ServiceLi
 	var i ServiceListItemByIDRow
 	err := row.Scan(
 		&i.ID,
+		&i.ProjectID,
 		&i.ApplicationID,
 		&i.InstanceKey,
 		&i.Code,

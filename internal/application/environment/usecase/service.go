@@ -25,6 +25,10 @@ type deploymentKeyManager interface {
 	DeploymentSSHPublicKey(ctx context.Context, credentialID string) (string, error)
 }
 
+type environmentTargetReader interface {
+	EnvironmentByTarget(ctx context.Context, projectID, targetType, host string, port int) (model.Environment, error)
+}
+
 type Service struct {
 	environments         repository.EnvironmentStore
 	projects             repository.ProjectReader
@@ -89,7 +93,8 @@ func (s Service) SaveInitialization(ctx context.Context, userID string, projectI
 			return environmentdto.View{}, err
 		}
 	}
-	if !creating && environmentTargetChanged(previous, item) {
+	if reader, ok := s.environments.(environmentTargetReader); ok {
+		host, port := "", 0
 		if item.SSH != nil {
 			item.SSH.HostKeyFingerprint = ""
 		}

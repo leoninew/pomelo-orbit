@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-09-09 20:22:00
+最后修改时间: 2026-09-11 14:48:17
 
 Doc role: living architecture
 
@@ -18,7 +18,7 @@ Project
      ssh   -> Environment.workspace_root + docker compose over SSH
 ```
 
-组合根按持久化的 `target_type` 注入 local 与 SSH runtime dispatcher；不会根据 hostname、空 SSH 字段或执行失败猜测另一种 runtime。两类 runtime 都从 Environment 保存的 `workspace_root` materialize Service workspace；local 使用控制面 Docker daemon，SSH 通过 SSH 执行。SSH 支持 Linux OpenSSH + Docker，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers，并维持私钥与 host-key pinning。`ssh` 到 loopback 也走 SSH runtime。控制面部署执行日志使用独立的 `logging.deployment_root`，不属于 Environment workspace。
+组合根按持久化的 `target_type` 注入 local 与 SSH runtime dispatcher；不会根据 hostname、空 SSH 字段或执行失败猜测另一种 runtime。两类 runtime 都从 Environment 保存的 `workspace_root` materialize Service workspace，保存值可以是绝对路径或 `~` / `~/...`；local 使用时把 `~` 展开为控制面进程用户主目录并交给 Docker daemon，SSH 在远端把 `~` 展开为登录用户主目录后执行。SSH 支持 Linux OpenSSH + Docker，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers，并维持私钥与 host-key pinning。`ssh` 到 loopback 也走 SSH runtime。控制面部署执行日志使用独立的 `logging.deployment_root`，不属于 Environment workspace。
 
 Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志、证书同步和 Traefik REST 通过同一个 target runtime 执行。local Probe 只验证控制面 Docker/Compose；SSH Probe 验证认证、pinned host key 和目标 Docker prerequisites。
 
@@ -32,7 +32,7 @@ Gateway 创建四个可编辑的普通 Version：`base`、`http`、`dns`、`http
 
 Gateway Compose 创建或复用部署宿主上的 Docker bridge network `traefik`。普通 Service 在声明加入 Traefik 网络时以 external 方式接入该共享网络；缺少 Gateway 网络配置时渲染失败。网络名固定为 `traefik`，不由 Environment code 派生。
 
-GatewayConfig 保存 Traefik component 名、REST URL/readiness、base domain、Component ingress 默认策略，以及 `acme_profile`、`acme_email`、`dns_api_token`。空 profile 选择 `base`；其余 profile 为 `http`、`dns`、`http-dns`。
+GatewayConfig 保存 REST URL/readiness、base domain、Component ingress 默认策略，以及 `acme_profile`、`acme_email`、`dns_api_token`。Traefik Component 名称固定为 `traefik`，从绑定 Version 解析，不存在 GatewayConfig 中。空 profile 选择 `base`；其余 profile 为 `http`、`dns`、`http-dns`。
 
 创建 Gateway deployment 前，默认 Service 切换到保存 profile 所绑定的普通 Version，并持久化该 Version ID。worker 只执行该 ID，不能因之后的 profile 更新重新选择 Version。
 

@@ -1,5 +1,5 @@
 # 服务器首次部署指南
-最后修改时间: 2026-08-19 10:43:40
+最后修改时间: 2026-09-11 14:48:17
 
 Doc role: living guide（运维向）。与代码冲突时以代码为准。
 
@@ -37,7 +37,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /opt/pomelo-orbit/data/db:/app/data/db
       - /opt/pomelo-orbit/ci:/app/data/pipeline
-      - /opt/pomelo-orbit/cd:/app/data/deployment
+      - /opt/pomelo-orbit/cd:/opt/pomelo-orbit/cd
     ports:
       - "9003:80"
     env_file:
@@ -65,7 +65,7 @@ EOF
 cat > /opt/pomelo-orbit/.env << 'EOF'
 # JWT 密钥（同时用于凭据加密，必须使用 Fernet 格式）
 # 生成方法: python -c "import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())"
-POMELO_ORBIT_JWT__SECRET_KEY=00000000000000000000000000000000000000000000
+POMELO_ORBIT_JWT__SECRET_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 EOF
 ```
 
@@ -141,7 +141,7 @@ docker compose up -d
 ├── .env                 # 宿主机环境变量，通过 env_file 注入容器
 ├── data/db/             # SQLite 数据库（挂载到容器 /app/data/db）
 ├── ci/                  # CI workspace（挂载到容器 /app/data/pipeline）
-└── cd/                  # CD workspace（挂载到容器 /app/data/deployment）
+└── cd/                  # 可选：给 local Environment.workspace_root 使用的宿主目录
 ```
 
 `.env` 有两个层面，但内容相同：
@@ -150,4 +150,4 @@ docker compose up -d
 
 首次手动部署时只需关注宿主机的 `.env`。
 
-默认 YAML 的 `data/pipeline` 和 `data/deployment` 在容器内分别解析为 `/app/data/pipeline` 和 `/app/data/deployment`。由于 Docker daemon 运行在宿主机，Orbit 会通过自己的容器挂载表将它们转换为 `/opt/pomelo-orbit/ci` 和 `/opt/pomelo-orbit/cd`；缺少任意 workspace 挂载会导致服务启动失败。
+默认 YAML 的 `workspace.pipeline=data/pipeline` 在容器内解析为 `/app/data/pipeline`。CD 工作目录不再来自进程配置；打开未初始化 Project 时由 Web Wizard 写入 `Environment.workspace_root`。默认值 `~/.pomelo-orbit` 原样展示和保存，使用时才展开为进程用户主目录。容器部署若要把 CD 根放在已挂载路径上，应在 Wizard 中填写该绝对路径。`logging.deployment_root` 仍是控制面部署执行日志目录。

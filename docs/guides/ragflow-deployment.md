@@ -1,6 +1,6 @@
 # RAGFlow 部署手册
 
-最后修改时间：2026-08-29
+最后修改时间: 2026-09-10 18:30:00
 
 本文是当前 RAGFlow 部署的唯一运维依据。不提供部署脚本或 Codex Skill；所有配置、预览、部署、停止和回滚均通过 Pomelo Orbit 完成。
 
@@ -14,13 +14,13 @@
 
 | 角色 | 所属 | 内部地址 | 持久化位置 |
 | --- | --- | --- | --- |
-| MySQL | `mysql-default` / `mysql` | `mysql-mysql:3306` | `data/deployment/mysql-default/mysql` |
-| MinIO | `minio-default` / `minio` | `minio-minio:9000` | `data/deployment/minio-default/minio` |
-| Redis | `redis-default` / `redis` | `redis-redis:6379` | `data/deployment/redis-default/redis` |
-| Elasticsearch | RAGFlow `es01` Component | `es01:9200` | `data/deployment/ragflow-integrated-default/es01` |
+| MySQL | `mysql-default` / `mysql` | `mysql-mysql:3306` | `<workspace_root>/mysql-default/mysql` |
+| MinIO | `minio-default` / `minio` | `minio-minio:9000` | `<workspace_root>/minio-default/minio` |
+| Redis | `redis-default` / `redis` | `redis-redis:6379` | `<workspace_root>/redis-default/redis` |
+| Elasticsearch | RAGFlow `es01` Component | `es01:9200` | `<workspace_root>/ragflow-integrated-default/es01` |
 | TEI | RAGFlow `tei` Component | `tei:80` | BGE-M3 模型缓存挂载至 `/data/bge-m3` |
 | MinerU | RAGFlow `mineru` Component | `mineru:8000` | 使用镜像中的本地模型源 |
-| RAGFlow | RAGFlow `ragflow` Component | `ragflow:80` | `data/deployment/ragflow-integrated-default/ragflow/logs` |
+| RAGFlow | RAGFlow `ragflow` Component | `ragflow:80` | `<workspace_root>/ragflow-integrated-default/ragflow/logs` |
 
 外置数据 Service 与 RAGFlow Service 通过受管 `traefik` Docker 网络通信。Component 名称只在所属 Compose 项目中可解析；跨 Service 连接必须使用表中的别名地址。
 

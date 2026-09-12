@@ -98,11 +98,11 @@ Route 的动态快照继续在 Gateway 就绪后读取最新启用 Route 集合�
 
 本需求不为 Gateway 创建额外的“发布后才可部署”例外。初始受管 Version 的状态应遵从通用 `DeployService` 当前语义；若后续产品决定只能部署 `published` Version，必须作为适用于所有 Service 的独立规则实施。`orbit_provision_gateway` 不得再静默发布 Gateway Version，以免 HTTP 和 MCP 行为分叉。
 
-Gateway 使用普通 Service 的实例模型。创建 Gateway 时必须建立 `instance_key=default` 的初始 Service，code 为 `<application-code>-default`；后续可存在其他 instance key 的 Service，其 code 为 `<application-code>-<instance-key>`。这些实例是候选/切换 binding，不是可以同时运行的 Traefik 副本。
+Gateway 使用普通 Service 的实例模型。每个 Environment 只允许一个 `instance_key=default` 的初始 Service，code 为 `<application-code>-default`。Application code 是产品身份 `traefik`，不把 Project code 拼进 Application code。
 
 Service create/update 继续复用全局 code 唯一性和 `(application_id, instance_key)` 唯一性，Gateway 不建立平行的实例标识、Service code 或实例并发校验。通用同 Application 单运行实例规则负责阻止同 Application 的多个 Gateway Service 同时启动。
 
-现有 Compose project 已使用 `<application-code>-<instance-key>`，Service 工作目录使用 Service code；但受管容器名和网络 alias 仍由 `<application-code>-<component-name>` 派生，并不含 instance key。当前不改变该命名规则：停止操作执行 `docker compose down`，通用单运行实例规则防止同 Application 的实例同时创建同名 Traefik 容器。实例语义因此是顺序切换，不是并发副本或灰度运行。
+Compose project 与 Service 工作目录都使用 Service code；受管容器名和网络 alias 仍由 `<application-code>-<component-name>` 派生，并不含 instance key。停止操作执行 `docker compose down`，通用单运行实例规则防止同 Application 的实例同时创建同名 Traefik 容器。实例语义因此是顺序切换，不是并发副本或灰度运行。
 
 ## Affected components
 
@@ -119,7 +119,7 @@ Service create/update 继续复用全局 code 唯一性和 `(application_id, ins
 
 该规格与用户目标和现行领域模型一致：Gateway 的运行态、操作状态和部署执行全部归 Service/Deployment；`kind=gateway` 仅保留确有必要的平台策略。它还能消除 HTTP 与 MCP 的不同资源时序，以及 Gateway 配置写入和受管静态配置脱节的问题。
 
-用户已确认 Gateway 采用普通 Service 实例模型：创建时生成 `<application-code>-default`，其他 instance key 允许作为候选 binding。实例并发直接复用通用同 Application 单运行实例规则，不再使用 active Gateway 查询或按 `service_id` 的 Gateway 互斥逻辑。
+用户已确认 Gateway 采用普通 Service 实例模型。后续 Project 初始化规格将每个 Environment 收敛为唯一 `default` Service：Application code 固定 `traefik`，Service code 为 `traefik-default`。实例并发直接复用通用同 Application 单运行实例规则，不再使用 active Gateway 查询或按 `service_id` 的 Gateway 互斥逻辑。
 
 新的审视表明，前一版“Gateway Render 注入受管静态物料”的设计会绕过 Application/Version 配置面，与领域模型冲突。最终方案是：已有配置仅生成初始 Version；拉取策略、默认入口/TLS 与共享网络保持当前默认，初始 Version 及其后续版本完全由常规 Application/Version/Service 流程配置和部署，Gateway 只保留创建 factory 与部署后 Route 同步。Route 不再隐式编译 Gateway Version。用户已确认不存在未决事项，本 Spec 已接受。
 

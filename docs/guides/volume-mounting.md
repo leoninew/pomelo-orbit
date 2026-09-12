@@ -1,5 +1,5 @@
 # Pomelo Orbit 工作目录与挂载
-最后修改时间: 2026-09-09 20:22:00
+最后修改时间: 2026-09-11 14:48:17
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -8,10 +8,10 @@ Doc role: living guide。与代码冲突时以代码为准。
 | 配置 / 字段 | 内容 |
 | --- | --- |
 | `workspace.pipeline` | Orbit 控制面上的 Repository checkout、Run artifacts 与 Stage logs；CI Docker runner 继续使用该目录 |
-| `Environment.workspace_root` | 当前 Environment 的 CD 根目录；local 使用控制面宿主机路径，SSH 使用目标宿主机路径。Service Compose、组件 logical mount、Gateway 证书和 Route REST snapshot 都在此目录下 |
+| `Environment.workspace_root` | 当前 Environment 的 CD 根目录，原样保存绝对路径或 `~` / `~/...`。local 在使用时把 `~` 展开为控制面进程用户主目录，SSH 展开为远端登录用户主目录。Service Compose、组件 logical mount、Gateway 证书和 Route REST snapshot 都在此目录下 |
 | `logging.deployment_root` | 控制面部署执行日志根目录（`<root>/logs/<service-code>/<deployment-id>.log`），不属于 Environment workspace |
 
-只有 `workspace.pipeline` 属于 Orbit 进程配置，并相对 `orbit.root` 解析。local 和 SSH 的 `Environment.workspace_root` 都由环境页面或 MCP 保存，不使用 YAML 默认值或 fallback；SSH 路径可以是目标平台的绝对路径，也可以是 `~/<path>`，后者在远端执行和 SFTP 写入时解析为登录 SSH 用户的主目录。
+只有 `workspace.pipeline` 属于 Orbit 进程配置，并相对 `orbit.root` 解析。local 和 SSH 的 `Environment.workspace_root` 都由 Wizard / 环境页面或 MCP 原样保存，不在加载配置或返回 API 时翻译成绝对路径。`~` 与 `~/...` 只在 Probe、部署、runtime 使用时展开：local 用控制面 `UserHomeDir`，SSH 用远端登录用户主目录。初始化来源配置 `project_initialization.environment.local_workspace_root` 默认 `~/.pomelo-orbit`，同样原样展示和写入。
 
 Service 目录为 `<Environment.workspace_root>/<service-code>/`，包含 `docker-compose.yml`、组件受控文件/目录，以及 Gateway 的 `gateway/certs/` 和 `.orbit/traefik-rest.json`。local 由控制面 Docker daemon 执行，SSH 由 SSH/SFTP 执行。两类目标不互相 fallback。
 

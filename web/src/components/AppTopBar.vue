@@ -290,6 +290,11 @@
   import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
   import { useAuthStore } from '@/stores/auth';
   import { useProjectStore } from '@/stores/project';
+  import { useProjectInitializationStore } from '@/stores/projectInitialization';
+  import {
+    isProjectInitializationPath,
+    isProjectReadinessGuardedPath,
+  } from '@/router/projectReadiness';
   import { useTheme } from '@/composables/useTheme';
   import { setLocale, type Locale } from '@/i18n';
   import { useToast } from '@/composables/useToast';
@@ -319,6 +324,7 @@
   const router = useRouter();
   const authStore = useAuthStore();
   const projectStore = useProjectStore();
+  const initializationStore = useProjectInitializationStore();
   const { theme, cycleTheme } = useTheme();
   const { t, locale } = useI18n({ useScope: 'global' });
   const toast = useToast();
@@ -379,10 +385,32 @@
     }
   }
 
-  function handleSwitchProject(projectId: string) {
-    if (projectId !== projectStore.activeProjectId) {
-      projectStore.setActiveProject(projectId);
+  async function handleSwitchProject(projectId: string) {
+    if (projectId === projectStore.activeProjectId) {
+      return;
+    }
+    projectStore.setActiveProject(projectId);
+    const current = router.currentRoute.value;
+    try {
+      const status = await initializationStore.fetchStatus(projectId);
+      if (status.status !== 'ready') {
+        await router.push({
+          name: 'ProjectInitialization',
+          params: { id: projectId },
+          query:
+            isProjectReadinessGuardedPath(current.path) || isProjectInitializationPath(current.path)
+              ? { redirect: current.fullPath }
+              : {},
+        });
+        return;
+      }
+      if (isProjectInitializationPath(current.path)) {
+        await router.push('/gateways');
+        return;
+      }
       router.go(0);
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : t('project.initialization.loadFailed'));
     }
   }
 

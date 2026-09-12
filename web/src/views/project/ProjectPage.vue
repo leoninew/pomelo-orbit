@@ -303,7 +303,11 @@
           toast.success(t('project.created'));
           isDialogOpen.value = false;
           projectStore.setActiveProject(project.id);
-          router.push('/environment');
+          await router.push({
+            name: 'ProjectInitialization',
+            params: { id: project.id },
+            query: { redirect: '/gateways' },
+          });
         }
       });
     } catch (error: unknown) {

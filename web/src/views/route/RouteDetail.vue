@@ -510,6 +510,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
+  import { MANAGED_GATEWAY_COMPONENT_NAME } from '@/constants/gateway';
   import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
 
   const currentRoute = useRoute();
@@ -617,22 +618,17 @@
   );
   const gatewayRuntimeLogTarget = computed<RuntimeContainerLogTarget | undefined>(() => {
     const current = gatewayForLogs.value;
-    if (
-      !current ||
-      !current.default_service_id ||
-      !current.default_service_instance_key ||
-      !current.traefik_component_name
-    ) {
+    if (!current || !current.default_service_id || !current.default_service_instance_key) {
       return undefined;
     }
     return {
       applicationId: current.id,
       serviceId: current.default_service_id,
-      component: current.traefik_component_name,
+      component: MANAGED_GATEWAY_COMPONENT_NAME,
       title: t('service.logs.titleWithComponent', {
         app: current.name,
         instance: current.default_service_instance_key,
-        component: current.traefik_component_name,
+        component: MANAGED_GATEWAY_COMPONENT_NAME,
       }),
     };
   });

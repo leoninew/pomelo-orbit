@@ -46,7 +46,6 @@ const gateway: GatewayResp = {
   default_service_instance_key: '',
   default_service_code: '',
   default_service_status: '',
-  traefik_component_name: 'traefik',
   rest_ready_timeout_seconds: 30,
   acme_profile: '',
   acme_email: '',
@@ -116,7 +115,6 @@ describe('Gateway detail editing', () => {
 
     expect(gatewayApi.update).toHaveBeenCalledWith('gateway-1', {
       name: 'Traefik edge',
-      traefik_component_name: gateway.traefik_component_name,
       rest_api_url: gateway.rest_api_url,
       rest_ready_timeout_seconds: gateway.rest_ready_timeout_seconds,
       base_domain: gateway.base_domain,

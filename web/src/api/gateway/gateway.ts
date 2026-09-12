@@ -1,5 +1,4 @@
 import type {
-  GatewayCreateReq,
   GatewayPaginatedResp,
   GatewayResp,
   GatewayUpdateReq,
@@ -18,10 +17,6 @@ export const gatewayApi = {
 
   get(id: string): Promise<GatewayResp> {
     return request.get(`/api/gateway/${id}`);
-  },
-
-  create(data: GatewayCreateReq, params?: { project_id?: string }): Promise<GatewayResp> {
-    return request.post('/api/gateway', data, { params });
   },
 
   update(id: string, data: GatewayUpdateReq): Promise<GatewayResp> {

@@ -33,7 +33,7 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, applicati
 	if !exists {
 		return []deploymentdto.RuntimeContainer{}, nil
 	}
-	command := containerPsCommand(composeProjectName(app.Code, service.InstanceKey))
+	command := containerPsCommand(composeProjectName(service.Code))
 	output, err := s.runtime.Query(ctx, target, service.Code, command.Name, command.Args...)
 	if err != nil {
 		return nil, apperror.New(apperror.KindInternal, outputOrError(output, err))
@@ -88,7 +88,14 @@ func (s Service) ApplicationLogs(ctx context.Context, userId string, application
 	if err != nil {
 		return "", err
 	}
-	projectName := composeProjectName(app.Code, service.InstanceKey)
+	exists, err := s.runtime.ServiceDirExists(ctx, target, service.Code)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
+	}
+	if !exists {
+		return "", nil
+	}
+	projectName := composeProjectName(service.Code)
 	command := containerLogsTailCommand(projectName, strconv.Itoa(tail))
 	if component != "" {
 		command = containerLogsTailCommand(projectName, strconv.Itoa(tail), component)

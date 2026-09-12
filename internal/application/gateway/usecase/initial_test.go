@@ -2,17 +2,9 @@ package gatewaysvc
 
 import (
 	"testing"
-	"time"
 
-	"github.com/leoninew/pomelo-orbit/internal/config"
 	"gopkg.in/yaml.v3"
 )
-
-func testGatewayConfig() config.TraefikConfig {
-	return config.TraefikConfig{
-		Image: "traefik:3.6", RestApiUrl: "http://localhost:8080", BaseDomain: "example.test", RestReadyTimeout: 20 * time.Second,
-	}
-}
 
 func TestBuildInitialGatewayVersionsDeclareStaticTopology(t *testing.T) {
 	versions := buildInitialGatewayVersions("gateway-1", "traefik:3.6", "missing", "traefik", "traefik")

@@ -98,12 +98,11 @@ func (m *RouteManager) ApplySnapshot(ctx context.Context, projectID string, gate
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to marshal traefik rest snapshot", err)
 	}
-	stateDir := path.Join(strings.ReplaceAll(serviceDir, "\\", "/"), ".orbit")
-	snapshotPath := path.Join(stateDir, "traefik-rest.json")
+	stateDir, snapshotPath := restSnapshotLocation(serviceDir)
 	if err := m.runtime.SyncFiles(ctx, target, stateDir, []deploymentport.WorkspaceFile{{Path: snapshotPath, Content: body, Mode: 0o600}}, ""); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to stage remote traefik snapshot", err)
 	}
-	output, err := m.runtime.QueryAtEnvironmentRoot(ctx, target, "curl", "-fsS", "--max-time", "15", "-X", "PUT", "-H", "Content-Type: application/json", "--data-binary", "@"+snapshotPath, base+"/api/providers/rest")
+	output, err := m.runtime.QueryAtEnvironmentRootInput(ctx, target, body, "curl", "-fsS", "--max-time", "15", "-X", "PUT", "-H", "Content-Type: application/json", "--data-binary", "@-", base+"/api/providers/rest")
 	if err != nil {
 		return apperror.New(apperror.KindInternal, outputOrRemoteError("Failed to put traefik rest config", output, err))
 	}
@@ -220,6 +219,12 @@ func (m *RouteManager) resolveTarget(ctx context.Context, projectID string) (env
 
 func (m *RouteManager) IsConnectionError(err error) bool {
 	return err != nil
+}
+
+func restSnapshotLocation(serviceDir string) (stateDir, snapshotPath string) {
+	serviceDir = strings.ReplaceAll(strings.TrimSpace(serviceDir), "\\", "/")
+	stateDir = path.Join(serviceDir, ".orbit")
+	return stateDir, path.Join(stateDir, "traefik-rest.json")
 }
 
 func traefikBaseURL(value string) (string, error) {

@@ -304,7 +304,7 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 	} else if _, err := fmt.Fprintln(logWriter, "Stopping services"); err != nil {
 		return err
 	}
-	projectName := composeProjectName(app.Code, svc.InstanceKey)
+	projectName := composeProjectName(svc.Code)
 	command := stopComposeCommand(projectName, removeVolumes)
 	if err := s.runtime.Run(executionCtx, target, svc.Code, logWriter, command.Name, command.Args...); err != nil {
 		if s.deploymentCanceled(ctx, deployment.Id) {
@@ -334,7 +334,7 @@ func (s Service) reconcileCanceledService(ctx context.Context, target environmen
 		if err == nil && !exists {
 			serviceStatus = status.ServiceStatusStopped
 		} else if err == nil {
-			command := containerPsCommand(composeProjectName(app.Code, svc.InstanceKey))
+			command := containerPsCommand(composeProjectName(svc.Code))
 			output, runErr := s.runtime.Query(ctx, target, svc.Code, command.Name, command.Args...)
 			if runErr == nil {
 				containers, parseErr := parseComposePsOutput(output)
@@ -421,7 +421,7 @@ func (s Service) resolveServiceFromDeployment(ctx context.Context, applicationId
 }
 
 func (s Service) renderAndDeployWithOptions(ctx context.Context, target environmentport.Target, plan model.EffectiveServicePlan, deploymentId string, forceRecreate bool) error {
-	app, version, svc := plan.Application, plan.Version, plan.Service
+	version, svc := plan.Version, plan.Service
 	if s.runtime == nil {
 		return fmt.Errorf("deployment runtime is not configured")
 	}
@@ -462,7 +462,7 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, target environm
 	if err := s.runtime.StageWorkspace(ctx, target, workspace); err != nil {
 		return err
 	}
-	projectName := composeProjectName(app.Code, svc.InstanceKey)
+	projectName := composeProjectName(svc.Code)
 	command := deployComposeCommand(projectName, deploymentPullPolicy(plan), forceRecreate)
 	if _, err := fmt.Fprintln(logWriter, "Starting services"); err != nil {
 		return err

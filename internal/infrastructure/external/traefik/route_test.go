@@ -87,8 +87,24 @@ func TestRouteManagerApplySnapshotStagesRemoteCertificatesAndPUTBody(t *testing.
 	if runtime.putURL != "http://127.0.0.1:8080/api/providers/rest" {
 		t.Fatalf("PUT URL = %q", runtime.putURL)
 	}
+	if runtime.putFile != "@-" {
+		t.Fatalf("PUT file = %q", runtime.putFile)
+	}
+	if !json.Valid(runtime.putBody) || !strings.Contains(string(runtime.putBody), `"http"`) {
+		t.Fatalf("PUT body = %s", runtime.putBody)
+	}
 	if runtime.environmentQueries != 1 {
 		t.Fatalf("environment-root query count = %d, want 1", runtime.environmentQueries)
+	}
+}
+
+func TestRestSnapshotLocationNormalizesWindowsServiceDir(t *testing.T) {
+	stateDir, snapshotPath := restSnapshotLocation(`C:\Users\wangm25\.pomelo-orbit\traefik-default`)
+	if stateDir != "C:/Users/wangm25/.pomelo-orbit/traefik-default/.orbit" {
+		t.Fatalf("state dir = %q", stateDir)
+	}
+	if snapshotPath != "C:/Users/wangm25/.pomelo-orbit/traefik-default/.orbit/traefik-rest.json" {
+		t.Fatalf("snapshot path = %q", snapshotPath)
 	}
 }
 
@@ -144,6 +160,8 @@ type routeRuntimeFake struct {
 	attempts           map[string]int
 	files              map[string][]byte
 	putBody            []byte
+	putStdin           []byte
+	putFile            string
 	putURL             string
 	lastTarget         environmentport.Target
 	environmentQueries int
@@ -171,8 +189,12 @@ func (r *routeRuntimeFake) Run(context.Context, environmentport.Target, string, 
 func (r *routeRuntimeFake) Query(_ context.Context, target environmentport.Target, _ string, _ string, args ...string) (string, error) {
 	return r.query(target, args...)
 }
-func (r *routeRuntimeFake) QueryAtEnvironmentRoot(_ context.Context, target environmentport.Target, _ string, args ...string) (string, error) {
+func (r *routeRuntimeFake) QueryAtEnvironmentRoot(_ context.Context, target environmentport.Target, name string, args ...string) (string, error) {
+	return r.QueryAtEnvironmentRootInput(context.Background(), target, nil, name, args...)
+}
+func (r *routeRuntimeFake) QueryAtEnvironmentRootInput(_ context.Context, target environmentport.Target, stdin []byte, _ string, args ...string) (string, error) {
 	r.environmentQueries++
+	r.putStdin = append([]byte(nil), stdin...)
 	return r.query(target, args...)
 }
 func (r *routeRuntimeFake) query(target environmentport.Target, args ...string) (string, error) {
@@ -197,14 +219,34 @@ func (r *routeRuntimeFake) query(target environmentport.Target, args ...string) 
 	if strings.HasSuffix(endpoint, "/api/providers/rest") {
 		r.putURL = endpoint
 		for _, arg := range args {
-			if strings.HasPrefix(arg, "@") {
-				r.putBody = append([]byte(nil), r.files[strings.TrimPrefix(arg, "@")]...)
+			if !strings.HasPrefix(arg, "@") {
+				continue
 			}
+			r.putFile = arg
+			if arg == "@-" {
+				r.putBody = append([]byte(nil), r.putStdin...)
+				continue
+			}
+			r.putBody = restSnapshotBody(r.files, strings.TrimPrefix(arg, "@"))
 		}
 		return "", nil
 	}
 	return "", errors.New("unexpected remote curl endpoint")
 }
+func restSnapshotBody(files map[string][]byte, fileArg string) []byte {
+	fileArg = strings.TrimPrefix(strings.ReplaceAll(fileArg, "\\", "/"), "./")
+	if body, ok := files[fileArg]; ok {
+		return append([]byte(nil), body...)
+	}
+	for filePath, content := range files {
+		normalized := strings.ReplaceAll(filePath, "\\", "/")
+		if normalized == fileArg || strings.HasSuffix(normalized, "/"+fileArg) {
+			return append([]byte(nil), content...)
+		}
+	}
+	return nil
+}
+
 func (r *routeRuntimeFake) SyncFiles(_ context.Context, _ environmentport.Target, directory string, files []deploymentport.WorkspaceFile, pruneSuffix string) error {
 	keep := map[string]struct{}{}
 	for _, file := range files {

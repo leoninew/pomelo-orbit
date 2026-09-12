@@ -49,7 +49,7 @@ func (s Service) ResolveRuntimeTarget(ctx context.Context, userId, applicationId
 	if err != nil {
 		return deploymentdto.RuntimeTarget{}, apperror.Wrap(apperror.KindInternal, "Failed to resolve remote runtime directory", err)
 	}
-	return deploymentdto.RuntimeTarget{ApplicationId: app.Id, ServiceId: service.Id, InstanceKey: service.InstanceKey, ServiceCode: service.Code, WorkingDirectory: workingDirectory, ComposeProject: composeProjectName(app.Code, service.InstanceKey), ProjectId: *app.ProjectId}, nil
+	return deploymentdto.RuntimeTarget{ApplicationId: app.Id, ServiceId: service.Id, InstanceKey: service.InstanceKey, ServiceCode: service.Code, WorkingDirectory: workingDirectory, ComposeProject: composeProjectName(service.Code), ProjectId: *app.ProjectId}, nil
 }
 
 func safeRuntimeSegment(value string) bool {

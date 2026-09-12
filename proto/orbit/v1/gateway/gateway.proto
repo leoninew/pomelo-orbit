@@ -19,7 +19,8 @@ message GatewayCreateReq {
   optional string default_entrypoint = 8;
   // none|letsencrypt|tls (default none when empty on create)
   optional string tls_mode = 9;
-  optional string traefik_component_name = 10;
+  reserved 10;
+  reserved "traefik_component_name";
   optional int32 rest_ready_timeout_seconds = 11;
   optional string acme_profile = 12;
   optional string acme_email = 13;
@@ -32,7 +33,8 @@ message GatewayUpdateReq {
   optional string base_domain = 3;
   optional string default_entrypoint = 4;
   optional string tls_mode = 5;
-  optional string traefik_component_name = 6;
+  reserved 6;
+  reserved "traefik_component_name";
   optional int32 rest_ready_timeout_seconds = 7;
   optional string acme_profile = 8;
   optional string acme_email = 9;
@@ -71,7 +73,8 @@ message GatewayResp {
   string default_service_instance_key = 15;
   string default_service_code = 16;
   string default_service_status = 17;
-  string traefik_component_name = 18;
+  reserved 18;
+  reserved "traefik_component_name";
   int32 rest_ready_timeout_seconds = 19;
   string acme_profile = 20;
   string acme_email = 21;

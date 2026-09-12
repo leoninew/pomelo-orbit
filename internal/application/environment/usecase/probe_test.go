@@ -471,7 +471,15 @@ func (p *localProbeEnvironmentProber) ProbeLocal(context.Context, model.Environm
 	return p.err
 }
 
+func (p *localProbeEnvironmentProber) TestSSH(context.Context, string, int, string) error {
+	return p.err
+}
+
 func (p *probeEnvironmentProber) ProbeLocal(context.Context, model.Environment) error {
+	return p.err
+}
+
+func (p *probeEnvironmentProber) TestSSH(context.Context, string, int, string) error {
 	return p.err
 }
 

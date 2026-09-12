@@ -5,7 +5,6 @@ CREATE TABLE deployment_dialogue_conversation (
     title VARCHAR(120) NOT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    CONSTRAINT fk_deployment_dialogue_conversation_project FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE,
     INDEX idx_deployment_dialogue_conversation_project_updated (project_id, updated_at DESC, id DESC)
 );
 
@@ -15,7 +14,6 @@ CREATE TABLE deployment_dialogue_message (
     role VARCHAR(16) NOT NULL,
     content LONGTEXT NOT NULL,
     created_at DATETIME NOT NULL,
-    CONSTRAINT fk_deployment_dialogue_message_conversation FOREIGN KEY (conversation_id) REFERENCES deployment_dialogue_conversation(id) ON DELETE CASCADE,
     CONSTRAINT chk_deployment_dialogue_message_role CHECK (role IN ('user', 'assistant')),
     INDEX idx_deployment_dialogue_message_conversation_created (conversation_id, created_at, id)
 );

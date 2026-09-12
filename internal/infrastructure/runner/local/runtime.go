@@ -110,7 +110,7 @@ func (r *Runtime) Query(ctx context.Context, target environmentport.Target, serv
 	if err != nil {
 		return "", err
 	}
-	return query(ctx, serviceDir, name, args...)
+	return query(ctx, serviceDir, nil, name, args...)
 }
 
 func (r *Runtime) QueryAtEnvironmentRoot(ctx context.Context, target environmentport.Target, name string, args ...string) (string, error) {
@@ -121,7 +121,18 @@ func (r *Runtime) QueryAtEnvironmentRoot(ctx context.Context, target environment
 	if err := os.MkdirAll(root, 0o750); err != nil {
 		return "", fmt.Errorf("create local environment workspace: %w", err)
 	}
-	return query(ctx, root, name, args...)
+	return query(ctx, root, nil, name, args...)
+}
+
+func (r *Runtime) QueryAtEnvironmentRootInput(ctx context.Context, target environmentport.Target, stdin []byte, name string, args ...string) (string, error) {
+	root, err := r.localWorkspaceRoot(target)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(root, 0o750); err != nil {
+		return "", fmt.Errorf("create local environment workspace: %w", err)
+	}
+	return query(ctx, root, stdin, name, args...)
 }
 
 func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []deploymentport.WorkspaceFile, pruneSuffix string) error {
@@ -177,11 +188,11 @@ func (r *Runtime) ProbeLocal(ctx context.Context, environment model.Environment)
 	if err := os.MkdirAll(root, 0o750); err != nil {
 		return localProbeError{diagnostic: "Local deployment workspace is unavailable."}
 	}
-	output, err := query(ctx, root, "docker", "version", "--format", "{{.Server.Version}}")
+	output, err := query(ctx, root, nil, "docker", "version", "--format", "{{.Server.Version}}")
 	if err != nil {
 		return localProbeError{diagnostic: "Local Docker daemon is unavailable: " + strings.TrimSpace(output)}
 	}
-	output, err = query(ctx, root, "docker", "compose", "version")
+	output, err = query(ctx, root, nil, "docker", "compose", "version")
 	if err != nil {
 		return localProbeError{diagnostic: "Local Docker Compose is unavailable: " + strings.TrimSpace(output)}
 	}
@@ -204,7 +215,33 @@ func (r *Runtime) localWorkspaceRoot(target environmentport.Target) (string, err
 	if root == "" {
 		return "", errors.New("local Environment workspace_root is required")
 	}
-	return filepath.Clean(root), nil
+	expanded, err := expandLocalHomePath(root)
+	if err != nil {
+		return "", err
+	}
+	return expanded, nil
+}
+
+func expandLocalHomePath(value string) (string, error) {
+	if !isHomeWorkspaceRoot(value) {
+		return filepath.Clean(value), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve user home: %w", err)
+	}
+	home = strings.TrimSpace(home)
+	if home == "" {
+		return "", errors.New("user home directory is required")
+	}
+	if value == "~" {
+		return filepath.Clean(home), nil
+	}
+	return filepath.Clean(filepath.Join(home, strings.TrimPrefix(value, "~/"))), nil
+}
+
+func isHomeWorkspaceRoot(value string) bool {
+	return value == "~" || strings.HasPrefix(value, "~/")
 }
 
 func (r *Runtime) writeFile(serviceDir string, file deploymentport.WorkspaceFile) error {
@@ -280,12 +317,15 @@ func run(ctx context.Context, cwd string, log io.Writer, name string, args ...st
 	return nil
 }
 
-func query(ctx context.Context, cwd string, name string, args ...string) (string, error) {
+func query(ctx context.Context, cwd string, stdin []byte, name string, args ...string) (string, error) {
 	if strings.TrimSpace(name) == "" {
 		return "", errors.New("command is required")
 	}
 	command := exec.CommandContext(ctx, name, args...)
 	command.Dir = cwd
+	if len(stdin) > 0 {
+		command.Stdin = bytes.NewReader(stdin)
+	}
 	var output bytes.Buffer
 	command.Stdout = &output
 	command.Stderr = &output

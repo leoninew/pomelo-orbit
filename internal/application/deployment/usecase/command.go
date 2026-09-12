@@ -147,7 +147,7 @@ func (s Service) DeployService(ctx context.Context, userId string, serviceId str
 	}
 	deployment.ServiceId = &service.Id
 	deployment.EffectivePlanHash = &planHash
-	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, service.InstanceKey), deploymentPullPolicy(plan), input.ForceRecreate).String()
+	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), deploymentPullPolicy(plan), input.ForceRecreate).String()
 	if err := s.commandStore.CreateDeployment(ctx, deployment); err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
@@ -185,7 +185,7 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	if err := setDeploymentOptions(&deployment, options); err != nil {
 		return "", err
 	}
-	deployment.CommandText = stopComposeCommand(composeProjectName(app.Code, service.InstanceKey), input.RemoveVolumes).String()
+	deployment.CommandText = stopComposeCommand(composeProjectName(service.Code), input.RemoveVolumes).String()
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}
@@ -273,7 +273,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 		return "", err
 	}
 	deployment.EffectivePlanHash = &planHash
-	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, service.InstanceKey), deploymentPullPolicy(plan), false).String()
+	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), deploymentPullPolicy(plan), false).String()
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}

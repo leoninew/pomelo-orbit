@@ -28,6 +28,8 @@ import (
 type Dependencies struct {
 	ActorUserId        string
 	ActorAuthenticator ActorAuthenticator
+	SelectedProjectId  string
+	ScopeFixed         bool
 	Project            ProjectService
 	Application        ApplicationService
 	Service            ServiceService
@@ -69,6 +71,7 @@ type ApplicationService interface {
 
 type ServiceService interface {
 	ListServicesByApplication(context.Context, string, string) ([]model.Service, error)
+	GetService(context.Context, string, string) (servicedto.ServiceView, error)
 	CreateService(context.Context, string, servicedto.ServiceCreateInput) (servicedto.ServiceView, error)
 	UpdateServiceComponentOverlay(context.Context, string, string, string, servicedto.ServiceComponentOverlayInput) (model.ServiceComponent, error)
 	UpdateServiceEnv(context.Context, string, string, servicedto.ServiceEnvUpdateInput) (servicedto.ServiceView, error)
@@ -103,7 +106,6 @@ type EnvironmentService interface {
 
 type GatewayService interface {
 	ListGateways(context.Context, string, string, int, int, string) (repository.Page[gatewaydto.GatewayView], error)
-	CreateGateway(context.Context, string, gatewaydto.GatewayCreateInput) (gatewaydto.GatewayView, error)
 	GatewayForUser(context.Context, string, string) (gatewaydto.GatewayView, error)
 	UpdateGateway(context.Context, string, string, gatewaydto.GatewayUpdateInput) (gatewaydto.GatewayView, error)
 	ProvisionGateway(context.Context, string, gatewaydto.ProvisionGatewayInput) (gatewaydto.ProvisionGatewayResult, error)

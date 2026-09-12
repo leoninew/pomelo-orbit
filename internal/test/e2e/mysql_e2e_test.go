@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	gatewayApplicationID = "01M10RRA8F863EJ2N9TC3Z2EC1"
+	identityProjectID = "01KRRKK0K3T519ZQZES3M4QA9Z"
 )
 
 func TestSQLiteMigrationE2E(t *testing.T) {
@@ -110,27 +110,24 @@ func runMigrationE2E(t *testing.T, cfg config.Config) {
 		t.Fatalf("migration is dirty: %+v", version)
 	}
 
-	var gatewayApplicationCount int
-	if err := database.QueryRow(
-		"SELECT COUNT(*) FROM application WHERE id = ? AND code = ?",
-		gatewayApplicationID,
-		"traefik",
-	).Scan(&gatewayApplicationCount); err != nil {
+	var projects, applications, environments, gateways int
+	if err := database.QueryRow("SELECT COUNT(*) FROM project WHERE id = ?", identityProjectID).Scan(&projects); err != nil {
 		t.Fatal(err)
 	}
-	if gatewayApplicationCount != 1 {
-		t.Fatalf("expected current gateway application, got %d", gatewayApplicationCount)
-	}
-
-	var profileVersionCount int
-	if err := database.QueryRow(
-		"SELECT COUNT(*) FROM gateway_acme_profile_version WHERE application_id = ?",
-		gatewayApplicationID,
-	).Scan(&profileVersionCount); err != nil {
+	if err := database.QueryRow("SELECT COUNT(*) FROM application").Scan(&applications); err != nil {
 		t.Fatal(err)
 	}
-	if profileVersionCount != 4 {
-		t.Fatalf("expected four gateway profile versions, got %d", profileVersionCount)
+	if err := database.QueryRow("SELECT COUNT(*) FROM environment").Scan(&environments); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.QueryRow("SELECT COUNT(*) FROM gateway_config").Scan(&gateways); err != nil {
+		t.Fatal(err)
+	}
+	if projects != 1 {
+		t.Fatalf("identity project seed missing: projects=%d", projects)
+	}
+	if applications != 0 || environments != 0 || gateways != 0 {
+		t.Fatalf("deployment resources were seeded: applications=%d environments=%d gateways=%d", applications, environments, gateways)
 	}
 }
 

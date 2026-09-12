@@ -33,6 +33,9 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 		}
 		var target *deploymentdto.RuntimeTarget
 		if hasApplication {
+			if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
+				return nil, err
+			}
 			resolved, err := c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, input.ApplicationId, input.InstanceKey, false)
 			if err != nil {
 				return nil, err
@@ -40,6 +43,9 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 			target = &resolved
 		}
 		if hasGateway {
+			if _, err := c.gatewayInScope(ctx, input.GatewayApplicationId); err != nil {
+				return nil, err
+			}
 			resolved, err := c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, input.GatewayApplicationId, input.GatewayInstanceKey, true)
 			if err != nil {
 				return nil, err
@@ -175,6 +181,9 @@ type runtimeTargetInput struct {
 }
 
 func (c *core) runtimeTarget(ctx context.Context, applicationId, instanceKey string) (deploymentdto.RuntimeTarget, error) {
+	if _, err := c.applicationInScope(ctx, applicationId); err != nil {
+		return deploymentdto.RuntimeTarget{}, err
+	}
 	if strings.TrimSpace(instanceKey) == "" {
 		instanceKey = "default"
 	}

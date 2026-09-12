@@ -20,7 +20,7 @@ func TestRenderGatewayComposeUsesDeclaredVersionTopology(t *testing.T) {
 			Version:     model.Version{Id: baseVersionID},
 			Service:     model.Service{InstanceKey: "default"},
 			Gateway: &model.GatewayConfig{
-				ApplicationId: "gateway-1", TraefikComponentName: "traefik", NetworkName: "traefik",
+				ApplicationId: "gateway-1", NetworkName: "traefik",
 				BaseDomain: "example.test", DefaultEntrypoint: "web",
 				VersionBindings: []model.GatewayVersionBinding{{Profile: "base", VersionId: baseVersionID}},
 			},

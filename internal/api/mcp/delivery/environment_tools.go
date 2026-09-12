@@ -10,18 +10,15 @@ import (
 )
 
 func (c *core) registerEnvironmentTools(server *mcp.Server) {
-	addTool(server, "orbit_get_project_environment", "Read the unique local or SSH deployment Environment for one Project. SSH responses never include private keys or initialization credentials.", func(ctx context.Context, input struct {
-		ProjectId string `json:"project_id" jsonschema:"required"`
-	}) (map[string]any, error) {
-		environment, err := c.deps.Environment.EnvironmentForUser(ctx, c.deps.ActorUserId, input.ProjectId)
+	addTool(server, "orbit_get_project_environment", "Read the unique local or SSH deployment Environment for the selected Project. SSH responses never include private keys or initialization credentials.", func(ctx context.Context, _ struct{}) (map[string]any, error) {
+		projectId, environment, err := c.requireReadyEnvironment(ctx)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"project_id": input.ProjectId, "environment": environmentOutput(environment)}, nil
+		return map[string]any{"environment": environmentOutput(environment), "project_id": projectId}, nil
 	})
 
-	addTool(server, "orbit_update_project_environment", "Update the explicit local or SSH target of a Project's unique deployment Environment. Local requires the nested local object; SSH requires the nested ssh object.", func(ctx context.Context, input struct {
-		ProjectId  string  `json:"project_id" jsonschema:"required"`
+	addTool(server, "orbit_update_project_environment", "Update the explicit local or SSH target of the selected Project's unique deployment Environment. Local requires the nested local object; SSH requires the nested ssh object.", func(ctx context.Context, input struct {
 		State      *string `json:"state,omitempty"`
 		TargetType *string `json:"target_type,omitempty"`
 		Local      *struct {
@@ -46,22 +43,28 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 		if input.SSH != nil {
 			ssh = &environmentdto.SSHTargetInput{Platform: input.SSH.Platform, Host: input.SSH.Host, Port: input.SSH.Port, Username: input.SSH.Username, WorkspaceRoot: input.SSH.WorkspaceRoot}
 		}
-		environment, err := c.deps.Environment.UpdateForUser(ctx, c.deps.ActorUserId, input.ProjectId, environmentdto.UpdateInput{
+		projectId, _, err := c.requireReadyEnvironment(ctx)
+		if err != nil {
+			return nil, err
+		}
+		environment, err := c.deps.Environment.UpdateForUser(ctx, c.deps.ActorUserId, projectId, environmentdto.UpdateInput{
 			State: input.State, TargetType: input.TargetType, Local: local, SSH: ssh,
 		})
 		if err != nil {
 			return nil, err
 		}
-		return writeResult("update_project_environment", map[string]string{"project_id": input.ProjectId, "environment_id": environment.Id}, "PUT", "/api/project/"+input.ProjectId+"/environment", map[string]any{"environment": environmentOutput(environment)}), nil
+		return writeResult("update_project_environment", map[string]string{"project_id": projectId, "environment_id": environment.Id}, "PUT", "/api/project/"+projectId+"/environment", map[string]any{"environment": environmentOutput(environment)}), nil
 	})
 
-	addTool(server, "orbit_probe_project_environment", "Probe Docker Compose prerequisites for a Project's active local or SSH Environment. SSH also verifies key authentication and host-key pinning.", func(ctx context.Context, input struct {
-		ProjectId string `json:"project_id" jsonschema:"required"`
-	}) (map[string]any, error) {
-		environment, err := c.deps.Environment.ProbeForUser(ctx, c.deps.ActorUserId, input.ProjectId)
+	addTool(server, "orbit_probe_project_environment", "Probe Docker Compose prerequisites for the selected Project's active local or SSH Environment. SSH also verifies key authentication and host-key pinning.", func(ctx context.Context, _ struct{}) (map[string]any, error) {
+		projectId, _, err := c.requireReadyEnvironment(ctx)
 		if err != nil {
 			return nil, err
 		}
-		return writeResult("probe_project_environment", map[string]string{"project_id": input.ProjectId, "environment_id": environment.Id}, "POST", "/api/project/"+input.ProjectId+"/environment/probe", map[string]any{"environment": environmentOutput(environment)}), nil
+		environment, err := c.deps.Environment.ProbeForUser(ctx, c.deps.ActorUserId, projectId)
+		if err != nil {
+			return nil, err
+		}
+		return writeResult("probe_project_environment", map[string]string{"project_id": projectId, "environment_id": environment.Id}, "POST", "/api/project/"+projectId+"/environment/probe", map[string]any{"environment": environmentOutput(environment)}), nil
 	})
 }

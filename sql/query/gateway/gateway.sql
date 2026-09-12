@@ -1,5 +1,5 @@
 -- name: GatewayConfigByApplication :one
-SELECT application_id, traefik_component_name, rest_api_url, rest_ready_timeout_seconds,
+SELECT application_id, rest_api_url, rest_ready_timeout_seconds,
        base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
        dns_api_token, created_at, updated_at
 FROM gateway_config
@@ -43,15 +43,15 @@ WHERE e.project_id = ?;
 
 -- name: InsertGatewayConfig :exec
 INSERT INTO gateway_config (
-  application_id, traefik_component_name, rest_api_url, rest_ready_timeout_seconds,
+  application_id, rest_api_url, rest_ready_timeout_seconds,
   base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
   dns_api_token, created_at, updated_at
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateGatewayConfig :exec
 UPDATE gateway_config
-SET traefik_component_name = ?, rest_api_url = ?, rest_ready_timeout_seconds = ?,
+SET rest_api_url = ?, rest_ready_timeout_seconds = ?,
     base_domain = ?, default_entrypoint = ?, tls_mode = ?, acme_profile = ?, acme_email = ?,
     dns_api_token = ?, updated_at = ?
 WHERE application_id = ?;

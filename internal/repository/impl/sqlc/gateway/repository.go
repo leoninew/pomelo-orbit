@@ -94,7 +94,6 @@ func (r Repository) UpsertGatewayConfig(ctx context.Context, cfg model.GatewayCo
 		}
 		if err := q.InsertGatewayConfig(ctx, gatewaysqlc.InsertGatewayConfigParams{
 			ApplicationID:           cfg.ApplicationId,
-			TraefikComponentName:    cfg.TraefikComponentName,
 			RestApiUrl:              cfg.RestApiUrl,
 			RestReadyTimeoutSeconds: int64(cfg.RestReadyTimeoutSeconds),
 			BaseDomain:              cfg.BaseDomain,
@@ -109,7 +108,6 @@ func (r Repository) UpsertGatewayConfig(ctx context.Context, cfg model.GatewayCo
 			return fmt.Errorf("insert gateway config %s: %w", cfg.ApplicationId, err)
 		}
 	} else if err := q.UpdateGatewayConfig(ctx, gatewaysqlc.UpdateGatewayConfigParams{
-		TraefikComponentName:    cfg.TraefikComponentName,
 		RestApiUrl:              cfg.RestApiUrl,
 		RestReadyTimeoutSeconds: int64(cfg.RestReadyTimeoutSeconds),
 		BaseDomain:              cfg.BaseDomain,
@@ -152,7 +150,6 @@ func (r Repository) gatewayFrom(ctx context.Context, row gatewaysqlc.GatewayConf
 	}
 	result := model.GatewayConfig{
 		ApplicationId:           row.ApplicationID,
-		TraefikComponentName:    row.TraefikComponentName,
 		RestApiUrl:              row.RestApiUrl,
 		RestReadyTimeoutSeconds: int(row.RestReadyTimeoutSeconds),
 		BaseDomain:              row.BaseDomain,

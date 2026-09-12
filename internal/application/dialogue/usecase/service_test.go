@@ -331,7 +331,7 @@ type fakeMCPFactory struct {
 	client      port.MCPClient
 }
 
-func (f *fakeMCPFactory) Connect(_ context.Context, actorUserId string) (port.MCPClient, error) {
+func (f *fakeMCPFactory) Connect(_ context.Context, actorUserId string, _ string) (port.MCPClient, error) {
 	f.actorUserId = actorUserId
 	return f.client, nil
 }

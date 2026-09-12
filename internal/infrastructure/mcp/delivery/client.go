@@ -14,7 +14,7 @@ import (
 
 const implementationVersion = "0.1.0"
 
-type ServerForActor func(string) (*mcp.Server, error)
+type ServerForActor func(string, string) (*mcp.Server, error)
 
 // Factory creates a short-lived in-memory MCP session for one Dialogue turn.
 // The Core is constructed by bootstrap so this infrastructure adapter never
@@ -27,15 +27,19 @@ func NewFactory(serverForActor ServerForActor) Factory {
 	return Factory{serverForActor: serverForActor}
 }
 
-func (f Factory) Connect(ctx context.Context, actorUserId string) (port.MCPClient, error) {
+func (f Factory) Connect(ctx context.Context, actorUserId string, projectId string) (port.MCPClient, error) {
 	actorUserId = strings.TrimSpace(actorUserId)
 	if actorUserId == "" {
 		return nil, errors.New("delivery MCP actor user ID is required")
 	}
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return nil, errors.New("delivery MCP project ID is required")
+	}
 	if f.serverForActor == nil {
 		return nil, errors.New("delivery MCP server factory is required")
 	}
-	server, err := f.serverForActor(actorUserId)
+	server, err := f.serverForActor(actorUserId, projectId)
 	if err != nil {
 		return nil, err
 	}

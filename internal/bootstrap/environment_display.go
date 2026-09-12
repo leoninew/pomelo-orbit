@@ -19,7 +19,15 @@ func localEnvironmentDisplay() environmentdto.LocalDisplaySnapshot {
 		snapshot.Host = strings.TrimSpace(host)
 	}
 	if current, err := osuser.Current(); err == nil {
-		snapshot.Username = strings.TrimSpace(current.Username)
+		snapshot.Username = sshUsernameHint(current.Username)
 	}
 	return snapshot
+}
+
+func sshUsernameHint(username string) string {
+	username = strings.TrimSpace(username)
+	if index := strings.LastIndex(username, `\`); index >= 0 && index+1 < len(username) {
+		return username[index+1:]
+	}
+	return username
 }

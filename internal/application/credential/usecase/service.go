@@ -71,6 +71,26 @@ func (s Service) CreateDeploymentSSHCredential(ctx context.Context, projectID st
 		}
 		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
 	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = defaultDeploymentSSHKeyName
+	}
+	// Initialization may have created the managed credential before a later
+	// environment write failed. Reuse that credential on retry instead of
+	// attempting to create the same unique name again.
+	existing, err := s.credential.CredentialByName(ctx, projectID, name)
+	if err == nil {
+		if !existing.IsDeploymentSSHPrivateKey() {
+			return model.Credential{}, apperror.New(apperror.KindConflict, "Credential name '"+name+"' already exists")
+		}
+		if existing.RequiresDeploymentSSHCredentialReconfiguration() {
+			return s.EnsureGeneratedDeploymentSSHCredential(ctx, existing.Id)
+		}
+		return existing, nil
+	}
+	if !errors.Is(err, repository.ErrNotFound) {
+		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to check deployment SSH credential", err)
+	}
 	payload, err := generateDeploymentSSHKeypair()
 	if err != nil {
 		return model.Credential{}, err
@@ -78,10 +98,6 @@ func (s Service) CreateDeploymentSSHCredential(ctx context.Context, projectID st
 	encoded, err := encodeDeploymentSSHPayload(payload)
 	if err != nil {
 		return model.Credential{}, err
-	}
-	name = strings.TrimSpace(name)
-	if name == "" {
-		name = defaultDeploymentSSHKeyName
 	}
 	return s.createCredentialRecord(ctx, projectID, name, model.CredentialTypeDeploymentSSHPrivateKey, encoded)
 }

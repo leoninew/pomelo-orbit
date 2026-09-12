@@ -6,6 +6,18 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
+func TestManagedGatewayCodeIsProductIdentity(t *testing.T) {
+	if got := ManagedGatewayCode(); got != "traefik" {
+		t.Fatalf("managed gateway code = %q", got)
+	}
+}
+
+func TestManagedGatewayNameIsProductIdentity(t *testing.T) {
+	if got := ManagedGatewayName(); got != "Traefik" {
+		t.Fatalf("managed gateway name = %q", got)
+	}
+}
+
 func TestBuildGatewayExposureItemUsesComponentServiceHost(t *testing.T) {
 	item, err := buildGatewayExposureItem(
 		model.Application{Id: "app-1", Code: "ragflow"},

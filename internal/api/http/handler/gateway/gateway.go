@@ -31,28 +31,6 @@ func (h Handler) ListGateways(c *gin.Context) {
 	})
 }
 
-func (h Handler) CreateGateway(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	var req gatewayv1.GatewayCreateReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
-		return
-	}
-	if projectId := c.Request.URL.Query().Get("project_id"); projectId != "" && req.ProjectId == "" {
-		req.ProjectId = projectId
-	}
-	view, err := h.service.CreateGateway(c.Request.Context(), current.Id, gatewayCreateInput(&req))
-	if err != nil {
-		transportresponse.WriteError(c, err)
-		return
-	}
-	resp := gatewayResponse(view)
-	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
-}
-
 func (h Handler) GetGateway(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {

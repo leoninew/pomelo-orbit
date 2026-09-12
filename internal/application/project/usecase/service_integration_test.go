@@ -3,32 +3,22 @@ package projectsvc
 import (
 	"context"
 	"database/sql"
-	"net/http"
-	"net/http/httptest"
+	"errors"
 	"testing"
 
-	"github.com/gin-gonic/gin"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	_ "modernc.org/sqlite"
 
-	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
-	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	projectdto "github.com/leoninew/pomelo-orbit/internal/application/project/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
-	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
-	"github.com/leoninew/pomelo-orbit/internal/model"
-	credentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/credential"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 	environmentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/environment"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
 )
 
-const (
-	projectTestUserId    = "01KKX2YNPF6VJ9N7QYCWG61KVK"
-	projectTestFernetKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-)
+const projectTestUserId = "01KKX2YNPF6VJ9N7QYCWG61KVK"
 
 func TestProjectServiceCreateUpdateMembersAndDeprecate(t *testing.T) {
 	service, database := newProjectIntegrationService(t)
@@ -42,12 +32,9 @@ func TestProjectServiceCreateUpdateMembersAndDeprecate(t *testing.T) {
 	if created.Id == "" || created.Code != "second" || !created.IsActive {
 		t.Fatalf("unexpected created project: %+v", created)
 	}
-	environment, err := environmentrepo.NewRepository(database).EnvironmentByProject(ctx, created.Id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if environment.State != model.EnvironmentStateActive || environment.TargetType != model.EnvironmentTargetTypeLocal || environment.SSH != nil {
-		t.Fatalf("unexpected created environment: %+v", environment)
+	_, err = environmentrepo.NewRepository(database).EnvironmentByProject(ctx, created.Id)
+	if !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("expected no environment for new project, got %v", err)
 	}
 	assertCount(t, database, `SELECT COUNT(*) FROM credential WHERE project_id = ?`, created.Id, 0)
 	loaded, err := service.LoadForUser(ctx, created.Id, projectTestUserId)
@@ -85,12 +72,6 @@ func TestProjectServiceCreateUpdateMembersAndDeprecate(t *testing.T) {
 	if len(members) != 1 {
 		t.Fatalf("unexpected members after remove: %+v", members)
 	}
-	if err := service.Deprecate(ctx, updated, projectTestUserId); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
-		t.Fatalf("expected active environment deprecation validation error, got %v", err)
-	}
-	if _, err := database.ExecContext(ctx, `UPDATE environment SET state = ? WHERE project_id = ?`, "disabled", updated.Id); err != nil {
-		t.Fatal(err)
-	}
 	if err := service.Deprecate(ctx, updated, projectTestUserId); err != nil {
 		t.Fatal(err)
 	}
@@ -114,45 +95,15 @@ func TestProjectServiceRejectsDuplicateCodeAndLastActiveDeprecation(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	defaultEnvironment, err := environmentrepo.NewRepository(database).EnvironmentByProject(ctx, defaultProject.Id)
-	if err != nil {
-		t.Fatal(err)
+	_, err = environmentrepo.NewRepository(database).EnvironmentByProject(ctx, defaultProject.Id)
+	if !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("expected seeded project to have no environment, got %v", err)
 	}
-	if defaultEnvironment.State != model.EnvironmentStateActive || defaultEnvironment.TargetType != model.EnvironmentTargetTypeLocal || defaultEnvironment.SSH != nil {
-		t.Fatalf("unexpected default environment: %+v", defaultEnvironment)
-	}
-	assertCount(t, database, `SELECT COUNT(*) FROM credential WHERE id = ?`, "01M202WNXY6FPPFGTJWCF6CP81", 0)
 	if err := service.Deprecate(ctx, defaultProject, projectTestUserId); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected last active project deprecation validation error, got %v", err)
 	}
 }
 
-func TestProjectCreateRollsBackBootstrapThroughRequestTransaction(t *testing.T) {
-	service, database := newProjectIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	input := testProjectCreateInput(t, "Rollback", "rollback")
-	service.environmentInit = failingEnvironmentBootstrapper{err: apperror.New(apperror.KindValidation, "bootstrap failed")}
-
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
-	router.Use(databasetx.Middleware(database))
-	router.POST("/api/project", func(c *gin.Context) {
-		if _, err := service.Create(c.Request.Context(), projectTestUserId, input); err != nil {
-			transportresponse.WriteError(c, err)
-			return
-		}
-		c.Status(http.StatusCreated)
-	})
-
-	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/project", nil))
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusBadRequest)
-	}
-	assertCount(t, database, `SELECT COUNT(*) FROM project WHERE code = ?`, "rollback", 0)
-	assertCount(t, database, `SELECT COUNT(*) FROM credential WHERE name = ?`, "deployment-ssh", 0)
-	assertCount(t, database, `SELECT COUNT(*) FROM environment WHERE code = ?`, "rollback", 0)
-}
 func newProjectIntegrationService(t *testing.T) (Service, *sql.DB) {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")
@@ -164,9 +115,7 @@ func newProjectIntegrationService(t *testing.T) (Service, *sql.DB) {
 		t.Fatal(err)
 	}
 	projectStore := projectrepo.NewRepository(database)
-	credentialService := credentialsvc.New(projectStore, credentialrepo.NewRepository(database), projectTestFernetKey)
-	environmentService := environmentsvc.New(environmentrepo.NewRepository(database), projectStore, credentialService, credentialService, nil, nil)
-	return New(projectStore, userrepo.NewRepository(database), environmentrepo.NewRepository(database), environmentService), database
+	return New(projectStore, userrepo.NewRepository(database), environmentrepo.NewRepository(database)), database
 }
 
 func testProjectCreateInput(t *testing.T, name string, code string) projectdto.CreateInput {
@@ -175,14 +124,6 @@ func testProjectCreateInput(t *testing.T, name string, code string) projectdto.C
 		Name: name,
 		Code: code,
 	}
-}
-
-type failingEnvironmentBootstrapper struct {
-	err error
-}
-
-func (s failingEnvironmentBootstrapper) BootstrapForProject(context.Context, model.Project) (model.Environment, error) {
-	return model.Environment{}, s.err
 }
 
 func assertCount(t *testing.T, database *sql.DB, query string, value string, want int) {

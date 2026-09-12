@@ -75,9 +75,7 @@ CREATE TABLE IF NOT EXISTS artifact (
     image_ref VARCHAR(512),
     local_image_sha256 VARCHAR(128),
     source_artifact_id VARCHAR(26),
-    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    FOREIGN KEY (project_id) REFERENCES project(id),
-    CONSTRAINT fk_artifact_source FOREIGN KEY (source_artifact_id) REFERENCES artifact(id) ON DELETE SET NULL
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB;
 
 CREATE INDEX idx_artifact_run ON artifact(pipeline_run_id);

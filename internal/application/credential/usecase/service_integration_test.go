@@ -148,6 +148,24 @@ func TestDeploymentSSHCredentialPlaceholderRequiresReplacement(t *testing.T) {
 	}
 }
 
+func TestCreateDeploymentSSHCredentialReusesExistingManagedCredential(t *testing.T) {
+	service, database := newCredentialIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	first, err := service.CreateDeploymentSSHCredential(ctx, ciTestProjectId, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := service.CreateDeploymentSSHCredential(ctx, ciTestProjectId, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Id == "" || second.Id != first.Id || second.Name != "deployment-ssh" {
+		t.Fatalf("credentials were not reused: first=%+v second=%+v", first, second)
+	}
+}
+
 func newCredentialIntegrationService(t *testing.T) (Service, *sql.DB) {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")

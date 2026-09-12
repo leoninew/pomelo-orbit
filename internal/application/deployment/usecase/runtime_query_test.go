@@ -34,6 +34,27 @@ func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T)
 	}
 }
 
+func TestApplicationLogsReturnsEmptyBeforeFirstDeployment(t *testing.T) {
+	service, store := newRuntimeQueryService()
+	store.service.Status = status.ServiceStatusStopped
+	workspace := testWorkspace(t.TempDir())
+	service.runtime = workspace
+	service.targetResolver = staticTargetResolver{target: testSSHTarget("project-1")}
+
+	logs, err := service.ApplicationLogs(context.Background(), "user-1", "app-1", 200, deploymentdto.ServiceTargetInput{
+		ServiceId: "service-1",
+	}, "traefik")
+	if err != nil {
+		t.Fatalf("ApplicationLogs returned error: %v", err)
+	}
+	if logs != "" {
+		t.Fatalf("logs = %q, want empty", logs)
+	}
+	if workspace.queryCalled {
+		t.Fatal("log query must not run without a deployment workspace")
+	}
+}
+
 func TestComposePreviewsDoNotRequireConfiguredProjectEnvironment(t *testing.T) {
 	projectID := "project-1"
 	store := &runtimeQueryStore{

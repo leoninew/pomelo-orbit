@@ -13,7 +13,7 @@ import (
 
 func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 	routeService := &routeToolService{}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Route: routeService})
+	server, err := NewServer(withReadyScope(Dependencies{Route: routeService}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -34,7 +34,7 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 	}
 
 	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_create_route", Arguments: map[string]any{
-		"project_id": "project-1", "name": "api-route", "protocol": "http", "domain": "api.example.test",
+		"name": "api-route", "protocol": "http", "domain": "api.example.test",
 		"path_prefix": "/api", "target_url": "https://origin.example.test:8443", "enabled": false,
 	}})
 	if err != nil {
@@ -90,7 +90,7 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 
 	syncChanges := []any{map[string]any{"route_id": "route-1", "enabled": true}}
 	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_preview_route_sync", Arguments: map[string]any{
-		"project_id": "project-1", "changes": syncChanges,
+		"changes": syncChanges,
 	}})
 	if err != nil {
 		t.Fatalf("CallTool(preview route sync) error = %v", err)
@@ -107,7 +107,7 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 	}
 
 	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_confirm_route_sync", Arguments: map[string]any{
-		"project_id": "project-1", "changes": syncChanges, "business_hash": "business-hash", "traefik_hash": "traefik-hash",
+		"changes": syncChanges, "business_hash": "business-hash", "traefik_hash": "traefik-hash",
 	}})
 	if err != nil {
 		t.Fatalf("CallTool(confirm route sync) error = %v", err)
@@ -119,7 +119,7 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 		t.Fatalf("confirm input = %q/%q/%#v", routeService.confirmUserId, routeService.confirmProjectId, routeService.confirmInput)
 	}
 
-	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_list_routes", Arguments: map[string]any{"project_id": "project-1"}})
+	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_list_routes", Arguments: map[string]any{}})
 	if err != nil {
 		t.Fatalf("CallTool(list routes) error = %v", err)
 	}

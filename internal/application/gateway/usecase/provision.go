@@ -10,7 +10,7 @@ import (
 
 // ProvisionGateway is an idempotent resource-preparation operation. It never
 // publishes a Version, creates a Deployment, waits for runtime state, or
-// changes an existing Service binding.
+// changes an existing Service binding. Missing Gateway resources are not created.
 func (s Service) ProvisionGateway(ctx context.Context, userId string, input gatewaydto.ProvisionGatewayInput) (gatewaydto.ProvisionGatewayResult, error) {
 	projectID := strings.TrimSpace(input.ProjectId)
 	if projectID == "" {
@@ -24,36 +24,12 @@ func (s Service) ProvisionGateway(ctx context.Context, userId string, input gate
 	if err != nil {
 		return gatewaydto.ProvisionGatewayResult{}, err
 	}
-	result := gatewaydto.ProvisionGatewayResult{}
 	if gateways.Total == 0 {
-		project, err := s.project.Project(ctx, projectID)
-		if err != nil {
-			return gatewaydto.ProvisionGatewayResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
-		}
-		defaults := s.CreateDefaults()
-		image, entrypoint, tlsMode := defaults.InitialComponentImage, defaults.DefaultEntrypoint, defaults.TLSMode
-		created, err := s.CreateGateway(ctx, userId, gatewaydto.GatewayCreateInput{
-			ProjectId:                  projectID,
-			Code:                       managedGatewayCodeForProject(project),
-			Name:                       managedGatewayNameForProject(project),
-			RestApiUrl:                 defaults.RestApiUrl,
-			BaseDomain:                 defaults.BaseDomain,
-			InitialComponentImage:      &image,
-			InitialComponentPullPolicy: defaults.InitialComponentPullPolicy,
-			DefaultEntrypoint:          &entrypoint,
-			TLSMode:                    &tlsMode,
-		})
-		if err != nil {
-			return gatewaydto.ProvisionGatewayResult{}, err
-		}
-		result.Gateway, result.GatewayCreated = created, true
-		result.Steps = append(result.Steps, "Created Gateway resources")
-	} else {
-		result.Gateway = gateways.Items[0]
-		result.Steps = append(result.Steps, "Reused Gateway resources")
+		return gatewaydto.ProvisionGatewayResult{}, apperror.NewWithCode(apperror.KindValidation, "gateway_not_ready", "Gateway is not ready")
 	}
+	result := gatewaydto.ProvisionGatewayResult{Gateway: gateways.Items[0], Steps: []string{"Reused Gateway resources"}}
 	if result.Gateway.DefaultService == nil {
-		return gatewaydto.ProvisionGatewayResult{}, apperror.New(apperror.KindInternal, "Gateway default service is missing")
+		return gatewaydto.ProvisionGatewayResult{}, apperror.NewWithCode(apperror.KindValidation, "gateway_not_ready", "Gateway default service is not ready")
 	}
 	result.Service = *result.Gateway.DefaultService
 	result.Steps = append(result.Steps, "Reused Gateway Service")

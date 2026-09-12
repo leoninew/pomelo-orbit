@@ -82,7 +82,6 @@ func TestDeleteGatewayRejectsBoundGateway(t *testing.T) {
 		gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", InstanceKey: "default", Status: status.ServiceStatusStopped}}},
 		nil,
 		nil,
-		testGatewayConfig(),
 		nil,
 		nil,
 	)

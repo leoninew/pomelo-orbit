@@ -174,7 +174,14 @@ func (s Service) DeploymentContainerLog(ctx context.Context, userId string, depl
 	if err != nil {
 		return deploymentdto.DeploymentContainerLog{}, err
 	}
-	projectName := composeProjectName(app.Code, svc.InstanceKey)
+	exists, err := s.runtime.ServiceDirExists(ctx, target, svc.Code)
+	if err != nil {
+		return deploymentdto.DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
+	}
+	if !exists {
+		return deploymentdto.DeploymentContainerLog{Source: "pending", IsRealtimeSupported: true}, nil
+	}
+	projectName := composeProjectName(svc.Code)
 	sinceCommand := containerLogsSinceCommand(projectName, deployment.StartedAt.UTC().Format(time.RFC3339))
 	output, err := s.runtime.Query(ctx, target, svc.Code, sinceCommand.Name, sinceCommand.Args...)
 	if err == nil {

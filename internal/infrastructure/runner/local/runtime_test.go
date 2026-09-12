@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
@@ -48,6 +49,22 @@ func TestRuntimeStagesLocalWorkspaceAndResolvesDockerPath(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(serviceDir, "docker-compose.yml")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRuntimeExpandsHomeWorkspaceRootAtUseTime(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil || strings.TrimSpace(home) == "" {
+		t.Fatalf("user home directory is required: %v", err)
+	}
+	runtime := NewRuntime(nil)
+	serviceDir, err := runtime.ServiceDir(localTarget("~/.pomelo-orbit"), "api-default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(home, ".pomelo-orbit", "api-default")
+	if serviceDir != want {
+		t.Fatalf("service dir = %q, want %q", serviceDir, want)
 	}
 }
 

@@ -53,9 +53,9 @@ func enrichGatewayPlan(plan *model.EffectiveServicePlan) error {
 	if plan.Version.Id != versionID {
 		return fmt.Errorf("selected Gateway Version does not match the %s binding", role)
 	}
-	component := gatewayPlanComponent(plan, cfg.TraefikComponentName)
+	component := gatewayPlanComponent(plan, model.GatewayComponentName())
 	if component == nil {
-		return fmt.Errorf("selected Version does not contain Gateway component %q", cfg.TraefikComponentName)
+		return fmt.Errorf("selected Version does not contain Gateway component %q", model.GatewayComponentName())
 	}
 	file := gatewayStaticConfigMount(component)
 	if file == nil {

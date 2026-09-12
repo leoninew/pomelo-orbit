@@ -166,10 +166,14 @@ func (r *Runtime) Query(ctx context.Context, target environmentport.Target, serv
 	if err != nil {
 		return "", err
 	}
-	return r.queryAt(ctx, target, serviceDir, name, args...)
+	return r.queryAt(ctx, target, serviceDir, nil, name, args...)
 }
 
 func (r *Runtime) QueryAtEnvironmentRoot(ctx context.Context, target environmentport.Target, name string, args ...string) (string, error) {
+	return r.QueryAtEnvironmentRootInput(ctx, target, nil, name, args...)
+}
+
+func (r *Runtime) QueryAtEnvironmentRootInput(ctx context.Context, target environmentport.Target, stdin []byte, name string, args ...string) (string, error) {
 	if !target.Environment.IsSSH() {
 		return "", errors.New("SSH deployment runtime received a non-SSH environment")
 	}
@@ -177,10 +181,10 @@ func (r *Runtime) QueryAtEnvironmentRoot(ctx context.Context, target environment
 	if root == "" {
 		return "", errors.New("environment workspace root is required")
 	}
-	return r.queryAt(ctx, target, root, name, args...)
+	return r.queryAt(ctx, target, root, stdin, name, args...)
 }
 
-func (r *Runtime) queryAt(ctx context.Context, target environmentport.Target, workingDirectory string, name string, args ...string) (string, error) {
+func (r *Runtime) queryAt(ctx context.Context, target environmentport.Target, workingDirectory string, stdin []byte, name string, args ...string) (string, error) {
 	if !target.Environment.IsSSH() {
 		return "", errors.New("SSH deployment runtime received a non-SSH environment")
 	}
@@ -201,6 +205,9 @@ func (r *Runtime) queryAt(ctx context.Context, target environmentport.Target, wo
 	var stdout, stderr bytes.Buffer
 	session.Stdout = &stdout
 	session.Stderr = &stderr
+	if len(stdin) > 0 {
+		session.Stdin = bytes.NewReader(stdin)
+	}
 	if err := session.Run(command); err != nil {
 		return remoteQueryDiagnostic(stdout.String(), stderr.String()), err
 	}

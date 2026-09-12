@@ -47,6 +47,9 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 	if got := created.DefaultService; got.InstanceKey != "default" || got.Code != "traefik-default" || got.Status != status.ServiceStatusStopped {
 		t.Fatalf("default service = %#v", got)
 	}
+	if created.Application.Code != "traefik" {
+		t.Fatalf("application code = %q", created.Application.Code)
+	}
 	if len(created.Services) != 1 || created.Services[0].Id != created.DefaultService.Id {
 		t.Fatalf("gateway services = %#v", created.Services)
 	}
@@ -117,6 +120,25 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 	}
 	if route.ServiceId != nil || route.ComponentName != nil || route.EndpointProtocol != nil || route.EndpointContainerPort != nil {
 		t.Fatalf("gateway dashboard route must use a custom target: %#v", route)
+	}
+}
+
+func TestCreateGatewayInitializationCodesDoNotRepeatProjectDefault(t *testing.T) {
+	service, _, _, database := newGatewayFactoryService(t, nil)
+	defer func() { _ = database.Close() }()
+
+	input := managedGatewayCreateInput()
+	input.Code = ManagedGatewayCode()
+	input.Name = ManagedGatewayName()
+	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserID, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Application.Code != "traefik" || created.Application.Name != "Traefik" {
+		t.Fatalf("application = %#v", created.Application)
+	}
+	if created.DefaultService == nil || created.DefaultService.Code != "traefik-default" {
+		t.Fatalf("default service = %#v", created.DefaultService)
 	}
 }
 
@@ -202,7 +224,7 @@ func TestCreateGatewayRollsBackWhenGatewayConfigWriteFails(t *testing.T) {
 	}
 	defer func() { _ = database.Close() }()
 	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 41); err != nil {
+	if err := databasepkg.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
 	removeSeededGateway(t, database)
@@ -216,7 +238,6 @@ func TestCreateGatewayRollsBackWhenGatewayConfigWriteFails(t *testing.T) {
 		servicerepo.NewRepository(database),
 		routerepo.NewRepository(database),
 		deploymentrepo.NewRepository(database),
-		testGatewayConfig(),
 		resolveGatewayPathForTest,
 		databasetx.NewTransactionRunner(database),
 	)
@@ -237,7 +258,7 @@ func TestCreateGatewayRollsBackWhenDashboardRouteWriteFails(t *testing.T) {
 	}
 	defer func() { _ = database.Close() }()
 	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 41); err != nil {
+	if err := databasepkg.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
 	removeSeededGateway(t, database)
@@ -251,7 +272,6 @@ func TestCreateGatewayRollsBackWhenDashboardRouteWriteFails(t *testing.T) {
 		servicerepo.NewRepository(database),
 		failingGatewayRouteStore{err: errors.New("gateway dashboard route write failed")},
 		deploymentrepo.NewRepository(database),
-		testGatewayConfig(),
 		resolveGatewayPathForTest,
 		databasetx.NewTransactionRunner(database),
 	)
@@ -289,7 +309,7 @@ func newGatewayFactoryService(t *testing.T, configStore gatewayport.ConfigStore)
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateTo(database, config.DatabaseDriverSQLite, 41); err != nil {
+	if err := databasepkg.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		_ = database.Close()
 		t.Fatal(err)
 	}
@@ -308,7 +328,6 @@ func newGatewayFactoryService(t *testing.T, configStore gatewayport.ConfigStore)
 		services,
 		routerepo.NewRepository(database),
 		deploymentrepo.NewRepository(database),
-		testGatewayConfig(),
 		resolveGatewayPathForTest,
 		databasetx.NewTransactionRunner(database),
 	), applications, services, database
@@ -366,15 +385,16 @@ func managedGatewayCreateInput() gatewaydto.GatewayCreateInput {
 	image := "traefik:3.6"
 	entrypoint := "web"
 	tlsMode := "none"
+	timeout := 20
 	return gatewaydto.GatewayCreateInput{
-		ProjectId:                  gatewayFactoryProjectID,
-		Code:                       managedGatewayCode,
-		Name:                       managedGatewayName,
-		RestApiUrl:                 "http://localhost:8080",
-		BaseDomain:                 "example.test",
-		InitialComponentImage:      &image,
-		InitialComponentPullPolicy: "missing",
-		DefaultEntrypoint:          &entrypoint,
-		TLSMode:                    &tlsMode,
+		ProjectId:               gatewayFactoryProjectID,
+		Code:                    managedGatewayCode,
+		Name:                    managedGatewayName,
+		RestApiUrl:              "http://localhost:8080",
+		RestReadyTimeoutSeconds: &timeout,
+		BaseDomain:              "example.test",
+		InitialComponentImage:   &image,
+		DefaultEntrypoint:       &entrypoint,
+		TLSMode:                 &tlsMode,
 	}
 }

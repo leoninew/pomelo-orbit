@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
+	runtimepath "github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local"
 )
 
 func TestMigrateAppliesSchemaAndSeedData(t *testing.T) {
@@ -38,6 +39,24 @@ func TestMigrateAppliesSchemaAndSeedData(t *testing.T) {
 	}
 	if version.Version == 0 || version.Dirty {
 		t.Fatalf("unexpected migration version: %+v", version)
+	}
+}
+
+func TestDockerDaemonPathResolverIsAlwaysConfigured(t *testing.T) {
+	resolver := dockerDaemonPathResolver()
+	if resolver == nil {
+		t.Fatal("local deployment requires a Docker daemon path resolver")
+	}
+	if runtimepath.IsRunningInContainer() {
+		return
+	}
+	path := t.TempDir()
+	got, err := resolver(context.Background(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != path {
+		t.Fatalf("native resolver changed path: got %q want %q", got, path)
 	}
 }
 

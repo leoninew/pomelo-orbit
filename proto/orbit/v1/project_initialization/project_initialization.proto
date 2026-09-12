@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package orbit.v1.project_initialization;
+
+import "orbit/v1/environment/environment.proto";
+
+message ProjectInitializationDefaults {
+  string local_workspace_root = 1;
+  string image = 2;
+  string rest_api_url = 3;
+  int32 rest_ready_timeout_seconds = 4;
+  string base_domain = 5;
+  string default_entrypoint = 6;
+  string tls_mode = 7;
+  string acme_profile = 8;
+  string acme_email = 9;
+  string dns_api_token = 10;
+  string local_platform = 11;
+  string local_host = 12;
+  string local_username = 13;
+}
+
+message ProjectInitializationEnvironmentSnapshot {
+  string id = 1;
+  string target_type = 2;
+  string workspace_root = 3;
+  string state = 4;
+  int64 target_revision = 5;
+  optional int64 last_probe_revision = 6;
+  optional string last_probe_status = 7;
+  optional string last_probe_at = 8;
+  optional string last_probe_diagnostic = 9;
+  orbit.v1.environment.EnvironmentLocalTargetResp local = 10;
+  orbit.v1.environment.EnvironmentSSHTargetResp ssh = 11;
+}
+
+message ProjectInitializationGatewaySnapshot {
+  string id = 1;
+  string code = 2;
+  string name = 3;
+  string rest_api_url = 4;
+  string base_domain = 5;
+  string default_service_status = 6;
+}
+
+message ProjectInitializationStatusResp {
+  string status = 1;
+  ProjectInitializationDefaults defaults = 2;
+  ProjectInitializationEnvironmentSnapshot environment = 3;
+  ProjectInitializationGatewaySnapshot gateway = 4;
+}
+
+message ProjectInitializationEnvironmentReq {
+  string target_type = 1;
+  optional orbit.v1.environment.EnvironmentLocalTargetReq local = 2;
+  optional orbit.v1.environment.EnvironmentSSHTargetReq ssh = 3;
+}
+
+message ProjectInitializationEnvironmentTestResp {
+  bool ok = 1;
+}
+
+message ProjectInitializationDeploymentPublicKeyResp {
+  string public_key = 1;
+}
+
+message ProjectInitializationBootstrapReq {
+  string username = 1;
+  string password = 2;
+  string private_key = 3;
+  string private_key_passphrase = 4;
+}
+
+message ProjectInitializationGatewayReq {
+  string image = 1;
+  string rest_api_url = 2;
+  int32 rest_ready_timeout_seconds = 3;
+  string base_domain = 4;
+  string default_entrypoint = 5;
+  string tls_mode = 6;
+  string acme_profile = 7;
+  string acme_email = 8;
+  string dns_api_token = 9;
+}

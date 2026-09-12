@@ -144,7 +144,6 @@ type GatewayAcmeProfileVersion struct {
 
 type GatewayConfig struct {
 	ApplicationID           string    `db:"application_id"`
-	TraefikComponentName    string    `db:"traefik_component_name"`
 	RestApiUrl              string    `db:"rest_api_url"`
 	RestReadyTimeoutSeconds int64     `db:"rest_ready_timeout_seconds"`
 	BaseDomain              string    `db:"base_domain"`

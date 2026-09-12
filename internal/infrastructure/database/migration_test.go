@@ -11,6 +11,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 	migrationfiles "github.com/leoninew/pomelo-orbit/sql"
 )
 
@@ -250,6 +251,34 @@ func TestMigrateToSQLiteReplacesHistoricalGatewaySeed(t *testing.T) {
 	}
 	if versions != 0 || bindings != 0 {
 		t.Fatalf("replacement Gateway topology: Versions=%d bindings=%d", versions, bindings)
+	}
+}
+
+func TestMigrateToSQLiteAdoptsLegacyGatewayEnvironment(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateTo(database, config.DatabaseDriverSQLite, 38); err != nil {
+		t.Fatalf("migrate to develop baseline: %v", err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('01M2LEGACYGATEWAY0000000001', 'Traefik', 'traefik', 'standard', '01KRRKK0K3T519ZQZES3M4QA9Z')`,
+		`INSERT INTO version (id, application_id, label, status, component_summary) VALUES ('01M2LEGACYGATEWAY0000000002', '01M2LEGACYGATEWAY0000000001', 'traefik:3.6', 'unpublished', 'traefik')`,
+		`INSERT INTO gateway_config (application_id, traefik_component_name, rest_api_url, rest_ready_timeout_seconds, base_domain, default_entrypoint, tls_mode, acme_profile, acme_email, dns_api_token) VALUES ('01M2LEGACYGATEWAY0000000001', 'traefik', 'http://localhost:8080', 20, 'lvh.me', 'web', 'none', '', '', '')`,
+		`INSERT INTO service (id, application_id, instance_key, code, version_id, status) VALUES ('01M2LEGACYGATEWAY0000000003', '01M2LEGACYGATEWAY0000000001', 'default', 'traefik-default', '01M2LEGACYGATEWAY0000000002', 'stopped')`,
+	} {
+		if _, err := database.Exec(statement); err != nil {
+			t.Fatalf("seed develop Gateway fixture: %v", err)
+		}
+	}
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate current schema: %v", err)
+	}
+	var targetType, gatewayApplicationID string
+	var workspaceRoot sql.NullString
+	if err := database.QueryRow(`SELECT target_type, workspace_root, gateway_application_id FROM environment WHERE project_id = '01KRRKK0K3T519ZQZES3M4QA9Z'`).Scan(&targetType, &workspaceRoot, &gatewayApplicationID); err != nil {
+		t.Fatalf("load adopted environment: %v", err)
+	}
+	if targetType != model.EnvironmentTargetTypeLocal || workspaceRoot.Valid || gatewayApplicationID != "01M2LEGACYGATEWAY0000000001" {
+		t.Fatalf("adopted environment = target_type:%q workspace:%v gateway:%q", targetType, workspaceRoot, gatewayApplicationID)
 	}
 }
 

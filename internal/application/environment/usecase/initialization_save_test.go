@@ -52,6 +52,31 @@ func TestSaveInitializationKeepsHomeWorkspaceRoot(t *testing.T) {
 	}
 }
 
+func TestSaveInitializationUpdatesUnprobedLegacyEnvironmentWithGatewayBinding(t *testing.T) {
+	gatewayID := "gateway-1"
+	store := &initializationEnvironmentStore{
+		found: true,
+		environment: model.Environment{
+			Id: "environment-1", ProjectId: "project-1", Code: "demo",
+			State: model.EnvironmentStateActive, TargetType: model.EnvironmentTargetTypeLocal,
+			TargetRevision: 1, GatewayApplicationId: &gatewayID,
+		},
+	}
+	targetType := model.EnvironmentTargetTypeLocal
+	_, err := New(store, initializationProjectReader{}, nil, nil, nil, nil).
+		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: model.EnvironmentPlatformLinux}).
+		SaveInitialization(context.Background(), "user-1", "project-1", environmentdto.UpdateInput{
+			TargetType: &targetType,
+			Local:      &environmentdto.LocalTargetInput{WorkspaceRoot: "/srv/orbit"},
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !store.updated || store.environment.GatewayApplicationId == nil || *store.environment.GatewayApplicationId != gatewayID {
+		t.Fatalf("legacy gateway binding was not preserved: %#v", store.environment)
+	}
+}
+
 func TestSaveInitializationCreatesSSHEnvironmentWithDeploymentCredential(t *testing.T) {
 	store := &initializationEnvironmentStore{}
 	keyManager := &createInitializationKeyManager{}

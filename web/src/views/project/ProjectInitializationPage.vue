@@ -720,7 +720,9 @@
   const canBootstrapHost = computed(
     () =>
       status.value?.environment?.target_type === 'ssh' &&
-      status.value.environment.ssh?.platform === 'linux'
+      status.value.environment.ssh?.platform === 'linux' &&
+      !status.value.environment.ssh?.host_key_fingerprint &&
+      status.value.environment.last_probe_status !== 'succeeded'
   );
   const acmeProfileValue = computed(() => gatewayForm.acme_profile || noAcmeProfileValue);
   const stepItems = computed(() => [
@@ -1053,6 +1055,11 @@
     activeOperation.value = 'creating';
     try {
       await executeOperation(async () => {
+        const latest = await initializationStore.fetchStatus(id);
+        if (latest.status !== 'needs_gateway') {
+          hydrate(latest);
+          return;
+        }
         const view = await initializationStore.createGateway(
           id,
           gatewayInitializeRequestFromForm(gatewayForm)

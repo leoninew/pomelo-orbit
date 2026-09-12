@@ -103,6 +103,45 @@ func TestSaveInitializationCreatesSSHEnvironmentWithDeploymentCredential(t *test
 	}
 }
 
+func TestSaveInitializationWorkspaceChangeKeepsSSHIdentity(t *testing.T) {
+	projectID := "project-1"
+	probeRevision := int64(4)
+	probeStatus := model.EnvironmentProbeStatusSucceeded
+	environment := model.Environment{
+		Id: "environment-1", ProjectId: projectID, Code: "demo", State: model.EnvironmentStateActive,
+		TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: "/srv/orbit/previous",
+		TargetRevision: probeRevision, LastProbeRevision: &probeRevision, LastProbeStatus: &probeStatus,
+		SSH: &model.EnvironmentSSHTarget{
+			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22, Username: "deploy",
+			CredentialId: "credential-1", CredentialRevision: 2,
+			HostKeyFingerprint: "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=",
+		},
+	}
+	store := &initializationEnvironmentStore{found: true, environment: environment}
+	keyManager := &updateDeploymentKeyManager{credential: model.Credential{
+		Id: "credential-1", ProjectId: &projectID,
+		Type: model.CredentialTypeDeploymentSSHPrivateKey, Revision: 2,
+	}}
+	targetType := model.EnvironmentTargetTypeSSH
+	_, err := New(store, initializationProjectReader{}, keyManager, nil, &reachableSSHProber{}, nil).
+		SaveInitialization(context.Background(), "user-1", projectID, environmentdto.UpdateInput{
+			TargetType: &targetType,
+			SSH: &environmentdto.SSHTargetInput{
+				Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22,
+				Username: "deploy", WorkspaceRoot: "/srv/orbit/next",
+			},
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !store.updated || store.environment.TargetRevision != probeRevision+1 || store.environment.WorkspaceRoot != "/srv/orbit/next" {
+		t.Fatalf("stored environment = %#v", store.environment)
+	}
+	if store.environment.SSH == nil || store.environment.SSH.CredentialId != "credential-1" || store.environment.SSH.CredentialRevision != 2 || store.environment.SSH.HostKeyFingerprint != environment.SSH.HostKeyFingerprint {
+		t.Fatalf("SSH identity was not preserved: %#v", store.environment.SSH)
+	}
+}
+
 func TestSaveInitializationRejectsUnreachableSSH(t *testing.T) {
 	store := &initializationEnvironmentStore{}
 	targetType := model.EnvironmentTargetTypeSSH

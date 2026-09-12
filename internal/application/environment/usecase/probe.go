@@ -54,7 +54,9 @@ func (s Service) ProbeForUser(ctx context.Context, userID string, projectID stri
 			return environmentdto.View{}, err
 		}
 		if environmentTargetChanged(previous, item) {
-			item.SSH.HostKeyFingerprint = ""
+			if environmentIdentityChanged(previous, item) {
+				item.SSH.HostKeyFingerprint = ""
+			}
 			item.TargetRevision++
 			if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
 				return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
@@ -137,7 +139,9 @@ func (s Service) InitializeForUser(ctx context.Context, userID string, projectID
 		return environmentdto.View{}, err
 	}
 	if environmentTargetChanged(previous, item) {
-		item.SSH.HostKeyFingerprint = ""
+		if environmentIdentityChanged(previous, item) {
+			item.SSH.HostKeyFingerprint = ""
+		}
 		item.TargetRevision++
 		if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
 			return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)

@@ -27,8 +27,8 @@ func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(tools.Tools) != 59 {
-		t.Fatalf("tool count = %d, want 59", len(tools.Tools))
+	if len(tools.Tools) != 60 {
+		t.Fatalf("tool count = %d, want 60", len(tools.Tools))
 	}
 
 	byName := make(map[string]*mcp.Tool, len(tools.Tools))
@@ -74,21 +74,24 @@ func TestServerReportsPomeloMCPImplementation(t *testing.T) {
 }
 
 func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(t *testing.T) {
+	revision := int64(3)
+	probeStatus := model.EnvironmentProbeStatusSucceeded
 	environment := &environmentToolService{environment: environmentdto.View{
 		Id: "environment-1", ProjectId: "project-1", Code: "project", State: model.EnvironmentStateActive,
 		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: 3,
+		LastProbeRevision: &revision, LastProbeStatus: &probeStatus,
 		SSH: &environmentdto.SSHTargetView{
 			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit", WorkspaceRoot: "/srv/orbit",
 			HostKeyFingerprint: "SHA256:abc",
 		},
 	}}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Environment: environment})
+	server, err := NewServer(withReadyScope(Dependencies{Environment: environment}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
 	session := connectInMemory(t, server)
 
-	getResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_get_project_environment", Arguments: map[string]any{"project_id": "project-1"}})
+	getResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_get_project_environment"})
 	if err != nil || getResult.IsError {
 		t.Fatalf("CallTool(get environment) result=%#v err=%v", getResult, err)
 	}
@@ -98,7 +101,7 @@ func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(
 	}
 
 	workspaceRoot := "/srv/orbit-next"
-	updateResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_project_environment", Arguments: map[string]any{"project_id": "project-1", "ssh": map[string]any{"platform": "linux", "host": "host.example.test", "port": 22, "username": "orbit", "workspace_root": workspaceRoot}}})
+	updateResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_project_environment", Arguments: map[string]any{"ssh": map[string]any{"platform": "linux", "host": "host.example.test", "port": 22, "username": "orbit", "workspace_root": workspaceRoot}}})
 	if err != nil || updateResult.IsError {
 		t.Fatalf("CallTool(update environment) result=%#v err=%v", updateResult, err)
 	}
@@ -120,7 +123,7 @@ func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(
 		t.Fatalf("get output exposed initialization credentials: %s", getEncoded)
 	}
 
-	probeResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_probe_project_environment", Arguments: map[string]any{"project_id": "project-1"}})
+	probeResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_probe_project_environment"})
 	if err != nil || probeResult.IsError {
 		t.Fatalf("CallTool(probe environment) result=%#v err=%v", probeResult, err)
 	}
@@ -130,19 +133,20 @@ func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(
 }
 
 func TestProjectEnvironmentToolsReturnLocalWorkspaceWithoutSSHFields(t *testing.T) {
+	revision := int64(1)
+	probeStatus := model.EnvironmentProbeStatusSucceeded
 	environment := &environmentToolService{environment: environmentdto.View{
 		Id: "environment-1", ProjectId: "project-1", Code: "project", State: model.EnvironmentStateActive,
-		TargetType: model.EnvironmentTargetTypeLocal,
-		Local:      &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit/deployment", Platform: "linux", Host: "orbit-host", Username: "orbit"},
+		TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: 1,
+		LastProbeRevision: &revision, LastProbeStatus: &probeStatus,
+		Local: &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit/deployment", Platform: "linux", Host: "orbit-host", Username: "orbit"},
 	}}
-	server, err := NewServer(Dependencies{
-		ActorUserId: "actor", Environment: environment,
-	})
+	server, err := NewServer(withReadyScope(Dependencies{Environment: environment}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	result, err := connectInMemory(t, server).CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "orbit_get_project_environment", Arguments: map[string]any{"project_id": "project-1"},
+		Name: "orbit_get_project_environment",
 	})
 	if err != nil || result.IsError {
 		t.Fatalf("CallTool(get local environment) result=%#v err=%v", result, err)
@@ -162,8 +166,7 @@ func TestProjectEnvironmentToolsReturnLocalWorkspaceWithoutSSHFields(t *testing.
 	updateResult, err := connectInMemory(t, server).CallTool(context.Background(), &mcp.CallToolParams{
 		Name: "orbit_update_project_environment",
 		Arguments: map[string]any{
-			"project_id": "project-1",
-			"local":      map[string]any{"workspace_root": "/srv/orbit/next"},
+			"local": map[string]any{"workspace_root": "/srv/orbit/next"},
 		},
 	})
 	if err != nil || updateResult.IsError {
@@ -176,7 +179,7 @@ func TestProjectEnvironmentToolsReturnLocalWorkspaceWithoutSSHFields(t *testing.
 
 func TestCreateVersionComponentPassesPolicies(t *testing.T) {
 	application := &versionComponentApplicationService{}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: application})
+	server, err := NewServer(withReadyScope(Dependencies{Application: application}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -228,7 +231,7 @@ func TestServerInstructionsAndRuntimeConfigToolsDocumentStatefulServiceBoundary(
 }
 
 func TestApplicationErrorBecomesClassifiedMCPToolError(t *testing.T) {
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: errorApplicationService{}})
+	server, err := NewServer(withReadyScope(Dependencies{Application: errorApplicationService{}}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -253,9 +256,10 @@ func TestApplicationErrorBecomesClassifiedMCPToolError(t *testing.T) {
 }
 
 func TestServiceCodeMCPContract(t *testing.T) {
-	application := &serviceApplicationToolService{application: model.Application{Id: "application-1", Code: "ragflow"}}
+	projectID := "project-1"
+	application := &serviceApplicationToolService{application: model.Application{Id: "application-1", ProjectId: &projectID, Code: "ragflow"}}
 	service := &serviceToolService{services: []model.Service{{Id: "service-1", ApplicationId: "application-1", InstanceKey: "default", Code: "ragflow-default", VersionId: "version-1", Status: "stopped"}}}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: application, Service: service})
+	server, err := NewServer(withReadyScope(Dependencies{Application: application, Service: service}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -325,7 +329,7 @@ func TestServiceCodeMCPContract(t *testing.T) {
 
 func TestServiceComponentOverlayToolMapsRuntimeAndHostPathFields(t *testing.T) {
 	service := &serviceOverlayToolService{}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Service: service})
+	server, err := NewServer(withReadyScope(Dependencies{Application: &serviceApplicationToolService{application: model.Application{Id: "application-1", ProjectId: readyProjectID(), Code: "ragflow"}}, Service: service}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -554,9 +558,9 @@ func (s *actorProjectService) snapshot() (string, int) {
 }
 
 var deliveryToolNames = []string{
-	"orbit_list_projects", "orbit_get_project_environment", "orbit_update_project_environment", "orbit_probe_project_environment",
+	"orbit_list_projects", "orbit_select_project", "orbit_get_current_project", "orbit_get_project_environment", "orbit_update_project_environment", "orbit_probe_project_environment",
 	"orbit_list_applications", "orbit_list_application_services", "orbit_list_gateways",
-	"orbit_create_gateway", "orbit_provision_gateway", "orbit_get_gateway", "orbit_update_gateway",
+	"orbit_provision_gateway", "orbit_get_gateway", "orbit_update_gateway",
 	"orbit_create_application", "orbit_get_application", "orbit_delete_application", "orbit_list_versions", "orbit_get_version",
 	"orbit_create_version_component", "orbit_create_version", "orbit_update_version",
 	"orbit_update_version_component_basic", "orbit_update_version_component_runtime", "orbit_update_version_component_endpoints",
@@ -572,7 +576,7 @@ var deliveryToolNames = []string{
 
 func TestFlatMountToolMapsCollectionToApplicationInput(t *testing.T) {
 	application := &mountApplicationService{}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: application})
+	server, err := NewServer(withReadyScope(Dependencies{Application: application}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -597,7 +601,7 @@ func TestFlatMountToolMapsCollectionToApplicationInput(t *testing.T) {
 
 func TestMountToolDocumentsAndMapsControlledFile(t *testing.T) {
 	application := &mountApplicationService{}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: application})
+	server, err := NewServer(withReadyScope(Dependencies{Application: application}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -831,6 +835,10 @@ func (s *serviceToolService) CreateService(_ context.Context, _ string, input se
 
 func (s *serviceToolService) ListServicesByApplication(context.Context, string, string) ([]model.Service, error) {
 	return s.services, nil
+}
+
+func (s *serviceOverlayToolService) GetService(_ context.Context, _ string, serviceID string) (servicedto.ServiceView, error) {
+	return servicedto.ServiceView{Service: model.Service{Id: serviceID, ApplicationId: "application-1"}}, nil
 }
 
 func (s *serviceOverlayToolService) UpdateServiceComponentOverlay(_ context.Context, _ string, _ string, _ string, input servicedto.ServiceComponentOverlayInput) (model.ServiceComponent, error) {

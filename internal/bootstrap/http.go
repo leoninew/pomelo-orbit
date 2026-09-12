@@ -18,6 +18,7 @@ import (
 	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
 	pipelinerunsvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/usecase"
 	projectsvc "github.com/leoninew/pomelo-orbit/internal/application/project/usecase"
+	projectinitializationsvc "github.com/leoninew/pomelo-orbit/internal/application/project_initialization/usecase"
 	repositorysvc "github.com/leoninew/pomelo-orbit/internal/application/repository/usecase"
 	rolesvc "github.com/leoninew/pomelo-orbit/internal/application/role/usecase"
 	routesvc "github.com/leoninew/pomelo-orbit/internal/application/route/usecase"
@@ -52,28 +53,31 @@ func NewHTTPServer(cfg config.Config, logger *slog.Logger, database *sql.DB, tas
 }
 
 type applicationServices struct {
-	AuthService        authsvc.Service
-	RoleService        rolesvc.Service
-	UserService        usersvc.Service
-	ProjectService     projectsvc.Service
-	SettingsService    settingssvc.Service
-	CredentialService  credentialsvc.Service
-	EnvironmentService environmentsvc.Service
-	RepositoryService  repositorysvc.Service
-	PipelineService    pipelinesvc.Service
-	PipelineRunService pipelinerunsvc.Service
-	RouteService       routesvc.Service
-	ApplicationService applicationsvc.Service
-	ServiceService     servicesvc.Service
-	DeploymentService  deploymentsvc.Service
-	DialogueService    dialoguesvc.Service
-	GatewayService     gatewaysvc.Service
-	TaskService        tasksvc.Service
+	AuthService                  authsvc.Service
+	RoleService                  rolesvc.Service
+	UserService                  usersvc.Service
+	ProjectService               projectsvc.Service
+	ProjectInitializationService projectinitializationsvc.Service
+	SettingsService              settingssvc.Service
+	CredentialService            credentialsvc.Service
+	EnvironmentService           environmentsvc.Service
+	RepositoryService            repositorysvc.Service
+	PipelineService              pipelinesvc.Service
+	PipelineRunService           pipelinerunsvc.Service
+	RouteService                 routesvc.Service
+	ApplicationService           applicationsvc.Service
+	ServiceService               servicesvc.Service
+	DeploymentService            deploymentsvc.Service
+	DialogueService              dialoguesvc.Service
+	GatewayService               gatewaysvc.Service
+	TaskService                  tasksvc.Service
 }
 
-func newDeliveryMCPServer(actorUserId string, services applicationServices) (*mcp.Server, error) {
+func newDeliveryMCPServer(actorUserId string, projectId string, services applicationServices, scopeFixed bool) (*mcp.Server, error) {
 	deps := newDeliveryMCPDependencies(services)
 	deps.ActorUserId = actorUserId
+	deps.SelectedProjectId = projectId
+	deps.ScopeFixed = scopeFixed
 	return deliverymcp.NewServer(deps)
 }
 
@@ -102,13 +106,15 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	deploymentLogStore := executionlog.NewDeploymentStore(cfg.Logging.DeploymentRoot)
 	dockerPathResolver := dockerDaemonPathResolver()
 	localRuntime, runtime := newDeploymentRuntime(dockerPathResolver)
-	environmentService := environmentsvc.New(stores.environment, stores.project, credentialService, credentialService, environmentrunner.NewProber(localRuntime, sshrunner.NewEnvironmentProber()), sshrunner.NewEnvironmentBootstrapper()).WithLocalDisplay(localEnvironmentDisplay())
-	projectService := projectsvc.New(stores.project, stores.user, stores.environment, environmentService)
+	localDisplay := localEnvironmentDisplay()
+	environmentService := environmentsvc.New(stores.environment, stores.project, credentialService, credentialService, environmentrunner.NewProber(localRuntime, sshrunner.NewEnvironmentProber()), sshrunner.NewEnvironmentBootstrapper()).WithLocalDisplay(localDisplay)
+	projectService := projectsvc.New(stores.project, stores.user, stores.environment)
 	pipelineWorkspace := pipelineworkspace.NewWithResolver(cfg.Workspace.Pipeline, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, credentialService)
 	routeManager := traefik.NewRouteManager(targetResolver, runtime)
-	gatewayCore := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, cfg.Traefik, dockerPathResolver, transactionRunner)
+	gatewayCore := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, dockerPathResolver, transactionRunner)
+	projectInitializationService := projectinitializationsvc.New(projectService, environmentService, gatewayCore, cfg.ProjectInitialization, localDisplay)
 	deploymentService := deploymentsvc.NewCommandService(
 		stores.project,
 		stores.application,
@@ -126,13 +132,14 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	applicationService := applicationsvc.New(stores.project, stores.application, stores.service)
 
 	services := applicationServices{
-		AuthService:        authService,
-		RoleService:        rolesvc.New(stores.role),
-		UserService:        usersvc.New(stores.user, stores.role, stores.project),
-		ProjectService:     projectService,
-		SettingsService:    settingssvc.New(settingssvc.Definitions(cfg), envfile.NewStore(cfg.EnvFilePath)),
-		CredentialService:  credentialService,
-		EnvironmentService: environmentService,
+		AuthService:                  authService,
+		RoleService:                  rolesvc.New(stores.role),
+		UserService:                  usersvc.New(stores.user, stores.role, stores.project),
+		ProjectService:               projectService,
+		ProjectInitializationService: projectInitializationService,
+		SettingsService:              settingssvc.New(settingssvc.Definitions(cfg), envfile.NewStore(cfg.EnvFilePath)),
+		CredentialService:            credentialService,
+		EnvironmentService:           environmentService,
 		RepositoryService: repositorysvc.New(
 			stores.project,
 			stores.credential,
@@ -186,8 +193,8 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		transactionRunner,
 		cfg.LLM.MaxToolCallRounds,
 		llmclient.New(cfg.LLM),
-		deliverymcpclient.NewFactory(func(actorUserId string) (*mcp.Server, error) {
-			return newDeliveryMCPServer(actorUserId, services)
+		deliverymcpclient.NewFactory(func(actorUserId string, projectId string) (*mcp.Server, error) {
+			return newDeliveryMCPServer(actorUserId, projectId, services, true)
 		}),
 	)
 	return services
@@ -196,25 +203,26 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database *sql.DB, taskRepo taskrepo.Repository) routes.Dependencies {
 	services := newApplicationServices(cfg, logger, database, taskRepo)
 	return routes.Dependencies{
-		MutatingUnitOfWork: databasetx.Middleware(database, "/api/route/sync/preview", "/api/route/sync/confirm", "/api/project/:project_id/environment/probe"),
-		Authenticator:      security.New(logger, services.AuthService),
-		AuthService:        services.AuthService,
-		RoleService:        services.RoleService,
-		UserService:        services.UserService,
-		ProjectService:     services.ProjectService,
-		SettingsService:    services.SettingsService,
-		CredentialService:  services.CredentialService,
-		EnvironmentService: services.EnvironmentService,
-		RepositoryService:  services.RepositoryService,
-		PipelineService:    services.PipelineService,
-		PipelineRunService: services.PipelineRunService,
-		RouteService:       services.RouteService,
-		ApplicationService: services.ApplicationService,
-		ServiceService:     services.ServiceService,
-		DeploymentService:  services.DeploymentService,
-		DialogueService:    services.DialogueService,
-		GatewayService:     services.GatewayService,
-		TaskService:        services.TaskService,
-		TurnstileVerifier:  turnstile.NewVerifier(cfg.Turnstile),
+		MutatingUnitOfWork:           databasetx.Middleware(database, "/api/route/sync/preview", "/api/route/sync/confirm", "/api/project/:project_id/environment/probe", "/api/project/:project_id/environment/initialize", "/api/project/:project_id/initialization/probe", "/api/project/:project_id/initialization/bootstrap"),
+		Authenticator:                security.New(logger, services.AuthService),
+		AuthService:                  services.AuthService,
+		RoleService:                  services.RoleService,
+		UserService:                  services.UserService,
+		ProjectService:               services.ProjectService,
+		ProjectInitializationService: services.ProjectInitializationService,
+		SettingsService:              services.SettingsService,
+		CredentialService:            services.CredentialService,
+		EnvironmentService:           services.EnvironmentService,
+		RepositoryService:            services.RepositoryService,
+		PipelineService:              services.PipelineService,
+		PipelineRunService:           services.PipelineRunService,
+		RouteService:                 services.RouteService,
+		ApplicationService:           services.ApplicationService,
+		ServiceService:               services.ServiceService,
+		DeploymentService:            services.DeploymentService,
+		DialogueService:              services.DialogueService,
+		GatewayService:               services.GatewayService,
+		TaskService:                  services.TaskService,
+		TurnstileVerifier:            turnstile.NewVerifier(cfg.Turnstile),
 	}
 }

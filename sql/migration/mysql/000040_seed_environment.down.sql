@@ -1,2 +1,2 @@
-DELETE FROM `environment` WHERE `id` = '01M202WNXYDEY0E0GDF1RCY3JB';
-DELETE FROM `credential` WHERE `id` = '01M202WNXY6FPPFGTJWCF6CP81';
+-- No-op: Environment is created by Project initialization, not seed.
+SELECT 1;

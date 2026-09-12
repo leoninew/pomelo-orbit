@@ -1,10 +1,14 @@
 package sshrunner
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"errors"
+	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"golang.org/x/crypto/ssh"
@@ -46,6 +50,28 @@ func TestProbeHostKeyCallbackAcceptsEmptyExpectedAndRecordsFingerprint(t *testin
 	}
 	if err := probeHostKeyCallback("SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", &observed)("example.test:22", nil, signer.PublicKey()); err == nil {
 		t.Fatal("mismatched expected fingerprint accepted")
+	}
+}
+
+func TestTestSSHReportsUnreachableHost(t *testing.T) {
+	prober := EnvironmentProber{
+		dialContext: func(context.Context, string, string) (net.Conn, error) {
+			return nil, errors.New("connection refused")
+		},
+		timeout: time.Second,
+	}
+	err := prober.TestSSH(context.Background(), "192.0.2.10", 22, "orbit")
+	if err == nil || !strings.Contains(err.Error(), "Cannot connect to the configured SSH host") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestSSHServiceReachableTreatsAuthenticationFailureAsReachable(t *testing.T) {
+	if !sshServiceReachable(errors.New("ssh: handshake failed: ssh: unable to authenticate, no supported methods remain")) {
+		t.Fatal("authentication failure must mean the SSH service is reachable")
+	}
+	if sshServiceReachable(errors.New("connection refused")) {
+		t.Fatal("connection refused must not mean the SSH service is reachable")
 	}
 }
 

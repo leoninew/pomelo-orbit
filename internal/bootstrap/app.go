@@ -134,9 +134,6 @@ func (a App) Serve(ctx context.Context) error {
 type dockerDaemonPathResolverFn func(context.Context, string) (string, error)
 
 func dockerDaemonPathResolver() func(context.Context, string) (string, error) {
-	if !runtimepath.IsRunningInContainer() {
-		return nil
-	}
 	return runtimepath.ResolveDockerDaemonPath
 }
 

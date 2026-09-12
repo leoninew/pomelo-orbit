@@ -28,7 +28,7 @@ func NewServer(deps Dependencies) (*mcp.Server, error) {
 		return nil, errors.New("mcp actor_user_id or actor authenticator is required")
 	}
 	server := mcp.NewServer(&mcp.Implementation{Name: "pomelo-orbit-mcp", Version: implementationVersion}, &mcp.ServerOptions{Instructions: deliveryInstructions})
-	core := &core{deps: deps}
+	core := &core{deps: deps, scope: projectScope{id: strings.TrimSpace(deps.SelectedProjectId), fixed: deps.ScopeFixed}}
 	if deps.ActorAuthenticator != nil {
 		server.AddReceivingMiddleware(core.authorizeToolCalls)
 	}
@@ -38,6 +38,7 @@ func NewServer(deps Dependencies) (*mcp.Server, error) {
 
 type core struct {
 	deps            Dependencies
+	scope           projectScope
 	authorizationMu sync.Mutex
 }
 
@@ -111,17 +112,27 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		}
 		return map[string]any{"projects": items}, nil
 	})
+	addTool(server, "orbit_select_project", "Confirm the ready Project this MCP connection will use. Later project-level tools use this connection scope and do not take project_id.", func(ctx context.Context, input struct {
+		ProjectId string `json:"project_id" jsonschema:"required"`
+	}) (map[string]any, error) {
+		return c.bindReadyProject(ctx, input.ProjectId)
+	})
+	addTool(server, "orbit_get_current_project", "Return the Project, Environment, and Gateway currently selected for this MCP connection.", func(ctx context.Context, _ struct{}) (map[string]any, error) {
+		return c.currentProjectSummary(ctx)
+	})
 	c.registerEnvironmentTools(server)
 
-	addTool(server, "orbit_list_applications", "List Orbit Applications in a Project, optionally limited to one application kind.", func(ctx context.Context, input struct {
-		ProjectId string `json:"project_id" jsonschema:"required"`
-		Kind      string `json:"kind,omitempty"`
+	addTool(server, "orbit_list_applications", "List Orbit Applications in the selected Project, optionally limited to one application kind.", func(ctx context.Context, input struct {
+		Kind string `json:"kind,omitempty"`
 	}) (map[string]any, error) {
+		projectId, _, err := c.requireReadyEnvironment(ctx)
+		if err != nil {
+			return nil, err
+		}
 		kind := input.Kind
 		if kind == "" {
 			kind = "standard"
 		}
-		projectId := input.ProjectId
 		apps, err := c.deps.Application.ListApplications(ctx, c.deps.ActorUserId, &projectId, 1, 10000, "", kind)
 		if err != nil {
 			return nil, err
@@ -130,12 +141,15 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		for _, app := range apps.Items {
 			items = append(items, applicationOutput(app))
 		}
-		return map[string]any{"project_id": projectId, "kind": kind, "applications": items}, nil
+		return map[string]any{"kind": kind, "applications": items}, nil
 	})
 
 	addTool(server, "orbit_list_application_services", "List non-sensitive Service summaries for an Orbit Application.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
+			return nil, err
+		}
 		services, err := c.deps.Service.ListServicesByApplication(ctx, c.deps.ActorUserId, input.ApplicationId)
 		if err != nil {
 			return nil, err
@@ -147,10 +161,12 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return map[string]any{"application_id": input.ApplicationId, "services": items}, nil
 	})
 
-	addTool(server, "orbit_list_gateways", "List Gateway metadata in a Project through Orbit.", func(ctx context.Context, input struct {
-		ProjectId string `json:"project_id" jsonschema:"required"`
-	}) (map[string]any, error) {
-		gateways, err := c.deps.Gateway.ListGateways(ctx, c.deps.ActorUserId, input.ProjectId, 1, 10000, "")
+	addTool(server, "orbit_list_gateways", "List Gateway metadata in the selected Project through Orbit.", func(ctx context.Context, _ struct{}) (map[string]any, error) {
+		projectId, _, err := c.requireReadyGateway(ctx)
+		if err != nil {
+			return nil, err
+		}
+		gateways, err := c.deps.Gateway.ListGateways(ctx, c.deps.ActorUserId, projectId, 1, 10000, "")
 		if err != nil {
 			return nil, err
 		}
@@ -158,47 +174,21 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		for _, gateway := range gateways.Items {
 			items = append(items, gatewayOutput(gateway))
 		}
-		return map[string]any{"project_id": input.ProjectId, "gateways": items}, nil
+		return map[string]any{"gateways": items}, nil
 	})
 
-	addTool(server, "orbit_create_gateway", "Create an Orbit-managed Gateway; deploy it with the existing deployment tools.", func(ctx context.Context, input struct {
-		ProjectId                  string  `json:"project_id" jsonschema:"required"`
-		Code                       string  `json:"code,omitempty"`
-		Name                       string  `json:"name,omitempty"`
-		RestApiUrl                 string  `json:"rest_api_url,omitempty"`
-		BaseDomain                 string  `json:"base_domain,omitempty"`
-		InitialComponentImage      *string `json:"initial_component_image,omitempty"`
-		InitialComponentPullPolicy string  `json:"initial_component_pull_policy,omitempty"`
-		DefaultEntrypoint          *string `json:"default_entrypoint,omitempty"`
-		TLSMode                    *string `json:"tls_mode,omitempty"`
+	addTool(server, "orbit_provision_gateway", "Prepare the selected Project's existing managed Gateway and return its stopped Service. Deploy it explicitly with orbit_deploy.", func(ctx context.Context, input struct {
+		InstanceKey string `json:"instance_key,omitempty"`
 	}) (map[string]any, error) {
-		// Empty optional fields are filled from process Traefik defaults inside CreateGateway.
-		gateway, err := c.deps.Gateway.CreateGateway(ctx, c.deps.ActorUserId, gatewaydto.GatewayCreateInput{
-			ProjectId:                  input.ProjectId,
-			Code:                       input.Code,
-			Name:                       input.Name,
-			RestApiUrl:                 input.RestApiUrl,
-			BaseDomain:                 input.BaseDomain,
-			InitialComponentImage:      input.InitialComponentImage,
-			InitialComponentPullPolicy: input.InitialComponentPullPolicy,
-			DefaultEntrypoint:          input.DefaultEntrypoint,
-			TLSMode:                    input.TLSMode,
-		})
+		projectId, _, err := c.requireReadyGateway(ctx)
 		if err != nil {
 			return nil, err
 		}
-		return writeResult("create_gateway", map[string]string{"gateway_id": gateway.Application.Id, "application_id": gateway.Application.Id}, "POST", "/api/gateway", map[string]any{"gateway": gatewayOutput(gateway)}), nil
-	})
-
-	addTool(server, "orbit_provision_gateway", "Prepare one managed traefik Gateway and return its stopped Service. Deploy it explicitly with orbit_deploy.", func(ctx context.Context, input struct {
-		ProjectId   string `json:"project_id" jsonschema:"required"`
-		InstanceKey string `json:"instance_key,omitempty"`
-	}) (map[string]any, error) {
 		instanceKey := input.InstanceKey
 		if instanceKey == "" {
 			instanceKey = "default"
 		}
-		result, err := c.deps.Gateway.ProvisionGateway(ctx, c.deps.ActorUserId, gatewaydto.ProvisionGatewayInput{ProjectId: input.ProjectId, InstanceKey: instanceKey})
+		result, err := c.deps.Gateway.ProvisionGateway(ctx, c.deps.ActorUserId, gatewaydto.ProvisionGatewayInput{ProjectId: projectId, InstanceKey: instanceKey})
 		if err != nil {
 			return nil, err
 		}
@@ -208,7 +198,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	addTool(server, "orbit_get_gateway", "Read one Gateway and its Application metadata through Orbit.", func(ctx context.Context, input struct {
 		GatewayId string `json:"gateway_id" jsonschema:"required"`
 	}) (map[string]any, error) {
-		gateway, err := c.deps.Gateway.GatewayForUser(ctx, c.deps.ActorUserId, input.GatewayId)
+		gateway, err := c.gatewayInScope(ctx, input.GatewayId)
 		if err != nil {
 			return nil, err
 		}
@@ -216,29 +206,39 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	})
 
 	addTool(server, "orbit_update_gateway", "Update an Orbit-managed Gateway configuration through Orbit.", func(ctx context.Context, input struct {
-		GatewayId         string  `json:"gateway_id" jsonschema:"required"`
-		Name              *string `json:"name,omitempty"`
-		RestApiUrl        *string `json:"rest_api_url,omitempty"`
-		BaseDomain        *string `json:"base_domain,omitempty"`
-		DefaultEntrypoint *string `json:"default_entrypoint,omitempty"`
-		TLSMode           *string `json:"tls_mode,omitempty"`
+		GatewayId               string  `json:"gateway_id" jsonschema:"required"`
+		Name                    *string `json:"name,omitempty"`
+		RestApiUrl              *string `json:"rest_api_url,omitempty"`
+		RestReadyTimeoutSeconds *int    `json:"rest_ready_timeout_seconds,omitempty"`
+		BaseDomain              *string `json:"base_domain,omitempty"`
+		DefaultEntrypoint       *string `json:"default_entrypoint,omitempty"`
+		TLSMode                 *string `json:"tls_mode,omitempty"`
+		AcmeProfile             *string `json:"acme_profile,omitempty"`
+		AcmeEmail               *string `json:"acme_email,omitempty"`
+		DNSApiToken             *string `json:"dns_api_token,omitempty"`
 	}) (map[string]any, error) {
-		if input.Name == nil && input.RestApiUrl == nil && input.BaseDomain == nil && input.DefaultEntrypoint == nil && input.TLSMode == nil {
+		if _, err := c.gatewayInScope(ctx, input.GatewayId); err != nil {
+			return nil, err
+		}
+		if input.Name == nil && input.RestApiUrl == nil && input.RestReadyTimeoutSeconds == nil && input.BaseDomain == nil && input.DefaultEntrypoint == nil && input.TLSMode == nil && input.AcmeProfile == nil && input.AcmeEmail == nil && input.DNSApiToken == nil {
 			return nil, apperror.New(apperror.KindValidation, "at least one Gateway field must be supplied")
 		}
-		gateway, err := c.deps.Gateway.UpdateGateway(ctx, c.deps.ActorUserId, input.GatewayId, gatewaydto.GatewayUpdateInput{Name: input.Name, RestApiUrl: input.RestApiUrl, BaseDomain: input.BaseDomain, DefaultEntrypoint: input.DefaultEntrypoint, TLSMode: input.TLSMode})
+		gateway, err := c.deps.Gateway.UpdateGateway(ctx, c.deps.ActorUserId, input.GatewayId, gatewaydto.GatewayUpdateInput{Name: input.Name, RestApiUrl: input.RestApiUrl, RestReadyTimeoutSeconds: input.RestReadyTimeoutSeconds, BaseDomain: input.BaseDomain, DefaultEntrypoint: input.DefaultEntrypoint, TLSMode: input.TLSMode, AcmeProfile: input.AcmeProfile, AcmeEmail: input.AcmeEmail, DNSApiToken: input.DNSApiToken})
 		if err != nil {
 			return nil, err
 		}
 		return writeResult("update_gateway", map[string]string{"gateway_id": input.GatewayId, "application_id": input.GatewayId}, "PUT", "/api/gateway/"+input.GatewayId, map[string]any{"gateway": gatewayOutput(gateway)}), nil
 	})
 
-	addTool(server, "orbit_create_application", "Create a standard Application through Orbit and return its initial draft Version.", func(ctx context.Context, input struct {
-		ProjectId string `json:"project_id" jsonschema:"required"`
-		Name      string `json:"name" jsonschema:"required"`
-		Code      string `json:"code" jsonschema:"required"`
-		Kind      string `json:"kind,omitempty"`
+	addTool(server, "orbit_create_application", "Create a standard Application in the selected Project and return its initial draft Version.", func(ctx context.Context, input struct {
+		Name string `json:"name" jsonschema:"required"`
+		Code string `json:"code" jsonschema:"required"`
+		Kind string `json:"kind,omitempty"`
 	}) (map[string]any, error) {
+		projectId, _, err := c.requireReadyEnvironment(ctx)
+		if err != nil {
+			return nil, err
+		}
 		kind := input.Kind
 		if kind == "" {
 			kind = "standard"
@@ -246,7 +246,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if kind != "standard" {
 			return nil, apperror.New(apperror.KindValidation, "MCP creation only supports kind=standard")
 		}
-		app, err := c.deps.Application.CreateApplication(ctx, c.deps.ActorUserId, applicationdto.ApplicationCreateInput{ProjectId: input.ProjectId, Name: input.Name, Code: input.Code, Kind: kind})
+		app, err := c.deps.Application.CreateApplication(ctx, c.deps.ActorUserId, applicationdto.ApplicationCreateInput{ProjectId: projectId, Name: input.Name, Code: input.Code, Kind: kind})
 		if err != nil {
 			return nil, err
 		}
@@ -273,7 +273,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	addTool(server, "orbit_get_application", "Read one Orbit Application, including its current service summary.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 	}) (map[string]any, error) {
-		app, err := c.deps.Application.ApplicationForUser(ctx, c.deps.ActorUserId, input.ApplicationId)
+		app, err := c.applicationInScope(ctx, input.ApplicationId)
 		if err != nil {
 			return nil, err
 		}
@@ -283,6 +283,9 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	addTool(server, "orbit_delete_application", "Delete an Orbit Application after its Services and Versions have been removed.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
+			return nil, err
+		}
 		if err := c.deps.Deployment.DeleteApplication(ctx, c.deps.ActorUserId, input.ApplicationId); err != nil {
 			return nil, err
 		}
@@ -292,6 +295,9 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	addTool(server, "orbit_list_versions", "List Versions for an Orbit Application.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
+			return nil, err
+		}
 		versions, err := c.deps.Application.ListVersions(ctx, c.deps.ActorUserId, input.ApplicationId)
 		if err != nil {
 			return nil, err
@@ -306,6 +312,9 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	addTool(server, "orbit_get_version", "Read a Version with its Components.", func(ctx context.Context, input struct {
 		VersionId string `json:"version_id" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
 		version, err := c.deps.Application.VersionForUser(ctx, c.deps.ActorUserId, input.VersionId)
 		if err != nil {
 			return nil, err
@@ -317,6 +326,9 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		VersionId string                             `json:"version_id" jsonschema:"required"`
 		Component *applicationv1.VersionComponentReq `json:"component" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
 		componentInput, err := componentInput(input.Component)
 		if err != nil {
 			return nil, apperror.Wrap(apperror.KindValidation, "invalid component command", err)
@@ -334,6 +346,9 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		Components    []*applicationv1.VersionComponentReq `json:"components" jsonschema:"required"`
 		Note          *string                              `json:"note,omitempty"`
 	}) (map[string]any, error) {
+		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
+			return nil, err
+		}
 		components := make([]applicationdto.VersionComponentInput, 0, len(input.Components))
 		for _, item := range input.Components {
 			component, err := componentInput(item)
@@ -354,6 +369,9 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		Label     *string `json:"label,omitempty"`
 		Note      *string `json:"note,omitempty"`
 	}) (map[string]any, error) {
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
 		if input.Label == nil && input.Note == nil {
 			return nil, apperror.New(apperror.KindValidation, "at least one Version field must be supplied")
 		}
@@ -370,6 +388,9 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	addTool(server, "orbit_publish_version", "Mark a Version published through Orbit; publication does not lock later edits or deletion.", func(ctx context.Context, input struct {
 		VersionId string `json:"version_id" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
 		version, err := c.deps.Application.PublishVersion(ctx, c.deps.ActorUserId, input.VersionId)
 		if err != nil {
 			return nil, err
@@ -380,6 +401,9 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	addTool(server, "orbit_delete_version", "Delete an unreferenced Version through Orbit regardless of its published marker.", func(ctx context.Context, input struct {
 		VersionId string `json:"version_id" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
 		if err := c.deps.Application.DeleteVersion(ctx, c.deps.ActorUserId, input.VersionId); err != nil {
 			return nil, err
 		}
@@ -389,6 +413,9 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	addTool(server, "orbit_preview_service", "Render a saved Service configuration without deploying it.", func(ctx context.Context, input struct {
 		ServiceId string `json:"service_id" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
+			return nil, err
+		}
 		preview, err := c.deps.Deployment.PreviewService(ctx, c.deps.ActorUserId, input.ServiceId, deploymentdto.PreviewComposeInput{})
 		if err != nil {
 			return nil, err

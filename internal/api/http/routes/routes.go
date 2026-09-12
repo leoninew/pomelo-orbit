@@ -20,6 +20,7 @@ import (
 	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
 	pipelinerunsvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/usecase"
 	projectsvc "github.com/leoninew/pomelo-orbit/internal/application/project/usecase"
+	projectinitializationsvc "github.com/leoninew/pomelo-orbit/internal/application/project_initialization/usecase"
 	repositorysvc "github.com/leoninew/pomelo-orbit/internal/application/repository/usecase"
 	rolesvc "github.com/leoninew/pomelo-orbit/internal/application/role/usecase"
 	routesvc "github.com/leoninew/pomelo-orbit/internal/application/route/usecase"
@@ -32,26 +33,27 @@ import (
 )
 
 type Dependencies struct {
-	MutatingUnitOfWork gin.HandlerFunc
-	Authenticator      security.Authenticator
-	AuthService        authsvc.Service
-	RoleService        rolesvc.Service
-	UserService        usersvc.Service
-	ProjectService     projectsvc.Service
-	SettingsService    settingssvc.Service
-	CredentialService  credentialsvc.Service
-	RepositoryService  repositorysvc.Service
-	PipelineService    pipelinesvc.Service
-	PipelineRunService pipelinerunsvc.Service
-	RouteService       routesvc.Service
-	ApplicationService applicationsvc.Service
-	ServiceService     servicesvc.Service
-	DeploymentService  deploymentsvc.Service
-	DialogueService    dialoguesvc.Service
-	EnvironmentService environmentsvc.Service
-	GatewayService     gatewaysvc.Service
-	TaskService        tasksvc.Service
-	TurnstileVerifier  authhandler.TurnstileVerifier
+	MutatingUnitOfWork           gin.HandlerFunc
+	Authenticator                security.Authenticator
+	AuthService                  authsvc.Service
+	RoleService                  rolesvc.Service
+	UserService                  usersvc.Service
+	ProjectService               projectsvc.Service
+	ProjectInitializationService projectinitializationsvc.Service
+	SettingsService              settingssvc.Service
+	CredentialService            credentialsvc.Service
+	RepositoryService            repositorysvc.Service
+	PipelineService              pipelinesvc.Service
+	PipelineRunService           pipelinerunsvc.Service
+	RouteService                 routesvc.Service
+	ApplicationService           applicationsvc.Service
+	ServiceService               servicesvc.Service
+	DeploymentService            deploymentsvc.Service
+	DialogueService              dialoguesvc.Service
+	EnvironmentService           environmentsvc.Service
+	GatewayService               gatewaysvc.Service
+	TaskService                  tasksvc.Service
+	TurnstileVerifier            authhandler.TurnstileVerifier
 }
 
 type Router struct {
@@ -94,6 +96,7 @@ func (r Router) Handler() http.Handler {
 	r.registerRole(engine)
 	r.registerSettings(engine)
 	r.registerProject(engine)
+	r.registerProjectInitialization(engine)
 	r.registerEnvironment(engine)
 	r.registerCredential(engine)
 	r.registerRepository(engine)

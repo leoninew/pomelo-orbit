@@ -37,7 +37,7 @@ func (q *Queries) GatewayBindingByProjectID(ctx context.Context, projectID strin
 }
 
 const gatewayConfigByApplication = `-- name: GatewayConfigByApplication :one
-SELECT application_id, traefik_component_name, rest_api_url, rest_ready_timeout_seconds,
+SELECT application_id, rest_api_url, rest_ready_timeout_seconds,
        base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
        dns_api_token, created_at, updated_at
 FROM gateway_config
@@ -49,7 +49,6 @@ func (q *Queries) GatewayConfigByApplication(ctx context.Context, applicationID 
 	var i GatewayConfig
 	err := row.Scan(
 		&i.ApplicationID,
-		&i.TraefikComponentName,
 		&i.RestApiUrl,
 		&i.RestReadyTimeoutSeconds,
 		&i.BaseDomain,
@@ -120,16 +119,15 @@ func (q *Queries) GatewayVersionBindingsByApplication(ctx context.Context, appli
 
 const insertGatewayConfig = `-- name: InsertGatewayConfig :exec
 INSERT INTO gateway_config (
-  application_id, traefik_component_name, rest_api_url, rest_ready_timeout_seconds,
+  application_id, rest_api_url, rest_ready_timeout_seconds,
   base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
   dns_api_token, created_at, updated_at
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertGatewayConfigParams struct {
 	ApplicationID           string    `db:"application_id"`
-	TraefikComponentName    string    `db:"traefik_component_name"`
 	RestApiUrl              string    `db:"rest_api_url"`
 	RestReadyTimeoutSeconds int64     `db:"rest_ready_timeout_seconds"`
 	BaseDomain              string    `db:"base_domain"`
@@ -145,7 +143,6 @@ type InsertGatewayConfigParams struct {
 func (q *Queries) InsertGatewayConfig(ctx context.Context, arg InsertGatewayConfigParams) error {
 	_, err := q.db.ExecContext(ctx, insertGatewayConfig,
 		arg.ApplicationID,
-		arg.TraefikComponentName,
 		arg.RestApiUrl,
 		arg.RestReadyTimeoutSeconds,
 		arg.BaseDomain,
@@ -227,14 +224,13 @@ func (q *Queries) ListGatewayApplications(ctx context.Context, projectID sql.Nul
 
 const updateGatewayConfig = `-- name: UpdateGatewayConfig :exec
 UPDATE gateway_config
-SET traefik_component_name = ?, rest_api_url = ?, rest_ready_timeout_seconds = ?,
+SET rest_api_url = ?, rest_ready_timeout_seconds = ?,
     base_domain = ?, default_entrypoint = ?, tls_mode = ?, acme_profile = ?, acme_email = ?,
     dns_api_token = ?, updated_at = ?
 WHERE application_id = ?
 `
 
 type UpdateGatewayConfigParams struct {
-	TraefikComponentName    string    `db:"traefik_component_name"`
 	RestApiUrl              string    `db:"rest_api_url"`
 	RestReadyTimeoutSeconds int64     `db:"rest_ready_timeout_seconds"`
 	BaseDomain              string    `db:"base_domain"`
@@ -249,7 +245,6 @@ type UpdateGatewayConfigParams struct {
 
 func (q *Queries) UpdateGatewayConfig(ctx context.Context, arg UpdateGatewayConfigParams) error {
 	_, err := q.db.ExecContext(ctx, updateGatewayConfig,
-		arg.TraefikComponentName,
 		arg.RestApiUrl,
 		arg.RestReadyTimeoutSeconds,
 		arg.BaseDomain,

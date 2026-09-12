@@ -6,29 +6,9 @@ import (
 	gatewayv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/gateway"
 )
 
-func gatewayCreateInput(req *gatewayv1.GatewayCreateReq) gatewaydto.GatewayCreateInput {
-	return gatewaydto.GatewayCreateInput{
-		ProjectId:                  req.ProjectId,
-		Code:                       req.Code,
-		Name:                       req.Name,
-		TraefikComponentName:       req.TraefikComponentName,
-		RestApiUrl:                 req.RestApiUrl,
-		RestReadyTimeoutSeconds:    intPointer(req.RestReadyTimeoutSeconds),
-		BaseDomain:                 req.BaseDomain,
-		InitialComponentImage:      req.InitialComponentImage,
-		InitialComponentPullPolicy: req.InitialComponentPullPolicy,
-		DefaultEntrypoint:          req.DefaultEntrypoint,
-		TLSMode:                    req.TlsMode,
-		AcmeProfile:                req.AcmeProfile,
-		AcmeEmail:                  req.AcmeEmail,
-		DNSApiToken:                req.DnsApiToken,
-	}
-}
-
 func gatewayUpdateInput(req *gatewayv1.GatewayUpdateReq) gatewaydto.GatewayUpdateInput {
 	return gatewaydto.GatewayUpdateInput{
 		Name:                    req.Name,
-		TraefikComponentName:    req.TraefikComponentName,
 		RestApiUrl:              req.RestApiUrl,
 		RestReadyTimeoutSeconds: intPointer(req.RestReadyTimeoutSeconds),
 		BaseDomain:              req.BaseDomain,
@@ -99,7 +79,6 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 		DefaultServiceInstanceKey: defaultServiceInstanceKey,
 		DefaultServiceCode:        defaultServiceCode,
 		DefaultServiceStatus:      defaultServiceStatus,
-		TraefikComponentName:      cfg.TraefikComponentName,
 		RestReadyTimeoutSeconds:   int32(cfg.RestReadyTimeoutSeconds),
 		AcmeEmail:                 cfg.AcmeEmail,
 		AcmeProfile:               cfg.AcmeProfile,

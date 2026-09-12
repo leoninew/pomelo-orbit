@@ -13,3 +13,21 @@ func TestValidWorkspaceRootAllowsSSHHome(t *testing.T) {
 		}
 	}
 }
+
+func TestValidWorkspaceRootAllowsLocalHomeAndAbsolutePath(t *testing.T) {
+	if !validWorkspaceRoot(model.EnvironmentPlatformLinux, "~/.pomelo-orbit") {
+		t.Fatal("local linux workspace root must allow the user home prefix")
+	}
+	if !validWorkspaceRoot(model.EnvironmentPlatformWindows, "~/.pomelo-orbit") {
+		t.Fatal("local windows workspace root must allow the user home prefix")
+	}
+	if !validWorkspaceRoot(model.EnvironmentPlatformLinux, "/tmp/orbit-workspace") {
+		t.Fatal("local linux workspace root must allow an absolute path")
+	}
+	if !validWorkspaceRoot(model.EnvironmentPlatformWindows, `C:\orbit-workspace`) {
+		t.Fatal("local windows workspace root must allow a drive-absolute path")
+	}
+	if validWorkspaceRoot(model.EnvironmentPlatformLinux, ".pomelo-orbit") {
+		t.Fatal("local workspace root must not allow a relative path without tilde")
+	}
+}

@@ -3,42 +3,22 @@ package dto
 import "github.com/leoninew/pomelo-orbit/internal/model"
 
 type GatewayCreateInput struct {
-	ProjectId                  string
-	Code                       string
-	Name                       string
-	TraefikComponentName       *string
-	RestApiUrl                 string
-	RestReadyTimeoutSeconds    *int
-	BaseDomain                 string
-	InitialComponentImage      *string
-	InitialComponentPullPolicy string
-	DefaultEntrypoint          *string
-	TLSMode                    *string
-	AcmeProfile                *string
-	AcmeEmail                  *string
-	DNSApiToken                *string
-}
-
-// GatewayCreateDefaults is the process-level default set for managed gateway create.
-type GatewayCreateDefaults struct {
-	Code                       string
-	Name                       string
-	TraefikComponentName       string
-	RestApiUrl                 string
-	RestReadyTimeoutSeconds    int
-	BaseDomain                 string
-	InitialComponentImage      string
-	InitialComponentPullPolicy string
-	DefaultEntrypoint          string
-	TLSMode                    string
-	AcmeProfile                string
-	AcmeEmail                  string
-	DNSApiToken                string
+	ProjectId               string
+	Code                    string
+	Name                    string
+	RestApiUrl              string
+	RestReadyTimeoutSeconds *int
+	BaseDomain              string
+	InitialComponentImage   *string
+	DefaultEntrypoint       *string
+	TLSMode                 *string
+	AcmeProfile             *string
+	AcmeEmail               *string
+	DNSApiToken             *string
 }
 
 type GatewayUpdateInput struct {
 	Name                    *string
-	TraefikComponentName    *string
 	RestApiUrl              *string
 	RestReadyTimeoutSeconds *int
 	BaseDomain              *string

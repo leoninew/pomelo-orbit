@@ -17,27 +17,18 @@ import (
 
 var projectCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
-type environmentBootstrapper interface {
-	BootstrapForProject(ctx context.Context, project model.Project) (model.Environment, error)
-}
-
 type Service struct {
-	repo            repository.ProjectStore
-	users           repository.UserStore
-	environments    repository.EnvironmentStore
-	environmentInit environmentBootstrapper
+	repo         repository.ProjectStore
+	users        repository.UserStore
+	environments repository.EnvironmentStore
 }
 
 func New(
 	repo repository.ProjectStore,
 	users repository.UserStore,
 	environments repository.EnvironmentStore,
-	environmentInit environmentBootstrapper,
 ) Service {
-	return Service{
-		repo: repo, users: users, environments: environments,
-		environmentInit: environmentInit,
-	}
+	return Service{repo: repo, users: users, environments: environments}
 }
 
 func (s Service) ListByMember(ctx context.Context, userId string) ([]model.Project, error) {
@@ -52,16 +43,9 @@ func (s Service) Create(ctx context.Context, userId string, input projectdto.Cre
 	if err := s.ensureCodeAvailable(ctx, code, ""); err != nil {
 		return model.Project{}, err
 	}
-	if s.environmentInit == nil {
-		return model.Project{}, apperror.New(apperror.KindInternal, "Project environment bootstrap is not configured")
-	}
-
 	now := time.Now().UTC()
 	project := model.Project{Id: idutil.NewId(), Name: name, Code: code, IsActive: true, CreatedAt: now, UpdatedAt: now}
 	if err := s.repo.CreateProject(ctx, project, userId); err != nil {
-		return model.Project{}, err
-	}
-	if _, err := s.environmentInit.BootstrapForProject(ctx, project); err != nil {
 		return model.Project{}, err
 	}
 	return project, nil
@@ -114,12 +98,10 @@ func (s Service) Deprecate(ctx context.Context, project model.Project, userId st
 	}
 	environment, err := s.environments.EnvironmentByProject(ctx, project.Id)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return apperror.New(apperror.KindValidation, "Project environment is missing")
+		if !errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("load project environment %s: %w", project.Id, err)
 		}
-		return fmt.Errorf("load project environment %s: %w", project.Id, err)
-	}
-	if environment.IsActive() {
+	} else if environment.IsActive() {
 		return apperror.New(apperror.KindValidation, "Disable the project environment before deprecating the project")
 	}
 	repoCount, err := s.repo.CountProjectRepositories(ctx, project.Id)

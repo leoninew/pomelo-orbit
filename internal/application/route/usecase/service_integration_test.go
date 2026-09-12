@@ -348,7 +348,7 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 41); err != nil {
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
 	clearRouteGatewaySeed(t, database)
@@ -659,8 +659,8 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 		t.Fatalf("seed gateway service: %v", err)
 	}
 	if err := gwRepo.UpsertGatewayConfig(ctx, model.GatewayConfig{
-		ApplicationId: app.Id, TraefikComponentName: "traefik",
-		RestApiUrl: "http://traefik:8080", RestReadyTimeoutSeconds: 20,
+		ApplicationId: app.Id,
+		RestApiUrl:    "http://traefik:8080", RestReadyTimeoutSeconds: 20,
 		BaseDomain: "lvh.me", DefaultEntrypoint: "websecure", TLSMode: "none",
 		AcmeProfile: "http-dns", AcmeEmail: "admin@example.test",
 	}); err != nil {

@@ -16,7 +16,6 @@ import (
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
-	"github.com/leoninew/pomelo-orbit/internal/config"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
@@ -27,11 +26,6 @@ const (
 	// Product identity for the managed gateway — not process configuration.
 	managedGatewayCode = "traefik"
 	managedGatewayName = "Traefik"
-
-	managedGatewayComponentName   = "traefik"
-	managedGatewayImagePullPolicy = "missing"
-	managedGatewayEntrypoint      = "web"
-	managedGatewayTLSMode         = "none"
 
 	entrypointWeb       = "web"
 	entrypointWebSecure = "websecure"
@@ -46,7 +40,6 @@ type Service struct {
 	route           repository.RouteStore
 	serviceCommands servicesvc.Service
 	transaction     gatewayport.TransactionRunner
-	traefik         config.TraefikConfig
 }
 
 func New(
@@ -57,7 +50,6 @@ func New(
 	service repository.ServiceStore,
 	route repository.RouteStore,
 	deployment repository.DeploymentStore,
-	traefik config.TraefikConfig,
 	resolvePath gatewayport.PhysicalPathResolver,
 	transaction gatewayport.TransactionRunner,
 ) Service {
@@ -67,61 +59,15 @@ func New(
 		route:           route,
 		serviceCommands: servicesvc.New(project, application, service, deployment),
 		transaction:     transaction,
-		traefik:         traefik,
 	}
 }
 
-// CreateDefaults merges product constants with process Traefik infrastructure
-// config for create forms, MCP, and ProvisionGateway.
-func (s Service) CreateDefaults() gatewaydto.GatewayCreateDefaults {
-	return gatewaydto.GatewayCreateDefaults{
-		Code:                       managedGatewayCode,
-		Name:                       managedGatewayName,
-		TraefikComponentName:       managedGatewayComponentName,
-		RestApiUrl:                 s.traefik.RestApiUrl,
-		RestReadyTimeoutSeconds:    int(s.traefik.RestReadyTimeout.Seconds()),
-		BaseDomain:                 s.traefik.BaseDomain,
-		InitialComponentImage:      s.traefik.Image,
-		InitialComponentPullPolicy: managedGatewayImagePullPolicy,
-		DefaultEntrypoint:          managedGatewayEntrypoint,
-		TLSMode:                    managedGatewayTLSMode,
-	}
+func ManagedGatewayCode() string {
+	return managedGatewayCode
 }
 
-func managedGatewayCodeForProject(project model.Project) string {
-	const prefix = managedGatewayCode + "-"
-	var suffix strings.Builder
-	for _, char := range strings.ToLower(strings.TrimSpace(project.Code)) {
-		switch {
-		case char >= 'a' && char <= 'z', char >= '0' && char <= '9':
-			suffix.WriteRune(char)
-		case char == '-', char == '_':
-			if suffix.Len() == 0 || !strings.HasSuffix(suffix.String(), "-") {
-				suffix.WriteByte('-')
-			}
-		}
-	}
-	value := strings.Trim(suffix.String(), "-")
-	if value == "" {
-		return managedGatewayCode
-	}
-	maxSuffixLength := 100 - len(prefix)
-	if len(value) > maxSuffixLength {
-		value = value[:maxSuffixLength]
-	}
-	return prefix + value
-}
-
-func managedGatewayNameForProject(project model.Project) string {
-	value := strings.TrimSpace(project.Code)
-	if value == "" {
-		return managedGatewayName
-	}
-	name := managedGatewayName + " (" + value + ")"
-	if len(name) <= 100 {
-		return name
-	}
-	return name[:100]
+func ManagedGatewayName() string {
+	return managedGatewayName
 }
 
 func (s Service) ListGateways(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[gatewaydto.GatewayView], error) {
@@ -184,10 +130,9 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "gateway environment store is not configured")
 	}
 
-	input = s.applyCreateDefaults(input)
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
-	imagePullPolicy := strings.TrimSpace(input.InitialComponentPullPolicy)
+	imagePullPolicy := model.GatewayInitialPullPolicy()
 	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !gatewayCreateCodePattern.MatchString(code) {
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "Invalid gateway fields")
 	}
@@ -206,10 +151,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	componentName, err := normalizeTraefikComponentName(input.TraefikComponentName)
-	if err != nil {
-		return gatewaydto.GatewayView{}, err
-	}
+	componentName := model.GatewayComponentName()
 	restReadyTimeoutSeconds, err := normalizeRestReadyTimeoutSeconds(input.RestReadyTimeoutSeconds)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
@@ -231,7 +173,6 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	}
 	cfg := model.GatewayConfig{
 		ApplicationId:           app.Id,
-		TraefikComponentName:    componentName,
 		RestApiUrl:              restApiUrl,
 		RestReadyTimeoutSeconds: restReadyTimeoutSeconds,
 		BaseDomain:              baseDomain,
@@ -421,13 +362,6 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 		}
 		cfg.RestApiUrl = restApiUrl
 	}
-	if input.TraefikComponentName != nil {
-		componentName, err := normalizeTraefikComponentName(input.TraefikComponentName)
-		if err != nil {
-			return gatewaydto.GatewayView{}, err
-		}
-		cfg.TraefikComponentName = componentName
-	}
 	if input.RestReadyTimeoutSeconds != nil {
 		timeout, err := normalizeRestReadyTimeoutSeconds(input.RestReadyTimeoutSeconds)
 		if err != nil {
@@ -590,60 +524,6 @@ type gatewayIngressPolicyValues struct {
 	TLSMode           string
 }
 
-// applyCreateDefaults fills empty request fields from process Traefik defaults.
-// Config values are already normalized at load; this only completes the request DTO.
-func (s Service) applyCreateDefaults(input gatewaydto.GatewayCreateInput) gatewaydto.GatewayCreateInput {
-	defaults := s.CreateDefaults()
-	if strings.TrimSpace(input.Code) == "" {
-		input.Code = defaults.Code
-	}
-	if strings.TrimSpace(input.Name) == "" {
-		input.Name = defaults.Name
-	}
-	if input.TraefikComponentName == nil || strings.TrimSpace(*input.TraefikComponentName) == "" {
-		componentName := defaults.TraefikComponentName
-		input.TraefikComponentName = &componentName
-	}
-	if strings.TrimSpace(input.RestApiUrl) == "" {
-		input.RestApiUrl = defaults.RestApiUrl
-	}
-	if input.RestReadyTimeoutSeconds == nil || *input.RestReadyTimeoutSeconds <= 0 {
-		timeout := defaults.RestReadyTimeoutSeconds
-		input.RestReadyTimeoutSeconds = &timeout
-	}
-	if strings.TrimSpace(input.BaseDomain) == "" {
-		input.BaseDomain = defaults.BaseDomain
-	}
-	if strings.TrimSpace(input.InitialComponentPullPolicy) == "" {
-		input.InitialComponentPullPolicy = defaults.InitialComponentPullPolicy
-	}
-	if input.InitialComponentImage == nil || strings.TrimSpace(*input.InitialComponentImage) == "" {
-		image := defaults.InitialComponentImage
-		input.InitialComponentImage = &image
-	}
-	if input.DefaultEntrypoint == nil || strings.TrimSpace(*input.DefaultEntrypoint) == "" {
-		entrypoint := defaults.DefaultEntrypoint
-		input.DefaultEntrypoint = &entrypoint
-	}
-	if input.TLSMode == nil || strings.TrimSpace(*input.TLSMode) == "" {
-		tlsMode := defaults.TLSMode
-		input.TLSMode = &tlsMode
-	}
-	if input.AcmeProfile == nil {
-		profile := defaults.AcmeProfile
-		input.AcmeProfile = &profile
-	}
-	if input.AcmeEmail == nil {
-		email := defaults.AcmeEmail
-		input.AcmeEmail = &email
-	}
-	if input.DNSApiToken == nil {
-		token := defaults.DNSApiToken
-		input.DNSApiToken = &token
-	}
-	return input
-}
-
 // parseGatewayIngressPolicy validates request/persisted GatewayConfig policy fields only.
 // Process-level Traefik defaults are not consulted here.
 func parseGatewayIngressPolicy(defaultEntrypoint *string, tlsMode *string) (gatewayIngressPolicyValues, error) {
@@ -678,17 +558,6 @@ func validGatewayEntrypoint(name string) bool {
 	}
 }
 
-func normalizeTraefikComponentName(value *string) (string, error) {
-	if value == nil {
-		return "", apperror.New(apperror.KindValidation, "traefik_component_name is required")
-	}
-	name := strings.TrimSpace(*value)
-	if !gatewayCreateCodePattern.MatchString(name) || len(name) > 100 {
-		return "", apperror.New(apperror.KindValidation, "traefik_component_name is invalid")
-	}
-	return name, nil
-}
-
 func normalizeRestReadyTimeoutSeconds(value *int) (int, error) {
 	if value == nil || *value < 1 || *value > 300 {
 		return 0, apperror.New(apperror.KindValidation, "rest_ready_timeout_seconds must be between 1 and 300")
@@ -697,15 +566,12 @@ func normalizeRestReadyTimeoutSeconds(value *int) (int, error) {
 }
 
 func normalizeGatewayCertificateConfig(profileValue, emailValue, tokenValue *string, tlsMode string) (string, string, string, error) {
-	if profileValue == nil || emailValue == nil || tokenValue == nil {
-		return "", "", "", apperror.New(apperror.KindValidation, "Gateway ACME configuration is required")
-	}
-	profile := strings.ToLower(strings.TrimSpace(*profileValue))
+	profile := strings.ToLower(strings.TrimSpace(derefString(profileValue)))
 	if profile != "" && profile != "http" && profile != "dns" && profile != "http-dns" {
 		return "", "", "", apperror.New(apperror.KindValidation, "acme_profile must be http, dns, http-dns, or empty")
 	}
-	email := strings.TrimSpace(*emailValue)
-	token := strings.TrimSpace(*tokenValue)
+	email := strings.TrimSpace(derefString(emailValue))
+	token := strings.TrimSpace(derefString(tokenValue))
 	if profile != "" {
 		parsed, err := mail.ParseAddress(email)
 		if err != nil || parsed.Address != email {
@@ -873,4 +739,11 @@ func isActiveServiceStatus(value string) bool {
 	default:
 		return false
 	}
+}
+
+func derefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }

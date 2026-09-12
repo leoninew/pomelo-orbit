@@ -15,6 +15,12 @@ func (c *core) registerVerificationTools(server *mcp.Server) {
 		DeploymentId  string `json:"deployment_id" jsonschema:"required"`
 		Detail        bool   `json:"detail,omitempty"`
 	}) (map[string]any, error) {
+		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
+			return nil, err
+		}
+		if _, err := c.deploymentInScope(ctx, input.DeploymentId); err != nil {
+			return nil, err
+		}
 		result, err := c.deps.Deployment.VerifyDeployment(ctx, c.deps.ActorUserId, input.ApplicationId, input.DeploymentId, deploymentdto.DeploymentVerificationInput{StabilityWindow: 60 * time.Second, StabilityPoll: 2 * time.Second})
 		if err != nil {
 			return nil, err

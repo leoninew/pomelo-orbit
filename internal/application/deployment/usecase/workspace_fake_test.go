@@ -63,6 +63,11 @@ func (w *workspaceFake) QueryAtEnvironmentRoot(context.Context, environmentport.
 	return w.queryOutput, w.queryErr
 }
 
+func (w *workspaceFake) QueryAtEnvironmentRootInput(context.Context, environmentport.Target, []byte, string, ...string) (string, error) {
+	w.queryCalled = true
+	return w.queryOutput, w.queryErr
+}
+
 func (w *workspaceFake) Writer(string, string) (io.WriteCloser, error) {
 	return nopWriteCloser{Writer: &bytes.Buffer{}}, nil
 }

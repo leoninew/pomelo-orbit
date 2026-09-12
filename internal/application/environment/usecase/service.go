@@ -47,21 +47,124 @@ func (s Service) WithLocalDisplay(snapshot environmentdto.LocalDisplaySnapshot) 
 	return s
 }
 
-// BootstrapForProject creates the active local Environment owned by a newly
-// created Project. SSH configuration is managed from the Environment page.
-func (s Service) BootstrapForProject(ctx context.Context, project model.Project) (model.Environment, error) {
-	item := model.Environment{
-		Id: idutil.NewId(), ProjectId: project.Id, Code: project.Code,
-		State: model.EnvironmentStateActive, TargetType: model.EnvironmentTargetTypeLocal,
-		TargetRevision: 1, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+// SaveInitialization creates or updates the Project Environment during Wizard
+// initialization. It is not used after Gateway creation.
+func (s Service) SaveInitialization(ctx context.Context, userID string, projectID string, input environmentdto.UpdateInput) (environmentdto.View, error) {
+	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+		return environmentdto.View{}, err
 	}
-	if err := validateBootstrap(project, item); err != nil {
-		return model.Environment{}, err
+	project, err := s.projects.Project(ctx, strings.TrimSpace(projectID))
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return environmentdto.View{}, apperror.New(apperror.KindNotFound, "Project "+projectID+" not found")
+		}
+		return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
 	}
-	if err := s.environments.CreateEnvironment(ctx, item); err != nil {
-		return model.Environment{}, apperror.Wrap(apperror.KindInternal, "Failed to create project environment", err)
+	item, err := s.environments.EnvironmentByProject(ctx, project.Id)
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
 	}
-	return item, nil
+	creating := errors.Is(err, repository.ErrNotFound)
+	if creating {
+		item = model.Environment{
+			Id: idutil.NewId(), ProjectId: project.Id, Code: project.Code,
+			State: model.EnvironmentStateActive, TargetRevision: 1,
+			CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+		}
+	} else if item.GatewayApplicationId != nil {
+		return environmentdto.View{}, apperror.New(apperror.KindConflict, "Project environment is already bound to a gateway")
+	}
+	previous := item
+	item.State = model.EnvironmentStateActive
+	if err := applyUpdate(&item, input); err != nil {
+		return environmentdto.View{}, err
+	}
+	item, err = s.ensureGeneratedCredential(ctx, item)
+	if err != nil {
+		return environmentdto.View{}, err
+	}
+	if err := validateEnvironment(item, s.localDisplay.Platform, false); err != nil {
+		return environmentdto.View{}, err
+	}
+	if item.IsSSH() {
+		if err := s.testSSHTarget(ctx, item.SSH.Host, item.SSH.Port, item.SSH.Username); err != nil {
+			return environmentdto.View{}, err
+		}
+	}
+	if !creating && environmentTargetChanged(previous, item) {
+		if item.SSH != nil {
+			item.SSH.HostKeyFingerprint = ""
+		}
+		item.TargetRevision++
+	}
+	if creating {
+		if err := s.environments.CreateEnvironment(ctx, item); err != nil {
+			return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to create project environment", err)
+		}
+		return s.toView(item), nil
+	}
+	if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
+		return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
+	}
+	item, err = s.environmentForProject(ctx, project.Id)
+	if err != nil {
+		return environmentdto.View{}, err
+	}
+	return s.toView(item), nil
+}
+
+func (s Service) TestSSHReachability(ctx context.Context, userID string, projectID string, input environmentdto.SSHTargetInput) error {
+	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+		return err
+	}
+	return s.testSSHTarget(ctx, input.Host, input.Port, input.Username)
+}
+
+// DeploymentSSHPublicKeyForProject returns a Project's managed deployment key.
+// It does not require an Environment to have been saved, allowing a Windows
+// host to receive its key before SSH key authentication is configured.
+func (s Service) DeploymentSSHPublicKeyForProject(ctx context.Context, userID string, projectID string) (string, error) {
+	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+		return "", err
+	}
+	if s.deploymentKey == nil {
+		return "", apperror.New(apperror.KindInternal, "deployment SSH credential manager is not configured")
+	}
+	credentialID := ""
+	item, err := s.environmentForProject(ctx, projectID)
+	if err == nil && item.IsSSH() && item.SSH != nil {
+		credentialID = strings.TrimSpace(item.SSH.CredentialId)
+	} else if err != nil && !apperror.IsKind(err, apperror.KindNotFound) {
+		return "", err
+	}
+	if credentialID == "" {
+		credential, err := s.deploymentKey.CreateDeploymentSSHCredential(ctx, projectID, "")
+		if err != nil {
+			return "", err
+		}
+		credentialID = credential.Id
+	}
+	publicKey, err := s.deploymentKey.DeploymentSSHPublicKey(ctx, credentialID)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(publicKey) == "" {
+		return "", apperror.New(apperror.KindInternal, "Generated deployment SSH public key is empty")
+	}
+	return strings.TrimSpace(publicKey), nil
+}
+
+func (s Service) testSSHTarget(ctx context.Context, host string, port int, username string) error {
+	if s.prober == nil {
+		return apperror.New(apperror.KindInternal, "SSH reachability tester is not configured")
+	}
+	if err := s.prober.TestSSH(ctx, host, port, username); err != nil {
+		if diagnostic, ok := err.(probeDiagnosticError); ok && strings.TrimSpace(diagnostic.ProbeDiagnostic()) != "" {
+			return apperror.New(apperror.KindValidation, diagnostic.ProbeDiagnostic())
+		}
+		return apperror.New(apperror.KindValidation, "Cannot connect to the configured SSH host.")
+	}
+	return nil
 }
 
 func (s Service) EnvironmentForUser(ctx context.Context, userID string, projectID string) (environmentdto.View, error) {
@@ -198,13 +301,6 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectID string, 
 	return nil
 }
 
-func validateBootstrap(project model.Project, item model.Environment) error {
-	if project.Id == "" || project.Code == "" {
-		return apperror.New(apperror.KindInternal, "Project environment bootstrap binding is invalid")
-	}
-	return validateEnvironment(item, "", true)
-}
-
 func validateEnvironment(item model.Environment, localPlatform string, allowEmptyLocalWorkspace bool) error {
 	if item.ProjectId == "" || item.Code == "" {
 		return apperror.New(apperror.KindValidation, "Project environment identity is invalid")
@@ -220,7 +316,7 @@ func validateEnvironment(item model.Environment, localPlatform string, allowEmpt
 		if item.WorkspaceRoot == "" && allowEmptyLocalWorkspace {
 			return nil
 		}
-		if !validLocalWorkspaceRoot(localPlatform, item.WorkspaceRoot) {
+		if !validWorkspaceRoot(localPlatform, item.WorkspaceRoot) {
 			return apperror.New(apperror.KindValidation, "Environment local workspace_root is invalid for the control-plane platform")
 		}
 	case model.EnvironmentTargetTypeSSH:
@@ -311,20 +407,6 @@ func sshTargetFromInput(input *environmentdto.SSHTargetInput, credential *model.
 		target.CredentialRevision = credential.Revision
 	}
 	return target
-}
-
-func validLocalWorkspaceRoot(platform string, workspaceRoot string) bool {
-	if workspaceRoot == "" || strings.ContainsAny(workspaceRoot, "\r\n") {
-		return false
-	}
-	switch platform {
-	case model.EnvironmentPlatformLinux:
-		return path.IsAbs(workspaceRoot)
-	case model.EnvironmentPlatformWindows:
-		return windowsWorkspacePattern.MatchString(workspaceRoot)
-	default:
-		return false
-	}
 }
 
 func validWorkspaceRoot(platform string, workspaceRoot string) bool {

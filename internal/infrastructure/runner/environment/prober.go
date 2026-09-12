@@ -34,3 +34,7 @@ func (p Prober) ProbeLocal(ctx context.Context, environment model.Environment) e
 	}
 	return p.Local.ProbeLocal(ctx, environment)
 }
+
+func (p Prober) TestSSH(ctx context.Context, host string, port int, username string) error {
+	return p.SSH.TestSSH(ctx, host, port, username)
+}

@@ -80,6 +80,7 @@ type Runtime interface {
 	Run(ctx context.Context, target environmentport.Target, serviceCode string, log io.Writer, name string, args ...string) error
 	Query(ctx context.Context, target environmentport.Target, serviceCode string, name string, args ...string) (string, error)
 	QueryAtEnvironmentRoot(ctx context.Context, target environmentport.Target, name string, args ...string) (string, error)
+	QueryAtEnvironmentRootInput(ctx context.Context, target environmentport.Target, stdin []byte, name string, args ...string) (string, error)
 	SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []WorkspaceFile, pruneSuffix string) error
 }
 

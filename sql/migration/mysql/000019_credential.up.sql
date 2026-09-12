@@ -8,8 +8,7 @@ CREATE TABLE IF NOT EXISTS credential (
     type VARCHAR(64) NOT NULL,
     encrypted_data LONGTEXT NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    project_id VARCHAR(26),
-    FOREIGN KEY (project_id) REFERENCES project(id)
+    project_id VARCHAR(26)
 );
 
 CREATE INDEX idx_credential_name ON credential(name);

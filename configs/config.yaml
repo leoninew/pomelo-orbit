@@ -43,12 +43,19 @@ jwt:
   # Generate with: python -c "import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())"
   secret_key: ""
 
-traefik:
-  # Infrastructure only. Product identity (code/component/network) is fixed in code.
-  image: traefik:3.6
-  rest_api_url: http://localhost:8080
-  base_domain: lvh.me
-  rest_ready_timeout: 20s
+project_initialization:
+  environment:
+    local_workspace_root: ~/.pomelo-orbit
+  gateway:
+    image: traefik:3.6
+    rest_api_url: http://localhost:8080
+    base_domain: lvh.me
+    rest_ready_timeout: 20s
+    default_entrypoint: web
+    tls_mode: none
+    acme_profile: ""
+    acme_email: ""
+    dns_api_token: ""
 
 turnstile:
   enabled: true
@@ -63,6 +70,7 @@ settings:
     - jwt__secret_key
     - turnstile__secret_key
     - llm__api_key
+    - project_initialization__gateway__dns_api_token
 
 llm:
   base_url: ""

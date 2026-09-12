@@ -454,7 +454,6 @@ CREATE TABLE IF NOT EXISTS version_component_device (
 
 CREATE TABLE IF NOT EXISTS gateway_config (
     application_id TEXT PRIMARY KEY,
-    traefik_component_name VARCHAR(255) NOT NULL DEFAULT 'traefik',
     rest_api_url TEXT NOT NULL,
     rest_ready_timeout_seconds BIGINT NOT NULL DEFAULT 20,
     base_domain TEXT NOT NULL,

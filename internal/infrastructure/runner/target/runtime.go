@@ -77,6 +77,14 @@ func (r Runtime) QueryAtEnvironmentRoot(ctx context.Context, target environmentp
 	return runtime.QueryAtEnvironmentRoot(ctx, target, name, args...)
 }
 
+func (r Runtime) QueryAtEnvironmentRootInput(ctx context.Context, target environmentport.Target, stdin []byte, name string, args ...string) (string, error) {
+	runtime, err := r.forTarget(target)
+	if err != nil {
+		return "", err
+	}
+	return runtime.QueryAtEnvironmentRootInput(ctx, target, stdin, name, args...)
+}
+
 func (r Runtime) SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []deploymentport.WorkspaceFile, pruneSuffix string) error {
 	runtime, err := r.forTarget(target)
 	if err != nil {

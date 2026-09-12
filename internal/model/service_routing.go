@@ -32,6 +32,16 @@ func GatewayNetworkName() string {
 	return "traefik"
 }
 
+// GatewayComponentName is the fixed product component name for managed Gateway Versions.
+func GatewayComponentName() string {
+	return "traefik"
+}
+
+// GatewayInitialPullPolicy is the pull policy written into the initial Gateway Version.
+func GatewayInitialPullPolicy() string {
+	return "missing"
+}
+
 // DeriveServiceComponentHost returns the public host for one Service component.
 func DeriveServiceComponentHost(gateway *GatewayConfig, service Service, componentName string) (string, error) {
 	if gateway == nil {

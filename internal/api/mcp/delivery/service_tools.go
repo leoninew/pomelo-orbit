@@ -16,7 +16,7 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		VersionId     string `json:"version_id" jsonschema:"required"`
 		InstanceKey   string `json:"instance_key" jsonschema:"required"`
 	}) (map[string]any, error) {
-		application, err := c.deps.Application.ApplicationForUser(ctx, c.deps.ActorUserId, input.ApplicationId)
+		application, err := c.applicationInScope(ctx, input.ApplicationId)
 		if err != nil {
 			return nil, err
 		}
@@ -33,6 +33,9 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		ComponentId string                                      `json:"component_id" jsonschema:"required"`
 		Overlay     *servicev1.ServiceComponentOverlayUpdateReq `json:"overlay" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
+			return nil, err
+		}
 		component, err := c.deps.Service.UpdateServiceComponentOverlay(ctx, c.deps.ActorUserId, input.ServiceId, input.ComponentId, serviceOverlayInput(input.Overlay))
 		if err != nil {
 			return nil, err
@@ -46,6 +49,9 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		ServiceId string                  `json:"service_id" jsonschema:"required"`
 		Env       []*servicev1.ServiceEnv `json:"env" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
+			return nil, err
+		}
 		service, err := c.deps.Service.UpdateServiceEnv(ctx, c.deps.ActorUserId, input.ServiceId, serviceEnvInput(input.Env))
 		if err != nil {
 			return nil, err
@@ -58,6 +64,9 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		VersionId   string `json:"version_id" jsonschema:"required"`
 		InstanceKey string `json:"instance_key" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
+			return nil, err
+		}
 		service, err := c.deps.Service.UpdateServiceBasic(ctx, c.deps.ActorUserId, input.ServiceId, servicedto.ServiceBasicUpdateInput{VersionId: input.VersionId, InstanceKey: input.InstanceKey})
 		if err != nil {
 			return nil, err

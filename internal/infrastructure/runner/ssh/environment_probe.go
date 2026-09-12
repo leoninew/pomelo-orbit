@@ -105,6 +105,60 @@ func (p EnvironmentProber) Probe(ctx context.Context, environment model.Environm
 	return observedFingerprint, nil
 }
 
+// TestSSH checks that the host:port speaks SSH. It does not persist a host
+// key, install credentials, or run Docker commands. Authentication failure
+// still means the SSH service is reachable.
+func (p EnvironmentProber) TestSSH(ctx context.Context, host string, port int, username string) error {
+	host = strings.TrimSpace(host)
+	username = strings.TrimSpace(username)
+	if host == "" || username == "" || port < 1 || port > 65535 {
+		return probeError{diagnostic: "SSH host, port, and username are required."}
+	}
+	if p.dialContext == nil {
+		return errors.New("SSH dialer is not configured")
+	}
+	if p.timeout <= 0 {
+		p.timeout = defaultProbeTimeout
+	}
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+	address := net.JoinHostPort(host, strconv.Itoa(port))
+	connection, err := p.dialContext(ctx, "tcp", address)
+	if err != nil {
+		return probeError{diagnostic: "Cannot connect to the configured SSH host."}
+	}
+	defer func() { _ = connection.Close() }()
+	stopCancelClose := context.AfterFunc(ctx, func() { _ = connection.Close() })
+	defer stopCancelClose()
+
+	clientConfig := &ssh.ClientConfig{
+		User:            username,
+		Auth:            []ssh.AuthMethod{ssh.Password("")},
+		HostKeyCallback: func(string, net.Addr, ssh.PublicKey) error { return nil },
+		Timeout:         p.timeout,
+	}
+	clientConnection, channels, requests, err := ssh.NewClientConn(connection, address, clientConfig)
+	if err != nil {
+		if sshServiceReachable(err) {
+			return nil
+		}
+		return probeError{diagnostic: "The host did not complete an SSH handshake."}
+	}
+	client := ssh.NewClient(clientConnection, channels, requests)
+	_ = client.Close()
+	return nil
+}
+
+func sshServiceReachable(err error) bool {
+	if err == nil {
+		return true
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "unable to authenticate") ||
+		strings.Contains(message, "no supported methods remain") ||
+		strings.Contains(message, "no common algorithms")
+}
+
 func probePrerequisiteFailureDiagnostic(platform string, stderr string) string {
 	if platform != model.EnvironmentPlatformWindows {
 		return "Docker and Docker Compose prerequisites are not ready on the SSH target."

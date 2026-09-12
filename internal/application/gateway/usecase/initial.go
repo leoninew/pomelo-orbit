@@ -143,7 +143,7 @@ func buildInitialGatewayDashboardRoute(app model.Application, cfg model.GatewayC
 		Protocol:      "http",
 		Domain:        "traefik-dashboard." + cfg.BaseDomain,
 		PathPrefix:    "/",
-		TargetUrl:     "http://" + model.RuntimeContainerName(app.Code, cfg.TraefikComponentName) + ":8080",
+		TargetUrl:     "http://" + model.RuntimeContainerName(app.Code, model.GatewayComponentName()) + ":8080",
 		Enabled:       false,
 		HTTPSEnabled:  false,
 		CertType:      "manual",

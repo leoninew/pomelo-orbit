@@ -12,4 +12,5 @@ import (
 type Prober interface {
 	Probe(context.Context, model.Environment, credentialdto.DeploymentSSHPrivateKey) (string, error)
 	ProbeLocal(context.Context, model.Environment) error
+	TestSSH(ctx context.Context, host string, port int, username string) error
 }

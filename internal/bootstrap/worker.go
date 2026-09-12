@@ -35,7 +35,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	credentialService := credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey)
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, credentialService)
 	_, runtime := newDeploymentRuntime(dockerPathResolver)
-	gatewayService := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, cfg.Traefik, dockerPathResolver, transactionRunner)
+	gatewayService := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, dockerPathResolver, transactionRunner)
 	routeManager := traefik.NewRouteManager(targetResolver, runtime)
 	routeService := routesvc.New(
 		stores.project,

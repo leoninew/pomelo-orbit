@@ -27,7 +27,7 @@ func TestRepositoryPersistsEffectivePlanHash(t *testing.T) {
 	for _, statement := range []string{
 		"INSERT INTO application (id, name, code, kind) VALUES ('app-1', 'Example', 'example', 'standard')",
 		"INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'draft')",
-		"INSERT INTO service (id, application_id, instance_key, code, version_id, status) VALUES ('service-1', 'app-1', 'default', 'example-default', 'version-1', 'stopped')",
+		"INSERT INTO service (id, project_id, application_id, instance_key, code, version_id, status) VALUES ('service-1', 'project-1', 'app-1', 'default', 'example-default', 'version-1', 'stopped')",
 	} {
 		if _, err := database.Exec(statement); err != nil {
 			t.Fatalf("seed deployment relation: %v", err)

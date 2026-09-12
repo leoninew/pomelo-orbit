@@ -168,6 +168,60 @@ func (q *Queries) EnvironmentByProjectID(ctx context.Context, projectID string) 
 	return i, err
 }
 
+const environmentByTarget = `-- name: EnvironmentByTarget :one
+SELECT id, project_id, code, state, target_type, platform, host, port, username, workspace_root,
+       ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
+       last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
+       gateway_application_id, created_at, updated_at
+FROM environment
+WHERE project_id <> ?
+  AND target_type = ?
+  AND (? = 'local' OR (host = ? AND port = ?))
+`
+
+type EnvironmentByTargetParams struct {
+	ProjectID  string         `db:"project_id"`
+	TargetType string         `db:"target_type"`
+	Column3    interface{}    `db:"column_3"`
+	Host       sql.NullString `db:"host"`
+	Port       sql.NullInt64  `db:"port"`
+}
+
+func (q *Queries) EnvironmentByTarget(ctx context.Context, arg EnvironmentByTargetParams) (Environment, error) {
+	row := q.db.QueryRowContext(ctx, environmentByTarget,
+		arg.ProjectID,
+		arg.TargetType,
+		arg.Column3,
+		arg.Host,
+		arg.Port,
+	)
+	var i Environment
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Code,
+		&i.State,
+		&i.TargetType,
+		&i.Platform,
+		&i.Host,
+		&i.Port,
+		&i.Username,
+		&i.WorkspaceRoot,
+		&i.SshCredentialID,
+		&i.SshCredentialRevision,
+		&i.HostKeyFingerprint,
+		&i.TargetRevision,
+		&i.LastProbeRevision,
+		&i.LastProbeStatus,
+		&i.LastProbeAt,
+		&i.LastProbeDiagnostic,
+		&i.GatewayApplicationID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const recordEnvironmentProbe = `-- name: RecordEnvironmentProbe :execrows
 UPDATE environment
 SET last_probe_revision = ?, last_probe_status = ?, last_probe_at = ?, last_probe_diagnostic = ?,

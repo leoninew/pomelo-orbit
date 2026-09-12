@@ -1,3 +1,7 @@
+DROP INDEX uq_application_project_name ON application;
+DROP INDEX uq_application_project_code ON application;
+CREATE UNIQUE INDEX name ON application(name);
+
 UPDATE environment
 SET gateway_application_id = NULL,
     updated_at = CURRENT_TIMESTAMP

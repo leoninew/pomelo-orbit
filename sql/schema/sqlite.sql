@@ -352,7 +352,7 @@ CREATE INDEX IF NOT EXISTS idx_artifact_pipeline ON artifact(pipeline_id);
 
 CREATE TABLE IF NOT EXISTS application (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     code TEXT NOT NULL,
     kind TEXT NOT NULL DEFAULT 'standard',
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
@@ -361,6 +361,8 @@ CREATE TABLE IF NOT EXISTS application (
 );
 
 CREATE INDEX IF NOT EXISTS idx_application_project ON application(project_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_application_project_name ON application(project_id, name);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_application_project_code ON application(project_id, code);
 
 CREATE TABLE IF NOT EXISTS version (
     id TEXT PRIMARY KEY,
@@ -535,9 +537,10 @@ CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
 
 CREATE TABLE IF NOT EXISTS service (
     id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
     application_id TEXT NOT NULL,
     instance_key TEXT NOT NULL DEFAULT 'default',
-    code TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL,
     version_id TEXT NOT NULL,
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
@@ -546,6 +549,7 @@ CREATE TABLE IF NOT EXISTS service (
     FOREIGN KEY (version_id) REFERENCES version(id),
     UNIQUE(application_id, instance_key)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uq_service_project_code ON service(project_id, code);
 
 CREATE INDEX IF NOT EXISTS idx_service_version ON service(version_id);
 CREATE INDEX IF NOT EXISTS idx_service_application ON service(application_id);

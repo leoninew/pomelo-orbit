@@ -18,7 +18,7 @@ func TestListApplicationsBindsTypedFilters(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = database.Close() }()
-	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
@@ -69,17 +69,17 @@ func TestDeleteApplicationCleansApplicationResources(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = database.Close() }()
-	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind) VALUES ('app-1', 'App', 'app', 'application')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'application', 'project-1')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'app-1', 'version-1', 'default', 'app-default', 'stopped')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO service (id, project_id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'default', 'app-default', 'stopped')`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -110,15 +110,15 @@ func TestDeleteGatewayApplicationDeletesStoppedResources(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = database.Close() }()
-	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
 	for _, statement := range []string{
-		`INSERT INTO application (id, name, code, kind) VALUES ('gateway-1', 'Gateway', 'gateway', 'gateway')`,
+		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('gateway-1', 'Gateway', 'gateway', 'gateway', 'project-1')`,
 		`INSERT INTO gateway_config (application_id, rest_api_url, base_domain) VALUES ('gateway-1', 'http://127.0.0.1:8080', 'example.test')`,
 		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'gateway-1', 'managed', 'unpublished')`,
-		`INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'gateway-1', 'version-1', 'default', 'gateway-default', 'stopped')`,
+		`INSERT INTO service (id, project_id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'project-1', 'gateway-1', 'version-1', 'default', 'gateway-default', 'stopped')`,
 	} {
 		if _, err := database.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)
@@ -145,7 +145,7 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 		t.Fatal(err)
 	}
 	defer func() { _ = database.Close() }()
-	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()

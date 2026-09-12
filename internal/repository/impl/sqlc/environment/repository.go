@@ -46,6 +46,16 @@ func (r Repository) EnvironmentByProject(ctx context.Context, projectID string) 
 	return environmentFrom(row), nil
 }
 
+// EnvironmentByTarget finds another Project bound to the same Docker target.
+// A target is exclusive because managed Gateway ports and network are fixed.
+func (r Repository) EnvironmentByTarget(ctx context.Context, projectID, targetType, host string, port int) (model.Environment, error) {
+	row, err := r.q(ctx).EnvironmentByTarget(ctx, environmentsqlc.EnvironmentByTargetParams{ProjectID: projectID, TargetType: targetType, Column3: targetType, Host: sql.NullString{String: host, Valid: host != ""}, Port: sql.NullInt64{Int64: int64(port), Valid: port > 0}})
+	if err != nil {
+		return model.Environment{}, fmt.Errorf("load environment by target: %w", sqlcommon.TranslateError(err))
+	}
+	return environmentFrom(row), nil
+}
+
 func (r Repository) CreateEnvironment(ctx context.Context, environment model.Environment) error {
 	now := time.Now().UTC()
 	createdAt, updatedAt := environment.CreatedAt, environment.UpdatedAt

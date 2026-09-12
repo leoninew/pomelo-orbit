@@ -104,6 +104,78 @@ func (q *Queries) ApplicationByName(ctx context.Context, name string) (Applicati
 	return i, err
 }
 
+const applicationByProjectAndCode = `-- name: ApplicationByProjectAndCode :one
+SELECT id, project_id, name, code, kind, created_at, updated_at
+FROM application
+WHERE project_id = ? AND code = ?
+`
+
+type ApplicationByProjectAndCodeParams struct {
+	ProjectID sql.NullString `db:"project_id"`
+	Code      string         `db:"code"`
+}
+
+type ApplicationByProjectAndCodeRow struct {
+	ID        string         `db:"id"`
+	ProjectID sql.NullString `db:"project_id"`
+	Name      string         `db:"name"`
+	Code      string         `db:"code"`
+	Kind      string         `db:"kind"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
+}
+
+func (q *Queries) ApplicationByProjectAndCode(ctx context.Context, arg ApplicationByProjectAndCodeParams) (ApplicationByProjectAndCodeRow, error) {
+	row := q.db.QueryRowContext(ctx, applicationByProjectAndCode, arg.ProjectID, arg.Code)
+	var i ApplicationByProjectAndCodeRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.Code,
+		&i.Kind,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const applicationByProjectAndName = `-- name: ApplicationByProjectAndName :one
+SELECT id, project_id, name, code, kind, created_at, updated_at
+FROM application
+WHERE project_id = ? AND name = ?
+`
+
+type ApplicationByProjectAndNameParams struct {
+	ProjectID sql.NullString `db:"project_id"`
+	Name      string         `db:"name"`
+}
+
+type ApplicationByProjectAndNameRow struct {
+	ID        string         `db:"id"`
+	ProjectID sql.NullString `db:"project_id"`
+	Name      string         `db:"name"`
+	Code      string         `db:"code"`
+	Kind      string         `db:"kind"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
+}
+
+func (q *Queries) ApplicationByProjectAndName(ctx context.Context, arg ApplicationByProjectAndNameParams) (ApplicationByProjectAndNameRow, error) {
+	row := q.db.QueryRowContext(ctx, applicationByProjectAndName, arg.ProjectID, arg.Name)
+	var i ApplicationByProjectAndNameRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.Code,
+		&i.Kind,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const countApplications = `-- name: CountApplications :one
 SELECT COUNT(*)
 FROM application

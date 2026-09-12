@@ -13,6 +13,8 @@ type Querier interface {
 	ApplicationByCode(ctx context.Context, code string) (ApplicationByCodeRow, error)
 	ApplicationByID(ctx context.Context, id string) (ApplicationByIDRow, error)
 	ApplicationByName(ctx context.Context, name string) (ApplicationByNameRow, error)
+	ApplicationByProjectAndCode(ctx context.Context, arg ApplicationByProjectAndCodeParams) (ApplicationByProjectAndCodeRow, error)
+	ApplicationByProjectAndName(ctx context.Context, arg ApplicationByProjectAndNameParams) (ApplicationByProjectAndNameRow, error)
 	ClearVersionForkRefs(ctx context.Context, versionID sql.NullString) error
 	CountApplications(ctx context.Context, arg CountApplicationsParams) (int64, error)
 	CountVersionRuntimeRefs(ctx context.Context, versionID string) (int64, error)

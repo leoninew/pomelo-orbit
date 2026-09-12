@@ -377,6 +377,7 @@ type Route struct {
 
 type Service struct {
 	ID            string    `db:"id"`
+	ProjectID     string    `db:"project_id"`
 	ApplicationID string    `db:"application_id"`
 	InstanceKey   string    `db:"instance_key"`
 	Code          string    `db:"code"`

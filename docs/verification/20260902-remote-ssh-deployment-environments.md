@@ -23,7 +23,7 @@ Mode: strict
 
 计划中的目标模型、运行时收敛、一次性 Linux 初始化、HTTP/MCP/Web、活文档和自动化测试均已在当前 diff 中覆盖。
 
-本轮按用户要求对 `000039`–`000042` 做职责重组：`000039` 直接建立最终 Environment schema，`000040` 独立处理 GatewayConfig 废弃列；Environment seed/no-op 与重复 target-type migration 已移除。现有开发库版本记录已就地同步到新链，不做旧版本兼容。
+本轮按用户要求对 `000039`–`000042` 做职责重组：`000039` 直接建立最终 Environment schema，`000040` 独立处理 GatewayConfig 废弃列，`000041` 迁移 develop(38) 遗留的完整 Traefik bundle 关系；空库 Environment seed/no-op 与重复 target-type migration 已移除。
 
 ## Actual diff summary
 
@@ -37,7 +37,7 @@ Mode: strict
 
 | Expected scope | Result |
 | --- | --- |
-| Environment/Deployment target model、三方言迁移、SQLC | 已实现；迁移已重组为 `000039` + `000040` |
+| Environment/Deployment target model、三方言迁移、SQLC | 已实现；迁移已重组为 `000039` + `000040` + `000041` |
 | local/ssh runtime dispatch、Gateway/Route 一致执行 | 已实现并有 unit/integration coverage |
 | Linux SSH 一次性初始化与受管 key Probe | 已实现并有 runner/use case/HTTP 测试 |
 | Proto/HTTP/MCP/Web target discriminator | 已实现并已重新生成 Proto |
@@ -57,7 +57,7 @@ Mode: strict
 - [x] 质量门与全量 Go 包测试通过。
 - [ ] Linux SSH 真实目标的写入式初始化与受管 key Probe。
 - [ ] Windows native OpenSSH + WSL2 Docker Desktop 的实机运行验证。
-- [x] 重组 `000039`–`000042`，并将开发库迁移记录就地收敛到新链版本。
+- [x] 重组 `000039`–`000042`，并提供 develop(38) 遗留 Gateway 关系的自动迁移。
 
 ## Validation results
 
@@ -82,7 +82,7 @@ Mode: strict
 ## Risks
 
 - 自动化测试不替代 SSH 目标的真实 Docker daemon、passwordless sudo、OpenSSH 配置和网络可达性验证。
-- local runtime 依赖控制面 Docker daemon path 与 `workspace.deployment` 挂载正确；Probe 在部署前会报告不满足的前置条件。
+- local runtime 依赖 Environment `workspace_root/deployment` 下的控制面 Docker daemon path；Probe 在部署前会报告不满足的前置条件。
 
 ## Incomplete items
 

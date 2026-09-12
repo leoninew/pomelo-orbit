@@ -152,10 +152,10 @@ const deploymentNavigation: NavigationBranch[] = [
     icon: Network,
     children: [
       {
-        key: 'gateways',
+        key: 'gateway',
         label: '网关',
-        labelKey: 'nav.gateways',
-        path: '/gateways',
+        labelKey: 'nav.gateway',
+        path: '/gateway',
       },
       {
         key: 'route',
@@ -346,8 +346,6 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path === '/environment' ||
     path === '/dialogue' ||
     path === '/gateway' ||
-    path.startsWith('/gateway/') ||
-    path === '/gateways' ||
     path === '/route' ||
     path.startsWith('/route/') ||
     path === '/routes'

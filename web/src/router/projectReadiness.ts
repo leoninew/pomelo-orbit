@@ -1,7 +1,7 @@
 import { getNavigationScope } from '@/navigation';
 
 export const PROJECT_INITIALIZATION_ROUTE = 'ProjectInitialization';
-export const DEFAULT_READY_REDIRECT = '/gateways';
+export const DEFAULT_READY_REDIRECT = '/gateway';
 
 export function isProjectInitializationPath(path: string): boolean {
   return /^\/project\/[^/]+\/initialization\/?$/.test(path);
@@ -49,20 +49,7 @@ export function resolveInitializationRedirect(raw: unknown): string {
   return value;
 }
 
-/**
- * Resolve the destination after a project initialization has completed.
- *
- * A completed initialization always has a managed Gateway. Opening its detail
- * page gives the user the expected post-setup view (including the default
- * Service's deploy action), while the sanitized return URL remains a fallback
- * for older/incomplete responses.
- */
-export function resolveInitializationCompletionRedirect(
-  gatewayId: unknown,
-  rawRedirect: unknown
-): string {
-  if (typeof gatewayId === 'string' && gatewayId.trim()) {
-    return `/gateway/${encodeURIComponent(gatewayId.trim())}`;
-  }
+/** Resolve the destination after project initialization has completed. */
+export function resolveInitializationCompletionRedirect(rawRedirect: unknown): string {
   return resolveInitializationRedirect(rawRedirect);
 }

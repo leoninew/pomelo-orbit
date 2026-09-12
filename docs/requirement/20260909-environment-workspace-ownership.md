@@ -9,7 +9,7 @@ Mode: standard
 
 工作目录是 Environment 的配置项，和 target type、SSH host 一样：在环境管理页面新建/编辑时一起保存，Probe 与部署时从已保存的 Environment 取出使用。
 
-当前只有 SSH 走这条路。local 的工作目录来自进程配置 `workspace.deployment`：环境页只读展示、不入库、local runtime 在启动时焊死 yaml。这不是 Environment 配置。
+当前只有 SSH 走这条路。local 的工作目录曾来自进程配置 `workspace.deployment`；现已统一为 Environment 保存的工作区根，CI/CD 分别使用其 `pipeline/` 与 `deployment/` 子目录。
 
 已接受的 `20260902-remote-ssh-deployment-environments` 曾规定 local 工作目录取 `workspace.deployment` 且不保存。本需求废止该条。CD 工作目录不属于 yaml，也不用 yaml 给 Environment 填默认值。
 
@@ -24,7 +24,7 @@ Mode: standard
 ## Non-goal
 
 - 不改 local / ssh 语义，不把 `127.0.0.1` 解释为 local。
-- 不把 `workspace.pipeline`、Docker socket、Traefik、镜像仓库搬进 Environment。
+- 不把 Docker socket、Traefik、镜像仓库搬进 Environment；CI 的 `pipeline/` 与 CD 的 `deployment/` 都是 Environment 工作区根下的受管子目录。
 - 不把 local 平台、主机名、当前用户当成可编辑配置；它们仍是控制面展示事实。
 - 不在 yaml / Settings 页提供工作目录默认值，也不做「配置为空则回退 yaml」。
 - 不自动搬迁已落地的 compose 文件。
@@ -43,7 +43,7 @@ Mode: standard
 - [ ] 环境页（HTTP）与 MCP 更新 Environment 时，local 与 ssh 都能提交并持久化 `workspace_root`。
 - [ ] GET Environment 的 local/ssh 工作目录来自库存，不是 yaml 投影。
 - [ ] 工作目录为空或非法时不能把 Environment 存成可部署目标；Probe/runtime 拒绝空工作目录。
-- [ ] local 与 ssh 的 service 目录均为 `<已保存 workspace_root>/<service_code>`。
+- [ ] local 与 ssh 的 service 目录均为 `<已保存 workspace_root>/deployment/<service_code>`；CI 使用同一根下的 `pipeline/`。
 - [ ] 修改工作目录增加 `target_revision` 并清除 probe freshness。
 - [ ] 代码路径中 local runtime / handler / MCP 不再读取 `workspace.deployment` 作为工作根或默认工作根。
 - [ ] yaml 不再承担 CD 工作目录配置；活文档删除「local 工作目录 = workspace.deployment」。

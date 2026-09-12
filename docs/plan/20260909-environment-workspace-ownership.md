@@ -41,10 +41,10 @@ Mode: standard
    - 通过共同 target runtime 保持 Compose lifecycle、runtime query/log、Gateway network、Traefik REST Route publish 的 local/SSH 目录语义一致；不增加 local/SSH fallback。
 
 4. **解耦控制面部署日志根与 YAML 工作目录。**
-   - 在 config 引入明确的 `logging.deployment_root`，独立于 `workspace.pipeline` 和 Environment 工作目录；`executionlog.NewDeploymentStore`、HTTP 与 Worker 都从该日志根初始化。
-   - 移除 `WorkspaceConfig.Deployment`、YAML `workspace.deployment`、环境变量绑定、路径规范化/重叠校验和容器启动挂载验证；保留 `workspace.pipeline` 的 CI 职责不变。
+   - 在 config 引入明确的 `logging.deployment_root`，独立于 `workspace.root` 和 Environment 工作目录；`executionlog.NewDeploymentStore`、HTTP 与 Worker 都从该日志根初始化。
+   - 移除独立的 `WorkspaceConfig.Deployment`/`Pipeline` 子根，YAML 只保留 `workspace.root`；CI/CD 子目录由统一路径模块派生。
    - 日志目录以 `<deployment_log_root>/<service_code>/<deployment_id>.log` 组织，删除部署记录时只删除该控制面日志文件；不迁移或删除任何旧 Compose/workspace 文件。
-   - 容器运行时只对 `workspace.pipeline` 和新的 `logging.deployment_root` 做对应的目录 / Docker-daemon 可见性检查；local Environment workspace 的 Docker-visible requirement 在 Environment Probe 中按已保存路径验证。
+   - 容器运行时对 `workspace.root` 及其 `pipeline/` 子目录和新的 `logging.deployment_root` 做对应的目录 / Docker-daemon 可见性检查；local Environment workspace 的 Docker-visible requirement 在 Environment Probe 中按已保存路径验证。
 
 5. **更新共享 View、HTTP/MCP 与 Web Environment 表单。**
    - 在并行分层整改产生的 `environmentdto.View` 上，local 与 SSH target 都映射库存 `workspace_root`；local 的 platform/host/username 仍来自组合根控制面快照，不可编辑也不持久化。
@@ -68,7 +68,7 @@ Mode: standard
 | Web | `web/src/views/environment/EnvironmentPage.vue`, `web/src/api/project/environment.ts`, generated environment proto, `web/src/utils/deploymentEnvironment.ts`, locale files and focused tests |
 | Living docs | `docs/product/cd-model.md`, `docs/architecture/cd-runtime.md`, `docs/guides/deployment.md`, `docs/guides/volume-mounting.md`, `docs/guides/docker-deployment.md`, directly affected operational guides |
 
-Do not change: `workspace.pipeline` behavior, SSH authentication semantics, local/SSH target discrimination, or archive documents. Migration files and the development database version record are managed by the dedicated baseline reorganization.
+Do not change: the CI `pipeline/` child layout, SSH authentication semantics, local/SSH target discrimination, or archive documents. Migration files and the development database version record are managed by the dedicated baseline reorganization.
 
 ## Verification plan
 
@@ -76,7 +76,7 @@ Implementation finishes before entering Verification. The Verification stage wil
 
 1. Run focused Go tests for Environment validation/revision/probe, SQLC repository mapping, local and SSH runtime service-root resolution, deployment target snapshot failure after root changes, and execution-log storage.
 2. Run focused HTTP/MCP tests proving local and SSH read/update payloads contain only applicable fields, persist their supplied root, never derive it from config, and keep sensitive SSH material absent.
-3. Run focused config/bootstrap tests proving `workspace.deployment` is no longer loaded, normalized, mount-validated or passed to runners, while deployment logs use the independent control-plane root.
+3. Run focused config/bootstrap tests proving only `workspace.root` is loaded and normalized, while CI/CD children are derived centrally and deployment logs use the independent control-plane root.
 4. Run focused Web tests plus `yarn --cwd web lint:fix` and `yarn --cwd web typecheck` for local root form validation, empty new-Project state, SSH regression and target switch behavior.
 5. Run `task sqlc`, `task proto`, `task check`, `go test ./cmd/... ./internal/...`, and `git diff --check HEAD`.
 6. Inspect the final diff to confirm no migration merge, no dbtalk invocation/output, and no development database migration-record changes were introduced.

@@ -72,7 +72,7 @@ Web 的 `projectStore.activeProjectId` 只保存在浏览器 `localStorage`，Co
 | `traefik.rest_ready_timeout` | 已持久化在 GatewayConfig；Route publish / deploy readiness 使用库存值 | 移入统一初始化来源配置；归当前 Project 的 GatewayConfig |
 | Gateway 初始 name/code、component、pull policy、ingress、ACME | SQL seed、Web form、Gateway factory 与 MCP schema 分散表达 | 统一初始化来源配置提供 Wizard 输入；固定产品拓扑保留 Gateway factory；确认值持久化到 GatewayConfig / Version / Component |
 | `workspace.deployment` | 已从 Go Config 移除，但 `.env.example` 与运维/RAGFlow 文档仍引用 `data/deployment` | 删除残留；CD 工作目录归 Environment.workspace_root |
-| `workspace.pipeline` | CI checkout、artifact 与 stage log 的控制面目录 | 保留为进程配置 |
+| `workspace.root` | 工作区根目录的启动配置基准；CI 运行时使用 `<Environment.workspace_root>/pipeline` | 保留为进程配置基准 |
 | `logging.deployment_root` | 控制面 deployment execution log 目录 | 保留为进程配置 |
 
 ### Project 资源生命周期
@@ -148,7 +148,7 @@ Project 打开时尚未完成初始化会先进入 Wizard，因此 Web Dialogue 
 - [ ] Web Deployment Dialogue 和 Codex CLI MCP 均只在 Environment 已就绪后执行运行时操作。Web Dialogue 由请求的 `project_id` 固定 scope，Codex CLI 由 connection-local selection 固定 scope，不产生第二套全局 Gateway 或 Project 状态。
 - [ ] Version、Service 与 Gateway Service 的领域 DTO 不为 MCP scope 额外添加 `project_id`；MCP 以选择确认和当前 scope 查询表达 Project 上下文。
 - [ ] `.env.example`、`configs/config.yaml` 和活运维文档不再将 `workspace.deployment` 或 `data/deployment` 表述为全局 CD workspace；示例使用 `Environment.workspace_root`。
-- [ ] `workspace.pipeline`、`logging.deployment_root` 及其他控制面配置不被迁入 Project / Environment。
+- [ ] `workspace.root`、`logging.deployment_root` 及其他控制面配置不被迁入 Project / Environment；实际 CI/CD 子目录统一由 Environment 工作区根派生。
 - [ ] 变更后运行项目约定的 Go、前端检查，并补充 Wizard redirect、seed 清理、已初始化 MCP 前置条件和 Gateway MCP contract 的最小测试。
 - [ ] Windows SSH 初始化命令可在保存/测试前生成，使用当前 Host、Port、SSH 用户和工作目录，远端完成部署公钥、工作目录及 WSL2/Docker/Compose 检查；命令执行后可继续测试和 Probe。
 - [ ] 环境保存失败后重试不会因遗留的受管 `deployment-ssh` 凭据触发同名冲突；非受管同名凭据仍返回冲突。

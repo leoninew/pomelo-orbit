@@ -117,7 +117,7 @@ export default {
     applications: '应用',
     versions: '版本',
     services: '服务',
-    gateways: '网关',
+    gateway: '网关',
     deployments: '部署',
     environment: '环境',
     deploymentDialogue: '对话',

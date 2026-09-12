@@ -13,8 +13,8 @@ Environment 是目标的鉴别联合：公共 identity/state/revision/Gateway bi
 
 ```text
 Project -> Environment(target_type)
-  local -> control-plane workspace.deployment + Docker daemon
-  ssh   -> SSH target + SFTP workspace + Docker daemon
+  local -> Environment.workspace_root/deployment + Docker daemon
+  ssh   -> Environment.workspace_root/deployment + SFTP + Docker daemon
                  -> Gateway / Traefik REST
 ```
 
@@ -22,7 +22,7 @@ Project -> Environment(target_type)
 
 Environment 公共字段：`id`、`project_id`、`code`、`state`、`target_type`、`target_revision`、Probe 状态、Gateway binding 与审计时间。
 
-- `local`：没有目标配置列。运行时由控制面 config 的 `workspace.deployment` 与本机 Docker CLI 定义。
+- `local`：运行时由 Project Environment 的 `workspace_root/deployment` 与本机 Docker CLI 定义。
 - `ssh`：`platform`、`host`、`port`、`username`、`workspace_root`、SSH credential identity/revision、host-key fingerprint。只支持 Linux OpenSSH，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。
 
 Environment target type 可显式更新。任何 type 或适用 target configuration 改变均清空 Probe、递增 revision。local 不产生 SSH credential；ssh 产生受管部署密钥，首次成功 Probe 写入 host-key fingerprint。
@@ -37,7 +37,7 @@ Project creation 不接受 Environment payload。Project service 先创建 Proje
 
 组合根注入一个 explicit dispatcher：
 
-- local runtime 复用历史本机执行语义，materialize `workspace.deployment/<service-code>`，使用本机进程运行 Docker Compose，并在该目录查询 Docker。
+- local runtime 复用历史本机执行语义，materialize `Environment.workspace_root/deployment/<service-code>`，使用本机进程运行 Docker Compose，并在该目录查询 Docker。
 - SSH runtime 继续用 SFTP materialize remote workspace，并在 pinned SSH target 运行受控命令。
 - dispatcher 仅按 `target_type` 路由；缺少适用 runtime 是配置错误，不尝试另一种运行时。
 
@@ -55,11 +55,11 @@ Environment request/response 以 `target_type` 为 discriminator：
 - local update request 仅有 target type 与 state；response 返回 local target、控制面 workspace、运行平台、主机名、当前用户和 Probe 状态。编辑当前 local target 切到 ssh 时，Web 只在所选 SSH 平台与该平台相同的情况下带入主机名和当前用户。
 - ssh update request 在 SSH target object 内提交 platform/host/port/username/workspace root；response 只返回这些配置与 fingerprint。Linux initialization request 额外提交一次性连接认证，成功 response 是完成受管 key Probe 的 Environment；MCP 不接受或输出这类认证。
 
-Web 编辑器切换 type 时仅显示对应表单。active Linux SSH target 显示“初始化部署主机”表单，用户选择密码或私钥并提交；对话框关闭或成功后立即清空一次性认证。Windows SSH target 显示可复制的 PowerShell helper，local 不显示 SSH 初始化入口；helper 执行后仍须完成页面 SSH 测试和 Probe。Gateway 仍使用直接跳转到 `/gateway/:id` 的链接，不展示内部 application id。
+Web 编辑器切换 type 时仅显示对应表单。active Linux SSH target 显示“初始化部署主机”表单，用户选择密码或私钥并提交；对话框关闭或成功后立即清空一次性认证。Windows SSH target 显示可复制的 PowerShell helper，local 不显示 SSH 初始化入口；helper 执行后仍须完成页面 SSH 测试和 Probe。Gateway 导航固定为当前 Project 的 `/gateway`，由其唯一 Environment binding 解析详情，不展示内部 application id。
 
 ## Data and migration boundary
 
-重组后的 `000039` 直接建立最终 Environment schema：SSH-specific columns 可空，并包含 `target_type` 与 Deployment `environment_target_type`。本次不提供旧库兼容迁移或 legacy/null 推断；空库不创建 Environment 或 placeholder deployment SSH credential。
+重组后的 `000039` 直接建立最终 Environment schema：SSH-specific columns 可空，并包含 `target_type` 与 Deployment `environment_target_type`。`000041` 仅迁移 develop(38) 已存在的完整 Traefik bundle 关系，不推断 Environment target；空库不创建 Environment 或 placeholder deployment SSH credential。
 
 ## Affected components
 

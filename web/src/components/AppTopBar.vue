@@ -405,7 +405,7 @@
         return;
       }
       if (isProjectInitializationPath(current.path)) {
-        await router.push('/gateways');
+        await router.push('/gateway');
         return;
       }
       router.go(0);

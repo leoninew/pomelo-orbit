@@ -861,9 +861,7 @@
       if (id !== projectId.value) return;
       hydrate(view);
       if (view.status === READY_INITIALIZATION_STATUS) {
-        await router.replace(
-          resolveInitializationCompletionRedirect(view.gateway?.id, route.query.redirect)
-        );
+        await router.replace(resolveInitializationCompletionRedirect(route.query.redirect));
       }
     } catch (error: unknown) {
       loadError.value =
@@ -1061,9 +1059,7 @@
         );
         hydrate(view);
         toast.success(t('project.initialization.created'));
-        await router.replace(
-          resolveInitializationCompletionRedirect(view.gateway?.id, route.query.redirect)
-        );
+        await router.replace(resolveInitializationCompletionRedirect(route.query.redirect));
       });
     } catch (error: unknown) {
       gatewaySubmitError.value =

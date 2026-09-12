@@ -9,7 +9,7 @@ describe('domain routes', () => {
     ['/pipeline-run/42', 'PipelineRunDetail'],
     ['/pipeline-run/artifact/42', 'ArtifactDetail'],
     ['/application/42', 'ApplicationDetail'],
-    ['/gateway/42', 'GatewayDetail'],
+    ['/gateway', 'Gateway'],
     ['/routes', 'Route'],
     ['/environment', 'Environment'],
     ['/project/abc/initialization', 'ProjectInitialization'],

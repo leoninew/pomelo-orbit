@@ -28,7 +28,7 @@ const (
 	redactedLogValue    = "[REDACTED]"
 )
 
-var deploymentSSHSecretJSONField = regexp.MustCompile(`(?is)("(?:deployment_ssh_private_key|deployment_ssh_key_passphrase)"\s*:\s*)"(?:\\.|[^"\\])*"?`)
+var deploymentSSHSecretJSONField = regexp.MustCompile(`(?is)("(?:deployment_ssh_private_key|deployment_ssh_key_passphrase|private_key|private_key_passphrase)"\s*:\s*)"(?:\\.|[^"\\])*"?`)
 
 type LogRequestConfig struct {
 	Enabled           bool

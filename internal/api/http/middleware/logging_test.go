@@ -388,6 +388,28 @@ func TestLogRequestRedactsDeploymentSSHSecrets(t *testing.T) {
 		t.Fatalf("status=%d", recorder.Code)
 	}
 }
+
+func TestLogRequestRedactsProjectInitializationSSHSecrets(t *testing.T) {
+	privateKey := "private-key-material"
+	passphrase := "private-key-passphrase"
+	requestBody := `{"private_key":"` + privateKey + `","private_key_passphrase":"` + passphrase + `"}`
+	entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 256}, http.MethodPost, "/api/project/p/initialization/bootstrap", "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	started, _ := assertStartedAndCompleted(t, entries)
+	loggedBody, ok := started["request_body"].(string)
+	if !ok {
+		t.Fatalf("expected request_body string: %+v", started)
+	}
+	if !strings.Contains(loggedBody, redactedLogValue) {
+		t.Fatalf("expected a redacted project initialization secret, got %q", loggedBody)
+	}
+	for _, secret := range []string{privateKey, passphrase} {
+		if strings.Contains(loggedBody, secret) {
+			t.Fatalf("project initialization secret leaked into request log: %q", loggedBody)
+		}
+	}
+}
 func TestLogRequestTruncatesRequestBodyByConfiguredBytesAndRestoresBody(t *testing.T) {
 	requestBody := `{"value":"` + strings.Repeat("好", testBodyMaxBytes) + `"}`
 	var handlerBody string

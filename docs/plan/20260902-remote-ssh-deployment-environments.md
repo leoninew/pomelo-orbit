@@ -1,5 +1,5 @@
 # 部署环境目标计划
-最后修改时间: 2026-09-09 17:04:54
+最后修改时间: 2026-09-12 09:50:42
 
 Review status: Accepted
 
@@ -17,16 +17,16 @@ Mode: strict
 
 ## Implementation steps
 
-1. 扩展 Environment/Deployment schema、SQL query、model、repository 与 generated SQLC：Environment target type 与 optional SSH fields；Deployment target type 与 optional SSH snapshot。新增三方言 migration，将既有 Environment 标记 ssh；default seed 收敛为 local，无 credential placeholder。
+1. 扩展 Environment/Deployment schema、SQL query、model、repository 与 generated SQLC：Environment target type 与 optional SSH fields；Deployment target type 与 optional SSH snapshot。重组后的三方言 `000039` 直接建立最终 schema；空库不创建 Environment seed 或 credential placeholder。
 2. 以 `environmentport.Target` 替换 `SSHTarget`，按 target type 生成/校验 SSH credential、target revision 和 Probe；Project bootstrap 固定创建 active local Environment，SSH key 仅在 Environment 页面切为 ssh 后创建。
 3. 将 `RemoteRuntime` 改为 target-neutral Runtime；恢复 local workspace/shell runner，新增 explicit runtime dispatcher，同时让 deployment、runtime query、container logs、Gateway/Route Traefik calls 共用。
-4. 将 proto/HTTP/MCP DTO 变为 target discriminator 与 SSH nested target；Project create DTO 只保留名称和编码，Web 创建完成后切换 active Project 并进入 Environment 页面。local 不显示 SSH 表单/初始化入口；Linux SSH 以一次性密码或私钥直接初始化，先检查现成 Docker/Compose、`sudo -n` 与 OpenSSH 公钥能力，再按需写入部署 key 和工作目录，不管理 Docker/Compose/Desktop/WSL、Docker 用户组、sshd、firewall 或网络。
+4. 将 proto/HTTP/MCP DTO 变为 target discriminator 与 SSH nested target；Project create DTO 只保留名称和编码，Web 创建完成后切换 active Project 并进入 Environment 页面。local 不显示 SSH 表单/初始化入口；Linux SSH 以一次性密码或私钥直接初始化，先检查现成 Docker/Compose、`sudo -n` 与 OpenSSH 公钥能力，再按需写入部署 key 和工作目录；Windows SSH 由 Wizard 与 Environment detail 提供可复制的 PowerShell helper，写入公钥、创建工作目录并检查 WSL2/Docker Desktop/Linux containers/Compose。Orbit 不管理 Docker/Compose/Desktop/WSL、Docker 用户组、sshd、firewall 或网络。
 5. 更新产品模型、CD runtime、部署与 MCP guide，移除 SSH-only/local-fallback 描述。
 6. 补充 local/ssh target resolution、snapshot validation、runtime dispatch、Probe、project bootstrap、seed 与 UI form tests；重新生成 SQLC/proto 并运行质量门。
 
 ## Files to change
 
-- `sql/migration/*/000041_*`、`sql/migration/*/000040_seed_environment.up.sql`、`sql/query/environment/*`、`sql/query/deployment/*`、`sql/schema/*`。
+- `sql/migration/*/000039_environment_foundation.*`、`sql/migration/*/000040_gateway_config_component_name.*`、`sql/query/environment/*`、`sql/query/deployment/*`、`sql/schema/*`。
 - `internal/model/environment.go`、`internal/model/deployment.go`、Environment/Project/Deployment/Route ports and use cases、SQLC repositories。
 - `internal/infrastructure/runner/local/*`、`internal/infrastructure/runner/ssh/*`、target runtime dispatcher、`internal/bootstrap/*`。
 - `proto/orbit/v1/environment/environment.proto`、generated Go/TypeScript、HTTP/MCP mapper 和 `web/src/views/environment/EnvironmentPage.vue`、Project form/i18n.

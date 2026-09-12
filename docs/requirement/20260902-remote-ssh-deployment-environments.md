@@ -1,5 +1,5 @@
 # 部署环境目标需求
-最后修改时间: 2026-09-09 17:04:54
+最后修改时间: 2026-09-12 09:50:42
 
 Review status: Accepted
 
@@ -15,7 +15,7 @@ Project 继续承担资源归属、成员授权、HTTP/Proto/MCP scope 和 Web a
 
 1. Environment 明确支持 `local` 与 `ssh` 两种 target type；二者复用 Project 1:1 Environment 1:1 Gateway、部署任务、Route 与权限模型。
 2. `local` 在控制面宿主机直接执行 Docker Compose，工作目录取控制面 `workspace.deployment`；不保存、不展示也不要求 SSH host、port、user、credential、host key 或 SSH 初始化入口。
-3. `ssh` 维持现有 Linux OpenSSH 与 Windows native OpenSSH + WSL2 Docker Desktop 能力。对于已能以用户密码或私钥连接的 Linux target，Orbit 直接使用一次性认证检查 Docker daemon/Compose、无交互 `sudo` 与 OpenSSH 公钥能力，按需写入部署公钥和工作目录，再用受管私钥 Probe；一次性认证不得持久化或出现在 API、MCP、日志。它不得安装、启停或配置 Docker、Docker Compose、Docker Desktop、WSL 或 Docker 用户组；这些外部前置条件不满足时直接失败并给出诊断。Windows 不提供自动初始化入口。
+3. `ssh` 维持现有 Linux OpenSSH 与 Windows native OpenSSH + WSL2 Docker Desktop 能力。对于已能以用户密码或私钥连接的 Linux target，Orbit 直接使用一次性认证检查 Docker daemon/Compose、无交互 `sudo` 与 OpenSSH 公钥能力，按需写入部署公钥和工作目录，再用受管私钥 Probe；一次性认证不得持久化或出现在 API、MCP、日志。Windows SSH target 可由 Web Wizard 或 Environment detail 生成本地主机 PowerShell helper，用户通过 SSH 写入受管部署公钥、创建工作目录并检查 WSL2/Docker Desktop/Linux containers/Compose，随后仍须回到页面执行 SSH 测试和 Probe。Orbit 不安装、启停或配置 Docker、Docker Compose、Docker Desktop、WSL 或 Docker 用户组；这些外部前置条件不满足时直接失败并给出诊断。
 4. Deploy、restart、stop、运行时查询、容器日志、Gateway 网络创建和 Traefik REST publish 都通过同一个显式目标运行时执行；不能出现只让 Compose 本机化而 Route/Gateway 仍走 SSH 的半套实现。
 5. Deployment 保存 Environment、target type、target revision、Gateway snapshot；仅 SSH deployment 保存 SSH credential identity/revision。目标或 revision 改变后，排队任务必须失败。
 6. Project 创建请求只包含名称和编码；后端在同一事务中固定创建 active `local` Environment，不创建部署 SSH credential。用户随后在 Environment 页面切换为 `ssh` 并完成配置。
@@ -62,10 +62,10 @@ Project 继续承担资源归属、成员授权、HTTP/Proto/MCP scope 和 Web a
 - `local` 是一等 Environment target type，不是 SSH 的快捷路径或降级路径。
 - local workspace 由控制面 `workspace.deployment` 配置决定；SSH workspace 仍是 Environment SSH target 的字段。
 - local response 的预填信息直接来自控制面进程：`runtime.GOOS`、`os.Hostname()` 和 `os/user.Current()`；它们不属于 Environment 持久化配置，也不用于改变 SSH 的运行时语义。
-- 本次保留已执行 migration 的演进方式：schema migration 为已有 SSH Environment 写入明确的 `ssh` type；应用运行时不基于空字段猜测类型，也不保留兼容执行分支。
+- 本次采用无兼容基线：`000039` 从空库直接建立最终 local/ssh schema，已有开发库由运维就地同步版本记录；应用运行时不基于空字段猜测类型，也不保留兼容执行分支。
 - SQL seed 随新模型收敛为 default local Environment，不再插入 placeholder credential。
 - Project 创建不承载 Environment target 配置，Environment 页面是切换和配置 SSH target 的唯一入口。
-- Docker Engine/Compose 与 Windows Docker Desktop/WSL2 是 SSH target 的外部前置条件；Linux 自动初始化负责检查，不负责包办安装。Windows 因普通 SSH 无法可靠完成 UAC 提权，不提供自动初始化。
+- Docker Engine/Compose 与 Windows Docker Desktop/WSL2 是 SSH target 的外部前置条件；Linux 自动初始化负责检查，不负责包办安装。Windows 因普通 SSH 无法可靠完成 UAC 提权，不提供自动特权初始化，但提供由用户执行的 PowerShell helper；helper 不能替代网络、账户权限或后续页面 Probe。
 
 ## Risk
 

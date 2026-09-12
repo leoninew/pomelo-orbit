@@ -185,15 +185,15 @@ func TestMigrateUpSQLiteDoesNotSeedDeploymentResources(t *testing.T) {
 
 func TestMigrateUpSQLiteDropsGatewayConfigComponentName(t *testing.T) {
 	database := openMemoryDb(t)
-	if err := MigrateTo(database, config.DatabaseDriverSQLite, 41); err != nil {
-		t.Fatalf("migrate to target-type schema: %v", err)
+	if err := MigrateTo(database, config.DatabaseDriverSQLite, 39); err != nil {
+		t.Fatalf("migrate to environment schema: %v", err)
 	}
 	var count int
 	if err := database.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('gateway_config') WHERE name = 'traefik_component_name'`).Scan(&count); err != nil {
 		t.Fatalf("inspect gateway_config before drop: %v", err)
 	}
 	if count != 1 {
-		t.Fatalf("traefik_component_name columns=%d, want 1 before 000042", count)
+		t.Fatalf("traefik_component_name columns=%d, want 1 before 000040", count)
 	}
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate remaining: %v", err)

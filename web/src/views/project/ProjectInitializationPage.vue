@@ -91,8 +91,8 @@
             @submit.prevent="saveEnvironment"
           >
             <EnvironmentTargetFields
-              v-model="environmentForm"
-              v-model:errors="environmentErrors"
+              :model-value="environmentForm"
+              :errors="environmentErrors"
               :disabled="operating"
               :local-workspace-root="localWorkspaceRoot"
               :local-display="localDisplay"
@@ -264,8 +264,8 @@
                 </p>
               </div>
               <EnvironmentBootstrapFields
-                v-model="bootstrapForm"
-                v-model:errors="bootstrapErrors"
+                :model-value="bootstrapForm"
+                :errors="bootstrapErrors"
                 :disabled="operating"
                 id-prefix="initialization-bootstrap"
               />

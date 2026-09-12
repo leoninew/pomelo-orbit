@@ -49,7 +49,7 @@ Codex stdio MCP 从未选择 Project 的状态启动。用户以 Project 名称�
 - 命令是幂等的：authorized key 已存在时不重复写入，工作目录使用 `New-Item -Force`；远端检查失败以明确的 PowerShell 错误结束，便于随后 Probe 诊断。
 - 命令生成不替代 SSH 测试或 Probe；测试按钮保持可用，执行命令后用户必须显式测试和探测。
 
-HTTP 只暴露 `/api/project/:project_id/initialization` 下的状态和上述 command；现有通用 Environment/Gateway HTTP 创建入口不再作为初始化入口。Project create 仅创建 Project/membership，不调用 `BootstrapForProject`。`000032_seed_identity` 保留 Project/membership；`000037_seed_gateway`、`000040_seed_environment` 在 SQLite、MySQL、PostgreSQL 中删除 Gateway、Service、Route、Environment 业务 seed。这是用户明确要求对现有 seed 迁移的定向修改。
+HTTP 只暴露 `/api/project/:project_id/initialization` 下的状态和上述 command；现有通用 Environment/Gateway HTTP 创建入口不再作为初始化入口。Project create 仅创建 Project/membership，不调用 `BootstrapForProject`。`000032_seed_identity` 保留 Project/membership；`000037_seed_gateway` 不再写入 Gateway、Service、Route 等部署资源，Environment 不再有 seed migration。最终 Environment schema 由重组后的 `000039` 建立，`000040` 仅负责 GatewayConfig 废弃列清理。
 
 ### Initialization source configuration
 
@@ -137,13 +137,13 @@ Web Dialogue 和 stdio 继续共享 Delivery Core 的资源工具、输入 DTO �
 
 ## Data migration and state transition
 
-新库执行收敛后的 seed 后，默认 Project 没有 Environment/Gateway，首次打开即进入 Wizard。已存在数据库通过后续 schema migration 删除 GatewayConfig component-name column；不保留该字段的兼容读取。Project 在任何时刻可处于 Environment 已保存但 Probe 未成功或 Gateway 未创建状态，Wizard 由资源派生状态恢复，而运行时和 MCP 仅接受 `ready`。
+新库执行收敛后的 seed 后，默认 Project 没有 Environment/Gateway，首次打开即进入 Wizard。Environment 最终 schema 与 GatewayConfig 清理由重组后的 `000039`/`000040` 建立；不保留旧版本兼容读取或升级分支，已有开发库由运维就地同步迁移记录。Project 在任何时刻可处于 Environment 已保存但 Probe 未成功或 Gateway 未创建状态，Wizard 由资源派生状态恢复，而运行时和 MCP 仅接受 `ready`。
 
 本任务不支持多个 Project 共用一个部署宿主，也不为其建立 host、port、network 或 workspace 冲突处理。现有已部署资源的转换不引入双写、别名或全局默认值路径。
 
 ## Verification design
 
-- 三数据库迁移测试确认 `000032` 仍产生可进入的 Project/membership，`000037`/`000040` 不产生部署资源，GatewayConfig schema 不再有 component-name column。
+- 三数据库迁移测试确认 `000032` 仍产生可进入的 Project/membership，`000037` 不产生部署资源，`000039` 直接建立最终 Environment schema，`000040` 后 GatewayConfig 不再有 component-name column。
 - Project 创建测试确认只创建 Project/membership；初始化 usecase 覆盖 `needs_environment`、Probe 失败重试、Gateway bundle 原子创建和 `ready` 派生状态。
 - Gateway factory 测试确认 image 等值必须来自初始化 command，固定 `traefik` / `missing` 写入初始 Component，Gateway update 不再接受 component name；provision 不创建缺失 Gateway。
 - Web 测试覆盖空库默认 Project 和新建 Project 进入 Wizard、初始化完成后返回原项目页面、切换到未初始化 Project 不加载旧项目数据。

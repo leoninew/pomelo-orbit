@@ -18,14 +18,14 @@ Mode: standard
 
 新 Project 仍在同一事务中创建 active local Environment，但其 `workspace_root` 初始为空，直到成员在 Environment 页面保存有效目录前不是可 Probe、可部署的目标。不存在 YAML 默认值、空值 fallback 或自动移动既有 Compose 树。部署执行日志保留在控制面独立的日志根，不再位于任一 Environment 的工作目录树。
 
-本期明确不做：将已存在的 migration `000041` 合并进 `000040`、修改已执行 migration、使用 dbtalk 同步开发库 schema/migration 版本或对开发库做就地迁移记录整理。现有 `workspace_root` 列足以承载此功能，不新增 schema migration；存量空 local Environment 需要成员在页面或 MCP 保存目录后才能通过 Probe。
+本计划形成时尚未进行 migration 重组；随后按用户决定采用无兼容基线，已将 Environment 最终 schema 收敛到 `000039`、GatewayConfig 清理保留为独立 `000040`，并使用 dbtalk 就地同步开发库迁移记录。现有 `workspace_root` 列足以承载此功能，不新增额外 schema migration；存量空 local Environment 仍需要成员在页面或 MCP 保存目录后才能通过 Probe。
 
 ## Implementation steps
 
 1. **收敛公共 Environment 工作目录模型与库存映射。**
    - 在 `model.Environment` 增加公共 `WorkspaceRoot`，从 `EnvironmentSSHTarget` 移除该字段；SSH target 仅保留 platform、host、port、username、credential binding 和 host key。
    - repository / SQLC 映射将 `environment.workspace_root` 无条件读写公共字段；不再因 target 是 local 写入 `NULL`，切换 local/ssh 时保留本次输入的目录而非把目录附着到 SSH 子对象。
-   - 保持既有 `target_type`、SSH nullable columns、deployment snapshot 和 gateway binding schema 不变；不编辑 `000040_*`、`000041_*` 或任何其他已执行 migration。
+   - 保持既有 `target_type`、SSH nullable columns、deployment snapshot 和 gateway binding schema 不变；迁移文件重组由独立变更完成。
    - Project bootstrap 创建的 local Environment 保持空 `WorkspaceRoot`；不由 config、seed、handler 或 MCP 自动填充值。
 
 2. **扩展 Environment 更新、校验和 freshness 语义。**
@@ -68,7 +68,7 @@ Mode: standard
 | Web | `web/src/views/environment/EnvironmentPage.vue`, `web/src/api/project/environment.ts`, generated environment proto, `web/src/utils/deploymentEnvironment.ts`, locale files and focused tests |
 | Living docs | `docs/product/cd-model.md`, `docs/architecture/cd-runtime.md`, `docs/guides/deployment.md`, `docs/guides/volume-mounting.md`, `docs/guides/docker-deployment.md`, directly affected operational guides |
 
-Do not change: `sql/migration/**/000040_*`, `sql/migration/**/000041_*`, development database data or schema-migration records, `workspace.pipeline` behavior, SSH authentication semantics, local/SSH target discrimination, or archive documents.
+Do not change: `workspace.pipeline` behavior, SSH authentication semantics, local/SSH target discrimination, or archive documents. Migration files and the development database version record are managed by the dedicated baseline reorganization.
 
 ## Verification plan
 
@@ -108,4 +108,4 @@ Implementation finishes before entering Verification. The Verification stage wil
 
 - 用户确认 local 与 ssh 的工作目录都属于 Environment，由环境页面/MCP 保存后再供 Probe 和部署读取。
 - 用户否定以 YAML 作为 local 默认或运行时路径来源，也不接受空值 fallback。
-- 用户要求剔除将 migration `000041` 合并进 `000040` 与同步开发库迁移记录，本计划和后续验证均不执行该整理工作。
+- 后续用户决定无兼容地重组 `000039`–`000042`，并就地同步开发库迁移记录；本计划不再重复处理该项。

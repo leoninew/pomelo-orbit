@@ -306,7 +306,7 @@
           await router.push({
             name: 'ProjectInitialization',
             params: { id: project.id },
-            query: { redirect: '/gateways' },
+            query: { redirect: '/gateway' },
           });
         }
       });

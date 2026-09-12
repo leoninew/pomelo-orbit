@@ -143,16 +143,10 @@ const router = createRouter({
       meta: { title: '服务组件配置', menuKey: 'services' },
     },
     {
-      path: '/gateways',
-      name: 'Gateways',
-      component: () => import('@/views/gateway/GatewayPage.vue'),
-      meta: { title: '网关', menuKey: 'gateways' },
-    },
-    {
-      path: '/gateway/:id',
-      name: 'GatewayDetail',
+      path: '/gateway',
+      name: 'Gateway',
       component: () => import('@/views/gateway/GatewayDetail.vue'),
-      meta: { title: '网关详情', menuKey: 'gateways' },
+      meta: { title: '网关详情', menuKey: 'gateway' },
     },
     {
       path: '/deployments',
@@ -352,7 +346,7 @@ router.beforeEach(async (to, _from, next) => {
         : await initializationStore.fetchStatus(projectId);
       if (status.status === READY_INITIALIZATION_STATUS) {
         if (isProjectInitializationPath(to.path)) {
-          next(resolveInitializationCompletionRedirect(status.gateway?.id, to.query.redirect));
+          next(resolveInitializationCompletionRedirect(to.query.redirect));
           return;
         }
         next();

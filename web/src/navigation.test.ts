@@ -28,7 +28,7 @@ describe('domain navigation declarations', () => {
     ['/pipeline/example', 'pipeline'],
     ['/pipeline-run/artifact', 'pipeline'],
     ['/application/example', 'deployment'],
-    ['/gateway/example', 'deployment'],
+    ['/gateway', 'deployment'],
     ['/route/traefik', 'deployment'],
   ] as const)('classifies %s as the %s scope', (path, scope) => {
     expect(getNavigationScope(path)).toBe(scope);
@@ -70,7 +70,7 @@ describe('domain navigation declarations', () => {
       expect.objectContaining({
         key: 'ingress',
         children: [
-          expect.objectContaining({ key: 'gateways', path: '/gateways' }),
+          expect.objectContaining({ key: 'gateway', path: '/gateway' }),
           expect.objectContaining({ key: 'route', path: '/routes' }),
         ],
       }),
@@ -82,14 +82,14 @@ describe('domain navigation declarations', () => {
       'nav.groups.code': '代码仓库',
       'nav.repositories': '仓库',
       'nav.groups.ingress': '网络接入',
-      'nav.gateways': '网关',
+      'nav.gateway': '网关',
       'nav.groups.admin': '系统管理',
       'nav.settings': '系统设置',
     };
     const t = (key: string) => labels[key] || key;
 
     expect(getSecondaryNavigationTitle('pipeline', 'repository', t)).toBe('代码仓库 仓库');
-    expect(getSecondaryNavigationTitle('deployment', 'gateways', t)).toBe('网络接入 网关');
+    expect(getSecondaryNavigationTitle('deployment', 'gateway', t)).toBe('网络接入 网关');
     expect(getSecondaryNavigationTitle('settings', 'settings', t)).toBe('系统管理 系统设置');
     expect(getSecondaryNavigationTitle('pipeline', 'missing', t)).toBeNull();
   });

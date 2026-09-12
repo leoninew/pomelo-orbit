@@ -30,10 +30,6 @@
           <Square class="size-4" />
           {{ t('gateway.actions.stop') }}
         </button>
-        <button class="app-button h-9 px-4" @click="goBack">
-          <ArrowLeft class="size-4" />
-          {{ t('common.back') }}
-        </button>
       </div>
     </div>
 
@@ -492,23 +488,15 @@
 </template>
 
 <script setup lang="ts">
-  import {
-    ArrowLeft,
-    ExternalLink,
-    Eye,
-    EyeOff,
-    Layers,
-    Rocket,
-    ScrollText,
-    Square,
-  } from '@lucide/vue';
+  import { ExternalLink, Eye, EyeOff, Layers, Rocket, ScrollText, Square } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRoute, useRouter } from 'vue-router';
+  import { useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
 
   import { serviceApi } from '@/api/service/service';
   import { gatewayApi } from '@/api/gateway/gateway';
+  import { projectEnvironmentApi } from '@/api/project/environment';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
@@ -520,6 +508,7 @@
   import SensitiveValue from '@/components/SensitiveValue.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import { useProjectStore } from '@/stores/project';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
@@ -535,8 +524,8 @@
 
   const toast = useToast();
   const { t } = useI18n();
-  const route = useRoute();
   const router = useRouter();
+  const projectStore = useProjectStore();
   const { status, execute } = useStatusAsync();
   const { status: opStatus, execute: executeOp } = useStatusAsync();
 
@@ -604,7 +593,6 @@
     service_id: '',
     remove_volumes: false,
   });
-  const gatewayId = () => String(route.params.id || '');
   const operating = computed(() => opStatus.value === 'loading');
   const isDeploying = computed(() => services.value.some((item) => item.active_deployment));
   const stoppableServices = computed(() =>
@@ -802,12 +790,19 @@
   }
 
   async function loadGateway() {
-    const id = gatewayId();
-    if (!id) {
+    const projectId = projectStore.activeProjectId;
+    gateway.value = null;
+    services.value = [];
+    if (!projectId) {
       return;
     }
     try {
       await execute(async () => {
+        const environment = await projectEnvironmentApi.get(projectId);
+        const id = environment.gateway_application_id;
+        if (!id) {
+          throw new Error(t('gateway.toast.loadDetailFailed'));
+        }
         gateway.value = await gatewayApi.get(id);
       });
       await loadRuntimeContext();
@@ -965,10 +960,6 @@
     router.push(`/application/${gateway.value.id}`);
   }
 
-  function goBack() {
-    router.push('/gateways');
-  }
-
   function usesDNSProfile(profile: string) {
     return profile === 'dns' || profile === 'http-dns';
   }
@@ -987,12 +978,7 @@
     }
   }
 
-  watch(
-    () => route.params.id,
-    () => {
-      loadGateway();
-    }
-  );
+  watch(() => projectStore.activeProjectId, loadGateway);
 
   onMounted(loadGateway);
 </script>

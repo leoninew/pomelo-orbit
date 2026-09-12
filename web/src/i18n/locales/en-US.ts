@@ -118,7 +118,7 @@ export default {
     applications: 'Applications',
     versions: 'Versions',
     services: 'Services',
-    gateways: 'Gateways',
+    gateway: 'Gateway',
     deployments: 'Deployments',
     environment: 'Environment',
     deploymentDialogue: 'Dialogue',

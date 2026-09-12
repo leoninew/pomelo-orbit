@@ -35,9 +35,7 @@ services:
       - traefik
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /opt/pomelo-orbit/data/db:/app/data/db
-      - /opt/pomelo-orbit/ci:/app/data/pipeline
-      - /opt/pomelo-orbit/cd:/opt/pomelo-orbit/cd
+      - /opt/pomelo-orbit/data:/app/data
     ports:
       - "9003:80"
     env_file:
@@ -139,9 +137,7 @@ docker compose up -d
 /opt/pomelo-orbit/
 ├── docker-compose.yml   # 容器编排配置（手动维护）
 ├── .env                 # 宿主机环境变量，通过 env_file 注入容器
-├── data/db/             # SQLite 数据库（挂载到容器 /app/data/db）
-├── ci/                  # CI workspace（挂载到容器 /app/data/pipeline）
-└── cd/                  # 可选：给 local Environment.workspace_root 使用的宿主目录
+└── data/                # 统一工作区根（含 db、pipeline、deployment 与日志）
 ```
 
 `.env` 有两个层面，但内容相同：
@@ -150,4 +146,4 @@ docker compose up -d
 
 首次手动部署时只需关注宿主机的 `.env`。
 
-默认 YAML 的 `workspace.pipeline=data/pipeline` 在容器内解析为 `/app/data/pipeline`。CD 工作目录不再来自进程配置；打开未初始化 Project 时由 Web Wizard 写入 `Environment.workspace_root`。默认值 `~/.pomelo-orbit` 原样展示和保存，使用时才展开为进程用户主目录。容器部署若要把 CD 根放在已挂载路径上，应在 Wizard 中填写该绝对路径。`logging.deployment_root` 仍是控制面部署执行日志目录。
+默认 YAML 的 `workspace.root=data` 在容器内解析为 `/app/data`；每个 Project 的 Environment 工作区在该根下使用 `pipeline/` 与 `deployment/<service-code>/` 子目录。打开未初始化 Project 时由 Web Wizard 写入 `Environment.workspace_root`。默认值 `~/.pomelo-orbit` 原样展示和保存，使用时才展开为进程用户主目录。容器部署若要把 Environment 工作区放在已挂载路径上，应在 Wizard 中填写该绝对路径。`logging.deployment_root` 仍是控制面部署执行日志目录。

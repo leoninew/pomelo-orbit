@@ -23,7 +23,7 @@ describe('project readiness routing', () => {
     expect(isProjectReadinessGuardedPath('/applications')).toBe(true);
     expect(isProjectReadinessGuardedPath('/environment')).toBe(true);
     expect(isProjectReadinessGuardedPath('/pipeline')).toBe(true);
-    expect(isProjectReadinessGuardedPath('/gateways')).toBe(true);
+    expect(isProjectReadinessGuardedPath('/gateway')).toBe(true);
     expect(isProjectReadinessGuardedPath('/projects')).toBe(false);
     expect(isProjectReadinessGuardedPath('/project/abc/initialization')).toBe(false);
   });
@@ -39,10 +39,7 @@ describe('project readiness routing', () => {
   });
 
   it('opens the initialized gateway detail before falling back to the return URL', () => {
-    expect(resolveInitializationCompletionRedirect('gateway-42', '/')).toBe('/gateway/gateway-42');
-    expect(resolveInitializationCompletionRedirect(' gateway/42 ', '/')).toBe(
-      '/gateway/gateway%2F42'
-    );
-    expect(resolveInitializationCompletionRedirect(undefined, '/environment')).toBe('/environment');
+    expect(resolveInitializationCompletionRedirect('/')).toBe('/');
+    expect(resolveInitializationCompletionRedirect('/environment')).toBe('/environment');
   });
 });

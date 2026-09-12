@@ -66,7 +66,7 @@ Retry 与手动触发共享 Run 创建路径。Retry 创建新 Run；`latest` �
 
 ## Runtime workspace
 
-Pipeline checkout、Stage log 和 Run artifact 都位于 `workspace.pipeline`。配置值表示 Orbit 进程可见路径；Pipeline 容器的 `/workspace` 与 `/artifacts` bind mount 会解析为 Docker daemon 可见的宿主路径。因此 DooD 部署必须将该根目录显式挂入 Orbit 容器，不能把容器内路径直接传给 Docker。
+Pipeline checkout、Stage log 和 Run artifact 都位于当前 Project `Environment.workspace_root/pipeline`。`workspace.root` 只作为启动配置基准，实际执行按 Project Environment 解析；配置值表示 Orbit 进程可见路径。Pipeline 容器的 `/workspace` 与 `/artifacts` bind mount 会解析为 Docker daemon 可见的宿主路径。因此 DooD 部署必须将该工作区根目录显式挂入 Orbit 容器，不能把容器内路径直接传给 Docker。SSH Environment 的远端 workspace 仅用于 CD，不能作为控制面 Pipeline 的本地 bind source。
 
 ## Git 凭据
 

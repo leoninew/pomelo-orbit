@@ -19,7 +19,7 @@ Web Wizard 与 Environment detail 复用同一个命令生成器和项目 Dialog
 
 ## Plan alignment
 
-计划中的配置迁移、seed 收敛、ProjectInitialization boundary、HTTP/proto 生成、Gateway/MCP 收敛、Web readiness guard 和活文档同步均已反映在当前工作区。Environment/Gateway migrations 已重组为 `000039`（最终 Environment schema）和 `000040`（GatewayConfig 废弃列清理）。
+计划中的配置迁移、seed 收敛、ProjectInitialization boundary、HTTP/proto 生成、Gateway/MCP 收敛、Web readiness guard 和活文档同步均已反映在当前工作区。Environment/Gateway migrations 已重组为 `000039`（最终 Environment schema）、`000040`（GatewayConfig 废弃列清理）和 `000041`（develop(38) 遗留 Gateway 关系迁移）。
 
 计划后续追加的 Windows SSH 命令、保存前公钥读取和受管凭据重试复用，已同步补入 requirement、spec、plan 和本验证文档。
 
@@ -64,7 +64,7 @@ Web Wizard 与 Environment detail 复用同一个命令生成器和项目 Dialog
 
 相对最初计划，Windows SSH helper 是根据实际使用反馈追加的范围：命令生成不再依赖 Environment 已保存或 SSH 公钥认证成功，并在命令中加入分阶段 Docker/Compose 检查。该扩展已写入 requirement/spec/plan，不属于未记录的隐式变更。
 
-本次按无兼容基线重组 `000039`–`000042`：`000039` 直接建立最终 Environment schema，`000040` 独立删除 `gateway_config.traefik_component_name`，移除无效的 Environment seed/no-op 与重复 target-type migration。现有开发库迁移记录已就地收敛到新链。未新增多 Project 共用宿主的冲突防御，也未恢复任何全局 deployment workspace fallback。
+本次按无兼容基线重组 `000039`–`000042`：`000039` 直接建立最终 Environment schema，`000040` 独立删除 `gateway_config.traefik_component_name`，`000041` 仅将 develop(38) 遗留的完整 Traefik bundle 纳入 Environment 关系；移除无效的空库 Environment seed/no-op 与重复 target-type migration。未新增多 Project 共用宿主的冲突防御，也未恢复任何全局 deployment workspace fallback。
 
 ## Risks and incomplete items
 

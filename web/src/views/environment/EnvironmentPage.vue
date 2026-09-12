@@ -121,11 +121,7 @@
           <div class="flex gap-2">
             <dt>{{ t('project.environment.gateway') }}</dt>
             <dd class="text-foreground">
-              <router-link
-                v-if="environment.gateway_application_id"
-                :to="`/gateway/${environment.gateway_application_id}`"
-                class="app-link"
-              >
+              <router-link v-if="environment.gateway_application_id" to="/gateway" class="app-link">
                 {{ t('project.environment.openGateway') }}
               </router-link>
               <span v-else class="text-muted-foreground">{{ t('common.notSet') }}</span>

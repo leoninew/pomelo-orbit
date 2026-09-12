@@ -22,7 +22,7 @@ Mode: strict
 - 在 `internal/config/config.go` 定义并加载 `ProjectInitializationConfig`，包含 Wizard 所需的 Environment 默认 target/workspace root 与 Gateway image、REST URL、readiness、domain、entrypoint、TLS、ACME 初始值；更新环境变量绑定、规范化和集中校验。`local_workspace_root` 保持 `~` / `~/...` 或平台绝对路径原样，不在 Load 时翻译成用户主目录。
 - 更新 `configs/config.yaml`、`.env.example`、开发环境覆盖配置及 `internal/config/config_test.go`，删除 `traefik.*` 的运行时默认职责，保留控制面 `workspace.pipeline` 和 `logging.deployment_root`。
 - 从 `model.GatewayConfig`、Gateway DTO、repository interface、SQL query、SQLC repository、Gateway HTTP/MCP mapper 和 Web generated usage 中删除 `traefik_component_name`。Dashboard Route 的容器目标改为固定产品组件名 `traefik` 或其绑定 Version 的解析结果，不再读取 GatewayConfig。
-- 新增 `000042` schema migration，在 SQLite、MySQL、PostgreSQL 删除 `gateway_config.traefik_component_name`；SQLite 按仓库既有重建表迁移模式实现。同步更新 schema source、SQLC 生成物和 migration 测试，迁移 down 恢复旧列结构但不建立运行时兼容读取。
+- 重组 `000039`/`000040` schema migrations：`000039` 直接建立最终 local/ssh Environment schema，`000040` 独立删除 SQLite、MySQL、PostgreSQL 的 `gateway_config.traefik_component_name`；不保留 Environment seed/no-op migration。同步更新 schema source、SQLC 生成物和 migration 测试。
 
 **完成条件**：运行时无法从进程配置补齐 GatewayConfig 或 Component；GatewayConfig 不再表达 component topology，所有生成 DTO 与数据库实现不再含该字段。
 
@@ -33,7 +33,7 @@ Mode: strict
 **修改范围**：
 
 - 保留三个数据库的 `000032_seed_identity` Project 与 membership 数据。
-- 按用户明确决定，修改 SQLite、MySQL、PostgreSQL 的 `000037_seed_gateway` 和 `000040_seed_environment` up/down SQL，删除 Gateway、Version、Component、default Service、Route、Environment、deployment credential 等业务 seed；同步 migration fixture 和数量断言。
+- 按用户明确决定，修改 SQLite、MySQL、PostgreSQL 的 `000037_seed_gateway` up/down SQL，删除 Gateway、Version、Component、default Service、Route 等业务 seed；Environment 不再有 seed migration。
 - 在 `internal/application/project/usecase/service.go` 删除 `Environment.BootstrapForProject` 调用及其依赖注入，Project create 仅写入 Project/membership。
 - 删除或收敛仅为 Project 自动 bootstrap 服务的 public/usecase 入口，保留能由初始化 boundary 复用的 target 校验、持久化与 Probe 基础能力。
 
@@ -144,7 +144,7 @@ Mode: strict
 
 | 项目 | 处理方式 |
 | --- | --- |
-| 改写 `000037`/`000040` 已执行 seed | 这是用户明确要求的空库行为变更；只改变新库 seed。现有数据库通过新 schema migration 迁移，不补写或删除其已存在资源。 |
+| 重组 `000039`–`000042` | 按无兼容基线直接收敛最终 Environment schema，并将 GatewayConfig 清理保留为独立 migration；现有数据库由运维就地同步迁移版本记录。 |
 | 外部 Probe 失败 | Environment 与诊断保留，Wizard 重试，不将 Probe 放进 Gateway bundle 事务。 |
 | 初始化配置误作 runtime fallback | 以依赖注入边界和定向测试禁止 Gateway/Deployment/Route 从 `ProjectInitializationConfig` 读取。 |
 | MCP scope 漏检 | 每个项目级工具集中调用 scope/readiness/ownership helper，并用 schema 与跨 Project ID 测试锁定。 |

@@ -154,8 +154,8 @@
     >
       <form novalidate @submit.prevent="initialize">
         <EnvironmentBootstrapFields
-          v-model="initializeForm"
-          v-model:errors="initializeErrors"
+          :model-value="initializeForm"
+          :errors="initializeErrors"
           :disabled="operating"
           id-prefix="environment-bootstrap"
         />
@@ -183,8 +183,8 @@
     >
       <form novalidate @submit.prevent="save">
         <EnvironmentTargetFields
-          v-model="form"
-          v-model:errors="errors"
+          :model-value="form"
+          :errors="errors"
           show-state
           :disabled="operating"
           :local-workspace-root="environment?.local?.workspace_root || ''"

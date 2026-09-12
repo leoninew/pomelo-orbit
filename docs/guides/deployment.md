@@ -35,7 +35,7 @@ Environment 的 target type 是显式 `local | ssh`：
 
 Docker Engine/Compose（Windows 上包括 Docker Desktop、WSL2 Linux engine）是 SSH target 的外部前置条件。Linux 自动初始化会先检查配置 SSH user 的 Docker daemon/Compose、bootstrap user 的 passwordless `sudo` 及 OpenSSH 公钥认证能力；不满足时直接失败并给出诊断。它只按需写入 Orbit 的部署公钥和 `.pomelo-orbit` 工作目录，不安装、启停或配置 Docker/Compose/Docker Desktop/WSL，不修改 Docker 用户组、sshd、firewall 或 Docker 网络。
 
-Windows SSH target 保留已配置受管私钥后的 Probe 与运行时能力，但不提供自动初始化入口：普通 SSH 不能可靠完成 Windows UAC 提权。Windows Docker Desktop/WSL/OpenSSH 与受管公钥必须由目标主机的管理员预先配置。
+Windows SSH target 保留已配置受管私钥后的 Probe 与运行时能力。由于普通 SSH 不能可靠完成 Windows UAC 提权，Orbit 不提供自动特权初始化；Web Wizard 和已保存的 Windows SSH Environment detail 会提供可复制的 PowerShell helper，由用户在本地主机执行以写入受管公钥、创建工作目录并检查 WSL2/Docker Desktop/Linux containers/Compose。执行后仍须回到页面完成 SSH 测试和 Environment Probe。Windows Docker Desktop/WSL/OpenSSH 服务必须已由目标主机准备好。
 
 “环境”是独立页面，始终对应顶部当前 Project；项目详情可跳转到该页面。local Probe 只检查控制面 Docker 与 Docker Compose。SSH 首次 Probe 使用生成的私钥认证并记录当次 host key `SHA256:` fingerprint，后续 Probe 和部署严格校验该指纹。SSH Probe 随后运行固定的 Docker 先决条件检查：
 

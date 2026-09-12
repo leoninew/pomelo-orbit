@@ -11,7 +11,7 @@ Project 是部署运行边界。一个已完成配置的 Project 具有其唯一
 
 目标空库和 Project 切换流程统一为 Project 初始化 Wizard：打开 Project 时检查它是否已有完整的 Environment、Gateway 和默认 Gateway Service。缺失任一资源即跳转 Wizard，由它在当前 Project 内完成 local 或 SSH Environment 配置、Probe 与 Gateway 创建；Gateway 最终只进入待部署状态，不自动部署。切换至另一个未初始化 Project 时走同一 Wizard，而不是复用前一个 Project、进程 YAML 或本地 host 的资源。
 
-当前空库 seed 分散写入默认 Project 及一套默认部署资源：`000032_seed_identity` 写入用户进入系统所需的默认 Project 和 Project membership，`000037_seed_gateway` 写入完整 Gateway、Version、Service 和 Route，`000040_seed_environment` 写入绑定该 Gateway 的 Environment。默认 Project 是空库的进入点，应保留；部署资源则须由 Wizard 初始化。运行时另有 `project.Service.Create` 无条件调用 `Environment.BootstrapForProject`，而 Gateway 又可从 HTTP 或 MCP provision 创建。这些并列初始化路径造成默认值和数据来源分散。
+当前空库 seed 分散写入默认 Project 及一套默认部署资源：`000032_seed_identity` 写入用户进入系统所需的默认 Project 和 Project membership，`000037_seed_gateway` 写入完整 Gateway、Version、Service 和 Route。默认 Project 是空库的进入点，应保留；部署资源则须由 Wizard 初始化。Environment 不再由 seed migration 创建。运行时另有 `project.Service.Create` 无条件调用 `Environment.BootstrapForProject`，而 Gateway 又可从 HTTP 或 MCP provision 创建。这些并列初始化路径造成默认值和数据来源分散。
 
 Windows SSH 目标不能假定控制面已经能够使用部署公钥直接建立远程会话。用户需要在目标 Windows 主机上先执行一段由当前表单生成的 PowerShell 初始化命令，配置 OpenSSH authorized keys、Orbit 工作目录并检查 WSL2、Docker Desktop、Linux containers 和 Docker Compose；命令执行后再由页面测试 SSH 并运行完整 Probe。该命令必须能在 Environment 尚未保存或 SSH 公钥尚未可用时生成。
 
@@ -80,7 +80,7 @@ Web 的 `projectStore.activeProjectId` 只保存在浏览器 `localStorage`，Co
 | 阶段 | 当前实现 | 目标实现 |
 | --- | --- | --- |
 | 创建 Project | 无条件 `BootstrapForProject`，插入 active local Environment | 只创建 Project；Environment 和 Gateway 均不存在 |
-| 空库本地初始化 | `000032`、`000037`、`000040` 分别 seed 默认 Project、Gateway、Environment | `000032` 继续 seed 可进入系统的默认 Project 和 membership；`000037`、`000040` 不再 seed 部署资源。打开该未初始化 Project 后进入同一 Wizard；它以统一来源配置创建 Environment、完成 Probe、创建 Gateway 和默认 Service；结果为待部署 |
+| 空库本地初始化 | `000032`、`000037` 分别处理 identity 与历史 Gateway seed | `000032` 继续 seed 可进入系统的默认 Project 和 membership；`000037` 不再 seed 部署资源，Environment 无 seed migration。打开该未初始化 Project 后进入同一 Wizard；它以统一来源配置创建 Environment、完成 Probe、创建 Gateway 和默认 Service；结果为待部署 |
 | 切换到未配置 Project | 后端假定 Environment 存在，环境页会进入加载错误；Gateway 列表为空 | 项目打开即检查完整性并跳转 Wizard；不得读取任何其他 Project 或进程配置 |
 | 已配置 Project | Environment 的 Gateway binding 指向唯一 Gateway Application | 保持；部署运行时从该 Project 的 Environment、GatewayConfig 和 Gateway Version / Component 读取 |
 
@@ -137,7 +137,7 @@ Project 打开时尚未完成初始化会先进入 Wizard，因此 Web Dialogue 
 - [ ] 初始化来源配置是 Wizard 的唯一数据来源；它统一替代 `traefik.*`、Web form 常量和 Gateway/Environment 业务 seed，且不参与已初始化 Project 的运行时解析或 fallback。
 - [ ] 新建 Gateway 的 REST URL、base domain、readiness、入口/证书配置均由 Wizard 确认输入并持久化到 GatewayConfig；初始 image 来自 Gateway Version / Component 创建输入。
 - [ ] Gateway 初始 Component 名称固定为 `traefik`，初始 pull policy 固定为 `missing`；二者不属于初始化来源配置或 GatewayConfig。`traefik_component_name` 从 GatewayConfig、Gateway DTO 与更新入口移除，避免与 Version Component 漂移。
-- [ ] `000032_seed_identity` 继续插入空库进入系统所需的默认 Project 和 Project membership；`000037_seed_gateway` 与 `000040_seed_environment` 不再插入默认 Gateway/Service/Route/Environment；三种数据库的 seed 与迁移测试同步收敛。
+- [ ] `000032_seed_identity` 继续插入空库进入系统所需的默认 Project 和 Project membership；`000037_seed_gateway` 不再插入默认 Gateway/Service/Route，Environment 不再有 seed migration；三种数据库的 seed 与迁移测试同步收敛。
 - [ ] 新建 Project 不再自动创建 active local Environment。打开 Project 时检查完整初始化状态，缺失 Environment、Gateway 或 default Service 则跳转同一 Wizard。
 - [ ] Wizard 在当前 Project 完成 Environment 配置、Probe 和完整 Gateway/default Service 创建后返回待部署状态，不自动提交 Deployment；切换任一未初始化 Project 走同一流程。
 - [ ] 未初始化 Project 的 Web 页面不显示或复用运行时资源，直接进入 Wizard；已初始化 Project 的运行和部署只读取其持久化资源。

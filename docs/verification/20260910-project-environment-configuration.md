@@ -1,5 +1,5 @@
 # Project / Environment 配置归属、初始化与 MCP 验证
-最后修改时间: 2026-09-12 08:58:36
+最后修改时间: 2026-09-12 09:50:42
 
 Review status: Accepted
 
@@ -19,7 +19,7 @@ Web Wizard 与 Environment detail 复用同一个命令生成器和项目 Dialog
 
 ## Plan alignment
 
-计划中的配置迁移、seed 收敛、ProjectInitialization boundary、HTTP/proto 生成、Gateway/MCP 收敛、Web readiness guard 和活文档同步均已反映在当前工作区。计划中的 component-name migration 实际编号为 `000042`，已在计划文档中校正。
+计划中的配置迁移、seed 收敛、ProjectInitialization boundary、HTTP/proto 生成、Gateway/MCP 收敛、Web readiness guard 和活文档同步均已反映在当前工作区。Environment/Gateway migrations 已重组为 `000039`（最终 Environment schema）和 `000040`（GatewayConfig 废弃列清理）。
 
 计划后续追加的 Windows SSH 命令、保存前公钥读取和受管凭据重试复用，已同步补入 requirement、spec、plan 和本验证文档。
 
@@ -36,7 +36,7 @@ Web Wizard 与 Environment detail 复用同一个命令生成器和项目 Dialog
 
 预期变更区域为配置、Project/Environment/Gateway/MCP application、HTTP/proto、SQL migration、Web Wizard、测试和活文档。实际 diff 覆盖这些区域，并额外包含 Windows 命令共享组件、生成器测试、Environment detail 入口和部署公钥接口测试；这些扩展均直接服务于 Windows SSH 在公钥认证前无法连接的实际场景。
 
-当前工作树没有暂存内容，且包含 151 个已修改路径和 37 个未跟踪路径。范围内的新增路径包括 `docs/verification`、`internal/application/project_initialization`、Project Initialization HTTP/proto、三数据库 `000042` migration、Web Wizard/store/router 以及 Windows SSH helper。由于工作树本来就包含本任务的大范围变更，提交前仍需人工确认是否全部纳入同一个提交。
+上一版记录中的“151 个已修改路径和 37 个未跟踪路径”是提交前快照，不再代表当前仓库状态。相关实现已纳入当前 feature 分支的提交历史；本次文档同步只修正文档表述，不重新定义代码提交边界。
 
 ## Acceptance criteria checklist
 
@@ -64,15 +64,14 @@ Web Wizard 与 Environment detail 复用同一个命令生成器和项目 Dialog
 
 相对最初计划，Windows SSH helper 是根据实际使用反馈追加的范围：命令生成不再依赖 Environment 已保存或 SSH 公钥认证成功，并在命令中加入分阶段 Docker/Compose 检查。该扩展已写入 requirement/spec/plan，不属于未记录的隐式变更。
 
-本次未修改已执行的历史 migration；`000042` 作为新增 migration 删除 `gateway_config.traefik_component_name`。未新增多 Project 共用宿主的冲突防御，也未恢复任何全局 deployment workspace fallback。
+本次按无兼容基线重组 `000039`–`000042`：`000039` 直接建立最终 Environment schema，`000040` 独立删除 `gateway_config.traefik_component_name`，移除无效的 Environment seed/no-op 与重复 target-type migration。现有开发库迁移记录已就地收敛到新链。未新增多 Project 共用宿主的冲突防御，也未恢复任何全局 deployment workspace fallback。
 
 ## Risks and incomplete items
 
 - Windows 命令需要用户在本地主机 PowerShell 执行，并且目标 OpenSSH 服务必须允许该 SSH 用户建立初始会话；命令不能替代网络、防火墙或账户权限配置。
 - 生成命令前可能创建受管 `deployment-ssh` 凭据。该记录用于后续 Environment 保存并按 Project/name 复用，不应被当作临时数据删除。
-- 工作树变更范围较大且尚未暂存；提交前需要确认这些变更是否按一个 feature 提交，或按 schema/config、backend、frontend、docs 分拆。
-- 当前没有执行 `git add`、`git commit` 或 `git push`，因为“准备提交”未明确授权 Git 写操作。
+- 本记录不再维护提交前的暂存状态；Git 提交边界和当前工作树状态以仓库实际历史与 `git status` 为准。
 
 ## Conclusion
 
-实现与已接受 Requirement、Spec 和 Plan 对齐，Windows SSH 初始化和重复凭据重试两个追加场景已补入过程文档并完成验证。代码检查和测试通过，当前状态适合进入人工 diff 审查及暂存范围确认。
+实现与已接受 Requirement、Spec 和 Plan 对齐，Windows SSH 初始化和重复凭据重试两个追加场景已补入过程文档并完成验证。代码检查和测试通过；代码实现已进入当前 feature 分支提交历史，后续重点是实机初始化验证，Git 暂存状态不在本验证文档中维护。

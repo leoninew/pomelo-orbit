@@ -1,5 +1,5 @@
 # 部署环境目标验证记录
-最后修改时间: 2026-09-09 17:22:10
+最后修改时间: 2026-09-12 09:50:42
 
 Review status: Draft
 
@@ -7,10 +7,10 @@ Mode: strict
 
 ## Requirement alignment
 
-- Project 仍是资源归属和 active-project scope；每个 Project 在创建事务中获得一个 active `local` Environment，并绑定默认 Gateway。Project create 不再携带 SSH 环境配置或创建部署私钥。
+- Project 仍是资源归属和 active-project scope；Project create 只创建 Project/membership，Environment 与 Gateway 由唯一的 Project Initialization Wizard 创建。Project create 不携带 SSH 环境配置或创建部署私钥。
 - Environment 使用显式 `local | ssh` target type。local response 只给出控制面 workspace、平台、主机和用户；ssh response 才包含 SSH target、credential 与 host-key fingerprint。SSH loopback 未被重新解释为 local。
 - local runtime、SSH runtime、Probe、Compose、runtime/log 查询、Gateway network 和 Traefik Route 操作都经同一 target runtime dispatcher 执行。
-- Linux SSH 初始化接受一次性密码或私钥认证；runner 只检查 Docker/Compose、无交互 sudo 和 OpenSSH 公钥能力，按需写入 Orbit 部署公钥和工作目录，随后用受管私钥 Probe。认证不会持久化或回传；实现未安装/管理 Docker、Docker Compose、Desktop、WSL、Docker 用户组、sshd、firewall 或网络规则。Windows 不显示该入口。
+- Linux SSH 初始化接受一次性密码或私钥认证；runner 只检查 Docker/Compose、无交互 sudo 和 OpenSSH 公钥能力，按需写入 Orbit 部署公钥和工作目录，随后用受管私钥 Probe。认证不会持久化或回传；实现未安装/管理 Docker、Docker Compose、Desktop、WSL、Docker 用户组、sshd、firewall 或网络规则。Windows SSH 通过 Web 提供可复制的 PowerShell helper，执行后再由页面完成 SSH 测试和 Probe。
 
 ## Spec alignment
 
@@ -23,7 +23,7 @@ Mode: strict
 
 计划中的目标模型、运行时收敛、一次性 Linux 初始化、HTTP/MCP/Web、活文档和自动化测试均已在当前 diff 中覆盖。
 
-本轮验证前用户提出将 `000041` 合并进 `000040` 并同步开发库；该数据迁移整理已按指示暂缓。当前迁移仍保持 `000040` seed 加 `000041` target-type 演进，开发库仍为 clean version 41；本次暂存不把它表述为已完成的迁移合并。
+本轮按用户要求对 `000039`–`000042` 做职责重组：`000039` 直接建立最终 Environment schema，`000040` 独立处理 GatewayConfig 废弃列；Environment seed/no-op 与重复 target-type migration 已移除。现有开发库版本记录已就地同步到新链，不做旧版本兼容。
 
 ## Actual diff summary
 
@@ -37,7 +37,7 @@ Mode: strict
 
 | Expected scope | Result |
 | --- | --- |
-| Environment/Deployment target model、三方言迁移、SQLC | 已实现；`000041` 到 `000040` 的后续合并暂缓 |
+| Environment/Deployment target model、三方言迁移、SQLC | 已实现；迁移已重组为 `000039` + `000040` |
 | local/ssh runtime dispatch、Gateway/Route 一致执行 | 已实现并有 unit/integration coverage |
 | Linux SSH 一次性初始化与受管 key Probe | 已实现并有 runner/use case/HTTP 测试 |
 | Proto/HTTP/MCP/Web target discriminator | 已实现并已重新生成 Proto |
@@ -51,13 +51,13 @@ Mode: strict
 - [x] local Probe 检查本机 Docker prerequisites；SSH Probe 继续 pin host key。
 - [x] Linux SSH 初始化只执行前置检查、部署公钥和工作目录配置；不管理 Docker、sshd、firewall 或网络。
 - [x] Deployment snapshot 校验 target type/revision，SSH credential snapshot 只在 ssh 使用。
-- [x] default seed Project 为 local Environment，Gateway binding 保留且没有占位 SSH credential。
+- [x] identity seed 仅保留可进入系统的默认 Project/membership；空库不预建 Environment、Gateway 或占位 SSH credential。
 - [x] Project create 只接受名称和编码，并创建可继续配置的 local Environment。
 - [x] local response 直接取控制面平台/主机/用户；Web 仅在同平台 local-to-SSH 转换时预填主机和用户。
 - [x] 质量门与全量 Go 包测试通过。
 - [ ] Linux SSH 真实目标的写入式初始化与受管 key Probe。
 - [ ] Windows native OpenSSH + WSL2 Docker Desktop 的实机运行验证。
-- [ ] `000041` 合并进 `000040`，并将开发库迁移记录从 version 41 收敛到 version 40。
+- [x] 重组 `000039`–`000042`，并将开发库迁移记录就地收敛到新链版本。
 
 ## Validation results
 
@@ -77,7 +77,7 @@ Mode: strict
 ## Scope deviation
 
 - 相比旧验证记录，已移除“生成并复制安装命令”的实现与验收描述；当前行为是 Orbit 用用户一次性认证直接完成 Linux SSH 部署 key/workspace 初始化。
-- 数据迁移合并与开发库就地收敛是用户后续提出且暂缓的整理工作，不在本次验证完成范围内。
+- 数据迁移链已按无兼容基线完成重组，开发库版本记录已同步；不保留旧版本兼容路径。
 
 ## Risks
 
@@ -88,8 +88,8 @@ Mode: strict
 
 1. 在经授权的 Linux SSH 主机实际执行一次初始化和受管 key Probe。
 2. 在 Windows native OpenSSH + WSL2 Docker Desktop 主机实际执行部署与运行时查询。
-3. 合并 `000041` 到 `000040`，使用 dbtalk 将开发库 schema/migration 记录同步至合并后的版本。
+3. 无兼容迁移链重组已完成；剩余实机 SSH 初始化验证。
 
 ## Conclusion
 
-当前实现通过代码生成、格式、类型、静态分析和 Go 全量包测试，严格模式 Verification 记录保持 `Draft`，等待实机初始化验证及暂缓的数据迁移整理完成后再接受。
+当前实现通过代码生成、格式、类型、静态分析和 Go 全量包测试，严格模式 Verification 记录保持 `Draft`，等待实机初始化验证后再接受。

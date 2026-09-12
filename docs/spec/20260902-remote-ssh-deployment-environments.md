@@ -1,5 +1,5 @@
 # 部署环境目标规格
-最后修改时间: 2026-09-09 17:04:54
+最后修改时间: 2026-09-12 09:50:42
 
 Review status: Accepted
 
@@ -27,7 +27,7 @@ Environment 公共字段：`id`、`project_id`、`code`、`state`、`target_type
 
 Environment target type 可显式更新。任何 type 或适用 target configuration 改变均清空 Probe、递增 revision。local 不产生 SSH credential；ssh 产生受管部署密钥，首次成功 Probe 写入 host-key fingerprint。
 
-Linux `POST /api/project/:id/environment/initialize` 接收 bootstrap SSH username 与恰好一种一次性认证（密码或私钥，私钥口令可选）。它们仅用于本次 SSH session，绝不持久化、返回或记录。runner 首先验证配置部署 user 的 Docker daemon/Compose，再要求 bootstrap user 的 `sudo -n`、验证现有 OpenSSH 配置支持公钥认证，最后仅按需写入部署公钥和工作目录。它不安装、启停或配置 Docker/Compose/Docker Desktop/WSL，不修改 Docker 用户组、sshd、firewall 或 Docker 网络。操作成功后调用原有 Probe，以受管私钥验证连接并 pin host key。Windows 不提供该 endpoint 的可用操作，因为普通 SSH 无法可靠触发 UAC。
+Linux `POST /api/project/:id/environment/initialize` 接收 bootstrap SSH username 与恰好一种一次性认证（密码或私钥，私钥口令可选）。它们仅用于本次 SSH session，绝不持久化、返回或记录。runner 首先验证配置部署 user 的 Docker daemon/Compose，再要求 bootstrap user 的 `sudo -n`、验证现有 OpenSSH 配置支持公钥认证，最后仅按需写入部署公钥和工作目录。它不安装、启停或配置 Docker/Compose/Docker Desktop/WSL，不修改 Docker 用户组、sshd、firewall 或 Docker 网络。操作成功后调用原有 Probe，以受管私钥验证连接并 pin host key。Windows 不使用该 Linux bootstrap endpoint；Windows 通过 Web 生成的 PowerShell helper 写入受管公钥、创建工作目录并检查 WSL2/Docker Desktop/Linux containers/Compose，执行后再由页面测试和 Probe。
 
 Project creation 不接受 Environment payload。Project service 先创建 Project，再以同一 request transaction 调用 Environment bootstrap，固定写入 active local Environment；因此新 Project 的 Environment 页面始终有可继续编辑的记录。仅当用户在该页切为 ssh 时，Environment service 才创建部署 SSH credential。
 
@@ -55,11 +55,11 @@ Environment request/response 以 `target_type` 为 discriminator：
 - local update request 仅有 target type 与 state；response 返回 local target、控制面 workspace、运行平台、主机名、当前用户和 Probe 状态。编辑当前 local target 切到 ssh 时，Web 只在所选 SSH 平台与该平台相同的情况下带入主机名和当前用户。
 - ssh update request 在 SSH target object 内提交 platform/host/port/username/workspace root；response 只返回这些配置与 fingerprint。Linux initialization request 额外提交一次性连接认证，成功 response 是完成受管 key Probe 的 Environment；MCP 不接受或输出这类认证。
 
-Web 编辑器切换 type 时仅显示对应表单。active Linux SSH target 显示“初始化部署主机”表单，用户选择密码或私钥并提交；对话框关闭或成功后立即清空一次性认证。Windows 与 local 不显示自动初始化入口。Gateway 仍使用直接跳转到 `/gateway/:id` 的链接，不展示内部 application id。
+Web 编辑器切换 type 时仅显示对应表单。active Linux SSH target 显示“初始化部署主机”表单，用户选择密码或私钥并提交；对话框关闭或成功后立即清空一次性认证。Windows SSH target 显示可复制的 PowerShell helper，local 不显示 SSH 初始化入口；helper 执行后仍须完成页面 SSH 测试和 Probe。Gateway 仍使用直接跳转到 `/gateway/:id` 的链接，不展示内部 application id。
 
 ## Data and migration boundary
 
-新增 schema migration 使 Environment SSH-specific columns nullable，并新增 `target_type` 与 Deployment `environment_target_type`。migration 将已有 Environment 事实性地标为 `ssh`，这是数据模型升级；应用层不读取 legacy/null data 来决定执行器。default seed 在 migration 后收敛为 local，不创建 placeholder deployment SSH credential。
+重组后的 `000039` 直接建立最终 Environment schema：SSH-specific columns 可空，并包含 `target_type` 与 Deployment `environment_target_type`。本次不提供旧库兼容迁移或 legacy/null 推断；空库不创建 Environment 或 placeholder deployment SSH credential。
 
 ## Affected components
 

@@ -71,8 +71,6 @@ func (s Service) SaveInitialization(ctx context.Context, userID string, projectI
 			State: model.EnvironmentStateActive, TargetRevision: 1,
 			CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 		}
-	} else if item.GatewayApplicationId != nil {
-		return environmentdto.View{}, apperror.New(apperror.KindConflict, "Project environment is already bound to a gateway")
 	}
 	previous := item
 	item.State = model.EnvironmentStateActive

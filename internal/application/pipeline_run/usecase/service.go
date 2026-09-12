@@ -318,7 +318,11 @@ func (s Service) DeletePipelineRun(ctx context.Context, userId, runId string) er
 	if s.workspace == nil {
 		return apperror.New(apperror.KindInternal, "pipeline workspace is not configured")
 	}
-	if err := s.workspace.RemoveRunFiles(run.Id); err != nil {
+	workspace, err := s.workspaceForProject(ctx, run.ProjectId)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to resolve pipeline workspace", err)
+	}
+	if err := workspace.RemoveRunFiles(run.Id); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			s.warnPipelineRunFileCleanupSkipped(run.Id, "pipeline run file or directory does not exist")
 		} else {
@@ -329,6 +333,20 @@ func (s Service) DeletePipelineRun(ctx context.Context, userId, runId string) er
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run", err)
 	}
 	return nil
+}
+
+func (s Service) workspaceForProject(ctx context.Context, projectID *string) (pipelinerunport.Workspace, error) {
+	if s.workspace == nil {
+		return nil, errors.New("pipeline workspace is not configured")
+	}
+	resolver, ok := s.workspace.(pipelinerunport.ProjectWorkspaceResolver)
+	if !ok {
+		return s.workspace, nil
+	}
+	if projectID == nil || strings.TrimSpace(*projectID) == "" {
+		return nil, errors.New("pipeline run project is missing")
+	}
+	return resolver.WorkspaceForProject(ctx, strings.TrimSpace(*projectID))
 }
 
 func (s Service) ListPipelineRunArtifacts(ctx context.Context, userId, runId string) ([]model.Artifact, error) {
@@ -380,7 +398,11 @@ func (s Service) PipelineStageLog(ctx context.Context, userId, runID, stageRunID
 	if err != nil {
 		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stage run", err)
 	}
-	content, next, err := s.logStore.Read(s.workspace.StageLogPath(run.Id, stageRun.Id), offset)
+	workspace, err := s.workspaceForProject(ctx, run.ProjectId)
+	if err != nil {
+		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to resolve pipeline workspace", err)
+	}
+	content, next, err := s.logStore.Read(workspace.StageLogPath(run.Id, stageRun.Id), offset)
 	if err != nil {
 		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to read stage log", err)
 	}

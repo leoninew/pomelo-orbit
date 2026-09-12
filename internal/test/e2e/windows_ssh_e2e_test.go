@@ -88,12 +88,10 @@ func TestWindowsSSHEnvironmentHTTPIntegration(t *testing.T) {
 			Driver: config.DatabaseDriverSQLite,
 			SQLite: config.SQLiteConfig{Path: filepath.Join(t.TempDir(), "pomelo-orbit-e2e.db")},
 		},
-		Workspace: config.WorkspaceConfig{
-			Pipeline: t.TempDir(),
-		},
-		Logging: config.LoggingConfig{DeploymentRoot: t.TempDir()},
-		Worker:  config.WorkerConfig{MaxAttempts: 1},
-		Jwt:     config.JwtConfig{SecretKey: windowsSSHE2ESecret},
+		Workspace: config.WorkspaceConfig{Root: t.TempDir()},
+		Logging:   config.LoggingConfig{DeploymentRoot: t.TempDir()},
+		Worker:    config.WorkerConfig{MaxAttempts: 1},
+		Jwt:       config.JwtConfig{SecretKey: windowsSSHE2ESecret},
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	if err := bootstrap.New(cfg, logger).Migrate(); err != nil {

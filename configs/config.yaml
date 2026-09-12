@@ -33,7 +33,7 @@ database:
     dsn: ""
 
 workspace:
-  pipeline: data/pipeline
+  root: data
 
 orbit:
   root: .

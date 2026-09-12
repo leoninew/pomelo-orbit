@@ -79,6 +79,49 @@ func TestWorkspaceUsesResolvedPhysicalWorkspaceRootForDockerMounts(t *testing.T)
 	}
 }
 
+func TestWorkspaceForProjectDerivesPipelineChildFromEnvironmentRoot(t *testing.T) {
+	root := t.TempDir()
+	workspace := NewWithProjectResolver("unused", nil, func(_ context.Context, projectID string) (string, error) {
+		if projectID != "project-1" {
+			t.Fatalf("project ID = %q", projectID)
+		}
+		return root, nil
+	})
+	projectWorkspace, err := workspace.WorkspaceForProject(context.Background(), "project-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := projectWorkspace.(*Workspace).WorkspacePath("repo"); got != filepath.Join(root, "pipeline", "repo", "workspace") {
+		t.Fatalf("pipeline workspace path = %q", got)
+	}
+}
+
+func TestWorkspaceForProjectExpandsHomeEnvironmentRoot(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	workspace := NewWithProjectResolver("unused", nil, func(context.Context, string) (string, error) {
+		return "~/.pomelo-orbit", nil
+	})
+	projectWorkspace, err := workspace.WorkspaceForProject(context.Background(), "project-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := projectWorkspace.(*Workspace).WorkspacePath("repo")
+	want := filepath.Join(home, ".pomelo-orbit", "pipeline", "repo", "workspace")
+	if got != want {
+		t.Fatalf("pipeline workspace path = %q, want %q", got, want)
+	}
+	mounts, err := projectWorkspace.DockerStageMounts(context.Background(), "repo", "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mounts[0].HostPath != want || mounts[1].HostPath != filepath.Join(home, ".pomelo-orbit", "pipeline", "runs", "run-1", "artifacts") {
+		t.Fatalf("pipeline mounts = %+v", mounts)
+	}
+}
+
 func TestRemoveRunFilesRemovesOnlyRunDirectory(t *testing.T) {
 	workspaceRoot := t.TempDir()
 	workspace := NewWithResolver(workspaceRoot, nil)

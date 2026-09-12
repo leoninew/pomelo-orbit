@@ -154,7 +154,7 @@ func validateContainerWorkspaceMounts(ctx context.Context, cfg config.Config, ru
 		key  string
 		path string
 	}{
-		{key: "workspace.pipeline", path: cfg.Workspace.Pipeline},
+		{key: "workspace.root", path: cfg.Workspace.Root},
 		{key: "logging.deployment_root", path: cfg.Logging.DeploymentRoot},
 	} {
 		if _, err := resolver(ctx, workspace.path); err != nil {

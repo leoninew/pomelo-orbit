@@ -29,6 +29,10 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 	if err != nil {
 		return err
 	}
+	workspace, err := s.workspaceForProject(ctx, run.ProjectId)
+	if err != nil {
+		return s.failRun(ctx, run.Id, err.Error())
+	}
 	snapshot, err := s.executionStore.PipelineSnapshot(ctx, run.SnapshotId)
 	if err != nil {
 		return err
@@ -48,7 +52,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 		return s.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
 
-	if err := s.workspace.CreateRunDirectories(repo.Code, run.Id); err != nil {
+	if err := workspace.CreateRunDirectories(repo.Code, run.Id); err != nil {
 		return s.failRun(ctx, run.Id, err.Error())
 	}
 	stageRuns, err := s.executionStore.ListPipelineStageRuns(ctx, run.Id)
@@ -58,7 +62,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 
 	executionCtx, cancel := s.pipelineExecutionContext(ctx, run.Id)
 	defer cancel()
-	stageExecutor := Executor{store: s.executionStore, versionForker: s.versionForker, transactionRunner: s.transactionRunner, workspace: s.workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, executionTimeout: s.executionTimeout, runner: s.runner, localSource: s.localSource}
+	stageExecutor := Executor{store: s.executionStore, versionForker: s.versionForker, transactionRunner: s.transactionRunner, workspace: workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, executionTimeout: s.executionTimeout, runner: s.runner, localSource: s.localSource}
 	ok, message := stageExecutor.Execute(ctx, executionCtx, run, repo, variables, stages, stageRunByStageID(stageRuns))
 	current, err := s.executionStore.PipelineRun(ctx, run.Id)
 	if err != nil {

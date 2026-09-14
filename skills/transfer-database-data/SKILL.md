@@ -63,10 +63,12 @@ uv run --project scripts python scripts/database_transfer.py import \
 For PostgreSQL, use `--target postgresql --dsn-env <ENV_NAME>` with a
 `postgresql+psycopg://user:password@host:5432/database` DSN.
 
-`--project-id` is required for import too. The file's Project, Service,
-Application, and Routes must all belong to the current selected Project. Its
-Environment remains target-local and is not transferred, so SSH credentials,
-host settings, and workspace roots cannot overwrite the target Project.
+`--project-id` is required for import too and identifies the current selected
+target Project. Orbit validates the source Project closure, then binds its
+Application, Service, and Routes to that target without importing the source
+Project row. The target Project must already exist. Its Environment remains
+target-local and is not transferred, so SSH credentials, host settings, and
+workspace roots cannot overwrite the target Project.
 
 `--mode` is required. `insert` fails on any database constraint conflict;
 `upsert` updates existing primary-key rows. A schema initialized by the normal

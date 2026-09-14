@@ -304,19 +304,51 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             input_path = Path(directory) / "service.jsonl"
             transfer.write_transfer(input_path, selected)
+
+            def fake_run(command: list[str], **_: object) -> SimpleNamespace:
+                if command[1] == "query":
+                    return SimpleNamespace(
+                        returncode=0,
+                        stdout='{"rows":[{"id":"project-other"}]}',
+                    )
+                target_input = Path(command[command.index("--input") + 1])
+                target_transfer = transfer.load_transfer(target_input)
+                self.assertEqual(
+                    tuple(table.name for table in target_transfer.tables),
+                    transfer.SERVICE_TABLES,
+                )
+                project_table = next(
+                    table for table in target_transfer.tables if table.name == "project"
+                )
+                self.assertEqual(project_table.rows, ())
+                for table_name in ("application", "service", "route"):
+                    table_block = next(
+                        table
+                        for table in target_transfer.tables
+                        if table.name == table_name
+                    )
+                    project_index = table_block.column_names.index("project_id")
+                    self.assertTrue(
+                        all(
+                            row[project_index] == "project-other"
+                            for row in table_block.rows
+                        )
+                    )
+                return SimpleNamespace(returncode=0, stdout="")
+
             with (
                 patch.dict(os.environ, {}, clear=True),
                 patch.object(transfer.shutil, "which", return_value="dbtalk"),
                 patch.object(
                     transfer.subprocess,
                     "run",
-                    return_value=SimpleNamespace(returncode=0),
+                    side_effect=fake_run,
                 ) as run,
             ):
                 code = transfer.import_service(
                     SimpleNamespace(
                         target="sqlite",
-                        project_id="project-target",
+                        project_id="project-other",
                         input=input_path,
                         mode="insert",
                         dsn="sqlite:///./target.db",
@@ -326,7 +358,11 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                     )
                 )
         self.assertEqual(code, "target")
-        command = run.call_args.args[0]
+        self.assertEqual(run.call_count, 2)
+        project_query = run.call_args_list[0].args[0]
+        self.assertEqual(project_query[0:2], ["dbtalk", "query"])
+        self.assertIn('project_id="project-other"', project_query)
+        command = run.call_args_list[1].args[0]
         self.assertEqual(command[0:4], ["dbtalk", "import", "--target", "sqlite"])
         self.assertIn("--dsn", command)
         self.assertIn("sqlite:///./target.db", command)
@@ -463,7 +499,14 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                 patch.object(
                     transfer.subprocess,
                     "run",
-                    return_value=SimpleNamespace(returncode=0),
+                    side_effect=lambda command, **_: SimpleNamespace(
+                        returncode=0,
+                        stdout=(
+                            '{"rows":[{"id":"project-target"}]}'
+                            if command[1] == "query"
+                            else ""
+                        ),
+                    ),
                 ) as run,
             ):
                 transfer.import_service(
@@ -478,7 +521,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                         dbtalk_command="dbtalk",
                     )
                 )
-        command = run.call_args.args[0]
+        command = run.call_args_list[1].args[0]
         self.assertIn("upsert", command)
         self.assertIn("--dsn-env", command)
         self.assertIn("ORBIT_TEST_DSN", command)
@@ -532,17 +575,24 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                     )
         run.assert_not_called()
 
-    def test_import_rejects_a_transfer_from_another_project(self) -> None:
+    def test_import_rejects_an_unknown_target_project(self) -> None:
         selected = transfer.service_tables(
             fixture_transfer(), "project-target", "target"
         )
         with tempfile.TemporaryDirectory() as directory:
             input_path = Path(directory) / "service.jsonl"
             transfer.write_transfer(input_path, selected)
-            with patch.object(transfer.subprocess, "run") as run:
+            with (
+                patch.object(transfer.shutil, "which", return_value="dbtalk"),
+                patch.object(
+                    transfer.subprocess,
+                    "run",
+                    return_value=SimpleNamespace(returncode=0, stdout='{"rows":[]}'),
+                ) as run,
+            ):
                 with self.assertRaisesRegex(
                     transfer.ServiceTransferError,
-                    "service does not exist in project project-other",
+                    "target project does not exist: project-other",
                 ):
                     transfer.import_service(
                         SimpleNamespace(
@@ -556,7 +606,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                             dbtalk_command="dbtalk",
                         )
                     )
-        run.assert_not_called()
+        self.assertEqual(run.call_count, 1)
 
     def test_export_filters_service_tables_and_cleans_temporary_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -605,9 +655,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
             self.assertEqual(included_tables, list(transfer.SERVICE_TABLES))
             self.assertNotIn("--exclude-table", export_command)
             self.assertEqual(
-                transfer.validate_service_transfer(
-                    transfer.load_transfer(output), "project-target"
-                ),
+                transfer.validate_service_transfer(transfer.load_transfer(output)),
                 "target",
             )
 

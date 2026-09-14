@@ -48,9 +48,10 @@ uv run --project scripts python scripts/database_transfer.py import \
 `--target postgresql --dsn-env <ENV_NAME>`，其中环境变量值为
 `postgresql+psycopg://user:password@host:5432/database`。
 
-导入同样必须传入当前选中的 `--project-id`；文件中的 Project、Service、Application 和
-Route 必须全部属于该 Project。Project 的 Environment 是目标运行时配置，不包含在服务
-传输文件中，避免导入改变 SSH 凭据绑定、宿主机或工作区。
+导入的 `--project-id` 是当前选中的目标 Project。适配器先校验文件中的源 Project 闭包，
+再将 Application、Service 和 Route 绑定到目标 Project；源 Project 行不会写入目标数据库。
+目标 Project 必须存在。Project 的 Environment 是目标运行时配置，不包含在服务传输文件中，
+避免导入改变 SSH 凭据绑定、宿主机或工作区。
 
 必须显式指定 `--mode`。`insert` 遇到主键、唯一键或其他约束冲突时失败；`upsert`
 按文件中声明的主键或联合主键更新已有行。目标执行正常 Orbit 迁移后已包含种子

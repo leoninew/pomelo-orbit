@@ -16,7 +16,7 @@ app.use(router);
 app.use(i18n);
 app.use(VueMonacoEditorPlugin, {
   paths: {
-    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs',
+    vs: '/monaco/vs',
   },
 });
 app.mount('#app');

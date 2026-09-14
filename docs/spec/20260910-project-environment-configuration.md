@@ -15,7 +15,7 @@ Project 创建和空库 identity seed 只提供可进入系统的 Project 与 me
 
 Wizard 的唯一业务入口为 `ProjectInitialization` application boundary。它使用仅供初始化的进程配置生成默认输入，持久化完成后不再读取该配置。该 boundary 组合现有 Environment、Probe 和 Gateway factory 行为，但不把外部 Probe 放入数据库事务，也不维护第二份初始化进度数据。
 
-Windows SSH 目标增加一个辅助初始化命令流程。Web 使用当前表单的 Host、Port、SSH 用户和 Windows 工作目录生成本地主机 PowerShell；服务端按 Project 返回受管部署公钥，命令通过 SSH 在目标写入管理员或普通用户的 authorized keys、创建工作目录，并检查 WSL2 Docker Desktop distribution、Docker Engine、Linux containers、Docker Compose 和 daemon。该流程不要求 Environment 已保存或部署密钥认证已经成功；执行后由用户回到页面继续 SSH reachability test 和 Probe。
+Windows SSH 目标增加一个辅助初始化命令流程。Web 使用当前表单的 Host、Port、SSH 用户和 Windows 工作目录生成 PowerShell；用户须在目标 Windows 主机的管理员终端执行，命令安装并启动 OpenSSH Server、按当前端口创建防火墙规则，再通过 SSH 在目标写入管理员或普通用户的 authorized keys、创建工作目录，并检查 WSL2 Docker Desktop distribution、Docker Engine、Linux containers、Docker Compose 和 daemon。该流程不要求 Environment 已保存或部署密钥认证已经成功；执行后由用户回到页面继续 SSH reachability test 和 Probe。
 
 Codex stdio MCP 从未选择 Project 的状态启动。用户以 Project 名称声明目标，Codex 先列出可见 Project，以唯一 name 匹配，必要时请用户提供唯一 code，再以内部 `project_id` 调用 `orbit_select_project`。成功结果确认 Project、Environment 和 Gateway readiness；后续工具从当前 connection scope 取得 Project。Web Dialogue 在 client 创建时以页面请求的 Project 预先完成相同 scope 选择，仍不建立网页跨 Project 流程。
 

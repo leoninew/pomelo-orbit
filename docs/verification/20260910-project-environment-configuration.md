@@ -7,7 +7,7 @@ Mode: strict
 
 ## Requirement alignment
 
-本次实现覆盖已接受需求中的 Project 初始化边界、Environment/Gateway 配置归属、MCP connection-local Project scope、空库 seed 收敛，以及未初始化 Project 的 Web Wizard 路由。新增的 Windows SSH 辅助流程补齐了需求中的实际部署前置：Windows 主机可在 SSH 公钥认证尚未建立时，通过当前表单生成并执行 PowerShell 命令，完成部署公钥、工作目录和 Docker 前置检查。
+本次实现覆盖已接受需求中的 Project 初始化边界、Environment/Gateway 配置归属、MCP connection-local Project scope、空库 seed 收敛，以及未初始化 Project 的 Web Wizard 路由。新增的 Windows SSH 辅助流程补齐了需求中的实际部署前置：用户可在目标 Windows 主机的管理员 PowerShell 中执行当前表单生成的命令，自动安装/启动 OpenSSH、放行端口，并在 SSH 公钥认证尚未建立时完成部署公钥、工作目录和 Docker 前置检查。
 
 环境保存失败后的重试也已纳入需求闭环。受管 `deployment-ssh` 凭据按 Project 和名称复用，避免部分失败留下的凭据在下一次保存时触发唯一约束；非受管同名凭据仍保持冲突语义。
 
@@ -44,7 +44,7 @@ Web Wizard 与 Environment detail 复用同一个命令生成器和项目 Dialog
 - [x] 空库保留 identity Project/membership seed，删除默认部署资源 seed；新建 Project 不自动创建 Environment。
 - [x] 未初始化 Project 进入 Wizard；初始化完成后 Gateway 保持待部署状态并返回原项目页面。
 - [x] Wizard 的 Environment、Probe、Gateway 三步使用派生状态，Probe 失败保留诊断并允许重试。
-- [x] Windows SSH 命令可在保存/测试前生成，使用当前 Host、Port、SSH 用户和 workspace，支持复制，并在远端检查部署公钥、工作目录和 Docker 前置。
+- [x] Windows SSH 命令可在保存/测试前生成，使用当前 Host、Port、SSH 用户和 workspace，支持复制，并负责安装/启动 OpenSSH、放行端口，再检查部署公钥、工作目录和 Docker 前置。
 - [x] Environment detail 对已保存 Windows SSH target 展示同一初始化命令入口；Linux 继续使用现有自动连接/初始化路径。
 - [x] 保存失败后重试复用受管 `deployment-ssh`；非受管同名凭据返回冲突。
 - [x] MCP 使用显式 Project selection 和 connection-local scope，不为运行时工具继续传递 `project_id`，也不提供 Gateway 初始化工具。
@@ -68,7 +68,7 @@ Web Wizard 与 Environment detail 复用同一个命令生成器和项目 Dialog
 
 ## Risks and incomplete items
 
-- Windows 命令需要用户在本地主机 PowerShell 执行，并且目标 OpenSSH 服务必须允许该 SSH 用户建立初始会话；命令不能替代网络、防火墙或账户权限配置。
+- Windows 命令需要用户在目标 Windows 主机的管理员 PowerShell 执行；命令负责安装/启动 OpenSSH Server、放行配置端口并通过 SSH 建立初始会话。Docker Desktop、WSL2 和账户权限仍需目标主机满足。
 - 生成命令前可能创建受管 `deployment-ssh` 凭据。该记录用于后续 Environment 保存并按 Project/name 复用，不应被当作临时数据删除。
 - 本记录不再维护提交前的暂存状态；Git 提交边界和当前工作树状态以仓库实际历史与 `git status` 为准。
 

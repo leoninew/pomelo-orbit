@@ -69,9 +69,9 @@ for ($index = 0; $index -lt $sshdConfigLines.Length; $index++) {
 if ($matchIndex -lt 0) {
   throw 'OpenSSH Server configuration has no global Match boundary.'
 }
-$globalLines = @($sshdConfigLines[0..($matchIndex - 1)] | Where-Object { $_ -notmatch '^\\s*(?:#?\\s*)?(?:Port|ListenAddress)\\b' })
+$globalLines = @($sshdConfigLines[0..($matchIndex - 1)] | Where-Object { $_ -notmatch '^\\s*(?:#?\\s*)?(?:Port|ListenAddress|PubkeyAuthentication)\\b' })
 $matchLines = @($sshdConfigLines[$matchIndex..($sshdConfigLines.Length - 1)])
-$sshdConfigLines = @('Port ${port}', 'ListenAddress 0.0.0.0', 'ListenAddress ::') + $globalLines + $matchLines
+$sshdConfigLines = @('Port ${port}', 'ListenAddress 0.0.0.0', 'ListenAddress ::', 'PubkeyAuthentication yes') + $globalLines + $matchLines
 Set-Content -LiteralPath $sshdConfig -Value $sshdConfigLines -Encoding ascii
 $sshKeygenExe = Join-Path $env:WINDIR 'System32\\OpenSSH\\ssh-keygen.exe'
 & $sshKeygenExe -A | Out-Null
@@ -111,25 +111,37 @@ Write-Host ${powershellSingleQuote(`Target ${username}@${host}:${port}`)}
 $setupScript = @'
 $ErrorActionPreference = 'Stop'
 $key = ${powershellSingleQuote(key)}
+$targetUsername = ${powershellSingleQuote(username)}
 $workspace = ${powershellSingleQuote(workspace)}
-$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-$principal = [Security.Principal.WindowsPrincipal]::new($identity)
-$isAdministrator = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if ($isAdministrator) {
-  $authorizedKeys = Join-Path $env:ProgramData 'ssh\\administrators_authorized_keys'
-  New-Item -ItemType Directory -Force -Path (Split-Path $authorizedKeys) | Out-Null
-} else {
-  $sshDir = Join-Path $env:USERPROFILE '.ssh'
-  $authorizedKeys = Join-Path $sshDir 'authorized_keys'
-  New-Item -ItemType Directory -Force -Path $sshDir | Out-Null
+try {
+  $targetAccount = [Security.Principal.NTAccount]::new($targetUsername)
+  $targetSid = $targetAccount.Translate([Security.Principal.SecurityIdentifier]).Value
+} catch {
+  throw "Configured SSH user '$targetUsername' could not be resolved to a Windows account."
 }
-if (-not (Test-Path -LiteralPath $authorizedKeys) -or -not (Select-String -LiteralPath $authorizedKeys -SimpleMatch -Quiet -Pattern $key)) {
-  Add-Content -LiteralPath $authorizedKeys -Value $key
+$targetProfile = Get-CimInstance -ClassName Win32_UserProfile -Filter "SID='$targetSid'" | Select-Object -First 1
+if (-not $targetProfile -or [string]::IsNullOrWhiteSpace($targetProfile.LocalPath)) {
+  throw "Configured SSH user '$targetUsername' does not have a local Windows profile."
 }
-if ($isAdministrator) {
-  icacls $authorizedKeys /inheritance:r /grant:r '*S-1-5-32-544:F' /grant:r '*S-1-5-18:F' | Out-Null
+function Add-DeploymentKey([string]$path) {
+  New-Item -ItemType Directory -Force -Path (Split-Path $path) | Out-Null
+  if (-not (Test-Path -LiteralPath $path) -or -not (Select-String -LiteralPath $path -SimpleMatch -Quiet -Pattern $key)) {
+    Add-Content -LiteralPath $path -Value $key
+  }
 }
+$sshDir = Join-Path $targetProfile.LocalPath '.ssh'
+$authorizedKeys = Join-Path $sshDir 'authorized_keys'
+Add-DeploymentKey $authorizedKeys
+$targetDirectoryAcl = '*' + $targetSid + ':(OI)(CI)F'
+$targetFileAcl = '*' + $targetSid + ':F'
+icacls $sshDir /inheritance:r /grant:r $targetDirectoryAcl /grant:r '*S-1-5-18:(OI)(CI)F' | Out-Null
+icacls $authorizedKeys /inheritance:r /grant:r $targetFileAcl /grant:r '*S-1-5-18:F' | Out-Null
+$administratorsAuthorizedKeys = Join-Path $env:ProgramData 'ssh\\administrators_authorized_keys'
+Add-DeploymentKey $administratorsAuthorizedKeys
+icacls $administratorsAuthorizedKeys /inheritance:r /grant:r '*S-1-5-32-544:F' /grant:r '*S-1-5-18:F' | Out-Null
 New-Item -ItemType Directory -Force -Path $workspace | Out-Null
+$workspaceAcl = '*' + $targetSid + ':(OI)(CI)M'
+icacls $workspace /grant:r $workspaceAcl /grant:r '*S-1-5-18:(OI)(CI)F' | Out-Null
 Write-Host '[1/3] Orbit deployment key and workspace are configured.'
 Write-Host '[2/3] Checking WSL2 and Docker Desktop...'
 $distros = (& wsl.exe -l -v | Out-String) -replace [char]0, ''

@@ -908,7 +908,8 @@
         runtimeLogTarget.value = runtimeTargetForService(
           current,
           selectedService.id,
-          selectedService.instance_key
+          selectedService.instance_key,
+          result.deployment_id
         );
       });
     } catch (err: unknown) {
@@ -924,12 +925,14 @@
   function runtimeTargetForService(
     current: GatewayResp,
     serviceId: string,
-    instanceKey: string
+    instanceKey: string,
+    deploymentId?: string
   ): RuntimeContainerLogTarget {
     return {
       applicationId: current.id,
       serviceId,
       component: MANAGED_GATEWAY_COMPONENT_NAME,
+      deploymentId,
       title: t('service.logs.titleWithComponent', {
         app: current.name,
         instance: instanceKey,

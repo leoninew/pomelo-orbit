@@ -1,6 +1,6 @@
 ---
 name: transfer-database-data
-description: "Export or import one Pomelo Orbit service deployment closure through the installed dbtalk database JSONL CLI."
+description: "Export or import one Pomelo Orbit service deployment closure for the current Project through the installed dbtalk database JSONL CLI."
 ---
 
 # Transfer An Orbit Service
@@ -26,14 +26,16 @@ migration tool or a remote filesystem backup.
 ```bash
 uv run --project scripts python scripts/database_transfer.py export \
   --source sqlite --dsn sqlite:///./data/db/pomelo-orbit.db \
+  --project-id <current-project-id> \
   --service-code <service-code> \
   --output data/<service-code>-<timestamp>.jsonl --tz UTC
 ```
 
 For MySQL or PostgreSQL, use `--source mysql --dsn-env <ENV_NAME>` or
 `--source postgresql --dsn-env <ENV_NAME>`. PostgreSQL DSNs use
-`postgresql+psycopg://user:password@host:5432/database`. Orbit asks dbtalk for
-the service closure tables, selects the requested service's project,
+`postgresql+psycopg://user:password@host:5432/database`. `--project-id` is the
+current selected Project. Orbit asks dbtalk for the service closure tables,
+selects the requested service within that project,
 application, version lineage, components, Gateway configuration, service
 overrides, and routes, then writes the service JSONL file. The temporary dbtalk
 export is removed automatically.
@@ -54,11 +56,17 @@ final service transfer an explicit, service-specific path such as
 ```bash
 uv run --project scripts python scripts/database_transfer.py import \
   --target sqlite --dsn sqlite:///./data/db/pomelo-orbit.db \
+  --project-id <current-project-id> \
   --input service.jsonl --mode upsert --tz UTC
 ```
 
 For PostgreSQL, use `--target postgresql --dsn-env <ENV_NAME>` with a
 `postgresql+psycopg://user:password@host:5432/database` DSN.
+
+`--project-id` is required for import too. The file's Project, Service,
+Application, and Routes must all belong to the current selected Project. Its
+Environment remains target-local and is not transferred, so SSH credentials,
+host settings, and workspace roots cannot overwrite the target Project.
 
 `--mode` is required. `insert` fails on any database constraint conflict;
 `upsert` updates existing primary-key rows. A schema initialized by the normal

@@ -71,10 +71,22 @@ def fixture_transfer(
         ),
         "service": table(
             "service",
-            ("id", "application_id", "version_id", "code"),
+            ("id", "project_id", "application_id", "version_id", "code"),
             (
-                ("service-target", "application-target", "version-current", "target"),
-                ("service-other", "application-other", "version-other", "other"),
+                (
+                    "service-target",
+                    "project-target",
+                    "application-target",
+                    "version-current",
+                    "target",
+                ),
+                (
+                    "service-other",
+                    "project-other",
+                    "application-other",
+                    "version-other",
+                    "target",
+                ),
             ),
         ),
         "service_env": table(
@@ -164,13 +176,13 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
         source = fixture_transfer(
             source_order=tuple(reversed(tuple(table.name for table in default.tables)))
         )
-        selected = transfer.service_tables(source, "target")
+        selected = transfer.service_tables(source, "project-target", "target")
 
         self.assertEqual(
             tuple(table.name for table in selected.tables), transfer.SERVICE_TABLES
         )
         self.assertEqual(
-            selected.tables[transfer.SERVICE_TABLES.index("service")].rows[0][3],
+            selected.tables[transfer.SERVICE_TABLES.index("service")].rows[0][4],
             "target",
         )
         for selected_table in selected.tables:
@@ -190,7 +202,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
         with self.assertRaisesRegex(
             transfer.ServiceTransferError, "missing required tables"
         ):
-            transfer.service_tables(missing, "target")
+            transfer.service_tables(missing, "project-target", "target")
 
         components = next(t for t in source.tables if t.name == "service_component")
         broken = table(
@@ -208,7 +220,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
         with self.assertRaisesRegex(
             transfer.ServiceTransferError, "missing version component"
         ):
-            transfer.service_tables(broken_transfer, "target")
+            transfer.service_tables(broken_transfer, "project-target", "target")
 
     def test_rejects_lineage_cycle_and_cross_application(self) -> None:
         source = fixture_transfer()
@@ -227,7 +239,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
             tuple(cycle if t.name == "version" else t for t in source.tables),
         )
         with self.assertRaisesRegex(transfer.ServiceTransferError, "cyclic"):
-            transfer.service_tables(cyclic, "target")
+            transfer.service_tables(cyclic, "project-target", "target")
 
         cross = table(
             versions.name,
@@ -245,10 +257,50 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
         with self.assertRaisesRegex(
             transfer.ServiceTransferError, "crosses applications"
         ):
-            transfer.service_tables(crossed, "target")
+            transfer.service_tables(crossed, "project-target", "target")
+
+    def test_rejects_inconsistent_service_project_reference(self) -> None:
+        source = fixture_transfer()
+        services = next(table for table in source.tables if table.name == "service")
+        inconsistent = table(
+            services.name,
+            services.column_names,
+            (
+                (
+                    "service-target",
+                    "project-target",
+                    "application-other",
+                    "version-current",
+                    "target",
+                ),
+                (
+                    "service-other",
+                    "project-other",
+                    "application-other",
+                    "version-other",
+                    "target",
+                ),
+            ),
+        )
+        with self.assertRaisesRegex(
+            transfer.ServiceTransferError, "inconsistent project references"
+        ):
+            transfer.service_tables(
+                transfer.TransferFile(
+                    source.header,
+                    tuple(
+                        inconsistent if table.name == "service" else table
+                        for table in source.tables
+                    ),
+                ),
+                "project-target",
+                "target",
+            )
 
     def test_import_requires_exact_service_file_and_forwards_insert(self) -> None:
-        selected = transfer.service_tables(fixture_transfer(), "target")
+        selected = transfer.service_tables(
+            fixture_transfer(), "project-target", "target"
+        )
         with tempfile.TemporaryDirectory() as directory:
             input_path = Path(directory) / "service.jsonl"
             transfer.write_transfer(input_path, selected)
@@ -264,6 +316,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                 code = transfer.import_service(
                     SimpleNamespace(
                         target="sqlite",
+                        project_id="project-target",
                         input=input_path,
                         mode="insert",
                         dsn="sqlite:///./target.db",
@@ -290,6 +343,8 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                         "import",
                         "--target",
                         "sqlite",
+                        "--project-id",
+                        "project-target",
                         "--input",
                         "service.jsonl",
                         "--dsn",
@@ -303,6 +358,8 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                 "import",
                 "--target",
                 "sqlite",
+                "--project-id",
+                "project-target",
                 "--input",
                 "service.jsonl",
                 "--mode",
@@ -319,6 +376,8 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                 "import",
                 "--target",
                 "postgresql",
+                "--project-id",
+                "project-target",
                 "--input",
                 "service.jsonl",
                 "--mode",
@@ -332,6 +391,8 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                 "export",
                 "--source",
                 "postgresql",
+                "--project-id",
+                "project-target",
                 "--service-code",
                 "target",
                 "--output",
@@ -342,6 +403,37 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
         )
         self.assertEqual(import_args.target, "postgresql")
         self.assertEqual(export_args.source, "postgresql")
+
+    def test_cli_requires_project_id_for_export_and_import(self) -> None:
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                transfer.parse_args(
+                    [
+                        "export",
+                        "--source",
+                        "sqlite",
+                        "--service-code",
+                        "target",
+                        "--output",
+                        "service.jsonl",
+                        "--dsn",
+                        "sqlite:///./source.db",
+                    ]
+                )
+            with self.assertRaises(SystemExit):
+                transfer.parse_args(
+                    [
+                        "import",
+                        "--target",
+                        "sqlite",
+                        "--input",
+                        "service.jsonl",
+                        "--mode",
+                        "upsert",
+                        "--dsn",
+                        "sqlite:///./target.db",
+                    ]
+                )
 
     def test_connection_arguments_require_one_available_dsn_source(self) -> None:
         with self.assertRaisesRegex(transfer.ServiceTransferError, "exactly one"):
@@ -355,7 +447,9 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                 transfer.connection_arguments(None, "ORBIT_TEST_DSN")
 
     def test_import_forwards_upsert_and_dsn_variable_name(self) -> None:
-        selected = transfer.service_tables(fixture_transfer(), "target")
+        selected = transfer.service_tables(
+            fixture_transfer(), "project-target", "target"
+        )
         with tempfile.TemporaryDirectory() as directory:
             input_path = Path(directory) / "service.jsonl"
             transfer.write_transfer(input_path, selected)
@@ -375,6 +469,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                 transfer.import_service(
                     SimpleNamespace(
                         target="mysql",
+                        project_id="project-target",
                         input=input_path,
                         mode="upsert",
                         dsn=None,
@@ -391,13 +486,23 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
         self.assertIn("Asia/Shanghai", command)
 
     def test_invalid_input_is_rejected_before_dbtalk_runs(self) -> None:
-        selected = transfer.service_tables(fixture_transfer(), "target")
+        selected = transfer.service_tables(
+            fixture_transfer(), "project-target", "target"
+        )
         service = next(table for table in selected.tables if table.name == "service")
         multiple_services = table(
             service.name,
             service.column_names,
             service.rows
-            + (("service-extra", "application-target", "version-current", "extra"),),
+            + (
+                (
+                    "service-extra",
+                    "project-target",
+                    "application-target",
+                    "version-current",
+                    "extra",
+                ),
+            ),
         )
         invalid = transfer.TransferFile(
             selected.header,
@@ -416,6 +521,33 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                     transfer.import_service(
                         SimpleNamespace(
                             target="sqlite",
+                            project_id="project-target",
+                            input=input_path,
+                            mode="insert",
+                            dsn="sqlite:///./target.db",
+                            dsn_env=None,
+                            tz="UTC",
+                            dbtalk_command="dbtalk",
+                        )
+                    )
+        run.assert_not_called()
+
+    def test_import_rejects_a_transfer_from_another_project(self) -> None:
+        selected = transfer.service_tables(
+            fixture_transfer(), "project-target", "target"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            input_path = Path(directory) / "service.jsonl"
+            transfer.write_transfer(input_path, selected)
+            with patch.object(transfer.subprocess, "run") as run:
+                with self.assertRaisesRegex(
+                    transfer.ServiceTransferError,
+                    "service does not exist in project project-other",
+                ):
+                    transfer.import_service(
+                        SimpleNamespace(
+                            target="sqlite",
+                            project_id="project-other",
                             input=input_path,
                             mode="insert",
                             dsn="sqlite:///./target.db",
@@ -444,6 +576,7 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                 result = transfer.export_service(
                     SimpleNamespace(
                         source="sqlite",
+                        project_id="project-target",
                         service_code="target",
                         output=output,
                         dsn="sqlite:///./source.db",
@@ -472,7 +605,9 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
             self.assertEqual(included_tables, list(transfer.SERVICE_TABLES))
             self.assertNotIn("--exclude-table", export_command)
             self.assertEqual(
-                transfer.validate_service_transfer(transfer.load_transfer(output)),
+                transfer.validate_service_transfer(
+                    transfer.load_transfer(output), "project-target"
+                ),
                 "target",
             )
 

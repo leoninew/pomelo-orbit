@@ -97,6 +97,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     exporter.add_argument(
         "--source", choices=("sqlite", "mysql", "postgresql"), required=True
     )
+    exporter.add_argument("--project-id", required=True)
     exporter.add_argument("--service-code", required=True)
     exporter.add_argument("--output", type=Path, required=True)
     connection = exporter.add_mutually_exclusive_group(required=True)
@@ -111,6 +112,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     importer.add_argument(
         "--target", choices=("sqlite", "mysql", "postgresql"), required=True
     )
+    importer.add_argument("--project-id", required=True)
     importer.add_argument("--input", type=Path, required=True)
     importer.add_argument("--mode", choices=("insert", "upsert"), required=True)
     connection = importer.add_mutually_exclusive_group(required=True)
@@ -322,7 +324,9 @@ def one_row_where(table: TableBlock, column: str, value: str) -> tuple[Any, ...]
     return rows[0]
 
 
-def service_tables(transfer: TransferFile, service_code: str) -> TransferFile:
+def service_tables(
+    transfer: TransferFile, project_id: str, service_code: str
+) -> TransferFile:
     available = table_map(transfer)
     missing = [name for name in SERVICE_TABLES if name not in available]
     if missing:
@@ -332,23 +336,30 @@ def service_tables(transfer: TransferFile, service_code: str) -> TransferFile:
 
     service_table = require_table(available, "service")
     service_code_index = require_column(service_table, "code")
+    service_project_index = require_column(service_table, "project_id")
     service_rows = [
         row
         for row in service_table.rows
         if value_key(row[service_code_index]) == service_code
+        and value_key(row[service_project_index]) == project_id
     ]
     if not service_rows:
-        raise ServiceTransferError(f"service does not exist: {service_code}")
+        raise ServiceTransferError(
+            f"service does not exist in project {project_id}: {service_code}"
+        )
     if len(service_rows) > 1:
-        raise ServiceTransferError(f"service code is not unique: {service_code}")
+        raise ServiceTransferError(
+            f"service code is not unique in project {project_id}: {service_code}"
+        )
 
     service = dict(zip(service_table.column_names, service_rows[0], strict=True))
     service_id = value_key(service.get("id"))
+    service_project_id = value_key(service.get("project_id"))
     application_id = value_key(service.get("application_id"))
     version_id = value_key(service.get("version_id"))
-    if not service_id or not application_id or not version_id:
+    if not service_id or not service_project_id or not application_id or not version_id:
         raise ServiceTransferError(
-            "service row has incomplete application/version references"
+            "service row has incomplete project/application/version references"
         )
 
     application_table = require_table(available, "application")
@@ -359,9 +370,13 @@ def service_tables(transfer: TransferFile, service_code: str) -> TransferFile:
             strict=True,
         )
     )
-    project_id = value_key(application.get("project_id"))
-    if not project_id:
+    application_project_id = value_key(application.get("project_id"))
+    if not application_project_id:
         raise ServiceTransferError("application row has no project reference")
+    if service_project_id != project_id or application_project_id != project_id:
+        raise ServiceTransferError(
+            f"service {service_code} has inconsistent project references"
+        )
     one_row_where(require_table(available, "project"), "id", project_id)
 
     version_table = require_table(available, "version")
@@ -463,7 +478,7 @@ def service_tables(transfer: TransferFile, service_code: str) -> TransferFile:
     return TransferFile(header=transfer.header, tables=tuple(selected))
 
 
-def validate_service_transfer(transfer: TransferFile) -> str:
+def validate_service_transfer(transfer: TransferFile, project_id: str) -> str:
     if tuple(table.name for table in transfer.tables) != SERVICE_TABLES:
         raise ServiceTransferError(
             "service transfer has an unexpected table set or order"
@@ -475,7 +490,7 @@ def validate_service_transfer(transfer: TransferFile) -> str:
     service_code = value_key(service_table.rows[0][code_index])
     if not service_code:
         raise ServiceTransferError("service transfer service code is empty")
-    selected = service_tables(transfer, service_code)
+    selected = service_tables(transfer, project_id, service_code)
     if selected.tables != transfer.tables:
         raise ServiceTransferError(
             "service transfer contains rows outside its deployment closure"
@@ -546,7 +561,9 @@ def export_service(args: argparse.Namespace) -> Path:
             ],
             operation="export",
         )
-        selected = service_tables(load_transfer(service_export), args.service_code)
+        selected = service_tables(
+            load_transfer(service_export), args.project_id, args.service_code
+        )
         write_transfer(output, selected)
     return output
 
@@ -554,7 +571,7 @@ def export_service(args: argparse.Namespace) -> Path:
 def import_service(args: argparse.Namespace) -> str:
     input_path = args.input.resolve()
     transfer = load_transfer(input_path)
-    service_code = validate_service_transfer(transfer)
+    service_code = validate_service_transfer(transfer, args.project_id)
     connection = connection_arguments(args.dsn, args.dsn_env)
     run_dbtalk(
         args.dbtalk_command,

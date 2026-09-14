@@ -276,7 +276,9 @@
   }
 
   function resetForm() {
-    if (!environment.value) return;
+    if (!environment.value) {
+      return;
+    }
     Object.assign(form, hydrateEnvironmentForm(environment.value));
     assignTargetFormErrors(errors, emptyEnvironmentFormErrors());
     submitError.value = '';
@@ -336,7 +338,9 @@
   async function openWindowsCommand() {
     const projectId = projectStore.activeProjectId;
     const target = environment.value?.ssh;
-    if (!projectId || !isWindowsSSH.value || !target) return;
+    if (!projectId || !isWindowsSSH.value || !target) {
+      return;
+    }
     showWindowsCommandDialog.value = true;
     loadingWindowsCommand.value = true;
     windowsCommand.value = '';
@@ -379,9 +383,13 @@
 
   async function initialize() {
     initializeSubmitError.value = '';
-    if (!validateInitialize()) return;
+    if (!validateInitialize()) {
+      return;
+    }
     const projectId = projectStore.activeProjectId;
-    if (!projectId) return;
+    if (!projectId) {
+      return;
+    }
     const input = environmentBootstrapRequestFromForm(initializeForm);
     try {
       await executeOperation(async () => {
@@ -397,9 +405,13 @@
 
   async function save() {
     submitError.value = '';
-    if (!validate()) return;
+    if (!validate()) {
+      return;
+    }
     const projectId = projectStore.activeProjectId;
-    if (!projectId) return;
+    if (!projectId) {
+      return;
+    }
     const input = environmentUpdateRequestFromForm(form);
     try {
       await executeOperation(async () => {
@@ -418,7 +430,9 @@
 
   async function probe() {
     const projectId = projectStore.activeProjectId;
-    if (!environment.value || !projectId) return;
+    if (!environment.value || !projectId) {
+      return;
+    }
     try {
       await executeOperation(async () => {
         const result = await projectEnvironmentApi.probe(projectId);
@@ -443,6 +457,8 @@
   );
 
   watch(isInitializeDialogOpen, (open) => {
-    if (!open) resetInitializeForm();
+    if (!open) {
+      resetInitializeForm();
+    }
   });
 </script>

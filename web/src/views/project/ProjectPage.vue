@@ -238,7 +238,9 @@
 
   function validate() {
     errors.name = form.name.trim() ? '' : t('project.nameRequired');
-    if (editingProject.value) return !errors.name;
+    if (editingProject.value) {
+      return !errors.name;
+    }
     errors.code = /^[a-z0-9_-]+$/.test(form.code) ? '' : t('project.codeInvalid');
     return !errors.name && !errors.code;
   }

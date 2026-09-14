@@ -753,8 +753,9 @@
     return items.find((item) => select(item) === key);
   }
   function draftFromResponse(value: ServiceComponentDetailResp) {
-    if (!value.version_component || !value.service_component)
+    if (!value.version_component || !value.service_component) {
       throw new Error('service component detail is incomplete');
+    }
     const declaration = value.version_component;
     const component = value.service_component;
     Object.assign(runtimeDraft.entrypoint, {
@@ -872,7 +873,9 @@
   }
   function componentEnvironmentPayload(): ServiceComponentOverlayUpdateReq {
     const component = detail.value?.service_component;
-    if (!component) throw new Error('service component detail is incomplete');
+    if (!component) {
+      throw new Error('service component detail is incomplete');
+    }
     return {
       entrypoint: component.entrypoint,
       command: component.command,
@@ -1167,7 +1170,9 @@
         ? optional(runtimeDraft.restart_policy.value)
         : undefined,
       env: environmentRows.value.flatMap((row) => {
-        if (row.deleted) return [{ key: row.key, state: 'deleted' }];
+        if (row.deleted) {
+          return [{ key: row.key, state: 'deleted' }];
+        }
         return row.overridden ? [{ key: row.key, value: row.value, state: 'override' }] : [];
       }),
       mounts: mountRows.value.map((row) =>

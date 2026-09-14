@@ -240,7 +240,9 @@
 
   function updatePlatform(value: string | number) {
     const platform = String(value) as EnvironmentPlatform;
-    if (platform === form.value.platform) return;
+    if (platform === form.value.platform) {
+      return;
+    }
     Object.assign(form.value, applyEnvironmentPlatform(form.value, platform, props.localDisplay));
     errors.value.workspaceRoot = '';
     errors.value.host = '';

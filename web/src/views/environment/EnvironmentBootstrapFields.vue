@@ -149,7 +149,9 @@
   }
 
   function selectAuth(authType: EnvironmentBootstrapAuthType) {
-    if (form.value.authType === authType) return;
+    if (form.value.authType === authType) {
+      return;
+    }
     form.value.authType = authType;
     form.value.password = '';
     form.value.privateKey = '';

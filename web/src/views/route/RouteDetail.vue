@@ -661,7 +661,9 @@
 
   async function loadGatewayForLogs(applicationId: string) {
     gatewayForLogs.value = undefined;
-    if (!applicationId) return;
+    if (!applicationId) {
+      return;
+    }
     try {
       gatewayForLogs.value = await gatewayApi.get(applicationId);
     } catch {
@@ -949,7 +951,9 @@
   }
 
   async function openGatewayLogs() {
-    if (!gatewayRuntimeLogTarget.value) return;
+    if (!gatewayRuntimeLogTarget.value) {
+      return;
+    }
     isGatewayLogsDrawerOpen.value = true;
   }
 

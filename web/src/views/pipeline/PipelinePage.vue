@@ -482,7 +482,9 @@
 
   async function loadInstantiationOptions() {
     const projectId = projectStore.activeProjectId;
-    if (!projectId) return;
+    if (!projectId) {
+      return;
+    }
     const [applicationResponse, repositoryResponse] = await Promise.all([
       applicationApi.list({ project_id: projectId, per_page: 100 }),
       repositoryApi.list({ project_id: projectId, per_page: 100 }),
@@ -550,7 +552,9 @@
   async function savePipelineInfo() {
     const pipeline = editingPipeline.value;
     editError.value = editForm.name.trim() ? '' : '请输入流水线名称';
-    if (!pipeline || editError.value) return;
+    if (!pipeline || editError.value) {
+      return;
+    }
     const payload: {
       name: string;
       description: string;
@@ -582,7 +586,9 @@
       createError.value = '请先选择项目';
       return;
     }
-    if (createError.value) return;
+    if (createError.value) {
+      return;
+    }
     try {
       await executeOperation(async () => {
         const pipeline = await pipelineApi.create(
@@ -634,8 +640,12 @@
   }
 
   function resetArtifactBindings() {
-    for (const key of Object.keys(artifactBindings)) delete artifactBindings[key];
-    for (const key of Object.keys(artifactBindingErrors)) delete artifactBindingErrors[key];
+    for (const key of Object.keys(artifactBindings)) {
+      delete artifactBindings[key];
+    }
+    for (const key of Object.keys(artifactBindingErrors)) {
+      delete artifactBindingErrors[key];
+    }
   }
 
   async function changeInstantiationApplication(value: ComboboxOptionValue) {
@@ -647,7 +657,9 @@
     versions.value = [];
     sourceVersion.value = undefined;
     sourceVersionError.value = '';
-    if (!instantiateForm.applicationId) return;
+    if (!instantiateForm.applicationId) {
+      return;
+    }
     try {
       const response = await applicationApi.listVersions(instantiateForm.applicationId, {
         per_page: 100,
@@ -678,7 +690,9 @@
   async function loadSourceVersion() {
     sourceVersion.value = undefined;
     sourceVersionError.value = '';
-    if (!instantiateForm.applicationId) return;
+    if (!instantiateForm.applicationId) {
+      return;
+    }
     const versionId =
       instantiateForm.versionForkStrategy === 'fixed'
         ? instantiateForm.fixedVersionId
@@ -703,7 +717,9 @@
 
   async function openInstantiationFromQuery(templateID: unknown) {
     const id = typeof templateID === 'string' ? templateID.trim() : '';
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     try {
       const template = await pipelineApi.get(id);
       if (template.kind !== 'template') {
@@ -720,7 +736,9 @@
   }
 
   async function instantiate() {
-    for (const key of Object.keys(artifactBindingErrors)) delete artifactBindingErrors[key];
+    for (const key of Object.keys(artifactBindingErrors)) {
+      delete artifactBindingErrors[key];
+    }
     const selectedComponents = new Map<string, string>();
     for (const artifact of dockerArtifacts.value) {
       const componentName = String(artifactBindings[artifact.key] || '').trim();
@@ -760,8 +778,9 @@
       !template ||
       Object.values(instantiateErrors).some(Boolean) ||
       Object.values(artifactBindingErrors).some(Boolean)
-    )
+    ) {
       return;
+    }
     try {
       await executeOperation(async () => {
         const pipeline = await pipelineApi.instantiate(template.id, {
@@ -799,7 +818,9 @@
         await pipelineApi.delete(pendingDeleteId.value);
         toast.success('流水线已删除');
         deleteOpen.value = false;
-        if (pipelines.value.length === 1 && pagination.current > 1) pagination.current -= 1;
+        if (pipelines.value.length === 1 && pagination.current > 1) {
+          pagination.current -= 1;
+        }
         await fetchPipelines();
       });
     } catch (reason) {

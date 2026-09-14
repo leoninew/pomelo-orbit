@@ -340,8 +340,12 @@
     }
   );
   const containerLogMessage = computed(() => {
-    if (containerLogStatus.value === 'not_applicable') return '停止操作不展示容器日志。';
-    if (containerLogStatus.value === 'waiting_for_operation') return '等待操作完成后拉取容器日志。';
+    if (containerLogStatus.value === 'not_applicable') {
+      return '停止操作不展示容器日志。';
+    }
+    if (containerLogStatus.value === 'waiting_for_operation') {
+      return '等待操作完成后拉取容器日志。';
+    }
     return '';
   });
   const containerLogError = computed(() =>
@@ -550,9 +554,13 @@
   }
 
   function revealLastLine(ed: editor.IStandaloneCodeEditor | null) {
-    if (!ed) return;
+    if (!ed) {
+      return;
+    }
     const n = ed.getModel()?.getLineCount() ?? 0;
-    if (n > 0) ed.revealLine(n);
+    if (n > 0) {
+      ed.revealLine(n);
+    }
   }
 
   function handleOperationLogEditorMount(ed: editor.IStandaloneCodeEditor) {

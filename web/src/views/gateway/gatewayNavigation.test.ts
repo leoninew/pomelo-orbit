@@ -129,7 +129,9 @@ describe('Gateway detail editing', () => {
 
     const nameInput = document.querySelector<HTMLInputElement>('#gateway-edit-name');
     expect(nameInput).not.toBeNull();
-    if (!nameInput) throw new Error('Gateway name input is missing');
+    if (!nameInput) {
+      throw new Error('Gateway name input is missing');
+    }
     nameInput.value = 'Traefik edge';
     nameInput.dispatchEvent(new Event('input', { bubbles: true }));
     await flushRender();

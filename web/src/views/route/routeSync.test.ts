@@ -106,7 +106,9 @@ describe('Route detail synchronization', () => {
 
     const nameInput = document.querySelector<HTMLInputElement>('.app-dialog-content input');
     expect(nameInput).not.toBeNull();
-    if (!nameInput) throw new Error('Route name input is missing');
+    if (!nameInput) {
+      throw new Error('Route name input is missing');
+    }
     nameInput.value = 'api-route-edited';
     nameInput.dispatchEvent(new Event('input', { bubbles: true }));
     await flushRender();

@@ -342,7 +342,9 @@
   }
 
   function openBasicEdit() {
-    if (!stage.value) return;
+    if (!stage.value) {
+      return;
+    }
     Object.assign(basicForm, {
       name: stage.value.name,
       image: stage.value.image,
@@ -355,7 +357,9 @@
   async function saveBasic() {
     basicErrors.name = basicForm.name.trim() ? '' : '请输入阶段名称';
     basicErrors.image = basicForm.image.trim() ? '' : '请输入执行镜像';
-    if (basicErrors.name || basicErrors.image) return;
+    if (basicErrors.name || basicErrors.image) {
+      return;
+    }
     try {
       await executeSave(async () => {
         stage.value = await pipelineStageApi.update(stageId(), {
@@ -378,7 +382,9 @@
   }
 
   async function copyScript() {
-    if (!stage.value) return;
+    if (!stage.value) {
+      return;
+    }
     try {
       await navigator.clipboard.writeText(stage.value.script);
       toast.success('脚本已复制到剪贴板');
@@ -416,7 +422,9 @@
   }
 
   function clearArtifactErrors() {
-    for (const key of Object.keys(artifactErrors) as ArtifactError[]) artifactErrors[key] = '';
+    for (const key of Object.keys(artifactErrors) as ArtifactError[]) {
+      artifactErrors[key] = '';
+    }
   }
 
   function openArtifact(index = -1) {
@@ -461,16 +469,24 @@
 
   async function saveArtifact() {
     clearArtifactErrors();
-    if (!artifactForm.name.trim()) artifactErrors.name = '请输入制品名称';
-    if (!artifactCollectors.includes(artifactForm.collector))
+    if (!artifactForm.name.trim()) {
+      artifactErrors.name = '请输入制品名称';
+    }
+    if (!artifactCollectors.includes(artifactForm.collector)) {
       artifactErrors.collector = '请选择收集器';
-    if (artifactForm.collector === 'command' && !artifactForm.command.trim())
+    }
+    if (artifactForm.collector === 'command' && !artifactForm.command.trim()) {
       artifactErrors.command = '请输入制品命令';
-    if (artifactForm.collector === 'command' && !artifactForm.format)
+    }
+    if (artifactForm.collector === 'command' && !artifactForm.format) {
       artifactErrors.format = '请选择输出格式';
-    if (artifactForm.collector !== 'command' && !artifactForm.reference.trim())
+    }
+    if (artifactForm.collector !== 'command' && !artifactForm.reference.trim()) {
       artifactErrors.reference = '请输入制品引用';
-    if (Object.values(artifactErrors).some(Boolean) || !stage.value) return;
+    }
+    if (Object.values(artifactErrors).some(Boolean) || !stage.value) {
+      return;
+    }
 
     const artifact = normalizedArtifact();
     const artifacts =
@@ -491,7 +507,9 @@
   }
 
   async function removeArtifact(index: number) {
-    if (!stage.value) return;
+    if (!stage.value) {
+      return;
+    }
     try {
       await executeSave(async () => {
         stage.value = await pipelineStageApi.update(stageId(), {

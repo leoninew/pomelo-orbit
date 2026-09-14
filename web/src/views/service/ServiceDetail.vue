@@ -406,7 +406,9 @@
   const runtimeLogTarget = ref<RuntimeContainerLogTarget>();
   const deployTargetLabel = computed(() => {
     const current = service.value;
-    if (!current) return '';
+    if (!current) {
+      return '';
+    }
     const application = current.application_name;
     return t('service.detail.subtitle', {
       instance: `${application} / ${current.instance_key || 'default'}`,
@@ -472,7 +474,9 @@
 
   async function openBasicEditDialog() {
     const current = service.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     Object.assign(basicEditForm, {
       version_id: current.version_id,
       instance_key: current.instance_key,
@@ -515,7 +519,9 @@
     basicEditSubmitError.value = '';
     basicEditErrors.version_id = versionId ? '' : t('service.create.versionRequired');
     basicEditErrors.instance_key = instanceKey ? '' : t('service.create.instanceKeyRequired');
-    if (basicEditErrors.version_id || basicEditErrors.instance_key) return;
+    if (basicEditErrors.version_id || basicEditErrors.instance_key) {
+      return;
+    }
     try {
       await executeOperation(async () => {
         const updated = await serviceApi.updateBasic(serviceId, {
@@ -578,7 +584,9 @@
 
   function openLogsDrawer(component: string) {
     const current = service.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     runtimeLogTarget.value = {
       applicationId: current.application_id,
       serviceId: current.id,
@@ -594,7 +602,9 @@
 
   async function openDeployDialog() {
     const current = service.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     try {
       const page = await applicationApi.listVersions(current.application_id, { per_page: 100 });
       deployVersions.value = page.items ?? [];
@@ -633,10 +643,14 @@
 
   async function handleDeployOk() {
     const current = service.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     deploySubmitError.value = '';
     deployVersionError.value = deployForm.version_id ? '' : t('service.deploy.versionRequired');
-    if (deployVersionError.value) return;
+    if (deployVersionError.value) {
+      return;
+    }
     try {
       await executeOperation(async () => {
         let serviceForDeploy = current;
@@ -651,10 +665,14 @@
           force_recreate: deployForm.force_recreate,
           join_traefik_network: deployForm.join_traefik_network,
         });
-        for (const warning of result.warnings) toast.error(warning);
+        for (const warning of result.warnings) {
+          toast.error(warning);
+        }
         toast.success(t('service.toast.deployQueued'));
         closeDeployDialog();
-        if (result.deployment_id) await router.push(`/deployment/${result.deployment_id}`);
+        if (result.deployment_id) {
+          await router.push(`/deployment/${result.deployment_id}`);
+        }
       });
     } catch (error) {
       deploySubmitError.value =
@@ -698,7 +716,9 @@
   }
 
   function openDeleteDialog() {
-    if (!canDeleteService.value) return;
+    if (!canDeleteService.value) {
+      return;
+    }
     deleteError.value = '';
     isDeleteDialogOpen.value = true;
   }

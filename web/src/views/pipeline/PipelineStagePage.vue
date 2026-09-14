@@ -164,7 +164,9 @@
 
   async function fetchStages() {
     const projectId = projectStore.activeProjectId;
-    if (!projectId) return;
+    if (!projectId) {
+      return;
+    }
     await execute(async () => {
       const response = await pipelineStageApi.list({
         project_id: projectId,
@@ -208,7 +210,9 @@
       name: form.name.trim() ? '' : '请输入阶段名称',
       image: form.image.trim() ? '' : '请输入执行镜像',
     });
-    if (Object.values(errors).some(Boolean)) return;
+    if (Object.values(errors).some(Boolean)) {
+      return;
+    }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
       formError.value = '请先选择项目';
@@ -236,7 +240,9 @@
   }
   async function remove() {
     const stage = pendingDelete.value;
-    if (!stage) return;
+    if (!stage) {
+      return;
+    }
     try {
       await executeOperation(async () => {
         await pipelineStageApi.delete(stage.id);

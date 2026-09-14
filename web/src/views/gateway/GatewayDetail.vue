@@ -571,7 +571,9 @@
   const isGatewayLogsDrawerOpen = computed({
     get: () => runtimeLogTarget.value !== undefined,
     set: (open) => {
-      if (!open) runtimeLogTarget.value = undefined;
+      if (!open) {
+        runtimeLogTarget.value = undefined;
+      }
     },
   });
   const gatewayRuntimeLogTarget = computed(() => {
@@ -638,7 +640,9 @@
   }
 
   function replaceErrors(target: GatewayConfigFormErrors, next: GatewayConfigFormErrors) {
-    for (const field of Object.keys(target)) delete target[field];
+    for (const field of Object.keys(target)) {
+      delete target[field];
+    }
     Object.assign(target, next);
   }
 
@@ -649,7 +653,9 @@
   ) {
     const next: GatewayConfigFormErrors = {};
     for (const field of fields) {
-      if (errors[field]) next[field] = errors[field];
+      if (errors[field]) {
+        next[field] = errors[field];
+      }
     }
     replaceErrors(target, next);
   }
@@ -660,7 +666,9 @@
 
   function openControlPlaneEditDialog() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     const form = gatewayConfigFormFromResponse(current);
     Object.assign(controlPlaneForm, {
       name: form.name,
@@ -675,7 +683,9 @@
 
   async function saveControlPlane() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     controlPlaneSubmitError.value = '';
     const form = gatewayConfigFormFromResponse(current);
     Object.assign(form, controlPlaneForm);
@@ -686,7 +696,9 @@
       'rest_ready_timeout_seconds',
       'base_domain',
     ]);
-    if (Object.keys(controlPlaneErrors).length > 0) return;
+    if (Object.keys(controlPlaneErrors).length > 0) {
+      return;
+    }
     try {
       await executeOp(async () => {
         gateway.value = await gatewayApi.update(current.id, {
@@ -706,7 +718,9 @@
 
   function openIngressEditDialog() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     Object.assign(ingressForm, {
       default_entrypoint: current.default_entrypoint,
       tls_mode: current.tls_mode,
@@ -718,13 +732,17 @@
 
   async function saveIngressDefaults() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     ingressSubmitError.value = '';
     const form = gatewayConfigFormFromResponse(current);
     Object.assign(form, ingressForm);
     const errors = validateGatewayConfigForm(form, 'edit');
     keepSectionErrors(ingressErrors, errors, ['default_entrypoint', 'tls_mode']);
-    if (Object.keys(ingressErrors).length > 0) return;
+    if (Object.keys(ingressErrors).length > 0) {
+      return;
+    }
     try {
       await executeOp(async () => {
         gateway.value = await gatewayApi.update(current.id, {
@@ -742,7 +760,9 @@
 
   function openCertificateEditDialog() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     Object.assign(certificateForm, {
       acme_profile: current.acme_profile as GatewayAcmeProfile,
       acme_email: current.acme_email,
@@ -763,14 +783,20 @@
 
   async function saveRouteCertificates() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     certificateSubmitError.value = '';
     const form = gatewayConfigFormFromResponse(current);
     Object.assign(form, certificateForm);
     const errors = validateGatewayConfigForm(form, 'edit');
-    if (errors.tls_mode) errors.acme_profile = errors.tls_mode;
+    if (errors.tls_mode) {
+      errors.acme_profile = errors.tls_mode;
+    }
     keepSectionErrors(certificateErrors, errors, ['acme_profile', 'acme_email', 'dns_api_token']);
-    if (Object.keys(certificateErrors).length > 0) return;
+    if (Object.keys(certificateErrors).length > 0) {
+      return;
+    }
     try {
       await executeOp(async () => {
         gateway.value = await gatewayApi.update(current.id, {
@@ -874,7 +900,9 @@
         const result = await serviceApi.deploy(selectedService.id, {
           force_recreate: deployForm.force_recreate,
         });
-        for (const warning of result.warnings) toast.error(warning);
+        for (const warning of result.warnings) {
+          toast.error(warning);
+        }
         toast.success(t('gateway.toast.deployQueued'));
         isDeployDialogOpen.value = false;
         runtimeLogTarget.value = runtimeTargetForService(

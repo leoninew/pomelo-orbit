@@ -117,20 +117,30 @@ export function validateGatewayConfigForm(
   mode: GatewayConfigFormMode
 ): GatewayConfigFormErrors {
   const errors: GatewayConfigFormErrors = {};
-  if (mode === 'edit' && !form.name.trim()) errors.name = 'nameRequired';
+  if (mode === 'edit' && !form.name.trim()) {
+    errors.name = 'nameRequired';
+  }
   if (mode === 'initialize' && !form.initial_component_image.trim()) {
     errors.initial_component_image = 'imageRequired';
   }
-  if (!isValidURL(form.rest_api_url.trim())) errors.rest_api_url = 'restApiUrlInvalid';
-  if (!isValidBaseDomain(form.base_domain.trim())) errors.base_domain = 'baseDomainInvalid';
+  if (!isValidURL(form.rest_api_url.trim())) {
+    errors.rest_api_url = 'restApiUrlInvalid';
+  }
+  if (!isValidBaseDomain(form.base_domain.trim())) {
+    errors.base_domain = 'baseDomainInvalid';
+  }
   if (!isValidTimeout(form.rest_ready_timeout_seconds)) {
     errors.rest_ready_timeout_seconds = 'restReadyTimeoutInvalid';
   }
   if (!['web', 'websecure'].includes(form.default_entrypoint)) {
     errors.default_entrypoint = 'defaultEntrypointInvalid';
   }
-  if (!['none', 'tls', 'letsencrypt'].includes(form.tls_mode)) errors.tls_mode = 'tlsModeInvalid';
-  if (!isGatewayAcmeProfile(form.acme_profile)) errors.acme_profile = 'acmeProfileInvalid';
+  if (!['none', 'tls', 'letsencrypt'].includes(form.tls_mode)) {
+    errors.tls_mode = 'tlsModeInvalid';
+  }
+  if (!isGatewayAcmeProfile(form.acme_profile)) {
+    errors.acme_profile = 'acmeProfileInvalid';
+  }
   if (form.acme_profile !== '' && !isValidEmail(form.acme_email.trim())) {
     errors.acme_email = 'acmeEmailInvalid';
   }

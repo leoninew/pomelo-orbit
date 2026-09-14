@@ -627,7 +627,9 @@
 
   function selectStageTemplate(value: ComboboxOptionValue) {
     const stage = stageTemplates.value.find((item) => item.id === String(value));
-    if (!stage) return;
+    if (!stage) {
+      return;
+    }
     Object.assign(stageForm, {
       name: stage.name,
       description: stage.description,
@@ -635,7 +637,9 @@
   }
 
   async function openInfoDialog() {
-    if (!pipeline.value) return;
+    if (!pipeline.value) {
+      return;
+    }
     Object.assign(infoForm, {
       name: pipeline.value.name,
       description: pipeline.value.description,
@@ -668,7 +672,9 @@
     infoErrors.name = infoForm.name.trim() ? '' : '请输入流水线名称';
     infoErrors.applicationId = '';
     infoError.value = '';
-    if (infoErrors.name) return;
+    if (infoErrors.name) {
+      return;
+    }
     const payload: {
       name: string;
       description: string;
@@ -722,7 +728,9 @@
     const saved = pipelineCustomVariables.value.find(
       (item) => variableScopeKey(item) === variableScopeKey(variable)
     );
-    if (!saved) return;
+    if (!saved) {
+      return;
+    }
     Object.assign(variableForm, {
       name: saved.name,
       value: displayVariableValue(effectiveVariableValue(variable)),
@@ -738,7 +746,9 @@
   }
 
   function openOverrideVariableDialog(variable: VariableDeclarationResp) {
-    if (variable.source !== 'pipeline_stage') return;
+    if (variable.source !== 'pipeline_stage') {
+      return;
+    }
     Object.assign(variableForm, {
       name: variable.name,
       value: displayVariableValue(effectiveVariableValue(variable)),
@@ -764,7 +774,9 @@
           )
         ? '变量名已存在'
         : '';
-    if (variableError.value) return;
+    if (variableError.value) {
+      return;
+    }
     const variable: VariableDeclarationReq = {
       name,
       description: variableForm.description.trim(),
@@ -836,7 +848,9 @@
   }
 
   async function openTemplateUpdate() {
-    if (!editingStage.value) return;
+    if (!editingStage.value) {
+      return;
+    }
     templateUpdateOpen.value = true;
     templateUpdateLoading.value = true;
     templateUpdatePreview.value = undefined;
@@ -875,7 +889,9 @@
   async function applyTemplateUpdate() {
     const preview = templateUpdatePreview.value;
     const stage = editingStage.value;
-    if (!preview || !stage) return;
+    if (!preview || !stage) {
+      return;
+    }
     try {
       await executeSave(async () => {
         pipeline.value = await pipelineApi.updateStageTemplate(pipelineId.value, stage.id, {
@@ -894,7 +910,9 @@
 
   async function updateOutdatedStages() {
     const stages = [...outdatedStages.value];
-    if (stages.length === 0) return;
+    if (stages.length === 0) {
+      return;
+    }
 
     let skippedCount = 0;
     updatingStages.value = true;
@@ -944,7 +962,9 @@
         : !stageForm.name.trim()
           ? '请输入阶段名称'
           : '';
-    if (stageError.value) return;
+    if (stageError.value) {
+      return;
+    }
     const payload = {
       name: stageForm.name.trim(),
       depends_on: [...stageForm.depends_on],
@@ -960,7 +980,7 @@
             sort_order: payload.sort_order,
             description: payload.description,
           });
-        } else
+        } else {
           pipeline.value = await pipelineApi.importStage(pipelineId.value, {
             source_template_stage_id: stageForm.source_template_stage_id,
             name: payload.name,
@@ -968,6 +988,7 @@
             depends_on: payload.depends_on,
             sort_order: payload.sort_order,
           });
+        }
         stageOpen.value = false;
         toast.success('阶段已保存');
       });
@@ -991,7 +1012,9 @@
 
   async function openRunDialog() {
     const repositoryId = pipeline.value?.repository_id;
-    if (!repositoryId) return;
+    if (!repositoryId) {
+      return;
+    }
 
     const request = ++runDialogRequest;
     runForm.repositoryRef = '';
@@ -1002,16 +1025,21 @@
     runOpen.value = true;
     try {
       const repository = await repositoryApi.get(repositoryId);
-      if (request !== runDialogRequest) return;
+      if (request !== runDialogRequest) {
+        return;
+      }
       const repositoryRef = repository.variable_declarations.find(
         (variable) => variable.name === 'repository_ref'
       );
       runForm.repositoryRef = displayVariableValue(repositoryRef?.value ?? repositoryRef?.default);
     } catch (reason) {
-      if (request === runDialogRequest)
+      if (request === runDialogRequest) {
         runLoadError.value = reason instanceof Error ? reason.message : '加载仓库分支失败';
+      }
     } finally {
-      if (request === runDialogRequest) runLoading.value = false;
+      if (request === runDialogRequest) {
+        runLoading.value = false;
+      }
     }
   }
 
@@ -1019,7 +1047,9 @@
     const repositoryRef = runForm.repositoryRef.trim();
     runFieldError.value = repositoryRef ? '' : '请输入分支或标签';
     runError.value = '';
-    if (runLoading.value || runLoadError.value || runFieldError.value) return;
+    if (runLoading.value || runLoadError.value || runFieldError.value) {
+      return;
+    }
     try {
       await executeSave(async () => {
         const run = await pipelineRunApi.trigger(pipelineId.value, {
@@ -1055,7 +1085,9 @@
     void fetchPipeline();
   });
   watch(runOpen, (open) => {
-    if (open) return;
+    if (open) {
+      return;
+    }
     runDialogRequest += 1;
     runForm.repositoryRef = '';
     runFieldError.value = '';

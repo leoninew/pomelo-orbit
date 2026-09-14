@@ -197,7 +197,9 @@
   }
   async function loadPipelines() {
     const projectId = projectStore.activeProjectId;
-    if (!projectId) return;
+    if (!projectId) {
+      return;
+    }
     const response = await pipelineApi.list({
       project_id: projectId,
       kind: 'application',

@@ -516,9 +516,13 @@
   }
 
   function revealLastLine(ed: editor.IStandaloneCodeEditor | null) {
-    if (!ed) return;
+    if (!ed) {
+      return;
+    }
     const n = ed.getModel()?.getLineCount() ?? 0;
-    if (n > 0) ed.revealLine(n);
+    if (n > 0) {
+      ed.revealLine(n);
+    }
   }
 
   function handleStageLogEditorMount(ed: editor.IStandaloneCodeEditor) {

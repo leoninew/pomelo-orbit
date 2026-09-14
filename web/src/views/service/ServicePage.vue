@@ -728,7 +728,9 @@
           force_recreate: deployForm.force_recreate,
           join_traefik_network: deployForm.join_traefik_network,
         });
-        for (const warning of result.warnings) toast.error(warning);
+        for (const warning of result.warnings) {
+          toast.error(warning);
+        }
         toast.success(t('service.toast.deployQueued'));
         isDeployDialogOpen.value = false;
         if (result.deployment_id) {

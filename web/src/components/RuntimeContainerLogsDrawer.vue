@@ -77,11 +77,15 @@
         },
         { signal }
       );
-      if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) return;
+      if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) {
+        return;
+      }
       logText.value = data.logs;
       status.value = logText.value ? (isAutoRefreshing.value ? 'streaming' : 'done') : 'empty';
     } catch (error) {
-      if (signal?.aborted) return;
+      if (signal?.aborted) {
+        return;
+      }
       if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {
         status.value = 'error';
         logError.value = error instanceof Error ? error.message : t('service.logs.loadFailed');
@@ -97,7 +101,9 @@
   }
 
   function startAutoRefresh() {
-    if (isAutoRefreshing.value) return;
+    if (isAutoRefreshing.value) {
+      return;
+    }
     const generation = ++refreshGeneration;
     const controller = new AbortController();
     const { signal } = controller;
@@ -106,13 +112,17 @@
     void (async () => {
       while (isCurrentRefresh(generation, signal)) {
         await delayAsync(2000, signal);
-        if (!isCurrentRefresh(generation, signal)) break;
+        if (!isCurrentRefresh(generation, signal)) {
+          break;
+        }
         await fetchLogs(generation, signal);
       }
       if (isCurrentRefresh(generation, signal)) {
         refreshAbort = null;
         isAutoRefreshing.value = false;
-        if (logText.value && status.value === 'streaming') status.value = 'done';
+        if (logText.value && status.value === 'streaming') {
+          status.value = 'done';
+        }
       }
     })();
   }
@@ -138,7 +148,9 @@
   function toggleAutoRefresh() {
     if (isAutoRefreshing.value) {
       stopAutoRefresh();
-      if (logText.value && status.value === 'streaming') status.value = 'done';
+      if (logText.value && status.value === 'streaming') {
+        status.value = 'done';
+      }
       return;
     }
     startAutoRefresh();
@@ -156,11 +168,15 @@
       closeLogs();
       return;
     }
-    if (!wasOpen || target !== previousTarget) openLogs();
+    if (!wasOpen || target !== previousTarget) {
+      openLogs();
+    }
   });
 
   onMounted(() => {
-    if (props.open) openLogs();
+    if (props.open) {
+      openLogs();
+    }
   });
   onUnmounted(stopAutoRefresh);
 </script>

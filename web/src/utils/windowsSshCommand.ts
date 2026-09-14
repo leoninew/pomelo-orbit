@@ -12,7 +12,9 @@ function powershellSingleQuote(value: string): string {
 
 export function buildWindowsSshInitializationCommand(input: WindowsSshCommandInput): string {
   const key = input.publicKey.trim();
-  if (!key) return '';
+  if (!key) {
+    return '';
+  }
 
   const host = input.host.trim() || '<host>';
   const username = input.username.trim() || '<ssh-user>';

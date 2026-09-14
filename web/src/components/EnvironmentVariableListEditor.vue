@@ -324,8 +324,12 @@
   }
 
   function displayValue(row: EnvironmentVariableListRow) {
-    if (isDeleted(row.id)) return '-';
-    if (props.maskValues && row.value && !valueVisible[row.id]) return maskValue;
+    if (isDeleted(row.id)) {
+      return '-';
+    }
+    if (props.maskValues && row.value && !valueVisible[row.id]) {
+      return maskValue;
+    }
     return row.value || '-';
   }
 
@@ -346,8 +350,12 @@
   }
 
   function errorMessage(error: string) {
-    if (error === 'required') return t('environment.validation.required');
-    if (error === 'duplicate') return t('environment.validation.duplicate');
+    if (error === 'required') {
+      return t('environment.validation.required');
+    }
+    if (error === 'duplicate') {
+      return t('environment.validation.duplicate');
+    }
     return error;
   }
 
@@ -373,14 +381,18 @@
 
   function updateEditingKey(id: string, event: Event) {
     const row = editingRows[id];
-    if (!row) return;
+    if (!row) {
+      return;
+    }
     row.key = (event.target as HTMLInputElement).value;
     clearError(id);
   }
 
   function updateEditingValue(id: string, event: Event) {
     const row = editingRows[id];
-    if (!row) return;
+    if (!row) {
+      return;
+    }
     row.value = (event.target as HTMLInputElement).value;
     clearError(id);
   }
@@ -412,7 +424,9 @@
   }
 
   function startEdit(row: EnvironmentVariableListRow) {
-    if (editingRows[row.id]) return;
+    if (editingRows[row.id]) {
+      return;
+    }
     const valueWasVisible = Boolean(valueVisible[row.id]);
     if (props.maskValues) {
       valueVisible[row.id] = true;
@@ -437,7 +451,9 @@
   function rowsWithEditingDrafts() {
     return props.rows.map((row) => {
       const draft = editingRows[row.id];
-      if (!draft) return row;
+      if (!draft) {
+        return row;
+      }
       return {
         ...row,
         key: draft.isNew ? draft.key : row.key,
@@ -448,12 +464,16 @@
 
   function applyEdit(row: EnvironmentVariableListRow) {
     const draft = editingRows[row.id];
-    if (!draft) return;
+    if (!draft) {
+      return;
+    }
     const rows = rowsWithEditingDrafts();
     const result = validateEnvironmentVariableRows(rows, props.validateKey);
     Object.keys(errors).forEach((id) => delete errors[id]);
     Object.assign(errors, result.errors);
-    if (errors[row.id]) return;
+    if (errors[row.id]) {
+      return;
+    }
     updateRow(row.id, {
       key: draft.isNew ? draft.key : row.key,
       value: draft.value,

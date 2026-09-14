@@ -696,7 +696,9 @@
     () => environmentForm.targetType === 'ssh' && environmentForm.platform === 'windows'
   );
   const sshTargetSignature = computed(() => {
-    if (!isRemoteSSH.value) return '';
+    if (!isRemoteSSH.value) {
+      return '';
+    }
     return [
       environmentForm.platform,
       environmentForm.host.trim(),
@@ -709,7 +711,9 @@
   );
   const localDisplay = computed(() => {
     const defaults = status.value?.defaults;
-    if (!defaults) return status.value?.environment?.local;
+    if (!defaults) {
+      return status.value?.environment?.local;
+    }
     return {
       workspace_root: defaults.local_workspace_root || '',
       platform: defaults.local_platform || '',
@@ -758,7 +762,9 @@
   );
   const probeStatus = computed(() => {
     const environment = status.value?.environment;
-    if (!environment || environment.last_probe_revision !== environment.target_revision) return '';
+    if (!environment || environment.last_probe_revision !== environment.target_revision) {
+      return '';
+    }
     return environment.last_probe_status || '';
   });
   const isProbing = computed(() => activeOperation.value === 'probing');
@@ -770,8 +776,12 @@
         ? t('project.initialization.probeChecking')
         : t('project.environment.initializeTitle');
     }
-    if (probeStatus.value === 'succeeded') return t('project.initialization.probePassed');
-    if (probeStatus.value === 'failed') return t('project.initialization.probeFailedTitle');
+    if (probeStatus.value === 'succeeded') {
+      return t('project.initialization.probePassed');
+    }
+    if (probeStatus.value === 'failed') {
+      return t('project.initialization.probeFailedTitle');
+    }
     return t('project.initialization.probeNotRun');
   });
   const probeDescription = computed(() => {
@@ -780,9 +790,12 @@
         ? t('project.initialization.probeCheckingDescription')
         : t('project.initialization.bootstrapHint');
     }
-    if (probeStatus.value === 'succeeded')
+    if (probeStatus.value === 'succeeded') {
       return t('project.initialization.probePassedDescription');
-    if (probeStatus.value === 'failed') return t('project.initialization.probeFailedDescription');
+    }
+    if (probeStatus.value === 'failed') {
+      return t('project.initialization.probeFailedDescription');
+    }
     return t('project.initialization.probeNotRunDescription');
   });
   const canContinueToGateway = computed(
@@ -794,8 +807,12 @@
 
   async function openWindowsCommand() {
     windowsCommandError.value = '';
-    if (!projectId.value || !isWindowsSSH.value) return;
-    if (!validateEnvironment()) return;
+    if (!projectId.value || !isWindowsSSH.value) {
+      return;
+    }
+    if (!validateEnvironment()) {
+      return;
+    }
     showWindowsCommandDialog.value = true;
     loadingDeploymentPublicKey.value = true;
     try {
@@ -818,8 +835,12 @@
   }
 
   function stepFromStatus(value?: string): number {
-    if (value === 'needs_probe') return 2;
-    if (value === 'needs_gateway' || value === READY_INITIALIZATION_STATUS) return 3;
+    if (value === 'needs_probe') {
+      return 2;
+    }
+    if (value === 'needs_gateway' || value === READY_INITIALIZATION_STATUS) {
+      return 3;
+    }
     return 1;
   }
 
@@ -839,28 +860,38 @@
   }
 
   function openProject(id: string) {
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     projectStore.setActiveProject(id);
     void loadStatus(id);
   }
 
   function selectStep(step: number) {
-    if (step < 1 || step > progressStep.value) return;
+    if (step < 1 || step > progressStep.value) {
+      return;
+    }
     selectedStep.value = step;
   }
 
   function handleStepChange(step: number | undefined) {
-    if (step !== undefined) selectStep(step);
+    if (step !== undefined) {
+      selectStep(step);
+    }
   }
 
   async function loadStatus(id = projectId.value, force = false) {
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     loadError.value = '';
     try {
       const view = force
         ? await initializationStore.fetchStatus(id)
         : await initializationStore.ensureStatus(id);
-      if (id !== projectId.value) return;
+      if (id !== projectId.value) {
+        return;
+      }
       hydrate(view);
       if (view.status === READY_INITIALIZATION_STATUS) {
         await router.replace(resolveInitializationCompletionRedirect(route.query.redirect));
@@ -876,7 +907,9 @@
   }
 
   function hydrate(view: NonNullable<typeof status.value>) {
-    if (!view) return;
+    if (!view) {
+      return;
+    }
     Object.assign(
       environmentForm,
       hydrateEnvironmentForm(view.environment, view.defaults?.local_workspace_root || '')
@@ -911,9 +944,13 @@
 
   async function testSSH() {
     environmentSubmitError.value = '';
-    if (!validateEnvironment()) return;
+    if (!validateEnvironment()) {
+      return;
+    }
     const id = projectId.value;
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     activeOperation.value = 'testing';
     try {
       await executeOperation(async () => {
@@ -935,9 +972,13 @@
 
   async function saveEnvironment() {
     environmentSubmitError.value = '';
-    if (!validateEnvironment()) return;
+    if (!validateEnvironment()) {
+      return;
+    }
     const id = projectId.value;
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     activeOperation.value = 'saving';
     try {
       await executeOperation(async () => {
@@ -966,12 +1007,18 @@
         privateKey: t('project.environment.validation.bootstrapPrivateKey'),
       })
     );
-    if (bootstrapErrors.username || bootstrapErrors.credential) return;
+    if (bootstrapErrors.username || bootstrapErrors.credential) {
+      return;
+    }
     const id = projectId.value;
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     if (environmentFormDirty(environmentForm, status.value?.environment)) {
       await saveEnvironment();
-      if (environmentSubmitError.value) return;
+      if (environmentSubmitError.value) {
+        return;
+      }
     }
     activeOperation.value = 'bootstrapping';
     try {
@@ -994,10 +1041,14 @@
   async function probeEnvironment() {
     environmentSubmitError.value = '';
     const id = projectId.value;
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     if (environmentFormDirty(environmentForm, status.value?.environment)) {
       await saveEnvironment();
-      if (environmentSubmitError.value) return;
+      if (environmentSubmitError.value) {
+        return;
+      }
     }
     activeOperation.value = 'probing';
     try {
@@ -1021,7 +1072,9 @@
   }
 
   function replaceGatewayErrors(next: GatewayConfigFormErrors) {
-    for (const field of Object.keys(gatewayErrors)) delete gatewayErrors[field];
+    for (const field of Object.keys(gatewayErrors)) {
+      delete gatewayErrors[field];
+    }
     Object.assign(gatewayErrors, next);
   }
 
@@ -1049,9 +1102,13 @@
     gatewaySubmitError.value = '';
     const errors = validateGatewayConfigForm(gatewayForm, 'initialize');
     replaceGatewayErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
     const id = projectId.value;
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     activeOperation.value = 'creating';
     try {
       await executeOperation(async () => {
@@ -1083,7 +1140,9 @@
 
   onBeforeRouteUpdate((to) => {
     const nextId = String(to.params.id || '');
-    if (nextId === projectId.value) return;
+    if (nextId === projectId.value) {
+      return;
+    }
     resetWorkspace();
     openProject(nextId);
   });

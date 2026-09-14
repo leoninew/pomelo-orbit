@@ -68,7 +68,9 @@
   });
 
   async function copyCommand() {
-    if (!props.command) return;
+    if (!props.command) {
+      return;
+    }
     try {
       await navigator.clipboard.writeText(props.command);
       toast.success(t('project.initialization.windowsTargetCommandCopied'));

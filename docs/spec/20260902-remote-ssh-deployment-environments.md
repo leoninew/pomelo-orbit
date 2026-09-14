@@ -27,7 +27,7 @@ Environment 公共字段：`id`、`project_id`、`code`、`state`、`target_type
 
 Environment target type 可显式更新。任何 type 或适用 target configuration 改变均清空 Probe、递增 revision；SSH 仅修改 `workspace_root` 时保留既有部署 credential 与 pinned host-key fingerprint，不重新要求一次性 bootstrap 认证。local 不产生 SSH credential；ssh 产生受管部署密钥，首次成功 Probe 写入 host-key fingerprint。
 
-Linux `POST /api/project/:id/environment/initialize` 接收 bootstrap SSH username 与恰好一种一次性认证（密码或私钥，私钥口令可选）。它们仅用于本次 SSH session，绝不持久化、返回或记录。runner 首先验证配置部署 user 的 Docker daemon/Compose，再要求 bootstrap user 的 `sudo -n`、验证现有 OpenSSH 配置支持公钥认证，最后仅按需写入部署公钥和工作目录。它不安装、启停或配置 Docker/Compose/Docker Desktop/WSL，不修改 Docker 用户组、sshd、firewall 或 Docker 网络。操作成功后调用原有 Probe，以受管私钥验证连接并 pin host key。Windows 不使用该 Linux bootstrap endpoint；Windows 通过 Web 生成的 PowerShell helper 写入受管公钥、创建工作目录并检查 WSL2/Docker Desktop/Linux containers/Compose，执行后再由页面测试和 Probe。
+Linux `POST /api/project/:id/environment/initialize` 接收 bootstrap SSH username 与恰好一种一次性认证（密码或私钥，私钥口令可选）。它们仅用于本次 SSH session，绝不持久化、返回或记录。runner 首先验证配置部署 user 的 Docker daemon/Compose，再要求 bootstrap user 的 `sudo -n`、验证现有 OpenSSH 配置支持公钥认证，最后仅按需写入部署公钥和工作目录。它不安装、启停或配置 Docker/Compose/Docker Desktop/WSL，不修改 Docker 用户组、sshd、firewall 或 Docker 网络。操作成功后调用原有 Probe，以受管私钥验证连接并 pin host key。Windows 不使用该 Linux bootstrap endpoint；Windows 通过 Web 生成的管理员 PowerShell helper 安装/启动 OpenSSH、放行端口，再写入受管公钥、创建工作目录并检查 WSL2/Docker Desktop/Linux containers/Compose，执行后再由页面测试和 Probe。
 
 Project creation 不接受 Environment payload。Project service 先创建 Project，再以同一 request transaction 调用 Environment bootstrap，固定写入 active local Environment；因此新 Project 的 Environment 页面始终有可继续编辑的记录。仅当用户在该页切为 ssh 时，Environment service 才创建部署 SSH credential。
 

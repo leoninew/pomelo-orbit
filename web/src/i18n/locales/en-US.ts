@@ -227,22 +227,17 @@ export default {
       testSSHPassed: 'SSH service is reachable (deployment key not verified)',
       testSSHFailed: 'SSH service is unreachable',
       saveRequiresSSHTest: 'Test the SSH service first; saving does not verify the deployment key',
-      windowsTargetNotice:
-        'Windows requires OpenSSH, Docker Desktop, WSL2, and the Orbit deployment key to be configured first.',
-      windowsTargetChecklist: 'Windows SSH prerequisites',
-      windowsTargetStep1: 'OpenSSH Server is running and the port is reachable.',
-      windowsTargetStep2: 'Docker Desktop uses Linux containers and WSL2 has docker-desktop.',
-      windowsTargetStep3: 'Orbit’s deployment key is in the SSH user’s authorized_keys.',
-      windowsTargetStep4: 'Use a Windows workspace path, e.g. C:\\Users\\wangm25\\.pomelo-orbit.',
       windowsTargetCommandLabel: 'PowerShell command',
       windowsTargetCommand: 'Generate Windows setup command',
       windowsTargetCommandTitle: 'Windows setup command',
-      windowsTargetCommandDescription: 'Uses the host, port, and SSH user from this form.',
+      windowsTargetCommandDescription:
+        'Run this in an elevated PowerShell on the target Windows host. It uses the host, port, and SSH user from this form.',
       windowsTargetCopyCommand: 'Copy command',
       windowsTargetCommandCopied: 'Command copied',
       windowsTargetCopyFailed: 'Could not copy the command; select it manually',
       windowsTargetCommandLoading: 'Generating command…',
-      windowsTargetCommandHint: 'Run this in PowerShell on the local machine, then probe.',
+      windowsTargetCommandHint:
+        'Run this as Administrator on the target Windows host, then return here and probe.',
       windowsTargetKeyLoadFailed:
         'Could not load the deployment public key. Refresh and try again.',
       probe: 'Probe environment',

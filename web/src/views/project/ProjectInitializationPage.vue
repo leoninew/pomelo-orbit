@@ -99,30 +99,6 @@
               id-prefix="initialization"
             />
 
-            <section
-              v-if="isWindowsSSH"
-              class="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-950/30"
-              aria-labelledby="initialization-windows-notice"
-            >
-              <h3
-                id="initialization-windows-notice"
-                class="text-sm font-semibold text-amber-900 dark:text-amber-100"
-              >
-                {{ t('project.initialization.windowsTargetChecklist') }}
-              </h3>
-              <p class="text-sm text-amber-800 dark:text-amber-200">
-                {{ t('project.initialization.windowsTargetNotice') }}
-              </p>
-              <ul
-                class="list-disc space-y-1 pl-5 text-xs leading-5 text-amber-800 dark:text-amber-200"
-              >
-                <li>{{ t('project.initialization.windowsTargetStep1') }}</li>
-                <li>{{ t('project.initialization.windowsTargetStep2') }}</li>
-                <li>{{ t('project.initialization.windowsTargetStep3') }}</li>
-                <li>{{ t('project.initialization.windowsTargetStep4') }}</li>
-              </ul>
-            </section>
-
             <p v-if="environmentSubmitError" class="app-field-error" role="alert">
               {{ environmentSubmitError }}
             </p>

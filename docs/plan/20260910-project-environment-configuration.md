@@ -89,7 +89,7 @@ Mode: strict
 
 - 在 `web/src/api` 和 `web/src/stores` 增加 initialization status/command client 与状态管理，所有请求显式使用当前 `activeProjectId`。
 - 在 `web/src/router/index.ts` 为项目级 route 和 Project 切换建立 readiness guard：`ready` 回到目标页，其他状态转至 Wizard。Project 管理、登录与 Wizard route 排除循环 guard。
-- 新建 `web/src/views/project` 下的 Initialization Wizard 页面。第一步使用与环境页共用的 `EnvironmentTargetFields` 选择 `local | ssh`；Linux SSH 主机初始化复用 `EnvironmentBootstrapFields`。Windows SSH 提供当前表单参数驱动的 PowerShell 初始化命令，命令可在保存/测试前生成；Wizard 按后端 status 恢复 Environment 保存、Probe、Gateway 确认三个步骤，用初始化来源的服务端默认值填充初次表单，但保存后只展示当前 Project 的持久化结果。
+- 新建 `web/src/views/project` 下的 Initialization Wizard 页面。第一步使用与环境页共用的 `EnvironmentTargetFields` 选择 `local | ssh`；Linux SSH 主机初始化复用 `EnvironmentBootstrapFields`。Windows SSH 提供当前表单参数驱动的 PowerShell 初始化命令，命令可在保存/测试前生成，并在目标机管理员 PowerShell 中安装/启动 OpenSSH、放行端口后完成远端配置；Wizard 按后端 status 恢复 Environment 保存、Probe、Gateway 确认三个步骤，用初始化来源的服务端默认值填充初次表单，但保存后只展示当前 Project 的持久化结果。
 - 修改 `EnvironmentPage.vue`、Gateway 页面、`gatewayConfigForm.ts` 和导航，移除独立 Gateway 创建流程及 component-name 输入；环境页继续用同一套目标表单编辑已保存 Environment，并在 Windows SSH 目标上展示同一初始化命令 Dialog。未就绪资源不显示空页或错误加载状态。现有 SSH bootstrap 只保留与已保存 Environment 相关的明确能力，不替代 Wizard 生命周期。
 - 更新 Web i18n、类型、router/store/form 测试，覆盖空库默认 Project、新建 Project、切换 Project 和初始化完成后回跳原目标 route。
 
@@ -130,7 +130,7 @@ Mode: strict
 4. HTTP / Proto：验证初始化路由、输入映射、错误状态和删除的 Gateway/component-name 契约；运行 `task proto`、`task sqlc` 后确认 generated files 干净。
 5. MCP：覆盖 Project 名称 discovery 的输入输出、手动 code 澄清后的 select、scope 生命周期、未选择/未就绪/归属不符的业务错误，以及 Web Dialogue 的固定 request scope。
 6. Web：覆盖 router guard、Wizard steps、Project 切换、完成后跳回，以及 Environment/Gateway 页面只读取 ready Project 数据。
-7. Windows SSH：覆盖命令生成、当前表单参数、PowerShell quoting、远端 WSL2/Docker/Compose 检查和保存前公钥读取；覆盖受管部署凭据重试复用。
+7. Windows SSH：覆盖命令生成、当前表单参数、PowerShell quoting、OpenSSH 安装/启动、端口防火墙、远端 WSL2/Docker/Compose 检查和保存前公钥读取；覆盖受管部署凭据重试复用。
 8. 最终执行项目固定检查：`task check`、`go test ./cmd/... ./internal/...`、`yarn --cwd web lint:fix`、`yarn --cwd web typecheck`，并按失败位置补充定向 Go/Web/MCP/migration 测试。
 
 ## 实施顺序与依赖

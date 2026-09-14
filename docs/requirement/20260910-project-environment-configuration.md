@@ -13,7 +13,7 @@ Project 是部署运行边界。一个已完成配置的 Project 具有其唯一
 
 当前空库 seed 分散写入默认 Project 及一套默认部署资源：`000032_seed_identity` 写入用户进入系统所需的默认 Project 和 Project membership，`000037_seed_gateway` 写入完整 Gateway、Version、Service 和 Route。默认 Project 是空库的进入点，应保留；部署资源则须由 Wizard 初始化。Environment 不再由 seed migration 创建。运行时另有 `project.Service.Create` 无条件调用 `Environment.BootstrapForProject`，而 Gateway 又可从 HTTP 或 MCP provision 创建。这些并列初始化路径造成默认值和数据来源分散。
 
-Windows SSH 目标不能假定控制面已经能够使用部署公钥直接建立远程会话。用户需要在目标 Windows 主机上先执行一段由当前表单生成的 PowerShell 初始化命令，配置 OpenSSH authorized keys、Orbit 工作目录并检查 WSL2、Docker Desktop、Linux containers 和 Docker Compose；命令执行后再由页面测试 SSH 并运行完整 Probe。该命令必须能在 Environment 尚未保存或 SSH 公钥尚未可用时生成。
+Windows SSH 目标不能假定控制面已经能够使用部署公钥直接建立远程会话。用户需要在目标 Windows 主机的管理员 PowerShell 中先执行一段由当前表单生成的初始化命令；命令负责安装并启动 OpenSSH Server、按当前端口创建防火墙规则，配置 OpenSSH authorized keys、Orbit 工作目录并检查 WSL2、Docker Desktop、Linux containers 和 Docker Compose。命令执行后再由页面测试 SSH 并运行完整 Probe。该命令必须能在 Environment 尚未保存或 SSH 公钥尚未可用时生成。
 
 现有 `traefik.*`、Web `emptyGatewayConfigForm()` 和 seed 也分别保存 image、REST URL、base domain、readiness 与入口策略。它们应收敛为一份统一的 Project 初始化来源配置，供 Wizard 构造初始输入。该来源配置不是 Environment/Gateway 的运行时数据，也不是部署、Route 发布或运行时查询的 fallback；Wizard 提交后，运行时只使用当前 Project 持久化的 Environment、GatewayConfig 和 Gateway Version / Component。
 
@@ -37,7 +37,7 @@ Web 的 `projectStore.activeProjectId` 只保存在浏览器 `localStorage`，Co
 6. Codex CLI MCP 不提供 Project、Environment 或 Gateway 初始化能力。用户以 Project 名称声明目标，Codex 通过 `orbit_list_projects` 解析后调用 `orbit_select_project(project_id)` 选择一个已就绪 Project；项目级运行时工具均使用该 connection 的当前 Project scope，并断言 Environment 存在、active 且最新 Probe 成功，Gateway 工具另要求既有 Gateway/default Service。切换要管理的 Project 必须先再次声明和选择。
 7. 保留的 MCP Gateway 更新工具覆盖 HTTP Gateway API 已支持的全部 GatewayConfig 字段；Codex 的 `orbit_select_project` 成功响应明确确认所选 `project_id`、Project 摘要及其就绪资源，后续工具使用该已确认 scope。
 8. 删除已废止的全局 CD workspace 配置说明，使运维文档只使用 `Environment.workspace_root` 表示 Service Compose、Gateway 证书与 Route snapshot 的目标目录。
-9. Windows SSH 初始化命令必须使用当前表单的 Host、Port、SSH 用户和工作目录，在本地主机 PowerShell 中通过 SSH 执行，并展示可复制的分阶段检查结果。生成命令前可创建或复用当前 Project 的受管部署凭据，但不得展示私钥。
+9. Windows SSH 初始化命令必须使用当前表单的 Host、Port、SSH 用户和工作目录，在目标 Windows 主机的管理员 PowerShell 中安装/启动 OpenSSH Server、放行端口并通过 SSH 执行远端配置，展示可复制的分阶段检查结果。生成命令前可创建或复用当前 Project 的受管部署凭据，但不得展示私钥。
 
 ## Non-goal
 

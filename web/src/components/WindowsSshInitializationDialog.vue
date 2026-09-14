@@ -3,42 +3,26 @@
     v-model:open="openModel"
     :title="t('project.initialization.windowsTargetCommandTitle')"
     width-class="w-[min(820px,calc(100vw-32px))]"
+    body-class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4"
+    content-class="max-h-[calc(100vh-32px)] flex flex-col"
   >
-    <div class="space-y-4">
-      <p class="text-sm text-muted-foreground">
-        {{ t('project.initialization.windowsTargetCommandDescription') }}
-      </p>
-      <div class="space-y-2">
-        <div class="flex items-center justify-between gap-2">
-          <p class="text-xs font-medium text-foreground">
-            {{ t('project.initialization.windowsTargetCommandLabel') }}
-          </p>
-          <button
-            type="button"
-            class="app-button h-8 px-3 text-xs"
-            :disabled="loading || !command"
-            @click="copyCommand"
-          >
-            <Copy class="size-3.5" aria-hidden="true" />
-            {{ t('project.initialization.windowsTargetCopyCommand') }}
-          </button>
-        </div>
-        <textarea
-          v-if="!loading"
-          :value="command"
-          rows="18"
-          readonly
-          class="app-textarea w-full font-mono text-xs leading-5"
-        />
-        <p v-else class="text-sm text-muted-foreground" aria-live="polite">
-          {{ t('project.initialization.windowsTargetCommandLoading') }}
-        </p>
-        <p v-if="error" class="app-field-error" role="alert">{{ error }}</p>
-      </div>
-      <p class="text-xs leading-5 text-muted-foreground">
-        {{ t('project.initialization.windowsTargetCommandHint') }}
-      </p>
+    <AppLoadingState v-if="loading" size="section" aria-live="polite" />
+    <div v-else-if="command" class="min-h-0">
+      <MonacoEditor :model-value="command" language="powershell" height="420px" :readonly="true" />
     </div>
+    <p v-else class="text-sm text-muted-foreground" aria-live="polite">
+      {{ t('project.initialization.windowsTargetCommandLoading') }}
+    </p>
+    <p v-if="error" class="app-field-error" role="alert">{{ error }}</p>
+    <template #footer>
+      <button type="button" class="app-button" :disabled="loading || !command" @click="copyCommand">
+        <Copy class="size-4" aria-hidden="true" />
+        {{ t('project.initialization.windowsTargetCopyCommand') }}
+      </button>
+      <button type="button" class="app-button-primary" @click="openModel = false">
+        {{ t('common.close') }}
+      </button>
+    </template>
   </AppDialog>
 </template>
 
@@ -47,6 +31,8 @@
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppLoadingState from '@/components/AppLoadingState.vue';
+  import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useToast } from '@/composables/useToast';
 
   const props = defineProps<{

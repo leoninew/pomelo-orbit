@@ -87,6 +87,12 @@ class TransferFile:
     tables: tuple[TableBlock, ...]
 
 
+@dataclass(frozen=True)
+class ServiceTransferScope:
+    project_id: str
+    service_code: str
+
+
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -478,24 +484,68 @@ def service_tables(
     return TransferFile(header=transfer.header, tables=tuple(selected))
 
 
-def validate_service_transfer(transfer: TransferFile, project_id: str) -> str:
+def service_transfer_scope(transfer: TransferFile) -> ServiceTransferScope:
     if tuple(table.name for table in transfer.tables) != SERVICE_TABLES:
         raise ServiceTransferError(
             "service transfer has an unexpected table set or order"
         )
     service_table = require_table(table_map(transfer), "service")
     code_index = require_column(service_table, "code")
+    project_index = require_column(service_table, "project_id")
     if len(service_table.rows) != 1:
         raise ServiceTransferError("service transfer must contain exactly one service")
     service_code = value_key(service_table.rows[0][code_index])
     if not service_code:
         raise ServiceTransferError("service transfer service code is empty")
+    project_id = value_key(service_table.rows[0][project_index])
+    if not project_id:
+        raise ServiceTransferError("service transfer service project is empty")
     selected = service_tables(transfer, project_id, service_code)
     if selected.tables != transfer.tables:
         raise ServiceTransferError(
             "service transfer contains rows outside its deployment closure"
         )
-    return service_code
+    return ServiceTransferScope(project_id=project_id, service_code=service_code)
+
+
+def validate_service_transfer(transfer: TransferFile) -> str:
+    return service_transfer_scope(transfer).service_code
+
+
+def retarget_service_transfer(
+    transfer: TransferFile, target_project_id: str
+) -> TransferFile:
+    retargeted: list[TableBlock] = []
+    for table in transfer.tables:
+        if table.name == "project":
+            # dbtalk needs the referenced table in the file, but the target
+            # project's own row must never be imported or updated.
+            retargeted.append(
+                TableBlock(
+                    name=table.name,
+                    columns=table.columns,
+                    primary_key=table.primary_key,
+                    rows=(),
+                )
+            )
+            continue
+        if table.name not in ("application", "service", "route"):
+            retargeted.append(table)
+            continue
+        project_index = require_column(table, "project_id")
+        rows = tuple(
+            row[:project_index] + (target_project_id,) + row[project_index + 1 :]
+            for row in table.rows
+        )
+        retargeted.append(
+            TableBlock(
+                name=table.name,
+                columns=table.columns,
+                primary_key=table.primary_key,
+                rows=rows,
+            )
+        )
+    return TransferFile(header=transfer.header, tables=tuple(retargeted))
 
 
 def dbtalk_command(command: str) -> str:
@@ -523,7 +573,9 @@ def connection_arguments(dsn: str | None, dsn_env: str | None) -> list[str]:
     return ["--dsn", dsn]
 
 
-def run_dbtalk(command: str, arguments: Sequence[str], *, operation: str) -> None:
+def dbtalk_result(
+    command: str, arguments: Sequence[str], *, operation: str
+) -> subprocess.CompletedProcess[str]:
     executable = dbtalk_command(command)
     result = subprocess.run(
         [executable, *arguments],
@@ -535,6 +587,43 @@ def run_dbtalk(command: str, arguments: Sequence[str], *, operation: str) -> Non
         raise ServiceTransferError(
             f"dbtalk {operation} failed with exit code {result.returncode}"
         )
+    return result
+
+
+def run_dbtalk(command: str, arguments: Sequence[str], *, operation: str) -> None:
+    dbtalk_result(command, arguments, operation=operation)
+
+
+def target_project_exists(
+    command: str, connection: Sequence[str], project_id: str
+) -> bool:
+    result = dbtalk_result(
+        command,
+        [
+            "query",
+            *connection,
+            "--sql",
+            "SELECT id FROM project WHERE id = :project_id",
+            "--param",
+            "project_id=" + json.dumps(project_id),
+            "--format",
+            "json",
+        ],
+        operation="project lookup",
+    )
+    try:
+        payload = json.loads(result.stdout)
+    except (AttributeError, json.JSONDecodeError) as error:
+        raise ServiceTransferError(
+            "dbtalk project lookup returned invalid JSON"
+        ) from error
+    rows = payload.get("rows") if isinstance(payload, dict) else None
+    return (
+        isinstance(rows, list)
+        and len(rows) == 1
+        and isinstance(rows[0], dict)
+        and value_key(rows[0].get("id")) == project_id
+    )
 
 
 def export_service(args: argparse.Namespace) -> Path:
@@ -569,27 +658,32 @@ def export_service(args: argparse.Namespace) -> Path:
 
 
 def import_service(args: argparse.Namespace) -> str:
-    input_path = args.input.resolve()
-    transfer = load_transfer(input_path)
-    service_code = validate_service_transfer(transfer, args.project_id)
+    transfer = load_transfer(args.input.resolve())
+    scope = service_transfer_scope(transfer)
     connection = connection_arguments(args.dsn, args.dsn_env)
-    run_dbtalk(
-        args.dbtalk_command,
-        [
-            "import",
-            "--target",
-            args.target,
-            "--input",
-            str(input_path),
-            "--mode",
-            args.mode,
-            *connection,
-            "--tz",
-            args.tz,
-        ],
-        operation="import",
-    )
-    return service_code
+    if not target_project_exists(args.dbtalk_command, connection, args.project_id):
+        raise ServiceTransferError(f"target project does not exist: {args.project_id}")
+    target_transfer = retarget_service_transfer(transfer, args.project_id)
+    with tempfile.TemporaryDirectory(prefix="orbit-service-import-") as directory:
+        target_input = Path(directory) / "service.jsonl"
+        write_transfer(target_input, target_transfer)
+        run_dbtalk(
+            args.dbtalk_command,
+            [
+                "import",
+                "--target",
+                args.target,
+                "--input",
+                str(target_input),
+                "--mode",
+                args.mode,
+                *connection,
+                "--tz",
+                args.tz,
+            ],
+            operation="import",
+        )
+    return scope.service_code
 
 
 def main(argv: Sequence[str]) -> int:

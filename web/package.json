@@ -6,6 +6,8 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "predev": "yarn monaco:assets",
+    "prebuild": "yarn monaco:assets",
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview --host localhost",
@@ -14,6 +16,7 @@
     "lint:fix": "eslint src --fix --fix-type=problem --cache",
     "format": "prettier src --check --ignore-unknown",
     "format:fix": "prettier src --write --ignore-unknown",
+    "monaco:assets": "node scripts/copy-monaco-assets.mjs",
     "test": "vitest run --passWithNoTests",
     "test:cov": "vitest run --coverage"
   },

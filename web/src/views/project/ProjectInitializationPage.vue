@@ -1058,6 +1058,9 @@
         const latest = await initializationStore.fetchStatus(id);
         if (latest.status !== 'needs_gateway') {
           hydrate(latest);
+          if (latest.status === READY_INITIALIZATION_STATUS) {
+            await router.replace(resolveInitializationCompletionRedirect(route.query.redirect));
+          }
           return;
         }
         const view = await initializationStore.createGateway(

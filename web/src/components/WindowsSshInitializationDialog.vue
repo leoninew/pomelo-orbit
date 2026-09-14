@@ -8,7 +8,13 @@
   >
     <AppLoadingState v-if="loading" size="section" aria-live="polite" />
     <div v-else-if="command" class="min-h-0">
-      <MonacoEditor :model-value="command" language="powershell" height="420px" :readonly="true" />
+      <textarea
+        :value="command"
+        class="app-textarea h-[420px] resize-none font-mono text-xs leading-5"
+        readonly
+        spellcheck="false"
+        wrap="soft"
+      />
     </div>
     <p v-else class="text-sm text-muted-foreground" aria-live="polite">
       {{ t('project.initialization.windowsTargetCommandLoading') }}
@@ -32,7 +38,6 @@
   import { useI18n } from 'vue-i18n';
   import AppDialog from '@/components/AppDialog.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useToast } from '@/composables/useToast';
 
   const props = defineProps<{

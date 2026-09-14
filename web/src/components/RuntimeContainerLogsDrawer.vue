@@ -34,8 +34,10 @@
   import { onMounted, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { applicationApi } from '@/api/application/application';
+  import { deploymentApi } from '@/api/deployment/deployment';
   import AppDrawer from '@/components/AppDrawer.vue';
   import ContainerLogView from '@/components/ContainerLogView.vue';
+  import { isComplete } from '@/utils/status';
   import { delayAsync } from '@/utils/time';
   import type { RuntimeContainerLogTarget } from './runtimeContainerLogs';
 
@@ -100,6 +102,20 @@
     isAutoRefreshing.value = false;
   }
 
+  async function deploymentIsComplete(generation: number, signal: AbortSignal) {
+    const deploymentId = props.target.deploymentId;
+    if (!deploymentId) {
+      return false;
+    }
+    try {
+      const deployment = await deploymentApi.get(deploymentId, { signal });
+      return isCurrentRefresh(generation, signal) && isComplete(deployment.status);
+    } catch {
+      // Logs remain available even if the task detail endpoint is transiently unavailable.
+      return false;
+    }
+  }
+
   function startAutoRefresh() {
     if (isAutoRefreshing.value) {
       return;
@@ -111,11 +127,11 @@
     isAutoRefreshing.value = true;
     void (async () => {
       while (isCurrentRefresh(generation, signal)) {
-        await delayAsync(2000, signal);
-        if (!isCurrentRefresh(generation, signal)) {
+        await fetchLogs(generation, signal);
+        if (!isCurrentRefresh(generation, signal) || (await deploymentIsComplete(generation, signal))) {
           break;
         }
-        await fetchLogs(generation, signal);
+        await delayAsync(2000, signal);
       }
       if (isCurrentRefresh(generation, signal)) {
         refreshAbort = null;
@@ -137,7 +153,6 @@
     stopAutoRefresh();
     resetLogState();
     startAutoRefresh();
-    void fetchLogs(refreshGeneration, refreshAbort?.signal);
   }
 
   function closeLogs() {

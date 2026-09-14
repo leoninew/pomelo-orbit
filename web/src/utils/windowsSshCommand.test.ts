@@ -28,14 +28,21 @@ describe('windowsSshCommand', () => {
       )
     );
     expect(script).toContain("$key = 'ssh-ed25519 AAAAorbit''s-key'");
+    expect(script).toContain("$targetUsername = 'Administrator'");
     expect(script).toContain("$workspace = 'C:\\Users\\orbit\\.pomelo-orbit'");
     expect(script).not.toContain('ssh.exe');
     expect(script).toContain('Invoke-Expression $setupScript');
+    expect(script).toContain('Get-CimInstance -ClassName Win32_UserProfile');
+    expect(script).toContain('$authorizedKeys = Join-Path $sshDir \'authorized_keys\'');
+    expect(script).toContain('Add-DeploymentKey $authorizedKeys');
     expect(script).toContain('administrators_authorized_keys');
+    expect(script).toContain('Add-DeploymentKey $administratorsAuthorizedKeys');
+    expect(script).not.toContain("Join-Path $env:USERPROFILE '.ssh'");
     expect(script).toContain("Add-WindowsCapability -Online -Name 'OpenSSH.Server~~~~0.0.1.0'");
     expect(script).toContain("$sshdConfig = Join-Path $env:ProgramData 'ssh\\sshd_config'");
     expect(script).toContain('ListenAddress 0.0.0.0');
     expect(script).toContain('ListenAddress ::');
+    expect(script).toContain('PubkeyAuthentication yes');
     expect(script).toContain(
       "$sshKeygenExe = Join-Path $env:WINDIR 'System32\\OpenSSH\\ssh-keygen.exe'"
     );

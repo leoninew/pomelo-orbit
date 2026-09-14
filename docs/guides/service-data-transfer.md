@@ -18,7 +18,8 @@ Python 包。
 ```bash
 uv run --project scripts python scripts/database_transfer.py export \
   --source sqlite --dsn sqlite:///./data/db/pomelo-orbit.db \
-  --service-code <service-code> --output service.jsonl --tz UTC
+  --project-id <current-project-id> --service-code <service-code> \
+  --output service.jsonl --tz UTC
 ```
 
 对于 MySQL 或 PostgreSQL，将 canonical DSN 放在环境变量中，并分别使用
@@ -26,6 +27,9 @@ uv run --project scripts python scripts/database_transfer.py export \
 `--source postgresql --dsn-env <ENV_NAME>`；环境变量值应分别使用
 `mysql+pymysql://user:password@host:3306/database` 或
 `postgresql+psycopg://user:password@host:5432/database` 形式。
+
+`--project-id` 必须是当前选中的 Project ID。服务 code 只在该 Project 内定位；脚本会拒绝
+Service、Application 或 Route 跨项目的输入数据。
 
 导出脚本让 dbtalk 读取服务闭包所需表并生成临时 JSONL，然后按 Orbit 领域规则裁剪为
 目标服务的 Project、Application、完整 Version lineage、Version/Service components、
@@ -37,12 +41,16 @@ Gateway 配置、环境覆盖和 Route。临时文件只在进程内存在，完
 ```bash
 uv run --project scripts python scripts/database_transfer.py import \
   --target sqlite --dsn sqlite:///./data/db/pomelo-orbit.db \
-  --input service.jsonl --mode upsert --tz UTC
+  --project-id <current-project-id> --input service.jsonl --mode upsert --tz UTC
 ```
 
 对于 PostgreSQL，使用
 `--target postgresql --dsn-env <ENV_NAME>`，其中环境变量值为
 `postgresql+psycopg://user:password@host:5432/database`。
+
+导入同样必须传入当前选中的 `--project-id`；文件中的 Project、Service、Application 和
+Route 必须全部属于该 Project。Project 的 Environment 是目标运行时配置，不包含在服务
+传输文件中，避免导入改变 SSH 凭据绑定、宿主机或工作区。
 
 必须显式指定 `--mode`。`insert` 遇到主键、唯一键或其他约束冲突时失败；`upsert`
 按文件中声明的主键或联合主键更新已有行。目标执行正常 Orbit 迁移后已包含种子

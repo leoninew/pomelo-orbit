@@ -346,7 +346,7 @@
 
   const activeProjectLabel = computed(() => {
     const project = projectStore.activeProject;
-    return project ? `${project.name} / ${project.code}` : t('project.noProjects');
+    return project ? project.name : t('project.noProjects');
   });
 
   const activeProjects = computed(() =>

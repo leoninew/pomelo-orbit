@@ -1056,11 +1056,11 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                 imported = transfer.load_transfer(target_input)
                 self.assertEqual(
                     tuple(table.name for table in imported.tables),
-                    transfer.ENVIRONMENT_TABLES,
+                    ("environment", "project", "environment_credential"),
                 )
-                self.assertEqual(imported.tables[0].rows, ())
-                credential = imported.tables[1].row_maps()[0]
-                environment = imported.tables[2].row_maps()[0]
+                environment = imported.tables[0].row_maps()[0]
+                self.assertEqual(imported.tables[1].rows, ())
+                credential = imported.tables[2].row_maps()[0]
                 self.assertEqual(credential["project_id"], "project-target")
                 self.assertEqual(environment["project_id"], "project-target")
                 self.assertEqual(environment["code"], "target-code")

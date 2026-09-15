@@ -62,6 +62,13 @@ SERVICE_COMPONENT_CHILD_TABLES = (
     "service_component_endpoint",
 )
 ENVIRONMENT_TABLES = ("project", "environment_credential", "environment")
+# dbtalk topologically sorts independent tables by name. Environment has no
+# database-level foreign key, so it must precede project in the import file.
+ENVIRONMENT_DBTALK_IMPORT_TABLES = (
+    "environment",
+    "project",
+    "environment_credential",
+)
 ENVIRONMENT_TRANSFER_SCOPE = "environment"
 ENVIRONMENT_REQUIRED_COLUMNS = (
     "id",
@@ -887,14 +894,14 @@ def retarget_environment_transfer(
     target_project_code: str,
     target_fernet: Fernet,
 ) -> TransferFile:
-    retargeted: list[TableBlock] = []
+    retargeted: dict[str, TableBlock] = {}
     for table in transfer.tables:
         if table.name == "project":
             if table.rows:
                 raise ServiceTransferError(
                     "environment transfer must not contain Project rows"
                 )
-            retargeted.append(table)
+            retargeted[table.name] = table
             continue
         project_index = require_column(table, "project_id")
         if table.name == "environment":
@@ -903,7 +910,7 @@ def retarget_environment_transfer(
             rows = replace_column_values(table.rows, project_index, target_project_id)
             rows = replace_column_values(rows, code_index, target_project_code)
             rows = replace_column_values(rows, gateway_index, None)
-            retargeted.append(table_with_rows(table, rows))
+            retargeted[table.name] = table_with_rows(table, rows)
             continue
         if table.name == "environment_credential":
             private_key_index = require_column(table, "private_key")
@@ -920,19 +927,24 @@ def retarget_environment_transfer(
                 )
                 for row in project_rows
             )
-            retargeted.append(
-                renamed_column_table(
-                    table,
-                    "private_key",
-                    "encrypted_private_key",
-                    rows,
-                )
+            retargeted[table.name] = renamed_column_table(
+                table,
+                "private_key",
+                "encrypted_private_key",
+                rows,
             )
             continue
         raise ServiceTransferError(
             f"environment transfer has an unexpected table: {table.name}"
         )
-    return TransferFile(header=transfer.header, tables=tuple(retargeted))
+    return TransferFile(
+        header=transfer.header,
+        tables=tuple(
+            retargeted[table_name]
+            for table_name in ENVIRONMENT_DBTALK_IMPORT_TABLES
+            if table_name in retargeted
+        ),
+    )
 
 
 def dbtalk_command(command: str) -> str:

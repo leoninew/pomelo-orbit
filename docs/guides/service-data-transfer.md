@@ -1,6 +1,7 @@
-# Orbit 服务导出导入
+# Orbit 服务与环境导出导入
 
 Orbit 的服务迁移只处理一个 Service 的部署闭包，不承担通用数据库传输。
+Environment 有独立的备份恢复命令，传输指定 Environment 及其 SSH 密钥。
 底层 SQLite/MySQL/PostgreSQL 连接、JSONL 解析、日期时间转换、主键冲突策略和事务由已安装的
 dbtalk CLI 提供。Orbit 与 dbtalk 通过根级 `dbtalk export` / `dbtalk import` 命令通信，不导入 dbtalk
 Python 包。
@@ -63,3 +64,43 @@ Project，因此标准服务迁移使用 `upsert`。导入前，Orbit 会拒绝�
 
 `--tz` 使用 IANA 时区名称，应在导出和导入时按同一业务约定传递。具体 JSONL 记录格式、
 日期时间解释、DATE/TIME 规则和事务语义以 dbtalk 的 `dbtalk-database` skill 为准。
+
+## 环境备份与恢复
+
+环境备份恢复使用独立命令，不和服务部署闭包混用。导出时指定源 Project 与 Environment：
+
+```bash
+uv run --project scripts python scripts/database_transfer.py export-environment \
+  --source sqlite --dsn sqlite:///./data/db/pomelo-orbit.db \
+  --project-id <source-project-id> --environment-id <environment-id> \
+  --source-secret-env <SOURCE_JWT_SECRET_ENV> \
+  --output data/<environment-id>-<timestamp>.jsonl --tz UTC
+```
+
+`SOURCE_JWT_SECRET_ENV` 是源 Orbit 实例 `jwt.secret_key` 的环境变量名。脚本用该 Fernet
+key 解开 `environment_credential.encrypted_private_key`，在环境 JSONL 中写成明文
+`private_key`，以便目标实例重新加密。不要把 Fernet key 写到命令行、文件名或日志里。
+
+恢复时指定目标 Project：
+
+```bash
+uv run --project scripts python scripts/database_transfer.py import-environment \
+  --target sqlite --dsn sqlite:///./data/db/pomelo-orbit.db \
+  --project-id <target-project-id> --input data/<environment-id>-<timestamp>.jsonl \
+  --target-secret-env <TARGET_JWT_SECRET_ENV> --tz UTC
+```
+
+`TARGET_JWT_SECRET_ENV` 是目标 Orbit 实例的 `jwt.secret_key` 环境变量名。导入前会确认目标
+Project 存在且没有 Environment；存在 Environment 时拒绝，环境恢复没有 `--mode` 覆盖选项。
+导入会将 Environment 和关联 SSH 密钥绑定到目标 Project，并使用目标 Fernet key 写回密文。
+Environment 的 code 同步使用目标 Project 的 code，避免保留源 Project 身份。
+这使同一把 SSH 私钥在目标实例中仍可用于已初始化的远程主机。
+
+环境文件的 scope 固定为 `environment`。SSH 环境含一条匹配的
+`environment_credential`；local 环境没有凭据块。为满足 dbtalk 外键检查，文件有零行的
+`project` 表块，但不包含 Project 行、`repository_credential`、Gateway 绑定、workspace 文件或
+容器。恢复时会清空
+`gateway_application_id`，Gateway 需在目标 Project 按正常流程建立。
+
+环境 JSONL 包含明文 SSH 私钥。应限制该文件的权限和保存位置，仅通过批准的安全通道传递，
+恢复成功后立即删除；不要将文件内容、私钥、Fernet key 或密文输出到日志、Issue 或聊天记录。

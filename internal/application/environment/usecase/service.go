@@ -127,23 +127,6 @@ func (s Service) TestSSHReachability(ctx context.Context, userId string, project
 	return s.testSSHTarget(ctx, input.Host, input.Port, input.Username)
 }
 
-// DeploymentSSHPublicKeyForProject returns a Project's managed deployment key.
-// It does not require an Environment to have been saved, allowing a Windows
-// host to receive its key before SSH key authentication is configured.
-func (s Service) DeploymentSSHPublicKeyForProject(ctx context.Context, userId string, projectId string) (string, error) {
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return "", err
-	}
-	credential, err := s.resolveProjectSSHKey(ctx, strings.TrimSpace(projectId))
-	if err != nil {
-		return "", err
-	}
-	if strings.TrimSpace(credential.PublicKey) == "" {
-		return "", apperror.New(apperror.KindInternal, "Generated deployment SSH public key is empty")
-	}
-	return strings.TrimSpace(credential.PublicKey), nil
-}
-
 func (s Service) testSSHTarget(ctx context.Context, host string, port int, username string) error {
 	if s.prober == nil {
 		return apperror.New(apperror.KindInternal, "SSH reachability tester is not configured")
@@ -214,10 +197,25 @@ func (s Service) hydrateEnvironment(ctx context.Context, item model.Environment)
 	if !item.IsSSH() {
 		return item, nil
 	}
+	if strings.TrimSpace(item.SSH.CredentialId) == "" {
+		return item, nil
+	}
 	previous := item
-	item, err := s.ensureGeneratedCredential(ctx, item)
+	credential, err := s.environmentCredential(ctx, item.SSH.CredentialId)
 	if err != nil {
+		// A legacy 000042 binding can still point at repository_credential.
+		// Reading Wizard status must not generate or validate its replacement.
+		if apperror.IsKind(err, apperror.KindNotFound) {
+			return item, nil
+		}
 		return model.Environment{}, err
+	}
+	if strings.TrimSpace(credential.ProjectId) != item.ProjectId {
+		return item, nil
+	}
+	if credential.Revision != item.SSH.CredentialRevision {
+		item.SSH.CredentialRevision = credential.Revision
+		item.SSH.HostKeyFingerprint = ""
 	}
 	if environmentTargetChanged(previous, item) {
 		if environmentIdentityChanged(previous, item) {

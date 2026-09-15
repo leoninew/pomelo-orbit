@@ -26,12 +26,12 @@ func New(projects initport.ProjectService, environments initport.EnvironmentServ
 	return Service{projects: projects, environments: environments, gateways: gateways, defaults: defaults, localDisplay: localDisplay}
 }
 
-func (s Service) Status(ctx context.Context, userID string, projectID string) (initdto.StatusView, error) {
-	if _, err := s.projects.LoadForUser(ctx, projectID, userID); err != nil {
+func (s Service) Status(ctx context.Context, userId string, projectId string) (initdto.StatusView, error) {
+	if _, err := s.projects.LoadForUser(ctx, projectId, userId); err != nil {
 		return initdto.StatusView{}, err
 	}
 	view := initdto.StatusView{Defaults: s.defaultValues()}
-	environment, err := s.environments.EnvironmentForUser(ctx, userID, projectID)
+	environment, err := s.environments.EnvironmentForUser(ctx, userId, projectId)
 	if err != nil {
 		if apperror.IsKind(err, apperror.KindNotFound) {
 			view.Status = initdto.StatusNeedsEnvironment
@@ -44,7 +44,7 @@ func (s Service) Status(ctx context.Context, userID string, projectID string) (i
 		view.Status = initdto.StatusNeedsProbe
 		return view, nil
 	}
-	gateways, err := s.gateways.ListGateways(ctx, userID, projectID, 1, 1, "")
+	gateways, err := s.gateways.ListGateways(ctx, userId, projectId, 1, 1, "")
 	if err != nil {
 		return initdto.StatusView{}, err
 	}
@@ -58,18 +58,18 @@ func (s Service) Status(ctx context.Context, userID string, projectID string) (i
 	return view, nil
 }
 
-func (s Service) TestEnvironment(ctx context.Context, userID string, projectID string, input initdto.SaveEnvironmentInput) error {
-	if _, err := s.projects.LoadForUser(ctx, projectID, userID); err != nil {
+func (s Service) TestEnvironment(ctx context.Context, userId string, projectId string, input initdto.SaveEnvironmentInput) error {
+	if _, err := s.projects.LoadForUser(ctx, projectId, userId); err != nil {
 		return err
 	}
 	if strings.TrimSpace(input.TargetType) != model.EnvironmentTargetTypeSSH || input.SSH == nil {
 		return apperror.New(apperror.KindValidation, "SSH reachability test is only available for remote SSH targets")
 	}
-	return s.environments.TestSSHReachability(ctx, userID, projectID, *input.SSH)
+	return s.environments.TestSSHReachability(ctx, userId, projectId, *input.SSH)
 }
 
-func (s Service) SaveEnvironment(ctx context.Context, userID string, projectID string, input initdto.SaveEnvironmentInput) (initdto.StatusView, error) {
-	status, err := s.Status(ctx, userID, projectID)
+func (s Service) SaveEnvironment(ctx context.Context, userId string, projectId string, input initdto.SaveEnvironmentInput) (initdto.StatusView, error) {
+	status, err := s.Status(ctx, userId, projectId)
 	if err != nil {
 		return initdto.StatusView{}, err
 	}
@@ -77,16 +77,16 @@ func (s Service) SaveEnvironment(ctx context.Context, userID string, projectID s
 		return initdto.StatusView{}, apperror.New(apperror.KindConflict, "Project environment is already ready")
 	}
 	targetType := strings.TrimSpace(input.TargetType)
-	if _, err := s.environments.SaveInitialization(ctx, userID, projectID, environmentdto.UpdateInput{
+	if _, err := s.environments.SaveInitialization(ctx, userId, projectId, environmentdto.UpdateInput{
 		TargetType: &targetType, Local: input.Local, SSH: input.SSH,
 	}); err != nil {
 		return initdto.StatusView{}, err
 	}
-	return s.Status(ctx, userID, projectID)
+	return s.Status(ctx, userId, projectId)
 }
 
-func (s Service) BootstrapEnvironment(ctx context.Context, userID string, projectID string, input initdto.BootstrapEnvironmentInput) (initdto.StatusView, error) {
-	status, err := s.Status(ctx, userID, projectID)
+func (s Service) BootstrapEnvironment(ctx context.Context, userId string, projectId string, input initdto.BootstrapEnvironmentInput) (initdto.StatusView, error) {
+	status, err := s.Status(ctx, userId, projectId)
 	if err != nil {
 		return initdto.StatusView{}, err
 	}
@@ -96,41 +96,55 @@ func (s Service) BootstrapEnvironment(ctx context.Context, userID string, projec
 	if status.Status == initdto.StatusNeedsEnvironment {
 		return initdto.StatusView{}, apperror.New(apperror.KindValidation, "Project environment must be saved before it can be initialized")
 	}
-	if _, err := s.environments.InitializeForUser(ctx, userID, projectID, environmentdto.InitializeInput{
+	if _, err := s.environments.InitializeForUser(ctx, userId, projectId, environmentdto.InitializeInput{
 		Username: input.Username, Password: input.Password,
 		PrivateKey: input.PrivateKey, PrivateKeyPassphrase: input.PrivateKeyPassphrase,
 	}); err != nil {
 		return initdto.StatusView{}, err
 	}
-	return s.Status(ctx, userID, projectID)
+	return s.Status(ctx, userId, projectId)
 }
 
-func (s Service) DeploymentSSHPublicKey(ctx context.Context, userID string, projectID string) (string, error) {
-	if _, err := s.projects.LoadForUser(ctx, projectID, userID); err != nil {
-		return "", err
+func (s Service) PrepareWindowsEnvironment(ctx context.Context, userId string, projectId string, input initdto.SaveEnvironmentInput) (initdto.WindowsCommandView, error) {
+	if _, err := s.projects.LoadForUser(ctx, projectId, userId); err != nil {
+		return initdto.WindowsCommandView{}, err
 	}
-	return s.environments.DeploymentSSHPublicKeyForProject(ctx, userID, projectID)
+	if strings.TrimSpace(input.TargetType) != model.EnvironmentTargetTypeSSH || input.SSH == nil {
+		return initdto.WindowsCommandView{}, apperror.New(apperror.KindValidation, "Windows initialization command requires an SSH target")
+	}
+	if strings.TrimSpace(input.SSH.Platform) != model.EnvironmentPlatformWindows {
+		return initdto.WindowsCommandView{}, apperror.New(apperror.KindValidation, "Windows initialization command requires a Windows SSH target")
+	}
+	_, publicKey, err := s.environments.PrepareWindowsEnvironment(ctx, userId, projectId, *input.SSH)
+	if err != nil {
+		return initdto.WindowsCommandView{}, err
+	}
+	status, err := s.Status(ctx, userId, projectId)
+	if err != nil {
+		return initdto.WindowsCommandView{}, err
+	}
+	return initdto.WindowsCommandView{Status: status, PublicKey: publicKey}, nil
 }
 
-func (s Service) ProbeEnvironment(ctx context.Context, userID string, projectID string) (initdto.StatusView, error) {
-	if _, err := s.projects.LoadForUser(ctx, projectID, userID); err != nil {
+func (s Service) ProbeEnvironment(ctx context.Context, userId string, projectId string) (initdto.StatusView, error) {
+	if _, err := s.projects.LoadForUser(ctx, projectId, userId); err != nil {
 		return initdto.StatusView{}, err
 	}
-	if _, err := s.environments.ProbeForUser(ctx, userID, projectID); err != nil {
+	if _, err := s.environments.ProbeForUser(ctx, userId, projectId); err != nil {
 		return initdto.StatusView{}, err
 	}
-	return s.Status(ctx, userID, projectID)
+	return s.Status(ctx, userId, projectId)
 }
 
-func (s Service) CreateGateway(ctx context.Context, userID string, projectID string, input initdto.CreateGatewayInput) (initdto.StatusView, error) {
-	status, err := s.Status(ctx, userID, projectID)
+func (s Service) CreateGateway(ctx context.Context, userId string, projectId string, input initdto.CreateGatewayInput) (initdto.StatusView, error) {
+	status, err := s.Status(ctx, userId, projectId)
 	if err != nil {
 		return initdto.StatusView{}, err
 	}
 	if status.Status != initdto.StatusNeedsGateway {
 		return initdto.StatusView{}, apperror.New(apperror.KindValidation, "Project environment must pass probe before creating a gateway")
 	}
-	project, err := s.projects.LoadForUser(ctx, projectID, userID)
+	project, err := s.projects.LoadForUser(ctx, projectId, userId)
 	if err != nil {
 		return initdto.StatusView{}, err
 	}
@@ -141,7 +155,7 @@ func (s Service) CreateGateway(ctx context.Context, userID string, projectID str
 	acmeProfile := strings.TrimSpace(input.AcmeProfile)
 	acmeEmail := strings.TrimSpace(input.AcmeEmail)
 	dnsToken := strings.TrimSpace(input.DNSApiToken)
-	if _, err := s.gateways.CreateGateway(ctx, userID, gatewaydto.GatewayCreateInput{
+	if _, err := s.gateways.CreateGateway(ctx, userId, gatewaydto.GatewayCreateInput{
 		ProjectId:               project.Id,
 		Code:                    gatewaysvc.ManagedGatewayCode(),
 		Name:                    gatewaysvc.ManagedGatewayName(),
@@ -157,7 +171,7 @@ func (s Service) CreateGateway(ctx context.Context, userID string, projectID str
 	}); err != nil {
 		return initdto.StatusView{}, err
 	}
-	return s.Status(ctx, userID, projectID)
+	return s.Status(ctx, userId, projectId)
 }
 
 func (s Service) defaultValues() initdto.Defaults {

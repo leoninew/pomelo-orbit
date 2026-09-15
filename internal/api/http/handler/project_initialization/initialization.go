@@ -61,17 +61,25 @@ func (h Handler) SaveEnvironment(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, initializationResponse(view))
 }
 
-func (h Handler) GetDeploymentPublicKey(c *gin.Context) {
+func (h Handler) PrepareWindowsEnvironment(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	publicKey, err := h.service.DeploymentSSHPublicKey(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")))
+	var req initv1.ProjectInitializationEnvironmentReq
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	result, err := h.service.PrepareWindowsEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), saveEnvironmentInput(&req))
 	if err != nil {
 		transportresponse.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &initv1.ProjectInitializationDeploymentPublicKeyResp{PublicKey: publicKey})
+	transportresponse.ProtoJSON(c, http.StatusOK, &initv1.ProjectInitializationWindowsCommandResp{
+		Status:    initializationResponse(result.Status),
+		PublicKey: result.PublicKey,
+	})
 }
 
 func (h Handler) BootstrapEnvironment(c *gin.Context) {

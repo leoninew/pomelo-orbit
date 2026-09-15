@@ -70,7 +70,8 @@ export interface ProjectInitializationEnvironmentTestResp {
   ok: boolean;
 }
 
-export interface ProjectInitializationDeploymentPublicKeyResp {
+export interface ProjectInitializationWindowsCommandResp {
+  status: ProjectInitializationStatusResp | undefined;
   public_key: string;
 }
 

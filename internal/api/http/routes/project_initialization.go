@@ -11,7 +11,7 @@ func (r Router) registerProjectInitialization(engine *gin.Engine) {
 	engine.GET("/api/project/:project_id/initialization", handler.GetStatus)
 	engine.POST("/api/project/:project_id/initialization/environment/test", handler.TestEnvironment)
 	engine.POST("/api/project/:project_id/initialization/environment", handler.SaveEnvironment)
-	engine.GET("/api/project/:project_id/initialization/environment/deployment-key", handler.GetDeploymentPublicKey)
+	engine.POST("/api/project/:project_id/initialization/environment/windows-command", handler.PrepareWindowsEnvironment)
 	engine.POST("/api/project/:project_id/initialization/bootstrap", handler.BootstrapEnvironment)
 	engine.POST("/api/project/:project_id/initialization/probe", handler.ProbeEnvironment)
 	engine.POST("/api/project/:project_id/initialization/gateway", handler.CreateGateway)

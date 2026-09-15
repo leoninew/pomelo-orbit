@@ -69,3 +69,13 @@ func (m *memoryEnvironmentCredentials) CreateEnvironmentCredential(_ context.Con
 	m.items = append(m.items, credential)
 	return nil
 }
+
+func (m *memoryEnvironmentCredentials) UpdateEnvironmentCredential(_ context.Context, credential model.EnvironmentCredential) error {
+	for index := range m.items {
+		if m.items[index].Id == credential.Id {
+			m.items[index] = credential
+			return nil
+		}
+	}
+	return repository.ErrNotFound
+}

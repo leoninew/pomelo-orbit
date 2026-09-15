@@ -21,7 +21,7 @@
             @click="openWindowsCommand"
           >
             <KeyRound class="size-4" aria-hidden="true" />
-            {{ t('project.environment.windowsCommand') }}
+            {{ t('project.initialization.windowsTargetCommand') }}
           </button>
           <button
             v-if="canInitialize"
@@ -197,7 +197,6 @@
   import { computed, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { projectEnvironmentApi } from '@/api/project/environment';
-  import { projectInitializationApi } from '@/api/project/initialization';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
@@ -208,6 +207,7 @@
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import { useProjectInitializationStore } from '@/stores/projectInitialization';
   import { useProjectStore } from '@/stores/project';
   import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment/environment';
   import { formatTime } from '@/utils/time';
@@ -232,6 +232,7 @@
 
   const { t } = useI18n();
   const toast = useToast();
+  const initializationStore = useProjectInitializationStore();
   const projectStore = useProjectStore();
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
@@ -332,20 +333,32 @@
     windowsCommand.value = '';
     windowsCommandError.value = '';
     try {
-      const { public_key: publicKey } =
-        await projectInitializationApi.getDeploymentPublicKey(projectId);
+      const result = await initializationStore.prepareWindowsEnvironment(projectId, {
+        target_type: 'ssh',
+        ssh: {
+          platform: target.platform,
+          host: target.host,
+          port: target.port,
+          username: target.username,
+          workspace_root: target.workspace_root,
+        },
+      });
+      if (!result.public_key) {
+        throw new Error(t('project.initialization.windowsTargetCommandFailed'));
+      }
       windowsCommand.value = buildWindowsSshInitializationCommand({
         host: target.host,
         port: target.port,
         username: target.username,
         workspaceRoot: target.workspace_root,
-        publicKey,
+        publicKey: result.public_key,
       });
+      environment.value = await projectEnvironmentApi.get(projectId);
     } catch (error: unknown) {
       windowsCommandError.value =
         error instanceof Error
           ? error.message
-          : t('project.initialization.windowsTargetKeyLoadFailed');
+          : t('project.initialization.windowsTargetCommandFailed');
     } finally {
       loadingWindowsCommand.value = false;
     }

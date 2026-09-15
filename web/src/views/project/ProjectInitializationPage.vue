@@ -104,6 +104,21 @@
             </p>
             <div class="flex flex-wrap justify-end gap-2">
               <button
+                v-if="isWindowsSSH"
+                type="button"
+                class="app-button h-9 px-4"
+                :disabled="operating || loadingWindowsCommand"
+                :aria-busy="loadingWindowsCommand"
+                @click="openWindowsCommand"
+              >
+                <LoaderCircle
+                  v-if="loadingWindowsCommand"
+                  class="size-4 animate-spin"
+                  aria-hidden="true"
+                />
+                {{ t('project.initialization.windowsTargetCommand') }}
+              </button>
+              <button
                 v-if="isRemoteSSH"
                 type="button"
                 class="app-button h-9 px-4"
@@ -121,21 +136,6 @@
                     ? t('project.initialization.testingSSH')
                     : t('project.initialization.testSSH')
                 }}
-              </button>
-              <button
-                v-if="isWindowsSSH"
-                type="button"
-                class="app-button h-9 px-4"
-                :disabled="operating || loadingDeploymentPublicKey"
-                :aria-busy="loadingDeploymentPublicKey"
-                @click="openWindowsCommand"
-              >
-                <LoaderCircle
-                  v-if="loadingDeploymentPublicKey"
-                  class="size-4 animate-spin"
-                  aria-hidden="true"
-                />
-                {{ t('project.initialization.windowsTargetCommand') }}
               </button>
               <span
                 class="inline-flex"
@@ -560,7 +560,7 @@
     <WindowsSshInitializationDialog
       v-model:open="showWindowsCommandDialog"
       :command="windowsCommand"
-      :loading="loadingDeploymentPublicKey"
+      :loading="loadingWindowsCommand"
       :error="windowsCommandError"
     />
   </div>
@@ -650,8 +650,7 @@
   const gatewayHydrated = ref(false);
   const probeCheckIndex = ref(-1);
   let probeCheckTimer: ReturnType<typeof setInterval> | undefined;
-  const deploymentPublicKey = ref('');
-  const loadingDeploymentPublicKey = ref(false);
+  const loadingWindowsCommand = ref(false);
   const showWindowsCommandDialog = ref(false);
   const windowsCommand = ref('');
   const windowsCommandError = ref('');
@@ -870,23 +869,31 @@
       return;
     }
     showWindowsCommandDialog.value = true;
-    loadingDeploymentPublicKey.value = true;
+    loadingWindowsCommand.value = true;
+    windowsCommand.value = '';
     try {
-      if (!deploymentPublicKey.value) {
-        const result = await initializationStore.getDeploymentPublicKey(projectId.value);
-        deploymentPublicKey.value = result.public_key;
+      const result = await initializationStore.prepareWindowsEnvironment(
+        projectId.value,
+        initializationEnvironmentRequestFromForm(environmentForm)
+      );
+      if (!result.status || !result.public_key) {
+        throw new Error(t('project.initialization.windowsTargetCommandFailed'));
       }
+      sshTestSignature.value = '';
+      hydrate(result.status);
+      selectedStep.value = 1;
       windowsCommand.value = buildWindowsSshInitializationCommand({
         host: environmentForm.host,
         port: environmentForm.port,
         username: environmentForm.username,
         workspaceRoot: environmentForm.workspaceRoot,
-        publicKey: deploymentPublicKey.value,
+        publicKey: result.public_key,
       });
-    } catch {
-      windowsCommandError.value = t('project.initialization.windowsTargetKeyLoadFailed');
+    } catch (error: unknown) {
+      windowsCommandError.value =
+        error instanceof Error ? error.message : t('project.initialization.windowsTargetCommandFailed');
     } finally {
-      loadingDeploymentPublicKey.value = false;
+      loadingWindowsCommand.value = false;
     }
   }
 
@@ -911,10 +918,9 @@
     Object.assign(bootstrapForm, emptyEnvironmentBootstrapForm());
     Object.assign(bootstrapErrors, emptyEnvironmentBootstrapFormErrors());
     Object.assign(gatewayForm, emptyGatewayConfigForm());
-    deploymentPublicKey.value = '';
     windowsCommand.value = '';
     windowsCommandError.value = '';
-    loadingDeploymentPublicKey.value = false;
+    loadingWindowsCommand.value = false;
   }
 
   function openProject(id: string) {
@@ -968,6 +974,7 @@
     if (!view) {
       return;
     }
+    const testedTarget = sshTestSignature.value;
     Object.assign(
       environmentForm,
       hydrateEnvironmentForm(view.environment, view.defaults?.local_workspace_root || '')
@@ -980,9 +987,7 @@
       gatewayHydrated.value = true;
     }
     selectedStep.value = stepFromStatus(view.status);
-    if (environmentForm.targetType === 'ssh' && view.environment?.ssh) {
-      sshTestSignature.value = sshTargetSignature.value;
-    } else {
+    if (environmentForm.targetType !== 'ssh' || testedTarget !== sshTargetSignature.value) {
       sshTestSignature.value = '';
     }
   }

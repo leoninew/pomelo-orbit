@@ -40,9 +40,6 @@ func (s Service) ProbeForUser(ctx context.Context, userID string, projectID stri
 	if err != nil {
 		return environmentdto.View{}, err
 	}
-	if !item.IsActive() {
-		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment must be active before it can be probed")
-	}
 	if strings.TrimSpace(item.WorkspaceRoot) == "" {
 		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment workspace_root must be configured before it can be probed")
 	}
@@ -109,9 +106,6 @@ func (s Service) InitializeForUser(ctx context.Context, userID string, projectID
 	item, err := s.environmentForProject(ctx, projectID)
 	if err != nil {
 		return environmentdto.View{}, err
-	}
-	if !item.IsActive() {
-		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment must be active before it can be initialized")
 	}
 	if !item.IsSSH() {
 		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Only an SSH environment can be initialized")

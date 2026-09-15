@@ -76,13 +76,6 @@
       </aside>
 
       <div class="app-surface min-w-0">
-        <header class="border-b border-border px-5 py-5 sm:px-6">
-          <h2 class="text-base font-semibold text-foreground">
-            {{ currentStepItem.title }}
-          </h2>
-          <p class="mt-1 text-sm text-muted-foreground">{{ currentStepItem.hint }}</p>
-        </header>
-
         <div class="space-y-6 p-5 sm:p-6">
           <form
             v-if="currentStep === 'environment'"
@@ -99,6 +92,7 @@
               id-prefix="initialization"
             />
 
+            <hr class="border-border" />
             <p v-if="environmentSubmitError" class="app-field-error" role="alert">
               {{ environmentSubmitError }}
             </p>
@@ -108,27 +102,20 @@
             >
               {{ t('project.initialization.testSSHPassed') }}
             </p>
-            <p v-else-if="isRemoteSSH && !sshTestPassed" class="text-sm text-muted-foreground">
-              {{ t('project.initialization.saveRequiresSSHTest') }}
-            </p>
-
-            <div class="flex justify-end gap-2 border-t border-border pt-5">
-              <button
-                v-if="isWindowsSSH"
-                type="button"
-                class="app-button h-9 px-4"
-                :disabled="operating"
-                @click="openWindowsCommand"
-              >
-                {{ t('project.initialization.windowsTargetCommand') }}
-              </button>
+            <div class="flex flex-wrap justify-end gap-2">
               <button
                 v-if="isRemoteSSH"
                 type="button"
                 class="app-button h-9 px-4"
                 :disabled="operating"
+                :aria-busy="activeOperation === 'testing'"
                 @click="testSSH"
               >
+                <LoaderCircle
+                  v-if="activeOperation === 'testing'"
+                  class="size-4 animate-spin"
+                  aria-hidden="true"
+                />
                 {{
                   activeOperation === 'testing'
                     ? t('project.initialization.testingSSH')
@@ -136,94 +123,97 @@
                 }}
               </button>
               <button
-                type="submit"
-                class="app-button-primary h-9 px-4"
-                :disabled="operating || (isRemoteSSH && !sshTestPassed)"
+                v-if="isWindowsSSH"
+                type="button"
+                class="app-button h-9 px-4"
+                :disabled="operating || loadingDeploymentPublicKey"
+                :aria-busy="loadingDeploymentPublicKey"
+                @click="openWindowsCommand"
               >
-                {{ t('project.initialization.saveEnvironment') }}
-                <ArrowRight class="size-4" aria-hidden="true" />
+                <LoaderCircle
+                  v-if="loadingDeploymentPublicKey"
+                  class="size-4 animate-spin"
+                  aria-hidden="true"
+                />
+                {{ t('project.initialization.windowsTargetCommand') }}
               </button>
+              <span
+                class="inline-flex"
+                :title="
+                  isRemoteSSH && !sshTestPassed
+                    ? t('project.initialization.saveRequiresSSHTest')
+                    : undefined
+                "
+              >
+                <button
+                  type="submit"
+                  class="app-button-primary h-9 px-4"
+                  :disabled="operating || (isRemoteSSH && !sshTestPassed)"
+                  :aria-busy="activeOperation === 'saving'"
+                >
+                  <LoaderCircle
+                    v-if="activeOperation === 'saving'"
+                    class="size-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                  {{ t('project.initialization.next') }}
+                  <ArrowRight v-if="activeOperation !== 'saving'" class="size-4" aria-hidden="true" />
+                </button>
+              </span>
             </div>
           </form>
 
           <section
             v-else-if="currentStep === 'probe'"
             class="space-y-5"
-            aria-labelledby="initialization-probe-heading"
+            aria-labelledby="initialization-probe-checklist-heading"
           >
-            <div class="overflow-hidden rounded-lg border border-border">
-              <div class="flex flex-wrap items-start gap-3 p-4 sm:p-5">
-                <div
-                  class="flex size-10 shrink-0 items-center justify-center rounded-full"
-                  :class="[
-                    isProbing
-                      ? 'bg-primary/10 text-primary'
-                      : probeStatus === 'succeeded'
-                        ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                        : probeStatus === 'failed'
-                          ? 'bg-destructive/10 text-destructive'
-                          : 'bg-muted text-muted-foreground',
-                  ]"
-                >
-                  <LoaderCircle v-if="operating" class="size-5 animate-spin" aria-hidden="true" />
-                  <CheckCircle2
-                    v-else-if="probeStatus === 'succeeded'"
-                    class="size-5"
-                    aria-hidden="true"
-                  />
-                  <XCircle v-else-if="probeStatus === 'failed'" class="size-5" aria-hidden="true" />
-                  <CircleDashed v-else class="size-5" aria-hidden="true" />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <h3
-                    id="initialization-probe-heading"
-                    class="text-sm font-semibold text-foreground"
+            <div class="space-y-3">
+              <h2 id="initialization-probe-checklist-heading" class="app-detail-section-title">
+                {{ t('project.initialization.probeChecklistTitle') }}
+              </h2>
+              <div class="overflow-hidden rounded-lg border border-border">
+                <ul class="divide-y divide-border">
+                  <li
+                    v-for="(item, index) in probeChecks"
+                    :key="item.key"
+                    class="flex items-center gap-3 px-4 py-3 sm:px-5"
+                    :class="probeCheckState(index) === 'error' ? 'bg-destructive/5' : ''"
                   >
-                    {{ probeHeadline }}
-                  </h3>
-                  <p class="mt-1 text-sm text-muted-foreground">{{ probeDescription }}</p>
-                </div>
-                <AppBadge
-                  v-if="!operating && probeStatus"
-                  variant="status"
-                  :tone="probeStatus === 'succeeded' ? 'success' : 'error'"
-                >
-                  {{ t(`project.environment.probeStates.${probeStatus}`) }}
-                </AppBadge>
-              </div>
-
-              <div
-                v-if="operating"
-                class="space-y-2 border-t border-border bg-muted/20 px-4 py-4 sm:px-5"
-              >
-                <div class="h-1.5 overflow-hidden rounded-full bg-primary/15">
-                  <div class="h-full w-2/5 animate-pulse rounded-full bg-primary" />
-                </div>
-                <p class="text-xs text-muted-foreground">
-                  {{
-                    isProbing
-                      ? t('project.initialization.probeChecking')
-                      : t('project.environment.initializeTitle')
-                  }}
-                </p>
-              </div>
-              <div
-                v-else-if="probeStatus === 'failed' && probeDiagnostic"
-                class="border-t border-destructive/20 bg-destructive/5 px-4 py-4 sm:px-5"
-              >
-                <p class="text-xs font-medium text-destructive">
-                  {{ t('project.initialization.probeDiagnostic') }}
-                </p>
-                <p class="mt-1 break-words text-sm text-destructive">{{ probeDiagnostic }}</p>
-              </div>
-              <div
-                v-else-if="probeStatus === 'succeeded'"
-                class="border-t border-border px-4 py-3 sm:px-5"
-              >
-                <p class="text-xs text-muted-foreground">
-                  {{ t('project.initialization.probeLastRun') }}:
-                  <span class="text-foreground">{{ formatTime(probeLastRun) }}</span>
-                </p>
+                    <div
+                      class="flex size-7 shrink-0 items-center justify-center rounded-full"
+                      :class="probeCheckIconClass(index)"
+                    >
+                      <LoaderCircle
+                        v-if="probeCheckState(index) === 'checking'"
+                        class="size-4 animate-spin"
+                        aria-hidden="true"
+                      />
+                      <CheckCircle2
+                        v-else-if="probeCheckState(index) === 'success'"
+                        class="size-4"
+                        aria-hidden="true"
+                      />
+                      <XCircle
+                        v-else-if="probeCheckState(index) === 'error'"
+                        class="size-4"
+                        aria-hidden="true"
+                      />
+                      <CircleDashed v-else class="size-4" aria-hidden="true" />
+                    </div>
+                    <span
+                      class="min-w-0 flex-1 text-sm"
+                      :class="
+                        probeCheckState(index) === 'error' ? 'text-destructive' : 'text-foreground'
+                      "
+                    >
+                      {{ item.label }}
+                    </span>
+                    <span class="text-xs text-muted-foreground">
+                      {{ probeCheckStateLabel(index) }}
+                    </span>
+                  </li>
+                </ul>
               </div>
             </div>
 
@@ -249,54 +239,63 @@
                 type="button"
                 class="app-button h-9 px-4"
                 :disabled="operating"
+                :aria-busy="activeOperation === 'bootstrapping'"
                 @click="bootstrapEnvironment"
               >
+                <LoaderCircle
+                  v-if="activeOperation === 'bootstrapping'"
+                  class="size-4 animate-spin"
+                  aria-hidden="true"
+                />
                 {{ t('project.environment.initialize') }}
               </button>
             </div>
 
+            <hr class="border-border" />
+
+            <p
+              v-if="probeStatus === 'failed' && probeDiagnostic"
+              class="app-field-error"
+              role="alert"
+            >
+              {{ probeDiagnostic }}
+            </p>
+            <p v-else-if="probeStatus === 'succeeded'" class="text-xs text-muted-foreground">
+              {{ t('project.initialization.probeLastRun') }}:
+              <span class="text-foreground">{{ formatTime(probeLastRun) }}</span>
+            </p>
             <p v-if="environmentSubmitError" class="app-field-error" role="alert">
               {{ environmentSubmitError }}
             </p>
 
-            <div
-              class="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5"
-            >
+            <div class="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
-                class="app-button h-9 px-3"
+                class="app-button h-9 px-4"
                 :disabled="operating"
-                @click="selectStep(1)"
+                :aria-busy="activeOperation === 'probing'"
+                @click="probeEnvironment"
               >
-                <ChevronLeft class="size-4" aria-hidden="true" />
-                {{ t('project.initialization.editEnvironment') }}
+                <LoaderCircle
+                  v-if="activeOperation === 'probing'"
+                  class="size-4 animate-spin"
+                  aria-hidden="true"
+                />
+                {{
+                  activeOperation === 'probing'
+                    ? t('project.initialization.probing')
+                    : t('project.initialization.probe')
+                }}
               </button>
-              <div class="ml-auto flex flex-wrap gap-2">
-                <button
-                  v-if="canContinueToGateway"
-                  type="button"
-                  class="app-button h-9 px-3"
-                  :disabled="operating"
-                  @click="selectStep(3)"
-                >
-                  {{ t('project.initialization.continueToGateway') }}
-                  <ArrowRight class="size-4" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  class="app-button-primary h-9 px-4"
-                  :disabled="operating"
-                  @click="probeEnvironment"
-                >
-                  {{
-                    operating
-                      ? t('project.initialization.probing')
-                      : probeStatus === 'failed'
-                        ? t('common.retry')
-                        : t('project.initialization.probe')
-                  }}
-                </button>
-              </div>
+              <button
+                type="button"
+                class="app-button-primary h-9 px-4"
+                :disabled="operating || !canContinueToGateway"
+                @click="selectStep(3)"
+              >
+                {{ t('project.initialization.next') }}
+                <ArrowRight class="size-4" aria-hidden="true" />
+              </button>
             </div>
           </section>
 
@@ -511,13 +510,12 @@
               </div>
             </section>
 
+            <hr class="border-border" />
             <p v-if="gatewaySubmitError" class="app-field-error" role="alert">
               {{ gatewaySubmitError }}
             </p>
 
-            <div
-              class="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5"
-            >
+            <div class="flex flex-wrap items-center justify-between gap-3">
               <button
                 type="button"
                 class="app-button h-9 px-3"
@@ -527,13 +525,27 @@
                 <ChevronLeft class="size-4" aria-hidden="true" />
                 {{ t('common.back') }}
               </button>
-              <button type="submit" class="app-button-primary h-9 px-4" :disabled="operating">
+              <button
+                type="submit"
+                class="app-button-primary h-9 px-4"
+                :disabled="operating"
+                :aria-busy="activeOperation === 'creating'"
+              >
+                <LoaderCircle
+                  v-if="activeOperation === 'creating'"
+                  class="size-4 animate-spin"
+                  aria-hidden="true"
+                />
                 {{
-                  operating
+                  activeOperation === 'creating'
                     ? t('project.initialization.creating')
                     : t('project.initialization.createGateway')
                 }}
-                <ArrowRight v-if="!operating" class="size-4" aria-hidden="true" />
+                <ArrowRight
+                  v-if="activeOperation !== 'creating'"
+                  class="size-4"
+                  aria-hidden="true"
+                />
               </button>
             </div>
           </form>
@@ -560,7 +572,7 @@
     LoaderCircle,
     XCircle,
   } from '@lucide/vue';
-  import { computed, onMounted, reactive, ref } from 'vue';
+  import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
   import {
@@ -572,7 +584,6 @@
     StepperTitle,
     StepperTrigger,
   } from 'reka-ui';
-  import AppBadge from '@/components/AppBadge.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import WindowsSshInitializationDialog from '@/components/WindowsSshInitializationDialog.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
@@ -633,6 +644,8 @@
   const environmentSubmitError = ref('');
   const gatewaySubmitError = ref('');
   const gatewayHydrated = ref(false);
+  const probeCheckIndex = ref(-1);
+  let probeCheckTimer: ReturnType<typeof setInterval> | undefined;
   const deploymentPublicKey = ref('');
   const loadingDeploymentPublicKey = ref(false);
   const showWindowsCommandDialog = ref(false);
@@ -680,6 +693,7 @@
       environmentForm.host.trim(),
       String(environmentForm.port),
       environmentForm.username.trim(),
+      environmentForm.workspaceRoot.trim(),
     ].join('\0');
   });
   const sshTestPassed = computed(
@@ -728,9 +742,6 @@
   const progressStep = computed(() => stepFromStatus(status.value?.status));
   const selectedStep = ref(1);
   const currentStep = computed(() => stepItems.value[selectedStep.value - 1]?.key || 'environment');
-  const currentStepItem = computed(
-    () => stepItems.value[selectedStep.value - 1] || stepItems.value[0]
-  );
   const environmentHasUnsavedChanges = computed(() =>
     Boolean(
       status.value?.environment && environmentFormDirty(environmentForm, status.value.environment)
@@ -746,34 +757,99 @@
   const isProbing = computed(() => activeOperation.value === 'probing');
   const probeDiagnostic = computed(() => status.value?.environment?.last_probe_diagnostic || '');
   const probeLastRun = computed(() => status.value?.environment?.last_probe_at);
-  const probeHeadline = computed(() => {
-    if (operating.value) {
-      return isProbing.value
-        ? t('project.initialization.probeChecking')
-        : t('project.environment.initializeTitle');
+  const probeChecks = computed(() => {
+    const items = [
+      {
+        key: environmentForm.targetType === 'local' ? 'workspace' : 'target',
+        label: t(
+          environmentForm.targetType === 'local'
+            ? 'project.initialization.probeChecks.workspace'
+            : 'project.initialization.probeChecks.target'
+        ),
+      },
+      { key: 'docker', label: t('project.initialization.probeChecks.docker') },
+      { key: 'compose', label: t('project.initialization.probeChecks.compose') },
+    ];
+    if (environmentForm.targetType === 'ssh' && environmentForm.platform === 'windows') {
+      items.splice(1, 0, {
+        key: 'wsl',
+        label: t('project.initialization.probeChecks.wsl'),
+      });
+    }
+    return items;
+  });
+
+  type ProbeCheckState = 'pending' | 'checking' | 'success' | 'error';
+
+  function probeCheckState(index: number): ProbeCheckState {
+    if (isProbing.value) {
+      if (index < probeCheckIndex.value) {
+        return 'success';
+      }
+      return index === probeCheckIndex.value ? 'checking' : 'pending';
     }
     if (probeStatus.value === 'succeeded') {
-      return t('project.initialization.probePassed');
+      return 'success';
     }
     if (probeStatus.value === 'failed') {
-      return t('project.initialization.probeFailedTitle');
+      const failedIndex = failedProbeCheckIndex();
+      if (index < failedIndex) {
+        return 'success';
+      }
+      return index === failedIndex ? 'error' : 'pending';
     }
-    return t('project.initialization.probeNotRun');
-  });
-  const probeDescription = computed(() => {
-    if (operating.value) {
-      return isProbing.value
-        ? t('project.initialization.probeCheckingDescription')
-        : t('project.initialization.bootstrapHint');
+    return 'pending';
+  }
+
+  function probeCheckIconClass(index: number) {
+    const state = probeCheckState(index);
+    if (state === 'success') {
+      return 'bg-green-500/10 text-green-600 dark:text-green-400';
     }
-    if (probeStatus.value === 'succeeded') {
-      return t('project.initialization.probePassedDescription');
+    if (state === 'error') {
+      return 'bg-destructive/10 text-destructive';
     }
-    if (probeStatus.value === 'failed') {
-      return t('project.initialization.probeFailedDescription');
+    if (state === 'checking') {
+      return 'bg-primary/10 text-primary';
     }
-    return t('project.initialization.probeNotRunDescription');
-  });
+    return 'bg-muted text-muted-foreground';
+  }
+
+  function probeCheckStateLabel(index: number) {
+    return t(`project.initialization.probeCheckStates.${probeCheckState(index)}`);
+  }
+
+  function failedProbeCheckIndex() {
+    const diagnostic = probeDiagnostic.value.toLowerCase();
+    const key = diagnostic.includes('compose')
+      ? 'compose'
+      : diagnostic.includes('wsl') || diagnostic.includes('docker desktop')
+        ? 'wsl'
+        : diagnostic.includes('workspace')
+          ? 'workspace'
+          : diagnostic.includes('docker')
+            ? 'docker'
+            : 'target';
+    const index = probeChecks.value.findIndex((item) => item.key === key);
+    return index >= 0 ? index : Math.max(0, probeCheckIndex.value);
+  }
+
+  function clearProbeCheckTimer() {
+    if (probeCheckTimer) {
+      clearInterval(probeCheckTimer);
+      probeCheckTimer = undefined;
+    }
+  }
+
+  function startProbeChecks() {
+    clearProbeCheckTimer();
+    probeCheckIndex.value = 0;
+    probeCheckTimer = setInterval(() => {
+      if (probeCheckIndex.value < probeChecks.value.length - 1) {
+        probeCheckIndex.value += 1;
+      }
+    }, 700);
+  }
   const canContinueToGateway = computed(
     () =>
       status.value?.status === 'needs_gateway' &&
@@ -821,6 +897,8 @@
   }
 
   function resetWorkspace() {
+    clearProbeCheckTimer();
+    probeCheckIndex.value = -1;
     gatewayHydrated.value = false;
     sshTestSignature.value = '';
     selectedStep.value = 1;
@@ -870,7 +948,7 @@
       }
       hydrate(view);
       if (view.status === READY_INITIALIZATION_STATUS) {
-        await router.replace(resolveInitializationCompletionRedirect(route.query.redirect));
+        await router.replace(resolveInitializationCompletionRedirect());
       }
     } catch (error: unknown) {
       loadError.value =
@@ -1027,6 +1105,7 @@
       }
     }
     activeOperation.value = 'probing';
+    startProbeChecks();
     try {
       await executeOperation(async () => {
         const view = await initializationStore.probeEnvironment(id);
@@ -1043,6 +1122,7 @@
       environmentSubmitError.value =
         error instanceof Error ? error.message : t('project.initialization.probeFailed');
     } finally {
+      clearProbeCheckTimer();
       activeOperation.value = 'idle';
     }
   }
@@ -1092,7 +1172,7 @@
         if (latest.status !== 'needs_gateway') {
           hydrate(latest);
           if (latest.status === READY_INITIALIZATION_STATUS) {
-            await router.replace(resolveInitializationCompletionRedirect(route.query.redirect));
+            await router.replace(resolveInitializationCompletionRedirect());
           }
           return;
         }
@@ -1102,7 +1182,7 @@
         );
         hydrate(view);
         toast.success(t('project.initialization.created'));
-        await router.replace(resolveInitializationCompletionRedirect(route.query.redirect));
+        await router.replace(resolveInitializationCompletionRedirect());
       });
     } catch (error: unknown) {
       gatewaySubmitError.value =
@@ -1113,6 +1193,8 @@
   }
 
   onMounted(() => openProject(projectId.value));
+
+  onUnmounted(clearProbeCheckTimer);
 
   onBeforeRouteUpdate((to) => {
     const nextId = String(to.params.id || '');

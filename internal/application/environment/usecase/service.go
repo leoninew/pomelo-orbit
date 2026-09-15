@@ -204,21 +204,15 @@ func (s Service) UpdateForUser(ctx context.Context, userID string, projectID str
 		return environmentdto.View{}, err
 	}
 	previous := item
+	// The legacy database state column is retained for storage compatibility;
+	// environment availability is determined by probe readiness instead.
+	item.State = model.EnvironmentStateActive
 	if err := applyUpdate(&item, input); err != nil {
 		return environmentdto.View{}, err
 	}
 	item, err = s.ensureGeneratedCredential(ctx, item)
 	if err != nil {
 		return environmentdto.View{}, err
-	}
-	if item.IsActive() && item.IsSSH() {
-		if s.deploymentCredential == nil {
-			return environmentdto.View{}, apperror.New(apperror.KindInternal, "deployment SSH credential reader is not configured")
-		}
-		credential, _, err := s.deploymentCredential.DeploymentSSHCredential(ctx, item.SSH.CredentialId)
-		if err != nil || !matchesEnvironmentCredential(item, credential) {
-			return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment deployment SSH credential must be configured before it can be active")
-		}
 	}
 	if err := validateEnvironment(item, s.localDisplay.Platform, false); err != nil {
 		return environmentdto.View{}, err
@@ -320,9 +314,6 @@ func validateEnvironment(item model.Environment, localPlatform string, allowEmpt
 	if item.ProjectId == "" || item.Code == "" {
 		return apperror.New(apperror.KindValidation, "Project environment identity is invalid")
 	}
-	if item.State != model.EnvironmentStateActive && item.State != model.EnvironmentStateDisabled {
-		return apperror.New(apperror.KindValidation, "Environment state must be active or disabled")
-	}
 	switch item.TargetType {
 	case model.EnvironmentTargetTypeLocal:
 		if item.SSH != nil {
@@ -360,9 +351,6 @@ func validateEnvironment(item model.Environment, localPlatform string, allowEmpt
 }
 
 func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) error {
-	if input.State != nil {
-		item.State = strings.TrimSpace(*input.State)
-	}
 	if input.TargetType != nil {
 		targetType := strings.TrimSpace(*input.TargetType)
 		switch targetType {

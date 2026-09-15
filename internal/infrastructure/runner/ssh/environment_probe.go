@@ -69,7 +69,7 @@ func (p EnvironmentProber) Probe(ctx context.Context, environment model.Environm
 	address := net.JoinHostPort(strings.TrimSpace(environment.SSH.Host), strconv.Itoa(environment.SSH.Port))
 	connection, err := p.dialContext(ctx, "tcp", address)
 	if err != nil {
-		return "", probeError{diagnostic: "Cannot connect to the configured SSH host."}
+		return "", probeError{diagnostic: sshDialDiagnostic(err)}
 	}
 	defer func() { _ = connection.Close() }()
 	stopCancelClose := context.AfterFunc(ctx, func() { _ = connection.Close() })
@@ -125,7 +125,7 @@ func (p EnvironmentProber) TestSSH(ctx context.Context, host string, port int, u
 	address := net.JoinHostPort(host, strconv.Itoa(port))
 	connection, err := p.dialContext(ctx, "tcp", address)
 	if err != nil {
-		return probeError{diagnostic: "Cannot connect to the configured SSH host."}
+		return probeError{diagnostic: sshDialDiagnostic(err)}
 	}
 	defer func() { _ = connection.Close() }()
 	stopCancelClose := context.AfterFunc(ctx, func() { _ = connection.Close() })
@@ -147,6 +147,22 @@ func (p EnvironmentProber) TestSSH(ctx context.Context, host string, port int, u
 	client := ssh.NewClient(clientConnection, channels, requests)
 	_ = client.Close()
 	return nil
+}
+
+func sshDialDiagnostic(err error) string {
+	message := strings.ToLower(err.Error())
+	switch {
+	case errors.Is(err, context.DeadlineExceeded) || strings.Contains(message, "timeout") || strings.Contains(message, "i/o timeout"):
+		return "Cannot connect to the configured SSH host: connection timed out."
+	case strings.Contains(message, "connection refused") || strings.Contains(message, "actively refused"):
+		return "Cannot connect to the configured SSH host: connection refused."
+	case strings.Contains(message, "no such host"):
+		return "Cannot connect to the configured SSH host: hostname could not be resolved."
+	case strings.Contains(message, "network is unreachable"):
+		return "Cannot connect to the configured SSH host: network is unreachable."
+	default:
+		return "Cannot connect to the configured SSH host."
+	}
 }
 
 func sshServiceReachable(err error) bool {

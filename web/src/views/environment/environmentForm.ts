@@ -14,7 +14,6 @@ export type EnvironmentTargetType = 'local' | 'ssh';
 export type EnvironmentPlatform = 'linux' | 'windows';
 
 export type EnvironmentForm = {
-  state: string;
   targetType: EnvironmentTargetType;
   platform: EnvironmentPlatform;
   host: string;
@@ -32,7 +31,6 @@ export type EnvironmentFormErrors = {
 
 export type EnvironmentTargetSnapshot = {
   target_type?: string;
-  state?: string;
   workspace_root?: string;
   local?: Pick<EnvironmentLocalTargetResp, 'workspace_root' | 'platform' | 'host' | 'username'>;
   ssh?: {
@@ -51,7 +49,6 @@ export type EnvironmentFormMessages = Pick<
 
 export function emptyEnvironmentForm(): EnvironmentForm {
   return {
-    state: 'active',
     targetType: 'local',
     platform: 'linux',
     host: '',
@@ -74,7 +71,6 @@ export function hydrateEnvironmentForm(
     form.workspaceRoot = localWorkspaceRoot;
     return form;
   }
-  form.state = snapshot.state || 'active';
   if (snapshot.target_type === 'ssh' && snapshot.ssh) {
     form.targetType = 'ssh';
     form.platform = snapshot.ssh.platform === 'windows' ? 'windows' : 'linux';
@@ -206,7 +202,7 @@ export function environmentUpdateRequestFromForm(
   form: EnvironmentForm
 ): ProjectEnvironmentUpdateReq {
   const payload = environmentTargetPayload(form);
-  return { state: form.state, ...payload };
+  return payload;
 }
 
 export function initializationEnvironmentRequestFromForm(
@@ -220,9 +216,6 @@ export function environmentFormDirty(
   snapshot: EnvironmentTargetSnapshot | undefined
 ): boolean {
   if (!snapshot) {
-    return true;
-  }
-  if (form.state && snapshot.state && form.state !== snapshot.state) {
     return true;
   }
   if (form.targetType !== snapshot.target_type) {

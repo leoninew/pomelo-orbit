@@ -38,8 +38,7 @@ describe('project readiness routing', () => {
     expect(resolveInitializationRedirect(undefined)).toBe(DEFAULT_READY_REDIRECT);
   });
 
-  it('opens the initialized gateway detail before falling back to the return URL', () => {
-    expect(resolveInitializationCompletionRedirect('/')).toBe('/');
-    expect(resolveInitializationCompletionRedirect('/environment')).toBe('/environment');
+  it('opens the initialized gateway detail after setup completes', () => {
+    expect(resolveInitializationCompletionRedirect()).toBe(DEFAULT_READY_REDIRECT);
   });
 });

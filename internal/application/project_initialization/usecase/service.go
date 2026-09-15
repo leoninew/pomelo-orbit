@@ -40,7 +40,7 @@ func (s Service) Status(ctx context.Context, userID string, projectID string) (i
 		return initdto.StatusView{}, err
 	}
 	view.Environment = &environment
-	if environment.State != model.EnvironmentStateActive || !hasFreshSuccessfulProbe(environment) {
+	if !hasFreshSuccessfulProbe(environment) {
 		view.Status = initdto.StatusNeedsProbe
 		return view, nil
 	}

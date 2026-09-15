@@ -61,8 +61,20 @@ func TestTestSSHReportsUnreachableHost(t *testing.T) {
 		timeout: time.Second,
 	}
 	err := prober.TestSSH(context.Background(), "192.0.2.10", 22, "orbit")
-	if err == nil || !strings.Contains(err.Error(), "Cannot connect to the configured SSH host") {
+	if err == nil || !strings.Contains(err.Error(), "Cannot connect to the configured SSH host: connection refused") {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestSSHDialDiagnosticClassifiesTimeoutAndRefused(t *testing.T) {
+	if got := sshDialDiagnostic(context.DeadlineExceeded); !strings.Contains(got, "timed out") {
+		t.Fatalf("timeout diagnostic = %q", got)
+	}
+	if got := sshDialDiagnostic(errors.New("dial tcp 10.126.126.1:22: i/o timeout")); !strings.Contains(got, "timed out") {
+		t.Fatalf("i/o timeout diagnostic = %q", got)
+	}
+	if got := sshDialDiagnostic(errors.New("connectex: No connection could be made because the target machine actively refused it.")); !strings.Contains(got, "connection refused") {
+		t.Fatalf("refused diagnostic = %q", got)
 	}
 }
 

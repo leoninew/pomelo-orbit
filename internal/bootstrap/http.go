@@ -107,7 +107,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	localRuntime, runtime := newDeploymentRuntime(dockerPathResolver)
 	localDisplay := localEnvironmentDisplay()
 	environmentService := environmentsvc.New(stores.environment, stores.project, credentialService, credentialService, environmentrunner.NewProber(localRuntime, sshrunner.NewEnvironmentProber()), sshrunner.NewEnvironmentBootstrapper()).WithLocalDisplay(localDisplay)
-	projectService := projectsvc.New(stores.project, stores.user, stores.environment)
+	projectService := projectsvc.New(stores.project, stores.user)
 	pipelineWorkspace := newPipelineWorkspace(cfg, stores, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, credentialService)

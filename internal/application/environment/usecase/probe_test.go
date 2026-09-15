@@ -173,7 +173,7 @@ func TestUpdateForUserWorkspaceChangeKeepsSSHIdentity(t *testing.T) {
 	}
 }
 
-func TestProbeForUserRejectsDisabledEnvironmentWithoutSSH(t *testing.T) {
+func TestProbeForUserIgnoresLegacyEnvironmentState(t *testing.T) {
 	environment := testProbeEnvironment("project-1")
 	environment.State = model.EnvironmentStateDisabled
 	store := &probeEnvironmentStore{environment: environment}
@@ -183,28 +183,27 @@ func TestProbeForUserRejectsDisabledEnvironmentWithoutSSH(t *testing.T) {
 	}, prober, nil)
 
 	_, err := service.ProbeForUser(context.Background(), "user-1", environment.ProjectId)
-	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
+	if err != nil {
 		t.Fatalf("ProbeForUser error = %v", err)
 	}
-	if prober.called || store.recorded {
-		t.Fatalf("disabled environment performed probe: prober=%#v store=%#v", prober, store)
+	if !prober.called || !store.recorded {
+		t.Fatalf("legacy environment state prevented probe: prober=%#v store=%#v", prober, store)
 	}
 }
 
-func TestUpdateForUserRejectsActivationWithoutConfiguredDeploymentCredential(t *testing.T) {
+func TestUpdateForUserIgnoresLegacyEnvironmentState(t *testing.T) {
 	projectID := "project-1"
 	environment := testProbeEnvironment(projectID)
 	environment.State = model.EnvironmentStateDisabled
 	store := &updateEnvironmentStore{environment: environment}
-	active := model.EnvironmentStateActive
 	service := New(store, probeProjectReader{}, nil, probeCredentialReader{err: errors.New("credential requires reconfiguration")}, nil, nil)
 
-	_, err := service.UpdateForUser(context.Background(), "user-1", projectID, environmentdto.UpdateInput{State: &active})
-	if err == nil || !apperror.IsKind(err, apperror.KindValidation) || !strings.Contains(err.Error(), "must be configured") {
+	_, err := service.UpdateForUser(context.Background(), "user-1", projectID, environmentdto.UpdateInput{})
+	if err != nil {
 		t.Fatalf("UpdateForUser error = %v", err)
 	}
-	if store.updated {
-		t.Fatal("environment update must not be persisted without a configured deployment SSH credential")
+	if !store.updated || store.environment.State != model.EnvironmentStateActive {
+		t.Fatalf("legacy environment state was not normalized on update: %#v", store.environment)
 	}
 }
 
@@ -534,6 +533,7 @@ func testProbeEnvironment(projectID string) model.Environment {
 	return model.Environment{
 		Id:             "environment-1",
 		ProjectId:      projectID,
+		Code:           "environment",
 		State:          model.EnvironmentStateActive,
 		TargetType:     model.EnvironmentTargetTypeSSH,
 		WorkspaceRoot:  "/srv/pomelo-orbit",

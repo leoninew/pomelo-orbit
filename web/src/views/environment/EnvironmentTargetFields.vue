@@ -13,19 +13,6 @@
         @update:model-value="updateTargetType"
       />
     </div>
-    <div v-if="showState" class="space-y-1.5">
-      <label class="app-field-label block" :for="id('state')">
-        {{ t('project.environment.state') }}
-        <span class="text-destructive">*</span>
-      </label>
-      <SelectControl
-        :id="id('state')"
-        :model-value="form.state"
-        :options="stateOptions"
-        :disabled="disabled"
-        @update:model-value="form.state = String($event)"
-      />
-    </div>
     <template v-if="form.targetType === 'local'">
       <div class="space-y-1.5 sm:col-span-2">
         <label class="app-field-label block" :for="id('workspace-root')">
@@ -185,14 +172,12 @@
   const props = withDefaults(
     defineProps<{
       disabled?: boolean;
-      showState?: boolean;
       localWorkspaceRoot?: string;
       localDisplay?: EnvironmentLocalTargetResp;
       idPrefix?: string;
     }>(),
     {
       disabled: false,
-      showState: false,
       localWorkspaceRoot: '',
       idPrefix: 'environment',
     }
@@ -202,10 +187,6 @@
   const targetTypeOptions = computed(() => [
     { value: 'local', label: t('project.environment.targetTypes.local') },
     { value: 'ssh', label: t('project.environment.targetTypes.ssh') },
-  ]);
-  const stateOptions = computed(() => [
-    { value: 'active', label: t('project.environment.states.active') },
-    { value: 'disabled', label: t('project.environment.states.disabled') },
   ]);
   const platformOptions = computed(() => [
     { value: 'linux', label: t('project.environment.platforms.linux') },

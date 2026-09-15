@@ -19,7 +19,6 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 	})
 
 	addTool(server, "orbit_update_project_environment", "Update the explicit local or SSH target of the selected Project's unique deployment Environment. Local requires the nested local object; SSH requires the nested ssh object.", func(ctx context.Context, input struct {
-		State      *string `json:"state,omitempty"`
 		TargetType *string `json:"target_type,omitempty"`
 		Local      *struct {
 			WorkspaceRoot string `json:"workspace_root"`
@@ -32,7 +31,7 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 			WorkspaceRoot string `json:"workspace_root"`
 		} `json:"ssh,omitempty"`
 	}) (map[string]any, error) {
-		if input.State == nil && input.TargetType == nil && input.Local == nil && input.SSH == nil {
+		if input.TargetType == nil && input.Local == nil && input.SSH == nil {
 			return nil, apperror.New(apperror.KindValidation, "at least one Environment field must be supplied")
 		}
 		var ssh *environmentdto.SSHTargetInput
@@ -48,7 +47,7 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 			return nil, err
 		}
 		environment, err := c.deps.Environment.UpdateForUser(ctx, c.deps.ActorUserId, projectId, environmentdto.UpdateInput{
-			State: input.State, TargetType: input.TargetType, Local: local, SSH: ssh,
+			TargetType: input.TargetType, Local: local, SSH: ssh,
 		})
 		if err != nil {
 			return nil, err
@@ -56,7 +55,7 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 		return writeResult("update_project_environment", map[string]string{"project_id": projectId, "environment_id": environment.Id}, "PUT", "/api/project/"+projectId+"/environment", map[string]any{"environment": environmentOutput(environment)}), nil
 	})
 
-	addTool(server, "orbit_probe_project_environment", "Probe Docker Compose prerequisites for the selected Project's active local or SSH Environment. SSH also verifies key authentication and host-key pinning.", func(ctx context.Context, _ struct{}) (map[string]any, error) {
+	addTool(server, "orbit_probe_project_environment", "Probe Docker Compose prerequisites for the selected Project's local or SSH Environment. SSH also verifies key authentication and host-key pinning.", func(ctx context.Context, _ struct{}) (map[string]any, error) {
 		projectId, _, err := c.requireReadyEnvironment(ctx)
 		if err != nil {
 			return nil, err

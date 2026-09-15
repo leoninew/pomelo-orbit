@@ -18,17 +18,15 @@ import (
 var projectCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
 type Service struct {
-	repo         repository.ProjectStore
-	users        repository.UserStore
-	environments repository.EnvironmentStore
+	repo  repository.ProjectStore
+	users repository.UserStore
 }
 
 func New(
 	repo repository.ProjectStore,
 	users repository.UserStore,
-	environments repository.EnvironmentStore,
 ) Service {
-	return Service{repo: repo, users: users, environments: environments}
+	return Service{repo: repo, users: users}
 }
 
 func (s Service) ListByMember(ctx context.Context, userId string) ([]model.Project, error) {
@@ -92,17 +90,6 @@ func (s Service) Deprecate(ctx context.Context, project model.Project, userId st
 	}
 	if len(activeProjects) <= 1 {
 		return apperror.New(apperror.KindValidation, "Cannot deprecate the last active project")
-	}
-	if s.environments == nil {
-		return apperror.New(apperror.KindInternal, "project environment store is not configured")
-	}
-	environment, err := s.environments.EnvironmentByProject(ctx, project.Id)
-	if err != nil {
-		if !errors.Is(err, repository.ErrNotFound) {
-			return fmt.Errorf("load project environment %s: %w", project.Id, err)
-		}
-	} else if environment.IsActive() {
-		return apperror.New(apperror.KindValidation, "Disable the project environment before deprecating the project")
 	}
 	repoCount, err := s.repo.CountProjectRepositories(ctx, project.Id)
 	if err != nil {

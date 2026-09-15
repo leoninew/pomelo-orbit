@@ -1,5 +1,5 @@
 # Project / Environment 配置归属、初始化与 MCP 实施计划
-最后修改时间: 2026-09-12 08:58:36
+最后修改时间: 2026-09-15 12:44:39
 
 Review status: Accepted
 
@@ -89,9 +89,9 @@ Mode: strict
 
 - 在 `web/src/api` 和 `web/src/stores` 增加 initialization status/command client 与状态管理，所有请求显式使用当前 `activeProjectId`。
 - 在 `web/src/router/index.ts` 为项目级 route 和 Project 切换建立 readiness guard：`ready` 回到目标页，其他状态转至 Wizard。Project 管理、登录与 Wizard route 排除循环 guard。
-- 新建 `web/src/views/project` 下的 Initialization Wizard 页面。第一步使用与环境页共用的 `EnvironmentTargetFields` 选择 `local | ssh`；Linux SSH 主机初始化复用 `EnvironmentBootstrapFields`。Windows SSH 提供当前表单参数驱动的 PowerShell 初始化命令，命令可在保存/测试前生成，并在目标机管理员 PowerShell 中安装/启动 OpenSSH、放行端口后完成远端配置；Wizard 按后端 status 恢复 Environment 保存、Probe、Gateway 确认三个步骤，用初始化来源的服务端默认值填充初次表单，但保存后只展示当前 Project 的持久化结果。
+- 新建 `web/src/views/project` 下的 Initialization Wizard 页面。第一步使用与环境页共用的 `EnvironmentTargetFields` 选择 `local | ssh`，主操作固定为“检查连接”“生成初始化命令”“下一步”：Windows SSH 的命令生成只依赖当前表单，连接失败时仍可用；SSH 目标的“下一步”须在当前表单连接检查成功后才可用，Local 隐藏不适用动作；目标字段变更使连接结果失效。第二步“准备环境”展示目标连接/认证、Docker 引擎、Docker Compose（Windows SSH 额外包括 WSL2 与 Docker Desktop）待检查清单；点击“检查就绪”后逐项推进状态，“下一步”须在 Probe 成功后可用，失败后仍保留“检查就绪”文案；Linux SSH 主机初始化继续复用 `EnvironmentBootstrapFields` 作为准备动作。Windows SSH 提供当前表单参数驱动的 PowerShell 初始化命令，并在目标机管理员 PowerShell 中安装/启动 OpenSSH、放行端口后完成远端配置；Wizard 按后端 status 恢复 Environment 保存、Probe、Gateway 确认三个步骤，用初始化来源的服务端默认值填充初次表单，但保存后只展示当前 Project 的持久化结果。
 - 修改 `EnvironmentPage.vue`、Gateway 页面、`gatewayConfigForm.ts` 和导航，移除独立 Gateway 创建流程及 component-name 输入；环境页继续用同一套目标表单编辑已保存 Environment，并在 Windows SSH 目标上展示同一初始化命令 Dialog。未就绪资源不显示空页或错误加载状态。现有 SSH bootstrap 只保留与已保存 Environment 相关的明确能力，不替代 Wizard 生命周期。
-- 更新 Web i18n、类型、router/store/form 测试，覆盖空库默认 Project、新建 Project、切换 Project 和初始化完成后回跳原目标 route。
+- 更新 Web i18n、类型、router/store/form 测试，覆盖空库默认 Project、新建 Project、切换 Project 和初始化完成后进入网关详情。
 
 **完成条件**：未初始化 Project 只进入 Wizard；切换 Project 不复用旧 Environment/Gateway 数据；Gateway 创建后处于可显式部署的待部署视图。
 
@@ -101,8 +101,8 @@ Mode: strict
 
 **修改范围**：
 
-- 在 `internal/api/mcp/delivery/server.go` 与拆分的 tool 文件中实现 `ProjectScope`、`requireProjectScope`、readiness assertion 和资源归属 assertion。scope 只挂在 MCP connection/core 生命周期内，绝不写入 config、数据库、浏览器状态或用户偏好；scope 的读写按现有 server 并发模型保护。
-- 保留 `orbit_list_projects` 作为发现工具，确保每项返回 id、name、唯一 code 和 active 信息。新增 `orbit_select_project(project_id)`，校验 member 可见性、Environment active/latest Probe 成功、Gateway/default Service 存在后写入 scope，并返回 Project、Environment、Gateway/default Service 摘要。新增 `orbit_get_current_project`；无选择时返回 `project_not_selected`。
+- 在 `internal/api/mcp/delivery/server.go` 与拆分的 tool 文件中实现 `ProjectScope`、`requireProjectScope`、readiness assertion 和资源归属 assertion。scope 只挂在 MCP connection/core 生命周期内，绝不写入 config、数据库、浏览器状态或用户偏好；scope 的读写按现有 server 并发模型保护。Environment 的历史 `state` 列不再作为业务状态或准入条件。
+- 保留 `orbit_list_projects` 作为发现工具，确保每项返回 id、name、唯一 code 和 active 信息。新增 `orbit_select_project(project_id)`，校验 member 可见性、Environment 最新 Probe 成功、Gateway/default Service 存在后写入 scope，并返回 Project、Environment、Gateway/default Service 摘要。新增 `orbit_get_current_project`；无选择时返回 `project_not_selected`。
 - 从除 list/select 外的项目级 MCP 输入删除 `project_id`。list/create Application、Gateway、Route、Service、Version、Deployment、runtime 和 Environment 相关工具均先取得 scope；接受 Application/Version/Service/Gateway/Route/Deployment ID 的工具在已有读取后校验资源的 Project 等于 scope。
 - 移除 `orbit_create_gateway` 注册。将 `orbit_provision_gateway` 改为无 `project_id` 的已存在 Gateway/default Service 解析操作。将 `orbit_update_gateway` 扩展为与 HTTP update 等价的完整 GatewayConfig 字段集。
 - 更新 `internal/bootstrap/app.go` 的 stdio composition，并修改 Dialogue port/usecase、MCP client 和 HTTP bootstrap，使 Web Deployment Dialogue 用请求中的 `project_id` 创建已预设且已验证的短生命周期 scope，不执行名称发现或项目切换。
@@ -129,8 +129,8 @@ Mode: strict
 3. Gateway：覆盖完整显式输入、固定 `traefik`/`missing` 初始 Component、无 defaults、Gateway update 字段完整性、Dashboard target 和 `ProvisionGateway` 缺失资源不创建行为。
 4. HTTP / Proto：验证初始化路由、输入映射、错误状态和删除的 Gateway/component-name 契约；运行 `task proto`、`task sqlc` 后确认 generated files 干净。
 5. MCP：覆盖 Project 名称 discovery 的输入输出、手动 code 澄清后的 select、scope 生命周期、未选择/未就绪/归属不符的业务错误，以及 Web Dialogue 的固定 request scope。
-6. Web：覆盖 router guard、Wizard steps、Project 切换、完成后跳回，以及 Environment/Gateway 页面只读取 ready Project 数据。
-7. Windows SSH：覆盖命令生成、当前表单参数、PowerShell quoting、OpenSSH 安装/启动、端口防火墙、远端 WSL2/Docker/Compose 检查和保存前公钥读取；覆盖受管部署凭据重试复用。
+6. Web：覆盖 router guard、Wizard steps、第一步“检查连接 / 生成初始化命令（不要求连接成功）/ 连接成功后下一步”和第二步“检查就绪 -> 下一步”的门控、目标变更后的状态失效、Project 切换、完成后跳回，以及 Environment/Gateway 页面只读取 ready Project 数据。
+7. Windows SSH：覆盖命令生成、当前表单参数、PowerShell quoting、OpenSSH 安装/启动、端口防火墙、远端 WSL2/Docker/Compose 检查和连接失败时的命令可用性；覆盖受管部署凭据重试复用。
 8. 最终执行项目固定检查：`task check`、`go test ./cmd/... ./internal/...`、`yarn --cwd web lint:fix`、`yarn --cwd web typecheck`，并按失败位置补充定向 Go/Web/MCP/migration 测试。
 
 ## 实施顺序与依赖
@@ -148,7 +148,7 @@ Mode: strict
 | 外部 Probe 失败 | Environment 与诊断保留，Wizard 重试，不将 Probe 放进 Gateway bundle 事务。 |
 | 初始化配置误作 runtime fallback | 以依赖注入边界和定向测试禁止 Gateway/Deployment/Route 从 `ProjectInitializationConfig` 读取。 |
 | MCP scope 漏检 | 每个项目级工具集中调用 scope/readiness/ownership helper，并用 schema 与跨 Project ID 测试锁定。 |
-| Windows SSH 尚未具备部署密钥 | 命令生成只依赖受认证 Project 公钥和当前表单，不依赖先保存或先 Probe；命令执行后仍由页面测试与 Probe 验证。 |
+| Windows SSH 尚未具备部署密钥 | 命令生成只依赖受认证 Project 公钥和当前表单，不依赖先连接、先保存或先 Probe；命令执行后仍由页面连接检查与 Probe 验证。 |
 | 初始化失败遗留部署凭据 | `deployment-ssh` 按 Project/name 查找并复用受管记录；非受管同名记录继续返回冲突。 |
 | 回滚 | 不保留运行时兼容层。需要回退时先执行新 migration 的 down 再回退二进制；该过程恢复列结构，不承诺恢复已删除的旧字段值。 |
 

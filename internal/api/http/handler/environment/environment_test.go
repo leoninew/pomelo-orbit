@@ -10,10 +10,10 @@ import (
 
 func TestEnvironmentResponseIncludesOnlyApplicableTargetFields(t *testing.T) {
 	local := environmentResponse(environmentdto.View{
-		Id: "local", TargetType: model.EnvironmentTargetTypeLocal,
+		Id: "local", State: model.EnvironmentStateDisabled, TargetType: model.EnvironmentTargetTypeLocal,
 		Local: &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit/deployment", Platform: "linux", Host: "orbit-host", Username: "orbit"},
 	})
-	if local.Local == nil || local.Local.WorkspaceRoot != "/srv/orbit/deployment" || local.Local.Platform != "linux" || local.Local.Host != "orbit-host" || local.Local.Username != "orbit" || local.Ssh != nil {
+	if local.State != "" || local.Local == nil || local.Local.WorkspaceRoot != "/srv/orbit/deployment" || local.Local.Platform != "linux" || local.Local.Host != "orbit-host" || local.Local.Username != "orbit" || local.Ssh != nil {
 		t.Fatalf("local response = %#v", local)
 	}
 
@@ -27,7 +27,9 @@ func TestEnvironmentResponseIncludesOnlyApplicableTargetFields(t *testing.T) {
 }
 
 func TestProjectEnvironmentUpdateInputMapsLocalWorkspace(t *testing.T) {
+	legacyState := model.EnvironmentStateDisabled
 	input := projectEnvironmentUpdateInput(&environmentv1.ProjectEnvironmentUpdateReq{
+		State: &legacyState,
 		Local: &environmentv1.EnvironmentLocalTargetReq{WorkspaceRoot: "/srv/orbit/deployment"},
 	})
 	if input.Local == nil || input.Local.WorkspaceRoot != "/srv/orbit/deployment" || input.SSH != nil {

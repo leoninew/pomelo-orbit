@@ -346,7 +346,7 @@ router.beforeEach(async (to, _from, next) => {
         : await initializationStore.fetchStatus(projectId);
       if (status.status === READY_INITIALIZATION_STATUS) {
         if (isProjectInitializationPath(to.path)) {
-          next(resolveInitializationCompletionRedirect(to.query.redirect));
+          next(resolveInitializationCompletionRedirect());
           return;
         }
         next();

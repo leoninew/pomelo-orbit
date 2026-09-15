@@ -14,3 +14,8 @@ LIMIT 1;
 INSERT INTO environment_credential (
   id, project_id, public_key, encrypted_private_key, revision, created_at
 ) VALUES (?, ?, ?, ?, ?, ?);
+
+-- name: UpdateEnvironmentCredential :exec
+UPDATE environment_credential
+SET public_key = ?, encrypted_private_key = ?, revision = ?
+WHERE id = ?;

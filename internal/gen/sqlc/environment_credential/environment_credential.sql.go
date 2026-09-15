@@ -78,3 +78,26 @@ func (q *Queries) EnvironmentCredentialByProjectLatest(ctx context.Context, proj
 	)
 	return i, err
 }
+
+const updateEnvironmentCredential = `-- name: UpdateEnvironmentCredential :exec
+UPDATE environment_credential
+SET public_key = ?, encrypted_private_key = ?, revision = ?
+WHERE id = ?
+`
+
+type UpdateEnvironmentCredentialParams struct {
+	PublicKey           string `db:"public_key"`
+	EncryptedPrivateKey string `db:"encrypted_private_key"`
+	Revision            int64  `db:"revision"`
+	ID                  string `db:"id"`
+}
+
+func (q *Queries) UpdateEnvironmentCredential(ctx context.Context, arg UpdateEnvironmentCredentialParams) error {
+	_, err := q.db.ExecContext(ctx, updateEnvironmentCredential,
+		arg.PublicKey,
+		arg.EncryptedPrivateKey,
+		arg.Revision,
+		arg.ID,
+	)
+	return err
+}

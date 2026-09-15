@@ -127,31 +127,24 @@ func TestSaveEnvironmentPersistsSSHTarget(t *testing.T) {
 	}
 }
 
-func TestDeploymentSSHPublicKeyIsAvailableBeforeEnvironmentSave(t *testing.T) {
+func TestPrepareWindowsEnvironmentPersistsTargetBeforeConnectionCheck(t *testing.T) {
 	service, environments := newInitializationService(t)
 	environments.publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOrbitDeploymentKey"
-	publicKey, err := service.DeploymentSSHPublicKey(context.Background(), "user-1", "project-1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if publicKey != environments.publicKey {
-		t.Fatalf("public key before save = %q", publicKey)
-	}
-	if _, err := service.SaveEnvironment(context.Background(), "user-1", "project-1", initdto.SaveEnvironmentInput{
+	result, err := service.PrepareWindowsEnvironment(context.Background(), "user-1", "project-1", initdto.SaveEnvironmentInput{
 		TargetType: model.EnvironmentTargetTypeSSH,
 		SSH: &environmentdto.SSHTargetInput{
 			Platform: model.EnvironmentPlatformWindows, Host: "192.0.2.10", Port: 22,
 			Username: "orbit", WorkspaceRoot: `C:\\orbit`,
 		},
-	}); err != nil {
-		t.Fatal(err)
-	}
-	publicKey, err = service.DeploymentSSHPublicKey(context.Background(), "user-1", "project-1")
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if publicKey != environments.publicKey {
-		t.Fatalf("public key = %q", publicKey)
+	if result.PublicKey != environments.publicKey || result.Status.Status != initdto.StatusNeedsProbe {
+		t.Fatalf("prepare result = %#v", result)
+	}
+	if environments.item == nil || environments.item.SSH == nil || environments.item.SSH.Host != "192.0.2.10" {
+		t.Fatalf("prepared environment = %#v", environments.item)
 	}
 }
 
@@ -214,8 +207,15 @@ func (f *fakeInitEnvironment) TestSSHReachability(context.Context, string, strin
 	return nil
 }
 
-func (f *fakeInitEnvironment) DeploymentSSHPublicKeyForProject(context.Context, string, string) (string, error) {
-	return f.publicKey, nil
+func (f *fakeInitEnvironment) PrepareWindowsEnvironment(_ context.Context, _ string, projectId string, input environmentdto.SSHTargetInput) (environmentdto.View, string, error) {
+	targetType := model.EnvironmentTargetTypeSSH
+	view, err := f.SaveInitialization(context.Background(), "", projectId, environmentdto.UpdateInput{
+		TargetType: &targetType, SSH: &input,
+	})
+	if err != nil {
+		return environmentdto.View{}, "", err
+	}
+	return view, f.publicKey, nil
 }
 
 func (f *fakeInitEnvironment) SaveInitialization(_ context.Context, _ string, projectID string, input environmentdto.UpdateInput) (environmentdto.View, error) {

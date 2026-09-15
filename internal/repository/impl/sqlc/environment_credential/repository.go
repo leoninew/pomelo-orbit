@@ -61,6 +61,19 @@ func (r Repository) CreateEnvironmentCredential(ctx context.Context, credential 
 	return nil
 }
 
+func (r Repository) UpdateEnvironmentCredential(ctx context.Context, credential model.EnvironmentCredential) error {
+	err := r.q(ctx).UpdateEnvironmentCredential(ctx, environmentcredentialsqlc.UpdateEnvironmentCredentialParams{
+		PublicKey:           credential.PublicKey,
+		EncryptedPrivateKey: credential.EncryptedPrivateKey,
+		Revision:            credential.Revision,
+		ID:                  credential.Id,
+	})
+	if err != nil {
+		return fmt.Errorf("update environment credential %s: %w", credential.Id, err)
+	}
+	return nil
+}
+
 func environmentCredentialFrom(row environmentcredentialsqlc.EnvironmentCredential) model.EnvironmentCredential {
 	return model.EnvironmentCredential{
 		Id:                  row.ID,

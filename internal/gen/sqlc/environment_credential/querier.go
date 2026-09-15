@@ -12,6 +12,7 @@ type Querier interface {
 	CreateEnvironmentCredential(ctx context.Context, arg CreateEnvironmentCredentialParams) error
 	EnvironmentCredentialById(ctx context.Context, id string) (EnvironmentCredential, error)
 	EnvironmentCredentialByProjectLatest(ctx context.Context, projectID string) (EnvironmentCredential, error)
+	UpdateEnvironmentCredential(ctx context.Context, arg UpdateEnvironmentCredentialParams) error
 }
 
 var _ Querier = (*Queries)(nil)

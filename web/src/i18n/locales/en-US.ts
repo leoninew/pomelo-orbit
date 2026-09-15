@@ -238,8 +238,8 @@ export default {
       windowsTargetCommandLoading: 'Generating command…',
       windowsTargetCommandHint:
         'Run this as Administrator on the target Windows host, then return here and probe.',
-      windowsTargetKeyLoadFailed:
-        'Could not load the deployment public key. Refresh and try again.',
+      windowsTargetCommandFailed:
+        'Could not generate the initialization command. Check the environment configuration and try again.',
       probe: 'Check readiness',
       probing: 'Checking',
       probeChecklistTitle: 'Environment readiness checks',

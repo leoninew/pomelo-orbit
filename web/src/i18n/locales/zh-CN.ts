@@ -235,7 +235,7 @@ export default {
       windowsTargetCopyFailed: '复制命令失败，请手动选择复制',
       windowsTargetCommandLoading: '正在生成命令…',
       windowsTargetCommandHint: '请在目标 Windows 主机以管理员身份执行，然后回到页面运行探测。',
-      windowsTargetKeyLoadFailed: '无法读取部署公钥，请刷新页面后重试',
+      windowsTargetCommandFailed: '无法生成初始化命令，请检查当前环境配置后重试',
       probe: '检查就绪',
       probing: '检查中',
       probeChecklistTitle: '环境就绪检查',

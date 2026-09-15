@@ -41,6 +41,11 @@ type SaveEnvironmentInput struct {
 	SSH        *environmentdto.SSHTargetInput
 }
 
+type WindowsCommandView struct {
+	Status    StatusView
+	PublicKey string
+}
+
 type BootstrapEnvironmentInput struct {
 	Username             string
 	Password             string

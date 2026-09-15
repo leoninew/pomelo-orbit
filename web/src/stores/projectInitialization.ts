@@ -5,6 +5,7 @@ import type {
   ProjectInitializationBootstrapReq,
   ProjectInitializationEnvironmentReq,
   ProjectInitializationStatusResp,
+  ProjectInitializationWindowsCommandResp,
 } from '@/gen/proto/orbit/v1/project_initialization/project_initialization';
 
 export const READY_INITIALIZATION_STATUS = 'ready';
@@ -62,8 +63,15 @@ export const useProjectInitializationStore = defineStore('projectInitialization'
     return status;
   }
 
-  async function getDeploymentPublicKey(projectId: string) {
-    return projectInitializationApi.getDeploymentPublicKey(projectId);
+  async function prepareWindowsEnvironment(
+    projectId: string,
+    input: ProjectInitializationEnvironmentReq
+  ): Promise<ProjectInitializationWindowsCommandResp> {
+    const result = await projectInitializationApi.prepareWindowsEnvironment(projectId, input);
+    if (result.status) {
+      statuses.value = { ...statuses.value, [projectId]: result.status };
+    }
+    return result;
   }
 
   async function bootstrapEnvironment(projectId: string, input: ProjectInitializationBootstrapReq) {
@@ -96,7 +104,7 @@ export const useProjectInitializationStore = defineStore('projectInitialization'
     ensureStatus,
     testEnvironment,
     saveEnvironment,
-    getDeploymentPublicKey,
+    prepareWindowsEnvironment,
     bootstrapEnvironment,
     probeEnvironment,
     createGateway,

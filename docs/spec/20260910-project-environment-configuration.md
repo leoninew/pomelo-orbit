@@ -1,5 +1,5 @@
 # Project / Environment 配置归属、初始化与 MCP 规格
-最后修改时间: 2026-09-15 12:44:39
+最后修改时间: 2026-09-15 21:47:24
 
 Review status: Accepted
 
@@ -9,7 +9,7 @@ Mode: strict
 
 本规格落实已接受的 [Requirement](../requirement/20260910-project-environment-configuration.md)。目标是将部署配置和生命周期收敛到 Project、Environment、GatewayConfig、Version / Component，同时用 Web Wizard 统一部署资源初始化，并让 Codex stdio MCP 以 connection-local 的已选 Project 执行操作。
 
-Environment 的历史 `state` 列仅为数据库兼容字段，不进入表单和业务判定；本 Spec 不新增迁移，Environment readiness 只依据最新 Probe 与资源完整性。
+Environment 的历史 `state` 列仅为数据库兼容字段，不进入表单和业务判定；Environment readiness 只依据最新 Probe 与资源完整性。`000042_environment_credential` 对既有 `deployment_ssh_private_key` 的表拆分没有完成数据转换，必须以新的、可重复执行的修复路径消除 Environment 指向 `repository_credential` 而不存在 `environment_credential` 的脏引用。
 
 ## Overview
 
@@ -17,7 +17,7 @@ Project 创建和空库 identity seed 只提供可进入系统的 Project 与 me
 
 Wizard 的唯一业务入口为 `ProjectInitialization` application boundary。它使用仅供初始化的进程配置生成默认输入，持久化完成后不再读取该配置。该 boundary 组合现有 Environment、Probe 和 Gateway factory 行为，但不把外部 Probe 放入数据库事务，也不维护第二份初始化进度数据。
 
-Windows SSH 目标增加一个辅助初始化命令流程。Web 使用当前表单的 Host、Port、SSH 用户和 Windows 工作目录生成 PowerShell；用户须在目标 Windows 主机的管理员终端执行，命令安装并启动 OpenSSH Server、按当前端口创建防火墙规则，再通过 SSH 在目标写入管理员或普通用户的 authorized keys、创建工作目录，并检查 WSL2 Docker Desktop distribution、Docker Engine、Linux containers、Docker Compose 和 daemon。该命令不要求 SSH 连接已成功，也不要求 Environment 已保存；它就是连接失败时初始化目标 SSH 的入口。Wizard 第一步“下一步”仍须当前目标连接检查成功；执行命令后用户回到页面检查连接，再运行完整 Probe。
+Windows SSH 目标增加一个辅助初始化命令流程。Web 以当前表单的 Host、Port、SSH 用户和 Windows 工作目录请求服务端准备当前 Project 的 SSH Environment：服务端在一个事务内创建缺失的 Environment 与项目级 `environment_credential`，或以当前表单和新生成的密钥覆盖已有两者并更新绑定。提交后返回新公钥，Web 据此生成 PowerShell；用户须在目标 Windows 主机的管理员终端执行，命令安装并启动 OpenSSH Server、按当前端口创建防火墙规则，再通过 SSH 在目标写入管理员或普通用户的 authorized keys、创建工作目录，并检查 WSL2 Docker Desktop distribution、Docker Engine、Linux containers、Docker Compose 和 daemon。命令不要求 SSH 已经可用；它就是连接失败时初始化目标 SSH 的入口。执行命令后用户回到页面检查连接，再运行完整 Probe。
 
 Codex stdio MCP 从未选择 Project 的状态启动。用户以 Project 名称声明目标，Codex 先列出可见 Project，以唯一 name 匹配，必要时请用户提供唯一 code，再以内部 `project_id` 调用 `orbit_select_project`。成功结果确认 Project、Environment 和 Gateway readiness；后续工具从当前 connection scope 取得 Project。Web Dialogue 在 client 创建时以页面请求的 Project 预先完成相同 scope 选择，仍不建立网页跨 Project 流程。
 
@@ -34,22 +34,23 @@ Codex stdio MCP 从未选择 Project 的状态启动。用户以 Project 名称�
 | `needs_gateway` | Environment 最新 Probe 成功，但缺 Gateway 或 default Service | 显示 Gateway 初始化确认 |
 | `ready` | Environment 最新 Probe 成功，且 Gateway/default Service 完整 | 允许进入正常项目页面 |
 
-服务公开三类受限 command：
+服务公开四类受限 command：
 
 | Command | 行为 | 事务与失败语义 |
 | --- | --- | --- |
 | `SaveEnvironment` | 按 Wizard 确认的 `local` 或 `ssh` target 创建缺失 Environment，或更新已存在但未完成初始化的 Environment | 只写数据库；保存成功后 Project 进入或保持 `needs_probe` |
+| `PrepareWindowsEnvironment` | 以当前 Windows SSH 表单准备命令所需的 Environment 与项目级密钥 | 一个事务内创建缺失的两项，或覆盖已有 target、密钥和 binding；成功后 Project 保持 `needs_probe`，返回新公钥但绝不返回私钥 |
 | `ProbeEnvironment` | 对已保存 target 执行既有 Environment Probe | 外部 I/O 在事务外运行；复用现有 target revision 条件更新，Probe 失败保留 Environment 和诊断供 Wizard 重试 |
 | `CreateGateway` | 仅在最新 Probe 成功后以确认的初始化值创建 Gateway Application、GatewayConfig、四个 Version、Component、default Service、Route 与 Environment binding | Gateway bundle 保持现有工厂的单事务原子性；失败不留下半个 Gateway |
 
-受管 `deployment-ssh` 凭据按 Project 唯一名称复用。Environment 保存或 Windows 命令流程在前次操作失败后再次执行时，不重复创建相同名称；若发现的是非受管同名凭据则返回冲突。
+`environment_credential` 是 Project 级而非 Environment 私有的部署密钥；私钥用全局 JWT `secret_key` 加密。Windows 命令准备每次生成新的密钥：缺失或失效 binding 创建新记录并绑定，已有完整 pair 直接覆盖该记录的公钥、加密私钥、修订与 Environment target。一个 Project 只能有一个当前受管部署密钥；不提供单独的轮换 command。
 
 ### Windows SSH helper command
 
-- `GET /api/project/:project_id/initialization/environment/deployment-key` 只返回当前 Project 受管部署凭据的公钥；没有 Environment 时也可创建/复用该凭据。
+- `POST /api/project/:project_id/initialization/environment/windows-command` 接收当前 Windows SSH target，执行 `PrepareWindowsEnvironment`，并返回当前 Environment snapshot 与新公钥；它取代不携带 target、无法调和 Environment 的 `GET .../deployment-key`。
 - Web Wizard 和 Environment detail 共用 `WindowsSshInitializationDialog` 与命令生成器；Environment detail 只在已保存的 Windows SSH target 上显示入口。
 - 命令是幂等的：authorized key 已存在时不重复写入，工作目录使用 `New-Item -Force`；远端检查失败以明确的 PowerShell 错误结束，便于随后 Probe 诊断。
-- 命令生成不替代 SSH 测试或 Probe；第一步“生成初始化命令”只依赖当前表单和 Project 公钥，连接失败时仍可用。“下一步”受当前目标 SSH 测试成功状态门控。执行命令后用户仍必须显式检查连接并运行 Probe。
+- 命令生成不替代 SSH 测试或 Probe；它先持久化命令对应的 target 与新密钥，连接失败时仍可用。“下一步”受当前目标 SSH 测试成功状态门控。执行命令后用户仍必须显式检查连接并运行 Probe。
 
 HTTP 只暴露 `/api/project/:project_id/initialization` 下的状态和上述 command；现有通用 Environment/Gateway HTTP 创建入口不再作为初始化入口。Project create 仅创建 Project/membership，不调用 `BootstrapForProject`。`000032_seed_identity` 保留 Project/membership；`000037_seed_gateway` 不再写入 Gateway、Service、Route 等部署资源，Environment 不再有空库 seed。最终 Environment schema 由重组后的 `000039` 建立，`000040` 仅负责 GatewayConfig 废弃列清理；`000041` 只将 develop(38) 遗留的完整 Traefik bundle 纳入 Environment 关系，空库执行零行变更。
 
@@ -74,7 +75,7 @@ Web 增加 Project Initialization Wizard route。项目选择或进入项目级 
 
 1. `ready` 继续原目标页面。
 2. 其他状态重定向到 Wizard，不加载 Environment、Gateway、Application、Route、Deployment 或 Dialogue 的运行时数据。
-3. Wizard 按派生状态恢复到适当步骤。第一步显式选择 `local | ssh`，并与环境页共用目标表单；使用同一 Project 已保存的数据和初始化来源默认值，不读取上一个 Project 的任何资源。第一步主操作固定为“检查连接”“生成初始化命令”“下一步”：Windows SSH 的命令生成不要求连接成功；SSH 目标须先检查连接成功才能进入下一步；Local 目标隐藏不适用的连接与命令动作。第二步“准备环境”展示待检查清单，至少包含目标连接/认证、Docker 引擎和 Docker Compose；Windows SSH 额外包含 WSL2 与 Docker Desktop。点击“检查就绪”后清单逐项进入检查中，成功项显示通过，失败项依据 Probe 诊断显示未通过，其余保持待检查；“下一步”只在 Probe 成功后可用。目标表单变更会使既有连接检查结果失效。
+3. Wizard 按派生状态恢复到适当步骤。第一步显式选择 `local | ssh`，并与环境页共用目标表单；使用同一 Project 已保存的数据和初始化来源默认值，不读取上一个 Project 的任何资源。第一步主操作固定为“生成初始化命令”“检查连接”“下一步”：Windows SSH 的命令生成提交表单并在服务端创建或覆盖当前 Project 的 Environment 与项目级密钥，不要求连接成功；用户在远端执行命令后，SSH 目标须先检查连接成功才能进入下一步；Local 目标隐藏不适用的连接与命令动作。第二步“准备环境”展示待检查清单，至少包含目标连接/认证、Docker 引擎和 Docker Compose；Windows SSH 额外包含 WSL2 与 Docker Desktop。点击“检查就绪”后清单逐项进入检查中，成功项显示通过，失败项依据 Probe 诊断显示未通过，其余保持待检查；“下一步”只在 Probe 成功后可用。目标表单变更会使既有连接检查结果失效。
 4. Gateway 创建成功后进入 Gateway/default Service 的待部署视图；不自动创建 Deployment。
 
 Project 管理页、登录页和 Wizard 自身不被该 guard 循环重定向。切换 active Project 时重新读取该 Project 初始化状态，不从浏览器 `localStorage` 外推 Environment 或 Gateway。
@@ -139,19 +140,19 @@ Web Dialogue 和 stdio 继续共享 Delivery Core 的资源工具、输入 DTO �
 
 ## Data migration and state transition
 
-新库执行收敛后的 seed 后，默认 Project 没有 Environment/Gateway，首次打开即进入 Wizard。Environment 最终 schema 与 GatewayConfig 清理由 `000039`/`000040` 建立；`000041` 为从 develop migration 38 升级时的一次性数据迁移：仅在同一 Project 已存在唯一 Traefik、GatewayConfig 和 default Service 时创建未探测的 local Environment 并绑定该 Gateway，不推断 workspace 或 Probe 结果。Project 在任何时刻可处于 Environment 已保存但 Probe 未成功或 Gateway 未创建状态，Wizard 由资源派生状态恢复，而运行时和 MCP 仅接受 `ready`。
+新库执行收敛后的 seed 后，默认 Project 没有 Environment/Gateway，首次打开即进入 Wizard。Environment 最终 schema 与 GatewayConfig 清理由 `000039`/`000040` 建立；`000041` 为从 develop migration 38 升级时的一次性数据迁移：仅在同一 Project 已存在唯一 Traefik、GatewayConfig 和 default Service 时创建未探测的 local Environment 并绑定该 Gateway，不推断 workspace 或 Probe 结果。`000042` 后遗留的 `repository_credential.type = deployment_ssh_private_key` 不能继续被 Environment 引用：Windows 准备 command 必须检测缺失或失效 pair 并以新项目级密钥覆盖 binding；对不经过该 command 的历史 SSH Environment 需要同样的幂等数据修复。Project 在任何时刻可处于 Environment 已保存但 Probe 未成功或 Gateway 未创建状态，Wizard 由资源派生状态恢复，而运行时和 MCP 仅接受 `ready`。
 
 本任务不支持多个 Project 共用一个部署宿主，也不为其建立 host、port、network 或 workspace 冲突处理。现有已部署资源的转换不引入双写、别名或全局默认值路径。
 
 ## Verification design
 
-- 三数据库迁移测试确认 `000032` 仍产生可进入的 Project/membership，`000037` 不产生部署资源，`000039` 直接建立最终 Environment schema，`000040` 后 GatewayConfig 不再有 component-name column，`000041` 可从 develop(38) 遗留 Gateway 拓扑建立待探测 Environment 且重复执行幂等。
+- 三数据库迁移与数据修复测试确认 `000032` 仍产生可进入的 Project/membership，`000037` 不产生部署资源，`000039` 直接建立最终 Environment schema，`000040` 后 GatewayConfig 不再有 component-name column，`000041` 可从 develop(38) 遗留 Gateway 拓扑建立待探测 Environment 且重复执行幂等，并覆盖 `000042` 后旧 `deployment_ssh_private_key` 引用的转换或替换。
 - Project 创建测试确认只创建 Project/membership；初始化 usecase 覆盖 `needs_environment`、Probe 失败重试、Gateway bundle 原子创建和 `ready` 派生状态。
 - Gateway factory 测试确认 image 等值必须来自初始化 command，固定 `traefik` / `missing` 写入初始 Component，Gateway update 不再接受 component name；provision 不创建缺失 Gateway。
 - Web 测试覆盖空库默认 Project 和新建 Project 进入 Wizard、初始化完成后进入网关详情、切换到未初始化 Project 不加载旧项目数据。
-- Web Wizard 测试覆盖第一步“检查连接 / 生成初始化命令（不要求连接成功）/ 连接成功后下一步”和第二步“检查就绪 -> 下一步”的按钮门控，以及目标字段变更后连接结果失效。
-- Web 测试覆盖 Windows 命令按当前 Host/Port/用户生成、PowerShell 转义、Docker/WSL 检查以及缺少公钥时不生成命令；初始化公钥接口覆盖保存前生成。
-- 凭据测试覆盖保存失败后的受管 `deployment-ssh` 重试复用与非受管同名冲突。
+- Web Wizard 测试覆盖第一步“生成初始化命令（不要求连接成功）/ 检查连接 / 连接成功后下一步”和第二步“检查就绪 -> 下一步”的按钮门控，以及目标字段变更后连接结果失效。
+- Web 测试覆盖 Windows 命令按当前 Host/Port/用户生成、PowerShell 转义、Docker/WSL 检查，以及准备 command 返回的新公钥和持久化 Environment snapshot。
+- 凭据测试覆盖 Windows 准备 command 对缺失 pair 的创建、对完整 pair 的覆盖、对失效 binding 的修复，以及与当前 Project 的一致性。
 - MCP server 测试覆盖名称发现、选择确认、未选择错误、未就绪选择错误、切换 scope、项目级 schema 移除 `project_id`、资源归属与 scope 一致，以及 Web Dialogue 固定请求 scope。
 - 运行 `task check`、`go test ./cmd/... ./internal/...`、`yarn --cwd web lint:fix`、`yarn --cwd web typecheck`，并执行针对迁移和 MCP 的定向测试。
 
@@ -174,3 +175,4 @@ Web Dialogue 和 stdio 继续共享 Delivery Core 的资源工具、输入 DTO �
 - 用户接受 `ProjectInitialization` application boundary，拒绝页面直接串通用初始化 API。
 - 用户确认 Gateway Component 名称 `traefik` 和初始 pull policy `missing` 是固定产品模板，不是初始化来源或 GatewayConfig。
 - 用户确认 Codex 用户以 Project 名称声明目标；模型解析后由 `orbit_select_project(project_id)` 确认，后续 MCP 工具使用当前 scope。
+- 用户确认生成 Windows 初始化命令时创建或覆盖当前 Project 的 Environment 与项目级部署密钥；不增加独立的密钥轮换入口。

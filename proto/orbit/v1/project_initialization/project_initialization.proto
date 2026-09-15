@@ -60,8 +60,9 @@ message ProjectInitializationEnvironmentTestResp {
   bool ok = 1;
 }
 
-message ProjectInitializationDeploymentPublicKeyResp {
-  string public_key = 1;
+message ProjectInitializationWindowsCommandResp {
+  ProjectInitializationStatusResp status = 1;
+  string public_key = 2;
 }
 
 message ProjectInitializationBootstrapReq {

@@ -542,27 +542,28 @@ func (x *ProjectInitializationEnvironmentTestResp) GetOk() bool {
 	return false
 }
 
-type ProjectInitializationDeploymentPublicKeyResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicKey     string                 `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+type ProjectInitializationWindowsCommandResp struct {
+	state         protoimpl.MessageState           `protogen:"open.v1"`
+	Status        *ProjectInitializationStatusResp `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	PublicKey     string                           `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ProjectInitializationDeploymentPublicKeyResp) Reset() {
-	*x = ProjectInitializationDeploymentPublicKeyResp{}
+func (x *ProjectInitializationWindowsCommandResp) Reset() {
+	*x = ProjectInitializationWindowsCommandResp{}
 	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ProjectInitializationDeploymentPublicKeyResp) String() string {
+func (x *ProjectInitializationWindowsCommandResp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ProjectInitializationDeploymentPublicKeyResp) ProtoMessage() {}
+func (*ProjectInitializationWindowsCommandResp) ProtoMessage() {}
 
-func (x *ProjectInitializationDeploymentPublicKeyResp) ProtoReflect() protoreflect.Message {
+func (x *ProjectInitializationWindowsCommandResp) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -574,12 +575,19 @@ func (x *ProjectInitializationDeploymentPublicKeyResp) ProtoReflect() protorefle
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ProjectInitializationDeploymentPublicKeyResp.ProtoReflect.Descriptor instead.
-func (*ProjectInitializationDeploymentPublicKeyResp) Descriptor() ([]byte, []int) {
+// Deprecated: Use ProjectInitializationWindowsCommandResp.ProtoReflect.Descriptor instead.
+func (*ProjectInitializationWindowsCommandResp) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_project_initialization_project_initialization_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *ProjectInitializationDeploymentPublicKeyResp) GetPublicKey() string {
+func (x *ProjectInitializationWindowsCommandResp) GetStatus() *ProjectInitializationStatusResp {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *ProjectInitializationWindowsCommandResp) GetPublicKey() string {
 	if x != nil {
 		return x.PublicKey
 	}
@@ -826,10 +834,11 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\x06_localB\x06\n" +
 	"\x04_ssh\":\n" +
 	"(ProjectInitializationEnvironmentTestResp\x12\x0e\n" +
-	"\x02ok\x18\x01 \x01(\bR\x02ok\"M\n" +
-	",ProjectInitializationDeploymentPublicKeyResp\x12\x1d\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\"\xa2\x01\n" +
+	"'ProjectInitializationWindowsCommandResp\x12X\n" +
+	"\x06status\x18\x01 \x01(\v2@.orbit.v1.project_initialization.ProjectInitializationStatusRespR\x06status\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x01 \x01(\tR\tpublicKey\"\xb2\x01\n" +
+	"public_key\x18\x02 \x01(\tR\tpublicKey\"\xb2\x01\n" +
 	"!ProjectInitializationBootstrapReq\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x1f\n" +
@@ -865,19 +874,19 @@ func file_orbit_v1_project_initialization_project_initialization_proto_rawDescGZ
 
 var file_orbit_v1_project_initialization_project_initialization_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_orbit_v1_project_initialization_project_initialization_proto_goTypes = []any{
-	(*ProjectInitializationDefaults)(nil),                // 0: orbit.v1.project_initialization.ProjectInitializationDefaults
-	(*ProjectInitializationEnvironmentSnapshot)(nil),     // 1: orbit.v1.project_initialization.ProjectInitializationEnvironmentSnapshot
-	(*ProjectInitializationGatewaySnapshot)(nil),         // 2: orbit.v1.project_initialization.ProjectInitializationGatewaySnapshot
-	(*ProjectInitializationStatusResp)(nil),              // 3: orbit.v1.project_initialization.ProjectInitializationStatusResp
-	(*ProjectInitializationEnvironmentReq)(nil),          // 4: orbit.v1.project_initialization.ProjectInitializationEnvironmentReq
-	(*ProjectInitializationEnvironmentTestResp)(nil),     // 5: orbit.v1.project_initialization.ProjectInitializationEnvironmentTestResp
-	(*ProjectInitializationDeploymentPublicKeyResp)(nil), // 6: orbit.v1.project_initialization.ProjectInitializationDeploymentPublicKeyResp
-	(*ProjectInitializationBootstrapReq)(nil),            // 7: orbit.v1.project_initialization.ProjectInitializationBootstrapReq
-	(*ProjectInitializationGatewayReq)(nil),              // 8: orbit.v1.project_initialization.ProjectInitializationGatewayReq
-	(*environment.EnvironmentLocalTargetResp)(nil),       // 9: orbit.v1.environment.EnvironmentLocalTargetResp
-	(*environment.EnvironmentSSHTargetResp)(nil),         // 10: orbit.v1.environment.EnvironmentSSHTargetResp
-	(*environment.EnvironmentLocalTargetReq)(nil),        // 11: orbit.v1.environment.EnvironmentLocalTargetReq
-	(*environment.EnvironmentSSHTargetReq)(nil),          // 12: orbit.v1.environment.EnvironmentSSHTargetReq
+	(*ProjectInitializationDefaults)(nil),            // 0: orbit.v1.project_initialization.ProjectInitializationDefaults
+	(*ProjectInitializationEnvironmentSnapshot)(nil), // 1: orbit.v1.project_initialization.ProjectInitializationEnvironmentSnapshot
+	(*ProjectInitializationGatewaySnapshot)(nil),     // 2: orbit.v1.project_initialization.ProjectInitializationGatewaySnapshot
+	(*ProjectInitializationStatusResp)(nil),          // 3: orbit.v1.project_initialization.ProjectInitializationStatusResp
+	(*ProjectInitializationEnvironmentReq)(nil),      // 4: orbit.v1.project_initialization.ProjectInitializationEnvironmentReq
+	(*ProjectInitializationEnvironmentTestResp)(nil), // 5: orbit.v1.project_initialization.ProjectInitializationEnvironmentTestResp
+	(*ProjectInitializationWindowsCommandResp)(nil),  // 6: orbit.v1.project_initialization.ProjectInitializationWindowsCommandResp
+	(*ProjectInitializationBootstrapReq)(nil),        // 7: orbit.v1.project_initialization.ProjectInitializationBootstrapReq
+	(*ProjectInitializationGatewayReq)(nil),          // 8: orbit.v1.project_initialization.ProjectInitializationGatewayReq
+	(*environment.EnvironmentLocalTargetResp)(nil),   // 9: orbit.v1.environment.EnvironmentLocalTargetResp
+	(*environment.EnvironmentSSHTargetResp)(nil),     // 10: orbit.v1.environment.EnvironmentSSHTargetResp
+	(*environment.EnvironmentLocalTargetReq)(nil),    // 11: orbit.v1.environment.EnvironmentLocalTargetReq
+	(*environment.EnvironmentSSHTargetReq)(nil),      // 12: orbit.v1.environment.EnvironmentSSHTargetReq
 }
 var file_orbit_v1_project_initialization_project_initialization_proto_depIdxs = []int32{
 	9,  // 0: orbit.v1.project_initialization.ProjectInitializationEnvironmentSnapshot.local:type_name -> orbit.v1.environment.EnvironmentLocalTargetResp
@@ -887,11 +896,12 @@ var file_orbit_v1_project_initialization_project_initialization_proto_depIdxs = 
 	2,  // 4: orbit.v1.project_initialization.ProjectInitializationStatusResp.gateway:type_name -> orbit.v1.project_initialization.ProjectInitializationGatewaySnapshot
 	11, // 5: orbit.v1.project_initialization.ProjectInitializationEnvironmentReq.local:type_name -> orbit.v1.environment.EnvironmentLocalTargetReq
 	12, // 6: orbit.v1.project_initialization.ProjectInitializationEnvironmentReq.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetReq
-	7,  // [7:7] is the sub-list for method output_type
-	7,  // [7:7] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	3,  // 7: orbit.v1.project_initialization.ProjectInitializationWindowsCommandResp.status:type_name -> orbit.v1.project_initialization.ProjectInitializationStatusResp
+	8,  // [8:8] is the sub-list for method output_type
+	8,  // [8:8] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_project_initialization_project_initialization_proto_init() }

@@ -23,7 +23,7 @@ Application + Version + Service
 Environment 的 target type 是显式 `local | ssh`：
 
 - `local` 直接在 Orbit 控制面宿主机的 Docker daemon 执行，工作目录为 Environment 保存的 `workspace_root`；页面原样展示该值，`~` / `~/...` 只在 Probe 和部署时展开为控制面用户主目录。不显示 SSH 表单、主机指纹或初始化入口。
-- `ssh` 支持 Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它在目标端按 Environment 保存的 `workspace_root` materialize workspace，`~` / `~/...` 展开为远端登录用户主目录，并使用受管私钥和 pinned host key 执行。
+- `ssh` 支持 Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它在目标端按 Environment 保存的 `workspace_root` materialize workspace，`~` / `~/...` 展开为远端登录用户主目录，并使用 `environment_credential` 中的私钥和 pinned host key 执行。
 
 `ssh` 到 `127.0.0.1` 仍是 SSH，不会被解释为 local。没有 hostname heuristic 或 local/SSH fallback。两类目标的 Compose 生命周期、运行时查询、证书同步、Gateway network 与 Traefik REST publish 均通过同一 target runtime 执行。
 
@@ -31,7 +31,7 @@ Environment 的 target type 是显式 `local | ssh`：
 
 ## 配置与 Probe
 
-创建 Project 时只填写名称和编码。Orbit 在同一事务中创建 active local Environment，Web 随即切换到新 Project 并打开“环境”页；用户可在那里将 target type 切换为 ssh 并填写 host、port、user、平台和工作目录。local 不创建部署私钥；切换到 SSH 后 Orbit 才生成并保存部署私钥。active Linux SSH target 显示“初始化部署主机”入口：输入能登录目标的 SSH 用户与一次性密码或私钥后，Orbit 在该连接内完成初始化。一次性认证不写入数据库、响应、MCP 或日志。
+创建 Project 时只填写名称和编码。Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。local 不创建 `environment_credential`；选择 SSH 后 Orbit 才生成并保存部署密钥。Wizard 在保存 Environment 前即可读取公钥，供 Windows 初始化命令使用。active Linux SSH target 显示“初始化部署主机”入口：输入能登录目标的 SSH 用户与一次性密码或私钥后，Orbit 在该连接内完成初始化。一次性认证不写入数据库、响应、MCP 或日志。
 
 Docker Engine/Compose（Windows 上包括 Docker Desktop、WSL2 Linux engine）是 SSH target 的外部前置条件。Linux 自动初始化会先检查配置 SSH user 的 Docker daemon/Compose、bootstrap user 的 passwordless `sudo` 及 OpenSSH 公钥认证能力；不满足时直接失败并给出诊断。它只按需写入 Orbit 的部署公钥和 `.pomelo-orbit` 工作目录，不安装、启停或配置 Docker/Compose/Docker Desktop/WSL，不修改 Docker 用户组、sshd、firewall 或 Docker 网络。
 

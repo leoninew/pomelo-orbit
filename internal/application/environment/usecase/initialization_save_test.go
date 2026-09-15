@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	credentialdto "github.com/leoninew/pomelo-orbit/internal/application/credential/dto"
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
@@ -15,7 +14,7 @@ import (
 func TestSaveInitializationCreatesLocalEnvironment(t *testing.T) {
 	store := &initializationEnvironmentStore{}
 	targetType := model.EnvironmentTargetTypeLocal
-	created, err := New(store, initializationProjectReader{}, nil, nil, nil, nil).
+	created, err := New(store, initializationProjectReader{}, nil, "", nil, nil).
 		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: model.EnvironmentPlatformLinux}).
 		SaveInitialization(context.Background(), "user-1", "project-1", environmentdto.UpdateInput{
 			TargetType: &targetType,
@@ -35,7 +34,7 @@ func TestSaveInitializationCreatesLocalEnvironment(t *testing.T) {
 func TestSaveInitializationKeepsHomeWorkspaceRoot(t *testing.T) {
 	store := &initializationEnvironmentStore{}
 	targetType := model.EnvironmentTargetTypeLocal
-	created, err := New(store, initializationProjectReader{}, nil, nil, nil, nil).
+	created, err := New(store, initializationProjectReader{}, nil, "", nil, nil).
 		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: model.EnvironmentPlatformLinux}).
 		SaveInitialization(context.Background(), "user-1", "project-1", environmentdto.UpdateInput{
 			TargetType: &targetType,
@@ -53,17 +52,17 @@ func TestSaveInitializationKeepsHomeWorkspaceRoot(t *testing.T) {
 }
 
 func TestSaveInitializationUpdatesUnprobedLegacyEnvironmentWithGatewayBinding(t *testing.T) {
-	gatewayID := "gateway-1"
+	gatewayId := "gateway-1"
 	store := &initializationEnvironmentStore{
 		found: true,
 		environment: model.Environment{
 			Id: "environment-1", ProjectId: "project-1", Code: "demo",
 			State: model.EnvironmentStateActive, TargetType: model.EnvironmentTargetTypeLocal,
-			TargetRevision: 1, GatewayApplicationId: &gatewayID,
+			TargetRevision: 1, GatewayApplicationId: &gatewayId,
 		},
 	}
 	targetType := model.EnvironmentTargetTypeLocal
-	_, err := New(store, initializationProjectReader{}, nil, nil, nil, nil).
+	_, err := New(store, initializationProjectReader{}, nil, "", nil, nil).
 		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: model.EnvironmentPlatformLinux}).
 		SaveInitialization(context.Background(), "user-1", "project-1", environmentdto.UpdateInput{
 			TargetType: &targetType,
@@ -72,16 +71,16 @@ func TestSaveInitializationUpdatesUnprobedLegacyEnvironmentWithGatewayBinding(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !store.updated || store.environment.GatewayApplicationId == nil || *store.environment.GatewayApplicationId != gatewayID {
+	if !store.updated || store.environment.GatewayApplicationId == nil || *store.environment.GatewayApplicationId != gatewayId {
 		t.Fatalf("legacy gateway binding was not preserved: %#v", store.environment)
 	}
 }
 
 func TestSaveInitializationCreatesSSHEnvironmentWithDeploymentCredential(t *testing.T) {
 	store := &initializationEnvironmentStore{}
-	keyManager := &createInitializationKeyManager{}
+	credentials := &memoryEnvironmentCredentials{}
 	targetType := model.EnvironmentTargetTypeSSH
-	created, err := New(store, initializationProjectReader{}, keyManager, nil, &reachableSSHProber{}, nil).
+	created, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, &reachableSSHProber{}, nil).
 		SaveInitialization(context.Background(), "user-1", "project-1", environmentdto.UpdateInput{
 			TargetType: &targetType,
 			SSH: &environmentdto.SSHTargetInput{
@@ -92,10 +91,10 @@ func TestSaveInitializationCreatesSSHEnvironmentWithDeploymentCredential(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if keyManager.createCalls != 1 {
-		t.Fatalf("credential create calls = %d", keyManager.createCalls)
+	if len(credentials.items) != 1 {
+		t.Fatalf("environment credentials = %#v", credentials.items)
 	}
-	if !store.created || store.environment.SSH == nil || store.environment.SSH.CredentialId != "credential-new" {
+	if !store.created || store.environment.SSH == nil || store.environment.SSH.CredentialId != credentials.items[0].Id {
 		t.Fatalf("stored ssh environment = %#v", store.environment)
 	}
 	if created.SSH == nil || created.SSH.Host != "192.0.2.10" || created.Local != nil {
@@ -104,11 +103,11 @@ func TestSaveInitializationCreatesSSHEnvironmentWithDeploymentCredential(t *test
 }
 
 func TestSaveInitializationWorkspaceChangeKeepsSSHIdentity(t *testing.T) {
-	projectID := "project-1"
+	projectId := "project-1"
 	probeRevision := int64(4)
 	probeStatus := model.EnvironmentProbeStatusSucceeded
 	environment := model.Environment{
-		Id: "environment-1", ProjectId: projectID, Code: "demo", State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: projectId, Code: "demo", State: model.EnvironmentStateActive,
 		TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: "/srv/orbit/previous",
 		TargetRevision: probeRevision, LastProbeRevision: &probeRevision, LastProbeStatus: &probeStatus,
 		SSH: &model.EnvironmentSSHTarget{
@@ -118,13 +117,12 @@ func TestSaveInitializationWorkspaceChangeKeepsSSHIdentity(t *testing.T) {
 		},
 	}
 	store := &initializationEnvironmentStore{found: true, environment: environment}
-	keyManager := &updateDeploymentKeyManager{credential: model.Credential{
-		Id: "credential-1", ProjectId: &projectID,
-		Type: model.CredentialTypeDeploymentSSHPrivateKey, Revision: 2,
-	}}
+	credentials := &memoryEnvironmentCredentials{items: []model.EnvironmentCredential{{
+		Id: "credential-1", ProjectId: projectId, PublicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOrbit", Revision: 2,
+	}}}
 	targetType := model.EnvironmentTargetTypeSSH
-	_, err := New(store, initializationProjectReader{}, keyManager, nil, &reachableSSHProber{}, nil).
-		SaveInitialization(context.Background(), "user-1", projectID, environmentdto.UpdateInput{
+	_, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, &reachableSSHProber{}, nil).
+		SaveInitialization(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
 			TargetType: &targetType,
 			SSH: &environmentdto.SSHTargetInput{
 				Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22,
@@ -145,7 +143,7 @@ func TestSaveInitializationWorkspaceChangeKeepsSSHIdentity(t *testing.T) {
 func TestSaveInitializationRejectsUnreachableSSH(t *testing.T) {
 	store := &initializationEnvironmentStore{}
 	targetType := model.EnvironmentTargetTypeSSH
-	_, err := New(store, initializationProjectReader{}, &createInitializationKeyManager{}, nil, &reachableSSHProber{err: errors.New("Cannot connect to the configured SSH host.")}, nil).
+	_, err := New(store, initializationProjectReader{}, &memoryEnvironmentCredentials{}, testCredentialSecret, &reachableSSHProber{err: errors.New("Cannot connect to the configured SSH host.")}, nil).
 		SaveInitialization(context.Background(), "user-1", "project-1", environmentdto.UpdateInput{
 			TargetType: &targetType,
 			SSH: &environmentdto.SSHTargetInput{
@@ -162,11 +160,11 @@ func TestSaveInitializationRejectsUnreachableSSH(t *testing.T) {
 }
 
 func TestDeploymentSSHPublicKeyForProjectReturnsBoundKey(t *testing.T) {
-	projectID := "project-1"
+	projectId := "project-1"
 	store := &initializationEnvironmentStore{
 		found: true,
 		environment: model.Environment{
-			Id: "environment-1", ProjectId: projectID, Code: "demo", State: model.EnvironmentStateActive,
+			Id: "environment-1", ProjectId: projectId, Code: "demo", State: model.EnvironmentStateActive,
 			TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: `C:\\orbit`,
 			SSH: &model.EnvironmentSSHTarget{
 				Platform: model.EnvironmentPlatformWindows, Host: "192.0.2.10", Port: 22, Username: "orbit",
@@ -174,9 +172,11 @@ func TestDeploymentSSHPublicKeyForProjectReturnsBoundKey(t *testing.T) {
 			},
 		},
 	}
-	keyManager := &createInitializationKeyManager{publicKey: " ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOrbitDeploymentKey\n"}
-	publicKey, err := New(store, initializationProjectReader{}, keyManager, nil, nil, nil).
-		DeploymentSSHPublicKeyForProject(context.Background(), "user-1", projectID)
+	credentials := &memoryEnvironmentCredentials{items: []model.EnvironmentCredential{{
+		Id: "credential-1", ProjectId: projectId, PublicKey: " ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOrbitDeploymentKey\n", Revision: 1,
+	}}}
+	publicKey, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
+		DeploymentSSHPublicKeyForProject(context.Background(), "user-1", projectId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,22 +186,22 @@ func TestDeploymentSSHPublicKeyForProjectReturnsBoundKey(t *testing.T) {
 }
 
 func TestDeploymentSSHPublicKeyForProjectCreatesKeyBeforeEnvironmentSave(t *testing.T) {
-	projectID := "project-1"
+	projectId := "project-1"
 	store := &initializationEnvironmentStore{}
-	keyManager := &createInitializationKeyManager{publicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOrbitDeploymentKey"}
-	publicKey, err := New(store, initializationProjectReader{}, keyManager, nil, nil, nil).
-		DeploymentSSHPublicKeyForProject(context.Background(), "user-1", projectID)
+	credentials := &memoryEnvironmentCredentials{}
+	publicKey, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
+		DeploymentSSHPublicKeyForProject(context.Background(), "user-1", projectId)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if publicKey != keyManager.publicKey || keyManager.createCalls != 1 {
-		t.Fatalf("public key=%q create calls=%d", publicKey, keyManager.createCalls)
+	if publicKey == "" || len(credentials.items) != 1 || credentials.items[0].PublicKey != publicKey {
+		t.Fatalf("public key=%q credentials=%#v", publicKey, credentials.items)
 	}
 }
 
 type reachableSSHProber struct{ err error }
 
-func (p *reachableSSHProber) Probe(context.Context, model.Environment, credentialdto.DeploymentSSHPrivateKey) (string, error) {
+func (p *reachableSSHProber) Probe(context.Context, model.Environment, environmentdto.DeploymentSSHPrivateKey) (string, error) {
 	return "", p.err
 }
 
@@ -215,8 +215,8 @@ func (p *reachableSSHProber) TestSSH(context.Context, string, int, string) error
 
 type initializationProjectReader struct{ probeProjectReader }
 
-func (initializationProjectReader) Project(_ context.Context, projectID string) (model.Project, error) {
-	return model.Project{Id: projectID, Code: "demo"}, nil
+func (initializationProjectReader) Project(_ context.Context, projectId string) (model.Project, error) {
+	return model.Project{Id: projectId, Code: "demo"}, nil
 }
 
 type initializationEnvironmentStore struct {
@@ -245,27 +245,4 @@ func (s *initializationEnvironmentStore) UpdateEnvironment(_ context.Context, en
 	s.updated = true
 	s.environment = environment
 	return nil
-}
-
-type createInitializationKeyManager struct {
-	createCalls int
-	publicKey   string
-}
-
-func (m *createInitializationKeyManager) CreateDeploymentSSHCredential(_ context.Context, projectID string, _ string) (model.Credential, error) {
-	m.createCalls++
-	return model.Credential{
-		Id: "credential-new", ProjectId: &projectID, Type: model.CredentialTypeDeploymentSSHPrivateKey, Revision: 1,
-	}, nil
-}
-
-func (m *createInitializationKeyManager) EnsureGeneratedDeploymentSSHCredential(context.Context, string) (model.Credential, error) {
-	return model.Credential{}, errors.New("existing credential must not be ensured on create")
-}
-
-func (m *createInitializationKeyManager) DeploymentSSHPublicKey(context.Context, string) (string, error) {
-	if m.publicKey == "" {
-		return "", errors.New("public key must not be read on save")
-	}
-	return m.publicKey, nil
 }

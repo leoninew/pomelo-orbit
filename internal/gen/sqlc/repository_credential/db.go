@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.30.0
 
-package credential
+package repositorycredential
 
 import (
 	"context"

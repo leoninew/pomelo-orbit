@@ -3,7 +3,7 @@ package port
 import (
 	"context"
 
-	credentialdto "github.com/leoninew/pomelo-orbit/internal/application/credential/dto"
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -11,9 +11,9 @@ import (
 // Project. PrivateKey is present only for SSH and is never persisted or logged.
 type Target struct {
 	Environment model.Environment
-	PrivateKey  *credentialdto.DeploymentSSHPrivateKey
+	PrivateKey  *environmentdto.DeploymentSSHPrivateKey
 }
 
 type TargetResolver interface {
-	ResolveProjectTarget(ctx context.Context, projectID string) (Target, error)
+	ResolveProjectTarget(ctx context.Context, projectId string) (Target, error)
 }

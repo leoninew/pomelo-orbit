@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	credentialdto "github.com/leoninew/pomelo-orbit/internal/application/credential/dto"
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"golang.org/x/crypto/ssh"
 )
@@ -45,7 +45,7 @@ func NewEnvironmentProber() EnvironmentProber {
 // Probe opens one strictly pinned SSH session and runs the fixed prerequisite
 // command for the configured platform. It does not allocate a PTY, forward
 // ports, invoke the system SSH client, or accept arbitrary commands.
-func (p EnvironmentProber) Probe(ctx context.Context, environment model.Environment, privateKey credentialdto.DeploymentSSHPrivateKey) (string, error) {
+func (p EnvironmentProber) Probe(ctx context.Context, environment model.Environment, privateKey environmentdto.DeploymentSSHPrivateKey) (string, error) {
 	if !environment.IsSSH() {
 		return "", errors.New("SSH environment probe received a non-SSH environment")
 	}
@@ -195,7 +195,7 @@ func probePrerequisiteFailureDiagnostic(platform string, stderr string) string {
 	}
 }
 
-func parseSigner(privateKey credentialdto.DeploymentSSHPrivateKey) (ssh.Signer, error) {
+func parseSigner(privateKey environmentdto.DeploymentSSHPrivateKey) (ssh.Signer, error) {
 	if privateKey.Passphrase == "" {
 		signer, err := ssh.ParsePrivateKey([]byte(privateKey.PrivateKey))
 		if err != nil {

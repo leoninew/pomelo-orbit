@@ -59,6 +59,17 @@ sql:
         emit_interface: true
   - engine: "mysql"
     schema: "sql/schema/mysql.sql"
+    queries: "sql/query/environment_credential"
+    gen:
+      go:
+        package: "environmentcredential"
+        out: "internal/gen/sqlc/environment_credential"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "mysql"
+    schema: "sql/schema/mysql.sql"
     queries: "sql/query/task"
     gen:
       go:
@@ -70,11 +81,11 @@ sql:
         emit_interface: true
   - engine: "mysql"
     schema: "sql/schema/mysql.sql"
-    queries: "sql/query/credential"
+    queries: "sql/query/repository_credential"
     gen:
       go:
-        package: "credential"
-        out: "internal/gen/sqlc/credential"
+        package: "repositorycredential"
+        out: "internal/gen/sqlc/repository_credential"
         sql_package: "database/sql"
         emit_db_tags: true
         emit_json_tags: false

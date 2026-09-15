@@ -183,7 +183,7 @@ const pipelineNavigation: NavigationBranch[] = [
         key: 'credentials',
         label: '凭据',
         labelKey: 'nav.credentials',
-        path: '/credential',
+        path: '/repository-credential',
       },
     ],
   },
@@ -325,8 +325,8 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path.startsWith('/pipeline-run/') ||
     path === '/repository' ||
     path.startsWith('/repository/') ||
-    path === '/credential' ||
-    path.startsWith('/credential/')
+    path === '/repository-credential' ||
+    path.startsWith('/repository-credential/')
   ) {
     return 'pipeline';
   }

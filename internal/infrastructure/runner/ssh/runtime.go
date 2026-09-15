@@ -115,13 +115,13 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 		if err != nil {
 			return err
 		}
-		if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, file.Path, file.Content, file.Mode, file.IgnoreIfExists, workspace.DeploymentID); err != nil {
+		if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, file.Path, file.Content, file.Mode, file.IgnoreIfExists, workspace.DeploymentId); err != nil {
 			return err
 		}
 	}
 	composePath := path.Join(serviceDir, "docker-compose.yml")
 	compose := strings.ReplaceAll(workspace.Compose, logicalServiceDir, serviceDir)
-	if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, composePath, []byte(compose), 0o644, false, workspace.DeploymentID); err != nil {
+	if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, composePath, []byte(compose), 0o644, false, workspace.DeploymentId); err != nil {
 		return err
 	}
 	return nil

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	credentialdto "github.com/leoninew/pomelo-orbit/internal/application/credential/dto"
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
@@ -21,10 +20,6 @@ const (
 	localProbeUnavailableDiagnostic  = "Local environment probing is not configured."
 )
 
-type deploymentCredentialReader interface {
-	DeploymentSSHCredential(context.Context, string) (model.Credential, credentialdto.DeploymentSSHPrivateKey, error)
-}
-
 type probeDiagnosticError interface {
 	ProbeDiagnostic() string
 }
@@ -32,11 +27,11 @@ type probeDiagnosticError interface {
 // ProbeForUser verifies the configured SSH target outside a request transaction.
 // Its single conditional update records a result only for the target revision
 // that was actually probed, preventing stale observations after an edit.
-func (s Service) ProbeForUser(ctx context.Context, userID string, projectID string) (environmentdto.View, error) {
-	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+func (s Service) ProbeForUser(ctx context.Context, userId string, projectId string) (environmentdto.View, error) {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.View{}, err
 	}
-	item, err := s.environmentForProject(ctx, projectID)
+	item, err := s.environmentForProject(ctx, projectId)
 	if err != nil {
 		return environmentdto.View{}, err
 	}
@@ -99,11 +94,11 @@ type bootstrapDiagnosticError interface {
 // deployment public key on a configured Linux target. The temporary
 // credentials are never stored and the target is probed with the generated
 // key immediately after bootstrap.
-func (s Service) InitializeForUser(ctx context.Context, userID string, projectID string, input environmentdto.InitializeInput) (environmentdto.View, error) {
-	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+func (s Service) InitializeForUser(ctx context.Context, userId string, projectId string, input environmentdto.InitializeInput) (environmentdto.View, error) {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.View{}, err
 	}
-	item, err := s.environmentForProject(ctx, projectID)
+	item, err := s.environmentForProject(ctx, projectId)
 	if err != nil {
 		return environmentdto.View{}, err
 	}
@@ -118,9 +113,6 @@ func (s Service) InitializeForUser(ctx context.Context, userID string, projectID
 	}
 	if s.bootstrapper == nil {
 		return environmentdto.View{}, apperror.New(apperror.KindInternal, "SSH environment bootstrap is not configured")
-	}
-	if s.deploymentKey == nil {
-		return environmentdto.View{}, apperror.New(apperror.KindInternal, "deployment SSH credential manager is not configured")
 	}
 	auth, err := bootstrapAuth(input)
 	if err != nil {
@@ -141,14 +133,18 @@ func (s Service) InitializeForUser(ctx context.Context, userID string, projectID
 			return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
 		}
 	}
-	publicKey, err := s.deploymentKey.DeploymentSSHPublicKey(ctx, item.SSH.CredentialId)
+	credential, err := s.environmentCredential(ctx, item.SSH.CredentialId)
 	if err != nil {
 		return environmentdto.View{}, err
+	}
+	publicKey := strings.TrimSpace(credential.PublicKey)
+	if publicKey == "" {
+		return environmentdto.View{}, apperror.New(apperror.KindInternal, "Generated deployment SSH public key is empty")
 	}
 	if err := s.bootstrapper.Bootstrap(ctx, item, publicKey, auth); err != nil {
 		return environmentdto.View{}, apperror.New(apperror.KindValidation, safeBootstrapDiagnostic(err))
 	}
-	return s.ProbeForUser(ctx, userID, projectID)
+	return s.ProbeForUser(ctx, userId, projectId)
 }
 
 func bootstrapAuth(input environmentdto.InitializeInput) (environmentport.BootstrapAuth, error) {
@@ -198,11 +194,12 @@ func (s Service) probeOutcome(ctx context.Context, item model.Environment) (stri
 	if !item.IsSSH() {
 		return model.EnvironmentProbeStatusFailed, probeUnavailableDiagnostic, ""
 	}
-	if s.deploymentCredential == nil {
-		return model.EnvironmentProbeStatusFailed, probeUnavailableDiagnostic, ""
-	}
-	credential, privateKey, err := s.deploymentCredential.DeploymentSSHCredential(ctx, item.SSH.CredentialId)
+	credential, err := s.environmentCredential(ctx, item.SSH.CredentialId)
 	if err != nil || !matchesEnvironmentCredential(item, credential) {
+		return model.EnvironmentProbeStatusFailed, probeCredentialFailureDiagnostic, ""
+	}
+	privateKey, err := decryptEnvironmentPrivateKey(s.secretKey, credential)
+	if err != nil {
 		return model.EnvironmentProbeStatusFailed, probeCredentialFailureDiagnostic, ""
 	}
 	if s.prober == nil {
@@ -230,15 +227,6 @@ func safeProbeDiagnostic(err error) string {
 		}
 	}
 	return probeFailureDiagnostic
-}
-
-func matchesEnvironmentCredential(environment model.Environment, credential model.Credential) bool {
-	return environment.IsSSH() &&
-		credential.Id == environment.SSH.CredentialId &&
-		credential.ProjectId != nil &&
-		strings.TrimSpace(*credential.ProjectId) == environment.ProjectId &&
-		credential.Revision == environment.SSH.CredentialRevision &&
-		credential.IsDeploymentSSHPrivateKey()
 }
 
 func probeSuccessDiagnostic(platform string) string {

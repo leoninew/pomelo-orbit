@@ -21,7 +21,7 @@
           <Trash2 class="size-4" />
           删除
         </button>
-        <button class="app-button h-9 px-4" @click="$router.push('/credential')">
+        <button class="app-button h-9 px-4" @click="$router.push('/repository-credential')">
           <ArrowLeft class="size-4" />
           返回
         </button>
@@ -215,7 +215,7 @@
       await executeOp(async () => {
         await credentialApi.delete(props.id);
         toast.success('删除成功');
-        $router.push('/credential');
+        $router.push('/repository-credential');
       });
     } catch (err) {
       deleteSubmitError.value = err instanceof Error ? err.message : '删除失败';

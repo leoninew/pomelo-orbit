@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	credentialdto "github.com/leoninew/pomelo-orbit/internal/application/credential/dto"
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	localrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/local"
 	sshrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/ssh"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -21,7 +21,7 @@ func NewProber(local *localrunner.Runtime, ssh sshrunner.EnvironmentProber) Prob
 	return Prober{Local: local, SSH: ssh}
 }
 
-func (p Prober) Probe(ctx context.Context, environment model.Environment, privateKey credentialdto.DeploymentSSHPrivateKey) (string, error) {
+func (p Prober) Probe(ctx context.Context, environment model.Environment, privateKey environmentdto.DeploymentSSHPrivateKey) (string, error) {
 	if !environment.IsSSH() {
 		return "", errors.New("SSH probe received a non-SSH environment")
 	}

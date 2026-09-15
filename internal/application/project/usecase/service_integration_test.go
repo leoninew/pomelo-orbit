@@ -36,7 +36,6 @@ func TestProjectServiceCreateUpdateMembersAndDeprecate(t *testing.T) {
 	if !errors.Is(err, repository.ErrNotFound) {
 		t.Fatalf("expected no environment for new project, got %v", err)
 	}
-	assertCount(t, database, `SELECT COUNT(*) FROM credential WHERE project_id = ?`, created.Id, 0)
 	loaded, err := service.LoadForUser(ctx, created.Id, projectTestUserId)
 	if err != nil {
 		t.Fatal(err)
@@ -123,16 +122,5 @@ func testProjectCreateInput(t *testing.T, name string, code string) projectdto.C
 	return projectdto.CreateInput{
 		Name: name,
 		Code: code,
-	}
-}
-
-func assertCount(t *testing.T, database *sql.DB, query string, value string, want int) {
-	t.Helper()
-	var got int
-	if err := database.QueryRow(query, value).Scan(&got); err != nil {
-		t.Fatal(err)
-	}
-	if got != want {
-		t.Fatalf("query %q with %q returned %d, want %d", query, value, got, want)
 	}
 }

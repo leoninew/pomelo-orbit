@@ -50,9 +50,9 @@ type ExecutionStore interface {
 }
 
 type ExecutionLogStore interface {
-	Read(serviceCode string, deploymentID string, offset int) ([]byte, int, error)
-	Writer(serviceCode string, deploymentID string) (io.WriteCloser, error)
-	Remove(serviceCode string, deploymentID string) error
+	Read(serviceCode string, deploymentId string, offset int) ([]byte, int, error)
+	Writer(serviceCode string, deploymentId string) (io.WriteCloser, error)
+	Remove(serviceCode string, deploymentId string) error
 }
 
 type WorkspaceFile struct {
@@ -67,7 +67,7 @@ type Workspace struct {
 	Directories  []string
 	Files        []WorkspaceFile
 	Compose      string
-	DeploymentID string
+	DeploymentId string
 }
 
 // Runtime is the only deployment execution boundary. Every operation receives

@@ -1,24 +1,38 @@
-#!/usr/bin/env python3
-"""Transfer Orbit service closures and selected Environments through dbtalk JSONL."""
+"""Transfer Orbit service closures and selected Environments through dbtalk."""
 
 from __future__ import annotations
 
-import argparse
 import contextlib
-import json
-import os
-import shutil
-import subprocess
-import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Sequence, TextIO, cast
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import click
 from cryptography.fernet import Fernet, InvalidToken
+from dbtalk.database import DatabaseClient, create_client
+from dbtalk.database.transfer import (
+    ColumnDefinition,
+    DatabaseOperationError,
+    DatabaseTransferError,
+    ExportOptions,
+    ImportOptions,
+    TableBlock as DbtalkTableBlock,
+    TableBlockHeader,
+    TransferConnection,
+    TransferHeader,
+    TransferMode,
+    export_database,
+    import_database,
+    read_jsonl,
+    write_jsonl,
+)
+
+from pomelo_orbit_cli.context import app_context
+from pomelo_orbit_cli.settings import DatabaseConnection, Settings
 
 
-TRANSFER_FORMAT = "dbtalk.database-transfer/v1"
 # Keep this order aligned with dbtalk's target-schema foreign-key ordering.
 SERVICE_TABLES = (
     "project",
@@ -69,7 +83,6 @@ ENVIRONMENT_DBTALK_IMPORT_TABLES = (
     "project",
     "environment_credential",
 )
-ENVIRONMENT_TRANSFER_SCOPE = "environment"
 ENVIRONMENT_REQUIRED_COLUMNS = (
     "id",
     "project_id",
@@ -82,20 +95,20 @@ ENVIRONMENT_REQUIRED_COLUMNS = (
 ENVIRONMENT_CREDENTIAL_REQUIRED_COLUMNS = ("id", "project_id", "revision")
 
 
-class ServiceTransferError(RuntimeError):
+class ServiceTransferError(DatabaseTransferError):
     """Raised when a service transfer cannot be safely prepared."""
 
 
 @dataclass(frozen=True)
 class TableBlock:
     name: str
-    columns: tuple[dict[str, Any], ...]
+    columns: tuple[ColumnDefinition, ...]
     primary_key: tuple[str, ...]
     rows: tuple[tuple[Any, ...], ...]
 
     @property
     def column_names(self) -> tuple[str, ...]:
-        return tuple(str(column["name"]) for column in self.columns)
+        return tuple(column.name for column in self.columns)
 
     def row_maps(self) -> tuple[dict[str, Any], ...]:
         names = self.column_names
@@ -104,7 +117,7 @@ class TableBlock:
 
 @dataclass(frozen=True)
 class TransferFile:
-    header: dict[str, Any]
+    header: TransferHeader
     tables: tuple[TableBlock, ...]
 
 
@@ -120,191 +133,28 @@ class EnvironmentTransferScope:
     environment_id: str
 
 
-def add_source_database_argument(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--source", choices=("sqlite", "mysql", "postgresql"), required=True
-    )
-
-
-def add_target_database_argument(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--target", choices=("sqlite", "mysql", "postgresql"), required=True
-    )
-
-
-def add_connection_arguments(parser: argparse.ArgumentParser) -> None:
-    connection = parser.add_mutually_exclusive_group(required=True)
-    connection.add_argument("--dsn")
-    connection.add_argument("--dsn-env")
-
-
-def add_dbtalk_runtime_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--tz", default="UTC")
-    parser.add_argument("--dbtalk-command", default="dbtalk")
-
-
-def parse_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    subcommands = parser.add_subparsers(dest="command", required=True)
-
-    exporter = subcommands.add_parser(
-        "export", help="export one service deployment closure"
-    )
-    add_source_database_argument(exporter)
-    exporter.add_argument("--project-id", required=True)
-    exporter.add_argument("--service-code", required=True)
-    exporter.add_argument("--output", type=Path, required=True)
-    add_connection_arguments(exporter)
-    add_dbtalk_runtime_arguments(exporter)
-
-    importer = subcommands.add_parser(
-        "import", help="import one service deployment closure"
-    )
-    add_target_database_argument(importer)
-    importer.add_argument("--project-id", required=True)
-    importer.add_argument("--input", type=Path, required=True)
-    importer.add_argument("--mode", choices=("insert", "upsert"), required=True)
-    add_connection_arguments(importer)
-    add_dbtalk_runtime_arguments(importer)
-
-    environment_exporter = subcommands.add_parser(
-        "export-environment", help="export one Environment and its SSH key"
-    )
-    add_source_database_argument(environment_exporter)
-    environment_exporter.add_argument("--project-id", required=True)
-    environment_exporter.add_argument("--environment-id", required=True)
-    environment_exporter.add_argument(
-        "--source-secret-env",
-        required=True,
-        help="environment variable containing the source jwt.secret_key Fernet key",
-    )
-    environment_exporter.add_argument("--output", type=Path, required=True)
-    add_connection_arguments(environment_exporter)
-    add_dbtalk_runtime_arguments(environment_exporter)
-
-    environment_importer = subcommands.add_parser(
-        "import-environment", help="import one Environment and its SSH key"
-    )
-    add_target_database_argument(environment_importer)
-    environment_importer.add_argument("--project-id", required=True)
-    environment_importer.add_argument("--input", type=Path, required=True)
-    environment_importer.add_argument(
-        "--target-secret-env",
-        required=True,
-        help="environment variable containing the target jwt.secret_key Fernet key",
-    )
-    add_connection_arguments(environment_importer)
-    add_dbtalk_runtime_arguments(environment_importer)
-
-    return parser.parse_args(argv)
-
-
 def load_transfer(path: Path) -> TransferFile:
     if not path.is_file():
         raise ServiceTransferError(f"transfer file does not exist: {path}")
-
-    header: dict[str, Any] | None = None
-    tables: list[TableBlock] = []
-    current: dict[str, Any] | None = None
-    current_rows: list[tuple[Any, ...]] = []
-
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-        for line_number, line in enumerate(lines, 1):
-            if not line.strip():
-                raise ServiceTransferError(f"blank JSONL record at line {line_number}")
-            record = json.loads(line)
-            if not isinstance(record, dict) or not isinstance(record.get("kind"), str):
-                raise ServiceTransferError(
-                    f"invalid JSONL record at line {line_number}"
-                )
-            kind = record["kind"]
-            if kind == "header":
-                if header is not None or tables or current is not None:
-                    raise ServiceTransferError("JSONL header must be the first record")
-                if record.get("format") != TRANSFER_FORMAT:
-                    raise ServiceTransferError("unsupported dbtalk JSONL format")
-                if record.get("source") not in ("sqlite", "mysql", "postgresql"):
-                    raise ServiceTransferError("JSONL header has an invalid source")
-                header = record
-            elif kind == "table":
-                if header is None or current is not None:
-                    raise ServiceTransferError(
-                        f"unexpected table record at line {line_number}"
-                    )
-                current = parse_table_header(record, line_number)
-                current_rows = []
-            elif kind == "row":
-                if current is None:
-                    raise ServiceTransferError(
-                        f"row outside table at line {line_number}"
-                    )
-                values = record.get("values")
-                if not isinstance(values, list) or len(values) != len(
-                    current["columns"]
-                ):
-                    raise ServiceTransferError(f"invalid row at line {line_number}")
-                current_rows.append(tuple(values))
-            elif kind == "end":
-                if current is None or record.get("rows") != len(current_rows):
-                    raise ServiceTransferError(
-                        f"invalid table end at line {line_number}"
-                    )
-                tables.append(
-                    TableBlock(
-                        name=current["name"],
-                        columns=tuple(current["columns"]),
-                        primary_key=tuple(current["primary_key"]),
-                        rows=tuple(current_rows),
-                    )
-                )
-                current = None
-                current_rows = []
-            else:
-                raise ServiceTransferError(f"unknown JSONL record kind: {kind}")
-    except json.JSONDecodeError as error:
-        raise ServiceTransferError(f"invalid JSONL at line {error.lineno}") from error
-
-    if header is None:
-        raise ServiceTransferError("JSONL header is missing")
-    if current is not None:
-        raise ServiceTransferError("JSONL table is missing its end record")
+        with path.open(encoding="utf-8") as input_file:
+            header, tables = read_jsonl(input_file)
+    except (OSError, DatabaseTransferError) as error:
+        raise ServiceTransferError(f"could not read transfer file: {error}") from error
     if not tables:
         raise ServiceTransferError("JSONL contains no table blocks")
-    if len({table.name for table in tables}) != len(tables):
-        raise ServiceTransferError("JSONL contains duplicate tables")
-    return TransferFile(header=header, tables=tuple(tables))
-
-
-def parse_table_header(record: dict[str, Any], line_number: int) -> dict[str, Any]:
-    name = record.get("name")
-    columns = record.get("columns")
-    primary_key = record.get("primary_key")
-    if (
-        not isinstance(name, str)
-        or not isinstance(columns, list)
-        or not isinstance(primary_key, list)
-        or not columns
-        or not all(isinstance(value, str) for value in primary_key)
-    ):
-        raise ServiceTransferError(f"invalid table header at line {line_number}")
-    parsed_columns: list[dict[str, Any]] = []
-    for column in columns:
-        if (
-            not isinstance(column, dict)
-            or not isinstance(column.get("name"), str)
-            or not isinstance(column.get("declared_type"), str)
-        ):
-            raise ServiceTransferError(
-                f"invalid column definition at line {line_number}"
+    return TransferFile(
+        header=header,
+        tables=tuple(
+            TableBlock(
+                name=table.header.name,
+                columns=table.header.columns,
+                primary_key=table.header.primary_key,
+                rows=table.rows,
             )
-        parsed_columns.append(column)
-    names = [column["name"] for column in parsed_columns]
-    if len(set(names)) != len(names) or any(key not in names for key in primary_key):
-        raise ServiceTransferError(
-            f"invalid primary key in table header at line {line_number}"
-        )
-    return {"name": name, "columns": parsed_columns, "primary_key": primary_key}
+            for table in tables
+        ),
+    )
 
 
 def write_transfer(path: Path, transfer: TransferFile) -> None:
@@ -315,38 +165,25 @@ def write_transfer(path: Path, transfer: TransferFile) -> None:
             "w", encoding="utf-8", newline="\n", dir=path.parent, delete=False
         ) as output:
             temporary = Path(output.name)
-            output.write(
-                json.dumps(transfer.header, ensure_ascii=False, separators=(",", ":"))
-                + "\n"
+            write_jsonl(
+                cast(TextIO, output.file),
+                transfer.header,
+                tuple(
+                    DbtalkTableBlock(
+                        header=TableBlockHeader(
+                            name=table.name,
+                            columns=table.columns,
+                            primary_key=table.primary_key,
+                        ),
+                        rows=table.rows,
+                    )
+                    for table in transfer.tables
+                ),
             )
-            for table in transfer.tables:
-                output.write(
-                    json.dumps(
-                        {
-                            "kind": "table",
-                            "name": table.name,
-                            "columns": list(table.columns),
-                            "primary_key": list(table.primary_key),
-                        },
-                        ensure_ascii=False,
-                        separators=(",", ":"),
-                    )
-                    + "\n"
-                )
-                for row in table.rows:
-                    output.write(
-                        json.dumps(
-                            {"kind": "row", "values": list(row)},
-                            ensure_ascii=False,
-                            separators=(",", ":"),
-                        )
-                        + "\n"
-                    )
-                output.write(
-                    json.dumps({"kind": "end", "rows": len(table.rows)}) + "\n"
-                )
         temporary.replace(path)
         temporary = None
+    except (DatabaseTransferError, OSError) as error:
+        raise ServiceTransferError("could not write transfer file") from error
     finally:
         if temporary is not None:
             with contextlib.suppress(OSError):
@@ -612,12 +449,6 @@ def retarget_service_transfer(
     return TransferFile(header=transfer.header, tables=tuple(retargeted))
 
 
-def environment_export_header(header: dict[str, Any]) -> dict[str, Any]:
-    exported = dict(header)
-    exported["orbit_scope"] = ENVIRONMENT_TRANSFER_SCOPE
-    return exported
-
-
 def environment_row(
     table: TableBlock, project_id: str, environment_id: str
 ) -> dict[str, Any]:
@@ -636,23 +467,6 @@ def environment_row(
             f"environment does not exist in project {project_id}: {environment_id}"
         )
     return environment
-
-
-def fernet_from_environment(variable_name: str, purpose: str) -> Fernet:
-    secret = os.environ.get(variable_name)
-    if secret is None or not secret.strip():
-        raise ServiceTransferError(
-            f"{purpose} secret environment variable is not set: {variable_name}"
-        )
-    try:
-        encoded = secret.strip().encode("ascii")
-        encoded += b"=" * (-len(encoded) % 4)
-        return Fernet(encoded)
-    except (UnicodeEncodeError, ValueError):
-        raise ServiceTransferError(
-            f"{purpose} secret environment variable is not a valid Fernet key: "
-            f"{variable_name}"
-        ) from None
 
 
 def decrypt_environment_private_key(fernet: Fernet, encrypted_value: Any) -> str:
@@ -695,7 +509,7 @@ def renamed_column_table(
             f"table {table.name} contains both {source_name} and {target_name}"
         )
     columns = list(table.columns)
-    columns[source_index] = {**columns[source_index], "name": target_name}
+    columns[source_index] = replace(columns[source_index], name=target_name)
     return TableBlock(
         name=table.name,
         columns=tuple(columns),
@@ -746,7 +560,6 @@ def select_environment_transfer(
     environment_rows = rows_where(environment_table, "id", {environment_id})
     exported_environment = replace_value(environment_rows[0], gateway_index, None)
     selected_environment = table_with_rows(environment_table, (exported_environment,))
-    header = environment_export_header(transfer.header)
     project_reference = empty_table(project_table)
 
     if target_type == "local":
@@ -754,7 +567,7 @@ def select_environment_transfer(
             raise ServiceTransferError(
                 "local environment must not bind an SSH credential"
             )
-        return TransferFile(header, (project_reference, selected_environment))
+        return TransferFile(transfer.header, (project_reference, selected_environment))
     if target_type != "ssh":
         raise ServiceTransferError("environment target_type must be local or ssh")
     if not credential_id or not credential_revision:
@@ -793,13 +606,11 @@ def select_environment_transfer(
         (exported_credential,),
     )
     return TransferFile(
-        header, (project_reference, selected_credential, selected_environment)
+        transfer.header, (project_reference, selected_credential, selected_environment)
     )
 
 
 def environment_transfer_scope(transfer: TransferFile) -> EnvironmentTransferScope:
-    if transfer.header.get("orbit_scope") != ENVIRONMENT_TRANSFER_SCOPE:
-        raise ServiceTransferError("transfer file is not an Orbit environment export")
     table_names = tuple(table.name for table in transfer.tables)
     if table_names not in (("project", "environment"), ENVIRONMENT_TABLES):
         raise ServiceTransferError(
@@ -947,277 +758,356 @@ def retarget_environment_transfer(
     )
 
 
-def dbtalk_command(command: str) -> str:
-    resolved = shutil.which(command)
-    if resolved:
-        return resolved
-    if Path(command).is_file():
-        return str(Path(command).resolve())
-    raise ServiceTransferError(
-        "dbtalk CLI was not found; install dbtalk and ensure the command is on PATH"
-    )
-
-
-def connection_arguments(dsn: str | None, dsn_env: str | None) -> list[str]:
-    if (dsn is None) == (dsn_env is None):
-        raise ServiceTransferError("provide exactly one of --dsn or --dsn-env")
-    if dsn_env is not None:
-        if not dsn_env:
-            raise ServiceTransferError("--dsn-env must not be empty")
-        return ["--dsn-env", dsn_env]
-    if not dsn:
-        raise ServiceTransferError("--dsn must not be empty")
-    return ["--dsn", dsn]
-
-
-def dbtalk_result(
-    command: str, arguments: Sequence[str], *, operation: str
-) -> subprocess.CompletedProcess[str]:
-    executable = dbtalk_command(command)
-    result = subprocess.run(
-        [executable, *arguments],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode:
-        raise ServiceTransferError(
-            f"dbtalk {operation} failed with exit code {result.returncode}"
-        )
-    return result
-
-
-def run_dbtalk(command: str, arguments: Sequence[str], *, operation: str) -> None:
-    dbtalk_result(command, arguments, operation=operation)
-
-
-def dbtalk_query_rows(
-    command: str,
-    connection: Sequence[str],
-    sql: str,
-    parameter_name: str,
-    parameter_value: str,
-    operation: str,
-) -> list[dict[str, Any]]:
-    result = dbtalk_result(
-        command,
-        [
-            "query",
-            *connection,
-            "--sql",
-            sql,
-            "--param",
-            parameter_name + "=" + json.dumps(parameter_value),
-            "--format",
-            "json",
-        ],
-        operation=operation,
-    )
+def timezone(value: str) -> ZoneInfo:
+    """Resolve a user-facing IANA timezone name without leaking implementation data."""
     try:
-        payload = json.loads(result.stdout)
-    except (AttributeError, json.JSONDecodeError) as error:
-        raise ServiceTransferError(
-            f"dbtalk {operation} returned invalid JSON"
-        ) from error
-    rows = payload.get("rows") if isinstance(payload, dict) else None
-    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
-        raise ServiceTransferError(f"dbtalk {operation} returned invalid JSON")
-    return rows
+        return ZoneInfo(value)
+    except ZoneInfoNotFoundError as error:
+        raise ServiceTransferError(f"unknown timezone: {value}") from error
 
 
-def target_project(
-    command: str, connection: Sequence[str], project_id: str
-) -> dict[str, Any] | None:
-    rows = dbtalk_query_rows(
-        command,
-        connection,
+def transfer_connection(connection: DatabaseConnection) -> TransferConnection:
+    """Adapt shared Orbit settings to the dbtalk transfer API."""
+    return TransferConnection(driver=connection.driver, dsn=connection.dsn)
+
+
+def export_from_database(
+    connection: DatabaseConnection,
+    output: Path,
+    table_names: tuple[str, ...],
+    tz: ZoneInfo,
+    *,
+    operation: str,
+) -> None:
+    try:
+        export_database(
+            ExportOptions(
+                connection=transfer_connection(connection),
+                output=output,
+                include_tables=table_names,
+                timezone=tz,
+            )
+        )
+    except (DatabaseOperationError, DatabaseTransferError, OSError) as error:
+        raise ServiceTransferError(f"database {operation} failed") from error
+
+
+def import_into_database(
+    connection: DatabaseConnection,
+    input_path: Path,
+    mode: TransferMode,
+    tz: ZoneInfo,
+    *,
+    operation: str,
+) -> None:
+    try:
+        import_database(
+            ImportOptions(
+                connection=transfer_connection(connection),
+                input=input_path,
+                mode=mode,
+                timezone=tz,
+            )
+        )
+    except (DatabaseOperationError, DatabaseTransferError, OSError) as error:
+        raise ServiceTransferError(f"database {operation} failed") from error
+
+
+@contextlib.contextmanager
+def database_client(connection: DatabaseConnection):
+    """Create and close the dbtalk client used for target preflight queries."""
+    client = create_client(connection.dsn)
+    try:
+        client.connect()
+        yield client
+    except DatabaseOperationError as error:
+        raise ServiceTransferError("database query failed") from error
+    finally:
+        client.close()
+
+
+def query_rows(
+    client: DatabaseClient, statement: str, parameters: dict[str, str]
+) -> list[dict[str, Any]]:
+    try:
+        result = client.query(statement, parameters)
+    except DatabaseOperationError as error:
+        raise ServiceTransferError("database query failed") from error
+    return [dict(zip(result.columns, row, strict=True)) for row in result.rows]
+
+
+def target_project(client: DatabaseClient, project_id: str) -> dict[str, Any] | None:
+    rows = query_rows(
+        client,
         "SELECT id, code FROM project WHERE id = :project_id",
-        "project_id",
-        project_id,
-        "project lookup",
+        {"project_id": project_id},
     )
     if len(rows) != 1 or value_key(rows[0].get("id")) != project_id:
         return None
     return rows[0]
 
 
-def target_project_exists(
-    command: str, connection: Sequence[str], project_id: str
-) -> bool:
-    return target_project(command, connection, project_id) is not None
-
-
-def target_project_has_environment(
-    command: str, connection: Sequence[str], project_id: str
-) -> bool:
-    rows = dbtalk_query_rows(
-        command,
-        connection,
-        "SELECT id FROM environment WHERE project_id = :project_id",
-        "project_id",
-        project_id,
-        "environment lookup",
+def target_project_has_environment(client: DatabaseClient, project_id: str) -> bool:
+    return bool(
+        query_rows(
+            client,
+            "SELECT id FROM environment WHERE project_id = :project_id",
+            {"project_id": project_id},
+        )
     )
-    return bool(rows)
 
 
-def export_service(args: argparse.Namespace) -> Path:
-    output = args.output.resolve()
-    connection = connection_arguments(args.dsn, args.dsn_env)
+def export_service(
+    settings: Settings,
+    *,
+    project_id: str,
+    service_code: str,
+    output: Path,
+    tz: str,
+) -> Path:
+    """Export the selected service closure using the configured source database."""
+    output = output.resolve()
+    connection = settings.connection
     with tempfile.TemporaryDirectory(prefix="orbit-service-transfer-") as directory:
-        service_export = Path(directory) / "service.jsonl"
-        run_dbtalk(
-            args.dbtalk_command,
-            [
-                "export",
-                "--source",
-                args.source,
-                "--output",
-                str(service_export),
-                *connection,
-                *(
-                    argument
-                    for table_name in SERVICE_TABLES
-                    for argument in ("--include-table", table_name)
-                ),
-                "--tz",
-                args.tz,
-            ],
+        source_export = Path(directory) / "service.jsonl"
+        export_from_database(
+            connection,
+            source_export,
+            SERVICE_TABLES,
+            timezone(tz),
             operation="export",
         )
-        selected = service_tables(
-            load_transfer(service_export), args.project_id, args.service_code
+        write_transfer(
+            output,
+            service_tables(load_transfer(source_export), project_id, service_code),
         )
-        write_transfer(output, selected)
     return output
 
 
-def export_environment(args: argparse.Namespace) -> Path:
-    output = args.output.resolve()
-    connection = connection_arguments(args.dsn, args.dsn_env)
-    source_fernet = fernet_from_environment(args.source_secret_env, "source")
+def export_environment(
+    settings: Settings,
+    *,
+    project_id: str,
+    environment_id: str,
+    output: Path,
+    tz: str,
+) -> Path:
+    """Export the selected Environment and reformat its SSH key for transport."""
+    output = output.resolve()
+    connection = settings.connection
+    source_fernet = settings.fernet
     with tempfile.TemporaryDirectory(prefix="orbit-environment-transfer-") as directory:
-        environment_export = Path(directory) / "environment.jsonl"
-        run_dbtalk(
-            args.dbtalk_command,
-            [
-                "export",
-                "--source",
-                args.source,
-                "--output",
-                str(environment_export),
-                *connection,
-                *(
-                    argument
-                    for table_name in ENVIRONMENT_TABLES
-                    for argument in ("--include-table", table_name)
-                ),
-                "--tz",
-                args.tz,
-            ],
+        source_export = Path(directory) / "environment.jsonl"
+        export_from_database(
+            connection,
+            source_export,
+            ENVIRONMENT_TABLES,
+            timezone(tz),
             operation="environment export",
         )
-        selected = select_environment_transfer(
-            load_transfer(environment_export),
-            args.project_id,
-            args.environment_id,
-            source_fernet,
+        write_transfer(
+            output,
+            select_environment_transfer(
+                load_transfer(source_export),
+                project_id,
+                environment_id,
+                source_fernet,
+            ),
         )
-        write_transfer(output, selected)
     return output
 
 
-def import_service(args: argparse.Namespace) -> str:
-    transfer = load_transfer(args.input.resolve())
+def import_service(
+    settings: Settings,
+    *,
+    project_id: str,
+    input_path: Path,
+    mode: TransferMode,
+    tz: str,
+) -> str:
+    """Validate, retarget, and import a service closure into the configured database."""
+    transfer = load_transfer(input_path.resolve())
     scope = service_transfer_scope(transfer)
-    connection = connection_arguments(args.dsn, args.dsn_env)
-    if not target_project_exists(args.dbtalk_command, connection, args.project_id):
-        raise ServiceTransferError(f"target project does not exist: {args.project_id}")
-    target_transfer = retarget_service_transfer(transfer, args.project_id)
+    connection = settings.connection
+    with database_client(connection) as client:
+        if target_project(client, project_id) is None:
+            raise ServiceTransferError(f"target project does not exist: {project_id}")
+    target_transfer = retarget_service_transfer(transfer, project_id)
     with tempfile.TemporaryDirectory(prefix="orbit-service-import-") as directory:
         target_input = Path(directory) / "service.jsonl"
         write_transfer(target_input, target_transfer)
-        run_dbtalk(
-            args.dbtalk_command,
-            [
-                "import",
-                "--target",
-                args.target,
-                "--input",
-                str(target_input),
-                "--mode",
-                args.mode,
-                *connection,
-                "--tz",
-                args.tz,
-            ],
+        import_into_database(
+            connection,
+            target_input,
+            mode,
+            timezone(tz),
             operation="import",
         )
     return scope.service_code
 
 
-def import_environment(args: argparse.Namespace) -> str:
-    transfer = load_transfer(args.input.resolve())
+def import_environment(
+    settings: Settings,
+    *,
+    project_id: str,
+    input_path: Path,
+    tz: str,
+) -> str:
+    """Restore a selected Environment into the configured target project."""
+    transfer = load_transfer(input_path.resolve())
     scope = environment_transfer_scope(transfer)
-    connection = connection_arguments(args.dsn, args.dsn_env)
-    target_fernet = fernet_from_environment(args.target_secret_env, "target")
-    target = target_project(args.dbtalk_command, connection, args.project_id)
-    if target is None:
-        raise ServiceTransferError(f"target project does not exist: {args.project_id}")
-    target_project_code = value_key(target.get("code"))
-    if not target_project_code:
-        raise ServiceTransferError(f"target project has no code: {args.project_id}")
-    if target_project_has_environment(args.dbtalk_command, connection, args.project_id):
-        raise ServiceTransferError(
-            f"target project already has an environment: {args.project_id}"
-        )
+    connection = settings.connection
+    target_fernet = settings.fernet
+    with database_client(connection) as client:
+        target = target_project(client, project_id)
+        if target is None:
+            raise ServiceTransferError(f"target project does not exist: {project_id}")
+        target_project_code = value_key(target.get("code"))
+        if not target_project_code:
+            raise ServiceTransferError(f"target project has no code: {project_id}")
+        if target_project_has_environment(client, project_id):
+            raise ServiceTransferError(
+                f"target project already has an environment: {project_id}"
+            )
     target_transfer = retarget_environment_transfer(
-        transfer, args.project_id, target_project_code, target_fernet
+        transfer, project_id, target_project_code, target_fernet
     )
     with tempfile.TemporaryDirectory(prefix="orbit-environment-import-") as directory:
         target_input = Path(directory) / "environment.jsonl"
         write_transfer(target_input, target_transfer)
-        run_dbtalk(
-            args.dbtalk_command,
-            [
-                "import",
-                "--target",
-                args.target,
-                "--input",
-                str(target_input),
-                "--mode",
-                "insert",
-                *connection,
-                "--tz",
-                args.tz,
-            ],
+        import_into_database(
+            connection,
+            target_input,
+            "insert",
+            timezone(tz),
             operation="environment import",
         )
     return scope.environment_id
 
 
-def main(argv: Sequence[str]) -> int:
-    args = parse_args(argv)
+@click.group(name="database-transfer")
+def database_transfer() -> None:
+    """Export and import Orbit services and Environments."""
+
+
+@database_transfer.command("export")
+@click.option("--project-id", required=True, help="Source Orbit Project ID.")
+@click.option("--service-code", required=True, help="Service code within the Project.")
+@click.option(
+    "--output", type=click.Path(path_type=Path, dir_okay=False), required=True
+)
+@click.option("--tz", default="UTC", show_default=True, help="IANA timezone name.")
+@click.pass_context
+def export_command(
+    ctx: click.Context,
+    project_id: str,
+    service_code: str,
+    output: Path,
+    tz: str,
+) -> None:
+    """Export one service deployment closure."""
+    settings = app_context(ctx).settings
     try:
-        if args.command == "export":
-            output = export_service(args)
-            print(f"service transfer written to {output}")
-        elif args.command == "import":
-            service_code = import_service(args)
-            print(f"service transfer imported for {service_code}")
-        elif args.command == "export-environment":
-            output = export_environment(args)
-            print(f"environment transfer written to {output}")
-        elif args.command == "import-environment":
-            environment_id = import_environment(args)
-            print(f"environment transfer imported for {environment_id}")
-        else:
-            raise ServiceTransferError(f"unsupported transfer command: {args.command}")
-    except (OSError, ServiceTransferError) as error:
-        print(f"database transfer blocked: {error}", file=sys.stderr)
-        return 2
-    return 0
+        written = export_service(
+            settings,
+            project_id=project_id,
+            service_code=service_code,
+            output=output,
+            tz=tz,
+        )
+    except ServiceTransferError as error:
+        raise click.ClickException(f"database transfer blocked: {error}") from error
+    click.echo(f"service transfer written to {written}")
 
 
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+@database_transfer.command("import")
+@click.option("--project-id", required=True, help="Target Orbit Project ID.")
+@click.option(
+    "--input",
+    "input_path",
+    type=click.Path(path_type=Path, dir_okay=False),
+    required=True,
+)
+@click.option("--mode", type=click.Choice(("insert", "upsert")), required=True)
+@click.option("--tz", default="UTC", show_default=True, help="IANA timezone name.")
+@click.pass_context
+def import_command(
+    ctx: click.Context,
+    project_id: str,
+    input_path: Path,
+    mode: str,
+    tz: str,
+) -> None:
+    """Import one service deployment closure."""
+    settings = app_context(ctx).settings
+    try:
+        service_code = import_service(
+            settings,
+            project_id=project_id,
+            input_path=input_path,
+            mode=cast(TransferMode, mode),
+            tz=tz,
+        )
+    except ServiceTransferError as error:
+        raise click.ClickException(f"database transfer blocked: {error}") from error
+    click.echo(f"service transfer imported for {service_code}")
+
+
+@database_transfer.command("export-environment")
+@click.option("--project-id", required=True, help="Source Orbit Project ID.")
+@click.option("--environment-id", required=True, help="Source Environment ID.")
+@click.option(
+    "--output", type=click.Path(path_type=Path, dir_okay=False), required=True
+)
+@click.option("--tz", default="UTC", show_default=True, help="IANA timezone name.")
+@click.pass_context
+def export_environment_command(
+    ctx: click.Context,
+    project_id: str,
+    environment_id: str,
+    output: Path,
+    tz: str,
+) -> None:
+    """Export one Environment and its SSH key."""
+    settings = app_context(ctx).settings
+    try:
+        written = export_environment(
+            settings,
+            project_id=project_id,
+            environment_id=environment_id,
+            output=output,
+            tz=tz,
+        )
+    except ServiceTransferError as error:
+        raise click.ClickException(f"database transfer blocked: {error}") from error
+    click.echo(f"environment transfer written to {written}")
+
+
+@database_transfer.command("import-environment")
+@click.option("--project-id", required=True, help="Target Orbit Project ID.")
+@click.option(
+    "--input",
+    "input_path",
+    type=click.Path(path_type=Path, dir_okay=False),
+    required=True,
+)
+@click.option("--tz", default="UTC", show_default=True, help="IANA timezone name.")
+@click.pass_context
+def import_environment_command(
+    ctx: click.Context,
+    project_id: str,
+    input_path: Path,
+    tz: str,
+) -> None:
+    """Import one Environment and its SSH key."""
+    settings = app_context(ctx).settings
+    try:
+        environment_id = import_environment(
+            settings,
+            project_id=project_id,
+            input_path=input_path,
+            tz=tz,
+        )
+    except ServiceTransferError as error:
+        raise click.ClickException(f"database transfer blocked: {error}") from error
+    click.echo(f"environment transfer imported for {environment_id}")

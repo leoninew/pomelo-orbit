@@ -1,8 +1,15 @@
-# 脚本工具
+# Pomelo Orbit CLI
 
-本页只索引面向开发者直接调用的工具；测试脚本和发布包脚本不单独列出。具体用法以脚本帮助、配套文档或 `skills/` 中的专项技能为准，与代码冲突时以代码为准。
+`scripts/` is the Python `>=3.12` uv project for Pomelo Orbit operational commands. Its `src/` package exposes the project-local `pomelo-orbit-cli` entry point; no global installation is required.
 
-`scripts/pyproject.toml` 仅管理脚本依赖和开发工具，不将本目录构建或安装为 Python 包。使用 uv 执行检查：
+```bash
+uv --directory scripts run pomelo-orbit-cli --help
+uv --directory scripts run pomelo-orbit-cli database-transfer --help
+```
+
+The CLI locates the Orbit repository, then loads the same configuration layers as the Go service: `configs/config.yaml`, optional `configs/config.<env>.yaml`, `.env` or `.env.<env>`, and process environment overrides. Set `POMELO_ORBIT_APP__ENV` in the process to select a profile.
+
+Run the script quality checks with:
 
 ```bash
 uv --directory scripts run ruff format --check .

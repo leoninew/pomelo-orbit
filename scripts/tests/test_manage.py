@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 
-SCRIPT = Path(__file__).with_name("manage.py")
+SCRIPT = Path(__file__).parent.parent / "manage.py"
 SPEC = importlib.util.spec_from_file_location("manage", SCRIPT)
 assert SPEC is not None
 assert SPEC.loader is not None

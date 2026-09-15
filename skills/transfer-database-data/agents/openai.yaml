@@ -1,4 +1,4 @@
 interface:
-  display_name: "Transfer An Orbit Service"
-  short_description: "Move one Orbit service through dbtalk JSONL"
-default_prompt: "Use $transfer-database-data to export or import one Orbit service deployment closure for the current selected Project through the dbtalk CLI."
+  display_name: "Transfer Orbit Data"
+  short_description: "Move service closures or restore one Environment"
+  default_prompt: "Use $transfer-database-data to back up one Orbit Environment with its SSH key and restore it to a specified Project."

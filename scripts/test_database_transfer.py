@@ -12,8 +12,14 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from cryptography.fernet import Fernet
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import database_transfer as transfer
+
+
+FERNET_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+PRIVATE_KEY = "-----BEGIN OPENSSH PRIVATE KEY-----\nprivate-key-data\n-----END OPENSSH PRIVATE KEY-----\n"
 
 
 def table(
@@ -138,6 +144,120 @@ def fixture_transfer(
             "source": "sqlite",
         },
         tables=ordered,
+    )
+
+
+def environment_fixture(
+    *,
+    environment_id: str = "environment-source",
+    environment_project_id: str = "project-source",
+    target_type: str = "ssh",
+    credential_id: str | None = "credential-source",
+    credential_project_id: str = "project-source",
+    credential_revision: int = 3,
+    bound_credential_revision: int | None = 3,
+    encrypted_private_key: str | None = None,
+) -> transfer.TransferFile:
+    if encrypted_private_key is None:
+        encrypted_private_key = (
+            Fernet(FERNET_KEY.encode("ascii"))
+            .encrypt(PRIVATE_KEY.encode("utf-8"))
+            .decode("ascii")
+        )
+    ssh = target_type == "ssh"
+    if target_type == "local":
+        credential_id = None
+        bound_credential_revision = None
+    return transfer.TransferFile(
+        header={
+            "kind": "header",
+            "format": transfer.TRANSFER_FORMAT,
+            "source": "sqlite",
+        },
+        tables=(
+            table(
+                "project",
+                ("id", "code"),
+                (("project-source", "source-code"),),
+            ),
+            table(
+                "repository_credential",
+                ("id", "project_id", "encrypted_data"),
+                (("repository-credential", "project-source", "repository-secret"),),
+            ),
+            table(
+                "environment",
+                (
+                    "id",
+                    "project_id",
+                    "code",
+                    "state",
+                    "target_type",
+                    "platform",
+                    "host",
+                    "port",
+                    "username",
+                    "workspace_root",
+                    "ssh_credential_id",
+                    "ssh_credential_revision",
+                    "host_key_fingerprint",
+                    "target_revision",
+                    "last_probe_revision",
+                    "last_probe_status",
+                    "last_probe_at",
+                    "last_probe_diagnostic",
+                    "gateway_application_id",
+                    "created_at",
+                    "updated_at",
+                ),
+                (
+                    (
+                        environment_id,
+                        environment_project_id,
+                        "environment-source",
+                        "active",
+                        target_type,
+                        "linux" if ssh else None,
+                        "source.example.test" if ssh else None,
+                        22 if ssh else None,
+                        "orbit" if ssh else None,
+                        "/srv/orbit",
+                        credential_id,
+                        bound_credential_revision,
+                        "SHA256:sourcefingerprint" if ssh else None,
+                        4,
+                        4,
+                        "succeeded",
+                        "2026-09-15T00:00:00Z",
+                        "source-only diagnostic",
+                        "gateway-source",
+                        "2026-09-15T00:00:00Z",
+                        "2026-09-15T00:00:00Z",
+                    ),
+                ),
+            ),
+            table(
+                "environment_credential",
+                (
+                    "id",
+                    "project_id",
+                    "public_key",
+                    "encrypted_private_key",
+                    "revision",
+                    "created_at",
+                ),
+                (
+                    (
+                        "credential-source",
+                        credential_project_id,
+                        "ssh-ed25519 public-key",
+                        encrypted_private_key,
+                        credential_revision,
+                        "2026-09-15T00:00:00Z",
+                    ),
+                ),
+            ),
+        ),
     )
 
 
@@ -471,16 +591,15 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                     ]
                 )
 
-    def test_connection_arguments_require_one_available_dsn_source(self) -> None:
+    def test_connection_arguments_require_one_dsn_source(self) -> None:
         with self.assertRaisesRegex(transfer.ServiceTransferError, "exactly one"):
             transfer.connection_arguments(None, None)
         with self.assertRaisesRegex(transfer.ServiceTransferError, "exactly one"):
             transfer.connection_arguments("sqlite:///./target.db", "ORBIT_TEST_DSN")
-        with patch.dict(os.environ, {}, clear=True):
-            with self.assertRaisesRegex(
-                transfer.ServiceTransferError, "DSN environment variable is not set"
-            ):
-                transfer.connection_arguments(None, "ORBIT_TEST_DSN")
+        self.assertEqual(
+            transfer.connection_arguments(None, "ORBIT_TEST_DSN"),
+            ["--dsn-env", "ORBIT_TEST_DSN"],
+        )
 
     def test_import_forwards_upsert_and_dsn_variable_name(self) -> None:
         selected = transfer.service_tables(
@@ -658,6 +777,377 @@ class ServiceDatabaseTransferTests(unittest.TestCase):
                 transfer.validate_service_transfer(transfer.load_transfer(output)),
                 "target",
             )
+
+    def test_export_environment_writes_only_selected_ssh_environment(self) -> None:
+        source = environment_fixture()
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "environment.jsonl"
+            dbtalk_exports: list[Path] = []
+
+            def fake_run(command: list[str], **_: object) -> SimpleNamespace:
+                export_path = Path(command[command.index("--output") + 1])
+                dbtalk_exports.append(export_path)
+                transfer.write_transfer(export_path, source)
+                return SimpleNamespace(returncode=0)
+
+            with (
+                patch.dict(os.environ, {"ORBIT_SOURCE_SECRET": FERNET_KEY}, clear=True),
+                patch.object(transfer.shutil, "which", return_value="dbtalk"),
+                patch.object(transfer.subprocess, "run", side_effect=fake_run) as run,
+            ):
+                result = transfer.export_environment(
+                    SimpleNamespace(
+                        source="sqlite",
+                        project_id="project-source",
+                        environment_id="environment-source",
+                        source_secret_env="ORBIT_SOURCE_SECRET",
+                        output=output,
+                        dsn="sqlite:///./source.db",
+                        dsn_env=None,
+                        tz="Asia/Shanghai",
+                        dbtalk_command="dbtalk",
+                    )
+                )
+
+            exported = transfer.load_transfer(output)
+            self.assertEqual(result, output.resolve())
+            self.assertEqual(exported.header["orbit_scope"], "environment")
+            self.assertEqual(
+                tuple(table.name for table in exported.tables),
+                transfer.ENVIRONMENT_TABLES,
+            )
+            self.assertEqual(exported.tables[0].rows, ())
+            credential = exported.tables[1].row_maps()[0]
+            environment = exported.tables[2].row_maps()[0]
+            self.assertEqual(credential["private_key"], PRIVATE_KEY)
+            self.assertNotIn("encrypted_private_key", credential)
+            self.assertIsNone(environment["gateway_application_id"])
+            self.assertEqual(
+                transfer.environment_transfer_scope(exported),
+                transfer.EnvironmentTransferScope(
+                    project_id="project-source", environment_id="environment-source"
+                ),
+            )
+            self.assertNotIn("repository-secret", output.read_text(encoding="utf-8"))
+            self.assertNotIn("gateway-source", output.read_text(encoding="utf-8"))
+            export_command = run.call_args.args[0]
+            self.assertEqual(
+                export_command.count("--include-table"),
+                len(transfer.ENVIRONMENT_TABLES),
+            )
+            included_tables = [
+                export_command[index + 1]
+                for index, argument in enumerate(export_command)
+                if argument == "--include-table"
+            ]
+            self.assertEqual(included_tables, list(transfer.ENVIRONMENT_TABLES))
+            self.assertTrue(dbtalk_exports)
+            self.assertFalse(dbtalk_exports[0].exists())
+
+    def test_export_local_environment_omits_credential(self) -> None:
+        exported = transfer.select_environment_transfer(
+            environment_fixture(target_type="local"),
+            "project-source",
+            "environment-source",
+            Fernet(FERNET_KEY.encode("ascii")),
+        )
+        self.assertEqual(
+            tuple(table.name for table in exported.tables),
+            ("project", "environment"),
+        )
+        self.assertEqual(exported.tables[0].rows, ())
+        self.assertIsNone(exported.tables[1].row_maps()[0]["gateway_application_id"])
+        self.assertEqual(
+            transfer.environment_transfer_scope(exported).environment_id,
+            "environment-source",
+        )
+
+    def test_environment_export_rejects_invalid_bindings(self) -> None:
+        cases = (
+            (
+                "different project",
+                environment_fixture(environment_project_id="project-other"),
+                "project-source",
+                "does not exist",
+            ),
+            (
+                "missing credential binding",
+                environment_fixture(credential_id=None),
+                "project-source",
+                "binding is incomplete",
+            ),
+            (
+                "credential from another project",
+                environment_fixture(credential_project_id="project-other"),
+                "project-source",
+                "different project",
+            ),
+            (
+                "credential revision mismatch",
+                environment_fixture(bound_credential_revision=2),
+                "project-source",
+                "revision does not match",
+            ),
+        )
+        source_fernet = Fernet(FERNET_KEY.encode("ascii"))
+        for name, source, project_id, message in cases:
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(transfer.ServiceTransferError, message):
+                    transfer.select_environment_transfer(
+                        source,
+                        project_id,
+                        "environment-source",
+                        source_fernet,
+                    )
+
+    def test_environment_export_does_not_leak_keys_in_errors(self) -> None:
+        ciphertext = "invalid-source-ciphertext"
+        source = environment_fixture(encrypted_private_key=ciphertext)
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "environment.jsonl"
+
+            def fake_run(command: list[str], **_: object) -> SimpleNamespace:
+                transfer.write_transfer(
+                    Path(command[command.index("--output") + 1]), source
+                )
+                return SimpleNamespace(returncode=0)
+
+            with (
+                patch.dict(os.environ, {"ORBIT_SOURCE_SECRET": FERNET_KEY}, clear=True),
+                patch.object(transfer.shutil, "which", return_value="dbtalk"),
+                patch.object(transfer.subprocess, "run", side_effect=fake_run),
+            ):
+                with self.assertRaises(transfer.ServiceTransferError) as error:
+                    transfer.export_environment(
+                        SimpleNamespace(
+                            source="sqlite",
+                            project_id="project-source",
+                            environment_id="environment-source",
+                            source_secret_env="ORBIT_SOURCE_SECRET",
+                            output=output,
+                            dsn="sqlite:///./source.db",
+                            dsn_env=None,
+                            tz="UTC",
+                            dbtalk_command="dbtalk",
+                        )
+                    )
+        self.assertNotIn(PRIVATE_KEY, str(error.exception))
+        self.assertNotIn(ciphertext, str(error.exception))
+
+    def test_environment_export_rejects_invalid_source_fernet_key(self) -> None:
+        invalid_secret = "not-a-valid-fernet-key"
+        with (
+            patch.dict(
+                os.environ,
+                {"ORBIT_SOURCE_SECRET": invalid_secret},
+                clear=True,
+            ),
+            patch.object(transfer.subprocess, "run") as run,
+        ):
+            with self.assertRaises(transfer.ServiceTransferError) as error:
+                transfer.export_environment(
+                    SimpleNamespace(
+                        source="sqlite",
+                        project_id="project-source",
+                        environment_id="environment-source",
+                        source_secret_env="ORBIT_SOURCE_SECRET",
+                        output=Path("environment.jsonl"),
+                        dsn="sqlite:///./source.db",
+                        dsn_env=None,
+                        tz="UTC",
+                        dbtalk_command="dbtalk",
+                    )
+                )
+        run.assert_not_called()
+        self.assertNotIn(invalid_secret, str(error.exception))
+
+    def test_environment_cli_requires_ids_and_secret_variables(self) -> None:
+        export_args = transfer.parse_args(
+            [
+                "export-environment",
+                "--source",
+                "postgresql",
+                "--project-id",
+                "project-source",
+                "--environment-id",
+                "environment-source",
+                "--source-secret-env",
+                "ORBIT_SOURCE_SECRET",
+                "--output",
+                "environment.jsonl",
+                "--dsn-env",
+                "ORBIT_SOURCE_DSN",
+            ]
+        )
+        import_args = transfer.parse_args(
+            [
+                "import-environment",
+                "--target",
+                "postgresql",
+                "--project-id",
+                "project-target",
+                "--input",
+                "environment.jsonl",
+                "--target-secret-env",
+                "ORBIT_TARGET_SECRET",
+                "--dsn-env",
+                "ORBIT_TARGET_DSN",
+            ]
+        )
+        self.assertEqual(export_args.source_secret_env, "ORBIT_SOURCE_SECRET")
+        self.assertEqual(import_args.target_secret_env, "ORBIT_TARGET_SECRET")
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                transfer.parse_args(
+                    [
+                        "export-environment",
+                        "--source",
+                        "sqlite",
+                        "--project-id",
+                        "project-source",
+                        "--source-secret-env",
+                        "ORBIT_SOURCE_SECRET",
+                        "--output",
+                        "environment.jsonl",
+                        "--dsn",
+                        "sqlite:///./source.db",
+                    ]
+                )
+            with self.assertRaises(SystemExit):
+                transfer.parse_args(
+                    [
+                        "import-environment",
+                        "--target",
+                        "sqlite",
+                        "--project-id",
+                        "project-target",
+                        "--input",
+                        "environment.jsonl",
+                        "--dsn",
+                        "sqlite:///./target.db",
+                    ]
+                )
+
+    def test_import_environment_retargets_and_reencrypts_private_key(self) -> None:
+        source = transfer.select_environment_transfer(
+            environment_fixture(),
+            "project-source",
+            "environment-source",
+            Fernet(FERNET_KEY.encode("ascii")),
+        )
+        target_key = Fernet.generate_key().decode("ascii")
+        target_fernet = Fernet(target_key.encode("ascii"))
+        with tempfile.TemporaryDirectory() as directory:
+            input_path = Path(directory) / "environment.jsonl"
+            transfer.write_transfer(input_path, source)
+            target_inputs: list[Path] = []
+
+            def fake_run(command: list[str], **_: object) -> SimpleNamespace:
+                if command[1] == "query":
+                    sql = command[command.index("--sql") + 1]
+                    if "FROM project" in sql:
+                        return SimpleNamespace(
+                            returncode=0,
+                            stdout='{"rows":[{"id":"project-target","code":"target-code"}]}',
+                        )
+                    return SimpleNamespace(returncode=0, stdout='{"rows":[]}')
+                target_input = Path(command[command.index("--input") + 1])
+                target_inputs.append(target_input)
+                imported = transfer.load_transfer(target_input)
+                self.assertEqual(
+                    tuple(table.name for table in imported.tables),
+                    transfer.ENVIRONMENT_TABLES,
+                )
+                self.assertEqual(imported.tables[0].rows, ())
+                credential = imported.tables[1].row_maps()[0]
+                environment = imported.tables[2].row_maps()[0]
+                self.assertEqual(credential["project_id"], "project-target")
+                self.assertEqual(environment["project_id"], "project-target")
+                self.assertEqual(environment["code"], "target-code")
+                self.assertIsNone(environment["gateway_application_id"])
+                self.assertNotIn("private_key", credential)
+                self.assertEqual(
+                    target_fernet.decrypt(
+                        credential["encrypted_private_key"].encode("ascii")
+                    ).decode("utf-8"),
+                    PRIVATE_KEY,
+                )
+                self.assertNotIn(PRIVATE_KEY, target_input.read_text(encoding="utf-8"))
+                return SimpleNamespace(returncode=0)
+
+            with (
+                patch.dict(os.environ, {"ORBIT_TARGET_SECRET": target_key}, clear=True),
+                patch.object(transfer.shutil, "which", return_value="dbtalk"),
+                patch.object(transfer.subprocess, "run", side_effect=fake_run) as run,
+            ):
+                result = transfer.import_environment(
+                    SimpleNamespace(
+                        target="sqlite",
+                        project_id="project-target",
+                        input=input_path,
+                        target_secret_env="ORBIT_TARGET_SECRET",
+                        dsn="sqlite:///./target.db",
+                        dsn_env=None,
+                        tz="Asia/Shanghai",
+                        dbtalk_command="dbtalk",
+                    )
+                )
+
+            self.assertEqual(result, "environment-source")
+            self.assertEqual(run.call_count, 3)
+            import_command = run.call_args.args[0]
+            self.assertIn("insert", import_command)
+            self.assertNotIn(PRIVATE_KEY, import_command)
+            self.assertTrue(target_inputs)
+            self.assertFalse(target_inputs[0].exists())
+
+    def test_import_environment_rejects_target_project_with_environment(self) -> None:
+        source = transfer.select_environment_transfer(
+            environment_fixture(),
+            "project-source",
+            "environment-source",
+            Fernet(FERNET_KEY.encode("ascii")),
+        )
+        target_key = Fernet.generate_key().decode("ascii")
+        with tempfile.TemporaryDirectory() as directory:
+            input_path = Path(directory) / "environment.jsonl"
+            transfer.write_transfer(input_path, source)
+
+            def fake_run(command: list[str], **_: object) -> SimpleNamespace:
+                sql = command[command.index("--sql") + 1]
+                if "FROM project" in sql:
+                    return SimpleNamespace(
+                        returncode=0,
+                        stdout='{"rows":[{"id":"project-target","code":"target-code"}]}',
+                    )
+                return SimpleNamespace(
+                    returncode=0,
+                    stdout='{"rows":[{"id":"environment-target"}]}',
+                )
+
+            with (
+                patch.dict(os.environ, {"ORBIT_TARGET_SECRET": target_key}, clear=True),
+                patch.object(transfer.shutil, "which", return_value="dbtalk"),
+                patch.object(transfer.subprocess, "run", side_effect=fake_run) as run,
+            ):
+                with self.assertRaisesRegex(
+                    transfer.ServiceTransferError,
+                    "already has an environment",
+                ):
+                    transfer.import_environment(
+                        SimpleNamespace(
+                            target="sqlite",
+                            project_id="project-target",
+                            input=input_path,
+                            target_secret_env="ORBIT_TARGET_SECRET",
+                            dsn="sqlite:///./target.db",
+                            dsn_env=None,
+                            tz="UTC",
+                            dbtalk_command="dbtalk",
+                        )
+                    )
+        self.assertEqual(run.call_count, 2)
+        self.assertNotIn("host", run.call_args_list[1].args[0])
 
     def test_load_transfer_rejects_invalid_jsonl(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

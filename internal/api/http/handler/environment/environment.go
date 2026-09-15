@@ -79,7 +79,6 @@ func (h Handler) InitializeProjectEnvironment(c *gin.Context) {
 
 func projectEnvironmentUpdateInput(req *environmentv1.ProjectEnvironmentUpdateReq) environmentdto.UpdateInput {
 	input := environmentdto.UpdateInput{
-		State:      req.State,
 		TargetType: req.TargetType,
 	}
 	if req.Local != nil {
@@ -108,7 +107,6 @@ func environmentResponse(item environmentdto.View) *environmentv1.EnvironmentRes
 		Id:                   item.Id,
 		ProjectId:            item.ProjectId,
 		Code:                 item.Code,
-		State:                item.State,
 		TargetType:           item.TargetType,
 		TargetRevision:       item.TargetRevision,
 		LastProbeRevision:    item.LastProbeRevision,

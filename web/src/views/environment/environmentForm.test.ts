@@ -25,7 +25,7 @@ describe('environmentForm', () => {
     });
   });
 
-  it('builds an ssh update request with state', () => {
+  it('builds an ssh update request without a lifecycle state', () => {
     const form = emptyEnvironmentForm();
     form.targetType = 'ssh';
     form.host = '192.0.2.10';
@@ -33,7 +33,6 @@ describe('environmentForm', () => {
     form.workspaceRoot = '/srv/orbit';
 
     expect(environmentUpdateRequestFromForm(form)).toEqual({
-      state: 'active',
       target_type: 'ssh',
       ssh: {
         platform: 'linux',

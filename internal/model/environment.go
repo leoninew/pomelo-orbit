@@ -6,7 +6,10 @@ import (
 )
 
 const (
-	EnvironmentStateActive   = "active"
+	// EnvironmentStateActive is retained only because existing database rows
+	// require a non-null state value. It is not a lifecycle or readiness signal.
+	EnvironmentStateActive = "active"
+	// EnvironmentStateDisabled is retained for decoding legacy rows only.
 	EnvironmentStateDisabled = "disabled"
 
 	EnvironmentTargetTypeLocal = "local"
@@ -22,9 +25,10 @@ const (
 // Environment is the unique Docker Compose target of one Project.
 // project_id and gateway_application_id are logical references by design.
 type Environment struct {
-	Id                   string                `db:"id"`
-	ProjectId            string                `db:"project_id"`
-	Code                 string                `db:"code"`
+	Id        string `db:"id"`
+	ProjectId string `db:"project_id"`
+	Code      string `db:"code"`
+	// State is a legacy database column retained for schema compatibility.
 	State                string                `db:"state"`
 	TargetType           string                `db:"target_type"`
 	WorkspaceRoot        string                `db:"workspace_root"`
@@ -48,10 +52,6 @@ type EnvironmentSSHTarget struct {
 	CredentialId       string
 	CredentialRevision int64
 	HostKeyFingerprint string
-}
-
-func (e Environment) IsActive() bool {
-	return e.State == EnvironmentStateActive
 }
 
 func (e Environment) IsLocal() bool {

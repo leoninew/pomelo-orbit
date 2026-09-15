@@ -3,7 +3,6 @@ package dto
 import "time"
 
 type UpdateInput struct {
-	State      *string
 	TargetType *string
 	Local      *LocalTargetInput
 	SSH        *SSHTargetInput
@@ -22,9 +21,10 @@ type SSHTargetInput struct {
 }
 
 type View struct {
-	Id                   string
-	ProjectId            string
-	Code                 string
+	Id        string
+	ProjectId string
+	Code      string
+	// State mirrors the legacy database column for read compatibility only.
 	State                string
 	TargetType           string
 	TargetRevision       int64

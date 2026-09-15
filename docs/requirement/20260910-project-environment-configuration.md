@@ -1,5 +1,5 @@
 # Project / Environment 配置归属、初始化与 MCP
-最后修改时间: 2026-09-12 08:58:36
+最后修改时间: 2026-09-15 12:44:39
 
 Review status: Accepted
 
@@ -9,11 +9,13 @@ Mode: strict
 
 Project 是部署运行边界。一个已完成配置的 Project 具有其唯一的 Environment 和 Gateway；新建但尚未初始化的 Project 可以没有二者。Environment 已持久化 target type、local/SSH target 和 `workspace_root`；GatewayConfig 已持久化 REST URL、base domain、readiness、入口策略和 ACME 配置；Gateway Version / Component 已声明镜像、端口、mount 与 Traefik static topology。
 
+Environment 旧表中的 `state` 列暂保留以兼容既有数据库结构，但不再作为表单字段、领域状态或运行时准入条件；Environment 是否可继续操作只由资源存在性和最新 Probe 结果决定。本次不新增迁移。
+
 目标空库和 Project 切换流程统一为 Project 初始化 Wizard：打开 Project 时检查它是否已有完整的 Environment、Gateway 和默认 Gateway Service。缺失任一资源即跳转 Wizard，由它在当前 Project 内完成 local 或 SSH Environment 配置、Probe 与 Gateway 创建；Gateway 最终只进入待部署状态，不自动部署。切换至另一个未初始化 Project 时走同一 Wizard，而不是复用前一个 Project、进程 YAML 或本地 host 的资源。
 
 当前空库 seed 分散写入默认 Project 及一套默认部署资源：`000032_seed_identity` 写入用户进入系统所需的默认 Project 和 Project membership，`000037_seed_gateway` 写入完整 Gateway、Version、Service 和 Route。默认 Project 是空库的进入点，应保留；部署资源则须由 Wizard 初始化。Environment 不再由 seed migration 创建。运行时另有 `project.Service.Create` 无条件调用 `Environment.BootstrapForProject`，而 Gateway 又可从 HTTP 或 MCP provision 创建。这些并列初始化路径造成默认值和数据来源分散。
 
-Windows SSH 目标不能假定控制面已经能够使用部署公钥直接建立远程会话。用户需要在目标 Windows 主机的管理员 PowerShell 中先执行一段由当前表单生成的初始化命令；命令负责安装并启动 OpenSSH Server、按当前端口创建防火墙规则，配置 OpenSSH authorized keys、Orbit 工作目录并检查 WSL2、Docker Desktop、Linux containers 和 Docker Compose。命令执行后再由页面测试 SSH 并运行完整 Probe。该命令必须能在 Environment 尚未保存或 SSH 公钥尚未可用时生成。
+Windows SSH 目标不能假定控制面已经能够使用部署公钥直接建立远程会话。用户需要在目标 Windows 主机的管理员 PowerShell 中执行一段由当前表单生成的初始化命令；命令负责安装并启动 OpenSSH Server、按当前端口创建防火墙规则，配置 OpenSSH authorized keys、Orbit 工作目录并检查 WSL2、Docker Desktop、Linux containers 和 Docker Compose。该命令必须能在 SSH 连接尚未可用、Environment 尚未保存时生成，因为命令本身就是让目标机具备 SSH 的前置步骤。Wizard 第一步提供“检查连接”“生成初始化命令”“下一步”：Windows SSH 按当前表单即可生成命令；SSH 目标只有连接检查成功后才能进入下一步。用户在目标机执行命令后再检查连接，随后由页面继续运行完整 Probe。
 
 现有 `traefik.*`、Web `emptyGatewayConfigForm()` 和 seed 也分别保存 image、REST URL、base domain、readiness 与入口策略。它们应收敛为一份统一的 Project 初始化来源配置，供 Wizard 构造初始输入。该来源配置不是 Environment/Gateway 的运行时数据，也不是部署、Route 发布或运行时查询的 fallback；Wizard 提交后，运行时只使用当前 Project 持久化的 Environment、GatewayConfig 和 Gateway Version / Component。
 
@@ -32,9 +34,9 @@ Web 的 `projectStore.activeProjectId` 只保存在浏览器 `localStorage`，Co
    - GatewayConfig 保存网关运行属性；
    - Gateway Version / Component 保存初始和后续可编辑的 Compose 拓扑，包括镜像。
 3. 将 seed、`traefik.*` 与前端硬编码的初始值收敛为一份统一的 Project 初始化来源配置。它只供 Wizard 产生和确认初始输入，不参与已初始化 Project 的运行时解析。
-4. 将 Project 生命周期收敛为“未初始化 -> Wizard 配置并 Probe Environment -> Wizard 创建 Gateway、待部署”。Project 创建不再隐式创建 active local Environment；空库保留可进入系统的 seeded Project，但其部署资源和后续任一 Project 均由打开 Project 后的同一 Wizard 初始化。
+4. 将 Project 生命周期收敛为“未初始化 -> Wizard 配置并 Probe Environment -> Wizard 创建 Gateway、待部署”。Project 创建不再隐式创建 local Environment；空库保留可进入系统的 seeded Project，但其部署资源和后续任一 Project 均由打开 Project 后的同一 Wizard 初始化。
 5. Project 打开时检查初始化完整性，未完成则直接进入 Wizard；已配置 Project 的运行和部署只读取其持久化资源。环境页和网关页不读取、复制或展示另一 Project 的 Environment/Gateway。
-6. Codex CLI MCP 不提供 Project、Environment 或 Gateway 初始化能力。用户以 Project 名称声明目标，Codex 通过 `orbit_list_projects` 解析后调用 `orbit_select_project(project_id)` 选择一个已就绪 Project；项目级运行时工具均使用该 connection 的当前 Project scope，并断言 Environment 存在、active 且最新 Probe 成功，Gateway 工具另要求既有 Gateway/default Service。切换要管理的 Project 必须先再次声明和选择。
+6. Codex CLI MCP 不提供 Project、Environment 或 Gateway 初始化能力。用户以 Project 名称声明目标，Codex 通过 `orbit_list_projects` 解析后调用 `orbit_select_project(project_id)` 选择一个已就绪 Project；项目级运行时工具均使用该 connection 的当前 Project scope，并断言 Environment 存在且最新 Probe 成功，Gateway 工具另要求既有 Gateway/default Service。切换要管理的 Project 必须先再次声明和选择。
 7. 保留的 MCP Gateway 更新工具覆盖 HTTP Gateway API 已支持的全部 GatewayConfig 字段；Codex 的 `orbit_select_project` 成功响应明确确认所选 `project_id`、Project 摘要及其就绪资源，后续工具使用该已确认 scope。
 8. 删除已废止的全局 CD workspace 配置说明，使运维文档只使用 `Environment.workspace_root` 表示 Service Compose、Gateway 证书与 Route snapshot 的目标目录。
 9. Windows SSH 初始化命令必须使用当前表单的 Host、Port、SSH 用户和工作目录，在目标 Windows 主机的管理员 PowerShell 中安装/启动 OpenSSH Server、放行端口并通过 SSH 执行远端配置，展示可复制的分阶段检查结果。生成命令前可创建或复用当前 Project 的受管部署凭据，但不得展示私钥。
@@ -55,10 +57,11 @@ Web 的 `projectStore.activeProjectId` 只保存在浏览器 `localStorage`，Co
 
 1. 空库中用户进入系统并打开 `000032_seed_identity` 保留的默认 Project。系统检查该 Project 未初始化并跳转 Wizard；Wizard 第一步选择 `local` 或 `ssh` 目标，从统一来源配置取得对应 Environment 与完整 Gateway 的初始输入，确认后只写入该 Project，创建 Gateway Version / Component 和 Service，并显示待部署。环境页继续使用同一套目标表单编辑已保存的 Environment。
 2. 用户切换到一个尚未初始化的 Project 时，同一检查直接跳转 Wizard。前一个 Project 的 Environment、Gateway 和运行态均不参与该流程。
-3. 用户在 Codex 中声明要管理的 Project 名称。Codex 先调用 `orbit_list_projects`，以名称匹配可见 Project；匹配唯一时调用 `orbit_select_project(project_id)`，选择一个 Environment 已就绪且具有 Gateway/default Service 的 Project。此后查询、更新、准备 Service 和部署均自动作用于当前选中 Project。若多个可见 Project 同名，Codex 展示 name/code 要求用户以 code 澄清；用户要管理另一个 Project 时，先再次声明和选择。CLI 不创建 Project、Environment 或 Gateway；选择或操作未就绪 Project 时，MCP 返回相应环境或 Gateway 未就绪业务错误。
-4. Web Wizard 创建 Gateway 时提交统一来源配置产生且经用户确认的完整 Gateway 初始输入；该配置持久化到 GatewayConfig 与初始 Version / Component，之后不再读取来源配置。
-5. 用户通过 Codex MCP 管理资源前先声明目标 Project；模型以 `orbit_select_project(project_id)` 提交该声明，MCP 成功响应确认 `project_id`、Project、Environment 与 Gateway 摘要。此后对 Application、Service、Version、Gateway、Route 或 Deployment 的操作均使用当前 scope，并要求资源归属一致；用户改为管理另一个 Project 时必须再次声明和选择。
-6. 用户部署到当前 Project 的 Environment 时，工作目录始终来自已保存的 `Environment.workspace_root`，不是 `workspace.deployment` 或 `data/deployment`。
+3. Web Wizard 的主操作按步骤固定：第一步“选择环境”提供“检查连接”“生成初始化命令”“下一步”三个动作。Windows SSH 的“生成初始化命令”只依赖当前表单和 Project 公钥，连接失败时仍可用，以便用户先在目标机完成 OpenSSH 初始化；SSH 目标的“下一步”只有在当前表单对应的 SSH 连接检查成功后可用。Local 目标不显示不适用的连接与命令动作。第二步“准备环境”展示待检查清单，点击“检查就绪”后按目标连接/认证、Docker 引擎、Docker Compose（Windows SSH 额外包括 WSL2 与 Docker Desktop）逐项核对；“下一步”只有在当前已保存 Environment 的 Probe 成功后可用，失败后仍显示“检查就绪”而不是“重试”。目标字段发生变化时，之前的连接结果立即失效，必须针对新目标重新检查。
+4. 用户在 Codex 中声明要管理的 Project 名称。Codex 先调用 `orbit_list_projects`，以名称匹配可见 Project；匹配唯一时调用 `orbit_select_project(project_id)`，选择一个 Environment 已就绪且具有 Gateway/default Service 的 Project。此后查询、更新、准备 Service 和部署均自动作用于当前选中 Project。若多个可见 Project 同名，Codex 展示 name/code 要求用户以 code 澄清；用户要管理另一个 Project 时，先再次声明和选择。CLI 不创建 Project、Environment 或 Gateway；选择或操作未就绪 Project 时，MCP 返回相应环境或 Gateway 未就绪业务错误。
+5. Web Wizard 创建 Gateway 时提交统一来源配置产生且经用户确认的完整 Gateway 初始输入；该配置持久化到 GatewayConfig 与初始 Version / Component，之后不再读取来源配置。
+6. 用户通过 Codex MCP 管理资源前先声明目标 Project；模型以 `orbit_select_project(project_id)` 提交该声明，MCP 成功响应确认 `project_id`、Project、Environment 与 Gateway 摘要。此后对 Application、Service、Version、Gateway、Route 或 Deployment 的操作均使用当前 scope，并要求资源归属一致；用户改为管理另一个 Project 时必须再次声明和选择。
+7. 用户部署到当前 Project 的 Environment 时，工作目录始终来自已保存的 `Environment.workspace_root`，不是 `workspace.deployment` 或 `data/deployment`。
 
 ## Current assessment
 
@@ -79,12 +82,12 @@ Web 的 `projectStore.activeProjectId` 只保存在浏览器 `localStorage`，Co
 
 | 阶段 | 当前实现 | 目标实现 |
 | --- | --- | --- |
-| 创建 Project | 无条件 `BootstrapForProject`，插入 active local Environment | 只创建 Project；Environment 和 Gateway 均不存在 |
+| 创建 Project | 无条件 `BootstrapForProject`，插入 local Environment | 只创建 Project；Environment 和 Gateway 均不存在 |
 | 空库本地初始化 | `000032`、`000037` 分别处理 identity 与历史 Gateway seed | `000032` 继续 seed 可进入系统的默认 Project 和 membership；`000037` 不再 seed 部署资源，Environment 无 seed migration。打开该未初始化 Project 后进入同一 Wizard；它以统一来源配置创建 Environment、完成 Probe、创建 Gateway 和默认 Service；结果为待部署 |
 | 切换到未配置 Project | 后端假定 Environment 存在，环境页会进入加载错误；Gateway 列表为空 | 项目打开即检查完整性并跳转 Wizard；不得读取任何其他 Project 或进程配置 |
 | 已配置 Project | Environment 的 Gateway binding 指向唯一 Gateway Application | 保持；部署运行时从该 Project 的 Environment、GatewayConfig 和 Gateway Version / Component 读取 |
 
-`CreateGateway` 已要求 Environment active 且最新 Probe 成功，适合作为 Wizard 的最后一步。应删除 Project create 对 `BootstrapForProject` 的隐式依赖，保留默认 Project/membership seed、删除默认 Gateway/Environment 及关联部署资源 seed，并将缺失资源定义为 Project 正常的未初始化状态。
+`CreateGateway` 已要求 Environment 最新 Probe 成功，适合作为 Wizard 的最后一步。应删除 Project create 对 `BootstrapForProject` 的隐式依赖，保留默认 Project/membership seed、删除默认 Gateway/Environment 及关联部署资源 seed，并将缺失资源定义为 Project 正常的未初始化状态。
 
 ### Gateway 创建入口
 
@@ -109,7 +112,7 @@ Web 的 `projectStore.activeProjectId` 只保存在浏览器 `localStorage`，Co
 目标边界：
 
 - MCP 不注册 Project 创建、Environment 初始化或 Gateway 初始化能力。空库和未初始化 Project 必须回到 Web Wizard 完成配置。
-- `orbit_list_projects` 返回 Project 的 name、唯一 code 与内部 id，供 Codex 将用户声明的名称解析为精确选择目标。Project name 不保证唯一；出现多个同名可见 Project 时，Codex 必须要求用户提供 code。`orbit_select_project(project_id)` 验证成员关系、Environment active、当前 Probe 成功以及 Gateway/default Service 已存在；成功后写入当前 stdio connection 的 selected Project，并返回 Project、Environment 与 Gateway 摘要。`orbit_get_current_project` 返回已选 Project；未选择时返回 `project_not_selected` 业务错误。
+- `orbit_list_projects` 返回 Project 的 name、唯一 code 与内部 id，供 Codex 将用户声明的名称解析为精确选择目标。Project name 不保证唯一；出现多个同名可见 Project 时，Codex 必须要求用户提供 code。`orbit_select_project(project_id)` 验证成员关系、Environment 当前 Probe 成功以及 Gateway/default Service 已存在；成功后写入当前 stdio connection 的 selected Project，并返回 Project、Environment 与 Gateway 摘要。`orbit_get_current_project` 返回已选 Project；未选择时返回 `project_not_selected` 业务错误。
 - 选择未完成初始化的 Project 必须返回对应的环境或 Gateway 未就绪业务错误，不从来源配置、seed 或其他 Project 补齐，也不表达 Web 页面跳转。
 - 除 `orbit_list_projects` 与 `orbit_select_project` 外，项目级工具不再接收 `project_id`，而是从当前 selected Project scope 获取。按 Application、Service、Version、Gateway、Route 或 Deployment ID 操作的工具须确认其归属等于当前 scope。
 - selected Project 只存于一个 stdio MCP session，连接关闭后丢失；不写入 `configs/config.yaml`、`.env`、数据库或 Codex 全局偏好。
@@ -138,10 +141,10 @@ Project 打开时尚未完成初始化会先进入 Wizard，因此 Web Dialogue 
 - [ ] 新建 Gateway 的 REST URL、base domain、readiness、入口/证书配置均由 Wizard 确认输入并持久化到 GatewayConfig；初始 image 来自 Gateway Version / Component 创建输入。
 - [ ] Gateway 初始 Component 名称固定为 `traefik`，初始 pull policy 固定为 `missing`；二者不属于初始化来源配置或 GatewayConfig。`traefik_component_name` 从 GatewayConfig、Gateway DTO 与更新入口移除，避免与 Version Component 漂移。
 - [ ] `000032_seed_identity` 继续插入空库进入系统所需的默认 Project 和 Project membership；`000037_seed_gateway` 不再插入默认 Gateway/Service/Route，Environment 不再有 seed migration；三种数据库的 seed 与迁移测试同步收敛。
-- [ ] 新建 Project 不再自动创建 active local Environment。打开 Project 时检查完整初始化状态，缺失 Environment、Gateway 或 default Service 则跳转同一 Wizard。
+- [ ] 新建 Project 不再自动创建 local Environment。打开 Project 时检查完整初始化状态，缺失 Environment、Gateway 或 default Service 则跳转同一 Wizard。
 - [ ] Wizard 在当前 Project 完成 Environment 配置、Probe 和完整 Gateway/default Service 创建后返回待部署状态，不自动提交 Deployment；切换任一未初始化 Project 走同一流程。
 - [ ] 未初始化 Project 的 Web 页面不显示或复用运行时资源，直接进入 Wizard；已初始化 Project 的运行和部署只读取其持久化资源。
-- [ ] Delivery MCP 不提供 Project、Environment 或 Gateway 初始化能力，且不再注册 `orbit_create_gateway`；所有项目级运行时工具断言 Environment 已存在、active 且最新 Probe 成功。
+- [ ] Delivery MCP 不提供 Project、Environment 或 Gateway 初始化能力，且不再注册 `orbit_create_gateway`；所有项目级运行时工具断言 Environment 已存在且最新 Probe 成功。
 - [ ] `orbit_update_gateway` 覆盖 HTTP Gateway API 的全部现行配置字段；`orbit_provision_gateway` 只复用已有 Gateway/default Service，Gateway 缺失时返回 Gateway 未就绪业务错误。
 - [ ] Codex 用户以 Project 名称声明要管理的目标；模型由 `orbit_list_projects` 以 name 解析，匹配唯一后才使用内部 `project_id` 调用 `orbit_select_project`。同名时模型展示 name/code 要求用户用唯一 code 澄清。MCP 成功响应确认该 Project、Environment readiness 与 Gateway/default Service，之后由 `orbit_get_current_project` 可查询。Project scope 不持久化到本地进程配置、数据库、用户偏好或下一次 connection。
 - [ ] 除 discovery/selection 工具外，Codex CLI 的项目级 MCP 工具不再接收 `project_id`，均使用当前 selected Project；资源 ID 工具验证其归属与当前 scope 一致。
@@ -150,7 +153,7 @@ Project 打开时尚未完成初始化会先进入 Wizard，因此 Web Dialogue 
 - [ ] `.env.example`、`configs/config.yaml` 和活运维文档不再将 `workspace.deployment` 或 `data/deployment` 表述为全局 CD workspace；示例使用 `Environment.workspace_root`。
 - [ ] `workspace.root`、`logging.deployment_root` 及其他控制面配置不被迁入 Project / Environment；实际 CI/CD 子目录统一由 Environment 工作区根派生。
 - [ ] 变更后运行项目约定的 Go、前端检查，并补充 Wizard redirect、seed 清理、已初始化 MCP 前置条件和 Gateway MCP contract 的最小测试。
-- [ ] Windows SSH 初始化命令可在保存/测试前生成，使用当前 Host、Port、SSH 用户和工作目录，远端完成部署公钥、工作目录及 WSL2/Docker/Compose 检查；命令执行后可继续测试和 Probe。
+- [ ] Wizard 第一步按“检查连接 / 生成初始化命令（适用时）/ 连接成功后下一步”的门控展示操作；第二步按“检查就绪 -> 下一步”的门控展示操作。Windows 命令使用当前 Host、Port、SSH 用户和工作目录，不要求连接已成功；远端完成部署公钥、工作目录及 WSL2/Docker/Compose 检查后，用户再检查连接并完成 Probe。
 - [ ] 环境保存失败后重试不会因遗留的受管 `deployment-ssh` 凭据触发同名冲突；非受管同名凭据仍返回冲突。
 
 ## Open questions
@@ -174,7 +177,7 @@ Project 打开时尚未完成初始化会先进入 Wizard，因此 Web Dialogue 
 - 本地配置系统只保留控制面运行配置和 Wizard 的初始化来源配置；Environment、GatewayConfig 与 Gateway Version / Component 是部署运行配置的唯一归属。
 - 不添加兼容层、别名或全局默认值 fallback。
 - `project_initialization.environment.local_workspace_root` 与 Environment `workspace_root` 使用 `~` / `~/...` 或平台绝对路径，配置、API 和界面都原样展示和存储；local 使用时把 `~` 解释为控制面用户主目录，SSH 使用时解释为远端登录用户主目录。不以加载配置时翻译成绝对路径。
-- Windows SSH 初始化命令属于 Web 辅助流程：公钥由受认证的 Project 初始化接口按 Project 生成/复用，命令只使用当前表单参数；用户执行命令后仍须通过页面 SSH 测试和 Environment Probe。
+- Windows SSH 初始化命令属于 Web 辅助流程：公钥由受认证的 Project 初始化接口按 Project 生成/复用，命令只使用当前表单参数；第一步的连接检查成功后才开放命令和下一步，用户执行命令后仍须通过 Environment Probe。
 
 ## Risk
 
@@ -183,7 +186,7 @@ Project 打开时尚未完成初始化会先进入 Wizard，因此 Web Dialogue 
 - Project 创建从“总有 Environment”变为“可未初始化”后，现有 Environment、Gateway、Deployment 调用链中假定必有 Environment 的读取、HTTP 404 和页面加载状态需要逐一改为 Wizard redirect 或只在部署/运行时操作时要求存在。
 - 删除 `data/deployment` 文档残留时，不能误删 `logging.deployment_root` 或 CI `workspace.pipeline` 的容器挂载说明。
 - Codex selected Project 仅是 stdio connection 的 scope，不得演变为全局当前项目；Project 上下文由 `orbit_select_project` 的确认结果和 `orbit_get_current_project` 表达，不扩散到 Version/Service 领域 DTO。
-- Windows 目标可能在部署公钥安装前无法完成密钥认证；命令生成不依赖先保存或先 Probe，避免把 Windows 初始化锁死在尚未建立的 SSH 密钥链路上。
+- Windows 目标可能在 OpenSSH 服务尚未启动时无法通过第一步连接检查；本需求采用“连接成功后才生成命令”的 UI 门控，因此部署前必须保证目标已有可探测的 SSH 服务，否则需要提供带外启用入口。命令生成仍不依赖先保存或先 Probe。
 
 ## User review notes
 

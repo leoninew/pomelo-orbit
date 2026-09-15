@@ -10,20 +10,6 @@ function powershellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-function encodePowerShellScript(value: string): string {
-  const bytes = new Uint8Array(value.length * 2);
-  for (let index = 0; index < value.length; index += 1) {
-    const code = value.charCodeAt(index);
-    bytes[index * 2] = code & 0xff;
-    bytes[index * 2 + 1] = code >> 8;
-  }
-  let binary = '';
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary);
-}
-
 export function buildWindowsSshInitializationCommand(input: WindowsSshCommandInput): string {
   const key = input.publicKey.trim();
   if (!key) {
@@ -35,13 +21,13 @@ export function buildWindowsSshInitializationCommand(input: WindowsSshCommandInp
   const port = Number.isInteger(input.port) ? input.port : 22;
   const workspace = input.workspaceRoot.trim() || 'C:\\Users\\<user>\\.pomelo-orbit';
 
-  const script = `$ErrorActionPreference = 'Stop'
+  return `$ErrorActionPreference = 'Stop'
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = [Security.Principal.WindowsPrincipal]::new($identity)
-$isAdministrator = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $isAdministrator) {
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
   throw 'Run this command in an elevated PowerShell window (Run as Administrator).'
 }
+Write-Host ${powershellSingleQuote(`Target ${username}@${host}:${port}`)}
 $sshClientCapability = Get-WindowsCapability -Online -Name 'OpenSSH.Client~~~~0.0.1.0'
 if ($sshClientCapability.State -ne 'Installed') {
   Add-WindowsCapability -Online -Name 'OpenSSH.Client~~~~0.0.1.0' | Out-Null
@@ -54,9 +40,26 @@ $sshd = Get-Service -Name sshd -ErrorAction SilentlyContinue
 if (-not $sshd) {
   throw 'OpenSSH Server installation did not provide the sshd service.'
 }
-$sshdConfig = Join-Path $env:ProgramData 'ssh\\sshd_config'
+$programDataSsh = Join-Path $env:ProgramData 'ssh'
+New-Item -ItemType Directory -Force -Path $programDataSsh | Out-Null
+$sshdConfig = Join-Path $programDataSsh 'sshd_config'
 if (-not (Test-Path -LiteralPath $sshdConfig)) {
-  throw 'OpenSSH Server configuration file was not found.'
+  $openSshDirectory = Join-Path $env:WINDIR 'System32\\OpenSSH'
+  $sshdConfigTemplate = Join-Path $openSshDirectory 'sshd_config_default'
+  if (-not (Test-Path -LiteralPath $sshdConfigTemplate)) {
+    $sshdConfigTemplate = Join-Path $openSshDirectory 'sshd_config'
+  }
+  if (Test-Path -LiteralPath $sshdConfigTemplate) {
+    Copy-Item -LiteralPath $sshdConfigTemplate -Destination $sshdConfig
+  } else {
+    @(
+      'PubkeyAuthentication yes',
+      'AuthorizedKeysFile .ssh/authorized_keys',
+      'Subsystem sftp sftp-server.exe',
+      'Match Group administrators',
+      '    AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys'
+    ) | Set-Content -LiteralPath $sshdConfig -Encoding ascii
+  }
 }
 $sshdConfigLines = [string[]](Get-Content -LiteralPath $sshdConfig)
 $matchIndex = -1
@@ -66,12 +69,15 @@ for ($index = 0; $index -lt $sshdConfigLines.Length; $index++) {
     break
   }
 }
+$keepLine = { $_ -notmatch '^\\s*(?:#?\\s*)?(?:Port|ListenAddress|PubkeyAuthentication)\\b' }
 if ($matchIndex -lt 0) {
-  throw 'OpenSSH Server configuration has no global Match boundary.'
+  $globalLines = @($sshdConfigLines | Where-Object $keepLine)
+  $matchLines = @()
+} else {
+  $globalLines = @($sshdConfigLines[0..($matchIndex - 1)] | Where-Object $keepLine)
+  $matchLines = @($sshdConfigLines[$matchIndex..($sshdConfigLines.Length - 1)])
 }
-$globalLines = @($sshdConfigLines[0..($matchIndex - 1)] | Where-Object { $_ -notmatch '^\\s*(?:#?\\s*)?(?:Port|ListenAddress|PubkeyAuthentication)\\b' })
-$matchLines = @($sshdConfigLines[$matchIndex..($sshdConfigLines.Length - 1)])
-$sshdConfigLines = @('Port ${port}', 'ListenAddress 0.0.0.0', 'ListenAddress ::', 'PubkeyAuthentication yes') + $globalLines + $matchLines
+$sshdConfigLines = @('Port ${port}', 'PubkeyAuthentication yes') + $globalLines + $matchLines
 Set-Content -LiteralPath $sshdConfig -Value $sshdConfigLines -Encoding ascii
 $sshKeygenExe = Join-Path $env:WINDIR 'System32\\OpenSSH\\ssh-keygen.exe'
 & $sshKeygenExe -A | Out-Null
@@ -84,32 +90,43 @@ if ($LASTEXITCODE -ne 0) {
   throw 'OpenSSH Server configuration is invalid after setting the configured port.'
 }
 Set-Service -Name sshd -StartupType Automatic
+$sshd = Get-Service -Name sshd
 if ($sshd.Status -eq 'Running') {
   Restart-Service -Name sshd -Force
 } else {
   Start-Service -Name sshd
 }
+$sshd = Get-Service -Name sshd
+if ($sshd.Status -ne 'Running') {
+  throw 'OpenSSH Server service failed to stay running. Check C:\\ProgramData\\ssh\\logs and the System event log.'
+}
 $firewallRuleName = 'Pomelo-Orbit-OpenSSH-In-TCP'
 $firewallRule = Get-NetFirewallRule -Name $firewallRuleName -ErrorAction SilentlyContinue
 if ($firewallRule) {
-  $firewallRule | Set-NetFirewallRule -Enabled True
+  $firewallRule | Set-NetFirewallRule -Enabled True -Profile Any
   $firewallRule | Get-NetFirewallPortFilter | Set-NetFirewallPortFilter -LocalPort ${port}
 } else {
-  New-NetFirewallRule -Name $firewallRuleName -DisplayName 'Pomelo Orbit OpenSSH Server' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort ${port} | Out-Null
+  New-NetFirewallRule -Name $firewallRuleName -DisplayName 'Pomelo Orbit OpenSSH Server' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort ${port} -Profile Any | Out-Null
+}
+function Test-OrbitSshListening([int]$Port) {
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = 'SilentlyContinue'
+  try {
+    return @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue).Count -gt 0
+  } finally {
+    $ErrorActionPreference = $previous
+  }
 }
 for ($attempt = 0; $attempt -lt 10; $attempt++) {
-  if ((Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue)) {
+  if (Test-OrbitSshListening ${port}) {
     break
   }
   Start-Sleep -Milliseconds 500
 }
-if (-not (Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue)) {
-  throw 'OpenSSH Server did not start listening on the configured port.'
+if (-not (Test-OrbitSshListening ${port})) {
+  throw "OpenSSH Server did not start listening on port ${port}."
 }
 Write-Host '[0/3] Windows OpenSSH Server is installed, running, and reachable on the configured port.'
-Write-Host ${powershellSingleQuote(`Target ${username}@${host}:${port}`)}
-$setupScript = @'
-$ErrorActionPreference = 'Stop'
 $key = ${powershellSingleQuote(key)}
 $targetUsername = ${powershellSingleQuote(username)}
 $workspace = ${powershellSingleQuote(workspace)}
@@ -157,10 +174,5 @@ if ($LASTEXITCODE -ne 0 -or $serverOS -ne 'linux') { throw 'Docker Desktop must 
 & docker.exe info | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Docker daemon is unavailable' }
 Write-Host '[3/3] Docker Desktop and Docker Compose are ready.'
-'@
-Invoke-Expression $setupScript
 `;
-
-  const encodedScript = encodePowerShellScript(script);
-  return `$encoded = '${encodedScript}'; $process = Start-Process -FilePath powershell.exe -Verb RunAs -ArgumentList @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded) -Wait -PassThru; if ($process.ExitCode -ne 0) { exit $process.ExitCode }`;
 }

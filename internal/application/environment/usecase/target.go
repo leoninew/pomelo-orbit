@@ -31,9 +31,6 @@ func (r TargetResolver) ResolveProjectTarget(ctx context.Context, projectID stri
 	if err != nil {
 		return environmentport.Target{}, apperror.Wrap(apperror.KindInternal, "Failed to resolve project environment", err)
 	}
-	if !environment.IsActive() {
-		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment is disabled")
-	}
 	if strings.TrimSpace(environment.WorkspaceRoot) == "" {
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment workspace_root must be configured before deployment")
 	}

@@ -199,9 +199,6 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 			}
 			return apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
 		}
-		if !environment.IsActive() {
-			return apperror.New(apperror.KindValidation, "Project environment must be active before provisioning a gateway")
-		}
 		if !environment.HasFreshSuccessfulProbe() {
 			return apperror.New(apperror.KindValidation, "Project environment must pass probe before provisioning a gateway")
 		}

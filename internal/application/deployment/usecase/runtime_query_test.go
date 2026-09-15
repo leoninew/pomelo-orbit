@@ -72,7 +72,7 @@ func TestComposePreviewsDoNotRequireConfiguredProjectEnvironment(t *testing.T) {
 	service := Service{
 		commandStore:       store,
 		executionStore:     store,
-		targetResolver:     staticTargetResolver{err: errors.New("Project environment is disabled")},
+		targetResolver:     staticTargetResolver{err: errors.New("Project environment is unavailable")},
 		gatewayCoordinator: &gatewayDeploymentCoordinatorFake{gateway: &model.GatewayConfig{NetworkName: "traefik"}},
 	}
 

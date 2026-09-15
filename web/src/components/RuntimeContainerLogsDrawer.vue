@@ -128,7 +128,10 @@
     void (async () => {
       while (isCurrentRefresh(generation, signal)) {
         await fetchLogs(generation, signal);
-        if (!isCurrentRefresh(generation, signal) || (await deploymentIsComplete(generation, signal))) {
+        if (
+          !isCurrentRefresh(generation, signal) ||
+          (await deploymentIsComplete(generation, signal))
+        ) {
           break;
         }
         await delayAsync(2000, signal);

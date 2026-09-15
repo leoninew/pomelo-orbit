@@ -39,7 +39,6 @@ func TestTargetResolverRejectsUnavailableTargets(t *testing.T) {
 		credential  model.Credential
 		want        string
 	}{
-		{name: "disabled environment", environment: withEnvironmentState(base, model.EnvironmentStateDisabled), credential: matchingTargetCredential(base), want: "disabled"},
 		{name: "stale probe", environment: withProbeRevision(base, 1), credential: matchingTargetCredential(base), want: "must pass probe"},
 		{name: "missing host key fingerprint", environment: withHostKeyFingerprint(base, ""), credential: matchingTargetCredential(base), want: "must pass probe"},
 		{name: "credential revision mismatch", environment: base, credential: withCredentialRevision(matchingTargetCredential(base), base.SSH.CredentialRevision+1), want: "credential binding is invalid"},
@@ -55,8 +54,9 @@ func TestTargetResolverRejectsUnavailableTargets(t *testing.T) {
 	}
 }
 
-func TestTargetResolverReturnsPinnedPrivateKey(t *testing.T) {
+func TestTargetResolverIgnoresLegacyEnvironmentState(t *testing.T) {
 	environment := readyTargetEnvironment()
+	environment.State = model.EnvironmentStateDisabled
 	privateKey := credentialdto.DeploymentSSHPrivateKey{PrivateKey: "secret-key", Passphrase: "secret-passphrase"}
 	resolver := NewTargetResolver(
 		targetEnvironmentStore{environment: environment},
@@ -132,11 +132,6 @@ func matchingTargetCredential(environment model.Environment) model.Credential {
 		Id: environment.SSH.CredentialId, ProjectId: &projectID,
 		Type: model.CredentialTypeDeploymentSSHPrivateKey, Revision: environment.SSH.CredentialRevision,
 	}
-}
-
-func withEnvironmentState(environment model.Environment, state string) model.Environment {
-	environment.State = state
-	return environment
 }
 
 func withProbeRevision(environment model.Environment, revision int64) model.Environment {

@@ -115,7 +115,7 @@ func newProjectIntegrationService(t *testing.T) (Service, *sql.DB) {
 		t.Fatal(err)
 	}
 	projectStore := projectrepo.NewRepository(database)
-	return New(projectStore, userrepo.NewRepository(database), environmentrepo.NewRepository(database)), database
+	return New(projectStore, userrepo.NewRepository(database)), database
 }
 
 func testProjectCreateInput(t *testing.T, name string, code string) projectdto.CreateInput {

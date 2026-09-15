@@ -40,17 +40,6 @@
               {{ t(`project.environment.targetTypes.${environment.target_type}`) }}
             </dd>
           </div>
-          <div class="flex gap-2">
-            <dt>{{ t('project.environment.state') }}</dt>
-            <dd>
-              <AppBadge
-                variant="status"
-                :tone="environment.state === 'active' ? 'success' : 'default'"
-              >
-                {{ t(`project.environment.states.${environment.state}`) }}
-              </AppBadge>
-            </dd>
-          </div>
           <div v-if="isLocal" class="flex gap-2 sm:col-span-2">
             <dt>{{ t('project.environment.workspaceRoot') }}</dt>
             <dd class="min-w-0 break-all text-foreground">
@@ -181,7 +170,6 @@
         <EnvironmentTargetFields
           :model-value="form"
           :errors="errors"
-          show-state
           :disabled="operating"
           :local-workspace-root="environment?.local?.workspace_root || ''"
           :local-display="environment?.local"
@@ -263,9 +251,7 @@
   const initializeErrors = reactive(emptyEnvironmentBootstrapFormErrors());
   const isLocal = computed(() => environment.value?.target_type === 'local');
   const isSSH = computed(() => environment.value?.target_type === 'ssh' && !!environment.value.ssh);
-  const canInitialize = computed(
-    () => environment.value?.state === 'active' && environment.value.ssh?.platform === 'linux'
-  );
+  const canInitialize = computed(() => environment.value?.ssh?.platform === 'linux');
   const isWindowsSSH = computed(
     () => environment.value?.target_type === 'ssh' && environment.value.ssh?.platform === 'windows'
   );

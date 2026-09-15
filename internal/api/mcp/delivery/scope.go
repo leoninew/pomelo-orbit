@@ -34,7 +34,7 @@ func (c *core) currentProjectID() (string, error) {
 	return c.scope.id, nil
 }
 
-func (c *core) requireActiveEnvironment(ctx context.Context) (string, environmentdto.View, error) {
+func (c *core) requireEnvironment(ctx context.Context) (string, environmentdto.View, error) {
 	projectID, err := c.currentProjectID()
 	if err != nil {
 		return "", environmentdto.View{}, err
@@ -46,14 +46,11 @@ func (c *core) requireActiveEnvironment(ctx context.Context) (string, environmen
 		}
 		return "", environmentdto.View{}, err
 	}
-	if environment.State != model.EnvironmentStateActive {
-		return "", environmentdto.View{}, apperror.NewWithCode(apperror.KindValidation, codeProjectNotReady, "Project environment is not ready")
-	}
 	return projectID, environment, nil
 }
 
 func (c *core) requireReadyEnvironment(ctx context.Context) (string, environmentdto.View, error) {
-	projectID, environment, err := c.requireActiveEnvironment(ctx)
+	projectID, environment, err := c.requireEnvironment(ctx)
 	if err != nil {
 		return "", environmentdto.View{}, err
 	}
@@ -119,7 +116,7 @@ func (c *core) bindReadyProject(ctx context.Context, projectID string) (map[stri
 		}
 		return nil, err
 	}
-	if environment.State != model.EnvironmentStateActive || !environmentProbeSucceeded(environment) {
+	if !environmentProbeSucceeded(environment) {
 		return nil, apperror.NewWithCode(apperror.KindValidation, codeProjectNotReady, "Project environment is not ready")
 	}
 	gateway, err := c.readyGateway(ctx, projectID)

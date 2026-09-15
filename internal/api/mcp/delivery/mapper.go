@@ -195,7 +195,7 @@ func projectOutput(value model.Project) map[string]any {
 
 func environmentOutput(value environmentdto.View) map[string]any {
 	result := map[string]any{
-		"id": value.Id, "project_id": value.ProjectId, "code": value.Code, "state": value.State,
+		"id": value.Id, "project_id": value.ProjectId, "code": value.Code,
 		"target_type": value.TargetType, "target_revision": value.TargetRevision,
 		"last_probe_revision": value.LastProbeRevision, "last_probe_status": value.LastProbeStatus,
 		"last_probe_at": formatTimePointer(value.LastProbeAt), "last_probe_diagnostic": value.LastProbeDiagnostic,

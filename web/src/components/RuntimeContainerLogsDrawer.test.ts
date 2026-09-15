@@ -85,10 +85,12 @@ describe('RuntimeContainerLogsDrawer', () => {
 
     expect(getLogs).toHaveBeenCalledOnce();
     expect(getDeployment).toHaveBeenCalledWith('deployment-1', expect.any(Object));
-    expect(target.querySelector('[data-logs]')?.getAttribute('data-logs')).toBe('container started');
-    expect(target.querySelector('[data-auto-refreshing]')?.getAttribute('data-auto-refreshing')).toBe(
-      'false'
+    expect(target.querySelector('[data-logs]')?.getAttribute('data-logs')).toBe(
+      'container started'
     );
+    expect(
+      target.querySelector('[data-auto-refreshing]')?.getAttribute('data-auto-refreshing')
+    ).toBe('false');
 
     app.unmount();
     target.remove();

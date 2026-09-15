@@ -52,7 +52,7 @@
               <td class="whitespace-nowrap text-foreground">
                 <router-link
                   v-if="p.git_credential_id"
-                  :to="`/credential/${p.git_credential_id}`"
+                  :to="`/repository-credential/${p.git_credential_id}`"
                   class="app-link"
                 >
                   已配置

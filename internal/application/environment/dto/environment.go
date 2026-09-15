@@ -20,6 +20,14 @@ type SSHTargetInput struct {
 	WorkspaceRoot string
 }
 
+// DeploymentSSHPrivateKey is decrypted only for an SSH probe or deployment.
+// It must never cross an HTTP, MCP, log, or persistence boundary.
+type DeploymentSSHPrivateKey struct {
+	PrivateKey string
+	Passphrase string
+	PublicKey  string
+}
+
 type View struct {
 	Id        string
 	ProjectId string

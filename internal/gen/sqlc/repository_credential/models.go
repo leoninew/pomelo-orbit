@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.30.0
 
-package credential
+package repositorycredential
 
 import (
 	"database/sql"
@@ -54,16 +54,6 @@ type BackgroundTask struct {
 	ErrorMessage sql.NullString `db:"error_message"`
 	CreatedAt    time.Time      `db:"created_at"`
 	UpdatedAt    time.Time      `db:"updated_at"`
-}
-
-type Credential struct {
-	ID            string         `db:"id"`
-	Name          string         `db:"name"`
-	Type          string         `db:"type"`
-	EncryptedData string         `db:"encrypted_data"`
-	Revision      int64          `db:"revision"`
-	CreatedAt     time.Time      `db:"created_at"`
-	ProjectID     sql.NullString `db:"project_id"`
 }
 
 type Deployment struct {
@@ -134,6 +124,15 @@ type Environment struct {
 	GatewayApplicationID  sql.NullString `db:"gateway_application_id"`
 	CreatedAt             time.Time      `db:"created_at"`
 	UpdatedAt             time.Time      `db:"updated_at"`
+}
+
+type EnvironmentCredential struct {
+	ID                  string    `db:"id"`
+	ProjectID           string    `db:"project_id"`
+	PublicKey           string    `db:"public_key"`
+	EncryptedPrivateKey string    `db:"encrypted_private_key"`
+	Revision            int64     `db:"revision"`
+	CreatedAt           time.Time `db:"created_at"`
 }
 
 type GatewayAcmeProfileVersion struct {
@@ -335,6 +334,16 @@ type Repository struct {
 	CreatedAt         time.Time      `db:"created_at"`
 	UpdatedAt         time.Time      `db:"updated_at"`
 	ProjectID         sql.NullString `db:"project_id"`
+}
+
+type RepositoryCredential struct {
+	ID            string         `db:"id"`
+	Name          string         `db:"name"`
+	Type          string         `db:"type"`
+	EncryptedData string         `db:"encrypted_data"`
+	Revision      int64          `db:"revision"`
+	CreatedAt     time.Time      `db:"created_at"`
+	ProjectID     sql.NullString `db:"project_id"`
 }
 
 type Role struct {

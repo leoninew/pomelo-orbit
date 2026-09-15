@@ -40,7 +40,7 @@ describe('domain navigation declarations', () => {
         key: 'code',
         children: [
           expect.objectContaining({ key: 'repository', path: '/repository' }),
-          expect.objectContaining({ key: 'credentials', path: '/credential' }),
+          expect.objectContaining({ key: 'credentials', path: '/repository-credential' }),
         ],
       }),
       expect.objectContaining({

@@ -38,7 +38,7 @@
           <tbody>
             <tr v-for="cred in credentials" :key="cred.id">
               <td>
-                <router-link :to="`/credential/${cred.id}`" class="app-link">
+                <router-link :to="`/repository-credential/${cred.id}`" class="app-link">
                   {{ cred.name }}
                 </router-link>
               </td>
@@ -386,7 +386,7 @@
           );
           toast.success('创建成功');
           showCredentialDialog.value = false;
-          await router.push(`/credential/${created.id}`);
+          await router.push(`/repository-credential/${created.id}`);
         }
       });
     } catch (error) {

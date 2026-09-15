@@ -19,30 +19,24 @@ import (
 var hostKeyFingerprintPattern = regexp.MustCompile(`^SHA256:[A-Za-z0-9+/]+={0,2}$`)
 var windowsWorkspacePattern = regexp.MustCompile(`^[A-Za-z]:\\`)
 
-type deploymentKeyManager interface {
-	CreateDeploymentSSHCredential(ctx context.Context, projectID string, name string) (model.Credential, error)
-	EnsureGeneratedDeploymentSSHCredential(ctx context.Context, credentialID string) (model.Credential, error)
-	DeploymentSSHPublicKey(ctx context.Context, credentialID string) (string, error)
-}
-
 type environmentTargetReader interface {
-	EnvironmentByTarget(ctx context.Context, projectID, targetType, host string, port int) (model.Environment, error)
+	EnvironmentByTarget(ctx context.Context, projectId, targetType, host string, port int) (model.Environment, error)
 }
 
 type Service struct {
-	environments         repository.EnvironmentStore
-	projects             repository.ProjectReader
-	deploymentKey        deploymentKeyManager
-	deploymentCredential deploymentCredentialReader
-	prober               environmentport.Prober
-	bootstrapper         environmentport.Bootstrapper
-	localDisplay         environmentdto.LocalDisplaySnapshot
+	environments           repository.EnvironmentStore
+	projects               repository.ProjectReader
+	environmentCredentials repository.EnvironmentCredentialStore
+	secretKey              string
+	prober                 environmentport.Prober
+	bootstrapper           environmentport.Bootstrapper
+	localDisplay           environmentdto.LocalDisplaySnapshot
 }
 
-func New(environments repository.EnvironmentStore, projects repository.ProjectReader, deploymentKey deploymentKeyManager, deploymentCredential deploymentCredentialReader, prober environmentport.Prober, bootstrapper environmentport.Bootstrapper) Service {
+func New(environments repository.EnvironmentStore, projects repository.ProjectReader, environmentCredentials repository.EnvironmentCredentialStore, secretKey string, prober environmentport.Prober, bootstrapper environmentport.Bootstrapper) Service {
 	return Service{
-		environments: environments, projects: projects, deploymentKey: deploymentKey,
-		deploymentCredential: deploymentCredential, prober: prober, bootstrapper: bootstrapper,
+		environments: environments, projects: projects, environmentCredentials: environmentCredentials,
+		secretKey: secretKey, prober: prober, bootstrapper: bootstrapper,
 	}
 }
 
@@ -53,14 +47,14 @@ func (s Service) WithLocalDisplay(snapshot environmentdto.LocalDisplaySnapshot) 
 
 // SaveInitialization creates or updates the Project Environment during Wizard
 // initialization. It is not used after Gateway creation.
-func (s Service) SaveInitialization(ctx context.Context, userID string, projectID string, input environmentdto.UpdateInput) (environmentdto.View, error) {
-	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+func (s Service) SaveInitialization(ctx context.Context, userId string, projectId string, input environmentdto.UpdateInput) (environmentdto.View, error) {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.View{}, err
 	}
-	project, err := s.projects.Project(ctx, strings.TrimSpace(projectID))
+	project, err := s.projects.Project(ctx, strings.TrimSpace(projectId))
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return environmentdto.View{}, apperror.New(apperror.KindNotFound, "Project "+projectID+" not found")
+			return environmentdto.View{}, apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
 		}
 		return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
 	}
@@ -126,8 +120,8 @@ func (s Service) SaveInitialization(ctx context.Context, userID string, projectI
 	return s.toView(item), nil
 }
 
-func (s Service) TestSSHReachability(ctx context.Context, userID string, projectID string, input environmentdto.SSHTargetInput) error {
-	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+func (s Service) TestSSHReachability(ctx context.Context, userId string, projectId string, input environmentdto.SSHTargetInput) error {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return err
 	}
 	return s.testSSHTarget(ctx, input.Host, input.Port, input.Username)
@@ -136,35 +130,18 @@ func (s Service) TestSSHReachability(ctx context.Context, userID string, project
 // DeploymentSSHPublicKeyForProject returns a Project's managed deployment key.
 // It does not require an Environment to have been saved, allowing a Windows
 // host to receive its key before SSH key authentication is configured.
-func (s Service) DeploymentSSHPublicKeyForProject(ctx context.Context, userID string, projectID string) (string, error) {
-	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+func (s Service) DeploymentSSHPublicKeyForProject(ctx context.Context, userId string, projectId string) (string, error) {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return "", err
 	}
-	if s.deploymentKey == nil {
-		return "", apperror.New(apperror.KindInternal, "deployment SSH credential manager is not configured")
-	}
-	credentialID := ""
-	item, err := s.environmentForProject(ctx, projectID)
-	if err == nil && item.IsSSH() && item.SSH != nil {
-		credentialID = strings.TrimSpace(item.SSH.CredentialId)
-	} else if err != nil && !apperror.IsKind(err, apperror.KindNotFound) {
-		return "", err
-	}
-	if credentialID == "" {
-		credential, err := s.deploymentKey.CreateDeploymentSSHCredential(ctx, projectID, "")
-		if err != nil {
-			return "", err
-		}
-		credentialID = credential.Id
-	}
-	publicKey, err := s.deploymentKey.DeploymentSSHPublicKey(ctx, credentialID)
+	credential, err := s.resolveProjectSSHKey(ctx, strings.TrimSpace(projectId))
 	if err != nil {
 		return "", err
 	}
-	if strings.TrimSpace(publicKey) == "" {
+	if strings.TrimSpace(credential.PublicKey) == "" {
 		return "", apperror.New(apperror.KindInternal, "Generated deployment SSH public key is empty")
 	}
-	return strings.TrimSpace(publicKey), nil
+	return strings.TrimSpace(credential.PublicKey), nil
 }
 
 func (s Service) testSSHTarget(ctx context.Context, host string, port int, username string) error {
@@ -180,11 +157,11 @@ func (s Service) testSSHTarget(ctx context.Context, host string, port int, usern
 	return nil
 }
 
-func (s Service) EnvironmentForUser(ctx context.Context, userID string, projectID string) (environmentdto.View, error) {
-	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+func (s Service) EnvironmentForUser(ctx context.Context, userId string, projectId string) (environmentdto.View, error) {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.View{}, err
 	}
-	item, err := s.environmentForProject(ctx, projectID)
+	item, err := s.environmentForProject(ctx, projectId)
 	if err != nil {
 		return environmentdto.View{}, err
 	}
@@ -195,11 +172,11 @@ func (s Service) EnvironmentForUser(ctx context.Context, userID string, projectI
 	return s.toView(item), nil
 }
 
-func (s Service) UpdateForUser(ctx context.Context, userID string, projectID string, input environmentdto.UpdateInput) (environmentdto.View, error) {
-	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+func (s Service) UpdateForUser(ctx context.Context, userId string, projectId string, input environmentdto.UpdateInput) (environmentdto.View, error) {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.View{}, err
 	}
-	item, err := s.environmentForProject(ctx, projectID)
+	item, err := s.environmentForProject(ctx, projectId)
 	if err != nil {
 		return environmentdto.View{}, err
 	}
@@ -226,7 +203,7 @@ func (s Service) UpdateForUser(ctx context.Context, userID string, projectID str
 	if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
 		return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
 	}
-	item, err = s.environmentForProject(ctx, projectID)
+	item, err = s.environmentForProject(ctx, projectId)
 	if err != nil {
 		return environmentdto.View{}, err
 	}
@@ -255,31 +232,31 @@ func (s Service) hydrateEnvironment(ctx context.Context, item model.Environment)
 }
 
 func (s Service) ensureGeneratedCredential(ctx context.Context, item model.Environment) (model.Environment, error) {
-	if !item.IsSSH() || s.deploymentKey == nil {
+	if !item.IsSSH() {
 		return item, nil
 	}
-	if strings.TrimSpace(item.SSH.CredentialId) == "" {
-		credential, err := s.deploymentKey.CreateDeploymentSSHCredential(ctx, item.ProjectId, "")
+	if strings.TrimSpace(item.SSH.CredentialId) != "" {
+		credential, err := s.environmentCredential(ctx, item.SSH.CredentialId)
 		if err != nil {
 			return model.Environment{}, err
 		}
-		item.SSH.CredentialId = credential.Id
-		item.SSH.CredentialRevision = credential.Revision
+		if credential.Revision != item.SSH.CredentialRevision {
+			item.SSH.CredentialRevision = credential.Revision
+			item.SSH.HostKeyFingerprint = ""
+		}
 		return item, nil
 	}
-	credential, err := s.deploymentKey.EnsureGeneratedDeploymentSSHCredential(ctx, item.SSH.CredentialId)
+	credential, err := s.resolveProjectSSHKey(ctx, item.ProjectId)
 	if err != nil {
 		return model.Environment{}, err
 	}
-	if credential.Revision != item.SSH.CredentialRevision {
-		item.SSH.CredentialRevision = credential.Revision
-		item.SSH.HostKeyFingerprint = ""
-	}
+	item.SSH.CredentialId = credential.Id
+	item.SSH.CredentialRevision = credential.Revision
 	return item, nil
 }
 
-func (s Service) environmentForProject(ctx context.Context, projectID string) (model.Environment, error) {
-	item, err := s.environments.EnvironmentByProject(ctx, strings.TrimSpace(projectID))
+func (s Service) environmentForProject(ctx context.Context, projectId string) (model.Environment, error) {
+	item, err := s.environments.EnvironmentByProject(ctx, strings.TrimSpace(projectId))
 	if errors.Is(err, repository.ErrNotFound) {
 		return model.Environment{}, apperror.New(apperror.KindNotFound, "Project environment not found")
 	}
@@ -289,18 +266,18 @@ func (s Service) environmentForProject(ctx context.Context, projectID string) (m
 	return item, nil
 }
 
-func (s Service) ensureProjectMembership(ctx context.Context, projectID string, userID string) error {
-	projectID = strings.TrimSpace(projectID)
-	if projectID == "" {
+func (s Service) ensureProjectMembership(ctx context.Context, projectId string, userId string) error {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
 		return apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	if _, err := s.projects.Project(ctx, projectID); err != nil {
+	if _, err := s.projects.Project(ctx, projectId); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return apperror.New(apperror.KindNotFound, "Project "+projectID+" not found")
+			return apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
 	}
-	member, err := s.projects.IsProjectMember(ctx, projectID, userID)
+	member, err := s.projects.IsProjectMember(ctx, projectId, userId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check project member", err)
 	}
@@ -365,7 +342,7 @@ func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) erro
 			if input.SSH == nil || input.Local != nil {
 				return apperror.New(apperror.KindValidation, "SSH target is required when target_type is ssh")
 			}
-			ssh := sshTargetFromInput(input.SSH, nil)
+			ssh := sshTargetFromInput(input.SSH)
 			if item.IsSSH() {
 				ssh.CredentialId = item.SSH.CredentialId
 				ssh.CredentialRevision = item.SSH.CredentialRevision
@@ -389,10 +366,10 @@ func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) erro
 			return apperror.New(apperror.KindValidation, "Local target is only valid for a local environment")
 		}
 		if input.SSH != nil {
-			credentialID, credentialRevision := item.SSH.CredentialId, item.SSH.CredentialRevision
+			credentialId, credentialRevision := item.SSH.CredentialId, item.SSH.CredentialRevision
 			hostKeyFingerprint := item.SSH.HostKeyFingerprint
-			item.SSH = sshTargetFromInput(input.SSH, nil)
-			item.SSH.CredentialId, item.SSH.CredentialRevision = credentialID, credentialRevision
+			item.SSH = sshTargetFromInput(input.SSH)
+			item.SSH.CredentialId, item.SSH.CredentialRevision = credentialId, credentialRevision
 			item.SSH.HostKeyFingerprint = hostKeyFingerprint
 			item.WorkspaceRoot = strings.TrimSpace(input.SSH.WorkspaceRoot)
 		}
@@ -400,17 +377,13 @@ func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) erro
 	return nil
 }
 
-func sshTargetFromInput(input *environmentdto.SSHTargetInput, credential *model.Credential) *model.EnvironmentSSHTarget {
+func sshTargetFromInput(input *environmentdto.SSHTargetInput) *model.EnvironmentSSHTarget {
 	if input == nil {
 		return nil
 	}
 	target := &model.EnvironmentSSHTarget{
 		Platform: strings.TrimSpace(input.Platform), Host: strings.TrimSpace(input.Host), Port: input.Port,
 		Username: strings.TrimSpace(input.Username),
-	}
-	if credential != nil {
-		target.CredentialId = credential.Id
-		target.CredentialRevision = credential.Revision
 	}
 	return target
 }

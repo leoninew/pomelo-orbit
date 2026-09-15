@@ -55,7 +55,7 @@
             <dd>
               <router-link
                 v-if="repository.git_credential_id"
-                :to="`/credential/${repository.git_credential_id}`"
+                :to="`/repository-credential/${repository.git_credential_id}`"
                 class="app-link"
               >
                 {{ repository.git_credential_name }}

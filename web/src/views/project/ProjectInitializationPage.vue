@@ -157,7 +157,11 @@
                     aria-hidden="true"
                   />
                   {{ t('project.initialization.next') }}
-                  <ArrowRight v-if="activeOperation !== 'saving'" class="size-4" aria-hidden="true" />
+                  <ArrowRight
+                    v-if="activeOperation !== 'saving'"
+                    class="size-4"
+                    aria-hidden="true"
+                  />
                 </button>
               </span>
             </div>

@@ -190,13 +190,13 @@ const router = createRouter({
     },
     // credential / repository / pipeline / pipeline_run
     {
-      path: '/credential',
+      path: '/repository-credential',
       name: 'Credentials',
       component: () => import('@/views/credential/CredentialPage.vue'),
       meta: { title: '凭据管理', menuKey: 'credentials' },
     },
     {
-      path: '/credential/:id',
+      path: '/repository-credential/:id',
       name: 'CredentialDetail',
       component: () => import('@/views/credential/CredentialDetail.vue'),
       props: true,

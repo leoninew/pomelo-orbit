@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
-	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
@@ -31,8 +30,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	pipelineWorkspace := newPipelineWorkspace(cfg, stores, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
 	transactionRunner := databasetx.NewTransactionRunner(database)
-	credentialService := credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey)
-	targetResolver := environmentsvc.NewTargetResolver(stores.environment, credentialService)
+	targetResolver := environmentsvc.NewTargetResolver(stores.environment, stores.environmentCredential, cfg.Jwt.SecretKey)
 	_, runtime := newDeploymentRuntime(dockerPathResolver)
 	gatewayService := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, dockerPathResolver, transactionRunner)
 	routeManager := traefik.NewRouteManager(targetResolver, runtime)

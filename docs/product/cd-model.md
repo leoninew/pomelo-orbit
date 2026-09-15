@@ -16,7 +16,7 @@ Doc role: living product model
 | GatewayConfig | Gateway Application 的业务属性和 ACME profile 选择 |
 | Route | 自定义 HTTP/TCP 入口和受管 target |
 
-`Project 1:1 Environment 1:1 Gateway` 是就绪后的运行时关系，不是 Project 创建时的预置数据。空库 identity seed 和新创建的 Project 都只有 Project 与 membership；Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。切换当前 Project 就是切换该 Project 已保存的部署环境和默认 Gateway。关联采用逻辑外键：Environment 的 `project_id`、`gateway_application_id`，以及仅 SSH Environment 的 credential binding 均不使用数据库物理外键。
+`Project 1:1 Environment 1:1 Gateway` 是就绪后的运行时关系，不是 Project 创建时的预置数据。空库 identity seed 和新创建的 Project 都只有 Project 与 membership；Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。切换当前 Project 就是切换该 Project 已保存的部署环境和默认 Gateway。关联采用逻辑外键：Environment 的 `project_id`、`gateway_application_id`，以及仅 SSH Environment 对 `environment_credential` 的 binding 均不使用数据库物理外键。
 
 Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CI 使用 `<workspace_root>/pipeline`，CD 使用 `<workspace_root>/deployment/<service-code>`，Gateway certificates 与 Route snapshot 也位于对应 Service 目录下。值可以是平台绝对路径或 `~` / `~/...`，配置、界面和库存都原样保存，只在使用时展开 `~`。控制面仅保留 `workspace.root` 作为无 Project 的启动配置基准，运行时按 Project Environment 解析实际 CI 根；`logging.deployment_root` 仅用于控制面部署日志。Environment 与已绑定的 Gateway 不提供删除能力。Project code 同时是 Environment code。Gateway 和声明加入 Traefik 的 Service 共享部署宿主上的 Docker bridge network `traefik`；网络名不由 Environment code 派生。Gateway Component 名称固定为 `traefik`，初始 pull policy 固定 `missing`，二者都不是 GatewayConfig 字段。
 
@@ -25,11 +25,11 @@ Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CI
 Environment 的 target type 是显式联合：
 
 - `local`：在 Orbit 控制面宿主机的 Docker daemon 上执行，工作目录为该 Environment 保存的 `workspace_root`；`~` / `~/...` 在使用时展开为控制面进程用户主目录。它不保存 SSH host、用户、私钥、host key 或 SSH 初始化认证。
-- `ssh`：Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它保存平台、SSH target、受管私钥 binding 与 host-key fingerprint，工作目录同样由该 Environment 保存的 `workspace_root` 提供；`~` / `~/...` 在使用时展开为远端登录用户主目录。
+- `ssh`：Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它保存平台、SSH target、`environment_credential` 绑定与 host-key fingerprint，工作目录同样由该 Environment 保存的 `workspace_root` 提供；`~` / `~/...` 在使用时展开为远端登录用户主目录。
 
 一个 Docker target 只能绑定一个 Project。`local` target 全局独占；`ssh` target 按精确的 host + port 独占。Gateway 使用固定端口和共享 `traefik` 网络，保存 Environment 时若发现其他 Project 已绑定同一 target 会直接拒绝。
 
-`ssh` 到 `127.0.0.1` 仍是 SSH target，必须使用密钥认证和 host-key pinning，不会转换为 `local`。不支持 macOS、其他 Windows Docker 形态或任意 SSH command 执行。部署私钥只属于 SSH Environment，不能通过凭据 API、MCP 或日志读取。SSH 连接不支持密码认证、交互式 shell、PTY 或端口转发。
+`ssh` 到 `127.0.0.1` 仍是 SSH target，必须使用密钥认证和 host-key pinning，不会转换为 `local`。不支持 macOS、其他 Windows Docker 形态或任意 SSH command 执行。部署私钥只属于 SSH Environment，存在 `environment_credential`，不能通过仓库凭据 API、MCP 或日志读取。SSH 连接不支持密码认证、交互式 shell、PTY 或端口转发。
 
 镜像 registry、登录方式和多 registry 配置是宿主机责任，不属于 Orbit Project 或 Environment 配置。
 

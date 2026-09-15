@@ -5,9 +5,7 @@ import (
 	"database/sql"
 	"io"
 	"log/slog"
-	"strings"
 	"testing"
-	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -16,7 +14,6 @@ import (
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
-	"github.com/leoninew/pomelo-orbit/internal/model"
 	credentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/credential"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
@@ -111,58 +108,6 @@ func TestCreateCredentialAcceptsGiteaTokenAndRejectsUnknownType(t *testing.T) {
 	})
 	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected unknown credential type to be rejected, got %v", err)
-	}
-}
-
-func TestDeploymentSSHCredentialPlaceholderRequiresReplacement(t *testing.T) {
-	service, database := newCredentialIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	ctx := context.Background()
-	credentialID := "01M00000000000000000000001"
-
-	if _, err := database.ExecContext(ctx, `
-		INSERT INTO credential (id, project_id, name, type, encrypted_data, revision, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, credentialID, ciTestProjectId, "deployment-ssh-reconfiguration", model.CredentialTypeDeploymentSSHPrivateKey, model.DeploymentSSHCredentialReconfigurationPlaceholder, 1, time.Now().UTC()); err != nil {
-		t.Fatal(err)
-	}
-
-	if _, _, err := service.DeploymentSSHCredential(ctx, credentialID); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
-		t.Fatalf("expected placeholder credential validation error, got %v", err)
-	}
-
-	updated, err := service.EnsureGeneratedDeploymentSSHCredential(ctx, credentialID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if updated.Revision != 2 || updated.RequiresDeploymentSSHCredentialReconfiguration() {
-		t.Fatalf("unexpected generated replacement: %+v", updated)
-	}
-
-	_, payload, err := service.DeploymentSSHCredential(ctx, credentialID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if payload.PrivateKey == "" || payload.PublicKey == "" || !strings.HasPrefix(payload.PublicKey, "ssh-ed25519 ") {
-		t.Fatalf("unexpected generated payload: %+v", payload)
-	}
-}
-
-func TestCreateDeploymentSSHCredentialReusesExistingManagedCredential(t *testing.T) {
-	service, database := newCredentialIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	ctx := context.Background()
-
-	first, err := service.CreateDeploymentSSHCredential(ctx, ciTestProjectId, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := service.CreateDeploymentSSHCredential(ctx, ciTestProjectId, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if first.Id == "" || second.Id != first.Id || second.Name != "deployment-ssh" {
-		t.Fatalf("credentials were not reused: first=%+v second=%+v", first, second)
 	}
 }
 

@@ -320,8 +320,8 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 	}
 	return s.completeDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
-func (s Service) deploymentCanceled(ctx context.Context, deploymentID string) bool {
-	deployment, err := s.executionStore.Deployment(ctx, deploymentID)
+func (s Service) deploymentCanceled(ctx context.Context, deploymentId string) bool {
+	deployment, err := s.executionStore.Deployment(ctx, deploymentId)
 	return err == nil && deployment.Status == status.WorkStatusCanceled
 }
 
@@ -358,12 +358,12 @@ func observedServiceStatus(containers []deploymentdto.RuntimeContainer) string {
 	return status.ServiceStatusRunning
 }
 
-func (s Service) completeDeployment(ctx context.Context, deploymentID, statusValue, message string) error {
-	_, err := s.executionStore.CompleteDeployment(ctx, deploymentID, statusValue, message)
+func (s Service) completeDeployment(ctx context.Context, deploymentId, statusValue, message string) error {
+	_, err := s.executionStore.CompleteDeployment(ctx, deploymentId, statusValue, message)
 	return err
 }
 
-func (s Service) deploymentExecutionContext(ctx context.Context, deploymentID string) (context.Context, context.CancelFunc) {
+func (s Service) deploymentExecutionContext(ctx context.Context, deploymentId string) (context.Context, context.CancelFunc) {
 	monitoredCtx, cancelMonitored := context.WithCancel(ctx)
 	done := make(chan struct{})
 	interval := s.pollInterval
@@ -380,7 +380,7 @@ func (s Service) deploymentExecutionContext(ctx context.Context, deploymentID st
 			case <-monitoredCtx.Done():
 				return
 			case <-ticker.C:
-				deployment, err := s.executionStore.Deployment(ctx, deploymentID)
+				deployment, err := s.executionStore.Deployment(ctx, deploymentId)
 				if err == nil && deployment.Status == status.WorkStatusCanceled {
 					cancelMonitored()
 					return
@@ -470,8 +470,8 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, target environm
 	return s.runtime.Run(ctx, target, svc.Code, logWriter, command.Name, command.Args...)
 }
 
-func remoteWorkspaceFromRender(serviceCode string, deploymentID string, result RenderResult) (deploymentport.Workspace, error) {
-	workspace := deploymentport.Workspace{ServiceCode: serviceCode, DeploymentID: deploymentID, Compose: result.Compose}
+func remoteWorkspaceFromRender(serviceCode string, deploymentId string, result RenderResult) (deploymentport.Workspace, error) {
+	workspace := deploymentport.Workspace{ServiceCode: serviceCode, DeploymentId: deploymentId, Compose: result.Compose}
 	for _, item := range result.ResolvedMounts {
 		if !item.ShouldMaterialize {
 			continue

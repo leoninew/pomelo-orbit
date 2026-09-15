@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS project_member (
 );
 
 
-CREATE TABLE IF NOT EXISTS credential (
+CREATE TABLE IF NOT EXISTS repository_credential (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     type TEXT NOT NULL,
@@ -121,6 +121,17 @@ CREATE TABLE IF NOT EXISTS credential (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     project_id TEXT REFERENCES project(id)
 );
+
+CREATE TABLE IF NOT EXISTS environment_credential (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES project(id),
+    public_key TEXT NOT NULL,
+    encrypted_private_key TEXT NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_environment_credential_project ON environment_credential(project_id);
 
 
 CREATE TABLE IF NOT EXISTS pipeline (
@@ -227,7 +238,7 @@ CREATE TABLE IF NOT EXISTS repository (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     project_id TEXT REFERENCES project(id),
-    FOREIGN KEY (git_credential_id) REFERENCES credential(id)
+    FOREIGN KEY (git_credential_id) REFERENCES repository_credential(id)
 );
 
 

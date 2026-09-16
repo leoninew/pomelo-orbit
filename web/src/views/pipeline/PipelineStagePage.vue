@@ -70,7 +70,7 @@
       />
     </div>
 
-    <AppDialog v-model:open="formOpen" title="新建阶段">
+    <AppDialog v-model:open="formOpen" title="创建阶段">
       <form class="space-y-4" @submit.prevent="save">
         <div class="space-y-1.5">
           <label class="app-field-label">

@@ -32,7 +32,6 @@
         @input="updateField('code', ($event.target as HTMLInputElement).value)"
       />
       <p v-if="errors.code" class="app-field-error mt-1 text-xs">{{ errors.code }}</p>
-      <p class="app-field-hint">{{ t('application.codeHint') }}</p>
     </div>
 
     <div class="space-y-1.5">

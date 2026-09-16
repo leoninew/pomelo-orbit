@@ -7,6 +7,10 @@ export interface EnvironmentVariableListRow extends EnvironmentVariableEntry {
   id: string;
 }
 
+export interface EnvironmentVariableRowDraft extends EnvironmentVariableEntry {
+  isNew: boolean;
+}
+
 export type EnvironmentVariableRowErrors = Record<string, string>;
 
 export type EnvironmentVariableKeyValidator = (key: string) => string | undefined;
@@ -33,6 +37,23 @@ export function cloneEnvironmentVariableRows(
   rows: EnvironmentVariableListRow[]
 ): EnvironmentVariableListRow[] {
   return rows.map((row) => ({ ...row }));
+}
+
+export function mergeEnvironmentVariableRows(
+  rows: EnvironmentVariableListRow[],
+  drafts: Record<string, EnvironmentVariableRowDraft>
+): EnvironmentVariableListRow[] {
+  return rows.map((row) => {
+    const draft = drafts[row.id];
+    if (!draft) {
+      return row;
+    }
+    return {
+      ...row,
+      key: draft.isNew ? draft.key : row.key,
+      value: draft.value,
+    };
+  });
 }
 
 export function validateEnvironmentVariableRows(

@@ -428,7 +428,7 @@
     <!-- 编辑版本组件基本信息 -->
     <AppDialog
       :open="isComponentEditDialogOpen"
-      :title="t('application.componentDetail.sections.basic')"
+      title="编辑组件"
       width-class="w-[min(640px,calc(100vw-32px))]"
       @update:open="setComponentEditDialogOpen"
     >

@@ -188,7 +188,7 @@
       </DetailInfoCard>
     </template>
 
-    <AppDialog v-model:open="infoOpen" title="编辑流水线信息">
+    <AppDialog v-model:open="infoOpen" title="编辑流水线">
       <form class="space-y-4" @submit.prevent="saveInfo">
         <div class="space-y-1.5">
           <label class="app-field-label block">
@@ -233,7 +233,7 @@
 
     <AppDialog
       v-model:open="stageOpen"
-      :title="editingStage ? '编辑构建阶段' : '引入构建阶段'"
+      :title="editingStage ? '编辑阶段' : '添加阶段'"
       width-class="w-[min(760px,calc(100vw-32px))]"
       body-class="max-h-[72vh] space-y-4 overflow-y-auto px-6 py-4"
     >
@@ -377,13 +377,7 @@
 
     <AppDialog
       v-model:open="variableOpen"
-      :title="
-        editingVariableName
-          ? '编辑自定义变量'
-          : overridingVariableName
-            ? '覆盖阶段变量'
-            : '添加自定义变量'
-      "
+      :title="editingVariableName ? '编辑变量' : overridingVariableName ? '覆盖变量' : '添加变量'"
     >
       <form class="space-y-4" @submit.prevent="saveVariable">
         <div class="space-y-1.5">

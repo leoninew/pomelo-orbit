@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   environmentVariableRowsEqual,
+  mergeEnvironmentVariableRows,
   validateEnvironmentVariableRows,
   type EnvironmentVariableListRow,
 } from './environmentVariableList';
@@ -53,5 +54,22 @@ describe('environmentVariableList', () => {
 
   it('treats a fully blank draft row as unchanged', () => {
     expect(environmentVariableRowsEqual(rows([['', '']]), [])).toBe(true);
+  });
+
+  it('merges existing row values and new row keys from drafts', () => {
+    const environmentRows: EnvironmentVariableListRow[] = [
+      { id: 'existing', key: 'LOG_LEVEL', value: 'info' },
+      { id: 'new', key: '', value: '' },
+    ];
+
+    expect(
+      mergeEnvironmentVariableRows(environmentRows, {
+        existing: { key: 'IGNORED_KEY', value: 'debug', isNew: false },
+        new: { key: 'FEATURE_FLAG', value: 'on', isNew: true },
+      })
+    ).toEqual([
+      { id: 'existing', key: 'LOG_LEVEL', value: 'debug' },
+      { id: 'new', key: 'FEATURE_FLAG', value: 'on' },
+    ]);
   });
 });

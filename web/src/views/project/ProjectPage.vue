@@ -129,11 +129,11 @@
               type="text"
               class="app-input"
               :class="errors.code ? 'app-input-error' : ''"
+              :placeholder="t('project.codeHint')"
               :aria-invalid="errors.code ? 'true' : undefined"
               @input="errors.code = ''"
             />
             <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
-            <p v-else class="app-field-hint">{{ t('project.codeHint') }}</p>
           </div>
         </template>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>

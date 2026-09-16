@@ -1,7 +1,7 @@
 package authhandler
 
 import (
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	authdto "github.com/leoninew/pomelo-orbit/internal/application/auth/dto"
 	authv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/auth"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -34,13 +34,13 @@ func userInfoResponse(user model.User, roles []string, permissions []string) aut
 	if permissions == nil {
 		permissions = []string{}
 	}
-	return authv1.UserInfoResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roles, Permissions: permissions}
+	return authv1.UserInfoResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transport.FormatTime(user.CreatedAt), LastLoginAt: transport.FormatOptionalTime(user.LastLoginAt), Roles: roles, Permissions: permissions}
 }
 
 func loginHistoryResponse(history model.LoginHistory) authv1.LoginHistoryResp {
-	return authv1.LoginHistoryResp{Id: history.Id, UserId: history.UserId, Username: history.Username, IpAddress: history.IpAddress, UserAgent: history.UserAgent, LoginAt: transportresponse.FormatTime(history.LoginAt), Success: history.Success}
+	return authv1.LoginHistoryResp{Id: history.Id, UserId: history.UserId, Username: history.Username, IpAddress: history.IpAddress, UserAgent: history.UserAgent, LoginAt: transport.FormatTime(history.LoginAt), Success: history.Success}
 }
 
 func mcpAccessTokenResponse(token model.MCPAccessToken) authv1.MCPAccessTokenResp {
-	return authv1.MCPAccessTokenResp{Id: token.Id, Name: token.Name, ExpiresAt: transportresponse.FormatOptionalTime(token.ExpiresAt), CreatedAt: transportresponse.FormatTime(token.CreatedAt)}
+	return authv1.MCPAccessTokenResp{Id: token.Id, Name: token.Name, ExpiresAt: transport.FormatOptionalTime(token.ExpiresAt), CreatedAt: transport.FormatTime(token.CreatedAt)}
 }

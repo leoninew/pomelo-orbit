@@ -7,6 +7,7 @@ import (
 	transporthttp "github.com/leoninew/pomelo-orbit/internal/api/http"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/routes"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	deliverymcp "github.com/leoninew/pomelo-orbit/internal/api/mcp/delivery"
 	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
 	authsvc "github.com/leoninew/pomelo-orbit/internal/application/auth/usecase"
@@ -202,7 +203,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database *sql.DB, taskRepo taskrepo.Repository) routes.Dependencies {
 	services := newApplicationServices(cfg, logger, database, taskRepo)
 	return routes.Dependencies{
-		MutatingUnitOfWork:           databasetx.Middleware(database, "/api/route/sync/preview", "/api/route/sync/confirm", "/api/project/:project_id/environment/probe", "/api/project/:project_id/environment/initialize", "/api/project/:project_id/initialization/probe", "/api/project/:project_id/initialization/bootstrap"),
+		MutatingUnitOfWork:           databasetx.Middleware(database, transport.WriteError, "/api/route/sync/preview", "/api/route/sync/confirm", "/api/project/:project_id/environment/probe", "/api/project/:project_id/environment/initialize", "/api/project/:project_id/initialization/probe", "/api/project/:project_id/initialization/bootstrap"),
 		Authenticator:                security.New(logger, services.AuthService),
 		AuthService:                  services.AuthService,
 		RoleService:                  services.RoleService,

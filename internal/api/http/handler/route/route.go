@@ -6,13 +6,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
-	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	routev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/route"
-
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 )
 
 func (h Handler) ListRoutes(c *gin.Context) {
@@ -20,15 +19,15 @@ func (h Handler) ListRoutes(c *gin.Context) {
 	if !ok {
 		return
 	}
-	page := binding.QueryInt(c.Request.URL.Query().Get("page"), 1)
-	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
+	page := transport.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := transport.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
 	items, err := h.service.ListRoutes(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := routeResponses(items.Items)
-	transportresponse.ProtoJSON(c, http.StatusOK, &routev1.RoutePaginatedResp{Items: transportresponse.Ptrs(resp), Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transportresponse.PageCount(items.Total, items.PerPage))})
+	transport.WriteProtoJSON(c, http.StatusOK, &routev1.RoutePaginatedResp{Items: transport.Ptrs(resp), Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transport.PageCount(items.Total, items.PerPage))})
 }
 
 func (h Handler) CreateRoute(c *gin.Context) {
@@ -37,17 +36,17 @@ func (h Handler) CreateRoute(c *gin.Context) {
 		return
 	}
 	var req routev1.RouteCreateReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.CreateRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routeCreateInput(&req))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
-	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
+	transport.WriteProtoJSON(c, http.StatusCreated, &resp)
 }
 
 func (h Handler) GetRoute(c *gin.Context) {
@@ -57,11 +56,11 @@ func (h Handler) GetRoute(c *gin.Context) {
 	}
 	route, err := h.service.RouteForUser(c.Request.Context(), current.Id, c.Param("route_id"))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) UpdateRoute(c *gin.Context) {
@@ -70,17 +69,17 @@ func (h Handler) UpdateRoute(c *gin.Context) {
 		return
 	}
 	var req routev1.RouteUpdateReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.UpdateRoute(c.Request.Context(), current.Id, c.Param("route_id"), routeUpdateInput(&req))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) DeleteRoute(c *gin.Context) {
@@ -89,7 +88,7 @@ func (h Handler) DeleteRoute(c *gin.Context) {
 		return
 	}
 	if err := h.service.DeleteRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -101,15 +100,15 @@ func (h Handler) EnableRoute(c *gin.Context) {
 		return
 	}
 	var req routev1.RouteEnableReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if _, err := h.service.EnableRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &routev1.RouteEnableResp{Message: "Route enabled successfully"})
+	transport.WriteProtoJSON(c, http.StatusOK, &routev1.RouteEnableResp{Message: "Route enabled successfully"})
 }
 
 func (h Handler) DisableRoute(c *gin.Context) {
@@ -118,15 +117,15 @@ func (h Handler) DisableRoute(c *gin.Context) {
 		return
 	}
 	var req routev1.RouteDisableReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if _, err := h.service.DisableRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &routev1.RouteDisableResp{Message: "Route disabled successfully"})
+	transport.WriteProtoJSON(c, http.StatusOK, &routev1.RouteDisableResp{Message: "Route disabled successfully"})
 }
 
 func (h Handler) PreviewRouteSync(c *gin.Context) {
@@ -135,17 +134,17 @@ func (h Handler) PreviewRouteSync(c *gin.Context) {
 		return
 	}
 	var req routev1.RouteSyncPreviewReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	preview, err := h.service.PreviewRouteSync(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routeSyncChanges(req.Changes))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	response := routeSyncPreviewResponse(preview)
-	transportresponse.ProtoJSON(c, http.StatusOK, &response)
+	transport.WriteProtoJSON(c, http.StatusOK, &response)
 }
 
 func (h Handler) ConfirmRouteSync(c *gin.Context) {
@@ -154,8 +153,8 @@ func (h Handler) ConfirmRouteSync(c *gin.Context) {
 		return
 	}
 	var req routev1.RouteSyncConfirmReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if err := h.service.ConfirmRouteSync(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routedto.RouteSyncConfirmInput{
@@ -163,10 +162,10 @@ func (h Handler) ConfirmRouteSync(c *gin.Context) {
 		BusinessHash: req.BusinessHash,
 		TraefikHash:  req.TraefikHash,
 	}); err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &routev1.RouteSyncConfirmResp{Message: "Routes synced successfully"})
+	transport.WriteProtoJSON(c, http.StatusOK, &routev1.RouteSyncConfirmResp{Message: "Routes synced successfully"})
 }
 
 func (h Handler) UploadRouteCert(c *gin.Context) {
@@ -176,28 +175,28 @@ func (h Handler) UploadRouteCert(c *gin.Context) {
 	}
 	file, _, err := c.Request.FormFile("pem")
 	if err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "pem is required")
+		transport.WriteStatusError(c, http.StatusBadRequest, "pem is required")
 		return
 	}
 	defer func() { _ = file.Close() }()
 	var content bytes.Buffer
 	if _, err := content.ReadFrom(file); err != nil {
 		h.logger.Error("read certificate upload failed", "route_id", c.Param("route_id"), "error", err)
-		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
+		transport.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	certPEM, certKey, ok := splitPEM(content.Bytes())
 	if !ok {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid PEM certificate")
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid PEM certificate")
 		return
 	}
 	route, err := h.service.UploadRouteCert(c.Request.Context(), current.Id, c.Param("route_id"), certPEM, certKey)
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) DisableRouteHTTPS(c *gin.Context) {
@@ -207,11 +206,11 @@ func (h Handler) DisableRouteHTTPS(c *gin.Context) {
 	}
 	route, err := h.service.DisableRouteHTTPS(c.Request.Context(), current.Id, c.Param("route_id"))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) EnableRouteLetsEncrypt(c *gin.Context) {
@@ -220,17 +219,17 @@ func (h Handler) EnableRouteLetsEncrypt(c *gin.Context) {
 		return
 	}
 	var req routev1.RouteLetsEncryptEnableReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.EnableRouteLetsEncrypt(c.Request.Context(), current.Id, c.Param("route_id"), req.Challenge)
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) EnableRouteMkcert(c *gin.Context) {
@@ -239,17 +238,17 @@ func (h Handler) EnableRouteMkcert(c *gin.Context) {
 		return
 	}
 	var req routev1.RouteMkcertEnableReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.EnableRouteMkcert(c.Request.Context(), current.Id, c.Param("route_id"))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := routeResponse(route)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) GetTraefikRouteConfig(c *gin.Context) {
@@ -259,11 +258,11 @@ func (h Handler) GetTraefikRouteConfig(c *gin.Context) {
 	}
 	config, err := h.service.TraefikRouteConfig(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := traefikConfigResponse(config)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) ListTraefikRoutes(c *gin.Context) {
@@ -274,14 +273,14 @@ func (h Handler) ListTraefikRoutes(c *gin.Context) {
 	items, err := h.service.ListTraefikRoutes(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"))
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "无法连接到 Traefik:") {
-			transportresponse.WriteError(c, apperror.Wrap(apperror.KindUnavailable, "", err))
+			transport.WriteError(c, apperror.Wrap(apperror.KindUnavailable, "", err))
 			return
 		}
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := traefikRouteListResponse(items)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
 
 func splitPEM(content []byte) (string, string, bool) {

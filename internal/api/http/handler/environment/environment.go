@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
-	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	environmentv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/environment"
 )
@@ -18,11 +18,11 @@ func (h Handler) GetProjectEnvironment(c *gin.Context) {
 	}
 	item, err := h.service.EnvironmentForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	response := environmentResponse(item)
-	transportresponse.ProtoJSON(c, http.StatusOK, response)
+	transport.WriteProtoJSON(c, http.StatusOK, response)
 }
 
 func (h Handler) UpdateProjectEnvironment(c *gin.Context) {
@@ -31,17 +31,17 @@ func (h Handler) UpdateProjectEnvironment(c *gin.Context) {
 		return
 	}
 	var req environmentv1.ProjectEnvironmentUpdateReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	item, err := h.service.UpdateForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), projectEnvironmentUpdateInput(&req))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	response := environmentResponse(item)
-	transportresponse.ProtoJSON(c, http.StatusOK, response)
+	transport.WriteProtoJSON(c, http.StatusOK, response)
 }
 
 func (h Handler) ProbeProjectEnvironment(c *gin.Context) {
@@ -51,11 +51,11 @@ func (h Handler) ProbeProjectEnvironment(c *gin.Context) {
 	}
 	item, err := h.service.ProbeForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	response := environmentResponse(item)
-	transportresponse.ProtoJSON(c, http.StatusOK, response)
+	transport.WriteProtoJSON(c, http.StatusOK, response)
 }
 
 func (h Handler) InitializeProjectEnvironment(c *gin.Context) {
@@ -64,17 +64,17 @@ func (h Handler) InitializeProjectEnvironment(c *gin.Context) {
 		return
 	}
 	var req environmentv1.ProjectEnvironmentInitializeReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	item, err := h.service.InitializeForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), projectEnvironmentInitializeInput(&req))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	response := environmentResponse(item)
-	transportresponse.ProtoJSON(c, http.StatusOK, response)
+	transport.WriteProtoJSON(c, http.StatusOK, response)
 }
 
 func projectEnvironmentUpdateInput(req *environmentv1.ProjectEnvironmentUpdateReq) environmentdto.UpdateInput {
@@ -111,11 +111,11 @@ func environmentResponse(item environmentdto.View) *environmentv1.EnvironmentRes
 		TargetRevision:       item.TargetRevision,
 		LastProbeRevision:    item.LastProbeRevision,
 		LastProbeStatus:      item.LastProbeStatus,
-		LastProbeAt:          transportresponse.FormatOptionalTime(item.LastProbeAt),
+		LastProbeAt:          transport.FormatOptionalTime(item.LastProbeAt),
 		LastProbeDiagnostic:  item.LastProbeDiagnostic,
 		GatewayApplicationId: item.GatewayApplicationId,
-		CreatedAt:            transportresponse.FormatTime(item.CreatedAt),
-		UpdatedAt:            transportresponse.FormatTime(item.UpdatedAt),
+		CreatedAt:            transport.FormatTime(item.CreatedAt),
+		UpdatedAt:            transport.FormatTime(item.UpdatedAt),
 	}
 	if item.SSH != nil {
 		response.Ssh = &environmentv1.EnvironmentSSHTargetResp{

@@ -1,7 +1,7 @@
 package repositoryhandler
 
 import (
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	commonv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
 )
 
@@ -17,8 +17,8 @@ func variableDeclarationResponse(item map[string]any) commonv1.VariableDeclarati
 	return commonv1.VariableDeclarationResp{
 		Name:        stringFromMap(item, "name"),
 		Description: stringFromMap(item, "description"),
-		Default:     transportresponse.ProtoValue(item["default"]),
-		Value:       transportresponse.ProtoValue(item["value"]),
+		Default:     transport.ProtoValue(item["default"]),
+		Value:       transport.ProtoValue(item["value"]),
 		Secret:      boolFromMap(item, "secret"),
 		Source:      stringFromMap(item, "source"),
 		Editable:    boolFromMap(item, "editable"),
@@ -42,8 +42,8 @@ func variableDeclarationRequestMap(item *commonv1.VariableDeclarationReq) map[st
 	return map[string]any{
 		"name":        item.Name,
 		"description": item.Description,
-		"default":     transportresponse.NativeValue(item.Default),
-		"value":       transportresponse.NativeValue(item.Value),
+		"default":     transport.NativeValue(item.Default),
+		"value":       transport.NativeValue(item.Value),
 		"secret":      item.Secret,
 		"source":      item.Source,
 		"editable":    item.Editable,

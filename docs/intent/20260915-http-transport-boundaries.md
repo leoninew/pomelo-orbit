@@ -1,43 +1,48 @@
 # HTTP Transport 边界收敛
-最后修改时间: 2026-09-15 22:46:20
+最后修改时间: 2026-09-16 09:56:29
 
-Review status: Draft
+Review status: Accepted
 
 Mode: standard
 
 ## Background
 
-当前 HTTP 入站适配层将请求解码、protobuf JSON 编解码、成功响应、错误契约、分页与 proto 字段转换分散在 `internal/api/http/binding`、`codec`、`response` 三个包中。`response` 还同时承载 HTTP status 映射、request ID 错误 body、`structpb.Value`、可选标量和 RFC3339 格式化，成为跨 handler 的杂项依赖。
+HTTP 入站适配层目前将请求解码、protobuf JSON 编解码、成功输出、错误契约和通用 proto 字段转换拆在 `internal/api/http/binding`、`codec`、`response` 三个包。`response` 同时承担成功 proto 输出、错误分类与输出、分页、时间和 `structpb` 转换，包名无法表达这些职责。
 
-现有 HTTP API 的所有 JSON 请求体均为生成的 protobuf message。成功响应以 `protojson` 输出，错误响应使用稳定的 `{code, error, requestId}` JSON 契约；NoRoute、NoMethod、CORS 拒绝、认证授权和 panic recovery 已复用统一错误 writer。
+现有 HTTP 请求体均为生成的 protobuf message。`codec` 是 `protojson` options 的唯一 owner；常规 HTTP 响应、SSE 和 task payload 均复用其编码规则。所有应用负责的失败边界，包括 NoRoute、NoMethod、认证授权、CORS 拒绝和 panic recovery，均调用 `response.WriteError` 或 `response.WriteStatusError`。HTTP adapter 外的 application、model、repository 与 infrastructure 当前未依赖 `internal/gen/proto`。
 
 ## Goal
 
-将已有共享 HTTP transport 支持做包结构收敛和冗余消除，使 handler 能明确完成“解码 proto 请求、映射 DTO、调用 usecase、输出成功或错误响应”的既有流程。
-
-保持 HTTP 对外 proto JSON 与错误响应契约、应用层边界、请求校验规则和所有现有行为不变。
+1. 将共享 HTTP transport 能力收敛到唯一的 `internal/api/http/transport` 包，以职责清楚的源文件组织请求解码与 query 读取、protobuf JSON 编解码、成功输出、错误映射与输出、mapper 辅助转换。
+2. 删除没有实际调用方的泛化能力和仅提供一次转发价值的 helper；不以新的包装层替代它们。
+3. 让 handler 保持既有的适配器职责：解码 proto 请求、映射 DTO、调用 usecase、输出成功或错误响应；生成 proto 类型继续限定在 HTTP transport adapter。
+4. 保持所有可观察 HTTP 行为不变，包括 proto JSON、错误响应、HTTP status、headers、request ID、校验和 query 默认值语义。
 
 ## Non-goal
 
-- 不让 application、model、repository 或 infrastructure 直接依赖 `internal/gen/proto`。
-- 不改用 Gin 标准 JSON binding，也不以 `encoding/json` 替代 protobuf JSON。
-- 不迁移至 RFC 9457 Problem Details，或改变既有错误字段、snake_case proto JSON、`EmitUnpopulated` 和未知字段拒绝语义。
-- 不重设计或重新实现业务错误分类、HTTP status 映射、响应格式、请求校验、分页业务规则、HTTP 路由或 MCP 契约。
-- 不改变非法 query 参数回退默认值、请求体读取或 middleware 顺序等现有行为。
+- 不让 application、model、repository 或 infrastructure 依赖 `internal/gen/proto`。
+- 不改用 Gin 标准 JSON binding 或 `encoding/json` 替代 protobuf JSON。
+- 不改变 proto JSON 的 snake_case 字段名、`EmitUnpopulated`、未知字段拒绝，或新增另一套 options owner。
+- 不重设计应用错误分类、HTTP status 映射、错误 body、请求校验、分页规则、HTTP 路由、middleware 顺序或 MCP 契约。
+- 不改变 CORS 预检成功响应、非法 query 参数回退、请求体读取、SSE 或 task payload 的现有语义。
+- 不顺带修正或重写与本次包收敛无关的日志字段、业务 mapper 或前端行为。
 
 ## User scenarios
 
-1. HTTP handler 接收任一 proto 请求时，继续通过统一 protobuf JSON 解码入口读取 body，并在无效 JSON 时返回既有 400 错误契约。
-2. HTTP handler 返回 proto message 时，继续以既有字段命名和空值规则输出；SSE 与 task payload 继续复用相同 protobuf JSON 编解码规则。
-3. 应用错误、认证授权失败、CORS 拒绝、路由 fallback 和 recovery 继续通过同一错误 writer 输出既有 status、code 和 request ID，且 5xx 继续脱敏。
+1. HTTP handler 接收任一 proto 请求时，仍通过统一 protobuf JSON 解码入口读取 body；无效 JSON 继续返回既有 `400` 错误契约。
+2. HTTP handler 返回 proto message 时，继续以既有字段命名和空值规则输出；SSE 与 task payload 继续复用同一 protobuf JSON 编解码规则。
+3. 应用错误、认证授权失败、CORS 拒绝、路由 fallback 和 recovery 继续通过同一错误 writer 输出既有 status、code 和 request ID；5xx 继续脱敏。
+4. handler mapper 继续可使用分页、时间、optional scalar 和 `structpb.Value` 辅助转换，但这些转换不再归入语义为 response 的包。
 
 ## Acceptance
 
-- 消除未被实际调用的泛化和仅转发一次的 helper，且不引入等价的新冗余。
-- protobuf JSON 的 marshal/unmarshal options 仍只有一个受控 owner；常规 HTTP、SSE 和 task payload 的 JSON 语义保持一致。
-- 成功响应、错误响应和字段转换不再混杂在语义为 `response` 的杂项包中；目录和导出 API 能表达请求、编码、输出、错误映射和 mapper 辅助转换的职责。
-- 保持既有错误 body、HTTP status、401 `WWW-Authenticate`、405 `Allow`、request ID 透传/生成、5xx 脱敏、请求校验和 query 参数语义。
-- 相关 Go 测试通过，并证明重组前后的 HTTP 可观察行为等价。
+- [ ] `internal/api/http/binding`、`codec`、`response` 的职责与调用方收敛到 `internal/api/http/transport`；不保留并行 transport 子包或旧包兼容入口。
+- [ ] 请求解码仅保留实际需要的 protobuf JSON 路径；不存在无调用方的普通 JSON fallback 或仅转发一次的同义 helper。
+- [ ] protobuf JSON marshal/unmarshal options 只有一个受控 owner；常规 HTTP、SSE 和 task payload 的 JSON 语义保持一致。
+- [ ] 成功 proto 输出、错误输出和 mapper 辅助转换在 transport 包内职责分明，不再混杂在 `response` 包。
+- [ ] 错误 body `{code, error, requestId}`、HTTP status、401 `WWW-Authenticate`、405 `Allow`、request ID 透传或生成、5xx 脱敏、请求校验与 query 语义保持不变。
+- [ ] HTTP adapter 之外仍无 `internal/gen/proto` 依赖；handler 不引入业务错误到 HTTP status 的分支表。
+- [ ] 相关 Go 测试证明重组前后的 HTTP 可观察行为等价，并通过 `task check` 和 `go test ./cmd/... ./internal/...`。
 
 ## Open questions
 
@@ -45,20 +50,24 @@ Mode: standard
 
 ## Decisions
 
-- protobuf 生成类型继续限定在 HTTP transport adapter，应用层使用 DTO、model 与 port。
-- 保留项目既有 `{code, error, requestId}` 错误契约；RFC 9457 仅作为外部参考，不作为本次迁移目标。
-- Gin custom renderer 与 `protojson` 是保留能力；任务目标是收敛 owner 和调用入口，而非替换协议实现。
-- 本任务只做包结构重组与冗余消除；不顺带改变 response、error、validation、query 或 body handling 行为。
-- 共享 HTTP transport 能力收敛到单一 `internal/api/http/transport` 包；以职责清楚的源文件划分内部实现，不保留多个 transport 子包。
+- 采用标准模式 / standard。
+- 使用单一 `internal/api/http/transport` 包，不保留 `binding`、`codec`、`response` 等并行包或兼容导入路径。
+- 包内按职责划分源文件，而不是为每项能力继续创建 transport 子包。
+- protobuf 生成类型只在 HTTP transport adapter 使用；应用层继续使用 DTO、model 与 port。
+- 保持已有 `{code, error, requestId}` 错误契约；RFC 9457 不在本次范围内。
+- 以删除无用泛化和一次性转发为准，不用别名、deprecated wrapper 或新旧 API 并存维持旧 import path。
 
 ## Risk
 
-- 当前 `WriteStatusError` 有大量 handler、认证和 middleware 调用点；必须分阶段迁移，避免改变 400、401、403、404 和 503 现有语义。
-- 跨包移动 protobuf JSON、错误 writer 和 mapper 辅助函数时，必须避免 import cycle，并保持 SSE 与 task payload 的复用路径。
-- 工作区存在与本任务无关的进行中修改；实施时不得覆盖或混入这些变更。
+- `WriteError` 和 `WriteStatusError` 被 handler、认证、middleware、router fallback 广泛调用；移动时必须保证所有入口仍复用一个错误 writer。
+- 当前成功输出函数与 protobuf renderer 类型有同名概念；合并为一个 Go package 时需要选择职责清楚且不冲突的标识符，不能用仅转发的兼容符号规避。
+- `DecodeJSONReader`、query pointer helper 和通用 mapper 的保留与删除必须以真实调用方为依据，不能因重组而改变空值或默认值语义。
+- 本任务是包结构收敛，现有日志中的 `uri` 字段等与响应契约无关的观察项不在范围内。
 
 ## User review notes
 
 - 2026-09-15：用户要求以标准模式记录本任务。
 - 2026-09-15：用户明确本任务仅整理已有包结构与消除冗余，不重新实现或改变响应格式、校验规则及其他既有行为。
 - 2026-09-15：用户选择单一 `internal/api/http/transport` 包。
+- 2026-09-16：用户要求推进工作；本 Intent 已接受。
+- 2026-09-16：用户要求开始 Plan；本 Intent 作为计划依据继续有效。

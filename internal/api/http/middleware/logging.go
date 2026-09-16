@@ -13,10 +13,11 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 )
@@ -130,7 +131,7 @@ func Recovery(logger *slog.Logger) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", fmt.Errorf("panic: %v", recovered)))
+		transport.WriteError(c, apperror.Wrap(apperror.KindInternal, "", fmt.Errorf("panic: %v", recovered)))
 	})
 }
 

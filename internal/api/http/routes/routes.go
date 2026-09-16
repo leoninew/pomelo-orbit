@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 
 	"github.com/gin-gonic/gin"
 	authhandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/auth"
@@ -82,7 +82,7 @@ func (r Router) Handler() http.Handler {
 	engine.Use(transportmiddleware.Recovery(r.logger))
 	engine.Use(transportmiddleware.Cors(r.cfg.Server.CorsAllowedOrigins, r.cfg.Server.ApiPathPrefixes))
 	engine.GET("/api/health", func(c *gin.Context) {
-		transportresponse.ProtoJSON(c, http.StatusOK, &commonv1.HealthResp{Status: "ok"})
+		transport.WriteProtoJSON(c, http.StatusOK, &commonv1.HealthResp{Status: "ok"})
 	})
 	// Dialogue requests can run external LLM and MCP calls. The MCP server owns
 	// transactions for its tool writes, so this route must not hold a request UoW.

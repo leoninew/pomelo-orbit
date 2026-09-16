@@ -1,7 +1,7 @@
 package credentialhandler
 
 import (
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	credentialdto "github.com/leoninew/pomelo-orbit/internal/application/credential/dto"
 	credentialv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/credential"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -12,7 +12,7 @@ func credentialResponse(item model.Credential) credentialv1.CredentialResp {
 		Id:        item.Id,
 		Name:      item.Name,
 		Type:      item.Type,
-		CreatedAt: transportresponse.FormatTime(item.CreatedAt),
+		CreatedAt: transport.FormatTime(item.CreatedAt),
 	}
 }
 

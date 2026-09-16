@@ -1,7 +1,7 @@
 package applicationhandler
 
 import (
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
 	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
 	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
@@ -43,8 +43,8 @@ func applicationResponse(item model.Application) applicationv1.ApplicationResp {
 		Name:      item.Name,
 		Code:      item.Code,
 		Kind:      item.Kind,
-		CreatedAt: transportresponse.FormatTime(item.CreatedAt),
-		UpdatedAt: transportresponse.FormatTime(item.UpdatedAt),
+		CreatedAt: transport.FormatTime(item.CreatedAt),
+		UpdatedAt: transport.FormatTime(item.UpdatedAt),
 	}
 }
 
@@ -56,7 +56,7 @@ func serviceResponse(item model.Service) servicev1.ServiceResp {
 		Code:          item.Code,
 		VersionId:     item.VersionId,
 		Status:        item.Status,
-		CreatedAt:     transportresponse.FormatTime(item.CreatedAt),
-		UpdatedAt:     transportresponse.FormatTime(item.UpdatedAt),
+		CreatedAt:     transport.FormatTime(item.CreatedAt),
+		UpdatedAt:     transport.FormatTime(item.UpdatedAt),
 	}
 }

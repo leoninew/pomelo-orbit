@@ -3,8 +3,8 @@ package taskhandler
 import (
 	"encoding/json"
 
-	transportcodec "github.com/leoninew/pomelo-orbit/internal/api/http/codec"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	taskv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/task"
 	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -36,12 +36,12 @@ func taskResponse(item *tasksvc.Task) taskv1.TaskResp {
 		Attempts:     int32(item.Attempts),
 		MaxAttempts:  int32(item.MaxAttempts),
 		LockedBy:     item.LockedBy,
-		LockedAt:     transportresponse.FormatOptionalTime(item.LockedAt),
-		StartedAt:    transportresponse.FormatOptionalTime(item.StartedAt),
-		FinishedAt:   transportresponse.FormatOptionalTime(item.FinishedAt),
+		LockedAt:     transport.FormatOptionalTime(item.LockedAt),
+		StartedAt:    transport.FormatOptionalTime(item.StartedAt),
+		FinishedAt:   transport.FormatOptionalTime(item.FinishedAt),
 		ErrorMessage: item.ErrorMessage,
-		CreatedAt:    transportresponse.FormatTime(item.CreatedAt),
-		UpdatedAt:    transportresponse.FormatTime(item.UpdatedAt),
+		CreatedAt:    transport.FormatTime(item.CreatedAt),
+		UpdatedAt:    transport.FormatTime(item.UpdatedAt),
 	}
 }
 
@@ -49,7 +49,7 @@ func rawPayload(payload *structpb.Value) json.RawMessage {
 	if payload == nil {
 		return nil
 	}
-	data, err := transportcodec.MarshalProtoJSON(payload)
+	data, err := transport.MarshalProtoJSON(payload)
 	if err != nil {
 		return nil
 	}

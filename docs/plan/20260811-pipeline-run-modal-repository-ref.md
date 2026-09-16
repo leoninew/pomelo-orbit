@@ -7,7 +7,7 @@ Mode: strict
 
 ## Basis
 
-- Requirement: [流水线运行时变量解析与运行弹窗](../requirement/20260811-pipeline-run-modal-repository-ref.md)
+- Requirement: [流水线运行时变量解析与运行弹窗](../intent/20260811-pipeline-run-modal-repository-ref.md)
 - Spec: [流水线运行时变量解析与运行弹窗规格](../spec/20260811-pipeline-run-modal-repository-ref.md)
 
 本计划以一次前后端同版本发布为前提，彻底移除 `trigger_ref`，不提供兼容字段、别名或运行时回退路径。`PipelineSnapshot.variables_snapshot` 继续保存完整可快照化声明历史，但不作为运行时变量解析来源。

@@ -7,7 +7,7 @@ Review status: Accepted
 
 | 文档 | 用途 |
 | --- | --- |
-| [requirement](../requirement/20260724-domain-split-closeout.md) | 最终业务边界、兼容策略与验收要求 |
+| [requirement](../intent/20260724-domain-split-closeout.md) | 最终业务边界、兼容策略与验收要求 |
 | [domain consensus](../analyze/20260724-domain-split-consensus-共识.md) | 领域地图、物理组织和依赖方向 |
 | [route cutover workboard](20260724-domain-route-cutover-00-workboard.md) | 后续 API / SPA 路径硬切换的固定路径地图 |
 

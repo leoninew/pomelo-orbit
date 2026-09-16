@@ -7,7 +7,7 @@ Mode: strict
 
 ## Requirement basis
 
-本规格落实已接受的 [Requirement](../requirement/20260910-project-environment-configuration.md)。目标是将部署配置和生命周期收敛到 Project、Environment、GatewayConfig、Version / Component，同时用 Web Wizard 统一部署资源初始化，并让 Codex stdio MCP 以 connection-local 的已选 Project 执行操作。
+本规格落实已接受的 [Requirement](../intent/20260910-project-environment-configuration.md)。目标是将部署配置和生命周期收敛到 Project、Environment、GatewayConfig、Version / Component，同时用 Web Wizard 统一部署资源初始化，并让 Codex stdio MCP 以 connection-local 的已选 Project 执行操作。
 
 Environment 的历史 `state` 列仅为数据库兼容字段，不进入表单和业务判定；Environment readiness 只依据最新 Probe 与资源完整性。`000042_environment_credential` 对既有 `deployment_ssh_private_key` 的表拆分没有完成数据转换，必须以新的、可重复执行的修复路径消除 Environment 指向 `repository_credential` 而不存在 `environment_credential` 的脏引用。
 

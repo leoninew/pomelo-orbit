@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## Requirement Basis
 
-依据 [Requirement](../requirement/20260825-lan-dns-https-certificates.md)：Application、Version、Component 与 Service 是 Traefik Compose 拓扑唯一来源。GatewayConfig 是业务配置和部署选择器；它不持有也不投影 listener、mount、endpoint 或 resolver 结构。
+依据 [Requirement](../intent/20260825-lan-dns-https-certificates.md)：Application、Version、Component 与 Service 是 Traefik Compose 拓扑唯一来源。GatewayConfig 是业务配置和部署选择器；它不持有也不投影 listener、mount、endpoint 或 resolver 结构。
 
 ## Overview
 
@@ -76,7 +76,7 @@ REST snapshots continue using `letsencrypt` and `letsencrypt-dns`. Manual and mk
 
 ## Scope Boundary
 
-本规格只约束 Gateway profile 对 Route challenge capability、resolver 和 TCP Version endpoint 的影响。Route 业务数据与 Traefik REST provider 的全量同步、前端启停草稿及预览/确认交互属于独立轻量任务，见 [Route REST 快照防误删](../requirement/20260819-route-rest-snapshot-safety.md) 及其验收记录；它不改变本规格的 Gateway 拓扑和 profile 设计。
+本规格只约束 Gateway profile 对 Route challenge capability、resolver 和 TCP Version endpoint 的影响。Route 业务数据与 Traefik REST provider 的全量同步、前端启停草稿及预览/确认交互属于独立轻量任务，见 [Route REST 快照防误删](../intent/20260819-route-rest-snapshot-safety.md) 及其验收记录；它不改变本规格的 Gateway 拓扑和 profile 设计。
 
 ## Interfaces And Cutover
 

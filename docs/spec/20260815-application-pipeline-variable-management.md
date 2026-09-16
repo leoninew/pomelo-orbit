@@ -7,7 +7,7 @@ Mode: standard
 
 ## Requirement Basis
 
-本规格落实 [Requirement](../requirement/20260815-application-pipeline-variable-management.md)。Application Pipeline 的变量配置从运行前临时表单迁移到 Pipeline 详情中的持久化管理；运行只负责按当前配置创建 Run。Template Pipeline 保留既有变量配置交互，不增加 Application Pipeline 的阶段覆盖能力。
+本规格落实 [Requirement](../intent/20260815-application-pipeline-variable-management.md)。Application Pipeline 的变量配置从运行前临时表单迁移到 Pipeline 详情中的持久化管理；运行只负责按当前配置创建 Run。Template Pipeline 保留既有变量配置交互，不增加 Application Pipeline 的阶段覆盖能力。
 
 ## Overview
 

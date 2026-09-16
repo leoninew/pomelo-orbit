@@ -7,7 +7,7 @@ Mode: standard
 
 ## Basis
 
-- Requirement: [流水线阶段变量默认值规范](../requirement/20260906-pipeline-stage-variable-defaults.md)（`Accepted`）
+- Requirement: [流水线阶段变量默认值规范](../intent/20260906-pipeline-stage-variable-defaults.md)（`Accepted`）
 - Plan: [流水线阶段变量默认值规范实施计划](../plan/20260906-pipeline-stage-variable-defaults.md)（`Accepted`）
 
 ## Requirement Alignment

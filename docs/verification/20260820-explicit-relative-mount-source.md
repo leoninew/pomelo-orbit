@@ -6,7 +6,7 @@ Flow mode: light
 
 ## Requirement alignment
 
-对照 [需求文档](../requirement/20260820-explicit-relative-mount-source.md) 验证：非 `named_volume` 的 `directory`、`file`、`controlled_file` source 统一要求绝对路径或显式 `./` 相对路径；裸 source 不再进入 Compose，避免被解释为卷挂载。`named_volume` 继续使用裸卷名。
+对照 [需求文档](../intent/20260820-explicit-relative-mount-source.md) 验证：非 `named_volume` 的 `directory`、`file`、`controlled_file` source 统一要求绝对路径或显式 `./` 相对路径；裸 source 不再进入 Compose，避免被解释为卷挂载。`named_volume` 继续使用裸卷名。
 
 ## Actual diff summary
 

@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求依据
 
-实施已接受的[持续部署对话记录持久化](../requirement/20260815-deployment-dialogue-history.md)。持续部署对话改为项目级 Conversation 与 Message 的持久化模型，通过 RBAC 与项目成员关系控制访问。只保存最终问答；既有工具调用和中间 SSE 事件继续按当前契约实时传输，但不写入记录，也不在历史回放中展示。
+实施已接受的[持续部署对话记录持久化](../intent/20260815-deployment-dialogue-history.md)。持续部署对话改为项目级 Conversation 与 Message 的持久化模型，通过 RBAC 与项目成员关系控制访问。只保存最终问答；既有工具调用和中间 SSE 事件继续按当前契约实时传输，但不写入记录，也不在历史回放中展示。
 
 ## 实施设计
 

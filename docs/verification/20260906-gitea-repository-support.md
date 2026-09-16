@@ -39,9 +39,9 @@ Review status: Accepted
 - `web/src/views/repository/RepositoryPage.vue`
 - `web/src/views/repository/RepositoryDetail.vue`
 - `docs/guides/ci-pipeline-design.md`
-- `docs/requirement/20260906-gitea-repository-support.md`
+- `docs/intent/20260906-gitea-repository-support.md`
 
-工作区另有未暂存的 `docs/requirement/20260906-mcp-standard-authentication.md` 与 `docs/requirement/20260906-pipeline-stage-variable-defaults.md`，不属于本 feature。
+工作区另有未暂存的 `docs/intent/20260906-mcp-standard-authentication.md` 与 `docs/intent/20260906-pipeline-stage-variable-defaults.md`，不属于本 feature。
 
 ## Acceptance checklist
 

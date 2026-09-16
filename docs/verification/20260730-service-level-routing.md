@@ -7,7 +7,7 @@ Review status: Draft
 
 ## 对齐结论
 
-- [需求](../requirement/20260730-service-level-routing.md)、[规格](../spec/20260730-service-level-routing.md) 与[计划](../plan/20260730-service-level-routing.md)均为 `Accepted`。
+- [需求](../intent/20260730-service-level-routing.md)、[规格](../spec/20260730-service-level-routing.md) 与[计划](../plan/20260730-service-level-routing.md)均为 `Accepted`。
 - 实现将访问暴露的持久化归属从 Version 移至 Service：移除 `VersionExpose`/`version_expose`，新增 `ServiceExpose`/`service_expose`，并由 Service 配置驱动 Compose 端口与 Traefik labels。
 - 标准 Service 部署继续校验 Gateway 存在且运行。缺少 public TCP entrypoint 时返回 warning 并继续入队；业务部署路径不再编译、写入、重建或部署 Gateway。
 - Version 的运行时部署与 Compose preview 契约、HTTP 路由及 Web/MCP 调用已移除，Service 成为 preview/deploy 的唯一入口。

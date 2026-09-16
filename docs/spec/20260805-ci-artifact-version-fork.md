@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## Requirement basis
 
-- 依据 [CI 制品关联应用版本 Requirement](../requirement/20260805-ci-artifact-version-fork.md)，该需求已接受。
+- 依据 [CI 制品关联应用版本 Requirement](../intent/20260805-ci-artifact-version-fork.md)，该需求已接受。
 - 范围是本地构建镜像制品、Application Version fork 和制品血缘；不涉及 Service 部署、registry 或 MCP 行为。
 
 ## Overview

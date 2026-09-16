@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## 需求对齐
 
-按 `docs/requirement/20260815-gateway-rest-deployment-boundary.md` 核对。该任务采用轻量模式 / light；无独立 Spec 或 Plan，按已接受的 Requirement 验证。
+按 `docs/intent/20260815-gateway-rest-deployment-boundary.md` 核对。该任务采用轻量模式 / light；无独立 Spec 或 Plan，按已接受的 Requirement 验证。
 
 - 普通 Service 的 Deploy 与 Restart 已不再包含 `EnsureGatewayRunning` 运行态预检；全仓 `internal/`、`proto/`、`web/` 无此符号引用。
 - `join_traefik_network` 已进入 HTTP、MCP、Proto、Web API、部署选项和有效计划哈希；省略时为 `true`。
@@ -18,7 +18,7 @@ Review status: Accepted
 
 | 范围 | 实际文件 |
 | --- | --- |
-| 过程文档 | `docs/requirement/20260815-gateway-rest-deployment-boundary.md` |
+| 过程文档 | `docs/intent/20260815-gateway-rest-deployment-boundary.md` |
 | 部署领域 | `internal/application/deployment/{dto,usecase}`、`internal/model/effective_service_plan.go` |
 | Gateway 回归测试 | `internal/application/gateway/usecase/deployment_test.go` |
 | 传输层与协议 | HTTP handler、MCP delivery、`proto/orbit/v1/{application/version,service/service}.proto` 及生成文件 |

@@ -51,7 +51,7 @@
 
 | 状态 | 路径 |
 |------|------|
-| 进行中 | `docs/requirement/`、`docs/spec/`、`docs/plan/`、`docs/verification/` |
+| 进行中 | `docs/intent/`、`docs/spec/`、`docs/plan/`、`docs/verification/` |
 | 已归档（无须采信） | [archive/specflow/](./archive/specflow/) |
 
 ## 归档索引（无须采信）

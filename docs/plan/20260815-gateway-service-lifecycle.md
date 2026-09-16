@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Basis
 
-本计划实施已接受的 `docs/requirement/20260815-gateway-service-lifecycle.md` 与 `docs/spec/20260815-gateway-service-lifecycle.md`。Gateway 创建生成初始 Application、GatewayConfig、可编辑 Version/Component 和默认停止态 Service；后续配置与部署复用普通 Application/Version/Service/Deployment 模型。
+本计划实施已接受的 `docs/intent/20260815-gateway-service-lifecycle.md` 与 `docs/spec/20260815-gateway-service-lifecycle.md`。Gateway 创建生成初始 Application、GatewayConfig、可编辑 Version/Component 和默认停止态 Service；后续配置与部署复用普通 Application/Version/Service/Deployment 模型。
 
 ## Implementation steps
 

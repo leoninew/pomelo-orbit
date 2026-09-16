@@ -7,9 +7,9 @@ Mode: standard
 
 ## Basis
 
-- Requirement: `docs/requirement/20260909-environment-architecture-boundaries.md`（Accepted）
+- Requirement: `docs/intent/20260909-environment-architecture-boundaries.md`（Accepted）
 - 无独立 Spec；标准模式直接计划。
-- 并行需求 `docs/requirement/20260909-environment-workspace-ownership.md` 不在本计划实现。本计划只收口分层与装配，不定义工作目录产品来源。
+- 并行需求 `docs/intent/20260909-environment-workspace-ownership.md` 不在本计划实现。本计划只收口分层与装配，不定义工作目录产品来源。
 
 ## Delivery boundary
 

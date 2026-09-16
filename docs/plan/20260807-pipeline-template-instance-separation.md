@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## Input and boundary
 
-- 依据已接受的 [Requirement](../requirement/20260807-pipeline-template-instance-separation.md) 和 [Spec](../spec/20260807-pipeline-template-instance-separation.md)。
+- 依据已接受的 [Requirement](../intent/20260807-pipeline-template-instance-separation.md) 和 [Spec](../spec/20260807-pipeline-template-instance-separation.md)。
 - 实现目标是以 `Pipeline(kind=template|application)` 取代现有 Template、全局 Stage 和 Template Snapshot 运行模型。
 - 业务代码、HTTP/Proto、Web 与测试只支持新模型；不保留旧路由、字段、DTO、SQL 查询或运行时分支。
 - 开发数据库的就地结构和数据切换由独立脚本或 CI 作业实现，不嵌入业务运行时。用户已授权在本计划中补充独立 SQLite 切换脚本；它不修改已执行迁移文件或 `schema_migrations`，也不为业务代码增加兼容路径。

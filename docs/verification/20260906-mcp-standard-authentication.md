@@ -7,7 +7,7 @@ Flow mode: standard
 
 ## 需求对齐
 
-- 对照已接受的 [MCP 调用认证边界重构需求](../requirement/20260906-mcp-standard-authentication.md) 与 [实施计划](../plan/20260906-mcp-standard-authentication.md)。本功能没有独立 Spec，按 standard 流程以 Requirement 和 Plan 为依据验收。
+- 对照已接受的 [MCP 调用认证边界重构需求](../intent/20260906-mcp-standard-authentication.md) 与 [实施计划](../plan/20260906-mcp-standard-authentication.md)。本功能没有独立 Spec，按 standard 流程以 Requirement 和 Plan 为依据验收。
 - Web Dialogue 的 HTTP 入站认证只将当前用户 ID 传入 Dialogue Service；Dialogue MCP factory 用该 ID 建立每 turn 独立的内存 transport session，不再传递浏览器 `Authorization` 或访问 HTTP `/mcp`。
 - 本地 stdio MCP 通过 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 获取 MCP PAT。`initialize` 与 `tools/list` 不触发认证；每次 `tools/call` 重新认证 PAT 并校验固定 session actor，认证失败不会执行业务工具。
 - 已登录用户可在“系统管理 / 访问令牌”创建、查看和撤销命名 PAT。创建响应只返回一次明文，数据库只保存 SHA-256 摘要；PAT 支持有限有效期，撤销、过期、篡改或用户禁用均被拒绝。

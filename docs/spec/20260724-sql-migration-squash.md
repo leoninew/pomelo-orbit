@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Requirement basis
 
-- Requirement: `docs/requirement/20260724-sql-migration-squash.md`（Accepted）
+- Requirement: `docs/intent/20260724-sql-migration-squash.md`（Accepted）
 - Domain baseline: `docs/analyze/20260724-domain-split-consensus-共识.md`
 - 现状：粗拆 `000014`–`000019`（`ci_schema`/`cd_schema` 等）待替换
 

@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Basis
 
-- Requirement: `docs/requirement/20260727-mcp-deployment-testability.md` (`Accepted`)
+- Requirement: `docs/intent/20260727-mcp-deployment-testability.md` (`Accepted`)
 - Spec: `docs/spec/20260727-mcp-deployment-testability.md` (`Accepted`)
 - Flow mode: `standard` / 标准模式。
 - 本计划只实现已接受规格，不新增部署脚本、初始化器、journal、`cleanup` 工具或 `data/` 目录行为。

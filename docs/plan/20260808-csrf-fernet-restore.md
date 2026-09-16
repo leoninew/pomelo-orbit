@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求依据
 
-- [需求](../requirement/20260808-csrf-fernet-restore.md) 已接受。
+- [需求](../intent/20260808-csrf-fernet-restore.md) 已接受。
 - 后端用 Fernet（非 JWT）签发/校验登录 CSRF；明文类型固定为 `csrf`；有效期 **3 分钟**，过期判定用 **Fernet 内置 timestamp + TTL**。
 - 密钥源：`cfg.Jwt.SecretKey`（与 Credential 加密一致）。
 - 登录页：初始化完成前 Login 禁用；初始化成功后 3 分钟内可登录；到期 Login 不可继续并提示刷新；**不**静默续签。

@@ -50,5 +50,5 @@ CI 的详细模型、API 与变量语义见 [CI 流水线设计](../guides/ci-pi
 | 类型 | 路径 | 用途 |
 |------|------|------|
 | 活 SoT | `docs/product`、`architecture`、`decisions`、校准后的 `guides`/`frontend` | 实现与评审默认依据 |
-| 过程文档 | `docs/requirement\|spec\|plan\|verification` | **仅进行中** SpecFlow 任务 |
+| 过程文档 | `docs/intent\|spec\|plan\|verification` | **仅进行中** SpecFlow 任务 |
 | 归档 | `docs/archive/**` | 历史；**无须采信** |

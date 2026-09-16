@@ -7,7 +7,7 @@ Mode: standard
 
 ## Basis
 
-- Requirement: [Environment 工作目录归属需求](../requirement/20260909-environment-workspace-ownership.md)（`Accepted`）。
+- Requirement: [Environment 工作目录归属需求](../intent/20260909-environment-workspace-ownership.md)（`Accepted`）。
 - 无独立 Spec；本任务采用 standard 模式，直接从 Requirement 进入 Plan。
 - 当前暂存的 `20260902-remote-ssh-deployment-environments` 已建立 `local | ssh` 显式 target、共享 runtime dispatcher 与 `environment.workspace_root` 列。本任务只改变工作目录的所有权和读取路径。
 - 并行的 [Environment 分层边界收敛计划](20260909-environment-architecture-boundaries.md) 负责 View、Prober、HTTP/MCP mapper 和 runtime 工厂等分层整理；本计划不重复实现其边界调整。

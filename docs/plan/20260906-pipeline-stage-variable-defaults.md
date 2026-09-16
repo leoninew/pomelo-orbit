@@ -7,7 +7,7 @@ Mode: standard
 
 ## Basis
 
-- Requirement: [流水线阶段变量默认值规范](../requirement/20260906-pipeline-stage-variable-defaults.md)（`Accepted`）
+- Requirement: [流水线阶段变量默认值规范](../intent/20260906-pipeline-stage-variable-defaults.md)（`Accepted`）
 - 当前实现：Go Liquid 渲染器位于 `internal/common/template`；流水线变量提取、合并和运行时解析位于 `internal/application/pipeline/rule/pipelinevariable`。
 
 本计划采用 Liquid 单一变量规范：`{{ NAME }}` 表示必填，`{{ NAME | default: "value" }}` 表示阶段位置级默认值。不增加 `${NAME:-default}` 或其他默认语法的兼容路径。

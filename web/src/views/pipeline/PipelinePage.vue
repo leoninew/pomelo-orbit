@@ -111,7 +111,7 @@
     </div>
   </div>
 
-  <AppDialog v-model:open="createOpen" title="新建流水线模板">
+  <AppDialog v-model:open="createOpen" title="创建流水线模板">
     <form class="space-y-4" @submit.prevent="createTemplate">
       <div class="space-y-1.5">
         <label class="app-field-label block">
@@ -135,7 +135,7 @@
     </template>
   </AppDialog>
 
-  <AppDialog v-model:open="editOpen" title="编辑流水线信息">
+  <AppDialog v-model:open="editOpen" title="编辑流水线">
     <form class="space-y-4" @submit.prevent="savePipelineInfo">
       <div class="space-y-1.5">
         <label class="app-field-label block">
@@ -178,7 +178,7 @@
 
   <AppDialog
     v-model:open="instantiateOpen"
-    title="从模板创建应用流水线"
+    title="创建应用流水线"
     width-class="w-[min(760px,calc(100vw-32px))]"
     body-class="max-h-[72vh] space-y-4 overflow-y-auto px-6 py-4"
   >
@@ -628,7 +628,7 @@
     const detail = await pipelineApi.get(projectId, template.id);
     selectedTemplate.value = detail;
     Object.assign(instantiateForm, {
-      name: `${detail.name}-应用流水线`,
+      name: detail.name,
       applicationId: '',
       repositoryId: '',
       versionForkStrategy: 'latest',

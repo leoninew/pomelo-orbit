@@ -23,6 +23,9 @@ go env -w GOPROXY=https://goproxy.cn,direct
 go install golang.org/x/lint/golint@latest
 golint ./...', '运行 Go 代码质量', 4, NULL, NULL, NULL, NULL, '[]', NULL, NULL),
     ('01KRCWNJVA1DM02TJXZ4STJD01', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'git clone', 'alpine/git', 'set -e
+# 将目录所有权改为当前执行用户
+chown -R $(id -u):$(id -g) /workspace
+
 # 强制全局关闭 SSL 验证
 git config --global http.sslVerify "false"
 git config --system http.sslVerify "false"
@@ -33,8 +36,7 @@ git init
 git remote remove origin 2>/dev/null || true
 git remote add origin {{ repository_url }}
 # 拉取代码
-git fetch --depth=1 --no-tags --force origin {{ repository_ref }}
-# 清理未跟踪源码，保留 Git 忽略的依赖缓存
+git fetch --depth=1 --force origin {{ repository_ref }}
 git clean -fd
 git checkout --force -B {{ repository_ref }} FETCH_HEAD', 'Clone source repository', 2, NULL, NULL, NULL, NULL, '[{"collector":"command","command":"git rev-parse HEAD","format":"git_object_id","name":"source_commit"}]', NULL, NULL),
     ('01KRCWNJVA1DM02TJXZ4STJD06', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'docker build', 'docker:29.4', 'set -e
@@ -57,6 +59,9 @@ docker build -f {{ repository_dockerfile }} \
 -- pipeline_stage_reference: 6 row(s).
 INSERT INTO "pipeline_stage_reference" ("id", "pipeline_id", "source_template_stage_id", "source_template_stage_name", "source_template_stage_version", "source_template_stage_description", "name", "image", "script", "description", "artifacts", "depends_on", "sort_order") VALUES
     ('01KZGBG9NT6NCK8AT6H6ENV874', '01KZG83K2MXG08EJ6G48SG38B3', '01KRCWNJVA1DM02TJXZ4STJD01', 'git clone', 2, 'Clone source repository', 'git clone', 'alpine/git', 'set -e
+# 将目录所有权改为当前执行用户
+chown -R $(id -u):$(id -g) /workspace
+
 # 强制全局关闭 SSL 验证
 git config --global http.sslVerify "false"
 git config --system http.sslVerify "false"
@@ -67,8 +72,7 @@ git init
 git remote remove origin 2>/dev/null || true
 git remote add origin {{ repository_url }}
 # 拉取代码
-git fetch --depth=1 --no-tags --force origin {{ repository_ref }}
-# 清理未跟踪源码，保留 Git 忽略的依赖缓存
+git fetch --depth=1 --force origin {{ repository_ref }}
 git clean -fd
 git checkout --force -B {{ repository_ref }} FETCH_HEAD', 'Clone source repository', '[{"collector":"command","command":"git rev-parse HEAD","format":"git_object_id","name":"source_commit"}]', '[]', 1),
     ('01KZGBGDK1G249681EVBDA9035', '01KZG83K2MXG08EJ6G48SG38B3', '01KRCWNJVA1DM02TJXZ4STJD06', 'docker build', 3, 'Build container image', 'docker build', 'docker:29.4', 'set -e
@@ -84,6 +88,9 @@ go env -w GOPROXY=https://goproxy.cn,direct
 go install golang.org/x/lint/golint@latest
 golint ./...', '运行 Go 代码质量', '[]', '["vb37nbzugq6pljhkbxm3hiij24"]', 2),
     ('vb37nbzugq6pljhkbxm3hiij24', '01KNVEJPWVK757139NMNNNCEFE', '01KZ5A17696GZ6NS5BS6VJGR9B', 'git clone (backup VJGR9B)', 8, '克隆代码仓库', 'git clone', 'alpine/git', 'set -e
+# 将目录所有权改为当前执行用户
+chown -R $(id -u):$(id -g) /workspace
+
 # 强制全局关闭 SSL 验证
 git config --global http.sslVerify "false"
 git config --system http.sslVerify "false"
@@ -94,8 +101,7 @@ git init
 git remote remove origin 2>/dev/null || true
 git remote add origin {{ repository_url }}
 # 拉取代码
-git fetch --depth=1 --no-tags --force origin {{ repository_ref }}
-# 清理未跟踪源码，保留 Git 忽略的依赖缓存
+git fetch --depth=1 --force origin {{ repository_ref }}
 git clean -fd
 git checkout --force -B {{ repository_ref }} FETCH_HEAD', '克隆代码仓库', '[]', '[]', 0),
     ('yrkdm4fc4wlupvd3ne6ea2ywpe', '01KNVEJPWVK757139NMNNNCEFE', '01KNRDSSJ7RNND7110175N4NR2', 'golang:1.23 build', 5, '运行 Go 构建', 'golang:1.25 build', 'golang:1.23-alpine', 'set -e

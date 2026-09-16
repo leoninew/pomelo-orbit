@@ -795,14 +795,20 @@ func (s Service) validatePipelineConfiguration(ctx context.Context, projectId st
 		return err
 	}
 	dockerArtifacts := dockerImageArtifacts(definitions)
+	if pipeline.ApplicationId == nil {
+		if len(mappings) != 0 {
+			return apperror.New(apperror.KindValidation, "component mappings require an application binding")
+		}
+		if pipeline.VersionForkStrategy != nil || pipeline.FixedVersionId != nil {
+			return apperror.New(apperror.KindValidation, "version strategy requires an application binding")
+		}
+		return nil
+	}
 	if len(dockerArtifacts) == 0 {
 		if pipeline.VersionForkStrategy != nil || pipeline.FixedVersionId != nil {
 			return apperror.New(apperror.KindValidation, "version strategy requires a Docker image artifact")
 		}
 		return nil
-	}
-	if pipeline.ApplicationId == nil {
-		return apperror.New(apperror.KindValidation, "Docker image artifacts require an application binding")
 	}
 	if len(mappings) != len(dockerArtifacts) {
 		return apperror.New(apperror.KindValidation, "every Docker image artifact requires a component binding")

@@ -115,7 +115,7 @@ func TestValidatePipelineConfigurationRejectsComponentMappingWithoutApplicationB
 	}
 }
 
-func TestValidatePipelineConfigurationRequiresComponentBindingForDockerArtifact(t *testing.T) {
+func TestValidatePipelineConfigurationAllowsUnboundDockerArtifact(t *testing.T) {
 	t.Parallel()
 
 	sourcePipelineId, sourceTemplateName := "template-1", "Build template"
@@ -144,12 +144,19 @@ func TestValidatePipelineConfigurationRequiresComponentBindingForDockerArtifact(
 	}}
 
 	err = (Service{}).validatePipelineConfiguration(context.Background(), "project-1", pipeline, stages)
-	if err == nil || !strings.Contains(err.Error(), "Docker image artifacts require an application binding") {
-		t.Fatalf("expected application binding rejection, got %v", err)
+	if err != nil {
+		t.Fatalf("expected unbound Docker artifact to be valid, got %v", err)
+	}
+
+	strategy := model.VersionForkStrategyLatest
+	pipeline.VersionForkStrategy = &strategy
+	err = (Service{}).validatePipelineConfiguration(context.Background(), "project-1", pipeline, stages)
+	if err == nil || !strings.Contains(err.Error(), "version strategy requires an application binding") {
+		t.Fatalf("expected unbound version strategy rejection, got %v", err)
 	}
 
 	applicationId, applicationName := "application-1", "API"
-	pipeline.ApplicationId, pipeline.ApplicationName = &applicationId, &applicationName
+	pipeline.ApplicationId, pipeline.ApplicationName, pipeline.VersionForkStrategy = &applicationId, &applicationName, nil
 	err = (Service{}).validatePipelineConfiguration(context.Background(), "project-1", pipeline, stages)
 	if err == nil || !strings.Contains(err.Error(), "every Docker image artifact requires a component binding") {
 		t.Fatalf("expected component binding rejection, got %v", err)

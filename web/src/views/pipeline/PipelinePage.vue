@@ -155,7 +155,13 @@
         <label class="app-field-label block">说明</label>
         <input v-model="editForm.description" class="app-input" />
       </div>
-      <div v-if="editingPipeline?.kind === 'application'" class="space-y-1.5">
+      <div
+        v-if="
+          editingPipeline?.kind === 'application' &&
+          (editingPipeline.application_id || canEditBindApplication)
+        "
+        class="space-y-1.5"
+      >
         <label class="app-field-label block">应用</label>
         <ComboboxSelect
           v-model="editForm.applicationId"
@@ -210,20 +216,13 @@
         </p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label block">
-          应用
-          <span v-if="dockerArtifacts.length" class="text-destructive">*</span>
-        </label>
+        <label class="app-field-label block">应用</label>
         <ComboboxSelect
           v-model="instantiateForm.applicationId"
           :options="applicationOptions"
-          :invalid="Boolean(instantiateErrors.applicationId)"
-          :placeholder="dockerArtifacts.length ? '选择应用' : '可选'"
+          placeholder="可选"
           @update:model-value="changeInstantiationApplication"
         />
-        <p v-if="instantiateErrors.applicationId" class="app-field-error" role="alert">
-          {{ instantiateErrors.applicationId }}
-        </p>
       </div>
       <template v-if="dockerArtifacts.length && instantiateForm.applicationId">
         <div class="grid gap-4 sm:grid-cols-2">
@@ -390,7 +389,6 @@
   const deleteError = ref('');
   const instantiateErrors = reactive({
     name: '',
-    applicationId: '',
     repositoryId: '',
     versionForkStrategy: '',
     fixedVersionId: '',
@@ -402,9 +400,17 @@
   const applicationOptions = computed(() =>
     applications.value.map((application) => ({ value: application.id, label: application.name }))
   );
-  const canEditBindApplication = computed(
-    () => editingPipeline.value?.kind === 'application' && !editingPipeline.value.application_id
-  );
+  const canEditBindApplication = computed(() => {
+    const pipeline = editingPipeline.value;
+    return Boolean(
+      pipeline &&
+        pipeline.kind === 'application' &&
+        !pipeline.application_id &&
+        !pipeline.stage_nodes.some((stage) =>
+          stage.artifacts.some((artifact) => artifact.collector === 'docker_image')
+        )
+    );
+  });
   const editApplicationOptions = computed(() => {
     const options = editApplications.value.map((application) => ({
       value: application.id,
@@ -630,7 +636,6 @@
     });
     Object.assign(instantiateErrors, {
       name: '',
-      applicationId: '',
       repositoryId: '',
       versionForkStrategy: '',
       fixedVersionId: '',
@@ -659,7 +664,6 @@
 
   async function changeInstantiationApplication(value: ComboboxOptionValue) {
     instantiateForm.applicationId = String(value || '');
-    instantiateErrors.applicationId = '';
     instantiateErrors.fixedVersionId = '';
     instantiateForm.fixedVersionId = '';
     resetArtifactBindings();
@@ -760,35 +764,36 @@
     for (const key of Object.keys(artifactBindingErrors)) {
       delete artifactBindingErrors[key];
     }
+    const needsVersionBinding =
+      dockerArtifacts.value.length > 0 && Boolean(instantiateForm.applicationId);
     const selectedComponents = new Map<string, string>();
-    for (const artifact of dockerArtifacts.value) {
-      const componentName = String(artifactBindings[artifact.key] || '').trim();
-      if (!componentName) {
-        artifactBindingErrors[artifact.key] = '请选择组件';
-        continue;
-      }
-      if (selectedComponents.has(componentName)) {
-        artifactBindingErrors[artifact.key] = '同一组件只能绑定一个 Docker 制品';
-      } else {
-        selectedComponents.set(componentName, artifact.key);
+    if (needsVersionBinding) {
+      for (const artifact of dockerArtifacts.value) {
+        const componentName = String(artifactBindings[artifact.key] || '').trim();
+        if (!componentName) {
+          artifactBindingErrors[artifact.key] = '请选择组件';
+          continue;
+        }
+        if (selectedComponents.has(componentName)) {
+          artifactBindingErrors[artifact.key] = '同一组件只能绑定一个 Docker 制品';
+        } else {
+          selectedComponents.set(componentName, artifact.key);
+        }
       }
     }
-    const bindings = selectedArtifactBindings.value;
-    const needsApplication = dockerArtifacts.value.length > 0;
+    const bindings = needsVersionBinding ? selectedArtifactBindings.value : [];
 
     instantiateErrors.name = instantiateForm.name.trim() ? '' : '请输入流水线名称';
     instantiateErrors.repositoryId = instantiateForm.repositoryId ? '' : '请选择代码仓库';
-    instantiateErrors.applicationId =
-      needsApplication && !instantiateForm.applicationId ? '请选择应用' : '';
     instantiateErrors.versionForkStrategy =
-      needsApplication && !instantiateForm.versionForkStrategy ? '请选择来源版本策略' : '';
+      needsVersionBinding && !instantiateForm.versionForkStrategy ? '请选择来源版本策略' : '';
     instantiateErrors.fixedVersionId =
-      needsApplication &&
+      needsVersionBinding &&
       instantiateForm.versionForkStrategy === 'fixed' &&
       !instantiateForm.fixedVersionId
         ? '请选择来源版本'
         : '';
-    if (needsApplication && instantiateForm.applicationId && !sourceVersion.value) {
+    if (needsVersionBinding && !sourceVersion.value) {
       for (const artifact of dockerArtifacts.value) {
         artifactBindingErrors[artifact.key] = '请先加载包含目标组件的来源版本';
       }
@@ -813,9 +818,11 @@
           name: instantiateForm.name.trim(),
           application_id: instantiateForm.applicationId || undefined,
           repository_id: instantiateForm.repositoryId,
-          version_fork_strategy: needsApplication ? instantiateForm.versionForkStrategy : undefined,
+          version_fork_strategy: needsVersionBinding
+            ? instantiateForm.versionForkStrategy
+            : undefined,
           fixed_version_id:
-            needsApplication && instantiateForm.versionForkStrategy === 'fixed'
+            needsVersionBinding && instantiateForm.versionForkStrategy === 'fixed'
               ? instantiateForm.fixedVersionId
               : undefined,
           artifact_bindings: bindings,

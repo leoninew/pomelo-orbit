@@ -1,8 +1,8 @@
 package userhandler
 
 import (
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	userdto "github.com/leoninew/pomelo-orbit/internal/application/user/dto"
 	userv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/user"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -22,12 +22,12 @@ func actor(current security.CurrentUserContext) userdto.Actor {
 
 func userDetailResponse(detail userdto.Detail) userv1.UserResp {
 	user := detail.User
-	return userv1.UserResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roleCodes(detail.Roles), Permissions: emptyStrings(detail.Permissions), Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(detail.Roles, detail.PermissionsByRoleId))}
+	return userv1.UserResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transport.FormatTime(user.CreatedAt), LastLoginAt: transport.FormatOptionalTime(user.LastLoginAt), Roles: roleCodes(detail.Roles), Permissions: emptyStrings(detail.Permissions), Status: user.Status, UpdatedAt: transport.FormatTime(user.UpdatedAt), RoleItems: transport.Ptrs(roleResponses(detail.Roles, detail.PermissionsByRoleId))}
 }
 
 func userListResponse(item userdto.ListItem) userv1.UserListResp {
 	user := item.User
-	return userv1.UserListResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(item.Roles, nil))}
+	return userv1.UserListResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transport.FormatTime(user.CreatedAt), LastLoginAt: transport.FormatOptionalTime(user.LastLoginAt), Status: user.Status, UpdatedAt: transport.FormatTime(user.UpdatedAt), RoleItems: transport.Ptrs(roleResponses(item.Roles, nil))}
 }
 
 func roleCodes(roles []model.Role) []string {

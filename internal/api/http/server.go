@@ -12,7 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 
 	"github.com/gin-gonic/gin"
@@ -39,19 +40,19 @@ func (s Server) Handler() http.Handler {
 func (s Server) registerFallbackRoutes(r *gin.Engine) {
 	r.NoRoute(func(c *gin.Context) {
 		if isApiPath(c.Request.URL.Path, s.appCfg.Server.ApiPathPrefixes) {
-			transportresponse.WriteError(c, apperror.New(apperror.KindNotFound, ""))
+			transport.WriteError(c, apperror.New(apperror.KindNotFound, ""))
 			return
 		}
 		if s.serveStatic(c, "static") {
 			return
 		}
-		transportresponse.WriteError(c, apperror.New(apperror.KindNotFound, ""))
+		transport.WriteError(c, apperror.New(apperror.KindNotFound, ""))
 	})
 	r.NoMethod(func(c *gin.Context) {
 		if methods := allowedHTTPMethods(r.Routes(), c.Request.URL.Path); len(methods) > 0 {
 			c.Header("Allow", strings.Join(methods, ", "))
 		}
-		transportresponse.WriteError(c, apperror.New(apperror.KindMethodNotAllowed, ""))
+		transport.WriteError(c, apperror.New(apperror.KindMethodNotAllowed, ""))
 	})
 }
 

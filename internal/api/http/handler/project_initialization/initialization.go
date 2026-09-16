@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
-	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	initdto "github.com/leoninew/pomelo-orbit/internal/application/project_initialization/dto"
 	environmentv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/environment"
@@ -20,10 +20,10 @@ func (h Handler) GetStatus(c *gin.Context) {
 	}
 	view, err := h.service.Status(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, initializationResponse(view))
+	transport.WriteProtoJSON(c, http.StatusOK, initializationResponse(view))
 }
 
 func (h Handler) TestEnvironment(c *gin.Context) {
@@ -32,15 +32,15 @@ func (h Handler) TestEnvironment(c *gin.Context) {
 		return
 	}
 	var req initv1.ProjectInitializationEnvironmentReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if err := h.service.TestEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), saveEnvironmentInput(&req)); err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &initv1.ProjectInitializationEnvironmentTestResp{Ok: true})
+	transport.WriteProtoJSON(c, http.StatusOK, &initv1.ProjectInitializationEnvironmentTestResp{Ok: true})
 }
 
 func (h Handler) SaveEnvironment(c *gin.Context) {
@@ -49,16 +49,16 @@ func (h Handler) SaveEnvironment(c *gin.Context) {
 		return
 	}
 	var req initv1.ProjectInitializationEnvironmentReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	view, err := h.service.SaveEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), saveEnvironmentInput(&req))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, initializationResponse(view))
+	transport.WriteProtoJSON(c, http.StatusOK, initializationResponse(view))
 }
 
 func (h Handler) PrepareWindowsEnvironment(c *gin.Context) {
@@ -67,16 +67,16 @@ func (h Handler) PrepareWindowsEnvironment(c *gin.Context) {
 		return
 	}
 	var req initv1.ProjectInitializationEnvironmentReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	result, err := h.service.PrepareWindowsEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), saveEnvironmentInput(&req))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &initv1.ProjectInitializationWindowsCommandResp{
+	transport.WriteProtoJSON(c, http.StatusOK, &initv1.ProjectInitializationWindowsCommandResp{
 		Status:    initializationResponse(result.Status),
 		PublicKey: result.PublicKey,
 	})
@@ -88,18 +88,18 @@ func (h Handler) BootstrapEnvironment(c *gin.Context) {
 		return
 	}
 	var req initv1.ProjectInitializationBootstrapReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	view, err := h.service.BootstrapEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), initdto.BootstrapEnvironmentInput{
 		Username: req.Username, Password: req.Password, PrivateKey: req.PrivateKey, PrivateKeyPassphrase: req.PrivateKeyPassphrase,
 	})
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, initializationResponse(view))
+	transport.WriteProtoJSON(c, http.StatusOK, initializationResponse(view))
 }
 
 func (h Handler) ProbeEnvironment(c *gin.Context) {
@@ -109,10 +109,10 @@ func (h Handler) ProbeEnvironment(c *gin.Context) {
 	}
 	view, err := h.service.ProbeEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, initializationResponse(view))
+	transport.WriteProtoJSON(c, http.StatusOK, initializationResponse(view))
 }
 
 func (h Handler) CreateGateway(c *gin.Context) {
@@ -121,8 +121,8 @@ func (h Handler) CreateGateway(c *gin.Context) {
 		return
 	}
 	var req initv1.ProjectInitializationGatewayReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	view, err := h.service.CreateGateway(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), initdto.CreateGatewayInput{
@@ -131,10 +131,10 @@ func (h Handler) CreateGateway(c *gin.Context) {
 		AcmeProfile: req.AcmeProfile, AcmeEmail: req.AcmeEmail, DNSApiToken: req.DnsApiToken,
 	})
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusCreated, initializationResponse(view))
+	transport.WriteProtoJSON(c, http.StatusCreated, initializationResponse(view))
 }
 
 func initializationResponse(view initdto.StatusView) *initv1.ProjectInitializationStatusResp {
@@ -161,7 +161,7 @@ func initializationResponse(view initdto.StatusView) *initv1.ProjectInitializati
 			Id: view.Environment.Id, TargetType: view.Environment.TargetType, WorkspaceRoot: workspaceRoot,
 			TargetRevision:    view.Environment.TargetRevision,
 			LastProbeRevision: view.Environment.LastProbeRevision, LastProbeStatus: view.Environment.LastProbeStatus,
-			LastProbeAt:         transportresponse.FormatOptionalTime(view.Environment.LastProbeAt),
+			LastProbeAt:         transport.FormatOptionalTime(view.Environment.LastProbeAt),
 			LastProbeDiagnostic: view.Environment.LastProbeDiagnostic,
 			Local:               localTargetResponse(view.Environment.Local),
 			Ssh:                 sshTargetResponse(view.Environment.SSH),

@@ -1,7 +1,7 @@
 package deploymenthandler
 
 import (
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
 	deploymentv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/deployment"
@@ -39,9 +39,9 @@ func deploymentResponse(item model.Deployment) deploymentv1.DeploymentResp {
 		TriggerType:              item.TriggerType,
 		CommandText:              item.CommandText,
 		Status:                   item.Status,
-		StartedAt:                transportresponse.FormatTime(item.StartedAt),
-		FinishedAt:               transportresponse.FormatOptionalTime(item.FinishedAt),
-		DurationMs:               transportresponse.OptionalInt32(item.DurationMs),
+		StartedAt:                transport.FormatTime(item.StartedAt),
+		FinishedAt:               transport.FormatOptionalTime(item.FinishedAt),
+		DurationMs:               transport.OptionalInt32(item.DurationMs),
 		LogText:                  item.LogText,
 		ErrorMessage:             item.ErrorMessage,
 		IsRollback:               item.IsRollback,

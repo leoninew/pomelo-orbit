@@ -7,10 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
 	transportmiddleware "github.com/leoninew/pomelo-orbit/internal/api/http/middleware"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -20,7 +21,7 @@ func TestWriteErrorMapsRuntimeCredentialReadFailureToSafeContract(t *testing.T) 
 	router := gin.New()
 	router.Use(transportmiddleware.RequestId())
 	router.GET("/", func(c *gin.Context) {
-		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "Failed to read deployment configuration", errors.New("invalid configuration")))
+		transport.WriteError(c, apperror.Wrap(apperror.KindInternal, "Failed to read deployment configuration", errors.New("invalid configuration")))
 	})
 
 	requestId := "01J1VY6M3R92K1WSPJ4AK84NQZ"
@@ -32,11 +33,11 @@ func TestWriteErrorMapsRuntimeCredentialReadFailureToSafeContract(t *testing.T) 
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("expected status %d, got %d", http.StatusInternalServerError, recorder.Code)
 	}
-	var response transportresponse.ErrorResp
+	var response transport.ErrorResp
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatalf("decode error response: %v", err)
 	}
-	if got, want := response, (transportresponse.ErrorResp{Code: "internal_error", Error: "Internal server error.", RequestId: requestId}); got != want {
+	if got, want := response, (transport.ErrorResp{Code: "internal_error", Error: "Internal server error.", RequestId: requestId}); got != want {
 		t.Fatalf("unexpected error response: got %+v, want %+v", got, want)
 	}
 	if got := recorder.Header().Get(requestid.HeaderName); got != requestId {

@@ -1,7 +1,7 @@
 package gatewayhandler
 
 import (
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	gatewayv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/gateway"
 )
@@ -69,9 +69,9 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 		Kind:                      app.Kind,
 		RestApiUrl:                cfg.RestApiUrl,
 		BaseDomain:                cfg.BaseDomain,
-		CreatedAt:                 transportresponse.FormatTime(app.CreatedAt),
-		UpdatedAt:                 transportresponse.FormatTime(app.UpdatedAt),
-		ConfigUpdatedAt:           transportresponse.FormatTime(cfg.UpdatedAt),
+		CreatedAt:                 transport.FormatTime(app.CreatedAt),
+		UpdatedAt:                 transport.FormatTime(app.UpdatedAt),
+		ConfigUpdatedAt:           transport.FormatTime(cfg.UpdatedAt),
 		DefaultEntrypoint:         cfg.DefaultEntrypoint,
 		TlsMode:                   cfg.TLSMode,
 		Exposures:                 exposures,

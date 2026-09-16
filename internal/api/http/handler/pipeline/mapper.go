@@ -3,7 +3,8 @@ package pipelinehandler
 import (
 	"encoding/json"
 
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	pipelinedto "github.com/leoninew/pomelo-orbit/internal/application/pipeline/dto"
 	commonv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
 	pipelinev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline"
@@ -16,7 +17,7 @@ func pipelineResponse(detail pipelinedto.PipelineDetail) *pipelinev1.PipelineRes
 	for _, node := range detail.StageNodes {
 		nodes = append(nodes, pipelineStageNodeResponse(node))
 	}
-	return &pipelinev1.PipelineResp{Id: item.Id, ProjectId: item.ProjectId, Kind: item.Kind, SourcePipelineId: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: intPtrToInt32(item.SourceTemplateVersion), ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: item.VersionForkStrategy, FixedVersionId: item.FixedVersionId, FixedVersionLabel: item.FixedVersionLabel, Name: item.Name, Description: item.Description, StageNodes: nodes, VariableDeclarations: variableResponses(detail.VariableDeclarations), Version: int32(item.Version), CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return &pipelinev1.PipelineResp{Id: item.Id, ProjectId: item.ProjectId, Kind: item.Kind, SourcePipelineId: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: intPtrToInt32(item.SourceTemplateVersion), ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: item.VersionForkStrategy, FixedVersionId: item.FixedVersionId, FixedVersionLabel: item.FixedVersionLabel, Name: item.Name, Description: item.Description, StageNodes: nodes, VariableDeclarations: variableResponses(detail.VariableDeclarations), Version: int32(item.Version), CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt)}
 }
 func pipelineStageTemplateResponse(detail pipelinedto.PipelineStageTemplateDetail) *pipelinev1.PipelineStageResp {
 	item := detail.Stage
@@ -24,7 +25,7 @@ func pipelineStageTemplateResponse(detail pipelinedto.PipelineStageTemplateDetai
 	for _, artifact := range detail.Artifacts {
 		artifacts = append(artifacts, &pipelinev1.ArtifactConfigResp{Name: artifact.Name, Collector: artifact.Collector, Reference: artifact.Reference, Command: artifact.Command, Format: artifact.Format})
 	}
-	return &pipelinev1.PipelineStageResp{Id: item.Id, ProjectId: item.ProjectId, Kind: item.Kind, Name: item.Name, Image: item.Image, Script: item.Script, Description: item.Description, Version: int32(valueOrZero(item.Version)), CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt), Artifacts: artifacts}
+	return &pipelinev1.PipelineStageResp{Id: item.Id, ProjectId: item.ProjectId, Kind: item.Kind, Name: item.Name, Image: item.Image, Script: item.Script, Description: item.Description, Version: int32(valueOrZero(item.Version)), CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt), Artifacts: artifacts}
 }
 func pipelineStageNodeResponse(detail pipelinedto.PipelineStageNodeDetail) *pipelinev1.PipelineStageNodeResp {
 	item := detail.Node
@@ -32,7 +33,7 @@ func pipelineStageNodeResponse(detail pipelinedto.PipelineStageNodeDetail) *pipe
 	for _, artifact := range detail.Artifacts {
 		artifacts = append(artifacts, &pipelinev1.ArtifactConfigResp{Name: artifact.Name, Collector: artifact.Collector, Reference: artifact.Reference, Command: artifact.Command, Format: artifact.Format, ComponentName: artifact.ComponentName})
 	}
-	return &pipelinev1.PipelineStageNodeResp{Id: item.Id, NodeType: item.NodeType, PipelineId: item.PipelineId, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: artifacts, DependsOn: detail.DependsOn, SortOrder: int32(item.SortOrder), Description: item.Description, SourceTemplateStageId: item.SourceTemplateStageId, SourceTemplateStageName: item.SourceTemplateStageName, SourceTemplateStageDescription: item.SourceTemplateStageDescription, SourceTemplateStageVersion: int32(item.SourceTemplateStageVersion), LatestTemplateStageVersion: intPtrToInt32(detail.LatestTemplateStageVersion), CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return &pipelinev1.PipelineStageNodeResp{Id: item.Id, NodeType: item.NodeType, PipelineId: item.PipelineId, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: artifacts, DependsOn: detail.DependsOn, SortOrder: int32(item.SortOrder), Description: item.Description, SourceTemplateStageId: item.SourceTemplateStageId, SourceTemplateStageName: item.SourceTemplateStageName, SourceTemplateStageDescription: item.SourceTemplateStageDescription, SourceTemplateStageVersion: int32(item.SourceTemplateStageVersion), LatestTemplateStageVersion: intPtrToInt32(detail.LatestTemplateStageVersion), CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt)}
 }
 func pipelineStageTemplateUpdatePreviewResponse(detail pipelinedto.PipelineStageTemplateUpdatePreview) *pipelinev1.PipelineStageTemplateUpdatePreviewResp {
 	differences := make([]*pipelinev1.PipelineStageTemplateFieldDifferenceResp, 0, len(detail.Differences))
@@ -51,7 +52,7 @@ func pipelineSnapshotResponse(detail pipelinedto.PipelineSnapshotDetail) *pipeli
 		}
 		stages = append(stages, &pipelinev1.SnapshotStageResp{Id: stage.Id, Name: stage.Name, Image: stage.Image, DependsOn: stage.DependsOn, Script: stage.Script, Artifacts: artifacts, SortOrder: int32(stage.SortOrder), Description: stage.Description})
 	}
-	return &pipelinev1.PipelineSnapshotResp{Id: item.Id, PipelineId: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int32(item.PipelineVersion), SourcePipelineId: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: int32(item.SourceTemplateVersion), ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: item.VersionForkStrategy, FixedVersionId: item.FixedVersionId, FixedVersionLabel: item.FixedVersionLabel, StagesSnapshot: stages, VariablesSnapshot: variableDeclarationResponses(detail.VariablesSnapshot), CreatedAt: transportresponse.FormatTime(item.CreatedAt)}
+	return &pipelinev1.PipelineSnapshotResp{Id: item.Id, PipelineId: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int32(item.PipelineVersion), SourcePipelineId: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: int32(item.SourceTemplateVersion), ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: item.VersionForkStrategy, FixedVersionId: item.FixedVersionId, FixedVersionLabel: item.FixedVersionLabel, StagesSnapshot: stages, VariablesSnapshot: variableDeclarationResponses(detail.VariablesSnapshot), CreatedAt: transport.FormatTime(item.CreatedAt)}
 }
 func serviceArtifacts(items []*pipelinev1.ArtifactConfigReq) []pipelinedto.ArtifactConfig {
 	result := make([]pipelinedto.ArtifactConfig, 0, len(items))
@@ -66,7 +67,7 @@ func variableRequestMaps(items []*commonv1.VariableDeclarationReq) []map[string]
 	result := make([]map[string]any, 0, len(items))
 	for _, item := range items {
 		if item != nil {
-			result = append(result, map[string]any{"name": item.Name, "description": item.Description, "default": transportresponse.NativeValue(item.Default), "value": transportresponse.NativeValue(item.Value), "secret": item.Secret, "source": item.Source, "editable": item.Editable, "stage_id": item.StageId})
+			result = append(result, map[string]any{"name": item.Name, "description": item.Description, "default": transport.NativeValue(item.Default), "value": transport.NativeValue(item.Value), "secret": item.Secret, "source": item.Source, "editable": item.Editable, "stage_id": item.StageId})
 		}
 	}
 	return result
@@ -88,13 +89,13 @@ func variableDeclarationResponses(items []model.VariableDeclaration) []*commonv1
 }
 
 func variableDeclarationResponse(item model.VariableDeclaration) *commonv1.VariableDeclarationResp {
-	return &commonv1.VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: transportresponse.ProtoValue(item.Default), Value: transportresponse.ProtoValue(item.Value), Secret: item.Secret, Source: item.Source, Editable: item.Editable, StageDefaults: stageVariableDefaultResponses(item.StageDefaults), StageId: item.StageId, StageName: item.StageName}
+	return &commonv1.VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: transport.ProtoValue(item.Default), Value: transport.ProtoValue(item.Value), Secret: item.Secret, Source: item.Source, Editable: item.Editable, StageDefaults: stageVariableDefaultResponses(item.StageDefaults), StageId: item.StageId, StageName: item.StageName}
 }
 
 func stageVariableDefaultResponses(items []model.StageVariableDefault) []*commonv1.StageVariableDefaultResp {
 	result := make([]*commonv1.StageVariableDefaultResp, 0, len(items))
 	for _, item := range items {
-		result = append(result, &commonv1.StageVariableDefaultResp{StageId: item.StageId, StageName: item.StageName, Default: transportresponse.ProtoValue(item.Default)})
+		result = append(result, &commonv1.StageVariableDefaultResp{StageId: item.StageId, StageName: item.StageName, Default: transport.ProtoValue(item.Default)})
 	}
 	return result
 }

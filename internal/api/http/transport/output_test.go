@@ -1,4 +1,4 @@
-package response
+package transport
 
 import (
 	"encoding/json"
@@ -19,7 +19,7 @@ func TestProtoJSONPreservesProtoJSONContract(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	engine := gin.New()
 	engine.GET("/", func(c *gin.Context) {
-		ProtoJSON(c, http.StatusCreated, &authv1.TokenResp{AccessToken: "token"})
+		WriteProtoJSON(c, http.StatusCreated, &authv1.TokenResp{AccessToken: "token"})
 	})
 
 	recorder := httptest.NewRecorder()
@@ -164,8 +164,8 @@ func TestHTTPStatusMapsKinds(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := HTTPStatus(tc.err); got != tc.status {
-				t.Fatalf("HTTPStatus() = %d, want %d", got, tc.status)
+			if got := httpStatus(tc.err); got != tc.status {
+				t.Fatalf("httpStatus() = %d, want %d", got, tc.status)
 			}
 		})
 	}

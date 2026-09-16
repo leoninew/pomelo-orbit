@@ -1,7 +1,7 @@
 package applicationhandler
 
 import (
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
 	"github.com/leoninew/pomelo-orbit/internal/common/commandline"
 	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
@@ -198,8 +198,8 @@ func versionResponse(view applicationdto.VersionView) applicationv1.VersionResp 
 		CreatedFromVersionId: view.Version.CreatedFromVersionId,
 		Note:                 view.Version.Note,
 		ComponentSummary:     view.Version.ComponentSummary,
-		CreatedAt:            transportresponse.FormatTime(view.Version.CreatedAt),
-		UpdatedAt:            transportresponse.FormatTime(view.Version.UpdatedAt),
+		CreatedAt:            transport.FormatTime(view.Version.CreatedAt),
+		UpdatedAt:            transport.FormatTime(view.Version.UpdatedAt),
 		Components:           components,
 	}
 }
@@ -214,7 +214,7 @@ func versionComponentResponse(component model.VersionComponent) *applicationv1.V
 		Healthcheck:  componentHealthcheckResponse(component.Healthcheck), Resources: componentResourcesResponse(component.Resources),
 		PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: componentTmpfsResponse(component.Tmpfs), Ulimits: componentUlimitResponse(component.Ulimits),
 		Devices:   componentDeviceResponse(component.Devices),
-		CreatedAt: transportresponse.FormatTime(component.CreatedAt), UpdatedAt: transportresponse.FormatTime(component.UpdatedAt),
+		CreatedAt: transport.FormatTime(component.CreatedAt), UpdatedAt: transport.FormatTime(component.UpdatedAt),
 	}
 	if component.Artifact != nil {
 		response.ArtifactId = optionalString(component.Artifact.ArtifactId)

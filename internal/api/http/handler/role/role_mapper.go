@@ -1,7 +1,7 @@
 package rolehandler
 
 import (
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	roledto "github.com/leoninew/pomelo-orbit/internal/application/role/dto"
 	rolev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/role"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -23,7 +23,7 @@ func roleResponse(role model.Role, permissionCodes []string) rolev1.RoleResp {
 	if permissionCodes == nil {
 		permissionCodes = []string{}
 	}
-	return rolev1.RoleResp{Id: role.Id, Code: role.Code, Name: role.Name, Description: role.Description, CreatedAt: transportresponse.FormatTime(role.CreatedAt), UpdatedAt: transportresponse.FormatTime(role.UpdatedAt), PermissionCodes: permissionCodes}
+	return rolev1.RoleResp{Id: role.Id, Code: role.Code, Name: role.Name, Description: role.Description, CreatedAt: transport.FormatTime(role.CreatedAt), UpdatedAt: transport.FormatTime(role.UpdatedAt), PermissionCodes: permissionCodes}
 }
 
 func permissionResponse(permission roledto.Permission) rolev1.PermissionResp {

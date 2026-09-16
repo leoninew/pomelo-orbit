@@ -1,4 +1,4 @@
-package codec
+package transport
 
 import (
 	"fmt"
@@ -8,22 +8,22 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var MarshalOptions = protojson.MarshalOptions{
+var protoJSONMarshalOptions = protojson.MarshalOptions{
 	UseProtoNames:   true,
 	EmitUnpopulated: true,
 }
 
-var UnmarshalOptions = protojson.UnmarshalOptions{
+var protoJSONUnmarshalOptions = protojson.UnmarshalOptions{
 	DiscardUnknown: false,
 }
 
-type ProtoJSON struct {
-	Message proto.Message
+type protoJSONRenderer struct {
+	message proto.Message
 }
 
-func (r ProtoJSON) Render(w http.ResponseWriter) error {
+func (r protoJSONRenderer) Render(w http.ResponseWriter) error {
 	r.WriteContentType(w)
-	data, err := MarshalProtoJSON(r.Message)
+	data, err := MarshalProtoJSON(r.message)
 	if err != nil {
 		return err
 	}
@@ -31,12 +31,12 @@ func (r ProtoJSON) Render(w http.ResponseWriter) error {
 	return err
 }
 
-func (r ProtoJSON) WriteContentType(w http.ResponseWriter) {
+func (r protoJSONRenderer) WriteContentType(w http.ResponseWriter) {
 	w.Header()["Content-Type"] = []string{"application/json; charset=utf-8"}
 }
 
 func MarshalProtoJSON(message proto.Message) ([]byte, error) {
-	data, err := MarshalOptions.Marshal(message)
+	data, err := protoJSONMarshalOptions.Marshal(message)
 	if err != nil {
 		return nil, fmt.Errorf("marshal proto json: %w", err)
 	}
@@ -44,7 +44,7 @@ func MarshalProtoJSON(message proto.Message) ([]byte, error) {
 }
 
 func UnmarshalProtoJSON(data []byte, message proto.Message) error {
-	if err := UnmarshalOptions.Unmarshal(data, message); err != nil {
+	if err := protoJSONUnmarshalOptions.Unmarshal(data, message); err != nil {
 		return fmt.Errorf("unmarshal proto json: %w", err)
 	}
 	return nil

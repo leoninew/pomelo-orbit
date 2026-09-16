@@ -891,7 +891,9 @@
       });
     } catch (error: unknown) {
       windowsCommandError.value =
-        error instanceof Error ? error.message : t('project.initialization.windowsTargetCommandFailed');
+        error instanceof Error
+          ? error.message
+          : t('project.initialization.windowsTargetCommandFailed');
     } finally {
       loadingWindowsCommand.value = false;
     }

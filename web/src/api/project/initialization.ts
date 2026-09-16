@@ -34,7 +34,10 @@ export const projectInitializationApi = {
     projectId: string,
     data: ProjectInitializationEnvironmentReq
   ): Promise<ProjectInitializationWindowsCommandResp> {
-    return request.post(`/api/project/${projectId}/initialization/environment/windows-command`, data);
+    return request.post(
+      `/api/project/${projectId}/initialization/environment/windows-command`,
+      data
+    );
   },
 
   bootstrapEnvironment(

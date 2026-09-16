@@ -11,9 +11,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
 
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/routes"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 )
@@ -239,7 +240,7 @@ func assertServerErrorResponse(t *testing.T, recorder *httptest.ResponseRecorder
 	if recorder.Code != statusCode {
 		t.Fatalf("expected status %d, got %d: %s", statusCode, recorder.Code, recorder.Body.String())
 	}
-	var response transportresponse.ErrorResp
+	var response transport.ErrorResp
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatalf("decode error response: %v", err)
 	}

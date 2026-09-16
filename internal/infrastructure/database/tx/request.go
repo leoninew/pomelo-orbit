@@ -8,16 +8,17 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 )
 
 const unwrittenResponseSize = -1
 
+type ErrorWriter func(*gin.Context, error)
+
 // Middleware begins a request-scoped transaction for API writes. Successful
 // responses stay buffered until the transaction commits.
 
-func Middleware(db *sql.DB, skipPaths ...string) gin.HandlerFunc {
+func Middleware(db *sql.DB, writeError ErrorWriter, skipPaths ...string) gin.HandlerFunc {
 	skipped := make(map[string]struct{}, len(skipPaths))
 	for _, path := range skipPaths {
 		skipped[path] = struct{}{}
@@ -35,7 +36,7 @@ func Middleware(db *sql.DB, skipPaths ...string) gin.HandlerFunc {
 		ctx := WithDb(c.Request.Context(), db)
 		sqlTx, err := db.BeginTx(ctx, nil)
 		if err != nil {
-			transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
+			writeError(c, apperror.Wrap(apperror.KindInternal, "", err))
 			return
 		}
 		ctx = WithTx(ctx, sqlTx)
@@ -70,7 +71,7 @@ func Middleware(db *sql.DB, skipPaths ...string) gin.HandlerFunc {
 		if err := sqlTx.Commit(); err != nil {
 			bufferedWriter.discard()
 			restoreHeader(originalWriter.Header(), originalHeaders)
-			transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
+			writeError(c, apperror.Wrap(apperror.KindInternal, "", err))
 			bufferedWriter.flush()
 			return
 		}

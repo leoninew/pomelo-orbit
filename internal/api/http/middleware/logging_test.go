@@ -12,11 +12,12 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
 	"github.com/oklog/ulid/v2"
 
 	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	authv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/auth"
 )
 
@@ -85,7 +86,7 @@ func TestRequestIdPreservesIncomingValueAndGeneratesULId(t *testing.T) {
 			var contextRequestID string
 			router.GET("/", func(c *gin.Context) {
 				contextRequestID = requestid.FromContext(c.Request.Context())
-				transportresponse.WriteError(c, transportError())
+				transport.WriteError(c, transportError())
 			})
 
 			request := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -95,7 +96,7 @@ func TestRequestIdPreservesIncomingValueAndGeneratesULId(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			router.ServeHTTP(recorder, request)
 
-			var response transportresponse.ErrorResp
+			var response transport.ErrorResp
 			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 				t.Fatalf("decode error response: %v", err)
 			}
@@ -305,7 +306,7 @@ func TestLogRequestRecordsProtoJSONResponseBody(t *testing.T) {
 	router.Use(RealIP())
 	router.Use(LogRequest(logger, testLogRequestConfig()))
 	router.GET("/api/test", func(c *gin.Context) {
-		transportresponse.ProtoJSON(c, http.StatusOK, &authv1.TokenResp{AccessToken: "token"})
+		transport.WriteProtoJSON(c, http.StatusOK, &authv1.TokenResp{AccessToken: "token"})
 	})
 
 	recorder := httptest.NewRecorder()
@@ -466,7 +467,7 @@ func TestLogRequestLogsRecoveredPanicAsInfo(t *testing.T) {
 	assertLogValue(t, failed, "error", "panic: boom")
 	assertLogValue(t, completed, "level", "INFO")
 	assertLogNumber(t, completed, "status", http.StatusInternalServerError)
-	var response transportresponse.ErrorResp
+	var response transport.ErrorResp
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatalf("decode recovery error response: %v", err)
 	}

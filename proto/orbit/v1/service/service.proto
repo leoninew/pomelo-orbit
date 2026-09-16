@@ -3,11 +3,8 @@ syntax = "proto3";
 package orbit.v1.service;
 
 message ServiceResp {
-  reserved 5, 13;
-
   string id = 1;
   string application_id = 2;
-  string instance_key = 3;
   string version_id = 4;
   string status = 6;
   string created_at = 7;
@@ -41,13 +38,11 @@ message ServicePaginatedResp {
 message ServiceCreateReq {
   string application_id = 1;
   string version_id = 2;
-  string instance_key = 3;
   string code = 4;
 }
 
 message ServiceBasicUpdateReq {
   string version_id = 1;
-  string instance_key = 2;
 }
 
 message ServiceEnv {
@@ -88,8 +83,6 @@ message ServiceComponentResp {
 // Service Component values separately. An absent value in service_component
 // means that the Service inherits the corresponding Version value.
 message ServiceComponentDetailResp {
-  reserved 3, 4;
-
   ServiceComponentResp service_component = 1;
   ServiceComponentDefinitionResp version_component = 2;
 }
@@ -156,7 +149,6 @@ message ServiceComponentEnvOverlay {
 }
 
 message ServiceComponentMountOverlay {
-  reserved 1;
   optional string source = 2;
   string state = 3;
   string target = 4;

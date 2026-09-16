@@ -5,8 +5,61 @@ import (
 	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
 	"github.com/leoninew/pomelo-orbit/internal/common/commandline"
 	applicationv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/application"
+	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+func applicationCreateInput(projectId string, req *applicationv1.ApplicationCreateReq) applicationdto.ApplicationCreateInput {
+	kind := ""
+	if req.Kind != nil {
+		kind = *req.Kind
+	}
+	return applicationdto.ApplicationCreateInput{
+		ProjectId: projectId,
+		Name:      req.Name,
+		Code:      req.Code,
+		Kind:      kind,
+	}
+}
+
+func applicationUpdateInput(req *applicationv1.ApplicationUpdateReq) applicationdto.ApplicationUpdateInput {
+	return applicationdto.ApplicationUpdateInput{
+		Name: req.Name,
+		Code: req.Code,
+	}
+}
+
+func applicationResponses(items []model.Application) []applicationv1.ApplicationResp {
+	resp := make([]applicationv1.ApplicationResp, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, applicationResponse(item))
+	}
+	return resp
+}
+
+func applicationResponse(item model.Application) applicationv1.ApplicationResp {
+	return applicationv1.ApplicationResp{
+		Id:        item.Id,
+		ProjectId: item.ProjectId,
+		Name:      item.Name,
+		Code:      item.Code,
+		Kind:      item.Kind,
+		CreatedAt: transport.FormatTime(item.CreatedAt),
+		UpdatedAt: transport.FormatTime(item.UpdatedAt),
+	}
+}
+
+func serviceResponse(item model.Service) servicev1.ServiceResp {
+	return servicev1.ServiceResp{
+		Id:            item.Id,
+		ApplicationId: item.ApplicationId,
+		Code:          item.Code,
+		VersionId:     item.VersionId,
+		Status:        item.Status,
+		CreatedAt:     transport.FormatTime(item.CreatedAt),
+		UpdatedAt:     transport.FormatTime(item.UpdatedAt),
+	}
+}
 
 func versionComponentInput(req *applicationv1.VersionComponentReq) applicationdto.VersionComponentInput {
 	return applicationdto.VersionComponentInput{

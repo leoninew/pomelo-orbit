@@ -276,13 +276,6 @@ func (s Service) readDeploymentLog(ctx context.Context, projectId string, deploy
 		}
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
-	opts, err := parseDeployOptions(deployment.OptionsJSON)
-	if err != nil {
-		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has invalid options: "+err.Error())
-	}
-	if opts.InstanceKey == "" {
-		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated instance")
-	}
 	svc, err := s.resolveServiceFromDeployment(ctx, projectId, app.Id, deployment)
 	if err != nil {
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)

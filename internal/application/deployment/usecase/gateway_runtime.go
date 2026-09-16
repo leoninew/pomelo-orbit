@@ -3,7 +3,6 @@ package deploymentsvc
 import (
 	"context"
 
-	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -20,13 +19,4 @@ func (s Service) selectGatewayVersionForDeployment(ctx context.Context, projectI
 		return model.Service{}, apperror.New(apperror.KindInternal, "gateway deployment coordinator is not configured")
 	}
 	return s.gatewayCoordinator.SelectGatewayDeploymentVersion(ctx, projectId, app, service)
-}
-
-func isActiveServiceStatus(statusValue string) bool {
-	switch statusValue {
-	case status.ServiceStatusRunning:
-		return true
-	default:
-		return false
-	}
 }

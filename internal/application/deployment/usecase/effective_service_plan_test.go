@@ -29,7 +29,7 @@ func TestBuildEffectiveServicePlanMergesSparseOverrides(t *testing.T) {
 	plan, hash, err := BuildEffectiveServicePlan(
 		model.Application{Id: "app-1", Code: "demo", Kind: status.ApplicationKindStandard},
 		model.Version{Id: "version-1", ApplicationId: "app-1", Label: "v1"},
-		model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-1", InstanceKey: "default"},
+		model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-1", Code: "demo-default"},
 		[]model.VersionComponent{declaration},
 		[]model.ServiceComponent{{
 			Id: "service-component-db", ServiceId: "service-1", SourceVersionComponentId: declaration.Id, ComponentName: declaration.Name,
@@ -67,7 +67,7 @@ func TestEffectiveServicePlanHashTracksTraefikNetworkOption(t *testing.T) {
 	plan := model.EffectiveServicePlan{
 		Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
 		Version:     model.Version{Label: "v1"},
-		Service:     model.Service{InstanceKey: "default"},
+		Service:     model.Service{Code: "demo-default"},
 		Gateway: &model.GatewayConfig{
 			NetworkName: "traefik", RestApiUrl: "http://127.0.0.1:8080",
 			BaseDomain: "example.com", DefaultEntrypoint: "websecure", TLSMode: "letsencrypt",
@@ -114,7 +114,7 @@ func TestBuildVersionPreviewPlanUsesVersionDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildVersionPreviewPlan returned error: %v", err)
 	}
-	if plan.Service.Id != "" || plan.Service.InstanceKey != versionPreviewInstanceKey || plan.Service.Code != "demo-preview" {
+	if plan.Service.Id != "" || plan.Service.Code != "demo-preview" {
 		t.Fatalf("preview must not use a persisted service: %+v", plan.Service)
 	}
 	if len(plan.Components) != 1 {

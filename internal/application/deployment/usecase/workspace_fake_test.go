@@ -104,7 +104,7 @@ func testSSHTarget(projectId string) environmentport.Target {
 	revision := int64(1)
 	status := "succeeded"
 	return environmentport.Target{Environment: model.Environment{
-		Id: "environment-1", ProjectId: projectId, State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: projectId,
 		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: revision,
 		WorkspaceRoot:     "/srv/orbit",
 		LastProbeRevision: &revision, LastProbeStatus: &status,

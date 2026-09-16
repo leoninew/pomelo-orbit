@@ -169,13 +169,13 @@ func initializationResponse(view initdto.StatusView) *initv1.ProjectInitializati
 	}
 	if view.Gateway != nil {
 		status := ""
-		if view.Gateway.DefaultService != nil {
-			status = view.Gateway.DefaultService.Status
+		if view.Gateway.Service != nil {
+			status = view.Gateway.Service.Status
 		}
 		resp.Gateway = &initv1.ProjectInitializationGatewaySnapshot{
 			Id: view.Gateway.Application.Id, Code: view.Gateway.Application.Code, Name: view.Gateway.Application.Name,
 			RestApiUrl: view.Gateway.Config.RestApiUrl, BaseDomain: view.Gateway.Config.BaseDomain,
-			DefaultServiceStatus: status,
+			ServiceStatus: status,
 		}
 	}
 	return resp

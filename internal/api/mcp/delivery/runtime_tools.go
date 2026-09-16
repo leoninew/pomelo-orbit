@@ -2,76 +2,28 @@ package delivery
 
 import (
 	"context"
-	"strings"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
-	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
-
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func (c *core) registerRuntimeTools(server *mcp.Server) {
-	addTool(server, "runtime_doctor", "Check Docker prerequisites for one managed runtime target. Supply application_id and instance_key together for an Application target, or gateway_application_id and gateway_instance_key together for a Gateway target. Do not combine those target pairs.", func(ctx context.Context, input struct {
-		ApplicationId        string `json:"application_id,omitempty"`
-		InstanceKey          string `json:"instance_key,omitempty"`
-		GatewayApplicationId string `json:"gateway_application_id,omitempty"`
-		GatewayInstanceKey   string `json:"gateway_instance_key,omitempty"`
+	addTool(server, "runtime_doctor", "Check Docker prerequisites for one managed runtime Service.", func(ctx context.Context, input struct {
+		ServiceId string `json:"service_id" jsonschema:"required"`
 	}) (map[string]any, error) {
-		hasApplication := input.ApplicationId != "" || input.InstanceKey != ""
-		hasGateway := input.GatewayApplicationId != "" || input.GatewayInstanceKey != ""
-		if hasApplication && (input.ApplicationId == "" || input.InstanceKey == "") {
-			return nil, apperror.New(apperror.KindValidation, "application_id and instance_key must be supplied together")
-		}
-		if hasGateway && (input.GatewayApplicationId == "" || input.GatewayInstanceKey == "") {
-			return nil, apperror.New(apperror.KindValidation, "gateway_application_id and gateway_instance_key must be supplied together")
-		}
-		if hasApplication && hasGateway {
-			return nil, apperror.New(apperror.KindValidation, "application target and gateway target cannot be requested together")
-		}
-		if !hasApplication && !hasGateway {
-			return nil, apperror.New(apperror.KindValidation, "a managed runtime target is required")
-		}
-		var target *deploymentdto.RuntimeTarget
-		if hasApplication {
-			if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
-				return nil, err
-			}
-			projectId, err := c.currentProjectId()
-			if err != nil {
-				return nil, err
-			}
-			resolved, err := c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, projectId, input.ApplicationId, input.InstanceKey, false)
-			if err != nil {
-				return nil, err
-			}
-			target = &resolved
-		}
-		if hasGateway {
-			if _, err := c.gatewayInScope(ctx, input.GatewayApplicationId); err != nil {
-				return nil, err
-			}
-			projectId, err := c.currentProjectId()
-			if err != nil {
-				return nil, err
-			}
-			resolved, err := c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, projectId, input.GatewayApplicationId, input.GatewayInstanceKey, true)
-			if err != nil {
-				return nil, err
-			}
-			target = &resolved
-		}
-		result, err := c.deps.Deployment.RuntimeDoctor(ctx, target)
+		target, err := c.runtimeTarget(ctx, input.ServiceId)
 		if err != nil {
 			return nil, err
 		}
-		if target != nil {
-			result = runtimeOutput(*target, result)
+		result, err := c.deps.Deployment.RuntimeDoctor(ctx, &target)
+		if err != nil {
+			return nil, err
 		}
-		return result, nil
+		return runtimeOutput(target, result), nil
 	})
 
 	addTool(server, "runtime_compose_config", "Read rendered Docker Compose configuration for one managed runtime target.", func(ctx context.Context, input runtimeTargetInput) (map[string]any, error) {
-		target, err := c.runtimeTarget(ctx, input.ApplicationId, input.InstanceKey)
+		target, err := c.runtimeTarget(ctx, input.ServiceId)
 		if err != nil {
 			return nil, err
 		}
@@ -83,11 +35,10 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 	})
 
 	addTool(server, "runtime_compose_ps", "Read concise Compose container state; set detail=true for raw Compose JSON.", func(ctx context.Context, input struct {
-		ApplicationId string `json:"application_id" jsonschema:"required"`
-		InstanceKey   string `json:"instance_key,omitempty"`
-		Detail        bool   `json:"detail,omitempty"`
+		ServiceId string `json:"service_id" jsonschema:"required"`
+		Detail    bool   `json:"detail,omitempty"`
 	}) (map[string]any, error) {
-		target, err := c.runtimeTarget(ctx, input.ApplicationId, input.InstanceKey)
+		target, err := c.runtimeTarget(ctx, input.ServiceId)
 		if err != nil {
 			return nil, err
 		}
@@ -107,13 +58,12 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 	})
 
 	addTool(server, "runtime_compose_logs", "Read Compose logs for services derived from one managed runtime target.", func(ctx context.Context, input struct {
-		ApplicationId string   `json:"application_id" jsonschema:"required"`
-		InstanceKey   string   `json:"instance_key,omitempty"`
-		Tail          int      `json:"tail,omitempty"`
-		Since         string   `json:"since,omitempty"`
-		Services      []string `json:"services,omitempty"`
+		ServiceId string   `json:"service_id" jsonschema:"required"`
+		Tail      int      `json:"tail,omitempty"`
+		Since     string   `json:"since,omitempty"`
+		Services  []string `json:"services,omitempty"`
 	}) (map[string]any, error) {
-		target, err := c.runtimeTarget(ctx, input.ApplicationId, input.InstanceKey)
+		target, err := c.runtimeTarget(ctx, input.ServiceId)
 		if err != nil {
 			return nil, err
 		}
@@ -129,11 +79,10 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 	})
 
 	addTool(server, "runtime_container_inspect", "Inspect a container only when its Id was returned by this target's Compose ps output.", func(ctx context.Context, input struct {
-		ApplicationId string `json:"application_id" jsonschema:"required"`
-		ContainerId   string `json:"container_id" jsonschema:"required"`
-		InstanceKey   string `json:"instance_key,omitempty"`
+		ServiceId   string `json:"service_id" jsonschema:"required"`
+		ContainerId string `json:"container_id" jsonschema:"required"`
 	}) (map[string]any, error) {
-		target, err := c.runtimeTarget(ctx, input.ApplicationId, input.InstanceKey)
+		target, err := c.runtimeTarget(ctx, input.ServiceId)
 		if err != nil {
 			return nil, err
 		}
@@ -145,11 +94,10 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 	})
 
 	addTool(server, "runtime_network_inspect", "Inspect a network only when it is derived from a target-managed container inspect result.", func(ctx context.Context, input struct {
-		ApplicationId string `json:"application_id" jsonschema:"required"`
-		NetworkName   string `json:"network_name" jsonschema:"required"`
-		InstanceKey   string `json:"instance_key,omitempty"`
+		ServiceId   string `json:"service_id" jsonschema:"required"`
+		NetworkName string `json:"network_name" jsonschema:"required"`
 	}) (map[string]any, error) {
-		target, err := c.runtimeTarget(ctx, input.ApplicationId, input.InstanceKey)
+		target, err := c.runtimeTarget(ctx, input.ServiceId)
 		if err != nil {
 			return nil, err
 		}
@@ -161,13 +109,12 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 	})
 
 	addTool(server, "runtime_http_probe", "Run a fixed local HTTP curl probe in one managed Compose component.", func(ctx context.Context, input struct {
-		ApplicationId string `json:"application_id" jsonschema:"required"`
+		ServiceId     string `json:"service_id" jsonschema:"required"`
 		ComponentName string `json:"component_name" jsonschema:"required"`
 		Port          int    `json:"port" jsonschema:"required"`
 		Path          string `json:"path,omitempty"`
-		InstanceKey   string `json:"instance_key,omitempty"`
 	}) (map[string]any, error) {
-		target, err := c.runtimeTarget(ctx, input.ApplicationId, input.InstanceKey)
+		target, err := c.runtimeTarget(ctx, input.ServiceId)
 		if err != nil {
 			return nil, err
 		}
@@ -184,26 +131,22 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 }
 
 type runtimeTargetInput struct {
-	ApplicationId string `json:"application_id" jsonschema:"required"`
-	InstanceKey   string `json:"instance_key,omitempty"`
+	ServiceId string `json:"service_id" jsonschema:"required"`
 }
 
-func (c *core) runtimeTarget(ctx context.Context, applicationId, instanceKey string) (deploymentdto.RuntimeTarget, error) {
-	if _, err := c.applicationInScope(ctx, applicationId); err != nil {
+func (c *core) runtimeTarget(ctx context.Context, serviceId string) (deploymentdto.RuntimeTarget, error) {
+	if err := c.serviceInScope(ctx, serviceId); err != nil {
 		return deploymentdto.RuntimeTarget{}, err
 	}
 	projectId, err := c.currentProjectId()
 	if err != nil {
 		return deploymentdto.RuntimeTarget{}, err
 	}
-	if strings.TrimSpace(instanceKey) == "" {
-		instanceKey = "default"
-	}
-	return c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, projectId, applicationId, instanceKey, false)
+	return c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, projectId, serviceId, true)
 }
 
 func runtimeOutput(target deploymentdto.RuntimeTarget, data map[string]any) map[string]any {
-	targetOutput := map[string]any{"project_id": target.ProjectId, "application_id": target.ApplicationId, "service_id": target.ServiceId, "instance_key": target.InstanceKey, "service_code": target.ServiceCode, "working_directory": target.WorkingDirectory, "compose_project": target.ComposeProject}
+	targetOutput := map[string]any{"project_id": target.ProjectId, "application_id": target.ApplicationId, "service_id": target.ServiceId, "service_code": target.ServiceCode, "working_directory": target.WorkingDirectory, "compose_project": target.ComposeProject}
 	result := map[string]any{"project_id": target.ProjectId, "target": targetOutput, "working_directory": target.WorkingDirectory}
 	for key, value := range data {
 		result[key] = value

@@ -48,7 +48,7 @@ func (s Service) VerifyDeployment(ctx context.Context, userId, projectId, applic
 	if service.ApplicationId != app.Id {
 		return verificationResult("inconclusive", []string{"deployment service does not belong to application"}, evidence), nil
 	}
-	target, err := s.ResolveRuntimeTarget(ctx, userId, projectId, app.Id, service.InstanceKey, false)
+	target, err := s.ResolveRuntimeTarget(ctx, userId, projectId, service.Id, false)
 	if err != nil {
 		return deploymentdto.DeploymentVerificationResult{}, err
 	}

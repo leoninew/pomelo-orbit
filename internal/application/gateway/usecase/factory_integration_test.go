@@ -33,7 +33,7 @@ const seededGatewayApplicationId = "01M10RRA8F863EJ2N9TC3Z2EC1"
 const seededGatewayServiceId = "01M10RRA8F863EJ2N9TTG49G6S"
 const seededGatewayDashboardRouteId = "01M10RRA8F863EJ2N9TYPF0CV7"
 
-func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
+func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	service, applications, services, database := newGatewayFactoryService(t, nil)
 	defer func() { _ = database.Close() }()
 
@@ -41,17 +41,14 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.DefaultService == nil {
-		t.Fatal("gateway response is missing default service")
+	if created.Service == nil {
+		t.Fatal("gateway response is missing service")
 	}
-	if got := created.DefaultService; got.InstanceKey != "default" || got.Code != "traefik-default" || got.Status != status.ServiceStatusStopped {
-		t.Fatalf("default service = %#v", got)
+	if got := created.Service; got.Code != "traefik-default" || got.Status != status.ServiceStatusStopped {
+		t.Fatalf("gateway service = %#v", got)
 	}
 	if created.Application.Code != "traefik" {
 		t.Fatalf("application code = %q", created.Application.Code)
-	}
-	if len(created.Services) != 1 || created.Services[0].Id != created.DefaultService.Id {
-		t.Fatalf("gateway services = %#v", created.Services)
 	}
 	if len(created.Config.VersionBindings) != 4 {
 		t.Fatalf("gateway Version bindings = %#v", created.Config.VersionBindings)
@@ -69,7 +66,7 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 		t.Fatalf("gateway Versions = %#v", versions)
 	}
 
-	version, err := applications.Version(context.Background(), gatewayFactoryProjectId, created.DefaultService.VersionId)
+	version, err := applications.Version(context.Background(), gatewayFactoryProjectId, created.Service.VersionId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +97,7 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 	if !strings.Contains(staticConfig, "network: traefik") {
 		t.Fatalf("initial Traefik config missing shared network: %q", staticConfig)
 	}
-	mappings, err := services.ServiceComponentsByService(context.Background(), gatewayFactoryProjectId, created.DefaultService.Id)
+	mappings, err := services.ServiceComponentsByService(context.Background(), gatewayFactoryProjectId, created.Service.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,8 +134,8 @@ func TestCreateGatewayInitializationCodesDoNotRepeatProjectDefault(t *testing.T)
 	if created.Application.Code != "traefik" || created.Application.Name != "Traefik" {
 		t.Fatalf("application = %#v", created.Application)
 	}
-	if created.DefaultService == nil || created.DefaultService.Code != "traefik-default" {
-		t.Fatalf("default service = %#v", created.DefaultService)
+	if created.Service == nil || created.Service.Code != "traefik-default" {
+		t.Fatalf("gateway service = %#v", created.Service)
 	}
 }
 
@@ -162,14 +159,14 @@ func TestProvisionGatewayOnlyPreparesStoppedServices(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defaultResult, err := service.ProvisionGateway(context.Background(), gatewayFactoryUserId, gatewaydto.ProvisionGatewayInput{ProjectId: gatewayFactoryProjectId, InstanceKey: "default"})
+	defaultResult, err := service.ProvisionGateway(context.Background(), gatewayFactoryUserId, gatewaydto.ProvisionGatewayInput{ProjectId: gatewayFactoryProjectId})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if defaultResult.GatewayCreated || defaultResult.ServiceCreated || defaultResult.Service.Id != created.DefaultService.Id {
-		t.Fatalf("default provision result = %#v", defaultResult)
+	if defaultResult.GatewayCreated || defaultResult.ServiceCreated || defaultResult.Service.Id != created.Service.Id {
+		t.Fatalf("provision result = %#v", defaultResult)
 	}
-	version, err := applications.Version(context.Background(), gatewayFactoryProjectId, created.DefaultService.VersionId)
+	version, err := applications.Version(context.Background(), gatewayFactoryProjectId, created.Service.VersionId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,10 +174,6 @@ func TestProvisionGatewayOnlyPreparesStoppedServices(t *testing.T) {
 		t.Fatalf("provision published version: %#v", version)
 	}
 
-	_, err = service.ProvisionGateway(context.Background(), gatewayFactoryUserId, gatewaydto.ProvisionGatewayInput{ProjectId: gatewayFactoryProjectId, InstanceKey: "staging"})
-	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
-		t.Fatalf("staging gateway provision error = %v, want validation error", err)
-	}
 }
 
 func TestSelectGatewayDeploymentVersionUsesProfileBinding(t *testing.T) {
@@ -197,7 +190,10 @@ func TestSelectGatewayDeploymentVersionUsesProfileBinding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := service.SelectGatewayDeploymentVersion(context.Background(), gatewayFactoryProjectId, updated.Application, *updated.DefaultService)
+	if updated.Service == nil {
+		t.Fatal("updated gateway service is missing")
+	}
+	selected, err := service.SelectGatewayDeploymentVersion(context.Background(), gatewayFactoryProjectId, updated.Application, *updated.Service)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +341,6 @@ func seedGatewayFactoryEnvironment(t *testing.T, database *sql.DB) {
 		Id:                "01KROUTEGATEWAYENV00000001",
 		ProjectId:         gatewayFactoryProjectId,
 		Code:              "gateway-factory",
-		State:             model.EnvironmentStateActive,
 		TargetType:        model.EnvironmentTargetTypeSSH,
 		WorkspaceRoot:     "/srv/pomelo-orbit",
 		TargetRevision:    1,

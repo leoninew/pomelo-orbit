@@ -237,7 +237,7 @@ func injectGatewayDashboardLabels(services map[string]any, plan model.EffectiveS
 		return fmt.Errorf("gateway default_entrypoint is required")
 	}
 	service := services[plan.Components[0].Name].(map[string]any)
-	router := plan.Application.Code + "-" + plan.Service.InstanceKey + "-dashboard"
+	router := plan.Service.Code + "-dashboard"
 	appendStrings(service, "labels", []string{"traefik.enable=true", "traefik.http.routers." + router + ".rule=Host(`" + host + "`)", "traefik.http.routers." + router + ".entrypoints=" + entrypoint, "traefik.http.routers." + router + ".service=api@internal"})
 	appendTLSLabels(service, router, "http", plan.Gateway.TLSMode)
 	return nil

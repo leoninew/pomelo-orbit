@@ -34,7 +34,6 @@ export interface ProjectInitializationEnvironmentSnapshot {
   id: string;
   target_type: string;
   workspace_root: string;
-  state: string;
   target_revision: number;
   last_probe_revision?: number | undefined;
   last_probe_status?: string | undefined;
@@ -50,7 +49,7 @@ export interface ProjectInitializationGatewaySnapshot {
   name: string;
   rest_api_url: string;
   base_domain: string;
-  default_service_status: string;
+  service_status: string;
 }
 
 export interface ProjectInitializationStatusResp {

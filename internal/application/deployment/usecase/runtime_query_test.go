@@ -59,7 +59,7 @@ func TestComposePreviewsDoNotRequireConfiguredProjectEnvironment(t *testing.T) {
 	projectId := "project-1"
 	store := &runtimeQueryStore{
 		application: model.Application{Id: "app-1", ProjectId: &projectId, Code: "demo", Kind: status.ApplicationKindStandard},
-		service:     model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-1", InstanceKey: "default", Code: "demo-default"},
+		service:     model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-1", Code: "demo-default"},
 		version:     model.Version{Id: "version-1", ApplicationId: "app-1"},
 		components: []model.VersionComponent{{
 			Id: "component-1", VersionId: "version-1", Name: "web", Image: "nginx:latest",
@@ -164,7 +164,7 @@ func newRuntimeQueryService() (Service, *runtimeQueryStore) {
 	projectId := "project-1"
 	store := &runtimeQueryStore{
 		application: model.Application{Id: "app-1", ProjectId: &projectId, Code: "demo", Kind: status.ApplicationKindStandard},
-		service:     model.Service{Id: "service-1", ApplicationId: "app-1", InstanceKey: "default", VersionId: "version-1"},
+		service:     model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-1", Code: "demo-default"},
 	}
 	return Service{commandStore: store}, store
 }

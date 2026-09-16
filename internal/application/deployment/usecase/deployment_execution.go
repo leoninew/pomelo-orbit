@@ -49,11 +49,6 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, projectId string,
 	if forceRecreate {
 		opts.ForceRecreate = true
 	}
-	if opts.InstanceKey == "" {
-		err := fmt.Errorf("deployment %s missing instance_key", deployment.Id)
-		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
-		return err
-	}
 	target, err := s.resolveProjectTarget(ctx, projectId)
 	if err != nil {
 		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
@@ -91,10 +86,6 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, projectId string,
 		return err
 	}
 	setPlanJoinTraefikNetwork(&plan, opts.JoinTraefikNetwork)
-	if err := s.ensureSingleRuntime(ctx, projectId, app, opts.InstanceKey); err != nil {
-		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
-		return err
-	}
 	plan.Gateway = cloneGatewayConfig(opts.GatewayConfig)
 	setPlanJoinTraefikNetwork(&plan, opts.JoinTraefikNetwork)
 	if requiresGatewayConfig(plan) && plan.Gateway == nil {
@@ -524,25 +515,4 @@ func parseDeployOptions(raw *string) (deploymentdto.DeployOptionsJSON, error) {
 func writeWorkingDirectory(w io.Writer, dir string) error {
 	_, err := fmt.Fprintf(w, "Working directory: %s\n", dir)
 	return err
-}
-
-// ensureSingleRuntime rejects a second active service binding for the same Application.
-func (s Service) ensureSingleRuntime(ctx context.Context, projectId string, app model.Application, instanceKey string) error {
-	if s.store == nil {
-		return nil
-	}
-	services, err := s.store.ListServicesByApplication(ctx, projectId, app.Id)
-	if err != nil {
-		return err
-	}
-	for _, svc := range services {
-		if !isActiveServiceStatus(svc.Status) {
-			continue
-		}
-		if svc.InstanceKey == instanceKey {
-			continue // same binding — replace in place
-		}
-		return fmt.Errorf("application already has an active runtime (service %s status=%s); single runtime only", svc.Id, svc.Status)
-	}
-	return nil
 }

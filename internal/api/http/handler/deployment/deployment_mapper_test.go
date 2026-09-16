@@ -58,13 +58,9 @@ func TestApplicationStatusResponse(t *testing.T) {
 
 func TestDeploymentResponseIncludesServiceIdentity(t *testing.T) {
 	serviceId := "service-1"
-	instanceKey := "production"
-	response := deploymentResponse(model.Deployment{Id: "deployment-1", ServiceId: &serviceId, ServiceInstanceKey: &instanceKey})
+	response := deploymentResponse(model.Deployment{Id: "deployment-1", ServiceId: &serviceId})
 
 	if response.ServiceId == nil || *response.ServiceId != serviceId {
 		t.Fatalf("ServiceId = %v, want %q", response.ServiceId, serviceId)
-	}
-	if response.ServiceInstanceKey == nil || *response.ServiceInstanceKey != instanceKey {
-		t.Fatalf("ServiceInstanceKey = %v, want %q", response.ServiceInstanceKey, instanceKey)
 	}
 }

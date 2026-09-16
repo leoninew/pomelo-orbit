@@ -160,7 +160,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		}
 		items := make([]map[string]any, 0, len(services))
 		for _, service := range services {
-			items = append(items, map[string]any{"id": service.Id, "application_id": service.ApplicationId, "instance_key": service.InstanceKey, "code": service.Code, "version_id": service.VersionId, "status": service.Status, "created_at": formatTime(service.CreatedAt), "updated_at": formatTime(service.UpdatedAt)})
+			items = append(items, map[string]any{"id": service.Id, "application_id": service.ApplicationId, "code": service.Code, "version_id": service.VersionId, "status": service.Status, "created_at": formatTime(service.CreatedAt), "updated_at": formatTime(service.UpdatedAt)})
 		}
 		return map[string]any{"application_id": input.ApplicationId, "services": items}, nil
 	})
@@ -181,18 +181,12 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return map[string]any{"gateways": items}, nil
 	})
 
-	addTool(server, "orbit_provision_gateway", "Prepare the selected Project's existing managed Gateway and return its stopped Service. Deploy it explicitly with orbit_deploy.", func(ctx context.Context, input struct {
-		InstanceKey string `json:"instance_key,omitempty"`
-	}) (map[string]any, error) {
+	addTool(server, "orbit_provision_gateway", "Prepare the selected Project's existing managed Gateway and return its stopped Service. Deploy it explicitly with orbit_deploy.", func(ctx context.Context, _ struct{}) (map[string]any, error) {
 		projectId, _, err := c.requireReadyGateway(ctx)
 		if err != nil {
 			return nil, err
 		}
-		instanceKey := input.InstanceKey
-		if instanceKey == "" {
-			instanceKey = "default"
-		}
-		result, err := c.deps.Gateway.ProvisionGateway(ctx, c.deps.ActorUserId, gatewaydto.ProvisionGatewayInput{ProjectId: projectId, InstanceKey: instanceKey})
+		result, err := c.deps.Gateway.ProvisionGateway(ctx, c.deps.ActorUserId, gatewaydto.ProvisionGatewayInput{ProjectId: projectId})
 		if err != nil {
 			return nil, err
 		}

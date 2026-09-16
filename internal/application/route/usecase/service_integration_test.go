@@ -566,7 +566,7 @@ func seedTCPRouteTarget(t *testing.T, database *sql.DB, projectId, appId, versio
 	if err := appRepo.CreateVersionWithVersionComponents(ctx, projectId, version, []model.VersionComponent{component}); err != nil {
 		t.Fatalf("seed TCP target version: %v", err)
 	}
-	target := model.Service{Id: serviceId, ProjectId: projectId, ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "redis-default", Status: status.ServiceStatusStopped}
+	target := model.Service{Id: serviceId, ProjectId: projectId, ApplicationId: app.Id, VersionId: version.Id, Code: "redis-default", Status: status.ServiceStatusStopped}
 	serviceComponent := model.ServiceComponent{
 		Id: "01KROUTETARGETSERVICECOMP01", ServiceId: target.Id,
 		SourceVersionComponentId: component.Id, ComponentName: component.Name, Status: "active",
@@ -597,7 +597,7 @@ func seedHTTPRouteTarget(t *testing.T, database *sql.DB, projectId, appId, versi
 	if err := appRepo.CreateVersionWithVersionComponents(ctx, projectId, version, []model.VersionComponent{component}); err != nil {
 		t.Fatalf("seed HTTP target version: %v", err)
 	}
-	target := model.Service{Id: serviceId, ProjectId: projectId, ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "api-default", Status: status.ServiceStatusStopped}
+	target := model.Service{Id: serviceId, ProjectId: projectId, ApplicationId: app.Id, VersionId: version.Id, Code: "api-default", Status: status.ServiceStatusStopped}
 	serviceComponent := model.ServiceComponent{
 		Id: "01KROUTEHTTPSERVICECOMP00001", ServiceId: target.Id,
 		SourceVersionComponentId: component.Id, ComponentName: component.Name, Status: "active",
@@ -654,7 +654,7 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 	if err := appRepo.CreateVersionWithVersionComponents(ctx, projectId, version, []model.VersionComponent{component}); err != nil {
 		t.Fatalf("seed gateway version: %v", err)
 	}
-	gatewayService := model.Service{Id: "01KROUTEGATEWAYSERVICE0000001", ProjectId: projectId, ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "test-gateway-default", Status: status.ServiceStatusStopped}
+	gatewayService := model.Service{Id: "01KROUTEGATEWAYSERVICE0000001", ProjectId: projectId, ApplicationId: app.Id, VersionId: version.Id, Code: "test-gateway-default", Status: status.ServiceStatusStopped}
 	if err := serviceRepo.CreateServiceWithComponents(ctx, projectId, gatewayService, []model.ServiceComponent{{Id: "01KROUTEGATEWAYSERVICECOMP0001", ServiceId: gatewayService.Id, SourceVersionComponentId: component.Id, ComponentName: component.Name, Status: "active"}}); err != nil {
 		t.Fatalf("seed gateway service: %v", err)
 	}
@@ -670,7 +670,6 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 		Id:             "01KROUTEENVIRONMENT0000001",
 		ProjectId:      projectId,
 		Code:           "route-test",
-		State:          model.EnvironmentStateActive,
 		TargetType:     model.EnvironmentTargetTypeSSH,
 		WorkspaceRoot:  "/srv/pomelo-orbit",
 		TargetRevision: 1,

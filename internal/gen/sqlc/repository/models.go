@@ -106,7 +106,6 @@ type Environment struct {
 	Id                    string         `db:"id"`
 	ProjectId             string         `db:"project_id"`
 	Code                  string         `db:"code"`
-	State                 string         `db:"state"`
 	TargetType            string         `db:"target_type"`
 	Platform              sql.NullString `db:"platform"`
 	Host                  sql.NullString `db:"host"`
@@ -388,7 +387,6 @@ type Service struct {
 	Id            string    `db:"id"`
 	ProjectId     string    `db:"project_id"`
 	ApplicationId string    `db:"application_id"`
-	InstanceKey   string    `db:"instance_key"`
 	Code          string    `db:"code"`
 	VersionId     string    `db:"version_id"`
 	Status        string    `db:"status"`

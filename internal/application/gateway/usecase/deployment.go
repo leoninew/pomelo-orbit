@@ -52,7 +52,7 @@ func (s Service) ensureGatewayConfigBoundToProject(ctx context.Context, cfg mode
 	return nil
 }
 
-// SelectGatewayDeploymentVersion makes the default Gateway Service point at
+// SelectGatewayDeploymentVersion makes the managed Gateway Service point at
 // the Version selected by its saved ACME profile before Deployment snapshots
 // the Service. Non-Gateway applications are left unchanged.
 func (s Service) SelectGatewayDeploymentVersion(ctx context.Context, projectId string, app model.Application, service model.Service) (model.Service, error) {
@@ -68,9 +68,6 @@ func (s Service) SelectGatewayDeploymentVersion(ctx context.Context, projectId s
 	}
 	if err := s.ensureGatewayConfigBoundToProject(ctx, cfg, projectId); err != nil {
 		return model.Service{}, err
-	}
-	if service.InstanceKey != "default" {
-		return service, nil
 	}
 	role := cfg.AcmeProfile
 	if role == "" {

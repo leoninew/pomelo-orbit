@@ -1,5 +1,5 @@
 # 后端架构（现行）
-最后修改时间: 2026-09-09 17:52:42
+最后修改时间: 2026-09-16 18:02:22
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。  
@@ -56,7 +56,7 @@ cmd/server, cmd/migrate
 | `application/repository` | 仓库 |
 | `application/role` | 角色 |
 | `application/route` | 平台路由 |
-| `application/service` | 服务实例 |
+| `application/service` | Service 运行绑定、服务编码与运行时覆盖 |
 | `application/settings` | 系统设置 |
 | `application/user` | 用户 |
 

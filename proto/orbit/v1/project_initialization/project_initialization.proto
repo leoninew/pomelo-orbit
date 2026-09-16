@@ -24,7 +24,6 @@ message ProjectInitializationEnvironmentSnapshot {
   string id = 1;
   string target_type = 2;
   string workspace_root = 3;
-  string state = 4;
   int64 target_revision = 5;
   optional int64 last_probe_revision = 6;
   optional string last_probe_status = 7;
@@ -40,7 +39,7 @@ message ProjectInitializationGatewaySnapshot {
   string name = 3;
   string rest_api_url = 4;
   string base_domain = 5;
-  string default_service_status = 6;
+  string service_status = 6;
 }
 
 message ProjectInitializationStatusResp {

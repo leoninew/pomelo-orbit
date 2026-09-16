@@ -1,5 +1,5 @@
 # CD 部署原理
-最后修改时间: 2026-09-11 14:48:17
+最后修改时间: 2026-09-16 18:02:22
 
 Doc role: living guide。权威模型见 [CD 领域模型](../product/cd-model.md) 与 [CD 运行时](../architecture/cd-runtime.md)。
 
@@ -17,6 +17,8 @@ Application + Version + Service
 ```
 
 一个 Environment 只能部署一个 Gateway。Environment 与已绑定 Gateway 不能删除；它们与 Project、Gateway Application 的关系均为逻辑外键。
+
+Service 是 Application 下的独立运行绑定。一个 Application 可以按需要创建多条 Service；`service.code` 在当前 Project 内唯一，并作为部署工作目录、Compose project、日志目录和派生路由名的稳定标识。创建页面可建议 `<application-code>-default`，但该 code 可编辑且 `default` 不表示实例或默认 Service。部署、停止和运行时查询均以显式 `service_id` 定位目标。
 
 ## Environment target
 

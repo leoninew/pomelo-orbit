@@ -550,15 +550,13 @@ CREATE TABLE IF NOT EXISTS service (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL,
     application_id TEXT NOT NULL,
-    instance_key TEXT NOT NULL DEFAULT 'default',
     code TEXT NOT NULL,
     version_id TEXT NOT NULL,
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
-    FOREIGN KEY (version_id) REFERENCES version(id),
-    UNIQUE(application_id, instance_key)
+    FOREIGN KEY (version_id) REFERENCES version(id)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_service_project_code ON service(project_id, code);
 
@@ -745,7 +743,6 @@ CREATE TABLE IF NOT EXISTS environment (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL UNIQUE,
     code TEXT NOT NULL UNIQUE,
-    state TEXT NOT NULL CHECK (state IN ('active', 'disabled')),
     target_type TEXT NOT NULL CHECK (target_type IN ('local', 'ssh')),
     platform TEXT CHECK (platform IS NULL OR platform IN ('linux', 'windows')),
     host TEXT,

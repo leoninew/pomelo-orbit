@@ -1,5 +1,5 @@
 # CD 产品模型
-最后修改时间: 2026-09-11 14:48:17
+最后修改时间: 2026-09-16 18:02:22
 
 Doc role: living product model
 
@@ -11,7 +11,7 @@ Doc role: living product model
 | Environment | Project 唯一的部署目标；类型为控制面本机或 SSH 宿主 |
 | Application | 通用应用元数据，属于一个 Project |
 | Version / Component | 可编辑、可 fork 的 Compose 拓扑声明 |
-| Service | Version 的运行实例和运行时覆盖 |
+| Service | Version 的独立运行绑定和运行时覆盖，由 Project 内唯一的服务编码标识 |
 | Deployment | 异步部署任务及不可变执行输入 |
 | GatewayConfig | Gateway Application 的业务属性和 ACME profile 选择 |
 | Route | 自定义 HTTP/TCP 入口和受管 target |
@@ -35,7 +35,7 @@ Environment 的 target type 是显式联合：
 
 ## Gateway
 
-Gateway 是一个绑定到 Project Environment 的普通 Application。每个 Environment 仅允许一个 Gateway 和一个停止态 `default` Service。Application name/code 是 Project 内唯一的产品身份 `Traefik` / `traefik`，不把 Project code 拼进名称；default Service code 为 Project 内唯一的 `traefik-default`。工作目录和 Compose project 都使用 Service code。创建时生成 `base`、`http`、`dns`、`http-dns` 四个普通 Version；它们与普通 Version/Component 一样可以查看、编辑、fork 和部署。
+Gateway 是一个绑定到 Project Environment 的普通 Application。每个 Environment 仅允许一个 Gateway 和一个受管 Service。Application name/code 是 Project 内唯一的产品身份 `Traefik` / `traefik`，不把 Project code 拼进名称；受管 Service 的既有 code 为 Project 内唯一的 `traefik-default`，但该字面量只是一项稳定编码，不表示默认实例。工作目录和 Compose project 都使用 Service code。普通 Application 可以拥有多条 Service；每条 Service 以 Project 内唯一 code 区分。创建时生成 `base`、`http`、`dns`、`http-dns` 四个普通 Version；它们与普通 Version/Component 一样可以查看、编辑、fork 和部署。
 
 GatewayConfig 保存控制面 REST URL/readiness、base domain、Component label 默认策略、ACME profile、email 和 DNS token。它不保存 Component 名称、镜像、mount、endpoint、TCP listener 或 resolver 布局。profile 选择对应的绑定 Version；空 profile 使用 `base` Version。
 

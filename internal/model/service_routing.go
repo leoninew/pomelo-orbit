@@ -14,9 +14,9 @@ func IsDNSLabel(value string) bool {
 }
 
 // RuntimeContainerName returns the explicit Docker container name emitted for
-// an Application component in the generated Compose configuration.
-func RuntimeContainerName(applicationCode, componentName string) string {
-	name := strings.ToLower(strings.TrimSpace(applicationCode) + "-" + strings.TrimSpace(componentName))
+// a Service component in the generated Compose configuration.
+func RuntimeContainerName(serviceCode, componentName string) string {
+	name := strings.ToLower(strings.TrimSpace(serviceCode) + "-" + strings.TrimSpace(componentName))
 	name = strings.Map(func(char rune) rune {
 		if (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '-' {
 			return char

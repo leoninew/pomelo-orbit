@@ -496,15 +496,13 @@ CREATE TABLE IF NOT EXISTS service (
     id TEXT PRIMARY KEY,
     project_id VARCHAR(26) NOT NULL,
     application_id TEXT NOT NULL,
-    instance_key TEXT NOT NULL DEFAULT 'default',
     code TEXT NOT NULL,
     version_id TEXT NOT NULL,
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
-    FOREIGN KEY (version_id) REFERENCES version(id),
-    UNIQUE(application_id, instance_key)
+    FOREIGN KEY (version_id) REFERENCES version(id)
 );
 CREATE UNIQUE INDEX uq_service_project_code ON service(project_id, code);
 
@@ -675,7 +673,6 @@ CREATE TABLE IF NOT EXISTS environment (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL UNIQUE,
     code TEXT NOT NULL UNIQUE,
-    state TEXT NOT NULL,
     target_type TEXT NOT NULL,
     platform TEXT,
     host TEXT,
@@ -693,7 +690,6 @@ CREATE TABLE IF NOT EXISTS environment (
     gateway_application_id TEXT UNIQUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_environment_state CHECK (state IN ('active', 'disabled')),
     CONSTRAINT chk_environment_target_type CHECK (target_type IN ('local', 'ssh')),
     CONSTRAINT chk_environment_platform CHECK (platform IS NULL OR platform IN ('linux', 'windows')),
     CONSTRAINT chk_environment_port CHECK (port IS NULL OR port BETWEEN 1 AND 65535),

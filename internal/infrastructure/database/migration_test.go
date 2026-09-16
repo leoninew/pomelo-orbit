@@ -104,6 +104,65 @@ func TestMigrateUpSQLite(t *testing.T) {
 	}
 }
 
+func TestMigrateUpSQLiteRemovesServiceInstanceAndEnvironmentState(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateTo(database, config.DatabaseDriverSQLite, 42); err != nil {
+		t.Fatalf("migrate to pre-removal schema: %v", err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO project (id, name, code) VALUES ('01MREMOVESERVICE0000000001', 'Removal test', 'removal-test')`,
+		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('01MREMOVESERVICE0000000002', 'Application', 'application', 'standard', '01MREMOVESERVICE0000000001')`,
+		`INSERT INTO version (id, application_id, label, status) VALUES ('01MREMOVESERVICE0000000003', '01MREMOVESERVICE0000000002', 'v1', 'unpublished')`,
+		`INSERT INTO version_component (id, version_id, name, image, pull_policy) VALUES ('01MREMOVESERVICE0000000004', '01MREMOVESERVICE0000000003', 'web', 'nginx:latest', 'missing')`,
+		`INSERT INTO service (id, project_id, application_id, instance_key, code, version_id, status) VALUES ('01MREMOVESERVICE0000000005', '01MREMOVESERVICE0000000001', '01MREMOVESERVICE0000000002', 'default', 'application-default', '01MREMOVESERVICE0000000003', 'stopped')`,
+		`INSERT INTO service_component (id, service_id, source_version_component_id, component_name, status) VALUES ('01MREMOVESERVICE0000000006', '01MREMOVESERVICE0000000005', '01MREMOVESERVICE0000000004', 'web', 'active')`,
+		`INSERT INTO environment (id, project_id, code, state, target_type, target_revision) VALUES ('01MREMOVESERVICE0000000007', '01MREMOVESERVICE0000000001', 'removal-test', 'active', 'local', 1)`,
+	} {
+		if _, err := database.Exec(statement); err != nil {
+			t.Fatalf("seed pre-removal schema: %v", err)
+		}
+	}
+
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate current schema: %v", err)
+	}
+	for _, tableColumn := range []struct {
+		table  string
+		column string
+	}{
+		{table: "service", column: "instance_key"},
+		{table: "environment", column: "state"},
+	} {
+		var count int
+		if err := database.QueryRow(`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`, tableColumn.table, tableColumn.column).Scan(&count); err != nil {
+			t.Fatalf("inspect %s.%s: %v", tableColumn.table, tableColumn.column, err)
+		}
+		if count != 0 {
+			t.Fatalf("%s still has %s", tableColumn.table, tableColumn.column)
+		}
+	}
+	var code string
+	if err := database.QueryRow(`SELECT code FROM service WHERE id = '01MREMOVESERVICE0000000005'`).Scan(&code); err != nil {
+		t.Fatalf("load migrated Service: %v", err)
+	}
+	if code != "application-default" {
+		t.Fatalf("migrated service code = %q", code)
+	}
+	var components int
+	if err := database.QueryRow(`SELECT COUNT(*) FROM service_component WHERE service_id = '01MREMOVESERVICE0000000005'`).Scan(&components); err != nil {
+		t.Fatalf("count migrated service components: %v", err)
+	}
+	if components != 1 {
+		t.Fatalf("migrated service components = %d, want 1", components)
+	}
+	if _, err := database.Exec(`INSERT INTO service (id, project_id, application_id, code, version_id, status) VALUES ('01MREMOVESERVICE0000000008', '01MREMOVESERVICE0000000001', '01MREMOVESERVICE0000000002', 'application-preview', '01MREMOVESERVICE0000000003', 'stopped')`); err != nil {
+		t.Fatalf("create a second service for application: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO service (id, project_id, application_id, code, version_id, status) VALUES ('01MREMOVESERVICE0000000009', '01MREMOVESERVICE0000000001', '01MREMOVESERVICE0000000002', 'application-default', '01MREMOVESERVICE0000000003', 'stopped')`); err == nil {
+		t.Fatal("duplicate project service code was accepted")
+	}
+}
+
 func TestMigrateUpSQLiteSeedsExportedData(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {

@@ -254,7 +254,6 @@ type EnvironmentResp struct {
 	Id                   string                      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ProjectId            string                      `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	Code                 string                      `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
-	State                string                      `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
 	TargetType           string                      `protobuf:"bytes,5,opt,name=target_type,json=targetType,proto3" json:"target_type,omitempty"`
 	Ssh                  *EnvironmentSSHTargetResp   `protobuf:"bytes,6,opt,name=ssh,proto3" json:"ssh,omitempty"`
 	TargetRevision       int64                       `protobuf:"varint,7,opt,name=target_revision,json=targetRevision,proto3" json:"target_revision,omitempty"`
@@ -317,13 +316,6 @@ func (x *EnvironmentResp) GetProjectId() string {
 func (x *EnvironmentResp) GetCode() string {
 	if x != nil {
 		return x.Code
-	}
-	return ""
-}
-
-func (x *EnvironmentResp) GetState() string {
-	if x != nil {
-		return x.State
 	}
 	return ""
 }
@@ -407,7 +399,6 @@ func (x *EnvironmentResp) GetLocal() *EnvironmentLocalTargetResp {
 
 type ProjectEnvironmentUpdateReq struct {
 	state         protoimpl.MessageState     `protogen:"open.v1"`
-	State         *string                    `protobuf:"bytes,1,opt,name=state,proto3,oneof" json:"state,omitempty"`
 	TargetType    *string                    `protobuf:"bytes,2,opt,name=target_type,json=targetType,proto3,oneof" json:"target_type,omitempty"`
 	Ssh           *EnvironmentSSHTargetReq   `protobuf:"bytes,3,opt,name=ssh,proto3,oneof" json:"ssh,omitempty"`
 	Local         *EnvironmentLocalTargetReq `protobuf:"bytes,4,opt,name=local,proto3,oneof" json:"local,omitempty"`
@@ -443,13 +434,6 @@ func (x *ProjectEnvironmentUpdateReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ProjectEnvironmentUpdateReq.ProtoReflect.Descriptor instead.
 func (*ProjectEnvironmentUpdateReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *ProjectEnvironmentUpdateReq) GetState() string {
-	if x != nil && x.State != nil {
-		return *x.State
-	}
-	return ""
 }
 
 func (x *ProjectEnvironmentUpdateReq) GetTargetType() string {
@@ -607,13 +591,12 @@ const file_orbit_v1_environment_environment_proto_rawDesc = "" +
 	"\x0eworkspace_root\x18\x01 \x01(\tR\rworkspaceRoot\x12\x1a\n" +
 	"\bplatform\x18\x02 \x01(\tR\bplatform\x12\x12\n" +
 	"\x04host\x18\x03 \x01(\tR\x04host\x12\x1a\n" +
-	"\busername\x18\x04 \x01(\tR\busername\"\xf4\x05\n" +
+	"\busername\x18\x04 \x01(\tR\busername\"\xde\x05\n" +
 	"\x0fEnvironmentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x12\n" +
-	"\x04code\x18\x03 \x01(\tR\x04code\x12\x14\n" +
-	"\x05state\x18\x04 \x01(\tR\x05state\x12\x1f\n" +
+	"\x04code\x18\x03 \x01(\tR\x04code\x12\x1f\n" +
 	"\vtarget_type\x18\x05 \x01(\tR\n" +
 	"targetType\x12@\n" +
 	"\x03ssh\x18\x06 \x01(\v2..orbit.v1.environment.EnvironmentSSHTargetRespR\x03ssh\x12'\n" +
@@ -633,14 +616,12 @@ const file_orbit_v1_environment_environment_proto_rawDesc = "" +
 	"\x12_last_probe_statusB\x10\n" +
 	"\x0e_last_probe_atB\x18\n" +
 	"\x16_last_probe_diagnosticB\x19\n" +
-	"\x17_gateway_application_id\"\x9c\x02\n" +
-	"\x1bProjectEnvironmentUpdateReq\x12\x19\n" +
-	"\x05state\x18\x01 \x01(\tH\x00R\x05state\x88\x01\x01\x12$\n" +
-	"\vtarget_type\x18\x02 \x01(\tH\x01R\n" +
+	"\x17_gateway_application_id\"\xf7\x01\n" +
+	"\x1bProjectEnvironmentUpdateReq\x12$\n" +
+	"\vtarget_type\x18\x02 \x01(\tH\x00R\n" +
 	"targetType\x88\x01\x01\x12D\n" +
-	"\x03ssh\x18\x03 \x01(\v2-.orbit.v1.environment.EnvironmentSSHTargetReqH\x02R\x03ssh\x88\x01\x01\x12J\n" +
-	"\x05local\x18\x04 \x01(\v2/.orbit.v1.environment.EnvironmentLocalTargetReqH\x03R\x05local\x88\x01\x01B\b\n" +
-	"\x06_stateB\x0e\n" +
+	"\x03ssh\x18\x03 \x01(\v2-.orbit.v1.environment.EnvironmentSSHTargetReqH\x01R\x03ssh\x88\x01\x01\x12J\n" +
+	"\x05local\x18\x04 \x01(\v2/.orbit.v1.environment.EnvironmentLocalTargetReqH\x02R\x05local\x88\x01\x01B\x0e\n" +
 	"\f_target_typeB\x06\n" +
 	"\x04_sshB\b\n" +
 	"\x06_local\"B\n" +

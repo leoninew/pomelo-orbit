@@ -64,7 +64,7 @@ func (h Handler) CreateService(c *gin.Context) {
 		return
 	}
 	view, err := h.service.CreateService(c.Request.Context(), current.Id, c.Query("project_id"), servicedto.ServiceCreateInput{
-		ApplicationId: req.ApplicationId, VersionId: req.VersionId, InstanceKey: req.InstanceKey, Code: req.Code,
+		ApplicationId: req.ApplicationId, VersionId: req.VersionId, Code: req.Code,
 	})
 	if err != nil {
 		transport.WriteError(c, err)
@@ -130,7 +130,7 @@ func (h Handler) UpdateServiceBasic(c *gin.Context) {
 		return
 	}
 	view, err := h.service.UpdateServiceBasic(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("service_id"), servicedto.ServiceBasicUpdateInput{
-		VersionId: req.VersionId, InstanceKey: req.InstanceKey,
+		VersionId: req.VersionId,
 	})
 	if err != nil {
 		transport.WriteError(c, err)

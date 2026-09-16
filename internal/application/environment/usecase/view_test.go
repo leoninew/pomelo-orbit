@@ -10,7 +10,7 @@ import (
 func TestToViewUsesInjectedLocalDisplayWithoutWorkspaceYaml(t *testing.T) {
 	item := model.Environment{
 		Id: "environment-local", ProjectId: "project-1", Code: "project",
-		State: model.EnvironmentStateActive, TargetType: model.EnvironmentTargetTypeLocal,
+		TargetType: model.EnvironmentTargetTypeLocal,
 	}
 	view := New(nil, nil, nil, "", nil, nil).WithLocalDisplay(environmentdto.LocalDisplaySnapshot{
 		Platform: "linux", Host: "orbit-host", Username: "orbit",

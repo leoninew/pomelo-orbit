@@ -157,7 +157,7 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	for _, row := range rows {
 		items = append(items, deploymentFrom(
 			row.Id, row.ProjectId, row.ApplicationId, row.ApplicationName, row.VersionId, row.ServiceId,
-			row.ServiceInstanceKey, row.EnvironmentId, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SSHCredentialId, row.SshCredentialRevision, row.GatewayApplicationId,
+			row.EnvironmentId, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SSHCredentialId, row.SshCredentialRevision, row.GatewayApplicationId,
 			row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 			row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentId,
 		))
@@ -172,7 +172,7 @@ func (r Repository) Deployment(ctx context.Context, projectId string, id string)
 	}
 	return deploymentFrom(
 		row.Id, row.ProjectId, row.ApplicationId, row.ApplicationName, row.VersionId, row.ServiceId,
-		row.ServiceInstanceKey, row.EnvironmentId, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SSHCredentialId, row.SshCredentialRevision, row.GatewayApplicationId,
+		row.EnvironmentId, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SSHCredentialId, row.SshCredentialRevision, row.GatewayApplicationId,
 		row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 		row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentId,
 	), nil
@@ -252,7 +252,7 @@ func (r Repository) LatestSuccessfulDeploymentPlanHash(ctx context.Context, proj
 
 func deploymentFrom(
 	id string, projectId, applicationId sql.NullString, applicationName string,
-	versionId, serviceId, serviceInstanceKey, environmentId, environmentTargetType sql.NullString,
+	versionId, serviceId, environmentId, environmentTargetType sql.NullString,
 	environmentTargetRevision sql.NullInt64, sshCredentialId sql.NullString, sshCredentialRevision sql.NullInt64,
 	gatewayApplicationId, optionsJSON, effectivePlanHash sql.NullString,
 	operationType, triggerType, commandText, deployStatus string,
@@ -266,7 +266,6 @@ func deploymentFrom(
 		ApplicationName:           applicationName,
 		VersionId:                 dbmodel.StringPtr(versionId),
 		ServiceId:                 dbmodel.StringPtr(serviceId),
-		ServiceInstanceKey:        dbmodel.StringPtr(serviceInstanceKey),
 		EnvironmentId:             dbmodel.StringPtr(environmentId),
 		EnvironmentTargetType:     dbmodel.StringPtr(environmentTargetType),
 		EnvironmentTargetRevision: int64Pointer(environmentTargetRevision),

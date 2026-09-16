@@ -66,12 +66,11 @@ func (s Service) SaveInitialization(ctx context.Context, userId string, projectI
 	if creating {
 		item = model.Environment{
 			Id: idutil.NewId(), ProjectId: project.Id, Code: project.Code,
-			State: model.EnvironmentStateActive, TargetRevision: 1,
-			CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+			TargetRevision: 1,
+			CreatedAt:      time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 		}
 	}
 	previous := item
-	item.State = model.EnvironmentStateActive
 	if err := applyUpdate(&item, input); err != nil {
 		return environmentdto.View{}, err
 	}
@@ -164,9 +163,6 @@ func (s Service) UpdateForUser(ctx context.Context, userId string, projectId str
 		return environmentdto.View{}, err
 	}
 	previous := item
-	// The legacy database state column is retained for storage compatibility;
-	// environment availability is determined by probe readiness instead.
-	item.State = model.EnvironmentStateActive
 	if err := applyUpdate(&item, input); err != nil {
 		return environmentdto.View{}, err
 	}

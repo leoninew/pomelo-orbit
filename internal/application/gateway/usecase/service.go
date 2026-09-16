@@ -228,7 +228,6 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 		if _, err := s.serviceCommands.CreateService(txCtx, userId, projectId, servicedto.ServiceCreateInput{
 			ApplicationId: app.Id,
 			VersionId:     cfg.VersionIDForProfile(gatewayVersionRoleBase),
-			InstanceKey:   "default",
 			Code:          app.Code + "-default",
 		}); err != nil {
 			return err
@@ -290,24 +289,13 @@ func (s Service) gatewayView(ctx context.Context, projectId string, app model.Ap
 	if err != nil {
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway services", err)
 	}
-	var defaultService *model.Service
-	for index := range services {
-		if services[index].InstanceKey != "default" {
-			continue
-		}
-		if defaultService != nil {
-			return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "Gateway has multiple default services")
-		}
-		defaultService = &services[index]
-	}
-	if defaultService == nil {
-		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "Gateway default service is missing")
+	if len(services) != 1 {
+		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "Gateway must have exactly one managed service")
 	}
 	view := gatewaydto.GatewayView{
-		Application:    app,
-		Config:         cfg,
-		DefaultService: defaultService,
-		Services:       services,
+		Application: app,
+		Config:      cfg,
+		Service:     &services[0],
 	}
 	if !includeExposures {
 		return view, nil

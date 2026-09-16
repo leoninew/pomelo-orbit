@@ -29,11 +29,9 @@ type DeploymentSSHPrivateKey struct {
 }
 
 type View struct {
-	Id        string
-	ProjectId string
-	Code      string
-	// State mirrors the legacy database column for read compatibility only.
-	State                string
+	Id                   string
+	ProjectId            string
+	Code                 string
 	TargetType           string
 	TargetRevision       int64
 	LastProbeRevision    *int64

@@ -1,5 +1,5 @@
 # MCP 直接操作
-最后修改时间: 2026-09-10 18:30:00
+最后修改时间: 2026-09-16 18:02:22
 
 ## 命名与启动约定
 
@@ -34,7 +34,7 @@ Codex stdio MCP 在未选择 Project 时不能操作项目级资源。用户以 
 
 `orbit_wait_deployment` 的 deployment 终态和 `timed_out`，以及 `verify_deployment` 的 `failed`、`drift`、`inconclusive`，都是正常领域结果。Orbit API、Docker、runtime target、输入校验和内部失败则统一返回结构化 MCP error result。
 
-Gateway 只能由 Web Initialization Wizard 创建。`orbit_provision_gateway` 只解析当前已选 Project 中已经存在的 Gateway/default Service，不会创建缺失资源。它不会发布 Version、部署、等待或检查 Docker 网络。需要运行 Gateway 时，随后显式调用 `orbit_deploy(service_id)`，并按需调用 `orbit_wait_deployment`。
+Gateway 只能由 Web Initialization Wizard 创建。`orbit_provision_gateway` 只解析当前已选 Project 中已经存在的 Gateway 及其受管 Service，不会创建缺失资源。它不会发布 Version、部署、等待或检查 Docker 网络。需要运行 Gateway 时，随后显式调用 `orbit_deploy(service_id)`，并按需调用 `orbit_wait_deployment`。
 
 每个 Project 只有一个 deployment Environment，target type 为 `local` 或 `ssh`。`orbit_get_project_environment`、`orbit_update_project_environment` 与 `orbit_probe_project_environment` 使用当前 connection 的 Project scope，不接受 `project_id` 或 `environment_id`。local 输出仅包含已保存的 `workspace_root`；SSH 输入/输出使用 nested `ssh` object 和主机指纹。MCP 不接受或输出部署私钥、bootstrap 密码、bootstrap 私钥或初始化命令。SSH 第一次探测成功后记下主机密钥指纹。`ssh` 到 `127.0.0.1` 仍按 SSH 执行。编辑 target 后必须显式 Probe 成功，才能部署。
 
@@ -42,7 +42,7 @@ Gateway 只能由 Web Initialization Wizard 创建。`orbit_provision_gateway` �
 
 Route 工具使用 Route 表单的持久化字段。HTTP Route 的 `path_prefix` 可省略并默认 `/`，且必须提供受管 HTTP target（`service_id`、`component_name`、`endpoint_protocol`、`endpoint_container_port`）或高级 `target_url` 之一；两种 target 互斥。TCP Route 必须提供受管 TCP target 与 `listen_port`，不能使用 `path_prefix` 或 `target_url`。启用 TCP Route 前，目标 Gateway Version 必须已经声明并部署对应的 `tcp<listen_port>` entrypoint 与宿主机端口。
 
-`runtime_doctor` 只接受一个已受管运行时目标：传 `application_id` 与可选 `instance_key`，或传 `gateway_application_id` 与可选 `gateway_instance_key`。运行时工具从 Application 的 Project 解析唯一 Environment；它们不接受 `environment_id`，并在输出中返回派生的 `project_id`。
+运行时工具只接受显式 `service_id` 定位一个已受管运行时目标。它们从 Service 所属 Application 的 Project 解析唯一 Environment；不接受 `environment_id`、`instance_key` 或 Gateway 实例字段，并在输出中返回派生的 `project_id`。
 
 `runtime_compose_ps` 和 `verify_deployment` 默认返回摘要。需要原始 Compose、inspect 或完整 evidence 时，明确传入 `detail=true`；也可以使用已有的 scoped logs、container inspect、network inspect 和 compose config 工具。MCP Server 是 stdio 进程，修改工具后需要重启 MCP client session，并通过 Server instructions 中的 source/schema 指纹确认新的工具表已生效。
 

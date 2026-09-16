@@ -27,7 +27,6 @@ type Querier interface {
 	ListServicesByApplication(ctx context.Context, arg ListServicesByApplicationParams) ([]Service, error)
 	ListServicesByProject(ctx context.Context, arg ListServicesByProjectParams) ([]ListServicesByProjectRow, error)
 	ServiceById(ctx context.Context, arg ServiceByIdParams) (Service, error)
-	ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Service, error)
 	ServiceByProjectAndCode(ctx context.Context, arg ServiceByProjectAndCodeParams) (Service, error)
 	ServiceComponentById(ctx context.Context, arg ServiceComponentByIdParams) (ServiceComponent, error)
 	ServiceComponentEndpointsByComponent(ctx context.Context, arg ServiceComponentEndpointsByComponentParams) ([]ServiceComponentEndpoint, error)
@@ -36,7 +35,6 @@ type Querier interface {
 	ServiceComponentResourceByComponent(ctx context.Context, arg ServiceComponentResourceByComponentParams) (ServiceComponentResource, error)
 	ServiceComponentsByService(ctx context.Context, arg ServiceComponentsByServiceParams) ([]ServiceComponent, error)
 	ServiceEnvByService(ctx context.Context, arg ServiceEnvByServiceParams) ([]ServiceEnv, error)
-	ServiceIdByKey(ctx context.Context, arg ServiceIdByKeyParams) (string, error)
 	ServiceListItemById(ctx context.Context, arg ServiceListItemByIdParams) (ServiceListItemByIdRow, error)
 	TouchService(ctx context.Context, arg TouchServiceParams) error
 	UpdateService(ctx context.Context, arg UpdateServiceParams) error

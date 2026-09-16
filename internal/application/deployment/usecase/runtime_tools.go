@@ -19,24 +19,24 @@ var runtimeSegmentPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]*$`)
 
 // ResolveRuntimeTarget validates that a requested runtime target is an Orbit
 // managed Service belonging to the configured actor.
-func (s Service) ResolveRuntimeTarget(ctx context.Context, userId, projectId, applicationId, instanceKey string, allowGateway bool) (deploymentdto.RuntimeTarget, error) {
-	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
-	if err != nil {
-		return deploymentdto.RuntimeTarget{}, err
+func (s Service) ResolveRuntimeTarget(ctx context.Context, userId, projectId, serviceId string, allowGateway bool) (deploymentdto.RuntimeTarget, error) {
+	serviceId = strings.TrimSpace(serviceId)
+	if serviceId == "" {
+		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindValidation, "service_id is required")
 	}
-	if app.Kind != status.ApplicationKindStandard && (!allowGateway || app.Kind != status.ApplicationKindGateway) {
-		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindValidation, "runtime tools only support managed standard Applications")
-	}
-	instanceKey = strings.TrimSpace(instanceKey)
-	if !safeRuntimeSegment(instanceKey) {
-		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindValidation, "invalid instance_key")
-	}
-	service, err := s.service.ServiceByKey(ctx, projectId, app.Id, instanceKey)
+	service, err := s.service.Service(ctx, projectId, serviceId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindNotFound, "Service not found")
 		}
 		return deploymentdto.RuntimeTarget{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, service.ApplicationId)
+	if err != nil {
+		return deploymentdto.RuntimeTarget{}, err
+	}
+	if app.Kind != status.ApplicationKindStandard && (!allowGateway || app.Kind != status.ApplicationKindGateway) {
+		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindValidation, "runtime tools only support managed standard Applications")
 	}
 	if !safeRuntimeSegment(service.Code) {
 		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindInternal, "invalid managed service code")
@@ -49,7 +49,7 @@ func (s Service) ResolveRuntimeTarget(ctx context.Context, userId, projectId, ap
 	if err != nil {
 		return deploymentdto.RuntimeTarget{}, apperror.Wrap(apperror.KindInternal, "Failed to resolve remote runtime directory", err)
 	}
-	return deploymentdto.RuntimeTarget{ApplicationId: app.Id, ServiceId: service.Id, InstanceKey: service.InstanceKey, ServiceCode: service.Code, WorkingDirectory: workingDirectory, ComposeProject: composeProjectName(service.Code), ProjectId: projectId}, nil
+	return deploymentdto.RuntimeTarget{ApplicationId: app.Id, ServiceId: service.Id, ServiceCode: service.Code, WorkingDirectory: workingDirectory, ComposeProject: composeProjectName(service.Code), ProjectId: projectId}, nil
 }
 
 func safeRuntimeSegment(value string) bool {

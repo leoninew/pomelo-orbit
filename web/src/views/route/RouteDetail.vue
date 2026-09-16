@@ -626,16 +626,16 @@
   );
   const gatewayRuntimeLogTarget = computed<RuntimeContainerLogTarget | undefined>(() => {
     const current = gatewayForLogs.value;
-    if (!current || !current.default_service_id || !current.default_service_instance_key) {
+    if (!current || !current.service_id) {
       return undefined;
     }
     return {
       applicationId: current.id,
-      serviceId: current.default_service_id,
+      serviceId: current.service_id,
       component: MANAGED_GATEWAY_COMPONENT_NAME,
       title: t('service.logs.titleWithComponent', {
         app: current.name,
-        instance: current.default_service_instance_key,
+        code: current.service_code,
         component: MANAGED_GATEWAY_COMPONENT_NAME,
       }),
     };

@@ -68,10 +68,6 @@
             <dd class="text-foreground">{{ service.code }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt>{{ t('service.fields.instanceKey') }}</dt>
-            <dd class="text-foreground">{{ service.instance_key }}</dd>
-          </div>
-          <div class="flex gap-2">
             <dt>{{ t('service.fields.version') }}</dt>
             <dd>
               <router-link :to="`/version/${service.version_id}`" class="app-link">
@@ -144,23 +140,6 @@
           />
           <p v-if="basicEditErrors.version_id" class="app-field-error" role="alert">
             {{ basicEditErrors.version_id }}
-          </p>
-        </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label mb-1.5 block">
-            {{ t('service.fields.instanceKey') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="basicEditForm.instance_key"
-            type="text"
-            class="app-input"
-            :class="basicEditErrors.instance_key ? 'app-input-error' : ''"
-            :aria-invalid="basicEditErrors.instance_key ? 'true' : undefined"
-            @input="basicEditErrors.instance_key = ''"
-          />
-          <p v-if="basicEditErrors.instance_key" class="app-field-error" role="alert">
-            {{ basicEditErrors.instance_key }}
           </p>
         </div>
       </div>
@@ -259,11 +238,7 @@
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
       <p class="text-sm text-muted-foreground">
-        {{
-          t('service.detail.dialog.deleteConfirm', {
-            instance: service?.instance_key || '-',
-          })
-        }}
+        {{ t('service.detail.dialog.deleteConfirm', { code: service?.code || '-' }) }}
       </p>
       <p v-if="deleteError" class="app-field-error mt-3" role="alert">
         {{ deleteError }}
@@ -375,11 +350,9 @@
   const basicEditVersions = ref<VersionResp[]>([]);
   const basicEditForm = reactive({
     version_id: '',
-    instance_key: '',
   });
   const basicEditErrors = reactive({
     version_id: '',
-    instance_key: '',
   });
   const basicEditSubmitError = ref('');
   const isDeployDialogOpen = ref(false);
@@ -419,9 +392,8 @@
     if (!current) {
       return '';
     }
-    const application = current.application_name;
     return t('service.detail.subtitle', {
-      instance: `${application} / ${current.instance_key || 'default'}`,
+      code: current.code,
       version: current.version_label,
     });
   });
@@ -489,9 +461,8 @@
     }
     Object.assign(basicEditForm, {
       version_id: current.version_id,
-      instance_key: current.instance_key,
     });
-    Object.assign(basicEditErrors, { version_id: '', instance_key: '' });
+    Object.assign(basicEditErrors, { version_id: '' });
     basicEditSubmitError.value = '';
     try {
       const page = await applicationApi.listVersions(selectedProjectId(), current.application_id, {
@@ -507,8 +478,8 @@
   function cancelBasicEditing() {
     isBasicEditDialogOpen.value = false;
     basicEditVersions.value = [];
-    Object.assign(basicEditForm, { version_id: '', instance_key: '' });
-    Object.assign(basicEditErrors, { version_id: '', instance_key: '' });
+    Object.assign(basicEditForm, { version_id: '' });
+    Object.assign(basicEditErrors, { version_id: '' });
     basicEditSubmitError.value = '';
   }
 
@@ -527,18 +498,15 @@
 
   async function saveBasicInfo() {
     const versionId = basicEditForm.version_id;
-    const instanceKey = basicEditForm.instance_key.trim();
     basicEditSubmitError.value = '';
     basicEditErrors.version_id = versionId ? '' : t('service.create.versionRequired');
-    basicEditErrors.instance_key = instanceKey ? '' : t('service.create.instanceKeyRequired');
-    if (basicEditErrors.version_id || basicEditErrors.instance_key) {
+    if (basicEditErrors.version_id) {
       return;
     }
     try {
       await executeOperation(async () => {
         const updated = await serviceApi.updateBasic(selectedProjectId(), serviceId, {
           version_id: versionId,
-          instance_key: instanceKey,
         });
         setService(updated);
         cancelBasicEditing();
@@ -605,7 +573,7 @@
       component: component.trim(),
       title: t('service.logs.titleWithComponent', {
         app: current.application_name,
-        instance: current.instance_key,
+        code: current.code,
         component: component.trim(),
       }),
     };
@@ -671,7 +639,6 @@
         if (deployForm.version_id !== current.version_id) {
           serviceForDeploy = await serviceApi.updateBasic(selectedProjectId(), serviceId, {
             version_id: deployForm.version_id,
-            instance_key: current.instance_key,
           });
           setService(serviceForDeploy);
         }

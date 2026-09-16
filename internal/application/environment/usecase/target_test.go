@@ -42,29 +42,11 @@ func TestTargetResolverRejectsUnavailableTargets(t *testing.T) {
 	}
 }
 
-func TestTargetResolverIgnoresLegacyEnvironmentState(t *testing.T) {
-	environment := readyTargetEnvironment()
-	environment.State = model.EnvironmentStateDisabled
-	resolver := NewTargetResolver(
-		targetEnvironmentStore{environment: environment},
-		credentialsForEnvironment(t, environment, "secret-key"),
-		testCredentialSecret,
-	)
-
-	target, err := resolver.ResolveProjectTarget(context.Background(), environment.ProjectId)
-	if err != nil {
-		t.Fatalf("ResolveProjectTarget returned error: %v", err)
-	}
-	if target.Environment.Id != environment.Id || target.PrivateKey == nil || target.PrivateKey.PrivateKey != "secret-key" {
-		t.Fatalf("resolved target = %#v", target)
-	}
-}
-
 func TestTargetResolverReturnsLocalTargetWithoutCredential(t *testing.T) {
 	revision := int64(2)
 	status := model.EnvironmentProbeStatusSucceeded
 	environment := model.Environment{
-		Id: "environment-1", ProjectId: "project-1", State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: "project-1",
 		TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: "/srv/pomelo-orbit", TargetRevision: revision,
 		LastProbeRevision: &revision, LastProbeStatus: &status,
 	}
@@ -81,7 +63,7 @@ func TestTargetResolverRejectsLocalTargetWithoutWorkspaceRoot(t *testing.T) {
 	revision := int64(2)
 	status := model.EnvironmentProbeStatusSucceeded
 	environment := model.Environment{
-		Id: "environment-1", ProjectId: "project-1", State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: "project-1",
 		TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: revision,
 		LastProbeRevision: &revision, LastProbeStatus: &status,
 	}
@@ -103,7 +85,7 @@ func readyTargetEnvironment() model.Environment {
 	revision := int64(2)
 	status := model.EnvironmentProbeStatusSucceeded
 	return model.Environment{
-		Id: "environment-1", ProjectId: "project-1", State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: "project-1",
 		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: revision,
 		WorkspaceRoot:     "/srv/orbit",
 		LastProbeRevision: &revision, LastProbeStatus: &status,

@@ -34,18 +34,17 @@ func (q *Queries) BindGatewayApplication(ctx context.Context, arg BindGatewayApp
 
 const createEnvironment = `-- name: CreateEnvironment :exec
 INSERT INTO environment (
-  id, project_id, code, state, target_type, platform, host, port, username, workspace_root,
+  id, project_id, code, target_type, platform, host, port, username, workspace_root,
   ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
   last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
   gateway_application_id, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateEnvironmentParams struct {
 	Id                    string         `db:"id"`
 	ProjectId             string         `db:"project_id"`
 	Code                  string         `db:"code"`
-	State                 string         `db:"state"`
 	TargetType            string         `db:"target_type"`
 	Platform              sql.NullString `db:"platform"`
 	Host                  sql.NullString `db:"host"`
@@ -70,7 +69,6 @@ func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentPa
 		arg.Id,
 		arg.ProjectId,
 		arg.Code,
-		arg.State,
 		arg.TargetType,
 		arg.Platform,
 		arg.Host,
@@ -93,7 +91,7 @@ func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentPa
 }
 
 const environmentById = `-- name: EnvironmentById :one
-SELECT id, project_id, code, state, target_type, platform, host, port, username, workspace_root,
+SELECT id, project_id, code, target_type, platform, host, port, username, workspace_root,
        ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
        last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
        gateway_application_id, created_at, updated_at
@@ -108,7 +106,6 @@ func (q *Queries) EnvironmentById(ctx context.Context, id string) (Environment, 
 		&i.Id,
 		&i.ProjectId,
 		&i.Code,
-		&i.State,
 		&i.TargetType,
 		&i.Platform,
 		&i.Host,
@@ -131,7 +128,7 @@ func (q *Queries) EnvironmentById(ctx context.Context, id string) (Environment, 
 }
 
 const environmentByProjectId = `-- name: EnvironmentByProjectId :one
-SELECT id, project_id, code, state, target_type, platform, host, port, username, workspace_root,
+SELECT id, project_id, code, target_type, platform, host, port, username, workspace_root,
        ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
        last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
        gateway_application_id, created_at, updated_at
@@ -146,7 +143,6 @@ func (q *Queries) EnvironmentByProjectId(ctx context.Context, projectID string) 
 		&i.Id,
 		&i.ProjectId,
 		&i.Code,
-		&i.State,
 		&i.TargetType,
 		&i.Platform,
 		&i.Host,
@@ -169,7 +165,7 @@ func (q *Queries) EnvironmentByProjectId(ctx context.Context, projectID string) 
 }
 
 const environmentByTarget = `-- name: EnvironmentByTarget :one
-SELECT id, project_id, code, state, target_type, platform, host, port, username, workspace_root,
+SELECT id, project_id, code, target_type, platform, host, port, username, workspace_root,
        ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
        last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
        gateway_application_id, created_at, updated_at
@@ -200,7 +196,6 @@ func (q *Queries) EnvironmentByTarget(ctx context.Context, arg EnvironmentByTarg
 		&i.Id,
 		&i.ProjectId,
 		&i.Code,
-		&i.State,
 		&i.TargetType,
 		&i.Platform,
 		&i.Host,
@@ -258,14 +253,13 @@ func (q *Queries) RecordEnvironmentProbe(ctx context.Context, arg RecordEnvironm
 
 const updateEnvironment = `-- name: UpdateEnvironment :exec
 UPDATE environment
-SET state = ?, target_type = ?, platform = ?, host = ?, port = ?, username = ?, workspace_root = ?,
+SET target_type = ?, platform = ?, host = ?, port = ?, username = ?, workspace_root = ?,
     ssh_credential_id = ?, ssh_credential_revision = ?, host_key_fingerprint = ?,
     target_revision = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateEnvironmentParams struct {
-	State                 string         `db:"state"`
 	TargetType            string         `db:"target_type"`
 	Platform              sql.NullString `db:"platform"`
 	Host                  sql.NullString `db:"host"`
@@ -282,7 +276,6 @@ type UpdateEnvironmentParams struct {
 
 func (q *Queries) UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) error {
 	_, err := q.db.ExecContext(ctx, updateEnvironment,
-		arg.State,
 		arg.TargetType,
 		arg.Platform,
 		arg.Host,

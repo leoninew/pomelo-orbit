@@ -449,9 +449,8 @@ export default {
         mountContent: 'File content',
         runtimeConfig: 'Runtime config',
         exposes: 'Ingress expose (Traefik labels)',
-        instanceKey: 'Instance Key',
         forceRecreate: 'Force recreate',
-        serviceInstance: 'Service instance',
+        serviceInstance: 'Service',
         removeVolumes: 'Also remove volumes',
         domain: 'Domain',
         port: 'Port',
@@ -464,7 +463,7 @@ export default {
       drawer: {
         composePreview: 'docker-compose Preview',
         composePreviewDescription:
-          'Rendered from the selected Version and instance; matches the docker-compose.yml written on deploy (including Traefik labels).',
+          'Rendered from the selected Version and service; matches the docker-compose.yml written on deploy (including Traefik labels).',
       },
       dialog: {
         editApplication: 'Edit Application',
@@ -473,8 +472,8 @@ export default {
         editVersion: 'Edit Version',
         forkVersion: 'Copy Version',
         deploy: 'Deploy Application',
-        stopTarget: 'Stop Service Instance',
-        restartTarget: 'Restart Service Instance',
+        stopTarget: 'Stop Service',
+        restartTarget: 'Restart Service',
         deleteApplicationConfirm: 'Delete application "{name}"? This action cannot be undone.',
         deleteWorkDir:
           'Also delete the application directory managed by the deployment workspace ({code})',
@@ -482,7 +481,7 @@ export default {
         deleteVersionConfirm: 'Delete version "{label}"? This cannot be undone.',
       },
       hints: {
-        selectServiceTarget: 'When multiple service instances exist, choose the target.',
+        selectServiceTarget: 'When multiple services exist, choose the target.',
       },
       placeholders: {
         versionLabel: 'For example: v1',
@@ -497,7 +496,7 @@ export default {
         exposeProtocol: 'Select protocol',
         exposeAccess: 'local or public',
         listenPort: 'Listen port',
-        serviceInstance: 'Select service instance',
+        serviceInstance: 'Select service',
         mountSourceType: 'Source type',
         mountSource: 'Source (./relative path / absolute path / volume name)',
         mountTarget: 'Container path, for example /data',
@@ -512,8 +511,7 @@ export default {
       },
       componentsLoadFailed: 'Unable to load components. Try again.',
       deployDescription:
-        'Deploy version "{label}" to the selected instance. Deploy maintains the service binding.',
-      instanceKeyPlaceholder: 'default',
+        'Deploy version "{label}" to the selected service. Deploy updates its runtime configuration.',
       dialog: {
         editBasic: 'Edit Basic Info',
         addComponent: 'Add Component',
@@ -703,7 +701,7 @@ export default {
       deployTriggered: '{name} deployment triggered',
       deployFailed: 'Failed to deploy',
       deployVersionRequired: 'Create and select a version before deploying',
-      serviceTargetRequired: 'Select a service instance first',
+      serviceTargetRequired: 'Select a service first',
       stopTriggered: '{name} stop triggered',
       stopFailed: 'Failed to stop',
       loadDetailFailed: 'Failed to load application',
@@ -741,7 +739,6 @@ export default {
     fields: {
       application: 'Application',
       code: 'Service Code',
-      instanceKey: 'Instance',
       version: 'Version',
       containers: 'Containers',
       component: 'Component',
@@ -762,7 +759,7 @@ export default {
     },
     detail: {
       title: 'Service detail',
-      subtitle: 'Instance {instance} · Version {version}',
+      subtitle: '{code} · Version {version}',
       notFound: 'Service not found or access denied',
       saved: 'Basic information saved',
       saveFailed: 'Failed to save basic information',
@@ -774,8 +771,7 @@ export default {
       dialog: {
         editBasic: 'Edit service basic information',
         confirmDelete: 'Delete service',
-        deleteConfirm:
-          'Delete service instance "{instance}"? Only stopped or faulted services can be deleted.',
+        deleteConfirm: 'Delete service "{code}"? Only stopped or faulted services can be deleted.',
       },
     },
     componentDetail: {
@@ -809,10 +805,9 @@ export default {
       title: 'Create service',
       selectApplication: 'Select application',
       selectVersion: 'Select version',
-      required: 'Application, version, and instance are required.',
+      required: 'Application, version, and service code are required.',
       applicationRequired: 'Select an application',
       versionRequired: 'Select a version',
-      instanceKeyRequired: 'Enter an instance key',
       codeRequired: 'Enter a service code',
       codeInvalid:
         'Service code must contain only lowercase letters, numbers, or hyphens and be at most 63 characters',
@@ -821,7 +816,7 @@ export default {
     deploy: {
       dialogTitle: 'Deploy service',
       description:
-        'Deploy the selected version to this instance. Deploy maintains the service binding.',
+        'Deploy the selected version to this service. Deploy updates its runtime configuration.',
       selectVersion: 'Select version',
       forceRecreate: 'Force recreate containers',
       joinTraefikNetwork: 'Join Traefik network',
@@ -829,7 +824,7 @@ export default {
     },
     stop: {
       dialogTitle: 'Stop service',
-      confirm: 'Stop all components of this service instance?',
+      confirm: 'Stop all components of this service?',
       removeVolumes: 'Also remove volumes',
     },
     containers: {
@@ -838,9 +833,9 @@ export default {
     },
     logs: {
       title: 'Container logs',
-      titleWithTarget: '{app} / {instance} · Container logs',
-      titleWithComponent: '{app} / {instance} · {component}',
-      description: 'Recent container logs for this service instance (compose logs --tail).',
+      titleWithTarget: '{app} · {code} · Container logs',
+      titleWithComponent: '{app} · {code} · {component}',
+      description: 'Recent container logs for this service (compose logs --tail).',
       loading: 'Loading container logs...',
       streaming: 'Refreshing container logs...',
       empty: 'No container log output',
@@ -875,8 +870,6 @@ export default {
     deploy: {
       dialogTitle: 'Deploy gateway',
       description: 'Deploy an existing Gateway service through the standard service pipeline.',
-      service: 'Service instance',
-      selectService: 'Select service instance',
       version: 'Version',
       selectVersion: 'Select a version',
       versionRequired: 'Select a version',
@@ -884,9 +877,7 @@ export default {
     },
     stop: {
       dialogTitle: 'Stop gateway',
-      confirm: 'Stop this gateway runtime instance?',
-      service: 'Service instance',
-      selectService: 'Select service instance',
+      confirm: 'Stop this gateway service?',
       removeVolumes: 'Also remove volumes',
     },
     sections: {
@@ -978,8 +969,8 @@ export default {
       noVersion: 'No version available to deploy',
       noService: 'No Gateway service available to deploy',
       versionRequired: 'Version is required',
-      deployServiceRequired: 'Select a Gateway service instance to deploy',
-      serviceRequired: 'Select a service instance to stop',
+      deployServiceRequired: 'Gateway service is unavailable',
+      serviceRequired: 'Gateway service is unavailable',
       deployQueued: 'Deploy queued',
       deployFailed: 'Deploy failed',
       stopQueued: 'Stop queued',

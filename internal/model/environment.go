@@ -6,12 +6,6 @@ import (
 )
 
 const (
-	// EnvironmentStateActive is retained only because existing database rows
-	// require a non-null state value. It is not a lifecycle or readiness signal.
-	EnvironmentStateActive = "active"
-	// EnvironmentStateDisabled is retained for decoding legacy rows only.
-	EnvironmentStateDisabled = "disabled"
-
 	EnvironmentTargetTypeLocal = "local"
 	EnvironmentTargetTypeSSH   = "ssh"
 
@@ -25,11 +19,9 @@ const (
 // Environment is the unique Docker Compose target of one Project.
 // project_id and gateway_application_id are logical references by design.
 type Environment struct {
-	Id        string `db:"id"`
-	ProjectId string `db:"project_id"`
-	Code      string `db:"code"`
-	// State is a legacy database column retained for schema compatibility.
-	State                string                `db:"state"`
+	Id                   string                `db:"id"`
+	ProjectId            string                `db:"project_id"`
+	Code                 string                `db:"code"`
 	TargetType           string                `db:"target_type"`
 	WorkspaceRoot        string                `db:"workspace_root"`
 	SSH                  *EnvironmentSSHTarget `db:"-"`

@@ -87,7 +87,7 @@ type DeploymentService interface {
 	DeploymentForUser(context.Context, string, string, string) (model.Deployment, error)
 	DeploymentLog(context.Context, string, string, string, int) (deploymentdto.DeploymentLog, error)
 	WaitDeployment(context.Context, string, string, string, *time.Duration) (deploymentdto.DeploymentWaitResult, error)
-	ResolveRuntimeTarget(context.Context, string, string, string, string, bool) (deploymentdto.RuntimeTarget, error)
+	ResolveRuntimeTarget(context.Context, string, string, string, bool) (deploymentdto.RuntimeTarget, error)
 	RuntimeDoctor(context.Context, *deploymentdto.RuntimeTarget) (map[string]any, error)
 	RuntimeComposeConfig(context.Context, deploymentdto.RuntimeTarget) (deploymentdto.RuntimeTextResult, error)
 	RuntimeComposePS(context.Context, deploymentdto.RuntimeTarget) (deploymentdto.RuntimeComposePSResult, error)

@@ -45,8 +45,8 @@ func (s Service) prepareWindowsEnvironment(ctx context.Context, userId string, p
 	if creating {
 		item = model.Environment{
 			Id: idutil.NewId(), ProjectId: project.Id, Code: project.Code,
-			State: model.EnvironmentStateActive, TargetRevision: 1,
-			CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+			TargetRevision: 1,
+			CreatedAt:      time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 		}
 	}
 	previous := item

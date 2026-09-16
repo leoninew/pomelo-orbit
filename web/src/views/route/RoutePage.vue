@@ -268,7 +268,7 @@
     @synced="handleSyncComplete"
   />
 
-  <AppDialog v-model:open="isCreateDialogOpen" :title="t('route.addRoute')">
+  <AppDialog v-model:open="isCreateDialogOpen" title="创建路由">
     <div class="space-y-4">
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
@@ -296,30 +296,32 @@
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
       </div>
-      <div class="space-y-1.5">
-        <label class="app-field-label block">
-          {{ t('route.fields.domain') }}
-          <span class="text-destructive">*</span>
-        </label>
-        <input
-          v-model="form.domain"
-          type="text"
-          class="app-input"
-          :class="errors.domain ? 'app-input-error' : ''"
-          placeholder="example.com"
-          :aria-invalid="errors.domain ? 'true' : undefined"
-          @input="errors.domain = ''"
-        />
-        <p v-if="errors.domain" class="app-field-error text-xs">{{ errors.domain }}</p>
-      </div>
-      <div v-if="form.protocol === 'http'" class="space-y-1.5">
-        <label class="app-field-label block">{{ t('route.fields.pathPrefix') }}</label>
-        <input
-          v-model="form.path_prefix"
-          type="text"
-          class="app-input"
-          :placeholder="t('route.hints.pathPrefix')"
-        />
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5" :class="form.protocol === 'tcp' ? 'sm:col-span-2' : undefined">
+          <label class="app-field-label block">
+            {{ t('route.fields.domain') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="form.domain"
+            type="text"
+            class="app-input"
+            :class="errors.domain ? 'app-input-error' : ''"
+            placeholder="example.com"
+            :aria-invalid="errors.domain ? 'true' : undefined"
+            @input="errors.domain = ''"
+          />
+          <p v-if="errors.domain" class="app-field-error text-xs">{{ errors.domain }}</p>
+        </div>
+        <div v-if="form.protocol === 'http'" class="space-y-1.5">
+          <label class="app-field-label block">{{ t('route.fields.pathPrefix') }}</label>
+          <input
+            v-model="form.path_prefix"
+            type="text"
+            class="app-input"
+            :placeholder="t('route.hints.pathPrefix')"
+          />
+        </div>
       </div>
       <template v-if="form.protocol === 'tcp'">
         <RouteManagedTargetSelect
@@ -457,30 +459,44 @@
           </p>
         </div>
       </div>
-      <div class="space-y-1.5">
-        <label for="edit-route-domain" class="app-field-label block">
-          {{ t('route.fields.domain') }}
-          <span class="text-destructive">*</span>
-        </label>
-        <input
-          id="edit-route-domain"
-          v-model="editForm.domain"
-          type="text"
-          class="app-input"
-          :class="editErrors.domain ? 'app-input-error' : ''"
-          placeholder="example.com"
-          :aria-invalid="editErrors.domain ? 'true' : undefined"
-          :aria-describedby="editErrors.domain ? 'edit-route-domain-error' : undefined"
-          @input="clearEditError('domain')"
-        />
-        <p
-          v-if="editErrors.domain"
-          id="edit-route-domain-error"
-          class="app-field-error text-xs"
-          role="alert"
-        >
-          {{ editErrors.domain }}
-        </p>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5" :class="editForm.protocol === 'tcp' ? 'sm:col-span-2' : undefined">
+          <label for="edit-route-domain" class="app-field-label block">
+            {{ t('route.fields.domain') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="edit-route-domain"
+            v-model="editForm.domain"
+            type="text"
+            class="app-input"
+            :class="editErrors.domain ? 'app-input-error' : ''"
+            placeholder="example.com"
+            :aria-invalid="editErrors.domain ? 'true' : undefined"
+            :aria-describedby="editErrors.domain ? 'edit-route-domain-error' : undefined"
+            @input="clearEditError('domain')"
+          />
+          <p
+            v-if="editErrors.domain"
+            id="edit-route-domain-error"
+            class="app-field-error text-xs"
+            role="alert"
+          >
+            {{ editErrors.domain }}
+          </p>
+        </div>
+        <div v-if="editForm.protocol === 'http'" class="space-y-1.5">
+          <label for="edit-route-path-prefix" class="app-field-label block">
+            {{ t('route.fields.pathPrefix') }}
+          </label>
+          <input
+            id="edit-route-path-prefix"
+            v-model="editForm.path_prefix"
+            type="text"
+            class="app-input"
+            :placeholder="t('route.hints.pathPrefix')"
+          />
+        </div>
       </div>
       <template v-if="editForm.protocol === 'tcp'">
         <RouteManagedTargetSelect
@@ -511,18 +527,6 @@
           "
         />
       </template>
-      <div v-if="editForm.protocol === 'http'" class="space-y-1.5">
-        <label for="edit-route-path-prefix" class="app-field-label block">
-          {{ t('route.fields.pathPrefix') }}
-        </label>
-        <input
-          id="edit-route-path-prefix"
-          v-model="editForm.path_prefix"
-          type="text"
-          class="app-input"
-          :placeholder="t('route.hints.pathPrefix')"
-        />
-      </div>
       <template v-if="editForm.protocol === 'http'">
         <RouteManagedTargetSelect
           v-if="!editForm.custom_target"

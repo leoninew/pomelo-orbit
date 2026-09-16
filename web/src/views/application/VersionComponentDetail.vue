@@ -659,7 +659,7 @@
 
     <AppDialog
       :open="basicDialogOpen"
-      :title="t('application.componentDetail.sections.basic')"
+      title="编辑组件"
       width-class="w-[min(640px,calc(100vw-32px))]"
       @update:open="setBasicDialogOpen"
     >
@@ -749,7 +749,7 @@
 
     <AppDialog
       :open="healthcheckDialogOpen"
-      :title="t('application.componentDetail.sections.healthcheck')"
+      title="编辑 Healthcheck"
       width-class="w-[min(760px,calc(100vw-32px))]"
       @update:open="setHealthcheckDialogOpen"
     >
@@ -873,7 +873,7 @@
 
     <AppDialog
       :open="resourcesDialogOpen"
-      :title="t('application.componentDetail.sections.resources')"
+      title="编辑 Resources"
       width-class="w-[min(640px,calc(100vw-32px))]"
       @update:open="setResourcesDialogOpen"
     >
@@ -1237,7 +1237,7 @@
 
     <AppDialog
       :open="mountDialogOpen"
-      :title="editingMountIndex === null ? t('common.add') : t('common.edit')"
+      :title="mountDialogTitle"
       width-class="w-[min(760px,calc(100vw-32px))]"
       body-class="space-y-4 px-6 py-4 text-sm"
       @update:open="setMountDialogOpen"
@@ -1595,8 +1595,27 @@
       .filter((item) => item.id !== componentId)
       .map((item) => item.name)
   );
-  const recordDialogTitle = computed(() =>
-    editingRecordIndex.value === null ? t('common.add') : t('common.edit')
+  const recordDialogItem = computed(() => {
+    switch (recordDialogGroup.value) {
+      case 'dependencies':
+        return 'Dependency';
+      case 'ports':
+        return 'Port';
+      case 'tmpfs':
+        return 'tmpfs';
+      case 'ulimits':
+        return 'Ulimit';
+      case 'devices':
+        return 'Device';
+      default:
+        return '';
+    }
+  });
+  const recordDialogTitle = computed(
+    () => `${editingRecordIndex.value === null ? '添加' : '编辑'} ${recordDialogItem.value}`
+  );
+  const mountDialogTitle = computed(() =>
+    editingMountIndex.value === null ? '添加 Mount' : '编辑 Mount'
   );
 
   function assignForm(source: ReturnType<typeof emptyComponentForm>) {

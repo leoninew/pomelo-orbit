@@ -73,9 +73,6 @@
                 </td>
                 <td class="whitespace-nowrap">
                   <div v-if="editingRuntimeKey === field.key" class="flex h-9 items-center gap-2">
-                    <button class="app-link" :disabled="operating" @click="applyRuntimeEdit(field)">
-                      {{ t('common.save') }}
-                    </button>
                     <button
                       class="text-muted-foreground hover:text-foreground"
                       :disabled="operating"
@@ -178,9 +175,6 @@
                 </td>
                 <td>
                   <div v-if="editingResourceKey === field.key" class="flex h-9 items-center gap-2">
-                    <button class="app-link" @click="applyResourceEdit(field)">
-                      {{ t('common.save') }}
-                    </button>
                     <button
                       class="text-muted-foreground hover:text-foreground"
                       @click="cancelResourceEdit"
@@ -377,7 +371,7 @@
 
     <AppDialog
       :open="mountDialogOpen"
-      :title="t('common.edit')"
+      title="编辑 Mount"
       width-class="w-[min(640px,calc(100vw-32px))]"
       body-class="space-y-4 px-6 py-4 text-sm"
       @update:open="setMountDialogOpen"
@@ -461,7 +455,7 @@
 
     <AppDialog
       :open="endpointDialogOpen"
-      :title="t('common.edit')"
+      title="编辑 Endpoint"
       width-class="w-[min(640px,calc(100vw-32px))]"
       body-class="space-y-4 px-6 py-4 text-sm"
       @update:open="setEndpointDialogOpen"
@@ -920,8 +914,15 @@
     editingResourceKey.value = field.key;
     editingResourceValue.value = field.value;
   }
-  function applyResourceEdit(field: ResourceField) {
-    field.value = editingResourceValue.value;
+  function commitResourceEdit() {
+    const key = editingResourceKey.value;
+    if (!key) {
+      return;
+    }
+    const field = resourceFields.value.find((item) => item.key === key);
+    if (field) {
+      field.value = editingResourceValue.value;
+    }
     cancelResourceEdit();
   }
   function cancelResourceEdit() {
@@ -1138,8 +1139,12 @@
     editingRuntimeKey.value = null;
     editingRuntimeValue.value = '';
   }
-  function applyRuntimeEdit(field: RuntimeField) {
-    const state = runtimeDraft[field.key];
+  function commitRuntimeEdit() {
+    const key = editingRuntimeKey.value;
+    if (!key) {
+      return;
+    }
+    const state = runtimeDraft[key];
     state.value = editingRuntimeValue.value;
     state.overridden = true;
     cancelRuntimeEdit();
@@ -1247,6 +1252,8 @@
     }
   }
   async function save() {
+    commitRuntimeEdit();
+    commitResourceEdit();
     try {
       await executeOperation(async () => {
         await serviceApi.updateComponent(selectedProjectId(), serviceId, componentId, payload());

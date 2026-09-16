@@ -182,7 +182,7 @@ func TestApplicationUsesSelectedProjectScope(t *testing.T) {
 func TestProvisionGatewayDoesNotCreateMissingGateway(t *testing.T) {
 	view := readyGatewayView("project-1")
 	gateway := &readyGatewayService{provision: gatewaydto.ProvisionGatewayResult{
-		Gateway: view, Service: *view.DefaultService, GatewayCreated: false, ServiceCreated: false, Steps: []string{"resolved existing gateway"},
+		Gateway: view, Service: *view.Service, GatewayCreated: false, ServiceCreated: false, Steps: []string{"resolved existing gateway"},
 	}}
 	server := newScopedServer(t, Dependencies{Gateway: gateway})
 	result, err := connectInMemory(t, server).CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_provision_gateway"})

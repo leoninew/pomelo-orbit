@@ -29,7 +29,7 @@ func TestDeleteServicePreservesDeploymentHistory(t *testing.T) {
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO service (id, project_id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'default', 'app-default', 'stopped')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO service (id, project_id, application_id, version_id, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'app-default', 'stopped')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO deployment (id, application_name, operation_type, trigger_type, status, is_rollback, service_id) VALUES ('deployment-1', 'App', 'deploy', 'manual', 'succeeded', 0, 'service-1')`); err != nil {
@@ -62,8 +62,8 @@ func TestListServicesByProjectSearchesApplicationNameAndServiceCode(t *testing.T
 		`INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`,
 		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'Application', 'application-code', 'standard', 'project-1')`,
 		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'version-label', 'unpublished')`,
-		`INSERT INTO service (id, project_id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'instance-one', 'service-one', 'stopped')`,
-		`INSERT INTO service (id, project_id, application_id, version_id, instance_key, code, status) VALUES ('service-2', 'project-1', 'app-1', 'version-1', 'instance-two', 'service-two', 'stopped')`,
+		`INSERT INTO service (id, project_id, application_id, version_id, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'service-one', 'stopped')`,
+		`INSERT INTO service (id, project_id, application_id, version_id, code, status) VALUES ('service-2', 'project-1', 'app-1', 'version-1', 'service-two', 'stopped')`,
 	} {
 		if _, err := database.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)
@@ -123,7 +123,7 @@ func TestServiceQueriesDoNotCrossProjectScope(t *testing.T) {
 		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-2', 'Application Two', 'application-two', 'standard', 'project-2')`,
 		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`,
 		`INSERT INTO version (id, application_id, label, status) VALUES ('version-2', 'app-2', 'v1', 'unpublished')`,
-		`INSERT INTO service (id, project_id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'default', 'application-one-default', 'stopped')`,
+		`INSERT INTO service (id, project_id, application_id, version_id, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'application-one-default', 'stopped')`,
 		`INSERT INTO service_env (service_id, env_key, value) VALUES ('service-1', 'SECRET', 'project-one-value')`,
 	} {
 		if _, err := database.ExecContext(ctx, statement); err != nil {

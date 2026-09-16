@@ -78,11 +78,11 @@ func TestCreateGatewayRequiresSuccessfulProbeAndReachesReady(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.Status != initdto.StatusReady || view.Gateway == nil || view.Gateway.DefaultService == nil {
+	if view.Status != initdto.StatusReady || view.Gateway == nil || view.Gateway.Service == nil {
 		t.Fatalf("ready status = %#v", view)
 	}
-	if view.Gateway.Application.Code != "traefik" || view.Gateway.Application.Name != "Traefik" || view.Gateway.DefaultService.Code != "traefik-default" {
-		t.Fatalf("gateway = app %q %q service %q", view.Gateway.Application.Code, view.Gateway.Application.Name, view.Gateway.DefaultService.Code)
+	if view.Gateway.Application.Code != "traefik" || view.Gateway.Application.Name != "Traefik" || view.Gateway.Service.Code != "traefik-default" {
+		t.Fatalf("gateway = app %q %q service %q", view.Gateway.Application.Code, view.Gateway.Application.Name, view.Gateway.Service.Code)
 	}
 	if _, err := service.SaveEnvironment(context.Background(), "user-1", "project-1", localSaveInput("/srv/orbit-next")); !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("save after ready error = %v", err)
@@ -227,7 +227,7 @@ func (f *fakeInitEnvironment) SaveInitialization(_ context.Context, _ string, pr
 		targetType = *input.TargetType
 	}
 	view := environmentdto.View{
-		Id: "environment-1", ProjectId: projectId, Code: "demo", State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: projectId, Code: "demo",
 		TargetType: targetType, TargetRevision: 1,
 	}
 	if targetType == model.EnvironmentTargetTypeLocal && input.Local != nil {
@@ -289,11 +289,11 @@ func (f *fakeInitGateway) CreateGateway(_ context.Context, _, projectId string, 
 	if f.item != nil {
 		return gatewaydto.GatewayView{}, errors.New("gateway already created")
 	}
-	service := model.Service{Id: "service-1", InstanceKey: "default", Code: input.Code + "-default", Status: "stopped"}
+	service := model.Service{Id: "service-1", Code: input.Code + "-default", Status: "stopped"}
 	view := gatewaydto.GatewayView{
-		Application:    model.Application{Id: "gateway-1", ProjectId: &projectId, Code: input.Code, Name: input.Name},
-		Config:         model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: input.RestApiUrl, BaseDomain: input.BaseDomain},
-		DefaultService: &service,
+		Application: model.Application{Id: "gateway-1", ProjectId: &projectId, Code: input.Code, Name: input.Name},
+		Config:      model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: input.RestApiUrl, BaseDomain: input.BaseDomain},
+		Service:     &service,
 	}
 	f.item = &view
 	return view, nil

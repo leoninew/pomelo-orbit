@@ -25,7 +25,6 @@ type ServiceResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ApplicationId string                 `protobuf:"bytes,2,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
-	InstanceKey   string                 `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
 	VersionId     string                 `protobuf:"bytes,4,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
 	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
@@ -86,13 +85,6 @@ func (x *ServiceResp) GetId() string {
 func (x *ServiceResp) GetApplicationId() string {
 	if x != nil {
 		return x.ApplicationId
-	}
-	return ""
-}
-
-func (x *ServiceResp) GetInstanceKey() string {
-	if x != nil {
-		return x.InstanceKey
 	}
 	return ""
 }
@@ -326,7 +318,6 @@ type ServiceCreateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ApplicationId string                 `protobuf:"bytes,1,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
 	VersionId     string                 `protobuf:"bytes,2,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
-	InstanceKey   string                 `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
 	Code          string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -376,13 +367,6 @@ func (x *ServiceCreateReq) GetVersionId() string {
 	return ""
 }
 
-func (x *ServiceCreateReq) GetInstanceKey() string {
-	if x != nil {
-		return x.InstanceKey
-	}
-	return ""
-}
-
 func (x *ServiceCreateReq) GetCode() string {
 	if x != nil {
 		return x.Code
@@ -393,7 +377,6 @@ func (x *ServiceCreateReq) GetCode() string {
 type ServiceBasicUpdateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	VersionId     string                 `protobuf:"bytes,1,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
-	InstanceKey   string                 `protobuf:"bytes,2,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -431,13 +414,6 @@ func (*ServiceBasicUpdateReq) Descriptor() ([]byte, []int) {
 func (x *ServiceBasicUpdateReq) GetVersionId() string {
 	if x != nil {
 		return x.VersionId
-	}
-	return ""
-}
-
-func (x *ServiceBasicUpdateReq) GetInstanceKey() string {
-	if x != nil {
-		return x.InstanceKey
 	}
 	return ""
 }
@@ -1869,11 +1845,10 @@ var File_orbit_v1_service_service_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\xc7\x05\n" +
+	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\x98\x05\n" +
 	"\vServiceResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
-	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12!\n" +
-	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\x12\x1d\n" +
+	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\x04 \x01(\tR\tversionId\x12\x16\n" +
 	"\x06status\x18\x06 \x01(\tR\x06status\x12\x1d\n" +
@@ -1894,7 +1869,7 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x03env\x18\x11 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\x12'\n" +
 	"\x0feffective_error\x18\x12 \x01(\tR\x0eeffectiveError\x12+\n" +
 	"\x11active_deployment\x18\x13 \x01(\bR\x10activeDeployment\x12\x12\n" +
-	"\x04code\x18\x14 \x01(\tR\x04codeJ\x04\b\x05\x10\x06J\x04\b\r\x10\x0e\"F\n" +
+	"\x04code\x18\x14 \x01(\tR\x04code\"F\n" +
 	"\x0fServiceListResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.service.ServiceRespR\x05items\"\xa6\x01\n" +
 	"\x14ServicePaginatedResp\x123\n" +
@@ -1902,17 +1877,15 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pages\"\x8f\x01\n" +
+	"\x05pages\x18\x05 \x01(\x05R\x05pages\"l\n" +
 	"\x10ServiceCreateReq\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x02 \x01(\tR\tversionId\x12!\n" +
-	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\x12\x12\n" +
-	"\x04code\x18\x04 \x01(\tR\x04code\"Y\n" +
+	"version_id\x18\x02 \x01(\tR\tversionId\x12\x12\n" +
+	"\x04code\x18\x04 \x01(\tR\x04code\"6\n" +
 	"\x15ServiceBasicUpdateReq\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x01 \x01(\tR\tversionId\x12!\n" +
-	"\finstance_key\x18\x02 \x01(\tR\vinstanceKey\"4\n" +
+	"version_id\x18\x01 \x01(\tR\tversionId\"4\n" +
 	"\n" +
 	"ServiceEnv\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -1949,10 +1922,10 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\n" +
 	"\b_commandB\x0e\n" +
 	"\f_pull_policyB\x11\n" +
-	"\x0f_restart_policy\"\xdc\x01\n" +
+	"\x0f_restart_policy\"\xd0\x01\n" +
 	"\x1aServiceComponentDetailResp\x12S\n" +
 	"\x11service_component\x18\x01 \x01(\v2&.orbit.v1.service.ServiceComponentRespR\x10serviceComponent\x12]\n" +
-	"\x11version_component\x18\x02 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\x10versionComponentJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05\"\xa3\x04\n" +
+	"\x11version_component\x18\x02 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\x10versionComponent\"\xa3\x04\n" +
 	"\x1eServiceComponentDefinitionResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -2027,14 +2000,14 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x19\n" +
 	"\x05value\x18\x02 \x01(\tH\x00R\x05value\x88\x01\x01\x12\x14\n" +
 	"\x05state\x18\x03 \x01(\tR\x05stateB\b\n" +
-	"\x06_value\"\xc6\x01\n" +
+	"\x06_value\"\xc0\x01\n" +
 	"\x1cServiceComponentMountOverlay\x12\x1b\n" +
 	"\x06source\x18\x02 \x01(\tH\x00R\x06source\x88\x01\x01\x12\x14\n" +
 	"\x05state\x18\x03 \x01(\tR\x05state\x12\x16\n" +
 	"\x06target\x18\x04 \x01(\tR\x06target\x122\n" +
 	"\x13source_is_host_path\x18\x05 \x01(\bH\x01R\x10sourceIsHostPath\x88\x01\x01B\t\n" +
 	"\a_sourceB\x16\n" +
-	"\x14_source_is_host_pathJ\x04\b\x01\x10\x02\"\xb3\x02\n" +
+	"\x14_source_is_host_path\"\xb3\x02\n" +
 	"\x1fServiceComponentResourceOverlay\x12\"\n" +
 	"\n" +
 	"limit_cpus\x18\x01 \x01(\tH\x00R\tlimitCpus\x88\x01\x01\x12&\n" +

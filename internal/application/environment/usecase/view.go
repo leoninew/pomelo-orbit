@@ -7,7 +7,7 @@ import (
 
 func (s Service) toView(item model.Environment) environmentdto.View {
 	view := environmentdto.View{
-		Id: item.Id, ProjectId: item.ProjectId, Code: item.Code, State: item.State,
+		Id: item.Id, ProjectId: item.ProjectId, Code: item.Code,
 		TargetType: item.TargetType, TargetRevision: item.TargetRevision,
 		LastProbeRevision: item.LastProbeRevision, LastProbeStatus: item.LastProbeStatus,
 		LastProbeAt: item.LastProbeAt, LastProbeDiagnostic: item.LastProbeDiagnostic,

@@ -54,36 +54,34 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 	for _, binding := range cfg.VersionBindings {
 		bindings = append(bindings, &gatewayv1.GatewayVersionBinding{Profile: binding.Profile, VersionId: binding.VersionId})
 	}
-	defaultServiceId, defaultServiceInstanceKey, defaultServiceCode, defaultServiceStatus := "", "", "", ""
-	if view.DefaultService != nil {
-		defaultServiceId = view.DefaultService.Id
-		defaultServiceInstanceKey = view.DefaultService.InstanceKey
-		defaultServiceCode = view.DefaultService.Code
-		defaultServiceStatus = view.DefaultService.Status
+	serviceId, serviceCode, serviceStatus := "", "", ""
+	if view.Service != nil {
+		serviceId = view.Service.Id
+		serviceCode = view.Service.Code
+		serviceStatus = view.Service.Status
 	}
 	return gatewayv1.GatewayResp{
-		Id:                        app.Id,
-		ProjectId:                 projectId,
-		Code:                      app.Code,
-		Name:                      app.Name,
-		Kind:                      app.Kind,
-		RestApiUrl:                cfg.RestApiUrl,
-		BaseDomain:                cfg.BaseDomain,
-		CreatedAt:                 transport.FormatTime(app.CreatedAt),
-		UpdatedAt:                 transport.FormatTime(app.UpdatedAt),
-		ConfigUpdatedAt:           transport.FormatTime(cfg.UpdatedAt),
-		DefaultEntrypoint:         cfg.DefaultEntrypoint,
-		TlsMode:                   cfg.TLSMode,
-		Exposures:                 exposures,
-		DefaultServiceId:          defaultServiceId,
-		DefaultServiceInstanceKey: defaultServiceInstanceKey,
-		DefaultServiceCode:        defaultServiceCode,
-		DefaultServiceStatus:      defaultServiceStatus,
-		RestReadyTimeoutSeconds:   int32(cfg.RestReadyTimeoutSeconds),
-		AcmeEmail:                 cfg.AcmeEmail,
-		AcmeProfile:               cfg.AcmeProfile,
-		DnsApiToken:               cfg.DNSApiToken,
-		VersionBindings:           bindings,
+		Id:                      app.Id,
+		ProjectId:               projectId,
+		Code:                    app.Code,
+		Name:                    app.Name,
+		Kind:                    app.Kind,
+		RestApiUrl:              cfg.RestApiUrl,
+		BaseDomain:              cfg.BaseDomain,
+		CreatedAt:               transport.FormatTime(app.CreatedAt),
+		UpdatedAt:               transport.FormatTime(app.UpdatedAt),
+		ConfigUpdatedAt:         transport.FormatTime(cfg.UpdatedAt),
+		DefaultEntrypoint:       cfg.DefaultEntrypoint,
+		TlsMode:                 cfg.TLSMode,
+		Exposures:               exposures,
+		ServiceId:               serviceId,
+		ServiceCode:             serviceCode,
+		ServiceStatus:           serviceStatus,
+		RestReadyTimeoutSeconds: int32(cfg.RestReadyTimeoutSeconds),
+		AcmeEmail:               cfg.AcmeEmail,
+		AcmeProfile:             cfg.AcmeProfile,
+		DnsApiToken:             cfg.DNSApiToken,
+		VersionBindings:         bindings,
 	}
 }
 

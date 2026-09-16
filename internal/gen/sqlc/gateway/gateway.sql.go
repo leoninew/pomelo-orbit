@@ -68,7 +68,6 @@ SELECT code
 FROM service
 WHERE application_id = ?
 ORDER BY CASE WHEN status = 'running' THEN 0 ELSE 1 END,
-         CASE WHEN instance_key = 'default' THEN 0 ELSE 1 END,
          updated_at DESC,
          id
 LIMIT 1

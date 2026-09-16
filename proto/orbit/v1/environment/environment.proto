@@ -30,7 +30,6 @@ message EnvironmentResp {
   string id = 1;
   string project_id = 2;
   string code = 3;
-  string state = 4;
   string target_type = 5;
   EnvironmentSSHTargetResp ssh = 6;
   int64 target_revision = 7;
@@ -45,7 +44,6 @@ message EnvironmentResp {
 }
 
 message ProjectEnvironmentUpdateReq {
-  optional string state = 1;
   optional string target_type = 2;
   optional EnvironmentSSHTargetReq ssh = 3;
   optional EnvironmentLocalTargetReq local = 4;

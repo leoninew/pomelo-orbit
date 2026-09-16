@@ -120,7 +120,7 @@ func TestWindowsSSHEnvironmentHTTPIntegration(t *testing.T) {
 	assertEnvironmentCredentialEncrypted(t, database, project.Id)
 
 	environment := getE2EEnvironment(t, handler, token, project.Id)
-	if environment.ProjectId != project.Id || environment.State != model.EnvironmentStateActive || environment.TargetType != model.EnvironmentTargetTypeSSH || environment.SSH == nil || environment.SSH.Platform != model.EnvironmentPlatformWindows {
+	if environment.ProjectId != project.Id || environment.TargetType != model.EnvironmentTargetTypeSSH || environment.SSH == nil || environment.SSH.Platform != model.EnvironmentPlatformWindows {
 		t.Fatalf("unexpected created environment: %+v", environment)
 	}
 	if environment.SSH.Host != target.host || environment.SSH.Port != target.port || environment.SSH.Username != target.username || environment.SSH.WorkspaceRoot != target.workspaceRoot {
@@ -433,7 +433,6 @@ func createE2EWindowsSSHProject(t *testing.T, handler http.Handler, token, code 
 func updateE2EWindowsSSHEnvironment(t *testing.T, handler http.Handler, token, projectId string, target windowsSSHTarget) {
 	t.Helper()
 	payload, err := json.Marshal(map[string]any{
-		"state":       model.EnvironmentStateActive,
 		"target_type": model.EnvironmentTargetTypeSSH,
 		"ssh": map[string]any{
 			"platform":       model.EnvironmentPlatformWindows,

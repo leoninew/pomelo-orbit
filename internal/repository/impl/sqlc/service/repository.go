@@ -72,7 +72,7 @@ func (r Repository) ListServicesByProject(ctx context.Context, projectId, applic
 	}
 	items := make([]model.ServiceListItem, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, serviceListFrom(row.Id, row.ProjectId, row.ApplicationId, row.InstanceKey, row.Code, row.VersionId, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel))
+		items = append(items, serviceListFrom(row.Id, row.ProjectId, row.ApplicationId, row.Code, row.VersionId, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel))
 	}
 	return repository.Page[model.ServiceListItem]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
@@ -82,15 +82,7 @@ func (r Repository) ServiceListItem(ctx context.Context, projectId, id string) (
 	if err != nil {
 		return model.ServiceListItem{}, fmt.Errorf("load service list item %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return serviceListFrom(row.Id, row.ProjectId, row.ApplicationId, row.InstanceKey, row.Code, row.VersionId, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel), nil
-}
-
-func (r Repository) ServiceByKey(ctx context.Context, projectId, applicationId, instanceKey string) (model.Service, error) {
-	row, err := r.q(ctx).ServiceByKey(ctx, servicesqlc.ServiceByKeyParams{ProjectId: projectId, ApplicationId: applicationId, InstanceKey: instanceKey})
-	if err != nil {
-		return model.Service{}, fmt.Errorf("load service by key: %w", sqlcommon.TranslateError(err))
-	}
-	return serviceFrom(row), nil
+	return serviceListFrom(row.Id, row.ProjectId, row.ApplicationId, row.Code, row.VersionId, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel), nil
 }
 
 func (r Repository) ServiceByProjectAndCode(ctx context.Context, projectId, code string) (model.Service, error) {
@@ -149,21 +141,20 @@ func (r Repository) UpsertService(ctx context.Context, projectId string, svc mod
 	if strings.TrimSpace(svc.ProjectId) != strings.TrimSpace(projectId) {
 		return fmt.Errorf("service project %s does not match scope %s", svc.ProjectId, projectId)
 	}
+	if strings.TrimSpace(svc.Id) == "" {
+		return fmt.Errorf("service id is required")
+	}
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		q := r.q(txCtx)
-		existingId, err := q.ServiceIdByKey(txCtx, servicesqlc.ServiceIdByKeyParams{ApplicationId: svc.ApplicationId, InstanceKey: svc.InstanceKey, ProjectId: projectId})
+		_, err := q.ServiceById(txCtx, servicesqlc.ServiceByIdParams{Id: svc.Id, ProjectId: projectId})
 		if errors.Is(err, sql.ErrNoRows) {
 			return r.insertService(txCtx, projectId, svc)
 		}
 		if err != nil {
-			return fmt.Errorf("lookup service for application %s: %w", svc.ApplicationId, err)
+			return fmt.Errorf("lookup service %s: %w", svc.Id, err)
 		}
-		id := existingId
-		if strings.TrimSpace(svc.Id) != "" {
-			id = svc.Id
-		}
-		if err := q.UpdateService(txCtx, servicesqlc.UpdateServiceParams{VersionId: svc.VersionId, Status: svc.Status, UpdatedAt: time.Now().UTC(), Id: id, ProjectId: projectId}); err != nil {
-			return fmt.Errorf("update service %s: %w", id, err)
+		if err := q.UpdateService(txCtx, servicesqlc.UpdateServiceParams{VersionId: svc.VersionId, Status: svc.Status, UpdatedAt: time.Now().UTC(), Id: svc.Id, ProjectId: projectId}); err != nil {
+			return fmt.Errorf("update service %s: %w", svc.Id, err)
 		}
 		return nil
 	})
@@ -184,7 +175,7 @@ func (r Repository) CreateServiceWithComponents(ctx context.Context, projectId s
 func (r Repository) UpdateServiceConfiguration(ctx context.Context, projectId string, svc model.Service, components []model.ServiceComponent) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		q := r.q(txCtx)
-		if err := q.UpdateServiceConfiguration(txCtx, servicesqlc.UpdateServiceConfigurationParams{InstanceKey: svc.InstanceKey, VersionId: svc.VersionId, UpdatedAt: time.Now().UTC(), Id: svc.Id, ProjectId: projectId}); err != nil {
+		if err := q.UpdateServiceConfiguration(txCtx, servicesqlc.UpdateServiceConfigurationParams{VersionId: svc.VersionId, UpdatedAt: time.Now().UTC(), Id: svc.Id, ProjectId: projectId}); err != nil {
 			return fmt.Errorf("update service configuration %s: %w", svc.Id, err)
 		}
 		return r.replaceServiceComponents(txCtx, projectId, svc, components)
@@ -276,7 +267,7 @@ func (r Repository) insertService(ctx context.Context, projectId string, svc mod
 	if updatedAt.IsZero() {
 		updatedAt = now
 	}
-	if err := r.q(ctx).InsertService(ctx, servicesqlc.InsertServiceParams{Id: svc.Id, ProjectId: projectId, ApplicationId: svc.ApplicationId, InstanceKey: svc.InstanceKey, Code: svc.Code, VersionId: svc.VersionId, Status: svc.Status, CreatedAt: createdAt, UpdatedAt: updatedAt}); err != nil {
+	if err := r.q(ctx).InsertService(ctx, servicesqlc.InsertServiceParams{Id: svc.Id, ProjectId: projectId, ApplicationId: svc.ApplicationId, Code: svc.Code, VersionId: svc.VersionId, Status: svc.Status, CreatedAt: createdAt, UpdatedAt: updatedAt}); err != nil {
 		return fmt.Errorf("create service for application %s: %w", svc.ApplicationId, err)
 	}
 	return nil
@@ -420,9 +411,9 @@ func insertServiceComponentOverlay(ctx context.Context, q *servicesqlc.Queries, 
 }
 
 func serviceFrom(row servicesqlc.Service) model.Service {
-	return model.Service{Id: row.Id, ProjectId: row.ProjectId, ApplicationId: row.ApplicationId, InstanceKey: row.InstanceKey, Code: row.Code, VersionId: row.VersionId, Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return model.Service{Id: row.Id, ProjectId: row.ProjectId, ApplicationId: row.ApplicationId, Code: row.Code, VersionId: row.VersionId, Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
-func serviceListFrom(id, projectId, applicationId, instanceKey, code, versionId, status string, createdAt, updatedAt time.Time, applicationName, applicationCode, applicationKind, versionLabel string) model.ServiceListItem {
-	return model.ServiceListItem{Id: id, ProjectId: projectId, ApplicationId: applicationId, InstanceKey: instanceKey, Code: code, VersionId: versionId, Status: status, CreatedAt: createdAt, UpdatedAt: updatedAt, ApplicationName: applicationName, ApplicationCode: applicationCode, ApplicationKind: applicationKind, VersionLabel: versionLabel}
+func serviceListFrom(id, projectId, applicationId, code, versionId, status string, createdAt, updatedAt time.Time, applicationName, applicationCode, applicationKind, versionLabel string) model.ServiceListItem {
+	return model.ServiceListItem{Id: id, ProjectId: projectId, ApplicationId: applicationId, Code: code, VersionId: versionId, Status: status, CreatedAt: createdAt, UpdatedAt: updatedAt, ApplicationName: applicationName, ApplicationCode: applicationCode, ApplicationKind: applicationKind, VersionLabel: versionLabel}
 }

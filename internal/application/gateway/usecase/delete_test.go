@@ -79,7 +79,7 @@ func TestDeleteGatewayRejectsBoundGateway(t *testing.T) {
 		gatewayDeleteEnvironmentStore{environment: model.Environment{ProjectId: projectId, GatewayApplicationId: &gatewayId}},
 		application,
 		gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: gatewayId}},
-		gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", InstanceKey: "default", Status: status.ServiceStatusStopped}}},
+		gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", Status: status.ServiceStatusStopped}}},
 		nil,
 		nil,
 		nil,

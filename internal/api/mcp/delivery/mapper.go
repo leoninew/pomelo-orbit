@@ -312,7 +312,7 @@ func serviceOutput(value servicedto.ServiceView) map[string]any {
 	for _, item := range value.Components {
 		components = append(components, serviceComponentOutput(item))
 	}
-	return map[string]any{"id": value.Service.Id, "application_id": value.Service.ApplicationId, "instance_key": value.Service.InstanceKey, "code": value.Service.Code, "version_id": value.Service.VersionId, "status": value.Service.Status, "application_name": value.ApplicationName, "application_code": value.ApplicationCode, "application_kind": value.ApplicationKind, "version_label": value.VersionLabel, "pending_deploy": value.PendingDeploy, "effective_plan_hash": value.EffectivePlanHash, "env": env, "components": components, "created_at": formatTime(value.Service.CreatedAt), "updated_at": formatTime(value.Service.UpdatedAt)}
+	return map[string]any{"id": value.Service.Id, "application_id": value.Service.ApplicationId, "code": value.Service.Code, "version_id": value.Service.VersionId, "status": value.Service.Status, "application_name": value.ApplicationName, "application_code": value.ApplicationCode, "application_kind": value.ApplicationKind, "version_label": value.VersionLabel, "pending_deploy": value.PendingDeploy, "effective_plan_hash": value.EffectivePlanHash, "env": env, "components": components, "created_at": formatTime(value.Service.CreatedAt), "updated_at": formatTime(value.Service.UpdatedAt)}
 }
 
 func serviceComponentOutput(value model.ServiceComponent) map[string]any {
@@ -350,13 +350,9 @@ func gatewayOutput(value gatewaydto.GatewayView) map[string]any {
 	for _, item := range value.Exposures {
 		exposures = append(exposures, map[string]any{"application_id": item.ApplicationId, "application_code": item.ApplicationCode, "component_name": item.ComponentName, "protocol": item.Protocol, "access": item.Access, "container_port": item.ContainerPort, "listen_port": item.ListenPort, "public_host": item.PublicHost, "internal_dns": item.InternalDns, "client_hint": item.ClientHint})
 	}
-	services := make([]map[string]any, 0, len(value.Services))
-	for _, service := range value.Services {
-		services = append(services, gatewayServiceOutput(service))
-	}
-	output := map[string]any{"id": value.Application.Id, "project_id": projectId, "code": value.Application.Code, "name": value.Application.Name, "kind": value.Application.Kind, "rest_api_url": value.Config.RestApiUrl, "base_domain": value.Config.BaseDomain, "default_entrypoint": value.Config.DefaultEntrypoint, "tls_mode": value.Config.TLSMode, "services": services, "exposures": exposures, "created_at": formatTime(value.Application.CreatedAt), "updated_at": formatTime(value.Application.UpdatedAt), "config_updated_at": formatTime(value.Config.UpdatedAt)}
-	if value.DefaultService != nil {
-		output["default_service"] = gatewayServiceOutput(*value.DefaultService)
+	output := map[string]any{"id": value.Application.Id, "project_id": projectId, "code": value.Application.Code, "name": value.Application.Name, "kind": value.Application.Kind, "rest_api_url": value.Config.RestApiUrl, "base_domain": value.Config.BaseDomain, "default_entrypoint": value.Config.DefaultEntrypoint, "tls_mode": value.Config.TLSMode, "exposures": exposures, "created_at": formatTime(value.Application.CreatedAt), "updated_at": formatTime(value.Application.UpdatedAt), "config_updated_at": formatTime(value.Config.UpdatedAt)}
+	if value.Service != nil {
+		output["service"] = gatewayServiceOutput(*value.Service)
 	}
 	return output
 }
@@ -374,7 +370,7 @@ func provisionGatewayOutput(value gatewaydto.ProvisionGatewayResult) map[string]
 }
 
 func gatewayServiceOutput(value model.Service) map[string]any {
-	return map[string]any{"id": value.Id, "application_id": value.ApplicationId, "instance_key": value.InstanceKey, "code": value.Code, "version_id": value.VersionId, "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
+	return map[string]any{"id": value.Id, "application_id": value.ApplicationId, "code": value.Code, "version_id": value.VersionId, "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 }
 
 func routeOutput(value model.Route) map[string]any {

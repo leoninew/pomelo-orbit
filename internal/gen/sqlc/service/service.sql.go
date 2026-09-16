@@ -196,15 +196,14 @@ func (q *Queries) DeleteServiceEnv(ctx context.Context, arg DeleteServiceEnvPara
 }
 
 const insertService = `-- name: InsertService :exec
-INSERT INTO service (id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO service (id, project_id, application_id, code, version_id, status, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertServiceParams struct {
 	Id            string    `db:"id"`
 	ProjectId     string    `db:"project_id"`
 	ApplicationId string    `db:"application_id"`
-	InstanceKey   string    `db:"instance_key"`
 	Code          string    `db:"code"`
 	VersionId     string    `db:"version_id"`
 	Status        string    `db:"status"`
@@ -217,7 +216,6 @@ func (q *Queries) InsertService(ctx context.Context, arg InsertServiceParams) er
 		arg.Id,
 		arg.ProjectId,
 		arg.ApplicationId,
-		arg.InstanceKey,
 		arg.Code,
 		arg.VersionId,
 		arg.Status,
@@ -450,11 +448,11 @@ func (q *Queries) InsertServiceEnv(ctx context.Context, arg InsertServiceEnvPara
 }
 
 const listServicesByApplication = `-- name: ListServicesByApplication :many
-SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = ?
   AND project_id = ?
-ORDER BY instance_key
+ORDER BY code
 `
 
 type ListServicesByApplicationParams struct {
@@ -475,7 +473,6 @@ func (q *Queries) ListServicesByApplication(ctx context.Context, arg ListService
 			&i.Id,
 			&i.ProjectId,
 			&i.ApplicationId,
-			&i.InstanceKey,
 			&i.Code,
 			&i.VersionId,
 			&i.Status,
@@ -496,7 +493,7 @@ func (q *Queries) ListServicesByApplication(ctx context.Context, arg ListService
 }
 
 const listServicesByProject = `-- name: ListServicesByProject :many
-SELECT s.id, s.project_id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
@@ -533,7 +530,6 @@ type ListServicesByProjectRow struct {
 	Id              string    `db:"id"`
 	ProjectId       string    `db:"project_id"`
 	ApplicationId   string    `db:"application_id"`
-	InstanceKey     string    `db:"instance_key"`
 	Code            string    `db:"code"`
 	VersionId       string    `db:"version_id"`
 	Status          string    `db:"status"`
@@ -569,7 +565,6 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 			&i.Id,
 			&i.ProjectId,
 			&i.ApplicationId,
-			&i.InstanceKey,
 			&i.Code,
 			&i.VersionId,
 			&i.Status,
@@ -594,7 +589,7 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 }
 
 const serviceById = `-- name: ServiceById :one
-SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
 FROM service
 WHERE service.id = ?
   AND project_id = ?
@@ -612,38 +607,6 @@ func (q *Queries) ServiceById(ctx context.Context, arg ServiceByIdParams) (Servi
 		&i.Id,
 		&i.ProjectId,
 		&i.ApplicationId,
-		&i.InstanceKey,
-		&i.Code,
-		&i.VersionId,
-		&i.Status,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const serviceByKey = `-- name: ServiceByKey :one
-SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
-FROM service
-WHERE application_id = ?
-  AND instance_key = ?
-  AND project_id = ?
-`
-
-type ServiceByKeyParams struct {
-	ApplicationId string `db:"application_id"`
-	InstanceKey   string `db:"instance_key"`
-	ProjectId     string `db:"project_id"`
-}
-
-func (q *Queries) ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Service, error) {
-	row := q.db.QueryRowContext(ctx, serviceByKey, arg.ApplicationId, arg.InstanceKey, arg.ProjectId)
-	var i Service
-	err := row.Scan(
-		&i.Id,
-		&i.ProjectId,
-		&i.ApplicationId,
-		&i.InstanceKey,
 		&i.Code,
 		&i.VersionId,
 		&i.Status,
@@ -654,7 +617,7 @@ func (q *Queries) ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Ser
 }
 
 const serviceByProjectAndCode = `-- name: ServiceByProjectAndCode :one
-SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
 FROM service
 WHERE project_id = ?
   AND code = ?
@@ -672,7 +635,6 @@ func (q *Queries) ServiceByProjectAndCode(ctx context.Context, arg ServiceByProj
 		&i.Id,
 		&i.ProjectId,
 		&i.ApplicationId,
-		&i.InstanceKey,
 		&i.Code,
 		&i.VersionId,
 		&i.Status,
@@ -993,29 +955,8 @@ func (q *Queries) ServiceEnvByService(ctx context.Context, arg ServiceEnvByServi
 	return items, nil
 }
 
-const serviceIdByKey = `-- name: ServiceIdByKey :one
-SELECT id
-FROM service
-WHERE application_id = ?
-  AND instance_key = ?
-  AND project_id = ?
-`
-
-type ServiceIdByKeyParams struct {
-	ApplicationId string `db:"application_id"`
-	InstanceKey   string `db:"instance_key"`
-	ProjectId     string `db:"project_id"`
-}
-
-func (q *Queries) ServiceIdByKey(ctx context.Context, arg ServiceIdByKeyParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, serviceIdByKey, arg.ApplicationId, arg.InstanceKey, arg.ProjectId)
-	var id string
-	err := row.Scan(&id)
-	return id, err
-}
-
 const serviceListItemById = `-- name: ServiceListItemById :one
-SELECT s.id, s.project_id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
@@ -1034,7 +975,6 @@ type ServiceListItemByIdRow struct {
 	Id              string    `db:"id"`
 	ProjectId       string    `db:"project_id"`
 	ApplicationId   string    `db:"application_id"`
-	InstanceKey     string    `db:"instance_key"`
 	Code            string    `db:"code"`
 	VersionId       string    `db:"version_id"`
 	Status          string    `db:"status"`
@@ -1053,7 +993,6 @@ func (q *Queries) ServiceListItemById(ctx context.Context, arg ServiceListItemBy
 		&i.Id,
 		&i.ProjectId,
 		&i.ApplicationId,
-		&i.InstanceKey,
 		&i.Code,
 		&i.VersionId,
 		&i.Status,
@@ -1206,22 +1145,20 @@ func (q *Queries) UpdateServiceComponentSource(ctx context.Context, arg UpdateSe
 
 const updateServiceConfiguration = `-- name: UpdateServiceConfiguration :exec
 UPDATE service
-SET instance_key = ?, version_id = ?, updated_at = ?
+SET version_id = ?, updated_at = ?
 WHERE service.id = ?
   AND project_id = ?
 `
 
 type UpdateServiceConfigurationParams struct {
-	InstanceKey string    `db:"instance_key"`
-	VersionId   string    `db:"version_id"`
-	UpdatedAt   time.Time `db:"updated_at"`
-	Id          string    `db:"id"`
-	ProjectId   string    `db:"project_id"`
+	VersionId string    `db:"version_id"`
+	UpdatedAt time.Time `db:"updated_at"`
+	Id        string    `db:"id"`
+	ProjectId string    `db:"project_id"`
 }
 
 func (q *Queries) UpdateServiceConfiguration(ctx context.Context, arg UpdateServiceConfigurationParams) error {
 	_, err := q.db.ExecContext(ctx, updateServiceConfiguration,
-		arg.InstanceKey,
 		arg.VersionId,
 		arg.UpdatedAt,
 		arg.Id,

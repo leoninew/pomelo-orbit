@@ -147,7 +147,7 @@ func TestServiceViewPendingDeployComparesEffectivePlanHash(t *testing.T) {
 				deployment:  deploymentStoreFake{planHash: test.deployed},
 			}
 			view, err := usecase.serviceView(context.Background(), "project-1", model.ServiceListItem{
-				Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
+				Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId,
 				Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
 			})
 			if err != nil {
@@ -178,7 +178,7 @@ func TestServiceViewReportsActiveDeploymentSeparatelyFromServiceStatus(t *testin
 		deployment:  deploymentStoreFake{active: true},
 	}
 	view, err := usecase.serviceView(context.Background(), "project-1", model.ServiceListItem{
-		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
+		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId,
 		Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
 	})
 	if err != nil {
@@ -203,7 +203,7 @@ func TestServiceViewWithGatewayEndpointDoesNotRequireGateway(t *testing.T) {
 	}
 
 	view, err := usecase.serviceView(context.Background(), "project-1", model.ServiceListItem{
-		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
+		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId,
 		Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
 	})
 	if err != nil {
@@ -286,7 +286,7 @@ func TestServiceViewAllowsMissingRequiredServiceEnvironment(t *testing.T) {
 		deployment:  deploymentStoreFake{},
 	}
 	view, err := usecase.serviceView(context.Background(), "project-1", model.ServiceListItem{
-		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
+		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId,
 		Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
 	})
 	if err != nil {
@@ -508,7 +508,7 @@ func TestRemapServiceComponentsRejectsMissingMountTarget(t *testing.T) {
 
 func serviceViewFixture() (model.Service, model.Application, model.Version, model.VersionComponent, model.ServiceComponent) {
 	baseValue, overrideValue := "version-value", "runtime-value"
-	service := model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-1", InstanceKey: "default", Status: status.ServiceStatusStopped}
+	service := model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-1", Status: status.ServiceStatusStopped}
 	app := model.Application{Id: "app-1", Name: "Example", Code: "example", Kind: status.ApplicationKindStandard}
 	version := model.Version{Id: "version-1", ApplicationId: "app-1", Label: "v1"}
 	declaration := model.VersionComponent{Id: "component-1", VersionId: version.Id, Name: "web", Image: "nginx:latest", Env: []model.VersionComponentEnv{{Key: "APP_VALUE", Value: baseValue}}}

@@ -1,5 +1,5 @@
 -- name: EnvironmentById :one
-SELECT id, project_id, code, state, target_type, platform, host, port, username, workspace_root,
+SELECT id, project_id, code, target_type, platform, host, port, username, workspace_root,
        ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
        last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
        gateway_application_id, created_at, updated_at
@@ -7,7 +7,7 @@ FROM environment
 WHERE id = ?;
 
 -- name: EnvironmentByProjectId :one
-SELECT id, project_id, code, state, target_type, platform, host, port, username, workspace_root,
+SELECT id, project_id, code, target_type, platform, host, port, username, workspace_root,
        ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
        last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
        gateway_application_id, created_at, updated_at
@@ -15,7 +15,7 @@ FROM environment
 WHERE project_id = ?;
 
 -- name: EnvironmentByTarget :one
-SELECT id, project_id, code, state, target_type, platform, host, port, username, workspace_root,
+SELECT id, project_id, code, target_type, platform, host, port, username, workspace_root,
        ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
        last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
        gateway_application_id, created_at, updated_at
@@ -26,15 +26,15 @@ WHERE project_id <> ?
 
 -- name: CreateEnvironment :exec
 INSERT INTO environment (
-  id, project_id, code, state, target_type, platform, host, port, username, workspace_root,
+  id, project_id, code, target_type, platform, host, port, username, workspace_root,
   ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
   last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
   gateway_application_id, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateEnvironment :exec
 UPDATE environment
-SET state = ?, target_type = ?, platform = ?, host = ?, port = ?, username = ?, workspace_root = ?,
+SET target_type = ?, platform = ?, host = ?, port = ?, username = ?, workspace_root = ?,
     ssh_credential_id = ?, ssh_credential_revision = ?, host_key_fingerprint = ?,
     target_revision = ?, updated_at = ?
 WHERE id = ?;

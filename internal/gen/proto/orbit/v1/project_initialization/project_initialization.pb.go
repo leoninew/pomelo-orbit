@@ -167,7 +167,6 @@ type ProjectInitializationEnvironmentSnapshot struct {
 	Id                  string                                  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	TargetType          string                                  `protobuf:"bytes,2,opt,name=target_type,json=targetType,proto3" json:"target_type,omitempty"`
 	WorkspaceRoot       string                                  `protobuf:"bytes,3,opt,name=workspace_root,json=workspaceRoot,proto3" json:"workspace_root,omitempty"`
-	State               string                                  `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
 	TargetRevision      int64                                   `protobuf:"varint,5,opt,name=target_revision,json=targetRevision,proto3" json:"target_revision,omitempty"`
 	LastProbeRevision   *int64                                  `protobuf:"varint,6,opt,name=last_probe_revision,json=lastProbeRevision,proto3,oneof" json:"last_probe_revision,omitempty"`
 	LastProbeStatus     *string                                 `protobuf:"bytes,7,opt,name=last_probe_status,json=lastProbeStatus,proto3,oneof" json:"last_probe_status,omitempty"`
@@ -230,13 +229,6 @@ func (x *ProjectInitializationEnvironmentSnapshot) GetWorkspaceRoot() string {
 	return ""
 }
 
-func (x *ProjectInitializationEnvironmentSnapshot) GetState() string {
-	if x != nil {
-		return x.State
-	}
-	return ""
-}
-
 func (x *ProjectInitializationEnvironmentSnapshot) GetTargetRevision() int64 {
 	if x != nil {
 		return x.TargetRevision
@@ -287,15 +279,15 @@ func (x *ProjectInitializationEnvironmentSnapshot) GetSsh() *environment.Environ
 }
 
 type ProjectInitializationGatewaySnapshot struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	Id                   string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Code                 string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	Name                 string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	RestApiUrl           string                 `protobuf:"bytes,4,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
-	BaseDomain           string                 `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
-	DefaultServiceStatus string                 `protobuf:"bytes,6,opt,name=default_service_status,json=defaultServiceStatus,proto3" json:"default_service_status,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	RestApiUrl    string                 `protobuf:"bytes,4,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
+	BaseDomain    string                 `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	ServiceStatus string                 `protobuf:"bytes,6,opt,name=service_status,json=serviceStatus,proto3" json:"service_status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProjectInitializationGatewaySnapshot) Reset() {
@@ -363,9 +355,9 @@ func (x *ProjectInitializationGatewaySnapshot) GetBaseDomain() string {
 	return ""
 }
 
-func (x *ProjectInitializationGatewaySnapshot) GetDefaultServiceStatus() string {
+func (x *ProjectInitializationGatewaySnapshot) GetServiceStatus() string {
 	if x != nil {
-		return x.DefaultServiceStatus
+		return x.ServiceStatus
 	}
 	return ""
 }
@@ -793,13 +785,12 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\x0elocal_platform\x18\v \x01(\tR\rlocalPlatform\x12\x1d\n" +
 	"\n" +
 	"local_host\x18\f \x01(\tR\tlocalHost\x12%\n" +
-	"\x0elocal_username\x18\r \x01(\tR\rlocalUsername\"\xed\x04\n" +
+	"\x0elocal_username\x18\r \x01(\tR\rlocalUsername\"\xd7\x04\n" +
 	"(ProjectInitializationEnvironmentSnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vtarget_type\x18\x02 \x01(\tR\n" +
 	"targetType\x12%\n" +
-	"\x0eworkspace_root\x18\x03 \x01(\tR\rworkspaceRoot\x12\x14\n" +
-	"\x05state\x18\x04 \x01(\tR\x05state\x12'\n" +
+	"\x0eworkspace_root\x18\x03 \x01(\tR\rworkspaceRoot\x12'\n" +
 	"\x0ftarget_revision\x18\x05 \x01(\x03R\x0etargetRevision\x123\n" +
 	"\x13last_probe_revision\x18\x06 \x01(\x03H\x00R\x11lastProbeRevision\x88\x01\x01\x12/\n" +
 	"\x11last_probe_status\x18\a \x01(\tH\x01R\x0flastProbeStatus\x88\x01\x01\x12'\n" +
@@ -811,7 +802,7 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\x14_last_probe_revisionB\x14\n" +
 	"\x12_last_probe_statusB\x10\n" +
 	"\x0e_last_probe_atB\x18\n" +
-	"\x16_last_probe_diagnostic\"\xd7\x01\n" +
+	"\x16_last_probe_diagnostic\"\xc8\x01\n" +
 	"$ProjectInitializationGatewaySnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x12\n" +
@@ -819,8 +810,8 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\frest_api_url\x18\x04 \x01(\tR\n" +
 	"restApiUrl\x12\x1f\n" +
 	"\vbase_domain\x18\x05 \x01(\tR\n" +
-	"baseDomain\x124\n" +
-	"\x16default_service_status\x18\x06 \x01(\tR\x14defaultServiceStatus\"\xe3\x02\n" +
+	"baseDomain\x12%\n" +
+	"\x0eservice_status\x18\x06 \x01(\tR\rserviceStatus\"\xe3\x02\n" +
 	"\x1fProjectInitializationStatusResp\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12Z\n" +
 	"\bdefaults\x18\x02 \x01(\v2>.orbit.v1.project_initialization.ProjectInitializationDefaultsR\bdefaults\x12k\n" +

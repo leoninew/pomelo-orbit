@@ -26,7 +26,7 @@ func readyProbe(revision int64) (int64, string) {
 func readyEnvironmentView(projectId string) environmentdto.View {
 	revision, status := readyProbe(1)
 	return environmentdto.View{
-		Id: "environment-1", ProjectId: projectId, Code: "demo", State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: projectId, Code: "demo",
 		TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: 1,
 		LastProbeRevision: &revision, LastProbeStatus: &status,
 		Local: &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit"},
@@ -35,8 +35,8 @@ func readyEnvironmentView(projectId string) environmentdto.View {
 
 func readyGatewayView(projectId string) gatewaydto.GatewayView {
 	return gatewaydto.GatewayView{
-		Application:    model.Application{Id: "gateway-1", ProjectId: &projectId, Name: "Demo Gateway", Code: "demo-gateway"},
-		DefaultService: &model.Service{Id: "gateway-service-1", ApplicationId: "gateway-1", InstanceKey: "default", Status: "stopped"},
+		Application: model.Application{Id: "gateway-1", ProjectId: &projectId, Name: "Demo Gateway", Code: "demo-gateway"},
+		Service:     &model.Service{Id: "gateway-service-1", ApplicationId: "gateway-1", Code: "demo-gateway-default", Status: "stopped"},
 	}
 }
 
@@ -81,7 +81,7 @@ func (s *readyGatewayService) ProvisionGateway(context.Context, string, gatewayd
 		return s.provision, nil
 	}
 	view := s.view()
-	return gatewaydto.ProvisionGatewayResult{Gateway: view, Service: *view.DefaultService, Steps: []string{"resolved existing gateway"}}, nil
+	return gatewaydto.ProvisionGatewayResult{Gateway: view, Service: *view.Service, Steps: []string{"resolved existing gateway"}}, nil
 }
 
 func withReadyScope(deps Dependencies) Dependencies {

@@ -69,7 +69,6 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 		Id:                    environment.Id,
 		ProjectId:             environment.ProjectId,
 		Code:                  environment.Code,
-		State:                 environment.State,
 		TargetType:            environment.TargetType,
 		Platform:              environmentSSHPlatform(environment),
 		Host:                  environmentSSHHost(environment),
@@ -95,7 +94,6 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 
 func (r Repository) UpdateEnvironment(ctx context.Context, environment model.Environment) error {
 	if err := r.q(ctx).UpdateEnvironment(ctx, environmentsqlc.UpdateEnvironmentParams{
-		State:                 environment.State,
 		TargetType:            environment.TargetType,
 		Platform:              environmentSSHPlatform(environment),
 		Host:                  environmentSSHHost(environment),
@@ -143,7 +141,7 @@ func (r Repository) BindGatewayApplication(ctx context.Context, environmentId st
 
 func environmentFrom(row environmentsqlc.Environment) model.Environment {
 	item := model.Environment{
-		Id: row.Id, ProjectId: row.ProjectId, Code: row.Code, State: row.State, TargetType: row.TargetType,
+		Id: row.Id, ProjectId: row.ProjectId, Code: row.Code, TargetType: row.TargetType,
 		WorkspaceRoot: row.WorkspaceRoot.String, TargetRevision: row.TargetRevision, LastProbeRevision: int64Ptr(row.LastProbeRevision),
 		LastProbeStatus: dbmodel.StringPtr(row.LastProbeStatus), LastProbeAt: dbmodel.TimePtr(row.LastProbeAt),
 		LastProbeDiagnostic: dbmodel.StringPtr(row.LastProbeDiagnostic), GatewayApplicationId: dbmodel.StringPtr(row.GatewayApplicationId),

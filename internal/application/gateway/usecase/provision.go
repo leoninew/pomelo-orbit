@@ -16,10 +16,6 @@ func (s Service) ProvisionGateway(ctx context.Context, userId string, input gate
 	if projectId == "" {
 		return gatewaydto.ProvisionGatewayResult{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	if instanceKey := strings.TrimSpace(input.InstanceKey); instanceKey != "" && instanceKey != "default" {
-		return gatewaydto.ProvisionGatewayResult{}, apperror.New(apperror.KindValidation, "a project environment supports only the default gateway service")
-	}
-
 	gateways, err := s.ListGateways(ctx, userId, projectId, 1, 1, "")
 	if err != nil {
 		return gatewaydto.ProvisionGatewayResult{}, err
@@ -28,10 +24,10 @@ func (s Service) ProvisionGateway(ctx context.Context, userId string, input gate
 		return gatewaydto.ProvisionGatewayResult{}, apperror.NewWithCode(apperror.KindValidation, "gateway_not_ready", "Gateway is not ready")
 	}
 	result := gatewaydto.ProvisionGatewayResult{Gateway: gateways.Items[0], Steps: []string{"Reused Gateway resources"}}
-	if result.Gateway.DefaultService == nil {
-		return gatewaydto.ProvisionGatewayResult{}, apperror.NewWithCode(apperror.KindValidation, "gateway_not_ready", "Gateway default service is not ready")
+	if result.Gateway.Service == nil {
+		return gatewaydto.ProvisionGatewayResult{}, apperror.NewWithCode(apperror.KindValidation, "gateway_not_ready", "Gateway service is not ready")
 	}
-	result.Service = *result.Gateway.DefaultService
+	result.Service = *result.Gateway.Service
 	result.Steps = append(result.Steps, "Reused Gateway Service")
 	return result, nil
 }

@@ -135,7 +135,7 @@ func (s Service) DeployService(ctx context.Context, userId string, projectId str
 	deployment := newDeployment(projectId, app, "deploy")
 	deployment.VersionId = &version.Id
 	opts := deploymentdto.DeployOptionsJSON{
-		ForceRecreate: input.ForceRecreate, InstanceKey: service.InstanceKey,
+		ForceRecreate:      input.ForceRecreate,
 		JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan), GatewayConfig: cloneGatewayConfig(gateway),
 	}
 	applyDeploymentTargetSnapshot(&deployment, target, gateway)
@@ -180,7 +180,7 @@ func (s Service) StopApplication(ctx context.Context, userId string, projectId s
 	deployment := newDeployment(projectId, app, "stop")
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &service.VersionId
-	options := deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey, RemoveVolumes: input.RemoveVolumes}
+	options := deploymentdto.DeployOptionsJSON{RemoveVolumes: input.RemoveVolumes}
 	applyDeploymentTargetSnapshot(&deployment, target, nil)
 	if err := setDeploymentOptions(&deployment, options); err != nil {
 		return "", err
@@ -266,7 +266,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, projectI
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &version.Id
 	restartOptions := deploymentdto.DeployOptionsJSON{
-		InstanceKey: service.InstanceKey, JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan), GatewayConfig: cloneGatewayConfig(gateway),
+		JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan), GatewayConfig: cloneGatewayConfig(gateway),
 	}
 	applyDeploymentTargetSnapshot(&deployment, target, gateway)
 	if err := setDeploymentOptions(&deployment, restartOptions); err != nil {

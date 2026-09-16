@@ -37,7 +37,6 @@ type ServiceTargetInput struct {
 type ServiceCreateInput struct {
 	ApplicationId string
 	VersionId     string
-	InstanceKey   string
 	Code          string
 }
 
@@ -60,8 +59,7 @@ type ServiceComponentDetail struct {
 }
 
 type ServiceBasicUpdateInput struct {
-	VersionId   string
-	InstanceKey string
+	VersionId string
 }
 
 type ServiceEnvUpdateInput struct {

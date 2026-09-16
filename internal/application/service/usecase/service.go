@@ -88,13 +88,13 @@ func (s Service) GetService(ctx context.Context, userId, projectId, serviceId st
 }
 
 func (s Service) CreateService(ctx context.Context, userId string, projectId string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
-	applicationId, versionId, instanceKey := strings.TrimSpace(input.ApplicationId), strings.TrimSpace(input.VersionId), strings.TrimSpace(input.InstanceKey)
+	applicationId, versionId := strings.TrimSpace(input.ApplicationId), strings.TrimSpace(input.VersionId)
 	code, err := normalizeServiceCode(input.Code)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	if applicationId == "" || versionId == "" || instanceKey == "" || code == "" {
-		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "application_id, version_id, instance_key and code are required")
+	if applicationId == "" || versionId == "" || code == "" {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "application_id, version_id and code are required")
 	}
 	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
@@ -109,12 +109,7 @@ func (s Service) CreateService(ctx context.Context, userId string, projectId str
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service code", err)
 	}
-	if _, err := s.service.ServiceByKey(ctx, projectId, app.Id, instanceKey); err == nil {
-		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service instance already exists")
-	} else if !errors.Is(err, repository.ErrNotFound) {
-		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
-	}
-	svc := model.Service{Id: idutil.NewId(), ProjectId: projectId, ApplicationId: app.Id, InstanceKey: instanceKey, Code: code, VersionId: version.Id, Status: status.ServiceStatusStopped}
+	svc := model.Service{Id: idutil.NewId(), ProjectId: projectId, ApplicationId: app.Id, Code: code, VersionId: version.Id, Status: status.ServiceStatusStopped}
 	components := mappedServiceComponents(svc.Id, declarations)
 	if err := s.service.CreateServiceWithComponents(ctx, projectId, svc, components); err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to create service", err)
@@ -131,18 +126,13 @@ func (s Service) UpdateServiceBasic(ctx context.Context, userId, projectId, serv
 	if err != nil {
 		return servicedto.ServiceView{}, err
 	}
-	versionId, instanceKey := strings.TrimSpace(input.VersionId), strings.TrimSpace(input.InstanceKey)
-	if versionId == "" || instanceKey == "" {
-		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "version_id and instance_key are required")
+	versionId := strings.TrimSpace(input.VersionId)
+	if versionId == "" {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "version_id is required")
 	}
 	version, declarations, err := s.versionComponents(ctx, projectId, versionId, svc.ApplicationId)
 	if err != nil {
 		return servicedto.ServiceView{}, err
-	}
-	if existing, err := s.service.ServiceByKey(ctx, projectId, svc.ApplicationId, instanceKey); err == nil && existing.Id != svc.Id {
-		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service instance already exists")
-	} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
-		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
 	mappings, err := s.service.ServiceComponentsByService(ctx, projectId, svc.Id)
 	if err != nil {
@@ -151,7 +141,7 @@ func (s Service) UpdateServiceBasic(ctx context.Context, userId, projectId, serv
 	if err := remapServiceComponents(mappings, declarations); err != nil {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	svc.VersionId, svc.InstanceKey = version.Id, instanceKey
+	svc.VersionId = version.Id
 	if err := s.service.UpdateServiceConfiguration(ctx, projectId, svc, mappings); err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to update service", err)
 	}

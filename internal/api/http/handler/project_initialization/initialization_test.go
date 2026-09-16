@@ -20,7 +20,7 @@ func TestInitializationResponseMapsLocalWorkspaceAndDefaults(t *testing.T) {
 			LocalPlatform: "windows", LocalHost: "orbit-host", LocalUsername: "orbit",
 		},
 		Environment: &environmentdto.View{
-			Id: "environment-1", TargetType: model.EnvironmentTargetTypeLocal, State: model.EnvironmentStateActive,
+			Id: "environment-1", TargetType: model.EnvironmentTargetTypeLocal,
 			TargetRevision: 1, LastProbeRevision: &revision, LastProbeStatus: &probeStatus,
 			Local: &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit"},
 		},
@@ -47,7 +47,7 @@ func TestInitializationResponseMapsSSHTarget(t *testing.T) {
 	view := initdto.StatusView{
 		Status: initdto.StatusNeedsProbe,
 		Environment: &environmentdto.View{
-			Id: "environment-1", TargetType: model.EnvironmentTargetTypeSSH, State: model.EnvironmentStateActive,
+			Id: "environment-1", TargetType: model.EnvironmentTargetTypeSSH,
 			TargetRevision: 1,
 			SSH: &environmentdto.SSHTargetView{
 				Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22,
@@ -71,13 +71,13 @@ func TestInitializationResponseMapsReadyGateway(t *testing.T) {
 		Status:   initdto.StatusReady,
 		Defaults: initdto.Defaults{Image: "traefik:3.6"},
 		Gateway: &gatewaydto.GatewayView{
-			Application:    model.Application{Id: "gateway-1", ProjectId: &projectId, Code: "traefik", Name: "Traefik"},
-			Config:         model.GatewayConfig{RestApiUrl: "http://localhost:8080", BaseDomain: "lvh.me"},
-			DefaultService: &service,
+			Application: model.Application{Id: "gateway-1", ProjectId: &projectId, Code: "traefik", Name: "Traefik"},
+			Config:      model.GatewayConfig{RestApiUrl: "http://localhost:8080", BaseDomain: "lvh.me"},
+			Service:     &service,
 		},
 	}
 	resp := initializationResponse(view)
-	if resp.Status != initdto.StatusReady || resp.Gateway == nil || resp.Gateway.Id != "gateway-1" || resp.Gateway.DefaultServiceStatus != "stopped" {
+	if resp.Status != initdto.StatusReady || resp.Gateway == nil || resp.Gateway.Id != "gateway-1" || resp.Gateway.ServiceStatus != "stopped" {
 		t.Fatalf("ready response = %#v", resp)
 	}
 }

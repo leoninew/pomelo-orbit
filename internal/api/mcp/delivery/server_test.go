@@ -77,7 +77,7 @@ func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(
 	revision := int64(3)
 	probeStatus := model.EnvironmentProbeStatusSucceeded
 	environment := &environmentToolService{environment: environmentdto.View{
-		Id: "environment-1", ProjectId: "project-1", Code: "project", State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: "project-1", Code: "project",
 		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: 3,
 		LastProbeRevision: &revision, LastProbeStatus: &probeStatus,
 		SSH: &environmentdto.SSHTargetView{
@@ -136,7 +136,7 @@ func TestProjectEnvironmentToolsReturnLocalWorkspaceWithoutSSHFields(t *testing.
 	revision := int64(1)
 	probeStatus := model.EnvironmentProbeStatusSucceeded
 	environment := &environmentToolService{environment: environmentdto.View{
-		Id: "environment-1", ProjectId: "project-1", Code: "project", State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: "project-1", Code: "project",
 		TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: 1,
 		LastProbeRevision: &revision, LastProbeStatus: &probeStatus,
 		Local: &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit/deployment", Platform: "linux", Host: "orbit-host", Username: "orbit"},
@@ -258,7 +258,7 @@ func TestApplicationErrorBecomesClassifiedMCPToolError(t *testing.T) {
 func TestServiceCodeMCPContract(t *testing.T) {
 	projectId := "project-1"
 	application := &serviceApplicationToolService{application: model.Application{Id: "application-1", ProjectId: &projectId, Code: "ragflow"}}
-	service := &serviceToolService{services: []model.Service{{Id: "service-1", ApplicationId: "application-1", InstanceKey: "default", Code: "ragflow-default", VersionId: "version-1", Status: "stopped"}}}
+	service := &serviceToolService{services: []model.Service{{Id: "service-1", ApplicationId: "application-1", Code: "ragflow-default", VersionId: "version-1", Status: "stopped"}}}
 	server, err := NewServer(withReadyScope(Dependencies{Application: application, Service: service}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
@@ -288,11 +288,14 @@ func TestServiceCodeMCPContract(t *testing.T) {
 	if err := json.Unmarshal(encodedSchema, &createSchema); err != nil {
 		t.Fatalf("unmarshal create schema: %v", err)
 	}
-	if _, ok := createSchema.Properties["code"]; ok || containsString(createSchema.Required, "code") {
-		t.Fatalf("create schema must derive code: %s", encodedSchema)
+	if _, ok := createSchema.Properties["code"]; !ok || !containsString(createSchema.Required, "code") {
+		t.Fatalf("create schema must require code: %s", encodedSchema)
+	}
+	if _, ok := createSchema.Properties["instance_key"]; ok {
+		t.Fatalf("create schema must not contain instance_key: %s", encodedSchema)
 	}
 	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_create_service", Arguments: map[string]any{
-		"application_id": "application-1", "version_id": "version-1", "instance_key": "default",
+		"application_id": "application-1", "version_id": "version-1", "code": "ragflow-default",
 	}})
 	if err != nil {
 		t.Fatalf("CallTool(create service) error = %v", err)
@@ -830,7 +833,7 @@ type serviceOverlayToolService struct {
 
 func (s *serviceToolService) CreateService(_ context.Context, _, _ string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
 	s.createInput = input
-	return servicedto.ServiceView{Service: model.Service{Id: "service-1", ApplicationId: input.ApplicationId, VersionId: input.VersionId, InstanceKey: input.InstanceKey, Code: input.Code, Status: "stopped"}}, nil
+	return servicedto.ServiceView{Service: model.Service{Id: "service-1", ApplicationId: input.ApplicationId, VersionId: input.VersionId, Code: input.Code, Status: "stopped"}}, nil
 }
 
 func (s *serviceToolService) ListServicesByApplication(context.Context, string, string, string) ([]model.Service, error) {

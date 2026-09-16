@@ -62,7 +62,7 @@ func TestProbeForUserRecordsSanitizedFailure(t *testing.T) {
 func TestProbeForUserProbesLocalEnvironmentWithoutDeploymentCredential(t *testing.T) {
 	projectId := "project-1"
 	environment := model.Environment{
-		Id: "environment-local", ProjectId: projectId, State: model.EnvironmentStateActive,
+		Id: "environment-local", ProjectId: projectId,
 		TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: "/srv/pomelo-orbit", TargetRevision: 1,
 	}
 	store := &probeEnvironmentStore{environment: environment}
@@ -158,38 +158,6 @@ func TestUpdateForUserWorkspaceChangeKeepsSSHIdentity(t *testing.T) {
 	}
 }
 
-func TestProbeForUserIgnoresLegacyEnvironmentState(t *testing.T) {
-	environment := testProbeEnvironment("project-1")
-	environment.State = model.EnvironmentStateDisabled
-	store := &probeEnvironmentStore{environment: environment}
-	prober := &probeEnvironmentProber{}
-	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, "private-key"), testCredentialSecret, prober, nil)
-
-	_, err := service.ProbeForUser(context.Background(), "user-1", environment.ProjectId)
-	if err != nil {
-		t.Fatalf("ProbeForUser error = %v", err)
-	}
-	if !prober.called || !store.recorded {
-		t.Fatalf("legacy environment state prevented probe: prober=%#v store=%#v", prober, store)
-	}
-}
-
-func TestUpdateForUserIgnoresLegacyEnvironmentState(t *testing.T) {
-	projectId := "project-1"
-	environment := testProbeEnvironment(projectId)
-	environment.State = model.EnvironmentStateDisabled
-	store := &updateEnvironmentStore{environment: environment}
-	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, "private-key"), testCredentialSecret, nil, nil)
-
-	_, err := service.UpdateForUser(context.Background(), "user-1", projectId, environmentdto.UpdateInput{})
-	if err != nil {
-		t.Fatalf("UpdateForUser error = %v", err)
-	}
-	if !store.updated || store.environment.State != model.EnvironmentStateActive {
-		t.Fatalf("legacy environment state was not normalized on update: %#v", store.environment)
-	}
-}
-
 func TestUpdateForUserKeepsDeploymentCredentialForSSHTargetChange(t *testing.T) {
 	projectId := "project-1"
 	environment := testProbeEnvironment(projectId)
@@ -231,7 +199,7 @@ func TestUpdateForUserChangesLocalWorkspaceAndInvalidatesProbeFreshness(t *testi
 	revision := int64(5)
 	probeStatus := model.EnvironmentProbeStatusSucceeded
 	environment := model.Environment{
-		Id: "environment-local", ProjectId: projectId, Code: "project", State: model.EnvironmentStateActive,
+		Id: "environment-local", ProjectId: projectId, Code: "project",
 		TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: "/srv/orbit/previous", TargetRevision: revision,
 		LastProbeRevision: &revision, LastProbeStatus: &probeStatus,
 	}
@@ -478,7 +446,6 @@ func testProbeEnvironment(projectId string) model.Environment {
 		Id:             "environment-1",
 		ProjectId:      projectId,
 		Code:           "environment",
-		State:          model.EnvironmentStateActive,
 		TargetType:     model.EnvironmentTargetTypeSSH,
 		WorkspaceRoot:  "/srv/pomelo-orbit",
 		TargetRevision: 7,

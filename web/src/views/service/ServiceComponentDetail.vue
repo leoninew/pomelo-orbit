@@ -668,7 +668,7 @@
     }
     return [
       {
-        label: `${currentService.application_name} / ${currentService.instance_key || 'default'}`,
+        label: `${currentService.application_name} · ${currentService.code}`,
         to: `/service/${currentService.id}`,
       },
     ];

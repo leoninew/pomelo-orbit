@@ -36,7 +36,6 @@ export interface EnvironmentResp {
   id: string;
   project_id: string;
   code: string;
-  state: string;
   target_type: string;
   ssh: EnvironmentSSHTargetResp | undefined;
   target_revision: number;
@@ -51,7 +50,6 @@ export interface EnvironmentResp {
 }
 
 export interface ProjectEnvironmentUpdateReq {
-  state?: string | undefined;
   target_type?: string | undefined;
   ssh?: EnvironmentSSHTargetReq | undefined;
   local?: EnvironmentLocalTargetReq | undefined;

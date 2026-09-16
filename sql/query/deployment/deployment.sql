@@ -7,13 +7,11 @@ INSERT INTO deployment (
 
 -- name: DeploymentById :one
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
-       s.instance_key AS service_instance_key,
        d.environment_id, d.environment_target_type, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
        d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
 FROM deployment d
-LEFT JOIN service s ON s.id = d.service_id
 WHERE d.id = sqlc.arg(id)
   AND d.project_id = sqlc.arg(project_id);
 
@@ -43,13 +41,11 @@ WHERE project_id = sqlc.arg(project_id)
 
 -- name: ListDeployments :many
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
-       s.instance_key AS service_instance_key,
        d.environment_id, d.environment_target_type, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
        d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
 FROM deployment d
-LEFT JOIN service s ON s.id = d.service_id
 WHERE d.project_id = sqlc.arg(project_id)
   AND (
     CAST(sqlc.narg(application_id) AS CHAR) IS NULL

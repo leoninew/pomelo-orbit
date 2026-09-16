@@ -57,7 +57,7 @@ func TestSaveInitializationUpdatesUnprobedLegacyEnvironmentWithGatewayBinding(t 
 		found: true,
 		environment: model.Environment{
 			Id: "environment-1", ProjectId: "project-1", Code: "demo",
-			State: model.EnvironmentStateActive, TargetType: model.EnvironmentTargetTypeLocal,
+			TargetType:     model.EnvironmentTargetTypeLocal,
 			TargetRevision: 1, GatewayApplicationId: &gatewayId,
 		},
 	}
@@ -107,7 +107,7 @@ func TestSaveInitializationWorkspaceChangeKeepsSSHIdentity(t *testing.T) {
 	probeRevision := int64(4)
 	probeStatus := model.EnvironmentProbeStatusSucceeded
 	environment := model.Environment{
-		Id: "environment-1", ProjectId: projectId, Code: "demo", State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: projectId, Code: "demo",
 		TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: "/srv/orbit/previous",
 		TargetRevision: probeRevision, LastProbeRevision: &probeRevision, LastProbeStatus: &probeStatus,
 		SSH: &model.EnvironmentSSHTarget{
@@ -187,7 +187,7 @@ func TestPrepareWindowsEnvironmentOverwritesCompletePair(t *testing.T) {
 	store := &initializationEnvironmentStore{
 		found: true,
 		environment: model.Environment{
-			Id: "environment-1", ProjectId: projectId, Code: "demo", State: model.EnvironmentStateActive,
+			Id: "environment-1", ProjectId: projectId, Code: "demo",
 			TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: `C:\\orbit`, TargetRevision: 1,
 			SSH: &model.EnvironmentSSHTarget{
 				Platform: model.EnvironmentPlatformWindows, Host: "192.0.2.10", Port: 22, Username: "orbit",
@@ -222,7 +222,7 @@ func TestPrepareWindowsEnvironmentRepairsLegacyCredentialBinding(t *testing.T) {
 	store := &initializationEnvironmentStore{
 		found: true,
 		environment: model.Environment{
-			Id: "environment-1", ProjectId: projectId, Code: "demo", State: model.EnvironmentStateActive,
+			Id: "environment-1", ProjectId: projectId, Code: "demo",
 			TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: `C:\\orbit`, TargetRevision: 1,
 			SSH: &model.EnvironmentSSHTarget{
 				Platform: model.EnvironmentPlatformWindows, Host: "192.0.2.10", Port: 22, Username: "orbit",
@@ -251,7 +251,7 @@ func TestEnvironmentForUserLeavesLegacyCredentialBindingForWindowsPreparation(t 
 	store := &initializationEnvironmentStore{
 		found: true,
 		environment: model.Environment{
-			Id: "environment-1", ProjectId: "project-1", Code: "demo", State: model.EnvironmentStateActive,
+			Id: "environment-1", ProjectId: "project-1", Code: "demo",
 			TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: `C:\\orbit`, TargetRevision: 1,
 			SSH: &model.EnvironmentSSHTarget{
 				Platform: model.EnvironmentPlatformWindows, Host: "192.0.2.10", Port: 22, Username: "orbit",

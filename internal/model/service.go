@@ -2,12 +2,11 @@ package model
 
 import "time"
 
-// Service is the runtime binding of an application instance.
+// Service is one runtime binding of an application.
 type Service struct {
 	Id            string    `db:"id"`
 	ProjectId     string    `db:"project_id"`
 	ApplicationId string    `db:"application_id"`
-	InstanceKey   string    `db:"instance_key"`
 	Code          string    `db:"code"`
 	VersionId     string    `db:"version_id"`
 	Status        string    `db:"status"`
@@ -87,7 +86,6 @@ type ServiceListItem struct {
 	Id              string    `db:"id"`
 	ProjectId       string    `db:"project_id"`
 	ApplicationId   string    `db:"application_id"`
-	InstanceKey     string    `db:"instance_key"`
 	Code            string    `db:"code"`
 	VersionId       string    `db:"version_id"`
 	Status          string    `db:"status"`
@@ -104,7 +102,6 @@ func (item ServiceListItem) Service() Service {
 	return Service{
 		Id: item.Id, ProjectId: item.ProjectId,
 		ApplicationId: item.ApplicationId,
-		InstanceKey:   item.InstanceKey,
 		Code:          item.Code,
 		VersionId:     item.VersionId,
 		Status:        item.Status,

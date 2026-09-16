@@ -404,11 +404,11 @@
     const pipeline = editingPipeline.value;
     return Boolean(
       pipeline &&
-        pipeline.kind === 'application' &&
-        !pipeline.application_id &&
-        !pipeline.stage_nodes.some((stage) =>
-          stage.artifacts.some((artifact) => artifact.collector === 'docker_image')
-        )
+      pipeline.kind === 'application' &&
+      !pipeline.application_id &&
+      !pipeline.stage_nodes.some((stage) =>
+        stage.artifacts.some((artifact) => artifact.collector === 'docker_image')
+      )
     );
   });
   const editApplicationOptions = computed(() => {

@@ -407,22 +407,6 @@
     >
       <div class="space-y-4">
         <p class="text-sm text-muted-foreground">{{ t('gateway.deploy.description') }}</p>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.deploy.service') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <SelectControl
-            v-model="deployForm.service_id"
-            :options="deployServiceSelectOptions"
-            :placeholder="t('gateway.deploy.selectService')"
-            :invalid="Boolean(deployErrors.service_id)"
-            @update:model-value="handleDeployServiceChange"
-          />
-          <p v-if="deployErrors.service_id" class="app-field-error" role="alert">
-            {{ deployErrors.service_id }}
-          </p>
-        </div>
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('gateway.deploy.forceRecreate') }}</span>
@@ -447,20 +431,6 @@
     >
       <div class="space-y-4">
         <p class="text-sm text-muted-foreground">{{ t('gateway.stop.confirm') }}</p>
-        <div v-if="stoppableServices.length > 1">
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.stop.service') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <SelectControl
-            v-model="stopForm.service_id"
-            :options="stopServiceSelectOptions"
-            :placeholder="t('gateway.stop.selectService')"
-            :invalid="Boolean(stopError)"
-            @update:model-value="stopError = ''"
-          />
-          <p v-if="stopError" class="app-field-error" role="alert">{{ stopError }}</p>
-        </div>
         <label class="flex items-center gap-2">
           <input v-model="stopForm.remove_volumes" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('gateway.stop.removeVolumes') }}</span>
@@ -569,10 +539,8 @@
   const certificateSubmitError = ref('');
   const isCertificateTokenVisible = ref(false);
   const isDeployDialogOpen = ref(false);
-  const deployErrors = reactive({ service_id: '' });
   const deploySubmitError = ref('');
   const deployForm = reactive({
-    service_id: '',
     force_recreate: false,
   });
   const runtimeLogTarget = ref<RuntimeContainerLogTarget>();
@@ -586,40 +554,28 @@
   });
   const gatewayRuntimeLogTarget = computed(() => {
     const current = gateway.value;
-    if (!current || !current.default_service_id || !current.default_service_instance_key) {
+    if (!current || !current.service_id) {
       return undefined;
     }
-    return runtimeTargetForService(
-      current,
-      current.default_service_id,
-      current.default_service_instance_key
-    );
+    return runtimeTargetForService(current, current.service_id, current.service_code);
   });
 
   const isStopDialogOpen = ref(false);
-  const stopError = ref('');
   const stopSubmitError = ref('');
   const stopForm = reactive({
-    service_id: '',
     remove_volumes: false,
   });
   const operating = computed(() => opStatus.value === 'loading');
-  const isDeploying = computed(() => services.value.some((item) => item.active_deployment));
-  const stoppableServices = computed(() =>
-    services.value.filter(
-      (item) => !item.active_deployment && (item.status === 'running' || item.status === 'faulted')
+  const gatewayService = computed(() =>
+    services.value.find((item) => item.id === gateway.value?.service_id)
+  );
+  const isDeploying = computed(() => gatewayService.value?.active_deployment ?? false);
+  const canStop = computed(() =>
+    Boolean(
+      gatewayService.value &&
+      !gatewayService.value.active_deployment &&
+      (gatewayService.value.status === 'running' || gatewayService.value.status === 'faulted')
     )
-  );
-  const canStop = computed(() => stoppableServices.value.length > 0);
-  const deployServiceSelectOptions = computed(() =>
-    services.value.map((item) => ({ value: item.id, label: serviceOptionLabel(item) }))
-  );
-
-  const stopServiceSelectOptions = computed(() =>
-    stoppableServices.value.map((item) => ({
-      value: item.id,
-      label: serviceOptionLabel(item),
-    }))
   );
   const noAcmeProfileValue = '__acme_disabled__';
   const entrypointOptions = [
@@ -641,11 +597,6 @@
     () => certificateForm.acme_profile || noAcmeProfileValue
   );
   const certificateUsesDNSProfile = computed(() => usesDNSProfile(certificateForm.acme_profile));
-
-  function serviceOptionLabel(item: ServiceResp) {
-    const instance = item.instance_key || 'default';
-    return `${instance} (${item.status})`;
-  }
 
   function replaceErrors(target: GatewayConfigFormErrors, next: GatewayConfigFormErrors) {
     for (const field of Object.keys(target)) {
@@ -864,28 +815,13 @@
     if (!current) {
       return;
     }
-    Object.assign(deployErrors, { service_id: '' });
     deploySubmitError.value = '';
     deployForm.force_recreate = false;
-    if (services.value.length === 0) {
+    if (!current.service_id) {
       toast.error(t('gateway.toast.noService'));
       return;
     }
-    const serviceId =
-      services.value.find((item) => item.id === current.default_service_id)?.id ||
-      services.value[0].id;
-    const selectedService = services.value.find((item) => item.id === serviceId);
-    if (!selectedService) {
-      return;
-    }
-    deployForm.service_id = selectedService.id;
     isDeployDialogOpen.value = true;
-  }
-
-  function handleDeployServiceChange(value: string | number) {
-    const serviceId = String(value);
-    deployForm.service_id = serviceId;
-    deployErrors.service_id = '';
   }
 
   async function handleDeployOk() {
@@ -894,18 +830,13 @@
     if (!current) {
       return;
     }
-    if (!deployForm.service_id) {
-      deployErrors.service_id = t('gateway.toast.deployServiceRequired');
+    if (!current.service_id) {
+      deploySubmitError.value = t('gateway.toast.deployServiceRequired');
       return;
     }
-    deployErrors.service_id = '';
     try {
       await executeOp(async () => {
-        const selectedService = services.value.find((item) => item.id === deployForm.service_id);
-        if (!selectedService) {
-          throw new Error(t('gateway.toast.deployServiceRequired'));
-        }
-        const result = await serviceApi.deploy(selectedProjectId(), selectedService.id, {
+        const result = await serviceApi.deploy(selectedProjectId(), current.service_id, {
           force_recreate: deployForm.force_recreate,
         });
         for (const warning of result.warnings) {
@@ -915,8 +846,8 @@
         isDeployDialogOpen.value = false;
         runtimeLogTarget.value = runtimeTargetForService(
           current,
-          selectedService.id,
-          selectedService.instance_key,
+          current.service_id,
+          current.service_code,
           result.deployment_id
         );
       });
@@ -933,7 +864,7 @@
   function runtimeTargetForService(
     current: GatewayResp,
     serviceId: string,
-    instanceKey: string,
+    serviceCode: string,
     deploymentId?: string
   ): RuntimeContainerLogTarget {
     return {
@@ -943,7 +874,7 @@
       deploymentId,
       title: t('service.logs.titleWithComponent', {
         app: current.name,
-        instance: instanceKey,
+        code: serviceCode,
         component: MANAGED_GATEWAY_COMPONENT_NAME,
       }),
     };
@@ -953,10 +884,8 @@
     if (!canStop.value) {
       return;
     }
-    stopError.value = '';
     stopSubmitError.value = '';
     stopForm.remove_volumes = false;
-    stopForm.service_id = stoppableServices.value[0]?.id || '';
     isStopDialogOpen.value = true;
   }
 
@@ -966,17 +895,14 @@
     if (!current) {
       return;
     }
-    const targetId =
-      stoppableServices.value.length === 1 ? stoppableServices.value[0].id : stopForm.service_id;
-    if (!targetId) {
-      stopError.value = t('gateway.toast.serviceRequired');
+    if (!current.service_id) {
+      stopSubmitError.value = t('gateway.toast.serviceRequired');
       return;
     }
-    stopError.value = '';
     try {
       await executeOp(async () => {
         const result = await applicationApi.stop(selectedProjectId(), current.id, {
-          service_id: targetId,
+          service_id: current.service_id,
           remove_volumes: stopForm.remove_volumes,
         });
         toast.success(t('gateway.toast.stopQueued'));

@@ -13,7 +13,7 @@ func TestRenderComposeSkipsTraefikNetworkWhenDisabled(t *testing.T) {
 	disabled := false
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application:        model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
-		Service:            model.Service{Code: "demo-default", InstanceKey: "default"},
+		Service:            model.Service{Code: "demo-default"},
 		JoinTraefikNetwork: &disabled,
 		Components: []model.EffectiveServiceComponent{{
 			Name: "api", Image: "nginx:latest",

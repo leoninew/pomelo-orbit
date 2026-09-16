@@ -70,12 +70,6 @@
                 </router-link>
               </h2>
               <p class="truncate text-sm text-muted-foreground">{{ svc.code }}</p>
-              <p
-                v-if="svc.instance_key && svc.instance_key !== 'default'"
-                class="truncate text-sm text-muted-foreground"
-              >
-                {{ svc.instance_key }}
-              </p>
             </div>
             <AppBadge variant="status" :tone="appStatusTone(svc.status)">
               {{ svc.status }}
@@ -162,12 +156,6 @@
                 >
                   {{ svc.application_name }}
                 </router-link>
-                <span
-                  v-if="svc.instance_key && svc.instance_key !== 'default'"
-                  class="ml-2 text-xs text-muted-foreground"
-                >
-                  {{ svc.instance_key }}
-                </span>
               </td>
               <td class="text-foreground">{{ svc.code }}</td>
               <td>
@@ -314,22 +302,6 @@
           </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label mb-1.5 block">
-            {{ t('service.fields.instanceKey') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="createForm.instance_key"
-            class="app-input"
-            :class="createErrors.instance_key ? 'app-input-error' : ''"
-            :aria-invalid="createErrors.instance_key ? 'true' : undefined"
-            @input="handleCreateInstanceKeyInput"
-          />
-          <p v-if="createErrors.instance_key" class="app-field-error" role="alert">
-            {{ createErrors.instance_key }}
-          </p>
-        </div>
-        <div class="space-y-1.5">
           <label for="create-service-code" class="app-field-label mb-1.5 block">
             {{ t('service.fields.code') }}
             <span class="text-destructive">*</span>
@@ -456,17 +428,13 @@
   const createErrors = reactive({
     application_id: '',
     version_id: '',
-    instance_key: '',
     code: '',
   });
   const createForm = reactive({
     application_id: '',
     version_id: '',
-    instance_key: 'default',
     code: '',
   });
-  let createCodeIsCustomized = false;
-
   const serviceCodePattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
   const applicationSelectOptions = computed(() =>
@@ -531,15 +499,12 @@
       Object.assign(createForm, {
         application_id: '',
         version_id: '',
-        instance_key: 'default',
         code: '',
       });
-      createCodeIsCustomized = false;
       createError.value = '';
       Object.assign(createErrors, {
         application_id: '',
         version_id: '',
-        instance_key: '',
         code: '',
       });
       isCreateDialogOpen.value = true;
@@ -583,7 +548,6 @@
       Object.assign(createErrors, {
         application_id: '',
         version_id: '',
-        instance_key: '',
         code: '',
       });
     }
@@ -591,25 +555,15 @@
 
   function suggestedCreateCode() {
     const application = applications.value.find((item) => item.id === createForm.application_id);
-    const instanceKey = createForm.instance_key.trim();
-    return application && instanceKey ? `${application.code}-${instanceKey}` : '';
+    return application ? `${application.code}-default` : '';
   }
 
   function updateSuggestedCreateCode() {
     createForm.code = suggestedCreateCode();
-    createCodeIsCustomized = false;
     createErrors.code = '';
   }
 
-  function handleCreateInstanceKeyInput() {
-    createErrors.instance_key = '';
-    if (!createCodeIsCustomized) {
-      updateSuggestedCreateCode();
-    }
-  }
-
   function handleCreateCodeInput() {
-    createCodeIsCustomized = true;
     createErrors.code = '';
   }
 
@@ -624,21 +578,13 @@
       ? ''
       : t('service.create.applicationRequired');
     createErrors.version_id = createForm.version_id ? '' : t('service.create.versionRequired');
-    createErrors.instance_key = createForm.instance_key.trim()
-      ? ''
-      : t('service.create.instanceKeyRequired');
     const code = createForm.code.trim();
     createErrors.code = !code
       ? t('service.create.codeRequired')
       : serviceCodePattern.test(code)
         ? ''
         : t('service.create.codeInvalid');
-    if (
-      createErrors.application_id ||
-      createErrors.version_id ||
-      createErrors.instance_key ||
-      createErrors.code
-    ) {
+    if (createErrors.application_id || createErrors.version_id || createErrors.code) {
       return;
     }
     try {
@@ -646,7 +592,6 @@
         const created = await serviceApi.create(projectId, {
           application_id: createForm.application_id,
           version_id: createForm.version_id,
-          instance_key: createForm.instance_key.trim(),
           code,
         });
         setCreateDialogOpen(false);
@@ -680,10 +625,8 @@
     if (!service) {
       return '';
     }
-    const application = service.application_name;
-    const instance = service.instance_key || 'default';
     return t('service.detail.subtitle', {
-      instance: `${application} / ${instance}`,
+      code: service.code,
       version: service.version_label,
     });
   }
@@ -744,7 +687,6 @@
         if (deployForm.version_id !== service.version_id) {
           serviceForDeploy = await serviceApi.updateBasic(projectId, service.id, {
             version_id: deployForm.version_id,
-            instance_key: service.instance_key,
           });
           selectedService.value = serviceForDeploy;
           const index = services.value.findIndex((item) => item.id === serviceForDeploy.id);

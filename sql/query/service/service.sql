@@ -1,39 +1,25 @@
 -- name: ListServicesByApplication :many
-SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = sqlc.arg(application_id)
   AND project_id = sqlc.arg(project_id)
-ORDER BY instance_key;
+ORDER BY code;
 
 -- name: ServiceById :one
-SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
 FROM service
 WHERE service.id = sqlc.arg(id)
   AND project_id = sqlc.arg(project_id);
 
--- name: ServiceByKey :one
-SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
-FROM service
-WHERE application_id = sqlc.arg(application_id)
-  AND instance_key = sqlc.arg(instance_key)
-  AND project_id = sqlc.arg(project_id);
-
 -- name: ServiceByProjectAndCode :one
-SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
+SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
 FROM service
 WHERE project_id = sqlc.arg(project_id)
   AND code = sqlc.arg(code);
 
--- name: ServiceIdByKey :one
-SELECT id
-FROM service
-WHERE application_id = sqlc.arg(application_id)
-  AND instance_key = sqlc.arg(instance_key)
-  AND project_id = sqlc.arg(project_id);
-
 -- name: InsertService :exec
-INSERT INTO service (id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at)
-VALUES (sqlc.arg(id), sqlc.arg(project_id), sqlc.arg(application_id), sqlc.arg(instance_key), sqlc.arg(code), sqlc.arg(version_id), sqlc.arg(status), sqlc.arg(created_at), sqlc.arg(updated_at));
+INSERT INTO service (id, project_id, application_id, code, version_id, status, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(project_id), sqlc.arg(application_id), sqlc.arg(code), sqlc.arg(version_id), sqlc.arg(status), sqlc.arg(created_at), sqlc.arg(updated_at));
 
 -- name: UpdateService :exec
 UPDATE service
@@ -43,7 +29,7 @@ WHERE service.id = sqlc.arg(id)
 
 -- name: UpdateServiceConfiguration :exec
 UPDATE service
-SET instance_key = sqlc.arg(instance_key), version_id = sqlc.arg(version_id), updated_at = sqlc.arg(updated_at)
+SET version_id = sqlc.arg(version_id), updated_at = sqlc.arg(updated_at)
 WHERE service.id = sqlc.arg(id)
   AND project_id = sqlc.arg(project_id);
 
@@ -313,7 +299,7 @@ WHERE s.project_id = sqlc.arg(project_id)
   );
 
 -- name: ListServicesByProject :many
-SELECT s.id, s.project_id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
@@ -337,7 +323,7 @@ ORDER BY s.id DESC
 LIMIT ? OFFSET ?;
 
 -- name: ServiceListItemById :one
-SELECT s.id, s.project_id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s

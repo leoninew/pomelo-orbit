@@ -73,10 +73,9 @@ export interface GatewayResp {
   default_entrypoint: string;
   tls_mode: string;
   exposures: GatewayExposureItem[];
-  default_service_id: string;
-  default_service_instance_key: string;
-  default_service_code: string;
-  default_service_status: string;
+  service_id: string;
+  service_code: string;
+  service_status: string;
   rest_ready_timeout_seconds: number;
   acme_profile: string;
   acme_email: string;

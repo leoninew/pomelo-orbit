@@ -271,13 +271,11 @@ func (q *Queries) DeleteDeployment(ctx context.Context, arg DeleteDeploymentPara
 
 const deploymentById = `-- name: DeploymentById :one
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
-       s.instance_key AS service_instance_key,
        d.environment_id, d.environment_target_type, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
        d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
 FROM deployment d
-LEFT JOIN service s ON s.id = d.service_id
 WHERE d.id = ?
   AND d.project_id = ?
 `
@@ -294,7 +292,6 @@ type DeploymentByIdRow struct {
 	ApplicationName           string         `db:"application_name"`
 	VersionId                 sql.NullString `db:"version_id"`
 	ServiceId                 sql.NullString `db:"service_id"`
-	ServiceInstanceKey        sql.NullString `db:"service_instance_key"`
 	EnvironmentId             sql.NullString `db:"environment_id"`
 	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
 	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
@@ -326,7 +323,6 @@ func (q *Queries) DeploymentById(ctx context.Context, arg DeploymentByIdParams) 
 		&i.ApplicationName,
 		&i.VersionId,
 		&i.ServiceId,
-		&i.ServiceInstanceKey,
 		&i.EnvironmentId,
 		&i.EnvironmentTargetType,
 		&i.EnvironmentTargetRevision,
@@ -394,13 +390,11 @@ func (q *Queries) LatestSuccessfulDeploymentPlanHash(ctx context.Context, arg La
 
 const listDeployments = `-- name: ListDeployments :many
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
-       s.instance_key AS service_instance_key,
        d.environment_id, d.environment_target_type, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
        d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
        d.log_text, d.error_message, d.is_rollback, d.rollback_from_deployment_id
 FROM deployment d
-LEFT JOIN service s ON s.id = d.service_id
 WHERE d.project_id = ?
   AND (
     CAST(? AS CHAR) IS NULL
@@ -438,7 +432,6 @@ type ListDeploymentsRow struct {
 	ApplicationName           string         `db:"application_name"`
 	VersionId                 sql.NullString `db:"version_id"`
 	ServiceId                 sql.NullString `db:"service_id"`
-	ServiceInstanceKey        sql.NullString `db:"service_instance_key"`
 	EnvironmentId             sql.NullString `db:"environment_id"`
 	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
 	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
@@ -490,7 +483,6 @@ func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams
 			&i.ApplicationName,
 			&i.VersionId,
 			&i.ServiceId,
-			&i.ServiceInstanceKey,
 			&i.EnvironmentId,
 			&i.EnvironmentTargetType,
 			&i.EnvironmentTargetRevision,

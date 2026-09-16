@@ -10,8 +10,6 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-const versionPreviewInstanceKey = "default"
-
 // BuildVersionPreviewPlan creates a compose preview from version declarations
 // only. It does not load or merge Service runtime overlays.
 func BuildVersionPreviewPlan(app model.Application, version model.Version, declarations []model.VersionComponent, gateway *model.GatewayConfig) (model.EffectiveServicePlan, error) {
@@ -24,7 +22,6 @@ func BuildVersionPreviewPlan(app model.Application, version model.Version, decla
 		Service: model.Service{
 			ApplicationId: app.Id,
 			VersionId:     version.Id,
-			InstanceKey:   versionPreviewInstanceKey,
 			Code:          app.Code + "-preview",
 		},
 		Gateway:    gateway,
@@ -348,7 +345,6 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 		AppCode            string
 		AppKind            string
 		VersionLabel       string
-		InstanceKey        string
 		ServiceCode        string
 		JoinTraefikNetwork bool
 		GatewayNetworkName string
@@ -363,7 +359,7 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 	if plan.JoinsTraefikNetwork() && plan.Gateway != nil {
 		gatewayNetworkName = plan.Gateway.NetworkName
 	}
-	data := fingerprint{AppCode: plan.Application.Code, AppKind: plan.Application.Kind, VersionLabel: plan.Version.Label, InstanceKey: plan.Service.InstanceKey, ServiceCode: plan.Service.Code, JoinTraefikNetwork: plan.JoinsTraefikNetwork(), GatewayNetworkName: gatewayNetworkName, Components: components}
+	data := fingerprint{AppCode: plan.Application.Code, AppKind: plan.Application.Kind, VersionLabel: plan.Version.Label, ServiceCode: plan.Service.Code, JoinTraefikNetwork: plan.JoinsTraefikNetwork(), GatewayNetworkName: gatewayNetworkName, Components: components}
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return "", fmt.Errorf("encode effective service plan: %w", err)

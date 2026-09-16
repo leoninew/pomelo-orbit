@@ -9,7 +9,6 @@ type Deployment struct {
 	ApplicationName           string     `db:"application_name"`
 	VersionId                 *string    `db:"version_id"`
 	ServiceId                 *string    `db:"service_id"`
-	ServiceInstanceKey        *string    `db:"service_instance_key"`
 	EnvironmentId             *string    `db:"environment_id"`
 	EnvironmentTargetType     *string    `db:"environment_target_type"`
 	EnvironmentTargetRevision *int64     `db:"environment_target_revision"`

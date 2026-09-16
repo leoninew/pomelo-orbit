@@ -82,9 +82,6 @@ func (s stores) ListServicesByProject(ctx context.Context, projectId string, app
 func (s stores) ServiceListItem(ctx context.Context, projectId, id string) (model.ServiceListItem, error) {
 	return s.service.ServiceListItem(ctx, projectId, id)
 }
-func (s stores) ServiceByKey(ctx context.Context, projectId, applicationId, instanceKey string) (model.Service, error) {
-	return s.service.ServiceByKey(ctx, projectId, applicationId, instanceKey)
-}
 func (s stores) Service(ctx context.Context, projectId, id string) (model.Service, error) {
 	return s.service.Service(ctx, projectId, id)
 }

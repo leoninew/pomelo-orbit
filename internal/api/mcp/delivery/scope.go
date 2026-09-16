@@ -76,7 +76,7 @@ func (c *core) readyGateway(ctx context.Context, projectId string) (gatewaydto.G
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	if gateways.Total == 0 || len(gateways.Items) == 0 || gateways.Items[0].DefaultService == nil {
+	if gateways.Total == 0 || len(gateways.Items) == 0 || gateways.Items[0].Service == nil {
 		return gatewaydto.GatewayView{}, apperror.NewWithCode(apperror.KindValidation, codeProjectNotReady, "Project gateway is not ready")
 	}
 	return gateways.Items[0], nil
@@ -237,8 +237,8 @@ func currentProjectOutput(project model.Project, environment environmentdto.View
 		"environment": environmentOutput(environment),
 		"gateway":     gatewayOutput(gateway),
 	}
-	if gateway.DefaultService != nil {
-		output["default_service"] = gatewayServiceOutput(*gateway.DefaultService)
+	if gateway.Service != nil {
+		output["service"] = gatewayServiceOutput(*gateway.Service)
 	}
 	return output
 }

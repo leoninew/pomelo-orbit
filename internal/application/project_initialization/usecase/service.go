@@ -48,7 +48,7 @@ func (s Service) Status(ctx context.Context, userId string, projectId string) (i
 	if err != nil {
 		return initdto.StatusView{}, err
 	}
-	if gateways.Total == 0 || len(gateways.Items) == 0 || gateways.Items[0].DefaultService == nil {
+	if gateways.Total == 0 || len(gateways.Items) == 0 || gateways.Items[0].Service == nil {
 		view.Status = initdto.StatusNeedsGateway
 		return view, nil
 	}

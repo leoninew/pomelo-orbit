@@ -54,7 +54,6 @@ type EnvironmentStore interface {
 
 type ServiceReader interface {
 	ListServicesByApplication(ctx context.Context, projectId string, applicationId string) ([]model.Service, error)
-	ServiceByKey(ctx context.Context, projectId string, applicationId string, instanceKey string) (model.Service, error)
 	ServiceComponentsByService(ctx context.Context, projectId string, serviceId string) ([]model.ServiceComponent, error)
 	UpdateServiceConfiguration(ctx context.Context, projectId string, svc model.Service, components []model.ServiceComponent) error
 }

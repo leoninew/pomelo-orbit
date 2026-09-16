@@ -44,16 +44,14 @@ type GatewayExposureItem struct {
 }
 
 type GatewayView struct {
-	Application    model.Application
-	Config         model.GatewayConfig
-	DefaultService *model.Service
-	Services       []model.Service
-	Exposures      []GatewayExposureItem
+	Application model.Application
+	Config      model.GatewayConfig
+	Service     *model.Service
+	Exposures   []GatewayExposureItem
 }
 
 type ProvisionGatewayInput struct {
-	ProjectId   string
-	InstanceKey string
+	ProjectId string
 }
 
 type ProvisionGatewayResult struct {

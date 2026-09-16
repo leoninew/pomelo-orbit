@@ -18,12 +18,7 @@ func (h Handler) ListRepositories(c *gin.Context) {
 		return
 	}
 	page, perPage := transport.QueryInt(c.Query("page"), 1), transport.QueryInt(c.Query("per_page"), 20)
-	projectID := c.Query("project_id")
-	var filter *string
-	if projectID != "" {
-		filter = &projectID
-	}
-	items, err := h.service.ListRepositories(c.Request.Context(), current.Id, filter, page, perPage, c.Query("search"))
+	items, err := h.service.ListRepositories(c.Request.Context(), current.Id, c.Query("project_id"), page, perPage, c.Query("search"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -57,7 +52,7 @@ func (h Handler) GetRepository(c *gin.Context) {
 	if !ok {
 		return
 	}
-	detail, err := h.service.RepositoryForUser(c.Request.Context(), current.Id, c.Param("repository_id"))
+	detail, err := h.service.RepositoryForUser(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("repository_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -80,7 +75,7 @@ func (h Handler) UpdateRepository(c *gin.Context) {
 		values := variableDeclarationRequestMaps(req.VariableOverrides.Items)
 		variables = &values
 	}
-	detail, err := h.service.UpdateRepository(c.Request.Context(), current.Id, c.Param("repository_id"), repositorydto.RepositoryUpdateInput{Name: req.Name, RepositoryType: req.RepositoryType, RepositoryUrl: req.RepositoryUrl, GitCredentialId: req.GitCredentialId, VariableOverrides: variables, DefaultBranch: req.DefaultBranch})
+	detail, err := h.service.UpdateRepository(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("repository_id"), repositorydto.RepositoryUpdateInput{Name: req.Name, RepositoryType: req.RepositoryType, RepositoryUrl: req.RepositoryUrl, GitCredentialId: req.GitCredentialId, VariableOverrides: variables, DefaultBranch: req.DefaultBranch})
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -93,7 +88,7 @@ func (h Handler) DeleteRepository(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteRepository(c.Request.Context(), current.Id, c.Param("repository_id")); err != nil {
+	if err := h.service.DeleteRepository(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("repository_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}

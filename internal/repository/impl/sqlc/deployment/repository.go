@@ -47,6 +47,10 @@ func optionalInt64(value *int64) sql.NullInt64 {
 	return sql.NullInt64{Int64: *value, Valid: true}
 }
 
+func projectScopeId(value string) sql.NullString {
+	return sql.NullString{String: strings.TrimSpace(value), Valid: true}
+}
+
 func int64Pointer(value sql.NullInt64) *int64 {
 	if !value.Valid {
 		return nil
@@ -54,24 +58,28 @@ func int64Pointer(value sql.NullInt64) *int64 {
 	return &value.Int64
 }
 
-func (r Repository) CreateDeployment(ctx context.Context, deployment model.Deployment) error {
+func (r Repository) CreateDeployment(ctx context.Context, projectId string, deployment model.Deployment) error {
+	projectId = strings.TrimSpace(projectId)
+	if deployment.ProjectId == nil || strings.TrimSpace(*deployment.ProjectId) != projectId {
+		return fmt.Errorf("deployment project scope does not match create request")
+	}
 	startedAt := deployment.StartedAt
 	if startedAt.IsZero() {
 		startedAt = time.Now().UTC()
 	}
 	err := r.q(ctx).CreateDeployment(ctx, deploymentsqlc.CreateDeploymentParams{
-		ID:                        deployment.Id,
-		ProjectID:                 dbmodel.NullString(deployment.ProjectId),
-		ApplicationID:             dbmodel.NullString(deployment.ApplicationId),
+		Id:                        deployment.Id,
+		ProjectId:                 projectScopeId(projectId),
+		ApplicationId:             dbmodel.NullString(deployment.ApplicationId),
 		ApplicationName:           deployment.ApplicationName,
-		VersionID:                 dbmodel.NullString(deployment.VersionId),
-		ServiceID:                 dbmodel.NullString(deployment.ServiceId),
-		EnvironmentID:             dbmodel.NullString(deployment.EnvironmentId),
+		VersionId:                 dbmodel.NullString(deployment.VersionId),
+		ServiceId:                 dbmodel.NullString(deployment.ServiceId),
+		EnvironmentId:             dbmodel.NullString(deployment.EnvironmentId),
 		EnvironmentTargetType:     dbmodel.NullString(deployment.EnvironmentTargetType),
 		EnvironmentTargetRevision: optionalInt64(deployment.EnvironmentTargetRevision),
-		SshCredentialID:           dbmodel.NullString(deployment.SSHCredentialId),
+		SSHCredentialId:           dbmodel.NullString(deployment.SSHCredentialId),
 		SshCredentialRevision:     optionalInt64(deployment.SSHCredentialRevision),
-		GatewayApplicationID:      dbmodel.NullString(deployment.GatewayApplicationId),
+		GatewayApplicationId:      dbmodel.NullString(deployment.GatewayApplicationId),
 		OptionsJson:               dbmodel.NullString(deployment.OptionsJSON),
 		EffectivePlanHash:         dbmodel.NullString(deployment.EffectivePlanHash),
 		OperationType:             deployment.OperationType,
@@ -80,7 +88,7 @@ func (r Repository) CreateDeployment(ctx context.Context, deployment model.Deplo
 		Status:                    deployment.Status,
 		StartedAt:                 startedAt,
 		IsRollback:                dbmodel.BoolInt(deployment.IsRollback),
-		RollbackFromDeploymentID:  dbmodel.NullString(deployment.RollbackFromDeploymentId),
+		RollbackFromDeploymentId:  dbmodel.NullString(deployment.RollbackFromDeploymentId),
 	})
 	if err != nil {
 		return fmt.Errorf("create deployment %s: %w", deployment.Id, err)
@@ -88,9 +96,9 @@ func (r Repository) CreateDeployment(ctx context.Context, deployment model.Deplo
 	return nil
 }
 
-func (r Repository) CompleteDeployment(ctx context.Context, id string, deployStatus string, message string) (bool, error) {
+func (r Repository) CompleteDeployment(ctx context.Context, projectId string, id string, deployStatus string, message string) (bool, error) {
 	q := r.q(ctx)
-	startedAt, err := q.DeploymentStartedAt(ctx, id)
+	startedAt, err := q.DeploymentStartedAt(ctx, deploymentsqlc.DeploymentStartedAtParams{Id: id, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return false, fmt.Errorf("load deployment started_at %s: %w", id, sqlcommon.TranslateError(err))
 	}
@@ -101,7 +109,8 @@ func (r Repository) CompleteDeployment(ctx context.Context, id string, deploySta
 		FinishedAt:    sql.NullTime{Time: now, Valid: true},
 		DurationMs:    sql.NullInt64{Int64: durationMs, Valid: true},
 		ErrorMessage:  message,
-		ID:            id,
+		Id:            id,
+		ProjectId:     projectScopeId(projectId),
 		CurrentStatus: status.WorkStatusRunning,
 	})
 	if err != nil {
@@ -118,11 +127,11 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	appNS := sql.NullString{String: appFilter, Valid: appFilter != ""}
 	statusValue := sql.NullString{String: stFilter, Valid: stFilter != ""}
 	applicationNamePattern := sql.NullString{String: pattern, Valid: raw != ""}
-	projectID := strings.TrimSpace(projectId)
+	projectId = strings.TrimSpace(projectId)
 	q := r.q(ctx)
 	total, err := q.CountDeployments(ctx, deploymentsqlc.CountDeploymentsParams{
-		ProjectID:              sql.NullString{String: projectID, Valid: true},
-		ApplicationID:          appNS,
+		ProjectId:              sql.NullString{String: projectId, Valid: true},
+		ApplicationId:          appNS,
 		Status:                 statusValue,
 		ApplicationNamePattern: applicationNamePattern,
 		DateFrom:               optionalTime(dateFrom),
@@ -132,8 +141,8 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 		return repository.Page[model.Deployment]{}, fmt.Errorf("count deployments: %w", err)
 	}
 	rows, err := q.ListDeployments(ctx, deploymentsqlc.ListDeploymentsParams{
-		ProjectID:              sql.NullString{String: projectID, Valid: true},
-		ApplicationID:          appNS,
+		ProjectId:              sql.NullString{String: projectId, Valid: true},
+		ApplicationId:          appNS,
 		Status:                 statusValue,
 		ApplicationNamePattern: applicationNamePattern,
 		DateFrom:               optionalTime(dateFrom),
@@ -147,51 +156,52 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	items := make([]model.Deployment, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, deploymentFrom(
-			row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
-			row.ServiceInstanceKey, row.EnvironmentID, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SshCredentialID, row.SshCredentialRevision, row.GatewayApplicationID,
+			row.Id, row.ProjectId, row.ApplicationId, row.ApplicationName, row.VersionId, row.ServiceId,
+			row.ServiceInstanceKey, row.EnvironmentId, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SSHCredentialId, row.SshCredentialRevision, row.GatewayApplicationId,
 			row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
-			row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
+			row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentId,
 		))
 	}
 	return repository.Page[model.Deployment]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
 
-func (r Repository) Deployment(ctx context.Context, id string) (model.Deployment, error) {
-	row, err := r.q(ctx).DeploymentByID(ctx, id)
+func (r Repository) Deployment(ctx context.Context, projectId string, id string) (model.Deployment, error) {
+	row, err := r.q(ctx).DeploymentById(ctx, deploymentsqlc.DeploymentByIdParams{Id: id, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return model.Deployment{}, fmt.Errorf("load deployment %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return deploymentFrom(
-		row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
-		row.ServiceInstanceKey, row.EnvironmentID, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SshCredentialID, row.SshCredentialRevision, row.GatewayApplicationID,
+		row.Id, row.ProjectId, row.ApplicationId, row.ApplicationName, row.VersionId, row.ServiceId,
+		row.ServiceInstanceKey, row.EnvironmentId, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SSHCredentialId, row.SshCredentialRevision, row.GatewayApplicationId,
 		row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
-		row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
+		row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentId,
 	), nil
 }
 
-func (r Repository) DeleteDeployment(ctx context.Context, id string) error {
-	if err := r.q(ctx).DeleteDeployment(ctx, id); err != nil {
+func (r Repository) DeleteDeployment(ctx context.Context, projectId string, id string) error {
+	if err := r.q(ctx).DeleteDeployment(ctx, deploymentsqlc.DeleteDeploymentParams{Id: id, ProjectId: projectScopeId(projectId)}); err != nil {
 		return fmt.Errorf("delete deployment %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return nil
 }
 
-func (r Repository) CancelDeployment(ctx context.Context, id string) (bool, error) {
+func (r Repository) CancelDeployment(ctx context.Context, projectId string, id string) (bool, error) {
 	q := r.q(ctx)
-	startedAt, err := q.DeploymentStartedAt(ctx, id)
+	startedAt, err := q.DeploymentStartedAt(ctx, deploymentsqlc.DeploymentStartedAtParams{Id: id, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return false, fmt.Errorf("load deployment started_at %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	now := time.Now().UTC()
 	durationMs := now.Sub(startedAt).Milliseconds()
 	rows, err := q.CancelDeployment(ctx, deploymentsqlc.CancelDeploymentParams{
-		Status:       status.WorkStatusCanceled,
-		FinishedAt:   sql.NullTime{Time: now, Valid: true},
-		DurationMs:   sql.NullInt64{Int64: durationMs, Valid: true},
-		ErrorMessage: sql.NullString{String: "Cancelled by user", Valid: true},
-		ID:           id,
-		Status_2:     status.WorkStatusWaitingToRun,
-		Status_3:     status.WorkStatusRunning,
+		NewStatus:     status.WorkStatusCanceled,
+		FinishedAt:    sql.NullTime{Time: now, Valid: true},
+		DurationMs:    sql.NullInt64{Int64: durationMs, Valid: true},
+		ErrorMessage:  sql.NullString{String: "Cancelled by user", Valid: true},
+		Id:            id,
+		ProjectId:     projectScopeId(projectId),
+		WaitingStatus: status.WorkStatusWaitingToRun,
+		RunningStatus: status.WorkStatusRunning,
 	})
 	if err != nil {
 		return false, fmt.Errorf("cancel deployment %s: %w", id, err)
@@ -199,12 +209,13 @@ func (r Repository) CancelDeployment(ctx context.Context, id string) (bool, erro
 	return rows == 1, nil
 }
 
-func (r Repository) BeginDeployment(ctx context.Context, id string) (bool, error) {
+func (r Repository) BeginDeployment(ctx context.Context, projectId string, id string) (bool, error) {
 	rows, err := r.q(ctx).BeginDeployment(ctx, deploymentsqlc.BeginDeploymentParams{
-		Status:    status.WorkStatusRunning,
-		StartedAt: time.Now().UTC(),
-		ID:        id,
-		Status_2:  status.WorkStatusWaitingToRun,
+		Status:        status.WorkStatusRunning,
+		StartedAt:     time.Now().UTC(),
+		Id:            id,
+		ProjectId:     projectScopeId(projectId),
+		WaitingStatus: status.WorkStatusWaitingToRun,
 	})
 	if err != nil {
 		return false, fmt.Errorf("begin deployment %s: %w", id, err)
@@ -212,20 +223,24 @@ func (r Repository) BeginDeployment(ctx context.Context, id string) (bool, error
 	return rows == 1, nil
 }
 
-func (r Repository) HasActiveDeployment(ctx context.Context, serviceID string) (bool, error) {
+func (r Repository) HasActiveDeployment(ctx context.Context, projectId string, serviceId string) (bool, error) {
 	count, err := r.q(ctx).CountActiveDeploymentsByService(ctx, deploymentsqlc.CountActiveDeploymentsByServiceParams{
-		ServiceID: sql.NullString{String: serviceID, Valid: strings.TrimSpace(serviceID) != ""},
-		Status:    status.WorkStatusWaitingToRun,
-		Status_2:  status.WorkStatusRunning,
+		ServiceId:     sql.NullString{String: serviceId, Valid: strings.TrimSpace(serviceId) != ""},
+		ProjectId:     projectScopeId(projectId),
+		WaitingStatus: status.WorkStatusWaitingToRun,
+		RunningStatus: status.WorkStatusRunning,
 	})
 	if err != nil {
-		return false, fmt.Errorf("count active deployments for service %s: %w", serviceID, err)
+		return false, fmt.Errorf("count active deployments for service %s: %w", serviceId, err)
 	}
 	return count > 0, nil
 }
 
-func (r Repository) LatestSuccessfulDeploymentPlanHash(ctx context.Context, serviceId string) (*string, error) {
-	value, err := r.q(ctx).LatestSuccessfulDeploymentPlanHash(ctx, sql.NullString{String: serviceId, Valid: serviceId != ""})
+func (r Repository) LatestSuccessfulDeploymentPlanHash(ctx context.Context, projectId string, serviceId string) (*string, error) {
+	value, err := r.q(ctx).LatestSuccessfulDeploymentPlanHash(ctx, deploymentsqlc.LatestSuccessfulDeploymentPlanHashParams{
+		ServiceId: sql.NullString{String: serviceId, Valid: serviceId != ""},
+		ProjectId: projectScopeId(projectId),
+	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -237,9 +252,9 @@ func (r Repository) LatestSuccessfulDeploymentPlanHash(ctx context.Context, serv
 
 func deploymentFrom(
 	id string, projectId, applicationId sql.NullString, applicationName string,
-	versionId, serviceId, serviceInstanceKey, environmentID, environmentTargetType sql.NullString,
-	environmentTargetRevision sql.NullInt64, sshCredentialID sql.NullString, sshCredentialRevision sql.NullInt64,
-	gatewayApplicationID, optionsJSON, effectivePlanHash sql.NullString,
+	versionId, serviceId, serviceInstanceKey, environmentId, environmentTargetType sql.NullString,
+	environmentTargetRevision sql.NullInt64, sshCredentialId sql.NullString, sshCredentialRevision sql.NullInt64,
+	gatewayApplicationId, optionsJSON, effectivePlanHash sql.NullString,
 	operationType, triggerType, commandText, deployStatus string,
 	startedAt time.Time, finishedAt sql.NullTime, durationMs sql.NullInt64,
 	logText, errorMessage sql.NullString, isRollback int64, rollbackFrom sql.NullString,
@@ -252,12 +267,12 @@ func deploymentFrom(
 		VersionId:                 dbmodel.StringPtr(versionId),
 		ServiceId:                 dbmodel.StringPtr(serviceId),
 		ServiceInstanceKey:        dbmodel.StringPtr(serviceInstanceKey),
-		EnvironmentId:             dbmodel.StringPtr(environmentID),
+		EnvironmentId:             dbmodel.StringPtr(environmentId),
 		EnvironmentTargetType:     dbmodel.StringPtr(environmentTargetType),
 		EnvironmentTargetRevision: int64Pointer(environmentTargetRevision),
-		SSHCredentialId:           dbmodel.StringPtr(sshCredentialID),
+		SSHCredentialId:           dbmodel.StringPtr(sshCredentialId),
 		SSHCredentialRevision:     int64Pointer(sshCredentialRevision),
-		GatewayApplicationId:      dbmodel.StringPtr(gatewayApplicationID),
+		GatewayApplicationId:      dbmodel.StringPtr(gatewayApplicationId),
 		OptionsJSON:               dbmodel.StringPtr(optionsJSON),
 		EffectivePlanHash:         dbmodel.StringPtr(effectivePlanHash),
 		OperationType:             operationType,

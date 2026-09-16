@@ -49,19 +49,19 @@ func TestUserServiceCreateUpdateStatusAndDelete(t *testing.T) {
 	if err := service.SetStatusByActor(ctx, actor, updated.User.Id, "enabled"); err != nil {
 		t.Fatal(err)
 	}
-	var projectID, roleID string
-	if err := database.QueryRowContext(ctx, `SELECT id FROM project WHERE code = 'default'`).Scan(&projectID); err != nil {
+	var projectId, roleId string
+	if err := database.QueryRowContext(ctx, `SELECT id FROM project WHERE code = 'default'`).Scan(&projectId); err != nil {
 		t.Fatal(err)
 	}
-	if err := database.QueryRowContext(ctx, `SELECT id FROM role WHERE code = 'admin'`).Scan(&roleID); err != nil {
+	if err := database.QueryRowContext(ctx, `SELECT id FROM role WHERE code = 'admin'`).Scan(&roleId); err != nil {
 		t.Fatal(err)
 	}
 	for _, statement := range []struct {
 		query string
 		args  []any
 	}{
-		{`INSERT INTO project_member (project_id, user_id) VALUES (?, ?)`, []any{projectID, updated.User.Id}},
-		{`INSERT INTO user_role (user_id, role_id) VALUES (?, ?)`, []any{updated.User.Id, roleID}},
+		{`INSERT INTO project_member (project_id, user_id) VALUES (?, ?)`, []any{projectId, updated.User.Id}},
+		{`INSERT INTO user_role (user_id, role_id) VALUES (?, ?)`, []any{updated.User.Id, roleId}},
 		{`INSERT INTO login_history (id, user_id, username, success) VALUES (?, ?, ?, ?)`, []any{"login-history-1", updated.User.Id, updated.User.Username, true}},
 	} {
 		if _, err := database.ExecContext(ctx, statement.query, statement.args...); err != nil {

@@ -25,7 +25,7 @@ type initialGatewayVersion struct {
 	Component model.VersionComponent
 }
 
-func buildInitialGatewayVersions(applicationID, image, pullPolicy, componentName, networkName string) []initialGatewayVersion {
+func buildInitialGatewayVersions(applicationId, image, pullPolicy, componentName, networkName string) []initialGatewayVersion {
 	roles := []string{gatewayVersionRoleBase, gatewayVersionProfileHTTP, gatewayVersionProfileDNS, gatewayVersionProfileBoth}
 	items := make([]initialGatewayVersion, 0, len(roles))
 	for _, role := range roles {
@@ -35,7 +35,7 @@ func buildInitialGatewayVersions(applicationID, image, pullPolicy, componentName
 		}
 		version := model.Version{
 			Id:               idutil.NewId(),
-			ApplicationId:    applicationID,
+			ApplicationId:    applicationId,
 			Label:            label,
 			Status:           "unpublished",
 			ComponentSummary: componentName,
@@ -51,10 +51,10 @@ func buildInitialGatewayVersions(applicationID, image, pullPolicy, componentName
 
 // buildInitialGatewayComponent creates an ordinary Version declaration. The
 // resolver layout is fixed per profile and never derived from GatewayConfig.
-func buildInitialGatewayComponent(versionID, image, pullPolicy, componentName, role, networkName string) model.VersionComponent {
+func buildInitialGatewayComponent(versionId, image, pullPolicy, componentName, role, networkName string) model.VersionComponent {
 	return model.VersionComponent{
 		Id:         idutil.NewId(),
-		VersionId:  versionID,
+		VersionId:  versionId,
 		Name:       componentName,
 		Image:      image,
 		PullPolicy: pullPolicy,
@@ -135,10 +135,10 @@ func stringRef(value string) *string { return &value }
 func intRef(value int) *int          { return &value }
 
 func buildInitialGatewayDashboardRoute(app model.Application, cfg model.GatewayConfig) model.Route {
-	projectID := *app.ProjectId
+	projectId := *app.ProjectId
 	return model.Route{
 		Id:            idutil.NewId(),
-		ProjectId:     &projectID,
+		ProjectId:     &projectId,
 		Name:          "traefik",
 		Protocol:      "http",
 		Domain:        "traefik-dashboard." + cfg.BaseDomain,

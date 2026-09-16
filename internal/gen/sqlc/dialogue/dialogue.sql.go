@@ -16,9 +16,9 @@ VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateDeploymentDialogueConversationParams struct {
-	ID              string    `db:"id"`
-	ProjectID       string    `db:"project_id"`
-	CreatedByUserID string    `db:"created_by_user_id"`
+	Id              string    `db:"id"`
+	ProjectId       string    `db:"project_id"`
+	CreatedByUserId string    `db:"created_by_user_id"`
 	Title           string    `db:"title"`
 	CreatedAt       time.Time `db:"created_at"`
 	UpdatedAt       time.Time `db:"updated_at"`
@@ -26,9 +26,9 @@ type CreateDeploymentDialogueConversationParams struct {
 
 func (q *Queries) CreateDeploymentDialogueConversation(ctx context.Context, arg CreateDeploymentDialogueConversationParams) error {
 	_, err := q.db.ExecContext(ctx, createDeploymentDialogueConversation,
-		arg.ID,
-		arg.ProjectID,
-		arg.CreatedByUserID,
+		arg.Id,
+		arg.ProjectId,
+		arg.CreatedByUserId,
 		arg.Title,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -36,53 +36,77 @@ func (q *Queries) CreateDeploymentDialogueConversation(ctx context.Context, arg 
 	return err
 }
 
-const createDeploymentDialogueMessage = `-- name: CreateDeploymentDialogueMessage :exec
+const createDeploymentDialogueMessage = `-- name: CreateDeploymentDialogueMessage :execrows
 INSERT INTO deployment_dialogue_message (id, conversation_id, role, content, created_at)
-VALUES (?, ?, ?, ?, ?)
+SELECT ?, ?, ?, ?, ?
+WHERE EXISTS (
+  SELECT 1
+  FROM deployment_dialogue_conversation AS conversation
+  WHERE conversation.id = ?
+    AND conversation.project_id = ?
+)
 `
 
 type CreateDeploymentDialogueMessageParams struct {
-	ID             string    `db:"id"`
-	ConversationID string    `db:"conversation_id"`
+	Id             string    `db:"id"`
+	ConversationId string    `db:"conversation_id"`
 	Role           string    `db:"role"`
 	Content        string    `db:"content"`
 	CreatedAt      time.Time `db:"created_at"`
+	ProjectId      string    `db:"project_id"`
 }
 
-func (q *Queries) CreateDeploymentDialogueMessage(ctx context.Context, arg CreateDeploymentDialogueMessageParams) error {
-	_, err := q.db.ExecContext(ctx, createDeploymentDialogueMessage,
-		arg.ID,
-		arg.ConversationID,
+func (q *Queries) CreateDeploymentDialogueMessage(ctx context.Context, arg CreateDeploymentDialogueMessageParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, createDeploymentDialogueMessage,
+		arg.Id,
+		arg.ConversationId,
 		arg.Role,
 		arg.Content,
 		arg.CreatedAt,
+		arg.ConversationId,
+		arg.ProjectId,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const deleteDeploymentDialogueConversation = `-- name: DeleteDeploymentDialogueConversation :exec
 DELETE FROM deployment_dialogue_conversation
 WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) DeleteDeploymentDialogueConversation(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteDeploymentDialogueConversation, id)
+type DeleteDeploymentDialogueConversationParams struct {
+	Id        string `db:"id"`
+	ProjectId string `db:"project_id"`
+}
+
+func (q *Queries) DeleteDeploymentDialogueConversation(ctx context.Context, arg DeleteDeploymentDialogueConversationParams) error {
+	_, err := q.db.ExecContext(ctx, deleteDeploymentDialogueConversation, arg.Id, arg.ProjectId)
 	return err
 }
 
-const deploymentDialogueConversationByID = `-- name: DeploymentDialogueConversationByID :one
+const deploymentDialogueConversationById = `-- name: DeploymentDialogueConversationById :one
 SELECT id, project_id, created_by_user_id, title, created_at, updated_at
 FROM deployment_dialogue_conversation
 WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) DeploymentDialogueConversationByID(ctx context.Context, id string) (DeploymentDialogueConversation, error) {
-	row := q.db.QueryRowContext(ctx, deploymentDialogueConversationByID, id)
+type DeploymentDialogueConversationByIdParams struct {
+	Id        string `db:"id"`
+	ProjectId string `db:"project_id"`
+}
+
+func (q *Queries) DeploymentDialogueConversationById(ctx context.Context, arg DeploymentDialogueConversationByIdParams) (DeploymentDialogueConversation, error) {
+	row := q.db.QueryRowContext(ctx, deploymentDialogueConversationById, arg.Id, arg.ProjectId)
 	var i DeploymentDialogueConversation
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
-		&i.CreatedByUserID,
+		&i.Id,
+		&i.ProjectId,
+		&i.CreatedByUserId,
 		&i.Title,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -107,9 +131,9 @@ func (q *Queries) ListDeploymentDialogueConversations(ctx context.Context, proje
 	for rows.Next() {
 		var i DeploymentDialogueConversation
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
-			&i.CreatedByUserID,
+			&i.Id,
+			&i.ProjectId,
+			&i.CreatedByUserId,
 			&i.Title,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -131,11 +155,22 @@ const listDeploymentDialogueMessages = `-- name: ListDeploymentDialogueMessages 
 SELECT id, conversation_id, role, content, created_at
 FROM deployment_dialogue_message
 WHERE conversation_id = ?
+  AND EXISTS (
+    SELECT 1
+    FROM deployment_dialogue_conversation
+    WHERE id = deployment_dialogue_message.conversation_id
+      AND project_id = ?
+  )
 ORDER BY created_at ASC, id ASC
 `
 
-func (q *Queries) ListDeploymentDialogueMessages(ctx context.Context, conversationID string) ([]DeploymentDialogueMessage, error) {
-	rows, err := q.db.QueryContext(ctx, listDeploymentDialogueMessages, conversationID)
+type ListDeploymentDialogueMessagesParams struct {
+	ConversationId string `db:"conversation_id"`
+	ProjectId      string `db:"project_id"`
+}
+
+func (q *Queries) ListDeploymentDialogueMessages(ctx context.Context, arg ListDeploymentDialogueMessagesParams) ([]DeploymentDialogueMessage, error) {
+	rows, err := q.db.QueryContext(ctx, listDeploymentDialogueMessages, arg.ConversationId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -144,8 +179,8 @@ func (q *Queries) ListDeploymentDialogueMessages(ctx context.Context, conversati
 	for rows.Next() {
 		var i DeploymentDialogueMessage
 		if err := rows.Scan(
-			&i.ID,
-			&i.ConversationID,
+			&i.Id,
+			&i.ConversationId,
 			&i.Role,
 			&i.Content,
 			&i.CreatedAt,
@@ -167,14 +202,16 @@ const touchDeploymentDialogueConversation = `-- name: TouchDeploymentDialogueCon
 UPDATE deployment_dialogue_conversation
 SET updated_at = ?
 WHERE id = ?
+  AND project_id = ?
 `
 
 type TouchDeploymentDialogueConversationParams struct {
 	UpdatedAt time.Time `db:"updated_at"`
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
+	ProjectId string    `db:"project_id"`
 }
 
 func (q *Queries) TouchDeploymentDialogueConversation(ctx context.Context, arg TouchDeploymentDialogueConversationParams) error {
-	_, err := q.db.ExecContext(ctx, touchDeploymentDialogueConversation, arg.UpdatedAt, arg.ID)
+	_, err := q.db.ExecContext(ctx, touchDeploymentDialogueConversation, arg.UpdatedAt, arg.Id, arg.ProjectId)
 	return err
 }

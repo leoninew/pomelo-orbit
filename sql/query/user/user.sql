@@ -4,7 +4,7 @@ SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
 FROM `user`
 WHERE username = ?;
 
--- name: UserByID :one
+-- name: UserById :one
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
 FROM `user`

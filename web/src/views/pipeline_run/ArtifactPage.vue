@@ -142,8 +142,10 @@
       return;
     }
     try {
-      const resp = await repositoryApi.list({ per_page: 100, project_id: projectId });
-      repoOptions.value = resp.items;
+      const resp = await repositoryApi.list(projectId, { per_page: 100 });
+      if (projectStore.activeProjectId === projectId) {
+        repoOptions.value = resp.items;
+      }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : '获取项目列表失败');
     }
@@ -171,15 +173,16 @@
     }
     try {
       await execute(async () => {
-        const resp = await artifactApi.list({
+        const resp = await artifactApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
           search: query.search || undefined,
           repository_id: query.repository_id || undefined,
-          project_id: projectId,
         });
-        artifacts.value = resp.items;
-        pagination.total = resp.total;
+        if (projectStore.activeProjectId === projectId) {
+          artifacts.value = resp.items;
+          pagination.total = resp.total;
+        }
       });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : '获取制品列表失败');

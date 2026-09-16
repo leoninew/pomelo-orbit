@@ -15,21 +15,42 @@ const clearVersionForkRefs = `-- name: ClearVersionForkRefs :exec
 UPDATE version
 SET created_from_version_id = NULL
 WHERE created_from_version_id = ?
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = ?
+  )
 `
 
-func (q *Queries) ClearVersionForkRefs(ctx context.Context, versionID sql.NullString) error {
-	_, err := q.db.ExecContext(ctx, clearVersionForkRefs, versionID)
+type ClearVersionForkRefsParams struct {
+	VersionId sql.NullString `db:"version_id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) ClearVersionForkRefs(ctx context.Context, arg ClearVersionForkRefsParams) error {
+	_, err := q.db.ExecContext(ctx, clearVersionForkRefs, arg.VersionId, arg.ProjectId)
 	return err
 }
 
 const countVersionRuntimeRefs = `-- name: CountVersionRuntimeRefs :one
 SELECT (
   SELECT COUNT(*) FROM service WHERE service.version_id = ?
+    AND EXISTS (
+      SELECT 1 FROM version
+      JOIN application ON application.id = version.application_id
+      WHERE version.id = service.version_id
+        AND application.project_id = ?
+    )
 )
 `
 
-func (q *Queries) CountVersionRuntimeRefs(ctx context.Context, versionID string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countVersionRuntimeRefs, versionID)
+type CountVersionRuntimeRefsParams struct {
+	VersionId string         `db:"version_id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) CountVersionRuntimeRefs(ctx context.Context, arg CountVersionRuntimeRefsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countVersionRuntimeRefs, arg.VersionId, arg.ProjectId)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -39,19 +60,26 @@ const countVersions = `-- name: CountVersions :one
 SELECT COUNT(*)
 FROM version
 WHERE application_id = ?
+	AND EXISTS (
+	  SELECT 1 FROM application
+	  WHERE application.id = version.application_id
+	    AND application.project_id = ?
+	)
   AND (CAST(? AS CHAR) IS NULL
     OR label LIKE ?
     OR note LIKE ?)
 `
 
 type CountVersionsParams struct {
-	ApplicationID string         `db:"application_id"`
+	ApplicationId string         `db:"application_id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountVersions(ctx context.Context, arg CountVersionsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countVersions,
-		arg.ApplicationID,
+		arg.ApplicationId,
+		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -67,11 +95,11 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateVersionParams struct {
-	ID                   string         `db:"id"`
-	ApplicationID        string         `db:"application_id"`
+	Id                   string         `db:"id"`
+	ApplicationId        string         `db:"application_id"`
 	Label                string         `db:"label"`
 	Status               string         `db:"status"`
-	CreatedFromVersionID sql.NullString `db:"created_from_version_id"`
+	CreatedFromVersionId sql.NullString `db:"created_from_version_id"`
 	Note                 sql.NullString `db:"note"`
 	ComponentSummary     string         `db:"component_summary"`
 	CreatedAt            time.Time      `db:"created_at"`
@@ -80,11 +108,11 @@ type CreateVersionParams struct {
 
 func (q *Queries) CreateVersion(ctx context.Context, arg CreateVersionParams) error {
 	_, err := q.db.ExecContext(ctx, createVersion,
-		arg.ID,
-		arg.ApplicationID,
+		arg.Id,
+		arg.ApplicationId,
 		arg.Label,
 		arg.Status,
-		arg.CreatedFromVersionID,
+		arg.CreatedFromVersionId,
 		arg.Note,
 		arg.ComponentSummary,
 		arg.CreatedAt,
@@ -95,21 +123,42 @@ func (q *Queries) CreateVersion(ctx context.Context, arg CreateVersionParams) er
 
 const deleteVersion = `-- name: DeleteVersion :exec
 DELETE FROM version
-WHERE id = ?
+WHERE version.id = ?
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteVersion(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteVersion, id)
+type DeleteVersionParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeleteVersion(ctx context.Context, arg DeleteVersionParams) error {
+	_, err := q.db.ExecContext(ctx, deleteVersion, arg.Id, arg.ProjectId)
 	return err
 }
 
 const deleteVersionComponent = `-- name: DeleteVersionComponent :exec
 DELETE FROM version_component
-WHERE id = ?
+WHERE version_component.id = ?
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteVersionComponent(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteVersionComponent, id)
+type DeleteVersionComponentParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeleteVersionComponent(ctx context.Context, arg DeleteVersionComponentParams) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponent, arg.Id, arg.ProjectId)
 	return err
 }
 
@@ -206,10 +255,21 @@ func (q *Queries) DeleteVersionComponentUlimits(ctx context.Context, componentID
 const deleteVersionComponents = `-- name: DeleteVersionComponents :exec
 DELETE FROM version_component
 WHERE version_id = ?
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteVersionComponents(ctx context.Context, versionID string) error {
-	_, err := q.db.ExecContext(ctx, deleteVersionComponents, versionID)
+type DeleteVersionComponentsParams struct {
+	VersionId string         `db:"version_id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeleteVersionComponents(ctx context.Context, arg DeleteVersionComponentsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponents, arg.VersionId, arg.ProjectId)
 	return err
 }
 
@@ -220,11 +280,11 @@ INSERT INTO version_component (
 `
 
 type InsertVersionComponentParams struct {
-	ID                       string         `db:"id"`
-	VersionID                string         `db:"version_id"`
+	Id                       string         `db:"id"`
+	VersionId                string         `db:"version_id"`
 	Name                     string         `db:"name"`
 	Image                    string         `db:"image"`
-	ArtifactID               sql.NullString `db:"artifact_id"`
+	ArtifactId               sql.NullString `db:"artifact_id"`
 	ArtifactName             sql.NullString `db:"artifact_name"`
 	ArtifactImageRef         sql.NullString `db:"artifact_image_ref"`
 	ArtifactLocalImageSha256 sql.NullString `db:"artifact_local_image_sha256"`
@@ -239,11 +299,11 @@ type InsertVersionComponentParams struct {
 
 func (q *Queries) InsertVersionComponent(ctx context.Context, arg InsertVersionComponentParams) error {
 	_, err := q.db.ExecContext(ctx, insertVersionComponent,
-		arg.ID,
-		arg.VersionID,
+		arg.Id,
+		arg.VersionId,
 		arg.Name,
 		arg.Image,
-		arg.ArtifactID,
+		arg.ArtifactId,
 		arg.ArtifactName,
 		arg.ArtifactImageRef,
 		arg.ArtifactLocalImageSha256,
@@ -264,7 +324,7 @@ VALUES (?, ?, ?, ?)
 `
 
 type InsertVersionComponentDependencyParams struct {
-	ComponentID   string `db:"component_id"`
+	ComponentId   string `db:"component_id"`
 	DependsOnName string `db:"depends_on_name"`
 	Condition     string `db:"condition"`
 	Position      int64  `db:"position"`
@@ -272,7 +332,7 @@ type InsertVersionComponentDependencyParams struct {
 
 func (q *Queries) InsertVersionComponentDependency(ctx context.Context, arg InsertVersionComponentDependencyParams) error {
 	_, err := q.db.ExecContext(ctx, insertVersionComponentDependency,
-		arg.ComponentID,
+		arg.ComponentId,
 		arg.DependsOnName,
 		arg.Condition,
 		arg.Position,
@@ -286,7 +346,7 @@ VALUES (?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentDeviceParams struct {
-	ComponentID      string `db:"component_id"`
+	ComponentId      string `db:"component_id"`
 	Driver           string `db:"driver"`
 	DeviceCount      string `db:"device_count"`
 	CapabilitiesJson string `db:"capabilities_json"`
@@ -295,7 +355,7 @@ type InsertVersionComponentDeviceParams struct {
 
 func (q *Queries) InsertVersionComponentDevice(ctx context.Context, arg InsertVersionComponentDeviceParams) error {
 	_, err := q.db.ExecContext(ctx, insertVersionComponentDevice,
-		arg.ComponentID,
+		arg.ComponentId,
 		arg.Driver,
 		arg.DeviceCount,
 		arg.CapabilitiesJson,
@@ -311,7 +371,7 @@ INSERT INTO version_component_endpoint (
 `
 
 type InsertVersionComponentEndpointParams struct {
-	ComponentID   string         `db:"component_id"`
+	ComponentId   string         `db:"component_id"`
 	Protocol      string         `db:"protocol"`
 	ContainerPort int64          `db:"container_port"`
 	Mode          string         `db:"mode"`
@@ -324,7 +384,7 @@ type InsertVersionComponentEndpointParams struct {
 
 func (q *Queries) InsertVersionComponentEndpoint(ctx context.Context, arg InsertVersionComponentEndpointParams) error {
 	_, err := q.db.ExecContext(ctx, insertVersionComponentEndpoint,
-		arg.ComponentID,
+		arg.ComponentId,
 		arg.Protocol,
 		arg.ContainerPort,
 		arg.Mode,
@@ -343,7 +403,7 @@ VALUES (?, ?, ?, ?)
 `
 
 type InsertVersionComponentEnvParams struct {
-	ComponentID string `db:"component_id"`
+	ComponentId string `db:"component_id"`
 	EnvKey      string `db:"env_key"`
 	Value       string `db:"value"`
 	Position    int64  `db:"position"`
@@ -351,7 +411,7 @@ type InsertVersionComponentEnvParams struct {
 
 func (q *Queries) InsertVersionComponentEnv(ctx context.Context, arg InsertVersionComponentEnvParams) error {
 	_, err := q.db.ExecContext(ctx, insertVersionComponentEnv,
-		arg.ComponentID,
+		arg.ComponentId,
 		arg.EnvKey,
 		arg.Value,
 		arg.Position,
@@ -366,7 +426,7 @@ INSERT INTO version_component_healthcheck (
 `
 
 type InsertVersionComponentHealthcheckParams struct {
-	ComponentID   string         `db:"component_id"`
+	ComponentId   string         `db:"component_id"`
 	TestMode      sql.NullString `db:"test_mode"`
 	Test          string         `db:"test"`
 	Interval      sql.NullString `db:"interval"`
@@ -379,7 +439,7 @@ type InsertVersionComponentHealthcheckParams struct {
 
 func (q *Queries) InsertVersionComponentHealthcheck(ctx context.Context, arg InsertVersionComponentHealthcheckParams) error {
 	_, err := q.db.ExecContext(ctx, insertVersionComponentHealthcheck,
-		arg.ComponentID,
+		arg.ComponentId,
 		arg.TestMode,
 		arg.Test,
 		arg.Interval,
@@ -399,7 +459,7 @@ INSERT INTO version_component_mount (
 `
 
 type InsertVersionComponentMountParams struct {
-	ComponentID      string         `db:"component_id"`
+	ComponentId      string         `db:"component_id"`
 	SourceType       string         `db:"source_type"`
 	Source           string         `db:"source"`
 	Target           string         `db:"target"`
@@ -413,7 +473,7 @@ type InsertVersionComponentMountParams struct {
 
 func (q *Queries) InsertVersionComponentMount(ctx context.Context, arg InsertVersionComponentMountParams) error {
 	_, err := q.db.ExecContext(ctx, insertVersionComponentMount,
-		arg.ComponentID,
+		arg.ComponentId,
 		arg.SourceType,
 		arg.Source,
 		arg.Target,
@@ -434,7 +494,7 @@ INSERT INTO version_component_resource (
 `
 
 type InsertVersionComponentResourceParams struct {
-	ComponentID       string         `db:"component_id"`
+	ComponentId       string         `db:"component_id"`
 	LimitCpus         sql.NullString `db:"limit_cpus"`
 	LimitMemory       sql.NullString `db:"limit_memory"`
 	ReservationCpus   sql.NullString `db:"reservation_cpus"`
@@ -443,7 +503,7 @@ type InsertVersionComponentResourceParams struct {
 
 func (q *Queries) InsertVersionComponentResource(ctx context.Context, arg InsertVersionComponentResourceParams) error {
 	_, err := q.db.ExecContext(ctx, insertVersionComponentResource,
-		arg.ComponentID,
+		arg.ComponentId,
 		arg.LimitCpus,
 		arg.LimitMemory,
 		arg.ReservationCpus,
@@ -458,7 +518,7 @@ VALUES (?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentTmpfsParams struct {
-	ComponentID string `db:"component_id"`
+	ComponentId string `db:"component_id"`
 	Target      string `db:"target"`
 	SizeBytes   int64  `db:"size_bytes"`
 	Mode        string `db:"mode"`
@@ -467,7 +527,7 @@ type InsertVersionComponentTmpfsParams struct {
 
 func (q *Queries) InsertVersionComponentTmpfs(ctx context.Context, arg InsertVersionComponentTmpfsParams) error {
 	_, err := q.db.ExecContext(ctx, insertVersionComponentTmpfs,
-		arg.ComponentID,
+		arg.ComponentId,
 		arg.Target,
 		arg.SizeBytes,
 		arg.Mode,
@@ -482,7 +542,7 @@ VALUES (?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentUlimitParams struct {
-	ComponentID string `db:"component_id"`
+	ComponentId string `db:"component_id"`
 	Name        string `db:"name"`
 	Soft        int64  `db:"soft"`
 	Hard        int64  `db:"hard"`
@@ -491,7 +551,7 @@ type InsertVersionComponentUlimitParams struct {
 
 func (q *Queries) InsertVersionComponentUlimit(ctx context.Context, arg InsertVersionComponentUlimitParams) error {
 	_, err := q.db.ExecContext(ctx, insertVersionComponentUlimit,
-		arg.ComponentID,
+		arg.ComponentId,
 		arg.Name,
 		arg.Soft,
 		arg.Hard,
@@ -504,19 +564,29 @@ const latestVersionByApplication = `-- name: LatestVersionByApplication :one
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = ?
+  )
 ORDER BY id DESC
 LIMIT 1
 `
 
-func (q *Queries) LatestVersionByApplication(ctx context.Context, applicationID string) (Version, error) {
-	row := q.db.QueryRowContext(ctx, latestVersionByApplication, applicationID)
+type LatestVersionByApplicationParams struct {
+	ApplicationId string         `db:"application_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) LatestVersionByApplication(ctx context.Context, arg LatestVersionByApplicationParams) (Version, error) {
+	row := q.db.QueryRowContext(ctx, latestVersionByApplication, arg.ApplicationId, arg.ProjectId)
 	var i Version
 	err := row.Scan(
-		&i.ID,
-		&i.ApplicationID,
+		&i.Id,
+		&i.ApplicationId,
 		&i.Label,
 		&i.Status,
-		&i.CreatedFromVersionID,
+		&i.CreatedFromVersionId,
 		&i.Note,
 		&i.ComponentSummary,
 		&i.CreatedAt,
@@ -529,11 +599,21 @@ const listVersions = `-- name: ListVersions :many
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = ?
+  )
 ORDER BY id DESC
 `
 
-func (q *Queries) ListVersions(ctx context.Context, applicationID string) ([]Version, error) {
-	rows, err := q.db.QueryContext(ctx, listVersions, applicationID)
+type ListVersionsParams struct {
+	ApplicationId string         `db:"application_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) ListVersions(ctx context.Context, arg ListVersionsParams) ([]Version, error) {
+	rows, err := q.db.QueryContext(ctx, listVersions, arg.ApplicationId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -542,11 +622,11 @@ func (q *Queries) ListVersions(ctx context.Context, applicationID string) ([]Ver
 	for rows.Next() {
 		var i Version
 		if err := rows.Scan(
-			&i.ID,
-			&i.ApplicationID,
+			&i.Id,
+			&i.ApplicationId,
 			&i.Label,
 			&i.Status,
-			&i.CreatedFromVersionID,
+			&i.CreatedFromVersionId,
 			&i.Note,
 			&i.ComponentSummary,
 			&i.CreatedAt,
@@ -569,6 +649,11 @@ const listVersionsPage = `-- name: ListVersionsPage :many
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
+	AND EXISTS (
+	  SELECT 1 FROM application
+	  WHERE application.id = version.application_id
+	    AND application.project_id = ?
+	)
   AND (CAST(? AS CHAR) IS NULL
     OR label LIKE ?
     OR note LIKE ?)
@@ -577,7 +662,8 @@ LIMIT ? OFFSET ?
 `
 
 type ListVersionsPageParams struct {
-	ApplicationID string         `db:"application_id"`
+	ApplicationId string         `db:"application_id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 	Limit         int32          `db:"limit"`
 	Offset        int32          `db:"offset"`
@@ -585,7 +671,8 @@ type ListVersionsPageParams struct {
 
 func (q *Queries) ListVersionsPage(ctx context.Context, arg ListVersionsPageParams) ([]Version, error) {
 	rows, err := q.db.QueryContext(ctx, listVersionsPage,
-		arg.ApplicationID,
+		arg.ApplicationId,
+		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -600,11 +687,11 @@ func (q *Queries) ListVersionsPage(ctx context.Context, arg ListVersionsPagePara
 	for rows.Next() {
 		var i Version
 		if err := rows.Scan(
-			&i.ID,
-			&i.ApplicationID,
+			&i.Id,
+			&i.ApplicationId,
 			&i.Label,
 			&i.Status,
-			&i.CreatedFromVersionID,
+			&i.CreatedFromVersionId,
 			&i.Note,
 			&i.ComponentSummary,
 			&i.CreatedAt,
@@ -627,42 +714,65 @@ const renameVersionComponentDependencies = `-- name: RenameVersionComponentDepen
 UPDATE version_component_dependency
 SET depends_on_name = ?
 WHERE component_id IN (
-  SELECT id FROM version_component WHERE version_id = ?
+  SELECT version_component.id
+  FROM version_component
+  JOIN version ON version.id = version_component.version_id
+  JOIN application ON application.id = version.application_id
+  WHERE version_component.version_id = ?
+    AND application.project_id = ?
 )
   AND depends_on_name = ?
 `
 
 type RenameVersionComponentDependenciesParams struct {
-	NewName   string `db:"new_name"`
-	VersionID string `db:"version_id"`
-	OldName   string `db:"old_name"`
+	NewName   string         `db:"new_name"`
+	VersionId string         `db:"version_id"`
+	ProjectId sql.NullString `db:"project_id"`
+	OldName   string         `db:"old_name"`
 }
 
 func (q *Queries) RenameVersionComponentDependencies(ctx context.Context, arg RenameVersionComponentDependenciesParams) error {
-	_, err := q.db.ExecContext(ctx, renameVersionComponentDependencies, arg.NewName, arg.VersionID, arg.OldName)
+	_, err := q.db.ExecContext(ctx, renameVersionComponentDependencies,
+		arg.NewName,
+		arg.VersionId,
+		arg.ProjectId,
+		arg.OldName,
+	)
 	return err
 }
 
 const touchVersionComponent = `-- name: TouchVersionComponent :exec
 UPDATE version_component
 SET updated_at = ?
-WHERE id = ?
+WHERE version_component.id = ?
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = ?
+  )
 `
 
 type TouchVersionComponentParams struct {
-	UpdatedAt time.Time `db:"updated_at"`
-	ID        string    `db:"id"`
+	UpdatedAt time.Time      `db:"updated_at"`
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) TouchVersionComponent(ctx context.Context, arg TouchVersionComponentParams) error {
-	_, err := q.db.ExecContext(ctx, touchVersionComponent, arg.UpdatedAt, arg.ID)
+	_, err := q.db.ExecContext(ctx, touchVersionComponent, arg.UpdatedAt, arg.Id, arg.ProjectId)
 	return err
 }
 
 const updateVersion = `-- name: UpdateVersion :exec
 UPDATE version
 SET label = ?, status = ?, note = ?, component_summary = ?, updated_at = ?
-WHERE id = ?
+WHERE version.id = ?
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = ?
+  )
 `
 
 type UpdateVersionParams struct {
@@ -671,7 +781,8 @@ type UpdateVersionParams struct {
 	Note             sql.NullString `db:"note"`
 	ComponentSummary string         `db:"component_summary"`
 	UpdatedAt        time.Time      `db:"updated_at"`
-	ID               string         `db:"id"`
+	Id               string         `db:"id"`
+	ProjectId        sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) UpdateVersion(ctx context.Context, arg UpdateVersionParams) error {
@@ -681,7 +792,8 @@ func (q *Queries) UpdateVersion(ctx context.Context, arg UpdateVersionParams) er
 		arg.Note,
 		arg.ComponentSummary,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
+		arg.ProjectId,
 	)
 	return err
 }
@@ -689,7 +801,13 @@ func (q *Queries) UpdateVersion(ctx context.Context, arg UpdateVersionParams) er
 const updateVersionComponentBasic = `-- name: UpdateVersionComponentBasic :exec
 UPDATE version_component
 SET name = ?, image = ?, pull_policy = ?, restart_policy = ?, updated_at = ?
-WHERE id = ?
+WHERE version_component.id = ?
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = ?
+  )
 `
 
 type UpdateVersionComponentBasicParams struct {
@@ -698,7 +816,8 @@ type UpdateVersionComponentBasicParams struct {
 	PullPolicy    string         `db:"pull_policy"`
 	RestartPolicy sql.NullString `db:"restart_policy"`
 	UpdatedAt     time.Time      `db:"updated_at"`
-	ID            string         `db:"id"`
+	Id            string         `db:"id"`
+	ProjectId     sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) UpdateVersionComponentBasic(ctx context.Context, arg UpdateVersionComponentBasicParams) error {
@@ -708,7 +827,8 @@ func (q *Queries) UpdateVersionComponentBasic(ctx context.Context, arg UpdateVer
 		arg.PullPolicy,
 		arg.RestartPolicy,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
+		arg.ProjectId,
 	)
 	return err
 }
@@ -716,69 +836,114 @@ func (q *Queries) UpdateVersionComponentBasic(ctx context.Context, arg UpdateVer
 const updateVersionComponentCommand = `-- name: UpdateVersionComponentCommand :exec
 UPDATE version_component
 SET command_json = ?, updated_at = ?
-WHERE id = ?
+WHERE version_component.id = ?
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = ?
+  )
 `
 
 type UpdateVersionComponentCommandParams struct {
-	CommandJson string    `db:"command_json"`
-	UpdatedAt   time.Time `db:"updated_at"`
-	ID          string    `db:"id"`
+	CommandJson string         `db:"command_json"`
+	UpdatedAt   time.Time      `db:"updated_at"`
+	Id          string         `db:"id"`
+	ProjectId   sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) UpdateVersionComponentCommand(ctx context.Context, arg UpdateVersionComponentCommandParams) error {
-	_, err := q.db.ExecContext(ctx, updateVersionComponentCommand, arg.CommandJson, arg.UpdatedAt, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateVersionComponentCommand,
+		arg.CommandJson,
+		arg.UpdatedAt,
+		arg.Id,
+		arg.ProjectId,
+	)
 	return err
 }
 
 const updateVersionComponentEntrypoint = `-- name: UpdateVersionComponentEntrypoint :exec
 UPDATE version_component
 SET entrypoint_json = ?, updated_at = ?
-WHERE id = ?
+WHERE version_component.id = ?
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = ?
+  )
 `
 
 type UpdateVersionComponentEntrypointParams struct {
-	EntrypointJson string    `db:"entrypoint_json"`
-	UpdatedAt      time.Time `db:"updated_at"`
-	ID             string    `db:"id"`
+	EntrypointJson string         `db:"entrypoint_json"`
+	UpdatedAt      time.Time      `db:"updated_at"`
+	Id             string         `db:"id"`
+	ProjectId      sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) UpdateVersionComponentEntrypoint(ctx context.Context, arg UpdateVersionComponentEntrypointParams) error {
-	_, err := q.db.ExecContext(ctx, updateVersionComponentEntrypoint, arg.EntrypointJson, arg.UpdatedAt, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateVersionComponentEntrypoint,
+		arg.EntrypointJson,
+		arg.UpdatedAt,
+		arg.Id,
+		arg.ProjectId,
+	)
 	return err
 }
 
 const updateVersionComponentSummary = `-- name: UpdateVersionComponentSummary :exec
 UPDATE version
 SET component_summary = ?, updated_at = ?
-WHERE id = ?
+WHERE version.id = ?
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = ?
+  )
 `
 
 type UpdateVersionComponentSummaryParams struct {
-	ComponentSummary string    `db:"component_summary"`
-	UpdatedAt        time.Time `db:"updated_at"`
-	ID               string    `db:"id"`
+	ComponentSummary string         `db:"component_summary"`
+	UpdatedAt        time.Time      `db:"updated_at"`
+	Id               string         `db:"id"`
+	ProjectId        sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) UpdateVersionComponentSummary(ctx context.Context, arg UpdateVersionComponentSummaryParams) error {
-	_, err := q.db.ExecContext(ctx, updateVersionComponentSummary, arg.ComponentSummary, arg.UpdatedAt, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateVersionComponentSummary,
+		arg.ComponentSummary,
+		arg.UpdatedAt,
+		arg.Id,
+		arg.ProjectId,
+	)
 	return err
 }
 
-const versionByID = `-- name: VersionByID :one
+const versionById = `-- name: VersionById :one
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
-WHERE id = ?
+WHERE version.id = ?
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = ?
+  )
 `
 
-func (q *Queries) VersionByID(ctx context.Context, id string) (Version, error) {
-	row := q.db.QueryRowContext(ctx, versionByID, id)
+type VersionByIdParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) VersionById(ctx context.Context, arg VersionByIdParams) (Version, error) {
+	row := q.db.QueryRowContext(ctx, versionById, arg.Id, arg.ProjectId)
 	var i Version
 	err := row.Scan(
-		&i.ID,
-		&i.ApplicationID,
+		&i.Id,
+		&i.ApplicationId,
 		&i.Label,
 		&i.Status,
-		&i.CreatedFromVersionID,
+		&i.CreatedFromVersionId,
 		&i.Note,
 		&i.ComponentSummary,
 		&i.CreatedAt,
@@ -787,18 +952,29 @@ func (q *Queries) VersionByID(ctx context.Context, id string) (Version, error) {
 	return i, err
 }
 
-const versionComponentByID = `-- name: VersionComponentByID :one
+const versionComponentById = `-- name: VersionComponentById :one
 SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
-WHERE id = ?
+WHERE version_component.id = ?
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = ?
+  )
 `
 
-type VersionComponentByIDRow struct {
-	ID                       string         `db:"id"`
-	VersionID                string         `db:"version_id"`
+type VersionComponentByIdParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+type VersionComponentByIdRow struct {
+	Id                       string         `db:"id"`
+	VersionId                string         `db:"version_id"`
 	Name                     string         `db:"name"`
 	Image                    string         `db:"image"`
-	ArtifactID               sql.NullString `db:"artifact_id"`
+	ArtifactId               sql.NullString `db:"artifact_id"`
 	ArtifactName             sql.NullString `db:"artifact_name"`
 	ArtifactImageRef         sql.NullString `db:"artifact_image_ref"`
 	ArtifactLocalImageSha256 sql.NullString `db:"artifact_local_image_sha256"`
@@ -811,15 +987,15 @@ type VersionComponentByIDRow struct {
 	UpdatedAt                time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) VersionComponentByID(ctx context.Context, id string) (VersionComponentByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, versionComponentByID, id)
-	var i VersionComponentByIDRow
+func (q *Queries) VersionComponentById(ctx context.Context, arg VersionComponentByIdParams) (VersionComponentByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, versionComponentById, arg.Id, arg.ProjectId)
+	var i VersionComponentByIdRow
 	err := row.Scan(
-		&i.ID,
-		&i.VersionID,
+		&i.Id,
+		&i.VersionId,
 		&i.Name,
 		&i.Image,
-		&i.ArtifactID,
+		&i.ArtifactId,
 		&i.ArtifactName,
 		&i.ArtifactImageRef,
 		&i.ArtifactLocalImageSha256,
@@ -851,7 +1027,7 @@ func (q *Queries) VersionComponentDependenciesByComponent(ctx context.Context, c
 	for rows.Next() {
 		var i VersionComponentDependency
 		if err := rows.Scan(
-			&i.ComponentID,
+			&i.ComponentId,
 			&i.DependsOnName,
 			&i.Condition,
 			&i.Position,
@@ -886,7 +1062,7 @@ func (q *Queries) VersionComponentDevicesByComponent(ctx context.Context, compon
 	for rows.Next() {
 		var i VersionComponentDevice
 		if err := rows.Scan(
-			&i.ComponentID,
+			&i.ComponentId,
 			&i.Driver,
 			&i.DeviceCount,
 			&i.CapabilitiesJson,
@@ -922,7 +1098,7 @@ func (q *Queries) VersionComponentEndpointsByComponent(ctx context.Context, comp
 	for rows.Next() {
 		var i VersionComponentEndpoint
 		if err := rows.Scan(
-			&i.ComponentID,
+			&i.ComponentId,
 			&i.Protocol,
 			&i.ContainerPort,
 			&i.Mode,
@@ -962,7 +1138,7 @@ func (q *Queries) VersionComponentEnvByComponent(ctx context.Context, componentI
 	for rows.Next() {
 		var i VersionComponentEnv
 		if err := rows.Scan(
-			&i.ComponentID,
+			&i.ComponentId,
 			&i.EnvKey,
 			&i.Value,
 			&i.Position,
@@ -990,7 +1166,7 @@ func (q *Queries) VersionComponentHealthcheckByComponent(ctx context.Context, co
 	row := q.db.QueryRowContext(ctx, versionComponentHealthcheckByComponent, componentID)
 	var i VersionComponentHealthcheck
 	err := row.Scan(
-		&i.ComponentID,
+		&i.ComponentId,
 		&i.TestMode,
 		&i.Test,
 		&i.Interval,
@@ -1011,7 +1187,7 @@ ORDER BY position
 `
 
 type VersionComponentMountsByComponentRow struct {
-	ComponentID      string         `db:"component_id"`
+	ComponentId      string         `db:"component_id"`
 	SourceType       string         `db:"source_type"`
 	Source           string         `db:"source"`
 	Target           string         `db:"target"`
@@ -1033,7 +1209,7 @@ func (q *Queries) VersionComponentMountsByComponent(ctx context.Context, compone
 	for rows.Next() {
 		var i VersionComponentMountsByComponentRow
 		if err := rows.Scan(
-			&i.ComponentID,
+			&i.ComponentId,
 			&i.SourceType,
 			&i.Source,
 			&i.Target,
@@ -1067,7 +1243,7 @@ func (q *Queries) VersionComponentResourceByComponent(ctx context.Context, compo
 	row := q.db.QueryRowContext(ctx, versionComponentResourceByComponent, componentID)
 	var i VersionComponentResource
 	err := row.Scan(
-		&i.ComponentID,
+		&i.ComponentId,
 		&i.LimitCpus,
 		&i.LimitMemory,
 		&i.ReservationCpus,
@@ -1093,7 +1269,7 @@ func (q *Queries) VersionComponentTmpfsByComponent(ctx context.Context, componen
 	for rows.Next() {
 		var i VersionComponentTmpf
 		if err := rows.Scan(
-			&i.ComponentID,
+			&i.ComponentId,
 			&i.Target,
 			&i.SizeBytes,
 			&i.Mode,
@@ -1129,7 +1305,7 @@ func (q *Queries) VersionComponentUlimitsByComponent(ctx context.Context, compon
 	for rows.Next() {
 		var i VersionComponentUlimit
 		if err := rows.Scan(
-			&i.ComponentID,
+			&i.ComponentId,
 			&i.Name,
 			&i.Soft,
 			&i.Hard,
@@ -1152,15 +1328,26 @@ const versionComponentsByVersion = `-- name: VersionComponentsByVersion :many
 SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE version_id = ?
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = ?
+  )
 ORDER BY name
 `
 
+type VersionComponentsByVersionParams struct {
+	VersionId string         `db:"version_id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
 type VersionComponentsByVersionRow struct {
-	ID                       string         `db:"id"`
-	VersionID                string         `db:"version_id"`
+	Id                       string         `db:"id"`
+	VersionId                string         `db:"version_id"`
 	Name                     string         `db:"name"`
 	Image                    string         `db:"image"`
-	ArtifactID               sql.NullString `db:"artifact_id"`
+	ArtifactId               sql.NullString `db:"artifact_id"`
 	ArtifactName             sql.NullString `db:"artifact_name"`
 	ArtifactImageRef         sql.NullString `db:"artifact_image_ref"`
 	ArtifactLocalImageSha256 sql.NullString `db:"artifact_local_image_sha256"`
@@ -1173,8 +1360,8 @@ type VersionComponentsByVersionRow struct {
 	UpdatedAt                time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) VersionComponentsByVersion(ctx context.Context, versionID string) ([]VersionComponentsByVersionRow, error) {
-	rows, err := q.db.QueryContext(ctx, versionComponentsByVersion, versionID)
+func (q *Queries) VersionComponentsByVersion(ctx context.Context, arg VersionComponentsByVersionParams) ([]VersionComponentsByVersionRow, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentsByVersion, arg.VersionId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -1183,11 +1370,11 @@ func (q *Queries) VersionComponentsByVersion(ctx context.Context, versionID stri
 	for rows.Next() {
 		var i VersionComponentsByVersionRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.VersionID,
+			&i.Id,
+			&i.VersionId,
 			&i.Name,
 			&i.Image,
-			&i.ArtifactID,
+			&i.ArtifactId,
 			&i.ArtifactName,
 			&i.ArtifactImageRef,
 			&i.ArtifactLocalImageSha256,

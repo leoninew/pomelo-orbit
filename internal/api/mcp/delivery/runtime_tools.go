@@ -36,7 +36,11 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 			if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
 				return nil, err
 			}
-			resolved, err := c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, input.ApplicationId, input.InstanceKey, false)
+			projectId, err := c.currentProjectId()
+			if err != nil {
+				return nil, err
+			}
+			resolved, err := c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, projectId, input.ApplicationId, input.InstanceKey, false)
 			if err != nil {
 				return nil, err
 			}
@@ -46,7 +50,11 @@ func (c *core) registerRuntimeTools(server *mcp.Server) {
 			if _, err := c.gatewayInScope(ctx, input.GatewayApplicationId); err != nil {
 				return nil, err
 			}
-			resolved, err := c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, input.GatewayApplicationId, input.GatewayInstanceKey, true)
+			projectId, err := c.currentProjectId()
+			if err != nil {
+				return nil, err
+			}
+			resolved, err := c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, projectId, input.GatewayApplicationId, input.GatewayInstanceKey, true)
 			if err != nil {
 				return nil, err
 			}
@@ -184,10 +192,14 @@ func (c *core) runtimeTarget(ctx context.Context, applicationId, instanceKey str
 	if _, err := c.applicationInScope(ctx, applicationId); err != nil {
 		return deploymentdto.RuntimeTarget{}, err
 	}
+	projectId, err := c.currentProjectId()
+	if err != nil {
+		return deploymentdto.RuntimeTarget{}, err
+	}
 	if strings.TrimSpace(instanceKey) == "" {
 		instanceKey = "default"
 	}
-	return c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, applicationId, instanceKey, false)
+	return c.deps.Deployment.ResolveRuntimeTarget(ctx, c.deps.ActorUserId, projectId, applicationId, instanceKey, false)
 }
 
 func runtimeOutput(target deploymentdto.RuntimeTarget, data map[string]any) map[string]any {

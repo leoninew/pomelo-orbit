@@ -472,6 +472,7 @@
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { VersionComponentResp, VersionResp } from '@/gen/proto/orbit/v1/application/version';
+  import { useProjectStore } from '@/stores/project';
   import { versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
@@ -487,6 +488,7 @@
   const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const versionId = route.params.id as string;
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -544,11 +546,19 @@
   const isStandardApplication = computed(() => application.value?.kind === 'standard');
 
   async function fetchVersion() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error(t('application.toast.selectProjectRequired'));
+      return;
+    }
     try {
       await execute(async () => {
-        const currentVersion = await applicationApi.getVersion(versionId);
+        const currentVersion = await applicationApi.getVersion(projectId, versionId);
+        if (projectStore.activeProjectId !== projectId) {
+          return;
+        }
         version.value = currentVersion;
-        application.value = await applicationApi.get(currentVersion.application_id);
+        application.value = await applicationApi.get(projectId, currentVersion.application_id);
       });
     } catch {
       toast.error(t('application.toast.loadVersionsFailed'));
@@ -574,9 +584,14 @@
     previewContent.value = '';
     previewError.value = '';
     previewOpen.value = true;
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      previewError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executePreview(async () => {
-        const result = await applicationApi.previewVersion(versionId, {
+        const result = await applicationApi.previewVersion(projectId, versionId, {
           join_traefik_network: previewJoinTraefikNetwork.value,
         });
         previewContent.value = result.compose_yaml;
@@ -613,9 +628,14 @@
     if (basicFormError.value) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      basicSubmitError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        version.value = await applicationApi.updateVersion(versionId, {
+        version.value = await applicationApi.updateVersion(projectId, versionId, {
           label: basicForm.label,
           note: basicForm.note,
         });
@@ -661,10 +681,15 @@
           : '';
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      componentCreateError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        await applicationApi.createVersionComponent(versionId, result.value);
-        version.value = await applicationApi.getVersion(versionId);
+        await applicationApi.createVersionComponent(projectId, versionId, result.value);
+        version.value = await applicationApi.getVersion(projectId, versionId);
         toast.success(t('application.toast.updateSuccess'));
         closeComponentDialog();
       });
@@ -727,9 +752,15 @@
           : '';
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      componentEditError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
         const updated = await applicationApi.updateVersionComponentBasic(
+          projectId,
           versionId,
           target.id,
           result.value
@@ -768,9 +799,14 @@
       return;
     }
     componentDeleteError.value = '';
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      componentDeleteError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        await applicationApi.deleteVersionComponent(versionId, target.id);
+        await applicationApi.deleteVersionComponent(projectId, versionId, target.id);
         if (version.value) {
           const index = version.value.components.findIndex((item) => item.id === target.id);
           if (index !== -1) {
@@ -787,9 +823,14 @@
   }
 
   async function handlePublish() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error(t('application.toast.selectProjectRequired'));
+      return;
+    }
     try {
       await executeOp(async () => {
-        version.value = await applicationApi.publishVersion(versionId);
+        version.value = await applicationApi.publishVersion(projectId, versionId);
         toast.success(t('application.toast.publishSuccess'));
       });
     } catch (error) {
@@ -798,9 +839,14 @@
   }
 
   async function handleUnpublish() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error(t('application.toast.selectProjectRequired'));
+      return;
+    }
     try {
       await executeOp(async () => {
-        version.value = await applicationApi.unpublishVersion(versionId);
+        version.value = await applicationApi.unpublishVersion(projectId, versionId);
         toast.success(t('application.toast.unpublishSuccess'));
       });
     } catch (error) {
@@ -828,9 +874,14 @@
     if (forkLabelError.value) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      forkSubmitError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        const created = await applicationApi.forkVersion(versionId, {
+        const created = await applicationApi.forkVersion(projectId, versionId, {
           label: forkLabel.value.trim(),
         });
         toast.success(t('application.toast.forkSuccess'));
@@ -844,9 +895,14 @@
   }
 
   async function handleDeleteOk() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteVersionError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        await applicationApi.deleteVersion(versionId);
+        await applicationApi.deleteVersion(projectId, versionId);
         toast.success(t('application.toast.deleteVersionSuccess'));
         setDeleteDialogOpen(false);
         goBack();

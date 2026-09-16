@@ -15,11 +15,17 @@ const applicationByCode = `-- name: ApplicationByCode :one
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE code = ?
+  AND project_id = ?
 `
 
+type ApplicationByCodeParams struct {
+	Code      string         `db:"code"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
 type ApplicationByCodeRow struct {
-	ID        string         `db:"id"`
-	ProjectID sql.NullString `db:"project_id"`
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
 	Name      string         `db:"name"`
 	Code      string         `db:"code"`
 	Kind      string         `db:"kind"`
@@ -27,12 +33,12 @@ type ApplicationByCodeRow struct {
 	UpdatedAt time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) ApplicationByCode(ctx context.Context, code string) (ApplicationByCodeRow, error) {
-	row := q.db.QueryRowContext(ctx, applicationByCode, code)
+func (q *Queries) ApplicationByCode(ctx context.Context, arg ApplicationByCodeParams) (ApplicationByCodeRow, error) {
+	row := q.db.QueryRowContext(ctx, applicationByCode, arg.Code, arg.ProjectId)
 	var i ApplicationByCodeRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
+		&i.Id,
+		&i.ProjectId,
 		&i.Name,
 		&i.Code,
 		&i.Kind,
@@ -42,15 +48,21 @@ func (q *Queries) ApplicationByCode(ctx context.Context, code string) (Applicati
 	return i, err
 }
 
-const applicationByID = `-- name: ApplicationByID :one
+const applicationById = `-- name: ApplicationById :one
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE id = ?
+  AND project_id = ?
 `
 
-type ApplicationByIDRow struct {
-	ID        string         `db:"id"`
-	ProjectID sql.NullString `db:"project_id"`
+type ApplicationByIdParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+type ApplicationByIdRow struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
 	Name      string         `db:"name"`
 	Code      string         `db:"code"`
 	Kind      string         `db:"kind"`
@@ -58,12 +70,12 @@ type ApplicationByIDRow struct {
 	UpdatedAt time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) ApplicationByID(ctx context.Context, id string) (ApplicationByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, applicationByID, id)
-	var i ApplicationByIDRow
+func (q *Queries) ApplicationById(ctx context.Context, arg ApplicationByIdParams) (ApplicationByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, applicationById, arg.Id, arg.ProjectId)
+	var i ApplicationByIdRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
+		&i.Id,
+		&i.ProjectId,
 		&i.Name,
 		&i.Code,
 		&i.Kind,
@@ -77,11 +89,17 @@ const applicationByName = `-- name: ApplicationByName :one
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
 WHERE name = ?
+  AND project_id = ?
 `
 
+type ApplicationByNameParams struct {
+	Name      string         `db:"name"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
 type ApplicationByNameRow struct {
-	ID        string         `db:"id"`
-	ProjectID sql.NullString `db:"project_id"`
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
 	Name      string         `db:"name"`
 	Code      string         `db:"code"`
 	Kind      string         `db:"kind"`
@@ -89,12 +107,12 @@ type ApplicationByNameRow struct {
 	UpdatedAt time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) ApplicationByName(ctx context.Context, name string) (ApplicationByNameRow, error) {
-	row := q.db.QueryRowContext(ctx, applicationByName, name)
+func (q *Queries) ApplicationByName(ctx context.Context, arg ApplicationByNameParams) (ApplicationByNameRow, error) {
+	row := q.db.QueryRowContext(ctx, applicationByName, arg.Name, arg.ProjectId)
 	var i ApplicationByNameRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
+		&i.Id,
+		&i.ProjectId,
 		&i.Name,
 		&i.Code,
 		&i.Kind,
@@ -107,17 +125,18 @@ func (q *Queries) ApplicationByName(ctx context.Context, name string) (Applicati
 const applicationByProjectAndCode = `-- name: ApplicationByProjectAndCode :one
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
-WHERE project_id = ? AND code = ?
+WHERE project_id = ?
+  AND code = ?
 `
 
 type ApplicationByProjectAndCodeParams struct {
-	ProjectID sql.NullString `db:"project_id"`
+	ProjectId sql.NullString `db:"project_id"`
 	Code      string         `db:"code"`
 }
 
 type ApplicationByProjectAndCodeRow struct {
-	ID        string         `db:"id"`
-	ProjectID sql.NullString `db:"project_id"`
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
 	Name      string         `db:"name"`
 	Code      string         `db:"code"`
 	Kind      string         `db:"kind"`
@@ -126,11 +145,11 @@ type ApplicationByProjectAndCodeRow struct {
 }
 
 func (q *Queries) ApplicationByProjectAndCode(ctx context.Context, arg ApplicationByProjectAndCodeParams) (ApplicationByProjectAndCodeRow, error) {
-	row := q.db.QueryRowContext(ctx, applicationByProjectAndCode, arg.ProjectID, arg.Code)
+	row := q.db.QueryRowContext(ctx, applicationByProjectAndCode, arg.ProjectId, arg.Code)
 	var i ApplicationByProjectAndCodeRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
+		&i.Id,
+		&i.ProjectId,
 		&i.Name,
 		&i.Code,
 		&i.Kind,
@@ -143,17 +162,18 @@ func (q *Queries) ApplicationByProjectAndCode(ctx context.Context, arg Applicati
 const applicationByProjectAndName = `-- name: ApplicationByProjectAndName :one
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
-WHERE project_id = ? AND name = ?
+WHERE project_id = ?
+  AND name = ?
 `
 
 type ApplicationByProjectAndNameParams struct {
-	ProjectID sql.NullString `db:"project_id"`
+	ProjectId sql.NullString `db:"project_id"`
 	Name      string         `db:"name"`
 }
 
 type ApplicationByProjectAndNameRow struct {
-	ID        string         `db:"id"`
-	ProjectID sql.NullString `db:"project_id"`
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
 	Name      string         `db:"name"`
 	Code      string         `db:"code"`
 	Kind      string         `db:"kind"`
@@ -162,11 +182,11 @@ type ApplicationByProjectAndNameRow struct {
 }
 
 func (q *Queries) ApplicationByProjectAndName(ctx context.Context, arg ApplicationByProjectAndNameParams) (ApplicationByProjectAndNameRow, error) {
-	row := q.db.QueryRowContext(ctx, applicationByProjectAndName, arg.ProjectID, arg.Name)
+	row := q.db.QueryRowContext(ctx, applicationByProjectAndName, arg.ProjectId, arg.Name)
 	var i ApplicationByProjectAndNameRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
+		&i.Id,
+		&i.ProjectId,
 		&i.Name,
 		&i.Code,
 		&i.Kind,
@@ -179,21 +199,20 @@ func (q *Queries) ApplicationByProjectAndName(ctx context.Context, arg Applicati
 const countApplications = `-- name: CountApplications :one
 SELECT COUNT(*)
 FROM application
-WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
+WHERE project_id = ?
   AND (CAST(? AS CHAR) IS NULL OR name LIKE ? OR code LIKE ?)
   AND (CAST(? AS CHAR) IS NULL OR kind = ?)
 `
 
 type CountApplicationsParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 	Kind          sql.NullString `db:"kind"`
 }
 
 func (q *Queries) CountApplications(ctx context.Context, arg CountApplicationsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countApplications,
-		arg.ProjectID,
-		arg.ProjectID,
+		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -211,8 +230,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateApplicationParams struct {
-	ID        string         `db:"id"`
-	ProjectID sql.NullString `db:"project_id"`
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
 	Name      string         `db:"name"`
 	Code      string         `db:"code"`
 	Kind      string         `db:"kind"`
@@ -222,8 +241,8 @@ type CreateApplicationParams struct {
 
 func (q *Queries) CreateApplication(ctx context.Context, arg CreateApplicationParams) error {
 	_, err := q.db.ExecContext(ctx, createApplication,
-		arg.ID,
-		arg.ProjectID,
+		arg.Id,
+		arg.ProjectId,
 		arg.Name,
 		arg.Code,
 		arg.Kind,
@@ -236,47 +255,83 @@ func (q *Queries) CreateApplication(ctx context.Context, arg CreateApplicationPa
 const deleteApplication = `-- name: DeleteApplication :exec
 DELETE FROM application
 WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) DeleteApplication(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteApplication, id)
+type DeleteApplicationParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeleteApplication(ctx context.Context, arg DeleteApplicationParams) error {
+	_, err := q.db.ExecContext(ctx, deleteApplication, arg.Id, arg.ProjectId)
 	return err
 }
 
 const deleteGatewayConfigByApplication = `-- name: DeleteGatewayConfigByApplication :exec
 DELETE FROM gateway_config
 WHERE application_id = ?
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = gateway_config.application_id
+      AND application.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteGatewayConfigByApplication(ctx context.Context, applicationID string) error {
-	_, err := q.db.ExecContext(ctx, deleteGatewayConfigByApplication, applicationID)
+type DeleteGatewayConfigByApplicationParams struct {
+	ApplicationId string         `db:"application_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeleteGatewayConfigByApplication(ctx context.Context, arg DeleteGatewayConfigByApplicationParams) error {
+	_, err := q.db.ExecContext(ctx, deleteGatewayConfigByApplication, arg.ApplicationId, arg.ProjectId)
 	return err
 }
 
 const deleteServicesByApplication = `-- name: DeleteServicesByApplication :exec
 DELETE FROM service
 WHERE application_id = ?
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = service.application_id
+      AND application.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteServicesByApplication(ctx context.Context, applicationID string) error {
-	_, err := q.db.ExecContext(ctx, deleteServicesByApplication, applicationID)
+type DeleteServicesByApplicationParams struct {
+	ApplicationId string         `db:"application_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeleteServicesByApplication(ctx context.Context, arg DeleteServicesByApplicationParams) error {
+	_, err := q.db.ExecContext(ctx, deleteServicesByApplication, arg.ApplicationId, arg.ProjectId)
 	return err
 }
 
 const deleteVersionsByApplication = `-- name: DeleteVersionsByApplication :exec
 DELETE FROM version
 WHERE application_id = ?
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteVersionsByApplication(ctx context.Context, applicationID string) error {
-	_, err := q.db.ExecContext(ctx, deleteVersionsByApplication, applicationID)
+type DeleteVersionsByApplicationParams struct {
+	ApplicationId string         `db:"application_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeleteVersionsByApplication(ctx context.Context, arg DeleteVersionsByApplicationParams) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionsByApplication, arg.ApplicationId, arg.ProjectId)
 	return err
 }
 
 const listApplications = `-- name: ListApplications :many
 SELECT id, project_id, name, code, kind, created_at, updated_at
 FROM application
-WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
+WHERE project_id = ?
   AND (CAST(? AS CHAR) IS NULL OR name LIKE ? OR code LIKE ?)
   AND (CAST(? AS CHAR) IS NULL OR kind = ?)
 ORDER BY id DESC
@@ -284,7 +339,7 @@ LIMIT ? OFFSET ?
 `
 
 type ListApplicationsParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 	Kind          sql.NullString `db:"kind"`
 	Limit         int32          `db:"limit"`
@@ -292,8 +347,8 @@ type ListApplicationsParams struct {
 }
 
 type ListApplicationsRow struct {
-	ID        string         `db:"id"`
-	ProjectID sql.NullString `db:"project_id"`
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
 	Name      string         `db:"name"`
 	Code      string         `db:"code"`
 	Kind      string         `db:"kind"`
@@ -303,8 +358,7 @@ type ListApplicationsRow struct {
 
 func (q *Queries) ListApplications(ctx context.Context, arg ListApplicationsParams) ([]ListApplicationsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listApplications,
-		arg.ProjectID,
-		arg.ProjectID,
+		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -321,8 +375,8 @@ func (q *Queries) ListApplications(ctx context.Context, arg ListApplicationsPara
 	for rows.Next() {
 		var i ListApplicationsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
+			&i.Id,
+			&i.ProjectId,
 			&i.Name,
 			&i.Code,
 			&i.Kind,
@@ -346,13 +400,15 @@ const updateApplication = `-- name: UpdateApplication :exec
 UPDATE application
 SET name = ?, code = ?, updated_at = ?
 WHERE id = ?
+  AND project_id = ?
 `
 
 type UpdateApplicationParams struct {
-	Name      string    `db:"name"`
-	Code      string    `db:"code"`
-	UpdatedAt time.Time `db:"updated_at"`
-	ID        string    `db:"id"`
+	Name      string         `db:"name"`
+	Code      string         `db:"code"`
+	UpdatedAt time.Time      `db:"updated_at"`
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) UpdateApplication(ctx context.Context, arg UpdateApplicationParams) error {
@@ -360,7 +416,8 @@ func (q *Queries) UpdateApplication(ctx context.Context, arg UpdateApplicationPa
 		arg.Name,
 		arg.Code,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
+		arg.ProjectId,
 	)
 	return err
 }
@@ -369,10 +426,20 @@ const versionIdsByApplication = `-- name: VersionIdsByApplication :many
 SELECT id
 FROM version
 WHERE application_id = ?
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = ?
+  )
 `
 
-func (q *Queries) VersionIdsByApplication(ctx context.Context, applicationID string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, versionIdsByApplication, applicationID)
+type VersionIdsByApplicationParams struct {
+	ApplicationId string         `db:"application_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) VersionIdsByApplication(ctx context.Context, arg VersionIdsByApplicationParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, versionIdsByApplication, arg.ApplicationId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}

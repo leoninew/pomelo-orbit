@@ -16,7 +16,7 @@ func (h Handler) GetProjectEnvironment(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, err := h.service.EnvironmentForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")))
+	item, err := h.service.EnvironmentForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -35,7 +35,7 @@ func (h Handler) UpdateProjectEnvironment(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	item, err := h.service.UpdateForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), projectEnvironmentUpdateInput(&req))
+	item, err := h.service.UpdateForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), projectEnvironmentUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -49,7 +49,7 @@ func (h Handler) ProbeProjectEnvironment(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, err := h.service.ProbeForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")))
+	item, err := h.service.ProbeForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -68,7 +68,7 @@ func (h Handler) InitializeProjectEnvironment(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	item, err := h.service.InitializeForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), projectEnvironmentInitializeInput(&req))
+	item, err := h.service.InitializeForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), projectEnvironmentInitializeInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return

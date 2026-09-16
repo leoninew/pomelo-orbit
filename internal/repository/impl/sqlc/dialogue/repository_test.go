@@ -61,7 +61,7 @@ func TestRepositoryListsMessagesInOrderAndDeletesConversationCascade(t *testing.
 		{Id: "message-2", ConversationId: "conversation-2", Role: "assistant", Content: "回答", CreatedAt: createdAt},
 		{Id: "message-1", ConversationId: "conversation-2", Role: "user", Content: "问题", CreatedAt: createdAt},
 	} {
-		if err := repository.CreateDeploymentDialogueMessage(ctx, message); err != nil {
+		if err := repository.CreateDeploymentDialogueMessage(ctx, "project-1", message); err != nil {
 			t.Fatalf("create message %s: %v", message.Id, err)
 		}
 	}
@@ -73,7 +73,7 @@ func TestRepositoryListsMessagesInOrderAndDeletesConversationCascade(t *testing.
 	if len(items) != 2 || items[0].Id != "conversation-2" || items[1].Id != "conversation-1" {
 		t.Fatalf("conversations = %#v", items)
 	}
-	messages, err := repository.ListDeploymentDialogueMessages(ctx, "conversation-2")
+	messages, err := repository.ListDeploymentDialogueMessages(ctx, "project-1", "conversation-2")
 	if err != nil {
 		t.Fatalf("list messages: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestRepositoryListsMessagesInOrderAndDeletesConversationCascade(t *testing.
 		t.Fatalf("messages = %#v", messages)
 	}
 
-	if err := repository.DeleteDeploymentDialogueConversation(ctx, "conversation-2"); err != nil {
+	if err := repository.DeleteDeploymentDialogueConversation(ctx, "project-1", "conversation-2"); err != nil {
 		t.Fatalf("delete conversation: %v", err)
 	}
 	var count int

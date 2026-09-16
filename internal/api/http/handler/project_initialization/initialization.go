@@ -18,7 +18,7 @@ func (h Handler) GetStatus(c *gin.Context) {
 	if !ok {
 		return
 	}
-	view, err := h.service.Status(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")))
+	view, err := h.service.Status(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -36,7 +36,7 @@ func (h Handler) TestEnvironment(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	if err := h.service.TestEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), saveEnvironmentInput(&req)); err != nil {
+	if err := h.service.TestEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), saveEnvironmentInput(&req)); err != nil {
 		transport.WriteError(c, err)
 		return
 	}
@@ -53,7 +53,7 @@ func (h Handler) SaveEnvironment(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	view, err := h.service.SaveEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), saveEnvironmentInput(&req))
+	view, err := h.service.SaveEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), saveEnvironmentInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -71,7 +71,7 @@ func (h Handler) PrepareWindowsEnvironment(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	result, err := h.service.PrepareWindowsEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), saveEnvironmentInput(&req))
+	result, err := h.service.PrepareWindowsEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), saveEnvironmentInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -92,7 +92,7 @@ func (h Handler) BootstrapEnvironment(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	view, err := h.service.BootstrapEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), initdto.BootstrapEnvironmentInput{
+	view, err := h.service.BootstrapEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), initdto.BootstrapEnvironmentInput{
 		Username: req.Username, Password: req.Password, PrivateKey: req.PrivateKey, PrivateKeyPassphrase: req.PrivateKeyPassphrase,
 	})
 	if err != nil {
@@ -107,7 +107,7 @@ func (h Handler) ProbeEnvironment(c *gin.Context) {
 	if !ok {
 		return
 	}
-	view, err := h.service.ProbeEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")))
+	view, err := h.service.ProbeEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -125,7 +125,7 @@ func (h Handler) CreateGateway(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	view, err := h.service.CreateGateway(c.Request.Context(), current.Id, strings.TrimSpace(c.Param("project_id")), initdto.CreateGatewayInput{
+	view, err := h.service.CreateGateway(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), initdto.CreateGatewayInput{
 		Image: req.Image, RestApiUrl: req.RestApiUrl, RestReadyTimeoutSeconds: int(req.RestReadyTimeoutSeconds),
 		BaseDomain: req.BaseDomain, DefaultEntrypoint: req.DefaultEntrypoint, TLSMode: req.TlsMode,
 		AcmeProfile: req.AcmeProfile, AcmeEmail: req.AcmeEmail, DNSApiToken: req.DnsApiToken,

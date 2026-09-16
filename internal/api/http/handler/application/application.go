@@ -16,7 +16,7 @@ func (h Handler) ListApplications(c *gin.Context) {
 	}
 	page := transport.QueryInt(c.Request.URL.Query().Get("page"), 1)
 	perPage := transport.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
-	items, err := h.service.ListApplications(c.Request.Context(), current.Id, transport.QueryProjectId(c.Request.URL.Query().Get("project_id")), page, perPage, c.Request.URL.Query().Get("search"), c.Request.URL.Query().Get("kind"))
+	items, err := h.service.ListApplications(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), page, perPage, c.Request.URL.Query().Get("search"), c.Request.URL.Query().Get("kind"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -49,7 +49,7 @@ func (h Handler) GetApplication(c *gin.Context) {
 	if !ok {
 		return
 	}
-	app, err := h.service.ApplicationForUser(c.Request.Context(), current.Id, c.Param("app_id"))
+	app, err := h.service.ApplicationForUser(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -68,7 +68,7 @@ func (h Handler) UpdateApplication(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	app, err := h.service.UpdateApplication(c.Request.Context(), current.Id, c.Param("app_id"), applicationUpdateInput(&req))
+	app, err := h.service.UpdateApplication(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id"), applicationUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return

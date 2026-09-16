@@ -19,19 +19,33 @@ export const dialogueApi = {
     });
   },
 
-  getConversation(conversationId: string): Promise<DeploymentDialogueConversationDetailResp> {
-    return request.get(`/api/deployment-dialogue/conversation/${conversationId}`);
+  getConversation(
+    projectId: string,
+    conversationId: string
+  ): Promise<DeploymentDialogueConversationDetailResp> {
+    return request.get(`/api/deployment-dialogue/conversation/${conversationId}`, {
+      params: { project_id: projectId },
+    });
   },
 
-  deleteConversation(conversationId: string): Promise<void> {
-    return request.delete(`/api/deployment-dialogue/conversation/${conversationId}`);
+  deleteConversation(projectId: string, conversationId: string): Promise<void> {
+    return request.delete(`/api/deployment-dialogue/conversation/${conversationId}`, {
+      params: { project_id: projectId },
+    });
   },
 
-  completeTurn(data: DeploymentDialogueTurnReq): Promise<DeploymentDialogueTurnResp> {
-    return request.post('/api/deployment-dialogue/turn', data, { timeout: DIALOGUE_TIMEOUT });
+  completeTurn(
+    projectId: string,
+    data: DeploymentDialogueTurnReq
+  ): Promise<DeploymentDialogueTurnResp> {
+    return request.post('/api/deployment-dialogue/turn', data, {
+      timeout: DIALOGUE_TIMEOUT,
+      params: { project_id: projectId },
+    });
   },
 
   async completeTurnStream(
+    projectId: string,
     data: DeploymentDialogueTurnReq,
     onEvent: (event: DeploymentDialogueStreamEvent) => void
   ): Promise<void> {
@@ -45,7 +59,7 @@ export const dialogueApi = {
 
     try {
       const response = await fetch(
-        `${runtimeConfig.publicUrl}/api/deployment-dialogue/turn/stream`,
+        `${runtimeConfig.publicUrl}/api/deployment-dialogue/turn/stream?project_id=${encodeURIComponent(projectId)}`,
         {
           method: 'POST',
           headers,

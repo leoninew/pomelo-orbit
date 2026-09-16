@@ -546,6 +546,14 @@
   const gatewayForLogs = ref<GatewayResp>();
   const isGatewayLogsDrawerOpen = ref(false);
 
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error(t('route.toast.selectProjectRequired'));
+    }
+    return projectId;
+  }
+
   const form = reactive({
     name: '',
     protocol: 'http',
@@ -636,7 +644,7 @@
   async function fetchRoute() {
     try {
       await execute(async () => {
-        const data = await routeApi.get(routeId);
+        const data = await routeApi.get(selectedProjectId(), routeId);
         routeData.value = data;
         Object.assign(form, {
           name: data.name,
@@ -665,7 +673,7 @@
       return;
     }
     try {
-      gatewayForLogs.value = await gatewayApi.get(applicationId);
+      gatewayForLogs.value = await gatewayApi.get(selectedProjectId(), applicationId);
     } catch {
       // Route detail remains available when its Gateway runtime is unavailable.
     }
@@ -756,7 +764,7 @@
     }
     try {
       await executeOp(async () => {
-        const updated = await routeApi.update(routeId, {
+        const updated = await routeApi.update(selectedProjectId(), routeId, {
           name: form.name,
           protocol: form.protocol,
           domain: form.domain,
@@ -838,7 +846,7 @@
     deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
-        await routeApi.delete(routeId);
+        await routeApi.delete(selectedProjectId(), routeId);
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.deleteSuccess'));
         router.push({ path: '/routes', query: { pending_sync: '1' } });
@@ -890,7 +898,7 @@
     }
     try {
       await executeOp(async () => {
-        await routeApi.uploadCert(routeId, file);
+        await routeApi.uploadCert(selectedProjectId(), routeId, file);
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.certUploadSuccess'));
         await fetchRoute();
@@ -910,7 +918,7 @@
   async function handleDisableHttps() {
     try {
       await executeOp(async () => {
-        await routeApi.disableHttps(routeId);
+        await routeApi.disableHttps(selectedProjectId(), routeId);
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.httpsDisabled'));
         await fetchRoute();
@@ -965,7 +973,9 @@
     }
     try {
       await executeOp(async () => {
-        await routeApi.enableLetsencrypt(routeId, { challenge: letsEncryptChallenge.value });
+        await routeApi.enableLetsencrypt(selectedProjectId(), routeId, {
+          challenge: letsEncryptChallenge.value,
+        });
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.letsencryptEnabled'));
         closeLetsEncryptDialog();
@@ -981,7 +991,7 @@
   async function handleEnableMkcert() {
     try {
       await executeOp(async () => {
-        await routeApi.enableMkcert(routeId, {});
+        await routeApi.enableMkcert(selectedProjectId(), routeId, {});
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.mkcertEnabled'));
         await fetchRoute();

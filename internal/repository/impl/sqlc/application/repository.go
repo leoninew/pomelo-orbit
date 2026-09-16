@@ -33,18 +33,11 @@ func (r Repository) q(ctx context.Context) *applicationsqlc.Queries {
 	})
 }
 
-func optionalProjectId(projectId *string) sql.NullString {
-	if projectId == nil {
-		return sql.NullString{}
-	}
-	trimmed := strings.TrimSpace(*projectId)
-	if trimmed == "" {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: trimmed, Valid: true}
+func projectScopeId(projectId string) sql.NullString {
+	return sql.NullString{String: strings.TrimSpace(projectId), Valid: true}
 }
 
-func (r Repository) ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
+func (r Repository) ListApplications(ctx context.Context, projectId string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	raw, pattern := dbmodel.SearchPattern(search)
 	kindFilter := strings.TrimSpace(kind)
@@ -52,7 +45,7 @@ func (r Repository) ListApplications(ctx context.Context, projectId *string, pag
 	kindValue := sql.NullString{String: kindFilter, Valid: kindFilter != ""}
 	q := r.q(ctx)
 	total, err := q.CountApplications(ctx, applicationsqlc.CountApplicationsParams{
-		ProjectID:     optionalProjectId(projectId),
+		ProjectId:     projectScopeId(projectId),
 		SearchPattern: searchPattern,
 		Kind:          kindValue,
 	})
@@ -60,7 +53,7 @@ func (r Repository) ListApplications(ctx context.Context, projectId *string, pag
 		return repository.Page[model.Application]{}, fmt.Errorf("count applications: %w", err)
 	}
 	rows, err := q.ListApplications(ctx, applicationsqlc.ListApplicationsParams{
-		ProjectID:     optionalProjectId(projectId),
+		ProjectId:     projectScopeId(projectId),
 		SearchPattern: searchPattern,
 		Kind:          kindValue,
 		Limit:         int32(perPage),
@@ -71,52 +64,52 @@ func (r Repository) ListApplications(ctx context.Context, projectId *string, pag
 	}
 	items := make([]model.Application, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt))
+		items = append(items, appFrom(row.Id, row.ProjectId, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt))
 	}
 	return repository.Page[model.Application]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
 
-func (r Repository) Application(ctx context.Context, id string) (model.Application, error) {
-	row, err := r.q(ctx).ApplicationByID(ctx, id)
+func (r Repository) Application(ctx context.Context, projectId string, id string) (model.Application, error) {
+	row, err := r.q(ctx).ApplicationById(ctx, applicationsqlc.ApplicationByIdParams{Id: id, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return model.Application{}, fmt.Errorf("load application %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
+	return appFrom(row.Id, row.ProjectId, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
 }
 
-func (r Repository) ApplicationByName(ctx context.Context, name string) (model.Application, error) {
-	row, err := r.q(ctx).ApplicationByName(ctx, name)
+func (r Repository) ApplicationByName(ctx context.Context, projectId string, name string) (model.Application, error) {
+	row, err := r.q(ctx).ApplicationByName(ctx, applicationsqlc.ApplicationByNameParams{Name: name, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return model.Application{}, fmt.Errorf("load application by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
-	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
+	return appFrom(row.Id, row.ProjectId, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r Repository) ApplicationByProjectAndName(ctx context.Context, projectId string, name string) (model.Application, error) {
 	row, err := r.q(ctx).ApplicationByProjectAndName(ctx, applicationsqlc.ApplicationByProjectAndNameParams{
-		ProjectID: optionalProjectId(&projectId),
+		ProjectId: projectScopeId(projectId),
 		Name:      name,
 	})
 	if err != nil {
 		return model.Application{}, fmt.Errorf("load application by project and name %s/%s: %w", projectId, name, sqlcommon.TranslateError(err))
 	}
-	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
+	return appFrom(row.Id, row.ProjectId, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r Repository) ApplicationByProjectAndCode(ctx context.Context, projectId string, code string) (model.Application, error) {
-	row, err := r.q(ctx).ApplicationByProjectAndCode(ctx, applicationsqlc.ApplicationByProjectAndCodeParams{ProjectID: optionalProjectId(&projectId), Code: code})
+	row, err := r.q(ctx).ApplicationByProjectAndCode(ctx, applicationsqlc.ApplicationByProjectAndCodeParams{ProjectId: projectScopeId(projectId), Code: code})
 	if err != nil {
 		return model.Application{}, fmt.Errorf("load application by project and code %s/%s: %w", projectId, code, sqlcommon.TranslateError(err))
 	}
-	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
+	return appFrom(row.Id, row.ProjectId, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
 }
 
-func (r Repository) ApplicationByCode(ctx context.Context, code string) (model.Application, error) {
-	row, err := r.q(ctx).ApplicationByCode(ctx, code)
+func (r Repository) ApplicationByCode(ctx context.Context, projectId string, code string) (model.Application, error) {
+	row, err := r.q(ctx).ApplicationByCode(ctx, applicationsqlc.ApplicationByCodeParams{Code: code, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return model.Application{}, fmt.Errorf("load application by code %s: %w", code, sqlcommon.TranslateError(err))
 	}
-	return appFrom(row.ID, row.ProjectID, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
+	return appFrom(row.Id, row.ProjectId, row.Name, row.Code, row.Kind, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r Repository) CreateApplication(ctx context.Context, app model.Application) error {
@@ -129,8 +122,8 @@ func (r Repository) CreateApplication(ctx context.Context, app model.Application
 		updatedAt = now
 	}
 	err := r.q(ctx).CreateApplication(ctx, applicationsqlc.CreateApplicationParams{
-		ID:        app.Id,
-		ProjectID: dbmodel.NullString(app.ProjectId),
+		Id:        app.Id,
+		ProjectId: dbmodel.NullString(app.ProjectId),
 		Name:      app.Name,
 		Code:      app.Code,
 		Kind:      app.Kind,
@@ -143,12 +136,13 @@ func (r Repository) CreateApplication(ctx context.Context, app model.Application
 	return nil
 }
 
-func (r Repository) UpdateApplication(ctx context.Context, app model.Application) error {
+func (r Repository) UpdateApplication(ctx context.Context, projectId string, app model.Application) error {
 	err := r.q(ctx).UpdateApplication(ctx, applicationsqlc.UpdateApplicationParams{
 		Name:      app.Name,
 		Code:      app.Code,
 		UpdatedAt: time.Now().UTC(),
-		ID:        app.Id,
+		Id:        app.Id,
+		ProjectId: projectScopeId(projectId),
 	})
 	if err != nil {
 		return fmt.Errorf("update application %s: %w", app.Id, err)
@@ -156,61 +150,61 @@ func (r Repository) UpdateApplication(ctx context.Context, app model.Application
 	return nil
 }
 
-func (r Repository) DeleteApplication(ctx context.Context, id string) error {
+func (r Repository) DeleteApplication(ctx context.Context, projectId string, id string) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		q := r.q(txCtx)
-		versionIds, err := q.VersionIdsByApplication(txCtx, id)
+		versionIds, err := q.VersionIdsByApplication(txCtx, applicationsqlc.VersionIdsByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)})
 		if err != nil {
 			return fmt.Errorf("list application version ids %s: %w", id, err)
 		}
 		for _, versionId := range versionIds {
-			if err := q.ClearVersionForkRefs(txCtx, sql.NullString{String: versionId, Valid: true}); err != nil {
+			if err := q.ClearVersionForkRefs(txCtx, applicationsqlc.ClearVersionForkRefsParams{VersionId: projectScopeId(versionId), ProjectId: projectScopeId(projectId)}); err != nil {
 				return fmt.Errorf("clear version fork references %s: %w", versionId, err)
 			}
 		}
-		if err := q.DeleteServicesByApplication(txCtx, id); err != nil {
+		if err := q.DeleteServicesByApplication(txCtx, applicationsqlc.DeleteServicesByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete application service %s: %w", id, err)
 		}
-		if err := q.DeleteVersionsByApplication(txCtx, id); err != nil {
+		if err := q.DeleteVersionsByApplication(txCtx, applicationsqlc.DeleteVersionsByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete application versions %s: %w", id, err)
 		}
-		if err := q.DeleteApplication(txCtx, id); err != nil {
+		if err := q.DeleteApplication(txCtx, applicationsqlc.DeleteApplicationParams{Id: id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete application %s: %w", id, err)
 		}
 		return nil
 	})
 }
 
-func (r Repository) DeleteGatewayApplication(ctx context.Context, id string) error {
+func (r Repository) DeleteGatewayApplication(ctx context.Context, projectId string, id string) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		q := r.q(txCtx)
-		versionIds, err := q.VersionIdsByApplication(txCtx, id)
+		versionIds, err := q.VersionIdsByApplication(txCtx, applicationsqlc.VersionIdsByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)})
 		if err != nil {
 			return fmt.Errorf("list gateway version ids %s: %w", id, err)
 		}
-		if err := q.DeleteServicesByApplication(txCtx, id); err != nil {
+		if err := q.DeleteServicesByApplication(txCtx, applicationsqlc.DeleteServicesByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete gateway services %s: %w", id, err)
 		}
 		for _, versionId := range versionIds {
-			if err := q.ClearVersionForkRefs(txCtx, sql.NullString{String: versionId, Valid: true}); err != nil {
+			if err := q.ClearVersionForkRefs(txCtx, applicationsqlc.ClearVersionForkRefsParams{VersionId: projectScopeId(versionId), ProjectId: projectScopeId(projectId)}); err != nil {
 				return fmt.Errorf("clear gateway version fork references %s: %w", versionId, err)
 			}
 		}
-		if err := q.DeleteVersionsByApplication(txCtx, id); err != nil {
+		if err := q.DeleteVersionsByApplication(txCtx, applicationsqlc.DeleteVersionsByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete gateway application versions %s: %w", id, err)
 		}
-		if err := q.DeleteGatewayConfigByApplication(txCtx, id); err != nil {
+		if err := q.DeleteGatewayConfigByApplication(txCtx, applicationsqlc.DeleteGatewayConfigByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete gateway config %s: %w", id, err)
 		}
-		if err := q.DeleteApplication(txCtx, id); err != nil {
+		if err := q.DeleteApplication(txCtx, applicationsqlc.DeleteApplicationParams{Id: id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete gateway application %s: %w", id, err)
 		}
 		return nil
 	})
 }
 
-func (r Repository) ListVersions(ctx context.Context, applicationId string) ([]model.Version, error) {
-	rows, err := r.q(ctx).ListVersions(ctx, applicationId)
+func (r Repository) ListVersions(ctx context.Context, projectId string, applicationId string) ([]model.Version, error) {
+	rows, err := r.q(ctx).ListVersions(ctx, applicationsqlc.ListVersionsParams{ApplicationId: applicationId, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return nil, fmt.Errorf("list versions %s: %w", applicationId, err)
 	}
@@ -221,28 +215,30 @@ func (r Repository) ListVersions(ctx context.Context, applicationId string) ([]m
 	return items, nil
 }
 
-func (r Repository) LatestVersionByApplication(ctx context.Context, applicationId string) (model.Version, error) {
-	row, err := r.q(ctx).LatestVersionByApplication(ctx, applicationId)
+func (r Repository) LatestVersionByApplication(ctx context.Context, projectId string, applicationId string) (model.Version, error) {
+	row, err := r.q(ctx).LatestVersionByApplication(ctx, applicationsqlc.LatestVersionByApplicationParams{ApplicationId: applicationId, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return model.Version{}, fmt.Errorf("load latest version for application %s: %w", applicationId, sqlcommon.TranslateError(err))
 	}
 	return versionFrom(row), nil
 }
 
-func (r Repository) ListVersionsPage(ctx context.Context, applicationId string, page int, perPage int, search string) (repository.Page[model.Version], error) {
+func (r Repository) ListVersionsPage(ctx context.Context, projectId string, applicationId string, page int, perPage int, search string) (repository.Page[model.Version], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	raw, pattern := dbmodel.SearchPattern(search)
 	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
 	q := r.q(ctx)
 	total, err := q.CountVersions(ctx, applicationsqlc.CountVersionsParams{
-		ApplicationID: applicationId,
+		ApplicationId: applicationId,
+		ProjectId:     projectScopeId(projectId),
 		SearchPattern: searchPattern,
 	})
 	if err != nil {
 		return repository.Page[model.Version]{}, fmt.Errorf("count versions: %w", err)
 	}
 	rows, err := q.ListVersionsPage(ctx, applicationsqlc.ListVersionsPageParams{
-		ApplicationID: applicationId,
+		ApplicationId: applicationId,
+		ProjectId:     projectScopeId(projectId),
 		SearchPattern: searchPattern,
 		Limit:         int32(perPage),
 		Offset:        int32((page - 1) * perPage),
@@ -257,15 +253,18 @@ func (r Repository) ListVersionsPage(ctx context.Context, applicationId string, 
 	return repository.Page[model.Version]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
 
-func (r Repository) Version(ctx context.Context, id string) (model.Version, error) {
-	row, err := r.q(ctx).VersionByID(ctx, id)
+func (r Repository) Version(ctx context.Context, projectId string, id string) (model.Version, error) {
+	row, err := r.q(ctx).VersionById(ctx, applicationsqlc.VersionByIdParams{Id: id, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return model.Version{}, fmt.Errorf("load version %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return versionFrom(row), nil
 }
 
-func (r Repository) CreateVersion(ctx context.Context, version model.Version) error {
+func (r Repository) CreateVersion(ctx context.Context, projectId string, version model.Version) error {
+	if _, err := r.Application(ctx, projectId, version.ApplicationId); err != nil {
+		return err
+	}
 	now := time.Now().UTC()
 	createdAt, updatedAt := version.CreatedAt, version.UpdatedAt
 	if createdAt.IsZero() {
@@ -275,11 +274,11 @@ func (r Repository) CreateVersion(ctx context.Context, version model.Version) er
 		updatedAt = now
 	}
 	err := r.q(ctx).CreateVersion(ctx, applicationsqlc.CreateVersionParams{
-		ID:                   version.Id,
-		ApplicationID:        version.ApplicationId,
+		Id:                   version.Id,
+		ApplicationId:        version.ApplicationId,
 		Label:                version.Label,
 		Status:               version.Status,
-		CreatedFromVersionID: dbmodel.NullString(version.CreatedFromVersionId),
+		CreatedFromVersionId: dbmodel.NullString(version.CreatedFromVersionId),
 		Note:                 dbmodel.NullString(version.Note),
 		ComponentSummary:     version.ComponentSummary,
 		CreatedAt:            createdAt,
@@ -291,14 +290,15 @@ func (r Repository) CreateVersion(ctx context.Context, version model.Version) er
 	return nil
 }
 
-func (r Repository) UpdateVersion(ctx context.Context, version model.Version) error {
+func (r Repository) UpdateVersion(ctx context.Context, projectId string, version model.Version) error {
 	err := r.q(ctx).UpdateVersion(ctx, applicationsqlc.UpdateVersionParams{
 		Label:            version.Label,
 		Status:           version.Status,
 		Note:             dbmodel.NullString(version.Note),
 		ComponentSummary: version.ComponentSummary,
 		UpdatedAt:        time.Now().UTC(),
-		ID:               version.Id,
+		Id:               version.Id,
+		ProjectId:        projectScopeId(projectId),
 	})
 	if err != nil {
 		return fmt.Errorf("update version %s: %w", version.Id, err)
@@ -306,38 +306,38 @@ func (r Repository) UpdateVersion(ctx context.Context, version model.Version) er
 	return nil
 }
 
-func (r Repository) DeleteVersion(ctx context.Context, id string) error {
+func (r Repository) DeleteVersion(ctx context.Context, projectId string, id string) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		q := r.q(txCtx)
-		if err := q.ClearVersionForkRefs(txCtx, sql.NullString{String: id, Valid: true}); err != nil {
+		if err := q.ClearVersionForkRefs(txCtx, applicationsqlc.ClearVersionForkRefsParams{VersionId: projectScopeId(id), ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("clear version fork references %s: %w", id, err)
 		}
-		if err := q.DeleteVersionComponents(txCtx, id); err != nil {
+		if err := q.DeleteVersionComponents(txCtx, applicationsqlc.DeleteVersionComponentsParams{VersionId: id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete version components %s: %w", id, err)
 		}
-		if err := q.DeleteVersion(txCtx, id); err != nil {
+		if err := q.DeleteVersion(txCtx, applicationsqlc.DeleteVersionParams{Id: id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete version %s: %w", id, err)
 		}
 		return nil
 	})
 }
 
-func (r Repository) CountVersionRuntimeRefs(ctx context.Context, versionId string) (int, error) {
-	raw, err := r.q(ctx).CountVersionRuntimeRefs(ctx, versionId)
+func (r Repository) CountVersionRuntimeRefs(ctx context.Context, projectId string, versionId string) (int, error) {
+	raw, err := r.q(ctx).CountVersionRuntimeRefs(ctx, applicationsqlc.CountVersionRuntimeRefsParams{VersionId: versionId, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return 0, fmt.Errorf("count version runtime refs %s: %w", versionId, err)
 	}
 	return asInt(raw), nil
 }
 
-func (r Repository) VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error) {
-	rows, err := r.q(ctx).VersionComponentsByVersion(ctx, versionId)
+func (r Repository) VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error) {
+	rows, err := r.q(ctx).VersionComponentsByVersion(ctx, applicationsqlc.VersionComponentsByVersionParams{VersionId: versionId, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return nil, fmt.Errorf("list version components %s: %w", versionId, err)
 	}
 	items := make([]model.VersionComponent, 0, len(rows))
 	for _, row := range rows {
-		component, err := r.componentFromRow(ctx, r.q(ctx), row.ID, row.VersionID, row.Name, row.Image, row.ArtifactID, row.ArtifactName, row.ArtifactImageRef, row.ArtifactLocalImageSha256, row.ArtifactSourceCommitSha, row.EntrypointJson, row.CommandJson, row.PullPolicy, row.RestartPolicy, row.CreatedAt, row.UpdatedAt)
+		component, err := r.componentFromRow(ctx, r.q(ctx), row.Id, row.VersionId, row.Name, row.Image, row.ArtifactId, row.ArtifactName, row.ArtifactImageRef, row.ArtifactLocalImageSha256, row.ArtifactSourceCommitSha, row.EntrypointJson, row.CommandJson, row.PullPolicy, row.RestartPolicy, row.CreatedAt, row.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -346,27 +346,27 @@ func (r Repository) VersionComponentsByVersion(ctx context.Context, versionId st
 	return items, nil
 }
 
-func (r Repository) VersionComponent(ctx context.Context, id string) (model.VersionComponent, error) {
-	row, err := r.q(ctx).VersionComponentByID(ctx, id)
+func (r Repository) VersionComponent(ctx context.Context, projectId string, id string) (model.VersionComponent, error) {
+	row, err := r.q(ctx).VersionComponentById(ctx, applicationsqlc.VersionComponentByIdParams{Id: id, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return model.VersionComponent{}, fmt.Errorf("load version component %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	component, err := r.componentFromRow(ctx, r.q(ctx), row.ID, row.VersionID, row.Name, row.Image, row.ArtifactID, row.ArtifactName, row.ArtifactImageRef, row.ArtifactLocalImageSha256, row.ArtifactSourceCommitSha, row.EntrypointJson, row.CommandJson, row.PullPolicy, row.RestartPolicy, row.CreatedAt, row.UpdatedAt)
+	component, err := r.componentFromRow(ctx, r.q(ctx), row.Id, row.VersionId, row.Name, row.Image, row.ArtifactId, row.ArtifactName, row.ArtifactImageRef, row.ArtifactLocalImageSha256, row.ArtifactSourceCommitSha, row.EntrypointJson, row.CommandJson, row.PullPolicy, row.RestartPolicy, row.CreatedAt, row.UpdatedAt)
 	if err != nil {
 		return model.VersionComponent{}, err
 	}
 	return component, nil
 }
 
-func (r Repository) ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error {
+func (r Repository) ReplaceVersionComponents(ctx context.Context, projectId string, versionId string, components []model.VersionComponent) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		return r.replaceVersionComponents(txCtx, versionId, components)
+		return r.replaceVersionComponents(txCtx, projectId, versionId, components)
 	})
 }
 
-func (r Repository) replaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error {
+func (r Repository) replaceVersionComponents(ctx context.Context, projectId string, versionId string, components []model.VersionComponent) error {
 	q := r.q(ctx)
-	if err := q.DeleteVersionComponents(ctx, versionId); err != nil {
+	if err := q.DeleteVersionComponents(ctx, applicationsqlc.DeleteVersionComponentsParams{VersionId: versionId, ProjectId: projectScopeId(projectId)}); err != nil {
 		return fmt.Errorf("delete version components %s: %w", versionId, err)
 	}
 	now := time.Now().UTC()
@@ -379,24 +379,28 @@ func (r Repository) replaceVersionComponents(ctx context.Context, versionId stri
 	if err := q.UpdateVersionComponentSummary(ctx, applicationsqlc.UpdateVersionComponentSummaryParams{
 		ComponentSummary: model.VersionComponentSummary(components),
 		UpdatedAt:        time.Now().UTC(),
-		ID:               versionId,
+		Id:               versionId,
+		ProjectId:        projectScopeId(projectId),
 	}); err != nil {
 		return fmt.Errorf("update version component summary %s: %w", versionId, err)
 	}
 	return nil
 }
 
-func (r Repository) CreateVersionComponent(ctx context.Context, component model.VersionComponent) error {
+func (r Repository) CreateVersionComponent(ctx context.Context, projectId string, component model.VersionComponent) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		q := r.q(txCtx)
+		if _, err := r.Version(txCtx, projectId, component.VersionId); err != nil {
+			return err
+		}
 		if err := insertVersionComponent(txCtx, q, component, time.Now().UTC()); err != nil {
 			return err
 		}
-		return r.updateComponentSummary(txCtx, q, component.VersionId)
+		return r.updateComponentSummary(txCtx, q, projectId, component.VersionId)
 	})
 }
 
-func (r Repository) UpdateVersionComponentBasic(ctx context.Context, component model.VersionComponent, oldName string) error {
+func (r Repository) UpdateVersionComponentBasic(ctx context.Context, projectId string, component model.VersionComponent, oldName string) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		q := r.q(txCtx)
 		now := time.Now().UTC()
@@ -414,63 +418,64 @@ func (r Repository) UpdateVersionComponentBasic(ctx context.Context, component m
 			PullPolicy:    component.PullPolicy,
 			RestartPolicy: dbmodel.NullString(component.RestartPolicy),
 			UpdatedAt:     now,
-			ID:            component.Id,
+			Id:            component.Id,
+			ProjectId:     projectScopeId(projectId),
 		}); err != nil {
 			return fmt.Errorf("update version component %s: %w", component.Id, err)
 		}
 		if err := q.UpdateVersionComponentCommand(txCtx, applicationsqlc.UpdateVersionComponentCommandParams{
-			CommandJson: commandJSON, UpdatedAt: now, ID: component.Id,
+			CommandJson: commandJSON, UpdatedAt: now, Id: component.Id, ProjectId: projectScopeId(projectId),
 		}); err != nil {
 			return fmt.Errorf("update component command: %w", err)
 		}
 		if err := q.UpdateVersionComponentEntrypoint(txCtx, applicationsqlc.UpdateVersionComponentEntrypointParams{
-			EntrypointJson: entrypointJSON, UpdatedAt: now, ID: component.Id,
+			EntrypointJson: entrypointJSON, UpdatedAt: now, Id: component.Id, ProjectId: projectScopeId(projectId),
 		}); err != nil {
 			return fmt.Errorf("update component entrypoint: %w", err)
 		}
 		if oldName != component.Name {
 			if err := q.RenameVersionComponentDependencies(txCtx, applicationsqlc.RenameVersionComponentDependenciesParams{
-				NewName: component.Name, VersionID: component.VersionId, OldName: oldName,
+				NewName: component.Name, VersionId: component.VersionId, OldName: oldName, ProjectId: projectScopeId(projectId),
 			}); err != nil {
 				return fmt.Errorf("rename version component dependencies: %w", err)
 			}
 		}
-		return r.updateComponentSummary(txCtx, q, component.VersionId)
+		return r.updateComponentSummary(txCtx, q, projectId, component.VersionId)
 	})
 }
 
-func (r Repository) UpdateVersionComponentRuntime(ctx context.Context, component model.VersionComponent) error {
-	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentRuntimeConfig, insertVersionComponentRuntimeConfig)
+func (r Repository) UpdateVersionComponentRuntime(ctx context.Context, projectId string, component model.VersionComponent) error {
+	return r.updateVersionComponentConfig(ctx, projectId, component, deleteVersionComponentRuntimeConfig, insertVersionComponentRuntimeConfig)
 }
 
-func (r Repository) UpdateVersionComponentEndpoints(ctx context.Context, component model.VersionComponent) error {
-	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentEndpointsConfig, insertVersionComponentEndpointsConfig)
+func (r Repository) UpdateVersionComponentEndpoints(ctx context.Context, projectId string, component model.VersionComponent) error {
+	return r.updateVersionComponentConfig(ctx, projectId, component, deleteVersionComponentEndpointsConfig, insertVersionComponentEndpointsConfig)
 }
 
-func (r Repository) UpdateVersionComponentEnv(ctx context.Context, component model.VersionComponent) error {
-	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentEnvConfig, insertVersionComponentEnvConfig)
+func (r Repository) UpdateVersionComponentEnv(ctx context.Context, projectId string, component model.VersionComponent) error {
+	return r.updateVersionComponentConfig(ctx, projectId, component, deleteVersionComponentEnvConfig, insertVersionComponentEnvConfig)
 }
 
-func (r Repository) UpdateVersionComponentMounts(ctx context.Context, component model.VersionComponent) error {
-	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentMountsConfig, insertVersionComponentMountsConfig)
+func (r Repository) UpdateVersionComponentMounts(ctx context.Context, projectId string, component model.VersionComponent) error {
+	return r.updateVersionComponentConfig(ctx, projectId, component, deleteVersionComponentMountsConfig, insertVersionComponentMountsConfig)
 }
 
-func (r Repository) UpdateVersionComponentDependencies(ctx context.Context, component model.VersionComponent) error {
-	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentDependenciesConfig, insertVersionComponentDependenciesConfig)
+func (r Repository) UpdateVersionComponentDependencies(ctx context.Context, projectId string, component model.VersionComponent) error {
+	return r.updateVersionComponentConfig(ctx, projectId, component, deleteVersionComponentDependenciesConfig, insertVersionComponentDependenciesConfig)
 }
 
-func (r Repository) UpdateVersionComponentAdvanced(ctx context.Context, component model.VersionComponent) error {
-	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentAdvancedConfig, insertVersionComponentAdvancedConfig)
+func (r Repository) UpdateVersionComponentAdvanced(ctx context.Context, projectId string, component model.VersionComponent) error {
+	return r.updateVersionComponentConfig(ctx, projectId, component, deleteVersionComponentAdvancedConfig, insertVersionComponentAdvancedConfig)
 }
 
-func (r Repository) UpdateVersionComponentDevices(ctx context.Context, component model.VersionComponent) error {
-	return r.updateVersionComponentConfig(ctx, component, deleteVersionComponentDevicesConfig, insertVersionComponentDevicesConfig)
+func (r Repository) UpdateVersionComponentDevices(ctx context.Context, projectId string, component model.VersionComponent) error {
+	return r.updateVersionComponentConfig(ctx, projectId, component, deleteVersionComponentDevicesConfig, insertVersionComponentDevicesConfig)
 }
 
-func (r Repository) updateVersionComponentConfig(ctx context.Context, component model.VersionComponent, deleteConfig func(context.Context, *applicationsqlc.Queries, string) error, insertConfig func(context.Context, *applicationsqlc.Queries, model.VersionComponent) error) error {
+func (r Repository) updateVersionComponentConfig(ctx context.Context, projectId string, component model.VersionComponent, deleteConfig func(context.Context, *applicationsqlc.Queries, string) error, insertConfig func(context.Context, *applicationsqlc.Queries, model.VersionComponent) error) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		q := r.q(txCtx)
-		if err := q.TouchVersionComponent(txCtx, applicationsqlc.TouchVersionComponentParams{UpdatedAt: time.Now().UTC(), ID: component.Id}); err != nil {
+		if err := q.TouchVersionComponent(txCtx, applicationsqlc.TouchVersionComponentParams{UpdatedAt: time.Now().UTC(), Id: component.Id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("touch version component %s: %w", component.Id, err)
 		}
 		if err := deleteConfig(txCtx, q, component.Id); err != nil {
@@ -479,26 +484,26 @@ func (r Repository) updateVersionComponentConfig(ctx context.Context, component 
 		if err := insertConfig(txCtx, q, component); err != nil {
 			return err
 		}
-		return r.updateComponentSummary(txCtx, q, component.VersionId)
+		return r.updateComponentSummary(txCtx, q, projectId, component.VersionId)
 	})
 }
 
-func (r Repository) DeleteVersionComponent(ctx context.Context, component model.VersionComponent) error {
+func (r Repository) DeleteVersionComponent(ctx context.Context, projectId string, component model.VersionComponent) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
 		q := r.q(txCtx)
-		if err := q.DeleteVersionComponent(txCtx, component.Id); err != nil {
+		if err := q.DeleteVersionComponent(txCtx, applicationsqlc.DeleteVersionComponentParams{Id: component.Id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete version component %s: %w", component.Id, err)
 		}
-		return r.updateComponentSummary(txCtx, q, component.VersionId)
+		return r.updateComponentSummary(txCtx, q, projectId, component.VersionId)
 	})
 }
 
-func (r Repository) CreateVersionWithVersionComponents(ctx context.Context, version model.Version, components []model.VersionComponent) error {
+func (r Repository) CreateVersionWithVersionComponents(ctx context.Context, projectId string, version model.Version, components []model.VersionComponent) error {
 	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		if err := r.CreateVersion(txCtx, version); err != nil {
+		if err := r.CreateVersion(txCtx, projectId, version); err != nil {
 			return err
 		}
-		if err := r.replaceVersionComponents(txCtx, version.Id, components); err != nil {
+		if err := r.replaceVersionComponents(txCtx, projectId, version.Id, components); err != nil {
 			return err
 		}
 		return nil
@@ -519,11 +524,11 @@ func appFrom(id string, projectId sql.NullString, name, code, kind string, creat
 
 func versionFrom(row applicationsqlc.Version) model.Version {
 	return model.Version{
-		Id:                   row.ID,
-		ApplicationId:        row.ApplicationID,
+		Id:                   row.Id,
+		ApplicationId:        row.ApplicationId,
 		Label:                row.Label,
 		Status:               row.Status,
-		CreatedFromVersionId: dbmodel.StringPtr(row.CreatedFromVersionID),
+		CreatedFromVersionId: dbmodel.StringPtr(row.CreatedFromVersionId),
 		Note:                 dbmodel.StringPtr(row.Note),
 		ComponentSummary:     row.ComponentSummary,
 		CreatedAt:            row.CreatedAt,
@@ -658,17 +663,17 @@ func insertVersionComponent(ctx context.Context, q *applicationsqlc.Queries, com
 	if updatedAt.IsZero() {
 		updatedAt = fallback
 	}
-	artifactID := dbmodel.NullString(component.ArtifactId)
+	artifactId := dbmodel.NullString(component.ArtifactId)
 	artifactName, artifactImageRef, artifactLocalImageSha256, artifactSourceCommitSha := sql.NullString{}, sql.NullString{}, sql.NullString{}, sql.NullString{}
 	if artifact := component.Artifact; artifact != nil {
-		artifactID = sql.NullString{String: artifact.ArtifactId, Valid: artifact.ArtifactId != ""}
+		artifactId = sql.NullString{String: artifact.ArtifactId, Valid: artifact.ArtifactId != ""}
 		artifactName = sql.NullString{String: artifact.ArtifactName, Valid: artifact.ArtifactName != ""}
 		artifactImageRef = sql.NullString{String: artifact.ImageRef, Valid: artifact.ImageRef != ""}
 		artifactLocalImageSha256 = sql.NullString{String: artifact.LocalImageSha256, Valid: artifact.LocalImageSha256 != ""}
 		artifactSourceCommitSha = sql.NullString{String: artifact.SourceCommitSha, Valid: artifact.SourceCommitSha != ""}
 	}
 	if err := q.InsertVersionComponent(ctx, applicationsqlc.InsertVersionComponentParams{
-		ID: component.Id, VersionID: component.VersionId, Name: component.Name, Image: component.Image, ArtifactID: artifactID,
+		Id: component.Id, VersionId: component.VersionId, Name: component.Name, Image: component.Image, ArtifactId: artifactId,
 		ArtifactName: artifactName, ArtifactImageRef: artifactImageRef, ArtifactLocalImageSha256: artifactLocalImageSha256, ArtifactSourceCommitSha: artifactSourceCommitSha, EntrypointJson: entrypointJSON, CommandJson: commandJSON,
 		PullPolicy: component.PullPolicy, RestartPolicy: dbmodel.NullString(component.RestartPolicy),
 		CreatedAt: createdAt, UpdatedAt: updatedAt,
@@ -695,7 +700,7 @@ func insertVersionComponentConfig(ctx context.Context, q *applicationsqlc.Querie
 func insertVersionComponentRuntimeConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
 	if component.Healthcheck != nil {
 		if err := q.InsertVersionComponentHealthcheck(ctx, applicationsqlc.InsertVersionComponentHealthcheckParams{
-			ComponentID: component.Id, TestMode: optionalText(component.Healthcheck.TestMode), Test: component.Healthcheck.Test, Interval: dbmodel.NullString(component.Healthcheck.Interval),
+			ComponentId: component.Id, TestMode: optionalText(component.Healthcheck.TestMode), Test: component.Healthcheck.Test, Interval: dbmodel.NullString(component.Healthcheck.Interval),
 			Timeout: dbmodel.NullString(component.Healthcheck.Timeout), Retries: dbmodel.NullInt64FromIntPtr(component.Healthcheck.Retries),
 			StartPeriod: dbmodel.NullString(component.Healthcheck.StartPeriod), StartInterval: dbmodel.NullString(component.Healthcheck.StartInterval),
 			Disabled: dbmodel.BoolInt(component.Healthcheck.Disabled),
@@ -722,7 +727,7 @@ func insertVersionComponentConnectivityConfig(ctx context.Context, q *applicatio
 
 func insertVersionComponentEnvConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
 	for position, item := range component.Env {
-		if err := q.InsertVersionComponentEnv(ctx, applicationsqlc.InsertVersionComponentEnvParams{ComponentID: component.Id, EnvKey: item.Key, Value: item.Value, Position: int64(position)}); err != nil {
+		if err := q.InsertVersionComponentEnv(ctx, applicationsqlc.InsertVersionComponentEnvParams{ComponentId: component.Id, EnvKey: item.Key, Value: item.Value, Position: int64(position)}); err != nil {
 			return fmt.Errorf("insert component env: %w", err)
 		}
 	}
@@ -731,7 +736,7 @@ func insertVersionComponentEnvConfig(ctx context.Context, q *applicationsqlc.Que
 
 func insertVersionComponentEndpointsConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
 	for position, item := range component.Endpoints {
-		if err := q.InsertVersionComponentEndpoint(ctx, applicationsqlc.InsertVersionComponentEndpointParams{ComponentID: component.Id, Protocol: item.Protocol, ContainerPort: int64(item.ContainerPort), Mode: item.Mode, BindAddress: dbmodel.NullString(item.BindAddress), ListenPort: dbmodel.NullInt64FromIntPtr(item.ListenPort), Entrypoint: dbmodel.NullString(item.Entrypoint), PathPrefix: dbmodel.NullString(item.PathPrefix), Position: int64(position)}); err != nil {
+		if err := q.InsertVersionComponentEndpoint(ctx, applicationsqlc.InsertVersionComponentEndpointParams{ComponentId: component.Id, Protocol: item.Protocol, ContainerPort: int64(item.ContainerPort), Mode: item.Mode, BindAddress: dbmodel.NullString(item.BindAddress), ListenPort: dbmodel.NullInt64FromIntPtr(item.ListenPort), Entrypoint: dbmodel.NullString(item.Entrypoint), PathPrefix: dbmodel.NullString(item.PathPrefix), Position: int64(position)}); err != nil {
 			return fmt.Errorf("insert component endpoint: %w", err)
 		}
 	}
@@ -741,7 +746,7 @@ func insertVersionComponentEndpointsConfig(ctx context.Context, q *applicationsq
 func insertVersionComponentMountsConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
 	for position, item := range component.Mounts {
 		if err := q.InsertVersionComponentMount(ctx, applicationsqlc.InsertVersionComponentMountParams{
-			ComponentID: component.Id, SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: dbmodel.BoolInt(item.ReadOnly),
+			ComponentId: component.Id, SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: dbmodel.BoolInt(item.ReadOnly),
 			SourceIsHostPath: dbmodel.BoolInt(item.SourceIsHostPath), Content: optionalText(item.Content),
 			Mode: item.Mode, IgnoreIfExists: dbmodel.BoolInt(item.IgnoreIfExists), Position: int64(position),
 		}); err != nil {
@@ -753,7 +758,7 @@ func insertVersionComponentMountsConfig(ctx context.Context, q *applicationsqlc.
 
 func insertVersionComponentDependenciesConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
 	for position, item := range component.Dependencies {
-		if err := q.InsertVersionComponentDependency(ctx, applicationsqlc.InsertVersionComponentDependencyParams{ComponentID: component.Id, DependsOnName: item.Name, Condition: item.Condition, Position: int64(position)}); err != nil {
+		if err := q.InsertVersionComponentDependency(ctx, applicationsqlc.InsertVersionComponentDependencyParams{ComponentId: component.Id, DependsOnName: item.Name, Condition: item.Condition, Position: int64(position)}); err != nil {
 			return fmt.Errorf("insert component dependency: %w", err)
 		}
 	}
@@ -763,19 +768,19 @@ func insertVersionComponentDependenciesConfig(ctx context.Context, q *applicatio
 func insertVersionComponentAdvancedConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
 	if component.Resources != nil {
 		if err := q.InsertVersionComponentResource(ctx, applicationsqlc.InsertVersionComponentResourceParams{
-			ComponentID: component.Id, LimitCpus: dbmodel.NullString(component.Resources.LimitCPUs), LimitMemory: dbmodel.NullString(component.Resources.LimitMemory),
+			ComponentId: component.Id, LimitCpus: dbmodel.NullString(component.Resources.LimitCPUs), LimitMemory: dbmodel.NullString(component.Resources.LimitMemory),
 			ReservationCpus: dbmodel.NullString(component.Resources.ReservationCPUs), ReservationMemory: dbmodel.NullString(component.Resources.ReservationMemory),
 		}); err != nil {
 			return fmt.Errorf("insert component resources: %w", err)
 		}
 	}
 	for position, item := range component.Tmpfs {
-		if err := q.InsertVersionComponentTmpfs(ctx, applicationsqlc.InsertVersionComponentTmpfsParams{ComponentID: component.Id, Target: item.Target, SizeBytes: item.SizeBytes, Mode: item.Mode, Position: int64(position)}); err != nil {
+		if err := q.InsertVersionComponentTmpfs(ctx, applicationsqlc.InsertVersionComponentTmpfsParams{ComponentId: component.Id, Target: item.Target, SizeBytes: item.SizeBytes, Mode: item.Mode, Position: int64(position)}); err != nil {
 			return fmt.Errorf("insert component tmpfs: %w", err)
 		}
 	}
 	for position, item := range component.Ulimits {
-		if err := q.InsertVersionComponentUlimit(ctx, applicationsqlc.InsertVersionComponentUlimitParams{ComponentID: component.Id, Name: item.Name, Soft: item.Soft, Hard: item.Hard, Position: int64(position)}); err != nil {
+		if err := q.InsertVersionComponentUlimit(ctx, applicationsqlc.InsertVersionComponentUlimitParams{ComponentId: component.Id, Name: item.Name, Soft: item.Soft, Hard: item.Hard, Position: int64(position)}); err != nil {
 			return fmt.Errorf("insert component ulimit: %w", err)
 		}
 	}
@@ -789,7 +794,7 @@ func insertVersionComponentDevicesConfig(ctx context.Context, q *applicationsqlc
 			return fmt.Errorf("encode component device capabilities: %w", err)
 		}
 		if err := q.InsertVersionComponentDevice(ctx, applicationsqlc.InsertVersionComponentDeviceParams{
-			ComponentID: component.Id, Driver: item.Driver, DeviceCount: item.Count,
+			ComponentId: component.Id, Driver: item.Driver, DeviceCount: item.Count,
 			CapabilitiesJson: string(capabilitiesJSON), Position: int64(position),
 		}); err != nil {
 			return fmt.Errorf("insert component device: %w", err)
@@ -863,8 +868,8 @@ func deleteVersionComponentConfigRows(ctx context.Context, componentId string, d
 	return nil
 }
 
-func (r Repository) updateComponentSummary(ctx context.Context, q *applicationsqlc.Queries, versionId string) error {
-	rows, err := q.VersionComponentsByVersion(ctx, versionId)
+func (r Repository) updateComponentSummary(ctx context.Context, q *applicationsqlc.Queries, projectId string, versionId string) error {
+	rows, err := q.VersionComponentsByVersion(ctx, applicationsqlc.VersionComponentsByVersionParams{VersionId: versionId, ProjectId: projectScopeId(projectId)})
 	if err != nil {
 		return fmt.Errorf("list version components for summary %s: %w", versionId, err)
 	}
@@ -873,7 +878,7 @@ func (r Repository) updateComponentSummary(ctx context.Context, q *applicationsq
 		components = append(components, model.VersionComponent{Name: row.Name, Image: row.Image})
 	}
 	if err := q.UpdateVersionComponentSummary(ctx, applicationsqlc.UpdateVersionComponentSummaryParams{
-		ComponentSummary: model.VersionComponentSummary(components), UpdatedAt: time.Now().UTC(), ID: versionId,
+		ComponentSummary: model.VersionComponentSummary(components), UpdatedAt: time.Now().UTC(), Id: versionId, ProjectId: projectScopeId(projectId),
 	}); err != nil {
 		return fmt.Errorf("update version component summary %s: %w", versionId, err)
 	}

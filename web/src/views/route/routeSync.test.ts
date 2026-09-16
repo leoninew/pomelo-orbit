@@ -121,6 +121,7 @@ describe('Route detail synchronization', () => {
     await flushRender();
 
     expect(routeApi.update).toHaveBeenCalledWith(
+      'project-1',
       'route-1',
       expect.objectContaining({
         name: 'api-route-edited',
@@ -136,10 +137,7 @@ describe('Route detail synchronization', () => {
     await vi.waitFor(() => expect(syncButton?.disabled).toBe(false));
     syncButton?.click();
     await vi.waitFor(() =>
-      expect(routeApi.previewSync).toHaveBeenCalledWith(
-        { changes: [] },
-        { project_id: 'project-1' }
-      )
+      expect(routeApi.previewSync).toHaveBeenCalledWith('project-1', { changes: [] })
     );
 
     const syncConfirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
@@ -149,14 +147,11 @@ describe('Route detail synchronization', () => {
     await vi.waitFor(() => expect(syncConfirmButton?.disabled).toBe(false));
     syncConfirmButton?.click();
     await vi.waitFor(() =>
-      expect(routeApi.confirmSync).toHaveBeenCalledWith(
-        {
-          changes: [],
-          business_hash: 'business-hash',
-          traefik_hash: 'traefik-hash',
-        },
-        { project_id: 'project-1' }
-      )
+      expect(routeApi.confirmSync).toHaveBeenCalledWith('project-1', {
+        changes: [],
+        business_hash: 'business-hash',
+        traefik_hash: 'traefik-hash',
+      })
     );
   });
 });

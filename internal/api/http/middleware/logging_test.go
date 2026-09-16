@@ -69,7 +69,7 @@ func TestLogRequestIncludesMetadata(t *testing.T) {
 	assertLogValue(t, completed, "response_body", `{"ok":true}`)
 }
 
-func TestRequestIdPreservesIncomingValueAndGeneratesULId(t *testing.T) {
+func TestRequestIdPreservesIncomingValueAndGeneratesULID(t *testing.T) {
 	cases := []struct {
 		name      string
 		requestId string
@@ -83,9 +83,9 @@ func TestRequestIdPreservesIncomingValueAndGeneratesULId(t *testing.T) {
 			gin.SetMode(gin.TestMode)
 			router := gin.New()
 			router.Use(RequestId())
-			var contextRequestID string
+			var contextRequestId string
 			router.GET("/", func(c *gin.Context) {
-				contextRequestID = requestid.FromContext(c.Request.Context())
+				contextRequestId = requestid.FromContext(c.Request.Context())
 				transport.WriteError(c, transportError())
 			})
 
@@ -103,8 +103,8 @@ func TestRequestIdPreservesIncomingValueAndGeneratesULId(t *testing.T) {
 			if response.RequestId == "" || recorder.Header().Get(requestid.HeaderName) != response.RequestId {
 				t.Fatalf("request id did not propagate: header=%q body=%q", recorder.Header().Get(requestid.HeaderName), response.RequestId)
 			}
-			if contextRequestID != response.RequestId {
-				t.Fatalf("request context id did not propagate: context=%q body=%q", contextRequestID, response.RequestId)
+			if contextRequestId != response.RequestId {
+				t.Fatalf("request context id did not propagate: context=%q body=%q", contextRequestId, response.RequestId)
 			}
 			if tc.requestId != "" && response.RequestId != tc.requestId {
 				t.Fatalf("expected incoming request id %q, got %q", tc.requestId, response.RequestId)
@@ -394,7 +394,7 @@ func TestLogRequestRedactsProjectInitializationSSHSecrets(t *testing.T) {
 	privateKey := "private-key-material"
 	passphrase := "private-key-passphrase"
 	requestBody := `{"private_key":"` + privateKey + `","private_key_passphrase":"` + passphrase + `"}`
-	entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 256}, http.MethodPost, "/api/project/p/initialization/bootstrap", "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 256}, http.MethodPost, "/api/project-initialization/bootstrap?project_id=p", "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	started, _ := assertStartedAndCompleted(t, entries)

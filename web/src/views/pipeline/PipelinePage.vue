@@ -465,13 +465,15 @@
     }
     try {
       await execute(async () => {
-        const response = await pipelineApi.list({
-          project_id: projectId,
+        const response = await pipelineApi.list(projectId, {
           kind: kind.value === 'all' ? undefined : kind.value,
           search: search.value.trim() || undefined,
           page: pagination.current,
           per_page: pagination.pageSize,
         });
+        if (projectStore.activeProjectId !== projectId) {
+          return;
+        }
         pipelines.value = response.items;
         pagination.total = response.total;
       });
@@ -486,8 +488,8 @@
       return;
     }
     const [applicationResponse, repositoryResponse] = await Promise.all([
-      applicationApi.list({ project_id: projectId, per_page: 100 }),
-      repositoryApi.list({ project_id: projectId, per_page: 100 }),
+      applicationApi.list(projectId, { per_page: 100 }),
+      repositoryApi.list(projectId, { per_page: 100 }),
     ]);
     applications.value = applicationResponse.items;
     repositories.value = repositoryResponse.items;
@@ -533,13 +535,13 @@
     editError.value = '';
     editApplications.value = [];
     if (pipeline.kind === 'application' && !pipeline.application_id) {
-      const projectId = projectStore.activeProjectId || pipeline.project_id;
+      const projectId = projectStore.activeProjectId;
       if (!projectId) {
         toast.error('请先选择项目');
         return;
       }
       try {
-        const page = await applicationApi.list({ project_id: projectId, per_page: 100 });
+        const page = await applicationApi.list(projectId, { per_page: 100 });
         editApplications.value = page.items ?? [];
       } catch (reason) {
         toast.error(reason instanceof Error ? reason.message : '加载应用列表失败');
@@ -566,9 +568,14 @@
     if (canEditBindApplication.value && editForm.applicationId) {
       payload.application_id = editForm.applicationId;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      editError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOperation(async () => {
-        const updated = await pipelineApi.update(pipeline.id, payload);
+        const updated = await pipelineApi.update(projectId, pipeline.id, payload);
         pipelines.value = pipelines.value.map((item) => (item.id === updated.id ? updated : item));
         editingPipeline.value = updated;
         editOpen.value = false;
@@ -591,15 +598,12 @@
     }
     try {
       await executeOperation(async () => {
-        const pipeline = await pipelineApi.create(
-          {
-            kind: 'template',
-            name: createForm.name.trim(),
-            description: createForm.description,
-            variable_declarations: [],
-          },
-          { project_id: projectId }
-        );
+        const pipeline = await pipelineApi.create(projectId, {
+          kind: 'template',
+          name: createForm.name.trim(),
+          description: createForm.description,
+          variable_declarations: [],
+        });
         createOpen.value = false;
         toast.success('模板已创建');
         await router.push(`/pipeline/${pipeline.id}`);
@@ -610,7 +614,12 @@
   }
 
   async function openInstantiateDialog(template: PipelineResp) {
-    const detail = await pipelineApi.get(template.id);
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error('请先选择项目');
+      return;
+    }
+    const detail = await pipelineApi.get(projectId, template.id);
     selectedTemplate.value = detail;
     Object.assign(instantiateForm, {
       name: `${detail.name}-应用流水线`,
@@ -660,8 +669,12 @@
     if (!instantiateForm.applicationId) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     try {
-      const response = await applicationApi.listVersions(instantiateForm.applicationId, {
+      const response = await applicationApi.listVersions(projectId, instantiateForm.applicationId, {
         per_page: 100,
       });
       versions.value = response.items;
@@ -701,9 +714,13 @@
       sourceVersionError.value = '应用尚无可用版本，无法选择组件。';
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     sourceVersionLoading.value = true;
     try {
-      sourceVersion.value = await applicationApi.getVersion(versionId);
+      sourceVersion.value = await applicationApi.getVersion(projectId, versionId);
     } catch (reason) {
       sourceVersionError.value = reason instanceof Error ? reason.message : '加载来源版本失败';
     } finally {
@@ -720,8 +737,12 @@
     if (!id) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     try {
-      const template = await pipelineApi.get(id);
+      const template = await pipelineApi.get(projectId, id);
       if (template.kind !== 'template') {
         throw new Error('只能从模板创建应用流水线');
       }
@@ -781,9 +802,14 @@
     ) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      instantiateError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOperation(async () => {
-        const pipeline = await pipelineApi.instantiate(template.id, {
+        const pipeline = await pipelineApi.instantiate(projectId, template.id, {
           name: instantiateForm.name.trim(),
           application_id: instantiateForm.applicationId || undefined,
           repository_id: instantiateForm.repositoryId,
@@ -813,9 +839,14 @@
 
   async function deletePipeline() {
     deleteError.value = '';
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOperation(async () => {
-        await pipelineApi.delete(pendingDeleteId.value);
+        await pipelineApi.delete(projectId, pendingDeleteId.value);
         toast.success('流水线已删除');
         deleteOpen.value = false;
         if (pipelines.value.length === 1 && pagination.current > 1) {

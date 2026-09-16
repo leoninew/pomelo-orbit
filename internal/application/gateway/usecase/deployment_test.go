@@ -26,14 +26,14 @@ func TestGatewayForDeploymentDoesNotRequireGatewayForInternalTCPEndpoint(t *test
 
 func TestGatewayForDeploymentFindsCarrierEvenWhenNetworkWasRequestedDisabled(t *testing.T) {
 	disabled := false
-	projectID := "project-1"
-	app := model.Application{Id: "gateway-app", ProjectId: &projectID, Kind: status.ApplicationKindStandard}
+	projectId := "project-1"
+	app := model.Application{Id: "gateway-app", ProjectId: &projectId, Kind: status.ApplicationKindStandard}
 	plan := model.EffectiveServicePlan{
 		Application: app, JoinTraefikNetwork: &disabled,
 	}
 	service := Service{config: gatewayConfigStore{cfg: model.GatewayConfig{ApplicationId: app.Id, NetworkName: "traefik"}}}
 
-	config, err := service.GatewayForDeployment(context.Background(), app, plan)
+	config, err := service.GatewayForDeployment(context.Background(), projectId, app, plan)
 	if err != nil {
 		t.Fatalf("GatewayForDeployment() error = %v", err)
 	}
@@ -46,15 +46,15 @@ type gatewayConfigStore struct {
 	cfg model.GatewayConfig
 }
 
-func (s gatewayConfigStore) GatewayConfig(_ context.Context, applicationID string) (model.GatewayConfig, error) {
-	if applicationID != s.cfg.ApplicationId {
+func (s gatewayConfigStore) GatewayConfig(_ context.Context, applicationId string) (model.GatewayConfig, error) {
+	if applicationId != s.cfg.ApplicationId {
 		return model.GatewayConfig{}, repository.ErrNotFound
 	}
 	return s.cfg, nil
 }
 
-func (s gatewayConfigStore) GatewayConfigByProject(_ context.Context, projectID string) (model.GatewayConfig, error) {
-	if projectID == "" {
+func (s gatewayConfigStore) GatewayConfigByProject(_ context.Context, projectId string) (model.GatewayConfig, error) {
+	if projectId == "" {
 		return model.GatewayConfig{}, repository.ErrNotFound
 	}
 	return s.cfg, nil
@@ -85,7 +85,7 @@ func TestGatewayForDeploymentSkipsGatewayConfigWhenTraefikNetworkDisabled(t *tes
 		}},
 	}
 
-	gateway, err := (Service{}).GatewayForDeployment(context.Background(), plan.Application, plan)
+	gateway, err := (Service{}).GatewayForDeployment(context.Background(), "project-1", plan.Application, plan)
 	if err != nil {
 		t.Fatalf("GatewayForDeployment() error = %v", err)
 	}

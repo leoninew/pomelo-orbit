@@ -50,17 +50,20 @@ type DeployOptionsJSON struct {
 }
 
 type DeployDispatchInput struct {
+	ProjectId     string
 	ApplicationId string
 	DeploymentId  string
 	ForceRecreate bool
 }
 
 type RestartDispatchInput struct {
+	ProjectId     string
 	ApplicationId string
 	DeploymentId  string
 }
 
 type StopDispatchInput struct {
+	ProjectId     string
 	ApplicationId string
 	DeploymentId  string
 	RemoveVolumes bool

@@ -274,11 +274,16 @@
       return;
     }
     const requestId = ++historySelectionRequest;
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     historyLoading.value = true;
     try {
-      const detail = await dialogueApi.getConversation(conversationId);
+      const detail = await dialogueApi.getConversation(projectId, conversationId);
       if (
         requestId !== historySelectionRequest ||
+        projectId !== projectStore.activeProjectId ||
         (loadRequestId !== undefined && loadRequestId !== historyRequest)
       ) {
         return;
@@ -314,13 +319,14 @@
 
   async function deleteConversation() {
     const conversation = conversationToDelete.value;
-    if (!conversation || deletingConversation.value) {
+    const projectId = projectStore.activeProjectId;
+    if (!conversation || !projectId || deletingConversation.value) {
       return;
     }
     deletingConversation.value = true;
     ++historySelectionRequest;
     try {
-      await dialogueApi.deleteConversation(conversation.id);
+      await dialogueApi.deleteConversation(projectId, conversation.id);
       conversations.value = conversations.value.filter((item) => item.id !== conversation.id);
       deleteDialogOpen.value = false;
       conversationToDelete.value = undefined;
@@ -362,8 +368,8 @@
     try {
       let isComplete = false;
       await dialogueApi.completeTurnStream(
+        projectId,
         {
-          project_id: projectId,
           conversation_id: conversationId,
           messages: messages.value
             .filter((message) => !message.is_error)

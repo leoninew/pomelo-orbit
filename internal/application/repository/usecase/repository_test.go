@@ -11,9 +11,9 @@ import (
 )
 
 func TestDeleteRepositoryRejectsRunningPipelinesWithValidation(t *testing.T) {
-	projectID := "project-1"
+	projectId := "project-1"
 	repositoryStore := &repositoryDeletionStore{
-		item:    model.Repository{Id: "repository-1", ProjectId: &projectID},
+		item:    model.Repository{Id: "repository-1", ProjectId: &projectId},
 		running: true,
 	}
 	service := Service{store: stores{
@@ -21,7 +21,7 @@ func TestDeleteRepositoryRejectsRunningPipelinesWithValidation(t *testing.T) {
 		repository: repositoryStore,
 	}}
 
-	err := service.DeleteRepository(context.Background(), "user-1", "repository-1")
+	err := service.DeleteRepository(context.Background(), "user-1", projectId, "repository-1")
 	if err == nil {
 		t.Fatal("expected validation error")
 	}
@@ -55,15 +55,15 @@ type repositoryDeletionStore struct {
 	deleted bool
 }
 
-func (s *repositoryDeletionStore) Repository(context.Context, string) (model.Repository, error) {
+func (s *repositoryDeletionStore) Repository(context.Context, string, string) (model.Repository, error) {
 	return s.item, nil
 }
 
-func (s *repositoryDeletionStore) RepositoryHasRunningPipelines(context.Context, string) (bool, error) {
+func (s *repositoryDeletionStore) RepositoryHasRunningPipelines(context.Context, string, string) (bool, error) {
 	return s.running, nil
 }
 
-func (s *repositoryDeletionStore) DeleteRepository(context.Context, string) error {
+func (s *repositoryDeletionStore) DeleteRepository(context.Context, string, string) error {
 	s.deleted = true
 	return nil
 }

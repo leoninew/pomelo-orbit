@@ -23,10 +23,3 @@ func QueryInt(value string, fallback int) int {
 	}
 	return parsed
 }
-
-func QueryProjectId(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
-}

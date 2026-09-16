@@ -25,7 +25,7 @@ type workspaceFake struct {
 
 type workspaceRemovedLog struct {
 	serviceCode  string
-	deploymentID string
+	deploymentId string
 }
 
 func testWorkspace(dataRoot string) *workspaceFake {
@@ -76,8 +76,8 @@ func (w *workspaceFake) Read(string, string, int) ([]byte, int, error) {
 	return nil, 0, nil
 }
 
-func (w *workspaceFake) Remove(serviceCode string, deploymentID string) error {
-	w.removedLog = workspaceRemovedLog{serviceCode: serviceCode, deploymentID: deploymentID}
+func (w *workspaceFake) Remove(serviceCode string, deploymentId string) error {
+	w.removedLog = workspaceRemovedLog{serviceCode: serviceCode, deploymentId: deploymentId}
 	return w.removeLogErr
 }
 
@@ -100,11 +100,11 @@ func (r staticTargetResolver) ResolveProjectTarget(context.Context, string) (env
 	return r.target, r.err
 }
 
-func testSSHTarget(projectID string) environmentport.Target {
+func testSSHTarget(projectId string) environmentport.Target {
 	revision := int64(1)
 	status := "succeeded"
 	return environmentport.Target{Environment: model.Environment{
-		Id: "environment-1", ProjectId: projectID, State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: projectId, State: model.EnvironmentStateActive,
 		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: revision,
 		WorkspaceRoot:     "/srv/orbit",
 		LastProbeRevision: &revision, LastProbeStatus: &status,

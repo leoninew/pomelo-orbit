@@ -30,11 +30,13 @@ func New(project repository.ProjectReader, application repository.ApplicationSto
 	return Service{store: store}
 }
 
-func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
-	if projectId != nil {
-		if err := s.ensureProjectMembership(ctx, *projectId, userId); err != nil {
-			return repository.Page[model.Application]{}, err
-		}
+func (s Service) ListApplications(ctx context.Context, userId string, projectId string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return repository.Page[model.Application]{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return repository.Page[model.Application]{}, err
 	}
 	items, err := s.store.ListApplications(ctx, projectId, page, perPage, search, strings.TrimSpace(kind))
 	if err != nil {
@@ -66,23 +68,23 @@ func (s Service) CreateApplication(ctx context.Context, userId string, input app
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to create application", err)
 	}
 	initialVersion := model.Version{Id: idutil.NewId(), ApplicationId: app.Id, Label: code, Status: status.VersionStatusUnpublished}
-	if err := s.store.CreateVersion(ctx, initialVersion); err != nil {
-		_ = s.store.DeleteApplication(ctx, app.Id)
+	if err := s.store.CreateVersion(ctx, projectId, initialVersion); err != nil {
+		_ = s.store.DeleteApplication(ctx, projectId, app.Id)
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to create initial version", err)
 	}
-	created, err := s.store.Application(ctx, app.Id)
+	created, err := s.store.Application(ctx, projectId, app.Id)
 	if err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
 	return created, nil
 }
 
-func (s Service) ApplicationForUser(ctx context.Context, userId string, applicationId string) (model.Application, error) {
-	return s.loadApplicationForUser(ctx, userId, applicationId)
+func (s Service) ApplicationForUser(ctx context.Context, userId string, projectId string, applicationId string) (model.Application, error) {
+	return s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 }
 
-func (s Service) UpdateApplication(ctx context.Context, userId string, applicationId string, input applicationdto.ApplicationUpdateInput) (model.Application, error) {
-	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+func (s Service) UpdateApplication(ctx context.Context, userId string, projectId string, applicationId string, input applicationdto.ApplicationUpdateInput) (model.Application, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return model.Application{}, err
 	}
@@ -100,34 +102,34 @@ func (s Service) UpdateApplication(ctx context.Context, userId string, applicati
 		}
 		app.Code = code
 	}
-	if app.ProjectId != nil {
-		if err := s.ensureApplicationCodeAvailableExcept(ctx, *app.ProjectId, app.Code, app.Id); err != nil {
-			return model.Application{}, err
-		}
+	if err := s.ensureApplicationCodeAvailableExcept(ctx, projectId, app.Code, app.Id); err != nil {
+		return model.Application{}, err
 	}
-	if err := s.store.UpdateApplication(ctx, app); err != nil {
+	if err := s.store.UpdateApplication(ctx, projectId, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to update application", err)
 	}
-	updated, err := s.store.Application(ctx, app.Id)
+	updated, err := s.store.Application(ctx, projectId, app.Id)
 	if err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
 	return updated, nil
 }
 
-func (s Service) loadApplicationForUser(ctx context.Context, userId string, applicationId string) (model.Application, error) {
+func (s Service) loadApplicationForUser(ctx context.Context, userId string, projectId string, applicationId string) (model.Application, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Application{}, err
+	}
 	applicationId = strings.TrimSpace(applicationId)
-	app, err := s.store.Application(ctx, applicationId)
+	app, err := s.store.Application(ctx, projectId, applicationId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Application{}, apperror.New(apperror.KindNotFound, "Application "+applicationId+" not found")
 		}
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
-	}
-	if app.ProjectId != nil {
-		if err := s.ensureProjectMembership(ctx, *app.ProjectId, userId); err != nil {
-			return model.Application{}, err
-		}
 	}
 	return app, nil
 }
@@ -164,9 +166,9 @@ func (s Service) ensureApplicationCodeAvailable(ctx context.Context, projectId s
 	return s.ensureApplicationCodeAvailableExcept(ctx, projectId, code, "")
 }
 
-func (s Service) ensureApplicationCodeAvailableExcept(ctx context.Context, projectId, code, exceptID string) error {
+func (s Service) ensureApplicationCodeAvailableExcept(ctx context.Context, projectId, code, exceptId string) error {
 	existing, err := s.store.ApplicationByProjectAndCode(ctx, projectId, code)
-	if err == nil && existing.Id != exceptID {
+	if err == nil && existing.Id != exceptId {
 		return apperror.New(apperror.KindValidation, "Application code '"+existing.Code+"' already exists")
 	}
 	if err != nil && !errors.Is(err, repository.ErrNotFound) {

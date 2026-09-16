@@ -35,7 +35,7 @@ func (h Handler) GetArtifact(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, err := h.service.ArtifactForUser(c.Request.Context(), current.Id, c.Param("artifact_id"))
+	item, err := h.service.ArtifactForUser(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("artifact_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return

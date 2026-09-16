@@ -44,7 +44,7 @@ type Workspace interface {
 // project. Production wiring resolves this from the project's Environment;
 // tests and embedded callers may continue to provide a fixed Workspace.
 type ProjectWorkspaceResolver interface {
-	WorkspaceForProject(ctx context.Context, projectID string) (Workspace, error)
+	WorkspaceForProject(ctx context.Context, projectId string) (Workspace, error)
 }
 
 type RunOptions struct {

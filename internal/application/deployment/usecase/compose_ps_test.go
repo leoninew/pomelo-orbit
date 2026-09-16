@@ -6,8 +6,8 @@ func TestParseComposePsOutput(t *testing.T) {
 	t.Parallel()
 
 	raw := `[
-  {"ID":"abc","Name":"app-web-1","Service":"web","State":"running","Status":"Up 2 hours","Health":"healthy","Image":"nginx:latest"},
-  {"ID":"def","Name":"app-db-1","Service":"db","State":"running","Status":"Up About a minute","Health":"starting","Image":"postgres:16"}
+  {"Id":"abc","Name":"app-web-1","Service":"web","State":"running","Status":"Up 2 hours","Health":"healthy","Image":"nginx:latest"},
+  {"Id":"def","Name":"app-db-1","Service":"db","State":"running","Status":"Up About a minute","Health":"starting","Image":"postgres:16"}
 ]`
 	containers, err := parseComposePsOutput(raw)
 	if err != nil {
@@ -45,7 +45,7 @@ func TestParseComposePsOutputAllowsEmptyArray(t *testing.T) {
 func TestParseComposePsOutputAcceptsJSONRecords(t *testing.T) {
 	t.Parallel()
 
-	raw := "{\"ID\":\"abc\",\"Service\":\"web\",\"State\":\"running\",\"Status\":\"Up 1 minute (health: healthy)\",\"Health\":\"healthy\"}\n{\"ID\":\"def\",\"Service\":\"db\",\"State\":\"running\",\"Status\":\"Up 1 minute (health: starting)\",\"Health\":\"starting\"}"
+	raw := "{\"Id\":\"abc\",\"Service\":\"web\",\"State\":\"running\",\"Status\":\"Up 1 minute (health: healthy)\",\"Health\":\"healthy\"}\n{\"Id\":\"def\",\"Service\":\"db\",\"State\":\"running\",\"Status\":\"Up 1 minute (health: starting)\",\"Health\":\"starting\"}"
 	containers, err := parseComposePsOutput(raw)
 	if err != nil {
 		t.Fatalf("parse output: %v", err)

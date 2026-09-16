@@ -10,24 +10,24 @@ import (
 )
 
 type Application struct {
-	ID        string         `db:"id"`
+	Id        string         `db:"id"`
 	Name      string         `db:"name"`
 	Code      string         `db:"code"`
 	Kind      string         `db:"kind"`
 	CreatedAt time.Time      `db:"created_at"`
 	UpdatedAt time.Time      `db:"updated_at"`
-	ProjectID sql.NullString `db:"project_id"`
+	ProjectId sql.NullString `db:"project_id"`
 }
 
 type Artifact struct {
-	ID               string         `db:"id"`
-	ProjectID        sql.NullString `db:"project_id"`
-	PipelineRunID    string         `db:"pipeline_run_id"`
-	RepositoryID     string         `db:"repository_id"`
+	Id               string         `db:"id"`
+	ProjectId        sql.NullString `db:"project_id"`
+	PipelineRunId    string         `db:"pipeline_run_id"`
+	RepositoryId     string         `db:"repository_id"`
 	RepositoryName   string         `db:"repository_name"`
-	PipelineID       string         `db:"pipeline_id"`
+	PipelineId       string         `db:"pipeline_id"`
 	PipelineName     string         `db:"pipeline_name"`
-	PipelineStageID  string         `db:"pipeline_stage_id"`
+	PipelineStageId  string         `db:"pipeline_stage_id"`
 	StageName        string         `db:"stage_name"`
 	Collector        string         `db:"collector"`
 	Name             string         `db:"name"`
@@ -36,12 +36,12 @@ type Artifact struct {
 	ValueFormat      sql.NullString `db:"value_format"`
 	ImageRef         sql.NullString `db:"image_ref"`
 	LocalImageSha256 sql.NullString `db:"local_image_sha256"`
-	SourceArtifactID sql.NullString `db:"source_artifact_id"`
+	SourceArtifactId sql.NullString `db:"source_artifact_id"`
 	CreatedAt        time.Time      `db:"created_at"`
 }
 
 type BackgroundTask struct {
-	ID           string         `db:"id"`
+	Id           string         `db:"id"`
 	TaskType     string         `db:"task_type"`
 	PayloadJson  string         `db:"payload_json"`
 	Status       string         `db:"status"`
@@ -57,8 +57,8 @@ type BackgroundTask struct {
 }
 
 type Deployment struct {
-	ID                        string         `db:"id"`
-	ApplicationID             sql.NullString `db:"application_id"`
+	Id                        string         `db:"id"`
+	ApplicationId             sql.NullString `db:"application_id"`
 	ApplicationName           string         `db:"application_name"`
 	OperationType             string         `db:"operation_type"`
 	TriggerType               string         `db:"trigger_type"`
@@ -70,41 +70,41 @@ type Deployment struct {
 	LogText                   sql.NullString `db:"log_text"`
 	ErrorMessage              sql.NullString `db:"error_message"`
 	IsRollback                int64          `db:"is_rollback"`
-	RollbackFromDeploymentID  sql.NullString `db:"rollback_from_deployment_id"`
-	ProjectID                 sql.NullString `db:"project_id"`
-	VersionID                 sql.NullString `db:"version_id"`
-	ServiceID                 sql.NullString `db:"service_id"`
-	EnvironmentID             sql.NullString `db:"environment_id"`
+	RollbackFromDeploymentId  sql.NullString `db:"rollback_from_deployment_id"`
+	ProjectId                 sql.NullString `db:"project_id"`
+	VersionId                 sql.NullString `db:"version_id"`
+	ServiceId                 sql.NullString `db:"service_id"`
+	EnvironmentId             sql.NullString `db:"environment_id"`
 	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
 	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
-	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
+	SSHCredentialId           sql.NullString `db:"ssh_credential_id"`
 	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
-	GatewayApplicationID      sql.NullString `db:"gateway_application_id"`
+	GatewayApplicationId      sql.NullString `db:"gateway_application_id"`
 	OptionsJson               sql.NullString `db:"options_json"`
 	EffectivePlanHash         sql.NullString `db:"effective_plan_hash"`
 	CommandText               string         `db:"command_text"`
 }
 
 type DeploymentDialogueConversation struct {
-	ID              string    `db:"id"`
-	ProjectID       string    `db:"project_id"`
-	CreatedByUserID string    `db:"created_by_user_id"`
+	Id              string    `db:"id"`
+	ProjectId       string    `db:"project_id"`
+	CreatedByUserId string    `db:"created_by_user_id"`
 	Title           string    `db:"title"`
 	CreatedAt       time.Time `db:"created_at"`
 	UpdatedAt       time.Time `db:"updated_at"`
 }
 
 type DeploymentDialogueMessage struct {
-	ID             string    `db:"id"`
-	ConversationID string    `db:"conversation_id"`
+	Id             string    `db:"id"`
+	ConversationId string    `db:"conversation_id"`
 	Role           string    `db:"role"`
 	Content        string    `db:"content"`
 	CreatedAt      time.Time `db:"created_at"`
 }
 
 type Environment struct {
-	ID                    string         `db:"id"`
-	ProjectID             string         `db:"project_id"`
+	Id                    string         `db:"id"`
+	ProjectId             string         `db:"project_id"`
 	Code                  string         `db:"code"`
 	State                 string         `db:"state"`
 	TargetType            string         `db:"target_type"`
@@ -113,7 +113,7 @@ type Environment struct {
 	Port                  sql.NullInt64  `db:"port"`
 	Username              sql.NullString `db:"username"`
 	WorkspaceRoot         sql.NullString `db:"workspace_root"`
-	SshCredentialID       sql.NullString `db:"ssh_credential_id"`
+	SSHCredentialId       sql.NullString `db:"ssh_credential_id"`
 	SshCredentialRevision sql.NullInt64  `db:"ssh_credential_revision"`
 	HostKeyFingerprint    sql.NullString `db:"host_key_fingerprint"`
 	TargetRevision        int64          `db:"target_revision"`
@@ -121,14 +121,14 @@ type Environment struct {
 	LastProbeStatus       sql.NullString `db:"last_probe_status"`
 	LastProbeAt           sql.NullTime   `db:"last_probe_at"`
 	LastProbeDiagnostic   sql.NullString `db:"last_probe_diagnostic"`
-	GatewayApplicationID  sql.NullString `db:"gateway_application_id"`
+	GatewayApplicationId  sql.NullString `db:"gateway_application_id"`
 	CreatedAt             time.Time      `db:"created_at"`
 	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
 type EnvironmentCredential struct {
-	ID                  string    `db:"id"`
-	ProjectID           string    `db:"project_id"`
+	Id                  string    `db:"id"`
+	ProjectId           string    `db:"project_id"`
 	PublicKey           string    `db:"public_key"`
 	EncryptedPrivateKey string    `db:"encrypted_private_key"`
 	Revision            int64     `db:"revision"`
@@ -136,13 +136,13 @@ type EnvironmentCredential struct {
 }
 
 type GatewayAcmeProfileVersion struct {
-	ApplicationID string `db:"application_id"`
+	ApplicationId string `db:"application_id"`
 	Profile       string `db:"profile"`
-	VersionID     string `db:"version_id"`
+	VersionId     string `db:"version_id"`
 }
 
 type GatewayConfig struct {
-	ApplicationID           string    `db:"application_id"`
+	ApplicationId           string    `db:"application_id"`
 	RestApiUrl              string    `db:"rest_api_url"`
 	RestReadyTimeoutSeconds int64     `db:"rest_ready_timeout_seconds"`
 	BaseDomain              string    `db:"base_domain"`
@@ -156,8 +156,8 @@ type GatewayConfig struct {
 }
 
 type LoginHistory struct {
-	ID        string         `db:"id"`
-	UserID    string         `db:"user_id"`
+	Id        string         `db:"id"`
+	UserId    string         `db:"user_id"`
 	Username  string         `db:"username"`
 	IpAddress sql.NullString `db:"ip_address"`
 	UserAgent sql.NullString `db:"user_agent"`
@@ -165,9 +165,9 @@ type LoginHistory struct {
 	Success   int64          `db:"success"`
 }
 
-type McpAccessToken struct {
-	ID        string       `db:"id"`
-	UserID    string       `db:"user_id"`
+type MCPAccessToken struct {
+	Id        string       `db:"id"`
+	UserId    string       `db:"user_id"`
 	Name      string       `db:"name"`
 	TokenHash string       `db:"token_hash"`
 	ExpiresAt sql.NullTime `db:"expires_at"`
@@ -175,7 +175,7 @@ type McpAccessToken struct {
 }
 
 type Permission struct {
-	ID          string         `db:"id"`
+	Id          string         `db:"id"`
 	Code        string         `db:"code"`
 	Name        string         `db:"name"`
 	Description sql.NullString `db:"description"`
@@ -184,18 +184,18 @@ type Permission struct {
 }
 
 type Pipeline struct {
-	ID                    string         `db:"id"`
-	ProjectID             sql.NullString `db:"project_id"`
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
 	Kind                  string         `db:"kind"`
-	SourcePipelineID      sql.NullString `db:"source_pipeline_id"`
+	SourcePipelineId      sql.NullString `db:"source_pipeline_id"`
 	SourceTemplateName    sql.NullString `db:"source_template_name"`
 	SourceTemplateVersion sql.NullInt64  `db:"source_template_version"`
-	ApplicationID         sql.NullString `db:"application_id"`
+	ApplicationId         sql.NullString `db:"application_id"`
 	ApplicationName       sql.NullString `db:"application_name"`
-	RepositoryID          sql.NullString `db:"repository_id"`
+	RepositoryId          sql.NullString `db:"repository_id"`
 	RepositoryName        sql.NullString `db:"repository_name"`
 	VersionForkStrategy   sql.NullString `db:"version_fork_strategy"`
-	FixedVersionID        sql.NullString `db:"fixed_version_id"`
+	FixedVersionId        sql.NullString `db:"fixed_version_id"`
 	FixedVersionLabel     sql.NullString `db:"fixed_version_label"`
 	Name                  string         `db:"name"`
 	Description           string         `db:"description"`
@@ -206,12 +206,12 @@ type Pipeline struct {
 }
 
 type PipelineRun struct {
-	ID                string         `db:"id"`
-	ProjectID         sql.NullString `db:"project_id"`
-	RepositoryID      string         `db:"repository_id"`
+	Id                string         `db:"id"`
+	ProjectId         sql.NullString `db:"project_id"`
+	RepositoryId      string         `db:"repository_id"`
 	RepositoryName    string         `db:"repository_name"`
-	SnapshotID        string         `db:"snapshot_id"`
-	PipelineID        string         `db:"pipeline_id"`
+	SnapshotId        string         `db:"snapshot_id"`
+	PipelineId        string         `db:"pipeline_id"`
 	PipelineName      string         `db:"pipeline_name"`
 	PipelineVersion   int64          `db:"pipeline_version"`
 	Trigger           string         `db:"trigger"`
@@ -226,30 +226,30 @@ type PipelineRun struct {
 }
 
 type PipelineRunVersionBinding struct {
-	PipelineRunID         string         `db:"pipeline_run_id"`
-	ApplicationID         string         `db:"application_id"`
+	PipelineRunId         string         `db:"pipeline_run_id"`
+	ApplicationId         string         `db:"application_id"`
 	ApplicationName       string         `db:"application_name"`
-	SourceVersionID       string         `db:"source_version_id"`
+	SourceVersionId       string         `db:"source_version_id"`
 	SourceVersionLabel    string         `db:"source_version_label"`
-	GeneratedVersionID    sql.NullString `db:"generated_version_id"`
+	GeneratedVersionId    sql.NullString `db:"generated_version_id"`
 	GeneratedVersionLabel sql.NullString `db:"generated_version_label"`
 }
 
 type PipelineSnapshot struct {
-	ID                    string         `db:"id"`
-	ProjectID             sql.NullString `db:"project_id"`
-	PipelineID            string         `db:"pipeline_id"`
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
+	PipelineId            string         `db:"pipeline_id"`
 	PipelineName          string         `db:"pipeline_name"`
 	PipelineVersion       int64          `db:"pipeline_version"`
-	SourcePipelineID      string         `db:"source_pipeline_id"`
+	SourcePipelineId      string         `db:"source_pipeline_id"`
 	SourceTemplateName    string         `db:"source_template_name"`
 	SourceTemplateVersion int64          `db:"source_template_version"`
-	ApplicationID         sql.NullString `db:"application_id"`
+	ApplicationId         sql.NullString `db:"application_id"`
 	ApplicationName       sql.NullString `db:"application_name"`
-	RepositoryID          string         `db:"repository_id"`
+	RepositoryId          string         `db:"repository_id"`
 	RepositoryName        string         `db:"repository_name"`
 	VersionForkStrategy   sql.NullString `db:"version_fork_strategy"`
-	FixedVersionID        sql.NullString `db:"fixed_version_id"`
+	FixedVersionId        sql.NullString `db:"fixed_version_id"`
 	FixedVersionLabel     sql.NullString `db:"fixed_version_label"`
 	StagesSnapshot        string         `db:"stages_snapshot"`
 	VariablesSnapshot     string         `db:"variables_snapshot"`
@@ -257,16 +257,16 @@ type PipelineSnapshot struct {
 }
 
 type PipelineStage struct {
-	ID                             string         `db:"id"`
-	ProjectID                      string         `db:"project_id"`
+	Id                             string         `db:"id"`
+	ProjectId                      string         `db:"project_id"`
 	Kind                           string         `db:"kind"`
-	PipelineID                     sql.NullString `db:"pipeline_id"`
+	PipelineId                     sql.NullString `db:"pipeline_id"`
 	Name                           string         `db:"name"`
 	Image                          string         `db:"image"`
 	Script                         string         `db:"script"`
 	Description                    string         `db:"description"`
 	Version                        sql.NullInt64  `db:"version"`
-	SourceTemplateStageID          sql.NullString `db:"source_template_stage_id"`
+	SourceTemplateStageId          sql.NullString `db:"source_template_stage_id"`
 	SourceTemplateStageName        sql.NullString `db:"source_template_stage_name"`
 	SourceTemplateStageVersion     sql.NullInt64  `db:"source_template_stage_version"`
 	SourceTemplateStageDescription sql.NullString `db:"source_template_stage_description"`
@@ -278,9 +278,9 @@ type PipelineStage struct {
 }
 
 type PipelineStageReference struct {
-	ID                             string    `db:"id"`
-	PipelineID                     string    `db:"pipeline_id"`
-	SourceTemplateStageID          string    `db:"source_template_stage_id"`
+	Id                             string    `db:"id"`
+	PipelineId                     string    `db:"pipeline_id"`
+	SourceTemplateStageId          string    `db:"source_template_stage_id"`
 	SourceTemplateStageName        string    `db:"source_template_stage_name"`
 	SourceTemplateStageVersion     int64     `db:"source_template_stage_version"`
 	SourceTemplateStageDescription string    `db:"source_template_stage_description"`
@@ -296,9 +296,9 @@ type PipelineStageReference struct {
 }
 
 type PipelineStageRun struct {
-	ID            string         `db:"id"`
-	PipelineRunID string         `db:"pipeline_run_id"`
-	StageID       string         `db:"stage_id"`
+	Id            string         `db:"id"`
+	PipelineRunId string         `db:"pipeline_run_id"`
+	StageId       string         `db:"stage_id"`
 	StageName     string         `db:"stage_name"`
 	Status        string         `db:"status"`
 	StartedAt     sql.NullTime   `db:"started_at"`
@@ -308,7 +308,7 @@ type PipelineStageRun struct {
 }
 
 type Project struct {
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
 	Name      string    `db:"name"`
 	Code      string    `db:"code"`
 	CreatedAt time.Time `db:"created_at"`
@@ -317,37 +317,37 @@ type Project struct {
 }
 
 type ProjectMember struct {
-	ProjectID string    `db:"project_id"`
-	UserID    string    `db:"user_id"`
+	ProjectId string    `db:"project_id"`
+	UserId    string    `db:"user_id"`
 	CreatedAt time.Time `db:"created_at"`
 }
 
 type Repository struct {
-	ID                string         `db:"id"`
+	Id                string         `db:"id"`
 	Name              string         `db:"name"`
 	Code              string         `db:"code"`
 	RepositoryType    string         `db:"repository_type"`
 	RepositoryUrl     string         `db:"repository_url"`
-	GitCredentialID   sql.NullString `db:"git_credential_id"`
+	GitCredentialId   sql.NullString `db:"git_credential_id"`
 	VariableOverrides string         `db:"variable_overrides"`
 	DefaultBranch     string         `db:"default_branch"`
 	CreatedAt         time.Time      `db:"created_at"`
 	UpdatedAt         time.Time      `db:"updated_at"`
-	ProjectID         sql.NullString `db:"project_id"`
+	ProjectId         sql.NullString `db:"project_id"`
 }
 
 type RepositoryCredential struct {
-	ID            string         `db:"id"`
+	Id            string         `db:"id"`
 	Name          string         `db:"name"`
 	Type          string         `db:"type"`
 	EncryptedData string         `db:"encrypted_data"`
 	Revision      int64          `db:"revision"`
 	CreatedAt     time.Time      `db:"created_at"`
-	ProjectID     sql.NullString `db:"project_id"`
+	ProjectId     sql.NullString `db:"project_id"`
 }
 
 type Role struct {
-	ID          string         `db:"id"`
+	Id          string         `db:"id"`
 	Code        string         `db:"code"`
 	Name        string         `db:"name"`
 	Description sql.NullString `db:"description"`
@@ -356,20 +356,20 @@ type Role struct {
 }
 
 type RolePermission struct {
-	RoleID       string    `db:"role_id"`
-	PermissionID string    `db:"permission_id"`
+	RoleId       string    `db:"role_id"`
+	PermissionId string    `db:"permission_id"`
 	CreatedAt    time.Time `db:"created_at"`
 }
 
 type Route struct {
-	ID                    string         `db:"id"`
+	Id                    string         `db:"id"`
 	Name                  string         `db:"name"`
 	Protocol              string         `db:"protocol"`
 	Domain                string         `db:"domain"`
 	PathPrefix            string         `db:"path_prefix"`
 	TargetUrl             string         `db:"target_url"`
 	ListenPort            sql.NullInt64  `db:"listen_port"`
-	ServiceID             sql.NullString `db:"service_id"`
+	ServiceId             sql.NullString `db:"service_id"`
 	ComponentName         sql.NullString `db:"component_name"`
 	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
 	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
@@ -381,25 +381,25 @@ type Route struct {
 	AcmeChallenge         string         `db:"acme_challenge"`
 	CreatedAt             time.Time      `db:"created_at"`
 	UpdatedAt             time.Time      `db:"updated_at"`
-	ProjectID             sql.NullString `db:"project_id"`
+	ProjectId             sql.NullString `db:"project_id"`
 }
 
 type Service struct {
-	ID            string    `db:"id"`
-	ProjectID     string    `db:"project_id"`
-	ApplicationID string    `db:"application_id"`
+	Id            string    `db:"id"`
+	ProjectId     string    `db:"project_id"`
+	ApplicationId string    `db:"application_id"`
 	InstanceKey   string    `db:"instance_key"`
 	Code          string    `db:"code"`
-	VersionID     string    `db:"version_id"`
+	VersionId     string    `db:"version_id"`
 	Status        string    `db:"status"`
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
 }
 
 type ServiceComponent struct {
-	ID                       string         `db:"id"`
-	ServiceID                string         `db:"service_id"`
-	SourceVersionComponentID string         `db:"source_version_component_id"`
+	Id                       string         `db:"id"`
+	ServiceId                string         `db:"service_id"`
+	SourceVersionComponentId string         `db:"source_version_component_id"`
 	ComponentName            string         `db:"component_name"`
 	EntrypointJson           sql.NullString `db:"entrypoint_json"`
 	CommandJson              sql.NullString `db:"command_json"`
@@ -411,8 +411,8 @@ type ServiceComponent struct {
 }
 
 type ServiceComponentEndpoint struct {
-	ID                 string         `db:"id"`
-	ServiceComponentID string         `db:"service_component_id"`
+	Id                 string         `db:"id"`
+	ServiceComponentId string         `db:"service_component_id"`
 	Protocol           string         `db:"protocol"`
 	ContainerPort      int64          `db:"container_port"`
 	Mode               sql.NullString `db:"mode"`
@@ -424,15 +424,15 @@ type ServiceComponentEndpoint struct {
 }
 
 type ServiceComponentEnv struct {
-	ServiceComponentID string         `db:"service_component_id"`
+	ServiceComponentId string         `db:"service_component_id"`
 	EnvKey             string         `db:"env_key"`
 	Value              sql.NullString `db:"value"`
 	State              string         `db:"state"`
 }
 
 type ServiceComponentMount struct {
-	ID                 string         `db:"id"`
-	ServiceComponentID string         `db:"service_component_id"`
+	Id                 string         `db:"id"`
+	ServiceComponentId string         `db:"service_component_id"`
 	Target             string         `db:"target"`
 	Source             sql.NullString `db:"source"`
 	SourceIsHostPath   sql.NullInt64  `db:"source_is_host_path"`
@@ -440,7 +440,7 @@ type ServiceComponentMount struct {
 }
 
 type ServiceComponentResource struct {
-	ServiceComponentID string         `db:"service_component_id"`
+	ServiceComponentId string         `db:"service_component_id"`
 	LimitCpus          sql.NullString `db:"limit_cpus"`
 	LimitMemory        sql.NullString `db:"limit_memory"`
 	ReservationCpus    sql.NullString `db:"reservation_cpus"`
@@ -449,37 +449,37 @@ type ServiceComponentResource struct {
 }
 
 type ServiceEnv struct {
-	ServiceID string `db:"service_id"`
+	ServiceId string `db:"service_id"`
 	EnvKey    string `db:"env_key"`
 	Value     string `db:"value"`
 }
 
 type User struct {
-	ID              string       `db:"id"`
+	Id              string       `db:"id"`
 	Username        string       `db:"username"`
 	PasswordHash    string       `db:"password_hash"`
 	CreatedAt       time.Time    `db:"created_at"`
 	UpdatedAt       time.Time    `db:"updated_at"`
 	LastLoginAt     sql.NullTime `db:"last_login_at"`
 	OauthProvider   string       `db:"oauth_provider"`
-	OauthProviderID string       `db:"oauth_provider_id"`
+	OAuthProviderId string       `db:"oauth_provider_id"`
 	Email           string       `db:"email"`
 	AuthSource      string       `db:"auth_source"`
 	Status          string       `db:"status"`
 }
 
 type UserRole struct {
-	UserID    string    `db:"user_id"`
-	RoleID    string    `db:"role_id"`
+	UserId    string    `db:"user_id"`
+	RoleId    string    `db:"role_id"`
 	CreatedAt time.Time `db:"created_at"`
 }
 
 type Version struct {
-	ID                   string         `db:"id"`
-	ApplicationID        string         `db:"application_id"`
+	Id                   string         `db:"id"`
+	ApplicationId        string         `db:"application_id"`
 	Label                string         `db:"label"`
 	Status               string         `db:"status"`
-	CreatedFromVersionID sql.NullString `db:"created_from_version_id"`
+	CreatedFromVersionId sql.NullString `db:"created_from_version_id"`
 	Note                 sql.NullString `db:"note"`
 	ComponentSummary     string         `db:"component_summary"`
 	CreatedAt            time.Time      `db:"created_at"`
@@ -487,11 +487,11 @@ type Version struct {
 }
 
 type VersionComponent struct {
-	ID                       string         `db:"id"`
-	VersionID                string         `db:"version_id"`
+	Id                       string         `db:"id"`
+	VersionId                string         `db:"version_id"`
 	Name                     string         `db:"name"`
 	Image                    string         `db:"image"`
-	ArtifactID               sql.NullString `db:"artifact_id"`
+	ArtifactId               sql.NullString `db:"artifact_id"`
 	CommandJson              string         `db:"command_json"`
 	PullPolicy               string         `db:"pull_policy"`
 	RestartPolicy            sql.NullString `db:"restart_policy"`
@@ -505,14 +505,14 @@ type VersionComponent struct {
 }
 
 type VersionComponentDependency struct {
-	ComponentID   string `db:"component_id"`
+	ComponentId   string `db:"component_id"`
 	DependsOnName string `db:"depends_on_name"`
 	Condition     string `db:"condition"`
 	Position      int64  `db:"position"`
 }
 
 type VersionComponentDevice struct {
-	ComponentID      string `db:"component_id"`
+	ComponentId      string `db:"component_id"`
 	Driver           string `db:"driver"`
 	DeviceCount      string `db:"device_count"`
 	CapabilitiesJson string `db:"capabilities_json"`
@@ -520,7 +520,7 @@ type VersionComponentDevice struct {
 }
 
 type VersionComponentEndpoint struct {
-	ComponentID   string         `db:"component_id"`
+	ComponentId   string         `db:"component_id"`
 	Protocol      string         `db:"protocol"`
 	ContainerPort int64          `db:"container_port"`
 	Mode          string         `db:"mode"`
@@ -532,14 +532,14 @@ type VersionComponentEndpoint struct {
 }
 
 type VersionComponentEnv struct {
-	ComponentID string `db:"component_id"`
+	ComponentId string `db:"component_id"`
 	EnvKey      string `db:"env_key"`
 	Value       string `db:"value"`
 	Position    int64  `db:"position"`
 }
 
 type VersionComponentHealthcheck struct {
-	ComponentID   string         `db:"component_id"`
+	ComponentId   string         `db:"component_id"`
 	TestMode      sql.NullString `db:"test_mode"`
 	Test          string         `db:"test"`
 	Interval      sql.NullString `db:"interval"`
@@ -551,7 +551,7 @@ type VersionComponentHealthcheck struct {
 }
 
 type VersionComponentMount struct {
-	ComponentID      string         `db:"component_id"`
+	ComponentId      string         `db:"component_id"`
 	SourceType       string         `db:"source_type"`
 	Source           string         `db:"source"`
 	Target           string         `db:"target"`
@@ -565,7 +565,7 @@ type VersionComponentMount struct {
 }
 
 type VersionComponentResource struct {
-	ComponentID       string         `db:"component_id"`
+	ComponentId       string         `db:"component_id"`
 	LimitCpus         sql.NullString `db:"limit_cpus"`
 	LimitMemory       sql.NullString `db:"limit_memory"`
 	ReservationCpus   sql.NullString `db:"reservation_cpus"`
@@ -573,7 +573,7 @@ type VersionComponentResource struct {
 }
 
 type VersionComponentTmpf struct {
-	ComponentID string `db:"component_id"`
+	ComponentId string `db:"component_id"`
 	Target      string `db:"target"`
 	SizeBytes   int64  `db:"size_bytes"`
 	Mode        string `db:"mode"`
@@ -581,7 +581,7 @@ type VersionComponentTmpf struct {
 }
 
 type VersionComponentUlimit struct {
-	ComponentID string `db:"component_id"`
+	ComponentId string `db:"component_id"`
 	Name        string `db:"name"`
 	Soft        int64  `db:"soft"`
 	Hard        int64  `db:"hard"`

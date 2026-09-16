@@ -133,10 +133,7 @@
     previewError.value = '';
     try {
       await executePreview(async () => {
-        preview.value = await routeApi.previewSync(
-          { changes: syncChanges.value },
-          { project_id: projectId }
-        );
+        preview.value = await routeApi.previewSync(projectId, { changes: syncChanges.value });
       });
     } catch (error) {
       previewError.value = error instanceof Error ? error.message : t('route.syncPreviewFailed');
@@ -152,14 +149,11 @@
     previewError.value = '';
     try {
       await executeSync(async () => {
-        await routeApi.confirmSync(
-          {
-            changes: syncChanges.value,
-            business_hash: currentPreview.business_hash,
-            traefik_hash: currentPreview.traefik_hash,
-          },
-          { project_id: projectId }
-        );
+        await routeApi.confirmSync(projectId, {
+          changes: syncChanges.value,
+          business_hash: currentPreview.business_hash,
+          traefik_hash: currentPreview.traefik_hash,
+        });
         toast.success(t('route.syncSuccess'));
         emit('synced');
         close();

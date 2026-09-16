@@ -32,7 +32,7 @@ SET status = CASE WHEN attempts >= max_attempts THEN ? ELSE ? END,
     updated_at = ?, error_message = ?
 WHERE id = ? AND status = ?;
 
--- name: FindTaskByID :one
+-- name: FindTaskById :one
 SELECT id, task_type, payload_json, status, attempts, max_attempts, locked_by, locked_at,
        started_at, finished_at, error_message, created_at, updated_at
 FROM background_task

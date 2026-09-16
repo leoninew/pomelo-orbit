@@ -21,7 +21,11 @@ func (c *core) registerVerificationTools(server *mcp.Server) {
 		if _, err := c.deploymentInScope(ctx, input.DeploymentId); err != nil {
 			return nil, err
 		}
-		result, err := c.deps.Deployment.VerifyDeployment(ctx, c.deps.ActorUserId, input.ApplicationId, input.DeploymentId, deploymentdto.DeploymentVerificationInput{StabilityWindow: 60 * time.Second, StabilityPoll: 2 * time.Second})
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		result, err := c.deps.Deployment.VerifyDeployment(ctx, c.deps.ActorUserId, projectId, input.ApplicationId, input.DeploymentId, deploymentdto.DeploymentVerificationInput{StabilityWindow: 60 * time.Second, StabilityPoll: 2 * time.Second})
 		if err != nil {
 			return nil, err
 		}

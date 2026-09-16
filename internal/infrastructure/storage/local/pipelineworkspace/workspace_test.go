@@ -81,9 +81,9 @@ func TestWorkspaceUsesResolvedPhysicalWorkspaceRootForDockerMounts(t *testing.T)
 
 func TestWorkspaceForProjectDerivesPipelineChildFromEnvironmentRoot(t *testing.T) {
 	root := t.TempDir()
-	workspace := NewWithProjectResolver("unused", nil, func(_ context.Context, projectID string) (string, error) {
-		if projectID != "project-1" {
-			t.Fatalf("project ID = %q", projectID)
+	workspace := NewWithProjectResolver("unused", nil, func(_ context.Context, projectId string) (string, error) {
+		if projectId != "project-1" {
+			t.Fatalf("project Id = %q", projectId)
 		}
 		return root, nil
 	})

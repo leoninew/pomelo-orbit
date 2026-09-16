@@ -353,6 +353,7 @@
   import { useToast } from '@/composables/useToast';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
+  import { useProjectStore } from '@/stores/project';
   import { appStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
@@ -365,6 +366,7 @@
   const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const { loading: previewLoading, execute: executePreview } = useStatusAsync();
@@ -399,6 +401,14 @@
   const previewError = ref('');
   const previewJoinTraefikNetwork = ref(true);
   const serviceId = String(route.params.id || '');
+
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error(t('application.toast.selectProjectRequired'));
+    }
+    return projectId;
+  }
   const environmentRows = ref<EnvironmentVariableListRow[]>([]);
   const savedEnvironmentRows = ref<EnvironmentVariableListRow[]>([]);
   const environmentKeyPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -460,7 +470,7 @@
   async function load() {
     try {
       await execute(async () => {
-        setService(await serviceApi.get(serviceId));
+        setService(await serviceApi.get(selectedProjectId(), serviceId));
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('service.toast.loadDetailFailed'));
@@ -484,7 +494,9 @@
     Object.assign(basicEditErrors, { version_id: '', instance_key: '' });
     basicEditSubmitError.value = '';
     try {
-      const page = await applicationApi.listVersions(current.application_id, { per_page: 100 });
+      const page = await applicationApi.listVersions(selectedProjectId(), current.application_id, {
+        per_page: 100,
+      });
       basicEditVersions.value = page.items ?? [];
       isBasicEditDialogOpen.value = true;
     } catch (error) {
@@ -524,7 +536,7 @@
     }
     try {
       await executeOperation(async () => {
-        const updated = await serviceApi.updateBasic(serviceId, {
+        const updated = await serviceApi.updateBasic(selectedProjectId(), serviceId, {
           version_id: versionId,
           instance_key: instanceKey,
         });
@@ -541,7 +553,7 @@
   async function persistEnvironment(entries: EnvironmentVariableEntry[]) {
     try {
       await executeOperation(async () => {
-        const updated = await serviceApi.updateEnv(serviceId, {
+        const updated = await serviceApi.updateEnv(selectedProjectId(), serviceId, {
           env: entries,
         });
         setService(updated);
@@ -563,7 +575,7 @@
     previewOpen.value = true;
     try {
       await executePreview(async () => {
-        const result = await serviceApi.preview(serviceId, {
+        const result = await serviceApi.preview(selectedProjectId(), serviceId, {
           join_traefik_network: previewJoinTraefikNetwork.value,
         });
         previewContent.value = result.compose_yaml;
@@ -606,7 +618,9 @@
       return;
     }
     try {
-      const page = await applicationApi.listVersions(current.application_id, { per_page: 100 });
+      const page = await applicationApi.listVersions(selectedProjectId(), current.application_id, {
+        per_page: 100,
+      });
       deployVersions.value = page.items ?? [];
       Object.assign(deployForm, {
         version_id: current.version_id,
@@ -655,13 +669,13 @@
       await executeOperation(async () => {
         let serviceForDeploy = current;
         if (deployForm.version_id !== current.version_id) {
-          serviceForDeploy = await serviceApi.updateBasic(serviceId, {
+          serviceForDeploy = await serviceApi.updateBasic(selectedProjectId(), serviceId, {
             version_id: deployForm.version_id,
             instance_key: current.instance_key,
           });
           setService(serviceForDeploy);
         }
-        const result = await serviceApi.deploy(serviceForDeploy.id, {
+        const result = await serviceApi.deploy(selectedProjectId(), serviceForDeploy.id, {
           force_recreate: deployForm.force_recreate,
           join_traefik_network: deployForm.join_traefik_network,
         });
@@ -697,7 +711,7 @@
     stopSubmitError.value = '';
     try {
       await executeOperation(async () => {
-        const result = await applicationApi.stop(current.application_id, {
+        const result = await applicationApi.stop(selectedProjectId(), current.application_id, {
           service_id: current.id,
           remove_volumes: stopRemoveVolumes.value,
         });
@@ -731,7 +745,7 @@
   async function deleteService() {
     try {
       await executeOperation(async () => {
-        await serviceApi.remove(serviceId);
+        await serviceApi.remove(selectedProjectId(), serviceId);
         closeDeleteDialog();
         toast.success(t('service.toast.deleteSuccess'));
         await router.push('/services');

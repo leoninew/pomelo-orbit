@@ -16,34 +16,34 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string, forceRecreate bool) error {
-	begun, err := s.executionStore.BeginDeployment(ctx, deploymentId)
+func (s Service) ExecuteApplicationDeploy(ctx context.Context, projectId string, applicationId string, deploymentId string, forceRecreate bool) error {
+	begun, err := s.executionStore.BeginDeployment(ctx, projectId, deploymentId)
 	if err != nil {
 		return err
 	}
 	if !begun {
 		return nil
 	}
-	app, deployment, err := s.loadDeploymentExecution(ctx, applicationId, deploymentId)
+	app, deployment, err := s.loadDeploymentExecution(ctx, projectId, applicationId, deploymentId)
 	if err != nil {
 		return err
 	}
-	executionCtx, cancel := s.deploymentExecutionContext(ctx, deployment.Id)
+	executionCtx, cancel := s.deploymentExecutionContext(ctx, projectId, deployment.Id)
 	defer cancel()
 	if deployment.VersionId == nil || *deployment.VersionId == "" {
 		err := fmt.Errorf("deployment %s missing version_id", deployment.Id)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
+	svc, err := s.resolveServiceFromDeployment(ctx, projectId, app.Id, deployment)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	opts, err := parseDeployOptions(deployment.OptionsJSON)
 	if err != nil {
 		err = fmt.Errorf("deployment %s has invalid options: %w", deployment.Id, err)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if forceRecreate {
@@ -51,148 +51,148 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 	}
 	if opts.InstanceKey == "" {
 		err := fmt.Errorf("deployment %s missing instance_key", deployment.Id)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	target, err := s.resolveProjectTarget(ctx, app)
+	target, err := s.resolveProjectTarget(ctx, projectId)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := verifyDeploymentTargetSnapshot(deployment, opts, target); err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 
-	version, err := s.executionStore.Version(ctx, *deployment.VersionId)
+	version, err := s.executionStore.Version(ctx, projectId, *deployment.VersionId)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	svc.VersionId = version.Id
-	components, err := s.executionStore.VersionComponentsByVersion(ctx, version.Id)
+	components, err := s.executionStore.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	overlays, err := s.executionStore.ServiceComponentsByService(ctx, svc.Id)
+	overlays, err := s.executionStore.ServiceComponentsByService(ctx, projectId, svc.Id)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	env, err := s.executionStore.ServiceEnvByService(ctx, svc.Id)
+	env, err := s.executionStore.ServiceEnvByService(ctx, projectId, svc.Id)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	plan, _, err := BuildEffectiveServicePlan(app, version, svc, components, overlays, env, nil)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	setPlanJoinTraefikNetwork(&plan, opts.JoinTraefikNetwork)
-	if err := s.ensureSingleRuntime(ctx, app, opts.InstanceKey); err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+	if err := s.ensureSingleRuntime(ctx, projectId, app, opts.InstanceKey); err != nil {
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	plan.Gateway = cloneGatewayConfig(opts.GatewayConfig)
 	setPlanJoinTraefikNetwork(&plan, opts.JoinTraefikNetwork)
 	if requiresGatewayConfig(plan) && plan.Gateway == nil {
 		err := fmt.Errorf("deployment %s is missing Gateway configuration snapshot", deployment.Id)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := enrichGatewayPlan(&plan); err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := verifyDeploymentPlanHash(deployment, plan); err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := s.renderAndDeployWithOptions(executionCtx, target, plan, deployment.Id, opts.ForceRecreate); err != nil {
-		if s.deploymentCanceled(ctx, deployment.Id) {
-			s.reconcileCanceledService(ctx, target, app, svc)
+		if s.deploymentCanceled(ctx, projectId, deployment.Id) {
+			s.reconcileCanceledService(ctx, projectId, target, app, svc)
 			return nil
 		}
-		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, projectId, svc.Id, status.ServiceStatusFaulted, version.Id)
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
+	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, projectId, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
-	if err := s.publishGatewayRoutes(ctx, plan); err != nil {
-		_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusFaulted)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+	if err := s.publishGatewayRoutes(ctx, projectId, plan); err != nil {
+		_ = s.executionStore.UpdateServiceStatus(ctx, projectId, svc.Id, status.ServiceStatusFaulted)
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	return s.completeDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
+	return s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
 
-func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId string, deploymentId string) error {
-	begun, err := s.executionStore.BeginDeployment(ctx, deploymentId)
+func (s Service) ExecuteApplicationRestart(ctx context.Context, projectId string, applicationId string, deploymentId string) error {
+	begun, err := s.executionStore.BeginDeployment(ctx, projectId, deploymentId)
 	if err != nil {
 		return err
 	}
 	if !begun {
 		return nil
 	}
-	app, deployment, err := s.loadDeploymentExecution(ctx, applicationId, deploymentId)
+	app, deployment, err := s.loadDeploymentExecution(ctx, projectId, applicationId, deploymentId)
 	if err != nil {
 		return err
 	}
-	executionCtx, cancel := s.deploymentExecutionContext(ctx, deployment.Id)
+	executionCtx, cancel := s.deploymentExecutionContext(ctx, projectId, deployment.Id)
 	defer cancel()
 	restartOpts, err := parseDeployOptions(deployment.OptionsJSON)
 	if err != nil {
 		err = fmt.Errorf("deployment %s has invalid options: %w", deployment.Id, err)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	target, err := s.resolveProjectTarget(ctx, app)
+	target, err := s.resolveProjectTarget(ctx, projectId)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := verifyDeploymentTargetSnapshot(deployment, restartOpts, target); err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
+	svc, err := s.resolveServiceFromDeployment(ctx, projectId, app.Id, deployment)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if deployment.VersionId == nil || *deployment.VersionId == "" {
 		err := fmt.Errorf("deployment %s missing version_id", deployment.Id)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	version, err := s.executionStore.Version(ctx, *deployment.VersionId)
+	version, err := s.executionStore.Version(ctx, projectId, *deployment.VersionId)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	svc.VersionId = version.Id
-	components, err := s.executionStore.VersionComponentsByVersion(ctx, version.Id)
+	components, err := s.executionStore.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	overlays, err := s.executionStore.ServiceComponentsByService(ctx, svc.Id)
+	overlays, err := s.executionStore.ServiceComponentsByService(ctx, projectId, svc.Id)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	env, err := s.executionStore.ServiceEnvByService(ctx, svc.Id)
+	env, err := s.executionStore.ServiceEnvByService(ctx, projectId, svc.Id)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	plan, _, err := BuildEffectiveServicePlan(app, version, svc, components, overlays, env, nil)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	setPlanJoinTraefikNetwork(&plan, restartOpts.JoinTraefikNetwork)
@@ -200,85 +200,82 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 	setPlanJoinTraefikNetwork(&plan, restartOpts.JoinTraefikNetwork)
 	if requiresGatewayConfig(plan) && plan.Gateway == nil {
 		err := fmt.Errorf("deployment %s is missing Gateway configuration snapshot", deployment.Id)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := enrichGatewayPlan(&plan); err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := verifyDeploymentPlanHash(deployment, plan); err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := s.renderAndDeployWithOptions(executionCtx, target, plan, deployment.Id, false); err != nil {
-		if s.deploymentCanceled(ctx, deployment.Id) {
-			s.reconcileCanceledService(ctx, target, app, svc)
+		if s.deploymentCanceled(ctx, projectId, deployment.Id) {
+			s.reconcileCanceledService(ctx, projectId, target, app, svc)
 			return nil
 		}
-		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, projectId, svc.Id, status.ServiceStatusFaulted, version.Id)
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
+	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, projectId, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
-	if err := s.publishGatewayRoutes(ctx, plan); err != nil {
-		_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusFaulted)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+	if err := s.publishGatewayRoutes(ctx, projectId, plan); err != nil {
+		_ = s.executionStore.UpdateServiceStatus(ctx, projectId, svc.Id, status.ServiceStatusFaulted)
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	return s.completeDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
+	return s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
 
-func (s Service) publishGatewayRoutes(ctx context.Context, plan model.EffectiveServicePlan) error {
+func (s Service) publishGatewayRoutes(ctx context.Context, projectId string, plan model.EffectiveServicePlan) error {
 	if !isGatewayCarrier(plan) {
 		return nil
 	}
 	if s.gatewayRoutePublisher == nil {
 		return fmt.Errorf("gateway route publisher is not configured")
 	}
-	if plan.Application.ProjectId == nil || strings.TrimSpace(*plan.Application.ProjectId) == "" {
-		return fmt.Errorf("gateway deployment is missing project scope")
-	}
-	if err := s.gatewayRoutePublisher.PublishSnapshot(ctx, *plan.Application.ProjectId); err != nil {
+	if err := s.gatewayRoutePublisher.PublishSnapshot(ctx, projectId); err != nil {
 		return fmt.Errorf("publish gateway route snapshot: %w", err)
 	}
 	return nil
 }
 
-func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId string, deploymentId string, removeVolumes bool) error {
-	begun, err := s.executionStore.BeginDeployment(ctx, deploymentId)
+func (s Service) ExecuteApplicationStop(ctx context.Context, projectId string, applicationId string, deploymentId string, removeVolumes bool) error {
+	begun, err := s.executionStore.BeginDeployment(ctx, projectId, deploymentId)
 	if err != nil {
 		return err
 	}
 	if !begun {
 		return nil
 	}
-	app, deployment, err := s.loadDeploymentExecution(ctx, applicationId, deploymentId)
+	app, deployment, err := s.loadDeploymentExecution(ctx, projectId, applicationId, deploymentId)
 	if err != nil {
 		return err
 	}
-	executionCtx, cancel := s.deploymentExecutionContext(ctx, deployment.Id)
+	executionCtx, cancel := s.deploymentExecutionContext(ctx, projectId, deployment.Id)
 	defer cancel()
 	options, err := parseDeployOptions(deployment.OptionsJSON)
 	if err != nil {
 		err = fmt.Errorf("deployment %s has invalid options: %w", deployment.Id, err)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	target, err := s.resolveProjectTarget(ctx, app)
+	target, err := s.resolveProjectTarget(ctx, projectId)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := verifyDeploymentTargetSnapshot(deployment, options, target); err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
+	svc, err := s.resolveServiceFromDeployment(ctx, projectId, app.Id, deployment)
 	if err != nil {
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	serviceDir, err := s.runtime.ServiceDir(target, svc.Code)
@@ -307,27 +304,27 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 	projectName := composeProjectName(svc.Code)
 	command := stopComposeCommand(projectName, removeVolumes)
 	if err := s.runtime.Run(executionCtx, target, svc.Code, logWriter, command.Name, command.Args...); err != nil {
-		if s.deploymentCanceled(ctx, deployment.Id) {
-			s.reconcileCanceledService(ctx, target, app, svc)
+		if s.deploymentCanceled(ctx, projectId, deployment.Id) {
+			s.reconcileCanceledService(ctx, projectId, target, app, svc)
 			return nil
 		}
-		_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusFaulted)
-		_ = s.completeDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		_ = s.executionStore.UpdateServiceStatus(ctx, projectId, svc.Id, status.ServiceStatusFaulted)
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusStopped); err != nil {
+	if err := s.executionStore.UpdateServiceStatus(ctx, projectId, svc.Id, status.ServiceStatusStopped); err != nil {
 		return err
 	}
-	return s.completeDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
+	return s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
-func (s Service) deploymentCanceled(ctx context.Context, deploymentId string) bool {
-	deployment, err := s.executionStore.Deployment(ctx, deploymentId)
+func (s Service) deploymentCanceled(ctx context.Context, projectId string, deploymentId string) bool {
+	deployment, err := s.executionStore.Deployment(ctx, projectId, deploymentId)
 	return err == nil && deployment.Status == status.WorkStatusCanceled
 }
 
 // reconcileCanceledService records the actual Compose runtime after a canceled
 // command. The Deployment remains canceled regardless of observation failures.
-func (s Service) reconcileCanceledService(ctx context.Context, target environmentport.Target, app model.Application, svc model.Service) {
+func (s Service) reconcileCanceledService(ctx context.Context, projectId string, target environmentport.Target, app model.Application, svc model.Service) {
 	serviceStatus := status.ServiceStatusFaulted
 	if s.runtime != nil {
 		exists, err := s.runtime.ServiceDirExists(ctx, target, svc.Code)
@@ -344,7 +341,7 @@ func (s Service) reconcileCanceledService(ctx context.Context, target environmen
 			}
 		}
 	}
-	_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, serviceStatus)
+	_ = s.executionStore.UpdateServiceStatus(ctx, projectId, svc.Id, serviceStatus)
 }
 func observedServiceStatus(containers []deploymentdto.RuntimeContainer) string {
 	if len(containers) == 0 {
@@ -358,12 +355,12 @@ func observedServiceStatus(containers []deploymentdto.RuntimeContainer) string {
 	return status.ServiceStatusRunning
 }
 
-func (s Service) completeDeployment(ctx context.Context, deploymentId, statusValue, message string) error {
-	_, err := s.executionStore.CompleteDeployment(ctx, deploymentId, statusValue, message)
+func (s Service) completeDeployment(ctx context.Context, projectId, deploymentId, statusValue, message string) error {
+	_, err := s.executionStore.CompleteDeployment(ctx, projectId, deploymentId, statusValue, message)
 	return err
 }
 
-func (s Service) deploymentExecutionContext(ctx context.Context, deploymentId string) (context.Context, context.CancelFunc) {
+func (s Service) deploymentExecutionContext(ctx context.Context, projectId string, deploymentId string) (context.Context, context.CancelFunc) {
 	monitoredCtx, cancelMonitored := context.WithCancel(ctx)
 	done := make(chan struct{})
 	interval := s.pollInterval
@@ -380,7 +377,7 @@ func (s Service) deploymentExecutionContext(ctx context.Context, deploymentId st
 			case <-monitoredCtx.Done():
 				return
 			case <-ticker.C:
-				deployment, err := s.executionStore.Deployment(ctx, deploymentId)
+				deployment, err := s.executionStore.Deployment(ctx, projectId, deploymentId)
 				if err == nil && deployment.Status == status.WorkStatusCanceled {
 					cancelMonitored()
 					return
@@ -394,23 +391,23 @@ func (s Service) deploymentExecutionContext(ctx context.Context, deploymentId st
 	}
 }
 
-func (s Service) loadDeploymentExecution(ctx context.Context, applicationId string, deploymentId string) (model.Application, model.Deployment, error) {
-	app, err := s.executionStore.Application(ctx, applicationId)
+func (s Service) loadDeploymentExecution(ctx context.Context, projectId string, applicationId string, deploymentId string) (model.Application, model.Deployment, error) {
+	app, err := s.executionStore.Application(ctx, projectId, applicationId)
 	if err != nil {
 		return model.Application{}, model.Deployment{}, err
 	}
-	deployment, err := s.executionStore.Deployment(ctx, deploymentId)
+	deployment, err := s.executionStore.Deployment(ctx, projectId, deploymentId)
 	if err != nil {
 		return model.Application{}, model.Deployment{}, err
 	}
 	return app, deployment, nil
 }
 
-func (s Service) resolveServiceFromDeployment(ctx context.Context, applicationId string, deployment model.Deployment) (model.Service, error) {
+func (s Service) resolveServiceFromDeployment(ctx context.Context, projectId, applicationId string, deployment model.Deployment) (model.Service, error) {
 	if deployment.ServiceId == nil || *deployment.ServiceId == "" {
 		return model.Service{}, fmt.Errorf("deployment %s missing service_id", deployment.Id)
 	}
-	svc, err := s.executionStore.Service(ctx, *deployment.ServiceId)
+	svc, err := s.executionStore.Service(ctx, projectId, *deployment.ServiceId)
 	if err != nil {
 		return model.Service{}, err
 	}
@@ -530,11 +527,11 @@ func writeWorkingDirectory(w io.Writer, dir string) error {
 }
 
 // ensureSingleRuntime rejects a second active service binding for the same Application.
-func (s Service) ensureSingleRuntime(ctx context.Context, app model.Application, instanceKey string) error {
+func (s Service) ensureSingleRuntime(ctx context.Context, projectId string, app model.Application, instanceKey string) error {
 	if s.store == nil {
 		return nil
 	}
-	services, err := s.store.ListServicesByApplication(ctx, app.Id)
+	services, err := s.store.ListServicesByApplication(ctx, projectId, app.Id)
 	if err != nil {
 		return err
 	}

@@ -60,7 +60,7 @@ func (c *core) ensureActor(ctx context.Context) error {
 	}
 	actorUserId = strings.TrimSpace(actorUserId)
 	if actorUserId == "" {
-		return errors.New("MCP actor authenticator returned an empty user ID")
+		return errors.New("MCP actor authenticator returned an empty user Id")
 	}
 
 	c.authorizationMu.Lock()
@@ -133,7 +133,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if kind == "" {
 			kind = "standard"
 		}
-		apps, err := c.deps.Application.ListApplications(ctx, c.deps.ActorUserId, &projectId, 1, 10000, "", kind)
+		apps, err := c.deps.Application.ListApplications(ctx, c.deps.ActorUserId, projectId, 1, 10000, "", kind)
 		if err != nil {
 			return nil, err
 		}
@@ -150,7 +150,11 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
 			return nil, err
 		}
-		services, err := c.deps.Service.ListServicesByApplication(ctx, c.deps.ActorUserId, input.ApplicationId)
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		services, err := c.deps.Service.ListServicesByApplication(ctx, c.deps.ActorUserId, projectId, input.ApplicationId)
 		if err != nil {
 			return nil, err
 		}
@@ -217,13 +221,17 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		AcmeEmail               *string `json:"acme_email,omitempty"`
 		DNSApiToken             *string `json:"dns_api_token,omitempty"`
 	}) (map[string]any, error) {
+		projectId, _, err := c.requireReadyGateway(ctx)
+		if err != nil {
+			return nil, err
+		}
 		if _, err := c.gatewayInScope(ctx, input.GatewayId); err != nil {
 			return nil, err
 		}
 		if input.Name == nil && input.RestApiUrl == nil && input.RestReadyTimeoutSeconds == nil && input.BaseDomain == nil && input.DefaultEntrypoint == nil && input.TLSMode == nil && input.AcmeProfile == nil && input.AcmeEmail == nil && input.DNSApiToken == nil {
 			return nil, apperror.New(apperror.KindValidation, "at least one Gateway field must be supplied")
 		}
-		gateway, err := c.deps.Gateway.UpdateGateway(ctx, c.deps.ActorUserId, input.GatewayId, gatewaydto.GatewayUpdateInput{Name: input.Name, RestApiUrl: input.RestApiUrl, RestReadyTimeoutSeconds: input.RestReadyTimeoutSeconds, BaseDomain: input.BaseDomain, DefaultEntrypoint: input.DefaultEntrypoint, TLSMode: input.TLSMode, AcmeProfile: input.AcmeProfile, AcmeEmail: input.AcmeEmail, DNSApiToken: input.DNSApiToken})
+		gateway, err := c.deps.Gateway.UpdateGateway(ctx, c.deps.ActorUserId, projectId, input.GatewayId, gatewaydto.GatewayUpdateInput{Name: input.Name, RestApiUrl: input.RestApiUrl, RestReadyTimeoutSeconds: input.RestReadyTimeoutSeconds, BaseDomain: input.BaseDomain, DefaultEntrypoint: input.DefaultEntrypoint, TLSMode: input.TLSMode, AcmeProfile: input.AcmeProfile, AcmeEmail: input.AcmeEmail, DNSApiToken: input.DNSApiToken})
 		if err != nil {
 			return nil, err
 		}
@@ -250,7 +258,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if err != nil {
 			return nil, err
 		}
-		versions, err := c.deps.Application.ListVersions(ctx, c.deps.ActorUserId, app.Id)
+		versions, err := c.deps.Application.ListVersions(ctx, c.deps.ActorUserId, projectId, app.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -286,7 +294,11 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
 			return nil, err
 		}
-		if err := c.deps.Deployment.DeleteApplication(ctx, c.deps.ActorUserId, input.ApplicationId); err != nil {
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		if err := c.deps.Deployment.DeleteApplication(ctx, c.deps.ActorUserId, projectId, input.ApplicationId); err != nil {
 			return nil, err
 		}
 		return writeResult("delete_application", map[string]string{"application_id": input.ApplicationId}, "DELETE", "/api/application/"+input.ApplicationId, nil), nil
@@ -298,7 +310,11 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
 			return nil, err
 		}
-		versions, err := c.deps.Application.ListVersions(ctx, c.deps.ActorUserId, input.ApplicationId)
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		versions, err := c.deps.Application.ListVersions(ctx, c.deps.ActorUserId, projectId, input.ApplicationId)
 		if err != nil {
 			return nil, err
 		}
@@ -315,7 +331,11 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		version, err := c.deps.Application.VersionForUser(ctx, c.deps.ActorUserId, input.VersionId)
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		version, err := c.deps.Application.VersionForUser(ctx, c.deps.ActorUserId, projectId, input.VersionId)
 		if err != nil {
 			return nil, err
 		}
@@ -329,11 +349,15 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
 		componentInput, err := componentInput(input.Component)
 		if err != nil {
 			return nil, apperror.Wrap(apperror.KindValidation, "invalid component command", err)
 		}
-		component, err := c.deps.Application.CreateVersionComponent(ctx, c.deps.ActorUserId, input.VersionId, componentInput)
+		component, err := c.deps.Application.CreateVersionComponent(ctx, c.deps.ActorUserId, projectId, input.VersionId, componentInput)
 		if err != nil {
 			return nil, err
 		}
@@ -349,6 +373,10 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
 			return nil, err
 		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
 		components := make([]applicationdto.VersionComponentInput, 0, len(input.Components))
 		for _, item := range input.Components {
 			component, err := componentInput(item)
@@ -357,7 +385,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 			}
 			components = append(components, component)
 		}
-		version, err := c.deps.Application.CreateVersion(ctx, c.deps.ActorUserId, applicationdto.VersionCreateInput{ApplicationId: input.ApplicationId, Label: input.Label, Note: input.Note, Components: components})
+		version, err := c.deps.Application.CreateVersion(ctx, c.deps.ActorUserId, projectId, applicationdto.VersionCreateInput{ApplicationId: input.ApplicationId, Label: input.Label, Note: input.Note, Components: components})
 		if err != nil {
 			return nil, err
 		}
@@ -372,10 +400,14 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
 		if input.Label == nil && input.Note == nil {
 			return nil, apperror.New(apperror.KindValidation, "at least one Version field must be supplied")
 		}
-		version, err := c.deps.Application.UpdateVersion(ctx, c.deps.ActorUserId, input.VersionId, applicationdto.VersionUpdateInput{Label: input.Label, Note: input.Note})
+		version, err := c.deps.Application.UpdateVersion(ctx, c.deps.ActorUserId, projectId, input.VersionId, applicationdto.VersionUpdateInput{Label: input.Label, Note: input.Note})
 		if err != nil {
 			return nil, err
 		}
@@ -391,7 +423,11 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		version, err := c.deps.Application.PublishVersion(ctx, c.deps.ActorUserId, input.VersionId)
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		version, err := c.deps.Application.PublishVersion(ctx, c.deps.ActorUserId, projectId, input.VersionId)
 		if err != nil {
 			return nil, err
 		}
@@ -404,7 +440,11 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		if err := c.deps.Application.DeleteVersion(ctx, c.deps.ActorUserId, input.VersionId); err != nil {
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		if err := c.deps.Application.DeleteVersion(ctx, c.deps.ActorUserId, projectId, input.VersionId); err != nil {
 			return nil, err
 		}
 		return writeResult("delete_version", map[string]string{"version_id": input.VersionId}, "DELETE", "/api/version/"+input.VersionId, nil), nil
@@ -416,7 +456,11 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
 			return nil, err
 		}
-		preview, err := c.deps.Deployment.PreviewService(ctx, c.deps.ActorUserId, input.ServiceId, deploymentdto.PreviewComposeInput{})
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		preview, err := c.deps.Deployment.PreviewService(ctx, c.deps.ActorUserId, projectId, input.ServiceId, deploymentdto.PreviewComposeInput{})
 		if err != nil {
 			return nil, err
 		}
@@ -437,6 +481,6 @@ func writeResult(operation string, resourceIds map[string]string, method, path s
 	return result
 }
 
-func (c *core) updateComponentAdvanced(ctx context.Context, versionId, componentId string, resources *model.VersionComponentResources, tmpfs []model.VersionComponentTmpfs, ulimits []model.VersionComponentUlimit) (model.VersionComponent, error) {
-	return c.deps.Application.UpdateVersionComponentAdvanced(ctx, c.deps.ActorUserId, versionId, componentId, applicationdto.VersionComponentAdvancedUpdateInput{Resources: resources, Tmpfs: tmpfs, Ulimits: ulimits})
+func (c *core) updateComponentAdvanced(ctx context.Context, projectId, versionId, componentId string, resources *model.VersionComponentResources, tmpfs []model.VersionComponentTmpfs, ulimits []model.VersionComponentUlimit) (model.VersionComponent, error) {
+	return c.deps.Application.UpdateVersionComponentAdvanced(ctx, c.deps.ActorUserId, projectId, versionId, componentId, applicationdto.VersionComponentAdvancedUpdateInput{Resources: resources, Tmpfs: tmpfs, Ulimits: ulimits})
 }

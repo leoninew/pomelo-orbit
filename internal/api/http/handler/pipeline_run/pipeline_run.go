@@ -21,7 +21,7 @@ func (h Handler) TriggerPipeline(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.TriggerPipeline(c.Request.Context(), current.Id, c.Param("pipeline_id"), req.RepositoryRef)
+	detail, err := h.service.TriggerPipeline(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("pipeline_id"), req.RepositoryRef)
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -51,7 +51,7 @@ func (h Handler) GetPipelineRun(c *gin.Context) {
 	if !ok {
 		return
 	}
-	detail, err := h.service.PipelineRunForUser(c.Request.Context(), current.Id, c.Param("run_id"))
+	detail, err := h.service.PipelineRunForUser(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("run_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -64,7 +64,7 @@ func (h Handler) DeletePipelineRun(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeletePipelineRun(c.Request.Context(), current.Id, c.Param("run_id")); err != nil {
+	if err := h.service.DeletePipelineRun(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("run_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}
@@ -75,7 +75,7 @@ func (h Handler) ListPipelineRunArtifacts(c *gin.Context) {
 	if !ok {
 		return
 	}
-	items, err := h.service.ListPipelineRunArtifacts(c.Request.Context(), current.Id, c.Param("run_id"))
+	items, err := h.service.ListPipelineRunArtifacts(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("run_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -91,7 +91,7 @@ func (h Handler) GetPipelineStageLog(c *gin.Context) {
 	if !ok {
 		return
 	}
-	detail, err := h.service.PipelineStageLog(c.Request.Context(), current.Id, c.Param("run_id"), c.Param("stage_run_id"), transport.QueryInt(c.Query("offset"), 0))
+	detail, err := h.service.PipelineStageLog(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("run_id"), c.Param("stage_run_id"), transport.QueryInt(c.Query("offset"), 0))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -108,7 +108,7 @@ func (h Handler) CancelPipelineRun(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.CancelPipelineRun(c.Request.Context(), current.Id, c.Param("run_id"))
+	detail, err := h.service.CancelPipelineRun(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("run_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -126,7 +126,7 @@ func (h Handler) RetryPipelineRun(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.RetryPipelineRun(c.Request.Context(), current.Id, c.Param("run_id"))
+	detail, err := h.service.RetryPipelineRun(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("run_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return

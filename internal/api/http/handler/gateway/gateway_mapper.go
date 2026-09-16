@@ -54,9 +54,9 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 	for _, binding := range cfg.VersionBindings {
 		bindings = append(bindings, &gatewayv1.GatewayVersionBinding{Profile: binding.Profile, VersionId: binding.VersionId})
 	}
-	defaultServiceID, defaultServiceInstanceKey, defaultServiceCode, defaultServiceStatus := "", "", "", ""
+	defaultServiceId, defaultServiceInstanceKey, defaultServiceCode, defaultServiceStatus := "", "", "", ""
 	if view.DefaultService != nil {
-		defaultServiceID = view.DefaultService.Id
+		defaultServiceId = view.DefaultService.Id
 		defaultServiceInstanceKey = view.DefaultService.InstanceKey
 		defaultServiceCode = view.DefaultService.Code
 		defaultServiceStatus = view.DefaultService.Status
@@ -75,7 +75,7 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 		DefaultEntrypoint:         cfg.DefaultEntrypoint,
 		TlsMode:                   cfg.TLSMode,
 		Exposures:                 exposures,
-		DefaultServiceId:          defaultServiceID,
+		DefaultServiceId:          defaultServiceId,
 		DefaultServiceInstanceKey: defaultServiceInstanceKey,
 		DefaultServiceCode:        defaultServiceCode,
 		DefaultServiceStatus:      defaultServiceStatus,

@@ -1,10 +1,14 @@
--- name: PipelineByID :one
+-- name: PipelineById :one
 SELECT id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at
-FROM pipeline WHERE id = ?;
+FROM pipeline
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
 -- name: PipelineByName :one
 SELECT id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at
-FROM pipeline WHERE project_id = ? AND name = ?;
+FROM pipeline
+WHERE project_id = sqlc.arg(project_id)
+  AND name = sqlc.arg(name);
 
 -- name: CountPipelines :one
 SELECT COUNT(*) FROM pipeline
@@ -25,10 +29,24 @@ INSERT INTO pipeline (id, project_id, kind, source_pipeline_id, source_template_
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdatePipeline :exec
-UPDATE pipeline SET name = ?, description = ?, variable_declarations = ?, version = ?, application_id = ?, application_name = ?, version_fork_strategy = ?, fixed_version_id = ?, fixed_version_label = ?, updated_at = ? WHERE id = ?;
+UPDATE pipeline
+SET name = sqlc.arg(name),
+    description = sqlc.arg(description),
+    variable_declarations = sqlc.arg(variable_declarations),
+    version = sqlc.arg(version),
+    application_id = sqlc.arg(application_id),
+    application_name = sqlc.arg(application_name),
+    version_fork_strategy = sqlc.arg(version_fork_strategy),
+    fixed_version_id = sqlc.arg(fixed_version_id),
+    fixed_version_label = sqlc.arg(fixed_version_label),
+    updated_at = sqlc.arg(updated_at)
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
 -- name: DeletePipeline :exec
-DELETE FROM pipeline WHERE id = ?;
+DELETE FROM pipeline
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
 -- name: CountPipelineStageTemplates :one
 SELECT COUNT(*) FROM pipeline_stage
@@ -47,19 +65,25 @@ WHERE project_id = sqlc.arg(project_id)
   AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL OR name LIKE sqlc.narg(search_pattern))
 ORDER BY id DESC LIMIT ? OFFSET ?;
 
--- name: PipelineStageTemplateByID :one
+-- name: PipelineStageTemplateById :one
 SELECT id, project_id, kind, pipeline_id, name, image, script, description, version,
        source_template_stage_id, source_template_stage_name,
        source_template_stage_version, source_template_stage_description, artifacts, depends_on, sort_order,
        created_at, updated_at
-FROM pipeline_stage WHERE id = ? AND kind = 'template';
+FROM pipeline_stage
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id)
+  AND kind = 'template';
 
 -- name: PipelineStageTemplateByName :one
 SELECT id, project_id, kind, pipeline_id, name, image, script, description, version,
        source_template_stage_id, source_template_stage_name,
        source_template_stage_version, source_template_stage_description, artifacts, depends_on, sort_order,
        created_at, updated_at
-FROM pipeline_stage WHERE project_id = ? AND name = ? AND kind = 'template';
+FROM pipeline_stage
+WHERE project_id = sqlc.arg(project_id)
+  AND name = sqlc.arg(name)
+  AND kind = 'template';
 
 -- name: InsertPipelineStageTemplate :exec
 INSERT INTO pipeline_stage (id, project_id, kind, pipeline_id, name, image, script, description,
@@ -70,20 +94,46 @@ VALUES (?, ?, 'template', NULL, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, NULL, 
 
 -- name: UpdatePipelineStageTemplate :exec
 UPDATE pipeline_stage
-SET name = ?, image = ?, script = ?, description = ?, artifacts = ?, version = ?, updated_at = ?
-WHERE id = ? AND kind = 'template';
+SET name = sqlc.arg(name),
+    image = sqlc.arg(image),
+    script = sqlc.arg(script),
+    description = sqlc.arg(description),
+    artifacts = sqlc.arg(artifacts),
+    version = sqlc.arg(version),
+    updated_at = sqlc.arg(updated_at)
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id)
+  AND kind = 'template';
 
 -- name: DeletePipelineStageTemplate :exec
-DELETE FROM pipeline_stage WHERE id = ? AND kind = 'template';
+DELETE FROM pipeline_stage
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id)
+  AND kind = 'template';
 
 -- name: TemplatePipelineStageReferences :many
 SELECT id, pipeline_id, source_template_stage_id, source_template_stage_name,
        source_template_stage_version, source_template_stage_description, name, image,
         script, description, artifacts, depends_on, sort_order, created_at, updated_at
-FROM pipeline_stage_reference WHERE pipeline_id = ? ORDER BY sort_order, id;
+FROM pipeline_stage_reference
+WHERE pipeline_id = sqlc.arg(pipeline_id)
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline
+    WHERE pipeline.id = pipeline_stage_reference.pipeline_id
+      AND pipeline.project_id = sqlc.arg(project_id)
+  )
+ORDER BY sort_order, id;
 
 -- name: DeleteTemplatePipelineStageReferences :exec
-DELETE FROM pipeline_stage_reference WHERE pipeline_id = ?;
+DELETE FROM pipeline_stage_reference
+WHERE pipeline_id = sqlc.arg(pipeline_id)
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline
+    WHERE pipeline.id = pipeline_stage_reference.pipeline_id
+      AND pipeline.project_id = sqlc.arg(project_id)
+  );
 
 -- name: InsertTemplatePipelineStageReference :exec
 INSERT INTO pipeline_stage_reference (id, pipeline_id, source_template_stage_id,
@@ -97,10 +147,17 @@ SELECT id, project_id, kind, pipeline_id, name, image, script, description, vers
        source_template_stage_id, source_template_stage_name,
        source_template_stage_version, source_template_stage_description, artifacts, depends_on, sort_order,
        created_at, updated_at
-FROM pipeline_stage WHERE pipeline_id = ? AND kind = 'application' ORDER BY sort_order, id;
+FROM pipeline_stage
+WHERE pipeline_id = sqlc.arg(pipeline_id)
+  AND project_id = sqlc.arg(project_id)
+  AND kind = 'application'
+ORDER BY sort_order, id;
 
 -- name: DeleteApplicationPipelineStages :exec
-DELETE FROM pipeline_stage WHERE pipeline_id = ? AND kind = 'application';
+DELETE FROM pipeline_stage
+WHERE pipeline_id = sqlc.arg(pipeline_id)
+  AND project_id = sqlc.arg(project_id)
+  AND kind = 'application';
 
 -- name: InsertApplicationPipelineStage :exec
 INSERT INTO pipeline_stage (id, project_id, kind, pipeline_id, name, image, script, description,
@@ -109,13 +166,19 @@ INSERT INTO pipeline_stage (id, project_id, kind, pipeline_id, name, image, scri
                             artifacts, depends_on, sort_order, created_at, updated_at)
 VALUES (?, ?, 'application', ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
--- name: PipelineSnapshotByID :one
+-- name: PipelineSnapshotById :one
 SELECT id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at
-FROM pipeline_snapshot WHERE id = ?;
+FROM pipeline_snapshot
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
 -- name: LatestPipelineSnapshot :one
 SELECT id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at
-FROM pipeline_snapshot WHERE pipeline_id = ? ORDER BY pipeline_version DESC, created_at DESC LIMIT 1;
+FROM pipeline_snapshot
+WHERE pipeline_id = sqlc.arg(pipeline_id)
+  AND project_id = sqlc.arg(project_id)
+ORDER BY pipeline_version DESC, created_at DESC
+LIMIT 1;
 
 -- name: InsertPipelineSnapshot :exec
 INSERT INTO pipeline_snapshot (id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at)

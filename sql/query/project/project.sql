@@ -1,4 +1,4 @@
--- name: ProjectByID :one
+-- name: ProjectById :one
 SELECT id, name, code, is_active, created_at, updated_at
 FROM project
 WHERE id = ?;

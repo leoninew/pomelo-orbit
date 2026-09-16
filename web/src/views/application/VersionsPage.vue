@@ -109,7 +109,7 @@
     loadingApplications.value = true;
     loadError.value = '';
     try {
-      const response = await applicationApi.list({ per_page: 100, project_id: projectId });
+      const response = await applicationApi.list(projectId, { per_page: 100 });
       applications.value = response.items ?? [];
       const selected = resolveApplicationId(projectId, applications.value);
       if (selected) {

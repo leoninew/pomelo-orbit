@@ -52,7 +52,7 @@ func (h Handler) GetPipelineStageTemplate(c *gin.Context) {
 	if !ok {
 		return
 	}
-	detail, err := h.service.PipelineStageTemplateForUser(c.Request.Context(), current.Id, c.Param("stage_id"))
+	detail, err := h.service.PipelineStageTemplateForUser(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("stage_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -75,7 +75,7 @@ func (h Handler) UpdatePipelineStageTemplate(c *gin.Context) {
 		values := serviceArtifacts(req.Artifacts.Items)
 		artifacts = &values
 	}
-	detail, err := h.service.UpdatePipelineStageTemplate(c.Request.Context(), current.Id, c.Param("stage_id"), pipelinedto.PipelineStageTemplateUpdateInput{Name: req.Name, Image: req.Image, Script: req.Script, Description: req.Description, Artifacts: artifacts})
+	detail, err := h.service.UpdatePipelineStageTemplate(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("stage_id"), pipelinedto.PipelineStageTemplateUpdateInput{Name: req.Name, Image: req.Image, Script: req.Script, Description: req.Description, Artifacts: artifacts})
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -88,7 +88,7 @@ func (h Handler) DeletePipelineStageTemplate(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeletePipelineStageTemplate(c.Request.Context(), current.Id, c.Param("stage_id")); err != nil {
+	if err := h.service.DeletePipelineStageTemplate(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("stage_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}
@@ -100,7 +100,7 @@ func (h Handler) PreviewPipelineStageTemplateUpdate(c *gin.Context) {
 	if !ok {
 		return
 	}
-	detail, err := h.service.PipelineStageTemplateUpdatePreview(c.Request.Context(), current.Id, c.Param("pipeline_id"), c.Param("stage_id"))
+	detail, err := h.service.PipelineStageTemplateUpdatePreview(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("pipeline_id"), c.Param("stage_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -118,7 +118,7 @@ func (h Handler) ApplyPipelineStageTemplateUpdate(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.ApplyPipelineStageTemplateUpdate(c.Request.Context(), current.Id, c.Param("pipeline_id"), c.Param("stage_id"), pipelinedto.PipelineStageTemplateApplyUpdateInput{ExpectedSourceTemplateStageVersion: int(req.ExpectedSourceTemplateStageVersion), TargetTemplateStageVersion: int(req.TargetTemplateStageVersion)})
+	detail, err := h.service.ApplyPipelineStageTemplateUpdate(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("pipeline_id"), c.Param("stage_id"), pipelinedto.PipelineStageTemplateApplyUpdateInput{ExpectedSourceTemplateStageVersion: int(req.ExpectedSourceTemplateStageVersion), TargetTemplateStageVersion: int(req.TargetTemplateStageVersion)})
 	if err != nil {
 		transport.WriteError(c, err)
 		return

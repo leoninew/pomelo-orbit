@@ -14,7 +14,7 @@ func (h Handler) GetVersionComponent(c *gin.Context) {
 	if !ok {
 		return
 	}
-	component, err := h.service.VersionComponentForUser(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"))
+	component, err := h.service.VersionComponentForUser(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), c.Param("component_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -33,7 +33,7 @@ func (h Handler) CreateVersionComponent(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.CreateVersionComponent(c.Request.Context(), current.Id, c.Param("version_id"), versionComponentCreateInput(&req))
+	component, err := h.service.CreateVersionComponent(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), versionComponentCreateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -52,7 +52,7 @@ func (h Handler) UpdateVersionComponentBasic(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.UpdateVersionComponentBasic(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentBasicUpdateInput(&req))
+	component, err := h.service.UpdateVersionComponentBasic(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), c.Param("component_id"), versionComponentBasicUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -71,7 +71,7 @@ func (h Handler) UpdateVersionComponentRuntime(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.UpdateVersionComponentRuntime(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentRuntimeUpdateInput(&req))
+	component, err := h.service.UpdateVersionComponentRuntime(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), c.Param("component_id"), versionComponentRuntimeUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -90,7 +90,7 @@ func (h Handler) UpdateVersionComponentEndpoints(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.UpdateVersionComponentEndpoints(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentEndpointsUpdateInput(&req))
+	component, err := h.service.UpdateVersionComponentEndpoints(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), c.Param("component_id"), versionComponentEndpointsUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -109,7 +109,7 @@ func (h Handler) UpdateVersionComponentEnv(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.UpdateVersionComponentEnv(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentEnvUpdateInput(&req))
+	component, err := h.service.UpdateVersionComponentEnv(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), c.Param("component_id"), versionComponentEnvUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -128,7 +128,7 @@ func (h Handler) UpdateVersionComponentMounts(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.UpdateVersionComponentMounts(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentMountsUpdateInput(&req))
+	component, err := h.service.UpdateVersionComponentMounts(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), c.Param("component_id"), versionComponentMountsUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -147,7 +147,7 @@ func (h Handler) UpdateVersionComponentDependencies(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.UpdateVersionComponentDependencies(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentDependenciesUpdateInput(&req))
+	component, err := h.service.UpdateVersionComponentDependencies(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), c.Param("component_id"), versionComponentDependenciesUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -166,7 +166,7 @@ func (h Handler) UpdateVersionComponentDevices(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.UpdateVersionComponentDevices(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentDevicesUpdateInput(&req))
+	component, err := h.service.UpdateVersionComponentDevices(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), c.Param("component_id"), versionComponentDevicesUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -185,7 +185,7 @@ func (h Handler) UpdateVersionComponentAdvanced(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.UpdateVersionComponentAdvanced(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentAdvancedUpdateInput(&req))
+	component, err := h.service.UpdateVersionComponentAdvanced(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), c.Param("component_id"), versionComponentAdvancedUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -199,7 +199,7 @@ func (h Handler) DeleteVersionComponent(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteVersionComponent(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id")); err != nil {
+	if err := h.service.DeleteVersionComponent(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), c.Param("component_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}

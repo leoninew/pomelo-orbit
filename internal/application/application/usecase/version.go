@@ -22,18 +22,18 @@ func optionalText(value *string) *string {
 	return &text
 }
 
-func (s Service) ListVersions(ctx context.Context, userId string, applicationId string) ([]applicationdto.VersionView, error) {
-	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+func (s Service) ListVersions(ctx context.Context, userId string, projectId string, applicationId string) ([]applicationdto.VersionView, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return nil, err
 	}
-	versions, err := s.store.ListVersions(ctx, app.Id)
+	versions, err := s.store.ListVersions(ctx, projectId, app.Id)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list versions", err)
 	}
 	views := make([]applicationdto.VersionView, 0, len(versions))
 	for _, version := range versions {
-		view, err := s.versionView(ctx, version)
+		view, err := s.versionView(ctx, projectId, version)
 		if err != nil {
 			return nil, err
 		}
@@ -42,12 +42,12 @@ func (s Service) ListVersions(ctx context.Context, userId string, applicationId 
 	return views, nil
 }
 
-func (s Service) ListVersionsPage(ctx context.Context, userId string, applicationId string, page int, perPage int, search string) (repository.Page[applicationdto.VersionView], error) {
-	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+func (s Service) ListVersionsPage(ctx context.Context, userId string, projectId string, applicationId string, page int, perPage int, search string) (repository.Page[applicationdto.VersionView], error) {
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return repository.Page[applicationdto.VersionView]{}, err
 	}
-	versions, err := s.store.ListVersionsPage(ctx, app.Id, page, perPage, search)
+	versions, err := s.store.ListVersionsPage(ctx, projectId, app.Id, page, perPage, search)
 	if err != nil {
 		return repository.Page[applicationdto.VersionView]{}, apperror.Wrap(apperror.KindInternal, "Failed to list versions", err)
 	}
@@ -58,16 +58,16 @@ func (s Service) ListVersionsPage(ctx context.Context, userId string, applicatio
 	return repository.Page[applicationdto.VersionView]{Items: views, Total: versions.Total, Page: versions.Page, PerPage: versions.PerPage}, nil
 }
 
-func (s Service) VersionForUser(ctx context.Context, userId string, versionId string) (applicationdto.VersionView, error) {
-	version, err := s.loadVersionForUser(ctx, userId, versionId)
+func (s Service) VersionForUser(ctx context.Context, userId string, projectId string, versionId string) (applicationdto.VersionView, error) {
+	version, err := s.loadVersionForUser(ctx, userId, projectId, versionId)
 	if err != nil {
 		return applicationdto.VersionView{}, err
 	}
-	return s.versionView(ctx, version)
+	return s.versionView(ctx, projectId, version)
 }
 
-func (s Service) CreateVersion(ctx context.Context, userId string, input applicationdto.VersionCreateInput) (applicationdto.VersionView, error) {
-	app, err := s.loadApplicationForUser(ctx, userId, input.ApplicationId)
+func (s Service) CreateVersion(ctx context.Context, userId string, projectId string, input applicationdto.VersionCreateInput) (applicationdto.VersionView, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, input.ApplicationId)
 	if err != nil {
 		return applicationdto.VersionView{}, err
 	}
@@ -93,14 +93,14 @@ func (s Service) CreateVersion(ctx context.Context, userId string, input applica
 		components[i].Id = idutil.NewId()
 		components[i].VersionId = version.Id
 	}
-	if err := s.store.CreateVersionWithVersionComponents(ctx, version, components); err != nil {
+	if err := s.store.CreateVersionWithVersionComponents(ctx, projectId, version, components); err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to create version", err)
 	}
-	return s.VersionForUser(ctx, userId, version.Id)
+	return s.VersionForUser(ctx, userId, projectId, version.Id)
 }
 
-func (s Service) UpdateVersion(ctx context.Context, userId string, versionId string, input applicationdto.VersionUpdateInput) (applicationdto.VersionView, error) {
-	version, err := s.loadVersionForUser(ctx, userId, versionId)
+func (s Service) UpdateVersion(ctx context.Context, userId string, projectId string, versionId string, input applicationdto.VersionUpdateInput) (applicationdto.VersionView, error) {
+	version, err := s.loadVersionForUser(ctx, userId, projectId, versionId)
 	if err != nil {
 		return applicationdto.VersionView{}, err
 	}
@@ -114,18 +114,18 @@ func (s Service) UpdateVersion(ctx context.Context, userId string, versionId str
 	if input.Note != nil {
 		version.Note = optionalText(input.Note)
 	}
-	if err := s.store.UpdateVersion(ctx, version); err != nil {
+	if err := s.store.UpdateVersion(ctx, projectId, version); err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to update version", err)
 	}
-	return s.VersionForUser(ctx, userId, version.Id)
+	return s.VersionForUser(ctx, userId, projectId, version.Id)
 }
 
-func (s Service) VersionComponentForUser(ctx context.Context, userId string, versionId string, componentId string) (model.VersionComponent, error) {
-	version, err := s.loadVersionForUser(ctx, userId, versionId)
+func (s Service) VersionComponentForUser(ctx context.Context, userId string, projectId string, versionId string, componentId string) (model.VersionComponent, error) {
+	version, err := s.loadVersionForUser(ctx, userId, projectId, versionId)
 	if err != nil {
 		return model.VersionComponent{}, err
 	}
-	component, err := s.store.VersionComponent(ctx, strings.TrimSpace(componentId))
+	component, err := s.store.VersionComponent(ctx, projectId, strings.TrimSpace(componentId))
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.VersionComponent{}, apperror.New(apperror.KindNotFound, "Component "+componentId+" not found")
@@ -138,15 +138,15 @@ func (s Service) VersionComponentForUser(ctx context.Context, userId string, ver
 	return component, nil
 }
 
-func (s Service) CreateVersionComponent(ctx context.Context, userId string, versionId string, input applicationdto.VersionComponentInput) (model.VersionComponent, error) {
-	version, err := s.loadVersionForUser(ctx, userId, versionId)
+func (s Service) CreateVersionComponent(ctx context.Context, userId string, projectId string, versionId string, input applicationdto.VersionComponentInput) (model.VersionComponent, error) {
+	version, err := s.loadVersionForUser(ctx, userId, projectId, versionId)
 	if err != nil {
 		return model.VersionComponent{}, err
 	}
 	if version.Status != status.VersionStatusUnpublished {
 		return model.VersionComponent{}, apperror.New(apperror.KindValidation, "Published version components cannot be changed")
 	}
-	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
+	components, err := s.store.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
 		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
@@ -161,13 +161,13 @@ func (s Service) CreateVersionComponent(ctx context.Context, userId string, vers
 	if err := validateVersionComponents(components); err != nil {
 		return model.VersionComponent{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	if err := s.store.CreateVersionComponent(ctx, component); err != nil {
+	if err := s.store.CreateVersionComponent(ctx, projectId, component); err != nil {
 		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to create component", err)
 	}
-	return s.VersionComponentForUser(ctx, userId, version.Id, component.Id)
+	return s.VersionComponentForUser(ctx, userId, projectId, version.Id, component.Id)
 }
 
-func (s Service) UpdateVersionComponentBasic(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentBasicUpdateInput) (model.VersionComponent, error) {
+func (s Service) UpdateVersionComponentBasic(ctx context.Context, userId string, projectId string, versionId string, componentId string, input applicationdto.VersionComponentBasicUpdateInput) (model.VersionComponent, error) {
 	entrypoint, err := parseComponentCommand(input.Entrypoint)
 	if err != nil {
 		return model.VersionComponent{}, err
@@ -176,91 +176,93 @@ func (s Service) UpdateVersionComponentBasic(ctx context.Context, userId string,
 	if err != nil {
 		return model.VersionComponent{}, err
 	}
-	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+	return s.updateVersionComponentGroup(ctx, userId, projectId, versionId, componentId, func(component *model.VersionComponent) {
 		component.Name = input.Name
 		component.Image = input.Image
 		component.Entrypoint = entrypoint
 		component.Command = command
 		component.PullPolicy = input.PullPolicy
 		component.RestartPolicy = input.RestartPolicy
-	}, s.store.UpdateVersionComponentBasic)
+	}, func(ctx context.Context, projectId string, component model.VersionComponent, oldName string) error {
+		return s.store.UpdateVersionComponentBasic(ctx, projectId, component, oldName)
+	})
 }
 
-func (s Service) UpdateVersionComponentRuntime(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentRuntimeUpdateInput) (model.VersionComponent, error) {
+func (s Service) UpdateVersionComponentRuntime(ctx context.Context, userId string, projectId string, versionId string, componentId string, input applicationdto.VersionComponentRuntimeUpdateInput) (model.VersionComponent, error) {
 	healthcheck, err := componentHealthcheckFromInput(input.Healthcheck)
 	if err != nil {
 		return model.VersionComponent{}, err
 	}
-	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+	return s.updateVersionComponentGroup(ctx, userId, projectId, versionId, componentId, func(component *model.VersionComponent) {
 		component.Healthcheck = healthcheck
-	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
-		return s.store.UpdateVersionComponentRuntime(ctx, component)
+	}, func(ctx context.Context, projectId string, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentRuntime(ctx, projectId, component)
 	})
 }
 
-func (s Service) UpdateVersionComponentEndpoints(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentEndpointsUpdateInput) (model.VersionComponent, error) {
-	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+func (s Service) UpdateVersionComponentEndpoints(ctx context.Context, userId string, projectId string, versionId string, componentId string, input applicationdto.VersionComponentEndpointsUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, projectId, versionId, componentId, func(component *model.VersionComponent) {
 		component.Endpoints = append([]model.VersionComponentEndpoint(nil), input.Endpoints...)
-	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
-		return s.store.UpdateVersionComponentEndpoints(ctx, component)
+	}, func(ctx context.Context, projectId string, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentEndpoints(ctx, projectId, component)
 	})
 }
 
-func (s Service) UpdateVersionComponentEnv(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentEnvUpdateInput) (model.VersionComponent, error) {
-	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+func (s Service) UpdateVersionComponentEnv(ctx context.Context, userId string, projectId string, versionId string, componentId string, input applicationdto.VersionComponentEnvUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, projectId, versionId, componentId, func(component *model.VersionComponent) {
 		component.Env = append([]model.VersionComponentEnv(nil), input.Env...)
-	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
-		return s.store.UpdateVersionComponentEnv(ctx, component)
+	}, func(ctx context.Context, projectId string, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentEnv(ctx, projectId, component)
 	})
 }
 
-func (s Service) UpdateVersionComponentMounts(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentMountsUpdateInput) (model.VersionComponent, error) {
-	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+func (s Service) UpdateVersionComponentMounts(ctx context.Context, userId string, projectId string, versionId string, componentId string, input applicationdto.VersionComponentMountsUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, projectId, versionId, componentId, func(component *model.VersionComponent) {
 		component.Mounts = append([]model.VersionComponentMount(nil), input.Mounts...)
-	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
-		return s.store.UpdateVersionComponentMounts(ctx, component)
+	}, func(ctx context.Context, projectId string, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentMounts(ctx, projectId, component)
 	})
 }
 
-func (s Service) UpdateVersionComponentDependencies(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentDependenciesUpdateInput) (model.VersionComponent, error) {
-	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+func (s Service) UpdateVersionComponentDependencies(ctx context.Context, userId string, projectId string, versionId string, componentId string, input applicationdto.VersionComponentDependenciesUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, projectId, versionId, componentId, func(component *model.VersionComponent) {
 		component.Dependencies = append([]model.VersionComponentDependency(nil), input.Dependencies...)
-	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
-		return s.store.UpdateVersionComponentDependencies(ctx, component)
+	}, func(ctx context.Context, projectId string, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentDependencies(ctx, projectId, component)
 	})
 }
 
-func (s Service) UpdateVersionComponentAdvanced(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentAdvancedUpdateInput) (model.VersionComponent, error) {
-	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+func (s Service) UpdateVersionComponentAdvanced(ctx context.Context, userId string, projectId string, versionId string, componentId string, input applicationdto.VersionComponentAdvancedUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, projectId, versionId, componentId, func(component *model.VersionComponent) {
 		component.Resources = cloneComponentResources(input.Resources)
 		component.Tmpfs = append([]model.VersionComponentTmpfs(nil), input.Tmpfs...)
 		component.Ulimits = append([]model.VersionComponentUlimit(nil), input.Ulimits...)
-	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
-		return s.store.UpdateVersionComponentAdvanced(ctx, component)
+	}, func(ctx context.Context, projectId string, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentAdvanced(ctx, projectId, component)
 	})
 }
 
-func (s Service) UpdateVersionComponentDevices(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentDevicesUpdateInput) (model.VersionComponent, error) {
-	return s.updateVersionComponentGroup(ctx, userId, versionId, componentId, func(component *model.VersionComponent) {
+func (s Service) UpdateVersionComponentDevices(ctx context.Context, userId string, projectId string, versionId string, componentId string, input applicationdto.VersionComponentDevicesUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, projectId, versionId, componentId, func(component *model.VersionComponent) {
 		component.Devices = cloneComponentDeviceRequests(input.Devices)
-	}, func(ctx context.Context, component model.VersionComponent, _ string) error {
-		return s.store.UpdateVersionComponentDevices(ctx, component)
+	}, func(ctx context.Context, projectId string, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentDevices(ctx, projectId, component)
 	})
 }
 
-func (s Service) updateVersionComponentGroup(ctx context.Context, userId string, versionId string, componentId string, update func(*model.VersionComponent), persist func(context.Context, model.VersionComponent, string) error) (model.VersionComponent, error) {
-	version, err := s.loadVersionForUser(ctx, userId, versionId)
+func (s Service) updateVersionComponentGroup(ctx context.Context, userId string, projectId string, versionId string, componentId string, update func(*model.VersionComponent), persist func(context.Context, string, model.VersionComponent, string) error) (model.VersionComponent, error) {
+	version, err := s.loadVersionForUser(ctx, userId, projectId, versionId)
 	if err != nil {
 		return model.VersionComponent{}, err
 	}
 	if version.Status != status.VersionStatusUnpublished {
 		return model.VersionComponent{}, apperror.New(apperror.KindValidation, "Published version components cannot be changed")
 	}
-	existing, err := s.VersionComponentForUser(ctx, userId, version.Id, componentId)
+	existing, err := s.VersionComponentForUser(ctx, userId, projectId, version.Id, componentId)
 	if err != nil {
 		return model.VersionComponent{}, err
 	}
-	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
+	components, err := s.store.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
 		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
@@ -288,25 +290,25 @@ func (s Service) updateVersionComponentGroup(ctx context.Context, userId string,
 	if err := validateVersionComponents(components); err != nil {
 		return model.VersionComponent{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	if err := persist(ctx, component, existing.Name); err != nil {
+	if err := persist(ctx, projectId, component, existing.Name); err != nil {
 		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to update component", err)
 	}
-	return s.VersionComponentForUser(ctx, userId, version.Id, component.Id)
+	return s.VersionComponentForUser(ctx, userId, projectId, version.Id, component.Id)
 }
 
-func (s Service) DeleteVersionComponent(ctx context.Context, userId string, versionId string, componentId string) error {
-	version, err := s.loadVersionForUser(ctx, userId, versionId)
+func (s Service) DeleteVersionComponent(ctx context.Context, userId string, projectId string, versionId string, componentId string) error {
+	version, err := s.loadVersionForUser(ctx, userId, projectId, versionId)
 	if err != nil {
 		return err
 	}
 	if version.Status != status.VersionStatusUnpublished {
 		return apperror.New(apperror.KindValidation, "Published version components cannot be changed")
 	}
-	component, err := s.VersionComponentForUser(ctx, userId, version.Id, componentId)
+	component, err := s.VersionComponentForUser(ctx, userId, projectId, version.Id, componentId)
 	if err != nil {
 		return err
 	}
-	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
+	components, err := s.store.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
@@ -321,21 +323,21 @@ func (s Service) DeleteVersionComponent(ctx context.Context, userId string, vers
 	if len(references) > 0 {
 		return apperror.New(apperror.KindValidation, "Component is referenced by "+strings.Join(references, ", "))
 	}
-	if err := s.store.DeleteVersionComponent(ctx, component); err != nil {
+	if err := s.store.DeleteVersionComponent(ctx, projectId, component); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete component", err)
 	}
 	return nil
 }
 
-func (s Service) PublishVersion(ctx context.Context, userId string, versionId string) (applicationdto.VersionView, error) {
-	version, err := s.loadVersionForUser(ctx, userId, versionId)
+func (s Service) PublishVersion(ctx context.Context, userId string, projectId string, versionId string) (applicationdto.VersionView, error) {
+	version, err := s.loadVersionForUser(ctx, userId, projectId, versionId)
 	if err != nil {
 		return applicationdto.VersionView{}, err
 	}
 	if version.Status == status.VersionStatusPublished {
-		return s.VersionForUser(ctx, userId, version.Id)
+		return s.VersionForUser(ctx, userId, projectId, version.Id)
 	}
-	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
+	components, err := s.store.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
@@ -346,79 +348,83 @@ func (s Service) PublishVersion(ctx context.Context, userId string, versionId st
 		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
 	version.Status = status.VersionStatusPublished
-	if err := s.store.UpdateVersion(ctx, version); err != nil {
+	if err := s.store.UpdateVersion(ctx, projectId, version); err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to publish version", err)
 	}
-	return s.VersionForUser(ctx, userId, version.Id)
+	return s.VersionForUser(ctx, userId, projectId, version.Id)
 }
 
-func (s Service) UnpublishVersion(ctx context.Context, userId string, versionId string) (applicationdto.VersionView, error) {
-	version, err := s.loadVersionForUser(ctx, userId, versionId)
+func (s Service) UnpublishVersion(ctx context.Context, userId string, projectId string, versionId string) (applicationdto.VersionView, error) {
+	version, err := s.loadVersionForUser(ctx, userId, projectId, versionId)
 	if err != nil {
 		return applicationdto.VersionView{}, err
 	}
 	if version.Status == status.VersionStatusUnpublished {
-		return s.VersionForUser(ctx, userId, version.Id)
+		return s.VersionForUser(ctx, userId, projectId, version.Id)
 	}
 	version.Status = status.VersionStatusUnpublished
-	if err := s.store.UpdateVersion(ctx, version); err != nil {
+	if err := s.store.UpdateVersion(ctx, projectId, version); err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to unpublish version", err)
 	}
-	return s.VersionForUser(ctx, userId, version.Id)
+	return s.VersionForUser(ctx, userId, projectId, version.Id)
 }
 
-func (s Service) DeleteVersion(ctx context.Context, userId string, versionId string) error {
-	version, err := s.loadVersionForUser(ctx, userId, versionId)
+func (s Service) DeleteVersion(ctx context.Context, userId string, projectId string, versionId string) error {
+	version, err := s.loadVersionForUser(ctx, userId, projectId, versionId)
 	if err != nil {
 		return err
 	}
-	refs, err := s.store.CountVersionRuntimeRefs(ctx, version.Id)
+	refs, err := s.store.CountVersionRuntimeRefs(ctx, projectId, version.Id)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check version references", err)
 	}
 	if refs > 0 {
 		return apperror.New(apperror.KindValidation, "Version is referenced and cannot be deleted")
 	}
-	if err := s.store.DeleteVersion(ctx, version.Id); err != nil {
+	if err := s.store.DeleteVersion(ctx, projectId, version.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete version", err)
 	}
 	return nil
 }
 
-func (s Service) ForkVersion(ctx context.Context, userId string, versionId string, label string) (applicationdto.VersionView, error) {
-	source, err := s.loadVersionForUser(ctx, userId, versionId)
+func (s Service) ForkVersion(ctx context.Context, userId string, projectId string, versionId string, label string) (applicationdto.VersionView, error) {
+	source, err := s.loadVersionForUser(ctx, userId, projectId, versionId)
 	if err != nil {
 		return applicationdto.VersionView{}, err
 	}
 	if strings.TrimSpace(label) == "" || len(label) > 128 {
 		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, "Invalid version label")
 	}
-	version, err := forkVersion(ctx, s.store, source, label, nil)
+	version, err := forkVersion(ctx, s.store, projectId, source, label, nil)
 	if err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to fork version", err)
 	}
-	return s.VersionForUser(ctx, userId, version.Id)
+	return s.VersionForUser(ctx, userId, projectId, version.Id)
 }
 
-func (s Service) versionView(ctx context.Context, version model.Version) (applicationdto.VersionView, error) {
-	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
+func (s Service) versionView(ctx context.Context, projectId string, version model.Version) (applicationdto.VersionView, error) {
+	components, err := s.store.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
 	return applicationdto.VersionView{Version: version, Components: components}, nil
 }
 
-func (s Service) loadVersionForUser(ctx context.Context, userId string, versionId string) (model.Version, error) {
+func (s Service) loadVersionForUser(ctx context.Context, userId string, projectId string, versionId string) (model.Version, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Version{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Version{}, err
+	}
 	versionId = strings.TrimSpace(versionId)
-	version, err := s.store.Version(ctx, versionId)
+	version, err := s.store.Version(ctx, projectId, versionId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Version{}, apperror.New(apperror.KindNotFound, "Version "+versionId+" not found")
 		}
 		return model.Version{}, apperror.Wrap(apperror.KindInternal, "Failed to load version", err)
-	}
-	if _, err := s.loadApplicationForUser(ctx, userId, version.ApplicationId); err != nil {
-		return model.Version{}, err
 	}
 	return version, nil
 }

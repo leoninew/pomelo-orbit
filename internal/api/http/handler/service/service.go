@@ -44,7 +44,7 @@ func (h Handler) GetService(c *gin.Context) {
 	if !ok {
 		return
 	}
-	view, err := h.service.GetService(c.Request.Context(), current.Id, c.Param("service_id"))
+	view, err := h.service.GetService(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("service_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -63,7 +63,7 @@ func (h Handler) CreateService(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	view, err := h.service.CreateService(c.Request.Context(), current.Id, servicedto.ServiceCreateInput{
+	view, err := h.service.CreateService(c.Request.Context(), current.Id, c.Query("project_id"), servicedto.ServiceCreateInput{
 		ApplicationId: req.ApplicationId, VersionId: req.VersionId, InstanceKey: req.InstanceKey, Code: req.Code,
 	})
 	if err != nil {
@@ -79,7 +79,7 @@ func (h Handler) DeleteService(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteService(c.Request.Context(), current.Id, c.Param("service_id")); err != nil {
+	if err := h.service.DeleteService(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("service_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}
@@ -91,7 +91,7 @@ func (h Handler) GetServiceComponent(c *gin.Context) {
 	if !ok {
 		return
 	}
-	detail, err := h.service.GetServiceComponent(c.Request.Context(), current.Id, c.Param("service_id"), c.Param("component_id"))
+	detail, err := h.service.GetServiceComponent(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("service_id"), c.Param("component_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -110,7 +110,7 @@ func (h Handler) UpdateServiceComponentOverlay(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	component, err := h.service.UpdateServiceComponentOverlay(c.Request.Context(), current.Id, c.Param("service_id"), c.Param("component_id"), serviceComponentOverlayInput(&req))
+	component, err := h.service.UpdateServiceComponentOverlay(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("service_id"), c.Param("component_id"), serviceComponentOverlayInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -129,7 +129,7 @@ func (h Handler) UpdateServiceBasic(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	view, err := h.service.UpdateServiceBasic(c.Request.Context(), current.Id, c.Param("service_id"), servicedto.ServiceBasicUpdateInput{
+	view, err := h.service.UpdateServiceBasic(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("service_id"), servicedto.ServiceBasicUpdateInput{
 		VersionId: req.VersionId, InstanceKey: req.InstanceKey,
 	})
 	if err != nil {
@@ -150,7 +150,7 @@ func (h Handler) UpdateServiceEnv(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	view, err := h.service.UpdateServiceEnv(c.Request.Context(), current.Id, c.Param("service_id"), serviceEnvUpdateInput(&req))
+	view, err := h.service.UpdateServiceEnv(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("service_id"), serviceEnvUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -165,7 +165,7 @@ func (h Handler) ListApplicationServices(c *gin.Context) {
 	if !ok {
 		return
 	}
-	items, err := h.service.ListServiceViewsByApplication(c.Request.Context(), current.Id, c.Param("app_id"))
+	items, err := h.service.ListServiceViewsByApplication(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return

@@ -40,8 +40,8 @@ func (s stores) IsProjectMember(ctx context.Context, projectId string, userId st
 	return s.project.IsProjectMember(ctx, projectId, userId)
 }
 
-func (s stores) Pipeline(ctx context.Context, id string) (model.Pipeline, error) {
-	return s.pipeline.Pipeline(ctx, id)
+func (s stores) Pipeline(ctx context.Context, projectId string, id string) (model.Pipeline, error) {
+	return s.pipeline.Pipeline(ctx, projectId, id)
 }
 
 func (s stores) PipelineByName(ctx context.Context, projectId string, name string) (model.Pipeline, error) {
@@ -56,20 +56,20 @@ func (s stores) CreatePipeline(ctx context.Context, pipeline model.Pipeline) err
 	return s.pipeline.CreatePipeline(ctx, pipeline)
 }
 
-func (s stores) UpdatePipeline(ctx context.Context, pipeline model.Pipeline) error {
-	return s.pipeline.UpdatePipeline(ctx, pipeline)
+func (s stores) UpdatePipeline(ctx context.Context, projectId string, pipeline model.Pipeline) error {
+	return s.pipeline.UpdatePipeline(ctx, projectId, pipeline)
 }
 
-func (s stores) DeletePipeline(ctx context.Context, id string) error {
-	return s.pipeline.DeletePipeline(ctx, id)
+func (s stores) DeletePipeline(ctx context.Context, projectId string, id string) error {
+	return s.pipeline.DeletePipeline(ctx, projectId, id)
 }
 
 func (s stores) ListPipelineStageTemplates(ctx context.Context, projectId string, page, perPage int, search string) (repository.Page[model.PipelineStage], error) {
 	return s.pipeline.ListPipelineStageTemplates(ctx, projectId, page, perPage, search)
 }
 
-func (s stores) PipelineStageTemplate(ctx context.Context, id string) (model.PipelineStage, error) {
-	return s.pipeline.PipelineStageTemplate(ctx, id)
+func (s stores) PipelineStageTemplate(ctx context.Context, projectId string, id string) (model.PipelineStage, error) {
+	return s.pipeline.PipelineStageTemplate(ctx, projectId, id)
 }
 
 func (s stores) PipelineStageTemplateByName(ctx context.Context, projectId, name string) (model.PipelineStage, error) {
@@ -80,60 +80,60 @@ func (s stores) CreatePipelineStageTemplate(ctx context.Context, stage model.Pip
 	return s.pipeline.CreatePipelineStageTemplate(ctx, stage)
 }
 
-func (s stores) UpdatePipelineStageTemplate(ctx context.Context, stage model.PipelineStage) error {
-	return s.pipeline.UpdatePipelineStageTemplate(ctx, stage)
+func (s stores) UpdatePipelineStageTemplate(ctx context.Context, projectId string, stage model.PipelineStage) error {
+	return s.pipeline.UpdatePipelineStageTemplate(ctx, projectId, stage)
 }
 
-func (s stores) DeletePipelineStageTemplate(ctx context.Context, id string) error {
-	return s.pipeline.DeletePipelineStageTemplate(ctx, id)
+func (s stores) DeletePipelineStageTemplate(ctx context.Context, projectId string, id string) error {
+	return s.pipeline.DeletePipelineStageTemplate(ctx, projectId, id)
 }
 
-func (s stores) TemplatePipelineStageReferences(ctx context.Context, pipelineId string) ([]model.PipelineStageReference, error) {
-	return s.pipeline.TemplatePipelineStageReferences(ctx, pipelineId)
+func (s stores) TemplatePipelineStageReferences(ctx context.Context, projectId string, pipelineId string) ([]model.PipelineStageReference, error) {
+	return s.pipeline.TemplatePipelineStageReferences(ctx, projectId, pipelineId)
 }
 
-func (s stores) ApplicationPipelineStages(ctx context.Context, pipelineId string) ([]model.PipelineStage, error) {
-	return s.pipeline.ApplicationPipelineStages(ctx, pipelineId)
+func (s stores) ApplicationPipelineStages(ctx context.Context, projectId string, pipelineId string) ([]model.PipelineStage, error) {
+	return s.pipeline.ApplicationPipelineStages(ctx, projectId, pipelineId)
 }
 
-func (s stores) UpdateTemplatePipelineWithReferences(ctx context.Context, pipeline model.Pipeline, references []model.PipelineStageReference) error {
-	return s.pipeline.UpdateTemplatePipelineWithReferences(ctx, pipeline, references)
+func (s stores) UpdateTemplatePipelineWithReferences(ctx context.Context, projectId string, pipeline model.Pipeline, references []model.PipelineStageReference) error {
+	return s.pipeline.UpdateTemplatePipelineWithReferences(ctx, projectId, pipeline, references)
 }
 
-func (s stores) UpdateApplicationPipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
-	return s.pipeline.UpdateApplicationPipelineWithStages(ctx, pipeline, stages)
+func (s stores) UpdateApplicationPipelineWithStages(ctx context.Context, projectId string, pipeline model.Pipeline, stages []model.PipelineStage) error {
+	return s.pipeline.UpdateApplicationPipelineWithStages(ctx, projectId, pipeline, stages)
 }
 
 func (s stores) CreateApplicationPipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
 	return s.pipeline.CreateApplicationPipelineWithStages(ctx, pipeline, stages)
 }
 
-func (s stores) LatestPipelineSnapshot(ctx context.Context, pipelineId string) (model.PipelineSnapshot, error) {
-	return s.pipeline.LatestPipelineSnapshot(ctx, pipelineId)
+func (s stores) LatestPipelineSnapshot(ctx context.Context, projectId string, pipelineId string) (model.PipelineSnapshot, error) {
+	return s.pipeline.LatestPipelineSnapshot(ctx, projectId, pipelineId)
 }
 
-func (s stores) PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error) {
-	return s.pipeline.PipelineSnapshot(ctx, id)
+func (s stores) PipelineSnapshot(ctx context.Context, projectId string, id string) (model.PipelineSnapshot, error) {
+	return s.pipeline.PipelineSnapshot(ctx, projectId, id)
 }
 
 func (s stores) CreatePipelineSnapshot(ctx context.Context, snapshot model.PipelineSnapshot) error {
 	return s.pipeline.CreatePipelineSnapshot(ctx, snapshot)
 }
 
-func (s stores) Application(ctx context.Context, id string) (model.Application, error) {
-	return s.application.Application(ctx, id)
+func (s stores) Application(ctx context.Context, projectId string, id string) (model.Application, error) {
+	return s.application.Application(ctx, projectId, id)
 }
 
-func (s stores) Version(ctx context.Context, id string) (model.Version, error) {
-	return s.application.Version(ctx, id)
+func (s stores) Version(ctx context.Context, projectId string, id string) (model.Version, error) {
+	return s.application.Version(ctx, projectId, id)
 }
 
-func (s stores) VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error) {
-	return s.application.VersionComponentsByVersion(ctx, versionId)
+func (s stores) VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error) {
+	return s.application.VersionComponentsByVersion(ctx, projectId, versionId)
 }
 
-func (s stores) Repository(ctx context.Context, id string) (model.Repository, error) {
-	return s.repository.Repository(ctx, id)
+func (s stores) Repository(ctx context.Context, projectId string, id string) (model.Repository, error) {
+	return s.repository.Repository(ctx, projectId, id)
 }
 
 func (s Service) ListPipelines(ctx context.Context, userId string, projectId string, kind string, page int, perPage int, search string) (repository.Page[pipelinedto.PipelineDetail], error) {
@@ -153,7 +153,7 @@ func (s Service) ListPipelines(ctx context.Context, userId string, projectId str
 	}
 	items := make([]pipelinedto.PipelineDetail, 0, len(pageOfPipelines.Items))
 	for _, pipeline := range pageOfPipelines.Items {
-		detail, err := s.pipelineDetail(ctx, pipeline)
+		detail, err := s.pipelineDetail(ctx, projectId, pipeline)
 		if err != nil {
 			return repository.Page[pipelinedto.PipelineDetail]{}, err
 		}
@@ -193,19 +193,19 @@ func (s Service) CreatePipeline(ctx context.Context, userId string, input pipeli
 	if err := s.store.CreatePipeline(ctx, pipeline); err != nil {
 		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline", err)
 	}
-	return s.pipelineDetail(ctx, pipeline)
+	return s.pipelineDetail(ctx, projectId, pipeline)
 }
 
-func (s Service) PipelineForUser(ctx context.Context, userId string, pipelineId string) (pipelinedto.PipelineDetail, error) {
-	pipeline, err := s.loadPipelineForUser(ctx, userId, pipelineId)
+func (s Service) PipelineForUser(ctx context.Context, userId string, projectId string, pipelineId string) (pipelinedto.PipelineDetail, error) {
+	pipeline, err := s.loadPipelineForUser(ctx, userId, projectId, pipelineId)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	return s.pipelineDetail(ctx, pipeline)
+	return s.pipelineDetail(ctx, projectId, pipeline)
 }
 
-func (s Service) UpdatePipeline(ctx context.Context, userId string, pipelineId string, input pipelinedto.PipelineUpdateInput) (pipelinedto.PipelineDetail, error) {
-	pipeline, err := s.loadPipelineForUser(ctx, userId, pipelineId)
+func (s Service) UpdatePipeline(ctx context.Context, userId string, projectId string, pipelineId string, input pipelinedto.PipelineUpdateInput) (pipelinedto.PipelineDetail, error) {
+	pipeline, err := s.loadPipelineForUser(ctx, userId, projectId, pipelineId)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
@@ -215,7 +215,7 @@ func (s Service) UpdatePipeline(ctx context.Context, userId string, pipelineId s
 		if name == "" {
 			return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "name is required")
 		}
-		if err := s.ensurePipelineNameAvailable(ctx, pipelineProjectId(pipeline), name, pipeline.Id); err != nil {
+		if err := s.ensurePipelineNameAvailable(ctx, projectId, name, pipeline.Id); err != nil {
 			return pipelinedto.PipelineDetail{}, err
 		}
 		if name != pipeline.Name {
@@ -246,7 +246,7 @@ func (s Service) UpdatePipeline(ctx context.Context, userId string, pipelineId s
 		}
 	}
 	if input.ApplicationId != nil {
-		bound, err := s.bindApplicationIfUnbound(ctx, &pipeline, *input.ApplicationId)
+		bound, err := s.bindApplicationIfUnbound(ctx, projectId, &pipeline, *input.ApplicationId)
 		if err != nil {
 			return pipelinedto.PipelineDetail{}, err
 		}
@@ -254,25 +254,25 @@ func (s Service) UpdatePipeline(ctx context.Context, userId string, pipelineId s
 			changed = true
 		}
 	}
-	if err := s.validateStoredPipelineConfiguration(ctx, pipeline); err != nil {
+	if err := s.validateStoredPipelineConfiguration(ctx, projectId, pipeline); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
 	if changed {
 		pipeline.Version++
-		if err := s.store.UpdatePipeline(ctx, pipeline); err != nil {
+		if err := s.store.UpdatePipeline(ctx, projectId, pipeline); err != nil {
 			return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to update pipeline", err)
 		}
 	}
-	return s.pipelineDetail(ctx, pipeline)
+	return s.pipelineDetail(ctx, projectId, pipeline)
 }
 
 // bindApplicationIfUnbound sets application identity only when the pipeline has none.
 // Rebinding or clearing an existing application is rejected.
-func (s Service) bindApplicationIfUnbound(ctx context.Context, pipeline *model.Pipeline, applicationID string) (bool, error) {
+func (s Service) bindApplicationIfUnbound(ctx context.Context, projectId string, pipeline *model.Pipeline, applicationId string) (bool, error) {
 	if pipeline.Kind != model.PipelineKindApplication {
 		return false, apperror.New(apperror.KindValidation, "only application pipelines can bind an application")
 	}
-	id := strings.TrimSpace(applicationID)
+	id := strings.TrimSpace(applicationId)
 	if id == "" {
 		return false, apperror.New(apperror.KindValidation, "application_id cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (s Service) bindApplicationIfUnbound(ctx context.Context, pipeline *model.P
 		}
 		return false, apperror.New(apperror.KindValidation, "application binding cannot be changed once set")
 	}
-	application, err := s.applicationInProject(ctx, id, pipelineProjectId(*pipeline))
+	application, err := s.applicationInProject(ctx, id, projectId)
 	if err != nil {
 		return false, err
 	}
@@ -291,26 +291,25 @@ func (s Service) bindApplicationIfUnbound(ctx context.Context, pipeline *model.P
 	return true, nil
 }
 
-func (s Service) DeletePipeline(ctx context.Context, userId string, pipelineId string) error {
-	pipeline, err := s.loadPipelineForUser(ctx, userId, pipelineId)
+func (s Service) DeletePipeline(ctx context.Context, userId string, projectId string, pipelineId string) error {
+	pipeline, err := s.loadPipelineForUser(ctx, userId, projectId, pipelineId)
 	if err != nil {
 		return err
 	}
-	if err := s.store.DeletePipeline(ctx, pipeline.Id); err != nil {
+	if err := s.store.DeletePipeline(ctx, projectId, pipeline.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline", err)
 	}
 	return nil
 }
 
-func (s Service) InstantiatePipeline(ctx context.Context, userId string, templateId string, input pipelinedto.PipelineInstantiateInput) (pipelinedto.PipelineDetail, error) {
-	template, err := s.loadPipelineForUser(ctx, userId, templateId)
+func (s Service) InstantiatePipeline(ctx context.Context, userId string, projectId string, templateId string, input pipelinedto.PipelineInstantiateInput) (pipelinedto.PipelineDetail, error) {
+	template, err := s.loadPipelineForUser(ctx, userId, projectId, templateId)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
 	if template.Kind != model.PipelineKindTemplate {
 		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "only template pipelines can be instantiated")
 	}
-	projectId := pipelineProjectId(template)
 	name := strings.TrimSpace(input.Name)
 	if name == "" {
 		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "name is required")
@@ -334,7 +333,7 @@ func (s Service) InstantiatePipeline(ctx context.Context, userId string, templat
 		}
 		applicationId, applicationName = &application.Id, &application.Name
 	}
-	references, err := s.store.TemplatePipelineStageReferences(ctx, template.Id)
+	references, err := s.store.TemplatePipelineStageReferences(ctx, projectId, template.Id)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load template pipeline stage references", err)
 	}
@@ -359,16 +358,16 @@ func (s Service) InstantiatePipeline(ctx context.Context, userId string, templat
 	if err := applyPipelineArtifactBindings(stages, references, input.ArtifactBindings); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	if _, err := s.applyVersionForkStrategy(ctx, &pipeline, input.VersionForkStrategy, input.FixedVersionId, false); err != nil {
+	if _, err := s.applyVersionForkStrategy(ctx, projectId, &pipeline, input.VersionForkStrategy, input.FixedVersionId, false); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	if err := s.validatePipelineConfiguration(ctx, pipeline, stages); err != nil {
+	if err := s.validatePipelineConfiguration(ctx, projectId, pipeline, stages); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
 	if err := s.store.CreateApplicationPipelineWithStages(ctx, pipeline, stages); err != nil {
 		return pipelinedto.PipelineDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to instantiate pipeline", err)
 	}
-	return s.pipelineDetail(ctx, pipeline)
+	return s.pipelineDetail(ctx, projectId, pipeline)
 }
 
 func applyPipelineArtifactBindings(stages []model.PipelineStage, references []model.PipelineStageReference, bindings []pipelinedto.PipelineArtifactBinding) error {
@@ -432,20 +431,20 @@ func applyPipelineArtifactBindings(stages []model.PipelineStage, references []mo
 	return nil
 }
 
-func (s Service) PipelineSnapshotForUser(ctx context.Context, userId string, snapshotId string) (pipelinedto.PipelineSnapshotDetail, error) {
-	snapshot, err := s.store.PipelineSnapshot(ctx, strings.TrimSpace(snapshotId))
+func (s Service) PipelineSnapshotForUser(ctx context.Context, userId string, projectId string, snapshotId string) (pipelinedto.PipelineSnapshotDetail, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return pipelinedto.PipelineSnapshotDetail{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return pipelinedto.PipelineSnapshotDetail{}, err
+	}
+	snapshot, err := s.store.PipelineSnapshot(ctx, projectId, strings.TrimSpace(snapshotId))
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return pipelinedto.PipelineSnapshotDetail{}, apperror.New(apperror.KindNotFound, "Pipeline snapshot "+snapshotId+" not found")
 		}
 		return pipelinedto.PipelineSnapshotDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
-	}
-	projectId, err := requiredProjectID(snapshot.ProjectId, "Pipeline snapshot")
-	if err != nil {
-		return pipelinedto.PipelineSnapshotDetail{}, err
-	}
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return pipelinedto.PipelineSnapshotDetail{}, err
 	}
 	stages, err := snapshotStages(snapshot.StagesSnapshot)
 	if err != nil {
@@ -458,27 +457,27 @@ func (s Service) PipelineSnapshotForUser(ctx context.Context, userId string, sna
 	return pipelinedto.PipelineSnapshotDetail{Snapshot: snapshot, StagesSnapshot: stages, VariablesSnapshot: variables}, nil
 }
 
-func (s Service) loadPipelineForUser(ctx context.Context, userId string, pipelineId string) (model.Pipeline, error) {
+func (s Service) loadPipelineForUser(ctx context.Context, userId string, projectId string, pipelineId string) (model.Pipeline, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Pipeline{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Pipeline{}, err
+	}
 	pipelineId = strings.TrimSpace(pipelineId)
-	pipeline, err := s.store.Pipeline(ctx, pipelineId)
+	pipeline, err := s.store.Pipeline(ctx, projectId, pipelineId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Pipeline{}, apperror.New(apperror.KindNotFound, "Pipeline "+pipelineId+" not found")
 		}
 		return model.Pipeline{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline", err)
 	}
-	projectId, err := requiredProjectID(pipeline.ProjectId, "Pipeline")
-	if err != nil {
-		return model.Pipeline{}, err
-	}
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return model.Pipeline{}, err
-	}
 	return pipeline, nil
 }
 
-func (s Service) pipelineDetail(ctx context.Context, pipeline model.Pipeline) (pipelinedto.PipelineDetail, error) {
-	nodes, stageViews, err := s.pipelineStageNodes(ctx, pipeline)
+func (s Service) pipelineDetail(ctx context.Context, projectId string, pipeline model.Pipeline) (pipelinedto.PipelineDetail, error) {
+	nodes, stageViews, err := s.pipelineStageNodes(ctx, projectId, pipeline)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
@@ -502,7 +501,7 @@ func (s Service) pipelineDetail(ctx context.Context, pipeline model.Pipeline) (p
 
 // applyVersionForkStrategy changes the version selection captured while an
 // application pipeline is instantiated.
-func (s Service) applyVersionForkStrategy(ctx context.Context, pipeline *model.Pipeline, strategyInput *string, fixedVersionInput *string, clear bool) (bool, error) {
+func (s Service) applyVersionForkStrategy(ctx context.Context, projectId string, pipeline *model.Pipeline, strategyInput *string, fixedVersionInput *string, clear bool) (bool, error) {
 	if strategyInput == nil && fixedVersionInput == nil && !clear {
 		return false, nil
 	}
@@ -536,7 +535,7 @@ func (s Service) applyVersionForkStrategy(ctx context.Context, pipeline *model.P
 	}
 	changed := !stringPointerEqual(pipeline.VersionForkStrategy, strategy) || !stringPointerEqual(pipeline.FixedVersionId, fixed)
 	pipeline.VersionForkStrategy, pipeline.FixedVersionId = strategy, fixed
-	if err := s.populateFixedVersionLabel(ctx, pipeline); err != nil {
+	if err := s.populateFixedVersionLabel(ctx, projectId, pipeline); err != nil {
 		return false, err
 	}
 	return changed, nil
@@ -549,9 +548,9 @@ func stringPointerEqual(left *string, right *string) bool {
 	return *left == *right
 }
 
-func (s Service) ensurePipelineNameAvailable(ctx context.Context, projectId string, name string, currentID string) error {
+func (s Service) ensurePipelineNameAvailable(ctx context.Context, projectId string, name string, currentId string) error {
 	existing, err := s.store.PipelineByName(ctx, projectId, name)
-	if err == nil && existing.Id != currentID {
+	if err == nil && existing.Id != currentId {
 		return apperror.New(apperror.KindConflict, "Pipeline '"+name+"' already exists")
 	}
 	if err != nil && !errors.Is(err, repository.ErrNotFound) {
@@ -561,8 +560,8 @@ func (s Service) ensurePipelineNameAvailable(ctx context.Context, projectId stri
 }
 
 func (s Service) applicationInProject(ctx context.Context, applicationId string, projectId string) (model.Application, error) {
-	app, err := s.store.Application(ctx, applicationId)
-	if errors.Is(err, repository.ErrNotFound) || app.ProjectId == nil || *app.ProjectId != projectId {
+	app, err := s.store.Application(ctx, projectId, applicationId)
+	if errors.Is(err, repository.ErrNotFound) {
 		return model.Application{}, apperror.New(apperror.KindNotFound, "Application "+applicationId+" not found")
 	}
 	if err != nil {
@@ -572,8 +571,8 @@ func (s Service) applicationInProject(ctx context.Context, applicationId string,
 }
 
 func (s Service) repositoryInProject(ctx context.Context, repositoryId string, projectId string) (model.Repository, error) {
-	repo, err := s.store.Repository(ctx, repositoryId)
-	if errors.Is(err, repository.ErrNotFound) || repo.ProjectId == nil || *repo.ProjectId != projectId {
+	repo, err := s.store.Repository(ctx, projectId, repositoryId)
+	if errors.Is(err, repository.ErrNotFound) {
 		return model.Repository{}, apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
 	}
 	if err != nil {
@@ -582,12 +581,12 @@ func (s Service) repositoryInProject(ctx context.Context, repositoryId string, p
 	return repo, nil
 }
 
-func (s Service) populateFixedVersionLabel(ctx context.Context, pipeline *model.Pipeline) error {
+func (s Service) populateFixedVersionLabel(ctx context.Context, projectId string, pipeline *model.Pipeline) error {
 	if pipeline.VersionForkStrategy == nil || *pipeline.VersionForkStrategy != model.VersionForkStrategyFixed || pipeline.FixedVersionId == nil {
 		pipeline.FixedVersionLabel = nil
 		return nil
 	}
-	version, err := s.store.Version(ctx, *pipeline.FixedVersionId)
+	version, err := s.store.Version(ctx, projectId, *pipeline.FixedVersionId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return apperror.New(apperror.KindNotFound, "Fixed version not found")
 	}
@@ -600,13 +599,6 @@ func (s Service) populateFixedVersionLabel(ctx context.Context, pipeline *model.
 	label := version.Label
 	pipeline.FixedVersionLabel = &label
 	return nil
-}
-
-func pipelineProjectId(pipeline model.Pipeline) string {
-	if pipeline.ProjectId == nil {
-		return ""
-	}
-	return *pipeline.ProjectId
 }
 
 func marshalPipelineVariables(variables []map[string]any) (string, error) {
@@ -762,7 +754,7 @@ func snapshotVariables(value string) ([]model.VariableDeclaration, error) {
 	return variables, nil
 }
 
-func (s Service) validatePipelineConfiguration(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
+func (s Service) validatePipelineConfiguration(ctx context.Context, projectId string, pipeline model.Pipeline, stages []model.PipelineStage) error {
 	definitions, err := pipelineStageDefinitions(stages)
 	if err != nil {
 		return err
@@ -791,7 +783,7 @@ func (s Service) validatePipelineConfiguration(ctx context.Context, pipeline mod
 	}
 	var repo *model.Repository
 	if s.store.repository != nil {
-		value, err := s.store.Repository(ctx, *pipeline.RepositoryId)
+		value, err := s.store.Repository(ctx, projectId, *pipeline.RepositoryId)
 		if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return apperror.Wrap(apperror.KindInternal, "Failed to load pipeline repository", err)
 		}
@@ -827,7 +819,7 @@ func (s Service) validatePipelineConfiguration(ctx context.Context, pipeline mod
 		if pipeline.FixedVersionId == nil || strings.TrimSpace(*pipeline.FixedVersionId) == "" {
 			return apperror.New(apperror.KindValidation, "fixed version strategy requires fixed_version_id")
 		}
-		if err := s.populateFixedVersionLabel(ctx, &pipeline); err != nil {
+		if err := s.populateFixedVersionLabel(ctx, projectId, &pipeline); err != nil {
 			return err
 		}
 	default:
@@ -844,7 +836,7 @@ func (s Service) validatePipelineConfiguration(ctx context.Context, pipeline mod
 		}
 	}
 	if pipeline.FixedVersionId != nil {
-		components, err := s.store.VersionComponentsByVersion(ctx, *pipeline.FixedVersionId)
+		components, err := s.store.VersionComponentsByVersion(ctx, projectId, *pipeline.FixedVersionId)
 		if err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to load fixed version components", err)
 		}
@@ -959,19 +951,19 @@ func validateJSONArray(value, field string) error {
 }
 
 func validatePipelineDAG(stages []model.StageDefinition) error {
-	byID := make(map[string]model.StageDefinition, len(stages))
+	byId := make(map[string]model.StageDefinition, len(stages))
 	names := map[string]struct{}{}
 	for _, stage := range stages {
 		if stage.Id == "" || stage.Name == "" {
 			return errors.New("pipeline stage id and name are required")
 		}
-		if _, exists := byID[stage.Id]; exists {
+		if _, exists := byId[stage.Id]; exists {
 			return fmt.Errorf("duplicate pipeline stage %s", stage.Id)
 		}
 		if _, exists := names[stage.Name]; exists {
 			return fmt.Errorf("duplicate pipeline stage name %s", stage.Name)
 		}
-		byID[stage.Id], names[stage.Name] = stage, struct{}{}
+		byId[stage.Id], names[stage.Name] = stage, struct{}{}
 	}
 	visiting, visited := map[string]bool{}, map[string]bool{}
 	var visit func(string) error
@@ -982,7 +974,7 @@ func validatePipelineDAG(stages []model.StageDefinition) error {
 		if visited[id] {
 			return nil
 		}
-		stage, exists := byID[id]
+		stage, exists := byId[id]
 		if !exists {
 			return fmt.Errorf("pipeline stage dependency %s does not exist", id)
 		}
@@ -1004,9 +996,9 @@ func validatePipelineDAG(stages []model.StageDefinition) error {
 }
 
 func sourceCommitArtifactForStage(stage model.StageDefinition, stages []model.StageDefinition) (model.ArtifactConfig, error) {
-	byID := make(map[string]model.StageDefinition, len(stages))
+	byId := make(map[string]model.StageDefinition, len(stages))
 	for _, item := range stages {
-		byID[item.Id] = item
+		byId[item.Id] = item
 	}
 	seen := map[string]bool{}
 	candidates := make([]model.ArtifactConfig, 0, 1)
@@ -1016,7 +1008,7 @@ func sourceCommitArtifactForStage(stage model.StageDefinition, stages []model.St
 			return nil
 		}
 		seen[id] = true
-		current, exists := byID[id]
+		current, exists := byId[id]
 		if !exists {
 			return fmt.Errorf("dependency %s does not exist", id)
 		}

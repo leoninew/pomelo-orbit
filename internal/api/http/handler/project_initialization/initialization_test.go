@@ -65,13 +65,13 @@ func TestInitializationResponseMapsSSHTarget(t *testing.T) {
 }
 
 func TestInitializationResponseMapsReadyGateway(t *testing.T) {
-	projectID := "project-1"
+	projectId := "project-1"
 	service := model.Service{Status: "stopped"}
 	view := initdto.StatusView{
 		Status:   initdto.StatusReady,
 		Defaults: initdto.Defaults{Image: "traefik:3.6"},
 		Gateway: &gatewaydto.GatewayView{
-			Application:    model.Application{Id: "gateway-1", ProjectId: &projectID, Code: "traefik", Name: "Traefik"},
+			Application:    model.Application{Id: "gateway-1", ProjectId: &projectId, Code: "traefik", Name: "Traefik"},
 			Config:         model.GatewayConfig{RestApiUrl: "http://localhost:8080", BaseDomain: "lvh.me"},
 			DefaultService: &service,
 		},

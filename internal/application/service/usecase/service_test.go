@@ -17,15 +17,15 @@ type serviceApplicationFake struct {
 	declarations []model.VersionComponent
 }
 
-func (f serviceApplicationFake) Application(_ context.Context, _ string) (model.Application, error) {
+func (f serviceApplicationFake) Application(_ context.Context, _, _ string) (model.Application, error) {
 	return f.app, nil
 }
 
-func (f serviceApplicationFake) Version(_ context.Context, _ string) (model.Version, error) {
+func (f serviceApplicationFake) Version(_ context.Context, _, _ string) (model.Version, error) {
 	return f.version, nil
 }
 
-func (f serviceApplicationFake) VersionComponentsByVersion(_ context.Context, _ string) ([]model.VersionComponent, error) {
+func (f serviceApplicationFake) VersionComponentsByVersion(_ context.Context, _, _ string) ([]model.VersionComponent, error) {
 	return f.declarations, nil
 }
 
@@ -37,19 +37,19 @@ type serviceStoreFake struct {
 	env        []model.ServiceEnv
 }
 
-func (f serviceStoreFake) Service(_ context.Context, _ string) (model.Service, error) {
+func (f serviceStoreFake) Service(_ context.Context, _, _ string) (model.Service, error) {
 	return f.service, nil
 }
 
-func (f serviceStoreFake) ServiceComponent(_ context.Context, _ string) (model.ServiceComponent, error) {
+func (f serviceStoreFake) ServiceComponent(_ context.Context, _, _ string) (model.ServiceComponent, error) {
 	return f.component, nil
 }
 
-func (f serviceStoreFake) ServiceComponentsByService(_ context.Context, _ string) ([]model.ServiceComponent, error) {
+func (f serviceStoreFake) ServiceComponentsByService(_ context.Context, _, _ string) ([]model.ServiceComponent, error) {
 	return f.components, nil
 }
 
-func (f serviceStoreFake) ServiceEnvByService(_ context.Context, _ string) ([]model.ServiceEnv, error) {
+func (f serviceStoreFake) ServiceEnvByService(_ context.Context, _, _ string) ([]model.ServiceEnv, error) {
 	return f.env, nil
 }
 
@@ -65,20 +65,20 @@ type deleteServiceStoreFake struct {
 	deletedId string
 }
 
-func (f *deleteServiceStoreFake) Service(_ context.Context, _ string) (model.Service, error) {
+func (f *deleteServiceStoreFake) Service(_ context.Context, _, _ string) (model.Service, error) {
 	return f.service, nil
 }
 
-func (f *deleteServiceStoreFake) DeleteService(_ context.Context, id string) error {
+func (f *deleteServiceStoreFake) DeleteService(_ context.Context, _ string, id string) error {
 	f.deletedId = id
 	return nil
 }
 
-func (f deploymentStoreFake) HasActiveDeployment(_ context.Context, _ string) (bool, error) {
+func (f deploymentStoreFake) HasActiveDeployment(_ context.Context, _, _ string) (bool, error) {
 	return f.active, nil
 }
 
-func (f deploymentStoreFake) LatestSuccessfulDeploymentPlanHash(_ context.Context, _ string) (*string, error) {
+func (f deploymentStoreFake) LatestSuccessfulDeploymentPlanHash(_ context.Context, _, _ string) (*string, error) {
 	return f.planHash, nil
 }
 
@@ -87,11 +87,12 @@ func TestDeleteServiceAllowsStoppedAndFaultedService(t *testing.T) {
 		t.Run(serviceStatus, func(t *testing.T) {
 			store := &deleteServiceStoreFake{service: model.Service{Id: "service-1", ApplicationId: "application-1", Status: serviceStatus}}
 			usecase := Service{
+				project:     serviceCreateProjectFake{},
 				application: serviceApplicationFake{app: model.Application{Id: "application-1"}},
 				service:     store,
 			}
 
-			if err := usecase.DeleteService(context.Background(), "user-1", "service-1"); err != nil {
+			if err := usecase.DeleteService(context.Background(), "user-1", "project-1", "service-1"); err != nil {
 				t.Fatalf("DeleteService() error = %v", err)
 			}
 			if store.deletedId != "service-1" {
@@ -104,11 +105,12 @@ func TestDeleteServiceAllowsStoppedAndFaultedService(t *testing.T) {
 func TestDeleteServiceRejectsRunningService(t *testing.T) {
 	store := &deleteServiceStoreFake{service: model.Service{Id: "service-1", ApplicationId: "application-1", Status: status.ServiceStatusRunning}}
 	usecase := Service{
+		project:     serviceCreateProjectFake{},
 		application: serviceApplicationFake{app: model.Application{Id: "application-1"}},
 		service:     store,
 	}
 
-	if err := usecase.DeleteService(context.Background(), "user-1", "service-1"); err == nil {
+	if err := usecase.DeleteService(context.Background(), "user-1", "project-1", "service-1"); err == nil {
 		t.Fatal("DeleteService() error = nil, want validation error")
 	}
 	if store.deletedId != "" {
@@ -144,7 +146,7 @@ func TestServiceViewPendingDeployComparesEffectivePlanHash(t *testing.T) {
 				service:     serviceStoreFake{components: []model.ServiceComponent{component}},
 				deployment:  deploymentStoreFake{planHash: test.deployed},
 			}
-			view, err := usecase.serviceView(context.Background(), model.ServiceListItem{
+			view, err := usecase.serviceView(context.Background(), "project-1", model.ServiceListItem{
 				Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
 				Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
 			})
@@ -175,7 +177,7 @@ func TestServiceViewReportsActiveDeploymentSeparatelyFromServiceStatus(t *testin
 		service:     serviceStoreFake{components: []model.ServiceComponent{component}},
 		deployment:  deploymentStoreFake{active: true},
 	}
-	view, err := usecase.serviceView(context.Background(), model.ServiceListItem{
+	view, err := usecase.serviceView(context.Background(), "project-1", model.ServiceListItem{
 		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
 		Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
 	})
@@ -200,7 +202,7 @@ func TestServiceViewWithGatewayEndpointDoesNotRequireGateway(t *testing.T) {
 		deployment:  deploymentStoreFake{planHash: &hash},
 	}
 
-	view, err := usecase.serviceView(context.Background(), model.ServiceListItem{
+	view, err := usecase.serviceView(context.Background(), "project-1", model.ServiceListItem{
 		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
 		Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
 	})
@@ -215,10 +217,11 @@ func TestServiceViewWithGatewayEndpointDoesNotRequireGateway(t *testing.T) {
 func TestGetServiceComponentReturnsVersionAndServiceComponentValues(t *testing.T) {
 	service, app, version, declaration, component := serviceViewFixture()
 	usecase := Service{
+		project:     serviceCreateProjectFake{},
 		application: serviceApplicationFake{app: app, version: version, declarations: []model.VersionComponent{declaration}},
 		service:     serviceStoreFake{service: service, component: component},
 	}
-	detail, err := usecase.GetServiceComponent(context.Background(), "user-1", service.Id, component.Id)
+	detail, err := usecase.GetServiceComponent(context.Background(), "user-1", "project-1", service.Id, component.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,13 +238,14 @@ func TestGetServiceComponentDoesNotResolveServiceEnvironment(t *testing.T) {
 	declaration.Env[0].Value = "${SHARED_VALUE}"
 	component.Env = nil
 	usecase := Service{
+		project:     serviceCreateProjectFake{},
 		application: serviceApplicationFake{app: app, version: version, declarations: []model.VersionComponent{declaration}},
 		service: serviceStoreFake{
 			service: service, component: component,
 			env: []model.ServiceEnv{{Key: "SHARED_VALUE", Value: "from-service"}},
 		},
 	}
-	detail, err := usecase.GetServiceComponent(context.Background(), "user-1", service.Id, component.Id)
+	detail, err := usecase.GetServiceComponent(context.Background(), "user-1", "project-1", service.Id, component.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,11 +262,12 @@ func TestGetServiceComponentReturnsSourceValuesWithoutResolvingEnvironment(t *te
 	declaration.Env[0].Value = "${MYSQL_DATABASE:?required}"
 	component.Env = nil
 	usecase := Service{
+		project:     serviceCreateProjectFake{},
 		application: serviceApplicationFake{app: app, version: version, declarations: []model.VersionComponent{declaration}},
 		service:     serviceStoreFake{service: service, component: component},
 	}
 
-	detail, err := usecase.GetServiceComponent(context.Background(), "user-1", service.Id, component.Id)
+	detail, err := usecase.GetServiceComponent(context.Background(), "user-1", "project-1", service.Id, component.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +285,7 @@ func TestServiceViewAllowsMissingRequiredServiceEnvironment(t *testing.T) {
 		service:     serviceStoreFake{components: []model.ServiceComponent{component}},
 		deployment:  deploymentStoreFake{},
 	}
-	view, err := usecase.serviceView(context.Background(), model.ServiceListItem{
+	view, err := usecase.serviceView(context.Background(), "project-1", model.ServiceListItem{
 		Id: service.Id, ApplicationId: service.ApplicationId, VersionId: service.VersionId, InstanceKey: service.InstanceKey,
 		Status: service.Status, ApplicationName: app.Name, ApplicationCode: app.Code, ApplicationKind: app.Kind, VersionLabel: version.Label,
 	})
@@ -441,7 +446,7 @@ func TestAlignComponentMappingsToVersionRewritesBoundServices(t *testing.T) {
 		},
 		service: store,
 	}
-	if err := usecase.AlignComponentMappingsToVersion(context.Background(), "app-1", "version-1"); err != nil {
+	if err := usecase.AlignComponentMappingsToVersion(context.Background(), "project-1", "app-1", "version-1"); err != nil {
 		t.Fatal(err)
 	}
 	if len(store.updated) != 1 || store.updated[0].service.Id != "service-bound" {
@@ -467,15 +472,15 @@ type alignServiceUpdate struct {
 	components []model.ServiceComponent
 }
 
-func (f *alignServiceStoreFake) ListServicesByApplication(context.Context, string) ([]model.Service, error) {
+func (f *alignServiceStoreFake) ListServicesByApplication(context.Context, string, string) ([]model.Service, error) {
 	return append([]model.Service(nil), f.services...), nil
 }
 
-func (f *alignServiceStoreFake) ServiceComponentsByService(_ context.Context, serviceId string) ([]model.ServiceComponent, error) {
+func (f *alignServiceStoreFake) ServiceComponentsByService(_ context.Context, _ string, serviceId string) ([]model.ServiceComponent, error) {
 	return append([]model.ServiceComponent(nil), f.components[serviceId]...), nil
 }
 
-func (f *alignServiceStoreFake) UpdateServiceConfiguration(_ context.Context, svc model.Service, components []model.ServiceComponent) error {
+func (f *alignServiceStoreFake) UpdateServiceConfiguration(_ context.Context, _ string, svc model.Service, components []model.ServiceComponent) error {
 	f.updated = append(f.updated, alignServiceUpdate{service: svc, components: append([]model.ServiceComponent(nil), components...)})
 	f.components[svc.Id] = append([]model.ServiceComponent(nil), components...)
 	return nil

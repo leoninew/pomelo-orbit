@@ -29,7 +29,7 @@ func TestCreateGeneratesULID(t *testing.T) {
 		t.Fatalf("create task: %v", err)
 	}
 	if _, err := ulid.ParseStrict(task.Id); err != nil {
-		t.Fatalf("expected ULID task ID, got %q: %v", task.Id, err)
+		t.Fatalf("expected ULID task Id, got %q: %v", task.Id, err)
 	}
 	if task.MaxAttempts != 2 {
 		t.Fatalf("max attempts = %d, want 2", task.MaxAttempts)

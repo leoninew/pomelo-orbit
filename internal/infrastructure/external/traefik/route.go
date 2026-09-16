@@ -33,7 +33,7 @@ func NewRouteManager(targetResolver environmentport.TargetResolver, runtime depl
 	return &RouteManager{targetResolver: targetResolver, runtime: runtime}
 }
 
-func (m *RouteManager) WaitUntilReady(ctx context.Context, projectID string, gateway model.GatewayConfig, timeout time.Duration) error {
+func (m *RouteManager) WaitUntilReady(ctx context.Context, projectId string, gateway model.GatewayConfig, timeout time.Duration) error {
 	base, err := traefikBaseURL(gateway.RestApiUrl)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func (m *RouteManager) WaitUntilReady(ctx context.Context, projectID string, gat
 	if timeout <= 0 {
 		return apperror.New(apperror.KindValidation, "gateway rest_ready_timeout_seconds is required")
 	}
-	target, err := m.resolveTarget(ctx, projectID)
+	target, err := m.resolveTarget(ctx, projectId)
 	if err != nil {
 		return err
 	}
@@ -65,14 +65,14 @@ func (m *RouteManager) WaitUntilReady(ctx context.Context, projectID string, gat
 	}
 }
 
-func (m *RouteManager) ApplySnapshot(ctx context.Context, projectID string, gateway model.GatewayConfig, routes []model.Route) error {
+func (m *RouteManager) ApplySnapshot(ctx context.Context, projectId string, gateway model.GatewayConfig, routes []model.Route) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	base, err := traefikBaseURL(gateway.RestApiUrl)
 	if err != nil {
 		return err
 	}
-	target, err := m.resolveTarget(ctx, projectID)
+	target, err := m.resolveTarget(ctx, projectId)
 	if err != nil {
 		return err
 	}
@@ -109,20 +109,20 @@ func (m *RouteManager) ApplySnapshot(ctx context.Context, projectID string, gate
 	return nil
 }
 
-func (m *RouteManager) ListRouters(ctx context.Context, projectID string, gateway model.GatewayConfig) ([]routeport.TraefikRouter, error) {
-	httpRouters, err := m.listRouters(ctx, projectID, gateway, "http")
+func (m *RouteManager) ListRouters(ctx context.Context, projectId string, gateway model.GatewayConfig) ([]routeport.TraefikRouter, error) {
+	httpRouters, err := m.listRouters(ctx, projectId, gateway, "http")
 	if err != nil {
 		return nil, err
 	}
-	tcpRouters, err := m.listRouters(ctx, projectID, gateway, "tcp")
+	tcpRouters, err := m.listRouters(ctx, projectId, gateway, "tcp")
 	if err != nil {
 		return nil, err
 	}
 	return append(httpRouters, tcpRouters...), nil
 }
 
-func (m *RouteManager) listRouters(ctx context.Context, projectID string, gateway model.GatewayConfig, protocol string) ([]routeport.TraefikRouter, error) {
-	body, err := m.get(ctx, projectID, gateway, "/api/"+protocol+"/routers")
+func (m *RouteManager) listRouters(ctx context.Context, projectId string, gateway model.GatewayConfig, protocol string) ([]routeport.TraefikRouter, error) {
+	body, err := m.get(ctx, projectId, gateway, "/api/"+protocol+"/routers")
 	if err != nil {
 		return nil, err
 	}
@@ -146,20 +146,20 @@ func (m *RouteManager) listRouters(ctx context.Context, projectID string, gatewa
 	return items, nil
 }
 
-func (m *RouteManager) ListServices(ctx context.Context, projectID string, gateway model.GatewayConfig) ([]routeport.TraefikService, error) {
-	httpServices, err := m.listServices(ctx, projectID, gateway, "http")
+func (m *RouteManager) ListServices(ctx context.Context, projectId string, gateway model.GatewayConfig) ([]routeport.TraefikService, error) {
+	httpServices, err := m.listServices(ctx, projectId, gateway, "http")
 	if err != nil {
 		return nil, err
 	}
-	tcpServices, err := m.listServices(ctx, projectID, gateway, "tcp")
+	tcpServices, err := m.listServices(ctx, projectId, gateway, "tcp")
 	if err != nil {
 		return nil, err
 	}
 	return append(httpServices, tcpServices...), nil
 }
 
-func (m *RouteManager) listServices(ctx context.Context, projectID string, gateway model.GatewayConfig, protocol string) ([]routeport.TraefikService, error) {
-	body, err := m.get(ctx, projectID, gateway, "/api/"+protocol+"/services")
+func (m *RouteManager) listServices(ctx context.Context, projectId string, gateway model.GatewayConfig, protocol string) ([]routeport.TraefikService, error) {
+	body, err := m.get(ctx, projectId, gateway, "/api/"+protocol+"/services")
 	if err != nil {
 		return nil, err
 	}
@@ -194,12 +194,12 @@ func (m *RouteManager) listServices(ctx context.Context, projectID string, gatew
 	return items, nil
 }
 
-func (m *RouteManager) get(ctx context.Context, projectID string, gateway model.GatewayConfig, endpoint string) (string, error) {
+func (m *RouteManager) get(ctx context.Context, projectId string, gateway model.GatewayConfig, endpoint string) (string, error) {
 	base, err := traefikBaseURL(gateway.RestApiUrl)
 	if err != nil {
 		return "", err
 	}
-	target, err := m.resolveTarget(ctx, projectID)
+	target, err := m.resolveTarget(ctx, projectId)
 	if err != nil {
 		return "", err
 	}
@@ -210,11 +210,11 @@ func (m *RouteManager) get(ctx context.Context, projectID string, gateway model.
 	return output, nil
 }
 
-func (m *RouteManager) resolveTarget(ctx context.Context, projectID string) (environmentport.Target, error) {
+func (m *RouteManager) resolveTarget(ctx context.Context, projectId string) (environmentport.Target, error) {
 	if m == nil || m.targetResolver == nil || m.runtime == nil {
 		return environmentport.Target{}, apperror.New(apperror.KindInternal, "remote Traefik client is not configured")
 	}
-	return m.targetResolver.ResolveProjectTarget(ctx, projectID)
+	return m.targetResolver.ResolveProjectTarget(ctx, projectId)
 }
 
 func (m *RouteManager) IsConnectionError(err error) bool {

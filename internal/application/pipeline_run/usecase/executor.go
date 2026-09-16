@@ -39,7 +39,7 @@ type Executor struct {
 	localSource       repositoryport.LocalDirectorySource
 }
 
-func (e Executor) Execute(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, runtime pipelinevariable.RuntimeVariables, stages []model.StageDefinition, stageRuns map[string]model.PipelineStageRun) (bool, string) {
+func (e Executor) Execute(ctx context.Context, executionCtx context.Context, projectId string, run model.PipelineRun, repo model.Repository, runtime pipelinevariable.RuntimeVariables, stages []model.StageDefinition, stageRuns map[string]model.PipelineStageRun) (bool, string) {
 	layers, err := topologicalLayers(stages)
 	if err != nil {
 		e.logger.Error("cyclic dependency", "run", run.Id, "error", err)
@@ -52,7 +52,7 @@ func (e Executor) Execute(ctx context.Context, executionCtx context.Context, run
 
 	for layerIndex, layer := range layers {
 		e.logger.Info("executing layer", "index", layerIndex+1, "total", len(layers), "run", run.Id, "stages", layer)
-		results := e.executeLayer(ctx, executionCtx, run, repo, runtime, layer, stageById, stageRuns)
+		results := e.executeLayer(ctx, executionCtx, projectId, run, repo, runtime, layer, stageById, stageRuns)
 		failed := make([]string, 0)
 		for _, stageId := range layer {
 			stage := stageById[stageId]
@@ -64,20 +64,20 @@ func (e Executor) Execute(ctx context.Context, executionCtx context.Context, run
 			return false, fmt.Sprintf("Stage(s) failed: %s", strings.Join(failed, ", "))
 		}
 	}
-	if err := e.forkBuildVersion(ctx, run, stages, fmt.Sprint(runtime.Global["runtime_datetime"])); err != nil {
+	if err := e.forkBuildVersion(ctx, projectId, run, stages, fmt.Sprint(runtime.Global["runtime_datetime"])); err != nil {
 		return false, err.Error()
 	}
 	return true, ""
 }
 
-func (e Executor) executeLayer(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, runtime pipelinevariable.RuntimeVariables, layer []string, stages map[string]model.StageDefinition, stageRuns map[string]model.PipelineStageRun) map[string]bool {
+func (e Executor) executeLayer(ctx context.Context, executionCtx context.Context, projectId string, run model.PipelineRun, repo model.Repository, runtime pipelinevariable.RuntimeVariables, layer []string, stages map[string]model.StageDefinition, stageRuns map[string]model.PipelineStageRun) map[string]bool {
 	results := make(map[string]bool, len(layer))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for _, stageId := range layer {
 		stage := stages[stageId]
 		wg.Go(func() {
-			ok := e.executeStage(ctx, executionCtx, run, repo, runtime, stage, stages, stageRuns[stage.Id])
+			ok := e.executeStage(ctx, executionCtx, projectId, run, repo, runtime, stage, stages, stageRuns[stage.Id])
 			mu.Lock()
 			results[stage.Name] = ok
 			mu.Unlock()
@@ -87,12 +87,12 @@ func (e Executor) executeLayer(ctx context.Context, executionCtx context.Context
 	return results
 }
 
-func (e Executor) executeStage(ctx context.Context, executionCtx context.Context, run model.PipelineRun, repo model.Repository, runtime pipelinevariable.RuntimeVariables, stage model.StageDefinition, stages map[string]model.StageDefinition, pipelineStageRun model.PipelineStageRun) bool {
+func (e Executor) executeStage(ctx context.Context, executionCtx context.Context, projectId string, run model.PipelineRun, repo model.Repository, runtime pipelinevariable.RuntimeVariables, stage model.StageDefinition, stages map[string]model.StageDefinition, pipelineStageRun model.PipelineStageRun) bool {
 	if pipelineStageRun.Id == "" {
 		e.logger.Error("pipeline stage run is missing", "run", run.Id, "stage", stage.Name)
 		return false
 	}
-	begun, err := e.store.BeginPipelineStageRun(ctx, pipelineStageRun.Id)
+	begun, err := e.store.BeginPipelineStageRun(ctx, projectId, pipelineStageRun.Id)
 	if err != nil {
 		e.logger.Error("pipeline stage run begin failed", "run", run.Id, "stage", stage.Name, "error", err)
 		return false
@@ -104,34 +104,34 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 	pipelineStageRun.StartedAt = &started
 	pipelineStageRun.Status = status.WorkStatusRunning
 	if err := executionCtx.Err(); err != nil {
-		return e.failStage(ctx, pipelineStageRun, e.executionErrorMessage(err))
+		return e.failStage(ctx, projectId, pipelineStageRun, e.executionErrorMessage(err))
 	}
 
 	logPath := e.workspace.StageLogPath(run.Id, pipelineStageRun.Id)
 	logWriter, err := e.logStore.Writer(logPath)
 	if err != nil {
-		return e.failStage(ctx, pipelineStageRun, fmt.Sprintf("create log writer: %v", err))
+		return e.failStage(ctx, projectId, pipelineStageRun, fmt.Sprintf("create log writer: %v", err))
 	}
 	defer func() { _ = logWriter.Close() }()
 
 	volumes, err := e.workspace.DockerStageMounts(ctx, repo.Code, run.Id)
 	if err != nil {
-		return e.failStage(ctx, pipelineStageRun, err.Error())
+		return e.failStage(ctx, projectId, pipelineStageRun, err.Error())
 	}
 	if repo.RepositoryType == model.RepositoryTypeLocalDirectory {
 		if e.localSource == nil {
-			return e.failStage(ctx, pipelineStageRun, "local directory sources are disabled")
+			return e.failStage(ctx, projectId, pipelineStageRun, "local directory sources are disabled")
 		}
 		sourcePath, err := e.localSource.DockerHostPath(ctx, repo.RepositoryUrl)
 		if err != nil {
-			return e.failStage(ctx, pipelineStageRun, err.Error())
+			return e.failStage(ctx, projectId, pipelineStageRun, err.Error())
 		}
 		volumes = append(volumes, pipelinerunport.VolumeMount{HostPath: sourcePath, ContainerPath: "/source", Mode: "ro"})
 	}
 
-	script, environment, err := e.pipelineStageRunConfig(ctx, repo, runtime, stage)
+	script, environment, err := e.pipelineStageRunConfig(ctx, projectId, repo, runtime, stage)
 	if err != nil {
-		return e.failStage(ctx, pipelineStageRun, err.Error())
+		return e.failStage(ctx, projectId, pipelineStageRun, err.Error())
 	}
 
 	runOptions := pipelinerunport.RunOptions{
@@ -149,20 +149,20 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 			if err != executionErr {
 				message = fmt.Sprintf("%s: %v", message, err)
 			}
-			return e.failStage(ctx, pipelineStageRun, message)
+			return e.failStage(ctx, projectId, pipelineStageRun, message)
 		}
-		return e.failStage(ctx, pipelineStageRun, err.Error())
+		return e.failStage(ctx, projectId, pipelineStageRun, err.Error())
 	}
 	if err := executionCtx.Err(); err != nil {
-		return e.failStage(ctx, pipelineStageRun, e.executionErrorMessage(err))
+		return e.failStage(ctx, projectId, pipelineStageRun, e.executionErrorMessage(err))
 	}
 	if exitCode != 0 {
 		if err := logWriter.Close(); err != nil {
-			return e.failStage(ctx, pipelineStageRun, fmt.Sprintf("close stage log writer: %v", err))
+			return e.failStage(ctx, projectId, pipelineStageRun, fmt.Sprintf("close stage log writer: %v", err))
 		}
 		content, _, _ := e.logStore.Read(logPath, 0)
 		errMsg := lastLines(string(content), 3)
-		return e.completeStageFailed(ctx, pipelineStageRun, exitCode, errMsg)
+		return e.completeStageFailed(ctx, projectId, pipelineStageRun, exitCode, errMsg)
 	}
 
 	finished := now()
@@ -170,10 +170,10 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 	pipelineStageRun.Status = status.WorkStatusRanToCompletion
 	pipelineStageRun.ExitCode = &exitCode
 	runtimeDatetime, _ := runtime.Global["runtime_datetime"].(string)
-	if err := e.saveArtifacts(executionCtx, run, stage, stages, runOptions, runtimeDatetime); err != nil {
-		return e.failStage(ctx, pipelineStageRun, err.Error())
+	if err := e.saveArtifacts(executionCtx, projectId, run, stage, stages, runOptions, runtimeDatetime); err != nil {
+		return e.failStage(ctx, projectId, pipelineStageRun, err.Error())
 	}
-	if _, err := e.store.CompletePipelineStageRun(ctx, pipelineStageRun); err != nil {
+	if _, err := e.store.CompletePipelineStageRun(ctx, projectId, pipelineStageRun); err != nil {
 		e.logger.Error("pipeline stage run update failed", "run", run.Id, "stage", stage.Name, "error", err)
 		return false
 	}
@@ -188,13 +188,13 @@ func (e Executor) executionErrorMessage(err error) string {
 	return fmt.Sprintf("pipeline execution canceled: %v", err)
 }
 
-func (e Executor) pipelineStageRunConfig(ctx context.Context, repo model.Repository, runtime pipelinevariable.RuntimeVariables, stage model.StageDefinition) (string, []string, error) {
+func (e Executor) pipelineStageRunConfig(ctx context.Context, projectId string, repo model.Repository, runtime pipelinevariable.RuntimeVariables, stage model.StageDefinition) (string, []string, error) {
 	script := commandLines(stage.Script)
 	environment := envMap(runtime.ValuesForStage(stage))
 	if repo.RepositoryType == model.RepositoryTypeLocalDirectory || repo.GitCredentialId == nil || !stageUsesRepositoryUrl(stage.Script, repo.RepositoryUrl) {
 		return script, environment, nil
 	}
-	credential, err := e.store.Credential(ctx, *repo.GitCredentialId)
+	credential, err := e.store.Credential(ctx, projectId, *repo.GitCredentialId)
 	if err != nil {
 		return "", nil, fmt.Errorf("load git credential: %w", err)
 	}
@@ -266,28 +266,28 @@ func gitCredentialEnvironment(repositoryUrl string, authenticatedUrl string) []s
 	}
 }
 
-func (e Executor) completeStageFailed(ctx context.Context, pipelineStageRun model.PipelineStageRun, exitCode int, message string) bool {
+func (e Executor) completeStageFailed(ctx context.Context, projectId string, pipelineStageRun model.PipelineStageRun, exitCode int, message string) bool {
 	finished := now()
 	pipelineStageRun.FinishedAt = &finished
 	pipelineStageRun.Status = status.WorkStatusFaulted
 	pipelineStageRun.ExitCode = &exitCode
 	pipelineStageRun.ErrorMessage = &message
-	_, _ = e.store.CompletePipelineStageRun(ctx, pipelineStageRun)
+	_, _ = e.store.CompletePipelineStageRun(ctx, projectId, pipelineStageRun)
 	e.logger.Warn("stage failed", "run", pipelineStageRun.PipelineRunId, "stage", pipelineStageRun.StageName, "exit_code", exitCode)
 	return false
 }
 
-func (e Executor) failStage(ctx context.Context, pipelineStageRun model.PipelineStageRun, message string) bool {
+func (e Executor) failStage(ctx context.Context, projectId string, pipelineStageRun model.PipelineStageRun, message string) bool {
 	finished := now()
 	pipelineStageRun.FinishedAt = &finished
 	pipelineStageRun.Status = status.WorkStatusFaulted
 	pipelineStageRun.ErrorMessage = &message
-	_, _ = e.store.CompletePipelineStageRun(ctx, pipelineStageRun)
+	_, _ = e.store.CompletePipelineStageRun(ctx, projectId, pipelineStageRun)
 	e.logger.Error("stage faulted", "run", pipelineStageRun.PipelineRunId, "stage", pipelineStageRun.StageName, "error", message)
 	return false
 }
 
-func (e Executor) saveArtifacts(ctx context.Context, run model.PipelineRun, stage model.StageDefinition, stages map[string]model.StageDefinition, runOptions pipelinerunport.RunOptions, runtimeDatetime string) error {
+func (e Executor) saveArtifacts(ctx context.Context, projectId string, run model.PipelineRun, stage model.StageDefinition, stages map[string]model.StageDefinition, runOptions pipelinerunport.RunOptions, runtimeDatetime string) error {
 	for _, artifact := range stage.Artifacts {
 		switch artifact.Collector {
 		case "file":
@@ -310,7 +310,7 @@ func (e Executor) saveArtifacts(ctx context.Context, run model.PipelineRun, stag
 				return err
 			}
 		case "docker_image":
-			if err := e.archiveContainerImageArtifact(ctx, run, stage, stages, artifact, runtimeDatetime); err != nil {
+			if err := e.archiveContainerImageArtifact(ctx, run, stage, stages, artifact, projectId); err != nil {
 				return err
 			}
 		default:
@@ -342,7 +342,7 @@ func (e Executor) archiveCommandArtifact(ctx context.Context, run model.Pipeline
 	return nil
 }
 
-func (e Executor) archiveContainerImageArtifact(ctx context.Context, run model.PipelineRun, stage model.StageDefinition, stages map[string]model.StageDefinition, artifact model.ArtifactConfig, _ string) error {
+func (e Executor) archiveContainerImageArtifact(ctx context.Context, run model.PipelineRun, stage model.StageDefinition, stages map[string]model.StageDefinition, artifact model.ArtifactConfig, projectId string) error {
 	inspector, ok := e.runner.(pipelinerunport.ImageInspector)
 	if !ok {
 		return fmt.Errorf("local image inspection is unavailable")
@@ -359,7 +359,7 @@ func (e Executor) archiveContainerImageArtifact(ctx context.Context, run model.P
 		if err != nil {
 			return err
 		}
-		sourceArtifact, err := e.store.CommandArtifactByRunStageAndName(ctx, run.Id, source.ProducerStageId, source.Artifact.Name)
+		sourceArtifact, err := e.store.CommandArtifactByRunStageAndName(ctx, projectId, run.Id, source.ProducerStageId, source.Artifact.Name)
 		if err != nil {
 			return fmt.Errorf("load source command artifact: %w", err)
 		}
@@ -373,17 +373,17 @@ func (e Executor) archiveContainerImageArtifact(ctx context.Context, run model.P
 }
 
 type forkBuildVersionStore interface {
-	PipelineRunVersionBinding(ctx context.Context, pipelineRunId string) (model.PipelineRunVersionBinding, error)
-	ListArtifactsByRun(ctx context.Context, projectId *string, runId string) ([]model.Artifact, error)
-	CompletePipelineRunVersionBinding(ctx context.Context, pipelineRunId string, generatedVersionId string, generatedVersionLabel string) error
+	PipelineRunVersionBinding(ctx context.Context, projectId string, pipelineRunId string) (model.PipelineRunVersionBinding, error)
+	ListArtifactsByRun(ctx context.Context, projectId string, runId string) ([]model.Artifact, error)
+	CompletePipelineRunVersionBinding(ctx context.Context, projectId string, pipelineRunId string, generatedVersionId string, generatedVersionLabel string) error
 }
 
-func (e Executor) forkBuildVersion(ctx context.Context, run model.PipelineRun, stages []model.StageDefinition, runtimeDatetime string) error {
-	return forkBuildVersion(ctx, e.store, e.transactionRunner, e.versionForker, run, stages, runtimeDatetime)
+func (e Executor) forkBuildVersion(ctx context.Context, projectId string, run model.PipelineRun, stages []model.StageDefinition, runtimeDatetime string) error {
+	return forkBuildVersion(ctx, e.store, e.transactionRunner, e.versionForker, projectId, run, stages, runtimeDatetime)
 }
 
-func forkBuildVersion(ctx context.Context, store forkBuildVersionStore, transactionRunner pipelinerunport.TransactionRunner, versionForker applicationport.BuildVersionForker, run model.PipelineRun, stages []model.StageDefinition, runtimeDatetime string) error {
-	binding, err := store.PipelineRunVersionBinding(ctx, run.Id)
+func forkBuildVersion(ctx context.Context, store forkBuildVersionStore, transactionRunner pipelinerunport.TransactionRunner, versionForker applicationport.BuildVersionForker, projectId string, run model.PipelineRun, stages []model.StageDefinition, runtimeDatetime string) error {
+	binding, err := store.PipelineRunVersionBinding(ctx, projectId, run.Id)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil
@@ -396,7 +396,7 @@ func forkBuildVersion(ctx context.Context, store forkBuildVersionStore, transact
 	if versionForker == nil {
 		return fmt.Errorf("application version forker is unavailable")
 	}
-	artifacts, err := store.ListArtifactsByRun(ctx, run.ProjectId, run.Id)
+	artifacts, err := store.ListArtifactsByRun(ctx, projectId, run.Id)
 	if err != nil {
 		return fmt.Errorf("load pipeline artifacts: %w", err)
 	}
@@ -420,6 +420,7 @@ func forkBuildVersion(ctx context.Context, store forkBuildVersionStore, transact
 	}
 	return transactionRunner.RunInTransaction(ctx, func(txCtx context.Context) error {
 		version, err := versionForker.ForkVersionForBuild(txCtx, applicationport.BuildVersionForkInput{
+			ProjectId:       projectId,
 			SourceVersionId: binding.SourceVersionId,
 			Label:           buildVersionLabel(runtimeDatetime),
 			Components:      updates,
@@ -427,7 +428,7 @@ func forkBuildVersion(ctx context.Context, store forkBuildVersionStore, transact
 		if err != nil {
 			return fmt.Errorf("fork source version: %w", err)
 		}
-		return store.CompletePipelineRunVersionBinding(txCtx, run.Id, version.Id, version.Label)
+		return store.CompletePipelineRunVersionBinding(txCtx, projectId, run.Id, version.Id, version.Label)
 	})
 }
 

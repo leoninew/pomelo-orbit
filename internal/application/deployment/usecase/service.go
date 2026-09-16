@@ -84,69 +84,69 @@ func (s Service) ListDeployments(ctx context.Context, userId string, input deplo
 	return items, nil
 }
 
-func (s Service) DeploymentForUser(ctx context.Context, userId string, deploymentId string) (model.Deployment, error) {
-	return s.loadDeploymentForUser(ctx, userId, deploymentId)
+func (s Service) DeploymentForUser(ctx context.Context, userId string, projectId string, deploymentId string) (model.Deployment, error) {
+	return s.loadDeploymentForUser(ctx, userId, projectId, deploymentId)
 }
 
-func (s Service) DeploymentLog(ctx context.Context, userId string, deploymentId string, offset int) (deploymentdto.DeploymentLog, error) {
+func (s Service) DeploymentLog(ctx context.Context, userId string, projectId string, deploymentId string, offset int) (deploymentdto.DeploymentLog, error) {
 	if offset < 0 {
 		return deploymentdto.DeploymentLog{}, apperror.New(apperror.KindValidation, "offset must be greater than or equal to 0")
 	}
-	deployment, err := s.loadDeploymentForUser(ctx, userId, deploymentId)
+	deployment, err := s.loadDeploymentForUser(ctx, userId, projectId, deploymentId)
 	if err != nil {
 		return deploymentdto.DeploymentLog{}, err
 	}
-	logs, newOffset, err := s.readDeploymentLog(ctx, deployment, offset)
+	logs, newOffset, err := s.readDeploymentLog(ctx, projectId, deployment, offset)
 	if err != nil {
 		return deploymentdto.DeploymentLog{}, err
 	}
 	return deploymentdto.DeploymentLog{Logs: logs, Offset: newOffset, IsComplete: status.WorkStatusIsComplete(deployment.Status), Status: deployment.Status}, nil
 }
 
-func (s Service) CancelDeployment(ctx context.Context, userId string, deploymentId string) (model.Deployment, error) {
-	deployment, err := s.loadDeploymentForUser(ctx, userId, deploymentId)
+func (s Service) CancelDeployment(ctx context.Context, userId string, projectId string, deploymentId string) (model.Deployment, error) {
+	deployment, err := s.loadDeploymentForUser(ctx, userId, projectId, deploymentId)
 	if err != nil {
 		return model.Deployment{}, err
 	}
 	if deployment.Status != status.WorkStatusWaitingToRun && deployment.Status != status.WorkStatusRunning {
 		return model.Deployment{}, apperror.New(apperror.KindValidation, "Cannot cancel deployment with status "+deployment.Status)
 	}
-	canceled, err := s.deployment.CancelDeployment(ctx, deployment.Id)
+	canceled, err := s.deployment.CancelDeployment(ctx, projectId, deployment.Id)
 	if err != nil {
 		return model.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to cancel deployment", err)
 	}
 	if !canceled {
 		return model.Deployment{}, apperror.New(apperror.KindValidation, "Cannot cancel deployment with status "+deployment.Status)
 	}
-	updated, err := s.deployment.Deployment(ctx, deployment.Id)
+	updated, err := s.deployment.Deployment(ctx, projectId, deployment.Id)
 	if err != nil {
 		return model.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to load deployment", err)
 	}
 	return updated, nil
 }
 
-func (s Service) DeleteDeployment(ctx context.Context, userId string, deploymentId string) error {
-	deployment, err := s.loadDeploymentForUser(ctx, userId, deploymentId)
+func (s Service) DeleteDeployment(ctx context.Context, userId string, projectId string, deploymentId string) error {
+	deployment, err := s.loadDeploymentForUser(ctx, userId, projectId, deploymentId)
 	if err != nil {
 		return err
 	}
 	if !status.WorkStatusIsComplete(deployment.Status) {
 		return apperror.New(apperror.KindValidation, "Cannot delete deployment with status "+deployment.Status)
 	}
-	if err := s.removeDeploymentLog(ctx, deployment); err != nil {
+	if err := s.removeDeploymentLog(ctx, projectId, deployment); err != nil {
 		return err
 	}
-	if err := s.deployment.DeleteDeployment(ctx, deployment.Id); err != nil {
+	if err := s.deployment.DeleteDeployment(ctx, projectId, deployment.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete deployment", err)
 	}
 	return nil
 }
 
-func (s Service) DeploymentContainerLog(ctx context.Context, userId string, deploymentId string, tail int) (deploymentdto.DeploymentContainerLog, error) {
+func (s Service) DeploymentContainerLog(ctx context.Context, userId string, projectId string, deploymentId string, tail int) (deploymentdto.DeploymentContainerLog, error) {
 	if tail < 1 || tail > 1000 {
 		return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindValidation, "tail must be between 1 and 1000")
 	}
-	deployment, err := s.loadDeploymentForUser(ctx, userId, deploymentId)
+	deployment, err := s.loadDeploymentForUser(ctx, userId, projectId, deploymentId)
 	if err != nil {
 		return deploymentdto.DeploymentContainerLog{}, err
 	}
@@ -159,18 +159,18 @@ func (s Service) DeploymentContainerLog(ctx context.Context, userId string, depl
 	if deployment.ApplicationId == nil || *deployment.ApplicationId == "" {
 		return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated application")
 	}
-	app, err := s.application.Application(ctx, *deployment.ApplicationId)
+	app, err := s.application.Application(ctx, projectId, *deployment.ApplicationId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindNotFound, "Application "+*deployment.ApplicationId+" not found")
 		}
 		return deploymentdto.DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
-	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
+	svc, err := s.resolveServiceFromDeployment(ctx, projectId, app.Id, deployment)
 	if err != nil {
 		return deploymentdto.DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	target, err := s.resolveProjectTarget(ctx, app)
+	target, err := s.resolveProjectTarget(ctx, projectId)
 	if err != nil {
 		return deploymentdto.DeploymentContainerLog{}, err
 	}
@@ -195,43 +195,30 @@ func (s Service) DeploymentContainerLog(ctx context.Context, userId string, depl
 	return deploymentdto.DeploymentContainerLog{Logs: output, Source: "tail", IsRealtimeSupported: true}, nil
 }
 
-func (s Service) loadDeploymentForUser(ctx context.Context, userId string, deploymentId string) (model.Deployment, error) {
-	deployment, err := s.deployment.Deployment(ctx, deploymentId)
+func (s Service) loadDeploymentForUser(ctx context.Context, userId string, projectId string, deploymentId string) (model.Deployment, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Deployment{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Deployment{}, err
+	}
+	deployment, err := s.deployment.Deployment(ctx, projectId, deploymentId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Deployment{}, apperror.New(apperror.KindNotFound, "Deployment "+deploymentId+" not found")
 		}
 		return model.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to load deployment", err)
 	}
-	if deployment.ProjectId != nil {
-		if err := s.ensureProjectMembership(ctx, *deployment.ProjectId, userId); err != nil {
-			return model.Deployment{}, err
-		}
-		return deployment, nil
-	}
-	if deployment.ApplicationId != nil {
-		app, err := s.application.Application(ctx, *deployment.ApplicationId)
-		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				return model.Deployment{}, apperror.New(apperror.KindNotFound, "Application "+*deployment.ApplicationId+" not found")
-			}
-			return model.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
-		}
-		if app.ProjectId != nil {
-			if err := s.ensureProjectMembership(ctx, *app.ProjectId, userId); err != nil {
-				return model.Deployment{}, err
-			}
-		}
-	}
 	return deployment, nil
 }
 
-func (s Service) removeDeploymentLog(ctx context.Context, deployment model.Deployment) error {
+func (s Service) removeDeploymentLog(ctx context.Context, projectId string, deployment model.Deployment) error {
 	if deployment.ServiceId == nil || strings.TrimSpace(*deployment.ServiceId) == "" {
 		s.warnDeploymentLogCleanupSkipped(deployment.Id, "deployment has no associated service")
 		return nil
 	}
-	service, err := s.service.Service(ctx, *deployment.ServiceId)
+	service, err := s.service.Service(ctx, projectId, *deployment.ServiceId)
 	if errors.Is(err, repository.ErrNotFound) {
 		s.warnDeploymentLogCleanupSkipped(deployment.Id, "associated service no longer exists")
 		return nil
@@ -278,11 +265,11 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectId string, 
 	return nil
 }
 
-func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deployment, offset int) (string, int, error) {
+func (s Service) readDeploymentLog(ctx context.Context, projectId string, deployment model.Deployment, offset int) (string, int, error) {
 	if deployment.ApplicationId == nil || *deployment.ApplicationId == "" {
 		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated application")
 	}
-	app, err := s.application.Application(ctx, *deployment.ApplicationId)
+	app, err := s.application.Application(ctx, projectId, *deployment.ApplicationId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return "", offset, apperror.New(apperror.KindNotFound, "Application "+*deployment.ApplicationId+" not found")
@@ -296,7 +283,7 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 	if opts.InstanceKey == "" {
 		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated instance")
 	}
-	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
+	svc, err := s.resolveServiceFromDeployment(ctx, projectId, app.Id, deployment)
 	if err != nil {
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}

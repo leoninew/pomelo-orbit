@@ -24,5 +24,5 @@ type EnvironmentService interface {
 
 type GatewayService interface {
 	ListGateways(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[gatewaydto.GatewayView], error)
-	CreateGateway(ctx context.Context, userId string, input gatewaydto.GatewayCreateInput) (gatewaydto.GatewayView, error)
+	CreateGateway(ctx context.Context, userId string, projectId string, input gatewaydto.GatewayCreateInput) (gatewaydto.GatewayView, error)
 }

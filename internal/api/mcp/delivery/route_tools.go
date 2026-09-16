@@ -89,10 +89,11 @@ func (c *core) registerRouteTools(server *mcp.Server) {
 		EndpointContainerPort *int    `json:"endpoint_container_port,omitempty"`
 		Enabled               *bool   `json:"enabled,omitempty"`
 	}) (map[string]any, error) {
-		if _, err := c.routeInScope(ctx, input.RouteId); err != nil {
+		projectId, _, err := c.requireReadyEnvironment(ctx)
+		if err != nil {
 			return nil, err
 		}
-		route, err := c.deps.Route.UpdateRoute(ctx, c.deps.ActorUserId, input.RouteId, routedto.RouteUpdateInput{
+		route, err := c.deps.Route.UpdateRoute(ctx, c.deps.ActorUserId, projectId, input.RouteId, routedto.RouteUpdateInput{
 			Name: input.Name, Protocol: input.Protocol, Domain: input.Domain, PathPrefix: input.PathPrefix,
 			TargetUrl: input.TargetUrl, ListenPort: input.ListenPort, ServiceId: input.ServiceId,
 			ComponentName: input.ComponentName, EndpointProtocol: input.EndpointProtocol,
@@ -107,10 +108,11 @@ func (c *core) registerRouteTools(server *mcp.Server) {
 	addTool(server, "orbit_enable_route", "Enable one custom Route in business data. The complete Route snapshot is published through the Route sync flow. For TCP, the target Gateway must already expose the selected listen_port.", func(ctx context.Context, input struct {
 		RouteId string `json:"route_id" jsonschema:"required"`
 	}) (map[string]any, error) {
-		if _, err := c.routeInScope(ctx, input.RouteId); err != nil {
+		projectId, _, err := c.requireReadyEnvironment(ctx)
+		if err != nil {
 			return nil, err
 		}
-		route, err := c.deps.Route.EnableRoute(ctx, c.deps.ActorUserId, input.RouteId)
+		route, err := c.deps.Route.EnableRoute(ctx, c.deps.ActorUserId, projectId, input.RouteId)
 		if err != nil {
 			return nil, err
 		}
@@ -120,10 +122,11 @@ func (c *core) registerRouteTools(server *mcp.Server) {
 	addTool(server, "orbit_disable_route", "Disable one custom Route in business data. The complete Route snapshot is published through the Route sync flow.", func(ctx context.Context, input struct {
 		RouteId string `json:"route_id" jsonschema:"required"`
 	}) (map[string]any, error) {
-		if _, err := c.routeInScope(ctx, input.RouteId); err != nil {
+		projectId, _, err := c.requireReadyEnvironment(ctx)
+		if err != nil {
 			return nil, err
 		}
-		route, err := c.deps.Route.DisableRoute(ctx, c.deps.ActorUserId, input.RouteId)
+		route, err := c.deps.Route.DisableRoute(ctx, c.deps.ActorUserId, projectId, input.RouteId)
 		if err != nil {
 			return nil, err
 		}

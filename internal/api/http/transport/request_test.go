@@ -31,15 +31,6 @@ func TestDecodeJSONRejectsUnknownProtoFields(t *testing.T) {
 	}
 }
 
-func TestQueryProjectId(t *testing.T) {
-	if value := QueryProjectId(""); value != nil {
-		t.Fatalf("QueryProjectId(\"\") = %q, want nil", *value)
-	}
-	if value := QueryProjectId("project-1"); value == nil || *value != "project-1" {
-		t.Fatalf("QueryProjectId() = %v, want project-1", value)
-	}
-}
-
 func testContext(body string) *gin.Context {
 	gin.SetMode(gin.TestMode)
 	context, _ := gin.CreateTestContext(httptest.NewRecorder())

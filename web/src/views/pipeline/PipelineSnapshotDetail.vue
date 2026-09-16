@@ -117,12 +117,14 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineSnapshotResp } from '@/gen/proto/orbit/v1/pipeline/snapshot';
+  import { useProjectStore } from '@/stores/project';
   import { formatTime } from '@/utils/time';
   import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
 
   const route = useRoute();
   const router = useRouter();
+  const projectStore = useProjectStore();
   const toast = useToast();
   const { status, execute } = useStatusAsync();
   const snapshot = ref<PipelineSnapshotResp>();
@@ -144,9 +146,14 @@
     return snapshot.value?.stages_snapshot.find((stage) => stage.id === id)?.name || id;
   }
   async function fetchSnapshot() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      await router.push('/pipeline');
+      return;
+    }
     try {
       await execute(async () => {
-        snapshot.value = await pipelineApi.getSnapshot(snapshotId.value);
+        snapshot.value = await pipelineApi.getSnapshot(projectId, snapshotId.value);
       });
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : '加载快照失败');

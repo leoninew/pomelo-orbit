@@ -36,19 +36,19 @@ func (s gatewayDeleteEnvironmentStore) EnvironmentByProject(context.Context, str
 type gatewayDeleteApplicationStore struct {
 	gatewayport.ApplicationStore
 	application model.Application
-	deleteID    string
+	deleteId    string
 }
 
-func (s *gatewayDeleteApplicationStore) Application(_ context.Context, _ string) (model.Application, error) {
+func (s *gatewayDeleteApplicationStore) Application(_ context.Context, _, _ string) (model.Application, error) {
 	return s.application, nil
 }
 
-func (s *gatewayDeleteApplicationStore) ListApplications(_ context.Context, _ *string, _ int, _ int, _ string, _ string) (repository.Page[model.Application], error) {
+func (s *gatewayDeleteApplicationStore) ListApplications(_ context.Context, _ string, _ int, _ int, _ string, _ string) (repository.Page[model.Application], error) {
 	return repository.Page[model.Application]{}, nil
 }
 
 func (s *gatewayDeleteApplicationStore) DeleteApplication(_ context.Context, id string) error {
-	s.deleteID = id
+	s.deleteId = id
 	return nil
 }
 
@@ -66,19 +66,19 @@ type gatewayDeleteServiceStore struct {
 	services []model.Service
 }
 
-func (s gatewayDeleteServiceStore) ListServicesByApplication(_ context.Context, _ string) ([]model.Service, error) {
+func (s gatewayDeleteServiceStore) ListServicesByApplication(_ context.Context, _, _ string) ([]model.Service, error) {
 	return s.services, nil
 }
 
 func TestDeleteGatewayRejectsBoundGateway(t *testing.T) {
-	projectID := "project-1"
-	gatewayID := "gateway-1"
-	application := &gatewayDeleteApplicationStore{application: model.Application{Id: gatewayID, ProjectId: &projectID, Kind: status.ApplicationKindGateway}}
+	projectId := "project-1"
+	gatewayId := "gateway-1"
+	application := &gatewayDeleteApplicationStore{application: model.Application{Id: gatewayId, ProjectId: &projectId, Kind: status.ApplicationKindGateway}}
 	service := New(
-		gatewayDeleteProjectStore{project: model.Project{Id: projectID}},
-		gatewayDeleteEnvironmentStore{environment: model.Environment{ProjectId: projectID, GatewayApplicationId: &gatewayID}},
+		gatewayDeleteProjectStore{project: model.Project{Id: projectId}},
+		gatewayDeleteEnvironmentStore{environment: model.Environment{ProjectId: projectId, GatewayApplicationId: &gatewayId}},
 		application,
-		gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: gatewayID}},
+		gatewayDeleteConfigStore{config: model.GatewayConfig{ApplicationId: gatewayId}},
 		gatewayDeleteServiceStore{services: []model.Service{{Id: "service-1", InstanceKey: "default", Status: status.ServiceStatusStopped}}},
 		nil,
 		nil,
@@ -86,14 +86,14 @@ func TestDeleteGatewayRejectsBoundGateway(t *testing.T) {
 		nil,
 	)
 
-	err := service.DeleteGateway(context.Background(), "user-1", gatewayID)
+	err := service.DeleteGateway(context.Background(), "user-1", projectId, gatewayId)
 	if !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("error = %v, want validation", err)
 	}
 	if apperror.Classify(err).Message != "Gateway cannot be deleted after it is bound to a project environment" {
 		t.Fatalf("message = %q", apperror.Classify(err).Message)
 	}
-	if application.deleteID != "" {
-		t.Fatalf("unexpected deletion of %q", application.deleteID)
+	if application.deleteId != "" {
+		t.Fatalf("unexpected deletion of %q", application.deleteId)
 	}
 }

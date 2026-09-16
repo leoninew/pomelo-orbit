@@ -30,11 +30,11 @@ func NewFactory(serverForActor ServerForActor) Factory {
 func (f Factory) Connect(ctx context.Context, actorUserId string, projectId string) (port.MCPClient, error) {
 	actorUserId = strings.TrimSpace(actorUserId)
 	if actorUserId == "" {
-		return nil, errors.New("delivery MCP actor user ID is required")
+		return nil, errors.New("delivery MCP actor user Id is required")
 	}
 	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
-		return nil, errors.New("delivery MCP project ID is required")
+		return nil, errors.New("delivery MCP project Id is required")
 	}
 	if f.serverForActor == nil {
 		return nil, errors.New("delivery MCP server factory is required")

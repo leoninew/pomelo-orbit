@@ -9,7 +9,7 @@ import request, { remoteRequestConfig } from '@/utils/request';
 
 export const projectInitializationApi = {
   getStatus(projectId: string): Promise<ProjectInitializationStatusResp> {
-    return request.get(`/api/project/${projectId}/initialization`);
+    return request.get('/api/project-initialization', { params: { project_id: projectId } });
   },
 
   testEnvironment(
@@ -17,9 +17,9 @@ export const projectInitializationApi = {
     data: ProjectInitializationEnvironmentReq
   ): Promise<{ ok: boolean }> {
     return request.post(
-      `/api/project/${projectId}/initialization/environment/test`,
+      '/api/project-initialization/environment/test',
       data,
-      remoteRequestConfig()
+      remoteRequestConfig({ params: { project_id: projectId } })
     );
   },
 
@@ -27,17 +27,18 @@ export const projectInitializationApi = {
     projectId: string,
     data: ProjectInitializationEnvironmentReq
   ): Promise<ProjectInitializationStatusResp> {
-    return request.post(`/api/project/${projectId}/initialization/environment`, data);
+    return request.post('/api/project-initialization/environment', data, {
+      params: { project_id: projectId },
+    });
   },
 
   prepareWindowsEnvironment(
     projectId: string,
     data: ProjectInitializationEnvironmentReq
   ): Promise<ProjectInitializationWindowsCommandResp> {
-    return request.post(
-      `/api/project/${projectId}/initialization/environment/windows-command`,
-      data
-    );
+    return request.post('/api/project-initialization/environment/windows-command', data, {
+      params: { project_id: projectId },
+    });
   },
 
   bootstrapEnvironment(
@@ -45,17 +46,17 @@ export const projectInitializationApi = {
     data: ProjectInitializationBootstrapReq
   ): Promise<ProjectInitializationStatusResp> {
     return request.post(
-      `/api/project/${projectId}/initialization/bootstrap`,
+      '/api/project-initialization/bootstrap',
       data,
-      remoteRequestConfig()
+      remoteRequestConfig({ params: { project_id: projectId } })
     );
   },
 
   probeEnvironment(projectId: string): Promise<ProjectInitializationStatusResp> {
     return request.post(
-      `/api/project/${projectId}/initialization/probe`,
+      '/api/project-initialization/probe',
       undefined,
-      remoteRequestConfig()
+      remoteRequestConfig({ params: { project_id: projectId } })
     );
   },
 
@@ -63,6 +64,8 @@ export const projectInitializationApi = {
     projectId: string,
     data: ProjectInitializationGatewayReq
   ): Promise<ProjectInitializationStatusResp> {
-    return request.post(`/api/project/${projectId}/initialization/gateway`, data);
+    return request.post('/api/project-initialization/gateway', data, {
+      params: { project_id: projectId },
+    });
   },
 };

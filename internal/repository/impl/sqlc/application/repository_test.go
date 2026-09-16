@@ -46,7 +46,7 @@ func TestListApplicationsBindsTypedFilters(t *testing.T) {
 		}
 	}
 
-	filtered, err := repo.ListApplications(ctx, &projectOne, 1, 1, "One", "standard")
+	filtered, err := repo.ListApplications(ctx, projectOne, 1, 1, "One", "standard")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,12 +54,12 @@ func TestListApplicationsBindsTypedFilters(t *testing.T) {
 		t.Fatalf("unexpected filtered page: %+v", filtered)
 	}
 
-	all, err := repo.ListApplications(ctx, nil, 1, 100, "", "")
+	otherProject, err := repo.ListApplications(ctx, projectTwo, 1, 100, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if all.Total != 2 || len(all.Items) != 2 {
-		t.Fatalf("unexpected unfiltered page: %+v", all)
+	if otherProject.Total != 1 || len(otherProject.Items) != 1 || otherProject.Items[0].Id != "application-2" {
+		t.Fatalf("unexpected second project page: %+v", otherProject)
 	}
 }
 
@@ -83,7 +83,7 @@ func TestDeleteApplicationCleansApplicationResources(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := NewRepository(database).DeleteApplication(ctx, "app-1"); err != nil {
+	if err := NewRepository(database).DeleteApplication(ctx, "project-1", "app-1"); err != nil {
 		t.Fatal(err)
 	}
 	for _, check := range []struct {
@@ -125,7 +125,7 @@ func TestDeleteGatewayApplicationDeletesStoppedResources(t *testing.T) {
 		}
 	}
 
-	if err := NewRepository(database).DeleteGatewayApplication(ctx, "gateway-1"); err != nil {
+	if err := NewRepository(database).DeleteGatewayApplication(ctx, "project-1", "gateway-1"); err != nil {
 		t.Fatal(err)
 	}
 	for _, table := range []string{"application", "gateway_config", "version", "service"} {
@@ -149,7 +149,7 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind) VALUES ('app-1', 'App', 'app', 'application')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'application', 'project-1')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
@@ -169,14 +169,14 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 	}
 
 	repo := NewRepository(database)
-	refs, err := repo.CountVersionRuntimeRefs(ctx, "version-1")
+	refs, err := repo.CountVersionRuntimeRefs(ctx, "project-1", "version-1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if refs != 0 {
 		t.Fatalf("expected fork reference to be deletable, got %d blocking references", refs)
 	}
-	if err := repo.DeleteVersion(ctx, "version-1"); err != nil {
+	if err := repo.DeleteVersion(ctx, "project-1", "version-1"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -187,36 +187,36 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 	if createdFrom.Valid {
 		t.Fatalf("expected cleared fork reference, got %q", createdFrom.String)
 	}
-	var deploymentVersionID string
-	if err := database.QueryRowContext(ctx, `SELECT version_id FROM deployment WHERE id = 'deployment-1'`).Scan(&deploymentVersionID); err != nil {
+	var deploymentVersionId string
+	if err := database.QueryRowContext(ctx, `SELECT version_id FROM deployment WHERE id = 'deployment-1'`).Scan(&deploymentVersionId); err != nil {
 		t.Fatal(err)
 	}
-	if deploymentVersionID != "version-1" {
-		t.Fatalf("expected preserved deployment version reference, got %q", deploymentVersionID)
+	if deploymentVersionId != "version-1" {
+		t.Fatalf("expected preserved deployment version reference, got %q", deploymentVersionId)
 	}
-	var sourceVersionID, generatedVersionID string
-	if err := database.QueryRowContext(ctx, `SELECT source_version_id, generated_version_id FROM pipeline_run_version_binding WHERE pipeline_run_id = 'run-1'`).Scan(&sourceVersionID, &generatedVersionID); err != nil {
+	var sourceVersionId, generatedVersionId string
+	if err := database.QueryRowContext(ctx, `SELECT source_version_id, generated_version_id FROM pipeline_run_version_binding WHERE pipeline_run_id = 'run-1'`).Scan(&sourceVersionId, &generatedVersionId); err != nil {
 		t.Fatal(err)
 	}
-	if sourceVersionID != "version-1" || generatedVersionID != "version-3" {
-		t.Fatalf("expected preserved pipeline run history, got source=%q generated=%q", sourceVersionID, generatedVersionID)
+	if sourceVersionId != "version-1" || generatedVersionId != "version-3" {
+		t.Fatalf("expected preserved pipeline run history, got source=%q generated=%q", sourceVersionId, generatedVersionId)
 	}
 
-	refs, err = repo.CountVersionRuntimeRefs(ctx, "version-3")
+	refs, err = repo.CountVersionRuntimeRefs(ctx, "project-1", "version-3")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if refs != 0 {
 		t.Fatalf("expected generated version history to be non-blocking, got %d blocking references", refs)
 	}
-	if err := repo.DeleteVersion(ctx, "version-3"); err != nil {
+	if err := repo.DeleteVersion(ctx, "project-1", "version-3"); err != nil {
 		t.Fatal(err)
 	}
-	if err := database.QueryRowContext(ctx, `SELECT generated_version_id FROM pipeline_run_version_binding WHERE pipeline_run_id = 'run-1'`).Scan(&generatedVersionID); err != nil {
+	if err := database.QueryRowContext(ctx, `SELECT generated_version_id FROM pipeline_run_version_binding WHERE pipeline_run_id = 'run-1'`).Scan(&generatedVersionId); err != nil {
 		t.Fatal(err)
 	}
-	if generatedVersionID != "version-3" {
-		t.Fatalf("expected preserved generated version history, got %q", generatedVersionID)
+	if generatedVersionId != "version-3" {
+		t.Fatalf("expected preserved generated version history, got %q", generatedVersionId)
 	}
 }
 
@@ -230,7 +230,7 @@ func TestDeleteApplicationAllowsForkLineage(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind) VALUES ('app-1', 'App', 'app', 'application')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'application', 'project-1')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
@@ -240,7 +240,7 @@ func TestDeleteApplicationAllowsForkLineage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := NewRepository(database).DeleteApplication(ctx, "app-1"); err != nil {
+	if err := NewRepository(database).DeleteApplication(ctx, "project-1", "app-1"); err != nil {
 		t.Fatal(err)
 	}
 	var remaining int

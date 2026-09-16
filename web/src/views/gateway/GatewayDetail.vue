@@ -529,6 +529,14 @@
   const { status, execute } = useStatusAsync();
   const { status: opStatus, execute: executeOp } = useStatusAsync();
 
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error(t('gateway.toast.loadDetailFailed'));
+    }
+    return projectId;
+  }
+
   const gateway = ref<GatewayResp | null>(null);
   const services = ref<ServiceResp[]>([]);
   const isControlPlaneEditDialogOpen = ref(false);
@@ -701,7 +709,7 @@
     }
     try {
       await executeOp(async () => {
-        gateway.value = await gatewayApi.update(current.id, {
+        gateway.value = await gatewayApi.update(selectedProjectId(), current.id, {
           name: controlPlaneForm.name.trim(),
           rest_api_url: controlPlaneForm.rest_api_url.trim(),
           rest_ready_timeout_seconds: Number(controlPlaneForm.rest_ready_timeout_seconds),
@@ -745,7 +753,7 @@
     }
     try {
       await executeOp(async () => {
-        gateway.value = await gatewayApi.update(current.id, {
+        gateway.value = await gatewayApi.update(selectedProjectId(), current.id, {
           default_entrypoint: ingressForm.default_entrypoint,
           tls_mode: ingressForm.tls_mode,
         });
@@ -799,7 +807,7 @@
     }
     try {
       await executeOp(async () => {
-        gateway.value = await gatewayApi.update(current.id, {
+        gateway.value = await gatewayApi.update(selectedProjectId(), current.id, {
           acme_profile: certificateForm.acme_profile,
           acme_email: certificateForm.acme_profile ? certificateForm.acme_email.trim() : '',
           dns_api_token: usesDNSProfile(certificateForm.acme_profile)
@@ -829,7 +837,7 @@
         if (!id) {
           throw new Error(t('gateway.toast.loadDetailFailed'));
         }
-        gateway.value = await gatewayApi.get(id);
+        gateway.value = await gatewayApi.get(projectId, id);
       });
       await loadRuntimeContext();
     } catch {
@@ -844,7 +852,7 @@
       return;
     }
     try {
-      const resp = await applicationApi.listServices(id);
+      const resp = await applicationApi.listServices(selectedProjectId(), id);
       services.value = resp.items ?? [];
     } catch {
       services.value = [];
@@ -897,7 +905,7 @@
         if (!selectedService) {
           throw new Error(t('gateway.toast.deployServiceRequired'));
         }
-        const result = await serviceApi.deploy(selectedService.id, {
+        const result = await serviceApi.deploy(selectedProjectId(), selectedService.id, {
           force_recreate: deployForm.force_recreate,
         });
         for (const warning of result.warnings) {
@@ -967,7 +975,7 @@
     stopError.value = '';
     try {
       await executeOp(async () => {
-        const result = await applicationApi.stop(current.id, {
+        const result = await applicationApi.stop(selectedProjectId(), current.id, {
           service_id: targetId,
           remove_volumes: stopForm.remove_volumes,
         });

@@ -144,7 +144,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 	if status.Status != initdto.StatusNeedsGateway {
 		return initdto.StatusView{}, apperror.New(apperror.KindValidation, "Project environment must pass probe before creating a gateway")
 	}
-	project, err := s.projects.LoadForUser(ctx, projectId, userId)
+	_, err = s.projects.LoadForUser(ctx, projectId, userId)
 	if err != nil {
 		return initdto.StatusView{}, err
 	}
@@ -155,8 +155,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 	acmeProfile := strings.TrimSpace(input.AcmeProfile)
 	acmeEmail := strings.TrimSpace(input.AcmeEmail)
 	dnsToken := strings.TrimSpace(input.DNSApiToken)
-	if _, err := s.gateways.CreateGateway(ctx, userId, gatewaydto.GatewayCreateInput{
-		ProjectId:               project.Id,
+	if _, err := s.gateways.CreateGateway(ctx, userId, projectId, gatewaydto.GatewayCreateInput{
 		Code:                    gatewaysvc.ManagedGatewayCode(),
 		Name:                    gatewaysvc.ManagedGatewayName(),
 		RestApiUrl:              input.RestApiUrl,

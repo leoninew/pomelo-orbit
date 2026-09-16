@@ -32,21 +32,21 @@ func (s Service) ListArtifacts(ctx context.Context, userId string, input pipelin
 	return items, nil
 }
 
-func (s Service) ArtifactForUser(ctx context.Context, userId string, artifactId string) (model.Artifact, error) {
+func (s Service) ArtifactForUser(ctx context.Context, userId string, projectId string, artifactId string) (model.Artifact, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Artifact{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Artifact{}, err
+	}
 	artifactId = strings.TrimSpace(artifactId)
-	item, err := s.store.Artifact(ctx, artifactId)
+	item, err := s.store.Artifact(ctx, projectId, artifactId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Artifact{}, apperror.New(apperror.KindNotFound, "Artifact "+artifactId+" not found")
 		}
 		return model.Artifact{}, apperror.Wrap(apperror.KindInternal, "Failed to load artifact", err)
-	}
-	projectId, err := requiredProjectID(item.ProjectId, "Artifact")
-	if err != nil {
-		return model.Artifact{}, err
-	}
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return model.Artifact{}, err
 	}
 	return item, nil
 }

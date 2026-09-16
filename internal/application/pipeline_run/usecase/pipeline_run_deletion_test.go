@@ -21,14 +21,14 @@ func TestDeletePipelineRunRemovesTerminalRecordWhenRunDirectoryIsMissing(t *test
 	workspace := &pipelineRunDeletionWorkspace{removeErr: fs.ErrNotExist}
 	service := newPipelineRunDeletionService(pipelineRunStore, workspace)
 
-	if err := service.DeletePipelineRun(context.Background(), "user-1", run.Id); err != nil {
+	if err := service.DeletePipelineRun(context.Background(), "user-1", "project-1", run.Id); err != nil {
 		t.Fatalf("DeletePipelineRun returned error: %v", err)
 	}
 	if !pipelineRunStore.deleted {
 		t.Fatal("pipeline run record was not deleted")
 	}
-	if workspace.removedRunID != run.Id {
-		t.Fatalf("removed run ID = %q, want %q", workspace.removedRunID, run.Id)
+	if workspace.removedRunId != run.Id {
+		t.Fatalf("removed run Id = %q, want %q", workspace.removedRunId, run.Id)
 	}
 }
 
@@ -38,14 +38,14 @@ func TestDeletePipelineRunRejectsActiveRun(t *testing.T) {
 	workspace := &pipelineRunDeletionWorkspace{}
 	service := newPipelineRunDeletionService(pipelineRunStore, workspace)
 
-	err := service.DeletePipelineRun(context.Background(), "user-1", run.Id)
+	err := service.DeletePipelineRun(context.Background(), "user-1", "project-1", run.Id)
 	if err == nil || !strings.Contains(err.Error(), "Cannot delete pipeline run") {
 		t.Fatalf("DeletePipelineRun error = %v, want active run validation error", err)
 	}
 	if pipelineRunStore.deleted {
 		t.Fatal("active pipeline run must not be deleted")
 	}
-	if workspace.removedRunID != "" {
+	if workspace.removedRunId != "" {
 		t.Fatal("active pipeline run files must not be removed")
 	}
 }
@@ -56,7 +56,7 @@ func TestDeletePipelineRunKeepsRecordWhenFileRemovalFails(t *testing.T) {
 	workspace := &pipelineRunDeletionWorkspace{removeErr: errors.New("permission denied")}
 	service := newPipelineRunDeletionService(pipelineRunStore, workspace)
 
-	err := service.DeletePipelineRun(context.Background(), "user-1", run.Id)
+	err := service.DeletePipelineRun(context.Background(), "user-1", "project-1", run.Id)
 	if err == nil || !strings.Contains(err.Error(), "Failed to delete pipeline run files") {
 		t.Fatalf("DeletePipelineRun error = %v, want file cleanup error", err)
 	}
@@ -66,8 +66,8 @@ func TestDeletePipelineRunKeepsRecordWhenFileRemovalFails(t *testing.T) {
 }
 
 func pipelineRunForDeletion(runStatus string) model.PipelineRun {
-	projectID := "project-1"
-	return model.PipelineRun{Id: "run-1", ProjectId: &projectID, Status: runStatus}
+	projectId := "project-1"
+	return model.PipelineRun{Id: "run-1", ProjectId: &projectId, Status: runStatus}
 }
 
 func newPipelineRunDeletionService(pipelineRunStore *pipelineRunDeletionStore, workspace *pipelineRunDeletionWorkspace) Service {
@@ -99,22 +99,22 @@ type pipelineRunDeletionStore struct {
 	deleted bool
 }
 
-func (s *pipelineRunDeletionStore) PipelineRun(context.Context, string) (model.PipelineRun, error) {
+func (s *pipelineRunDeletionStore) PipelineRun(context.Context, string, string) (model.PipelineRun, error) {
 	return s.run, nil
 }
 
-func (s *pipelineRunDeletionStore) DeletePipelineRun(context.Context, string) error {
+func (s *pipelineRunDeletionStore) DeletePipelineRun(context.Context, string, string) error {
 	s.deleted = true
 	return nil
 }
 
 type pipelineRunDeletionWorkspace struct {
 	pipelinerunport.Workspace
-	removedRunID string
+	removedRunId string
 	removeErr    error
 }
 
-func (w *pipelineRunDeletionWorkspace) RemoveRunFiles(runID string) error {
-	w.removedRunID = runID
+func (w *pipelineRunDeletionWorkspace) RemoveRunFiles(runId string) error {
+	w.removedRunId = runId
 	return w.removeErr
 }

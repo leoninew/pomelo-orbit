@@ -17,82 +17,85 @@ import type {
 import request, { remoteRequestConfig } from '@/utils/request';
 
 export const routeApi = {
-  list(params?: {
-    page?: number;
-    per_page?: number;
-    search?: string;
-    project_id: string;
-  }): Promise<RoutePaginatedResp> {
-    return request.get('/api/route', { params });
+  list(
+    projectId: string,
+    params?: {
+      page?: number;
+      per_page?: number;
+      search?: string;
+    }
+  ): Promise<RoutePaginatedResp> {
+    return request.get('/api/route', { params: { project_id: projectId, ...params } });
   },
 
-  get(id: string): Promise<RouteResp> {
-    return request.get(`/api/route/${id}`);
+  get(projectId: string, id: string): Promise<RouteResp> {
+    return request.get(`/api/route/${id}`, { params: { project_id: projectId } });
   },
 
-  create(data: RouteCreateReq, params: { project_id: string }): Promise<RouteResp> {
-    return request.post('/api/route', data, { params });
+  create(projectId: string, data: RouteCreateReq): Promise<RouteResp> {
+    return request.post('/api/route', data, { params: { project_id: projectId } });
   },
 
-  update(id: string, data: RouteUpdateReq): Promise<RouteResp> {
-    return request.put(`/api/route/${id}`, data);
+  update(projectId: string, id: string, data: RouteUpdateReq): Promise<RouteResp> {
+    return request.put(`/api/route/${id}`, data, { params: { project_id: projectId } });
   },
 
-  delete(id: string): Promise<void> {
-    return request.delete(`/api/route/${id}`);
+  delete(projectId: string, id: string): Promise<void> {
+    return request.delete(`/api/route/${id}`, { params: { project_id: projectId } });
   },
 
-  enable(id: string, data: RouteEnableReq): Promise<RouteEnableResp> {
-    return request.post(`/api/route/${id}/enable`, data);
+  enable(projectId: string, id: string, data: RouteEnableReq): Promise<RouteEnableResp> {
+    return request.post(`/api/route/${id}/enable`, data, { params: { project_id: projectId } });
   },
 
-  disable(id: string, data: RouteDisableReq): Promise<RouteDisableResp> {
-    return request.post(`/api/route/${id}/disable`, data);
+  disable(projectId: string, id: string, data: RouteDisableReq): Promise<RouteDisableResp> {
+    return request.post(`/api/route/${id}/disable`, data, { params: { project_id: projectId } });
   },
 
-  previewSync(
-    data: RouteSyncPreviewReq,
-    params: { project_id: string }
-  ): Promise<RouteSyncPreviewResp> {
+  previewSync(projectId: string, data: RouteSyncPreviewReq): Promise<RouteSyncPreviewResp> {
     return request.post(
       '/api/route/sync/preview',
       data,
       remoteRequestConfig({
-        params,
+        params: { project_id: projectId },
       })
     );
   },
 
-  confirmSync(
-    data: RouteSyncConfirmReq,
-    params: { project_id: string }
-  ): Promise<RouteSyncConfirmResp> {
+  confirmSync(projectId: string, data: RouteSyncConfirmReq): Promise<RouteSyncConfirmResp> {
     return request.post(
       '/api/route/sync/confirm',
       data,
       remoteRequestConfig({
-        params,
+        params: { project_id: projectId },
       })
     );
   },
 
-  uploadCert(id: string, certFile: File): Promise<RouteResp> {
+  uploadCert(projectId: string, id: string, certFile: File): Promise<RouteResp> {
     const formData = new FormData();
     formData.append('pem', certFile);
     return request.post(`/api/route/${id}/cert`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      params: { project_id: projectId },
     });
   },
 
-  disableHttps(id: string): Promise<RouteResp> {
-    return request.delete(`/api/route/${id}/https`);
+  disableHttps(projectId: string, id: string): Promise<RouteResp> {
+    return request.delete(`/api/route/${id}/https`, { params: { project_id: projectId } });
   },
 
-  enableLetsencrypt(id: string, data: RouteLetsEncryptEnableReq): Promise<RouteResp> {
-    return request.post(`/api/route/${id}/letsencrypt`, data);
+  enableLetsencrypt(
+    projectId: string,
+    id: string,
+    data: RouteLetsEncryptEnableReq
+  ): Promise<RouteResp> {
+    return request.post(`/api/route/${id}/letsencrypt`, data, {
+      params: { project_id: projectId },
+    });
   },
 
-  enableMkcert(id: string, data: RouteMkcertEnableReq): Promise<RouteResp> {
-    return request.post(`/api/route/${id}/mkcert`, data);
+  enableMkcert(projectId: string, id: string, data: RouteMkcertEnableReq): Promise<RouteResp> {
+    return request.post(`/api/route/${id}/mkcert`, data, { params: { project_id: projectId } });
   },
 };

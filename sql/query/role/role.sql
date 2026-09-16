@@ -1,4 +1,4 @@
--- name: RoleByID :one
+-- name: RoleById :one
 SELECT id, code, name, description, created_at, updated_at
 FROM role
 WHERE id = ?;
@@ -61,7 +61,7 @@ WHERE id = ?;
 DELETE FROM role
 WHERE id = ?;
 
--- name: PermissionIDByCode :one
+-- name: PermissionIdByCode :one
 SELECT id
 FROM permission
 WHERE code = ?;

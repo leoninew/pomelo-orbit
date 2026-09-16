@@ -20,7 +20,7 @@ func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T)
 	service.runtime = workspace
 	service.targetResolver = staticTargetResolver{target: testSSHTarget("project-1")}
 
-	containers, err := service.ApplicationStatus(context.Background(), "user-1", "app-1", deploymentdto.ServiceTargetInput{
+	containers, err := service.ApplicationStatus(context.Background(), "user-1", "project-1", "app-1", deploymentdto.ServiceTargetInput{
 		ServiceId: "service-1",
 	})
 	if err != nil {
@@ -41,7 +41,7 @@ func TestApplicationLogsReturnsEmptyBeforeFirstDeployment(t *testing.T) {
 	service.runtime = workspace
 	service.targetResolver = staticTargetResolver{target: testSSHTarget("project-1")}
 
-	logs, err := service.ApplicationLogs(context.Background(), "user-1", "app-1", 200, deploymentdto.ServiceTargetInput{
+	logs, err := service.ApplicationLogs(context.Background(), "user-1", "project-1", "app-1", 200, deploymentdto.ServiceTargetInput{
 		ServiceId: "service-1",
 	}, "traefik")
 	if err != nil {
@@ -56,9 +56,9 @@ func TestApplicationLogsReturnsEmptyBeforeFirstDeployment(t *testing.T) {
 }
 
 func TestComposePreviewsDoNotRequireConfiguredProjectEnvironment(t *testing.T) {
-	projectID := "project-1"
+	projectId := "project-1"
 	store := &runtimeQueryStore{
-		application: model.Application{Id: "app-1", ProjectId: &projectID, Code: "demo", Kind: status.ApplicationKindStandard},
+		application: model.Application{Id: "app-1", ProjectId: &projectId, Code: "demo", Kind: status.ApplicationKindStandard},
 		service:     model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-1", InstanceKey: "default", Code: "demo-default"},
 		version:     model.Version{Id: "version-1", ApplicationId: "app-1"},
 		components: []model.VersionComponent{{
@@ -76,7 +76,7 @@ func TestComposePreviewsDoNotRequireConfiguredProjectEnvironment(t *testing.T) {
 		gatewayCoordinator: &gatewayDeploymentCoordinatorFake{gateway: &model.GatewayConfig{NetworkName: "traefik"}},
 	}
 
-	servicePreview, err := service.PreviewService(context.Background(), "user-1", "service-1", deploymentdto.PreviewComposeInput{})
+	servicePreview, err := service.PreviewService(context.Background(), "user-1", projectId, "service-1", deploymentdto.PreviewComposeInput{})
 	if err != nil {
 		t.Fatalf("PreviewService returned error: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestComposePreviewsDoNotRequireConfiguredProjectEnvironment(t *testing.T) {
 		t.Fatalf("PreviewService did not render relative mount:\n%s", servicePreview)
 	}
 
-	versionPreview, err := service.PreviewVersion(context.Background(), "user-1", "version-1", deploymentdto.PreviewComposeInput{})
+	versionPreview, err := service.PreviewVersion(context.Background(), "user-1", projectId, "version-1", deploymentdto.PreviewComposeInput{})
 	if err != nil {
 		t.Fatalf("PreviewVersion returned error: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestDeleteApplicationRequiresServicesAndVersionsToBeRemoved(t *testing.T) {
 		service:      serviceStore,
 	}
 
-	err := service.DeleteApplication(context.Background(), "user-1", "app-1")
+	err := service.DeleteApplication(context.Background(), "user-1", projectId, "app-1")
 	if err == nil || !strings.Contains(err.Error(), "服务") {
 		t.Fatalf("DeleteApplication error = %v, want service validation error", err)
 	}
@@ -119,7 +119,7 @@ func TestDeleteApplicationRequiresServicesAndVersionsToBeRemoved(t *testing.T) {
 	}
 
 	serviceStore.services = nil
-	err = service.DeleteApplication(context.Background(), "user-1", "app-1")
+	err = service.DeleteApplication(context.Background(), "user-1", projectId, "app-1")
 	if err == nil || !strings.Contains(err.Error(), "版本") {
 		t.Fatalf("DeleteApplication error = %v, want version validation error", err)
 	}
@@ -128,7 +128,7 @@ func TestDeleteApplicationRequiresServicesAndVersionsToBeRemoved(t *testing.T) {
 	}
 
 	applicationStore.versions = nil
-	if err := service.DeleteApplication(context.Background(), "user-1", "app-1"); err != nil {
+	if err := service.DeleteApplication(context.Background(), "user-1", projectId, "app-1"); err != nil {
 		t.Fatalf("DeleteApplication returned error: %v", err)
 	}
 	if !applicationStore.deleted {
@@ -142,11 +142,11 @@ type deleteApplicationStore struct {
 	deleted  bool
 }
 
-func (s *deleteApplicationStore) ListVersions(_ context.Context, _ string) ([]model.Version, error) {
+func (s *deleteApplicationStore) ListVersions(_ context.Context, _ string, _ string) ([]model.Version, error) {
 	return s.versions, nil
 }
 
-func (s *deleteApplicationStore) DeleteApplication(context.Context, string) error {
+func (s *deleteApplicationStore) DeleteApplication(context.Context, string, string) error {
 	s.deleted = true
 	return nil
 }
@@ -156,14 +156,14 @@ type deleteApplicationServiceStore struct {
 	services []model.Service
 }
 
-func (s *deleteApplicationServiceStore) ListServicesByApplication(_ context.Context, _ string) ([]model.Service, error) {
+func (s *deleteApplicationServiceStore) ListServicesByApplication(_ context.Context, _, _ string) ([]model.Service, error) {
 	return s.services, nil
 }
 
 func newRuntimeQueryService() (Service, *runtimeQueryStore) {
-	projectID := "project-1"
+	projectId := "project-1"
 	store := &runtimeQueryStore{
-		application: model.Application{Id: "app-1", ProjectId: &projectID, Code: "demo", Kind: status.ApplicationKindStandard},
+		application: model.Application{Id: "app-1", ProjectId: &projectId, Code: "demo", Kind: status.ApplicationKindStandard},
 		service:     model.Service{Id: "service-1", ApplicationId: "app-1", InstanceKey: "default", VersionId: "version-1"},
 	}
 	return Service{commandStore: store}, store
@@ -179,7 +179,7 @@ type runtimeQueryStore struct {
 	serviceEnv        []model.ServiceEnv
 }
 
-func (s *runtimeQueryStore) ServiceEnvByService(_ context.Context, _ string) ([]model.ServiceEnv, error) {
+func (s *runtimeQueryStore) ServiceEnvByService(_ context.Context, _, _ string) ([]model.ServiceEnv, error) {
 	return s.serviceEnv, nil
 }
 
@@ -191,45 +191,45 @@ func (s *runtimeQueryStore) IsProjectMember(context.Context, string, string) (bo
 	return true, nil
 }
 
-func (s *runtimeQueryStore) Application(context.Context, string) (model.Application, error) {
+func (s *runtimeQueryStore) Application(context.Context, string, string) (model.Application, error) {
 	return s.application, nil
 }
 
-func (s *runtimeQueryStore) Version(_ context.Context, id string) (model.Version, error) {
+func (s *runtimeQueryStore) Version(_ context.Context, _ string, id string) (model.Version, error) {
 	if s.version.Id != id {
 		return model.Version{}, repository.ErrNotFound
 	}
 	return s.version, nil
 }
 
-func (s *runtimeQueryStore) VersionComponentsByVersion(_ context.Context, versionID string) ([]model.VersionComponent, error) {
-	if s.version.Id != versionID {
+func (s *runtimeQueryStore) VersionComponentsByVersion(_ context.Context, _ string, versionId string) ([]model.VersionComponent, error) {
+	if s.version.Id != versionId {
 		return nil, repository.ErrNotFound
 	}
 	return s.components, nil
 }
 
-func (s *runtimeQueryStore) Service(context.Context, string) (model.Service, error) {
+func (s *runtimeQueryStore) Service(context.Context, string, string) (model.Service, error) {
 	return s.service, nil
 }
 
-func (s *runtimeQueryStore) ListServicesByApplication(context.Context, string) ([]model.Service, error) {
+func (s *runtimeQueryStore) ListServicesByApplication(context.Context, string, string) ([]model.Service, error) {
 	return []model.Service{s.service}, nil
 }
 
-func (s *runtimeQueryStore) ServiceComponentsByService(context.Context, string) ([]model.ServiceComponent, error) {
+func (s *runtimeQueryStore) ServiceComponentsByService(context.Context, string, string) ([]model.ServiceComponent, error) {
 	return s.serviceComponents, nil
 }
 
-func (s *runtimeQueryStore) UpdateServiceStatus(context.Context, string, string) error {
+func (s *runtimeQueryStore) UpdateServiceStatus(context.Context, string, string, string) error {
 	return nil
 }
 
-func (s *runtimeQueryStore) CreateDeployment(context.Context, model.Deployment) error {
+func (s *runtimeQueryStore) CreateDeployment(context.Context, string, model.Deployment) error {
 	return nil
 }
 
-func (s *runtimeQueryStore) HasActiveDeployment(context.Context, string) (bool, error) {
+func (s *runtimeQueryStore) HasActiveDeployment(context.Context, string, string) (bool, error) {
 	return false, nil
 }
 
@@ -245,15 +245,15 @@ func TestApplyContainerComponentIds(t *testing.T) {
 	})
 
 	if got, want := containers[0].VersionId, "version-1"; got != want {
-		t.Fatalf("VersionID: got %q want %q", got, want)
+		t.Fatalf("VersionId: got %q want %q", got, want)
 	}
 	if got, want := containers[0].ComponentId, "component-web"; got != want {
-		t.Fatalf("ComponentID: got %q want %q", got, want)
+		t.Fatalf("ComponentId: got %q want %q", got, want)
 	}
 	if got, want := containers[1].VersionId, "version-1"; got != want {
-		t.Fatalf("VersionID: got %q want %q", got, want)
+		t.Fatalf("VersionId: got %q want %q", got, want)
 	}
 	if containers[1].ComponentId != "" {
-		t.Fatalf("unexpected ComponentID for %+v", containers[1])
+		t.Fatalf("unexpected ComponentId for %+v", containers[1])
 	}
 }

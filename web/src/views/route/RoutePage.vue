@@ -845,14 +845,15 @@
     }
     try {
       await executeRoutes(async () => {
-        const res = await routeApi.list({
+        const res = await routeApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
           search: routeSearchText.value || undefined,
-          project_id: projectId,
         });
-        routes.value = res.items;
-        pagination.total = res.total;
+        if (projectStore.activeProjectId === projectId) {
+          routes.value = res.items;
+          pagination.total = res.total;
+        }
       });
     } catch {
       toast.error(t('route.toast.loadFailed'));
@@ -867,8 +868,10 @@
     }
     try {
       await executeTraefik(async () => {
-        const data = await traefikRouteApi.list({ project_id: projectId });
-        traefikRoutes.value = data.items;
+        const data = await traefikRouteApi.list(projectId);
+        if (projectStore.activeProjectId === projectId) {
+          traefikRoutes.value = data.items;
+        }
       });
     } catch {
       // The card renders the error state from useStatusAsync.
@@ -904,7 +907,7 @@
     }
     let config;
     try {
-      config = await traefikRouteApi.getConfig({ project_id: projectId });
+      config = await traefikRouteApi.getConfig(projectId);
       await loadTargetServices(projectId);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.loadFailed'));
@@ -1029,28 +1032,24 @@
     }
     try {
       await executeRouteOperation(async () => {
-        const created = await routeApi.create(
-          {
-            name: form.name,
-            protocol: form.protocol,
-            domain: form.domain,
-            path_prefix: form.protocol === 'http' ? form.path_prefix : '',
-            target_url: form.protocol === 'http' && form.custom_target ? form.target_url : '',
-            listen_port: form.protocol === 'tcp' ? form.listen_port : undefined,
-            service_id:
-              form.protocol === 'tcp' || !form.custom_target ? form.service_id.trim() : '',
-            component_name:
-              form.protocol === 'tcp' || !form.custom_target ? form.component_name.trim() : '',
-            endpoint_protocol:
-              form.protocol === 'tcp' || !form.custom_target ? form.endpoint_protocol.trim() : '',
-            endpoint_container_port:
-              form.protocol === 'tcp' || !form.custom_target
-                ? form.endpoint_container_port
-                : undefined,
-            enabled: false,
-          },
-          { project_id: projectId }
-        );
+        const created = await routeApi.create(projectId, {
+          name: form.name,
+          protocol: form.protocol,
+          domain: form.domain,
+          path_prefix: form.protocol === 'http' ? form.path_prefix : '',
+          target_url: form.protocol === 'http' && form.custom_target ? form.target_url : '',
+          listen_port: form.protocol === 'tcp' ? form.listen_port : undefined,
+          service_id: form.protocol === 'tcp' || !form.custom_target ? form.service_id.trim() : '',
+          component_name:
+            form.protocol === 'tcp' || !form.custom_target ? form.component_name.trim() : '',
+          endpoint_protocol:
+            form.protocol === 'tcp' || !form.custom_target ? form.endpoint_protocol.trim() : '',
+          endpoint_container_port:
+            form.protocol === 'tcp' || !form.custom_target
+              ? form.endpoint_container_port
+              : undefined,
+          enabled: false,
+        });
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.addSuccess'));
         isCreateDialogOpen.value = false;
@@ -1066,13 +1065,14 @@
 
   async function handleEditSave() {
     const route = editingRoute.value;
+    const projectId = projectStore.activeProjectId;
     editSubmitError.value = '';
-    if (!route || !validateEditForm()) {
+    if (!route || !projectId || !validateEditForm()) {
       return;
     }
     try {
       await executeRouteOperation(async () => {
-        const updated = await routeApi.update(route.id, {
+        const updated = await routeApi.update(projectId, route.id, {
           name: editForm.name,
           protocol: editForm.protocol,
           domain: editForm.domain,
@@ -1143,7 +1143,7 @@
       return;
     }
     try {
-      const config = await traefikRouteApi.getConfig({ project_id: projectId });
+      const config = await traefikRouteApi.getConfig(projectId);
       window.open(
         `${config.https_enabled ? 'https' : 'http'}://${config.dashboard_domain}/dashboard/`,
         '_blank'

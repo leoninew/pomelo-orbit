@@ -16,7 +16,7 @@ func (h Handler) ListVersions(c *gin.Context) {
 	}
 	page := transport.QueryInt(c.Request.URL.Query().Get("page"), 1)
 	perPage := transport.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
-	views, err := h.service.ListVersionsPage(c.Request.Context(), current.Id, c.Param("app_id"), page, perPage, c.Request.URL.Query().Get("search"))
+	views, err := h.service.ListVersionsPage(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id"), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -38,7 +38,7 @@ func (h Handler) CreateVersion(c *gin.Context) {
 	if req.ApplicationId == "" {
 		req.ApplicationId = c.Param("app_id")
 	}
-	view, err := h.service.CreateVersion(c.Request.Context(), current.Id, versionCreateInput(&req))
+	view, err := h.service.CreateVersion(c.Request.Context(), current.Id, c.Query("project_id"), versionCreateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -52,7 +52,7 @@ func (h Handler) GetVersion(c *gin.Context) {
 	if !ok {
 		return
 	}
-	view, err := h.service.VersionForUser(c.Request.Context(), current.Id, c.Param("version_id"))
+	view, err := h.service.VersionForUser(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -72,7 +72,7 @@ func (h Handler) UpdateVersion(c *gin.Context) {
 		return
 	}
 	input := versionUpdateInput(&req)
-	view, err := h.service.UpdateVersion(c.Request.Context(), current.Id, c.Param("version_id"), input)
+	view, err := h.service.UpdateVersion(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), input)
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -86,7 +86,7 @@ func (h Handler) PublishVersion(c *gin.Context) {
 	if !ok {
 		return
 	}
-	view, err := h.service.PublishVersion(c.Request.Context(), current.Id, c.Param("version_id"))
+	view, err := h.service.PublishVersion(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -100,7 +100,7 @@ func (h Handler) UnpublishVersion(c *gin.Context) {
 	if !ok {
 		return
 	}
-	view, err := h.service.UnpublishVersion(c.Request.Context(), current.Id, c.Param("version_id"))
+	view, err := h.service.UnpublishVersion(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -114,7 +114,7 @@ func (h Handler) DeleteVersion(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteVersion(c.Request.Context(), current.Id, c.Param("version_id")); err != nil {
+	if err := h.service.DeleteVersion(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}
@@ -131,7 +131,7 @@ func (h Handler) ForkVersion(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	view, err := h.service.ForkVersion(c.Request.Context(), current.Id, c.Param("version_id"), req.Label)
+	view, err := h.service.ForkVersion(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), req.Label)
 	if err != nil {
 		transport.WriteError(c, err)
 		return

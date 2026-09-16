@@ -22,13 +22,13 @@ WHERE project_id = ?
 `
 
 type CountRepositoryCredentialsParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountRepositoryCredentials(ctx context.Context, arg CountRepositoryCredentialsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countRepositoryCredentials,
-		arg.ProjectID,
+		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -44,8 +44,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRepositoryCredentialParams struct {
-	ID            string         `db:"id"`
-	ProjectID     sql.NullString `db:"project_id"`
+	Id            string         `db:"id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	Name          string         `db:"name"`
 	Type          string         `db:"type"`
 	EncryptedData string         `db:"encrypted_data"`
@@ -55,8 +55,8 @@ type CreateRepositoryCredentialParams struct {
 
 func (q *Queries) CreateRepositoryCredential(ctx context.Context, arg CreateRepositoryCredentialParams) error {
 	_, err := q.db.ExecContext(ctx, createRepositoryCredential,
-		arg.ID,
-		arg.ProjectID,
+		arg.Id,
+		arg.ProjectId,
 		arg.Name,
 		arg.Type,
 		arg.EncryptedData,
@@ -69,10 +69,16 @@ func (q *Queries) CreateRepositoryCredential(ctx context.Context, arg CreateRepo
 const deleteRepositoryCredential = `-- name: DeleteRepositoryCredential :exec
 DELETE FROM repository_credential
 WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) DeleteRepositoryCredential(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteRepositoryCredential, id)
+type DeleteRepositoryCredentialParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeleteRepositoryCredential(ctx context.Context, arg DeleteRepositoryCredentialParams) error {
+	_, err := q.db.ExecContext(ctx, deleteRepositoryCredential, arg.Id, arg.ProjectId)
 	return err
 }
 
@@ -89,15 +95,15 @@ LIMIT ? OFFSET ?
 `
 
 type ListRepositoryCredentialsParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 	Limit         int32          `db:"limit"`
 	Offset        int32          `db:"offset"`
 }
 
 type ListRepositoryCredentialsRow struct {
-	ID            string         `db:"id"`
-	ProjectID     sql.NullString `db:"project_id"`
+	Id            string         `db:"id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	Name          string         `db:"name"`
 	Type          string         `db:"type"`
 	EncryptedData string         `db:"encrypted_data"`
@@ -107,7 +113,7 @@ type ListRepositoryCredentialsRow struct {
 
 func (q *Queries) ListRepositoryCredentials(ctx context.Context, arg ListRepositoryCredentialsParams) ([]ListRepositoryCredentialsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRepositoryCredentials,
-		arg.ProjectID,
+		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -122,8 +128,8 @@ func (q *Queries) ListRepositoryCredentials(ctx context.Context, arg ListReposit
 	for rows.Next() {
 		var i ListRepositoryCredentialsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
+			&i.Id,
+			&i.ProjectId,
 			&i.Name,
 			&i.Type,
 			&i.EncryptedData,
@@ -147,11 +153,17 @@ const repositoryCredentialById = `-- name: RepositoryCredentialById :one
 SELECT id, project_id, name, type, encrypted_data, revision, created_at
 FROM repository_credential
 WHERE id = ?
+  AND project_id = ?
 `
 
+type RepositoryCredentialByIdParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
 type RepositoryCredentialByIdRow struct {
-	ID            string         `db:"id"`
-	ProjectID     sql.NullString `db:"project_id"`
+	Id            string         `db:"id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	Name          string         `db:"name"`
 	Type          string         `db:"type"`
 	EncryptedData string         `db:"encrypted_data"`
@@ -159,12 +171,12 @@ type RepositoryCredentialByIdRow struct {
 	CreatedAt     time.Time      `db:"created_at"`
 }
 
-func (q *Queries) RepositoryCredentialById(ctx context.Context, id string) (RepositoryCredentialByIdRow, error) {
-	row := q.db.QueryRowContext(ctx, repositoryCredentialById, id)
+func (q *Queries) RepositoryCredentialById(ctx context.Context, arg RepositoryCredentialByIdParams) (RepositoryCredentialByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, repositoryCredentialById, arg.Id, arg.ProjectId)
 	var i RepositoryCredentialByIdRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
+		&i.Id,
+		&i.ProjectId,
 		&i.Name,
 		&i.Type,
 		&i.EncryptedData,
@@ -177,17 +189,18 @@ func (q *Queries) RepositoryCredentialById(ctx context.Context, id string) (Repo
 const repositoryCredentialByName = `-- name: RepositoryCredentialByName :one
 SELECT id, project_id, name, type, encrypted_data, revision, created_at
 FROM repository_credential
-WHERE project_id = ? AND name = ?
+WHERE project_id = ?
+  AND name = ?
 `
 
 type RepositoryCredentialByNameParams struct {
-	ProjectID sql.NullString `db:"project_id"`
+	ProjectId sql.NullString `db:"project_id"`
 	Name      string         `db:"name"`
 }
 
 type RepositoryCredentialByNameRow struct {
-	ID            string         `db:"id"`
-	ProjectID     sql.NullString `db:"project_id"`
+	Id            string         `db:"id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	Name          string         `db:"name"`
 	Type          string         `db:"type"`
 	EncryptedData string         `db:"encrypted_data"`
@@ -196,11 +209,11 @@ type RepositoryCredentialByNameRow struct {
 }
 
 func (q *Queries) RepositoryCredentialByName(ctx context.Context, arg RepositoryCredentialByNameParams) (RepositoryCredentialByNameRow, error) {
-	row := q.db.QueryRowContext(ctx, repositoryCredentialByName, arg.ProjectID, arg.Name)
+	row := q.db.QueryRowContext(ctx, repositoryCredentialByName, arg.ProjectId, arg.Name)
 	var i RepositoryCredentialByNameRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
+		&i.Id,
+		&i.ProjectId,
 		&i.Name,
 		&i.Type,
 		&i.EncryptedData,
@@ -214,10 +227,16 @@ const repositoryCredentialExists = `-- name: RepositoryCredentialExists :one
 SELECT COUNT(*)
 FROM repository_credential
 WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) RepositoryCredentialExists(ctx context.Context, id string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, repositoryCredentialExists, id)
+type RepositoryCredentialExistsParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) RepositoryCredentialExists(ctx context.Context, arg RepositoryCredentialExistsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, repositoryCredentialExists, arg.Id, arg.ProjectId)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -227,10 +246,16 @@ const repositoryCredentialName = `-- name: RepositoryCredentialName :one
 SELECT name
 FROM repository_credential
 WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) RepositoryCredentialName(ctx context.Context, id string) (string, error) {
-	row := q.db.QueryRowContext(ctx, repositoryCredentialName, id)
+type RepositoryCredentialNameParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) RepositoryCredentialName(ctx context.Context, arg RepositoryCredentialNameParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, repositoryCredentialName, arg.Id, arg.ProjectId)
 	var name string
 	err := row.Scan(&name)
 	return name, err
@@ -239,16 +264,17 @@ func (q *Queries) RepositoryCredentialName(ctx context.Context, id string) (stri
 const repositoryCredentialReferencedByRepositories = `-- name: RepositoryCredentialReferencedByRepositories :one
 SELECT COUNT(*)
 FROM repository
-WHERE project_id = ? AND git_credential_id = ?
+WHERE project_id = ?
+  AND git_credential_id = ?
 `
 
 type RepositoryCredentialReferencedByRepositoriesParams struct {
-	ProjectID       sql.NullString `db:"project_id"`
-	GitCredentialID sql.NullString `db:"git_credential_id"`
+	ProjectId       sql.NullString `db:"project_id"`
+	GitCredentialId sql.NullString `db:"git_credential_id"`
 }
 
 func (q *Queries) RepositoryCredentialReferencedByRepositories(ctx context.Context, arg RepositoryCredentialReferencedByRepositoriesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, repositoryCredentialReferencedByRepositories, arg.ProjectID, arg.GitCredentialID)
+	row := q.db.QueryRowContext(ctx, repositoryCredentialReferencedByRepositories, arg.ProjectId, arg.GitCredentialId)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -258,13 +284,15 @@ const updateRepositoryCredential = `-- name: UpdateRepositoryCredential :exec
 UPDATE repository_credential
 SET name = ?, encrypted_data = ?, revision = ?
 WHERE id = ?
+  AND project_id = ?
 `
 
 type UpdateRepositoryCredentialParams struct {
-	Name          string `db:"name"`
-	EncryptedData string `db:"encrypted_data"`
-	Revision      int64  `db:"revision"`
-	ID            string `db:"id"`
+	Name          string         `db:"name"`
+	EncryptedData string         `db:"encrypted_data"`
+	Revision      int64          `db:"revision"`
+	Id            string         `db:"id"`
+	ProjectId     sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) UpdateRepositoryCredential(ctx context.Context, arg UpdateRepositoryCredentialParams) error {
@@ -272,7 +300,8 @@ func (q *Queries) UpdateRepositoryCredential(ctx context.Context, arg UpdateRepo
 		arg.Name,
 		arg.EncryptedData,
 		arg.Revision,
-		arg.ID,
+		arg.Id,
+		arg.ProjectId,
 	)
 	return err
 }

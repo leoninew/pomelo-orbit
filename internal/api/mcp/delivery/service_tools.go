@@ -20,8 +20,12 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		if err != nil {
 			return nil, err
 		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
 		instanceKey := strings.TrimSpace(input.InstanceKey)
-		service, err := c.deps.Service.CreateService(ctx, c.deps.ActorUserId, servicedto.ServiceCreateInput{ApplicationId: input.ApplicationId, VersionId: input.VersionId, InstanceKey: instanceKey, Code: application.Code + "-" + instanceKey})
+		service, err := c.deps.Service.CreateService(ctx, c.deps.ActorUserId, projectId, servicedto.ServiceCreateInput{ApplicationId: input.ApplicationId, VersionId: input.VersionId, InstanceKey: instanceKey, Code: application.Code + "-" + instanceKey})
 		if err != nil {
 			return nil, err
 		}
@@ -36,7 +40,11 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
 			return nil, err
 		}
-		component, err := c.deps.Service.UpdateServiceComponentOverlay(ctx, c.deps.ActorUserId, input.ServiceId, input.ComponentId, serviceOverlayInput(input.Overlay))
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Service.UpdateServiceComponentOverlay(ctx, c.deps.ActorUserId, projectId, input.ServiceId, input.ComponentId, serviceOverlayInput(input.Overlay))
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +60,11 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
 			return nil, err
 		}
-		service, err := c.deps.Service.UpdateServiceEnv(ctx, c.deps.ActorUserId, input.ServiceId, serviceEnvInput(input.Env))
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		service, err := c.deps.Service.UpdateServiceEnv(ctx, c.deps.ActorUserId, projectId, input.ServiceId, serviceEnvInput(input.Env))
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +79,11 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
 			return nil, err
 		}
-		service, err := c.deps.Service.UpdateServiceBasic(ctx, c.deps.ActorUserId, input.ServiceId, servicedto.ServiceBasicUpdateInput{VersionId: input.VersionId, InstanceKey: input.InstanceKey})
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		service, err := c.deps.Service.UpdateServiceBasic(ctx, c.deps.ActorUserId, projectId, input.ServiceId, servicedto.ServiceBasicUpdateInput{VersionId: input.VersionId, InstanceKey: input.InstanceKey})
 		if err != nil {
 			return nil, err
 		}

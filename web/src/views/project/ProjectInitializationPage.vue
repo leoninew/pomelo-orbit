@@ -576,9 +576,9 @@
     LoaderCircle,
     XCircle,
   } from '@lucide/vue';
-  import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+  import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
+  import { useRouter } from 'vue-router';
   import {
     StepperDescription,
     StepperIndicator,
@@ -631,9 +631,7 @@
     type GatewayConfigFormErrors,
   } from '@/views/gateway/gatewayConfigForm';
 
-  const props = defineProps<{ id?: string }>();
   const { t } = useI18n();
-  const route = useRoute();
   const router = useRouter();
   const toast = useToast();
   const projectStore = useProjectStore();
@@ -677,10 +675,7 @@
     { value: 'http-dns', label: t('gateway.acmeProfiles.httpDns') },
   ]);
 
-  const projectId = computed(() =>
-    String(props.id || route.params.id || projectStore.activeProjectId || '')
-  );
-  const status = computed(() => initializationStore.statusFor(projectId.value));
+  const status = computed(() => initializationStore.statusFor(projectStore.activeProjectId ?? ''));
   const loading = computed(() => initializationStore.loading);
   const localWorkspaceRoot = computed(() => status.value?.defaults?.local_workspace_root || '');
   const isRemoteSSH = computed(() => environmentForm.targetType === 'ssh');
@@ -862,7 +857,8 @@
 
   async function openWindowsCommand() {
     windowsCommandError.value = '';
-    if (!projectId.value || !isWindowsSSH.value) {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId || !isWindowsSSH.value) {
       return;
     }
     if (!validateEnvironment()) {
@@ -873,7 +869,7 @@
     windowsCommand.value = '';
     try {
       const result = await initializationStore.prepareWindowsEnvironment(
-        projectId.value,
+        projectId,
         initializationEnvironmentRequestFromForm(environmentForm)
       );
       if (!result.status || !result.public_key) {
@@ -946,7 +942,7 @@
     }
   }
 
-  async function loadStatus(id = projectId.value, force = false) {
+  async function loadStatus(id = projectStore.activeProjectId, force = false) {
     if (!id) {
       return;
     }
@@ -955,7 +951,7 @@
       const view = force
         ? await initializationStore.fetchStatus(id)
         : await initializationStore.ensureStatus(id);
-      if (id !== projectId.value) {
+      if (id !== projectStore.activeProjectId) {
         return;
       }
       hydrate(view);
@@ -969,7 +965,7 @@
   }
 
   function reloadStatus() {
-    void loadStatus(projectId.value, true);
+    void loadStatus(projectStore.activeProjectId, true);
   }
 
   function hydrate(view: NonNullable<typeof status.value>) {
@@ -1012,7 +1008,7 @@
     if (!validateEnvironment()) {
       return;
     }
-    const id = projectId.value;
+    const id = projectStore.activeProjectId;
     if (!id) {
       return;
     }
@@ -1040,7 +1036,7 @@
     if (!validateEnvironment()) {
       return;
     }
-    const id = projectId.value;
+    const id = projectStore.activeProjectId;
     if (!id) {
       return;
     }
@@ -1075,7 +1071,7 @@
     if (bootstrapErrors.username || bootstrapErrors.credential) {
       return;
     }
-    const id = projectId.value;
+    const id = projectStore.activeProjectId;
     if (!id) {
       return;
     }
@@ -1105,7 +1101,7 @@
 
   async function probeEnvironment() {
     environmentSubmitError.value = '';
-    const id = projectId.value;
+    const id = projectStore.activeProjectId;
     if (!id) {
       return;
     }
@@ -1172,7 +1168,7 @@
     if (Object.keys(errors).length > 0) {
       return;
     }
-    const id = projectId.value;
+    const id = projectStore.activeProjectId;
     if (!id) {
       return;
     }
@@ -1203,16 +1199,18 @@
     }
   }
 
-  onMounted(() => openProject(projectId.value));
+  onMounted(() => openProject(projectStore.activeProjectId ?? ''));
 
   onUnmounted(clearProbeCheckTimer);
 
-  onBeforeRouteUpdate((to) => {
-    const nextId = String(to.params.id || '');
-    if (nextId === projectId.value) {
-      return;
+  watch(
+    () => projectStore.activeProjectId,
+    (nextId, previousId) => {
+      if (nextId === previousId) {
+        return;
+      }
+      resetWorkspace();
+      openProject(nextId ?? '');
     }
-    resetWorkspace();
-    openProject(nextId);
-  });
+  );
 </script>

@@ -10,35 +10,36 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-func (s Service) resolveProjectTarget(ctx context.Context, app model.Application) (environmentport.Target, error) {
-	if app.ProjectId == nil || strings.TrimSpace(*app.ProjectId) == "" {
-		return environmentport.Target{}, fmt.Errorf("application %s is missing project scope", app.Id)
+func (s Service) resolveProjectTarget(ctx context.Context, projectId string) (environmentport.Target, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return environmentport.Target{}, fmt.Errorf("project scope is required")
 	}
 	if s.targetResolver == nil {
 		return environmentport.Target{}, fmt.Errorf("deployment target resolver is not configured")
 	}
-	return s.targetResolver.ResolveProjectTarget(ctx, *app.ProjectId)
+	return s.targetResolver.ResolveProjectTarget(ctx, projectId)
 }
 
 func applyDeploymentTargetSnapshot(deployment *model.Deployment, target environmentport.Target, gateway *model.GatewayConfig) {
-	environmentID := target.Environment.Id
+	environmentId := target.Environment.Id
 	targetType := target.Environment.TargetType
 	targetRevision := target.Environment.TargetRevision
-	deployment.EnvironmentId = &environmentID
+	deployment.EnvironmentId = &environmentId
 	deployment.EnvironmentTargetType = &targetType
 	deployment.EnvironmentTargetRevision = &targetRevision
 	deployment.SSHCredentialId = nil
 	deployment.SSHCredentialRevision = nil
 	if target.Environment.IsSSH() {
-		credentialID := target.Environment.SSH.CredentialId
+		credentialId := target.Environment.SSH.CredentialId
 		credentialRevision := target.Environment.SSH.CredentialRevision
-		deployment.SSHCredentialId = &credentialID
+		deployment.SSHCredentialId = &credentialId
 		deployment.SSHCredentialRevision = &credentialRevision
 	}
 	deployment.GatewayApplicationId = nil
 	if gateway != nil {
-		gatewayApplicationID := gateway.ApplicationId
-		deployment.GatewayApplicationId = &gatewayApplicationID
+		gatewayApplicationId := gateway.ApplicationId
+		deployment.GatewayApplicationId = &gatewayApplicationId
 	}
 }
 

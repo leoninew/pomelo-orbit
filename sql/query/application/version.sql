@@ -1,13 +1,23 @@
 -- name: ListVersions :many
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
-WHERE application_id = ?
+WHERE application_id = sqlc.arg(application_id)
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = sqlc.arg(project_id)
+  )
 ORDER BY id DESC;
 
 -- name: CountVersions :one
 SELECT COUNT(*)
 FROM version
 WHERE application_id = sqlc.arg(application_id)
+	AND EXISTS (
+	  SELECT 1 FROM application
+	  WHERE application.id = version.application_id
+	    AND application.project_id = sqlc.arg(project_id)
+	)
   AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR label LIKE sqlc.narg(search_pattern)
     OR note LIKE sqlc.narg(search_pattern));
@@ -16,21 +26,36 @@ WHERE application_id = sqlc.arg(application_id)
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = sqlc.arg(application_id)
+	AND EXISTS (
+	  SELECT 1 FROM application
+	  WHERE application.id = version.application_id
+	    AND application.project_id = sqlc.arg(project_id)
+	)
   AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR label LIKE sqlc.narg(search_pattern)
     OR note LIKE sqlc.narg(search_pattern))
 ORDER BY id DESC
 LIMIT ? OFFSET ?;
 
--- name: VersionByID :one
+-- name: VersionById :one
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
-WHERE id = ?;
+WHERE version.id = sqlc.arg(id)
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: LatestVersionByApplication :one
 SELECT id, application_id, label, status, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
-WHERE application_id = ?
+WHERE application_id = sqlc.arg(application_id)
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = sqlc.arg(project_id)
+  )
 ORDER BY id DESC
 LIMIT 1;
 
@@ -40,42 +65,86 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateVersion :exec
 UPDATE version
-SET label = ?, status = ?, note = ?, component_summary = ?, updated_at = ?
-WHERE id = ?;
+SET label = sqlc.arg(label), status = sqlc.arg(status), note = sqlc.arg(note), component_summary = sqlc.arg(component_summary), updated_at = sqlc.arg(updated_at)
+WHERE version.id = sqlc.arg(id)
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: UpdateVersionComponentSummary :exec
 UPDATE version
-SET component_summary = ?, updated_at = ?
-WHERE id = ?;
+SET component_summary = sqlc.arg(component_summary), updated_at = sqlc.arg(updated_at)
+WHERE version.id = sqlc.arg(id)
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: CountVersionRuntimeRefs :one
 SELECT (
   SELECT COUNT(*) FROM service WHERE service.version_id = sqlc.arg(version_id)
+    AND EXISTS (
+      SELECT 1 FROM version
+      JOIN application ON application.id = version.application_id
+      WHERE version.id = service.version_id
+        AND application.project_id = sqlc.arg(project_id)
+    )
 );
 
 -- name: ClearVersionForkRefs :exec
 UPDATE version
 SET created_from_version_id = NULL
-WHERE created_from_version_id = sqlc.arg(version_id);
+WHERE created_from_version_id = sqlc.arg(version_id)
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: DeleteVersionComponents :exec
 DELETE FROM version_component
-WHERE version_id = ?;
+WHERE version_id = sqlc.arg(version_id)
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: DeleteVersion :exec
 DELETE FROM version
-WHERE id = ?;
+WHERE version.id = sqlc.arg(id)
+  AND EXISTS (
+    SELECT 1 FROM application
+    WHERE application.id = version.application_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: VersionComponentsByVersion :many
 SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
-WHERE version_id = ?
+WHERE version_id = sqlc.arg(version_id)
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = sqlc.arg(project_id)
+  )
 ORDER BY name;
 
--- name: VersionComponentByID :one
+-- name: VersionComponentById :one
 SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
-WHERE id = ?;
+WHERE version_component.id = sqlc.arg(id)
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: InsertVersionComponent :exec
 INSERT INTO version_component (
@@ -84,27 +153,57 @@ INSERT INTO version_component (
 
 -- name: UpdateVersionComponentBasic :exec
 UPDATE version_component
-SET name = ?, image = ?, pull_policy = ?, restart_policy = ?, updated_at = ?
-WHERE id = ?;
+SET name = sqlc.arg(name), image = sqlc.arg(image), pull_policy = sqlc.arg(pull_policy), restart_policy = sqlc.arg(restart_policy), updated_at = sqlc.arg(updated_at)
+WHERE version_component.id = sqlc.arg(id)
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: TouchVersionComponent :exec
 UPDATE version_component
-SET updated_at = ?
-WHERE id = ?;
+SET updated_at = sqlc.arg(updated_at)
+WHERE version_component.id = sqlc.arg(id)
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: DeleteVersionComponent :exec
 DELETE FROM version_component
-WHERE id = ?;
+WHERE version_component.id = sqlc.arg(id)
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: UpdateVersionComponentCommand :exec
 UPDATE version_component
-SET command_json = ?, updated_at = ?
-WHERE id = ?;
+SET command_json = sqlc.arg(command_json), updated_at = sqlc.arg(updated_at)
+WHERE version_component.id = sqlc.arg(id)
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: UpdateVersionComponentEntrypoint :exec
 UPDATE version_component
-SET entrypoint_json = ?, updated_at = ?
-WHERE id = ?;
+SET entrypoint_json = sqlc.arg(entrypoint_json), updated_at = sqlc.arg(updated_at)
+WHERE version_component.id = sqlc.arg(id)
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
 
 -- name: InsertVersionComponentEnv :exec
 INSERT INTO version_component_env (component_id, env_key, value, position)
@@ -238,6 +337,11 @@ WHERE component_id = ?;
 UPDATE version_component_dependency
 SET depends_on_name = sqlc.arg(new_name)
 WHERE component_id IN (
-  SELECT id FROM version_component WHERE version_id = sqlc.arg(version_id)
+  SELECT version_component.id
+  FROM version_component
+  JOIN version ON version.id = version_component.version_id
+  JOIN application ON application.id = version.application_id
+  WHERE version_component.version_id = sqlc.arg(version_id)
+    AND application.project_id = sqlc.arg(project_id)
 )
   AND depends_on_name = sqlc.arg(old_name);

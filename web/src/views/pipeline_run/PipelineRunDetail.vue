@@ -392,6 +392,7 @@
     PipelineSnapshotResp,
     SnapshotStageResp,
   } from '@/gen/proto/orbit/v1/pipeline/snapshot';
+  import { useProjectStore } from '@/stores/project';
   import { isComplete, statusTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
   import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
@@ -403,6 +404,7 @@
   const runId = computed(() => route.params.id as string);
   const { t } = useI18n();
   const toast = useToast();
+  const projectStore = useProjectStore();
 
   const { loading, execute } = useStatusAsync();
   const { loading: artifactsLoading, execute: executeArtifacts } = useStatusAsync();
@@ -426,6 +428,14 @@
   const appliedArtifactSearch = ref('');
   const stageLogStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error'>('loading');
   const stageLogError = ref('');
+
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error(t('pipelineRun.toast.loadDetailFailed'));
+    }
+    return projectId;
+  }
 
   const runVariableDeclarations = computed(() => run.value?.variables_snapshot ?? []);
   const stageRuns = computed(() => run.value?.pipeline_stage_runs ?? []);
@@ -550,7 +560,13 @@
 
     while (!signal.aborted) {
       try {
-        const resp = await pipelineRunApi.getStageLog(runId.value, stageRunId, offset, { signal });
+        const resp = await pipelineRunApi.getStageLog(
+          selectedProjectId(),
+          runId.value,
+          stageRunId,
+          offset,
+          { signal }
+        );
         if (signal.aborted) {
           break;
         }
@@ -586,7 +602,7 @@
   async function fetchRun() {
     try {
       return await execute(async () => {
-        const data = await pipelineRunApi.get(runId.value);
+        const data = await pipelineRunApi.get(selectedProjectId(), runId.value);
         run.value = data;
         return data;
       });
@@ -598,7 +614,7 @@
 
   async function fetchSnapshot(snapshotId: string) {
     try {
-      const data = await pipelineApi.getSnapshot(snapshotId);
+      const data = await pipelineApi.getSnapshot(selectedProjectId(), snapshotId);
       snapshot.value = data;
     } catch {
       // Snapshot load failure does not block the main flow
@@ -607,7 +623,7 @@
 
   async function fetchArtifacts(silent = false) {
     const fetch = async () => {
-      const resp = await pipelineRunApi.listArtifacts(runId.value);
+      const resp = await pipelineRunApi.listArtifacts(selectedProjectId(), runId.value);
       artifacts.value = resp.items;
     };
 
@@ -639,7 +655,7 @@
   async function handleRetry() {
     try {
       await executeRetry(async () => {
-        const newRun = await pipelineRunApi.retry(runId.value, {});
+        const newRun = await pipelineRunApi.retry(selectedProjectId(), runId.value, {});
         toast.success(t('pipelineRun.toast.retrySuccess'));
         router.push(`/pipeline-run/${newRun.id}`);
       });
@@ -652,7 +668,7 @@
     cancelSubmitError.value = '';
     try {
       await executeCancel(async () => {
-        await pipelineRunApi.cancel(runId.value, {});
+        await pipelineRunApi.cancel(selectedProjectId(), runId.value, {});
         toast.success(t('pipelineRun.toast.cancelSuccess'));
         isCancelDialogOpen.value = false;
         const currentRun = await fetchRun();
@@ -687,7 +703,7 @@
       await executeDelete(async () => {
         stopPolling();
         logPollAbort?.abort();
-        await pipelineRunApi.delete(runId.value);
+        await pipelineRunApi.delete(selectedProjectId(), runId.value);
         toast.success(t('pipelineRun.toast.deleteSuccess'));
         await router.replace('/pipeline-run');
       });
@@ -703,7 +719,7 @@
     isPolling.value = true;
     while (!signal.aborted) {
       try {
-        run.value = await pipelineRunApi.get(runId.value);
+        run.value = await pipelineRunApi.get(selectedProjectId(), runId.value);
         await fetchArtifacts(true);
         if (isComplete(run.value.status)) {
           isPolling.value = false;

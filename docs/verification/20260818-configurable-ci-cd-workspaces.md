@@ -7,7 +7,7 @@ Mode: strict
 
 ## Verification Basis
 
-- Requirement: [可配置 CI/CD 工作目录与 DooD 宿主路径解析](../requirement/20260818-configurable-ci-cd-workspaces.md)
+- Requirement: [可配置 CI/CD 工作目录与 DooD 宿主路径解析](../intent/20260818-configurable-ci-cd-workspaces.md)
 - Spec: 不适用。用户从已接受的 Requirement 直接进入 Plan，Plan 承担实现设计细化。
 - Plan: [可配置 CI/CD 工作目录与 DooD 宿主路径解析计划](../plan/20260818-configurable-ci-cd-workspaces.md)
 - Verification scope: `workspace.pipeline`、`workspace.deployment`、DooD Docker daemon path 解析、Gateway 证书目录、运维工具与对应活文档。

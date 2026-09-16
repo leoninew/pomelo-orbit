@@ -11,7 +11,7 @@ Mode: standard
 
 验证依据：
 
-- [Requirement](../requirement/20260815-application-pipeline-variable-management.md)
+- [Requirement](../intent/20260815-application-pipeline-variable-management.md)
 - [Spec](../spec/20260815-application-pipeline-variable-management.md)
 - [Plan](../plan/20260815-application-pipeline-variable-management.md)
 

@@ -7,7 +7,7 @@ Review status: Draft
 
 ## 验证依据
 
-依据已接受的 [Requirement](../requirement/20260806-go-mcp-contract-and-python-removal.md) 与 [Plan](../plan/20260806-go-mcp-contract-and-python-removal.md) 验证。本次以 Go delivery MCP、浏览器授权交接、对话编排和活文档更新为范围；用户已澄清，除 Python MCP 目录本身外，所有 `scripts/` 必须保留。
+依据已接受的 [Requirement](../intent/20260806-go-mcp-contract-and-python-removal.md) 与 [Plan](../plan/20260806-go-mcp-contract-and-python-removal.md) 验证。本次以 Go delivery MCP、浏览器授权交接、对话编排和活文档更新为范围；用户已澄清，除 Python MCP 目录本身外，所有 `scripts/` 必须保留。
 
 ## 实际差异摘要
 

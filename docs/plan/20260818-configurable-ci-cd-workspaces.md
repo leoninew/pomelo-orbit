@@ -7,7 +7,7 @@ Mode: strict
 
 ## Basis
 
-- Requirement: [可配置 CI/CD 工作目录与 DooD 宿主路径解析](../requirement/20260818-configurable-ci-cd-workspaces.md)
+- Requirement: [可配置 CI/CD 工作目录与 DooD 宿主路径解析](../intent/20260818-configurable-ci-cd-workspaces.md)
 - Spec：用户明确要求从已接受 Requirement 直接进入 Plan；本计划承担必要的实现设计细化。
 
 ## Implementation steps

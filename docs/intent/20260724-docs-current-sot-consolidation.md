@@ -7,7 +7,7 @@ Flow mode: light
 
 ## Background
 
-早期与后期产品/技术决策分散在 SpecFlow 过程文档（`docs/requirement|spec|plan|verification`）、`docs/guides`、`docs/designs` 及讨论/分析文中。部分结论已废止或被后续主线覆盖，但旧文仍为 `Accepted` 全文，Agent 与人类检索时易把历史决策当现行规范。
+早期与后期产品/技术决策分散在 SpecFlow 过程文档（`docs/intent|spec|plan|verification`）、`docs/guides`、`docs/designs` 及讨论/分析文中。部分结论已废止或被后续主线覆盖，但旧文仍为 `Accepted` 全文，Agent 与人类检索时易把历史决策当现行规范。
 
 已确认方向：
 
@@ -15,7 +15,7 @@ Flow mode: light
 2. **物理归档** 已提交的历史过程文档与过时活文档；归档目录含 README，明确 **无须采信 / 不得作为实现依据**。
 3. **梳理并沉淀** 少量当前 **产品 / 设计 / 技术** 活文档作为开发默认 SoT。
 4. 文码冲突时 **以代码为准** 回写活文档。
-5. 新功能仍按 SpecFlow 写过程文档（写在主树 `docs/requirement|…`）；日常开发默认先读活文档。
+5. 新功能仍按 SpecFlow 写过程文档（写在主树 `docs/intent|…`）；日常开发默认先读活文档。
 6. **范围仅限 git HEAD 已提交的 docs**（`git ls-tree -r HEAD --name-only docs/`）。**未提交文档一律不在本任务处理之列**（不登记、不搬移、不消化、不校准）。
 7. **`docs/INDEX.md` 独立存在**（与 `docs/README.md` 分工，不合并进 README）。
 
@@ -129,68 +129,68 @@ docs/
 
 | 路径 | 处置 | 状态 |
 |------|------|------|
-| `docs/requirement/20260614-cloudflare-turnstile-captcha.md` | archive/specflow/requirement | 待处理 |
-| `docs/requirement/20260614-startup-config-validation.md` | archive | 待处理 |
-| `docs/requirement/20260615-backend-go-cd-application.md` | archive | 待处理 |
-| `docs/requirement/20260615-backend-go-cd-deployment.md` | archive | 待处理 |
-| `docs/requirement/20260615-backend-go-cd-route.md` | archive | 待处理 |
-| `docs/requirement/20260615-ci-run-api-migration.md` | archive | 待处理 |
-| `docs/requirement/20260616-backend-go-mainstream-template.md` | archive | 待处理 |
-| `docs/requirement/20260618-backend-go-auth-sqlite-busy.md` | archive | 待处理 |
-| `docs/requirement/20260618-backend-go-ci-docker-physical-mount.md` | archive | 待处理 |
-| `docs/requirement/20260618-backend-go-ci-runtime-variables.md` | archive | 待处理 |
-| `docs/requirement/20260618-backend-go-ci-snapshot-get-or-create.md` | archive | 待处理 |
-| `docs/requirement/20260618-go-liquid-template.md` | archive | 待处理 |
-| `docs/requirement/20260622-backend-go-cd-physical-path.md` | archive | 待处理 |
-| `docs/requirement/20260622-backend-go-http-logging.md` | archive | 待处理 |
-| `docs/requirement/20260622-backend-go-runtime-config.md` | archive | 待处理 |
-| `docs/requirement/20260624-backend-go-config-loading.md` | archive | 待处理 |
-| `docs/requirement/20260624-backend-go-docker-image.md` | archive | 待处理 |
-| `docs/requirement/20260624-backend-go-env-config.md` | archive | 待处理 |
-| `docs/requirement/20260624-backend-go-repository-variables.md` | archive | 待处理 |
-| `docs/requirement/20260624-docker-image-roles.md` | archive | 待处理 |
-| `docs/requirement/20260624-trixie-compose-apt.md` | archive | 待处理 |
-| `docs/requirement/20260625-backend-go-logging.md` | archive | 待处理 |
-| `docs/requirement/20260625-cd-docker-worker.md` | archive | 待处理 |
-| `docs/requirement/20260625-incremental-log-domain-extraction.md` | archive | 待处理 |
-| `docs/requirement/20260626-cd-application-contract-fixes.md` | archive | 待处理 |
-| `docs/requirement/20260626-cd-application-create-methods.md` | archive | 待处理 |
-| `docs/requirement/20260626-manage-scp.md` | archive | 待处理 |
-| `docs/requirement/20260628-settings-plain-list.md` | archive | 待处理 |
-| `docs/requirement/20260629-jwt-secret-validation.md` | archive | 待处理 |
-| `docs/requirement/20260630-cd-deploy-force-recreate.md` | archive | 待处理 |
-| `docs/requirement/20260630-cd-deployment-detail-container-logs.md` | archive | 待处理 |
-| `docs/requirement/20260701-api-inventory.md` | archive | 待处理 |
-| `docs/requirement/20260701-cloudflare-api-cors-baseurl.md` | archive | 待处理 |
-| `docs/requirement/20260701-traefik-multi-domain-router-label.md` | archive | 待处理 |
-| `docs/requirement/20260703-runtime-api-origin-refinement.md` | archive | 待处理 |
-| `docs/requirement/20260705-api-proto-contracts.md` | archive | 待处理 |
-| `docs/requirement/20260705-backend-go-golang-migrate.md` | archive | 待处理 |
-| `docs/requirement/20260705-backend-go-sqlc.md` | archive | 待处理 |
-| `docs/requirement/20260707-gin-http-transport-migration.md` | archive | 待处理 |
-| `docs/requirement/20260707-http-assets-logging-filter.md` | archive | 待处理 |
-| `docs/requirement/20260708-internal-layering-followup-split.md` | archive | 待处理 |
-| `docs/requirement/20260708-internal-layering-record.md` | archive | 待处理 |
-| `docs/requirement/20260709-internal-directory-structure-alignment.md` | archive | 待处理 |
-| `docs/requirement/20260710-cd-deployment-status-polling.md` | archive | 待处理 |
-| `docs/requirement/20260713-bootstrap-logger-lifecycle.md` | archive | 待处理 |
-| `docs/requirement/20260713-web-1440-layout-adaptation.md` | archive | 待处理 |
-| `docs/requirement/20260714-resource-route-registration.md` | archive | 待处理 |
-| `docs/requirement/20260721-cd-application-version-cadence.md` | archive；精华吸收进 product + decisions | 待处理 |
-| `docs/requirement/20260721-cd-application-version-deploy.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260721-cd-application-version-domain.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260721-cd-application-version-render.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260721-cd-application-version-spec.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260721-cd-deployment-failure-error-detail.md` | archive | 待处理 |
-| `docs/requirement/20260721-cd-environment-expose-service.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260722-cd-application-kind-gateway.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260722-cd-environment-ingress-policy.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260722-cd-gateway-component-mount-e5.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260722-cd-gateway-domain-config-e6.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260723-cd-gateway-detail-deploy-stop.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260723-cd-gateway-entrypoint-ownership.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260723-cd-gateway-tcp-access.md` | archive；吸收 | 待处理 |
-| `docs/requirement/20260723-cd-post-e6-cleanup.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260614-cloudflare-turnstile-captcha.md` | archive/specflow/requirement | 待处理 |
+| `docs/intent/20260614-startup-config-validation.md` | archive | 待处理 |
+| `docs/intent/20260615-backend-go-cd-application.md` | archive | 待处理 |
+| `docs/intent/20260615-backend-go-cd-deployment.md` | archive | 待处理 |
+| `docs/intent/20260615-backend-go-cd-route.md` | archive | 待处理 |
+| `docs/intent/20260615-ci-run-api-migration.md` | archive | 待处理 |
+| `docs/intent/20260616-backend-go-mainstream-template.md` | archive | 待处理 |
+| `docs/intent/20260618-backend-go-auth-sqlite-busy.md` | archive | 待处理 |
+| `docs/intent/20260618-backend-go-ci-docker-physical-mount.md` | archive | 待处理 |
+| `docs/intent/20260618-backend-go-ci-runtime-variables.md` | archive | 待处理 |
+| `docs/intent/20260618-backend-go-ci-snapshot-get-or-create.md` | archive | 待处理 |
+| `docs/intent/20260618-go-liquid-template.md` | archive | 待处理 |
+| `docs/intent/20260622-backend-go-cd-physical-path.md` | archive | 待处理 |
+| `docs/intent/20260622-backend-go-http-logging.md` | archive | 待处理 |
+| `docs/intent/20260622-backend-go-runtime-config.md` | archive | 待处理 |
+| `docs/intent/20260624-backend-go-config-loading.md` | archive | 待处理 |
+| `docs/intent/20260624-backend-go-docker-image.md` | archive | 待处理 |
+| `docs/intent/20260624-backend-go-env-config.md` | archive | 待处理 |
+| `docs/intent/20260624-backend-go-repository-variables.md` | archive | 待处理 |
+| `docs/intent/20260624-docker-image-roles.md` | archive | 待处理 |
+| `docs/intent/20260624-trixie-compose-apt.md` | archive | 待处理 |
+| `docs/intent/20260625-backend-go-logging.md` | archive | 待处理 |
+| `docs/intent/20260625-cd-docker-worker.md` | archive | 待处理 |
+| `docs/intent/20260625-incremental-log-domain-extraction.md` | archive | 待处理 |
+| `docs/intent/20260626-cd-application-contract-fixes.md` | archive | 待处理 |
+| `docs/intent/20260626-cd-application-create-methods.md` | archive | 待处理 |
+| `docs/intent/20260626-manage-scp.md` | archive | 待处理 |
+| `docs/intent/20260628-settings-plain-list.md` | archive | 待处理 |
+| `docs/intent/20260629-jwt-secret-validation.md` | archive | 待处理 |
+| `docs/intent/20260630-cd-deploy-force-recreate.md` | archive | 待处理 |
+| `docs/intent/20260630-cd-deployment-detail-container-logs.md` | archive | 待处理 |
+| `docs/intent/20260701-api-inventory.md` | archive | 待处理 |
+| `docs/intent/20260701-cloudflare-api-cors-baseurl.md` | archive | 待处理 |
+| `docs/intent/20260701-traefik-multi-domain-router-label.md` | archive | 待处理 |
+| `docs/intent/20260703-runtime-api-origin-refinement.md` | archive | 待处理 |
+| `docs/intent/20260705-api-proto-contracts.md` | archive | 待处理 |
+| `docs/intent/20260705-backend-go-golang-migrate.md` | archive | 待处理 |
+| `docs/intent/20260705-backend-go-sqlc.md` | archive | 待处理 |
+| `docs/intent/20260707-gin-http-transport-migration.md` | archive | 待处理 |
+| `docs/intent/20260707-http-assets-logging-filter.md` | archive | 待处理 |
+| `docs/intent/20260708-internal-layering-followup-split.md` | archive | 待处理 |
+| `docs/intent/20260708-internal-layering-record.md` | archive | 待处理 |
+| `docs/intent/20260709-internal-directory-structure-alignment.md` | archive | 待处理 |
+| `docs/intent/20260710-cd-deployment-status-polling.md` | archive | 待处理 |
+| `docs/intent/20260713-bootstrap-logger-lifecycle.md` | archive | 待处理 |
+| `docs/intent/20260713-web-1440-layout-adaptation.md` | archive | 待处理 |
+| `docs/intent/20260714-resource-route-registration.md` | archive | 待处理 |
+| `docs/intent/20260721-cd-application-version-cadence.md` | archive；精华吸收进 product + decisions | 待处理 |
+| `docs/intent/20260721-cd-application-version-deploy.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260721-cd-application-version-domain.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260721-cd-application-version-render.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260721-cd-application-version-spec.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260721-cd-deployment-failure-error-detail.md` | archive | 待处理 |
+| `docs/intent/20260721-cd-environment-expose-service.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260722-cd-application-kind-gateway.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260722-cd-environment-ingress-policy.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260722-cd-gateway-component-mount-e5.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260722-cd-gateway-domain-config-e6.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260723-cd-gateway-detail-deploy-stop.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260723-cd-gateway-entrypoint-ownership.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260723-cd-gateway-tcp-access.md` | archive；吸收 | 待处理 |
+| `docs/intent/20260723-cd-post-e6-cleanup.md` | archive；吸收 | 待处理 |
 
 #### 1.2 spec（14）
 
@@ -353,9 +353,9 @@ docs/
 
 **不处理、不列表、不搬移、不消化。** 包括但不限于工作区中可能存在的：
 
-- `docs/requirement/20260724-docs-current-sot-consolidation.md`（本文件，在 commit 进 HEAD 前）
-- `docs/requirement/20260724-sql-migration-squash.md` 及任何仅 staged / untracked 过程文档
-- `docs/requirement|plan/20260724-ci-cd-dto-file-split.md`、`docs/requirement/20260724-remove-sqlx-full-sqlc.md`
+- `docs/intent/20260724-docs-current-sot-consolidation.md`（本文件，在 commit 进 HEAD 前）
+- `docs/intent/20260724-sql-migration-squash.md` 及任何仅 staged / untracked 过程文档
+- `docs/intent|plan/20260724-ci-cd-dto-file-split.md`、`docs/intent/20260724-remove-sqlx-full-sqlc.md`
 - `docs/analyze/20260724-*-domain-split-*.md` 等未进 HEAD 的分析稿
 
 实现时 **禁止** 因「顺手」修改或归档上述路径。

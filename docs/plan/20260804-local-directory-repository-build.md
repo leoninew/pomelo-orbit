@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求依据
 
-- [Requirement](../requirement/20260804-local-directory-repository-build.md) 已接受。
+- [Requirement](../intent/20260804-local-directory-repository-build.md) 已接受。
 - 本地源码必须使用 Git commit shallow 检出至既有项目 workspace，不可写回真实目录。
 
 ## 实施步骤

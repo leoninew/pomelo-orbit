@@ -7,7 +7,7 @@ Mode: strict
 
 ## 输入与实施边界
 
-本计划实施已接受的 [Requirement](../requirement/20260910-project-environment-configuration.md) 和 [Spec](../spec/20260910-project-environment-configuration.md)。实施顺序先收敛数据与应用边界，再替换 HTTP/Web/MCP 调用入口，避免短暂保留第二条初始化或运行时配置来源。
+本计划实施已接受的 [Requirement](../intent/20260910-project-environment-configuration.md) 和 [Spec](../spec/20260910-project-environment-configuration.md)。实施顺序先收敛数据与应用边界，再替换 HTTP/Web/MCP 调用入口，避免短暂保留第二条初始化或运行时配置来源。
 
 仅 Web Project Initialization Wizard 可以初始化部署资源。Codex stdio MCP 和 Web Deployment Dialogue 只使用已经就绪的 Project。Project、Environment、Gateway、Version / Component 的现有持久化资源是部署运行时唯一来源；`ProjectInitializationConfig` 仅提供 Wizard 的初始表单值，不能参与运行时 fallback。
 

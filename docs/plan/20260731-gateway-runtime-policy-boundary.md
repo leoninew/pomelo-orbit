@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求与规格依据
 
-- [Requirement](../requirement/20260731-gateway-runtime-policy-boundary.md) 与 [Spec](../spec/20260731-gateway-runtime-policy-boundary.md) 已接受。
+- [Requirement](../intent/20260731-gateway-runtime-policy-boundary.md) 与 [Spec](../spec/20260731-gateway-runtime-policy-boundary.md) 已接受。
 - VersionComponent 与 `version_component_xx` 保存可复用声明和模板值；ServiceComponent 与 `service_component_xx` 保存稀疏运行时值。没有 Service 子记录表示继承，`override` 表示改写值字段，`deleted` 表示压制声明值。
 - Service 只能覆盖或删除 Version 已声明的条目，不能新增环境变量、挂载、资源项或 Endpoint。可覆盖的是值字段；标识、接口和结构字段仍来自 Version。
 - 网络配置允许保存。端口冲突、Gateway/entrypoint/域名/网络可用性由 Preview 和 Deploy 的部署处理报告；Gateway `api` 与其他已声明 Endpoint 一样按保存的 Version/Service 值生成计划，不因名称被强制为 `internal`。

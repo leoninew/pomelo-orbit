@@ -27,7 +27,7 @@ Review status: Accepted
 
 | 预期范围 | 实际文件 | 结果 |
 |---|---|---|
-| Requirement | `docs/requirement/20260809-deletion-guard-rules.md` | 一致 |
+| Requirement | `docs/intent/20260809-deletion-guard-rules.md` | 一致 |
 | Application 清理 | `internal/repository/impl/sqlc/application/repository.go`、`repository_test.go` | 一致 |
 | Credential / Repository 提示 | 对应 usecase 与测试 | 一致 |
 | Pipeline 依赖检查 | `stage_template.go`、`pipeline_test.go` | 一致 |

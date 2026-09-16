@@ -7,7 +7,7 @@ Mode: standard
 
 ## Basis
 
-- Requirement: [流水线变量嵌套 Liquid 值](../requirement/20260907-pipeline-variable-nested-liquid-values.md)（`Accepted`）
+- Requirement: [流水线变量嵌套 Liquid 值](../intent/20260907-pipeline-variable-nested-liquid-values.md)（`Accepted`）
 - Plan: [流水线变量嵌套 Liquid 值实施计划](../plan/20260907-pipeline-variable-nested-liquid-values.md)（`Accepted`）
 
 ## Requirement Alignment

@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求依据
 
-本计划实施已接受的 [Go MCP 契约补齐与 Python MCP 移除](../requirement/20260806-go-mcp-contract-and-python-removal.md)。Python 不是迁移来源；现有 Go application usecase、Go delivery MCP 与 Web 认证流程是唯一实现依据。
+本计划实施已接受的 [Go MCP 契约补齐与 Python MCP 移除](../intent/20260806-go-mcp-contract-and-python-removal.md)。Python 不是迁移来源；现有 Go application usecase、Go delivery MCP 与 Web 认证流程是唯一实现依据。
 
 ## 实施架构
 

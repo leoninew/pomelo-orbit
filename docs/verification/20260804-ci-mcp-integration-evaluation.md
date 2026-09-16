@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求对齐
 
-- 对照已接受的 [持续集成 MCP 集成评估](../requirement/20260804-ci-mcp-integration-evaluation.md) 及其 2026-08-04 的实施决策，本次交付实现独立、只读的 `pomelo-pipeline-mcp`，不扩展 `pomelo-orbit-mcp`。
+- 对照已接受的 [持续集成 MCP 集成评估](../intent/20260804-ci-mcp-integration-evaluation.md) 及其 2026-08-04 的实施决策，本次交付实现独立、只读的 `pomelo-pipeline-mcp`，不扩展 `pomelo-orbit-mcp`。
 - MCP client 仅发起固定的受鉴权 `GET` 请求；没有触发、取消、重试、部署或其他写操作。
 - Server 未注册进 `.codex/config.toml`，不会自动加入现有 stdio 会话，也不会把 CI 成功自动衔接为 Orbit 部署。
 - 响应投影排除阶段/模板脚本、变量 default/value、运行错误文本和制品物理路径；阶段日志会进行常见凭据遮蔽，并通过受限 `max_bytes` 与 `offset` 支持续读。

@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 输入与范围
 
-- 依据已接受的 [Requirement](../requirement/20260805-ci-artifact-version-fork.md) 与 [Spec](../spec/20260805-ci-artifact-version-fork.md)。
+- 依据已接受的 [Requirement](../intent/20260805-ci-artifact-version-fork.md) 与 [Spec](../spec/20260805-ci-artifact-version-fork.md)。
 - 仅实现 CI 制品记录、Application Version fork 和血缘查询；不触发 Service、Deployment、registry 或 MCP 的动作。
 - `latest` 使用创建时 `id DESC` 的最后创建 Version；`fixed` 使用用户指定且属于 Application 的 Version。
 - 同一 Repository 的触发与重试只断言不存在 `running` PipelineRun；`waiting_to_run` 不阻塞，不增加锁表、lease 或跨 worker 互斥。

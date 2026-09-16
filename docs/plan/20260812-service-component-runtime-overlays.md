@@ -7,7 +7,7 @@ Mode: standard
 
 ## Requirement Basis
 
-依据 [服务组件运行时基础配置覆盖需求](../requirement/20260812-service-component-runtime-overlays.md)：Service Component 在保持 Version 组件映射、镜像来源及接口契约不变的前提下，可覆盖 `entrypoint`、`command`、`pull_policy` 和 `restart_policy`。保存不自动部署，所有生效读取、预览、哈希与渲染使用同一有效计划。
+依据 [服务组件运行时基础配置覆盖需求](../intent/20260812-service-component-runtime-overlays.md)：Service Component 在保持 Version 组件映射、镜像来源及接口契约不变的前提下，可覆盖 `entrypoint`、`command`、`pull_policy` 和 `restart_policy`。保存不自动部署，所有生效读取、预览、哈希与渲染使用同一有效计划。
 
 ## Design Summary
 

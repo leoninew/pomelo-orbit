@@ -5,7 +5,7 @@ Verification status: Passed
 
 ## Scope
 
-本记录合并此前按阶段维护的 Pipeline 术语、Gateway use case、Deployment use case、Application family 总切换和历史命名 / 边界审计验证。验收对象是 [领域拆分收尾需求](../requirement/20260724-domain-split-closeout.md) 与 [统一实施计划](../plan/20260724-domain-split-closeout.md) 中定义的最终生产边界。
+本记录合并此前按阶段维护的 Pipeline 术语、Gateway use case、Deployment use case、Application family 总切换和历史命名 / 边界审计验证。验收对象是 [领域拆分收尾需求](../intent/20260724-domain-split-closeout.md) 与 [统一实施计划](../plan/20260724-domain-split-closeout.md) 中定义的最终生产边界。
 
 ## Phase results
 

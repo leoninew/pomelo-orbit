@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Requirement alignment
 
-与 [`20260809-service-mount-source-mode.md`](../requirement/20260809-service-mount-source-mode.md) 对齐：Version 挂载编辑页不展示宿主机路径模式，Service 覆盖同时保存源路径和该模式，保存错误留在当前模态内；有效运行配置错误以页面 Toast 展示而不归属到环境变量；没有新增数据库状态组合约束或异常兜底。
+与 [`20260809-service-mount-source-mode.md`](../intent/20260809-service-mount-source-mode.md) 对齐：Version 挂载编辑页不展示宿主机路径模式，Service 覆盖同时保存源路径和该模式，保存错误留在当前模态内；有效运行配置错误以页面 Toast 展示而不归属到环境变量；没有新增数据库状态组合约束或异常兜底。
 
 ## Spec / Plan alignment
 

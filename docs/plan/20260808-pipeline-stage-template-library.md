@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## Inputs
 
-- [Requirement](../requirement/20260808-pipeline-stage-template-library.md)：`Accepted`
+- [Requirement](../intent/20260808-pipeline-stage-template-library.md)：`Accepted`
 - [Spec](../spec/20260808-pipeline-stage-template-library.md)：`Accepted`
 - 当前实现基线：`Pipeline(kind=template|application)` 已存在；`pipeline_stage` 仍强制归属 Pipeline，并在同一行保存 DAG、排序和制品 JSON。
 

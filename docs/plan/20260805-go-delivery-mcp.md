@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求依据
 
-本计划实施已接受的 [Go 持续部署 MCP 改写](../requirement/20260805-go-delivery-mcp.md)。目标是将 Python 持续部署 MCP 迁移为 Go 实现，并统一对外名称为 `pomelo-orbit-mcp`，同时保持 stdio 与 Streamable HTTP 两种标准 transport、完整工具兼容性，以及所有业务 tool 直接调用 application usecase 的分层边界。
+本计划实施已接受的 [Go 持续部署 MCP 改写](../intent/20260805-go-delivery-mcp.md)。目标是将 Python 持续部署 MCP 迁移为 Go 实现，并统一对外名称为 `pomelo-orbit-mcp`，同时保持 stdio 与 Streamable HTTP 两种标准 transport、完整工具兼容性，以及所有业务 tool 直接调用 application usecase 的分层边界。
 
 ## 实施架构
 

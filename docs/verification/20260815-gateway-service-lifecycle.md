@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Verification basis
 
-- Requirement: `docs/requirement/20260815-gateway-service-lifecycle.md`
+- Requirement: `docs/intent/20260815-gateway-service-lifecycle.md`
 - Spec: `docs/spec/20260815-gateway-service-lifecycle.md`
 - Plan: `docs/plan/20260815-gateway-service-lifecycle.md`
 - Verification scope: 已暂存的 `20260815-gateway-service-lifecycle` 变更；应用导入导出删除、Gateway REST 网络选项、流水线变量管理和本地目录仓库排障仍处于未暂存工作区，不纳入本任务结论。

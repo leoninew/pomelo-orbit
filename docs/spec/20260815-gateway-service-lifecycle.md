@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Requirement basis
 
-本规格依据 `docs/requirement/20260815-gateway-service-lifecycle.md`。它不重写 `20260731-gateway-runtime-policy-boundary`、`20260809-gateway-deletion` 或 `20260813-custom-tcp-routes` 的已接受过程记录；实现时以当前代码和活 SoT 为准，并把本任务的最终结论回写活文档。
+本规格依据 `docs/intent/20260815-gateway-service-lifecycle.md`。它不重写 `20260731-gateway-runtime-policy-boundary`、`20260809-gateway-deletion` 或 `20260813-custom-tcp-routes` 的已接受过程记录；实现时以当前代码和活 SoT 为准，并把本任务的最终结论回写活文档。
 
 ## Target model
 

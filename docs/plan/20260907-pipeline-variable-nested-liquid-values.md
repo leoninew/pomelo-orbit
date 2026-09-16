@@ -7,7 +7,7 @@ Mode: standard
 
 ## Basis
 
-- Requirement: [流水线变量嵌套 Liquid 值](../requirement/20260907-pipeline-variable-nested-liquid-values.md)（`Accepted`）
+- Requirement: [流水线变量嵌套 Liquid 值](../intent/20260907-pipeline-variable-nested-liquid-values.md)（`Accepted`）
 - 当前阶段字段通过 `internal/common/template.Render` 直接使用 Liquid 引擎渲染，但阶段表达式扫描、`default` filter 解析和 Shell 默认值校验仍位于 `pipelinevariable`。
 - 当前 Pipeline 变量解析位于 `internal/application/pipeline/rule/pipelinevariable/runtime.go`：先选择来源优先级，再将未经二次求值的字符串放入 `RuntimeVariables`。
 - 当前 `UpdatePipeline` 在 `internal/application/pipeline/usecase/pipeline.go` 中仅规范化变量 JSON；变量保存前没有嵌套引用的语法、可见性或循环校验。

@@ -5,7 +5,7 @@ Review status: Draft
 
 ## Requirement Alignment
 
-实现遵循 `docs/requirement/20260731-gateway-runtime-policy-boundary.md`：VersionComponent 保留镜像使用方式与 Endpoint 契约；ServiceComponent 只保存声明项的稀疏运行时覆盖；GatewayConfig 只承载平台策略。`VersionComponentPort`、`ServiceExpose`、`runtime_config_json` 已从生产模型、SQL 查询、Proto/HTTP/MCP 和前端契约中移除，没有兼容读取路径。
+实现遵循 `docs/intent/20260731-gateway-runtime-policy-boundary.md`：VersionComponent 保留镜像使用方式与 Endpoint 契约；ServiceComponent 只保存声明项的稀疏运行时覆盖；GatewayConfig 只承载平台策略。`VersionComponentPort`、`ServiceExpose`、`runtime_config_json` 已从生产模型、SQL 查询、Proto/HTTP/MCP 和前端契约中移除，没有兼容读取路径。
 
 Gateway 的共享网络由 Gateway 生成的 Compose 顶层键 `traefik`、物理名称 `traefik` 和 `bridge` 驱动；标准 Service 以 external 网络消费者加入。Gateway `api` Endpoint 与其他已声明 Endpoint 一样保留 Version 默认值或 Service overlay 形成的 Effective Endpoint，不再被计划归一为 `internal`。
 

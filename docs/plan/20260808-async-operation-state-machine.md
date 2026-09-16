@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Basis
 
-- Requirement：[异步操作状态机收敛需求](../requirement/20260808-async-operation-state-machine.md)（Accepted）
+- Requirement：[异步操作状态机收敛需求](../intent/20260808-async-operation-state-machine.md)（Accepted）
 - Spec：[异步操作状态机收敛规格](../spec/20260808-async-operation-state-machine.md)（Accepted）
 
 交付分为两个顺序阶段：先完成并验证主业务状态机；随后交付并单独执行历史数据脚本。历史数据不进入业务用例、启动流程或兼容逻辑。

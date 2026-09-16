@@ -17,30 +17,30 @@
         <table class="app-data-table min-w-[640px] table-fixed">
           <colgroup>
             <col class="w-[16%]" />
-            <col class="w-[84%]" />
+            <col class="w-[20%]" />
+            <col class="w-[64%]" />
           </colgroup>
           <thead>
             <tr>
               <th>{{ t('route.syncAction') }}</th>
+              <th>{{ t('route.syncSource') }}</th>
               <th>{{ t('route.syncRule') }}</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="difference in preview.differences" :key="difference.route_name">
-              <td class="align-top break-words text-foreground">
-                <p>{{ t(`route.syncActions.${difference.action}`) }}</p>
+            <tr v-for="row in previewRows" :key="row.key">
+              <td
+                v-if="row.showAction"
+                :rowspan="row.actionRowspan"
+                class="align-top break-words text-foreground"
+              >
+                <p>{{ t(`route.syncActions.${row.action}`) }}</p>
               </td>
-              <td class="align-top">
-                <div class="space-y-1 break-words text-foreground">
-                  <p v-if="difference.business_value">
-                    <span class="text-muted-foreground">{{ t('route.syncBusinessValue') }}</span>
-                    {{ difference.business_value }}
-                  </p>
-                  <p v-if="difference.traefik_value">
-                    <span class="text-muted-foreground">{{ t('route.syncTraefikValue') }}</span>
-                    {{ difference.traefik_value }}
-                  </p>
-                </div>
+              <td class="align-top break-words text-foreground">
+                <p>{{ t(`route.syncSources.${row.source}`) }}</p>
+              </td>
+              <td class="align-top break-words text-foreground">
+                <p>{{ row.rule }}</p>
               </td>
             </tr>
           </tbody>
@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, watch } from 'vue';
+  import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { routeApi } from '@/api/route/route';
   import AppDialog from '@/components/AppDialog.vue';
@@ -93,6 +93,24 @@
   const preview = ref<RouteSyncPreviewResp>();
   const previewError = ref('');
   const syncChanges = ref<RouteSyncChange[]>([]);
+  const previewRows = computed(() =>
+    (preview.value?.differences ?? []).flatMap((difference) => {
+      const rows: Array<{ source: 'customRoute' | 'dockerLabel'; rule: string }> = [];
+      if (difference.business_value) {
+        rows.push({ source: 'customRoute', rule: difference.business_value });
+      }
+      if (difference.traefik_value) {
+        rows.push({ source: 'dockerLabel', rule: difference.traefik_value });
+      }
+      return rows.map((row, index) => ({
+        ...row,
+        key: `${difference.route_name}-${difference.field}-${row.source}`,
+        action: difference.action,
+        showAction: index === 0,
+        actionRowspan: rows.length,
+      }));
+    })
+  );
 
   watch(
     () => props.open,
@@ -102,7 +120,8 @@
       } else {
         reset();
       }
-    }
+    },
+    { immediate: true }
   );
 
   function reset() {

@@ -17,11 +17,15 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
 			return nil, err
 		}
-		result, err := c.deps.Deployment.DeployService(ctx, c.deps.ActorUserId, input.ServiceId, deploymentdto.DeployServiceInput{ForceRecreate: input.ForceRecreate})
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, result.DeploymentId)
+		result, err := c.deps.Deployment.DeployService(ctx, c.deps.ActorUserId, projectId, input.ServiceId, deploymentdto.DeployServiceInput{ForceRecreate: input.ForceRecreate})
+		if err != nil {
+			return nil, err
+		}
+		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, projectId, result.DeploymentId)
 		if err != nil {
 			return nil, err
 		}
@@ -39,11 +43,15 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
 			return nil, err
 		}
-		deploymentId, err := c.deps.Deployment.StopApplication(ctx, c.deps.ActorUserId, input.ApplicationId, deploymentdto.ServiceTargetInput{ServiceId: input.ServiceId, RemoveVolumes: input.RemoveVolumes})
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, deploymentId)
+		deploymentId, err := c.deps.Deployment.StopApplication(ctx, c.deps.ActorUserId, projectId, input.ApplicationId, deploymentdto.ServiceTargetInput{ServiceId: input.ServiceId, RemoveVolumes: input.RemoveVolumes})
+		if err != nil {
+			return nil, err
+		}
+		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, projectId, deploymentId)
 		if err != nil {
 			return nil, err
 		}
@@ -60,11 +68,15 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
 			return nil, err
 		}
-		deploymentId, err := c.deps.Deployment.RestartApplication(ctx, c.deps.ActorUserId, input.ApplicationId, deploymentdto.ServiceTargetInput{ServiceId: input.ServiceId})
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, deploymentId)
+		deploymentId, err := c.deps.Deployment.RestartApplication(ctx, c.deps.ActorUserId, projectId, input.ApplicationId, deploymentdto.ServiceTargetInput{ServiceId: input.ServiceId})
+		if err != nil {
+			return nil, err
+		}
+		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, projectId, deploymentId)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +100,11 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 		if _, err := c.deploymentInScope(ctx, input.DeploymentId); err != nil {
 			return nil, err
 		}
-		logs, err := c.deps.Deployment.DeploymentLog(ctx, c.deps.ActorUserId, input.DeploymentId, input.Offset)
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		logs, err := c.deps.Deployment.DeploymentLog(ctx, c.deps.ActorUserId, projectId, input.DeploymentId, input.Offset)
 		if err != nil {
 			return nil, err
 		}
@@ -102,12 +118,16 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 		if _, err := c.deploymentInScope(ctx, input.DeploymentId); err != nil {
 			return nil, err
 		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
 		var timeout *time.Duration
 		if input.TimeoutSeconds != nil {
 			value := time.Duration(*input.TimeoutSeconds) * time.Second
 			timeout = &value
 		}
-		result, err := c.deps.Deployment.WaitDeployment(ctx, c.deps.ActorUserId, input.DeploymentId, timeout)
+		result, err := c.deps.Deployment.WaitDeployment(ctx, c.deps.ActorUserId, projectId, input.DeploymentId, timeout)
 		if err != nil {
 			return nil, err
 		}

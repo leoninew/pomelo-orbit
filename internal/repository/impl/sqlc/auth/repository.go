@@ -31,8 +31,8 @@ func (r Repository) q(ctx context.Context) *authsqlc.Queries {
 
 func (r Repository) SaveLoginHistory(ctx context.Context, history model.LoginHistory) error {
 	err := r.q(ctx).SaveLoginHistory(ctx, authsqlc.SaveLoginHistoryParams{
-		ID:        history.Id,
-		UserID:    history.UserId,
+		Id:        history.Id,
+		UserId:    history.UserId,
 		Username:  history.Username,
 		IpAddress: dbmodel.NullString(history.IpAddress),
 		UserAgent: dbmodel.NullString(history.UserAgent),
@@ -65,8 +65,8 @@ func (r Repository) ListLoginHistory(ctx context.Context, page int, perPage int,
 	items := make([]model.LoginHistory, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, model.LoginHistory{
-			Id:        row.ID,
-			UserId:    row.UserID,
+			Id:        row.Id,
+			UserId:    row.UserId,
 			Username:  row.Username,
 			IpAddress: dbmodel.StringPtr(row.IpAddress),
 			UserAgent: dbmodel.StringPtr(row.UserAgent),
@@ -79,8 +79,8 @@ func (r Repository) ListLoginHistory(ctx context.Context, page int, perPage int,
 
 func (r Repository) CreateMCPAccessToken(ctx context.Context, token model.MCPAccessToken) error {
 	err := r.q(ctx).CreateMCPAccessToken(ctx, authsqlc.CreateMCPAccessTokenParams{
-		ID:        token.Id,
-		UserID:    token.UserId,
+		Id:        token.Id,
+		UserId:    token.UserId,
 		Name:      token.Name,
 		TokenHash: token.TokenHash,
 		ExpiresAt: dbmodel.NullTime(token.ExpiresAt),
@@ -113,7 +113,7 @@ func (r Repository) MCPAccessTokenByHash(ctx context.Context, tokenHash string) 
 }
 
 func (r Repository) MCPAccessTokenForUser(ctx context.Context, userId string, tokenId string) (model.MCPAccessToken, error) {
-	row, err := r.q(ctx).MCPAccessTokenForUser(ctx, authsqlc.MCPAccessTokenForUserParams{ID: tokenId, UserID: userId})
+	row, err := r.q(ctx).MCPAccessTokenForUser(ctx, authsqlc.MCPAccessTokenForUserParams{Id: tokenId, UserId: userId})
 	if err != nil {
 		return model.MCPAccessToken{}, fmt.Errorf("load MCP access token %s for user %s: %w", tokenId, userId, sqlcommon.TranslateError(err))
 	}
@@ -129,8 +129,8 @@ func (r Repository) DeleteMCPAccessToken(ctx context.Context, tokenId string) er
 
 func mcpAccessTokenFrom(row authsqlc.MCPAccessToken) model.MCPAccessToken {
 	return model.MCPAccessToken{
-		Id:        row.ID,
-		UserId:    row.UserID,
+		Id:        row.Id,
+		UserId:    row.UserId,
 		Name:      row.Name,
 		TokenHash: row.TokenHash,
 		ExpiresAt: dbmodel.TimePtr(row.ExpiresAt),

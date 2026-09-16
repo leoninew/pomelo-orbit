@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/user"
 	"path"
@@ -445,7 +446,7 @@ func updateE2EWindowsSSHEnvironment(t *testing.T, handler http.Handler, token, p
 	if err != nil {
 		t.Fatalf("encode Windows SSH environment: %v", err)
 	}
-	status, body := doE2ERequest(t, handler, token, http.MethodPut, "/api/project/"+projectId+"/environment", payload)
+	status, body := doE2ERequest(t, handler, token, http.MethodPut, "/api/environment?project_id="+url.QueryEscape(projectId), payload)
 	if status != http.StatusOK {
 		t.Fatalf("update environment status=%d body=%s", status, body)
 	}
@@ -464,7 +465,7 @@ func assertEnvironmentCredentialEncrypted(t *testing.T, database *sql.DB, projec
 
 func getE2EEnvironment(t *testing.T, handler http.Handler, token, projectId string) e2eEnvironmentResponse {
 	t.Helper()
-	status, body := doE2ERequest(t, handler, token, http.MethodGet, "/api/project/"+projectId+"/environment", nil)
+	status, body := doE2ERequest(t, handler, token, http.MethodGet, "/api/environment?project_id="+url.QueryEscape(projectId), nil)
 	if status != http.StatusOK {
 		t.Fatalf("get environment status=%d body=%s", status, body)
 	}
@@ -477,7 +478,7 @@ func getE2EEnvironment(t *testing.T, handler http.Handler, token, projectId stri
 
 func probeE2EEnvironment(t *testing.T, handler http.Handler, token, projectId string) e2eEnvironmentResponse {
 	t.Helper()
-	status, body := doE2ERequest(t, handler, token, http.MethodPost, "/api/project/"+projectId+"/environment/probe", nil)
+	status, body := doE2ERequest(t, handler, token, http.MethodPost, "/api/environment/probe?project_id="+url.QueryEscape(projectId), nil)
 	if status != http.StatusOK {
 		t.Fatalf("probe environment status=%d body=%s", status, body)
 	}

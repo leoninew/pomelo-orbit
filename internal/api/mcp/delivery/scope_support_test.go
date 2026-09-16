@@ -13,7 +13,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func readyProjectID() *string {
+func readyProjectId() *string {
 	id := "project-1"
 	return &id
 }
@@ -23,19 +23,19 @@ func readyProbe(revision int64) (int64, string) {
 	return revision, status
 }
 
-func readyEnvironmentView(projectID string) environmentdto.View {
+func readyEnvironmentView(projectId string) environmentdto.View {
 	revision, status := readyProbe(1)
 	return environmentdto.View{
-		Id: "environment-1", ProjectId: projectID, Code: "demo", State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: projectId, Code: "demo", State: model.EnvironmentStateActive,
 		TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: 1,
 		LastProbeRevision: &revision, LastProbeStatus: &status,
 		Local: &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit"},
 	}
 }
 
-func readyGatewayView(projectID string) gatewaydto.GatewayView {
+func readyGatewayView(projectId string) gatewaydto.GatewayView {
 	return gatewaydto.GatewayView{
-		Application:    model.Application{Id: "gateway-1", ProjectId: &projectID, Name: "Demo Gateway", Code: "demo-gateway"},
+		Application:    model.Application{Id: "gateway-1", ProjectId: &projectId, Name: "Demo Gateway", Code: "demo-gateway"},
 		DefaultService: &model.Service{Id: "gateway-service-1", ApplicationId: "gateway-1", InstanceKey: "default", Status: "stopped"},
 	}
 }
@@ -70,9 +70,9 @@ func (s *readyGatewayService) ListGateways(context.Context, string, string, int,
 	return repository.Page[gatewaydto.GatewayView]{Items: []gatewaydto.GatewayView{view}, Total: 1, Page: 1, PerPage: 1}, nil
 }
 
-func (s *readyGatewayService) GatewayForUser(_ context.Context, _ string, gatewayID string) (gatewaydto.GatewayView, error) {
+func (s *readyGatewayService) GatewayForUser(_ context.Context, _, _ string, gatewayId string) (gatewaydto.GatewayView, error) {
 	view := s.view()
-	view.Application.Id = gatewayID
+	view.Application.Id = gatewayId
 	return view, nil
 }
 
@@ -126,18 +126,18 @@ func newReadyServer(t *testing.T, deps Dependencies) *mcp.Server {
 	return server
 }
 
-func (s *mountApplicationService) ApplicationForUser(_ context.Context, _ string, applicationID string) (model.Application, error) {
-	return model.Application{Id: applicationID, ProjectId: readyProjectID()}, nil
+func (s *mountApplicationService) ApplicationForUser(_ context.Context, _, _ string, applicationId string) (model.Application, error) {
+	return model.Application{Id: applicationId, ProjectId: readyProjectId()}, nil
 }
 
-func (s *mountApplicationService) VersionForUser(_ context.Context, _ string, versionID string) (applicationdto.VersionView, error) {
-	return applicationdto.VersionView{Version: model.Version{Id: versionID, ApplicationId: "application-1"}}, nil
+func (s *mountApplicationService) VersionForUser(_ context.Context, _, _ string, versionId string) (applicationdto.VersionView, error) {
+	return applicationdto.VersionView{Version: model.Version{Id: versionId, ApplicationId: "application-1"}}, nil
 }
 
-func (s *versionComponentApplicationService) ApplicationForUser(_ context.Context, _ string, applicationID string) (model.Application, error) {
-	return model.Application{Id: applicationID, ProjectId: readyProjectID()}, nil
+func (s *versionComponentApplicationService) ApplicationForUser(_ context.Context, _, _ string, applicationId string) (model.Application, error) {
+	return model.Application{Id: applicationId, ProjectId: readyProjectId()}, nil
 }
 
-func (s *versionComponentApplicationService) VersionForUser(_ context.Context, _ string, versionID string) (applicationdto.VersionView, error) {
-	return applicationdto.VersionView{Version: model.Version{Id: versionID, ApplicationId: "application-1"}}, nil
+func (s *versionComponentApplicationService) VersionForUser(_ context.Context, _, _ string, versionId string) (applicationdto.VersionView, error) {
+	return applicationdto.VersionView{Version: model.Version{Id: versionId, ApplicationId: "application-1"}}, nil
 }

@@ -31,7 +31,7 @@ func (r Repository) q(ctx context.Context) *rolesqlc.Queries {
 }
 
 func (r Repository) RoleById(ctx context.Context, id string) (model.Role, error) {
-	role, err := r.q(ctx).RoleByID(ctx, id)
+	role, err := r.q(ctx).RoleById(ctx, id)
 	if err != nil {
 		return model.Role{}, fmt.Errorf("load role %s: %w", id, sqlcommon.TranslateError(err))
 	}
@@ -86,7 +86,7 @@ func (r Repository) ListPermissions(ctx context.Context) ([]model.Permission, er
 	permissions := make([]model.Permission, 0, len(rows))
 	for _, row := range rows {
 		permissions = append(permissions, model.Permission{
-			Id:          row.ID,
+			Id:          row.Id,
 			Code:        row.Code,
 			Name:        row.Name,
 			Description: dbmodel.StringPtr(row.Description),
@@ -125,7 +125,7 @@ func (r Repository) RolePermissionCodesByRoleIds(ctx context.Context, roleIds []
 		return nil, fmt.Errorf("load role permissions: %w", err)
 	}
 	for _, row := range rows {
-		permissionsByRoleId[row.RoleID] = append(permissionsByRoleId[row.RoleID], row.Code)
+		permissionsByRoleId[row.RoleId] = append(permissionsByRoleId[row.RoleId], row.Code)
 	}
 	return permissionsByRoleId, nil
 }
@@ -133,7 +133,7 @@ func (r Repository) RolePermissionCodesByRoleIds(ctx context.Context, roleIds []
 func (r Repository) CreateRole(ctx context.Context, role model.Role, permissionCodes []string) error {
 	q := r.q(ctx)
 	if err := q.CreateRole(ctx, rolesqlc.CreateRoleParams{
-		ID:          role.Id,
+		Id:          role.Id,
 		Code:        role.Code,
 		Name:        role.Name,
 		Description: dbmodel.NullString(role.Description),
@@ -155,7 +155,7 @@ func (r Repository) UpdateRole(ctx context.Context, role model.Role, permissionC
 		Name:        role.Name,
 		Description: dbmodel.NullString(role.Description),
 		UpdatedAt:   time.Now().UTC(),
-		ID:          role.Id,
+		Id:          role.Id,
 	}); err != nil {
 		return fmt.Errorf("update role %s: %w", role.Id, err)
 	}
@@ -178,13 +178,13 @@ func setRolePermissions(ctx context.Context, q *rolesqlc.Queries, roleId string,
 	}
 	now := time.Now().UTC()
 	for _, code := range permissionCodes {
-		permissionId, err := q.PermissionIDByCode(ctx, code)
+		permissionId, err := q.PermissionIdByCode(ctx, code)
 		if err != nil {
 			return fmt.Errorf("load permission %s: %w", code, err)
 		}
 		if err := q.InsertRolePermission(ctx, rolesqlc.InsertRolePermissionParams{
-			RoleID:       roleId,
-			PermissionID: permissionId,
+			RoleId:       roleId,
+			PermissionId: permissionId,
 			CreatedAt:    now,
 		}); err != nil {
 			return fmt.Errorf("insert role permission %s/%s: %w", roleId, code, err)
@@ -195,7 +195,7 @@ func setRolePermissions(ctx context.Context, q *rolesqlc.Queries, roleId string,
 
 func roleFromSQLC(role rolesqlc.Role) model.Role {
 	return model.Role{
-		Id:          role.ID,
+		Id:          role.Id,
 		Code:        role.Code,
 		Name:        role.Name,
 		Description: dbmodel.StringPtr(role.Description),

@@ -16,8 +16,8 @@ func newPipelineWorkspace(cfg config.Config, stores domainStores, resolver pipel
 	return pipelineworkspace.NewWithProjectResolver(
 		cfg.Workspace.Root,
 		resolver,
-		func(ctx context.Context, projectID string) (string, error) {
-			environment, err := stores.environment.EnvironmentByProject(ctx, strings.TrimSpace(projectID))
+		func(ctx context.Context, projectId string) (string, error) {
+			environment, err := stores.environment.EnvironmentByProject(ctx, strings.TrimSpace(projectId))
 			if err != nil {
 				return "", err
 			}

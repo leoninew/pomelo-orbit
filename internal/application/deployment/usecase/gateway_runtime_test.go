@@ -15,6 +15,7 @@ func TestSelectGatewayVersionForDeploymentUsesRequiredCoordinator(t *testing.T) 
 
 	selected, err := service.selectGatewayVersionForDeployment(
 		context.Background(),
+		"project-1",
 		model.Application{Id: "gateway-app"},
 		model.Service{Id: "gateway-service", VersionId: "base-version"},
 	)
@@ -35,11 +36,11 @@ type gatewayDeploymentCoordinatorFake struct {
 	gateway     *model.GatewayConfig
 }
 
-func (f *gatewayDeploymentCoordinatorFake) GatewayForDeployment(context.Context, model.Application, model.EffectiveServicePlan) (*model.GatewayConfig, error) {
+func (f *gatewayDeploymentCoordinatorFake) GatewayForDeployment(context.Context, string, model.Application, model.EffectiveServicePlan) (*model.GatewayConfig, error) {
 	return f.gateway, nil
 }
 
-func (f *gatewayDeploymentCoordinatorFake) SelectGatewayDeploymentVersion(_ context.Context, _ model.Application, _ model.Service) (model.Service, error) {
+func (f *gatewayDeploymentCoordinatorFake) SelectGatewayDeploymentVersion(_ context.Context, _ string, _ model.Application, _ model.Service) (model.Service, error) {
 	f.selectCalls++
 	return f.selected, nil
 }

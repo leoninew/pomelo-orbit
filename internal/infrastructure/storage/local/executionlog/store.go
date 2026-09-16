@@ -66,18 +66,18 @@ func NewDeploymentStore(root string) DeploymentStore {
 	return DeploymentStore{Root: filepath.Clean(root)}
 }
 
-func (s DeploymentStore) Writer(serviceCode string, deploymentID string) (io.WriteCloser, error) {
-	return Store{}.Writer(s.path(serviceCode, deploymentID))
+func (s DeploymentStore) Writer(serviceCode string, deploymentId string) (io.WriteCloser, error) {
+	return Store{}.Writer(s.path(serviceCode, deploymentId))
 }
 
-func (s DeploymentStore) Read(serviceCode string, deploymentID string, offset int) ([]byte, int, error) {
-	return Store{}.Read(s.path(serviceCode, deploymentID), offset)
+func (s DeploymentStore) Read(serviceCode string, deploymentId string, offset int) ([]byte, int, error) {
+	return Store{}.Read(s.path(serviceCode, deploymentId), offset)
 }
 
-func (s DeploymentStore) Remove(serviceCode string, deploymentID string) error {
-	return os.Remove(s.path(serviceCode, deploymentID))
+func (s DeploymentStore) Remove(serviceCode string, deploymentId string) error {
+	return os.Remove(s.path(serviceCode, deploymentId))
 }
 
-func (s DeploymentStore) path(serviceCode string, deploymentID string) string {
-	return filepath.Join(s.Root, "logs", serviceCode, deploymentID+".log")
+func (s DeploymentStore) path(serviceCode string, deploymentId string) string {
+	return filepath.Join(s.Root, "logs", serviceCode, deploymentId+".log")
 }

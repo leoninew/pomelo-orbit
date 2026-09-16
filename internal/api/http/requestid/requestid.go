@@ -9,15 +9,15 @@ import (
 
 const (
 	ContextKey = "request_id"
-	HeaderName = "X-Request-ID"
+	HeaderName = "X-Request-Id"
 )
 
 type contextKey struct{}
 
 var requestIDContextKey contextKey
 
-func WithContext(ctx context.Context, requestID string) context.Context {
-	return context.WithValue(ctx, requestIDContextKey, strings.TrimSpace(requestID))
+func WithContext(ctx context.Context, requestId string) context.Context {
+	return context.WithValue(ctx, requestIDContextKey, strings.TrimSpace(requestId))
 }
 
 func FromContext(ctx context.Context) string {

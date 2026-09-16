@@ -6,26 +6,25 @@ package application
 
 import (
 	"context"
-	"database/sql"
 )
 
 type Querier interface {
-	ApplicationByCode(ctx context.Context, code string) (ApplicationByCodeRow, error)
-	ApplicationByID(ctx context.Context, id string) (ApplicationByIDRow, error)
-	ApplicationByName(ctx context.Context, name string) (ApplicationByNameRow, error)
+	ApplicationByCode(ctx context.Context, arg ApplicationByCodeParams) (ApplicationByCodeRow, error)
+	ApplicationById(ctx context.Context, arg ApplicationByIdParams) (ApplicationByIdRow, error)
+	ApplicationByName(ctx context.Context, arg ApplicationByNameParams) (ApplicationByNameRow, error)
 	ApplicationByProjectAndCode(ctx context.Context, arg ApplicationByProjectAndCodeParams) (ApplicationByProjectAndCodeRow, error)
 	ApplicationByProjectAndName(ctx context.Context, arg ApplicationByProjectAndNameParams) (ApplicationByProjectAndNameRow, error)
-	ClearVersionForkRefs(ctx context.Context, versionID sql.NullString) error
+	ClearVersionForkRefs(ctx context.Context, arg ClearVersionForkRefsParams) error
 	CountApplications(ctx context.Context, arg CountApplicationsParams) (int64, error)
-	CountVersionRuntimeRefs(ctx context.Context, versionID string) (int64, error)
+	CountVersionRuntimeRefs(ctx context.Context, arg CountVersionRuntimeRefsParams) (int64, error)
 	CountVersions(ctx context.Context, arg CountVersionsParams) (int64, error)
 	CreateApplication(ctx context.Context, arg CreateApplicationParams) error
 	CreateVersion(ctx context.Context, arg CreateVersionParams) error
-	DeleteApplication(ctx context.Context, id string) error
-	DeleteGatewayConfigByApplication(ctx context.Context, applicationID string) error
-	DeleteServicesByApplication(ctx context.Context, applicationID string) error
-	DeleteVersion(ctx context.Context, id string) error
-	DeleteVersionComponent(ctx context.Context, id string) error
+	DeleteApplication(ctx context.Context, arg DeleteApplicationParams) error
+	DeleteGatewayConfigByApplication(ctx context.Context, arg DeleteGatewayConfigByApplicationParams) error
+	DeleteServicesByApplication(ctx context.Context, arg DeleteServicesByApplicationParams) error
+	DeleteVersion(ctx context.Context, arg DeleteVersionParams) error
+	DeleteVersionComponent(ctx context.Context, arg DeleteVersionComponentParams) error
 	DeleteVersionComponentDependencies(ctx context.Context, componentID string) error
 	DeleteVersionComponentDevices(ctx context.Context, componentID string) error
 	DeleteVersionComponentEndpoints(ctx context.Context, componentID string) error
@@ -35,8 +34,8 @@ type Querier interface {
 	DeleteVersionComponentResource(ctx context.Context, componentID string) error
 	DeleteVersionComponentTmpfs(ctx context.Context, componentID string) error
 	DeleteVersionComponentUlimits(ctx context.Context, componentID string) error
-	DeleteVersionComponents(ctx context.Context, versionID string) error
-	DeleteVersionsByApplication(ctx context.Context, applicationID string) error
+	DeleteVersionComponents(ctx context.Context, arg DeleteVersionComponentsParams) error
+	DeleteVersionsByApplication(ctx context.Context, arg DeleteVersionsByApplicationParams) error
 	InsertVersionComponent(ctx context.Context, arg InsertVersionComponentParams) error
 	InsertVersionComponentDependency(ctx context.Context, arg InsertVersionComponentDependencyParams) error
 	InsertVersionComponentDevice(ctx context.Context, arg InsertVersionComponentDeviceParams) error
@@ -47,9 +46,9 @@ type Querier interface {
 	InsertVersionComponentResource(ctx context.Context, arg InsertVersionComponentResourceParams) error
 	InsertVersionComponentTmpfs(ctx context.Context, arg InsertVersionComponentTmpfsParams) error
 	InsertVersionComponentUlimit(ctx context.Context, arg InsertVersionComponentUlimitParams) error
-	LatestVersionByApplication(ctx context.Context, applicationID string) (Version, error)
+	LatestVersionByApplication(ctx context.Context, arg LatestVersionByApplicationParams) (Version, error)
 	ListApplications(ctx context.Context, arg ListApplicationsParams) ([]ListApplicationsRow, error)
-	ListVersions(ctx context.Context, applicationID string) ([]Version, error)
+	ListVersions(ctx context.Context, arg ListVersionsParams) ([]Version, error)
 	ListVersionsPage(ctx context.Context, arg ListVersionsPageParams) ([]Version, error)
 	RenameVersionComponentDependencies(ctx context.Context, arg RenameVersionComponentDependenciesParams) error
 	TouchVersionComponent(ctx context.Context, arg TouchVersionComponentParams) error
@@ -59,8 +58,8 @@ type Querier interface {
 	UpdateVersionComponentCommand(ctx context.Context, arg UpdateVersionComponentCommandParams) error
 	UpdateVersionComponentEntrypoint(ctx context.Context, arg UpdateVersionComponentEntrypointParams) error
 	UpdateVersionComponentSummary(ctx context.Context, arg UpdateVersionComponentSummaryParams) error
-	VersionByID(ctx context.Context, id string) (Version, error)
-	VersionComponentByID(ctx context.Context, id string) (VersionComponentByIDRow, error)
+	VersionById(ctx context.Context, arg VersionByIdParams) (Version, error)
+	VersionComponentById(ctx context.Context, arg VersionComponentByIdParams) (VersionComponentByIdRow, error)
 	VersionComponentDependenciesByComponent(ctx context.Context, componentID string) ([]VersionComponentDependency, error)
 	VersionComponentDevicesByComponent(ctx context.Context, componentID string) ([]VersionComponentDevice, error)
 	VersionComponentEndpointsByComponent(ctx context.Context, componentID string) ([]VersionComponentEndpoint, error)
@@ -70,8 +69,8 @@ type Querier interface {
 	VersionComponentResourceByComponent(ctx context.Context, componentID string) (VersionComponentResource, error)
 	VersionComponentTmpfsByComponent(ctx context.Context, componentID string) ([]VersionComponentTmpf, error)
 	VersionComponentUlimitsByComponent(ctx context.Context, componentID string) ([]VersionComponentUlimit, error)
-	VersionComponentsByVersion(ctx context.Context, versionID string) ([]VersionComponentsByVersionRow, error)
-	VersionIdsByApplication(ctx context.Context, applicationID string) ([]string, error)
+	VersionComponentsByVersion(ctx context.Context, arg VersionComponentsByVersionParams) ([]VersionComponentsByVersionRow, error)
+	VersionIdsByApplication(ctx context.Context, arg VersionIdsByApplicationParams) ([]string, error)
 }
 
 var _ Querier = (*Queries)(nil)

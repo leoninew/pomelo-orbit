@@ -499,14 +499,15 @@
     }
     try {
       await execute(async () => {
-        const resp = await serviceApi.list({
-          project_id: projectId,
+        const resp = await serviceApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
           search: query.search || undefined,
         });
-        services.value = resp.items ?? [];
-        pagination.total = resp.total ?? 0;
+        if (projectStore.activeProjectId === projectId) {
+          services.value = resp.items ?? [];
+          pagination.total = resp.total ?? 0;
+        }
       });
     } catch {
       services.value = [];
@@ -521,7 +522,10 @@
       return;
     }
     try {
-      const page = await applicationApi.list({ project_id: projectId, per_page: 100 });
+      const page = await applicationApi.list(projectId, { per_page: 100 });
+      if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
       applications.value = page.items ?? [];
       versions.value = [];
       Object.assign(createForm, {
@@ -545,6 +549,10 @@
   }
 
   async function handleCreateApplicationChange(value: ComboboxOptionValue) {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     createForm.application_id = String(value || '');
     createForm.version_id = '';
     createErrors.application_id = '';
@@ -555,7 +563,12 @@
       return;
     }
     try {
-      const page = await applicationApi.listVersions(createForm.application_id, { per_page: 100 });
+      const page = await applicationApi.listVersions(projectId, createForm.application_id, {
+        per_page: 100,
+      });
+      if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
       versions.value = page.items ?? [];
       createForm.version_id = versions.value[0]?.id ?? '';
     } catch (error) {
@@ -601,6 +614,11 @@
   }
 
   async function handleCreateOk() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      createError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     createError.value = '';
     createErrors.application_id = createForm.application_id
       ? ''
@@ -625,7 +643,7 @@
     }
     try {
       await executeOp(async () => {
-        const created = await serviceApi.create({
+        const created = await serviceApi.create(projectId, {
           application_id: createForm.application_id,
           version_id: createForm.version_id,
           instance_key: createForm.instance_key.trim(),
@@ -677,9 +695,18 @@
   }
 
   async function openDeployDialog(service: ServiceResp) {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     selectedService.value = service;
     try {
-      const page = await applicationApi.listVersions(service.application_id, { per_page: 100 });
+      const page = await applicationApi.listVersions(projectId, service.application_id, {
+        per_page: 100,
+      });
+      if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
       deployVersions.value = page.items ?? [];
       Object.assign(deployForm, {
         version_id: service.version_id,
@@ -702,7 +729,8 @@
 
   async function handleDeployOk() {
     const service = selectedService.value;
-    if (!service) {
+    const projectId = projectStore.activeProjectId;
+    if (!service || !projectId) {
       return;
     }
     deploySubmitError.value = '';
@@ -714,7 +742,7 @@
       await executeOp(async () => {
         let serviceForDeploy = service;
         if (deployForm.version_id !== service.version_id) {
-          serviceForDeploy = await serviceApi.updateBasic(service.id, {
+          serviceForDeploy = await serviceApi.updateBasic(projectId, service.id, {
             version_id: deployForm.version_id,
             instance_key: service.instance_key,
           });
@@ -724,7 +752,7 @@
             services.value[index] = serviceForDeploy;
           }
         }
-        const result = await serviceApi.deploy(serviceForDeploy.id, {
+        const result = await serviceApi.deploy(projectId, serviceForDeploy.id, {
           force_recreate: deployForm.force_recreate,
           join_traefik_network: deployForm.join_traefik_network,
         });
@@ -754,13 +782,14 @@
 
   async function handleStopOk() {
     const service = selectedService.value;
-    if (!service) {
+    const projectId = projectStore.activeProjectId;
+    if (!service || !projectId) {
       return;
     }
     stopSubmitError.value = '';
     try {
       await executeOp(async () => {
-        const result = await applicationApi.stop(service.application_id, {
+        const result = await applicationApi.stop(projectId, service.application_id, {
           service_id: service.id,
           remove_volumes: stopRemoveVolumes.value,
         });

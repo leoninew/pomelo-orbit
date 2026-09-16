@@ -11,10 +11,10 @@ import (
 type Querier interface {
 	CountRepositories(ctx context.Context, arg CountRepositoriesParams) (int64, error)
 	CreateRepository(ctx context.Context, arg CreateRepositoryParams) error
-	DeleteRepository(ctx context.Context, id string) error
+	DeleteRepository(ctx context.Context, arg DeleteRepositoryParams) error
 	ListRepositories(ctx context.Context, arg ListRepositoriesParams) ([]ListRepositoriesRow, error)
 	RepositoryByCode(ctx context.Context, arg RepositoryByCodeParams) (RepositoryByCodeRow, error)
-	RepositoryByID(ctx context.Context, id string) (RepositoryByIDRow, error)
+	RepositoryById(ctx context.Context, arg RepositoryByIdParams) (RepositoryByIdRow, error)
 	RepositoryHasRunningPipelines(ctx context.Context, arg RepositoryHasRunningPipelinesParams) (int64, error)
 	UpdateRepository(ctx context.Context, arg UpdateRepositoryParams) error
 }

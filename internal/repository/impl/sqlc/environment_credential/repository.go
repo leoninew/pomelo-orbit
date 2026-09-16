@@ -48,8 +48,8 @@ func (r Repository) LatestEnvironmentCredentialByProject(ctx context.Context, pr
 
 func (r Repository) CreateEnvironmentCredential(ctx context.Context, credential model.EnvironmentCredential) error {
 	err := r.q(ctx).CreateEnvironmentCredential(ctx, environmentcredentialsqlc.CreateEnvironmentCredentialParams{
-		ID:                  credential.Id,
-		ProjectID:           credential.ProjectId,
+		Id:                  credential.Id,
+		ProjectId:           credential.ProjectId,
 		PublicKey:           credential.PublicKey,
 		EncryptedPrivateKey: credential.EncryptedPrivateKey,
 		Revision:            credential.Revision,
@@ -66,7 +66,7 @@ func (r Repository) UpdateEnvironmentCredential(ctx context.Context, credential 
 		PublicKey:           credential.PublicKey,
 		EncryptedPrivateKey: credential.EncryptedPrivateKey,
 		Revision:            credential.Revision,
-		ID:                  credential.Id,
+		Id:                  credential.Id,
 	})
 	if err != nil {
 		return fmt.Errorf("update environment credential %s: %w", credential.Id, err)
@@ -76,8 +76,8 @@ func (r Repository) UpdateEnvironmentCredential(ctx context.Context, credential 
 
 func environmentCredentialFrom(row environmentcredentialsqlc.EnvironmentCredential) model.EnvironmentCredential {
 	return model.EnvironmentCredential{
-		Id:                  row.ID,
-		ProjectId:           row.ProjectID,
+		Id:                  row.Id,
+		ProjectId:           row.ProjectId,
 		PublicKey:           row.PublicKey,
 		EncryptedPrivateKey: row.EncryptedPrivateKey,
 		Revision:            row.Revision,

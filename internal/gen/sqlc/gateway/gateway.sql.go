@@ -21,7 +21,7 @@ func (q *Queries) DeleteGatewayVersionBindings(ctx context.Context, applicationI
 	return err
 }
 
-const gatewayBindingByProjectID = `-- name: GatewayBindingByProjectID :one
+const gatewayBindingByProjectId = `-- name: GatewayBindingByProjectId :one
 SELECT gc.application_id
 FROM environment e
 INNER JOIN gateway_config gc ON gc.application_id = e.gateway_application_id
@@ -29,8 +29,8 @@ INNER JOIN application a ON a.id = gc.application_id AND a.project_id = e.projec
 WHERE e.project_id = ?
 `
 
-func (q *Queries) GatewayBindingByProjectID(ctx context.Context, projectID string) (string, error) {
-	row := q.db.QueryRowContext(ctx, gatewayBindingByProjectID, projectID)
+func (q *Queries) GatewayBindingByProjectId(ctx context.Context, projectID string) (string, error) {
+	row := q.db.QueryRowContext(ctx, gatewayBindingByProjectId, projectID)
 	var application_id string
 	err := row.Scan(&application_id)
 	return application_id, err
@@ -48,7 +48,7 @@ func (q *Queries) GatewayConfigByApplication(ctx context.Context, applicationID 
 	row := q.db.QueryRowContext(ctx, gatewayConfigByApplication, applicationID)
 	var i GatewayConfig
 	err := row.Scan(
-		&i.ApplicationID,
+		&i.ApplicationId,
 		&i.RestApiUrl,
 		&i.RestReadyTimeoutSeconds,
 		&i.BaseDomain,
@@ -103,7 +103,7 @@ func (q *Queries) GatewayVersionBindingsByApplication(ctx context.Context, appli
 	var items []GatewayAcmeProfileVersion
 	for rows.Next() {
 		var i GatewayAcmeProfileVersion
-		if err := rows.Scan(&i.ApplicationID, &i.Profile, &i.VersionID); err != nil {
+		if err := rows.Scan(&i.ApplicationId, &i.Profile, &i.VersionId); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -127,7 +127,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertGatewayConfigParams struct {
-	ApplicationID           string    `db:"application_id"`
+	ApplicationId           string    `db:"application_id"`
 	RestApiUrl              string    `db:"rest_api_url"`
 	RestReadyTimeoutSeconds int64     `db:"rest_ready_timeout_seconds"`
 	BaseDomain              string    `db:"base_domain"`
@@ -142,7 +142,7 @@ type InsertGatewayConfigParams struct {
 
 func (q *Queries) InsertGatewayConfig(ctx context.Context, arg InsertGatewayConfigParams) error {
 	_, err := q.db.ExecContext(ctx, insertGatewayConfig,
-		arg.ApplicationID,
+		arg.ApplicationId,
 		arg.RestApiUrl,
 		arg.RestReadyTimeoutSeconds,
 		arg.BaseDomain,
@@ -163,13 +163,13 @@ VALUES (?, ?, ?)
 `
 
 type InsertGatewayVersionBindingParams struct {
-	ApplicationID string `db:"application_id"`
+	ApplicationId string `db:"application_id"`
 	Profile       string `db:"profile"`
-	VersionID     string `db:"version_id"`
+	VersionId     string `db:"version_id"`
 }
 
 func (q *Queries) InsertGatewayVersionBinding(ctx context.Context, arg InsertGatewayVersionBindingParams) error {
-	_, err := q.db.ExecContext(ctx, insertGatewayVersionBinding, arg.ApplicationID, arg.Profile, arg.VersionID)
+	_, err := q.db.ExecContext(ctx, insertGatewayVersionBinding, arg.ApplicationId, arg.Profile, arg.VersionId)
 	return err
 }
 
@@ -182,8 +182,8 @@ ORDER BY a.id DESC
 `
 
 type ListGatewayApplicationsRow struct {
-	ID        string         `db:"id"`
-	ProjectID sql.NullString `db:"project_id"`
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
 	Name      string         `db:"name"`
 	Code      string         `db:"code"`
 	Kind      string         `db:"kind"`
@@ -201,8 +201,8 @@ func (q *Queries) ListGatewayApplications(ctx context.Context, projectID sql.Nul
 	for rows.Next() {
 		var i ListGatewayApplicationsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
+			&i.Id,
+			&i.ProjectId,
 			&i.Name,
 			&i.Code,
 			&i.Kind,
@@ -240,7 +240,7 @@ type UpdateGatewayConfigParams struct {
 	AcmeEmail               string    `db:"acme_email"`
 	DnsApiToken             string    `db:"dns_api_token"`
 	UpdatedAt               time.Time `db:"updated_at"`
-	ApplicationID           string    `db:"application_id"`
+	ApplicationId           string    `db:"application_id"`
 }
 
 func (q *Queries) UpdateGatewayConfig(ctx context.Context, arg UpdateGatewayConfigParams) error {
@@ -254,7 +254,7 @@ func (q *Queries) UpdateGatewayConfig(ctx context.Context, arg UpdateGatewayConf
 		arg.AcmeEmail,
 		arg.DnsApiToken,
 		arg.UpdatedAt,
-		arg.ApplicationID,
+		arg.ApplicationId,
 	)
 	return err
 }

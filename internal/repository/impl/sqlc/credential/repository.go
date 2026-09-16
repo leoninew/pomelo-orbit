@@ -39,14 +39,14 @@ func (r Repository) ListCredentials(ctx context.Context, projectId string, page 
 	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
 	q := r.q(ctx)
 	total, err := q.CountRepositoryCredentials(ctx, repositorycredentialsqlc.CountRepositoryCredentialsParams{
-		ProjectID:     sql.NullString{String: projectId, Valid: true},
+		ProjectId:     sql.NullString{String: projectId, Valid: true},
 		SearchPattern: searchPattern,
 	})
 	if err != nil {
 		return repository.Page[model.Credential]{}, fmt.Errorf("count credentials: %w", err)
 	}
 	rows, err := q.ListRepositoryCredentials(ctx, repositorycredentialsqlc.ListRepositoryCredentialsParams{
-		ProjectID:     sql.NullString{String: projectId, Valid: true},
+		ProjectId:     sql.NullString{String: projectId, Valid: true},
 		SearchPattern: searchPattern,
 		Limit:         int32(perPage),
 		Offset:        int32((page - 1) * perPage),
@@ -56,40 +56,49 @@ func (r Repository) ListCredentials(ctx context.Context, projectId string, page 
 	}
 	items := make([]model.Credential, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, credentialFrom(row.ID, row.ProjectID, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt))
+		items = append(items, credentialFrom(row.Id, row.ProjectId, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt))
 	}
 	return repository.Page[model.Credential]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
 
-func (r Repository) Credential(ctx context.Context, id string) (model.Credential, error) {
-	row, err := r.q(ctx).RepositoryCredentialById(ctx, id)
+func (r Repository) Credential(ctx context.Context, projectId string, id string) (model.Credential, error) {
+	row, err := r.q(ctx).RepositoryCredentialById(ctx, repositorycredentialsqlc.RepositoryCredentialByIdParams{
+		Id:        id,
+		ProjectId: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
+	})
 	if err != nil {
 		return model.Credential{}, fmt.Errorf("load credential %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return credentialFrom(row.ID, row.ProjectID, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt), nil
+	return credentialFrom(row.Id, row.ProjectId, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt), nil
 }
 
 func (r Repository) CredentialByName(ctx context.Context, projectId string, name string) (model.Credential, error) {
 	row, err := r.q(ctx).RepositoryCredentialByName(ctx, repositorycredentialsqlc.RepositoryCredentialByNameParams{
-		ProjectID: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
+		ProjectId: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
 		Name:      strings.TrimSpace(name),
 	})
 	if err != nil {
 		return model.Credential{}, fmt.Errorf("load credential by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
-	return credentialFrom(row.ID, row.ProjectID, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt), nil
+	return credentialFrom(row.Id, row.ProjectId, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt), nil
 }
 
-func (r Repository) CredentialExists(ctx context.Context, id string) (bool, error) {
-	count, err := r.q(ctx).RepositoryCredentialExists(ctx, id)
+func (r Repository) CredentialExists(ctx context.Context, projectId string, id string) (bool, error) {
+	count, err := r.q(ctx).RepositoryCredentialExists(ctx, repositorycredentialsqlc.RepositoryCredentialExistsParams{
+		Id:        id,
+		ProjectId: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
+	})
 	if err != nil {
 		return false, fmt.Errorf("check credential exists %s: %w", id, err)
 	}
 	return count > 0, nil
 }
 
-func (r Repository) CredentialName(ctx context.Context, id string) (*string, error) {
-	name, err := r.q(ctx).RepositoryCredentialName(ctx, id)
+func (r Repository) CredentialName(ctx context.Context, projectId string, id string) (*string, error) {
+	name, err := r.q(ctx).RepositoryCredentialName(ctx, repositorycredentialsqlc.RepositoryCredentialNameParams{
+		Id:        id,
+		ProjectId: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -101,8 +110,8 @@ func (r Repository) CredentialName(ctx context.Context, id string) (*string, err
 
 func (r Repository) CreateCredential(ctx context.Context, credential model.Credential) error {
 	err := r.q(ctx).CreateRepositoryCredential(ctx, repositorycredentialsqlc.CreateRepositoryCredentialParams{
-		ID:            credential.Id,
-		ProjectID:     dbmodel.NullString(credential.ProjectId),
+		Id:            credential.Id,
+		ProjectId:     dbmodel.NullString(credential.ProjectId),
 		Name:          credential.Name,
 		Type:          credential.Type,
 		EncryptedData: credential.EncryptedData,
@@ -115,12 +124,13 @@ func (r Repository) CreateCredential(ctx context.Context, credential model.Crede
 	return nil
 }
 
-func (r Repository) UpdateCredential(ctx context.Context, credential model.Credential) error {
+func (r Repository) UpdateCredential(ctx context.Context, projectId string, credential model.Credential) error {
 	err := r.q(ctx).UpdateRepositoryCredential(ctx, repositorycredentialsqlc.UpdateRepositoryCredentialParams{
 		Name:          credential.Name,
 		EncryptedData: credential.EncryptedData,
 		Revision:      credential.Revision,
-		ID:            credential.Id,
+		Id:            credential.Id,
+		ProjectId:     sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
 	})
 	if err != nil {
 		return fmt.Errorf("update credential %s: %w", credential.Id, err)
@@ -128,8 +138,11 @@ func (r Repository) UpdateCredential(ctx context.Context, credential model.Crede
 	return nil
 }
 
-func (r Repository) DeleteCredential(ctx context.Context, id string) error {
-	if err := r.q(ctx).DeleteRepositoryCredential(ctx, id); err != nil {
+func (r Repository) DeleteCredential(ctx context.Context, projectId string, id string) error {
+	if err := r.q(ctx).DeleteRepositoryCredential(ctx, repositorycredentialsqlc.DeleteRepositoryCredentialParams{
+		Id:        id,
+		ProjectId: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
+	}); err != nil {
 		return fmt.Errorf("delete credential %s: %w", id, err)
 	}
 	return nil
@@ -137,8 +150,8 @@ func (r Repository) DeleteCredential(ctx context.Context, id string) error {
 
 func (r Repository) CredentialReferencedByRepositories(ctx context.Context, projectId string, credentialId string) (bool, error) {
 	count, err := r.q(ctx).RepositoryCredentialReferencedByRepositories(ctx, repositorycredentialsqlc.RepositoryCredentialReferencedByRepositoriesParams{
-		ProjectID:       sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		GitCredentialID: sql.NullString{String: credentialId, Valid: true},
+		ProjectId:       sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
+		GitCredentialId: sql.NullString{String: credentialId, Valid: true},
 	})
 	if err != nil {
 		return false, fmt.Errorf("count credential repository refs %s: %w", credentialId, err)

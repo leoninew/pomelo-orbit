@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	identityProjectID = "01KRRKK0K3T519ZQZES3M4QA9Z"
+	identityProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"
 )
 
 func TestSQLiteMigrationE2E(t *testing.T) {
@@ -111,7 +111,7 @@ func runMigrationE2E(t *testing.T, cfg config.Config) {
 	}
 
 	var projects, applications, environments, gateways int
-	if err := database.QueryRow("SELECT COUNT(*) FROM project WHERE id = ?", identityProjectID).Scan(&projects); err != nil {
+	if err := database.QueryRow("SELECT COUNT(*) FROM project WHERE id = ?", identityProjectId).Scan(&projects); err != nil {
 		t.Fatal(err)
 	}
 	if err := database.QueryRow("SELECT COUNT(*) FROM application").Scan(&applications); err != nil {

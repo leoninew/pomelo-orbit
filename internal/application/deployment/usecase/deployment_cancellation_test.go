@@ -52,7 +52,7 @@ func TestReconcileCanceledServiceUsesObservedRuntimeWithoutChangingDeployment(t 
 			runtime.queryOutput = test.output
 			runtime.queryErr = test.runErr
 			service := Service{executionStore: store, runtime: runtime}
-			service.reconcileCanceledService(context.Background(), environmentport.Target{}, model.Application{Code: "demo"}, model.Service{Id: "service-1", InstanceKey: "default"})
+			service.reconcileCanceledService(context.Background(), "project-1", environmentport.Target{}, model.Application{Code: "demo"}, model.Service{Id: "service-1", InstanceKey: "default"})
 			if store.status != test.want {
 				t.Fatalf("service status = %q, want %q", store.status, test.want)
 			}
@@ -65,7 +65,7 @@ type canceledServiceStore struct {
 	status string
 }
 
-func (s *canceledServiceStore) UpdateServiceStatus(_ context.Context, _ string, value string) error {
+func (s *canceledServiceStore) UpdateServiceStatus(_ context.Context, _, _ string, value string) error {
 	s.status = value
 	return nil
 }

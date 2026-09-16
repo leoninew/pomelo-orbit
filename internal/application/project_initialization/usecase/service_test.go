@@ -164,12 +164,12 @@ func testGatewayInput() initdto.CreateGatewayInput {
 
 func newInitializationService(t *testing.T) (Service, *fakeInitEnvironment) {
 	t.Helper()
-	projectID := "project-1"
-	environments := &fakeInitEnvironment{projectID: projectID}
+	projectId := "project-1"
+	environments := &fakeInitEnvironment{projectId: projectId}
 	return New(
-		fakeInitProject{project: model.Project{Id: projectID, Code: "demo", Name: "Demo"}},
+		fakeInitProject{project: model.Project{Id: projectId, Code: "demo", Name: "Demo"}},
 		environments,
-		&fakeInitGateway{projectID: projectID},
+		&fakeInitGateway{projectId: projectId},
 		config.ProjectInitializationConfig{
 			Environment: config.ProjectInitializationEnvironmentConfig{LocalWorkspaceRoot: "~/.pomelo-orbit"},
 			Gateway: config.ProjectInitializationGatewayConfig{
@@ -190,7 +190,7 @@ func (f fakeInitProject) LoadForUser(context.Context, string, string) (model.Pro
 }
 
 type fakeInitEnvironment struct {
-	projectID     string
+	projectId     string
 	item          *environmentdto.View
 	failNextProbe bool
 	publicKey     string
@@ -218,7 +218,7 @@ func (f *fakeInitEnvironment) PrepareWindowsEnvironment(_ context.Context, _ str
 	return view, f.publicKey, nil
 }
 
-func (f *fakeInitEnvironment) SaveInitialization(_ context.Context, _ string, projectID string, input environmentdto.UpdateInput) (environmentdto.View, error) {
+func (f *fakeInitEnvironment) SaveInitialization(_ context.Context, _ string, projectId string, input environmentdto.UpdateInput) (environmentdto.View, error) {
 	if f.item != nil && f.item.GatewayApplicationId != nil {
 		return environmentdto.View{}, apperror.New(apperror.KindConflict, "Project environment is already bound to a gateway")
 	}
@@ -227,7 +227,7 @@ func (f *fakeInitEnvironment) SaveInitialization(_ context.Context, _ string, pr
 		targetType = *input.TargetType
 	}
 	view := environmentdto.View{
-		Id: "environment-1", ProjectId: projectID, Code: "demo", State: model.EnvironmentStateActive,
+		Id: "environment-1", ProjectId: projectId, Code: "demo", State: model.EnvironmentStateActive,
 		TargetType: targetType, TargetRevision: 1,
 	}
 	if targetType == model.EnvironmentTargetTypeLocal && input.Local != nil {
@@ -274,7 +274,7 @@ func (f *fakeInitEnvironment) ProbeForUser(context.Context, string, string) (env
 }
 
 type fakeInitGateway struct {
-	projectID string
+	projectId string
 	item      *gatewaydto.GatewayView
 }
 
@@ -285,14 +285,13 @@ func (f *fakeInitGateway) ListGateways(context.Context, string, string, int, int
 	return repository.Page[gatewaydto.GatewayView]{Items: []gatewaydto.GatewayView{*f.item}, Total: 1, Page: 1, PerPage: 1}, nil
 }
 
-func (f *fakeInitGateway) CreateGateway(_ context.Context, _ string, input gatewaydto.GatewayCreateInput) (gatewaydto.GatewayView, error) {
+func (f *fakeInitGateway) CreateGateway(_ context.Context, _, projectId string, input gatewaydto.GatewayCreateInput) (gatewaydto.GatewayView, error) {
 	if f.item != nil {
 		return gatewaydto.GatewayView{}, errors.New("gateway already created")
 	}
-	projectID := input.ProjectId
 	service := model.Service{Id: "service-1", InstanceKey: "default", Code: input.Code + "-default", Status: "stopped"}
 	view := gatewaydto.GatewayView{
-		Application:    model.Application{Id: "gateway-1", ProjectId: &projectID, Code: input.Code, Name: input.Name},
+		Application:    model.Application{Id: "gateway-1", ProjectId: &projectId, Code: input.Code, Name: input.Name},
 		Config:         model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: input.RestApiUrl, BaseDomain: input.BaseDomain},
 		DefaultService: &service,
 	}

@@ -23,12 +23,16 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
 		command, err := commandInput(input.Command)
 		if err != nil {
 			return nil, err
 		}
 		restartPolicy := input.RestartPolicy
-		component, err := c.deps.Application.UpdateVersionComponentBasic(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentBasicUpdateInput{Name: input.Name, Image: input.Image, Command: command, PullPolicy: input.PullPolicy, RestartPolicy: &restartPolicy})
+		component, err := c.deps.Application.UpdateVersionComponentBasic(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentBasicUpdateInput{Name: input.Name, Image: input.Image, Command: command, PullPolicy: input.PullPolicy, RestartPolicy: &restartPolicy})
 		if err != nil {
 			return nil, err
 		}
@@ -43,7 +47,11 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		component, err := c.deps.Application.UpdateVersionComponentRuntime(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentRuntimeUpdateInput{Healthcheck: healthcheckInput(input.Healthcheck)})
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentRuntime(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentRuntimeUpdateInput{Healthcheck: healthcheckInput(input.Healthcheck)})
 		if err != nil {
 			return nil, err
 		}
@@ -61,7 +69,11 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		component, err := c.deps.Application.UpdateVersionComponentEndpoints(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentEndpointsUpdateInput{Endpoints: componentEndpointsInput(input.Endpoints)})
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentEndpoints(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentEndpointsUpdateInput{Endpoints: componentEndpointsInput(input.Endpoints)})
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +88,11 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		component, err := c.deps.Application.UpdateVersionComponentEnv(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentEnvUpdateInput{Env: componentEnvInput(input.Env)})
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentEnv(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentEnvUpdateInput{Env: componentEnvInput(input.Env)})
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +107,11 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		component, err := c.deps.Application.UpdateVersionComponentMounts(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentMountsUpdateInput{Mounts: componentMountsInput(input.Mounts)})
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentMounts(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentMountsUpdateInput{Mounts: componentMountsInput(input.Mounts)})
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +126,11 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		component, err := c.deps.Application.UpdateVersionComponentDependencies(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentDependenciesUpdateInput{Dependencies: componentDependenciesInput(input.Dependencies)})
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentDependencies(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentDependenciesUpdateInput{Dependencies: componentDependenciesInput(input.Dependencies)})
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +145,11 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		component, err := c.deps.Application.UpdateVersionComponentDevices(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentDevicesUpdateInput{Devices: devicesInput(input.Devices)})
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentDevices(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentDevicesUpdateInput{Devices: devicesInput(input.Devices)})
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +166,11 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		component, err := c.updateComponentAdvanced(ctx, input.VersionId, input.ComponentId, resourcesInput(input.Resources), tmpfsInput(input.Tmpfs), ulimitsInput(input.Ulimits))
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.updateComponentAdvanced(ctx, projectId, input.VersionId, input.ComponentId, resourcesInput(input.Resources), tmpfsInput(input.Tmpfs), ulimitsInput(input.Ulimits))
 		if err != nil {
 			return nil, err
 		}
@@ -153,11 +185,15 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId)
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		component, err := c.updateComponentAdvanced(ctx, input.VersionId, input.ComponentId, resourcesInput(input.Resources), previous.Tmpfs, previous.Ulimits)
+		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId)
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.updateComponentAdvanced(ctx, projectId, input.VersionId, input.ComponentId, resourcesInput(input.Resources), previous.Tmpfs, previous.Ulimits)
 		if err != nil {
 			return nil, err
 		}
@@ -172,11 +208,15 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId)
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		component, err := c.updateComponentAdvanced(ctx, input.VersionId, input.ComponentId, previous.Resources, tmpfsInput(input.Tmpfs), previous.Ulimits)
+		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId)
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.updateComponentAdvanced(ctx, projectId, input.VersionId, input.ComponentId, previous.Resources, tmpfsInput(input.Tmpfs), previous.Ulimits)
 		if err != nil {
 			return nil, err
 		}
@@ -191,11 +231,15 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
 			return nil, err
 		}
-		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId)
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		component, err := c.updateComponentAdvanced(ctx, input.VersionId, input.ComponentId, previous.Resources, previous.Tmpfs, ulimitsInput(input.Ulimits))
+		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId)
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.updateComponentAdvanced(ctx, projectId, input.VersionId, input.ComponentId, previous.Resources, previous.Tmpfs, ulimitsInput(input.Ulimits))
 		if err != nil {
 			return nil, err
 		}

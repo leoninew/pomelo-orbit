@@ -96,7 +96,7 @@ func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(
 		t.Fatalf("CallTool(get environment) result=%#v err=%v", getResult, err)
 	}
 	getOutput := structuredOutput(t, getResult)
-	if getOutput["project_id"] != "project-1" || environment.userID != "actor" || environment.projectID != "project-1" {
+	if getOutput["project_id"] != "project-1" || environment.userId != "actor" || environment.projectId != "project-1" {
 		t.Fatalf("get environment scope = output %#v service %#v", getOutput, environment)
 	}
 
@@ -127,7 +127,7 @@ func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(
 	if err != nil || probeResult.IsError {
 		t.Fatalf("CallTool(probe environment) result=%#v err=%v", probeResult, err)
 	}
-	if environment.probeCalls != 1 || environment.projectID != "project-1" || environment.userID != "actor" {
+	if environment.probeCalls != 1 || environment.projectId != "project-1" || environment.userId != "actor" {
 		t.Fatalf("probe scope = service %#v", environment)
 	}
 }
@@ -256,8 +256,8 @@ func TestApplicationErrorBecomesClassifiedMCPToolError(t *testing.T) {
 }
 
 func TestServiceCodeMCPContract(t *testing.T) {
-	projectID := "project-1"
-	application := &serviceApplicationToolService{application: model.Application{Id: "application-1", ProjectId: &projectID, Code: "ragflow"}}
+	projectId := "project-1"
+	application := &serviceApplicationToolService{application: model.Application{Id: "application-1", ProjectId: &projectId, Code: "ragflow"}}
 	service := &serviceToolService{services: []model.Service{{Id: "service-1", ApplicationId: "application-1", InstanceKey: "default", Code: "ragflow-default", VersionId: "version-1", Status: "stopped"}}}
 	server, err := NewServer(withReadyScope(Dependencies{Application: application, Service: service}))
 	if err != nil {
@@ -329,7 +329,7 @@ func TestServiceCodeMCPContract(t *testing.T) {
 
 func TestServiceComponentOverlayToolMapsRuntimeAndHostPathFields(t *testing.T) {
 	service := &serviceOverlayToolService{}
-	server, err := NewServer(withReadyScope(Dependencies{Application: &serviceApplicationToolService{application: model.Application{Id: "application-1", ProjectId: readyProjectID(), Code: "ragflow"}}, Service: service}))
+	server, err := NewServer(withReadyScope(Dependencies{Application: &serviceApplicationToolService{application: model.Application{Id: "application-1", ProjectId: readyProjectId(), Code: "ragflow"}}, Service: service}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -516,24 +516,24 @@ func TestActorAuthenticatorKeepsConcurrentCallsBoundToOneActor(t *testing.T) {
 type environmentToolService struct {
 	EnvironmentService
 	environment environmentdto.View
-	userID      string
-	projectID   string
+	userId      string
+	projectId   string
 	update      environmentdto.UpdateInput
 	probeCalls  int
 }
 
-func (s *environmentToolService) EnvironmentForUser(_ context.Context, userID, projectID string) (environmentdto.View, error) {
-	s.userID, s.projectID = userID, projectID
+func (s *environmentToolService) EnvironmentForUser(_ context.Context, userId, projectId string) (environmentdto.View, error) {
+	s.userId, s.projectId = userId, projectId
 	return s.environment, nil
 }
 
-func (s *environmentToolService) UpdateForUser(_ context.Context, userID, projectID string, input environmentdto.UpdateInput) (environmentdto.View, error) {
-	s.userID, s.projectID, s.update = userID, projectID, input
+func (s *environmentToolService) UpdateForUser(_ context.Context, userId, projectId string, input environmentdto.UpdateInput) (environmentdto.View, error) {
+	s.userId, s.projectId, s.update = userId, projectId, input
 	return s.environment, nil
 }
 
-func (s *environmentToolService) ProbeForUser(_ context.Context, userID, projectID string) (environmentdto.View, error) {
-	s.userID, s.projectID, s.probeCalls = userID, projectID, s.probeCalls+1
+func (s *environmentToolService) ProbeForUser(_ context.Context, userId, projectId string) (environmentdto.View, error) {
+	s.userId, s.projectId, s.probeCalls = userId, projectId, s.probeCalls+1
 	return s.environment, nil
 }
 
@@ -595,7 +595,7 @@ func TestFlatMountToolMapsCollectionToApplicationInput(t *testing.T) {
 		t.Fatalf("mapped mounts = %#v", application.mounts)
 	}
 	if application.versionId != "version-1" || application.componentId != "component-1" {
-		t.Fatalf("mapped IDs = %q, %q", application.versionId, application.componentId)
+		t.Fatalf("mapped Ids = %q, %q", application.versionId, application.componentId)
 	}
 }
 
@@ -803,7 +803,7 @@ type versionComponentApplicationService struct {
 	input applicationdto.VersionComponentInput
 }
 
-func (s *versionComponentApplicationService) CreateVersionComponent(_ context.Context, _ string, _ string, input applicationdto.VersionComponentInput) (model.VersionComponent, error) {
+func (s *versionComponentApplicationService) CreateVersionComponent(_ context.Context, _, _, _ string, input applicationdto.VersionComponentInput) (model.VersionComponent, error) {
 	s.input = input
 	return model.VersionComponent{Id: "component-1", PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy}, nil
 }
@@ -819,7 +819,7 @@ type serviceApplicationToolService struct {
 	application model.Application
 }
 
-func (s *serviceApplicationToolService) ApplicationForUser(context.Context, string, string) (model.Application, error) {
+func (s *serviceApplicationToolService) ApplicationForUser(context.Context, string, string, string) (model.Application, error) {
 	return s.application, nil
 }
 
@@ -828,20 +828,20 @@ type serviceOverlayToolService struct {
 	overlayInput servicedto.ServiceComponentOverlayInput
 }
 
-func (s *serviceToolService) CreateService(_ context.Context, _ string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
+func (s *serviceToolService) CreateService(_ context.Context, _, _ string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
 	s.createInput = input
 	return servicedto.ServiceView{Service: model.Service{Id: "service-1", ApplicationId: input.ApplicationId, VersionId: input.VersionId, InstanceKey: input.InstanceKey, Code: input.Code, Status: "stopped"}}, nil
 }
 
-func (s *serviceToolService) ListServicesByApplication(context.Context, string, string) ([]model.Service, error) {
+func (s *serviceToolService) ListServicesByApplication(context.Context, string, string, string) ([]model.Service, error) {
 	return s.services, nil
 }
 
-func (s *serviceOverlayToolService) GetService(_ context.Context, _ string, serviceID string) (servicedto.ServiceView, error) {
-	return servicedto.ServiceView{Service: model.Service{Id: serviceID, ApplicationId: "application-1"}}, nil
+func (s *serviceOverlayToolService) GetService(_ context.Context, _, _ string, serviceId string) (servicedto.ServiceView, error) {
+	return servicedto.ServiceView{Service: model.Service{Id: serviceId, ApplicationId: "application-1"}}, nil
 }
 
-func (s *serviceOverlayToolService) UpdateServiceComponentOverlay(_ context.Context, _ string, _ string, _ string, input servicedto.ServiceComponentOverlayInput) (model.ServiceComponent, error) {
+func (s *serviceOverlayToolService) UpdateServiceComponentOverlay(_ context.Context, _, _, _, _ string, input servicedto.ServiceComponentOverlayInput) (model.ServiceComponent, error) {
 	s.overlayInput = input
 	return model.ServiceComponent{
 		Id:            "component-1",
@@ -854,11 +854,11 @@ func (s *serviceOverlayToolService) UpdateServiceComponentOverlay(_ context.Cont
 
 type errorApplicationService struct{ ApplicationService }
 
-func (errorApplicationService) ApplicationForUser(context.Context, string, string) (model.Application, error) {
+func (errorApplicationService) ApplicationForUser(context.Context, string, string, string) (model.Application, error) {
 	return model.Application{}, apperror.New(apperror.KindNotFound, "Application missing not found")
 }
 
-func (s *mountApplicationService) UpdateVersionComponentMounts(_ context.Context, _ string, versionId, componentId string, input applicationdto.VersionComponentMountsUpdateInput) (model.VersionComponent, error) {
+func (s *mountApplicationService) UpdateVersionComponentMounts(_ context.Context, _, _ string, versionId, componentId string, input applicationdto.VersionComponentMountsUpdateInput) (model.VersionComponent, error) {
 	s.versionId, s.componentId, s.mounts = versionId, componentId, input.Mounts
 	return model.VersionComponent{Id: componentId, VersionId: versionId, Mounts: input.Mounts}, nil
 }

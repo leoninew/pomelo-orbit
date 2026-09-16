@@ -11,18 +11,18 @@ import (
 )
 
 func TestRenderGatewayComposeUsesDeclaredVersionTopology(t *testing.T) {
-	baseVersionID := "version-1"
+	baseVersionId := "version-1"
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
 		LogicalSvcDir:         t.TempDir(),
 		ComposeMountSourceDir: t.TempDir(),
 		Plan: model.EffectiveServicePlan{
 			Application: model.Application{Id: "gateway-1", Code: "traefik", Kind: status.ApplicationKindStandard},
-			Version:     model.Version{Id: baseVersionID},
+			Version:     model.Version{Id: baseVersionId},
 			Service:     model.Service{InstanceKey: "default"},
 			Gateway: &model.GatewayConfig{
 				ApplicationId: "gateway-1", NetworkName: "traefik",
 				BaseDomain: "example.test", DefaultEntrypoint: "web",
-				VersionBindings: []model.GatewayVersionBinding{{Profile: "base", VersionId: baseVersionID}},
+				VersionBindings: []model.GatewayVersionBinding{{Profile: "base", VersionId: baseVersionId}},
 			},
 			Components: []model.EffectiveServiceComponent{{
 				Name: "traefik", Image: "traefik:3.6", PullPolicy: "missing",

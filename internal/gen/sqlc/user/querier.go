@@ -20,7 +20,7 @@ type Querier interface {
 	TouchUserUpdatedAt(ctx context.Context, arg TouchUserUpdatedAtParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UserByEmail(ctx context.Context, email string) (UserByEmailRow, error)
-	UserByID(ctx context.Context, id string) (UserByIDRow, error)
+	UserById(ctx context.Context, id string) (UserByIdRow, error)
 	UserByUsername(ctx context.Context, username string) (UserByUsernameRow, error)
 	UserPermissions(ctx context.Context, userID string) ([]string, error)
 	UserRoleDetails(ctx context.Context, userID string) ([]Role, error)

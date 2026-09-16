@@ -15,7 +15,7 @@ export function useRouteTargetServices() {
       let page = 1;
       let pages = 1;
       do {
-        const response = await serviceApi.list({ project_id: projectId, page, per_page: pageSize });
+        const response = await serviceApi.list(projectId, { page, per_page: pageSize });
         items.push(...response.items);
         pages = response.pages;
         page += 1;

@@ -52,7 +52,7 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 		if err != nil {
 			return nil, err
 		}
-		return writeResult("update_project_environment", map[string]string{"project_id": projectId, "environment_id": environment.Id}, "PUT", "/api/project/"+projectId+"/environment", map[string]any{"environment": environmentOutput(environment)}), nil
+		return writeResult("update_project_environment", map[string]string{"project_id": projectId, "environment_id": environment.Id}, "PUT", "/api/environment", map[string]any{"environment": environmentOutput(environment)}), nil
 	})
 
 	addTool(server, "orbit_probe_project_environment", "Probe Docker Compose prerequisites for the selected Project's local or SSH Environment. SSH also verifies key authentication and host-key pinning.", func(ctx context.Context, _ struct{}) (map[string]any, error) {
@@ -64,6 +64,6 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 		if err != nil {
 			return nil, err
 		}
-		return writeResult("probe_project_environment", map[string]string{"project_id": projectId, "environment_id": environment.Id}, "POST", "/api/project/"+projectId+"/environment/probe", map[string]any{"environment": environmentOutput(environment)}), nil
+		return writeResult("probe_project_environment", map[string]string{"project_id": projectId, "environment_id": environment.Id}, "POST", "/api/environment/probe", map[string]any{"environment": environmentOutput(environment)}), nil
 	})
 }

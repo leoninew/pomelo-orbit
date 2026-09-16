@@ -9,7 +9,7 @@ import (
 )
 
 type Querier interface {
-	ArtifactByID(ctx context.Context, id string) (ArtifactByIDRow, error)
+	ArtifactById(ctx context.Context, arg ArtifactByIdParams) (ArtifactByIdRow, error)
 	BeginPipelineRun(ctx context.Context, arg BeginPipelineRunParams) (int64, error)
 	BeginPipelineStageRun(ctx context.Context, arg BeginPipelineStageRunParams) (int64, error)
 	CancelPipelineRun(ctx context.Context, arg CancelPipelineRunParams) (int64, error)
@@ -21,10 +21,10 @@ type Querier interface {
 	CountActivePipelineRunsByRepository(ctx context.Context, arg CountActivePipelineRunsByRepositoryParams) (int64, error)
 	CountArtifacts(ctx context.Context, arg CountArtifactsParams) (int64, error)
 	CountPipelineRuns(ctx context.Context, arg CountPipelineRunsParams) (int64, error)
-	DeletePipelineRun(ctx context.Context, id string) error
-	DeletePipelineRunArtifacts(ctx context.Context, pipelineRunID string) error
-	DeletePipelineRunVersionBinding(ctx context.Context, pipelineRunID string) error
-	DeletePipelineStageRuns(ctx context.Context, pipelineRunID string) error
+	DeletePipelineRun(ctx context.Context, arg DeletePipelineRunParams) error
+	DeletePipelineRunArtifacts(ctx context.Context, arg DeletePipelineRunArtifactsParams) error
+	DeletePipelineRunVersionBinding(ctx context.Context, arg DeletePipelineRunVersionBindingParams) error
+	DeletePipelineStageRuns(ctx context.Context, arg DeletePipelineStageRunsParams) error
 	InsertArtifact(ctx context.Context, arg InsertArtifactParams) error
 	InsertPipelineRun(ctx context.Context, arg InsertPipelineRunParams) error
 	InsertPipelineRunVersionBinding(ctx context.Context, arg InsertPipelineRunVersionBindingParams) error
@@ -32,10 +32,10 @@ type Querier interface {
 	ListArtifacts(ctx context.Context, arg ListArtifactsParams) ([]ListArtifactsRow, error)
 	ListArtifactsByRun(ctx context.Context, arg ListArtifactsByRunParams) ([]ListArtifactsByRunRow, error)
 	ListPipelineRuns(ctx context.Context, arg ListPipelineRunsParams) ([]PipelineRun, error)
-	ListPipelineStageRuns(ctx context.Context, pipelineRunID string) ([]PipelineStageRun, error)
-	PipelineRunByID(ctx context.Context, id string) (PipelineRun, error)
-	PipelineRunVersionBindingByRunID(ctx context.Context, pipelineRunID string) (PipelineRunVersionBinding, error)
-	PipelineStageRunByID(ctx context.Context, id string) (PipelineStageRun, error)
+	ListPipelineStageRuns(ctx context.Context, arg ListPipelineStageRunsParams) ([]PipelineStageRun, error)
+	PipelineRunById(ctx context.Context, arg PipelineRunByIdParams) (PipelineRun, error)
+	PipelineRunVersionBindingByRunId(ctx context.Context, arg PipelineRunVersionBindingByRunIdParams) (PipelineRunVersionBinding, error)
+	PipelineStageRunById(ctx context.Context, arg PipelineStageRunByIdParams) (PipelineStageRun, error)
 }
 
 var _ Querier = (*Queries)(nil)

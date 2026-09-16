@@ -27,17 +27,17 @@ import (
 	servicerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/service"
 )
 
-const gatewayFactoryUserID = "01KKX2YNPF6VJ9N7QYCWG61KVK"
-const gatewayFactoryProjectID = "01KRRKK0K3T519ZQZES3M4QA9Z"
-const seededGatewayApplicationID = "01M10RRA8F863EJ2N9TC3Z2EC1"
-const seededGatewayServiceID = "01M10RRA8F863EJ2N9TTG49G6S"
-const seededGatewayDashboardRouteID = "01M10RRA8F863EJ2N9TYPF0CV7"
+const gatewayFactoryUserId = "01KKX2YNPF6VJ9N7QYCWG61KVK"
+const gatewayFactoryProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"
+const seededGatewayApplicationId = "01M10RRA8F863EJ2N9TC3Z2EC1"
+const seededGatewayServiceId = "01M10RRA8F863EJ2N9TTG49G6S"
+const seededGatewayDashboardRouteId = "01M10RRA8F863EJ2N9TYPF0CV7"
 
 func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 	service, applications, services, database := newGatewayFactoryService(t, nil)
 	defer func() { _ = database.Close() }()
 
-	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserID, managedGatewayCreateInput())
+	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, managedGatewayCreateInput())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 			t.Fatalf("missing Gateway Version binding for %q: %#v", role, created.Config.VersionBindings)
 		}
 	}
-	versions, err := applications.ListVersions(context.Background(), created.Application.Id)
+	versions, err := applications.ListVersions(context.Background(), gatewayFactoryProjectId, created.Application.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,21 +69,21 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 		t.Fatalf("gateway Versions = %#v", versions)
 	}
 
-	version, err := applications.Version(context.Background(), created.DefaultService.VersionId)
+	version, err := applications.Version(context.Background(), gatewayFactoryProjectId, created.DefaultService.VersionId)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if version.Status != status.VersionStatusUnpublished {
 		t.Fatalf("initial version status = %q", version.Status)
 	}
-	components, err := applications.VersionComponentsByVersion(context.Background(), version.Id)
+	components, err := applications.VersionComponentsByVersion(context.Background(), gatewayFactoryProjectId, version.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(components) != 1 || components[0].Image != "traefik:3.6" || components[0].PullPolicy != "missing" {
 		t.Fatalf("initial components = %#v", components)
 	}
-	gatewayConfig, err := gatewayrepo.NewRepository(database).GatewayConfigByProject(context.Background(), gatewayFactoryProjectID)
+	gatewayConfig, err := gatewayrepo.NewRepository(database).GatewayConfigByProject(context.Background(), gatewayFactoryProjectId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,14 +100,14 @@ func TestCreateGatewayCreatesAtomicDefaultServiceBundle(t *testing.T) {
 	if !strings.Contains(staticConfig, "network: traefik") {
 		t.Fatalf("initial Traefik config missing shared network: %q", staticConfig)
 	}
-	mappings, err := services.ServiceComponentsByService(context.Background(), created.DefaultService.Id)
+	mappings, err := services.ServiceComponentsByService(context.Background(), gatewayFactoryProjectId, created.DefaultService.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(mappings) != 1 || mappings[0].SourceVersionComponentId != components[0].Id {
 		t.Fatalf("service mappings = %#v", mappings)
 	}
-	routes, err := routerepo.NewRepository(database).ListAllRoutes(context.Background(), gatewayFactoryProjectID)
+	routes, err := routerepo.NewRepository(database).ListAllRoutes(context.Background(), gatewayFactoryProjectId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestCreateGatewayInitializationCodesDoNotRepeatProjectDefault(t *testing.T)
 	input := managedGatewayCreateInput()
 	input.Code = ManagedGatewayCode()
 	input.Name = ManagedGatewayName()
-	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserID, input)
+	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,11 +145,11 @@ func TestCreateGatewayInitializationCodesDoNotRepeatProjectDefault(t *testing.T)
 func TestCreateGatewayRequiresFreshEnvironmentProbe(t *testing.T) {
 	service, _, _, database := newGatewayFactoryService(t, nil)
 	defer func() { _ = database.Close() }()
-	if _, err := database.Exec(`UPDATE environment SET last_probe_revision = NULL, last_probe_status = NULL WHERE project_id = ?`, gatewayFactoryProjectID); err != nil {
+	if _, err := database.Exec(`UPDATE environment SET last_probe_revision = NULL, last_probe_status = NULL WHERE project_id = ?`, gatewayFactoryProjectId); err != nil {
 		t.Fatal(err)
 	}
 
-	_, err := service.CreateGateway(context.Background(), gatewayFactoryUserID, managedGatewayCreateInput())
+	_, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, managedGatewayCreateInput())
 	if err == nil || !apperror.IsKind(err, apperror.KindValidation) || !strings.Contains(err.Error(), "must pass probe") {
 		t.Fatalf("CreateGateway error = %v, want fresh Probe validation", err)
 	}
@@ -157,19 +157,19 @@ func TestCreateGatewayRequiresFreshEnvironmentProbe(t *testing.T) {
 func TestProvisionGatewayOnlyPreparesStoppedServices(t *testing.T) {
 	service, applications, _, database := newGatewayFactoryService(t, nil)
 	defer func() { _ = database.Close() }()
-	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserID, managedGatewayCreateInput())
+	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, managedGatewayCreateInput())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defaultResult, err := service.ProvisionGateway(context.Background(), gatewayFactoryUserID, gatewaydto.ProvisionGatewayInput{ProjectId: gatewayFactoryProjectID, InstanceKey: "default"})
+	defaultResult, err := service.ProvisionGateway(context.Background(), gatewayFactoryUserId, gatewaydto.ProvisionGatewayInput{ProjectId: gatewayFactoryProjectId, InstanceKey: "default"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if defaultResult.GatewayCreated || defaultResult.ServiceCreated || defaultResult.Service.Id != created.DefaultService.Id {
 		t.Fatalf("default provision result = %#v", defaultResult)
 	}
-	version, err := applications.Version(context.Background(), created.DefaultService.VersionId)
+	version, err := applications.Version(context.Background(), gatewayFactoryProjectId, created.DefaultService.VersionId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +177,7 @@ func TestProvisionGatewayOnlyPreparesStoppedServices(t *testing.T) {
 		t.Fatalf("provision published version: %#v", version)
 	}
 
-	_, err = service.ProvisionGateway(context.Background(), gatewayFactoryUserID, gatewaydto.ProvisionGatewayInput{ProjectId: gatewayFactoryProjectID, InstanceKey: "staging"})
+	_, err = service.ProvisionGateway(context.Background(), gatewayFactoryUserId, gatewaydto.ProvisionGatewayInput{ProjectId: gatewayFactoryProjectId, InstanceKey: "staging"})
 	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("staging gateway provision error = %v, want validation error", err)
 	}
@@ -186,29 +186,29 @@ func TestProvisionGatewayOnlyPreparesStoppedServices(t *testing.T) {
 func TestSelectGatewayDeploymentVersionUsesProfileBinding(t *testing.T) {
 	service, applications, services, database := newGatewayFactoryService(t, nil)
 	defer func() { _ = database.Close() }()
-	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserID, managedGatewayCreateInput())
+	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, managedGatewayCreateInput())
 	if err != nil {
 		t.Fatal(err)
 	}
 	profile, email, token := "dns", "ops@example.test", "cfat_gateway_token"
-	updated, err := service.UpdateGateway(context.Background(), gatewayFactoryUserID, created.Application.Id, gatewaydto.GatewayUpdateInput{
+	updated, err := service.UpdateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, created.Application.Id, gatewaydto.GatewayUpdateInput{
 		AcmeProfile: &profile, AcmeEmail: &email, DNSApiToken: &token,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := service.SelectGatewayDeploymentVersion(context.Background(), updated.Application, *updated.DefaultService)
+	selected, err := service.SelectGatewayDeploymentVersion(context.Background(), gatewayFactoryProjectId, updated.Application, *updated.DefaultService)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if selected.VersionId != updated.Config.VersionIDForProfile("dns") {
 		t.Fatalf("selected Version = %q, bindings = %#v", selected.VersionId, updated.Config.VersionBindings)
 	}
-	component, err := applications.VersionComponentsByVersion(context.Background(), selected.VersionId)
+	component, err := applications.VersionComponentsByVersion(context.Background(), gatewayFactoryProjectId, selected.VersionId)
 	if err != nil {
 		t.Fatal(err)
 	}
-	mappings, err := services.ServiceComponentsByService(context.Background(), selected.Id)
+	mappings, err := services.ServiceComponentsByService(context.Background(), gatewayFactoryProjectId, selected.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,11 +242,11 @@ func TestCreateGatewayRollsBackWhenGatewayConfigWriteFails(t *testing.T) {
 		databasetx.NewTransactionRunner(database),
 	)
 
-	_, err = service.CreateGateway(context.Background(), gatewayFactoryUserID, managedGatewayCreateInput())
+	_, err = service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, managedGatewayCreateInput())
 	if err == nil {
 		t.Fatal("expected gateway creation failure")
 	}
-	if _, err := applications.ApplicationByCode(context.Background(), managedGatewayCode); !errors.Is(err, repository.ErrNotFound) {
+	if _, err := applications.ApplicationByCode(context.Background(), gatewayFactoryProjectId, managedGatewayCode); !errors.Is(err, repository.ErrNotFound) {
 		t.Fatalf("gateway application survived failed factory: %v", err)
 	}
 }
@@ -276,10 +276,10 @@ func TestCreateGatewayRollsBackWhenDashboardRouteWriteFails(t *testing.T) {
 		databasetx.NewTransactionRunner(database),
 	)
 
-	if _, err := service.CreateGateway(context.Background(), gatewayFactoryUserID, managedGatewayCreateInput()); err == nil {
+	if _, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, managedGatewayCreateInput()); err == nil {
 		t.Fatal("expected gateway creation failure")
 	}
-	if _, err := applications.ApplicationByCode(context.Background(), managedGatewayCode); !errors.Is(err, repository.ErrNotFound) {
+	if _, err := applications.ApplicationByCode(context.Background(), gatewayFactoryProjectId, managedGatewayCode); !errors.Is(err, repository.ErrNotFound) {
 		t.Fatalf("gateway application survived failed factory: %v", err)
 	}
 }
@@ -343,7 +343,7 @@ func seedGatewayFactoryEnvironment(t *testing.T, database *sql.DB) {
 	probeStatus := model.EnvironmentProbeStatusSucceeded
 	environment := model.Environment{
 		Id:                "01KROUTEGATEWAYENV00000001",
-		ProjectId:         gatewayFactoryProjectID,
+		ProjectId:         gatewayFactoryProjectId,
 		Code:              "gateway-factory",
 		State:             model.EnvironmentStateActive,
 		TargetType:        model.EnvironmentTargetTypeSSH,
@@ -364,19 +364,19 @@ func seedGatewayFactoryEnvironment(t *testing.T, database *sql.DB) {
 
 func removeSeededGateway(t *testing.T, database *sql.DB) {
 	t.Helper()
-	if _, err := database.Exec("DELETE FROM route WHERE id = ?", seededGatewayDashboardRouteID); err != nil {
+	if _, err := database.Exec("DELETE FROM route WHERE id = ?", seededGatewayDashboardRouteId); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.Exec("DELETE FROM service_component WHERE service_id = ?", seededGatewayServiceID); err != nil {
+	if _, err := database.Exec("DELETE FROM service_component WHERE service_id = ?", seededGatewayServiceId); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.Exec("DELETE FROM service WHERE id = ?", seededGatewayServiceID); err != nil {
+	if _, err := database.Exec("DELETE FROM service WHERE id = ?", seededGatewayServiceId); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.Exec("DELETE FROM application WHERE id = ?", seededGatewayApplicationID); err != nil {
+	if _, err := database.Exec("DELETE FROM application WHERE id = ?", seededGatewayApplicationId); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.Exec("DELETE FROM environment WHERE project_id = ?", gatewayFactoryProjectID); err != nil {
+	if _, err := database.Exec("DELETE FROM environment WHERE project_id = ?", gatewayFactoryProjectId); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -387,7 +387,7 @@ func managedGatewayCreateInput() gatewaydto.GatewayCreateInput {
 	tlsMode := "none"
 	timeout := 20
 	return gatewaydto.GatewayCreateInput{
-		ProjectId:               gatewayFactoryProjectID,
+		ProjectId:               gatewayFactoryProjectId,
 		Code:                    managedGatewayCode,
 		Name:                    managedGatewayName,
 		RestApiUrl:              "http://localhost:8080",

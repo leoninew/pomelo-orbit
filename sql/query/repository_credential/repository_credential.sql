@@ -1,22 +1,26 @@
 -- name: RepositoryCredentialById :one
 SELECT id, project_id, name, type, encrypted_data, revision, created_at
 FROM repository_credential
-WHERE id = ?;
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
 -- name: RepositoryCredentialByName :one
 SELECT id, project_id, name, type, encrypted_data, revision, created_at
 FROM repository_credential
-WHERE project_id = ? AND name = ?;
+WHERE project_id = sqlc.arg(project_id)
+  AND name = sqlc.arg(name);
 
 -- name: RepositoryCredentialExists :one
 SELECT COUNT(*)
 FROM repository_credential
-WHERE id = ?;
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
 -- name: RepositoryCredentialName :one
 SELECT name
 FROM repository_credential
-WHERE id = ?;
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
 -- name: CountRepositoryCredentials :one
 SELECT COUNT(*)
@@ -44,14 +48,17 @@ VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateRepositoryCredential :exec
 UPDATE repository_credential
-SET name = ?, encrypted_data = ?, revision = ?
-WHERE id = ?;
+SET name = sqlc.arg(name), encrypted_data = sqlc.arg(encrypted_data), revision = sqlc.arg(revision)
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
 -- name: DeleteRepositoryCredential :exec
 DELETE FROM repository_credential
-WHERE id = ?;
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
 -- name: RepositoryCredentialReferencedByRepositories :one
 SELECT COUNT(*)
 FROM repository
-WHERE project_id = ? AND git_credential_id = ?;
+WHERE project_id = sqlc.arg(project_id)
+  AND git_credential_id = sqlc.arg(git_credential_id);

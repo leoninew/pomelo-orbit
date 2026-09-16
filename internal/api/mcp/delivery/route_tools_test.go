@@ -85,7 +85,7 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 		}
 	}
 	if routeService.enableRouteId != "route-1" || routeService.disableRouteId != "route-1" {
-		t.Fatalf("enable/disable IDs = %q/%q", routeService.enableRouteId, routeService.disableRouteId)
+		t.Fatalf("enable/disable Ids = %q/%q", routeService.enableRouteId, routeService.disableRouteId)
 	}
 
 	syncChanges := []any{map[string]any{"route_id": "route-1", "enabled": true}}
@@ -167,22 +167,22 @@ func (s *routeToolService) CreateRoute(_ context.Context, userId, projectId stri
 	return route, nil
 }
 
-func (s *routeToolService) RouteForUser(_ context.Context, _ string, routeId string) (model.Route, error) {
+func (s *routeToolService) RouteForUser(_ context.Context, _ string, _ string, routeId string) (model.Route, error) {
 	s.getRouteId = routeId
 	return s.route(routeId, false), nil
 }
 
-func (s *routeToolService) UpdateRoute(_ context.Context, _ string, _ string, input routedto.RouteUpdateInput) (model.Route, error) {
+func (s *routeToolService) UpdateRoute(_ context.Context, _ string, _ string, _ string, input routedto.RouteUpdateInput) (model.Route, error) {
 	s.updateInput = input
 	return s.route("route-1", input.Enabled != nil && *input.Enabled), nil
 }
 
-func (s *routeToolService) EnableRoute(_ context.Context, _ string, routeId string) (model.Route, error) {
+func (s *routeToolService) EnableRoute(_ context.Context, _ string, _ string, routeId string) (model.Route, error) {
 	s.enableRouteId = routeId
 	return s.route(routeId, true), nil
 }
 
-func (s *routeToolService) DisableRoute(_ context.Context, _ string, routeId string) (model.Route, error) {
+func (s *routeToolService) DisableRoute(_ context.Context, _ string, _ string, routeId string) (model.Route, error) {
 	s.disableRouteId = routeId
 	return s.route(routeId, false), nil
 }

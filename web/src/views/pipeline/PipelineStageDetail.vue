@@ -296,6 +296,7 @@
     ArtifactConfigReq,
     PipelineStageResp,
   } from '@/gen/proto/orbit/v1/pipeline/pipeline_stage';
+  import { useProjectStore } from '@/stores/project';
   import { formatTime } from '@/utils/time';
 
   type ArtifactError = 'name' | 'collector' | 'reference' | 'command' | 'format';
@@ -303,6 +304,7 @@
   const route = useRoute();
   const router = useRouter();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const { status, error, execute } = useStatusAsync();
   const { loading: saving, execute: executeSave } = useStatusAsync();
   const stage = ref<PipelineStageResp>();
@@ -335,9 +337,17 @@
 
   const stageId = () => String(route.params.id || '');
 
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error('请先选择项目');
+    }
+    return projectId;
+  }
+
   async function fetchStage() {
     await execute(async () => {
-      stage.value = await pipelineStageApi.get(stageId());
+      stage.value = await pipelineStageApi.get(selectedProjectId(), stageId());
     });
   }
 
@@ -362,7 +372,7 @@
     }
     try {
       await executeSave(async () => {
-        stage.value = await pipelineStageApi.update(stageId(), {
+        stage.value = await pipelineStageApi.update(selectedProjectId(), stageId(), {
           name: basicForm.name.trim(),
           image: basicForm.image.trim(),
           description: basicForm.description,
@@ -410,7 +420,7 @@
     scriptError.value = '';
     try {
       await executeSave(async () => {
-        stage.value = await pipelineStageApi.update(stageId(), {
+        stage.value = await pipelineStageApi.update(selectedProjectId(), stageId(), {
           script: scriptForm.script.trim(),
         });
         closeScriptDrawer();
@@ -497,7 +507,9 @@
           );
     try {
       await executeSave(async () => {
-        stage.value = await pipelineStageApi.update(stageId(), { artifacts: { items: artifacts } });
+        stage.value = await pipelineStageApi.update(selectedProjectId(), stageId(), {
+          artifacts: { items: artifacts },
+        });
         closeArtifact();
         toast.success('制品声明已保存');
       });
@@ -512,7 +524,7 @@
     }
     try {
       await executeSave(async () => {
-        stage.value = await pipelineStageApi.update(stageId(), {
+        stage.value = await pipelineStageApi.update(selectedProjectId(), stageId(), {
           artifacts: {
             items: stage.value?.artifacts.filter((_, itemIndex) => itemIndex !== index) || [],
           },
@@ -532,7 +544,7 @@
   async function removeStage() {
     try {
       await executeSave(async () => {
-        await pipelineStageApi.delete(stageId());
+        await pipelineStageApi.delete(selectedProjectId(), stageId());
         toast.success('阶段已删除');
         await router.replace('/pipeline-stage');
       });

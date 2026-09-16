@@ -20,6 +20,7 @@ type BuildVersionComponentUpdate struct {
 // BuildVersionForkInput identifies the source Version and all build outputs
 // applied atomically to its target Components.
 type BuildVersionForkInput struct {
+	ProjectId       string
 	SourceVersionId string
 	Label           string
 	Components      []BuildVersionComponentUpdate

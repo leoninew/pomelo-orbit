@@ -678,6 +678,7 @@
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { VersionComponentResp, VersionResp } from '@/gen/proto/orbit/v1/application/version';
+  import { useProjectStore } from '@/stores/project';
   import { applicationKindTone, versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
@@ -697,6 +698,7 @@
   const { t } = useI18n();
   const applicationId = applicationIdProp || (route.params.id as string);
   const toast = useToast();
+  const projectStore = useProjectStore();
 
   const { loading: basicInfoLoading, execute: executeBasicInfo } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -756,9 +758,17 @@
   const componentRestartPolicyValues = ['no', 'on-failure', 'always', 'unless-stopped'];
 
   async function fetchApplication() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error(t('application.toast.selectProjectRequired'));
+      return;
+    }
     try {
       await executeBasicInfo(async () => {
-        const data = await applicationApi.get(applicationId);
+        const data = await applicationApi.get(projectId, applicationId);
+        if (projectStore.activeProjectId !== projectId) {
+          return;
+        }
         application.value = data;
         Object.assign(editForm, {
           name: data.name,
@@ -772,13 +782,20 @@
   }
 
   async function loadVersions() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     try {
       await executeVersionList(async () => {
-        const resp = await applicationApi.listVersions(applicationId, {
+        const resp = await applicationApi.listVersions(projectId, applicationId, {
           page: versionsOnly ? versionPagination.current : 1,
           per_page: versionsOnly ? versionPagination.pageSize : 100,
           search: versionSearchText.value.trim() || undefined,
         });
+        if (projectStore.activeProjectId !== projectId) {
+          return;
+        }
         versions.value = resp.items ?? [];
         if (versionsOnly) {
           versionPagination.total = resp.total;
@@ -797,8 +814,16 @@
       return;
     }
     versionComponentLoadState[versionId] = 'loading';
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      versionComponentLoadState[versionId] = 'error';
+      return;
+    }
     try {
-      const version = await applicationApi.getVersion(versionId);
+      const version = await applicationApi.getVersion(projectId, versionId);
+      if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
       versionComponents[versionId] = version.components ?? [];
       versionComponentLoadState[versionId] = 'loaded';
     } catch {
@@ -840,9 +865,14 @@
     previewContent.value = '';
     previewError.value = '';
     previewOpen.value = true;
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      previewError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executePreview(async () => {
-        const result = await applicationApi.previewVersion(versionId, {});
+        const result = await applicationApi.previewVersion(projectId, versionId, {});
         previewContent.value = result.compose_yaml;
       });
     } catch (error) {
@@ -877,9 +907,14 @@
     if (editErrors.name) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      editSubmitError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        await applicationApi.update(applicationId, {
+        await applicationApi.update(projectId, applicationId, {
           name: editForm.name,
         });
         toast.success(t('application.toast.updateSuccess'));
@@ -899,9 +934,14 @@
 
   async function handleDeleteOk() {
     deleteApplicationError.value = '';
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteApplicationError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        await applicationApi.delete(applicationId);
+        await applicationApi.delete(projectId, applicationId);
         toast.success(t('application.toast.deleteSuccess'));
         router.push('/applications');
       });
@@ -927,10 +967,15 @@
     if (versionFormErrors.label) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      versionCreateError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     const note = versionForm.note.trim() || undefined;
     try {
       await executeOp(async () => {
-        const created = await applicationApi.createVersion(applicationId, {
+        const created = await applicationApi.createVersion(projectId, applicationId, {
           application_id: applicationId,
           label: versionForm.label.trim(),
           note,
@@ -947,9 +992,14 @@
   }
 
   async function handlePublish(versionId: string) {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error(t('application.toast.selectProjectRequired'));
+      return;
+    }
     try {
       await executeOp(async () => {
-        await applicationApi.publishVersion(versionId);
+        await applicationApi.publishVersion(projectId, versionId);
         toast.success(t('application.toast.publishSuccess'));
         await loadVersions();
       });
@@ -959,9 +1009,14 @@
   }
 
   async function handleUnpublish(versionId: string) {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error(t('application.toast.selectProjectRequired'));
+      return;
+    }
     try {
       await executeOp(async () => {
-        await applicationApi.unpublishVersion(versionId);
+        await applicationApi.unpublishVersion(projectId, versionId);
         toast.success(t('application.toast.unpublishSuccess'));
         await loadVersions();
       });
@@ -989,9 +1044,14 @@
     if (!target) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteVersionError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        await applicationApi.deleteVersion(target.id);
+        await applicationApi.deleteVersion(projectId, target.id);
         toast.success(t('application.toast.deleteVersionSuccess'));
         setDeleteVersionDialogOpen(false);
         await loadVersions();
@@ -1057,9 +1117,15 @@
           : '';
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      componentEditError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
         const updated = await applicationApi.updateVersionComponentBasic(
+          projectId,
           pendingComponentVersionId.value,
           target.id,
           result.value
@@ -1101,9 +1167,18 @@
       return;
     }
     componentDeleteError.value = '';
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      componentDeleteError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        await applicationApi.deleteVersionComponent(pendingComponentVersionId.value, target.id);
+        await applicationApi.deleteVersionComponent(
+          projectId,
+          pendingComponentVersionId.value,
+          target.id
+        );
         const components = versionComponents[pendingComponentVersionId.value];
         if (components) {
           const index = components.findIndex((item) => item.id === target.id);
@@ -1136,9 +1211,14 @@
     if (forkLabelError.value || !forkingVersionId.value) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      forkSubmitError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        const created = await applicationApi.forkVersion(forkingVersionId.value, {
+        const created = await applicationApi.forkVersion(projectId, forkingVersionId.value, {
           label: forkLabel.value.trim(),
         });
         toast.success(t('application.toast.forkSuccess'));

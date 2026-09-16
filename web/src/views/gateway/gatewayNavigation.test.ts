@@ -143,14 +143,14 @@ describe('Gateway detail editing', () => {
     confirmButton?.click();
     await flushRender();
 
-    expect(gatewayApi.update).toHaveBeenCalledWith('gateway-1', {
+    expect(gatewayApi.update).toHaveBeenCalledWith('project-1', 'gateway-1', {
       name: 'Traefik edge',
       rest_api_url: gateway.rest_api_url,
       rest_ready_timeout_seconds: gateway.rest_ready_timeout_seconds,
       base_domain: gateway.base_domain,
     });
     expect(projectEnvironmentApi.get).toHaveBeenCalledWith('project-1');
-    expect(gatewayApi.get).toHaveBeenCalledWith('gateway-1');
+    expect(gatewayApi.get).toHaveBeenCalledWith('project-1', 'gateway-1');
     expect(target.textContent).toContain('Traefik edge');
     expect(renderErrors).toEqual([]);
   });

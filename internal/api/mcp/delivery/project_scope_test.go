@@ -139,7 +139,7 @@ func TestFixedDialogueScopeRejectsProjectSwitch(t *testing.T) {
 	}
 }
 
-func TestProjectLevelToolSchemasOmitProjectID(t *testing.T) {
+func TestProjectLevelToolSchemasOmitProjectId(t *testing.T) {
 	server, err := NewServer(Dependencies{ActorUserId: "actor"})
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
@@ -164,18 +164,18 @@ func TestProjectLevelToolSchemasOmitProjectID(t *testing.T) {
 	}
 }
 
-func TestApplicationOwnershipMustMatchSelectedProject(t *testing.T) {
-	server := newScopedServer(t, Dependencies{Application: mismatchApplicationService{projectID: "project-2"}})
+func TestApplicationUsesSelectedProjectScope(t *testing.T) {
+	application := &selectedProjectApplicationService{}
+	server := newScopedServer(t, Dependencies{Application: application})
 	result, err := connectInMemory(t, server).CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_get_application", Arguments: map[string]any{"application_id": "application-1"}})
 	if err != nil {
 		t.Fatalf("CallTool() error = %v", err)
 	}
-	if !result.IsError {
-		t.Fatal("CallTool() IsError = false, want true")
+	if result.IsError {
+		t.Fatalf("CallTool() IsError = true, result = %#v", result)
 	}
-	content, ok := result.Content[0].(*mcp.TextContent)
-	if !ok || !strings.Contains(content.Text, "project_scope_mismatch") {
-		t.Fatalf("error text = %#v", result.Content)
+	if application.projectId != "project-1" {
+		t.Fatalf("ApplicationForUser project_id = %q, want project-1", application.projectId)
 	}
 }
 
@@ -202,14 +202,14 @@ func (missingEnvironmentService) EnvironmentForUser(context.Context, string, str
 	return environmentdto.View{}, apperror.New(apperror.KindNotFound, "Environment not found")
 }
 
-type mismatchApplicationService struct {
+type selectedProjectApplicationService struct {
 	ApplicationService
-	projectID string
+	projectId string
 }
 
-func (s mismatchApplicationService) ApplicationForUser(_ context.Context, _ string, applicationID string) (model.Application, error) {
-	projectID := s.projectID
-	return model.Application{Id: applicationID, ProjectId: &projectID}, nil
+func (s *selectedProjectApplicationService) ApplicationForUser(_ context.Context, _, projectId, applicationId string) (model.Application, error) {
+	s.projectId = projectId
+	return model.Application{Id: applicationId, ProjectId: &projectId}, nil
 }
 
 func toolInputSchema(t *testing.T, tool *mcp.Tool) (schema struct {

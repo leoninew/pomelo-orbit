@@ -13,7 +13,7 @@ import (
 )
 
 type PhysicalWorkspaceResolver func(ctx context.Context, logicalWorkspaceRoot string) (string, error)
-type ProjectWorkspaceRootResolver func(ctx context.Context, projectID string) (string, error)
+type ProjectWorkspaceRootResolver func(ctx context.Context, projectId string) (string, error)
 
 type Workspace struct {
 	logicalWorkspaceRoot string
@@ -41,11 +41,11 @@ func NewWithProjectResolver(workspaceRoot string, resolver PhysicalWorkspaceReso
 	}
 }
 
-func (w *Workspace) WorkspaceForProject(ctx context.Context, projectID string) (pipelinerunport.Workspace, error) {
+func (w *Workspace) WorkspaceForProject(ctx context.Context, projectId string) (pipelinerunport.Workspace, error) {
 	if w.projectRootResolver == nil {
 		return w, nil
 	}
-	root, err := w.projectRootResolver(ctx, projectID)
+	root, err := w.projectRootResolver(ctx, projectId)
 	if err != nil {
 		return nil, err
 	}

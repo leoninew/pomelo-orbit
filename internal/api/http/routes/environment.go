@@ -8,8 +8,8 @@ import (
 
 func (r Router) registerEnvironment(engine *gin.Engine) {
 	handler := environmenthandler.New(r.logger, r.deps.EnvironmentService, r.deps.Authenticator)
-	engine.GET("/api/project/:project_id/environment", handler.GetProjectEnvironment)
-	engine.PUT("/api/project/:project_id/environment", handler.UpdateProjectEnvironment)
-	engine.POST("/api/project/:project_id/environment/initialize", handler.InitializeProjectEnvironment)
-	engine.POST("/api/project/:project_id/environment/probe", handler.ProbeProjectEnvironment)
+	engine.GET("/api/environment", handler.GetProjectEnvironment)
+	engine.PUT("/api/environment", handler.UpdateProjectEnvironment)
+	engine.POST("/api/environment/initialize", handler.InitializeProjectEnvironment)
+	engine.POST("/api/environment/probe", handler.ProbeProjectEnvironment)
 }

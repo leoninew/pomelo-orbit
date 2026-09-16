@@ -17,8 +17,8 @@ INSERT INTO environment_credential (
 `
 
 type CreateEnvironmentCredentialParams struct {
-	ID                  string    `db:"id"`
-	ProjectID           string    `db:"project_id"`
+	Id                  string    `db:"id"`
+	ProjectId           string    `db:"project_id"`
 	PublicKey           string    `db:"public_key"`
 	EncryptedPrivateKey string    `db:"encrypted_private_key"`
 	Revision            int64     `db:"revision"`
@@ -27,8 +27,8 @@ type CreateEnvironmentCredentialParams struct {
 
 func (q *Queries) CreateEnvironmentCredential(ctx context.Context, arg CreateEnvironmentCredentialParams) error {
 	_, err := q.db.ExecContext(ctx, createEnvironmentCredential,
-		arg.ID,
-		arg.ProjectID,
+		arg.Id,
+		arg.ProjectId,
 		arg.PublicKey,
 		arg.EncryptedPrivateKey,
 		arg.Revision,
@@ -47,8 +47,8 @@ func (q *Queries) EnvironmentCredentialById(ctx context.Context, id string) (Env
 	row := q.db.QueryRowContext(ctx, environmentCredentialById, id)
 	var i EnvironmentCredential
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
+		&i.Id,
+		&i.ProjectId,
 		&i.PublicKey,
 		&i.EncryptedPrivateKey,
 		&i.Revision,
@@ -69,8 +69,8 @@ func (q *Queries) EnvironmentCredentialByProjectLatest(ctx context.Context, proj
 	row := q.db.QueryRowContext(ctx, environmentCredentialByProjectLatest, projectID)
 	var i EnvironmentCredential
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
+		&i.Id,
+		&i.ProjectId,
 		&i.PublicKey,
 		&i.EncryptedPrivateKey,
 		&i.Revision,
@@ -89,7 +89,7 @@ type UpdateEnvironmentCredentialParams struct {
 	PublicKey           string `db:"public_key"`
 	EncryptedPrivateKey string `db:"encrypted_private_key"`
 	Revision            int64  `db:"revision"`
-	ID                  string `db:"id"`
+	Id                  string `db:"id"`
 }
 
 func (q *Queries) UpdateEnvironmentCredential(ctx context.Context, arg UpdateEnvironmentCredentialParams) error {
@@ -97,7 +97,7 @@ func (q *Queries) UpdateEnvironmentCredential(ctx context.Context, arg UpdateEnv
 		arg.PublicKey,
 		arg.EncryptedPrivateKey,
 		arg.Revision,
-		arg.ID,
+		arg.Id,
 	)
 	return err
 }

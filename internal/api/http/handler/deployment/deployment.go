@@ -33,7 +33,7 @@ func (h Handler) GetDeployment(c *gin.Context) {
 	if !ok {
 		return
 	}
-	deployment, err := h.service.DeploymentForUser(c.Request.Context(), current.Id, c.Param("deployment_id"))
+	deployment, err := h.service.DeploymentForUser(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("deployment_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -47,7 +47,7 @@ func (h Handler) DeleteDeployment(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteDeployment(c.Request.Context(), current.Id, c.Param("deployment_id")); err != nil {
+	if err := h.service.DeleteDeployment(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("deployment_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}
@@ -59,7 +59,7 @@ func (h Handler) GetDeploymentLogs(c *gin.Context) {
 	if !ok {
 		return
 	}
-	log, err := h.service.DeploymentLog(c.Request.Context(), current.Id, c.Param("deployment_id"), transport.QueryInt(c.Request.URL.Query().Get("offset"), 0))
+	log, err := h.service.DeploymentLog(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("deployment_id"), transport.QueryInt(c.Request.URL.Query().Get("offset"), 0))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -73,7 +73,7 @@ func (h Handler) GetDeploymentContainerLogs(c *gin.Context) {
 	if !ok {
 		return
 	}
-	log, err := h.service.DeploymentContainerLog(c.Request.Context(), current.Id, c.Param("deployment_id"), transport.QueryInt(c.Request.URL.Query().Get("tail"), 200))
+	log, err := h.service.DeploymentContainerLog(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("deployment_id"), transport.QueryInt(c.Request.URL.Query().Get("tail"), 200))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -92,7 +92,7 @@ func (h Handler) CancelDeployment(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	deployment, err := h.service.CancelDeployment(c.Request.Context(), current.Id, c.Param("deployment_id"))
+	deployment, err := h.service.CancelDeployment(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("deployment_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -111,7 +111,7 @@ func (h Handler) DeployService(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	result, err := h.service.DeployService(c.Request.Context(), current.Id, c.Param("service_id"), deploymentdto.DeployServiceInput{ForceRecreate: req.ForceRecreate, JoinTraefikNetwork: req.JoinTraefikNetwork})
+	result, err := h.service.DeployService(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("service_id"), deploymentdto.DeployServiceInput{ForceRecreate: req.ForceRecreate, JoinTraefikNetwork: req.JoinTraefikNetwork})
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -129,7 +129,7 @@ func (h Handler) StopApplication(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	deploymentId, err := h.service.StopApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTarget(req.ServiceId, req.RemoveVolumes))
+	deploymentId, err := h.service.StopApplication(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id"), deploymentTarget(req.ServiceId, req.RemoveVolumes))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -147,7 +147,7 @@ func (h Handler) RestartApplication(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	deploymentId, err := h.service.RestartApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTarget(req.ServiceId, false))
+	deploymentId, err := h.service.RestartApplication(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id"), deploymentTarget(req.ServiceId, false))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -160,7 +160,7 @@ func (h Handler) GetApplicationStatus(c *gin.Context) {
 	if !ok {
 		return
 	}
-	containers, err := h.service.ApplicationStatus(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTargetFromQuery(c))
+	containers, err := h.service.ApplicationStatus(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id"), deploymentTargetFromQuery(c))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -173,7 +173,7 @@ func (h Handler) GetApplicationLogs(c *gin.Context) {
 	if !ok {
 		return
 	}
-	value, err := h.service.ApplicationLogs(c.Request.Context(), current.Id, c.Param("app_id"), transport.QueryInt(c.Request.URL.Query().Get("tail"), 100), deploymentTargetFromQuery(c), c.Request.URL.Query().Get("component"))
+	value, err := h.service.ApplicationLogs(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id"), transport.QueryInt(c.Request.URL.Query().Get("tail"), 100), deploymentTargetFromQuery(c), c.Request.URL.Query().Get("component"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -191,7 +191,7 @@ func (h Handler) PreviewService(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	compose, err := h.service.PreviewService(c.Request.Context(), current.Id, c.Param("service_id"), deploymentdto.PreviewComposeInput{JoinTraefikNetwork: req.JoinTraefikNetwork})
+	compose, err := h.service.PreviewService(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("service_id"), deploymentdto.PreviewComposeInput{JoinTraefikNetwork: req.JoinTraefikNetwork})
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -209,7 +209,7 @@ func (h Handler) PreviewVersion(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	compose, err := h.service.PreviewVersion(c.Request.Context(), current.Id, c.Param("version_id"), deploymentdto.PreviewComposeInput{JoinTraefikNetwork: req.JoinTraefikNetwork})
+	compose, err := h.service.PreviewVersion(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), deploymentdto.PreviewComposeInput{JoinTraefikNetwork: req.JoinTraefikNetwork})
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -222,7 +222,7 @@ func (h Handler) DeleteApplication(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteApplication(c.Request.Context(), current.Id, c.Param("app_id")); err != nil {
+	if err := h.service.DeleteApplication(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}

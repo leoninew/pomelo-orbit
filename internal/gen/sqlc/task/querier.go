@@ -13,7 +13,7 @@ type Querier interface {
 	CompleteTask(ctx context.Context, arg CompleteTaskParams) error
 	EnqueueTask(ctx context.Context, arg EnqueueTaskParams) error
 	FailTask(ctx context.Context, arg FailTaskParams) error
-	FindTaskByID(ctx context.Context, id string) (BackgroundTask, error)
+	FindTaskById(ctx context.Context, id string) (BackgroundTask, error)
 	TaskToClaim(ctx context.Context, arg TaskToClaimParams) (BackgroundTask, error)
 }
 

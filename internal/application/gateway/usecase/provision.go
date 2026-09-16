@@ -12,15 +12,15 @@ import (
 // publishes a Version, creates a Deployment, waits for runtime state, or
 // changes an existing Service binding. Missing Gateway resources are not created.
 func (s Service) ProvisionGateway(ctx context.Context, userId string, input gatewaydto.ProvisionGatewayInput) (gatewaydto.ProvisionGatewayResult, error) {
-	projectID := strings.TrimSpace(input.ProjectId)
-	if projectID == "" {
+	projectId := strings.TrimSpace(input.ProjectId)
+	if projectId == "" {
 		return gatewaydto.ProvisionGatewayResult{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if instanceKey := strings.TrimSpace(input.InstanceKey); instanceKey != "" && instanceKey != "default" {
 		return gatewaydto.ProvisionGatewayResult{}, apperror.New(apperror.KindValidation, "a project environment supports only the default gateway service")
 	}
 
-	gateways, err := s.ListGateways(ctx, userId, projectID, 1, 1, "")
+	gateways, err := s.ListGateways(ctx, userId, projectId, 1, 1, "")
 	if err != nil {
 		return gatewaydto.ProvisionGatewayResult{}, err
 	}

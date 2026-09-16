@@ -12,12 +12,12 @@ import (
 type Querier interface {
 	CountRoutes(ctx context.Context, arg CountRoutesParams) (int64, error)
 	CreateRoute(ctx context.Context, arg CreateRouteParams) error
-	DeleteRoute(ctx context.Context, id string) error
+	DeleteRoute(ctx context.Context, arg DeleteRouteParams) error
 	ListAllRoutes(ctx context.Context, projectID sql.NullString) ([]ListAllRoutesRow, error)
-	ListEnabledRoutesByProjectID(ctx context.Context, arg ListEnabledRoutesByProjectIDParams) ([]ListEnabledRoutesByProjectIDRow, error)
+	ListEnabledRoutesByProjectId(ctx context.Context, arg ListEnabledRoutesByProjectIdParams) ([]ListEnabledRoutesByProjectIdRow, error)
 	ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListRoutesRow, error)
-	RouteByID(ctx context.Context, id string) (RouteByIDRow, error)
-	RouteByProjectIDAndDomain(ctx context.Context, arg RouteByProjectIDAndDomainParams) (RouteByProjectIDAndDomainRow, error)
+	RouteById(ctx context.Context, arg RouteByIdParams) (RouteByIdRow, error)
+	RouteByProjectIdAndDomain(ctx context.Context, arg RouteByProjectIdAndDomainParams) (RouteByProjectIdAndDomainRow, error)
 	UpdateRoute(ctx context.Context, arg UpdateRouteParams) error
 }
 

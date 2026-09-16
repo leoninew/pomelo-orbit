@@ -46,11 +46,11 @@ func enrichGatewayPlan(plan *model.EffectiveServicePlan) error {
 	if role == "" {
 		role = "base"
 	}
-	versionID := cfg.VersionIDForProfile(role)
-	if versionID == "" {
+	versionId := cfg.VersionIDForProfile(role)
+	if versionId == "" {
 		return fmt.Errorf("gateway Version binding is missing for %s", role)
 	}
-	if plan.Version.Id != versionID {
+	if plan.Version.Id != versionId {
 		return fmt.Errorf("selected Gateway Version does not match the %s binding", role)
 	}
 	component := gatewayPlanComponent(plan, model.GatewayComponentName())

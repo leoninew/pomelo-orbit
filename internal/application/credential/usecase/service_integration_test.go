@@ -52,7 +52,7 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 		t.Fatalf("unexpected decrypted credential data: %q", decrypted)
 	}
 
-	exported, err := service.ExportCredential(ctx, ciTestUserId, created.Id)
+	exported, err := service.ExportCredential(ctx, ciTestUserId, ciTestProjectId, created.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,14 +69,14 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 		t.Fatal(err)
 	}
 	name := "GitHub Token"
-	if _, err := service.UpdateCredential(ctx, ciTestUserId, other.Id, credentialdto.CredentialUpdateInput{Name: &name}); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
+	if _, err := service.UpdateCredential(ctx, ciTestUserId, ciTestProjectId, other.Id, credentialdto.CredentialUpdateInput{Name: &name}); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate credential update conflict, got %v", err)
 	}
 
 	if _, err := database.ExecContext(ctx, `UPDATE repository SET git_credential_id = ? WHERE id = ?`, created.Id, "01KNNRBH52BQJYT9487B2H8N62"); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.DeleteCredential(ctx, ciTestUserId, created.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
+	if err := service.DeleteCredential(ctx, ciTestUserId, ciTestProjectId, created.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected referenced credential delete validation error, got %v", err)
 	}
 }
@@ -95,7 +95,7 @@ func TestCreateCredentialAcceptsGiteaTokenAndRejectsUnknownType(t *testing.T) {
 	if created.Type != "gitea_token" {
 		t.Fatalf("created type=%q", created.Type)
 	}
-	exported, err := service.ExportCredential(ctx, ciTestUserId, created.Id)
+	exported, err := service.ExportCredential(ctx, ciTestUserId, ciTestProjectId, created.Id)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,4 +1,4 @@
--- name: EnvironmentByID :one
+-- name: EnvironmentById :one
 SELECT id, project_id, code, state, target_type, platform, host, port, username, workspace_root,
        ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
        last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
@@ -6,7 +6,7 @@ SELECT id, project_id, code, state, target_type, platform, host, port, username,
 FROM environment
 WHERE id = ?;
 
--- name: EnvironmentByProjectID :one
+-- name: EnvironmentByProjectId :one
 SELECT id, project_id, code, state, target_type, platform, host, port, username, workspace_root,
        ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
        last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,

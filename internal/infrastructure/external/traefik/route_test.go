@@ -150,8 +150,8 @@ func testGateway() model.GatewayConfig {
 
 type routeTargetResolver struct{}
 
-func (routeTargetResolver) ResolveProjectTarget(_ context.Context, projectID string) (environmentport.Target, error) {
-	return environmentport.Target{Environment: model.Environment{Id: "environment-1", ProjectId: projectID, TargetType: model.EnvironmentTargetTypeLocal}}, nil
+func (routeTargetResolver) ResolveProjectTarget(_ context.Context, projectId string) (environmentport.Target, error) {
+	return environmentport.Target{Environment: model.Environment{Id: "environment-1", ProjectId: projectId, TargetType: model.EnvironmentTargetTypeLocal}}, nil
 }
 
 type routeRuntimeFake struct {

@@ -54,7 +54,7 @@ func (h Handler) GetRoute(c *gin.Context) {
 	if !ok {
 		return
 	}
-	route, err := h.service.RouteForUser(c.Request.Context(), current.Id, c.Param("route_id"))
+	route, err := h.service.RouteForUser(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("route_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -73,7 +73,7 @@ func (h Handler) UpdateRoute(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	route, err := h.service.UpdateRoute(c.Request.Context(), current.Id, c.Param("route_id"), routeUpdateInput(&req))
+	route, err := h.service.UpdateRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("route_id"), routeUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -87,7 +87,7 @@ func (h Handler) DeleteRoute(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
+	if err := h.service.DeleteRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("route_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}
@@ -104,7 +104,7 @@ func (h Handler) EnableRoute(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	if _, err := h.service.EnableRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
+	if _, err := h.service.EnableRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("route_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}
@@ -121,7 +121,7 @@ func (h Handler) DisableRoute(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	if _, err := h.service.DisableRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
+	if _, err := h.service.DisableRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("route_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}
@@ -190,7 +190,7 @@ func (h Handler) UploadRouteCert(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid PEM certificate")
 		return
 	}
-	route, err := h.service.UploadRouteCert(c.Request.Context(), current.Id, c.Param("route_id"), certPEM, certKey)
+	route, err := h.service.UploadRouteCert(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("route_id"), certPEM, certKey)
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -204,7 +204,7 @@ func (h Handler) DisableRouteHTTPS(c *gin.Context) {
 	if !ok {
 		return
 	}
-	route, err := h.service.DisableRouteHTTPS(c.Request.Context(), current.Id, c.Param("route_id"))
+	route, err := h.service.DisableRouteHTTPS(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("route_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -223,7 +223,7 @@ func (h Handler) EnableRouteLetsEncrypt(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	route, err := h.service.EnableRouteLetsEncrypt(c.Request.Context(), current.Id, c.Param("route_id"), req.Challenge)
+	route, err := h.service.EnableRouteLetsEncrypt(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("route_id"), req.Challenge)
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -242,7 +242,7 @@ func (h Handler) EnableRouteMkcert(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	route, err := h.service.EnableRouteMkcert(c.Request.Context(), current.Id, c.Param("route_id"))
+	route, err := h.service.EnableRouteMkcert(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("route_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return

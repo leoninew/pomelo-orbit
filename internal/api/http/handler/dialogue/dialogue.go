@@ -23,7 +23,7 @@ func (h Handler) CompleteTurn(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	result, err := h.service.CompleteTurn(c.Request.Context(), current.User.Id, dialogueTurnInput(&req))
+	result, err := h.service.CompleteTurn(c.Request.Context(), current.User.Id, c.Request.URL.Query().Get("project_id"), dialogueTurnInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -62,7 +62,7 @@ func (h Handler) StreamTurn(c *gin.Context) {
 		}
 	}
 
-	result, err := h.service.CompleteTurnWithProgress(c.Request.Context(), current.User.Id, dialogueTurnInput(&req), func(event dialoguedto.StreamEvent) {
+	result, err := h.service.CompleteTurnWithProgress(c.Request.Context(), current.User.Id, c.Request.URL.Query().Get("project_id"), dialogueTurnInput(&req), func(event dialoguedto.StreamEvent) {
 		emit(dialogueStreamEvent(event))
 	})
 	if err != nil {
@@ -106,7 +106,7 @@ func (h Handler) Conversation(c *gin.Context) {
 	if !ok {
 		return
 	}
-	detail, err := h.service.Conversation(c.Request.Context(), current.User.Id, c.Param("conversation_id"))
+	detail, err := h.service.Conversation(c.Request.Context(), current.User.Id, c.Request.URL.Query().Get("project_id"), c.Param("conversation_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -123,7 +123,7 @@ func (h Handler) DeleteConversation(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteConversation(c.Request.Context(), current.User.Id, c.Param("conversation_id")); err != nil {
+	if err := h.service.DeleteConversation(c.Request.Context(), current.User.Id, c.Request.URL.Query().Get("project_id"), c.Param("conversation_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}
@@ -159,7 +159,7 @@ func dialogueTurnInput(req *dialoguev1.DeploymentDialogueTurnReq) dialoguedto.Tu
 	if req == nil {
 		return dialoguedto.TurnInput{}
 	}
-	result := dialoguedto.TurnInput{ProjectId: req.ProjectId, ConversationId: req.GetConversationId(), Messages: make([]dialoguedto.Message, 0, len(req.Messages))}
+	result := dialoguedto.TurnInput{ConversationId: req.GetConversationId(), Messages: make([]dialoguedto.Message, 0, len(req.Messages))}
 	for _, message := range req.Messages {
 		if message != nil {
 			result.Messages = append(result.Messages, dialoguedto.Message{Role: message.Role, Content: message.Content})

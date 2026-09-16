@@ -31,25 +31,25 @@ func (r Repository) q(ctx context.Context) *environmentsqlc.Queries {
 }
 
 func (r Repository) Environment(ctx context.Context, id string) (model.Environment, error) {
-	row, err := r.q(ctx).EnvironmentByID(ctx, id)
+	row, err := r.q(ctx).EnvironmentById(ctx, id)
 	if err != nil {
 		return model.Environment{}, fmt.Errorf("load environment %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return environmentFrom(row), nil
 }
 
-func (r Repository) EnvironmentByProject(ctx context.Context, projectID string) (model.Environment, error) {
-	row, err := r.q(ctx).EnvironmentByProjectID(ctx, projectID)
+func (r Repository) EnvironmentByProject(ctx context.Context, projectId string) (model.Environment, error) {
+	row, err := r.q(ctx).EnvironmentByProjectId(ctx, projectId)
 	if err != nil {
-		return model.Environment{}, fmt.Errorf("load environment for project %s: %w", projectID, sqlcommon.TranslateError(err))
+		return model.Environment{}, fmt.Errorf("load environment for project %s: %w", projectId, sqlcommon.TranslateError(err))
 	}
 	return environmentFrom(row), nil
 }
 
 // EnvironmentByTarget finds another Project bound to the same Docker target.
 // A target is exclusive because managed Gateway ports and network are fixed.
-func (r Repository) EnvironmentByTarget(ctx context.Context, projectID, targetType, host string, port int) (model.Environment, error) {
-	row, err := r.q(ctx).EnvironmentByTarget(ctx, environmentsqlc.EnvironmentByTargetParams{ProjectID: projectID, TargetType: targetType, Column3: targetType, Host: sql.NullString{String: host, Valid: host != ""}, Port: sql.NullInt64{Int64: int64(port), Valid: port > 0}})
+func (r Repository) EnvironmentByTarget(ctx context.Context, projectId, targetType, host string, port int) (model.Environment, error) {
+	row, err := r.q(ctx).EnvironmentByTarget(ctx, environmentsqlc.EnvironmentByTargetParams{ProjectId: projectId, TargetType: targetType, Column3: targetType, Host: sql.NullString{String: host, Valid: host != ""}, Port: sql.NullInt64{Int64: int64(port), Valid: port > 0}})
 	if err != nil {
 		return model.Environment{}, fmt.Errorf("load environment by target: %w", sqlcommon.TranslateError(err))
 	}
@@ -66,8 +66,8 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 		updatedAt = now
 	}
 	if err := r.q(ctx).CreateEnvironment(ctx, environmentsqlc.CreateEnvironmentParams{
-		ID:                    environment.Id,
-		ProjectID:             environment.ProjectId,
+		Id:                    environment.Id,
+		ProjectId:             environment.ProjectId,
 		Code:                  environment.Code,
 		State:                 environment.State,
 		TargetType:            environment.TargetType,
@@ -76,7 +76,7 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 		Port:                  environmentSSHPort(environment),
 		Username:              environmentSSHUsername(environment),
 		WorkspaceRoot:         environmentWorkspaceRoot(environment),
-		SshCredentialID:       environmentSSHCredentialID(environment),
+		SSHCredentialId:       environmentSSHCredentialId(environment),
 		SshCredentialRevision: environmentSSHCredentialRevision(environment),
 		HostKeyFingerprint:    environmentSSHHostKeyFingerprint(environment),
 		TargetRevision:        environment.TargetRevision,
@@ -84,7 +84,7 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 		LastProbeStatus:       dbmodel.NullString(environment.LastProbeStatus),
 		LastProbeAt:           dbmodel.NullTime(environment.LastProbeAt),
 		LastProbeDiagnostic:   dbmodel.NullString(environment.LastProbeDiagnostic),
-		GatewayApplicationID:  dbmodel.NullString(environment.GatewayApplicationId),
+		GatewayApplicationId:  dbmodel.NullString(environment.GatewayApplicationId),
 		CreatedAt:             createdAt,
 		UpdatedAt:             updatedAt,
 	}); err != nil {
@@ -102,58 +102,58 @@ func (r Repository) UpdateEnvironment(ctx context.Context, environment model.Env
 		Port:                  environmentSSHPort(environment),
 		Username:              environmentSSHUsername(environment),
 		WorkspaceRoot:         environmentWorkspaceRoot(environment),
-		SshCredentialID:       environmentSSHCredentialID(environment),
+		SSHCredentialId:       environmentSSHCredentialId(environment),
 		SshCredentialRevision: environmentSSHCredentialRevision(environment),
 		HostKeyFingerprint:    environmentSSHHostKeyFingerprint(environment),
 		TargetRevision:        environment.TargetRevision,
 		UpdatedAt:             time.Now().UTC(),
-		ID:                    environment.Id,
+		Id:                    environment.Id,
 	}); err != nil {
 		return fmt.Errorf("update environment %s: %w", environment.Id, err)
 	}
 	return nil
 }
 
-func (r Repository) RecordProbe(ctx context.Context, environmentID string, targetRevision int64, status string, probedAt time.Time, diagnostic string) (bool, error) {
+func (r Repository) RecordProbe(ctx context.Context, environmentId string, targetRevision int64, status string, probedAt time.Time, diagnostic string) (bool, error) {
 	rows, err := r.q(ctx).RecordEnvironmentProbe(ctx, environmentsqlc.RecordEnvironmentProbeParams{
 		LastProbeRevision:   sql.NullInt64{Int64: targetRevision, Valid: true},
 		LastProbeStatus:     sql.NullString{String: status, Valid: true},
 		LastProbeAt:         sql.NullTime{Time: probedAt, Valid: true},
 		LastProbeDiagnostic: sql.NullString{String: diagnostic, Valid: diagnostic != ""},
 		UpdatedAt:           time.Now().UTC(),
-		ID:                  environmentID,
+		Id:                  environmentId,
 		TargetRevision:      targetRevision,
 	})
 	if err != nil {
-		return false, fmt.Errorf("record environment probe %s: %w", environmentID, err)
+		return false, fmt.Errorf("record environment probe %s: %w", environmentId, err)
 	}
 	return rows == 1, nil
 }
-func (r Repository) BindGatewayApplication(ctx context.Context, environmentID string, gatewayApplicationID string) (bool, error) {
+func (r Repository) BindGatewayApplication(ctx context.Context, environmentId string, gatewayApplicationId string) (bool, error) {
 	rows, err := r.q(ctx).BindGatewayApplication(ctx, environmentsqlc.BindGatewayApplicationParams{
-		GatewayApplicationID: sql.NullString{String: gatewayApplicationID, Valid: true},
+		GatewayApplicationId: sql.NullString{String: gatewayApplicationId, Valid: true},
 		UpdatedAt:            time.Now().UTC(),
-		ID:                   environmentID,
+		Id:                   environmentId,
 	})
 	if err != nil {
-		return false, fmt.Errorf("bind gateway application %s to environment %s: %w", gatewayApplicationID, environmentID, err)
+		return false, fmt.Errorf("bind gateway application %s to environment %s: %w", gatewayApplicationId, environmentId, err)
 	}
 	return rows == 1, nil
 }
 
 func environmentFrom(row environmentsqlc.Environment) model.Environment {
 	item := model.Environment{
-		Id: row.ID, ProjectId: row.ProjectID, Code: row.Code, State: row.State, TargetType: row.TargetType,
+		Id: row.Id, ProjectId: row.ProjectId, Code: row.Code, State: row.State, TargetType: row.TargetType,
 		WorkspaceRoot: row.WorkspaceRoot.String, TargetRevision: row.TargetRevision, LastProbeRevision: int64Ptr(row.LastProbeRevision),
 		LastProbeStatus: dbmodel.StringPtr(row.LastProbeStatus), LastProbeAt: dbmodel.TimePtr(row.LastProbeAt),
-		LastProbeDiagnostic: dbmodel.StringPtr(row.LastProbeDiagnostic), GatewayApplicationId: dbmodel.StringPtr(row.GatewayApplicationID),
+		LastProbeDiagnostic: dbmodel.StringPtr(row.LastProbeDiagnostic), GatewayApplicationId: dbmodel.StringPtr(row.GatewayApplicationId),
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 	if item.TargetType == model.EnvironmentTargetTypeSSH {
 		item.SSH = &model.EnvironmentSSHTarget{
 			Platform: row.Platform.String, Host: row.Host.String, Port: int(row.Port.Int64),
 			Username:     row.Username.String,
-			CredentialId: row.SshCredentialID.String, CredentialRevision: row.SshCredentialRevision.Int64,
+			CredentialId: row.SSHCredentialId.String, CredentialRevision: row.SshCredentialRevision.Int64,
 			HostKeyFingerprint: row.HostKeyFingerprint.String,
 		}
 	}
@@ -195,7 +195,7 @@ func environmentWorkspaceRoot(value model.Environment) sql.NullString {
 	return sql.NullString{String: value.WorkspaceRoot, Valid: true}
 }
 
-func environmentSSHCredentialID(value model.Environment) sql.NullString {
+func environmentSSHCredentialId(value model.Environment) sql.NullString {
 	if value.SSH == nil {
 		return sql.NullString{}
 	}

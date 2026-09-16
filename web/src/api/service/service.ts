@@ -15,54 +15,67 @@ import type {
 import request from '@/utils/request';
 
 export const serviceApi = {
-  list(params: {
-    project_id: string;
-    page?: number;
-    per_page?: number;
-    application_id?: string;
-    status?: string;
-    search?: string;
-  }): Promise<ServicePaginatedResp> {
-    return request.get('/api/service', { params });
+  list(
+    projectId: string,
+    params?: {
+      page?: number;
+      per_page?: number;
+      application_id?: string;
+      status?: string;
+      search?: string;
+    }
+  ): Promise<ServicePaginatedResp> {
+    return request.get('/api/service', { params: { project_id: projectId, ...params } });
   },
 
-  get(id: string): Promise<ServiceResp> {
-    return request.get(`/api/service/${id}`);
+  get(projectId: string, id: string): Promise<ServiceResp> {
+    return request.get(`/api/service/${id}`, { params: { project_id: projectId } });
   },
 
-  create(payload: ServiceCreateReq): Promise<ServiceResp> {
-    return request.post('/api/service', payload);
+  create(projectId: string, payload: ServiceCreateReq): Promise<ServiceResp> {
+    return request.post('/api/service', payload, { params: { project_id: projectId } });
   },
 
-  remove(id: string): Promise<void> {
-    return request.delete(`/api/service/${id}`);
+  remove(projectId: string, id: string): Promise<void> {
+    return request.delete(`/api/service/${id}`, { params: { project_id: projectId } });
   },
 
-  getComponent(serviceId: string, componentId: string): Promise<ServiceComponentDetailResp> {
-    return request.get(`/api/service/${serviceId}/component/${componentId}`);
+  getComponent(
+    projectId: string,
+    serviceId: string,
+    componentId: string
+  ): Promise<ServiceComponentDetailResp> {
+    return request.get(`/api/service/${serviceId}/component/${componentId}`, {
+      params: { project_id: projectId },
+    });
   },
 
   updateComponent(
+    projectId: string,
     serviceId: string,
     componentId: string,
     payload: ServiceComponentOverlayUpdateReq
   ): Promise<ServiceComponentResp> {
-    return request.put(`/api/service/${serviceId}/component/${componentId}`, payload);
+    return request.put(`/api/service/${serviceId}/component/${componentId}`, payload, {
+      params: { project_id: projectId },
+    });
   },
 
-  updateBasic(id: string, payload: ServiceBasicUpdateReq): Promise<ServiceResp> {
-    return request.put(`/api/service/${id}/basic`, payload);
+  updateBasic(projectId: string, id: string, payload: ServiceBasicUpdateReq): Promise<ServiceResp> {
+    return request.put(`/api/service/${id}/basic`, payload, { params: { project_id: projectId } });
   },
 
-  updateEnv(id: string, payload: ServiceEnvUpdateReq): Promise<ServiceResp> {
-    return request.put(`/api/service/${id}/env`, payload);
+  updateEnv(projectId: string, id: string, payload: ServiceEnvUpdateReq): Promise<ServiceResp> {
+    return request.put(`/api/service/${id}/env`, payload, { params: { project_id: projectId } });
   },
 
-  preview(id: string, data: ServicePreviewReq): Promise<ServicePreviewResp> {
-    return request.post(`/api/service/${id}/preview`, data);
+  preview(projectId: string, id: string, data: ServicePreviewReq): Promise<ServicePreviewResp> {
+    return request.post(`/api/service/${id}/preview`, data, { params: { project_id: projectId } });
   },
 
-  deploy(id: string, payload: ServiceDeployReq): Promise<ServiceDeployResp> {
-    return request.post(`/api/service/${id}/deploy`, payload);
+  deploy(projectId: string, id: string, payload: ServiceDeployReq): Promise<ServiceDeployResp> {
+    return request.post(`/api/service/${id}/deploy`, payload, {
+      params: { project_id: projectId },
+    });
   },
 };

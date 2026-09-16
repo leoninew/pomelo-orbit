@@ -146,11 +146,13 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { CredentialDetailResp } from '@/gen/proto/orbit/v1/credential/credential';
+  import { useProjectStore } from '@/stores/project';
   import { formatTime } from '@/utils/time';
 
   const props = defineProps<{ id: string }>();
   const $router = useRouter();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
@@ -163,9 +165,17 @@
   const deleteSubmitError = ref('');
 
   async function fetchCredential() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error('请先选择项目');
+      return;
+    }
     try {
       await execute(async () => {
-        credential.value = await credentialApi.get(props.id);
+        const item = await credentialApi.get(projectId, props.id);
+        if (projectStore.activeProjectId === projectId) {
+          credential.value = item;
+        }
       });
     } catch {
       toast.error('获取凭据详情失败');
@@ -189,9 +199,14 @@
     if (errors.name || errors.data) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      editSubmitError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOp(async () => {
-        await credentialApi.update(props.id, {
+        await credentialApi.update(projectId, props.id, {
           name: form.name,
           data: form.data,
         });
@@ -211,9 +226,14 @@
 
   async function handleDelete() {
     deleteSubmitError.value = '';
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteSubmitError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOp(async () => {
-        await credentialApi.delete(props.id);
+        await credentialApi.delete(projectId, props.id);
         toast.success('删除成功');
         $router.push('/repository-credential');
       });
@@ -223,8 +243,13 @@
   }
 
   async function handleExport() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error('请先选择项目');
+      return;
+    }
     try {
-      const data = await credentialApi.exportCredential(props.id);
+      const data = await credentialApi.exportCredential(projectId, props.id);
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

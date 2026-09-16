@@ -16,11 +16,11 @@ import (
 )
 
 const (
-	seededGatewayApplicationID = "01M10RRA8F863EJ2N9TC3Z2EC1"
-	seededGatewayBaseVersionID = "01M10RRA8F863EJ2N9TDN9JSBW"
+	seededGatewayApplicationId = "01M10RRA8F863EJ2N9TC3Z2EC1"
+	seededGatewayBaseVersionId = "01M10RRA8F863EJ2N9TDN9JSBW"
 	seededGatewayBaseComponent = "01M10RRA8F863EJ2N9TN8CWTEY"
-	seededGatewayServiceID     = "01M10RRA8F863EJ2N9TTG49G6S"
-	seededGatewayRouteID       = "01M10RRA8F863EJ2N9TYPF0CV7"
+	seededGatewayServiceId     = "01M10RRA8F863EJ2N9TTG49G6S"
+	seededGatewayRouteId       = "01M10RRA8F863EJ2N9TYPF0CV7"
 )
 
 func TestDatabaseMigrationFilesAlign(t *testing.T) {
@@ -163,9 +163,9 @@ func TestMigrateUpSQLiteDoesNotSeedDeploymentResources(t *testing.T) {
 	}
 
 	for table, id := range map[string]string{
-		"application": seededGatewayApplicationID,
-		"service":     seededGatewayServiceID,
-		"route":       seededGatewayRouteID,
+		"application": seededGatewayApplicationId,
+		"service":     seededGatewayServiceId,
+		"route":       seededGatewayRouteId,
 	} {
 		var count int
 		if err := database.QueryRow("SELECT COUNT(*) FROM "+table+" WHERE id = ?", id).Scan(&count); err != nil {
@@ -243,10 +243,10 @@ func TestMigrateToSQLiteReplacesHistoricalGatewaySeed(t *testing.T) {
 		}
 	}
 	var versions, bindings int
-	if err := database.QueryRow(`SELECT COUNT(*) FROM version WHERE application_id = ?`, seededGatewayApplicationID).Scan(&versions); err != nil {
+	if err := database.QueryRow(`SELECT COUNT(*) FROM version WHERE application_id = ?`, seededGatewayApplicationId).Scan(&versions); err != nil {
 		t.Fatalf("count replacement Gateway Versions: %v", err)
 	}
-	if err := database.QueryRow(`SELECT COUNT(*) FROM gateway_acme_profile_version WHERE application_id = ?`, seededGatewayApplicationID).Scan(&bindings); err != nil {
+	if err := database.QueryRow(`SELECT COUNT(*) FROM gateway_acme_profile_version WHERE application_id = ?`, seededGatewayApplicationId).Scan(&bindings); err != nil {
 		t.Fatalf("count replacement Gateway bindings: %v", err)
 	}
 	if versions != 0 || bindings != 0 {
@@ -272,13 +272,13 @@ func TestMigrateToSQLiteAdoptsLegacyGatewayEnvironment(t *testing.T) {
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate current schema: %v", err)
 	}
-	var targetType, gatewayApplicationID string
+	var targetType, gatewayApplicationId string
 	var workspaceRoot sql.NullString
-	if err := database.QueryRow(`SELECT target_type, workspace_root, gateway_application_id FROM environment WHERE project_id = '01KRRKK0K3T519ZQZES3M4QA9Z'`).Scan(&targetType, &workspaceRoot, &gatewayApplicationID); err != nil {
+	if err := database.QueryRow(`SELECT target_type, workspace_root, gateway_application_id FROM environment WHERE project_id = '01KRRKK0K3T519ZQZES3M4QA9Z'`).Scan(&targetType, &workspaceRoot, &gatewayApplicationId); err != nil {
 		t.Fatalf("load adopted environment: %v", err)
 	}
-	if targetType != model.EnvironmentTargetTypeLocal || workspaceRoot.Valid || gatewayApplicationID != "01M2LEGACYGATEWAY0000000001" {
-		t.Fatalf("adopted environment = target_type:%q workspace:%v gateway:%q", targetType, workspaceRoot, gatewayApplicationID)
+	if targetType != model.EnvironmentTargetTypeLocal || workspaceRoot.Valid || gatewayApplicationId != "01M2LEGACYGATEWAY0000000001" {
+		t.Fatalf("adopted environment = target_type:%q workspace:%v gateway:%q", targetType, workspaceRoot, gatewayApplicationId)
 	}
 }
 
@@ -301,25 +301,25 @@ func TestSQLiteSystemSeedIDsAreULIDs(t *testing.T) {
 	} {
 		rows, err := database.Query("SELECT id FROM " + table)
 		if err != nil {
-			t.Fatalf("list %s IDs: %v", table, err)
+			t.Fatalf("list %s Ids: %v", table, err)
 		}
 		for rows.Next() {
 			var id string
 			if err := rows.Scan(&id); err != nil {
 				_ = rows.Close()
-				t.Fatalf("scan %s ID: %v", table, err)
+				t.Fatalf("scan %s Id: %v", table, err)
 			}
 			if _, err := ulid.ParseStrict(id); err != nil {
 				_ = rows.Close()
-				t.Fatalf("%s has non-ULID ID %q: %v", table, id, err)
+				t.Fatalf("%s has non-ULID Id %q: %v", table, id, err)
 			}
 		}
 		if err := rows.Err(); err != nil {
 			_ = rows.Close()
-			t.Fatalf("iterate %s IDs: %v", table, err)
+			t.Fatalf("iterate %s Ids: %v", table, err)
 		}
 		if err := rows.Close(); err != nil {
-			t.Fatalf("close %s IDs: %v", table, err)
+			t.Fatalf("close %s Ids: %v", table, err)
 		}
 	}
 }

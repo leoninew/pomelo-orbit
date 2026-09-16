@@ -37,7 +37,7 @@ func TestApplicationStatusResponse(t *testing.T) {
 		t.Fatalf("version fields: got %+v", container)
 	}
 	if container.ComponentId != "component-1" {
-		t.Fatalf("component ID: got %+v", container)
+		t.Fatalf("component Id: got %+v", container)
 	}
 
 	encoded, err := protojson.Marshal(response)
@@ -57,12 +57,12 @@ func TestApplicationStatusResponse(t *testing.T) {
 }
 
 func TestDeploymentResponseIncludesServiceIdentity(t *testing.T) {
-	serviceID := "service-1"
+	serviceId := "service-1"
 	instanceKey := "production"
-	response := deploymentResponse(model.Deployment{Id: "deployment-1", ServiceId: &serviceID, ServiceInstanceKey: &instanceKey})
+	response := deploymentResponse(model.Deployment{Id: "deployment-1", ServiceId: &serviceId, ServiceInstanceKey: &instanceKey})
 
-	if response.ServiceId == nil || *response.ServiceId != serviceID {
-		t.Fatalf("ServiceId = %v, want %q", response.ServiceId, serviceID)
+	if response.ServiceId == nil || *response.ServiceId != serviceId {
+		t.Fatalf("ServiceId = %v, want %q", response.ServiceId, serviceId)
 	}
 	if response.ServiceInstanceKey == nil || *response.ServiceInstanceKey != instanceKey {
 		t.Fatalf("ServiceInstanceKey = %v, want %q", response.ServiceInstanceKey, instanceKey)

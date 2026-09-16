@@ -76,7 +76,7 @@ func (h Handler) GetCredential(c *gin.Context) {
 	if !ok {
 		return
 	}
-	credential, err := h.service.CredentialDetailForUser(c.Request.Context(), current.Id, c.Param("credential_id"))
+	credential, err := h.service.CredentialDetailForUser(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("credential_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -95,7 +95,7 @@ func (h Handler) UpdateCredential(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	updated, err := h.service.UpdateCredential(c.Request.Context(), current.Id, c.Param("credential_id"), credentialdto.CredentialUpdateInput{Name: req.Name, Data: req.Data})
+	updated, err := h.service.UpdateCredential(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("credential_id"), credentialdto.CredentialUpdateInput{Name: req.Name, Data: req.Data})
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -109,7 +109,7 @@ func (h Handler) DeleteCredential(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteCredential(c.Request.Context(), current.Id, c.Param("credential_id")); err != nil {
+	if err := h.service.DeleteCredential(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("credential_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}
@@ -121,7 +121,7 @@ func (h Handler) ExportCredential(c *gin.Context) {
 	if !ok {
 		return
 	}
-	exported, err := h.service.ExportCredential(c.Request.Context(), current.Id, c.Param("credential_id"))
+	exported, err := h.service.ExportCredential(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), c.Param("credential_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return

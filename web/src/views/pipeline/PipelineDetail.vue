@@ -478,6 +478,14 @@
   const router = useRouter();
   const toast = useToast();
   const projectStore = useProjectStore();
+
+  function selectedProjectId(): string {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error('请先选择项目');
+    }
+    return projectId;
+  }
   const { status, execute } = useStatusAsync();
   const { loading: saving, execute: executeSave } = useStatusAsync();
   const pipelineId = computed(() => String(route.params.id));
@@ -604,7 +612,7 @@
   async function fetchPipeline() {
     try {
       await execute(async () => {
-        pipeline.value = await pipelineApi.get(pipelineId.value);
+        pipeline.value = await pipelineApi.get(selectedProjectId(), pipelineId.value);
       });
       await loadStageTemplates();
     } catch (reason) {
@@ -618,8 +626,7 @@
       stageTemplates.value = [];
       return;
     }
-    const response = await pipelineStageApi.list({
-      project_id: pipeline.value.project_id,
+    const response = await pipelineStageApi.list(selectedProjectId(), {
       per_page: 100,
     });
     stageTemplates.value = response.items;
@@ -649,14 +656,13 @@
     infoError.value = '';
     applications.value = [];
     if (!isTemplate.value && !pipeline.value.application_id) {
-      const projectId = pipeline.value.project_id || projectStore.activeProjectId || '';
+      const projectId = selectedProjectId();
       if (!projectId) {
         toast.error('请先选择项目');
         return;
       }
       try {
-        const page = await applicationApi.list({
-          project_id: projectId,
+        const page = await applicationApi.list(projectId, {
           per_page: 100,
         });
         applications.value = page.items ?? [];
@@ -688,7 +694,7 @@
     }
     try {
       await executeSave(async () => {
-        pipeline.value = await pipelineApi.update(pipelineId.value, payload);
+        pipeline.value = await pipelineApi.update(selectedProjectId(), pipelineId.value, payload);
         infoOpen.value = false;
         toast.success('流水线信息已保存');
       });
@@ -789,7 +795,7 @@
     };
     try {
       await executeSave(async () => {
-        pipeline.value = await pipelineApi.update(pipelineId.value, {
+        pipeline.value = await pipelineApi.update(selectedProjectId(), pipelineId.value, {
           variable_declarations: { items: pipelineVariableRequestsWith(variable) },
         });
         variableOpen.value = false;
@@ -809,7 +815,7 @@
   async function deleteVariable(variable: VariableDeclarationResp) {
     try {
       await executeSave(async () => {
-        pipeline.value = await pipelineApi.update(pipelineId.value, {
+        pipeline.value = await pipelineApi.update(selectedProjectId(), pipelineId.value, {
           variable_declarations: {
             items: pipelineCustomVariables.value
               .filter((item) => variableScopeKey(item) !== variableScopeKey(variable))
@@ -856,6 +862,7 @@
     templateUpdatePreview.value = undefined;
     try {
       const preview = await pipelineApi.previewStageTemplateUpdate(
+        selectedProjectId(),
         pipelineId.value,
         editingStage.value.id
       );
@@ -894,10 +901,15 @@
     }
     try {
       await executeSave(async () => {
-        pipeline.value = await pipelineApi.updateStageTemplate(pipelineId.value, stage.id, {
-          expected_source_template_stage_version: preview.expected_source_template_stage_version,
-          target_template_stage_version: preview.target_template_stage_version,
-        });
+        pipeline.value = await pipelineApi.updateStageTemplate(
+          selectedProjectId(),
+          pipelineId.value,
+          stage.id,
+          {
+            expected_source_template_stage_version: preview.expected_source_template_stage_version,
+            target_template_stage_version: preview.target_template_stage_version,
+          }
+        );
         templateUpdateOpen.value = false;
         stageOpen.value = false;
         toast.success('阶段已更新至模板版本');
@@ -921,16 +933,26 @@
     try {
       await executeSave(async () => {
         for (const stage of stages) {
-          const preview = await pipelineApi.previewStageTemplateUpdate(pipelineId.value, stage.id);
+          const preview = await pipelineApi.previewStageTemplateUpdate(
+            selectedProjectId(),
+            pipelineId.value,
+            stage.id
+          );
           if (!preview.available) {
             skippedCount += 1;
             updatedStageCount.value += 1;
             continue;
           }
-          pipeline.value = await pipelineApi.updateStageTemplate(pipelineId.value, stage.id, {
-            expected_source_template_stage_version: preview.expected_source_template_stage_version,
-            target_template_stage_version: preview.target_template_stage_version,
-          });
+          pipeline.value = await pipelineApi.updateStageTemplate(
+            selectedProjectId(),
+            pipelineId.value,
+            stage.id,
+            {
+              expected_source_template_stage_version:
+                preview.expected_source_template_stage_version,
+              target_template_stage_version: preview.target_template_stage_version,
+            }
+          );
           updatedStageCount.value += 1;
         }
       });
@@ -974,14 +996,19 @@
     try {
       await executeSave(async () => {
         if (editingStage.value) {
-          pipeline.value = await pipelineApi.updateStage(pipelineId.value, editingStage.value.id, {
-            name: payload.name,
-            depends_on: { items: payload.depends_on },
-            sort_order: payload.sort_order,
-            description: payload.description,
-          });
+          pipeline.value = await pipelineApi.updateStage(
+            selectedProjectId(),
+            pipelineId.value,
+            editingStage.value.id,
+            {
+              name: payload.name,
+              depends_on: { items: payload.depends_on },
+              sort_order: payload.sort_order,
+              description: payload.description,
+            }
+          );
         } else {
-          pipeline.value = await pipelineApi.importStage(pipelineId.value, {
+          pipeline.value = await pipelineApi.importStage(selectedProjectId(), pipelineId.value, {
             source_template_stage_id: stageForm.source_template_stage_id,
             name: payload.name,
             description: payload.description,
@@ -1000,7 +1027,11 @@
   async function removeStage(stage: PipelineStageNodeResp) {
     try {
       await executeSave(async () => {
-        pipeline.value = await pipelineApi.deleteStage(pipelineId.value, stage.id);
+        pipeline.value = await pipelineApi.deleteStage(
+          selectedProjectId(),
+          pipelineId.value,
+          stage.id
+        );
         toast.success('阶段已删除');
       });
     } catch (reason) {
@@ -1024,7 +1055,7 @@
     runLoading.value = true;
     runOpen.value = true;
     try {
-      const repository = await repositoryApi.get(repositoryId);
+      const repository = await repositoryApi.get(selectedProjectId(), repositoryId);
       if (request !== runDialogRequest) {
         return;
       }
@@ -1052,7 +1083,7 @@
     }
     try {
       await executeSave(async () => {
-        const run = await pipelineRunApi.trigger(pipelineId.value, {
+        const run = await pipelineRunApi.trigger(selectedProjectId(), pipelineId.value, {
           repository_ref: repositoryRef,
         });
         runOpen.value = false;
@@ -1072,7 +1103,7 @@
     deleteError.value = '';
     try {
       await executeSave(async () => {
-        await pipelineApi.delete(pipelineId.value);
+        await pipelineApi.delete(selectedProjectId(), pipelineId.value);
         toast.success('流水线已删除');
         await router.push('/pipeline');
       });

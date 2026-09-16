@@ -36,7 +36,7 @@ func (h Handler) GetGateway(c *gin.Context) {
 	if !ok {
 		return
 	}
-	view, err := h.service.GatewayForUser(c.Request.Context(), current.Id, c.Param("gateway_id"))
+	view, err := h.service.GatewayForUser(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("gateway_id"))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -55,7 +55,7 @@ func (h Handler) UpdateGateway(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	view, err := h.service.UpdateGateway(c.Request.Context(), current.Id, c.Param("gateway_id"), gatewayUpdateInput(&req))
+	view, err := h.service.UpdateGateway(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("gateway_id"), gatewayUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -69,7 +69,7 @@ func (h Handler) DeleteGateway(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteGateway(c.Request.Context(), current.Id, c.Param("gateway_id")); err != nil {
+	if err := h.service.DeleteGateway(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("gateway_id")); err != nil {
 		transport.WriteError(c, err)
 		return
 	}

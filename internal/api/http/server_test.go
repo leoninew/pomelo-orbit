@@ -247,7 +247,7 @@ func assertServerErrorResponse(t *testing.T, recorder *httptest.ResponseRecorder
 	if response.Code != code || response.RequestId == "" {
 		t.Fatalf("unexpected error response: %+v", response)
 	}
-	if got := recorder.Header().Get("X-Request-ID"); got != response.RequestId {
+	if got := recorder.Header().Get("X-Request-Id"); got != response.RequestId {
 		t.Fatalf("expected matching request id header and body, got header=%q body=%q", got, response.RequestId)
 	}
 }

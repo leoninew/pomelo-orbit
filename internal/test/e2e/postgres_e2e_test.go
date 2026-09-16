@@ -23,8 +23,8 @@ import (
 const (
 	postgresE2EConfigEnv = "BACKEND_GO_POSTGRES_E2E_CONFIG"
 	postgresE2EDsnEnv    = "BACKEND_GO_POSTGRES_E2E_DSN"
-	postgresAdminID      = "01KKX2YNPF6VJ9N7QYCWG61KVK"
-	postgresProjectID    = "01KRRKK0K3T519ZQZES3M4QA9Z"
+	postgresAdminId      = "01KKX2YNPF6VJ9N7QYCWG61KVK"
+	postgresProjectId    = "01KRRKK0K3T519ZQZES3M4QA9Z"
 )
 
 func TestPostgreSQLMigrationE2E(t *testing.T) {
@@ -84,15 +84,15 @@ func testPostgresRepositoriesAndTransaction(t *testing.T, database *sql.DB) {
 	if err != nil {
 		t.Fatalf("load seeded admin through sqlc: %v", err)
 	}
-	if user.Id != postgresAdminID || user.Username != "admin" {
+	if user.Id != postgresAdminId || user.Username != "admin" {
 		t.Fatalf("unexpected seeded admin: id=%q username=%q", user.Id, user.Username)
 	}
 
-	projects, err := projectrepo.NewRepository(database).ListActiveProjectsByMember(ctx, postgresAdminID)
+	projects, err := projectrepo.NewRepository(database).ListActiveProjectsByMember(ctx, postgresAdminId)
 	if err != nil {
 		t.Fatalf("list active projects through sqlc: %v", err)
 	}
-	if len(projects) != 1 || projects[0].Id != postgresProjectID || !projects[0].IsActive {
+	if len(projects) != 1 || projects[0].Id != postgresProjectId || !projects[0].IsActive {
 		t.Fatalf("unexpected active projects: %+v", projects)
 	}
 
@@ -100,7 +100,7 @@ func testPostgresRepositoriesAndTransaction(t *testing.T, database *sql.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE "user" SET status = ? WHERE id = ?`, "disabled", postgresAdminID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE "user" SET status = ? WHERE id = ?`, "disabled", postgresAdminId); err != nil {
 		_ = tx.Rollback()
 		t.Fatalf("execute transaction with postgres placeholders: %v", err)
 	}
@@ -109,7 +109,7 @@ func testPostgresRepositoriesAndTransaction(t *testing.T, database *sql.DB) {
 	}
 
 	var status string
-	if err := database.QueryRowContext(ctx, `SELECT status FROM "user" WHERE id = ?`, postgresAdminID).Scan(&status); err != nil {
+	if err := database.QueryRowContext(ctx, `SELECT status FROM "user" WHERE id = ?`, postgresAdminId).Scan(&status); err != nil {
 		t.Fatal(err)
 	}
 	if status != "enabled" {
@@ -126,7 +126,7 @@ func testPostgresOptionalQueryFilters(t *testing.T, database *sql.DB) {
 		t.Fatalf("count repositories without optional filters: %v", err)
 	}
 	if _, err := repositoryQueries.CountRepositories(ctx, repositoriessqlc.CountRepositoriesParams{
-		ProjectID:     sql.NullString{String: postgresProjectID, Valid: true},
+		ProjectId:     sql.NullString{String: postgresProjectId, Valid: true},
 		SearchPattern: sql.NullString{String: "%gateway%", Valid: true},
 	}); err != nil {
 		t.Fatalf("count repositories with optional text filters: %v", err)
@@ -140,7 +140,7 @@ func testPostgresOptionalQueryFilters(t *testing.T, database *sql.DB) {
 
 	deploymentQueries := deploymentsqlc.New(database)
 	if _, err := deploymentQueries.CountDeployments(ctx, deploymentsqlc.CountDeploymentsParams{
-		ProjectID: sql.NullString{String: postgresProjectID, Valid: true},
+		ProjectId: sql.NullString{String: postgresProjectId, Valid: true},
 	}); err != nil {
 		t.Fatalf("count deployments without optional filters: %v", err)
 	}
@@ -153,7 +153,7 @@ func testPostgresOptionalQueryFilters(t *testing.T, database *sql.DB) {
 		t.Fatalf("count pipeline runs with optional time filters: %v", err)
 	}
 	if _, err := deploymentQueries.CountDeployments(ctx, deploymentsqlc.CountDeploymentsParams{
-		ProjectID: sql.NullString{String: postgresProjectID, Valid: true},
+		ProjectId: sql.NullString{String: postgresProjectId, Valid: true},
 		DateFrom:  sql.NullTime{Time: now.Add(-time.Hour), Valid: true},
 		DateTo:    sql.NullTime{Time: now, Valid: true},
 	}); err != nil {

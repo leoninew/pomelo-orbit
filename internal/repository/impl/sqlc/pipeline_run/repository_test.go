@@ -3,10 +3,12 @@ package pipelinerunrepo
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 	_ "modernc.org/sqlite"
 )
 
@@ -86,8 +88,8 @@ func TestListQueriesBindNamedPaginationParameters(t *testing.T) {
 		t.Fatalf("artifacts=%+v", artifacts.Items)
 	}
 
-	projectID := "project-1"
-	runArtifacts, err := repository.ListArtifactsByRun(ctx, &projectID, "run-1")
+	projectId := "project-1"
+	runArtifacts, err := repository.ListArtifactsByRun(ctx, projectId, "run-1")
 	if err != nil {
 		t.Fatalf("list artifacts by run: %v", err)
 	}
@@ -103,13 +105,13 @@ func TestBeginPipelineStageRunRequiresRunningParentRun(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = database.Close() })
 	if _, err := database.Exec(`
-		CREATE TABLE pipeline_run (id TEXT PRIMARY KEY, status TEXT NOT NULL);
+		CREATE TABLE pipeline_run (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, status TEXT NOT NULL);
 		CREATE TABLE pipeline_stage_run (
 			id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL, stage_id TEXT NOT NULL,
 			stage_name TEXT NOT NULL, status TEXT NOT NULL, started_at DATETIME,
 			finished_at DATETIME, exit_code INTEGER, error_message TEXT
 		);
-		INSERT INTO pipeline_run (id, status) VALUES ('run-1', 'canceled');
+		INSERT INTO pipeline_run (id, project_id, status) VALUES ('run-1', 'project-1', 'canceled');
 		INSERT INTO pipeline_stage_run (id, pipeline_run_id, stage_id, stage_name, status)
 		VALUES ('stage-run-1', 'run-1', 'stage-1', 'build', 'waiting_to_run');
 	`); err != nil {
@@ -117,7 +119,7 @@ func TestBeginPipelineStageRunRequiresRunningParentRun(t *testing.T) {
 	}
 
 	repository := NewRepository(database)
-	begun, err := repository.BeginPipelineStageRun(context.Background(), "stage-run-1")
+	begun, err := repository.BeginPipelineStageRun(context.Background(), "project-1", "stage-run-1")
 	if err != nil {
 		t.Fatalf("begin stage run: %v", err)
 	}
@@ -128,7 +130,7 @@ func TestBeginPipelineStageRunRequiresRunningParentRun(t *testing.T) {
 	if _, err := database.Exec(`UPDATE pipeline_run SET status = 'running' WHERE id = 'run-1'`); err != nil {
 		t.Fatal(err)
 	}
-	begun, err = repository.BeginPipelineStageRun(context.Background(), "stage-run-1")
+	begun, err = repository.BeginPipelineStageRun(context.Background(), "project-1", "stage-run-1")
 	if err != nil {
 		t.Fatalf("begin stage run for running parent: %v", err)
 	}
@@ -152,11 +154,11 @@ func TestDeletePipelineRunDeletesRelatedRecords(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = database.Close() })
 	if _, err := database.Exec(`
-		CREATE TABLE pipeline_run (id TEXT PRIMARY KEY);
+		CREATE TABLE pipeline_run (id TEXT PRIMARY KEY, project_id TEXT NOT NULL);
 		CREATE TABLE pipeline_stage_run (id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL);
 		CREATE TABLE pipeline_run_version_binding (pipeline_run_id TEXT PRIMARY KEY);
 		CREATE TABLE artifact (id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL);
-		INSERT INTO pipeline_run (id) VALUES ('run-1');
+		INSERT INTO pipeline_run (id, project_id) VALUES ('run-1', 'project-1');
 		INSERT INTO pipeline_stage_run (id, pipeline_run_id) VALUES ('stage-run-1', 'run-1');
 		INSERT INTO pipeline_run_version_binding (pipeline_run_id) VALUES ('run-1');
 		INSERT INTO artifact (id, pipeline_run_id) VALUES ('artifact-1', 'run-1');
@@ -164,7 +166,18 @@ func TestDeletePipelineRunDeletesRelatedRecords(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := NewRepository(database).DeletePipelineRun(context.Background(), "run-1"); err != nil {
+	repoStore := NewRepository(database)
+	if err := repoStore.DeletePipelineRun(context.Background(), "project-2", "run-1"); err != nil {
+		t.Fatalf("DeletePipelineRun for another project returned error: %v", err)
+	}
+	var runCount int
+	if err := database.QueryRow("SELECT COUNT(*) FROM pipeline_run").Scan(&runCount); err != nil {
+		t.Fatal(err)
+	}
+	if runCount != 1 {
+		t.Fatalf("cross-project delete removed %d runs", 1-runCount)
+	}
+	if err := repoStore.DeletePipelineRun(context.Background(), "project-1", "run-1"); err != nil {
 		t.Fatalf("DeletePipelineRun returned error: %v", err)
 	}
 	for _, table := range []string{"pipeline_run", "pipeline_stage_run", "pipeline_run_version_binding", "artifact"} {
@@ -175,5 +188,61 @@ func TestDeletePipelineRunDeletesRelatedRecords(t *testing.T) {
 		if count != 0 {
 			t.Fatalf("%s count = %d, want 0", table, count)
 		}
+	}
+}
+
+func TestPipelineRunDerivedQueriesRequireMatchingProject(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if _, err := database.Exec(`
+		CREATE TABLE pipeline_run (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, status TEXT NOT NULL);
+		CREATE TABLE pipeline_stage_run (
+			id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL, stage_id TEXT NOT NULL,
+			stage_name TEXT NOT NULL, status TEXT NOT NULL, started_at DATETIME,
+			finished_at DATETIME, exit_code INTEGER, error_message TEXT
+		);
+		CREATE TABLE pipeline_run_version_binding (
+			pipeline_run_id TEXT PRIMARY KEY, application_id TEXT NOT NULL, application_name TEXT NOT NULL,
+			source_version_id TEXT NOT NULL, source_version_label TEXT NOT NULL,
+			generated_version_id TEXT, generated_version_label TEXT
+		);
+		CREATE TABLE artifact (
+			id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL, pipeline_stage_id TEXT NOT NULL,
+			name TEXT NOT NULL, collector TEXT NOT NULL, value TEXT, value_format TEXT
+		);
+		INSERT INTO pipeline_run (id, project_id, status) VALUES ('run-1', 'project-1', 'running');
+		INSERT INTO pipeline_stage_run (id, pipeline_run_id, stage_id, stage_name, status)
+		VALUES ('stage-run-1', 'run-1', 'stage-1', 'Build', 'waiting_to_run');
+		INSERT INTO pipeline_run_version_binding (pipeline_run_id, application_id, application_name, source_version_id, source_version_label)
+		VALUES ('run-1', 'application-1', 'Application', 'version-1', 'v1');
+		INSERT INTO artifact (id, pipeline_run_id, pipeline_stage_id, name, collector, value, value_format)
+		VALUES ('artifact-1', 'run-1', 'stage-1', 'commit', 'command', '0123456789012345678901234567890123456789', 'git_object_id');
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	repoStore := NewRepository(database)
+	stageRuns, err := repoStore.ListPipelineStageRuns(context.Background(), "project-1", "run-1")
+	if err != nil {
+		t.Fatalf("ListPipelineStageRuns: %v", err)
+	}
+	if len(stageRuns) != 1 || stageRuns[0].Id != "stage-run-1" {
+		t.Fatalf("stage runs=%+v", stageRuns)
+	}
+	stageRuns, err = repoStore.ListPipelineStageRuns(context.Background(), "project-2", "run-1")
+	if err != nil {
+		t.Fatalf("ListPipelineStageRuns for another project: %v", err)
+	}
+	if len(stageRuns) != 0 {
+		t.Fatalf("cross-project stage runs=%+v", stageRuns)
+	}
+	if _, err := repoStore.PipelineRunVersionBinding(context.Background(), "project-2", "run-1"); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("cross-project version binding error=%v, want not found", err)
+	}
+	if _, err := repoStore.CommandArtifactByRunStageAndName(context.Background(), "project-2", "run-1", "stage-1", "commit"); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("cross-project command artifact error=%v, want not found", err)
 	}
 }

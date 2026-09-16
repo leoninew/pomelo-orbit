@@ -58,14 +58,14 @@ type snapshotOrderPublisher struct {
 	events *[]string
 }
 
-func (p *snapshotOrderPublisher) WaitUntilReady(ctx context.Context, projectID string, gateway model.GatewayConfig, timeout time.Duration) error {
+func (p *snapshotOrderPublisher) WaitUntilReady(ctx context.Context, projectId string, gateway model.GatewayConfig, timeout time.Duration) error {
 	*p.events = append(*p.events, "wait")
-	return p.recordingRoutePublisher.WaitUntilReady(ctx, projectID, gateway, timeout)
+	return p.recordingRoutePublisher.WaitUntilReady(ctx, projectId, gateway, timeout)
 }
 
-func (p *snapshotOrderPublisher) ApplySnapshot(ctx context.Context, projectID string, gateway model.GatewayConfig, routes []model.Route) error {
+func (p *snapshotOrderPublisher) ApplySnapshot(ctx context.Context, projectId string, gateway model.GatewayConfig, routes []model.Route) error {
 	*p.events = append(*p.events, "apply")
-	return p.recordingRoutePublisher.ApplySnapshot(ctx, projectID, gateway, routes)
+	return p.recordingRoutePublisher.ApplySnapshot(ctx, projectId, gateway, routes)
 }
 
 type snapshotOrderRouterClient struct {

@@ -151,7 +151,7 @@ func settingDefinitions(cfg config.Config) []settingsdto.Definition {
 		{Key: "turnstile__verify_url", Default: cfg.Turnstile.VerifyUrl, Description: "Cloudflare Turnstile siteverify URL"},
 		{Key: "settings__secret_keys", Default: cfg.Settings.SecretKeys, Description: "Settings fields marked as secret"},
 		{Key: "pipeline_run__execution_timeout", Default: cfg.PipelineRun.ExecutionTimeout.String(), Description: "Maximum pipeline execution duration"},
-		{Key: "worker__id", Default: cfg.Worker.Id, Description: "Background worker ID"},
+		{Key: "worker__id", Default: cfg.Worker.Id, Description: "Background worker Id"},
 		{Key: "worker__poll_interval", Default: cfg.Worker.PollInterval.String(), Description: "Background worker poll interval"},
 		{Key: "worker__lease_duration", Default: cfg.Worker.LeaseDuration.String(), Description: "Background task lease duration"},
 		{Key: "worker__max_attempts", Default: cfg.Worker.MaxAttempts, Description: "Attempts frozen into each new background task"},

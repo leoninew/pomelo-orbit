@@ -575,6 +575,7 @@
     ServiceComponentOverlayUpdateReq,
     ServiceResp,
   } from '@/gen/proto/orbit/v1/service/service';
+  import { useProjectStore } from '@/stores/project';
   import ServiceEnvironmentCard from './components/ServiceEnvironmentCard.vue';
   import {
     componentEnvironmentListRows,
@@ -645,10 +646,19 @@
   const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const serviceId = String(route.params.id || '');
   const componentId = String(route.params.componentId || '');
+
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error('请先选择项目');
+    }
+    return projectId;
+  }
   const service = ref<ServiceResp>();
   const detail = ref<ServiceComponentDetailResp>();
   const breadcrumbs = computed(() => {
@@ -891,6 +901,7 @@
     try {
       await executeOperation(async () => {
         const updated = await serviceApi.updateComponent(
+          selectedProjectId(),
           serviceId,
           componentId,
           componentEnvironmentPayload()
@@ -1223,8 +1234,8 @@
     try {
       await execute(async () => {
         const [serviceValue, value] = await Promise.all([
-          serviceApi.get(serviceId),
-          serviceApi.getComponent(serviceId, componentId),
+          serviceApi.get(selectedProjectId(), serviceId),
+          serviceApi.getComponent(selectedProjectId(), serviceId, componentId),
         ]);
         service.value = serviceValue;
         detail.value = value;
@@ -1238,7 +1249,7 @@
   async function save() {
     try {
       await executeOperation(async () => {
-        await serviceApi.updateComponent(serviceId, componentId, payload());
+        await serviceApi.updateComponent(selectedProjectId(), serviceId, componentId, payload());
         await load();
         toast.success('已保存，等待显式部署');
       });

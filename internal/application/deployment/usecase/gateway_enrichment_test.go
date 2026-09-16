@@ -39,13 +39,13 @@ func testGatewayEnrichmentPlan(profile, email, token string) model.EffectiveServ
 	if role == "" {
 		role = "base"
 	}
-	versionID := "version-" + role
+	versionId := "version-" + role
 	return model.EffectiveServicePlan{
 		Application: model.Application{Id: "gateway-1", Code: "traefik"},
-		Version:     model.Version{Id: versionID},
+		Version:     model.Version{Id: versionId},
 		Gateway: &model.GatewayConfig{
 			ApplicationId: "gateway-1", NetworkName: "traefik", AcmeProfile: profile, AcmeEmail: email, DNSApiToken: token,
-			VersionBindings: []model.GatewayVersionBinding{{Profile: role, VersionId: versionID}},
+			VersionBindings: []model.GatewayVersionBinding{{Profile: role, VersionId: versionId}},
 		},
 		Components: []model.EffectiveServiceComponent{{
 			Name: "traefik",

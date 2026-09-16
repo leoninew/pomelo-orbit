@@ -2,7 +2,9 @@
 /* eslint-disable vue/one-component-per-file -- The test uses lightweight child component doubles. */
 import { createApp, h, nextTick } from 'vue';
 import { createI18n } from 'vue-i18n';
+import { createPinia, setActivePinia } from 'pinia';
 import { describe, expect, it, vi } from 'vitest';
+import { useProjectStore } from '@/stores/project';
 
 const { getLogs, getDeployment } = vi.hoisted(() => ({
   getLogs: vi.fn(),
@@ -64,6 +66,9 @@ describe('RuntimeContainerLogsDrawer', () => {
       locale: 'en',
       messages: { en: { common: { cancel: 'Cancel', refresh: 'Refresh' } } },
     });
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    useProjectStore().setActiveProject('project-1');
     const app = createApp({
       render: () =>
         h(RuntimeContainerLogsDrawer, {
@@ -77,6 +82,7 @@ describe('RuntimeContainerLogsDrawer', () => {
           },
         }),
     });
+    app.use(pinia);
     app.use(i18n);
     document.body.append(target);
     app.mount(target);
@@ -84,7 +90,13 @@ describe('RuntimeContainerLogsDrawer', () => {
     await flushAsyncWork();
 
     expect(getLogs).toHaveBeenCalledOnce();
-    expect(getDeployment).toHaveBeenCalledWith('deployment-1', expect.any(Object));
+    expect(getLogs).toHaveBeenCalledWith(
+      'project-1',
+      'application-1',
+      { tail: 200, service_id: 'service-1', component: 'web' },
+      expect.any(Object)
+    );
+    expect(getDeployment).toHaveBeenCalledWith('project-1', 'deployment-1', expect.any(Object));
     expect(target.querySelector('[data-logs]')?.getAttribute('data-logs')).toBe(
       'container started'
     );

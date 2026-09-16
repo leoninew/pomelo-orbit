@@ -7,26 +7,26 @@ import request, { remoteRequestConfig } from '@/utils/request';
 
 export const projectEnvironmentApi = {
   get(projectId: string): Promise<EnvironmentResp> {
-    return request.get(`/api/project/${projectId}/environment`);
+    return request.get('/api/environment', { params: { project_id: projectId } });
   },
 
   update(projectId: string, data: ProjectEnvironmentUpdateReq): Promise<EnvironmentResp> {
-    return request.put(`/api/project/${projectId}/environment`, data);
+    return request.put('/api/environment', data, { params: { project_id: projectId } });
   },
 
   probe(projectId: string): Promise<EnvironmentResp> {
     return request.post(
-      `/api/project/${projectId}/environment/probe`,
+      '/api/environment/probe',
       undefined,
-      remoteRequestConfig()
+      remoteRequestConfig({ params: { project_id: projectId } })
     );
   },
 
   initialize(projectId: string, data: ProjectEnvironmentInitializeReq): Promise<EnvironmentResp> {
     return request.post(
-      `/api/project/${projectId}/environment/initialize`,
+      '/api/environment/initialize',
       data,
-      remoteRequestConfig()
+      remoteRequestConfig({ params: { project_id: projectId } })
     );
   },
 };

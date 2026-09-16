@@ -11,12 +11,12 @@ import (
 type Querier interface {
 	CountRepositoryCredentials(ctx context.Context, arg CountRepositoryCredentialsParams) (int64, error)
 	CreateRepositoryCredential(ctx context.Context, arg CreateRepositoryCredentialParams) error
-	DeleteRepositoryCredential(ctx context.Context, id string) error
+	DeleteRepositoryCredential(ctx context.Context, arg DeleteRepositoryCredentialParams) error
 	ListRepositoryCredentials(ctx context.Context, arg ListRepositoryCredentialsParams) ([]ListRepositoryCredentialsRow, error)
-	RepositoryCredentialById(ctx context.Context, id string) (RepositoryCredentialByIdRow, error)
+	RepositoryCredentialById(ctx context.Context, arg RepositoryCredentialByIdParams) (RepositoryCredentialByIdRow, error)
 	RepositoryCredentialByName(ctx context.Context, arg RepositoryCredentialByNameParams) (RepositoryCredentialByNameRow, error)
-	RepositoryCredentialExists(ctx context.Context, id string) (int64, error)
-	RepositoryCredentialName(ctx context.Context, id string) (string, error)
+	RepositoryCredentialExists(ctx context.Context, arg RepositoryCredentialExistsParams) (int64, error)
+	RepositoryCredentialName(ctx context.Context, arg RepositoryCredentialNameParams) (string, error)
 	RepositoryCredentialReferencedByRepositories(ctx context.Context, arg RepositoryCredentialReferencedByRepositoriesParams) (int64, error)
 	UpdateRepositoryCredential(ctx context.Context, arg UpdateRepositoryCredentialParams) error
 }

@@ -31,12 +31,12 @@ func (r Repository) q(ctx context.Context) *projectsqlc.Queries {
 }
 
 func (r Repository) Project(ctx context.Context, id string) (model.Project, error) {
-	project, err := r.q(ctx).ProjectByID(ctx, id)
+	project, err := r.q(ctx).ProjectById(ctx, id)
 	if err != nil {
 		return model.Project{}, fmt.Errorf("load project %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return model.Project{
-		Id:        project.ID,
+		Id:        project.Id,
 		Name:      project.Name,
 		Code:      project.Code,
 		IsActive:  project.IsActive,
@@ -53,7 +53,7 @@ func (r Repository) ListProjectsByMember(ctx context.Context, userId string) ([]
 	projects := make([]model.Project, 0, len(rows))
 	for _, row := range rows {
 		projects = append(projects, model.Project{
-			Id:        row.ID,
+			Id:        row.Id,
 			Name:      row.Name,
 			Code:      row.Code,
 			IsActive:  row.IsActive,
@@ -72,7 +72,7 @@ func (r Repository) ListActiveProjectsByMember(ctx context.Context, userId strin
 	projects := make([]model.Project, 0, len(rows))
 	for _, row := range rows {
 		projects = append(projects, model.Project{
-			Id:        row.ID,
+			Id:        row.Id,
 			Name:      row.Name,
 			Code:      row.Code,
 			IsActive:  row.IsActive,
@@ -89,7 +89,7 @@ func (r Repository) ProjectByCode(ctx context.Context, code string) (model.Proje
 		return model.Project{}, fmt.Errorf("load project by code %s: %w", code, sqlcommon.TranslateError(err))
 	}
 	return model.Project{
-		Id:        project.ID,
+		Id:        project.Id,
 		Name:      project.Name,
 		Code:      project.Code,
 		IsActive:  project.IsActive,
@@ -100,8 +100,8 @@ func (r Repository) ProjectByCode(ctx context.Context, code string) (model.Proje
 
 func (r Repository) IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error) {
 	count, err := r.q(ctx).IsProjectMember(ctx, projectsqlc.IsProjectMemberParams{
-		ProjectID: projectId,
-		UserID:    userId,
+		ProjectId: projectId,
+		UserId:    userId,
 	})
 	if err != nil {
 		return false, fmt.Errorf("check project member %s/%s: %w", projectId, userId, err)
@@ -112,7 +112,7 @@ func (r Repository) IsProjectMember(ctx context.Context, projectId string, userI
 func (r Repository) CreateProject(ctx context.Context, project model.Project, userId string) error {
 	q := r.q(ctx)
 	if err := q.CreateProject(ctx, projectsqlc.CreateProjectParams{
-		ID:        project.Id,
+		Id:        project.Id,
 		Name:      project.Name,
 		Code:      project.Code,
 		IsActive:  project.IsActive,
@@ -122,8 +122,8 @@ func (r Repository) CreateProject(ctx context.Context, project model.Project, us
 		return fmt.Errorf("create project %s: %w", project.Code, err)
 	}
 	if err := q.AddProjectMember(ctx, projectsqlc.AddProjectMemberParams{
-		ProjectID: project.Id,
-		UserID:    userId,
+		ProjectId: project.Id,
+		UserId:    userId,
 		CreatedAt: time.Now().UTC(),
 	}); err != nil {
 		return fmt.Errorf("add project creator %s/%s: %w", project.Id, userId, err)
@@ -135,7 +135,7 @@ func (r Repository) UpdateProject(ctx context.Context, project model.Project) er
 	err := r.q(ctx).UpdateProject(ctx, projectsqlc.UpdateProjectParams{
 		Name:      project.Name,
 		UpdatedAt: time.Now().UTC(),
-		ID:        project.Id,
+		Id:        project.Id,
 	})
 	if err != nil {
 		return fmt.Errorf("update project %s: %w", project.Id, err)
@@ -146,7 +146,7 @@ func (r Repository) UpdateProject(ctx context.Context, project model.Project) er
 func (r Repository) DeprecateProject(ctx context.Context, projectId string) error {
 	err := r.q(ctx).DeprecateProject(ctx, projectsqlc.DeprecateProjectParams{
 		UpdatedAt: time.Now().UTC(),
-		ID:        projectId,
+		Id:        projectId,
 	})
 	if err != nil {
 		return fmt.Errorf("deprecate project %s: %w", projectId, err)
@@ -178,12 +178,12 @@ func (r Repository) ProjectMembers(ctx context.Context, projectId string) ([]mod
 	users := make([]model.User, 0, len(rows))
 	for _, row := range rows {
 		users = append(users, model.User{
-			Id:              row.ID,
+			Id:              row.Id,
 			Username:        row.Username,
 			PasswordHash:    row.PasswordHash,
 			Status:          row.Status,
 			OAuthProvider:   row.OauthProvider,
-			OAuthProviderId: row.OauthProviderID,
+			OAuthProviderId: row.OAuthProviderId,
 			Email:           row.Email,
 			AuthSource:      row.AuthSource,
 			CreatedAt:       row.CreatedAt,
@@ -203,8 +203,8 @@ func (r Repository) AddProjectMember(ctx context.Context, projectId string, user
 		return nil
 	}
 	if err := r.q(ctx).AddProjectMember(ctx, projectsqlc.AddProjectMemberParams{
-		ProjectID: projectId,
-		UserID:    userId,
+		ProjectId: projectId,
+		UserId:    userId,
 		CreatedAt: time.Now().UTC(),
 	}); err != nil {
 		return fmt.Errorf("add project member %s/%s: %w", projectId, userId, err)
@@ -214,8 +214,8 @@ func (r Repository) AddProjectMember(ctx context.Context, projectId string, user
 
 func (r Repository) RemoveProjectMember(ctx context.Context, projectId string, userId string) error {
 	err := r.q(ctx).RemoveProjectMember(ctx, projectsqlc.RemoveProjectMemberParams{
-		ProjectID: projectId,
-		UserID:    userId,
+		ProjectId: projectId,
+		UserId:    userId,
 	})
 	if err != nil {
 		return fmt.Errorf("remove project member %s/%s: %w", projectId, userId, err)

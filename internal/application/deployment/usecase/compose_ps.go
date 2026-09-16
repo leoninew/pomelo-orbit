@@ -12,7 +12,7 @@ import (
 // composePsRow is the docker compose ps --format json record schema used by
 // the runtime command.
 type composePsRow struct {
-	Id      string `json:"ID"`
+	Id      string `json:"Id"`
 	Name    string `json:"Name"`
 	Service string `json:"Service"`
 	State   string `json:"State"`

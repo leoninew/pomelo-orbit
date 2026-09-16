@@ -43,7 +43,7 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if route.Id == "" || route.CertType != "manual" || route.HTTPSEnabled {
 		t.Fatalf("unexpected created route: %+v", route)
 	}
-	if err := service.DeleteRoute(ctx, routeTestUserId, route.Id); err != nil {
+	if err := service.DeleteRoute(ctx, routeTestUserId, routeTestProjectId, route.Id); err != nil {
 		t.Fatal(err)
 	}
 
@@ -57,10 +57,10 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if len(publisher.snapshots) != 0 {
 		t.Fatalf("expected no snapshot publication before explicit sync, got %+v", publisher.snapshots)
 	}
-	if err := service.DeleteRoute(ctx, routeTestUserId, enabled.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
+	if err := service.DeleteRoute(ctx, routeTestUserId, routeTestProjectId, enabled.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected enabled route delete validation error, got %v", err)
 	}
-	disabled, err := service.DisableRoute(ctx, routeTestUserId, enabled.Id)
+	disabled, err := service.DisableRoute(ctx, routeTestUserId, routeTestProjectId, enabled.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,14 +71,14 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 		t.Fatalf("expected no snapshot publication after disable, got %+v", publisher.snapshots)
 	}
 
-	certRoute, err := service.UploadRouteCert(ctx, routeTestUserId, disabled.Id, "CERT", "KEY")
+	certRoute, err := service.UploadRouteCert(ctx, routeTestUserId, routeTestProjectId, disabled.Id, "CERT", "KEY")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !certRoute.HTTPSEnabled || certRoute.CertType != "manual" {
 		t.Fatalf("unexpected manual cert route: %+v", certRoute)
 	}
-	certRoute, err = service.EnableRouteLetsEncrypt(ctx, routeTestUserId, disabled.Id, acmeChallengeHTTP)
+	certRoute, err = service.EnableRouteLetsEncrypt(ctx, routeTestUserId, routeTestProjectId, disabled.Id, acmeChallengeHTTP)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,10 +127,10 @@ func TestRouteServiceRequiresTokenAndGatewayCapabilityForDNSLetsEncrypt(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, route.Id, acmeChallengeDNS); err == nil || !strings.Contains(err.Error(), "Gateway DNS API token") {
+	if _, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, routeTestProjectId, route.Id, acmeChallengeDNS); err == nil || !strings.Contains(err.Error(), "Gateway DNS API token") {
 		t.Fatalf("missing DNS token error = %v", err)
 	}
-	stored, err := service.route.Route(ctx, route.Id)
+	stored, err := service.route.Route(ctx, routeTestProjectId, route.Id)
 	if err != nil || stored.HTTPSEnabled || stored.CertType != certTypeManual {
 		t.Fatalf("route changed after token refusal: %+v, err=%v", stored, err)
 	}
@@ -142,7 +142,7 @@ func TestRouteServiceRequiresTokenAndGatewayCapabilityForDNSLetsEncrypt(t *testi
 	if err := service.gateway.UpsertGatewayConfig(ctx, gateway); err != nil {
 		t.Fatal(err)
 	}
-	enabled, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, route.Id, acmeChallengeDNS)
+	enabled, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, routeTestProjectId, route.Id, acmeChallengeDNS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,10 +168,10 @@ func TestRouteServiceMutationsDoNotPublishWhenTraefikHasUnmanagedRestRoute(t *te
 	client.routers = []routeport.TraefikRouter{{Name: "legacy-route@rest", Provider: "rest", Status: "enabled"}}
 	published := len(publisher.snapshots)
 
-	if _, err := service.DisableRoute(ctx, routeTestUserId, managed.Id); err != nil {
+	if _, err := service.DisableRoute(ctx, routeTestUserId, routeTestProjectId, managed.Id); err != nil {
 		t.Fatalf("expected route change to ignore unmanaged router, got %v", err)
 	}
-	stored, err := service.RouteForUser(ctx, routeTestUserId, managed.Id)
+	stored, err := service.RouteForUser(ctx, routeTestUserId, routeTestProjectId, managed.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ func TestRouteServiceSyncAppliesPendingEnableChange(t *testing.T) {
 	if preview.Matched || len(preview.Differences) != 1 || preview.Differences[0].Action != "added" || preview.Differences[0].Field != "route" || preview.Differences[0].BusinessValue != "HTTP Host(`pending.example.test`) -> http://host.docker.internal:8091" || preview.Differences[0].TraefikValue != "" {
 		t.Fatalf("pending enable preview = %+v", preview)
 	}
-	if stored, err := service.route.Route(ctx, route.Id); err != nil || stored.Enabled {
+	if stored, err := service.route.Route(ctx, routeTestProjectId, route.Id); err != nil || stored.Enabled {
 		t.Fatalf("preview changed business state: route=%+v err=%v", stored, err)
 	}
 	if err := service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
@@ -246,7 +246,7 @@ func TestRouteServiceSyncAppliesPendingEnableChange(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	stored, err := service.route.Route(ctx, route.Id)
+	stored, err := service.route.Route(ctx, routeTestProjectId, route.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +277,7 @@ func TestRouteServiceRejectsStaleSyncPreview(t *testing.T) {
 	}); err == nil || !apperror.IsKind(err, apperror.KindConflict) || apperror.Classify(err).Code != routeSyncPreviewExpiredCode {
 		t.Fatalf("stale preview error = %v", err)
 	}
-	stored, err := service.route.Route(ctx, route.Id)
+	stored, err := service.route.Route(ctx, routeTestProjectId, route.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,10 +301,10 @@ func TestRouteServiceRenameWaitsForFullSync(t *testing.T) {
 	published := len(publisher.snapshots)
 	newName := "renamed-route"
 
-	if _, err := service.UpdateRoute(ctx, routeTestUserId, route.Id, routedto.RouteUpdateInput{Name: &newName}); err != nil {
+	if _, err := service.UpdateRoute(ctx, routeTestUserId, routeTestProjectId, route.Id, routedto.RouteUpdateInput{Name: &newName}); err != nil {
 		t.Fatalf("expected rename to ignore unmanaged router, got %v", err)
 	}
-	stored, err := service.RouteForUser(ctx, routeTestUserId, route.Id)
+	stored, err := service.RouteForUser(ctx, routeTestUserId, routeTestProjectId, route.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +333,7 @@ func TestRouteServiceKeepsEnabledCustomTargetWhenAnotherRouteIsDisabled(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.DisableRoute(ctx, routeTestUserId, other.Id); err != nil {
+	if _, err := service.DisableRoute(ctx, routeTestUserId, routeTestProjectId, other.Id); err != nil {
 		t.Fatal(err)
 	}
 	if len(publisher.snapshots) != 0 {
@@ -431,7 +431,7 @@ func TestRouteServiceCreatesManagedHTTPRoute(t *testing.T) {
 	}
 	updatedName := "app-route-edited"
 	emptyTargetURL := ""
-	updated, err := service.UpdateRoute(ctx, routeTestUserId, route.Id, routedto.RouteUpdateInput{
+	updated, err := service.UpdateRoute(ctx, routeTestUserId, routeTestProjectId, route.Id, routedto.RouteUpdateInput{
 		Name:      &updatedName,
 		TargetUrl: &emptyTargetURL,
 	})
@@ -533,7 +533,7 @@ func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
 	if conflict != "" {
 		t.Fatalf("stopped service host endpoint conflict = %q, want none", conflict)
 	}
-	if err := servicerepo.NewRepository(database).UpdateServiceStatus(ctx, target.Id, status.ServiceStatusRunning); err != nil {
+	if err := servicerepo.NewRepository(database).UpdateServiceStatus(ctx, routeTestProjectId, target.Id, status.ServiceStatusRunning); err != nil {
 		t.Fatal(err)
 	}
 	_, err = service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
@@ -545,17 +545,17 @@ func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
 	}
 }
 
-func seedTCPRouteTarget(t *testing.T, database *sql.DB, projectID, appID, versionID, serviceID string) model.Service {
+func seedTCPRouteTarget(t *testing.T, database *sql.DB, projectId, appId, versionId, serviceId string) model.Service {
 	t.Helper()
 	ctx := context.Background()
 	appRepo := applicationrepo.NewRepository(database)
 	serviceRepo := servicerepo.NewRepository(database)
-	app := model.Application{Id: appID, ProjectId: &projectID, Name: "Redis", Code: "redis", Kind: status.ApplicationKindStandard}
+	app := model.Application{Id: appId, ProjectId: &projectId, Name: "Redis", Code: "redis", Kind: status.ApplicationKindStandard}
 	if err := appRepo.CreateApplication(ctx, app); err != nil {
 		t.Fatalf("seed TCP target application: %v", err)
 	}
 	conflictingPort := 16380
-	version := model.Version{Id: versionID, ApplicationId: app.Id, Label: "v1", Status: status.VersionStatusPublished}
+	version := model.Version{Id: versionId, ApplicationId: app.Id, Label: "v1", Status: status.VersionStatusPublished}
 	component := model.VersionComponent{
 		Id: "01KROUTETARGETCOMPONENT00001", VersionId: version.Id, Name: "redis", Image: "redis:7", PullPolicy: "missing",
 		Endpoints: []model.VersionComponentEndpoint{
@@ -563,30 +563,30 @@ func seedTCPRouteTarget(t *testing.T, database *sql.DB, projectID, appID, versio
 			{Protocol: "tcp", ContainerPort: 6380, Mode: "local", ListenPort: &conflictingPort},
 		},
 	}
-	if err := appRepo.CreateVersionWithVersionComponents(ctx, version, []model.VersionComponent{component}); err != nil {
+	if err := appRepo.CreateVersionWithVersionComponents(ctx, projectId, version, []model.VersionComponent{component}); err != nil {
 		t.Fatalf("seed TCP target version: %v", err)
 	}
-	target := model.Service{Id: serviceID, ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "redis-default", Status: status.ServiceStatusStopped}
+	target := model.Service{Id: serviceId, ProjectId: projectId, ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "redis-default", Status: status.ServiceStatusStopped}
 	serviceComponent := model.ServiceComponent{
 		Id: "01KROUTETARGETSERVICECOMP01", ServiceId: target.Id,
 		SourceVersionComponentId: component.Id, ComponentName: component.Name, Status: "active",
 	}
-	if err := serviceRepo.CreateServiceWithComponents(ctx, target, []model.ServiceComponent{serviceComponent}); err != nil {
+	if err := serviceRepo.CreateServiceWithComponents(ctx, projectId, target, []model.ServiceComponent{serviceComponent}); err != nil {
 		t.Fatalf("seed TCP target service: %v", err)
 	}
 	return target
 }
 
-func seedHTTPRouteTarget(t *testing.T, database *sql.DB, projectID, appID, versionID, serviceID string) model.Service {
+func seedHTTPRouteTarget(t *testing.T, database *sql.DB, projectId, appId, versionId, serviceId string) model.Service {
 	t.Helper()
 	ctx := context.Background()
 	appRepo := applicationrepo.NewRepository(database)
 	serviceRepo := servicerepo.NewRepository(database)
-	app := model.Application{Id: appID, ProjectId: &projectID, Name: "API", Code: "api", Kind: status.ApplicationKindStandard}
+	app := model.Application{Id: appId, ProjectId: &projectId, Name: "API", Code: "api", Kind: status.ApplicationKindStandard}
 	if err := appRepo.CreateApplication(ctx, app); err != nil {
 		t.Fatalf("seed HTTP target application: %v", err)
 	}
-	version := model.Version{Id: versionID, ApplicationId: app.Id, Label: "v1", Status: status.VersionStatusPublished}
+	version := model.Version{Id: versionId, ApplicationId: app.Id, Label: "v1", Status: status.VersionStatusPublished}
 	component := model.VersionComponent{
 		Id: "01KROUTEHTTPCOMPONENT000001", VersionId: version.Id, Name: "api", Image: "api:test", PullPolicy: "missing",
 		Endpoints: []model.VersionComponentEndpoint{
@@ -594,15 +594,15 @@ func seedHTTPRouteTarget(t *testing.T, database *sql.DB, projectID, appID, versi
 			{Protocol: "tcp", ContainerPort: 9090, Mode: "internal"},
 		},
 	}
-	if err := appRepo.CreateVersionWithVersionComponents(ctx, version, []model.VersionComponent{component}); err != nil {
+	if err := appRepo.CreateVersionWithVersionComponents(ctx, projectId, version, []model.VersionComponent{component}); err != nil {
 		t.Fatalf("seed HTTP target version: %v", err)
 	}
-	target := model.Service{Id: serviceID, ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "api-default", Status: status.ServiceStatusStopped}
+	target := model.Service{Id: serviceId, ProjectId: projectId, ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "api-default", Status: status.ServiceStatusStopped}
 	serviceComponent := model.ServiceComponent{
 		Id: "01KROUTEHTTPSERVICECOMP00001", ServiceId: target.Id,
 		SourceVersionComponentId: component.Id, ComponentName: component.Name, Status: "active",
 	}
-	if err := serviceRepo.CreateServiceWithComponents(ctx, target, []model.ServiceComponent{serviceComponent}); err != nil {
+	if err := serviceRepo.CreateServiceWithComponents(ctx, projectId, target, []model.ServiceComponent{serviceComponent}); err != nil {
 		t.Fatalf("seed HTTP target service: %v", err)
 	}
 	return target
@@ -651,11 +651,11 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 	}
 	version := model.Version{Id: "01KROUTEGATEWAYVERSION00001", ApplicationId: app.Id, Label: "managed", Status: status.VersionStatusPublished}
 	component := model.VersionComponent{Id: "01KROUTEGATEWAYCOMPONENT01", VersionId: version.Id, Name: "traefik", Image: "traefik:3.6", PullPolicy: "missing"}
-	if err := appRepo.CreateVersionWithVersionComponents(ctx, version, []model.VersionComponent{component}); err != nil {
+	if err := appRepo.CreateVersionWithVersionComponents(ctx, projectId, version, []model.VersionComponent{component}); err != nil {
 		t.Fatalf("seed gateway version: %v", err)
 	}
-	gatewayService := model.Service{Id: "01KROUTEGATEWAYSERVICE0000001", ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "test-gateway-default", Status: status.ServiceStatusStopped}
-	if err := serviceRepo.CreateServiceWithComponents(ctx, gatewayService, []model.ServiceComponent{{Id: "01KROUTEGATEWAYSERVICECOMP0001", ServiceId: gatewayService.Id, SourceVersionComponentId: component.Id, ComponentName: component.Name, Status: "active"}}); err != nil {
+	gatewayService := model.Service{Id: "01KROUTEGATEWAYSERVICE0000001", ProjectId: projectId, ApplicationId: app.Id, VersionId: version.Id, InstanceKey: "default", Code: "test-gateway-default", Status: status.ServiceStatusStopped}
+	if err := serviceRepo.CreateServiceWithComponents(ctx, projectId, gatewayService, []model.ServiceComponent{{Id: "01KROUTEGATEWAYSERVICECOMP0001", ServiceId: gatewayService.Id, SourceVersionComponentId: component.Id, ComponentName: component.Name, Status: "active"}}); err != nil {
 		t.Fatalf("seed gateway service: %v", err)
 	}
 	if err := gwRepo.UpsertGatewayConfig(ctx, model.GatewayConfig{

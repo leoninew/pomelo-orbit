@@ -37,6 +37,7 @@
   import { deploymentApi } from '@/api/deployment/deployment';
   import AppDrawer from '@/components/AppDrawer.vue';
   import ContainerLogView from '@/components/ContainerLogView.vue';
+  import { useProjectStore } from '@/stores/project';
   import { isComplete } from '@/utils/status';
   import { delayAsync } from '@/utils/time';
   import type { RuntimeContainerLogTarget } from './runtimeContainerLogs';
@@ -53,6 +54,7 @@
   type LogStatus = 'loading' | 'streaming' | 'done' | 'empty' | 'error';
 
   const { t } = useI18n({ useScope: 'global' });
+  const projectStore = useProjectStore();
   const logText = ref('');
   const status = ref<LogStatus>('loading');
   const logError = ref('');
@@ -69,8 +71,15 @@
       status.value = logText.value ? 'streaming' : 'loading';
       logError.value = '';
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      status.value = 'error';
+      logError.value = t('service.logs.loadFailed');
+      return;
+    }
     try {
       const data = await applicationApi.getLogs(
+        projectId,
         props.target.applicationId,
         {
           tail: 200,
@@ -104,11 +113,12 @@
 
   async function deploymentIsComplete(generation: number, signal: AbortSignal) {
     const deploymentId = props.target.deploymentId;
-    if (!deploymentId) {
+    const projectId = projectStore.activeProjectId;
+    if (!deploymentId || !projectId) {
       return false;
     }
     try {
-      const deployment = await deploymentApi.get(deploymentId, { signal });
+      const deployment = await deploymentApi.get(projectId, deploymentId, { signal });
       return isCurrentRefresh(generation, signal) && isComplete(deployment.status);
     } catch {
       // Logs remain available even if the task detail endpoint is transiently unavailable.

@@ -91,12 +91,9 @@ func (s Service) ListGateways(ctx context.Context, userId string, projectId stri
 	if environment.GatewayApplicationId == nil {
 		return repository.Page[gatewaydto.GatewayView]{Items: []gatewaydto.GatewayView{}, Page: max(page, 1), PerPage: max(perPage, 1)}, nil
 	}
-	app, err := s.application.Application(ctx, *environment.GatewayApplicationId)
+	app, err := s.application.Application(ctx, projectId, *environment.GatewayApplicationId)
 	if err != nil {
 		return repository.Page[gatewaydto.GatewayView]{}, apperror.Wrap(apperror.KindInternal, "Failed to load bound gateway application", err)
-	}
-	if app.ProjectId == nil || *app.ProjectId != projectId {
-		return repository.Page[gatewaydto.GatewayView]{}, apperror.New(apperror.KindInternal, "Gateway environment binding belongs to another project")
 	}
 	search = strings.ToLower(strings.TrimSpace(search))
 	if search != "" && !strings.Contains(strings.ToLower(app.Name), search) && !strings.Contains(strings.ToLower(app.Code), search) {
@@ -106,7 +103,7 @@ func (s Service) ListGateways(ctx context.Context, userId string, projectId stri
 	if err != nil {
 		return repository.Page[gatewaydto.GatewayView]{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
 	}
-	view, err := s.gatewayView(ctx, app, cfg, false)
+	view, err := s.gatewayView(ctx, projectId, app, cfg, false)
 	if err != nil {
 		return repository.Page[gatewaydto.GatewayView]{}, err
 	}
@@ -118,8 +115,8 @@ func (s Service) ListGateways(ctx context.Context, userId string, projectId stri
 	return repository.Page[gatewaydto.GatewayView]{Items: []gatewaydto.GatewayView{view}, Total: 1, Page: page, PerPage: perPage}, nil
 }
 
-func (s Service) CreateGateway(ctx context.Context, userId string, input gatewaydto.GatewayCreateInput) (gatewaydto.GatewayView, error) {
-	projectId := strings.TrimSpace(input.ProjectId)
+func (s Service) CreateGateway(ctx context.Context, userId string, projectId string, input gatewaydto.GatewayCreateInput) (gatewaydto.GatewayView, error) {
+	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -218,17 +215,17 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 			return apperror.Wrap(apperror.KindInternal, "Failed to create gateway config", err)
 		}
 		for _, item := range versions {
-			if err := s.application.CreateVersion(txCtx, item.Version); err != nil {
+			if err := s.application.CreateVersion(txCtx, projectId, item.Version); err != nil {
 				return apperror.Wrap(apperror.KindInternal, "Failed to create gateway version", err)
 			}
-			if err := s.application.ReplaceVersionComponents(txCtx, item.Version.Id, []model.VersionComponent{item.Component}); err != nil {
+			if err := s.application.ReplaceVersionComponents(txCtx, projectId, item.Version.Id, []model.VersionComponent{item.Component}); err != nil {
 				return apperror.Wrap(apperror.KindInternal, "Failed to create gateway component", err)
 			}
 		}
 		if err := s.config.ReplaceGatewayVersionBindings(txCtx, app.Id, cfg.VersionBindings); err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to bind gateway versions", err)
 		}
-		if _, err := s.serviceCommands.CreateService(txCtx, userId, servicedto.ServiceCreateInput{
+		if _, err := s.serviceCommands.CreateService(txCtx, userId, projectId, servicedto.ServiceCreateInput{
 			ApplicationId: app.Id,
 			VersionId:     cfg.VersionIDForProfile(gatewayVersionRoleBase),
 			InstanceKey:   "default",
@@ -250,15 +247,15 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	}); err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	return s.GatewayForUser(ctx, userId, app.Id)
+	return s.GatewayForUser(ctx, userId, projectId, app.Id)
 }
 
-func (s Service) GatewayForUser(ctx context.Context, userId string, applicationId string) (gatewaydto.GatewayView, error) {
-	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+func (s Service) GatewayForUser(ctx context.Context, userId string, projectId string, applicationId string) (gatewaydto.GatewayView, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	if err := s.ensureGatewayEnvironmentBinding(ctx, app); err != nil {
+	if err := s.ensureGatewayEnvironmentBinding(ctx, projectId, app); err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
 	cfg, err := s.config.GatewayConfig(ctx, app.Id)
@@ -268,17 +265,14 @@ func (s Service) GatewayForUser(ctx context.Context, userId string, applicationI
 		}
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
 	}
-	return s.gatewayView(ctx, app, cfg, true)
+	return s.gatewayView(ctx, projectId, app, cfg, true)
 }
 
-func (s Service) ensureGatewayEnvironmentBinding(ctx context.Context, app model.Application) error {
+func (s Service) ensureGatewayEnvironmentBinding(ctx context.Context, projectId string, app model.Application) error {
 	if s.environment == nil {
 		return apperror.New(apperror.KindInternal, "gateway environment store is not configured")
 	}
-	if app.ProjectId == nil || strings.TrimSpace(*app.ProjectId) == "" {
-		return apperror.New(apperror.KindValidation, "Gateway application must belong to a project")
-	}
-	environment, err := s.environment.EnvironmentByProject(ctx, *app.ProjectId)
+	environment, err := s.environment.EnvironmentByProject(ctx, projectId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return apperror.New(apperror.KindNotFound, "Gateway environment binding not found")
@@ -291,8 +285,8 @@ func (s Service) ensureGatewayEnvironmentBinding(ctx context.Context, app model.
 	return nil
 }
 
-func (s Service) gatewayView(ctx context.Context, app model.Application, cfg model.GatewayConfig, includeExposures bool) (gatewaydto.GatewayView, error) {
-	services, err := s.service.ListServicesByApplication(ctx, app.Id)
+func (s Service) gatewayView(ctx context.Context, projectId string, app model.Application, cfg model.GatewayConfig, includeExposures bool) (gatewaydto.GatewayView, error) {
+	services, err := s.service.ListServicesByApplication(ctx, projectId, app.Id)
 	if err != nil {
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway services", err)
 	}
@@ -318,10 +312,7 @@ func (s Service) gatewayView(ctx context.Context, app model.Application, cfg mod
 	if !includeExposures {
 		return view, nil
 	}
-	if app.ProjectId == nil {
-		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "Gateway application has no project")
-	}
-	exposures, err := s.listActiveGatewayExposures(ctx, *app.ProjectId, &cfg)
+	exposures, err := s.listActiveGatewayExposures(ctx, projectId, &cfg)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
@@ -329,8 +320,8 @@ func (s Service) gatewayView(ctx context.Context, app model.Application, cfg mod
 	return view, nil
 }
 
-func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId string, input gatewaydto.GatewayUpdateInput) (gatewaydto.GatewayView, error) {
-	view, err := s.GatewayForUser(ctx, userId, applicationId)
+func (s Service) UpdateGateway(ctx context.Context, userId string, projectId string, applicationId string, input gatewaydto.GatewayUpdateInput) (gatewaydto.GatewayView, error) {
+	view, err := s.GatewayForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
@@ -343,10 +334,6 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 			return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "Invalid gateway name")
 		}
 		if name != app.Name {
-			projectId := ""
-			if app.ProjectId != nil {
-				projectId = *app.ProjectId
-			}
 			if err := s.ensureApplicationNameAvailable(ctx, projectId, name); err != nil {
 				return gatewaydto.GatewayView{}, err
 			}
@@ -355,7 +342,7 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 		}
 	}
 	if appDirty {
-		if err := s.application.UpdateApplication(ctx, app); err != nil {
+		if err := s.application.UpdateApplication(ctx, projectId, app); err != nil {
 			return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to update gateway application", err)
 		}
 	}
@@ -418,29 +405,31 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 	if err := s.config.UpsertGatewayConfig(ctx, cfg); err != nil {
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to update gateway config", err)
 	}
-	return s.GatewayForUser(ctx, userId, applicationId)
+	return s.GatewayForUser(ctx, userId, projectId, applicationId)
 }
 
-func (s Service) DeleteGateway(ctx context.Context, userId string, applicationId string) error {
-	if _, err := s.GatewayForUser(ctx, userId, applicationId); err != nil {
+func (s Service) DeleteGateway(ctx context.Context, userId string, projectId string, applicationId string) error {
+	if _, err := s.GatewayForUser(ctx, userId, projectId, applicationId); err != nil {
 		return err
 	}
 	return apperror.New(apperror.KindValidation, "Gateway cannot be deleted after it is bound to a project environment")
 }
 
-func (s Service) loadApplicationForUser(ctx context.Context, userId string, applicationId string) (model.Application, error) {
+func (s Service) loadApplicationForUser(ctx context.Context, userId string, projectId string, applicationId string) (model.Application, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Application{}, err
+	}
 	applicationId = strings.TrimSpace(applicationId)
-	app, err := s.application.Application(ctx, applicationId)
+	app, err := s.application.Application(ctx, projectId, applicationId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Application{}, apperror.New(apperror.KindNotFound, "Application "+applicationId+" not found")
 		}
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
-	}
-	if app.ProjectId != nil {
-		if err := s.ensureProjectMembership(ctx, *app.ProjectId, userId); err != nil {
-			return model.Application{}, err
-		}
 	}
 	return app, nil
 }
@@ -659,14 +648,14 @@ func buildGatewayExposureItem(app model.Application, service model.Service, comp
 	}, nil
 }
 
-func (s Service) listActiveGatewayExposures(ctx context.Context, projectID string, gateway *model.GatewayConfig) ([]gatewaydto.GatewayExposureItem, error) {
-	apps, err := s.application.ListApplications(ctx, &projectID, 1, 10000, "", status.ApplicationKindStandard)
+func (s Service) listActiveGatewayExposures(ctx context.Context, projectId string, gateway *model.GatewayConfig) ([]gatewaydto.GatewayExposureItem, error) {
+	apps, err := s.application.ListApplications(ctx, projectId, 1, 10000, "", status.ApplicationKindStandard)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list applications for exposures", err)
 	}
 	var items []gatewaydto.GatewayExposureItem
 	for _, app := range apps.Items {
-		services, err := s.service.ListServicesByApplication(ctx, app.Id)
+		services, err := s.service.ListServicesByApplication(ctx, projectId, app.Id)
 		if err != nil {
 			return nil, apperror.Wrap(apperror.KindInternal, "Failed to list services", err)
 		}
@@ -674,11 +663,11 @@ func (s Service) listActiveGatewayExposures(ctx context.Context, projectID strin
 			if !isActiveServiceStatus(service.Status) {
 				continue
 			}
-			declarations, err := s.application.VersionComponentsByVersion(ctx, service.VersionId)
+			declarations, err := s.application.VersionComponentsByVersion(ctx, projectId, service.VersionId)
 			if err != nil {
 				return nil, apperror.Wrap(apperror.KindInternal, "Failed to list version components", err)
 			}
-			overlays, err := s.service.ServiceComponentsByService(ctx, service.Id)
+			overlays, err := s.service.ServiceComponentsByService(ctx, projectId, service.Id)
 			if err != nil {
 				return nil, apperror.Wrap(apperror.KindInternal, "Failed to list service components", err)
 			}

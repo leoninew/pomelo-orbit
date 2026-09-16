@@ -16,7 +16,7 @@ SELECT COUNT(*)
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
-WHERE a.project_id = ?
+WHERE s.project_id = ?
   AND (
     CAST(? AS CHAR) IS NULL
     OR s.application_id = ?
@@ -33,17 +33,17 @@ WHERE a.project_id = ?
 `
 
 type CountServicesByProjectParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
-	ApplicationID sql.NullString `db:"application_id"`
+	ProjectId     string         `db:"project_id"`
+	ApplicationId sql.NullString `db:"application_id"`
 	Status        sql.NullString `db:"status"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountServicesByProject(ctx context.Context, arg CountServicesByProjectParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countServicesByProject,
-		arg.ProjectID,
-		arg.ApplicationID,
-		arg.ApplicationID,
+		arg.ProjectId,
+		arg.ApplicationId,
+		arg.ApplicationId,
 		arg.Status,
 		arg.Status,
 		arg.SearchPattern,
@@ -58,70 +58,140 @@ func (q *Queries) CountServicesByProject(ctx context.Context, arg CountServicesB
 const deleteService = `-- name: DeleteService :exec
 DELETE FROM service
 WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) DeleteService(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteService, id)
+type DeleteServiceParams struct {
+	Id        string `db:"id"`
+	ProjectId string `db:"project_id"`
+}
+
+func (q *Queries) DeleteService(ctx context.Context, arg DeleteServiceParams) error {
+	_, err := q.db.ExecContext(ctx, deleteService, arg.Id, arg.ProjectId)
 	return err
 }
 
 const deleteServiceComponentEndpoints = `-- name: DeleteServiceComponentEndpoints :exec
 DELETE FROM service_component_endpoint
 WHERE service_component_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service_component
+    JOIN service ON service.id = service_component.service_id
+    WHERE service_component.id = service_component_endpoint.service_component_id
+      AND service.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteServiceComponentEndpoints(ctx context.Context, serviceComponentID string) error {
-	_, err := q.db.ExecContext(ctx, deleteServiceComponentEndpoints, serviceComponentID)
+type DeleteServiceComponentEndpointsParams struct {
+	ServiceComponentId string `db:"service_component_id"`
+	ProjectId          string `db:"project_id"`
+}
+
+func (q *Queries) DeleteServiceComponentEndpoints(ctx context.Context, arg DeleteServiceComponentEndpointsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteServiceComponentEndpoints, arg.ServiceComponentId, arg.ProjectId)
 	return err
 }
 
 const deleteServiceComponentEnv = `-- name: DeleteServiceComponentEnv :exec
 DELETE FROM service_component_env
 WHERE service_component_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service_component
+    JOIN service ON service.id = service_component.service_id
+    WHERE service_component.id = service_component_env.service_component_id
+      AND service.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteServiceComponentEnv(ctx context.Context, serviceComponentID string) error {
-	_, err := q.db.ExecContext(ctx, deleteServiceComponentEnv, serviceComponentID)
+type DeleteServiceComponentEnvParams struct {
+	ServiceComponentId string `db:"service_component_id"`
+	ProjectId          string `db:"project_id"`
+}
+
+func (q *Queries) DeleteServiceComponentEnv(ctx context.Context, arg DeleteServiceComponentEnvParams) error {
+	_, err := q.db.ExecContext(ctx, deleteServiceComponentEnv, arg.ServiceComponentId, arg.ProjectId)
 	return err
 }
 
 const deleteServiceComponentMounts = `-- name: DeleteServiceComponentMounts :exec
 DELETE FROM service_component_mount
 WHERE service_component_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service_component
+    JOIN service ON service.id = service_component.service_id
+    WHERE service_component.id = service_component_mount.service_component_id
+      AND service.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteServiceComponentMounts(ctx context.Context, serviceComponentID string) error {
-	_, err := q.db.ExecContext(ctx, deleteServiceComponentMounts, serviceComponentID)
+type DeleteServiceComponentMountsParams struct {
+	ServiceComponentId string `db:"service_component_id"`
+	ProjectId          string `db:"project_id"`
+}
+
+func (q *Queries) DeleteServiceComponentMounts(ctx context.Context, arg DeleteServiceComponentMountsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteServiceComponentMounts, arg.ServiceComponentId, arg.ProjectId)
 	return err
 }
 
 const deleteServiceComponentResource = `-- name: DeleteServiceComponentResource :exec
 DELETE FROM service_component_resource
 WHERE service_component_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service_component
+    JOIN service ON service.id = service_component.service_id
+    WHERE service_component.id = service_component_resource.service_component_id
+      AND service.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteServiceComponentResource(ctx context.Context, serviceComponentID string) error {
-	_, err := q.db.ExecContext(ctx, deleteServiceComponentResource, serviceComponentID)
+type DeleteServiceComponentResourceParams struct {
+	ServiceComponentId string `db:"service_component_id"`
+	ProjectId          string `db:"project_id"`
+}
+
+func (q *Queries) DeleteServiceComponentResource(ctx context.Context, arg DeleteServiceComponentResourceParams) error {
+	_, err := q.db.ExecContext(ctx, deleteServiceComponentResource, arg.ServiceComponentId, arg.ProjectId)
 	return err
 }
 
 const deleteServiceComponents = `-- name: DeleteServiceComponents :exec
 DELETE FROM service_component
 WHERE service_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service
+    WHERE service.id = service_component.service_id
+      AND service.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteServiceComponents(ctx context.Context, serviceID string) error {
-	_, err := q.db.ExecContext(ctx, deleteServiceComponents, serviceID)
+type DeleteServiceComponentsParams struct {
+	ServiceId string `db:"service_id"`
+	ProjectId string `db:"project_id"`
+}
+
+func (q *Queries) DeleteServiceComponents(ctx context.Context, arg DeleteServiceComponentsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteServiceComponents, arg.ServiceId, arg.ProjectId)
 	return err
 }
 
 const deleteServiceEnv = `-- name: DeleteServiceEnv :exec
 DELETE FROM service_env
 WHERE service_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service
+    WHERE service.id = service_env.service_id
+      AND service.project_id = ?
+  )
 `
 
-func (q *Queries) DeleteServiceEnv(ctx context.Context, serviceID string) error {
-	_, err := q.db.ExecContext(ctx, deleteServiceEnv, serviceID)
+type DeleteServiceEnvParams struct {
+	ServiceId string `db:"service_id"`
+	ProjectId string `db:"project_id"`
+}
+
+func (q *Queries) DeleteServiceEnv(ctx context.Context, arg DeleteServiceEnvParams) error {
+	_, err := q.db.ExecContext(ctx, deleteServiceEnv, arg.ServiceId, arg.ProjectId)
 	return err
 }
 
@@ -131,12 +201,12 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertServiceParams struct {
-	ID            string    `db:"id"`
-	ProjectID     string    `db:"project_id"`
-	ApplicationID string    `db:"application_id"`
+	Id            string    `db:"id"`
+	ProjectId     string    `db:"project_id"`
+	ApplicationId string    `db:"application_id"`
 	InstanceKey   string    `db:"instance_key"`
 	Code          string    `db:"code"`
-	VersionID     string    `db:"version_id"`
+	VersionId     string    `db:"version_id"`
 	Status        string    `db:"status"`
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
@@ -144,12 +214,12 @@ type InsertServiceParams struct {
 
 func (q *Queries) InsertService(ctx context.Context, arg InsertServiceParams) error {
 	_, err := q.db.ExecContext(ctx, insertService,
-		arg.ID,
-		arg.ProjectID,
-		arg.ApplicationID,
+		arg.Id,
+		arg.ProjectId,
+		arg.ApplicationId,
 		arg.InstanceKey,
 		arg.Code,
-		arg.VersionID,
+		arg.VersionId,
 		arg.Status,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -160,13 +230,19 @@ func (q *Queries) InsertService(ctx context.Context, arg InsertServiceParams) er
 const insertServiceComponent = `-- name: InsertServiceComponent :exec
 INSERT INTO service_component (
   id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) SELECT
+  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+WHERE EXISTS (
+  SELECT 1 FROM service
+  WHERE service.id = ?
+    AND service.project_id = ?
+)
 `
 
 type InsertServiceComponentParams struct {
-	ID                       string         `db:"id"`
-	ServiceID                string         `db:"service_id"`
-	SourceVersionComponentID string         `db:"source_version_component_id"`
+	Id                       string         `db:"id"`
+	ServiceId                string         `db:"service_id"`
+	SourceVersionComponentId string         `db:"source_version_component_id"`
 	ComponentName            string         `db:"component_name"`
 	EntrypointJson           sql.NullString `db:"entrypoint_json"`
 	CommandJson              sql.NullString `db:"command_json"`
@@ -175,13 +251,14 @@ type InsertServiceComponentParams struct {
 	Status                   string         `db:"status"`
 	CreatedAt                time.Time      `db:"created_at"`
 	UpdatedAt                time.Time      `db:"updated_at"`
+	ProjectId                string         `db:"project_id"`
 }
 
 func (q *Queries) InsertServiceComponent(ctx context.Context, arg InsertServiceComponentParams) error {
 	_, err := q.db.ExecContext(ctx, insertServiceComponent,
-		arg.ID,
-		arg.ServiceID,
-		arg.SourceVersionComponentID,
+		arg.Id,
+		arg.ServiceId,
+		arg.SourceVersionComponentId,
 		arg.ComponentName,
 		arg.EntrypointJson,
 		arg.CommandJson,
@@ -190,6 +267,8 @@ func (q *Queries) InsertServiceComponent(ctx context.Context, arg InsertServiceC
 		arg.Status,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.ServiceId,
+		arg.ProjectId,
 	)
 	return err
 }
@@ -197,12 +276,19 @@ func (q *Queries) InsertServiceComponent(ctx context.Context, arg InsertServiceC
 const insertServiceComponentEndpoint = `-- name: InsertServiceComponentEndpoint :exec
 INSERT INTO service_component_endpoint (
   id, service_component_id, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) SELECT
+  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+WHERE EXISTS (
+  SELECT 1 FROM service_component
+  JOIN service ON service.id = service_component.service_id
+  WHERE service_component.id = ?
+    AND service.project_id = ?
+)
 `
 
 type InsertServiceComponentEndpointParams struct {
-	ID                 string         `db:"id"`
-	ServiceComponentID string         `db:"service_component_id"`
+	Id                 string         `db:"id"`
+	ServiceComponentId string         `db:"service_component_id"`
 	Protocol           string         `db:"protocol"`
 	ContainerPort      int64          `db:"container_port"`
 	Mode               sql.NullString `db:"mode"`
@@ -211,12 +297,13 @@ type InsertServiceComponentEndpointParams struct {
 	Entrypoint         sql.NullString `db:"entrypoint"`
 	PathPrefix         sql.NullString `db:"path_prefix"`
 	State              string         `db:"state"`
+	ProjectId          string         `db:"project_id"`
 }
 
 func (q *Queries) InsertServiceComponentEndpoint(ctx context.Context, arg InsertServiceComponentEndpointParams) error {
 	_, err := q.db.ExecContext(ctx, insertServiceComponentEndpoint,
-		arg.ID,
-		arg.ServiceComponentID,
+		arg.Id,
+		arg.ServiceComponentId,
 		arg.Protocol,
 		arg.ContainerPort,
 		arg.Mode,
@@ -225,54 +312,74 @@ func (q *Queries) InsertServiceComponentEndpoint(ctx context.Context, arg Insert
 		arg.Entrypoint,
 		arg.PathPrefix,
 		arg.State,
+		arg.ServiceComponentId,
+		arg.ProjectId,
 	)
 	return err
 }
 
 const insertServiceComponentEnv = `-- name: InsertServiceComponentEnv :exec
 INSERT INTO service_component_env (service_component_id, env_key, value, state)
-VALUES (?, ?, ?, ?)
+SELECT ?, ?, ?, ?
+WHERE EXISTS (
+  SELECT 1 FROM service_component
+  JOIN service ON service.id = service_component.service_id
+  WHERE service_component.id = ?
+    AND service.project_id = ?
+)
 `
 
 type InsertServiceComponentEnvParams struct {
-	ServiceComponentID string         `db:"service_component_id"`
+	ServiceComponentId string         `db:"service_component_id"`
 	EnvKey             string         `db:"env_key"`
 	Value              sql.NullString `db:"value"`
 	State              string         `db:"state"`
+	ProjectId          string         `db:"project_id"`
 }
 
 func (q *Queries) InsertServiceComponentEnv(ctx context.Context, arg InsertServiceComponentEnvParams) error {
 	_, err := q.db.ExecContext(ctx, insertServiceComponentEnv,
-		arg.ServiceComponentID,
+		arg.ServiceComponentId,
 		arg.EnvKey,
 		arg.Value,
 		arg.State,
+		arg.ServiceComponentId,
+		arg.ProjectId,
 	)
 	return err
 }
 
 const insertServiceComponentMount = `-- name: InsertServiceComponentMount :exec
 INSERT INTO service_component_mount (id, service_component_id, target, source, source_is_host_path, state)
-VALUES (?, ?, ?, ?, ?, ?)
+SELECT ?, ?, ?, ?, ?, ?
+WHERE EXISTS (
+  SELECT 1 FROM service_component
+  JOIN service ON service.id = service_component.service_id
+  WHERE service_component.id = ?
+    AND service.project_id = ?
+)
 `
 
 type InsertServiceComponentMountParams struct {
-	ID                 string         `db:"id"`
-	ServiceComponentID string         `db:"service_component_id"`
+	Id                 string         `db:"id"`
+	ServiceComponentId string         `db:"service_component_id"`
 	Target             string         `db:"target"`
 	Source             sql.NullString `db:"source"`
 	SourceIsHostPath   sql.NullInt64  `db:"source_is_host_path"`
 	State              string         `db:"state"`
+	ProjectId          string         `db:"project_id"`
 }
 
 func (q *Queries) InsertServiceComponentMount(ctx context.Context, arg InsertServiceComponentMountParams) error {
 	_, err := q.db.ExecContext(ctx, insertServiceComponentMount,
-		arg.ID,
-		arg.ServiceComponentID,
+		arg.Id,
+		arg.ServiceComponentId,
 		arg.Target,
 		arg.Source,
 		arg.SourceIsHostPath,
 		arg.State,
+		arg.ServiceComponentId,
+		arg.ProjectId,
 	)
 	return err
 }
@@ -280,43 +387,65 @@ func (q *Queries) InsertServiceComponentMount(ctx context.Context, arg InsertSer
 const insertServiceComponentResource = `-- name: InsertServiceComponentResource :exec
 INSERT INTO service_component_resource (
   service_component_id, limit_cpus, limit_memory, reservation_cpus, reservation_memory, state
-) VALUES (?, ?, ?, ?, ?, ?)
+) SELECT
+  ?, ?, ?, ?, ?, ?
+WHERE EXISTS (
+  SELECT 1 FROM service_component
+  JOIN service ON service.id = service_component.service_id
+  WHERE service_component.id = ?
+    AND service.project_id = ?
+)
 `
 
 type InsertServiceComponentResourceParams struct {
-	ServiceComponentID string         `db:"service_component_id"`
+	ServiceComponentId string         `db:"service_component_id"`
 	LimitCpus          sql.NullString `db:"limit_cpus"`
 	LimitMemory        sql.NullString `db:"limit_memory"`
 	ReservationCpus    sql.NullString `db:"reservation_cpus"`
 	ReservationMemory  sql.NullString `db:"reservation_memory"`
 	State              string         `db:"state"`
+	ProjectId          string         `db:"project_id"`
 }
 
 func (q *Queries) InsertServiceComponentResource(ctx context.Context, arg InsertServiceComponentResourceParams) error {
 	_, err := q.db.ExecContext(ctx, insertServiceComponentResource,
-		arg.ServiceComponentID,
+		arg.ServiceComponentId,
 		arg.LimitCpus,
 		arg.LimitMemory,
 		arg.ReservationCpus,
 		arg.ReservationMemory,
 		arg.State,
+		arg.ServiceComponentId,
+		arg.ProjectId,
 	)
 	return err
 }
 
 const insertServiceEnv = `-- name: InsertServiceEnv :exec
 INSERT INTO service_env (service_id, env_key, value)
-VALUES (?, ?, ?)
+SELECT ?, ?, ?
+WHERE EXISTS (
+  SELECT 1 FROM service
+  WHERE service.id = ?
+    AND service.project_id = ?
+)
 `
 
 type InsertServiceEnvParams struct {
-	ServiceID string `db:"service_id"`
+	ServiceId string `db:"service_id"`
 	EnvKey    string `db:"env_key"`
 	Value     string `db:"value"`
+	ProjectId string `db:"project_id"`
 }
 
 func (q *Queries) InsertServiceEnv(ctx context.Context, arg InsertServiceEnvParams) error {
-	_, err := q.db.ExecContext(ctx, insertServiceEnv, arg.ServiceID, arg.EnvKey, arg.Value)
+	_, err := q.db.ExecContext(ctx, insertServiceEnv,
+		arg.ServiceId,
+		arg.EnvKey,
+		arg.Value,
+		arg.ServiceId,
+		arg.ProjectId,
+	)
 	return err
 }
 
@@ -324,11 +453,17 @@ const listServicesByApplication = `-- name: ListServicesByApplication :many
 SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = ?
+  AND project_id = ?
 ORDER BY instance_key
 `
 
-func (q *Queries) ListServicesByApplication(ctx context.Context, applicationID string) ([]Service, error) {
-	rows, err := q.db.QueryContext(ctx, listServicesByApplication, applicationID)
+type ListServicesByApplicationParams struct {
+	ApplicationId string `db:"application_id"`
+	ProjectId     string `db:"project_id"`
+}
+
+func (q *Queries) ListServicesByApplication(ctx context.Context, arg ListServicesByApplicationParams) ([]Service, error) {
+	rows, err := q.db.QueryContext(ctx, listServicesByApplication, arg.ApplicationId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -337,12 +472,12 @@ func (q *Queries) ListServicesByApplication(ctx context.Context, applicationID s
 	for rows.Next() {
 		var i Service
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
-			&i.ApplicationID,
+			&i.Id,
+			&i.ProjectId,
+			&i.ApplicationId,
 			&i.InstanceKey,
 			&i.Code,
-			&i.VersionID,
+			&i.VersionId,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -367,7 +502,7 @@ SELECT s.id, s.project_id, s.application_id, s.instance_key, s.code, s.version_i
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
-WHERE a.project_id = ?
+WHERE s.project_id = ?
   AND (
     CAST(? AS CHAR) IS NULL
     OR s.application_id = ?
@@ -386,8 +521,8 @@ LIMIT ? OFFSET ?
 `
 
 type ListServicesByProjectParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
-	ApplicationID sql.NullString `db:"application_id"`
+	ProjectId     string         `db:"project_id"`
+	ApplicationId sql.NullString `db:"application_id"`
 	Status        sql.NullString `db:"status"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 	Limit         int32          `db:"limit"`
@@ -395,12 +530,12 @@ type ListServicesByProjectParams struct {
 }
 
 type ListServicesByProjectRow struct {
-	ID              string    `db:"id"`
-	ProjectID       string    `db:"project_id"`
-	ApplicationID   string    `db:"application_id"`
+	Id              string    `db:"id"`
+	ProjectId       string    `db:"project_id"`
+	ApplicationId   string    `db:"application_id"`
 	InstanceKey     string    `db:"instance_key"`
 	Code            string    `db:"code"`
-	VersionID       string    `db:"version_id"`
+	VersionId       string    `db:"version_id"`
 	Status          string    `db:"status"`
 	CreatedAt       time.Time `db:"created_at"`
 	UpdatedAt       time.Time `db:"updated_at"`
@@ -412,9 +547,9 @@ type ListServicesByProjectRow struct {
 
 func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByProjectParams) ([]ListServicesByProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, listServicesByProject,
-		arg.ProjectID,
-		arg.ApplicationID,
-		arg.ApplicationID,
+		arg.ProjectId,
+		arg.ApplicationId,
+		arg.ApplicationId,
 		arg.Status,
 		arg.Status,
 		arg.SearchPattern,
@@ -431,12 +566,12 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 	for rows.Next() {
 		var i ListServicesByProjectRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
-			&i.ApplicationID,
+			&i.Id,
+			&i.ProjectId,
+			&i.ApplicationId,
 			&i.InstanceKey,
 			&i.Code,
-			&i.VersionID,
+			&i.VersionId,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -458,22 +593,28 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 	return items, nil
 }
 
-const serviceByID = `-- name: ServiceByID :one
+const serviceById = `-- name: ServiceById :one
 SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
-WHERE id = ?
+WHERE service.id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) ServiceByID(ctx context.Context, id string) (Service, error) {
-	row := q.db.QueryRowContext(ctx, serviceByID, id)
+type ServiceByIdParams struct {
+	Id        string `db:"id"`
+	ProjectId string `db:"project_id"`
+}
+
+func (q *Queries) ServiceById(ctx context.Context, arg ServiceByIdParams) (Service, error) {
+	row := q.db.QueryRowContext(ctx, serviceById, arg.Id, arg.ProjectId)
 	var i Service
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
-		&i.ApplicationID,
+		&i.Id,
+		&i.ProjectId,
+		&i.ApplicationId,
 		&i.InstanceKey,
 		&i.Code,
-		&i.VersionID,
+		&i.VersionId,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -484,24 +625,27 @@ func (q *Queries) ServiceByID(ctx context.Context, id string) (Service, error) {
 const serviceByKey = `-- name: ServiceByKey :one
 SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
-WHERE application_id = ? AND instance_key = ?
+WHERE application_id = ?
+  AND instance_key = ?
+  AND project_id = ?
 `
 
 type ServiceByKeyParams struct {
-	ApplicationID string `db:"application_id"`
+	ApplicationId string `db:"application_id"`
 	InstanceKey   string `db:"instance_key"`
+	ProjectId     string `db:"project_id"`
 }
 
 func (q *Queries) ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Service, error) {
-	row := q.db.QueryRowContext(ctx, serviceByKey, arg.ApplicationID, arg.InstanceKey)
+	row := q.db.QueryRowContext(ctx, serviceByKey, arg.ApplicationId, arg.InstanceKey, arg.ProjectId)
 	var i Service
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
-		&i.ApplicationID,
+		&i.Id,
+		&i.ProjectId,
+		&i.ApplicationId,
 		&i.InstanceKey,
 		&i.Code,
-		&i.VersionID,
+		&i.VersionId,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -512,24 +656,25 @@ func (q *Queries) ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Ser
 const serviceByProjectAndCode = `-- name: ServiceByProjectAndCode :one
 SELECT id, project_id, application_id, instance_key, code, version_id, status, created_at, updated_at
 FROM service
-WHERE project_id = ? AND code = ?
+WHERE project_id = ?
+  AND code = ?
 `
 
 type ServiceByProjectAndCodeParams struct {
-	ProjectID string `db:"project_id"`
+	ProjectId string `db:"project_id"`
 	Code      string `db:"code"`
 }
 
 func (q *Queries) ServiceByProjectAndCode(ctx context.Context, arg ServiceByProjectAndCodeParams) (Service, error) {
-	row := q.db.QueryRowContext(ctx, serviceByProjectAndCode, arg.ProjectID, arg.Code)
+	row := q.db.QueryRowContext(ctx, serviceByProjectAndCode, arg.ProjectId, arg.Code)
 	var i Service
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
-		&i.ApplicationID,
+		&i.Id,
+		&i.ProjectId,
+		&i.ApplicationId,
 		&i.InstanceKey,
 		&i.Code,
-		&i.VersionID,
+		&i.VersionId,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -537,19 +682,29 @@ func (q *Queries) ServiceByProjectAndCode(ctx context.Context, arg ServiceByProj
 	return i, err
 }
 
-const serviceComponentByID = `-- name: ServiceComponentByID :one
+const serviceComponentById = `-- name: ServiceComponentById :one
 SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
 FROM service_component
-WHERE id = ?
+WHERE service_component.id = ?
+  AND EXISTS (
+    SELECT 1 FROM service
+    WHERE service.id = service_component.service_id
+      AND service.project_id = ?
+  )
 `
 
-func (q *Queries) ServiceComponentByID(ctx context.Context, id string) (ServiceComponent, error) {
-	row := q.db.QueryRowContext(ctx, serviceComponentByID, id)
+type ServiceComponentByIdParams struct {
+	Id        string `db:"id"`
+	ProjectId string `db:"project_id"`
+}
+
+func (q *Queries) ServiceComponentById(ctx context.Context, arg ServiceComponentByIdParams) (ServiceComponent, error) {
+	row := q.db.QueryRowContext(ctx, serviceComponentById, arg.Id, arg.ProjectId)
 	var i ServiceComponent
 	err := row.Scan(
-		&i.ID,
-		&i.ServiceID,
-		&i.SourceVersionComponentID,
+		&i.Id,
+		&i.ServiceId,
+		&i.SourceVersionComponentId,
 		&i.ComponentName,
 		&i.EntrypointJson,
 		&i.CommandJson,
@@ -566,11 +721,22 @@ const serviceComponentEndpointsByComponent = `-- name: ServiceComponentEndpoints
 SELECT id, service_component_id, protocol, container_port, mode, bind_address, listen_port, entrypoint, path_prefix, state
 FROM service_component_endpoint
 WHERE service_component_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service_component
+    JOIN service ON service.id = service_component.service_id
+    WHERE service_component.id = service_component_endpoint.service_component_id
+      AND service.project_id = ?
+  )
 ORDER BY protocol, container_port
 `
 
-func (q *Queries) ServiceComponentEndpointsByComponent(ctx context.Context, serviceComponentID string) ([]ServiceComponentEndpoint, error) {
-	rows, err := q.db.QueryContext(ctx, serviceComponentEndpointsByComponent, serviceComponentID)
+type ServiceComponentEndpointsByComponentParams struct {
+	ServiceComponentId string `db:"service_component_id"`
+	ProjectId          string `db:"project_id"`
+}
+
+func (q *Queries) ServiceComponentEndpointsByComponent(ctx context.Context, arg ServiceComponentEndpointsByComponentParams) ([]ServiceComponentEndpoint, error) {
+	rows, err := q.db.QueryContext(ctx, serviceComponentEndpointsByComponent, arg.ServiceComponentId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -579,8 +745,8 @@ func (q *Queries) ServiceComponentEndpointsByComponent(ctx context.Context, serv
 	for rows.Next() {
 		var i ServiceComponentEndpoint
 		if err := rows.Scan(
-			&i.ID,
-			&i.ServiceComponentID,
+			&i.Id,
+			&i.ServiceComponentId,
 			&i.Protocol,
 			&i.ContainerPort,
 			&i.Mode,
@@ -607,11 +773,22 @@ const serviceComponentEnvByComponent = `-- name: ServiceComponentEnvByComponent 
 SELECT service_component_id, env_key, value, state
 FROM service_component_env
 WHERE service_component_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service_component
+    JOIN service ON service.id = service_component.service_id
+    WHERE service_component.id = service_component_env.service_component_id
+      AND service.project_id = ?
+  )
 ORDER BY env_key
 `
 
-func (q *Queries) ServiceComponentEnvByComponent(ctx context.Context, serviceComponentID string) ([]ServiceComponentEnv, error) {
-	rows, err := q.db.QueryContext(ctx, serviceComponentEnvByComponent, serviceComponentID)
+type ServiceComponentEnvByComponentParams struct {
+	ServiceComponentId string `db:"service_component_id"`
+	ProjectId          string `db:"project_id"`
+}
+
+func (q *Queries) ServiceComponentEnvByComponent(ctx context.Context, arg ServiceComponentEnvByComponentParams) ([]ServiceComponentEnv, error) {
+	rows, err := q.db.QueryContext(ctx, serviceComponentEnvByComponent, arg.ServiceComponentId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -620,7 +797,7 @@ func (q *Queries) ServiceComponentEnvByComponent(ctx context.Context, serviceCom
 	for rows.Next() {
 		var i ServiceComponentEnv
 		if err := rows.Scan(
-			&i.ServiceComponentID,
+			&i.ServiceComponentId,
 			&i.EnvKey,
 			&i.Value,
 			&i.State,
@@ -642,19 +819,30 @@ const serviceComponentMountsByComponent = `-- name: ServiceComponentMountsByComp
 SELECT service_component_id, target, source, source_is_host_path, state
 FROM service_component_mount
 WHERE service_component_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service_component
+    JOIN service ON service.id = service_component.service_id
+    WHERE service_component.id = service_component_mount.service_component_id
+      AND service.project_id = ?
+  )
 ORDER BY target
 `
 
+type ServiceComponentMountsByComponentParams struct {
+	ServiceComponentId string `db:"service_component_id"`
+	ProjectId          string `db:"project_id"`
+}
+
 type ServiceComponentMountsByComponentRow struct {
-	ServiceComponentID string         `db:"service_component_id"`
+	ServiceComponentId string         `db:"service_component_id"`
 	Target             string         `db:"target"`
 	Source             sql.NullString `db:"source"`
 	SourceIsHostPath   sql.NullInt64  `db:"source_is_host_path"`
 	State              string         `db:"state"`
 }
 
-func (q *Queries) ServiceComponentMountsByComponent(ctx context.Context, serviceComponentID string) ([]ServiceComponentMountsByComponentRow, error) {
-	rows, err := q.db.QueryContext(ctx, serviceComponentMountsByComponent, serviceComponentID)
+func (q *Queries) ServiceComponentMountsByComponent(ctx context.Context, arg ServiceComponentMountsByComponentParams) ([]ServiceComponentMountsByComponentRow, error) {
+	rows, err := q.db.QueryContext(ctx, serviceComponentMountsByComponent, arg.ServiceComponentId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -663,7 +851,7 @@ func (q *Queries) ServiceComponentMountsByComponent(ctx context.Context, service
 	for rows.Next() {
 		var i ServiceComponentMountsByComponentRow
 		if err := rows.Scan(
-			&i.ServiceComponentID,
+			&i.ServiceComponentId,
 			&i.Target,
 			&i.Source,
 			&i.SourceIsHostPath,
@@ -686,13 +874,24 @@ const serviceComponentResourceByComponent = `-- name: ServiceComponentResourceBy
 SELECT service_component_id, limit_cpus, limit_memory, reservation_cpus, reservation_memory, state
 FROM service_component_resource
 WHERE service_component_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service_component
+    JOIN service ON service.id = service_component.service_id
+    WHERE service_component.id = service_component_resource.service_component_id
+      AND service.project_id = ?
+  )
 `
 
-func (q *Queries) ServiceComponentResourceByComponent(ctx context.Context, serviceComponentID string) (ServiceComponentResource, error) {
-	row := q.db.QueryRowContext(ctx, serviceComponentResourceByComponent, serviceComponentID)
+type ServiceComponentResourceByComponentParams struct {
+	ServiceComponentId string `db:"service_component_id"`
+	ProjectId          string `db:"project_id"`
+}
+
+func (q *Queries) ServiceComponentResourceByComponent(ctx context.Context, arg ServiceComponentResourceByComponentParams) (ServiceComponentResource, error) {
+	row := q.db.QueryRowContext(ctx, serviceComponentResourceByComponent, arg.ServiceComponentId, arg.ProjectId)
 	var i ServiceComponentResource
 	err := row.Scan(
-		&i.ServiceComponentID,
+		&i.ServiceComponentId,
 		&i.LimitCpus,
 		&i.LimitMemory,
 		&i.ReservationCpus,
@@ -706,11 +905,21 @@ const serviceComponentsByService = `-- name: ServiceComponentsByService :many
 SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
 FROM service_component
 WHERE service_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service
+    WHERE service.id = service_component.service_id
+      AND service.project_id = ?
+  )
 ORDER BY component_name
 `
 
-func (q *Queries) ServiceComponentsByService(ctx context.Context, serviceID string) ([]ServiceComponent, error) {
-	rows, err := q.db.QueryContext(ctx, serviceComponentsByService, serviceID)
+type ServiceComponentsByServiceParams struct {
+	ServiceId string `db:"service_id"`
+	ProjectId string `db:"project_id"`
+}
+
+func (q *Queries) ServiceComponentsByService(ctx context.Context, arg ServiceComponentsByServiceParams) ([]ServiceComponent, error) {
+	rows, err := q.db.QueryContext(ctx, serviceComponentsByService, arg.ServiceId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -719,9 +928,9 @@ func (q *Queries) ServiceComponentsByService(ctx context.Context, serviceID stri
 	for rows.Next() {
 		var i ServiceComponent
 		if err := rows.Scan(
-			&i.ID,
-			&i.ServiceID,
-			&i.SourceVersionComponentID,
+			&i.Id,
+			&i.ServiceId,
+			&i.SourceVersionComponentId,
 			&i.ComponentName,
 			&i.EntrypointJson,
 			&i.CommandJson,
@@ -748,11 +957,21 @@ const serviceEnvByService = `-- name: ServiceEnvByService :many
 SELECT service_id, env_key, value
 FROM service_env
 WHERE service_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service
+    WHERE service.id = service_env.service_id
+      AND service.project_id = ?
+  )
 ORDER BY env_key
 `
 
-func (q *Queries) ServiceEnvByService(ctx context.Context, serviceID string) ([]ServiceEnv, error) {
-	rows, err := q.db.QueryContext(ctx, serviceEnvByService, serviceID)
+type ServiceEnvByServiceParams struct {
+	ServiceId string `db:"service_id"`
+	ProjectId string `db:"project_id"`
+}
+
+func (q *Queries) ServiceEnvByService(ctx context.Context, arg ServiceEnvByServiceParams) ([]ServiceEnv, error) {
+	rows, err := q.db.QueryContext(ctx, serviceEnvByService, arg.ServiceId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -760,7 +979,7 @@ func (q *Queries) ServiceEnvByService(ctx context.Context, serviceID string) ([]
 	var items []ServiceEnv
 	for rows.Next() {
 		var i ServiceEnv
-		if err := rows.Scan(&i.ServiceID, &i.EnvKey, &i.Value); err != nil {
+		if err := rows.Scan(&i.ServiceId, &i.EnvKey, &i.Value); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -774,25 +993,28 @@ func (q *Queries) ServiceEnvByService(ctx context.Context, serviceID string) ([]
 	return items, nil
 }
 
-const serviceIDByKey = `-- name: ServiceIDByKey :one
+const serviceIdByKey = `-- name: ServiceIdByKey :one
 SELECT id
 FROM service
-WHERE application_id = ? AND instance_key = ?
+WHERE application_id = ?
+  AND instance_key = ?
+  AND project_id = ?
 `
 
-type ServiceIDByKeyParams struct {
-	ApplicationID string `db:"application_id"`
+type ServiceIdByKeyParams struct {
+	ApplicationId string `db:"application_id"`
 	InstanceKey   string `db:"instance_key"`
+	ProjectId     string `db:"project_id"`
 }
 
-func (q *Queries) ServiceIDByKey(ctx context.Context, arg ServiceIDByKeyParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, serviceIDByKey, arg.ApplicationID, arg.InstanceKey)
+func (q *Queries) ServiceIdByKey(ctx context.Context, arg ServiceIdByKeyParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, serviceIdByKey, arg.ApplicationId, arg.InstanceKey, arg.ProjectId)
 	var id string
 	err := row.Scan(&id)
 	return id, err
 }
 
-const serviceListItemByID = `-- name: ServiceListItemByID :one
+const serviceListItemById = `-- name: ServiceListItemById :one
 SELECT s.id, s.project_id, s.application_id, s.instance_key, s.code, s.version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
@@ -800,15 +1022,21 @@ FROM service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN version v ON v.id = s.version_id
 WHERE s.id = ?
+  AND s.project_id = ?
 `
 
-type ServiceListItemByIDRow struct {
-	ID              string    `db:"id"`
-	ProjectID       string    `db:"project_id"`
-	ApplicationID   string    `db:"application_id"`
+type ServiceListItemByIdParams struct {
+	Id        string `db:"id"`
+	ProjectId string `db:"project_id"`
+}
+
+type ServiceListItemByIdRow struct {
+	Id              string    `db:"id"`
+	ProjectId       string    `db:"project_id"`
+	ApplicationId   string    `db:"application_id"`
 	InstanceKey     string    `db:"instance_key"`
 	Code            string    `db:"code"`
-	VersionID       string    `db:"version_id"`
+	VersionId       string    `db:"version_id"`
 	Status          string    `db:"status"`
 	CreatedAt       time.Time `db:"created_at"`
 	UpdatedAt       time.Time `db:"updated_at"`
@@ -818,16 +1046,16 @@ type ServiceListItemByIDRow struct {
 	VersionLabel    string    `db:"version_label"`
 }
 
-func (q *Queries) ServiceListItemByID(ctx context.Context, id string) (ServiceListItemByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, serviceListItemByID, id)
-	var i ServiceListItemByIDRow
+func (q *Queries) ServiceListItemById(ctx context.Context, arg ServiceListItemByIdParams) (ServiceListItemByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, serviceListItemById, arg.Id, arg.ProjectId)
+	var i ServiceListItemByIdRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
-		&i.ApplicationID,
+		&i.Id,
+		&i.ProjectId,
+		&i.ApplicationId,
 		&i.InstanceKey,
 		&i.Code,
-		&i.VersionID,
+		&i.VersionId,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -843,37 +1071,42 @@ const touchService = `-- name: TouchService :exec
 UPDATE service
 SET updated_at = ?
 WHERE id = ?
+  AND project_id = ?
 `
 
 type TouchServiceParams struct {
 	UpdatedAt time.Time `db:"updated_at"`
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
+	ProjectId string    `db:"project_id"`
 }
 
 func (q *Queries) TouchService(ctx context.Context, arg TouchServiceParams) error {
-	_, err := q.db.ExecContext(ctx, touchService, arg.UpdatedAt, arg.ID)
+	_, err := q.db.ExecContext(ctx, touchService, arg.UpdatedAt, arg.Id, arg.ProjectId)
 	return err
 }
 
 const updateService = `-- name: UpdateService :exec
 UPDATE service
 SET version_id = ?, status = ?, updated_at = ?
-WHERE id = ?
+WHERE service.id = ?
+  AND project_id = ?
 `
 
 type UpdateServiceParams struct {
-	VersionID string    `db:"version_id"`
+	VersionId string    `db:"version_id"`
 	Status    string    `db:"status"`
 	UpdatedAt time.Time `db:"updated_at"`
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
+	ProjectId string    `db:"project_id"`
 }
 
 func (q *Queries) UpdateService(ctx context.Context, arg UpdateServiceParams) error {
 	_, err := q.db.ExecContext(ctx, updateService,
-		arg.VersionID,
+		arg.VersionId,
 		arg.Status,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
+		arg.ProjectId,
 	)
 	return err
 }
@@ -882,21 +1115,24 @@ const updateServiceAfterDeploy = `-- name: UpdateServiceAfterDeploy :exec
 UPDATE service
 SET status = ?, version_id = ?, updated_at = ?
 WHERE id = ?
+  AND project_id = ?
 `
 
 type UpdateServiceAfterDeployParams struct {
 	Status    string    `db:"status"`
-	VersionID string    `db:"version_id"`
+	VersionId string    `db:"version_id"`
 	UpdatedAt time.Time `db:"updated_at"`
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
+	ProjectId string    `db:"project_id"`
 }
 
 func (q *Queries) UpdateServiceAfterDeploy(ctx context.Context, arg UpdateServiceAfterDeployParams) error {
 	_, err := q.db.ExecContext(ctx, updateServiceAfterDeploy,
 		arg.Status,
-		arg.VersionID,
+		arg.VersionId,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
+		arg.ProjectId,
 	)
 	return err
 }
@@ -904,7 +1140,12 @@ func (q *Queries) UpdateServiceAfterDeploy(ctx context.Context, arg UpdateServic
 const updateServiceComponentOverlayFields = `-- name: UpdateServiceComponentOverlayFields :exec
 UPDATE service_component
 SET entrypoint_json = ?, command_json = ?, pull_policy = ?, restart_policy = ?, updated_at = ?
-WHERE id = ?
+WHERE service_component.id = ?
+  AND EXISTS (
+    SELECT 1 FROM service
+    WHERE service.id = service_component.service_id
+      AND service.project_id = ?
+  )
 `
 
 type UpdateServiceComponentOverlayFieldsParams struct {
@@ -913,7 +1154,8 @@ type UpdateServiceComponentOverlayFieldsParams struct {
 	PullPolicy     sql.NullString `db:"pull_policy"`
 	RestartPolicy  sql.NullString `db:"restart_policy"`
 	UpdatedAt      time.Time      `db:"updated_at"`
-	ID             string         `db:"id"`
+	Id             string         `db:"id"`
+	ProjectId      string         `db:"project_id"`
 }
 
 func (q *Queries) UpdateServiceComponentOverlayFields(ctx context.Context, arg UpdateServiceComponentOverlayFieldsParams) error {
@@ -923,7 +1165,8 @@ func (q *Queries) UpdateServiceComponentOverlayFields(ctx context.Context, arg U
 		arg.PullPolicy,
 		arg.RestartPolicy,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
+		arg.ProjectId,
 	)
 	return err
 }
@@ -931,24 +1174,32 @@ func (q *Queries) UpdateServiceComponentOverlayFields(ctx context.Context, arg U
 const updateServiceComponentSource = `-- name: UpdateServiceComponentSource :exec
 UPDATE service_component
 SET source_version_component_id = ?, component_name = ?, updated_at = ?
-WHERE id = ? AND service_id = ?
+WHERE service_component.id = ?
+  AND service_id = ?
+  AND EXISTS (
+    SELECT 1 FROM service
+    WHERE service.id = service_component.service_id
+      AND service.project_id = ?
+  )
 `
 
 type UpdateServiceComponentSourceParams struct {
-	SourceVersionComponentID string    `db:"source_version_component_id"`
+	SourceVersionComponentId string    `db:"source_version_component_id"`
 	ComponentName            string    `db:"component_name"`
 	UpdatedAt                time.Time `db:"updated_at"`
-	ID                       string    `db:"id"`
-	ServiceID                string    `db:"service_id"`
+	Id                       string    `db:"id"`
+	ServiceId                string    `db:"service_id"`
+	ProjectId                string    `db:"project_id"`
 }
 
 func (q *Queries) UpdateServiceComponentSource(ctx context.Context, arg UpdateServiceComponentSourceParams) error {
 	_, err := q.db.ExecContext(ctx, updateServiceComponentSource,
-		arg.SourceVersionComponentID,
+		arg.SourceVersionComponentId,
 		arg.ComponentName,
 		arg.UpdatedAt,
-		arg.ID,
-		arg.ServiceID,
+		arg.Id,
+		arg.ServiceId,
+		arg.ProjectId,
 	)
 	return err
 }
@@ -956,22 +1207,25 @@ func (q *Queries) UpdateServiceComponentSource(ctx context.Context, arg UpdateSe
 const updateServiceConfiguration = `-- name: UpdateServiceConfiguration :exec
 UPDATE service
 SET instance_key = ?, version_id = ?, updated_at = ?
-WHERE id = ?
+WHERE service.id = ?
+  AND project_id = ?
 `
 
 type UpdateServiceConfigurationParams struct {
 	InstanceKey string    `db:"instance_key"`
-	VersionID   string    `db:"version_id"`
+	VersionId   string    `db:"version_id"`
 	UpdatedAt   time.Time `db:"updated_at"`
-	ID          string    `db:"id"`
+	Id          string    `db:"id"`
+	ProjectId   string    `db:"project_id"`
 }
 
 func (q *Queries) UpdateServiceConfiguration(ctx context.Context, arg UpdateServiceConfigurationParams) error {
 	_, err := q.db.ExecContext(ctx, updateServiceConfiguration,
 		arg.InstanceKey,
-		arg.VersionID,
+		arg.VersionId,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
+		arg.ProjectId,
 	)
 	return err
 }
@@ -980,15 +1234,22 @@ const updateServiceStatus = `-- name: UpdateServiceStatus :exec
 UPDATE service
 SET status = ?, updated_at = ?
 WHERE id = ?
+  AND project_id = ?
 `
 
 type UpdateServiceStatusParams struct {
 	Status    string    `db:"status"`
 	UpdatedAt time.Time `db:"updated_at"`
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
+	ProjectId string    `db:"project_id"`
 }
 
 func (q *Queries) UpdateServiceStatus(ctx context.Context, arg UpdateServiceStatusParams) error {
-	_, err := q.db.ExecContext(ctx, updateServiceStatus, arg.Status, arg.UpdatedAt, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateServiceStatus,
+		arg.Status,
+		arg.UpdatedAt,
+		arg.Id,
+		arg.ProjectId,
+	)
 	return err
 }

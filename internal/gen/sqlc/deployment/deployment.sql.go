@@ -13,23 +13,29 @@ import (
 
 const beginDeployment = `-- name: BeginDeployment :execrows
 UPDATE deployment
-SET status = ?, started_at = ?, error_message = NULL
-WHERE id = ? AND status = ?
+SET status = ?,
+    started_at = ?,
+    error_message = NULL
+WHERE id = ?
+  AND project_id = ?
+  AND status = ?
 `
 
 type BeginDeploymentParams struct {
-	Status    string    `db:"status"`
-	StartedAt time.Time `db:"started_at"`
-	ID        string    `db:"id"`
-	Status_2  string    `db:"status_2"`
+	Status        string         `db:"status"`
+	StartedAt     time.Time      `db:"started_at"`
+	Id            string         `db:"id"`
+	ProjectId     sql.NullString `db:"project_id"`
+	WaitingStatus string         `db:"waiting_status"`
 }
 
 func (q *Queries) BeginDeployment(ctx context.Context, arg BeginDeploymentParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, beginDeployment,
 		arg.Status,
 		arg.StartedAt,
-		arg.ID,
-		arg.Status_2,
+		arg.Id,
+		arg.ProjectId,
+		arg.WaitingStatus,
 	)
 	if err != nil {
 		return 0, err
@@ -39,29 +45,36 @@ func (q *Queries) BeginDeployment(ctx context.Context, arg BeginDeploymentParams
 
 const cancelDeployment = `-- name: CancelDeployment :execrows
 UPDATE deployment
-SET status = ?, finished_at = ?, duration_ms = ?, error_message = ?
-WHERE id = ? AND status IN (?, ?)
+SET status = ?,
+    finished_at = ?,
+    duration_ms = ?,
+    error_message = ?
+WHERE id = ?
+  AND project_id = ?
+  AND status IN (?, ?)
 `
 
 type CancelDeploymentParams struct {
-	Status       string         `db:"status"`
-	FinishedAt   sql.NullTime   `db:"finished_at"`
-	DurationMs   sql.NullInt64  `db:"duration_ms"`
-	ErrorMessage sql.NullString `db:"error_message"`
-	ID           string         `db:"id"`
-	Status_2     string         `db:"status_2"`
-	Status_3     string         `db:"status_3"`
+	NewStatus     string         `db:"new_status"`
+	FinishedAt    sql.NullTime   `db:"finished_at"`
+	DurationMs    sql.NullInt64  `db:"duration_ms"`
+	ErrorMessage  sql.NullString `db:"error_message"`
+	Id            string         `db:"id"`
+	ProjectId     sql.NullString `db:"project_id"`
+	WaitingStatus string         `db:"waiting_status"`
+	RunningStatus string         `db:"running_status"`
 }
 
 func (q *Queries) CancelDeployment(ctx context.Context, arg CancelDeploymentParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, cancelDeployment,
-		arg.Status,
+		arg.NewStatus,
 		arg.FinishedAt,
 		arg.DurationMs,
 		arg.ErrorMessage,
-		arg.ID,
-		arg.Status_2,
-		arg.Status_3,
+		arg.Id,
+		arg.ProjectId,
+		arg.WaitingStatus,
+		arg.RunningStatus,
 	)
 	if err != nil {
 		return 0, err
@@ -75,16 +88,19 @@ SET status = ?,
     finished_at = ?,
     duration_ms = ?,
     error_message = NULLIF(?, '')
-WHERE id = ? AND status = ?
+WHERE id = ?
+  AND project_id = ?
+  AND status = ?
 `
 
 type CompleteDeploymentParams struct {
-	Status        string        `db:"status"`
-	FinishedAt    sql.NullTime  `db:"finished_at"`
-	DurationMs    sql.NullInt64 `db:"duration_ms"`
-	ErrorMessage  interface{}   `db:"error_message"`
-	ID            string        `db:"id"`
-	CurrentStatus string        `db:"current_status"`
+	Status        string         `db:"status"`
+	FinishedAt    sql.NullTime   `db:"finished_at"`
+	DurationMs    sql.NullInt64  `db:"duration_ms"`
+	ErrorMessage  interface{}    `db:"error_message"`
+	Id            string         `db:"id"`
+	ProjectId     sql.NullString `db:"project_id"`
+	CurrentStatus string         `db:"current_status"`
 }
 
 func (q *Queries) CompleteDeployment(ctx context.Context, arg CompleteDeploymentParams) (int64, error) {
@@ -93,7 +109,8 @@ func (q *Queries) CompleteDeployment(ctx context.Context, arg CompleteDeployment
 		arg.FinishedAt,
 		arg.DurationMs,
 		arg.ErrorMessage,
-		arg.ID,
+		arg.Id,
+		arg.ProjectId,
 		arg.CurrentStatus,
 	)
 	if err != nil {
@@ -105,17 +122,25 @@ func (q *Queries) CompleteDeployment(ctx context.Context, arg CompleteDeployment
 const countActiveDeploymentsByService = `-- name: CountActiveDeploymentsByService :one
 SELECT COUNT(*)
 FROM deployment
-WHERE service_id = ? AND status IN (?, ?)
+WHERE service_id = ?
+  AND project_id = ?
+  AND status IN (?, ?)
 `
 
 type CountActiveDeploymentsByServiceParams struct {
-	ServiceID sql.NullString `db:"service_id"`
-	Status    string         `db:"status"`
-	Status_2  string         `db:"status_2"`
+	ServiceId     sql.NullString `db:"service_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+	WaitingStatus string         `db:"waiting_status"`
+	RunningStatus string         `db:"running_status"`
 }
 
 func (q *Queries) CountActiveDeploymentsByService(ctx context.Context, arg CountActiveDeploymentsByServiceParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countActiveDeploymentsByService, arg.ServiceID, arg.Status, arg.Status_2)
+	row := q.db.QueryRowContext(ctx, countActiveDeploymentsByService,
+		arg.ServiceId,
+		arg.ProjectId,
+		arg.WaitingStatus,
+		arg.RunningStatus,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -142,8 +167,8 @@ WHERE project_id = ?
 `
 
 type CountDeploymentsParams struct {
-	ProjectID              sql.NullString `db:"project_id"`
-	ApplicationID          sql.NullString `db:"application_id"`
+	ProjectId              sql.NullString `db:"project_id"`
+	ApplicationId          sql.NullString `db:"application_id"`
 	Status                 sql.NullString `db:"status"`
 	ApplicationNamePattern sql.NullString `db:"application_name_pattern"`
 	DateFrom               sql.NullTime   `db:"date_from"`
@@ -152,9 +177,9 @@ type CountDeploymentsParams struct {
 
 func (q *Queries) CountDeployments(ctx context.Context, arg CountDeploymentsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countDeployments,
-		arg.ProjectID,
-		arg.ApplicationID,
-		arg.ApplicationID,
+		arg.ProjectId,
+		arg.ApplicationId,
+		arg.ApplicationId,
 		arg.Status,
 		arg.Status,
 		arg.ApplicationNamePattern,
@@ -178,18 +203,18 @@ INSERT INTO deployment (
 `
 
 type CreateDeploymentParams struct {
-	ID                        string         `db:"id"`
-	ProjectID                 sql.NullString `db:"project_id"`
-	ApplicationID             sql.NullString `db:"application_id"`
+	Id                        string         `db:"id"`
+	ProjectId                 sql.NullString `db:"project_id"`
+	ApplicationId             sql.NullString `db:"application_id"`
 	ApplicationName           string         `db:"application_name"`
-	VersionID                 sql.NullString `db:"version_id"`
-	ServiceID                 sql.NullString `db:"service_id"`
-	EnvironmentID             sql.NullString `db:"environment_id"`
+	VersionId                 sql.NullString `db:"version_id"`
+	ServiceId                 sql.NullString `db:"service_id"`
+	EnvironmentId             sql.NullString `db:"environment_id"`
 	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
 	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
-	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
+	SSHCredentialId           sql.NullString `db:"ssh_credential_id"`
 	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
-	GatewayApplicationID      sql.NullString `db:"gateway_application_id"`
+	GatewayApplicationId      sql.NullString `db:"gateway_application_id"`
 	OptionsJson               sql.NullString `db:"options_json"`
 	EffectivePlanHash         sql.NullString `db:"effective_plan_hash"`
 	OperationType             string         `db:"operation_type"`
@@ -198,23 +223,23 @@ type CreateDeploymentParams struct {
 	Status                    string         `db:"status"`
 	StartedAt                 time.Time      `db:"started_at"`
 	IsRollback                int64          `db:"is_rollback"`
-	RollbackFromDeploymentID  sql.NullString `db:"rollback_from_deployment_id"`
+	RollbackFromDeploymentId  sql.NullString `db:"rollback_from_deployment_id"`
 }
 
 func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentParams) error {
 	_, err := q.db.ExecContext(ctx, createDeployment,
-		arg.ID,
-		arg.ProjectID,
-		arg.ApplicationID,
+		arg.Id,
+		arg.ProjectId,
+		arg.ApplicationId,
 		arg.ApplicationName,
-		arg.VersionID,
-		arg.ServiceID,
-		arg.EnvironmentID,
+		arg.VersionId,
+		arg.ServiceId,
+		arg.EnvironmentId,
 		arg.EnvironmentTargetType,
 		arg.EnvironmentTargetRevision,
-		arg.SshCredentialID,
+		arg.SSHCredentialId,
 		arg.SshCredentialRevision,
-		arg.GatewayApplicationID,
+		arg.GatewayApplicationId,
 		arg.OptionsJson,
 		arg.EffectivePlanHash,
 		arg.OperationType,
@@ -223,7 +248,7 @@ func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentPara
 		arg.Status,
 		arg.StartedAt,
 		arg.IsRollback,
-		arg.RollbackFromDeploymentID,
+		arg.RollbackFromDeploymentId,
 	)
 	return err
 }
@@ -231,14 +256,20 @@ func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentPara
 const deleteDeployment = `-- name: DeleteDeployment :exec
 DELETE FROM deployment
 WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) DeleteDeployment(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteDeployment, id)
+type DeleteDeploymentParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeleteDeployment(ctx context.Context, arg DeleteDeploymentParams) error {
+	_, err := q.db.ExecContext(ctx, deleteDeployment, arg.Id, arg.ProjectId)
 	return err
 }
 
-const deploymentByID = `-- name: DeploymentByID :one
+const deploymentById = `-- name: DeploymentById :one
 SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
        s.instance_key AS service_instance_key,
        d.environment_id, d.environment_target_type, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
@@ -248,22 +279,28 @@ SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d
 FROM deployment d
 LEFT JOIN service s ON s.id = d.service_id
 WHERE d.id = ?
+  AND d.project_id = ?
 `
 
-type DeploymentByIDRow struct {
-	ID                        string         `db:"id"`
-	ProjectID                 sql.NullString `db:"project_id"`
-	ApplicationID             sql.NullString `db:"application_id"`
+type DeploymentByIdParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+type DeploymentByIdRow struct {
+	Id                        string         `db:"id"`
+	ProjectId                 sql.NullString `db:"project_id"`
+	ApplicationId             sql.NullString `db:"application_id"`
 	ApplicationName           string         `db:"application_name"`
-	VersionID                 sql.NullString `db:"version_id"`
-	ServiceID                 sql.NullString `db:"service_id"`
+	VersionId                 sql.NullString `db:"version_id"`
+	ServiceId                 sql.NullString `db:"service_id"`
 	ServiceInstanceKey        sql.NullString `db:"service_instance_key"`
-	EnvironmentID             sql.NullString `db:"environment_id"`
+	EnvironmentId             sql.NullString `db:"environment_id"`
 	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
 	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
-	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
+	SSHCredentialId           sql.NullString `db:"ssh_credential_id"`
 	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
-	GatewayApplicationID      sql.NullString `db:"gateway_application_id"`
+	GatewayApplicationId      sql.NullString `db:"gateway_application_id"`
 	OptionsJson               sql.NullString `db:"options_json"`
 	EffectivePlanHash         sql.NullString `db:"effective_plan_hash"`
 	OperationType             string         `db:"operation_type"`
@@ -276,26 +313,26 @@ type DeploymentByIDRow struct {
 	LogText                   sql.NullString `db:"log_text"`
 	ErrorMessage              sql.NullString `db:"error_message"`
 	IsRollback                int64          `db:"is_rollback"`
-	RollbackFromDeploymentID  sql.NullString `db:"rollback_from_deployment_id"`
+	RollbackFromDeploymentId  sql.NullString `db:"rollback_from_deployment_id"`
 }
 
-func (q *Queries) DeploymentByID(ctx context.Context, id string) (DeploymentByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, deploymentByID, id)
-	var i DeploymentByIDRow
+func (q *Queries) DeploymentById(ctx context.Context, arg DeploymentByIdParams) (DeploymentByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, deploymentById, arg.Id, arg.ProjectId)
+	var i DeploymentByIdRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
-		&i.ApplicationID,
+		&i.Id,
+		&i.ProjectId,
+		&i.ApplicationId,
 		&i.ApplicationName,
-		&i.VersionID,
-		&i.ServiceID,
+		&i.VersionId,
+		&i.ServiceId,
 		&i.ServiceInstanceKey,
-		&i.EnvironmentID,
+		&i.EnvironmentId,
 		&i.EnvironmentTargetType,
 		&i.EnvironmentTargetRevision,
-		&i.SshCredentialID,
+		&i.SSHCredentialId,
 		&i.SshCredentialRevision,
-		&i.GatewayApplicationID,
+		&i.GatewayApplicationId,
 		&i.OptionsJson,
 		&i.EffectivePlanHash,
 		&i.OperationType,
@@ -308,7 +345,7 @@ func (q *Queries) DeploymentByID(ctx context.Context, id string) (DeploymentByID
 		&i.LogText,
 		&i.ErrorMessage,
 		&i.IsRollback,
-		&i.RollbackFromDeploymentID,
+		&i.RollbackFromDeploymentId,
 	)
 	return i, err
 }
@@ -317,10 +354,16 @@ const deploymentStartedAt = `-- name: DeploymentStartedAt :one
 SELECT started_at
 FROM deployment
 WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) DeploymentStartedAt(ctx context.Context, id string) (time.Time, error) {
-	row := q.db.QueryRowContext(ctx, deploymentStartedAt, id)
+type DeploymentStartedAtParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeploymentStartedAt(ctx context.Context, arg DeploymentStartedAtParams) (time.Time, error) {
+	row := q.db.QueryRowContext(ctx, deploymentStartedAt, arg.Id, arg.ProjectId)
 	var started_at time.Time
 	err := row.Scan(&started_at)
 	return started_at, err
@@ -330,14 +373,20 @@ const latestSuccessfulDeploymentPlanHash = `-- name: LatestSuccessfulDeploymentP
 SELECT effective_plan_hash
 FROM deployment
 WHERE service_id = ?
+  AND project_id = ?
   AND status = 'ran_to_completion'
   AND effective_plan_hash IS NOT NULL
 ORDER BY finished_at DESC, id DESC
 LIMIT 1
 `
 
-func (q *Queries) LatestSuccessfulDeploymentPlanHash(ctx context.Context, serviceID sql.NullString) (sql.NullString, error) {
-	row := q.db.QueryRowContext(ctx, latestSuccessfulDeploymentPlanHash, serviceID)
+type LatestSuccessfulDeploymentPlanHashParams struct {
+	ServiceId sql.NullString `db:"service_id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) LatestSuccessfulDeploymentPlanHash(ctx context.Context, arg LatestSuccessfulDeploymentPlanHashParams) (sql.NullString, error) {
+	row := q.db.QueryRowContext(ctx, latestSuccessfulDeploymentPlanHash, arg.ServiceId, arg.ProjectId)
 	var effective_plan_hash sql.NullString
 	err := row.Scan(&effective_plan_hash)
 	return effective_plan_hash, err
@@ -372,8 +421,8 @@ LIMIT ? OFFSET ?
 `
 
 type ListDeploymentsParams struct {
-	ProjectID              sql.NullString `db:"project_id"`
-	ApplicationID          sql.NullString `db:"application_id"`
+	ProjectId              sql.NullString `db:"project_id"`
+	ApplicationId          sql.NullString `db:"application_id"`
 	Status                 sql.NullString `db:"status"`
 	ApplicationNamePattern sql.NullString `db:"application_name_pattern"`
 	DateFrom               sql.NullTime   `db:"date_from"`
@@ -383,19 +432,19 @@ type ListDeploymentsParams struct {
 }
 
 type ListDeploymentsRow struct {
-	ID                        string         `db:"id"`
-	ProjectID                 sql.NullString `db:"project_id"`
-	ApplicationID             sql.NullString `db:"application_id"`
+	Id                        string         `db:"id"`
+	ProjectId                 sql.NullString `db:"project_id"`
+	ApplicationId             sql.NullString `db:"application_id"`
 	ApplicationName           string         `db:"application_name"`
-	VersionID                 sql.NullString `db:"version_id"`
-	ServiceID                 sql.NullString `db:"service_id"`
+	VersionId                 sql.NullString `db:"version_id"`
+	ServiceId                 sql.NullString `db:"service_id"`
 	ServiceInstanceKey        sql.NullString `db:"service_instance_key"`
-	EnvironmentID             sql.NullString `db:"environment_id"`
+	EnvironmentId             sql.NullString `db:"environment_id"`
 	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
 	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
-	SshCredentialID           sql.NullString `db:"ssh_credential_id"`
+	SSHCredentialId           sql.NullString `db:"ssh_credential_id"`
 	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
-	GatewayApplicationID      sql.NullString `db:"gateway_application_id"`
+	GatewayApplicationId      sql.NullString `db:"gateway_application_id"`
 	OptionsJson               sql.NullString `db:"options_json"`
 	EffectivePlanHash         sql.NullString `db:"effective_plan_hash"`
 	OperationType             string         `db:"operation_type"`
@@ -408,14 +457,14 @@ type ListDeploymentsRow struct {
 	LogText                   sql.NullString `db:"log_text"`
 	ErrorMessage              sql.NullString `db:"error_message"`
 	IsRollback                int64          `db:"is_rollback"`
-	RollbackFromDeploymentID  sql.NullString `db:"rollback_from_deployment_id"`
+	RollbackFromDeploymentId  sql.NullString `db:"rollback_from_deployment_id"`
 }
 
 func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams) ([]ListDeploymentsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listDeployments,
-		arg.ProjectID,
-		arg.ApplicationID,
-		arg.ApplicationID,
+		arg.ProjectId,
+		arg.ApplicationId,
+		arg.ApplicationId,
 		arg.Status,
 		arg.Status,
 		arg.ApplicationNamePattern,
@@ -435,19 +484,19 @@ func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams
 	for rows.Next() {
 		var i ListDeploymentsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
-			&i.ApplicationID,
+			&i.Id,
+			&i.ProjectId,
+			&i.ApplicationId,
 			&i.ApplicationName,
-			&i.VersionID,
-			&i.ServiceID,
+			&i.VersionId,
+			&i.ServiceId,
 			&i.ServiceInstanceKey,
-			&i.EnvironmentID,
+			&i.EnvironmentId,
 			&i.EnvironmentTargetType,
 			&i.EnvironmentTargetRevision,
-			&i.SshCredentialID,
+			&i.SSHCredentialId,
 			&i.SshCredentialRevision,
-			&i.GatewayApplicationID,
+			&i.GatewayApplicationId,
 			&i.OptionsJson,
 			&i.EffectivePlanHash,
 			&i.OperationType,
@@ -460,7 +509,7 @@ func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams
 			&i.LogText,
 			&i.ErrorMessage,
 			&i.IsRollback,
-			&i.RollbackFromDeploymentID,
+			&i.RollbackFromDeploymentId,
 		); err != nil {
 			return nil, err
 		}

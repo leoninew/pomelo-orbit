@@ -168,8 +168,7 @@
       return;
     }
     await execute(async () => {
-      const response = await pipelineStageApi.list({
-        project_id: projectId,
+      const response = await pipelineStageApi.list(projectId, {
         search: search.value.trim() || undefined,
         page: pagination.current,
         per_page: pagination.pageSize,
@@ -220,16 +219,13 @@
     }
     try {
       await executeOperation(async () => {
-        const stage = await pipelineStageApi.create(
-          {
-            name: form.name.trim(),
-            image: form.image.trim(),
-            script: '',
-            description: form.description,
-            artifacts: [],
-          },
-          { project_id: projectId }
-        );
+        const stage = await pipelineStageApi.create(projectId, {
+          name: form.name.trim(),
+          image: form.image.trim(),
+          script: '',
+          description: form.description,
+          artifacts: [],
+        });
         formOpen.value = false;
         toast.success('阶段已创建');
         await router.push(`/pipeline-stage/${stage.id}`);
@@ -243,9 +239,14 @@
     if (!stage) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOperation(async () => {
-        await pipelineStageApi.delete(stage.id);
+        await pipelineStageApi.delete(projectId, stage.id);
         deleteOpen.value = false;
         await fetchStages();
         toast.success('阶段已删除');

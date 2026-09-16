@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	pipelinedto "github.com/leoninew/pomelo-orbit/internal/application/pipeline/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
@@ -269,6 +270,42 @@ func TestUpdatePipelineRejectsInvalidNestedVariableBeforePersisting(t *testing.T
 	if pipelineStore.pipeline.Version != 3 || pipelineStore.pipeline.VariableDeclarations != stored.VariableDeclarations {
 		t.Fatalf("stored pipeline changed: %#v", pipelineStore.pipeline)
 	}
+}
+
+func TestEnsurePipelineNameAvailableScopesConflictsToProject(t *testing.T) {
+	projectId := "project-1"
+	store := &pipelineNameCheckStore{pipeline: model.Pipeline{Id: "pipeline-1"}}
+	service := Service{store: stores{pipeline: store}}
+
+	err := service.ensurePipelineNameAvailable(context.Background(), projectId, "Build", "")
+	if err == nil || !apperror.IsKind(err, apperror.KindConflict) {
+		t.Fatalf("duplicate pipeline name error = %v, want conflict", err)
+	}
+	if store.projectId != projectId || store.name != "Build" {
+		t.Fatalf("name lookup scope = (%q, %q), want (%q, %q)", store.projectId, store.name, projectId, "Build")
+	}
+
+	if err := service.ensurePipelineNameAvailable(context.Background(), projectId, "Build", "pipeline-1"); err != nil {
+		t.Fatalf("current pipeline name should be available: %v", err)
+	}
+
+	store.err = repository.ErrNotFound
+	if err := service.ensurePipelineNameAvailable(context.Background(), projectId, "New", ""); err != nil {
+		t.Fatalf("unclaimed pipeline name should be available: %v", err)
+	}
+}
+
+type pipelineNameCheckStore struct {
+	repository.PipelineStore
+	pipeline  model.Pipeline
+	err       error
+	projectId string
+	name      string
+}
+
+func (s *pipelineNameCheckStore) PipelineByName(_ context.Context, projectId, name string) (model.Pipeline, error) {
+	s.projectId, s.name = projectId, name
+	return s.pipeline, s.err
 }
 
 type nestedVariableUpdateProjectStore struct{}

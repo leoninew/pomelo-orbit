@@ -172,7 +172,7 @@ export default {
     toolbar: 'Project toolbar',
     searchPlaceholder: 'Search project name/code',
     create: 'Create',
-    createProject: 'New Project',
+    createProject: 'Create Project',
     editProject: 'Edit Project',
     name: 'Name',
     code: 'Code',
@@ -351,10 +351,7 @@ export default {
     kind: 'Type',
     serviceCount: 'Services',
     namePlaceholder: 'Enter application name',
-    codePlaceholder:
-      'Enter application code, starting with a lowercase letter; numbers and hyphens allowed',
-    codeHint:
-      'Application code is used to generate the working directory and cannot be changed after creation',
+    codePlaceholder: 'Starts with lowercase; numbers and hyphens allowed; immutable after creation',
     imagePullPolicyPlaceholder: 'Select image pull policy',
     createWizard: {
       title: 'Create Application',
@@ -513,7 +510,7 @@ export default {
       deployDescription:
         'Deploy version "{label}" to the selected service. Deploy updates its runtime configuration.',
       dialog: {
-        editBasic: 'Edit Basic Info',
+        editBasic: 'Edit Version',
         addComponent: 'Add Component',
         editComponent: 'Edit Component',
         componentPorts: 'Configure Component Ports',
@@ -769,7 +766,7 @@ export default {
         components: 'Runtime status',
       },
       dialog: {
-        editBasic: 'Edit service basic information',
+        editBasic: 'Edit Service',
         confirmDelete: 'Delete service',
         deleteConfirm: 'Delete service "{code}"? Only stopped or faulted services can be deleted.',
       },
@@ -923,8 +920,8 @@ export default {
     dialog: {
       create: 'Create Gateway',
       editControlPlane: 'Edit control plane',
-      editIngressDefaults: 'Edit ingress defaults',
-      editRouteCertificates: 'Edit Route certificates',
+      editIngressDefaults: 'Edit ingress policy',
+      editRouteCertificates: 'Edit Certificates',
       delete: 'Confirm Delete',
       deleteConfirm: 'Delete gateway "{name}"? This action cannot be undone.',
     },
@@ -1045,7 +1042,7 @@ export default {
       customConfiguration: 'Custom Routes',
     },
     searchPlaceholder: 'Search name/domain/target URL',
-    addRoute: 'Add Route',
+    addRoute: 'Create Route',
     syncAll: 'Sync',
     syncPending: 'Sync ({count})',
     syncSuccess: 'Synced successfully',
@@ -1057,9 +1054,12 @@ export default {
     syncOverwriteWarning: 'Confirming will replace Traefik route data with business data.',
     syncPendingChanges: 'Pending route changes: {count}',
     syncAction: 'Action',
+    syncSource: 'Source',
     syncRule: 'Rule',
-    syncBusinessValue: 'Business data:',
-    syncTraefikValue: 'Traefik data:',
+    syncSources: {
+      customRoute: 'Custom route',
+      dockerLabel: 'Docker label',
+    },
     syncActions: {
       added: 'Add',
       modified: 'Modify',
@@ -1335,7 +1335,7 @@ export default {
   },
   userManagement: {
     searchPlaceholder: 'Search username/email',
-    create: 'New User',
+    create: 'Create User',
     edit: 'Edit User',
     username: 'Username',
     email: 'Email',
@@ -1370,7 +1370,7 @@ export default {
   },
   roleManagement: {
     searchPlaceholder: 'Search role code/name/description',
-    create: 'New Role',
+    create: 'Create Role',
     edit: 'Edit Role',
     delete: 'Delete Role',
     code: 'Role Code',

@@ -171,7 +171,7 @@ export default {
     toolbar: '项目工具栏',
     searchPlaceholder: '搜索项目名称/编码',
     create: '创建',
-    createProject: '新建项目',
+    createProject: '创建项目',
     editProject: '编辑项目',
     name: '名称',
     code: '编码',
@@ -347,8 +347,7 @@ export default {
     kind: '类型',
     serviceCount: '服务',
     namePlaceholder: '输入应用名称',
-    codePlaceholder: '输入应用代码（以小写字母开头，可含数字和连字符）',
-    codeHint: '应用代码用于生成工作目录，创建后不可修改',
+    codePlaceholder: '小写字母开头，可含数字和连字符，创建后不可修改',
     imagePullPolicyPlaceholder: '选择镜像拉取策略',
     createWizard: {
       title: '创建应用',
@@ -458,7 +457,7 @@ export default {
       dialog: {
         editApplication: '编辑应用',
         confirmDelete: '确认删除',
-        createVersion: '新建版本',
+        createVersion: '创建版本',
         editVersion: '编辑版本',
         forkVersion: '复制版本',
         deploy: '部署应用',
@@ -501,7 +500,7 @@ export default {
       componentsLoadFailed: '组件加载失败，请重试',
       deployDescription: '将版本「{label}」部署到指定服务；部署时会维护服务运行配置。',
       dialog: {
-        editBasic: '编辑基本信息',
+        editBasic: '编辑版本',
         addComponent: '添加组件',
         editComponent: '编辑组件',
         componentPorts: '配置组件端口',
@@ -751,7 +750,7 @@ export default {
         components: '运行状态',
       },
       dialog: {
-        editBasic: '编辑服务基本信息',
+        editBasic: '编辑服务',
         confirmDelete: '删除服务',
         deleteConfirm: '确定删除服务“{code}”吗？仅已停止或失败的服务可删除。',
       },
@@ -902,8 +901,8 @@ export default {
     dialog: {
       create: '创建网关',
       editControlPlane: '编辑控制面',
-      editIngressDefaults: '编辑入口默认策略',
-      editRouteCertificates: '编辑 Route 证书',
+      editIngressDefaults: '编辑入口策略',
+      editRouteCertificates: '编辑证书',
       delete: '确认删除',
       deleteConfirm: '确定删除网关「{name}」吗？此操作不可恢复。',
     },
@@ -1023,7 +1022,7 @@ export default {
       customConfiguration: '自定义路由',
     },
     searchPlaceholder: '搜索名称/域名/目标地址',
-    addRoute: '添加路由',
+    addRoute: '创建路由',
     syncAll: '同步',
     syncPending: '同步（{count}）',
     syncSuccess: '同步成功',
@@ -1035,9 +1034,12 @@ export default {
     syncOverwriteWarning: '确认同步后将以业务数据覆盖 Traefik 路由数据。',
     syncPendingChanges: '待提交的路由变更：{count} 项',
     syncAction: '操作',
+    syncSource: '来源',
     syncRule: '规则',
-    syncBusinessValue: '业务数据：',
-    syncTraefikValue: 'Traefik 数据：',
+    syncSources: {
+      customRoute: '自定义路由',
+      dockerLabel: 'Docker Label',
+    },
     syncActions: {
       added: '新增',
       modified: '修改',
@@ -1309,7 +1311,7 @@ export default {
   },
   userManagement: {
     searchPlaceholder: '搜索用户名/邮箱',
-    create: '新建用户',
+    create: '创建用户',
     edit: '编辑用户',
     username: '用户名',
     email: '邮箱',
@@ -1344,7 +1346,7 @@ export default {
   },
   roleManagement: {
     searchPlaceholder: '搜索角色编码/名称/描述',
-    create: '新建角色',
+    create: '创建角色',
     edit: '编辑角色',
     delete: '删除角色',
     code: '角色编码',

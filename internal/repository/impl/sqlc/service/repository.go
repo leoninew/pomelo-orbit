@@ -156,94 +156,84 @@ func (r Repository) UpsertService(ctx context.Context, projectId string, svc mod
 	if strings.TrimSpace(svc.Id) == "" {
 		return fmt.Errorf("service id is required")
 	}
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		_, err := q.ServiceById(txCtx, servicesqlc.ServiceByIdParams{Id: svc.Id, ProjectId: projectId})
-		if errors.Is(err, sql.ErrNoRows) {
-			return r.insertService(txCtx, projectId, svc)
-		}
-		if err != nil {
-			return fmt.Errorf("lookup service %s: %w", svc.Id, err)
-		}
-		if err := q.UpdateService(txCtx, servicesqlc.UpdateServiceParams{VersionId: svc.VersionId, Status: svc.Status, UpdatedAt: time.Now().UTC(), Id: svc.Id, ProjectId: projectId}); err != nil {
-			return fmt.Errorf("update service %s: %w", svc.Id, err)
-		}
-		return nil
-	})
+	q := r.q(ctx)
+	_, err := q.ServiceById(ctx, servicesqlc.ServiceByIdParams{Id: svc.Id, ProjectId: projectId})
+	if errors.Is(err, sql.ErrNoRows) {
+		return r.insertService(ctx, projectId, svc)
+	}
+	if err != nil {
+		return fmt.Errorf("lookup service %s: %w", svc.Id, err)
+	}
+	if err := q.UpdateService(ctx, servicesqlc.UpdateServiceParams{VersionId: svc.VersionId, Status: svc.Status, UpdatedAt: time.Now().UTC(), Id: svc.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("update service %s: %w", svc.Id, err)
+	}
+	return nil
 }
 
 func (r Repository) CreateServiceWithComponents(ctx context.Context, projectId string, svc model.Service, components []model.ServiceComponent) error {
 	if strings.TrimSpace(svc.ProjectId) != strings.TrimSpace(projectId) {
 		return fmt.Errorf("service project %s does not match scope %s", svc.ProjectId, projectId)
 	}
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		if err := r.insertService(txCtx, projectId, svc); err != nil {
-			return err
-		}
-		return r.replaceServiceComponents(txCtx, projectId, svc, components)
-	})
+	if err := r.insertService(ctx, projectId, svc); err != nil {
+		return err
+	}
+	return r.replaceServiceComponents(ctx, projectId, svc, components)
 }
 
 func (r Repository) UpdateServiceConfiguration(ctx context.Context, projectId string, svc model.Service, components []model.ServiceComponent) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		if err := q.UpdateServiceConfiguration(txCtx, servicesqlc.UpdateServiceConfigurationParams{VersionId: svc.VersionId, UpdatedAt: time.Now().UTC(), Id: svc.Id, ProjectId: projectId}); err != nil {
-			return fmt.Errorf("update service configuration %s: %w", svc.Id, err)
-		}
-		return r.replaceServiceComponents(txCtx, projectId, svc, components)
-	})
+	q := r.q(ctx)
+	if err := q.UpdateServiceConfiguration(ctx, servicesqlc.UpdateServiceConfigurationParams{VersionId: svc.VersionId, UpdatedAt: time.Now().UTC(), Id: svc.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("update service configuration %s: %w", svc.Id, err)
+	}
+	return r.replaceServiceComponents(ctx, projectId, svc, components)
 }
 
 func (r Repository) ReplaceServiceEnv(ctx context.Context, projectId, serviceId string, env []model.ServiceEnv) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		if err := q.DeleteServiceEnv(txCtx, servicesqlc.DeleteServiceEnvParams{ServiceId: serviceId, ProjectId: projectId}); err != nil {
-			return fmt.Errorf("delete service environment: %w", err)
+	q := r.q(ctx)
+	if err := q.DeleteServiceEnv(ctx, servicesqlc.DeleteServiceEnvParams{ServiceId: serviceId, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service environment: %w", err)
+	}
+	for _, item := range env {
+		if err := q.InsertServiceEnv(ctx, servicesqlc.InsertServiceEnvParams{ServiceId: serviceId, EnvKey: item.Key, Value: item.Value, ProjectId: projectId}); err != nil {
+			return fmt.Errorf("insert service environment %s: %w", item.Key, err)
 		}
-		for _, item := range env {
-			if err := q.InsertServiceEnv(txCtx, servicesqlc.InsertServiceEnvParams{ServiceId: serviceId, EnvKey: item.Key, Value: item.Value, ProjectId: projectId}); err != nil {
-				return fmt.Errorf("insert service environment %s: %w", item.Key, err)
-			}
-		}
-		if err := q.TouchService(txCtx, servicesqlc.TouchServiceParams{UpdatedAt: time.Now().UTC(), Id: serviceId, ProjectId: projectId}); err != nil {
-			return fmt.Errorf("touch service %s: %w", serviceId, err)
-		}
-		return nil
-	})
+	}
+	if err := q.TouchService(ctx, servicesqlc.TouchServiceParams{UpdatedAt: time.Now().UTC(), Id: serviceId, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("touch service %s: %w", serviceId, err)
+	}
+	return nil
 }
 
 func (r Repository) UpdateServiceComponentOverlay(ctx context.Context, projectId string, component model.ServiceComponent) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		entrypointJSON, err := optionalCommandJSON(component.Entrypoint)
-		if err != nil {
-			return fmt.Errorf("encode service component entrypoint: %w", err)
-		}
-		commandJSON, err := optionalCommandJSON(component.Command)
-		if err != nil {
-			return fmt.Errorf("encode service component command: %w", err)
-		}
-		if err := q.UpdateServiceComponentOverlayFields(txCtx, servicesqlc.UpdateServiceComponentOverlayFieldsParams{
-			EntrypointJson: entrypointJSON, CommandJson: commandJSON,
-			PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy),
-			UpdatedAt: time.Now().UTC(), Id: component.Id, ProjectId: projectId,
-		}); err != nil {
-			return fmt.Errorf("update service component runtime overlay: %w", err)
-		}
-		if err := q.DeleteServiceComponentEnv(txCtx, servicesqlc.DeleteServiceComponentEnvParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
-			return fmt.Errorf("delete service component env: %w", err)
-		}
-		if err := q.DeleteServiceComponentMounts(txCtx, servicesqlc.DeleteServiceComponentMountsParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
-			return fmt.Errorf("delete service component mounts: %w", err)
-		}
-		if err := q.DeleteServiceComponentResource(txCtx, servicesqlc.DeleteServiceComponentResourceParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
-			return fmt.Errorf("delete service component resource: %w", err)
-		}
-		if err := q.DeleteServiceComponentEndpoints(txCtx, servicesqlc.DeleteServiceComponentEndpointsParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
-			return fmt.Errorf("delete service component endpoints: %w", err)
-		}
-		return insertServiceComponentOverlay(txCtx, q, projectId, component)
-	})
+	q := r.q(ctx)
+	entrypointJSON, err := optionalCommandJSON(component.Entrypoint)
+	if err != nil {
+		return fmt.Errorf("encode service component entrypoint: %w", err)
+	}
+	commandJSON, err := optionalCommandJSON(component.Command)
+	if err != nil {
+		return fmt.Errorf("encode service component command: %w", err)
+	}
+	if err := q.UpdateServiceComponentOverlayFields(ctx, servicesqlc.UpdateServiceComponentOverlayFieldsParams{
+		EntrypointJson: entrypointJSON, CommandJson: commandJSON,
+		PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy),
+		UpdatedAt: time.Now().UTC(), Id: component.Id, ProjectId: projectId,
+	}); err != nil {
+		return fmt.Errorf("update service component runtime overlay: %w", err)
+	}
+	if err := q.DeleteServiceComponentEnv(ctx, servicesqlc.DeleteServiceComponentEnvParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service component env: %w", err)
+	}
+	if err := q.DeleteServiceComponentMounts(ctx, servicesqlc.DeleteServiceComponentMountsParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service component mounts: %w", err)
+	}
+	if err := q.DeleteServiceComponentResource(ctx, servicesqlc.DeleteServiceComponentResourceParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service component resource: %w", err)
+	}
+	if err := q.DeleteServiceComponentEndpoints(ctx, servicesqlc.DeleteServiceComponentEndpointsParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service component endpoints: %w", err)
+	}
+	return insertServiceComponentOverlay(ctx, q, projectId, component)
 }
 
 func (r Repository) DeleteService(ctx context.Context, projectId, id string) error {

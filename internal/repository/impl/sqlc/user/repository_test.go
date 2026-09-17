@@ -10,6 +10,7 @@ import (
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -109,11 +110,19 @@ func TestSetUserRolesRollsBackOnError(t *testing.T) {
 		t.Fatalf("initial SetUserRoles failed: %v", err)
 	}
 
+	// 在外部事务上下文中执行，并在出错时回滚，验证仓储在事务下的正确性
+	sqlTx, err := database.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	txCtx := tx.WithTx(ctx, sqlTx)
+
 	// 传入重复的 roleId 触发主键冲突错误
-	err := repo.SetUserRoles(ctx, userId, []string{"role-init", "role-init"})
+	err = repo.SetUserRoles(txCtx, userId, []string{"role-init", "role-init"})
 	if err == nil {
 		t.Fatal("expected SetUserRoles to fail on duplicate roleId")
 	}
+	_ = sqlTx.Rollback()
 
 	// 验证回滚：原角色 initial_role 仍完整保留
 	roles, err := repo.UserRoles(ctx, userId)

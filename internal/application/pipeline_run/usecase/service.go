@@ -341,8 +341,17 @@ func (s Service) DeletePipelineRun(ctx context.Context, userId string, projectId
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to resolve pipeline workspace", err)
 	}
-	if err := s.store.DeletePipelineRun(ctx, projectId, run.Id); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run", err)
+	deleteRecord := func(txCtx context.Context) error {
+		return s.store.DeletePipelineRun(txCtx, projectId, run.Id)
+	}
+	var deleteErr error
+	if s.transactionRunner != nil {
+		deleteErr = s.transactionRunner.RunInTransaction(ctx, deleteRecord)
+	} else {
+		deleteErr = deleteRecord(ctx)
+	}
+	if deleteErr != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run", deleteErr)
 	}
 	if err := workspace.RemoveRunFiles(run.Id); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {

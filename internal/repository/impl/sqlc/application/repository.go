@@ -159,25 +159,23 @@ func (r Repository) UpdateApplication(ctx context.Context, projectId string, app
 }
 
 func (r Repository) DeleteApplication(ctx context.Context, projectId string, id string) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		versionIds, err := q.VersionIdsByApplication(txCtx, applicationsqlc.VersionIdsByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)})
-		if err != nil {
-			return fmt.Errorf("list application version ids %s: %w", id, err)
+	q := r.q(ctx)
+	versionIds, err := q.VersionIdsByApplication(ctx, applicationsqlc.VersionIdsByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)})
+	if err != nil {
+		return fmt.Errorf("list application version ids %s: %w", id, err)
+	}
+	for _, versionId := range versionIds {
+		if err := q.ClearVersionForkRefs(ctx, applicationsqlc.ClearVersionForkRefsParams{VersionId: projectScopeId(versionId), ProjectId: projectScopeId(projectId)}); err != nil {
+			return fmt.Errorf("clear version fork references %s: %w", versionId, err)
 		}
-		for _, versionId := range versionIds {
-			if err := q.ClearVersionForkRefs(txCtx, applicationsqlc.ClearVersionForkRefsParams{VersionId: projectScopeId(versionId), ProjectId: projectScopeId(projectId)}); err != nil {
-				return fmt.Errorf("clear version fork references %s: %w", versionId, err)
-			}
-		}
-		if err := q.DeleteVersionsByApplication(txCtx, applicationsqlc.DeleteVersionsByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("delete application versions %s: %w", id, err)
-		}
-		if err := q.DeleteApplication(txCtx, applicationsqlc.DeleteApplicationParams{Id: id, ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("delete application %s: %w", id, err)
-		}
-		return nil
-	})
+	}
+	if err := q.DeleteVersionsByApplication(ctx, applicationsqlc.DeleteVersionsByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
+		return fmt.Errorf("delete application versions %s: %w", id, err)
+	}
+	if err := q.DeleteApplication(ctx, applicationsqlc.DeleteApplicationParams{Id: id, ProjectId: projectScopeId(projectId)}); err != nil {
+		return fmt.Errorf("delete application %s: %w", id, err)
+	}
+	return nil
 }
 
 func (r Repository) ListVersions(ctx context.Context, projectId string, applicationId string) ([]model.Version, error) {
@@ -284,19 +282,17 @@ func (r Repository) UpdateVersion(ctx context.Context, projectId string, version
 }
 
 func (r Repository) DeleteVersion(ctx context.Context, projectId string, id string) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		if err := q.ClearVersionForkRefs(txCtx, applicationsqlc.ClearVersionForkRefsParams{VersionId: projectScopeId(id), ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("clear version fork references %s: %w", id, err)
-		}
-		if err := q.DeleteVersionComponents(txCtx, applicationsqlc.DeleteVersionComponentsParams{VersionId: id, ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("delete version components %s: %w", id, err)
-		}
-		if err := q.DeleteVersion(txCtx, applicationsqlc.DeleteVersionParams{Id: id, ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("delete version %s: %w", id, err)
-		}
-		return nil
-	})
+	q := r.q(ctx)
+	if err := q.ClearVersionForkRefs(ctx, applicationsqlc.ClearVersionForkRefsParams{VersionId: projectScopeId(id), ProjectId: projectScopeId(projectId)}); err != nil {
+		return fmt.Errorf("clear version fork references %s: %w", id, err)
+	}
+	if err := q.DeleteVersionComponents(ctx, applicationsqlc.DeleteVersionComponentsParams{VersionId: id, ProjectId: projectScopeId(projectId)}); err != nil {
+		return fmt.Errorf("delete version components %s: %w", id, err)
+	}
+	if err := q.DeleteVersion(ctx, applicationsqlc.DeleteVersionParams{Id: id, ProjectId: projectScopeId(projectId)}); err != nil {
+		return fmt.Errorf("delete version %s: %w", id, err)
+	}
+	return nil
 }
 
 func (r Repository) VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error) {
@@ -328,9 +324,7 @@ func (r Repository) VersionComponent(ctx context.Context, projectId string, id s
 }
 
 func (r Repository) ReplaceVersionComponents(ctx context.Context, projectId string, versionId string, components []model.VersionComponent) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		return r.replaceVersionComponents(txCtx, projectId, versionId, components)
-	})
+	return r.replaceVersionComponents(ctx, projectId, versionId, components)
 }
 
 func (r Repository) replaceVersionComponents(ctx context.Context, projectId string, versionId string, components []model.VersionComponent) error {
@@ -357,60 +351,56 @@ func (r Repository) replaceVersionComponents(ctx context.Context, projectId stri
 }
 
 func (r Repository) CreateVersionComponent(ctx context.Context, projectId string, component model.VersionComponent) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		if _, err := r.Version(txCtx, projectId, component.VersionId); err != nil {
-			return err
-		}
-		if err := insertVersionComponent(txCtx, q, component, time.Now().UTC()); err != nil {
-			return err
-		}
-		return r.updateComponentSummary(txCtx, q, projectId, component.VersionId)
-	})
+	q := r.q(ctx)
+	if _, err := r.Version(ctx, projectId, component.VersionId); err != nil {
+		return err
+	}
+	if err := insertVersionComponent(ctx, q, component, time.Now().UTC()); err != nil {
+		return err
+	}
+	return r.updateComponentSummary(ctx, q, projectId, component.VersionId)
 }
 
 func (r Repository) UpdateVersionComponentBasic(ctx context.Context, projectId string, component model.VersionComponent, oldName string) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		now := time.Now().UTC()
-		entrypointJSON, err := commandJSON(component.Entrypoint)
-		if err != nil {
-			return fmt.Errorf("encode component entrypoint: %w", err)
-		}
-		commandJSON, err := commandJSON(component.Command)
-		if err != nil {
-			return fmt.Errorf("encode component command: %w", err)
-		}
-		if err := q.UpdateVersionComponentBasic(txCtx, applicationsqlc.UpdateVersionComponentBasicParams{
-			Name:          component.Name,
-			Image:         component.Image,
-			PullPolicy:    component.PullPolicy,
-			RestartPolicy: dbmodel.NullString(component.RestartPolicy),
-			UpdatedAt:     now,
-			Id:            component.Id,
-			ProjectId:     projectScopeId(projectId),
+	q := r.q(ctx)
+	now := time.Now().UTC()
+	entrypointJSON, err := commandJSON(component.Entrypoint)
+	if err != nil {
+		return fmt.Errorf("encode component entrypoint: %w", err)
+	}
+	commandJSON, err := commandJSON(component.Command)
+	if err != nil {
+		return fmt.Errorf("encode component command: %w", err)
+	}
+	if err := q.UpdateVersionComponentBasic(ctx, applicationsqlc.UpdateVersionComponentBasicParams{
+		Name:          component.Name,
+		Image:         component.Image,
+		PullPolicy:    component.PullPolicy,
+		RestartPolicy: dbmodel.NullString(component.RestartPolicy),
+		UpdatedAt:     now,
+		Id:            component.Id,
+		ProjectId:     projectScopeId(projectId),
+	}); err != nil {
+		return fmt.Errorf("update version component %s: %w", component.Id, err)
+	}
+	if err := q.UpdateVersionComponentCommand(ctx, applicationsqlc.UpdateVersionComponentCommandParams{
+		CommandJson: commandJSON, UpdatedAt: now, Id: component.Id, ProjectId: projectScopeId(projectId),
+	}); err != nil {
+		return fmt.Errorf("update component command: %w", err)
+	}
+	if err := q.UpdateVersionComponentEntrypoint(ctx, applicationsqlc.UpdateVersionComponentEntrypointParams{
+		EntrypointJson: entrypointJSON, UpdatedAt: now, Id: component.Id, ProjectId: projectScopeId(projectId),
+	}); err != nil {
+		return fmt.Errorf("update component entrypoint: %w", err)
+	}
+	if oldName != component.Name {
+		if err := q.RenameVersionComponentDependencies(ctx, applicationsqlc.RenameVersionComponentDependenciesParams{
+			NewName: component.Name, VersionId: component.VersionId, OldName: oldName, ProjectId: projectScopeId(projectId),
 		}); err != nil {
-			return fmt.Errorf("update version component %s: %w", component.Id, err)
+			return fmt.Errorf("rename version component dependencies: %w", err)
 		}
-		if err := q.UpdateVersionComponentCommand(txCtx, applicationsqlc.UpdateVersionComponentCommandParams{
-			CommandJson: commandJSON, UpdatedAt: now, Id: component.Id, ProjectId: projectScopeId(projectId),
-		}); err != nil {
-			return fmt.Errorf("update component command: %w", err)
-		}
-		if err := q.UpdateVersionComponentEntrypoint(txCtx, applicationsqlc.UpdateVersionComponentEntrypointParams{
-			EntrypointJson: entrypointJSON, UpdatedAt: now, Id: component.Id, ProjectId: projectScopeId(projectId),
-		}); err != nil {
-			return fmt.Errorf("update component entrypoint: %w", err)
-		}
-		if oldName != component.Name {
-			if err := q.RenameVersionComponentDependencies(txCtx, applicationsqlc.RenameVersionComponentDependenciesParams{
-				NewName: component.Name, VersionId: component.VersionId, OldName: oldName, ProjectId: projectScopeId(projectId),
-			}); err != nil {
-				return fmt.Errorf("rename version component dependencies: %w", err)
-			}
-		}
-		return r.updateComponentSummary(txCtx, q, projectId, component.VersionId)
-	})
+	}
+	return r.updateComponentSummary(ctx, q, projectId, component.VersionId)
 }
 
 func (r Repository) UpdateVersionComponentRuntime(ctx context.Context, projectId string, component model.VersionComponent) error {
@@ -442,41 +432,35 @@ func (r Repository) UpdateVersionComponentDevices(ctx context.Context, projectId
 }
 
 func (r Repository) updateVersionComponentConfig(ctx context.Context, projectId string, component model.VersionComponent, deleteConfig func(context.Context, *applicationsqlc.Queries, string) error, insertConfig func(context.Context, *applicationsqlc.Queries, model.VersionComponent) error) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		if err := q.TouchVersionComponent(txCtx, applicationsqlc.TouchVersionComponentParams{UpdatedAt: time.Now().UTC(), Id: component.Id, ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("touch version component %s: %w", component.Id, err)
-		}
-		if err := deleteConfig(txCtx, q, component.Id); err != nil {
-			return err
-		}
-		if err := insertConfig(txCtx, q, component); err != nil {
-			return err
-		}
-		return r.updateComponentSummary(txCtx, q, projectId, component.VersionId)
-	})
+	q := r.q(ctx)
+	if err := q.TouchVersionComponent(ctx, applicationsqlc.TouchVersionComponentParams{UpdatedAt: time.Now().UTC(), Id: component.Id, ProjectId: projectScopeId(projectId)}); err != nil {
+		return fmt.Errorf("touch version component %s: %w", component.Id, err)
+	}
+	if err := deleteConfig(ctx, q, component.Id); err != nil {
+		return err
+	}
+	if err := insertConfig(ctx, q, component); err != nil {
+		return err
+	}
+	return r.updateComponentSummary(ctx, q, projectId, component.VersionId)
 }
 
 func (r Repository) DeleteVersionComponent(ctx context.Context, projectId string, component model.VersionComponent) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		if err := q.DeleteVersionComponent(txCtx, applicationsqlc.DeleteVersionComponentParams{Id: component.Id, ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("delete version component %s: %w", component.Id, err)
-		}
-		return r.updateComponentSummary(txCtx, q, projectId, component.VersionId)
-	})
+	q := r.q(ctx)
+	if err := q.DeleteVersionComponent(ctx, applicationsqlc.DeleteVersionComponentParams{Id: component.Id, ProjectId: projectScopeId(projectId)}); err != nil {
+		return fmt.Errorf("delete version component %s: %w", component.Id, err)
+	}
+	return r.updateComponentSummary(ctx, q, projectId, component.VersionId)
 }
 
 func (r Repository) CreateVersionWithVersionComponents(ctx context.Context, projectId string, version model.Version, components []model.VersionComponent) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		if err := r.CreateVersion(txCtx, projectId, version); err != nil {
-			return err
-		}
-		if err := r.replaceVersionComponents(txCtx, projectId, version.Id, components); err != nil {
-			return err
-		}
-		return nil
-	})
+	if err := r.CreateVersion(ctx, projectId, version); err != nil {
+		return err
+	}
+	if err := r.replaceVersionComponents(ctx, projectId, version.Id, components); err != nil {
+		return err
+	}
+	return nil
 }
 
 func appFrom(id string, projectId sql.NullString, name, code, kind string, createdAt, updatedAt time.Time) model.Application {

@@ -122,51 +122,45 @@ func (r Repository) ApplicationPipelineStages(ctx context.Context, projectId str
 	return result, nil
 }
 func (r Repository) CreateApplicationPipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		if err := r.CreatePipeline(txCtx, pipeline); err != nil {
+	if err := r.CreatePipeline(ctx, pipeline); err != nil {
+		return err
+	}
+	for _, stage := range stages {
+		if err := translate(r.q(ctx).InsertApplicationPipelineStage(ctx, applicationStageParams(stage))); err != nil {
 			return err
 		}
-		for _, stage := range stages {
-			if err := translate(r.q(txCtx).InsertApplicationPipelineStage(txCtx, applicationStageParams(stage))); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}
+	return nil
 }
 func (r Repository) UpdateApplicationPipelineWithStages(ctx context.Context, projectId string, pipeline model.Pipeline, stages []model.PipelineStage) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		if err := r.UpdatePipeline(txCtx, projectId, pipeline); err != nil {
+	if err := r.UpdatePipeline(ctx, projectId, pipeline); err != nil {
+		return err
+	}
+	q := r.q(ctx)
+	if err := translate(q.DeleteApplicationPipelineStages(ctx, pipelinesqlc.DeleteApplicationPipelineStagesParams{PipelineId: nullString(&pipeline.Id), ProjectId: projectId})); err != nil {
+		return err
+	}
+	for _, stage := range stages {
+		if err := translate(q.InsertApplicationPipelineStage(ctx, applicationStageParams(stage))); err != nil {
 			return err
 		}
-		q := r.q(txCtx)
-		if err := translate(q.DeleteApplicationPipelineStages(txCtx, pipelinesqlc.DeleteApplicationPipelineStagesParams{PipelineId: nullString(&pipeline.Id), ProjectId: projectId})); err != nil {
-			return err
-		}
-		for _, stage := range stages {
-			if err := translate(q.InsertApplicationPipelineStage(txCtx, applicationStageParams(stage))); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}
+	return nil
 }
 func (r Repository) UpdateTemplatePipelineWithReferences(ctx context.Context, projectId string, pipeline model.Pipeline, references []model.PipelineStageReference) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		if err := r.UpdatePipeline(txCtx, projectId, pipeline); err != nil {
+	if err := r.UpdatePipeline(ctx, projectId, pipeline); err != nil {
+		return err
+	}
+	q := r.q(ctx)
+	if err := translate(q.DeleteTemplatePipelineStageReferences(ctx, pipelinesqlc.DeleteTemplatePipelineStageReferencesParams{PipelineId: pipeline.Id, ProjectId: nullString(&projectId)})); err != nil {
+		return err
+	}
+	for _, reference := range references {
+		if err := translate(q.InsertTemplatePipelineStageReference(ctx, referenceParams(reference))); err != nil {
 			return err
 		}
-		q := r.q(txCtx)
-		if err := translate(q.DeleteTemplatePipelineStageReferences(txCtx, pipelinesqlc.DeleteTemplatePipelineStageReferencesParams{PipelineId: pipeline.Id, ProjectId: nullString(&projectId)})); err != nil {
-			return err
-		}
-		for _, reference := range references {
-			if err := translate(q.InsertTemplatePipelineStageReference(txCtx, referenceParams(reference))); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}
+	return nil
 }
 func (r Repository) LatestPipelineSnapshot(ctx context.Context, projectId string, pipelineId string) (model.PipelineSnapshot, error) {
 	item, err := r.q(ctx).LatestPipelineSnapshot(ctx, pipelinesqlc.LatestPipelineSnapshotParams{PipelineId: pipelineId, ProjectId: nullString(&projectId)})

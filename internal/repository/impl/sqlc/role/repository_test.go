@@ -10,6 +10,7 @@ import (
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -45,10 +46,17 @@ func TestCreateRoleRollsBackWhenPermissionFails(t *testing.T) {
 		UpdatedAt: time.Now().UTC(),
 	}
 
-	err := repo.CreateRole(ctx, role, []string{"perm:read", "perm:non_existent"})
+	sqlTx, err := database.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	txCtx := tx.WithTx(ctx, sqlTx)
+
+	err = repo.CreateRole(txCtx, role, []string{"perm:read", "perm:non_existent"})
 	if err == nil {
 		t.Fatal("expected CreateRole to fail for unknown permission code")
 	}
+	_ = sqlTx.Rollback()
 
 	var count int
 	if err := database.QueryRowContext(ctx, `SELECT COUNT(*) FROM role WHERE id = 'role-1'`).Scan(&count); err != nil {
@@ -122,10 +130,17 @@ func TestUpdateRoleRollsBackWhenPermissionFails(t *testing.T) {
 	}
 
 	role.Name = "Senior Manager"
-	err := repo.UpdateRole(ctx, role, []string{"perm:invalid"})
+	sqlTx, err := database.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	txCtx := tx.WithTx(ctx, sqlTx)
+
+	err = repo.UpdateRole(txCtx, role, []string{"perm:invalid"})
 	if err == nil {
 		t.Fatal("expected UpdateRole to fail for unknown permission code")
 	}
+	_ = sqlTx.Rollback()
 
 	unchanged, err := repo.RoleById(ctx, "role-3")
 	if err != nil {

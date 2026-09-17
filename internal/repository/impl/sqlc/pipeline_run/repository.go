@@ -66,20 +66,18 @@ func (r Repository) PipelineRun(ctx context.Context, projectId string, id string
 }
 
 func (r Repository) DeletePipelineRun(ctx context.Context, projectId, id string) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		deleteParams := pipelinerunsqlc.DeletePipelineRunArtifactsParams{PipelineRunId: id, ProjectId: requiredArgument(projectId)}
-		if err := q.DeletePipelineRunArtifacts(txCtx, deleteParams); err != nil {
-			return translate(err)
-		}
-		if err := q.DeletePipelineStageRuns(txCtx, pipelinerunsqlc.DeletePipelineStageRunsParams(deleteParams)); err != nil {
-			return translate(err)
-		}
-		if err := q.DeletePipelineRunVersionBinding(txCtx, pipelinerunsqlc.DeletePipelineRunVersionBindingParams(deleteParams)); err != nil {
-			return translate(err)
-		}
-		return translate(q.DeletePipelineRun(txCtx, pipelinerunsqlc.DeletePipelineRunParams{Id: id, ProjectId: requiredArgument(projectId)}))
-	})
+	q := r.q(ctx)
+	deleteParams := pipelinerunsqlc.DeletePipelineRunArtifactsParams{PipelineRunId: id, ProjectId: requiredArgument(projectId)}
+	if err := q.DeletePipelineRunArtifacts(ctx, deleteParams); err != nil {
+		return translate(err)
+	}
+	if err := q.DeletePipelineStageRuns(ctx, pipelinerunsqlc.DeletePipelineStageRunsParams(deleteParams)); err != nil {
+		return translate(err)
+	}
+	if err := q.DeletePipelineRunVersionBinding(ctx, pipelinerunsqlc.DeletePipelineRunVersionBindingParams(deleteParams)); err != nil {
+		return translate(err)
+	}
+	return translate(q.DeletePipelineRun(ctx, pipelinerunsqlc.DeletePipelineRunParams{Id: id, ProjectId: requiredArgument(projectId)}))
 }
 
 func (r Repository) ListPipelineStageRuns(ctx context.Context, projectId, runId string) ([]model.PipelineStageRun, error) {
@@ -149,28 +147,27 @@ func (r Repository) Artifact(ctx context.Context, projectId string, id string) (
 }
 
 func (r Repository) CreatePipelineRun(ctx context.Context, run model.PipelineRun, binding *model.PipelineRunVersionBinding, stageRuns []model.PipelineStageRun) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		if err := r.q(txCtx).InsertPipelineRun(txCtx, pipelineRunParams(run)); err != nil {
+	q := r.q(ctx)
+	if err := q.InsertPipelineRun(ctx, pipelineRunParams(run)); err != nil {
+		return translate(err)
+	}
+	for _, stageRun := range stageRuns {
+		if err := q.InsertPipelineStageRun(ctx, pipelineStageRunParams(stageRun)); err != nil {
 			return translate(err)
 		}
-		for _, stageRun := range stageRuns {
-			if err := r.q(txCtx).InsertPipelineStageRun(txCtx, pipelineStageRunParams(stageRun)); err != nil {
-				return translate(err)
-			}
-		}
-		if binding == nil {
-			return nil
-		}
-		return translate(r.q(txCtx).InsertPipelineRunVersionBinding(txCtx, pipelinerunsqlc.InsertPipelineRunVersionBindingParams{
-			PipelineRunId:         run.Id,
-			ApplicationId:         binding.ApplicationId,
-			ApplicationName:       binding.ApplicationName,
-			SourceVersionId:       binding.SourceVersionId,
-			SourceVersionLabel:    binding.SourceVersionLabel,
-			GeneratedVersionId:    nullString(binding.GeneratedVersionId),
-			GeneratedVersionLabel: nullString(binding.GeneratedVersionLabel),
-		}))
-	})
+	}
+	if binding == nil {
+		return nil
+	}
+	return translate(q.InsertPipelineRunVersionBinding(ctx, pipelinerunsqlc.InsertPipelineRunVersionBindingParams{
+		PipelineRunId:         run.Id,
+		ApplicationId:         binding.ApplicationId,
+		ApplicationName:       binding.ApplicationName,
+		SourceVersionId:       binding.SourceVersionId,
+		SourceVersionLabel:    binding.SourceVersionLabel,
+		GeneratedVersionId:    nullString(binding.GeneratedVersionId),
+		GeneratedVersionLabel: nullString(binding.GeneratedVersionLabel),
+	}))
 }
 
 func (r Repository) RepositoryHasActivePipelineRun(ctx context.Context, projectId, repositoryId string) (bool, error) {
@@ -189,21 +186,17 @@ func (r Repository) PipelineRunVersionBinding(ctx context.Context, projectId, ru
 }
 
 func (r Repository) CancelPipelineRun(ctx context.Context, projectId, id string) (bool, error) {
-	canceled := false
-	err := tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		now := time.Now().UTC()
-		rows, err := r.q(txCtx).CancelPipelineRun(txCtx, pipelinerunsqlc.CancelPipelineRunParams{Status: status.WorkStatusCanceled, FinishedAt: sql.NullTime{Time: now, Valid: true}, ErrorMessage: sql.NullString{String: "Cancelled by user", Valid: true}, Id: id, ProjectId: requiredArgument(projectId), WaitingStatus: status.WorkStatusWaitingToRun, RunningStatus: status.WorkStatusRunning})
-		if err != nil {
-			return translate(err)
-		}
-		if rows == 0 {
-			return nil
-		}
-		canceled = true
-		_, err = r.q(txCtx).CancelRunningPipelineStageRuns(txCtx, pipelinerunsqlc.CancelRunningPipelineStageRunsParams{Status: status.WorkStatusCanceled, FinishedAt: sql.NullTime{Time: now, Valid: true}, ErrorMessage: sql.NullString{String: "Cancelled by user", Valid: true}, PipelineRunId: id, ExpectedStatus: status.WorkStatusRunning, ProjectId: requiredArgument(projectId)})
-		return translate(err)
-	})
-	return canceled, err
+	q := r.q(ctx)
+	now := time.Now().UTC()
+	rows, err := q.CancelPipelineRun(ctx, pipelinerunsqlc.CancelPipelineRunParams{Status: status.WorkStatusCanceled, FinishedAt: sql.NullTime{Time: now, Valid: true}, ErrorMessage: sql.NullString{String: "Cancelled by user", Valid: true}, Id: id, ProjectId: requiredArgument(projectId), WaitingStatus: status.WorkStatusWaitingToRun, RunningStatus: status.WorkStatusRunning})
+	if err != nil {
+		return false, translate(err)
+	}
+	if rows == 0 {
+		return false, nil
+	}
+	_, err = q.CancelRunningPipelineStageRuns(ctx, pipelinerunsqlc.CancelRunningPipelineStageRunsParams{Status: status.WorkStatusCanceled, FinishedAt: sql.NullTime{Time: now, Valid: true}, ErrorMessage: sql.NullString{String: "Cancelled by user", Valid: true}, PipelineRunId: id, ExpectedStatus: status.WorkStatusRunning, ProjectId: requiredArgument(projectId)})
+	return true, translate(err)
 }
 
 func (r Repository) CancelRunningPipelineStageRuns(ctx context.Context, projectId, runId string) error {

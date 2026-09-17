@@ -1,5 +1,5 @@
 # 后端架构（现行）
-最后修改时间: 2026-09-16 18:02:22
+最后修改时间: 2026-09-17 10:55:15
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。  
@@ -70,7 +70,7 @@ cmd/server, cmd/migrate
 
 - `App.Serve`：普通迁移（含 seed）→ HTTP → **同进程** background worker（见 `internal/bootstrap/app.go`）。
 - `App.RunWorker`：普通迁移（含 seed）→ 可单独跑 worker。
-- `App.RunMCP`：本地 stdio MCP；工具发现无认证副作用，每次 `tools/call` 校验 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 中的 MCP PAT，并固定 session actor。它直连 application usecase，不暴露 HTTP `/mcp`，也不使用浏览器 grant、loopback callback、本地 token 文件或 Web JWT。
+- `App.RunMCP`：本地 stdio MCP；工具发现无认证副作用，每次 `tools/call` 校验 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 中的 MCP PAT，并固定 session actor。Grok 通过仓库 `.grok/config.toml` 启动该进程，Codex 通过 `.codex/config.toml`。它直连 application usecase，不暴露 HTTP `/mcp`，也不使用浏览器 grant、loopback callback、本地 token 文件或 Web JWT。
 - Deployment Dialogue：HTTP 入站认证后的 actor 通过每 turn 的内存 MCP session 调用与 stdio 相同的 Core；不转发浏览器 Authorization。
 - 单节点挂载 Docker socket 执行 CI/CD 容器操作；不做 API→远程 worker 协议主路径。
 

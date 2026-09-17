@@ -1,15 +1,26 @@
 # MCP 直接操作
-最后修改时间: 2026-09-16 18:02:22
+最后修改时间: 2026-09-17 11:45:00
 
 ## 命名与启动约定
 
-Codex 注册名为 `pomelo-orbit-mcp`，本地 stdio 入口为 `go run ./cmd/server mcp`，工具在客户端中显示为 `mcp__pomelo-orbit-mcp__orbit_*`。它直接构造 Orbit Go delivery MCP Core，工具调用不会回环到 Orbit HTTP API，也不提供远程 `/mcp` 端点。先在已登录的 Orbit Web 控制台“系统管理 / 访问令牌”创建一个命名 PAT，并在创建窗口中复制一次。`initialize` 和 `tools/list` 不读取或验证凭据；每次实际 `tools/call` 都使用 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 调用同一 Auth Service 查找 PAT 摘要、校验未撤销/未过期及用户 enabled 状态，并把 session 固定到首次通过校验的用户。父进程通过项目 `.codex/config.toml` 的 `env_vars` 将变量传给 stdio 子进程；不要将 token 写入配置文件、浏览器 localStorage 或用户配置目录。PAT 默认不过期，也可创建为有限有效期；撤销、到期或替换后，更新父进程环境并重启 MCP session。stdio 仍需运行在可访问同一 Orbit 数据库、签名配置、Docker 和 workspace 的可信环境。不要使用已废弃的注册名、浏览器授权页面或 Python MCP 命令。
+Grok 与 Codex 的注册名都是 `pomelo-orbit-mcp`，本地 stdio 入口都是 `go run ./cmd/server mcp`。它直接构造 Orbit Go delivery MCP Core，工具调用不会回环到 Orbit HTTP API，也不提供远程 `/mcp` 端点。
+
+| 客户端 | 注册位置 | 工具名 |
+| --- | --- | --- |
+| Grok | 仓库 `.grok/config.toml` 的 `[mcp_servers.pomelo-orbit-mcp]` | `pomelo-orbit-mcp__orbit_*`（`search_tool` / `use_tool`） |
+| Codex | 仓库 `.codex/config.toml` 的 `[mcp_servers.pomelo-orbit-mcp]` | `mcp__pomelo-orbit-mcp__orbit_*` |
+
+先在已登录的 Orbit Web 控制台“系统管理 / 访问令牌”创建一个命名 PAT，并在创建窗口中复制一次。`initialize` 和 `tools/list` 不读取或验证凭据；每次实际 `tools/call` 都使用 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 调用同一 Auth Service 查找 PAT 摘要、校验未撤销/未过期及用户 enabled 状态，并把 session 固定到首次通过校验的用户。
+
+不要将 token 写入 `.grok/config.toml`、`.codex/config.toml`、浏览器 localStorage 或用户配置目录。把它放在启动 Grok/Codex 的父进程环境中，或 gitignored 的 `.env.<env>`（Go 配置加载器读取，OS 环境优先）。Grok 和 Codex 的项目配置都把 `POMELO_ORBIT_APP__ENV` 写成 `development`，不使用 Shell 占位符。Codex 另用 `env_vars` 透传父进程的 `POMELO_ORBIT_MCP__ACCESS_TOKEN`，不把 PAT 写进 TOML。PAT 默认不过期，也可创建为有限有效期；撤销、到期或替换后，更新父进程环境或 dotenv 并重启 MCP session。stdio 仍需运行在可访问同一 Orbit 数据库、签名配置、Docker 和 workspace 的可信环境。不要使用已废弃的注册名、浏览器授权页面或 Python MCP 命令。
+
+Grok 写入或修改 `.grok/config.toml` 后，在 `/mcps` 中刷新或新开会话，才能连上新的 stdio Server。
 
 `pomelo-orbit-mcp` 只执行用户明确要求的独立动作。调用结果为 `isError=true` 时，该调用失败；不要自动执行依赖它的后续动作。
 
 对于带持久卷的状态服务，MCP Server instructions 和环境变量工具共同约束：Version 中由 Service 决定的环境值必须使用精确 `${KEY}` 占位，具体值只通过 `orbit_update_service_env` 保存；新 Service 的口令、令牌和密钥一次安全随机生成后跨重部署保持稳定且不在报告中暴露。数据库镜像的 bootstrap 环境变量只在空数据卷生效，因此修改 Service 值后重部署不会轮换既有数据库凭据；必须取得用户对原地轮换或重置卷的明确授权。
 
-Codex stdio MCP 在未选择 Project 时不能操作项目级资源。用户以 Project 名称声明目标后，先调用 `orbit_list_projects`（返回 id/name/code/is_active），名称唯一则调用 `orbit_select_project(project_id)`；同名时用唯一 code 澄清再选择。成功结果确认当前 Project、Environment 与 Gateway；之后的项目级工具使用该 connection scope，不再传 `project_id`。`orbit_get_current_project` 读取当前选择；未选择时返回 `project_not_selected`。未就绪 Project 返回 `project_not_ready`，不创建 Environment 或 Gateway。Web Deployment Dialogue 在创建 client 时注入页面请求的固定 Project scope，不能切换 Project。
+本地 stdio MCP 在未选择 Project 时不能操作项目级资源。用户以 Project 名称声明目标后，先调用 `orbit_list_projects`（返回 id/name/code/is_active），名称唯一则调用 `orbit_select_project(project_id)`；同名时用唯一 code 澄清再选择。成功结果确认当前 Project、Environment 与 Gateway；之后的项目级工具使用该 connection scope，不再传 `project_id`。`orbit_get_current_project` 读取当前选择；未选择时返回 `project_not_selected`。未就绪 Project 返回 `project_not_ready`，不创建 Environment 或 Gateway。Web Deployment Dialogue 在创建 client 时注入页面请求的固定 Project scope，不能切换 Project。
 
 | 用户明确要求 | 调用工具 | 不隐含的动作 |
 | --- | --- | --- |

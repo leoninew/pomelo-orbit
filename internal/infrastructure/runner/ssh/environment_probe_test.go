@@ -78,6 +78,15 @@ func TestSSHDialDiagnosticClassifiesTimeoutAndRefused(t *testing.T) {
 	}
 }
 
+func TestSSHHandshakeDiagnosticIncludesUnderlyingError(t *testing.T) {
+	underlying := errors.New("ssh: handshake failed: ssh: unable to authenticate, attempted methods [none publickey], no supported methods remain")
+	got := sshHandshakeDiagnostic("SSH key authentication failed for the configured user", underlying)
+	want := "SSH key authentication failed for the configured user: " + underlying.Error()
+	if got != want {
+		t.Fatalf("handshake diagnostic = %q, want %q", got, want)
+	}
+}
+
 func TestSSHServiceReachableTreatsAuthenticationFailureAsReachable(t *testing.T) {
 	if !sshServiceReachable(errors.New("ssh: handshake failed: ssh: unable to authenticate, no supported methods remain")) {
 		t.Fatal("authentication failure must mean the SSH service is reachable")

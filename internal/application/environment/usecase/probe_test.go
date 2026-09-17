@@ -1,8 +1,10 @@
 package environmentsvc
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +22,7 @@ func TestProbeForUserRecordsSuccessfulProbeForCurrentTargetRevision(t *testing.T
 	store := &probeEnvironmentStore{environment: environment}
 	privateKey := environmentdto.DeploymentSSHPrivateKey{PrivateKey: "private-key"}
 	prober := &probeEnvironmentProber{}
-	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, privateKey.PrivateKey), testCredentialSecret, prober, nil)
+	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, privateKey.PrivateKey), testCredentialSecret, prober, nil, nil)
 
 	result, err := service.ProbeForUser(context.Background(), "user-1", projectId)
 	if err != nil {
@@ -45,7 +47,7 @@ func TestProbeForUserRecordsSanitizedFailure(t *testing.T) {
 	environment := testProbeEnvironment(projectId)
 	store := &probeEnvironmentStore{environment: environment}
 	secret := "private-key-must-not-appear"
-	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, secret), testCredentialSecret, &probeEnvironmentProber{err: errors.New(secret)}, nil)
+	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, secret), testCredentialSecret, &probeEnvironmentProber{err: errors.New(secret)}, nil, nil)
 
 	result, err := service.ProbeForUser(context.Background(), "user-1", projectId)
 	if err != nil {
@@ -67,7 +69,7 @@ func TestProbeForUserProbesLocalEnvironmentWithoutDeploymentCredential(t *testin
 	}
 	store := &probeEnvironmentStore{environment: environment}
 	prober := &localProbeEnvironmentProber{}
-	service := New(store, probeProjectReader{}, nil, "", prober, nil)
+	service := New(store, probeProjectReader{}, nil, "", prober, nil, nil)
 
 	result, err := service.ProbeForUser(context.Background(), "user-1", projectId)
 	if err != nil {
@@ -81,18 +83,25 @@ func TestProbeForUserProbesLocalEnvironmentWithoutDeploymentCredential(t *testin
 	}
 }
 
-func TestProbeForUserRecordsSafeRunnerDiagnostic(t *testing.T) {
+func TestProbeForUserRecordsAndLogsRunnerDiagnostic(t *testing.T) {
 	projectId := "project-1"
 	environment := testProbeEnvironment(projectId)
 	store := &probeEnvironmentStore{environment: environment}
-	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, "private-key"), testCredentialSecret, &probeEnvironmentProber{err: testProbeDiagnosticError("SSH key authentication failed for the configured user.")}, nil)
+	diagnostic := "SSH key authentication failed for the configured user: ssh: handshake failed: ssh: unable to authenticate, attempted methods [none publickey], no supported methods remain"
+	var logBuffer bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logBuffer, nil))
+	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, "private-key"), testCredentialSecret, &probeEnvironmentProber{err: testProbeDiagnosticError(diagnostic)}, nil, logger)
 
 	result, err := service.ProbeForUser(context.Background(), "user-1", projectId)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.LastProbeDiagnostic == nil || *result.LastProbeDiagnostic != "SSH key authentication failed for the configured user." {
+	if result.LastProbeDiagnostic == nil || *result.LastProbeDiagnostic != diagnostic {
 		t.Fatalf("probe diagnostic = %#v", result.LastProbeDiagnostic)
+	}
+	logged := logBuffer.String()
+	if !strings.Contains(logged, "project environment probe failed") || !strings.Contains(logged, diagnostic) || !strings.Contains(logged, "project_id=project-1") || !strings.Contains(logged, "environment_id=environment-1") {
+		t.Fatalf("probe failure log = %q", logged)
 	}
 }
 
@@ -112,7 +121,7 @@ func TestProbeForUserRecordsHostKeyFingerprintOnFirstSuccess(t *testing.T) {
 	environment.SSH.HostKeyFingerprint = ""
 	store := &probeEnvironmentStore{environment: environment}
 	fingerprint := "SHA256:recordedhostkeyfingerprintvalueabcdefghijk="
-	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, "private-key"), testCredentialSecret, &probeEnvironmentProber{fingerprint: fingerprint}, nil)
+	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, "private-key"), testCredentialSecret, &probeEnvironmentProber{fingerprint: fingerprint}, nil, nil)
 
 	result, err := service.ProbeForUser(context.Background(), "user-1", projectId)
 	if err != nil {
@@ -135,7 +144,7 @@ func TestUpdateForUserWorkspaceChangeKeepsSSHIdentity(t *testing.T) {
 	environment.Code = "demo"
 	store := &updateEnvironmentStore{environment: environment}
 	targetType := model.EnvironmentTargetTypeSSH
-	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, "private-key"), testCredentialSecret, nil, nil)
+	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, "private-key"), testCredentialSecret, nil, nil, nil)
 
 	updated, err := service.UpdateForUser(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
 		TargetType: &targetType,
@@ -169,6 +178,7 @@ func TestUpdateForUserKeepsDeploymentCredentialForSSHTargetChange(t *testing.T) 
 		probeProjectReader{},
 		credentialsForEnvironment(t, environment, "private-key"),
 		testCredentialSecret,
+		nil,
 		nil,
 		nil,
 	)
@@ -205,7 +215,7 @@ func TestUpdateForUserChangesLocalWorkspaceAndInvalidatesProbeFreshness(t *testi
 	}
 	store := &updateEnvironmentStore{environment: environment}
 	targetType := model.EnvironmentTargetTypeLocal
-	updated, err := New(store, probeProjectReader{}, nil, "", nil, nil).
+	updated, err := New(store, probeProjectReader{}, nil, "", nil, nil, nil).
 		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: model.EnvironmentPlatformLinux}).
 		UpdateForUser(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
 			TargetType: &targetType,
@@ -228,7 +238,7 @@ func TestUpdateForUserChangesLocalWorkspaceAndInvalidatesProbeFreshness(t *testi
 func TestProbeForUserRejectsStaleResult(t *testing.T) {
 	environment := testProbeEnvironment("project-1")
 	store := &probeEnvironmentStore{environment: environment, stale: true}
-	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, "private-key"), testCredentialSecret, &probeEnvironmentProber{}, nil)
+	service := New(store, probeProjectReader{}, credentialsForEnvironment(t, environment, "private-key"), testCredentialSecret, &probeEnvironmentProber{}, nil, nil)
 
 	_, err := service.ProbeForUser(context.Background(), "user-1", environment.ProjectId)
 	if err == nil || !apperror.IsKind(err, apperror.KindConflict) {
@@ -250,6 +260,7 @@ func TestInitializeForUserBootstrapsWithEphemeralPasswordAndProbesGeneratedKey(t
 		testCredentialSecret,
 		prober,
 		bootstrapper,
+		nil,
 	)
 
 	result, err := service.InitializeForUser(context.Background(), "user-1", projectId, environmentdto.InitializeInput{
@@ -278,6 +289,7 @@ func TestInitializeForUserRejectsUnsupportedTargetAndAmbiguousCredentials(t *tes
 		testCredentialSecret,
 		&probeEnvironmentProber{},
 		bootstrapper,
+		nil,
 	)
 	_, err := service.InitializeForUser(context.Background(), "user-1", projectId, environmentdto.InitializeInput{
 		Username: "administrator", Password: "password", PrivateKey: "private-key",
@@ -294,6 +306,7 @@ func TestInitializeForUserRejectsUnsupportedTargetAndAmbiguousCredentials(t *tes
 		testCredentialSecret,
 		&probeEnvironmentProber{},
 		bootstrapper,
+		nil,
 	)
 	_, err = service.InitializeForUser(context.Background(), "user-1", projectId, environmentdto.InitializeInput{
 		Username: "opc", Password: "password", PrivateKey: "private-key",
@@ -314,6 +327,7 @@ func TestInitializeForUserDoesNotExposeBootstrapSecret(t *testing.T) {
 		testCredentialSecret,
 		&probeEnvironmentProber{},
 		&testEnvironmentBootstrapper{err: errors.New(secret)},
+		nil,
 	)
 	_, err := service.InitializeForUser(context.Background(), "user-1", projectId, environmentdto.InitializeInput{
 		Username: "opc", PrivateKey: secret,

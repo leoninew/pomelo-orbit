@@ -84,16 +84,16 @@ func (b EnvironmentBootstrapper) Bootstrap(ctx context.Context, environment mode
 	clientConnection, channels, requests, err := ssh.NewClientConn(connection, address, clientConfig)
 	if err != nil {
 		if strings.Contains(err.Error(), "SSH host key fingerprint mismatch") {
-			return bootstrapError{diagnostic: "The SSH host key fingerprint does not match the configured host."}
+			return bootstrapError{diagnostic: sshHandshakeDiagnostic("The SSH host key fingerprint does not match the configured host", err)}
 		}
-		return bootstrapError{diagnostic: "SSH authentication failed for the bootstrap user."}
+		return bootstrapError{diagnostic: sshHandshakeDiagnostic("SSH authentication failed for the bootstrap user", err)}
 	}
 	client := ssh.NewClient(clientConnection, channels, requests)
 	defer func() { _ = client.Close() }()
 
 	session, err := client.NewSession()
 	if err != nil {
-		return bootstrapError{diagnostic: "SSH connected, but a remote session could not be opened."}
+		return bootstrapError{diagnostic: sshHandshakeDiagnostic("SSH connected, but a remote session could not be opened", err)}
 	}
 	defer func() { _ = session.Close() }()
 	var stderr limitedBootstrapOutput

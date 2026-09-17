@@ -142,6 +142,7 @@ func (s Service) InitializeForUser(ctx context.Context, userId string, projectId
 		return environmentdto.View{}, apperror.New(apperror.KindInternal, "Generated deployment SSH public key is empty")
 	}
 	if err := s.bootstrapper.Bootstrap(ctx, item, publicKey, auth); err != nil {
+		s.logEnvironmentFailure("SSH environment initialization failed", item, err, "bootstrap_username", auth.Username)
 		return environmentdto.View{}, apperror.New(apperror.KindValidation, safeBootstrapDiagnostic(err))
 	}
 	return s.ProbeForUser(ctx, userId, projectId)
@@ -207,6 +208,7 @@ func (s Service) probeOutcome(ctx context.Context, item model.Environment) (stri
 	}
 	observedFingerprint, err := s.prober.Probe(ctx, item, privateKey)
 	if err != nil {
+		s.logEnvironmentFailure("project environment probe failed", item, err)
 		return model.EnvironmentProbeStatusFailed, safeProbeDiagnostic(err), ""
 	}
 	return model.EnvironmentProbeStatusSucceeded, probeSuccessDiagnostic(item.SSH.Platform), observedFingerprint
@@ -242,4 +244,25 @@ func probeSuccessDiagnostic(platform string) string {
 
 func stringPointer(value string) *string {
 	return &value
+}
+
+func (s Service) logEnvironmentFailure(message string, item model.Environment, err error, extra ...any) {
+	if s.logger == nil {
+		return
+	}
+	attributes := []any{
+		"project_id", item.ProjectId,
+		"environment_id", item.Id,
+		"target_type", item.TargetType,
+	}
+	if item.SSH != nil {
+		attributes = append(attributes,
+			"ssh_host", item.SSH.Host,
+			"ssh_port", item.SSH.Port,
+			"ssh_username", item.SSH.Username,
+		)
+	}
+	attributes = append(attributes, extra...)
+	attributes = append(attributes, "error", err)
+	s.logger.Error(message, attributes...)
 }

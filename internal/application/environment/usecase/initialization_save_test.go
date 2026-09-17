@@ -14,7 +14,7 @@ import (
 func TestSaveInitializationCreatesLocalEnvironment(t *testing.T) {
 	store := &initializationEnvironmentStore{}
 	targetType := model.EnvironmentTargetTypeLocal
-	created, err := New(store, initializationProjectReader{}, nil, "", nil, nil).
+	created, err := New(store, initializationProjectReader{}, nil, "", nil, nil, nil).
 		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: model.EnvironmentPlatformLinux}).
 		SaveInitialization(context.Background(), "user-1", "project-1", environmentdto.UpdateInput{
 			TargetType: &targetType,
@@ -34,7 +34,7 @@ func TestSaveInitializationCreatesLocalEnvironment(t *testing.T) {
 func TestSaveInitializationKeepsHomeWorkspaceRoot(t *testing.T) {
 	store := &initializationEnvironmentStore{}
 	targetType := model.EnvironmentTargetTypeLocal
-	created, err := New(store, initializationProjectReader{}, nil, "", nil, nil).
+	created, err := New(store, initializationProjectReader{}, nil, "", nil, nil, nil).
 		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: model.EnvironmentPlatformLinux}).
 		SaveInitialization(context.Background(), "user-1", "project-1", environmentdto.UpdateInput{
 			TargetType: &targetType,
@@ -62,7 +62,7 @@ func TestSaveInitializationUpdatesUnprobedLegacyEnvironmentWithGatewayBinding(t 
 		},
 	}
 	targetType := model.EnvironmentTargetTypeLocal
-	_, err := New(store, initializationProjectReader{}, nil, "", nil, nil).
+	_, err := New(store, initializationProjectReader{}, nil, "", nil, nil, nil).
 		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: model.EnvironmentPlatformLinux}).
 		SaveInitialization(context.Background(), "user-1", "project-1", environmentdto.UpdateInput{
 			TargetType: &targetType,
@@ -80,7 +80,7 @@ func TestSaveInitializationCreatesSSHEnvironmentWithDeploymentCredential(t *test
 	store := &initializationEnvironmentStore{}
 	credentials := &memoryEnvironmentCredentials{}
 	targetType := model.EnvironmentTargetTypeSSH
-	created, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, &reachableSSHProber{}, nil).
+	created, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, &reachableSSHProber{}, nil, nil).
 		SaveInitialization(context.Background(), "user-1", "project-1", environmentdto.UpdateInput{
 			TargetType: &targetType,
 			SSH: &environmentdto.SSHTargetInput{
@@ -121,7 +121,7 @@ func TestSaveInitializationWorkspaceChangeKeepsSSHIdentity(t *testing.T) {
 		Id: "credential-1", ProjectId: projectId, PublicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOrbit", Revision: 2,
 	}}}
 	targetType := model.EnvironmentTargetTypeSSH
-	_, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, &reachableSSHProber{}, nil).
+	_, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, &reachableSSHProber{}, nil, nil).
 		SaveInitialization(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
 			TargetType: &targetType,
 			SSH: &environmentdto.SSHTargetInput{
@@ -143,7 +143,7 @@ func TestSaveInitializationWorkspaceChangeKeepsSSHIdentity(t *testing.T) {
 func TestSaveInitializationRejectsUnreachableSSH(t *testing.T) {
 	store := &initializationEnvironmentStore{}
 	targetType := model.EnvironmentTargetTypeSSH
-	_, err := New(store, initializationProjectReader{}, &memoryEnvironmentCredentials{}, testCredentialSecret, &reachableSSHProber{err: errors.New("Cannot connect to the configured SSH host.")}, nil).
+	_, err := New(store, initializationProjectReader{}, &memoryEnvironmentCredentials{}, testCredentialSecret, &reachableSSHProber{err: errors.New("Cannot connect to the configured SSH host.")}, nil, nil).
 		SaveInitialization(context.Background(), "user-1", "project-1", environmentdto.UpdateInput{
 			TargetType: &targetType,
 			SSH: &environmentdto.SSHTargetInput{
@@ -163,7 +163,7 @@ func TestPrepareWindowsEnvironmentCreatesEnvironmentAndCredentialWithoutSSHReach
 	projectId := "project-1"
 	store := &initializationEnvironmentStore{}
 	credentials := &memoryEnvironmentCredentials{}
-	view, publicKey, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, &reachableSSHProber{err: errors.New("unreachable")}, nil).
+	view, publicKey, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, &reachableSSHProber{err: errors.New("unreachable")}, nil, nil).
 		PrepareWindowsEnvironment(context.Background(), "user-1", projectId, environmentdto.SSHTargetInput{
 			Platform: model.EnvironmentPlatformWindows, Host: "192.0.2.10", Port: 2222,
 			Username: "orbit", WorkspaceRoot: `C:\\orbit`,
@@ -198,7 +198,7 @@ func TestPrepareWindowsEnvironmentOverwritesCompletePair(t *testing.T) {
 	credentials := &memoryEnvironmentCredentials{items: []model.EnvironmentCredential{{
 		Id: "credential-1", ProjectId: projectId, PublicKey: "ssh-ed25519 old", EncryptedPrivateKey: "encrypted", Revision: 1,
 	}}}
-	view, publicKey, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
+	view, publicKey, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil, nil).
 		PrepareWindowsEnvironment(context.Background(), "user-1", projectId, environmentdto.SSHTargetInput{
 			Platform: model.EnvironmentPlatformWindows, Host: "192.0.2.10", Port: 2222,
 			Username: "orbit", WorkspaceRoot: `C:\\orbit-next`,
@@ -231,7 +231,7 @@ func TestPrepareWindowsEnvironmentRepairsLegacyCredentialBinding(t *testing.T) {
 		},
 	}
 	credentials := &memoryEnvironmentCredentials{}
-	view, publicKey, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
+	view, publicKey, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil, nil).
 		PrepareWindowsEnvironment(context.Background(), "user-1", projectId, environmentdto.SSHTargetInput{
 			Platform: model.EnvironmentPlatformWindows, Host: "192.0.2.10", Port: 22,
 			Username: "orbit", WorkspaceRoot: `C:\\orbit`,
@@ -259,7 +259,7 @@ func TestEnvironmentForUserLeavesLegacyCredentialBindingForWindowsPreparation(t 
 			},
 		},
 	}
-	view, err := New(store, initializationProjectReader{}, &memoryEnvironmentCredentials{}, testCredentialSecret, nil, nil).
+	view, err := New(store, initializationProjectReader{}, &memoryEnvironmentCredentials{}, testCredentialSecret, nil, nil, nil).
 		EnvironmentForUser(context.Background(), "user-1", "project-1")
 	if err != nil {
 		t.Fatal(err)

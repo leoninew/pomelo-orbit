@@ -84,16 +84,16 @@ func (p EnvironmentProber) Probe(ctx context.Context, environment model.Environm
 	clientConnection, channels, requests, err := ssh.NewClientConn(connection, address, clientConfig)
 	if err != nil {
 		if strings.Contains(err.Error(), "SSH host key fingerprint mismatch") {
-			return "", probeError{diagnostic: "The SSH host key fingerprint does not match the configured host."}
+			return "", probeError{diagnostic: sshHandshakeDiagnostic("The SSH host key fingerprint does not match the configured host", err)}
 		}
-		return "", probeError{diagnostic: "SSH key authentication failed for the configured user."}
+		return "", probeError{diagnostic: sshHandshakeDiagnostic("SSH key authentication failed for the configured user", err)}
 	}
 	client := ssh.NewClient(clientConnection, channels, requests)
 	defer func() { _ = client.Close() }()
 
 	session, err := client.NewSession()
 	if err != nil {
-		return "", probeError{diagnostic: "SSH connected, but a remote session could not be opened."}
+		return "", probeError{diagnostic: sshHandshakeDiagnostic("SSH connected, but a remote session could not be opened", err)}
 	}
 	defer func() { _ = session.Close() }()
 	session.Stdout = io.Discard
@@ -163,6 +163,14 @@ func sshDialDiagnostic(err error) string {
 	default:
 		return "Cannot connect to the configured SSH host."
 	}
+}
+
+func sshHandshakeDiagnostic(summary string, err error) string {
+	detail := strings.TrimSpace(err.Error())
+	if detail == "" {
+		return summary + "."
+	}
+	return summary + ": " + detail
 }
 
 func sshServiceReachable(err error) bool {

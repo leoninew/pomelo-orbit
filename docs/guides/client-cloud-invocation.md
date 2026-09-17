@@ -1,6 +1,6 @@
 # 客户端与云端调用机制
 
-最后修改时间: 2026-09-07 13:31:14
+最后修改时间: 2026-09-17 11:01:29
 
 ## 业务定位
 
@@ -66,7 +66,7 @@ sequenceDiagram
 
 ### 本地 stdio 模式
 
-本地 AI 客户端启动 Orbit MCP 进程，并只通过标准输入输出调用工具。客户端初始化和工具发现没有认证交互或副作用。stdio 进程从 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 读取启动时的 MCP PAT；每次 `tools/call` 都按其 SHA-256 摘要查找 token，并校验 token 未撤销、未到期、用户存在且 enabled，首次成功后还会固定 session actor，后续凭据不可切换到另一用户。token 缺失、撤销、过期、篡改或用户禁用时，工具返回安全的 MCP error，业务用例不会执行。PAT 不可作为 Web API 的 Bearer JWT 使用。
+本地 AI 客户端启动 Orbit MCP 进程，并只通过标准输入输出调用工具。Grok 使用仓库 `.grok/config.toml` 注册 `pomelo-orbit-mcp`；Codex 使用仓库 `.codex/config.toml`。客户端初始化和工具发现没有认证交互或副作用。stdio 进程从 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 读取启动时的 MCP PAT（父进程环境或 gitignored `.env.<env>`）；每次 `tools/call` 都按其 SHA-256 摘要查找 token，并校验 token 未撤销、未到期、用户存在且 enabled，首次成功后还会固定 session actor，后续凭据不可切换到另一用户。token 缺失、撤销、过期、篡改或用户禁用时，工具返回安全的 MCP error，业务用例不会执行。PAT 不可作为 Web API 的 Bearer JWT 使用，也不写入可提交的客户端配置。
 
 本地 stdio 工具直接复用 Orbit 的 Go 业务服务、项目成员检查和领域授权规则，不回环 Orbit HTTP API，也不打开浏览器、监听 loopback、交换授权码或缓存凭据。运行该进程的主机必须能够访问目标 Orbit 的同一数据库、签名配置、Docker 和 workspace；这不是远程 MCP bridge。
 

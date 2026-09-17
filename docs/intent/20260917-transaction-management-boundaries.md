@@ -1,5 +1,5 @@
 # 事务管理与边界规范治理
-最后修改时间: 2026-09-17 16:55:00
+最后修改时间: 2026-09-17 21:15:00
 
 Review status: Accepted
 
@@ -7,12 +7,12 @@ Mode: standard
 
 ## Background
 
-系统目前具备分工明确的三层事务管理体系：
-1. **HTTP 请求切面事务（全局写 UoW）**：在 `internal/infrastructure/database/tx/request.go` 中通过 `tx.Middleware` 作为 Gin 中间件（`MutatingUnitOfWork`），对所有 `POST`、`PUT`、`PATCH`、`DELETE` 请求统一开启事务，使用标准 `context.Context` 传播，并通过 `bufferedResponseWriter` 实现两阶段提交保障（仅在 Handler 正常且 `sqlTx.Commit()` 成功后才 flush 响应）。**常规 HTTP 业务写请求（包括跨多个 Repository 的编排）默认直接复用此切面事务，应用层无须引入额外的 `TransactionRunner`。**
+系统采用清晰收敛的两层事务管理架构（路线 B：仓储去事务化）：
+1. **HTTP 请求切面事务（全局写 UoW）**：在 `internal/infrastructure/database/tx/request.go` 中通过 `tx.Middleware` 作为 Gin 中间件（`MutatingUnitOfWork`），对所有常规 `POST`、`PUT`、`PATCH`、`DELETE` 写请求统一开启事务，使用标准 `context.Context` 传播，并通过 `bufferedResponseWriter` 实现两阶段提交保障（仅在 Handler 正常且 `sqlTx.Commit()` 成功后才 flush 响应）。**常规 HTTP 业务写请求（包括跨多个 Repository 的应用层编排）默认直接复用此切面事务，应用层无须引入额外的 `TransactionRunner`。**
 2. **应用层显式短 UoW（`TransactionRunner`）**：其使用场景严格限定在**缺乏入站请求事务切面**的场景：
    - 异步 Worker 后台任务：Worker 仅持有 `*sql.DB`，容器运行与长任务在事务外执行，仅在最终多表持久化阶段（如 `forkBuildVersion`）使用显式短 UoW。
-   - 被排除在切面外的特殊请求（`skipPaths`）：如 `/api/route/sync/confirm`（前后有 Traefik 网络 I/O）与 `/api/dialogue`（包含 LLM 外部调用），业务需要将短数据库写入包裹在显式 UoW 中。
-3. **Repository 内部复合持久化（`RunInTx`）**：Repository 通过 `dbmodel.Queries(ctx, r.db, ...)` 与 `tx.DbTXFrom(ctx)` 获取连接；对于单聚合内部的多语句写入，通过 `tx.RunInTx` 感知上下文事务：有外层事务时直接复用执行（不发 `BEGIN`），无外层事务时（如测试、离线脚本）自洽开启独立短事务。
+   - 被排除在切面外的特殊请求（`skipPaths`）：如 `/api/route/sync/confirm`（前后有 Traefik 网络 I/O）、`/api/dialogue`（包含 LLM 外部调用），以及 `/api/pipeline-run/:run_id`（多表删除后有物理文件清理）。应用层 UseCase 在需要保证多表原子写入时显式调用 `TransactionRunner.RunInTransaction`。
+3. **仓储层定位（彻底去事务化）**：领域仓储（Domain Repositories）彻底消除内部 `tx.RunInTx` 调用，纯粹作为数据访问层，只通过 `r.q(ctx)` 执行 SQL 语句。仓储自身不开启、不提交、也不回滚事务，其原子性完全遵循外部传入的 `context.Context`。
 
 经全库代码与事务边界审查，已精确定位以下具体违规与隐患点，本规范文档定义确定的改造任务项：
 
@@ -23,11 +23,9 @@ Mode: standard
 2. **纯计算或无写操作的 POST 接口空跑事务**：
    - `POST /api/service/:service_id/preview` 与 `POST /api/version/:version_id/preview`：仅生成 Docker Compose YAML 文本，纯读无写，未加入 `skipPaths`，每次请求空跑 `BeginTx`、缓冲与 `Commit`。
    - `POST /api/auth/logout`：仅做请求解析并返回 204，无任何数据库操作，未加入 `skipPaths`。
-3. **Repository 内部事务使用不规范**：
-   - `service.Repository.DeleteService`：内部仅执行单条 `q.DeleteService`，冗余包裹了 `tx.RunInTx`，违反“不为单表、单语句写入引入显式 UoW”的原则。
-   - `application.Repository.DeleteGatewayApplication`：内部直接调用 `q.DeleteGatewayConfigByApplication` 越界删除网关表数据，破坏聚合边界，且与 `gateway.Repository.DeleteGatewayConfig` 重复。
-   - `role.Repository.CreateRole` 与 `UpdateRole`：包含写主表与删除并重写权限表的多语句操作，但未包裹 `tx.RunInTx`，脱离 HTTP 切面时无法保证原子性。
-   - `user.Repository.SetUserRoles`：包含清空角色、批量插入角色和更新时间戳的多语句操作，未包裹 `tx.RunInTx`。
+3. **仓储层违规自治事务与隐式嵌套**：
+   - 多个领域仓储（`application`, `service`, `gateway`, `pipeline`, `pipeline_run` 等）内部残留 `tx.RunInTx`，造成职责混淆与隐式嵌套隐患。
+   - `role.Repository` 与 `user.Repository` 在不同方法中事务使用不一致。
 
 ## Goal
 
@@ -40,13 +38,13 @@ Mode: standard
      - `"/api/version/:version_id/preview"`（纯计算 Compose 预览）
      - `"/api/pipeline-run/:run_id"`（包含磁盘物理文件清理）
 2. **重构流水线删除执行顺序与事务边界**：
-   - `DELETE /api/pipeline-run/:run_id` 移出 HTTP 全局事务切面后，由 `pipeline_run.Repository.DeletePipelineRun` 内部原生的 `tx.RunInTx` 保障数据库删除的独立原子提交；数据库删除成功后，再在事务外执行本地磁盘文件清理 `workspace.RemoveRunFiles`。
-3. **消除 Repository 冗余与越界操作**：
-   - 改造 `service.Repository.DeleteService`：去除 `tx.RunInTx` 包装，直接通过 `r.q(ctx).DeleteService` 执行单语句删除。
-   - 改造 `application.Repository.DeleteGatewayApplication`：删除该越界方法，统一使用 `DeleteApplication`；网关配置的清理完全收敛到 `gateway.Repository.DeleteGatewayConfig` 负责。
-4. **补齐 Repository 复合写入原子性**：
-   - 为 `role.Repository.CreateRole` 与 `UpdateRole` 包裹 `tx.RunInTx(ctx, r.db, ...)`，确保角色与权限关联原子写入。
-   - 为 `user.Repository.SetUserRoles` 包裹 `tx.RunInTx(ctx, r.db, ...)`，确保用户角色清空、批量写入与时间戳更新原子完成。
+   - `DELETE /api/pipeline-run/:run_id` 移出 HTTP 全局事务切面后，在应用层 `pipelinerunsvc.Service.DeletePipelineRun` 中通过显式注入的 `TransactionRunner.RunInTransaction` 保障数据库四表级联删除的原子提交；在数据库成功提交后，再在事务外执行本地磁盘文件清理 `workspace.RemoveRunFiles`。
+3. **彻底消除领域仓储中的事务控制（路线 B）**：
+   - 彻底清除所有领域仓储（`application`, `service`, `gateway`, `pipeline`, `pipeline_run`, `role`, `user` 等）内部的 `tx.RunInTx`。
+   - 仓储仅通过 `r.q(ctx)` 执行 SQL，其事务生命周期完全由外部上下文决定。
+4. **适配相关单元测试**：
+   - 仓储层复合写入回滚测试直接通过外部传入带有事务的 context（`database.BeginTx` + `tx.WithTx`）验证回滚行为。
+   - 应用层用例测试注入 `TransactionRunner` 验证事务边界。
 
 ## Non-goal
 
@@ -63,8 +61,8 @@ Mode: standard
 1. 用户点击测试 SSH 连通性时，若目标机器离线导致连接超时，请求全程不开启数据库事务，不占用数据库连接池。
 2. 用户登录时，Cloudflare Turnstile 验证与密码哈希计算不持有数据库连接；登录历史记录与时间更新在验证完成后以普通上下文直接写入。
 3. 用户调用 Compose 预览或点击登出时，系统不开启事务也不进行响应缓冲，直接快速返回结果。
-4. 离线脚本、数据初始化或自动化测试直接调用 `roleRepo.CreateRole` 或 `userRepo.SetUserRoles` 时，即使插入权限或角色中途出错，也会完整回滚，数据库不残留脏数据。
-5. 删除流水线运行记录时，先在独立短事务内原子删除数据库记录与绑定，提交成功后再执行文件删除；文件物理操作彻底与数据库事务解耦。
+4. 删除流水线运行记录时，在应用层短事务内原子删除数据库记录与绑定，提交成功后再执行本地文件删除；文件物理操作彻底与数据库事务解耦。
+5. 仓储层测试通过标准 `context` 注入事务并触发回滚，清晰验证多表操作在事务边界下的原子性。
 
 ## Acceptance
 
@@ -79,26 +77,31 @@ Mode: standard
 - [x] **登录用例事务解耦** (`internal/api/http/handler/auth/handler.go`, `internal/application/auth/usecase/service.go`)：
   - [x] 确认登录接口在无切面事务状态下，Turnstile 验证、密码比对与 JWT 签发正常执行。
   - [x] `MarkUserLoggedIn` 与 `SaveLoginHistory` 在无外层事务时正常写入数据库。
-- [x] **流水线删除与文件清理时序重构** (`internal/application/pipeline_run/usecase/service.go`)：
-  - [x] `DeletePipelineRun` 调整执行顺序：先执行 `s.store.DeletePipelineRun(ctx, projectId, run.Id)`；在数据库成功删除并提交后，再执行 `workspace.RemoveRunFiles(run.Id)`。
+- [x] **流水线删除应用层短 UoW 与文件清理时序重构** (`internal/application/pipeline_run/usecase/service.go`)：
+  - [x] `pipelinerunsvc.Service` 注入 `TransactionRunner`。
+  - [x] `DeletePipelineRun` 中先通过 `s.transactionRunner.RunInTransaction` 原子删除数据库 4 张表并提交；提交成功后，再在事务外执行 `workspace.RemoveRunFiles(run.Id)`。
   - [x] 若数据库删除失败，磁盘文件完全不被修改。
-- [x] **Repository 事务精简与规范**：
-  - [x] `service.Repository.DeleteService` 去除 `tx.RunInTx`，改为单语句直调。
-  - [x] `application.Repository` 移除 `DeleteGatewayApplication` 及内部对 `gateway_config` 表的操作（已于前序提交 `d2a81f62` 收敛移除，现状统一使用 `DeleteApplication` 与 `gatewayCore.RemoveGateway`）。
-  - [x] `role.Repository.CreateRole` 与 `UpdateRole` 内部包裹 `tx.RunInTx`。
-  - [x] `user.Repository.SetUserRoles` 内部包裹 `tx.RunInTx`。
+- [x] **领域仓储彻底去事务化（路线 B）**：
+  - [x] 清除 `internal/repository/impl/sqlc/role/repository.go` 中的 `tx.RunInTx`。
+  - [x] 清除 `internal/repository/impl/sqlc/user/repository.go` 中的 `tx.RunInTx`。
+  - [x] 清除 `internal/repository/impl/sqlc/service/repository.go` 中的 `tx.RunInTx`。
+  - [x] 清除 `internal/repository/impl/sqlc/gateway/repository.go` 中的 `tx.RunInTx`。
+  - [x] 清除 `internal/repository/impl/sqlc/pipeline/repository.go` 中的 `tx.RunInTx`。
+  - [x] 清除 `internal/repository/impl/sqlc/pipeline_run/repository.go` 中的 `tx.RunInTx`。
+  - [x] 清除 `internal/repository/impl/sqlc/application/repository.go` 中的 `tx.RunInTx`。
 - [x] **验证通过**：
-  - [x] `task check` 通过。
+  - [x] `task check` 通过（Vue/Prettier/ESLint/Go linter 0 issues）。
   - [x] `go test ./cmd/... ./internal/...` 全量通过。
-  - [x] 新增针对 `roleRepo` 与 `userRepo` 复合写入在独立调用下的事务回滚测试。
+  - [x] `pipeline_run_deletion_test.go` 验证应用层短 UoW 与文件清理时序。
+  - [x] `role/repository_test.go` 与 `user/repository_test.go` 验证上下文事务下的原子性与回滚。
 
 ## Decisions
 
-1. **HTTP 请求事务边界**：面向切面的 `tx.Middleware` 是常规 HTTP 同步写请求的默认且唯一的 UoW。跨聚合编排（如 `gateway.Service.RemoveGateway`、`user.Service.DeleteUser`）直接通过标准 Context 复用该切面事务，不为常规 HTTP 用例引入 `TransactionRunner` 样板代码（沿用 `20260902-user-email-authentication` 既定原则）。
-2. **显式 UoW 适用场景**：`TransactionRunner` 仅用于 Worker 异步短写阶段以及被排除在切面外的特殊请求（如 `route/sync/confirm`、`dialogue`）。
-3. **排除路由决策**：所有包含外部网络通信（SSH、Cloudflare）、不可逆文件物理 I/O 以及纯读/无写的写动词路由，全部通过 `skipPaths` 显式移出 HTTP 请求级事务切面。
-4. **文件删除与数据库一致性决策**：数据库记录是系统可信事实源。删除流水线采用“先原子提交数据库删除，后异步/后续清理磁盘文件”的时序。
-5. **复合持久化自治决策**：单聚合的多语句写入在 Repository 内部自治使用 `tx.RunInTx`，保证脱离切面环境时的自洽原子性。
+1. **路线 B 仓储去事务化**：彻底消除领域仓储内部的 `tx.RunInTx`。仓储是单纯的数据访问对象（DAO），只依赖 `r.q(ctx)`，其原子性完全由调用方传入的 context 决定。
+2. **HTTP 请求事务边界**：面向切面的 `tx.Middleware` 是常规 HTTP 同步写请求的默认且唯一的 UoW。跨聚合编排（如 `gateway.Service.RemoveGateway`、`user.Service.DeleteUser`）直接通过标准 Context 复用该切面事务，不为常规 HTTP 用例引入 `TransactionRunner` 样板代码。
+3. **显式 UoW 适用场景**：`TransactionRunner` 仅用于 Worker 异步短写阶段以及被排除在切面外的特殊写请求（如 `route/sync/confirm`、`dialogue`、`pipeline-run/:run_id`）。
+4. **排除路由决策**：所有包含外部网络通信（SSH、Cloudflare）、不可逆文件物理 I/O 以及纯读/无写的写动词路由，全部通过 `skipPaths` 显式移出 HTTP 请求级事务切面。
+5. **文件删除与数据库一致性决策**：数据库记录是系统可信事实源。删除流水线采用“先原子提交数据库删除，后异步/后续清理磁盘文件”的时序。
 
 ## Risk
 
@@ -107,4 +110,5 @@ Mode: standard
 
 ## User review notes
 
-- 2026-09-17：纠正对 `gateway.Service.RemoveGateway` 的误判，澄清常规 HTTP 写请求统一由切面事务兜底、无需手动 `TransactionRunner` 的边界规则，收敛文档任务项。
+- 2026-09-17：纠正对 `gateway.Service.RemoveGateway` 的误判，澄清常规 HTTP 写请求统一由切面事务兜底、无需手动 `TransactionRunner` 的边界规则。
+- 2026-09-17：采纳用户决策“路线 B”，彻底消除所有领域仓储内的 `tx.RunInTx`，将事务生命周期管理 100% 收敛到入站切面与应用层显式 UoW。

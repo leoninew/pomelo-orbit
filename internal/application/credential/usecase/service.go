@@ -15,13 +15,14 @@ import (
 )
 
 type Service struct {
-	project    repository.ProjectReader
-	credential repository.CredentialStore
-	secretKey  string
+	project      repository.ProjectReader
+	credential   repository.CredentialStore
+	repositories repository.RepositoryStore
+	secretKey    string
 }
 
-func New(project repository.ProjectReader, credential repository.CredentialStore, secretKey string) Service {
-	return Service{project: project, credential: credential, secretKey: secretKey}
+func New(project repository.ProjectReader, credential repository.CredentialStore, repositories repository.RepositoryStore, secretKey string) Service {
+	return Service{project: project, credential: credential, repositories: repositories, secretKey: secretKey}
 }
 
 func (s Service) ListCredentials(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[model.Credential], error) {
@@ -111,7 +112,7 @@ func (s Service) DeleteCredential(ctx context.Context, userId string, projectId 
 	if err != nil {
 		return err
 	}
-	referenced, err := s.credential.CredentialReferencedByRepositories(ctx, projectId, credential.Id)
+	referenced, err := s.repositories.RepositoryReferencesCredential(ctx, projectId, credential.Id)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check credential references", err)
 	}

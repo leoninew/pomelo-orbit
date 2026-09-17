@@ -134,6 +134,8 @@ func (r Repository) CreateProject(ctx context.Context, project model.Project, us
 func (r Repository) UpdateProject(ctx context.Context, project model.Project) error {
 	err := r.q(ctx).UpdateProject(ctx, projectsqlc.UpdateProjectParams{
 		Name:      project.Name,
+		Code:      project.Code,
+		IsActive:  project.IsActive,
 		UpdatedAt: time.Now().UTC(),
 		Id:        project.Id,
 	})
@@ -152,22 +154,6 @@ func (r Repository) DeprecateProject(ctx context.Context, projectId string) erro
 		return fmt.Errorf("deprecate project %s: %w", projectId, err)
 	}
 	return nil
-}
-
-func (r Repository) CountProjectRepositories(ctx context.Context, projectId string) (int, error) {
-	count, err := r.q(ctx).CountProjectRepositories(ctx, sql.NullString{String: projectId, Valid: true})
-	if err != nil {
-		return 0, fmt.Errorf("count project repositories %s: %w", projectId, err)
-	}
-	return int(count), nil
-}
-
-func (r Repository) CountProjectApplications(ctx context.Context, projectId string) (int, error) {
-	count, err := r.q(ctx).CountProjectApplications(ctx, sql.NullString{String: projectId, Valid: true})
-	if err != nil {
-		return 0, fmt.Errorf("count project applications %s: %w", projectId, err)
-	}
-	return int(count), nil
 }
 
 func (r Repository) ProjectMembers(ctx context.Context, projectId string) ([]model.User, error) {

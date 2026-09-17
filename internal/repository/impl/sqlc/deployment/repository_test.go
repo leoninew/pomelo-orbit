@@ -24,6 +24,9 @@ func TestRepositoryPersistsEffectivePlanHash(t *testing.T) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
+	if _, err := database.Exec(`INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`); err != nil {
+		t.Fatalf("seed Project: %v", err)
+	}
 	for _, statement := range []string{
 		"INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'Example', 'example', 'standard', 'project-1')",
 		"INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'draft')",
@@ -91,6 +94,9 @@ func TestRepositoryDeletesDeployment(t *testing.T) {
 	t.Cleanup(func() { _ = database.Close() })
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate database: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`); err != nil {
+		t.Fatalf("seed Project: %v", err)
 	}
 	if _, err := database.Exec(`
 		INSERT INTO deployment (id, project_id, application_name, operation_type, trigger_type, status, is_rollback)

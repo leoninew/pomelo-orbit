@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	reposqlc "github.com/leoninew/pomelo-orbit/internal/gen/sqlc/repository"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -58,6 +57,14 @@ func (r Repository) ListRepositories(ctx context.Context, projectId string, page
 		items = append(items, repositoryFrom(row.Id, row.ProjectId, row.Name, row.Code, row.RepositoryType, row.RepositoryUrl, row.GitCredentialId, row.VariableOverrides, row.DefaultBranch, row.CreatedAt, row.UpdatedAt))
 	}
 	return repository.Page[model.Repository]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
+}
+
+func (r Repository) CountRepositoriesByProject(ctx context.Context, projectId string) (int, error) {
+	count, err := r.q(ctx).CountRepositoriesByProject(ctx, projectScopeId(projectId))
+	if err != nil {
+		return 0, fmt.Errorf("count Project repositories %s: %w", projectId, err)
+	}
+	return int(count), nil
 }
 
 func (r Repository) Repository(ctx context.Context, projectId string, id string) (model.Repository, error) {
@@ -138,15 +145,13 @@ func (r Repository) DeleteRepository(ctx context.Context, projectId string, id s
 	return nil
 }
 
-func (r Repository) RepositoryHasRunningPipelines(ctx context.Context, projectId string, repositoryId string) (bool, error) {
-	count, err := r.q(ctx).RepositoryHasRunningPipelines(ctx, reposqlc.RepositoryHasRunningPipelinesParams{
-		RepositoryId:  repositoryId,
-		ProjectId:     projectScopeId(projectId),
-		StatusWaiting: status.WorkStatusWaitingToRun,
-		StatusRunning: status.WorkStatusRunning,
+func (r Repository) RepositoryReferencesCredential(ctx context.Context, projectId string, credentialId string) (bool, error) {
+	count, err := r.q(ctx).RepositoryReferencesCredential(ctx, reposqlc.RepositoryReferencesCredentialParams{
+		ProjectId:       projectScopeId(projectId),
+		GitCredentialId: projectScopeId(credentialId),
 	})
 	if err != nil {
-		return false, fmt.Errorf("count running repository pipelines %s: %w", repositoryId, err)
+		return false, fmt.Errorf("count credential repository references %s: %w", credentialId, err)
 	}
 	return count > 0, nil
 }

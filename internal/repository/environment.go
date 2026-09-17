@@ -16,4 +16,5 @@ type EnvironmentStore interface {
 	UpdateEnvironment(ctx context.Context, environment model.Environment) error
 	RecordProbe(ctx context.Context, environmentId string, targetRevision int64, status string, probedAt time.Time, diagnostic string) (bool, error)
 	BindGatewayApplication(ctx context.Context, environmentId string, gatewayApplicationId string) (bool, error)
+	UnbindGatewayApplication(ctx context.Context, environmentId string, gatewayApplicationId string) (bool, error)
 }

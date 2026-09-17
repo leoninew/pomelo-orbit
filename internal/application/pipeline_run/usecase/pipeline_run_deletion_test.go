@@ -50,7 +50,7 @@ func TestDeletePipelineRunRejectsActiveRun(t *testing.T) {
 	}
 }
 
-func TestDeletePipelineRunKeepsRecordWhenFileRemovalFails(t *testing.T) {
+func TestDeletePipelineRunDeletesRecordBeforeFileRemovalFails(t *testing.T) {
 	run := pipelineRunForDeletion(status.WorkStatusFaulted)
 	pipelineRunStore := &pipelineRunDeletionStore{run: run}
 	workspace := &pipelineRunDeletionWorkspace{removeErr: errors.New("permission denied")}
@@ -60,8 +60,29 @@ func TestDeletePipelineRunKeepsRecordWhenFileRemovalFails(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "Failed to delete pipeline run files") {
 		t.Fatalf("DeletePipelineRun error = %v, want file cleanup error", err)
 	}
+	if !pipelineRunStore.deleted {
+		t.Fatal("pipeline run record must be deleted before file cleanup")
+	}
+	if workspace.removedRunId != run.Id {
+		t.Fatalf("removed run Id = %q, want %q", workspace.removedRunId, run.Id)
+	}
+}
+
+func TestDeletePipelineRunKeepsFilesWhenRecordDeletionFails(t *testing.T) {
+	run := pipelineRunForDeletion(status.WorkStatusFaulted)
+	pipelineRunStore := &pipelineRunDeletionStore{run: run, deleteErr: errors.New("db delete failed")}
+	workspace := &pipelineRunDeletionWorkspace{}
+	service := newPipelineRunDeletionService(pipelineRunStore, workspace)
+
+	err := service.DeletePipelineRun(context.Background(), "user-1", "project-1", run.Id)
+	if err == nil || !strings.Contains(err.Error(), "Failed to delete pipeline run") {
+		t.Fatalf("DeletePipelineRun error = %v, want DB deletion error", err)
+	}
 	if pipelineRunStore.deleted {
-		t.Fatal("pipeline run record must remain when file cleanup fails")
+		t.Fatal("pipeline run record must not be marked deleted when store fails")
+	}
+	if workspace.removedRunId != "" {
+		t.Fatalf("workspace files must not be touched when DB delete fails, got %q", workspace.removedRunId)
 	}
 }
 
@@ -95,8 +116,9 @@ func (pipelineRunDeletionProjectStore) IsProjectMember(context.Context, string, 
 
 type pipelineRunDeletionStore struct {
 	repository.PipelineRunStore
-	run     model.PipelineRun
-	deleted bool
+	run       model.PipelineRun
+	deleted   bool
+	deleteErr error
 }
 
 func (s *pipelineRunDeletionStore) PipelineRun(context.Context, string, string) (model.PipelineRun, error) {
@@ -104,6 +126,9 @@ func (s *pipelineRunDeletionStore) PipelineRun(context.Context, string, string) 
 }
 
 func (s *pipelineRunDeletionStore) DeletePipelineRun(context.Context, string, string) error {
+	if s.deleteErr != nil {
+		return s.deleteErr
+	}
 	s.deleted = true
 	return nil
 }

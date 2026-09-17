@@ -424,6 +424,24 @@ func (q *Queries) CountArtifacts(ctx context.Context, arg CountArtifactsParams) 
 	return count, err
 }
 
+const countCDConfigurationReferences = `-- name: CountCDConfigurationReferences :one
+SELECT COUNT(*)
+FROM pipeline_run_version_binding
+WHERE EXISTS (
+  SELECT 1
+  FROM pipeline_run
+  WHERE pipeline_run.id = pipeline_run_version_binding.pipeline_run_id
+    AND pipeline_run.project_id = ?
+)
+`
+
+func (q *Queries) CountCDConfigurationReferences(ctx context.Context, projectID sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCDConfigurationReferences, projectID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countPipelineRuns = `-- name: CountPipelineRuns :one
 SELECT COUNT(*) FROM pipeline_run
 WHERE project_id = ?

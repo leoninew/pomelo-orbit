@@ -251,15 +251,38 @@ func (q *Queries) RecordEnvironmentProbe(ctx context.Context, arg RecordEnvironm
 	return result.RowsAffected()
 }
 
+const unbindGatewayApplication = `-- name: UnbindGatewayApplication :execrows
+UPDATE environment
+SET gateway_application_id = NULL, updated_at = ?
+WHERE id = ?
+  AND gateway_application_id = ?
+`
+
+type UnbindGatewayApplicationParams struct {
+	UpdatedAt            time.Time      `db:"updated_at"`
+	Id                   string         `db:"id"`
+	GatewayApplicationId sql.NullString `db:"gateway_application_id"`
+}
+
+func (q *Queries) UnbindGatewayApplication(ctx context.Context, arg UnbindGatewayApplicationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, unbindGatewayApplication, arg.UpdatedAt, arg.Id, arg.GatewayApplicationId)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateEnvironment = `-- name: UpdateEnvironment :exec
 UPDATE environment
-SET target_type = ?, platform = ?, host = ?, port = ?, username = ?, workspace_root = ?,
+SET code = ?, target_type = ?, platform = ?, host = ?, port = ?, username = ?, workspace_root = ?,
     ssh_credential_id = ?, ssh_credential_revision = ?, host_key_fingerprint = ?,
-    target_revision = ?, updated_at = ?
+    target_revision = ?, last_probe_revision = ?, last_probe_status = ?, last_probe_at = ?, last_probe_diagnostic = ?,
+    gateway_application_id = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateEnvironmentParams struct {
+	Code                  string         `db:"code"`
 	TargetType            string         `db:"target_type"`
 	Platform              sql.NullString `db:"platform"`
 	Host                  sql.NullString `db:"host"`
@@ -270,12 +293,18 @@ type UpdateEnvironmentParams struct {
 	SshCredentialRevision sql.NullInt64  `db:"ssh_credential_revision"`
 	HostKeyFingerprint    sql.NullString `db:"host_key_fingerprint"`
 	TargetRevision        int64          `db:"target_revision"`
+	LastProbeRevision     sql.NullInt64  `db:"last_probe_revision"`
+	LastProbeStatus       sql.NullString `db:"last_probe_status"`
+	LastProbeAt           sql.NullTime   `db:"last_probe_at"`
+	LastProbeDiagnostic   sql.NullString `db:"last_probe_diagnostic"`
+	GatewayApplicationId  sql.NullString `db:"gateway_application_id"`
 	UpdatedAt             time.Time      `db:"updated_at"`
 	Id                    string         `db:"id"`
 }
 
 func (q *Queries) UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) error {
 	_, err := q.db.ExecContext(ctx, updateEnvironment,
+		arg.Code,
 		arg.TargetType,
 		arg.Platform,
 		arg.Host,
@@ -286,6 +315,11 @@ func (q *Queries) UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentPa
 		arg.SshCredentialRevision,
 		arg.HostKeyFingerprint,
 		arg.TargetRevision,
+		arg.LastProbeRevision,
+		arg.LastProbeStatus,
+		arg.LastProbeAt,
+		arg.LastProbeDiagnostic,
+		arg.GatewayApplicationId,
 		arg.UpdatedAt,
 		arg.Id,
 	)

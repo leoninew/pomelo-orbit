@@ -20,6 +20,7 @@ type PipelineRunStore interface {
 	Artifact(ctx context.Context, projectId string, artifactId string) (model.Artifact, error)
 	CreatePipelineRun(ctx context.Context, run model.PipelineRun, binding *model.PipelineRunVersionBinding, stageRuns []model.PipelineStageRun) error
 	RepositoryHasActivePipelineRun(ctx context.Context, projectId string, repositoryId string) (bool, error)
+	HasCDConfigurationReferences(ctx context.Context, projectId string) (bool, error)
 	PipelineRunVersionBinding(ctx context.Context, projectId string, pipelineRunId string) (model.PipelineRunVersionBinding, error)
 	CancelPipelineRun(ctx context.Context, projectId string, id string) (bool, error)
 	CancelRunningPipelineStageRuns(ctx context.Context, projectId string, runId string) error

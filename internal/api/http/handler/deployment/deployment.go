@@ -217,18 +217,6 @@ func (h Handler) PreviewVersion(c *gin.Context) {
 	transport.WriteProtoJSON(c, http.StatusOK, &applicationv1.VersionPreviewResp{ComposeYaml: compose})
 }
 
-func (h Handler) DeleteApplication(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	if err := h.service.DeleteApplication(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id")); err != nil {
-		transport.WriteError(c, err)
-		return
-	}
-	c.Status(http.StatusNoContent)
-}
-
 func deploymentTarget(serviceId string, removeVolumes bool) deploymentdto.ServiceTargetInput {
 	return deploymentdto.ServiceTargetInput{ServiceId: serviceId, RemoveVolumes: removeVolumes}
 }

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { createApp, h, nextTick, ref } from 'vue';
+import { createApp, nextTick, ref, type Ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { describe, expect, it } from 'vitest';
 import type {
@@ -7,6 +7,25 @@ import type {
   EnvironmentVariableListRow,
 } from '@/components/environmentVariableList';
 import ServiceEnvironmentCard from './ServiceEnvironmentCard.vue';
+
+function createCardApp(
+  rows: Ref<EnvironmentVariableListRow[]>,
+  onSave?: (entries: EnvironmentVariableEntry[]) => void
+) {
+  return createApp(ServiceEnvironmentCard, {
+    rows: rows.value,
+    savedRows: rows.value.map((row) => ({ ...row })),
+    allowAdd: false,
+    allowRemove: false,
+    defaultValues: { LOG_LEVEL: 'info' },
+    defaultValueLabel: 'Default',
+    valueLabel: 'Current',
+    'onUpdate:rows': (updatedRows: EnvironmentVariableListRow[]) => {
+      rows.value = updatedRows;
+    },
+    onSave,
+  });
+}
 
 describe('ServiceEnvironmentCard', () => {
   it('opens the text field when editing an unchanged component environment variable', async () => {
@@ -29,23 +48,9 @@ describe('ServiceEnvironmentCard', () => {
         },
       },
     });
-    const app = createApp({
-      render: () =>
-        h(ServiceEnvironmentCard, {
-          rows: rows.value,
-          savedRows: rows.value.map((row) => ({ ...row })),
-          allowAdd: false,
-          allowRemove: false,
-          defaultValues: { LOG_LEVEL: 'info' },
-          defaultValueLabel: 'Default',
-          valueLabel: 'Current',
-          'onUpdate:rows': (updatedRows: EnvironmentVariableListRow[]) => {
-            rows.value = updatedRows;
-          },
-        }),
-    });
-    app.use(i18n);
     document.body.append(target);
+    const app = createCardApp(rows);
+    app.use(i18n);
     app.mount(target);
 
     const editButton = Array.from(target.querySelectorAll('button')).find(
@@ -92,26 +97,11 @@ describe('ServiceEnvironmentCard', () => {
         },
       },
     });
-    const app = createApp({
-      render: () =>
-        h(ServiceEnvironmentCard, {
-          rows: rows.value,
-          savedRows: rows.value.map((row) => ({ ...row })),
-          allowAdd: false,
-          allowRemove: false,
-          defaultValues: { LOG_LEVEL: 'info' },
-          defaultValueLabel: 'Default',
-          valueLabel: 'Current',
-          'onUpdate:rows': (updatedRows: EnvironmentVariableListRow[]) => {
-            rows.value = updatedRows;
-          },
-          onSave: (entries: EnvironmentVariableEntry[]) => {
-            savedEntries.value = entries;
-          },
-        }),
+    document.body.append(target);
+    const app = createCardApp(rows, (entries) => {
+      savedEntries.value = entries;
     });
     app.use(i18n);
-    document.body.append(target);
     app.mount(target);
 
     const editButton = Array.from(target.querySelectorAll('button')).find(

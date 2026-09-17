@@ -83,17 +83,6 @@ WHERE version.id = sqlc.arg(id)
       AND application.project_id = sqlc.arg(project_id)
   );
 
--- name: CountVersionRuntimeRefs :one
-SELECT (
-  SELECT COUNT(*) FROM service WHERE service.version_id = sqlc.arg(version_id)
-    AND EXISTS (
-      SELECT 1 FROM version
-      JOIN application ON application.id = version.application_id
-      WHERE version.id = service.version_id
-        AND application.project_id = sqlc.arg(project_id)
-    )
-);
-
 -- name: ClearVersionForkRefs :exec
 UPDATE version
 SET created_from_version_id = NULL

@@ -131,38 +131,42 @@ func (r Repository) RolePermissionCodesByRoleIds(ctx context.Context, roleIds []
 }
 
 func (r Repository) CreateRole(ctx context.Context, role model.Role, permissionCodes []string) error {
-	q := r.q(ctx)
-	if err := q.CreateRole(ctx, rolesqlc.CreateRoleParams{
-		Id:          role.Id,
-		Code:        role.Code,
-		Name:        role.Name,
-		Description: dbmodel.NullString(role.Description),
-		CreatedAt:   role.CreatedAt,
-		UpdatedAt:   role.UpdatedAt,
-	}); err != nil {
-		return fmt.Errorf("create role %s: %w", role.Code, err)
-	}
-	if err := setRolePermissions(ctx, q, role.Id, permissionCodes); err != nil {
-		return err
-	}
-	return nil
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		if err := q.CreateRole(txCtx, rolesqlc.CreateRoleParams{
+			Id:          role.Id,
+			Code:        role.Code,
+			Name:        role.Name,
+			Description: dbmodel.NullString(role.Description),
+			CreatedAt:   role.CreatedAt,
+			UpdatedAt:   role.UpdatedAt,
+		}); err != nil {
+			return fmt.Errorf("create role %s: %w", role.Code, err)
+		}
+		if err := setRolePermissions(txCtx, q, role.Id, permissionCodes); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (r Repository) UpdateRole(ctx context.Context, role model.Role, permissionCodes []string) error {
-	q := r.q(ctx)
-	if err := q.UpdateRole(ctx, rolesqlc.UpdateRoleParams{
-		Code:        role.Code,
-		Name:        role.Name,
-		Description: dbmodel.NullString(role.Description),
-		UpdatedAt:   time.Now().UTC(),
-		Id:          role.Id,
-	}); err != nil {
-		return fmt.Errorf("update role %s: %w", role.Id, err)
-	}
-	if err := setRolePermissions(ctx, q, role.Id, permissionCodes); err != nil {
-		return err
-	}
-	return nil
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		if err := q.UpdateRole(txCtx, rolesqlc.UpdateRoleParams{
+			Code:        role.Code,
+			Name:        role.Name,
+			Description: dbmodel.NullString(role.Description),
+			UpdatedAt:   time.Now().UTC(),
+			Id:          role.Id,
+		}); err != nil {
+			return fmt.Errorf("update role %s: %w", role.Id, err)
+		}
+		if err := setRolePermissions(txCtx, q, role.Id, permissionCodes); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (r Repository) DeleteRole(ctx context.Context, roleId string) error {

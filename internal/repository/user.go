@@ -6,6 +6,11 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
+// UserRoleReader provides role-assignment facts required by the Role domain.
+type UserRoleReader interface {
+	HasUsersWithRole(ctx context.Context, roleId string) (bool, error)
+}
+
 // UserStore persists user accounts and role assignments.
 type UserStore interface {
 	UserById(ctx context.Context, id string) (model.User, error)

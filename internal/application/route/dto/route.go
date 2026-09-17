@@ -1,5 +1,7 @@
 package dto
 
+import "github.com/leoninew/pomelo-orbit/internal/model"
+
 type RouteCreateInput struct {
 	Name                  string
 	Protocol              string
@@ -12,6 +14,12 @@ type RouteCreateInput struct {
 	EndpointProtocol      string
 	EndpointContainerPort *int
 	Enabled               bool
+}
+
+// RouteDefinitionInput is a complete Route configuration for internal
+// workflows. Storage and Project identity are assigned by the Route domain.
+type RouteDefinitionInput struct {
+	Route model.Route
 }
 
 type RouteUpdateInput struct {

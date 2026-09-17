@@ -20,6 +20,15 @@ DELETE FROM deployment
 WHERE id = sqlc.arg(id)
   AND project_id = sqlc.arg(project_id);
 
+-- name: ClearProjectDeploymentRollbackReferences :exec
+UPDATE deployment
+SET rollback_from_deployment_id = NULL
+WHERE project_id = sqlc.arg(project_id);
+
+-- name: ClearProjectDeploymentHistory :exec
+DELETE FROM deployment
+WHERE project_id = sqlc.arg(project_id);
+
 -- name: CountDeployments :one
 SELECT COUNT(*)
 FROM deployment

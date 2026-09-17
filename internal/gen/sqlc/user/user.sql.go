@@ -87,6 +87,19 @@ func (q *Queries) DeleteUserRoles(ctx context.Context, userID string) error {
 	return err
 }
 
+const hasUsersWithRole = `-- name: HasUsersWithRole :one
+SELECT COUNT(*)
+FROM user_role
+WHERE role_id = ?
+`
+
+func (q *Queries) HasUsersWithRole(ctx context.Context, roleID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, hasUsersWithRole, roleID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const insertUserRole = `-- name: InsertUserRole :exec
 INSERT INTO user_role (user_id, role_id, created_at)
 VALUES (?, ?, ?)

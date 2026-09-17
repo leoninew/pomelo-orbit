@@ -72,6 +72,10 @@ func (gatewayConfigStore) ReplaceGatewayVersionBindings(context.Context, string,
 	return nil
 }
 
+func (gatewayConfigStore) DeleteGatewayConfig(context.Context, string) error {
+	return nil
+}
+
 func TestGatewayForDeploymentSkipsGatewayConfigWhenTraefikNetworkDisabled(t *testing.T) {
 	disabled := false
 	plan := model.EffectiveServicePlan{

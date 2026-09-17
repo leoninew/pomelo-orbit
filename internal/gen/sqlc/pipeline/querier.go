@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	ApplicationPipelineStages(ctx context.Context, arg ApplicationPipelineStagesParams) ([]PipelineStage, error)
+	CountCDConfigurationReferences(ctx context.Context, arg CountCDConfigurationReferencesParams) (int32, error)
 	CountPipelineStageTemplates(ctx context.Context, arg CountPipelineStageTemplatesParams) (int64, error)
 	CountPipelines(ctx context.Context, arg CountPipelinesParams) (int64, error)
 	CreatePipeline(ctx context.Context, arg CreatePipelineParams) error

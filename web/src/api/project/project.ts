@@ -30,6 +30,26 @@ export const projectApi = {
     return request.post(`/api/project/${id}/deprecate`, data);
   },
 
+  exportHandover(id: string): Promise<Blob> {
+    return request.get(`/api/project/${id}/handover`, { responseType: 'blob' });
+  },
+
+  importHandover(
+    file: File,
+    mode: 'new' | 'replace',
+    targetProjectId?: string
+  ): Promise<ProjectResp> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mode', mode);
+    if (targetProjectId) {
+      formData.append('target_project_id', targetProjectId);
+    }
+    return request.post('/api/project/handover', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
   listMembers(id: string): Promise<ProjectMemberListResp> {
     return request.get(`/api/project/${id}/member`);
   },

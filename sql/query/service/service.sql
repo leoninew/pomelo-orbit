@@ -5,6 +5,13 @@ WHERE application_id = sqlc.arg(application_id)
   AND project_id = sqlc.arg(project_id)
 ORDER BY code;
 
+-- name: ListServicesByVersion :many
+SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
+FROM service
+WHERE version_id = sqlc.arg(version_id)
+  AND project_id = sqlc.arg(project_id)
+ORDER BY code;
+
 -- name: ServiceById :one
 SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
 FROM service

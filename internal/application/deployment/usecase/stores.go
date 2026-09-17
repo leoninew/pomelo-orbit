@@ -42,9 +42,6 @@ func (s stores) CreateApplication(ctx context.Context, app model.Application) er
 func (s stores) UpdateApplication(ctx context.Context, projectId string, app model.Application) error {
 	return s.application.UpdateApplication(ctx, projectId, app)
 }
-func (s stores) DeleteApplication(ctx context.Context, projectId string, id string) error {
-	return s.application.DeleteApplication(ctx, projectId, id)
-}
 func (s stores) ListVersions(ctx context.Context, projectId string, applicationId string) ([]model.Version, error) {
 	return s.application.ListVersions(ctx, projectId, applicationId)
 }
@@ -62,9 +59,6 @@ func (s stores) UpdateVersion(ctx context.Context, projectId string, version mod
 }
 func (s stores) DeleteVersion(ctx context.Context, projectId string, id string) error {
 	return s.application.DeleteVersion(ctx, projectId, id)
-}
-func (s stores) CountVersionRuntimeRefs(ctx context.Context, projectId string, versionId string) (int, error) {
-	return s.application.CountVersionRuntimeRefs(ctx, projectId, versionId)
 }
 func (s stores) VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error) {
 	return s.application.VersionComponentsByVersion(ctx, projectId, versionId)

@@ -44,6 +44,11 @@ WHERE project_id = sqlc.arg(project_id)
 ORDER BY id DESC
 LIMIT ? OFFSET ?;
 
+-- name: CountApplicationsByProject :one
+SELECT COUNT(*)
+FROM application
+WHERE project_id = sqlc.arg(project_id);
+
 -- name: CreateApplication :exec
 INSERT INTO application (id, project_id, name, code, kind, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?);
@@ -53,15 +58,6 @@ UPDATE application
 SET name = sqlc.arg(name), code = sqlc.arg(code), updated_at = sqlc.arg(updated_at)
 WHERE id = sqlc.arg(id)
   AND project_id = sqlc.arg(project_id);
-
--- name: DeleteServicesByApplication :exec
-DELETE FROM service
-WHERE application_id = sqlc.arg(application_id)
-  AND EXISTS (
-    SELECT 1 FROM application
-    WHERE application.id = service.application_id
-      AND application.project_id = sqlc.arg(project_id)
-  );
 
 -- name: VersionIdsByApplication :many
 SELECT id
@@ -79,15 +75,6 @@ WHERE application_id = sqlc.arg(application_id)
   AND EXISTS (
     SELECT 1 FROM application
     WHERE application.id = version.application_id
-      AND application.project_id = sqlc.arg(project_id)
-  );
-
--- name: DeleteGatewayConfigByApplication :exec
-DELETE FROM gateway_config
-WHERE application_id = sqlc.arg(application_id)
-  AND EXISTS (
-    SELECT 1 FROM application
-    WHERE application.id = gateway_config.application_id
       AND application.project_id = sqlc.arg(project_id)
   );
 

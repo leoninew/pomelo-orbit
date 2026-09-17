@@ -13,8 +13,10 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
+	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
 	environmentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/environment"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
+	repositoryrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/repository"
 	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
 )
 
@@ -114,7 +116,12 @@ func newProjectIntegrationService(t *testing.T) (Service, *sql.DB) {
 		t.Fatal(err)
 	}
 	projectStore := projectrepo.NewRepository(database)
-	return New(projectStore, userrepo.NewRepository(database)), database
+	return New(
+		projectStore,
+		userrepo.NewRepository(database),
+		repositoryrepo.NewRepository(database),
+		applicationrepo.NewRepository(database),
+	), database
 }
 
 func testProjectCreateInput(t *testing.T, name string, code string) projectdto.CreateInput {

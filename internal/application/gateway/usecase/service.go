@@ -9,8 +9,12 @@ import (
 	"regexp"
 	"strings"
 
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	gatewayport "github.com/leoninew/pomelo-orbit/internal/application/gateway/port"
+	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
+	routesvc "github.com/leoninew/pomelo-orbit/internal/application/route/usecase"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
 	servicesvc "github.com/leoninew/pomelo-orbit/internal/application/service/usecase"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
@@ -32,14 +36,28 @@ const (
 )
 
 type Service struct {
-	project         gatewayport.ProjectReader
-	environment     gatewayport.EnvironmentStore
-	application     gatewayport.ApplicationStore
-	config          gatewayport.ConfigStore
-	service         gatewayport.ServiceReader
-	route           repository.RouteStore
-	serviceCommands servicesvc.Service
-	transaction     gatewayport.TransactionRunner
+	project                gatewayport.ProjectReader
+	environment            gatewayport.EnvironmentStore
+	application            gatewayport.ApplicationStore
+	config                 gatewayport.ConfigStore
+	service                gatewayport.ServiceReader
+	route                  repository.RouteStore
+	serviceCommands        servicesvc.Service
+	transaction            gatewayport.TransactionRunner
+	applicationDefinitions applicationsvc.Service
+	serviceDefinitions     servicesvc.Service
+	routeDefinitions       routesvc.Service
+	definitionsConfigured  bool
+}
+
+// WithDefinitionServices connects Gateway's complete business definition to
+// the Application, Service, and Route domains that own its children.
+func (s Service) WithDefinitionServices(application applicationsvc.Service, service servicesvc.Service, route routesvc.Service) Service {
+	s.applicationDefinitions = application
+	s.serviceDefinitions = service
+	s.routeDefinitions = route
+	s.definitionsConfigured = true
+	return s
 }
 
 func New(
@@ -68,6 +86,231 @@ func ManagedGatewayCode() string {
 
 func ManagedGatewayName() string {
 	return managedGatewayName
+}
+
+// GatewayDefinitionForUser returns the complete managed Gateway definition.
+func (s Service) GatewayDefinitionForUser(ctx context.Context, userId, projectId, applicationId string) (gatewaydto.GatewayDefinition, error) {
+	if !s.definitionsConfigured {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindInternal, "gateway definition services are not configured")
+	}
+	view, err := s.GatewayForUser(ctx, userId, projectId, applicationId)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	application, err := s.applicationDefinitions.ApplicationDefinitionForUser(ctx, userId, projectId, view.Application.Id)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	service, err := s.serviceDefinitions.ServiceDefinitionForUser(ctx, userId, projectId, view.Service.Id)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	routes, err := s.route.ListRoutes(ctx, projectId, 1, 10_000, "")
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to list project routes", err)
+	}
+	dashboardTarget := "http://" + model.RuntimeContainerName(view.Application.Code, model.GatewayComponentName()) + ":8080"
+	var dashboard *model.Route
+	for _, route := range routes.Items {
+		if route.Name != view.Application.Code || route.TargetUrl != dashboardTarget {
+			continue
+		}
+		if dashboard != nil {
+			return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "Gateway dashboard route is not unique")
+		}
+		routeCopy := route
+		dashboard = &routeCopy
+	}
+	if dashboard == nil {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "Gateway dashboard route is missing")
+	}
+	return gatewaydto.GatewayDefinition{
+		Application: application, Config: view.Config, RuntimeService: service, DashboardRoute: *dashboard,
+	}, nil
+}
+
+// CreateGatewayFromDefinition restores a complete managed Gateway definition
+// without probing the Environment, deploying containers, or publishing
+// Traefik state.
+func (s Service) CreateGatewayFromDefinition(ctx context.Context, userId, projectId string, input gatewaydto.GatewayDefinition) (gatewaydto.GatewayDefinition, error) {
+	if !s.definitionsConfigured {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindInternal, "gateway definition services are not configured")
+	}
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	if s.environment == nil {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindInternal, "gateway environment store is not configured")
+	}
+	if strings.TrimSpace(input.Application.Application.Id) == "" {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "Gateway Application definition id is required")
+	}
+	environment, err := s.environment.EnvironmentByProject(ctx, projectId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "Project environment is required before registering a gateway")
+		}
+		return gatewaydto.GatewayDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
+	}
+	if environment.GatewayApplicationId != nil {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindConflict, "Project environment already has a gateway")
+	}
+	createdApplication, err := s.applicationDefinitions.CreateApplicationFromDefinition(ctx, userId, projectId, input.Application)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	versionIDs, componentIDs, err := definitionIDMaps(input.Application, createdApplication)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	config, err := gatewayConfigFromDefinition(input.Config, createdApplication.Application.Id, versionIDs)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	if err := s.validateGatewayVersionBindings(ctx, projectId, createdApplication.Application.Id, config.VersionBindings); err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	if err := s.config.UpsertGatewayConfig(ctx, config); err != nil {
+		return gatewaydto.GatewayDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway config", err)
+	}
+	if err := s.config.ReplaceGatewayVersionBindings(ctx, createdApplication.Application.Id, config.VersionBindings); err != nil {
+		return gatewaydto.GatewayDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to bind gateway versions", err)
+	}
+	bound, err := s.environment.BindGatewayApplication(ctx, environment.Id, createdApplication.Application.Id)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to bind gateway to project environment", err)
+	}
+	if !bound {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindConflict, "Project environment already has a gateway")
+	}
+	serviceDefinition, err := targetGatewayServiceDefinition(input, createdApplication.Application.Id, versionIDs, componentIDs)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	createdService, err := s.serviceDefinitions.CreateServiceFromDefinition(ctx, userId, projectId, serviceDefinition)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	routeDefinition, err := targetGatewayDashboardRoute(input, projectId, createdService.Service.Id)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	if _, err := s.routeDefinitions.CreateRouteFromDefinition(ctx, userId, projectId, routeDefinition); err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	return s.GatewayDefinitionForUser(ctx, userId, projectId, createdApplication.Application.Id)
+}
+
+// RemoveGateway removes the complete saved Gateway configuration without
+// operating containers or publishing Traefik state.
+func (s Service) RemoveGateway(ctx context.Context, userId, projectId, applicationId string) error {
+	if !s.definitionsConfigured {
+		return apperror.New(apperror.KindInternal, "gateway definition services are not configured")
+	}
+	definition, err := s.GatewayDefinitionForUser(ctx, userId, projectId, applicationId)
+	if err != nil {
+		return err
+	}
+	if s.environment == nil {
+		return apperror.New(apperror.KindInternal, "gateway environment store is not configured")
+	}
+	environment, err := s.environment.EnvironmentByProject(ctx, projectId)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
+	}
+	applicationID := definition.Application.Application.Id
+	if environment.GatewayApplicationId == nil || *environment.GatewayApplicationId != applicationID {
+		return apperror.New(apperror.KindConflict, "Project environment gateway binding changed")
+	}
+	if err := s.routeDefinitions.RemoveRoute(ctx, userId, projectId, definition.DashboardRoute.Id); err != nil {
+		return err
+	}
+	if err := s.serviceDefinitions.RemoveService(ctx, userId, projectId, definition.RuntimeService.Service.Id); err != nil {
+		return err
+	}
+	unbound, err := s.environment.UnbindGatewayApplication(ctx, environment.Id, applicationID)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to unbind gateway from project environment", err)
+	}
+	if !unbound {
+		return apperror.New(apperror.KindConflict, "Project environment gateway binding changed")
+	}
+	if err := s.config.DeleteGatewayConfig(ctx, applicationID); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to remove gateway config", err)
+	}
+	if err := s.applicationDefinitions.RemoveApplication(ctx, userId, projectId, applicationID); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to remove gateway application", err)
+	}
+	return nil
+}
+
+func definitionIDMaps(source, target applicationdto.ApplicationDefinition) (map[string]string, map[string]string, error) {
+	if len(source.Versions) != len(target.Versions) {
+		return nil, nil, apperror.New(apperror.KindValidation, "Gateway Version definition is incomplete")
+	}
+	versionIDs := make(map[string]string, len(source.Versions))
+	componentIDs := make(map[string]string)
+	for index, sourceVersion := range source.Versions {
+		sourceVersionID := strings.TrimSpace(sourceVersion.Version.Id)
+		if sourceVersionID == "" || len(sourceVersion.Components) != len(target.Versions[index].Components) {
+			return nil, nil, apperror.New(apperror.KindValidation, "Gateway Version definition is incomplete")
+		}
+		if _, exists := versionIDs[sourceVersionID]; exists {
+			return nil, nil, apperror.New(apperror.KindValidation, "Gateway Version definition has duplicate ids")
+		}
+		versionIDs[sourceVersionID] = target.Versions[index].Version.Id
+		for componentIndex, sourceComponent := range sourceVersion.Components {
+			sourceComponentID := strings.TrimSpace(sourceComponent.Id)
+			if sourceComponentID == "" {
+				return nil, nil, apperror.New(apperror.KindValidation, "Gateway Component definition id is required")
+			}
+			if _, exists := componentIDs[sourceComponentID]; exists {
+				return nil, nil, apperror.New(apperror.KindValidation, "Gateway Component definition has duplicate ids")
+			}
+			componentIDs[sourceComponentID] = target.Versions[index].Components[componentIndex].Id
+		}
+	}
+	return versionIDs, componentIDs, nil
+}
+
+func targetGatewayServiceDefinition(input gatewaydto.GatewayDefinition, applicationID string, versionIDs, componentIDs map[string]string) (servicedto.ServiceDefinition, error) {
+	definition := input.RuntimeService
+	if strings.TrimSpace(definition.Service.ApplicationId) != strings.TrimSpace(input.Application.Application.Id) {
+		return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service does not belong to the Gateway Application")
+	}
+	versionID, exists := versionIDs[strings.TrimSpace(definition.Service.VersionId)]
+	if !exists {
+		return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service Version is not part of the Gateway definition")
+	}
+	definition.Service.ApplicationId = applicationID
+	definition.Service.VersionId = versionID
+	definition.Service.Status = status.ServiceStatusStopped
+	for index := range definition.Components {
+		targetComponentID, exists := componentIDs[strings.TrimSpace(definition.Components[index].SourceVersionComponentId)]
+		if !exists {
+			return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service Component is not part of the Gateway Version")
+		}
+		definition.Components[index].SourceVersionComponentId = targetComponentID
+	}
+	return definition, nil
+}
+
+func targetGatewayDashboardRoute(input gatewaydto.GatewayDefinition, projectID, serviceID string) (routedto.RouteDefinitionInput, error) {
+	route := input.DashboardRoute
+	route.ProjectId = &projectID
+	route.Id = ""
+	route.Enabled = false
+	if route.ServiceId != nil {
+		if strings.TrimSpace(*route.ServiceId) != strings.TrimSpace(input.RuntimeService.Service.Id) {
+			return routedto.RouteDefinitionInput{}, apperror.New(apperror.KindValidation, "Gateway dashboard Route references a different Service")
+		}
+		route.ServiceId = &serviceID
+	}
+	return routedto.RouteDefinitionInput{Route: route}, nil
 }
 
 func (s Service) ListGateways(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[gatewaydto.GatewayView], error) {
@@ -397,10 +640,7 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, projectId str
 }
 
 func (s Service) DeleteGateway(ctx context.Context, userId string, projectId string, applicationId string) error {
-	if _, err := s.GatewayForUser(ctx, userId, projectId, applicationId); err != nil {
-		return err
-	}
-	return apperror.New(apperror.KindValidation, "Gateway cannot be deleted after it is bound to a project environment")
+	return s.RemoveGateway(ctx, userId, projectId, applicationId)
 }
 
 func (s Service) loadApplicationForUser(ctx context.Context, userId string, projectId string, applicationId string) (model.Application, error) {
@@ -584,6 +824,87 @@ func normalizeGatewayCertificateConfig(profileValue, emailValue, tokenValue *str
 		return "", "", "", apperror.New(apperror.KindValidation, "acme_profile must support HTTP-01 when tls_mode=letsencrypt")
 	}
 	return profile, email, token, nil
+}
+
+func normalizeGatewayConfig(input model.GatewayConfig, applicationId string) (model.GatewayConfig, error) {
+	restAPIURL, err := normalizeRestApiUrl(input.RestApiUrl)
+	if err != nil {
+		return model.GatewayConfig{}, err
+	}
+	timeout := input.RestReadyTimeoutSeconds
+	if _, err := normalizeRestReadyTimeoutSeconds(&timeout); err != nil {
+		return model.GatewayConfig{}, err
+	}
+	baseDomain, err := normalizeBaseDomain(input.BaseDomain)
+	if err != nil {
+		return model.GatewayConfig{}, err
+	}
+	defaultEntrypoint, tlsMode := strings.TrimSpace(input.DefaultEntrypoint), strings.TrimSpace(input.TLSMode)
+	policy, err := parseGatewayIngressPolicy(&defaultEntrypoint, &tlsMode)
+	if err != nil {
+		return model.GatewayConfig{}, err
+	}
+	acmeProfile, acmeEmail, dnsToken, err := normalizeGatewayCertificateConfig(&input.AcmeProfile, &input.AcmeEmail, &input.DNSApiToken, policy.TLSMode)
+	if err != nil {
+		return model.GatewayConfig{}, err
+	}
+	return model.GatewayConfig{
+		ApplicationId:           applicationId,
+		RestApiUrl:              restAPIURL,
+		RestReadyTimeoutSeconds: timeout,
+		BaseDomain:              baseDomain,
+		DefaultEntrypoint:       policy.DefaultEntrypoint,
+		TLSMode:                 policy.TLSMode,
+		AcmeProfile:             acmeProfile,
+		AcmeEmail:               acmeEmail,
+		DNSApiToken:             dnsToken,
+		VersionBindings:         append([]model.GatewayVersionBinding(nil), input.VersionBindings...),
+	}, nil
+}
+
+func gatewayConfigFromDefinition(input model.GatewayConfig, applicationID string, versionIDs map[string]string) (model.GatewayConfig, error) {
+	configInput := input
+	configInput.VersionBindings = make([]model.GatewayVersionBinding, 0, len(input.VersionBindings))
+	for _, binding := range input.VersionBindings {
+		versionID, exists := versionIDs[strings.TrimSpace(binding.VersionId)]
+		if !exists {
+			return model.GatewayConfig{}, apperror.New(apperror.KindValidation, "Gateway Version binding is not part of the Gateway definition")
+		}
+		configInput.VersionBindings = append(configInput.VersionBindings, model.GatewayVersionBinding{Profile: binding.Profile, VersionId: versionID})
+	}
+	return normalizeGatewayConfig(configInput, applicationID)
+}
+
+func (s Service) validateGatewayVersionBindings(ctx context.Context, projectId string, applicationId string, bindings []model.GatewayVersionBinding) error {
+	required := map[string]struct{}{
+		gatewayVersionRoleBase: {}, gatewayVersionProfileHTTP: {}, gatewayVersionProfileDNS: {}, gatewayVersionProfileBoth: {},
+	}
+	if len(bindings) != len(required) {
+		return apperror.New(apperror.KindValidation, "Gateway requires base, http, dns, and http-dns Version bindings")
+	}
+	for _, binding := range bindings {
+		if _, known := required[binding.Profile]; !known || strings.TrimSpace(binding.VersionId) == "" {
+			return apperror.New(apperror.KindValidation, "Gateway Version bindings are invalid")
+		}
+		if _, duplicate := required[binding.Profile]; !duplicate {
+			return apperror.New(apperror.KindValidation, "Gateway Version bindings are invalid")
+		}
+		delete(required, binding.Profile)
+		version, err := s.application.Version(ctx, projectId, binding.VersionId)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return apperror.New(apperror.KindValidation, "Gateway Version binding was not found")
+			}
+			return apperror.Wrap(apperror.KindInternal, "Failed to load gateway Version binding", err)
+		}
+		if version.ApplicationId != applicationId {
+			return apperror.New(apperror.KindValidation, "Gateway Version binding does not belong to the gateway application")
+		}
+	}
+	if len(required) != 0 {
+		return apperror.New(apperror.KindValidation, "Gateway Version bindings are invalid")
+	}
+	return nil
 }
 
 func buildGatewayExposureItem(app model.Application, service model.Service, component model.EffectiveServiceComponent, endpoint model.VersionComponentEndpoint, gateway *model.GatewayConfig) (gatewaydto.GatewayExposureItem, error) {

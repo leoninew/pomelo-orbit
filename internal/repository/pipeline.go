@@ -33,4 +33,5 @@ type PipelineStore interface {
 	LatestPipelineSnapshot(ctx context.Context, projectId string, pipelineId string) (model.PipelineSnapshot, error)
 	PipelineSnapshot(ctx context.Context, projectId string, id string) (model.PipelineSnapshot, error)
 	CreatePipelineSnapshot(ctx context.Context, snapshot model.PipelineSnapshot) error
+	HasCDConfigurationReferences(ctx context.Context, projectId string) (bool, error)
 }

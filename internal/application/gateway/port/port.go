@@ -31,6 +31,7 @@ type ApplicationStore interface {
 	ApplicationByProjectAndCode(ctx context.Context, projectId string, code string) (model.Application, error)
 	CreateApplication(ctx context.Context, app model.Application) error
 	UpdateApplication(ctx context.Context, projectId string, app model.Application) error
+	DeleteApplication(ctx context.Context, projectId string, id string) error
 	Version(ctx context.Context, projectId string, id string) (model.Version, error)
 	CreateVersion(ctx context.Context, projectId string, version model.Version) error
 	VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error)
@@ -44,12 +45,14 @@ type ConfigStore interface {
 	ListGatewayApplications(ctx context.Context, projectId string) ([]model.Application, error)
 	UpsertGatewayConfig(ctx context.Context, cfg model.GatewayConfig) error
 	ReplaceGatewayVersionBindings(ctx context.Context, applicationId string, bindings []model.GatewayVersionBinding) error
+	DeleteGatewayConfig(ctx context.Context, applicationId string) error
 }
 
 // ServiceReader exposes only runtime bindings needed by gateway projections and conflict checks.
 type EnvironmentStore interface {
 	EnvironmentByProject(ctx context.Context, projectId string) (model.Environment, error)
 	BindGatewayApplication(ctx context.Context, environmentId string, gatewayApplicationId string) (bool, error)
+	UnbindGatewayApplication(ctx context.Context, environmentId string, gatewayApplicationId string) (bool, error)
 }
 
 type ServiceReader interface {

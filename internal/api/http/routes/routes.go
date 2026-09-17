@@ -20,6 +20,7 @@ import (
 	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
 	pipelinerunsvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/usecase"
 	projectsvc "github.com/leoninew/pomelo-orbit/internal/application/project/usecase"
+	handoversvc "github.com/leoninew/pomelo-orbit/internal/application/project_handover/usecase"
 	projectinitializationsvc "github.com/leoninew/pomelo-orbit/internal/application/project_initialization/usecase"
 	repositorysvc "github.com/leoninew/pomelo-orbit/internal/application/repository/usecase"
 	rolesvc "github.com/leoninew/pomelo-orbit/internal/application/role/usecase"
@@ -39,6 +40,7 @@ type Dependencies struct {
 	RoleService                  rolesvc.Service
 	UserService                  usersvc.Service
 	ProjectService               projectsvc.Service
+	ProjectHandoverService       handoversvc.Service
 	ProjectInitializationService projectinitializationsvc.Service
 	SettingsService              settingssvc.Service
 	CredentialService            credentialsvc.Service

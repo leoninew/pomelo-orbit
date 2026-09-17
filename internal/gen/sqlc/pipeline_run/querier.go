@@ -6,6 +6,7 @@ package pipelinerun
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
@@ -20,6 +21,7 @@ type Querier interface {
 	CompletePipelineStageRun(ctx context.Context, arg CompletePipelineStageRunParams) (int64, error)
 	CountActivePipelineRunsByRepository(ctx context.Context, arg CountActivePipelineRunsByRepositoryParams) (int64, error)
 	CountArtifacts(ctx context.Context, arg CountArtifactsParams) (int64, error)
+	CountCDConfigurationReferences(ctx context.Context, projectID sql.NullString) (int64, error)
 	CountPipelineRuns(ctx context.Context, arg CountPipelineRunsParams) (int64, error)
 	DeletePipelineRun(ctx context.Context, arg DeletePipelineRunParams) error
 	DeletePipelineRunArtifacts(ctx context.Context, arg DeletePipelineRunArtifactsParams) error

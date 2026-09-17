@@ -163,6 +163,63 @@ func TestMigrateUpSQLiteRemovesServiceInstanceAndEnvironmentState(t *testing.T) 
 	}
 }
 
+func TestMigrateUpSQLiteRestrictsCrossDomainDeletes(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateTo(database, config.DatabaseDriverSQLite, 44); err != nil {
+		t.Fatalf("migrate to pre-restriction schema: %v", err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`,
+		`INSERT INTO application (id, project_id, name, code, kind) VALUES ('app-1', 'project-1', 'Application', 'application', 'standard')`,
+		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`,
+		`INSERT INTO version_component (id, version_id, name, image, pull_policy) VALUES ('component-1', 'version-1', 'web', 'nginx:latest', 'missing')`,
+		`INSERT INTO gateway_config (application_id, rest_api_url, rest_ready_timeout_seconds, base_domain, default_entrypoint, tls_mode) VALUES ('app-1', 'http://127.0.0.1:8080', 20, 'example.test', 'web', 'none')`,
+		`INSERT INTO gateway_acme_profile_version (application_id, profile, version_id) VALUES ('app-1', 'base', 'version-1')`,
+		`INSERT INTO service (id, project_id, application_id, code, version_id, status) VALUES ('service-1', 'project-1', 'app-1', 'application-default', 'version-1', 'stopped')`,
+		`INSERT INTO service_component (id, service_id, source_version_component_id, component_name, status) VALUES ('service-component-1', 'service-1', 'component-1', 'web', 'active')`,
+	} {
+		if _, err := database.Exec(statement); err != nil {
+			t.Fatalf("seed pre-restriction schema: %v", err)
+		}
+	}
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate current schema: %v", err)
+	}
+	var foreignKeys int
+	if err := database.QueryRow(`PRAGMA foreign_keys`).Scan(&foreignKeys); err != nil {
+		t.Fatalf("read foreign key enforcement: %v", err)
+	}
+	if foreignKeys != 1 {
+		t.Fatalf("foreign key enforcement=%d, want 1", foreignKeys)
+	}
+	for _, statement := range []string{
+		`DELETE FROM application WHERE id = 'app-1'`,
+		`DELETE FROM version WHERE id = 'version-1'`,
+		`DELETE FROM version_component WHERE id = 'component-1'`,
+	} {
+		if _, err := database.Exec(statement); err == nil {
+			t.Fatalf("cross-domain delete succeeded: %s", statement)
+		}
+	}
+	for _, table := range []string{
+		"application",
+		"version",
+		"version_component",
+		"gateway_config",
+		"gateway_acme_profile_version",
+		"service",
+		"service_component",
+	} {
+		var count int
+		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		if count != 1 {
+			t.Fatalf("%s rows=%d, want 1", table, count)
+		}
+	}
+}
+
 func TestMigrateUpSQLiteSeedsExportedData(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {

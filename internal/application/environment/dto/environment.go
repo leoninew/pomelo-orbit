@@ -8,6 +8,38 @@ type UpdateInput struct {
 	SSH        *SSHTargetInput
 }
 
+// TargetDefinition is the complete persisted Environment target state used by
+// application workflows that operate on an already-known deployment target.
+// It deliberately has no Project or storage identity.
+type TargetDefinition struct {
+	TargetType          string
+	WorkspaceRoot       string
+	TargetRevision      int64
+	LastProbeRevision   *int64
+	LastProbeStatus     *string
+	LastProbeAt         *time.Time
+	LastProbeDiagnostic *string
+	SSH                 *SSHDefinition
+	Credential          *SSHCredentialDefinition
+}
+
+type SSHDefinition struct {
+	Platform           string
+	Host               string
+	Port               int
+	Username           string
+	CredentialRevision int64
+	HostKeyFingerprint string
+}
+
+// SSHCredentialDefinition carries the logical key pair, not its encrypted
+// persistence representation.
+type SSHCredentialDefinition struct {
+	PublicKey  string
+	PrivateKey string
+	Revision   int64
+}
+
 type LocalTargetInput struct {
 	WorkspaceRoot string
 }

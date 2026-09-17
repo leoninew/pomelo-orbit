@@ -16,5 +16,4 @@ type CredentialStore interface {
 	CreateCredential(ctx context.Context, credential model.Credential) error
 	UpdateCredential(ctx context.Context, projectId string, credential model.Credential) error
 	DeleteCredential(ctx context.Context, projectId string, id string) error
-	CredentialReferencedByRepositories(ctx context.Context, projectId string, credentialId string) (bool, error)
 }

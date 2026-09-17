@@ -17,7 +17,7 @@ func (r Router) registerApplication(engine *gin.Engine) {
 	engine.POST("/api/application", handler.CreateApplication)
 	engine.GET("/api/application/:app_id", handler.GetApplication)
 	engine.PUT("/api/application/:app_id", handler.UpdateApplication)
-	engine.DELETE("/api/application/:app_id", deploymentHandler.DeleteApplication)
+	engine.DELETE("/api/application/:app_id", handler.DeleteApplication)
 	engine.POST("/api/application/:app_id/stop", deploymentHandler.StopApplication)
 	engine.POST("/api/application/:app_id/restart", deploymentHandler.RestartApplication)
 	engine.GET("/api/application/:app_id/status", deploymentHandler.GetApplicationStatus)

@@ -282,7 +282,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return map[string]any{"application": applicationOutput(app)}, nil
 	})
 
-	addTool(server, "orbit_delete_application", "Delete an Orbit Application after its Services and Versions have been removed.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_delete_application", "Delete an Orbit Application after its Services have been removed.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 	}) (map[string]any, error) {
 		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
@@ -292,7 +292,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if err != nil {
 			return nil, err
 		}
-		if err := c.deps.Deployment.DeleteApplication(ctx, c.deps.ActorUserId, projectId, input.ApplicationId); err != nil {
+		if err := c.deps.Application.RemoveApplication(ctx, c.deps.ActorUserId, projectId, input.ApplicationId); err != nil {
 			return nil, err
 		}
 		return writeResult("delete_application", map[string]string{"application_id": input.ApplicationId}, "DELETE", "/api/application/"+input.ApplicationId, nil), nil

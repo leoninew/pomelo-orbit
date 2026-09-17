@@ -79,3 +79,14 @@ func (m *memoryEnvironmentCredentials) UpdateEnvironmentCredential(_ context.Con
 	}
 	return repository.ErrNotFound
 }
+
+func (m *memoryEnvironmentCredentials) DeleteEnvironmentCredential(_ context.Context, id string) error {
+	for index := range m.items {
+		if m.items[index].Id != id {
+			continue
+		}
+		m.items = append(m.items[:index], m.items[index+1:]...)
+		return nil
+	}
+	return repository.ErrNotFound
+}

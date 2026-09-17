@@ -148,17 +148,6 @@ func (r Repository) DeleteCredential(ctx context.Context, projectId string, id s
 	return nil
 }
 
-func (r Repository) CredentialReferencedByRepositories(ctx context.Context, projectId string, credentialId string) (bool, error) {
-	count, err := r.q(ctx).RepositoryCredentialReferencedByRepositories(ctx, repositorycredentialsqlc.RepositoryCredentialReferencedByRepositoriesParams{
-		ProjectId:       sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		GitCredentialId: sql.NullString{String: credentialId, Valid: true},
-	})
-	if err != nil {
-		return false, fmt.Errorf("count credential repository refs %s: %w", credentialId, err)
-	}
-	return count > 0, nil
-}
-
 func credentialFrom(id string, projectId sql.NullString, name, typ, encryptedData string, revision int64, createdAt time.Time) model.Credential {
 	return model.Credential{
 		Id:            id,

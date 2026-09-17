@@ -11,6 +11,16 @@ import (
 	"time"
 )
 
+const deleteGatewayConfig = `-- name: DeleteGatewayConfig :exec
+DELETE FROM gateway_config
+WHERE application_id = ?
+`
+
+func (q *Queries) DeleteGatewayConfig(ctx context.Context, applicationID string) error {
+	_, err := q.db.ExecContext(ctx, deleteGatewayConfig, applicationID)
+	return err
+}
+
 const deleteGatewayVersionBindings = `-- name: DeleteGatewayVersionBindings :exec
 DELETE FROM gateway_acme_profile_version
 WHERE application_id = ?

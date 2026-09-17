@@ -105,6 +105,16 @@ WHERE project_id = sqlc.arg(project_id)
   AND repository_id = sqlc.arg(repository_id)
   AND status IN (sqlc.arg(waiting_status), sqlc.arg(running_status));
 
+-- name: CountCDConfigurationReferences :one
+SELECT COUNT(*)
+FROM pipeline_run_version_binding
+WHERE EXISTS (
+  SELECT 1
+  FROM pipeline_run
+  WHERE pipeline_run.id = pipeline_run_version_binding.pipeline_run_id
+    AND pipeline_run.project_id = sqlc.arg(project_id)
+);
+
 -- name: CancelPipelineRun :execrows
 UPDATE pipeline_run
 SET status = sqlc.arg(status), finished_at = sqlc.arg(finished_at), error_message = sqlc.arg(error_message)

@@ -13,6 +13,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	DeleteUser(ctx context.Context, id string) error
 	DeleteUserRoles(ctx context.Context, userID string) error
+	HasUsersWithRole(ctx context.Context, roleID string) (int64, error)
 	InsertUserRole(ctx context.Context, arg InsertUserRoleParams) error
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error)
 	MarkUserLoggedIn(ctx context.Context, arg MarkUserLoggedInParams) error

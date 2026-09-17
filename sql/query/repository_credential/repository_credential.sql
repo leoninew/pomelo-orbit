@@ -56,9 +56,3 @@ WHERE id = sqlc.arg(id)
 DELETE FROM repository_credential
 WHERE id = sqlc.arg(id)
   AND project_id = sqlc.arg(project_id);
-
--- name: RepositoryCredentialReferencedByRepositories :one
-SELECT COUNT(*)
-FROM repository
-WHERE project_id = sqlc.arg(project_id)
-  AND git_credential_id = sqlc.arg(git_credential_id);

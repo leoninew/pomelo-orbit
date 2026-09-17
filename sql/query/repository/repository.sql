@@ -37,6 +37,11 @@ WHERE project_id = sqlc.arg(project_id)
 ORDER BY id DESC
 LIMIT ? OFFSET ?;
 
+-- name: CountRepositoriesByProject :one
+SELECT COUNT(*)
+FROM repository
+WHERE project_id = sqlc.arg(project_id);
+
 -- name: CreateRepository :exec
 INSERT INTO repository (id, project_id, name, code, repository_type, repository_url, git_credential_id, variable_overrides, default_branch, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
@@ -58,9 +63,8 @@ DELETE FROM repository
 WHERE id = sqlc.arg(id)
   AND project_id = sqlc.arg(project_id);
 
--- name: RepositoryHasRunningPipelines :one
+-- name: RepositoryReferencesCredential :one
 SELECT COUNT(*)
-FROM pipeline_run
-WHERE repository_id = sqlc.arg(repository_id)
-  AND project_id = sqlc.arg(project_id)
-  AND status IN (sqlc.arg(status_waiting), sqlc.arg(status_running));
+FROM repository
+WHERE project_id = sqlc.arg(project_id)
+  AND git_credential_id = sqlc.arg(git_credential_id);

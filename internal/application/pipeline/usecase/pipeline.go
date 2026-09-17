@@ -120,6 +120,26 @@ func (s stores) CreatePipelineSnapshot(ctx context.Context, snapshot model.Pipel
 	return s.pipeline.CreatePipelineSnapshot(ctx, snapshot)
 }
 
+func (s stores) HasCDConfigurationReferences(ctx context.Context, projectId string) (bool, error) {
+	return s.pipeline.HasCDConfigurationReferences(ctx, projectId)
+}
+
+// EnsureNoCDConfigurationReferences prevents replacing deployment
+// configuration that remains referenced by Pipeline definitions or snapshots.
+func (s Service) EnsureNoCDConfigurationReferences(ctx context.Context, userId, projectId string) error {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return err
+	}
+	referenced, err := s.store.HasCDConfigurationReferences(ctx, projectId)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to check Pipeline CD configuration references", err)
+	}
+	if referenced {
+		return apperror.New(apperror.KindConflict, "Project Pipeline configuration still references the current CD configuration")
+	}
+	return nil
+}
+
 func (s stores) Application(ctx context.Context, projectId string, id string) (model.Application, error) {
 	return s.application.Application(ctx, projectId, id)
 }

@@ -51,6 +51,7 @@ type ApplicationService interface {
 	ListApplications(context.Context, string, string, int, int, string, string) (repository.Page[model.Application], error)
 	CreateApplication(context.Context, string, applicationdto.ApplicationCreateInput) (model.Application, error)
 	ApplicationForUser(context.Context, string, string, string) (model.Application, error)
+	RemoveApplication(context.Context, string, string, string) error
 	ListVersions(context.Context, string, string, string) ([]applicationdto.VersionView, error)
 	VersionForUser(context.Context, string, string, string) (applicationdto.VersionView, error)
 	CreateVersion(context.Context, string, string, applicationdto.VersionCreateInput) (applicationdto.VersionView, error)
@@ -79,7 +80,6 @@ type ServiceService interface {
 }
 
 type DeploymentService interface {
-	DeleteApplication(context.Context, string, string, string) error
 	PreviewService(context.Context, string, string, string, deploymentdto.PreviewComposeInput) (string, error)
 	DeployService(context.Context, string, string, string, deploymentdto.DeployServiceInput) (deploymentdto.DeployServiceResult, error)
 	StopApplication(context.Context, string, string, string, deploymentdto.ServiceTargetInput) (string, error)

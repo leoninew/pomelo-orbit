@@ -183,3 +183,16 @@ LIMIT 1;
 -- name: InsertPipelineSnapshot :exec
 INSERT INTO pipeline_snapshot (id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: CountCDConfigurationReferences :one
+SELECT (
+  SELECT COUNT(*)
+  FROM pipeline
+  WHERE pipeline.project_id = sqlc.arg(project_id)
+    AND (application_id IS NOT NULL OR fixed_version_id IS NOT NULL)
+) + (
+  SELECT COUNT(*)
+  FROM pipeline_snapshot
+  WHERE pipeline_snapshot.project_id = sqlc.arg(project_id)
+    AND (application_id IS NOT NULL OR fixed_version_id IS NOT NULL)
+);

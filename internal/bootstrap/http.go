@@ -19,6 +19,7 @@ import (
 	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
 	pipelinerunsvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/usecase"
 	projectsvc "github.com/leoninew/pomelo-orbit/internal/application/project/usecase"
+	handoversvc "github.com/leoninew/pomelo-orbit/internal/application/project_handover/usecase"
 	projectinitializationsvc "github.com/leoninew/pomelo-orbit/internal/application/project_initialization/usecase"
 	repositorysvc "github.com/leoninew/pomelo-orbit/internal/application/repository/usecase"
 	rolesvc "github.com/leoninew/pomelo-orbit/internal/application/role/usecase"
@@ -57,6 +58,7 @@ type applicationServices struct {
 	RoleService                  rolesvc.Service
 	UserService                  usersvc.Service
 	ProjectService               projectsvc.Service
+	ProjectHandoverService       handoversvc.Service
 	ProjectInitializationService projectinitializationsvc.Service
 	SettingsService              settingssvc.Service
 	CredentialService            credentialsvc.Service
@@ -101,19 +103,33 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	deploymentDispatcher := queuedispatch.NewDeploymentDispatcher(taskService)
 	authService := authsvc.New(stores.user, stores.auth, tokenService, logger, cfg.Jwt.SecretKey)
 	transactionRunner := databasetx.NewTransactionRunner(database)
-	credentialService := credentialsvc.New(stores.project, stores.credential, cfg.Jwt.SecretKey)
+	credentialService := credentialsvc.New(stores.project, stores.credential, stores.repository, cfg.Jwt.SecretKey)
 	pipelineLogStore := executionlog.Store{}
 	deploymentLogStore := executionlog.NewDeploymentStore(cfg.Logging.DeploymentRoot)
 	dockerPathResolver := dockerDaemonPathResolver()
 	localRuntime, runtime := newDeploymentRuntime(dockerPathResolver)
 	localDisplay := localEnvironmentDisplay()
 	environmentService := environmentsvc.New(stores.environment, stores.project, stores.environmentCredential, cfg.Jwt.SecretKey, environmentrunner.NewProber(localRuntime, sshrunner.NewEnvironmentProber()), sshrunner.NewEnvironmentBootstrapper()).WithLocalDisplay(localDisplay)
-	projectService := projectsvc.New(stores.project, stores.user)
+	projectService := projectsvc.New(stores.project, stores.user, stores.repository, stores.application)
 	pipelineWorkspace := newPipelineWorkspace(cfg, stores, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, stores.environmentCredential, cfg.Jwt.SecretKey)
 	routeManager := traefik.NewRouteManager(targetResolver, runtime)
-	gatewayCore := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, dockerPathResolver, transactionRunner)
+	applicationService := applicationsvc.New(stores.project, stores.application, stores.service)
+	serviceService := servicesvc.New(stores.project, stores.application, stores.service, stores.deployment)
+	routeService := routesvc.New(
+		stores.project,
+		stores.application,
+		stores.service,
+		stores.route,
+		stores.gateway,
+		routeManager,
+		traefik.MkcertGenerator{},
+		routeManager,
+		transactionRunner,
+	)
+	gatewayCore := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, dockerPathResolver, transactionRunner).
+		WithDefinitionServices(applicationService, serviceService, routeService)
 	projectInitializationService := projectinitializationsvc.New(projectService, environmentService, gatewayCore, cfg.ProjectInitialization, localDisplay)
 	deploymentService := deploymentsvc.NewCommandService(
 		stores.project,
@@ -129,13 +145,42 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		gatewayCore,
 	)
 	gatewayService := gatewayCore
-	applicationService := applicationsvc.New(stores.project, stores.application, stores.service)
+	pipelineService := pipelinesvc.New(stores.project, stores.pipeline, stores.application, stores.repository, logger)
+	pipelineRunService := pipelinerunsvc.New(
+		stores.project,
+		stores.credential,
+		stores.repository,
+		stores.pipeline,
+		stores.pipelineRun,
+		stores.application,
+		applicationService,
+		transactionRunner,
+		pipelineRunDispatcher,
+		pipelineWorkspace,
+		cfg.Jwt.SecretKey,
+		logger,
+		pipelinerunner.DockerRunner{},
+		pipelineLogStore,
+		localSource,
+	)
+	projectHandoverService := handoversvc.New(
+		projectService,
+		environmentService,
+		applicationService,
+		serviceService,
+		routeService,
+		gatewayService,
+		pipelineService,
+		pipelineRunService,
+		deploymentService,
+	)
 
 	services := applicationServices{
 		AuthService:                  authService,
-		RoleService:                  rolesvc.New(stores.role),
-		UserService:                  usersvc.New(stores.user, stores.role, stores.project),
+		RoleService:                  rolesvc.New(stores.role, stores.user),
+		UserService:                  usersvc.New(stores.user, stores.role, projectService),
 		ProjectService:               projectService,
+		ProjectHandoverService:       projectHandoverService,
 		ProjectInitializationService: projectInitializationService,
 		SettingsService:              settingssvc.New(settingssvc.Definitions(cfg), envfile.NewStore(cfg.EnvFilePath)),
 		CredentialService:            credentialService,
@@ -144,48 +189,18 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 			stores.project,
 			stores.credential,
 			stores.repository,
-			localSource,
-			logger,
-		),
-		PipelineService: pipelinesvc.New(stores.project, stores.pipeline, stores.application, stores.repository, logger),
-		PipelineRunService: pipelinerunsvc.New(
-			stores.project,
-			stores.credential,
-			stores.repository,
-			stores.pipeline,
 			stores.pipelineRun,
-			stores.application,
-			applicationService,
-			transactionRunner,
-			pipelineRunDispatcher,
-			pipelineWorkspace,
-			cfg.Jwt.SecretKey,
-			logger,
-			pipelinerunner.DockerRunner{},
-			pipelineLogStore,
 			localSource,
+			logger,
 		),
-		RouteService: routesvc.New(
-			stores.project,
-			stores.application,
-			stores.service,
-			stores.route,
-			stores.gateway,
-			routeManager,
-			traefik.MkcertGenerator{},
-			routeManager,
-			transactionRunner,
-		),
+		PipelineService:    pipelineService,
+		PipelineRunService: pipelineRunService,
+		RouteService:       routeService,
 		ApplicationService: applicationService,
-		ServiceService: servicesvc.New(
-			stores.project,
-			stores.application,
-			stores.service,
-			stores.deployment,
-		),
-		DeploymentService: deploymentService,
-		GatewayService:    gatewayService,
-		TaskService:       taskService,
+		ServiceService:     serviceService,
+		DeploymentService:  deploymentService,
+		GatewayService:     gatewayService,
+		TaskService:        taskService,
 	}
 	services.DialogueService = dialoguesvc.New(
 		stores.project,
@@ -203,12 +218,28 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database *sql.DB, taskRepo taskrepo.Repository) routes.Dependencies {
 	services := newApplicationServices(cfg, logger, database, taskRepo)
 	return routes.Dependencies{
-		MutatingUnitOfWork:           databasetx.Middleware(database, transport.WriteError, "/api/route/sync/preview", "/api/route/sync/confirm", "/api/environment/probe", "/api/environment/initialize", "/api/project-initialization/probe", "/api/project-initialization/bootstrap"),
+		MutatingUnitOfWork: databasetx.Middleware(
+			database,
+			transport.WriteError,
+			"/api/route/sync/preview",
+			"/api/route/sync/confirm",
+			"/api/environment/probe",
+			"/api/environment/initialize",
+			"/api/project-initialization/probe",
+			"/api/project-initialization/bootstrap",
+			"/api/project-initialization/environment/test",
+			"/api/auth/login",
+			"/api/auth/logout",
+			"/api/service/:service_id/preview",
+			"/api/version/:version_id/preview",
+			"/api/pipeline-run/:run_id",
+		),
 		Authenticator:                security.New(logger, services.AuthService),
 		AuthService:                  services.AuthService,
 		RoleService:                  services.RoleService,
 		UserService:                  services.UserService,
 		ProjectService:               services.ProjectService,
+		ProjectHandoverService:       services.ProjectHandoverService,
 		ProjectInitializationService: services.ProjectInitializationService,
 		SettingsService:              services.SettingsService,
 		CredentialService:            services.CredentialService,

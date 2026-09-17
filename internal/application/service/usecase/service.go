@@ -53,6 +53,19 @@ func (s Service) DeleteService(ctx context.Context, userId, projectId, serviceId
 	return nil
 }
 
+// RemoveService removes the stored control-plane Service configuration. It
+// does not operate a runtime; a later deployment operation reconciles it.
+func (s Service) RemoveService(ctx context.Context, userId, projectId, serviceId string) error {
+	item, err := s.serviceForUser(ctx, userId, projectId, serviceId)
+	if err != nil {
+		return err
+	}
+	if err := s.service.DeleteService(ctx, projectId, item.Id); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to remove service", err)
+	}
+	return nil
+}
+
 func (s Service) ListServices(ctx context.Context, userId string, input servicedto.ServiceListInput) (repository.Page[servicedto.ServiceView], error) {
 	projectId := strings.TrimSpace(input.ProjectId)
 	if projectId == "" {
@@ -109,10 +122,81 @@ func (s Service) CreateService(ctx context.Context, userId string, projectId str
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service code", err)
 	}
-	svc := model.Service{Id: idutil.NewId(), ProjectId: projectId, ApplicationId: app.Id, Code: code, VersionId: version.Id, Status: status.ServiceStatusStopped}
-	components := mappedServiceComponents(svc.Id, declarations)
+	return s.CreateServiceFromDefinition(ctx, userId, projectId, servicedto.ServiceDefinition{
+		Service:    model.Service{ApplicationId: app.Id, Code: code, VersionId: version.Id, Status: status.ServiceStatusStopped},
+		Components: mappedServiceComponents("", declarations),
+	})
+}
+
+// ServiceDefinitionForUser returns the complete saved Service configuration.
+func (s Service) ServiceDefinitionForUser(ctx context.Context, userId, projectId, serviceId string) (servicedto.ServiceDefinition, error) {
+	svc, err := s.serviceForUser(ctx, userId, projectId, serviceId)
+	if err != nil {
+		return servicedto.ServiceDefinition{}, err
+	}
+	env, err := s.service.ServiceEnvByService(ctx, projectId, svc.Id)
+	if err != nil {
+		return servicedto.ServiceDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to load service environment", err)
+	}
+	components, err := s.service.ServiceComponentsByService(ctx, projectId, svc.Id)
+	if err != nil {
+		return servicedto.ServiceDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to load service components", err)
+	}
+	return servicedto.ServiceDefinition{Service: svc, Env: env, Components: components}, nil
+}
+
+// CreateServiceFromDefinition persists a complete Service runtime
+// configuration without operating a runtime. All component references must
+// belong to the selected Version.
+func (s Service) CreateServiceFromDefinition(ctx context.Context, userId, projectId string, input servicedto.ServiceDefinition) (servicedto.ServiceView, error) {
+	applicationId := strings.TrimSpace(input.Service.ApplicationId)
+	versionId := strings.TrimSpace(input.Service.VersionId)
+	code, err := normalizeServiceCode(input.Service.Code)
+	if err != nil {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	if applicationId == "" || versionId == "" || code == "" {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "application_id, version_id and code are required")
+	}
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
+	if err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	version, declarations, err := s.versionComponents(ctx, projectId, versionId, app.Id)
+	if err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	if _, err := s.service.ServiceByProjectAndCode(ctx, projectId, code); err == nil {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service code already exists")
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service code", err)
+	}
+	components, err := serviceComponentsFromDefinition(input.Components, declarations)
+	if err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	env, err := normalizeServiceEnv(input.Env)
+	if err != nil {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	svc := input.Service
+	svc.Id = idutil.NewId()
+	svc.ProjectId = projectId
+	svc.ApplicationId = app.Id
+	svc.VersionId = version.Id
+	svc.Code = code
+	svc.Status = status.ServiceStatusStopped
+	for index := range components {
+		components[index].Id = idutil.NewId()
+		components[index].ServiceId = svc.Id
+	}
 	if err := s.service.CreateServiceWithComponents(ctx, projectId, svc, components); err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to create service", err)
+	}
+	if len(env) > 0 {
+		if err := s.service.ReplaceServiceEnv(ctx, projectId, svc.Id, env); err != nil {
+			return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to save service environment", err)
+		}
 	}
 	created, err := s.service.ServiceListItem(ctx, projectId, svc.Id)
 	if err != nil {
@@ -377,6 +461,19 @@ func remapServiceComponents(mappings []model.ServiceComponent, declarations []mo
 		mappings[index].SourceVersionComponentId = declaration.Id
 	}
 	return nil
+}
+
+func serviceComponentsFromDefinition(input []model.ServiceComponent, declarations []model.VersionComponent) ([]model.ServiceComponent, error) {
+	components := append([]model.ServiceComponent(nil), input...)
+	if err := remapServiceComponents(components, declarations); err != nil {
+		return nil, apperror.New(apperror.KindValidation, err.Error())
+	}
+	for index := range components {
+		if components[index].Status == "" {
+			components[index].Status = "active"
+		}
+	}
+	return components, nil
 }
 
 func normalizeOverlay(component *model.ServiceComponent, declaration model.VersionComponent) error {

@@ -6,13 +6,10 @@ package project
 
 import (
 	"context"
-	"database/sql"
 )
 
 type Querier interface {
 	AddProjectMember(ctx context.Context, arg AddProjectMemberParams) error
-	CountProjectApplications(ctx context.Context, projectID sql.NullString) (int64, error)
-	CountProjectRepositories(ctx context.Context, projectID sql.NullString) (int64, error)
 	CreateProject(ctx context.Context, arg CreateProjectParams) error
 	DeprecateProject(ctx context.Context, arg DeprecateProjectParams) error
 	IsProjectMember(ctx context.Context, arg IsProjectMemberParams) (int64, error)

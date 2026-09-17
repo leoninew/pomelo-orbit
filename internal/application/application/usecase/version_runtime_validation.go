@@ -16,13 +16,19 @@ const (
 var tmpfsModePattern = regexp.MustCompile(`^[0-7]{3,4}$`)
 
 func validateComponentRuntimeFields(component model.VersionComponent) error {
-	if component.RestartPolicy == nil {
+	return validateComponentRuntimeFieldsWithOptions(component, true)
+}
+
+func validateComponentRuntimeFieldsWithOptions(component model.VersionComponent, requireRestartPolicy bool) error {
+	if requireRestartPolicy && component.RestartPolicy == nil {
 		return fmt.Errorf("component %s restart_policy is required", component.Name)
 	}
-	switch *component.RestartPolicy {
-	case "no", "on-failure", "always", "unless-stopped":
-	default:
-		return fmt.Errorf("component %s restart_policy must be no, on-failure, always or unless-stopped", component.Name)
+	if component.RestartPolicy != nil {
+		switch *component.RestartPolicy {
+		case "no", "on-failure", "always", "unless-stopped":
+		default:
+			return fmt.Errorf("component %s restart_policy must be no, on-failure, always or unless-stopped", component.Name)
+		}
 	}
 	if err := validateTmpfs(component.Name, component.Tmpfs); err != nil {
 		return err

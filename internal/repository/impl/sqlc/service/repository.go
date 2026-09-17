@@ -40,6 +40,18 @@ func (r Repository) ListServicesByApplication(ctx context.Context, projectId, ap
 	return items, nil
 }
 
+func (r Repository) ListServicesByVersion(ctx context.Context, projectId, versionId string) ([]model.Service, error) {
+	rows, err := r.q(ctx).ListServicesByVersion(ctx, servicesqlc.ListServicesByVersionParams{ProjectId: projectId, VersionId: versionId})
+	if err != nil {
+		return nil, fmt.Errorf("list services by version %s: %w", versionId, err)
+	}
+	items := make([]model.Service, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, serviceFrom(row))
+	}
+	return items, nil
+}
+
 func (r Repository) ListServicesByProject(ctx context.Context, projectId, applicationId, statusFilter, search string, page, perPage int) (repository.Page[model.ServiceListItem], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	searchRaw, searchValue := dbmodel.SearchPattern(search)
@@ -235,13 +247,10 @@ func (r Repository) UpdateServiceComponentOverlay(ctx context.Context, projectId
 }
 
 func (r Repository) DeleteService(ctx context.Context, projectId, id string) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		if err := q.DeleteService(txCtx, servicesqlc.DeleteServiceParams{Id: id, ProjectId: projectId}); err != nil {
-			return fmt.Errorf("delete service %s: %w", id, err)
-		}
-		return nil
-	})
+	if err := r.q(ctx).DeleteService(ctx, servicesqlc.DeleteServiceParams{Id: id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service %s: %w", id, err)
+	}
+	return nil
 }
 
 func (r Repository) UpdateServiceStatus(ctx context.Context, projectId, id, status string) error {

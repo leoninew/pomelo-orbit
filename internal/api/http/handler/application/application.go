@@ -76,3 +76,15 @@ func (h Handler) UpdateApplication(c *gin.Context) {
 	resp := applicationResponse(app)
 	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
+
+func (h Handler) DeleteApplication(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	if err := h.service.RemoveApplication(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id")); err != nil {
+		transport.WriteError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}

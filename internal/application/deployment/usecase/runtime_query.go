@@ -188,33 +188,3 @@ func (s Service) renderComposePreview(ctx context.Context, projectId string, app
 	}
 	return content, nil
 }
-
-// DeleteApplication performs runtime safety checks before removing an
-// application specification. Service workspaces are not application-owned.
-func (s Service) DeleteApplication(ctx context.Context, userId string, projectId string, applicationId string) error {
-	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
-	if err != nil {
-		return err
-	}
-	services, err := s.service.ListServicesByApplication(ctx, projectId, app.Id)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to load services", err)
-	}
-	if len(services) > 0 {
-		return apperror.New(apperror.KindValidation, "应用仍包含服务, 请先删除服务")
-	}
-	versions, err := s.application.ListVersions(ctx, projectId, app.Id)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to load versions", err)
-	}
-	if len(versions) > 0 {
-		return apperror.New(apperror.KindValidation, "应用仍包含版本, 请先删除版本")
-	}
-	if err := s.application.DeleteApplication(ctx, projectId, app.Id); err != nil {
-		if errors.Is(err, repository.ErrReferenced) {
-			return apperror.New(apperror.KindValidation, "应用包含被引用的版本, 无法删除")
-		}
-		return apperror.Wrap(apperror.KindInternal, "Failed to delete application", err)
-	}
-	return nil
-}

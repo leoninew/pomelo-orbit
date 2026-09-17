@@ -13,12 +13,12 @@ import (
 func TestDeleteRepositoryRejectsRunningPipelinesWithValidation(t *testing.T) {
 	projectId := "project-1"
 	repositoryStore := &repositoryDeletionStore{
-		item:    model.Repository{Id: "repository-1", ProjectId: &projectId},
-		running: true,
+		item: model.Repository{Id: "repository-1", ProjectId: &projectId},
 	}
 	service := Service{store: stores{
-		project:    repositoryDeletionProjectStore{},
-		repository: repositoryStore,
+		project:     repositoryDeletionProjectStore{},
+		repository:  repositoryStore,
+		pipelineRun: repositoryDeletionPipelineRunStore{running: true},
 	}}
 
 	err := service.DeleteRepository(context.Background(), "user-1", projectId, "repository-1")
@@ -51,7 +51,6 @@ func (repositoryDeletionProjectStore) IsProjectMember(context.Context, string, s
 type repositoryDeletionStore struct {
 	repository.RepositoryStore
 	item    model.Repository
-	running bool
 	deleted bool
 }
 
@@ -59,11 +58,16 @@ func (s *repositoryDeletionStore) Repository(context.Context, string, string) (m
 	return s.item, nil
 }
 
-func (s *repositoryDeletionStore) RepositoryHasRunningPipelines(context.Context, string, string) (bool, error) {
-	return s.running, nil
-}
-
 func (s *repositoryDeletionStore) DeleteRepository(context.Context, string, string) error {
 	s.deleted = true
 	return nil
+}
+
+type repositoryDeletionPipelineRunStore struct {
+	repository.PipelineRunStore
+	running bool
+}
+
+func (s repositoryDeletionPipelineRunStore) RepositoryHasActivePipelineRun(context.Context, string, string) (bool, error) {
+	return s.running, nil
 }

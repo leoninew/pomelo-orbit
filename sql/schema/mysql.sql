@@ -479,7 +479,7 @@ CREATE TABLE IF NOT EXISTS gateway_config (
     dns_api_token VARCHAR(255) NOT NULL DEFAULT '',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE
+    FOREIGN KEY (application_id) REFERENCES application(id)
 );
 
 CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
@@ -489,7 +489,7 @@ CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
     PRIMARY KEY (application_id, profile),
     UNIQUE (application_id, version_id),
     FOREIGN KEY (application_id) REFERENCES gateway_config(application_id) ON DELETE CASCADE,
-    FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE
+    FOREIGN KEY (version_id) REFERENCES version(id)
 );
 
 CREATE TABLE IF NOT EXISTS service (
@@ -501,7 +501,7 @@ CREATE TABLE IF NOT EXISTS service (
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
+    FOREIGN KEY (application_id) REFERENCES application(id),
     FOREIGN KEY (version_id) REFERENCES version(id)
 );
 CREATE UNIQUE INDEX uq_service_project_code ON service(project_id, code);
@@ -530,7 +530,7 @@ CREATE TABLE IF NOT EXISTS service_component (
     UNIQUE (service_id, source_version_component_id),
     UNIQUE (service_id, component_name),
     FOREIGN KEY (service_id) REFERENCES service(id) ON DELETE CASCADE,
-    FOREIGN KEY (source_version_component_id) REFERENCES version_component(id) ON DELETE CASCADE
+    FOREIGN KEY (source_version_component_id) REFERENCES version_component(id)
 );
 
 

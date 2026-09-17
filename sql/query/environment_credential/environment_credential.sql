@@ -19,3 +19,7 @@ INSERT INTO environment_credential (
 UPDATE environment_credential
 SET public_key = ?, encrypted_private_key = ?, revision = ?
 WHERE id = ?;
+
+-- name: DeleteEnvironmentCredential :exec
+DELETE FROM environment_credential
+WHERE id = ?;

@@ -41,6 +41,19 @@ func (q *Queries) CountRepositories(ctx context.Context, arg CountRepositoriesPa
 	return count, err
 }
 
+const countRepositoriesByProject = `-- name: CountRepositoriesByProject :one
+SELECT COUNT(*)
+FROM repository
+WHERE project_id = ?
+`
+
+func (q *Queries) CountRepositoriesByProject(ctx context.Context, projectID sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countRepositoriesByProject, projectID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createRepository = `-- name: CreateRepository :exec
 INSERT INTO repository (id, project_id, name, code, repository_type, repository_url, git_credential_id, variable_overrides, default_branch, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -264,28 +277,20 @@ func (q *Queries) RepositoryById(ctx context.Context, arg RepositoryByIdParams) 
 	return i, err
 }
 
-const repositoryHasRunningPipelines = `-- name: RepositoryHasRunningPipelines :one
+const repositoryReferencesCredential = `-- name: RepositoryReferencesCredential :one
 SELECT COUNT(*)
-FROM pipeline_run
-WHERE repository_id = ?
-  AND project_id = ?
-  AND status IN (?, ?)
+FROM repository
+WHERE project_id = ?
+  AND git_credential_id = ?
 `
 
-type RepositoryHasRunningPipelinesParams struct {
-	RepositoryId  string         `db:"repository_id"`
-	ProjectId     sql.NullString `db:"project_id"`
-	StatusWaiting string         `db:"status_waiting"`
-	StatusRunning string         `db:"status_running"`
+type RepositoryReferencesCredentialParams struct {
+	ProjectId       sql.NullString `db:"project_id"`
+	GitCredentialId sql.NullString `db:"git_credential_id"`
 }
 
-func (q *Queries) RepositoryHasRunningPipelines(ctx context.Context, arg RepositoryHasRunningPipelinesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, repositoryHasRunningPipelines,
-		arg.RepositoryId,
-		arg.ProjectId,
-		arg.StatusWaiting,
-		arg.StatusRunning,
-	)
+func (q *Queries) RepositoryReferencesCredential(ctx context.Context, arg RepositoryReferencesCredentialParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, repositoryReferencesCredential, arg.ProjectId, arg.GitCredentialId)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

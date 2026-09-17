@@ -148,6 +148,25 @@ func (s stores) CreatePipelineRun(ctx context.Context, run model.PipelineRun, bi
 func (s stores) RepositoryHasActivePipelineRun(ctx context.Context, projectId, id string) (bool, error) {
 	return s.pipelineRun.RepositoryHasActivePipelineRun(ctx, projectId, id)
 }
+func (s stores) HasCDConfigurationReferences(ctx context.Context, projectId string) (bool, error) {
+	return s.pipelineRun.HasCDConfigurationReferences(ctx, projectId)
+}
+
+// EnsureNoCDConfigurationReferences prevents replacing deployment
+// configuration that remains referenced by Pipeline Run bindings.
+func (s Service) EnsureNoCDConfigurationReferences(ctx context.Context, userId, projectId string) error {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return err
+	}
+	referenced, err := s.store.HasCDConfigurationReferences(ctx, projectId)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to check Pipeline Run CD configuration references", err)
+	}
+	if referenced {
+		return apperror.New(apperror.KindConflict, "Project Pipeline Run history still references the current CD configuration")
+	}
+	return nil
+}
 func (s stores) PipelineRunVersionBinding(ctx context.Context, projectId, runId string) (model.PipelineRunVersionBinding, error) {
 	return s.pipelineRun.PipelineRunVersionBinding(ctx, projectId, runId)
 }
@@ -322,15 +341,15 @@ func (s Service) DeletePipelineRun(ctx context.Context, userId string, projectId
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to resolve pipeline workspace", err)
 	}
+	if err := s.store.DeletePipelineRun(ctx, projectId, run.Id); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run", err)
+	}
 	if err := workspace.RemoveRunFiles(run.Id); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			s.warnPipelineRunFileCleanupSkipped(run.Id, "pipeline run file or directory does not exist")
 		} else {
 			return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run files", err)
 		}
-	}
-	if err := s.store.DeletePipelineRun(ctx, projectId, run.Id); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run", err)
 	}
 	return nil
 }

@@ -62,6 +62,14 @@ func (r Repository) UserRoles(ctx context.Context, userId string) ([]string, err
 	return roles, nil
 }
 
+func (r Repository) HasUsersWithRole(ctx context.Context, roleId string) (bool, error) {
+	count, err := r.q(ctx).HasUsersWithRole(ctx, roleId)
+	if err != nil {
+		return false, fmt.Errorf("count users assigned Role %s: %w", roleId, err)
+	}
+	return count > 0, nil
+}
+
 func (r Repository) UserPermissions(ctx context.Context, userId string) ([]string, error) {
 	permissions, err := r.q(ctx).UserPermissions(ctx, userId)
 	if err != nil {
@@ -189,27 +197,29 @@ func (r Repository) SetUserStatus(ctx context.Context, userId string, status str
 }
 
 func (r Repository) SetUserRoles(ctx context.Context, userId string, roleIds []string) error {
-	q := r.q(ctx)
-	if err := q.DeleteUserRoles(ctx, userId); err != nil {
-		return fmt.Errorf("delete user roles %s: %w", userId, err)
-	}
-	now := time.Now().UTC()
-	for _, roleId := range roleIds {
-		if err := q.InsertUserRole(ctx, usersqlc.InsertUserRoleParams{
-			UserId:    userId,
-			RoleId:    roleId,
-			CreatedAt: now,
-		}); err != nil {
-			return fmt.Errorf("insert user role %s/%s: %w", userId, roleId, err)
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		if err := q.DeleteUserRoles(txCtx, userId); err != nil {
+			return fmt.Errorf("delete user roles %s: %w", userId, err)
 		}
-	}
-	if err := q.TouchUserUpdatedAt(ctx, usersqlc.TouchUserUpdatedAtParams{
-		UpdatedAt: now,
-		Id:        userId,
-	}); err != nil {
-		return fmt.Errorf("touch user %s: %w", userId, err)
-	}
-	return nil
+		now := time.Now().UTC()
+		for _, roleId := range roleIds {
+			if err := q.InsertUserRole(txCtx, usersqlc.InsertUserRoleParams{
+				UserId:    userId,
+				RoleId:    roleId,
+				CreatedAt: now,
+			}); err != nil {
+				return fmt.Errorf("insert user role %s/%s: %w", userId, roleId, err)
+			}
+		}
+		if err := q.TouchUserUpdatedAt(txCtx, usersqlc.TouchUserUpdatedAtParams{
+			UpdatedAt: now,
+			Id:        userId,
+		}); err != nil {
+			return fmt.Errorf("touch user %s: %w", userId, err)
+		}
+		return nil
+	})
 }
 
 func (r Repository) DeleteUser(ctx context.Context, userId string) error {

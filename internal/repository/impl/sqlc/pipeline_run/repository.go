@@ -178,6 +178,11 @@ func (r Repository) RepositoryHasActivePipelineRun(ctx context.Context, projectI
 	return count > 0, translate(err)
 }
 
+func (r Repository) HasCDConfigurationReferences(ctx context.Context, projectId string) (bool, error) {
+	count, err := r.q(ctx).CountCDConfigurationReferences(ctx, requiredArgument(projectId))
+	return count > 0, translate(err)
+}
+
 func (r Repository) PipelineRunVersionBinding(ctx context.Context, projectId, runId string) (model.PipelineRunVersionBinding, error) {
 	item, err := r.q(ctx).PipelineRunVersionBindingByRunId(ctx, pipelinerunsqlc.PipelineRunVersionBindingByRunIdParams{PipelineRunId: runId, ProjectId: requiredArgument(projectId)})
 	return pipelineRunVersionBindingModel(item), translate(err)

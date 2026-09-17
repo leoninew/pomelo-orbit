@@ -59,6 +59,10 @@ WHERE application_id = ?;
 DELETE FROM gateway_acme_profile_version
 WHERE application_id = ?;
 
+-- name: DeleteGatewayConfig :exec
+DELETE FROM gateway_config
+WHERE application_id = ?;
+
 -- name: InsertGatewayVersionBinding :exec
 INSERT INTO gateway_acme_profile_version (application_id, profile, version_id)
 VALUES (?, ?, ?);

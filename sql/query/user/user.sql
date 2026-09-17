@@ -40,6 +40,11 @@ JOIN user_role ON user_role.role_id = role.id
 WHERE user_role.user_id = ?
 ORDER BY role.code;
 
+-- name: HasUsersWithRole :one
+SELECT COUNT(*)
+FROM user_role
+WHERE role_id = ?;
+
 -- name: UserPermissions :many
 SELECT DISTINCT permission.code
 FROM permission

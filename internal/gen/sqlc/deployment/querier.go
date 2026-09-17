@@ -13,6 +13,8 @@ import (
 type Querier interface {
 	BeginDeployment(ctx context.Context, arg BeginDeploymentParams) (int64, error)
 	CancelDeployment(ctx context.Context, arg CancelDeploymentParams) (int64, error)
+	ClearProjectDeploymentHistory(ctx context.Context, projectID sql.NullString) error
+	ClearProjectDeploymentRollbackReferences(ctx context.Context, projectID sql.NullString) error
 	CompleteDeployment(ctx context.Context, arg CompleteDeploymentParams) (int64, error)
 	CountActiveDeploymentsByService(ctx context.Context, arg CountActiveDeploymentsByServiceParams) (int64, error)
 	CountDeployments(ctx context.Context, arg CountDeploymentsParams) (int64, error)

@@ -180,6 +180,11 @@ func (r Repository) CreatePipelineSnapshot(ctx context.Context, item model.Pipel
 	return translate(r.q(ctx).InsertPipelineSnapshot(ctx, pipelinesqlc.InsertPipelineSnapshotParams{Id: item.Id, ProjectId: nullString(item.ProjectId), PipelineId: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int64(item.PipelineVersion), SourcePipelineId: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: int64(item.SourceTemplateVersion), ApplicationId: nullString(item.ApplicationId), ApplicationName: nullString(item.ApplicationName), RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: nullString(item.VersionForkStrategy), FixedVersionId: nullString(item.FixedVersionId), FixedVersionLabel: nullString(item.FixedVersionLabel), StagesSnapshot: item.StagesSnapshot, VariablesSnapshot: item.VariablesSnapshot, CreatedAt: timeOrNow(item.CreatedAt)}))
 }
 
+func (r Repository) HasCDConfigurationReferences(ctx context.Context, projectId string) (bool, error) {
+	count, err := r.q(ctx).CountCDConfigurationReferences(ctx, pipelinesqlc.CountCDConfigurationReferencesParams{ProjectId: nullString(&projectId)})
+	return count > 0, translate(err)
+}
+
 func pipelineParams(item model.Pipeline) pipelinesqlc.CreatePipelineParams {
 	return pipelinesqlc.CreatePipelineParams{Id: item.Id, ProjectId: nullString(item.ProjectId), Kind: item.Kind, SourcePipelineId: nullString(item.SourcePipelineId), SourceTemplateName: nullString(item.SourceTemplateName), SourceTemplateVersion: nullInt(item.SourceTemplateVersion), ApplicationId: nullString(item.ApplicationId), ApplicationName: nullString(item.ApplicationName), RepositoryId: nullString(item.RepositoryId), RepositoryName: nullString(item.RepositoryName), VersionForkStrategy: nullString(item.VersionForkStrategy), FixedVersionId: nullString(item.FixedVersionId), FixedVersionLabel: nullString(item.FixedVersionLabel), Name: item.Name, Description: item.Description, VariableDeclarations: item.VariableDeclarations, Version: int64(item.Version), CreatedAt: timeOrNow(item.CreatedAt), UpdatedAt: timeOrNow(item.UpdatedAt)}
 }

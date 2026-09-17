@@ -37,6 +37,16 @@ func (q *Queries) CreateEnvironmentCredential(ctx context.Context, arg CreateEnv
 	return err
 }
 
+const deleteEnvironmentCredential = `-- name: DeleteEnvironmentCredential :exec
+DELETE FROM environment_credential
+WHERE id = ?
+`
+
+func (q *Queries) DeleteEnvironmentCredential(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteEnvironmentCredential, id)
+	return err
+}
+
 const environmentCredentialById = `-- name: EnvironmentCredentialById :one
 SELECT id, project_id, public_key, encrypted_private_key, revision, created_at
 FROM environment_credential

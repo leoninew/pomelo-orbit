@@ -119,7 +119,7 @@ func (s Service) DeleteRepository(ctx context.Context, userId string, projectId 
 	if err != nil {
 		return err
 	}
-	running, err := s.store.RepositoryHasRunningPipelines(ctx, projectId, item.Id)
+	running, err := s.store.RepositoryHasActivePipelineRun(ctx, projectId, item.Id)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check repository pipelines", err)
 	}

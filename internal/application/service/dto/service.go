@@ -40,6 +40,15 @@ type ServiceCreateInput struct {
 	Code          string
 }
 
+// ServiceDefinition is the complete saved runtime configuration of one
+// Service. IDs are references within a caller's definition only; the Service
+// domain assigns its persisted identity when creating the configuration.
+type ServiceDefinition struct {
+	Service    model.Service
+	Env        []model.ServiceEnv
+	Components []model.ServiceComponent
+}
+
 type ServiceComponentOverlayInput struct {
 	Entrypoint    *string
 	Command       *string

@@ -94,6 +94,7 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 
 func (r Repository) UpdateEnvironment(ctx context.Context, environment model.Environment) error {
 	if err := r.q(ctx).UpdateEnvironment(ctx, environmentsqlc.UpdateEnvironmentParams{
+		Code:                  environment.Code,
 		TargetType:            environment.TargetType,
 		Platform:              environmentSSHPlatform(environment),
 		Host:                  environmentSSHHost(environment),
@@ -104,6 +105,11 @@ func (r Repository) UpdateEnvironment(ctx context.Context, environment model.Env
 		SshCredentialRevision: environmentSSHCredentialRevision(environment),
 		HostKeyFingerprint:    environmentSSHHostKeyFingerprint(environment),
 		TargetRevision:        environment.TargetRevision,
+		LastProbeRevision:     nullableInt64(environment.LastProbeRevision),
+		LastProbeStatus:       dbmodel.NullString(environment.LastProbeStatus),
+		LastProbeAt:           dbmodel.NullTime(environment.LastProbeAt),
+		LastProbeDiagnostic:   dbmodel.NullString(environment.LastProbeDiagnostic),
+		GatewayApplicationId:  dbmodel.NullString(environment.GatewayApplicationId),
 		UpdatedAt:             time.Now().UTC(),
 		Id:                    environment.Id,
 	}); err != nil {
@@ -135,6 +141,18 @@ func (r Repository) BindGatewayApplication(ctx context.Context, environmentId st
 	})
 	if err != nil {
 		return false, fmt.Errorf("bind gateway application %s to environment %s: %w", gatewayApplicationId, environmentId, err)
+	}
+	return rows == 1, nil
+}
+
+func (r Repository) UnbindGatewayApplication(ctx context.Context, environmentId string, gatewayApplicationId string) (bool, error) {
+	rows, err := r.q(ctx).UnbindGatewayApplication(ctx, environmentsqlc.UnbindGatewayApplicationParams{
+		UpdatedAt:            time.Now().UTC(),
+		Id:                   environmentId,
+		GatewayApplicationId: sql.NullString{String: gatewayApplicationId, Valid: true},
+	})
+	if err != nil {
+		return false, fmt.Errorf("unbind gateway application %s from environment %s: %w", gatewayApplicationId, environmentId, err)
 	}
 	return rows == 1, nil
 }

@@ -27,32 +27,6 @@ func (q *Queries) AddProjectMember(ctx context.Context, arg AddProjectMemberPara
 	return err
 }
 
-const countProjectApplications = `-- name: CountProjectApplications :one
-SELECT COUNT(*)
-FROM application
-WHERE project_id = ?
-`
-
-func (q *Queries) CountProjectApplications(ctx context.Context, projectID sql.NullString) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProjectApplications, projectID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countProjectRepositories = `-- name: CountProjectRepositories :one
-SELECT COUNT(*)
-FROM repository
-WHERE project_id = ?
-`
-
-func (q *Queries) CountProjectRepositories(ctx context.Context, projectID sql.NullString) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProjectRepositories, projectID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const createProject = `-- name: CreateProject :exec
 INSERT INTO project (id, name, code, is_active, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?)
@@ -350,17 +324,25 @@ func (q *Queries) RemoveUserFromAllProjects(ctx context.Context, userID string) 
 
 const updateProject = `-- name: UpdateProject :exec
 UPDATE project
-SET name = ?, updated_at = ?
+SET name = ?, code = ?, is_active = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateProjectParams struct {
 	Name      string    `db:"name"`
+	Code      string    `db:"code"`
+	IsActive  bool      `db:"is_active"`
 	UpdatedAt time.Time `db:"updated_at"`
 	Id        string    `db:"id"`
 }
 
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) error {
-	_, err := q.db.ExecContext(ctx, updateProject, arg.Name, arg.UpdatedAt, arg.Id)
+	_, err := q.db.ExecContext(ctx, updateProject,
+		arg.Name,
+		arg.Code,
+		arg.IsActive,
+		arg.UpdatedAt,
+		arg.Id,
+	)
 	return err
 }

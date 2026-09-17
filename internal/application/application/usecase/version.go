@@ -99,6 +99,144 @@ func (s Service) CreateVersion(ctx context.Context, userId string, projectId str
 	return s.VersionForUser(ctx, userId, projectId, version.Id)
 }
 
+// CreateVersionFromDefinition creates an unpublished Version from its parsed
+// component specification. The caller may choose an existing parent Version
+// from the same Application to establish Version lineage.
+func (s Service) CreateVersionFromDefinition(ctx context.Context, userId string, projectId string, applicationId string, input applicationdto.VersionDefinitionInput) (applicationdto.VersionView, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
+	if err != nil {
+		return applicationdto.VersionView{}, err
+	}
+	label := strings.TrimSpace(input.Label)
+	if label == "" || len(label) > 128 {
+		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, "Invalid version label")
+	}
+	var createdFromVersionId *string
+	if input.CreatedFromVersionId != nil {
+		value := strings.TrimSpace(*input.CreatedFromVersionId)
+		if value != "" {
+			createdFromVersionId = &value
+		}
+	}
+	if createdFromVersionId != nil {
+		parent, err := s.store.Version(ctx, projectId, *createdFromVersionId)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return applicationdto.VersionView{}, apperror.New(apperror.KindNotFound, "Version "+*createdFromVersionId+" not found")
+			}
+			return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to load parent version", err)
+		}
+		if parent.ApplicationId != app.Id {
+			return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, "Parent version does not belong to the application")
+		}
+	}
+	components := cloneVersionDefinitionComponents(input.Components)
+	if err := validateVersionDefinitionComponents(components); err != nil {
+		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	version := model.Version{
+		Id:                   idutil.NewId(),
+		ApplicationId:        app.Id,
+		Label:                label,
+		Status:               status.VersionStatusUnpublished,
+		CreatedFromVersionId: createdFromVersionId,
+		Note:                 optionalText(input.Note),
+	}
+	for index := range components {
+		components[index].Id = idutil.NewId()
+		components[index].VersionId = version.Id
+	}
+	if err := s.store.CreateVersionWithVersionComponents(ctx, projectId, version, components); err != nil {
+		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to create version", err)
+	}
+	return s.VersionForUser(ctx, userId, projectId, version.Id)
+}
+
+func (s Service) createDefinitionVersions(ctx context.Context, projectId string, app model.Application, definitions []applicationdto.VersionDefinition) ([]applicationdto.VersionDefinition, error) {
+	if len(definitions) == 0 {
+		return nil, apperror.New(apperror.KindValidation, "Application definition requires at least one Version")
+	}
+	bySourceID := make(map[string]applicationdto.VersionDefinition, len(definitions))
+	for _, definition := range definitions {
+		sourceID := strings.TrimSpace(definition.Version.Id)
+		if sourceID == "" {
+			return nil, apperror.New(apperror.KindValidation, "Application definition Version id is required")
+		}
+		if _, exists := bySourceID[sourceID]; exists {
+			return nil, apperror.New(apperror.KindValidation, "Application definition has duplicate Version id")
+		}
+		bySourceID[sourceID] = definition
+	}
+	createdBySourceID := make(map[string]applicationdto.VersionDefinition, len(definitions))
+	visiting := make(map[string]bool, len(definitions))
+	var create func(string) error
+	create = func(sourceID string) error {
+		if _, exists := createdBySourceID[sourceID]; exists {
+			return nil
+		}
+		if visiting[sourceID] {
+			return apperror.New(apperror.KindValidation, "Application definition Version lineage contains a cycle")
+		}
+		definition, exists := bySourceID[sourceID]
+		if !exists {
+			return apperror.New(apperror.KindValidation, "Application definition Version lineage references an unknown Version")
+		}
+		visiting[sourceID] = true
+		var parentID *string
+		if definition.Version.CreatedFromVersionId != nil {
+			parentSourceID := strings.TrimSpace(*definition.Version.CreatedFromVersionId)
+			if parentSourceID == "" {
+				return apperror.New(apperror.KindValidation, "Application definition Version parent id is invalid")
+			}
+			if err := create(parentSourceID); err != nil {
+				return err
+			}
+			parent := createdBySourceID[parentSourceID].Version.Id
+			parentID = &parent
+		}
+		components := cloneVersionDefinitionComponents(definition.Components)
+		for index := range components {
+			components[index].ArtifactId = nil
+			components[index].Artifact = nil
+		}
+		if err := validateVersionDefinitionComponents(components); err != nil {
+			return apperror.New(apperror.KindValidation, err.Error())
+		}
+		label := strings.TrimSpace(definition.Version.Label)
+		if label == "" || len(label) > 128 {
+			return apperror.New(apperror.KindValidation, "Invalid version label")
+		}
+		if definition.Version.Status != status.VersionStatusUnpublished && definition.Version.Status != status.VersionStatusPublished {
+			return apperror.New(apperror.KindValidation, "Invalid version status")
+		}
+		version := model.Version{
+			Id: idutil.NewId(), ApplicationId: app.Id, Label: label, Status: definition.Version.Status,
+			CreatedFromVersionId: parentID, Note: optionalText(definition.Version.Note),
+			ComponentSummary: model.VersionComponentSummary(components),
+		}
+		for index := range components {
+			components[index].Id = idutil.NewId()
+			components[index].VersionId = version.Id
+		}
+		if err := s.store.CreateVersionWithVersionComponents(ctx, projectId, version, components); err != nil {
+			return apperror.Wrap(apperror.KindInternal, "Failed to create Version definition", err)
+		}
+		createdBySourceID[sourceID] = applicationdto.VersionDefinition{Version: version, Components: components}
+		visiting[sourceID] = false
+		return nil
+	}
+	for _, definition := range definitions {
+		if err := create(strings.TrimSpace(definition.Version.Id)); err != nil {
+			return nil, err
+		}
+	}
+	created := make([]applicationdto.VersionDefinition, 0, len(definitions))
+	for _, definition := range definitions {
+		created = append(created, createdBySourceID[strings.TrimSpace(definition.Version.Id)])
+	}
+	return created, nil
+}
+
 func (s Service) UpdateVersion(ctx context.Context, userId string, projectId string, versionId string, input applicationdto.VersionUpdateInput) (applicationdto.VersionView, error) {
 	version, err := s.loadVersionForUser(ctx, userId, projectId, versionId)
 	if err != nil {
@@ -374,11 +512,11 @@ func (s Service) DeleteVersion(ctx context.Context, userId string, projectId str
 	if err != nil {
 		return err
 	}
-	refs, err := s.store.CountVersionRuntimeRefs(ctx, projectId, version.Id)
+	services, err := s.store.ListServicesByVersion(ctx, projectId, version.Id)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check version references", err)
 	}
-	if refs > 0 {
+	if len(services) > 0 {
 		return apperror.New(apperror.KindValidation, "Version is referenced and cannot be deleted")
 	}
 	if err := s.store.DeleteVersion(ctx, projectId, version.Id); err != nil {
@@ -471,6 +609,27 @@ func versionComponentsFromInputs(inputs []applicationdto.VersionComponentInput) 
 		})
 	}
 	return components, nil
+}
+
+func cloneVersionDefinitionComponents(input []model.VersionComponent) []model.VersionComponent {
+	components := make([]model.VersionComponent, 0, len(input))
+	for _, component := range input {
+		copy := component
+		copy.Id = ""
+		copy.VersionId = ""
+		copy.Entrypoint = append([]string(nil), component.Entrypoint...)
+		copy.Command = append([]string(nil), component.Command...)
+		copy.Env = append([]model.VersionComponentEnv(nil), component.Env...)
+		copy.Endpoints = append([]model.VersionComponentEndpoint(nil), component.Endpoints...)
+		copy.Mounts = append([]model.VersionComponentMount(nil), component.Mounts...)
+		copy.Dependencies = append([]model.VersionComponentDependency(nil), component.Dependencies...)
+		copy.Tmpfs = append([]model.VersionComponentTmpfs(nil), component.Tmpfs...)
+		copy.Ulimits = append([]model.VersionComponentUlimit(nil), component.Ulimits...)
+		copy.Devices = cloneComponentDeviceRequests(component.Devices)
+		copy.Resources = cloneComponentResources(component.Resources)
+		components = append(components, copy)
+	}
+	return components
 }
 
 func parseComponentCommand(input string) ([]string, error) {

@@ -143,6 +143,19 @@ func (r Repository) ReplaceGatewayVersionBindings(ctx context.Context, applicati
 	})
 }
 
+func (r Repository) DeleteGatewayConfig(ctx context.Context, applicationId string) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		if err := q.DeleteGatewayVersionBindings(txCtx, applicationId); err != nil {
+			return fmt.Errorf("delete gateway Version bindings %s: %w", applicationId, err)
+		}
+		if err := q.DeleteGatewayConfig(txCtx, applicationId); err != nil {
+			return fmt.Errorf("delete gateway config %s: %w", applicationId, err)
+		}
+		return nil
+	})
+}
+
 func (r Repository) gatewayFrom(ctx context.Context, row gatewaysqlc.GatewayConfig) (model.GatewayConfig, error) {
 	bindings, err := r.q(ctx).GatewayVersionBindingsByApplication(ctx, row.ApplicationId)
 	if err != nil {

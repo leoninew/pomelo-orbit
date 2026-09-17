@@ -18,15 +18,19 @@ import (
 var projectCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
 type Service struct {
-	repo  repository.ProjectStore
-	users repository.UserStore
+	repo         repository.ProjectStore
+	users        repository.UserStore
+	repositories repository.RepositoryProjectCounter
+	applications repository.ApplicationProjectCounter
 }
 
 func New(
 	repo repository.ProjectStore,
 	users repository.UserStore,
+	repositories repository.RepositoryProjectCounter,
+	applications repository.ApplicationProjectCounter,
 ) Service {
-	return Service{repo: repo, users: users}
+	return Service{repo: repo, users: users, repositories: repositories, applications: applications}
 }
 
 func (s Service) ListByMember(ctx context.Context, userId string) ([]model.Project, error) {
@@ -43,6 +47,24 @@ func (s Service) Create(ctx context.Context, userId string, input projectdto.Cre
 	}
 	now := time.Now().UTC()
 	project := model.Project{Id: idutil.NewId(), Name: name, Code: code, IsActive: true, CreatedAt: now, UpdatedAt: now}
+	if err := s.repo.CreateProject(ctx, project, userId); err != nil {
+		return model.Project{}, err
+	}
+	return project, nil
+}
+
+// CreateFromDefinition creates a Project and assigns the initiating user as
+// its initial member.
+func (s Service) CreateFromDefinition(ctx context.Context, userId string, input projectdto.ProjectDefinition) (model.Project, error) {
+	name, code, err := normalizeProjectDefinition(input)
+	if err != nil {
+		return model.Project{}, err
+	}
+	if err := s.ensureCodeAvailable(ctx, code, ""); err != nil {
+		return model.Project{}, err
+	}
+	now := time.Now().UTC()
+	project := model.Project{Id: idutil.NewId(), Name: name, Code: code, IsActive: input.IsActive, CreatedAt: now, UpdatedAt: now}
 	if err := s.repo.CreateProject(ctx, project, userId); err != nil {
 		return model.Project{}, err
 	}
@@ -83,6 +105,29 @@ func (s Service) Update(ctx context.Context, project model.Project, input projec
 	return updated, nil
 }
 
+// UpdateFromDefinition replaces a Project's mutable business identity while
+// preserving its ID and member relationships.
+func (s Service) UpdateFromDefinition(ctx context.Context, userId, projectId string, input projectdto.ProjectDefinition) (model.Project, error) {
+	project, err := s.LoadForUser(ctx, projectId, userId)
+	if err != nil {
+		return model.Project{}, err
+	}
+	name, code, err := normalizeProjectDefinition(input)
+	if err != nil {
+		return model.Project{}, err
+	}
+	if err := s.ensureCodeAvailable(ctx, code, project.Id); err != nil {
+		return model.Project{}, err
+	}
+	project.Name = name
+	project.Code = code
+	project.IsActive = input.IsActive
+	if err := s.repo.UpdateProject(ctx, project); err != nil {
+		return model.Project{}, err
+	}
+	return s.repo.Project(ctx, project.Id)
+}
+
 func (s Service) Deprecate(ctx context.Context, project model.Project, userId string) error {
 	activeProjects, err := s.repo.ListActiveProjectsByMember(ctx, userId)
 	if err != nil {
@@ -91,14 +136,14 @@ func (s Service) Deprecate(ctx context.Context, project model.Project, userId st
 	if len(activeProjects) <= 1 {
 		return apperror.New(apperror.KindValidation, "Cannot deprecate the last active project")
 	}
-	repoCount, err := s.repo.CountProjectRepositories(ctx, project.Id)
+	repoCount, err := s.repositories.CountRepositoriesByProject(ctx, project.Id)
 	if err != nil {
 		return fmt.Errorf("count project repositories %s: %w", project.Id, err)
 	}
 	if repoCount > 0 {
 		return apperror.New(apperror.KindValidation, fmt.Sprintf("Cannot deprecate project with %d repositories", repoCount))
 	}
-	appCount, err := s.repo.CountProjectApplications(ctx, project.Id)
+	appCount, err := s.applications.CountApplicationsByProject(ctx, project.Id)
 	if err != nil {
 		return fmt.Errorf("count project applications %s: %w", project.Id, err)
 	}
@@ -136,6 +181,12 @@ func (s Service) RemoveMember(ctx context.Context, projectId string, userId stri
 	return s.repo.ProjectMembers(ctx, projectId)
 }
 
+// RemoveUserFromAllProjects removes Project-owned memberships before the User
+// domain deletes the account itself.
+func (s Service) RemoveUserFromAllProjects(ctx context.Context, userId string) error {
+	return s.repo.RemoveUserFromAllProjects(ctx, strings.TrimSpace(userId))
+}
+
 func (s Service) ensureCodeAvailable(ctx context.Context, code string, currentProjectId string) error {
 	existing, err := s.repo.ProjectByCode(ctx, code)
 	if err == nil {
@@ -165,6 +216,10 @@ func normalizeAndValidateUpdate(input projectdto.SaveInput) (string, error) {
 		return "", ErrInvalidProjectFields
 	}
 	return name, nil
+}
+
+func normalizeProjectDefinition(input projectdto.ProjectDefinition) (string, string, error) {
+	return normalizeAndValidateCreate(projectdto.CreateInput{Name: input.Name, Code: input.Code})
 }
 
 var ErrInvalidProjectFields = apperror.New(apperror.KindValidation, "Invalid project fields")

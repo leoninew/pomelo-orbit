@@ -11,4 +11,5 @@ type EnvironmentCredentialStore interface {
 	LatestEnvironmentCredentialByProject(ctx context.Context, projectId string) (model.EnvironmentCredential, error)
 	CreateEnvironmentCredential(ctx context.Context, credential model.EnvironmentCredential) error
 	UpdateEnvironmentCredential(ctx context.Context, credential model.EnvironmentCredential) error
+	DeleteEnvironmentCredential(ctx context.Context, id string) error
 }

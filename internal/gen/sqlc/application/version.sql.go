@@ -32,30 +32,6 @@ func (q *Queries) ClearVersionForkRefs(ctx context.Context, arg ClearVersionFork
 	return err
 }
 
-const countVersionRuntimeRefs = `-- name: CountVersionRuntimeRefs :one
-SELECT (
-  SELECT COUNT(*) FROM service WHERE service.version_id = ?
-    AND EXISTS (
-      SELECT 1 FROM version
-      JOIN application ON application.id = version.application_id
-      WHERE version.id = service.version_id
-        AND application.project_id = ?
-    )
-)
-`
-
-type CountVersionRuntimeRefsParams struct {
-	VersionId string         `db:"version_id"`
-	ProjectId sql.NullString `db:"project_id"`
-}
-
-func (q *Queries) CountVersionRuntimeRefs(ctx context.Context, arg CountVersionRuntimeRefsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countVersionRuntimeRefs, arg.VersionId, arg.ProjectId)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const countVersions = `-- name: CountVersions :one
 SELECT COUNT(*)
 FROM version

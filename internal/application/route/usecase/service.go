@@ -155,6 +155,40 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 	return created, nil
 }
 
+// CreateRouteFromDefinition persists a complete Route configuration without
+// publishing it. Imported routes always start disabled, regardless of the
+// source configuration's enabled flag.
+func (s Service) CreateRouteFromDefinition(ctx context.Context, userId string, projectId string, input routedto.RouteDefinitionInput) (model.Route, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Route{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Route{}, err
+	}
+	route := cloneRouteDefinition(input.Route)
+	route.Id = idutil.NewId()
+	route.ProjectId = &projectId
+	route.Enabled = false
+	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
+		route.PathPrefix = "/"
+	}
+	if err := s.validateRoute(ctx, projectId, &route, ""); err != nil {
+		return model.Route{}, err
+	}
+	if err := s.validateRouteCertificateConfiguration(ctx, route); err != nil {
+		return model.Route{}, err
+	}
+	if err := s.route.CreateRoute(ctx, route); err != nil {
+		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to create route", err)
+	}
+	created, err := s.route.Route(ctx, projectId, route.Id)
+	if err != nil {
+		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
+	}
+	return created, nil
+}
+
 // RouteForUser loads a route visible to the current user.
 func (s Service) RouteForUser(ctx context.Context, userId, projectId, routeId string) (model.Route, error) {
 	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
@@ -239,7 +273,21 @@ func (s Service) DeleteRoute(ctx context.Context, userId, projectId, routeId str
 	if route.Enabled {
 		return apperror.New(apperror.KindValidation, "Cannot delete enabled route. Please disable it first.")
 	}
-	if err := s.route.DeleteRoute(ctx, projectId, route.Id); err != nil {
+	return s.removeRoute(ctx, projectId, route.Id)
+}
+
+// RemoveRoute removes saved ingress configuration without publishing Traefik
+// state. It is used by workflows that replace an entire configuration.
+func (s Service) RemoveRoute(ctx context.Context, userId, projectId, routeId string) error {
+	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
+	if err != nil {
+		return err
+	}
+	return s.removeRoute(ctx, projectId, route.Id)
+}
+
+func (s Service) removeRoute(ctx context.Context, projectId, routeId string) error {
+	if err := s.route.DeleteRoute(ctx, projectId, routeId); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete route", err)
 	}
 	return nil
@@ -405,6 +453,42 @@ func (s Service) validateGatewayACMECapability(ctx context.Context, route model.
 	return gatewayConfig, nil
 }
 
+func (s Service) validateRouteCertificateConfiguration(ctx context.Context, route model.Route) error {
+	if route.Protocol == routeProtocolTCP {
+		return nil
+	}
+	if !route.HTTPSEnabled {
+		if route.CertPEM != nil || route.CertKey != nil || route.CertType != certTypeManual || route.AcmeChallenge != acmeChallengeHTTP {
+			return apperror.New(apperror.KindValidation, "Disabled HTTPS route has invalid certificate configuration")
+		}
+		return nil
+	}
+	switch route.CertType {
+	case certTypeManual, certTypeMkcert:
+		if route.CertPEM == nil || route.CertKey == nil || strings.TrimSpace(*route.CertPEM) == "" || strings.TrimSpace(*route.CertKey) == "" {
+			return apperror.New(apperror.KindValidation, "Manual route certificate and key are required")
+		}
+		if route.AcmeChallenge != acmeChallengeHTTP {
+			return apperror.New(apperror.KindValidation, "Manual route certificate cannot declare an ACME challenge")
+		}
+	case certTypeLetsEncrypt:
+		if route.CertPEM != nil || route.CertKey != nil {
+			return apperror.New(apperror.KindValidation, "Let's Encrypt route cannot include a manual certificate")
+		}
+		if route.AcmeChallenge != acmeChallengeHTTP && route.AcmeChallenge != acmeChallengeDNS {
+			return apperror.New(apperror.KindValidation, "Let's Encrypt route has invalid challenge")
+		}
+		if err := validatePublicACMEDomain(route.Domain); err != nil {
+			return err
+		}
+		_, err := s.validateGatewayACMECapability(ctx, route, route.AcmeChallenge)
+		return err
+	default:
+		return apperror.New(apperror.KindValidation, "Route certificate type is invalid")
+	}
+	return nil
+}
+
 func gatewaySupportsHTTP01(profile string) bool {
 	return profile == "http" || profile == "http-dns"
 }
@@ -519,6 +603,35 @@ func (s Service) loadRouteForUser(ctx context.Context, userId, projectId, routeI
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
 	return route, nil
+}
+
+func cloneRouteDefinition(input model.Route) model.Route {
+	copy := input
+	copy.ProjectId = nil
+	copy.ListenPort = cloneInt(input.ListenPort)
+	copy.ServiceId = cloneString(input.ServiceId)
+	copy.ComponentName = cloneString(input.ComponentName)
+	copy.EndpointProtocol = cloneString(input.EndpointProtocol)
+	copy.EndpointContainerPort = cloneInt(input.EndpointContainerPort)
+	copy.CertPEM = cloneString(input.CertPEM)
+	copy.CertKey = cloneString(input.CertKey)
+	return copy
+}
+
+func cloneString(input *string) *string {
+	if input == nil {
+		return nil
+	}
+	copy := *input
+	return &copy
+}
+
+func cloneInt(input *int) *int {
+	if input == nil {
+		return nil
+	}
+	copy := *input
+	return &copy
 }
 
 // PublishSnapshot is the worker-facing hook used after a Gateway deployment.

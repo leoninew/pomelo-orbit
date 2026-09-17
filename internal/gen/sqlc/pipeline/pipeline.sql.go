@@ -70,6 +70,31 @@ func (q *Queries) ApplicationPipelineStages(ctx context.Context, arg Application
 	return items, nil
 }
 
+const countCDConfigurationReferences = `-- name: CountCDConfigurationReferences :one
+SELECT (
+  SELECT COUNT(*)
+  FROM pipeline
+  WHERE pipeline.project_id = ?
+    AND (application_id IS NOT NULL OR fixed_version_id IS NOT NULL)
+) + (
+  SELECT COUNT(*)
+  FROM pipeline_snapshot
+  WHERE pipeline_snapshot.project_id = ?
+    AND (application_id IS NOT NULL OR fixed_version_id IS NOT NULL)
+)
+`
+
+type CountCDConfigurationReferencesParams struct {
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) CountCDConfigurationReferences(ctx context.Context, arg CountCDConfigurationReferencesParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countCDConfigurationReferences, arg.ProjectId, arg.ProjectId)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countPipelineStageTemplates = `-- name: CountPipelineStageTemplates :one
 SELECT COUNT(*) FROM pipeline_stage
 WHERE project_id = ?

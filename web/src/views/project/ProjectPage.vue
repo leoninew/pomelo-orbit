@@ -9,6 +9,10 @@
         @search="handleSearch"
       />
       <div class="flex items-center gap-3">
+        <button class="app-button px-4" @click="openHandoverDialog">
+          <Upload class="size-4" />
+          {{ t('project.importHandover') }}
+        </button>
         <button class="app-button-primary px-5" @click="openCreateDialog">
           <Plus class="size-4" />
           {{ t('project.createProject') }}
@@ -144,6 +148,92 @@
       </template>
     </AppDialog>
 
+    <AppDialog
+      v-model:open="isHandoverDialogOpen"
+      :title="t('project.importHandover')"
+      width-class="w-[min(600px,calc(100vw-32px))]"
+    >
+      <form class="space-y-4" novalidate @submit.prevent="handleHandoverImport">
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="handover-file">
+            {{ t('project.handoverFile') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="handover-file"
+            :key="handoverFileInputKey"
+            type="file"
+            accept="application/json,.json"
+            class="app-input file:mr-3 file:border-0 file:bg-transparent file:text-sm file:font-medium"
+            :class="handoverErrors.file ? 'app-input-error' : ''"
+            :disabled="operating"
+            @change="handleHandoverFile"
+          />
+          <p v-if="handoverErrors.file" class="app-field-error text-xs" role="alert">
+            {{ handoverErrors.file }}
+          </p>
+        </div>
+
+        <div class="space-y-1.5">
+          <span class="app-field-label block">{{ t('project.handoverMode') }}</span>
+          <div class="grid grid-cols-2 gap-2" role="radiogroup">
+            <button
+              type="button"
+              class="app-button justify-center"
+              :class="handoverMode === 'new' ? 'app-button-primary' : ''"
+              :aria-checked="handoverMode === 'new'"
+              role="radio"
+              :disabled="operating"
+              @click="selectHandoverMode('new')"
+            >
+              {{ t('project.handoverModeNew') }}
+            </button>
+            <button
+              type="button"
+              class="app-button justify-center"
+              :class="handoverMode === 'replace' ? 'app-button-primary' : ''"
+              :aria-checked="handoverMode === 'replace'"
+              role="radio"
+              :disabled="operating"
+              @click="selectHandoverMode('replace')"
+            >
+              {{ t('project.handoverModeReplace') }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="handoverMode === 'replace'" class="space-y-1.5">
+          <label class="app-field-label block">
+            {{ t('project.handoverTargetProject') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <ComboboxSelect
+            v-model="handoverTargetProjectId"
+            :options="handoverTargetOptions"
+            :placeholder="t('project.handoverTargetProject')"
+            :disabled="operating"
+            :invalid="Boolean(handoverErrors.targetProject)"
+            description-inline
+            @update:model-value="handoverErrors.targetProject = ''"
+          />
+          <p v-if="handoverErrors.targetProject" class="app-field-error text-xs" role="alert">
+            {{ handoverErrors.targetProject }}
+          </p>
+        </div>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
+      </form>
+      <p v-if="handoverSubmitError" class="app-field-error mt-3" role="alert">
+        {{ handoverSubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="closeHandoverDialog"
+          @confirm="handleHandoverImport"
+        />
+      </template>
+    </AppDialog>
+
     <AppDialog v-model:open="isDeprecateDialogOpen" :title="t('project.deprecateProject')">
       <p class="text-sm text-foreground">
         {{ t('project.deprecateConfirmPrefix') }}
@@ -166,17 +256,19 @@
 </template>
 
 <script setup lang="ts">
-  import { Plus } from '@lucide/vue';
+  import { Plus, Upload } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
-  import { useRouter } from 'vue-router';
+  import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import { ToolbarRoot } from 'reka-ui';
+  import { projectApi } from '@/api/project/project';
   import type { ProjectResp } from '@/gen/proto/orbit/v1/project/project';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -185,6 +277,7 @@
   import { formatTime } from '@/utils/time';
 
   const router = useRouter();
+  const route = useRoute();
   const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();
@@ -195,6 +288,7 @@
   const appliedSearch = ref('');
   const isDialogOpen = ref(false);
   const isDeprecateDialogOpen = ref(false);
+  const isHandoverDialogOpen = ref(false);
   const editingProject = ref<ProjectResp | null>(null);
   const deprecatingProject = ref<ProjectResp | null>(null);
   const pagination = reactive({ current: 1, pageSize: 10 });
@@ -208,6 +302,12 @@
   });
   const submitError = ref('');
   const deprecateSubmitError = ref('');
+  const handoverMode = ref<'new' | 'replace'>('new');
+  const handoverFile = ref<File>();
+  const handoverFileInputKey = ref(0);
+  const handoverTargetProjectId = ref('');
+  const handoverErrors = reactive({ file: '', targetProject: '' });
+  const handoverSubmitError = ref('');
 
   const filteredProjects = computed(() => {
     const keyword = appliedSearch.value.trim().toLowerCase();
@@ -226,6 +326,13 @@
     const start = (pagination.current - 1) * pagination.pageSize;
     return filteredProjects.value.slice(start, start + pagination.pageSize);
   });
+  const handoverTargetOptions = computed(() =>
+    projectStore.projects.map((project) => ({
+      value: project.id,
+      label: project.name,
+      description: project.code,
+    }))
+  );
 
   function resetForm(project?: ProjectResp) {
     form.name = project?.name ?? '';
@@ -249,6 +356,32 @@
     editingProject.value = null;
     resetForm();
     isDialogOpen.value = true;
+  }
+
+  function openHandoverDialog() {
+    handoverMode.value = 'new';
+    handoverFile.value = undefined;
+    handoverFileInputKey.value += 1;
+    handoverTargetProjectId.value = '';
+    handoverErrors.file = '';
+    handoverErrors.targetProject = '';
+    handoverSubmitError.value = '';
+    isHandoverDialogOpen.value = true;
+  }
+
+  function closeHandoverDialog() {
+    isHandoverDialogOpen.value = false;
+    handoverSubmitError.value = '';
+  }
+
+  function handleHandoverFile(event: Event) {
+    handoverFile.value = (event.target as HTMLInputElement).files?.[0];
+    handoverErrors.file = '';
+  }
+
+  function selectHandoverMode(mode: 'new' | 'replace') {
+    handoverMode.value = mode;
+    handoverErrors.targetProject = '';
   }
 
   function openEditDialog(project: ProjectResp) {
@@ -334,5 +467,39 @@
     }
   }
 
-  onMounted(fetchProjects);
+  async function handleHandoverImport() {
+    handoverSubmitError.value = '';
+    handoverErrors.file = handoverFile.value ? '' : t('project.handoverFileRequired');
+    handoverErrors.targetProject =
+      handoverMode.value === 'replace' && !handoverTargetProjectId.value
+        ? t('project.handoverTargetRequired')
+        : '';
+    if (handoverErrors.file || handoverErrors.targetProject || !handoverFile.value) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        const project = await projectApi.importHandover(
+          handoverFile.value as File,
+          handoverMode.value,
+          handoverTargetProjectId.value || undefined
+        );
+        await projectStore.fetchProjects();
+        projectStore.setActiveProject(project.id);
+        closeHandoverDialog();
+        toast.success(t('project.handoverImported'));
+        await router.push({ name: 'ProjectDetail', params: { id: project.id } });
+      });
+    } catch (error: unknown) {
+      handoverSubmitError.value =
+        error instanceof Error ? error.message : t('project.handoverImportFailed');
+    }
+  }
+
+  onMounted(async () => {
+    await fetchProjects();
+    if (route.query.handover === 'import') {
+      openHandoverDialog();
+    }
+  });
 </script>

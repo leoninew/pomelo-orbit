@@ -261,25 +261,6 @@ func (q *Queries) RepositoryCredentialName(ctx context.Context, arg RepositoryCr
 	return name, err
 }
 
-const repositoryCredentialReferencedByRepositories = `-- name: RepositoryCredentialReferencedByRepositories :one
-SELECT COUNT(*)
-FROM repository
-WHERE project_id = ?
-  AND git_credential_id = ?
-`
-
-type RepositoryCredentialReferencedByRepositoriesParams struct {
-	ProjectId       sql.NullString `db:"project_id"`
-	GitCredentialId sql.NullString `db:"git_credential_id"`
-}
-
-func (q *Queries) RepositoryCredentialReferencedByRepositories(ctx context.Context, arg RepositoryCredentialReferencedByRepositoriesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, repositoryCredentialReferencedByRepositories, arg.ProjectId, arg.GitCredentialId)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const updateRepositoryCredential = `-- name: UpdateRepositoryCredential :exec
 UPDATE repository_credential
 SET name = ?, encrypted_data = ?, revision = ?

@@ -7,6 +7,18 @@
           <Server class="size-4" />
           {{ t('project.environment.title') }}
         </button>
+        <button
+          class="app-button h-9 px-3"
+          :disabled="operating || !project"
+          @click="exportHandover"
+        >
+          <Download class="size-4" />
+          {{ t('project.exportHandover') }}
+        </button>
+        <button class="app-button h-9 px-3" :disabled="operating" @click="openHandoverImport">
+          <Upload class="size-4" />
+          {{ t('project.importHandover') }}
+        </button>
         <button class="app-button h-9 px-4" @click="router.push('/projects')">
           <ArrowLeft class="size-4" />
           {{ t('common.back') }}
@@ -184,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Server, UserPlus } from '@lucide/vue';
+  import { ArrowLeft, Download, Server, Upload, UserPlus } from '@lucide/vue';
   import { onMounted, reactive, ref, computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
@@ -303,6 +315,32 @@
   function openEnvironment() {
     projectStore.setActiveProject(props.id);
     void router.push('/environment');
+  }
+
+  function openHandoverImport() {
+    void router.push({ name: 'Projects', query: { handover: 'import' } });
+  }
+
+  async function exportHandover() {
+    if (!project.value) {
+      return;
+    }
+    const projectId = project.value.id;
+    const projectCode = project.value.code;
+    try {
+      await executeOp(async () => {
+        const packageDocument = await projectApi.exportHandover(projectId);
+        const url = URL.createObjectURL(packageDocument);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${projectCode || 'project'}.orbit-project-handover.json`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        toast.success(t('project.handoverExported'));
+      });
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : t('project.handoverExportFailed'));
+    }
   }
 
   async function handleEditOk() {

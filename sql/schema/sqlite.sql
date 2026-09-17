@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS user_role (
     role_id TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, role_id),
-    FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE CASCADE
+    FOREIGN KEY (role_id) REFERENCES role(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_role_user_id ON user_role(user_id);
@@ -533,7 +533,7 @@ CREATE TABLE IF NOT EXISTS gateway_config (
     dns_api_token TEXT NOT NULL DEFAULT '',
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE
+    FOREIGN KEY (application_id) REFERENCES application(id)
 );
 
 CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
@@ -543,7 +543,7 @@ CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
     PRIMARY KEY (application_id, profile),
     UNIQUE (application_id, version_id),
     FOREIGN KEY (application_id) REFERENCES gateway_config(application_id) ON DELETE CASCADE,
-    FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE
+    FOREIGN KEY (version_id) REFERENCES version(id)
 );
 
 CREATE TABLE IF NOT EXISTS service (
@@ -555,7 +555,7 @@ CREATE TABLE IF NOT EXISTS service (
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
+    FOREIGN KEY (application_id) REFERENCES application(id),
     FOREIGN KEY (version_id) REFERENCES version(id)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_service_project_code ON service(project_id, code);
@@ -586,7 +586,7 @@ CREATE TABLE IF NOT EXISTS service_component (
     UNIQUE (service_id, source_version_component_id),
     UNIQUE (service_id, component_name),
     FOREIGN KEY (service_id) REFERENCES service(id) ON DELETE CASCADE,
-    FOREIGN KEY (source_version_component_id) REFERENCES version_component(id) ON DELETE CASCADE
+    FOREIGN KEY (source_version_component_id) REFERENCES version_component(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_service_component_service ON service_component(service_id);

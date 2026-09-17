@@ -7,11 +7,13 @@ import (
 )
 
 func (r Router) registerProject(engine *gin.Engine) {
-	handler := projecthandler.New(r.logger, r.deps.ProjectService, r.deps.Authenticator)
+	handler := projecthandler.New(r.logger, r.deps.ProjectService, r.deps.Authenticator).WithHandover(r.deps.ProjectHandoverService)
 	engine.GET("/api/project", handler.ListProjects)
 	engine.POST("/api/project", handler.CreateProject)
 	engine.GET("/api/project/:project_id", handler.GetProject)
 	engine.PUT("/api/project/:project_id", handler.UpdateProject)
+	engine.GET("/api/project/:project_id/handover", handler.ExportHandover)
+	engine.POST("/api/project/handover", handler.ImportHandover)
 	engine.POST("/api/project/:project_id/deprecate", handler.DeprecateProject)
 	engine.GET("/api/project/:project_id/member", handler.ListProjectMembers)
 	engine.POST("/api/project/:project_id/member", handler.AddProjectMember)

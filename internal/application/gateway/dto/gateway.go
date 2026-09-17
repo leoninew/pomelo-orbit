@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/leoninew/pomelo-orbit/internal/model"
+import (
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+)
 
 type GatewayCreateInput struct {
 	ProjectId               string
@@ -27,6 +31,16 @@ type GatewayUpdateInput struct {
 	AcmeProfile             *string
 	AcmeEmail               *string
 	DNSApiToken             *string
+}
+
+// GatewayDefinition is the complete saved configuration of the managed
+// Gateway. It owns its Application, Versions, runtime Service, dashboard
+// Route, Config, profile bindings, and Environment binding.
+type GatewayDefinition struct {
+	Application    applicationdto.ApplicationDefinition
+	Config         model.GatewayConfig
+	RuntimeService servicedto.ServiceDefinition
+	DashboardRoute model.Route
 }
 
 // GatewayExposureItem is an active local or public application exposure.

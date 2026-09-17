@@ -17,7 +17,6 @@ type Querier interface {
 	RepositoryCredentialByName(ctx context.Context, arg RepositoryCredentialByNameParams) (RepositoryCredentialByNameRow, error)
 	RepositoryCredentialExists(ctx context.Context, arg RepositoryCredentialExistsParams) (int64, error)
 	RepositoryCredentialName(ctx context.Context, arg RepositoryCredentialNameParams) (string, error)
-	RepositoryCredentialReferencedByRepositories(ctx context.Context, arg RepositoryCredentialReferencedByRepositoriesParams) (int64, error)
 	UpdateRepositoryCredential(ctx context.Context, arg UpdateRepositoryCredentialParams) error
 }
 

@@ -69,6 +69,14 @@ func (r Repository) ListApplications(ctx context.Context, projectId string, page
 	return repository.Page[model.Application]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
 
+func (r Repository) CountApplicationsByProject(ctx context.Context, projectId string) (int, error) {
+	count, err := r.q(ctx).CountApplicationsByProject(ctx, projectScopeId(projectId))
+	if err != nil {
+		return 0, fmt.Errorf("count Project applications %s: %w", projectId, err)
+	}
+	return int(count), nil
+}
+
 func (r Repository) Application(ctx context.Context, projectId string, id string) (model.Application, error) {
 	row, err := r.q(ctx).ApplicationById(ctx, applicationsqlc.ApplicationByIdParams{Id: id, ProjectId: projectScopeId(projectId)})
 	if err != nil {
@@ -162,42 +170,11 @@ func (r Repository) DeleteApplication(ctx context.Context, projectId string, id 
 				return fmt.Errorf("clear version fork references %s: %w", versionId, err)
 			}
 		}
-		if err := q.DeleteServicesByApplication(txCtx, applicationsqlc.DeleteServicesByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("delete application service %s: %w", id, err)
-		}
 		if err := q.DeleteVersionsByApplication(txCtx, applicationsqlc.DeleteVersionsByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete application versions %s: %w", id, err)
 		}
 		if err := q.DeleteApplication(txCtx, applicationsqlc.DeleteApplicationParams{Id: id, ProjectId: projectScopeId(projectId)}); err != nil {
 			return fmt.Errorf("delete application %s: %w", id, err)
-		}
-		return nil
-	})
-}
-
-func (r Repository) DeleteGatewayApplication(ctx context.Context, projectId string, id string) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		versionIds, err := q.VersionIdsByApplication(txCtx, applicationsqlc.VersionIdsByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)})
-		if err != nil {
-			return fmt.Errorf("list gateway version ids %s: %w", id, err)
-		}
-		if err := q.DeleteServicesByApplication(txCtx, applicationsqlc.DeleteServicesByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("delete gateway services %s: %w", id, err)
-		}
-		for _, versionId := range versionIds {
-			if err := q.ClearVersionForkRefs(txCtx, applicationsqlc.ClearVersionForkRefsParams{VersionId: projectScopeId(versionId), ProjectId: projectScopeId(projectId)}); err != nil {
-				return fmt.Errorf("clear gateway version fork references %s: %w", versionId, err)
-			}
-		}
-		if err := q.DeleteVersionsByApplication(txCtx, applicationsqlc.DeleteVersionsByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("delete gateway application versions %s: %w", id, err)
-		}
-		if err := q.DeleteGatewayConfigByApplication(txCtx, applicationsqlc.DeleteGatewayConfigByApplicationParams{ApplicationId: id, ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("delete gateway config %s: %w", id, err)
-		}
-		if err := q.DeleteApplication(txCtx, applicationsqlc.DeleteApplicationParams{Id: id, ProjectId: projectScopeId(projectId)}); err != nil {
-			return fmt.Errorf("delete gateway application %s: %w", id, err)
 		}
 		return nil
 	})
@@ -320,14 +297,6 @@ func (r Repository) DeleteVersion(ctx context.Context, projectId string, id stri
 		}
 		return nil
 	})
-}
-
-func (r Repository) CountVersionRuntimeRefs(ctx context.Context, projectId string, versionId string) (int, error) {
-	raw, err := r.q(ctx).CountVersionRuntimeRefs(ctx, applicationsqlc.CountVersionRuntimeRefsParams{VersionId: versionId, ProjectId: projectScopeId(projectId)})
-	if err != nil {
-		return 0, fmt.Errorf("count version runtime refs %s: %w", versionId, err)
-	}
-	return asInt(raw), nil
 }
 
 func (r Repository) VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error) {
@@ -897,28 +866,4 @@ func optionalText(value string) sql.NullString {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: value, Valid: true}
-}
-
-func asInt(v interface{}) int {
-	switch n := v.(type) {
-	case int64:
-		return int(n)
-	case int32:
-		return int(n)
-	case int:
-		return n
-	case float64:
-		return int(n)
-	case []byte:
-		var parsed int64
-		if _, err := fmt.Sscan(string(n), &parsed); err == nil {
-			return int(parsed)
-		}
-	case string:
-		var parsed int64
-		if _, err := fmt.Sscan(n, &parsed); err == nil {
-			return int(parsed)
-		}
-	}
-	return 0
 }

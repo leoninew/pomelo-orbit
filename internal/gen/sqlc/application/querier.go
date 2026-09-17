@@ -6,6 +6,7 @@ package application
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
@@ -16,13 +17,11 @@ type Querier interface {
 	ApplicationByProjectAndName(ctx context.Context, arg ApplicationByProjectAndNameParams) (ApplicationByProjectAndNameRow, error)
 	ClearVersionForkRefs(ctx context.Context, arg ClearVersionForkRefsParams) error
 	CountApplications(ctx context.Context, arg CountApplicationsParams) (int64, error)
-	CountVersionRuntimeRefs(ctx context.Context, arg CountVersionRuntimeRefsParams) (int64, error)
+	CountApplicationsByProject(ctx context.Context, projectID sql.NullString) (int64, error)
 	CountVersions(ctx context.Context, arg CountVersionsParams) (int64, error)
 	CreateApplication(ctx context.Context, arg CreateApplicationParams) error
 	CreateVersion(ctx context.Context, arg CreateVersionParams) error
 	DeleteApplication(ctx context.Context, arg DeleteApplicationParams) error
-	DeleteGatewayConfigByApplication(ctx context.Context, arg DeleteGatewayConfigByApplicationParams) error
-	DeleteServicesByApplication(ctx context.Context, arg DeleteServicesByApplicationParams) error
 	DeleteVersion(ctx context.Context, arg DeleteVersionParams) error
 	DeleteVersionComponent(ctx context.Context, arg DeleteVersionComponentParams) error
 	DeleteVersionComponentDependencies(ctx context.Context, componentID string) error

@@ -84,6 +84,18 @@ func (s Service) ListDeployments(ctx context.Context, userId string, input deplo
 	return items, nil
 }
 
+// ClearProjectDeploymentHistory removes persisted deployment records without
+// touching runtime workspaces, containers, or execution logs.
+func (s Service) ClearProjectDeploymentHistory(ctx context.Context, userId, projectId string) error {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return err
+	}
+	if err := s.deployment.ClearProjectDeploymentHistory(ctx, projectId); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to clear Project deployment history", err)
+	}
+	return nil
+}
+
 func (s Service) DeploymentForUser(ctx context.Context, userId string, projectId string, deploymentId string) (model.Deployment, error) {
 	return s.loadDeploymentForUser(ctx, userId, projectId, deploymentId)
 }

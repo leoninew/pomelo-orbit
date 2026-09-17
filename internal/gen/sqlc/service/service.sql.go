@@ -588,6 +588,51 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 	return items, nil
 }
 
+const listServicesByVersion = `-- name: ListServicesByVersion :many
+SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
+FROM service
+WHERE version_id = ?
+  AND project_id = ?
+ORDER BY code
+`
+
+type ListServicesByVersionParams struct {
+	VersionId string `db:"version_id"`
+	ProjectId string `db:"project_id"`
+}
+
+func (q *Queries) ListServicesByVersion(ctx context.Context, arg ListServicesByVersionParams) ([]Service, error) {
+	rows, err := q.db.QueryContext(ctx, listServicesByVersion, arg.VersionId, arg.ProjectId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Service
+	for rows.Next() {
+		var i Service
+		if err := rows.Scan(
+			&i.Id,
+			&i.ProjectId,
+			&i.ApplicationId,
+			&i.Code,
+			&i.VersionId,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const serviceById = `-- name: ServiceById :one
 SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
 FROM service

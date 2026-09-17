@@ -74,6 +74,13 @@ func (r Repository) UpdateEnvironmentCredential(ctx context.Context, credential 
 	return nil
 }
 
+func (r Repository) DeleteEnvironmentCredential(ctx context.Context, id string) error {
+	if err := r.q(ctx).DeleteEnvironmentCredential(ctx, strings.TrimSpace(id)); err != nil {
+		return fmt.Errorf("delete environment credential %s: %w", id, err)
+	}
+	return nil
+}
+
 func environmentCredentialFrom(row environmentcredentialsqlc.EnvironmentCredential) model.EnvironmentCredential {
 	return model.EnvironmentCredential{
 		Id:                  row.Id,

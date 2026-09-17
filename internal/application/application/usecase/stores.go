@@ -89,8 +89,11 @@ func (s stores) DeleteVersion(ctx context.Context, projectId string, id string) 
 	return s.application.DeleteVersion(ctx, projectId, id)
 }
 
-func (s stores) CountVersionRuntimeRefs(ctx context.Context, projectId string, versionId string) (int, error) {
-	return s.application.CountVersionRuntimeRefs(ctx, projectId, versionId)
+func (s stores) ListServicesByVersion(ctx context.Context, projectId string, versionId string) ([]model.Service, error) {
+	if s.service == nil {
+		return nil, nil
+	}
+	return s.service.ListServicesByVersion(ctx, projectId, versionId)
 }
 
 func (s stores) VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error) {

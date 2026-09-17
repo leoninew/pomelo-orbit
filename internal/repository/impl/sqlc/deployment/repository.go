@@ -185,6 +185,16 @@ func (r Repository) DeleteDeployment(ctx context.Context, projectId string, id s
 	return nil
 }
 
+func (r Repository) ClearProjectDeploymentHistory(ctx context.Context, projectId string) error {
+	if err := r.q(ctx).ClearProjectDeploymentRollbackReferences(ctx, projectScopeId(projectId)); err != nil {
+		return fmt.Errorf("clear project deployment rollback references: %w", err)
+	}
+	if err := r.q(ctx).ClearProjectDeploymentHistory(ctx, projectScopeId(projectId)); err != nil {
+		return fmt.Errorf("clear project deployment history: %w", err)
+	}
+	return nil
+}
+
 func (r Repository) CancelDeployment(ctx context.Context, projectId string, id string) (bool, error) {
 	q := r.q(ctx)
 	startedAt, err := q.DeploymentStartedAt(ctx, deploymentsqlc.DeploymentStartedAtParams{Id: id, ProjectId: projectScopeId(projectId)})

@@ -33,23 +33,13 @@ VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: UpdateProject :exec
 UPDATE project
-SET name = ?, updated_at = ?
+SET name = ?, code = ?, is_active = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DeprecateProject :exec
 UPDATE project
 SET is_active = FALSE, updated_at = ?
 WHERE id = ?;
-
--- name: CountProjectRepositories :one
-SELECT COUNT(*)
-FROM repository
-WHERE project_id = ?;
-
--- name: CountProjectApplications :one
-SELECT COUNT(*)
-FROM application
-WHERE project_id = ?;
 
 -- name: ProjectMembers :many
 SELECT u.id, u.username, u.password_hash, u.status, u.oauth_provider, u.oauth_provider_id,

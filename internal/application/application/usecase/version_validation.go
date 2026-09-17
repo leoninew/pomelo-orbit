@@ -12,6 +12,17 @@ import (
 const maxMountContent = 256 * 1024
 
 func validateVersionComponents(components []model.VersionComponent) error {
+	return validateVersionComponentsWithOptions(components, true)
+}
+
+// validateVersionDefinitionComponents accepts all persisted Version forms.
+// Gateway definitions have historically used an omitted restart policy, while
+// the interactive Version form deliberately requires an explicit value.
+func validateVersionDefinitionComponents(components []model.VersionComponent) error {
+	return validateVersionComponentsWithOptions(components, false)
+}
+
+func validateVersionComponentsWithOptions(components []model.VersionComponent, requireRestartPolicy bool) error {
 	names := make(map[string]struct{}, len(components))
 	dependencies := make(map[string][]string, len(components))
 	for _, component := range components {
@@ -25,7 +36,7 @@ func validateVersionComponents(components []model.VersionComponent) error {
 		if _, exists := names[name]; exists {
 			return fmt.Errorf("duplicate component name %s", name)
 		}
-		if err := validateComponentFields(component); err != nil {
+		if err := validateComponentFields(component, requireRestartPolicy); err != nil {
 			return err
 		}
 		names[name] = struct{}{}
@@ -80,11 +91,11 @@ func validateVersionComponents(components []model.VersionComponent) error {
 	return nil
 }
 
-func validateComponentFields(component model.VersionComponent) error {
+func validateComponentFields(component model.VersionComponent, requireRestartPolicy bool) error {
 	if !validImagePullPolicy(component.PullPolicy) {
 		return fmt.Errorf("component %s pull_policy must be always, missing or never", component.Name)
 	}
-	if err := validateComponentRuntimeFields(component); err != nil {
+	if err := validateComponentRuntimeFieldsWithOptions(component, requireRestartPolicy); err != nil {
 		return err
 	}
 	env := make(map[string]struct{}, len(component.Env))

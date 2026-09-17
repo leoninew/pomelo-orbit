@@ -16,6 +16,7 @@ import (
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	credentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/credential"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
+	vcsrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/repository"
 	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
@@ -126,6 +127,7 @@ func newCredentialIntegrationService(t *testing.T) (Service, *sql.DB) {
 	service := New(
 		projectrepo.NewRepository(database),
 		credentialrepo.NewRepository(database),
+		vcsrepo.NewRepository(database),
 		ciTestSecretKey,
 	)
 	return service, database

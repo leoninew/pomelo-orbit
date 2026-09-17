@@ -63,7 +63,7 @@ func TestListApplicationsBindsTypedFilters(t *testing.T) {
 	}
 }
 
-func TestDeleteApplicationCleansApplicationResources(t *testing.T) {
+func TestDeleteApplicationRejectsServiceReference(t *testing.T) {
 	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
@@ -73,6 +73,9 @@ func TestDeleteApplicationCleansApplicationResources(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
+	if _, err := database.ExecContext(ctx, `INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'application', 'project-1')`); err != nil {
 		t.Fatal(err)
 	}
@@ -83,58 +86,24 @@ func TestDeleteApplicationCleansApplicationResources(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := NewRepository(database).DeleteApplication(ctx, "project-1", "app-1"); err != nil {
-		t.Fatal(err)
+	if err := NewRepository(database).DeleteApplication(ctx, "project-1", "app-1"); err == nil {
+		t.Fatal("expected Application deletion to reject the Service reference")
 	}
 	for _, check := range []struct {
 		table  string
 		column string
+		value  string
 	}{
-		{table: "application", column: "id"},
-		{table: "service", column: "application_id"},
-		{table: "version", column: "application_id"},
+		{table: "application", column: "id", value: "app-1"},
+		{table: "service", column: "id", value: "service-1"},
+		{table: "version", column: "id", value: "version-1"},
 	} {
 		var count int
-		if err := database.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+check.table+" WHERE "+check.column+" = 'app-1'").Scan(&count); err != nil {
+		if err := database.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+check.table+" WHERE "+check.column+" = ?", check.value).Scan(&count); err != nil {
 			t.Fatal(err)
 		}
-		if count != 0 {
-			t.Fatalf("expected %s rows to be deleted, got %d", check.table, count)
-		}
-	}
-}
-
-func TestDeleteGatewayApplicationDeletesStoppedResources(t *testing.T) {
-	database, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = database.Close() }()
-	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
-		t.Fatal(err)
-	}
-	ctx := context.Background()
-	for _, statement := range []string{
-		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('gateway-1', 'Gateway', 'gateway', 'gateway', 'project-1')`,
-		`INSERT INTO gateway_config (application_id, rest_api_url, base_domain) VALUES ('gateway-1', 'http://127.0.0.1:8080', 'example.test')`,
-		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'gateway-1', 'managed', 'unpublished')`,
-		`INSERT INTO service (id, project_id, application_id, version_id, code, status) VALUES ('service-1', 'project-1', 'gateway-1', 'version-1', 'gateway-default', 'stopped')`,
-	} {
-		if _, err := database.ExecContext(ctx, statement); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err := NewRepository(database).DeleteGatewayApplication(ctx, "project-1", "gateway-1"); err != nil {
-		t.Fatal(err)
-	}
-	for _, table := range []string{"application", "gateway_config", "version", "service"} {
-		var count int
-		if err := database.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+table).Scan(&count); err != nil {
-			t.Fatal(err)
-		}
-		if count != 0 {
-			t.Fatalf("expected %s to be deleted, found %d rows", table, count)
+		if count != 1 {
+			t.Fatalf("expected %s reference to remain, got %d rows", check.table, count)
 		}
 	}
 }
@@ -149,6 +118,9 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 		t.Fatal(err)
 	}
 	ctx := context.Background()
+	if _, err := database.ExecContext(ctx, `INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'application', 'project-1')`); err != nil {
 		t.Fatal(err)
 	}
@@ -169,13 +141,6 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 	}
 
 	repo := NewRepository(database)
-	refs, err := repo.CountVersionRuntimeRefs(ctx, "project-1", "version-1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if refs != 0 {
-		t.Fatalf("expected fork reference to be deletable, got %d blocking references", refs)
-	}
 	if err := repo.DeleteVersion(ctx, "project-1", "version-1"); err != nil {
 		t.Fatal(err)
 	}
@@ -202,13 +167,6 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 		t.Fatalf("expected preserved pipeline run history, got source=%q generated=%q", sourceVersionId, generatedVersionId)
 	}
 
-	refs, err = repo.CountVersionRuntimeRefs(ctx, "project-1", "version-3")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if refs != 0 {
-		t.Fatalf("expected generated version history to be non-blocking, got %d blocking references", refs)
-	}
 	if err := repo.DeleteVersion(ctx, "project-1", "version-3"); err != nil {
 		t.Fatal(err)
 	}
@@ -230,6 +188,9 @@ func TestDeleteApplicationAllowsForkLineage(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
+	if _, err := database.ExecContext(ctx, `INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'application', 'project-1')`); err != nil {
 		t.Fatal(err)
 	}

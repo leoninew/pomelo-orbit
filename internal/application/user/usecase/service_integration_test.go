@@ -10,11 +10,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	_ "modernc.org/sqlite"
 
+	projectsvc "github.com/leoninew/pomelo-orbit/internal/application/project/usecase"
 	userdto "github.com/leoninew/pomelo-orbit/internal/application/user/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
+	repositoryrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/repository"
 	rolerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/role"
 	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
 )
@@ -131,11 +134,14 @@ func newUserIntegrationService(t *testing.T) (Service, *sql.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	return New(
-		userrepo.NewRepository(database),
-		rolerepo.NewRepository(database),
+	userStore := userrepo.NewRepository(database)
+	projectService := projectsvc.New(
 		projectrepo.NewRepository(database),
-	), database
+		userStore,
+		repositoryrepo.NewRepository(database),
+		applicationrepo.NewRepository(database),
+	)
+	return New(userStore, rolerepo.NewRepository(database), projectService), database
 }
 
 func stringPtr(value string) *string {

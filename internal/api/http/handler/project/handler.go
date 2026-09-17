@@ -12,6 +12,7 @@ import (
 
 	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
 	projectsvc "github.com/leoninew/pomelo-orbit/internal/application/project/usecase"
+	handoversvc "github.com/leoninew/pomelo-orbit/internal/application/project_handover/usecase"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -19,11 +20,17 @@ import (
 type Handler struct {
 	logger        *slog.Logger
 	service       projectsvc.Service
+	handover      *handoversvc.Service
 	authenticator security.Authenticator
 }
 
 func New(logger *slog.Logger, service projectsvc.Service, authenticator security.Authenticator) Handler {
 	return Handler{logger: logger, service: service, authenticator: authenticator}
+}
+
+func (h Handler) WithHandover(service handoversvc.Service) Handler {
+	h.handover = &service
+	return h
 }
 
 func (h Handler) ListProjects(c *gin.Context) {

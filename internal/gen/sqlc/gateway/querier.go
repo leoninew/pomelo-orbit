@@ -10,6 +10,7 @@ import (
 )
 
 type Querier interface {
+	DeleteGatewayConfig(ctx context.Context, applicationID string) error
 	DeleteGatewayVersionBindings(ctx context.Context, applicationID string) error
 	GatewayBindingByProjectId(ctx context.Context, projectID string) (string, error)
 	GatewayConfigByApplication(ctx context.Context, applicationID string) (GatewayConfig, error)

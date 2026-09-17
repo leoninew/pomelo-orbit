@@ -82,6 +82,27 @@ func (q *Queries) CancelDeployment(ctx context.Context, arg CancelDeploymentPara
 	return result.RowsAffected()
 }
 
+const clearProjectDeploymentHistory = `-- name: ClearProjectDeploymentHistory :exec
+DELETE FROM deployment
+WHERE project_id = ?
+`
+
+func (q *Queries) ClearProjectDeploymentHistory(ctx context.Context, projectID sql.NullString) error {
+	_, err := q.db.ExecContext(ctx, clearProjectDeploymentHistory, projectID)
+	return err
+}
+
+const clearProjectDeploymentRollbackReferences = `-- name: ClearProjectDeploymentRollbackReferences :exec
+UPDATE deployment
+SET rollback_from_deployment_id = NULL
+WHERE project_id = ?
+`
+
+func (q *Queries) ClearProjectDeploymentRollbackReferences(ctx context.Context, projectID sql.NullString) error {
+	_, err := q.db.ExecContext(ctx, clearProjectDeploymentRollbackReferences, projectID)
+	return err
+}
+
 const completeDeployment = `-- name: CompleteDeployment :execrows
 UPDATE deployment
 SET status = ?,

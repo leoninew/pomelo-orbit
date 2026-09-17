@@ -224,6 +224,19 @@ func (q *Queries) CountApplications(ctx context.Context, arg CountApplicationsPa
 	return count, err
 }
 
+const countApplicationsByProject = `-- name: CountApplicationsByProject :one
+SELECT COUNT(*)
+FROM application
+WHERE project_id = ?
+`
+
+func (q *Queries) CountApplicationsByProject(ctx context.Context, projectID sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countApplicationsByProject, projectID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createApplication = `-- name: CreateApplication :exec
 INSERT INTO application (id, project_id, name, code, kind, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -265,46 +278,6 @@ type DeleteApplicationParams struct {
 
 func (q *Queries) DeleteApplication(ctx context.Context, arg DeleteApplicationParams) error {
 	_, err := q.db.ExecContext(ctx, deleteApplication, arg.Id, arg.ProjectId)
-	return err
-}
-
-const deleteGatewayConfigByApplication = `-- name: DeleteGatewayConfigByApplication :exec
-DELETE FROM gateway_config
-WHERE application_id = ?
-  AND EXISTS (
-    SELECT 1 FROM application
-    WHERE application.id = gateway_config.application_id
-      AND application.project_id = ?
-  )
-`
-
-type DeleteGatewayConfigByApplicationParams struct {
-	ApplicationId string         `db:"application_id"`
-	ProjectId     sql.NullString `db:"project_id"`
-}
-
-func (q *Queries) DeleteGatewayConfigByApplication(ctx context.Context, arg DeleteGatewayConfigByApplicationParams) error {
-	_, err := q.db.ExecContext(ctx, deleteGatewayConfigByApplication, arg.ApplicationId, arg.ProjectId)
-	return err
-}
-
-const deleteServicesByApplication = `-- name: DeleteServicesByApplication :exec
-DELETE FROM service
-WHERE application_id = ?
-  AND EXISTS (
-    SELECT 1 FROM application
-    WHERE application.id = service.application_id
-      AND application.project_id = ?
-  )
-`
-
-type DeleteServicesByApplicationParams struct {
-	ApplicationId string         `db:"application_id"`
-	ProjectId     sql.NullString `db:"project_id"`
-}
-
-func (q *Queries) DeleteServicesByApplication(ctx context.Context, arg DeleteServicesByApplicationParams) error {
-	_, err := q.db.ExecContext(ctx, deleteServicesByApplication, arg.ApplicationId, arg.ProjectId)
 	return err
 }
 

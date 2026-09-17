@@ -141,5 +141,6 @@ func testConfigurationEnvironmentService(database *sql.DB) Service {
 		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
 		nil,
 		nil,
+		nil,
 	).WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: platform})
 }

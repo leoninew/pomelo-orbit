@@ -3,6 +3,7 @@ package environmentsvc
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"path"
 	"regexp"
 	"strings"
@@ -31,12 +32,13 @@ type Service struct {
 	prober                 environmentport.Prober
 	bootstrapper           environmentport.Bootstrapper
 	localDisplay           environmentdto.LocalDisplaySnapshot
+	logger                 *slog.Logger
 }
 
-func New(environments repository.EnvironmentStore, projects repository.ProjectReader, environmentCredentials repository.EnvironmentCredentialStore, secretKey string, prober environmentport.Prober, bootstrapper environmentport.Bootstrapper) Service {
+func New(environments repository.EnvironmentStore, projects repository.ProjectReader, environmentCredentials repository.EnvironmentCredentialStore, secretKey string, prober environmentport.Prober, bootstrapper environmentport.Bootstrapper, logger *slog.Logger) Service {
 	return Service{
 		environments: environments, projects: projects, environmentCredentials: environmentCredentials,
-		secretKey: secretKey, prober: prober, bootstrapper: bootstrapper,
+		secretKey: secretKey, prober: prober, bootstrapper: bootstrapper, logger: logger,
 	}
 }
 

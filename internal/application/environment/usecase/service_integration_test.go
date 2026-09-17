@@ -35,7 +35,7 @@ func TestEnvironmentForUserReturnsLocalSeed(t *testing.T) {
 		platform = model.EnvironmentPlatformWindows
 		workspaceRoot = `C:\orbit-workspace`
 	}
-	service := New(environmentrepo.NewRepository(database), projectStore, environmentcredentialrepo.NewRepository(database), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", nil, nil).
+	service := New(environmentrepo.NewRepository(database), projectStore, environmentcredentialrepo.NewRepository(database), "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", nil, nil, nil).
 		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: platform})
 
 	targetType := model.EnvironmentTargetTypeLocal

@@ -90,6 +90,7 @@ type GatewayCreateReq struct {
 	AcmeProfile             *string `protobuf:"bytes,12,opt,name=acme_profile,json=acmeProfile,proto3,oneof" json:"acme_profile,omitempty"`
 	AcmeEmail               *string `protobuf:"bytes,13,opt,name=acme_email,json=acmeEmail,proto3,oneof" json:"acme_email,omitempty"`
 	DnsApiToken             *string `protobuf:"bytes,14,opt,name=dns_api_token,json=dnsApiToken,proto3,oneof" json:"dns_api_token,omitempty"`
+	RestApiHostUrl          string  `protobuf:"bytes,15,opt,name=rest_api_host_url,json=restApiHostUrl,proto3" json:"rest_api_host_url,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -215,6 +216,13 @@ func (x *GatewayCreateReq) GetDnsApiToken() string {
 	return ""
 }
 
+func (x *GatewayCreateReq) GetRestApiHostUrl() string {
+	if x != nil {
+		return x.RestApiHostUrl
+	}
+	return ""
+}
+
 type GatewayUpdateReq struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Name                    *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
@@ -226,6 +234,7 @@ type GatewayUpdateReq struct {
 	AcmeProfile             *string                `protobuf:"bytes,8,opt,name=acme_profile,json=acmeProfile,proto3,oneof" json:"acme_profile,omitempty"`
 	AcmeEmail               *string                `protobuf:"bytes,9,opt,name=acme_email,json=acmeEmail,proto3,oneof" json:"acme_email,omitempty"`
 	DnsApiToken             *string                `protobuf:"bytes,10,opt,name=dns_api_token,json=dnsApiToken,proto3,oneof" json:"dns_api_token,omitempty"`
+	RestApiHostUrl          *string                `protobuf:"bytes,11,opt,name=rest_api_host_url,json=restApiHostUrl,proto3,oneof" json:"rest_api_host_url,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -319,6 +328,13 @@ func (x *GatewayUpdateReq) GetAcmeEmail() string {
 func (x *GatewayUpdateReq) GetDnsApiToken() string {
 	if x != nil && x.DnsApiToken != nil {
 		return *x.DnsApiToken
+	}
+	return ""
+}
+
+func (x *GatewayUpdateReq) GetRestApiHostUrl() string {
+	if x != nil && x.RestApiHostUrl != nil {
+		return *x.RestApiHostUrl
 	}
 	return ""
 }
@@ -463,6 +479,7 @@ type GatewayResp struct {
 	AcmeEmail               string                   `protobuf:"bytes,21,opt,name=acme_email,json=acmeEmail,proto3" json:"acme_email,omitempty"`
 	DnsApiToken             string                   `protobuf:"bytes,22,opt,name=dns_api_token,json=dnsApiToken,proto3" json:"dns_api_token,omitempty"`
 	VersionBindings         []*GatewayVersionBinding `protobuf:"bytes,23,rep,name=version_bindings,json=versionBindings,proto3" json:"version_bindings,omitempty"`
+	RestApiHostUrl          string                   `protobuf:"bytes,24,opt,name=rest_api_host_url,json=restApiHostUrl,proto3" json:"rest_api_host_url,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -644,6 +661,13 @@ func (x *GatewayResp) GetVersionBindings() []*GatewayVersionBinding {
 	return nil
 }
 
+func (x *GatewayResp) GetRestApiHostUrl() string {
+	if x != nil {
+		return x.RestApiHostUrl
+	}
+	return ""
+}
+
 type GatewayPaginatedResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*GatewayResp         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -728,7 +752,7 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\x15GatewayVersionBinding\x12\x18\n" +
 	"\aprofile\x18\x01 \x01(\tR\aprofile\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x02 \x01(\tR\tversionId\"\xb8\x05\n" +
+	"version_id\x18\x02 \x01(\tR\tversionId\"\xe3\x05\n" +
 	"\x10GatewayCreateReq\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x12\n" +
@@ -746,14 +770,15 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\facme_profile\x18\f \x01(\tH\x04R\vacmeProfile\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"acme_email\x18\r \x01(\tH\x05R\tacmeEmail\x88\x01\x01\x12'\n" +
-	"\rdns_api_token\x18\x0e \x01(\tH\x06R\vdnsApiToken\x88\x01\x01B\x1a\n" +
+	"\rdns_api_token\x18\x0e \x01(\tH\x06R\vdnsApiToken\x88\x01\x01\x12)\n" +
+	"\x11rest_api_host_url\x18\x0f \x01(\tR\x0erestApiHostUrlB\x1a\n" +
 	"\x18_initial_component_imageB\x15\n" +
 	"\x13_default_entrypointB\v\n" +
 	"\t_tls_modeB\x1d\n" +
 	"\x1b_rest_ready_timeout_secondsB\x0f\n" +
 	"\r_acme_profileB\r\n" +
 	"\v_acme_emailB\x10\n" +
-	"\x0e_dns_api_token\"\xa2\x04\n" +
+	"\x0e_dns_api_token\"\xe8\x04\n" +
 	"\x10GatewayUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12%\n" +
 	"\frest_api_url\x18\x02 \x01(\tH\x01R\n" +
@@ -767,7 +792,8 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\n" +
 	"acme_email\x18\t \x01(\tH\aR\tacmeEmail\x88\x01\x01\x12'\n" +
 	"\rdns_api_token\x18\n" +
-	" \x01(\tH\bR\vdnsApiToken\x88\x01\x01B\a\n" +
+	" \x01(\tH\bR\vdnsApiToken\x88\x01\x01\x12.\n" +
+	"\x11rest_api_host_url\x18\v \x01(\tH\tR\x0erestApiHostUrl\x88\x01\x01B\a\n" +
 	"\x05_nameB\x0f\n" +
 	"\r_rest_api_urlB\x0e\n" +
 	"\f_base_domainB\x15\n" +
@@ -776,7 +802,8 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\x1b_rest_ready_timeout_secondsB\x0f\n" +
 	"\r_acme_profileB\r\n" +
 	"\v_acme_emailB\x10\n" +
-	"\x0e_dns_api_token\"\xef\x02\n" +
+	"\x0e_dns_api_tokenB\x14\n" +
+	"\x12_rest_api_host_url\"\xef\x02\n" +
 	"\x13GatewayExposureItem\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12)\n" +
 	"\x10application_code\x18\x02 \x01(\tR\x0fapplicationCode\x12%\n" +
@@ -791,7 +818,7 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\finternal_dns\x18\t \x01(\tR\vinternalDns\x12\x1f\n" +
 	"\vclient_hint\x18\n" +
 	" \x01(\tR\n" +
-	"clientHint\"\x94\x06\n" +
+	"clientHint\"\xbf\x06\n" +
 	"\vGatewayResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -821,7 +848,8 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\n" +
 	"acme_email\x18\x15 \x01(\tR\tacmeEmail\x12\"\n" +
 	"\rdns_api_token\x18\x16 \x01(\tR\vdnsApiToken\x12R\n" +
-	"\x10version_bindings\x18\x17 \x03(\v2'.orbit.v1.gateway.GatewayVersionBindingR\x0fversionBindings\"\xa6\x01\n" +
+	"\x10version_bindings\x18\x17 \x03(\v2'.orbit.v1.gateway.GatewayVersionBindingR\x0fversionBindings\x12)\n" +
+	"\x11rest_api_host_url\x18\x18 \x01(\tR\x0erestApiHostUrl\"\xa6\x01\n" +
 	"\x14GatewayPaginatedResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.gateway.GatewayRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +

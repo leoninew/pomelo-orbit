@@ -114,8 +114,13 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 		t.Fatalf("expected port data to be independent from the application view, got %+v", client.routers)
 	}
 	client.err = errors.New("connection refused")
-	if _, err := service.ListTraefikRoutes(ctx, routeTestUserId, routeTestProjectId); err == nil || !apperror.IsKind(err, apperror.KindUnavailable) || apperror.Classify(err).Message != "Traefik is unavailable." {
-		t.Fatalf("expected safe traefik unavailable error, got %v", err)
+	client.unavailableMessage = "Traefik REST API is unavailable on the remote host at http://127.0.0.1:8080."
+	if _, err := service.ListTraefikRoutes(ctx, routeTestUserId, routeTestProjectId); err == nil || !apperror.IsKind(err, apperror.KindUnavailable) || apperror.Classify(err).Message != client.unavailableMessage {
+		t.Fatalf("expected Traefik unavailable error with access context, got %v", err)
+	}
+	client.unavailableMessage = ""
+	if _, err := service.ListTraefikRoutes(ctx, routeTestUserId, routeTestProjectId); err == nil || !apperror.IsKind(err, apperror.KindInternal) {
+		t.Fatalf("expected non-request Traefik error to remain internal, got %v", err)
 	}
 }
 
@@ -660,7 +665,7 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 	}
 	if err := gwRepo.UpsertGatewayConfig(ctx, model.GatewayConfig{
 		ApplicationId: app.Id,
-		RestApiUrl:    "http://traefik:8080", RestReadyTimeoutSeconds: 20,
+		RestApiUrl:    model.GatewayRestAPIContainerURL, RestApiHostUrl: model.GatewayRestAPIHostURL, RestReadyTimeoutSeconds: 20,
 		BaseDomain: "lvh.me", DefaultEntrypoint: "websecure", TLSMode: "none",
 		AcmeProfile: "http-dns", AcmeEmail: "admin@example.test",
 	}); err != nil {
@@ -713,9 +718,10 @@ func (recordingCertificateGenerator) Generate(context.Context, string) (string, 
 }
 
 type recordingTraefikClient struct {
-	routers  []routeport.TraefikRouter
-	services []routeport.TraefikService
-	err      error
+	routers            []routeport.TraefikRouter
+	services           []routeport.TraefikService
+	err                error
+	unavailableMessage string
 }
 
 func (c *recordingTraefikClient) ListRouters(_ context.Context, _ string, _ model.GatewayConfig) ([]routeport.TraefikRouter, error) {
@@ -732,6 +738,6 @@ func (c *recordingTraefikClient) ListServices(_ context.Context, _ string, _ mod
 	return c.services, nil
 }
 
-func (c *recordingTraefikClient) IsConnectionError(err error) bool {
-	return err != nil && errors.Is(err, c.err)
+func (c *recordingTraefikClient) TraefikUnavailableMessage(err error) (string, bool) {
+	return c.unavailableMessage, c.unavailableMessage != "" && errors.Is(err, c.err)
 }

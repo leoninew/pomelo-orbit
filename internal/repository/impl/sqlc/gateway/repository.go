@@ -95,6 +95,7 @@ func (r Repository) UpsertGatewayConfig(ctx context.Context, cfg model.GatewayCo
 		if err := q.InsertGatewayConfig(ctx, gatewaysqlc.InsertGatewayConfigParams{
 			ApplicationId:           cfg.ApplicationId,
 			RestApiUrl:              cfg.RestApiUrl,
+			RestApiHostUrl:          cfg.RestApiHostUrl,
 			RestReadyTimeoutSeconds: int64(cfg.RestReadyTimeoutSeconds),
 			BaseDomain:              cfg.BaseDomain,
 			DefaultEntrypoint:       cfg.DefaultEntrypoint,
@@ -109,6 +110,7 @@ func (r Repository) UpsertGatewayConfig(ctx context.Context, cfg model.GatewayCo
 		}
 	} else if err := q.UpdateGatewayConfig(ctx, gatewaysqlc.UpdateGatewayConfigParams{
 		RestApiUrl:              cfg.RestApiUrl,
+		RestApiHostUrl:          cfg.RestApiHostUrl,
 		RestReadyTimeoutSeconds: int64(cfg.RestReadyTimeoutSeconds),
 		BaseDomain:              cfg.BaseDomain,
 		DefaultEntrypoint:       cfg.DefaultEntrypoint,
@@ -160,6 +162,7 @@ func (r Repository) gatewayFrom(ctx context.Context, row gatewaysqlc.GatewayConf
 	result := model.GatewayConfig{
 		ApplicationId:           row.ApplicationId,
 		RestApiUrl:              row.RestApiUrl,
+		RestApiHostUrl:          row.RestApiHostUrl,
 		RestReadyTimeoutSeconds: int(row.RestReadyTimeoutSeconds),
 		BaseDomain:              row.BaseDomain,
 		DefaultEntrypoint:       row.DefaultEntrypoint,

@@ -36,7 +36,7 @@ func newDecodeError(message string, err error) error {
 	return decodeError{message: message, err: err}
 }
 
-// Encode serializes a package using the v1 wire format. Ownership fields are
+// Encode serializes a package using the v2 wire format. Ownership fields are
 // deliberately not transferable: the import target supplies every project ID.
 func Encode(item Package) ([]byte, error) {
 	raw, err := json.Marshal(item)
@@ -50,7 +50,7 @@ func Encode(item Package) ([]byte, error) {
 	return json.Marshal(normalizeForExport(value))
 }
 
-// Decode accepts only the v1 document shape. It rejects transfer ownership
+// Decode accepts the current wire document shape. It rejects transfer ownership
 // fields before converting snake_case wire names to the existing business DTOs.
 func Decode(data []byte) (Package, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))

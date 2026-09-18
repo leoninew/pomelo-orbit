@@ -16,6 +16,7 @@ type Defaults struct {
 	LocalWorkspaceRoot      string
 	Image                   string
 	RestApiUrl              string
+	RestApiHostUrl          string
 	RestReadyTimeoutSeconds int
 	BaseDomain              string
 	DefaultEntrypoint       string
@@ -49,6 +50,7 @@ type SSHCommandView struct {
 type CreateGatewayInput struct {
 	Image                   string
 	RestApiUrl              string
+	RestApiHostUrl          string
 	RestReadyTimeoutSeconds int
 	BaseDomain              string
 	DefaultEntrypoint       string

@@ -13,8 +13,6 @@ import (
 	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	gatewayport "github.com/leoninew/pomelo-orbit/internal/application/gateway/port"
-	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
-	routesvc "github.com/leoninew/pomelo-orbit/internal/application/route/usecase"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
 	servicesvc "github.com/leoninew/pomelo-orbit/internal/application/service/usecase"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
@@ -41,21 +39,18 @@ type Service struct {
 	application            gatewayport.ApplicationStore
 	config                 gatewayport.ConfigStore
 	service                gatewayport.ServiceReader
-	route                  repository.RouteStore
 	serviceCommands        servicesvc.Service
 	transaction            gatewayport.TransactionRunner
 	applicationDefinitions applicationsvc.Service
 	serviceDefinitions     servicesvc.Service
-	routeDefinitions       routesvc.Service
 	definitionsConfigured  bool
 }
 
 // WithDefinitionServices connects Gateway's complete business definition to
-// the Application, Service, and Route domains that own its children.
-func (s Service) WithDefinitionServices(application applicationsvc.Service, service servicesvc.Service, route routesvc.Service) Service {
+// the Application and Service domains that own its children.
+func (s Service) WithDefinitionServices(application applicationsvc.Service, service servicesvc.Service) Service {
 	s.applicationDefinitions = application
 	s.serviceDefinitions = service
-	s.routeDefinitions = route
 	s.definitionsConfigured = true
 	return s
 }
@@ -66,15 +61,12 @@ func New(
 	application gatewayport.ApplicationStore,
 	configStore gatewayport.ConfigStore,
 	service repository.ServiceStore,
-	route repository.RouteStore,
 	deployment repository.DeploymentStore,
 	resolvePath gatewayport.PhysicalPathResolver,
 	transaction gatewayport.TransactionRunner,
 ) Service {
 	return Service{
-		project: project, environment: environment, application: application, config: configStore,
-		service:         service,
-		route:           route,
+		project: project, environment: environment, application: application, config: configStore, service: service,
 		serviceCommands: servicesvc.New(project, application, service, deployment),
 		transaction:     transaction,
 	}
@@ -105,72 +97,7 @@ func (s Service) GatewayDefinitionForUser(ctx context.Context, userId, projectId
 	if err != nil {
 		return gatewaydto.GatewayDefinition{}, err
 	}
-	routes, err := s.route.ListAllRoutes(ctx, projectId)
-	if err != nil {
-		return gatewaydto.GatewayDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to list project routes", err)
-	}
-	dashboard, err := findGatewayDashboardRoute(routes, view.Application.Code, view.Service.Id)
-	if err != nil {
-		return gatewaydto.GatewayDefinition{}, err
-	}
-	return gatewaydto.GatewayDefinition{
-		Application: application, Config: view.Config, RuntimeService: service, DashboardRoute: dashboard,
-	}, nil
-}
-
-func gatewayDashboardTargetURL(applicationCode string) string {
-	return fmt.Sprintf("http://%s:%d", model.RuntimeContainerName(applicationCode, model.GatewayComponentName()), gatewayDashboardPort)
-}
-
-func findGatewayDashboardRoute(routes []model.Route, applicationCode, runtimeServiceID string) (model.Route, error) {
-	var dashboard *model.Route
-	for _, route := range routes {
-		if !isGatewayDashboardRoute(route, applicationCode, runtimeServiceID) {
-			continue
-		}
-		if dashboard != nil {
-			return model.Route{}, apperror.New(apperror.KindValidation, "Gateway dashboard route is not unique")
-		}
-		routeCopy := route
-		dashboard = &routeCopy
-	}
-	if dashboard == nil {
-		return model.Route{}, apperror.New(apperror.KindValidation, "Gateway dashboard route is missing")
-	}
-	return *dashboard, nil
-}
-
-func isGatewayDashboardRoute(route model.Route, applicationCode, runtimeServiceID string) bool {
-	if strings.TrimSpace(route.Protocol) != gatewayDashboardProtocol {
-		return false
-	}
-	if isManagedGatewayDashboardRoute(route, runtimeServiceID) {
-		return true
-	}
-	return isCustomGatewayDashboardRoute(route, applicationCode)
-}
-
-func isCustomGatewayDashboardRoute(route model.Route, applicationCode string) bool {
-	if route.ServiceId != nil || route.ComponentName != nil || route.EndpointProtocol != nil || route.EndpointContainerPort != nil {
-		return false
-	}
-	return strings.TrimSpace(route.TargetUrl) == gatewayDashboardTargetURL(applicationCode)
-}
-
-func isManagedGatewayDashboardRoute(route model.Route, runtimeServiceID string) bool {
-	if route.ServiceId == nil || route.ComponentName == nil || route.EndpointProtocol == nil || route.EndpointContainerPort == nil {
-		return false
-	}
-	if strings.TrimSpace(*route.ServiceId) != strings.TrimSpace(runtimeServiceID) {
-		return false
-	}
-	if strings.TrimSpace(*route.ComponentName) != model.GatewayComponentName() {
-		return false
-	}
-	if strings.TrimSpace(*route.EndpointProtocol) != gatewayDashboardProtocol {
-		return false
-	}
-	return *route.EndpointContainerPort == gatewayDashboardPort
+	return gatewaydto.GatewayDefinition{Application: application, Config: view.Config, RuntimeService: service}, nil
 }
 
 // CreateGatewayFromDefinition restores a complete managed Gateway definition
@@ -235,15 +162,7 @@ func (s Service) CreateGatewayFromDefinition(ctx context.Context, userId, projec
 	if err != nil {
 		return gatewaydto.GatewayDefinition{}, err
 	}
-	createdService, err := s.serviceDefinitions.CreateServiceFromDefinition(ctx, userId, projectId, serviceDefinition)
-	if err != nil {
-		return gatewaydto.GatewayDefinition{}, err
-	}
-	routeDefinition, err := targetGatewayDashboardRoute(input, projectId, createdService.Service.Id)
-	if err != nil {
-		return gatewaydto.GatewayDefinition{}, err
-	}
-	if _, err := s.routeDefinitions.CreateRouteFromDefinition(ctx, userId, projectId, routeDefinition); err != nil {
+	if _, err := s.serviceDefinitions.CreateServiceFromDefinition(ctx, userId, projectId, serviceDefinition); err != nil {
 		return gatewaydto.GatewayDefinition{}, err
 	}
 	return s.GatewayDefinitionForUser(ctx, userId, projectId, createdApplication.Application.Id)
@@ -269,9 +188,6 @@ func (s Service) RemoveGateway(ctx context.Context, userId, projectId, applicati
 	applicationID := definition.Application.Application.Id
 	if environment.GatewayApplicationId == nil || *environment.GatewayApplicationId != applicationID {
 		return apperror.New(apperror.KindConflict, "Project environment gateway binding changed")
-	}
-	if err := s.routeDefinitions.RemoveRoute(ctx, userId, projectId, definition.DashboardRoute.Id); err != nil {
-		return err
 	}
 	if err := s.serviceDefinitions.RemoveService(ctx, userId, projectId, definition.RuntimeService.Service.Id); err != nil {
 		return err
@@ -341,20 +257,6 @@ func targetGatewayServiceDefinition(input gatewaydto.GatewayDefinition, applicat
 		definition.Components[index].SourceVersionComponentId = targetComponentID
 	}
 	return definition, nil
-}
-
-func targetGatewayDashboardRoute(input gatewaydto.GatewayDefinition, projectID, serviceID string) (routedto.RouteDefinitionInput, error) {
-	route := input.DashboardRoute
-	route.ProjectId = &projectID
-	route.Id = ""
-	route.Enabled = false
-	if route.ServiceId != nil {
-		if strings.TrimSpace(*route.ServiceId) != strings.TrimSpace(input.RuntimeService.Service.Id) {
-			return routedto.RouteDefinitionInput{}, apperror.New(apperror.KindValidation, "Gateway dashboard Route references a different Service")
-		}
-		route.ServiceId = &serviceID
-	}
-	return routedto.RouteDefinitionInput{Route: route}, nil
 }
 
 func (s Service) ListGateways(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[gatewaydto.GatewayView], error) {
@@ -427,6 +329,10 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
+	restApiHostUrl, err := normalizeRestApiHostUrl(input.RestApiHostUrl)
+	if err != nil {
+		return gatewaydto.GatewayView{}, err
+	}
 	baseDomain, err := normalizeBaseDomain(input.BaseDomain)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
@@ -461,6 +367,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 	cfg := model.GatewayConfig{
 		ApplicationId:           app.Id,
 		RestApiUrl:              restApiUrl,
+		RestApiHostUrl:          restApiHostUrl,
 		RestReadyTimeoutSeconds: restReadyTimeoutSeconds,
 		BaseDomain:              baseDomain,
 		DefaultEntrypoint:       policy.DefaultEntrypoint,
@@ -471,9 +378,6 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 	}
 	if s.transaction == nil {
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "gateway transaction runner is not configured")
-	}
-	if s.route == nil {
-		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "gateway route store is not configured")
 	}
 	if err := s.transaction.RunInTransaction(ctx, func(txCtx context.Context) error {
 		environment, err := s.environment.EnvironmentByProject(txCtx, projectId)
@@ -518,9 +422,6 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 			Code:          app.Code + "-default",
 		}); err != nil {
 			return err
-		}
-		if err := s.route.CreateRoute(txCtx, buildInitialGatewayDashboardRoute(app, cfg)); err != nil {
-			return apperror.Wrap(apperror.KindInternal, "Failed to create gateway dashboard route", err)
 		}
 		bound, err := s.environment.BindGatewayApplication(txCtx, environment.Id, app.Id)
 		if err != nil {
@@ -627,6 +528,13 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, projectId str
 			return gatewaydto.GatewayView{}, err
 		}
 		cfg.RestApiUrl = restApiUrl
+	}
+	if input.RestApiHostUrl != nil {
+		restApiHostUrl, err := normalizeRestApiHostUrl(*input.RestApiHostUrl)
+		if err != nil {
+			return gatewaydto.GatewayView{}, err
+		}
+		cfg.RestApiHostUrl = restApiHostUrl
 	}
 	if input.RestReadyTimeoutSeconds != nil {
 		timeout, err := normalizeRestReadyTimeoutSeconds(input.RestReadyTimeoutSeconds)
@@ -746,19 +654,27 @@ func (s Service) ensureApplicationCodeAvailable(ctx context.Context, projectId s
 }
 
 func normalizeRestApiUrl(raw string) (string, error) {
+	return normalizeGatewayRestAPIURL(raw, "rest_api_url")
+}
+
+func normalizeRestApiHostUrl(raw string) (string, error) {
+	return normalizeGatewayRestAPIURL(raw, "rest_api_host_url")
+}
+
+func normalizeGatewayRestAPIURL(raw string, field string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return "", apperror.New(apperror.KindValidation, "rest_api_url is required")
+		return "", apperror.New(apperror.KindValidation, field+" is required")
 	}
 	if len(raw) > 512 {
-		return "", apperror.New(apperror.KindValidation, "rest_api_url is too long")
+		return "", apperror.New(apperror.KindValidation, field+" is too long")
 	}
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return "", apperror.New(apperror.KindValidation, "rest_api_url must be an absolute http(s) URL")
+		return "", apperror.New(apperror.KindValidation, field+" must be an absolute http(s) URL")
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return "", apperror.New(apperror.KindValidation, "rest_api_url must use http or https")
+		return "", apperror.New(apperror.KindValidation, field+" must use http or https")
 	}
 	return strings.TrimRight(raw, "/"), nil
 }
@@ -875,6 +791,10 @@ func normalizeGatewayConfig(input model.GatewayConfig, applicationId string) (mo
 	if err != nil {
 		return model.GatewayConfig{}, err
 	}
+	restAPIHostURL, err := normalizeRestApiHostUrl(input.RestApiHostUrl)
+	if err != nil {
+		return model.GatewayConfig{}, err
+	}
 	timeout := input.RestReadyTimeoutSeconds
 	if _, err := normalizeRestReadyTimeoutSeconds(&timeout); err != nil {
 		return model.GatewayConfig{}, err
@@ -895,6 +815,7 @@ func normalizeGatewayConfig(input model.GatewayConfig, applicationId string) (mo
 	return model.GatewayConfig{
 		ApplicationId:           applicationId,
 		RestApiUrl:              restAPIURL,
+		RestApiHostUrl:          restAPIHostURL,
 		RestReadyTimeoutSeconds: timeout,
 		BaseDomain:              baseDomain,
 		DefaultEntrypoint:       policy.DefaultEntrypoint,

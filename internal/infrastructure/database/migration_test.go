@@ -220,6 +220,44 @@ func TestMigrateUpSQLiteRestrictsCrossDomainDeletes(t *testing.T) {
 	}
 }
 
+func TestMigrateUpSQLiteAddsGatewayHostEndpointAndRemovesFactoryDashboardRoute(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateTo(database, config.DatabaseDriverSQLite, 46); err != nil {
+		t.Fatalf("migrate to pre-host-endpoint schema: %v", err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO project (id, name, code) VALUES ('project-47', 'Project', 'project-47')`,
+		`INSERT INTO application (id, project_id, name, code, kind) VALUES ('gateway-47', 'project-47', 'Traefik', 'traefik', 'standard')`,
+		`INSERT INTO gateway_config (application_id, rest_api_url, rest_ready_timeout_seconds, base_domain, default_entrypoint, tls_mode) VALUES ('gateway-47', 'http://traefik:8080', 20, 'example.test', 'web', 'none')`,
+		`INSERT INTO route (id, project_id, name, protocol, domain, path_prefix, target_url, enabled, https_enabled, cert_type, acme_challenge) VALUES ('factory-route-47', 'project-47', 'traefik', 'http', 'traefik-dashboard.example.test', '/', 'http://traefik-traefik:8080', 0, 0, 'manual', 'http')`,
+		`INSERT INTO route (id, project_id, name, protocol, domain, path_prefix, target_url, enabled, https_enabled, cert_type, acme_challenge) VALUES ('user-route-47', 'project-47', 'traefik', 'http', 'traefik-dashboard.example.test', '/', 'http://user-proxy:8080', 0, 0, 'manual', 'http')`,
+	} {
+		if _, err := database.Exec(statement); err != nil {
+			t.Fatalf("seed pre-host-endpoint schema: %v", err)
+		}
+	}
+
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate current schema: %v", err)
+	}
+	var hostEndpoint string
+	if err := database.QueryRow(`SELECT rest_api_host_url FROM gateway_config WHERE application_id = 'gateway-47'`).Scan(&hostEndpoint); err != nil {
+		t.Fatalf("load migrated Gateway host endpoint: %v", err)
+	}
+	if hostEndpoint != model.GatewayRestAPIHostURL {
+		t.Fatalf("Gateway host endpoint = %q", hostEndpoint)
+	}
+	for routeID, want := range map[string]int{"factory-route-47": 0, "user-route-47": 1} {
+		var count int
+		if err := database.QueryRow(`SELECT COUNT(*) FROM route WHERE id = ?`, routeID).Scan(&count); err != nil {
+			t.Fatalf("count migrated route %s: %v", routeID, err)
+		}
+		if count != want {
+			t.Fatalf("migrated route %s count = %d, want %d", routeID, count, want)
+		}
+	}
+}
+
 func TestMigrateUpSQLiteSeedsExportedData(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {

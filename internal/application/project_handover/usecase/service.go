@@ -179,9 +179,6 @@ func (s Service) Export(ctx context.Context, userID, projectID string) (handover
 		return handoverdto.Package{}, apperror.New(apperror.KindValidation, "Project has too many routes to export")
 	}
 	for _, item := range routes {
-		if gateway != nil && item.Id == gateway.DashboardRoute.Id {
-			continue
-		}
 		result.Routes = append(result.Routes, routedto.RouteDefinitionInput{Route: item})
 	}
 	return result, nil

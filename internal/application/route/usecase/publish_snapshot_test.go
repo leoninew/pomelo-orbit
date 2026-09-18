@@ -16,7 +16,7 @@ func TestPublishSnapshotWaitsForGatewayAndPublishesRoutes(t *testing.T) {
 	publisher := &snapshotOrderPublisher{events: &events}
 	service := Service{
 		route:               routeListFake{routes: []model.Route{{Id: "route-1", Name: "api", Protocol: "http", Domain: "api.example.test", PathPrefix: "/", TargetUrl: "http://example:80", Enabled: true}}},
-		gateway:             gatewayConfigFake{cfg: model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: "http://localhost:8080"}},
+		gateway:             gatewayConfigFake{cfg: model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: model.GatewayRestAPIContainerURL, RestApiHostUrl: model.GatewayRestAPIHostURL}},
 		routePublisher:      publisher,
 		traefikRouterClient: snapshotOrderRouterClient{events: &events},
 	}
@@ -81,6 +81,6 @@ func (snapshotOrderRouterClient) ListServices(context.Context, string, model.Gat
 	return nil, nil
 }
 
-func (snapshotOrderRouterClient) IsConnectionError(error) bool {
-	return false
+func (snapshotOrderRouterClient) TraefikUnavailableMessage(error) (string, bool) {
+	return "", false
 }

@@ -157,7 +157,7 @@ func localSaveInput(workspaceRoot string) initdto.SaveEnvironmentInput {
 
 func testGatewayInput() initdto.CreateGatewayInput {
 	return initdto.CreateGatewayInput{
-		Image: "traefik:3.6", RestApiUrl: "http://localhost:8080", RestReadyTimeoutSeconds: 20,
+		Image: "traefik:3.6", RestApiUrl: model.GatewayRestAPIContainerURL, RestApiHostUrl: model.GatewayRestAPIHostURL, RestReadyTimeoutSeconds: 20,
 		BaseDomain: "lvh.me", DefaultEntrypoint: "web", TLSMode: "none",
 	}
 }
@@ -173,7 +173,7 @@ func newInitializationService(t *testing.T) (Service, *fakeInitEnvironment) {
 		config.ProjectInitializationConfig{
 			Environment: config.ProjectInitializationEnvironmentConfig{LocalWorkspaceRoot: "~/.pomelo-orbit"},
 			Gateway: config.ProjectInitializationGatewayConfig{
-				Image: "traefik:3.6", RestApiUrl: "http://localhost:8080", BaseDomain: "lvh.me",
+				Image: "traefik:3.6", RestApiUrl: model.GatewayRestAPIContainerURL, RestApiHostUrl: model.GatewayRestAPIHostURL, BaseDomain: "lvh.me",
 				RestReadyTimeout: 20 * time.Second, DefaultEntrypoint: "web", TLSMode: "none",
 			},
 		},
@@ -274,7 +274,7 @@ func (f *fakeInitGateway) CreateGateway(_ context.Context, _, projectId string, 
 	service := model.Service{Id: "service-1", Code: input.Code + "-default", Status: "stopped"}
 	view := gatewaydto.GatewayView{
 		Application: model.Application{Id: "gateway-1", ProjectId: &projectId, Code: input.Code, Name: input.Name},
-		Config:      model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: input.RestApiUrl, BaseDomain: input.BaseDomain},
+		Config:      model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: input.RestApiUrl, RestApiHostUrl: input.RestApiHostUrl, BaseDomain: input.BaseDomain},
 		Service:     &service,
 	}
 	f.item = &view

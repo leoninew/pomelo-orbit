@@ -28,6 +28,7 @@ export interface ProjectInitializationDefaults {
   local_platform: string;
   local_host: string;
   local_username: string;
+  rest_api_host_url: string;
 }
 
 export interface ProjectInitializationEnvironmentSnapshot {
@@ -50,6 +51,7 @@ export interface ProjectInitializationGatewaySnapshot {
   rest_api_url: string;
   base_domain: string;
   service_status: string;
+  rest_api_host_url: string;
 }
 
 export interface ProjectInitializationStatusResp {
@@ -80,4 +82,5 @@ export interface ProjectInitializationGatewayReq {
   acme_profile: string;
   acme_email: string;
   dns_api_token: string;
+  rest_api_host_url: string;
 }

@@ -3,6 +3,7 @@ package traefik
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"path"
@@ -15,6 +16,7 @@ import (
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	localstorage "github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -24,31 +26,46 @@ var _ routeport.TraefikRouterClient = (*RouteManager)(nil)
 const restApiReadyPollInterval = 500 * time.Millisecond
 
 type RouteManager struct {
-	targetResolver environmentport.TargetResolver
-	runtime        deploymentport.Runtime
-	mu             sync.Mutex
+	targetResolver     environmentport.TargetResolver
+	runtime            deploymentport.Runtime
+	runningInContainer func() bool
+	mu                 sync.Mutex
+}
+
+type restRequestFailure struct {
+	endpoint          string
+	executionLocation string
+	err               error
+}
+
+func (e *restRequestFailure) Error() string {
+	return fmt.Sprintf("request Traefik REST API %s at %s: %v", e.executionLocation, e.endpoint, e.err)
+}
+
+func (e *restRequestFailure) Unwrap() error {
+	return e.err
+}
+
+func (e *restRequestFailure) unavailableMessage() string {
+	return fmt.Sprintf("Traefik REST API is unavailable %s at %s.", e.executionLocation, e.endpoint)
 }
 
 func NewRouteManager(targetResolver environmentport.TargetResolver, runtime deploymentport.Runtime) *RouteManager {
-	return &RouteManager{targetResolver: targetResolver, runtime: runtime}
+	return newRouteManager(targetResolver, runtime, localstorage.IsRunningInContainer)
+}
+
+func newRouteManager(targetResolver environmentport.TargetResolver, runtime deploymentport.Runtime, runningInContainer func() bool) *RouteManager {
+	return &RouteManager{targetResolver: targetResolver, runtime: runtime, runningInContainer: runningInContainer}
 }
 
 func (m *RouteManager) WaitUntilReady(ctx context.Context, projectId string, gateway model.GatewayConfig, timeout time.Duration) error {
-	base, err := traefikBaseURL(gateway.RestApiUrl)
-	if err != nil {
-		return err
-	}
 	if timeout <= 0 {
 		return apperror.New(apperror.KindValidation, "gateway rest_ready_timeout_seconds is required")
-	}
-	target, err := m.resolveTarget(ctx, projectId)
-	if err != nil {
-		return err
 	}
 	deadline := time.Now().Add(timeout)
 	var lastErr error
 	for {
-		_, lastErr = m.runtime.QueryAtEnvironmentRoot(ctx, target, "curl", "-fsS", "--max-time", "5", base+"/api/overview")
+		_, lastErr = m.request(ctx, projectId, gateway, nil, []string{"-fsS", "--max-time", "5"}, "/api/overview")
 		if lastErr == nil {
 			return nil
 		}
@@ -68,10 +85,6 @@ func (m *RouteManager) WaitUntilReady(ctx context.Context, projectId string, gat
 func (m *RouteManager) ApplySnapshot(ctx context.Context, projectId string, gateway model.GatewayConfig, routes []model.Route) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	base, err := traefikBaseURL(gateway.RestApiUrl)
-	if err != nil {
-		return err
-	}
 	target, err := m.resolveTarget(ctx, projectId)
 	if err != nil {
 		return err
@@ -102,7 +115,7 @@ func (m *RouteManager) ApplySnapshot(ctx context.Context, projectId string, gate
 	if err := m.runtime.SyncFiles(ctx, target, stateDir, []deploymentport.WorkspaceFile{{Path: snapshotPath, Content: body, Mode: 0o600}}, ""); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to stage remote traefik snapshot", err)
 	}
-	output, err := m.runtime.QueryAtEnvironmentRootInput(ctx, target, body, "curl", "-fsS", "--max-time", "15", "-X", "PUT", "-H", "Content-Type: application/json", "--data-binary", "@-", base+"/api/providers/rest")
+	output, err := m.requestAtTarget(ctx, target, gateway, body, []string{"-fsS", "--max-time", "15", "-X", "PUT", "-H", "Content-Type: application/json", "--data-binary", "@-"}, "/api/providers/rest")
 	if err != nil {
 		return apperror.New(apperror.KindInternal, outputOrRemoteError("Failed to put traefik rest config", output, err))
 	}
@@ -195,17 +208,31 @@ func (m *RouteManager) listServices(ctx context.Context, projectId string, gatew
 }
 
 func (m *RouteManager) get(ctx context.Context, projectId string, gateway model.GatewayConfig, endpoint string) (string, error) {
-	base, err := traefikBaseURL(gateway.RestApiUrl)
-	if err != nil {
-		return "", err
-	}
+	return m.request(ctx, projectId, gateway, nil, []string{"-fsS", "--max-time", "15"}, endpoint)
+}
+
+func (m *RouteManager) request(ctx context.Context, projectId string, gateway model.GatewayConfig, input []byte, curlArgs []string, endpoint string) (string, error) {
 	target, err := m.resolveTarget(ctx, projectId)
 	if err != nil {
 		return "", err
 	}
-	output, err := m.runtime.QueryAtEnvironmentRoot(ctx, target, "curl", "-fsS", "--max-time", "15", base+endpoint)
+	return m.requestAtTarget(ctx, target, gateway, input, curlArgs, endpoint)
+}
+
+func (m *RouteManager) requestAtTarget(ctx context.Context, target environmentport.Target, gateway model.GatewayConfig, input []byte, curlArgs []string, endpoint string) (string, error) {
+	base, err := m.traefikBaseURL(target, gateway)
 	if err != nil {
-		return output, fmt.Errorf("request traefik API: %w", err)
+		return "", err
+	}
+	args := append(append([]string(nil), curlArgs...), base+endpoint)
+	var output string
+	if input == nil {
+		output, err = m.runtime.QueryAtEnvironmentRoot(ctx, target, "curl", args...)
+	} else {
+		output, err = m.runtime.QueryAtEnvironmentRootInput(ctx, target, input, "curl", args...)
+	}
+	if err != nil {
+		return output, &restRequestFailure{endpoint: base, executionLocation: m.traefikExecutionLocation(target), err: err}
 	}
 	return output, nil
 }
@@ -217,8 +244,12 @@ func (m *RouteManager) resolveTarget(ctx context.Context, projectId string) (env
 	return m.targetResolver.ResolveProjectTarget(ctx, projectId)
 }
 
-func (m *RouteManager) IsConnectionError(err error) bool {
-	return err != nil
+func (m *RouteManager) TraefikUnavailableMessage(err error) (string, bool) {
+	var failure *restRequestFailure
+	if !errors.As(err, &failure) {
+		return "", false
+	}
+	return failure.unavailableMessage(), true
 }
 
 func restSnapshotLocation(serviceDir string) (stateDir, snapshotPath string) {
@@ -227,10 +258,27 @@ func restSnapshotLocation(serviceDir string) (stateDir, snapshotPath string) {
 	return stateDir, path.Join(stateDir, "traefik-rest.json")
 }
 
-func traefikBaseURL(value string) (string, error) {
+func (m *RouteManager) traefikBaseURL(target environmentport.Target, gateway model.GatewayConfig) (string, error) {
+	if target.Environment.TargetType == model.EnvironmentTargetTypeLocal && m.runningInContainer != nil && m.runningInContainer() {
+		return normalizeTraefikBaseURL(gateway.RestApiUrl, "rest_api_url")
+	}
+	return normalizeTraefikBaseURL(gateway.RestApiHostUrl, "rest_api_host_url")
+}
+
+func (m *RouteManager) traefikExecutionLocation(target environmentport.Target) string {
+	if target.Environment.TargetType != model.EnvironmentTargetTypeLocal {
+		return "on the remote host"
+	}
+	if m.runningInContainer != nil && m.runningInContainer() {
+		return "in the Orbit container"
+	}
+	return "on the local host"
+}
+
+func normalizeTraefikBaseURL(value string, field string) (string, error) {
 	base := strings.TrimRight(strings.TrimSpace(value), "/")
 	if base == "" {
-		return "", apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
+		return "", apperror.New(apperror.KindValidation, "gateway "+field+" is required")
 	}
 	return base, nil
 }

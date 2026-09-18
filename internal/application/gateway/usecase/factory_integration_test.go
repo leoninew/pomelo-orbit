@@ -87,6 +87,9 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	if gatewayConfig.NetworkName != "traefik" {
 		t.Fatalf("gateway network = %q", gatewayConfig.NetworkName)
 	}
+	if gatewayConfig.RestApiUrl != model.GatewayRestAPIContainerURL || gatewayConfig.RestApiHostUrl != model.GatewayRestAPIHostURL {
+		t.Fatalf("gateway REST endpoints = container:%q host:%q", gatewayConfig.RestApiUrl, gatewayConfig.RestApiHostUrl)
+	}
 	var staticConfig string
 	for _, mount := range components[0].Mounts {
 		if mount.Target == "/etc/traefik/traefik.yml" {
@@ -96,6 +99,9 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	}
 	if !strings.Contains(staticConfig, "network: traefik") {
 		t.Fatalf("initial Traefik config missing shared network: %q", staticConfig)
+	}
+	if len(components[0].Endpoints) != 3 || components[0].Endpoints[2].Mode != "local" || components[0].Endpoints[2].BindAddress == nil || *components[0].Endpoints[2].BindAddress != "127.0.0.1" || components[0].Endpoints[2].ListenPort == nil || *components[0].Endpoints[2].ListenPort != 8080 {
+		t.Fatalf("gateway REST endpoint = %#v", components[0].Endpoints)
 	}
 	mappings, err := services.ServiceComponentsByService(context.Background(), gatewayFactoryProjectId, created.Service.Id)
 	if err != nil {
@@ -108,15 +114,8 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(routes) != 1 {
+	if len(routes) != 0 {
 		t.Fatalf("gateway routes = %#v", routes)
-	}
-	route := routes[0]
-	if route.Name != "traefik" || route.Domain != "traefik-dashboard.example.test" || route.TargetUrl != "http://traefik-traefik:8080" || route.Enabled || route.HTTPSEnabled || route.CertType != "manual" || route.AcmeChallenge != "http" {
-		t.Fatalf("gateway dashboard route = %#v", route)
-	}
-	if route.ServiceId != nil || route.ComponentName != nil || route.EndpointProtocol != nil || route.EndpointContainerPort != nil {
-		t.Fatalf("gateway dashboard route must use a custom target: %#v", route)
 	}
 }
 
@@ -232,7 +231,6 @@ func TestCreateGatewayRollsBackWhenGatewayConfigWriteFails(t *testing.T) {
 		applications,
 		failingGatewayConfigStore{GatewayStore: gatewayrepo.NewRepository(database), err: errors.New("gateway config write failed")},
 		servicerepo.NewRepository(database),
-		routerepo.NewRepository(database),
 		deploymentrepo.NewRepository(database),
 		resolveGatewayPathForTest,
 		databasetx.NewTransactionRunner(database),
@@ -247,54 +245,12 @@ func TestCreateGatewayRollsBackWhenGatewayConfigWriteFails(t *testing.T) {
 	}
 }
 
-func TestCreateGatewayRollsBackWhenDashboardRouteWriteFails(t *testing.T) {
-	database, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = database.Close() }()
-	database.SetMaxOpenConns(1)
-	if err := databasepkg.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
-		t.Fatal(err)
-	}
-	removeSeededGateway(t, database)
-	seedGatewayFactoryEnvironment(t, database)
-	applications := applicationrepo.NewRepository(database)
-	service := New(
-		projectrepo.NewRepository(database),
-		environmentrepo.NewRepository(database),
-		applications,
-		gatewayrepo.NewRepository(database),
-		servicerepo.NewRepository(database),
-		failingGatewayRouteStore{err: errors.New("gateway dashboard route write failed")},
-		deploymentrepo.NewRepository(database),
-		resolveGatewayPathForTest,
-		databasetx.NewTransactionRunner(database),
-	)
-
-	if _, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, managedGatewayCreateInput()); err == nil {
-		t.Fatal("expected gateway creation failure")
-	}
-	if _, err := applications.ApplicationByCode(context.Background(), gatewayFactoryProjectId, managedGatewayCode); !errors.Is(err, repository.ErrNotFound) {
-		t.Fatalf("gateway application survived failed factory: %v", err)
-	}
-}
-
 type failingGatewayConfigStore struct {
 	repository.GatewayStore
 	err error
 }
 
 func (s failingGatewayConfigStore) UpsertGatewayConfig(context.Context, model.GatewayConfig) error {
-	return s.err
-}
-
-type failingGatewayRouteStore struct {
-	repository.RouteStore
-	err error
-}
-
-func (s failingGatewayRouteStore) CreateRoute(context.Context, model.Route) error {
 	return s.err
 }
 
@@ -322,7 +278,6 @@ func newGatewayFactoryService(t *testing.T, configStore gatewayport.ConfigStore)
 		applications,
 		configStore,
 		services,
-		routerepo.NewRepository(database),
 		deploymentrepo.NewRepository(database),
 		resolveGatewayPathForTest,
 		databasetx.NewTransactionRunner(database),
@@ -385,7 +340,8 @@ func managedGatewayCreateInput() gatewaydto.GatewayCreateInput {
 		ProjectId:               gatewayFactoryProjectId,
 		Code:                    managedGatewayCode,
 		Name:                    managedGatewayName,
-		RestApiUrl:              "http://localhost:8080",
+		RestApiUrl:              model.GatewayRestAPIContainerURL,
+		RestApiHostUrl:          model.GatewayRestAPIHostURL,
 		RestReadyTimeoutSeconds: &timeout,
 		BaseDomain:              "example.test",
 		InitialComponentImage:   &image,

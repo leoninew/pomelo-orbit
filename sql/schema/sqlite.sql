@@ -524,6 +524,7 @@ CREATE TABLE IF NOT EXISTS version_component_device (
 CREATE TABLE IF NOT EXISTS gateway_config (
     application_id TEXT PRIMARY KEY,
     rest_api_url TEXT NOT NULL,
+    rest_api_host_url TEXT NOT NULL,
     rest_ready_timeout_seconds INTEGER NOT NULL DEFAULT 20,
     base_domain TEXT NOT NULL,
     default_entrypoint TEXT NOT NULL DEFAULT 'web',

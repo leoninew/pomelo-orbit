@@ -11,6 +11,7 @@ export interface GatewayConfigForm {
   name: string;
   code: string;
   rest_api_url: string;
+  rest_api_host_url: string;
   rest_ready_timeout_seconds: string;
   base_domain: string;
   initial_component_image: string;
@@ -28,6 +29,7 @@ export function emptyGatewayConfigForm(): GatewayConfigForm {
     name: '',
     code: '',
     rest_api_url: '',
+    rest_api_host_url: '',
     rest_ready_timeout_seconds: '20',
     base_domain: '',
     initial_component_image: '',
@@ -44,6 +46,7 @@ export function gatewayConfigFormFromResponse(value: GatewayResp): GatewayConfig
     name: value.name,
     code: value.code,
     rest_api_url: value.rest_api_url,
+    rest_api_host_url: value.rest_api_host_url,
     rest_ready_timeout_seconds: String(value.rest_ready_timeout_seconds),
     base_domain: value.base_domain,
     initial_component_image: '',
@@ -61,6 +64,7 @@ export function gatewayConfigFormFromDefaults(
   return {
     ...emptyGatewayConfigForm(),
     rest_api_url: defaults.rest_api_url,
+    rest_api_host_url: defaults.rest_api_host_url,
     rest_ready_timeout_seconds: String(defaults.rest_ready_timeout_seconds),
     base_domain: defaults.base_domain,
     initial_component_image: defaults.image,
@@ -126,6 +130,9 @@ export function validateGatewayConfigForm(
   if (!isValidURL(form.rest_api_url.trim())) {
     errors.rest_api_url = 'restApiUrlInvalid';
   }
+  if (!isValidURL(form.rest_api_host_url.trim())) {
+    errors.rest_api_host_url = 'restApiHostUrlInvalid';
+  }
   if (!isValidBaseDomain(form.base_domain.trim())) {
     errors.base_domain = 'baseDomainInvalid';
   }
@@ -156,6 +163,7 @@ export function validateGatewayConfigForm(
 function configRequest(form: GatewayConfigForm) {
   return {
     rest_api_url: form.rest_api_url.trim(),
+    rest_api_host_url: form.rest_api_host_url.trim(),
     rest_ready_timeout_seconds: Number(form.rest_ready_timeout_seconds),
     base_domain: form.base_domain.trim(),
     default_entrypoint: form.default_entrypoint,

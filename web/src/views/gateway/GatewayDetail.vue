@@ -74,6 +74,10 @@
             </dd>
           </div>
           <div class="flex gap-2">
+            <dt>{{ t('gateway.fields.restApiHostUrl') }}</dt>
+            <dd class="min-w-0 break-all text-foreground">{{ gateway.rest_api_host_url }}</dd>
+          </div>
+          <div class="flex gap-2">
             <dt>
               {{ t('gateway.fields.baseDomain') }}
             </dt>
@@ -188,7 +192,7 @@
             readonly
           />
         </div>
-        <div class="space-y-1.5">
+        <div class="space-y-1.5 sm:col-span-2">
           <label class="app-field-label block" for="gateway-edit-rest-api-url">
             {{ t('gateway.fields.restApiUrl') }}
             <span class="text-destructive">*</span>
@@ -204,6 +208,24 @@
           />
           <p v-if="controlPlaneErrors.rest_api_url" class="app-field-error" role="alert">
             {{ validationMessage(controlPlaneErrors.rest_api_url) }}
+          </p>
+        </div>
+        <div class="space-y-1.5 sm:col-span-2">
+          <label class="app-field-label block" for="gateway-edit-rest-api-host-url">
+            {{ t('gateway.fields.restApiHostUrl') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="gateway-edit-rest-api-host-url"
+            v-model="controlPlaneForm.rest_api_host_url"
+            type="url"
+            class="app-input"
+            :class="controlPlaneErrors.rest_api_host_url ? 'app-input-error' : ''"
+            :aria-invalid="controlPlaneErrors.rest_api_host_url ? 'true' : undefined"
+            @input="delete controlPlaneErrors.rest_api_host_url"
+          />
+          <p v-if="controlPlaneErrors.rest_api_host_url" class="app-field-error" role="alert">
+            {{ validationMessage(controlPlaneErrors.rest_api_host_url) }}
           </p>
         </div>
         <div class="space-y-1.5">
@@ -511,10 +533,14 @@
   const services = ref<ServiceResp[]>([]);
   const isControlPlaneEditDialogOpen = ref(false);
   const controlPlaneForm = reactive<
-    Pick<GatewayConfigForm, 'name' | 'rest_api_url' | 'rest_ready_timeout_seconds' | 'base_domain'>
+    Pick<
+      GatewayConfigForm,
+      'name' | 'rest_api_url' | 'rest_api_host_url' | 'rest_ready_timeout_seconds' | 'base_domain'
+    >
   >({
     name: '',
     rest_api_url: '',
+    rest_api_host_url: '',
     rest_ready_timeout_seconds: '',
     base_domain: '',
   });
@@ -632,6 +658,7 @@
     Object.assign(controlPlaneForm, {
       name: form.name,
       rest_api_url: form.rest_api_url,
+      rest_api_host_url: form.rest_api_host_url,
       rest_ready_timeout_seconds: form.rest_ready_timeout_seconds,
       base_domain: form.base_domain,
     });
@@ -652,6 +679,7 @@
     keepSectionErrors(controlPlaneErrors, errors, [
       'name',
       'rest_api_url',
+      'rest_api_host_url',
       'rest_ready_timeout_seconds',
       'base_domain',
     ]);
@@ -663,6 +691,7 @@
         gateway.value = await gatewayApi.update(selectedProjectId(), current.id, {
           name: controlPlaneForm.name.trim(),
           rest_api_url: controlPlaneForm.rest_api_url.trim(),
+          rest_api_host_url: controlPlaneForm.rest_api_host_url.trim(),
           rest_ready_timeout_seconds: Number(controlPlaneForm.rest_ready_timeout_seconds),
           base_domain: controlPlaneForm.base_domain.trim(),
         });

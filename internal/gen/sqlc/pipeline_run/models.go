@@ -143,6 +143,7 @@ type GatewayAcmeProfileVersion struct {
 type GatewayConfig struct {
 	ApplicationId           string    `db:"application_id"`
 	RestApiUrl              string    `db:"rest_api_url"`
+	RestApiHostUrl          string    `db:"rest_api_host_url"`
 	RestReadyTimeoutSeconds int64     `db:"rest_ready_timeout_seconds"`
 	BaseDomain              string    `db:"base_domain"`
 	DefaultEntrypoint       string    `db:"default_entrypoint"`

@@ -18,8 +18,8 @@ const (
 	gatewayMountTargetCertDir    = "/etc/traefik/certs"
 	gatewayMountTargetAcmeDir    = "/letsencrypt"
 
-	gatewayDashboardPort     = 8080
-	gatewayDashboardProtocol = "http"
+	gatewayRestAPIPort     = 8080
+	gatewayRestAPIProtocol = "http"
 )
 
 type initialGatewayVersion struct {
@@ -64,7 +64,7 @@ func buildInitialGatewayComponent(versionId, image, pullPolicy, componentName, r
 		Endpoints: []model.VersionComponentEndpoint{
 			{Protocol: "tcp", ContainerPort: 80, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(80)},
 			{Protocol: "tcp", ContainerPort: 443, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(443)},
-			{Protocol: gatewayDashboardProtocol, ContainerPort: gatewayDashboardPort, Mode: "local", BindAddress: stringRef("127.0.0.1"), ListenPort: intRef(gatewayDashboardPort)},
+			{Protocol: gatewayRestAPIProtocol, ContainerPort: gatewayRestAPIPort, Mode: "local", BindAddress: stringRef("127.0.0.1"), ListenPort: intRef(gatewayRestAPIPort)},
 		},
 		Mounts: []model.VersionComponentMount{
 			{SourceType: "file", Source: gatewayDockerSocketPath, SourceIsHostPath: true, Target: gatewayDockerSocketPath, ReadOnly: true},
@@ -136,20 +136,3 @@ const acmeDNSResolver = `certificatesResolvers:
 
 func stringRef(value string) *string { return &value }
 func intRef(value int) *int          { return &value }
-
-func buildInitialGatewayDashboardRoute(app model.Application, cfg model.GatewayConfig) model.Route {
-	projectId := *app.ProjectId
-	return model.Route{
-		Id:            idutil.NewId(),
-		ProjectId:     &projectId,
-		Name:          "traefik",
-		Protocol:      "http",
-		Domain:        "traefik-dashboard." + cfg.BaseDomain,
-		PathPrefix:    "/",
-		TargetUrl:     gatewayDashboardTargetURL(app.Code),
-		Enabled:       false,
-		HTTPSEnabled:  false,
-		CertType:      "manual",
-		AcmeChallenge: "http",
-	}
-}

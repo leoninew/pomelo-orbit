@@ -48,7 +48,8 @@ project_initialization:
     local_workspace_root: ~/.pomelo-orbit
   gateway:
     image: traefik:3.6
-    rest_api_url: http://localhost:8080
+    rest_api_url: http://traefik:8080
+    rest_api_host_url: http://127.0.0.1:8080
     base_domain: lvh.me
     rest_ready_timeout: 20s
     default_entrypoint: web

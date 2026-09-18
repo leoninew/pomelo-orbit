@@ -272,10 +272,6 @@ func (h Handler) ListTraefikRoutes(c *gin.Context) {
 	}
 	items, err := h.service.ListTraefikRoutes(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"))
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "无法连接到 Traefik:") {
-			transport.WriteError(c, apperror.Wrap(apperror.KindUnavailable, "", err))
-			return
-		}
 		transport.WriteError(c, err)
 		return
 	}

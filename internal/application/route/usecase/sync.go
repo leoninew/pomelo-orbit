@@ -117,17 +117,11 @@ func (s Service) loadSyncState(ctx context.Context, userId string, projectId str
 	}
 	items, err := s.traefikRouterClient.ListRouters(ctx, projectId, *gateway)
 	if err != nil {
-		if s.traefikRouterClient.IsConnectionError(err) {
-			return nil, nil, nil, apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
-		}
-		return nil, nil, nil, apperror.Wrap(apperror.KindInternal, "Failed to inspect Traefik routers", err)
+		return nil, nil, nil, s.traefikClientError(err, "Failed to inspect Traefik routers")
 	}
 	services, err := s.traefikRouterClient.ListServices(ctx, projectId, *gateway)
 	if err != nil {
-		if s.traefikRouterClient.IsConnectionError(err) {
-			return nil, nil, nil, apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
-		}
-		return nil, nil, nil, apperror.Wrap(apperror.KindInternal, "Failed to inspect Traefik services", err)
+		return nil, nil, nil, s.traefikClientError(err, "Failed to inspect Traefik services")
 	}
 	return routes, items, services, nil
 }

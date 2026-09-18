@@ -31,7 +31,25 @@
               {{ t(`project.environment.targetTypes.${environment.target_type}`) }}
             </dd>
           </div>
-          <div v-if="isLocal" class="flex gap-2 sm:col-span-2">
+          <div v-if="isLocal && environment.local" class="flex gap-2">
+            <dt>{{ t('project.environment.platform') }}</dt>
+            <dd class="text-foreground">
+              {{ t(`project.environment.platforms.${environment.local.platform}`) }}
+            </dd>
+          </div>
+          <div v-if="isLocal && environment.local" class="flex gap-2">
+            <dt>{{ t('project.environment.host') }}</dt>
+            <dd class="min-w-0 break-all text-foreground">
+              {{ environment.local.host || t('common.notSet') }}
+            </dd>
+          </div>
+          <div v-if="isLocal && environment.local" class="flex gap-2">
+            <dt>{{ t('project.environment.username') }}</dt>
+            <dd class="text-foreground">
+              {{ environment.local.username || t('common.notSet') }}
+            </dd>
+          </div>
+          <div v-if="isLocal && environment.local" class="flex gap-2 sm:col-span-2">
             <dt>{{ t('project.environment.workspaceRoot') }}</dt>
             <dd class="min-w-0 break-all text-foreground">
               {{ environment.local?.workspace_root || t('common.notSet') }}
@@ -44,10 +62,14 @@
             </dd>
           </div>
           <div v-if="isSSH && environment.ssh" class="flex gap-2">
-            <dt>{{ t('project.environment.sshTarget') }}</dt>
+            <dt>{{ t('project.environment.host') }}</dt>
             <dd class="min-w-0 break-all text-foreground">
-              {{ formatSSHAddress(environment.ssh.host, environment.ssh.port) }}
+              {{ environment.ssh.host }}
             </dd>
+          </div>
+          <div v-if="isSSH && environment.ssh" class="flex gap-2">
+            <dt>{{ t('project.environment.port') }}</dt>
+            <dd class="text-foreground">{{ environment.ssh.port }}</dd>
           </div>
           <div v-if="isSSH && environment.ssh" class="flex gap-2">
             <dt>{{ t('project.environment.username') }}</dt>
@@ -143,7 +165,22 @@
       </form>
       <p v-if="submitError" class="app-field-error mt-3" role="alert">{{ submitError }}</p>
       <template #footer>
-        <AppDialogActions :busy="operating" @cancel="isEditDialogOpen = false" @confirm="save" />
+        <div class="flex w-full flex-wrap items-center justify-between gap-3">
+          <button
+            v-if="form.targetType === 'ssh'"
+            type="button"
+            class="app-button h-9 px-3"
+            :disabled="operating || loadingSshCommand"
+            :aria-busy="loadingSshCommand"
+            @click="openSshCommand"
+          >
+            <RefreshCw v-if="loadingSshCommand" class="size-4 animate-spin" aria-hidden="true" />
+            <KeyRound v-else class="size-4" aria-hidden="true" />
+            {{ t('project.initialization.sshCommand') }}
+          </button>
+          <span v-else />
+          <AppDialogActions :busy="operating" @cancel="isEditDialogOpen = false" @confirm="save" />
+        </div>
       </template>
     </AppDialog>
 
@@ -205,11 +242,6 @@
   const isLocal = computed(() => environment.value?.target_type === 'local');
   const isSSH = computed(() => environment.value?.target_type === 'ssh' && !!environment.value.ssh);
 
-  function formatSSHAddress(host: string, port: number) {
-    const displayHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
-    return `${displayHost}:${port}`;
-  }
-
   function resetForm() {
     if (!environment.value) {
       return;
@@ -260,8 +292,21 @@
 
   async function openSshCommand() {
     const projectId = projectStore.activeProjectId;
-    const target = environment.value?.ssh;
-    if (!projectId || !isSSH.value || !target) {
+    const editing = isEditDialogOpen.value;
+    if (editing && !validate()) {
+      return;
+    }
+    const target = editing && form.targetType === 'ssh'
+      ? {
+          platform: form.platform,
+          host: form.host,
+          port: form.port,
+          username: form.username,
+          workspace_root: form.workspaceRoot,
+        }
+      : environment.value?.ssh;
+    const canPrepareSSH = editing ? form.targetType === 'ssh' : isSSH.value;
+    if (!projectId || !canPrepareSSH || !target) {
       return;
     }
     showSshCommandDialog.value = true;
@@ -283,6 +328,9 @@
         throw new Error(t('project.initialization.sshCommandFailed'));
       }
       environment.value = result.environment;
+      if (editing) {
+        isEditDialogOpen.value = false;
+      }
       sshCommand.value =
         target.platform === 'windows'
           ? buildWindowsSshInitializationCommand({

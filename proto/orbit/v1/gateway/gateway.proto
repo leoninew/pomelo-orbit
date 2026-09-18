@@ -23,6 +23,7 @@ message GatewayCreateReq {
   optional string acme_profile = 12;
   optional string acme_email = 13;
   optional string dns_api_token = 14;
+  string rest_api_host_url = 15;
 }
 
 message GatewayUpdateReq {
@@ -35,6 +36,7 @@ message GatewayUpdateReq {
   optional string acme_profile = 8;
   optional string acme_email = 9;
   optional string dns_api_token = 10;
+  optional string rest_api_host_url = 11;
 }
 
 // Read-only active exit / cluster DNS row (not a CRUD resource).
@@ -73,6 +75,7 @@ message GatewayResp {
   string acme_email = 21;
   string dns_api_token = 22;
   repeated GatewayVersionBinding version_bindings = 23;
+  string rest_api_host_url = 24;
 }
 
 message GatewayPaginatedResp {

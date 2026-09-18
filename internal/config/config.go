@@ -148,6 +148,7 @@ type ProjectInitializationEnvironmentConfig struct {
 type ProjectInitializationGatewayConfig struct {
 	Image             string        `mapstructure:"image" yaml:"image"`
 	RestApiUrl        string        `mapstructure:"rest_api_url" yaml:"rest_api_url"`
+	RestApiHostUrl    string        `mapstructure:"rest_api_host_url" yaml:"rest_api_host_url"`
 	BaseDomain        string        `mapstructure:"base_domain" yaml:"base_domain"`
 	RestReadyTimeout  time.Duration `mapstructure:"rest_ready_timeout" yaml:"rest_ready_timeout"`
 	DefaultEntrypoint string        `mapstructure:"default_entrypoint" yaml:"default_entrypoint"`
@@ -468,6 +469,7 @@ func normalizeProjectInitializationConfig(cfg *ProjectInitializationConfig) erro
 	cfg.Environment.LocalWorkspaceRoot = workspaceRoot
 	cfg.Gateway.Image = strings.TrimSpace(cfg.Gateway.Image)
 	cfg.Gateway.RestApiUrl = strings.TrimRight(strings.TrimSpace(cfg.Gateway.RestApiUrl), "/")
+	cfg.Gateway.RestApiHostUrl = strings.TrimRight(strings.TrimSpace(cfg.Gateway.RestApiHostUrl), "/")
 	cfg.Gateway.BaseDomain = strings.ToLower(strings.TrimSpace(cfg.Gateway.BaseDomain))
 	cfg.Gateway.DefaultEntrypoint = strings.TrimSpace(cfg.Gateway.DefaultEntrypoint)
 	cfg.Gateway.TLSMode = strings.ToLower(strings.TrimSpace(cfg.Gateway.TLSMode))
@@ -505,6 +507,12 @@ func validateProjectInitializationConfig(cfg ProjectInitializationConfig) error 
 		return errors.New("project_initialization.gateway.rest_api_url is required")
 	}
 	if err := validateHTTPUrl("project_initialization.gateway.rest_api_url", cfg.Gateway.RestApiUrl, false); err != nil {
+		return err
+	}
+	if cfg.Gateway.RestApiHostUrl == "" {
+		return errors.New("project_initialization.gateway.rest_api_host_url is required")
+	}
+	if err := validateHTTPUrl("project_initialization.gateway.rest_api_host_url", cfg.Gateway.RestApiHostUrl, false); err != nil {
 		return err
 	}
 	if cfg.Gateway.BaseDomain == "" {

@@ -44,6 +44,7 @@ const gateway: GatewayResp = {
   name: 'Traefik',
   kind: 'gateway',
   rest_api_url: 'http://traefik:8080',
+  rest_api_host_url: 'http://127.0.0.1:8080',
   base_domain: 'example.com',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
@@ -144,6 +145,7 @@ describe('Gateway detail editing', () => {
     expect(gatewayApi.update).toHaveBeenCalledWith('project-1', 'gateway-1', {
       name: 'Traefik edge',
       rest_api_url: gateway.rest_api_url,
+      rest_api_host_url: gateway.rest_api_host_url,
       rest_ready_timeout_seconds: gateway.rest_ready_timeout_seconds,
       base_domain: gateway.base_domain,
     });

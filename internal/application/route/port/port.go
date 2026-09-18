@@ -55,5 +55,8 @@ type TraefikService struct {
 type TraefikRouterClient interface {
 	ListRouters(ctx context.Context, projectId string, gateway model.GatewayConfig) ([]TraefikRouter, error)
 	ListServices(ctx context.Context, projectId string, gateway model.GatewayConfig) ([]TraefikService, error)
-	IsConnectionError(err error) bool
+	// TraefikUnavailableMessage reports the safe access context for a failed
+	// Traefik REST request. Other errors, including configuration and response
+	// decoding failures, must return ok=false.
+	TraefikUnavailableMessage(err error) (message string, ok bool)
 }

@@ -274,6 +274,32 @@
                   </p>
                 </div>
                 <div class="space-y-1.5">
+                  <label
+                    class="app-field-label block"
+                    for="initialization-gateway-rest-api-host-url"
+                  >
+                    {{ t('gateway.fields.restApiHostUrl') }}
+                    <span class="text-destructive">*</span>
+                  </label>
+                  <input
+                    id="initialization-gateway-rest-api-host-url"
+                    :value="gatewayForm.rest_api_host_url"
+                    type="url"
+                    class="app-input"
+                    :class="gatewayErrors.rest_api_host_url ? 'app-input-error' : ''"
+                    :aria-invalid="gatewayErrors.rest_api_host_url ? 'true' : undefined"
+                    @input="
+                      updateGatewayField(
+                        'rest_api_host_url',
+                        ($event.target as HTMLInputElement).value
+                      )
+                    "
+                  />
+                  <p v-if="gatewayErrors.rest_api_host_url" class="app-field-error" role="alert">
+                    {{ gatewayValidationMessage('rest_api_host_url') }}
+                  </p>
+                </div>
+                <div class="space-y-1.5">
                   <label class="app-field-label block" for="initialization-gateway-timeout">
                     {{ t('gateway.fields.restReadyTimeout') }}
                     <span class="text-destructive">*</span>

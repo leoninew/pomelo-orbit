@@ -11,6 +11,7 @@ type GatewayCreateInput struct {
 	Code                    string
 	Name                    string
 	RestApiUrl              string
+	RestApiHostUrl          string
 	RestReadyTimeoutSeconds *int
 	BaseDomain              string
 	InitialComponentImage   *string
@@ -24,6 +25,7 @@ type GatewayCreateInput struct {
 type GatewayUpdateInput struct {
 	Name                    *string
 	RestApiUrl              *string
+	RestApiHostUrl          *string
 	RestReadyTimeoutSeconds *int
 	BaseDomain              *string
 	DefaultEntrypoint       *string
@@ -34,13 +36,12 @@ type GatewayUpdateInput struct {
 }
 
 // GatewayDefinition is the complete saved configuration of the managed
-// Gateway. It owns its Application, Versions, runtime Service, dashboard
-// Route, Config, profile bindings, and Environment binding.
+// Gateway. It owns its Application, Versions, runtime Service, Config,
+// profile bindings, and Environment binding.
 type GatewayDefinition struct {
 	Application    applicationdto.ApplicationDefinition
 	Config         model.GatewayConfig
 	RuntimeService servicedto.ServiceDefinition
-	DashboardRoute model.Route
 }
 
 // GatewayExposureItem is an active local or public application exposure.

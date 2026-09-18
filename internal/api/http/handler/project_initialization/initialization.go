@@ -89,7 +89,7 @@ func (h Handler) CreateGateway(c *gin.Context) {
 		return
 	}
 	view, err := h.service.CreateGateway(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), initdto.CreateGatewayInput{
-		Image: req.Image, RestApiUrl: req.RestApiUrl, RestReadyTimeoutSeconds: int(req.RestReadyTimeoutSeconds),
+		Image: req.Image, RestApiUrl: req.RestApiUrl, RestApiHostUrl: req.RestApiHostUrl, RestReadyTimeoutSeconds: int(req.RestReadyTimeoutSeconds),
 		BaseDomain: req.BaseDomain, DefaultEntrypoint: req.DefaultEntrypoint, TLSMode: req.TlsMode,
 		AcmeProfile: req.AcmeProfile, AcmeEmail: req.AcmeEmail, DNSApiToken: req.DnsApiToken,
 	})
@@ -105,7 +105,7 @@ func initializationResponse(view initdto.StatusView) *initv1.ProjectInitializati
 		Status: view.Status,
 		Defaults: &initv1.ProjectInitializationDefaults{
 			LocalWorkspaceRoot: view.Defaults.LocalWorkspaceRoot, Image: view.Defaults.Image,
-			RestApiUrl: view.Defaults.RestApiUrl, RestReadyTimeoutSeconds: int32(view.Defaults.RestReadyTimeoutSeconds),
+			RestApiUrl: view.Defaults.RestApiUrl, RestApiHostUrl: view.Defaults.RestApiHostUrl, RestReadyTimeoutSeconds: int32(view.Defaults.RestReadyTimeoutSeconds),
 			BaseDomain: view.Defaults.BaseDomain, DefaultEntrypoint: view.Defaults.DefaultEntrypoint,
 			TlsMode: view.Defaults.TLSMode, AcmeProfile: view.Defaults.AcmeProfile,
 			AcmeEmail: view.Defaults.AcmeEmail, DnsApiToken: view.Defaults.DNSApiToken,
@@ -137,7 +137,7 @@ func initializationResponse(view initdto.StatusView) *initv1.ProjectInitializati
 		}
 		resp.Gateway = &initv1.ProjectInitializationGatewaySnapshot{
 			Id: view.Gateway.Application.Id, Code: view.Gateway.Application.Code, Name: view.Gateway.Application.Name,
-			RestApiUrl: view.Gateway.Config.RestApiUrl, BaseDomain: view.Gateway.Config.BaseDomain,
+			RestApiUrl: view.Gateway.Config.RestApiUrl, RestApiHostUrl: view.Gateway.Config.RestApiHostUrl, BaseDomain: view.Gateway.Config.BaseDomain,
 			ServiceStatus: status,
 		}
 	}

@@ -18,6 +18,7 @@ message ProjectInitializationDefaults {
   string local_platform = 11;
   string local_host = 12;
   string local_username = 13;
+  string rest_api_host_url = 14;
 }
 
 message ProjectInitializationEnvironmentSnapshot {
@@ -40,6 +41,7 @@ message ProjectInitializationGatewaySnapshot {
   string rest_api_url = 4;
   string base_domain = 5;
   string service_status = 6;
+  string rest_api_host_url = 7;
 }
 
 message ProjectInitializationStatusResp {
@@ -70,4 +72,5 @@ message ProjectInitializationGatewayReq {
   string acme_profile = 7;
   string acme_email = 8;
   string dns_api_token = 9;
+  string rest_api_host_url = 10;
 }

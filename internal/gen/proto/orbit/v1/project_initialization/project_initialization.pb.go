@@ -37,6 +37,7 @@ type ProjectInitializationDefaults struct {
 	LocalPlatform           string                 `protobuf:"bytes,11,opt,name=local_platform,json=localPlatform,proto3" json:"local_platform,omitempty"`
 	LocalHost               string                 `protobuf:"bytes,12,opt,name=local_host,json=localHost,proto3" json:"local_host,omitempty"`
 	LocalUsername           string                 `protobuf:"bytes,13,opt,name=local_username,json=localUsername,proto3" json:"local_username,omitempty"`
+	RestApiHostUrl          string                 `protobuf:"bytes,14,opt,name=rest_api_host_url,json=restApiHostUrl,proto3" json:"rest_api_host_url,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -162,6 +163,13 @@ func (x *ProjectInitializationDefaults) GetLocalUsername() string {
 	return ""
 }
 
+func (x *ProjectInitializationDefaults) GetRestApiHostUrl() string {
+	if x != nil {
+		return x.RestApiHostUrl
+	}
+	return ""
+}
+
 type ProjectInitializationEnvironmentSnapshot struct {
 	state               protoimpl.MessageState                  `protogen:"open.v1"`
 	Id                  string                                  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -279,15 +287,16 @@ func (x *ProjectInitializationEnvironmentSnapshot) GetSsh() *environment.Environ
 }
 
 type ProjectInitializationGatewaySnapshot struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	RestApiUrl    string                 `protobuf:"bytes,4,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
-	BaseDomain    string                 `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
-	ServiceStatus string                 `protobuf:"bytes,6,opt,name=service_status,json=serviceStatus,proto3" json:"service_status,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Code           string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	Name           string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	RestApiUrl     string                 `protobuf:"bytes,4,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
+	BaseDomain     string                 `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	ServiceStatus  string                 `protobuf:"bytes,6,opt,name=service_status,json=serviceStatus,proto3" json:"service_status,omitempty"`
+	RestApiHostUrl string                 `protobuf:"bytes,7,opt,name=rest_api_host_url,json=restApiHostUrl,proto3" json:"rest_api_host_url,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ProjectInitializationGatewaySnapshot) Reset() {
@@ -358,6 +367,13 @@ func (x *ProjectInitializationGatewaySnapshot) GetBaseDomain() string {
 func (x *ProjectInitializationGatewaySnapshot) GetServiceStatus() string {
 	if x != nil {
 		return x.ServiceStatus
+	}
+	return ""
+}
+
+func (x *ProjectInitializationGatewaySnapshot) GetRestApiHostUrl() string {
+	if x != nil {
+		return x.RestApiHostUrl
 	}
 	return ""
 }
@@ -553,6 +569,7 @@ type ProjectInitializationGatewayReq struct {
 	AcmeProfile             string                 `protobuf:"bytes,7,opt,name=acme_profile,json=acmeProfile,proto3" json:"acme_profile,omitempty"`
 	AcmeEmail               string                 `protobuf:"bytes,8,opt,name=acme_email,json=acmeEmail,proto3" json:"acme_email,omitempty"`
 	DnsApiToken             string                 `protobuf:"bytes,9,opt,name=dns_api_token,json=dnsApiToken,proto3" json:"dns_api_token,omitempty"`
+	RestApiHostUrl          string                 `protobuf:"bytes,10,opt,name=rest_api_host_url,json=restApiHostUrl,proto3" json:"rest_api_host_url,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -650,11 +667,18 @@ func (x *ProjectInitializationGatewayReq) GetDnsApiToken() string {
 	return ""
 }
 
+func (x *ProjectInitializationGatewayReq) GetRestApiHostUrl() string {
+	if x != nil {
+		return x.RestApiHostUrl
+	}
+	return ""
+}
+
 var File_orbit_v1_project_initialization_project_initialization_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc = "" +
 	"\n" +
-	"<orbit/v1/project_initialization/project_initialization.proto\x12\x1forbit.v1.project_initialization\x1a&orbit/v1/environment/environment.proto\"\x84\x04\n" +
+	"<orbit/v1/project_initialization/project_initialization.proto\x12\x1forbit.v1.project_initialization\x1a&orbit/v1/environment/environment.proto\"\xaf\x04\n" +
 	"\x1dProjectInitializationDefaults\x120\n" +
 	"\x14local_workspace_root\x18\x01 \x01(\tR\x12localWorkspaceRoot\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12 \n" +
@@ -673,7 +697,8 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\x0elocal_platform\x18\v \x01(\tR\rlocalPlatform\x12\x1d\n" +
 	"\n" +
 	"local_host\x18\f \x01(\tR\tlocalHost\x12%\n" +
-	"\x0elocal_username\x18\r \x01(\tR\rlocalUsername\"\xd7\x04\n" +
+	"\x0elocal_username\x18\r \x01(\tR\rlocalUsername\x12)\n" +
+	"\x11rest_api_host_url\x18\x0e \x01(\tR\x0erestApiHostUrl\"\xd7\x04\n" +
 	"(ProjectInitializationEnvironmentSnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vtarget_type\x18\x02 \x01(\tR\n" +
@@ -690,7 +715,7 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\x14_last_probe_revisionB\x14\n" +
 	"\x12_last_probe_statusB\x10\n" +
 	"\x0e_last_probe_atB\x18\n" +
-	"\x16_last_probe_diagnostic\"\xc8\x01\n" +
+	"\x16_last_probe_diagnostic\"\xf3\x01\n" +
 	"$ProjectInitializationGatewaySnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x12\n" +
@@ -699,7 +724,8 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"restApiUrl\x12\x1f\n" +
 	"\vbase_domain\x18\x05 \x01(\tR\n" +
 	"baseDomain\x12%\n" +
-	"\x0eservice_status\x18\x06 \x01(\tR\rserviceStatus\"\xe3\x02\n" +
+	"\x0eservice_status\x18\x06 \x01(\tR\rserviceStatus\x12)\n" +
+	"\x11rest_api_host_url\x18\a \x01(\tR\x0erestApiHostUrl\"\xe3\x02\n" +
 	"\x1fProjectInitializationStatusResp\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12Z\n" +
 	"\bdefaults\x18\x02 \x01(\v2>.orbit.v1.project_initialization.ProjectInitializationDefaultsR\bdefaults\x12k\n" +
@@ -715,7 +741,7 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"#ProjectInitializationSSHCommandResp\x12X\n" +
 	"\x06status\x18\x01 \x01(\v2@.orbit.v1.project_initialization.ProjectInitializationStatusRespR\x06status\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x02 \x01(\tR\tpublicKey\"\xe7\x02\n" +
+	"public_key\x18\x02 \x01(\tR\tpublicKey\"\x92\x03\n" +
 	"\x1fProjectInitializationGatewayReq\x12\x14\n" +
 	"\x05image\x18\x01 \x01(\tR\x05image\x12 \n" +
 	"\frest_api_url\x18\x02 \x01(\tR\n" +
@@ -728,7 +754,9 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\facme_profile\x18\a \x01(\tR\vacmeProfile\x12\x1d\n" +
 	"\n" +
 	"acme_email\x18\b \x01(\tR\tacmeEmail\x12\"\n" +
-	"\rdns_api_token\x18\t \x01(\tR\vdnsApiTokenB\xb0\x02\n" +
+	"\rdns_api_token\x18\t \x01(\tR\vdnsApiToken\x12)\n" +
+	"\x11rest_api_host_url\x18\n" +
+	" \x01(\tR\x0erestApiHostUrlB\xb0\x02\n" +
 	"#com.orbit.v1.project_initializationB\x1aProjectInitializationProtoP\x01ZSgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/project_initialization\xa2\x02\x03OVP\xaa\x02\x1eOrbit.V1.ProjectInitialization\xca\x02\x1eOrbit\\V1\\ProjectInitialization\xe2\x02*Orbit\\V1\\ProjectInitialization\\GPBMetadata\xea\x02 Orbit::V1::ProjectInitializationb\x06proto3"
 
 var (

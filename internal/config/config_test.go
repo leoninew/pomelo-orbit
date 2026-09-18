@@ -75,8 +75,8 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.ProjectInitialization.Gateway.Image != "traefik:3.6" {
 		t.Fatalf("unexpected initialization image: %q", cfg.ProjectInitialization.Gateway.Image)
 	}
-	if cfg.ProjectInitialization.Gateway.RestApiUrl != "http://localhost:8080" || cfg.ProjectInitialization.Gateway.BaseDomain != "lvh.me" {
-		t.Fatalf("unexpected initialization endpoints: rest=%q domain=%q", cfg.ProjectInitialization.Gateway.RestApiUrl, cfg.ProjectInitialization.Gateway.BaseDomain)
+	if cfg.ProjectInitialization.Gateway.RestApiUrl != "http://traefik:8080" || cfg.ProjectInitialization.Gateway.RestApiHostUrl != "http://127.0.0.1:8080" || cfg.ProjectInitialization.Gateway.BaseDomain != "lvh.me" {
+		t.Fatalf("unexpected initialization endpoints: container=%q host=%q domain=%q", cfg.ProjectInitialization.Gateway.RestApiUrl, cfg.ProjectInitialization.Gateway.RestApiHostUrl, cfg.ProjectInitialization.Gateway.BaseDomain)
 	}
 	if cfg.ProjectInitialization.Gateway.RestReadyTimeout != 20*time.Second {
 		t.Fatalf("unexpected initialization rest ready timeout: %s", cfg.ProjectInitialization.Gateway.RestReadyTimeout)
@@ -988,7 +988,8 @@ project_initialization:
     local_workspace_root: ~/.pomelo-orbit
   gateway:
     image: traefik:3.6
-    rest_api_url: http://localhost:8080
+    rest_api_url: http://traefik:8080
+    rest_api_host_url: http://127.0.0.1:8080
     base_domain: lvh.me
     rest_ready_timeout: 20s
     default_entrypoint: web

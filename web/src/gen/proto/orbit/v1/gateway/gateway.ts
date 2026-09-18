@@ -31,6 +31,7 @@ export interface GatewayCreateReq {
   acme_profile?: string | undefined;
   acme_email?: string | undefined;
   dns_api_token?: string | undefined;
+  rest_api_host_url: string;
 }
 
 export interface GatewayUpdateReq {
@@ -43,6 +44,7 @@ export interface GatewayUpdateReq {
   acme_profile?: string | undefined;
   acme_email?: string | undefined;
   dns_api_token?: string | undefined;
+  rest_api_host_url?: string | undefined;
 }
 
 /** Read-only active exit / cluster DNS row (not a CRUD resource). */
@@ -81,6 +83,7 @@ export interface GatewayResp {
   acme_email: string;
   dns_api_token: string;
   version_bindings: GatewayVersionBinding[];
+  rest_api_host_url: string;
 }
 
 export interface GatewayPaginatedResp {

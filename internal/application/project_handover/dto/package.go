@@ -11,7 +11,7 @@ import (
 
 const (
 	Format        = "pomelo-orbit/project-handover"
-	FormatVersion = 1
+	FormatVersion = 2
 )
 
 type Package struct {

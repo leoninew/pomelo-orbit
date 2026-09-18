@@ -350,7 +350,7 @@ func gatewayOutput(value gatewaydto.GatewayView) map[string]any {
 	for _, item := range value.Exposures {
 		exposures = append(exposures, map[string]any{"application_id": item.ApplicationId, "application_code": item.ApplicationCode, "component_name": item.ComponentName, "protocol": item.Protocol, "access": item.Access, "container_port": item.ContainerPort, "listen_port": item.ListenPort, "public_host": item.PublicHost, "internal_dns": item.InternalDns, "client_hint": item.ClientHint})
 	}
-	output := map[string]any{"id": value.Application.Id, "project_id": projectId, "code": value.Application.Code, "name": value.Application.Name, "kind": value.Application.Kind, "rest_api_url": value.Config.RestApiUrl, "base_domain": value.Config.BaseDomain, "default_entrypoint": value.Config.DefaultEntrypoint, "tls_mode": value.Config.TLSMode, "exposures": exposures, "created_at": formatTime(value.Application.CreatedAt), "updated_at": formatTime(value.Application.UpdatedAt), "config_updated_at": formatTime(value.Config.UpdatedAt)}
+	output := map[string]any{"id": value.Application.Id, "project_id": projectId, "code": value.Application.Code, "name": value.Application.Name, "kind": value.Application.Kind, "rest_api_url": value.Config.RestApiUrl, "rest_api_host_url": value.Config.RestApiHostUrl, "base_domain": value.Config.BaseDomain, "default_entrypoint": value.Config.DefaultEntrypoint, "tls_mode": value.Config.TLSMode, "exposures": exposures, "created_at": formatTime(value.Application.CreatedAt), "updated_at": formatTime(value.Application.UpdatedAt), "config_updated_at": formatTime(value.Config.UpdatedAt)}
 	if value.Service != nil {
 		output["service"] = gatewayServiceOutput(*value.Service)
 	}

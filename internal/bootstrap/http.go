@@ -128,8 +128,8 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		routeManager,
 		transactionRunner,
 	)
-	gatewayCore := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.route, stores.deployment, dockerPathResolver, transactionRunner).
-		WithDefinitionServices(applicationService, serviceService, routeService)
+	gatewayCore := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.deployment, dockerPathResolver, transactionRunner).
+		WithDefinitionServices(applicationService, serviceService)
 	projectInitializationService := projectinitializationsvc.New(projectService, environmentService, gatewayCore, cfg.ProjectInitialization, localDisplay)
 	deploymentService := deploymentsvc.NewCommandService(
 		stores.project,

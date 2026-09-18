@@ -90,6 +90,7 @@ func TestWriteErrorClassifiesErrorsWithoutLeakingCause(t *testing.T) {
 		err        error
 		statusCode int
 		code       string
+		message    string
 	}{
 		{name: "validation", err: apperror.New(apperror.KindValidation, "Invalid JSON body"), statusCode: http.StatusBadRequest, code: "validation_failed"},
 		{name: "unauthorized", err: apperror.New(apperror.KindUnauthorized, ""), statusCode: http.StatusUnauthorized, code: "unauthorized"},
@@ -98,6 +99,7 @@ func TestWriteErrorClassifiesErrorsWithoutLeakingCause(t *testing.T) {
 		{name: "method not allowed", err: apperror.New(apperror.KindMethodNotAllowed, ""), statusCode: http.StatusMethodNotAllowed, code: "method_not_allowed"},
 		{name: "conflict", err: apperror.New(apperror.KindConflict, ""), statusCode: http.StatusConflict, code: "conflict"},
 		{name: "unavailable", err: apperror.New(apperror.KindUnavailable, ""), statusCode: http.StatusServiceUnavailable, code: "service_unavailable"},
+		{name: "unavailable with access context", err: apperror.New(apperror.KindUnavailable, "Traefik REST API is unavailable on the remote host at http://127.0.0.1:8080."), statusCode: http.StatusServiceUnavailable, code: "service_unavailable", message: "Traefik REST API is unavailable on the remote host at http://127.0.0.1:8080."},
 		{name: "internal", err: apperror.Wrap(apperror.KindInternal, "database password", assertError("token=secret")), statusCode: http.StatusInternalServerError, code: "internal_error"},
 	}
 
@@ -122,6 +124,9 @@ func TestWriteErrorClassifiesErrorsWithoutLeakingCause(t *testing.T) {
 			}
 			if response.Code != tc.code || response.RequestId != "request-1" {
 				t.Fatalf("unexpected error response: %+v", response)
+			}
+			if tc.message != "" && response.Error != tc.message {
+				t.Fatalf("error message = %q, want %q", response.Error, tc.message)
 			}
 			if tc.statusCode == http.StatusInternalServerError && (response.Error != "Internal server error." || containsAny(response.Error, "database", "secret", "token")) {
 				t.Fatalf("internal error leaked cause: %+v", response)

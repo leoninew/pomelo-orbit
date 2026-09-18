@@ -873,7 +873,8 @@ export default {
     fields: {
       name: 'Name',
       code: 'Code',
-      restApiUrl: 'Rest API URL',
+      restApiUrl: 'Container REST API URL',
+      restApiHostUrl: 'Host REST API URL',
       baseDomain: 'Base domain',
       defaultEntrypoint: 'HTTP entrypoint',
       tlsMode: 'TLS mode',
@@ -916,6 +917,7 @@ export default {
       code: 'e.g. traefik',
       name: 'e.g. Traefik',
       restApiUrl: 'http://traefik:8080',
+      restApiHostUrl: 'http://127.0.0.1:8080',
       baseDomain: 'e.g. lvh.me',
       defaultEntrypoint: 'web',
       tlsMode: 'none',
@@ -934,6 +936,7 @@ export default {
       componentNameInvalid:
         'Component name must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens',
       restApiUrlInvalid: 'Enter a valid HTTP or HTTPS URL',
+      restApiHostUrlInvalid: 'Enter a valid HTTP or HTTPS URL',
       baseDomainInvalid: 'Enter a valid base domain',
       restReadyTimeoutInvalid: 'Enter seconds from 1 through 300',
       defaultEntrypointInvalid: 'Select web or websecure',

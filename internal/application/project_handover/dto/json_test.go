@@ -68,26 +68,27 @@ func TestDecodeRejectsProjectOwnershipAndUnknownFields(t *testing.T) {
 	}
 }
 
-func TestEncodeDecodeKeepsGatewayNetworkName(t *testing.T) {
+func TestEncodeDecodeOmitsGatewayRuntimeNetworkName(t *testing.T) {
 	document, err := Encode(Package{
 		Format:  Format,
 		Version: FormatVersion,
 		Gateway: &gatewaydto.GatewayDefinition{Config: model.GatewayConfig{
-			NetworkName: "traefik",
+			NetworkName:    "traefik",
+			RestApiHostUrl: model.GatewayRestAPIHostURL,
 		}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(document), `"network_name":"traefik"`) {
-		t.Fatalf("handover document did not use network_name: %s", document)
+	if strings.Contains(string(document), "network_name") || strings.Contains(string(document), "networkName") {
+		t.Fatalf("handover document retained runtime network name: %s", document)
 	}
 
 	decoded, err := Decode(document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if decoded.Gateway == nil || decoded.Gateway.Config.NetworkName != "traefik" {
-		t.Fatalf("gateway network name = %+v, want traefik", decoded.Gateway)
+	if decoded.Gateway == nil || decoded.Gateway.Config.RestApiHostUrl != model.GatewayRestAPIHostURL {
+		t.Fatalf("gateway host endpoint = %+v", decoded.Gateway)
 	}
 }

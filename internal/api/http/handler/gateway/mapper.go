@@ -10,6 +10,7 @@ func gatewayUpdateInput(req *gatewayv1.GatewayUpdateReq) gatewaydto.GatewayUpdat
 	return gatewaydto.GatewayUpdateInput{
 		Name:                    req.Name,
 		RestApiUrl:              req.RestApiUrl,
+		RestApiHostUrl:          req.RestApiHostUrl,
 		RestReadyTimeoutSeconds: intPointer(req.RestReadyTimeoutSeconds),
 		BaseDomain:              req.BaseDomain,
 		DefaultEntrypoint:       req.DefaultEntrypoint,
@@ -67,6 +68,7 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 		Name:                    app.Name,
 		Kind:                    app.Kind,
 		RestApiUrl:              cfg.RestApiUrl,
+		RestApiHostUrl:          cfg.RestApiHostUrl,
 		BaseDomain:              cfg.BaseDomain,
 		CreatedAt:               transport.FormatTime(app.CreatedAt),
 		UpdatedAt:               transport.FormatTime(app.UpdatedAt),

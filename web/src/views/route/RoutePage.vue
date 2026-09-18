@@ -909,27 +909,26 @@
       toast.error(t('route.toast.selectProjectRequired'));
       return;
     }
-    let config;
     try {
-      config = await traefikRouteApi.getConfig(projectId);
+      const config = await traefikRouteApi.getConfig(projectId);
       await loadTargetServices(projectId);
+      Object.assign(form, {
+        name: '',
+        protocol: 'http',
+        domain: config?.base_domain ?? '',
+        path_prefix: '/',
+        target_url: '',
+        custom_target: false,
+        listen_port: undefined,
+        service_id: '',
+        component_name: '',
+        endpoint_protocol: '',
+        endpoint_container_port: undefined,
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.loadFailed'));
       return;
     }
-    Object.assign(form, {
-      name: '',
-      protocol: 'http',
-      domain: config?.base_domain ?? '',
-      path_prefix: '/',
-      target_url: '',
-      custom_target: false,
-      listen_port: undefined,
-      service_id: '',
-      component_name: '',
-      endpoint_protocol: '',
-      endpoint_container_port: undefined,
-    });
     Object.assign(errors, {
       name: '',
       domain: '',

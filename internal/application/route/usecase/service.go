@@ -583,10 +583,7 @@ func (s Service) ListTraefikRoutes(ctx context.Context, userId string, projectId
 	}
 	items, err := s.traefikRouterClient.ListRouters(ctx, projectId, *gw)
 	if err != nil {
-		if s.traefikRouterClient.IsConnectionError(err) {
-			return nil, apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
-		}
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list Traefik routes", err)
+		return nil, s.traefikClientError(err, "Failed to list Traefik routes")
 	}
 	out := make([]routeport.TraefikRouter, 0, len(items))
 	for _, item := range items {
@@ -601,6 +598,13 @@ func (s Service) ListTraefikRoutes(ctx context.Context, userId string, projectId
 		})
 	}
 	return out, nil
+}
+
+func (s Service) traefikClientError(err error, internalMessage string) error {
+	if message, ok := s.traefikRouterClient.TraefikUnavailableMessage(err); ok {
+		return apperror.Wrap(apperror.KindUnavailable, message, err)
+	}
+	return apperror.Wrap(apperror.KindInternal, internalMessage, err)
 }
 
 func (s Service) loadRouteForUser(ctx context.Context, userId, projectId, routeId string) (model.Route, error) {
@@ -669,8 +673,8 @@ func (s Service) PublishSnapshot(ctx context.Context, projectId string) error {
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(gateway.RestApiUrl) == "" {
-		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for route publish")
+	if strings.TrimSpace(gateway.RestApiUrl) == "" || strings.TrimSpace(gateway.RestApiHostUrl) == "" {
+		return apperror.New(apperror.KindValidation, "gateway rest_api_url and rest_api_host_url are required for route publish")
 	}
 	if err := s.routePublisher.WaitUntilReady(ctx, projectId, *gateway, time.Duration(gateway.RestReadyTimeoutSeconds)*time.Second); err != nil {
 		return err
@@ -691,8 +695,8 @@ func (s Service) applyRouteSnapshot(ctx context.Context, projectId string, route
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(gw.RestApiUrl) == "" {
-		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for route publish")
+	if strings.TrimSpace(gw.RestApiUrl) == "" || strings.TrimSpace(gw.RestApiHostUrl) == "" {
+		return apperror.New(apperror.KindValidation, "gateway rest_api_url and rest_api_host_url are required for route publish")
 	}
 	if waitReady {
 		if err := s.routePublisher.WaitUntilReady(ctx, projectId, *gw, time.Duration(gw.RestReadyTimeoutSeconds)*time.Second); err != nil {

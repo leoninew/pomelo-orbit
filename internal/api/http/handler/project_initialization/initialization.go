@@ -26,23 +26,6 @@ func (h Handler) GetStatus(c *gin.Context) {
 	transport.WriteProtoJSON(c, http.StatusOK, initializationResponse(view))
 }
 
-func (h Handler) TestEnvironment(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	var req initv1.ProjectInitializationEnvironmentReq
-	if err := transport.DecodeJSON(c, &req); err != nil {
-		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
-		return
-	}
-	if err := h.service.TestEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), saveEnvironmentInput(&req)); err != nil {
-		transport.WriteError(c, err)
-		return
-	}
-	transport.WriteProtoJSON(c, http.StatusOK, &initv1.ProjectInitializationEnvironmentTestResp{Ok: true})
-}
-
 func (h Handler) SaveEnvironment(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
@@ -61,7 +44,7 @@ func (h Handler) SaveEnvironment(c *gin.Context) {
 	transport.WriteProtoJSON(c, http.StatusOK, initializationResponse(view))
 }
 
-func (h Handler) PrepareWindowsEnvironment(c *gin.Context) {
+func (h Handler) PrepareSSHEnvironment(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -71,35 +54,15 @@ func (h Handler) PrepareWindowsEnvironment(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	result, err := h.service.PrepareWindowsEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), saveEnvironmentInput(&req))
+	result, err := h.service.PrepareSSHEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), saveEnvironmentInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
 	}
-	transport.WriteProtoJSON(c, http.StatusOK, &initv1.ProjectInitializationWindowsCommandResp{
+	transport.WriteProtoJSON(c, http.StatusOK, &initv1.ProjectInitializationSSHCommandResp{
 		Status:    initializationResponse(result.Status),
 		PublicKey: result.PublicKey,
 	})
-}
-
-func (h Handler) BootstrapEnvironment(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	var req initv1.ProjectInitializationBootstrapReq
-	if err := transport.DecodeJSON(c, &req); err != nil {
-		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
-		return
-	}
-	view, err := h.service.BootstrapEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), initdto.BootstrapEnvironmentInput{
-		Username: req.Username, Password: req.Password, PrivateKey: req.PrivateKey, PrivateKeyPassphrase: req.PrivateKeyPassphrase,
-	})
-	if err != nil {
-		transport.WriteError(c, err)
-		return
-	}
-	transport.WriteProtoJSON(c, http.StatusOK, initializationResponse(view))
 }
 
 func (h Handler) ProbeEnvironment(c *gin.Context) {

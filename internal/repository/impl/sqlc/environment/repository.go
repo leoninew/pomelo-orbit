@@ -46,8 +46,9 @@ func (r Repository) EnvironmentByProject(ctx context.Context, projectId string) 
 	return environmentFrom(row), nil
 }
 
-// EnvironmentByTarget finds another Project bound to the same Docker target.
-// A target is exclusive because managed Gateway ports and network are fixed.
+// EnvironmentByTarget finds another active Project bound to the same Docker
+// target. Deprecated Projects retain their historical Environment but release
+// its target for a successor Project.
 func (r Repository) EnvironmentByTarget(ctx context.Context, projectId, targetType, host string, port int) (model.Environment, error) {
 	row, err := r.q(ctx).EnvironmentByTarget(ctx, environmentsqlc.EnvironmentByTargetParams{ProjectId: projectId, TargetType: targetType, Column3: targetType, Host: sql.NullString{String: host, Valid: host != ""}, Port: sql.NullInt64{Int64: int64(port), Valid: port > 0}})
 	if err != nil {
@@ -212,14 +213,14 @@ func environmentWorkspaceRoot(value model.Environment) sql.NullString {
 }
 
 func environmentSSHCredentialId(value model.Environment) sql.NullString {
-	if value.SSH == nil {
+	if value.SSH == nil || value.SSH.CredentialId == "" {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: value.SSH.CredentialId, Valid: true}
 }
 
 func environmentSSHCredentialRevision(value model.Environment) sql.NullInt64 {
-	if value.SSH == nil {
+	if value.SSH == nil || value.SSH.CredentialRevision < 1 {
 		return sql.NullInt64{}
 	}
 	return sql.NullInt64{Int64: value.SSH.CredentialRevision, Valid: true}

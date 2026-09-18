@@ -96,74 +96,36 @@
             <p v-if="environmentSubmitError" class="app-field-error" role="alert">
               {{ environmentSubmitError }}
             </p>
-            <p
-              v-else-if="isRemoteSSH && sshTestPassed"
-              class="text-sm text-green-600 dark:text-green-400"
-            >
-              {{ t('project.initialization.testSSHPassed') }}
-            </p>
             <div class="flex flex-wrap justify-end gap-2">
-              <button
-                v-if="isWindowsSSH"
-                type="button"
-                class="app-button h-9 px-4"
-                :disabled="operating || loadingWindowsCommand"
-                :aria-busy="loadingWindowsCommand"
-                @click="openWindowsCommand"
-              >
-                <LoaderCircle
-                  v-if="loadingWindowsCommand"
-                  class="size-4 animate-spin"
-                  aria-hidden="true"
-                />
-                {{ t('project.initialization.windowsTargetCommand') }}
-              </button>
               <button
                 v-if="isRemoteSSH"
                 type="button"
                 class="app-button h-9 px-4"
-                :disabled="operating"
-                :aria-busy="activeOperation === 'testing'"
-                @click="testSSH"
+                :disabled="operating || loadingSshCommand"
+                :aria-busy="loadingSshCommand"
+                @click="openSshCommand"
               >
                 <LoaderCircle
-                  v-if="activeOperation === 'testing'"
+                  v-if="loadingSshCommand"
                   class="size-4 animate-spin"
                   aria-hidden="true"
                 />
-                {{
-                  activeOperation === 'testing'
-                    ? t('project.initialization.testingSSH')
-                    : t('project.initialization.testSSH')
-                }}
+                {{ t('project.initialization.sshCommand') }}
               </button>
-              <span
-                class="inline-flex"
-                :title="
-                  isRemoteSSH && !sshTestPassed
-                    ? t('project.initialization.saveRequiresSSHTest')
-                    : undefined
-                "
+              <button
+                type="submit"
+                class="app-button-primary h-9 px-4"
+                :disabled="operating || loadingSshCommand"
+                :aria-busy="activeOperation === 'saving'"
               >
-                <button
-                  type="submit"
-                  class="app-button-primary h-9 px-4"
-                  :disabled="operating || (isRemoteSSH && !sshTestPassed)"
-                  :aria-busy="activeOperation === 'saving'"
-                >
-                  <LoaderCircle
-                    v-if="activeOperation === 'saving'"
-                    class="size-4 animate-spin"
-                    aria-hidden="true"
-                  />
-                  {{ t('project.initialization.next') }}
-                  <ArrowRight
-                    v-if="activeOperation !== 'saving'"
-                    class="size-4"
-                    aria-hidden="true"
-                  />
-                </button>
-              </span>
+                <LoaderCircle
+                  v-if="activeOperation === 'saving'"
+                  class="size-4 animate-spin"
+                  aria-hidden="true"
+                />
+                {{ t('project.initialization.next') }}
+                <ArrowRight v-if="activeOperation !== 'saving'" class="size-4" aria-hidden="true" />
+              </button>
             </div>
           </form>
 
@@ -182,7 +144,6 @@
                     v-for="(item, index) in probeChecks"
                     :key="item.key"
                     class="flex items-center gap-3 px-4 py-3 sm:px-5"
-                    :class="probeCheckState(index) === 'error' ? 'bg-destructive/5' : ''"
                   >
                     <div
                       class="flex size-7 shrink-0 items-center justify-center rounded-full"
@@ -198,19 +159,9 @@
                         class="size-4"
                         aria-hidden="true"
                       />
-                      <XCircle
-                        v-else-if="probeCheckState(index) === 'error'"
-                        class="size-4"
-                        aria-hidden="true"
-                      />
                       <CircleDashed v-else class="size-4" aria-hidden="true" />
                     </div>
-                    <span
-                      class="min-w-0 flex-1 text-sm"
-                      :class="
-                        probeCheckState(index) === 'error' ? 'text-destructive' : 'text-foreground'
-                      "
-                    >
+                    <span class="min-w-0 flex-1 text-sm text-foreground">
                       {{ item.label }}
                     </span>
                     <span class="text-xs text-muted-foreground">
@@ -219,40 +170,6 @@
                   </li>
                 </ul>
               </div>
-            </div>
-
-            <div
-              v-if="canBootstrapHost && probeStatus !== 'succeeded'"
-              class="space-y-3 rounded-lg border border-border p-4"
-            >
-              <div>
-                <h3 class="text-sm font-medium text-foreground">
-                  {{ t('project.environment.initializeTitle') }}
-                </h3>
-                <p class="mt-1 text-xs text-muted-foreground">
-                  {{ t('project.initialization.bootstrapHint') }}
-                </p>
-              </div>
-              <EnvironmentBootstrapFields
-                :model-value="bootstrapForm"
-                :errors="bootstrapErrors"
-                :disabled="operating"
-                id-prefix="initialization-bootstrap"
-              />
-              <button
-                type="button"
-                class="app-button h-9 px-4"
-                :disabled="operating"
-                :aria-busy="activeOperation === 'bootstrapping'"
-                @click="bootstrapEnvironment"
-              >
-                <LoaderCircle
-                  v-if="activeOperation === 'bootstrapping'"
-                  class="size-4 animate-spin"
-                  aria-hidden="true"
-                />
-                {{ t('project.environment.initialize') }}
-              </button>
             </div>
 
             <hr class="border-border" />
@@ -557,11 +474,11 @@
       </div>
     </section>
 
-    <WindowsSshInitializationDialog
-      v-model:open="showWindowsCommandDialog"
-      :command="windowsCommand"
-      :loading="loadingWindowsCommand"
-      :error="windowsCommandError"
+    <SshInitializationCommandDialog
+      v-model:open="showSshCommandDialog"
+      :command="sshCommand"
+      :loading="loadingSshCommand"
+      :error="sshCommandError"
     />
   </div>
 </template>
@@ -574,9 +491,8 @@
     ChevronLeft,
     CircleDashed,
     LoaderCircle,
-    XCircle,
   } from '@lucide/vue';
-  import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+  import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import {
@@ -589,7 +505,7 @@
     StepperTrigger,
   } from 'reka-ui';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import WindowsSshInitializationDialog from '@/components/WindowsSshInitializationDialog.vue';
+  import SshInitializationCommandDialog from '@/components/SshInitializationCommandDialog.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -601,15 +517,9 @@
   import { useProjectStore } from '@/stores/project';
   import { resolveInitializationCompletionRedirect } from '@/router/projectReadiness';
   import { formatTime } from '@/utils/time';
+  import { buildLinuxSshInitializationCommand } from '@/utils/linuxSshCommand';
   import { buildWindowsSshInitializationCommand } from '@/utils/windowsSshCommand';
-  import EnvironmentBootstrapFields from '@/views/environment/EnvironmentBootstrapFields.vue';
   import EnvironmentTargetFields from '@/views/environment/EnvironmentTargetFields.vue';
-  import {
-    emptyEnvironmentBootstrapForm,
-    emptyEnvironmentBootstrapFormErrors,
-    environmentBootstrapRequestFromForm,
-    validateEnvironmentBootstrapForm,
-  } from '@/views/environment/environmentBootstrapForm';
   import {
     assignEnvironmentFormErrors,
     emptyEnvironmentForm,
@@ -638,24 +548,17 @@
   const initializationStore = useProjectInitializationStore();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
 
-  const activeOperation = ref<
-    'idle' | 'testing' | 'saving' | 'probing' | 'bootstrapping' | 'creating'
-  >('idle');
-  const sshTestSignature = ref('');
+  const activeOperation = ref<'idle' | 'saving' | 'probing' | 'creating'>('idle');
   const loadError = ref('');
   const environmentSubmitError = ref('');
   const gatewaySubmitError = ref('');
   const gatewayHydrated = ref(false);
-  const probeCheckIndex = ref(-1);
-  let probeCheckTimer: ReturnType<typeof setInterval> | undefined;
-  const loadingWindowsCommand = ref(false);
-  const showWindowsCommandDialog = ref(false);
-  const windowsCommand = ref('');
-  const windowsCommandError = ref('');
+  const loadingSshCommand = ref(false);
+  const showSshCommandDialog = ref(false);
+  const sshCommand = ref('');
+  const sshCommandError = ref('');
   const environmentForm = reactive(emptyEnvironmentForm());
   const environmentErrors = reactive(emptyEnvironmentFormErrors());
-  const bootstrapForm = reactive(emptyEnvironmentBootstrapForm());
-  const bootstrapErrors = reactive(emptyEnvironmentBootstrapFormErrors());
   const gatewayForm = reactive<GatewayConfigForm>(emptyGatewayConfigForm());
   const gatewayErrors = reactive<GatewayConfigFormErrors>({});
   const noAcmeProfileValue = '__acme_disabled__';
@@ -679,24 +582,6 @@
   const loading = computed(() => initializationStore.loading);
   const localWorkspaceRoot = computed(() => status.value?.defaults?.local_workspace_root || '');
   const isRemoteSSH = computed(() => environmentForm.targetType === 'ssh');
-  const isWindowsSSH = computed(
-    () => environmentForm.targetType === 'ssh' && environmentForm.platform === 'windows'
-  );
-  const sshTargetSignature = computed(() => {
-    if (!isRemoteSSH.value) {
-      return '';
-    }
-    return [
-      environmentForm.platform,
-      environmentForm.host.trim(),
-      String(environmentForm.port),
-      environmentForm.username.trim(),
-      environmentForm.workspaceRoot.trim(),
-    ].join('\0');
-  });
-  const sshTestPassed = computed(
-    () => isRemoteSSH.value && sshTestSignature.value === sshTargetSignature.value
-  );
   const localDisplay = computed(() => {
     const defaults = status.value?.defaults;
     if (!defaults) {
@@ -709,13 +594,6 @@
       username: defaults.local_username || '',
     };
   });
-  const canBootstrapHost = computed(
-    () =>
-      status.value?.environment?.target_type === 'ssh' &&
-      status.value.environment.ssh?.platform === 'linux' &&
-      !status.value.environment.ssh?.host_key_fingerprint &&
-      status.value.environment.last_probe_status !== 'succeeded'
-  );
   const acmeProfileValue = computed(() => gatewayForm.acme_profile || noAcmeProfileValue);
   const stepItems = computed(() => [
     {
@@ -777,24 +655,14 @@
     return items;
   });
 
-  type ProbeCheckState = 'pending' | 'checking' | 'success' | 'error';
+  type ProbeCheckState = 'pending' | 'checking' | 'success';
 
-  function probeCheckState(index: number): ProbeCheckState {
+  function probeCheckState(_index: number): ProbeCheckState {
     if (isProbing.value) {
-      if (index < probeCheckIndex.value) {
-        return 'success';
-      }
-      return index === probeCheckIndex.value ? 'checking' : 'pending';
+      return 'checking';
     }
     if (probeStatus.value === 'succeeded') {
       return 'success';
-    }
-    if (probeStatus.value === 'failed') {
-      const failedIndex = failedProbeCheckIndex();
-      if (index < failedIndex) {
-        return 'success';
-      }
-      return index === failedIndex ? 'error' : 'pending';
     }
     return 'pending';
   }
@@ -803,9 +671,6 @@
     const state = probeCheckState(index);
     if (state === 'success') {
       return 'bg-green-500/10 text-green-600 dark:text-green-400';
-    }
-    if (state === 'error') {
-      return 'bg-destructive/10 text-destructive';
     }
     if (state === 'checking') {
       return 'bg-primary/10 text-primary';
@@ -817,37 +682,6 @@
     return t(`project.initialization.probeCheckStates.${probeCheckState(index)}`);
   }
 
-  function failedProbeCheckIndex() {
-    const diagnostic = probeDiagnostic.value.toLowerCase();
-    const key = diagnostic.includes('compose')
-      ? 'compose'
-      : diagnostic.includes('wsl') || diagnostic.includes('docker desktop')
-        ? 'wsl'
-        : diagnostic.includes('workspace')
-          ? 'workspace'
-          : diagnostic.includes('docker')
-            ? 'docker'
-            : 'target';
-    const index = probeChecks.value.findIndex((item) => item.key === key);
-    return index >= 0 ? index : Math.max(0, probeCheckIndex.value);
-  }
-
-  function clearProbeCheckTimer() {
-    if (probeCheckTimer) {
-      clearInterval(probeCheckTimer);
-      probeCheckTimer = undefined;
-    }
-  }
-
-  function startProbeChecks() {
-    clearProbeCheckTimer();
-    probeCheckIndex.value = 0;
-    probeCheckTimer = setInterval(() => {
-      if (probeCheckIndex.value < probeChecks.value.length - 1) {
-        probeCheckIndex.value += 1;
-      }
-    }, 700);
-  }
   const canContinueToGateway = computed(
     () =>
       status.value?.status === 'needs_gateway' &&
@@ -855,43 +689,43 @@
       !environmentHasUnsavedChanges.value
   );
 
-  async function openWindowsCommand() {
-    windowsCommandError.value = '';
+  async function openSshCommand() {
+    sshCommandError.value = '';
     const projectId = projectStore.activeProjectId;
-    if (!projectId || !isWindowsSSH.value) {
+    if (!projectId || !isRemoteSSH.value) {
       return;
     }
     if (!validateEnvironment()) {
       return;
     }
-    showWindowsCommandDialog.value = true;
-    loadingWindowsCommand.value = true;
-    windowsCommand.value = '';
+    showSshCommandDialog.value = true;
+    loadingSshCommand.value = true;
+    sshCommand.value = '';
     try {
-      const result = await initializationStore.prepareWindowsEnvironment(
+      const result = await initializationStore.prepareSSHEnvironment(
         projectId,
         initializationEnvironmentRequestFromForm(environmentForm)
       );
       if (!result.status || !result.public_key) {
-        throw new Error(t('project.initialization.windowsTargetCommandFailed'));
+        throw new Error(t('project.initialization.sshCommandFailed'));
       }
-      sshTestSignature.value = '';
       hydrate(result.status);
       selectedStep.value = 1;
-      windowsCommand.value = buildWindowsSshInitializationCommand({
-        host: environmentForm.host,
-        port: environmentForm.port,
-        username: environmentForm.username,
-        workspaceRoot: environmentForm.workspaceRoot,
-        publicKey: result.public_key,
-      });
+      sshCommand.value =
+        environmentForm.platform === 'windows'
+          ? buildWindowsSshInitializationCommand({
+              host: environmentForm.host,
+              port: environmentForm.port,
+              username: environmentForm.username,
+              workspaceRoot: environmentForm.workspaceRoot,
+              publicKey: result.public_key,
+            })
+          : buildLinuxSshInitializationCommand({ publicKey: result.public_key });
     } catch (error: unknown) {
-      windowsCommandError.value =
-        error instanceof Error
-          ? error.message
-          : t('project.initialization.windowsTargetCommandFailed');
+      sshCommandError.value =
+        error instanceof Error ? error.message : t('project.initialization.sshCommandFailed');
     } finally {
-      loadingWindowsCommand.value = false;
+      loadingSshCommand.value = false;
     }
   }
 
@@ -906,19 +740,15 @@
   }
 
   function resetWorkspace() {
-    clearProbeCheckTimer();
-    probeCheckIndex.value = -1;
     gatewayHydrated.value = false;
-    sshTestSignature.value = '';
     selectedStep.value = 1;
     Object.assign(environmentForm, emptyEnvironmentForm());
     assignEnvironmentFormErrors(environmentErrors, emptyEnvironmentFormErrors());
-    Object.assign(bootstrapForm, emptyEnvironmentBootstrapForm());
-    Object.assign(bootstrapErrors, emptyEnvironmentBootstrapFormErrors());
     Object.assign(gatewayForm, emptyGatewayConfigForm());
-    windowsCommand.value = '';
-    windowsCommandError.value = '';
-    loadingWindowsCommand.value = false;
+    showSshCommandDialog.value = false;
+    sshCommand.value = '';
+    sshCommandError.value = '';
+    loadingSshCommand.value = false;
   }
 
   function openProject(id: string) {
@@ -972,22 +802,15 @@
     if (!view) {
       return;
     }
-    const testedTarget = sshTestSignature.value;
     Object.assign(
       environmentForm,
       hydrateEnvironmentForm(view.environment, view.defaults?.local_workspace_root || '')
     );
-    if (view.environment?.ssh?.username && !bootstrapForm.username) {
-      bootstrapForm.username = view.environment.ssh.username;
-    }
     if (!gatewayHydrated.value && view.defaults) {
       Object.assign(gatewayForm, gatewayConfigFormFromDefaults(view.defaults));
       gatewayHydrated.value = true;
     }
     selectedStep.value = stepFromStatus(view.status);
-    if (environmentForm.targetType !== 'ssh' || testedTarget !== sshTargetSignature.value) {
-      sshTestSignature.value = '';
-    }
   }
 
   function validateEnvironment() {
@@ -1001,34 +824,6 @@
       })
     );
     return !environmentFormHasErrors(environmentErrors);
-  }
-
-  async function testSSH() {
-    environmentSubmitError.value = '';
-    if (!validateEnvironment()) {
-      return;
-    }
-    const id = projectStore.activeProjectId;
-    if (!id) {
-      return;
-    }
-    activeOperation.value = 'testing';
-    try {
-      await executeOperation(async () => {
-        await initializationStore.testEnvironment(
-          id,
-          initializationEnvironmentRequestFromForm(environmentForm)
-        );
-        sshTestSignature.value = sshTargetSignature.value;
-        toast.success(t('project.initialization.testSSHPassed'));
-      });
-    } catch (error: unknown) {
-      sshTestSignature.value = '';
-      environmentSubmitError.value =
-        error instanceof Error ? error.message : t('project.initialization.testSSHFailed');
-    } finally {
-      activeOperation.value = 'idle';
-    }
   }
 
   async function saveEnvironment() {
@@ -1048,52 +843,12 @@
           initializationEnvironmentRequestFromForm(environmentForm)
         );
         hydrate(view);
+        selectedStep.value = 2;
         toast.success(t('project.initialization.saved'));
       });
     } catch (error: unknown) {
       environmentSubmitError.value =
         error instanceof Error ? error.message : t('project.initialization.saveFailed');
-    } finally {
-      activeOperation.value = 'idle';
-    }
-  }
-
-  async function bootstrapEnvironment() {
-    environmentSubmitError.value = '';
-    Object.assign(
-      bootstrapErrors,
-      validateEnvironmentBootstrapForm(bootstrapForm, {
-        username: t('project.environment.validation.bootstrapUsername'),
-        password: t('project.environment.validation.bootstrapPassword'),
-        privateKey: t('project.environment.validation.bootstrapPrivateKey'),
-      })
-    );
-    if (bootstrapErrors.username || bootstrapErrors.credential) {
-      return;
-    }
-    const id = projectStore.activeProjectId;
-    if (!id) {
-      return;
-    }
-    if (environmentFormDirty(environmentForm, status.value?.environment)) {
-      await saveEnvironment();
-      if (environmentSubmitError.value) {
-        return;
-      }
-    }
-    activeOperation.value = 'bootstrapping';
-    try {
-      await executeOperation(async () => {
-        const view = await initializationStore.bootstrapEnvironment(
-          id,
-          environmentBootstrapRequestFromForm(bootstrapForm)
-        );
-        hydrate(view);
-        toast.success(t('project.environment.initialized'));
-      });
-    } catch (error: unknown) {
-      environmentSubmitError.value =
-        error instanceof Error ? error.message : t('project.environment.initializeFailed');
     } finally {
       activeOperation.value = 'idle';
     }
@@ -1112,7 +867,6 @@
       }
     }
     activeOperation.value = 'probing';
-    startProbeChecks();
     try {
       await executeOperation(async () => {
         const view = await initializationStore.probeEnvironment(id);
@@ -1129,7 +883,6 @@
       environmentSubmitError.value =
         error instanceof Error ? error.message : t('project.initialization.probeFailed');
     } finally {
-      clearProbeCheckTimer();
       activeOperation.value = 'idle';
     }
   }
@@ -1200,8 +953,6 @@
   }
 
   onMounted(() => openProject(projectStore.activeProjectId ?? ''));
-
-  onUnmounted(clearProbeCheckTimer);
 
   watch(
     () => projectStore.activeProjectId,

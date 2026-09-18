@@ -1,6 +1,6 @@
 import type {
   EnvironmentResp,
-  ProjectEnvironmentInitializeReq,
+  ProjectEnvironmentSSHCommandResp,
   ProjectEnvironmentUpdateReq,
 } from '@/gen/proto/orbit/v1/environment/environment';
 import request, { remoteRequestConfig } from '@/utils/request';
@@ -22,11 +22,12 @@ export const projectEnvironmentApi = {
     );
   },
 
-  initialize(projectId: string, data: ProjectEnvironmentInitializeReq): Promise<EnvironmentResp> {
-    return request.post(
-      '/api/environment/initialize',
-      data,
-      remoteRequestConfig({ params: { project_id: projectId } })
-    );
+  prepareSSHCommand(
+    projectId: string,
+    data: ProjectEnvironmentUpdateReq
+  ): Promise<ProjectEnvironmentSSHCommandResp> {
+    return request.post('/api/environment/ssh-command', data, {
+      params: { project_id: projectId },
+    });
   },
 };

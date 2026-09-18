@@ -59,9 +59,7 @@ export interface EnvironmentLocalTargetReq {
   workspace_root: string;
 }
 
-export interface ProjectEnvironmentInitializeReq {
-  username: string;
-  password: string;
-  private_key: string;
-  private_key_passphrase: string;
+export interface ProjectEnvironmentSSHCommandResp {
+  environment: EnvironmentResp | undefined;
+  public_key: string;
 }

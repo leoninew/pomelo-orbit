@@ -65,20 +65,9 @@ export interface ProjectInitializationEnvironmentReq {
   ssh?: EnvironmentSSHTargetReq | undefined;
 }
 
-export interface ProjectInitializationEnvironmentTestResp {
-  ok: boolean;
-}
-
-export interface ProjectInitializationWindowsCommandResp {
+export interface ProjectInitializationSSHCommandResp {
   status: ProjectInitializationStatusResp | undefined;
   public_key: string;
-}
-
-export interface ProjectInitializationBootstrapReq {
-  username: string;
-  password: string;
-  private_key: string;
-  private_key_passphrase: string;
 }
 
 export interface ProjectInitializationGatewayReq {

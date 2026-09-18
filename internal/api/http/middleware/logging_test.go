@@ -390,11 +390,11 @@ func TestLogRequestRedactsDeploymentSSHSecrets(t *testing.T) {
 	}
 }
 
-func TestLogRequestRedactsProjectInitializationSSHSecrets(t *testing.T) {
+func TestLogRequestRedactsSSHSecrets(t *testing.T) {
 	privateKey := "private-key-material"
 	passphrase := "private-key-passphrase"
 	requestBody := `{"private_key":"` + privateKey + `","private_key_passphrase":"` + passphrase + `"}`
-	entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 256}, http.MethodPost, "/api/project-initialization/bootstrap?project_id=p", "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 256}, http.MethodPost, "/api/project-initialization/environment/ssh-command?project_id=p", "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	started, _ := assertStartedAndCompleted(t, entries)

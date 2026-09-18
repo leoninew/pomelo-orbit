@@ -1,7 +1,7 @@
 <template>
   <AppDialog
     v-model:open="openModel"
-    :title="t('project.initialization.windowsTargetCommandTitle')"
+    :title="t('project.initialization.sshCommandTitle')"
     width-class="w-[min(820px,calc(100vw-32px))]"
     body-class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4"
     content-class="max-h-[calc(100vh-32px)] flex flex-col"
@@ -17,13 +17,13 @@
       />
     </div>
     <p v-else class="text-sm text-muted-foreground" aria-live="polite">
-      {{ t('project.initialization.windowsTargetCommandLoading') }}
+      {{ t('project.initialization.sshCommandLoading') }}
     </p>
     <p v-if="error" class="app-field-error" role="alert">{{ error }}</p>
     <template #footer>
       <button type="button" class="app-button" :disabled="loading || !command" @click="copyCommand">
         <Copy class="size-4" aria-hidden="true" />
-        {{ t('project.initialization.windowsTargetCopyCommand') }}
+        {{ t('project.initialization.sshCommandCopy') }}
       </button>
       <button type="button" class="app-button-primary" @click="openModel = false">
         {{ t('common.close') }}
@@ -64,9 +64,9 @@
     }
     try {
       await navigator.clipboard.writeText(props.command);
-      toast.success(t('project.initialization.windowsTargetCommandCopied'));
+      toast.success(t('project.initialization.sshCommandCopied'));
     } catch {
-      toast.error(t('project.initialization.windowsTargetCopyFailed'));
+      toast.error(t('project.initialization.sshCommandCopyFailed'));
     }
   }
 </script>

@@ -127,10 +127,10 @@ func TestSaveEnvironmentPersistsSSHTarget(t *testing.T) {
 	}
 }
 
-func TestPrepareWindowsEnvironmentPersistsTargetBeforeConnectionCheck(t *testing.T) {
+func TestPrepareSSHEnvironmentPersistsTargetBeforeProbe(t *testing.T) {
 	service, environments := newInitializationService(t)
 	environments.publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOrbitDeploymentKey"
-	result, err := service.PrepareWindowsEnvironment(context.Background(), "user-1", "project-1", initdto.SaveEnvironmentInput{
+	result, err := service.PrepareSSHEnvironment(context.Background(), "user-1", "project-1", initdto.SaveEnvironmentInput{
 		TargetType: model.EnvironmentTargetTypeSSH,
 		SSH: &environmentdto.SSHTargetInput{
 			Platform: model.EnvironmentPlatformWindows, Host: "192.0.2.10", Port: 22,
@@ -203,15 +203,8 @@ func (f *fakeInitEnvironment) EnvironmentForUser(context.Context, string, string
 	return *f.item, nil
 }
 
-func (f *fakeInitEnvironment) TestSSHReachability(context.Context, string, string, environmentdto.SSHTargetInput) error {
-	return nil
-}
-
-func (f *fakeInitEnvironment) PrepareWindowsEnvironment(_ context.Context, _ string, projectId string, input environmentdto.SSHTargetInput) (environmentdto.View, string, error) {
-	targetType := model.EnvironmentTargetTypeSSH
-	view, err := f.SaveInitialization(context.Background(), "", projectId, environmentdto.UpdateInput{
-		TargetType: &targetType, SSH: &input,
-	})
+func (f *fakeInitEnvironment) PrepareSSHEnvironment(_ context.Context, _ string, projectId string, input environmentdto.UpdateInput) (environmentdto.View, string, error) {
+	view, err := f.SaveInitialization(context.Background(), "", projectId, input)
 	if err != nil {
 		return environmentdto.View{}, "", err
 	}
@@ -241,17 +234,6 @@ func (f *fakeInitEnvironment) SaveInitialization(_ context.Context, _ string, pr
 	}
 	f.item = &view
 	return view, nil
-}
-
-func (f *fakeInitEnvironment) InitializeForUser(context.Context, string, string, environmentdto.InitializeInput) (environmentdto.View, error) {
-	if f.item == nil {
-		return environmentdto.View{}, apperror.New(apperror.KindNotFound, "Project environment not found")
-	}
-	revision := f.item.TargetRevision
-	status := model.EnvironmentProbeStatusSucceeded
-	f.item.LastProbeRevision = &revision
-	f.item.LastProbeStatus = &status
-	return *f.item, nil
 }
 
 func (f *fakeInitEnvironment) ProbeForUser(context.Context, string, string) (environmentdto.View, error) {

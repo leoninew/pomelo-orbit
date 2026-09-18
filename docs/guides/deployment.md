@@ -33,18 +33,18 @@ Environment 的 target type 是显式 `local | ssh`：
 
 ## 配置与 Probe
 
-创建 Project 时只填写名称和编码。Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。local 不创建 `environment_credential`；选择 SSH 后 Orbit 才生成并保存部署密钥。Wizard 在保存 Environment 前即可读取公钥，供 Windows 初始化命令使用。active Linux SSH target 显示“初始化部署主机”入口：输入能登录目标的 SSH 用户与一次性密码或私钥后，Orbit 在该连接内完成初始化。一次性认证不写入数据库、响应、MCP 或日志。
+创建 Project 时只填写名称和编码。Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。local 不创建 `environment_credential`。SSH target 可以先保存为未初始化状态；用户在完整表单后点击“生成初始化命令”时，Orbit 在同一写事务中保存 target，并创建或复用该 Environment 的受管密钥。重复生成命令始终返回同一有效公钥，保存、编辑、状态读取和 Probe 都不会隐式创建或轮换密钥。
 
-Docker Engine/Compose（Windows 上包括 Docker Desktop、WSL2 Linux engine）是 SSH target 的外部前置条件。Linux 自动初始化会先检查配置 SSH user 的 Docker daemon/Compose、bootstrap user 的 passwordless `sudo` 及 OpenSSH 公钥认证能力；不满足时直接失败并给出诊断。它只按需写入 Orbit 的部署公钥和 `.pomelo-orbit` 工作目录，不安装、启停或配置 Docker/Compose/Docker Desktop/WSL，不修改 Docker 用户组、sshd、firewall 或 Docker 网络。
+Linux 和 Windows SSH target 都在 Wizard 与已保存的 Environment detail 中提供可复制的初始化命令。用户必须通过云控制台、已有 SSH 登录或其他带外方式在目标端执行命令，随后回到页面运行 Probe。Linux Bash 命令仅幂等创建当前用户的 `~/.ssh`、修正 `700`/`600` 权限，并在缺失时追加 Orbit 公钥到 `authorized_keys`；不使用 `sudo`，不修改 `sshd`、Docker、Docker Compose、Docker 用户组或防火墙。Windows PowerShell 命令仍须在目标 Windows 主机的管理员 PowerShell 执行，用于准备 Windows OpenSSH、受管公钥、工作目录和 Docker Desktop 前置条件。
 
-Windows SSH target 由 Web Wizard 和已保存的 Windows SSH Environment detail 提供可复制的 PowerShell helper。用户须在目标 Windows 主机的管理员 PowerShell 执行该命令；命令会按当前端口安装并启动 OpenSSH Server、创建防火墙规则、通过 SSH 写入受管公钥和工作目录，并检查 WSL2/Docker Desktop/Linux containers/Compose。执行后仍须回到页面完成 SSH 测试和 Environment Probe。Docker Desktop 与 WSL2 仍须由目标主机准备好。
+Docker Engine/Compose（Windows 上包括 Docker Desktop、WSL2 Linux engine）是 SSH target 的外部前置条件。Orbit 不接收、读取或持久化操作者个人私钥、密码或一次性 bootstrap 认证。未生成初始化命令时，SSH Probe 会写入明确的恢复诊断且不会尝试裸网络连接或生成密钥。
 
-“环境”是独立页面，始终对应顶部当前 Project；项目详情可跳转到该页面。local Probe 只检查控制面 Docker 与 Docker Compose。SSH 首次 Probe 使用生成的私钥认证并记录当次 host key `SHA256:` fingerprint，后续 Probe 和部署严格校验该指纹。SSH Probe 随后运行固定的 Docker 先决条件检查：
+“环境”是独立页面，始终对应顶部当前 Project；项目详情可跳转到该页面。local Probe 只检查控制面 Docker 与 Docker Compose。SSH 首次 Probe 使用受管私钥认证并记录当次 host key `SHA256:` fingerprint，后续 Probe 和部署严格校验该指纹。SSH Probe 随后运行固定的 Docker 先决条件检查：
 
 - Linux：验证 `docker`、Docker Engine、`docker compose` 与 Docker daemon。
 - Windows：验证 native OpenSSH 可调用 `wsl.exe`、存在 WSL2 `docker-desktop`，并通过宿主机 `docker.exe` 验证 Docker Desktop Engine、Compose、daemon 和 Server OS 为 `linux`。部署与 Traefik REST 同样在 noninteractive PowerShell 中调用 `docker.exe` / `curl.exe`，不进入 Docker Desktop 内部发行版执行 Compose。
 
-SSH Probe 不使用密码认证、PTY、端口转发或用户输入的远端命令。Linux 自动初始化仅在一次性 bootstrap session 中使用用户提供的密码或私钥，随后仍由受管私钥 Probe；网络、认证和 Docker 失败将记录为脱敏诊断。切换 target type 或修改 SSH target/工作目录会递增 Environment target revision。SSH target 变更会清除已记录指纹，旧 Probe 结果不会覆盖新配置。
+SSH Probe 不使用密码认证、PTY、端口转发或用户输入的远端命令；网络、认证和 Docker 失败将记录为脱敏诊断。切换 target type 或修改 SSH target/工作目录会递增 Environment target revision。SSH target 变更会清除已记录指纹，旧 Probe 结果不会覆盖新配置。
 
 ## 网络与 Gateway
 

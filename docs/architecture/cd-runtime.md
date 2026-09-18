@@ -22,11 +22,13 @@ Project
 
 Environment target 是 Project 的独占部署边界：local target 全局唯一，SSH target 按精确 host + port 唯一。这样固定 Gateway 端口和共享 `traefik` 网络不会被多个 Project 同时占用。
 
-Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志、证书同步和 Traefik REST 通过同一个 target runtime 执行。Service 目录统一为 `<workspace_root>/deployment/<service-code>`；Pipeline 在控制面本地执行时使用同一根下的 `<workspace_root>/pipeline`，不把 SSH 远端路径作为本地 Docker bind source。local Probe 只验证控制面 Docker/Compose；SSH Probe 验证认证、pinned host key 和目标 Docker prerequisites。
+Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志、证书同步和 Traefik REST 通过同一个 target runtime 执行。Service 目录统一为 `<workspace_root>/deployment/<service-code>`；Pipeline 在控制面本地执行时使用同一根下的 `<workspace_root>/pipeline`，不把 SSH 远端路径作为本地 Docker bind source。local Probe 只验证控制面 Docker/Compose；SSH Probe 使用 Environment binding 的受管私钥验证认证、pinned host key 和目标 Docker prerequisites。
 
 Deployment 将 `environment_id`、Environment `target_type`、target revision 与可选 Gateway Application identity 保存为正式不可变列。SSH deployment 额外保存 SSH Credential identity/revision；local deployment 的 SSH snapshot 为空。`options_json` 只保存命令选项和 Gateway 配置快照；worker 在执行前以正式列核对当前 Environment，目标变更后的排队任务直接失败，不能落到其他 Project 或新目标。
 
 Environment Probe 在 HTTP 请求事务外执行 target I/O。Probe 完成后使用带 `target_revision` 条件的单条更新写入结果，旧配置上的探测不会覆盖新配置状态；单表更新本身是原子操作，不额外引入应用层事务编排。
+
+SSH 初始化命令是普通 HTTP 写事务内的无远端 I/O 动作：它以提交的完整 SSH target 更新 Environment，并只在 binding 缺失或失效时创建 `environment_credential`。有效 binding 会原样复用。保存、编辑和 Probe 均不隐式生成密钥；未初始化 SSH target 的 Probe 仅写入“先生成并执行初始化命令”的失败诊断，不启动 SSH runner。
 
 ## GatewayConfig 与部署
 

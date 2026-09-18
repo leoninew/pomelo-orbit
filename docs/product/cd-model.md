@@ -25,11 +25,11 @@ Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CI
 Environment 的 target type 是显式联合：
 
 - `local`：在 Orbit 控制面宿主机的 Docker daemon 上执行，工作目录为该 Environment 保存的 `workspace_root`；`~` / `~/...` 在使用时展开为控制面进程用户主目录。它不保存 SSH host、用户、私钥、host key 或 SSH 初始化认证。
-- `ssh`：Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它保存平台、SSH target、`environment_credential` 绑定与 host-key fingerprint，工作目录同样由该 Environment 保存的 `workspace_root` 提供；`~` / `~/...` 在使用时展开为远端登录用户主目录。
+- `ssh`：Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。完整 SSH target 可以先保存为未初始化状态；用户显式生成初始化命令时才创建或复用其 `environment_credential` binding。命令执行并通过首次 Probe 后才记录 host-key fingerprint。工作目录同样由该 Environment 保存的 `workspace_root` 提供；`~` / `~/...` 在使用时展开为远端登录用户主目录。
 
-一个 Docker target 只能绑定一个 Project。`local` target 全局独占；`ssh` target 按精确的 host + port 独占。Gateway 使用固定端口和共享 `traefik` 网络，保存 Environment 时若发现其他 Project 已绑定同一 target 会直接拒绝。
+一个 Docker target 只能绑定一个活跃 Project。`local` target 全局独占；`ssh` target 按精确的 host + port 独占。已废弃 Project 保留其历史 Environment，但不再占用 target；Gateway 使用固定端口和共享 `traefik` 网络，保存 Environment 时若发现其他活跃 Project 已绑定同一 target 会直接拒绝。
 
-`ssh` 到 `127.0.0.1` 仍是 SSH target，必须使用密钥认证和 host-key pinning，不会转换为 `local`。不支持 macOS、其他 Windows Docker 形态或任意 SSH command 执行。部署私钥只属于 SSH Environment，存在 `environment_credential`，不能通过仓库凭据 API、MCP 或日志读取。SSH 连接不支持密码认证、交互式 shell、PTY 或端口转发。
+`ssh` 到 `127.0.0.1` 仍是 SSH target，必须使用密钥认证和 host-key pinning，不会转换为 `local`。保存、编辑、状态读取和 Probe 不创建、轮换或替换部署密钥；未生成初始化命令时 Probe 返回可恢复诊断。部署私钥只属于 SSH Environment，存在 `environment_credential`，不能通过仓库凭据 API、MCP 或日志读取。SSH 连接不支持密码认证、交互式 shell、PTY 或端口转发，也不接收操作者个人私钥。
 
 镜像 registry、登录方式和多 registry 配置是宿主机责任，不属于 Orbit Project 或 Environment 配置。
 

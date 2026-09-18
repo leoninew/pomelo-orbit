@@ -490,51 +490,7 @@ func (x *ProjectInitializationEnvironmentReq) GetSsh() *environment.EnvironmentS
 	return nil
 }
 
-type ProjectInitializationEnvironmentTestResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ProjectInitializationEnvironmentTestResp) Reset() {
-	*x = ProjectInitializationEnvironmentTestResp{}
-	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ProjectInitializationEnvironmentTestResp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ProjectInitializationEnvironmentTestResp) ProtoMessage() {}
-
-func (x *ProjectInitializationEnvironmentTestResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ProjectInitializationEnvironmentTestResp.ProtoReflect.Descriptor instead.
-func (*ProjectInitializationEnvironmentTestResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_project_initialization_project_initialization_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *ProjectInitializationEnvironmentTestResp) GetOk() bool {
-	if x != nil {
-		return x.Ok
-	}
-	return false
-}
-
-type ProjectInitializationWindowsCommandResp struct {
+type ProjectInitializationSSHCommandResp struct {
 	state         protoimpl.MessageState           `protogen:"open.v1"`
 	Status        *ProjectInitializationStatusResp `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
 	PublicKey     string                           `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
@@ -542,21 +498,21 @@ type ProjectInitializationWindowsCommandResp struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ProjectInitializationWindowsCommandResp) Reset() {
-	*x = ProjectInitializationWindowsCommandResp{}
-	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[6]
+func (x *ProjectInitializationSSHCommandResp) Reset() {
+	*x = ProjectInitializationSSHCommandResp{}
+	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ProjectInitializationWindowsCommandResp) String() string {
+func (x *ProjectInitializationSSHCommandResp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ProjectInitializationWindowsCommandResp) ProtoMessage() {}
+func (*ProjectInitializationSSHCommandResp) ProtoMessage() {}
 
-func (x *ProjectInitializationWindowsCommandResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[6]
+func (x *ProjectInitializationSSHCommandResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -567,89 +523,21 @@ func (x *ProjectInitializationWindowsCommandResp) ProtoReflect() protoreflect.Me
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ProjectInitializationWindowsCommandResp.ProtoReflect.Descriptor instead.
-func (*ProjectInitializationWindowsCommandResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_project_initialization_project_initialization_proto_rawDescGZIP(), []int{6}
+// Deprecated: Use ProjectInitializationSSHCommandResp.ProtoReflect.Descriptor instead.
+func (*ProjectInitializationSSHCommandResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_project_initialization_project_initialization_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *ProjectInitializationWindowsCommandResp) GetStatus() *ProjectInitializationStatusResp {
+func (x *ProjectInitializationSSHCommandResp) GetStatus() *ProjectInitializationStatusResp {
 	if x != nil {
 		return x.Status
 	}
 	return nil
 }
 
-func (x *ProjectInitializationWindowsCommandResp) GetPublicKey() string {
+func (x *ProjectInitializationSSHCommandResp) GetPublicKey() string {
 	if x != nil {
 		return x.PublicKey
-	}
-	return ""
-}
-
-type ProjectInitializationBootstrapReq struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	Username             string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	Password             string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
-	PrivateKey           string                 `protobuf:"bytes,3,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
-	PrivateKeyPassphrase string                 `protobuf:"bytes,4,opt,name=private_key_passphrase,json=privateKeyPassphrase,proto3" json:"private_key_passphrase,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
-}
-
-func (x *ProjectInitializationBootstrapReq) Reset() {
-	*x = ProjectInitializationBootstrapReq{}
-	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ProjectInitializationBootstrapReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ProjectInitializationBootstrapReq) ProtoMessage() {}
-
-func (x *ProjectInitializationBootstrapReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ProjectInitializationBootstrapReq.ProtoReflect.Descriptor instead.
-func (*ProjectInitializationBootstrapReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_project_initialization_project_initialization_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *ProjectInitializationBootstrapReq) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *ProjectInitializationBootstrapReq) GetPassword() string {
-	if x != nil {
-		return x.Password
-	}
-	return ""
-}
-
-func (x *ProjectInitializationBootstrapReq) GetPrivateKey() string {
-	if x != nil {
-		return x.PrivateKey
-	}
-	return ""
-}
-
-func (x *ProjectInitializationBootstrapReq) GetPrivateKeyPassphrase() string {
-	if x != nil {
-		return x.PrivateKeyPassphrase
 	}
 	return ""
 }
@@ -671,7 +559,7 @@ type ProjectInitializationGatewayReq struct {
 
 func (x *ProjectInitializationGatewayReq) Reset() {
 	*x = ProjectInitializationGatewayReq{}
-	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[8]
+	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -683,7 +571,7 @@ func (x *ProjectInitializationGatewayReq) String() string {
 func (*ProjectInitializationGatewayReq) ProtoMessage() {}
 
 func (x *ProjectInitializationGatewayReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[8]
+	mi := &file_orbit_v1_project_initialization_project_initialization_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -696,7 +584,7 @@ func (x *ProjectInitializationGatewayReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectInitializationGatewayReq.ProtoReflect.Descriptor instead.
 func (*ProjectInitializationGatewayReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_project_initialization_project_initialization_proto_rawDescGZIP(), []int{8}
+	return file_orbit_v1_project_initialization_project_initialization_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ProjectInitializationGatewayReq) GetImage() string {
@@ -823,19 +711,11 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\x05local\x18\x02 \x01(\v2/.orbit.v1.environment.EnvironmentLocalTargetReqH\x00R\x05local\x88\x01\x01\x12D\n" +
 	"\x03ssh\x18\x03 \x01(\v2-.orbit.v1.environment.EnvironmentSSHTargetReqH\x01R\x03ssh\x88\x01\x01B\b\n" +
 	"\x06_localB\x06\n" +
-	"\x04_ssh\":\n" +
-	"(ProjectInitializationEnvironmentTestResp\x12\x0e\n" +
-	"\x02ok\x18\x01 \x01(\bR\x02ok\"\xa2\x01\n" +
-	"'ProjectInitializationWindowsCommandResp\x12X\n" +
+	"\x04_ssh\"\x9e\x01\n" +
+	"#ProjectInitializationSSHCommandResp\x12X\n" +
 	"\x06status\x18\x01 \x01(\v2@.orbit.v1.project_initialization.ProjectInitializationStatusRespR\x06status\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x02 \x01(\tR\tpublicKey\"\xb2\x01\n" +
-	"!ProjectInitializationBootstrapReq\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x1f\n" +
-	"\vprivate_key\x18\x03 \x01(\tR\n" +
-	"privateKey\x124\n" +
-	"\x16private_key_passphrase\x18\x04 \x01(\tR\x14privateKeyPassphrase\"\xe7\x02\n" +
+	"public_key\x18\x02 \x01(\tR\tpublicKey\"\xe7\x02\n" +
 	"\x1fProjectInitializationGatewayReq\x12\x14\n" +
 	"\x05image\x18\x01 \x01(\tR\x05image\x12 \n" +
 	"\frest_api_url\x18\x02 \x01(\tR\n" +
@@ -863,31 +743,29 @@ func file_orbit_v1_project_initialization_project_initialization_proto_rawDescGZ
 	return file_orbit_v1_project_initialization_project_initialization_proto_rawDescData
 }
 
-var file_orbit_v1_project_initialization_project_initialization_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_orbit_v1_project_initialization_project_initialization_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_orbit_v1_project_initialization_project_initialization_proto_goTypes = []any{
 	(*ProjectInitializationDefaults)(nil),            // 0: orbit.v1.project_initialization.ProjectInitializationDefaults
 	(*ProjectInitializationEnvironmentSnapshot)(nil), // 1: orbit.v1.project_initialization.ProjectInitializationEnvironmentSnapshot
 	(*ProjectInitializationGatewaySnapshot)(nil),     // 2: orbit.v1.project_initialization.ProjectInitializationGatewaySnapshot
 	(*ProjectInitializationStatusResp)(nil),          // 3: orbit.v1.project_initialization.ProjectInitializationStatusResp
 	(*ProjectInitializationEnvironmentReq)(nil),      // 4: orbit.v1.project_initialization.ProjectInitializationEnvironmentReq
-	(*ProjectInitializationEnvironmentTestResp)(nil), // 5: orbit.v1.project_initialization.ProjectInitializationEnvironmentTestResp
-	(*ProjectInitializationWindowsCommandResp)(nil),  // 6: orbit.v1.project_initialization.ProjectInitializationWindowsCommandResp
-	(*ProjectInitializationBootstrapReq)(nil),        // 7: orbit.v1.project_initialization.ProjectInitializationBootstrapReq
-	(*ProjectInitializationGatewayReq)(nil),          // 8: orbit.v1.project_initialization.ProjectInitializationGatewayReq
-	(*environment.EnvironmentLocalTargetResp)(nil),   // 9: orbit.v1.environment.EnvironmentLocalTargetResp
-	(*environment.EnvironmentSSHTargetResp)(nil),     // 10: orbit.v1.environment.EnvironmentSSHTargetResp
-	(*environment.EnvironmentLocalTargetReq)(nil),    // 11: orbit.v1.environment.EnvironmentLocalTargetReq
-	(*environment.EnvironmentSSHTargetReq)(nil),      // 12: orbit.v1.environment.EnvironmentSSHTargetReq
+	(*ProjectInitializationSSHCommandResp)(nil),      // 5: orbit.v1.project_initialization.ProjectInitializationSSHCommandResp
+	(*ProjectInitializationGatewayReq)(nil),          // 6: orbit.v1.project_initialization.ProjectInitializationGatewayReq
+	(*environment.EnvironmentLocalTargetResp)(nil),   // 7: orbit.v1.environment.EnvironmentLocalTargetResp
+	(*environment.EnvironmentSSHTargetResp)(nil),     // 8: orbit.v1.environment.EnvironmentSSHTargetResp
+	(*environment.EnvironmentLocalTargetReq)(nil),    // 9: orbit.v1.environment.EnvironmentLocalTargetReq
+	(*environment.EnvironmentSSHTargetReq)(nil),      // 10: orbit.v1.environment.EnvironmentSSHTargetReq
 }
 var file_orbit_v1_project_initialization_project_initialization_proto_depIdxs = []int32{
-	9,  // 0: orbit.v1.project_initialization.ProjectInitializationEnvironmentSnapshot.local:type_name -> orbit.v1.environment.EnvironmentLocalTargetResp
-	10, // 1: orbit.v1.project_initialization.ProjectInitializationEnvironmentSnapshot.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetResp
+	7,  // 0: orbit.v1.project_initialization.ProjectInitializationEnvironmentSnapshot.local:type_name -> orbit.v1.environment.EnvironmentLocalTargetResp
+	8,  // 1: orbit.v1.project_initialization.ProjectInitializationEnvironmentSnapshot.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetResp
 	0,  // 2: orbit.v1.project_initialization.ProjectInitializationStatusResp.defaults:type_name -> orbit.v1.project_initialization.ProjectInitializationDefaults
 	1,  // 3: orbit.v1.project_initialization.ProjectInitializationStatusResp.environment:type_name -> orbit.v1.project_initialization.ProjectInitializationEnvironmentSnapshot
 	2,  // 4: orbit.v1.project_initialization.ProjectInitializationStatusResp.gateway:type_name -> orbit.v1.project_initialization.ProjectInitializationGatewaySnapshot
-	11, // 5: orbit.v1.project_initialization.ProjectInitializationEnvironmentReq.local:type_name -> orbit.v1.environment.EnvironmentLocalTargetReq
-	12, // 6: orbit.v1.project_initialization.ProjectInitializationEnvironmentReq.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetReq
-	3,  // 7: orbit.v1.project_initialization.ProjectInitializationWindowsCommandResp.status:type_name -> orbit.v1.project_initialization.ProjectInitializationStatusResp
+	9,  // 5: orbit.v1.project_initialization.ProjectInitializationEnvironmentReq.local:type_name -> orbit.v1.environment.EnvironmentLocalTargetReq
+	10, // 6: orbit.v1.project_initialization.ProjectInitializationEnvironmentReq.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetReq
+	3,  // 7: orbit.v1.project_initialization.ProjectInitializationSSHCommandResp.status:type_name -> orbit.v1.project_initialization.ProjectInitializationStatusResp
 	8,  // [8:8] is the sub-list for method output_type
 	8,  // [8:8] is the sub-list for method input_type
 	8,  // [8:8] is the sub-list for extension type_name
@@ -908,7 +786,7 @@ func file_orbit_v1_project_initialization_project_initialization_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_project_initialization_project_initialization_proto_rawDesc), len(file_orbit_v1_project_initialization_project_initialization_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

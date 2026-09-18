@@ -34,6 +34,8 @@ const (
 
 type ImportInput struct {
 	Mode            ImportMode
+	Name            string
+	Code            string
 	TargetProjectID string
 	Package         Package
 }

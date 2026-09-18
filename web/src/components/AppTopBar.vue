@@ -110,7 +110,7 @@
                 </div>
                 <template v-else>
                   <DropdownMenuItem
-                    v-for="project in activeProjects"
+                    v-for="project in projectStore.activeProjects"
                     :key="project.id"
                     class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
                     :class="{ 'bg-accent': project.id === projectStore.activeProjectId }"
@@ -120,7 +120,7 @@
                     <span class="text-xs text-muted-foreground">{{ project.code }}</span>
                   </DropdownMenuItem>
                   <div
-                    v-if="activeProjects.length === 0"
+                    v-if="projectStore.activeProjects.length === 0"
                     class="px-3 py-2 text-sm text-muted-foreground"
                   >
                     {{ t('project.noProjects') }}
@@ -348,10 +348,6 @@
     const project = projectStore.activeProject;
     return project ? project.name : t('project.noProjects');
   });
-
-  const activeProjects = computed(() =>
-    projectStore.projects.filter((project) => project.is_active)
-  );
 
   const localizedPrimaryNavigation = computed(() =>
     primaryNavigation.map((item) => ({

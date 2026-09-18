@@ -3,10 +3,38 @@ package dto
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 )
+
+type decodeError struct {
+	message string
+	err     error
+}
+
+func (e decodeError) Error() string {
+	return e.err.Error()
+}
+
+func (e decodeError) Unwrap() error {
+	return e.err
+}
+
+// DecodeErrorMessage returns a safe, actionable summary of a package decoding failure.
+func DecodeErrorMessage(err error) string {
+	var decodeErr decodeError
+	if errors.As(err, &decodeErr) {
+		return decodeErr.message
+	}
+	return "Invalid handover package"
+}
+
+func newDecodeError(message string, err error) error {
+	return decodeError{message: message, err: err}
+}
 
 // Encode serializes a package using the v1 wire format. Ownership fields are
 // deliberately not transferable: the import target supplies every project ID.
@@ -29,29 +57,29 @@ func Decode(data []byte) (Package, error) {
 	decoder.UseNumber()
 	var value any
 	if err := decoder.Decode(&value); err != nil {
-		return Package{}, fmt.Errorf("decode handover JSON: %w", err)
+		return Package{}, newDecodeError("Handover package is not valid JSON", fmt.Errorf("decode handover JSON: %w", err))
 	}
 	if err := ensureEOF(decoder); err != nil {
-		return Package{}, err
+		return Package{}, newDecodeError("Handover package must contain exactly one JSON document", err)
 	}
 	if _, ok := value.(map[string]any); !ok {
-		return Package{}, fmt.Errorf("handover package must be a JSON object")
+		return Package{}, newDecodeError("Handover package must be a JSON object", fmt.Errorf("handover package must be a JSON object"))
 	}
 	if err := rejectOwnershipFields(value, nil); err != nil {
-		return Package{}, err
+		return Package{}, newDecodeError("Handover package must not contain source project ownership fields", err)
 	}
-	normalized, err := json.Marshal(normalizeForImport(value))
+	normalized, err := json.Marshal(normalizeForImport(value, reflect.TypeOf(Package{})))
 	if err != nil {
-		return Package{}, fmt.Errorf("normalize handover package: %w", err)
+		return Package{}, newDecodeError("Handover package has invalid content", fmt.Errorf("normalize handover package: %w", err))
 	}
 	strict := json.NewDecoder(bytes.NewReader(normalized))
 	strict.DisallowUnknownFields()
 	var item Package
 	if err := strict.Decode(&item); err != nil {
-		return Package{}, fmt.Errorf("decode handover package fields: %w", err)
+		return Package{}, newDecodeError("Handover package contains unsupported or invalid fields", fmt.Errorf("decode handover package fields: %w", err))
 	}
 	if err := ensureEOF(strict); err != nil {
-		return Package{}, err
+		return Package{}, newDecodeError("Handover package must contain exactly one JSON document", err)
 	}
 	return item, nil
 }
@@ -90,23 +118,87 @@ func normalizeForExport(value any) any {
 	}
 }
 
-func normalizeForImport(value any) any {
+// normalizeForImport maps the snake_case wire document to the actual JSON key
+// for the target Go type. This preserves explicit json tags while converting
+// untagged fields to their Go names for strict decoding.
+func normalizeForImport(value any, target reflect.Type) any {
 	switch current := value.(type) {
 	case []any:
+		target = indirectType(target)
+		if target.Kind() == reflect.Array || target.Kind() == reflect.Slice {
+			target = target.Elem()
+		}
 		result := make([]any, len(current))
 		for index, item := range current {
-			result[index] = normalizeForImport(item)
+			result[index] = normalizeForImport(item, target)
 		}
 		return result
 	case map[string]any:
+		target = indirectType(target)
+		if target.Kind() == reflect.Map {
+			result := make(map[string]any, len(current))
+			for key, item := range current {
+				result[key] = normalizeForImport(item, target.Elem())
+			}
+			return result
+		}
+		if target.Kind() != reflect.Struct {
+			return current
+		}
 		result := make(map[string]any, len(current))
 		for key, item := range current {
-			result[camelCase(key)] = normalizeForImport(item)
+			field, ok := fieldForWireKey(target, key)
+			if !ok {
+				// Keep unexpected fields intact so the strict decoder rejects them.
+				result[key] = item
+				continue
+			}
+			result[jsonFieldName(field)] = normalizeForImport(item, field.Type)
 		}
 		return result
 	default:
 		return value
 	}
+}
+
+func indirectType(target reflect.Type) reflect.Type {
+	for target.Kind() == reflect.Pointer {
+		target = target.Elem()
+	}
+	return target
+}
+
+func fieldForWireKey(target reflect.Type, key string) (reflect.StructField, bool) {
+	for index := 0; index < target.NumField(); index++ {
+		field := target.Field(index)
+		if field.PkgPath != "" {
+			continue
+		}
+		name := jsonFieldName(field)
+		if name == "-" {
+			continue
+		}
+		wireName := snakeCase(field.Name)
+		if explicitName := explicitJSONFieldName(field); explicitName != "" {
+			wireName = explicitName
+		}
+		if key == wireName {
+			return field, true
+		}
+	}
+	return reflect.StructField{}, false
+}
+
+func jsonFieldName(field reflect.StructField) string {
+	if name := explicitJSONFieldName(field); name != "" {
+		return name
+	}
+	return field.Name
+}
+
+func explicitJSONFieldName(field reflect.StructField) string {
+	name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+	return name
 }
 
 func rejectOwnershipFields(value any, path []string) error {
@@ -156,18 +248,4 @@ func snakeCase(value string) string {
 		result.WriteRune(current)
 	}
 	return result.String()
-}
-
-func camelCase(value string) string {
-	parts := strings.FieldsFunc(value, func(current rune) bool { return current == '_' || current == '-' || current == ' ' })
-	if len(parts) == 0 {
-		return value
-	}
-	for index := range parts {
-		if index == 0 {
-			continue
-		}
-		parts[index] = strings.ToUpper(parts[index][:1]) + parts[index][1:]
-	}
-	return strings.Join(parts, "")
 }

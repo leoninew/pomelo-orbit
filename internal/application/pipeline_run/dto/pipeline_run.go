@@ -4,10 +4,12 @@ import "github.com/leoninew/pomelo-orbit/internal/model"
 
 type PipelineRunDispatchInput struct {
 	PipelineRunId string
+	ProjectId     string
 }
 
 type ExecutePipelineRunInput struct {
 	PipelineRunId string
+	ProjectId     string
 	Variables     map[string]any
 }
 

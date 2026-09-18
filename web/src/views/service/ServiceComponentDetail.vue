@@ -73,9 +73,6 @@
                 </td>
                 <td class="whitespace-nowrap">
                   <div v-if="editingRuntimeKey === field.key" class="flex h-9 items-center gap-2">
-                    <button class="app-link" :disabled="operating" @click="applyRuntimeEdit(field)">
-                      {{ t('common.save') }}
-                    </button>
                     <button
                       class="text-muted-foreground hover:text-foreground"
                       :disabled="operating"
@@ -178,9 +175,6 @@
                 </td>
                 <td>
                   <div v-if="editingResourceKey === field.key" class="flex h-9 items-center gap-2">
-                    <button class="app-link" @click="applyResourceEdit(field)">
-                      {{ t('common.save') }}
-                    </button>
                     <button
                       class="text-muted-foreground hover:text-foreground"
                       @click="cancelResourceEdit"
@@ -377,7 +371,7 @@
 
     <AppDialog
       :open="mountDialogOpen"
-      :title="t('common.edit')"
+      title="编辑 Mount"
       width-class="w-[min(640px,calc(100vw-32px))]"
       body-class="space-y-4 px-6 py-4 text-sm"
       @update:open="setMountDialogOpen"
@@ -461,7 +455,7 @@
 
     <AppDialog
       :open="endpointDialogOpen"
-      :title="t('common.edit')"
+      title="编辑 Endpoint"
       width-class="w-[min(640px,calc(100vw-32px))]"
       body-class="space-y-4 px-6 py-4 text-sm"
       @update:open="setEndpointDialogOpen"
@@ -575,6 +569,7 @@
     ServiceComponentOverlayUpdateReq,
     ServiceResp,
   } from '@/gen/proto/orbit/v1/service/service';
+  import { useProjectStore } from '@/stores/project';
   import ServiceEnvironmentCard from './components/ServiceEnvironmentCard.vue';
   import {
     componentEnvironmentListRows,
@@ -645,10 +640,19 @@
   const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const serviceId = String(route.params.id || '');
   const componentId = String(route.params.componentId || '');
+
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error('请先选择项目');
+    }
+    return projectId;
+  }
   const service = ref<ServiceResp>();
   const detail = ref<ServiceComponentDetailResp>();
   const breadcrumbs = computed(() => {
@@ -658,7 +662,7 @@
     }
     return [
       {
-        label: `${currentService.application_name} / ${currentService.instance_key || 'default'}`,
+        label: `${currentService.application_name} · ${currentService.code}`,
         to: `/service/${currentService.id}`,
       },
     ];
@@ -753,8 +757,9 @@
     return items.find((item) => select(item) === key);
   }
   function draftFromResponse(value: ServiceComponentDetailResp) {
-    if (!value.version_component || !value.service_component)
+    if (!value.version_component || !value.service_component) {
       throw new Error('service component detail is incomplete');
+    }
     const declaration = value.version_component;
     const component = value.service_component;
     Object.assign(runtimeDraft.entrypoint, {
@@ -872,7 +877,9 @@
   }
   function componentEnvironmentPayload(): ServiceComponentOverlayUpdateReq {
     const component = detail.value?.service_component;
-    if (!component) throw new Error('service component detail is incomplete');
+    if (!component) {
+      throw new Error('service component detail is incomplete');
+    }
     return {
       entrypoint: component.entrypoint,
       command: component.command,
@@ -888,6 +895,7 @@
     try {
       await executeOperation(async () => {
         const updated = await serviceApi.updateComponent(
+          selectedProjectId(),
           serviceId,
           componentId,
           componentEnvironmentPayload()
@@ -906,8 +914,15 @@
     editingResourceKey.value = field.key;
     editingResourceValue.value = field.value;
   }
-  function applyResourceEdit(field: ResourceField) {
-    field.value = editingResourceValue.value;
+  function commitResourceEdit() {
+    const key = editingResourceKey.value;
+    if (!key) {
+      return;
+    }
+    const field = resourceFields.value.find((item) => item.key === key);
+    if (field) {
+      field.value = editingResourceValue.value;
+    }
     cancelResourceEdit();
   }
   function cancelResourceEdit() {
@@ -1124,8 +1139,12 @@
     editingRuntimeKey.value = null;
     editingRuntimeValue.value = '';
   }
-  function applyRuntimeEdit(field: RuntimeField) {
-    const state = runtimeDraft[field.key];
+  function commitRuntimeEdit() {
+    const key = editingRuntimeKey.value;
+    if (!key) {
+      return;
+    }
+    const state = runtimeDraft[key];
     state.value = editingRuntimeValue.value;
     state.overridden = true;
     cancelRuntimeEdit();
@@ -1167,7 +1186,9 @@
         ? optional(runtimeDraft.restart_policy.value)
         : undefined,
       env: environmentRows.value.flatMap((row) => {
-        if (row.deleted) return [{ key: row.key, state: 'deleted' }];
+        if (row.deleted) {
+          return [{ key: row.key, state: 'deleted' }];
+        }
         return row.overridden ? [{ key: row.key, value: row.value, state: 'override' }] : [];
       }),
       mounts: mountRows.value.map((row) =>
@@ -1218,8 +1239,8 @@
     try {
       await execute(async () => {
         const [serviceValue, value] = await Promise.all([
-          serviceApi.get(serviceId),
-          serviceApi.getComponent(serviceId, componentId),
+          serviceApi.get(selectedProjectId(), serviceId),
+          serviceApi.getComponent(selectedProjectId(), serviceId, componentId),
         ]);
         service.value = serviceValue;
         detail.value = value;
@@ -1231,9 +1252,11 @@
     }
   }
   async function save() {
+    commitRuntimeEdit();
+    commitResourceEdit();
     try {
       await executeOperation(async () => {
-        await serviceApi.updateComponent(serviceId, componentId, payload());
+        await serviceApi.updateComponent(selectedProjectId(), serviceId, componentId, payload());
         await load();
         toast.success('已保存，等待显式部署');
       });

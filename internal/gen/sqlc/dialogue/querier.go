@@ -10,11 +10,11 @@ import (
 
 type Querier interface {
 	CreateDeploymentDialogueConversation(ctx context.Context, arg CreateDeploymentDialogueConversationParams) error
-	CreateDeploymentDialogueMessage(ctx context.Context, arg CreateDeploymentDialogueMessageParams) error
-	DeleteDeploymentDialogueConversation(ctx context.Context, id string) error
-	DeploymentDialogueConversationByID(ctx context.Context, id string) (DeploymentDialogueConversation, error)
+	CreateDeploymentDialogueMessage(ctx context.Context, arg CreateDeploymentDialogueMessageParams) (int64, error)
+	DeleteDeploymentDialogueConversation(ctx context.Context, arg DeleteDeploymentDialogueConversationParams) error
+	DeploymentDialogueConversationById(ctx context.Context, arg DeploymentDialogueConversationByIdParams) (DeploymentDialogueConversation, error)
 	ListDeploymentDialogueConversations(ctx context.Context, projectID string) ([]DeploymentDialogueConversation, error)
-	ListDeploymentDialogueMessages(ctx context.Context, conversationID string) ([]DeploymentDialogueMessage, error)
+	ListDeploymentDialogueMessages(ctx context.Context, arg ListDeploymentDialogueMessagesParams) ([]DeploymentDialogueMessage, error)
 	TouchDeploymentDialogueConversation(ctx context.Context, arg TouchDeploymentDialogueConversationParams) error
 }
 

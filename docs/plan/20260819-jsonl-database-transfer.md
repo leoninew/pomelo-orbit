@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Basis
 
-本计划实施已接受的 `docs/requirement/20260819-jsonl-database-transfer.md`。dbtalk 拥有全库 SQLite/MySQL JSONL 导出、导入、类型转换、时区、主键冲突策略、事务和通用 skill；Orbit 仅拥有服务部署闭包的领域选择、领域校验和服务级 skill。
+本计划实施已接受的 `docs/intent/20260819-jsonl-database-transfer.md`。dbtalk 拥有全库 SQLite/MySQL JSONL 导出、导入、类型转换、时区、主键冲突策略、事务和通用 skill；Orbit 仅拥有服务部署闭包的领域选择、领域校验和服务级 skill。
 
 跨项目边界是已安装的 `dbtalk database` CLI。Orbit 不 import dbtalk Python 包，不实现 SQLite/MySQL 连接、全库枚举、SQL 方言、通用值类型编码或数据库写入。dbtalk 已发布并可在本机调用是本计划实施的前置条件。
 
@@ -65,7 +65,7 @@ dbtalk database import --target sqlite|mysql --input <service.jsonl> --mode inse
 - 更新 `skills/transfer-database-data/` 的服务级边界及 `agents/openai.yaml`。
 - 新增或更新 `docs/guides/service-data-transfer.md`、`docs/INDEX.md`、README 中需要的运维入口。
 - 新增 `scripts/pyproject.toml`、`scripts/uv.lock`，更新 `scripts/.gitignore`、`scripts/README.md` 与根 `Taskfile.yml`。
-- `docs/requirement/20260819-jsonl-database-transfer.md`、本 Plan，后续 Verification 文档。
+- `docs/intent/20260819-jsonl-database-transfer.md`、本 Plan，后续 Verification 文档。
 
 ## Verification Plan
 

@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 验证依据
 
-- Requirement: [持续部署对话记录持久化](../requirement/20260815-deployment-dialogue-history.md)，状态 `Accepted`。
+- Requirement: [持续部署对话记录持久化](../intent/20260815-deployment-dialogue-history.md)，状态 `Accepted`。
 - Plan: [持续部署对话记录持久化计划](../plan/20260815-deployment-dialogue-history.md)，状态 `Accepted`。
 - Spec: 不适用；本功能采用标准模式，未单独创建 Spec。
 

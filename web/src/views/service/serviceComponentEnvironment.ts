@@ -42,7 +42,9 @@ export function updateComponentEnvironmentRows(
   const valuesByKey = new Map(editorRows.map((row) => [row.id, row.value]));
   return currentRows.map((row) => {
     const value = valuesByKey.get(row.key);
-    if (value === undefined || value === row.value) return row;
+    if (value === undefined || value === row.value) {
+      return row;
+    }
     return {
       ...row,
       value,
@@ -72,7 +74,9 @@ export function componentEnvironmentOverlays(
   rows: ServiceComponentEnvironmentRow[]
 ): ServiceComponentEnvOverlay[] {
   return rows.flatMap((row) => {
-    if (row.deleted) return [{ key: row.key, state: 'deleted' }];
+    if (row.deleted) {
+      return [{ key: row.key, state: 'deleted' }];
+    }
     return row.overridden ? [{ key: row.key, value: row.value, state: 'override' }] : [];
   });
 }

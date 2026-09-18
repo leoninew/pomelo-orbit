@@ -34,9 +34,13 @@ export interface ProjectMemberListResp {
   items: ProjectMemberResp[];
 }
 
-export interface ProjectSaveReq {
+export interface ProjectCreateReq {
   name: string;
   code: string;
+}
+
+export interface ProjectSaveReq {
+  name: string;
 }
 
 export interface ProjectMemberReq {

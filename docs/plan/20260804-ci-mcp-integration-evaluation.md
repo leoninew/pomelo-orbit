@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求依据与范围
 
-- [持续集成 MCP 集成评估](../requirement/20260804-ci-mcp-integration-evaluation.md) 已于 2026-08-04 接受。
+- [持续集成 MCP 集成评估](../intent/20260804-ci-mcp-integration-evaluation.md) 已于 2026-08-04 接受。
 - 本计划只定义后续实现与验证路径；本轮不写入 MCP、应用 API、数据库、任务队列或部署环境。
 - 当前 `pomelo-orbit-mcp` 仍专属 Orbit Application、Version、Service、Gateway 生命周期和受管运行态诊断。CI MCP 必须是独立 Server，不能复用 `orbit_*` 的资源模型或把 CI 成功隐式转换为部署。
 

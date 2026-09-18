@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Requirement basis
 
-本规格落实已接受的 [异步操作状态机收敛需求](../requirement/20260808-async-operation-state-machine.md)。范围包含 Deployment、Pipeline Run、Pipeline Stage Run、`background_task` 的调度边界，以及 Service 运行态与 Deployment 操作态的分离。
+本规格落实已接受的 [异步操作状态机收敛需求](../intent/20260808-async-operation-state-machine.md)。范围包含 Deployment、Pipeline Run、Pipeline Stage Run、`background_task` 的调度边界，以及 Service 运行态与 Deployment 操作态的分离。
 
 不为 Deployment 设计 Retry 或 `retry_of`。现有 `PipelineRun.retry_of` 保留，且 Retry 始终创建新的 Pipeline Run。
 

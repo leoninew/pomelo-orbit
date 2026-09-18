@@ -1,17 +1,36 @@
 # MCP 直接操作
-最后修改时间: 2026-09-07 13:31:14
+最后修改时间: 2026-09-17 11:45:00
 
 ## 命名与启动约定
 
-Codex 注册名为 `pomelo-orbit-mcp`，本地 stdio 入口为 `go run ./cmd/server mcp`，工具在客户端中显示为 `mcp__pomelo-orbit-mcp__orbit_*`。它直接构造 Orbit Go delivery MCP Core，工具调用不会回环到 Orbit HTTP API，也不提供远程 `/mcp` 端点。先在已登录的 Orbit Web 控制台“系统管理 / 访问令牌”创建一个命名 PAT，并在创建窗口中复制一次。`initialize` 和 `tools/list` 不读取或验证凭据；每次实际 `tools/call` 都使用 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 调用同一 Auth Service 查找 PAT 摘要、校验未撤销/未过期及用户 enabled 状态，并把 session 固定到首次通过校验的用户。父进程通过项目 `.codex/config.toml` 的 `env_vars` 将变量传给 stdio 子进程；不要将 token 写入配置文件、浏览器 localStorage 或用户配置目录。PAT 默认不过期，也可创建为有限有效期；撤销、到期或替换后，更新父进程环境并重启 MCP session。stdio 仍需运行在可访问同一 Orbit 数据库、签名配置、Docker 和 workspace 的可信环境。不要使用已废弃的注册名、浏览器授权页面或 Python MCP 命令。
+Grok 与 Codex 的注册名都是 `pomelo-orbit-mcp`，本地 stdio 入口都是 `go run ./cmd/server mcp`。它直接构造 Orbit Go delivery MCP Core，工具调用不会回环到 Orbit HTTP API，也不提供远程 `/mcp` 端点。
+
+| 客户端 | 注册位置 | 工具名 |
+| --- | --- | --- |
+| Grok | 仓库 `.grok/config.toml` 的 `[mcp_servers.pomelo-orbit-mcp]` | `pomelo-orbit-mcp__orbit_*`（`search_tool` / `use_tool`） |
+| Codex | 仓库 `.codex/config.toml` 的 `[mcp_servers.pomelo-orbit-mcp]` | `mcp__pomelo-orbit-mcp__orbit_*` |
+
+先在已登录的 Orbit Web 控制台“系统管理 / 访问令牌”创建一个命名 PAT，并在创建窗口中复制一次。`initialize` 和 `tools/list` 不读取或验证凭据；每次实际 `tools/call` 都使用 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 调用同一 Auth Service 查找 PAT 摘要、校验未撤销/未过期及用户 enabled 状态，并把 session 固定到首次通过校验的用户。
+
+不要将 token 写入 `.grok/config.toml`、`.codex/config.toml`、浏览器 localStorage 或用户配置目录。把它放在启动 Grok/Codex 的父进程环境中，或 gitignored 的 `.env.<env>`（Go 配置加载器读取，OS 环境优先）。Grok 和 Codex 的项目配置都把 `POMELO_ORBIT_APP__ENV` 写成 `development`，不使用 Shell 占位符。Codex 另用 `env_vars` 透传父进程的 `POMELO_ORBIT_MCP__ACCESS_TOKEN`，不把 PAT 写进 TOML。PAT 默认不过期，也可创建为有限有效期；撤销、到期或替换后，更新父进程环境或 dotenv 并重启 MCP session。stdio 仍需运行在可访问同一 Orbit 数据库、签名配置、Docker 和 workspace 的可信环境。不要使用已废弃的注册名、浏览器授权页面或 Python MCP 命令。
+
+Grok 写入或修改 `.grok/config.toml` 后，在 `/mcps` 中刷新或新开会话，才能连上新的 stdio Server。
 
 `pomelo-orbit-mcp` 只执行用户明确要求的独立动作。调用结果为 `isError=true` 时，该调用失败；不要自动执行依赖它的后续动作。
 
 对于带持久卷的状态服务，MCP Server instructions 和环境变量工具共同约束：Version 中由 Service 决定的环境值必须使用精确 `${KEY}` 占位，具体值只通过 `orbit_update_service_env` 保存；新 Service 的口令、令牌和密钥一次安全随机生成后跨重部署保持稳定且不在报告中暴露。数据库镜像的 bootstrap 环境变量只在空数据卷生效，因此修改 Service 值后重部署不会轮换既有数据库凭据；必须取得用户对原地轮换或重置卷的明确授权。
 
+本地 stdio MCP 在未选择 Project 时不能操作项目级资源。用户以 Project 名称声明目标后，先调用 `orbit_list_projects`（返回 id/name/code/is_active），名称唯一则调用 `orbit_select_project(project_id)`；同名时用唯一 code 澄清再选择。成功结果确认当前 Project、Environment 与 Gateway；之后的项目级工具使用该 connection scope，不再传 `project_id`。`orbit_get_current_project` 读取当前选择；未选择时返回 `project_not_selected`。未就绪 Project 返回 `project_not_ready`，不创建 Environment 或 Gateway。Web Deployment Dialogue 在创建 client 时注入页面请求的固定 Project scope，不能切换 Project。
+
 | 用户明确要求 | 调用工具 | 不隐含的动作 |
 | --- | --- | --- |
-| 供应或复用 Traefik Gateway | `orbit_provision_gateway` | 修改已有 Gateway 配置、覆盖已有 Service runtime configuration、删除失败资源 |
+| 列出可见 Project | `orbit_list_projects` | 选择 Project、创建 Environment 或 Gateway |
+| 确认当前 connection 的 Project | `orbit_select_project` | 初始化未就绪 Project |
+| 查看当前已选 Project | `orbit_get_current_project` | 切换 Project |
+| 查看项目部署 Environment | `orbit_get_project_environment` | 编辑、Probe、部署或 Gateway provision |
+| 编辑项目部署 Environment | `orbit_update_project_environment` | Probe、Gateway provision、部署或同步 Route |
+| Probe 项目部署 Environment | `orbit_probe_project_environment` | Gateway provision、部署或同步 Route |
+| 准备已有 Traefik Gateway | `orbit_provision_gateway` | 创建缺失 Gateway、修改已有 Gateway 配置、覆盖已有 Service runtime configuration、删除失败资源 |
 | 查看 Application 的 Service | `orbit_list_application_services` | deploy、stop、delete |
 | 查看或编辑自定义 Route | `orbit_list_routes`、`orbit_get_route`、`orbit_update_route` | enable、disable、删除或同步 |
 | 创建自定义 Route | `orbit_create_route` | enable、deploy Gateway、删除或同步 |
@@ -26,13 +45,15 @@ Codex 注册名为 `pomelo-orbit-mcp`，本地 stdio 入口为 `go run ./cmd/ser
 
 `orbit_wait_deployment` 的 deployment 终态和 `timed_out`，以及 `verify_deployment` 的 `failed`、`drift`、`inconclusive`，都是正常领域结果。Orbit API、Docker、runtime target、输入校验和内部失败则统一返回结构化 MCP error result。
 
-`orbit_create_gateway` 创建完整 Gateway 资源组：Application、GatewayConfig、初始可编辑 Version/Traefik Component 和默认停止态 Service。`orbit_provision_gateway` 是幂等资源准备工具：它按 `project_id` 与 `code=traefik` 查找 Gateway，零个时创建、恰好一个时复用、多个时返回冲突；指定实例不存在时按通用 Service 创建语义新增停止态 binding。它不会发布 Version、部署、等待或检查 Docker 网络。需要运行 Gateway 时，随后显式调用 `orbit_deploy(service_id)`，并按需调用 `orbit_wait_deployment`。
+Gateway 只能由 Web Initialization Wizard 创建。`orbit_provision_gateway` 只解析当前已选 Project 中已经存在的 Gateway 及其受管 Service，不会创建缺失资源。它不会发布 Version、部署、等待或检查 Docker 网络。需要运行 Gateway 时，随后显式调用 `orbit_deploy(service_id)`，并按需调用 `orbit_wait_deployment`。
+
+每个 Project 只有一个 deployment Environment，target type 为 `local` 或 `ssh`。`orbit_get_project_environment`、`orbit_update_project_environment` 与 `orbit_probe_project_environment` 使用当前 connection 的 Project scope，不接受 `project_id` 或 `environment_id`。local 输出仅包含已保存的 `workspace_root`；SSH 输入/输出使用 nested `ssh` object 和主机指纹。MCP 不接受或输出部署私钥、bootstrap 密码、bootstrap 私钥或初始化命令。SSH 第一次探测成功后记下主机密钥指纹。`ssh` 到 `127.0.0.1` 仍按 SSH 执行。编辑 target 后必须显式 Probe 成功，才能部署。
 
 通过 `orbit_create_version` 或 `orbit_create_version_component` 创建 Component 时，必须显式提交 `pull_policy` 和 `restart_policy`；策略分别只能是 `missing`、`always`、`never` 和 `no`、`on-failure`、`always`、`unless-stopped`。
 
 Route 工具使用 Route 表单的持久化字段。HTTP Route 的 `path_prefix` 可省略并默认 `/`，且必须提供受管 HTTP target（`service_id`、`component_name`、`endpoint_protocol`、`endpoint_container_port`）或高级 `target_url` 之一；两种 target 互斥。TCP Route 必须提供受管 TCP target 与 `listen_port`，不能使用 `path_prefix` 或 `target_url`。启用 TCP Route 前，目标 Gateway Version 必须已经声明并部署对应的 `tcp<listen_port>` entrypoint 与宿主机端口。
 
-没有受管 Application target 时，使用 `runtime_doctor(network_name="traefik")` 进行只读预检。该参数只接受 `traefik`，不能与 Application 或 Gateway target 组合；`runtime_network_inspect` 仍只允许读取从受管 Compose target 派生的网络。
+运行时工具只接受显式 `service_id` 定位一个已受管运行时目标。它们从 Service 所属 Application 的 Project 解析唯一 Environment；不接受 `environment_id`、`instance_key` 或 Gateway 实例字段，并在输出中返回派生的 `project_id`。
 
 `runtime_compose_ps` 和 `verify_deployment` 默认返回摘要。需要原始 Compose、inspect 或完整 evidence 时，明确传入 `detail=true`；也可以使用已有的 scoped logs、container inspect、network inspect 和 compose config 工具。MCP Server 是 stdio 进程，修改工具后需要重启 MCP client session，并通过 Server instructions 中的 source/schema 指纹确认新的工具表已生效。
 

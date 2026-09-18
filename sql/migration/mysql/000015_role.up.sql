@@ -1,6 +1,7 @@
 -- Domain: role
 -- Tables: role, permission, role_permission
 -- Ref: docs/analyze/20260724-domain-split-consensus-共识.md
+-- MySQL DDL omits physical FOREIGN KEY constraints; migrator accounts typically lack REFERENCES.
 
 CREATE TABLE IF NOT EXISTS role (
     id VARCHAR(26) PRIMARY KEY,
@@ -24,9 +25,7 @@ CREATE TABLE IF NOT EXISTS role_permission (
     role_id VARCHAR(26) NOT NULL,
     permission_id VARCHAR(26) NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    PRIMARY KEY (role_id, permission_id),
-    FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE CASCADE,
-    FOREIGN KEY (permission_id) REFERENCES permission(id) ON DELETE CASCADE
+    PRIMARY KEY (role_id, permission_id)
 );
 
 CREATE INDEX idx_role_code ON role(code);

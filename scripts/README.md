@@ -1,12 +1,31 @@
-# 脚本工具
+# Pomelo Orbit CLI
 
-本页只索引面向开发者直接调用的工具；测试脚本和发布包脚本不单独列出。具体用法以脚本帮助、配套文档或 `skills/` 中的专项技能为准，与代码冲突时以代码为准。
-
-`scripts/pyproject.toml` 仅管理脚本依赖和开发工具，不将本目录构建或安装为 Python 包。使用 uv 执行检查：
+`scripts/` is the Python `>=3.12` uv project for Pomelo Orbit operational commands. Its `src/` package exposes the project-local `pomelo-orbit-cli` entry point; no global installation is required. From this directory, the Makefile is the local automation entry:
 
 ```bash
-uv --directory scripts run ruff format --check .
-uv --directory scripts run ruff check .
-uv --directory scripts run mypy
-uv --directory scripts run pytest
+make deps
+make run
+make run ARGS="database-transfer --help"
+make run POMELO_ORBIT_APP__ENV=production ARGS="database-transfer --help"
+make check
+make test
+```
+
+`make deps` syncs the locked dependency groups and installs `pomelo-orbit-cli` into the scripts project environment. `make run` defaults `POMELO_ORBIT_APP__ENV` to `development`; override it on the command line or in the process environment. `make check fix=1` applies Ruff format and lint fixes. Equivalent uv commands from the Orbit repository root:
+
+```bash
+uv --directory scripts sync --all-groups --locked
+POMELO_ORBIT_APP__ENV=development uv --directory scripts run --locked pomelo-orbit-cli --help
+POMELO_ORBIT_APP__ENV=development uv --directory scripts run --locked pomelo-orbit-cli database-transfer --help
+```
+
+The CLI locates the Orbit repository, then loads the same configuration layers as the Go service: `configs/config.yaml`, optional `configs/config.<env>.yaml`, `.env` or `.env.<env>`, and process environment overrides. `make run` selects the development profile unless `POMELO_ORBIT_APP__ENV` is already set.
+
+Run the script quality checks with:
+
+```bash
+uv --directory scripts run --locked ruff format --check .
+uv --directory scripts run --locked ruff check .
+uv --directory scripts run --locked mypy
+uv --directory scripts run --locked pytest
 ```

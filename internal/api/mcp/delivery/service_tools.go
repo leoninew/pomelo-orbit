@@ -2,7 +2,6 @@ package delivery
 
 import (
 	"context"
-	"strings"
 
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
 	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
@@ -11,17 +10,20 @@ import (
 )
 
 func (c *core) registerServiceTools(server *mcp.Server) {
-	addTool(server, "orbit_create_service", "Create a stopped Service whose Component overlays initially inherit the Version. The Service code is derived as <application-code>-<instance-key> and cannot be changed after creation.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_create_service", "Create a stopped Service whose Component overlays initially inherit the Version. The Service code is immutable after creation and must be unique within the selected Project.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 		VersionId     string `json:"version_id" jsonschema:"required"`
-		InstanceKey   string `json:"instance_key" jsonschema:"required"`
+		Code          string `json:"code" jsonschema:"required"`
 	}) (map[string]any, error) {
-		application, err := c.deps.Application.ApplicationForUser(ctx, c.deps.ActorUserId, input.ApplicationId)
+		application, err := c.applicationInScope(ctx, input.ApplicationId)
 		if err != nil {
 			return nil, err
 		}
-		instanceKey := strings.TrimSpace(input.InstanceKey)
-		service, err := c.deps.Service.CreateService(ctx, c.deps.ActorUserId, servicedto.ServiceCreateInput{ApplicationId: input.ApplicationId, VersionId: input.VersionId, InstanceKey: instanceKey, Code: application.Code + "-" + instanceKey})
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		service, err := c.deps.Service.CreateService(ctx, c.deps.ActorUserId, projectId, servicedto.ServiceCreateInput{ApplicationId: application.Id, VersionId: input.VersionId, Code: input.Code})
 		if err != nil {
 			return nil, err
 		}
@@ -33,7 +35,14 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		ComponentId string                                      `json:"component_id" jsonschema:"required"`
 		Overlay     *servicev1.ServiceComponentOverlayUpdateReq `json:"overlay" jsonschema:"required"`
 	}) (map[string]any, error) {
-		component, err := c.deps.Service.UpdateServiceComponentOverlay(ctx, c.deps.ActorUserId, input.ServiceId, input.ComponentId, serviceOverlayInput(input.Overlay))
+		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Service.UpdateServiceComponentOverlay(ctx, c.deps.ActorUserId, projectId, input.ServiceId, input.ComponentId, serviceOverlayInput(input.Overlay))
 		if err != nil {
 			return nil, err
 		}
@@ -46,19 +55,32 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		ServiceId string                  `json:"service_id" jsonschema:"required"`
 		Env       []*servicev1.ServiceEnv `json:"env" jsonschema:"required"`
 	}) (map[string]any, error) {
-		service, err := c.deps.Service.UpdateServiceEnv(ctx, c.deps.ActorUserId, input.ServiceId, serviceEnvInput(input.Env))
+		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		service, err := c.deps.Service.UpdateServiceEnv(ctx, c.deps.ActorUserId, projectId, input.ServiceId, serviceEnvInput(input.Env))
 		if err != nil {
 			return nil, err
 		}
 		return writeResult("update_service_env", map[string]string{"service_id": input.ServiceId}, "PUT", "/api/service/"+input.ServiceId+"/env", map[string]any{"service": serviceOutput(service)}), nil
 	})
 
-	addTool(server, "orbit_update_service_basic", "Replace a Service's selected Version and instance key.", func(ctx context.Context, input struct {
-		ServiceId   string `json:"service_id" jsonschema:"required"`
-		VersionId   string `json:"version_id" jsonschema:"required"`
-		InstanceKey string `json:"instance_key" jsonschema:"required"`
+	addTool(server, "orbit_update_service_basic", "Replace a Service's selected Version.", func(ctx context.Context, input struct {
+		ServiceId string `json:"service_id" jsonschema:"required"`
+		VersionId string `json:"version_id" jsonschema:"required"`
 	}) (map[string]any, error) {
-		service, err := c.deps.Service.UpdateServiceBasic(ctx, c.deps.ActorUserId, input.ServiceId, servicedto.ServiceBasicUpdateInput{VersionId: input.VersionId, InstanceKey: input.InstanceKey})
+		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		service, err := c.deps.Service.UpdateServiceBasic(ctx, c.deps.ActorUserId, projectId, input.ServiceId, servicedto.ServiceBasicUpdateInput{VersionId: input.VersionId})
 		if err != nil {
 			return nil, err
 		}

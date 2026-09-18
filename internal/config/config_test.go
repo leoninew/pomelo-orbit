@@ -66,17 +66,23 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Jwt.SecretKey != testJwtSecret {
 		t.Fatalf("unexpected jwt secret key: %s", cfg.Jwt.SecretKey)
 	}
-	if !filepath.IsAbs(cfg.Workspace.Pipeline) || !filepath.IsAbs(cfg.Workspace.Deployment) {
+	if !filepath.IsAbs(cfg.Workspace.Root) || !filepath.IsAbs(cfg.Logging.DeploymentRoot) {
 		t.Fatalf("workspace roots must be absolute: %#v", cfg.Workspace)
 	}
-	if cfg.Traefik.Image != "traefik:3.6" {
-		t.Fatalf("unexpected traefik image: %q", cfg.Traefik.Image)
+	if cfg.ProjectInitialization.Environment.LocalWorkspaceRoot != "~/.pomelo-orbit" {
+		t.Fatalf("unexpected initialization workspace root: %q", cfg.ProjectInitialization.Environment.LocalWorkspaceRoot)
 	}
-	if cfg.Traefik.RestApiUrl != "http://localhost:8080" || cfg.Traefik.BaseDomain != "lvh.me" {
-		t.Fatalf("unexpected traefik endpoints: rest=%q domain=%q", cfg.Traefik.RestApiUrl, cfg.Traefik.BaseDomain)
+	if cfg.ProjectInitialization.Gateway.Image != "traefik:3.6" {
+		t.Fatalf("unexpected initialization image: %q", cfg.ProjectInitialization.Gateway.Image)
 	}
-	if cfg.Traefik.RestReadyTimeout != 20*time.Second {
-		t.Fatalf("unexpected traefik rest ready timeout: %s", cfg.Traefik.RestReadyTimeout)
+	if cfg.ProjectInitialization.Gateway.RestApiUrl != "http://traefik:8080" || cfg.ProjectInitialization.Gateway.RestApiHostUrl != "http://127.0.0.1:8080" || cfg.ProjectInitialization.Gateway.BaseDomain != "lvh.me" {
+		t.Fatalf("unexpected initialization endpoints: container=%q host=%q domain=%q", cfg.ProjectInitialization.Gateway.RestApiUrl, cfg.ProjectInitialization.Gateway.RestApiHostUrl, cfg.ProjectInitialization.Gateway.BaseDomain)
+	}
+	if cfg.ProjectInitialization.Gateway.RestReadyTimeout != 20*time.Second {
+		t.Fatalf("unexpected initialization rest ready timeout: %s", cfg.ProjectInitialization.Gateway.RestReadyTimeout)
+	}
+	if cfg.ProjectInitialization.Gateway.DefaultEntrypoint != "web" || cfg.ProjectInitialization.Gateway.TLSMode != "none" {
+		t.Fatalf("unexpected initialization ingress defaults: entrypoint=%q tls=%q", cfg.ProjectInitialization.Gateway.DefaultEntrypoint, cfg.ProjectInitialization.Gateway.TLSMode)
 	}
 	if !cfg.Turnstile.Enabled {
 		t.Fatal("expected turnstile enabled")
@@ -252,15 +258,15 @@ worker:
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SITE_KEY", "site-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SECRET_KEY", "secret-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__VERIFY_URL", "https://turnstile.example.test")
-	t.Setenv("POMELO_ORBIT_TRAEFIK__IMAGE", "traefik:v3.9")
-	t.Setenv("POMELO_ORBIT_TRAEFIK__REST_API_URL", "http://127.0.0.1:9080")
-	t.Setenv("POMELO_ORBIT_TRAEFIK__REST_READY_TIMEOUT", "45s")
+	t.Setenv("POMELO_ORBIT_PROJECT_INITIALIZATION__GATEWAY__IMAGE", "traefik:v3.9")
+	t.Setenv("POMELO_ORBIT_PROJECT_INITIALIZATION__GATEWAY__REST_API_URL", "http://127.0.0.1:9080")
+	t.Setenv("POMELO_ORBIT_PROJECT_INITIALIZATION__GATEWAY__REST_READY_TIMEOUT", "45s")
 	orbitRoot := t.TempDir()
 	t.Setenv("POMELO_ORBIT_ORBIT__ROOT", orbitRoot)
 	workspacePipeline := t.TempDir()
-	workspaceDeployment := t.TempDir()
-	t.Setenv("POMELO_ORBIT_WORKSPACE__PIPELINE", workspacePipeline)
-	t.Setenv("POMELO_ORBIT_WORKSPACE__DEPLOYMENT", workspaceDeployment)
+	deploymentLogRoot := t.TempDir()
+	t.Setenv("POMELO_ORBIT_WORKSPACE__ROOT", workspacePipeline)
+	t.Setenv("POMELO_ORBIT_LOGGING__DEPLOYMENT_ROOT", deploymentLogRoot)
 	t.Setenv("POMELO_ORBIT_WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_WORKER__POLL_INTERVAL", "2s")
 	t.Setenv("POMELO_ORBIT_WORKER__LEASE_DURATION", "3h")
@@ -318,14 +324,14 @@ worker:
 	if cfg.Turnstile.VerifyUrl != "https://turnstile.example.test" {
 		t.Fatalf("unexpected turnstile verify url: %s", cfg.Turnstile.VerifyUrl)
 	}
-	if cfg.Traefik.Image != "traefik:v3.9" || cfg.Traefik.RestApiUrl != "http://127.0.0.1:9080" || cfg.Traefik.RestReadyTimeout != 45*time.Second {
-		t.Fatalf("unexpected Traefik env overrides: %#v", cfg.Traefik)
+	if cfg.ProjectInitialization.Gateway.Image != "traefik:v3.9" || cfg.ProjectInitialization.Gateway.RestApiUrl != "http://127.0.0.1:9080" || cfg.ProjectInitialization.Gateway.RestReadyTimeout != 45*time.Second {
+		t.Fatalf("unexpected initialization env overrides: %#v", cfg.ProjectInitialization.Gateway)
 	}
 	if cfg.Orbit.Root != orbitRoot {
 		t.Fatalf("unexpected orbit root: %s", cfg.Orbit.Root)
 	}
-	if cfg.Workspace.Pipeline != workspacePipeline || cfg.Workspace.Deployment != workspaceDeployment {
-		t.Fatalf("unexpected workspace env overrides: %#v", cfg.Workspace)
+	if cfg.Workspace.Root != workspacePipeline || cfg.Logging.DeploymentRoot != deploymentLogRoot {
+		t.Fatalf("unexpected workspace/logging env overrides: workspace=%#v logging=%#v", cfg.Workspace, cfg.Logging)
 	}
 	if cfg.Worker.Concurrency != 4 {
 		t.Fatalf("unexpected worker concurrency: %d", cfg.Worker.Concurrency)
@@ -348,16 +354,17 @@ func TestLoadConfigNormalizesAndValidatesWorkspaceRoots(t *testing.T) {
 		writeEnvConfig(t, "develop", fmt.Sprintf(`orbit:
   root: %q
 workspace:
-  pipeline: " ci "
-  deployment: cd
+  root: " ci "
+logging:
+  deployment_root: logs
 `, root))
 
 		cfg, err := Load()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cfg.Workspace.Pipeline != filepath.Join(root, "ci") || cfg.Workspace.Deployment != filepath.Join(root, "cd") {
-			t.Fatalf("unexpected normalized workspace roots: %#v", cfg.Workspace)
+		if cfg.Workspace.Root != filepath.Join(root, "ci") || cfg.Logging.DeploymentRoot != filepath.Join(root, "logs") {
+			t.Fatalf("unexpected normalized roots: workspace=%#v logging=%#v", cfg.Workspace, cfg.Logging)
 		}
 	})
 
@@ -365,39 +372,63 @@ workspace:
 		setupDefaultConfig(t)
 		root := t.TempDir()
 		pipeline := t.TempDir()
-		deployment := t.TempDir()
+		deploymentLogRoot := t.TempDir()
 		writeEnvConfig(t, "develop", fmt.Sprintf(`orbit:
   root: %q
 workspace:
-  pipeline: %q
-  deployment: %q
-`, root, pipeline, deployment))
+  root: %q
+logging:
+  deployment_root: %q
+`, root, pipeline, deploymentLogRoot))
 
 		cfg, err := Load()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cfg.Workspace.Pipeline != pipeline || cfg.Workspace.Deployment != deployment {
-			t.Fatalf("absolute workspace roots changed: %#v", cfg.Workspace)
+		if cfg.Workspace.Root != pipeline || cfg.Logging.DeploymentRoot != deploymentLogRoot {
+			t.Fatalf("absolute roots changed: workspace=%#v logging=%#v", cfg.Workspace, cfg.Logging)
+		}
+	})
+
+	t.Run("keeps initialization home workspace root as written", func(t *testing.T) {
+		setupDefaultConfig(t)
+		writeEnvConfig(t, "develop", `project_initialization:
+  environment:
+    local_workspace_root: ~/.pomelo-orbit
+`)
+		cfg, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.ProjectInitialization.Environment.LocalWorkspaceRoot != "~/.pomelo-orbit" {
+			t.Fatalf("home workspace root was translated: %q", cfg.ProjectInitialization.Environment.LocalWorkspaceRoot)
+		}
+	})
+
+	t.Run("rejects relative initialization workspace root without tilde", func(t *testing.T) {
+		setupDefaultConfig(t)
+		writeEnvConfig(t, "develop", `project_initialization:
+  environment:
+    local_workspace_root: .pomelo-orbit
+`)
+		_, err := Load()
+		if err == nil || !strings.Contains(err.Error(), "project_initialization.environment.local_workspace_root") {
+			t.Fatalf("expected relative initialization workspace root to be rejected, got %v", err)
 		}
 	})
 
 	for _, tc := range []struct {
-		name       string
-		pipeline   string
-		deployment string
-		want       string
+		name     string
+		pipeline string
+		want     string
 	}{
-		{name: "empty pipeline", pipeline: " ", deployment: "cd", want: "workspace.pipeline: is required"},
-		{name: "same root", pipeline: "workspace", deployment: "workspace", want: "workspace.pipeline and workspace.deployment must not overlap"},
-		{name: "nested root", pipeline: "workspace", deployment: "workspace/cd", want: "workspace.pipeline and workspace.deployment must not overlap"},
+		{name: "empty root", pipeline: " ", want: "workspace.root: is required"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			setupDefaultConfig(t)
 			writeEnvConfig(t, "develop", fmt.Sprintf(`workspace:
-  pipeline: %q
-  deployment: %q
-`, tc.pipeline, tc.deployment))
+  root: %q
+`, tc.pipeline))
 
 			_, err := Load()
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -930,6 +961,7 @@ server:
 logging:
   level: info
   file: logs/pomelo-orbit.log
+  deployment_root: data/deployment-logs
   max_size_mb: 100
   max_backups: 7
   http:
@@ -946,17 +978,25 @@ database:
   postgres:
     dsn: ""
 workspace:
-  pipeline: data/pipeline
-  deployment: data/deployment
+  root: data
 orbit:
   root: .
 jwt:
   secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-traefik:
-  image: traefik:3.6
-  rest_api_url: http://localhost:8080
-  base_domain: lvh.me
-  rest_ready_timeout: 20s
+project_initialization:
+  environment:
+    local_workspace_root: ~/.pomelo-orbit
+  gateway:
+    image: traefik:3.6
+    rest_api_url: http://traefik:8080
+    rest_api_host_url: http://127.0.0.1:8080
+    base_domain: lvh.me
+    rest_ready_timeout: 20s
+    default_entrypoint: web
+    tls_mode: none
+    acme_profile: ""
+    acme_email: ""
+    dns_api_token: ""
 turnstile:
   enabled: true
   site_key: "1x00000000000000000000AA"

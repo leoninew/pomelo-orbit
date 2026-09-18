@@ -1,0 +1,32 @@
+package projecthandler
+
+import (
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+	projectdto "github.com/leoninew/pomelo-orbit/internal/application/project/dto"
+	projectv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/project"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+)
+
+func projectCreateInput(req *projectv1.ProjectCreateReq) projectdto.CreateInput {
+	return projectdto.CreateInput{Name: req.Name, Code: req.Code}
+}
+
+func projectSaveInput(req *projectv1.ProjectSaveReq) projectdto.SaveInput {
+	return projectdto.SaveInput{Name: req.Name}
+}
+
+func projectResponse(project model.Project) projectv1.ProjectResp {
+	return projectv1.ProjectResp{Id: project.Id, Name: project.Name, Code: project.Code, IsActive: project.IsActive, CreatedAt: transport.FormatTime(project.CreatedAt), UpdatedAt: transport.FormatTime(project.UpdatedAt)}
+}
+
+func projectMemberResponses(users []model.User) []projectv1.ProjectMemberResp {
+	resp := make([]projectv1.ProjectMemberResp, 0, len(users))
+	for _, user := range users {
+		resp = append(resp, projectMemberResponse(user))
+	}
+	return resp
+}
+
+func projectMemberResponse(user model.User) projectv1.ProjectMemberResp {
+	return projectv1.ProjectMemberResp{Id: user.Id, Username: user.Username, Email: user.Email, Status: user.Status, AuthSource: user.AuthSource, LastLoginAt: transport.FormatOptionalTime(user.LastLoginAt)}
+}

@@ -4,7 +4,7 @@ SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
 FROM `user`
 WHERE username = ?;
 
--- name: UserByID :one
+-- name: UserById :one
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at
 FROM `user`
@@ -39,6 +39,11 @@ FROM role
 JOIN user_role ON user_role.role_id = role.id
 WHERE user_role.user_id = ?
 ORDER BY role.code;
+
+-- name: HasUsersWithRole :one
+SELECT COUNT(*)
+FROM user_role
+WHERE role_id = ?;
 
 -- name: UserPermissions :many
 SELECT DISTINCT permission.code

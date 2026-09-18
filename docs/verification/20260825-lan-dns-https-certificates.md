@@ -47,7 +47,7 @@ Review status: Draft
 | Route | `internal/application/route/**`、Traefik adapter、route proto/mapper | 符合 |
 | Gateway UI | `web/src/views/gateway/**`、generated TS、router/navigation、locale、form/navigation tests | 符合 |
 | 用户追加的日志体验 | `web/src/components/{ContainerLogView,RuntimeContainerLogsDrawer}.vue`、`runtimeContainerLogs.ts`、Gateway/Route/Service/Deployment detail | 范围扩展，已实现 |
-| 无关暂存项 | `docs/requirement/20260825-project-automation-review.md` | 与本 feature 无关，应从该功能提交中拆出 |
+| 无关暂存项 | `docs/intent/20260825-project-automation-review.md` | 与本 feature 无关，应从该功能提交中拆出 |
 
 ## Acceptance Checklist
 
@@ -80,7 +80,7 @@ Review status: Draft
 
 - 用户在实现期间追加了 Gateway/Route/Service 的 Traefik runtime 日志抽屉、部署及 Route 操作后的自动展开，以及日志区域高度修复；这部分不在原 plan 中，已纳入本次实际交付。
 - Route 与 Traefik REST provider 的统一全量同步、前端启停草稿和 preview/confirm 模态窗已拆分为独立轻量任务，见 [Route REST 快照防误删](../verification/20260819-route-rest-snapshot-safety.md)。它不计入本 DNS-01 验收的范围或未完成项。
-- `docs/requirement/20260825-project-automation-review.md` 是独立的 Taskfile 审查，不属于 LAN DNS-01/Gateway feature，当前仅因共用暂存区而出现。
+- `docs/intent/20260825-project-automation-review.md` 是独立的 Taskfile 审查，不属于 LAN DNS-01/Gateway feature，当前仅因共用暂存区而出现。
 - 未发现需求、规格或计划中遗漏而未实现的功能项。
 
 ## Risks And Incomplete Items

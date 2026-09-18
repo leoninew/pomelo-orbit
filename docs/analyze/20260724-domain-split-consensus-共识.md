@@ -230,7 +230,7 @@ sqlc query 文件和实现包按下表领域拆分，禁止继续用 `ci`、`cd`
 | `application/<domain>` | 领域 use case、DTO 和 port 分别位于 `usecase/`、`dto/`、`port/`。 | 用 `<entity>.go`、`<capability>.go` 或动作名；`service.go` 仅用于定义该领域主 `Service` 类型及其构造。 |
 | `repository` | 根 package 定义领域 port；`impl/sqlc/<domain>` 隔离 sqlc 实现和 DB Row 转换。 | 根 package 用 `<domain>.go`；领域实现目录内可用 `repository.go` 表示该实现的主 Repository。 |
 | `infrastructure` | 按外部系统或技术实现组织，例如 `<provider>`、`runner`、`storage`。 | 用 provider 或能力名，不以业务领域命名来掩盖外部系统适配。 |
-| 入站 adapter | HTTP handler、routes、worker handler 等按 transport 和领域分组。 | `handler/<domain>/` 内使用 `handler.go`、`<entity>.go`、`<entity>_mapper.go`；`routes/<domain>.go` 只绑定 URL 与 handler。 |
+| 入站 adapter | HTTP handler、routes、worker handler 等按 transport 和领域分组。 | `handler/<domain>/` 内使用 `handler.go`、`<entity>.go`、`mapper.go`；`routes/<domain>.go` 只绑定 URL 与 handler。 |
 | `bootstrap` | 组合根，负责创建实现并注入 port。 | 使用 transport 或组合目标命名，例如 `http.go`、`worker.go`；不承载业务规则。 |
 
 在一个扁平的多领域目录中，选择 `<domain>.go`，不选择 `<domain>_<layer>.go`：父目录已经给出层语义，后缀重复信息。例如 `repository/<domain>.go` 优于 `<domain>_repository.go`，`model/<domain>.go` 优于 `<domain>_model.go`。当领域拥有多个实体或行为时，先进入 `<layer>/<domain>/`，再以 `<entity>.go` 或 `<action>.go` 划分。

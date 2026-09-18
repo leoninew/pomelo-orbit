@@ -17,9 +17,9 @@ type Querier interface {
 	ListPermissions(ctx context.Context) ([]Permission, error)
 	ListRoles(ctx context.Context, arg ListRolesParams) ([]Role, error)
 	PermissionCodesByCodes(ctx context.Context, codes []string) ([]string, error)
-	PermissionIDByCode(ctx context.Context, code string) (string, error)
+	PermissionIdByCode(ctx context.Context, code string) (string, error)
 	RoleByCode(ctx context.Context, code string) (Role, error)
-	RoleByID(ctx context.Context, id string) (Role, error)
+	RoleById(ctx context.Context, id string) (Role, error)
 	RoleByName(ctx context.Context, name string) (Role, error)
 	RolePermissionCodesByRoleIds(ctx context.Context, roleIds []string) ([]RolePermissionCodesByRoleIdsRow, error)
 	UpdateRole(ctx context.Context, arg UpdateRoleParams) error

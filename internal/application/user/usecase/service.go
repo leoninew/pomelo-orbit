@@ -21,10 +21,14 @@ import (
 type Service struct {
 	repo     repository.UserStore
 	roles    repository.RoleStore
-	projects repository.ProjectStore
+	projects projectMembershipDomain
 }
 
-func New(repo repository.UserStore, roles repository.RoleStore, projects repository.ProjectStore) Service {
+type projectMembershipDomain interface {
+	RemoveUserFromAllProjects(ctx context.Context, userId string) error
+}
+
+func New(repo repository.UserStore, roles repository.RoleStore, projects projectMembershipDomain) Service {
 	return Service{repo: repo, roles: roles, projects: projects}
 }
 

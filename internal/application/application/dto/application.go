@@ -14,12 +14,35 @@ type ApplicationUpdateInput struct {
 	Code *string
 }
 
+// ApplicationDefinition is the complete static definition of an Application.
+// Its IDs are only relationship keys in the supplied definition; creation
+// assigns new persisted IDs to the Application, Versions, and Components.
+type ApplicationDefinition struct {
+	Application model.Application
+	Versions    []VersionDefinition
+}
+
+type VersionDefinition struct {
+	Version    model.Version
+	Components []model.VersionComponent
+}
+
 // VersionCreateInput creates an unpublished version with component specifications.
 type VersionCreateInput struct {
 	ApplicationId string
 	Label         string
 	Note          *string
 	Components    []VersionComponentInput
+}
+
+// VersionDefinitionInput is a complete draft Version specification. It is
+// used by internal application workflows that already hold parsed component
+// values, rather than HTTP command-line fields.
+type VersionDefinitionInput struct {
+	Label                string
+	Note                 *string
+	CreatedFromVersionId *string
+	Components           []model.VersionComponent
 }
 
 // VersionUpdateInput updates version metadata.

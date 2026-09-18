@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## 需求对齐
 
-按 `docs/requirement/20260815-application-import-export-removal.md` 核对。本任务采用轻量模式 / light；无独立 Spec 或 Plan，按已接受的 Requirement 验证。
+按 `docs/intent/20260815-application-import-export-removal.md` 核对。本任务采用轻量模式 / light；无独立 Spec 或 Plan，按已接受的 Requirement 验证。
 
 - 应用列表删除 JSON 文件导入控件、导入对话框和相关表单逻辑。
 - 应用详情删除导出命令与下载逻辑。
@@ -19,7 +19,7 @@ Review status: Accepted
 
 | 范围 | 实际文件 |
 | --- | --- |
-| 过程文档 | `docs/requirement/20260815-application-import-export-removal.md` |
+| 过程文档 | `docs/intent/20260815-application-import-export-removal.md` |
 | HTTP 与应用层 | Application handler、router、DTO 与 import/export usecase 删除 |
 | 协议 | `application_bundle.proto` 及 Go/TypeScript 生成文件删除 |
 | Web | Application API、列表页、详情页与中英文 locale |

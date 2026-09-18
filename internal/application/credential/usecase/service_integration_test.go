@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"io"
 	"log/slog"
-	"net/http"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -17,6 +16,7 @@ import (
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	credentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/credential"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
+	vcsrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/repository"
 	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
@@ -53,7 +53,7 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 		t.Fatalf("unexpected decrypted credential data: %q", decrypted)
 	}
 
-	exported, err := service.ExportCredential(ctx, ciTestUserId, created.Id)
+	exported, err := service.ExportCredential(ctx, ciTestUserId, ciTestProjectId, created.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 		t.Fatalf("unexpected exported credential: %+v", exported)
 	}
 
-	if _, err := service.CreateCredential(ctx, ciTestUserId, credentialdto.CredentialCreateInput{ProjectId: ciTestProjectId, Name: "GitHub Token", Type: "github_token", Data: "other"}); err == nil || apperror.StatusCode(err) != http.StatusConflict {
+	if _, err := service.CreateCredential(ctx, ciTestUserId, credentialdto.CredentialCreateInput{ProjectId: ciTestProjectId, Name: "GitHub Token", Type: "github_token", Data: "other"}); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate credential create conflict, got %v", err)
 	}
 
@@ -70,14 +70,14 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 		t.Fatal(err)
 	}
 	name := "GitHub Token"
-	if _, err := service.UpdateCredential(ctx, ciTestUserId, other.Id, credentialdto.CredentialUpdateInput{Name: &name}); err == nil || apperror.StatusCode(err) != http.StatusConflict {
+	if _, err := service.UpdateCredential(ctx, ciTestUserId, ciTestProjectId, other.Id, credentialdto.CredentialUpdateInput{Name: &name}); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate credential update conflict, got %v", err)
 	}
 
 	if _, err := database.ExecContext(ctx, `UPDATE repository SET git_credential_id = ? WHERE id = ?`, created.Id, "01KNNRBH52BQJYT9487B2H8N62"); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.DeleteCredential(ctx, ciTestUserId, created.Id); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+	if err := service.DeleteCredential(ctx, ciTestUserId, ciTestProjectId, created.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected referenced credential delete validation error, got %v", err)
 	}
 }
@@ -96,7 +96,7 @@ func TestCreateCredentialAcceptsGiteaTokenAndRejectsUnknownType(t *testing.T) {
 	if created.Type != "gitea_token" {
 		t.Fatalf("created type=%q", created.Type)
 	}
-	exported, err := service.ExportCredential(ctx, ciTestUserId, created.Id)
+	exported, err := service.ExportCredential(ctx, ciTestUserId, ciTestProjectId, created.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestCreateCredentialAcceptsGiteaTokenAndRejectsUnknownType(t *testing.T) {
 	_, err = service.CreateCredential(ctx, ciTestUserId, credentialdto.CredentialCreateInput{
 		ProjectId: ciTestProjectId, Name: "Unknown Token", Type: "unknown_token", Data: "alice:token",
 	})
-	if err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
+	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected unknown credential type to be rejected, got %v", err)
 	}
 }
@@ -127,6 +127,7 @@ func newCredentialIntegrationService(t *testing.T) (Service, *sql.DB) {
 	service := New(
 		projectrepo.NewRepository(database),
 		credentialrepo.NewRepository(database),
+		vcsrepo.NewRepository(database),
 		ciTestSecretKey,
 	)
 	return service, database

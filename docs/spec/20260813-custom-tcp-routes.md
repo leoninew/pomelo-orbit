@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Requirement basis
 
-依据已接受的 [自定义 TCP 路由需求](../requirement/20260813-custom-tcp-routes.md)。Route 是 Gateway 唯一的公开 TCP 控制面：`gateway_tcp` 直接删除、`gateway_http` 直接更名为 `gateway`，历史值均由发布前离线更新处理，不提供运行时兼容。Gateway 每次成功 deploy/restart 后必须全量同步自定义 Route，避免动态 REST 配置因 Gateway 重建丢失。
+依据已接受的 [自定义 TCP 路由需求](../intent/20260813-custom-tcp-routes.md)。Route 是 Gateway 唯一的公开 TCP 控制面：`gateway_tcp` 直接删除、`gateway_http` 直接更名为 `gateway`，历史值均由发布前离线更新处理，不提供运行时兼容。Gateway 每次成功 deploy/restart 后必须全量同步自定义 Route，避免动态 REST 配置因 Gateway 重建丢失。
 
 ## Overview
 

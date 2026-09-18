@@ -8,10 +8,9 @@ import (
 	"strings"
 	"time"
 
-	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
-
 	projectdto "github.com/leoninew/pomelo-orbit/internal/application/project/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
@@ -19,20 +18,27 @@ import (
 var projectCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
 type Service struct {
-	repo  repository.ProjectStore
-	users repository.UserStore
+	repo         repository.ProjectStore
+	users        repository.UserStore
+	repositories repository.RepositoryProjectCounter
+	applications repository.ApplicationProjectCounter
 }
 
-func New(repo repository.ProjectStore, users repository.UserStore) Service {
-	return Service{repo: repo, users: users}
+func New(
+	repo repository.ProjectStore,
+	users repository.UserStore,
+	repositories repository.RepositoryProjectCounter,
+	applications repository.ApplicationProjectCounter,
+) Service {
+	return Service{repo: repo, users: users, repositories: repositories, applications: applications}
 }
 
 func (s Service) ListByMember(ctx context.Context, userId string) ([]model.Project, error) {
 	return s.repo.ListProjectsByMember(ctx, userId)
 }
 
-func (s Service) Create(ctx context.Context, userId string, input projectdto.SaveInput) (model.Project, error) {
-	name, code, err := normalizeAndValidate(input)
+func (s Service) Create(ctx context.Context, userId string, input projectdto.CreateInput) (model.Project, error) {
+	name, code, err := normalizeAndValidateCreate(input)
 	if err != nil {
 		return model.Project{}, err
 	}
@@ -41,6 +47,24 @@ func (s Service) Create(ctx context.Context, userId string, input projectdto.Sav
 	}
 	now := time.Now().UTC()
 	project := model.Project{Id: idutil.NewId(), Name: name, Code: code, IsActive: true, CreatedAt: now, UpdatedAt: now}
+	if err := s.repo.CreateProject(ctx, project, userId); err != nil {
+		return model.Project{}, err
+	}
+	return project, nil
+}
+
+// CreateFromDefinition creates a Project and assigns the initiating user as
+// its initial member.
+func (s Service) CreateFromDefinition(ctx context.Context, userId string, input projectdto.ProjectDefinition) (model.Project, error) {
+	name, code, err := normalizeProjectDefinition(input)
+	if err != nil {
+		return model.Project{}, err
+	}
+	if err := s.ensureCodeAvailable(ctx, code, ""); err != nil {
+		return model.Project{}, err
+	}
+	now := time.Now().UTC()
+	project := model.Project{Id: idutil.NewId(), Name: name, Code: code, IsActive: input.IsActive, CreatedAt: now, UpdatedAt: now}
 	if err := s.repo.CreateProject(ctx, project, userId); err != nil {
 		return model.Project{}, err
 	}
@@ -66,15 +90,11 @@ func (s Service) LoadForUser(ctx context.Context, projectId string, userId strin
 }
 
 func (s Service) Update(ctx context.Context, project model.Project, input projectdto.SaveInput) (model.Project, error) {
-	name, code, err := normalizeAndValidate(input)
+	name, err := normalizeAndValidateUpdate(input)
 	if err != nil {
 		return model.Project{}, err
 	}
-	if err := s.ensureCodeAvailable(ctx, code, project.Id); err != nil {
-		return model.Project{}, err
-	}
 	project.Name = name
-	project.Code = code
 	if err := s.repo.UpdateProject(ctx, project); err != nil {
 		return model.Project{}, err
 	}
@@ -93,14 +113,14 @@ func (s Service) Deprecate(ctx context.Context, project model.Project, userId st
 	if len(activeProjects) <= 1 {
 		return apperror.New(apperror.KindValidation, "Cannot deprecate the last active project")
 	}
-	repoCount, err := s.repo.CountProjectRepositories(ctx, project.Id)
+	repoCount, err := s.repositories.CountRepositoriesByProject(ctx, project.Id)
 	if err != nil {
 		return fmt.Errorf("count project repositories %s: %w", project.Id, err)
 	}
 	if repoCount > 0 {
 		return apperror.New(apperror.KindValidation, fmt.Sprintf("Cannot deprecate project with %d repositories", repoCount))
 	}
-	appCount, err := s.repo.CountProjectApplications(ctx, project.Id)
+	appCount, err := s.applications.CountApplicationsByProject(ctx, project.Id)
 	if err != nil {
 		return fmt.Errorf("count project applications %s: %w", project.Id, err)
 	}
@@ -138,6 +158,12 @@ func (s Service) RemoveMember(ctx context.Context, projectId string, userId stri
 	return s.repo.ProjectMembers(ctx, projectId)
 }
 
+// RemoveUserFromAllProjects removes Project-owned memberships before the User
+// domain deletes the account itself.
+func (s Service) RemoveUserFromAllProjects(ctx context.Context, userId string) error {
+	return s.repo.RemoveUserFromAllProjects(ctx, strings.TrimSpace(userId))
+}
+
 func (s Service) ensureCodeAvailable(ctx context.Context, code string, currentProjectId string) error {
 	existing, err := s.repo.ProjectByCode(ctx, code)
 	if err == nil {
@@ -152,13 +178,25 @@ func (s Service) ensureCodeAvailable(ctx context.Context, code string, currentPr
 	return nil
 }
 
-func normalizeAndValidate(input projectdto.SaveInput) (string, string, error) {
+func normalizeAndValidateCreate(input projectdto.CreateInput) (string, string, error) {
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
 	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !projectCodePattern.MatchString(code) {
 		return "", "", ErrInvalidProjectFields
 	}
 	return name, code, nil
+}
+
+func normalizeAndValidateUpdate(input projectdto.SaveInput) (string, error) {
+	name := strings.TrimSpace(input.Name)
+	if name == "" || len(name) > 100 {
+		return "", ErrInvalidProjectFields
+	}
+	return name, nil
+}
+
+func normalizeProjectDefinition(input projectdto.ProjectDefinition) (string, string, error) {
+	return normalizeAndValidateCreate(projectdto.CreateInput{Name: input.Name, Code: input.Code})
 }
 
 var ErrInvalidProjectFields = apperror.New(apperror.KindValidation, "Invalid project fields")

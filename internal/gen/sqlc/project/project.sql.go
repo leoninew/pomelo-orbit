@@ -17,40 +17,14 @@ VALUES (?, ?, ?)
 `
 
 type AddProjectMemberParams struct {
-	ProjectID string    `db:"project_id"`
-	UserID    string    `db:"user_id"`
+	ProjectId string    `db:"project_id"`
+	UserId    string    `db:"user_id"`
 	CreatedAt time.Time `db:"created_at"`
 }
 
 func (q *Queries) AddProjectMember(ctx context.Context, arg AddProjectMemberParams) error {
-	_, err := q.db.ExecContext(ctx, addProjectMember, arg.ProjectID, arg.UserID, arg.CreatedAt)
+	_, err := q.db.ExecContext(ctx, addProjectMember, arg.ProjectId, arg.UserId, arg.CreatedAt)
 	return err
-}
-
-const countProjectApplications = `-- name: CountProjectApplications :one
-SELECT COUNT(*)
-FROM application
-WHERE project_id = ?
-`
-
-func (q *Queries) CountProjectApplications(ctx context.Context, projectID sql.NullString) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProjectApplications, projectID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countProjectRepositories = `-- name: CountProjectRepositories :one
-SELECT COUNT(*)
-FROM repository
-WHERE project_id = ?
-`
-
-func (q *Queries) CountProjectRepositories(ctx context.Context, projectID sql.NullString) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProjectRepositories, projectID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
 }
 
 const createProject = `-- name: CreateProject :exec
@@ -59,7 +33,7 @@ VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateProjectParams struct {
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
 	Name      string    `db:"name"`
 	Code      string    `db:"code"`
 	IsActive  bool      `db:"is_active"`
@@ -69,7 +43,7 @@ type CreateProjectParams struct {
 
 func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) error {
 	_, err := q.db.ExecContext(ctx, createProject,
-		arg.ID,
+		arg.Id,
 		arg.Name,
 		arg.Code,
 		arg.IsActive,
@@ -87,11 +61,11 @@ WHERE id = ?
 
 type DeprecateProjectParams struct {
 	UpdatedAt time.Time `db:"updated_at"`
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
 }
 
 func (q *Queries) DeprecateProject(ctx context.Context, arg DeprecateProjectParams) error {
-	_, err := q.db.ExecContext(ctx, deprecateProject, arg.UpdatedAt, arg.ID)
+	_, err := q.db.ExecContext(ctx, deprecateProject, arg.UpdatedAt, arg.Id)
 	return err
 }
 
@@ -102,12 +76,12 @@ WHERE project_id = ? AND user_id = ?
 `
 
 type IsProjectMemberParams struct {
-	ProjectID string `db:"project_id"`
-	UserID    string `db:"user_id"`
+	ProjectId string `db:"project_id"`
+	UserId    string `db:"user_id"`
 }
 
 func (q *Queries) IsProjectMember(ctx context.Context, arg IsProjectMemberParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, isProjectMember, arg.ProjectID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, isProjectMember, arg.ProjectId, arg.UserId)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -122,7 +96,7 @@ ORDER BY project.id DESC
 `
 
 type ListActiveProjectsByMemberRow struct {
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
 	Name      string    `db:"name"`
 	Code      string    `db:"code"`
 	IsActive  bool      `db:"is_active"`
@@ -140,7 +114,7 @@ func (q *Queries) ListActiveProjectsByMember(ctx context.Context, userID string)
 	for rows.Next() {
 		var i ListActiveProjectsByMemberRow
 		if err := rows.Scan(
-			&i.ID,
+			&i.Id,
 			&i.Name,
 			&i.Code,
 			&i.IsActive,
@@ -169,7 +143,7 @@ ORDER BY project.id DESC
 `
 
 type ListProjectsByMemberRow struct {
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
 	Name      string    `db:"name"`
 	Code      string    `db:"code"`
 	IsActive  bool      `db:"is_active"`
@@ -187,7 +161,7 @@ func (q *Queries) ListProjectsByMember(ctx context.Context, userID string) ([]Li
 	for rows.Next() {
 		var i ListProjectsByMemberRow
 		if err := rows.Scan(
-			&i.ID,
+			&i.Id,
 			&i.Name,
 			&i.Code,
 			&i.IsActive,
@@ -214,7 +188,7 @@ WHERE code = ?
 `
 
 type ProjectByCodeRow struct {
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
 	Name      string    `db:"name"`
 	Code      string    `db:"code"`
 	IsActive  bool      `db:"is_active"`
@@ -226,7 +200,7 @@ func (q *Queries) ProjectByCode(ctx context.Context, code string) (ProjectByCode
 	row := q.db.QueryRowContext(ctx, projectByCode, code)
 	var i ProjectByCodeRow
 	err := row.Scan(
-		&i.ID,
+		&i.Id,
 		&i.Name,
 		&i.Code,
 		&i.IsActive,
@@ -236,14 +210,14 @@ func (q *Queries) ProjectByCode(ctx context.Context, code string) (ProjectByCode
 	return i, err
 }
 
-const projectByID = `-- name: ProjectByID :one
+const projectById = `-- name: ProjectById :one
 SELECT id, name, code, is_active, created_at, updated_at
 FROM project
 WHERE id = ?
 `
 
-type ProjectByIDRow struct {
-	ID        string    `db:"id"`
+type ProjectByIdRow struct {
+	Id        string    `db:"id"`
 	Name      string    `db:"name"`
 	Code      string    `db:"code"`
 	IsActive  bool      `db:"is_active"`
@@ -251,11 +225,11 @@ type ProjectByIDRow struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-func (q *Queries) ProjectByID(ctx context.Context, id string) (ProjectByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, projectByID, id)
-	var i ProjectByIDRow
+func (q *Queries) ProjectById(ctx context.Context, id string) (ProjectByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, projectById, id)
+	var i ProjectByIdRow
 	err := row.Scan(
-		&i.ID,
+		&i.Id,
 		&i.Name,
 		&i.Code,
 		&i.IsActive,
@@ -275,12 +249,12 @@ ORDER BY u.username
 `
 
 type ProjectMembersRow struct {
-	ID              string       `db:"id"`
+	Id              string       `db:"id"`
 	Username        string       `db:"username"`
 	PasswordHash    string       `db:"password_hash"`
 	Status          string       `db:"status"`
 	OauthProvider   string       `db:"oauth_provider"`
-	OauthProviderID string       `db:"oauth_provider_id"`
+	OAuthProviderId string       `db:"oauth_provider_id"`
 	Email           string       `db:"email"`
 	AuthSource      string       `db:"auth_source"`
 	CreatedAt       time.Time    `db:"created_at"`
@@ -298,12 +272,12 @@ func (q *Queries) ProjectMembers(ctx context.Context, projectID string) ([]Proje
 	for rows.Next() {
 		var i ProjectMembersRow
 		if err := rows.Scan(
-			&i.ID,
+			&i.Id,
 			&i.Username,
 			&i.PasswordHash,
 			&i.Status,
 			&i.OauthProvider,
-			&i.OauthProviderID,
+			&i.OAuthProviderId,
 			&i.Email,
 			&i.AuthSource,
 			&i.CreatedAt,
@@ -329,12 +303,12 @@ WHERE project_id = ? AND user_id = ?
 `
 
 type RemoveProjectMemberParams struct {
-	ProjectID string `db:"project_id"`
-	UserID    string `db:"user_id"`
+	ProjectId string `db:"project_id"`
+	UserId    string `db:"user_id"`
 }
 
 func (q *Queries) RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error {
-	_, err := q.db.ExecContext(ctx, removeProjectMember, arg.ProjectID, arg.UserID)
+	_, err := q.db.ExecContext(ctx, removeProjectMember, arg.ProjectId, arg.UserId)
 	return err
 }
 
@@ -350,23 +324,25 @@ func (q *Queries) RemoveUserFromAllProjects(ctx context.Context, userID string) 
 
 const updateProject = `-- name: UpdateProject :exec
 UPDATE project
-SET name = ?, code = ?, updated_at = ?
+SET name = ?, code = ?, is_active = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateProjectParams struct {
 	Name      string    `db:"name"`
 	Code      string    `db:"code"`
+	IsActive  bool      `db:"is_active"`
 	UpdatedAt time.Time `db:"updated_at"`
-	ID        string    `db:"id"`
+	Id        string    `db:"id"`
 }
 
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) error {
 	_, err := q.db.ExecContext(ctx, updateProject,
 		arg.Name,
 		arg.Code,
+		arg.IsActive,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
 	)
 	return err
 }

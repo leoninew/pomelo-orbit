@@ -25,5 +25,5 @@
 
 - 默认阅读顺序：`docs/README.md` -> `docs/INDEX.md` -> `docs/product/`、`docs/architecture/`、`docs/decisions/`，以及已校准的 `docs/guides/`、`docs/frontend/`。
 - `docs/archive/**` 为历史材料。除非用户明确要求，不将其作为实现或验收依据。
-- 进行中的 SpecFlow 任务使用 `docs/requirement|spec|plan|verification`，已归档过程文档位于 `docs/archive/specflow/`。
+- 进行中的 SpecFlow 任务使用 `docs/intent|spec|plan|verification`，已归档过程文档位于 `docs/archive/specflow/`。
 - 文档与代码冲突时以代码为准，并同步修正活文档。

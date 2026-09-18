@@ -41,20 +41,20 @@ type Service struct {
 }
 
 type pipelineExecutionStore interface {
-	PipelineRun(ctx context.Context, id string) (model.PipelineRun, error)
-	ListPipelineStageRuns(ctx context.Context, runId string) ([]model.PipelineStageRun, error)
-	Repository(ctx context.Context, id string) (model.Repository, error)
-	Credential(ctx context.Context, id string) (model.Credential, error)
-	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
-	BeginPipelineRun(ctx context.Context, id string) (bool, error)
-	CompletePipelineRun(ctx context.Context, id string, status string, message string) (bool, error)
-	BeginPipelineStageRun(ctx context.Context, id string) (bool, error)
-	CompletePipelineStageRun(ctx context.Context, stage model.PipelineStageRun) (bool, error)
+	PipelineRun(ctx context.Context, projectId string, id string) (model.PipelineRun, error)
+	ListPipelineStageRuns(ctx context.Context, projectId string, runId string) ([]model.PipelineStageRun, error)
+	Repository(ctx context.Context, projectId string, id string) (model.Repository, error)
+	Credential(ctx context.Context, projectId string, id string) (model.Credential, error)
+	PipelineSnapshot(ctx context.Context, projectId string, id string) (model.PipelineSnapshot, error)
+	BeginPipelineRun(ctx context.Context, projectId string, id string) (bool, error)
+	CompletePipelineRun(ctx context.Context, projectId string, id string, status string, message string) (bool, error)
+	BeginPipelineStageRun(ctx context.Context, projectId string, id string) (bool, error)
+	CompletePipelineStageRun(ctx context.Context, projectId string, stage model.PipelineStageRun) (bool, error)
 	CreateArtifact(ctx context.Context, artifact model.Artifact) error
-	CommandArtifactByRunStageAndName(ctx context.Context, pipelineRunId string, pipelineStageId string, name string) (model.Artifact, error)
-	ListArtifactsByRun(ctx context.Context, projectId *string, runId string) ([]model.Artifact, error)
-	PipelineRunVersionBinding(ctx context.Context, pipelineRunId string) (model.PipelineRunVersionBinding, error)
-	CompletePipelineRunVersionBinding(ctx context.Context, pipelineRunId string, generatedVersionId string, generatedVersionLabel string) error
+	CommandArtifactByRunStageAndName(ctx context.Context, projectId string, pipelineRunId string, pipelineStageId string, name string) (model.Artifact, error)
+	ListArtifactsByRun(ctx context.Context, projectId string, runId string) ([]model.Artifact, error)
+	PipelineRunVersionBinding(ctx context.Context, projectId string, pipelineRunId string) (model.PipelineRunVersionBinding, error)
+	CompletePipelineRunVersionBinding(ctx context.Context, projectId string, pipelineRunId string, generatedVersionId string, generatedVersionLabel string) error
 }
 
 type stores struct {
@@ -82,105 +82,124 @@ func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
 func (s stores) IsProjectMember(ctx context.Context, projectId, userId string) (bool, error) {
 	return s.project.IsProjectMember(ctx, projectId, userId)
 }
-func (s stores) Repository(ctx context.Context, id string) (model.Repository, error) {
-	return s.repository.Repository(ctx, id)
+func (s stores) Repository(ctx context.Context, projectId string, id string) (model.Repository, error) {
+	return s.repository.Repository(ctx, projectId, id)
 }
-func (s stores) Credential(ctx context.Context, id string) (model.Credential, error) {
-	return s.credential.Credential(ctx, id)
+func (s stores) Credential(ctx context.Context, projectId string, id string) (model.Credential, error) {
+	return s.credential.Credential(ctx, projectId, id)
 }
-func (s stores) Pipeline(ctx context.Context, id string) (model.Pipeline, error) {
-	return s.pipeline.Pipeline(ctx, id)
+func (s stores) Pipeline(ctx context.Context, projectId string, id string) (model.Pipeline, error) {
+	return s.pipeline.Pipeline(ctx, projectId, id)
 }
-func (s stores) PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error) {
-	return s.pipeline.PipelineSnapshot(ctx, id)
+func (s stores) PipelineSnapshot(ctx context.Context, projectId string, id string) (model.PipelineSnapshot, error) {
+	return s.pipeline.PipelineSnapshot(ctx, projectId, id)
 }
-func (s stores) LatestPipelineSnapshot(ctx context.Context, pipelineId string) (model.PipelineSnapshot, error) {
-	return s.pipeline.LatestPipelineSnapshot(ctx, pipelineId)
+func (s stores) LatestPipelineSnapshot(ctx context.Context, projectId string, pipelineId string) (model.PipelineSnapshot, error) {
+	return s.pipeline.LatestPipelineSnapshot(ctx, projectId, pipelineId)
 }
 func (s stores) CreatePipelineSnapshot(ctx context.Context, snapshot model.PipelineSnapshot) error {
 	return s.pipeline.CreatePipelineSnapshot(ctx, snapshot)
 }
-func (s stores) ApplicationPipelineStages(ctx context.Context, pipelineId string) ([]model.PipelineStage, error) {
-	return s.pipeline.ApplicationPipelineStages(ctx, pipelineId)
+func (s stores) ApplicationPipelineStages(ctx context.Context, projectId string, pipelineId string) ([]model.PipelineStage, error) {
+	return s.pipeline.ApplicationPipelineStages(ctx, projectId, pipelineId)
 }
-func (s stores) Application(ctx context.Context, id string) (model.Application, error) {
-	return s.application.Application(ctx, id)
+func (s stores) Application(ctx context.Context, projectId, id string) (model.Application, error) {
+	return s.application.Application(ctx, projectId, id)
 }
-func (s stores) Version(ctx context.Context, id string) (model.Version, error) {
-	return s.application.Version(ctx, id)
+func (s stores) Version(ctx context.Context, projectId, id string) (model.Version, error) {
+	return s.application.Version(ctx, projectId, id)
 }
-func (s stores) LatestVersionByApplication(ctx context.Context, id string) (model.Version, error) {
-	return s.application.LatestVersionByApplication(ctx, id)
+func (s stores) LatestVersionByApplication(ctx context.Context, projectId, id string) (model.Version, error) {
+	return s.application.LatestVersionByApplication(ctx, projectId, id)
 }
-func (s stores) VersionComponentsByVersion(ctx context.Context, id string) ([]model.VersionComponent, error) {
-	return s.application.VersionComponentsByVersion(ctx, id)
+func (s stores) VersionComponentsByVersion(ctx context.Context, projectId, id string) ([]model.VersionComponent, error) {
+	return s.application.VersionComponentsByVersion(ctx, projectId, id)
 }
-func (s stores) ListPipelineRuns(ctx context.Context, project, repositoryID, pipelineID string, from, to *time.Time, page, perPage int) (repository.Page[model.PipelineRun], error) {
-	return s.pipelineRun.ListPipelineRuns(ctx, project, repositoryID, pipelineID, from, to, page, perPage)
+func (s stores) ListPipelineRuns(ctx context.Context, project, repositoryId, pipelineId string, from, to *time.Time, page, perPage int) (repository.Page[model.PipelineRun], error) {
+	return s.pipelineRun.ListPipelineRuns(ctx, project, repositoryId, pipelineId, from, to, page, perPage)
 }
-func (s stores) ListPipelineRunsByPipeline(ctx context.Context, pipelineID string, page, perPage int) (repository.Page[model.PipelineRun], error) {
-	return s.pipelineRun.ListPipelineRunsByPipeline(ctx, pipelineID, page, perPage)
+func (s stores) ListPipelineRunsByPipeline(ctx context.Context, projectId string, pipelineId string, page, perPage int) (repository.Page[model.PipelineRun], error) {
+	return s.pipelineRun.ListPipelineRunsByPipeline(ctx, projectId, pipelineId, page, perPage)
 }
-func (s stores) PipelineRun(ctx context.Context, id string) (model.PipelineRun, error) {
-	return s.pipelineRun.PipelineRun(ctx, id)
+func (s stores) PipelineRun(ctx context.Context, projectId string, id string) (model.PipelineRun, error) {
+	return s.pipelineRun.PipelineRun(ctx, projectId, id)
 }
-func (s stores) DeletePipelineRun(ctx context.Context, id string) error {
-	return s.pipelineRun.DeletePipelineRun(ctx, id)
+func (s stores) DeletePipelineRun(ctx context.Context, projectId, id string) error {
+	return s.pipelineRun.DeletePipelineRun(ctx, projectId, id)
 }
-func (s stores) ListPipelineStageRuns(ctx context.Context, id string) ([]model.PipelineStageRun, error) {
-	return s.pipelineRun.ListPipelineStageRuns(ctx, id)
+func (s stores) ListPipelineStageRuns(ctx context.Context, projectId, id string) ([]model.PipelineStageRun, error) {
+	return s.pipelineRun.ListPipelineStageRuns(ctx, projectId, id)
 }
-func (s stores) PipelineStageRun(ctx context.Context, id string) (model.PipelineStageRun, error) {
-	return s.pipelineRun.PipelineStageRun(ctx, id)
+func (s stores) PipelineStageRun(ctx context.Context, projectId, id string) (model.PipelineStageRun, error) {
+	return s.pipelineRun.PipelineStageRun(ctx, projectId, id)
 }
-func (s stores) ListArtifacts(ctx context.Context, project, repositoryID, pipelineID string, page, perPage int, search string) (repository.Page[model.Artifact], error) {
-	return s.pipelineRun.ListArtifacts(ctx, project, repositoryID, pipelineID, page, perPage, search)
+func (s stores) ListArtifacts(ctx context.Context, project, repositoryId, pipelineId string, page, perPage int, search string) (repository.Page[model.Artifact], error) {
+	return s.pipelineRun.ListArtifacts(ctx, project, repositoryId, pipelineId, page, perPage, search)
 }
-func (s stores) ListArtifactsByRun(ctx context.Context, project *string, runID string) ([]model.Artifact, error) {
-	return s.pipelineRun.ListArtifactsByRun(ctx, project, runID)
+func (s stores) ListArtifactsByRun(ctx context.Context, projectId string, runId string) ([]model.Artifact, error) {
+	return s.pipelineRun.ListArtifactsByRun(ctx, projectId, runId)
 }
-func (s stores) Artifact(ctx context.Context, id string) (model.Artifact, error) {
-	return s.pipelineRun.Artifact(ctx, id)
+func (s stores) Artifact(ctx context.Context, projectId string, id string) (model.Artifact, error) {
+	return s.pipelineRun.Artifact(ctx, projectId, id)
 }
 func (s stores) CreatePipelineRun(ctx context.Context, run model.PipelineRun, binding *model.PipelineRunVersionBinding, stageRuns []model.PipelineStageRun) error {
 	return s.pipelineRun.CreatePipelineRun(ctx, run, binding, stageRuns)
 }
-func (s stores) RepositoryHasActivePipelineRun(ctx context.Context, id string) (bool, error) {
-	return s.pipelineRun.RepositoryHasActivePipelineRun(ctx, id)
+func (s stores) RepositoryHasActivePipelineRun(ctx context.Context, projectId, id string) (bool, error) {
+	return s.pipelineRun.RepositoryHasActivePipelineRun(ctx, projectId, id)
 }
-func (s stores) PipelineRunVersionBinding(ctx context.Context, runID string) (model.PipelineRunVersionBinding, error) {
-	return s.pipelineRun.PipelineRunVersionBinding(ctx, runID)
+func (s stores) HasCDConfigurationReferences(ctx context.Context, projectId string) (bool, error) {
+	return s.pipelineRun.HasCDConfigurationReferences(ctx, projectId)
 }
-func (s stores) CancelPipelineRun(ctx context.Context, id string) (bool, error) {
-	return s.pipelineRun.CancelPipelineRun(ctx, id)
+
+// EnsureNoCDConfigurationReferences prevents replacing deployment
+// configuration that remains referenced by Pipeline Run bindings.
+func (s Service) EnsureNoCDConfigurationReferences(ctx context.Context, userId, projectId string) error {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return err
+	}
+	referenced, err := s.store.HasCDConfigurationReferences(ctx, projectId)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to check Pipeline Run CD configuration references", err)
+	}
+	if referenced {
+		return apperror.New(apperror.KindConflict, "Project Pipeline Run history still references the current CD configuration")
+	}
+	return nil
 }
-func (s stores) CancelRunningPipelineStageRuns(ctx context.Context, id string) error {
-	return s.pipelineRun.CancelRunningPipelineStageRuns(ctx, id)
+func (s stores) PipelineRunVersionBinding(ctx context.Context, projectId, runId string) (model.PipelineRunVersionBinding, error) {
+	return s.pipelineRun.PipelineRunVersionBinding(ctx, projectId, runId)
 }
-func (s stores) BeginPipelineRun(ctx context.Context, id string) (bool, error) {
-	return s.pipelineRun.BeginPipelineRun(ctx, id)
+func (s stores) CancelPipelineRun(ctx context.Context, projectId, id string) (bool, error) {
+	return s.pipelineRun.CancelPipelineRun(ctx, projectId, id)
 }
-func (s stores) CompletePipelineRun(ctx context.Context, id, statusValue, message string) (bool, error) {
-	return s.pipelineRun.CompletePipelineRun(ctx, id, statusValue, message)
+func (s stores) CancelRunningPipelineStageRuns(ctx context.Context, projectId, id string) error {
+	return s.pipelineRun.CancelRunningPipelineStageRuns(ctx, projectId, id)
 }
-func (s stores) BeginPipelineStageRun(ctx context.Context, id string) (bool, error) {
-	return s.pipelineRun.BeginPipelineStageRun(ctx, id)
+func (s stores) BeginPipelineRun(ctx context.Context, projectId, id string) (bool, error) {
+	return s.pipelineRun.BeginPipelineRun(ctx, projectId, id)
 }
-func (s stores) CompletePipelineStageRun(ctx context.Context, stage model.PipelineStageRun) (bool, error) {
-	return s.pipelineRun.CompletePipelineStageRun(ctx, stage)
+func (s stores) CompletePipelineRun(ctx context.Context, projectId, id, statusValue, message string) (bool, error) {
+	return s.pipelineRun.CompletePipelineRun(ctx, projectId, id, statusValue, message)
+}
+func (s stores) BeginPipelineStageRun(ctx context.Context, projectId, id string) (bool, error) {
+	return s.pipelineRun.BeginPipelineStageRun(ctx, projectId, id)
+}
+func (s stores) CompletePipelineStageRun(ctx context.Context, projectId string, stage model.PipelineStageRun) (bool, error) {
+	return s.pipelineRun.CompletePipelineStageRun(ctx, projectId, stage)
 }
 func (s stores) CreateArtifact(ctx context.Context, artifact model.Artifact) error {
 	return s.pipelineRun.CreateArtifact(ctx, artifact)
 }
-func (s stores) CommandArtifactByRunStageAndName(ctx context.Context, runID, stageID, name string) (model.Artifact, error) {
-	return s.pipelineRun.CommandArtifactByRunStageAndName(ctx, runID, stageID, name)
+func (s stores) CommandArtifactByRunStageAndName(ctx context.Context, projectId, runId, stageId, name string) (model.Artifact, error) {
+	return s.pipelineRun.CommandArtifactByRunStageAndName(ctx, projectId, runId, stageId, name)
 }
-func (s stores) CompletePipelineRunVersionBinding(ctx context.Context, runID, versionID, label string) error {
-	return s.pipelineRun.CompletePipelineRunVersionBinding(ctx, runID, versionID, label)
+func (s stores) CompletePipelineRunVersionBinding(ctx context.Context, projectId, runId, versionId, label string) error {
+	return s.pipelineRun.CompletePipelineRunVersionBinding(ctx, projectId, runId, versionId, label)
 }
 
-func (s Service) TriggerPipeline(ctx context.Context, userId, pipelineId, repositoryRef string) (pipelinerundto.PipelineRunDetail, error) {
-	pipeline, err := s.pipelineForUser(ctx, userId, pipelineId)
+func (s Service) TriggerPipeline(ctx context.Context, userId string, projectId string, pipelineId string, repositoryRef string) (pipelinerundto.PipelineRunDetail, error) {
+	pipeline, err := s.pipelineForUser(ctx, userId, projectId, pipelineId)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
@@ -191,15 +210,15 @@ func (s Service) TriggerPipeline(ctx context.Context, userId, pipelineId, reposi
 	if ref := strings.TrimSpace(repositoryRef); ref != "" {
 		overrides.Global = map[string]string{"repository_ref": ref}
 	}
-	return s.createPipelineRun(ctx, pipeline, overrides, nil)
+	return s.createPipelineRun(ctx, projectId, pipeline, overrides, nil)
 }
 
-func (s Service) RetryPipelineRun(ctx context.Context, userId, runId string) (pipelinerundto.PipelineRunDetail, error) {
-	original, err := s.loadPipelineRunForUser(ctx, userId, runId)
+func (s Service) RetryPipelineRun(ctx context.Context, userId string, projectId string, runId string) (pipelinerundto.PipelineRunDetail, error) {
+	original, err := s.loadPipelineRunForUser(ctx, userId, projectId, runId)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	pipeline, err := s.pipelineForUser(ctx, userId, original.PipelineId)
+	pipeline, err := s.pipelineForUser(ctx, userId, projectId, original.PipelineId)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
@@ -221,28 +240,28 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId, runId string) (pi
 			overrides.Global[declaration.Name] = fmt.Sprint(declaration.Value)
 		}
 	}
-	return s.createPipelineRun(ctx, pipeline, overrides, &original.Id)
+	return s.createPipelineRun(ctx, projectId, pipeline, overrides, &original.Id)
 }
 
-func (s Service) createPipelineRun(ctx context.Context, pipeline model.Pipeline, overrides pipelinevariable.RuntimeVariableOverrides, retryOf *string) (pipelinerundto.PipelineRunDetail, error) {
+func (s Service) createPipelineRun(ctx context.Context, projectId string, pipeline model.Pipeline, overrides pipelinevariable.RuntimeVariableOverrides, retryOf *string) (pipelinerundto.PipelineRunDetail, error) {
 	if pipeline.RepositoryId == nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "application pipeline identity is incomplete")
 	}
-	repo, err := s.repositoryForPipeline(ctx, pipeline)
+	repo, err := s.repositoryForPipeline(ctx, projectId, pipeline)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	if err := s.ensureRepositoryHasNoRunningPipelineRun(ctx, repo.Id); err != nil {
+	if err := s.ensureRepositoryHasNoRunningPipelineRun(ctx, projectId, repo.Id); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	stages, err := s.store.ApplicationPipelineStages(ctx, pipeline.Id)
+	stages, err := s.store.ApplicationPipelineStages(ctx, projectId, pipeline.Id)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
 	}
 	if _, _, err := pipelinevariable.ResolveRuntimeVariablesFromPipelineStages(repo, pipeline, stages, overrides); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	snapshot, err := pipelinesvc.GetOrCreatePipelineSnapshot(ctx, s.store, pipeline, repo)
+	snapshot, err := pipelinesvc.GetOrCreatePipelineSnapshot(ctx, s.store, projectId, pipeline, repo)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
@@ -250,7 +269,7 @@ func (s Service) createPipelineRun(ctx context.Context, pipeline model.Pipeline,
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	binding, err := s.resolvePipelineRunVersionBinding(ctx, snapshot)
+	binding, err := s.resolvePipelineRunVersionBinding(ctx, projectId, snapshot)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
@@ -263,19 +282,19 @@ func (s Service) createPipelineRun(ctx context.Context, pipeline model.Pipeline,
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
 	if s.dispatcher != nil {
-		if err := s.dispatcher.DispatchPipelineRun(ctx, pipelinerundto.PipelineRunDispatchInput{PipelineRunId: run.Id}); err != nil {
+		if err := s.dispatcher.DispatchPipelineRun(ctx, pipelinerundto.PipelineRunDispatchInput{PipelineRunId: run.Id, ProjectId: projectId}); err != nil {
 			return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue pipeline run", err)
 		}
 	}
-	return s.pipelineRunDetail(ctx, run, false)
+	return s.pipelineRunDetail(ctx, projectId, run, false)
 }
 
 func (s Service) ListPipelineRuns(ctx context.Context, userId string, input pipelinerundto.PipelineRunListInput) (repository.Page[pipelinerundto.PipelineRunDetail], error) {
-	projectID := strings.TrimSpace(input.ProjectId)
-	if projectID == "" {
+	projectId := strings.TrimSpace(input.ProjectId)
+	if projectId == "" {
 		return repository.Page[pipelinerundto.PipelineRunDetail]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	if err := s.ensureProjectMembership(ctx, projectID, userId); err != nil {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return repository.Page[pipelinerundto.PipelineRunDetail]{}, err
 	}
 	from, err := parseOptionalRunTime(input.DateFrom, "date_from")
@@ -286,29 +305,29 @@ func (s Service) ListPipelineRuns(ctx context.Context, userId string, input pipe
 	if err != nil {
 		return repository.Page[pipelinerundto.PipelineRunDetail]{}, err
 	}
-	if err := s.ensureRunRepositoryFilter(ctx, projectID, input.RepositoryId); err != nil {
+	if err := s.ensureRunRepositoryFilter(ctx, projectId, input.RepositoryId); err != nil {
 		return repository.Page[pipelinerundto.PipelineRunDetail]{}, err
 	}
-	if err := s.ensureRunPipelineFilter(ctx, projectID, input.PipelineId); err != nil {
+	if err := s.ensureRunPipelineFilter(ctx, projectId, input.PipelineId); err != nil {
 		return repository.Page[pipelinerundto.PipelineRunDetail]{}, err
 	}
-	items, err := s.store.ListPipelineRuns(ctx, projectID, input.RepositoryId, input.PipelineId, from, to, input.Page, input.PerPage)
+	items, err := s.store.ListPipelineRuns(ctx, projectId, input.RepositoryId, input.PipelineId, from, to, input.Page, input.PerPage)
 	if err != nil {
 		return repository.Page[pipelinerundto.PipelineRunDetail]{}, apperror.Wrap(apperror.KindInternal, "Failed to list pipeline runs", err)
 	}
-	return s.pipelineRunDetails(ctx, items, false)
+	return s.pipelineRunDetails(ctx, projectId, items, false)
 }
 
-func (s Service) PipelineRunForUser(ctx context.Context, userId, runId string) (pipelinerundto.PipelineRunDetail, error) {
-	run, err := s.loadPipelineRunForUser(ctx, userId, runId)
+func (s Service) PipelineRunForUser(ctx context.Context, userId string, projectId string, runId string) (pipelinerundto.PipelineRunDetail, error) {
+	run, err := s.loadPipelineRunForUser(ctx, userId, projectId, runId)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	return s.pipelineRunDetail(ctx, run, true)
+	return s.pipelineRunDetail(ctx, projectId, run, true)
 }
 
-func (s Service) DeletePipelineRun(ctx context.Context, userId, runId string) error {
-	run, err := s.loadPipelineRunForUser(ctx, userId, runId)
+func (s Service) DeletePipelineRun(ctx context.Context, userId string, projectId string, runId string) error {
+	run, err := s.loadPipelineRunForUser(ctx, userId, projectId, runId)
 	if err != nil {
 		return err
 	}
@@ -318,89 +337,121 @@ func (s Service) DeletePipelineRun(ctx context.Context, userId, runId string) er
 	if s.workspace == nil {
 		return apperror.New(apperror.KindInternal, "pipeline workspace is not configured")
 	}
-	if err := s.workspace.RemoveRunFiles(run.Id); err != nil {
+	workspace, err := s.workspaceForProject(ctx, projectId)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to resolve pipeline workspace", err)
+	}
+	deleteRecord := func(txCtx context.Context) error {
+		return s.store.DeletePipelineRun(txCtx, projectId, run.Id)
+	}
+	var deleteErr error
+	if s.transactionRunner != nil {
+		deleteErr = s.transactionRunner.RunInTransaction(ctx, deleteRecord)
+	} else {
+		deleteErr = deleteRecord(ctx)
+	}
+	if deleteErr != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run", deleteErr)
+	}
+	if err := workspace.RemoveRunFiles(run.Id); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			s.warnPipelineRunFileCleanupSkipped(run.Id, "pipeline run file or directory does not exist")
 		} else {
 			return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run files", err)
 		}
 	}
-	if err := s.store.DeletePipelineRun(ctx, run.Id); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run", err)
-	}
 	return nil
 }
 
-func (s Service) ListPipelineRunArtifacts(ctx context.Context, userId, runId string) ([]model.Artifact, error) {
-	run, err := s.loadPipelineRunForUser(ctx, userId, runId)
+func (s Service) workspaceForProject(ctx context.Context, projectId string) (pipelinerunport.Workspace, error) {
+	if s.workspace == nil {
+		return nil, errors.New("pipeline workspace is not configured")
+	}
+	resolver, ok := s.workspace.(pipelinerunport.ProjectWorkspaceResolver)
+	if !ok {
+		return s.workspace, nil
+	}
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return nil, errors.New("pipeline run project is missing")
+	}
+	return resolver.WorkspaceForProject(ctx, projectId)
+}
+
+func (s Service) ListPipelineRunArtifacts(ctx context.Context, userId string, projectId string, runId string) ([]model.Artifact, error) {
+	run, err := s.loadPipelineRunForUser(ctx, userId, projectId, runId)
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.store.ListArtifactsByRun(ctx, run.ProjectId, run.Id)
+	items, err := s.store.ListArtifactsByRun(ctx, projectId, run.Id)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list artifacts", err)
 	}
 	return items, nil
 }
 
-func (s Service) CancelPipelineRun(ctx context.Context, userId, runId string) (pipelinerundto.PipelineRunDetail, error) {
-	run, err := s.loadPipelineRunForUser(ctx, userId, runId)
+func (s Service) CancelPipelineRun(ctx context.Context, userId string, projectId string, runId string) (pipelinerundto.PipelineRunDetail, error) {
+	run, err := s.loadPipelineRunForUser(ctx, userId, projectId, runId)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
 	if run.Status != status.WorkStatusWaitingToRun && run.Status != status.WorkStatusRunning {
 		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "Cannot cancel run with status "+run.Status)
 	}
-	canceled, err := s.store.CancelPipelineRun(ctx, run.Id)
+	canceled, err := s.store.CancelPipelineRun(ctx, projectId, run.Id)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to cancel pipeline run", err)
 	}
 	if !canceled {
 		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "Cannot cancel run with status "+run.Status)
 	}
-	updated, err := s.store.PipelineRun(ctx, run.Id)
+	updated, err := s.store.PipelineRun(ctx, projectId, run.Id)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline run", err)
 	}
-	return s.pipelineRunDetail(ctx, updated, true)
+	return s.pipelineRunDetail(ctx, projectId, updated, true)
 }
 
-func (s Service) PipelineStageLog(ctx context.Context, userId, runID, stageRunID string, offset int) (pipelinerundto.PipelineStageLog, error) {
-	run, err := s.loadPipelineRunForUser(ctx, userId, runID)
+func (s Service) PipelineStageLog(ctx context.Context, userId string, projectId string, runId string, stageRunId string, offset int) (pipelinerundto.PipelineStageLog, error) {
+	run, err := s.loadPipelineRunForUser(ctx, userId, projectId, runId)
 	if err != nil {
 		return pipelinerundto.PipelineStageLog{}, err
 	}
 	if offset < 0 {
 		return pipelinerundto.PipelineStageLog{}, apperror.New(apperror.KindValidation, "offset must be greater than or equal to 0")
 	}
-	stageRun, err := s.store.PipelineStageRun(ctx, strings.TrimSpace(stageRunID))
+	stageRun, err := s.store.PipelineStageRun(ctx, projectId, strings.TrimSpace(stageRunId))
 	if errors.Is(err, repository.ErrNotFound) || (err == nil && stageRun.PipelineRunId != run.Id) {
 		return pipelinerundto.PipelineStageLog{Offset: offset, IsComplete: true}, nil
 	}
 	if err != nil {
 		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stage run", err)
 	}
-	content, next, err := s.logStore.Read(s.workspace.StageLogPath(run.Id, stageRun.Id), offset)
+	workspace, err := s.workspaceForProject(ctx, projectId)
+	if err != nil {
+		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to resolve pipeline workspace", err)
+	}
+	content, next, err := s.logStore.Read(workspace.StageLogPath(run.Id, stageRun.Id), offset)
 	if err != nil {
 		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to read stage log", err)
 	}
 	return pipelinerundto.PipelineStageLog{Logs: string(content), Offset: next, IsComplete: status.WorkStatusIsComplete(stageRun.Status)}, nil
 }
 
-func (s Service) loadPipelineRunForUser(ctx context.Context, userId, runID string) (model.PipelineRun, error) {
-	run, err := s.store.PipelineRun(ctx, strings.TrimSpace(runID))
-	if errors.Is(err, repository.ErrNotFound) {
-		return model.PipelineRun{}, apperror.New(apperror.KindNotFound, "Pipeline run "+runID+" not found")
-	}
-	if err != nil {
-		return model.PipelineRun{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline run", err)
-	}
-	projectId, err := requiredProjectID(run.ProjectId, "Pipeline run")
-	if err != nil {
-		return model.PipelineRun{}, err
+func (s Service) loadPipelineRunForUser(ctx context.Context, userId string, projectId string, runId string) (model.PipelineRun, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.PipelineRun{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.PipelineRun{}, err
+	}
+	run, err := s.store.PipelineRun(ctx, projectId, strings.TrimSpace(runId))
+	if errors.Is(err, repository.ErrNotFound) {
+		return model.PipelineRun{}, apperror.New(apperror.KindNotFound, "Pipeline run "+runId+" not found")
+	}
+	if err != nil {
+		return model.PipelineRun{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline run", err)
 	}
 	return run, nil
 }
@@ -411,42 +462,39 @@ func (s Service) warnPipelineRunFileCleanupSkipped(runId string, reason string) 
 	}
 }
 
-func (s Service) pipelineForUser(ctx context.Context, userID, pipelineID string) (model.Pipeline, error) {
-	pipeline, err := s.store.Pipeline(ctx, strings.TrimSpace(pipelineID))
+func (s Service) pipelineForUser(ctx context.Context, userId string, projectId string, pipelineId string) (model.Pipeline, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Pipeline{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Pipeline{}, err
+	}
+	pipeline, err := s.store.Pipeline(ctx, projectId, strings.TrimSpace(pipelineId))
 	if errors.Is(err, repository.ErrNotFound) {
-		return model.Pipeline{}, apperror.New(apperror.KindNotFound, "Pipeline "+pipelineID+" not found")
+		return model.Pipeline{}, apperror.New(apperror.KindNotFound, "Pipeline "+pipelineId+" not found")
 	}
 	if err != nil {
 		return model.Pipeline{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline", err)
 	}
-	projectId, err := requiredProjectID(pipeline.ProjectId, "Pipeline")
-	if err != nil {
-		return model.Pipeline{}, err
-	}
-	if err := s.ensureProjectMembership(ctx, projectId, userID); err != nil {
-		return model.Pipeline{}, err
-	}
 	return pipeline, nil
 }
 
-func (s Service) repositoryForPipeline(ctx context.Context, pipeline model.Pipeline) (model.Repository, error) {
+func (s Service) repositoryForPipeline(ctx context.Context, projectId string, pipeline model.Pipeline) (model.Repository, error) {
 	if pipeline.RepositoryId == nil {
 		return model.Repository{}, apperror.New(apperror.KindValidation, "application pipeline has no repository")
 	}
-	repo, err := s.store.Repository(ctx, *pipeline.RepositoryId)
+	repo, err := s.store.Repository(ctx, projectId, *pipeline.RepositoryId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return model.Repository{}, apperror.New(apperror.KindNotFound, "Pipeline repository not found")
 	}
 	if err != nil {
 		return model.Repository{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline repository", err)
 	}
-	if repo.ProjectId == nil || pipeline.ProjectId == nil || *repo.ProjectId != *pipeline.ProjectId {
-		return model.Repository{}, apperror.New(apperror.KindValidation, "Pipeline repository must belong to pipeline project")
-	}
 	return repo, nil
 }
 
-func (s Service) resolvePipelineRunVersionBinding(ctx context.Context, snapshot model.PipelineSnapshot) (*model.PipelineRunVersionBinding, error) {
+func (s Service) resolvePipelineRunVersionBinding(ctx context.Context, projectId string, snapshot model.PipelineSnapshot) (*model.PipelineRunVersionBinding, error) {
 	var stages []model.StageDefinition
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
 		return nil, apperror.New(apperror.KindInternal, "Invalid pipeline snapshot stages")
@@ -458,24 +506,21 @@ func (s Service) resolvePipelineRunVersionBinding(ctx context.Context, snapshot 
 	if snapshot.ApplicationId == nil || snapshot.ApplicationName == nil {
 		return nil, apperror.New(apperror.KindValidation, "component-bound artifacts require an application binding")
 	}
-	app, err := s.store.Application(ctx, *snapshot.ApplicationId)
+	app, err := s.store.Application(ctx, projectId, *snapshot.ApplicationId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return nil, apperror.New(apperror.KindNotFound, "Pipeline application not found")
 	}
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline application", err)
 	}
-	if app.ProjectId == nil || snapshot.ProjectId == nil || *app.ProjectId != *snapshot.ProjectId {
-		return nil, apperror.New(apperror.KindValidation, "Pipeline application must belong to pipeline project")
-	}
 	var source model.Version
 	switch strategy := snapshot.VersionForkStrategy; {
 	case strategy == nil:
 		return nil, apperror.New(apperror.KindValidation, "component-bound artifacts require a version strategy")
 	case *strategy == model.VersionForkStrategyLatest:
-		source, err = s.store.LatestVersionByApplication(ctx, *snapshot.ApplicationId)
+		source, err = s.store.LatestVersionByApplication(ctx, projectId, *snapshot.ApplicationId)
 	case *strategy == model.VersionForkStrategyFixed && snapshot.FixedVersionId != nil:
-		source, err = s.store.Version(ctx, *snapshot.FixedVersionId)
+		source, err = s.store.Version(ctx, projectId, *snapshot.FixedVersionId)
 	default:
 		return nil, apperror.New(apperror.KindValidation, "invalid pipeline version strategy")
 	}
@@ -488,7 +533,7 @@ func (s Service) resolvePipelineRunVersionBinding(ctx context.Context, snapshot 
 	if source.ApplicationId != *snapshot.ApplicationId {
 		return nil, apperror.New(apperror.KindValidation, "Pipeline source version does not belong to its application")
 	}
-	components, err := s.store.VersionComponentsByVersion(ctx, source.Id)
+	components, err := s.store.VersionComponentsByVersion(ctx, projectId, source.Id)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load source version components", err)
 	}
@@ -500,8 +545,8 @@ func (s Service) resolvePipelineRunVersionBinding(ctx context.Context, snapshot 
 	return &model.PipelineRunVersionBinding{ApplicationId: app.Id, ApplicationName: app.Name, SourceVersionId: source.Id, SourceVersionLabel: source.Label}, nil
 }
 
-func (s Service) ensureRepositoryHasNoRunningPipelineRun(ctx context.Context, repositoryID string) error {
-	running, err := s.store.RepositoryHasActivePipelineRun(ctx, repositoryID)
+func (s Service) ensureRepositoryHasNoRunningPipelineRun(ctx context.Context, projectId, repositoryId string) error {
+	running, err := s.store.RepositoryHasActivePipelineRun(ctx, projectId, repositoryId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check running pipeline runs", err)
 	}
@@ -511,7 +556,7 @@ func (s Service) ensureRepositoryHasNoRunningPipelineRun(ctx context.Context, re
 	return nil
 }
 
-func pipelineStageRuns(runID, stagesSnapshot string) ([]model.PipelineStageRun, error) {
+func pipelineStageRuns(runId, stagesSnapshot string) ([]model.PipelineStageRun, error) {
 	var stages []model.StageDefinition
 	if err := json.Unmarshal([]byte(stagesSnapshot), &stages); err != nil {
 		return nil, apperror.New(apperror.KindInternal, "Invalid pipeline snapshot stages")
@@ -520,7 +565,7 @@ func pipelineStageRuns(runID, stagesSnapshot string) ([]model.PipelineStageRun, 
 	for _, stage := range stages {
 		runs = append(runs, model.PipelineStageRun{
 			Id:            idutil.NewId(),
-			PipelineRunId: runID,
+			PipelineRunId: runId,
 			StageId:       stage.Id,
 			StageName:     stage.Name,
 			Status:        status.WorkStatusWaitingToRun,
@@ -528,36 +573,36 @@ func pipelineStageRuns(runID, stagesSnapshot string) ([]model.PipelineStageRun, 
 	}
 	return runs, nil
 }
-func (s Service) ensureRunRepositoryFilter(ctx context.Context, projectID, repositoryID string) error {
-	if strings.TrimSpace(repositoryID) == "" {
+func (s Service) ensureRunRepositoryFilter(ctx context.Context, projectId, repositoryId string) error {
+	if strings.TrimSpace(repositoryId) == "" {
 		return nil
 	}
-	repo, err := s.store.Repository(ctx, repositoryID)
-	if errors.Is(err, repository.ErrNotFound) || repo.ProjectId == nil || *repo.ProjectId != projectID {
-		return apperror.New(apperror.KindNotFound, "Repository "+repositoryID+" not found")
+	_, err := s.store.Repository(ctx, projectId, repositoryId)
+	if errors.Is(err, repository.ErrNotFound) {
+		return apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
 	}
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
 	}
 	return nil
 }
-func (s Service) ensureRunPipelineFilter(ctx context.Context, projectID, pipelineID string) error {
-	if strings.TrimSpace(pipelineID) == "" {
+func (s Service) ensureRunPipelineFilter(ctx context.Context, projectId, pipelineId string) error {
+	if strings.TrimSpace(pipelineId) == "" {
 		return nil
 	}
-	pipeline, err := s.store.Pipeline(ctx, pipelineID)
-	if errors.Is(err, repository.ErrNotFound) || pipeline.ProjectId == nil || *pipeline.ProjectId != projectID {
-		return apperror.New(apperror.KindNotFound, "Pipeline "+pipelineID+" not found")
+	_, err := s.store.Pipeline(ctx, projectId, pipelineId)
+	if errors.Is(err, repository.ErrNotFound) {
+		return apperror.New(apperror.KindNotFound, "Pipeline "+pipelineId+" not found")
 	}
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to load pipeline", err)
 	}
 	return nil
 }
-func (s Service) pipelineRunDetails(ctx context.Context, page repository.Page[model.PipelineRun], includeStages bool) (repository.Page[pipelinerundto.PipelineRunDetail], error) {
+func (s Service) pipelineRunDetails(ctx context.Context, projectId string, page repository.Page[model.PipelineRun], includeStages bool) (repository.Page[pipelinerundto.PipelineRunDetail], error) {
 	items := make([]pipelinerundto.PipelineRunDetail, 0, len(page.Items))
 	for _, run := range page.Items {
-		detail, err := s.pipelineRunDetail(ctx, run, includeStages)
+		detail, err := s.pipelineRunDetail(ctx, projectId, run, includeStages)
 		if err != nil {
 			return repository.Page[pipelinerundto.PipelineRunDetail]{}, err
 		}
@@ -565,20 +610,20 @@ func (s Service) pipelineRunDetails(ctx context.Context, page repository.Page[mo
 	}
 	return repository.Page[pipelinerundto.PipelineRunDetail]{Items: items, Total: page.Total, Page: page.Page, PerPage: page.PerPage}, nil
 }
-func (s Service) pipelineRunDetail(ctx context.Context, run model.PipelineRun, includeStages bool) (pipelinerundto.PipelineRunDetail, error) {
+func (s Service) pipelineRunDetail(ctx context.Context, projectId string, run model.PipelineRun, includeStages bool) (pipelinerundto.PipelineRunDetail, error) {
 	variables, _, err := pipelinevariable.UnmarshalRuntimeVariableSnapshot(run.VariablesSnapshot)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
 	detail := pipelinerundto.PipelineRunDetail{Run: run, VariablesSnapshot: variables}
 	if includeStages {
-		stages, err := s.store.ListPipelineStageRuns(ctx, run.Id)
+		stages, err := s.store.ListPipelineStageRuns(ctx, projectId, run.Id)
 		if err != nil {
 			return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stage runs", err)
 		}
 		detail.PipelineStageRuns = stages
 	}
-	binding, err := s.store.PipelineRunVersionBinding(ctx, run.Id)
+	binding, err := s.store.PipelineRunVersionBinding(ctx, projectId, run.Id)
 	if err == nil {
 		detail.VersionBinding = &binding
 	} else if !errors.Is(err, repository.ErrNotFound) {

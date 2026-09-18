@@ -7,7 +7,7 @@ Mode: strict
 
 ## Requirement Basis
 
-本规格落实 [Requirement](../requirement/20260811-pipeline-run-modal-repository-ref.md) 已确认的运行时变量模型。改动跨 Proto/HTTP、应用用例、变量规则、持久化、执行器和 Vue 运行弹窗；不实施兼容字段、别名或新旧逻辑并存。
+本规格落实 [Requirement](../intent/20260811-pipeline-run-modal-repository-ref.md) 已确认的运行时变量模型。改动跨 Proto/HTTP、应用用例、变量规则、持久化、执行器和 Vue 运行弹窗；不实施兼容字段、别名或新旧逻辑并存。
 
 ## Overview
 

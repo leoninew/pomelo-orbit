@@ -26,23 +26,23 @@ func TestListRoutesBindsSearchAndPaginationForSQLite(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	const projectID = "01KROUTEREPOSITORYTEST0001"
-	if _, err := database.ExecContext(ctx, "INSERT INTO project (id, name, code) VALUES (?, ?, ?)", projectID, "Route Test", "route-test"); err != nil {
+	const projectId = "01KROUTEREPOSITORYTEST0001"
+	if _, err := database.ExecContext(ctx, "INSERT INTO project (id, name, code) VALUES (?, ?, ?)", projectId, "Route Test", "route-test"); err != nil {
 		t.Fatal(err)
 	}
 
 	repository := NewRepository(database)
 	for _, route := range []model.Route{
-		{Id: "route-1", ProjectId: stringPtr(projectID), Name: "match alpha", Protocol: "http", Domain: "alpha.example.test", PathPrefix: "/", TargetUrl: "http://alpha.example.test", CertType: "manual", AcmeChallenge: "http"},
-		{Id: "route-2", ProjectId: stringPtr(projectID), Name: "match beta", Protocol: "http", Domain: "beta.example.test", PathPrefix: "/", TargetUrl: "http://beta.example.test", CertType: "manual", AcmeChallenge: "http"},
-		{Id: "route-3", ProjectId: stringPtr(projectID), Name: "other", Protocol: "http", Domain: "other.example.test", PathPrefix: "/", TargetUrl: "http://other.example.test", CertType: "manual", AcmeChallenge: "http"},
+		{Id: "route-1", ProjectId: stringPtr(projectId), Name: "match alpha", Protocol: "http", Domain: "alpha.example.test", PathPrefix: "/", TargetUrl: "http://alpha.example.test", CertType: "manual", AcmeChallenge: "http"},
+		{Id: "route-2", ProjectId: stringPtr(projectId), Name: "match beta", Protocol: "http", Domain: "beta.example.test", PathPrefix: "/", TargetUrl: "http://beta.example.test", CertType: "manual", AcmeChallenge: "http"},
+		{Id: "route-3", ProjectId: stringPtr(projectId), Name: "other", Protocol: "http", Domain: "other.example.test", PathPrefix: "/", TargetUrl: "http://other.example.test", CertType: "manual", AcmeChallenge: "http"},
 	} {
 		if err := repository.CreateRoute(ctx, route); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	all, err := repository.ListRoutes(ctx, projectID, 1, 2, "")
+	all, err := repository.ListRoutes(ctx, projectId, 1, 2, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestListRoutesBindsSearchAndPaginationForSQLite(t *testing.T) {
 		t.Fatalf("unfiltered routes = %+v, want first page of three routes", all)
 	}
 
-	matched, err := repository.ListRoutes(ctx, projectID, 1, 10, "match")
+	matched, err := repository.ListRoutes(ctx, projectId, 1, 10, "match")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestListRoutesBindsSearchAndPaginationForSQLite(t *testing.T) {
 		t.Fatalf("matched routes = %+v, want two matching routes", matched)
 	}
 
-	secondPage, err := repository.ListRoutes(ctx, projectID, 2, 1, "match")
+	secondPage, err := repository.ListRoutes(ctx, projectId, 2, 1, "match")
 	if err != nil {
 		t.Fatal(err)
 	}

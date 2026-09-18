@@ -11,6 +11,7 @@ import (
 
 type ExecutePayload struct {
 	PipelineRunId string         `json:"pipeline_run_id"`
+	ProjectId     string         `json:"project_id"`
 	Variables     map[string]any `json:"variables"`
 }
 
@@ -31,8 +32,8 @@ func (h Handler) Handle(ctx context.Context, item tasksvc.Task) error {
 	if err := json.Unmarshal([]byte(item.PayloadJSON), &payload); err != nil {
 		return fmt.Errorf("parse pipeline_run task payload: %w", err)
 	}
-	if payload.PipelineRunId == "" {
-		return fmt.Errorf("pipeline_run_id is required")
+	if payload.PipelineRunId == "" || payload.ProjectId == "" {
+		return fmt.Errorf("pipeline_run_id and project_id are required")
 	}
-	return h.executor.ExecutePipelineRun(ctx, pipelinerundto.ExecutePipelineRunInput{PipelineRunId: payload.PipelineRunId, Variables: payload.Variables})
+	return h.executor.ExecutePipelineRun(ctx, pipelinerundto.ExecutePipelineRunInput{PipelineRunId: payload.PipelineRunId, ProjectId: payload.ProjectId, Variables: payload.Variables})
 }

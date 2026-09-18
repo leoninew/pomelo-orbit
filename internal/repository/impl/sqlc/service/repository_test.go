@@ -3,12 +3,14 @@ package servicerepo
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
 	_ "modernc.org/sqlite"
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 func TestDeleteServicePreservesDeploymentHistory(t *testing.T) {
@@ -27,22 +29,22 @@ func TestDeleteServicePreservesDeploymentHistory(t *testing.T) {
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'app-1', 'version-1', 'default', 'app-default', 'stopped')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO service (id, project_id, application_id, version_id, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'app-default', 'stopped')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO deployment (id, application_name, operation_type, trigger_type, status, is_rollback, service_id) VALUES ('deployment-1', 'App', 'deploy', 'manual', 'succeeded', 0, 'service-1')`); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := NewRepository(database).DeleteService(ctx, "service-1"); err != nil {
+	if err := NewRepository(database).DeleteService(ctx, "project-1", "service-1"); err != nil {
 		t.Fatal(err)
 	}
-	var serviceID string
-	if err := database.QueryRowContext(ctx, `SELECT service_id FROM deployment WHERE id = 'deployment-1'`).Scan(&serviceID); err != nil {
+	var serviceId string
+	if err := database.QueryRowContext(ctx, `SELECT service_id FROM deployment WHERE id = 'deployment-1'`).Scan(&serviceId); err != nil {
 		t.Fatal(err)
 	}
-	if serviceID != "service-1" {
-		t.Fatalf("expected preserved deployment service reference, got %q", serviceID)
+	if serviceId != "service-1" {
+		t.Fatalf("expected preserved deployment service reference, got %q", serviceId)
 	}
 }
 
@@ -60,8 +62,8 @@ func TestListServicesByProjectSearchesApplicationNameAndServiceCode(t *testing.T
 		`INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`,
 		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'Application', 'application-code', 'standard', 'project-1')`,
 		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'version-label', 'unpublished')`,
-		`INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-1', 'app-1', 'version-1', 'instance-one', 'service-one', 'stopped')`,
-		`INSERT INTO service (id, application_id, version_id, instance_key, code, status) VALUES ('service-2', 'app-1', 'version-1', 'instance-two', 'service-two', 'stopped')`,
+		`INSERT INTO service (id, project_id, application_id, version_id, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'service-one', 'stopped')`,
+		`INSERT INTO service (id, project_id, application_id, version_id, code, status) VALUES ('service-2', 'project-1', 'app-1', 'version-1', 'service-two', 'stopped')`,
 	} {
 		if _, err := database.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)
@@ -101,5 +103,43 @@ func TestListServicesByProjectSearchesApplicationNameAndServiceCode(t *testing.T
 		if matched.Total != 0 || len(matched.Items) != 0 {
 			t.Fatalf("search %q unexpectedly matched %#v", search, matched)
 		}
+	}
+}
+
+func TestServiceQueriesDoNotCrossProjectScope(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = database.Close() }()
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	for _, statement := range []string{
+		`INSERT INTO project (id, name, code) VALUES ('project-1', 'Project One', 'project-one')`,
+		`INSERT INTO project (id, name, code) VALUES ('project-2', 'Project Two', 'project-two')`,
+		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'Application One', 'application-one', 'standard', 'project-1')`,
+		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-2', 'Application Two', 'application-two', 'standard', 'project-2')`,
+		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`,
+		`INSERT INTO version (id, application_id, label, status) VALUES ('version-2', 'app-2', 'v1', 'unpublished')`,
+		`INSERT INTO service (id, project_id, application_id, version_id, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'application-one-default', 'stopped')`,
+		`INSERT INTO service_env (service_id, env_key, value) VALUES ('service-1', 'SECRET', 'project-one-value')`,
+	} {
+		if _, err := database.ExecContext(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	service := NewRepository(database)
+	if _, err := service.Service(ctx, "project-2", "service-1"); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("foreign project service lookup error = %v, want not found", err)
+	}
+	env, err := service.ServiceEnvByService(ctx, "project-2", "service-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(env) != 0 {
+		t.Fatalf("foreign project service environment = %#v, want none", env)
 	}
 }

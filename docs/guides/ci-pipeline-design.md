@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-09-07 22:04:24
+最后修改时间: 2026-09-16 17:27:38
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -16,15 +16,15 @@ Pipeline(kind=template)                         只作为来源，不可运行
 
 Pipeline(kind=application)                      可运行的交付单元
   ├── source_pipeline_id + 名称/版本快照        来源 Template
-  ├── application_id + 名称快照（模板含 Docker 制品时必填）  目标 Application
+  ├── application_id + 名称快照                  可选的目标 Application
   ├── repository_id + 名称快照                  固定的源码 Repository
-  ├── version_fork_strategy                     latest | fixed（模板含 Docker 制品时）
+  ├── version_fork_strategy                     latest | fixed（有 Component 映射时）
   └── PipelineStage(kind=application)[]         从引用快照物化的独立执行节点
 ```
 
 阶段库只定义通用执行步骤；`PipelineStage(kind=template)` 不保存 DAG、排序、Application、Component 或来源 Version 策略，但保存不带 `component_name` 的制品声明。Template Pipeline 通过 `PipelineStageReference` 保存阶段引入时的来源 ID/名称/版本/说明、镜像、脚本和制品声明快照，以及自己的节点名称、说明、DAG 和排序。
 
-Application Pipeline 必须从同项目 Template 创建。实例化只读取 Template Pipeline 已关联的引用快照，重映射引用节点 ID 到新的应用阶段 ID，复制制品声明。模板含 Docker 制品时，必须在同一请求中选择 Application、来源 Version 策略，并把每个 Docker 制品绑定到唯一的 Component；它不会重新读取可变阶段库。Template 或阶段模板后续变更、删除都不会影响已创建的 Application Pipeline。
+Application Pipeline 必须从同项目 Template 创建。实例化只读取 Template Pipeline 已关联的引用快照，重映射引用节点 ID 到新的应用阶段 ID，复制制品声明。Application 可不绑定，此时 Docker 制品照常收集但不写入 Version；选择 Application 后，必须在同一请求中选择来源 Version 策略，并把每个 Docker 制品绑定到唯一的 Component。它不会重新读取可变阶段库。Template 或阶段模板后续变更、删除都不会影响已创建的 Application Pipeline。
 
 ## 阶段与制品
 
@@ -35,11 +35,11 @@ Template Pipeline 的 `PipelineStageReference` 与 Application Stage 都可对�
 `ArtifactConfig` 的 `component_name` 只允许用于 `docker_image`：
 
 - 模板阶段和 Template Pipeline 引用保存无 `component_name` 的制品声明。
-- Application Pipeline 在实例化时复制声明；每个 Docker 制品必须映射到一个 Application Component。
+- Application Pipeline 在实例化时复制声明；只有选择 Application 时，每个 Docker 制品才必须映射到一个 Application Component。
 - Docker 制品的 `component_name` 表示成功 Run 要更新的 Application Component；同一 Pipeline 中 Component 不可重复。
 - 每个组件映射镜像必须经由该 Stage 的传递依赖恰好关联一个 `command/git_object_id` 制品，作为 source commit。
 
-来源 Version 策略归 Pipeline 所有：`latest` 在 Run 创建时读取该 Application 的最新 Version，`fixed` 固定一个该 Application 的 Version。模板含 Docker 制品时，它与制品组件映射在 Template Pipeline 实例化为 Application Pipeline 时一并保存，避免出现不能运行的中间配置。
+来源 Version 策略归 Pipeline 所有：`latest` 在 Run 创建时读取该 Application 的最新 Version，`fixed` 固定一个该 Application 的 Version。选择 Application 且配置 Docker 制品组件映射时，它与映射在 Template Pipeline 实例化为 Application Pipeline 时一并保存，避免出现不能运行的中间配置。
 
 ## 阶段变量
 
@@ -66,7 +66,7 @@ Retry 与手动触发共享 Run 创建路径。Retry 创建新 Run；`latest` �
 
 ## Runtime workspace
 
-Pipeline checkout、Stage log 和 Run artifact 都位于 `workspace.pipeline`。配置值表示 Orbit 进程可见路径；Pipeline 容器的 `/workspace` 与 `/artifacts` bind mount 会解析为 Docker daemon 可见的宿主路径。因此 DooD 部署必须将该根目录显式挂入 Orbit 容器，不能把容器内路径直接传给 Docker。
+Pipeline checkout、Stage log 和 Run artifact 都位于当前 Project `Environment.workspace_root/pipeline`。`workspace.root` 只作为启动配置基准，实际执行按 Project Environment 解析；配置值表示 Orbit 进程可见路径。Pipeline 容器的 `/workspace` 与 `/artifacts` bind mount 会解析为 Docker daemon 可见的宿主路径。因此 DooD 部署必须将该工作区根目录显式挂入 Orbit 容器，不能把容器内路径直接传给 Docker。SSH Environment 的远端 workspace 仅用于 CD，不能作为控制面 Pipeline 的本地 bind source。
 
 ## Git 凭据
 

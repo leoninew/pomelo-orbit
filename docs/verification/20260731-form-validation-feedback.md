@@ -7,7 +7,7 @@ Review status: Draft
 
 ## 需求对齐
 
-- [需求](../requirement/20260731-form-validation-feedback.md) 的审查状态为 `Accepted`；轻量模式没有单独的规格或计划文档，按需求逐项核对。
+- [需求](../intent/20260731-form-validation-feedback.md) 的审查状态为 `Accepted`；轻量模式没有单独的规格或计划文档，按需求逐项核对。
 - 业务表单的本地校验已改为字段级状态：失败字段使用 `app-input-error` 红框，并在控件正下方渲染 `app-field-error`；公共样式为 12px、正常字重、红色文本。
 - `SelectControl`、`RawValueSelect` 和既有的 `ComboboxSelect` 都支持 `invalid` 红框，动态行的错误与对应行索引绑定。
 - `AppDialogActions` 的确认按钮固定为 `type="button"`，不再接受或渲染跨表单 `form` 关联；业务模态窗改由自身确认事件处理。

@@ -296,6 +296,7 @@
     ArtifactConfigReq,
     PipelineStageResp,
   } from '@/gen/proto/orbit/v1/pipeline/pipeline_stage';
+  import { useProjectStore } from '@/stores/project';
   import { formatTime } from '@/utils/time';
 
   type ArtifactError = 'name' | 'collector' | 'reference' | 'command' | 'format';
@@ -303,6 +304,7 @@
   const route = useRoute();
   const router = useRouter();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const { status, error, execute } = useStatusAsync();
   const { loading: saving, execute: executeSave } = useStatusAsync();
   const stage = ref<PipelineStageResp>();
@@ -335,14 +337,24 @@
 
   const stageId = () => String(route.params.id || '');
 
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error('请先选择项目');
+    }
+    return projectId;
+  }
+
   async function fetchStage() {
     await execute(async () => {
-      stage.value = await pipelineStageApi.get(stageId());
+      stage.value = await pipelineStageApi.get(selectedProjectId(), stageId());
     });
   }
 
   function openBasicEdit() {
-    if (!stage.value) return;
+    if (!stage.value) {
+      return;
+    }
     Object.assign(basicForm, {
       name: stage.value.name,
       image: stage.value.image,
@@ -355,10 +367,12 @@
   async function saveBasic() {
     basicErrors.name = basicForm.name.trim() ? '' : '请输入阶段名称';
     basicErrors.image = basicForm.image.trim() ? '' : '请输入执行镜像';
-    if (basicErrors.name || basicErrors.image) return;
+    if (basicErrors.name || basicErrors.image) {
+      return;
+    }
     try {
       await executeSave(async () => {
-        stage.value = await pipelineStageApi.update(stageId(), {
+        stage.value = await pipelineStageApi.update(selectedProjectId(), stageId(), {
           name: basicForm.name.trim(),
           image: basicForm.image.trim(),
           description: basicForm.description,
@@ -378,7 +392,9 @@
   }
 
   async function copyScript() {
-    if (!stage.value) return;
+    if (!stage.value) {
+      return;
+    }
     try {
       await navigator.clipboard.writeText(stage.value.script);
       toast.success('脚本已复制到剪贴板');
@@ -404,7 +420,7 @@
     scriptError.value = '';
     try {
       await executeSave(async () => {
-        stage.value = await pipelineStageApi.update(stageId(), {
+        stage.value = await pipelineStageApi.update(selectedProjectId(), stageId(), {
           script: scriptForm.script.trim(),
         });
         closeScriptDrawer();
@@ -416,7 +432,9 @@
   }
 
   function clearArtifactErrors() {
-    for (const key of Object.keys(artifactErrors) as ArtifactError[]) artifactErrors[key] = '';
+    for (const key of Object.keys(artifactErrors) as ArtifactError[]) {
+      artifactErrors[key] = '';
+    }
   }
 
   function openArtifact(index = -1) {
@@ -461,16 +479,24 @@
 
   async function saveArtifact() {
     clearArtifactErrors();
-    if (!artifactForm.name.trim()) artifactErrors.name = '请输入制品名称';
-    if (!artifactCollectors.includes(artifactForm.collector))
+    if (!artifactForm.name.trim()) {
+      artifactErrors.name = '请输入制品名称';
+    }
+    if (!artifactCollectors.includes(artifactForm.collector)) {
       artifactErrors.collector = '请选择收集器';
-    if (artifactForm.collector === 'command' && !artifactForm.command.trim())
+    }
+    if (artifactForm.collector === 'command' && !artifactForm.command.trim()) {
       artifactErrors.command = '请输入制品命令';
-    if (artifactForm.collector === 'command' && !artifactForm.format)
+    }
+    if (artifactForm.collector === 'command' && !artifactForm.format) {
       artifactErrors.format = '请选择输出格式';
-    if (artifactForm.collector !== 'command' && !artifactForm.reference.trim())
+    }
+    if (artifactForm.collector !== 'command' && !artifactForm.reference.trim()) {
       artifactErrors.reference = '请输入制品引用';
-    if (Object.values(artifactErrors).some(Boolean) || !stage.value) return;
+    }
+    if (Object.values(artifactErrors).some(Boolean) || !stage.value) {
+      return;
+    }
 
     const artifact = normalizedArtifact();
     const artifacts =
@@ -481,7 +507,9 @@
           );
     try {
       await executeSave(async () => {
-        stage.value = await pipelineStageApi.update(stageId(), { artifacts: { items: artifacts } });
+        stage.value = await pipelineStageApi.update(selectedProjectId(), stageId(), {
+          artifacts: { items: artifacts },
+        });
         closeArtifact();
         toast.success('制品声明已保存');
       });
@@ -491,10 +519,12 @@
   }
 
   async function removeArtifact(index: number) {
-    if (!stage.value) return;
+    if (!stage.value) {
+      return;
+    }
     try {
       await executeSave(async () => {
-        stage.value = await pipelineStageApi.update(stageId(), {
+        stage.value = await pipelineStageApi.update(selectedProjectId(), stageId(), {
           artifacts: {
             items: stage.value?.artifacts.filter((_, itemIndex) => itemIndex !== index) || [],
           },
@@ -514,7 +544,7 @@
   async function removeStage() {
     try {
       await executeSave(async () => {
-        await pipelineStageApi.delete(stageId());
+        await pipelineStageApi.delete(selectedProjectId(), stageId());
         toast.success('阶段已删除');
         await router.replace('/pipeline-stage');
       });

@@ -8,14 +8,16 @@ import (
 	"mime"
 	"net/http"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 )
@@ -24,7 +26,10 @@ const (
 	RequestIdKey        = requestid.ContextKey
 	RequestIdHeader     = requestid.HeaderName
 	TruncatedBodySuffix = "..."
+	redactedLogValue    = "[REDACTED]"
 )
+
+var deploymentSSHSecretJSONField = regexp.MustCompile(`(?is)("(?:deployment_ssh_private_key|deployment_ssh_key_passphrase|private_key|private_key_passphrase)"\s*:\s*)"(?:\\.|[^"\\])*"?`)
 
 type LogRequestConfig struct {
 	Enabled           bool
@@ -126,7 +131,7 @@ func Recovery(logger *slog.Logger) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", fmt.Errorf("panic: %v", recovered)))
+		transport.WriteError(c, apperror.Wrap(apperror.KindInternal, "", fmt.Errorf("panic: %v", recovered)))
 	})
 }
 
@@ -168,7 +173,11 @@ func readRequestBodyForLog(r *http.Request, limit int) (string, error) {
 	if len(loggedBytes) == 0 {
 		return "", nil
 	}
-	return truncateLogBody(loggedBytes, limit), nil
+	return redactSensitiveJSONLogBody(truncateLogBody(loggedBytes, limit)), nil
+}
+
+func redactSensitiveJSONLogBody(value string) string {
+	return deploymentSSHSecretJSONField.ReplaceAllString(value, `${1}"`+redactedLogValue+`"`)
 }
 
 func isJSONContentType(contentType string) bool {

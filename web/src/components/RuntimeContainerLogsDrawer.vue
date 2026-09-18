@@ -34,8 +34,11 @@
   import { onMounted, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { applicationApi } from '@/api/application/application';
+  import { deploymentApi } from '@/api/deployment/deployment';
   import AppDrawer from '@/components/AppDrawer.vue';
   import ContainerLogView from '@/components/ContainerLogView.vue';
+  import { useProjectStore } from '@/stores/project';
+  import { isComplete } from '@/utils/status';
   import { delayAsync } from '@/utils/time';
   import type { RuntimeContainerLogTarget } from './runtimeContainerLogs';
 
@@ -51,6 +54,7 @@
   type LogStatus = 'loading' | 'streaming' | 'done' | 'empty' | 'error';
 
   const { t } = useI18n({ useScope: 'global' });
+  const projectStore = useProjectStore();
   const logText = ref('');
   const status = ref<LogStatus>('loading');
   const logError = ref('');
@@ -67,8 +71,15 @@
       status.value = logText.value ? 'streaming' : 'loading';
       logError.value = '';
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      status.value = 'error';
+      logError.value = t('service.logs.loadFailed');
+      return;
+    }
     try {
       const data = await applicationApi.getLogs(
+        projectId,
         props.target.applicationId,
         {
           tail: 200,
@@ -77,11 +88,15 @@
         },
         { signal }
       );
-      if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) return;
+      if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) {
+        return;
+      }
       logText.value = data.logs;
       status.value = logText.value ? (isAutoRefreshing.value ? 'streaming' : 'done') : 'empty';
     } catch (error) {
-      if (signal?.aborted) return;
+      if (signal?.aborted) {
+        return;
+      }
       if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {
         status.value = 'error';
         logError.value = error instanceof Error ? error.message : t('service.logs.loadFailed');
@@ -96,8 +111,25 @@
     isAutoRefreshing.value = false;
   }
 
+  async function deploymentIsComplete(generation: number, signal: AbortSignal) {
+    const deploymentId = props.target.deploymentId;
+    const projectId = projectStore.activeProjectId;
+    if (!deploymentId || !projectId) {
+      return false;
+    }
+    try {
+      const deployment = await deploymentApi.get(projectId, deploymentId, { signal });
+      return isCurrentRefresh(generation, signal) && isComplete(deployment.status);
+    } catch {
+      // Logs remain available even if the task detail endpoint is transiently unavailable.
+      return false;
+    }
+  }
+
   function startAutoRefresh() {
-    if (isAutoRefreshing.value) return;
+    if (isAutoRefreshing.value) {
+      return;
+    }
     const generation = ++refreshGeneration;
     const controller = new AbortController();
     const { signal } = controller;
@@ -105,14 +137,21 @@
     isAutoRefreshing.value = true;
     void (async () => {
       while (isCurrentRefresh(generation, signal)) {
-        await delayAsync(2000, signal);
-        if (!isCurrentRefresh(generation, signal)) break;
         await fetchLogs(generation, signal);
+        if (
+          !isCurrentRefresh(generation, signal) ||
+          (await deploymentIsComplete(generation, signal))
+        ) {
+          break;
+        }
+        await delayAsync(2000, signal);
       }
       if (isCurrentRefresh(generation, signal)) {
         refreshAbort = null;
         isAutoRefreshing.value = false;
-        if (logText.value && status.value === 'streaming') status.value = 'done';
+        if (logText.value && status.value === 'streaming') {
+          status.value = 'done';
+        }
       }
     })();
   }
@@ -127,7 +166,6 @@
     stopAutoRefresh();
     resetLogState();
     startAutoRefresh();
-    void fetchLogs(refreshGeneration, refreshAbort?.signal);
   }
 
   function closeLogs() {
@@ -138,7 +176,9 @@
   function toggleAutoRefresh() {
     if (isAutoRefreshing.value) {
       stopAutoRefresh();
-      if (logText.value && status.value === 'streaming') status.value = 'done';
+      if (logText.value && status.value === 'streaming') {
+        status.value = 'done';
+      }
       return;
     }
     startAutoRefresh();
@@ -156,11 +196,15 @@
       closeLogs();
       return;
     }
-    if (!wasOpen || target !== previousTarget) openLogs();
+    if (!wasOpen || target !== previousTarget) {
+      openLogs();
+    }
   });
 
   onMounted(() => {
-    if (props.open) openLogs();
+    if (props.open) {
+      openLogs();
+    }
   });
   onUnmounted(stopAutoRefresh);
 </script>

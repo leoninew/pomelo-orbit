@@ -30,10 +30,6 @@
           <Square class="size-4" />
           {{ t('gateway.actions.stop') }}
         </button>
-        <button class="app-button h-9 px-4" @click="goBack">
-          <ArrowLeft class="size-4" />
-          {{ t('common.back') }}
-        </button>
       </div>
     </div>
 
@@ -78,14 +74,14 @@
             </dd>
           </div>
           <div class="flex gap-2">
+            <dt>{{ t('gateway.fields.restApiHostUrl') }}</dt>
+            <dd class="min-w-0 break-all text-foreground">{{ gateway.rest_api_host_url }}</dd>
+          </div>
+          <div class="flex gap-2">
             <dt>
               {{ t('gateway.fields.baseDomain') }}
             </dt>
             <dd class="text-foreground">{{ gateway.base_domain }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>{{ t('gateway.fields.traefikComponentName') }}</dt>
-            <dd class="text-foreground">{{ gateway.traefik_component_name }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>{{ t('gateway.fields.restReadyTimeout') }}</dt>
@@ -196,25 +192,7 @@
             readonly
           />
         </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label block" for="gateway-edit-traefik-component-name">
-            {{ t('gateway.fields.traefikComponentName') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            id="gateway-edit-traefik-component-name"
-            v-model="controlPlaneForm.traefik_component_name"
-            type="text"
-            class="app-input"
-            :class="controlPlaneErrors.traefik_component_name ? 'app-input-error' : ''"
-            :aria-invalid="controlPlaneErrors.traefik_component_name ? 'true' : undefined"
-            @input="delete controlPlaneErrors.traefik_component_name"
-          />
-          <p v-if="controlPlaneErrors.traefik_component_name" class="app-field-error" role="alert">
-            {{ validationMessage(controlPlaneErrors.traefik_component_name) }}
-          </p>
-        </div>
-        <div class="space-y-1.5">
+        <div class="space-y-1.5 sm:col-span-2">
           <label class="app-field-label block" for="gateway-edit-rest-api-url">
             {{ t('gateway.fields.restApiUrl') }}
             <span class="text-destructive">*</span>
@@ -230,6 +208,24 @@
           />
           <p v-if="controlPlaneErrors.rest_api_url" class="app-field-error" role="alert">
             {{ validationMessage(controlPlaneErrors.rest_api_url) }}
+          </p>
+        </div>
+        <div class="space-y-1.5 sm:col-span-2">
+          <label class="app-field-label block" for="gateway-edit-rest-api-host-url">
+            {{ t('gateway.fields.restApiHostUrl') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="gateway-edit-rest-api-host-url"
+            v-model="controlPlaneForm.rest_api_host_url"
+            type="url"
+            class="app-input"
+            :class="controlPlaneErrors.rest_api_host_url ? 'app-input-error' : ''"
+            :aria-invalid="controlPlaneErrors.rest_api_host_url ? 'true' : undefined"
+            @input="delete controlPlaneErrors.rest_api_host_url"
+          />
+          <p v-if="controlPlaneErrors.rest_api_host_url" class="app-field-error" role="alert">
+            {{ validationMessage(controlPlaneErrors.rest_api_host_url) }}
           </p>
         </div>
         <div class="space-y-1.5">
@@ -433,22 +429,6 @@
     >
       <div class="space-y-4">
         <p class="text-sm text-muted-foreground">{{ t('gateway.deploy.description') }}</p>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.deploy.service') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <SelectControl
-            v-model="deployForm.service_id"
-            :options="deployServiceSelectOptions"
-            :placeholder="t('gateway.deploy.selectService')"
-            :invalid="Boolean(deployErrors.service_id)"
-            @update:model-value="handleDeployServiceChange"
-          />
-          <p v-if="deployErrors.service_id" class="app-field-error" role="alert">
-            {{ deployErrors.service_id }}
-          </p>
-        </div>
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('gateway.deploy.forceRecreate') }}</span>
@@ -473,20 +453,6 @@
     >
       <div class="space-y-4">
         <p class="text-sm text-muted-foreground">{{ t('gateway.stop.confirm') }}</p>
-        <div v-if="stoppableServices.length > 1">
-          <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.stop.service') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <SelectControl
-            v-model="stopForm.service_id"
-            :options="stopServiceSelectOptions"
-            :placeholder="t('gateway.stop.selectService')"
-            :invalid="Boolean(stopError)"
-            @update:model-value="stopError = ''"
-          />
-          <p v-if="stopError" class="app-field-error" role="alert">{{ stopError }}</p>
-        </div>
         <label class="flex items-center gap-2">
           <input v-model="stopForm.remove_volumes" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('gateway.stop.removeVolumes') }}</span>
@@ -514,23 +480,15 @@
 </template>
 
 <script setup lang="ts">
-  import {
-    ArrowLeft,
-    ExternalLink,
-    Eye,
-    EyeOff,
-    Layers,
-    Rocket,
-    ScrollText,
-    Square,
-  } from '@lucide/vue';
+  import { ExternalLink, Eye, EyeOff, Layers, Rocket, ScrollText, Square } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRoute, useRouter } from 'vue-router';
+  import { useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
 
   import { serviceApi } from '@/api/service/service';
   import { gatewayApi } from '@/api/gateway/gateway';
+  import { projectEnvironmentApi } from '@/api/project/environment';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
@@ -542,10 +500,12 @@
   import SensitiveValue from '@/components/SensitiveValue.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import { useProjectStore } from '@/stores/project';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
   import { formatTime } from '@/utils/time';
+  import { MANAGED_GATEWAY_COMPONENT_NAME } from '@/constants/gateway';
   import {
     gatewayConfigFormFromResponse,
     type GatewayAcmeProfile,
@@ -556,10 +516,18 @@
 
   const toast = useToast();
   const { t } = useI18n();
-  const route = useRoute();
   const router = useRouter();
+  const projectStore = useProjectStore();
   const { status, execute } = useStatusAsync();
   const { status: opStatus, execute: executeOp } = useStatusAsync();
+
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error(t('gateway.toast.loadDetailFailed'));
+    }
+    return projectId;
+  }
 
   const gateway = ref<GatewayResp | null>(null);
   const services = ref<ServiceResp[]>([]);
@@ -567,16 +535,12 @@
   const controlPlaneForm = reactive<
     Pick<
       GatewayConfigForm,
-      | 'name'
-      | 'traefik_component_name'
-      | 'rest_api_url'
-      | 'rest_ready_timeout_seconds'
-      | 'base_domain'
+      'name' | 'rest_api_url' | 'rest_api_host_url' | 'rest_ready_timeout_seconds' | 'base_domain'
     >
   >({
     name: '',
-    traefik_component_name: '',
     rest_api_url: '',
+    rest_api_host_url: '',
     rest_ready_timeout_seconds: '',
     base_domain: '',
   });
@@ -601,61 +565,43 @@
   const certificateSubmitError = ref('');
   const isCertificateTokenVisible = ref(false);
   const isDeployDialogOpen = ref(false);
-  const deployErrors = reactive({ service_id: '' });
   const deploySubmitError = ref('');
   const deployForm = reactive({
-    service_id: '',
     force_recreate: false,
   });
   const runtimeLogTarget = ref<RuntimeContainerLogTarget>();
   const isGatewayLogsDrawerOpen = computed({
     get: () => runtimeLogTarget.value !== undefined,
     set: (open) => {
-      if (!open) runtimeLogTarget.value = undefined;
+      if (!open) {
+        runtimeLogTarget.value = undefined;
+      }
     },
   });
   const gatewayRuntimeLogTarget = computed(() => {
     const current = gateway.value;
-    if (
-      !current ||
-      !current.default_service_id ||
-      !current.default_service_instance_key ||
-      !current.traefik_component_name
-    ) {
+    if (!current || !current.service_id) {
       return undefined;
     }
-    return runtimeTargetForService(
-      current,
-      current.default_service_id,
-      current.default_service_instance_key
-    );
+    return runtimeTargetForService(current, current.service_id, current.service_code);
   });
 
   const isStopDialogOpen = ref(false);
-  const stopError = ref('');
   const stopSubmitError = ref('');
   const stopForm = reactive({
-    service_id: '',
     remove_volumes: false,
   });
-  const gatewayId = () => String(route.params.id || '');
   const operating = computed(() => opStatus.value === 'loading');
-  const isDeploying = computed(() => services.value.some((item) => item.active_deployment));
-  const stoppableServices = computed(() =>
-    services.value.filter(
-      (item) => !item.active_deployment && (item.status === 'running' || item.status === 'faulted')
+  const gatewayService = computed(() =>
+    services.value.find((item) => item.id === gateway.value?.service_id)
+  );
+  const isDeploying = computed(() => gatewayService.value?.active_deployment ?? false);
+  const canStop = computed(() =>
+    Boolean(
+      gatewayService.value &&
+      !gatewayService.value.active_deployment &&
+      (gatewayService.value.status === 'running' || gatewayService.value.status === 'faulted')
     )
-  );
-  const canStop = computed(() => stoppableServices.value.length > 0);
-  const deployServiceSelectOptions = computed(() =>
-    services.value.map((item) => ({ value: item.id, label: serviceOptionLabel(item) }))
-  );
-
-  const stopServiceSelectOptions = computed(() =>
-    stoppableServices.value.map((item) => ({
-      value: item.id,
-      label: serviceOptionLabel(item),
-    }))
   );
   const noAcmeProfileValue = '__acme_disabled__';
   const entrypointOptions = [
@@ -678,13 +624,10 @@
   );
   const certificateUsesDNSProfile = computed(() => usesDNSProfile(certificateForm.acme_profile));
 
-  function serviceOptionLabel(item: ServiceResp) {
-    const instance = item.instance_key || 'default';
-    return `${instance} (${item.status})`;
-  }
-
   function replaceErrors(target: GatewayConfigFormErrors, next: GatewayConfigFormErrors) {
-    for (const field of Object.keys(target)) delete target[field];
+    for (const field of Object.keys(target)) {
+      delete target[field];
+    }
     Object.assign(target, next);
   }
 
@@ -695,7 +638,9 @@
   ) {
     const next: GatewayConfigFormErrors = {};
     for (const field of fields) {
-      if (errors[field]) next[field] = errors[field];
+      if (errors[field]) {
+        next[field] = errors[field];
+      }
     }
     replaceErrors(target, next);
   }
@@ -706,12 +651,14 @@
 
   function openControlPlaneEditDialog() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     const form = gatewayConfigFormFromResponse(current);
     Object.assign(controlPlaneForm, {
       name: form.name,
-      traefik_component_name: form.traefik_component_name,
       rest_api_url: form.rest_api_url,
+      rest_api_host_url: form.rest_api_host_url,
       rest_ready_timeout_seconds: form.rest_ready_timeout_seconds,
       base_domain: form.base_domain,
     });
@@ -722,25 +669,29 @@
 
   async function saveControlPlane() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     controlPlaneSubmitError.value = '';
     const form = gatewayConfigFormFromResponse(current);
     Object.assign(form, controlPlaneForm);
     const errors = validateGatewayConfigForm(form, 'edit');
     keepSectionErrors(controlPlaneErrors, errors, [
       'name',
-      'traefik_component_name',
       'rest_api_url',
+      'rest_api_host_url',
       'rest_ready_timeout_seconds',
       'base_domain',
     ]);
-    if (Object.keys(controlPlaneErrors).length > 0) return;
+    if (Object.keys(controlPlaneErrors).length > 0) {
+      return;
+    }
     try {
       await executeOp(async () => {
-        gateway.value = await gatewayApi.update(current.id, {
+        gateway.value = await gatewayApi.update(selectedProjectId(), current.id, {
           name: controlPlaneForm.name.trim(),
-          traefik_component_name: controlPlaneForm.traefik_component_name.trim(),
           rest_api_url: controlPlaneForm.rest_api_url.trim(),
+          rest_api_host_url: controlPlaneForm.rest_api_host_url.trim(),
           rest_ready_timeout_seconds: Number(controlPlaneForm.rest_ready_timeout_seconds),
           base_domain: controlPlaneForm.base_domain.trim(),
         });
@@ -755,7 +706,9 @@
 
   function openIngressEditDialog() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     Object.assign(ingressForm, {
       default_entrypoint: current.default_entrypoint,
       tls_mode: current.tls_mode,
@@ -767,16 +720,20 @@
 
   async function saveIngressDefaults() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     ingressSubmitError.value = '';
     const form = gatewayConfigFormFromResponse(current);
     Object.assign(form, ingressForm);
     const errors = validateGatewayConfigForm(form, 'edit');
     keepSectionErrors(ingressErrors, errors, ['default_entrypoint', 'tls_mode']);
-    if (Object.keys(ingressErrors).length > 0) return;
+    if (Object.keys(ingressErrors).length > 0) {
+      return;
+    }
     try {
       await executeOp(async () => {
-        gateway.value = await gatewayApi.update(current.id, {
+        gateway.value = await gatewayApi.update(selectedProjectId(), current.id, {
           default_entrypoint: ingressForm.default_entrypoint,
           tls_mode: ingressForm.tls_mode,
         });
@@ -791,7 +748,9 @@
 
   function openCertificateEditDialog() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     Object.assign(certificateForm, {
       acme_profile: current.acme_profile as GatewayAcmeProfile,
       acme_email: current.acme_email,
@@ -812,17 +771,23 @@
 
   async function saveRouteCertificates() {
     const current = gateway.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     certificateSubmitError.value = '';
     const form = gatewayConfigFormFromResponse(current);
     Object.assign(form, certificateForm);
     const errors = validateGatewayConfigForm(form, 'edit');
-    if (errors.tls_mode) errors.acme_profile = errors.tls_mode;
+    if (errors.tls_mode) {
+      errors.acme_profile = errors.tls_mode;
+    }
     keepSectionErrors(certificateErrors, errors, ['acme_profile', 'acme_email', 'dns_api_token']);
-    if (Object.keys(certificateErrors).length > 0) return;
+    if (Object.keys(certificateErrors).length > 0) {
+      return;
+    }
     try {
       await executeOp(async () => {
-        gateway.value = await gatewayApi.update(current.id, {
+        gateway.value = await gatewayApi.update(selectedProjectId(), current.id, {
           acme_profile: certificateForm.acme_profile,
           acme_email: certificateForm.acme_profile ? certificateForm.acme_email.trim() : '',
           dns_api_token: usesDNSProfile(certificateForm.acme_profile)
@@ -839,13 +804,20 @@
   }
 
   async function loadGateway() {
-    const id = gatewayId();
-    if (!id) {
+    const projectId = projectStore.activeProjectId;
+    gateway.value = null;
+    services.value = [];
+    if (!projectId) {
       return;
     }
     try {
       await execute(async () => {
-        gateway.value = await gatewayApi.get(id);
+        const environment = await projectEnvironmentApi.get(projectId);
+        const id = environment.gateway_application_id;
+        if (!id) {
+          throw new Error(t('gateway.toast.loadDetailFailed'));
+        }
+        gateway.value = await gatewayApi.get(projectId, id);
       });
       await loadRuntimeContext();
     } catch {
@@ -860,7 +832,7 @@
       return;
     }
     try {
-      const resp = await applicationApi.listServices(id);
+      const resp = await applicationApi.listServices(selectedProjectId(), id);
       services.value = resp.items ?? [];
     } catch {
       services.value = [];
@@ -872,28 +844,13 @@
     if (!current) {
       return;
     }
-    Object.assign(deployErrors, { service_id: '' });
     deploySubmitError.value = '';
     deployForm.force_recreate = false;
-    if (services.value.length === 0) {
+    if (!current.service_id) {
       toast.error(t('gateway.toast.noService'));
       return;
     }
-    const serviceId =
-      services.value.find((item) => item.id === current.default_service_id)?.id ||
-      services.value[0].id;
-    const selectedService = services.value.find((item) => item.id === serviceId);
-    if (!selectedService) {
-      return;
-    }
-    deployForm.service_id = selectedService.id;
     isDeployDialogOpen.value = true;
-  }
-
-  function handleDeployServiceChange(value: string | number) {
-    const serviceId = String(value);
-    deployForm.service_id = serviceId;
-    deployErrors.service_id = '';
   }
 
   async function handleDeployOk() {
@@ -902,27 +859,25 @@
     if (!current) {
       return;
     }
-    if (!deployForm.service_id) {
-      deployErrors.service_id = t('gateway.toast.deployServiceRequired');
+    if (!current.service_id) {
+      deploySubmitError.value = t('gateway.toast.deployServiceRequired');
       return;
     }
-    deployErrors.service_id = '';
     try {
       await executeOp(async () => {
-        const selectedService = services.value.find((item) => item.id === deployForm.service_id);
-        if (!selectedService) {
-          throw new Error(t('gateway.toast.deployServiceRequired'));
-        }
-        const result = await serviceApi.deploy(selectedService.id, {
+        const result = await serviceApi.deploy(selectedProjectId(), current.service_id, {
           force_recreate: deployForm.force_recreate,
         });
-        for (const warning of result.warnings) toast.error(warning);
+        for (const warning of result.warnings) {
+          toast.error(warning);
+        }
         toast.success(t('gateway.toast.deployQueued'));
         isDeployDialogOpen.value = false;
         runtimeLogTarget.value = runtimeTargetForService(
           current,
-          selectedService.id,
-          selectedService.instance_key
+          current.service_id,
+          current.service_code,
+          result.deployment_id
         );
       });
     } catch (err: unknown) {
@@ -938,16 +893,18 @@
   function runtimeTargetForService(
     current: GatewayResp,
     serviceId: string,
-    instanceKey: string
+    serviceCode: string,
+    deploymentId?: string
   ): RuntimeContainerLogTarget {
     return {
       applicationId: current.id,
       serviceId,
-      component: current.traefik_component_name,
+      component: MANAGED_GATEWAY_COMPONENT_NAME,
+      deploymentId,
       title: t('service.logs.titleWithComponent', {
         app: current.name,
-        instance: instanceKey,
-        component: current.traefik_component_name,
+        code: serviceCode,
+        component: MANAGED_GATEWAY_COMPONENT_NAME,
       }),
     };
   }
@@ -956,10 +913,8 @@
     if (!canStop.value) {
       return;
     }
-    stopError.value = '';
     stopSubmitError.value = '';
     stopForm.remove_volumes = false;
-    stopForm.service_id = stoppableServices.value[0]?.id || '';
     isStopDialogOpen.value = true;
   }
 
@@ -969,17 +924,14 @@
     if (!current) {
       return;
     }
-    const targetId =
-      stoppableServices.value.length === 1 ? stoppableServices.value[0].id : stopForm.service_id;
-    if (!targetId) {
-      stopError.value = t('gateway.toast.serviceRequired');
+    if (!current.service_id) {
+      stopSubmitError.value = t('gateway.toast.serviceRequired');
       return;
     }
-    stopError.value = '';
     try {
       await executeOp(async () => {
-        const result = await applicationApi.stop(current.id, {
-          service_id: targetId,
+        const result = await applicationApi.stop(selectedProjectId(), current.id, {
+          service_id: current.service_id,
           remove_volumes: stopForm.remove_volumes,
         });
         toast.success(t('gateway.toast.stopQueued'));
@@ -1002,10 +954,6 @@
     router.push(`/application/${gateway.value.id}`);
   }
 
-  function goBack() {
-    router.push('/gateways');
-  }
-
   function usesDNSProfile(profile: string) {
     return profile === 'dns' || profile === 'http-dns';
   }
@@ -1024,12 +972,7 @@
     }
   }
 
-  watch(
-    () => route.params.id,
-    () => {
-      loadGateway();
-    }
-  );
+  watch(() => projectStore.activeProjectId, loadGateway);
 
   onMounted(loadGateway);
 </script>

@@ -1,91 +1,120 @@
 package deploymentsvc
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"io/fs"
 	"path/filepath"
-)
 
-type workspaceWrite struct {
-	serviceCode string
-	path        string
-	content     string
-}
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+)
 
 type workspaceFake struct {
 	dataRoot      string
-	physicalRoot  string
-	physicalErr   error
 	hasServiceDir bool
-	writes        []workspaceWrite
+	queryOutput   string
+	queryErr      error
+	queryCalled   bool
+	staged        []deploymentport.Workspace
 	removedLog    workspaceRemovedLog
 	removeLogErr  error
 }
 
 type workspaceRemovedLog struct {
 	serviceCode  string
-	deploymentID string
+	deploymentId string
 }
 
 func testWorkspace(dataRoot string) *workspaceFake {
-	return testWorkspaceWithPhysicalRoot(dataRoot, dataRoot, nil)
+	return &workspaceFake{dataRoot: dataRoot}
 }
 
-func testWorkspaceWithPhysicalRoot(dataRoot string, physicalRoot string, physicalErr error) *workspaceFake {
-	return &workspaceFake{dataRoot: dataRoot, physicalRoot: physicalRoot, physicalErr: physicalErr}
+func (w *workspaceFake) ServiceDir(_ environmentport.Target, serviceCode string) (string, error) {
+	return filepath.ToSlash(filepath.Join(w.dataRoot, "cd", serviceCode)), nil
 }
 
-func (w *workspaceFake) ServiceDir(serviceCode string) string {
-	return filepath.Join(w.dataRoot, "cd", serviceCode)
-}
-
-func (w *workspaceFake) ServiceDirExists(string) (bool, error) {
+func (w *workspaceFake) ServiceDirExists(context.Context, environmentport.Target, string) (bool, error) {
 	return w.hasServiceDir, nil
 }
 
-func (w *workspaceFake) DeploymentLogPath(serviceCode string, deploymentId string) string {
-	return filepath.Join(w.ServiceDir(serviceCode), "deployments", deploymentId+".log")
+func (w *workspaceFake) ComposeMountSourceDir(_ context.Context, target environmentport.Target, serviceCode string) (string, error) {
+	return w.ServiceDir(target, serviceCode)
 }
 
-func (w *workspaceFake) RemoveDeploymentLog(serviceCode string, deploymentID string) error {
-	w.removedLog = workspaceRemovedLog{serviceCode: serviceCode, deploymentID: deploymentID}
-	return w.removeLogErr
-}
-
-func (w *workspaceFake) PhysicalWorkspaceRoot(context.Context) (string, error) {
-	if w.physicalErr != nil {
-		return "", w.physicalErr
-	}
-	return filepath.ToSlash(w.physicalRoot), nil
-}
-
-func (w *workspaceFake) ComposeMountSourceDir(ctx context.Context, serviceCode string) (string, error) {
-	physicalRoot, err := w.PhysicalWorkspaceRoot(ctx)
-	if err != nil {
-		return "", err
-	}
-	return filepath.ToSlash(filepath.Join(physicalRoot, serviceCode)), nil
-}
-
-func (w *workspaceFake) WriteConfig(serviceCode string, path string, content string) error {
-	w.writes = append(w.writes, workspaceWrite{
-		serviceCode: serviceCode,
-		path:        path,
-		content:     content,
-	})
+func (w *workspaceFake) StageWorkspace(_ context.Context, _ environmentport.Target, workspace deploymentport.Workspace) error {
+	w.staged = append(w.staged, workspace)
 	return nil
+}
+
+func (w *workspaceFake) Run(context.Context, environmentport.Target, string, io.Writer, string, ...string) error {
+	return w.queryErr
+}
+
+func (w *workspaceFake) Query(context.Context, environmentport.Target, string, string, ...string) (string, error) {
+	w.queryCalled = true
+	return w.queryOutput, w.queryErr
+}
+
+func (w *workspaceFake) QueryAtEnvironmentRoot(context.Context, environmentport.Target, string, ...string) (string, error) {
+	w.queryCalled = true
+	return w.queryOutput, w.queryErr
+}
+
+func (w *workspaceFake) QueryAtEnvironmentRootInput(context.Context, environmentport.Target, []byte, string, ...string) (string, error) {
+	w.queryCalled = true
+	return w.queryOutput, w.queryErr
+}
+
+func (w *workspaceFake) Writer(string, string) (io.WriteCloser, error) {
+	return nopWriteCloser{Writer: &bytes.Buffer{}}, nil
+}
+
+func (w *workspaceFake) Read(string, string, int) ([]byte, int, error) {
+	return nil, 0, nil
+}
+
+func (w *workspaceFake) Remove(serviceCode string, deploymentId string) error {
+	w.removedLog = workspaceRemovedLog{serviceCode: serviceCode, deploymentId: deploymentId}
+	return w.removeLogErr
 }
 
 func (w *workspaceFake) SetMissingDeploymentLog() {
 	w.removeLogErr = fs.ErrNotExist
 }
 
-func (w *workspaceFake) Config(serviceCode string, path string) (string, bool) {
-	for index := len(w.writes) - 1; index >= 0; index-- {
-		write := w.writes[index]
-		if write.serviceCode == serviceCode && write.path == path {
-			return write.content, true
-		}
-	}
-	return "", false
+type nopWriteCloser struct {
+	io.Writer
+}
+
+func (nopWriteCloser) Close() error { return nil }
+
+type staticTargetResolver struct {
+	target environmentport.Target
+	err    error
+}
+
+func (r staticTargetResolver) ResolveProjectTarget(context.Context, string) (environmentport.Target, error) {
+	return r.target, r.err
+}
+
+func testSSHTarget(projectId string) environmentport.Target {
+	revision := int64(1)
+	status := "succeeded"
+	return environmentport.Target{Environment: model.Environment{
+		Id: "environment-1", ProjectId: projectId,
+		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: revision,
+		WorkspaceRoot:     "/srv/orbit",
+		LastProbeRevision: &revision, LastProbeStatus: &status,
+		SSH: &model.EnvironmentSSHTarget{
+			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit",
+			CredentialId: "credential-1", CredentialRevision: revision, HostKeyFingerprint: "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=",
+		},
+	}}
+}
+
+func (w *workspaceFake) SyncFiles(context.Context, environmentport.Target, string, []deploymentport.WorkspaceFile, string) error {
+	return nil
 }

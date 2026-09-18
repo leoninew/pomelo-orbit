@@ -9,6 +9,10 @@
         @search="handleSearch"
       />
       <div class="flex items-center gap-3">
+        <button class="app-button px-4" @click="openHandoverDialog">
+          <Upload class="size-4" />
+          {{ t('project.importHandover') }}
+        </button>
         <button class="app-button-primary px-5" @click="openCreateDialog">
           <Plus class="size-4" />
           {{ t('project.createProject') }}
@@ -96,48 +100,260 @@
     <AppDialog
       v-model:open="isDialogOpen"
       :title="editingProject ? t('project.editProject') : t('project.createProject')"
+      width-class="w-[min(760px,calc(100vw-32px))]"
+      body-class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4"
+      content-class="max-h-[calc(100vh-32px)] flex flex-col"
     >
-      <div class="space-y-4">
+      <form class="space-y-4" novalidate @submit.prevent="handleSave">
         <div class="space-y-1.5">
-          <label class="app-field-label block">
+          <label class="app-field-label block" for="project-name">
             {{ t('project.name') }}
             <span class="text-destructive">*</span>
           </label>
           <input
+            id="project-name"
             v-model="form.name"
             type="text"
             class="app-input"
             :class="errors.name ? 'app-input-error' : ''"
-            placeholder="Default Project"
             :aria-invalid="errors.name ? 'true' : undefined"
             @input="errors.name = ''"
           />
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
+        <template v-if="!editingProject">
+          <div class="space-y-1.5">
+            <label class="app-field-label block" for="project-code">
+              {{ t('project.code') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <input
+              id="project-code"
+              v-model="form.code"
+              type="text"
+              class="app-input"
+              :class="errors.code ? 'app-input-error' : ''"
+              :placeholder="t('project.codeHint')"
+              :aria-invalid="errors.code ? 'true' : undefined"
+              @input="errors.code = ''"
+            />
+            <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
+          </div>
+        </template>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
+      </form>
+      <p v-if="submitError" class="app-field-error mt-3" role="alert">{{ submitError }}</p>
+      <template #footer>
+        <AppDialogActions :busy="operating" @cancel="isDialogOpen = false" @confirm="handleSave" />
+      </template>
+    </AppDialog>
+
+    <AppDialog
+      v-model:open="isHandoverDialogOpen"
+      :title="t('project.importHandover')"
+      width-class="w-[min(600px,calc(100vw-32px))]"
+    >
+      <form class="space-y-4" novalidate @submit.prevent="handleHandoverImport">
         <div class="space-y-1.5">
-          <label class="app-field-label block">
-            {{ t('project.code') }}
+          <label id="handover-file-label" class="app-field-label block">
+            {{ t('project.handoverFile') }}
             <span class="text-destructive">*</span>
           </label>
           <input
-            v-model="form.code"
-            type="text"
-            class="app-input"
-            :class="errors.code ? 'app-input-error' : ''"
-            placeholder="default"
-            :aria-invalid="errors.code ? 'true' : undefined"
-            @input="errors.code = ''"
+            id="handover-file"
+            ref="handoverFileInput"
+            :key="handoverFileInputKey"
+            type="file"
+            accept="application/json,.json"
+            class="sr-only"
+            :disabled="operating"
+            :aria-invalid="handoverErrors.file ? 'true' : undefined"
+            :aria-labelledby="'handover-file-label'"
+            :aria-describedby="handoverErrors.file ? 'handover-file-error' : undefined"
+            @change="handleHandoverFile"
           />
-          <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
-          <p v-else class="app-field-hint">{{ t('project.codeHint') }}</p>
+          <div
+            class="flex min-h-28 flex-col gap-3 rounded-md border border-dashed bg-muted/20 p-4 sm:flex-row sm:items-center"
+            :class="[
+              handoverErrors.file ? 'border-destructive' : 'border-input',
+              operating ? 'cursor-not-allowed opacity-60' : 'hover:border-ring',
+            ]"
+            :aria-labelledby="'handover-file-label'"
+            @dragover.prevent
+            @drop.prevent="handleHandoverFileDrop"
+          >
+            <span
+              class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+              aria-hidden="true"
+            >
+              <FileUp class="size-5" />
+            </span>
+            <template v-if="handoverFile">
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-foreground" :title="handoverFile.name">
+                  {{ handoverFile.name }}
+                </p>
+                <p class="mt-0.5 text-xs text-muted-foreground">
+                  {{ formatHandoverFileSize(handoverFile.size) }}
+                </p>
+              </div>
+              <div class="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  class="app-button h-9 px-3"
+                  :disabled="operating"
+                  @click="selectHandoverFile"
+                >
+                  <FileUp class="size-4" />
+                  {{ t('project.handoverChooseFile') }}
+                </button>
+                <button
+                  type="button"
+                  class="app-button h-9 w-9 p-0"
+                  :disabled="operating"
+                  :aria-label="t('common.remove')"
+                  :title="t('common.remove')"
+                  @click="clearHandoverFile"
+                >
+                  <X class="size-4" aria-hidden="true" />
+                </button>
+              </div>
+            </template>
+            <template v-else>
+              <p class="min-w-0 flex-1 text-sm text-muted-foreground">
+                {{ t('project.handoverFileEmpty') }}
+              </p>
+              <button
+                type="button"
+                class="app-button-primary h-9 shrink-0 px-3"
+                :disabled="operating"
+                @click="selectHandoverFile"
+              >
+                <FileUp class="size-4" />
+                {{ t('project.handoverChooseFile') }}
+              </button>
+            </template>
+          </div>
+          <p
+            v-if="handoverErrors.file"
+            id="handover-file-error"
+            class="app-field-error text-xs"
+            role="alert"
+          >
+            {{ handoverErrors.file }}
+          </p>
         </div>
-      </div>
-      <p v-if="submitError" class="app-field-error mt-3" role="alert">
-        {{ submitError }}
-      </p>
 
+        <div class="space-y-1.5">
+          <span id="handover-mode-label" class="app-field-label block">
+            {{ t('project.handoverMode') }}
+          </span>
+          <div
+            class="flex h-10 items-center gap-3"
+            role="group"
+            aria-labelledby="handover-mode-label"
+          >
+            <button
+              type="button"
+              class="text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              :class="handoverMode === 'new' ? 'text-foreground' : 'text-muted-foreground'"
+              :disabled="operating"
+              @click="setHandoverMode(false)"
+            >
+              {{ t('project.handoverModeNew') }}
+            </button>
+            <SwitchRoot
+              :model-value="handoverMode === 'replace'"
+              class="app-switch-root"
+              :disabled="operating"
+              :aria-label="t('project.handoverMode')"
+              @update:model-value="setHandoverMode"
+            >
+              <SwitchThumb class="app-switch-thumb" />
+            </SwitchRoot>
+            <button
+              type="button"
+              class="text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              :class="handoverMode === 'replace' ? 'text-foreground' : 'text-muted-foreground'"
+              :disabled="operating"
+              @click="setHandoverMode(true)"
+            >
+              {{ t('project.handoverModeReplace') }}
+            </button>
+          </div>
+        </div>
+
+        <template v-if="handoverMode === 'new'">
+          <div class="space-y-1.5">
+            <label class="app-field-label block" for="handover-project-name">
+              {{ t('project.name') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <input
+              id="handover-project-name"
+              v-model="handoverForm.name"
+              type="text"
+              class="app-input"
+              :class="handoverErrors.name ? 'app-input-error' : ''"
+              :disabled="operating"
+              :aria-invalid="handoverErrors.name ? 'true' : undefined"
+              @input="handoverErrors.name = ''"
+            />
+            <p v-if="handoverErrors.name" class="app-field-error text-xs">
+              {{ handoverErrors.name }}
+            </p>
+          </div>
+          <div class="space-y-1.5">
+            <label class="app-field-label block" for="handover-project-code">
+              {{ t('project.code') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <input
+              id="handover-project-code"
+              v-model="handoverForm.code"
+              type="text"
+              class="app-input"
+              :class="handoverErrors.code ? 'app-input-error' : ''"
+              :placeholder="t('project.codeHint')"
+              :disabled="operating"
+              :aria-invalid="handoverErrors.code ? 'true' : undefined"
+              @input="handoverErrors.code = ''"
+            />
+            <p v-if="handoverErrors.code" class="app-field-error text-xs">
+              {{ handoverErrors.code }}
+            </p>
+          </div>
+        </template>
+        <div v-else class="space-y-1.5">
+          <label class="app-field-label block">
+            {{ t('project.handoverTargetProject') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <ComboboxSelect
+            v-model="handoverTargetProjectId"
+            :options="handoverTargetOptions"
+            :placeholder="t('project.handoverTargetProject')"
+            :disabled="operating"
+            :invalid="Boolean(handoverErrors.targetProject)"
+            description-inline
+            @update:model-value="handoverErrors.targetProject = ''"
+          />
+          <p v-if="handoverErrors.targetProject" class="app-field-error text-xs" role="alert">
+            {{ handoverErrors.targetProject }}
+          </p>
+        </div>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
+      </form>
+      <p v-if="handoverSubmitError" class="app-field-error mt-3" role="alert">
+        {{ handoverSubmitError }}
+      </p>
       <template #footer>
-        <AppDialogActions :busy="operating" @cancel="isDialogOpen = false" @confirm="handleSave" />
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('project.importHandover')"
+          @cancel="closeHandoverDialog"
+          @confirm="handleHandoverImport"
+        />
       </template>
     </AppDialog>
 
@@ -163,17 +379,19 @@
 </template>
 
 <script setup lang="ts">
-  import { Plus } from '@lucide/vue';
+  import { FileUp, Plus, Upload, X } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
-  import { useRouter } from 'vue-router';
+  import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
-  import { ToolbarRoot } from 'reka-ui';
+  import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
+  import { projectApi } from '@/api/project/project';
   import type { ProjectResp } from '@/gen/proto/orbit/v1/project/project';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -182,6 +400,7 @@
   import { formatTime } from '@/utils/time';
 
   const router = useRouter();
+  const route = useRoute();
   const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();
@@ -192,13 +411,31 @@
   const appliedSearch = ref('');
   const isDialogOpen = ref(false);
   const isDeprecateDialogOpen = ref(false);
+  const isHandoverDialogOpen = ref(false);
   const editingProject = ref<ProjectResp | null>(null);
   const deprecatingProject = ref<ProjectResp | null>(null);
   const pagination = reactive({ current: 1, pageSize: 10 });
-  const form = reactive({ name: '', code: '' });
-  const errors = reactive({ name: '', code: '' });
+  const form = reactive({
+    name: '',
+    code: '',
+  });
+  const errors = reactive({
+    name: '',
+    code: '',
+  });
   const submitError = ref('');
   const deprecateSubmitError = ref('');
+  const handoverMode = ref<'new' | 'replace'>('new');
+  const handoverFile = ref<File>();
+  const handoverFileInput = ref<HTMLInputElement>();
+  const handoverFileInputKey = ref(0);
+  const handoverForm = reactive({
+    name: '',
+    code: '',
+  });
+  const handoverTargetProjectId = ref('');
+  const handoverErrors = reactive({ file: '', name: '', code: '', targetProject: '' });
+  const handoverSubmitError = ref('');
 
   const filteredProjects = computed(() => {
     const keyword = appliedSearch.value.trim().toLowerCase();
@@ -217,17 +454,28 @@
     const start = (pagination.current - 1) * pagination.pageSize;
     return filteredProjects.value.slice(start, start + pagination.pageSize);
   });
+  const handoverTargetOptions = computed(() =>
+    projectStore.activeProjects.map((project) => ({
+      value: project.id,
+      label: project.name,
+      description: project.code,
+    }))
+  );
 
   function resetForm(project?: ProjectResp) {
     form.name = project?.name ?? '';
     form.code = project?.code ?? '';
-    errors.name = '';
-    errors.code = '';
+    Object.keys(errors).forEach((key) => {
+      errors[key as keyof typeof errors] = '';
+    });
     submitError.value = '';
   }
 
   function validate() {
     errors.name = form.name.trim() ? '' : t('project.nameRequired');
+    if (editingProject.value) {
+      return !errors.name;
+    }
     errors.code = /^[a-z0-9_-]+$/.test(form.code) ? '' : t('project.codeInvalid');
     return !errors.name && !errors.code;
   }
@@ -236,6 +484,77 @@
     editingProject.value = null;
     resetForm();
     isDialogOpen.value = true;
+  }
+
+  function openHandoverDialog() {
+    handoverMode.value = 'new';
+    handoverFile.value = undefined;
+    handoverFileInputKey.value += 1;
+    handoverForm.name = '';
+    handoverForm.code = '';
+    handoverTargetProjectId.value = '';
+    handoverErrors.file = '';
+    handoverErrors.name = '';
+    handoverErrors.code = '';
+    handoverErrors.targetProject = '';
+    handoverSubmitError.value = '';
+    isHandoverDialogOpen.value = true;
+  }
+
+  function setHandoverMode(replace: boolean) {
+    handoverMode.value = replace ? 'replace' : 'new';
+    handoverErrors.name = '';
+    handoverErrors.code = '';
+    handoverErrors.targetProject = '';
+  }
+
+  function closeHandoverDialog() {
+    isHandoverDialogOpen.value = false;
+    handoverSubmitError.value = '';
+  }
+
+  function handleHandoverFile(event: Event) {
+    setHandoverFile((event.target as HTMLInputElement).files?.[0]);
+  }
+
+  function handleHandoverFileDrop(event: DragEvent) {
+    if (operating.value) {
+      return;
+    }
+    setHandoverFile(event.dataTransfer?.files?.[0]);
+  }
+
+  function selectHandoverFile() {
+    if (operating.value || !handoverFileInput.value) {
+      return;
+    }
+    handoverFileInput.value.value = '';
+    handoverFileInput.value.click();
+  }
+
+  function clearHandoverFile() {
+    handoverFile.value = undefined;
+    handoverFileInputKey.value += 1;
+    handoverErrors.file = '';
+  }
+
+  function setHandoverFile(file?: File) {
+    if (!file) {
+      return;
+    }
+    handoverFile.value = file;
+    handoverErrors.file = '';
+  }
+
+  function formatHandoverFileSize(bytes: number) {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = bytes;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex += 1;
+    }
+    return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
   }
 
   function openEditDialog(project: ProjectResp) {
@@ -281,10 +600,7 @@
     try {
       await executeOp(async () => {
         if (editingProject.value) {
-          await projectStore.updateProject(editingProject.value.id, {
-            name: form.name.trim(),
-            code: form.code.trim(),
-          });
+          await projectStore.updateProject(editingProject.value.id, { name: form.name.trim() });
           toast.success(t('project.updated'));
           isDialogOpen.value = false;
         } else {
@@ -294,7 +610,12 @@
           });
           toast.success(t('project.created'));
           isDialogOpen.value = false;
-          router.push({ name: 'ProjectDetail', params: { id: project.id } });
+          projectStore.setActiveProject(project.id);
+          await router.push({
+            name: 'ProjectInitialization',
+            params: { id: project.id },
+            query: { redirect: '/gateway' },
+          });
         }
       });
     } catch (error: unknown) {
@@ -319,5 +640,58 @@
     }
   }
 
-  onMounted(fetchProjects);
+  function validateHandoverImport() {
+    handoverErrors.file = handoverFile.value ? '' : t('project.handoverFileRequired');
+    if (handoverMode.value === 'new') {
+      handoverErrors.name = handoverForm.name.trim() ? '' : t('project.nameRequired');
+      handoverErrors.code = /^[a-z0-9_-]+$/.test(handoverForm.code) ? '' : t('project.codeInvalid');
+      handoverErrors.targetProject = '';
+    } else {
+      handoverErrors.name = '';
+      handoverErrors.code = '';
+      handoverErrors.targetProject = handoverTargetProjectId.value
+        ? ''
+        : t('project.handoverTargetRequired');
+    }
+    return (
+      !handoverErrors.file &&
+      !handoverErrors.name &&
+      !handoverErrors.code &&
+      !handoverErrors.targetProject &&
+      Boolean(handoverFile.value)
+    );
+  }
+
+  async function handleHandoverImport() {
+    handoverSubmitError.value = '';
+    if (!validateHandoverImport() || !handoverFile.value) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        const project = await projectApi.importHandover(handoverFile.value as File, {
+          mode: handoverMode.value,
+          name: handoverMode.value === 'new' ? handoverForm.name.trim() : undefined,
+          code: handoverMode.value === 'new' ? handoverForm.code.trim() : undefined,
+          targetProjectId:
+            handoverMode.value === 'replace' ? handoverTargetProjectId.value : undefined,
+        });
+        await projectStore.fetchProjects();
+        projectStore.setActiveProject(project.id);
+        closeHandoverDialog();
+        toast.success(t('project.handoverImported'));
+        await router.push({ name: 'ProjectDetail', params: { id: project.id } });
+      });
+    } catch (error: unknown) {
+      handoverSubmitError.value =
+        error instanceof Error ? error.message : t('project.handoverImportFailed');
+    }
+  }
+
+  onMounted(async () => {
+    await fetchProjects();
+    if (route.query.handover === 'import') {
+      openHandoverDialog();
+    }
+  });
 </script>

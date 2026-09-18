@@ -7,7 +7,7 @@ Review status: Accepted
 
 | 文档 | 状态 |
 |------|------|
-| [requirement](../requirement/20260724-remove-sqlx-full-sqlc.md) | Accepted |
+| [requirement](../intent/20260724-remove-sqlx-full-sqlc.md) | Accepted |
 | [spec](../spec/20260724-remove-sqlx-full-sqlc.md) | Accepted |
 | [domain consensus](../analyze/20260724-domain-split-consensus-共识.md) | 已确认基线 |
 

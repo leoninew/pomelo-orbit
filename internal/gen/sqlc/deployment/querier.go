@@ -13,14 +13,16 @@ import (
 type Querier interface {
 	BeginDeployment(ctx context.Context, arg BeginDeploymentParams) (int64, error)
 	CancelDeployment(ctx context.Context, arg CancelDeploymentParams) (int64, error)
+	ClearProjectDeploymentHistory(ctx context.Context, projectID sql.NullString) error
+	ClearProjectDeploymentRollbackReferences(ctx context.Context, projectID sql.NullString) error
 	CompleteDeployment(ctx context.Context, arg CompleteDeploymentParams) (int64, error)
 	CountActiveDeploymentsByService(ctx context.Context, arg CountActiveDeploymentsByServiceParams) (int64, error)
 	CountDeployments(ctx context.Context, arg CountDeploymentsParams) (int64, error)
 	CreateDeployment(ctx context.Context, arg CreateDeploymentParams) error
-	DeleteDeployment(ctx context.Context, id string) error
-	DeploymentByID(ctx context.Context, id string) (DeploymentByIDRow, error)
-	DeploymentStartedAt(ctx context.Context, id string) (time.Time, error)
-	LatestSuccessfulDeploymentPlanHash(ctx context.Context, serviceID sql.NullString) (sql.NullString, error)
+	DeleteDeployment(ctx context.Context, arg DeleteDeploymentParams) error
+	DeploymentById(ctx context.Context, arg DeploymentByIdParams) (DeploymentByIdRow, error)
+	DeploymentStartedAt(ctx context.Context, arg DeploymentStartedAtParams) (time.Time, error)
+	LatestSuccessfulDeploymentPlanHash(ctx context.Context, arg LatestSuccessfulDeploymentPlanHashParams) (sql.NullString, error)
 	ListDeployments(ctx context.Context, arg ListDeploymentsParams) ([]ListDeploymentsRow, error)
 }
 

@@ -268,7 +268,7 @@
     @synced="handleSyncComplete"
   />
 
-  <AppDialog v-model:open="isCreateDialogOpen" :title="t('route.addRoute')">
+  <AppDialog v-model:open="isCreateDialogOpen" title="创建路由">
     <div class="space-y-4">
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
@@ -296,30 +296,32 @@
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
       </div>
-      <div class="space-y-1.5">
-        <label class="app-field-label block">
-          {{ t('route.fields.domain') }}
-          <span class="text-destructive">*</span>
-        </label>
-        <input
-          v-model="form.domain"
-          type="text"
-          class="app-input"
-          :class="errors.domain ? 'app-input-error' : ''"
-          placeholder="example.com"
-          :aria-invalid="errors.domain ? 'true' : undefined"
-          @input="errors.domain = ''"
-        />
-        <p v-if="errors.domain" class="app-field-error text-xs">{{ errors.domain }}</p>
-      </div>
-      <div v-if="form.protocol === 'http'" class="space-y-1.5">
-        <label class="app-field-label block">{{ t('route.fields.pathPrefix') }}</label>
-        <input
-          v-model="form.path_prefix"
-          type="text"
-          class="app-input"
-          :placeholder="t('route.hints.pathPrefix')"
-        />
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5" :class="form.protocol === 'tcp' ? 'sm:col-span-2' : undefined">
+          <label class="app-field-label block">
+            {{ t('route.fields.domain') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="form.domain"
+            type="text"
+            class="app-input"
+            :class="errors.domain ? 'app-input-error' : ''"
+            placeholder="example.com"
+            :aria-invalid="errors.domain ? 'true' : undefined"
+            @input="errors.domain = ''"
+          />
+          <p v-if="errors.domain" class="app-field-error text-xs">{{ errors.domain }}</p>
+        </div>
+        <div v-if="form.protocol === 'http'" class="space-y-1.5">
+          <label class="app-field-label block">{{ t('route.fields.pathPrefix') }}</label>
+          <input
+            v-model="form.path_prefix"
+            type="text"
+            class="app-input"
+            :placeholder="t('route.hints.pathPrefix')"
+          />
+        </div>
       </div>
       <template v-if="form.protocol === 'tcp'">
         <RouteManagedTargetSelect
@@ -457,30 +459,44 @@
           </p>
         </div>
       </div>
-      <div class="space-y-1.5">
-        <label for="edit-route-domain" class="app-field-label block">
-          {{ t('route.fields.domain') }}
-          <span class="text-destructive">*</span>
-        </label>
-        <input
-          id="edit-route-domain"
-          v-model="editForm.domain"
-          type="text"
-          class="app-input"
-          :class="editErrors.domain ? 'app-input-error' : ''"
-          placeholder="example.com"
-          :aria-invalid="editErrors.domain ? 'true' : undefined"
-          :aria-describedby="editErrors.domain ? 'edit-route-domain-error' : undefined"
-          @input="clearEditError('domain')"
-        />
-        <p
-          v-if="editErrors.domain"
-          id="edit-route-domain-error"
-          class="app-field-error text-xs"
-          role="alert"
-        >
-          {{ editErrors.domain }}
-        </p>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5" :class="editForm.protocol === 'tcp' ? 'sm:col-span-2' : undefined">
+          <label for="edit-route-domain" class="app-field-label block">
+            {{ t('route.fields.domain') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="edit-route-domain"
+            v-model="editForm.domain"
+            type="text"
+            class="app-input"
+            :class="editErrors.domain ? 'app-input-error' : ''"
+            placeholder="example.com"
+            :aria-invalid="editErrors.domain ? 'true' : undefined"
+            :aria-describedby="editErrors.domain ? 'edit-route-domain-error' : undefined"
+            @input="clearEditError('domain')"
+          />
+          <p
+            v-if="editErrors.domain"
+            id="edit-route-domain-error"
+            class="app-field-error text-xs"
+            role="alert"
+          >
+            {{ editErrors.domain }}
+          </p>
+        </div>
+        <div v-if="editForm.protocol === 'http'" class="space-y-1.5">
+          <label for="edit-route-path-prefix" class="app-field-label block">
+            {{ t('route.fields.pathPrefix') }}
+          </label>
+          <input
+            id="edit-route-path-prefix"
+            v-model="editForm.path_prefix"
+            type="text"
+            class="app-input"
+            :placeholder="t('route.hints.pathPrefix')"
+          />
+        </div>
       </div>
       <template v-if="editForm.protocol === 'tcp'">
         <RouteManagedTargetSelect
@@ -511,18 +527,6 @@
           "
         />
       </template>
-      <div v-if="editForm.protocol === 'http'" class="space-y-1.5">
-        <label for="edit-route-path-prefix" class="app-field-label block">
-          {{ t('route.fields.pathPrefix') }}
-        </label>
-        <input
-          id="edit-route-path-prefix"
-          v-model="editForm.path_prefix"
-          type="text"
-          class="app-input"
-          :placeholder="t('route.hints.pathPrefix')"
-        />
-      </div>
       <template v-if="editForm.protocol === 'http'">
         <RouteManagedTargetSelect
           v-if="!editForm.custom_target"
@@ -845,14 +849,15 @@
     }
     try {
       await executeRoutes(async () => {
-        const res = await routeApi.list({
+        const res = await routeApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
           search: routeSearchText.value || undefined,
-          project_id: projectId,
         });
-        routes.value = res.items;
-        pagination.total = res.total;
+        if (projectStore.activeProjectId === projectId) {
+          routes.value = res.items;
+          pagination.total = res.total;
+        }
       });
     } catch {
       toast.error(t('route.toast.loadFailed'));
@@ -867,8 +872,10 @@
     }
     try {
       await executeTraefik(async () => {
-        const data = await traefikRouteApi.list({ project_id: projectId });
-        traefikRoutes.value = data.items;
+        const data = await traefikRouteApi.list(projectId);
+        if (projectStore.activeProjectId === projectId) {
+          traefikRoutes.value = data.items;
+        }
       });
     } catch {
       // The card renders the error state from useStatusAsync.
@@ -902,27 +909,26 @@
       toast.error(t('route.toast.selectProjectRequired'));
       return;
     }
-    let config;
     try {
-      config = await traefikRouteApi.getConfig({ project_id: projectId });
+      const config = await traefikRouteApi.getConfig(projectId);
       await loadTargetServices(projectId);
+      Object.assign(form, {
+        name: '',
+        protocol: 'http',
+        domain: config?.base_domain ?? '',
+        path_prefix: '/',
+        target_url: '',
+        custom_target: false,
+        listen_port: undefined,
+        service_id: '',
+        component_name: '',
+        endpoint_protocol: '',
+        endpoint_container_port: undefined,
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.loadFailed'));
       return;
     }
-    Object.assign(form, {
-      name: '',
-      protocol: 'http',
-      domain: config?.base_domain ?? '',
-      path_prefix: '/',
-      target_url: '',
-      custom_target: false,
-      listen_port: undefined,
-      service_id: '',
-      component_name: '',
-      endpoint_protocol: '',
-      endpoint_container_port: undefined,
-    });
     Object.assign(errors, {
       name: '',
       domain: '',
@@ -1029,28 +1035,24 @@
     }
     try {
       await executeRouteOperation(async () => {
-        const created = await routeApi.create(
-          {
-            name: form.name,
-            protocol: form.protocol,
-            domain: form.domain,
-            path_prefix: form.protocol === 'http' ? form.path_prefix : '',
-            target_url: form.protocol === 'http' && form.custom_target ? form.target_url : '',
-            listen_port: form.protocol === 'tcp' ? form.listen_port : undefined,
-            service_id:
-              form.protocol === 'tcp' || !form.custom_target ? form.service_id.trim() : '',
-            component_name:
-              form.protocol === 'tcp' || !form.custom_target ? form.component_name.trim() : '',
-            endpoint_protocol:
-              form.protocol === 'tcp' || !form.custom_target ? form.endpoint_protocol.trim() : '',
-            endpoint_container_port:
-              form.protocol === 'tcp' || !form.custom_target
-                ? form.endpoint_container_port
-                : undefined,
-            enabled: false,
-          },
-          { project_id: projectId }
-        );
+        const created = await routeApi.create(projectId, {
+          name: form.name,
+          protocol: form.protocol,
+          domain: form.domain,
+          path_prefix: form.protocol === 'http' ? form.path_prefix : '',
+          target_url: form.protocol === 'http' && form.custom_target ? form.target_url : '',
+          listen_port: form.protocol === 'tcp' ? form.listen_port : undefined,
+          service_id: form.protocol === 'tcp' || !form.custom_target ? form.service_id.trim() : '',
+          component_name:
+            form.protocol === 'tcp' || !form.custom_target ? form.component_name.trim() : '',
+          endpoint_protocol:
+            form.protocol === 'tcp' || !form.custom_target ? form.endpoint_protocol.trim() : '',
+          endpoint_container_port:
+            form.protocol === 'tcp' || !form.custom_target
+              ? form.endpoint_container_port
+              : undefined,
+          enabled: false,
+        });
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.addSuccess'));
         isCreateDialogOpen.value = false;
@@ -1066,13 +1068,14 @@
 
   async function handleEditSave() {
     const route = editingRoute.value;
+    const projectId = projectStore.activeProjectId;
     editSubmitError.value = '';
-    if (!route || !validateEditForm()) {
+    if (!route || !projectId || !validateEditForm()) {
       return;
     }
     try {
       await executeRouteOperation(async () => {
-        const updated = await routeApi.update(route.id, {
+        const updated = await routeApi.update(projectId, route.id, {
           name: editForm.name,
           protocol: editForm.protocol,
           domain: editForm.domain,
@@ -1143,7 +1146,7 @@
       return;
     }
     try {
-      const config = await traefikRouteApi.getConfig({ project_id: projectId });
+      const config = await traefikRouteApi.getConfig(projectId);
       window.open(
         `${config.https_enabled ? 'https' : 'http'}://${config.dashboard_domain}/dashboard/`,
         '_blank'

@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
-	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
-	"github.com/leoninew/pomelo-orbit/internal/api/http/codec"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	dialoguedto "github.com/leoninew/pomelo-orbit/internal/application/dialogue/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	dialoguev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/dialogue"
@@ -20,16 +19,16 @@ func (h Handler) CompleteTurn(c *gin.Context) {
 		return
 	}
 	var req dialoguev1.DeploymentDialogueTurnReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	result, err := h.service.CompleteTurn(c.Request.Context(), current.User.Id, dialogueTurnInput(&req))
+	result, err := h.service.CompleteTurn(c.Request.Context(), current.User.Id, c.Request.URL.Query().Get("project_id"), dialogueTurnInput(&req))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, dialogueTurnResponse(result))
+	transport.WriteProtoJSON(c, http.StatusOK, dialogueTurnResponse(result))
 }
 
 func (h Handler) StreamTurn(c *gin.Context) {
@@ -38,8 +37,8 @@ func (h Handler) StreamTurn(c *gin.Context) {
 		return
 	}
 	var req dialoguev1.DeploymentDialogueTurnReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 
@@ -63,12 +62,12 @@ func (h Handler) StreamTurn(c *gin.Context) {
 		}
 	}
 
-	result, err := h.service.CompleteTurnWithProgress(c.Request.Context(), current.User.Id, dialogueTurnInput(&req), func(event dialoguedto.StreamEvent) {
+	result, err := h.service.CompleteTurnWithProgress(c.Request.Context(), current.User.Id, c.Request.URL.Query().Get("project_id"), dialogueTurnInput(&req), func(event dialoguedto.StreamEvent) {
 		emit(dialogueStreamEvent(event))
 	})
 	if err != nil {
 		if !streamStarted {
-			transportresponse.WriteError(c, err)
+			transport.WriteError(c, err)
 			return
 		}
 		classification := apperror.Classify(err)
@@ -92,14 +91,14 @@ func (h Handler) ListConversations(c *gin.Context) {
 	}
 	items, err := h.service.ListConversations(c.Request.Context(), current.User.Id, c.Request.URL.Query().Get("project_id"))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	result := make([]dialoguev1.DeploymentDialogueConversation, 0, len(items))
 	for _, item := range items {
 		result = append(result, *dialogueConversationResponse(item))
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &dialoguev1.DeploymentDialogueConversationListResp{Items: transportresponse.Ptrs(result)})
+	transport.WriteProtoJSON(c, http.StatusOK, &dialoguev1.DeploymentDialogueConversationListResp{Items: transport.Ptrs(result)})
 }
 
 func (h Handler) Conversation(c *gin.Context) {
@@ -107,16 +106,16 @@ func (h Handler) Conversation(c *gin.Context) {
 	if !ok {
 		return
 	}
-	detail, err := h.service.Conversation(c.Request.Context(), current.User.Id, c.Param("conversation_id"))
+	detail, err := h.service.Conversation(c.Request.Context(), current.User.Id, c.Request.URL.Query().Get("project_id"), c.Param("conversation_id"))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	messages := make([]dialoguev1.DeploymentDialogueMessage, 0, len(detail.Messages))
 	for _, message := range detail.Messages {
 		messages = append(messages, dialogueMessageResponse(message))
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &dialoguev1.DeploymentDialogueConversationDetailResp{Conversation: dialogueConversationResponse(detail.Conversation), Messages: transportresponse.Ptrs(messages)})
+	transport.WriteProtoJSON(c, http.StatusOK, &dialoguev1.DeploymentDialogueConversationDetailResp{Conversation: dialogueConversationResponse(detail.Conversation), Messages: transport.Ptrs(messages)})
 }
 
 func (h Handler) DeleteConversation(c *gin.Context) {
@@ -124,15 +123,15 @@ func (h Handler) DeleteConversation(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteConversation(c.Request.Context(), current.User.Id, c.Param("conversation_id")); err != nil {
-		transportresponse.WriteError(c, err)
+	if err := h.service.DeleteConversation(c.Request.Context(), current.User.Id, c.Request.URL.Query().Get("project_id"), c.Param("conversation_id")); err != nil {
+		transport.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
 }
 
 func writeStreamEvent(c *gin.Context, event *dialoguev1.DeploymentDialogueStreamEvent) error {
-	encoded, err := codec.MarshalProtoJSON(event)
+	encoded, err := transport.MarshalProtoJSON(event)
 	if err != nil {
 		return err
 	}
@@ -160,7 +159,7 @@ func dialogueTurnInput(req *dialoguev1.DeploymentDialogueTurnReq) dialoguedto.Tu
 	if req == nil {
 		return dialoguedto.TurnInput{}
 	}
-	result := dialoguedto.TurnInput{ProjectId: req.ProjectId, ConversationId: req.GetConversationId(), Messages: make([]dialoguedto.Message, 0, len(req.Messages))}
+	result := dialoguedto.TurnInput{ConversationId: req.GetConversationId(), Messages: make([]dialoguedto.Message, 0, len(req.Messages))}
 	for _, message := range req.Messages {
 		if message != nil {
 			result.Messages = append(result.Messages, dialoguedto.Message{Role: message.Role, Content: message.Content})
@@ -185,8 +184,8 @@ func dialogueConversationResponse(conversation dialoguedto.Conversation) *dialog
 		Id:        conversation.Id,
 		ProjectId: conversation.ProjectId,
 		Title:     conversation.Title,
-		CreatedAt: transportresponse.FormatTime(conversation.CreatedAt),
-		UpdatedAt: transportresponse.FormatTime(conversation.UpdatedAt),
+		CreatedAt: transport.FormatTime(conversation.CreatedAt),
+		UpdatedAt: transport.FormatTime(conversation.UpdatedAt),
 	}
 }
 

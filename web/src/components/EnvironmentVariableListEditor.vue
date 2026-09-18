@@ -28,7 +28,7 @@
           <button
             type="submit"
             class="app-button-primary h-9 px-3"
-            :disabled="disabled || !isDirty || hasEditingRows"
+            :disabled="disabled || !isDirty"
           >
             <Save class="size-4" />
             {{ t('common.save') }}
@@ -145,9 +145,6 @@
             </td>
             <td v-if="editable" class="whitespace-nowrap">
               <div v-if="isEditing(row.id)" class="flex h-9 items-center gap-2">
-                <button type="button" class="app-link" :disabled="disabled" @click="applyEdit(row)">
-                  {{ t('common.save') }}
-                </button>
                 <button
                   type="button"
                   class="text-muted-foreground hover:text-foreground"
@@ -232,9 +229,11 @@
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import {
     environmentVariableRowsEqual,
+    mergeEnvironmentVariableRows,
     type EnvironmentVariableEntry,
     type EnvironmentVariableKeyValidator,
     type EnvironmentVariableListRow,
+    type EnvironmentVariableRowDraft,
     validateEnvironmentVariableRows,
   } from '@/components/environmentVariableList';
 
@@ -287,16 +286,20 @@
   const valueVisible = reactive<Record<string, boolean>>({});
   const maskValue = '********';
   const editingRows = reactive<
-    Record<string, { key: string; value: string; isNew: boolean; valueWasVisible: boolean }>
+    Record<string, EnvironmentVariableRowDraft & { valueWasVisible: boolean }>
   >({});
   let newRowIndex = 0;
 
-  const isDirty = computed(
-    () => props.dirty ?? !environmentVariableRowsEqual(props.rows, props.savedRows)
-  );
+  const isDirty = computed(() => {
+    const draftRows = rowsWithEditingDrafts();
+    const hasDraftChanges = !environmentVariableRowsEqual(draftRows, props.rows);
+    if (props.dirty !== undefined) {
+      return props.dirty || hasDraftChanges;
+    }
+    return !environmentVariableRowsEqual(draftRows, props.savedRows);
+  });
   const hasDefaultValues = computed(() => props.defaultValues !== undefined);
   const columnCount = computed(() => 2 + Number(hasDefaultValues.value) + Number(props.editable));
-  const hasEditingRows = computed(() => Object.keys(editingRows).length > 0);
   const search = ref('');
   const filteredRows = computed(() => {
     const keyword = search.value.trim().toLowerCase();
@@ -324,8 +327,12 @@
   }
 
   function displayValue(row: EnvironmentVariableListRow) {
-    if (isDeleted(row.id)) return '-';
-    if (props.maskValues && row.value && !valueVisible[row.id]) return maskValue;
+    if (isDeleted(row.id)) {
+      return '-';
+    }
+    if (props.maskValues && row.value && !valueVisible[row.id]) {
+      return maskValue;
+    }
     return row.value || '-';
   }
 
@@ -346,21 +353,17 @@
   }
 
   function errorMessage(error: string) {
-    if (error === 'required') return t('environment.validation.required');
-    if (error === 'duplicate') return t('environment.validation.duplicate');
+    if (error === 'required') {
+      return t('environment.validation.required');
+    }
+    if (error === 'duplicate') {
+      return t('environment.validation.duplicate');
+    }
     return error;
   }
 
   function clearError(id: string) {
     delete errors[id];
-  }
-
-  function updateRow(id: string, update: Partial<EnvironmentVariableListRow>) {
-    emit(
-      'update:rows',
-      props.rows.map((row) => (row.id === id ? { ...row, ...update } : row))
-    );
-    clearError(id);
   }
 
   function isEditing(id: string) {
@@ -373,14 +376,18 @@
 
   function updateEditingKey(id: string, event: Event) {
     const row = editingRows[id];
-    if (!row) return;
+    if (!row) {
+      return;
+    }
     row.key = (event.target as HTMLInputElement).value;
     clearError(id);
   }
 
   function updateEditingValue(id: string, event: Event) {
     const row = editingRows[id];
-    if (!row) return;
+    if (!row) {
+      return;
+    }
     row.value = (event.target as HTMLInputElement).value;
     clearError(id);
   }
@@ -412,7 +419,9 @@
   }
 
   function startEdit(row: EnvironmentVariableListRow) {
-    if (editingRows[row.id]) return;
+    if (editingRows[row.id]) {
+      return;
+    }
     const valueWasVisible = Boolean(valueVisible[row.id]);
     if (props.maskValues) {
       valueVisible[row.id] = true;
@@ -435,30 +444,7 @@
   }
 
   function rowsWithEditingDrafts() {
-    return props.rows.map((row) => {
-      const draft = editingRows[row.id];
-      if (!draft) return row;
-      return {
-        ...row,
-        key: draft.isNew ? draft.key : row.key,
-        value: draft.value,
-      };
-    });
-  }
-
-  function applyEdit(row: EnvironmentVariableListRow) {
-    const draft = editingRows[row.id];
-    if (!draft) return;
-    const rows = rowsWithEditingDrafts();
-    const result = validateEnvironmentVariableRows(rows, props.validateKey);
-    Object.keys(errors).forEach((id) => delete errors[id]);
-    Object.assign(errors, result.errors);
-    if (errors[row.id]) return;
-    updateRow(row.id, {
-      key: draft.isNew ? draft.key : row.key,
-      value: draft.value,
-    });
-    clearEditState(row.id);
+    return mergeEnvironmentVariableRows(props.rows, editingRows);
   }
 
   function toggleValueVisibility(id: string) {
@@ -466,7 +452,7 @@
   }
 
   function submit() {
-    const result = validateEnvironmentVariableRows(props.rows, props.validateKey);
+    const result = validateEnvironmentVariableRows(rowsWithEditingDrafts(), props.validateKey);
     Object.keys(errors).forEach((id) => delete errors[id]);
     Object.assign(errors, result.errors);
     if (!result.valid) {

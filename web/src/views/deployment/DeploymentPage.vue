@@ -199,8 +199,10 @@
       return;
     }
     try {
-      const resp = await applicationApi.list({ per_page: 100, project_id: projectId });
-      appOptions.value = resp.items;
+      const resp = await applicationApi.list(projectId, { per_page: 100 });
+      if (projectStore.activeProjectId === projectId) {
+        appOptions.value = resp.items;
+      }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t('application.toast.loadFailed'));
     }
@@ -214,15 +216,16 @@
     }
     try {
       await execute(async () => {
-        const res = await deploymentApi.list({
+        const res = await deploymentApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
           application_id: query.application_id || undefined,
           search: searchText.value.trim() || undefined,
-          project_id: projectId,
         });
-        deployments.value = res.items;
-        pagination.total = res.total;
+        if (projectStore.activeProjectId === projectId) {
+          deployments.value = res.items;
+          pagination.total = res.total;
+        }
       });
     } catch {
       toast.error(t('deployment.toast.loadFailed'));
@@ -269,13 +272,14 @@
 
   async function handleDelete() {
     const deployment = pendingDelete.value;
-    if (!deployment) {
+    const projectId = projectStore.activeProjectId;
+    if (!deployment || !projectId) {
       return;
     }
     deleteSubmitError.value = '';
     try {
       await executeOperation(async () => {
-        await deploymentApi.delete(deployment.id);
+        await deploymentApi.delete(projectId, deployment.id);
         toast.success(t('deployment.toast.deleteSuccess'));
         if (deployments.value.length === 1 && pagination.current > 1) {
           pagination.current -= 1;

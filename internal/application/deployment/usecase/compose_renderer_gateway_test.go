@@ -11,18 +11,18 @@ import (
 )
 
 func TestRenderGatewayComposeUsesDeclaredVersionTopology(t *testing.T) {
-	baseVersionID := "version-1"
+	baseVersionId := "version-1"
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
 		LogicalSvcDir:         t.TempDir(),
 		ComposeMountSourceDir: t.TempDir(),
 		Plan: model.EffectiveServicePlan{
 			Application: model.Application{Id: "gateway-1", Code: "traefik", Kind: status.ApplicationKindStandard},
-			Version:     model.Version{Id: baseVersionID},
-			Service:     model.Service{InstanceKey: "default"},
+			Version:     model.Version{Id: baseVersionId},
+			Service:     model.Service{Code: "traefik-default"},
 			Gateway: &model.GatewayConfig{
-				ApplicationId: "gateway-1", TraefikComponentName: "traefik",
+				ApplicationId: "gateway-1", NetworkName: "traefik",
 				BaseDomain: "example.test", DefaultEntrypoint: "web",
-				VersionBindings: []model.GatewayVersionBinding{{Profile: "base", VersionId: baseVersionID}},
+				VersionBindings: []model.GatewayVersionBinding{{Profile: "base", VersionId: baseVersionId}},
 			},
 			Components: []model.EffectiveServiceComponent{{
 				Name: "traefik", Image: "traefik:3.6", PullPolicy: "missing",
@@ -56,7 +56,7 @@ func TestRenderGatewayComposeUsesDeclaredVersionTopology(t *testing.T) {
 	}
 
 	network, ok := document.Networks[consumerPlatformNetworkKey]
-	if !ok || network.Name != defaultGatewayNetworkName || network.Driver != "bridge" {
+	if !ok || network.Name != "traefik" || network.Driver != "bridge" {
 		t.Fatalf("gateway network = %#v", document.Networks)
 	}
 	if got := document.Services["traefik"].Networks; len(got) != 1 || got[0] != gatewayNetworkKey {

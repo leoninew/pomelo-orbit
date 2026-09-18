@@ -138,6 +138,12 @@ const deploymentNavigation: NavigationBranch[] = [
         labelKey: 'nav.deployments',
         path: '/deployments',
       },
+      {
+        key: 'environment',
+        label: '环境',
+        labelKey: 'nav.environment',
+        path: '/environment',
+      },
     ],
   },
   {
@@ -146,10 +152,10 @@ const deploymentNavigation: NavigationBranch[] = [
     icon: Network,
     children: [
       {
-        key: 'gateways',
+        key: 'gateway',
         label: '网关',
-        labelKey: 'nav.gateways',
-        path: '/gateways',
+        labelKey: 'nav.gateway',
+        path: '/gateway',
       },
       {
         key: 'route',
@@ -177,7 +183,7 @@ const pipelineNavigation: NavigationBranch[] = [
         key: 'credentials',
         label: '凭据',
         labelKey: 'nav.credentials',
-        path: '/credential',
+        path: '/repository-credential',
       },
     ],
   },
@@ -319,8 +325,8 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path.startsWith('/pipeline-run/') ||
     path === '/repository' ||
     path.startsWith('/repository/') ||
-    path === '/credential' ||
-    path.startsWith('/credential/')
+    path === '/repository-credential' ||
+    path.startsWith('/repository-credential/')
   ) {
     return 'pipeline';
   }
@@ -337,10 +343,9 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path === '/deployment' ||
     path.startsWith('/deployment/') ||
     path === '/deployments' ||
+    path === '/environment' ||
     path === '/dialogue' ||
     path === '/gateway' ||
-    path.startsWith('/gateway/') ||
-    path === '/gateways' ||
     path === '/route' ||
     path.startsWith('/route/') ||
     path === '/routes'

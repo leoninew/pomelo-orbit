@@ -19,9 +19,9 @@ import (
 )
 
 type applicationReader interface {
-	Application(ctx context.Context, id string) (model.Application, error)
-	Version(ctx context.Context, id string) (model.Version, error)
-	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
+	Application(ctx context.Context, projectId string, id string) (model.Application, error)
+	Version(ctx context.Context, projectId string, id string) (model.Version, error)
+	VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error)
 }
 
 type serviceStore interface{ repository.ServiceStore }
@@ -39,16 +39,29 @@ func New(project repository.ProjectReader, application applicationReader, servic
 	return Service{project: project, application: application, service: service, deployment: deployment}
 }
 
-func (s Service) DeleteService(ctx context.Context, userId, serviceId string) error {
-	item, err := s.serviceForUser(ctx, userId, serviceId)
+func (s Service) DeleteService(ctx context.Context, userId, projectId, serviceId string) error {
+	item, err := s.serviceForUser(ctx, userId, projectId, serviceId)
 	if err != nil {
 		return err
 	}
 	if item.Status != status.ServiceStatusStopped && item.Status != status.ServiceStatusFaulted {
 		return apperror.New(apperror.KindValidation, "Only stopped or faulted services can be deleted")
 	}
-	if err := s.service.DeleteService(ctx, item.Id); err != nil {
+	if err := s.service.DeleteService(ctx, projectId, item.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete service", err)
+	}
+	return nil
+}
+
+// RemoveService removes the stored control-plane Service configuration. It
+// does not operate a runtime; a later deployment operation reconciles it.
+func (s Service) RemoveService(ctx context.Context, userId, projectId, serviceId string) error {
+	item, err := s.serviceForUser(ctx, userId, projectId, serviceId)
+	if err != nil {
+		return err
+	}
+	if err := s.service.DeleteService(ctx, projectId, item.Id); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to remove service", err)
 	}
 	return nil
 }
@@ -67,7 +80,7 @@ func (s Service) ListServices(ctx context.Context, userId string, input serviced
 	}
 	items := make([]servicedto.ServiceView, 0, len(page.Items))
 	for _, item := range page.Items {
-		view, err := s.serviceView(ctx, item)
+		view, err := s.serviceView(ctx, projectId, item)
 		if err != nil {
 			return repository.Page[servicedto.ServiceView]{}, err
 		}
@@ -76,105 +89,166 @@ func (s Service) ListServices(ctx context.Context, userId string, input serviced
 	return repository.Page[servicedto.ServiceView]{Items: items, Total: page.Total, Page: page.Page, PerPage: page.PerPage}, nil
 }
 
-func (s Service) GetService(ctx context.Context, userId, serviceId string) (servicedto.ServiceView, error) {
-	item, err := s.service.ServiceListItem(ctx, strings.TrimSpace(serviceId))
+func (s Service) GetService(ctx context.Context, userId, projectId, serviceId string) (servicedto.ServiceView, error) {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	item, err := s.service.ServiceListItem(ctx, projectId, strings.TrimSpace(serviceId))
 	if err != nil {
 		return servicedto.ServiceView{}, serviceReadError("Service", serviceId, err)
 	}
-	if _, err := s.loadApplicationForUser(ctx, userId, item.ApplicationId); err != nil {
-		return servicedto.ServiceView{}, err
-	}
-	return s.serviceView(ctx, item)
+	return s.serviceView(ctx, projectId, item)
 }
 
-func (s Service) CreateService(ctx context.Context, userId string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
-	applicationId, versionId, instanceKey := strings.TrimSpace(input.ApplicationId), strings.TrimSpace(input.VersionId), strings.TrimSpace(input.InstanceKey)
+func (s Service) CreateService(ctx context.Context, userId string, projectId string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
+	applicationId, versionId := strings.TrimSpace(input.ApplicationId), strings.TrimSpace(input.VersionId)
 	code, err := normalizeServiceCode(input.Code)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	if applicationId == "" || versionId == "" || instanceKey == "" || code == "" {
-		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "application_id, version_id, instance_key and code are required")
+	if applicationId == "" || versionId == "" || code == "" {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "application_id, version_id and code are required")
 	}
-	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return servicedto.ServiceView{}, err
 	}
-	version, declarations, err := s.versionComponents(ctx, versionId, app.Id)
+	version, declarations, err := s.versionComponents(ctx, projectId, versionId, app.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, err
 	}
-	if _, err := s.service.ServiceByCode(ctx, code); err == nil {
+	if _, err := s.service.ServiceByProjectAndCode(ctx, projectId, code); err == nil {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service code already exists")
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service code", err)
 	}
-	if _, err := s.service.ServiceByKey(ctx, app.Id, instanceKey); err == nil {
-		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service instance already exists")
-	} else if !errors.Is(err, repository.ErrNotFound) {
-		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
-	}
-	svc := model.Service{Id: idutil.NewId(), ApplicationId: app.Id, InstanceKey: instanceKey, Code: code, VersionId: version.Id, Status: status.ServiceStatusStopped}
-	components := mappedServiceComponents(svc.Id, declarations)
-	if err := s.service.CreateServiceWithComponents(ctx, svc, components); err != nil {
-		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to create service", err)
-	}
-	created, err := s.service.ServiceListItem(ctx, svc.Id)
-	if err != nil {
-		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
-	}
-	return s.serviceView(ctx, created)
+	return s.CreateServiceFromDefinition(ctx, userId, projectId, servicedto.ServiceDefinition{
+		Service:    model.Service{ApplicationId: app.Id, Code: code, VersionId: version.Id, Status: status.ServiceStatusStopped},
+		Components: mappedServiceComponents("", declarations),
+	})
 }
 
-func (s Service) UpdateServiceBasic(ctx context.Context, userId, serviceId string, input servicedto.ServiceBasicUpdateInput) (servicedto.ServiceView, error) {
-	svc, err := s.serviceForUser(ctx, userId, serviceId)
+// ServiceDefinitionForUser returns the complete saved Service configuration.
+func (s Service) ServiceDefinitionForUser(ctx context.Context, userId, projectId, serviceId string) (servicedto.ServiceDefinition, error) {
+	svc, err := s.serviceForUser(ctx, userId, projectId, serviceId)
+	if err != nil {
+		return servicedto.ServiceDefinition{}, err
+	}
+	env, err := s.service.ServiceEnvByService(ctx, projectId, svc.Id)
+	if err != nil {
+		return servicedto.ServiceDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to load service environment", err)
+	}
+	components, err := s.service.ServiceComponentsByService(ctx, projectId, svc.Id)
+	if err != nil {
+		return servicedto.ServiceDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to load service components", err)
+	}
+	return servicedto.ServiceDefinition{Service: svc, Env: env, Components: components}, nil
+}
+
+// CreateServiceFromDefinition persists a complete Service runtime
+// configuration without operating a runtime. All component references must
+// belong to the selected Version.
+func (s Service) CreateServiceFromDefinition(ctx context.Context, userId, projectId string, input servicedto.ServiceDefinition) (servicedto.ServiceView, error) {
+	applicationId := strings.TrimSpace(input.Service.ApplicationId)
+	versionId := strings.TrimSpace(input.Service.VersionId)
+	code, err := normalizeServiceCode(input.Service.Code)
+	if err != nil {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	if applicationId == "" || versionId == "" || code == "" {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "application_id, version_id and code are required")
+	}
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return servicedto.ServiceView{}, err
 	}
-	versionId, instanceKey := strings.TrimSpace(input.VersionId), strings.TrimSpace(input.InstanceKey)
-	if versionId == "" || instanceKey == "" {
-		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "version_id and instance_key are required")
-	}
-	version, declarations, err := s.versionComponents(ctx, versionId, svc.ApplicationId)
+	version, declarations, err := s.versionComponents(ctx, projectId, versionId, app.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, err
 	}
-	if existing, err := s.service.ServiceByKey(ctx, svc.ApplicationId, instanceKey); err == nil && existing.Id != svc.Id {
-		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service instance already exists")
-	} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
+	if _, err := s.service.ServiceByProjectAndCode(ctx, projectId, code); err == nil {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service code already exists")
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service code", err)
+	}
+	components, err := serviceComponentsFromDefinition(input.Components, declarations)
+	if err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	env, err := normalizeServiceEnv(input.Env)
+	if err != nil {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	svc := input.Service
+	svc.Id = idutil.NewId()
+	svc.ProjectId = projectId
+	svc.ApplicationId = app.Id
+	svc.VersionId = version.Id
+	svc.Code = code
+	svc.Status = status.ServiceStatusStopped
+	for index := range components {
+		components[index].Id = idutil.NewId()
+		components[index].ServiceId = svc.Id
+	}
+	if err := s.service.CreateServiceWithComponents(ctx, projectId, svc, components); err != nil {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to create service", err)
+	}
+	if len(env) > 0 {
+		if err := s.service.ReplaceServiceEnv(ctx, projectId, svc.Id, env); err != nil {
+			return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to save service environment", err)
+		}
+	}
+	created, err := s.service.ServiceListItem(ctx, projectId, svc.Id)
+	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	mappings, err := s.service.ServiceComponentsByService(ctx, svc.Id)
+	return s.serviceView(ctx, projectId, created)
+}
+
+func (s Service) UpdateServiceBasic(ctx context.Context, userId, projectId, serviceId string, input servicedto.ServiceBasicUpdateInput) (servicedto.ServiceView, error) {
+	svc, err := s.serviceForUser(ctx, userId, projectId, serviceId)
+	if err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	versionId := strings.TrimSpace(input.VersionId)
+	if versionId == "" {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "version_id is required")
+	}
+	version, declarations, err := s.versionComponents(ctx, projectId, versionId, svc.ApplicationId)
+	if err != nil {
+		return servicedto.ServiceView{}, err
+	}
+	mappings, err := s.service.ServiceComponentsByService(ctx, projectId, svc.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service components", err)
 	}
 	if err := remapServiceComponents(mappings, declarations); err != nil {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	svc.VersionId, svc.InstanceKey = version.Id, instanceKey
-	if err := s.service.UpdateServiceConfiguration(ctx, svc, mappings); err != nil {
+	svc.VersionId = version.Id
+	if err := s.service.UpdateServiceConfiguration(ctx, projectId, svc, mappings); err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to update service", err)
 	}
-	updated, err := s.service.ServiceListItem(ctx, svc.Id)
+	updated, err := s.service.ServiceListItem(ctx, projectId, svc.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	return s.serviceView(ctx, updated)
+	return s.serviceView(ctx, projectId, updated)
 }
 
-func (s Service) GetServiceComponent(ctx context.Context, userId, serviceId, componentId string) (servicedto.ServiceComponentDetail, error) {
-	svc, err := s.serviceForUser(ctx, userId, serviceId)
+func (s Service) GetServiceComponent(ctx context.Context, userId, projectId, serviceId, componentId string) (servicedto.ServiceComponentDetail, error) {
+	svc, err := s.serviceForUser(ctx, userId, projectId, serviceId)
 	if err != nil {
 		return servicedto.ServiceComponentDetail{}, err
 	}
-	component, err := s.service.ServiceComponent(ctx, strings.TrimSpace(componentId))
+	component, err := s.service.ServiceComponent(ctx, projectId, strings.TrimSpace(componentId))
 	if err != nil {
 		return servicedto.ServiceComponentDetail{}, serviceReadError("Service component", componentId, err)
 	}
 	if component.ServiceId != svc.Id {
 		return servicedto.ServiceComponentDetail{}, apperror.New(apperror.KindNotFound, "Service component not found")
 	}
-	declarations, err := s.application.VersionComponentsByVersion(ctx, svc.VersionId)
+	declarations, err := s.application.VersionComponentsByVersion(ctx, projectId, svc.VersionId)
 	if err != nil {
 		return servicedto.ServiceComponentDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load version components", err)
 	}
@@ -186,8 +260,8 @@ func (s Service) GetServiceComponent(ctx context.Context, userId, serviceId, com
 	return servicedto.ServiceComponentDetail{}, apperror.New(apperror.KindValidation, "Service component declaration is no longer available")
 }
 
-func (s Service) UpdateServiceEnv(ctx context.Context, userId, serviceId string, input servicedto.ServiceEnvUpdateInput) (servicedto.ServiceView, error) {
-	svc, err := s.serviceForUser(ctx, userId, serviceId)
+func (s Service) UpdateServiceEnv(ctx context.Context, userId, projectId, serviceId string, input servicedto.ServiceEnvUpdateInput) (servicedto.ServiceView, error) {
+	svc, err := s.serviceForUser(ctx, userId, projectId, serviceId)
 	if err != nil {
 		return servicedto.ServiceView{}, err
 	}
@@ -195,18 +269,18 @@ func (s Service) UpdateServiceEnv(ctx context.Context, userId, serviceId string,
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	if err := s.service.ReplaceServiceEnv(ctx, svc.Id, env); err != nil {
+	if err := s.service.ReplaceServiceEnv(ctx, projectId, svc.Id, env); err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to update service environment", err)
 	}
-	item, err := s.service.ServiceListItem(ctx, svc.Id)
+	item, err := s.service.ServiceListItem(ctx, projectId, svc.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	return s.serviceView(ctx, item)
+	return s.serviceView(ctx, projectId, item)
 }
 
-func (s Service) UpdateServiceComponentOverlay(ctx context.Context, userId, serviceId, componentId string, input servicedto.ServiceComponentOverlayInput) (model.ServiceComponent, error) {
-	detail, err := s.GetServiceComponent(ctx, userId, serviceId, componentId)
+func (s Service) UpdateServiceComponentOverlay(ctx context.Context, userId, projectId, serviceId, componentId string, input servicedto.ServiceComponentOverlayInput) (model.ServiceComponent, error) {
+	detail, err := s.GetServiceComponent(ctx, userId, projectId, serviceId, componentId)
 	if err != nil {
 		return model.ServiceComponent{}, err
 	}
@@ -230,18 +304,18 @@ func (s Service) UpdateServiceComponentOverlay(ctx context.Context, userId, serv
 	if err := normalizeOverlay(&component, detail.VersionComponent); err != nil {
 		return model.ServiceComponent{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	if err := s.service.UpdateServiceComponentOverlay(ctx, component); err != nil {
+	if err := s.service.UpdateServiceComponentOverlay(ctx, projectId, component); err != nil {
 		return model.ServiceComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to update service component", err)
 	}
-	return s.service.ServiceComponent(ctx, component.Id)
+	return s.service.ServiceComponent(ctx, projectId, component.Id)
 }
 
-func (s Service) ListServicesByApplication(ctx context.Context, userId, applicationId string) ([]model.Service, error) {
-	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+func (s Service) ListServicesByApplication(ctx context.Context, userId, projectId, applicationId string) ([]model.Service, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.service.ListServicesByApplication(ctx, app.Id)
+	items, err := s.service.ListServicesByApplication(ctx, projectId, app.Id)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list services", err)
 	}
@@ -250,8 +324,8 @@ func (s Service) ListServicesByApplication(ctx context.Context, userId, applicat
 
 // ListServiceViewsByApplication provides the same runtime bindings as the
 // application-scoped list, including active operation state for UI guards.
-func (s Service) ListServiceViewsByApplication(ctx context.Context, userId, applicationId string) ([]servicedto.ServiceView, error) {
-	items, err := s.ListServicesByApplication(ctx, userId, applicationId)
+func (s Service) ListServiceViewsByApplication(ctx context.Context, userId, projectId, applicationId string) ([]servicedto.ServiceView, error) {
+	items, err := s.ListServicesByApplication(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +333,7 @@ func (s Service) ListServiceViewsByApplication(ctx context.Context, userId, appl
 	for _, item := range items {
 		view := servicedto.ServiceView{Service: item}
 		if s.deployment != nil {
-			active, err := s.deployment.HasActiveDeployment(ctx, item.Id)
+			active, err := s.deployment.HasActiveDeployment(ctx, projectId, item.Id)
 			if err != nil {
 				return nil, apperror.Wrap(apperror.KindInternal, "Failed to load active deployment", err)
 			}
@@ -270,19 +344,19 @@ func (s Service) ListServiceViewsByApplication(ctx context.Context, userId, appl
 	return views, nil
 }
 
-func (s Service) PrimaryServiceByApplication(ctx context.Context, userId, applicationId string) (*model.Service, error) {
-	items, err := s.ListServicesByApplication(ctx, userId, applicationId)
+func (s Service) PrimaryServiceByApplication(ctx context.Context, userId, projectId, applicationId string) (*model.Service, error) {
+	items, err := s.ListServicesByApplication(ctx, userId, projectId, applicationId)
 	if err != nil || len(items) == 0 {
 		return nil, err
 	}
 	return &items[0], nil
 }
-func (s Service) ResolveServiceTarget(ctx context.Context, userId, applicationId string, input servicedto.ServiceTargetInput) (model.Service, error) {
-	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+func (s Service) ResolveServiceTarget(ctx context.Context, userId, projectId, applicationId string, input servicedto.ServiceTargetInput) (model.Service, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return model.Service{}, err
 	}
-	svc, err := s.service.Service(ctx, strings.TrimSpace(input.ServiceId))
+	svc, err := s.service.Service(ctx, projectId, strings.TrimSpace(input.ServiceId))
 	if err != nil {
 		return model.Service{}, serviceReadError("Service", input.ServiceId, err)
 	}
@@ -304,24 +378,24 @@ func mappedServiceComponents(serviceId string, declarations []model.VersionCompo
 // Service bound to versionId so SourceVersionComponentId matches the current
 // Version declarations. Gateway compile replaces version_component rows and
 // ON DELETE CASCADE would otherwise leave Services without mappings.
-func (s Service) AlignComponentMappingsToVersion(ctx context.Context, applicationId, versionId string) error {
+func (s Service) AlignComponentMappingsToVersion(ctx context.Context, projectId, applicationId, versionId string) error {
 	applicationId = strings.TrimSpace(applicationId)
 	versionId = strings.TrimSpace(versionId)
 	if applicationId == "" || versionId == "" {
 		return apperror.New(apperror.KindValidation, "application_id and version_id are required")
 	}
-	version, err := s.application.Version(ctx, versionId)
+	version, err := s.application.Version(ctx, projectId, versionId)
 	if err != nil {
 		return serviceReadError("Version", versionId, err)
 	}
 	if version.ApplicationId != applicationId {
 		return apperror.New(apperror.KindValidation, "version does not belong to application")
 	}
-	declarations, err := s.application.VersionComponentsByVersion(ctx, version.Id)
+	declarations, err := s.application.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to load version components", err)
 	}
-	services, err := s.service.ListServicesByApplication(ctx, applicationId)
+	services, err := s.service.ListServicesByApplication(ctx, projectId, applicationId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to list services", err)
 	}
@@ -329,12 +403,12 @@ func (s Service) AlignComponentMappingsToVersion(ctx context.Context, applicatio
 		if svc.VersionId != version.Id {
 			continue
 		}
-		existing, err := s.service.ServiceComponentsByService(ctx, svc.Id)
+		existing, err := s.service.ServiceComponentsByService(ctx, projectId, svc.Id)
 		if err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to load service components", err)
 		}
 		aligned := alignServiceComponents(svc.Id, existing, declarations)
-		if err := s.service.UpdateServiceConfiguration(ctx, svc, aligned); err != nil {
+		if err := s.service.UpdateServiceConfiguration(ctx, projectId, svc, aligned); err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to align service component mappings", err)
 		}
 	}
@@ -387,6 +461,19 @@ func remapServiceComponents(mappings []model.ServiceComponent, declarations []mo
 		mappings[index].SourceVersionComponentId = declaration.Id
 	}
 	return nil
+}
+
+func serviceComponentsFromDefinition(input []model.ServiceComponent, declarations []model.VersionComponent) ([]model.ServiceComponent, error) {
+	components := append([]model.ServiceComponent(nil), input...)
+	if err := remapServiceComponents(components, declarations); err != nil {
+		return nil, apperror.New(apperror.KindValidation, err.Error())
+	}
+	for index := range components {
+		if components[index].Status == "" {
+			components[index].Status = "active"
+		}
+	}
+	return components, nil
 }
 
 func normalizeOverlay(component *model.ServiceComponent, declaration model.VersionComponent) error {
@@ -588,12 +675,12 @@ func normalizeServiceCode(input string) (string, error) {
 	return code, nil
 }
 
-func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (servicedto.ServiceView, error) {
-	env, err := s.service.ServiceEnvByService(ctx, item.Id)
+func (s Service) serviceView(ctx context.Context, projectId string, item model.ServiceListItem) (servicedto.ServiceView, error) {
+	env, err := s.service.ServiceEnvByService(ctx, projectId, item.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service environment", err)
 	}
-	components, err := s.service.ServiceComponentsByService(ctx, item.Id)
+	components, err := s.service.ServiceComponentsByService(ctx, projectId, item.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service components", err)
 	}
@@ -601,20 +688,20 @@ func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (s
 	if s.deployment == nil {
 		return view, nil
 	}
-	active, err := s.deployment.HasActiveDeployment(ctx, item.Id)
+	active, err := s.deployment.HasActiveDeployment(ctx, projectId, item.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load active deployment", err)
 	}
 	view.ActiveDeployment = active
-	app, err := s.application.Application(ctx, item.ApplicationId)
+	app, err := s.application.Application(ctx, projectId, item.ApplicationId)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load application plan context", err)
 	}
-	version, err := s.application.Version(ctx, item.VersionId)
+	version, err := s.application.Version(ctx, projectId, item.VersionId)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load version plan context", err)
 	}
-	declarations, err := s.application.VersionComponentsByVersion(ctx, version.Id)
+	declarations, err := s.application.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load component plan context", err)
 	}
@@ -631,7 +718,7 @@ func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (s
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to hash service plan", err)
 	}
 	view.EffectivePlanHash = hash
-	latest, err := s.deployment.LatestSuccessfulDeploymentPlanHash(ctx, item.Id)
+	latest, err := s.deployment.LatestSuccessfulDeploymentPlanHash(ctx, projectId, item.Id)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load deployed plan", err)
 	}
@@ -639,39 +726,41 @@ func (s Service) serviceView(ctx context.Context, item model.ServiceListItem) (s
 	return view, nil
 }
 
-func (s Service) serviceForUser(ctx context.Context, userId, serviceId string) (model.Service, error) {
-	svc, err := s.service.Service(ctx, strings.TrimSpace(serviceId))
+func (s Service) serviceForUser(ctx context.Context, userId, projectId, serviceId string) (model.Service, error) {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Service{}, err
+	}
+	svc, err := s.service.Service(ctx, projectId, strings.TrimSpace(serviceId))
 	if err != nil {
 		return model.Service{}, serviceReadError("Service", serviceId, err)
 	}
-	if _, err := s.loadApplicationForUser(ctx, userId, svc.ApplicationId); err != nil {
-		return model.Service{}, err
-	}
 	return svc, nil
 }
-func (s Service) versionComponents(ctx context.Context, versionId, applicationId string) (model.Version, []model.VersionComponent, error) {
-	version, err := s.application.Version(ctx, versionId)
+func (s Service) versionComponents(ctx context.Context, projectId, versionId, applicationId string) (model.Version, []model.VersionComponent, error) {
+	version, err := s.application.Version(ctx, projectId, versionId)
 	if err != nil {
 		return model.Version{}, nil, serviceReadError("Version", versionId, err)
 	}
 	if version.ApplicationId != applicationId {
 		return model.Version{}, nil, apperror.New(apperror.KindValidation, "Version does not belong to the service application")
 	}
-	components, err := s.application.VersionComponentsByVersion(ctx, version.Id)
+	components, err := s.application.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
 		return model.Version{}, nil, apperror.Wrap(apperror.KindInternal, "Failed to load version components", err)
 	}
 	return version, components, nil
 }
-func (s Service) loadApplicationForUser(ctx context.Context, userId, applicationId string) (model.Application, error) {
-	app, err := s.application.Application(ctx, strings.TrimSpace(applicationId))
+func (s Service) loadApplicationForUser(ctx context.Context, userId, projectId, applicationId string) (model.Application, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Application{}, err
+	}
+	app, err := s.application.Application(ctx, projectId, strings.TrimSpace(applicationId))
 	if err != nil {
 		return model.Application{}, serviceReadError("Application", applicationId, err)
-	}
-	if app.ProjectId != nil {
-		if err := s.ensureProjectMembership(ctx, *app.ProjectId, userId); err != nil {
-			return model.Application{}, err
-		}
 	}
 	return app, nil
 }

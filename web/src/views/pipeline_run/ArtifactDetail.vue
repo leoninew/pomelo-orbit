@@ -169,11 +169,13 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ArtifactResp } from '@/gen/proto/orbit/v1/pipeline_run/artifact';
+  import { useProjectStore } from '@/stores/project';
   import { formatTime } from '@/utils/time';
 
   const route = useRoute();
   const router = useRouter();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const artifactId = computed(() => route.params.id as string);
   const artifact = ref<ArtifactResp>();
   const { loading, execute } = useStatusAsync();
@@ -195,10 +197,18 @@
   );
 
   async function fetchArtifact() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error('请先选择项目');
+      return;
+    }
     artifact.value = undefined;
     try {
       await execute(async () => {
-        artifact.value = await artifactApi.get(artifactId.value);
+        const response = await artifactApi.get(projectId, artifactId.value);
+        if (projectStore.activeProjectId === projectId) {
+          artifact.value = response;
+        }
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '加载制品详情失败');

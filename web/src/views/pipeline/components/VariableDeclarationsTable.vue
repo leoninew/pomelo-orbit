@@ -102,7 +102,9 @@
   }
 
   function hasDisplayValue(value: unknown) {
-    if (value === null || value === undefined) return false;
+    if (value === null || value === undefined) {
+      return false;
+    }
     return typeof value !== 'string' || value.trim().length > 0;
   }
 
@@ -123,7 +125,9 @@
   }
 
   function requireSource(decl: VariableDeclarationResp) {
-    if (!decl.source) throw new Error('Variable declaration source is required: ' + decl.name);
+    if (!decl.source) {
+      throw new Error('Variable declaration source is required: ' + decl.name);
+    }
     return decl.source;
   }
 </script>

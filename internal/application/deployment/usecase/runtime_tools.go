@@ -19,29 +19,37 @@ var runtimeSegmentPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]*$`)
 
 // ResolveRuntimeTarget validates that a requested runtime target is an Orbit
 // managed Service belonging to the configured actor.
-func (s Service) ResolveRuntimeTarget(ctx context.Context, userId, applicationId, instanceKey string, allowGateway bool) (deploymentdto.RuntimeTarget, error) {
-	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
-	if err != nil {
-		return deploymentdto.RuntimeTarget{}, err
+func (s Service) ResolveRuntimeTarget(ctx context.Context, userId, projectId, serviceId string, allowGateway bool) (deploymentdto.RuntimeTarget, error) {
+	serviceId = strings.TrimSpace(serviceId)
+	if serviceId == "" {
+		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindValidation, "service_id is required")
 	}
-	if app.Kind != status.ApplicationKindStandard && (!allowGateway || app.Kind != status.ApplicationKindGateway) {
-		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindValidation, "runtime tools only support managed standard Applications")
-	}
-	instanceKey = strings.TrimSpace(instanceKey)
-	if !safeRuntimeSegment(instanceKey) {
-		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindValidation, "invalid instance_key")
-	}
-	service, err := s.service.ServiceByKey(ctx, app.Id, instanceKey)
+	service, err := s.service.Service(ctx, projectId, serviceId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindNotFound, "Service not found")
 		}
 		return deploymentdto.RuntimeTarget{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, service.ApplicationId)
+	if err != nil {
+		return deploymentdto.RuntimeTarget{}, err
+	}
+	if app.Kind != status.ApplicationKindStandard && (!allowGateway || app.Kind != status.ApplicationKindGateway) {
+		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindValidation, "runtime tools only support managed standard Applications")
+	}
 	if !safeRuntimeSegment(service.Code) {
 		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindInternal, "invalid managed service code")
 	}
-	return deploymentdto.RuntimeTarget{ApplicationId: app.Id, ServiceId: service.Id, InstanceKey: service.InstanceKey, ServiceCode: service.Code, WorkingDirectory: s.workspace.ServiceDir(service.Code), ComposeProject: composeProjectName(app.Code, service.InstanceKey)}, nil
+	target, err := s.resolveProjectTarget(ctx, projectId)
+	if err != nil {
+		return deploymentdto.RuntimeTarget{}, err
+	}
+	workingDirectory, err := s.runtime.ServiceDir(target, service.Code)
+	if err != nil {
+		return deploymentdto.RuntimeTarget{}, apperror.Wrap(apperror.KindInternal, "Failed to resolve remote runtime directory", err)
+	}
+	return deploymentdto.RuntimeTarget{ApplicationId: app.Id, ServiceId: service.Id, ServiceCode: service.Code, WorkingDirectory: workingDirectory, ComposeProject: composeProjectName(service.Code), ProjectId: projectId}, nil
 }
 
 func safeRuntimeSegment(value string) bool {
@@ -65,14 +73,14 @@ func (s Service) RuntimeComposePS(ctx context.Context, target deploymentdto.Runt
 	if err != nil {
 		return deploymentdto.RuntimeComposePSResult{}, apperror.Wrap(apperror.KindInternal, "Failed to parse compose status", err)
 	}
-	service, err := s.service.Service(ctx, target.ServiceId)
+	service, err := s.service.Service(ctx, target.ProjectId, target.ServiceId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return deploymentdto.RuntimeComposePSResult{}, apperror.New(apperror.KindNotFound, "Service not found")
 		}
 		return deploymentdto.RuntimeComposePSResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load runtime service", err)
 	}
-	if err := s.populateContainerComponentIds(ctx, service.VersionId, containers); err != nil {
+	if err := s.populateContainerComponentIds(ctx, target.ProjectId, service.VersionId, containers); err != nil {
 		return deploymentdto.RuntimeComposePSResult{}, err
 	}
 	var raw any
@@ -86,7 +94,7 @@ func (s Service) RuntimeComposeLogs(ctx context.Context, target deploymentdto.Ru
 	if tail < 1 || tail > 1000 {
 		return deploymentdto.RuntimeTextResult{}, apperror.New(apperror.KindValidation, "tail must be between 1 and 1000")
 	}
-	if err := s.ensureRuntimeServiceNames(ctx, target.ServiceId, services); err != nil {
+	if err := s.ensureRuntimeServiceNames(ctx, target.ProjectId, target.ServiceId, services); err != nil {
 		return deploymentdto.RuntimeTextResult{}, err
 	}
 	var command composeCommand
@@ -208,7 +216,7 @@ func (s Service) RuntimeHTTPProbe(ctx context.Context, target deploymentdto.Runt
 	if !strings.HasPrefix(path, "/") || strings.ContainsAny(path, "\r\n") {
 		return deploymentdto.RuntimeTextResult{}, apperror.New(apperror.KindValidation, "path must begin with /")
 	}
-	if err := s.ensureRuntimeServiceNames(ctx, target.ServiceId, []string{componentName}); err != nil {
+	if err := s.ensureRuntimeServiceNames(ctx, target.ProjectId, target.ServiceId, []string{componentName}); err != nil {
 		return deploymentdto.RuntimeTextResult{}, err
 	}
 	url := fmt.Sprintf("http://127.0.0.1:%d%s", port, path)
@@ -220,58 +228,47 @@ func (s Service) RuntimeHTTPProbe(ctx context.Context, target deploymentdto.Runt
 	return deploymentdto.RuntimeTextResult{Target: target, Text: output}, nil
 }
 
-func (s Service) RuntimeDoctor(ctx context.Context, target *deploymentdto.RuntimeTarget, networkName string) (map[string]any, error) {
-	if target == nil && networkName == "" {
-		if s.queryRunner == nil {
-			return nil, apperror.New(apperror.KindInternal, "deployment query runner is not configured")
-		}
-		output, err := s.queryRunner.Run(ctx, "", "docker", "version", "--format", "json")
-		if err != nil {
-			return nil, apperror.New(apperror.KindUnavailable, outputOrError(output, err))
-		}
-		return map[string]any{"docker": strings.TrimSpace(output)}, nil
+func (s Service) RuntimeDoctor(ctx context.Context, target *deploymentdto.RuntimeTarget) (map[string]any, error) {
+	if target == nil {
+		return nil, apperror.New(apperror.KindValidation, "managed runtime target is required")
 	}
-	if networkName != "" {
-		network, err := s.ExternalNetworkInspect(ctx, networkName)
-		if err != nil {
-			return nil, err
-		}
-		return map[string]any{"network": map[string]any{"id": network.Id, "name": network.Name, "driver": network.Driver}}, nil
-	}
-	ps, err := s.RuntimeComposePS(ctx, *target)
+	output, err := s.runRuntimeCommand(ctx, *target, composeCommand{Name: "docker", Args: []string{"version", "--format", "json"}})
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"containers": ps.Containers}, nil
+	return map[string]any{"docker": strings.TrimSpace(output)}, nil
 }
 
 func (s Service) runRuntimeCommand(ctx context.Context, target deploymentdto.RuntimeTarget, command composeCommand) (string, error) {
-	if s.queryRunner == nil {
-		return "", apperror.New(apperror.KindInternal, "deployment query runner is not configured")
+	if s.runtime == nil || s.targetResolver == nil {
+		return "", apperror.New(apperror.KindInternal, "remote deployment runtime is not configured")
 	}
-	exists, err := s.workspace.ServiceDirExists(target.ServiceCode)
+	sshTarget, err := s.targetResolver.ResolveProjectTarget(ctx, target.ProjectId)
 	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
+		return "", err
+	}
+	exists, err := s.runtime.ServiceDirExists(ctx, sshTarget, target.ServiceCode)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to inspect remote service workspace", err)
 	}
 	if !exists {
 		return "", apperror.New(apperror.KindNotFound, "managed runtime workspace does not exist")
 	}
-	output, err := s.queryRunner.Run(ctx, target.WorkingDirectory, command.Name, command.Args...)
+	output, err := s.runtime.Query(ctx, sshTarget, target.ServiceCode, command.Name, command.Args...)
 	if err != nil {
 		return output, apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
 	return output, nil
 }
-
-func (s Service) ensureRuntimeServiceNames(ctx context.Context, serviceId string, names []string) error {
+func (s Service) ensureRuntimeServiceNames(ctx context.Context, projectId string, serviceId string, names []string) error {
 	if len(names) == 0 {
 		return nil
 	}
-	service, err := s.service.Service(ctx, serviceId)
+	service, err := s.service.Service(ctx, projectId, serviceId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to load runtime service", err)
 	}
-	components, err := s.application.VersionComponentsByVersion(ctx, service.VersionId)
+	components, err := s.application.VersionComponentsByVersion(ctx, projectId, service.VersionId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to load version components", err)
 	}

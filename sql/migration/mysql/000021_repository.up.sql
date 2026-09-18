@@ -13,9 +13,7 @@ CREATE TABLE IF NOT EXISTS repository (
     default_branch VARCHAR(255) NOT NULL DEFAULT 'master',
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    project_id VARCHAR(26),
-    FOREIGN KEY (project_id) REFERENCES project(id),
-    FOREIGN KEY (git_credential_id) REFERENCES credential(id)
+    project_id VARCHAR(26)
 );
 
 CREATE INDEX idx_repository_name ON repository(name);

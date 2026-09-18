@@ -111,7 +111,7 @@
     </div>
   </div>
 
-  <AppDialog v-model:open="createOpen" title="新建流水线模板">
+  <AppDialog v-model:open="createOpen" title="创建流水线模板">
     <form class="space-y-4" @submit.prevent="createTemplate">
       <div class="space-y-1.5">
         <label class="app-field-label block">
@@ -135,7 +135,7 @@
     </template>
   </AppDialog>
 
-  <AppDialog v-model:open="editOpen" title="编辑流水线信息">
+  <AppDialog v-model:open="editOpen" title="编辑流水线">
     <form class="space-y-4" @submit.prevent="savePipelineInfo">
       <div class="space-y-1.5">
         <label class="app-field-label block">
@@ -155,7 +155,13 @@
         <label class="app-field-label block">说明</label>
         <input v-model="editForm.description" class="app-input" />
       </div>
-      <div v-if="editingPipeline?.kind === 'application'" class="space-y-1.5">
+      <div
+        v-if="
+          editingPipeline?.kind === 'application' &&
+          (editingPipeline.application_id || canEditBindApplication)
+        "
+        class="space-y-1.5"
+      >
         <label class="app-field-label block">应用</label>
         <ComboboxSelect
           v-model="editForm.applicationId"
@@ -172,7 +178,7 @@
 
   <AppDialog
     v-model:open="instantiateOpen"
-    title="从模板创建应用流水线"
+    title="创建应用流水线"
     width-class="w-[min(760px,calc(100vw-32px))]"
     body-class="max-h-[72vh] space-y-4 overflow-y-auto px-6 py-4"
   >
@@ -210,20 +216,13 @@
         </p>
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label block">
-          应用
-          <span v-if="dockerArtifacts.length" class="text-destructive">*</span>
-        </label>
+        <label class="app-field-label block">应用</label>
         <ComboboxSelect
           v-model="instantiateForm.applicationId"
           :options="applicationOptions"
-          :invalid="Boolean(instantiateErrors.applicationId)"
-          :placeholder="dockerArtifacts.length ? '选择应用' : '可选'"
+          placeholder="可选"
           @update:model-value="changeInstantiationApplication"
         />
-        <p v-if="instantiateErrors.applicationId" class="app-field-error" role="alert">
-          {{ instantiateErrors.applicationId }}
-        </p>
       </div>
       <template v-if="dockerArtifacts.length && instantiateForm.applicationId">
         <div class="grid gap-4 sm:grid-cols-2">
@@ -390,7 +389,6 @@
   const deleteError = ref('');
   const instantiateErrors = reactive({
     name: '',
-    applicationId: '',
     repositoryId: '',
     versionForkStrategy: '',
     fixedVersionId: '',
@@ -402,9 +400,17 @@
   const applicationOptions = computed(() =>
     applications.value.map((application) => ({ value: application.id, label: application.name }))
   );
-  const canEditBindApplication = computed(
-    () => editingPipeline.value?.kind === 'application' && !editingPipeline.value.application_id
-  );
+  const canEditBindApplication = computed(() => {
+    const pipeline = editingPipeline.value;
+    return Boolean(
+      pipeline &&
+      pipeline.kind === 'application' &&
+      !pipeline.application_id &&
+      !pipeline.stage_nodes.some((stage) =>
+        stage.artifacts.some((artifact) => artifact.collector === 'docker_image')
+      )
+    );
+  });
   const editApplicationOptions = computed(() => {
     const options = editApplications.value.map((application) => ({
       value: application.id,
@@ -465,13 +471,15 @@
     }
     try {
       await execute(async () => {
-        const response = await pipelineApi.list({
-          project_id: projectId,
+        const response = await pipelineApi.list(projectId, {
           kind: kind.value === 'all' ? undefined : kind.value,
           search: search.value.trim() || undefined,
           page: pagination.current,
           per_page: pagination.pageSize,
         });
+        if (projectStore.activeProjectId !== projectId) {
+          return;
+        }
         pipelines.value = response.items;
         pagination.total = response.total;
       });
@@ -482,10 +490,12 @@
 
   async function loadInstantiationOptions() {
     const projectId = projectStore.activeProjectId;
-    if (!projectId) return;
+    if (!projectId) {
+      return;
+    }
     const [applicationResponse, repositoryResponse] = await Promise.all([
-      applicationApi.list({ project_id: projectId, per_page: 100 }),
-      repositoryApi.list({ project_id: projectId, per_page: 100 }),
+      applicationApi.list(projectId, { per_page: 100 }),
+      repositoryApi.list(projectId, { per_page: 100 }),
     ]);
     applications.value = applicationResponse.items;
     repositories.value = repositoryResponse.items;
@@ -531,13 +541,13 @@
     editError.value = '';
     editApplications.value = [];
     if (pipeline.kind === 'application' && !pipeline.application_id) {
-      const projectId = projectStore.activeProjectId || pipeline.project_id;
+      const projectId = projectStore.activeProjectId;
       if (!projectId) {
         toast.error('请先选择项目');
         return;
       }
       try {
-        const page = await applicationApi.list({ project_id: projectId, per_page: 100 });
+        const page = await applicationApi.list(projectId, { per_page: 100 });
         editApplications.value = page.items ?? [];
       } catch (reason) {
         toast.error(reason instanceof Error ? reason.message : '加载应用列表失败');
@@ -550,7 +560,9 @@
   async function savePipelineInfo() {
     const pipeline = editingPipeline.value;
     editError.value = editForm.name.trim() ? '' : '请输入流水线名称';
-    if (!pipeline || editError.value) return;
+    if (!pipeline || editError.value) {
+      return;
+    }
     const payload: {
       name: string;
       description: string;
@@ -562,9 +574,14 @@
     if (canEditBindApplication.value && editForm.applicationId) {
       payload.application_id = editForm.applicationId;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      editError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOperation(async () => {
-        const updated = await pipelineApi.update(pipeline.id, payload);
+        const updated = await pipelineApi.update(projectId, pipeline.id, payload);
         pipelines.value = pipelines.value.map((item) => (item.id === updated.id ? updated : item));
         editingPipeline.value = updated;
         editOpen.value = false;
@@ -582,18 +599,17 @@
       createError.value = '请先选择项目';
       return;
     }
-    if (createError.value) return;
+    if (createError.value) {
+      return;
+    }
     try {
       await executeOperation(async () => {
-        const pipeline = await pipelineApi.create(
-          {
-            kind: 'template',
-            name: createForm.name.trim(),
-            description: createForm.description,
-            variable_declarations: [],
-          },
-          { project_id: projectId }
-        );
+        const pipeline = await pipelineApi.create(projectId, {
+          kind: 'template',
+          name: createForm.name.trim(),
+          description: createForm.description,
+          variable_declarations: [],
+        });
         createOpen.value = false;
         toast.success('模板已创建');
         await router.push(`/pipeline/${pipeline.id}`);
@@ -604,10 +620,15 @@
   }
 
   async function openInstantiateDialog(template: PipelineResp) {
-    const detail = await pipelineApi.get(template.id);
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error('请先选择项目');
+      return;
+    }
+    const detail = await pipelineApi.get(projectId, template.id);
     selectedTemplate.value = detail;
     Object.assign(instantiateForm, {
-      name: `${detail.name}-应用流水线`,
+      name: detail.name,
       applicationId: '',
       repositoryId: '',
       versionForkStrategy: 'latest',
@@ -615,7 +636,6 @@
     });
     Object.assign(instantiateErrors, {
       name: '',
-      applicationId: '',
       repositoryId: '',
       versionForkStrategy: '',
       fixedVersionId: '',
@@ -634,22 +654,31 @@
   }
 
   function resetArtifactBindings() {
-    for (const key of Object.keys(artifactBindings)) delete artifactBindings[key];
-    for (const key of Object.keys(artifactBindingErrors)) delete artifactBindingErrors[key];
+    for (const key of Object.keys(artifactBindings)) {
+      delete artifactBindings[key];
+    }
+    for (const key of Object.keys(artifactBindingErrors)) {
+      delete artifactBindingErrors[key];
+    }
   }
 
   async function changeInstantiationApplication(value: ComboboxOptionValue) {
     instantiateForm.applicationId = String(value || '');
-    instantiateErrors.applicationId = '';
     instantiateErrors.fixedVersionId = '';
     instantiateForm.fixedVersionId = '';
     resetArtifactBindings();
     versions.value = [];
     sourceVersion.value = undefined;
     sourceVersionError.value = '';
-    if (!instantiateForm.applicationId) return;
+    if (!instantiateForm.applicationId) {
+      return;
+    }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     try {
-      const response = await applicationApi.listVersions(instantiateForm.applicationId, {
+      const response = await applicationApi.listVersions(projectId, instantiateForm.applicationId, {
         per_page: 100,
       });
       versions.value = response.items;
@@ -678,7 +707,9 @@
   async function loadSourceVersion() {
     sourceVersion.value = undefined;
     sourceVersionError.value = '';
-    if (!instantiateForm.applicationId) return;
+    if (!instantiateForm.applicationId) {
+      return;
+    }
     const versionId =
       instantiateForm.versionForkStrategy === 'fixed'
         ? instantiateForm.fixedVersionId
@@ -687,9 +718,13 @@
       sourceVersionError.value = '应用尚无可用版本，无法选择组件。';
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     sourceVersionLoading.value = true;
     try {
-      sourceVersion.value = await applicationApi.getVersion(versionId);
+      sourceVersion.value = await applicationApi.getVersion(projectId, versionId);
     } catch (reason) {
       sourceVersionError.value = reason instanceof Error ? reason.message : '加载来源版本失败';
     } finally {
@@ -703,9 +738,15 @@
 
   async function openInstantiationFromQuery(templateID: unknown) {
     const id = typeof templateID === 'string' ? templateID.trim() : '';
-    if (!id) return;
+    if (!id) {
+      return;
+    }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     try {
-      const template = await pipelineApi.get(id);
+      const template = await pipelineApi.get(projectId, id);
       if (template.kind !== 'template') {
         throw new Error('只能从模板创建应用流水线');
       }
@@ -720,36 +761,39 @@
   }
 
   async function instantiate() {
-    for (const key of Object.keys(artifactBindingErrors)) delete artifactBindingErrors[key];
+    for (const key of Object.keys(artifactBindingErrors)) {
+      delete artifactBindingErrors[key];
+    }
+    const needsVersionBinding =
+      dockerArtifacts.value.length > 0 && Boolean(instantiateForm.applicationId);
     const selectedComponents = new Map<string, string>();
-    for (const artifact of dockerArtifacts.value) {
-      const componentName = String(artifactBindings[artifact.key] || '').trim();
-      if (!componentName) {
-        artifactBindingErrors[artifact.key] = '请选择组件';
-        continue;
-      }
-      if (selectedComponents.has(componentName)) {
-        artifactBindingErrors[artifact.key] = '同一组件只能绑定一个 Docker 制品';
-      } else {
-        selectedComponents.set(componentName, artifact.key);
+    if (needsVersionBinding) {
+      for (const artifact of dockerArtifacts.value) {
+        const componentName = String(artifactBindings[artifact.key] || '').trim();
+        if (!componentName) {
+          artifactBindingErrors[artifact.key] = '请选择组件';
+          continue;
+        }
+        if (selectedComponents.has(componentName)) {
+          artifactBindingErrors[artifact.key] = '同一组件只能绑定一个 Docker 制品';
+        } else {
+          selectedComponents.set(componentName, artifact.key);
+        }
       }
     }
-    const bindings = selectedArtifactBindings.value;
-    const needsApplication = dockerArtifacts.value.length > 0;
+    const bindings = needsVersionBinding ? selectedArtifactBindings.value : [];
 
     instantiateErrors.name = instantiateForm.name.trim() ? '' : '请输入流水线名称';
     instantiateErrors.repositoryId = instantiateForm.repositoryId ? '' : '请选择代码仓库';
-    instantiateErrors.applicationId =
-      needsApplication && !instantiateForm.applicationId ? '请选择应用' : '';
     instantiateErrors.versionForkStrategy =
-      needsApplication && !instantiateForm.versionForkStrategy ? '请选择来源版本策略' : '';
+      needsVersionBinding && !instantiateForm.versionForkStrategy ? '请选择来源版本策略' : '';
     instantiateErrors.fixedVersionId =
-      needsApplication &&
+      needsVersionBinding &&
       instantiateForm.versionForkStrategy === 'fixed' &&
       !instantiateForm.fixedVersionId
         ? '请选择来源版本'
         : '';
-    if (needsApplication && instantiateForm.applicationId && !sourceVersion.value) {
+    if (needsVersionBinding && !sourceVersion.value) {
       for (const artifact of dockerArtifacts.value) {
         artifactBindingErrors[artifact.key] = '请先加载包含目标组件的来源版本';
       }
@@ -760,17 +804,25 @@
       !template ||
       Object.values(instantiateErrors).some(Boolean) ||
       Object.values(artifactBindingErrors).some(Boolean)
-    )
+    ) {
       return;
+    }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      instantiateError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOperation(async () => {
-        const pipeline = await pipelineApi.instantiate(template.id, {
+        const pipeline = await pipelineApi.instantiate(projectId, template.id, {
           name: instantiateForm.name.trim(),
           application_id: instantiateForm.applicationId || undefined,
           repository_id: instantiateForm.repositoryId,
-          version_fork_strategy: needsApplication ? instantiateForm.versionForkStrategy : undefined,
+          version_fork_strategy: needsVersionBinding
+            ? instantiateForm.versionForkStrategy
+            : undefined,
           fixed_version_id:
-            needsApplication && instantiateForm.versionForkStrategy === 'fixed'
+            needsVersionBinding && instantiateForm.versionForkStrategy === 'fixed'
               ? instantiateForm.fixedVersionId
               : undefined,
           artifact_bindings: bindings,
@@ -794,12 +846,19 @@
 
   async function deletePipeline() {
     deleteError.value = '';
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOperation(async () => {
-        await pipelineApi.delete(pendingDeleteId.value);
+        await pipelineApi.delete(projectId, pendingDeleteId.value);
         toast.success('流水线已删除');
         deleteOpen.value = false;
-        if (pipelines.value.length === 1 && pagination.current > 1) pagination.current -= 1;
+        if (pipelines.value.length === 1 && pagination.current > 1) {
+          pagination.current -= 1;
+        }
         await fetchPipelines();
       });
     } catch (reason) {

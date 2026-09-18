@@ -1,11 +1,10 @@
 package routes
 
 import (
-	"database/sql"
 	"log/slog"
 	"net/http"
 
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 
 	"github.com/gin-gonic/gin"
 	authhandler "github.com/leoninew/pomelo-orbit/internal/api/http/handler/auth"
@@ -16,10 +15,13 @@ import (
 	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	dialoguesvc "github.com/leoninew/pomelo-orbit/internal/application/dialogue/usecase"
+	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
 	pipelinerunsvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/usecase"
 	projectsvc "github.com/leoninew/pomelo-orbit/internal/application/project/usecase"
+	handoversvc "github.com/leoninew/pomelo-orbit/internal/application/project_handover/usecase"
+	projectinitializationsvc "github.com/leoninew/pomelo-orbit/internal/application/project_initialization/usecase"
 	repositorysvc "github.com/leoninew/pomelo-orbit/internal/application/repository/usecase"
 	rolesvc "github.com/leoninew/pomelo-orbit/internal/application/role/usecase"
 	routesvc "github.com/leoninew/pomelo-orbit/internal/application/route/usecase"
@@ -28,30 +30,32 @@ import (
 	usersvc "github.com/leoninew/pomelo-orbit/internal/application/user/usecase"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	commonv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
-	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
 )
 
 type Dependencies struct {
-	Database           *sql.DB
-	Authenticator      security.Authenticator
-	AuthService        authsvc.Service
-	RoleService        rolesvc.Service
-	UserService        usersvc.Service
-	ProjectService     projectsvc.Service
-	SettingsService    settingssvc.Service
-	CredentialService  credentialsvc.Service
-	RepositoryService  repositorysvc.Service
-	PipelineService    pipelinesvc.Service
-	PipelineRunService pipelinerunsvc.Service
-	RouteService       routesvc.Service
-	ApplicationService applicationsvc.Service
-	ServiceService     servicesvc.Service
-	DeploymentService  deploymentsvc.Service
-	DialogueService    dialoguesvc.Service
-	GatewayService     gatewaysvc.Service
-	TaskService        tasksvc.Service
-	TurnstileVerifier  authhandler.TurnstileVerifier
+	MutatingUnitOfWork           gin.HandlerFunc
+	Authenticator                security.Authenticator
+	AuthService                  authsvc.Service
+	RoleService                  rolesvc.Service
+	UserService                  usersvc.Service
+	ProjectService               projectsvc.Service
+	ProjectHandoverService       handoversvc.Service
+	ProjectInitializationService projectinitializationsvc.Service
+	SettingsService              settingssvc.Service
+	CredentialService            credentialsvc.Service
+	RepositoryService            repositorysvc.Service
+	PipelineService              pipelinesvc.Service
+	PipelineRunService           pipelinerunsvc.Service
+	RouteService                 routesvc.Service
+	ApplicationService           applicationsvc.Service
+	ServiceService               servicesvc.Service
+	DeploymentService            deploymentsvc.Service
+	DialogueService              dialoguesvc.Service
+	EnvironmentService           environmentsvc.Service
+	GatewayService               gatewaysvc.Service
+	TaskService                  tasksvc.Service
+	TurnstileVerifier            authhandler.TurnstileVerifier
 }
 
 type Router struct {
@@ -80,24 +84,22 @@ func (r Router) Handler() http.Handler {
 	engine.Use(transportmiddleware.Recovery(r.logger))
 	engine.Use(transportmiddleware.Cors(r.cfg.Server.CorsAllowedOrigins, r.cfg.Server.ApiPathPrefixes))
 	engine.GET("/api/health", func(c *gin.Context) {
-		transportresponse.ProtoJSON(c, http.StatusOK, &commonv1.HealthResp{Status: "ok"})
+		transport.WriteProtoJSON(c, http.StatusOK, &commonv1.HealthResp{Status: "ok"})
 	})
 	// Dialogue requests can run external LLM and MCP calls. The MCP server owns
 	// transactions for its tool writes, so this route must not hold a request UoW.
 	r.registerDialogue(engine)
-	if r.deps.Database != nil {
+	if r.deps.MutatingUnitOfWork != nil {
 		// Request-scoped UoW for mutating API routes (health is registered above).
-		engine.Use(tx.Middleware(
-			r.deps.Database,
-			"/api/route/sync/preview",
-			"/api/route/sync/confirm",
-		))
+		engine.Use(r.deps.MutatingUnitOfWork)
 	}
 	r.registerAuth(engine)
 	r.registerUser(engine)
 	r.registerRole(engine)
 	r.registerSettings(engine)
 	r.registerProject(engine)
+	r.registerProjectInitialization(engine)
+	r.registerEnvironment(engine)
 	r.registerCredential(engine)
 	r.registerRepository(engine)
 	r.registerPipeline(engine)

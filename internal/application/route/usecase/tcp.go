@@ -17,9 +17,9 @@ import (
 const routeProtocolHTTP = "http"
 const routeProtocolTCP = "tcp"
 
-func (s Service) routeFromCreateInput(ctx context.Context, projectID string, input routedto.RouteCreateInput) (model.Route, error) {
+func (s Service) routeFromCreateInput(ctx context.Context, projectId string, input routedto.RouteCreateInput) (model.Route, error) {
 	route := model.Route{
-		ProjectId:             &projectID,
+		ProjectId:             &projectId,
 		Name:                  strings.TrimSpace(input.Name),
 		Protocol:              strings.TrimSpace(input.Protocol),
 		Domain:                strings.TrimSpace(input.Domain),
@@ -37,13 +37,13 @@ func (s Service) routeFromCreateInput(ctx context.Context, projectID string, inp
 	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
 		route.PathPrefix = "/"
 	}
-	if err := s.validateRoute(ctx, &route, ""); err != nil {
+	if err := s.validateRoute(ctx, projectId, &route, "", true); err != nil {
 		return model.Route{}, err
 	}
 	return route, nil
 }
 
-func (s Service) validateRoute(ctx context.Context, route *model.Route, excludeID string) error {
+func (s Service) validateRoute(ctx context.Context, projectId string, route *model.Route, excludeId string, resolveManagedTarget bool) error {
 	switch route.Protocol {
 	case routeProtocolHTTP:
 		if !validRouteIdentity(route.Name, route.Domain, route.PathPrefix) {
@@ -53,8 +53,10 @@ func (s Service) validateRoute(ctx context.Context, route *model.Route, excludeI
 			return apperror.New(apperror.KindValidation, "HTTP route cannot declare a TCP listen port")
 		}
 		if hasManagedRouteTarget(*route) {
-			if err := s.resolveManagedRouteTarget(ctx, route); err != nil {
-				return err
+			if resolveManagedTarget {
+				if err := s.resolveManagedRouteTarget(ctx, projectId, route); err != nil {
+					return err
+				}
 			}
 			return nil
 		}
@@ -71,12 +73,14 @@ func (s Service) validateRoute(ctx context.Context, route *model.Route, excludeI
 		if strings.TrimSpace(route.PathPrefix) != "" || route.HTTPSEnabled || route.CertPEM != nil || route.CertKey != nil || route.CertType != "" && route.CertType != certTypeManual {
 			return apperror.New(apperror.KindValidation, "TCP route cannot declare HTTP or certificate fields")
 		}
-		if err := s.resolveManagedRouteTarget(ctx, route); err != nil {
-			return err
-		}
-		if route.Enabled {
-			if err := s.ensureTCPListenerAvailable(ctx, *route, excludeID); err != nil {
+		if resolveManagedTarget {
+			if err := s.resolveManagedRouteTarget(ctx, projectId, route); err != nil {
 				return err
+			}
+			if route.Enabled {
+				if err := s.ensureTCPListenerAvailable(ctx, *route, excludeId); err != nil {
+					return err
+				}
 			}
 		}
 	default:
@@ -85,37 +89,34 @@ func (s Service) validateRoute(ctx context.Context, route *model.Route, excludeI
 	return nil
 }
 
-func (s Service) resolveManagedRouteTargets(ctx context.Context, routes []model.Route) error {
+func (s Service) resolveManagedRouteTargets(ctx context.Context, projectId string, routes []model.Route) error {
 	for index := range routes {
 		if !hasManagedRouteTarget(routes[index]) {
 			continue
 		}
-		if err := s.resolveManagedRouteTarget(ctx, &routes[index]); err != nil {
+		if err := s.resolveManagedRouteTarget(ctx, projectId, &routes[index]); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s Service) resolveManagedRouteTarget(ctx context.Context, route *model.Route) error {
+func (s Service) resolveManagedRouteTarget(ctx context.Context, projectId string, route *model.Route) error {
 	if route.ProjectId == nil || route.ServiceId == nil || route.ComponentName == nil || route.EndpointProtocol == nil || route.EndpointContainerPort == nil {
 		return apperror.New(apperror.KindValidation, "managed route target is required")
 	}
-	service, err := s.service.Service(ctx, *route.ServiceId)
+	service, err := s.service.Service(ctx, projectId, *route.ServiceId)
 	if err != nil {
 		if isNotFound(err) {
 			return apperror.New(apperror.KindValidation, "route target service was not found")
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to load route target service", err)
 	}
-	app, err := s.application.Application(ctx, service.ApplicationId)
+	app, err := s.application.Application(ctx, projectId, service.ApplicationId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to load route target application", err)
 	}
-	if app.ProjectId == nil || *app.ProjectId != *route.ProjectId {
-		return apperror.New(apperror.KindForbidden, "route target must belong to the route project")
-	}
-	plan, err := s.effectiveServicePlan(ctx, app, service)
+	plan, err := s.effectiveServicePlan(ctx, projectId, app, service)
 	if err != nil {
 		return err
 	}
@@ -141,20 +142,24 @@ func (s Service) resolveManagedRouteTarget(ctx context.Context, route *model.Rou
 	return nil
 }
 
-func (s Service) ensureTCPListenerAvailable(ctx context.Context, candidate model.Route, excludeID string) error {
-	routes, err := s.route.ListEnabledRoutes(ctx)
+func (s Service) ensureTCPListenerAvailable(ctx context.Context, candidate model.Route, excludeId string) error {
+	if candidate.ProjectId == nil || strings.TrimSpace(*candidate.ProjectId) == "" {
+		return apperror.New(apperror.KindValidation, "Route project is required")
+	}
+	projectId := strings.TrimSpace(*candidate.ProjectId)
+	routes, err := s.route.ListEnabledRoutesByProject(ctx, projectId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
 	}
 	for _, route := range routes {
-		if route.Id == excludeID || route.Protocol != routeProtocolTCP || route.ListenPort == nil {
+		if route.Id == excludeId || route.Protocol != routeProtocolTCP || route.ListenPort == nil {
 			continue
 		}
 		if *route.ListenPort == *candidate.ListenPort {
 			return apperror.New(apperror.KindConflict, fmt.Sprintf("TCP listen port %d is already used by route %s", *candidate.ListenPort, route.Name))
 		}
 	}
-	conflict, err := s.componentPortConflict(ctx, *candidate.ListenPort)
+	conflict, err := s.componentPortConflict(ctx, projectId, *candidate.ListenPort)
 	if err != nil {
 		return err
 	}
@@ -164,13 +169,17 @@ func (s Service) ensureTCPListenerAvailable(ctx context.Context, candidate model
 	return nil
 }
 
-func (s Service) componentPortConflict(ctx context.Context, listenPort int) (string, error) {
-	apps, err := s.application.ListApplications(ctx, nil, 1, 10000, "", "")
+func (s Service) componentPortConflict(ctx context.Context, projectId string, listenPort int) (string, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return "", apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	apps, err := s.application.ListApplications(ctx, projectId, 1, 10000, "", "")
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list applications for TCP port validation", err)
 	}
 	for _, app := range apps.Items {
-		services, err := s.service.ListServicesByApplication(ctx, app.Id)
+		services, err := s.service.ListServicesByApplication(ctx, projectId, app.Id)
 		if err != nil {
 			return "", apperror.Wrap(apperror.KindInternal, "Failed to list services for TCP port validation", err)
 		}
@@ -178,7 +187,7 @@ func (s Service) componentPortConflict(ctx context.Context, listenPort int) (str
 			if service.Status != status.ServiceStatusRunning {
 				continue
 			}
-			plan, err := s.effectiveServicePlan(ctx, app, service)
+			plan, err := s.effectiveServicePlan(ctx, projectId, app, service)
 			if err != nil {
 				return "", err
 			}
@@ -194,20 +203,20 @@ func (s Service) componentPortConflict(ctx context.Context, listenPort int) (str
 	return "", nil
 }
 
-func (s Service) effectiveServicePlan(ctx context.Context, app model.Application, service model.Service) (model.EffectiveServicePlan, error) {
-	version, err := s.application.Version(ctx, service.VersionId)
+func (s Service) effectiveServicePlan(ctx context.Context, projectId string, app model.Application, service model.Service) (model.EffectiveServicePlan, error) {
+	version, err := s.application.Version(ctx, projectId, service.VersionId)
 	if err != nil {
 		return model.EffectiveServicePlan{}, apperror.Wrap(apperror.KindInternal, "Failed to load route target version", err)
 	}
-	components, err := s.application.VersionComponentsByVersion(ctx, version.Id)
+	components, err := s.application.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
 		return model.EffectiveServicePlan{}, apperror.Wrap(apperror.KindInternal, "Failed to load route target components", err)
 	}
-	overlays, err := s.service.ServiceComponentsByService(ctx, service.Id)
+	overlays, err := s.service.ServiceComponentsByService(ctx, projectId, service.Id)
 	if err != nil {
 		return model.EffectiveServicePlan{}, apperror.Wrap(apperror.KindInternal, "Failed to load route target components", err)
 	}
-	env, err := s.service.ServiceEnvByService(ctx, service.Id)
+	env, err := s.service.ServiceEnvByService(ctx, projectId, service.Id)
 	if err != nil {
 		return model.EffectiveServicePlan{}, apperror.Wrap(apperror.KindInternal, "Failed to load route target environment", err)
 	}

@@ -26,20 +26,10 @@ export default defineConfig({
 			"@": fileURLToPath(new URL("./src", import.meta.url)),
 		},
 	},
-	optimizeDeps: {
-		include: ["monaco-editor"],
-	},
 	build: {
 		rolldownOptions: {
 			checks: {
 				invalidAnnotation: false,
-			},
-		},
-		rollupOptions: {
-			output: {
-				manualChunks: {
-					monaco: ["monaco-editor"],
-				},
 			},
 		},
 	},

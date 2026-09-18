@@ -238,12 +238,14 @@
     }
     try {
       await execute(async () => {
-        const res = await applicationApi.list({
+        const res = await applicationApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
           search: searchText.value || undefined,
-          project_id: projectId,
         });
+        if (projectStore.activeProjectId !== projectId) {
+          return;
+        }
         applications.value = res.items;
         pagination.total = res.total;
       });
@@ -308,9 +310,14 @@
     if (editErrors.name || !applicationId) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      editSubmitError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     try {
       await executeOp(async () => {
-        await applicationApi.update(applicationId, { name: editForm.name.trim() });
+        await applicationApi.update(projectId, applicationId, { name: editForm.name.trim() });
         toast.success(t('application.toast.updateSuccess'));
         isEditDialogOpen.value = false;
         await fetchApplications();
@@ -326,10 +333,15 @@
     if (!application) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteSubmitError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
-        await applicationApi.delete(application.id);
+        await applicationApi.delete(projectId, application.id);
         toast.success(t('application.toast.deleteSuccess'));
         isDeleteDialogOpen.value = false;
         pendingDeleteApplication.value = undefined;
@@ -360,14 +372,11 @@
     }
     try {
       await executeOp(async () => {
-        const created = await applicationApi.create(
-          {
-            name: createForm.name,
-            code: createForm.code,
-            kind: createForm.kind,
-          },
-          { project_id: projectId }
-        );
+        const created = await applicationApi.create(projectId, {
+          name: createForm.name,
+          code: createForm.code,
+          kind: createForm.kind,
+        });
         toast.success(t('application.toast.createSuccess'));
         isCreateDialogOpen.value = false;
         await router.push(`/application/${created.id}`);

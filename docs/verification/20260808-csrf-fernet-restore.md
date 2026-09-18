@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## Requirement alignment
 
-对照 [需求](../requirement/20260808-csrf-fernet-restore.md)：
+对照 [需求](../intent/20260808-csrf-fernet-restore.md)：
 
 | 验收项 | 结果 |
 | --- | --- |

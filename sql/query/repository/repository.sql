@@ -1,20 +1,21 @@
--- name: RepositoryByID :one
+-- name: RepositoryById :one
 SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
-WHERE id = ?;
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
 -- name: RepositoryByCode :one
 SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
 WHERE code = sqlc.arg(code)
-  AND (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(project_id));
+  AND project_id = sqlc.arg(project_id);
 
 -- name: CountRepositories :one
 SELECT COUNT(*)
 FROM repository
-WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(project_id))
+WHERE project_id = sqlc.arg(project_id)
   AND (
     CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR name LIKE sqlc.narg(search_pattern)
@@ -26,7 +27,7 @@ WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(pro
 SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
-WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(project_id))
+WHERE project_id = sqlc.arg(project_id)
   AND (
     CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
     OR name LIKE sqlc.narg(search_pattern)
@@ -36,20 +37,34 @@ WHERE (CAST(sqlc.narg(project_id) AS CHAR) IS NULL OR project_id = sqlc.narg(pro
 ORDER BY id DESC
 LIMIT ? OFFSET ?;
 
+-- name: CountRepositoriesByProject :one
+SELECT COUNT(*)
+FROM repository
+WHERE project_id = sqlc.arg(project_id);
+
 -- name: CreateRepository :exec
 INSERT INTO repository (id, project_id, name, code, repository_type, repository_url, git_credential_id, variable_overrides, default_branch, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateRepository :exec
 UPDATE repository
-SET name = ?, repository_type = ?, repository_url = ?, git_credential_id = ?, variable_overrides = ?, default_branch = ?, updated_at = ?
-WHERE id = ?;
+SET name = sqlc.arg(name),
+    repository_type = sqlc.arg(repository_type),
+    repository_url = sqlc.arg(repository_url),
+    git_credential_id = sqlc.arg(git_credential_id),
+    variable_overrides = sqlc.arg(variable_overrides),
+    default_branch = sqlc.arg(default_branch),
+    updated_at = sqlc.arg(updated_at)
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
 -- name: DeleteRepository :exec
 DELETE FROM repository
-WHERE id = ?;
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id);
 
--- name: RepositoryHasRunningPipelines :one
+-- name: RepositoryReferencesCredential :one
 SELECT COUNT(*)
-FROM pipeline_run
-WHERE repository_id = ? AND status IN (?, ?);
+FROM repository
+WHERE project_id = sqlc.arg(project_id)
+  AND git_credential_id = sqlc.arg(git_credential_id);

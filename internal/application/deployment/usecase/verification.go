@@ -15,8 +15,8 @@ import (
 // VerifyDeployment compares the persisted deployment intent, rendered Compose
 // configuration, and managed runtime evidence. It never calls a tool handler
 // or executes an unbounded Docker operation.
-func (s Service) VerifyDeployment(ctx context.Context, userId, applicationId, deploymentId string, input deploymentdto.DeploymentVerificationInput) (deploymentdto.DeploymentVerificationResult, error) {
-	deployment, err := s.DeploymentForUser(ctx, userId, deploymentId)
+func (s Service) VerifyDeployment(ctx context.Context, userId, projectId, applicationId, deploymentId string, input deploymentdto.DeploymentVerificationInput) (deploymentdto.DeploymentVerificationResult, error) {
+	deployment, err := s.DeploymentForUser(ctx, userId, projectId, deploymentId)
 	if err != nil {
 		return deploymentdto.DeploymentVerificationResult{}, err
 	}
@@ -37,22 +37,22 @@ func (s Service) VerifyDeployment(ctx context.Context, userId, applicationId, de
 		return verificationResult("inconclusive", []string{"deployment lacks service or version linkage"}, evidence), nil
 	}
 
-	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return deploymentdto.DeploymentVerificationResult{}, err
 	}
-	service, err := s.service.Service(ctx, *deployment.ServiceId)
+	service, err := s.service.Service(ctx, projectId, *deployment.ServiceId)
 	if err != nil {
 		return deploymentdto.DeploymentVerificationResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load deployment service", err)
 	}
 	if service.ApplicationId != app.Id {
 		return verificationResult("inconclusive", []string{"deployment service does not belong to application"}, evidence), nil
 	}
-	target, err := s.ResolveRuntimeTarget(ctx, userId, app.Id, service.InstanceKey, false)
+	target, err := s.ResolveRuntimeTarget(ctx, userId, projectId, service.Id, false)
 	if err != nil {
 		return deploymentdto.DeploymentVerificationResult{}, err
 	}
-	preview, err := s.PreviewService(ctx, userId, service.Id, deploymentdto.PreviewComposeInput{})
+	preview, err := s.PreviewService(ctx, userId, projectId, service.Id, deploymentdto.PreviewComposeInput{})
 	if err != nil {
 		return deploymentdto.DeploymentVerificationResult{}, err
 	}

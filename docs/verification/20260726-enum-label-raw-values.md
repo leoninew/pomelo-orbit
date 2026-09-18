@@ -6,7 +6,7 @@ Review status: Draft
 
 ## Requirement alignment
 
-与 [Requirement](../requirement/20260726-enum-label-raw-values.md) 一致。接口字符串枚举在展示与选择器中直接使用原始值；字段名、按钮、提示和布尔型业务状态继续使用现有本地化文案。
+与 [Requirement](../intent/20260726-enum-label-raw-values.md) 一致。接口字符串枚举在展示与选择器中直接使用原始值；字段名、按钮、提示和布尔型业务状态继续使用现有本地化文案。
 
 ## Spec alignment
 
@@ -35,7 +35,7 @@ Review status: Draft
 | `web/src/i18n/locales/*.ts` | 清理废弃枚举翻译 | 中英文词条已清理 | 一致 |
 | `web/src/constants/credential.ts` | 移除未使用类型标签表 | 文件已删除 | 一致 |
 | `web/src/router/index.test.ts` | 只验证现有业务路由 | 已移除对不存在 legacy path 的负向断言 | 一致 |
-| `docs/requirement/20260726-enum-label-raw-values.md` | 记录并接受需求 | 已新增，状态为 `Accepted` | 一致 |
+| `docs/intent/20260726-enum-label-raw-values.md` | 记录并接受需求 | 已新增，状态为 `Accepted` | 一致 |
 | `docs/verification/20260726-enum-label-raw-values.md` | 记录验证结果 | 已新增 | 一致 |
 
 ## Acceptance criteria

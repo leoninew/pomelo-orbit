@@ -68,10 +68,6 @@
             <dd class="text-foreground">{{ service.code }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt>{{ t('service.fields.instanceKey') }}</dt>
-            <dd class="text-foreground">{{ service.instance_key }}</dd>
-          </div>
-          <div class="flex gap-2">
             <dt>{{ t('service.fields.version') }}</dt>
             <dd>
               <router-link :to="`/version/${service.version_id}`" class="app-link">
@@ -144,23 +140,6 @@
           />
           <p v-if="basicEditErrors.version_id" class="app-field-error" role="alert">
             {{ basicEditErrors.version_id }}
-          </p>
-        </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label mb-1.5 block">
-            {{ t('service.fields.instanceKey') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="basicEditForm.instance_key"
-            type="text"
-            class="app-input"
-            :class="basicEditErrors.instance_key ? 'app-input-error' : ''"
-            :aria-invalid="basicEditErrors.instance_key ? 'true' : undefined"
-            @input="basicEditErrors.instance_key = ''"
-          />
-          <p v-if="basicEditErrors.instance_key" class="app-field-error" role="alert">
-            {{ basicEditErrors.instance_key }}
           </p>
         </div>
       </div>
@@ -259,11 +238,7 @@
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
       <p class="text-sm text-muted-foreground">
-        {{
-          t('service.detail.dialog.deleteConfirm', {
-            instance: service?.instance_key || '-',
-          })
-        }}
+        {{ t('service.detail.dialog.deleteConfirm', { code: service?.code || '-' }) }}
       </p>
       <p v-if="deleteError" class="app-field-error mt-3" role="alert">
         {{ deleteError }}
@@ -353,6 +328,7 @@
   import { useToast } from '@/composables/useToast';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
+  import { useProjectStore } from '@/stores/project';
   import { appStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
@@ -365,6 +341,7 @@
   const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const { loading: previewLoading, execute: executePreview } = useStatusAsync();
@@ -373,11 +350,9 @@
   const basicEditVersions = ref<VersionResp[]>([]);
   const basicEditForm = reactive({
     version_id: '',
-    instance_key: '',
   });
   const basicEditErrors = reactive({
     version_id: '',
-    instance_key: '',
   });
   const basicEditSubmitError = ref('');
   const isDeployDialogOpen = ref(false);
@@ -399,6 +374,14 @@
   const previewError = ref('');
   const previewJoinTraefikNetwork = ref(true);
   const serviceId = String(route.params.id || '');
+
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error(t('application.toast.selectProjectRequired'));
+    }
+    return projectId;
+  }
   const environmentRows = ref<EnvironmentVariableListRow[]>([]);
   const savedEnvironmentRows = ref<EnvironmentVariableListRow[]>([]);
   const environmentKeyPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -406,10 +389,11 @@
   const runtimeLogTarget = ref<RuntimeContainerLogTarget>();
   const deployTargetLabel = computed(() => {
     const current = service.value;
-    if (!current) return '';
-    const application = current.application_name;
+    if (!current) {
+      return '';
+    }
     return t('service.detail.subtitle', {
-      instance: `${application} / ${current.instance_key || 'default'}`,
+      code: current.code,
       version: current.version_label,
     });
   });
@@ -458,7 +442,7 @@
   async function load() {
     try {
       await execute(async () => {
-        setService(await serviceApi.get(serviceId));
+        setService(await serviceApi.get(selectedProjectId(), serviceId));
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('service.toast.loadDetailFailed'));
@@ -472,15 +456,18 @@
 
   async function openBasicEditDialog() {
     const current = service.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     Object.assign(basicEditForm, {
       version_id: current.version_id,
-      instance_key: current.instance_key,
     });
-    Object.assign(basicEditErrors, { version_id: '', instance_key: '' });
+    Object.assign(basicEditErrors, { version_id: '' });
     basicEditSubmitError.value = '';
     try {
-      const page = await applicationApi.listVersions(current.application_id, { per_page: 100 });
+      const page = await applicationApi.listVersions(selectedProjectId(), current.application_id, {
+        per_page: 100,
+      });
       basicEditVersions.value = page.items ?? [];
       isBasicEditDialogOpen.value = true;
     } catch (error) {
@@ -491,8 +478,8 @@
   function cancelBasicEditing() {
     isBasicEditDialogOpen.value = false;
     basicEditVersions.value = [];
-    Object.assign(basicEditForm, { version_id: '', instance_key: '' });
-    Object.assign(basicEditErrors, { version_id: '', instance_key: '' });
+    Object.assign(basicEditForm, { version_id: '' });
+    Object.assign(basicEditErrors, { version_id: '' });
     basicEditSubmitError.value = '';
   }
 
@@ -511,16 +498,15 @@
 
   async function saveBasicInfo() {
     const versionId = basicEditForm.version_id;
-    const instanceKey = basicEditForm.instance_key.trim();
     basicEditSubmitError.value = '';
     basicEditErrors.version_id = versionId ? '' : t('service.create.versionRequired');
-    basicEditErrors.instance_key = instanceKey ? '' : t('service.create.instanceKeyRequired');
-    if (basicEditErrors.version_id || basicEditErrors.instance_key) return;
+    if (basicEditErrors.version_id) {
+      return;
+    }
     try {
       await executeOperation(async () => {
-        const updated = await serviceApi.updateBasic(serviceId, {
+        const updated = await serviceApi.updateBasic(selectedProjectId(), serviceId, {
           version_id: versionId,
-          instance_key: instanceKey,
         });
         setService(updated);
         cancelBasicEditing();
@@ -535,7 +521,7 @@
   async function persistEnvironment(entries: EnvironmentVariableEntry[]) {
     try {
       await executeOperation(async () => {
-        const updated = await serviceApi.updateEnv(serviceId, {
+        const updated = await serviceApi.updateEnv(selectedProjectId(), serviceId, {
           env: entries,
         });
         setService(updated);
@@ -557,7 +543,7 @@
     previewOpen.value = true;
     try {
       await executePreview(async () => {
-        const result = await serviceApi.preview(serviceId, {
+        const result = await serviceApi.preview(selectedProjectId(), serviceId, {
           join_traefik_network: previewJoinTraefikNetwork.value,
         });
         previewContent.value = result.compose_yaml;
@@ -578,14 +564,16 @@
 
   function openLogsDrawer(component: string) {
     const current = service.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     runtimeLogTarget.value = {
       applicationId: current.application_id,
       serviceId: current.id,
       component: component.trim(),
       title: t('service.logs.titleWithComponent', {
         app: current.application_name,
-        instance: current.instance_key,
+        code: current.code,
         component: component.trim(),
       }),
     };
@@ -594,9 +582,13 @@
 
   async function openDeployDialog() {
     const current = service.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     try {
-      const page = await applicationApi.listVersions(current.application_id, { per_page: 100 });
+      const page = await applicationApi.listVersions(selectedProjectId(), current.application_id, {
+        per_page: 100,
+      });
       deployVersions.value = page.items ?? [];
       Object.assign(deployForm, {
         version_id: current.version_id,
@@ -633,28 +625,35 @@
 
   async function handleDeployOk() {
     const current = service.value;
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     deploySubmitError.value = '';
     deployVersionError.value = deployForm.version_id ? '' : t('service.deploy.versionRequired');
-    if (deployVersionError.value) return;
+    if (deployVersionError.value) {
+      return;
+    }
     try {
       await executeOperation(async () => {
         let serviceForDeploy = current;
         if (deployForm.version_id !== current.version_id) {
-          serviceForDeploy = await serviceApi.updateBasic(serviceId, {
+          serviceForDeploy = await serviceApi.updateBasic(selectedProjectId(), serviceId, {
             version_id: deployForm.version_id,
-            instance_key: current.instance_key,
           });
           setService(serviceForDeploy);
         }
-        const result = await serviceApi.deploy(serviceForDeploy.id, {
+        const result = await serviceApi.deploy(selectedProjectId(), serviceForDeploy.id, {
           force_recreate: deployForm.force_recreate,
           join_traefik_network: deployForm.join_traefik_network,
         });
-        for (const warning of result.warnings) toast.error(warning);
+        for (const warning of result.warnings) {
+          toast.error(warning);
+        }
         toast.success(t('service.toast.deployQueued'));
         closeDeployDialog();
-        if (result.deployment_id) await router.push(`/deployment/${result.deployment_id}`);
+        if (result.deployment_id) {
+          await router.push(`/deployment/${result.deployment_id}`);
+        }
       });
     } catch (error) {
       deploySubmitError.value =
@@ -679,7 +678,7 @@
     stopSubmitError.value = '';
     try {
       await executeOperation(async () => {
-        const result = await applicationApi.stop(current.application_id, {
+        const result = await applicationApi.stop(selectedProjectId(), current.application_id, {
           service_id: current.id,
           remove_volumes: stopRemoveVolumes.value,
         });
@@ -698,7 +697,9 @@
   }
 
   function openDeleteDialog() {
-    if (!canDeleteService.value) return;
+    if (!canDeleteService.value) {
+      return;
+    }
     deleteError.value = '';
     isDeleteDialogOpen.value = true;
   }
@@ -711,7 +712,7 @@
   async function deleteService() {
     try {
       await executeOperation(async () => {
-        await serviceApi.remove(serviceId);
+        await serviceApi.remove(selectedProjectId(), serviceId);
         closeDeleteDialog();
         toast.success(t('service.toast.deleteSuccess'));
         await router.push('/services');

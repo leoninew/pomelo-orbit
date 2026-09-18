@@ -40,7 +40,7 @@ Plan 中没有独立 Spec，按已接受的 Requirement 与 Plan 核对。
 | 运行依赖脚本文档 | `scripts/{cert.py,cert.md,gen_ulid.md,version-calc.py,version-calc.md}`、`docs/guides/certificate-management.md` |
 | 过程文档 | `docs/{requirement,plan,verification}/20260819-jsonl-database-transfer.md` |
 
-工作区还包含独立的 `docs/requirement/20260820-scheduled-tasks.md`；它不属于本任务。`docs/INDEX.md` 和 `scripts/README.md` 的先前清理内容也不构成服务传输实现行为。
+工作区还包含独立的 `docs/intent/20260820-scheduled-tasks.md`；它不属于本任务。`docs/INDEX.md` 和 `scripts/README.md` 的先前清理内容也不构成服务传输实现行为。
 
 ## Acceptance
 

@@ -30,18 +30,18 @@ func (e *turnExecution) before(name string, arguments json.RawMessage) error {
 	values := toolArguments(arguments)
 	switch name {
 	case "orbit_deploy":
-		serviceID := stringArgument(values, "service_id")
-		if serviceID == "" {
+		serviceId := stringArgument(values, "service_id")
+		if serviceId == "" {
 			return fmt.Errorf("orbit_deploy requires service_id")
 		}
-		if _, exists := e.deployedServices[serviceID]; exists {
+		if _, exists := e.deployedServices[serviceId]; exists {
 			return fmt.Errorf("orbit_deploy is limited to one call per service in a dialogue turn; reuse the existing deployment result")
 		}
 		if versions := e.pendingVersionIds(); len(versions) > 0 {
 			return fmt.Errorf("read updated Version state with orbit_get_version before deployment: %s", strings.Join(versions, ", "))
 		}
-		if _, exists := e.servicesNeedingCheck[serviceID]; exists {
-			return fmt.Errorf("preview the updated Service with orbit_preview_service before deployment: %s", serviceID)
+		if _, exists := e.servicesNeedingCheck[serviceId]; exists {
+			return fmt.Errorf("preview the updated Service with orbit_preview_service before deployment: %s", serviceId)
 		}
 	}
 	return nil
@@ -56,26 +56,26 @@ func (e *turnExecution) record(name string, arguments, result json.RawMessage, i
 	case name == "orbit_get_version":
 		delete(e.versionsNeedingRead, stringArgument(values, "version_id"))
 	case isVersionComponentWrite(name):
-		if versionID := stringArgument(values, "version_id"); versionID != "" {
-			e.versionsNeedingRead[versionID] = struct{}{}
+		if versionId := stringArgument(values, "version_id"); versionId != "" {
+			e.versionsNeedingRead[versionId] = struct{}{}
 		}
 	case isServiceWrite(name):
-		if serviceID := stringArgument(values, "service_id"); serviceID != "" {
-			e.servicesNeedingCheck[serviceID] = struct{}{}
+		if serviceId := stringArgument(values, "service_id"); serviceId != "" {
+			e.servicesNeedingCheck[serviceId] = struct{}{}
 		}
 	case name == "orbit_create_service":
-		if serviceID := resultResourceID(result, "service_id"); serviceID != "" {
-			e.servicesNeedingCheck[serviceID] = struct{}{}
+		if serviceId := resultResourceId(result, "service_id"); serviceId != "" {
+			e.servicesNeedingCheck[serviceId] = struct{}{}
 		}
 	case name == "orbit_preview_service":
 		delete(e.servicesNeedingCheck, stringArgument(values, "service_id"))
 	case name == "orbit_deploy":
-		serviceID := stringArgument(values, "service_id")
-		if serviceID != "" {
-			e.deployedServices[serviceID] = struct{}{}
+		serviceId := stringArgument(values, "service_id")
+		if serviceId != "" {
+			e.deployedServices[serviceId] = struct{}{}
 		}
-		if deploymentID := resultResourceID(result, "deployment_id"); deploymentID != "" {
-			e.unwaitedDeployments[deploymentID] = struct{}{}
+		if deploymentId := resultResourceId(result, "deployment_id"); deploymentId != "" {
+			e.unwaitedDeployments[deploymentId] = struct{}{}
 		}
 	case name == "orbit_wait_deployment":
 		delete(e.unwaitedDeployments, stringArgument(values, "deployment_id"))
@@ -119,12 +119,12 @@ func stringArgument(values map[string]any, key string) string {
 	return strings.TrimSpace(value)
 }
 
-func resultResourceID(result json.RawMessage, key string) string {
+func resultResourceId(result json.RawMessage, key string) string {
 	var payload struct {
-		ResourceIDs map[string]string `json:"resource_ids"`
+		ResourceIds map[string]string `json:"resource_ids"`
 	}
 	if json.Unmarshal(result, &payload) != nil {
 		return ""
 	}
-	return strings.TrimSpace(payload.ResourceIDs[key])
+	return strings.TrimSpace(payload.ResourceIds[key])
 }

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
+	runtimepath "github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local"
 )
 
 func TestMigrateAppliesSchemaAndSeedData(t *testing.T) {
@@ -41,29 +42,44 @@ func TestMigrateAppliesSchemaAndSeedData(t *testing.T) {
 	}
 }
 
+func TestDockerDaemonPathResolverIsAlwaysConfigured(t *testing.T) {
+	resolver := dockerDaemonPathResolver()
+	if resolver == nil {
+		t.Fatal("local deployment requires a Docker daemon path resolver")
+	}
+	if runtimepath.IsRunningInContainer() {
+		return
+	}
+	path := t.TempDir()
+	got, err := resolver(context.Background(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != path {
+		t.Fatalf("native resolver changed path: got %q want %q", got, path)
+	}
+}
+
 func TestValidateContainerWorkspaceMountsIncludesConfigurationKey(t *testing.T) {
-	cfg := config.Config{Workspace: config.WorkspaceConfig{
-		Pipeline:   "/app/data/pipeline",
-		Deployment: "/app/data/deployment",
-	}}
+	cfg := config.Config{Workspace: config.WorkspaceConfig{Root: "/app/data"}, Logging: config.LoggingConfig{DeploymentRoot: "/app/data/deployment-logs"}}
 	var resolved []string
 	err := validateContainerWorkspaceMounts(context.Background(), cfg, true, func(_ context.Context, path string) (string, error) {
 		resolved = append(resolved, path)
-		if path == cfg.Workspace.Deployment {
+		if path == cfg.Logging.DeploymentRoot {
 			return "", errors.New("not mounted")
 		}
 		return "/srv/orbit/ci", nil
 	})
-	if err == nil || !strings.Contains(err.Error(), "workspace.deployment must be bind mounted when Orbit runs in a container") {
+	if err == nil || !strings.Contains(err.Error(), "logging.deployment_root must be bind mounted when Orbit runs in a container") {
 		t.Fatalf("unexpected validation error: %v", err)
 	}
-	if len(resolved) != 2 || resolved[0] != cfg.Workspace.Pipeline || resolved[1] != cfg.Workspace.Deployment {
+	if len(resolved) != 2 || resolved[0] != cfg.Workspace.Root || resolved[1] != cfg.Logging.DeploymentRoot {
 		t.Fatalf("resolved paths = %#v", resolved)
 	}
 }
 
 func TestValidateContainerWorkspaceMountsSkipsNativeOrbit(t *testing.T) {
-	cfg := config.Config{Workspace: config.WorkspaceConfig{Pipeline: "relative-ci", Deployment: "relative-cd"}}
+	cfg := config.Config{Workspace: config.WorkspaceConfig{Root: "relative-ci"}, Logging: config.LoggingConfig{DeploymentRoot: "relative-cd"}}
 	resolverCalls := 0
 	err := validateContainerWorkspaceMounts(context.Background(), cfg, false, func(context.Context, string) (string, error) {
 		resolverCalls++

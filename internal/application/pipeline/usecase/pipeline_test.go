@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	pipelinedto "github.com/leoninew/pomelo-orbit/internal/application/pipeline/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
@@ -53,7 +54,7 @@ func TestClonePipelineStageReferencesRemapsDependenciesAndKeepsSourceSnapshots(t
 func TestGetOrCreatePipelineSnapshotRejectsTemplate(t *testing.T) {
 	t.Parallel()
 
-	_, err := GetOrCreatePipelineSnapshot(context.Background(), nil, model.Pipeline{Kind: model.PipelineKindTemplate}, model.Repository{})
+	_, err := GetOrCreatePipelineSnapshot(context.Background(), nil, "project-1", model.Pipeline{Kind: model.PipelineKindTemplate}, model.Repository{})
 	if err == nil || !strings.Contains(err.Error(), "template pipelines cannot create snapshots") {
 		t.Fatalf("expected template snapshot rejection, got %v", err)
 	}
@@ -62,19 +63,19 @@ func TestGetOrCreatePipelineSnapshotRejectsTemplate(t *testing.T) {
 func TestValidatePipelineConfigurationAllowsApplicationPipelineWithoutApplicationBinding(t *testing.T) {
 	t.Parallel()
 
-	sourcePipelineID, sourceTemplateName := "template-1", "Build template"
+	sourcePipelineId, sourceTemplateName := "template-1", "Build template"
 	sourceTemplateVersion := 1
-	repositoryID, repositoryName := "repository-1", "source"
+	repositoryId, repositoryName := "repository-1", "source"
 	pipeline := model.Pipeline{
 		Kind:                  model.PipelineKindApplication,
-		SourcePipelineId:      &sourcePipelineID,
+		SourcePipelineId:      &sourcePipelineId,
 		SourceTemplateName:    &sourceTemplateName,
 		SourceTemplateVersion: &sourceTemplateVersion,
-		RepositoryId:          &repositoryID,
+		RepositoryId:          &repositoryId,
 		RepositoryName:        &repositoryName,
 	}
 
-	if err := (Service{}).validatePipelineConfiguration(context.Background(), pipeline, nil); err != nil {
+	if err := (Service{}).validatePipelineConfiguration(context.Background(), "project-1", pipeline, nil); err != nil {
 		t.Fatalf("expected unbound application pipeline to be valid, got %v", err)
 	}
 }
@@ -82,9 +83,9 @@ func TestValidatePipelineConfigurationAllowsApplicationPipelineWithoutApplicatio
 func TestValidatePipelineConfigurationRejectsComponentMappingWithoutApplicationBinding(t *testing.T) {
 	t.Parallel()
 
-	sourcePipelineID, sourceTemplateName := "template-1", "Build template"
+	sourcePipelineId, sourceTemplateName := "template-1", "Build template"
 	sourceTemplateVersion := 1
-	repositoryID, repositoryName := "repository-1", "source"
+	repositoryId, repositoryName := "repository-1", "source"
 	componentName := "api"
 	artifacts, err := json.Marshal([]model.ArtifactConfig{{
 		Name:          "image",
@@ -97,30 +98,30 @@ func TestValidatePipelineConfigurationRejectsComponentMappingWithoutApplicationB
 	}
 	pipeline := model.Pipeline{
 		Kind:                  model.PipelineKindApplication,
-		SourcePipelineId:      &sourcePipelineID,
+		SourcePipelineId:      &sourcePipelineId,
 		SourceTemplateName:    &sourceTemplateName,
 		SourceTemplateVersion: &sourceTemplateVersion,
-		RepositoryId:          &repositoryID,
+		RepositoryId:          &repositoryId,
 		RepositoryName:        &repositoryName,
 	}
-	pipelineID, sourceID, sourceName, sourceDescription, dependsOn := "pipeline-1", "template-stage-1", "build", "template description", "[]"
+	pipelineId, sourceId, sourceName, sourceDescription, dependsOn := "pipeline-1", "template-stage-1", "build", "template description", "[]"
 	sortOrder, sourceVersion := 0, 1
 	stages := []model.PipelineStage{{
-		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineID, Name: "build", Image: "builder", Script: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: &dependsOn, SortOrder: &sortOrder, SourceTemplateStageId: &sourceID, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
+		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineId, Name: "build", Image: "builder", Script: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: &dependsOn, SortOrder: &sortOrder, SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
 	}}
 
-	err = (Service{}).validatePipelineConfiguration(context.Background(), pipeline, stages)
+	err = (Service{}).validatePipelineConfiguration(context.Background(), "project-1", pipeline, stages)
 	if err == nil || !strings.Contains(err.Error(), "require an application binding") {
 		t.Fatalf("expected application binding rejection, got %v", err)
 	}
 }
 
-func TestValidatePipelineConfigurationRequiresComponentBindingForDockerArtifact(t *testing.T) {
+func TestValidatePipelineConfigurationAllowsUnboundDockerArtifact(t *testing.T) {
 	t.Parallel()
 
-	sourcePipelineID, sourceTemplateName := "template-1", "Build template"
+	sourcePipelineId, sourceTemplateName := "template-1", "Build template"
 	sourceTemplateVersion := 1
-	repositoryID, repositoryName := "repository-1", "source"
+	repositoryId, repositoryName := "repository-1", "source"
 	artifacts, err := json.Marshal([]model.ArtifactConfig{{
 		Name:      "image",
 		Collector: "docker_image",
@@ -131,26 +132,33 @@ func TestValidatePipelineConfigurationRequiresComponentBindingForDockerArtifact(
 	}
 	pipeline := model.Pipeline{
 		Kind:                  model.PipelineKindApplication,
-		SourcePipelineId:      &sourcePipelineID,
+		SourcePipelineId:      &sourcePipelineId,
 		SourceTemplateName:    &sourceTemplateName,
 		SourceTemplateVersion: &sourceTemplateVersion,
-		RepositoryId:          &repositoryID,
+		RepositoryId:          &repositoryId,
 		RepositoryName:        &repositoryName,
 	}
-	pipelineID, sourceID, sourceName, sourceDescription, dependsOn := "pipeline-1", "template-stage-1", "build", "template description", "[]"
+	pipelineId, sourceId, sourceName, sourceDescription, dependsOn := "pipeline-1", "template-stage-1", "build", "template description", "[]"
 	sortOrder, sourceVersion := 0, 1
 	stages := []model.PipelineStage{{
-		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineID, Name: "build", Image: "builder", Script: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: &dependsOn, SortOrder: &sortOrder, SourceTemplateStageId: &sourceID, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
+		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineId, Name: "build", Image: "builder", Script: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: &dependsOn, SortOrder: &sortOrder, SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
 	}}
 
-	err = (Service{}).validatePipelineConfiguration(context.Background(), pipeline, stages)
-	if err == nil || !strings.Contains(err.Error(), "Docker image artifacts require an application binding") {
-		t.Fatalf("expected application binding rejection, got %v", err)
+	err = (Service{}).validatePipelineConfiguration(context.Background(), "project-1", pipeline, stages)
+	if err != nil {
+		t.Fatalf("expected unbound Docker artifact to be valid, got %v", err)
 	}
 
-	applicationID, applicationName := "application-1", "API"
-	pipeline.ApplicationId, pipeline.ApplicationName = &applicationID, &applicationName
-	err = (Service{}).validatePipelineConfiguration(context.Background(), pipeline, stages)
+	strategy := model.VersionForkStrategyLatest
+	pipeline.VersionForkStrategy = &strategy
+	err = (Service{}).validatePipelineConfiguration(context.Background(), "project-1", pipeline, stages)
+	if err == nil || !strings.Contains(err.Error(), "version strategy requires an application binding") {
+		t.Fatalf("expected unbound version strategy rejection, got %v", err)
+	}
+
+	applicationId, applicationName := "application-1", "API"
+	pipeline.ApplicationId, pipeline.ApplicationName, pipeline.VersionForkStrategy = &applicationId, &applicationName, nil
+	err = (Service{}).validatePipelineConfiguration(context.Background(), "project-1", pipeline, stages)
 	if err == nil || !strings.Contains(err.Error(), "every Docker image artifact requires a component binding") {
 		t.Fatalf("expected component binding rejection, got %v", err)
 	}
@@ -159,12 +167,12 @@ func TestValidatePipelineConfigurationRequiresComponentBindingForDockerArtifact(
 func TestPipelineStageDefinitionsRejectsInvalidApplicationStageShape(t *testing.T) {
 	t.Parallel()
 
-	pipelineID, sourceID, sourceName, sourceDescription, artifacts, dependsOn := "pipeline-1", "template-stage-1", "build", "template description", "[]", "[]"
+	pipelineId, sourceId, sourceName, sourceDescription, artifacts, dependsOn := "pipeline-1", "template-stage-1", "build", "template description", "[]", "[]"
 	sortOrder, sourceVersion := 0, 0
 	_, err := pipelineStageDefinitions([]model.PipelineStage{{
-		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineID,
+		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineId,
 		Name: "build", Image: "builder", Script: "build", Artifacts: &artifacts, DependsOn: &dependsOn, SortOrder: &sortOrder,
-		SourceTemplateStageId: &sourceID, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
+		SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
 	}})
 	if err == nil || !strings.Contains(err.Error(), "source snapshot is required") {
 		t.Fatalf("expected business validation of application stage source snapshot, got %v", err)
@@ -237,10 +245,10 @@ func TestValidatePipelineVariableScopesRejectsUnknownStage(t *testing.T) {
 }
 
 func TestUpdatePipelineRejectsInvalidNestedVariableBeforePersisting(t *testing.T) {
-	projectID := "project-1"
+	projectId := "project-1"
 	stored := model.Pipeline{
 		Id:                   "pipeline-1",
-		ProjectId:            &projectID,
+		ProjectId:            &projectId,
 		Kind:                 model.PipelineKindTemplate,
 		Name:                 "Build template",
 		VariableDeclarations: `[{"name":"IMAGE","value":"base"}]`,
@@ -252,7 +260,7 @@ func TestUpdatePipelineRejectsInvalidNestedVariableBeforePersisting(t *testing.T
 		pipeline: pipelineStore,
 	}}
 	variables := []map[string]any{{"name": "IMAGE", "value": "{{ MISSING }}"}}
-	_, err := service.UpdatePipeline(context.Background(), "user-1", stored.Id, pipelinedto.PipelineUpdateInput{VariableDeclarations: &variables})
+	_, err := service.UpdatePipeline(context.Background(), "user-1", projectId, stored.Id, pipelinedto.PipelineUpdateInput{VariableDeclarations: &variables})
 	if err == nil || !strings.Contains(err.Error(), "MISSING") {
 		t.Fatalf("expected unknown nested variable error, got %v", err)
 	}
@@ -262,6 +270,42 @@ func TestUpdatePipelineRejectsInvalidNestedVariableBeforePersisting(t *testing.T
 	if pipelineStore.pipeline.Version != 3 || pipelineStore.pipeline.VariableDeclarations != stored.VariableDeclarations {
 		t.Fatalf("stored pipeline changed: %#v", pipelineStore.pipeline)
 	}
+}
+
+func TestEnsurePipelineNameAvailableScopesConflictsToProject(t *testing.T) {
+	projectId := "project-1"
+	store := &pipelineNameCheckStore{pipeline: model.Pipeline{Id: "pipeline-1"}}
+	service := Service{store: stores{pipeline: store}}
+
+	err := service.ensurePipelineNameAvailable(context.Background(), projectId, "Build", "")
+	if err == nil || !apperror.IsKind(err, apperror.KindConflict) {
+		t.Fatalf("duplicate pipeline name error = %v, want conflict", err)
+	}
+	if store.projectId != projectId || store.name != "Build" {
+		t.Fatalf("name lookup scope = (%q, %q), want (%q, %q)", store.projectId, store.name, projectId, "Build")
+	}
+
+	if err := service.ensurePipelineNameAvailable(context.Background(), projectId, "Build", "pipeline-1"); err != nil {
+		t.Fatalf("current pipeline name should be available: %v", err)
+	}
+
+	store.err = repository.ErrNotFound
+	if err := service.ensurePipelineNameAvailable(context.Background(), projectId, "New", ""); err != nil {
+		t.Fatalf("unclaimed pipeline name should be available: %v", err)
+	}
+}
+
+type pipelineNameCheckStore struct {
+	repository.PipelineStore
+	pipeline  model.Pipeline
+	err       error
+	projectId string
+	name      string
+}
+
+func (s *pipelineNameCheckStore) PipelineByName(_ context.Context, projectId, name string) (model.Pipeline, error) {
+	s.projectId, s.name = projectId, name
+	return s.pipeline, s.err
 }
 
 type nestedVariableUpdateProjectStore struct{}
@@ -280,15 +324,15 @@ type nestedVariableUpdatePipelineStore struct {
 	updated  bool
 }
 
-func (s *nestedVariableUpdatePipelineStore) Pipeline(context.Context, string) (model.Pipeline, error) {
+func (s *nestedVariableUpdatePipelineStore) Pipeline(context.Context, string, string) (model.Pipeline, error) {
 	return s.pipeline, nil
 }
 
-func (*nestedVariableUpdatePipelineStore) TemplatePipelineStageReferences(context.Context, string) ([]model.PipelineStageReference, error) {
+func (*nestedVariableUpdatePipelineStore) TemplatePipelineStageReferences(context.Context, string, string) ([]model.PipelineStageReference, error) {
 	return []model.PipelineStageReference{}, nil
 }
 
-func (s *nestedVariableUpdatePipelineStore) UpdatePipeline(_ context.Context, pipeline model.Pipeline) error {
+func (s *nestedVariableUpdatePipelineStore) UpdatePipeline(_ context.Context, _ string, pipeline model.Pipeline) error {
 	s.updated = true
 	s.pipeline = pipeline
 	return nil

@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Basis
 
-- Requirement：[`20260813-custom-tcp-routes.md`](../requirement/20260813-custom-tcp-routes.md)，状态 `Accepted`。
+- Requirement：[`20260813-custom-tcp-routes.md`](../intent/20260813-custom-tcp-routes.md)，状态 `Accepted`。
 - Spec：[`20260813-custom-tcp-routes.md`](../spec/20260813-custom-tcp-routes.md)，状态 `Accepted`。
 
 实现限定为：Route 的受管单端口 TCP 转发、Gateway 静态端口 reconcile、Gateway 成功部署后的 Route 全量同步、Endpoint mode 枚举收敛。不得加入 TLS/SNI、Route 状态机、任意地址 TCP target 或旧 mode 兼容。

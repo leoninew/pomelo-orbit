@@ -11,15 +11,16 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/leoninew/pomelo-orbit/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 	migrationfiles "github.com/leoninew/pomelo-orbit/sql"
 )
 
 const (
-	seededGatewayApplicationID = "01M10RRA8F863EJ2N9TC3Z2EC1"
-	seededGatewayBaseVersionID = "01M10RRA8F863EJ2N9TDN9JSBW"
+	seededGatewayApplicationId = "01M10RRA8F863EJ2N9TC3Z2EC1"
+	seededGatewayBaseVersionId = "01M10RRA8F863EJ2N9TDN9JSBW"
 	seededGatewayBaseComponent = "01M10RRA8F863EJ2N9TN8CWTEY"
-	seededGatewayServiceID     = "01M10RRA8F863EJ2N9TTG49G6S"
-	seededGatewayRouteID       = "01M10RRA8F863EJ2N9TYPF0CV7"
+	seededGatewayServiceId     = "01M10RRA8F863EJ2N9TTG49G6S"
+	seededGatewayRouteId       = "01M10RRA8F863EJ2N9TYPF0CV7"
 )
 
 func TestDatabaseMigrationFilesAlign(t *testing.T) {
@@ -103,6 +104,160 @@ func TestMigrateUpSQLite(t *testing.T) {
 	}
 }
 
+func TestMigrateUpSQLiteRemovesServiceInstanceAndEnvironmentState(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateTo(database, config.DatabaseDriverSQLite, 42); err != nil {
+		t.Fatalf("migrate to pre-removal schema: %v", err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO project (id, name, code) VALUES ('01MREMOVESERVICE0000000001', 'Removal test', 'removal-test')`,
+		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('01MREMOVESERVICE0000000002', 'Application', 'application', 'standard', '01MREMOVESERVICE0000000001')`,
+		`INSERT INTO version (id, application_id, label, status) VALUES ('01MREMOVESERVICE0000000003', '01MREMOVESERVICE0000000002', 'v1', 'unpublished')`,
+		`INSERT INTO version_component (id, version_id, name, image, pull_policy) VALUES ('01MREMOVESERVICE0000000004', '01MREMOVESERVICE0000000003', 'web', 'nginx:latest', 'missing')`,
+		`INSERT INTO service (id, project_id, application_id, instance_key, code, version_id, status) VALUES ('01MREMOVESERVICE0000000005', '01MREMOVESERVICE0000000001', '01MREMOVESERVICE0000000002', 'default', 'application-default', '01MREMOVESERVICE0000000003', 'stopped')`,
+		`INSERT INTO service_component (id, service_id, source_version_component_id, component_name, status) VALUES ('01MREMOVESERVICE0000000006', '01MREMOVESERVICE0000000005', '01MREMOVESERVICE0000000004', 'web', 'active')`,
+		`INSERT INTO environment (id, project_id, code, state, target_type, target_revision) VALUES ('01MREMOVESERVICE0000000007', '01MREMOVESERVICE0000000001', 'removal-test', 'active', 'local', 1)`,
+	} {
+		if _, err := database.Exec(statement); err != nil {
+			t.Fatalf("seed pre-removal schema: %v", err)
+		}
+	}
+
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate current schema: %v", err)
+	}
+	for _, tableColumn := range []struct {
+		table  string
+		column string
+	}{
+		{table: "service", column: "instance_key"},
+		{table: "environment", column: "state"},
+	} {
+		var count int
+		if err := database.QueryRow(`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`, tableColumn.table, tableColumn.column).Scan(&count); err != nil {
+			t.Fatalf("inspect %s.%s: %v", tableColumn.table, tableColumn.column, err)
+		}
+		if count != 0 {
+			t.Fatalf("%s still has %s", tableColumn.table, tableColumn.column)
+		}
+	}
+	var code string
+	if err := database.QueryRow(`SELECT code FROM service WHERE id = '01MREMOVESERVICE0000000005'`).Scan(&code); err != nil {
+		t.Fatalf("load migrated Service: %v", err)
+	}
+	if code != "application-default" {
+		t.Fatalf("migrated service code = %q", code)
+	}
+	var components int
+	if err := database.QueryRow(`SELECT COUNT(*) FROM service_component WHERE service_id = '01MREMOVESERVICE0000000005'`).Scan(&components); err != nil {
+		t.Fatalf("count migrated service components: %v", err)
+	}
+	if components != 1 {
+		t.Fatalf("migrated service components = %d, want 1", components)
+	}
+	if _, err := database.Exec(`INSERT INTO service (id, project_id, application_id, code, version_id, status) VALUES ('01MREMOVESERVICE0000000008', '01MREMOVESERVICE0000000001', '01MREMOVESERVICE0000000002', 'application-preview', '01MREMOVESERVICE0000000003', 'stopped')`); err != nil {
+		t.Fatalf("create a second service for application: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO service (id, project_id, application_id, code, version_id, status) VALUES ('01MREMOVESERVICE0000000009', '01MREMOVESERVICE0000000001', '01MREMOVESERVICE0000000002', 'application-default', '01MREMOVESERVICE0000000003', 'stopped')`); err == nil {
+		t.Fatal("duplicate project service code was accepted")
+	}
+}
+
+func TestMigrateUpSQLiteRestrictsCrossDomainDeletes(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateTo(database, config.DatabaseDriverSQLite, 44); err != nil {
+		t.Fatalf("migrate to pre-restriction schema: %v", err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`,
+		`INSERT INTO application (id, project_id, name, code, kind) VALUES ('app-1', 'project-1', 'Application', 'application', 'standard')`,
+		`INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`,
+		`INSERT INTO version_component (id, version_id, name, image, pull_policy) VALUES ('component-1', 'version-1', 'web', 'nginx:latest', 'missing')`,
+		`INSERT INTO gateway_config (application_id, rest_api_url, rest_ready_timeout_seconds, base_domain, default_entrypoint, tls_mode) VALUES ('app-1', 'http://127.0.0.1:8080', 20, 'example.test', 'web', 'none')`,
+		`INSERT INTO gateway_acme_profile_version (application_id, profile, version_id) VALUES ('app-1', 'base', 'version-1')`,
+		`INSERT INTO service (id, project_id, application_id, code, version_id, status) VALUES ('service-1', 'project-1', 'app-1', 'application-default', 'version-1', 'stopped')`,
+		`INSERT INTO service_component (id, service_id, source_version_component_id, component_name, status) VALUES ('service-component-1', 'service-1', 'component-1', 'web', 'active')`,
+	} {
+		if _, err := database.Exec(statement); err != nil {
+			t.Fatalf("seed pre-restriction schema: %v", err)
+		}
+	}
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate current schema: %v", err)
+	}
+	var foreignKeys int
+	if err := database.QueryRow(`PRAGMA foreign_keys`).Scan(&foreignKeys); err != nil {
+		t.Fatalf("read foreign key enforcement: %v", err)
+	}
+	if foreignKeys != 1 {
+		t.Fatalf("foreign key enforcement=%d, want 1", foreignKeys)
+	}
+	for _, statement := range []string{
+		`DELETE FROM application WHERE id = 'app-1'`,
+		`DELETE FROM version WHERE id = 'version-1'`,
+		`DELETE FROM version_component WHERE id = 'component-1'`,
+	} {
+		if _, err := database.Exec(statement); err == nil {
+			t.Fatalf("cross-domain delete succeeded: %s", statement)
+		}
+	}
+	for _, table := range []string{
+		"application",
+		"version",
+		"version_component",
+		"gateway_config",
+		"gateway_acme_profile_version",
+		"service",
+		"service_component",
+	} {
+		var count int
+		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		if count != 1 {
+			t.Fatalf("%s rows=%d, want 1", table, count)
+		}
+	}
+}
+
+func TestMigrateUpSQLiteAddsGatewayHostEndpointAndRemovesFactoryDashboardRoute(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateTo(database, config.DatabaseDriverSQLite, 46); err != nil {
+		t.Fatalf("migrate to pre-host-endpoint schema: %v", err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO project (id, name, code) VALUES ('project-47', 'Project', 'project-47')`,
+		`INSERT INTO application (id, project_id, name, code, kind) VALUES ('gateway-47', 'project-47', 'Traefik', 'traefik', 'standard')`,
+		`INSERT INTO gateway_config (application_id, rest_api_url, rest_ready_timeout_seconds, base_domain, default_entrypoint, tls_mode) VALUES ('gateway-47', 'http://traefik:8080', 20, 'example.test', 'web', 'none')`,
+		`INSERT INTO route (id, project_id, name, protocol, domain, path_prefix, target_url, enabled, https_enabled, cert_type, acme_challenge) VALUES ('factory-route-47', 'project-47', 'traefik', 'http', 'traefik-dashboard.example.test', '/', 'http://traefik-traefik:8080', 0, 0, 'manual', 'http')`,
+		`INSERT INTO route (id, project_id, name, protocol, domain, path_prefix, target_url, enabled, https_enabled, cert_type, acme_challenge) VALUES ('user-route-47', 'project-47', 'traefik', 'http', 'traefik-dashboard.example.test', '/', 'http://user-proxy:8080', 0, 0, 'manual', 'http')`,
+	} {
+		if _, err := database.Exec(statement); err != nil {
+			t.Fatalf("seed pre-host-endpoint schema: %v", err)
+		}
+	}
+
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate current schema: %v", err)
+	}
+	var hostEndpoint string
+	if err := database.QueryRow(`SELECT rest_api_host_url FROM gateway_config WHERE application_id = 'gateway-47'`).Scan(&hostEndpoint); err != nil {
+		t.Fatalf("load migrated Gateway host endpoint: %v", err)
+	}
+	if hostEndpoint != model.GatewayRestAPIHostURL {
+		t.Fatalf("Gateway host endpoint = %q", hostEndpoint)
+	}
+	for routeID, want := range map[string]int{"factory-route-47": 0, "user-route-47": 1} {
+		var count int
+		if err := database.QueryRow(`SELECT COUNT(*) FROM route WHERE id = ?`, routeID).Scan(&count); err != nil {
+			t.Fatalf("count migrated route %s: %v", routeID, err)
+		}
+		if count != want {
+			t.Fatalf("migrated route %s count = %d, want %d", routeID, count, want)
+		}
+	}
+}
+
 func TestMigrateUpSQLiteSeedsExportedData(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
@@ -110,8 +265,8 @@ func TestMigrateUpSQLiteSeedsExportedData(t *testing.T) {
 	}
 
 	for table, want := range map[string]int{
-		"application":                  1,
-		"gateway_config":               1,
+		"application":                  0,
+		"gateway_config":               0,
 		"user":                         1,
 		"project":                      1,
 		"permission":                   9,
@@ -119,14 +274,15 @@ func TestMigrateUpSQLiteSeedsExportedData(t *testing.T) {
 		"pipeline":                     2,
 		"pipeline_stage":               5,
 		"pipeline_stage_reference":     6,
-		"route":                        1,
-		"service":                      1,
-		"service_component":            1,
-		"version":                      4,
-		"version_component":            4,
-		"version_component_endpoint":   12,
-		"version_component_mount":      16,
-		"gateway_acme_profile_version": 4,
+		"route":                        0,
+		"service":                      0,
+		"service_component":            0,
+		"version":                      0,
+		"version_component":            0,
+		"version_component_endpoint":   0,
+		"version_component_mount":      0,
+		"gateway_acme_profile_version": 0,
+		"environment":                  0,
 	} {
 		var got int
 		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&got); err != nil {
@@ -154,109 +310,54 @@ func TestMigrateUpSQLiteSeedsExportedData(t *testing.T) {
 	}
 }
 
-func TestMigrateUpSQLiteSeedsCompleteGatewayTopology(t *testing.T) {
+func TestMigrateUpSQLiteDoesNotSeedDeploymentResources(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
 
-	var kind, componentName, restAPIURL, baseDomain, entrypoint, tlsMode, acmeProfile, acmeEmail, dnsAPIToken string
-	var readyTimeout int
-	if err := database.QueryRow(`
-        SELECT application.kind, gateway_config.traefik_component_name, gateway_config.rest_api_url,
-               gateway_config.rest_ready_timeout_seconds, gateway_config.base_domain, gateway_config.default_entrypoint,
-               gateway_config.tls_mode, gateway_config.acme_profile, gateway_config.acme_email, gateway_config.dns_api_token
-        FROM application
-        JOIN gateway_config ON gateway_config.application_id = application.id
-        WHERE application.id = ?
-    `, seededGatewayApplicationID).Scan(
-		&kind, &componentName, &restAPIURL, &readyTimeout, &baseDomain, &entrypoint, &tlsMode, &acmeProfile, &acmeEmail, &dnsAPIToken,
-	); err != nil {
-		t.Fatalf("read seeded Gateway config: %v", err)
+	for table, id := range map[string]string{
+		"application": seededGatewayApplicationId,
+		"service":     seededGatewayServiceId,
+		"route":       seededGatewayRouteId,
+	} {
+		var count int
+		if err := database.QueryRow("SELECT COUNT(*) FROM "+table+" WHERE id = ?", id).Scan(&count); err != nil {
+			t.Fatalf("count seeded %s: %v", table, err)
+		}
+		if count != 0 {
+			t.Fatalf("empty database seeded %s %s", table, id)
+		}
 	}
-	if kind != "standard" || componentName != "traefik" || restAPIURL != "http://localhost:8080" || readyTimeout != 20 || baseDomain != "lvh.me" || entrypoint != "web" || tlsMode != "none" || acmeProfile != "" || acmeEmail != "" || dnsAPIToken != "" {
-		t.Fatalf("seeded Gateway config is incomplete: kind=%q component=%q rest=%q timeout=%d domain=%q entrypoint=%q tls=%q profile=%q email=%q token=%q", kind, componentName, restAPIURL, readyTimeout, baseDomain, entrypoint, tlsMode, acmeProfile, acmeEmail, dnsAPIToken)
+	var environments int
+	if err := database.QueryRow("SELECT COUNT(*) FROM environment").Scan(&environments); err != nil {
+		t.Fatalf("count environments: %v", err)
 	}
+	if environments != 0 {
+		t.Fatalf("environment rows=%d, want 0", environments)
+	}
+}
 
-	profiles := []struct {
-		profile       string
-		versionID     string
-		componentID   string
-		resolverNames []string
-	}{
-		{"base", seededGatewayBaseVersionID, seededGatewayBaseComponent, nil},
-		{"http", "01M10RRA8F863EJ2N9TFH32002", "01M10RRA8F863EJ2N9TPPNAAN1", []string{"letsencrypt:"}},
-		{"dns", "01M10RRA8F863EJ2N9TH6R2HSB", "01M10RRA8F863EJ2N9TSRZBPC3", []string{"letsencrypt-dns:"}},
-		{"http-dns", "01M10RRA8F863EJ2N9TKGXYZXE", "01M10RRA8F863EJ2N9TT9T3NK7", []string{"letsencrypt:", "letsencrypt-dns:"}},
+func TestMigrateUpSQLiteDropsGatewayConfigComponentName(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateTo(database, config.DatabaseDriverSQLite, 39); err != nil {
+		t.Fatalf("migrate to environment schema: %v", err)
 	}
-	for _, profile := range profiles {
-		var versionID string
-		if err := database.QueryRow(`SELECT version_id FROM gateway_acme_profile_version WHERE application_id = ? AND profile = ?`, seededGatewayApplicationID, profile.profile).Scan(&versionID); err != nil {
-			t.Fatalf("read %s profile binding: %v", profile.profile, err)
-		}
-		if versionID != profile.versionID {
-			t.Fatalf("%s profile Version=%q, want %q", profile.profile, versionID, profile.versionID)
-		}
-
-		var componentCount, endpointCount, mountCount int
-		if err := database.QueryRow(`SELECT COUNT(*) FROM version_component WHERE id = ? AND version_id = ? AND name = 'traefik' AND image = 'traefik:3.6' AND pull_policy = 'missing'`, profile.componentID, profile.versionID).Scan(&componentCount); err != nil {
-			t.Fatalf("count %s profile component: %v", profile.profile, err)
-		}
-		if err := database.QueryRow(`
-            SELECT COUNT(*) FROM version_component_endpoint
-            WHERE component_id = ?
-              AND ((protocol = 'tcp' AND container_port = 80 AND mode = 'host' AND bind_address = '0.0.0.0' AND listen_port = 80)
-                OR (protocol = 'tcp' AND container_port = 443 AND mode = 'host' AND bind_address = '0.0.0.0' AND listen_port = 443)
-                OR (protocol = 'http' AND container_port = 8080 AND mode = 'local' AND bind_address = '127.0.0.1' AND listen_port = 8080))
-        `, profile.componentID).Scan(&endpointCount); err != nil {
-			t.Fatalf("count %s profile endpoints: %v", profile.profile, err)
-		}
-		if err := database.QueryRow(`
-            SELECT COUNT(*) FROM version_component_mount
-            WHERE component_id = ?
-              AND target IN ('/var/run/docker.sock', '/etc/traefik/traefik.yml', '/etc/traefik/certs', '/letsencrypt')
-        `, profile.componentID).Scan(&mountCount); err != nil {
-			t.Fatalf("count %s profile mounts: %v", profile.profile, err)
-		}
-		if componentCount != 1 || endpointCount != 3 || mountCount != 4 {
-			t.Fatalf("%s profile topology: components=%d endpoints=%d mounts=%d", profile.profile, componentCount, endpointCount, mountCount)
-		}
-
-		var staticConfig string
-		if err := database.QueryRow(`SELECT content FROM version_component_mount WHERE component_id = ? AND target = '/etc/traefik/traefik.yml'`, profile.componentID).Scan(&staticConfig); err != nil {
-			t.Fatalf("read %s static config: %v", profile.profile, err)
-		}
-		if profile.profile == "base" && strings.Contains(staticConfig, "certificatesResolvers:") {
-			t.Fatal("base profile must not declare ACME resolvers")
-		}
-		for _, resolverName := range profile.resolverNames {
-			if !strings.Contains(staticConfig, resolverName) {
-				t.Fatalf("%s profile is missing resolver %q", profile.profile, resolverName)
-			}
-		}
+	var count int
+	if err := database.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('gateway_config') WHERE name = 'traefik_component_name'`).Scan(&count); err != nil {
+		t.Fatalf("inspect gateway_config before drop: %v", err)
 	}
-
-	var serviceVersionID, serviceStatus, sourceComponentID string
-	if err := database.QueryRow(`SELECT version_id, status FROM service WHERE id = ?`, seededGatewayServiceID).Scan(&serviceVersionID, &serviceStatus); err != nil {
-		t.Fatalf("read seeded Gateway service: %v", err)
+	if count != 1 {
+		t.Fatalf("traefik_component_name columns=%d, want 1 before 000040", count)
 	}
-	if err := database.QueryRow(`SELECT source_version_component_id FROM service_component WHERE service_id = ? AND component_name = 'traefik'`, seededGatewayServiceID).Scan(&sourceComponentID); err != nil {
-		t.Fatalf("read seeded Gateway service component: %v", err)
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate remaining: %v", err)
 	}
-	if serviceVersionID != seededGatewayBaseVersionID || serviceStatus != "stopped" || sourceComponentID != seededGatewayBaseComponent {
-		t.Fatalf("seeded Gateway Service is not bound to base Version: version=%q status=%q component=%q", serviceVersionID, serviceStatus, sourceComponentID)
+	if err := database.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('gateway_config') WHERE name = 'traefik_component_name'`).Scan(&count); err != nil {
+		t.Fatalf("inspect gateway_config after drop: %v", err)
 	}
-
-	var name, protocol, domain, pathPrefix, targetURL, certType, challenge string
-	var enabled, httpsEnabled int
-	if err := database.QueryRow(`
-        SELECT name, protocol, domain, path_prefix, target_url, enabled, https_enabled, cert_type, acme_challenge
-        FROM route WHERE id = ?
-    `, seededGatewayRouteID).Scan(&name, &protocol, &domain, &pathPrefix, &targetURL, &enabled, &httpsEnabled, &certType, &challenge); err != nil {
-		t.Fatalf("read seeded Gateway dashboard Route: %v", err)
-	}
-	if name != "traefik" || protocol != "http" || domain != "traefik-dashboard.lvh.me" || pathPrefix != "/" || targetURL != "http://traefik-traefik:8080" || enabled != 0 || httpsEnabled != 0 || certType != "manual" || challenge != "http" {
-		t.Fatalf("seeded Gateway dashboard Route=%q %q %q %q %q %d %d %q %q", name, protocol, domain, pathPrefix, targetURL, enabled, httpsEnabled, certType, challenge)
+	if count != 0 {
+		t.Fatal("gateway_config still has traefik_component_name")
 	}
 }
 
@@ -296,14 +397,42 @@ func TestMigrateToSQLiteReplacesHistoricalGatewaySeed(t *testing.T) {
 		}
 	}
 	var versions, bindings int
-	if err := database.QueryRow(`SELECT COUNT(*) FROM version WHERE application_id = ?`, seededGatewayApplicationID).Scan(&versions); err != nil {
+	if err := database.QueryRow(`SELECT COUNT(*) FROM version WHERE application_id = ?`, seededGatewayApplicationId).Scan(&versions); err != nil {
 		t.Fatalf("count replacement Gateway Versions: %v", err)
 	}
-	if err := database.QueryRow(`SELECT COUNT(*) FROM gateway_acme_profile_version WHERE application_id = ?`, seededGatewayApplicationID).Scan(&bindings); err != nil {
+	if err := database.QueryRow(`SELECT COUNT(*) FROM gateway_acme_profile_version WHERE application_id = ?`, seededGatewayApplicationId).Scan(&bindings); err != nil {
 		t.Fatalf("count replacement Gateway bindings: %v", err)
 	}
-	if versions != 4 || bindings != 4 {
+	if versions != 0 || bindings != 0 {
 		t.Fatalf("replacement Gateway topology: Versions=%d bindings=%d", versions, bindings)
+	}
+}
+
+func TestMigrateToSQLiteAdoptsLegacyGatewayEnvironment(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateTo(database, config.DatabaseDriverSQLite, 38); err != nil {
+		t.Fatalf("migrate to develop baseline: %v", err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO application (id, name, code, kind, project_id) VALUES ('01M2LEGACYGATEWAY0000000001', 'Traefik', 'traefik', 'standard', '01KRRKK0K3T519ZQZES3M4QA9Z')`,
+		`INSERT INTO version (id, application_id, label, status, component_summary) VALUES ('01M2LEGACYGATEWAY0000000002', '01M2LEGACYGATEWAY0000000001', 'traefik:3.6', 'unpublished', 'traefik')`,
+		`INSERT INTO gateway_config (application_id, traefik_component_name, rest_api_url, rest_ready_timeout_seconds, base_domain, default_entrypoint, tls_mode, acme_profile, acme_email, dns_api_token) VALUES ('01M2LEGACYGATEWAY0000000001', 'traefik', 'http://localhost:8080', 20, 'lvh.me', 'web', 'none', '', '', '')`,
+		`INSERT INTO service (id, application_id, instance_key, code, version_id, status) VALUES ('01M2LEGACYGATEWAY0000000003', '01M2LEGACYGATEWAY0000000001', 'default', 'traefik-default', '01M2LEGACYGATEWAY0000000002', 'stopped')`,
+	} {
+		if _, err := database.Exec(statement); err != nil {
+			t.Fatalf("seed develop Gateway fixture: %v", err)
+		}
+	}
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate current schema: %v", err)
+	}
+	var targetType, gatewayApplicationId string
+	var workspaceRoot sql.NullString
+	if err := database.QueryRow(`SELECT target_type, workspace_root, gateway_application_id FROM environment WHERE project_id = '01KRRKK0K3T519ZQZES3M4QA9Z'`).Scan(&targetType, &workspaceRoot, &gatewayApplicationId); err != nil {
+		t.Fatalf("load adopted environment: %v", err)
+	}
+	if targetType != model.EnvironmentTargetTypeLocal || workspaceRoot.Valid || gatewayApplicationId != "01M2LEGACYGATEWAY0000000001" {
+		t.Fatalf("adopted environment = target_type:%q workspace:%v gateway:%q", targetType, workspaceRoot, gatewayApplicationId)
 	}
 }
 
@@ -326,25 +455,25 @@ func TestSQLiteSystemSeedIDsAreULIDs(t *testing.T) {
 	} {
 		rows, err := database.Query("SELECT id FROM " + table)
 		if err != nil {
-			t.Fatalf("list %s IDs: %v", table, err)
+			t.Fatalf("list %s Ids: %v", table, err)
 		}
 		for rows.Next() {
 			var id string
 			if err := rows.Scan(&id); err != nil {
 				_ = rows.Close()
-				t.Fatalf("scan %s ID: %v", table, err)
+				t.Fatalf("scan %s Id: %v", table, err)
 			}
 			if _, err := ulid.ParseStrict(id); err != nil {
 				_ = rows.Close()
-				t.Fatalf("%s has non-ULID ID %q: %v", table, id, err)
+				t.Fatalf("%s has non-ULID Id %q: %v", table, id, err)
 			}
 		}
 		if err := rows.Err(); err != nil {
 			_ = rows.Close()
-			t.Fatalf("iterate %s IDs: %v", table, err)
+			t.Fatalf("iterate %s Ids: %v", table, err)
 		}
 		if err := rows.Close(); err != nil {
-			t.Fatalf("close %s IDs: %v", table, err)
+			t.Fatalf("close %s Ids: %v", table, err)
 		}
 	}
 }

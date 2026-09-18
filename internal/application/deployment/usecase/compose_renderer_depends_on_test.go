@@ -30,10 +30,12 @@ func TestRenderComponentPreservesDependencyConditions(t *testing.T) {
 }
 
 func TestRenderComposeDeclaresNamedVolumes(t *testing.T) {
+	disabled := false
 	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
 		Plan: model.EffectiveServicePlan{
-			Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
-			Version:     model.Version{Id: "version-1"},
+			Application:        model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
+			JoinTraefikNetwork: &disabled,
+			Version:            model.Version{Id: "version-1"},
 			Components: []model.EffectiveServiceComponent{{
 				Name:  "db",
 				Image: "postgres:16",

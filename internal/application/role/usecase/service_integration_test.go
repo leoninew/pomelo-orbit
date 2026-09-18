@@ -13,6 +13,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	rolerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/role"
+	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
 )
 
 func TestRoleServiceCreateUpdateAndDelete(t *testing.T) {
@@ -42,6 +43,21 @@ func TestRoleServiceCreateUpdateAndDelete(t *testing.T) {
 	if len(permissions[updated.Role.Id]) != 2 || permissions[updated.Role.Id][0] != "role:read" || permissions[updated.Role.Id][1] != "user:read" {
 		t.Fatalf("unexpected role permissions: %+v", permissions)
 	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO user (id, username, password_hash, status, oauth_provider, oauth_provider_id, email, auth_source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`, "assigned-user", "assigned", "hash", "enabled", "", "", "assigned@example.test", "password"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO user_role (user_id, role_id) VALUES (?, ?)`, "assigned-user", updated.Role.Id); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Delete(ctx, updated.Role.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
+		t.Fatalf("expected assigned Role deletion validation error, got %v", err)
+	}
+	if _, err := database.ExecContext(ctx, `DELETE FROM role WHERE id = ?`, updated.Role.Id); err == nil {
+		t.Fatal("expected database to reject deleting an assigned Role")
+	}
+	if _, err := database.ExecContext(ctx, `DELETE FROM user_role WHERE user_id = ? AND role_id = ?`, "assigned-user", updated.Role.Id); err != nil {
+		t.Fatal(err)
+	}
 	if err := service.Delete(ctx, updated.Role.Id); err != nil {
 		t.Fatal(err)
 	}
@@ -51,10 +67,10 @@ func TestRoleServiceRejectsMissingPermissionAndDuplicatePermissions(t *testing.T
 	service, database := newRoleIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
-	if _, err := service.Create(ctx, roledto.SaveInput{Code: "bad", Name: "Bad", PermissionCodes: []string{"missing:permission"}}); err == nil || apperror.StatusCode(err) != 404 {
+	if _, err := service.Create(ctx, roledto.SaveInput{Code: "bad", Name: "Bad", PermissionCodes: []string{"missing:permission"}}); err == nil || !apperror.IsKind(err, apperror.KindNotFound) {
 		t.Fatalf("expected missing permission to return 404, got %v", err)
 	}
-	if _, err := service.Create(ctx, roledto.SaveInput{Code: "bad", Name: "Bad", PermissionCodes: []string{"user:read", "user:read"}}); err == nil || apperror.StatusCode(err) != 400 {
+	if _, err := service.Create(ctx, roledto.SaveInput{Code: "bad", Name: "Bad", PermissionCodes: []string{"user:read", "user:read"}}); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected duplicate permissions to return 400, got %v", err)
 	}
 }
@@ -69,5 +85,5 @@ func newRoleIntegrationService(t *testing.T) (Service, *sql.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	return New(rolerepo.NewRepository(database)), database
+	return New(rolerepo.NewRepository(database), userrepo.NewRepository(database)), database
 }

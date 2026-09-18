@@ -93,7 +93,7 @@ func TestChangePasswordRejectsWrongOldPassword(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := service.ChangePassword(ctx, authdto.ChangePasswordInput{User: user, OldPassword: "wrong", NewPassword: "newpass1"}); err == nil || apperror.StatusCode(err) != 401 {
+	if err := service.ChangePassword(ctx, authdto.ChangePasswordInput{User: user, OldPassword: "wrong", NewPassword: "newpass1"}); err == nil || !apperror.IsKind(err, apperror.KindUnauthorized) {
 		t.Fatalf("expected wrong old password to be unauthorized, got %v", err)
 	}
 }

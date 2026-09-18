@@ -7,7 +7,7 @@ Flow mode: standard
 
 ## Requirement basis
 
-- 依据：[MCP 调用认证边界重构需求](../requirement/20260906-mcp-standard-authentication.md)，状态 `Accepted`。
+- 依据：[MCP 调用认证边界重构需求](../intent/20260906-mcp-standard-authentication.md)，状态 `Accepted`。
 - 用户从 Requirement 明确要求进入 Plan。本功能没有独立 Spec；本轮只记录实施方案和待审查假设，不补写已接受的 Spec，不实施产品代码，不进入 Verification。
 - 实际场景仅为 Web Dialogue 内部调用与 Codex CLI 启动 `go run ./cmd/server mcp` 的 stdio 调用。不建设 OAuth2/OIDC，也不改为 Codex 直连 HTTP MCP。
 - stdio 的环境凭据形式是 Orbit 的项目选择；不把 JWT 格式、删除浏览器辅助流程或删除 HTTP transport 说成 MCP 规范对所有实现的强制要求。

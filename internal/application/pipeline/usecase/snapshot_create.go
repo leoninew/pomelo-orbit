@@ -13,26 +13,26 @@ import (
 )
 
 type SnapshotStore interface {
-	LatestPipelineSnapshot(ctx context.Context, pipelineId string) (model.PipelineSnapshot, error)
-	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
+	LatestPipelineSnapshot(ctx context.Context, projectId string, pipelineId string) (model.PipelineSnapshot, error)
+	PipelineSnapshot(ctx context.Context, projectId string, id string) (model.PipelineSnapshot, error)
 	CreatePipelineSnapshot(ctx context.Context, snapshot model.PipelineSnapshot) error
-	ApplicationPipelineStages(ctx context.Context, pipelineId string) ([]model.PipelineStage, error)
+	ApplicationPipelineStages(ctx context.Context, projectId string, pipelineId string) ([]model.PipelineStage, error)
 }
 
 // GetOrCreatePipelineSnapshot only accepts an application Pipeline. Templates
 // have a version for provenance, but are not executable inputs.
-func GetOrCreatePipelineSnapshot(ctx context.Context, store SnapshotStore, pipeline model.Pipeline, repo model.Repository) (model.PipelineSnapshot, error) {
+func GetOrCreatePipelineSnapshot(ctx context.Context, store SnapshotStore, projectId string, pipeline model.Pipeline, repo model.Repository) (model.PipelineSnapshot, error) {
 	if pipeline.Kind != model.PipelineKindApplication {
 		return model.PipelineSnapshot{}, apperror.New(apperror.KindValidation, "template pipelines cannot create snapshots")
 	}
-	latest, err := store.LatestPipelineSnapshot(ctx, pipeline.Id)
+	latest, err := store.LatestPipelineSnapshot(ctx, projectId, pipeline.Id)
 	if err == nil && latest.PipelineVersion == pipeline.Version {
 		return latest, nil
 	}
 	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return model.PipelineSnapshot{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
 	}
-	stages, err := store.ApplicationPipelineStages(ctx, pipeline.Id)
+	stages, err := store.ApplicationPipelineStages(ctx, projectId, pipeline.Id)
 	if err != nil {
 		return model.PipelineSnapshot{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stages", err)
 	}
@@ -67,13 +67,13 @@ func GetOrCreatePipelineSnapshot(ctx context.Context, store SnapshotStore, pipel
 		StagesSnapshot: string(stageData), VariablesSnapshot: string(variableData),
 	}
 	if err := store.CreatePipelineSnapshot(ctx, snapshot); err != nil {
-		latest, latestErr := store.LatestPipelineSnapshot(ctx, pipeline.Id)
+		latest, latestErr := store.LatestPipelineSnapshot(ctx, projectId, pipeline.Id)
 		if latestErr == nil && latest.PipelineVersion == pipeline.Version {
 			return latest, nil
 		}
 		return model.PipelineSnapshot{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline snapshot", err)
 	}
-	created, err := store.PipelineSnapshot(ctx, snapshot.Id)
+	created, err := store.PipelineSnapshot(ctx, projectId, snapshot.Id)
 	if err != nil {
 		return model.PipelineSnapshot{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
 	}

@@ -41,3 +41,9 @@ func TestRuntimeContainerName(t *testing.T) {
 		t.Fatalf("container name = %q, want %q", got, want)
 	}
 }
+
+func TestGatewayNetworkName(t *testing.T) {
+	if got, want := GatewayNetworkName(), "traefik"; got != want {
+		t.Fatalf("GatewayNetworkName() = %q, want %q", got, want)
+	}
+}

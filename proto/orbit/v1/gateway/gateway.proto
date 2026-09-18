@@ -19,11 +19,11 @@ message GatewayCreateReq {
   optional string default_entrypoint = 8;
   // none|letsencrypt|tls (default none when empty on create)
   optional string tls_mode = 9;
-  optional string traefik_component_name = 10;
   optional int32 rest_ready_timeout_seconds = 11;
   optional string acme_profile = 12;
   optional string acme_email = 13;
   optional string dns_api_token = 14;
+  string rest_api_host_url = 15;
 }
 
 message GatewayUpdateReq {
@@ -32,11 +32,11 @@ message GatewayUpdateReq {
   optional string base_domain = 3;
   optional string default_entrypoint = 4;
   optional string tls_mode = 5;
-  optional string traefik_component_name = 6;
   optional int32 rest_ready_timeout_seconds = 7;
   optional string acme_profile = 8;
   optional string acme_email = 9;
   optional string dns_api_token = 10;
+  optional string rest_api_host_url = 11;
 }
 
 // Read-only active exit / cluster DNS row (not a CRUD resource).
@@ -67,16 +67,15 @@ message GatewayResp {
   string default_entrypoint = 11;
   string tls_mode = 12;
   repeated GatewayExposureItem exposures = 13;
-  string default_service_id = 14;
-  string default_service_instance_key = 15;
-  string default_service_code = 16;
-  string default_service_status = 17;
-  string traefik_component_name = 18;
+  string service_id = 14;
+  string service_code = 16;
+  string service_status = 17;
   int32 rest_ready_timeout_seconds = 19;
   string acme_profile = 20;
   string acme_email = 21;
   string dns_api_token = 22;
   repeated GatewayVersionBinding version_bindings = 23;
+  string rest_api_host_url = 24;
 }
 
 message GatewayPaginatedResp {

@@ -19,11 +19,12 @@ import (
 var codePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 type Service struct {
-	repo repository.RoleStore
+	repo  repository.RoleStore
+	users repository.UserRoleReader
 }
 
-func New(repo repository.RoleStore) Service {
-	return Service{repo: repo}
+func New(repo repository.RoleStore, users repository.UserRoleReader) Service {
+	return Service{repo: repo, users: users}
 }
 
 func (s Service) List(ctx context.Context, page int, perPage int, search string) (repository.Page[roledto.Detail], error) {
@@ -108,6 +109,13 @@ func (s Service) Delete(ctx context.Context, roleId string) error {
 	role, err := s.find(ctx, roleId)
 	if err != nil {
 		return err
+	}
+	assigned, err := s.users.HasUsersWithRole(ctx, role.Id)
+	if err != nil {
+		return err
+	}
+	if assigned {
+		return apperror.New(apperror.KindValidation, "Cannot delete Role assigned to users")
 	}
 	return s.repo.DeleteRole(ctx, role.Id)
 }

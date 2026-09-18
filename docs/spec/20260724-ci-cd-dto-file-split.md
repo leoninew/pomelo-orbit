@@ -7,7 +7,7 @@ Accepted
 
 ## Requirement basis
 
-- Requirement: `docs/requirement/20260724-ci-cd-dto-file-split.md`（`Accepted`）
+- Requirement: `docs/intent/20260724-ci-cd-dto-file-split.md`（`Accepted`）
 - 领域基线: `docs/analyze/20260724-domain-split-consensus-共识.md`（已确认）
 - 流程: 标准模式 / standard；用户要求进入 Plan，Spec 标为 Accepted
 

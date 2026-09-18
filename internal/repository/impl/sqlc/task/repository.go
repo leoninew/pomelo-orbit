@@ -31,7 +31,7 @@ func (r Repository) q(ctx context.Context) *tasksqlc.Queries {
 func (r Repository) Enqueue(ctx context.Context, id string, taskType string, payloadJSON string, maxAttempts int) error {
 	now := time.Now().UTC()
 	err := r.q(ctx).EnqueueTask(ctx, tasksqlc.EnqueueTaskParams{
-		ID:          id,
+		Id:          id,
 		TaskType:    taskType,
 		PayloadJson: payloadJSON,
 		Status:      status.TaskPending,
@@ -68,18 +68,18 @@ func (r Repository) ClaimNext(ctx context.Context, workerId string, lockTimeout 
 			LockedAt:   sql.NullTime{Time: now, Valid: true},
 			StartedAt:  sql.NullTime{Time: now, Valid: true},
 			UpdatedAt:  now,
-			ID:         task.ID,
+			Id:         task.Id,
 			Status_2:   status.TaskPending,
 			Status_3:   status.TaskRunning,
 			LockedAt_2: sql.NullTime{Time: cutoff, Valid: true},
 		})
 		if err != nil {
-			return fmt.Errorf("claim task %s: %w", task.ID, err)
+			return fmt.Errorf("claim task %s: %w", task.Id, err)
 		}
 		if rows == 0 {
 			return nil
 		}
-		claimedId = task.ID
+		claimedId = task.Id
 		return nil
 	})
 	if err != nil {
@@ -97,7 +97,7 @@ func (r Repository) Complete(ctx context.Context, taskId string) error {
 		Status:     status.TaskSucceeded,
 		FinishedAt: sql.NullTime{Time: now, Valid: true},
 		UpdatedAt:  now,
-		ID:         taskId,
+		Id:         taskId,
 		Status_2:   status.TaskRunning,
 	})
 	if err != nil {
@@ -114,7 +114,7 @@ func (r Repository) Fail(ctx context.Context, taskId string, message string) err
 		FinishedAt:   sql.NullTime{Time: now, Valid: true},
 		UpdatedAt:    now,
 		ErrorMessage: sql.NullString{String: message, Valid: true},
-		ID:           taskId,
+		Id:           taskId,
 		Status_3:     status.TaskRunning,
 	})
 	if err != nil {
@@ -124,7 +124,7 @@ func (r Repository) Fail(ctx context.Context, taskId string, message string) err
 }
 
 func (r Repository) FindById(ctx context.Context, id string) (*tasksvc.Task, error) {
-	task, err := r.q(ctx).FindTaskByID(ctx, id)
+	task, err := r.q(ctx).FindTaskById(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("find task %s: %w", id, err)
 	}
@@ -134,7 +134,7 @@ func (r Repository) FindById(ctx context.Context, id string) (*tasksvc.Task, err
 
 func taskFromSQLC(task tasksqlc.BackgroundTask) tasksvc.Task {
 	return tasksvc.Task{
-		Id:           task.ID,
+		Id:           task.Id,
 		TaskType:     task.TaskType,
 		PayloadJSON:  task.PayloadJson,
 		Status:       task.Status,

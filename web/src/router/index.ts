@@ -2,8 +2,18 @@ import { createRouter, createWebHistory } from 'vue-router';
 import i18n from '@/i18n';
 import { getNavigationScope, getSecondaryNavigationTitle } from '@/navigation';
 import { useAuthStore } from '@/stores/auth';
+import { useProjectStore } from '@/stores/project';
+import {
+  READY_INITIALIZATION_STATUS,
+  useProjectInitializationStore,
+} from '@/stores/projectInitialization';
 import { PERMISSIONS } from '@/constants/permissions';
 import { resolveLoginRedirect } from '@/utils/login-redirect';
+import {
+  isProjectInitializationPath,
+  isProjectReadinessGuardedPath,
+  resolveInitializationCompletionRedirect,
+} from '@/router/projectReadiness';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -42,6 +52,13 @@ const router = createRouter({
       name: 'Projects',
       component: () => import('@/views/project/ProjectPage.vue'),
       meta: { title: '项目管理', menuKey: 'projects' },
+    },
+    {
+      path: '/project/:id/initialization',
+      name: 'ProjectInitialization',
+      component: () => import('@/views/project/ProjectInitializationPage.vue'),
+      props: true,
+      meta: { title: '项目初始化', menuKey: 'projects' },
     },
     {
       path: '/project/:id',
@@ -126,22 +143,22 @@ const router = createRouter({
       meta: { title: '服务组件配置', menuKey: 'services' },
     },
     {
-      path: '/gateways',
-      name: 'Gateways',
-      component: () => import('@/views/gateway/GatewayPage.vue'),
-      meta: { title: '网关', menuKey: 'gateways' },
-    },
-    {
-      path: '/gateway/:id',
-      name: 'GatewayDetail',
+      path: '/gateway',
+      name: 'Gateway',
       component: () => import('@/views/gateway/GatewayDetail.vue'),
-      meta: { title: '网关详情', menuKey: 'gateways' },
+      meta: { title: '网关详情', menuKey: 'gateway' },
     },
     {
       path: '/deployments',
       name: 'Deployments',
       component: () => import('@/views/deployment/DeploymentPage.vue'),
       meta: { title: '部署记录', menuKey: 'deployments' },
+    },
+    {
+      path: '/environment',
+      name: 'Environment',
+      component: () => import('@/views/environment/EnvironmentPage.vue'),
+      meta: { title: '部署环境', menuKey: 'environment' },
     },
     {
       path: '/dialogue',
@@ -173,13 +190,13 @@ const router = createRouter({
     },
     // credential / repository / pipeline / pipeline_run
     {
-      path: '/credential',
+      path: '/repository-credential',
       name: 'Credentials',
       component: () => import('@/views/credential/CredentialPage.vue'),
       meta: { title: '凭据管理', menuKey: 'credentials' },
     },
     {
-      path: '/credential/:id',
+      path: '/repository-credential/:id',
       name: 'CredentialDetail',
       component: () => import('@/views/credential/CredentialDetail.vue'),
       props: true,
@@ -307,6 +324,46 @@ router.beforeEach(async (to, _from, next) => {
   const permission = to.meta.permission;
   if (typeof permission === 'string' && !authStore.hasPermission(permission)) {
     next({ name: 'Forbidden', query: { from: to.fullPath } });
+    return;
+  }
+
+  if (isProjectReadinessGuardedPath(to.path) || isProjectInitializationPath(to.path)) {
+    const projectStore = useProjectStore();
+    const projectId = isProjectInitializationPath(to.path)
+      ? String(to.params.id || '')
+      : projectStore.activeProjectId;
+    if (isProjectInitializationPath(to.path) && projectId) {
+      projectStore.setActiveProject(projectId);
+    }
+    if (!projectId) {
+      next({ name: 'Projects' });
+      return;
+    }
+    try {
+      const initializationStore = useProjectInitializationStore();
+      const status = isProjectInitializationPath(to.path)
+        ? await initializationStore.ensureStatus(projectId)
+        : await initializationStore.fetchStatus(projectId);
+      if (status.status === READY_INITIALIZATION_STATUS) {
+        if (isProjectInitializationPath(to.path)) {
+          next(resolveInitializationCompletionRedirect());
+          return;
+        }
+        next();
+        return;
+      }
+      if (isProjectInitializationPath(to.path)) {
+        next();
+        return;
+      }
+      next({
+        name: 'ProjectInitialization',
+        params: { id: projectId },
+        query: { redirect: to.fullPath },
+      });
+    } catch {
+      next({ name: 'Projects' });
+    }
     return;
   }
 

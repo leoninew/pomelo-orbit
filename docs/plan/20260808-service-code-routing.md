@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求依据
 
-- [需求](../requirement/20260808-service-code-routing.md) 已接受。
+- [需求](../intent/20260808-service-code-routing.md) 已接受。
 - `service_code` 在 Service 创建窗以 `<application_code>-<instance_key>` 预填，创建时由用户提交，是全局唯一、创建后不可编辑的 DNS-label 路由身份。
 - 标准 Service 的 `gateway_http` Host 为 `{component_name}.{service_code}.{gateway.base_domain}`；TLS `gateway_tcp` 的 SNI 也使用同一组件级 Host。
 - 路由继续由部署渲染的 Traefik Docker labels 下发；平台 `Route` 与 Gateway Dashboard 不在本次变更范围。

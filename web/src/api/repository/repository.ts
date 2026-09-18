@@ -7,28 +7,32 @@ import type {
 import request from '@/utils/request';
 
 export const repositoryApi = {
-  list(params?: {
-    page?: number;
-    per_page?: number;
-    search?: string;
-    project_id?: string;
-  }): Promise<RepositoryPaginatedResp> {
-    return request.get('/api/repository', { params });
+  list(
+    projectId: string,
+    params?: {
+      page?: number;
+      per_page?: number;
+      search?: string;
+    }
+  ): Promise<RepositoryPaginatedResp> {
+    return request.get('/api/repository', { params: { project_id: projectId, ...params } });
   },
 
-  get(id: string): Promise<RepositoryResp> {
-    return request.get(`/api/repository/${id}`);
+  get(projectId: string, id: string): Promise<RepositoryResp> {
+    return request.get(`/api/repository/${id}`, { params: { project_id: projectId } });
   },
 
-  create(data: RepositoryCreateReq, params: { project_id: string }): Promise<RepositoryResp> {
-    return request.post('/api/repository', data, { params });
+  create(projectId: string, data: RepositoryCreateReq): Promise<RepositoryResp> {
+    return request.post('/api/repository', data, { params: { project_id: projectId } });
   },
 
-  update(id: string, data: RepositoryUpdateReq): Promise<RepositoryResp> {
-    return request.put(`/api/repository/${id}`, data);
+  update(projectId: string, id: string, data: RepositoryUpdateReq): Promise<RepositoryResp> {
+    return request.put(`/api/repository/${id}`, data, { params: { project_id: projectId } });
   },
 
-  delete(id: string, params?: { delete_workspace?: boolean }): Promise<void> {
-    return request.delete(`/api/repository/${id}`, { params });
+  delete(projectId: string, id: string, params?: { delete_workspace?: boolean }): Promise<void> {
+    return request.delete(`/api/repository/${id}`, {
+      params: { project_id: projectId, ...params },
+    });
   },
 };

@@ -28,10 +28,22 @@ func (r Repository) q(ctx context.Context) *servicesqlc.Queries {
 	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DbTX) *servicesqlc.Queries { return servicesqlc.New(dbtx) })
 }
 
-func (r Repository) ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error) {
-	rows, err := r.q(ctx).ListServicesByApplication(ctx, applicationId)
+func (r Repository) ListServicesByApplication(ctx context.Context, projectId, applicationId string) ([]model.Service, error) {
+	rows, err := r.q(ctx).ListServicesByApplication(ctx, servicesqlc.ListServicesByApplicationParams{ProjectId: projectId, ApplicationId: applicationId})
 	if err != nil {
 		return nil, fmt.Errorf("list services by application %s: %w", applicationId, err)
+	}
+	items := make([]model.Service, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, serviceFrom(row))
+	}
+	return items, nil
+}
+
+func (r Repository) ListServicesByVersion(ctx context.Context, projectId, versionId string) ([]model.Service, error) {
+	rows, err := r.q(ctx).ListServicesByVersion(ctx, servicesqlc.ListServicesByVersionParams{ProjectId: projectId, VersionId: versionId})
+	if err != nil {
+		return nil, fmt.Errorf("list services by version %s: %w", versionId, err)
 	}
 	items := make([]model.Service, 0, len(rows))
 	for _, row := range rows {
@@ -45,13 +57,13 @@ func (r Repository) ListServicesByProject(ctx context.Context, projectId, applic
 	searchRaw, searchValue := dbmodel.SearchPattern(search)
 	applicationFilter := strings.TrimSpace(applicationId)
 	serviceStatusFilter := strings.TrimSpace(statusFilter)
-	applicationID := sql.NullString{String: applicationFilter, Valid: applicationFilter != ""}
+	applicationIdFilter := sql.NullString{String: applicationFilter, Valid: applicationFilter != ""}
 	serviceStatus := sql.NullString{String: serviceStatusFilter, Valid: serviceStatusFilter != ""}
 	searchPattern := sql.NullString{String: searchValue, Valid: searchRaw != ""}
 	q := r.q(ctx)
 	params := servicesqlc.CountServicesByProjectParams{
-		ProjectID:     sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		ApplicationID: applicationID,
+		ProjectId:     strings.TrimSpace(projectId),
+		ApplicationId: applicationIdFilter,
 		Status:        serviceStatus,
 		SearchPattern: searchPattern,
 	}
@@ -60,8 +72,8 @@ func (r Repository) ListServicesByProject(ctx context.Context, projectId, applic
 		return repository.Page[model.ServiceListItem]{}, fmt.Errorf("count services by project: %w", err)
 	}
 	rows, err := q.ListServicesByProject(ctx, servicesqlc.ListServicesByProjectParams{
-		ProjectID:     params.ProjectID,
-		ApplicationID: applicationID,
+		ProjectId:     params.ProjectId,
+		ApplicationId: applicationIdFilter,
 		Status:        serviceStatus,
 		SearchPattern: searchPattern,
 		Limit:         int32(perPage),
@@ -72,45 +84,37 @@ func (r Repository) ListServicesByProject(ctx context.Context, projectId, applic
 	}
 	items := make([]model.ServiceListItem, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.Code, row.VersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel))
+		items = append(items, serviceListFrom(row.Id, row.ProjectId, row.ApplicationId, row.Code, row.VersionId, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel))
 	}
 	return repository.Page[model.ServiceListItem]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
 
-func (r Repository) ServiceListItem(ctx context.Context, id string) (model.ServiceListItem, error) {
-	row, err := r.q(ctx).ServiceListItemByID(ctx, id)
+func (r Repository) ServiceListItem(ctx context.Context, projectId, id string) (model.ServiceListItem, error) {
+	row, err := r.q(ctx).ServiceListItemById(ctx, servicesqlc.ServiceListItemByIdParams{Id: id, ProjectId: projectId})
 	if err != nil {
 		return model.ServiceListItem{}, fmt.Errorf("load service list item %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.Code, row.VersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel), nil
+	return serviceListFrom(row.Id, row.ProjectId, row.ApplicationId, row.Code, row.VersionId, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel), nil
 }
 
-func (r Repository) ServiceByKey(ctx context.Context, applicationId, instanceKey string) (model.Service, error) {
-	row, err := r.q(ctx).ServiceByKey(ctx, servicesqlc.ServiceByKeyParams{ApplicationID: applicationId, InstanceKey: instanceKey})
+func (r Repository) ServiceByProjectAndCode(ctx context.Context, projectId, code string) (model.Service, error) {
+	row, err := r.q(ctx).ServiceByProjectAndCode(ctx, servicesqlc.ServiceByProjectAndCodeParams{ProjectId: projectId, Code: code})
 	if err != nil {
-		return model.Service{}, fmt.Errorf("load service by key: %w", sqlcommon.TranslateError(err))
+		return model.Service{}, fmt.Errorf("load service by project and code: %w", sqlcommon.TranslateError(err))
 	}
 	return serviceFrom(row), nil
 }
 
-func (r Repository) ServiceByCode(ctx context.Context, code string) (model.Service, error) {
-	row, err := r.q(ctx).ServiceByCode(ctx, code)
-	if err != nil {
-		return model.Service{}, fmt.Errorf("load service by code: %w", sqlcommon.TranslateError(err))
-	}
-	return serviceFrom(row), nil
-}
-
-func (r Repository) Service(ctx context.Context, id string) (model.Service, error) {
-	row, err := r.q(ctx).ServiceByID(ctx, id)
+func (r Repository) Service(ctx context.Context, projectId, id string) (model.Service, error) {
+	row, err := r.q(ctx).ServiceById(ctx, servicesqlc.ServiceByIdParams{Id: id, ProjectId: projectId})
 	if err != nil {
 		return model.Service{}, fmt.Errorf("load service %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return serviceFrom(row), nil
 }
 
-func (r Repository) ServiceEnvByService(ctx context.Context, serviceId string) ([]model.ServiceEnv, error) {
-	rows, err := r.q(ctx).ServiceEnvByService(ctx, serviceId)
+func (r Repository) ServiceEnvByService(ctx context.Context, projectId, serviceId string) ([]model.ServiceEnv, error) {
+	rows, err := r.q(ctx).ServiceEnvByService(ctx, servicesqlc.ServiceEnvByServiceParams{ServiceId: serviceId, ProjectId: projectId})
 	if err != nil {
 		return nil, fmt.Errorf("list service environment %s: %w", serviceId, err)
 	}
@@ -121,14 +125,14 @@ func (r Repository) ServiceEnvByService(ctx context.Context, serviceId string) (
 	return items, nil
 }
 
-func (r Repository) ServiceComponentsByService(ctx context.Context, serviceId string) ([]model.ServiceComponent, error) {
-	rows, err := r.q(ctx).ServiceComponentsByService(ctx, serviceId)
+func (r Repository) ServiceComponentsByService(ctx context.Context, projectId, serviceId string) ([]model.ServiceComponent, error) {
+	rows, err := r.q(ctx).ServiceComponentsByService(ctx, servicesqlc.ServiceComponentsByServiceParams{ServiceId: serviceId, ProjectId: projectId})
 	if err != nil {
 		return nil, fmt.Errorf("list service components %s: %w", serviceId, err)
 	}
 	items := make([]model.ServiceComponent, 0, len(rows))
 	for _, row := range rows {
-		component, err := r.serviceComponentFromRow(ctx, r.q(ctx), row)
+		component, err := r.serviceComponentFromRow(ctx, r.q(ctx), projectId, row)
 		if err != nil {
 			return nil, err
 		}
@@ -137,131 +141,123 @@ func (r Repository) ServiceComponentsByService(ctx context.Context, serviceId st
 	return items, nil
 }
 
-func (r Repository) ServiceComponent(ctx context.Context, id string) (model.ServiceComponent, error) {
-	row, err := r.q(ctx).ServiceComponentByID(ctx, id)
+func (r Repository) ServiceComponent(ctx context.Context, projectId, id string) (model.ServiceComponent, error) {
+	row, err := r.q(ctx).ServiceComponentById(ctx, servicesqlc.ServiceComponentByIdParams{Id: id, ProjectId: projectId})
 	if err != nil {
 		return model.ServiceComponent{}, fmt.Errorf("load service component %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return r.serviceComponentFromRow(ctx, r.q(ctx), row)
+	return r.serviceComponentFromRow(ctx, r.q(ctx), projectId, row)
 }
 
-func (r Repository) UpsertService(ctx context.Context, svc model.Service) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		existingID, err := q.ServiceIDByKey(txCtx, servicesqlc.ServiceIDByKeyParams{ApplicationID: svc.ApplicationId, InstanceKey: svc.InstanceKey})
-		if errors.Is(err, sql.ErrNoRows) {
-			return r.insertService(txCtx, svc)
-		}
-		if err != nil {
-			return fmt.Errorf("lookup service for application %s: %w", svc.ApplicationId, err)
-		}
-		id := existingID
-		if strings.TrimSpace(svc.Id) != "" {
-			id = svc.Id
-		}
-		if err := q.UpdateService(txCtx, servicesqlc.UpdateServiceParams{VersionID: svc.VersionId, Status: svc.Status, UpdatedAt: time.Now().UTC(), ID: id}); err != nil {
-			return fmt.Errorf("update service %s: %w", id, err)
-		}
-		return nil
-	})
+func (r Repository) UpsertService(ctx context.Context, projectId string, svc model.Service) error {
+	if strings.TrimSpace(svc.ProjectId) != strings.TrimSpace(projectId) {
+		return fmt.Errorf("service project %s does not match scope %s", svc.ProjectId, projectId)
+	}
+	if strings.TrimSpace(svc.Id) == "" {
+		return fmt.Errorf("service id is required")
+	}
+	q := r.q(ctx)
+	_, err := q.ServiceById(ctx, servicesqlc.ServiceByIdParams{Id: svc.Id, ProjectId: projectId})
+	if errors.Is(err, sql.ErrNoRows) {
+		return r.insertService(ctx, projectId, svc)
+	}
+	if err != nil {
+		return fmt.Errorf("lookup service %s: %w", svc.Id, err)
+	}
+	if err := q.UpdateService(ctx, servicesqlc.UpdateServiceParams{VersionId: svc.VersionId, Status: svc.Status, UpdatedAt: time.Now().UTC(), Id: svc.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("update service %s: %w", svc.Id, err)
+	}
+	return nil
 }
 
-func (r Repository) CreateServiceWithComponents(ctx context.Context, svc model.Service, components []model.ServiceComponent) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		if err := r.insertService(txCtx, svc); err != nil {
-			return err
-		}
-		return r.replaceServiceComponents(txCtx, svc, components)
-	})
+func (r Repository) CreateServiceWithComponents(ctx context.Context, projectId string, svc model.Service, components []model.ServiceComponent) error {
+	if strings.TrimSpace(svc.ProjectId) != strings.TrimSpace(projectId) {
+		return fmt.Errorf("service project %s does not match scope %s", svc.ProjectId, projectId)
+	}
+	if err := r.insertService(ctx, projectId, svc); err != nil {
+		return err
+	}
+	return r.replaceServiceComponents(ctx, projectId, svc, components)
 }
 
-func (r Repository) UpdateServiceConfiguration(ctx context.Context, svc model.Service, components []model.ServiceComponent) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		if err := q.UpdateServiceConfiguration(txCtx, servicesqlc.UpdateServiceConfigurationParams{InstanceKey: svc.InstanceKey, VersionID: svc.VersionId, UpdatedAt: time.Now().UTC(), ID: svc.Id}); err != nil {
-			return fmt.Errorf("update service configuration %s: %w", svc.Id, err)
-		}
-		return r.replaceServiceComponents(txCtx, svc, components)
-	})
+func (r Repository) UpdateServiceConfiguration(ctx context.Context, projectId string, svc model.Service, components []model.ServiceComponent) error {
+	q := r.q(ctx)
+	if err := q.UpdateServiceConfiguration(ctx, servicesqlc.UpdateServiceConfigurationParams{VersionId: svc.VersionId, UpdatedAt: time.Now().UTC(), Id: svc.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("update service configuration %s: %w", svc.Id, err)
+	}
+	return r.replaceServiceComponents(ctx, projectId, svc, components)
 }
 
-func (r Repository) ReplaceServiceEnv(ctx context.Context, serviceId string, env []model.ServiceEnv) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		if err := q.DeleteServiceEnv(txCtx, serviceId); err != nil {
-			return fmt.Errorf("delete service environment: %w", err)
+func (r Repository) ReplaceServiceEnv(ctx context.Context, projectId, serviceId string, env []model.ServiceEnv) error {
+	q := r.q(ctx)
+	if err := q.DeleteServiceEnv(ctx, servicesqlc.DeleteServiceEnvParams{ServiceId: serviceId, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service environment: %w", err)
+	}
+	for _, item := range env {
+		if err := q.InsertServiceEnv(ctx, servicesqlc.InsertServiceEnvParams{ServiceId: serviceId, EnvKey: item.Key, Value: item.Value, ProjectId: projectId}); err != nil {
+			return fmt.Errorf("insert service environment %s: %w", item.Key, err)
 		}
-		for _, item := range env {
-			if err := q.InsertServiceEnv(txCtx, servicesqlc.InsertServiceEnvParams{ServiceID: serviceId, EnvKey: item.Key, Value: item.Value}); err != nil {
-				return fmt.Errorf("insert service environment %s: %w", item.Key, err)
-			}
-		}
-		if err := q.TouchService(txCtx, servicesqlc.TouchServiceParams{UpdatedAt: time.Now().UTC(), ID: serviceId}); err != nil {
-			return fmt.Errorf("touch service %s: %w", serviceId, err)
-		}
-		return nil
-	})
+	}
+	if err := q.TouchService(ctx, servicesqlc.TouchServiceParams{UpdatedAt: time.Now().UTC(), Id: serviceId, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("touch service %s: %w", serviceId, err)
+	}
+	return nil
 }
 
-func (r Repository) UpdateServiceComponentOverlay(ctx context.Context, component model.ServiceComponent) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		entrypointJSON, err := optionalCommandJSON(component.Entrypoint)
-		if err != nil {
-			return fmt.Errorf("encode service component entrypoint: %w", err)
-		}
-		commandJSON, err := optionalCommandJSON(component.Command)
-		if err != nil {
-			return fmt.Errorf("encode service component command: %w", err)
-		}
-		if err := q.UpdateServiceComponentOverlayFields(txCtx, servicesqlc.UpdateServiceComponentOverlayFieldsParams{
-			EntrypointJson: entrypointJSON, CommandJson: commandJSON,
-			PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy),
-			UpdatedAt: time.Now().UTC(), ID: component.Id,
-		}); err != nil {
-			return fmt.Errorf("update service component runtime overlay: %w", err)
-		}
-		if err := q.DeleteServiceComponentEnv(txCtx, component.Id); err != nil {
-			return fmt.Errorf("delete service component env: %w", err)
-		}
-		if err := q.DeleteServiceComponentMounts(txCtx, component.Id); err != nil {
-			return fmt.Errorf("delete service component mounts: %w", err)
-		}
-		if err := q.DeleteServiceComponentResource(txCtx, component.Id); err != nil {
-			return fmt.Errorf("delete service component resource: %w", err)
-		}
-		if err := q.DeleteServiceComponentEndpoints(txCtx, component.Id); err != nil {
-			return fmt.Errorf("delete service component endpoints: %w", err)
-		}
-		return insertServiceComponentOverlay(txCtx, q, component)
-	})
+func (r Repository) UpdateServiceComponentOverlay(ctx context.Context, projectId string, component model.ServiceComponent) error {
+	q := r.q(ctx)
+	entrypointJSON, err := optionalCommandJSON(component.Entrypoint)
+	if err != nil {
+		return fmt.Errorf("encode service component entrypoint: %w", err)
+	}
+	commandJSON, err := optionalCommandJSON(component.Command)
+	if err != nil {
+		return fmt.Errorf("encode service component command: %w", err)
+	}
+	if err := q.UpdateServiceComponentOverlayFields(ctx, servicesqlc.UpdateServiceComponentOverlayFieldsParams{
+		EntrypointJson: entrypointJSON, CommandJson: commandJSON,
+		PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy),
+		UpdatedAt: time.Now().UTC(), Id: component.Id, ProjectId: projectId,
+	}); err != nil {
+		return fmt.Errorf("update service component runtime overlay: %w", err)
+	}
+	if err := q.DeleteServiceComponentEnv(ctx, servicesqlc.DeleteServiceComponentEnvParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service component env: %w", err)
+	}
+	if err := q.DeleteServiceComponentMounts(ctx, servicesqlc.DeleteServiceComponentMountsParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service component mounts: %w", err)
+	}
+	if err := q.DeleteServiceComponentResource(ctx, servicesqlc.DeleteServiceComponentResourceParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service component resource: %w", err)
+	}
+	if err := q.DeleteServiceComponentEndpoints(ctx, servicesqlc.DeleteServiceComponentEndpointsParams{ServiceComponentId: component.Id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service component endpoints: %w", err)
+	}
+	return insertServiceComponentOverlay(ctx, q, projectId, component)
 }
 
-func (r Repository) DeleteService(ctx context.Context, id string) error {
-	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
-		q := r.q(txCtx)
-		if err := q.DeleteService(txCtx, id); err != nil {
-			return fmt.Errorf("delete service %s: %w", id, err)
-		}
-		return nil
-	})
+func (r Repository) DeleteService(ctx context.Context, projectId, id string) error {
+	if err := r.q(ctx).DeleteService(ctx, servicesqlc.DeleteServiceParams{Id: id, ProjectId: projectId}); err != nil {
+		return fmt.Errorf("delete service %s: %w", id, err)
+	}
+	return nil
 }
 
-func (r Repository) UpdateServiceStatus(ctx context.Context, id, status string) error {
-	if err := r.q(ctx).UpdateServiceStatus(ctx, servicesqlc.UpdateServiceStatusParams{Status: status, UpdatedAt: time.Now().UTC(), ID: id}); err != nil {
+func (r Repository) UpdateServiceStatus(ctx context.Context, projectId, id, status string) error {
+	if err := r.q(ctx).UpdateServiceStatus(ctx, servicesqlc.UpdateServiceStatusParams{Status: status, UpdatedAt: time.Now().UTC(), Id: id, ProjectId: projectId}); err != nil {
 		return fmt.Errorf("update service status %s: %w", id, err)
 	}
 	return nil
 }
 
-func (r Repository) UpdateServiceAfterDeploy(ctx context.Context, id, status, versionId string) error {
-	if err := r.q(ctx).UpdateServiceAfterDeploy(ctx, servicesqlc.UpdateServiceAfterDeployParams{Status: status, VersionID: versionId, UpdatedAt: time.Now().UTC(), ID: id}); err != nil {
+func (r Repository) UpdateServiceAfterDeploy(ctx context.Context, projectId, id, status, versionId string) error {
+	if err := r.q(ctx).UpdateServiceAfterDeploy(ctx, servicesqlc.UpdateServiceAfterDeployParams{Status: status, VersionId: versionId, UpdatedAt: time.Now().UTC(), Id: id, ProjectId: projectId}); err != nil {
 		return fmt.Errorf("update service after deploy %s: %w", id, err)
 	}
 	return nil
 }
 
-func (r Repository) insertService(ctx context.Context, svc model.Service) error {
+func (r Repository) insertService(ctx context.Context, projectId string, svc model.Service) error {
 	now := time.Now().UTC()
 	createdAt, updatedAt := svc.CreatedAt, svc.UpdatedAt
 	if createdAt.IsZero() {
@@ -270,74 +266,74 @@ func (r Repository) insertService(ctx context.Context, svc model.Service) error 
 	if updatedAt.IsZero() {
 		updatedAt = now
 	}
-	if err := r.q(ctx).InsertService(ctx, servicesqlc.InsertServiceParams{ID: svc.Id, ApplicationID: svc.ApplicationId, InstanceKey: svc.InstanceKey, Code: svc.Code, VersionID: svc.VersionId, Status: svc.Status, CreatedAt: createdAt, UpdatedAt: updatedAt}); err != nil {
+	if err := r.q(ctx).InsertService(ctx, servicesqlc.InsertServiceParams{Id: svc.Id, ProjectId: projectId, ApplicationId: svc.ApplicationId, Code: svc.Code, VersionId: svc.VersionId, Status: svc.Status, CreatedAt: createdAt, UpdatedAt: updatedAt}); err != nil {
 		return fmt.Errorf("create service for application %s: %w", svc.ApplicationId, err)
 	}
 	return nil
 }
 
-func (r Repository) replaceServiceComponents(ctx context.Context, svc model.Service, components []model.ServiceComponent) error {
+func (r Repository) replaceServiceComponents(ctx context.Context, projectId string, svc model.Service, components []model.ServiceComponent) error {
 	q := r.q(ctx)
-	if err := q.DeleteServiceComponents(ctx, svc.Id); err != nil {
+	if err := q.DeleteServiceComponents(ctx, servicesqlc.DeleteServiceComponentsParams{ServiceId: svc.Id, ProjectId: projectId}); err != nil {
 		return fmt.Errorf("delete service components %s: %w", svc.Id, err)
 	}
 	for _, component := range components {
 		if component.ServiceId == "" {
 			component.ServiceId = svc.Id
 		}
-		if err := insertServiceComponent(ctx, q, component); err != nil {
+		if err := insertServiceComponent(ctx, q, projectId, component); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (r Repository) serviceComponentFromRow(ctx context.Context, q *servicesqlc.Queries, row servicesqlc.ServiceComponent) (model.ServiceComponent, error) {
+func (r Repository) serviceComponentFromRow(ctx context.Context, q *servicesqlc.Queries, projectId string, row servicesqlc.ServiceComponent) (model.ServiceComponent, error) {
 	entrypoint, err := optionalCommandFromJSON(row.EntrypointJson)
 	if err != nil {
-		return model.ServiceComponent{}, fmt.Errorf("decode service component entrypoint %s: %w", row.ID, err)
+		return model.ServiceComponent{}, fmt.Errorf("decode service component entrypoint %s: %w", row.Id, err)
 	}
 	command, err := optionalCommandFromJSON(row.CommandJson)
 	if err != nil {
-		return model.ServiceComponent{}, fmt.Errorf("decode service component command %s: %w", row.ID, err)
+		return model.ServiceComponent{}, fmt.Errorf("decode service component command %s: %w", row.Id, err)
 	}
 	component := model.ServiceComponent{
-		Id: row.ID, ServiceId: row.ServiceID, SourceVersionComponentId: row.SourceVersionComponentID, ComponentName: row.ComponentName,
+		Id: row.Id, ServiceId: row.ServiceId, SourceVersionComponentId: row.SourceVersionComponentId, ComponentName: row.ComponentName,
 		Entrypoint: entrypoint, Command: command, PullPolicy: dbmodel.StringPtr(row.PullPolicy), RestartPolicy: dbmodel.StringPtr(row.RestartPolicy),
 		Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
-	env, err := q.ServiceComponentEnvByComponent(ctx, component.Id)
+	env, err := q.ServiceComponentEnvByComponent(ctx, servicesqlc.ServiceComponentEnvByComponentParams{ServiceComponentId: component.Id, ProjectId: projectId})
 	if err != nil {
 		return model.ServiceComponent{}, fmt.Errorf("load service component env %s: %w", component.Id, err)
 	}
 	for _, item := range env {
 		component.Env = append(component.Env, model.ServiceComponentEnv{Key: item.EnvKey, Value: dbmodel.StringPtr(item.Value), State: model.ServiceComponentOverlayState(item.State)})
 	}
-	mounts, err := q.ServiceComponentMountsByComponent(ctx, component.Id)
+	mounts, err := q.ServiceComponentMountsByComponent(ctx, servicesqlc.ServiceComponentMountsByComponentParams{ServiceComponentId: component.Id, ProjectId: projectId})
 	if err != nil {
 		return model.ServiceComponent{}, fmt.Errorf("load service component mounts %s: %w", component.Id, err)
 	}
 	for _, item := range mounts {
 		component.Mounts = append(component.Mounts, model.ServiceComponentMount{Target: item.Target, Source: dbmodel.StringPtr(item.Source), SourceIsHostPath: dbmodel.BoolPtrFromNullInt64(item.SourceIsHostPath), State: model.ServiceComponentOverlayState(item.State)})
 	}
-	resource, err := q.ServiceComponentResourceByComponent(ctx, component.Id)
+	resource, err := q.ServiceComponentResourceByComponent(ctx, servicesqlc.ServiceComponentResourceByComponentParams{ServiceComponentId: component.Id, ProjectId: projectId})
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return model.ServiceComponent{}, fmt.Errorf("load service component resource %s: %w", component.Id, err)
 	}
 	if err == nil {
 		component.Resources = &model.ServiceComponentResources{LimitCPUs: dbmodel.StringPtr(resource.LimitCpus), LimitMemory: dbmodel.StringPtr(resource.LimitMemory), ReservationCPUs: dbmodel.StringPtr(resource.ReservationCpus), ReservationMemory: dbmodel.StringPtr(resource.ReservationMemory), State: model.ServiceComponentOverlayState(resource.State)}
 	}
-	endpoints, err := q.ServiceComponentEndpointsByComponent(ctx, component.Id)
+	endpoints, err := q.ServiceComponentEndpointsByComponent(ctx, servicesqlc.ServiceComponentEndpointsByComponentParams{ServiceComponentId: component.Id, ProjectId: projectId})
 	if err != nil {
 		return model.ServiceComponent{}, fmt.Errorf("load service component endpoints %s: %w", component.Id, err)
 	}
 	for _, item := range endpoints {
-		component.Endpoints = append(component.Endpoints, model.ServiceComponentEndpoint{Id: item.ID, Protocol: item.Protocol, ContainerPort: int(item.ContainerPort), Mode: dbmodel.StringPtr(item.Mode), BindAddress: dbmodel.StringPtr(item.BindAddress), ListenPort: dbmodel.IntPtrFromNullInt64(item.ListenPort), Entrypoint: dbmodel.StringPtr(item.Entrypoint), PathPrefix: dbmodel.StringPtr(item.PathPrefix), State: model.ServiceComponentOverlayState(item.State)})
+		component.Endpoints = append(component.Endpoints, model.ServiceComponentEndpoint{Id: item.Id, Protocol: item.Protocol, ContainerPort: int(item.ContainerPort), Mode: dbmodel.StringPtr(item.Mode), BindAddress: dbmodel.StringPtr(item.BindAddress), ListenPort: dbmodel.IntPtrFromNullInt64(item.ListenPort), Entrypoint: dbmodel.StringPtr(item.Entrypoint), PathPrefix: dbmodel.StringPtr(item.PathPrefix), State: model.ServiceComponentOverlayState(item.State)})
 	}
 	return component, nil
 }
 
-func insertServiceComponent(ctx context.Context, q *servicesqlc.Queries, component model.ServiceComponent) error {
+func insertServiceComponent(ctx context.Context, q *servicesqlc.Queries, projectId string, component model.ServiceComponent) error {
 	now := time.Now().UTC()
 	createdAt, updatedAt := component.CreatedAt, component.UpdatedAt
 	if createdAt.IsZero() {
@@ -355,13 +351,13 @@ func insertServiceComponent(ctx context.Context, q *servicesqlc.Queries, compone
 		return fmt.Errorf("encode service component command %s: %w", component.ComponentName, err)
 	}
 	if err := q.InsertServiceComponent(ctx, servicesqlc.InsertServiceComponentParams{
-		ID: component.Id, ServiceID: component.ServiceId, SourceVersionComponentID: component.SourceVersionComponentId, ComponentName: component.ComponentName,
+		Id: component.Id, ServiceId: component.ServiceId, SourceVersionComponentId: component.SourceVersionComponentId, ComponentName: component.ComponentName,
 		EntrypointJson: entrypointJSON, CommandJson: commandJSON, PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy),
-		Status: component.Status, CreatedAt: createdAt, UpdatedAt: updatedAt,
+		Status: component.Status, CreatedAt: createdAt, UpdatedAt: updatedAt, ProjectId: projectId,
 	}); err != nil {
 		return fmt.Errorf("insert service component %s: %w", component.ComponentName, err)
 	}
-	return insertServiceComponentOverlay(ctx, q, component)
+	return insertServiceComponentOverlay(ctx, q, projectId, component)
 }
 
 func optionalCommandFromJSON(value sql.NullString) ([]string, error) {
@@ -389,24 +385,24 @@ func optionalCommandJSON(command []string) (sql.NullString, error) {
 	return sql.NullString{String: string(encoded), Valid: true}, nil
 }
 
-func insertServiceComponentOverlay(ctx context.Context, q *servicesqlc.Queries, component model.ServiceComponent) error {
+func insertServiceComponentOverlay(ctx context.Context, q *servicesqlc.Queries, projectId string, component model.ServiceComponent) error {
 	for _, item := range component.Env {
-		if err := q.InsertServiceComponentEnv(ctx, servicesqlc.InsertServiceComponentEnvParams{ServiceComponentID: component.Id, EnvKey: item.Key, Value: dbmodel.NullString(item.Value), State: string(item.State)}); err != nil {
+		if err := q.InsertServiceComponentEnv(ctx, servicesqlc.InsertServiceComponentEnvParams{ServiceComponentId: component.Id, EnvKey: item.Key, Value: dbmodel.NullString(item.Value), State: string(item.State), ProjectId: projectId}); err != nil {
 			return fmt.Errorf("insert service component env: %w", err)
 		}
 	}
 	for _, item := range component.Mounts {
-		if err := q.InsertServiceComponentMount(ctx, servicesqlc.InsertServiceComponentMountParams{ID: idutil.NewId(), ServiceComponentID: component.Id, Target: item.Target, Source: dbmodel.NullString(item.Source), SourceIsHostPath: dbmodel.NullInt64FromBoolPtr(item.SourceIsHostPath), State: string(item.State)}); err != nil {
+		if err := q.InsertServiceComponentMount(ctx, servicesqlc.InsertServiceComponentMountParams{Id: idutil.NewId(), ServiceComponentId: component.Id, Target: item.Target, Source: dbmodel.NullString(item.Source), SourceIsHostPath: dbmodel.NullInt64FromBoolPtr(item.SourceIsHostPath), State: string(item.State), ProjectId: projectId}); err != nil {
 			return fmt.Errorf("insert service component mount: %w", err)
 		}
 	}
 	if item := component.Resources; item != nil {
-		if err := q.InsertServiceComponentResource(ctx, servicesqlc.InsertServiceComponentResourceParams{ServiceComponentID: component.Id, LimitCpus: dbmodel.NullString(item.LimitCPUs), LimitMemory: dbmodel.NullString(item.LimitMemory), ReservationCpus: dbmodel.NullString(item.ReservationCPUs), ReservationMemory: dbmodel.NullString(item.ReservationMemory), State: string(item.State)}); err != nil {
+		if err := q.InsertServiceComponentResource(ctx, servicesqlc.InsertServiceComponentResourceParams{ServiceComponentId: component.Id, LimitCpus: dbmodel.NullString(item.LimitCPUs), LimitMemory: dbmodel.NullString(item.LimitMemory), ReservationCpus: dbmodel.NullString(item.ReservationCPUs), ReservationMemory: dbmodel.NullString(item.ReservationMemory), State: string(item.State), ProjectId: projectId}); err != nil {
 			return fmt.Errorf("insert service component resources: %w", err)
 		}
 	}
 	for _, item := range component.Endpoints {
-		if err := q.InsertServiceComponentEndpoint(ctx, servicesqlc.InsertServiceComponentEndpointParams{ID: idutil.NewId(), ServiceComponentID: component.Id, Protocol: item.Protocol, ContainerPort: int64(item.ContainerPort), Mode: dbmodel.NullString(item.Mode), BindAddress: dbmodel.NullString(item.BindAddress), ListenPort: dbmodel.NullInt64FromIntPtr(item.ListenPort), Entrypoint: dbmodel.NullString(item.Entrypoint), PathPrefix: dbmodel.NullString(item.PathPrefix), State: string(item.State)}); err != nil {
+		if err := q.InsertServiceComponentEndpoint(ctx, servicesqlc.InsertServiceComponentEndpointParams{Id: idutil.NewId(), ServiceComponentId: component.Id, Protocol: item.Protocol, ContainerPort: int64(item.ContainerPort), Mode: dbmodel.NullString(item.Mode), BindAddress: dbmodel.NullString(item.BindAddress), ListenPort: dbmodel.NullInt64FromIntPtr(item.ListenPort), Entrypoint: dbmodel.NullString(item.Entrypoint), PathPrefix: dbmodel.NullString(item.PathPrefix), State: string(item.State), ProjectId: projectId}); err != nil {
 			return fmt.Errorf("insert service component endpoint: %w", err)
 		}
 	}
@@ -414,9 +410,9 @@ func insertServiceComponentOverlay(ctx context.Context, q *servicesqlc.Queries, 
 }
 
 func serviceFrom(row servicesqlc.Service) model.Service {
-	return model.Service{Id: row.ID, ApplicationId: row.ApplicationID, InstanceKey: row.InstanceKey, Code: row.Code, VersionId: row.VersionID, Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return model.Service{Id: row.Id, ProjectId: row.ProjectId, ApplicationId: row.ApplicationId, Code: row.Code, VersionId: row.VersionId, Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
-func serviceListFrom(id, applicationId, instanceKey, code, versionId, status string, createdAt, updatedAt time.Time, applicationName, applicationCode, applicationKind, versionLabel string) model.ServiceListItem {
-	return model.ServiceListItem{Id: id, ApplicationId: applicationId, InstanceKey: instanceKey, Code: code, VersionId: versionId, Status: status, CreatedAt: createdAt, UpdatedAt: updatedAt, ApplicationName: applicationName, ApplicationCode: applicationCode, ApplicationKind: applicationKind, VersionLabel: versionLabel}
+func serviceListFrom(id, projectId, applicationId, code, versionId, status string, createdAt, updatedAt time.Time, applicationName, applicationCode, applicationKind, versionLabel string) model.ServiceListItem {
+	return model.ServiceListItem{Id: id, ProjectId: projectId, ApplicationId: applicationId, Code: code, VersionId: versionId, Status: status, CreatedAt: createdAt, UpdatedAt: updatedAt, ApplicationName: applicationName, ApplicationCode: applicationCode, ApplicationKind: applicationKind, VersionLabel: versionLabel}
 }

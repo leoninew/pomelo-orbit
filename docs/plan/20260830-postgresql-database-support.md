@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## Basis
 
-本计划实施已接受的 [Requirement](../requirement/20260830-postgresql-database-support.md)。当前数据库边界如下：
+本计划实施已接受的 [Requirement](../intent/20260830-postgresql-database-support.md)。当前数据库边界如下：
 
 - internal/infrastructure/database 以 *sql.DB 作为连接和事务入口。
 - SQLite、MySQL 共用以 ? 为参数占位符的 SQLC 生成代码；SQLC 当前以 MySQL schema/query 生成。

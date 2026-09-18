@@ -3,9 +3,13 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/mail"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -14,6 +18,7 @@ import (
 	"github.com/spf13/viper"
 
 	security "github.com/leoninew/pomelo-orbit/internal/common/crypto"
+	"github.com/leoninew/pomelo-orbit/internal/common/workspacepath"
 )
 
 const (
@@ -26,22 +31,22 @@ func EnvConfigFile(env string) string {
 }
 
 type Config struct {
-	App         AppConfig         `mapstructure:"app" yaml:"app"`
-	Server      ServerConfig      `mapstructure:"server" yaml:"server"`
-	Logging     LoggingConfig     `mapstructure:"logging" yaml:"logging"`
-	Database    DatabaseConfig    `mapstructure:"database" yaml:"database"`
-	Workspace   WorkspaceConfig   `mapstructure:"workspace" yaml:"workspace"`
-	PipelineRun PipelineRunConfig `mapstructure:"pipeline_run" yaml:"pipeline_run"`
-	Worker      WorkerConfig      `mapstructure:"worker" yaml:"worker"`
-	Orbit       OrbitConfig       `mapstructure:"orbit" yaml:"orbit"`
-	Jwt         JwtConfig         `mapstructure:"jwt" yaml:"jwt"`
-	Traefik     TraefikConfig     `mapstructure:"traefik" yaml:"traefik"`
-	Turnstile   TurnstileConfig   `mapstructure:"turnstile" yaml:"turnstile"`
-	Settings    SettingsConfig    `mapstructure:"settings" yaml:"settings"`
-	LLM         LLMConfig         `mapstructure:"llm" yaml:"llm"`
-	MCP         MCPConfig         `mapstructure:"mcp" yaml:"mcp"`
-	EnvFilePath string            `mapstructure:"-" yaml:"-"`
-	Base        *Config           `mapstructure:"-" yaml:"-"`
+	App                   AppConfig                   `mapstructure:"app" yaml:"app"`
+	Server                ServerConfig                `mapstructure:"server" yaml:"server"`
+	Logging               LoggingConfig               `mapstructure:"logging" yaml:"logging"`
+	Database              DatabaseConfig              `mapstructure:"database" yaml:"database"`
+	Workspace             WorkspaceConfig             `mapstructure:"workspace" yaml:"workspace"`
+	PipelineRun           PipelineRunConfig           `mapstructure:"pipeline_run" yaml:"pipeline_run"`
+	Worker                WorkerConfig                `mapstructure:"worker" yaml:"worker"`
+	Orbit                 OrbitConfig                 `mapstructure:"orbit" yaml:"orbit"`
+	Jwt                   JwtConfig                   `mapstructure:"jwt" yaml:"jwt"`
+	ProjectInitialization ProjectInitializationConfig `mapstructure:"project_initialization" yaml:"project_initialization"`
+	Turnstile             TurnstileConfig             `mapstructure:"turnstile" yaml:"turnstile"`
+	Settings              SettingsConfig              `mapstructure:"settings" yaml:"settings"`
+	LLM                   LLMConfig                   `mapstructure:"llm" yaml:"llm"`
+	MCP                   MCPConfig                   `mapstructure:"mcp" yaml:"mcp"`
+	EnvFilePath           string                      `mapstructure:"-" yaml:"-"`
+	Base                  *Config                     `mapstructure:"-" yaml:"-"`
 }
 
 type AppConfig struct {
@@ -60,11 +65,12 @@ type ServerConfig struct {
 }
 
 type LoggingConfig struct {
-	Level      string        `mapstructure:"level" yaml:"level"`
-	File       string        `mapstructure:"file" yaml:"file"`
-	MaxSizeMB  int           `mapstructure:"max_size_mb" yaml:"max_size_mb"`
-	MaxBackups int           `mapstructure:"max_backups" yaml:"max_backups"`
-	HTTP       LogHTTPConfig `mapstructure:"http" yaml:"http"`
+	Level          string        `mapstructure:"level" yaml:"level"`
+	File           string        `mapstructure:"file" yaml:"file"`
+	DeploymentRoot string        `mapstructure:"deployment_root" yaml:"deployment_root"`
+	MaxSizeMB      int           `mapstructure:"max_size_mb" yaml:"max_size_mb"`
+	MaxBackups     int           `mapstructure:"max_backups" yaml:"max_backups"`
+	HTTP           LogHTTPConfig `mapstructure:"http" yaml:"http"`
 }
 
 type LogHTTPConfig struct {
@@ -99,12 +105,11 @@ type PostgresConfig struct {
 	Dsn string `mapstructure:"dsn" yaml:"dsn"`
 }
 
-// WorkspaceConfig contains Orbit-managed runtime workspace roots. Relative
-// values resolve against orbit.root; absolute values may be outside orbit.root.
-// Both are normalized once to absolute Orbit-visible paths during config loading.
+// WorkspaceConfig contains the Orbit workspace root. Relative values resolve
+// against orbit.root; absolute values may be outside orbit.root. The runtime
+// derives pipeline and deployment child directories from this single root.
 type WorkspaceConfig struct {
-	Pipeline   string `mapstructure:"pipeline" yaml:"pipeline"`
-	Deployment string `mapstructure:"deployment" yaml:"deployment"`
+	Root string `mapstructure:"root" yaml:"root"`
 }
 
 type WorkerConfig struct {
@@ -127,17 +132,35 @@ type JwtConfig struct {
 	SecretKey string `mapstructure:"secret_key" yaml:"secret_key"`
 }
 
-// TraefikConfig is process-level gateway infrastructure only: paths, image pin,
-// environment endpoints, and deploy readiness timing. Product identity (code,
-// component name, network name) and display defaults (name, entrypoint, tls)
-// are code constants — not operator configuration.
-// Fields are normalized and validated during config Load; callers consume them as-is.
-// Per-gateway runtime fields after create live in GatewayConfig.
-type TraefikConfig struct {
-	Image            string        `mapstructure:"image" yaml:"image"`
-	RestApiUrl       string        `mapstructure:"rest_api_url" yaml:"rest_api_url"`
-	BaseDomain       string        `mapstructure:"base_domain" yaml:"base_domain"`
-	RestReadyTimeout time.Duration `mapstructure:"rest_ready_timeout" yaml:"rest_ready_timeout"`
+// ProjectInitializationConfig supplies Wizard form defaults only. Runtime
+// Environment, GatewayConfig, and Gateway Version / Component values never
+// fall back to this process configuration after persistence. Home paths
+// (~ and ~/...) are kept as written and expanded only when local runtime uses them.
+type ProjectInitializationConfig struct {
+	Environment ProjectInitializationEnvironmentConfig `mapstructure:"environment" yaml:"environment"`
+	Gateway     ProjectInitializationGatewayConfig     `mapstructure:"gateway" yaml:"gateway"`
+}
+
+type ProjectInitializationEnvironmentConfig struct {
+	LocalWorkspaceRoot string `mapstructure:"local_workspace_root" yaml:"local_workspace_root"`
+}
+
+type ProjectInitializationGatewayConfig struct {
+	Image             string        `mapstructure:"image" yaml:"image"`
+	RestApiUrl        string        `mapstructure:"rest_api_url" yaml:"rest_api_url"`
+	RestApiHostUrl    string        `mapstructure:"rest_api_host_url" yaml:"rest_api_host_url"`
+	BaseDomain        string        `mapstructure:"base_domain" yaml:"base_domain"`
+	RestReadyTimeout  time.Duration `mapstructure:"rest_ready_timeout" yaml:"rest_ready_timeout"`
+	DefaultEntrypoint string        `mapstructure:"default_entrypoint" yaml:"default_entrypoint"`
+	TLSMode           string        `mapstructure:"tls_mode" yaml:"tls_mode"`
+	AcmeProfile       string        `mapstructure:"acme_profile" yaml:"acme_profile"`
+	AcmeEmail         string        `mapstructure:"acme_email" yaml:"acme_email"`
+	DNSApiToken       string        `mapstructure:"dns_api_token" yaml:"dns_api_token"`
+}
+
+func (c ProjectInitializationGatewayConfig) RestReadyTimeoutSeconds() int {
+	seconds := int(c.RestReadyTimeout / time.Second)
+	return seconds
 }
 
 type TurnstileConfig struct {
@@ -195,10 +218,15 @@ func Load() (Config, error) {
 
 	normalizeServerRuntimeOriginConfig(&cfg.Server)
 	normalizeLogHTTPConfig(&cfg.Logging.HTTP)
+	if err := normalizeLoggingConfig(&cfg.Logging, cfg.OrbitRoot()); err != nil {
+		return Config{}, err
+	}
 	if err := normalizeWorkspaceConfig(&cfg.Workspace, cfg.OrbitRoot()); err != nil {
 		return Config{}, err
 	}
-	normalizeTraefikConfig(&cfg.Traefik)
+	if err := normalizeProjectInitializationConfig(&cfg.ProjectInitialization); err != nil {
+		return Config{}, err
+	}
 	if cfg.Worker.Id == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -239,7 +267,13 @@ func loadBaseConfig(envName string) (Config, error) {
 	}
 	normalizeServerRuntimeOriginConfig(&base.Server)
 	normalizeLogHTTPConfig(&base.Logging.HTTP)
+	if err := normalizeLoggingConfig(&base.Logging, base.OrbitRoot()); err != nil {
+		return Config{}, err
+	}
 	if err := normalizeWorkspaceConfig(&base.Workspace, base.OrbitRoot()); err != nil {
+		return Config{}, err
+	}
+	if err := normalizeProjectInitializationConfig(&base.ProjectInitialization); err != nil {
 		return Config{}, err
 	}
 	return base, nil
@@ -301,6 +335,7 @@ func bindEnv(loader *viper.Viper) {
 		"server.public_url",
 		"logging.level",
 		"logging.file",
+		"logging.deployment_root",
 		"logging.max_size_mb",
 		"logging.max_backups",
 		"logging.http.enabled",
@@ -311,15 +346,20 @@ func bindEnv(loader *viper.Viper) {
 		"database.sqlite.path",
 		"database.mysql.dsn",
 		"database.postgres.dsn",
-		"workspace.pipeline",
-		"workspace.deployment",
+		"workspace.root",
 		"pipeline_run.execution_timeout",
 		"orbit.root",
 		"jwt.secret_key",
-		"traefik.image",
-		"traefik.rest_api_url",
-		"traefik.base_domain",
-		"traefik.rest_ready_timeout",
+		"project_initialization.environment.local_workspace_root",
+		"project_initialization.gateway.image",
+		"project_initialization.gateway.rest_api_url",
+		"project_initialization.gateway.base_domain",
+		"project_initialization.gateway.rest_ready_timeout",
+		"project_initialization.gateway.default_entrypoint",
+		"project_initialization.gateway.tls_mode",
+		"project_initialization.gateway.acme_profile",
+		"project_initialization.gateway.acme_email",
+		"project_initialization.gateway.dns_api_token",
 		"turnstile.enabled",
 		"turnstile.site_key",
 		"turnstile.secret_key",
@@ -366,6 +406,9 @@ func (c Config) Validate() error {
 	if strings.TrimSpace(c.Logging.File) == "" {
 		return errors.New("logging.file is required")
 	}
+	if strings.TrimSpace(c.Logging.DeploymentRoot) == "" {
+		return errors.New("logging.deployment_root is required")
+	}
 	if c.Logging.MaxSizeMB <= 0 {
 		return errors.New("logging.max_size_mb must be positive")
 	}
@@ -410,53 +453,126 @@ func (c Config) Validate() error {
 	if err := validateLLMConfig(c.LLM); err != nil {
 		return err
 	}
-	if err := validateTraefikConfig(c.Traefik); err != nil {
+	if err := validateProjectInitializationConfig(c.ProjectInitialization); err != nil {
 		return err
 	}
 	return nil
 }
 
-// normalizeTraefikConfig trims and canonicalizes load-time values so runtime
-// code can read TraefikConfig fields without further config-stage work.
-func normalizeTraefikConfig(cfg *TraefikConfig) {
-	cfg.Image = strings.TrimSpace(cfg.Image)
-	cfg.RestApiUrl = strings.TrimRight(strings.TrimSpace(cfg.RestApiUrl), "/")
-	cfg.BaseDomain = strings.ToLower(strings.TrimSpace(cfg.BaseDomain))
+var windowsInitializationWorkspacePattern = regexp.MustCompile(`^[A-Za-z]:\\`)
+
+func normalizeProjectInitializationConfig(cfg *ProjectInitializationConfig) error {
+	workspaceRoot, err := normalizeInitializationWorkspaceRoot(cfg.Environment.LocalWorkspaceRoot)
+	if err != nil {
+		return fmt.Errorf("project_initialization.environment.local_workspace_root: %w", err)
+	}
+	cfg.Environment.LocalWorkspaceRoot = workspaceRoot
+	cfg.Gateway.Image = strings.TrimSpace(cfg.Gateway.Image)
+	cfg.Gateway.RestApiUrl = strings.TrimRight(strings.TrimSpace(cfg.Gateway.RestApiUrl), "/")
+	cfg.Gateway.RestApiHostUrl = strings.TrimRight(strings.TrimSpace(cfg.Gateway.RestApiHostUrl), "/")
+	cfg.Gateway.BaseDomain = strings.ToLower(strings.TrimSpace(cfg.Gateway.BaseDomain))
+	cfg.Gateway.DefaultEntrypoint = strings.TrimSpace(cfg.Gateway.DefaultEntrypoint)
+	cfg.Gateway.TLSMode = strings.ToLower(strings.TrimSpace(cfg.Gateway.TLSMode))
+	cfg.Gateway.AcmeProfile = strings.TrimSpace(cfg.Gateway.AcmeProfile)
+	cfg.Gateway.AcmeEmail = strings.TrimSpace(cfg.Gateway.AcmeEmail)
+	cfg.Gateway.DNSApiToken = strings.TrimSpace(cfg.Gateway.DNSApiToken)
+	return nil
 }
 
-func validateTraefikConfig(cfg TraefikConfig) error {
-	if cfg.Image == "" {
-		return errors.New("traefik.image is required")
+func normalizeInitializationWorkspaceRoot(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", errors.New("is required")
 	}
-	if cfg.RestApiUrl == "" {
-		return errors.New("traefik.rest_api_url is required")
+	if strings.ContainsAny(value, "\r\n") {
+		return "", errors.New("must not contain newlines")
 	}
-	if err := validateHTTPUrl("traefik.rest_api_url", cfg.RestApiUrl, false); err != nil {
+	if workspacepath.IsHomeWorkspaceRoot(value) {
+		return value, nil
+	}
+	if !filepath.IsAbs(value) {
+		return "", errors.New("must be an absolute path or a ~ / ~/... home path")
+	}
+	return filepath.Clean(value), nil
+}
+
+func validateProjectInitializationConfig(cfg ProjectInitializationConfig) error {
+	if !validInitializationLocalWorkspaceRoot(cfg.Environment.LocalWorkspaceRoot) {
+		return errors.New("project_initialization.environment.local_workspace_root must be a ~ / ~/... home path or an absolute path for the control-plane platform")
+	}
+	if cfg.Gateway.Image == "" {
+		return errors.New("project_initialization.gateway.image is required")
+	}
+	if cfg.Gateway.RestApiUrl == "" {
+		return errors.New("project_initialization.gateway.rest_api_url is required")
+	}
+	if err := validateHTTPUrl("project_initialization.gateway.rest_api_url", cfg.Gateway.RestApiUrl, false); err != nil {
 		return err
 	}
-	if cfg.BaseDomain == "" {
-		return errors.New("traefik.base_domain is required")
+	if cfg.Gateway.RestApiHostUrl == "" {
+		return errors.New("project_initialization.gateway.rest_api_host_url is required")
 	}
-	if strings.Contains(cfg.BaseDomain, "://") || strings.Contains(cfg.BaseDomain, "/") || strings.Contains(cfg.BaseDomain, " ") {
-		return errors.New("traefik.base_domain must be a bare domain (e.g. lvh.me)")
+	if err := validateHTTPUrl("project_initialization.gateway.rest_api_host_url", cfg.Gateway.RestApiHostUrl, false); err != nil {
+		return err
 	}
-	if cfg.RestReadyTimeout <= 0 {
-		return errors.New("traefik.rest_ready_timeout must be positive")
+	if cfg.Gateway.BaseDomain == "" {
+		return errors.New("project_initialization.gateway.base_domain is required")
+	}
+	if strings.Contains(cfg.Gateway.BaseDomain, "://") || strings.Contains(cfg.Gateway.BaseDomain, "/") || strings.Contains(cfg.Gateway.BaseDomain, " ") {
+		return errors.New("project_initialization.gateway.base_domain must be a bare domain (e.g. lvh.me)")
+	}
+	if cfg.Gateway.RestReadyTimeout <= 0 {
+		return errors.New("project_initialization.gateway.rest_ready_timeout must be positive")
+	}
+	if cfg.Gateway.DefaultEntrypoint != "web" && cfg.Gateway.DefaultEntrypoint != "websecure" {
+		return errors.New("project_initialization.gateway.default_entrypoint must be web or websecure")
+	}
+	if cfg.Gateway.TLSMode != "none" && cfg.Gateway.TLSMode != "letsencrypt" && cfg.Gateway.TLSMode != "tls" {
+		return errors.New("project_initialization.gateway.tls_mode must be none, letsencrypt, or tls")
+	}
+	switch cfg.Gateway.AcmeProfile {
+	case "", "http", "dns", "http-dns":
+	default:
+		return errors.New("project_initialization.gateway.acme_profile must be empty, http, dns, or http-dns")
+	}
+	if cfg.Gateway.AcmeEmail != "" {
+		if _, err := mail.ParseAddress(cfg.Gateway.AcmeEmail); err != nil {
+			return errors.New("project_initialization.gateway.acme_email must be a valid email address")
+		}
 	}
 	return nil
+}
+
+func validInitializationLocalWorkspaceRoot(workspaceRoot string) bool {
+	if workspaceRoot == "" || strings.ContainsAny(workspaceRoot, "\r\n") {
+		return false
+	}
+	if workspacepath.IsHomeWorkspaceRoot(workspaceRoot) {
+		return true
+	}
+	switch runtime.GOOS {
+	case "windows":
+		return windowsInitializationWorkspacePattern.MatchString(workspaceRoot)
+	default:
+		return path.IsAbs(filepath.ToSlash(workspaceRoot))
+	}
 }
 
 func normalizeWorkspaceConfig(cfg *WorkspaceConfig, orbitRoot string) error {
-	pipeline, err := normalizeWorkspacePath(orbitRoot, cfg.Pipeline)
+	root, err := normalizeWorkspacePath(orbitRoot, cfg.Root)
 	if err != nil {
-		return fmt.Errorf("workspace.pipeline: %w", err)
+		return fmt.Errorf("workspace.root: %w", err)
 	}
-	deployment, err := normalizeWorkspacePath(orbitRoot, cfg.Deployment)
+	cfg.Root = root
+	return nil
+}
+
+func normalizeLoggingConfig(cfg *LoggingConfig, orbitRoot string) error {
+	deploymentRoot, err := normalizeWorkspacePath(orbitRoot, cfg.DeploymentRoot)
 	if err != nil {
-		return fmt.Errorf("workspace.deployment: %w", err)
+		return fmt.Errorf("logging.deployment_root: %w", err)
 	}
-	cfg.Pipeline = pipeline
-	cfg.Deployment = deployment
+	cfg.DeploymentRoot = deploymentRoot
 	return nil
 }
 
@@ -476,28 +592,10 @@ func normalizeWorkspacePath(orbitRoot string, value string) (string, error) {
 }
 
 func validateWorkspaceConfig(cfg WorkspaceConfig) error {
-	if cfg.Pipeline == "" {
-		return errors.New("workspace.pipeline is required")
-	}
-	if cfg.Deployment == "" {
-		return errors.New("workspace.deployment is required")
-	}
-	if workspacePathsOverlap(cfg.Pipeline, cfg.Deployment) {
-		return errors.New("workspace.pipeline and workspace.deployment must not overlap")
+	if cfg.Root == "" {
+		return errors.New("workspace.root is required")
 	}
 	return nil
-}
-
-func workspacePathsOverlap(first string, second string) bool {
-	return pathContains(first, second) || pathContains(second, first)
-}
-
-func pathContains(parent string, child string) bool {
-	relative, err := filepath.Rel(parent, child)
-	if err != nil {
-		return false
-	}
-	return relative == "." || (relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative))
 }
 
 func validateLLMConfig(cfg LLMConfig) error {

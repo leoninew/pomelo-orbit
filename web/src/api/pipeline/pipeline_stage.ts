@@ -7,24 +7,26 @@ import type {
 import request from '@/utils/request';
 
 export const pipelineStageApi = {
-  list(params: {
-    project_id: string;
-    page?: number;
-    per_page?: number;
-    search?: string;
-  }): Promise<PipelineStagePaginatedResp> {
-    return request.get('/api/pipeline-stage', { params });
+  list(
+    projectId: string,
+    params?: {
+      page?: number;
+      per_page?: number;
+      search?: string;
+    }
+  ): Promise<PipelineStagePaginatedResp> {
+    return request.get('/api/pipeline-stage', { params: { project_id: projectId, ...params } });
   },
-  get(id: string): Promise<PipelineStageResp> {
-    return request.get(`/api/pipeline-stage/${id}`);
+  get(projectId: string, id: string): Promise<PipelineStageResp> {
+    return request.get(`/api/pipeline-stage/${id}`, { params: { project_id: projectId } });
   },
-  create(data: PipelineStageCreateReq, params: { project_id: string }): Promise<PipelineStageResp> {
-    return request.post('/api/pipeline-stage', data, { params });
+  create(projectId: string, data: PipelineStageCreateReq): Promise<PipelineStageResp> {
+    return request.post('/api/pipeline-stage', data, { params: { project_id: projectId } });
   },
-  update(id: string, data: PipelineStageUpdateReq): Promise<PipelineStageResp> {
-    return request.put(`/api/pipeline-stage/${id}`, data);
+  update(projectId: string, id: string, data: PipelineStageUpdateReq): Promise<PipelineStageResp> {
+    return request.put(`/api/pipeline-stage/${id}`, data, { params: { project_id: projectId } });
   },
-  delete(id: string): Promise<void> {
-    return request.delete(`/api/pipeline-stage/${id}`);
+  delete(projectId: string, id: string): Promise<void> {
+    return request.delete(`/api/pipeline-stage/${id}`, { params: { project_id: projectId } });
   },
 };

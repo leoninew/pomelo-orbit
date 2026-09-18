@@ -21,8 +21,6 @@ type ProjectStore interface {
 	CreateProject(ctx context.Context, project model.Project, userId string) error
 	UpdateProject(ctx context.Context, project model.Project) error
 	DeprecateProject(ctx context.Context, projectId string) error
-	CountProjectRepositories(ctx context.Context, projectId string) (int, error)
-	CountProjectApplications(ctx context.Context, projectId string) (int, error)
 	ProjectMembers(ctx context.Context, projectId string) ([]model.User, error)
 	AddProjectMember(ctx context.Context, projectId string, userId string) error
 	RemoveProjectMember(ctx context.Context, projectId string, userId string) error

@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
 
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	authsvc "github.com/leoninew/pomelo-orbit/internal/application/auth/usecase"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -30,17 +31,17 @@ func New(logger *slog.Logger, service authsvc.Service) Authenticator {
 func (a Authenticator) CurrentUser(c *gin.Context) (model.User, bool) {
 	token := strings.TrimSpace(strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer "))
 	if token == "" {
-		transportresponse.WriteStatusError(c, http.StatusUnauthorized, "Not authenticated")
+		transport.WriteStatusError(c, http.StatusUnauthorized, "Not authenticated")
 		return model.User{}, false
 	}
 	authenticated, err := a.service.Authenticate(c.Request.Context(), token)
 	if err != nil {
 		if apperror.IsKind(err, apperror.KindUnauthorized) {
-			transportresponse.WriteStatusError(c, http.StatusUnauthorized, "Invalid token")
+			transport.WriteStatusError(c, http.StatusUnauthorized, "Invalid token")
 			return model.User{}, false
 		}
 		a.logger.Error("load current user failed", "error", err)
-		transportresponse.WriteError(c, apperror.Wrap(apperror.KindUnavailable, "", err))
+		transport.WriteError(c, apperror.Wrap(apperror.KindUnavailable, "", err))
 		return model.User{}, false
 	}
 	return authenticated.User, true
@@ -54,13 +55,13 @@ func (a Authenticator) RequirePermission(c *gin.Context, permission string) (Cur
 	permissions, err := a.service.UserPermissions(c.Request.Context(), user.Id)
 	if err != nil {
 		a.logger.Error("load current user permissions failed", "user_id", user.Id, "error", err)
-		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
+		transport.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return CurrentUserContext{}, false
 	}
 	if HasPermission(permissions, permission) {
 		return CurrentUserContext{User: user, Permissions: permissions}, true
 	}
-	transportresponse.WriteStatusError(c, http.StatusForbidden, "Permission denied")
+	transport.WriteStatusError(c, http.StatusForbidden, "Permission denied")
 	return CurrentUserContext{}, false
 }
 

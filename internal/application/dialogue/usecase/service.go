@@ -18,10 +18,10 @@ import (
 
 type Service interface {
 	ListConversations(context.Context, string, string) ([]dialoguedto.Conversation, error)
-	Conversation(context.Context, string, string) (dialoguedto.ConversationDetail, error)
-	CompleteTurn(context.Context, string, dialoguedto.TurnInput) (dialoguedto.TurnResult, error)
-	CompleteTurnWithProgress(context.Context, string, dialoguedto.TurnInput, func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error)
-	DeleteConversation(context.Context, string, string) error
+	Conversation(context.Context, string, string, string) (dialoguedto.ConversationDetail, error)
+	CompleteTurn(context.Context, string, string, dialoguedto.TurnInput) (dialoguedto.TurnResult, error)
+	CompleteTurnWithProgress(context.Context, string, string, dialoguedto.TurnInput, func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error)
+	DeleteConversation(context.Context, string, string, string) error
 }
 
 type service struct {
@@ -52,12 +52,12 @@ func (s service) ListConversations(ctx context.Context, userId, projectId string
 	return result, nil
 }
 
-func (s service) Conversation(ctx context.Context, userId, conversationId string) (dialoguedto.ConversationDetail, error) {
-	conversation, err := s.loadConversationForUser(ctx, userId, conversationId)
+func (s service) Conversation(ctx context.Context, userId, projectId, conversationId string) (dialoguedto.ConversationDetail, error) {
+	conversation, err := s.loadConversationForUser(ctx, userId, projectId, conversationId)
 	if err != nil {
 		return dialoguedto.ConversationDetail{}, err
 	}
-	messages, err := s.dialogue.ListDeploymentDialogueMessages(ctx, conversation.Id)
+	messages, err := s.dialogue.ListDeploymentDialogueMessages(ctx, projectId, conversation.Id)
 	if err != nil {
 		return dialoguedto.ConversationDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load deployment dialogue messages", err)
 	}
@@ -68,32 +68,32 @@ func (s service) Conversation(ctx context.Context, userId, conversationId string
 	return result, nil
 }
 
-func (s service) CompleteTurn(ctx context.Context, userId string, input dialoguedto.TurnInput) (dialoguedto.TurnResult, error) {
-	return s.completeTurn(ctx, userId, input, nil)
+func (s service) CompleteTurn(ctx context.Context, userId, projectId string, input dialoguedto.TurnInput) (dialoguedto.TurnResult, error) {
+	return s.completeTurn(ctx, userId, projectId, input, nil)
 }
 
-func (s service) CompleteTurnWithProgress(ctx context.Context, userId string, input dialoguedto.TurnInput, progress func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error) {
-	return s.completeTurn(ctx, userId, input, progress)
+func (s service) CompleteTurnWithProgress(ctx context.Context, userId, projectId string, input dialoguedto.TurnInput, progress func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error) {
+	return s.completeTurn(ctx, userId, projectId, input, progress)
 }
 
-func (s service) DeleteConversation(ctx context.Context, userId, conversationId string) error {
-	conversation, err := s.loadConversationForUser(ctx, userId, conversationId)
+func (s service) DeleteConversation(ctx context.Context, userId, projectId, conversationId string) error {
+	conversation, err := s.loadConversationForUser(ctx, userId, projectId, conversationId)
 	if err != nil {
 		return err
 	}
-	if err := s.dialogue.DeleteDeploymentDialogueConversation(ctx, conversation.Id); err != nil {
+	if err := s.dialogue.DeleteDeploymentDialogueConversation(ctx, projectId, conversation.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete deployment dialogue conversation", err)
 	}
 	return nil
 }
 
-func (s service) completeTurn(ctx context.Context, userId string, input dialoguedto.TurnInput, progress func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error) {
-	input.ProjectId = strings.TrimSpace(input.ProjectId)
+func (s service) completeTurn(ctx context.Context, userId, projectId string, input dialoguedto.TurnInput, progress func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error) {
+	projectId = strings.TrimSpace(projectId)
 	input.ConversationId = strings.TrimSpace(input.ConversationId)
-	if input.ProjectId == "" {
+	if projectId == "" {
 		return dialoguedto.TurnResult{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	if err := s.ensureProjectMembership(ctx, input.ProjectId, userId); err != nil {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return dialoguedto.TurnResult{}, err
 	}
 	if len(input.Messages) == 0 {
@@ -101,18 +101,12 @@ func (s service) completeTurn(ctx context.Context, userId string, input dialogue
 	}
 	var conversation model.DeploymentDialogueConversation
 	if input.ConversationId != "" {
-		loaded, err := s.dialogue.DeploymentDialogueConversation(ctx, input.ConversationId)
+		loaded, err := s.dialogue.DeploymentDialogueConversation(ctx, projectId, input.ConversationId)
 		switch {
 		case err == nil:
-			if err := s.ensureProjectMembership(ctx, loaded.ProjectId, userId); err != nil {
-				return dialoguedto.TurnResult{}, err
-			}
-			if loaded.ProjectId != input.ProjectId {
-				return dialoguedto.TurnResult{}, apperror.New(apperror.KindNotFound, "Deployment dialogue conversation not found")
-			}
 			conversation = loaded
 		case errors.Is(err, repository.ErrNotFound):
-			// A client-created ID lets the stream client continue the new conversation
+			// A client-created Id lets the stream client continue the new conversation
 			// without adding persistence data to the established SSE complete event.
 			conversation.Id = input.ConversationId
 		default:
@@ -134,7 +128,7 @@ func (s service) completeTurn(ctx context.Context, userId string, input dialogue
 		)
 	}
 
-	mcpClient, err := s.mcpFactory.Connect(ctx, userId)
+	mcpClient, err := s.mcpFactory.Connect(ctx, userId, projectId)
 	if err != nil {
 		return dialoguedto.TurnResult{}, apperror.Wrap(apperror.KindUnavailable, "Deployment dialogue MCP is unavailable", err)
 	}
@@ -162,7 +156,7 @@ func (s service) completeTurn(ctx context.Context, userId string, input dialogue
 				return partialTurnResult(result, apperror.New(apperror.KindUnavailable, "Deployment dialogue returned an empty response"))
 			}
 			result.Message = message
-			conversation, err = s.persistTurn(ctx, userId, input.ProjectId, conversation, input.Messages[len(input.Messages)-1].Content, message)
+			conversation, err = s.persistTurn(ctx, userId, projectId, conversation, input.Messages[len(input.Messages)-1].Content, message)
 			if err != nil {
 				return dialoguedto.TurnResult{}, err
 			}
@@ -231,13 +225,13 @@ func (s service) persistTurn(ctx context.Context, userId, projectId string, conv
 				return err
 			}
 		}
-		if err := s.dialogue.CreateDeploymentDialogueMessage(txCtx, userMessage); err != nil {
+		if err := s.dialogue.CreateDeploymentDialogueMessage(txCtx, projectId, userMessage); err != nil {
 			return err
 		}
-		if err := s.dialogue.CreateDeploymentDialogueMessage(txCtx, assistantMessage); err != nil {
+		if err := s.dialogue.CreateDeploymentDialogueMessage(txCtx, projectId, assistantMessage); err != nil {
 			return err
 		}
-		if err := s.dialogue.TouchDeploymentDialogueConversation(txCtx, conversation.Id, assistantMessage.CreatedAt); err != nil {
+		if err := s.dialogue.TouchDeploymentDialogueConversation(txCtx, projectId, conversation.Id, assistantMessage.CreatedAt); err != nil {
 			return err
 		}
 		return nil
@@ -248,16 +242,17 @@ func (s service) persistTurn(ctx context.Context, userId, projectId string, conv
 	return conversation, nil
 }
 
-func (s service) loadConversationForUser(ctx context.Context, userId, conversationId string) (model.DeploymentDialogueConversation, error) {
-	conversation, err := s.dialogue.DeploymentDialogueConversation(ctx, strings.TrimSpace(conversationId))
+func (s service) loadConversationForUser(ctx context.Context, userId, projectId, conversationId string) (model.DeploymentDialogueConversation, error) {
+	projectId = strings.TrimSpace(projectId)
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.DeploymentDialogueConversation{}, err
+	}
+	conversation, err := s.dialogue.DeploymentDialogueConversation(ctx, projectId, strings.TrimSpace(conversationId))
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.DeploymentDialogueConversation{}, apperror.New(apperror.KindNotFound, "Deployment dialogue conversation not found")
 		}
 		return model.DeploymentDialogueConversation{}, apperror.Wrap(apperror.KindInternal, "Failed to load deployment dialogue conversation", err)
-	}
-	if err := s.ensureProjectMembership(ctx, conversation.ProjectId, userId); err != nil {
-		return model.DeploymentDialogueConversation{}, err
 	}
 	return conversation, nil
 }
@@ -304,7 +299,7 @@ func notifyProgress(progress func(dialoguedto.StreamEvent), event dialoguedto.St
 func dialogueMessages(input dialoguedto.TurnInput) ([]port.Message, error) {
 	messages := []port.Message{{
 		Role:    "system",
-		Content: "You are the Pomelo Orbit continuous deployment assistant. Use the supplied MCP tools as the authoritative source for deployment state and as the only way to change applications, versions, services, gateways, deployments, and managed runtime state. Treat the user's configuration as target state: inspect the relevant resource first, compare concrete fields, make the minimal necessary write when it differs, then read it back before deployment. Component collection writes replace the entire collection. To deploy a different Version, first update the Service binding with orbit_update_service_basic, preserving its instance key. orbit_deploy always uses the Service's saved Version. After a Version Component write call orbit_get_version for that version. After a Service write or creation call orbit_preview_service for that service before orbit_deploy. Create no more than one orbit_deploy for a Service in this user turn, and call orbit_wait_deployment for every Deployment you create before the final answer. Explain completed operations, terminal deployment status, and concrete identifiers. The active project_id is " + input.ProjectId + ".",
+		Content: "You are the Pomelo Orbit continuous deployment assistant. Use the supplied MCP tools as the authoritative source for deployment state and as the only way to change applications, versions, services, gateways, deployments, and managed runtime state. Treat the user's configuration as target state: inspect the relevant resource first, compare concrete fields, make the minimal necessary write when it differs, then read it back before deployment. Component collection writes replace the entire collection. To deploy a different Version, first update the Service binding with orbit_update_service_basic, preserving its instance key. orbit_deploy always uses the Service's saved Version. After a Version Component write call orbit_get_version for that version. After a Service write or creation call orbit_preview_service for that service before orbit_deploy. Create no more than one orbit_deploy for a Service in this user turn, and call orbit_wait_deployment for every Deployment you create before the final answer. Explain completed operations, terminal deployment status, and concrete identifiers. This dialogue is already scoped to the current Project; do not pass project_id to tools.",
 	}}
 	for _, message := range input.Messages {
 		role := strings.TrimSpace(message.Role)

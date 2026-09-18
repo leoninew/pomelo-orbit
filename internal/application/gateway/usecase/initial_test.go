@@ -2,20 +2,12 @@ package gatewaysvc
 
 import (
 	"testing"
-	"time"
 
-	"github.com/leoninew/pomelo-orbit/internal/config"
 	"gopkg.in/yaml.v3"
 )
 
-func testGatewayConfig() config.Config {
-	return config.Config{Traefik: config.TraefikConfig{
-		Image: "traefik:3.6", RestApiUrl: "http://localhost:8080", BaseDomain: "example.test", RestReadyTimeout: 20 * time.Second,
-	}}
-}
-
 func TestBuildInitialGatewayVersionsDeclareStaticTopology(t *testing.T) {
-	versions := buildInitialGatewayVersions("gateway-1", "traefik:3.6", "missing", "traefik")
+	versions := buildInitialGatewayVersions("gateway-1", "traefik:3.6", "missing", "traefik", "traefik")
 	if len(versions) != 4 {
 		t.Fatalf("initial versions = %#v", versions)
 	}
@@ -41,6 +33,11 @@ func TestInitialGatewayProfileStaticConfigsAreValidYAML(t *testing.T) {
 	for _, role := range []string{gatewayVersionProfileHTTP, gatewayVersionProfileDNS, gatewayVersionProfileBoth} {
 		t.Run(role, func(t *testing.T) {
 			var document struct {
+				Providers struct {
+					Docker struct {
+						Network string `yaml:"network"`
+					} `yaml:"docker"`
+				} `yaml:"providers"`
 				CertificatesResolvers map[string]struct {
 					ACME struct {
 						DNSChallenge struct {
@@ -53,8 +50,11 @@ func TestInitialGatewayProfileStaticConfigsAreValidYAML(t *testing.T) {
 					} `yaml:"acme"`
 				} `yaml:"certificatesResolvers"`
 			}
-			if err := yaml.Unmarshal([]byte(initialTraefikStaticConfig(role)), &document); err != nil {
+			if err := yaml.Unmarshal([]byte(initialTraefikStaticConfig(role, "traefik")), &document); err != nil {
 				t.Fatalf("parse static config: %v", err)
+			}
+			if document.Providers.Docker.Network != "traefik" {
+				t.Fatalf("Docker provider network = %q", document.Providers.Docker.Network)
 			}
 			if role == gatewayVersionProfileHTTP {
 				return

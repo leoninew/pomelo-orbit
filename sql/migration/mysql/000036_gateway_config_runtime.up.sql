@@ -11,7 +11,5 @@ CREATE TABLE gateway_acme_profile_version (
     version_id VARCHAR(26) NOT NULL,
     PRIMARY KEY (application_id, profile),
     UNIQUE (application_id, version_id),
-    CONSTRAINT chk_gateway_acme_profile_version_profile CHECK (profile IN ('base', 'http', 'dns', 'http-dns')),
-    FOREIGN KEY (application_id) REFERENCES gateway_config(application_id) ON DELETE CASCADE,
-    FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE
+    CONSTRAINT chk_gateway_acme_profile_version_profile CHECK (profile IN ('base', 'http', 'dns', 'http-dns'))
 );

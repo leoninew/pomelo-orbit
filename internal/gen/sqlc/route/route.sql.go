@@ -22,13 +22,13 @@ WHERE project_id = ?
 `
 
 type CountRoutesParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountRoutes(ctx context.Context, arg CountRoutesParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countRoutes,
-		arg.ProjectID,
+		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -45,15 +45,15 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRouteParams struct {
-	ID                    string         `db:"id"`
-	ProjectID             sql.NullString `db:"project_id"`
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
 	Name                  string         `db:"name"`
 	Protocol              string         `db:"protocol"`
 	Domain                string         `db:"domain"`
 	PathPrefix            string         `db:"path_prefix"`
 	TargetUrl             string         `db:"target_url"`
 	ListenPort            sql.NullInt64  `db:"listen_port"`
-	ServiceID             sql.NullString `db:"service_id"`
+	ServiceId             sql.NullString `db:"service_id"`
 	ComponentName         sql.NullString `db:"component_name"`
 	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
 	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
@@ -69,15 +69,15 @@ type CreateRouteParams struct {
 
 func (q *Queries) CreateRoute(ctx context.Context, arg CreateRouteParams) error {
 	_, err := q.db.ExecContext(ctx, createRoute,
-		arg.ID,
-		arg.ProjectID,
+		arg.Id,
+		arg.ProjectId,
 		arg.Name,
 		arg.Protocol,
 		arg.Domain,
 		arg.PathPrefix,
 		arg.TargetUrl,
 		arg.ListenPort,
-		arg.ServiceID,
+		arg.ServiceId,
 		arg.ComponentName,
 		arg.EndpointProtocol,
 		arg.EndpointContainerPort,
@@ -96,10 +96,16 @@ func (q *Queries) CreateRoute(ctx context.Context, arg CreateRouteParams) error 
 const deleteRoute = `-- name: DeleteRoute :exec
 DELETE FROM route
 WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) DeleteRoute(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteRoute, id)
+type DeleteRouteParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeleteRoute(ctx context.Context, arg DeleteRouteParams) error {
+	_, err := q.db.ExecContext(ctx, deleteRoute, arg.Id, arg.ProjectId)
 	return err
 }
 
@@ -111,15 +117,15 @@ ORDER BY id DESC
 `
 
 type ListAllRoutesRow struct {
-	ID                    string         `db:"id"`
-	ProjectID             sql.NullString `db:"project_id"`
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
 	Name                  string         `db:"name"`
 	Protocol              string         `db:"protocol"`
 	Domain                string         `db:"domain"`
 	PathPrefix            string         `db:"path_prefix"`
 	TargetUrl             string         `db:"target_url"`
 	ListenPort            sql.NullInt64  `db:"listen_port"`
-	ServiceID             sql.NullString `db:"service_id"`
+	ServiceId             sql.NullString `db:"service_id"`
 	ComponentName         sql.NullString `db:"component_name"`
 	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
 	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
@@ -143,15 +149,15 @@ func (q *Queries) ListAllRoutes(ctx context.Context, projectID sql.NullString) (
 	for rows.Next() {
 		var i ListAllRoutesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
+			&i.Id,
+			&i.ProjectId,
 			&i.Name,
 			&i.Protocol,
 			&i.Domain,
 			&i.PathPrefix,
 			&i.TargetUrl,
 			&i.ListenPort,
-			&i.ServiceID,
+			&i.ServiceId,
 			&i.ComponentName,
 			&i.EndpointProtocol,
 			&i.EndpointContainerPort,
@@ -177,23 +183,29 @@ func (q *Queries) ListAllRoutes(ctx context.Context, projectID sql.NullString) (
 	return items, nil
 }
 
-const listEnabledRoutes = `-- name: ListEnabledRoutes :many
+const listEnabledRoutesByProjectId = `-- name: ListEnabledRoutesByProjectId :many
 SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
 FROM route
-WHERE enabled = ?
+WHERE project_id = ?
+  AND enabled = ?
 ORDER BY name ASC, id ASC
 `
 
-type ListEnabledRoutesRow struct {
-	ID                    string         `db:"id"`
-	ProjectID             sql.NullString `db:"project_id"`
+type ListEnabledRoutesByProjectIdParams struct {
+	ProjectId sql.NullString `db:"project_id"`
+	Enabled   int64          `db:"enabled"`
+}
+
+type ListEnabledRoutesByProjectIdRow struct {
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
 	Name                  string         `db:"name"`
 	Protocol              string         `db:"protocol"`
 	Domain                string         `db:"domain"`
 	PathPrefix            string         `db:"path_prefix"`
 	TargetUrl             string         `db:"target_url"`
 	ListenPort            sql.NullInt64  `db:"listen_port"`
-	ServiceID             sql.NullString `db:"service_id"`
+	ServiceId             sql.NullString `db:"service_id"`
 	ComponentName         sql.NullString `db:"component_name"`
 	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
 	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
@@ -207,25 +219,25 @@ type ListEnabledRoutesRow struct {
 	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) ListEnabledRoutes(ctx context.Context, enabled int64) ([]ListEnabledRoutesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEnabledRoutes, enabled)
+func (q *Queries) ListEnabledRoutesByProjectId(ctx context.Context, arg ListEnabledRoutesByProjectIdParams) ([]ListEnabledRoutesByProjectIdRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEnabledRoutesByProjectId, arg.ProjectId, arg.Enabled)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListEnabledRoutesRow
+	var items []ListEnabledRoutesByProjectIdRow
 	for rows.Next() {
-		var i ListEnabledRoutesRow
+		var i ListEnabledRoutesByProjectIdRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
+			&i.Id,
+			&i.ProjectId,
 			&i.Name,
 			&i.Protocol,
 			&i.Domain,
 			&i.PathPrefix,
 			&i.TargetUrl,
 			&i.ListenPort,
-			&i.ServiceID,
+			&i.ServiceId,
 			&i.ComponentName,
 			&i.EndpointProtocol,
 			&i.EndpointContainerPort,
@@ -264,22 +276,22 @@ LIMIT ? OFFSET ?
 `
 
 type ListRoutesParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
+	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 	Limit         int32          `db:"limit"`
 	Offset        int32          `db:"offset"`
 }
 
 type ListRoutesRow struct {
-	ID                    string         `db:"id"`
-	ProjectID             sql.NullString `db:"project_id"`
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
 	Name                  string         `db:"name"`
 	Protocol              string         `db:"protocol"`
 	Domain                string         `db:"domain"`
 	PathPrefix            string         `db:"path_prefix"`
 	TargetUrl             string         `db:"target_url"`
 	ListenPort            sql.NullInt64  `db:"listen_port"`
-	ServiceID             sql.NullString `db:"service_id"`
+	ServiceId             sql.NullString `db:"service_id"`
 	ComponentName         sql.NullString `db:"component_name"`
 	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
 	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
@@ -295,7 +307,7 @@ type ListRoutesRow struct {
 
 func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListRoutesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRoutes,
-		arg.ProjectID,
+		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -311,15 +323,15 @@ func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListR
 	for rows.Next() {
 		var i ListRoutesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
+			&i.Id,
+			&i.ProjectId,
 			&i.Name,
 			&i.Protocol,
 			&i.Domain,
 			&i.PathPrefix,
 			&i.TargetUrl,
 			&i.ListenPort,
-			&i.ServiceID,
+			&i.ServiceId,
 			&i.ComponentName,
 			&i.EndpointProtocol,
 			&i.EndpointContainerPort,
@@ -345,22 +357,28 @@ func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListR
 	return items, nil
 }
 
-const routeByDomain = `-- name: RouteByDomain :one
+const routeById = `-- name: RouteById :one
 SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
 FROM route
-WHERE domain = ?
+WHERE id = ?
+  AND project_id = ?
 `
 
-type RouteByDomainRow struct {
-	ID                    string         `db:"id"`
-	ProjectID             sql.NullString `db:"project_id"`
+type RouteByIdParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+type RouteByIdRow struct {
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
 	Name                  string         `db:"name"`
 	Protocol              string         `db:"protocol"`
 	Domain                string         `db:"domain"`
 	PathPrefix            string         `db:"path_prefix"`
 	TargetUrl             string         `db:"target_url"`
 	ListenPort            sql.NullInt64  `db:"listen_port"`
-	ServiceID             sql.NullString `db:"service_id"`
+	ServiceId             sql.NullString `db:"service_id"`
 	ComponentName         sql.NullString `db:"component_name"`
 	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
 	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
@@ -374,19 +392,19 @@ type RouteByDomainRow struct {
 	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) RouteByDomain(ctx context.Context, domain string) (RouteByDomainRow, error) {
-	row := q.db.QueryRowContext(ctx, routeByDomain, domain)
-	var i RouteByDomainRow
+func (q *Queries) RouteById(ctx context.Context, arg RouteByIdParams) (RouteByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, routeById, arg.Id, arg.ProjectId)
+	var i RouteByIdRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
+		&i.Id,
+		&i.ProjectId,
 		&i.Name,
 		&i.Protocol,
 		&i.Domain,
 		&i.PathPrefix,
 		&i.TargetUrl,
 		&i.ListenPort,
-		&i.ServiceID,
+		&i.ServiceId,
 		&i.ComponentName,
 		&i.EndpointProtocol,
 		&i.EndpointContainerPort,
@@ -402,22 +420,28 @@ func (q *Queries) RouteByDomain(ctx context.Context, domain string) (RouteByDoma
 	return i, err
 }
 
-const routeByID = `-- name: RouteByID :one
+const routeByProjectIdAndDomain = `-- name: RouteByProjectIdAndDomain :one
 SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
 FROM route
-WHERE id = ?
+WHERE project_id = ?
+  AND domain = ?
 `
 
-type RouteByIDRow struct {
-	ID                    string         `db:"id"`
-	ProjectID             sql.NullString `db:"project_id"`
+type RouteByProjectIdAndDomainParams struct {
+	ProjectId sql.NullString `db:"project_id"`
+	Domain    string         `db:"domain"`
+}
+
+type RouteByProjectIdAndDomainRow struct {
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
 	Name                  string         `db:"name"`
 	Protocol              string         `db:"protocol"`
 	Domain                string         `db:"domain"`
 	PathPrefix            string         `db:"path_prefix"`
 	TargetUrl             string         `db:"target_url"`
 	ListenPort            sql.NullInt64  `db:"listen_port"`
-	ServiceID             sql.NullString `db:"service_id"`
+	ServiceId             sql.NullString `db:"service_id"`
 	ComponentName         sql.NullString `db:"component_name"`
 	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
 	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
@@ -431,19 +455,19 @@ type RouteByIDRow struct {
 	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) RouteByID(ctx context.Context, id string) (RouteByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, routeByID, id)
-	var i RouteByIDRow
+func (q *Queries) RouteByProjectIdAndDomain(ctx context.Context, arg RouteByProjectIdAndDomainParams) (RouteByProjectIdAndDomainRow, error) {
+	row := q.db.QueryRowContext(ctx, routeByProjectIdAndDomain, arg.ProjectId, arg.Domain)
+	var i RouteByProjectIdAndDomainRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
+		&i.Id,
+		&i.ProjectId,
 		&i.Name,
 		&i.Protocol,
 		&i.Domain,
 		&i.PathPrefix,
 		&i.TargetUrl,
 		&i.ListenPort,
-		&i.ServiceID,
+		&i.ServiceId,
 		&i.ComponentName,
 		&i.EndpointProtocol,
 		&i.EndpointContainerPort,
@@ -463,6 +487,7 @@ const updateRoute = `-- name: UpdateRoute :exec
 UPDATE route
 SET name = ?, protocol = ?, domain = ?, path_prefix = ?, target_url = ?, listen_port = ?, service_id = ?, component_name = ?, endpoint_protocol = ?, endpoint_container_port = ?, enabled = ?, https_enabled = ?, cert_pem = ?, cert_key = ?, cert_type = ?, acme_challenge = ?, updated_at = ?
 WHERE id = ?
+  AND project_id = ?
 `
 
 type UpdateRouteParams struct {
@@ -472,7 +497,7 @@ type UpdateRouteParams struct {
 	PathPrefix            string         `db:"path_prefix"`
 	TargetUrl             string         `db:"target_url"`
 	ListenPort            sql.NullInt64  `db:"listen_port"`
-	ServiceID             sql.NullString `db:"service_id"`
+	ServiceId             sql.NullString `db:"service_id"`
 	ComponentName         sql.NullString `db:"component_name"`
 	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
 	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
@@ -483,7 +508,8 @@ type UpdateRouteParams struct {
 	CertType              string         `db:"cert_type"`
 	AcmeChallenge         string         `db:"acme_challenge"`
 	UpdatedAt             time.Time      `db:"updated_at"`
-	ID                    string         `db:"id"`
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) UpdateRoute(ctx context.Context, arg UpdateRouteParams) error {
@@ -494,7 +520,7 @@ func (q *Queries) UpdateRoute(ctx context.Context, arg UpdateRouteParams) error 
 		arg.PathPrefix,
 		arg.TargetUrl,
 		arg.ListenPort,
-		arg.ServiceID,
+		arg.ServiceId,
 		arg.ComponentName,
 		arg.EndpointProtocol,
 		arg.EndpointContainerPort,
@@ -505,7 +531,8 @@ func (q *Queries) UpdateRoute(ctx context.Context, arg UpdateRouteParams) error 
 		arg.CertType,
 		arg.AcmeChallenge,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
+		arg.ProjectId,
 	)
 	return err
 }

@@ -659,7 +659,7 @@
 
     <AppDialog
       :open="basicDialogOpen"
-      :title="t('application.componentDetail.sections.basic')"
+      title="编辑组件"
       width-class="w-[min(640px,calc(100vw-32px))]"
       @update:open="setBasicDialogOpen"
     >
@@ -749,7 +749,7 @@
 
     <AppDialog
       :open="healthcheckDialogOpen"
-      :title="t('application.componentDetail.sections.healthcheck')"
+      title="编辑 Healthcheck"
       width-class="w-[min(760px,calc(100vw-32px))]"
       @update:open="setHealthcheckDialogOpen"
     >
@@ -873,7 +873,7 @@
 
     <AppDialog
       :open="resourcesDialogOpen"
-      :title="t('application.componentDetail.sections.resources')"
+      title="编辑 Resources"
       width-class="w-[min(640px,calc(100vw-32px))]"
       @update:open="setResourcesDialogOpen"
     >
@@ -1237,7 +1237,7 @@
 
     <AppDialog
       :open="mountDialogOpen"
-      :title="editingMountIndex === null ? t('common.add') : t('common.edit')"
+      :title="mountDialogTitle"
       width-class="w-[min(760px,calc(100vw-32px))]"
       body-class="space-y-4 px-6 py-4 text-sm"
       @update:open="setMountDialogOpen"
@@ -1409,6 +1409,7 @@
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import { useProjectStore } from '@/stores/project';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type {
     VersionComponentAdvancedUpdateReq,
@@ -1454,6 +1455,7 @@
   const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const versionId = route.params.versionId as string;
   const componentId = route.params.componentId as string;
   const isNew = componentId === 'new';
@@ -1512,7 +1514,7 @@
     protocol: 'http',
     host_port: '',
     container_port: '',
-    mode: 'local',
+    mode: 'internal',
     bind_address: '',
     entrypoint: '',
     path_prefix: '',
@@ -1563,6 +1565,13 @@
   const restartPolicyValues = ['no', 'on-failure', 'always', 'unless-stopped'];
   const mountSourceTypes = ['directory', 'file', 'named_volume', 'controlled_file'];
   const endpointProtocolValues = ['http', 'tcp'];
+  function selectedProjectId(): string | undefined {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error(t('application.toast.selectProjectRequired'));
+    }
+    return projectId ?? undefined;
+  }
   function endpointModeValues(protocol?: string) {
     return protocol === 'http'
       ? ['internal', 'local', 'host', 'gateway']
@@ -1586,8 +1595,27 @@
       .filter((item) => item.id !== componentId)
       .map((item) => item.name)
   );
-  const recordDialogTitle = computed(() =>
-    editingRecordIndex.value === null ? t('common.add') : t('common.edit')
+  const recordDialogItem = computed(() => {
+    switch (recordDialogGroup.value) {
+      case 'dependencies':
+        return 'Dependency';
+      case 'ports':
+        return 'Port';
+      case 'tmpfs':
+        return 'tmpfs';
+      case 'ulimits':
+        return 'Ulimit';
+      case 'devices':
+        return 'Device';
+      default:
+        return '';
+    }
+  });
+  const recordDialogTitle = computed(
+    () => `${editingRecordIndex.value === null ? '添加' : '编辑'} ${recordDialogItem.value}`
+  );
+  const mountDialogTitle = computed(() =>
+    editingMountIndex.value === null ? '添加 Mount' : '编辑 Mount'
   );
 
   function assignForm(source: ReturnType<typeof emptyComponentForm>) {
@@ -1827,16 +1855,27 @@
   }
 
   async function fetchData() {
+    const projectId = selectedProjectId();
+    if (!projectId) {
+      return;
+    }
     try {
       await execute(async () => {
-        const loadedVersion = await applicationApi.getVersion(versionId);
+        const loadedVersion = await applicationApi.getVersion(projectId, versionId);
+        if (projectStore.activeProjectId !== projectId) {
+          return;
+        }
         version.value = loadedVersion;
-        application.value = await applicationApi.get(loadedVersion.application_id);
+        application.value = await applicationApi.get(projectId, loadedVersion.application_id);
         if (isNew) {
           assignForm(emptyComponentForm());
           return;
         }
-        const loadedComponent = await applicationApi.getVersionComponent(versionId, componentId);
+        const loadedComponent = await applicationApi.getVersionComponent(
+          projectId,
+          versionId,
+          componentId
+        );
         component.value = loadedComponent;
         assignForm(componentFormFromResponse(loadedComponent));
       });
@@ -1948,9 +1987,14 @@
     payload: VersionComponentAdvancedUpdateReq,
     onSaved: () => void
   ): Promise<boolean> {
+    const projectId = selectedProjectId();
+    if (!projectId) {
+      return false;
+    }
     try {
       await executeOperation(async () => {
         const updated = await applicationApi.updateVersionComponentAdvanced(
+          projectId,
           versionId,
           componentId,
           payload
@@ -2006,9 +2050,14 @@
       form.ports = draft.ports;
       return 'saved';
     }
+    const projectId = selectedProjectId();
+    if (!projectId) {
+      return 'failed';
+    }
     try {
       await executeOperation(async () => {
         const updated = await applicationApi.updateVersionComponentEndpoints(
+          projectId,
           versionId,
           componentId,
           result.value
@@ -2032,11 +2081,20 @@
       savedEnvironmentRows.value = cloneEnvironmentVariableRows(environmentRows.value);
       return;
     }
+    const projectId = selectedProjectId();
+    if (!projectId) {
+      return;
+    }
     try {
       await executeOperation(async () => {
-        const updated = await applicationApi.updateVersionComponentEnv(versionId, componentId, {
-          env: entries,
-        });
+        const updated = await applicationApi.updateVersionComponentEnv(
+          projectId,
+          versionId,
+          componentId,
+          {
+            env: entries,
+          }
+        );
         component.value = updated;
         assignForm(componentFormFromResponse(updated));
         toast.success(t('application.toast.updateSuccess'));
@@ -2059,9 +2117,14 @@
       form.dependencies = draft.dependencies;
       return 'saved';
     }
+    const projectId = selectedProjectId();
+    if (!projectId) {
+      return 'failed';
+    }
     try {
       await executeOperation(async () => {
         const updated = await applicationApi.updateVersionComponentDependencies(
+          projectId,
           versionId,
           componentId,
           result.value
@@ -2122,9 +2185,14 @@
       form.devices = nextDevices.map((row) => ({ ...row, capabilities: [...row.capabilities] }));
       return 'saved';
     }
+    const projectId = selectedProjectId();
+    if (!projectId) {
+      return 'failed';
+    }
     try {
       await executeOperation(async () => {
         const updated = await applicationApi.updateVersionComponentDevices(
+          projectId,
           versionId,
           componentId,
           result.value
@@ -2152,7 +2220,7 @@
               protocol: 'http',
               host_port: '',
               container_port: '',
-              mode: 'local',
+              mode: 'internal',
               bind_address: '',
               entrypoint: '',
               path_prefix: '',
@@ -2333,9 +2401,14 @@
       form.mounts = draft.mounts;
       return { status: 'saved' };
     }
+    const projectId = selectedProjectId();
+    if (!projectId) {
+      return { status: 'failed', error: t('application.toast.selectProjectRequired') };
+    }
     try {
       await executeOperation(async () => {
         const updated = await applicationApi.updateVersionComponentMounts(
+          projectId,
           versionId,
           componentId,
           result.value
@@ -2483,6 +2556,10 @@
   }
 
   async function save(group?: ComponentSaveGroup) {
+    const projectId = selectedProjectId();
+    if (!projectId) {
+      return;
+    }
     if (isNew) {
       if (!validateBasicForm()) {
         return;
@@ -2495,7 +2572,11 @@
       formError.value = '';
       try {
         await executeOperation(async () => {
-          const created = await applicationApi.createVersionComponent(versionId, result.value);
+          const created = await applicationApi.createVersionComponent(
+            projectId,
+            versionId,
+            result.value
+          );
           toast.success(t('application.toast.updateSuccess'));
           await router.replace(`/version/${versionId}/component/${created.id}`);
         });
@@ -2521,6 +2602,7 @@
             return;
           }
           updated = await applicationApi.updateVersionComponentBasic(
+            projectId,
             versionId,
             componentId,
             result.value
@@ -2535,6 +2617,7 @@
             return;
           }
           updated = await applicationApi.updateVersionComponentRuntime(
+            projectId,
             versionId,
             componentId,
             result.value
@@ -2556,9 +2639,13 @@
     if (isNew) {
       return;
     }
+    const projectId = selectedProjectId();
+    if (!projectId) {
+      return;
+    }
     try {
       await executeOperation(async () => {
-        await applicationApi.deleteVersionComponent(versionId, componentId);
+        await applicationApi.deleteVersionComponent(projectId, versionId, componentId);
         toast.success(t('application.toast.updateSuccess'));
         await router.replace(`/version/${versionId}`);
       });

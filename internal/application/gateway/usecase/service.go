@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	gatewayport "github.com/leoninew/pomelo-orbit/internal/application/gateway/port"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
@@ -16,7 +18,6 @@ import (
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
-	"github.com/leoninew/pomelo-orbit/internal/config"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
@@ -25,65 +26,237 @@ var gatewayCreateCodePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
 const (
 	// Product identity for the managed gateway — not process configuration.
-	managedGatewayCode            = "traefik"
-	managedGatewayName            = "Traefik"
-	managedGatewayNetworkName     = "traefik"
-	managedGatewayComponentName   = "traefik"
-	managedGatewayImagePullPolicy = "missing"
-	managedGatewayEntrypoint      = "web"
-	managedGatewayTLSMode         = "none"
+	managedGatewayCode = "traefik"
+	managedGatewayName = "Traefik"
 
 	entrypointWeb       = "web"
 	entrypointWebSecure = "websecure"
 )
 
 type Service struct {
-	project         gatewayport.ProjectReader
-	application     gatewayport.ApplicationStore
-	config          gatewayport.ConfigStore
-	service         gatewayport.ServiceReader
-	route           repository.RouteStore
-	serviceCommands servicesvc.Service
-	transaction     gatewayport.TransactionRunner
-	traefik         config.TraefikConfig
+	project                gatewayport.ProjectReader
+	environment            gatewayport.EnvironmentStore
+	application            gatewayport.ApplicationStore
+	config                 gatewayport.ConfigStore
+	service                gatewayport.ServiceReader
+	serviceCommands        servicesvc.Service
+	transaction            gatewayport.TransactionRunner
+	applicationDefinitions applicationsvc.Service
+	serviceDefinitions     servicesvc.Service
+	definitionsConfigured  bool
+}
+
+// WithDefinitionServices connects Gateway's complete business definition to
+// the Application and Service domains that own its children.
+func (s Service) WithDefinitionServices(application applicationsvc.Service, service servicesvc.Service) Service {
+	s.applicationDefinitions = application
+	s.serviceDefinitions = service
+	s.definitionsConfigured = true
+	return s
 }
 
 func New(
 	project gatewayport.ProjectReader,
+	environment gatewayport.EnvironmentStore,
 	application gatewayport.ApplicationStore,
 	configStore gatewayport.ConfigStore,
 	service repository.ServiceStore,
-	route repository.RouteStore,
 	deployment repository.DeploymentStore,
-	cfg config.Config,
 	resolvePath gatewayport.PhysicalPathResolver,
 	transaction gatewayport.TransactionRunner,
 ) Service {
 	return Service{
-		project: project, application: application, config: configStore,
-		service:         service,
-		route:           route,
+		project: project, environment: environment, application: application, config: configStore, service: service,
 		serviceCommands: servicesvc.New(project, application, service, deployment),
 		transaction:     transaction,
-		traefik:         cfg.Traefik,
 	}
 }
 
-// CreateDefaults merges product constants with process Traefik infrastructure
-// config for create forms, MCP, and ProvisionGateway.
-func (s Service) CreateDefaults() gatewaydto.GatewayCreateDefaults {
-	return gatewaydto.GatewayCreateDefaults{
-		Code:                       managedGatewayCode,
-		Name:                       managedGatewayName,
-		TraefikComponentName:       managedGatewayComponentName,
-		RestApiUrl:                 s.traefik.RestApiUrl,
-		RestReadyTimeoutSeconds:    int(s.traefik.RestReadyTimeout.Seconds()),
-		BaseDomain:                 s.traefik.BaseDomain,
-		InitialComponentImage:      s.traefik.Image,
-		InitialComponentPullPolicy: managedGatewayImagePullPolicy,
-		DefaultEntrypoint:          managedGatewayEntrypoint,
-		TLSMode:                    managedGatewayTLSMode,
+func ManagedGatewayCode() string {
+	return managedGatewayCode
+}
+
+func ManagedGatewayName() string {
+	return managedGatewayName
+}
+
+// GatewayDefinitionForUser returns the complete managed Gateway definition.
+func (s Service) GatewayDefinitionForUser(ctx context.Context, userId, projectId, applicationId string) (gatewaydto.GatewayDefinition, error) {
+	if !s.definitionsConfigured {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindInternal, "gateway definition services are not configured")
 	}
+	view, err := s.GatewayForUser(ctx, userId, projectId, applicationId)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	application, err := s.applicationDefinitions.ApplicationDefinitionForUser(ctx, userId, projectId, view.Application.Id)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	service, err := s.serviceDefinitions.ServiceDefinitionForUser(ctx, userId, projectId, view.Service.Id)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	return gatewaydto.GatewayDefinition{Application: application, Config: view.Config, RuntimeService: service}, nil
+}
+
+// CreateGatewayFromDefinition restores a complete managed Gateway definition
+// without probing the Environment, deploying containers, or publishing
+// Traefik state.
+func (s Service) CreateGatewayFromDefinition(ctx context.Context, userId, projectId string, input gatewaydto.GatewayDefinition) (gatewaydto.GatewayDefinition, error) {
+	if !s.definitionsConfigured {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindInternal, "gateway definition services are not configured")
+	}
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	if s.environment == nil {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindInternal, "gateway environment store is not configured")
+	}
+	if strings.TrimSpace(input.Application.Application.Id) == "" {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "Gateway Application definition id is required")
+	}
+	environment, err := s.environment.EnvironmentByProject(ctx, projectId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "Project environment is required before registering a gateway")
+		}
+		return gatewaydto.GatewayDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
+	}
+	if environment.GatewayApplicationId != nil {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindConflict, "Project environment already has a gateway")
+	}
+	createdApplication, err := s.applicationDefinitions.CreateApplicationFromDefinition(ctx, userId, projectId, input.Application)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	versionIDs, componentIDs, err := definitionIDMaps(input.Application, createdApplication)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	config, err := gatewayConfigFromDefinition(input.Config, createdApplication.Application.Id, versionIDs)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	if err := s.validateGatewayVersionBindings(ctx, projectId, createdApplication.Application.Id, config.VersionBindings); err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	if err := s.config.UpsertGatewayConfig(ctx, config); err != nil {
+		return gatewaydto.GatewayDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to create gateway config", err)
+	}
+	if err := s.config.ReplaceGatewayVersionBindings(ctx, createdApplication.Application.Id, config.VersionBindings); err != nil {
+		return gatewaydto.GatewayDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to bind gateway versions", err)
+	}
+	bound, err := s.environment.BindGatewayApplication(ctx, environment.Id, createdApplication.Application.Id)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to bind gateway to project environment", err)
+	}
+	if !bound {
+		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindConflict, "Project environment already has a gateway")
+	}
+	serviceDefinition, err := targetGatewayServiceDefinition(input, createdApplication.Application.Id, versionIDs, componentIDs)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	if _, err := s.serviceDefinitions.CreateServiceFromDefinition(ctx, userId, projectId, serviceDefinition); err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	return s.GatewayDefinitionForUser(ctx, userId, projectId, createdApplication.Application.Id)
+}
+
+// RemoveGateway removes the complete saved Gateway configuration without
+// operating containers or publishing Traefik state.
+func (s Service) RemoveGateway(ctx context.Context, userId, projectId, applicationId string) error {
+	if !s.definitionsConfigured {
+		return apperror.New(apperror.KindInternal, "gateway definition services are not configured")
+	}
+	definition, err := s.GatewayDefinitionForUser(ctx, userId, projectId, applicationId)
+	if err != nil {
+		return err
+	}
+	if s.environment == nil {
+		return apperror.New(apperror.KindInternal, "gateway environment store is not configured")
+	}
+	environment, err := s.environment.EnvironmentByProject(ctx, projectId)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
+	}
+	applicationID := definition.Application.Application.Id
+	if environment.GatewayApplicationId == nil || *environment.GatewayApplicationId != applicationID {
+		return apperror.New(apperror.KindConflict, "Project environment gateway binding changed")
+	}
+	if err := s.serviceDefinitions.RemoveService(ctx, userId, projectId, definition.RuntimeService.Service.Id); err != nil {
+		return err
+	}
+	unbound, err := s.environment.UnbindGatewayApplication(ctx, environment.Id, applicationID)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to unbind gateway from project environment", err)
+	}
+	if !unbound {
+		return apperror.New(apperror.KindConflict, "Project environment gateway binding changed")
+	}
+	if err := s.config.DeleteGatewayConfig(ctx, applicationID); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to remove gateway config", err)
+	}
+	if err := s.applicationDefinitions.RemoveApplication(ctx, userId, projectId, applicationID); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to remove gateway application", err)
+	}
+	return nil
+}
+
+func definitionIDMaps(source, target applicationdto.ApplicationDefinition) (map[string]string, map[string]string, error) {
+	if len(source.Versions) != len(target.Versions) {
+		return nil, nil, apperror.New(apperror.KindValidation, "Gateway Version definition is incomplete")
+	}
+	versionIDs := make(map[string]string, len(source.Versions))
+	componentIDs := make(map[string]string)
+	for index, sourceVersion := range source.Versions {
+		sourceVersionID := strings.TrimSpace(sourceVersion.Version.Id)
+		if sourceVersionID == "" || len(sourceVersion.Components) != len(target.Versions[index].Components) {
+			return nil, nil, apperror.New(apperror.KindValidation, "Gateway Version definition is incomplete")
+		}
+		if _, exists := versionIDs[sourceVersionID]; exists {
+			return nil, nil, apperror.New(apperror.KindValidation, "Gateway Version definition has duplicate ids")
+		}
+		versionIDs[sourceVersionID] = target.Versions[index].Version.Id
+		for componentIndex, sourceComponent := range sourceVersion.Components {
+			sourceComponentID := strings.TrimSpace(sourceComponent.Id)
+			if sourceComponentID == "" {
+				return nil, nil, apperror.New(apperror.KindValidation, "Gateway Component definition id is required")
+			}
+			if _, exists := componentIDs[sourceComponentID]; exists {
+				return nil, nil, apperror.New(apperror.KindValidation, "Gateway Component definition has duplicate ids")
+			}
+			componentIDs[sourceComponentID] = target.Versions[index].Components[componentIndex].Id
+		}
+	}
+	return versionIDs, componentIDs, nil
+}
+
+func targetGatewayServiceDefinition(input gatewaydto.GatewayDefinition, applicationID string, versionIDs, componentIDs map[string]string) (servicedto.ServiceDefinition, error) {
+	definition := input.RuntimeService
+	if strings.TrimSpace(definition.Service.ApplicationId) != strings.TrimSpace(input.Application.Application.Id) {
+		return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service does not belong to the Gateway Application")
+	}
+	versionID, exists := versionIDs[strings.TrimSpace(definition.Service.VersionId)]
+	if !exists {
+		return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service Version is not part of the Gateway definition")
+	}
+	definition.Service.ApplicationId = applicationID
+	definition.Service.VersionId = versionID
+	definition.Service.Status = status.ServiceStatusStopped
+	for index := range definition.Components {
+		targetComponentID, exists := componentIDs[strings.TrimSpace(definition.Components[index].SourceVersionComponentId)]
+		if !exists {
+			return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service Component is not part of the Gateway Version")
+		}
+		definition.Components[index].SourceVersionComponentId = targetComponentID
+	}
+	return definition, nil
 }
 
 func (s Service) ListGateways(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[gatewaydto.GatewayView], error) {
@@ -94,49 +267,58 @@ func (s Service) ListGateways(ctx context.Context, userId string, projectId stri
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return repository.Page[gatewaydto.GatewayView]{}, err
 	}
-	apps, err := s.config.ListGatewayApplications(ctx, projectId)
+	if s.environment == nil {
+		return repository.Page[gatewaydto.GatewayView]{}, apperror.New(apperror.KindInternal, "gateway environment store is not configured")
+	}
+	environment, err := s.environment.EnvironmentByProject(ctx, projectId)
 	if err != nil {
-		return repository.Page[gatewaydto.GatewayView]{}, apperror.Wrap(apperror.KindInternal, "Failed to list gateways", err)
+		if errors.Is(err, repository.ErrNotFound) {
+			return repository.Page[gatewaydto.GatewayView]{Items: []gatewaydto.GatewayView{}, Page: max(page, 1), PerPage: max(perPage, 1)}, nil
+		}
+		return repository.Page[gatewaydto.GatewayView]{}, apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
+	}
+	if environment.GatewayApplicationId == nil {
+		return repository.Page[gatewaydto.GatewayView]{Items: []gatewaydto.GatewayView{}, Page: max(page, 1), PerPage: max(perPage, 1)}, nil
+	}
+	app, err := s.application.Application(ctx, projectId, *environment.GatewayApplicationId)
+	if err != nil {
+		return repository.Page[gatewaydto.GatewayView]{}, apperror.Wrap(apperror.KindInternal, "Failed to load bound gateway application", err)
 	}
 	search = strings.ToLower(strings.TrimSpace(search))
-	items := make([]gatewaydto.GatewayView, 0, len(apps))
-	for _, app := range apps {
-		if search != "" && !strings.Contains(strings.ToLower(app.Name), search) && !strings.Contains(strings.ToLower(app.Code), search) {
-			continue
-		}
-		cfg, err := s.config.GatewayConfig(ctx, app.Id)
-		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				return repository.Page[gatewaydto.GatewayView]{}, apperror.New(apperror.KindInternal, "Gateway config missing for application "+app.Id)
-			}
-			return repository.Page[gatewaydto.GatewayView]{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
-		}
-		view, err := s.gatewayView(ctx, app, cfg, false)
-		if err != nil {
-			return repository.Page[gatewaydto.GatewayView]{}, err
-		}
-		items = append(items, view)
+	if search != "" && !strings.Contains(strings.ToLower(app.Name), search) && !strings.Contains(strings.ToLower(app.Code), search) {
+		return repository.Page[gatewaydto.GatewayView]{Items: []gatewaydto.GatewayView{}, Page: max(page, 1), PerPage: max(perPage, 1)}, nil
+	}
+	cfg, err := s.config.GatewayConfig(ctx, app.Id)
+	if err != nil {
+		return repository.Page[gatewaydto.GatewayView]{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
+	}
+	view, err := s.gatewayView(ctx, projectId, app, cfg, false)
+	if err != nil {
+		return repository.Page[gatewaydto.GatewayView]{}, err
 	}
 	page = max(page, 1)
 	perPage = max(perPage, 1)
-	start := min((page-1)*perPage, len(items))
-	end := min(start+perPage, len(items))
-	return repository.Page[gatewaydto.GatewayView]{Items: items[start:end], Total: len(items), Page: page, PerPage: perPage}, nil
+	if page > 1 {
+		return repository.Page[gatewaydto.GatewayView]{Items: []gatewaydto.GatewayView{}, Total: 1, Page: page, PerPage: perPage}, nil
+	}
+	return repository.Page[gatewaydto.GatewayView]{Items: []gatewaydto.GatewayView{view}, Total: 1, Page: page, PerPage: perPage}, nil
 }
 
-func (s Service) CreateGateway(ctx context.Context, userId string, input gatewaydto.GatewayCreateInput) (gatewaydto.GatewayView, error) {
-	projectId := strings.TrimSpace(input.ProjectId)
+func (s Service) CreateGateway(ctx context.Context, userId string, projectId string, input gatewaydto.GatewayCreateInput) (gatewaydto.GatewayView, error) {
+	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
+	if s.environment == nil {
+		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "gateway environment store is not configured")
+	}
 
-	input = s.applyCreateDefaults(input)
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
-	imagePullPolicy := strings.TrimSpace(input.InitialComponentPullPolicy)
+	imagePullPolicy := model.GatewayInitialPullPolicy()
 	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !gatewayCreateCodePattern.MatchString(code) {
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "Invalid gateway fields")
 	}
@@ -144,6 +326,10 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "initial_component_pull_policy must be always, missing, or never")
 	}
 	restApiUrl, err := normalizeRestApiUrl(input.RestApiUrl)
+	if err != nil {
+		return gatewaydto.GatewayView{}, err
+	}
+	restApiHostUrl, err := normalizeRestApiHostUrl(input.RestApiHostUrl)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
@@ -155,10 +341,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	componentName, err := normalizeTraefikComponentName(input.TraefikComponentName)
-	if err != nil {
-		return gatewaydto.GatewayView{}, err
-	}
+	componentName := model.GatewayComponentName()
 	restReadyTimeoutSeconds, err := normalizeRestReadyTimeoutSeconds(input.RestReadyTimeoutSeconds)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
@@ -171,13 +354,11 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
+	if err := s.ensureApplicationNameAvailable(ctx, projectId, name); err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	if _, err := s.application.ApplicationByCode(ctx, code); err == nil {
-		return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "Application code already exists")
-	} else if !errors.Is(err, repository.ErrNotFound) {
-		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to check application code", err)
+	if err := s.ensureApplicationCodeAvailable(ctx, projectId, code); err != nil {
+		return gatewaydto.GatewayView{}, err
 	}
 
 	app := model.Application{
@@ -185,8 +366,8 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 	}
 	cfg := model.GatewayConfig{
 		ApplicationId:           app.Id,
-		TraefikComponentName:    componentName,
 		RestApiUrl:              restApiUrl,
+		RestApiHostUrl:          restApiHostUrl,
 		RestReadyTimeoutSeconds: restReadyTimeoutSeconds,
 		BaseDomain:              baseDomain,
 		DefaultEntrypoint:       policy.DefaultEntrypoint,
@@ -195,18 +376,29 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 		AcmeEmail:               acmeEmail,
 		DNSApiToken:             dnsApiToken,
 	}
-	versions := buildInitialGatewayVersions(app.Id, *image, imagePullPolicy, componentName)
-	cfg.VersionBindings = make([]model.GatewayVersionBinding, 0, len(versions))
-	for _, item := range versions {
-		cfg.VersionBindings = append(cfg.VersionBindings, model.GatewayVersionBinding{Profile: item.Role, VersionId: item.Version.Id})
-	}
 	if s.transaction == nil {
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "gateway transaction runner is not configured")
 	}
-	if s.route == nil {
-		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "gateway route store is not configured")
-	}
 	if err := s.transaction.RunInTransaction(ctx, func(txCtx context.Context) error {
+		environment, err := s.environment.EnvironmentByProject(txCtx, projectId)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return apperror.New(apperror.KindValidation, "Project environment is required before provisioning a gateway")
+			}
+			return apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
+		}
+		if !environment.HasFreshSuccessfulProbe() {
+			return apperror.New(apperror.KindValidation, "Project environment must pass probe before provisioning a gateway")
+		}
+		if environment.GatewayApplicationId != nil {
+			return apperror.New(apperror.KindConflict, "Project environment already has a gateway")
+		}
+		networkName := model.GatewayNetworkName()
+		versions := buildInitialGatewayVersions(app.Id, *image, imagePullPolicy, componentName, networkName)
+		cfg.VersionBindings = make([]model.GatewayVersionBinding, 0, len(versions))
+		for _, item := range versions {
+			cfg.VersionBindings = append(cfg.VersionBindings, model.GatewayVersionBinding{Profile: item.Role, VersionId: item.Version.Id})
+		}
 		if err := s.application.CreateApplication(txCtx, app); err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to create gateway application", err)
 		}
@@ -214,37 +406,43 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input gateway
 			return apperror.Wrap(apperror.KindInternal, "Failed to create gateway config", err)
 		}
 		for _, item := range versions {
-			if err := s.application.CreateVersion(txCtx, item.Version); err != nil {
+			if err := s.application.CreateVersion(txCtx, projectId, item.Version); err != nil {
 				return apperror.Wrap(apperror.KindInternal, "Failed to create gateway version", err)
 			}
-			if err := s.application.ReplaceVersionComponents(txCtx, item.Version.Id, []model.VersionComponent{item.Component}); err != nil {
+			if err := s.application.ReplaceVersionComponents(txCtx, projectId, item.Version.Id, []model.VersionComponent{item.Component}); err != nil {
 				return apperror.Wrap(apperror.KindInternal, "Failed to create gateway component", err)
 			}
 		}
 		if err := s.config.ReplaceGatewayVersionBindings(txCtx, app.Id, cfg.VersionBindings); err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to bind gateway versions", err)
 		}
-		if _, err := s.serviceCommands.CreateService(txCtx, userId, servicedto.ServiceCreateInput{
+		if _, err := s.serviceCommands.CreateService(txCtx, userId, projectId, servicedto.ServiceCreateInput{
 			ApplicationId: app.Id,
 			VersionId:     cfg.VersionIDForProfile(gatewayVersionRoleBase),
-			InstanceKey:   "default",
 			Code:          app.Code + "-default",
 		}); err != nil {
 			return err
 		}
-		if err := s.route.CreateRoute(txCtx, buildInitialGatewayDashboardRoute(app, cfg)); err != nil {
-			return apperror.Wrap(apperror.KindInternal, "Failed to create gateway dashboard route", err)
+		bound, err := s.environment.BindGatewayApplication(txCtx, environment.Id, app.Id)
+		if err != nil {
+			return apperror.Wrap(apperror.KindInternal, "Failed to bind gateway to project environment", err)
+		}
+		if !bound {
+			return apperror.New(apperror.KindConflict, "Project environment already has a gateway")
 		}
 		return nil
 	}); err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	return s.GatewayForUser(ctx, userId, app.Id)
+	return s.GatewayForUser(ctx, userId, projectId, app.Id)
 }
 
-func (s Service) GatewayForUser(ctx context.Context, userId string, applicationId string) (gatewaydto.GatewayView, error) {
-	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+func (s Service) GatewayForUser(ctx context.Context, userId string, projectId string, applicationId string) (gatewaydto.GatewayView, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
+		return gatewaydto.GatewayView{}, err
+	}
+	if err := s.ensureGatewayEnvironmentBinding(ctx, projectId, app); err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
 	cfg, err := s.config.GatewayConfig(ctx, app.Id)
@@ -254,37 +452,43 @@ func (s Service) GatewayForUser(ctx context.Context, userId string, applicationI
 		}
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
 	}
-	return s.gatewayView(ctx, app, cfg, true)
+	return s.gatewayView(ctx, projectId, app, cfg, true)
 }
 
-func (s Service) gatewayView(ctx context.Context, app model.Application, cfg model.GatewayConfig, includeExposures bool) (gatewaydto.GatewayView, error) {
-	services, err := s.service.ListServicesByApplication(ctx, app.Id)
+func (s Service) ensureGatewayEnvironmentBinding(ctx context.Context, projectId string, app model.Application) error {
+	if s.environment == nil {
+		return apperror.New(apperror.KindInternal, "gateway environment store is not configured")
+	}
+	environment, err := s.environment.EnvironmentByProject(ctx, projectId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return apperror.New(apperror.KindNotFound, "Gateway environment binding not found")
+		}
+		return apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
+	}
+	if environment.GatewayApplicationId == nil || *environment.GatewayApplicationId != app.Id {
+		return apperror.New(apperror.KindNotFound, "Gateway environment binding not found")
+	}
+	return nil
+}
+
+func (s Service) gatewayView(ctx context.Context, projectId string, app model.Application, cfg model.GatewayConfig, includeExposures bool) (gatewaydto.GatewayView, error) {
+	services, err := s.service.ListServicesByApplication(ctx, projectId, app.Id)
 	if err != nil {
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway services", err)
 	}
-	var defaultService *model.Service
-	for index := range services {
-		if services[index].InstanceKey != "default" {
-			continue
-		}
-		if defaultService != nil {
-			return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "Gateway has multiple default services")
-		}
-		defaultService = &services[index]
-	}
-	if defaultService == nil {
-		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "Gateway default service is missing")
+	if len(services) != 1 {
+		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "Gateway must have exactly one managed service")
 	}
 	view := gatewaydto.GatewayView{
-		Application:    app,
-		Config:         cfg,
-		DefaultService: defaultService,
-		Services:       services,
+		Application: app,
+		Config:      cfg,
+		Service:     &services[0],
 	}
 	if !includeExposures {
 		return view, nil
 	}
-	exposures, err := s.listActiveGatewayExposures(ctx, &cfg)
+	exposures, err := s.listActiveGatewayExposures(ctx, projectId, &cfg)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
@@ -292,8 +496,8 @@ func (s Service) gatewayView(ctx context.Context, app model.Application, cfg mod
 	return view, nil
 }
 
-func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId string, input gatewaydto.GatewayUpdateInput) (gatewaydto.GatewayView, error) {
-	view, err := s.GatewayForUser(ctx, userId, applicationId)
+func (s Service) UpdateGateway(ctx context.Context, userId string, projectId string, applicationId string, input gatewaydto.GatewayUpdateInput) (gatewaydto.GatewayView, error) {
+	view, err := s.GatewayForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
@@ -306,7 +510,7 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 			return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "Invalid gateway name")
 		}
 		if name != app.Name {
-			if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
+			if err := s.ensureApplicationNameAvailable(ctx, projectId, name); err != nil {
 				return gatewaydto.GatewayView{}, err
 			}
 			app.Name = name
@@ -314,7 +518,7 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 		}
 	}
 	if appDirty {
-		if err := s.application.UpdateApplication(ctx, app); err != nil {
+		if err := s.application.UpdateApplication(ctx, projectId, app); err != nil {
 			return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to update gateway application", err)
 		}
 	}
@@ -325,12 +529,12 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 		}
 		cfg.RestApiUrl = restApiUrl
 	}
-	if input.TraefikComponentName != nil {
-		componentName, err := normalizeTraefikComponentName(input.TraefikComponentName)
+	if input.RestApiHostUrl != nil {
+		restApiHostUrl, err := normalizeRestApiHostUrl(*input.RestApiHostUrl)
 		if err != nil {
 			return gatewaydto.GatewayView{}, err
 		}
-		cfg.TraefikComponentName = componentName
+		cfg.RestApiHostUrl = restApiHostUrl
 	}
 	if input.RestReadyTimeoutSeconds != nil {
 		timeout, err := normalizeRestReadyTimeoutSeconds(input.RestReadyTimeoutSeconds)
@@ -384,54 +588,28 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 	if err := s.config.UpsertGatewayConfig(ctx, cfg); err != nil {
 		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to update gateway config", err)
 	}
-	return s.GatewayForUser(ctx, userId, applicationId)
+	return s.GatewayForUser(ctx, userId, projectId, applicationId)
 }
 
-func (s Service) DeleteGateway(ctx context.Context, userId string, applicationId string) error {
-	view, err := s.GatewayForUser(ctx, userId, applicationId)
-	if err != nil {
-		return err
-	}
-	services, err := s.service.ListServicesByApplication(ctx, view.Application.Id)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to load services", err)
-	}
-	for _, service := range services {
-		if service.Status != status.ServiceStatusStopped {
-			return apperror.New(apperror.KindValidation, fmt.Sprintf("网关存在未停止的服务 %s, 请先停止后再删除", service.Code))
-		}
-	}
-	if err := s.application.DeleteApplication(ctx, view.Application.Id); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to delete application", err)
-	}
-	return nil
+func (s Service) DeleteGateway(ctx context.Context, userId string, projectId string, applicationId string) error {
+	return s.RemoveGateway(ctx, userId, projectId, applicationId)
 }
 
-// ResolveActiveGatewayConfig returns the active gateway or a user-facing validation error.
-func (s Service) ResolveActiveGatewayConfig(ctx context.Context) (*model.GatewayConfig, error) {
-	cfg, err := s.config.ResolveActiveGatewayConfig(ctx)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, apperror.New(apperror.KindValidation, "no gateway configured: create and configure a gateway first")
-		}
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to resolve gateway config", err)
+func (s Service) loadApplicationForUser(ctx context.Context, userId string, projectId string, applicationId string) (model.Application, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	return &cfg, nil
-}
-
-func (s Service) loadApplicationForUser(ctx context.Context, userId string, applicationId string) (model.Application, error) {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Application{}, err
+	}
 	applicationId = strings.TrimSpace(applicationId)
-	app, err := s.application.Application(ctx, applicationId)
+	app, err := s.application.Application(ctx, projectId, applicationId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Application{}, apperror.New(apperror.KindNotFound, "Application "+applicationId+" not found")
 		}
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
-	}
-	if app.ProjectId != nil {
-		if err := s.ensureProjectMembership(ctx, *app.ProjectId, userId); err != nil {
-			return model.Application{}, err
-		}
 	}
 	return app, nil
 }
@@ -453,8 +631,8 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectId string, 
 	return nil
 }
 
-func (s Service) ensureApplicationNameAvailable(ctx context.Context, name string) error {
-	existing, err := s.application.ApplicationByName(ctx, name)
+func (s Service) ensureApplicationNameAvailable(ctx context.Context, projectId string, name string) error {
+	existing, err := s.application.ApplicationByProjectAndName(ctx, projectId, name)
 	if err == nil {
 		return apperror.New(apperror.KindValidation, "Application '"+existing.Name+"' already exists")
 	}
@@ -464,20 +642,39 @@ func (s Service) ensureApplicationNameAvailable(ctx context.Context, name string
 	return nil
 }
 
+func (s Service) ensureApplicationCodeAvailable(ctx context.Context, projectId string, code string) error {
+	existing, err := s.application.ApplicationByProjectAndCode(ctx, projectId, code)
+	if err == nil {
+		return apperror.New(apperror.KindValidation, "Application code '"+existing.Code+"' already exists")
+	}
+	if !errors.Is(err, repository.ErrNotFound) {
+		return apperror.Wrap(apperror.KindInternal, "Failed to check application code", err)
+	}
+	return nil
+}
+
 func normalizeRestApiUrl(raw string) (string, error) {
+	return normalizeGatewayRestAPIURL(raw, "rest_api_url")
+}
+
+func normalizeRestApiHostUrl(raw string) (string, error) {
+	return normalizeGatewayRestAPIURL(raw, "rest_api_host_url")
+}
+
+func normalizeGatewayRestAPIURL(raw string, field string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return "", apperror.New(apperror.KindValidation, "rest_api_url is required")
+		return "", apperror.New(apperror.KindValidation, field+" is required")
 	}
 	if len(raw) > 512 {
-		return "", apperror.New(apperror.KindValidation, "rest_api_url is too long")
+		return "", apperror.New(apperror.KindValidation, field+" is too long")
 	}
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return "", apperror.New(apperror.KindValidation, "rest_api_url must be an absolute http(s) URL")
+		return "", apperror.New(apperror.KindValidation, field+" must be an absolute http(s) URL")
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return "", apperror.New(apperror.KindValidation, "rest_api_url must use http or https")
+		return "", apperror.New(apperror.KindValidation, field+" must use http or https")
 	}
 	return strings.TrimRight(raw, "/"), nil
 }
@@ -519,60 +716,6 @@ type gatewayIngressPolicyValues struct {
 	TLSMode           string
 }
 
-// applyCreateDefaults fills empty request fields from process Traefik defaults.
-// Config values are already normalized at load; this only completes the request DTO.
-func (s Service) applyCreateDefaults(input gatewaydto.GatewayCreateInput) gatewaydto.GatewayCreateInput {
-	defaults := s.CreateDefaults()
-	if strings.TrimSpace(input.Code) == "" {
-		input.Code = defaults.Code
-	}
-	if strings.TrimSpace(input.Name) == "" {
-		input.Name = defaults.Name
-	}
-	if input.TraefikComponentName == nil || strings.TrimSpace(*input.TraefikComponentName) == "" {
-		componentName := defaults.TraefikComponentName
-		input.TraefikComponentName = &componentName
-	}
-	if strings.TrimSpace(input.RestApiUrl) == "" {
-		input.RestApiUrl = defaults.RestApiUrl
-	}
-	if input.RestReadyTimeoutSeconds == nil || *input.RestReadyTimeoutSeconds <= 0 {
-		timeout := defaults.RestReadyTimeoutSeconds
-		input.RestReadyTimeoutSeconds = &timeout
-	}
-	if strings.TrimSpace(input.BaseDomain) == "" {
-		input.BaseDomain = defaults.BaseDomain
-	}
-	if strings.TrimSpace(input.InitialComponentPullPolicy) == "" {
-		input.InitialComponentPullPolicy = defaults.InitialComponentPullPolicy
-	}
-	if input.InitialComponentImage == nil || strings.TrimSpace(*input.InitialComponentImage) == "" {
-		image := defaults.InitialComponentImage
-		input.InitialComponentImage = &image
-	}
-	if input.DefaultEntrypoint == nil || strings.TrimSpace(*input.DefaultEntrypoint) == "" {
-		entrypoint := defaults.DefaultEntrypoint
-		input.DefaultEntrypoint = &entrypoint
-	}
-	if input.TLSMode == nil || strings.TrimSpace(*input.TLSMode) == "" {
-		tlsMode := defaults.TLSMode
-		input.TLSMode = &tlsMode
-	}
-	if input.AcmeProfile == nil {
-		profile := defaults.AcmeProfile
-		input.AcmeProfile = &profile
-	}
-	if input.AcmeEmail == nil {
-		email := defaults.AcmeEmail
-		input.AcmeEmail = &email
-	}
-	if input.DNSApiToken == nil {
-		token := defaults.DNSApiToken
-		input.DNSApiToken = &token
-	}
-	return input
-}
-
 // parseGatewayIngressPolicy validates request/persisted GatewayConfig policy fields only.
 // Process-level Traefik defaults are not consulted here.
 func parseGatewayIngressPolicy(defaultEntrypoint *string, tlsMode *string) (gatewayIngressPolicyValues, error) {
@@ -607,17 +750,6 @@ func validGatewayEntrypoint(name string) bool {
 	}
 }
 
-func normalizeTraefikComponentName(value *string) (string, error) {
-	if value == nil {
-		return "", apperror.New(apperror.KindValidation, "traefik_component_name is required")
-	}
-	name := strings.TrimSpace(*value)
-	if !gatewayCreateCodePattern.MatchString(name) || len(name) > 100 {
-		return "", apperror.New(apperror.KindValidation, "traefik_component_name is invalid")
-	}
-	return name, nil
-}
-
 func normalizeRestReadyTimeoutSeconds(value *int) (int, error) {
 	if value == nil || *value < 1 || *value > 300 {
 		return 0, apperror.New(apperror.KindValidation, "rest_ready_timeout_seconds must be between 1 and 300")
@@ -626,15 +758,12 @@ func normalizeRestReadyTimeoutSeconds(value *int) (int, error) {
 }
 
 func normalizeGatewayCertificateConfig(profileValue, emailValue, tokenValue *string, tlsMode string) (string, string, string, error) {
-	if profileValue == nil || emailValue == nil || tokenValue == nil {
-		return "", "", "", apperror.New(apperror.KindValidation, "Gateway ACME configuration is required")
-	}
-	profile := strings.ToLower(strings.TrimSpace(*profileValue))
+	profile := strings.ToLower(strings.TrimSpace(derefString(profileValue)))
 	if profile != "" && profile != "http" && profile != "dns" && profile != "http-dns" {
 		return "", "", "", apperror.New(apperror.KindValidation, "acme_profile must be http, dns, http-dns, or empty")
 	}
-	email := strings.TrimSpace(*emailValue)
-	token := strings.TrimSpace(*tokenValue)
+	email := strings.TrimSpace(derefString(emailValue))
+	token := strings.TrimSpace(derefString(tokenValue))
 	if profile != "" {
 		parsed, err := mail.ParseAddress(email)
 		if err != nil || parsed.Address != email {
@@ -655,6 +784,92 @@ func normalizeGatewayCertificateConfig(profileValue, emailValue, tokenValue *str
 		return "", "", "", apperror.New(apperror.KindValidation, "acme_profile must support HTTP-01 when tls_mode=letsencrypt")
 	}
 	return profile, email, token, nil
+}
+
+func normalizeGatewayConfig(input model.GatewayConfig, applicationId string) (model.GatewayConfig, error) {
+	restAPIURL, err := normalizeRestApiUrl(input.RestApiUrl)
+	if err != nil {
+		return model.GatewayConfig{}, err
+	}
+	restAPIHostURL, err := normalizeRestApiHostUrl(input.RestApiHostUrl)
+	if err != nil {
+		return model.GatewayConfig{}, err
+	}
+	timeout := input.RestReadyTimeoutSeconds
+	if _, err := normalizeRestReadyTimeoutSeconds(&timeout); err != nil {
+		return model.GatewayConfig{}, err
+	}
+	baseDomain, err := normalizeBaseDomain(input.BaseDomain)
+	if err != nil {
+		return model.GatewayConfig{}, err
+	}
+	defaultEntrypoint, tlsMode := strings.TrimSpace(input.DefaultEntrypoint), strings.TrimSpace(input.TLSMode)
+	policy, err := parseGatewayIngressPolicy(&defaultEntrypoint, &tlsMode)
+	if err != nil {
+		return model.GatewayConfig{}, err
+	}
+	acmeProfile, acmeEmail, dnsToken, err := normalizeGatewayCertificateConfig(&input.AcmeProfile, &input.AcmeEmail, &input.DNSApiToken, policy.TLSMode)
+	if err != nil {
+		return model.GatewayConfig{}, err
+	}
+	return model.GatewayConfig{
+		ApplicationId:           applicationId,
+		RestApiUrl:              restAPIURL,
+		RestApiHostUrl:          restAPIHostURL,
+		RestReadyTimeoutSeconds: timeout,
+		BaseDomain:              baseDomain,
+		DefaultEntrypoint:       policy.DefaultEntrypoint,
+		TLSMode:                 policy.TLSMode,
+		AcmeProfile:             acmeProfile,
+		AcmeEmail:               acmeEmail,
+		DNSApiToken:             dnsToken,
+		VersionBindings:         append([]model.GatewayVersionBinding(nil), input.VersionBindings...),
+	}, nil
+}
+
+func gatewayConfigFromDefinition(input model.GatewayConfig, applicationID string, versionIDs map[string]string) (model.GatewayConfig, error) {
+	configInput := input
+	configInput.VersionBindings = make([]model.GatewayVersionBinding, 0, len(input.VersionBindings))
+	for _, binding := range input.VersionBindings {
+		versionID, exists := versionIDs[strings.TrimSpace(binding.VersionId)]
+		if !exists {
+			return model.GatewayConfig{}, apperror.New(apperror.KindValidation, "Gateway Version binding is not part of the Gateway definition")
+		}
+		configInput.VersionBindings = append(configInput.VersionBindings, model.GatewayVersionBinding{Profile: binding.Profile, VersionId: versionID})
+	}
+	return normalizeGatewayConfig(configInput, applicationID)
+}
+
+func (s Service) validateGatewayVersionBindings(ctx context.Context, projectId string, applicationId string, bindings []model.GatewayVersionBinding) error {
+	required := map[string]struct{}{
+		gatewayVersionRoleBase: {}, gatewayVersionProfileHTTP: {}, gatewayVersionProfileDNS: {}, gatewayVersionProfileBoth: {},
+	}
+	if len(bindings) != len(required) {
+		return apperror.New(apperror.KindValidation, "Gateway requires base, http, dns, and http-dns Version bindings")
+	}
+	for _, binding := range bindings {
+		if _, known := required[binding.Profile]; !known || strings.TrimSpace(binding.VersionId) == "" {
+			return apperror.New(apperror.KindValidation, "Gateway Version bindings are invalid")
+		}
+		if _, duplicate := required[binding.Profile]; !duplicate {
+			return apperror.New(apperror.KindValidation, "Gateway Version bindings are invalid")
+		}
+		delete(required, binding.Profile)
+		version, err := s.application.Version(ctx, projectId, binding.VersionId)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return apperror.New(apperror.KindValidation, "Gateway Version binding was not found")
+			}
+			return apperror.Wrap(apperror.KindInternal, "Failed to load gateway Version binding", err)
+		}
+		if version.ApplicationId != applicationId {
+			return apperror.New(apperror.KindValidation, "Gateway Version binding does not belong to the gateway application")
+		}
+	}
+	if len(required) != 0 {
+		return apperror.New(apperror.KindValidation, "Gateway Version bindings are invalid")
+	}
+	return nil
 }
 
 func buildGatewayExposureItem(app model.Application, service model.Service, component model.EffectiveServiceComponent, endpoint model.VersionComponentEndpoint, gateway *model.GatewayConfig) (gatewaydto.GatewayExposureItem, error) {
@@ -707,14 +922,14 @@ func buildGatewayExposureItem(app model.Application, service model.Service, comp
 	}, nil
 }
 
-func (s Service) listActiveGatewayExposures(ctx context.Context, gateway *model.GatewayConfig) ([]gatewaydto.GatewayExposureItem, error) {
-	apps, err := s.application.ListApplications(ctx, nil, 1, 10000, "", status.ApplicationKindStandard)
+func (s Service) listActiveGatewayExposures(ctx context.Context, projectId string, gateway *model.GatewayConfig) ([]gatewaydto.GatewayExposureItem, error) {
+	apps, err := s.application.ListApplications(ctx, projectId, 1, 10000, "", status.ApplicationKindStandard)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list applications for exposures", err)
 	}
 	var items []gatewaydto.GatewayExposureItem
 	for _, app := range apps.Items {
-		services, err := s.service.ListServicesByApplication(ctx, app.Id)
+		services, err := s.service.ListServicesByApplication(ctx, projectId, app.Id)
 		if err != nil {
 			return nil, apperror.Wrap(apperror.KindInternal, "Failed to list services", err)
 		}
@@ -722,11 +937,11 @@ func (s Service) listActiveGatewayExposures(ctx context.Context, gateway *model.
 			if !isActiveServiceStatus(service.Status) {
 				continue
 			}
-			declarations, err := s.application.VersionComponentsByVersion(ctx, service.VersionId)
+			declarations, err := s.application.VersionComponentsByVersion(ctx, projectId, service.VersionId)
 			if err != nil {
 				return nil, apperror.Wrap(apperror.KindInternal, "Failed to list version components", err)
 			}
-			overlays, err := s.service.ServiceComponentsByService(ctx, service.Id)
+			overlays, err := s.service.ServiceComponentsByService(ctx, projectId, service.Id)
 			if err != nil {
 				return nil, apperror.Wrap(apperror.KindInternal, "Failed to list service components", err)
 			}
@@ -802,4 +1017,11 @@ func isActiveServiceStatus(value string) bool {
 	default:
 		return false
 	}
+}
+
+func derefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }

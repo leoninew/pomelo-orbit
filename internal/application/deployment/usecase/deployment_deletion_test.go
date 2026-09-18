@@ -22,13 +22,13 @@ func TestDeleteDeploymentRemovesTerminalRecordWhenLogFileIsMissing(t *testing.T)
 		service: model.Service{Id: *deployment.ServiceId, Code: "demo-default"},
 	}, workspace)
 
-	if err := service.DeleteDeployment(context.Background(), "user-1", deployment.Id); err != nil {
+	if err := service.DeleteDeployment(context.Background(), "user-1", "project-1", deployment.Id); err != nil {
 		t.Fatalf("DeleteDeployment returned error: %v", err)
 	}
 	if !store.deleted {
 		t.Fatal("deployment record was not deleted")
 	}
-	if got, want := workspace.removedLog, (workspaceRemovedLog{serviceCode: "demo-default", deploymentID: deployment.Id}); got != want {
+	if got, want := workspace.removedLog, (workspaceRemovedLog{serviceCode: "demo-default", deploymentId: deployment.Id}); got != want {
 		t.Fatalf("removed log = %#v, want %#v", got, want)
 	}
 }
@@ -41,7 +41,7 @@ func TestDeleteDeploymentRejectsActiveRecord(t *testing.T) {
 		service: model.Service{Id: *deployment.ServiceId, Code: "demo-default"},
 	}, workspace)
 
-	err := service.DeleteDeployment(context.Background(), "user-1", deployment.Id)
+	err := service.DeleteDeployment(context.Background(), "user-1", "project-1", deployment.Id)
 	if err == nil || !strings.Contains(err.Error(), "Cannot delete deployment") {
 		t.Fatalf("DeleteDeployment error = %v, want active deployment validation error", err)
 	}
@@ -62,7 +62,7 @@ func TestDeleteDeploymentKeepsRecordWhenLogRemovalFails(t *testing.T) {
 		service: model.Service{Id: *deployment.ServiceId, Code: "demo-default"},
 	}, workspace)
 
-	err := service.DeleteDeployment(context.Background(), "user-1", deployment.Id)
+	err := service.DeleteDeployment(context.Background(), "user-1", "project-1", deployment.Id)
 	if err == nil || !strings.Contains(err.Error(), "Failed to delete deployment log") {
 		t.Fatalf("DeleteDeployment error = %v, want log removal error", err)
 	}
@@ -78,7 +78,7 @@ func TestDeleteDeploymentRemovesRecordWhenAssociatedServiceIsMissing(t *testing.
 		err: repository.ErrNotFound,
 	}, testWorkspace(t.TempDir()))
 
-	if err := service.DeleteDeployment(context.Background(), "user-1", deployment.Id); err != nil {
+	if err := service.DeleteDeployment(context.Background(), "user-1", "project-1", deployment.Id); err != nil {
 		t.Fatalf("DeleteDeployment returned error: %v", err)
 	}
 	if !store.deleted {
@@ -87,12 +87,12 @@ func TestDeleteDeploymentRemovesRecordWhenAssociatedServiceIsMissing(t *testing.
 }
 
 func deploymentForDeletion(deploymentStatus string) model.Deployment {
-	projectID := "project-1"
-	serviceID := "service-1"
+	projectId := "project-1"
+	serviceId := "service-1"
 	return model.Deployment{
 		Id:        "deployment-1",
-		ProjectId: &projectID,
-		ServiceId: &serviceID,
+		ProjectId: &projectId,
+		ServiceId: &serviceId,
 		Status:    deploymentStatus,
 	}
 }
@@ -102,7 +102,7 @@ func newDeploymentDeletionService(store *deploymentDeletionStore, serviceStore *
 		project:    deploymentDeletionProjectStore{},
 		service:    serviceStore,
 		deployment: store,
-		workspace:  workspace,
+		logStore:   workspace,
 		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 }
@@ -125,7 +125,7 @@ type deploymentDeletionServiceStore struct {
 	err     error
 }
 
-func (s *deploymentDeletionServiceStore) Service(context.Context, string) (model.Service, error) {
+func (s *deploymentDeletionServiceStore) Service(context.Context, string, string) (model.Service, error) {
 	return s.service, s.err
 }
 
@@ -135,11 +135,11 @@ type deploymentDeletionStore struct {
 	deleted    bool
 }
 
-func (s *deploymentDeletionStore) Deployment(context.Context, string) (model.Deployment, error) {
+func (s *deploymentDeletionStore) Deployment(context.Context, string, string) (model.Deployment, error) {
 	return s.deployment, nil
 }
 
-func (s *deploymentDeletionStore) DeleteDeployment(context.Context, string) error {
+func (s *deploymentDeletionStore) DeleteDeployment(context.Context, string, string) error {
 	s.deleted = true
 	return nil
 }

@@ -18,14 +18,14 @@ type RouteConfigPublisher interface {
 	// WaitUntilReady blocks until the Traefik control-plane REST API accepts
 	// requests, or until ctx ends / the readiness deadline elapses. Gateway
 	// deploy uses this after compose up because process start lags the container.
-	WaitUntilReady(ctx context.Context, restApiUrl string, timeout time.Duration) error
-	ApplySnapshot(ctx context.Context, gateway model.GatewayConfig, routes []model.Route) error
+	WaitUntilReady(ctx context.Context, projectId string, gateway model.GatewayConfig, timeout time.Duration) error
+	ApplySnapshot(ctx context.Context, projectId string, gateway model.GatewayConfig, routes []model.Route) error
 }
 
 // SnapshotPublisher republishes the full enabled Route configuration after a
 // Gateway runtime has been recreated.
 type SnapshotPublisher interface {
-	PublishSnapshot(ctx context.Context) error
+	PublishSnapshot(ctx context.Context, projectId string) error
 }
 
 type RouteCertificateGenerator interface {
@@ -53,7 +53,10 @@ type TraefikService struct {
 }
 
 type TraefikRouterClient interface {
-	ListRouters(ctx context.Context, restApiUrl string) ([]TraefikRouter, error)
-	ListServices(ctx context.Context, restApiUrl string) ([]TraefikService, error)
-	IsConnectionError(err error) bool
+	ListRouters(ctx context.Context, projectId string, gateway model.GatewayConfig) ([]TraefikRouter, error)
+	ListServices(ctx context.Context, projectId string, gateway model.GatewayConfig) ([]TraefikService, error)
+	// TraefikUnavailableMessage reports the safe access context for a failed
+	// Traefik REST request. Other errors, including configuration and response
+	// decoding failures, must return ok=false.
+	TraefikUnavailableMessage(err error) (message string, ok bool)
 }

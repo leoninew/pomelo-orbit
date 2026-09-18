@@ -70,7 +70,7 @@
       />
     </div>
 
-    <AppDialog v-model:open="formOpen" title="新建阶段">
+    <AppDialog v-model:open="formOpen" title="创建阶段">
       <form class="space-y-4" @submit.prevent="save">
         <div class="space-y-1.5">
           <label class="app-field-label">
@@ -164,10 +164,11 @@
 
   async function fetchStages() {
     const projectId = projectStore.activeProjectId;
-    if (!projectId) return;
+    if (!projectId) {
+      return;
+    }
     await execute(async () => {
-      const response = await pipelineStageApi.list({
-        project_id: projectId,
+      const response = await pipelineStageApi.list(projectId, {
         search: search.value.trim() || undefined,
         page: pagination.current,
         per_page: pagination.pageSize,
@@ -208,7 +209,9 @@
       name: form.name.trim() ? '' : '请输入阶段名称',
       image: form.image.trim() ? '' : '请输入执行镜像',
     });
-    if (Object.values(errors).some(Boolean)) return;
+    if (Object.values(errors).some(Boolean)) {
+      return;
+    }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
       formError.value = '请先选择项目';
@@ -216,16 +219,13 @@
     }
     try {
       await executeOperation(async () => {
-        const stage = await pipelineStageApi.create(
-          {
-            name: form.name.trim(),
-            image: form.image.trim(),
-            script: '',
-            description: form.description,
-            artifacts: [],
-          },
-          { project_id: projectId }
-        );
+        const stage = await pipelineStageApi.create(projectId, {
+          name: form.name.trim(),
+          image: form.image.trim(),
+          script: '',
+          description: form.description,
+          artifacts: [],
+        });
         formOpen.value = false;
         toast.success('阶段已创建');
         await router.push(`/pipeline-stage/${stage.id}`);
@@ -236,10 +236,17 @@
   }
   async function remove() {
     const stage = pendingDelete.value;
-    if (!stage) return;
+    if (!stage) {
+      return;
+    }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOperation(async () => {
-        await pipelineStageApi.delete(stage.id);
+        await pipelineStageApi.delete(projectId, stage.id);
         deleteOpen.value = false;
         await fetchStages();
         toast.success('阶段已删除');

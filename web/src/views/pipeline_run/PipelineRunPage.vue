@@ -182,14 +182,15 @@
     }
     try {
       await execute(async () => {
-        const response = await pipelineRunApi.list({
-          project_id: projectId,
+        const response = await pipelineRunApi.list(projectId, {
           pipeline_id: pipelineId.value || undefined,
           page: pagination.current,
           per_page: pagination.pageSize,
         });
-        runs.value = response.items;
-        pagination.total = response.total;
+        if (projectStore.activeProjectId === projectId) {
+          runs.value = response.items;
+          pagination.total = response.total;
+        }
       });
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : '加载运行记录失败');
@@ -197,13 +198,16 @@
   }
   async function loadPipelines() {
     const projectId = projectStore.activeProjectId;
-    if (!projectId) return;
-    const response = await pipelineApi.list({
-      project_id: projectId,
+    if (!projectId) {
+      return;
+    }
+    const response = await pipelineApi.list(projectId, {
       kind: 'application',
       per_page: 100,
     });
-    pipelines.value = response.items;
+    if (projectStore.activeProjectId === projectId) {
+      pipelines.value = response.items;
+    }
   }
   function searchRuns() {
     pagination.current = 1;
@@ -235,13 +239,14 @@
   }
   async function handleDelete() {
     const run = pendingDelete.value;
-    if (!run) {
+    const projectId = projectStore.activeProjectId;
+    if (!run || !projectId) {
       return;
     }
     deleteSubmitError.value = '';
     try {
       await executeOperation(async () => {
-        await pipelineRunApi.delete(run.id);
+        await pipelineRunApi.delete(projectId, run.id);
         toast.success(t('pipelineRun.toast.deleteSuccess'));
         if (runs.value.length === 1 && pagination.current > 1) {
           pagination.current -= 1;

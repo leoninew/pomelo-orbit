@@ -72,8 +72,13 @@ export default [
       'no-debugger': 'warn',
       'prefer-const': 'warn',
       'no-var': 'error',
-      curly: ['error', 'all'],
     },
   },
   eslintConfigPrettier,
+  {
+    rules: {
+      // Require braces for every control statement, including single-line bodies.
+      curly: ['error', 'all'],
+    },
+  },
 ];

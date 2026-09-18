@@ -1,45 +1,31 @@
 package dto
 
-import "github.com/leoninew/pomelo-orbit/internal/model"
+import (
+	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+)
 
 type GatewayCreateInput struct {
-	ProjectId                  string
-	Code                       string
-	Name                       string
-	TraefikComponentName       *string
-	RestApiUrl                 string
-	RestReadyTimeoutSeconds    *int
-	BaseDomain                 string
-	InitialComponentImage      *string
-	InitialComponentPullPolicy string
-	DefaultEntrypoint          *string
-	TLSMode                    *string
-	AcmeProfile                *string
-	AcmeEmail                  *string
-	DNSApiToken                *string
-}
-
-// GatewayCreateDefaults is the process-level default set for managed gateway create.
-type GatewayCreateDefaults struct {
-	Code                       string
-	Name                       string
-	TraefikComponentName       string
-	RestApiUrl                 string
-	RestReadyTimeoutSeconds    int
-	BaseDomain                 string
-	InitialComponentImage      string
-	InitialComponentPullPolicy string
-	DefaultEntrypoint          string
-	TLSMode                    string
-	AcmeProfile                string
-	AcmeEmail                  string
-	DNSApiToken                string
+	ProjectId               string
+	Code                    string
+	Name                    string
+	RestApiUrl              string
+	RestApiHostUrl          string
+	RestReadyTimeoutSeconds *int
+	BaseDomain              string
+	InitialComponentImage   *string
+	DefaultEntrypoint       *string
+	TLSMode                 *string
+	AcmeProfile             *string
+	AcmeEmail               *string
+	DNSApiToken             *string
 }
 
 type GatewayUpdateInput struct {
 	Name                    *string
-	TraefikComponentName    *string
 	RestApiUrl              *string
+	RestApiHostUrl          *string
 	RestReadyTimeoutSeconds *int
 	BaseDomain              *string
 	DefaultEntrypoint       *string
@@ -47,6 +33,15 @@ type GatewayUpdateInput struct {
 	AcmeProfile             *string
 	AcmeEmail               *string
 	DNSApiToken             *string
+}
+
+// GatewayDefinition is the complete saved configuration of the managed
+// Gateway. It owns its Application, Versions, runtime Service, Config,
+// profile bindings, and Environment binding.
+type GatewayDefinition struct {
+	Application    applicationdto.ApplicationDefinition
+	Config         model.GatewayConfig
+	RuntimeService servicedto.ServiceDefinition
 }
 
 // GatewayExposureItem is an active local or public application exposure.
@@ -64,16 +59,14 @@ type GatewayExposureItem struct {
 }
 
 type GatewayView struct {
-	Application    model.Application
-	Config         model.GatewayConfig
-	DefaultService *model.Service
-	Services       []model.Service
-	Exposures      []GatewayExposureItem
+	Application model.Application
+	Config      model.GatewayConfig
+	Service     *model.Service
+	Exposures   []GatewayExposureItem
 }
 
 type ProvisionGatewayInput struct {
-	ProjectId   string
-	InstanceKey string
+	ProjectId string
 }
 
 type ProvisionGatewayResult struct {

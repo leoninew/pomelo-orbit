@@ -70,12 +70,6 @@
                 </router-link>
               </h2>
               <p class="truncate text-sm text-muted-foreground">{{ svc.code }}</p>
-              <p
-                v-if="svc.instance_key && svc.instance_key !== 'default'"
-                class="truncate text-sm text-muted-foreground"
-              >
-                {{ svc.instance_key }}
-              </p>
             </div>
             <AppBadge variant="status" :tone="appStatusTone(svc.status)">
               {{ svc.status }}
@@ -162,12 +156,6 @@
                 >
                   {{ svc.application_name }}
                 </router-link>
-                <span
-                  v-if="svc.instance_key && svc.instance_key !== 'default'"
-                  class="ml-2 text-xs text-muted-foreground"
-                >
-                  {{ svc.instance_key }}
-                </span>
               </td>
               <td class="text-foreground">{{ svc.code }}</td>
               <td>
@@ -314,22 +302,6 @@
           </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label mb-1.5 block">
-            {{ t('service.fields.instanceKey') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="createForm.instance_key"
-            class="app-input"
-            :class="createErrors.instance_key ? 'app-input-error' : ''"
-            :aria-invalid="createErrors.instance_key ? 'true' : undefined"
-            @input="handleCreateInstanceKeyInput"
-          />
-          <p v-if="createErrors.instance_key" class="app-field-error" role="alert">
-            {{ createErrors.instance_key }}
-          </p>
-        </div>
-        <div class="space-y-1.5">
           <label for="create-service-code" class="app-field-label mb-1.5 block">
             {{ t('service.fields.code') }}
             <span class="text-destructive">*</span>
@@ -456,17 +428,13 @@
   const createErrors = reactive({
     application_id: '',
     version_id: '',
-    instance_key: '',
     code: '',
   });
   const createForm = reactive({
     application_id: '',
     version_id: '',
-    instance_key: 'default',
     code: '',
   });
-  let createCodeIsCustomized = false;
-
   const serviceCodePattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
   const applicationSelectOptions = computed(() =>
@@ -499,14 +467,15 @@
     }
     try {
       await execute(async () => {
-        const resp = await serviceApi.list({
-          project_id: projectId,
+        const resp = await serviceApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
           search: query.search || undefined,
         });
-        services.value = resp.items ?? [];
-        pagination.total = resp.total ?? 0;
+        if (projectStore.activeProjectId === projectId) {
+          services.value = resp.items ?? [];
+          pagination.total = resp.total ?? 0;
+        }
       });
     } catch {
       services.value = [];
@@ -521,21 +490,21 @@
       return;
     }
     try {
-      const page = await applicationApi.list({ project_id: projectId, per_page: 100 });
+      const page = await applicationApi.list(projectId, { per_page: 100 });
+      if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
       applications.value = page.items ?? [];
       versions.value = [];
       Object.assign(createForm, {
         application_id: '',
         version_id: '',
-        instance_key: 'default',
         code: '',
       });
-      createCodeIsCustomized = false;
       createError.value = '';
       Object.assign(createErrors, {
         application_id: '',
         version_id: '',
-        instance_key: '',
         code: '',
       });
       isCreateDialogOpen.value = true;
@@ -545,6 +514,10 @@
   }
 
   async function handleCreateApplicationChange(value: ComboboxOptionValue) {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     createForm.application_id = String(value || '');
     createForm.version_id = '';
     createErrors.application_id = '';
@@ -555,7 +528,12 @@
       return;
     }
     try {
-      const page = await applicationApi.listVersions(createForm.application_id, { per_page: 100 });
+      const page = await applicationApi.listVersions(projectId, createForm.application_id, {
+        per_page: 100,
+      });
+      if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
       versions.value = page.items ?? [];
       createForm.version_id = versions.value[0]?.id ?? '';
     } catch (error) {
@@ -570,7 +548,6 @@
       Object.assign(createErrors, {
         application_id: '',
         version_id: '',
-        instance_key: '',
         code: '',
       });
     }
@@ -578,57 +555,43 @@
 
   function suggestedCreateCode() {
     const application = applications.value.find((item) => item.id === createForm.application_id);
-    const instanceKey = createForm.instance_key.trim();
-    return application && instanceKey ? `${application.code}-${instanceKey}` : '';
+    return application ? `${application.code}-default` : '';
   }
 
   function updateSuggestedCreateCode() {
     createForm.code = suggestedCreateCode();
-    createCodeIsCustomized = false;
     createErrors.code = '';
   }
 
-  function handleCreateInstanceKeyInput() {
-    createErrors.instance_key = '';
-    if (!createCodeIsCustomized) {
-      updateSuggestedCreateCode();
-    }
-  }
-
   function handleCreateCodeInput() {
-    createCodeIsCustomized = true;
     createErrors.code = '';
   }
 
   async function handleCreateOk() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      createError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
     createError.value = '';
     createErrors.application_id = createForm.application_id
       ? ''
       : t('service.create.applicationRequired');
     createErrors.version_id = createForm.version_id ? '' : t('service.create.versionRequired');
-    createErrors.instance_key = createForm.instance_key.trim()
-      ? ''
-      : t('service.create.instanceKeyRequired');
     const code = createForm.code.trim();
     createErrors.code = !code
       ? t('service.create.codeRequired')
       : serviceCodePattern.test(code)
         ? ''
         : t('service.create.codeInvalid');
-    if (
-      createErrors.application_id ||
-      createErrors.version_id ||
-      createErrors.instance_key ||
-      createErrors.code
-    ) {
+    if (createErrors.application_id || createErrors.version_id || createErrors.code) {
       return;
     }
     try {
       await executeOp(async () => {
-        const created = await serviceApi.create({
+        const created = await serviceApi.create(projectId, {
           application_id: createForm.application_id,
           version_id: createForm.version_id,
-          instance_key: createForm.instance_key.trim(),
           code,
         });
         setCreateDialogOpen(false);
@@ -662,10 +625,8 @@
     if (!service) {
       return '';
     }
-    const application = service.application_name;
-    const instance = service.instance_key || 'default';
     return t('service.detail.subtitle', {
-      instance: `${application} / ${instance}`,
+      code: service.code,
       version: service.version_label,
     });
   }
@@ -677,9 +638,18 @@
   }
 
   async function openDeployDialog(service: ServiceResp) {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
     selectedService.value = service;
     try {
-      const page = await applicationApi.listVersions(service.application_id, { per_page: 100 });
+      const page = await applicationApi.listVersions(projectId, service.application_id, {
+        per_page: 100,
+      });
+      if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
       deployVersions.value = page.items ?? [];
       Object.assign(deployForm, {
         version_id: service.version_id,
@@ -702,7 +672,8 @@
 
   async function handleDeployOk() {
     const service = selectedService.value;
-    if (!service) {
+    const projectId = projectStore.activeProjectId;
+    if (!service || !projectId) {
       return;
     }
     deploySubmitError.value = '';
@@ -714,9 +685,8 @@
       await executeOp(async () => {
         let serviceForDeploy = service;
         if (deployForm.version_id !== service.version_id) {
-          serviceForDeploy = await serviceApi.updateBasic(service.id, {
+          serviceForDeploy = await serviceApi.updateBasic(projectId, service.id, {
             version_id: deployForm.version_id,
-            instance_key: service.instance_key,
           });
           selectedService.value = serviceForDeploy;
           const index = services.value.findIndex((item) => item.id === serviceForDeploy.id);
@@ -724,11 +694,13 @@
             services.value[index] = serviceForDeploy;
           }
         }
-        const result = await serviceApi.deploy(serviceForDeploy.id, {
+        const result = await serviceApi.deploy(projectId, serviceForDeploy.id, {
           force_recreate: deployForm.force_recreate,
           join_traefik_network: deployForm.join_traefik_network,
         });
-        for (const warning of result.warnings) toast.error(warning);
+        for (const warning of result.warnings) {
+          toast.error(warning);
+        }
         toast.success(t('service.toast.deployQueued'));
         isDeployDialogOpen.value = false;
         if (result.deployment_id) {
@@ -752,13 +724,14 @@
 
   async function handleStopOk() {
     const service = selectedService.value;
-    if (!service) {
+    const projectId = projectStore.activeProjectId;
+    if (!service || !projectId) {
       return;
     }
     stopSubmitError.value = '';
     try {
       await executeOp(async () => {
-        const result = await applicationApi.stop(service.application_id, {
+        const result = await applicationApi.stop(projectId, service.application_id, {
           service_id: service.id,
           remove_volumes: stopRemoveVolumes.value,
         });

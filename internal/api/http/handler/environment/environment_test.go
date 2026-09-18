@@ -34,15 +34,3 @@ func TestProjectEnvironmentUpdateInputMapsLocalWorkspace(t *testing.T) {
 		t.Fatalf("update input = %#v", input)
 	}
 }
-
-func TestProjectEnvironmentInitializeInputKeepsTemporaryAuthenticationInRequestMapping(t *testing.T) {
-	input := projectEnvironmentInitializeInput(&environmentv1.ProjectEnvironmentInitializeReq{
-		Username:             "bootstrap-user",
-		Password:             "password",
-		PrivateKey:           "private-key",
-		PrivateKeyPassphrase: "passphrase",
-	})
-	if input.Username != "bootstrap-user" || input.Password != "password" || input.PrivateKey != "private-key" || input.PrivateKeyPassphrase != "passphrase" {
-		t.Fatalf("initialize input = %#v", input)
-	}
-}

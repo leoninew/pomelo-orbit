@@ -501,30 +501,28 @@ func (x *EnvironmentLocalTargetReq) GetWorkspaceRoot() string {
 	return ""
 }
 
-type ProjectEnvironmentInitializeReq struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	Username             string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	Password             string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
-	PrivateKey           string                 `protobuf:"bytes,3,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
-	PrivateKeyPassphrase string                 `protobuf:"bytes,4,opt,name=private_key_passphrase,json=privateKeyPassphrase,proto3" json:"private_key_passphrase,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+type ProjectEnvironmentSSHCommandResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Environment   *EnvironmentResp       `protobuf:"bytes,1,opt,name=environment,proto3" json:"environment,omitempty"`
+	PublicKey     string                 `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ProjectEnvironmentInitializeReq) Reset() {
-	*x = ProjectEnvironmentInitializeReq{}
+func (x *ProjectEnvironmentSSHCommandResp) Reset() {
+	*x = ProjectEnvironmentSSHCommandResp{}
 	mi := &file_orbit_v1_environment_environment_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ProjectEnvironmentInitializeReq) String() string {
+func (x *ProjectEnvironmentSSHCommandResp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ProjectEnvironmentInitializeReq) ProtoMessage() {}
+func (*ProjectEnvironmentSSHCommandResp) ProtoMessage() {}
 
-func (x *ProjectEnvironmentInitializeReq) ProtoReflect() protoreflect.Message {
+func (x *ProjectEnvironmentSSHCommandResp) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_environment_environment_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -536,35 +534,21 @@ func (x *ProjectEnvironmentInitializeReq) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ProjectEnvironmentInitializeReq.ProtoReflect.Descriptor instead.
-func (*ProjectEnvironmentInitializeReq) Descriptor() ([]byte, []int) {
+// Deprecated: Use ProjectEnvironmentSSHCommandResp.ProtoReflect.Descriptor instead.
+func (*ProjectEnvironmentSSHCommandResp) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *ProjectEnvironmentInitializeReq) GetUsername() string {
+func (x *ProjectEnvironmentSSHCommandResp) GetEnvironment() *EnvironmentResp {
 	if x != nil {
-		return x.Username
+		return x.Environment
 	}
-	return ""
+	return nil
 }
 
-func (x *ProjectEnvironmentInitializeReq) GetPassword() string {
+func (x *ProjectEnvironmentSSHCommandResp) GetPublicKey() string {
 	if x != nil {
-		return x.Password
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentInitializeReq) GetPrivateKey() string {
-	if x != nil {
-		return x.PrivateKey
-	}
-	return ""
-}
-
-func (x *ProjectEnvironmentInitializeReq) GetPrivateKeyPassphrase() string {
-	if x != nil {
-		return x.PrivateKeyPassphrase
+		return x.PublicKey
 	}
 	return ""
 }
@@ -626,13 +610,11 @@ const file_orbit_v1_environment_environment_proto_rawDesc = "" +
 	"\x04_sshB\b\n" +
 	"\x06_local\"B\n" +
 	"\x19EnvironmentLocalTargetReq\x12%\n" +
-	"\x0eworkspace_root\x18\x01 \x01(\tR\rworkspaceRoot\"\xb0\x01\n" +
-	"\x1fProjectEnvironmentInitializeReq\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x1f\n" +
-	"\vprivate_key\x18\x03 \x01(\tR\n" +
-	"privateKey\x124\n" +
-	"\x16private_key_passphrase\x18\x04 \x01(\tR\x14privateKeyPassphraseB\xe8\x01\n" +
+	"\x0eworkspace_root\x18\x01 \x01(\tR\rworkspaceRoot\"\x8a\x01\n" +
+	" ProjectEnvironmentSSHCommandResp\x12G\n" +
+	"\venvironment\x18\x01 \x01(\v2%.orbit.v1.environment.EnvironmentRespR\venvironment\x12\x1d\n" +
+	"\n" +
+	"public_key\x18\x02 \x01(\tR\tpublicKeyB\xe8\x01\n" +
 	"\x18com.orbit.v1.environmentB\x10EnvironmentProtoP\x01ZHgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/environment\xa2\x02\x03OVE\xaa\x02\x14Orbit.V1.Environment\xca\x02\x14Orbit\\V1\\Environment\xe2\x02 Orbit\\V1\\Environment\\GPBMetadata\xea\x02\x16Orbit::V1::Environmentb\x06proto3"
 
 var (
@@ -649,24 +631,25 @@ func file_orbit_v1_environment_environment_proto_rawDescGZIP() []byte {
 
 var file_orbit_v1_environment_environment_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_orbit_v1_environment_environment_proto_goTypes = []any{
-	(*EnvironmentSSHTargetResp)(nil),        // 0: orbit.v1.environment.EnvironmentSSHTargetResp
-	(*EnvironmentSSHTargetReq)(nil),         // 1: orbit.v1.environment.EnvironmentSSHTargetReq
-	(*EnvironmentLocalTargetResp)(nil),      // 2: orbit.v1.environment.EnvironmentLocalTargetResp
-	(*EnvironmentResp)(nil),                 // 3: orbit.v1.environment.EnvironmentResp
-	(*ProjectEnvironmentUpdateReq)(nil),     // 4: orbit.v1.environment.ProjectEnvironmentUpdateReq
-	(*EnvironmentLocalTargetReq)(nil),       // 5: orbit.v1.environment.EnvironmentLocalTargetReq
-	(*ProjectEnvironmentInitializeReq)(nil), // 6: orbit.v1.environment.ProjectEnvironmentInitializeReq
+	(*EnvironmentSSHTargetResp)(nil),         // 0: orbit.v1.environment.EnvironmentSSHTargetResp
+	(*EnvironmentSSHTargetReq)(nil),          // 1: orbit.v1.environment.EnvironmentSSHTargetReq
+	(*EnvironmentLocalTargetResp)(nil),       // 2: orbit.v1.environment.EnvironmentLocalTargetResp
+	(*EnvironmentResp)(nil),                  // 3: orbit.v1.environment.EnvironmentResp
+	(*ProjectEnvironmentUpdateReq)(nil),      // 4: orbit.v1.environment.ProjectEnvironmentUpdateReq
+	(*EnvironmentLocalTargetReq)(nil),        // 5: orbit.v1.environment.EnvironmentLocalTargetReq
+	(*ProjectEnvironmentSSHCommandResp)(nil), // 6: orbit.v1.environment.ProjectEnvironmentSSHCommandResp
 }
 var file_orbit_v1_environment_environment_proto_depIdxs = []int32{
 	0, // 0: orbit.v1.environment.EnvironmentResp.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetResp
 	2, // 1: orbit.v1.environment.EnvironmentResp.local:type_name -> orbit.v1.environment.EnvironmentLocalTargetResp
 	1, // 2: orbit.v1.environment.ProjectEnvironmentUpdateReq.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetReq
 	5, // 3: orbit.v1.environment.ProjectEnvironmentUpdateReq.local:type_name -> orbit.v1.environment.EnvironmentLocalTargetReq
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 4: orbit.v1.environment.ProjectEnvironmentSSHCommandResp.environment:type_name -> orbit.v1.environment.EnvironmentResp
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_environment_environment_proto_init() }

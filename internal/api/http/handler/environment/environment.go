@@ -58,22 +58,22 @@ func (h Handler) ProbeProjectEnvironment(c *gin.Context) {
 	transport.WriteProtoJSON(c, http.StatusOK, response)
 }
 
-func (h Handler) InitializeProjectEnvironment(c *gin.Context) {
+func (h Handler) PrepareProjectEnvironmentSSHCommand(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	var req environmentv1.ProjectEnvironmentInitializeReq
+	var req environmentv1.ProjectEnvironmentUpdateReq
 	if err := transport.DecodeJSON(c, &req); err != nil {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	item, err := h.service.InitializeForUser(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), projectEnvironmentInitializeInput(&req))
+	item, publicKey, err := h.service.PrepareSSHEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), projectEnvironmentUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
 	}
-	response := environmentResponse(item)
+	response := &environmentv1.ProjectEnvironmentSSHCommandResp{Environment: environmentResponse(item), PublicKey: publicKey}
 	transport.WriteProtoJSON(c, http.StatusOK, response)
 }
 
@@ -91,15 +91,6 @@ func projectEnvironmentUpdateInput(req *environmentv1.ProjectEnvironmentUpdateRe
 		}
 	}
 	return input
-}
-
-func projectEnvironmentInitializeInput(req *environmentv1.ProjectEnvironmentInitializeReq) environmentdto.InitializeInput {
-	return environmentdto.InitializeInput{
-		Username:             req.Username,
-		Password:             req.Password,
-		PrivateKey:           req.PrivateKey,
-		PrivateKeyPassphrase: req.PrivateKeyPassphrase,
-	}
 }
 
 func environmentResponse(item environmentdto.View) *environmentv1.EnvironmentResp {

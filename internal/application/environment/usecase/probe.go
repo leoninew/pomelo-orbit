@@ -7,13 +7,13 @@ import (
 	"time"
 
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
-	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 const (
 	probeFailureDiagnostic           = "SSH connection, host key verification, key authentication, or Docker prerequisites failed."
+	probeInitializationDiagnostic    = "Generate and run the SSH initialization command before probing this target."
 	probeCredentialFailureDiagnostic = "The deployment SSH credential binding is invalid."
 	probeUnavailableDiagnostic       = "SSH environment probing is not configured."
 	localProbeFailureDiagnostic      = "Local Docker and Docker Compose prerequisites failed."
@@ -39,24 +39,10 @@ func (s Service) ProbeForUser(ctx context.Context, userId string, projectId stri
 		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment workspace_root must be configured before it can be probed")
 	}
 
-	if item.IsSSH() {
-		previous := item
-		item, err = s.ensureGeneratedCredential(ctx, item)
-		if err != nil {
-			return environmentdto.View{}, err
-		}
-		if environmentTargetChanged(previous, item) {
-			if environmentIdentityChanged(previous, item) {
-				item.SSH.HostKeyFingerprint = ""
-			}
-			item.TargetRevision++
-			if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
-				return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
-			}
-		}
+	statusValue, diagnostic, observedFingerprint := model.EnvironmentProbeStatusFailed, probeInitializationDiagnostic, ""
+	if !item.IsSSH() || hasSSHCredentialBinding(item) {
+		statusValue, diagnostic, observedFingerprint = s.probeOutcome(ctx, item)
 	}
-
-	statusValue, diagnostic, observedFingerprint := s.probeOutcome(ctx, item)
 	if item.IsSSH() && statusValue == model.EnvironmentProbeStatusSucceeded && strings.TrimSpace(item.SSH.HostKeyFingerprint) == "" {
 		if !hostKeyFingerprintPattern.MatchString(observedFingerprint) {
 			statusValue = model.EnvironmentProbeStatusFailed
@@ -84,102 +70,6 @@ func (s Service) ProbeForUser(ctx context.Context, userId string, projectId stri
 	item.LastProbeAt = &probedAt
 	item.LastProbeDiagnostic = stringPointer(diagnostic)
 	return s.toView(item), nil
-}
-
-type bootstrapDiagnosticError interface {
-	BootstrapDiagnostic() string
-}
-
-// InitializeForUser uses temporary SSH credentials to install the generated
-// deployment public key on a configured Linux target. The temporary
-// credentials are never stored and the target is probed with the generated
-// key immediately after bootstrap.
-func (s Service) InitializeForUser(ctx context.Context, userId string, projectId string, input environmentdto.InitializeInput) (environmentdto.View, error) {
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return environmentdto.View{}, err
-	}
-	item, err := s.environmentForProject(ctx, projectId)
-	if err != nil {
-		return environmentdto.View{}, err
-	}
-	if !item.IsSSH() {
-		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Only an SSH environment can be initialized")
-	}
-	if strings.TrimSpace(item.WorkspaceRoot) == "" {
-		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Environment workspace_root must be configured before it can be initialized")
-	}
-	if item.SSH.Platform != model.EnvironmentPlatformLinux {
-		return environmentdto.View{}, apperror.New(apperror.KindValidation, "Automatic SSH initialization is available only for Linux environments")
-	}
-	if s.bootstrapper == nil {
-		return environmentdto.View{}, apperror.New(apperror.KindInternal, "SSH environment bootstrap is not configured")
-	}
-	auth, err := bootstrapAuth(input)
-	if err != nil {
-		return environmentdto.View{}, err
-	}
-
-	previous := item
-	item, err = s.ensureGeneratedCredential(ctx, item)
-	if err != nil {
-		return environmentdto.View{}, err
-	}
-	if environmentTargetChanged(previous, item) {
-		if environmentIdentityChanged(previous, item) {
-			item.SSH.HostKeyFingerprint = ""
-		}
-		item.TargetRevision++
-		if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
-			return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
-		}
-	}
-	credential, err := s.environmentCredential(ctx, item.SSH.CredentialId)
-	if err != nil {
-		return environmentdto.View{}, err
-	}
-	publicKey := strings.TrimSpace(credential.PublicKey)
-	if publicKey == "" {
-		return environmentdto.View{}, apperror.New(apperror.KindInternal, "Generated deployment SSH public key is empty")
-	}
-	if err := s.bootstrapper.Bootstrap(ctx, item, publicKey, auth); err != nil {
-		s.logEnvironmentFailure("SSH environment initialization failed", item, err, "bootstrap_username", auth.Username)
-		return environmentdto.View{}, apperror.New(apperror.KindValidation, safeBootstrapDiagnostic(err))
-	}
-	return s.ProbeForUser(ctx, userId, projectId)
-}
-
-func bootstrapAuth(input environmentdto.InitializeInput) (environmentport.BootstrapAuth, error) {
-	auth := environmentport.BootstrapAuth{
-		Username:             strings.TrimSpace(input.Username),
-		Password:             input.Password,
-		PrivateKey:           strings.TrimSpace(input.PrivateKey),
-		PrivateKeyPassphrase: input.PrivateKeyPassphrase,
-	}
-	if auth.Username == "" || strings.ContainsAny(auth.Username, "\r\n") {
-		return environmentport.BootstrapAuth{}, apperror.New(apperror.KindValidation, "Bootstrap SSH username is required")
-	}
-	hasPassword := auth.Password != ""
-	hasPrivateKey := auth.PrivateKey != ""
-	if hasPassword == hasPrivateKey {
-		return environmentport.BootstrapAuth{}, apperror.New(apperror.KindValidation, "Provide exactly one SSH password or private key")
-	}
-	if !hasPrivateKey && auth.PrivateKeyPassphrase != "" {
-		return environmentport.BootstrapAuth{}, apperror.New(apperror.KindValidation, "A private key passphrase requires a private key")
-	}
-	if len(auth.Password) > 4096 || len(auth.PrivateKey) > 64*1024 || len(auth.PrivateKeyPassphrase) > 4096 {
-		return environmentport.BootstrapAuth{}, apperror.New(apperror.KindValidation, "Bootstrap SSH credentials are too large")
-	}
-	return auth, nil
-}
-
-func safeBootstrapDiagnostic(err error) string {
-	var diagnosticError bootstrapDiagnosticError
-	if errors.As(err, &diagnosticError) {
-		if diagnostic := strings.TrimSpace(diagnosticError.BootstrapDiagnostic()); diagnostic != "" {
-			return diagnostic
-		}
-	}
-	return "SSH initialization failed. Verify the temporary SSH credential and target prerequisites."
 }
 
 func (s Service) probeOutcome(ctx context.Context, item model.Environment) (string, string, string) {

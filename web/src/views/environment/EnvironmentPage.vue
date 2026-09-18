@@ -15,22 +15,13 @@
       >
         <template #actions>
           <button
-            v-if="isWindowsSSH"
+            v-if="isSSH"
             class="app-button h-9 px-3"
             :disabled="operating"
-            @click="openWindowsCommand"
+            @click="openSshCommand"
           >
             <KeyRound class="size-4" aria-hidden="true" />
-            {{ t('project.initialization.windowsTargetCommand') }}
-          </button>
-          <button
-            v-if="canInitialize"
-            class="app-button h-9 px-3"
-            :disabled="operating"
-            @click="openInitializeDialog"
-          >
-            <KeyRound class="size-4" />
-            {{ t('project.environment.initialize') }}
+            {{ t('project.initialization.sshCommand') }}
           </button>
         </template>
         <dl class="app-detail-info-grid">
@@ -133,33 +124,6 @@
     </template>
 
     <AppDialog
-      v-model:open="isInitializeDialogOpen"
-      :title="t('project.environment.initializeTitle')"
-      width-class="w-[min(720px,calc(100vw-32px))]"
-    >
-      <form novalidate @submit.prevent="initialize">
-        <EnvironmentBootstrapFields
-          :model-value="initializeForm"
-          :errors="initializeErrors"
-          :disabled="operating"
-          id-prefix="environment-bootstrap"
-        />
-        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
-      </form>
-      <p v-if="initializeSubmitError" class="app-field-error mt-3" role="alert">
-        {{ initializeSubmitError }}
-      </p>
-      <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          :confirm-label="t('project.environment.initialize')"
-          @cancel="closeInitializeDialog"
-          @confirm="initialize"
-        />
-      </template>
-    </AppDialog>
-
-    <AppDialog
       v-model:open="isEditDialogOpen"
       :title="t('project.environment.editTitle')"
       width-class="w-[min(720px,calc(100vw-32px))]"
@@ -183,11 +147,11 @@
       </template>
     </AppDialog>
 
-    <WindowsSshInitializationDialog
-      v-model:open="showWindowsCommandDialog"
-      :command="windowsCommand"
-      :loading="loadingWindowsCommand"
-      :error="windowsCommandError"
+    <SshInitializationCommandDialog
+      v-model:open="showSshCommandDialog"
+      :command="sshCommand"
+      :loading="loadingSshCommand"
+      :error="sshCommandError"
     />
   </div>
 </template>
@@ -202,24 +166,17 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import WindowsSshInitializationDialog from '@/components/WindowsSshInitializationDialog.vue';
+  import SshInitializationCommandDialog from '@/components/SshInitializationCommandDialog.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import { useProjectInitializationStore } from '@/stores/projectInitialization';
   import { useProjectStore } from '@/stores/project';
   import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment/environment';
   import { formatTime } from '@/utils/time';
+  import { buildLinuxSshInitializationCommand } from '@/utils/linuxSshCommand';
   import { buildWindowsSshInitializationCommand } from '@/utils/windowsSshCommand';
-  import EnvironmentBootstrapFields from '@/views/environment/EnvironmentBootstrapFields.vue';
   import EnvironmentTargetFields from '@/views/environment/EnvironmentTargetFields.vue';
-  import {
-    emptyEnvironmentBootstrapForm,
-    emptyEnvironmentBootstrapFormErrors,
-    environmentBootstrapRequestFromForm,
-    validateEnvironmentBootstrapForm,
-  } from '@/views/environment/environmentBootstrapForm';
   import {
     assignEnvironmentFormErrors as assignTargetFormErrors,
     emptyEnvironmentForm,
@@ -232,7 +189,6 @@
 
   const { t } = useI18n();
   const toast = useToast();
-  const initializationStore = useProjectInitializationStore();
   const projectStore = useProjectStore();
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
@@ -240,22 +196,14 @@
   const loadError = ref('');
   const submitError = ref('');
   const isEditDialogOpen = ref(false);
-  const isInitializeDialogOpen = ref(false);
-  const initializeSubmitError = ref('');
-  const showWindowsCommandDialog = ref(false);
-  const loadingWindowsCommand = ref(false);
-  const windowsCommand = ref('');
-  const windowsCommandError = ref('');
+  const showSshCommandDialog = ref(false);
+  const loadingSshCommand = ref(false);
+  const sshCommand = ref('');
+  const sshCommandError = ref('');
   const form = reactive(emptyEnvironmentForm());
   const errors = reactive(emptyEnvironmentFormErrors());
-  const initializeForm = reactive(emptyEnvironmentBootstrapForm());
-  const initializeErrors = reactive(emptyEnvironmentBootstrapFormErrors());
   const isLocal = computed(() => environment.value?.target_type === 'local');
   const isSSH = computed(() => environment.value?.target_type === 'ssh' && !!environment.value.ssh);
-  const canInitialize = computed(() => environment.value?.ssh?.platform === 'linux');
-  const isWindowsSSH = computed(
-    () => environment.value?.target_type === 'ssh' && environment.value.ssh?.platform === 'windows'
-  );
 
   function formatSSHAddress(host: string, port: number) {
     const displayHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
@@ -286,9 +234,9 @@
 
   async function fetchEnvironment() {
     const projectId = projectStore.activeProjectId;
-    showWindowsCommandDialog.value = false;
-    windowsCommand.value = '';
-    windowsCommandError.value = '';
+    showSshCommandDialog.value = false;
+    sshCommand.value = '';
+    sshCommandError.value = '';
     if (!projectId) {
       environment.value = undefined;
       loadError.value = '';
@@ -310,30 +258,18 @@
     isEditDialogOpen.value = true;
   }
 
-  function resetInitializeForm() {
-    Object.assign(initializeForm, emptyEnvironmentBootstrapForm());
-    Object.assign(initializeErrors, emptyEnvironmentBootstrapFormErrors());
-    initializeSubmitError.value = '';
-  }
-
-  function openInitializeDialog() {
-    resetInitializeForm();
-    initializeForm.username = environment.value?.ssh?.username || '';
-    isInitializeDialogOpen.value = true;
-  }
-
-  async function openWindowsCommand() {
+  async function openSshCommand() {
     const projectId = projectStore.activeProjectId;
     const target = environment.value?.ssh;
-    if (!projectId || !isWindowsSSH.value || !target) {
+    if (!projectId || !isSSH.value || !target) {
       return;
     }
-    showWindowsCommandDialog.value = true;
-    loadingWindowsCommand.value = true;
-    windowsCommand.value = '';
-    windowsCommandError.value = '';
+    showSshCommandDialog.value = true;
+    loadingSshCommand.value = true;
+    sshCommand.value = '';
+    sshCommandError.value = '';
     try {
-      const result = await initializationStore.prepareWindowsEnvironment(projectId, {
+      const result = await projectEnvironmentApi.prepareSSHCommand(projectId, {
         target_type: 'ssh',
         ssh: {
           platform: target.platform,
@@ -343,62 +279,25 @@
           workspace_root: target.workspace_root,
         },
       });
-      if (!result.public_key) {
-        throw new Error(t('project.initialization.windowsTargetCommandFailed'));
+      if (!result.environment || !result.public_key) {
+        throw new Error(t('project.initialization.sshCommandFailed'));
       }
-      windowsCommand.value = buildWindowsSshInitializationCommand({
-        host: target.host,
-        port: target.port,
-        username: target.username,
-        workspaceRoot: target.workspace_root,
-        publicKey: result.public_key,
-      });
-      environment.value = await projectEnvironmentApi.get(projectId);
+      environment.value = result.environment;
+      sshCommand.value =
+        target.platform === 'windows'
+          ? buildWindowsSshInitializationCommand({
+              host: target.host,
+              port: target.port,
+              username: target.username,
+              workspaceRoot: target.workspace_root,
+              publicKey: result.public_key,
+            })
+          : buildLinuxSshInitializationCommand({ publicKey: result.public_key });
     } catch (error: unknown) {
-      windowsCommandError.value =
-        error instanceof Error
-          ? error.message
-          : t('project.initialization.windowsTargetCommandFailed');
+      sshCommandError.value =
+        error instanceof Error ? error.message : t('project.initialization.sshCommandFailed');
     } finally {
-      loadingWindowsCommand.value = false;
-    }
-  }
-
-  function closeInitializeDialog() {
-    isInitializeDialogOpen.value = false;
-  }
-
-  function validateInitialize() {
-    Object.assign(
-      initializeErrors,
-      validateEnvironmentBootstrapForm(initializeForm, {
-        username: t('project.environment.validation.bootstrapUsername'),
-        password: t('project.environment.validation.bootstrapPassword'),
-        privateKey: t('project.environment.validation.bootstrapPrivateKey'),
-      })
-    );
-    return !initializeErrors.username && !initializeErrors.credential;
-  }
-
-  async function initialize() {
-    initializeSubmitError.value = '';
-    if (!validateInitialize()) {
-      return;
-    }
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      return;
-    }
-    const input = environmentBootstrapRequestFromForm(initializeForm);
-    try {
-      await executeOperation(async () => {
-        environment.value = await projectEnvironmentApi.initialize(projectId, input);
-        toast.success(t('project.environment.initialized'));
-        closeInitializeDialog();
-      });
-    } catch (error: unknown) {
-      initializeSubmitError.value =
-        error instanceof Error ? error.message : t('project.environment.initializeFailed');
+      loadingSshCommand.value = false;
     }
   }
 
@@ -415,9 +314,9 @@
     try {
       await executeOperation(async () => {
         environment.value = await projectEnvironmentApi.update(projectId, input);
-        showWindowsCommandDialog.value = false;
-        windowsCommand.value = '';
-        windowsCommandError.value = '';
+        showSshCommandDialog.value = false;
+        sshCommand.value = '';
+        sshCommandError.value = '';
         toast.success(t('project.environment.updated'));
         isEditDialogOpen.value = false;
       });
@@ -454,10 +353,4 @@
     },
     { immediate: true }
   );
-
-  watch(isInitializeDialogOpen, (open) => {
-    if (!open) {
-      resetInitializeForm();
-    }
-  });
 </script>

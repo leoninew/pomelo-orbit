@@ -109,7 +109,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	dockerPathResolver := dockerDaemonPathResolver()
 	localRuntime, runtime := newDeploymentRuntime(dockerPathResolver)
 	localDisplay := localEnvironmentDisplay()
-	environmentService := environmentsvc.New(stores.environment, stores.project, stores.environmentCredential, cfg.Jwt.SecretKey, environmentrunner.NewProber(localRuntime, sshrunner.NewEnvironmentProber()), sshrunner.NewEnvironmentBootstrapper(), logger).WithLocalDisplay(localDisplay)
+	environmentService := environmentsvc.New(stores.environment, stores.project, stores.environmentCredential, cfg.Jwt.SecretKey, environmentrunner.NewProber(localRuntime, sshrunner.NewEnvironmentProber()), logger).WithLocalDisplay(localDisplay)
 	projectService := projectsvc.New(stores.project, stores.user, stores.repository, stores.application)
 	pipelineWorkspace := newPipelineWorkspace(cfg, stores, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
@@ -224,10 +224,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			"/api/route/sync/preview",
 			"/api/route/sync/confirm",
 			"/api/environment/probe",
-			"/api/environment/initialize",
 			"/api/project-initialization/probe",
-			"/api/project-initialization/bootstrap",
-			"/api/project-initialization/environment/test",
 			"/api/auth/login",
 			"/api/auth/logout",
 			"/api/service/:service_id/preview",

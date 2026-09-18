@@ -16,10 +16,8 @@ type ProjectService interface {
 type EnvironmentService interface {
 	EnvironmentForUser(ctx context.Context, userId string, projectId string) (environmentdto.View, error)
 	SaveInitialization(ctx context.Context, userId string, projectId string, input environmentdto.UpdateInput) (environmentdto.View, error)
-	TestSSHReachability(ctx context.Context, userId string, projectId string, input environmentdto.SSHTargetInput) error
-	PrepareWindowsEnvironment(ctx context.Context, userId string, projectId string, input environmentdto.SSHTargetInput) (environmentdto.View, string, error)
+	PrepareSSHEnvironment(ctx context.Context, userId string, projectId string, input environmentdto.UpdateInput) (environmentdto.View, string, error)
 	ProbeForUser(ctx context.Context, userId string, projectId string) (environmentdto.View, error)
-	InitializeForUser(ctx context.Context, userId string, projectId string, input environmentdto.InitializeInput) (environmentdto.View, error)
 }
 
 type GatewayService interface {

@@ -88,6 +88,16 @@ func TestSaveTargetDefinitionForUserPersistsKnownSSHTargetWithoutProbe(t *testin
 	if err == nil {
 		t.Fatal("SaveTargetDefinitionForUser() accepted a Docker target already bound to another project")
 	}
+	if _, err := database.ExecContext(ctx, `UPDATE project SET is_active = FALSE WHERE id = 'project-1'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.SaveTargetDefinitionForUser(ctx, "user-2", "project-2", environmentdto.TargetDefinition{
+		TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: "/srv/other", TargetRevision: 1,
+		SSH:        &environmentdto.SSHDefinition{Platform: model.EnvironmentPlatformLinux, Host: "10.0.0.10", Port: 22, Username: "other", CredentialRevision: 1},
+		Credential: &environmentdto.SSHCredentialDefinition{PublicKey: "ssh-ed25519 AAAA other", PrivateKey: "OTHER PRIVATE KEY", Revision: 1},
+	}); err != nil {
+		t.Fatalf("SaveTargetDefinitionForUser() rejected a target released by a deprecated project: %v", err)
+	}
 }
 
 func TestSaveTargetDefinitionForUserPersistsLocalEnvironmentWithoutCredential(t *testing.T) {
@@ -129,6 +139,54 @@ func TestSaveTargetDefinitionForUserPersistsLocalEnvironmentWithoutCredential(t 
 	}
 }
 
+func TestUpdateForUserPersistsUninitializedSSHCredentialAsNull(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = database.Close() }()
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if _, err := database.ExecContext(ctx, `INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO project_member (project_id, user_id) VALUES ('project-1', 'user-1')`); err != nil {
+		t.Fatal(err)
+	}
+	workspaceRoot := "/srv/orbit"
+	if runtime.GOOS == "windows" {
+		workspaceRoot = `C:\orbit`
+	}
+	if _, err := database.ExecContext(ctx, `INSERT INTO environment (id, project_id, code, target_type, workspace_root, target_revision) VALUES ('environment-1', 'project-1', 'project', 'local', ?, 1)`, workspaceRoot); err != nil {
+		t.Fatal(err)
+	}
+	service := testConfigurationEnvironmentService(database)
+	targetType := model.EnvironmentTargetTypeSSH
+	updated, err := service.UpdateForUser(ctx, "user-1", "project-1", environmentdto.UpdateInput{
+		TargetType: &targetType,
+		SSH: &environmentdto.SSHTargetInput{
+			Platform: model.EnvironmentPlatformLinux, Host: "10.0.0.10", Port: 22,
+			Username: "deploy", WorkspaceRoot: "/srv/orbit",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.SSH == nil || updated.SSH.Host != "10.0.0.10" || updated.TargetType != model.EnvironmentTargetTypeSSH {
+		t.Fatalf("updated SSH view = %+v", updated)
+	}
+	var credentialID sql.NullString
+	var credentialRevision sql.NullInt64
+	if err := database.QueryRowContext(ctx, `SELECT ssh_credential_id, ssh_credential_revision FROM environment WHERE id = 'environment-1'`).Scan(&credentialID, &credentialRevision); err != nil {
+		t.Fatal(err)
+	}
+	if credentialID.Valid || credentialRevision.Valid {
+		t.Fatalf("uninitialized SSH binding = id=%v revision=%v", credentialID, credentialRevision)
+	}
+}
+
 func testConfigurationEnvironmentService(database *sql.DB) Service {
 	platform := model.EnvironmentPlatformLinux
 	if runtime.GOOS == "windows" {
@@ -139,7 +197,6 @@ func testConfigurationEnvironmentService(database *sql.DB) Service {
 		projectrepo.NewRepository(database),
 		environmentcredentialrepo.NewRepository(database),
 		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-		nil,
 		nil,
 		nil,
 	).WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: platform})

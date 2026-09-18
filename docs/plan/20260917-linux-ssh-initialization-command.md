@@ -1,7 +1,7 @@
 # Linux SSH 初始化命令与受管密钥流程实施计划
-最后修改时间: 2026-09-17 21:48:53
+最后修改时间: 2026-09-17 22:16:18
 
-Review status: Draft
+Review status: Accepted
 
 Mode: standard
 
@@ -109,3 +109,4 @@ Mode: standard
 - 用户确认 Intent，要求进入计划阶段。
 - 用户确认初始化命令必须在完整 Environment 表单之后生成，因平台决定 Bash 或 PowerShell。
 - 用户确认初始化动作持久化当前 Environment target；页面刷新后回填表单，并复用已有有效密钥。
+- 用户确认意图和计划已足够明确，要求进入实施阶段。

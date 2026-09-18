@@ -30,15 +30,14 @@ type Service struct {
 	environmentCredentials repository.EnvironmentCredentialStore
 	secretKey              string
 	prober                 environmentport.Prober
-	bootstrapper           environmentport.Bootstrapper
 	localDisplay           environmentdto.LocalDisplaySnapshot
 	logger                 *slog.Logger
 }
 
-func New(environments repository.EnvironmentStore, projects repository.ProjectReader, environmentCredentials repository.EnvironmentCredentialStore, secretKey string, prober environmentport.Prober, bootstrapper environmentport.Bootstrapper, logger *slog.Logger) Service {
+func New(environments repository.EnvironmentStore, projects repository.ProjectReader, environmentCredentials repository.EnvironmentCredentialStore, secretKey string, prober environmentport.Prober, logger *slog.Logger) Service {
 	return Service{
 		environments: environments, projects: projects, environmentCredentials: environmentCredentials,
-		secretKey: secretKey, prober: prober, bootstrapper: bootstrapper, logger: logger,
+		secretKey: secretKey, prober: prober, logger: logger,
 	}
 }
 
@@ -76,28 +75,11 @@ func (s Service) SaveInitialization(ctx context.Context, userId string, projectI
 	if err := applyUpdate(&item, input); err != nil {
 		return environmentdto.View{}, err
 	}
-	item, err = s.ensureGeneratedCredential(ctx, item)
-	if err != nil {
-		return environmentdto.View{}, err
-	}
 	if err := validateEnvironment(item, s.localDisplay.Platform, false); err != nil {
 		return environmentdto.View{}, err
 	}
-	if item.IsSSH() {
-		if err := s.testSSHTarget(ctx, item.SSH.Host, item.SSH.Port, item.SSH.Username); err != nil {
-			return environmentdto.View{}, err
-		}
-	}
-	if reader, ok := s.environments.(environmentTargetReader); ok {
-		host, port := "", 0
-		if item.SSH != nil {
-			host, port = strings.TrimSpace(item.SSH.Host), item.SSH.Port
-		}
-		if _, err := reader.EnvironmentByTarget(ctx, project.Id, item.TargetType, host, port); err == nil {
-			return environmentdto.View{}, apperror.New(apperror.KindConflict, "The Docker target is already bound to another project")
-		} else if !errors.Is(err, repository.ErrNotFound) {
-			return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to check environment target", err)
-		}
+	if err := s.ensureTargetIsAvailable(ctx, project.Id, item); err != nil {
+		return environmentdto.View{}, err
 	}
 	if !creating && environmentTargetChanged(previous, item) {
 		if item.SSH != nil && environmentIdentityChanged(previous, item) {
@@ -121,35 +103,11 @@ func (s Service) SaveInitialization(ctx context.Context, userId string, projectI
 	return s.toView(item), nil
 }
 
-func (s Service) TestSSHReachability(ctx context.Context, userId string, projectId string, input environmentdto.SSHTargetInput) error {
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return err
-	}
-	return s.testSSHTarget(ctx, input.Host, input.Port, input.Username)
-}
-
-func (s Service) testSSHTarget(ctx context.Context, host string, port int, username string) error {
-	if s.prober == nil {
-		return apperror.New(apperror.KindInternal, "SSH reachability tester is not configured")
-	}
-	if err := s.prober.TestSSH(ctx, host, port, username); err != nil {
-		if diagnostic, ok := err.(probeDiagnosticError); ok && strings.TrimSpace(diagnostic.ProbeDiagnostic()) != "" {
-			return apperror.New(apperror.KindValidation, diagnostic.ProbeDiagnostic())
-		}
-		return apperror.New(apperror.KindValidation, "Cannot connect to the configured SSH host.")
-	}
-	return nil
-}
-
 func (s Service) EnvironmentForUser(ctx context.Context, userId string, projectId string) (environmentdto.View, error) {
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.View{}, err
 	}
 	item, err := s.environmentForProject(ctx, projectId)
-	if err != nil {
-		return environmentdto.View{}, err
-	}
-	item, err = s.hydrateEnvironment(ctx, item)
 	if err != nil {
 		return environmentdto.View{}, err
 	}
@@ -166,10 +124,6 @@ func (s Service) UpdateForUser(ctx context.Context, userId string, projectId str
 	}
 	previous := item
 	if err := applyUpdate(&item, input); err != nil {
-		return environmentdto.View{}, err
-	}
-	item, err = s.ensureGeneratedCredential(ctx, item)
-	if err != nil {
 		return environmentdto.View{}, err
 	}
 	if err := validateEnvironment(item, s.localDisplay.Platform, false); err != nil {
@@ -189,66 +143,6 @@ func (s Service) UpdateForUser(ctx context.Context, userId string, projectId str
 		return environmentdto.View{}, err
 	}
 	return s.toView(item), nil
-}
-
-func (s Service) hydrateEnvironment(ctx context.Context, item model.Environment) (model.Environment, error) {
-	if !item.IsSSH() {
-		return item, nil
-	}
-	if strings.TrimSpace(item.SSH.CredentialId) == "" {
-		return item, nil
-	}
-	previous := item
-	credential, err := s.environmentCredential(ctx, item.SSH.CredentialId)
-	if err != nil {
-		// A legacy 000042 binding can still point at repository_credential.
-		// Reading Wizard status must not generate or validate its replacement.
-		if apperror.IsKind(err, apperror.KindNotFound) {
-			return item, nil
-		}
-		return model.Environment{}, err
-	}
-	if strings.TrimSpace(credential.ProjectId) != item.ProjectId {
-		return item, nil
-	}
-	if credential.Revision != item.SSH.CredentialRevision {
-		item.SSH.CredentialRevision = credential.Revision
-		item.SSH.HostKeyFingerprint = ""
-	}
-	if environmentTargetChanged(previous, item) {
-		if environmentIdentityChanged(previous, item) {
-			item.SSH.HostKeyFingerprint = ""
-		}
-		item.TargetRevision++
-		if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
-			return model.Environment{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
-		}
-	}
-	return item, nil
-}
-
-func (s Service) ensureGeneratedCredential(ctx context.Context, item model.Environment) (model.Environment, error) {
-	if !item.IsSSH() {
-		return item, nil
-	}
-	if strings.TrimSpace(item.SSH.CredentialId) != "" {
-		credential, err := s.environmentCredential(ctx, item.SSH.CredentialId)
-		if err != nil {
-			return model.Environment{}, err
-		}
-		if credential.Revision != item.SSH.CredentialRevision {
-			item.SSH.CredentialRevision = credential.Revision
-			item.SSH.HostKeyFingerprint = ""
-		}
-		return item, nil
-	}
-	credential, err := s.resolveProjectSSHKey(ctx, item.ProjectId)
-	if err != nil {
-		return model.Environment{}, err
-	}
-	item.SSH.CredentialId = credential.Id
-	item.SSH.CredentialRevision = credential.Revision
-	return item, nil
 }
 
 func (s Service) environmentForProject(ctx context.Context, projectId string) (model.Environment, error) {
@@ -311,7 +205,7 @@ func validateEnvironment(item model.Environment, localPlatform string, allowEmpt
 		if !validWorkspaceRoot(item.SSH.Platform, item.WorkspaceRoot) {
 			return apperror.New(apperror.KindValidation, "Environment SSH workspace_root is invalid for its platform")
 		}
-		if item.SSH.CredentialId == "" || item.SSH.CredentialRevision < 1 {
+		if !hasSSHCredentialBinding(item) && (item.SSH.CredentialId != "" || item.SSH.CredentialRevision != 0) {
 			return apperror.New(apperror.KindValidation, "Environment SSH credential binding is invalid")
 		}
 		if item.SSH.HostKeyFingerprint != "" && !hostKeyFingerprintPattern.MatchString(item.SSH.HostKeyFingerprint) {
@@ -321,6 +215,10 @@ func validateEnvironment(item model.Environment, localPlatform string, allowEmpt
 		return apperror.New(apperror.KindValidation, "Environment target_type must be local or ssh")
 	}
 	return nil
+}
+
+func hasSSHCredentialBinding(item model.Environment) bool {
+	return item.IsSSH() && item.SSH.CredentialId != "" && item.SSH.CredentialRevision > 0
 }
 
 func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) error {

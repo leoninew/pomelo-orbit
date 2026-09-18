@@ -55,7 +55,7 @@
             <dd>
               <router-link
                 v-if="repository.git_credential_id"
-                :to="`/credential/${repository.git_credential_id}`"
+                :to="`/repository-credential/${repository.git_credential_id}`"
                 class="app-link"
               >
                 {{ repository.git_credential_name }}
@@ -524,9 +524,14 @@
   }
 
   async function fetchRepository() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      router.push('/repository');
+      return;
+    }
     try {
       await execute(async () => {
-        repository.value = await repositoryApi.get(repositoryId);
+        repository.value = await repositoryApi.get(projectId, repositoryId);
         resetEditForm();
       });
     } catch {
@@ -542,7 +547,7 @@
       return;
     }
     try {
-      const res = await credentialApi.list({ per_page: 100, project_id: projectId });
+      const res = await credentialApi.list(projectId, { per_page: 100 });
       credentials.value = res.items;
     } catch {
       toast.error('获取凭据列表失败');
@@ -567,7 +572,7 @@
     }
     try {
       await executeOp(async () => {
-        const updated = await repositoryApi.update(repositoryId, {
+        const updated = await repositoryApi.update(projectId, repositoryId, {
           name: editForm.name,
           repository_type: editForm.repository_type,
           repository_url: editForm.repository_url,
@@ -594,10 +599,15 @@
   }
 
   async function handleDeleteOk() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteSubmitError.value = '请先选择项目';
+      return;
+    }
     deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
-        await repositoryApi.delete(repositoryId, {
+        await repositoryApi.delete(projectId, repositoryId, {
           delete_workspace: deleteWorkspace.value,
         });
         toast.success('删除成功');
@@ -660,7 +670,7 @@
           editable: true,
           stage_id: '',
         };
-        const updated = await repositoryApi.update(repositoryId, {
+        const updated = await repositoryApi.update(projectId, repositoryId, {
           variable_overrides: { items: variableOverridesWith(nextVariable) },
         });
         repository.value = updated;
@@ -690,7 +700,7 @@
         if (!current) {
           return;
         }
-        const updated = await repositoryApi.update(repositoryId, {
+        const updated = await repositoryApi.update(projectId, repositoryId, {
           variable_overrides: {
             items: variableOverridesWith(
               toVariableDeclarationRequest({
@@ -719,7 +729,7 @@
     }
     try {
       await executeOp(async () => {
-        const updated = await repositoryApi.update(repositoryId, {
+        const updated = await repositoryApi.update(projectId, repositoryId, {
           variable_overrides: {
             items: repositoryCustomVariables.value
               .filter((item) => item.name !== variable.name)

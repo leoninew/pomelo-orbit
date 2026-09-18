@@ -112,14 +112,26 @@ CREATE TABLE IF NOT EXISTS project_member (
 );
 
 
-CREATE TABLE IF NOT EXISTS credential (
+CREATE TABLE IF NOT EXISTS repository_credential (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     type TEXT NOT NULL,
     encrypted_data TEXT NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     project_id TEXT REFERENCES project(id)
 );
+
+CREATE TABLE IF NOT EXISTS environment_credential (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES project(id),
+    public_key TEXT NOT NULL,
+    encrypted_private_key TEXT NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_environment_credential_project ON environment_credential(project_id);
 
 
 CREATE TABLE IF NOT EXISTS pipeline (
@@ -226,7 +238,7 @@ CREATE TABLE IF NOT EXISTS repository (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     project_id TEXT REFERENCES project(id),
-    FOREIGN KEY (git_credential_id) REFERENCES credential(id)
+    FOREIGN KEY (git_credential_id) REFERENCES repository_credential(id)
 );
 
 
@@ -300,13 +312,17 @@ CREATE TABLE IF NOT EXISTS artifact (
 
 CREATE TABLE IF NOT EXISTS application (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     code TEXT NOT NULL,
     kind TEXT NOT NULL DEFAULT 'standard',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    project_id TEXT REFERENCES project(id)
+    project_id VARCHAR(26) REFERENCES project(id)
 );
+
+CREATE INDEX idx_application_project ON application(project_id);
+CREATE UNIQUE INDEX uq_application_project_name ON application(project_id, name);
+CREATE UNIQUE INDEX uq_application_project_code ON application(project_id, code);
 
 
 CREATE TABLE IF NOT EXISTS version (
@@ -453,8 +469,8 @@ CREATE TABLE IF NOT EXISTS version_component_device (
 
 CREATE TABLE IF NOT EXISTS gateway_config (
     application_id TEXT PRIMARY KEY,
-    traefik_component_name VARCHAR(255) NOT NULL DEFAULT 'traefik',
     rest_api_url TEXT NOT NULL,
+    rest_api_host_url TEXT NOT NULL,
     rest_ready_timeout_seconds BIGINT NOT NULL DEFAULT 20,
     base_domain TEXT NOT NULL,
     default_entrypoint TEXT NOT NULL DEFAULT 'web',
@@ -464,7 +480,7 @@ CREATE TABLE IF NOT EXISTS gateway_config (
     dns_api_token VARCHAR(255) NOT NULL DEFAULT '',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE
+    FOREIGN KEY (application_id) REFERENCES application(id)
 );
 
 CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
@@ -474,22 +490,22 @@ CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
     PRIMARY KEY (application_id, profile),
     UNIQUE (application_id, version_id),
     FOREIGN KEY (application_id) REFERENCES gateway_config(application_id) ON DELETE CASCADE,
-    FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE
+    FOREIGN KEY (version_id) REFERENCES version(id)
 );
 
 CREATE TABLE IF NOT EXISTS service (
     id TEXT PRIMARY KEY,
+    project_id VARCHAR(26) NOT NULL,
     application_id TEXT NOT NULL,
-    instance_key TEXT NOT NULL DEFAULT 'default',
-    code TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL,
     version_id TEXT NOT NULL,
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
-    FOREIGN KEY (version_id) REFERENCES version(id),
-    UNIQUE(application_id, instance_key)
+    FOREIGN KEY (application_id) REFERENCES application(id),
+    FOREIGN KEY (version_id) REFERENCES version(id)
 );
+CREATE UNIQUE INDEX uq_service_project_code ON service(project_id, code);
 
 
 CREATE TABLE IF NOT EXISTS service_env (
@@ -515,7 +531,7 @@ CREATE TABLE IF NOT EXISTS service_component (
     UNIQUE (service_id, source_version_component_id),
     UNIQUE (service_id, component_name),
     FOREIGN KEY (service_id) REFERENCES service(id) ON DELETE CASCADE,
-    FOREIGN KEY (source_version_component_id) REFERENCES version_component(id) ON DELETE CASCADE
+    FOREIGN KEY (source_version_component_id) REFERENCES version_component(id)
 );
 
 
@@ -595,6 +611,12 @@ CREATE TABLE IF NOT EXISTS deployment (
     project_id TEXT REFERENCES project(id),
     version_id TEXT,
     service_id TEXT,
+    environment_id TEXT,
+    environment_target_type TEXT,
+    environment_target_revision BIGINT,
+    ssh_credential_id TEXT,
+    ssh_credential_revision BIGINT,
+    gateway_application_id TEXT,
     options_json TEXT,
     effective_plan_hash TEXT,
     command_text TEXT NOT NULL DEFAULT '',
@@ -648,3 +670,29 @@ CREATE INDEX idx_deployment_dialogue_conversation_project_updated
     ON deployment_dialogue_conversation(project_id, updated_at DESC, id DESC);
 CREATE INDEX idx_deployment_dialogue_message_conversation_created
     ON deployment_dialogue_message(conversation_id, created_at, id);
+CREATE TABLE IF NOT EXISTS environment (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL UNIQUE,
+    target_type TEXT NOT NULL,
+    platform TEXT,
+    host TEXT,
+    port BIGINT,
+    username TEXT,
+    workspace_root TEXT,
+    ssh_credential_id TEXT,
+    ssh_credential_revision BIGINT,
+    host_key_fingerprint TEXT,
+    target_revision BIGINT NOT NULL,
+    last_probe_revision BIGINT,
+    last_probe_status TEXT,
+    last_probe_at DATETIME,
+    last_probe_diagnostic TEXT,
+    gateway_application_id TEXT UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_environment_target_type CHECK (target_type IN ('local', 'ssh')),
+    CONSTRAINT chk_environment_platform CHECK (platform IS NULL OR platform IN ('linux', 'windows')),
+    CONSTRAINT chk_environment_port CHECK (port IS NULL OR port BETWEEN 1 AND 65535),
+    CONSTRAINT chk_environment_revision CHECK ((ssh_credential_revision IS NULL OR ssh_credential_revision >= 1) AND target_revision >= 1)
+);

@@ -89,11 +89,11 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 		return err
 	}
 
-	updatedRoutes, err := s.listEnabledRoutesForPublish(ctx)
+	updatedRoutes, err := s.listEnabledRoutesForPublish(ctx, projectId)
 	if err != nil {
 		return err
 	}
-	return s.applyRouteSnapshot(ctx, updatedRoutes, false)
+	return s.applyRouteSnapshot(ctx, projectId, updatedRoutes, false)
 }
 
 func (s Service) loadSyncState(ctx context.Context, userId string, projectId string, changes []routedto.RouteSyncChange) ([]model.Route, []routeport.TraefikRouter, []routeport.TraefikService, error) {
@@ -108,32 +108,26 @@ func (s Service) loadSyncState(ctx context.Context, userId string, projectId str
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if err := s.prepareSyncRoutes(ctx, routes); err != nil {
+	if err := s.prepareSyncRoutes(ctx, projectId, routes); err != nil {
 		return nil, nil, nil, err
 	}
-	gateway, err := s.resolveGatewayForRender(ctx)
+	gateway, err := s.resolveGatewayForRender(ctx, projectId)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	items, err := s.traefikRouterClient.ListRouters(ctx, gateway.RestApiUrl)
+	items, err := s.traefikRouterClient.ListRouters(ctx, projectId, *gateway)
 	if err != nil {
-		if s.traefikRouterClient.IsConnectionError(err) {
-			return nil, nil, nil, apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
-		}
-		return nil, nil, nil, apperror.Wrap(apperror.KindInternal, "Failed to inspect Traefik routers", err)
+		return nil, nil, nil, s.traefikClientError(err, "Failed to inspect Traefik routers")
 	}
-	services, err := s.traefikRouterClient.ListServices(ctx, gateway.RestApiUrl)
+	services, err := s.traefikRouterClient.ListServices(ctx, projectId, *gateway)
 	if err != nil {
-		if s.traefikRouterClient.IsConnectionError(err) {
-			return nil, nil, nil, apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
-		}
-		return nil, nil, nil, apperror.Wrap(apperror.KindInternal, "Failed to inspect Traefik services", err)
+		return nil, nil, nil, s.traefikClientError(err, "Failed to inspect Traefik services")
 	}
 	return routes, items, services, nil
 }
 
 func (s Service) syncCandidateRoutes(ctx context.Context, projectId string, changes []routedto.RouteSyncChange) ([]model.Route, error) {
-	enabledRoutes, err := s.route.ListEnabledRoutes(ctx)
+	enabledRoutes, err := s.route.ListEnabledRoutesByProject(ctx, projectId)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
 	}
@@ -152,15 +146,12 @@ func (s Service) syncCandidateRoutes(ctx context.Context, projectId string, chan
 		}
 		requested[routeId] = change.Enabled
 
-		route, err := s.route.Route(ctx, routeId)
+		route, err := s.route.Route(ctx, projectId, routeId)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return nil, apperror.New(apperror.KindNotFound, "Route "+routeId+" not found")
 			}
 			return nil, apperror.Wrap(apperror.KindInternal, "Failed to load route for sync", err)
-		}
-		if route.ProjectId == nil || *route.ProjectId != projectId {
-			return nil, apperror.New(apperror.KindForbidden, "Permission denied")
 		}
 		route.Enabled = change.Enabled
 		if change.Enabled {
@@ -178,12 +169,12 @@ func (s Service) syncCandidateRoutes(ctx context.Context, projectId string, chan
 	return routes, nil
 }
 
-func (s Service) prepareSyncRoutes(ctx context.Context, routes []model.Route) error {
+func (s Service) prepareSyncRoutes(ctx context.Context, projectId string, routes []model.Route) error {
 	tcpPorts := make(map[int]string)
 	for index := range routes {
 		route := &routes[index]
 		if route.Protocol != routeProtocolTCP {
-			if err := s.validateRoute(ctx, route, route.Id); err != nil {
+			if err := s.validateRoute(ctx, projectId, route, route.Id, true); err != nil {
 				return err
 			}
 			continue
@@ -197,10 +188,10 @@ func (s Service) prepareSyncRoutes(ctx context.Context, routes []model.Route) er
 		if existing, found := tcpPorts[*route.ListenPort]; found && existing != route.Name {
 			return apperror.New(apperror.KindConflict, fmt.Sprintf("TCP listen port %d is already used by route %s", *route.ListenPort, existing))
 		}
-		if err := s.resolveManagedRouteTarget(ctx, route); err != nil {
+		if err := s.resolveManagedRouteTarget(ctx, projectId, route); err != nil {
 			return err
 		}
-		if conflict, err := s.componentPortConflict(ctx, *route.ListenPort); err != nil {
+		if conflict, err := s.componentPortConflict(ctx, projectId, *route.ListenPort); err != nil {
 			return err
 		} else if conflict != "" {
 			return apperror.New(apperror.KindConflict, fmt.Sprintf("TCP listen port %d conflicts with component endpoint %s", *route.ListenPort, conflict))
@@ -213,18 +204,15 @@ func (s Service) prepareSyncRoutes(ctx context.Context, routes []model.Route) er
 func (s Service) applyRouteSyncChanges(ctx context.Context, projectId string, changes []routedto.RouteSyncChange) error {
 	for _, change := range changes {
 		routeId := strings.TrimSpace(change.RouteId)
-		route, err := s.route.Route(ctx, routeId)
+		route, err := s.route.Route(ctx, projectId, routeId)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return apperror.New(apperror.KindNotFound, "Route "+routeId+" not found")
 			}
 			return apperror.Wrap(apperror.KindInternal, "Failed to load route for sync", err)
 		}
-		if route.ProjectId == nil || *route.ProjectId != strings.TrimSpace(projectId) {
-			return apperror.New(apperror.KindForbidden, "Permission denied")
-		}
 		route.Enabled = change.Enabled
-		if err := s.route.UpdateRoute(ctx, route); err != nil {
+		if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to update route sync state", err)
 		}
 	}

@@ -8,7 +8,6 @@ type Message struct {
 }
 
 type TurnInput struct {
-	ProjectId      string
 	ConversationId string
 	Messages       []Message
 }

@@ -15,11 +15,11 @@ const { authStore, router } = vi.hoisted(() => ({
           query: { redirect: target.searchParams.get('redirect') ?? undefined },
         };
       }
-      if (target.pathname === '/gateways') {
+      if (target.pathname === '/gateway') {
         return {
           fullPath: `${target.pathname}${target.search}${target.hash}`,
           matched: [{ meta: {} }],
-          name: 'Gateways',
+          name: 'Gateway',
           query: {},
         };
       }
@@ -41,8 +41,8 @@ describe('handleUnauthorized', () => {
 
   it('replaces a protected route with login while preserving its destination', () => {
     router.currentRoute.value = {
-      fullPath: '/gateways?status=healthy',
-      name: 'Gateways',
+      fullPath: '/gateway?status=healthy',
+      name: 'Gateway',
       query: {},
     };
 
@@ -51,15 +51,15 @@ describe('handleUnauthorized', () => {
     expect(authStore.clearToken).toHaveBeenCalledTimes(1);
     expect(router.replace).toHaveBeenCalledWith({
       name: 'Login',
-      query: { redirect: '/gateways?status=healthy' },
+      query: { redirect: '/gateway?status=healthy' },
     });
   });
 
   it('normalizes a nested login redirect instead of appending another redirect layer', () => {
     router.currentRoute.value = {
-      fullPath: '/login?redirect=/login?redirect=/gateways',
+      fullPath: '/login?redirect=/login?redirect=/gateway',
       name: 'Login',
-      query: { redirect: '/login?redirect=/gateways' },
+      query: { redirect: '/login?redirect=/gateway' },
     };
 
     handleUnauthorized();
@@ -67,15 +67,15 @@ describe('handleUnauthorized', () => {
     expect(authStore.clearToken).toHaveBeenCalledTimes(1);
     expect(router.replace).toHaveBeenCalledWith({
       name: 'Login',
-      query: { redirect: '/gateways' },
+      query: { redirect: '/gateway' },
     });
   });
 
   it('does not navigate when login already has a valid redirect target', () => {
     router.currentRoute.value = {
-      fullPath: '/login?redirect=/gateways',
+      fullPath: '/login?redirect=/gateway',
       name: 'Login',
-      query: { redirect: '/gateways' },
+      query: { redirect: '/gateway' },
     };
 
     handleUnauthorized();

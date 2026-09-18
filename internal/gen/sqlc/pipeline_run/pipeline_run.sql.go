@@ -11,24 +11,30 @@ import (
 	"time"
 )
 
-const artifactByID = `-- name: ArtifactByID :one
+const artifactById = `-- name: ArtifactById :one
 SELECT artifact.id, artifact.project_id, artifact.pipeline_run_id, artifact.repository_id, artifact.repository_name, artifact.pipeline_id, artifact.pipeline_name, artifact.pipeline_stage_id, artifact.stage_name, artifact.collector, artifact.name, artifact.location, artifact.value, artifact.value_format, artifact.image_ref, artifact.local_image_sha256, artifact.source_artifact_id, source_artifact.value AS source_commit_sha, binding.application_id, binding.application_name, binding.source_version_id, binding.source_version_label, binding.generated_version_id, binding.generated_version_label, version_component.id AS version_component_id, version_component.name AS version_component_name, artifact.created_at
 FROM artifact
 LEFT JOIN artifact AS source_artifact ON source_artifact.id = artifact.source_artifact_id AND source_artifact.value_format = 'git_object_id'
 LEFT JOIN pipeline_run_version_binding AS binding ON binding.pipeline_run_id = artifact.pipeline_run_id
 LEFT JOIN version_component ON version_component.artifact_id = artifact.id
 WHERE artifact.id = ?
+  AND artifact.project_id = ?
 `
 
-type ArtifactByIDRow struct {
-	ID                    string         `db:"id"`
-	ProjectID             sql.NullString `db:"project_id"`
-	PipelineRunID         string         `db:"pipeline_run_id"`
-	RepositoryID          string         `db:"repository_id"`
+type ArtifactByIdParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+type ArtifactByIdRow struct {
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
+	PipelineRunId         string         `db:"pipeline_run_id"`
+	RepositoryId          string         `db:"repository_id"`
 	RepositoryName        string         `db:"repository_name"`
-	PipelineID            string         `db:"pipeline_id"`
+	PipelineId            string         `db:"pipeline_id"`
 	PipelineName          string         `db:"pipeline_name"`
-	PipelineStageID       string         `db:"pipeline_stage_id"`
+	PipelineStageId       string         `db:"pipeline_stage_id"`
 	StageName             string         `db:"stage_name"`
 	Collector             string         `db:"collector"`
 	Name                  string         `db:"name"`
@@ -37,31 +43,31 @@ type ArtifactByIDRow struct {
 	ValueFormat           sql.NullString `db:"value_format"`
 	ImageRef              sql.NullString `db:"image_ref"`
 	LocalImageSha256      sql.NullString `db:"local_image_sha256"`
-	SourceArtifactID      sql.NullString `db:"source_artifact_id"`
+	SourceArtifactId      sql.NullString `db:"source_artifact_id"`
 	SourceCommitSha       sql.NullString `db:"source_commit_sha"`
-	ApplicationID         sql.NullString `db:"application_id"`
+	ApplicationId         sql.NullString `db:"application_id"`
 	ApplicationName       sql.NullString `db:"application_name"`
-	SourceVersionID       sql.NullString `db:"source_version_id"`
+	SourceVersionId       sql.NullString `db:"source_version_id"`
 	SourceVersionLabel    sql.NullString `db:"source_version_label"`
-	GeneratedVersionID    sql.NullString `db:"generated_version_id"`
+	GeneratedVersionId    sql.NullString `db:"generated_version_id"`
 	GeneratedVersionLabel sql.NullString `db:"generated_version_label"`
-	VersionComponentID    sql.NullString `db:"version_component_id"`
+	VersionComponentId    sql.NullString `db:"version_component_id"`
 	VersionComponentName  sql.NullString `db:"version_component_name"`
 	CreatedAt             time.Time      `db:"created_at"`
 }
 
-func (q *Queries) ArtifactByID(ctx context.Context, id string) (ArtifactByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, artifactByID, id)
-	var i ArtifactByIDRow
+func (q *Queries) ArtifactById(ctx context.Context, arg ArtifactByIdParams) (ArtifactByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, artifactById, arg.Id, arg.ProjectId)
+	var i ArtifactByIdRow
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
-		&i.PipelineRunID,
-		&i.RepositoryID,
+		&i.Id,
+		&i.ProjectId,
+		&i.PipelineRunId,
+		&i.RepositoryId,
 		&i.RepositoryName,
-		&i.PipelineID,
+		&i.PipelineId,
 		&i.PipelineName,
-		&i.PipelineStageID,
+		&i.PipelineStageId,
 		&i.StageName,
 		&i.Collector,
 		&i.Name,
@@ -70,15 +76,15 @@ func (q *Queries) ArtifactByID(ctx context.Context, id string) (ArtifactByIDRow,
 		&i.ValueFormat,
 		&i.ImageRef,
 		&i.LocalImageSha256,
-		&i.SourceArtifactID,
+		&i.SourceArtifactId,
 		&i.SourceCommitSha,
-		&i.ApplicationID,
+		&i.ApplicationId,
 		&i.ApplicationName,
-		&i.SourceVersionID,
+		&i.SourceVersionId,
 		&i.SourceVersionLabel,
-		&i.GeneratedVersionID,
+		&i.GeneratedVersionId,
 		&i.GeneratedVersionLabel,
-		&i.VersionComponentID,
+		&i.VersionComponentId,
 		&i.VersionComponentName,
 		&i.CreatedAt,
 	)
@@ -87,22 +93,26 @@ func (q *Queries) ArtifactByID(ctx context.Context, id string) (ArtifactByIDRow,
 
 const beginPipelineRun = `-- name: BeginPipelineRun :execrows
 UPDATE pipeline_run SET status = ?, started_at = ?
-WHERE id = ? AND status = ?
+WHERE id = ?
+  AND project_id = ?
+  AND status = ?
 `
 
 type BeginPipelineRunParams struct {
-	Status    string       `db:"status"`
-	StartedAt sql.NullTime `db:"started_at"`
-	ID        string       `db:"id"`
-	Status_2  string       `db:"status_2"`
+	Status         string         `db:"status"`
+	StartedAt      sql.NullTime   `db:"started_at"`
+	Id             string         `db:"id"`
+	ProjectId      sql.NullString `db:"project_id"`
+	ExpectedStatus string         `db:"expected_status"`
 }
 
 func (q *Queries) BeginPipelineRun(ctx context.Context, arg BeginPipelineRunParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, beginPipelineRun,
 		arg.Status,
 		arg.StartedAt,
-		arg.ID,
-		arg.Status_2,
+		arg.Id,
+		arg.ProjectId,
+		arg.ExpectedStatus,
 	)
 	if err != nil {
 		return 0, err
@@ -119,25 +129,28 @@ WHERE pipeline_stage_run.id = ?
     SELECT 1
     FROM pipeline_run
     WHERE pipeline_run.id = pipeline_stage_run.pipeline_run_id
+      AND pipeline_run.project_id = ?
       AND pipeline_run.status = ?
   )
 `
 
 type BeginPipelineStageRunParams struct {
-	Status    string       `db:"status"`
-	StartedAt sql.NullTime `db:"started_at"`
-	ID        string       `db:"id"`
-	Status_2  string       `db:"status_2"`
-	Status_3  string       `db:"status_3"`
+	Status         string         `db:"status"`
+	StartedAt      sql.NullTime   `db:"started_at"`
+	Id             string         `db:"id"`
+	ExpectedStatus string         `db:"expected_status"`
+	ProjectId      sql.NullString `db:"project_id"`
+	ParentStatus   string         `db:"parent_status"`
 }
 
 func (q *Queries) BeginPipelineStageRun(ctx context.Context, arg BeginPipelineStageRunParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, beginPipelineStageRun,
 		arg.Status,
 		arg.StartedAt,
-		arg.ID,
-		arg.Status_2,
-		arg.Status_3,
+		arg.Id,
+		arg.ExpectedStatus,
+		arg.ProjectId,
+		arg.ParentStatus,
 	)
 	if err != nil {
 		return 0, err
@@ -148,16 +161,19 @@ func (q *Queries) BeginPipelineStageRun(ctx context.Context, arg BeginPipelineSt
 const cancelPipelineRun = `-- name: CancelPipelineRun :execrows
 UPDATE pipeline_run
 SET status = ?, finished_at = ?, error_message = ?
-WHERE id = ? AND status IN (?, ?)
+WHERE id = ?
+  AND project_id = ?
+  AND status IN (?, ?)
 `
 
 type CancelPipelineRunParams struct {
-	Status       string         `db:"status"`
-	FinishedAt   sql.NullTime   `db:"finished_at"`
-	ErrorMessage sql.NullString `db:"error_message"`
-	ID           string         `db:"id"`
-	Status_2     string         `db:"status_2"`
-	Status_3     string         `db:"status_3"`
+	Status        string         `db:"status"`
+	FinishedAt    sql.NullTime   `db:"finished_at"`
+	ErrorMessage  sql.NullString `db:"error_message"`
+	Id            string         `db:"id"`
+	ProjectId     sql.NullString `db:"project_id"`
+	WaitingStatus string         `db:"waiting_status"`
+	RunningStatus string         `db:"running_status"`
 }
 
 func (q *Queries) CancelPipelineRun(ctx context.Context, arg CancelPipelineRunParams) (int64, error) {
@@ -165,9 +181,10 @@ func (q *Queries) CancelPipelineRun(ctx context.Context, arg CancelPipelineRunPa
 		arg.Status,
 		arg.FinishedAt,
 		arg.ErrorMessage,
-		arg.ID,
-		arg.Status_2,
-		arg.Status_3,
+		arg.Id,
+		arg.ProjectId,
+		arg.WaitingStatus,
+		arg.RunningStatus,
 	)
 	if err != nil {
 		return 0, err
@@ -178,15 +195,23 @@ func (q *Queries) CancelPipelineRun(ctx context.Context, arg CancelPipelineRunPa
 const cancelRunningPipelineStageRuns = `-- name: CancelRunningPipelineStageRuns :execrows
 UPDATE pipeline_stage_run
 SET status = ?, finished_at = ?, error_message = ?
-WHERE pipeline_run_id = ? AND status = ?
+WHERE pipeline_stage_run.pipeline_run_id = ?
+  AND pipeline_stage_run.status = ?
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline_run
+    WHERE pipeline_run.id = pipeline_stage_run.pipeline_run_id
+      AND pipeline_run.project_id = ?
+  )
 `
 
 type CancelRunningPipelineStageRunsParams struct {
-	Status        string         `db:"status"`
-	FinishedAt    sql.NullTime   `db:"finished_at"`
-	ErrorMessage  sql.NullString `db:"error_message"`
-	PipelineRunID string         `db:"pipeline_run_id"`
-	Status_2      string         `db:"status_2"`
+	Status         string         `db:"status"`
+	FinishedAt     sql.NullTime   `db:"finished_at"`
+	ErrorMessage   sql.NullString `db:"error_message"`
+	PipelineRunId  string         `db:"pipeline_run_id"`
+	ExpectedStatus string         `db:"expected_status"`
+	ProjectId      sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) CancelRunningPipelineStageRuns(ctx context.Context, arg CancelRunningPipelineStageRunsParams) (int64, error) {
@@ -194,8 +219,9 @@ func (q *Queries) CancelRunningPipelineStageRuns(ctx context.Context, arg Cancel
 		arg.Status,
 		arg.FinishedAt,
 		arg.ErrorMessage,
-		arg.PipelineRunID,
-		arg.Status_2,
+		arg.PipelineRunId,
+		arg.ExpectedStatus,
+		arg.ProjectId,
 	)
 	if err != nil {
 		return 0, err
@@ -205,39 +231,57 @@ func (q *Queries) CancelRunningPipelineStageRuns(ctx context.Context, arg Cancel
 
 const commandArtifactByRunStageAndName = `-- name: CommandArtifactByRunStageAndName :one
 SELECT id, value, value_format FROM artifact
-WHERE pipeline_run_id = ? AND pipeline_stage_id = ? AND name = ? AND collector = 'command'
+WHERE pipeline_run_id = ?
+  AND pipeline_stage_id = ?
+  AND name = ?
+  AND collector = 'command'
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline_run
+    WHERE pipeline_run.id = artifact.pipeline_run_id
+      AND pipeline_run.project_id = ?
+  )
 `
 
 type CommandArtifactByRunStageAndNameParams struct {
-	PipelineRunID   string `db:"pipeline_run_id"`
-	PipelineStageID string `db:"pipeline_stage_id"`
-	Name            string `db:"name"`
+	PipelineRunId   string         `db:"pipeline_run_id"`
+	PipelineStageId string         `db:"pipeline_stage_id"`
+	Name            string         `db:"name"`
+	ProjectId       sql.NullString `db:"project_id"`
 }
 
 type CommandArtifactByRunStageAndNameRow struct {
-	ID          string         `db:"id"`
+	Id          string         `db:"id"`
 	Value       sql.NullString `db:"value"`
 	ValueFormat sql.NullString `db:"value_format"`
 }
 
 func (q *Queries) CommandArtifactByRunStageAndName(ctx context.Context, arg CommandArtifactByRunStageAndNameParams) (CommandArtifactByRunStageAndNameRow, error) {
-	row := q.db.QueryRowContext(ctx, commandArtifactByRunStageAndName, arg.PipelineRunID, arg.PipelineStageID, arg.Name)
+	row := q.db.QueryRowContext(ctx, commandArtifactByRunStageAndName,
+		arg.PipelineRunId,
+		arg.PipelineStageId,
+		arg.Name,
+		arg.ProjectId,
+	)
 	var i CommandArtifactByRunStageAndNameRow
-	err := row.Scan(&i.ID, &i.Value, &i.ValueFormat)
+	err := row.Scan(&i.Id, &i.Value, &i.ValueFormat)
 	return i, err
 }
 
 const completePipelineRun = `-- name: CompletePipelineRun :execrows
 UPDATE pipeline_run SET status = ?, error_message = ?, finished_at = ?
-WHERE id = ? AND status = ?
+WHERE id = ?
+  AND project_id = ?
+  AND status = ?
 `
 
 type CompletePipelineRunParams struct {
-	Status       string         `db:"status"`
-	ErrorMessage sql.NullString `db:"error_message"`
-	FinishedAt   sql.NullTime   `db:"finished_at"`
-	ID           string         `db:"id"`
-	Status_2     string         `db:"status_2"`
+	Status         string         `db:"status"`
+	ErrorMessage   sql.NullString `db:"error_message"`
+	FinishedAt     sql.NullTime   `db:"finished_at"`
+	Id             string         `db:"id"`
+	ProjectId      sql.NullString `db:"project_id"`
+	ExpectedStatus string         `db:"expected_status"`
 }
 
 func (q *Queries) CompletePipelineRun(ctx context.Context, arg CompletePipelineRunParams) (int64, error) {
@@ -245,8 +289,9 @@ func (q *Queries) CompletePipelineRun(ctx context.Context, arg CompletePipelineR
 		arg.Status,
 		arg.ErrorMessage,
 		arg.FinishedAt,
-		arg.ID,
-		arg.Status_2,
+		arg.Id,
+		arg.ProjectId,
+		arg.ExpectedStatus,
 	)
 	if err != nil {
 		return 0, err
@@ -255,33 +300,55 @@ func (q *Queries) CompletePipelineRun(ctx context.Context, arg CompletePipelineR
 }
 
 const completePipelineRunVersionBinding = `-- name: CompletePipelineRunVersionBinding :exec
-UPDATE pipeline_run_version_binding SET generated_version_id = ?, generated_version_label = ? WHERE pipeline_run_id = ?
+UPDATE pipeline_run_version_binding
+SET generated_version_id = ?, generated_version_label = ?
+WHERE pipeline_run_id = ?
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline_run
+    WHERE pipeline_run.id = pipeline_run_version_binding.pipeline_run_id
+      AND pipeline_run.project_id = ?
+  )
 `
 
 type CompletePipelineRunVersionBindingParams struct {
-	GeneratedVersionID    sql.NullString `db:"generated_version_id"`
+	GeneratedVersionId    sql.NullString `db:"generated_version_id"`
 	GeneratedVersionLabel sql.NullString `db:"generated_version_label"`
-	PipelineRunID         string         `db:"pipeline_run_id"`
+	PipelineRunId         string         `db:"pipeline_run_id"`
+	ProjectId             sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) CompletePipelineRunVersionBinding(ctx context.Context, arg CompletePipelineRunVersionBindingParams) error {
-	_, err := q.db.ExecContext(ctx, completePipelineRunVersionBinding, arg.GeneratedVersionID, arg.GeneratedVersionLabel, arg.PipelineRunID)
+	_, err := q.db.ExecContext(ctx, completePipelineRunVersionBinding,
+		arg.GeneratedVersionId,
+		arg.GeneratedVersionLabel,
+		arg.PipelineRunId,
+		arg.ProjectId,
+	)
 	return err
 }
 
 const completePipelineStageRun = `-- name: CompletePipelineStageRun :execrows
 UPDATE pipeline_stage_run
 SET status = ?, finished_at = ?, exit_code = ?, error_message = ?
-WHERE id = ? AND status = ?
+WHERE pipeline_stage_run.id = ?
+  AND pipeline_stage_run.status = ?
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline_run
+    WHERE pipeline_run.id = pipeline_stage_run.pipeline_run_id
+      AND pipeline_run.project_id = ?
+  )
 `
 
 type CompletePipelineStageRunParams struct {
-	Status       string         `db:"status"`
-	FinishedAt   sql.NullTime   `db:"finished_at"`
-	ExitCode     sql.NullInt64  `db:"exit_code"`
-	ErrorMessage sql.NullString `db:"error_message"`
-	ID           string         `db:"id"`
-	Status_2     string         `db:"status_2"`
+	Status         string         `db:"status"`
+	FinishedAt     sql.NullTime   `db:"finished_at"`
+	ExitCode       sql.NullInt64  `db:"exit_code"`
+	ErrorMessage   sql.NullString `db:"error_message"`
+	Id             string         `db:"id"`
+	ExpectedStatus string         `db:"expected_status"`
+	ProjectId      sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) CompletePipelineStageRun(ctx context.Context, arg CompletePipelineStageRunParams) (int64, error) {
@@ -290,8 +357,9 @@ func (q *Queries) CompletePipelineStageRun(ctx context.Context, arg CompletePipe
 		arg.FinishedAt,
 		arg.ExitCode,
 		arg.ErrorMessage,
-		arg.ID,
-		arg.Status_2,
+		arg.Id,
+		arg.ExpectedStatus,
+		arg.ProjectId,
 	)
 	if err != nil {
 		return 0, err
@@ -301,17 +369,25 @@ func (q *Queries) CompletePipelineStageRun(ctx context.Context, arg CompletePipe
 
 const countActivePipelineRunsByRepository = `-- name: CountActivePipelineRunsByRepository :one
 SELECT COUNT(*) FROM pipeline_run
-WHERE repository_id = ? AND status IN (?, ?)
+WHERE project_id = ?
+  AND repository_id = ?
+  AND status IN (?, ?)
 `
 
 type CountActivePipelineRunsByRepositoryParams struct {
-	RepositoryID string `db:"repository_id"`
-	Status       string `db:"status"`
-	Status_2     string `db:"status_2"`
+	ProjectId     sql.NullString `db:"project_id"`
+	RepositoryId  string         `db:"repository_id"`
+	WaitingStatus string         `db:"waiting_status"`
+	RunningStatus string         `db:"running_status"`
 }
 
 func (q *Queries) CountActivePipelineRunsByRepository(ctx context.Context, arg CountActivePipelineRunsByRepositoryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countActivePipelineRunsByRepository, arg.RepositoryID, arg.Status, arg.Status_2)
+	row := q.db.QueryRowContext(ctx, countActivePipelineRunsByRepository,
+		arg.ProjectId,
+		arg.RepositoryId,
+		arg.WaitingStatus,
+		arg.RunningStatus,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -319,27 +395,26 @@ func (q *Queries) CountActivePipelineRunsByRepository(ctx context.Context, arg C
 
 const countArtifacts = `-- name: CountArtifacts :one
 SELECT COUNT(*) FROM artifact
-WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
+WHERE project_id = ?
   AND (CAST(? AS CHAR) IS NULL OR repository_id = ?)
   AND (CAST(? AS CHAR) IS NULL OR pipeline_id = ?)
   AND (CAST(? AS CHAR) IS NULL OR name LIKE ? OR stage_name LIKE ?)
 `
 
 type CountArtifactsParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
-	RepositoryID  sql.NullString `db:"repository_id"`
-	PipelineID    sql.NullString `db:"pipeline_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+	RepositoryId  sql.NullString `db:"repository_id"`
+	PipelineId    sql.NullString `db:"pipeline_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountArtifacts(ctx context.Context, arg CountArtifactsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countArtifacts,
-		arg.ProjectID,
-		arg.ProjectID,
-		arg.RepositoryID,
-		arg.RepositoryID,
-		arg.PipelineID,
-		arg.PipelineID,
+		arg.ProjectId,
+		arg.RepositoryId,
+		arg.RepositoryId,
+		arg.PipelineId,
+		arg.PipelineId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -349,9 +424,27 @@ func (q *Queries) CountArtifacts(ctx context.Context, arg CountArtifactsParams) 
 	return count, err
 }
 
+const countCDConfigurationReferences = `-- name: CountCDConfigurationReferences :one
+SELECT COUNT(*)
+FROM pipeline_run_version_binding
+WHERE EXISTS (
+  SELECT 1
+  FROM pipeline_run
+  WHERE pipeline_run.id = pipeline_run_version_binding.pipeline_run_id
+    AND pipeline_run.project_id = ?
+)
+`
+
+func (q *Queries) CountCDConfigurationReferences(ctx context.Context, projectID sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCDConfigurationReferences, projectID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countPipelineRuns = `-- name: CountPipelineRuns :one
 SELECT COUNT(*) FROM pipeline_run
-WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
+WHERE project_id = ?
   AND (CAST(? AS CHAR) IS NULL OR repository_id = ?)
   AND (CAST(? AS CHAR) IS NULL OR pipeline_id = ?)
   AND (CAST(? AS DATE) IS NULL OR created_at >= ?)
@@ -359,21 +452,20 @@ WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
 `
 
 type CountPipelineRunsParams struct {
-	ProjectID    sql.NullString `db:"project_id"`
-	RepositoryID sql.NullString `db:"repository_id"`
-	PipelineID   sql.NullString `db:"pipeline_id"`
+	ProjectId    sql.NullString `db:"project_id"`
+	RepositoryId sql.NullString `db:"repository_id"`
+	PipelineId   sql.NullString `db:"pipeline_id"`
 	FromAt       sql.NullTime   `db:"from_at"`
 	ToAt         sql.NullTime   `db:"to_at"`
 }
 
 func (q *Queries) CountPipelineRuns(ctx context.Context, arg CountPipelineRunsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countPipelineRuns,
-		arg.ProjectID,
-		arg.ProjectID,
-		arg.RepositoryID,
-		arg.RepositoryID,
-		arg.PipelineID,
-		arg.PipelineID,
+		arg.ProjectId,
+		arg.RepositoryId,
+		arg.RepositoryId,
+		arg.PipelineId,
+		arg.PipelineId,
 		arg.FromAt,
 		arg.FromAt,
 		arg.ToAt,
@@ -387,40 +479,79 @@ func (q *Queries) CountPipelineRuns(ctx context.Context, arg CountPipelineRunsPa
 const deletePipelineRun = `-- name: DeletePipelineRun :exec
 DELETE FROM pipeline_run
 WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) DeletePipelineRun(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deletePipelineRun, id)
+type DeletePipelineRunParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeletePipelineRun(ctx context.Context, arg DeletePipelineRunParams) error {
+	_, err := q.db.ExecContext(ctx, deletePipelineRun, arg.Id, arg.ProjectId)
 	return err
 }
 
 const deletePipelineRunArtifacts = `-- name: DeletePipelineRunArtifacts :exec
 DELETE FROM artifact
 WHERE pipeline_run_id = ?
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline_run
+    WHERE pipeline_run.id = artifact.pipeline_run_id
+      AND pipeline_run.project_id = ?
+  )
 `
 
-func (q *Queries) DeletePipelineRunArtifacts(ctx context.Context, pipelineRunID string) error {
-	_, err := q.db.ExecContext(ctx, deletePipelineRunArtifacts, pipelineRunID)
+type DeletePipelineRunArtifactsParams struct {
+	PipelineRunId string         `db:"pipeline_run_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeletePipelineRunArtifacts(ctx context.Context, arg DeletePipelineRunArtifactsParams) error {
+	_, err := q.db.ExecContext(ctx, deletePipelineRunArtifacts, arg.PipelineRunId, arg.ProjectId)
 	return err
 }
 
 const deletePipelineRunVersionBinding = `-- name: DeletePipelineRunVersionBinding :exec
 DELETE FROM pipeline_run_version_binding
 WHERE pipeline_run_id = ?
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline_run
+    WHERE pipeline_run.id = pipeline_run_version_binding.pipeline_run_id
+      AND pipeline_run.project_id = ?
+  )
 `
 
-func (q *Queries) DeletePipelineRunVersionBinding(ctx context.Context, pipelineRunID string) error {
-	_, err := q.db.ExecContext(ctx, deletePipelineRunVersionBinding, pipelineRunID)
+type DeletePipelineRunVersionBindingParams struct {
+	PipelineRunId string         `db:"pipeline_run_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeletePipelineRunVersionBinding(ctx context.Context, arg DeletePipelineRunVersionBindingParams) error {
+	_, err := q.db.ExecContext(ctx, deletePipelineRunVersionBinding, arg.PipelineRunId, arg.ProjectId)
 	return err
 }
 
 const deletePipelineStageRuns = `-- name: DeletePipelineStageRuns :exec
 DELETE FROM pipeline_stage_run
 WHERE pipeline_run_id = ?
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline_run
+    WHERE pipeline_run.id = pipeline_stage_run.pipeline_run_id
+      AND pipeline_run.project_id = ?
+  )
 `
 
-func (q *Queries) DeletePipelineStageRuns(ctx context.Context, pipelineRunID string) error {
-	_, err := q.db.ExecContext(ctx, deletePipelineStageRuns, pipelineRunID)
+type DeletePipelineStageRunsParams struct {
+	PipelineRunId string         `db:"pipeline_run_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) DeletePipelineStageRuns(ctx context.Context, arg DeletePipelineStageRunsParams) error {
+	_, err := q.db.ExecContext(ctx, deletePipelineStageRuns, arg.PipelineRunId, arg.ProjectId)
 	return err
 }
 
@@ -430,14 +561,14 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertArtifactParams struct {
-	ID               string         `db:"id"`
-	ProjectID        sql.NullString `db:"project_id"`
-	PipelineRunID    string         `db:"pipeline_run_id"`
-	RepositoryID     string         `db:"repository_id"`
+	Id               string         `db:"id"`
+	ProjectId        sql.NullString `db:"project_id"`
+	PipelineRunId    string         `db:"pipeline_run_id"`
+	RepositoryId     string         `db:"repository_id"`
 	RepositoryName   string         `db:"repository_name"`
-	PipelineID       string         `db:"pipeline_id"`
+	PipelineId       string         `db:"pipeline_id"`
 	PipelineName     string         `db:"pipeline_name"`
-	PipelineStageID  string         `db:"pipeline_stage_id"`
+	PipelineStageId  string         `db:"pipeline_stage_id"`
 	StageName        string         `db:"stage_name"`
 	Collector        string         `db:"collector"`
 	Name             string         `db:"name"`
@@ -446,20 +577,20 @@ type InsertArtifactParams struct {
 	ValueFormat      sql.NullString `db:"value_format"`
 	ImageRef         sql.NullString `db:"image_ref"`
 	LocalImageSha256 sql.NullString `db:"local_image_sha256"`
-	SourceArtifactID sql.NullString `db:"source_artifact_id"`
+	SourceArtifactId sql.NullString `db:"source_artifact_id"`
 	CreatedAt        time.Time      `db:"created_at"`
 }
 
 func (q *Queries) InsertArtifact(ctx context.Context, arg InsertArtifactParams) error {
 	_, err := q.db.ExecContext(ctx, insertArtifact,
-		arg.ID,
-		arg.ProjectID,
-		arg.PipelineRunID,
-		arg.RepositoryID,
+		arg.Id,
+		arg.ProjectId,
+		arg.PipelineRunId,
+		arg.RepositoryId,
 		arg.RepositoryName,
-		arg.PipelineID,
+		arg.PipelineId,
 		arg.PipelineName,
-		arg.PipelineStageID,
+		arg.PipelineStageId,
 		arg.StageName,
 		arg.Collector,
 		arg.Name,
@@ -468,7 +599,7 @@ func (q *Queries) InsertArtifact(ctx context.Context, arg InsertArtifactParams) 
 		arg.ValueFormat,
 		arg.ImageRef,
 		arg.LocalImageSha256,
-		arg.SourceArtifactID,
+		arg.SourceArtifactId,
 		arg.CreatedAt,
 	)
 	return err
@@ -480,12 +611,12 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertPipelineRunParams struct {
-	ID                string         `db:"id"`
-	ProjectID         sql.NullString `db:"project_id"`
-	RepositoryID      string         `db:"repository_id"`
+	Id                string         `db:"id"`
+	ProjectId         sql.NullString `db:"project_id"`
+	RepositoryId      string         `db:"repository_id"`
 	RepositoryName    string         `db:"repository_name"`
-	SnapshotID        string         `db:"snapshot_id"`
-	PipelineID        string         `db:"pipeline_id"`
+	SnapshotId        string         `db:"snapshot_id"`
+	PipelineId        string         `db:"pipeline_id"`
 	PipelineName      string         `db:"pipeline_name"`
 	PipelineVersion   int64          `db:"pipeline_version"`
 	Trigger           string         `db:"trigger"`
@@ -501,12 +632,12 @@ type InsertPipelineRunParams struct {
 
 func (q *Queries) InsertPipelineRun(ctx context.Context, arg InsertPipelineRunParams) error {
 	_, err := q.db.ExecContext(ctx, insertPipelineRun,
-		arg.ID,
-		arg.ProjectID,
-		arg.RepositoryID,
+		arg.Id,
+		arg.ProjectId,
+		arg.RepositoryId,
 		arg.RepositoryName,
-		arg.SnapshotID,
-		arg.PipelineID,
+		arg.SnapshotId,
+		arg.PipelineId,
 		arg.PipelineName,
 		arg.PipelineVersion,
 		arg.Trigger,
@@ -528,23 +659,23 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertPipelineRunVersionBindingParams struct {
-	PipelineRunID         string         `db:"pipeline_run_id"`
-	ApplicationID         string         `db:"application_id"`
+	PipelineRunId         string         `db:"pipeline_run_id"`
+	ApplicationId         string         `db:"application_id"`
 	ApplicationName       string         `db:"application_name"`
-	SourceVersionID       string         `db:"source_version_id"`
+	SourceVersionId       string         `db:"source_version_id"`
 	SourceVersionLabel    string         `db:"source_version_label"`
-	GeneratedVersionID    sql.NullString `db:"generated_version_id"`
+	GeneratedVersionId    sql.NullString `db:"generated_version_id"`
 	GeneratedVersionLabel sql.NullString `db:"generated_version_label"`
 }
 
 func (q *Queries) InsertPipelineRunVersionBinding(ctx context.Context, arg InsertPipelineRunVersionBindingParams) error {
 	_, err := q.db.ExecContext(ctx, insertPipelineRunVersionBinding,
-		arg.PipelineRunID,
-		arg.ApplicationID,
+		arg.PipelineRunId,
+		arg.ApplicationId,
 		arg.ApplicationName,
-		arg.SourceVersionID,
+		arg.SourceVersionId,
 		arg.SourceVersionLabel,
-		arg.GeneratedVersionID,
+		arg.GeneratedVersionId,
 		arg.GeneratedVersionLabel,
 	)
 	return err
@@ -556,9 +687,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertPipelineStageRunParams struct {
-	ID            string         `db:"id"`
-	PipelineRunID string         `db:"pipeline_run_id"`
-	StageID       string         `db:"stage_id"`
+	Id            string         `db:"id"`
+	PipelineRunId string         `db:"pipeline_run_id"`
+	StageId       string         `db:"stage_id"`
 	StageName     string         `db:"stage_name"`
 	Status        string         `db:"status"`
 	StartedAt     sql.NullTime   `db:"started_at"`
@@ -569,9 +700,9 @@ type InsertPipelineStageRunParams struct {
 
 func (q *Queries) InsertPipelineStageRun(ctx context.Context, arg InsertPipelineStageRunParams) error {
 	_, err := q.db.ExecContext(ctx, insertPipelineStageRun,
-		arg.ID,
-		arg.PipelineRunID,
-		arg.StageID,
+		arg.Id,
+		arg.PipelineRunId,
+		arg.StageId,
 		arg.StageName,
 		arg.Status,
 		arg.StartedAt,
@@ -588,7 +719,7 @@ FROM artifact
 LEFT JOIN artifact AS source_artifact ON source_artifact.id = artifact.source_artifact_id AND source_artifact.value_format = 'git_object_id'
 LEFT JOIN pipeline_run_version_binding AS binding ON binding.pipeline_run_id = artifact.pipeline_run_id
 LEFT JOIN version_component ON version_component.artifact_id = artifact.id
-WHERE (CAST(? AS CHAR) IS NULL OR artifact.project_id = ?)
+WHERE artifact.project_id = ?
   AND (CAST(? AS CHAR) IS NULL OR artifact.repository_id = ?)
   AND (CAST(? AS CHAR) IS NULL OR artifact.pipeline_id = ?)
   AND (CAST(? AS CHAR) IS NULL OR artifact.name LIKE ? OR artifact.stage_name LIKE ?)
@@ -596,23 +727,23 @@ ORDER BY artifact.id DESC LIMIT ? OFFSET ?
 `
 
 type ListArtifactsParams struct {
-	ProjectID     sql.NullString `db:"project_id"`
-	RepositoryID  sql.NullString `db:"repository_id"`
-	PipelineID    sql.NullString `db:"pipeline_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+	RepositoryId  sql.NullString `db:"repository_id"`
+	PipelineId    sql.NullString `db:"pipeline_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 	Limit         int32          `db:"limit"`
 	Offset        int32          `db:"offset"`
 }
 
 type ListArtifactsRow struct {
-	ID                    string         `db:"id"`
-	ProjectID             sql.NullString `db:"project_id"`
-	PipelineRunID         string         `db:"pipeline_run_id"`
-	RepositoryID          string         `db:"repository_id"`
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
+	PipelineRunId         string         `db:"pipeline_run_id"`
+	RepositoryId          string         `db:"repository_id"`
 	RepositoryName        string         `db:"repository_name"`
-	PipelineID            string         `db:"pipeline_id"`
+	PipelineId            string         `db:"pipeline_id"`
 	PipelineName          string         `db:"pipeline_name"`
-	PipelineStageID       string         `db:"pipeline_stage_id"`
+	PipelineStageId       string         `db:"pipeline_stage_id"`
 	StageName             string         `db:"stage_name"`
 	Collector             string         `db:"collector"`
 	Name                  string         `db:"name"`
@@ -621,27 +752,26 @@ type ListArtifactsRow struct {
 	ValueFormat           sql.NullString `db:"value_format"`
 	ImageRef              sql.NullString `db:"image_ref"`
 	LocalImageSha256      sql.NullString `db:"local_image_sha256"`
-	SourceArtifactID      sql.NullString `db:"source_artifact_id"`
+	SourceArtifactId      sql.NullString `db:"source_artifact_id"`
 	SourceCommitSha       sql.NullString `db:"source_commit_sha"`
-	ApplicationID         sql.NullString `db:"application_id"`
+	ApplicationId         sql.NullString `db:"application_id"`
 	ApplicationName       sql.NullString `db:"application_name"`
-	SourceVersionID       sql.NullString `db:"source_version_id"`
+	SourceVersionId       sql.NullString `db:"source_version_id"`
 	SourceVersionLabel    sql.NullString `db:"source_version_label"`
-	GeneratedVersionID    sql.NullString `db:"generated_version_id"`
+	GeneratedVersionId    sql.NullString `db:"generated_version_id"`
 	GeneratedVersionLabel sql.NullString `db:"generated_version_label"`
-	VersionComponentID    sql.NullString `db:"version_component_id"`
+	VersionComponentId    sql.NullString `db:"version_component_id"`
 	VersionComponentName  sql.NullString `db:"version_component_name"`
 	CreatedAt             time.Time      `db:"created_at"`
 }
 
 func (q *Queries) ListArtifacts(ctx context.Context, arg ListArtifactsParams) ([]ListArtifactsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listArtifacts,
-		arg.ProjectID,
-		arg.ProjectID,
-		arg.RepositoryID,
-		arg.RepositoryID,
-		arg.PipelineID,
-		arg.PipelineID,
+		arg.ProjectId,
+		arg.RepositoryId,
+		arg.RepositoryId,
+		arg.PipelineId,
+		arg.PipelineId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -656,14 +786,14 @@ func (q *Queries) ListArtifacts(ctx context.Context, arg ListArtifactsParams) ([
 	for rows.Next() {
 		var i ListArtifactsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
-			&i.PipelineRunID,
-			&i.RepositoryID,
+			&i.Id,
+			&i.ProjectId,
+			&i.PipelineRunId,
+			&i.RepositoryId,
 			&i.RepositoryName,
-			&i.PipelineID,
+			&i.PipelineId,
 			&i.PipelineName,
-			&i.PipelineStageID,
+			&i.PipelineStageId,
 			&i.StageName,
 			&i.Collector,
 			&i.Name,
@@ -672,15 +802,15 @@ func (q *Queries) ListArtifacts(ctx context.Context, arg ListArtifactsParams) ([
 			&i.ValueFormat,
 			&i.ImageRef,
 			&i.LocalImageSha256,
-			&i.SourceArtifactID,
+			&i.SourceArtifactId,
 			&i.SourceCommitSha,
-			&i.ApplicationID,
+			&i.ApplicationId,
 			&i.ApplicationName,
-			&i.SourceVersionID,
+			&i.SourceVersionId,
 			&i.SourceVersionLabel,
-			&i.GeneratedVersionID,
+			&i.GeneratedVersionId,
 			&i.GeneratedVersionLabel,
-			&i.VersionComponentID,
+			&i.VersionComponentId,
 			&i.VersionComponentName,
 			&i.CreatedAt,
 		); err != nil {
@@ -704,24 +834,24 @@ LEFT JOIN artifact AS source_artifact ON source_artifact.id = artifact.source_ar
 LEFT JOIN pipeline_run_version_binding AS binding ON binding.pipeline_run_id = artifact.pipeline_run_id
 LEFT JOIN version_component ON version_component.artifact_id = artifact.id
 WHERE artifact.pipeline_run_id = ?
-  AND (CAST(? AS CHAR) IS NULL OR artifact.project_id = ?)
+  AND artifact.project_id = ?
 ORDER BY artifact.created_at, artifact.id
 `
 
 type ListArtifactsByRunParams struct {
-	PipelineRunID string         `db:"pipeline_run_id"`
-	ProjectID     sql.NullString `db:"project_id"`
+	PipelineRunId string         `db:"pipeline_run_id"`
+	ProjectId     sql.NullString `db:"project_id"`
 }
 
 type ListArtifactsByRunRow struct {
-	ID                    string         `db:"id"`
-	ProjectID             sql.NullString `db:"project_id"`
-	PipelineRunID         string         `db:"pipeline_run_id"`
-	RepositoryID          string         `db:"repository_id"`
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
+	PipelineRunId         string         `db:"pipeline_run_id"`
+	RepositoryId          string         `db:"repository_id"`
 	RepositoryName        string         `db:"repository_name"`
-	PipelineID            string         `db:"pipeline_id"`
+	PipelineId            string         `db:"pipeline_id"`
 	PipelineName          string         `db:"pipeline_name"`
-	PipelineStageID       string         `db:"pipeline_stage_id"`
+	PipelineStageId       string         `db:"pipeline_stage_id"`
 	StageName             string         `db:"stage_name"`
 	Collector             string         `db:"collector"`
 	Name                  string         `db:"name"`
@@ -730,21 +860,21 @@ type ListArtifactsByRunRow struct {
 	ValueFormat           sql.NullString `db:"value_format"`
 	ImageRef              sql.NullString `db:"image_ref"`
 	LocalImageSha256      sql.NullString `db:"local_image_sha256"`
-	SourceArtifactID      sql.NullString `db:"source_artifact_id"`
+	SourceArtifactId      sql.NullString `db:"source_artifact_id"`
 	SourceCommitSha       sql.NullString `db:"source_commit_sha"`
-	ApplicationID         sql.NullString `db:"application_id"`
+	ApplicationId         sql.NullString `db:"application_id"`
 	ApplicationName       sql.NullString `db:"application_name"`
-	SourceVersionID       sql.NullString `db:"source_version_id"`
+	SourceVersionId       sql.NullString `db:"source_version_id"`
 	SourceVersionLabel    sql.NullString `db:"source_version_label"`
-	GeneratedVersionID    sql.NullString `db:"generated_version_id"`
+	GeneratedVersionId    sql.NullString `db:"generated_version_id"`
 	GeneratedVersionLabel sql.NullString `db:"generated_version_label"`
-	VersionComponentID    sql.NullString `db:"version_component_id"`
+	VersionComponentId    sql.NullString `db:"version_component_id"`
 	VersionComponentName  sql.NullString `db:"version_component_name"`
 	CreatedAt             time.Time      `db:"created_at"`
 }
 
 func (q *Queries) ListArtifactsByRun(ctx context.Context, arg ListArtifactsByRunParams) ([]ListArtifactsByRunRow, error) {
-	rows, err := q.db.QueryContext(ctx, listArtifactsByRun, arg.PipelineRunID, arg.ProjectID, arg.ProjectID)
+	rows, err := q.db.QueryContext(ctx, listArtifactsByRun, arg.PipelineRunId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -753,14 +883,14 @@ func (q *Queries) ListArtifactsByRun(ctx context.Context, arg ListArtifactsByRun
 	for rows.Next() {
 		var i ListArtifactsByRunRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
-			&i.PipelineRunID,
-			&i.RepositoryID,
+			&i.Id,
+			&i.ProjectId,
+			&i.PipelineRunId,
+			&i.RepositoryId,
 			&i.RepositoryName,
-			&i.PipelineID,
+			&i.PipelineId,
 			&i.PipelineName,
-			&i.PipelineStageID,
+			&i.PipelineStageId,
 			&i.StageName,
 			&i.Collector,
 			&i.Name,
@@ -769,15 +899,15 @@ func (q *Queries) ListArtifactsByRun(ctx context.Context, arg ListArtifactsByRun
 			&i.ValueFormat,
 			&i.ImageRef,
 			&i.LocalImageSha256,
-			&i.SourceArtifactID,
+			&i.SourceArtifactId,
 			&i.SourceCommitSha,
-			&i.ApplicationID,
+			&i.ApplicationId,
 			&i.ApplicationName,
-			&i.SourceVersionID,
+			&i.SourceVersionId,
 			&i.SourceVersionLabel,
-			&i.GeneratedVersionID,
+			&i.GeneratedVersionId,
 			&i.GeneratedVersionLabel,
-			&i.VersionComponentID,
+			&i.VersionComponentId,
 			&i.VersionComponentName,
 			&i.CreatedAt,
 		); err != nil {
@@ -797,7 +927,7 @@ func (q *Queries) ListArtifactsByRun(ctx context.Context, arg ListArtifactsByRun
 const listPipelineRuns = `-- name: ListPipelineRuns :many
 SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
 FROM pipeline_run
-WHERE (CAST(? AS CHAR) IS NULL OR project_id = ?)
+WHERE project_id = ?
   AND (CAST(? AS CHAR) IS NULL OR repository_id = ?)
   AND (CAST(? AS CHAR) IS NULL OR pipeline_id = ?)
   AND (CAST(? AS DATE) IS NULL OR created_at >= ?)
@@ -806,9 +936,9 @@ ORDER BY id DESC LIMIT ? OFFSET ?
 `
 
 type ListPipelineRunsParams struct {
-	ProjectID    sql.NullString `db:"project_id"`
-	RepositoryID sql.NullString `db:"repository_id"`
-	PipelineID   sql.NullString `db:"pipeline_id"`
+	ProjectId    sql.NullString `db:"project_id"`
+	RepositoryId sql.NullString `db:"repository_id"`
+	PipelineId   sql.NullString `db:"pipeline_id"`
 	FromAt       sql.NullTime   `db:"from_at"`
 	ToAt         sql.NullTime   `db:"to_at"`
 	Limit        int32          `db:"limit"`
@@ -817,12 +947,11 @@ type ListPipelineRunsParams struct {
 
 func (q *Queries) ListPipelineRuns(ctx context.Context, arg ListPipelineRunsParams) ([]PipelineRun, error) {
 	rows, err := q.db.QueryContext(ctx, listPipelineRuns,
-		arg.ProjectID,
-		arg.ProjectID,
-		arg.RepositoryID,
-		arg.RepositoryID,
-		arg.PipelineID,
-		arg.PipelineID,
+		arg.ProjectId,
+		arg.RepositoryId,
+		arg.RepositoryId,
+		arg.PipelineId,
+		arg.PipelineId,
 		arg.FromAt,
 		arg.FromAt,
 		arg.ToAt,
@@ -838,12 +967,12 @@ func (q *Queries) ListPipelineRuns(ctx context.Context, arg ListPipelineRunsPara
 	for rows.Next() {
 		var i PipelineRun
 		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
-			&i.RepositoryID,
+			&i.Id,
+			&i.ProjectId,
+			&i.RepositoryId,
 			&i.RepositoryName,
-			&i.SnapshotID,
-			&i.PipelineID,
+			&i.SnapshotId,
+			&i.PipelineId,
 			&i.PipelineName,
 			&i.PipelineVersion,
 			&i.Trigger,
@@ -871,11 +1000,24 @@ func (q *Queries) ListPipelineRuns(ctx context.Context, arg ListPipelineRunsPara
 
 const listPipelineStageRuns = `-- name: ListPipelineStageRuns :many
 SELECT id, pipeline_run_id, stage_id, stage_name, status, started_at, finished_at, exit_code, error_message
-FROM pipeline_stage_run WHERE pipeline_run_id = ? ORDER BY started_at, id
+FROM pipeline_stage_run
+WHERE pipeline_run_id = ?
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline_run
+    WHERE pipeline_run.id = pipeline_stage_run.pipeline_run_id
+      AND pipeline_run.project_id = ?
+  )
+ORDER BY started_at, id
 `
 
-func (q *Queries) ListPipelineStageRuns(ctx context.Context, pipelineRunID string) ([]PipelineStageRun, error) {
-	rows, err := q.db.QueryContext(ctx, listPipelineStageRuns, pipelineRunID)
+type ListPipelineStageRunsParams struct {
+	PipelineRunId string         `db:"pipeline_run_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) ListPipelineStageRuns(ctx context.Context, arg ListPipelineStageRunsParams) ([]PipelineStageRun, error) {
+	rows, err := q.db.QueryContext(ctx, listPipelineStageRuns, arg.PipelineRunId, arg.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -884,9 +1026,9 @@ func (q *Queries) ListPipelineStageRuns(ctx context.Context, pipelineRunID strin
 	for rows.Next() {
 		var i PipelineStageRun
 		if err := rows.Scan(
-			&i.ID,
-			&i.PipelineRunID,
-			&i.StageID,
+			&i.Id,
+			&i.PipelineRunId,
+			&i.StageId,
 			&i.StageName,
 			&i.Status,
 			&i.StartedAt,
@@ -907,21 +1049,28 @@ func (q *Queries) ListPipelineStageRuns(ctx context.Context, pipelineRunID strin
 	return items, nil
 }
 
-const pipelineRunByID = `-- name: PipelineRunByID :one
+const pipelineRunById = `-- name: PipelineRunById :one
 SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
-FROM pipeline_run WHERE id = ?
+FROM pipeline_run
+WHERE id = ?
+  AND project_id = ?
 `
 
-func (q *Queries) PipelineRunByID(ctx context.Context, id string) (PipelineRun, error) {
-	row := q.db.QueryRowContext(ctx, pipelineRunByID, id)
+type PipelineRunByIdParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) PipelineRunById(ctx context.Context, arg PipelineRunByIdParams) (PipelineRun, error) {
+	row := q.db.QueryRowContext(ctx, pipelineRunById, arg.Id, arg.ProjectId)
 	var i PipelineRun
 	err := row.Scan(
-		&i.ID,
-		&i.ProjectID,
-		&i.RepositoryID,
+		&i.Id,
+		&i.ProjectId,
+		&i.RepositoryId,
 		&i.RepositoryName,
-		&i.SnapshotID,
-		&i.PipelineID,
+		&i.SnapshotId,
+		&i.PipelineId,
 		&i.PipelineName,
 		&i.PipelineVersion,
 		&i.Trigger,
@@ -937,38 +1086,62 @@ func (q *Queries) PipelineRunByID(ctx context.Context, id string) (PipelineRun, 
 	return i, err
 }
 
-const pipelineRunVersionBindingByRunID = `-- name: PipelineRunVersionBindingByRunID :one
+const pipelineRunVersionBindingByRunId = `-- name: PipelineRunVersionBindingByRunId :one
 SELECT pipeline_run_id, application_id, application_name, source_version_id, source_version_label, generated_version_id, generated_version_label
-FROM pipeline_run_version_binding WHERE pipeline_run_id = ?
+FROM pipeline_run_version_binding
+WHERE pipeline_run_id = ?
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline_run
+    WHERE pipeline_run.id = pipeline_run_version_binding.pipeline_run_id
+      AND pipeline_run.project_id = ?
+  )
 `
 
-func (q *Queries) PipelineRunVersionBindingByRunID(ctx context.Context, pipelineRunID string) (PipelineRunVersionBinding, error) {
-	row := q.db.QueryRowContext(ctx, pipelineRunVersionBindingByRunID, pipelineRunID)
+type PipelineRunVersionBindingByRunIdParams struct {
+	PipelineRunId string         `db:"pipeline_run_id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) PipelineRunVersionBindingByRunId(ctx context.Context, arg PipelineRunVersionBindingByRunIdParams) (PipelineRunVersionBinding, error) {
+	row := q.db.QueryRowContext(ctx, pipelineRunVersionBindingByRunId, arg.PipelineRunId, arg.ProjectId)
 	var i PipelineRunVersionBinding
 	err := row.Scan(
-		&i.PipelineRunID,
-		&i.ApplicationID,
+		&i.PipelineRunId,
+		&i.ApplicationId,
 		&i.ApplicationName,
-		&i.SourceVersionID,
+		&i.SourceVersionId,
 		&i.SourceVersionLabel,
-		&i.GeneratedVersionID,
+		&i.GeneratedVersionId,
 		&i.GeneratedVersionLabel,
 	)
 	return i, err
 }
 
-const pipelineStageRunByID = `-- name: PipelineStageRunByID :one
+const pipelineStageRunById = `-- name: PipelineStageRunById :one
 SELECT id, pipeline_run_id, stage_id, stage_name, status, started_at, finished_at, exit_code, error_message
-FROM pipeline_stage_run WHERE id = ?
+FROM pipeline_stage_run
+WHERE pipeline_stage_run.id = ?
+  AND EXISTS (
+    SELECT 1
+    FROM pipeline_run
+    WHERE pipeline_run.id = pipeline_stage_run.pipeline_run_id
+      AND pipeline_run.project_id = ?
+  )
 `
 
-func (q *Queries) PipelineStageRunByID(ctx context.Context, id string) (PipelineStageRun, error) {
-	row := q.db.QueryRowContext(ctx, pipelineStageRunByID, id)
+type PipelineStageRunByIdParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) PipelineStageRunById(ctx context.Context, arg PipelineStageRunByIdParams) (PipelineStageRun, error) {
+	row := q.db.QueryRowContext(ctx, pipelineStageRunById, arg.Id, arg.ProjectId)
 	var i PipelineStageRun
 	err := row.Scan(
-		&i.ID,
-		&i.PipelineRunID,
-		&i.StageID,
+		&i.Id,
+		&i.PipelineRunId,
+		&i.StageId,
 		&i.StageName,
 		&i.Status,
 		&i.StartedAt,

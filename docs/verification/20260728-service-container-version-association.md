@@ -6,7 +6,7 @@ Review status: Draft
 ## Verification scope
 
 - 流程模式：标准模式 / `standard`
-- 依据：`docs/requirement/20260728-service-container-version-association.md` 与 `docs/plan/20260728-service-container-version-association.md`，均为 `Accepted`。
+- 依据：`docs/intent/20260728-service-container-version-association.md` 与 `docs/plan/20260728-service-container-version-association.md`，均为 `Accepted`。
 - 验证对象：服务的“最近成功版本”移除，以及容器实际运行版本的 Compose label、状态 API 与详情页展示。
 
 ## Requirement alignment

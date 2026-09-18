@@ -27,11 +27,11 @@ export interface GatewayCreateReq {
     | undefined;
   /** none|letsencrypt|tls (default none when empty on create) */
   tls_mode?: string | undefined;
-  traefik_component_name?: string | undefined;
   rest_ready_timeout_seconds?: number | undefined;
   acme_profile?: string | undefined;
   acme_email?: string | undefined;
   dns_api_token?: string | undefined;
+  rest_api_host_url: string;
 }
 
 export interface GatewayUpdateReq {
@@ -40,11 +40,11 @@ export interface GatewayUpdateReq {
   base_domain?: string | undefined;
   default_entrypoint?: string | undefined;
   tls_mode?: string | undefined;
-  traefik_component_name?: string | undefined;
   rest_ready_timeout_seconds?: number | undefined;
   acme_profile?: string | undefined;
   acme_email?: string | undefined;
   dns_api_token?: string | undefined;
+  rest_api_host_url?: string | undefined;
 }
 
 /** Read-only active exit / cluster DNS row (not a CRUD resource). */
@@ -75,16 +75,15 @@ export interface GatewayResp {
   default_entrypoint: string;
   tls_mode: string;
   exposures: GatewayExposureItem[];
-  default_service_id: string;
-  default_service_instance_key: string;
-  default_service_code: string;
-  default_service_status: string;
-  traefik_component_name: string;
+  service_id: string;
+  service_code: string;
+  service_status: string;
   rest_ready_timeout_seconds: number;
   acme_profile: string;
   acme_email: string;
   dns_api_token: string;
   version_bindings: GatewayVersionBinding[];
+  rest_api_host_url: string;
 }
 
 export interface GatewayPaginatedResp {

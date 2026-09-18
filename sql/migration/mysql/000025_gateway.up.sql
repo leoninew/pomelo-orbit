@@ -10,7 +10,5 @@ CREATE TABLE IF NOT EXISTS gateway_config (
     default_entrypoint VARCHAR(128) NOT NULL DEFAULT 'web',
     tls_mode VARCHAR(32) NOT NULL DEFAULT 'none',
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_gateway_config_application
-        FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB;

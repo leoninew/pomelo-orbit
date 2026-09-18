@@ -96,7 +96,10 @@ func newMigrationRunner(sqlDb *sql.DB, driver string) (*gomigrate.Migrate, error
 func migrationDatabaseDriver(sqlDb *sql.DB, driver string) (database.Driver, error) {
 	switch driver {
 	case config.DatabaseDriverSQLite:
-		driver, err := migratesqlite.WithInstance(sqlDb, &migratesqlite.Config{})
+		// SQLite table-rebuild migrations temporarily disable foreign keys.
+		// PRAGMA foreign_keys is a connection setting and cannot change inside
+		// the transaction wrapper used by golang-migrate.
+		driver, err := migratesqlite.WithInstance(sqlDb, &migratesqlite.Config{NoTxWrap: true})
 		if err != nil {
 			return nil, err
 		}

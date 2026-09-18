@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -11,11 +12,12 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
 	"github.com/oklog/ulid/v2"
 
 	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	authv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/auth"
 )
 
@@ -67,7 +69,7 @@ func TestLogRequestIncludesMetadata(t *testing.T) {
 	assertLogValue(t, completed, "response_body", `{"ok":true}`)
 }
 
-func TestRequestIdPreservesIncomingValueAndGeneratesULId(t *testing.T) {
+func TestRequestIdPreservesIncomingValueAndGeneratesULID(t *testing.T) {
 	cases := []struct {
 		name      string
 		requestId string
@@ -81,10 +83,10 @@ func TestRequestIdPreservesIncomingValueAndGeneratesULId(t *testing.T) {
 			gin.SetMode(gin.TestMode)
 			router := gin.New()
 			router.Use(RequestId())
-			var contextRequestID string
+			var contextRequestId string
 			router.GET("/", func(c *gin.Context) {
-				contextRequestID = requestid.FromContext(c.Request.Context())
-				transportresponse.WriteError(c, transportError())
+				contextRequestId = requestid.FromContext(c.Request.Context())
+				transport.WriteError(c, transportError())
 			})
 
 			request := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -94,15 +96,15 @@ func TestRequestIdPreservesIncomingValueAndGeneratesULId(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			router.ServeHTTP(recorder, request)
 
-			var response transportresponse.ErrorResp
+			var response transport.ErrorResp
 			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 				t.Fatalf("decode error response: %v", err)
 			}
 			if response.RequestId == "" || recorder.Header().Get(requestid.HeaderName) != response.RequestId {
 				t.Fatalf("request id did not propagate: header=%q body=%q", recorder.Header().Get(requestid.HeaderName), response.RequestId)
 			}
-			if contextRequestID != response.RequestId {
-				t.Fatalf("request context id did not propagate: context=%q body=%q", contextRequestID, response.RequestId)
+			if contextRequestId != response.RequestId {
+				t.Fatalf("request context id did not propagate: context=%q body=%q", contextRequestId, response.RequestId)
 			}
 			if tc.requestId != "" && response.RequestId != tc.requestId {
 				t.Fatalf("expected incoming request id %q, got %q", tc.requestId, response.RequestId)
@@ -304,7 +306,7 @@ func TestLogRequestRecordsProtoJSONResponseBody(t *testing.T) {
 	router.Use(RealIP())
 	router.Use(LogRequest(logger, testLogRequestConfig()))
 	router.GET("/api/test", func(c *gin.Context) {
-		transportresponse.ProtoJSON(c, http.StatusOK, &authv1.TokenResp{AccessToken: "token"})
+		transport.WriteProtoJSON(c, http.StatusOK, &authv1.TokenResp{AccessToken: "token"})
 	})
 
 	recorder := httptest.NewRecorder()
@@ -357,6 +359,58 @@ func TestLogRequestTruncatesResponseBodyByConfiguredBytes(t *testing.T) {
 	assertTruncatedBody(t, loggedBody)
 }
 
+func TestLogRequestRedactsDeploymentSSHSecrets(t *testing.T) {
+	privateKey := "private-key-material"
+	passphrase := "private-key-passphrase"
+	requestBody := `{"deployment_ssh_private_key":"` + privateKey + `","deployment_ssh_key_passphrase":"` + passphrase + `"}`
+	var handlerBody string
+	entries, recorder := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 48}, http.MethodPost, "/api/project", "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		handlerBody = string(body)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	started, _ := assertStartedAndCompleted(t, entries)
+	loggedBody, ok := started["request_body"].(string)
+	if !ok {
+		t.Fatalf("expected request_body string: %+v", started)
+	}
+	if !strings.Contains(loggedBody, redactedLogValue) {
+		t.Fatalf("expected a redacted deployment secret, got %q", loggedBody)
+	}
+	for _, secret := range []string{privateKey, passphrase} {
+		if strings.Contains(loggedBody, secret) {
+			t.Fatalf("deployment secret leaked into request log: %q", loggedBody)
+		}
+	}
+	if handlerBody != requestBody {
+		t.Fatalf("expected handler body %q, got %q", requestBody, handlerBody)
+	}
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status=%d", recorder.Code)
+	}
+}
+
+func TestLogRequestRedactsSSHSecrets(t *testing.T) {
+	privateKey := "private-key-material"
+	passphrase := "private-key-passphrase"
+	requestBody := `{"private_key":"` + privateKey + `","private_key_passphrase":"` + passphrase + `"}`
+	entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 256}, http.MethodPost, "/api/project-initialization/environment/ssh-command?project_id=p", "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	started, _ := assertStartedAndCompleted(t, entries)
+	loggedBody, ok := started["request_body"].(string)
+	if !ok {
+		t.Fatalf("expected request_body string: %+v", started)
+	}
+	if !strings.Contains(loggedBody, redactedLogValue) {
+		t.Fatalf("expected a redacted project initialization secret, got %q", loggedBody)
+	}
+	for _, secret := range []string{privateKey, passphrase} {
+		if strings.Contains(loggedBody, secret) {
+			t.Fatalf("project initialization secret leaked into request log: %q", loggedBody)
+		}
+	}
+}
 func TestLogRequestTruncatesRequestBodyByConfiguredBytesAndRestoresBody(t *testing.T) {
 	requestBody := `{"value":"` + strings.Repeat("好", testBodyMaxBytes) + `"}`
 	var handlerBody string
@@ -413,7 +467,7 @@ func TestLogRequestLogsRecoveredPanicAsInfo(t *testing.T) {
 	assertLogValue(t, failed, "error", "panic: boom")
 	assertLogValue(t, completed, "level", "INFO")
 	assertLogNumber(t, completed, "status", http.StatusInternalServerError)
-	var response transportresponse.ErrorResp
+	var response transport.ErrorResp
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatalf("decode recovery error response: %v", err)
 	}

@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
-	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
 	usersvc "github.com/leoninew/pomelo-orbit/internal/application/user/usecase"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
@@ -28,19 +28,19 @@ func (h Handler) ListUsers(c *gin.Context) {
 	if _, ok := h.authenticator.RequirePermission(c, "user:read"); !ok {
 		return
 	}
-	page := binding.QueryInt(c.Request.URL.Query().Get("page"), 1)
-	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
+	page := transport.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := transport.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
 	users, err := h.service.List(c.Request.Context(), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
 		h.logger.Error("list users failed", "error", err)
-		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
+		transport.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	items := make([]userv1.UserListResp, 0, len(users.Items))
 	for _, user := range users.Items {
 		items = append(items, userListResponse(user))
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &userv1.UserPaginatedResp{Items: transportresponse.Ptrs(items), Total: int32(users.Total), Page: int32(users.Page), PerPage: int32(users.PerPage), Pages: int32(transportresponse.PageCount(users.Total, users.PerPage))})
+	transport.WriteProtoJSON(c, http.StatusOK, &userv1.UserPaginatedResp{Items: transport.Ptrs(items), Total: int32(users.Total), Page: int32(users.Page), PerPage: int32(users.PerPage), Pages: int32(transport.PageCount(users.Total, users.PerPage))})
 }
 
 func (h Handler) CreateUser(c *gin.Context) {
@@ -48,22 +48,22 @@ func (h Handler) CreateUser(c *gin.Context) {
 		return
 	}
 	var req userv1.UserCreateReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	user, err := h.service.Create(c.Request.Context(), userCreateInput(&req))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	detail, err := h.service.Detail(c.Request.Context(), user.Id)
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := userDetailResponse(detail)
-	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
+	transport.WriteProtoJSON(c, http.StatusCreated, &resp)
 }
 
 func (h Handler) GetUser(c *gin.Context) {
@@ -72,11 +72,11 @@ func (h Handler) GetUser(c *gin.Context) {
 	}
 	detail, err := h.service.Detail(c.Request.Context(), userId(c))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := userDetailResponse(detail)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) UpdateUser(c *gin.Context) {
@@ -85,17 +85,17 @@ func (h Handler) UpdateUser(c *gin.Context) {
 		return
 	}
 	var req userv1.UserUpdateReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.UpdateByActor(c.Request.Context(), actor(current), userId(c), userUpdateInput(&req))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := userDetailResponse(detail)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) UpdateUserRoles(c *gin.Context) {
@@ -104,17 +104,17 @@ func (h Handler) UpdateUserRoles(c *gin.Context) {
 		return
 	}
 	var req userv1.UserRoleUpdateReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.SetRoles(c.Request.Context(), actor(current), userId(c), req.RoleIds)
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := userDetailResponse(detail)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) DisableUser(c *gin.Context) {
@@ -123,12 +123,12 @@ func (h Handler) DisableUser(c *gin.Context) {
 		return
 	}
 	var req userv1.UserDisableReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if err := h.service.SetStatusByActor(c.Request.Context(), actor(current), userId(c), "disabled"); err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -140,12 +140,12 @@ func (h Handler) EnableUser(c *gin.Context) {
 		return
 	}
 	var req userv1.UserEnableReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if err := h.service.SetStatusByActor(c.Request.Context(), actor(current), userId(c), "enabled"); err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -157,7 +157,7 @@ func (h Handler) DeleteUser(c *gin.Context) {
 		return
 	}
 	if err := h.service.DeleteByActor(c.Request.Context(), actor(current), userId(c)); err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)

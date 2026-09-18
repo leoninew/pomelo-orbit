@@ -1989,7 +1989,7 @@ var File_orbit_v1_application_version_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\n" +
-	"\"orbit/v1/application/version.proto\x12\x14orbit.v1.application\"\xc4\x06\n" +
+	"\"orbit/v1/application/version.proto\x12\x14orbit.v1.application\"\xbe\x06\n" +
 	"\x13VersionComponentReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x18\n" +
@@ -2010,7 +2010,7 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\n" +
 	"entrypoint\x18\x11 \x01(\tR\n" +
 	"entrypointB\x11\n" +
-	"\x0f_restart_policyJ\x04\b\x04\x10\x05\"\xdf\x01\n" +
+	"\x0f_restart_policy\"\xdf\x01\n" +
 	"\x19VersionComponentCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x1f\n" +
@@ -2032,9 +2032,9 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\n" +
 	"entrypoint\x18\x06 \x01(\tR\n" +
 	"entrypointB\x11\n" +
-	"\x0f_restart_policy\"\x82\x01\n" +
+	"\x0f_restart_policy\"p\n" +
 	" VersionComponentRuntimeUpdateReq\x12L\n" +
-	"\vhealthcheck\x18\x03 \x01(\v2*.orbit.v1.application.ComponentHealthcheckR\vhealthcheckJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03J\x04\b\x04\x10\x05\"k\n" +
+	"\vhealthcheck\x18\x03 \x01(\v2*.orbit.v1.application.ComponentHealthcheckR\vhealthcheck\"k\n" +
 	"\"VersionComponentEndpointsUpdateReq\x12E\n" +
 	"\tendpoints\x18\x01 \x03(\v2'.orbit.v1.application.ComponentEndpointR\tendpoints\"T\n" +
 	"\x1cVersionComponentEnvUpdateReq\x124\n" +
@@ -2048,7 +2048,7 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"!VersionComponentAdvancedUpdateReq\x12:\n" +
 	"\x05tmpfs\x18\x01 \x03(\v2$.orbit.v1.application.ComponentTmpfsR\x05tmpfs\x12?\n" +
 	"\aulimits\x18\x02 \x03(\v2%.orbit.v1.application.ComponentUlimitR\aulimits\x12F\n" +
-	"\tresources\x18\x03 \x01(\v2(.orbit.v1.application.ComponentResourcesR\tresources\"\xb3\n" +
+	"\tresources\x18\x03 \x01(\v2(.orbit.v1.application.ComponentResourcesR\tresources\"\xad\n" +
 	"\n" +
 	"\x14VersionComponentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
@@ -2087,7 +2087,7 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x13_artifact_image_refB\x1e\n" +
 	"\x1c_artifact_local_image_sha256B\x1d\n" +
 	"\x1b_artifact_source_commit_shaB\x10\n" +
-	"\x0e_artifact_nameJ\x04\b\x06\x10\a\"6\n" +
+	"\x0e_artifact_name\"6\n" +
 	"\fComponentEnv\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\"\xc3\x02\n" +
@@ -2106,7 +2106,7 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\r_bind_addressB\x0e\n" +
 	"\f_listen_portB\r\n" +
 	"\v_entrypointB\x0e\n" +
-	"\f_path_prefix\"\x9c\x02\n" +
+	"\f_path_prefix\"\x96\x02\n" +
 	"\x0eComponentMount\x12\x1f\n" +
 	"\vsource_type\x18\x01 \x01(\tR\n" +
 	"sourceType\x12\x16\n" +
@@ -2118,7 +2118,7 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x10ignore_if_exists\x18\b \x01(\bR\x0eignoreIfExists\x12\x12\n" +
 	"\x04mode\x18\t \x01(\tR\x04modeB\n" +
 	"\n" +
-	"\b_contentJ\x04\b\a\x10\b\"G\n" +
+	"\b_content\"G\n" +
 	"\x13ComponentDependency\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
 	"\tcondition\x18\x02 \x01(\tR\tcondition\"\xdf\x02\n" +
@@ -2160,7 +2160,7 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x16ComponentDeviceRequest\x12\x16\n" +
 	"\x06driver\x18\x01 \x01(\tR\x06driver\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\tR\x05count\x12\"\n" +
-	"\fcapabilities\x18\x03 \x03(\tR\fcapabilities\"\xc8\x01\n" +
+	"\fcapabilities\x18\x03 \x03(\tR\fcapabilities\"\xbc\x01\n" +
 	"\x10VersionCreateReq\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x17\n" +
@@ -2168,14 +2168,14 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\n" +
 	"components\x18\x05 \x03(\v2).orbit.v1.application.VersionComponentReqR\n" +
 	"componentsB\a\n" +
-	"\x05_noteJ\x04\b\x03\x10\x04J\x04\b\x06\x10\a\"k\n" +
+	"\x05_note\"Y\n" +
 	"\x10VersionUpdateReq\x12\x19\n" +
 	"\x05label\x18\x01 \x01(\tH\x00R\x05label\x88\x01\x01\x12\x17\n" +
 	"\x04note\x18\x03 \x01(\tH\x01R\x04note\x88\x01\x01B\b\n" +
 	"\x06_labelB\a\n" +
-	"\x05_noteJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06\"&\n" +
+	"\x05_note\"&\n" +
 	"\x0eVersionForkReq\x12\x14\n" +
-	"\x05label\x18\x01 \x01(\tR\x05label\"\xaf\x03\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\"\xa3\x03\n" +
 	"\vVersionResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12\x14\n" +
@@ -2193,7 +2193,7 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"components\x12+\n" +
 	"\x11component_summary\x18\f \x01(\tR\x10componentSummaryB\x1a\n" +
 	"\x18_created_from_version_idB\a\n" +
-	"\x05_noteJ\x04\b\x05\x10\x06J\x04\b\v\x10\f\"\xaa\x01\n" +
+	"\x05_note\"\xaa\x01\n" +
 	"\x14VersionPaginatedResp\x127\n" +
 	"\x05items\x18\x01 \x03(\v2!.orbit.v1.application.VersionRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +

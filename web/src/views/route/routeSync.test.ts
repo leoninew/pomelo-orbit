@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { createPinia, setActivePinia } from 'pinia';
 import { createApp, nextTick, type App } from 'vue';
-import { createMemoryHistory, createRouter } from 'vue-router';
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { routeApi } from '@/api/route/route';
 import { serviceApi } from '@/api/service/service';
@@ -90,7 +90,7 @@ describe('Route detail synchronization', () => {
 
     target = document.createElement('div');
     document.body.append(target);
-    mountedApp = createApp({ template: '<RouterView />' });
+    mountedApp = createApp(RouterView);
     mountedApp.use(pinia);
     mountedApp.use(router);
     mountedApp.use(i18n);
@@ -106,7 +106,9 @@ describe('Route detail synchronization', () => {
 
     const nameInput = document.querySelector<HTMLInputElement>('.app-dialog-content input');
     expect(nameInput).not.toBeNull();
-    if (!nameInput) throw new Error('Route name input is missing');
+    if (!nameInput) {
+      throw new Error('Route name input is missing');
+    }
     nameInput.value = 'api-route-edited';
     nameInput.dispatchEvent(new Event('input', { bubbles: true }));
     await flushRender();
@@ -119,6 +121,7 @@ describe('Route detail synchronization', () => {
     await flushRender();
 
     expect(routeApi.update).toHaveBeenCalledWith(
+      'project-1',
       'route-1',
       expect.objectContaining({
         name: 'api-route-edited',
@@ -134,10 +137,7 @@ describe('Route detail synchronization', () => {
     await vi.waitFor(() => expect(syncButton?.disabled).toBe(false));
     syncButton?.click();
     await vi.waitFor(() =>
-      expect(routeApi.previewSync).toHaveBeenCalledWith(
-        { changes: [] },
-        { project_id: 'project-1' }
-      )
+      expect(routeApi.previewSync).toHaveBeenCalledWith('project-1', { changes: [] })
     );
 
     const syncConfirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
@@ -147,14 +147,11 @@ describe('Route detail synchronization', () => {
     await vi.waitFor(() => expect(syncConfirmButton?.disabled).toBe(false));
     syncConfirmButton?.click();
     await vi.waitFor(() =>
-      expect(routeApi.confirmSync).toHaveBeenCalledWith(
-        {
-          changes: [],
-          business_hash: 'business-hash',
-          traefik_hash: 'traefik-hash',
-        },
-        { project_id: 'project-1' }
-      )
+      expect(routeApi.confirmSync).toHaveBeenCalledWith('project-1', {
+        changes: [],
+        business_hash: 'business-hash',
+        traefik_hash: 'traefik-hash',
+      })
     );
   });
 });

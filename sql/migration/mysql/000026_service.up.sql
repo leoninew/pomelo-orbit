@@ -14,17 +14,14 @@ CREATE TABLE IF NOT EXISTS service (
     UNIQUE KEY uq_service_application_instance (application_id, instance_key),
     UNIQUE KEY uq_service_code (code),
     KEY idx_service_version (version_id),
-    KEY idx_service_application (application_id),
-    CONSTRAINT fk_service_application FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
-    CONSTRAINT fk_service_version FOREIGN KEY (version_id) REFERENCES version(id)
+    KEY idx_service_application (application_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS service_env (
     service_id VARCHAR(26) NOT NULL,
     env_key VARCHAR(255) NOT NULL,
     value TEXT NOT NULL,
-    PRIMARY KEY (service_id, env_key),
-    CONSTRAINT fk_service_env_service FOREIGN KEY (service_id) REFERENCES service(id) ON DELETE CASCADE
+    PRIMARY KEY (service_id, env_key)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS service_component (
@@ -42,8 +39,6 @@ CREATE TABLE IF NOT EXISTS service_component (
     UNIQUE KEY uq_service_component_source (service_id, source_version_component_id),
     UNIQUE KEY uq_service_component_name (service_id, component_name),
     KEY idx_service_component_service (service_id),
-    CONSTRAINT fk_service_component_service FOREIGN KEY (service_id) REFERENCES service(id) ON DELETE CASCADE,
-    CONSTRAINT fk_service_component_source FOREIGN KEY (source_version_component_id) REFERENCES version_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_service_component_pull_policy CHECK (pull_policy IS NULL OR pull_policy IN ('always', 'missing', 'never')),
     CONSTRAINT chk_service_component_restart_policy CHECK (restart_policy IS NULL OR restart_policy IN ('no', 'unless-stopped')),
     CONSTRAINT chk_service_component_status CHECK (status = 'active')
@@ -55,7 +50,6 @@ CREATE TABLE IF NOT EXISTS service_component_env (
     value TEXT NULL,
     state VARCHAR(16) NOT NULL,
     PRIMARY KEY (service_component_id, env_key),
-    CONSTRAINT fk_service_component_env_component FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_service_component_env_state CHECK (
         (state = 'override' AND value IS NOT NULL)
         OR (state = 'deleted' AND value IS NULL)
@@ -70,7 +64,6 @@ CREATE TABLE IF NOT EXISTS service_component_mount (
     source_is_host_path TINYINT(1) NULL,
     state VARCHAR(16) NOT NULL,
     KEY idx_service_component_mount_component (service_component_id),
-    CONSTRAINT fk_service_component_mount_component FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_service_component_mount_state CHECK (
         (state = 'override' AND source IS NOT NULL)
         OR (state = 'deleted' AND source IS NULL)
@@ -84,7 +77,6 @@ CREATE TABLE IF NOT EXISTS service_component_resource (
     reservation_cpus VARCHAR(64) NULL,
     reservation_memory VARCHAR(64) NULL,
     state VARCHAR(16) NOT NULL,
-    CONSTRAINT fk_service_component_resource_component FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_service_component_resource_state CHECK (
         (state = 'deleted' AND limit_cpus IS NULL AND limit_memory IS NULL AND reservation_cpus IS NULL AND reservation_memory IS NULL)
         OR (state = 'override' AND (limit_cpus IS NOT NULL OR limit_memory IS NOT NULL OR reservation_cpus IS NOT NULL OR reservation_memory IS NOT NULL))
@@ -105,7 +97,6 @@ CREATE TABLE IF NOT EXISTS service_component_endpoint (
     PRIMARY KEY (id),
     UNIQUE KEY uq_service_component_endpoint_contract (service_component_id, protocol, container_port),
     KEY idx_service_component_endpoint_listen (listen_port),
-    CONSTRAINT fk_service_component_endpoint_component FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE,
     CONSTRAINT chk_service_component_endpoint_protocol CHECK (protocol IN ('http', 'tcp')),
     CONSTRAINT chk_service_component_endpoint_container_port CHECK (container_port BETWEEN 1 AND 65535),
     CONSTRAINT chk_service_component_endpoint_mode CHECK (mode IS NULL OR mode IN ('internal', 'local', 'host', 'gateway')),

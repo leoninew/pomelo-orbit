@@ -11,17 +11,17 @@ import (
 )
 
 type versionForkStore interface {
-	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
-	CreateVersionWithVersionComponents(ctx context.Context, version model.Version, components []model.VersionComponent) error
+	VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error)
+	CreateVersionWithVersionComponents(ctx context.Context, projectId string, version model.Version, components []model.VersionComponent) error
 }
 
 type buildVersionForkStore interface {
 	versionForkStore
-	Version(ctx context.Context, id string) (model.Version, error)
+	Version(ctx context.Context, projectId string, id string) (model.Version, error)
 }
 
-func forkVersion(ctx context.Context, store versionForkStore, source model.Version, label string, mutate func([]model.VersionComponent) error) (model.Version, error) {
-	components, err := store.VersionComponentsByVersion(ctx, source.Id)
+func forkVersion(ctx context.Context, store versionForkStore, projectId string, source model.Version, label string, mutate func([]model.VersionComponent) error) (model.Version, error) {
+	components, err := store.VersionComponentsByVersion(ctx, projectId, source.Id)
 	if err != nil {
 		return model.Version{}, fmt.Errorf("list source version components: %w", err)
 	}
@@ -43,7 +43,7 @@ func forkVersion(ctx context.Context, store versionForkStore, source model.Versi
 			return model.Version{}, err
 		}
 	}
-	if err := store.CreateVersionWithVersionComponents(ctx, version, components); err != nil {
+	if err := store.CreateVersionWithVersionComponents(ctx, projectId, version, components); err != nil {
 		return model.Version{}, fmt.Errorf("create forked version: %w", err)
 	}
 	return version, nil
@@ -56,11 +56,11 @@ func (s Service) ForkVersionForBuild(ctx context.Context, input applicationport.
 }
 
 func forkVersionForBuild(ctx context.Context, store buildVersionForkStore, input applicationport.BuildVersionForkInput) (model.Version, error) {
-	source, err := store.Version(ctx, input.SourceVersionId)
+	source, err := store.Version(ctx, input.ProjectId, input.SourceVersionId)
 	if err != nil {
 		return model.Version{}, fmt.Errorf("load source version: %w", err)
 	}
-	return forkVersion(ctx, store, source, input.Label, func(components []model.VersionComponent) error {
+	return forkVersion(ctx, store, input.ProjectId, source, input.Label, func(components []model.VersionComponent) error {
 		updates := make(map[string]applicationport.BuildVersionComponentUpdate, len(input.Components))
 		for _, update := range input.Components {
 			updates[update.ComponentName] = update

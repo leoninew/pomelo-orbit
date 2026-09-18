@@ -164,6 +164,14 @@ tasks:
       - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-linux-x64.zip pomelo-orbit-v{{.VERSION}}-linux-x64
       - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-macos-x64.zip pomelo-orbit-v{{.VERSION}}-macos-x64
 
+  release:docker:
+    desc: Build the Docker image tagged with VERSION, optionally with cn=1
+    cmds:
+      - task: build
+        vars:
+          TAG: '{{.VERSION}}'
+          cn: '{{.cn}}'
+
   clean:
     desc: Remove local build artifacts (POSIX shell required)
     cmds:

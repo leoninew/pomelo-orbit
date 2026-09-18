@@ -10,13 +10,13 @@ import (
 
 type Querier interface {
 	CountServicesByProject(ctx context.Context, arg CountServicesByProjectParams) (int64, error)
-	DeleteService(ctx context.Context, id string) error
-	DeleteServiceComponentEndpoints(ctx context.Context, serviceComponentID string) error
-	DeleteServiceComponentEnv(ctx context.Context, serviceComponentID string) error
-	DeleteServiceComponentMounts(ctx context.Context, serviceComponentID string) error
-	DeleteServiceComponentResource(ctx context.Context, serviceComponentID string) error
-	DeleteServiceComponents(ctx context.Context, serviceID string) error
-	DeleteServiceEnv(ctx context.Context, serviceID string) error
+	DeleteService(ctx context.Context, arg DeleteServiceParams) error
+	DeleteServiceComponentEndpoints(ctx context.Context, arg DeleteServiceComponentEndpointsParams) error
+	DeleteServiceComponentEnv(ctx context.Context, arg DeleteServiceComponentEnvParams) error
+	DeleteServiceComponentMounts(ctx context.Context, arg DeleteServiceComponentMountsParams) error
+	DeleteServiceComponentResource(ctx context.Context, arg DeleteServiceComponentResourceParams) error
+	DeleteServiceComponents(ctx context.Context, arg DeleteServiceComponentsParams) error
+	DeleteServiceEnv(ctx context.Context, arg DeleteServiceEnvParams) error
 	InsertService(ctx context.Context, arg InsertServiceParams) error
 	InsertServiceComponent(ctx context.Context, arg InsertServiceComponentParams) error
 	InsertServiceComponentEndpoint(ctx context.Context, arg InsertServiceComponentEndpointParams) error
@@ -24,20 +24,19 @@ type Querier interface {
 	InsertServiceComponentMount(ctx context.Context, arg InsertServiceComponentMountParams) error
 	InsertServiceComponentResource(ctx context.Context, arg InsertServiceComponentResourceParams) error
 	InsertServiceEnv(ctx context.Context, arg InsertServiceEnvParams) error
-	ListServicesByApplication(ctx context.Context, applicationID string) ([]Service, error)
+	ListServicesByApplication(ctx context.Context, arg ListServicesByApplicationParams) ([]Service, error)
 	ListServicesByProject(ctx context.Context, arg ListServicesByProjectParams) ([]ListServicesByProjectRow, error)
-	ServiceByCode(ctx context.Context, code string) (Service, error)
-	ServiceByID(ctx context.Context, id string) (Service, error)
-	ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Service, error)
-	ServiceComponentByID(ctx context.Context, id string) (ServiceComponent, error)
-	ServiceComponentEndpointsByComponent(ctx context.Context, serviceComponentID string) ([]ServiceComponentEndpoint, error)
-	ServiceComponentEnvByComponent(ctx context.Context, serviceComponentID string) ([]ServiceComponentEnv, error)
-	ServiceComponentMountsByComponent(ctx context.Context, serviceComponentID string) ([]ServiceComponentMountsByComponentRow, error)
-	ServiceComponentResourceByComponent(ctx context.Context, serviceComponentID string) (ServiceComponentResource, error)
-	ServiceComponentsByService(ctx context.Context, serviceID string) ([]ServiceComponent, error)
-	ServiceEnvByService(ctx context.Context, serviceID string) ([]ServiceEnv, error)
-	ServiceIDByKey(ctx context.Context, arg ServiceIDByKeyParams) (string, error)
-	ServiceListItemByID(ctx context.Context, id string) (ServiceListItemByIDRow, error)
+	ListServicesByVersion(ctx context.Context, arg ListServicesByVersionParams) ([]Service, error)
+	ServiceById(ctx context.Context, arg ServiceByIdParams) (Service, error)
+	ServiceByProjectAndCode(ctx context.Context, arg ServiceByProjectAndCodeParams) (Service, error)
+	ServiceComponentById(ctx context.Context, arg ServiceComponentByIdParams) (ServiceComponent, error)
+	ServiceComponentEndpointsByComponent(ctx context.Context, arg ServiceComponentEndpointsByComponentParams) ([]ServiceComponentEndpoint, error)
+	ServiceComponentEnvByComponent(ctx context.Context, arg ServiceComponentEnvByComponentParams) ([]ServiceComponentEnv, error)
+	ServiceComponentMountsByComponent(ctx context.Context, arg ServiceComponentMountsByComponentParams) ([]ServiceComponentMountsByComponentRow, error)
+	ServiceComponentResourceByComponent(ctx context.Context, arg ServiceComponentResourceByComponentParams) (ServiceComponentResource, error)
+	ServiceComponentsByService(ctx context.Context, arg ServiceComponentsByServiceParams) ([]ServiceComponent, error)
+	ServiceEnvByService(ctx context.Context, arg ServiceEnvByServiceParams) ([]ServiceEnv, error)
+	ServiceListItemById(ctx context.Context, arg ServiceListItemByIdParams) (ServiceListItemByIdRow, error)
 	TouchService(ctx context.Context, arg TouchServiceParams) error
 	UpdateService(ctx context.Context, arg UpdateServiceParams) error
 	UpdateServiceAfterDeploy(ctx context.Context, arg UpdateServiceAfterDeployParams) error

@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Requirement alignment
 
-对照 [docs/requirement/20260814-detail-breadcrumbs.md](../../requirement/20260814-detail-breadcrumbs.md) 核对，本次实现把 breadcrumb 责任下沉到页面本身，去掉了泛化的模块级节点，改为使用页面已加载的真实父实体名称。版本组件页、服务详情页和服务组件页都能正确指向父实体详情页，而不是列表页。
+对照 [docs/intent/20260814-detail-breadcrumbs.md](../../intent/20260814-detail-breadcrumbs.md) 核对，本次实现把 breadcrumb 责任下沉到页面本身，去掉了泛化的模块级节点，改为使用页面已加载的真实父实体名称。版本组件页、服务详情页和服务组件页都能正确指向父实体详情页，而不是列表页。
 
 ## Spec alignment
 
@@ -22,7 +22,7 @@ Review status: Accepted
 - 在 [ServiceDetail.vue](/D:/SourceCodes/mywork/pomelo-orbit/web/src/views/service/ServiceDetail.vue) 中直接使用服务返回的应用名，breadcrumb 链接到应用详情。
 - 在 [ServiceComponentDetail.vue](/D:/SourceCodes/mywork/pomelo-orbit/web/src/views/service/ServiceComponentDetail.vue) 中补充服务详情请求，breadcrumb 改为使用真实服务实例名称并链接到服务详情。
 - 在 [AppBreadcrumb.vue](/D:/SourceCodes/mywork/pomelo-orbit/web/src/components/AppBreadcrumb.vue) 和 [App.vue](/D:/SourceCodes/mywork/pomelo-orbit/web/src/App.vue) 中收紧 breadcrumb 的间距与层次，减少与标题区的视觉挤压。
-- 更新 [requirement 文档](/D:/SourceCodes/mywork/pomelo-orbit/docs/requirement/20260814-detail-breadcrumbs.md) 以匹配最终实现口径。
+- 更新 [requirement 文档](/D:/SourceCodes/mywork/pomelo-orbit/docs/intent/20260814-detail-breadcrumbs.md) 以匹配最终实现口径。
 
 ## Expected vs actual changed files
 

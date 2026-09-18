@@ -6,10 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 )
 
 func TestCorsNoopWhenNotConfigured(t *testing.T) {
@@ -86,7 +87,7 @@ func TestCorsDeniedPreflightReturnsForbidden(t *testing.T) {
 	if recorder.Header().Get("Access-Control-Allow-Origin") != "" {
 		t.Fatalf("expected no cors origin header, got %s", recorder.Header().Get("Access-Control-Allow-Origin"))
 	}
-	var response transportresponse.ErrorResp
+	var response transport.ErrorResp
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatalf("decode error response: %v", err)
 	}

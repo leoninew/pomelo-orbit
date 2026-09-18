@@ -12,44 +12,49 @@ import (
 
 type serviceCreateStoreFake struct {
 	repository.ServiceStore
-	serviceByKeyErr  error
-	serviceByCodeErr error
-	created          model.Service
+	serviceByProjectAndCodeErr error
+	created                    model.Service
 }
 
-func (f *serviceCreateStoreFake) ServiceByKey(context.Context, string, string) (model.Service, error) {
-	return model.Service{}, f.serviceByKeyErr
+type serviceCreateProjectFake struct{}
+
+func (serviceCreateProjectFake) Project(context.Context, string) (model.Project, error) {
+	return model.Project{Id: "project-1"}, nil
+}
+func (serviceCreateProjectFake) IsProjectMember(context.Context, string, string) (bool, error) {
+	return true, nil
 }
 
-func (f *serviceCreateStoreFake) ServiceByCode(context.Context, string) (model.Service, error) {
-	return model.Service{}, f.serviceByCodeErr
+func (f *serviceCreateStoreFake) ServiceByProjectAndCode(context.Context, string, string) (model.Service, error) {
+	return model.Service{}, f.serviceByProjectAndCodeErr
 }
 
-func (f *serviceCreateStoreFake) CreateServiceWithComponents(_ context.Context, service model.Service, _ []model.ServiceComponent) error {
+func (f *serviceCreateStoreFake) CreateServiceWithComponents(_ context.Context, _ string, service model.Service, _ []model.ServiceComponent) error {
 	f.created = service
 	return nil
 }
 
-func (f *serviceCreateStoreFake) ServiceListItem(context.Context, string) (model.ServiceListItem, error) {
+func (f *serviceCreateStoreFake) ServiceListItem(context.Context, string, string) (model.ServiceListItem, error) {
 	return model.ServiceListItem{
-		Id: f.created.Id, ApplicationId: f.created.ApplicationId, InstanceKey: f.created.InstanceKey, Code: f.created.Code,
+		Id: f.created.Id, ApplicationId: f.created.ApplicationId, Code: f.created.Code,
 		VersionId: f.created.VersionId, Status: f.created.Status, ApplicationName: "RAGFlow", ApplicationCode: "ragflow",
 	}, nil
 }
 
-func (f *serviceCreateStoreFake) ServiceEnvByService(context.Context, string) ([]model.ServiceEnv, error) {
+func (f *serviceCreateStoreFake) ServiceEnvByService(context.Context, string, string) ([]model.ServiceEnv, error) {
 	return nil, nil
 }
 
-func (f *serviceCreateStoreFake) ServiceComponentsByService(context.Context, string) ([]model.ServiceComponent, error) {
+func (f *serviceCreateStoreFake) ServiceComponentsByService(context.Context, string, string) ([]model.ServiceComponent, error) {
 	return nil, nil
 }
 
 func TestCreateServiceUsesSubmittedCode(t *testing.T) {
-	store := &serviceCreateStoreFake{serviceByKeyErr: repository.ErrNotFound, serviceByCodeErr: repository.ErrNotFound}
+	store := &serviceCreateStoreFake{serviceByProjectAndCodeErr: repository.ErrNotFound}
 	service := Service{
+		project: serviceCreateProjectFake{},
 		application: serviceApplicationFake{
-			app:     model.Application{Id: "app-1", Code: "ragflow"},
+			app:     model.Application{Id: "app-1", ProjectId: stringPtr("project-1"), Code: "ragflow"},
 			version: model.Version{Id: "version-1", ApplicationId: "app-1"},
 			declarations: []model.VersionComponent{{
 				Id: "component-1", Name: "ragflow", Image: "ragflow:latest",
@@ -58,7 +63,7 @@ func TestCreateServiceUsesSubmittedCode(t *testing.T) {
 		service: store,
 	}
 
-	view, err := service.CreateService(context.Background(), "user-1", servicedto.ServiceCreateInput{ApplicationId: "app-1", VersionId: "version-1", InstanceKey: "default", Code: "ragflow-preview"})
+	view, err := service.CreateService(context.Background(), "user-1", "project-1", servicedto.ServiceCreateInput{ApplicationId: "app-1", VersionId: "version-1", Code: "ragflow-preview"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,15 +73,16 @@ func TestCreateServiceUsesSubmittedCode(t *testing.T) {
 }
 
 func TestCreateServiceReportsExistingCodeConflict(t *testing.T) {
-	store := &serviceCreateStoreFake{serviceByKeyErr: repository.ErrNotFound}
+	store := &serviceCreateStoreFake{}
 	service := Service{
+		project: serviceCreateProjectFake{},
 		application: serviceApplicationFake{
-			app: model.Application{Id: "app-1", Code: "ragflow"}, version: model.Version{Id: "version-1", ApplicationId: "app-1"},
+			app: model.Application{Id: "app-1", ProjectId: stringPtr("project-1"), Code: "ragflow"}, version: model.Version{Id: "version-1", ApplicationId: "app-1"},
 		},
 		service: store,
 	}
 
-	_, err := service.CreateService(context.Background(), "user-1", servicedto.ServiceCreateInput{ApplicationId: "app-1", VersionId: "version-1", InstanceKey: "default", Code: "ragflow-default"})
+	_, err := service.CreateService(context.Background(), "user-1", "project-1", servicedto.ServiceCreateInput{ApplicationId: "app-1", VersionId: "version-1", Code: "ragflow-default"})
 	if err == nil || !strings.Contains(err.Error(), "Service code already exists") {
 		t.Fatalf("create error = %v", err)
 	}

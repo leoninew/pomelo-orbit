@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求依据
 
-- [MCP 部署体验改进需求](../requirement/20260729-mcp-deployment-ergonomics.md) 已于 2026-07-29 接受。
+- [MCP 部署体验改进需求](../intent/20260729-mcp-deployment-ergonomics.md) 已于 2026-07-29 接受。
 - 本计划只实现 MCP 部署与诊断体验改进；敏感信息脱敏按已确认边界延期，不在本轮改变其行为。
 - 保持通过 Orbit HTTP API 完成所有生命周期写操作；不使用 Docker Compose CLI 执行 `up`、`down`、`restart` 等生命周期写入。
 

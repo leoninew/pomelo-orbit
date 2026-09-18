@@ -26,17 +26,18 @@ func TestGatewayForDeploymentDoesNotRequireGatewayForInternalTCPEndpoint(t *test
 
 func TestGatewayForDeploymentFindsCarrierEvenWhenNetworkWasRequestedDisabled(t *testing.T) {
 	disabled := false
-	app := model.Application{Id: "gateway-app", Kind: status.ApplicationKindStandard}
+	projectId := "project-1"
+	app := model.Application{Id: "gateway-app", ProjectId: &projectId, Kind: status.ApplicationKindStandard}
 	plan := model.EffectiveServicePlan{
 		Application: app, JoinTraefikNetwork: &disabled,
 	}
-	service := Service{config: gatewayConfigStore{cfg: model.GatewayConfig{ApplicationId: app.Id}}}
+	service := Service{config: gatewayConfigStore{cfg: model.GatewayConfig{ApplicationId: app.Id, NetworkName: "traefik"}}}
 
-	config, err := service.GatewayForDeployment(context.Background(), app, plan)
+	config, err := service.GatewayForDeployment(context.Background(), projectId, app, plan)
 	if err != nil {
 		t.Fatalf("GatewayForDeployment() error = %v", err)
 	}
-	if config == nil || config.ApplicationId != app.Id {
+	if config == nil || config.ApplicationId != app.Id || config.NetworkName != "traefik" {
 		t.Fatalf("GatewayForDeployment() = %#v, want GatewayConfig for %q", config, app.Id)
 	}
 }
@@ -45,14 +46,17 @@ type gatewayConfigStore struct {
 	cfg model.GatewayConfig
 }
 
-func (s gatewayConfigStore) GatewayConfig(_ context.Context, applicationID string) (model.GatewayConfig, error) {
-	if applicationID != s.cfg.ApplicationId {
+func (s gatewayConfigStore) GatewayConfig(_ context.Context, applicationId string) (model.GatewayConfig, error) {
+	if applicationId != s.cfg.ApplicationId {
 		return model.GatewayConfig{}, repository.ErrNotFound
 	}
 	return s.cfg, nil
 }
 
-func (s gatewayConfigStore) ResolveActiveGatewayConfig(context.Context) (model.GatewayConfig, error) {
+func (s gatewayConfigStore) GatewayConfigByProject(_ context.Context, projectId string) (model.GatewayConfig, error) {
+	if projectId == "" {
+		return model.GatewayConfig{}, repository.ErrNotFound
+	}
 	return s.cfg, nil
 }
 
@@ -65,6 +69,10 @@ func (gatewayConfigStore) UpsertGatewayConfig(context.Context, model.GatewayConf
 }
 
 func (gatewayConfigStore) ReplaceGatewayVersionBindings(context.Context, string, []model.GatewayVersionBinding) error {
+	return nil
+}
+
+func (gatewayConfigStore) DeleteGatewayConfig(context.Context, string) error {
 	return nil
 }
 
@@ -81,7 +89,7 @@ func TestGatewayForDeploymentSkipsGatewayConfigWhenTraefikNetworkDisabled(t *tes
 		}},
 	}
 
-	gateway, err := (Service{}).GatewayForDeployment(context.Background(), plan.Application, plan)
+	gateway, err := (Service{}).GatewayForDeployment(context.Background(), "project-1", plan.Application, plan)
 	if err != nil {
 		t.Fatalf("GatewayForDeployment() error = %v", err)
 	}

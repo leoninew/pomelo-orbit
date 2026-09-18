@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -26,8 +27,8 @@ func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(tools.Tools) != 56 {
-		t.Fatalf("tool count = %d, want 56", len(tools.Tools))
+	if len(tools.Tools) != 60 {
+		t.Fatalf("tool count = %d, want 60", len(tools.Tools))
 	}
 
 	byName := make(map[string]*mcp.Tool, len(tools.Tools))
@@ -72,9 +73,113 @@ func TestServerReportsPomeloMCPImplementation(t *testing.T) {
 	}
 }
 
+func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(t *testing.T) {
+	revision := int64(3)
+	probeStatus := model.EnvironmentProbeStatusSucceeded
+	environment := &environmentToolService{environment: environmentdto.View{
+		Id: "environment-1", ProjectId: "project-1", Code: "project",
+		TargetType: model.EnvironmentTargetTypeSSH, TargetRevision: 3,
+		LastProbeRevision: &revision, LastProbeStatus: &probeStatus,
+		SSH: &environmentdto.SSHTargetView{
+			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit", WorkspaceRoot: "/srv/orbit",
+			HostKeyFingerprint: "SHA256:abc",
+		},
+	}}
+	server, err := NewServer(withReadyScope(Dependencies{Environment: environment}))
+	if err != nil {
+		t.Fatalf("NewServer() error = %v", err)
+	}
+	session := connectInMemory(t, server)
+
+	getResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_get_project_environment"})
+	if err != nil || getResult.IsError {
+		t.Fatalf("CallTool(get environment) result=%#v err=%v", getResult, err)
+	}
+	getOutput := structuredOutput(t, getResult)
+	if getOutput["project_id"] != "project-1" || environment.userId != "actor" || environment.projectId != "project-1" {
+		t.Fatalf("get environment scope = output %#v service %#v", getOutput, environment)
+	}
+
+	workspaceRoot := "/srv/orbit-next"
+	updateResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_project_environment", Arguments: map[string]any{"ssh": map[string]any{"platform": "linux", "host": "host.example.test", "port": 22, "username": "orbit", "workspace_root": workspaceRoot}}})
+	if err != nil || updateResult.IsError {
+		t.Fatalf("CallTool(update environment) result=%#v err=%v", updateResult, err)
+	}
+	if environment.update.SSH == nil || environment.update.SSH.WorkspaceRoot != workspaceRoot {
+		t.Fatalf("update input = %#v", environment.update)
+	}
+	encodedUpdate, err := json.Marshal(structuredOutput(t, updateResult))
+	if err != nil {
+		t.Fatalf("marshal update output: %v", err)
+	}
+	if strings.Contains(string(encodedUpdate), "PRIVATE KEY") || strings.Contains(strings.ToLower(string(encodedUpdate)), "private_key") {
+		t.Fatalf("update output exposed private key: %s", encodedUpdate)
+	}
+	getEncoded, err := json.Marshal(getOutput)
+	if err != nil {
+		t.Fatalf("marshal get output: %v", err)
+	}
+	if strings.Contains(string(getEncoded), "authorized_keys") || strings.Contains(strings.ToLower(string(getEncoded)), "private_key") {
+		t.Fatalf("get output exposed initialization credentials: %s", getEncoded)
+	}
+
+	probeResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_probe_project_environment"})
+	if err != nil || probeResult.IsError {
+		t.Fatalf("CallTool(probe environment) result=%#v err=%v", probeResult, err)
+	}
+	if environment.probeCalls != 1 || environment.projectId != "project-1" || environment.userId != "actor" {
+		t.Fatalf("probe scope = service %#v", environment)
+	}
+}
+
+func TestProjectEnvironmentToolsReturnLocalWorkspaceWithoutSSHFields(t *testing.T) {
+	revision := int64(1)
+	probeStatus := model.EnvironmentProbeStatusSucceeded
+	environment := &environmentToolService{environment: environmentdto.View{
+		Id: "environment-1", ProjectId: "project-1", Code: "project",
+		TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: 1,
+		LastProbeRevision: &revision, LastProbeStatus: &probeStatus,
+		Local: &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit/deployment", Platform: "linux", Host: "orbit-host", Username: "orbit"},
+	}}
+	server, err := NewServer(withReadyScope(Dependencies{Environment: environment}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := connectInMemory(t, server).CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "orbit_get_project_environment",
+	})
+	if err != nil || result.IsError {
+		t.Fatalf("CallTool(get local environment) result=%#v err=%v", result, err)
+	}
+	output := structuredOutput(t, result)
+	environmentOutput, ok := output["environment"].(map[string]any)
+	if !ok {
+		t.Fatalf("environment output = %#v", output["environment"])
+	}
+	local, ok := environmentOutput["local"].(map[string]any)
+	if !ok || local["workspace_root"] != "/srv/orbit/deployment" {
+		t.Fatalf("local output = %#v", environmentOutput["local"])
+	}
+	if _, found := environmentOutput["ssh"]; found {
+		t.Fatalf("local environment exposed SSH fields: %#v", environmentOutput)
+	}
+	updateResult, err := connectInMemory(t, server).CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "orbit_update_project_environment",
+		Arguments: map[string]any{
+			"local": map[string]any{"workspace_root": "/srv/orbit/next"},
+		},
+	})
+	if err != nil || updateResult.IsError {
+		t.Fatalf("CallTool(update local environment) result=%#v err=%v", updateResult, err)
+	}
+	if environment.update.Local == nil || environment.update.Local.WorkspaceRoot != "/srv/orbit/next" || environment.update.SSH != nil {
+		t.Fatalf("local update input = %#v", environment.update)
+	}
+}
+
 func TestCreateVersionComponentPassesPolicies(t *testing.T) {
 	application := &versionComponentApplicationService{}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: application})
+	server, err := NewServer(withReadyScope(Dependencies{Application: application}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -126,7 +231,7 @@ func TestServerInstructionsAndRuntimeConfigToolsDocumentStatefulServiceBoundary(
 }
 
 func TestApplicationErrorBecomesClassifiedMCPToolError(t *testing.T) {
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: errorApplicationService{}})
+	server, err := NewServer(withReadyScope(Dependencies{Application: errorApplicationService{}}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -151,9 +256,10 @@ func TestApplicationErrorBecomesClassifiedMCPToolError(t *testing.T) {
 }
 
 func TestServiceCodeMCPContract(t *testing.T) {
-	application := &serviceApplicationToolService{application: model.Application{Id: "application-1", Code: "ragflow"}}
-	service := &serviceToolService{services: []model.Service{{Id: "service-1", ApplicationId: "application-1", InstanceKey: "default", Code: "ragflow-default", VersionId: "version-1", Status: "stopped"}}}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: application, Service: service})
+	projectId := "project-1"
+	application := &serviceApplicationToolService{application: model.Application{Id: "application-1", ProjectId: &projectId, Code: "ragflow"}}
+	service := &serviceToolService{services: []model.Service{{Id: "service-1", ApplicationId: "application-1", Code: "ragflow-default", VersionId: "version-1", Status: "stopped"}}}
+	server, err := NewServer(withReadyScope(Dependencies{Application: application, Service: service}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -182,11 +288,14 @@ func TestServiceCodeMCPContract(t *testing.T) {
 	if err := json.Unmarshal(encodedSchema, &createSchema); err != nil {
 		t.Fatalf("unmarshal create schema: %v", err)
 	}
-	if _, ok := createSchema.Properties["code"]; ok || containsString(createSchema.Required, "code") {
-		t.Fatalf("create schema must derive code: %s", encodedSchema)
+	if _, ok := createSchema.Properties["code"]; !ok || !containsString(createSchema.Required, "code") {
+		t.Fatalf("create schema must require code: %s", encodedSchema)
+	}
+	if _, ok := createSchema.Properties["instance_key"]; ok {
+		t.Fatalf("create schema must not contain instance_key: %s", encodedSchema)
 	}
 	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_create_service", Arguments: map[string]any{
-		"application_id": "application-1", "version_id": "version-1", "instance_key": "default",
+		"application_id": "application-1", "version_id": "version-1", "code": "ragflow-default",
 	}})
 	if err != nil {
 		t.Fatalf("CallTool(create service) error = %v", err)
@@ -223,7 +332,7 @@ func TestServiceCodeMCPContract(t *testing.T) {
 
 func TestServiceComponentOverlayToolMapsRuntimeAndHostPathFields(t *testing.T) {
 	service := &serviceOverlayToolService{}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Service: service})
+	server, err := NewServer(withReadyScope(Dependencies{Application: &serviceApplicationToolService{application: model.Application{Id: "application-1", ProjectId: readyProjectId(), Code: "ragflow"}}, Service: service}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -407,6 +516,30 @@ func TestActorAuthenticatorKeepsConcurrentCallsBoundToOneActor(t *testing.T) {
 	}
 }
 
+type environmentToolService struct {
+	EnvironmentService
+	environment environmentdto.View
+	userId      string
+	projectId   string
+	update      environmentdto.UpdateInput
+	probeCalls  int
+}
+
+func (s *environmentToolService) EnvironmentForUser(_ context.Context, userId, projectId string) (environmentdto.View, error) {
+	s.userId, s.projectId = userId, projectId
+	return s.environment, nil
+}
+
+func (s *environmentToolService) UpdateForUser(_ context.Context, userId, projectId string, input environmentdto.UpdateInput) (environmentdto.View, error) {
+	s.userId, s.projectId, s.update = userId, projectId, input
+	return s.environment, nil
+}
+
+func (s *environmentToolService) ProbeForUser(_ context.Context, userId, projectId string) (environmentdto.View, error) {
+	s.userId, s.projectId, s.probeCalls = userId, projectId, s.probeCalls+1
+	return s.environment, nil
+}
+
 type actorProjectService struct {
 	mu          sync.Mutex
 	actorUserId string
@@ -428,8 +561,9 @@ func (s *actorProjectService) snapshot() (string, int) {
 }
 
 var deliveryToolNames = []string{
-	"orbit_list_projects", "orbit_list_applications", "orbit_list_application_services", "orbit_list_gateways",
-	"orbit_create_gateway", "orbit_provision_gateway", "orbit_get_gateway", "orbit_update_gateway",
+	"orbit_list_projects", "orbit_select_project", "orbit_get_current_project", "orbit_get_project_environment", "orbit_update_project_environment", "orbit_probe_project_environment",
+	"orbit_list_applications", "orbit_list_application_services", "orbit_list_gateways",
+	"orbit_provision_gateway", "orbit_get_gateway", "orbit_update_gateway",
 	"orbit_create_application", "orbit_get_application", "orbit_delete_application", "orbit_list_versions", "orbit_get_version",
 	"orbit_create_version_component", "orbit_create_version", "orbit_update_version",
 	"orbit_update_version_component_basic", "orbit_update_version_component_runtime", "orbit_update_version_component_endpoints",
@@ -445,7 +579,7 @@ var deliveryToolNames = []string{
 
 func TestFlatMountToolMapsCollectionToApplicationInput(t *testing.T) {
 	application := &mountApplicationService{}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: application})
+	server, err := NewServer(withReadyScope(Dependencies{Application: application}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -464,13 +598,13 @@ func TestFlatMountToolMapsCollectionToApplicationInput(t *testing.T) {
 		t.Fatalf("mapped mounts = %#v", application.mounts)
 	}
 	if application.versionId != "version-1" || application.componentId != "component-1" {
-		t.Fatalf("mapped IDs = %q, %q", application.versionId, application.componentId)
+		t.Fatalf("mapped Ids = %q, %q", application.versionId, application.componentId)
 	}
 }
 
 func TestMountToolDocumentsAndMapsControlledFile(t *testing.T) {
 	application := &mountApplicationService{}
-	server, err := NewServer(Dependencies{ActorUserId: "actor", Application: application})
+	server, err := NewServer(withReadyScope(Dependencies{Application: application}))
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -672,7 +806,7 @@ type versionComponentApplicationService struct {
 	input applicationdto.VersionComponentInput
 }
 
-func (s *versionComponentApplicationService) CreateVersionComponent(_ context.Context, _ string, _ string, input applicationdto.VersionComponentInput) (model.VersionComponent, error) {
+func (s *versionComponentApplicationService) CreateVersionComponent(_ context.Context, _, _, _ string, input applicationdto.VersionComponentInput) (model.VersionComponent, error) {
 	s.input = input
 	return model.VersionComponent{Id: "component-1", PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy}, nil
 }
@@ -688,7 +822,7 @@ type serviceApplicationToolService struct {
 	application model.Application
 }
 
-func (s *serviceApplicationToolService) ApplicationForUser(context.Context, string, string) (model.Application, error) {
+func (s *serviceApplicationToolService) ApplicationForUser(context.Context, string, string, string) (model.Application, error) {
 	return s.application, nil
 }
 
@@ -697,16 +831,20 @@ type serviceOverlayToolService struct {
 	overlayInput servicedto.ServiceComponentOverlayInput
 }
 
-func (s *serviceToolService) CreateService(_ context.Context, _ string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
+func (s *serviceToolService) CreateService(_ context.Context, _, _ string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
 	s.createInput = input
-	return servicedto.ServiceView{Service: model.Service{Id: "service-1", ApplicationId: input.ApplicationId, VersionId: input.VersionId, InstanceKey: input.InstanceKey, Code: input.Code, Status: "stopped"}}, nil
+	return servicedto.ServiceView{Service: model.Service{Id: "service-1", ApplicationId: input.ApplicationId, VersionId: input.VersionId, Code: input.Code, Status: "stopped"}}, nil
 }
 
-func (s *serviceToolService) ListServicesByApplication(context.Context, string, string) ([]model.Service, error) {
+func (s *serviceToolService) ListServicesByApplication(context.Context, string, string, string) ([]model.Service, error) {
 	return s.services, nil
 }
 
-func (s *serviceOverlayToolService) UpdateServiceComponentOverlay(_ context.Context, _ string, _ string, _ string, input servicedto.ServiceComponentOverlayInput) (model.ServiceComponent, error) {
+func (s *serviceOverlayToolService) GetService(_ context.Context, _, _ string, serviceId string) (servicedto.ServiceView, error) {
+	return servicedto.ServiceView{Service: model.Service{Id: serviceId, ApplicationId: "application-1"}}, nil
+}
+
+func (s *serviceOverlayToolService) UpdateServiceComponentOverlay(_ context.Context, _, _, _, _ string, input servicedto.ServiceComponentOverlayInput) (model.ServiceComponent, error) {
 	s.overlayInput = input
 	return model.ServiceComponent{
 		Id:            "component-1",
@@ -719,11 +857,11 @@ func (s *serviceOverlayToolService) UpdateServiceComponentOverlay(_ context.Cont
 
 type errorApplicationService struct{ ApplicationService }
 
-func (errorApplicationService) ApplicationForUser(context.Context, string, string) (model.Application, error) {
+func (errorApplicationService) ApplicationForUser(context.Context, string, string, string) (model.Application, error) {
 	return model.Application{}, apperror.New(apperror.KindNotFound, "Application missing not found")
 }
 
-func (s *mountApplicationService) UpdateVersionComponentMounts(_ context.Context, _ string, versionId, componentId string, input applicationdto.VersionComponentMountsUpdateInput) (model.VersionComponent, error) {
+func (s *mountApplicationService) UpdateVersionComponentMounts(_ context.Context, _, _ string, versionId, componentId string, input applicationdto.VersionComponentMountsUpdateInput) (model.VersionComponent, error) {
 	s.versionId, s.componentId, s.mounts = versionId, componentId, input.Mounts
 	return model.VersionComponent{Id: componentId, VersionId: versionId, Mounts: input.Mounts}, nil
 }

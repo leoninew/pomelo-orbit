@@ -1,0 +1,69 @@
+package delivery
+
+import (
+	"context"
+
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+)
+
+func (c *core) registerEnvironmentTools(server *mcp.Server) {
+	addTool(server, "orbit_get_project_environment", "Read the unique local or SSH deployment Environment for the selected Project. SSH responses never include private keys or initialization credentials.", func(ctx context.Context, _ struct{}) (map[string]any, error) {
+		projectId, environment, err := c.requireReadyEnvironment(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"environment": environmentOutput(environment), "project_id": projectId}, nil
+	})
+
+	addTool(server, "orbit_update_project_environment", "Update the explicit local or SSH target of the selected Project's unique deployment Environment. Local requires the nested local object; SSH requires the nested ssh object.", func(ctx context.Context, input struct {
+		TargetType *string `json:"target_type,omitempty"`
+		Local      *struct {
+			WorkspaceRoot string `json:"workspace_root"`
+		} `json:"local,omitempty"`
+		SSH *struct {
+			Platform      string `json:"platform"`
+			Host          string `json:"host"`
+			Port          int    `json:"port"`
+			Username      string `json:"username"`
+			WorkspaceRoot string `json:"workspace_root"`
+		} `json:"ssh,omitempty"`
+	}) (map[string]any, error) {
+		if input.TargetType == nil && input.Local == nil && input.SSH == nil {
+			return nil, apperror.New(apperror.KindValidation, "at least one Environment field must be supplied")
+		}
+		var ssh *environmentdto.SSHTargetInput
+		var local *environmentdto.LocalTargetInput
+		if input.Local != nil {
+			local = &environmentdto.LocalTargetInput{WorkspaceRoot: input.Local.WorkspaceRoot}
+		}
+		if input.SSH != nil {
+			ssh = &environmentdto.SSHTargetInput{Platform: input.SSH.Platform, Host: input.SSH.Host, Port: input.SSH.Port, Username: input.SSH.Username, WorkspaceRoot: input.SSH.WorkspaceRoot}
+		}
+		projectId, _, err := c.requireReadyEnvironment(ctx)
+		if err != nil {
+			return nil, err
+		}
+		environment, err := c.deps.Environment.UpdateForUser(ctx, c.deps.ActorUserId, projectId, environmentdto.UpdateInput{
+			TargetType: input.TargetType, Local: local, SSH: ssh,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return writeResult("update_project_environment", map[string]string{"project_id": projectId, "environment_id": environment.Id}, "PUT", "/api/environment", map[string]any{"environment": environmentOutput(environment)}), nil
+	})
+
+	addTool(server, "orbit_probe_project_environment", "Probe Docker Compose prerequisites for the selected Project's local or SSH Environment. SSH also verifies key authentication and host-key pinning.", func(ctx context.Context, _ struct{}) (map[string]any, error) {
+		projectId, _, err := c.requireReadyEnvironment(ctx)
+		if err != nil {
+			return nil, err
+		}
+		environment, err := c.deps.Environment.ProbeForUser(ctx, c.deps.ActorUserId, projectId)
+		if err != nil {
+			return nil, err
+		}
+		return writeResult("probe_project_environment", map[string]string{"project_id": projectId, "environment_id": environment.Id}, "POST", "/api/environment/probe", map[string]any{"environment": environmentOutput(environment)}), nil
+	})
+}

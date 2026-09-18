@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS route (
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     project_id VARCHAR(26),
-    FOREIGN KEY (project_id) REFERENCES project(id),
     CONSTRAINT chk_route_protocol CHECK (protocol IN ('http', 'tcp')),
     CONSTRAINT chk_route_listen_port CHECK (listen_port IS NULL OR listen_port BETWEEN 1 AND 65535),
     CONSTRAINT chk_route_endpoint_protocol CHECK (endpoint_protocol IS NULL OR endpoint_protocol IN ('http', 'tcp')),

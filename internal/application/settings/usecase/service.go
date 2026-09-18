@@ -16,12 +16,19 @@ import (
 const envPrefix = "POMELO_ORBIT_"
 
 type Service struct {
-	cfg      config.Config
-	envStore settingsport.EnvStore
+	definitions []settingsdto.Definition
+	envStore    settingsport.EnvStore
 }
 
-func New(cfg config.Config, envStore settingsport.EnvStore) Service {
-	return Service{cfg: cfg, envStore: envStore}
+func New(definitions []settingsdto.Definition, envStore settingsport.EnvStore) Service {
+	return Service{definitions: definitions, envStore: envStore}
+}
+
+func Definitions(cfg config.Config) []settingsdto.Definition {
+	if cfg.Base != nil {
+		return settingDefinitions(*cfg.Base)
+	}
+	return settingDefinitions(cfg)
 }
 
 func (s Service) Config(ctx context.Context) (settingsdto.SystemConfig, error) {
@@ -29,7 +36,7 @@ func (s Service) Config(ctx context.Context) (settingsdto.SystemConfig, error) {
 	if err != nil {
 		return settingsdto.SystemConfig{}, err
 	}
-	definitions := settingDefinitions(s.baseConfig())
+	definitions := s.definitions
 	definitionByKey := make(map[string]settingsdto.Definition, len(definitions))
 	orderedKeys := make([]string, 0, len(definitions))
 	for _, definition := range definitions {
@@ -100,13 +107,6 @@ func (s Service) Reset(ctx context.Context, keys []string) (settingsdto.SystemCo
 	return s.Config(ctx)
 }
 
-func (s Service) baseConfig() config.Config {
-	if s.cfg.Base != nil {
-		return *s.cfg.Base
-	}
-	return s.cfg
-}
-
 func settingDefinitions(cfg config.Config) []settingsdto.Definition {
 	secretKeys := map[string]struct{}{}
 	for _, key := range cfg.Settings.SecretKeys {
@@ -135,17 +135,23 @@ func settingDefinitions(cfg config.Config) []settingsdto.Definition {
 		{Key: "database__mysql__dsn", Default: cfg.Database.MySQL.Dsn, Description: "MySQL DSN"},
 		{Key: "database__postgres__dsn", Default: cfg.Database.Postgres.Dsn, Description: "PostgreSQL DSN"},
 		{Key: "jwt__secret_key", Default: cfg.Jwt.SecretKey, Description: "JWT signing secret"},
-		{Key: "traefik__image", Default: cfg.Traefik.Image, Description: "Managed gateway container image pin"},
-		{Key: "traefik__rest_api_url", Default: cfg.Traefik.RestApiUrl, Description: "Default Traefik REST control-plane URL for new gateways"},
-		{Key: "traefik__base_domain", Default: cfg.Traefik.BaseDomain, Description: "Default gateway base domain for new gateways"},
-		{Key: "traefik__rest_ready_timeout", Default: cfg.Traefik.RestReadyTimeout.String(), Description: "How long deploy waits for Traefik REST API readiness"},
+		{Key: "project_initialization__environment__local_workspace_root", Default: cfg.ProjectInitialization.Environment.LocalWorkspaceRoot, Description: "Default local Environment workspace_root for the Project initialization Wizard"},
+		{Key: "project_initialization__gateway__image", Default: cfg.ProjectInitialization.Gateway.Image, Description: "Default Gateway image for the Project initialization Wizard"},
+		{Key: "project_initialization__gateway__rest_api_url", Default: cfg.ProjectInitialization.Gateway.RestApiUrl, Description: "Default Gateway REST URL for the Project initialization Wizard"},
+		{Key: "project_initialization__gateway__base_domain", Default: cfg.ProjectInitialization.Gateway.BaseDomain, Description: "Default Gateway base domain for the Project initialization Wizard"},
+		{Key: "project_initialization__gateway__rest_ready_timeout", Default: cfg.ProjectInitialization.Gateway.RestReadyTimeout.String(), Description: "Default Gateway REST readiness timeout for the Project initialization Wizard"},
+		{Key: "project_initialization__gateway__default_entrypoint", Default: cfg.ProjectInitialization.Gateway.DefaultEntrypoint, Description: "Default Gateway entrypoint for the Project initialization Wizard"},
+		{Key: "project_initialization__gateway__tls_mode", Default: cfg.ProjectInitialization.Gateway.TLSMode, Description: "Default Gateway TLS mode for the Project initialization Wizard"},
+		{Key: "project_initialization__gateway__acme_profile", Default: cfg.ProjectInitialization.Gateway.AcmeProfile, Description: "Default Gateway ACME profile for the Project initialization Wizard"},
+		{Key: "project_initialization__gateway__acme_email", Default: cfg.ProjectInitialization.Gateway.AcmeEmail, Description: "Default Gateway ACME email for the Project initialization Wizard"},
+		{Key: "project_initialization__gateway__dns_api_token", Default: cfg.ProjectInitialization.Gateway.DNSApiToken, Description: "Default Gateway DNS API token for the Project initialization Wizard"},
 		{Key: "turnstile__enabled", Default: cfg.Turnstile.Enabled, Description: "Enable Cloudflare Turnstile verification"},
 		{Key: "turnstile__site_key", Default: cfg.Turnstile.SiteKey, Description: "Cloudflare Turnstile site key"},
 		{Key: "turnstile__secret_key", Default: cfg.Turnstile.SecretKey, Description: "Cloudflare Turnstile secret key"},
 		{Key: "turnstile__verify_url", Default: cfg.Turnstile.VerifyUrl, Description: "Cloudflare Turnstile siteverify URL"},
 		{Key: "settings__secret_keys", Default: cfg.Settings.SecretKeys, Description: "Settings fields marked as secret"},
 		{Key: "pipeline_run__execution_timeout", Default: cfg.PipelineRun.ExecutionTimeout.String(), Description: "Maximum pipeline execution duration"},
-		{Key: "worker__id", Default: cfg.Worker.Id, Description: "Background worker ID"},
+		{Key: "worker__id", Default: cfg.Worker.Id, Description: "Background worker Id"},
 		{Key: "worker__poll_interval", Default: cfg.Worker.PollInterval.String(), Description: "Background worker poll interval"},
 		{Key: "worker__lease_duration", Default: cfg.Worker.LeaseDuration.String(), Description: "Background task lease duration"},
 		{Key: "worker__max_attempts", Default: cfg.Worker.MaxAttempts, Description: "Attempts frozen into each new background task"},

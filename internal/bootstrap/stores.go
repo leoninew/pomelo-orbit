@@ -8,6 +8,8 @@ import (
 	credentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/credential"
 	deploymentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/deployment"
 	dialoguerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/dialogue"
+	environmentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/environment"
+	environmentcredentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/environment_credential"
 	gatewayrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/gateway"
 	pipelinerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/pipeline"
 	pipelinerunrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/pipeline_run"
@@ -22,37 +24,41 @@ import (
 // domainStores holds per-domain sqlc repositories for HTTP and worker wiring.
 // Keep construction here so bootstrap paths cannot drift domain by domain.
 type domainStores struct {
-	user        userrepo.Repository
-	auth        authrepo.Repository
-	role        rolerepo.Repository
-	project     projectrepo.Repository
-	credential  credentialrepo.Repository
-	repository  vcsrepo.Repository
-	pipeline    pipelinerepo.Repository
-	pipelineRun pipelinerunrepo.Repository
-	application applicationrepo.Repository
-	service     servicerepo.Repository
-	deployment  deploymentrepo.Repository
-	dialogue    dialoguerepo.Repository
-	gateway     gatewayrepo.Repository
-	route       routerepo.Repository
+	user                  userrepo.Repository
+	auth                  authrepo.Repository
+	role                  rolerepo.Repository
+	project               projectrepo.Repository
+	credential            credentialrepo.Repository
+	environmentCredential environmentcredentialrepo.Repository
+	repository            vcsrepo.Repository
+	pipeline              pipelinerepo.Repository
+	pipelineRun           pipelinerunrepo.Repository
+	application           applicationrepo.Repository
+	service               servicerepo.Repository
+	deployment            deploymentrepo.Repository
+	dialogue              dialoguerepo.Repository
+	environment           environmentrepo.Repository
+	gateway               gatewayrepo.Repository
+	route                 routerepo.Repository
 }
 
 func newDomainStores(database *sql.DB) domainStores {
 	return domainStores{
-		user:        userrepo.NewRepository(database),
-		auth:        authrepo.NewRepository(database),
-		role:        rolerepo.NewRepository(database),
-		project:     projectrepo.NewRepository(database),
-		credential:  credentialrepo.NewRepository(database),
-		repository:  vcsrepo.NewRepository(database),
-		pipeline:    pipelinerepo.NewRepository(database),
-		pipelineRun: pipelinerunrepo.NewRepository(database),
-		application: applicationrepo.NewRepository(database),
-		service:     servicerepo.NewRepository(database),
-		deployment:  deploymentrepo.NewRepository(database),
-		dialogue:    dialoguerepo.NewRepository(database),
-		gateway:     gatewayrepo.NewRepository(database),
-		route:       routerepo.NewRepository(database),
+		user:                  userrepo.NewRepository(database),
+		auth:                  authrepo.NewRepository(database),
+		role:                  rolerepo.NewRepository(database),
+		project:               projectrepo.NewRepository(database),
+		credential:            credentialrepo.NewRepository(database),
+		environmentCredential: environmentcredentialrepo.NewRepository(database),
+		repository:            vcsrepo.NewRepository(database),
+		pipeline:              pipelinerepo.NewRepository(database),
+		pipelineRun:           pipelinerunrepo.NewRepository(database),
+		application:           applicationrepo.NewRepository(database),
+		service:               servicerepo.NewRepository(database),
+		deployment:            deploymentrepo.NewRepository(database),
+		dialogue:              dialoguerepo.NewRepository(database),
+		environment:           environmentrepo.NewRepository(database),
+		gateway:               gatewayrepo.NewRepository(database),
+		route:                 routerepo.NewRepository(database),
 	}
 }

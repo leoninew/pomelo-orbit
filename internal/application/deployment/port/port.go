@@ -5,6 +5,7 @@ import (
 	"io"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -19,74 +20,80 @@ type Dispatcher interface {
 type CommandStore interface {
 	Project(ctx context.Context, id string) (model.Project, error)
 	IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error)
-	Application(ctx context.Context, id string) (model.Application, error)
-	Version(ctx context.Context, id string) (model.Version, error)
-	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
-	Service(ctx context.Context, id string) (model.Service, error)
-	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
-	ServiceEnvByService(ctx context.Context, serviceId string) ([]model.ServiceEnv, error)
-	ServiceComponentsByService(ctx context.Context, serviceId string) ([]model.ServiceComponent, error)
-	UpdateServiceStatus(ctx context.Context, id string, status string) error
-	CreateDeployment(ctx context.Context, deployment model.Deployment) error
-	HasActiveDeployment(ctx context.Context, serviceId string) (bool, error)
-	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
+	Application(ctx context.Context, projectId string, id string) (model.Application, error)
+	Version(ctx context.Context, projectId string, id string) (model.Version, error)
+	VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error)
+	Service(ctx context.Context, projectId string, id string) (model.Service, error)
+	ListServicesByApplication(ctx context.Context, projectId string, applicationId string) ([]model.Service, error)
+	ServiceEnvByService(ctx context.Context, projectId string, serviceId string) ([]model.ServiceEnv, error)
+	ServiceComponentsByService(ctx context.Context, projectId string, serviceId string) ([]model.ServiceComponent, error)
+	UpdateServiceStatus(ctx context.Context, projectId string, id string, status string) error
+	CreateDeployment(ctx context.Context, projectId string, deployment model.Deployment) error
+	HasActiveDeployment(ctx context.Context, projectId string, serviceId string) (bool, error)
 }
 
 // ExecutionStore is the worker's narrow persistence view. It deliberately
 // exposes domain models rather than generated SQLC or transport types.
 type ExecutionStore interface {
-	Application(ctx context.Context, id string) (model.Application, error)
-	Deployment(ctx context.Context, id string) (model.Deployment, error)
-	Version(ctx context.Context, id string) (model.Version, error)
-	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
-	ServiceEnvByService(ctx context.Context, serviceId string) ([]model.ServiceEnv, error)
-	ServiceComponentsByService(ctx context.Context, serviceId string) ([]model.ServiceComponent, error)
-	Service(ctx context.Context, id string) (model.Service, error)
-	UpdateServiceStatus(ctx context.Context, id string, status string) error
-	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string) error
-	BeginDeployment(ctx context.Context, id string) (bool, error)
-	CompleteDeployment(ctx context.Context, id string, status string, message string) (bool, error)
+	Application(ctx context.Context, projectId string, id string) (model.Application, error)
+	Deployment(ctx context.Context, projectId string, id string) (model.Deployment, error)
+	Version(ctx context.Context, projectId string, id string) (model.Version, error)
+	VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error)
+	ServiceEnvByService(ctx context.Context, projectId string, serviceId string) ([]model.ServiceEnv, error)
+	ServiceComponentsByService(ctx context.Context, projectId string, serviceId string) ([]model.ServiceComponent, error)
+	Service(ctx context.Context, projectId string, id string) (model.Service, error)
+	UpdateServiceStatus(ctx context.Context, projectId string, id string, status string) error
+	UpdateServiceAfterDeploy(ctx context.Context, projectId string, id string, status string, versionId string) error
+	BeginDeployment(ctx context.Context, projectId string, id string) (bool, error)
+	CompleteDeployment(ctx context.Context, projectId string, id string, status string, message string) (bool, error)
 	GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error)
-	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
-}
-
-type LogReader interface {
-	Read(logPath string, offset int) ([]byte, int, error)
-}
-
-type CommandQueryRunner interface {
-	Run(ctx context.Context, cwd string, name string, args ...string) (string, error)
-}
-
-type CommandRunner interface {
-	Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error
 }
 
 type ExecutionLogStore interface {
-	LogReader
-	Writer(logPath string) (io.WriteCloser, error)
+	Read(serviceCode string, deploymentId string, offset int) ([]byte, int, error)
+	Writer(serviceCode string, deploymentId string) (io.WriteCloser, error)
+	Remove(serviceCode string, deploymentId string) error
 }
 
-// Workspace is the deployment runtime filesystem boundary.
-type Workspace interface {
-	ServiceDir(serviceCode string) string
-	ServiceDirExists(serviceCode string) (bool, error)
-	DeploymentLogPath(serviceCode string, deploymentId string) string
-	RemoveDeploymentLog(serviceCode string, deploymentId string) error
-	ComposeMountSourceDir(ctx context.Context, serviceCode string) (string, error)
-	WriteConfig(serviceCode string, path string, content string) error
+type WorkspaceFile struct {
+	Path           string
+	Content        []byte
+	Mode           uint32
+	IgnoreIfExists bool
+}
+
+type Workspace struct {
+	ServiceCode  string
+	Directories  []string
+	Files        []WorkspaceFile
+	Compose      string
+	DeploymentId string
+}
+
+// Runtime is the only deployment execution boundary. Every operation receives
+// an explicit Project Environment target and dispatches only by target type.
+type Runtime interface {
+	ServiceDir(target environmentport.Target, serviceCode string) (string, error)
+	ServiceDirExists(ctx context.Context, target environmentport.Target, serviceCode string) (bool, error)
+	ComposeMountSourceDir(ctx context.Context, target environmentport.Target, serviceCode string) (string, error)
+	StageWorkspace(ctx context.Context, target environmentport.Target, workspace Workspace) error
+	Run(ctx context.Context, target environmentport.Target, serviceCode string, log io.Writer, name string, args ...string) error
+	Query(ctx context.Context, target environmentport.Target, serviceCode string, name string, args ...string) (string, error)
+	QueryAtEnvironmentRoot(ctx context.Context, target environmentport.Target, name string, args ...string) (string, error)
+	QueryAtEnvironmentRootInput(ctx context.Context, target environmentport.Target, stdin []byte, name string, args ...string) (string, error)
+	SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []WorkspaceFile, pruneSuffix string) error
 }
 
 // GatewayRoutePublisher restores the complete custom Route snapshot after a
 // Gateway Compose deployment has replaced the Traefik REST provider state.
 type GatewayRoutePublisher interface {
-	PublishSnapshot(ctx context.Context) error
+	PublishSnapshot(ctx context.Context, projectId string) error
 }
 
 // GatewayDeploymentCoordinator resolves and selects Gateway state required by
 // a deployment. The deployment domain owns this outbound port because both
 // operations are mandatory before a Gateway deployment is snapshotted.
 type GatewayDeploymentCoordinator interface {
-	GatewayForDeployment(ctx context.Context, app model.Application, plan model.EffectiveServicePlan) (*model.GatewayConfig, error)
-	SelectGatewayDeploymentVersion(ctx context.Context, app model.Application, service model.Service) (model.Service, error)
+	GatewayForDeployment(ctx context.Context, projectId string, app model.Application, plan model.EffectiveServicePlan) (*model.GatewayConfig, error)
+	SelectGatewayDeploymentVersion(ctx context.Context, projectId string, app model.Application, service model.Service) (model.Service, error)
 }

@@ -72,7 +72,9 @@
 
   function revealLastLine() {
     const lineCount = logEditor?.getModel()?.getLineCount() ?? 0;
-    if (lineCount > 0) logEditor?.revealLine(lineCount);
+    if (lineCount > 0) {
+      logEditor?.revealLine(lineCount);
+    }
   }
 
   function handleEditorMount(ed: editor.IStandaloneCodeEditor) {

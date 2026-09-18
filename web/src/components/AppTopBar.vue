@@ -110,7 +110,7 @@
                 </div>
                 <template v-else>
                   <DropdownMenuItem
-                    v-for="project in activeProjects"
+                    v-for="project in projectStore.activeProjects"
                     :key="project.id"
                     class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
                     :class="{ 'bg-accent': project.id === projectStore.activeProjectId }"
@@ -120,7 +120,7 @@
                     <span class="text-xs text-muted-foreground">{{ project.code }}</span>
                   </DropdownMenuItem>
                   <div
-                    v-if="activeProjects.length === 0"
+                    v-if="projectStore.activeProjects.length === 0"
                     class="px-3 py-2 text-sm text-muted-foreground"
                   >
                     {{ t('project.noProjects') }}
@@ -290,6 +290,11 @@
   import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
   import { useAuthStore } from '@/stores/auth';
   import { useProjectStore } from '@/stores/project';
+  import { useProjectInitializationStore } from '@/stores/projectInitialization';
+  import {
+    isProjectInitializationPath,
+    isProjectReadinessGuardedPath,
+  } from '@/router/projectReadiness';
   import { useTheme } from '@/composables/useTheme';
   import { setLocale, type Locale } from '@/i18n';
   import { useToast } from '@/composables/useToast';
@@ -319,6 +324,7 @@
   const router = useRouter();
   const authStore = useAuthStore();
   const projectStore = useProjectStore();
+  const initializationStore = useProjectInitializationStore();
   const { theme, cycleTheme } = useTheme();
   const { t, locale } = useI18n({ useScope: 'global' });
   const toast = useToast();
@@ -340,12 +346,8 @@
 
   const activeProjectLabel = computed(() => {
     const project = projectStore.activeProject;
-    return project ? `${project.name} / ${project.code}` : t('project.noProjects');
+    return project ? project.name : t('project.noProjects');
   });
-
-  const activeProjects = computed(() =>
-    projectStore.projects.filter((project) => project.is_active)
-  );
 
   const localizedPrimaryNavigation = computed(() =>
     primaryNavigation.map((item) => ({
@@ -379,10 +381,32 @@
     }
   }
 
-  function handleSwitchProject(projectId: string) {
-    if (projectId !== projectStore.activeProjectId) {
-      projectStore.setActiveProject(projectId);
+  async function handleSwitchProject(projectId: string) {
+    if (projectId === projectStore.activeProjectId) {
+      return;
+    }
+    projectStore.setActiveProject(projectId);
+    const current = router.currentRoute.value;
+    try {
+      const status = await initializationStore.fetchStatus(projectId);
+      if (status.status !== 'ready') {
+        await router.push({
+          name: 'ProjectInitialization',
+          params: { id: projectId },
+          query:
+            isProjectReadinessGuardedPath(current.path) || isProjectInitializationPath(current.path)
+              ? { redirect: current.fullPath }
+              : {},
+        });
+        return;
+      }
+      if (isProjectInitializationPath(current.path)) {
+        await router.push('/gateway');
+        return;
+      }
       router.go(0);
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : t('project.initialization.loadFailed'));
     }
   }
 

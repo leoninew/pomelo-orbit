@@ -152,7 +152,6 @@ func (x *DeploymentDialogueMessage) GetContent() string {
 
 type DeploymentDialogueTurnReq struct {
 	state          protoimpl.MessageState       `protogen:"open.v1"`
-	ProjectId      string                       `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	Messages       []*DeploymentDialogueMessage `protobuf:"bytes,2,rep,name=messages,proto3" json:"messages,omitempty"`
 	ConversationId *string                      `protobuf:"bytes,3,opt,name=conversation_id,json=conversationId,proto3,oneof" json:"conversation_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
@@ -187,13 +186,6 @@ func (x *DeploymentDialogueTurnReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use DeploymentDialogueTurnReq.ProtoReflect.Descriptor instead.
 func (*DeploymentDialogueTurnReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_dialogue_dialogue_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *DeploymentDialogueTurnReq) GetProjectId() string {
-	if x != nil {
-		return x.ProjectId
-	}
-	return ""
 }
 
 func (x *DeploymentDialogueTurnReq) GetMessages() []*DeploymentDialogueMessage {
@@ -520,10 +512,8 @@ const file_orbit_v1_dialogue_dialogue_proto_rawDesc = "" +
 	"updated_at\x18\x05 \x01(\tR\tupdatedAt\"I\n" +
 	"\x19DeploymentDialogueMessage\x12\x12\n" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\"\xc6\x01\n" +
-	"\x19DeploymentDialogueTurnReq\x12\x1d\n" +
-	"\n" +
-	"project_id\x18\x01 \x01(\tR\tprojectId\x12H\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\"\xa7\x01\n" +
+	"\x19DeploymentDialogueTurnReq\x12H\n" +
 	"\bmessages\x18\x02 \x03(\v2,.orbit.v1.dialogue.DeploymentDialogueMessageR\bmessages\x12,\n" +
 	"\x0fconversation_id\x18\x03 \x01(\tH\x00R\x0econversationId\x88\x01\x01B\x12\n" +
 	"\x10_conversation_id\"\x93\x01\n" +

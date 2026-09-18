@@ -43,7 +43,7 @@ VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateRoleParams struct {
-	ID          string         `db:"id"`
+	Id          string         `db:"id"`
 	Code        string         `db:"code"`
 	Name        string         `db:"name"`
 	Description sql.NullString `db:"description"`
@@ -53,7 +53,7 @@ type CreateRoleParams struct {
 
 func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) error {
 	_, err := q.db.ExecContext(ctx, createRole,
-		arg.ID,
+		arg.Id,
 		arg.Code,
 		arg.Name,
 		arg.Description,
@@ -89,13 +89,13 @@ VALUES (?, ?, ?)
 `
 
 type InsertRolePermissionParams struct {
-	RoleID       string    `db:"role_id"`
-	PermissionID string    `db:"permission_id"`
+	RoleId       string    `db:"role_id"`
+	PermissionId string    `db:"permission_id"`
 	CreatedAt    time.Time `db:"created_at"`
 }
 
 func (q *Queries) InsertRolePermission(ctx context.Context, arg InsertRolePermissionParams) error {
-	_, err := q.db.ExecContext(ctx, insertRolePermission, arg.RoleID, arg.PermissionID, arg.CreatedAt)
+	_, err := q.db.ExecContext(ctx, insertRolePermission, arg.RoleId, arg.PermissionId, arg.CreatedAt)
 	return err
 }
 
@@ -115,7 +115,7 @@ func (q *Queries) ListPermissions(ctx context.Context) ([]Permission, error) {
 	for rows.Next() {
 		var i Permission
 		if err := rows.Scan(
-			&i.ID,
+			&i.Id,
 			&i.Code,
 			&i.Name,
 			&i.Description,
@@ -169,7 +169,7 @@ func (q *Queries) ListRoles(ctx context.Context, arg ListRolesParams) ([]Role, e
 	for rows.Next() {
 		var i Role
 		if err := rows.Scan(
-			&i.ID,
+			&i.Id,
 			&i.Code,
 			&i.Name,
 			&i.Description,
@@ -228,14 +228,14 @@ func (q *Queries) PermissionCodesByCodes(ctx context.Context, codes []string) ([
 	return items, nil
 }
 
-const permissionIDByCode = `-- name: PermissionIDByCode :one
+const permissionIdByCode = `-- name: PermissionIdByCode :one
 SELECT id
 FROM permission
 WHERE code = ?
 `
 
-func (q *Queries) PermissionIDByCode(ctx context.Context, code string) (string, error) {
-	row := q.db.QueryRowContext(ctx, permissionIDByCode, code)
+func (q *Queries) PermissionIdByCode(ctx context.Context, code string) (string, error) {
+	row := q.db.QueryRowContext(ctx, permissionIdByCode, code)
 	var id string
 	err := row.Scan(&id)
 	return id, err
@@ -251,7 +251,7 @@ func (q *Queries) RoleByCode(ctx context.Context, code string) (Role, error) {
 	row := q.db.QueryRowContext(ctx, roleByCode, code)
 	var i Role
 	err := row.Scan(
-		&i.ID,
+		&i.Id,
 		&i.Code,
 		&i.Name,
 		&i.Description,
@@ -261,17 +261,17 @@ func (q *Queries) RoleByCode(ctx context.Context, code string) (Role, error) {
 	return i, err
 }
 
-const roleByID = `-- name: RoleByID :one
+const roleById = `-- name: RoleById :one
 SELECT id, code, name, description, created_at, updated_at
 FROM role
 WHERE id = ?
 `
 
-func (q *Queries) RoleByID(ctx context.Context, id string) (Role, error) {
-	row := q.db.QueryRowContext(ctx, roleByID, id)
+func (q *Queries) RoleById(ctx context.Context, id string) (Role, error) {
+	row := q.db.QueryRowContext(ctx, roleById, id)
 	var i Role
 	err := row.Scan(
-		&i.ID,
+		&i.Id,
 		&i.Code,
 		&i.Name,
 		&i.Description,
@@ -291,7 +291,7 @@ func (q *Queries) RoleByName(ctx context.Context, name string) (Role, error) {
 	row := q.db.QueryRowContext(ctx, roleByName, name)
 	var i Role
 	err := row.Scan(
-		&i.ID,
+		&i.Id,
 		&i.Code,
 		&i.Name,
 		&i.Description,
@@ -310,7 +310,7 @@ ORDER BY role_permission.role_id, permission.code
 `
 
 type RolePermissionCodesByRoleIdsRow struct {
-	RoleID string `db:"role_id"`
+	RoleId string `db:"role_id"`
 	Code   string `db:"code"`
 }
 
@@ -333,7 +333,7 @@ func (q *Queries) RolePermissionCodesByRoleIds(ctx context.Context, roleIds []st
 	var items []RolePermissionCodesByRoleIdsRow
 	for rows.Next() {
 		var i RolePermissionCodesByRoleIdsRow
-		if err := rows.Scan(&i.RoleID, &i.Code); err != nil {
+		if err := rows.Scan(&i.RoleId, &i.Code); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -358,7 +358,7 @@ type UpdateRoleParams struct {
 	Name        string         `db:"name"`
 	Description sql.NullString `db:"description"`
 	UpdatedAt   time.Time      `db:"updated_at"`
-	ID          string         `db:"id"`
+	Id          string         `db:"id"`
 }
 
 func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) error {
@@ -367,7 +367,7 @@ func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) error {
 		arg.Name,
 		arg.Description,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
 	)
 	return err
 }

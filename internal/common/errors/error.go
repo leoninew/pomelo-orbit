@@ -2,7 +2,6 @@ package apperror
 
 import (
 	"errors"
-	"net/http"
 )
 
 type Kind string
@@ -27,9 +26,8 @@ type Error struct {
 }
 
 type Classification struct {
-	StatusCode int
-	Code       string
-	Message    string
+	Code    string
+	Message string
 }
 
 func New(kind Kind, message string) Error {
@@ -71,10 +69,6 @@ func IsKind(err error, kind Kind) bool {
 	return ok && appErr.Kind == kind
 }
 
-func StatusCode(err error) int {
-	return Classify(err).StatusCode
-}
-
 func Classify(err error) Classification {
 	appErr, ok := As(err)
 	if !ok {
@@ -100,59 +94,32 @@ func As(err error) (Error, bool) {
 	return Error{}, false
 }
 
-func NewForHTTPStatus(status int, message string) Error {
-	return New(kindForHTTPStatus(status), message)
-}
-
 func classificationForKind(kind Kind, message string) Classification {
 	var classification Classification
 	switch kind {
 	case KindValidation:
-		classification = Classification{StatusCode: http.StatusBadRequest, Code: "validation_failed", Message: "Invalid request."}
+		classification = Classification{Code: "validation_failed", Message: "Invalid request."}
 	case KindUnauthorized:
-		classification = Classification{StatusCode: http.StatusUnauthorized, Code: "unauthorized", Message: "Unauthorized."}
+		classification = Classification{Code: "unauthorized", Message: "Unauthorized."}
 	case KindForbidden:
-		classification = Classification{StatusCode: http.StatusForbidden, Code: "forbidden", Message: "Forbidden."}
+		classification = Classification{Code: "forbidden", Message: "Forbidden."}
 	case KindNotFound:
-		classification = Classification{StatusCode: http.StatusNotFound, Code: "not_found", Message: "Resource not found."}
+		classification = Classification{Code: "not_found", Message: "Resource not found."}
 	case KindConflict:
-		classification = Classification{StatusCode: http.StatusConflict, Code: "conflict", Message: "Conflict."}
+		classification = Classification{Code: "conflict", Message: "Conflict."}
 	case KindMethodNotAllowed:
-		classification = Classification{StatusCode: http.StatusMethodNotAllowed, Code: "method_not_allowed", Message: "Method not allowed."}
+		classification = Classification{Code: "method_not_allowed", Message: "Method not allowed."}
 	case KindRateLimited:
-		classification = Classification{StatusCode: http.StatusTooManyRequests, Code: "rate_limited", Message: "Too many requests."}
+		classification = Classification{Code: "rate_limited", Message: "Too many requests."}
 	case KindUnavailable:
-		classification = Classification{StatusCode: http.StatusServiceUnavailable, Code: "service_unavailable", Message: "Service unavailable."}
+		classification = Classification{Code: "service_unavailable", Message: "Service unavailable."}
 	default:
-		return Classification{StatusCode: http.StatusInternalServerError, Code: "internal_error", Message: "Internal server error."}
+		return Classification{Code: "internal_error", Message: "Internal server error."}
 	}
 	if message != "" {
 		classification.Message = message
 	}
 	return classification
-}
-
-func kindForHTTPStatus(status int) Kind {
-	switch status {
-	case http.StatusBadRequest:
-		return KindValidation
-	case http.StatusUnauthorized:
-		return KindUnauthorized
-	case http.StatusForbidden:
-		return KindForbidden
-	case http.StatusNotFound:
-		return KindNotFound
-	case http.StatusConflict:
-		return KindConflict
-	case http.StatusMethodNotAllowed:
-		return KindMethodNotAllowed
-	case http.StatusTooManyRequests:
-		return KindRateLimited
-	case http.StatusServiceUnavailable:
-		return KindUnavailable
-	default:
-		return KindInternal
-	}
 }
 
 func validCode(code string) bool {

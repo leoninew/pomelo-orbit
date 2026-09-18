@@ -13,37 +13,49 @@ import (
 
 // GatewayForDeployment resolves the Gateway configuration required to render
 // an application's Compose definition.
-func (s Service) GatewayForDeployment(ctx context.Context, app model.Application, plan model.EffectiveServicePlan) (*model.GatewayConfig, error) {
+func (s Service) GatewayForDeployment(ctx context.Context, projectId string, app model.Application, plan model.EffectiveServicePlan) (*model.GatewayConfig, error) {
 	if s.config == nil {
 		return nil, nil
 	}
-	cfg, err := s.config.GatewayConfig(ctx, app.Id)
-	if err == nil {
-		return &cfg, nil
-	}
-	if !errors.Is(err, repository.ErrNotFound) {
+	applicationConfig, err := s.config.GatewayConfig(ctx, app.Id)
+	isGateway := err == nil
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
 	}
-	if !plan.JoinsTraefikNetwork() {
+	if !isGateway && !plan.JoinsTraefikNetwork() {
 		return nil, nil
 	}
-	if !hasGatewayEndpoint(plan) {
-		return nil, nil
-	}
-	cfg, err = s.config.ResolveActiveGatewayConfig(ctx)
+	cfg, err := s.config.GatewayConfigByProject(ctx, projectId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return nil, apperror.New(apperror.KindValidation, "no gateway configured: create and configure a gateway first")
+			return nil, apperror.New(apperror.KindValidation, "no gateway provisioned for this project environment")
 		}
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to resolve gateway config", err)
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to resolve project gateway config", err)
+	}
+	if isGateway && cfg.ApplicationId != applicationConfig.ApplicationId {
+		return nil, apperror.New(apperror.KindValidation, "Gateway is not bound to this project environment")
 	}
 	return &cfg, nil
 }
 
-// SelectGatewayDeploymentVersion makes the default Gateway Service point at
+func (s Service) ensureGatewayConfigBoundToProject(ctx context.Context, cfg model.GatewayConfig, projectId string) error {
+	bound, err := s.config.GatewayConfigByProject(ctx, projectId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return apperror.New(apperror.KindValidation, "Gateway is not bound to this project environment")
+		}
+		return apperror.Wrap(apperror.KindInternal, "Failed to resolve project gateway config", err)
+	}
+	if bound.ApplicationId != cfg.ApplicationId {
+		return apperror.New(apperror.KindValidation, "Gateway is not bound to this project environment")
+	}
+	return nil
+}
+
+// SelectGatewayDeploymentVersion makes the managed Gateway Service point at
 // the Version selected by its saved ACME profile before Deployment snapshots
 // the Service. Non-Gateway applications are left unchanged.
-func (s Service) SelectGatewayDeploymentVersion(ctx context.Context, app model.Application, service model.Service) (model.Service, error) {
+func (s Service) SelectGatewayDeploymentVersion(ctx context.Context, projectId string, app model.Application, service model.Service) (model.Service, error) {
 	if s.config == nil {
 		return service, nil
 	}
@@ -54,32 +66,32 @@ func (s Service) SelectGatewayDeploymentVersion(ctx context.Context, app model.A
 	if err != nil {
 		return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
 	}
-	if service.InstanceKey != "default" {
-		return service, nil
+	if err := s.ensureGatewayConfigBoundToProject(ctx, cfg, projectId); err != nil {
+		return model.Service{}, err
 	}
 	role := cfg.AcmeProfile
 	if role == "" {
 		role = gatewayVersionRoleBase
 	}
-	versionID := cfg.VersionIDForProfile(role)
-	if versionID == "" {
+	versionId := cfg.VersionIDForProfile(role)
+	if versionId == "" {
 		return model.Service{}, apperror.New(apperror.KindValidation, "Gateway Version binding is missing for "+role)
 	}
-	if service.VersionId == versionID {
+	if service.VersionId == versionId {
 		return service, nil
 	}
-	version, err := s.application.Version(ctx, versionID)
+	version, err := s.application.Version(ctx, projectId, versionId)
 	if err != nil {
 		return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load selected Gateway Version", err)
 	}
 	if version.ApplicationId != app.Id {
 		return model.Service{}, apperror.New(apperror.KindValidation, "Gateway Version binding does not belong to the Gateway application")
 	}
-	declarations, err := s.application.VersionComponentsByVersion(ctx, version.Id)
+	declarations, err := s.application.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
 		return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load selected Gateway Version components", err)
 	}
-	mappings, err := s.service.ServiceComponentsByService(ctx, service.Id)
+	mappings, err := s.service.ServiceComponentsByService(ctx, projectId, service.Id)
 	if err != nil {
 		return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load Gateway Service components", err)
 	}
@@ -87,7 +99,7 @@ func (s Service) SelectGatewayDeploymentVersion(ctx context.Context, app model.A
 		return model.Service{}, apperror.New(apperror.KindValidation, err.Error())
 	}
 	service.VersionId = version.Id
-	if err := s.service.UpdateServiceConfiguration(ctx, service, mappings); err != nil {
+	if err := s.service.UpdateServiceConfiguration(ctx, projectId, service, mappings); err != nil {
 		return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to select Gateway Version", err)
 	}
 	return service, nil

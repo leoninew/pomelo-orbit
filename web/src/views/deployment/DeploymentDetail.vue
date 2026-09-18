@@ -250,6 +250,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { DeploymentResp } from '@/gen/proto/orbit/v1/deployment/deployment';
+  import { useProjectStore } from '@/stores/project';
   import { isComplete, statusTone } from '@/utils/status';
   import { delayAsync, formatDuration, formatTime } from '@/utils/time';
   import type { editor } from 'monaco-editor';
@@ -259,6 +260,7 @@
   const { t } = useI18n();
   const deploymentId = computed(() => String(route.params.id ?? ''));
   const toast = useToast();
+  const projectStore = useProjectStore();
   const { status, execute } = useStatusAsync();
   const { loading: isCancelling, execute: executeCancel } = useStatusAsync();
   const { loading: isDeleting, execute: executeDelete } = useStatusAsync();
@@ -294,6 +296,14 @@
   let refreshAbort: AbortController | null = null;
   let refreshGeneration = 0;
   let operationLogEditor: editor.IStandaloneCodeEditor | null = null;
+
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error(t('application.toast.selectProjectRequired'));
+    }
+    return projectId;
+  }
 
   const backButtonText = computed(() => {
     if (route.query.from === 'application') {
@@ -340,8 +350,12 @@
     }
   );
   const containerLogMessage = computed(() => {
-    if (containerLogStatus.value === 'not_applicable') return '停止操作不展示容器日志。';
-    if (containerLogStatus.value === 'waiting_for_operation') return '等待操作完成后拉取容器日志。';
+    if (containerLogStatus.value === 'not_applicable') {
+      return '停止操作不展示容器日志。';
+    }
+    if (containerLogStatus.value === 'waiting_for_operation') {
+      return '等待操作完成后拉取容器日志。';
+    }
     return '';
   });
   const containerLogError = computed(() =>
@@ -355,7 +369,9 @@
   async function fetchOperationLogs(generation?: number, signal?: AbortSignal) {
     const offset = operationLogOffset.value;
     try {
-      const data = await deploymentApi.getLogs(deploymentId.value, offset, { signal });
+      const data = await deploymentApi.getLogs(selectedProjectId(), deploymentId.value, offset, {
+        signal,
+      });
       if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) {
         return;
       }
@@ -390,6 +406,7 @@
     }
     try {
       const data = await deploymentApi.getContainerLogs(
+        selectedProjectId(),
         deploymentId.value,
         { tail: 200 },
         { signal }
@@ -447,7 +464,7 @@
           break;
         }
         try {
-          const data = await deploymentApi.get(deploymentId.value, { signal });
+          const data = await deploymentApi.get(selectedProjectId(), deploymentId.value, { signal });
           if (!isCurrentRefresh(generation, signal)) {
             break;
           }
@@ -492,7 +509,9 @@
   async function loadDeployment() {
     resetState();
     try {
-      const currentDeployment = await execute(() => deploymentApi.get(deploymentId.value));
+      const currentDeployment = await execute(() =>
+        deploymentApi.get(selectedProjectId(), deploymentId.value)
+      );
       deployment.value = currentDeployment;
     } catch {
       toast.error(t('deployment.toast.loadFailed'));
@@ -509,7 +528,7 @@
     cancelSubmitError.value = '';
     try {
       await executeCancel(async () => {
-        deployment.value = await deploymentApi.cancel(deploymentId.value, {});
+        deployment.value = await deploymentApi.cancel(selectedProjectId(), deploymentId.value, {});
         stopAutoRefresh();
         isCancelDialogOpen.value = false;
         toast.success(t('deployment.toast.cancelSuccess'));
@@ -538,7 +557,7 @@
     deleteSubmitError.value = '';
     try {
       await executeDelete(async () => {
-        await deploymentApi.delete(deploymentId.value);
+        await deploymentApi.delete(selectedProjectId(), deploymentId.value);
         stopAutoRefresh();
         toast.success(t('deployment.toast.deleteSuccess'));
         await router.replace('/deployments');
@@ -550,9 +569,13 @@
   }
 
   function revealLastLine(ed: editor.IStandaloneCodeEditor | null) {
-    if (!ed) return;
+    if (!ed) {
+      return;
+    }
     const n = ed.getModel()?.getLineCount() ?? 0;
-    if (n > 0) ed.revealLine(n);
+    if (n > 0) {
+      ed.revealLine(n);
+    }
   }
 
   function handleOperationLogEditorMount(ed: editor.IStandaloneCodeEditor) {

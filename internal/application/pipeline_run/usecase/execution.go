@@ -14,53 +14,62 @@ import (
 )
 
 func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.ExecutePipelineRunInput) error {
-	begun, err := s.executionStore.BeginPipelineRun(ctx, input.PipelineRunId)
+	projectId := strings.TrimSpace(input.ProjectId)
+	runId := strings.TrimSpace(input.PipelineRunId)
+	if projectId == "" || runId == "" {
+		return fmt.Errorf("project_id and pipeline_run_id are required")
+	}
+	begun, err := s.executionStore.BeginPipelineRun(ctx, projectId, runId)
 	if err != nil {
 		return err
 	}
 	if !begun {
 		return nil
 	}
-	run, err := s.executionStore.PipelineRun(ctx, input.PipelineRunId)
+	run, err := s.executionStore.PipelineRun(ctx, projectId, runId)
 	if err != nil {
 		return err
 	}
-	repo, err := s.executionStore.Repository(ctx, run.RepositoryId)
+	repo, err := s.executionStore.Repository(ctx, projectId, run.RepositoryId)
 	if err != nil {
 		return err
 	}
-	snapshot, err := s.executionStore.PipelineSnapshot(ctx, run.SnapshotId)
+	workspace, err := s.workspaceForProject(ctx, projectId)
+	if err != nil {
+		return s.failRun(ctx, projectId, run.Id, err.Error())
+	}
+	snapshot, err := s.executionStore.PipelineSnapshot(ctx, projectId, run.SnapshotId)
 	if err != nil {
 		return err
 	}
 
 	var stages []model.StageDefinition
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
-		return s.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
+		return s.failRun(ctx, projectId, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
 	variables, err := s.pipelineRunExecutionVariables(run)
 	if err != nil {
-		return s.failRun(ctx, run.Id, fmt.Sprintf("Variable resolution failed: %v", err))
+		return s.failRun(ctx, projectId, run.Id, fmt.Sprintf("Variable resolution failed: %v", err))
 	}
 
 	stages, err = resolveStages(stages, variables)
 	if err != nil {
-		return s.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
+		return s.failRun(ctx, projectId, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
 
-	if err := s.workspace.CreateRunDirectories(repo.Code, run.Id); err != nil {
-		return s.failRun(ctx, run.Id, err.Error())
+	if err := workspace.CreateRunDirectories(repo.Code, run.Id); err != nil {
+		return s.failRun(ctx, projectId, run.Id, err.Error())
 	}
-	stageRuns, err := s.executionStore.ListPipelineStageRuns(ctx, run.Id)
+	stageRuns, err := s.executionStore.ListPipelineStageRuns(ctx, projectId, run.Id)
 	if err != nil {
-		return s.failRun(ctx, run.Id, fmt.Sprintf("Load stage runs failed: %v", err))
+		return s.failRun(ctx, projectId, run.Id, fmt.Sprintf("Load stage runs failed: %v", err))
 	}
 
-	executionCtx, cancel := s.pipelineExecutionContext(ctx, run.Id)
+	executionCtx, cancel := s.pipelineExecutionContext(ctx, projectId, run.Id)
 	defer cancel()
-	stageExecutor := Executor{store: s.executionStore, versionForker: s.versionForker, transactionRunner: s.transactionRunner, workspace: s.workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, executionTimeout: s.executionTimeout, runner: s.runner, localSource: s.localSource}
-	ok, message := stageExecutor.Execute(ctx, executionCtx, run, repo, variables, stages, stageRunByStageID(stageRuns))
-	current, err := s.executionStore.PipelineRun(ctx, run.Id)
+	stageExecutor := Executor{store: s.executionStore, versionForker: s.versionForker, transactionRunner: s.transactionRunner, workspace: workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, executionTimeout: s.executionTimeout, runner: s.runner, localSource: s.localSource}
+	ok, message := stageExecutor.Execute(ctx, executionCtx, projectId, run, repo, variables, stages, stageRunByStageId(stageRuns))
+	current, err := s.executionStore.PipelineRun(ctx, projectId, run.Id)
 	if err != nil {
 		return err
 	}
@@ -68,21 +77,21 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 		return nil
 	}
 	if ok {
-		return s.completeRun(ctx, run.Id, status.WorkStatusRanToCompletion, "")
+		return s.completeRun(ctx, projectId, run.Id, status.WorkStatusRanToCompletion, "")
 	}
-	return s.failRun(ctx, run.Id, message)
+	return s.failRun(ctx, projectId, run.Id, message)
 }
 
-func (s Service) failRun(ctx context.Context, runId string, message string) error {
-	return s.completeRun(ctx, runId, status.WorkStatusFaulted, message)
+func (s Service) failRun(ctx context.Context, projectId, runId string, message string) error {
+	return s.completeRun(ctx, projectId, runId, status.WorkStatusFaulted, message)
 }
 
-func (s Service) completeRun(ctx context.Context, runID, statusValue, message string) error {
-	_, err := s.executionStore.CompletePipelineRun(ctx, runID, statusValue, message)
+func (s Service) completeRun(ctx context.Context, projectId, runId, statusValue, message string) error {
+	_, err := s.executionStore.CompletePipelineRun(ctx, projectId, runId, statusValue, message)
 	return err
 }
 
-func (s Service) pipelineExecutionContext(ctx context.Context, runID string) (context.Context, context.CancelFunc) {
+func (s Service) pipelineExecutionContext(ctx context.Context, projectId string, runId string) (context.Context, context.CancelFunc) {
 	timedCtx, cancelTimeout := context.WithTimeout(ctx, s.executionTimeout)
 	monitoredCtx, cancelMonitored := context.WithCancel(timedCtx)
 	done := make(chan struct{})
@@ -100,7 +109,7 @@ func (s Service) pipelineExecutionContext(ctx context.Context, runID string) (co
 			case <-timedCtx.Done():
 				return
 			case <-ticker.C:
-				run, err := s.executionStore.PipelineRun(ctx, runID)
+				run, err := s.executionStore.PipelineRun(ctx, projectId, runId)
 				if err == nil && run.Status == status.WorkStatusCanceled {
 					cancelMonitored()
 					return
@@ -115,12 +124,12 @@ func (s Service) pipelineExecutionContext(ctx context.Context, runID string) (co
 	}
 }
 
-func stageRunByStageID(stageRuns []model.PipelineStageRun) map[string]model.PipelineStageRun {
-	byStageID := make(map[string]model.PipelineStageRun, len(stageRuns))
+func stageRunByStageId(stageRuns []model.PipelineStageRun) map[string]model.PipelineStageRun {
+	byStageId := make(map[string]model.PipelineStageRun, len(stageRuns))
 	for _, stageRun := range stageRuns {
-		byStageID[stageRun.StageId] = stageRun
+		byStageId[stageRun.StageId] = stageRun
 	}
-	return byStageID
+	return byStageId
 }
 
 func (s Service) pipelineRunExecutionVariables(run model.PipelineRun) (pipelinevariable.RuntimeVariables, error) {

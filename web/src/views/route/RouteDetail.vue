@@ -510,6 +510,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
+  import { MANAGED_GATEWAY_COMPONENT_NAME } from '@/constants/gateway';
   import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
 
   const currentRoute = useRoute();
@@ -544,6 +545,14 @@
   const certFileInput = ref<HTMLInputElement>();
   const gatewayForLogs = ref<GatewayResp>();
   const isGatewayLogsDrawerOpen = ref(false);
+
+  function selectedProjectId() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      throw new Error(t('route.toast.selectProjectRequired'));
+    }
+    return projectId;
+  }
 
   const form = reactive({
     name: '',
@@ -617,22 +626,17 @@
   );
   const gatewayRuntimeLogTarget = computed<RuntimeContainerLogTarget | undefined>(() => {
     const current = gatewayForLogs.value;
-    if (
-      !current ||
-      !current.default_service_id ||
-      !current.default_service_instance_key ||
-      !current.traefik_component_name
-    ) {
+    if (!current || !current.service_id) {
       return undefined;
     }
     return {
       applicationId: current.id,
-      serviceId: current.default_service_id,
-      component: current.traefik_component_name,
+      serviceId: current.service_id,
+      component: MANAGED_GATEWAY_COMPONENT_NAME,
       title: t('service.logs.titleWithComponent', {
         app: current.name,
-        instance: current.default_service_instance_key,
-        component: current.traefik_component_name,
+        code: current.service_code,
+        component: MANAGED_GATEWAY_COMPONENT_NAME,
       }),
     };
   });
@@ -640,7 +644,7 @@
   async function fetchRoute() {
     try {
       await execute(async () => {
-        const data = await routeApi.get(routeId);
+        const data = await routeApi.get(selectedProjectId(), routeId);
         routeData.value = data;
         Object.assign(form, {
           name: data.name,
@@ -665,9 +669,11 @@
 
   async function loadGatewayForLogs(applicationId: string) {
     gatewayForLogs.value = undefined;
-    if (!applicationId) return;
+    if (!applicationId) {
+      return;
+    }
     try {
-      gatewayForLogs.value = await gatewayApi.get(applicationId);
+      gatewayForLogs.value = await gatewayApi.get(selectedProjectId(), applicationId);
     } catch {
       // Route detail remains available when its Gateway runtime is unavailable.
     }
@@ -758,7 +764,7 @@
     }
     try {
       await executeOp(async () => {
-        const updated = await routeApi.update(routeId, {
+        const updated = await routeApi.update(selectedProjectId(), routeId, {
           name: form.name,
           protocol: form.protocol,
           domain: form.domain,
@@ -840,7 +846,7 @@
     deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
-        await routeApi.delete(routeId);
+        await routeApi.delete(selectedProjectId(), routeId);
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.deleteSuccess'));
         router.push({ path: '/routes', query: { pending_sync: '1' } });
@@ -892,7 +898,7 @@
     }
     try {
       await executeOp(async () => {
-        await routeApi.uploadCert(routeId, file);
+        await routeApi.uploadCert(selectedProjectId(), routeId, file);
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.certUploadSuccess'));
         await fetchRoute();
@@ -912,7 +918,7 @@
   async function handleDisableHttps() {
     try {
       await executeOp(async () => {
-        await routeApi.disableHttps(routeId);
+        await routeApi.disableHttps(selectedProjectId(), routeId);
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.httpsDisabled'));
         await fetchRoute();
@@ -953,7 +959,9 @@
   }
 
   async function openGatewayLogs() {
-    if (!gatewayRuntimeLogTarget.value) return;
+    if (!gatewayRuntimeLogTarget.value) {
+      return;
+    }
     isGatewayLogsDrawerOpen.value = true;
   }
 
@@ -965,7 +973,9 @@
     }
     try {
       await executeOp(async () => {
-        await routeApi.enableLetsencrypt(routeId, { challenge: letsEncryptChallenge.value });
+        await routeApi.enableLetsencrypt(selectedProjectId(), routeId, {
+          challenge: letsEncryptChallenge.value,
+        });
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.letsencryptEnabled'));
         closeLetsEncryptDialog();
@@ -981,7 +991,7 @@
   async function handleEnableMkcert() {
     try {
       await executeOp(async () => {
-        await routeApi.enableMkcert(routeId, {});
+        await routeApi.enableMkcert(selectedProjectId(), routeId, {});
         hasPendingRouteChanges.value = true;
         toast.success(t('route.toast.mkcertEnabled'));
         await fetchRoute();

@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
 
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 )
 
@@ -41,7 +42,7 @@ func Cors(allowedOrigins []string, apiPathPrefixes []string) gin.HandlerFunc {
 		}
 
 		if c.Request.Method == http.MethodOptions {
-			transportresponse.WriteError(c, apperror.New(apperror.KindForbidden, "CORS origin is not allowed."))
+			transport.WriteError(c, apperror.New(apperror.KindForbidden, "CORS origin is not allowed."))
 			return
 		}
 		c.Next()

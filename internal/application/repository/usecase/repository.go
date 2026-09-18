@@ -18,27 +18,29 @@ import (
 
 var repositoryCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
-func (s Service) ListRepositories(ctx context.Context, userID string, projectID *string, page, perPage int, search string) (repository.Page[model.Repository], error) {
-	if projectID != nil {
-		if err := s.ensureProjectMembership(ctx, *projectID, userID); err != nil {
-			return repository.Page[model.Repository]{}, err
-		}
+func (s Service) ListRepositories(ctx context.Context, userId string, projectId string, page, perPage int, search string) (repository.Page[model.Repository], error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return repository.Page[model.Repository]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	items, err := s.store.ListRepositories(ctx, projectID, page, perPage, search)
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return repository.Page[model.Repository]{}, err
+	}
+	items, err := s.store.ListRepositories(ctx, projectId, page, perPage, search)
 	if err != nil {
 		return repository.Page[model.Repository]{}, apperror.Wrap(apperror.KindInternal, "Failed to list repositories", err)
 	}
 	return items, nil
 }
-func (s Service) CreateRepository(ctx context.Context, userID string, input repositorydto.RepositoryCreateInput) (repositorydto.RepositoryDetail, error) {
-	projectID := strings.TrimSpace(input.ProjectId)
-	if projectID == "" {
+func (s Service) CreateRepository(ctx context.Context, userId string, input repositorydto.RepositoryCreateInput) (repositorydto.RepositoryDetail, error) {
+	projectId := strings.TrimSpace(input.ProjectId)
+	if projectId == "" {
 		return repositorydto.RepositoryDetail{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	name, code, sourceType, sourceURL, branch, credentialID, err := normalizeRepositoryCreateInput(input)
+	name, code, sourceType, sourceURL, branch, credentialId, err := normalizeRepositoryCreateInput(input)
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
@@ -48,31 +50,31 @@ func (s Service) CreateRepository(ctx context.Context, userID string, input repo
 			return repositorydto.RepositoryDetail{}, err
 		}
 	}
-	if err := s.ensureRepositoryCodeAvailable(ctx, &projectID, code); err != nil {
+	if err := s.ensureRepositoryCodeAvailable(ctx, projectId, code); err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	if err := s.ensureCredential(ctx, credentialID); err != nil {
+	if err := s.ensureCredential(ctx, projectId, credentialId); err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
 	variables, err := marshalVariableOverrides(sanitizeRepositoryVariables(input.VariableOverrides))
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	item := model.Repository{Id: idutil.NewId(), ProjectId: &projectID, Name: name, Code: code, RepositoryType: sourceType, RepositoryUrl: sourceURL, GitCredentialId: credentialID, VariableOverrides: variables, DefaultBranch: branch}
+	item := model.Repository{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, RepositoryType: sourceType, RepositoryUrl: sourceURL, GitCredentialId: credentialId, VariableOverrides: variables, DefaultBranch: branch}
 	if err := s.store.CreateRepository(ctx, item); err != nil {
 		return repositorydto.RepositoryDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create repository", err)
 	}
-	return s.repositoryDetail(ctx, item)
+	return s.repositoryDetail(ctx, projectId, item)
 }
-func (s Service) RepositoryForUser(ctx context.Context, userID, repositoryID string) (repositorydto.RepositoryDetail, error) {
-	item, err := s.loadRepositoryForUser(ctx, userID, repositoryID)
+func (s Service) RepositoryForUser(ctx context.Context, userId string, projectId string, repositoryId string) (repositorydto.RepositoryDetail, error) {
+	item, err := s.loadRepositoryForUser(ctx, userId, projectId, repositoryId)
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	return s.repositoryDetail(ctx, item)
+	return s.repositoryDetail(ctx, projectId, item)
 }
-func (s Service) UpdateRepository(ctx context.Context, userID, repositoryID string, input repositorydto.RepositoryUpdateInput) (repositorydto.RepositoryDetail, error) {
-	item, err := s.loadRepositoryForUser(ctx, userID, repositoryID)
+func (s Service) UpdateRepository(ctx context.Context, userId string, projectId string, repositoryId string, input repositorydto.RepositoryUpdateInput) (repositorydto.RepositoryDetail, error) {
+	item, err := s.loadRepositoryForUser(ctx, userId, projectId, repositoryId)
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
@@ -87,7 +89,7 @@ func (s Service) UpdateRepository(ctx context.Context, userID, repositoryID stri
 	}
 	if input.GitCredentialId != nil {
 		item.GitCredentialId = normalizeOptionalString(input.GitCredentialId)
-		if err := s.ensureCredential(ctx, item.GitCredentialId); err != nil {
+		if err := s.ensureCredential(ctx, projectId, item.GitCredentialId); err != nil {
 			return repositorydto.RepositoryDetail{}, err
 		}
 	}
@@ -107,51 +109,53 @@ func (s Service) UpdateRepository(ctx context.Context, userID, repositoryID stri
 	if err := s.normalizeRepositorySource(ctx, &item); err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	if err := s.store.UpdateRepository(ctx, item); err != nil {
+	if err := s.store.UpdateRepository(ctx, projectId, item); err != nil {
 		return repositorydto.RepositoryDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to update repository", err)
 	}
-	return s.repositoryDetail(ctx, item)
+	return s.repositoryDetail(ctx, projectId, item)
 }
-func (s Service) DeleteRepository(ctx context.Context, userID, repositoryID string) error {
-	item, err := s.loadRepositoryForUser(ctx, userID, repositoryID)
+func (s Service) DeleteRepository(ctx context.Context, userId string, projectId string, repositoryId string) error {
+	item, err := s.loadRepositoryForUser(ctx, userId, projectId, repositoryId)
 	if err != nil {
 		return err
 	}
-	running, err := s.store.RepositoryHasRunningPipelines(ctx, item.Id)
+	running, err := s.store.RepositoryHasActivePipelineRun(ctx, projectId, item.Id)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check repository pipelines", err)
 	}
 	if running {
 		return apperror.New(apperror.KindValidation, "Repository has running pipelines. Cancel or wait for them to finish before deleting it.")
 	}
-	if err := s.store.DeleteRepository(ctx, item.Id); err != nil {
+	if err := s.store.DeleteRepository(ctx, projectId, item.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete repository", err)
 	}
 	return nil
 }
-func (s Service) loadRepositoryForUser(ctx context.Context, userID, repositoryID string) (model.Repository, error) {
-	item, err := s.store.Repository(ctx, strings.TrimSpace(repositoryID))
+func (s Service) loadRepositoryForUser(ctx context.Context, userId string, projectId string, repositoryId string) (model.Repository, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Repository{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Repository{}, err
+	}
+	item, err := s.store.Repository(ctx, projectId, strings.TrimSpace(repositoryId))
 	if errors.Is(err, repository.ErrNotFound) {
-		return model.Repository{}, apperror.New(apperror.KindNotFound, "Repository "+repositoryID+" not found")
+		return model.Repository{}, apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
 	}
 	if err != nil {
 		return model.Repository{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
 	}
-	if item.ProjectId != nil {
-		if err := s.ensureProjectMembership(ctx, *item.ProjectId, userID); err != nil {
-			return model.Repository{}, err
-		}
-	}
 	return item, nil
 }
-func (s Service) ensureProjectMembership(ctx context.Context, projectID, userID string) error {
-	if _, err := s.store.Project(ctx, projectID); err != nil {
+func (s Service) ensureProjectMembership(ctx context.Context, projectId, userId string) error {
+	if _, err := s.store.Project(ctx, projectId); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return apperror.New(apperror.KindNotFound, "Project "+projectID+" not found")
+			return apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
 	}
-	member, err := s.store.IsProjectMember(ctx, projectID, userID)
+	member, err := s.store.IsProjectMember(ctx, projectId, userId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check project member", err)
 	}
@@ -160,8 +164,8 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectID, userID 
 	}
 	return nil
 }
-func (s Service) ensureRepositoryCodeAvailable(ctx context.Context, projectID *string, code string) error {
-	existing, err := s.store.RepositoryByCode(ctx, projectID, code)
+func (s Service) ensureRepositoryCodeAvailable(ctx context.Context, projectId string, code string) error {
+	existing, err := s.store.RepositoryByCode(ctx, projectId, code)
 	if err == nil {
 		return apperror.New(apperror.KindConflict, "Repository code '"+existing.Code+"' already exists")
 	}
@@ -170,21 +174,21 @@ func (s Service) ensureRepositoryCodeAvailable(ctx context.Context, projectID *s
 	}
 	return nil
 }
-func (s Service) ensureCredential(ctx context.Context, credentialID *string) error {
-	if credentialID == nil {
+func (s Service) ensureCredential(ctx context.Context, projectId string, credentialId *string) error {
+	if credentialId == nil {
 		return nil
 	}
-	exists, err := s.store.CredentialExists(ctx, *credentialID)
+	exists, err := s.store.CredentialExists(ctx, projectId, *credentialId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check credential", err)
 	}
 	if !exists {
-		return apperror.New(apperror.KindNotFound, "Credential "+*credentialID+" not found")
+		return apperror.New(apperror.KindNotFound, "Credential "+*credentialId+" not found")
 	}
 	return nil
 }
-func (s Service) repositoryDetail(ctx context.Context, item model.Repository) (repositorydto.RepositoryDetail, error) {
-	name, err := s.repositoryCredentialName(ctx, item.GitCredentialId)
+func (s Service) repositoryDetail(ctx context.Context, projectId string, item model.Repository) (repositorydto.RepositoryDetail, error) {
+	name, err := s.repositoryCredentialName(ctx, projectId, item.GitCredentialId)
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
@@ -194,16 +198,17 @@ func (s Service) repositoryDetail(ctx context.Context, item model.Repository) (r
 	}
 	return repositorydto.RepositoryDetail{Repository: item, GitCredentialName: name, VariableDeclarations: variables}, nil
 }
-func (s Service) repositoryCredentialName(ctx context.Context, credentialID *string) (*string, error) {
-	if credentialID == nil {
+func (s Service) repositoryCredentialName(ctx context.Context, projectId string, credentialId *string) (*string, error) {
+	if credentialId == nil {
 		return nil, nil
 	}
-	value, err := s.store.CredentialName(ctx, *credentialID)
+	value, err := s.store.CredentialName(ctx, projectId, *credentialId)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load repository credential", err)
 	}
 	return value, nil
 }
+
 func normalizeRepositoryCreateInput(input repositorydto.RepositoryCreateInput) (string, string, string, string, string, *string, error) {
 	name, code, sourceURL, sourceType, branch := strings.TrimSpace(input.Name), strings.TrimSpace(input.Code), strings.TrimSpace(input.RepositoryUrl), strings.TrimSpace(input.RepositoryType), strings.TrimSpace(input.DefaultBranch)
 	if sourceType == "" {
@@ -212,14 +217,14 @@ func normalizeRepositoryCreateInput(input repositorydto.RepositoryCreateInput) (
 	if branch == "" {
 		branch = "master"
 	}
-	credentialID := normalizeOptionalString(input.GitCredentialId)
+	credentialId := normalizeOptionalString(input.GitCredentialId)
 	if name == "" || code == "" || !repositoryCodePattern.MatchString(code) {
 		return "", "", "", "", "", nil, apperror.New(apperror.KindValidation, "Invalid repository fields")
 	}
 	if sourceType == model.RepositoryTypeRemoteGit && sourceURL != "" {
-		return name, code, sourceType, sourceURL, branch, credentialID, nil
+		return name, code, sourceType, sourceURL, branch, credentialId, nil
 	}
-	if sourceType == model.RepositoryTypeLocalDirectory && sourceURL != "" && credentialID == nil {
+	if sourceType == model.RepositoryTypeLocalDirectory && sourceURL != "" && credentialId == nil {
 		return name, code, sourceType, sourceURL, branch, nil, nil
 	}
 	return "", "", "", "", "", nil, apperror.New(apperror.KindValidation, "Invalid repository fields")

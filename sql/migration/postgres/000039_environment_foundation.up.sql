@@ -1,0 +1,32 @@
+ALTER TABLE deployment ADD COLUMN environment_id TEXT;
+ALTER TABLE deployment ADD COLUMN environment_target_revision BIGINT;
+ALTER TABLE deployment ADD COLUMN ssh_credential_id TEXT;
+ALTER TABLE deployment ADD COLUMN ssh_credential_revision BIGINT;
+ALTER TABLE deployment ADD COLUMN gateway_application_id TEXT;
+ALTER TABLE deployment ADD COLUMN environment_target_type TEXT;
+
+ALTER TABLE credential ADD COLUMN revision BIGINT NOT NULL DEFAULT 1;
+
+CREATE TABLE environment (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL UNIQUE,
+    state TEXT NOT NULL CHECK (state IN ('active', 'disabled')),
+    target_type TEXT NOT NULL CHECK (target_type IN ('local', 'ssh')),
+    platform TEXT CHECK (platform IS NULL OR platform IN ('linux', 'windows')),
+    host TEXT,
+    port BIGINT CHECK (port IS NULL OR port BETWEEN 1 AND 65535),
+    username TEXT,
+    workspace_root TEXT,
+    ssh_credential_id TEXT,
+    ssh_credential_revision BIGINT CHECK (ssh_credential_revision IS NULL OR ssh_credential_revision >= 1),
+    host_key_fingerprint TEXT,
+    target_revision BIGINT NOT NULL CHECK (target_revision >= 1),
+    last_probe_revision BIGINT,
+    last_probe_status TEXT,
+    last_probe_at TIMESTAMPTZ,
+    last_probe_diagnostic TEXT,
+    gateway_application_id TEXT UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

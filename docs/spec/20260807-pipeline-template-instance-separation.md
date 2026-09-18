@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## Requirement basis
 
-- 依据已接受的 [流水线模板与应用流水线分离 Requirement](../requirement/20260807-pipeline-template-instance-separation.md)。
+- 依据已接受的 [流水线模板与应用流水线分离 Requirement](../intent/20260807-pipeline-template-instance-separation.md)。
 - 产品目标是让 Template 成为真正的来源蓝图，让 Application Pipeline 成为一次配置后可直接运行的交付单元。
 - 本规格采用破坏性模型切换：业务代码、HTTP/Proto 和 Web 只支持新 Pipeline 模型，不保留旧 Template/Stage/Trigger 契约的兼容分支。
 - 开发数据库从空库执行迁移链至 version 30，直接得到最终结构和种子数据；不提供旧结构就地转换。

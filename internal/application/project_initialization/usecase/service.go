@@ -1,0 +1,176 @@
+package projectinitializationsvc
+
+import (
+	"context"
+	"strings"
+
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
+	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
+	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
+	initdto "github.com/leoninew/pomelo-orbit/internal/application/project_initialization/dto"
+	initport "github.com/leoninew/pomelo-orbit/internal/application/project_initialization/port"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+)
+
+type Service struct {
+	projects     initport.ProjectService
+	environments initport.EnvironmentService
+	gateways     initport.GatewayService
+	defaults     config.ProjectInitializationConfig
+	localDisplay environmentdto.LocalDisplaySnapshot
+}
+
+func New(projects initport.ProjectService, environments initport.EnvironmentService, gateways initport.GatewayService, defaults config.ProjectInitializationConfig, localDisplay environmentdto.LocalDisplaySnapshot) Service {
+	return Service{projects: projects, environments: environments, gateways: gateways, defaults: defaults, localDisplay: localDisplay}
+}
+
+func (s Service) Status(ctx context.Context, userId string, projectId string) (initdto.StatusView, error) {
+	if _, err := s.projects.LoadForUser(ctx, projectId, userId); err != nil {
+		return initdto.StatusView{}, err
+	}
+	view := initdto.StatusView{Defaults: s.defaultValues()}
+	environment, err := s.environments.EnvironmentForUser(ctx, userId, projectId)
+	if err != nil {
+		if apperror.IsKind(err, apperror.KindNotFound) {
+			view.Status = initdto.StatusNeedsEnvironment
+			return view, nil
+		}
+		return initdto.StatusView{}, err
+	}
+	view.Environment = &environment
+	if !hasFreshSuccessfulProbe(environment) {
+		view.Status = initdto.StatusNeedsProbe
+		return view, nil
+	}
+	gateways, err := s.gateways.ListGateways(ctx, userId, projectId, 1, 1, "")
+	if err != nil {
+		return initdto.StatusView{}, err
+	}
+	if gateways.Total == 0 || len(gateways.Items) == 0 || gateways.Items[0].Service == nil {
+		view.Status = initdto.StatusNeedsGateway
+		return view, nil
+	}
+	gateway := gateways.Items[0]
+	view.Gateway = &gateway
+	view.Status = initdto.StatusReady
+	return view, nil
+}
+
+func (s Service) SaveEnvironment(ctx context.Context, userId string, projectId string, input initdto.SaveEnvironmentInput) (initdto.StatusView, error) {
+	status, err := s.Status(ctx, userId, projectId)
+	if err != nil {
+		return initdto.StatusView{}, err
+	}
+	if status.Status == initdto.StatusReady {
+		return initdto.StatusView{}, apperror.New(apperror.KindConflict, "Project environment is already ready")
+	}
+	targetType := strings.TrimSpace(input.TargetType)
+	if _, err := s.environments.SaveInitialization(ctx, userId, projectId, environmentdto.UpdateInput{
+		TargetType: &targetType, Local: input.Local, SSH: input.SSH,
+	}); err != nil {
+		return initdto.StatusView{}, err
+	}
+	return s.Status(ctx, userId, projectId)
+}
+
+func (s Service) PrepareSSHEnvironment(ctx context.Context, userId string, projectId string, input initdto.SaveEnvironmentInput) (initdto.SSHCommandView, error) {
+	if _, err := s.projects.LoadForUser(ctx, projectId, userId); err != nil {
+		return initdto.SSHCommandView{}, err
+	}
+	if strings.TrimSpace(input.TargetType) != model.EnvironmentTargetTypeSSH || input.SSH == nil {
+		return initdto.SSHCommandView{}, apperror.New(apperror.KindValidation, "SSH initialization command requires an SSH target")
+	}
+	targetType := model.EnvironmentTargetTypeSSH
+	_, publicKey, err := s.environments.PrepareSSHEnvironment(ctx, userId, projectId, environmentdto.UpdateInput{TargetType: &targetType, SSH: input.SSH})
+	if err != nil {
+		return initdto.SSHCommandView{}, err
+	}
+	status, err := s.Status(ctx, userId, projectId)
+	if err != nil {
+		return initdto.SSHCommandView{}, err
+	}
+	return initdto.SSHCommandView{Status: status, PublicKey: publicKey}, nil
+}
+
+func (s Service) ProbeEnvironment(ctx context.Context, userId string, projectId string) (initdto.StatusView, error) {
+	if _, err := s.projects.LoadForUser(ctx, projectId, userId); err != nil {
+		return initdto.StatusView{}, err
+	}
+	if _, err := s.environments.ProbeForUser(ctx, userId, projectId); err != nil {
+		return initdto.StatusView{}, err
+	}
+	return s.Status(ctx, userId, projectId)
+}
+
+func (s Service) CreateGateway(ctx context.Context, userId string, projectId string, input initdto.CreateGatewayInput) (initdto.StatusView, error) {
+	status, err := s.Status(ctx, userId, projectId)
+	if err != nil {
+		return initdto.StatusView{}, err
+	}
+	if status.Status != initdto.StatusNeedsGateway {
+		return initdto.StatusView{}, apperror.New(apperror.KindValidation, "Project environment must pass probe before creating a gateway")
+	}
+	_, err = s.projects.LoadForUser(ctx, projectId, userId)
+	if err != nil {
+		return initdto.StatusView{}, err
+	}
+	timeout := input.RestReadyTimeoutSeconds
+	image := strings.TrimSpace(input.Image)
+	entrypoint := strings.TrimSpace(input.DefaultEntrypoint)
+	tlsMode := strings.TrimSpace(input.TLSMode)
+	acmeProfile := strings.TrimSpace(input.AcmeProfile)
+	acmeEmail := strings.TrimSpace(input.AcmeEmail)
+	dnsToken := strings.TrimSpace(input.DNSApiToken)
+	if _, err := s.gateways.CreateGateway(ctx, userId, projectId, gatewaydto.GatewayCreateInput{
+		Code:                    gatewaysvc.ManagedGatewayCode(),
+		Name:                    gatewaysvc.ManagedGatewayName(),
+		RestApiUrl:              input.RestApiUrl,
+		RestApiHostUrl:          input.RestApiHostUrl,
+		RestReadyTimeoutSeconds: &timeout,
+		BaseDomain:              input.BaseDomain,
+		InitialComponentImage:   &image,
+		DefaultEntrypoint:       &entrypoint,
+		TLSMode:                 &tlsMode,
+		AcmeProfile:             &acmeProfile,
+		AcmeEmail:               &acmeEmail,
+		DNSApiToken:             &dnsToken,
+	}); err != nil {
+		return initdto.StatusView{}, err
+	}
+	return s.Status(ctx, userId, projectId)
+}
+
+func (s Service) defaultValues() initdto.Defaults {
+	return initdto.Defaults{
+		LocalWorkspaceRoot:      s.defaults.Environment.LocalWorkspaceRoot,
+		Image:                   s.defaults.Gateway.Image,
+		RestApiUrl:              s.defaults.Gateway.RestApiUrl,
+		RestApiHostUrl:          s.defaults.Gateway.RestApiHostUrl,
+		RestReadyTimeoutSeconds: s.defaults.Gateway.RestReadyTimeoutSeconds(),
+		BaseDomain:              s.defaults.Gateway.BaseDomain,
+		DefaultEntrypoint:       s.defaults.Gateway.DefaultEntrypoint,
+		TLSMode:                 s.defaults.Gateway.TLSMode,
+		AcmeProfile:             s.defaults.Gateway.AcmeProfile,
+		AcmeEmail:               s.defaults.Gateway.AcmeEmail,
+		DNSApiToken:             s.defaults.Gateway.DNSApiToken,
+		LocalPlatform:           s.localDisplay.Platform,
+		LocalHost:               s.localDisplay.Host,
+		LocalUsername:           s.localDisplay.Username,
+	}
+}
+
+func hasFreshSuccessfulProbe(view environmentdto.View) bool {
+	if view.LastProbeRevision == nil || *view.LastProbeRevision != view.TargetRevision || view.LastProbeStatus == nil || *view.LastProbeStatus != model.EnvironmentProbeStatusSucceeded {
+		return false
+	}
+	if view.TargetType == model.EnvironmentTargetTypeLocal {
+		return true
+	}
+	if view.SSH == nil {
+		return false
+	}
+	fingerprint := strings.TrimSpace(view.SSH.HostKeyFingerprint)
+	return strings.HasPrefix(fingerprint, "SHA256:") && len(fingerprint) > len("SHA256:")
+}

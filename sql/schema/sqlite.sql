@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS user_role (
     role_id TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, role_id),
-    FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE CASCADE
+    FOREIGN KEY (role_id) REFERENCES role(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_role_user_id ON user_role(user_id);
@@ -130,17 +130,29 @@ CREATE TABLE IF NOT EXISTS project_member (
 
 CREATE INDEX IF NOT EXISTS idx_project_member_user_id ON project_member(user_id);
 
-CREATE TABLE IF NOT EXISTS credential (
+CREATE TABLE IF NOT EXISTS repository_credential (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     type TEXT NOT NULL,
     encrypted_data TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     project_id TEXT REFERENCES project(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_credential_name ON credential(name);
-CREATE INDEX IF NOT EXISTS idx_credential_project ON credential(project_id);
+CREATE INDEX IF NOT EXISTS idx_repository_credential_name ON repository_credential(name);
+CREATE INDEX IF NOT EXISTS idx_repository_credential_project ON repository_credential(project_id);
+
+CREATE TABLE IF NOT EXISTS environment_credential (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES project(id),
+    public_key TEXT NOT NULL,
+    encrypted_private_key TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_environment_credential_project ON environment_credential(project_id);
 
 CREATE TABLE IF NOT EXISTS pipeline (
     id TEXT PRIMARY KEY,
@@ -254,7 +266,7 @@ CREATE TABLE IF NOT EXISTS repository (
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     project_id TEXT REFERENCES project(id),
-    FOREIGN KEY (git_credential_id) REFERENCES credential(id)
+    FOREIGN KEY (git_credential_id) REFERENCES repository_credential(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_repository_name ON repository(name);
@@ -351,7 +363,7 @@ CREATE INDEX IF NOT EXISTS idx_artifact_pipeline ON artifact(pipeline_id);
 
 CREATE TABLE IF NOT EXISTS application (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     code TEXT NOT NULL,
     kind TEXT NOT NULL DEFAULT 'standard',
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
@@ -360,6 +372,8 @@ CREATE TABLE IF NOT EXISTS application (
 );
 
 CREATE INDEX IF NOT EXISTS idx_application_project ON application(project_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_application_project_name ON application(project_id, name);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_application_project_code ON application(project_id, code);
 
 CREATE TABLE IF NOT EXISTS version (
     id TEXT PRIMARY KEY,
@@ -509,8 +523,8 @@ CREATE TABLE IF NOT EXISTS version_component_device (
 
 CREATE TABLE IF NOT EXISTS gateway_config (
     application_id TEXT PRIMARY KEY,
-    traefik_component_name TEXT NOT NULL DEFAULT 'traefik',
     rest_api_url TEXT NOT NULL,
+    rest_api_host_url TEXT NOT NULL,
     rest_ready_timeout_seconds INTEGER NOT NULL DEFAULT 20,
     base_domain TEXT NOT NULL,
     default_entrypoint TEXT NOT NULL DEFAULT 'web',
@@ -520,7 +534,7 @@ CREATE TABLE IF NOT EXISTS gateway_config (
     dns_api_token TEXT NOT NULL DEFAULT '',
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE
+    FOREIGN KEY (application_id) REFERENCES application(id)
 );
 
 CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
@@ -530,22 +544,22 @@ CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
     PRIMARY KEY (application_id, profile),
     UNIQUE (application_id, version_id),
     FOREIGN KEY (application_id) REFERENCES gateway_config(application_id) ON DELETE CASCADE,
-    FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE
+    FOREIGN KEY (version_id) REFERENCES version(id)
 );
 
 CREATE TABLE IF NOT EXISTS service (
     id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
     application_id TEXT NOT NULL,
-    instance_key TEXT NOT NULL DEFAULT 'default',
-    code TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL,
     version_id TEXT NOT NULL,
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
-    FOREIGN KEY (version_id) REFERENCES version(id),
-    UNIQUE(application_id, instance_key)
+    FOREIGN KEY (application_id) REFERENCES application(id),
+    FOREIGN KEY (version_id) REFERENCES version(id)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uq_service_project_code ON service(project_id, code);
 
 CREATE INDEX IF NOT EXISTS idx_service_version ON service(version_id);
 CREATE INDEX IF NOT EXISTS idx_service_application ON service(application_id);
@@ -573,7 +587,7 @@ CREATE TABLE IF NOT EXISTS service_component (
     UNIQUE (service_id, source_version_component_id),
     UNIQUE (service_id, component_name),
     FOREIGN KEY (service_id) REFERENCES service(id) ON DELETE CASCADE,
-    FOREIGN KEY (source_version_component_id) REFERENCES version_component(id) ON DELETE CASCADE
+    FOREIGN KEY (source_version_component_id) REFERENCES version_component(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_service_component_service ON service_component(service_id);
@@ -656,6 +670,12 @@ CREATE TABLE IF NOT EXISTS deployment (
     project_id TEXT REFERENCES project(id),
     version_id TEXT,
     service_id TEXT,
+    environment_id TEXT,
+    environment_target_type TEXT,
+    environment_target_revision BIGINT,
+    ssh_credential_id TEXT,
+    ssh_credential_revision BIGINT,
+    gateway_application_id TEXT,
     options_json TEXT,
     effective_plan_hash TEXT,
     command_text TEXT NOT NULL DEFAULT '',
@@ -720,3 +740,25 @@ CREATE INDEX IF NOT EXISTS idx_deployment_dialogue_conversation_project_updated
     ON deployment_dialogue_conversation(project_id, updated_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_deployment_dialogue_message_conversation_created
     ON deployment_dialogue_message(conversation_id, created_at ASC, id ASC);
+CREATE TABLE IF NOT EXISTS environment (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL UNIQUE,
+    target_type TEXT NOT NULL CHECK (target_type IN ('local', 'ssh')),
+    platform TEXT CHECK (platform IS NULL OR platform IN ('linux', 'windows')),
+    host TEXT,
+    port INTEGER CHECK (port IS NULL OR port BETWEEN 1 AND 65535),
+    username TEXT,
+    workspace_root TEXT,
+    ssh_credential_id TEXT,
+    ssh_credential_revision INTEGER CHECK (ssh_credential_revision IS NULL OR ssh_credential_revision >= 1),
+    host_key_fingerprint TEXT,
+    target_revision INTEGER NOT NULL CHECK (target_revision >= 1),
+    last_probe_revision INTEGER,
+    last_probe_status TEXT,
+    last_probe_at DATETIME,
+    last_probe_diagnostic TEXT,
+    gateway_application_id TEXT UNIQUE,
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+);

@@ -2,11 +2,16 @@ package model
 
 import "time"
 
+const (
+	GatewayRestAPIContainerURL = "http://traefik:8080"
+	GatewayRestAPIHostURL      = "http://127.0.0.1:8080"
+)
+
 // GatewayConfig is the configuration owned by a gateway application.
 type GatewayConfig struct {
 	ApplicationId           string                  `db:"application_id"`
-	TraefikComponentName    string                  `db:"traefik_component_name"`
 	RestApiUrl              string                  `db:"rest_api_url"`
+	RestApiHostUrl          string                  `db:"rest_api_host_url"`
 	RestReadyTimeoutSeconds int                     `db:"rest_ready_timeout_seconds"`
 	BaseDomain              string                  `db:"base_domain"`
 	DefaultEntrypoint       string                  `db:"default_entrypoint"`
@@ -15,7 +20,8 @@ type GatewayConfig struct {
 	AcmeEmail               string                  `db:"acme_email"`
 	DNSApiToken             string                  `db:"dns_api_token"`
 	VersionBindings         []GatewayVersionBinding `db:"-"`
-	RuntimeServiceCode      string                  `db:"-"`
+	RuntimeServiceCode      string                  `db:"-" json:"-"`
+	NetworkName             string                  `db:"-" json:"-"`
 	CreatedAt               time.Time               `db:"created_at"`
 	UpdatedAt               time.Time               `db:"updated_at"`
 }

@@ -25,7 +25,7 @@ type ClaimTaskParams struct {
 	LockedAt   sql.NullTime   `db:"locked_at"`
 	StartedAt  sql.NullTime   `db:"started_at"`
 	UpdatedAt  time.Time      `db:"updated_at"`
-	ID         string         `db:"id"`
+	Id         string         `db:"id"`
 	Status_2   string         `db:"status_2"`
 	Status_3   string         `db:"status_3"`
 	LockedAt_2 sql.NullTime   `db:"locked_at_2"`
@@ -38,7 +38,7 @@ func (q *Queries) ClaimTask(ctx context.Context, arg ClaimTaskParams) (int64, er
 		arg.LockedAt,
 		arg.StartedAt,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
 		arg.Status_2,
 		arg.Status_3,
 		arg.LockedAt_2,
@@ -60,7 +60,7 @@ type CompleteTaskParams struct {
 	Status     string       `db:"status"`
 	FinishedAt sql.NullTime `db:"finished_at"`
 	UpdatedAt  time.Time    `db:"updated_at"`
-	ID         string       `db:"id"`
+	Id         string       `db:"id"`
 	Status_2   string       `db:"status_2"`
 }
 
@@ -69,7 +69,7 @@ func (q *Queries) CompleteTask(ctx context.Context, arg CompleteTaskParams) erro
 		arg.Status,
 		arg.FinishedAt,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.Id,
 		arg.Status_2,
 	)
 	return err
@@ -81,7 +81,7 @@ VALUES (?, ?, ?, ?, 0, ?, ?, ?)
 `
 
 type EnqueueTaskParams struct {
-	ID          string    `db:"id"`
+	Id          string    `db:"id"`
 	TaskType    string    `db:"task_type"`
 	PayloadJson string    `db:"payload_json"`
 	Status      string    `db:"status"`
@@ -92,7 +92,7 @@ type EnqueueTaskParams struct {
 
 func (q *Queries) EnqueueTask(ctx context.Context, arg EnqueueTaskParams) error {
 	_, err := q.db.ExecContext(ctx, enqueueTask,
-		arg.ID,
+		arg.Id,
 		arg.TaskType,
 		arg.PayloadJson,
 		arg.Status,
@@ -118,7 +118,7 @@ type FailTaskParams struct {
 	FinishedAt   sql.NullTime   `db:"finished_at"`
 	UpdatedAt    time.Time      `db:"updated_at"`
 	ErrorMessage sql.NullString `db:"error_message"`
-	ID           string         `db:"id"`
+	Id           string         `db:"id"`
 	Status_3     string         `db:"status_3"`
 }
 
@@ -129,24 +129,24 @@ func (q *Queries) FailTask(ctx context.Context, arg FailTaskParams) error {
 		arg.FinishedAt,
 		arg.UpdatedAt,
 		arg.ErrorMessage,
-		arg.ID,
+		arg.Id,
 		arg.Status_3,
 	)
 	return err
 }
 
-const findTaskByID = `-- name: FindTaskByID :one
+const findTaskById = `-- name: FindTaskById :one
 SELECT id, task_type, payload_json, status, attempts, max_attempts, locked_by, locked_at,
        started_at, finished_at, error_message, created_at, updated_at
 FROM background_task
 WHERE id = ?
 `
 
-func (q *Queries) FindTaskByID(ctx context.Context, id string) (BackgroundTask, error) {
-	row := q.db.QueryRowContext(ctx, findTaskByID, id)
+func (q *Queries) FindTaskById(ctx context.Context, id string) (BackgroundTask, error) {
+	row := q.db.QueryRowContext(ctx, findTaskById, id)
 	var i BackgroundTask
 	err := row.Scan(
-		&i.ID,
+		&i.Id,
 		&i.TaskType,
 		&i.PayloadJson,
 		&i.Status,
@@ -183,7 +183,7 @@ func (q *Queries) TaskToClaim(ctx context.Context, arg TaskToClaimParams) (Backg
 	row := q.db.QueryRowContext(ctx, taskToClaim, arg.Status, arg.Status_2, arg.LockedAt)
 	var i BackgroundTask
 	err := row.Scan(
-		&i.ID,
+		&i.Id,
 		&i.TaskType,
 		&i.PayloadJson,
 		&i.Status,

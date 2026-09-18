@@ -1,7 +1,6 @@
 package deploymentsvc
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -21,8 +20,10 @@ func (c composeCommand) argv() []string {
 	return parts
 }
 
-func composeProjectName(appCode string, instanceKey string) string {
-	return fmt.Sprintf("%s-%s", appCode, instanceKey)
+// composeProjectName is the Docker Compose project (-p) name. It equals the
+// globally unique service code, which is also the service workspace directory.
+func composeProjectName(serviceCode string) string {
+	return serviceCode
 }
 
 func deployComposeCommand(projectName string, imagePullPolicy string, forceRecreate bool) composeCommand {

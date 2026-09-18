@@ -23,7 +23,6 @@ export interface DeploymentDialogueMessage {
 }
 
 export interface DeploymentDialogueTurnReq {
-  project_id: string;
   messages: DeploymentDialogueMessage[];
   conversation_id?: string | undefined;
 }

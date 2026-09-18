@@ -1,5 +1,5 @@
 # 文档主题索引
-最后修改时间: 2026-08-22 21:01:18
+最后修改时间: 2026-09-17 10:55:15
 
 独立索引文件（与 [README.md](./README.md) 分工：README 讲规则与阅读顺序，本页讲主题 → 路径）。
 
@@ -38,6 +38,7 @@
 | 服务导出导入（dbtalk JSONL） | [guides/service-data-transfer.md](./guides/service-data-transfer.md) |
 | Agent Plugin 与 Skill 发布 | [guides/plugin-release.md](./guides/plugin-release.md) |
 | 权限 RBAC | [guides/permissions.md](./guides/permissions.md) |
+| MCP 直接操作 | [guides/mcp-direct-operations.md](./guides/mcp-direct-operations.md) |
 | Google OAuth（国内网络） | [guides/google-oauth-china-network.md](./guides/google-oauth-china-network.md) |
 | AntDV icons 笔记 | [guides/antdv-icons.md](./guides/antdv-icons.md) |
 
@@ -51,7 +52,7 @@
 
 | 状态 | 路径 |
 |------|------|
-| 进行中 | `docs/requirement/`、`docs/spec/`、`docs/plan/`、`docs/verification/` |
+| 进行中 | `docs/intent/`、`docs/spec/`、`docs/plan/`、`docs/verification/` |
 | 已归档（无须采信） | [archive/specflow/](./archive/specflow/) |
 
 ## 归档索引（无须采信）

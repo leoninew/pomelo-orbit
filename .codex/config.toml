@@ -1,10 +1,13 @@
-[mcp_servers."pomelo-orbit-mcp"]
+# Project-scoped Codex MCP. Do not put MCP PATs in this file.
+# Create a token in Orbit 系统管理 / 访问令牌, then either:
+# - set POMELO_ORBIT_MCP__ACCESS_TOKEN in the Codex parent process, or
+# - keep it in the gitignored .env.<env> loaded by the Go process.
+[mcp_servers.pomelo-orbit-mcp]
 command = "go"
 args = ["run", "./cmd/server", "mcp"]
 cwd = "."
-startup_timeout_sec = 60.0
-tool_timeout_sec = 300.0
+startup_timeout_sec = 120.0
 env_vars = ["POMELO_ORBIT_MCP__ACCESS_TOKEN"]
 
-[mcp_servers."pomelo-orbit-mcp".env]
+[mcp_servers.pomelo-orbit-mcp.env]
 POMELO_ORBIT_APP__ENV = "development"

@@ -46,16 +46,16 @@ func enrichGatewayPlan(plan *model.EffectiveServicePlan) error {
 	if role == "" {
 		role = "base"
 	}
-	versionID := cfg.VersionIDForProfile(role)
-	if versionID == "" {
+	versionId := cfg.VersionIDForProfile(role)
+	if versionId == "" {
 		return fmt.Errorf("gateway Version binding is missing for %s", role)
 	}
-	if plan.Version.Id != versionID {
+	if plan.Version.Id != versionId {
 		return fmt.Errorf("selected Gateway Version does not match the %s binding", role)
 	}
-	component := gatewayPlanComponent(plan, cfg.TraefikComponentName)
+	component := gatewayPlanComponent(plan, model.GatewayComponentName())
 	if component == nil {
-		return fmt.Errorf("selected Version does not contain Gateway component %q", cfg.TraefikComponentName)
+		return fmt.Errorf("selected Version does not contain Gateway component %q", model.GatewayComponentName())
 	}
 	file := gatewayStaticConfigMount(component)
 	if file == nil {

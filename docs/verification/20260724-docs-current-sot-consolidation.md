@@ -31,7 +31,7 @@ Flow mode: light
 3. 过程库与过时 designs/guides/analyze **rename** 入 `docs/archive/...`。  
 4. guides/frontend 校准（deployment 重写、living banner、`web/` 路径）。  
 5. `CLAUDE.md` 文档阅读顺序。  
-6. 本任务 requirement：`docs/requirement/20260724-docs-current-sot-consolidation.md`。
+6. 本任务 requirement：`docs/intent/20260724-docs-current-sot-consolidation.md`。
 
 ## Expected vs actual changed files / 预期与实际
 

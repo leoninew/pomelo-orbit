@@ -134,9 +134,6 @@ func (a App) Serve(ctx context.Context) error {
 type dockerDaemonPathResolverFn func(context.Context, string) (string, error)
 
 func dockerDaemonPathResolver() func(context.Context, string) (string, error) {
-	if !runtimepath.IsRunningInContainer() {
-		return nil
-	}
 	return runtimepath.ResolveDockerDaemonPath
 }
 
@@ -157,8 +154,8 @@ func validateContainerWorkspaceMounts(ctx context.Context, cfg config.Config, ru
 		key  string
 		path string
 	}{
-		{key: "workspace.pipeline", path: cfg.Workspace.Pipeline},
-		{key: "workspace.deployment", path: cfg.Workspace.Deployment},
+		{key: "workspace.root", path: cfg.Workspace.Root},
+		{key: "logging.deployment_root", path: cfg.Logging.DeploymentRoot},
 	} {
 		if _, err := resolver(ctx, workspace.path); err != nil {
 			return fmt.Errorf("%s must be bind mounted when Orbit runs in a container: %w", workspace.key, err)

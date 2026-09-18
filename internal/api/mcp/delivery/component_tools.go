@@ -20,12 +20,19 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		PullPolicy    string `json:"pull_policy" jsonschema:"required"`
 		RestartPolicy string `json:"restart_policy" jsonschema:"required"`
 	}) (map[string]any, error) {
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
 		command, err := commandInput(input.Command)
 		if err != nil {
 			return nil, err
 		}
 		restartPolicy := input.RestartPolicy
-		component, err := c.deps.Application.UpdateVersionComponentBasic(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentBasicUpdateInput{Name: input.Name, Image: input.Image, Command: command, PullPolicy: input.PullPolicy, RestartPolicy: &restartPolicy})
+		component, err := c.deps.Application.UpdateVersionComponentBasic(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentBasicUpdateInput{Name: input.Name, Image: input.Image, Command: command, PullPolicy: input.PullPolicy, RestartPolicy: &restartPolicy})
 		if err != nil {
 			return nil, err
 		}
@@ -37,7 +44,14 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		ComponentId string                              `json:"component_id" jsonschema:"required"`
 		Healthcheck *applicationv1.ComponentHealthcheck `json:"healthcheck,omitempty"`
 	}) (map[string]any, error) {
-		component, err := c.deps.Application.UpdateVersionComponentRuntime(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentRuntimeUpdateInput{Healthcheck: healthcheckInput(input.Healthcheck)})
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentRuntime(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentRuntimeUpdateInput{Healthcheck: healthcheckInput(input.Healthcheck)})
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +66,14 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		ComponentId string                             `json:"component_id" jsonschema:"required"`
 		Endpoints   []*applicationv1.ComponentEndpoint `json:"endpoints" jsonschema:"required"`
 	}) (map[string]any, error) {
-		component, err := c.deps.Application.UpdateVersionComponentEndpoints(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentEndpointsUpdateInput{Endpoints: componentEndpointsInput(input.Endpoints)})
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentEndpoints(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentEndpointsUpdateInput{Endpoints: componentEndpointsInput(input.Endpoints)})
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +85,14 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		ComponentId string                        `json:"component_id" jsonschema:"required"`
 		Env         []*applicationv1.ComponentEnv `json:"env" jsonschema:"required"`
 	}) (map[string]any, error) {
-		component, err := c.deps.Application.UpdateVersionComponentEnv(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentEnvUpdateInput{Env: componentEnvInput(input.Env)})
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentEnv(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentEnvUpdateInput{Env: componentEnvInput(input.Env)})
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +104,14 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		ComponentId string                          `json:"component_id" jsonschema:"required"`
 		Mounts      []*applicationv1.ComponentMount `json:"mounts" jsonschema:"required"`
 	}) (map[string]any, error) {
-		component, err := c.deps.Application.UpdateVersionComponentMounts(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentMountsUpdateInput{Mounts: componentMountsInput(input.Mounts)})
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentMounts(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentMountsUpdateInput{Mounts: componentMountsInput(input.Mounts)})
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +123,14 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		ComponentId  string                               `json:"component_id" jsonschema:"required"`
 		Dependencies []*applicationv1.ComponentDependency `json:"dependencies" jsonschema:"required"`
 	}) (map[string]any, error) {
-		component, err := c.deps.Application.UpdateVersionComponentDependencies(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentDependenciesUpdateInput{Dependencies: componentDependenciesInput(input.Dependencies)})
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentDependencies(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentDependenciesUpdateInput{Dependencies: componentDependenciesInput(input.Dependencies)})
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +142,14 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		ComponentId string                                  `json:"component_id" jsonschema:"required"`
 		Devices     []*applicationv1.ComponentDeviceRequest `json:"devices" jsonschema:"required"`
 	}) (map[string]any, error) {
-		component, err := c.deps.Application.UpdateVersionComponentDevices(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId, applicationdto.VersionComponentDevicesUpdateInput{Devices: devicesInput(input.Devices)})
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentDevices(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentDevicesUpdateInput{Devices: devicesInput(input.Devices)})
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +163,14 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		Tmpfs       []*applicationv1.ComponentTmpfs   `json:"tmpfs,omitempty"`
 		Ulimits     []*applicationv1.ComponentUlimit  `json:"ulimits,omitempty"`
 	}) (map[string]any, error) {
-		component, err := c.updateComponentAdvanced(ctx, input.VersionId, input.ComponentId, resourcesInput(input.Resources), tmpfsInput(input.Tmpfs), ulimitsInput(input.Ulimits))
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.updateComponentAdvanced(ctx, projectId, input.VersionId, input.ComponentId, resourcesInput(input.Resources), tmpfsInput(input.Tmpfs), ulimitsInput(input.Ulimits))
 		if err != nil {
 			return nil, err
 		}
@@ -126,11 +182,18 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		ComponentId string                            `json:"component_id" jsonschema:"required"`
 		Resources   *applicationv1.ComponentResources `json:"resources,omitempty"`
 	}) (map[string]any, error) {
-		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId)
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		component, err := c.updateComponentAdvanced(ctx, input.VersionId, input.ComponentId, resourcesInput(input.Resources), previous.Tmpfs, previous.Ulimits)
+		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId)
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.updateComponentAdvanced(ctx, projectId, input.VersionId, input.ComponentId, resourcesInput(input.Resources), previous.Tmpfs, previous.Ulimits)
 		if err != nil {
 			return nil, err
 		}
@@ -142,11 +205,18 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		ComponentId string                          `json:"component_id" jsonschema:"required"`
 		Tmpfs       []*applicationv1.ComponentTmpfs `json:"tmpfs" jsonschema:"required"`
 	}) (map[string]any, error) {
-		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId)
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		component, err := c.updateComponentAdvanced(ctx, input.VersionId, input.ComponentId, previous.Resources, tmpfsInput(input.Tmpfs), previous.Ulimits)
+		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId)
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.updateComponentAdvanced(ctx, projectId, input.VersionId, input.ComponentId, previous.Resources, tmpfsInput(input.Tmpfs), previous.Ulimits)
 		if err != nil {
 			return nil, err
 		}
@@ -158,11 +228,18 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		ComponentId string                           `json:"component_id" jsonschema:"required"`
 		Ulimits     []*applicationv1.ComponentUlimit `json:"ulimits" jsonschema:"required"`
 	}) (map[string]any, error) {
-		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, input.VersionId, input.ComponentId)
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		component, err := c.updateComponentAdvanced(ctx, input.VersionId, input.ComponentId, previous.Resources, previous.Tmpfs, ulimitsInput(input.Ulimits))
+		previous, err := c.deps.Application.VersionComponentForUser(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId)
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.updateComponentAdvanced(ctx, projectId, input.VersionId, input.ComponentId, previous.Resources, previous.Tmpfs, ulimitsInput(input.Ulimits))
 		if err != nil {
 			return nil, err
 		}

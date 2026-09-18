@@ -14,11 +14,18 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 		ServiceId     string `json:"service_id" jsonschema:"required"`
 		ForceRecreate bool   `json:"force_recreate,omitempty"`
 	}) (map[string]any, error) {
-		result, err := c.deps.Deployment.DeployService(ctx, c.deps.ActorUserId, input.ServiceId, deploymentdto.DeployServiceInput{ForceRecreate: input.ForceRecreate})
+		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, result.DeploymentId)
+		result, err := c.deps.Deployment.DeployService(ctx, c.deps.ActorUserId, projectId, input.ServiceId, deploymentdto.DeployServiceInput{ForceRecreate: input.ForceRecreate})
+		if err != nil {
+			return nil, err
+		}
+		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, projectId, result.DeploymentId)
 		if err != nil {
 			return nil, err
 		}
@@ -30,11 +37,21 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 		ServiceId     string `json:"service_id" jsonschema:"required"`
 		RemoveVolumes bool   `json:"remove_volumes,omitempty"`
 	}) (map[string]any, error) {
-		deploymentId, err := c.deps.Deployment.StopApplication(ctx, c.deps.ActorUserId, input.ApplicationId, deploymentdto.ServiceTargetInput{ServiceId: input.ServiceId, RemoveVolumes: input.RemoveVolumes})
+		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
+			return nil, err
+		}
+		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, deploymentId)
+		deploymentId, err := c.deps.Deployment.StopApplication(ctx, c.deps.ActorUserId, projectId, input.ApplicationId, deploymentdto.ServiceTargetInput{ServiceId: input.ServiceId, RemoveVolumes: input.RemoveVolumes})
+		if err != nil {
+			return nil, err
+		}
+		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, projectId, deploymentId)
 		if err != nil {
 			return nil, err
 		}
@@ -45,11 +62,21 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 		ServiceId     string `json:"service_id" jsonschema:"required"`
 	}) (map[string]any, error) {
-		deploymentId, err := c.deps.Deployment.RestartApplication(ctx, c.deps.ActorUserId, input.ApplicationId, deploymentdto.ServiceTargetInput{ServiceId: input.ServiceId})
+		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
+			return nil, err
+		}
+		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
 		if err != nil {
 			return nil, err
 		}
-		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, deploymentId)
+		deploymentId, err := c.deps.Deployment.RestartApplication(ctx, c.deps.ActorUserId, projectId, input.ApplicationId, deploymentdto.ServiceTargetInput{ServiceId: input.ServiceId})
+		if err != nil {
+			return nil, err
+		}
+		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, projectId, deploymentId)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +86,7 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 	addTool(server, "orbit_deployment_status", "Read the current Orbit Deployment state and command text.", func(ctx context.Context, input struct {
 		DeploymentId string `json:"deployment_id" jsonschema:"required"`
 	}) (map[string]any, error) {
-		deployment, err := c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, input.DeploymentId)
+		deployment, err := c.deploymentInScope(ctx, input.DeploymentId)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +97,14 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 		DeploymentId string `json:"deployment_id" jsonschema:"required"`
 		Offset       int    `json:"offset,omitempty"`
 	}) (map[string]any, error) {
-		logs, err := c.deps.Deployment.DeploymentLog(ctx, c.deps.ActorUserId, input.DeploymentId, input.Offset)
+		if _, err := c.deploymentInScope(ctx, input.DeploymentId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		logs, err := c.deps.Deployment.DeploymentLog(ctx, c.deps.ActorUserId, projectId, input.DeploymentId, input.Offset)
 		if err != nil {
 			return nil, err
 		}
@@ -81,12 +115,19 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 		DeploymentId   string `json:"deployment_id" jsonschema:"required"`
 		TimeoutSeconds *int   `json:"timeout_seconds,omitempty"`
 	}) (map[string]any, error) {
+		if _, err := c.deploymentInScope(ctx, input.DeploymentId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
 		var timeout *time.Duration
 		if input.TimeoutSeconds != nil {
 			value := time.Duration(*input.TimeoutSeconds) * time.Second
 			timeout = &value
 		}
-		result, err := c.deps.Deployment.WaitDeployment(ctx, c.deps.ActorUserId, input.DeploymentId, timeout)
+		result, err := c.deps.Deployment.WaitDeployment(ctx, c.deps.ActorUserId, projectId, input.DeploymentId, timeout)
 		if err != nil {
 			return nil, err
 		}

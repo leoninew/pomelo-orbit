@@ -3,4 +3,5 @@ export interface RuntimeContainerLogTarget {
   serviceId: string;
   component: string;
   title: string;
+  deploymentId?: string;
 }

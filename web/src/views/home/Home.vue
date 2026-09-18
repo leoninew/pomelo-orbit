@@ -289,22 +289,20 @@
           deploymentTodayRes,
           deploymentRecentRes,
         ] = await Promise.all([
-          repositoryApi.list({ per_page: 1, project_id: activeProjectId }),
-          pipelineRunApi.list({ per_page: 5, project_id: activeProjectId }),
-          pipelineRunApi.list({
+          repositoryApi.list(activeProjectId, { per_page: 1 }),
+          pipelineRunApi.list(activeProjectId, { per_page: 5 }),
+          pipelineRunApi.list(activeProjectId, {
             per_page: 1,
             date_from: todayStart.toISOString(),
             date_to: todayEnd.toISOString(),
-            project_id: activeProjectId,
           }),
-          applicationApi.list({ per_page: 1, project_id: activeProjectId }),
-          deploymentApi.list({
+          applicationApi.list(activeProjectId, { per_page: 1 }),
+          deploymentApi.list(activeProjectId, {
             per_page: 1,
             date_from: todayStart.toISOString(),
             date_to: todayEnd.toISOString(),
-            project_id: activeProjectId,
           }),
-          deploymentApi.list({ per_page: 5, project_id: activeProjectId }),
+          deploymentApi.list(activeProjectId, { per_page: 5 }),
         ]);
 
         pipelineStats.projectCount = repositoryRes.total;

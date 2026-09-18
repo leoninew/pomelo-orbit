@@ -30,7 +30,7 @@ Review status: Accepted
 | Gateway 删除语义与 HTTP 参数 | `internal/api/http/handler/gateway/`、`internal/application/gateway/`、`internal/bootstrap/`、`web/src/api/gateway/` | 一致 |
 | 原子清理与 sqlc 查询 | `internal/repository/`、`internal/repository/impl/sqlc/application/`、`sql/query/application/`、`internal/gen/sqlc/application/` | 一致 |
 | 自动化测试 | `internal/application/gateway/usecase/delete_test.go`、`internal/repository/impl/sqlc/application/repository_test.go` | 一致 |
-| 过程与后续记录 | `docs/requirement/`、`docs/verification/`、`docs/decisions/ledger.md` | 一致；Backlog 为用户明确要求的额外记录 |
+| 过程与后续记录 | `docs/intent/`、`docs/verification/`、`docs/decisions/ledger.md` | 一致；Backlog 为用户明确要求的额外记录 |
 
 ## 验收清单
 

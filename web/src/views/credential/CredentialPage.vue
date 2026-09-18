@@ -38,7 +38,7 @@
           <tbody>
             <tr v-for="cred in credentials" :key="cred.id">
               <td>
-                <router-link :to="`/credential/${cred.id}`" class="app-link">
+                <router-link :to="`/repository-credential/${cred.id}`" class="app-link">
                   {{ cred.name }}
                 </router-link>
               </td>
@@ -296,12 +296,14 @@
     }
     try {
       await execute(async () => {
-        const res = await credentialApi.list({
+        const res = await credentialApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
           search: searchText.value || undefined,
-          project_id: projectId,
         });
+        if (projectStore.activeProjectId !== projectId) {
+          return;
+        }
         credentials.value = res.items;
         pagination.total = res.total;
       });
@@ -336,9 +338,14 @@
   }
 
   async function openEditModal(record: CredentialResp) {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error('请先选择项目');
+      return;
+    }
     try {
       await executeOp(async () => {
-        const detail = await credentialApi.get(record.id);
+        const detail = await credentialApi.get(projectId, record.id);
         isEditing.value = true;
         currentId.value = record.id;
         Object.assign(form, {
@@ -368,7 +375,7 @@
     try {
       await executeOp(async () => {
         if (isEditing.value) {
-          await credentialApi.update(currentId.value, {
+          await credentialApi.update(projectId, currentId.value, {
             name: form.name,
             data: form.data,
           });
@@ -376,17 +383,14 @@
           showCredentialDialog.value = false;
           fetchCredentials();
         } else {
-          const created = await credentialApi.create(
-            {
-              name: form.name,
-              type: form.type,
-              data: form.data,
-            },
-            { project_id: projectId }
-          );
+          const created = await credentialApi.create(projectId, {
+            name: form.name,
+            type: form.type,
+            data: form.data,
+          });
           toast.success('创建成功');
           showCredentialDialog.value = false;
-          await router.push(`/credential/${created.id}`);
+          await router.push(`/repository-credential/${created.id}`);
         }
       });
     } catch (error) {
@@ -404,9 +408,14 @@
 
   async function handleDelete() {
     deleteSubmitError.value = '';
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteSubmitError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOp(async () => {
-        await credentialApi.delete(pendingDeleteId.value);
+        await credentialApi.delete(projectId, pendingDeleteId.value);
         toast.success('删除成功');
         showDeleteDialog.value = false;
         fetchCredentials();
@@ -478,15 +487,12 @@
     }
     try {
       await executeOp(async () => {
-        await credentialApi.importCredential(
-          {
-            version: importForm.version,
-            name: importForm.name,
-            type: importForm.type,
-            data: importForm.data,
-          },
-          { project_id: projectId }
-        );
+        await credentialApi.importCredential(projectId, {
+          version: importForm.version,
+          name: importForm.name,
+          type: importForm.type,
+          data: importForm.data,
+        });
         toast.success('导入成功');
         showImportDialog.value = false;
         fetchCredentials();

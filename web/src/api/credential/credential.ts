@@ -11,39 +11,48 @@ import request from '@/utils/request';
 
 // Credential API
 export const credentialApi = {
-  list(params?: {
-    page?: number;
-    per_page?: number;
-    search?: string;
-    project_id?: string;
-  }): Promise<CredentialPaginatedResp> {
-    return request.get('/api/credential', { params });
+  list(
+    projectId: string,
+    params?: {
+      page?: number;
+      per_page?: number;
+      search?: string;
+    }
+  ): Promise<CredentialPaginatedResp> {
+    return request.get('/api/repository-credential', {
+      params: { project_id: projectId, ...params },
+    });
   },
 
-  get(id: string): Promise<CredentialDetailResp> {
-    return request.get(`/api/credential/${id}`);
+  get(projectId: string, id: string): Promise<CredentialDetailResp> {
+    return request.get(`/api/repository-credential/${id}`, { params: { project_id: projectId } });
   },
 
-  create(data: CredentialCreateReq, params: { project_id: string }): Promise<CredentialResp> {
-    return request.post('/api/credential', data, { params });
+  create(projectId: string, data: CredentialCreateReq): Promise<CredentialResp> {
+    return request.post('/api/repository-credential', data, { params: { project_id: projectId } });
   },
 
-  update(id: string, data: CredentialUpdateReq): Promise<CredentialResp> {
-    return request.put(`/api/credential/${id}`, data);
+  update(projectId: string, id: string, data: CredentialUpdateReq): Promise<CredentialResp> {
+    return request.put(`/api/repository-credential/${id}`, data, {
+      params: { project_id: projectId },
+    });
   },
 
-  delete(id: string): Promise<void> {
-    return request.delete(`/api/credential/${id}`);
+  delete(projectId: string, id: string): Promise<void> {
+    return request.delete(`/api/repository-credential/${id}`, {
+      params: { project_id: projectId },
+    });
   },
 
-  exportCredential(id: string): Promise<CredentialExportResp> {
-    return request.get(`/api/credential/${id}/export`);
+  exportCredential(projectId: string, id: string): Promise<CredentialExportResp> {
+    return request.get(`/api/repository-credential/${id}/export`, {
+      params: { project_id: projectId },
+    });
   },
 
-  importCredential(
-    data: CredentialImportReq,
-    params: { project_id: string }
-  ): Promise<CredentialResp> {
-    return request.post('/api/credential/import', data, { params });
+  importCredential(projectId: string, data: CredentialImportReq): Promise<CredentialResp> {
+    return request.post('/api/repository-credential/import', data, {
+      params: { project_id: projectId },
+    });
   },
 };

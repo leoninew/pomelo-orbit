@@ -17,7 +17,7 @@ const (
 
 // WaitDeployment waits for the persisted deployment state to become terminal.
 // It never drives the worker or replays a lifecycle command.
-func (s Service) WaitDeployment(ctx context.Context, userId, deploymentId string, timeout *time.Duration) (deploymentdto.DeploymentWaitResult, error) {
+func (s Service) WaitDeployment(ctx context.Context, userId, projectId, deploymentId string, timeout *time.Duration) (deploymentdto.DeploymentWaitResult, error) {
 	limit := defaultDeploymentWaitTimeout
 	if timeout != nil {
 		limit = *timeout
@@ -32,7 +32,7 @@ func (s Service) WaitDeployment(ctx context.Context, userId, deploymentId string
 	defer ticker.Stop()
 
 	for {
-		deployment, err := s.DeploymentForUser(ctx, userId, deploymentId)
+		deployment, err := s.DeploymentForUser(ctx, userId, projectId, deploymentId)
 		if err != nil {
 			return deploymentdto.DeploymentWaitResult{}, err
 		}

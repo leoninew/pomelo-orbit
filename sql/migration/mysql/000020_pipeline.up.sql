@@ -47,7 +47,6 @@ CREATE TABLE IF NOT EXISTS pipeline_stage (
     sort_order INT,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_pipeline_stage_pipeline FOREIGN KEY (pipeline_id) REFERENCES pipeline(id) ON DELETE CASCADE,
     CONSTRAINT uq_pipeline_stage_pipeline_name UNIQUE (pipeline_id, name)
 ) ENGINE=InnoDB;
 
@@ -69,7 +68,6 @@ CREATE TABLE pipeline_stage_reference (
     sort_order INT NOT NULL DEFAULT 0,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_pipeline_stage_reference_pipeline FOREIGN KEY (pipeline_id) REFERENCES pipeline(id) ON DELETE CASCADE,
     CONSTRAINT uq_pipeline_stage_reference_name UNIQUE (pipeline_id, name)
 ) ENGINE=InnoDB;
 

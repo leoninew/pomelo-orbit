@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## 需求与规格依据
 
-- [需求](../requirement/20260730-service-level-routing.md) 与 [规格](../spec/20260730-service-level-routing.md) 已接受。
+- [需求](../intent/20260730-service-level-routing.md) 与 [规格](../spec/20260730-service-level-routing.md) 已接受。
 - Version 只保存可复用组件规格；Service 保存选定 Version、运行配置和端口/路由暴露绑定。
 - Gateway 的存在且运行校验必须保留。缺少 public TCP entrypoint 只产生必要的非阻断提示，不得触发 Gateway 写入、编译、重建或部署。
 - 不新增 migration 编号、业务数据迁移代码或独立迁移脚本；修改既有 baseline SQL，并在实施时就地更新开发 SQLite。

@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Requirement Basis
 
-依据已接受的 [Requirement](../requirement/20260730-service-level-routing.md)：Version 是可复用组件规格；Service 是实例和环境相关的运行配置。标准应用部署继续要求存在且运行中的 Gateway，但 public TCP 缺少 Gateway entrypoint 只产生提示，绝不触发 Gateway 写入或部署。
+依据已接受的 [Requirement](../intent/20260730-service-level-routing.md)：Version 是可复用组件规格；Service 是实例和环境相关的运行配置。标准应用部署继续要求存在且运行中的 Gateway，但 public TCP 缺少 Gateway entrypoint 只产生提示，绝不触发 Gateway 写入或部署。
 
 ## Current State
 

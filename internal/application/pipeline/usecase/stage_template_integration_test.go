@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	pipelineTemplateUpdateUserID    = "01KKX2YNPF6VJ9N7QYCWG61KVK"
-	pipelineTemplateUpdateProjectID = "01KRRKK0K3T519ZQZES3M4QA9Z"
+	pipelineTemplateUpdateUserId    = "01KKX2YNPF6VJ9N7QYCWG61KVK"
+	pipelineTemplateUpdateProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"
 )
 
 func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *testing.T) {
@@ -31,7 +31,7 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 	templateVersion := 2
 	template := model.PipelineStage{
 		Id:          "template-stage-build",
-		ProjectId:   pipelineTemplateUpdateProjectID,
+		ProjectId:   pipelineTemplateUpdateProjectId,
 		Kind:        model.PipelineStageKindTemplate,
 		Name:        "Build image",
 		Image:       "docker:27",
@@ -46,7 +46,7 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 
 	templatePipeline := model.Pipeline{
 		Id:                   "template-pipeline-update",
-		ProjectId:            stringPointer(pipelineTemplateUpdateProjectID),
+		ProjectId:            stringPointer(pipelineTemplateUpdateProjectId),
 		Kind:                 model.PipelineKindTemplate,
 		Name:                 "Build template",
 		Description:          "",
@@ -56,7 +56,7 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 	if err := store.CreatePipeline(ctx, templatePipeline); err != nil {
 		t.Fatalf("create template pipeline: %v", err)
 	}
-	if err := store.UpdateTemplatePipelineWithReferences(ctx, templatePipeline, []model.PipelineStageReference{{
+	if err := store.UpdateTemplatePipelineWithReferences(ctx, pipelineTemplateUpdateProjectId, templatePipeline, []model.PipelineStageReference{{
 		Id:                             "template-pipeline-stage-build",
 		PipelineId:                     templatePipeline.Id,
 		SourceTemplateStageId:          template.Id,
@@ -74,16 +74,16 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 		t.Fatalf("create template pipeline reference: %v", err)
 	}
 
-	sourcePipelineID, sourceTemplateName, repositoryID, repositoryName := "source-template", "Source template", "repository-1", "Repository"
+	sourcePipelineId, sourceTemplateName, repositoryId, repositoryName := "source-template", "Source template", "repository-1", "Repository"
 	sourcePipelineVersion, sourceStageVersion, sortOrder := 1, 1, 0
 	applicationPipeline := model.Pipeline{
 		Id:                    "application-pipeline-update",
-		ProjectId:             stringPointer(pipelineTemplateUpdateProjectID),
+		ProjectId:             stringPointer(pipelineTemplateUpdateProjectId),
 		Kind:                  model.PipelineKindApplication,
-		SourcePipelineId:      &sourcePipelineID,
+		SourcePipelineId:      &sourcePipelineId,
 		SourceTemplateName:    &sourceTemplateName,
 		SourceTemplateVersion: &sourcePipelineVersion,
-		RepositoryId:          &repositoryID,
+		RepositoryId:          &repositoryId,
 		RepositoryName:        &repositoryName,
 		Name:                  "Application build",
 		Description:           "",
@@ -92,7 +92,7 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 	}
 	if err := store.CreateApplicationPipelineWithStages(ctx, applicationPipeline, []model.PipelineStage{{
 		Id:                             "application-pipeline-stage-build",
-		ProjectId:                      pipelineTemplateUpdateProjectID,
+		ProjectId:                      pipelineTemplateUpdateProjectId,
 		Kind:                           model.PipelineStageKindApplication,
 		PipelineId:                     &applicationPipeline.Id,
 		SourceTemplateStageId:          &template.Id,
@@ -121,7 +121,7 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 			pipelineId: templatePipeline.Id,
 			stageId:    "template-pipeline-stage-build",
 			stored: func() (int, error) {
-				references, err := store.TemplatePipelineStageReferences(ctx, templatePipeline.Id)
+				references, err := store.TemplatePipelineStageReferences(ctx, pipelineTemplateUpdateProjectId, templatePipeline.Id)
 				if err != nil || len(references) != 1 {
 					return 0, err
 				}
@@ -133,7 +133,7 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 			pipelineId: applicationPipeline.Id,
 			stageId:    "application-pipeline-stage-build",
 			stored: func() (int, error) {
-				stages, err := store.ApplicationPipelineStages(ctx, applicationPipeline.Id)
+				stages, err := store.ApplicationPipelineStages(ctx, pipelineTemplateUpdateProjectId, applicationPipeline.Id)
 				if err != nil || len(stages) != 1 || stages[0].SourceTemplateStageVersion == nil {
 					return 0, err
 				}
@@ -143,7 +143,7 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			detail, err := service.ApplyPipelineStageTemplateUpdate(ctx, pipelineTemplateUpdateUserID, testCase.pipelineId, testCase.stageId, pipelinedto.PipelineStageTemplateApplyUpdateInput{
+			detail, err := service.ApplyPipelineStageTemplateUpdate(ctx, pipelineTemplateUpdateUserId, pipelineTemplateUpdateProjectId, testCase.pipelineId, testCase.stageId, pipelinedto.PipelineStageTemplateApplyUpdateInput{
 				ExpectedSourceTemplateStageVersion: 1,
 				TargetTemplateStageVersion:         templateVersion,
 			})

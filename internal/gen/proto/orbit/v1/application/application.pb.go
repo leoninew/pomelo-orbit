@@ -651,7 +651,7 @@ var File_orbit_v1_application_application_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_application_application_proto_rawDesc = "" +
 	"\n" +
-	"&orbit/v1/application/application.proto\x12\x14orbit.v1.application\"\xd4\x01\n" +
+	"&orbit/v1/application/application.proto\x12\x14orbit.v1.application\"\xce\x01\n" +
 	"\x0fApplicationResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
@@ -663,17 +663,17 @@ const file_orbit_v1_application_application_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\b \x01(\tR\tupdatedAt\x12\x12\n" +
 	"\x04kind\x18\f \x01(\tR\x04kindB\r\n" +
-	"\v_project_idJ\x04\b\x05\x10\x06\"f\n" +
+	"\v_project_id\"`\n" +
 	"\x14ApplicationCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x17\n" +
 	"\x04kind\x18\x04 \x01(\tH\x00R\x04kind\x88\x01\x01B\a\n" +
-	"\x05_kindJ\x04\b\x03\x10\x04\"`\n" +
+	"\x05_kind\"Z\n" +
 	"\x14ApplicationUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x17\n" +
 	"\x04code\x18\x02 \x01(\tH\x01R\x04code\x88\x01\x01B\a\n" +
 	"\x05_nameB\a\n" +
-	"\x05_codeJ\x04\b\x03\x10\x04\"Z\n" +
+	"\x05_code\"Z\n" +
 	"\x12ApplicationStopReq\x12%\n" +
 	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\x12\x1d\n" +
 	"\n" +

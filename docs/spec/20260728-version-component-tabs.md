@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Requirement basis
 
-依据 `docs/requirement/20260728-version-component-tabs.md`：Version Component 不再以 `*_json` 作为 API 或持久化模型；迁移通过 SQL 就地完成，业务代码不承担兼容或数据搬迁。
+依据 `docs/intent/20260728-version-component-tabs.md`：Version Component 不再以 `*_json` 作为 API 或持久化模型；迁移通过 SQL 就地完成，业务代码不承担兼容或数据搬迁。
 
 ## Overview
 

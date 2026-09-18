@@ -7,7 +7,7 @@ Review status: Accepted
 
 ## Requirement basis
 
-- 需求文档：[可复用流水线阶段](../requirement/20260808-pipeline-stage-template-library.md)，已接受。
+- 需求文档：[可复用流水线阶段](../intent/20260808-pipeline-stage-template-library.md)，已接受。
 - 当前实现中，`Pipeline` 已通过 `kind=template|application` 区分模板和应用流水线；`PipelineStage` 仍是带有 `pipeline_id`、DAG、排序及制品 JSON 的 Pipeline 私有节点。
 - 本规格取代该私有节点模型。代码领域名仍为 `PipelineStage`，不引入独立的 `PipelineStageTemplate` 领域实体；可复用资源由 `PipelineStage.kind=template` 表示。
 

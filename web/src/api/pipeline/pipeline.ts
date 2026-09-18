@@ -15,68 +15,83 @@ import type { PipelineSnapshotResp } from '@/gen/proto/orbit/v1/pipeline/snapsho
 import request from '@/utils/request';
 
 export const pipelineApi = {
-  list(params?: {
-    page?: number;
-    per_page?: number;
-    search?: string;
-    project_id?: string;
-    kind?: string;
-  }): Promise<PipelinePaginatedResp> {
-    return request.get('/api/pipeline', { params });
+  list(
+    projectId: string,
+    params?: {
+      page?: number;
+      per_page?: number;
+      search?: string;
+      kind?: string;
+    }
+  ): Promise<PipelinePaginatedResp> {
+    return request.get('/api/pipeline', { params: { project_id: projectId, ...params } });
   },
 
-  get(id: string): Promise<PipelineResp> {
-    return request.get(`/api/pipeline/${id}`);
+  get(projectId: string, id: string): Promise<PipelineResp> {
+    return request.get(`/api/pipeline/${id}`, { params: { project_id: projectId } });
   },
 
-  create(data: PipelineCreateReq, params: { project_id: string }): Promise<PipelineResp> {
-    return request.post('/api/pipeline', data, { params });
+  create(projectId: string, data: PipelineCreateReq): Promise<PipelineResp> {
+    return request.post('/api/pipeline', data, { params: { project_id: projectId } });
   },
 
-  update(id: string, data: PipelineUpdateReq): Promise<PipelineResp> {
-    return request.put(`/api/pipeline/${id}`, data);
+  update(projectId: string, id: string, data: PipelineUpdateReq): Promise<PipelineResp> {
+    return request.put(`/api/pipeline/${id}`, data, { params: { project_id: projectId } });
   },
 
-  delete(id: string): Promise<void> {
-    return request.delete(`/api/pipeline/${id}`);
+  delete(projectId: string, id: string): Promise<void> {
+    return request.delete(`/api/pipeline/${id}`, { params: { project_id: projectId } });
   },
 
-  instantiate(id: string, data: PipelineInstantiateReq): Promise<PipelineResp> {
-    return request.post(`/api/pipeline/${id}/instantiate`, data);
+  instantiate(projectId: string, id: string, data: PipelineInstantiateReq): Promise<PipelineResp> {
+    return request.post(`/api/pipeline/${id}/instantiate`, data, {
+      params: { project_id: projectId },
+    });
   },
 
-  importStage(id: string, data: PipelineStageImportReq): Promise<PipelineResp> {
-    return request.post(`/api/pipeline/${id}/stage`, data);
+  importStage(projectId: string, id: string, data: PipelineStageImportReq): Promise<PipelineResp> {
+    return request.post(`/api/pipeline/${id}/stage`, data, { params: { project_id: projectId } });
   },
 
   updateStage(
+    projectId: string,
     pipelineId: string,
     stageId: string,
     data: PipelineStageNodeUpdateReq
   ): Promise<PipelineResp> {
-    return request.put(`/api/pipeline/${pipelineId}/stage/${stageId}`, data);
+    return request.put(`/api/pipeline/${pipelineId}/stage/${stageId}`, data, {
+      params: { project_id: projectId },
+    });
   },
 
-  deleteStage(pipelineId: string, stageId: string): Promise<PipelineResp> {
-    return request.delete(`/api/pipeline/${pipelineId}/stage/${stageId}`);
+  deleteStage(projectId: string, pipelineId: string, stageId: string): Promise<PipelineResp> {
+    return request.delete(`/api/pipeline/${pipelineId}/stage/${stageId}`, {
+      params: { project_id: projectId },
+    });
   },
 
   previewStageTemplateUpdate(
+    projectId: string,
     pipelineId: string,
     stageId: string
   ): Promise<PipelineStageTemplateUpdatePreviewResp> {
-    return request.get(`/api/pipeline/${pipelineId}/stage/${stageId}/template-update-preview`);
+    return request.get(`/api/pipeline/${pipelineId}/stage/${stageId}/template-update-preview`, {
+      params: { project_id: projectId },
+    });
   },
 
   updateStageTemplate(
+    projectId: string,
     pipelineId: string,
     stageId: string,
     data: PipelineStageTemplateUpdateReq
   ): Promise<PipelineResp> {
-    return request.post(`/api/pipeline/${pipelineId}/stage/${stageId}/template-update`, data);
+    return request.post(`/api/pipeline/${pipelineId}/stage/${stageId}/template-update`, data, {
+      params: { project_id: projectId },
+    });
   },
 
-  getSnapshot(id: string): Promise<PipelineSnapshotResp> {
-    return request.get(`/api/pipeline/snapshot/${id}`);
+  getSnapshot(projectId: string, id: string): Promise<PipelineSnapshotResp> {
+    return request.get(`/api/pipeline/snapshot/${id}`, { params: { project_id: projectId } });
   },
 };

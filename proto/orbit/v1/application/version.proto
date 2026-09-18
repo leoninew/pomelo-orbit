@@ -6,7 +6,6 @@ message VersionComponentReq {
   string name = 1;
   string image = 2;
   string command = 3;
-  reserved 4;
   repeated ComponentEnv env = 5;
   repeated ComponentEndpoint endpoints = 6;
   repeated ComponentMount mounts = 7;
@@ -40,10 +39,7 @@ message VersionComponentBasicUpdateReq {
 }
 
 message VersionComponentRuntimeUpdateReq {
-  reserved 1;
-  reserved 2;
   ComponentHealthcheck healthcheck = 3;
-  reserved 4;
 }
 
 message VersionComponentEndpointsUpdateReq {
@@ -78,7 +74,6 @@ message VersionComponentResp {
   string name = 3;
   string image = 4;
   string command = 5;
-  reserved 6;
   repeated ComponentEnv env = 7;
   repeated ComponentEndpoint endpoints = 8;
   repeated ComponentMount mounts = 9;
@@ -122,7 +117,6 @@ message ComponentMount {
   bool read_only = 4;
   optional string content = 5;
   bool source_is_host_path = 6;
-  reserved 7;
   bool ignore_if_exists = 8;
   string mode = 9;
 }
@@ -171,18 +165,13 @@ message ComponentDeviceRequest {
 message VersionCreateReq {
   string application_id = 1;
   string label = 2;
-  reserved 3;
   optional string note = 4;
   repeated VersionComponentReq components = 5;
-  reserved 6;
 }
 
 message VersionUpdateReq {
   optional string label = 1;
-  reserved 2;
   optional string note = 3;
-  reserved 4;
-  reserved 5;
 }
 
 message VersionForkReq {
@@ -194,13 +183,11 @@ message VersionResp {
   string application_id = 2;
   string label = 3;
   string status = 4;
-  reserved 5;
   optional string created_from_version_id = 6;
   optional string note = 7;
   string created_at = 8;
   string updated_at = 9;
   repeated VersionComponentResp components = 10;
-  reserved 11;
   string component_summary = 12;
 }
 

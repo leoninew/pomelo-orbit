@@ -5,18 +5,20 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 )
 
 const unwrittenResponseSize = -1
 
+type ErrorWriter func(*gin.Context, error)
+
 // Middleware begins a request-scoped transaction for API writes. Successful
 // responses stay buffered until the transaction commits.
 
-func Middleware(db *sql.DB, skipPaths ...string) gin.HandlerFunc {
+func Middleware(db *sql.DB, writeError ErrorWriter, skipPaths ...string) gin.HandlerFunc {
 	skipped := make(map[string]struct{}, len(skipPaths))
 	for _, path := range skipPaths {
 		skipped[path] = struct{}{}
@@ -26,7 +28,7 @@ func Middleware(db *sql.DB, skipPaths ...string) gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		if _, ok := skipped[c.Request.URL.Path]; ok {
+		if skipPath(c.Request.URL.Path, skipped) {
 			c.Next()
 			return
 		}
@@ -34,7 +36,7 @@ func Middleware(db *sql.DB, skipPaths ...string) gin.HandlerFunc {
 		ctx := WithDb(c.Request.Context(), db)
 		sqlTx, err := db.BeginTx(ctx, nil)
 		if err != nil {
-			transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
+			writeError(c, apperror.Wrap(apperror.KindInternal, "", err))
 			return
 		}
 		ctx = WithTx(ctx, sqlTx)
@@ -69,7 +71,7 @@ func Middleware(db *sql.DB, skipPaths ...string) gin.HandlerFunc {
 		if err := sqlTx.Commit(); err != nil {
 			bufferedWriter.discard()
 			restoreHeader(originalWriter.Header(), originalHeaders)
-			transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
+			writeError(c, apperror.Wrap(apperror.KindInternal, "", err))
 			bufferedWriter.flush()
 			return
 		}
@@ -78,6 +80,37 @@ func Middleware(db *sql.DB, skipPaths ...string) gin.HandlerFunc {
 	}
 }
 
+func skipPath(path string, skipped map[string]struct{}) bool {
+	if _, ok := skipped[path]; ok {
+		return true
+	}
+	for pattern := range skipped {
+		if matchesPathTemplate(path, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesPathTemplate(path string, pattern string) bool {
+	pathSegments := strings.Split(strings.Trim(path, "/"), "/")
+	patternSegments := strings.Split(strings.Trim(pattern, "/"), "/")
+	if len(pathSegments) != len(patternSegments) {
+		return false
+	}
+	for index, segment := range patternSegments {
+		if strings.HasPrefix(segment, ":") {
+			if pathSegments[index] == "" {
+				return false
+			}
+			continue
+		}
+		if pathSegments[index] != segment {
+			return false
+		}
+	}
+	return true
+}
 func isWriteRequest(method string) bool {
 	switch method {
 	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:

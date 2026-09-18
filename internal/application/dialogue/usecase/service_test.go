@@ -24,9 +24,8 @@ func TestCompleteTurnRunsMCPToolCallsUntilAssistantReply(t *testing.T) {
 	}}
 	service := New(fakeDialogueProject{}, store, fakeDialogueTransaction{}, 32, llm, factory)
 
-	result, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
-		ProjectId: "project-1",
-		Messages:  []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
+	result, err := service.CompleteTurn(context.Background(), "user-1", "project-1", dialoguedto.TurnInput{
+		Messages: []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
 	})
 	if err != nil {
 		t.Fatalf("CompleteTurn() error = %v", err)
@@ -41,7 +40,7 @@ func TestCompleteTurnRunsMCPToolCallsUntilAssistantReply(t *testing.T) {
 		t.Fatalf("ToolCalls = %#v", result.ToolCalls)
 	}
 	if factory.actorUserId != "user-1" {
-		t.Fatalf("actor user ID = %q", factory.actorUserId)
+		t.Fatalf("actor user Id = %q", factory.actorUserId)
 	}
 	if len(mcp.calls) != 1 || mcp.calls[0].name != "orbit_list_applications" {
 		t.Fatalf("MCP calls = %#v", mcp.calls)
@@ -69,9 +68,8 @@ func TestCompleteTurnDoesNotPersistWithoutFinalAssistantReply(t *testing.T) {
 		&fakeMCPFactory{client: mcp},
 	)
 
-	result, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
-		ProjectId: "project-1",
-		Messages:  []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
+	result, err := service.CompleteTurn(context.Background(), "user-1", "project-1", dialoguedto.TurnInput{
+		Messages: []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
 	})
 	if err != nil {
 		t.Fatalf("CompleteTurn() error = %v", err)
@@ -84,7 +82,7 @@ func TestCompleteTurnDoesNotPersistWithoutFinalAssistantReply(t *testing.T) {
 	}
 }
 
-func TestCompleteTurnCreatesConversationWithClientConversationID(t *testing.T) {
+func TestCompleteTurnCreatesConversationWithClientConversationId(t *testing.T) {
 	store := newFakeDialogueStore()
 	service := New(
 		fakeDialogueProject{},
@@ -95,8 +93,7 @@ func TestCompleteTurnCreatesConversationWithClientConversationID(t *testing.T) {
 		&fakeMCPFactory{client: &fakeMCPClient{}},
 	)
 
-	result, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
-		ProjectId:      "project-1",
+	result, err := service.CompleteTurn(context.Background(), "user-1", "project-1", dialoguedto.TurnInput{
 		ConversationId: "client-created-conversation",
 		Messages:       []dialoguedto.Message{{Role: "user", Content: "问题"}},
 	})
@@ -131,8 +128,7 @@ func TestCompleteTurnAppendsToExistingConversationAfterFinalAssistantReply(t *te
 		&fakeMCPFactory{client: &fakeMCPClient{}},
 	)
 
-	result, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
-		ProjectId:      "project-1",
+	result, err := service.CompleteTurn(context.Background(), "user-1", "project-1", dialoguedto.TurnInput{
 		ConversationId: conversation.Id,
 		Messages: []dialoguedto.Message{
 			{Role: "user", Content: "旧问题"},
@@ -163,11 +159,11 @@ func TestConversationHistoryCanBeReadAndDeleted(t *testing.T) {
 	if err != nil || len(items) != 1 || items[0].Id != conversation.Id {
 		t.Fatalf("ListConversations() = %#v, %v", items, err)
 	}
-	detail, err := service.Conversation(context.Background(), "user-1", conversation.Id)
+	detail, err := service.Conversation(context.Background(), "user-1", "project-1", conversation.Id)
 	if err != nil || len(detail.Messages) != 1 || detail.Messages[0].Content != "问题" {
 		t.Fatalf("Conversation() = %#v, %v", detail, err)
 	}
-	if err := service.DeleteConversation(context.Background(), "user-1", conversation.Id); err != nil {
+	if err := service.DeleteConversation(context.Background(), "user-1", "project-1", conversation.Id); err != nil {
 		t.Fatalf("DeleteConversation() error = %v", err)
 	}
 	if len(store.conversations) != 0 || len(store.messages) != 0 {
@@ -184,9 +180,8 @@ func TestCompleteTurnWithProgressReportsToolLifecycle(t *testing.T) {
 	service := newDialogueService(llm, &fakeMCPFactory{client: mcp})
 	var events []dialoguedto.StreamEvent
 
-	_, err := service.CompleteTurnWithProgress(context.Background(), "user-1", dialoguedto.TurnInput{
-		ProjectId: "project-1",
-		Messages:  []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
+	_, err := service.CompleteTurnWithProgress(context.Background(), "user-1", "project-1", dialoguedto.TurnInput{
+		Messages: []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
 	}, func(event dialoguedto.StreamEvent) {
 		events = append(events, event)
 	})
@@ -209,9 +204,8 @@ func TestCompleteTurnWithProgressReportsToolLifecycle(t *testing.T) {
 
 func TestCompleteTurnRequiresUserAsLastMessage(t *testing.T) {
 	service := newDialogueService(&fakeLLM{}, &fakeMCPFactory{client: &fakeMCPClient{}})
-	_, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
-		ProjectId: "project-1",
-		Messages:  []dialoguedto.Message{{Role: "assistant", Content: "hello"}},
+	_, err := service.CompleteTurn(context.Background(), "user-1", "project-1", dialoguedto.TurnInput{
+		Messages: []dialoguedto.Message{{Role: "assistant", Content: "hello"}},
 	})
 	if err == nil {
 		t.Fatal("CompleteTurn() error = nil, want validation error")
@@ -222,9 +216,8 @@ func TestCompleteTurnReturnsConfigurationPromptBeforeMCPConnect(t *testing.T) {
 	factory := &fakeMCPFactory{client: &fakeMCPClient{}}
 	service := newDialogueService(&fakeLLM{}, factory)
 
-	_, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{
-		ProjectId: "project-1",
-		Messages:  []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
+	_, err := service.CompleteTurn(context.Background(), "user-1", "project-1", dialoguedto.TurnInput{
+		Messages: []dialoguedto.Message{{Role: "user", Content: "列出应用"}},
 	})
 	if err == nil {
 		t.Fatal("CompleteTurn() error = nil, want unavailable error")
@@ -234,7 +227,7 @@ func TestCompleteTurnReturnsConfigurationPromptBeforeMCPConnect(t *testing.T) {
 		t.Fatalf("error = %#v", err)
 	}
 	if factory.actorUserId != "" {
-		t.Fatalf("MCP Connect() was called with actor user ID %q", factory.actorUserId)
+		t.Fatalf("MCP Connect() was called with actor user Id %q", factory.actorUserId)
 	}
 }
 
@@ -248,7 +241,7 @@ func TestCompleteTurnRequiresVersionReadBeforeDeploy(t *testing.T) {
 		{Content: "已完成。"},
 	}}
 
-	result, err := newDialogueService(llm, &fakeMCPFactory{client: mcp}).CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "更新并部署"}}})
+	result, err := newDialogueService(llm, &fakeMCPFactory{client: mcp}).CompleteTurn(context.Background(), "user-1", "project-1", dialoguedto.TurnInput{Messages: []dialoguedto.Message{{Role: "user", Content: "更新并部署"}}})
 	if err != nil {
 		t.Fatalf("CompleteTurn() error = %v", err)
 	}
@@ -271,7 +264,7 @@ func TestCompleteTurnRejectsDuplicateDeploymentForService(t *testing.T) {
 		{Content: "已提交一次部署。"},
 	}}
 
-	result, err := newDialogueService(llm, &fakeMCPFactory{client: mcp}).CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "部署"}}})
+	result, err := newDialogueService(llm, &fakeMCPFactory{client: mcp}).CompleteTurn(context.Background(), "user-1", "project-1", dialoguedto.TurnInput{Messages: []dialoguedto.Message{{Role: "user", Content: "部署"}}})
 	if err != nil {
 		t.Fatalf("CompleteTurn() error = %v", err)
 	}
@@ -296,7 +289,7 @@ func TestCompleteTurnStopsAfterConfiguredToolCallRounds(t *testing.T) {
 		&fakeMCPFactory{client: mcp},
 	)
 
-	result, err := service.CompleteTurn(context.Background(), "user-1", dialoguedto.TurnInput{ProjectId: "project-1", Messages: []dialoguedto.Message{{Role: "user", Content: "列出应用"}}})
+	result, err := service.CompleteTurn(context.Background(), "user-1", "project-1", dialoguedto.TurnInput{Messages: []dialoguedto.Message{{Role: "user", Content: "列出应用"}}})
 	if err != nil {
 		t.Fatalf("CompleteTurn() error = %v", err)
 	}
@@ -331,7 +324,7 @@ type fakeMCPFactory struct {
 	client      port.MCPClient
 }
 
-func (f *fakeMCPFactory) Connect(_ context.Context, actorUserId string) (port.MCPClient, error) {
+func (f *fakeMCPFactory) Connect(_ context.Context, actorUserId string, _ string) (port.MCPClient, error) {
 	f.actorUserId = actorUserId
 	return f.client, nil
 }
@@ -392,15 +385,19 @@ func (s *fakeDialogueStore) ListDeploymentDialogueConversations(_ context.Contex
 	return items, nil
 }
 
-func (s *fakeDialogueStore) DeploymentDialogueConversation(_ context.Context, id string) (model.DeploymentDialogueConversation, error) {
+func (s *fakeDialogueStore) DeploymentDialogueConversation(_ context.Context, projectId, id string) (model.DeploymentDialogueConversation, error) {
 	conversation, ok := s.conversations[id]
-	if !ok {
+	if !ok || conversation.ProjectId != projectId {
 		return model.DeploymentDialogueConversation{}, repository.ErrNotFound
 	}
 	return conversation, nil
 }
 
-func (s *fakeDialogueStore) ListDeploymentDialogueMessages(_ context.Context, conversationId string) ([]model.DeploymentDialogueMessage, error) {
+func (s *fakeDialogueStore) ListDeploymentDialogueMessages(_ context.Context, projectId, conversationId string) ([]model.DeploymentDialogueMessage, error) {
+	conversation, ok := s.conversations[conversationId]
+	if !ok || conversation.ProjectId != projectId {
+		return nil, repository.ErrNotFound
+	}
 	return append([]model.DeploymentDialogueMessage(nil), s.messages[conversationId]...), nil
 }
 
@@ -409,14 +406,18 @@ func (s *fakeDialogueStore) CreateDeploymentDialogueConversation(_ context.Conte
 	return nil
 }
 
-func (s *fakeDialogueStore) CreateDeploymentDialogueMessage(_ context.Context, message model.DeploymentDialogueMessage) error {
+func (s *fakeDialogueStore) CreateDeploymentDialogueMessage(_ context.Context, projectId string, message model.DeploymentDialogueMessage) error {
+	conversation, ok := s.conversations[message.ConversationId]
+	if !ok || conversation.ProjectId != projectId {
+		return repository.ErrNotFound
+	}
 	s.messages[message.ConversationId] = append(s.messages[message.ConversationId], message)
 	return nil
 }
 
-func (s *fakeDialogueStore) TouchDeploymentDialogueConversation(_ context.Context, id string, updatedAt time.Time) error {
+func (s *fakeDialogueStore) TouchDeploymentDialogueConversation(_ context.Context, projectId, id string, updatedAt time.Time) error {
 	conversation, ok := s.conversations[id]
-	if !ok {
+	if !ok || conversation.ProjectId != projectId {
 		return repository.ErrNotFound
 	}
 	conversation.UpdatedAt = updatedAt
@@ -424,7 +425,11 @@ func (s *fakeDialogueStore) TouchDeploymentDialogueConversation(_ context.Contex
 	return nil
 }
 
-func (s *fakeDialogueStore) DeleteDeploymentDialogueConversation(_ context.Context, id string) error {
+func (s *fakeDialogueStore) DeleteDeploymentDialogueConversation(_ context.Context, projectId, id string) error {
+	conversation, ok := s.conversations[id]
+	if !ok || conversation.ProjectId != projectId {
+		return repository.ErrNotFound
+	}
 	delete(s.conversations, id)
 	delete(s.messages, id)
 	return nil

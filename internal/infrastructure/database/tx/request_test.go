@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	_ "modernc.org/sqlite"
 )
@@ -122,19 +123,19 @@ func TestMiddlewareDoesNotOpenTransactionForReadRequest(t *testing.T) {
 	}
 }
 
-func TestMiddlewareSkipsConfiguredWritePath(t *testing.T) {
+func TestMiddlewareSkipsConfiguredParameterizedWritePath(t *testing.T) {
 	db, mock := openMock(t)
 	r := gin.New()
 	addRequestId(r)
-	r.Use(Middleware(db, "/api/route/sync/preview"))
-	r.POST("/api/route/sync/preview", func(c *gin.Context) {
+	r.Use(Middleware(db, transport.WriteError, "/api/environment/probe"))
+	r.POST("/api/environment/probe", func(c *gin.Context) {
 		if _, ok := TxFrom(c.Request.Context()); ok {
 			t.Fatal("expected no request transaction")
 		}
 		c.Status(http.StatusOK)
 	})
 
-	w := serve(t, r, http.MethodPost, "/api/route/sync/preview")
+	w := serve(t, r, http.MethodPost, "/api/environment/probe?project_id=project-1")
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d", w.Code)
 	}
@@ -181,9 +182,9 @@ func TestMiddlewarePanicDiscardsBufferedSuccessResponse(t *testing.T) {
 	r := gin.New()
 	addRequestId(r)
 	r.Use(gin.CustomRecovery(func(c *gin.Context, _ any) {
-		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", errors.New("handler panic")))
+		transport.WriteError(c, apperror.Wrap(apperror.KindInternal, "", errors.New("handler panic")))
 	}))
-	r.Use(Middleware(db))
+	r.Use(Middleware(db, transport.WriteError))
 	r.POST("/api/panic", func(c *gin.Context) {
 		connection, err := DbTXFrom(c.Request.Context())
 		if err != nil {
@@ -214,7 +215,7 @@ func newRouter(db *sql.DB) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	addRequestId(r)
-	r.Use(Middleware(db))
+	r.Use(Middleware(db, transport.WriteError))
 	return r
 }
 
@@ -242,11 +243,11 @@ func assertInternalError(t *testing.T, recorder *httptest.ResponseRecorder) {
 	if recorder.Header().Get(requestid.HeaderName) != "request-1" {
 		t.Fatalf("request id header=%q", recorder.Header().Get(requestid.HeaderName))
 	}
-	var response transportresponse.ErrorResp
+	var response transport.ErrorResp
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
-	if response != (transportresponse.ErrorResp{
+	if response != (transport.ErrorResp{
 		Code: "internal_error", Error: "Internal server error.", RequestId: "request-1",
 	}) {
 		t.Fatalf("response=%#v", response)

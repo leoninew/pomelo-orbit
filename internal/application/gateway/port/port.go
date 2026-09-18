@@ -25,35 +25,38 @@ type PhysicalPathResolver func(ctx context.Context, logicalPath string) (string,
 
 // ApplicationStore is the narrow application/version persistence surface used by gateway.
 type ApplicationStore interface {
-	ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error)
-	Application(ctx context.Context, id string) (model.Application, error)
-	ApplicationByName(ctx context.Context, name string) (model.Application, error)
-	ApplicationByCode(ctx context.Context, code string) (model.Application, error)
+	ListApplications(ctx context.Context, projectId string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error)
+	Application(ctx context.Context, projectId string, id string) (model.Application, error)
+	ApplicationByProjectAndName(ctx context.Context, projectId string, name string) (model.Application, error)
+	ApplicationByProjectAndCode(ctx context.Context, projectId string, code string) (model.Application, error)
 	CreateApplication(ctx context.Context, app model.Application) error
-	UpdateApplication(ctx context.Context, app model.Application) error
-	DeleteApplication(ctx context.Context, id string) error
-	DeleteGatewayApplication(ctx context.Context, id string) error
-	ListVersions(ctx context.Context, applicationId string) ([]model.Version, error)
-	Version(ctx context.Context, id string) (model.Version, error)
-	CreateVersion(ctx context.Context, version model.Version) error
-	UpdateVersion(ctx context.Context, version model.Version) error
-	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
-	ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error
+	UpdateApplication(ctx context.Context, projectId string, app model.Application) error
+	DeleteApplication(ctx context.Context, projectId string, id string) error
+	Version(ctx context.Context, projectId string, id string) (model.Version, error)
+	CreateVersion(ctx context.Context, projectId string, version model.Version) error
+	VersionComponentsByVersion(ctx context.Context, projectId string, versionId string) ([]model.VersionComponent, error)
+	ReplaceVersionComponents(ctx context.Context, projectId string, versionId string, components []model.VersionComponent) error
 }
 
 // ConfigStore persists gateway configuration and resolves the active gateway.
 type ConfigStore interface {
 	GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error)
-	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
+	GatewayConfigByProject(ctx context.Context, projectId string) (model.GatewayConfig, error)
 	ListGatewayApplications(ctx context.Context, projectId string) ([]model.Application, error)
 	UpsertGatewayConfig(ctx context.Context, cfg model.GatewayConfig) error
 	ReplaceGatewayVersionBindings(ctx context.Context, applicationId string, bindings []model.GatewayVersionBinding) error
+	DeleteGatewayConfig(ctx context.Context, applicationId string) error
 }
 
 // ServiceReader exposes only runtime bindings needed by gateway projections and conflict checks.
+type EnvironmentStore interface {
+	EnvironmentByProject(ctx context.Context, projectId string) (model.Environment, error)
+	BindGatewayApplication(ctx context.Context, environmentId string, gatewayApplicationId string) (bool, error)
+	UnbindGatewayApplication(ctx context.Context, environmentId string, gatewayApplicationId string) (bool, error)
+}
+
 type ServiceReader interface {
-	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
-	ServiceByKey(ctx context.Context, applicationId string, instanceKey string) (model.Service, error)
-	ServiceComponentsByService(ctx context.Context, serviceId string) ([]model.ServiceComponent, error)
-	UpdateServiceConfiguration(ctx context.Context, svc model.Service, components []model.ServiceComponent) error
+	ListServicesByApplication(ctx context.Context, projectId string, applicationId string) ([]model.Service, error)
+	ServiceComponentsByService(ctx context.Context, projectId string, serviceId string) ([]model.ServiceComponent, error)
+	UpdateServiceConfiguration(ctx context.Context, projectId string, svc model.Service, components []model.ServiceComponent) error
 }

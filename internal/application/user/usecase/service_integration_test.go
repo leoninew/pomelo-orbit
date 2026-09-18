@@ -10,11 +10,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	_ "modernc.org/sqlite"
 
+	projectsvc "github.com/leoninew/pomelo-orbit/internal/application/project/usecase"
 	userdto "github.com/leoninew/pomelo-orbit/internal/application/user/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
+	repositoryrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/repository"
 	rolerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/role"
 	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
 )
@@ -49,19 +52,19 @@ func TestUserServiceCreateUpdateStatusAndDelete(t *testing.T) {
 	if err := service.SetStatusByActor(ctx, actor, updated.User.Id, "enabled"); err != nil {
 		t.Fatal(err)
 	}
-	var projectID, roleID string
-	if err := database.QueryRowContext(ctx, `SELECT id FROM project WHERE code = 'default'`).Scan(&projectID); err != nil {
+	var projectId, roleId string
+	if err := database.QueryRowContext(ctx, `SELECT id FROM project WHERE code = 'default'`).Scan(&projectId); err != nil {
 		t.Fatal(err)
 	}
-	if err := database.QueryRowContext(ctx, `SELECT id FROM role WHERE code = 'admin'`).Scan(&roleID); err != nil {
+	if err := database.QueryRowContext(ctx, `SELECT id FROM role WHERE code = 'admin'`).Scan(&roleId); err != nil {
 		t.Fatal(err)
 	}
 	for _, statement := range []struct {
 		query string
 		args  []any
 	}{
-		{`INSERT INTO project_member (project_id, user_id) VALUES (?, ?)`, []any{projectID, updated.User.Id}},
-		{`INSERT INTO user_role (user_id, role_id) VALUES (?, ?)`, []any{updated.User.Id, roleID}},
+		{`INSERT INTO project_member (project_id, user_id) VALUES (?, ?)`, []any{projectId, updated.User.Id}},
+		{`INSERT INTO user_role (user_id, role_id) VALUES (?, ?)`, []any{updated.User.Id, roleId}},
 		{`INSERT INTO login_history (id, user_id, username, success) VALUES (?, ?, ?, ?)`, []any{"login-history-1", updated.User.Id, updated.User.Username, true}},
 	} {
 		if _, err := database.ExecContext(ctx, statement.query, statement.args...); err != nil {
@@ -98,10 +101,10 @@ func TestUserServiceRejectsDuplicateUsernameAndEmail(t *testing.T) {
 	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator", Password: "secret1", Email: email}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator", Password: "secret1", Email: "other@example.test"}); err == nil || apperror.StatusCode(err) != 409 {
+	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator", Password: "secret1", Email: "other@example.test"}); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate username conflict, got %v", err)
 	}
-	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator2", Password: "secret1", Email: email}); err == nil || apperror.StatusCode(err) != 409 {
+	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator2", Password: "secret1", Email: email}); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate email conflict, got %v", err)
 	}
 	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator3", Password: "secret1"}); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
@@ -131,11 +134,14 @@ func newUserIntegrationService(t *testing.T) (Service, *sql.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	return New(
-		userrepo.NewRepository(database),
-		rolerepo.NewRepository(database),
+	userStore := userrepo.NewRepository(database)
+	projectService := projectsvc.New(
 		projectrepo.NewRepository(database),
-	), database
+		userStore,
+		repositoryrepo.NewRepository(database),
+		applicationrepo.NewRepository(database),
+	)
+	return New(userStore, rolerepo.NewRepository(database), projectService), database
 }
 
 func stringPtr(value string) *string {

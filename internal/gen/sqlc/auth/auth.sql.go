@@ -35,8 +35,8 @@ VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateMCPAccessTokenParams struct {
-	ID        string       `db:"id"`
-	UserID    string       `db:"user_id"`
+	Id        string       `db:"id"`
+	UserId    string       `db:"user_id"`
 	Name      string       `db:"name"`
 	TokenHash string       `db:"token_hash"`
 	ExpiresAt sql.NullTime `db:"expires_at"`
@@ -45,8 +45,8 @@ type CreateMCPAccessTokenParams struct {
 
 func (q *Queries) CreateMCPAccessToken(ctx context.Context, arg CreateMCPAccessTokenParams) error {
 	_, err := q.db.ExecContext(ctx, createMCPAccessToken,
-		arg.ID,
-		arg.UserID,
+		arg.Id,
+		arg.UserId,
 		arg.Name,
 		arg.TokenHash,
 		arg.ExpiresAt,
@@ -95,8 +95,8 @@ func (q *Queries) ListLoginHistory(ctx context.Context, arg ListLoginHistoryPara
 	for rows.Next() {
 		var i LoginHistory
 		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
+			&i.Id,
+			&i.UserId,
 			&i.Username,
 			&i.IpAddress,
 			&i.UserAgent,
@@ -133,8 +133,8 @@ func (q *Queries) ListMCPAccessTokens(ctx context.Context, userID string) ([]MCP
 	for rows.Next() {
 		var i MCPAccessToken
 		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
+			&i.Id,
+			&i.UserId,
 			&i.Name,
 			&i.TokenHash,
 			&i.ExpiresAt,
@@ -163,8 +163,8 @@ func (q *Queries) MCPAccessTokenByHash(ctx context.Context, tokenHash string) (M
 	row := q.db.QueryRowContext(ctx, mCPAccessTokenByHash, tokenHash)
 	var i MCPAccessToken
 	err := row.Scan(
-		&i.ID,
-		&i.UserID,
+		&i.Id,
+		&i.UserId,
 		&i.Name,
 		&i.TokenHash,
 		&i.ExpiresAt,
@@ -180,16 +180,16 @@ WHERE id = ? AND user_id = ?
 `
 
 type MCPAccessTokenForUserParams struct {
-	ID     string `db:"id"`
-	UserID string `db:"user_id"`
+	Id     string `db:"id"`
+	UserId string `db:"user_id"`
 }
 
 func (q *Queries) MCPAccessTokenForUser(ctx context.Context, arg MCPAccessTokenForUserParams) (MCPAccessToken, error) {
-	row := q.db.QueryRowContext(ctx, mCPAccessTokenForUser, arg.ID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, mCPAccessTokenForUser, arg.Id, arg.UserId)
 	var i MCPAccessToken
 	err := row.Scan(
-		&i.ID,
-		&i.UserID,
+		&i.Id,
+		&i.UserId,
 		&i.Name,
 		&i.TokenHash,
 		&i.ExpiresAt,
@@ -204,8 +204,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type SaveLoginHistoryParams struct {
-	ID        string         `db:"id"`
-	UserID    string         `db:"user_id"`
+	Id        string         `db:"id"`
+	UserId    string         `db:"user_id"`
 	Username  string         `db:"username"`
 	IpAddress sql.NullString `db:"ip_address"`
 	UserAgent sql.NullString `db:"user_agent"`
@@ -215,8 +215,8 @@ type SaveLoginHistoryParams struct {
 
 func (q *Queries) SaveLoginHistory(ctx context.Context, arg SaveLoginHistoryParams) error {
 	_, err := q.db.ExecContext(ctx, saveLoginHistory,
-		arg.ID,
-		arg.UserID,
+		arg.Id,
+		arg.UserId,
 		arg.Username,
 		arg.IpAddress,
 		arg.UserAgent,

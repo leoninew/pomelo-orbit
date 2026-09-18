@@ -879,7 +879,7 @@ func NormalizePipelineVariables(variables []map[string]any) ([]map[string]any, e
 }
 
 // ValidatePipelineVariableScopes ensures every stage-scoped Pipeline variable
-// references one of the Pipeline's current stage IDs.
+// references one of the Pipeline's current stage Ids.
 func ValidatePipelineVariableScopes(variables []map[string]any, stages []model.StageDefinition) error {
 	stageIds := make(map[string]struct{}, len(stages))
 	for _, stage := range stages {

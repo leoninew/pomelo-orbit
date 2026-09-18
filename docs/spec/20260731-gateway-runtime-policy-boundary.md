@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Requirement basis
 
-本规格依据 `docs/requirement/20260731-gateway-runtime-policy-boundary.md`。目标是在保留 Application -> Version -> VersionComponent -> Service 生命周期的前提下，消除 VersionComponentPort 与 ServiceExpose 的重复宿主机端口表达，并建立可扩展到目录挂载、资源配额等运行时调整的核心模型。
+本规格依据 `docs/intent/20260731-gateway-runtime-policy-boundary.md`。目标是在保留 Application -> Version -> VersionComponent -> Service 生命周期的前提下，消除 VersionComponentPort 与 ServiceExpose 的重复宿主机端口表达，并建立可扩展到目录挂载、资源配额等运行时调整的核心模型。
 
 ## Overview
 

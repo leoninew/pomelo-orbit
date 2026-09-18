@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+
 	"github.com/gin-gonic/gin"
-	"github.com/leoninew/pomelo-orbit/internal/api/http/binding"
 	deploymentv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/deployment"
 	pipelinerunv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline_run"
 	taskv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/task"
 
-	transportresponse "github.com/leoninew/pomelo-orbit/internal/api/http/response"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	tasksvc "github.com/leoninew/pomelo-orbit/internal/queue/task"
 )
@@ -27,29 +27,29 @@ func New(logger *slog.Logger, service tasksvc.Service) Handler {
 
 func (h Handler) CreateTask(c *gin.Context) {
 	var req taskv1.CreateTaskReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 
 	item, err := h.service.Create(c.Request.Context(), taskCreateInput(&req))
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := taskResponse(item)
-	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
+	transport.WriteProtoJSON(c, http.StatusCreated, &resp)
 }
 
 func (h Handler) EnqueuePipelineRun(c *gin.Context) {
 	var req pipelinerunv1.PipelineRunExecuteTaskReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	runId := strings.TrimSpace(c.Param("run_id"))
 	if runId == "" {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "run_id is required")
+		transport.WriteStatusError(c, http.StatusBadRequest, "run_id is required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypePipelineRunExecute, pipelineRunExecutePayload(runId))
@@ -57,14 +57,14 @@ func (h Handler) EnqueuePipelineRun(c *gin.Context) {
 
 func (h Handler) EnqueueDeployment(c *gin.Context) {
 	var req deploymentv1.ApplicationDeployTaskReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	appId := strings.TrimSpace(c.Param("app_id"))
 	deploymentId := strings.TrimSpace(c.Param("deployment_id"))
 	if appId == "" || deploymentId == "" {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "app_id and deployment_id are required")
+		transport.WriteStatusError(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypeDeploymentDeploy, applicationDeploymentPayload(appId, deploymentId))
@@ -72,14 +72,14 @@ func (h Handler) EnqueueDeployment(c *gin.Context) {
 
 func (h Handler) EnqueueDeploymentRestart(c *gin.Context) {
 	var req deploymentv1.ApplicationRestartTaskReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	appId := strings.TrimSpace(c.Param("app_id"))
 	deploymentId := strings.TrimSpace(c.Param("deployment_id"))
 	if appId == "" || deploymentId == "" {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "app_id and deployment_id are required")
+		transport.WriteStatusError(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypeDeploymentRestart, applicationDeploymentPayload(appId, deploymentId))
@@ -87,14 +87,14 @@ func (h Handler) EnqueueDeploymentRestart(c *gin.Context) {
 
 func (h Handler) EnqueueDeploymentStop(c *gin.Context) {
 	var req deploymentv1.ApplicationStopTaskReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	appId := strings.TrimSpace(c.Param("app_id"))
 	deploymentId := strings.TrimSpace(c.Param("deployment_id"))
 	if appId == "" || deploymentId == "" {
-		transportresponse.WriteStatusError(c, http.StatusBadRequest, "app_id and deployment_id are required")
+		transport.WriteStatusError(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypeDeploymentStop, applicationDeploymentPayload(appId, deploymentId))
@@ -103,19 +103,19 @@ func (h Handler) EnqueueDeploymentStop(c *gin.Context) {
 func (h Handler) enqueueTypedTask(c *gin.Context, taskType string, payload any) {
 	item, err := h.service.EnqueueTyped(c.Request.Context(), taskType, payload)
 	if err != nil {
-		transportresponse.WriteError(c, err)
+		transport.WriteError(c, err)
 		return
 	}
 	resp := taskResponse(item)
-	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
+	transport.WriteProtoJSON(c, http.StatusCreated, &resp)
 }
 
 func (h Handler) GetTask(c *gin.Context) {
 	item, err := h.service.FindById(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		transportresponse.WriteStatusError(c, http.StatusNotFound, "Task not found")
+		transport.WriteStatusError(c, http.StatusNotFound, "Task not found")
 		return
 	}
 	resp := taskResponse(item)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
 }

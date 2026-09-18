@@ -20,7 +20,7 @@ func TestHandleRejectsInvalidPayload(t *testing.T) {
 func TestHandleRequiresPipelineRunId(t *testing.T) {
 	handler := NewHandler(&fakeExecutor{})
 	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{}`})
-	if err == nil || !strings.Contains(err.Error(), "pipeline_run_id is required") {
+	if err == nil || !strings.Contains(err.Error(), "pipeline_run_id and project_id are required") {
 		t.Fatalf("expected required field error, got %v", err)
 	}
 }
@@ -29,12 +29,15 @@ func TestHandleExecutesPipelineRun(t *testing.T) {
 	executor := &fakeExecutor{}
 	handler := NewHandler(executor)
 
-	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{"pipeline_run_id":"run-1","variables":{"IMAGE":"demo"}}`})
+	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{"pipeline_run_id":"run-1","project_id":"project-1","variables":{"IMAGE":"demo"}}`})
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
 	if executor.input.PipelineRunId != "run-1" {
 		t.Fatalf("unexpected pipeline run id: %s", executor.input.PipelineRunId)
+	}
+	if executor.input.ProjectId != "project-1" {
+		t.Fatalf("unexpected project id: %s", executor.input.ProjectId)
 	}
 	if executor.input.Variables["IMAGE"] != "demo" {
 		t.Fatalf("unexpected variables: %+v", executor.input.Variables)

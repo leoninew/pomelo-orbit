@@ -7,7 +7,7 @@ Flow mode: standard
 
 ## 需求依据
 
-- [HTTP 错误契约规范化需求](../requirement/20260726-http-error-contract-normalization.md)（`Accepted`）
+- [HTTP 错误契约规范化需求](../intent/20260726-http-error-contract-normalization.md)（`Accepted`）
 - `D:\SourceCodes\mywork\best-practices\docs\guides\http-error-contract.manual.md`
 - `D:\SourceCodes\mywork\best-practices\docs\guides\http-error-contract.md`
 

@@ -21,7 +21,8 @@ func TestForkBuildVersionCompletesBindingInForkTransaction(t *testing.T) {
 	}
 	transactionRunner := &transactionRunnerStub{}
 	forker := &buildVersionForkerStub{}
-	err := forkBuildVersion(context.Background(), store, transactionRunner, forker, model.PipelineRun{Id: "run-1"}, []model.StageDefinition{{
+	projectId := "project-1"
+	err := forkBuildVersion(context.Background(), store, transactionRunner, forker, projectId, model.PipelineRun{Id: "run-1", ProjectId: &projectId}, []model.StageDefinition{{
 		Id: "stage-1", Name: "Build", Artifacts: []model.ArtifactConfig{{Name: "image", Collector: "docker_image", ComponentName: &componentName}},
 	}}, "20260807170000")
 	if err != nil {
@@ -30,8 +31,8 @@ func TestForkBuildVersionCompletesBindingInForkTransaction(t *testing.T) {
 	if !store.completedInTransaction || !forker.calledInTransaction {
 		t.Fatal("version fork and binding completion must use the same transaction context")
 	}
-	if store.generatedVersionID != "version-generated" || store.generatedVersionLabel != "build-20260807170000" {
-		t.Fatalf("binding=%q/%q", store.generatedVersionID, store.generatedVersionLabel)
+	if store.generatedVersionId != "version-generated" || store.generatedVersionLabel != "build-20260807170000" {
+		t.Fatalf("binding=%q/%q", store.generatedVersionId, store.generatedVersionLabel)
 	}
 	if len(forker.input.Components) != 1 || forker.input.Components[0].ComponentName != "api" {
 		t.Fatalf("fork input=%+v", forker.input)
@@ -102,21 +103,21 @@ type forkBuildVersionStoreStub struct {
 	binding                model.PipelineRunVersionBinding
 	artifacts              []model.Artifact
 	completedInTransaction bool
-	generatedVersionID     string
+	generatedVersionId     string
 	generatedVersionLabel  string
 }
 
-func (s *forkBuildVersionStoreStub) PipelineRunVersionBinding(context.Context, string) (model.PipelineRunVersionBinding, error) {
+func (s *forkBuildVersionStoreStub) PipelineRunVersionBinding(context.Context, string, string) (model.PipelineRunVersionBinding, error) {
 	return s.binding, nil
 }
 
-func (s *forkBuildVersionStoreStub) ListArtifactsByRun(context.Context, *string, string) ([]model.Artifact, error) {
+func (s *forkBuildVersionStoreStub) ListArtifactsByRun(context.Context, string, string) ([]model.Artifact, error) {
 	return s.artifacts, nil
 }
 
-func (s *forkBuildVersionStoreStub) CompletePipelineRunVersionBinding(ctx context.Context, _ string, versionID string, label string) error {
+func (s *forkBuildVersionStoreStub) CompletePipelineRunVersionBinding(ctx context.Context, _ string, _ string, versionId string, label string) error {
 	s.completedInTransaction, _ = ctx.Value(transactionContextKey{}).(bool)
-	s.generatedVersionID, s.generatedVersionLabel = versionID, label
+	s.generatedVersionId, s.generatedVersionLabel = versionId, label
 	return nil
 }
 

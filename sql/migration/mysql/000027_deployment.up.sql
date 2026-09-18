@@ -22,9 +22,7 @@ CREATE TABLE IF NOT EXISTS deployment (
     service_id VARCHAR(26) NULL,
     options_json LONGTEXT NULL,
     effective_plan_hash VARCHAR(128) NULL,
-    command_text VARCHAR(2048) NOT NULL DEFAULT '',
-    FOREIGN KEY (project_id) REFERENCES project(id),
-    FOREIGN KEY (rollback_from_deployment_id) REFERENCES deployment(id)
+    command_text VARCHAR(2048) NOT NULL DEFAULT ''
 );
 
 CREATE INDEX idx_deployment_app ON deployment(application_id);

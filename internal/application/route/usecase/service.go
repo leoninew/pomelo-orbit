@@ -66,34 +66,29 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectId string, 
 	return nil
 }
 
-func (s Service) resolveGatewayForRender(ctx context.Context) (*model.GatewayConfig, error) {
-	cfg, err := s.gateway.ResolveActiveGatewayConfig(ctx)
+func (s Service) resolveGatewayForRender(ctx context.Context, projectId string) (*model.GatewayConfig, error) {
+	cfg, err := s.gateway.GatewayConfigByProject(ctx, strings.TrimSpace(projectId))
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return nil, apperror.New(apperror.KindValidation, "no gateway configured: create and configure a gateway first")
+			return nil, apperror.New(apperror.KindValidation, "no gateway provisioned for this project environment")
 		}
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to resolve gateway config", err)
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to resolve project gateway config", err)
 	}
 	return &cfg, nil
 }
 
-func (s Service) resolveGatewayForRoute(ctx context.Context) (*model.GatewayConfig, error) {
-	return s.resolveGatewayForRender(ctx)
+func (s Service) resolveGatewayForRoute(ctx context.Context, projectId string) (*model.GatewayConfig, error) {
+	return s.resolveGatewayForRender(ctx, projectId)
 }
 
 func (s Service) withRouteACMECapabilities(ctx context.Context, route model.Route) model.Route {
-	gateway, err := s.resolveGatewayForRoute(ctx)
-	if err != nil {
-		route.ACMEChallengeHint = "Gateway configuration is required before enabling Let's Encrypt"
-		return route
-	}
 	if route.ProjectId == nil {
 		route.ACMEChallengeHint = "Route project is required"
 		return route
 	}
-	gatewayApp, err := s.application.Application(ctx, gateway.ApplicationId)
-	if err != nil || gatewayApp.ProjectId == nil || *gatewayApp.ProjectId != *route.ProjectId {
-		route.ACMEChallengeHint = "The active Gateway must belong to this project"
+	gateway, err := s.resolveGatewayForRoute(ctx, *route.ProjectId)
+	if err != nil {
+		route.ACMEChallengeHint = "Gateway configuration is required before enabling Let's Encrypt"
 		return route
 	}
 	route.GatewayApplicationId = gateway.ApplicationId
@@ -135,6 +130,23 @@ func (s Service) ListRoutes(ctx context.Context, userId string, projectId string
 	return items, nil
 }
 
+// ListAllRoutes returns every route in the Project, including disabled
+// HTTP/TCP routes and both managed and custom targets.
+func (s Service) ListAllRoutes(ctx context.Context, userId string, projectId string) ([]model.Route, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return nil, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return nil, err
+	}
+	items, err := s.route.ListAllRoutes(ctx, projectId)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list routes", err)
+	}
+	return items, nil
+}
+
 // CreateRoute creates a route and persists it.
 func (s Service) CreateRoute(ctx context.Context, userId string, projectId string, input routedto.RouteCreateInput) (model.Route, error) {
 	projectId = strings.TrimSpace(projectId)
@@ -153,7 +165,41 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 	if err := s.route.CreateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to create route", err)
 	}
-	created, err := s.route.Route(ctx, route.Id)
+	created, err := s.route.Route(ctx, projectId, route.Id)
+	if err != nil {
+		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
+	}
+	return created, nil
+}
+
+// CreateRouteFromDefinition persists a complete Route configuration without
+// publishing it. Imported routes always start disabled, regardless of the
+// source configuration's enabled flag.
+func (s Service) CreateRouteFromDefinition(ctx context.Context, userId string, projectId string, input routedto.RouteDefinitionInput) (model.Route, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Route{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Route{}, err
+	}
+	route := cloneRouteDefinition(input.Route)
+	route.Id = idutil.NewId()
+	route.ProjectId = &projectId
+	route.Enabled = false
+	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
+		route.PathPrefix = "/"
+	}
+	if err := s.validateRoute(ctx, projectId, &route, "", false); err != nil {
+		return model.Route{}, err
+	}
+	if err := s.validateRouteCertificateConfiguration(ctx, route); err != nil {
+		return model.Route{}, err
+	}
+	if err := s.route.CreateRoute(ctx, route); err != nil {
+		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to create route", err)
+	}
+	created, err := s.route.Route(ctx, projectId, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
@@ -161,8 +207,8 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 }
 
 // RouteForUser loads a route visible to the current user.
-func (s Service) RouteForUser(ctx context.Context, userId string, routeId string) (model.Route, error) {
-	route, err := s.loadRouteForUser(ctx, userId, routeId)
+func (s Service) RouteForUser(ctx context.Context, userId, projectId, routeId string) (model.Route, error) {
+	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
 	if err != nil {
 		return model.Route{}, err
 	}
@@ -171,8 +217,8 @@ func (s Service) RouteForUser(ctx context.Context, userId string, routeId string
 
 // UpdateRoute updates the business route record. Traefik is updated by the
 // explicit full-sync flow.
-func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string, input routedto.RouteUpdateInput) (model.Route, error) {
-	route, err := s.loadRouteForUser(ctx, userId, routeId)
+func (s Service) UpdateRoute(ctx context.Context, userId, projectId, routeId string, input routedto.RouteUpdateInput) (model.Route, error) {
+	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
 	if err != nil {
 		return model.Route{}, err
 	}
@@ -222,13 +268,13 @@ func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string,
 	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
 		route.PathPrefix = "/"
 	}
-	if err := s.validateRoute(ctx, &route, route.Id); err != nil {
+	if err := s.validateRoute(ctx, projectId, &route, route.Id, true); err != nil {
 		return model.Route{}, err
 	}
-	if err := s.route.UpdateRoute(ctx, route); err != nil {
+	if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to update route", err)
 	}
-	updated, err := s.route.Route(ctx, route.Id)
+	updated, err := s.route.Route(ctx, projectId, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
@@ -236,15 +282,29 @@ func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string,
 }
 
 // DeleteRoute removes a route after confirming it is disabled.
-func (s Service) DeleteRoute(ctx context.Context, userId string, routeId string) error {
-	route, err := s.loadRouteForUser(ctx, userId, routeId)
+func (s Service) DeleteRoute(ctx context.Context, userId, projectId, routeId string) error {
+	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
 	if err != nil {
 		return err
 	}
 	if route.Enabled {
 		return apperror.New(apperror.KindValidation, "Cannot delete enabled route. Please disable it first.")
 	}
-	if err := s.route.DeleteRoute(ctx, route.Id); err != nil {
+	return s.removeRoute(ctx, projectId, route.Id)
+}
+
+// RemoveRoute removes saved ingress configuration without publishing Traefik
+// state. It is used by workflows that replace an entire configuration.
+func (s Service) RemoveRoute(ctx context.Context, userId, projectId, routeId string) error {
+	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
+	if err != nil {
+		return err
+	}
+	return s.removeRoute(ctx, projectId, route.Id)
+}
+
+func (s Service) removeRoute(ctx context.Context, projectId, routeId string) error {
+	if err := s.route.DeleteRoute(ctx, projectId, routeId); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete route", err)
 	}
 	return nil
@@ -252,19 +312,19 @@ func (s Service) DeleteRoute(ctx context.Context, userId string, routeId string)
 
 // EnableRoute marks a route enabled in business data. Traefik is updated by
 // the explicit full-sync flow.
-func (s Service) EnableRoute(ctx context.Context, userId string, routeId string) (model.Route, error) {
-	route, err := s.loadRouteForUser(ctx, userId, routeId)
+func (s Service) EnableRoute(ctx context.Context, userId, projectId, routeId string) (model.Route, error) {
+	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
 	if err != nil {
 		return model.Route{}, err
 	}
 	route.Enabled = true
-	if err := s.validateRoute(ctx, &route, route.Id); err != nil {
+	if err := s.validateRoute(ctx, projectId, &route, route.Id, true); err != nil {
 		return model.Route{}, err
 	}
-	if err := s.route.UpdateRoute(ctx, route); err != nil {
+	if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to enable route", err)
 	}
-	updated, err := s.route.Route(ctx, route.Id)
+	updated, err := s.route.Route(ctx, projectId, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
@@ -273,16 +333,16 @@ func (s Service) EnableRoute(ctx context.Context, userId string, routeId string)
 
 // DisableRoute marks a route disabled in business data. Traefik is updated by
 // the explicit full-sync flow.
-func (s Service) DisableRoute(ctx context.Context, userId string, routeId string) (model.Route, error) {
-	route, err := s.loadRouteForUser(ctx, userId, routeId)
+func (s Service) DisableRoute(ctx context.Context, userId, projectId, routeId string) (model.Route, error) {
+	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
 	if err != nil {
 		return model.Route{}, err
 	}
 	route.Enabled = false
-	if err := s.route.UpdateRoute(ctx, route); err != nil {
+	if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to disable route", err)
 	}
-	updated, err := s.route.Route(ctx, route.Id)
+	updated, err := s.route.Route(ctx, projectId, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
@@ -290,8 +350,8 @@ func (s Service) DisableRoute(ctx context.Context, userId string, routeId string
 }
 
 // UploadRouteCert stores a manual certificate and updates the route.
-func (s Service) UploadRouteCert(ctx context.Context, userId string, routeId string, certPEM string, certKey string) (model.Route, error) {
-	route, err := s.loadRouteForUser(ctx, userId, routeId)
+func (s Service) UploadRouteCert(ctx context.Context, userId, projectId, routeId string, certPEM string, certKey string) (model.Route, error) {
+	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
 	if err != nil {
 		return model.Route{}, err
 	}
@@ -303,10 +363,10 @@ func (s Service) UploadRouteCert(ctx context.Context, userId string, routeId str
 	route.CertKey = &certKey
 	route.CertType = certTypeManual
 	route.AcmeChallenge = acmeChallengeHTTP
-	if err := s.route.UpdateRoute(ctx, route); err != nil {
+	if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to update route certificate", err)
 	}
-	updated, err := s.route.Route(ctx, route.Id)
+	updated, err := s.route.Route(ctx, projectId, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
@@ -315,8 +375,8 @@ func (s Service) UploadRouteCert(ctx context.Context, userId string, routeId str
 
 // DisableRouteHTTPS clears HTTPS settings. Certificate files are reconciled by
 // the next full snapshot publication.
-func (s Service) DisableRouteHTTPS(ctx context.Context, userId string, routeId string) (model.Route, error) {
-	route, err := s.loadRouteForUser(ctx, userId, routeId)
+func (s Service) DisableRouteHTTPS(ctx context.Context, userId, projectId, routeId string) (model.Route, error) {
+	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
 	if err != nil {
 		return model.Route{}, err
 	}
@@ -328,10 +388,10 @@ func (s Service) DisableRouteHTTPS(ctx context.Context, userId string, routeId s
 	route.CertKey = nil
 	route.CertType = certTypeManual
 	route.AcmeChallenge = acmeChallengeHTTP
-	if err := s.route.UpdateRoute(ctx, route); err != nil {
+	if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to disable route HTTPS", err)
 	}
-	updated, err := s.route.Route(ctx, route.Id)
+	updated, err := s.route.Route(ctx, projectId, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
@@ -339,8 +399,8 @@ func (s Service) DisableRouteHTTPS(ctx context.Context, userId string, routeId s
 }
 
 // EnableRouteLetsEncrypt enables Let's Encrypt for the route.
-func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, routeId string, challenge string) (model.Route, error) {
-	route, err := s.loadRouteForUser(ctx, userId, routeId)
+func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId, projectId, routeId string, challenge string) (model.Route, error) {
+	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
 	if err != nil {
 		return model.Route{}, err
 	}
@@ -365,10 +425,10 @@ func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, rout
 	route.CertKey = nil
 	route.CertType = certTypeLetsEncrypt
 	route.AcmeChallenge = challenge
-	if err := s.route.UpdateRoute(ctx, route); err != nil {
+	if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to enable Let's Encrypt", err)
 	}
-	updated, err := s.route.Route(ctx, route.Id)
+	updated, err := s.route.Route(ctx, projectId, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
@@ -387,16 +447,12 @@ func validatePublicACMEDomain(domain string) error {
 }
 
 func (s Service) validateGatewayACMECapability(ctx context.Context, route model.Route, challenge string) (*model.GatewayConfig, error) {
-	gatewayConfig, err := s.resolveGatewayForRoute(ctx)
+	if route.ProjectId == nil {
+		return nil, apperror.New(apperror.KindValidation, "Route project is required")
+	}
+	gatewayConfig, err := s.resolveGatewayForRoute(ctx, *route.ProjectId)
 	if err != nil {
 		return nil, err
-	}
-	gatewayApp, err := s.application.Application(ctx, gatewayConfig.ApplicationId)
-	if err != nil {
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load active gateway", err)
-	}
-	if gatewayApp.ProjectId == nil || route.ProjectId == nil || *gatewayApp.ProjectId != *route.ProjectId {
-		return nil, apperror.New(apperror.KindValidation, "active gateway must belong to the Route project")
 	}
 	switch challenge {
 	case acmeChallengeHTTP:
@@ -414,6 +470,42 @@ func (s Service) validateGatewayACMECapability(ctx context.Context, route model.
 	return gatewayConfig, nil
 }
 
+func (s Service) validateRouteCertificateConfiguration(ctx context.Context, route model.Route) error {
+	if route.Protocol == routeProtocolTCP {
+		return nil
+	}
+	if !route.HTTPSEnabled {
+		if route.CertPEM != nil || route.CertKey != nil || route.CertType != certTypeManual || route.AcmeChallenge != acmeChallengeHTTP {
+			return apperror.New(apperror.KindValidation, "Disabled HTTPS route has invalid certificate configuration")
+		}
+		return nil
+	}
+	switch route.CertType {
+	case certTypeManual, certTypeMkcert:
+		if route.CertPEM == nil || route.CertKey == nil || strings.TrimSpace(*route.CertPEM) == "" || strings.TrimSpace(*route.CertKey) == "" {
+			return apperror.New(apperror.KindValidation, "Manual route certificate and key are required")
+		}
+		if route.AcmeChallenge != acmeChallengeHTTP {
+			return apperror.New(apperror.KindValidation, "Manual route certificate cannot declare an ACME challenge")
+		}
+	case certTypeLetsEncrypt:
+		if route.CertPEM != nil || route.CertKey != nil {
+			return apperror.New(apperror.KindValidation, "Let's Encrypt route cannot include a manual certificate")
+		}
+		if route.AcmeChallenge != acmeChallengeHTTP && route.AcmeChallenge != acmeChallengeDNS {
+			return apperror.New(apperror.KindValidation, "Let's Encrypt route has invalid challenge")
+		}
+		if err := validatePublicACMEDomain(route.Domain); err != nil {
+			return err
+		}
+		_, err := s.validateGatewayACMECapability(ctx, route, route.AcmeChallenge)
+		return err
+	default:
+		return apperror.New(apperror.KindValidation, "Route certificate type is invalid")
+	}
+	return nil
+}
+
 func gatewaySupportsHTTP01(profile string) bool {
 	return profile == "http" || profile == "http-dns"
 }
@@ -423,8 +515,8 @@ func gatewaySupportsDNS01(profile string) bool {
 }
 
 // EnableRouteMkcert generates a certificate with mkcert.
-func (s Service) EnableRouteMkcert(ctx context.Context, userId string, routeId string) (model.Route, error) {
-	route, err := s.loadRouteForUser(ctx, userId, routeId)
+func (s Service) EnableRouteMkcert(ctx context.Context, userId, projectId, routeId string) (model.Route, error) {
+	route, err := s.loadRouteForUser(ctx, userId, projectId, routeId)
 	if err != nil {
 		return model.Route{}, err
 	}
@@ -440,10 +532,10 @@ func (s Service) EnableRouteMkcert(ctx context.Context, userId string, routeId s
 	route.CertKey = &keyPEM
 	route.CertType = certTypeMkcert
 	route.AcmeChallenge = acmeChallengeHTTP
-	if err := s.route.UpdateRoute(ctx, route); err != nil {
+	if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to enable mkcert", err)
 	}
-	updated, err := s.route.Route(ctx, route.Id)
+	updated, err := s.route.Route(ctx, projectId, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
@@ -459,13 +551,13 @@ func (s Service) TraefikRouteConfig(ctx context.Context, userId string, projectI
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return routedto.TraefikConfigView{}, err
 	}
-	gw, err := s.resolveGatewayForRender(ctx)
+	gw, err := s.resolveGatewayForRender(ctx, projectId)
 	if err != nil {
 		return routedto.TraefikConfigView{}, err
 	}
 	dashboardDomain := fmt.Sprintf("traefik.%s", gw.BaseDomain)
 	configView := routedto.TraefikConfigView{DashboardDomain: dashboardDomain, HTTPSEnabled: false, BaseDomain: gw.BaseDomain}
-	route, err := s.route.RouteByDomain(ctx, dashboardDomain)
+	route, err := s.route.RouteByProjectAndDomain(ctx, projectId, dashboardDomain)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return configView, nil
@@ -485,16 +577,13 @@ func (s Service) ListTraefikRoutes(ctx context.Context, userId string, projectId
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return nil, err
 	}
-	gw, err := s.resolveGatewayForRender(ctx)
+	gw, err := s.resolveGatewayForRender(ctx, projectId)
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.traefikRouterClient.ListRouters(ctx, gw.RestApiUrl)
+	items, err := s.traefikRouterClient.ListRouters(ctx, projectId, *gw)
 	if err != nil {
-		if s.traefikRouterClient.IsConnectionError(err) {
-			return nil, apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
-		}
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list Traefik routes", err)
+		return nil, s.traefikClientError(err, "Failed to list Traefik routes")
 	}
 	out := make([]routeport.TraefikRouter, 0, len(items))
 	for _, item := range items {
@@ -511,22 +600,59 @@ func (s Service) ListTraefikRoutes(ctx context.Context, userId string, projectId
 	return out, nil
 }
 
-func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId string) (model.Route, error) {
+func (s Service) traefikClientError(err error, internalMessage string) error {
+	if message, ok := s.traefikRouterClient.TraefikUnavailableMessage(err); ok {
+		return apperror.Wrap(apperror.KindUnavailable, message, err)
+	}
+	return apperror.Wrap(apperror.KindInternal, internalMessage, err)
+}
+
+func (s Service) loadRouteForUser(ctx context.Context, userId, projectId, routeId string) (model.Route, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return model.Route{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Route{}, err
+	}
 	routeId = strings.TrimSpace(routeId)
-	route, err := s.route.Route(ctx, routeId)
+	route, err := s.route.Route(ctx, projectId, routeId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Route{}, apperror.New(apperror.KindNotFound, "Route "+routeId+" not found")
 		}
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
-	if route.ProjectId == nil {
-		return model.Route{}, apperror.New(apperror.KindForbidden, "Permission denied")
-	}
-	if err := s.ensureProjectMembership(ctx, *route.ProjectId, userId); err != nil {
-		return model.Route{}, err
-	}
 	return route, nil
+}
+
+func cloneRouteDefinition(input model.Route) model.Route {
+	copy := input
+	copy.ProjectId = nil
+	copy.ListenPort = cloneInt(input.ListenPort)
+	copy.ServiceId = cloneString(input.ServiceId)
+	copy.ComponentName = cloneString(input.ComponentName)
+	copy.EndpointProtocol = cloneString(input.EndpointProtocol)
+	copy.EndpointContainerPort = cloneInt(input.EndpointContainerPort)
+	copy.CertPEM = cloneString(input.CertPEM)
+	copy.CertKey = cloneString(input.CertKey)
+	return copy
+}
+
+func cloneString(input *string) *string {
+	if input == nil {
+		return nil
+	}
+	copy := *input
+	return &copy
+}
+
+func cloneInt(input *int) *int {
+	if input == nil {
+		return nil
+	}
+	copy := *input
+	return &copy
 }
 
 // PublishSnapshot is the worker-facing hook used after a Gateway deployment.
@@ -534,49 +660,53 @@ func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId st
 // belongs to Route mutations and must not rewrite Version components mid-deploy.
 // compose up success is not sufficient: the Traefik REST control plane must
 // accept requests before the snapshot PUT.
-func (s Service) PublishSnapshot(ctx context.Context) error {
-	routes, err := s.listEnabledRoutesForPublish(ctx)
+func (s Service) PublishSnapshot(ctx context.Context, projectId string) error {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return apperror.New(apperror.KindValidation, "project_id is required for route publish")
+	}
+	routes, err := s.listEnabledRoutesForPublish(ctx, projectId)
 	if err != nil {
 		return err
 	}
-	gateway, err := s.resolveGatewayForRender(ctx)
+	gateway, err := s.resolveGatewayForRender(ctx, projectId)
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(gateway.RestApiUrl) == "" {
-		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for route publish")
+	if strings.TrimSpace(gateway.RestApiUrl) == "" || strings.TrimSpace(gateway.RestApiHostUrl) == "" {
+		return apperror.New(apperror.KindValidation, "gateway rest_api_url and rest_api_host_url are required for route publish")
 	}
-	if err := s.routePublisher.WaitUntilReady(ctx, gateway.RestApiUrl, time.Duration(gateway.RestReadyTimeoutSeconds)*time.Second); err != nil {
+	if err := s.routePublisher.WaitUntilReady(ctx, projectId, *gateway, time.Duration(gateway.RestReadyTimeoutSeconds)*time.Second); err != nil {
 		return err
 	}
-	return s.applyRouteSnapshot(ctx, routes, false)
+	return s.applyRouteSnapshot(ctx, projectId, routes, false)
 }
 
-func (s Service) listEnabledRoutesForPublish(ctx context.Context) ([]model.Route, error) {
-	routes, err := s.route.ListEnabledRoutes(ctx)
+func (s Service) listEnabledRoutesForPublish(ctx context.Context, projectId string) ([]model.Route, error) {
+	routes, err := s.route.ListEnabledRoutesByProject(ctx, projectId)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
 	}
 	return routes, nil
 }
 
-func (s Service) applyRouteSnapshot(ctx context.Context, routes []model.Route, waitReady bool) error {
-	gw, err := s.resolveGatewayForRender(ctx)
+func (s Service) applyRouteSnapshot(ctx context.Context, projectId string, routes []model.Route, waitReady bool) error {
+	gw, err := s.resolveGatewayForRender(ctx, projectId)
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(gw.RestApiUrl) == "" {
-		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for route publish")
+	if strings.TrimSpace(gw.RestApiUrl) == "" || strings.TrimSpace(gw.RestApiHostUrl) == "" {
+		return apperror.New(apperror.KindValidation, "gateway rest_api_url and rest_api_host_url are required for route publish")
 	}
 	if waitReady {
-		if err := s.routePublisher.WaitUntilReady(ctx, gw.RestApiUrl, time.Duration(gw.RestReadyTimeoutSeconds)*time.Second); err != nil {
+		if err := s.routePublisher.WaitUntilReady(ctx, projectId, *gw, time.Duration(gw.RestReadyTimeoutSeconds)*time.Second); err != nil {
 			return err
 		}
 	}
-	if err := s.resolveManagedRouteTargets(ctx, routes); err != nil {
+	if err := s.resolveManagedRouteTargets(ctx, projectId, routes); err != nil {
 		return err
 	}
-	if err := s.routePublisher.ApplySnapshot(ctx, *gw, routes); err != nil {
+	if err := s.routePublisher.ApplySnapshot(ctx, projectId, *gw, routes); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to publish traefik rest snapshot", err)
 	}
 	return nil

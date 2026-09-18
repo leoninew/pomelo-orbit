@@ -35,15 +35,15 @@ func (r Repository) UserByUsername(ctx context.Context, username string) (model.
 	if err != nil {
 		return model.User{}, fmt.Errorf("load user by username %s: %w", username, sqlcommon.TranslateError(err))
 	}
-	return userFromRow(user.ID, user.Username, user.PasswordHash, user.Status, user.OauthProvider, user.OauthProviderID, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt), nil
+	return userFromRow(user.Id, user.Username, user.PasswordHash, user.Status, user.OauthProvider, user.OAuthProviderId, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt), nil
 }
 
 func (r Repository) UserById(ctx context.Context, id string) (model.User, error) {
-	user, err := r.q(ctx).UserByID(ctx, id)
+	user, err := r.q(ctx).UserById(ctx, id)
 	if err != nil {
 		return model.User{}, fmt.Errorf("load user %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return userFromRow(user.ID, user.Username, user.PasswordHash, user.Status, user.OauthProvider, user.OauthProviderID, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt), nil
+	return userFromRow(user.Id, user.Username, user.PasswordHash, user.Status, user.OauthProvider, user.OAuthProviderId, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt), nil
 }
 
 func (r Repository) UserByEmail(ctx context.Context, email string) (model.User, error) {
@@ -51,7 +51,7 @@ func (r Repository) UserByEmail(ctx context.Context, email string) (model.User, 
 	if err != nil {
 		return model.User{}, fmt.Errorf("load user by email %s: %w", email, sqlcommon.TranslateError(err))
 	}
-	return userFromRow(user.ID, user.Username, user.PasswordHash, user.Status, user.OauthProvider, user.OauthProviderID, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt), nil
+	return userFromRow(user.Id, user.Username, user.PasswordHash, user.Status, user.OauthProvider, user.OAuthProviderId, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt), nil
 }
 
 func (r Repository) UserRoles(ctx context.Context, userId string) ([]string, error) {
@@ -60,6 +60,14 @@ func (r Repository) UserRoles(ctx context.Context, userId string) ([]string, err
 		return nil, fmt.Errorf("load user roles %s: %w", userId, err)
 	}
 	return roles, nil
+}
+
+func (r Repository) HasUsersWithRole(ctx context.Context, roleId string) (bool, error) {
+	count, err := r.q(ctx).HasUsersWithRole(ctx, roleId)
+	if err != nil {
+		return false, fmt.Errorf("count users assigned Role %s: %w", roleId, err)
+	}
+	return count > 0, nil
 }
 
 func (r Repository) UserPermissions(ctx context.Context, userId string) ([]string, error) {
@@ -89,7 +97,7 @@ func (r Repository) ListUsers(ctx context.Context, page int, perPage int, search
 	}
 	items := make([]model.User, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, userFromRow(row.ID, row.Username, row.PasswordHash, row.Status, row.OauthProvider, row.OauthProviderID, row.Email, row.AuthSource, row.CreatedAt, row.UpdatedAt, row.LastLoginAt))
+		items = append(items, userFromRow(row.Id, row.Username, row.PasswordHash, row.Status, row.OauthProvider, row.OAuthProviderId, row.Email, row.AuthSource, row.CreatedAt, row.UpdatedAt, row.LastLoginAt))
 	}
 	return repository.Page[model.User]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
@@ -107,8 +115,8 @@ func (r Repository) UserRolesByUserIds(ctx context.Context, userIds []string) (m
 		return nil, fmt.Errorf("load users roles: %w", err)
 	}
 	for _, row := range rows {
-		rolesByUserId[row.UserID] = append(rolesByUserId[row.UserID], model.Role{
-			Id:          row.ID,
+		rolesByUserId[row.UserId] = append(rolesByUserId[row.UserId], model.Role{
+			Id:          row.Id,
 			Code:        row.Code,
 			Name:        row.Name,
 			Description: dbmodel.StringPtr(row.Description),
@@ -127,7 +135,7 @@ func (r Repository) UserRoleDetails(ctx context.Context, userId string) ([]model
 	roles := make([]model.Role, 0, len(rows))
 	for _, row := range rows {
 		roles = append(roles, model.Role{
-			Id:          row.ID,
+			Id:          row.Id,
 			Code:        row.Code,
 			Name:        row.Name,
 			Description: dbmodel.StringPtr(row.Description),
@@ -140,12 +148,12 @@ func (r Repository) UserRoleDetails(ctx context.Context, userId string) ([]model
 
 func (r Repository) CreateUser(ctx context.Context, user model.User) error {
 	err := r.q(ctx).CreateUser(ctx, usersqlc.CreateUserParams{
-		ID:              user.Id,
+		Id:              user.Id,
 		Username:        user.Username,
 		PasswordHash:    user.PasswordHash,
 		Status:          user.Status,
 		OauthProvider:   user.OAuthProvider,
-		OauthProviderID: user.OAuthProviderId,
+		OAuthProviderId: user.OAuthProviderId,
 		Email:           user.Email,
 		AuthSource:      user.AuthSource,
 		CreatedAt:       user.CreatedAt,
@@ -166,9 +174,9 @@ func (r Repository) UpdateUser(ctx context.Context, user model.User) error {
 		Email:           user.Email,
 		AuthSource:      user.AuthSource,
 		OauthProvider:   user.OAuthProvider,
-		OauthProviderID: user.OAuthProviderId,
+		OAuthProviderId: user.OAuthProviderId,
 		UpdatedAt:       time.Now().UTC(),
-		ID:              user.Id,
+		Id:              user.Id,
 	})
 	if err != nil {
 		return fmt.Errorf("update user %s: %w", user.Id, err)
@@ -180,7 +188,7 @@ func (r Repository) SetUserStatus(ctx context.Context, userId string, status str
 	err := r.q(ctx).SetUserStatus(ctx, usersqlc.SetUserStatusParams{
 		Status:    status,
 		UpdatedAt: time.Now().UTC(),
-		ID:        userId,
+		Id:        userId,
 	})
 	if err != nil {
 		return fmt.Errorf("set user status %s: %w", userId, err)
@@ -196,8 +204,8 @@ func (r Repository) SetUserRoles(ctx context.Context, userId string, roleIds []s
 	now := time.Now().UTC()
 	for _, roleId := range roleIds {
 		if err := q.InsertUserRole(ctx, usersqlc.InsertUserRoleParams{
-			UserID:    userId,
-			RoleID:    roleId,
+			UserId:    userId,
+			RoleId:    roleId,
 			CreatedAt: now,
 		}); err != nil {
 			return fmt.Errorf("insert user role %s/%s: %w", userId, roleId, err)
@@ -205,7 +213,7 @@ func (r Repository) SetUserRoles(ctx context.Context, userId string, roleIds []s
 	}
 	if err := q.TouchUserUpdatedAt(ctx, usersqlc.TouchUserUpdatedAtParams{
 		UpdatedAt: now,
-		ID:        userId,
+		Id:        userId,
 	}); err != nil {
 		return fmt.Errorf("touch user %s: %w", userId, err)
 	}
@@ -231,7 +239,7 @@ func (r Repository) MarkUserLoggedIn(ctx context.Context, userId string) error {
 	err := r.q(ctx).MarkUserLoggedIn(ctx, usersqlc.MarkUserLoggedInParams{
 		LastLoginAt: sql.NullTime{Time: now, Valid: true},
 		UpdatedAt:   now,
-		ID:          userId,
+		Id:          userId,
 	})
 	if err != nil {
 		return fmt.Errorf("mark user logged in %s: %w", userId, err)

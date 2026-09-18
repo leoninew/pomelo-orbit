@@ -1,4 +1,5 @@
 import type {
+  ProjectCreateReq,
   ProjectDeprecateReq,
   ProjectListResp,
   ProjectMemberListResp,
@@ -17,7 +18,7 @@ export const projectApi = {
     return request.get(`/api/project/${id}`);
   },
 
-  create(data: ProjectSaveReq): Promise<ProjectResp> {
+  create(data: ProjectCreateReq): Promise<ProjectResp> {
     return request.post('/api/project', data);
   },
 
@@ -27,6 +28,34 @@ export const projectApi = {
 
   deprecate(id: string, data: ProjectDeprecateReq): Promise<void> {
     return request.post(`/api/project/${id}/deprecate`, data);
+  },
+
+  exportHandover(id: string): Promise<Blob> {
+    return request.get(`/api/project/${id}/handover`, { responseType: 'blob' });
+  },
+
+  importHandover(
+    file: File,
+    input: {
+      mode: 'new' | 'replace';
+      name?: string;
+      code?: string;
+      targetProjectId?: string;
+    }
+  ): Promise<ProjectResp> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mode', input.mode);
+    if (input.mode === 'new') {
+      formData.append('name', input.name ?? '');
+      formData.append('code', input.code ?? '');
+    }
+    if (input.mode === 'replace' && input.targetProjectId) {
+      formData.append('target_project_id', input.targetProjectId);
+    }
+    return request.post('/api/project/handover', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   },
 
   listMembers(id: string): Promise<ProjectMemberListResp> {

@@ -101,15 +101,21 @@
     const request = ++layoutRequest;
     isReady.value = false;
     initialNodes.value = buildLayoutedNodes(props.stages);
-    if (initialNodes.value.length === 0) return;
+    if (initialNodes.value.length === 0) {
+      return;
+    }
 
     await nextTick();
     await nextTick();
     setTimeout(() => {
-      if (request !== layoutRequest) return;
+      if (request !== layoutRequest) {
+        return;
+      }
       fitView({ padding: 0.15, duration: 0 });
       requestAnimationFrame(() => {
-        if (request === layoutRequest) isReady.value = true;
+        if (request === layoutRequest) {
+          isReady.value = true;
+        }
       });
     }, 150);
   }

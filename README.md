@@ -25,6 +25,7 @@ task check   # 类型检查、格式化和 lint
 task test    # 前后端测试
 task build   # 构建 Docker 镜像
 task release # 构建直接运行发布包（dist/）
+task release:docker # 构建 VERSION 标签的 Docker 镜像
 task version # 显示当前发布版本
 ```
 

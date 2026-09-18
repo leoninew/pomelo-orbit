@@ -5,7 +5,7 @@ Review status: Accepted
 
 ## Requirement alignment
 
-按 [需求](../requirement/20260815-execution-record-deletion.md) 核对：
+按 [需求](../intent/20260815-execution-record-deletion.md) 核对：
 
 - 部署记录与 PipelineRun 均提供单数 DELETE API，入口通过当前用户身份和项目成员关系校验。
 - 仅 `ran_to_completion`、`faulted`、`canceled` 可删除；前端仅为终态展示删除入口，后端保留状态校验。

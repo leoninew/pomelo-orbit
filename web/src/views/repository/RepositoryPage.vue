@@ -52,7 +52,7 @@
               <td class="whitespace-nowrap text-foreground">
                 <router-link
                   v-if="p.git_credential_id"
-                  :to="`/credential/${p.git_credential_id}`"
+                  :to="`/repository-credential/${p.git_credential_id}`"
                   class="app-link"
                 >
                   已配置
@@ -613,11 +613,10 @@
     }
     try {
       await execute(async () => {
-        const res = await repositoryApi.list({
+        const res = await repositoryApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
           search: searchText.value || undefined,
-          project_id: projectId,
         });
         repositories.value = res.items;
         pagination.total = res.total;
@@ -664,9 +663,8 @@
     showCreateModal.value = true;
     try {
       await executeModal(async () => {
-        const credRes = await credentialApi.list({
+        const credRes = await credentialApi.list(projectId, {
           per_page: 100,
-          project_id: projectId,
         });
         credentials.value = credRes.items;
       });
@@ -686,9 +684,8 @@
     showEditModal.value = true;
     try {
       await executeModal(async () => {
-        const credRes = await credentialApi.list({
+        const credRes = await credentialApi.list(projectId, {
           per_page: 100,
-          project_id: projectId,
         });
         credentials.value = credRes.items;
       });
@@ -709,21 +706,16 @@
     }
     try {
       await executeOp(async () => {
-        const repository = await repositoryApi.create(
-          {
-            name: form.name,
-            code: form.code,
-            repository_type: form.repository_type,
-            repository_url: form.repository_url,
-            git_credential_id:
-              form.repository_type === 'remote_git'
-                ? form.git_credential_id || undefined
-                : undefined,
-            variable_overrides: [],
-            default_branch: form.default_branch,
-          },
-          { project_id: projectId }
-        );
+        const repository = await repositoryApi.create(projectId, {
+          name: form.name,
+          code: form.code,
+          repository_type: form.repository_type,
+          repository_url: form.repository_url,
+          git_credential_id:
+            form.repository_type === 'remote_git' ? form.git_credential_id || undefined : undefined,
+          variable_overrides: [],
+          default_branch: form.default_branch,
+        });
         toast.success('创建成功');
         showCreateModal.value = false;
         router.push(`/repository/${repository.id}`);
@@ -741,9 +733,14 @@
     if (!repository || !validateEditForm()) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      editFormError.value = '请先选择项目';
+      return;
+    }
     try {
       await executeOp(async () => {
-        const updated = await repositoryApi.update(repository.id, {
+        const updated = await repositoryApi.update(projectId, repository.id, {
           name: editForm.name,
           repository_type: editForm.repository_type,
           repository_url: editForm.repository_url,
@@ -777,10 +774,15 @@
     if (!repository) {
       return;
     }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      deleteSubmitError.value = '请先选择项目';
+      return;
+    }
     deleteSubmitError.value = '';
     try {
       await executeOp(async () => {
-        await repositoryApi.delete(repository.id, {
+        await repositoryApi.delete(projectId, repository.id, {
           delete_workspace: deleteWorkspace.value,
         });
         toast.success('删除成功');

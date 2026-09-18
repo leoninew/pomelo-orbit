@@ -9,6 +9,7 @@ import (
 )
 
 type Payload struct {
+	ProjectId     string `json:"project_id"`
 	ApplicationId string `json:"application_id"`
 	DeploymentId  string `json:"deployment_id"`
 	RemoveVolumes bool   `json:"remove_volumes"`
@@ -16,9 +17,9 @@ type Payload struct {
 }
 
 type ApplicationDeployer interface {
-	ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string, forceRecreate bool) error
-	ExecuteApplicationRestart(ctx context.Context, applicationId string, deploymentId string) error
-	ExecuteApplicationStop(ctx context.Context, applicationId string, deploymentId string, removeVolumes bool) error
+	ExecuteApplicationDeploy(ctx context.Context, projectId string, applicationId string, deploymentId string, forceRecreate bool) error
+	ExecuteApplicationRestart(ctx context.Context, projectId string, applicationId string, deploymentId string) error
+	ExecuteApplicationStop(ctx context.Context, projectId string, applicationId string, deploymentId string, removeVolumes bool) error
 }
 
 type Handler struct {
@@ -43,16 +44,16 @@ func (h Handler) Handle(ctx context.Context, item tasksvc.Task) error {
 	if err := json.Unmarshal([]byte(item.PayloadJSON), &payload); err != nil {
 		return fmt.Errorf("parse deployment task payload: %w", err)
 	}
-	if payload.ApplicationId == "" || payload.DeploymentId == "" {
-		return fmt.Errorf("application_id and deployment_id are required")
+	if payload.ProjectId == "" || payload.ApplicationId == "" || payload.DeploymentId == "" {
+		return fmt.Errorf("project_id, application_id and deployment_id are required")
 	}
 	switch h.operation {
 	case "deploy":
-		return h.deployer.ExecuteApplicationDeploy(ctx, payload.ApplicationId, payload.DeploymentId, payload.ForceRecreate)
+		return h.deployer.ExecuteApplicationDeploy(ctx, payload.ProjectId, payload.ApplicationId, payload.DeploymentId, payload.ForceRecreate)
 	case "restart":
-		return h.deployer.ExecuteApplicationRestart(ctx, payload.ApplicationId, payload.DeploymentId)
+		return h.deployer.ExecuteApplicationRestart(ctx, payload.ProjectId, payload.ApplicationId, payload.DeploymentId)
 	case "stop":
-		return h.deployer.ExecuteApplicationStop(ctx, payload.ApplicationId, payload.DeploymentId, payload.RemoveVolumes)
+		return h.deployer.ExecuteApplicationStop(ctx, payload.ProjectId, payload.ApplicationId, payload.DeploymentId, payload.RemoveVolumes)
 	default:
 		return fmt.Errorf("unsupported deployment task operation: %s", h.operation)
 	}

@@ -3,6 +3,7 @@ package projectsvc
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -11,7 +12,11 @@ import (
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
+	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
+	environmentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/environment"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
+	repositoryrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/repository"
 	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
 )
 
@@ -22,22 +27,26 @@ func TestProjectServiceCreateUpdateMembersAndDeprecate(t *testing.T) {
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 
-	created, err := service.Create(ctx, projectTestUserId, projectdto.SaveInput{Name: "Second Project", Code: "second"})
+	created, err := service.Create(ctx, projectTestUserId, testProjectCreateInput(t, "Second Project", "second"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if created.Id == "" || created.Code != "second" || !created.IsActive {
 		t.Fatalf("unexpected created project: %+v", created)
 	}
+	_, err = environmentrepo.NewRepository(database).EnvironmentByProject(ctx, created.Id)
+	if !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("expected no environment for new project, got %v", err)
+	}
 	loaded, err := service.LoadForUser(ctx, created.Id, projectTestUserId)
 	if err != nil {
 		t.Fatal(err)
 	}
-	updated, err := service.Update(ctx, loaded, projectdto.SaveInput{Name: "Second Project Updated", Code: "second-updated"})
+	updated, err := service.Update(ctx, loaded, projectdto.SaveInput{Name: "Second Project Updated"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Name != "Second Project Updated" || updated.Code != "second-updated" {
+	if updated.Name != "Second Project Updated" || updated.Code != "second" {
 		t.Fatalf("unexpected updated project: %+v", updated)
 	}
 	members, err := service.Members(ctx, updated.Id)
@@ -80,14 +89,18 @@ func TestProjectServiceRejectsDuplicateCodeAndLastActiveDeprecation(t *testing.T
 	service, database := newProjectIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
-	if _, err := service.Create(ctx, projectTestUserId, projectdto.SaveInput{Name: "Duplicate", Code: "default"}); err == nil || apperror.StatusCode(err) != 409 {
+	if _, err := service.Create(ctx, projectTestUserId, testProjectCreateInput(t, "Duplicate", "default")); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate code conflict, got %v", err)
 	}
 	defaultProject, err := service.LoadForUser(ctx, "01KRRKK0K3T519ZQZES3M4QA9Z", projectTestUserId)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := service.Deprecate(ctx, defaultProject, projectTestUserId); err == nil || apperror.StatusCode(err) != 400 {
+	_, err = environmentrepo.NewRepository(database).EnvironmentByProject(ctx, defaultProject.Id)
+	if !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("expected seeded project to have no environment, got %v", err)
+	}
+	if err := service.Deprecate(ctx, defaultProject, projectTestUserId); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected last active project deprecation validation error, got %v", err)
 	}
 }
@@ -102,9 +115,19 @@ func newProjectIntegrationService(t *testing.T) (Service, *sql.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	service := New(
-		projectrepo.NewRepository(database),
+	projectStore := projectrepo.NewRepository(database)
+	return New(
+		projectStore,
 		userrepo.NewRepository(database),
-	)
-	return service, database
+		repositoryrepo.NewRepository(database),
+		applicationrepo.NewRepository(database),
+	), database
+}
+
+func testProjectCreateInput(t *testing.T, name string, code string) projectdto.CreateInput {
+	t.Helper()
+	return projectdto.CreateInput{
+		Name: name,
+		Code: code,
+	}
 }

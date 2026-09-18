@@ -25,8 +25,7 @@ CREATE TABLE IF NOT EXISTS user_role (
     user_id VARCHAR(26) NOT NULL,
     role_id VARCHAR(26) NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    PRIMARY KEY (user_id, role_id),
-    FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE CASCADE
+    PRIMARY KEY (user_id, role_id)
 );
 
 CREATE INDEX idx_user_role_user_id ON user_role(user_id);

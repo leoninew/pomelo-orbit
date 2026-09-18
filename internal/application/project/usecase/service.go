@@ -105,29 +105,6 @@ func (s Service) Update(ctx context.Context, project model.Project, input projec
 	return updated, nil
 }
 
-// UpdateFromDefinition replaces a Project's mutable business identity while
-// preserving its ID and member relationships.
-func (s Service) UpdateFromDefinition(ctx context.Context, userId, projectId string, input projectdto.ProjectDefinition) (model.Project, error) {
-	project, err := s.LoadForUser(ctx, projectId, userId)
-	if err != nil {
-		return model.Project{}, err
-	}
-	name, code, err := normalizeProjectDefinition(input)
-	if err != nil {
-		return model.Project{}, err
-	}
-	if err := s.ensureCodeAvailable(ctx, code, project.Id); err != nil {
-		return model.Project{}, err
-	}
-	project.Name = name
-	project.Code = code
-	project.IsActive = input.IsActive
-	if err := s.repo.UpdateProject(ctx, project); err != nil {
-		return model.Project{}, err
-	}
-	return s.repo.Project(ctx, project.Id)
-}
-
 func (s Service) Deprecate(ctx context.Context, project model.Project, userId string) error {
 	activeProjects, err := s.repo.ListActiveProjectsByMember(ctx, userId)
 	if err != nil {

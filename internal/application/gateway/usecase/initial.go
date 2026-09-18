@@ -17,6 +17,9 @@ const (
 	gatewayMountTargetTraefikYml = "/etc/traefik/traefik.yml"
 	gatewayMountTargetCertDir    = "/etc/traefik/certs"
 	gatewayMountTargetAcmeDir    = "/letsencrypt"
+
+	gatewayDashboardPort     = 8080
+	gatewayDashboardProtocol = "http"
 )
 
 type initialGatewayVersion struct {
@@ -61,7 +64,7 @@ func buildInitialGatewayComponent(versionId, image, pullPolicy, componentName, r
 		Endpoints: []model.VersionComponentEndpoint{
 			{Protocol: "tcp", ContainerPort: 80, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(80)},
 			{Protocol: "tcp", ContainerPort: 443, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(443)},
-			{Protocol: "http", ContainerPort: 8080, Mode: "local", BindAddress: stringRef("127.0.0.1"), ListenPort: intRef(8080)},
+			{Protocol: gatewayDashboardProtocol, ContainerPort: gatewayDashboardPort, Mode: "local", BindAddress: stringRef("127.0.0.1"), ListenPort: intRef(gatewayDashboardPort)},
 		},
 		Mounts: []model.VersionComponentMount{
 			{SourceType: "file", Source: gatewayDockerSocketPath, SourceIsHostPath: true, Target: gatewayDockerSocketPath, ReadOnly: true},
@@ -143,7 +146,7 @@ func buildInitialGatewayDashboardRoute(app model.Application, cfg model.GatewayC
 		Protocol:      "http",
 		Domain:        "traefik-dashboard." + cfg.BaseDomain,
 		PathPrefix:    "/",
-		TargetUrl:     "http://" + model.RuntimeContainerName(app.Code, model.GatewayComponentName()) + ":8080",
+		TargetUrl:     gatewayDashboardTargetURL(app.Code),
 		Enabled:       false,
 		HTTPSEnabled:  false,
 		CertType:      "manual",

@@ -37,13 +37,13 @@ func (s Service) routeFromCreateInput(ctx context.Context, projectId string, inp
 	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
 		route.PathPrefix = "/"
 	}
-	if err := s.validateRoute(ctx, projectId, &route, ""); err != nil {
+	if err := s.validateRoute(ctx, projectId, &route, "", true); err != nil {
 		return model.Route{}, err
 	}
 	return route, nil
 }
 
-func (s Service) validateRoute(ctx context.Context, projectId string, route *model.Route, excludeId string) error {
+func (s Service) validateRoute(ctx context.Context, projectId string, route *model.Route, excludeId string, resolveManagedTarget bool) error {
 	switch route.Protocol {
 	case routeProtocolHTTP:
 		if !validRouteIdentity(route.Name, route.Domain, route.PathPrefix) {
@@ -53,8 +53,10 @@ func (s Service) validateRoute(ctx context.Context, projectId string, route *mod
 			return apperror.New(apperror.KindValidation, "HTTP route cannot declare a TCP listen port")
 		}
 		if hasManagedRouteTarget(*route) {
-			if err := s.resolveManagedRouteTarget(ctx, projectId, route); err != nil {
-				return err
+			if resolveManagedTarget {
+				if err := s.resolveManagedRouteTarget(ctx, projectId, route); err != nil {
+					return err
+				}
 			}
 			return nil
 		}
@@ -71,12 +73,14 @@ func (s Service) validateRoute(ctx context.Context, projectId string, route *mod
 		if strings.TrimSpace(route.PathPrefix) != "" || route.HTTPSEnabled || route.CertPEM != nil || route.CertKey != nil || route.CertType != "" && route.CertType != certTypeManual {
 			return apperror.New(apperror.KindValidation, "TCP route cannot declare HTTP or certificate fields")
 		}
-		if err := s.resolveManagedRouteTarget(ctx, projectId, route); err != nil {
-			return err
-		}
-		if route.Enabled {
-			if err := s.ensureTCPListenerAvailable(ctx, *route, excludeId); err != nil {
+		if resolveManagedTarget {
+			if err := s.resolveManagedRouteTarget(ctx, projectId, route); err != nil {
 				return err
+			}
+			if route.Enabled {
+				if err := s.ensureTCPListenerAvailable(ctx, *route, excludeId); err != nil {
+					return err
+				}
 			}
 		}
 	default:

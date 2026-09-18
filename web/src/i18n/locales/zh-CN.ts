@@ -212,6 +212,8 @@ export default {
     handoverImported: '接管包已导入',
     handoverImportFailed: '导入接管包失败',
     handoverFile: '接管包文件',
+    handoverFileEmpty: '未选择接管包文件',
+    handoverChooseFile: '选择文件',
     handoverFileRequired: '请选择接管包文件',
     handoverMode: '导入模式',
     handoverModeNew: '新建项目',

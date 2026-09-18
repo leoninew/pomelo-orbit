@@ -180,7 +180,7 @@ func (s Service) prepareSyncRoutes(ctx context.Context, projectId string, routes
 	for index := range routes {
 		route := &routes[index]
 		if route.Protocol != routeProtocolTCP {
-			if err := s.validateRoute(ctx, projectId, route, route.Id); err != nil {
+			if err := s.validateRoute(ctx, projectId, route, route.Id, true); err != nil {
 				return err
 			}
 			continue

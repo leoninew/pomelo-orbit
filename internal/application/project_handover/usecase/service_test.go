@@ -12,16 +12,18 @@ import (
 	handoverdto "github.com/leoninew/pomelo-orbit/internal/application/project_handover/dto"
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-func TestImportNewCreatesProjectBeforeRestoringEnvironment(t *testing.T) {
+func TestImportNewCreatesProjectWithSubmittedIdentity(t *testing.T) {
 	calls := []string{}
-	service := newTestService(&calls)
+	created := projectdto.ProjectDefinition{}
+	service := newTestServiceWithProject(&calls, &testProjectDomain{calls: &calls, created: &created})
 
 	project, err := service.Import(context.Background(), "operator", handoverdto.ImportInput{
-		Mode: handoverdto.ImportModeNew, Package: testPackage(),
+		Mode: handoverdto.ImportModeNew, Name: "Taken Over", Code: "taken-over", Package: testPackage(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -29,13 +31,33 @@ func TestImportNewCreatesProjectBeforeRestoringEnvironment(t *testing.T) {
 	if project.Id != "new-project" {
 		t.Fatalf("unexpected imported Project: %+v", project)
 	}
+	if created.Name != "Taken Over" || created.Code != "taken-over" || !created.IsActive {
+		t.Fatalf("created Project identity = %+v", created)
+	}
 	want := []string{"project.create", "environment.save"}
 	if !reflect.DeepEqual(calls, want) {
 		t.Fatalf("calls = %v, want %v", calls, want)
 	}
 }
 
-func TestImportReplaceClearsDomainConfigurationBeforeEnvironmentRestore(t *testing.T) {
+func TestImportDocumentReportsSafeDecodeError(t *testing.T) {
+	service := newTestService(&[]string{})
+
+	_, err := service.ImportDocument(
+		context.Background(),
+		"operator",
+		handoverdto.ImportInput{Mode: handoverdto.ImportModeNew, Name: "Taken Over", Code: "taken-over"},
+		[]byte(`{"unexpected":true}`),
+	)
+	if err == nil {
+		t.Fatal("ImportDocument() error = nil")
+	}
+	if got, want := apperror.Classify(err).Message, "Handover package contains unsupported or invalid fields"; got != want {
+		t.Fatalf("error message = %q, want %q", got, want)
+	}
+}
+
+func TestImportReplaceKeepsTargetProjectIdentity(t *testing.T) {
 	calls := []string{}
 	service := newTestService(&calls)
 
@@ -57,9 +79,32 @@ func TestImportReplaceClearsDomainConfigurationBeforeEnvironmentRestore(t *testi
 		"service.list",
 		"application.list",
 		"deployment.clear",
-		"project.update",
 		"environment.save",
 	}
+	if !reflect.DeepEqual(calls, want) {
+		t.Fatalf("calls = %v, want %v", calls, want)
+	}
+}
+
+func TestRestoreProjectConfigurationCreatesGatewayBeforeRoutes(t *testing.T) {
+	calls := []string{}
+	service := newTestService(&calls)
+	applicationID, versionID, serviceID := "source-application", "source-version", "source-service"
+	item := testPackage()
+	item.Applications = []applicationdto.ApplicationDefinition{{
+		Application: model.Application{Id: applicationID},
+		Versions:    []applicationdto.VersionDefinition{{Version: model.Version{Id: versionID}}},
+	}}
+	item.Services = []servicedto.ServiceDefinition{{
+		Service: model.Service{Id: serviceID, ApplicationId: applicationID, VersionId: versionID},
+	}}
+	item.Gateway = &gatewaydto.GatewayDefinition{}
+	item.Routes = []routedto.RouteDefinitionInput{{Route: model.Route{ServiceId: &serviceID}}}
+
+	if _, err := service.restoreProjectConfiguration(context.Background(), "operator", model.Project{Id: "target-project"}, item); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"application.create", "service.create", "gateway.create", "route.create"}
 	if !reflect.DeepEqual(calls, want) {
 		t.Fatalf("calls = %v, want %v", calls, want)
 	}
@@ -108,8 +153,12 @@ func testPackage() handoverdto.Package {
 }
 
 func newTestService(calls *[]string) Service {
+	return newTestServiceWithProject(calls, &testProjectDomain{calls: calls})
+}
+
+func newTestServiceWithProject(calls *[]string, project *testProjectDomain) Service {
 	return New(
-		&testProjectDomain{calls: calls},
+		project,
 		&testEnvironmentDomain{calls: calls},
 		&testApplicationDomain{calls: calls},
 		&testServiceDomain{calls: calls},
@@ -121,19 +170,21 @@ func newTestService(calls *[]string) Service {
 	)
 }
 
-type testProjectDomain struct{ calls *[]string }
+type testProjectDomain struct {
+	calls   *[]string
+	created *projectdto.ProjectDefinition
+}
 
 func (d *testProjectDomain) LoadForUser(_ context.Context, projectID string, _ string) (model.Project, error) {
 	*d.calls = append(*d.calls, "project.load")
 	return model.Project{Id: projectID}, nil
 }
-func (d *testProjectDomain) CreateFromDefinition(_ context.Context, _ string, _ projectdto.ProjectDefinition) (model.Project, error) {
+func (d *testProjectDomain) CreateFromDefinition(_ context.Context, _ string, input projectdto.ProjectDefinition) (model.Project, error) {
 	*d.calls = append(*d.calls, "project.create")
+	if d.created != nil {
+		*d.created = input
+	}
 	return model.Project{Id: "new-project"}, nil
-}
-func (d *testProjectDomain) UpdateFromDefinition(_ context.Context, _ string, projectID string, _ projectdto.ProjectDefinition) (model.Project, error) {
-	*d.calls = append(*d.calls, "project.update")
-	return model.Project{Id: projectID}, nil
 }
 
 type testEnvironmentDomain struct{ calls *[]string }
@@ -155,8 +206,9 @@ func (d *testApplicationDomain) ListApplications(context.Context, string, string
 func (*testApplicationDomain) ApplicationDefinitionForUser(context.Context, string, string, string) (applicationdto.ApplicationDefinition, error) {
 	return applicationdto.ApplicationDefinition{}, nil
 }
-func (*testApplicationDomain) CreateApplicationFromDefinition(context.Context, string, string, applicationdto.ApplicationDefinition) (applicationdto.ApplicationDefinition, error) {
-	return applicationdto.ApplicationDefinition{}, nil
+func (d *testApplicationDomain) CreateApplicationFromDefinition(_ context.Context, _ string, _ string, definition applicationdto.ApplicationDefinition) (applicationdto.ApplicationDefinition, error) {
+	*d.calls = append(*d.calls, "application.create")
+	return definition, nil
 }
 func (d *testApplicationDomain) RemoveApplication(context.Context, string, string, string) error {
 	*d.calls = append(*d.calls, "application.remove")
@@ -172,8 +224,9 @@ func (d *testServiceDomain) ListServices(context.Context, string, servicedto.Ser
 func (*testServiceDomain) ServiceDefinitionForUser(context.Context, string, string, string) (servicedto.ServiceDefinition, error) {
 	return servicedto.ServiceDefinition{}, nil
 }
-func (*testServiceDomain) CreateServiceFromDefinition(context.Context, string, string, servicedto.ServiceDefinition) (servicedto.ServiceView, error) {
-	return servicedto.ServiceView{}, nil
+func (d *testServiceDomain) CreateServiceFromDefinition(_ context.Context, _ string, _ string, definition servicedto.ServiceDefinition) (servicedto.ServiceView, error) {
+	*d.calls = append(*d.calls, "service.create")
+	return servicedto.ServiceView{Service: definition.Service}, nil
 }
 func (d *testServiceDomain) RemoveService(context.Context, string, string, string) error {
 	*d.calls = append(*d.calls, "service.remove")
@@ -182,11 +235,12 @@ func (d *testServiceDomain) RemoveService(context.Context, string, string, strin
 
 type testRouteDomain struct{ calls *[]string }
 
-func (d *testRouteDomain) ListRoutes(context.Context, string, string, int, int, string) (repository.Page[model.Route], error) {
+func (d *testRouteDomain) ListAllRoutes(context.Context, string, string) ([]model.Route, error) {
 	*d.calls = append(*d.calls, "route.list")
-	return repository.Page[model.Route]{}, nil
+	return nil, nil
 }
-func (*testRouteDomain) CreateRouteFromDefinition(context.Context, string, string, routedto.RouteDefinitionInput) (model.Route, error) {
+func (d *testRouteDomain) CreateRouteFromDefinition(context.Context, string, string, routedto.RouteDefinitionInput) (model.Route, error) {
+	*d.calls = append(*d.calls, "route.create")
 	return model.Route{}, nil
 }
 func (d *testRouteDomain) RemoveRoute(context.Context, string, string, string) error {
@@ -203,7 +257,8 @@ func (d *testGatewayDomain) ListGateways(context.Context, string, string, int, i
 func (*testGatewayDomain) GatewayDefinitionForUser(context.Context, string, string, string) (gatewaydto.GatewayDefinition, error) {
 	return gatewaydto.GatewayDefinition{}, nil
 }
-func (*testGatewayDomain) CreateGatewayFromDefinition(context.Context, string, string, gatewaydto.GatewayDefinition) (gatewaydto.GatewayDefinition, error) {
+func (d *testGatewayDomain) CreateGatewayFromDefinition(context.Context, string, string, gatewaydto.GatewayDefinition) (gatewaydto.GatewayDefinition, error) {
+	*d.calls = append(*d.calls, "gateway.create")
 	return gatewaydto.GatewayDefinition{}, nil
 }
 func (d *testGatewayDomain) RemoveGateway(context.Context, string, string, string) error {

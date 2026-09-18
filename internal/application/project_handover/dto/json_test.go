@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	projectdto "github.com/leoninew/pomelo-orbit/internal/application/project/dto"
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
@@ -64,5 +65,29 @@ func TestDecodeRejectsProjectOwnershipAndUnknownFields(t *testing.T) {
 		if _, err := Decode([]byte(document)); err == nil {
 			t.Fatalf("expected Decode to reject %s", document)
 		}
+	}
+}
+
+func TestEncodeDecodeKeepsGatewayNetworkName(t *testing.T) {
+	document, err := Encode(Package{
+		Format:  Format,
+		Version: FormatVersion,
+		Gateway: &gatewaydto.GatewayDefinition{Config: model.GatewayConfig{
+			NetworkName: "traefik",
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(document), `"network_name":"traefik"`) {
+		t.Fatalf("handover document did not use network_name: %s", document)
+	}
+
+	decoded, err := Decode(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decoded.Gateway == nil || decoded.Gateway.Config.NetworkName != "traefik" {
+		t.Fatalf("gateway network name = %+v, want traefik", decoded.Gateway)
 	}
 }

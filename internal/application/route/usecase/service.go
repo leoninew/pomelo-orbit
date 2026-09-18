@@ -130,6 +130,23 @@ func (s Service) ListRoutes(ctx context.Context, userId string, projectId string
 	return items, nil
 }
 
+// ListAllRoutes returns every route in the Project, including disabled
+// HTTP/TCP routes and both managed and custom targets.
+func (s Service) ListAllRoutes(ctx context.Context, userId string, projectId string) ([]model.Route, error) {
+	projectId = strings.TrimSpace(projectId)
+	if projectId == "" {
+		return nil, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return nil, err
+	}
+	items, err := s.route.ListAllRoutes(ctx, projectId)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list routes", err)
+	}
+	return items, nil
+}
+
 // CreateRoute creates a route and persists it.
 func (s Service) CreateRoute(ctx context.Context, userId string, projectId string, input routedto.RouteCreateInput) (model.Route, error) {
 	projectId = strings.TrimSpace(projectId)
@@ -173,7 +190,7 @@ func (s Service) CreateRouteFromDefinition(ctx context.Context, userId string, p
 	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
 		route.PathPrefix = "/"
 	}
-	if err := s.validateRoute(ctx, projectId, &route, ""); err != nil {
+	if err := s.validateRoute(ctx, projectId, &route, "", false); err != nil {
 		return model.Route{}, err
 	}
 	if err := s.validateRouteCertificateConfiguration(ctx, route); err != nil {
@@ -251,7 +268,7 @@ func (s Service) UpdateRoute(ctx context.Context, userId, projectId, routeId str
 	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
 		route.PathPrefix = "/"
 	}
-	if err := s.validateRoute(ctx, projectId, &route, route.Id); err != nil {
+	if err := s.validateRoute(ctx, projectId, &route, route.Id, true); err != nil {
 		return model.Route{}, err
 	}
 	if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {
@@ -301,7 +318,7 @@ func (s Service) EnableRoute(ctx context.Context, userId, projectId, routeId str
 		return model.Route{}, err
 	}
 	route.Enabled = true
-	if err := s.validateRoute(ctx, projectId, &route, route.Id); err != nil {
+	if err := s.validateRoute(ctx, projectId, &route, route.Id, true); err != nil {
 		return model.Route{}, err
 	}
 	if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {

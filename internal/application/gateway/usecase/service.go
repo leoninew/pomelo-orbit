@@ -105,28 +105,72 @@ func (s Service) GatewayDefinitionForUser(ctx context.Context, userId, projectId
 	if err != nil {
 		return gatewaydto.GatewayDefinition{}, err
 	}
-	routes, err := s.route.ListRoutes(ctx, projectId, 1, 10_000, "")
+	routes, err := s.route.ListAllRoutes(ctx, projectId)
 	if err != nil {
 		return gatewaydto.GatewayDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to list project routes", err)
 	}
-	dashboardTarget := "http://" + model.RuntimeContainerName(view.Application.Code, model.GatewayComponentName()) + ":8080"
+	dashboard, err := findGatewayDashboardRoute(routes, view.Application.Code, view.Service.Id)
+	if err != nil {
+		return gatewaydto.GatewayDefinition{}, err
+	}
+	return gatewaydto.GatewayDefinition{
+		Application: application, Config: view.Config, RuntimeService: service, DashboardRoute: dashboard,
+	}, nil
+}
+
+func gatewayDashboardTargetURL(applicationCode string) string {
+	return fmt.Sprintf("http://%s:%d", model.RuntimeContainerName(applicationCode, model.GatewayComponentName()), gatewayDashboardPort)
+}
+
+func findGatewayDashboardRoute(routes []model.Route, applicationCode, runtimeServiceID string) (model.Route, error) {
 	var dashboard *model.Route
-	for _, route := range routes.Items {
-		if route.Name != view.Application.Code || route.TargetUrl != dashboardTarget {
+	for _, route := range routes {
+		if !isGatewayDashboardRoute(route, applicationCode, runtimeServiceID) {
 			continue
 		}
 		if dashboard != nil {
-			return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "Gateway dashboard route is not unique")
+			return model.Route{}, apperror.New(apperror.KindValidation, "Gateway dashboard route is not unique")
 		}
 		routeCopy := route
 		dashboard = &routeCopy
 	}
 	if dashboard == nil {
-		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "Gateway dashboard route is missing")
+		return model.Route{}, apperror.New(apperror.KindValidation, "Gateway dashboard route is missing")
 	}
-	return gatewaydto.GatewayDefinition{
-		Application: application, Config: view.Config, RuntimeService: service, DashboardRoute: *dashboard,
-	}, nil
+	return *dashboard, nil
+}
+
+func isGatewayDashboardRoute(route model.Route, applicationCode, runtimeServiceID string) bool {
+	if strings.TrimSpace(route.Protocol) != gatewayDashboardProtocol {
+		return false
+	}
+	if isManagedGatewayDashboardRoute(route, runtimeServiceID) {
+		return true
+	}
+	return isCustomGatewayDashboardRoute(route, applicationCode)
+}
+
+func isCustomGatewayDashboardRoute(route model.Route, applicationCode string) bool {
+	if route.ServiceId != nil || route.ComponentName != nil || route.EndpointProtocol != nil || route.EndpointContainerPort != nil {
+		return false
+	}
+	return strings.TrimSpace(route.TargetUrl) == gatewayDashboardTargetURL(applicationCode)
+}
+
+func isManagedGatewayDashboardRoute(route model.Route, runtimeServiceID string) bool {
+	if route.ServiceId == nil || route.ComponentName == nil || route.EndpointProtocol == nil || route.EndpointContainerPort == nil {
+		return false
+	}
+	if strings.TrimSpace(*route.ServiceId) != strings.TrimSpace(runtimeServiceID) {
+		return false
+	}
+	if strings.TrimSpace(*route.ComponentName) != model.GatewayComponentName() {
+		return false
+	}
+	if strings.TrimSpace(*route.EndpointProtocol) != gatewayDashboardProtocol {
+		return false
+	}
+	return *route.EndpointContainerPort == gatewayDashboardPort
 }
 
 // CreateGatewayFromDefinition restores a complete managed Gateway definition

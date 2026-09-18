@@ -21,7 +21,6 @@ const handoverPageSize = 10_000
 type projectDomain interface {
 	LoadForUser(context.Context, string, string) (model.Project, error)
 	CreateFromDefinition(context.Context, string, projectdto.ProjectDefinition) (model.Project, error)
-	UpdateFromDefinition(context.Context, string, string, projectdto.ProjectDefinition) (model.Project, error)
 }
 
 type environmentDomain interface {
@@ -44,7 +43,7 @@ type serviceDomain interface {
 }
 
 type routeDomain interface {
-	ListRoutes(context.Context, string, string, int, int, string) (repository.Page[model.Route], error)
+	ListAllRoutes(context.Context, string, string) ([]model.Route, error)
 	CreateRouteFromDefinition(context.Context, string, string, routedto.RouteDefinitionInput) (model.Route, error)
 	RemoveRoute(context.Context, string, string, string) error
 }
@@ -99,12 +98,13 @@ func (s Service) ExportDocument(ctx context.Context, userID, projectID string) (
 	return document, nil
 }
 
-func (s Service) ImportDocument(ctx context.Context, userID string, mode handoverdto.ImportMode, targetProjectID string, document []byte) (model.Project, error) {
+func (s Service) ImportDocument(ctx context.Context, userID string, input handoverdto.ImportInput, document []byte) (model.Project, error) {
 	item, err := handoverdto.Decode(document)
 	if err != nil {
-		return model.Project{}, apperror.Wrap(apperror.KindValidation, "Invalid handover package", err)
+		return model.Project{}, apperror.Wrap(apperror.KindValidation, handoverdto.DecodeErrorMessage(err), err)
 	}
-	return s.Import(ctx, userID, handoverdto.ImportInput{Mode: mode, TargetProjectID: targetProjectID, Package: item})
+	input.Package = item
+	return s.Import(ctx, userID, input)
 }
 
 func (s Service) Export(ctx context.Context, userID, projectID string) (handoverdto.Package, error) {
@@ -171,14 +171,14 @@ func (s Service) Export(ctx context.Context, userID, projectID string) (handover
 		}
 		result.Services = append(result.Services, definition)
 	}
-	routes, err := s.route.ListRoutes(ctx, userID, project.Id, 1, handoverPageSize, "")
+	routes, err := s.route.ListAllRoutes(ctx, userID, project.Id)
 	if err != nil {
 		return handoverdto.Package{}, err
 	}
-	if routes.Total > handoverPageSize {
+	if len(routes) > handoverPageSize {
 		return handoverdto.Package{}, apperror.New(apperror.KindValidation, "Project has too many routes to export")
 	}
-	for _, item := range routes.Items {
+	for _, item := range routes {
 		if gateway != nil && item.Id == gateway.DashboardRoute.Id {
 			continue
 		}
@@ -195,7 +195,11 @@ func (s Service) Import(ctx context.Context, userID string, input handoverdto.Im
 	var err error
 	switch input.Mode {
 	case handoverdto.ImportModeNew:
-		project, err = s.project.CreateFromDefinition(ctx, userID, input.Package.Project)
+		project, err = s.project.CreateFromDefinition(ctx, userID, projectdto.ProjectDefinition{
+			Name:     input.Name,
+			Code:     input.Code,
+			IsActive: true,
+		})
 	case handoverdto.ImportModeReplace:
 		project, err = s.project.LoadForUser(ctx, strings.TrimSpace(input.TargetProjectID), userID)
 		if err == nil {
@@ -206,9 +210,6 @@ func (s Service) Import(ctx context.Context, userID string, input handoverdto.Im
 		}
 		if err == nil {
 			err = s.deployment.ClearProjectDeploymentHistory(ctx, userID, project.Id)
-		}
-		if err == nil {
-			project, err = s.project.UpdateFromDefinition(ctx, userID, project.Id, input.Package.Project)
 		}
 	default:
 		return model.Project{}, apperror.New(apperror.KindValidation, "Invalid handover import mode")
@@ -335,14 +336,14 @@ func (s Service) removeProjectConfiguration(ctx context.Context, userID, project
 			return err
 		}
 	}
-	routes, err := s.route.ListRoutes(ctx, userID, projectID, 1, handoverPageSize, "")
+	routes, err := s.route.ListAllRoutes(ctx, userID, projectID)
 	if err != nil {
 		return err
 	}
-	if routes.Total > handoverPageSize {
+	if len(routes) > handoverPageSize {
 		return apperror.New(apperror.KindValidation, "Project has too many routes to replace")
 	}
-	for _, route := range routes.Items {
+	for _, route := range routes {
 		if err := s.route.RemoveRoute(ctx, userID, projectID, route.Id); err != nil {
 			return err
 		}
@@ -395,13 +396,13 @@ func (s Service) restoreProjectConfiguration(ctx context.Context, userID string,
 		}
 		maps.services[definition.Service.Id] = created.Service.Id
 	}
-	for _, definition := range item.Routes {
-		if _, err := s.route.CreateRouteFromDefinition(ctx, userID, project.Id, remapRouteDefinition(definition, maps)); err != nil {
+	if item.Gateway != nil {
+		if _, err := s.gateway.CreateGatewayFromDefinition(ctx, userID, project.Id, *item.Gateway); err != nil {
 			return model.Project{}, err
 		}
 	}
-	if item.Gateway != nil {
-		if _, err := s.gateway.CreateGatewayFromDefinition(ctx, userID, project.Id, *item.Gateway); err != nil {
+	for _, definition := range item.Routes {
+		if _, err := s.route.CreateRouteFromDefinition(ctx, userID, project.Id, remapRouteDefinition(definition, maps)); err != nil {
 			return model.Project{}, err
 		}
 	}

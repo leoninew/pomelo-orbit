@@ -18,6 +18,7 @@ export const useProjectStore = defineStore('project', () => {
   const activeProject = computed(() =>
     projects.value.find((project) => project.id === activeProjectId.value)
   );
+  const activeProjects = computed(() => projects.value.filter((project) => project.is_active));
 
   function setActiveProject(project_id: string) {
     activeProjectId.value = project_id;
@@ -31,14 +32,18 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   function selectFallbackProject(items: ProjectResp[]) {
-    if (items.length === 0) {
+    const selectableProjects = items.filter((project) => project.is_active);
+    if (selectableProjects.length === 0) {
       clearProjects();
       return;
     }
-    if (activeProjectId.value && items.some((project) => project.id === activeProjectId.value)) {
+    if (
+      activeProjectId.value &&
+      selectableProjects.some((project) => project.id === activeProjectId.value)
+    ) {
       return;
     }
-    setActiveProject(items[0].id);
+    setActiveProject(selectableProjects[0].id);
   }
 
   async function fetchProjects() {
@@ -74,6 +79,7 @@ export const useProjectStore = defineStore('project', () => {
     projects,
     activeProjectId,
     activeProject,
+    activeProjects,
     loading,
     fetchProjects,
     setActiveProject,

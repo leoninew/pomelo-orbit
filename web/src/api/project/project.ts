@@ -36,14 +36,22 @@ export const projectApi = {
 
   importHandover(
     file: File,
-    mode: 'new' | 'replace',
-    targetProjectId?: string
+    input: {
+      mode: 'new' | 'replace';
+      name?: string;
+      code?: string;
+      targetProjectId?: string;
+    }
   ): Promise<ProjectResp> {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('mode', mode);
-    if (targetProjectId) {
-      formData.append('target_project_id', targetProjectId);
+    formData.append('mode', input.mode);
+    if (input.mode === 'new') {
+      formData.append('name', input.name ?? '');
+      formData.append('code', input.code ?? '');
+    }
+    if (input.mode === 'replace' && input.targetProjectId) {
+      formData.append('target_project_id', input.targetProjectId);
     }
     return request.post('/api/project/handover', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

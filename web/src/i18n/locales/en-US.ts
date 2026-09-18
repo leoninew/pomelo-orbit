@@ -213,6 +213,8 @@ export default {
     handoverImported: 'Handover package imported',
     handoverImportFailed: 'Failed to import handover package',
     handoverFile: 'Handover package file',
+    handoverFileEmpty: 'No handover package file selected',
+    handoverChooseFile: 'Choose file',
     handoverFileRequired: 'Select a handover package file',
     handoverMode: 'Import mode',
     handoverModeNew: 'New Project',

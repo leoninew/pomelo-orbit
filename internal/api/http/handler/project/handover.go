@@ -61,8 +61,12 @@ func (h Handler) ImportHandover(c *gin.Context) {
 	project, err := h.handover.ImportDocument(
 		c.Request.Context(),
 		current.Id,
-		handoverdto.ImportMode(c.PostForm("mode")),
-		c.PostForm("target_project_id"),
+		handoverdto.ImportInput{
+			Mode:            handoverdto.ImportMode(c.PostForm("mode")),
+			Name:            c.PostForm("name"),
+			Code:            c.PostForm("code"),
+			TargetProjectID: c.PostForm("target_project_id"),
+		},
 		document,
 	)
 	if err != nil {

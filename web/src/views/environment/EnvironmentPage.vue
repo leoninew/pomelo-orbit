@@ -296,15 +296,16 @@
     if (editing && !validate()) {
       return;
     }
-    const target = editing && form.targetType === 'ssh'
-      ? {
-          platform: form.platform,
-          host: form.host,
-          port: form.port,
-          username: form.username,
-          workspace_root: form.workspaceRoot,
-        }
-      : environment.value?.ssh;
+    const target =
+      editing && form.targetType === 'ssh'
+        ? {
+            platform: form.platform,
+            host: form.host,
+            port: form.port,
+            username: form.username,
+            workspace_root: form.workspaceRoot,
+          }
+        : environment.value?.ssh;
     const canPrepareSSH = editing ? form.targetType === 'ssh' : isSSH.value;
     if (!projectId || !canPrepareSSH || !target) {
       return;

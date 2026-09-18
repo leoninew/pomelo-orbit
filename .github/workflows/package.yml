@@ -1,8 +1,9 @@
-name: Release packages
+name: Release packages and images
 
 env:
   PROJECT_NAME: pomelo-orbit
   NODE_VERSION: "22"
+  IMAGE_REPOSITORY: ghcr.io/leoninew/pomelo-orbit
 
 on:
   push:
@@ -117,9 +118,93 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  image:
+    name: Build and publish Docker image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Verify checked out tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
+          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$(git rev-parse HEAD)"
+
+      - name: Verify release tag matches VERSION
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RELEASE_TAG#v}" = "$(tr -d '\r\n' < VERSION)"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_REPOSITORY }}
+          tags: |
+            type=raw,value=${{ env.RELEASE_TAG }}
+            type=raw,value=latest,enable=${{ github.event_name == 'push' }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Export image archive for GitHub Release
+        shell: bash
+        env:
+          IMAGE_REF: ${{ env.IMAGE_REPOSITORY }}:${{ env.RELEASE_TAG }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for platform in amd64 arm64; do
+            docker pull --platform "linux/$platform" "$IMAGE_REF"
+            test "$(docker image inspect --format '{{.Architecture}}' "$IMAGE_REF")" = "$platform"
+            archive="dist/${PROJECT_NAME}-${RELEASE_TAG}-linux-$platform.tar.gz"
+            docker image save --platform "linux/$platform" "$IMAGE_REF" | gzip -9 > "$archive"
+            gzip -t "$archive"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PROJECT_NAME }}-image-${{ env.RELEASE_TAG }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
   publish:
-    name: Create Release and upload packages
-    needs: build
+    name: Create Release and upload packages and image
+    needs: [build, image]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -133,14 +218,19 @@ jobs:
           name: ${{ env.PROJECT_NAME }}-packages-${{ env.RELEASE_TAG }}
           path: dist
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.PROJECT_NAME }}-image-${{ env.RELEASE_TAG }}
+          path: dist
+
       - name: Create Release and upload packages
         shell: bash
         run: |
           set -euo pipefail
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" dist/*.zip \
+            gh release upload "$RELEASE_TAG" dist/*.zip dist/*.tar.gz \
               --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$RELEASE_TAG" dist/*.zip \
+            gh release create "$RELEASE_TAG" dist/*.zip dist/*.tar.gz \
               --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
           fi

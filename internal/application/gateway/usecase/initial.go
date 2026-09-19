@@ -18,8 +18,8 @@ const (
 	gatewayMountTargetCertDir    = "/etc/traefik/certs"
 	gatewayMountTargetAcmeDir    = "/letsencrypt"
 
-	gatewayRestAPIPort     = 8080
-	gatewayRestAPIProtocol = "http"
+	gatewayRestApiPort     = 8080
+	gatewayRestApiProtocol = "http"
 )
 
 type initialGatewayVersion struct {
@@ -64,7 +64,7 @@ func buildInitialGatewayComponent(versionId, image, pullPolicy, componentName, r
 		Endpoints: []model.VersionComponentEndpoint{
 			{Protocol: "tcp", ContainerPort: 80, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(80)},
 			{Protocol: "tcp", ContainerPort: 443, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(443)},
-			{Protocol: gatewayRestAPIProtocol, ContainerPort: gatewayRestAPIPort, Mode: "local", BindAddress: stringRef("127.0.0.1"), ListenPort: intRef(gatewayRestAPIPort)},
+			{Protocol: gatewayRestApiProtocol, ContainerPort: gatewayRestApiPort, Mode: "local", BindAddress: stringRef("127.0.0.1"), ListenPort: intRef(gatewayRestApiPort)},
 		},
 		Mounts: []model.VersionComponentMount{
 			{SourceType: "file", Source: gatewayDockerSocketPath, SourceIsHostPath: true, Target: gatewayDockerSocketPath, ReadOnly: true},

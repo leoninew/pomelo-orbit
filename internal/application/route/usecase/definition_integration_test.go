@@ -67,18 +67,18 @@ func TestCreateRouteFromDefinitionPreservesConfigurationAndDisablesRoutes(t *tes
 		t.Fatalf("created route configuration = %+v", created)
 	}
 
-	serviceID, componentName, protocol := "source-service", "app", "http"
+	serviceId, componentName, protocol := "source-service", "app", "http"
 	containerPort := 8080
 	stale, err := service.CreateRouteFromDefinition(ctx, "user-1", "project-1", routedto.RouteDefinitionInput{Route: model.Route{
 		Id: "source-stale-route", Name: "stale", Protocol: routeProtocolHTTP, Domain: "stale.example.test", PathPrefix: "/",
-		TargetUrl: "source-service/app/http8080", ServiceId: &serviceID, ComponentName: &componentName,
+		TargetUrl: "source-service/app/http8080", ServiceId: &serviceId, ComponentName: &componentName,
 		EndpointProtocol: &protocol, EndpointContainerPort: &containerPort, Enabled: false,
 		CertType: certTypeManual, AcmeChallenge: acmeChallengeHTTP,
 	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stale.Enabled || stale.ServiceId == nil || *stale.ServiceId != serviceID || stale.ComponentName == nil || *stale.ComponentName != componentName || stale.EndpointProtocol == nil || *stale.EndpointProtocol != protocol || stale.EndpointContainerPort == nil || *stale.EndpointContainerPort != containerPort {
+	if stale.Enabled || stale.ServiceId == nil || *stale.ServiceId != serviceId || stale.ComponentName == nil || *stale.ComponentName != componentName || stale.EndpointProtocol == nil || *stale.EndpointProtocol != protocol || stale.EndpointContainerPort == nil || *stale.EndpointContainerPort != containerPort {
 		t.Fatalf("restored disabled managed route = %+v", stale)
 	}
 }

@@ -52,9 +52,9 @@ func DecryptString(secretKey string, encryptedValue string) (string, error) {
 	return string(plaintext), nil
 }
 
-// DecryptStringWithTTL decrypts a Fernet token and rejects it when the embedded
+// DecryptStringWithTtl decrypts a Fernet token and rejects it when the embedded
 // timestamp is older than maxAge. A small future skew (60s) is tolerated.
-func DecryptStringWithTTL(secretKey string, encryptedValue string, maxAge time.Duration) (string, error) {
+func DecryptStringWithTtl(secretKey string, encryptedValue string, maxAge time.Duration) (string, error) {
 	if maxAge <= 0 {
 		return "", errors.New("fernet max age must be positive")
 	}

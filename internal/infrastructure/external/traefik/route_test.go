@@ -15,7 +15,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-func TestRouteManagerListRoutersUsesRemoteTraefikAPI(t *testing.T) {
+func TestRouteManagerListRoutersUsesRemoteTraefikApi(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.responses["/api/http/routers"] = `[{"name":"api@docker","provider":"docker","status":"enabled","rule":"Host(api.example.test)","service":"api-service","entryPoints":["websecure"],"tls":{}}]`
 	runtime.responses["/api/tcp/routers"] = `[{"name":"redis@rest","provider":"rest","status":"enabled","rule":"HostSNI(` + "`*`" + `)","service":"redis-service","entryPoints":["tcp16379"],"tls":null}]`
@@ -189,8 +189,8 @@ func TestRouteManagerApplySnapshotStagesRemoteCertificatesAndPUTBody(t *testing.
 	if len(httpCfg["routers"].(map[string]any)) != 2 {
 		t.Fatalf("unexpected REST snapshot: %s", runtime.putBody)
 	}
-	if runtime.putURL != "http://traefik:8080/api/providers/rest" {
-		t.Fatalf("PUT URL = %q", runtime.putURL)
+	if runtime.putUrl != "http://traefik:8080/api/providers/rest" {
+		t.Fatalf("PUT URL = %q", runtime.putUrl)
 	}
 	if runtime.putFile != "@-" {
 		t.Fatalf("PUT file = %q", runtime.putFile)
@@ -274,7 +274,7 @@ func equalStrings(left, right []string) bool {
 }
 
 func testGateway() model.GatewayConfig {
-	return model.GatewayConfig{RestApiUrl: model.GatewayRestAPIContainerURL, RestApiHostUrl: model.GatewayRestAPIHostURL, RuntimeServiceCode: "traefik-default"}
+	return model.GatewayConfig{RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl, RuntimeServiceCode: "traefik-default"}
 }
 
 type routeTargetResolver struct {
@@ -299,7 +299,7 @@ type routeRuntimeFake struct {
 	putBody            []byte
 	putStdin           []byte
 	putFile            string
-	putURL             string
+	putUrl             string
 	lastTarget         environmentport.Target
 	environmentQueries int
 }
@@ -361,7 +361,7 @@ func (r *routeRuntimeFake) query(target environmentport.Target, args ...string) 
 		return `{}`, nil
 	}
 	if strings.HasSuffix(endpoint, "/api/providers/rest") {
-		r.putURL = endpoint
+		r.putUrl = endpoint
 		for _, arg := range args {
 			if !strings.HasPrefix(arg, "@") {
 				continue

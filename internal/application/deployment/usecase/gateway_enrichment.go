@@ -46,7 +46,7 @@ func enrichGatewayPlan(plan *model.EffectiveServicePlan) error {
 	if role == "" {
 		role = "base"
 	}
-	versionId := cfg.VersionIDForProfile(role)
+	versionId := cfg.VersionIdForProfile(role)
 	if versionId == "" {
 		return fmt.Errorf("gateway Version binding is missing for %s", role)
 	}

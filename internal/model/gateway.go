@@ -3,8 +3,8 @@ package model
 import "time"
 
 const (
-	GatewayRestAPIContainerURL = "http://traefik:8080"
-	GatewayRestAPIHostURL      = "http://127.0.0.1:8080"
+	GatewayRestApiContainerUrl = "http://traefik:8080"
+	GatewayRestApiHostUrl      = "http://127.0.0.1:8080"
 )
 
 // GatewayConfig is the configuration owned by a gateway application.
@@ -33,7 +33,7 @@ type GatewayVersionBinding struct {
 	VersionId string `db:"version_id"`
 }
 
-func (g GatewayConfig) VersionIDForProfile(profile string) string {
+func (g GatewayConfig) VersionIdForProfile(profile string) string {
 	for _, binding := range g.VersionBindings {
 		if binding.Profile == profile {
 			return binding.VersionId

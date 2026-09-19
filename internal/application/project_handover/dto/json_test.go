@@ -12,24 +12,24 @@ import (
 )
 
 func TestEncodeDecodeKeepsInternalReferencesWithoutProjectOwnership(t *testing.T) {
-	projectID := "source-project"
-	serviceID := "source-service"
+	projectId := "source-project"
+	serviceId := "source-service"
 	item := Package{
 		Format:  Format,
 		Version: FormatVersion,
 		Project: projectdto.ProjectDefinition{Name: "Source", Code: "source", IsActive: true},
 		Services: []servicedto.ServiceDefinition{{
 			Service: model.Service{
-				Id: "source-service", ProjectId: projectID, ApplicationId: "source-application",
+				Id: "source-service", ProjectId: projectId, ApplicationId: "source-application",
 				VersionId: "source-version", Code: "web", Status: "running",
 			},
 			Components: []model.ServiceComponent{{
-				Id: "source-service-component", ServiceId: serviceID,
+				Id: "source-service-component", ServiceId: serviceId,
 				SourceVersionComponentId: "source-version-component", ComponentName: "web",
 			}},
 		}},
 		Routes: []routedto.RouteDefinitionInput{{Route: model.Route{
-			Id: "source-route", ProjectId: &projectID, ServiceId: &serviceID, Name: "web",
+			Id: "source-route", ProjectId: &projectId, ServiceId: &serviceId, Name: "web",
 		}}},
 	}
 
@@ -51,7 +51,7 @@ func TestEncodeDecodeKeepsInternalReferencesWithoutProjectOwnership(t *testing.T
 	if decoded.Services[0].Components[0].SourceVersionComponentId != "source-version-component" {
 		t.Fatalf("source Component reference was not preserved: %+v", decoded.Services[0].Components[0])
 	}
-	if decoded.Routes[0].Route.ServiceId == nil || *decoded.Routes[0].Route.ServiceId != serviceID || decoded.Routes[0].Route.ProjectId != nil {
+	if decoded.Routes[0].Route.ServiceId == nil || *decoded.Routes[0].Route.ServiceId != serviceId || decoded.Routes[0].Route.ProjectId != nil {
 		t.Fatalf("unexpected decoded Route: %+v", decoded.Routes[0].Route)
 	}
 }
@@ -74,7 +74,7 @@ func TestEncodeDecodeOmitsGatewayRuntimeNetworkName(t *testing.T) {
 		Version: FormatVersion,
 		Gateway: &gatewaydto.GatewayDefinition{Config: model.GatewayConfig{
 			NetworkName:    "traefik",
-			RestApiHostUrl: model.GatewayRestAPIHostURL,
+			RestApiHostUrl: model.GatewayRestApiHostUrl,
 		}},
 	})
 	if err != nil {
@@ -88,7 +88,7 @@ func TestEncodeDecodeOmitsGatewayRuntimeNetworkName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if decoded.Gateway == nil || decoded.Gateway.Config.RestApiHostUrl != model.GatewayRestAPIHostURL {
+	if decoded.Gateway == nil || decoded.Gateway.Config.RestApiHostUrl != model.GatewayRestApiHostUrl {
 		t.Fatalf("gateway host endpoint = %+v", decoded.Gateway)
 	}
 }

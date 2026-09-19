@@ -71,7 +71,7 @@ type Config struct {
 //
 // Transaction boundaries (aligned with sqlc UoW plan):
 //   - ClaimNext uses an independent short RunInTx (lease lifecycle ≠ handler).
-//   - Handler context gets *sql.DB via WithDB only — no outer message transaction —
+//   - Handler context gets *sql.DB via WithDb only — no outer message transaction —
 //     so Docker/file/network work never holds a DB connection lease.
 //   - Complete/Fail are single-statement writes on that DB handle after the handler.
 //   - Multi-write atomic segments inside handlers use tx.RunInTx when needed.

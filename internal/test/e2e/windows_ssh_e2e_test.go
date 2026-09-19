@@ -185,7 +185,7 @@ func TestWindowsSSHTraefikRouterQueryIntegration(t *testing.T) {
 	defer cancel()
 
 	manager := traefikclient.NewRouteManager(windowsSSHTargetResolver{target: target}, sshrunner.NewRuntime())
-	routers, err := manager.ListRouters(ctx, target.Environment.ProjectId, model.GatewayConfig{RestApiUrl: model.GatewayRestAPIContainerURL, RestApiHostUrl: windowsSSHTraefikRestApiUrl()})
+	routers, err := manager.ListRouters(ctx, target.Environment.ProjectId, model.GatewayConfig{RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: windowsSSHTraefikRestApiUrl()})
 	if err != nil {
 		t.Fatalf("query Traefik routers through Windows SSH: %v", err)
 	}

@@ -156,43 +156,43 @@ func (s Service) createDefinitionVersions(ctx context.Context, projectId string,
 	if len(definitions) == 0 {
 		return nil, apperror.New(apperror.KindValidation, "Application definition requires at least one Version")
 	}
-	bySourceID := make(map[string]applicationdto.VersionDefinition, len(definitions))
+	bySourceId := make(map[string]applicationdto.VersionDefinition, len(definitions))
 	for _, definition := range definitions {
-		sourceID := strings.TrimSpace(definition.Version.Id)
-		if sourceID == "" {
+		sourceId := strings.TrimSpace(definition.Version.Id)
+		if sourceId == "" {
 			return nil, apperror.New(apperror.KindValidation, "Application definition Version id is required")
 		}
-		if _, exists := bySourceID[sourceID]; exists {
+		if _, exists := bySourceId[sourceId]; exists {
 			return nil, apperror.New(apperror.KindValidation, "Application definition has duplicate Version id")
 		}
-		bySourceID[sourceID] = definition
+		bySourceId[sourceId] = definition
 	}
-	createdBySourceID := make(map[string]applicationdto.VersionDefinition, len(definitions))
+	createdBySourceId := make(map[string]applicationdto.VersionDefinition, len(definitions))
 	visiting := make(map[string]bool, len(definitions))
 	var create func(string) error
-	create = func(sourceID string) error {
-		if _, exists := createdBySourceID[sourceID]; exists {
+	create = func(sourceId string) error {
+		if _, exists := createdBySourceId[sourceId]; exists {
 			return nil
 		}
-		if visiting[sourceID] {
+		if visiting[sourceId] {
 			return apperror.New(apperror.KindValidation, "Application definition Version lineage contains a cycle")
 		}
-		definition, exists := bySourceID[sourceID]
+		definition, exists := bySourceId[sourceId]
 		if !exists {
 			return apperror.New(apperror.KindValidation, "Application definition Version lineage references an unknown Version")
 		}
-		visiting[sourceID] = true
-		var parentID *string
+		visiting[sourceId] = true
+		var parentId *string
 		if definition.Version.CreatedFromVersionId != nil {
-			parentSourceID := strings.TrimSpace(*definition.Version.CreatedFromVersionId)
-			if parentSourceID == "" {
+			parentSourceId := strings.TrimSpace(*definition.Version.CreatedFromVersionId)
+			if parentSourceId == "" {
 				return apperror.New(apperror.KindValidation, "Application definition Version parent id is invalid")
 			}
-			if err := create(parentSourceID); err != nil {
+			if err := create(parentSourceId); err != nil {
 				return err
 			}
-			parent := createdBySourceID[parentSourceID].Version.Id
-			parentID = &parent
+			parent := createdBySourceId[parentSourceId].Version.Id
+			parentId = &parent
 		}
 		components := cloneVersionDefinitionComponents(definition.Components)
 		for index := range components {
@@ -211,7 +211,7 @@ func (s Service) createDefinitionVersions(ctx context.Context, projectId string,
 		}
 		version := model.Version{
 			Id: idutil.NewId(), ApplicationId: app.Id, Label: label, Status: definition.Version.Status,
-			CreatedFromVersionId: parentID, Note: optionalText(definition.Version.Note),
+			CreatedFromVersionId: parentId, Note: optionalText(definition.Version.Note),
 			ComponentSummary: model.VersionComponentSummary(components),
 		}
 		for index := range components {
@@ -221,8 +221,8 @@ func (s Service) createDefinitionVersions(ctx context.Context, projectId string,
 		if err := s.store.CreateVersionWithVersionComponents(ctx, projectId, version, components); err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to create Version definition", err)
 		}
-		createdBySourceID[sourceID] = applicationdto.VersionDefinition{Version: version, Components: components}
-		visiting[sourceID] = false
+		createdBySourceId[sourceId] = applicationdto.VersionDefinition{Version: version, Components: components}
+		visiting[sourceId] = false
 		return nil
 	}
 	for _, definition := range definitions {
@@ -232,7 +232,7 @@ func (s Service) createDefinitionVersions(ctx context.Context, projectId string,
 	}
 	created := make([]applicationdto.VersionDefinition, 0, len(definitions))
 	for _, definition := range definitions {
-		created = append(created, createdBySourceID[strings.TrimSpace(definition.Version.Id)])
+		created = append(created, createdBySourceId[strings.TrimSpace(definition.Version.Id)])
 	}
 	return created, nil
 }

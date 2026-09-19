@@ -55,12 +55,12 @@ func TestFernetRejectsTamperedToken(t *testing.T) {
 	}
 }
 
-func TestFernetDecryptStringWithTTLAcceptsFreshToken(t *testing.T) {
+func TestFernetDecryptStringWithTtlAcceptsFreshToken(t *testing.T) {
 	encrypted, err := EncryptString(testFernetKey, "csrf")
 	if err != nil {
 		t.Fatal(err)
 	}
-	decrypted, err := DecryptStringWithTTL(testFernetKey, encrypted, 3*time.Minute)
+	decrypted, err := DecryptStringWithTtl(testFernetKey, encrypted, 3*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestFernetDecryptStringWithTTLAcceptsFreshToken(t *testing.T) {
 	}
 }
 
-func TestFernetDecryptStringWithTTLRejectsExpiredToken(t *testing.T) {
+func TestFernetDecryptStringWithTtlRejectsExpiredToken(t *testing.T) {
 	key, err := parseFernetKey(testFernetKey)
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +83,7 @@ func TestFernetDecryptStringWithTTLRejectsExpiredToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := DecryptStringWithTTL(testFernetKey, encrypted, 3*time.Minute); err == nil {
+	if _, err := DecryptStringWithTtl(testFernetKey, encrypted, 3*time.Minute); err == nil {
 		t.Fatal("expected expired token error")
 	} else if !strings.Contains(err.Error(), "expired") {
 		t.Fatalf("expected expired error, got %v", err)
@@ -94,13 +94,13 @@ func TestFernetDecryptStringWithTTLRejectsExpiredToken(t *testing.T) {
 	}
 }
 
-func TestFernetDecryptStringWithTTLRejectsTamperedToken(t *testing.T) {
+func TestFernetDecryptStringWithTtlRejectsTamperedToken(t *testing.T) {
 	encrypted, err := EncryptString(testFernetKey, "csrf")
 	if err != nil {
 		t.Fatal(err)
 	}
 	tampered := encrypted[:len(encrypted)-2] + "AA"
-	if _, err := DecryptStringWithTTL(testFernetKey, tampered, 3*time.Minute); err == nil {
+	if _, err := DecryptStringWithTtl(testFernetKey, tampered, 3*time.Minute); err == nil {
 		t.Fatal("expected tampered token error")
 	}
 }

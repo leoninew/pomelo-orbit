@@ -173,8 +173,7 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 }
 
 // CreateRouteFromDefinition persists a complete Route configuration without
-// publishing it. Imported routes always start disabled, regardless of the
-// source configuration's enabled flag.
+// publishing it. The imported route's enabled state is retained.
 func (s Service) CreateRouteFromDefinition(ctx context.Context, userId string, projectId string, input routedto.RouteDefinitionInput) (model.Route, error) {
 	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
@@ -186,7 +185,6 @@ func (s Service) CreateRouteFromDefinition(ctx context.Context, userId string, p
 	route := cloneRouteDefinition(input.Route)
 	route.Id = idutil.NewId()
 	route.ProjectId = &projectId
-	route.Enabled = false
 	if route.Protocol == routeProtocolHTTP && route.PathPrefix == "" {
 		route.PathPrefix = "/"
 	}

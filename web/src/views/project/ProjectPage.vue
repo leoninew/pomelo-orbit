@@ -254,11 +254,9 @@
             type="password"
             autocomplete="off"
             class="app-input"
+            :placeholder="t('project.handoverDecryptionKeyHint')"
             :disabled="operating || !handoverOverrideEnvironment"
           />
-          <p class="text-xs text-muted-foreground">
-            {{ t('project.handoverDecryptionKeyHint') }}
-          </p>
         </div>
 
         <label

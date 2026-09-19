@@ -9,6 +9,8 @@ import type {
 } from '@/gen/proto/orbit/v1/project/project';
 import request from '@/utils/request';
 
+const HANDOVER_EXPORT_TIMEOUT = 60_000;
+
 export const projectApi = {
   list(): Promise<ProjectListResp> {
     return request.get('/api/project');
@@ -31,7 +33,10 @@ export const projectApi = {
   },
 
   exportHandover(id: string): Promise<Blob> {
-    return request.get(`/api/project/${id}/handover`, { responseType: 'blob' });
+    return request.get(`/api/project/${id}/handover`, {
+      responseType: 'blob',
+      timeout: HANDOVER_EXPORT_TIMEOUT,
+    });
   },
 
   importHandover(

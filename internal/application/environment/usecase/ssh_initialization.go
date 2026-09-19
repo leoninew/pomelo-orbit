@@ -45,7 +45,7 @@ func (s Service) PrepareSSHEnvironment(ctx context.Context, userId string, proje
 	if err := applyUpdate(&item, input); err != nil {
 		return environmentdto.View{}, "", err
 	}
-	if err := validateEnvironment(item, s.localDisplay.Platform, false); err != nil {
+	if err := validateEnvironment(item, s.localDisplay.Platform, false, false); err != nil {
 		return environmentdto.View{}, "", err
 	}
 	if err := s.ensureTargetIsAvailable(ctx, project.Id, item); err != nil {

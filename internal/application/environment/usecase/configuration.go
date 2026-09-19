@@ -31,6 +31,17 @@ func (s Service) TargetDefinitionForUser(ctx context.Context, userId string, pro
 // performs model and target-exclusivity validation but deliberately does not
 // invoke the SSH reachability probe or any runtime integration.
 func (s Service) SaveTargetDefinitionForUser(ctx context.Context, userId string, projectId string, input environmentdto.TargetDefinition) (environmentdto.TargetDefinition, error) {
+	return s.saveTargetDefinitionForUser(ctx, userId, projectId, input, false, false)
+}
+
+// SaveTargetDefinitionForHandover restores the package value exactly. Import
+// persists configuration only; deployment-target availability is checked when
+// the target is subsequently used, not while a package is being restored.
+func (s Service) SaveTargetDefinitionForHandover(ctx context.Context, userId string, projectId string, input environmentdto.TargetDefinition) (environmentdto.TargetDefinition, error) {
+	return s.saveTargetDefinitionForUser(ctx, userId, projectId, input, true, true)
+}
+
+func (s Service) saveTargetDefinitionForUser(ctx context.Context, userId string, projectId string, input environmentdto.TargetDefinition, allowLocalWorkspacePlatformMismatch bool, skipTargetAvailabilityCheck bool) (environmentdto.TargetDefinition, error) {
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.TargetDefinition{}, err
 	}
@@ -46,9 +57,9 @@ func (s Service) SaveTargetDefinitionForUser(ctx context.Context, userId string,
 	if err != nil && !creating {
 		return environmentdto.TargetDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
 	}
-	previousCredentialID := ""
+	previousCredentialId := ""
 	if !creating && existing.IsSSH() {
-		previousCredentialID = existing.SSH.CredentialId
+		previousCredentialId = existing.SSH.CredentialId
 	}
 	credential, credentialCreating, err := s.configurationCredential(ctx, project.Id, existing, creating, input)
 	if err != nil {
@@ -58,11 +69,13 @@ func (s Service) SaveTargetDefinitionForUser(ctx context.Context, userId string,
 	if err != nil {
 		return environmentdto.TargetDefinition{}, err
 	}
-	if err := validateEnvironment(environment, s.localDisplay.Platform, false); err != nil {
+	if err := validateEnvironment(environment, s.localDisplay.Platform, false, allowLocalWorkspacePlatformMismatch); err != nil {
 		return environmentdto.TargetDefinition{}, err
 	}
-	if err := s.ensureTargetAvailable(ctx, environment); err != nil {
-		return environmentdto.TargetDefinition{}, err
+	if !skipTargetAvailabilityCheck {
+		if err := s.ensureTargetAvailable(ctx, environment); err != nil {
+			return environmentdto.TargetDefinition{}, err
+		}
 	}
 	if credential != nil {
 		if credentialCreating {
@@ -80,8 +93,8 @@ func (s Service) SaveTargetDefinitionForUser(ctx context.Context, userId string,
 	} else if err := s.environments.UpdateEnvironment(ctx, environment); err != nil {
 		return environmentdto.TargetDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
 	}
-	if previousCredentialID != "" && (credential == nil || credential.Id != previousCredentialID) {
-		if err := s.environmentCredentials.DeleteEnvironmentCredential(ctx, previousCredentialID); err != nil {
+	if previousCredentialId != "" && (credential == nil || credential.Id != previousCredentialId) {
+		if err := s.environmentCredentials.DeleteEnvironmentCredential(ctx, previousCredentialId); err != nil {
 			return environmentdto.TargetDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to remove replaced environment SSH credential", err)
 		}
 	}

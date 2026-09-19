@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
@@ -69,6 +70,28 @@ func TestCreateServiceUsesSubmittedCode(t *testing.T) {
 	}
 	if store.created.Code != "ragflow-preview" || view.Service.Code != "ragflow-preview" {
 		t.Fatalf("service code was not preserved: created=%q view=%q", store.created.Code, view.Service.Code)
+	}
+}
+
+func TestCreateServiceFromDefinitionPreservesSubmittedStatus(t *testing.T) {
+	store := &serviceCreateStoreFake{serviceByProjectAndCodeErr: repository.ErrNotFound}
+	service := Service{
+		project: serviceCreateProjectFake{},
+		application: serviceApplicationFake{
+			app:     model.Application{Id: "app-1", ProjectId: stringPtr("project-1"), Code: "ragflow"},
+			version: model.Version{Id: "version-1", ApplicationId: "app-1"},
+		},
+		service: store,
+	}
+
+	view, err := service.CreateServiceFromDefinition(context.Background(), "user-1", "project-1", servicedto.ServiceDefinition{
+		Service: model.Service{ApplicationId: "app-1", VersionId: "version-1", Code: "ragflow-imported", Status: status.ServiceStatusRunning},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store.created.Status != status.ServiceStatusRunning || view.Service.Status != status.ServiceStatusRunning {
+		t.Fatalf("service status was not preserved: created=%q view=%q", store.created.Status, view.Service.Status)
 	}
 }
 

@@ -134,11 +134,11 @@ func (s Service) CreateGatewayFromDefinition(ctx context.Context, userId, projec
 	if err != nil {
 		return gatewaydto.GatewayDefinition{}, err
 	}
-	versionIDs, componentIDs, err := definitionIDMaps(input.Application, createdApplication)
+	versionIds, componentIds, err := definitionIdMaps(input.Application, createdApplication)
 	if err != nil {
 		return gatewaydto.GatewayDefinition{}, err
 	}
-	config, err := gatewayConfigFromDefinition(input.Config, createdApplication.Application.Id, versionIDs)
+	config, err := gatewayConfigFromDefinition(input.Config, createdApplication.Application.Id, versionIds)
 	if err != nil {
 		return gatewaydto.GatewayDefinition{}, err
 	}
@@ -158,7 +158,7 @@ func (s Service) CreateGatewayFromDefinition(ctx context.Context, userId, projec
 	if !bound {
 		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindConflict, "Project environment already has a gateway")
 	}
-	serviceDefinition, err := targetGatewayServiceDefinition(input, createdApplication.Application.Id, versionIDs, componentIDs)
+	serviceDefinition, err := targetGatewayServiceDefinition(input, createdApplication.Application.Id, versionIds, componentIds)
 	if err != nil {
 		return gatewaydto.GatewayDefinition{}, err
 	}
@@ -185,76 +185,75 @@ func (s Service) RemoveGateway(ctx context.Context, userId, projectId, applicati
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
 	}
-	applicationID := definition.Application.Application.Id
-	if environment.GatewayApplicationId == nil || *environment.GatewayApplicationId != applicationID {
+	applicationId = definition.Application.Application.Id
+	if environment.GatewayApplicationId == nil || *environment.GatewayApplicationId != applicationId {
 		return apperror.New(apperror.KindConflict, "Project environment gateway binding changed")
 	}
 	if err := s.serviceDefinitions.RemoveService(ctx, userId, projectId, definition.RuntimeService.Service.Id); err != nil {
 		return err
 	}
-	unbound, err := s.environment.UnbindGatewayApplication(ctx, environment.Id, applicationID)
+	unbound, err := s.environment.UnbindGatewayApplication(ctx, environment.Id, applicationId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to unbind gateway from project environment", err)
 	}
 	if !unbound {
 		return apperror.New(apperror.KindConflict, "Project environment gateway binding changed")
 	}
-	if err := s.config.DeleteGatewayConfig(ctx, applicationID); err != nil {
+	if err := s.config.DeleteGatewayConfig(ctx, applicationId); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to remove gateway config", err)
 	}
-	if err := s.applicationDefinitions.RemoveApplication(ctx, userId, projectId, applicationID); err != nil {
+	if err := s.applicationDefinitions.RemoveApplication(ctx, userId, projectId, applicationId); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to remove gateway application", err)
 	}
 	return nil
 }
 
-func definitionIDMaps(source, target applicationdto.ApplicationDefinition) (map[string]string, map[string]string, error) {
+func definitionIdMaps(source, target applicationdto.ApplicationDefinition) (map[string]string, map[string]string, error) {
 	if len(source.Versions) != len(target.Versions) {
 		return nil, nil, apperror.New(apperror.KindValidation, "Gateway Version definition is incomplete")
 	}
-	versionIDs := make(map[string]string, len(source.Versions))
-	componentIDs := make(map[string]string)
+	versionIds := make(map[string]string, len(source.Versions))
+	componentIds := make(map[string]string)
 	for index, sourceVersion := range source.Versions {
-		sourceVersionID := strings.TrimSpace(sourceVersion.Version.Id)
-		if sourceVersionID == "" || len(sourceVersion.Components) != len(target.Versions[index].Components) {
+		sourceVersionId := strings.TrimSpace(sourceVersion.Version.Id)
+		if sourceVersionId == "" || len(sourceVersion.Components) != len(target.Versions[index].Components) {
 			return nil, nil, apperror.New(apperror.KindValidation, "Gateway Version definition is incomplete")
 		}
-		if _, exists := versionIDs[sourceVersionID]; exists {
+		if _, exists := versionIds[sourceVersionId]; exists {
 			return nil, nil, apperror.New(apperror.KindValidation, "Gateway Version definition has duplicate ids")
 		}
-		versionIDs[sourceVersionID] = target.Versions[index].Version.Id
+		versionIds[sourceVersionId] = target.Versions[index].Version.Id
 		for componentIndex, sourceComponent := range sourceVersion.Components {
-			sourceComponentID := strings.TrimSpace(sourceComponent.Id)
-			if sourceComponentID == "" {
+			sourceComponentId := strings.TrimSpace(sourceComponent.Id)
+			if sourceComponentId == "" {
 				return nil, nil, apperror.New(apperror.KindValidation, "Gateway Component definition id is required")
 			}
-			if _, exists := componentIDs[sourceComponentID]; exists {
+			if _, exists := componentIds[sourceComponentId]; exists {
 				return nil, nil, apperror.New(apperror.KindValidation, "Gateway Component definition has duplicate ids")
 			}
-			componentIDs[sourceComponentID] = target.Versions[index].Components[componentIndex].Id
+			componentIds[sourceComponentId] = target.Versions[index].Components[componentIndex].Id
 		}
 	}
-	return versionIDs, componentIDs, nil
+	return versionIds, componentIds, nil
 }
 
-func targetGatewayServiceDefinition(input gatewaydto.GatewayDefinition, applicationID string, versionIDs, componentIDs map[string]string) (servicedto.ServiceDefinition, error) {
+func targetGatewayServiceDefinition(input gatewaydto.GatewayDefinition, applicationId string, versionIds, componentIds map[string]string) (servicedto.ServiceDefinition, error) {
 	definition := input.RuntimeService
 	if strings.TrimSpace(definition.Service.ApplicationId) != strings.TrimSpace(input.Application.Application.Id) {
 		return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service does not belong to the Gateway Application")
 	}
-	versionID, exists := versionIDs[strings.TrimSpace(definition.Service.VersionId)]
+	versionId, exists := versionIds[strings.TrimSpace(definition.Service.VersionId)]
 	if !exists {
 		return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service Version is not part of the Gateway definition")
 	}
-	definition.Service.ApplicationId = applicationID
-	definition.Service.VersionId = versionID
-	definition.Service.Status = status.ServiceStatusStopped
+	definition.Service.ApplicationId = applicationId
+	definition.Service.VersionId = versionId
 	for index := range definition.Components {
-		targetComponentID, exists := componentIDs[strings.TrimSpace(definition.Components[index].SourceVersionComponentId)]
+		targetComponentId, exists := componentIds[strings.TrimSpace(definition.Components[index].SourceVersionComponentId)]
 		if !exists {
 			return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service Component is not part of the Gateway Version")
 		}
-		definition.Components[index].SourceVersionComponentId = targetComponentID
+		definition.Components[index].SourceVersionComponentId = targetComponentId
 	}
 	return definition, nil
 }
@@ -418,7 +417,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 		}
 		if _, err := s.serviceCommands.CreateService(txCtx, userId, projectId, servicedto.ServiceCreateInput{
 			ApplicationId: app.Id,
-			VersionId:     cfg.VersionIDForProfile(gatewayVersionRoleBase),
+			VersionId:     cfg.VersionIdForProfile(gatewayVersionRoleBase),
 			Code:          app.Code + "-default",
 		}); err != nil {
 			return err
@@ -654,14 +653,14 @@ func (s Service) ensureApplicationCodeAvailable(ctx context.Context, projectId s
 }
 
 func normalizeRestApiUrl(raw string) (string, error) {
-	return normalizeGatewayRestAPIURL(raw, "rest_api_url")
+	return normalizeGatewayRestApiUrl(raw, "rest_api_url")
 }
 
 func normalizeRestApiHostUrl(raw string) (string, error) {
-	return normalizeGatewayRestAPIURL(raw, "rest_api_host_url")
+	return normalizeGatewayRestApiUrl(raw, "rest_api_host_url")
 }
 
-func normalizeGatewayRestAPIURL(raw string, field string) (string, error) {
+func normalizeGatewayRestApiUrl(raw string, field string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return "", apperror.New(apperror.KindValidation, field+" is required")
@@ -787,11 +786,11 @@ func normalizeGatewayCertificateConfig(profileValue, emailValue, tokenValue *str
 }
 
 func normalizeGatewayConfig(input model.GatewayConfig, applicationId string) (model.GatewayConfig, error) {
-	restAPIURL, err := normalizeRestApiUrl(input.RestApiUrl)
+	restApiUrl, err := normalizeRestApiUrl(input.RestApiUrl)
 	if err != nil {
 		return model.GatewayConfig{}, err
 	}
-	restAPIHostURL, err := normalizeRestApiHostUrl(input.RestApiHostUrl)
+	restApiHostUrl, err := normalizeRestApiHostUrl(input.RestApiHostUrl)
 	if err != nil {
 		return model.GatewayConfig{}, err
 	}
@@ -814,8 +813,8 @@ func normalizeGatewayConfig(input model.GatewayConfig, applicationId string) (mo
 	}
 	return model.GatewayConfig{
 		ApplicationId:           applicationId,
-		RestApiUrl:              restAPIURL,
-		RestApiHostUrl:          restAPIHostURL,
+		RestApiUrl:              restApiUrl,
+		RestApiHostUrl:          restApiHostUrl,
 		RestReadyTimeoutSeconds: timeout,
 		BaseDomain:              baseDomain,
 		DefaultEntrypoint:       policy.DefaultEntrypoint,
@@ -827,17 +826,17 @@ func normalizeGatewayConfig(input model.GatewayConfig, applicationId string) (mo
 	}, nil
 }
 
-func gatewayConfigFromDefinition(input model.GatewayConfig, applicationID string, versionIDs map[string]string) (model.GatewayConfig, error) {
+func gatewayConfigFromDefinition(input model.GatewayConfig, applicationId string, versionIds map[string]string) (model.GatewayConfig, error) {
 	configInput := input
 	configInput.VersionBindings = make([]model.GatewayVersionBinding, 0, len(input.VersionBindings))
 	for _, binding := range input.VersionBindings {
-		versionID, exists := versionIDs[strings.TrimSpace(binding.VersionId)]
+		versionId, exists := versionIds[strings.TrimSpace(binding.VersionId)]
 		if !exists {
 			return model.GatewayConfig{}, apperror.New(apperror.KindValidation, "Gateway Version binding is not part of the Gateway definition")
 		}
-		configInput.VersionBindings = append(configInput.VersionBindings, model.GatewayVersionBinding{Profile: binding.Profile, VersionId: versionID})
+		configInput.VersionBindings = append(configInput.VersionBindings, model.GatewayVersionBinding{Profile: binding.Profile, VersionId: versionId})
 	}
-	return normalizeGatewayConfig(configInput, applicationID)
+	return normalizeGatewayConfig(configInput, applicationId)
 }
 
 func (s Service) validateGatewayVersionBindings(ctx context.Context, projectId string, applicationId string, bindings []model.GatewayVersionBinding) error {

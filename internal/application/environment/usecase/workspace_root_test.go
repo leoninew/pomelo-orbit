@@ -31,3 +31,15 @@ func TestValidWorkspaceRootAllowsLocalHomeAndAbsolutePath(t *testing.T) {
 		t.Fatal("local workspace root must not allow a relative path without tilde")
 	}
 }
+
+func TestValidateEnvironmentHandoverAllowsSourceLocalWorkspacePlatform(t *testing.T) {
+	item := model.Environment{
+		ProjectId:     "project-1",
+		Code:          "project-1",
+		TargetType:    model.EnvironmentTargetTypeLocal,
+		WorkspaceRoot: "/app/data",
+	}
+	if err := validateEnvironment(item, model.EnvironmentPlatformWindows, false, true); err != nil {
+		t.Fatalf("handover environment rejected source workspace root: %v", err)
+	}
+}

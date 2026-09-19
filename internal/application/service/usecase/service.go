@@ -185,7 +185,6 @@ func (s Service) CreateServiceFromDefinition(ctx context.Context, userId, projec
 	svc.ApplicationId = app.Id
 	svc.VersionId = version.Id
 	svc.Code = code
-	svc.Status = status.ServiceStatusStopped
 	for index := range components {
 		components[index].Id = idutil.NewId()
 		components[index].ServiceId = svc.Id

@@ -75,7 +75,7 @@ func (s Service) SaveInitialization(ctx context.Context, userId string, projectI
 	if err := applyUpdate(&item, input); err != nil {
 		return environmentdto.View{}, err
 	}
-	if err := validateEnvironment(item, s.localDisplay.Platform, false); err != nil {
+	if err := validateEnvironment(item, s.localDisplay.Platform, false, false); err != nil {
 		return environmentdto.View{}, err
 	}
 	if err := s.ensureTargetIsAvailable(ctx, project.Id, item); err != nil {
@@ -126,7 +126,7 @@ func (s Service) UpdateForUser(ctx context.Context, userId string, projectId str
 	if err := applyUpdate(&item, input); err != nil {
 		return environmentdto.View{}, err
 	}
-	if err := validateEnvironment(item, s.localDisplay.Platform, false); err != nil {
+	if err := validateEnvironment(item, s.localDisplay.Platform, false, false); err != nil {
 		return environmentdto.View{}, err
 	}
 	if environmentTargetChanged(previous, item) {
@@ -177,7 +177,7 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectId string, 
 	return nil
 }
 
-func validateEnvironment(item model.Environment, localPlatform string, allowEmptyLocalWorkspace bool) error {
+func validateEnvironment(item model.Environment, localPlatform string, allowEmptyLocalWorkspace, allowLocalWorkspacePlatformMismatch bool) error {
 	if item.ProjectId == "" || item.Code == "" {
 		return apperror.New(apperror.KindValidation, "Project environment identity is invalid")
 	}
@@ -189,7 +189,7 @@ func validateEnvironment(item model.Environment, localPlatform string, allowEmpt
 		if item.WorkspaceRoot == "" && allowEmptyLocalWorkspace {
 			return nil
 		}
-		if !validWorkspaceRoot(localPlatform, item.WorkspaceRoot) {
+		if !allowLocalWorkspacePlatformMismatch && !validWorkspaceRoot(localPlatform, item.WorkspaceRoot) {
 			return apperror.New(apperror.KindValidation, "Environment local workspace_root is invalid for the control-plane platform")
 		}
 	case model.EnvironmentTargetTypeSSH:

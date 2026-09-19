@@ -28,14 +28,14 @@ func TestSaveTargetDefinitionForUserPersistsKnownSSHTargetWithoutProbe(t *testin
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	for _, row := range []struct{ id, name, code, userID string }{
-		{id: "project-1", name: "Project One", code: "project-one", userID: "user-1"},
-		{id: "project-2", name: "Project Two", code: "project-two", userID: "user-2"},
+	for _, row := range []struct{ id, name, code, userId string }{
+		{id: "project-1", name: "Project One", code: "project-one", userId: "user-1"},
+		{id: "project-2", name: "Project Two", code: "project-two", userId: "user-2"},
 	} {
 		if _, err := database.ExecContext(ctx, `INSERT INTO project (id, name, code) VALUES (?, ?, ?)`, row.id, row.name, row.code); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := database.ExecContext(ctx, `INSERT INTO project_member (project_id, user_id) VALUES (?, ?)`, row.id, row.userID); err != nil {
+		if _, err := database.ExecContext(ctx, `INSERT INTO project_member (project_id, user_id) VALUES (?, ?)`, row.id, row.userId); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -97,6 +97,45 @@ func TestSaveTargetDefinitionForUserPersistsKnownSSHTargetWithoutProbe(t *testin
 		Credential: &environmentdto.SSHCredentialDefinition{PublicKey: "ssh-ed25519 AAAA other", PrivateKey: "OTHER PRIVATE KEY", Revision: 1},
 	}); err != nil {
 		t.Fatalf("SaveTargetDefinitionForUser() rejected a target released by a deprecated project: %v", err)
+	}
+}
+
+func TestSaveTargetDefinitionForHandoverPersistsBoundTarget(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = database.Close() }()
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	for _, row := range []struct{ id, name, code, userId string }{
+		{id: "project-1", name: "Project One", code: "project-one", userId: "user-1"},
+		{id: "project-2", name: "Project Two", code: "project-two", userId: "user-2"},
+	} {
+		if _, err := database.ExecContext(ctx, `INSERT INTO project (id, name, code) VALUES (?, ?, ?)`, row.id, row.name, row.code); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := database.ExecContext(ctx, `INSERT INTO project_member (project_id, user_id) VALUES (?, ?)`, row.id, row.userId); err != nil {
+			t.Fatal(err)
+		}
+	}
+	service := testConfigurationEnvironmentService(database)
+	configuration := environmentdto.TargetDefinition{
+		TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: "/srv/orbit", TargetRevision: 1,
+		SSH:        &environmentdto.SSHDefinition{Platform: model.EnvironmentPlatformLinux, Host: "10.0.0.10", Port: 22, Username: "deployer", CredentialRevision: 1},
+		Credential: &environmentdto.SSHCredentialDefinition{PublicKey: "ssh-ed25519 AAAA source", PrivateKey: "PRIVATE KEY", Revision: 1},
+	}
+	if _, err := service.SaveTargetDefinitionForUser(ctx, "user-1", "project-1", configuration); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := service.SaveTargetDefinitionForHandover(ctx, "user-2", "project-2", configuration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.SSH == nil || saved.SSH.Host != "10.0.0.10" || saved.WorkspaceRoot != "/srv/orbit" {
+		t.Fatalf("saved handover configuration = %+v", saved)
 	}
 }
 
@@ -177,13 +216,13 @@ func TestUpdateForUserPersistsUninitializedSSHCredentialAsNull(t *testing.T) {
 	if updated.SSH == nil || updated.SSH.Host != "10.0.0.10" || updated.TargetType != model.EnvironmentTargetTypeSSH {
 		t.Fatalf("updated SSH view = %+v", updated)
 	}
-	var credentialID sql.NullString
+	var credentialId sql.NullString
 	var credentialRevision sql.NullInt64
-	if err := database.QueryRowContext(ctx, `SELECT ssh_credential_id, ssh_credential_revision FROM environment WHERE id = 'environment-1'`).Scan(&credentialID, &credentialRevision); err != nil {
+	if err := database.QueryRowContext(ctx, `SELECT ssh_credential_id, ssh_credential_revision FROM environment WHERE id = 'environment-1'`).Scan(&credentialId, &credentialRevision); err != nil {
 		t.Fatal(err)
 	}
-	if credentialID.Valid || credentialRevision.Valid {
-		t.Fatalf("uninitialized SSH binding = id=%v revision=%v", credentialID, credentialRevision)
+	if credentialId.Valid || credentialRevision.Valid {
+		t.Fatalf("uninitialized SSH binding = id=%v revision=%v", credentialId, credentialRevision)
 	}
 }
 

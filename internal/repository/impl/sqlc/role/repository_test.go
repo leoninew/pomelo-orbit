@@ -14,7 +14,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-func setupTestRoleDB(t *testing.T) *sql.DB {
+func setupTestRoleDb(t *testing.T) *sql.DB {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
@@ -28,7 +28,7 @@ func setupTestRoleDB(t *testing.T) *sql.DB {
 }
 
 func TestCreateRoleRollsBackWhenPermissionFails(t *testing.T) {
-	database := setupTestRoleDB(t)
+	database := setupTestRoleDb(t)
 	defer func() { _ = database.Close() }()
 
 	ctx := context.Background()
@@ -68,7 +68,7 @@ func TestCreateRoleRollsBackWhenPermissionFails(t *testing.T) {
 }
 
 func TestCreateRoleSucceedsAtomically(t *testing.T) {
-	database := setupTestRoleDB(t)
+	database := setupTestRoleDb(t)
 	defer func() { _ = database.Close() }()
 
 	ctx := context.Background()
@@ -108,7 +108,7 @@ func TestCreateRoleSucceedsAtomically(t *testing.T) {
 }
 
 func TestUpdateRoleRollsBackWhenPermissionFails(t *testing.T) {
-	database := setupTestRoleDB(t)
+	database := setupTestRoleDb(t)
 	defer func() { _ = database.Close() }()
 
 	ctx := context.Background()

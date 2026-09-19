@@ -157,7 +157,7 @@ func localSaveInput(workspaceRoot string) initdto.SaveEnvironmentInput {
 
 func testGatewayInput() initdto.CreateGatewayInput {
 	return initdto.CreateGatewayInput{
-		Image: "traefik:3.6", RestApiUrl: model.GatewayRestAPIContainerURL, RestApiHostUrl: model.GatewayRestAPIHostURL, RestReadyTimeoutSeconds: 20,
+		Image: "traefik:3.6", RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl, RestReadyTimeoutSeconds: 20,
 		BaseDomain: "lvh.me", DefaultEntrypoint: "web", TLSMode: "none",
 	}
 }
@@ -173,7 +173,7 @@ func newInitializationService(t *testing.T) (Service, *fakeInitEnvironment) {
 		config.ProjectInitializationConfig{
 			Environment: config.ProjectInitializationEnvironmentConfig{LocalWorkspaceRoot: "~/.pomelo-orbit"},
 			Gateway: config.ProjectInitializationGatewayConfig{
-				Image: "traefik:3.6", RestApiUrl: model.GatewayRestAPIContainerURL, RestApiHostUrl: model.GatewayRestAPIHostURL, BaseDomain: "lvh.me",
+				Image: "traefik:3.6", RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl, BaseDomain: "lvh.me",
 				RestReadyTimeout: 20 * time.Second, DefaultEntrypoint: "web", TLSMode: "none",
 			},
 		},

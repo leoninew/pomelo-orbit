@@ -220,7 +220,7 @@ func (m *RouteManager) request(ctx context.Context, projectId string, gateway mo
 }
 
 func (m *RouteManager) requestAtTarget(ctx context.Context, target environmentport.Target, gateway model.GatewayConfig, input []byte, curlArgs []string, endpoint string) (string, error) {
-	base, err := m.traefikBaseURL(target, gateway)
+	base, err := m.traefikBaseUrl(target, gateway)
 	if err != nil {
 		return "", err
 	}
@@ -258,11 +258,11 @@ func restSnapshotLocation(serviceDir string) (stateDir, snapshotPath string) {
 	return stateDir, path.Join(stateDir, "traefik-rest.json")
 }
 
-func (m *RouteManager) traefikBaseURL(target environmentport.Target, gateway model.GatewayConfig) (string, error) {
+func (m *RouteManager) traefikBaseUrl(target environmentport.Target, gateway model.GatewayConfig) (string, error) {
 	if target.Environment.TargetType == model.EnvironmentTargetTypeLocal && m.runningInContainer != nil && m.runningInContainer() {
-		return normalizeTraefikBaseURL(gateway.RestApiUrl, "rest_api_url")
+		return normalizeTraefikBaseUrl(gateway.RestApiUrl, "rest_api_url")
 	}
-	return normalizeTraefikBaseURL(gateway.RestApiHostUrl, "rest_api_host_url")
+	return normalizeTraefikBaseUrl(gateway.RestApiHostUrl, "rest_api_host_url")
 }
 
 func (m *RouteManager) traefikExecutionLocation(target environmentport.Target) string {
@@ -275,7 +275,7 @@ func (m *RouteManager) traefikExecutionLocation(target environmentport.Target) s
 	return "on the local host"
 }
 
-func normalizeTraefikBaseURL(value string, field string) (string, error) {
+func normalizeTraefikBaseUrl(value string, field string) (string, error) {
 	base := strings.TrimRight(strings.TrimSpace(value), "/")
 	if base == "" {
 		return "", apperror.New(apperror.KindValidation, "gateway "+field+" is required")

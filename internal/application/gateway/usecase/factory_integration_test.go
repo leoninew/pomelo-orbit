@@ -54,7 +54,7 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 		t.Fatalf("gateway Version bindings = %#v", created.Config.VersionBindings)
 	}
 	for _, role := range []string{"base", "http", "dns", "http-dns"} {
-		if created.Config.VersionIDForProfile(role) == "" {
+		if created.Config.VersionIdForProfile(role) == "" {
 			t.Fatalf("missing Gateway Version binding for %q: %#v", role, created.Config.VersionBindings)
 		}
 	}
@@ -87,7 +87,7 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	if gatewayConfig.NetworkName != "traefik" {
 		t.Fatalf("gateway network = %q", gatewayConfig.NetworkName)
 	}
-	if gatewayConfig.RestApiUrl != model.GatewayRestAPIContainerURL || gatewayConfig.RestApiHostUrl != model.GatewayRestAPIHostURL {
+	if gatewayConfig.RestApiUrl != model.GatewayRestApiContainerUrl || gatewayConfig.RestApiHostUrl != model.GatewayRestApiHostUrl {
 		t.Fatalf("gateway REST endpoints = container:%q host:%q", gatewayConfig.RestApiUrl, gatewayConfig.RestApiHostUrl)
 	}
 	var staticConfig string
@@ -196,7 +196,7 @@ func TestSelectGatewayDeploymentVersionUsesProfileBinding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if selected.VersionId != updated.Config.VersionIDForProfile("dns") {
+	if selected.VersionId != updated.Config.VersionIdForProfile("dns") {
 		t.Fatalf("selected Version = %q, bindings = %#v", selected.VersionId, updated.Config.VersionBindings)
 	}
 	component, err := applications.VersionComponentsByVersion(context.Background(), gatewayFactoryProjectId, selected.VersionId)
@@ -340,8 +340,8 @@ func managedGatewayCreateInput() gatewaydto.GatewayCreateInput {
 		ProjectId:               gatewayFactoryProjectId,
 		Code:                    managedGatewayCode,
 		Name:                    managedGatewayName,
-		RestApiUrl:              model.GatewayRestAPIContainerURL,
-		RestApiHostUrl:          model.GatewayRestAPIHostURL,
+		RestApiUrl:              model.GatewayRestApiContainerUrl,
+		RestApiHostUrl:          model.GatewayRestApiHostUrl,
 		RestReadyTimeoutSeconds: &timeout,
 		BaseDomain:              "example.test",
 		InitialComponentImage:   &image,

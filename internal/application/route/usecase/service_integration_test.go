@@ -374,7 +374,7 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 	return service, publisher, client, database
 }
 
-func TestRouteValidationSeparatesIdentityFromCustomTargetURL(t *testing.T) {
+func TestRouteValidationSeparatesIdentityFromCustomTargetUrl(t *testing.T) {
 	validTargets := []string{
 		"http://host",
 		"https://host",
@@ -435,10 +435,10 @@ func TestRouteServiceCreatesManagedHTTPRoute(t *testing.T) {
 		t.Fatalf("unexpected resolved HTTP snapshot: %+v", snapshot)
 	}
 	updatedName := "app-route-edited"
-	emptyTargetURL := ""
+	emptyTargetUrl := ""
 	updated, err := service.UpdateRoute(ctx, routeTestUserId, routeTestProjectId, route.Id, routedto.RouteUpdateInput{
 		Name:      &updatedName,
-		TargetUrl: &emptyTargetURL,
+		TargetUrl: &emptyTargetUrl,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -665,7 +665,7 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 	}
 	if err := gwRepo.UpsertGatewayConfig(ctx, model.GatewayConfig{
 		ApplicationId: app.Id,
-		RestApiUrl:    model.GatewayRestAPIContainerURL, RestApiHostUrl: model.GatewayRestAPIHostURL, RestReadyTimeoutSeconds: 20,
+		RestApiUrl:    model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl, RestReadyTimeoutSeconds: 20,
 		BaseDomain: "lvh.me", DefaultEntrypoint: "websecure", TLSMode: "none",
 		AcmeProfile: "http-dns", AcmeEmail: "admin@example.test",
 	}); err != nil {

@@ -40,12 +40,12 @@ func (s Service) CreateRepository(ctx context.Context, userId string, input repo
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	name, code, sourceType, sourceURL, branch, credentialId, err := normalizeRepositoryCreateInput(input)
+	name, code, sourceType, sourceUrl, branch, credentialId, err := normalizeRepositoryCreateInput(input)
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
 	if sourceType == model.RepositoryTypeLocalDirectory {
-		sourceURL, err = s.validateLocalSourcePath(ctx, sourceURL)
+		sourceUrl, err = s.validateLocalSourcePath(ctx, sourceUrl)
 		if err != nil {
 			return repositorydto.RepositoryDetail{}, err
 		}
@@ -60,7 +60,7 @@ func (s Service) CreateRepository(ctx context.Context, userId string, input repo
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	item := model.Repository{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, RepositoryType: sourceType, RepositoryUrl: sourceURL, GitCredentialId: credentialId, VariableOverrides: variables, DefaultBranch: branch}
+	item := model.Repository{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, RepositoryType: sourceType, RepositoryUrl: sourceUrl, GitCredentialId: credentialId, VariableOverrides: variables, DefaultBranch: branch}
 	if err := s.store.CreateRepository(ctx, item); err != nil {
 		return repositorydto.RepositoryDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create repository", err)
 	}
@@ -210,7 +210,7 @@ func (s Service) repositoryCredentialName(ctx context.Context, projectId string,
 }
 
 func normalizeRepositoryCreateInput(input repositorydto.RepositoryCreateInput) (string, string, string, string, string, *string, error) {
-	name, code, sourceURL, sourceType, branch := strings.TrimSpace(input.Name), strings.TrimSpace(input.Code), strings.TrimSpace(input.RepositoryUrl), strings.TrimSpace(input.RepositoryType), strings.TrimSpace(input.DefaultBranch)
+	name, code, sourceUrl, sourceType, branch := strings.TrimSpace(input.Name), strings.TrimSpace(input.Code), strings.TrimSpace(input.RepositoryUrl), strings.TrimSpace(input.RepositoryType), strings.TrimSpace(input.DefaultBranch)
 	if sourceType == "" {
 		sourceType = model.RepositoryTypeRemoteGit
 	}
@@ -221,11 +221,11 @@ func normalizeRepositoryCreateInput(input repositorydto.RepositoryCreateInput) (
 	if name == "" || code == "" || !repositoryCodePattern.MatchString(code) {
 		return "", "", "", "", "", nil, apperror.New(apperror.KindValidation, "Invalid repository fields")
 	}
-	if sourceType == model.RepositoryTypeRemoteGit && sourceURL != "" {
-		return name, code, sourceType, sourceURL, branch, credentialId, nil
+	if sourceType == model.RepositoryTypeRemoteGit && sourceUrl != "" {
+		return name, code, sourceType, sourceUrl, branch, credentialId, nil
 	}
-	if sourceType == model.RepositoryTypeLocalDirectory && sourceURL != "" && credentialId == nil {
-		return name, code, sourceType, sourceURL, branch, nil, nil
+	if sourceType == model.RepositoryTypeLocalDirectory && sourceUrl != "" && credentialId == nil {
+		return name, code, sourceType, sourceUrl, branch, nil, nil
 	}
 	return "", "", "", "", "", nil, apperror.New(apperror.KindValidation, "Invalid repository fields")
 }

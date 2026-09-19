@@ -44,11 +44,11 @@ func TestCreateVersionFromDefinitionCreatesMappedDraftVersion(t *testing.T) {
 	if len(versions) != 1 {
 		t.Fatalf("initial versions = %d, want 1", len(versions))
 	}
-	parentID := versions[0].Version.Id
+	parentId := versions[0].Version.Id
 	restartPolicy := "unless-stopped"
 	input := applicationdto.VersionDefinitionInput{
 		Label:                "release-1",
-		CreatedFromVersionId: &parentID,
+		CreatedFromVersionId: &parentId,
 		Components: []model.VersionComponent{{
 			Id: "source-component", VersionId: "source-version", Name: "api", Image: "example/api:1",
 			Entrypoint: []string{"/bin/api"}, Command: []string{"serve"}, PullPolicy: "missing", RestartPolicy: &restartPolicy,
@@ -59,11 +59,11 @@ func TestCreateVersionFromDefinitionCreatesMappedDraftVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.Version.Id == "source-version" || created.Version.Id == parentID {
+	if created.Version.Id == "source-version" || created.Version.Id == parentId {
 		t.Fatalf("created version id = %q, expected a new id", created.Version.Id)
 	}
-	if created.Version.CreatedFromVersionId == nil || *created.Version.CreatedFromVersionId != parentID {
-		t.Fatalf("created_from_version_id = %v, want %q", created.Version.CreatedFromVersionId, parentID)
+	if created.Version.CreatedFromVersionId == nil || *created.Version.CreatedFromVersionId != parentId {
+		t.Fatalf("created_from_version_id = %v, want %q", created.Version.CreatedFromVersionId, parentId)
 	}
 	if len(created.Components) != 1 {
 		t.Fatalf("components = %d, want 1", len(created.Components))

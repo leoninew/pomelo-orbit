@@ -14,14 +14,14 @@ const (
 
 type contextKey struct{}
 
-var requestIDContextKey contextKey
+var requestIdContextKey contextKey
 
 func WithContext(ctx context.Context, requestId string) context.Context {
-	return context.WithValue(ctx, requestIDContextKey, strings.TrimSpace(requestId))
+	return context.WithValue(ctx, requestIdContextKey, strings.TrimSpace(requestId))
 }
 
 func FromContext(ctx context.Context) string {
-	value, _ := ctx.Value(requestIDContextKey).(string)
+	value, _ := ctx.Value(requestIdContextKey).(string)
 	return strings.TrimSpace(value)
 }
 

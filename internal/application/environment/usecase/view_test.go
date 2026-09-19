@@ -7,7 +7,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-func TestToViewUsesInjectedLocalDisplayWithoutWorkspaceYaml(t *testing.T) {
+func TestToViewUsesInjectedLocalDisplayWithoutWorkspaceYAML(t *testing.T) {
 	item := model.Environment{
 		Id: "environment-local", ProjectId: "project-1", Code: "project",
 		TargetType: model.EnvironmentTargetTypeLocal,

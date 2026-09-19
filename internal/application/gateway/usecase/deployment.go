@@ -73,7 +73,7 @@ func (s Service) SelectGatewayDeploymentVersion(ctx context.Context, projectId s
 	if role == "" {
 		role = gatewayVersionRoleBase
 	}
-	versionId := cfg.VersionIDForProfile(role)
+	versionId := cfg.VersionIdForProfile(role)
 	if versionId == "" {
 		return model.Service{}, apperror.New(apperror.KindValidation, "Gateway Version binding is missing for "+role)
 	}

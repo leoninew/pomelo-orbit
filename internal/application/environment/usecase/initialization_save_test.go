@@ -10,13 +10,13 @@ import (
 )
 
 func TestSaveInitializationPersistsSSHWithoutCreatingCredential(t *testing.T) {
-	projectID := "project-1"
+	projectId := "project-1"
 	store := &initializationEnvironmentStore{}
 	credentials := &memoryEnvironmentCredentials{}
 	targetType := model.EnvironmentTargetTypeSSH
 
 	view, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
-		SaveInitialization(context.Background(), "user-1", projectID, environmentdto.UpdateInput{
+		SaveInitialization(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
 			TargetType: &targetType,
 			SSH: &environmentdto.SSHTargetInput{
 				Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22,
@@ -35,12 +35,12 @@ func TestSaveInitializationPersistsSSHWithoutCreatingCredential(t *testing.T) {
 }
 
 func TestPrepareSSHEnvironmentCreatesAndReusesEnvironmentCredential(t *testing.T) {
-	projectID := "project-1"
+	projectId := "project-1"
 	store := &initializationEnvironmentStore{}
 	credentials := &memoryEnvironmentCredentials{}
 	targetType := model.EnvironmentTargetTypeSSH
 	service := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil)
-	first, publicKey, err := service.PrepareSSHEnvironment(context.Background(), "user-1", projectID, environmentdto.UpdateInput{
+	first, publicKey, err := service.PrepareSSHEnvironment(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
 		TargetType: &targetType,
 		SSH: &environmentdto.SSHTargetInput{
 			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22,
@@ -53,10 +53,10 @@ func TestPrepareSSHEnvironmentCreatesAndReusesEnvironmentCredential(t *testing.T
 	if publicKey == "" || len(credentials.items) != 1 || first.SSH == nil || first.SSH.Platform != model.EnvironmentPlatformLinux {
 		t.Fatalf("first SSH command = view=%#v key=%q credentials=%#v", first, publicKey, credentials.items)
 	}
-	credentialID, revision := store.environment.SSH.CredentialId, store.environment.SSH.CredentialRevision
+	credentialId, revision := store.environment.SSH.CredentialId, store.environment.SSH.CredentialRevision
 	store.environment.SSH.HostKeyFingerprint = "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde="
 
-	second, repeatedKey, err := service.PrepareSSHEnvironment(context.Background(), "user-1", projectID, environmentdto.UpdateInput{
+	second, repeatedKey, err := service.PrepareSSHEnvironment(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
 		TargetType: &targetType,
 		SSH: &environmentdto.SSHTargetInput{
 			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.20", Port: 22,
@@ -66,7 +66,7 @@ func TestPrepareSSHEnvironmentCreatesAndReusesEnvironmentCredential(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if repeatedKey != publicKey || len(credentials.items) != 1 || store.environment.SSH.CredentialId != credentialID || store.environment.SSH.CredentialRevision != revision {
+	if repeatedKey != publicKey || len(credentials.items) != 1 || store.environment.SSH.CredentialId != credentialId || store.environment.SSH.CredentialRevision != revision {
 		t.Fatalf("credential was not reused: environment=%#v credentials=%#v", store.environment, credentials.items)
 	}
 	if second.TargetRevision != first.TargetRevision+1 || store.environment.SSH.HostKeyFingerprint != "" {
@@ -75,12 +75,12 @@ func TestPrepareSSHEnvironmentCreatesAndReusesEnvironmentCredential(t *testing.T
 }
 
 func TestPrepareSSHEnvironmentAcceptsWindowsTarget(t *testing.T) {
-	projectID := "project-1"
+	projectId := "project-1"
 	store := &initializationEnvironmentStore{}
 	credentials := &memoryEnvironmentCredentials{}
 	targetType := model.EnvironmentTargetTypeSSH
 	view, publicKey, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
-		PrepareSSHEnvironment(context.Background(), "user-1", projectID, environmentdto.UpdateInput{
+		PrepareSSHEnvironment(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
 			TargetType: &targetType,
 			SSH: &environmentdto.SSHTargetInput{
 				Platform: model.EnvironmentPlatformWindows, Host: "192.0.2.10", Port: 2222,
@@ -97,8 +97,8 @@ func TestPrepareSSHEnvironmentAcceptsWindowsTarget(t *testing.T) {
 
 type initializationProjectReader struct{ probeProjectReader }
 
-func (initializationProjectReader) Project(_ context.Context, projectID string) (model.Project, error) {
-	return model.Project{Id: projectID, Code: "demo"}, nil
+func (initializationProjectReader) Project(_ context.Context, projectId string) (model.Project, error) {
+	return model.Project{Id: projectId, Code: "demo"}, nil
 }
 
 type initializationEnvironmentStore struct {

@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	// TokenTTL is the cryptographic lifetime of a login CSRF token.
-	TokenTTL = 3 * time.Minute
+	// TokenTtl is the cryptographic lifetime of a login CSRF token.
+	TokenTtl = 3 * time.Minute
 	// payloadType is the Fernet plaintext type marker. It prevents credential
 	// ciphertexts and other Fernet uses from being accepted as CSRF tokens.
 	payloadType = "csrf"
@@ -27,7 +27,7 @@ func Verify(secretKey string, token string) error {
 	if token == "" {
 		return errors.New("csrf token is empty")
 	}
-	plain, err := security.DecryptStringWithTTL(secretKey, token, TokenTTL)
+	plain, err := security.DecryptStringWithTtl(secretKey, token, TokenTtl)
 	if err != nil {
 		return err
 	}

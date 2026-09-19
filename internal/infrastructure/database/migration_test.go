@@ -244,16 +244,16 @@ func TestMigrateUpSQLiteAddsGatewayHostEndpointAndRemovesFactoryDashboardRoute(t
 	if err := database.QueryRow(`SELECT rest_api_host_url FROM gateway_config WHERE application_id = 'gateway-47'`).Scan(&hostEndpoint); err != nil {
 		t.Fatalf("load migrated Gateway host endpoint: %v", err)
 	}
-	if hostEndpoint != model.GatewayRestAPIHostURL {
+	if hostEndpoint != model.GatewayRestApiHostUrl {
 		t.Fatalf("Gateway host endpoint = %q", hostEndpoint)
 	}
-	for routeID, want := range map[string]int{"factory-route-47": 0, "user-route-47": 1} {
+	for routeId, want := range map[string]int{"factory-route-47": 0, "user-route-47": 1} {
 		var count int
-		if err := database.QueryRow(`SELECT COUNT(*) FROM route WHERE id = ?`, routeID).Scan(&count); err != nil {
-			t.Fatalf("count migrated route %s: %v", routeID, err)
+		if err := database.QueryRow(`SELECT COUNT(*) FROM route WHERE id = ?`, routeId).Scan(&count); err != nil {
+			t.Fatalf("count migrated route %s: %v", routeId, err)
 		}
 		if count != want {
-			t.Fatalf("migrated route %s count = %d, want %d", routeID, count, want)
+			t.Fatalf("migrated route %s count = %d, want %d", routeId, count, want)
 		}
 	}
 }
@@ -436,7 +436,7 @@ func TestMigrateToSQLiteAdoptsLegacyGatewayEnvironment(t *testing.T) {
 	}
 }
 
-func TestSQLiteSystemSeedIDsAreULIDs(t *testing.T) {
+func TestSQLiteSystemSeedIdsAreULIDs(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatalf("migrate up: %v", err)

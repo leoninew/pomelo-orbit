@@ -36,7 +36,7 @@ func RunInTx(ctx context.Context, db *sql.DB, fn func(ctx context.Context) error
 }
 
 // RunMessageUoW runs a short multi-write segment for worker handlers.
-// Do not wrap Docker, long file IO, or external HTTP — use WithDB for those paths
+// Do not wrap Docker, long file IO, or external HTTP — use WithDb for those paths
 // and call RunMessageUoW / RunInTx only around the DB phase.
 func RunMessageUoW(ctx context.Context, db *sql.DB, fn func(ctx context.Context) error) error {
 	return RunInTx(ctx, db, fn)

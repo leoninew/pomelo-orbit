@@ -502,7 +502,6 @@ func remapRouteDefinition(source routedto.RouteDefinitionInput, maps packageIdMa
 	definition := source
 	definition.Route.Id = ""
 	definition.Route.ProjectId = nil
-	definition.Route.Enabled = false
 	if source.Route.ServiceId != nil {
 		serviceId := maps.services[*source.Route.ServiceId]
 		definition.Route.ServiceId = &serviceId

@@ -18,7 +18,7 @@ import (
 	servicerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/service"
 )
 
-func TestCreateRouteFromDefinitionPreservesConfigurationAndDisablesRoutes(t *testing.T) {
+func TestCreateRouteFromDefinitionPreservesConfigurationAndState(t *testing.T) {
 	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
@@ -57,8 +57,8 @@ func TestCreateRouteFromDefinitionPreservesConfigurationAndDisablesRoutes(t *tes
 	if created.Id == "source-route" || created.ProjectId == nil || *created.ProjectId != "project-1" {
 		t.Fatalf("created route identity = %+v", created)
 	}
-	if created.Enabled {
-		t.Fatalf("created route remained enabled: %+v", created)
+	if !created.Enabled {
+		t.Fatalf("created route state was not preserved: %+v", created)
 	}
 	if !created.HTTPSEnabled || created.CertPEM == nil || *created.CertPEM != certPEM || created.CertKey == nil || *created.CertKey != certKey {
 		t.Fatalf("created route certificate = %+v", created)

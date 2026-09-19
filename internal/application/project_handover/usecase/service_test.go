@@ -148,7 +148,7 @@ func TestRestoreProjectConfigurationRemapsGatewayRouteService(t *testing.T) {
 	}
 }
 
-func TestRemapDefinitionsPreserveServiceStatusAndResetRouteState(t *testing.T) {
+func TestRemapDefinitionsPreserveServiceAndRouteState(t *testing.T) {
 	projectId := "source-project"
 	serviceId := "source-service"
 	service := servicedto.ServiceDefinition{Service: model.Service{
@@ -173,7 +173,7 @@ func TestRemapDefinitionsPreserveServiceStatusAndResetRouteState(t *testing.T) {
 
 	route := routedto.RouteDefinitionInput{Route: model.Route{Id: "source-route", ProjectId: &projectId, ServiceId: &serviceId, Enabled: true}}
 	remappedRoute := remapRouteDefinition(route, maps)
-	if remappedRoute.Route.Id != "" || remappedRoute.Route.ProjectId != nil || remappedRoute.Route.Enabled || remappedRoute.Route.ServiceId == nil || *remappedRoute.Route.ServiceId != "target-service" {
+	if remappedRoute.Route.Id != "" || remappedRoute.Route.ProjectId != nil || !remappedRoute.Route.Enabled || remappedRoute.Route.ServiceId == nil || *remappedRoute.Route.ServiceId != "target-service" {
 		t.Fatalf("Route was not normalized for import: %+v", remappedRoute.Route)
 	}
 }

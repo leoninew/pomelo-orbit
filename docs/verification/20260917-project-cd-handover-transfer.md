@@ -11,7 +11,8 @@ Mode: standard
 - 包格式为 `pomelo-orbit/project-handover` v1 单一 JSON 文档。编码移除根 Project ID 及所有直接归属 `project_id`；解码拒绝这些字段和未知字段。
 - 模式 A 通过 Project 领域创建 Project 并写入当前操作者成员关系；模式 B 校验成员关系、保护 CI 引用、清除既有 CD 配置后以目标 Project ID 恢复配置，保留原成员。
 - Environment、SSH credential、Application / Version / Component、Gateway、Service 与 Route 均经所属领域的完整定义读取、创建和删除。接管协调层不访问 SQL，不以表顺序实现事务脚本。
-- 导入将 Service 状态固定为 `stopped`，Route 状态固定为禁用；不调用 Docker、SSH、workspace、Traefik、证书或 Probe。
+- SSH 私钥在接管包中使用 `encrypted_private_key`；导入使用提交的解密 Key，缺省时回退到实例 system key，解密后再由目标 Environment 持久化。
+- 导入保留 Service 的包内状态，Route 继续禁用；不调用 Docker、SSH、workspace、Traefik、证书或 Probe。
 - 既有跨领域删除已调整为由拥有数据的领域处理，跨领域引用由应用服务/仓储读取并拒绝或显式协调，不再依赖隐藏级联。
 
 ## Actual diff
@@ -27,8 +28,8 @@ Mode: standard
 - [x] 接管 API 与 UI 为 Orbit 应用能力，不依赖 Python transfer/dbtalk/JSONL。
 - [x] API 支持下载 JSON attachment 和 multipart 上传；UI 支持新建 Project 与覆盖已有 Project。
 - [x] 包不携带源 Project identity；内部源 ID 只用于恢复期间的关系映射。
-- [x] Environment 与 SSH credential 作为正常业务数据恢复；目标持久化时使用当前实例密钥加密私钥。
-- [x] 导入后的 Service 为 `stopped`，Route 为禁用，且用例不触发运行时副作用。
+- [x] Environment 与 SSH credential 作为正常业务数据恢复；SSH 私钥在包中加密，导入使用自定义或 system key 解密，目标持久化时使用当前实例密钥加密。
+- [x] 导入后的 Service status 保持包内原值，Route 仍为禁用，且用例不触发运行时副作用。
 - [x] 覆盖模式在同一 HTTP request UoW 内处理 Project 更新、CD 数据替换、Environment 保存和 Deployment history 清理；失败由事务切面回滚。
 - [x] 模式 B 在 CD 配置清理前由 Pipeline / PipelineRun 拒绝会留下失效引用的操作。
 - [x] 跨领域删除边界已由领域能力与前向迁移收敛。

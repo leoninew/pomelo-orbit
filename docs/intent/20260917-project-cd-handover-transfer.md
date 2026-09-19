@@ -24,7 +24,7 @@ Environment 包含 `target_type`、SSH host / user / credential、host-key finge
 3. 在 Project、Environment、Application / Version、Gateway、Service、Route 与 Pipeline 既有领域中补足正常业务能力；Handover Application 只按依赖顺序组合这些领域操作和目标 ID 映射，且不直接组织 SQL、表级删除或批量持久化。
 4. 模式 A 创建新 Project：由业务服务生成目标 Project ID，以包中的 Project 业务字段创建 Project，并在同一原子导入中将当前认证用户加入 `project_member`。
 5. 模式 B 选择当前用户已有成员资格的 Project：以包原样覆盖其 CD 配置聚合和 Environment；Project ID 保持目标 ID，既有成员关系不迁移也不删除。
-6. 导入完成后，所有 Service 强制为 `stopped`，所有 Route 强制为禁用；导入不部署、不重启容器、不写远端 workspace，也不发布 Traefik REST snapshot。
+6. 导入完成后，Service 保留包中的原始状态，Route 继续按现有规则禁用；导入不部署、不重启容器、不写远端 workspace，也不发布 Traefik REST snapshot。
 
 ## Non-goal
 
@@ -41,8 +41,8 @@ Environment 包含 `target_type`、SSH host / user / credential、host-key finge
 1. 当前用户从 Project 管理界面导出自己有权限访问的源 Project，浏览器下载一个版本化 JSON 包。包只包含该 Project 的 Project 配置、Environment、Environment credential、Gateway、全部 Application / Version / Component、Service 运行时覆盖、全部 Project Route 及 Route 证书字段和 Gateway Version bindings。
 2. 当前用户在界面选择模式 A 并上传接管包。服务在同一个事务内生成目标 Project ID、以包中的 Project 非 ID 字段创建 Project、创建当前用户的 `project_member`，并将所有直属记录绑定到该 ID。导入成功后该用户可立即切换和访问新 Project。
 3. 当前用户在界面选择模式 B、自己已有成员资格的目标 Project 并上传接管包。服务在一个事务中替换该 Project 现有 CD 配置聚合、Environment credential 和 Environment，并以包的 Project 非 ID 字段更新目标 Project；既有 `project_member` 保持不变。
-4. 包内 Environment 为 `local` 时，导入结果仍是 `local`；包内为 `ssh` 时，SSH 连接属性和凭据的业务值保持不变。跨 Orbit 时，私钥在导出包中作为普通业务字段传递，目标写入前以目标 Fernet key 加密；这只改变静态存储表示，不改变业务数据。
-5. 导入完成后，所有 Service 都为 `stopped`，所有 Route 都为禁用。已有容器和 Traefik 的实际运行状态不在此操作中改变，后续运行或路由操作才可能改变它们。
+4. 包内 Environment 为 `local` 时，导入结果仍是 `local`；包内为 `ssh` 时，SSH 连接属性和凭据的业务值保持不变。SSH 私钥在导出包中以源实例 Fernet key 加密为 `encrypted_private_key`；导入默认用目标实例的 system key 解密，也可由操作者提交解密 Key 覆盖。解密后的私钥仅在导入内存中存在，目标写入前以目标实例 Fernet key 加密。
+5. 导入完成后，Service 的持久化状态与包中一致，Route 仍为禁用。已有容器和 Traefik 的实际运行状态不在此操作中改变，后续运行或路由操作才可能改变它们。
 
 ## Acceptance
 
@@ -57,9 +57,9 @@ Environment 包含 `target_type`、SSH host / user / credential、host-key finge
 - [ ] 模式 B 要求目标 Project 存在且当前用户是成员；它在同一个可回滚事务内更新 Project 配置并替换完整 CD 聚合、Environment credential 和 Environment，保留 `project_member`。
 - [ ] 任意解码、完整性校验、目标校验、删除或写入错误均回滚整次导入，不留下新 Project、成员关系或部分 CD 数据。
 - [ ] 源 / 目标 Project ID 相同不会导致 Project 行按源 ID upsert 或跨 Project 范围选择。
-- [ ] SSH 私钥、公钥、Route PEM / key 和 Gateway token 作为普通业务数据传输；私钥仅在源持久化值与包字段、包字段与目标持久化值之间执行必要的解密 / 加密。
+- [ ] SSH 公钥、Route PEM / key 和 Gateway token 作为普通业务数据传输；SSH 私钥在包中仅通过 `encrypted_private_key` 传输，导出和导入分别以源、目标实例的 Fernet key 完成必要的加密 / 解密。
 - [ ] 导入路径不调用 Docker Compose、Docker lifecycle、SFTP workspace 写入、Traefik REST publish、证书签发或 Environment Probe。
-- [ ] 导入时无条件将所有 Service 写为 `stopped`、所有 Route 写为禁用，忽略源包的 Service status 与 Route enabled 值。
+- [ ] 导入时保留源包的 Service status；Route 仍按导入规则写为禁用。
 
 ## Open questions
 
@@ -75,11 +75,11 @@ Environment 包含 `target_type`、SSH host / user / credential、host-key finge
 - Environment 是 Project CD 聚合的一部分。除归属重绑定到目标 Project 外，Environment、Environment credential 及其关联值原样导入；不基于导入位置转换 `local` / `ssh`。
 - 传输包是 Orbit 业务 DTO，而非数据库行转储：它按聚合嵌套表达实体与关联，省略 Project identity / direct ownership 字段；源记录 ID 只作为包内引用，目标记录 ID 由领域命令创建时生成，并使用明确 format version 做兼容边界。
 - Project 的部署配置是多个既有领域对象的组合，不新增名为 Project Deployment Configuration 的大聚合或大仓储；Handover 只表示导出 / 导入 Application 用例，不作为领域仓储或模型名称。
-- Application 层负责 Handover 的授权、模式选择、包编码/解码、私钥存储表示转换和协调既有领域操作；各领域仓储负责自身对象的查询、引用校验、删除和写入。
+- Application 层负责 Handover 的授权、模式选择、包编码/解码、SSH 私钥的包级加密 / 解密及持久化表示转换，并协调既有领域操作；各领域仓储负责自身对象的查询、引用校验、删除和写入。
 - 不为接管新增“替换 Project 全部 CD 配置”之类的大领域操作。缺少的能力以最小的现有领域行为补齐，接管用例逐个调用这些行为，而不是把领域表集合当作一个可批量重放的模型。
 - Project CD 聚合是唯一的导入事务粒度。覆盖模式的清理与恢复必须进入同一请求事务，不引入分段导入、导入后补救或业务层复杂预检。
-- Route 手工 PEM、私钥、Gateway DNS token 与其他导入字段一样是业务数据。
-- 导入无条件把所有 Service 状态重置为 `stopped`，把所有 Route 重置为禁用，不保留源库运行或启用状态。
+- Route 手工 PEM、私钥、Gateway DNS token 与其他导入字段一样是业务数据；SSH 私钥是例外，必须以包级密文传输。
+- 导入保留源库的 Service 状态；Route 按现有导入规则重置为禁用。
 - 本次实现同时纠正既有跨领域删除语义：聚合内子对象可以随拥有者删除，领域之间的引用必须阻止父对象删除；拥有完整闭包删除流程的领域显式协调自己的子领域操作，不能把 Service、Gateway 或其他领域的删除隐藏在 Application 仓储或数据库级联中。
 - 这一删除与引用边界不是接管特例：Project 判断废弃条件时向 Repository / Application 领域读取各自的资源事实；User 删除时调用 Project 领域移除其成员关系；Role 删除时向 User 领域确认不存在角色分配。跨领域关系不能再依靠拥有者仓储直查或数据库级联静默清理。
 
@@ -88,7 +88,7 @@ Environment 包含 `target_type`、SSH host / user / credential、host-key finge
 - Project 闭包覆盖 Gateway、Version、Service、Route、Environment 与 credential 多张关联表；漏表会在首次 Gateway 部署或 Route sync 时造成配置漂移，因此领域聚合必须完整读取、验证和原子写入。
 - 直接导入源 `local` Environment 到另一台控制面机器后，它指向目标控制面本机 Docker target，不会自动指向原服务器。需要远程管理时，操作者必须在导入完成后显式改为 SSH Environment；这不属于导入阻断条件。
 - 覆盖模式只改数据库管理数据。目标服务器上现有容器、Compose 文件和 Traefik provider 保持不变，直到后续显式操作；首次后续运行操作可能按导入配置重建它们。
-- 接管包含 SSH 私钥、Route 私钥和 Gateway token。它们是业务数据而非另设安全对象，JSON 包不增加签名、脱敏、密钥协商或额外传输协议；使用者须按现有业务数据下载权限管理该文件。
+- 接管包包含加密的 SSH 私钥，以及 Route 私钥和 Gateway token。包不增加签名、脱敏、密钥协商或额外传输协议；使用者须按现有业务数据下载权限管理该文件及其解密 Key。
 - 目标 Project 中不迁移的 CI 数据可能引用被替换的 CD Application / Version；导入必须在写入前阻止会留下失效引用的模式 B 操作，或在 Plan review 中确认替代的包范围。
 
 ## User review notes
@@ -98,8 +98,8 @@ Environment 包含 `target_type`、SSH host / user / credential、host-key finge
 - 用户确认接管以 Project 为粒度，删除现有 Service 与 Environment 分拆导入导出能力。
 - 用户确认源、目标 Project ID 可能相同，导出不得携带源 Project identity，导入必须由目标 Project 绑定。
 - 用户确认导入以完整 Project CD 聚合为事务粒度，任何错误回滚。
-- 用户确认公钥、私钥、Route 证书和 Gateway token 都是普通业务数据，不增加额外安全传输流程。
-- 用户确认导入后所有 Service 重置为 `stopped`，所有 Route 重置为禁用。
+- 用户确认公钥、Route 证书和 Gateway token 都是普通业务数据；SSH 私钥在包中使用实例 Fernet key 加密，并允许导入时提供覆盖 system key 的解密 Key。
+- 用户确认导入后保留 Service 原始状态，Route 继续导入为禁用。
 - 用户确认 Environment 应随包导出并原样导入；因为接管前不预先掌握项目 SSH 地址，导入不得转换为其他连接类型。
 - 用户确认两种导入模式：模式 A 创建新 Project，模式 B 指定已有 Project 并覆盖其 CD 数据，包含 Environment。
 - 用户要求将能力集成到 Orbit 业务 API 和 Web UI；模式 A 通过当前用户自动建立成员关系。

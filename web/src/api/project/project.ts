@@ -41,6 +41,7 @@ export const projectApi = {
       name?: string;
       code?: string;
       targetProjectId?: string;
+      decryptionKey?: string;
     }
   ): Promise<ProjectResp> {
     const formData = new FormData();
@@ -50,10 +51,12 @@ export const projectApi = {
       formData.append('name', input.name ?? '');
       formData.append('code', input.code ?? '');
     }
-    if (input.mode === 'replace' && input.targetProjectId) {
-      formData.append('target_project_id', input.targetProjectId);
-    }
-    return request.post('/api/project/handover', formData, {
+    formData.append('decryption_key', input.decryptionKey ?? '');
+    const path =
+      input.mode === 'replace'
+        ? `/api/project/${input.targetProjectId ?? ''}/handover`
+        : '/api/project/handover';
+    return request.post(path, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },

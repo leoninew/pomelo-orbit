@@ -220,6 +220,8 @@ export default {
     handoverModeReplace: '覆盖已有项目',
     handoverTargetProject: '目标项目',
     handoverTargetRequired: '请选择目标项目',
+    handoverDecryptionKey: '解密 Key',
+    handoverDecryptionKeyHint: '留空时使用系统 Key；填写后使用该 Key 解密。',
     initialization: {
       title: '初始化项目',
       description: '配置部署目标，完成环境检查后创建网关。',

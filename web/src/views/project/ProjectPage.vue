@@ -245,6 +245,23 @@
         </div>
 
         <div class="space-y-1.5">
+          <label class="app-field-label block" for="handover-decryption-key">
+            {{ t('project.handoverDecryptionKey') }}
+          </label>
+          <input
+            id="handover-decryption-key"
+            v-model="handoverDecryptionKey"
+            type="password"
+            autocomplete="off"
+            class="app-input"
+            :disabled="operating"
+          />
+          <p class="text-xs text-muted-foreground">
+            {{ t('project.handoverDecryptionKeyHint') }}
+          </p>
+        </div>
+
+        <div class="space-y-1.5">
           <span id="handover-mode-label" class="app-field-label block">
             {{ t('project.handoverMode') }}
           </span>
@@ -434,6 +451,7 @@
     code: '',
   });
   const handoverTargetProjectId = ref('');
+  const handoverDecryptionKey = ref('');
   const handoverErrors = reactive({ file: '', name: '', code: '', targetProject: '' });
   const handoverSubmitError = ref('');
 
@@ -493,6 +511,7 @@
     handoverForm.name = '';
     handoverForm.code = '';
     handoverTargetProjectId.value = '';
+    handoverDecryptionKey.value = '';
     handoverErrors.file = '';
     handoverErrors.name = '';
     handoverErrors.code = '';
@@ -675,6 +694,7 @@
           code: handoverMode.value === 'new' ? handoverForm.code.trim() : undefined,
           targetProjectId:
             handoverMode.value === 'replace' ? handoverTargetProjectId.value : undefined,
+          decryptionKey: handoverDecryptionKey.value.trim(),
         });
         await projectStore.fetchProjects();
         projectStore.setActiveProject(project.id);

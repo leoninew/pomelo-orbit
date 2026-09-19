@@ -221,6 +221,8 @@ export default {
     handoverModeReplace: 'Replace existing Project',
     handoverTargetProject: 'Target Project',
     handoverTargetRequired: 'Select a target Project',
+    handoverDecryptionKey: 'Decryption Key',
+    handoverDecryptionKeyHint: 'Leave blank to use the system Key; a value overrides it.',
     initialization: {
       title: 'Initialize Project',
       description:

@@ -36,6 +36,7 @@ type ImportInput struct {
 	Mode            ImportMode
 	Name            string
 	Code            string
-	TargetProjectID string
+	TargetProjectId string
+	DecryptionKey   string
 	Package         Package
 }

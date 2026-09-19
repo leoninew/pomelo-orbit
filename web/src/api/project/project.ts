@@ -42,6 +42,7 @@ export const projectApi = {
       code?: string;
       targetProjectId?: string;
       decryptionKey?: string;
+      overrideEnvironment: boolean;
     }
   ): Promise<ProjectResp> {
     const formData = new FormData();
@@ -52,6 +53,7 @@ export const projectApi = {
       formData.append('code', input.code ?? '');
     }
     formData.append('decryption_key', input.decryptionKey ?? '');
+    formData.append('override_environment', String(input.overrideEnvironment));
     const path =
       input.mode === 'replace'
         ? `/api/project/${input.targetProjectId ?? ''}/handover`

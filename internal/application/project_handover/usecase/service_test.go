@@ -24,7 +24,7 @@ func TestImportNewCreatesProjectWithSubmittedIdentity(t *testing.T) {
 	service := newTestServiceWithProject(&calls, &testProjectDomain{calls: &calls, created: &created})
 
 	project, err := service.Import(context.Background(), "operator", handoverdto.ImportInput{
-		Mode: handoverdto.ImportModeNew, Name: "Taken Over", Code: "taken-over", Package: testPackage(),
+		Mode: handoverdto.ImportModeNew, Name: "Taken Over", Code: "taken-over", OverrideEnvironment: true, Package: testPackage(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +63,7 @@ func TestImportReplaceKeepsTargetProjectIdentity(t *testing.T) {
 	service := newTestService(&calls)
 
 	project, err := service.Import(context.Background(), "operator", handoverdto.ImportInput{
-		Mode: handoverdto.ImportModeReplace, TargetProjectId: "target-project", Package: testPackage(),
+		Mode: handoverdto.ImportModeReplace, TargetProjectId: "target-project", OverrideEnvironment: true, Package: testPackage(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -250,7 +250,7 @@ func TestImportDocumentRejectsInvalidEnvironmentCredentialKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = service.ImportDocument(context.Background(), "operator", handoverdto.ImportInput{
-		Mode: handoverdto.ImportModeNew, Name: "Taken Over", Code: "taken-over", DecryptionKey: "invalid",
+		Mode: handoverdto.ImportModeNew, Name: "Taken Over", Code: "taken-over", DecryptionKey: "invalid", OverrideEnvironment: true,
 	}, document)
 	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("ImportDocument() error = %v, want validation error", err)
@@ -276,7 +276,7 @@ func assertImportDocumentDecryptsCredential(t *testing.T, decryptionKey string, 
 		t.Fatal(err)
 	}
 	_, err = service.ImportDocument(context.Background(), "operator", handoverdto.ImportInput{
-		Mode: handoverdto.ImportModeNew, Name: "Taken Over", Code: "taken-over", DecryptionKey: decryptionKey,
+		Mode: handoverdto.ImportModeNew, Name: "Taken Over", Code: "taken-over", DecryptionKey: decryptionKey, OverrideEnvironment: true,
 	}, document)
 	if err != nil {
 		t.Fatal(err)
@@ -301,6 +301,30 @@ func TestEncryptPackagePrivateKeyRemovesPlaintext(t *testing.T) {
 	plain, err := security.DecryptString(testHandoverSecretKey, item.Environment.Credential.EncryptedPrivateKey)
 	if err != nil || plain != "PRIVATE KEY" {
 		t.Fatalf("encrypted package credential decrypted = %q, %v", plain, err)
+	}
+}
+
+func TestImportDocumentSkipsEnvironmentAndCredentialWhenNotOverridden(t *testing.T) {
+	calls := []string{}
+	environment := &testEnvironmentDomain{calls: &calls}
+	service := newTestServiceWithEnvironment(&calls, environment)
+	item := testPackage()
+	item.Environment.Credential = &environmentdto.SSHCredentialDefinition{EncryptedPrivateKey: "not-a-valid-token"}
+	document, err := handoverdto.Encode(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = service.ImportDocument(context.Background(), "operator", handoverdto.ImportInput{
+		Mode: handoverdto.ImportModeNew, Name: "Taken Over", Code: "taken-over",
+	}, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(calls, []string{"project.create"}) {
+		t.Fatalf("ImportDocument() calls = %v, want only project creation", calls)
+	}
+	if environment.saved != nil {
+		t.Fatalf("environment was saved despite override disabled: %+v", environment.saved)
 	}
 }
 

@@ -223,6 +223,7 @@ export default {
     handoverTargetRequired: 'Select a target Project',
     handoverDecryptionKey: 'Decryption Key',
     handoverDecryptionKeyHint: 'Leave blank to use the system Key; a value overrides it.',
+    handoverOverrideEnvironment: 'Override current environment and credentials',
     initialization: {
       title: 'Initialize Project',
       description:

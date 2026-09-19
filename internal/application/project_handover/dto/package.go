@@ -33,10 +33,11 @@ const (
 )
 
 type ImportInput struct {
-	Mode            ImportMode
-	Name            string
-	Code            string
-	TargetProjectId string
-	DecryptionKey   string
-	Package         Package
+	Mode                ImportMode
+	Name                string
+	Code                string
+	TargetProjectId     string
+	DecryptionKey       string
+	OverrideEnvironment bool
+	Package             Package
 }

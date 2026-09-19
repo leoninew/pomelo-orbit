@@ -62,11 +62,12 @@ func (h Handler) ImportHandover(c *gin.Context) {
 		c.Request.Context(),
 		current.Id,
 		handoverdto.ImportInput{
-			Mode:            handoverdto.ImportMode(c.PostForm("mode")),
-			Name:            c.PostForm("name"),
-			Code:            c.PostForm("code"),
-			TargetProjectId: c.Param("project_id"),
-			DecryptionKey:   c.PostForm("decryption_key"),
+			Mode:                handoverdto.ImportMode(c.PostForm("mode")),
+			Name:                c.PostForm("name"),
+			Code:                c.PostForm("code"),
+			TargetProjectId:     c.Param("project_id"),
+			DecryptionKey:       c.PostForm("decryption_key"),
+			OverrideEnvironment: c.PostForm("override_environment") == "true",
 		},
 		document,
 	)

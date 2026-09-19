@@ -254,12 +254,26 @@
             type="password"
             autocomplete="off"
             class="app-input"
-            :disabled="operating"
+            :disabled="operating || !handoverOverrideEnvironment"
           />
           <p class="text-xs text-muted-foreground">
             {{ t('project.handoverDecryptionKeyHint') }}
           </p>
         </div>
+
+        <label
+          class="flex items-start gap-2 text-sm text-foreground"
+          for="handover-override-environment"
+        >
+          <input
+            id="handover-override-environment"
+            v-model="handoverOverrideEnvironment"
+            type="checkbox"
+            class="app-checkbox mt-0.5"
+            :disabled="operating"
+          />
+          <span>{{ t('project.handoverOverrideEnvironment') }}</span>
+        </label>
 
         <div class="space-y-1.5">
           <span id="handover-mode-label" class="app-field-label block">
@@ -452,6 +466,7 @@
   });
   const handoverTargetProjectId = ref('');
   const handoverDecryptionKey = ref('');
+  const handoverOverrideEnvironment = ref(true);
   const handoverErrors = reactive({ file: '', name: '', code: '', targetProject: '' });
   const handoverSubmitError = ref('');
 
@@ -512,6 +527,7 @@
     handoverForm.code = '';
     handoverTargetProjectId.value = '';
     handoverDecryptionKey.value = '';
+    handoverOverrideEnvironment.value = true;
     handoverErrors.file = '';
     handoverErrors.name = '';
     handoverErrors.code = '';
@@ -695,6 +711,7 @@
           targetProjectId:
             handoverMode.value === 'replace' ? handoverTargetProjectId.value : undefined,
           decryptionKey: handoverDecryptionKey.value.trim(),
+          overrideEnvironment: handoverOverrideEnvironment.value,
         });
         await projectStore.fetchProjects();
         projectStore.setActiveProject(project.id);

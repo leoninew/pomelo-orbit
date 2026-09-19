@@ -108,8 +108,10 @@ func (s Service) ImportDocument(ctx context.Context, userId string, input handov
 	if err != nil {
 		return model.Project{}, apperror.Wrap(apperror.KindValidation, handoverdto.DecodeErrorMessage(err), err)
 	}
-	if err := decryptPackagePrivateKey(s.secretKey, input.DecryptionKey, &item); err != nil {
-		return model.Project{}, err
+	if input.OverrideEnvironment {
+		if err := decryptPackagePrivateKey(s.secretKey, input.DecryptionKey, &item); err != nil {
+			return model.Project{}, err
+		}
 	}
 	input.Package = item
 	return s.Import(ctx, userId, input)
@@ -252,8 +254,10 @@ func (s Service) Import(ctx context.Context, userId string, input handoverdto.Im
 	if err != nil {
 		return model.Project{}, err
 	}
-	if _, err := s.environment.SaveTargetDefinitionForHandover(ctx, userId, project.Id, input.Package.Environment); err != nil {
-		return model.Project{}, err
+	if input.OverrideEnvironment {
+		if _, err := s.environment.SaveTargetDefinitionForHandover(ctx, userId, project.Id, input.Package.Environment); err != nil {
+			return model.Project{}, err
+		}
 	}
 	return s.restoreProjectConfiguration(ctx, userId, project, input.Package)
 }

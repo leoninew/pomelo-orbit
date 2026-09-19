@@ -173,6 +173,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		pipelineService,
 		pipelineRunService,
 		deploymentService,
+		cfg.Jwt.SecretKey,
 	)
 
 	services := applicationServices{

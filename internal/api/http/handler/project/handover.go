@@ -65,7 +65,8 @@ func (h Handler) ImportHandover(c *gin.Context) {
 			Mode:            handoverdto.ImportMode(c.PostForm("mode")),
 			Name:            c.PostForm("name"),
 			Code:            c.PostForm("code"),
-			TargetProjectID: c.PostForm("target_project_id"),
+			TargetProjectId: c.Param("project_id"),
+			DecryptionKey:   c.PostForm("decryption_key"),
 		},
 		document,
 	)

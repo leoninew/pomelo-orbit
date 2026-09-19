@@ -14,6 +14,7 @@ func (r Router) registerProject(engine *gin.Engine) {
 	engine.PUT("/api/project/:project_id", handler.UpdateProject)
 	engine.GET("/api/project/:project_id/handover", handler.ExportHandover)
 	engine.POST("/api/project/handover", handler.ImportHandover)
+	engine.POST("/api/project/:project_id/handover", handler.ImportHandover)
 	engine.POST("/api/project/:project_id/deprecate", handler.DeprecateProject)
 	engine.GET("/api/project/:project_id/member", handler.ListProjectMembers)
 	engine.POST("/api/project/:project_id/member", handler.AddProjectMember)

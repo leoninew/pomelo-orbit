@@ -35,9 +35,10 @@ type SSHDefinition struct {
 // SSHCredentialDefinition carries the logical key pair, not its encrypted
 // persistence representation.
 type SSHCredentialDefinition struct {
-	PublicKey  string
-	PrivateKey string
-	Revision   int64
+	PublicKey           string `json:"public_key"`
+	PrivateKey          string `json:"private_key,omitempty"`
+	EncryptedPrivateKey string `json:"encrypted_private_key,omitempty"`
+	Revision            int64  `json:"revision"`
 }
 
 type LocalTargetInput struct {

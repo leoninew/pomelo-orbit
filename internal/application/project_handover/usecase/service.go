@@ -11,6 +11,7 @@ import (
 	handoverdto "github.com/leoninew/pomelo-orbit/internal/application/project_handover/dto"
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
+	security "github.com/leoninew/pomelo-orbit/internal/common/crypto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
@@ -25,7 +26,7 @@ type projectDomain interface {
 
 type environmentDomain interface {
 	TargetDefinitionForUser(context.Context, string, string) (environmentdto.TargetDefinition, error)
-	SaveTargetDefinitionForUser(context.Context, string, string, environmentdto.TargetDefinition) (environmentdto.TargetDefinition, error)
+	SaveTargetDefinitionForHandover(context.Context, string, string, environmentdto.TargetDefinition) (environmentdto.TargetDefinition, error)
 }
 
 type applicationDomain interface {
@@ -80,15 +81,19 @@ type Service struct {
 	pipeline    pipelineDomain
 	pipelineRun pipelineRunDomain
 	deployment  deploymentDomain
+	secretKey   string
 }
 
-func New(project projectDomain, environment environmentDomain, application applicationDomain, service serviceDomain, route routeDomain, gateway gatewayDomain, pipeline pipelineDomain, pipelineRun pipelineRunDomain, deployment deploymentDomain) Service {
-	return Service{project: project, environment: environment, application: application, service: service, route: route, gateway: gateway, pipeline: pipeline, pipelineRun: pipelineRun, deployment: deployment}
+func New(project projectDomain, environment environmentDomain, application applicationDomain, service serviceDomain, route routeDomain, gateway gatewayDomain, pipeline pipelineDomain, pipelineRun pipelineRunDomain, deployment deploymentDomain, secretKey string) Service {
+	return Service{project: project, environment: environment, application: application, service: service, route: route, gateway: gateway, pipeline: pipeline, pipelineRun: pipelineRun, deployment: deployment, secretKey: secretKey}
 }
 
-func (s Service) ExportDocument(ctx context.Context, userID, projectID string) ([]byte, error) {
-	item, err := s.Export(ctx, userID, projectID)
+func (s Service) ExportDocument(ctx context.Context, userId, projectId string) ([]byte, error) {
+	item, err := s.Export(ctx, userId, projectId)
 	if err != nil {
+		return nil, err
+	}
+	if err := encryptPackagePrivateKey(s.secretKey, &item); err != nil {
 		return nil, err
 	}
 	document, err := handoverdto.Encode(item)
@@ -98,25 +103,58 @@ func (s Service) ExportDocument(ctx context.Context, userID, projectID string) (
 	return document, nil
 }
 
-func (s Service) ImportDocument(ctx context.Context, userID string, input handoverdto.ImportInput, document []byte) (model.Project, error) {
+func (s Service) ImportDocument(ctx context.Context, userId string, input handoverdto.ImportInput, document []byte) (model.Project, error) {
 	item, err := handoverdto.Decode(document)
 	if err != nil {
 		return model.Project{}, apperror.Wrap(apperror.KindValidation, handoverdto.DecodeErrorMessage(err), err)
 	}
+	if err := decryptPackagePrivateKey(s.secretKey, input.DecryptionKey, &item); err != nil {
+		return model.Project{}, err
+	}
 	input.Package = item
-	return s.Import(ctx, userID, input)
+	return s.Import(ctx, userId, input)
 }
 
-func (s Service) Export(ctx context.Context, userID, projectID string) (handoverdto.Package, error) {
-	project, err := s.project.LoadForUser(ctx, projectID, userID)
+func encryptPackagePrivateKey(secretKey string, item *handoverdto.Package) error {
+	if item.Environment.Credential == nil || item.Environment.Credential.PrivateKey == "" {
+		return nil
+	}
+	encryptedPrivateKey, err := security.EncryptString(secretKey, item.Environment.Credential.PrivateKey)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to encrypt handover environment SSH private key", err)
+	}
+	item.Environment.Credential.EncryptedPrivateKey = encryptedPrivateKey
+	item.Environment.Credential.PrivateKey = ""
+	return nil
+}
+
+func decryptPackagePrivateKey(systemKey string, suppliedKey string, item *handoverdto.Package) error {
+	if item.Environment.Credential == nil || item.Environment.Credential.EncryptedPrivateKey == "" {
+		return nil
+	}
+	decryptionKey := strings.TrimSpace(suppliedKey)
+	if decryptionKey == "" {
+		decryptionKey = systemKey
+	}
+	privateKey, err := security.DecryptString(decryptionKey, item.Environment.Credential.EncryptedPrivateKey)
+	if err != nil {
+		return apperror.Wrap(apperror.KindValidation, "Failed to decrypt handover environment SSH private key", err)
+	}
+	item.Environment.Credential.PrivateKey = privateKey
+	item.Environment.Credential.EncryptedPrivateKey = ""
+	return nil
+}
+
+func (s Service) Export(ctx context.Context, userId, projectId string) (handoverdto.Package, error) {
+	project, err := s.project.LoadForUser(ctx, projectId, userId)
 	if err != nil {
 		return handoverdto.Package{}, err
 	}
-	environment, err := s.environment.TargetDefinitionForUser(ctx, userID, project.Id)
+	environment, err := s.environment.TargetDefinitionForUser(ctx, userId, project.Id)
 	if err != nil {
 		return handoverdto.Package{}, err
 	}
-	gateways, err := s.gateway.ListGateways(ctx, userID, project.Id, 1, handoverPageSize, "")
+	gateways, err := s.gateway.ListGateways(ctx, userId, project.Id, 1, handoverPageSize, "")
 	if err != nil {
 		return handoverdto.Package{}, err
 	}
@@ -125,13 +163,13 @@ func (s Service) Export(ctx context.Context, userID, projectID string) (handover
 	}
 	var gateway *gatewaydto.GatewayDefinition
 	if len(gateways.Items) == 1 {
-		definition, err := s.gateway.GatewayDefinitionForUser(ctx, userID, project.Id, gateways.Items[0].Application.Id)
+		definition, err := s.gateway.GatewayDefinitionForUser(ctx, userId, project.Id, gateways.Items[0].Application.Id)
 		if err != nil {
 			return handoverdto.Package{}, err
 		}
 		gateway = &definition
 	}
-	applications, err := s.application.ListApplications(ctx, userID, project.Id, 1, handoverPageSize, "", "")
+	applications, err := s.application.ListApplications(ctx, userId, project.Id, 1, handoverPageSize, "", "")
 	if err != nil {
 		return handoverdto.Package{}, err
 	}
@@ -148,13 +186,13 @@ func (s Service) Export(ctx context.Context, userID, projectID string) (handover
 		if gateway != nil && item.Id == gateway.Application.Application.Id {
 			continue
 		}
-		definition, err := s.application.ApplicationDefinitionForUser(ctx, userID, project.Id, item.Id)
+		definition, err := s.application.ApplicationDefinitionForUser(ctx, userId, project.Id, item.Id)
 		if err != nil {
 			return handoverdto.Package{}, err
 		}
 		result.Applications = append(result.Applications, definition)
 	}
-	services, err := s.service.ListServices(ctx, userID, servicedto.ServiceListInput{ProjectId: project.Id, Page: 1, PerPage: handoverPageSize})
+	services, err := s.service.ListServices(ctx, userId, servicedto.ServiceListInput{ProjectId: project.Id, Page: 1, PerPage: handoverPageSize})
 	if err != nil {
 		return handoverdto.Package{}, err
 	}
@@ -165,13 +203,13 @@ func (s Service) Export(ctx context.Context, userID, projectID string) (handover
 		if gateway != nil && item.Service.Id == gateway.RuntimeService.Service.Id {
 			continue
 		}
-		definition, err := s.service.ServiceDefinitionForUser(ctx, userID, project.Id, item.Service.Id)
+		definition, err := s.service.ServiceDefinitionForUser(ctx, userId, project.Id, item.Service.Id)
 		if err != nil {
 			return handoverdto.Package{}, err
 		}
 		result.Services = append(result.Services, definition)
 	}
-	routes, err := s.route.ListAllRoutes(ctx, userID, project.Id)
+	routes, err := s.route.ListAllRoutes(ctx, userId, project.Id)
 	if err != nil {
 		return handoverdto.Package{}, err
 	}
@@ -184,7 +222,7 @@ func (s Service) Export(ctx context.Context, userID, projectID string) (handover
 	return result, nil
 }
 
-func (s Service) Import(ctx context.Context, userID string, input handoverdto.ImportInput) (model.Project, error) {
+func (s Service) Import(ctx context.Context, userId string, input handoverdto.ImportInput) (model.Project, error) {
 	if err := validatePackage(input.Package); err != nil {
 		return model.Project{}, err
 	}
@@ -192,21 +230,21 @@ func (s Service) Import(ctx context.Context, userID string, input handoverdto.Im
 	var err error
 	switch input.Mode {
 	case handoverdto.ImportModeNew:
-		project, err = s.project.CreateFromDefinition(ctx, userID, projectdto.ProjectDefinition{
+		project, err = s.project.CreateFromDefinition(ctx, userId, projectdto.ProjectDefinition{
 			Name:     input.Name,
 			Code:     input.Code,
 			IsActive: true,
 		})
 	case handoverdto.ImportModeReplace:
-		project, err = s.project.LoadForUser(ctx, strings.TrimSpace(input.TargetProjectID), userID)
+		project, err = s.project.LoadForUser(ctx, strings.TrimSpace(input.TargetProjectId), userId)
 		if err == nil {
-			err = s.ensureProjectConfigurationReplaceable(ctx, userID, project.Id)
+			err = s.ensureProjectConfigurationReplaceable(ctx, userId, project.Id)
 		}
 		if err == nil {
-			err = s.removeProjectConfiguration(ctx, userID, project.Id)
+			err = s.removeProjectConfiguration(ctx, userId, project.Id)
 		}
 		if err == nil {
-			err = s.deployment.ClearProjectDeploymentHistory(ctx, userID, project.Id)
+			err = s.deployment.ClearProjectDeploymentHistory(ctx, userId, project.Id)
 		}
 	default:
 		return model.Project{}, apperror.New(apperror.KindValidation, "Invalid handover import mode")
@@ -214,23 +252,23 @@ func (s Service) Import(ctx context.Context, userID string, input handoverdto.Im
 	if err != nil {
 		return model.Project{}, err
 	}
-	if _, err := s.environment.SaveTargetDefinitionForUser(ctx, userID, project.Id, input.Package.Environment); err != nil {
+	if _, err := s.environment.SaveTargetDefinitionForHandover(ctx, userId, project.Id, input.Package.Environment); err != nil {
 		return model.Project{}, err
 	}
-	return s.restoreProjectConfiguration(ctx, userID, project, input.Package)
+	return s.restoreProjectConfiguration(ctx, userId, project, input.Package)
 }
 
-func (s Service) ensureProjectConfigurationReplaceable(ctx context.Context, userID, projectID string) error {
+func (s Service) ensureProjectConfigurationReplaceable(ctx context.Context, userId, projectId string) error {
 	if s.pipeline == nil || s.pipelineRun == nil || s.deployment == nil {
 		return apperror.New(apperror.KindInternal, "project handover dependencies are not configured")
 	}
-	if err := s.pipeline.EnsureNoCDConfigurationReferences(ctx, userID, projectID); err != nil {
+	if err := s.pipeline.EnsureNoCDConfigurationReferences(ctx, userId, projectId); err != nil {
 		return err
 	}
-	return s.pipelineRun.EnsureNoCDConfigurationReferences(ctx, userID, projectID)
+	return s.pipelineRun.EnsureNoCDConfigurationReferences(ctx, userId, projectId)
 }
 
-type packageIDMaps struct {
+type packageIdMaps struct {
 	applications map[string]string
 	versions     map[string]string
 	components   map[string]string
@@ -244,84 +282,93 @@ func validatePackage(item handoverdto.Package) error {
 	if item.Version != handoverdto.FormatVersion {
 		return apperror.New(apperror.KindValidation, "Unsupported handover package version")
 	}
-	_, err := sourceDefinitionIDs(item)
+	_, err := sourceDefinitionIds(item)
 	return err
 }
 
-func sourceDefinitionIDs(item handoverdto.Package) (packageIDMaps, error) {
-	maps := packageIDMaps{
+func sourceDefinitionIds(item handoverdto.Package) (packageIdMaps, error) {
+	maps := packageIdMaps{
 		applications: make(map[string]string, len(item.Applications)),
 		versions:     make(map[string]string),
 		components:   make(map[string]string),
-		services:     make(map[string]string, len(item.Services)),
+		services:     make(map[string]string, len(item.Services)+1),
 	}
 	for _, definition := range item.Applications {
-		applicationID := strings.TrimSpace(definition.Application.Id)
-		if applicationID == "" {
-			return packageIDMaps{}, apperror.New(apperror.KindValidation, "Application definition id is required")
+		applicationId := strings.TrimSpace(definition.Application.Id)
+		if applicationId == "" {
+			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Application definition id is required")
 		}
-		if _, exists := maps.applications[applicationID]; exists {
-			return packageIDMaps{}, apperror.New(apperror.KindValidation, "Application definition ids must be unique")
+		if _, exists := maps.applications[applicationId]; exists {
+			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Application definition ids must be unique")
 		}
-		maps.applications[applicationID] = ""
+		maps.applications[applicationId] = ""
 		if len(definition.Versions) == 0 {
-			return packageIDMaps{}, apperror.New(apperror.KindValidation, "Application definition requires a Version")
+			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Application definition requires a Version")
 		}
 		for _, version := range definition.Versions {
-			versionID := strings.TrimSpace(version.Version.Id)
-			if versionID == "" {
-				return packageIDMaps{}, apperror.New(apperror.KindValidation, "Version definition id is required")
+			versionId := strings.TrimSpace(version.Version.Id)
+			if versionId == "" {
+				return packageIdMaps{}, apperror.New(apperror.KindValidation, "Version definition id is required")
 			}
-			if _, exists := maps.versions[versionID]; exists {
-				return packageIDMaps{}, apperror.New(apperror.KindValidation, "Version definition ids must be unique")
+			if _, exists := maps.versions[versionId]; exists {
+				return packageIdMaps{}, apperror.New(apperror.KindValidation, "Version definition ids must be unique")
 			}
-			maps.versions[versionID] = ""
+			maps.versions[versionId] = ""
 			for _, component := range version.Components {
-				componentID := strings.TrimSpace(component.Id)
-				if componentID == "" {
-					return packageIDMaps{}, apperror.New(apperror.KindValidation, "Version Component definition id is required")
+				componentId := strings.TrimSpace(component.Id)
+				if componentId == "" {
+					return packageIdMaps{}, apperror.New(apperror.KindValidation, "Version Component definition id is required")
 				}
-				if _, exists := maps.components[componentID]; exists {
-					return packageIDMaps{}, apperror.New(apperror.KindValidation, "Version Component definition ids must be unique")
+				if _, exists := maps.components[componentId]; exists {
+					return packageIdMaps{}, apperror.New(apperror.KindValidation, "Version Component definition ids must be unique")
 				}
-				maps.components[componentID] = ""
+				maps.components[componentId] = ""
 			}
 		}
 	}
 	for _, definition := range item.Services {
-		serviceID := strings.TrimSpace(definition.Service.Id)
-		if serviceID == "" {
-			return packageIDMaps{}, apperror.New(apperror.KindValidation, "Service definition id is required")
+		serviceId := strings.TrimSpace(definition.Service.Id)
+		if serviceId == "" {
+			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service definition id is required")
 		}
-		if _, exists := maps.services[serviceID]; exists {
-			return packageIDMaps{}, apperror.New(apperror.KindValidation, "Service definition ids must be unique")
+		if _, exists := maps.services[serviceId]; exists {
+			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service definition ids must be unique")
 		}
 		if _, exists := maps.applications[strings.TrimSpace(definition.Service.ApplicationId)]; !exists {
-			return packageIDMaps{}, apperror.New(apperror.KindValidation, "Service definition Application is not in the package")
+			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service definition Application is not in the package")
 		}
 		if _, exists := maps.versions[strings.TrimSpace(definition.Service.VersionId)]; !exists {
-			return packageIDMaps{}, apperror.New(apperror.KindValidation, "Service definition Version is not in the package")
+			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service definition Version is not in the package")
 		}
 		for _, component := range definition.Components {
 			if _, exists := maps.components[strings.TrimSpace(component.SourceVersionComponentId)]; !exists {
-				return packageIDMaps{}, apperror.New(apperror.KindValidation, "Service Component definition is not in the package")
+				return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service Component definition is not in the package")
 			}
 		}
-		maps.services[serviceID] = ""
+		maps.services[serviceId] = ""
+	}
+	if item.Gateway != nil {
+		gatewayServiceId := strings.TrimSpace(item.Gateway.RuntimeService.Service.Id)
+		if gatewayServiceId != "" {
+			if _, exists := maps.services[gatewayServiceId]; exists {
+				return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service definition ids must be unique")
+			}
+			maps.services[gatewayServiceId] = ""
+		}
 	}
 	for _, definition := range item.Routes {
 		if definition.Route.ServiceId == nil || strings.TrimSpace(*definition.Route.ServiceId) == "" {
 			continue
 		}
 		if _, exists := maps.services[strings.TrimSpace(*definition.Route.ServiceId)]; !exists {
-			return packageIDMaps{}, apperror.New(apperror.KindValidation, "Route Service is not in the package")
+			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Route Service is not in the package")
 		}
 	}
 	return maps, nil
 }
 
-func (s Service) removeProjectConfiguration(ctx context.Context, userID, projectID string) error {
-	gateways, err := s.gateway.ListGateways(ctx, userID, projectID, 1, handoverPageSize, "")
+func (s Service) removeProjectConfiguration(ctx context.Context, userId, projectId string) error {
+	gateways, err := s.gateway.ListGateways(ctx, userId, projectId, 1, handoverPageSize, "")
 	if err != nil {
 		return err
 	}
@@ -329,11 +376,11 @@ func (s Service) removeProjectConfiguration(ctx context.Context, userID, project
 		return apperror.New(apperror.KindValidation, "Project has multiple gateways")
 	}
 	if len(gateways.Items) == 1 {
-		if err := s.gateway.RemoveGateway(ctx, userID, projectID, gateways.Items[0].Application.Id); err != nil {
+		if err := s.gateway.RemoveGateway(ctx, userId, projectId, gateways.Items[0].Application.Id); err != nil {
 			return err
 		}
 	}
-	routes, err := s.route.ListAllRoutes(ctx, userID, projectID)
+	routes, err := s.route.ListAllRoutes(ctx, userId, projectId)
 	if err != nil {
 		return err
 	}
@@ -341,11 +388,11 @@ func (s Service) removeProjectConfiguration(ctx context.Context, userID, project
 		return apperror.New(apperror.KindValidation, "Project has too many routes to replace")
 	}
 	for _, route := range routes {
-		if err := s.route.RemoveRoute(ctx, userID, projectID, route.Id); err != nil {
+		if err := s.route.RemoveRoute(ctx, userId, projectId, route.Id); err != nil {
 			return err
 		}
 	}
-	services, err := s.service.ListServices(ctx, userID, servicedto.ServiceListInput{ProjectId: projectID, Page: 1, PerPage: handoverPageSize})
+	services, err := s.service.ListServices(ctx, userId, servicedto.ServiceListInput{ProjectId: projectId, Page: 1, PerPage: handoverPageSize})
 	if err != nil {
 		return err
 	}
@@ -353,11 +400,11 @@ func (s Service) removeProjectConfiguration(ctx context.Context, userID, project
 		return apperror.New(apperror.KindValidation, "Project has too many services to replace")
 	}
 	for _, service := range services.Items {
-		if err := s.service.RemoveService(ctx, userID, projectID, service.Service.Id); err != nil {
+		if err := s.service.RemoveService(ctx, userId, projectId, service.Service.Id); err != nil {
 			return err
 		}
 	}
-	applications, err := s.application.ListApplications(ctx, userID, projectID, 1, handoverPageSize, "", "")
+	applications, err := s.application.ListApplications(ctx, userId, projectId, 1, handoverPageSize, "", "")
 	if err != nil {
 		return err
 	}
@@ -365,20 +412,20 @@ func (s Service) removeProjectConfiguration(ctx context.Context, userID, project
 		return apperror.New(apperror.KindValidation, "Project has too many applications to replace")
 	}
 	for _, application := range applications.Items {
-		if err := s.application.RemoveApplication(ctx, userID, projectID, application.Id); err != nil {
+		if err := s.application.RemoveApplication(ctx, userId, projectId, application.Id); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s Service) restoreProjectConfiguration(ctx context.Context, userID string, project model.Project, item handoverdto.Package) (model.Project, error) {
-	maps, err := sourceDefinitionIDs(item)
+func (s Service) restoreProjectConfiguration(ctx context.Context, userId string, project model.Project, item handoverdto.Package) (model.Project, error) {
+	maps, err := sourceDefinitionIds(item)
 	if err != nil {
 		return model.Project{}, err
 	}
 	for _, definition := range item.Applications {
-		created, err := s.application.CreateApplicationFromDefinition(ctx, userID, project.Id, definition)
+		created, err := s.application.CreateApplicationFromDefinition(ctx, userId, project.Id, definition)
 		if err != nil {
 			return model.Project{}, err
 		}
@@ -387,26 +434,35 @@ func (s Service) restoreProjectConfiguration(ctx context.Context, userID string,
 		}
 	}
 	for _, definition := range item.Services {
-		created, err := s.service.CreateServiceFromDefinition(ctx, userID, project.Id, remapServiceDefinition(definition, maps))
+		created, err := s.service.CreateServiceFromDefinition(ctx, userId, project.Id, remapServiceDefinition(definition, maps))
 		if err != nil {
 			return model.Project{}, err
 		}
 		maps.services[definition.Service.Id] = created.Service.Id
 	}
 	if item.Gateway != nil {
-		if _, err := s.gateway.CreateGatewayFromDefinition(ctx, userID, project.Id, *item.Gateway); err != nil {
+		created, err := s.gateway.CreateGatewayFromDefinition(ctx, userId, project.Id, *item.Gateway)
+		if err != nil {
 			return model.Project{}, err
+		}
+		gatewayServiceId := strings.TrimSpace(item.Gateway.RuntimeService.Service.Id)
+		if gatewayServiceId != "" {
+			targetGatewayServiceId := strings.TrimSpace(created.RuntimeService.Service.Id)
+			if targetGatewayServiceId == "" {
+				return model.Project{}, apperror.New(apperror.KindInternal, "Gateway definition restoration returned incomplete RuntimeService")
+			}
+			maps.services[gatewayServiceId] = targetGatewayServiceId
 		}
 	}
 	for _, definition := range item.Routes {
-		if _, err := s.route.CreateRouteFromDefinition(ctx, userID, project.Id, remapRouteDefinition(definition, maps)); err != nil {
+		if _, err := s.route.CreateRouteFromDefinition(ctx, userId, project.Id, remapRouteDefinition(definition, maps)); err != nil {
 			return model.Project{}, err
 		}
 	}
 	return project, nil
 }
 
-func mapApplicationDefinition(maps *packageIDMaps, source, target applicationdto.ApplicationDefinition) error {
+func mapApplicationDefinition(maps *packageIdMaps, source, target applicationdto.ApplicationDefinition) error {
 	if len(source.Versions) != len(target.Versions) {
 		return apperror.New(apperror.KindInternal, "Application definition restoration returned incomplete Versions")
 	}
@@ -424,13 +480,12 @@ func mapApplicationDefinition(maps *packageIDMaps, source, target applicationdto
 	return nil
 }
 
-func remapServiceDefinition(source servicedto.ServiceDefinition, maps packageIDMaps) servicedto.ServiceDefinition {
+func remapServiceDefinition(source servicedto.ServiceDefinition, maps packageIdMaps) servicedto.ServiceDefinition {
 	definition := source
 	definition.Service.Id = ""
 	definition.Service.ProjectId = ""
 	definition.Service.ApplicationId = maps.applications[source.Service.ApplicationId]
 	definition.Service.VersionId = maps.versions[source.Service.VersionId]
-	definition.Service.Status = "stopped"
 	for index := range definition.Components {
 		definition.Components[index].Id = ""
 		definition.Components[index].ServiceId = ""
@@ -439,14 +494,14 @@ func remapServiceDefinition(source servicedto.ServiceDefinition, maps packageIDM
 	return definition
 }
 
-func remapRouteDefinition(source routedto.RouteDefinitionInput, maps packageIDMaps) routedto.RouteDefinitionInput {
+func remapRouteDefinition(source routedto.RouteDefinitionInput, maps packageIdMaps) routedto.RouteDefinitionInput {
 	definition := source
 	definition.Route.Id = ""
 	definition.Route.ProjectId = nil
 	definition.Route.Enabled = false
 	if source.Route.ServiceId != nil {
-		serviceID := maps.services[*source.Route.ServiceId]
-		definition.Route.ServiceId = &serviceID
+		serviceId := maps.services[*source.Route.ServiceId]
+		definition.Route.ServiceId = &serviceId
 	}
 	return definition
 }

@@ -452,3 +452,118 @@ func TestResolveTemplatePipelineVariablesPreservesTemplateDetailContract(t *test
 		t.Fatalf("template custom declaration=%#v", byName["invalid-name"])
 	}
 }
+
+func TestResolveTemplatePipelineVariablesInheritsGlobalCustomOntoExtractedStageVariable(t *testing.T) {
+	artifacts := `[{"collector":"docker_image","reference":"{{ image_name }}:{{ runtime_datetime }}","name":"{{ image_name }}"}]`
+	stages := []model.PipelineStage{{
+		Id:        "01KZGBGDK1G249681EVBDA9035",
+		Name:      "docker build",
+		Script:    "docker build -t {{ image_name }}:{{ runtime_datetime }} -f {{ repository_dockerfile | default: \"Dockerfile\" }} .",
+		Artifacts: &artifacts,
+	}}
+	resolved, err := ResolveTemplatePipelineVariables(stages, []map[string]any{{
+		"name": "image_name", "source": "pipeline_custom", "value": "{{ repository_code }}",
+	}})
+	if err != nil {
+		t.Fatalf("resolve template variables: %v", err)
+	}
+
+	var stageImage, globalImage map[string]any
+	for _, variable := range resolved {
+		if variable["name"] != "image_name" {
+			continue
+		}
+		if stageId, _ := variable["stage_id"].(string); stageId == "01KZGBGDK1G249681EVBDA9035" {
+			stageImage = variable
+			continue
+		}
+		if _, exists := variable["stage_id"]; !exists {
+			globalImage = variable
+		}
+	}
+	if stageImage["value"] != "{{ repository_code }}" || stageImage["source"] != "pipeline_stage" {
+		t.Fatalf("stage image_name=%#v", stageImage)
+	}
+	if globalImage["value"] != "{{ repository_code }}" || globalImage["source"] != "pipeline_custom" {
+		t.Fatalf("global image_name=%#v", globalImage)
+	}
+}
+
+func TestResolvePipelineVariablesInheritsGlobalCustomOntoExtractedStageVariable(t *testing.T) {
+	artifacts := `[{"collector":"docker_image","reference":"{{ image_name }}:{{ runtime_datetime }}","name":"{{ image_name }}"}]`
+	stages := []model.PipelineStage{{
+		Id:        "stage-build",
+		Name:      "docker build",
+		Script:    "docker build -t {{ image_name }}:{{ runtime_datetime }} .",
+		Artifacts: &artifacts,
+	}}
+	resolved, err := ResolvePipelineVariables(stages, []map[string]any{{
+		"name": "image_name", "value": "{{ repository_code }}",
+	}})
+	if err != nil {
+		t.Fatalf("resolve pipeline variables: %v", err)
+	}
+
+	var stageImage map[string]any
+	for _, variable := range resolved {
+		if variable["name"] == "image_name" && variable["stage_id"] == "stage-build" {
+			stageImage = variable
+			break
+		}
+	}
+	if stageImage["value"] != "{{ repository_code }}" || stageImage["source"] != "pipeline_stage" {
+		t.Fatalf("stage image_name=%#v", stageImage)
+	}
+}
+
+func TestResolvePipelineVariablesKeepsStageScopedCustomOverGlobal(t *testing.T) {
+	stages := []model.PipelineStage{{Id: "stage-build", Name: "docker build", Script: "docker build -t {{ image_name }} ."}}
+	resolved, err := ResolvePipelineVariables(stages, []map[string]any{
+		{"name": "image_name", "value": "from-global"},
+		{"name": "image_name", "stage_id": "stage-build", "value": "from-stage"},
+	})
+	if err != nil {
+		t.Fatalf("resolve pipeline variables: %v", err)
+	}
+
+	var stageImage map[string]any
+	for _, variable := range resolved {
+		if variable["name"] == "image_name" && variable["stage_id"] == "stage-build" {
+			stageImage = variable
+			break
+		}
+	}
+	if stageImage["value"] != "from-stage" || stageImage["source"] != "pipeline_custom" {
+		t.Fatalf("stage image_name=%#v", stageImage)
+	}
+}
+
+func TestRuntimeVariableDeclarationsInheritsGlobalCustomOntoExtractedStageVariable(t *testing.T) {
+	repo := model.Repository{Id: "repo-1", DefaultBranch: "main"}
+	pipeline := model.Pipeline{VariableDeclarations: `[{"name":"image_name","value":"{{ repository_code }}"}]`}
+	stages := []model.StageDefinition{{
+		Id:     "stage-build",
+		Name:   "docker build",
+		Script: "docker build -t {{ image_name }}:{{ runtime_datetime }} .",
+		Artifacts: []model.ArtifactConfig{{
+			Name: "{{ image_name }}", Collector: "docker_image", Reference: "{{ image_name }}:{{ runtime_datetime }}",
+		}},
+	}}
+
+	declarations, err := RuntimeVariableDeclarations(repo, pipeline, stages)
+	if err != nil {
+		t.Fatalf("runtime declarations: %v", err)
+	}
+
+	var stageImage *model.VariableDeclaration
+	for index := range declarations {
+		declaration := declarations[index]
+		if declaration.Name == "image_name" && declaration.StageId == "stage-build" {
+			stageImage = &declaration
+			break
+		}
+	}
+	if stageImage == nil || stageImage.Value != "{{ repository_code }}" || stageImage.Source != "pipeline_stage" {
+		t.Fatalf("stage image_name=%#v", stageImage)
+	}
+}

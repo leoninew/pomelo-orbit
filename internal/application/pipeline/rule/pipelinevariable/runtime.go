@@ -109,6 +109,10 @@ func RuntimeVariableDeclarations(repo model.Repository, pipeline model.Pipeline,
 			result = append(result, configured)
 			continue
 		}
+		if inherited, ok := pipelineGlobals[declaration.Name]; ok {
+			declaration.Value = inherited.Value
+			declaration.Default = inherited.Default
+		}
 		result = append(result, declaration)
 	}
 	unmatchedPipelineStages := make([]model.VariableDeclaration, 0)
@@ -927,38 +931,7 @@ func ResolvePipelineVariables(stages []model.PipelineStage, custom []map[string]
 	if err := ValidatePipelineVariableScopes(custom, stageDefinitions); err != nil {
 		return nil, err
 	}
-	customByKey := map[string]map[string]any{}
-	for _, variable := range custom {
-		name, _ := variable["name"].(string)
-		stageId, _ := variable["stage_id"].(string)
-		customByKey[declarationScopeKey(name, strings.TrimSpace(stageId))] = variable
-	}
-	result := make([]map[string]any, 0, len(extracted)+len(custom)+len(PipelineBuiltinVariableSpecs()))
-	for _, name := range SortedPipelineBuiltinVariableNames() {
-		result = append(result, PipelineBuiltinVariable(name))
-	}
-	consumed := map[string]struct{}{}
-	for _, declaration := range extracted {
-		key := declarationScopeKey(declaration.Name, declaration.StageId)
-		if existing, ok := customByKey[key]; ok {
-			copy := map[string]any{}
-			maps.Copy(copy, existing)
-			copy["stage_id"], copy["stage_name"], copy["stage_defaults"] = declaration.StageId, declaration.StageName, declaration.StageDefaults
-			result = append(result, copy)
-			consumed[key] = struct{}{}
-			continue
-		}
-		result = append(result, declarationMap(declaration, false))
-	}
-	for _, variable := range custom {
-		name, _ := variable["name"].(string)
-		stageId, _ := variable["stage_id"].(string)
-		key := declarationScopeKey(name, strings.TrimSpace(stageId))
-		if _, exists := consumed[key]; !exists {
-			result = append(result, variable)
-		}
-	}
-	return result, nil
+	return mergeExtractedAndCustomVariables(extracted, custom), nil
 }
 
 func ResolveTemplatePipelineVariables(stages []model.PipelineStage, custom []map[string]any) ([]map[string]any, error) {
@@ -966,7 +939,10 @@ func ResolveTemplatePipelineVariables(stages []model.PipelineStage, custom []map
 	if err != nil {
 		return nil, err
 	}
-	custom = SanitizeTemplatePipelineVariables(custom)
+	return mergeExtractedAndCustomVariables(extracted, SanitizeTemplatePipelineVariables(custom)), nil
+}
+
+func mergeExtractedAndCustomVariables(extracted []model.VariableDeclaration, custom []map[string]any) []map[string]any {
 	customByKey := map[string]map[string]any{}
 	for _, variable := range custom {
 		name, _ := variable["name"].(string)
@@ -988,8 +964,11 @@ func ResolveTemplatePipelineVariables(stages []model.PipelineStage, custom []map
 			consumed[key] = struct{}{}
 			continue
 		}
-		declaration.Editable = false
-		result = append(result, declarationMap(declaration, false))
+		item := declarationMap(declaration, false)
+		if inherited, ok := customByKey[declarationScopeKey(declaration.Name, "")]; ok {
+			applyInheritedPipelineVariable(item, inherited)
+		}
+		result = append(result, item)
 	}
 	for _, variable := range custom {
 		name, _ := variable["name"].(string)
@@ -999,7 +978,16 @@ func ResolveTemplatePipelineVariables(stages []model.PipelineStage, custom []map
 			result = append(result, variable)
 		}
 	}
-	return result, nil
+	return result
+}
+
+func applyInheritedPipelineVariable(item, inherited map[string]any) {
+	if value, exists := inherited["value"]; exists {
+		item["value"] = value
+	}
+	if defaultValue, exists := inherited["default"]; exists {
+		item["default"] = defaultValue
+	}
 }
 
 func extractPipelineStageDeclarationsFromPipelineStages(stages []model.PipelineStage) ([]model.VariableDeclaration, error) {

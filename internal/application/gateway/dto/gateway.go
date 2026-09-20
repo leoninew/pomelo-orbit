@@ -59,10 +59,11 @@ type GatewayExposureItem struct {
 }
 
 type GatewayView struct {
-	Application model.Application
-	Config      model.GatewayConfig
-	Service     *model.Service
-	Exposures   []GatewayExposureItem
+	Application      model.Application
+	Config           model.GatewayConfig
+	Service          *model.Service
+	ActiveDeployment bool
+	Exposures        []GatewayExposureItem
 }
 
 type ProvisionGatewayInput struct {

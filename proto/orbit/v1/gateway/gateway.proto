@@ -70,6 +70,7 @@ message GatewayResp {
   string service_id = 14;
   string service_code = 16;
   string service_status = 17;
+  bool active_deployment = 18;
   int32 rest_ready_timeout_seconds = 19;
   string acme_profile = 20;
   string acme_email = 21;

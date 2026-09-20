@@ -79,6 +79,7 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 		ServiceId:               serviceId,
 		ServiceCode:             serviceCode,
 		ServiceStatus:           serviceStatus,
+		ActiveDeployment:        view.ActiveDeployment,
 		RestReadyTimeoutSeconds: int32(cfg.RestReadyTimeoutSeconds),
 		AcmeEmail:               cfg.AcmeEmail,
 		AcmeProfile:             cfg.AcmeProfile,

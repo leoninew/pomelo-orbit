@@ -1,22 +1,23 @@
 <template>
   <div class="space-y-6">
-    <div class="app-toolbar-simple">
-      <SearchControl
-        v-model="searchText"
-        :placeholder="t('pipelineRun.searchPlaceholder')"
-        :loading="status === 'loading'"
-        class="shrink-0"
-        @search="handleSearch"
-      />
-      <ComboboxSelect
-        v-model="pipelineId"
-        :options="pipelineOptions"
-        placeholder="筛选应用流水线"
-        width-class="w-64"
-        description-inline
-        @update:model-value="searchRuns"
-      />
-    </div>
+    <ToolbarRoot class="app-toolbar-scroll" aria-label="运行记录工具栏">
+      <div class="app-toolbar-row">
+        <ComboboxSelect
+          v-model="repositoryId"
+          :options="repositoryOptions"
+          placeholder="筛选代码仓库"
+          width-class="app-toolbar-select"
+          @update:model-value="searchRuns"
+        />
+        <SearchControl
+          v-model="searchText"
+          :placeholder="t('pipelineRun.searchPlaceholder')"
+          :loading="status === 'loading'"
+          class="shrink-0"
+          @search="handleSearch"
+        />
+      </div>
+    </ToolbarRoot>
     <div class="app-surface">
       <AppLoadingState v-if="status === 'loading'" />
       <p v-else-if="status === 'error'" class="py-16 text-center text-sm text-destructive">
@@ -118,9 +119,10 @@
 
 <script setup lang="ts">
   import { computed, onMounted, reactive, ref } from 'vue';
+  import { ToolbarRoot } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
-  import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
+  import { repositoryApi } from '@/api/repository/repository';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
@@ -131,8 +133,8 @@
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
   import type { PipelineRunResp } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
+  import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
   import { useProjectStore } from '@/stores/project';
   import { isComplete, statusTone } from '@/utils/status';
   import { formatDuration, formatTime } from '@/utils/time';
@@ -143,8 +145,8 @@
   const { status, error, execute } = useStatusAsync();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const runs = ref<PipelineRunResp[]>([]);
-  const pipelines = ref<PipelineResp[]>([]);
-  const pipelineId = ref('');
+  const repositories = ref<RepositoryResp[]>([]);
+  const repositoryId = ref('');
   const searchText = ref('');
   const appliedSearch = ref('');
   const isDeleteDialogOpen = ref(false);
@@ -152,11 +154,10 @@
   const deleteSubmitError = ref('');
   const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-  const pipelineOptions = computed(() =>
-    pipelines.value.map((pipeline) => ({
-      value: pipeline.id,
-      label: pipeline.name,
-      description: `v${pipeline.version}`,
+  const repositoryOptions = computed(() =>
+    repositories.value.map((repository) => ({
+      value: repository.id,
+      label: repository.name,
     }))
   );
   const filteredRuns = computed(() => {
@@ -183,7 +184,7 @@
     try {
       await execute(async () => {
         const response = await pipelineRunApi.list(projectId, {
-          pipeline_id: pipelineId.value || undefined,
+          repository_id: repositoryId.value || undefined,
           page: pagination.current,
           per_page: pagination.pageSize,
         });
@@ -196,17 +197,14 @@
       toast.error(reason instanceof Error ? reason.message : '加载运行记录失败');
     }
   }
-  async function loadPipelines() {
+  async function loadRepositories() {
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
       return;
     }
-    const response = await pipelineApi.list(projectId, {
-      kind: 'application',
-      per_page: 100,
-    });
+    const response = await repositoryApi.list(projectId, { per_page: 100 });
     if (projectStore.activeProjectId === projectId) {
-      pipelines.value = response.items;
+      repositories.value = response.items;
     }
   }
   function searchRuns() {
@@ -261,9 +259,9 @@
   }
   onMounted(async () => {
     try {
-      await loadPipelines();
+      await loadRepositories();
     } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : '加载流水线筛选项失败');
+      toast.error(reason instanceof Error ? reason.message : '加载仓库筛选项失败');
     }
     await fetchRuns();
   });

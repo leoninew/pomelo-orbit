@@ -18,12 +18,16 @@ describe('project readiness routing', () => {
     expect(isProjectReadinessExemptPath('/users')).toBe(true);
   });
 
-  it('guards home, pipeline, and deployment routes', () => {
-    expect(isProjectReadinessGuardedPath('/')).toBe(true);
-    expect(isProjectReadinessGuardedPath('/applications')).toBe(true);
-    expect(isProjectReadinessGuardedPath('/environment')).toBe(true);
-    expect(isProjectReadinessGuardedPath('/pipeline')).toBe(true);
+  it('guards service and gateway routes only', () => {
+    expect(isProjectReadinessGuardedPath('/services')).toBe(true);
+    expect(isProjectReadinessGuardedPath('/service/42')).toBe(true);
+    expect(isProjectReadinessGuardedPath('/service/42/component/7')).toBe(true);
     expect(isProjectReadinessGuardedPath('/gateway')).toBe(true);
+    expect(isProjectReadinessGuardedPath('/')).toBe(false);
+    expect(isProjectReadinessGuardedPath('/applications')).toBe(false);
+    expect(isProjectReadinessGuardedPath('/environment')).toBe(false);
+    expect(isProjectReadinessGuardedPath('/pipeline')).toBe(false);
+    expect(isProjectReadinessGuardedPath('/routes')).toBe(false);
     expect(isProjectReadinessGuardedPath('/projects')).toBe(false);
     expect(isProjectReadinessGuardedPath('/project/abc/initialization')).toBe(false);
   });

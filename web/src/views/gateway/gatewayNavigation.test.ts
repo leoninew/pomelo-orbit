@@ -3,9 +3,7 @@ import { createApp, nextTick, type App } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { applicationApi } from '@/api/application/application';
 import { gatewayApi } from '@/api/gateway/gateway';
-import { projectEnvironmentApi } from '@/api/project/environment';
 import i18n from '@/i18n';
 import { useProjectStore } from '@/stores/project';
 import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
@@ -13,26 +11,20 @@ import GatewayDetail from './GatewayDetail.vue';
 
 vi.mock('@/api/gateway/gateway', () => ({
   gatewayApi: {
-    get: vi.fn(),
+    list: vi.fn(),
     update: vi.fn(),
-  },
-}));
-
-vi.mock('@/api/project/environment', () => ({
-  projectEnvironmentApi: {
-    get: vi.fn(),
   },
 }));
 
 vi.mock('@/api/application/application', () => ({
   applicationApi: {
-    listServices: vi.fn(),
     stop: vi.fn(),
   },
 }));
 
 vi.mock('@/api/service/service', () => ({
   serviceApi: {
+    get: vi.fn(),
     deploy: vi.fn(),
   },
 }));
@@ -55,6 +47,7 @@ const gateway: GatewayResp = {
   service_id: '',
   service_code: '',
   service_status: '',
+  active_deployment: false,
   rest_ready_timeout_seconds: 30,
   acme_profile: '',
   acme_email: '',
@@ -87,21 +80,14 @@ describe('Gateway detail editing', () => {
     pinia = createPinia();
     setActivePinia(pinia);
     useProjectStore().setActiveProject('project-1');
-    vi.mocked(projectEnvironmentApi.get).mockResolvedValue({
-      id: 'environment-1',
-      project_id: 'project-1',
-      code: 'project-1',
-      target_type: 'local',
-      ssh: undefined,
-      target_revision: 1,
-      gateway_application_id: 'gateway-1',
-      created_at: '2026-01-01T00:00:00Z',
-      updated_at: '2026-01-01T00:00:00Z',
-      local: undefined,
+    vi.mocked(gatewayApi.list).mockResolvedValue({
+      items: [gateway],
+      total: 1,
+      page: 1,
+      per_page: 1,
+      pages: 1,
     });
-    vi.mocked(gatewayApi.get).mockResolvedValue(gateway);
     vi.mocked(gatewayApi.update).mockResolvedValue({ ...gateway, name: 'Traefik edge' });
-    vi.mocked(applicationApi.listServices).mockResolvedValue({ items: [] });
     const renderErrors: unknown[] = [];
     const router = createRouter({
       history: createMemoryHistory(),
@@ -149,8 +135,7 @@ describe('Gateway detail editing', () => {
       rest_ready_timeout_seconds: gateway.rest_ready_timeout_seconds,
       base_domain: gateway.base_domain,
     });
-    expect(projectEnvironmentApi.get).toHaveBeenCalledWith('project-1');
-    expect(gatewayApi.get).toHaveBeenCalledWith('project-1', 'gateway-1');
+    expect(gatewayApi.list).toHaveBeenCalledWith('project-1');
     expect(target.textContent).toContain('Traefik edge');
     expect(renderErrors).toEqual([]);
   });

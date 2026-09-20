@@ -123,7 +123,11 @@
             <tbody>
               <tr v-for="stage in orderedStages" :key="stage.id">
                 <td>{{ stage.sort_order }}</td>
-                <td class="text-foreground">{{ stage.name }}</td>
+                <td>
+                  <router-link :to="`/pipeline-stage/${stage.source_template_stage_id}`" class="app-link">
+                    {{ stage.name }}
+                  </router-link>
+                </td>
                 <td class="max-w-xs truncate text-foreground" :title="stage.image">
                   {{ stage.image }}
                 </td>
@@ -394,7 +398,7 @@
           <p v-if="variableError" class="app-field-error">{{ variableError }}</p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label">变量值</label>
+          <label class="app-field-label">当前值</label>
           <input
             v-model="variableForm.value"
             :type="variableForm.secret ? 'password' : 'text'"

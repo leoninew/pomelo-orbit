@@ -488,7 +488,6 @@
 
   import { serviceApi } from '@/api/service/service';
   import { gatewayApi } from '@/api/gateway/gateway';
-  import { projectEnvironmentApi } from '@/api/project/environment';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
@@ -502,7 +501,6 @@
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
-  import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
   import { formatTime } from '@/utils/time';
   import { MANAGED_GATEWAY_COMPONENT_NAME } from '@/constants/gateway';
@@ -530,7 +528,6 @@
   }
 
   const gateway = ref<GatewayResp | null>(null);
-  const services = ref<ServiceResp[]>([]);
   const isControlPlaneEditDialogOpen = ref(false);
   const controlPlaneForm = reactive<
     Pick<
@@ -592,17 +589,15 @@
     remove_volumes: false,
   });
   const operating = computed(() => opStatus.value === 'loading');
-  const gatewayService = computed(() =>
-    services.value.find((item) => item.id === gateway.value?.service_id)
-  );
-  const isDeploying = computed(() => gatewayService.value?.active_deployment ?? false);
-  const canStop = computed(() =>
-    Boolean(
-      gatewayService.value &&
-      !gatewayService.value.active_deployment &&
-      (gatewayService.value.status === 'running' || gatewayService.value.status === 'faulted')
-    )
-  );
+  const isDeploying = computed(() => gateway.value?.active_deployment ?? false);
+  const canStop = computed(() => {
+    const current = gateway.value;
+    return Boolean(
+      current?.service_id &&
+      !current.active_deployment &&
+      (current.service_status === 'running' || current.service_status === 'faulted')
+    );
+  });
   const noAcmeProfileValue = '__acme_disabled__';
   const entrypointOptions = [
     { value: 'web', label: 'web' },
@@ -806,36 +801,20 @@
   async function loadGateway() {
     const projectId = projectStore.activeProjectId;
     gateway.value = null;
-    services.value = [];
     if (!projectId) {
       return;
     }
     try {
       await execute(async () => {
-        const environment = await projectEnvironmentApi.get(projectId);
-        const id = environment.gateway_application_id;
-        if (!id) {
+        const response = await gatewayApi.list(projectId);
+        const current = response.items[0];
+        if (!current) {
           throw new Error(t('gateway.toast.loadDetailFailed'));
         }
-        gateway.value = await gatewayApi.get(projectId, id);
+        gateway.value = current;
       });
-      await loadRuntimeContext();
     } catch {
       toast.error(t('gateway.toast.loadDetailFailed'));
-    }
-  }
-
-  async function loadRuntimeContext() {
-    const id = gateway.value?.id;
-    if (!id) {
-      services.value = [];
-      return;
-    }
-    try {
-      const resp = await applicationApi.listServices(selectedProjectId(), id);
-      services.value = resp.items ?? [];
-    } catch {
-      services.value = [];
     }
   }
 
@@ -940,7 +919,7 @@
           router.push(`/deployment/${result.deployment_id}`);
           return;
         }
-        await loadRuntimeContext();
+        await loadGateway();
       });
     } catch (err: unknown) {
       stopSubmitError.value = err instanceof Error ? err.message : t('gateway.toast.stopFailed');

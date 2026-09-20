@@ -10,6 +10,7 @@ import (
 
 	pipelinedto "github.com/leoninew/pomelo-orbit/internal/application/pipeline/dto"
 	pipelinevariable "github.com/leoninew/pomelo-orbit/internal/application/pipeline/rule/pipelinevariable"
+	"github.com/leoninew/pomelo-orbit/internal/application/variableview"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -474,7 +475,11 @@ func (s Service) PipelineSnapshotForUser(ctx context.Context, userId string, pro
 	if err != nil {
 		return pipelinedto.PipelineSnapshotDetail{}, err
 	}
-	return pipelinedto.PipelineSnapshotDetail{Snapshot: snapshot, StagesSnapshot: stages, VariablesSnapshot: variables}, nil
+	variableViews, err := variableview.Snapshot(stages, variables)
+	if err != nil {
+		return pipelinedto.PipelineSnapshotDetail{}, err
+	}
+	return pipelinedto.PipelineSnapshotDetail{Snapshot: snapshot, StagesSnapshot: stages, Variables: variableViews}, nil
 }
 
 func (s Service) loadPipelineForUser(ctx context.Context, userId string, projectId string, pipelineId string) (model.Pipeline, error) {
@@ -501,22 +506,19 @@ func (s Service) pipelineDetail(ctx context.Context, projectId string, pipeline 
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	variables, err := pipelinevariable.PipelineVariables(pipeline.VariableDeclarations)
-	if err != nil {
-		return pipelinedto.PipelineDetail{}, err
-	}
-	if pipeline.Kind == model.PipelineKindTemplate {
-		resolved, err := pipelinevariable.ResolveTemplatePipelineVariables(stageViews, variables)
+	var repo *model.Repository
+	if pipeline.Kind == model.PipelineKindApplication && pipeline.RepositoryId != nil {
+		item, err := s.repositoryInProject(ctx, *pipeline.RepositoryId, projectId)
 		if err != nil {
 			return pipelinedto.PipelineDetail{}, err
 		}
-		return pipelinedto.PipelineDetail{Pipeline: pipeline, StageNodes: nodes, VariableDeclarations: resolved}, nil
+		repo = &item
 	}
-	managedVariables, err := pipelinevariable.ResolvePipelineVariables(stageViews, variables)
+	variables, err := variableview.PipelineStages(pipeline, stageViews, repo)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	return pipelinedto.PipelineDetail{Pipeline: pipeline, StageNodes: nodes, VariableDeclarations: managedVariables}, nil
+	return pipelinedto.PipelineDetail{Pipeline: pipeline, StageNodes: nodes, Variables: variables}, nil
 }
 
 // applyVersionForkStrategy changes the version selection captured while an

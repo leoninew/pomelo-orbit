@@ -32,7 +32,7 @@ message PipelineRunResp {
   int32 pipeline_version = 8;
   string trigger = 9;
   string repository_ref = 10;
-  repeated orbit.v1.common.VariableDeclarationResp variables_snapshot = 11;
+  repeated orbit.v1.common.VariableResp variables = 11;
   string status = 12;
   optional string retry_of = 13;
   optional string started_at = 14;

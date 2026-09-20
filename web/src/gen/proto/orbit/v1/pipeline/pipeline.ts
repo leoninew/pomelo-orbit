@@ -5,7 +5,7 @@
 // source: orbit/v1/pipeline/pipeline.proto
 
 /* eslint-disable */
-import type { VariableDeclarationListReq, VariableDeclarationReq, VariableDeclarationResp } from "../common/common";
+import type { VariableDeclarationListReq, VariableDeclarationReq, VariableResp } from "../common/common";
 import type { PipelineStageNodeResp } from "./pipeline_stage";
 
 export const protobufPackage = "orbit.v1.pipeline";
@@ -27,7 +27,7 @@ export interface PipelineResp {
   name: string;
   description: string;
   stage_nodes: PipelineStageNodeResp[];
-  variable_declarations: VariableDeclarationResp[];
+  variables: VariableResp[];
   version: number;
   created_at: string;
   updated_at: string;

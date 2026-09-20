@@ -235,7 +235,7 @@
       </DetailInfoCard>
 
       <DetailInfoCard :title="t('pipelineRun.variableSnapshot')">
-        <VariableDeclarationsTable :declarations="runVariableDeclarations" :readonly="true" />
+        <VariableDeclarationsTable :variables="runVariables" :readonly="true" />
       </DetailInfoCard>
 
       <DetailInfoCard :title="t('pipelineRun.artifacts')">
@@ -437,7 +437,7 @@
     return projectId;
   }
 
-  const runVariableDeclarations = computed(() => run.value?.variables_snapshot ?? []);
+  const runVariables = computed(() => run.value?.variables ?? []);
   const stageRuns = computed(() => run.value?.pipeline_stage_runs ?? []);
   const stageRunMap = computed<Record<string, PipelineStageRunResp>>(() => {
     const map: Record<string, PipelineStageRunResp> = {};

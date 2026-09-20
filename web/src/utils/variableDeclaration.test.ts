@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
+import type { VariableDeclarationReq } from '@/gen/proto/orbit/v1/common/common';
 import { effectiveVariableValue, toVariableDeclarationRequest } from './variableDeclaration';
 
 describe('toVariableDeclarationRequest', () => {
   it('keeps only fields accepted by the variable declaration request contract', () => {
-    const response: VariableDeclarationResp = {
+    const response: VariableDeclarationReq = {
       name: 'working_dir',
       description: 'build directory',
       default: null,
@@ -12,9 +12,7 @@ describe('toVariableDeclarationRequest', () => {
       secret: false,
       source: 'pipeline_custom',
       editable: true,
-      stage_defaults: [{ stage_id: 'frontend', stage_name: 'Frontend', default: 'web' }],
       stage_id: 'frontend',
-      stage_name: 'Frontend',
     };
 
     expect(toVariableDeclarationRequest(response)).toEqual({
@@ -41,23 +39,7 @@ describe('effectiveVariableValue', () => {
     );
   });
 
-  it('falls back to a stage default when no configured value exists', () => {
-    expect(
-      effectiveVariableValue({
-        value: undefined,
-        default: undefined,
-        stage_defaults: [{ stage_id: 'build', stage_name: 'Build', default: 'Dockerfile' }],
-      })
-    ).toBe('Dockerfile');
-  });
-
-  it('prefers a configured default over a stage default', () => {
-    expect(
-      effectiveVariableValue({
-        value: undefined,
-        default: 'configured-default',
-        stage_defaults: [{ stage_id: 'build', stage_name: 'Build', default: 'stage-default' }],
-      })
-    ).toBe('configured-default');
+  it('returns undefined when no configuration is supplied', () => {
+    expect(effectiveVariableValue()).toBeUndefined();
   });
 });

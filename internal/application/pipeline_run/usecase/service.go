@@ -16,6 +16,7 @@ import (
 	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
 	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
 	repositoryport "github.com/leoninew/pomelo-orbit/internal/application/repository/port"
+	"github.com/leoninew/pomelo-orbit/internal/application/variableview"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
@@ -615,7 +616,19 @@ func (s Service) pipelineRunDetail(ctx context.Context, projectId string, run mo
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	detail := pipelinerundto.PipelineRunDetail{Run: run, VariablesSnapshot: variables}
+	snapshot, err := s.store.PipelineSnapshot(ctx, projectId, run.SnapshotId)
+	if err != nil {
+		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
+	}
+	var snapshotStages []model.StageDefinition
+	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &snapshotStages); err != nil {
+		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindInternal, "Invalid pipeline snapshot stages")
+	}
+	variableViews, err := variableview.Snapshot(snapshotStages, variables)
+	if err != nil {
+		return pipelinerundto.PipelineRunDetail{}, err
+	}
+	detail := pipelinerundto.PipelineRunDetail{Run: run, Variables: variableViews}
 	if includeStages {
 		stages, err := s.store.ListPipelineStageRuns(ctx, projectId, run.Id)
 		if err != nil {

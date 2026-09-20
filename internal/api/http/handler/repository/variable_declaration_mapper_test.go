@@ -22,8 +22,8 @@ func TestVariableDeclarationRequestMapsSkipsNilAndPreservesDynamicValues(t *test
 	}
 }
 
-func TestVariableDeclarationResponsesKeepsEmptySlice(t *testing.T) {
-	responses := variableDeclarationResponses(nil)
+func TestVariableResponsesKeepsEmptySlice(t *testing.T) {
+	responses := variableResponses(nil)
 	if responses == nil || len(responses) != 0 {
 		t.Fatalf("nil source must map to a non-nil empty response slice: %#v", responses)
 	}

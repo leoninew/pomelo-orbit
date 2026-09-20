@@ -23,22 +23,22 @@ const (
 )
 
 type RepositoryResp struct {
-	state                protoimpl.MessageState            `protogen:"open.v1"`
-	Id                   string                            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId            *string                           `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
-	Name                 string                            `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Code                 string                            `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
-	RepositoryType       string                            `protobuf:"bytes,13,opt,name=repository_type,json=repositoryType,proto3" json:"repository_type,omitempty"`
-	RepositoryUrl        string                            `protobuf:"bytes,5,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
-	HasCredential        bool                              `protobuf:"varint,6,opt,name=has_credential,json=hasCredential,proto3" json:"has_credential,omitempty"`
-	GitCredentialId      string                            `protobuf:"bytes,7,opt,name=git_credential_id,json=gitCredentialId,proto3" json:"git_credential_id,omitempty"`
-	GitCredentialName    *string                           `protobuf:"bytes,8,opt,name=git_credential_name,json=gitCredentialName,proto3,oneof" json:"git_credential_name,omitempty"`
-	VariableDeclarations []*common.VariableDeclarationResp `protobuf:"bytes,9,rep,name=variable_declarations,json=variableDeclarations,proto3" json:"variable_declarations,omitempty"`
-	DefaultBranch        string                            `protobuf:"bytes,10,opt,name=default_branch,json=defaultBranch,proto3" json:"default_branch,omitempty"`
-	CreatedAt            string                            `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt            string                            `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId         *string                `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
+	Name              string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Code              string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
+	RepositoryType    string                 `protobuf:"bytes,13,opt,name=repository_type,json=repositoryType,proto3" json:"repository_type,omitempty"`
+	RepositoryUrl     string                 `protobuf:"bytes,5,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
+	HasCredential     bool                   `protobuf:"varint,6,opt,name=has_credential,json=hasCredential,proto3" json:"has_credential,omitempty"`
+	GitCredentialId   string                 `protobuf:"bytes,7,opt,name=git_credential_id,json=gitCredentialId,proto3" json:"git_credential_id,omitempty"`
+	GitCredentialName *string                `protobuf:"bytes,8,opt,name=git_credential_name,json=gitCredentialName,proto3,oneof" json:"git_credential_name,omitempty"`
+	Variables         []*common.VariableResp `protobuf:"bytes,9,rep,name=variables,proto3" json:"variables,omitempty"`
+	DefaultBranch     string                 `protobuf:"bytes,10,opt,name=default_branch,json=defaultBranch,proto3" json:"default_branch,omitempty"`
+	CreatedAt         string                 `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt         string                 `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *RepositoryResp) Reset() {
@@ -134,9 +134,9 @@ func (x *RepositoryResp) GetGitCredentialName() string {
 	return ""
 }
 
-func (x *RepositoryResp) GetVariableDeclarations() []*common.VariableDeclarationResp {
+func (x *RepositoryResp) GetVariables() []*common.VariableResp {
 	if x != nil {
-		return x.VariableDeclarations
+		return x.Variables
 	}
 	return nil
 }
@@ -418,7 +418,7 @@ var File_orbit_v1_repository_repository_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_repository_repository_proto_rawDesc = "" +
 	"\n" +
-	"$orbit/v1/repository/repository.proto\x12\x13orbit.v1.repository\x1a\x1corbit/v1/common/common.proto\"\xaf\x04\n" +
+	"$orbit/v1/repository/repository.proto\x12\x13orbit.v1.repository\x1a\x1corbit/v1/common/common.proto\"\x8d\x04\n" +
 	"\x0eRepositoryResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
@@ -429,8 +429,8 @@ const file_orbit_v1_repository_repository_proto_rawDesc = "" +
 	"\x0erepository_url\x18\x05 \x01(\tR\rrepositoryUrl\x12%\n" +
 	"\x0ehas_credential\x18\x06 \x01(\bR\rhasCredential\x12*\n" +
 	"\x11git_credential_id\x18\a \x01(\tR\x0fgitCredentialId\x123\n" +
-	"\x13git_credential_name\x18\b \x01(\tH\x01R\x11gitCredentialName\x88\x01\x01\x12]\n" +
-	"\x15variable_declarations\x18\t \x03(\v2(.orbit.v1.common.VariableDeclarationRespR\x14variableDeclarations\x12%\n" +
+	"\x13git_credential_name\x18\b \x01(\tH\x01R\x11gitCredentialName\x88\x01\x01\x12;\n" +
+	"\tvariables\x18\t \x03(\v2\x1d.orbit.v1.common.VariableRespR\tvariables\x12%\n" +
 	"\x0edefault_branch\x18\n" +
 	" \x01(\tR\rdefaultBranch\x12\x1d\n" +
 	"\n" +
@@ -487,12 +487,12 @@ var file_orbit_v1_repository_repository_proto_goTypes = []any{
 	(*RepositoryCreateReq)(nil),               // 1: orbit.v1.repository.RepositoryCreateReq
 	(*RepositoryUpdateReq)(nil),               // 2: orbit.v1.repository.RepositoryUpdateReq
 	(*RepositoryPaginatedResp)(nil),           // 3: orbit.v1.repository.RepositoryPaginatedResp
-	(*common.VariableDeclarationResp)(nil),    // 4: orbit.v1.common.VariableDeclarationResp
+	(*common.VariableResp)(nil),               // 4: orbit.v1.common.VariableResp
 	(*common.VariableDeclarationReq)(nil),     // 5: orbit.v1.common.VariableDeclarationReq
 	(*common.VariableDeclarationListReq)(nil), // 6: orbit.v1.common.VariableDeclarationListReq
 }
 var file_orbit_v1_repository_repository_proto_depIdxs = []int32{
-	4, // 0: orbit.v1.repository.RepositoryResp.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationResp
+	4, // 0: orbit.v1.repository.RepositoryResp.variables:type_name -> orbit.v1.common.VariableResp
 	5, // 1: orbit.v1.repository.RepositoryCreateReq.variable_overrides:type_name -> orbit.v1.common.VariableDeclarationReq
 	6, // 2: orbit.v1.repository.RepositoryUpdateReq.variable_overrides:type_name -> orbit.v1.common.VariableDeclarationListReq
 	0, // 3: orbit.v1.repository.RepositoryPaginatedResp.items:type_name -> orbit.v1.repository.RepositoryResp

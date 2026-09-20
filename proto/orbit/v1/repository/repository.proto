@@ -15,7 +15,7 @@ message RepositoryResp {
   bool has_credential = 6;
   string git_credential_id = 7;
   optional string git_credential_name = 8;
-  repeated orbit.v1.common.VariableDeclarationResp variable_declarations = 9;
+  repeated orbit.v1.common.VariableResp variables = 9;
   string default_branch = 10;
   string created_at = 11;
   string updated_at = 12;

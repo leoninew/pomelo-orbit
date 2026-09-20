@@ -22,7 +22,7 @@ message PipelineResp {
   string name = 14;
   string description = 15;
   repeated PipelineStageNodeResp stage_nodes = 16;
-  repeated orbit.v1.common.VariableDeclarationResp variable_declarations = 17;
+  repeated orbit.v1.common.VariableResp variables = 17;
   int32 version = 18;
   string created_at = 19;
   string updated_at = 20;

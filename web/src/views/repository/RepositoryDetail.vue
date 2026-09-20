@@ -90,7 +90,7 @@
           </button>
         </template>
         <VariableDeclarationsTable
-          :declarations="repositoryVariableRows"
+          :variables="repositoryVariableRows"
           :readonly="false"
           @edit="openEditVariableDialog"
           @delete="deleteVariable"
@@ -351,7 +351,7 @@
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
   import type {
     VariableDeclarationReq,
-    VariableDeclarationResp,
+    VariableResp,
   } from '@/gen/proto/orbit/v1/common/common';
   import { formatTime } from '@/utils/time';
   import {
@@ -431,16 +431,27 @@
     { value: 'remote_git', label: '远程 Git' },
     { value: 'local_directory', label: '本地目录' },
   ];
-  const repositoryVariables = computed(() => repository.value?.variable_declarations ?? []);
+  const repositoryVariables = computed(() => repository.value?.variables ?? []);
   const repositoryCustomVariables = computed(() =>
-    repositoryVariables.value.filter((variable) => variable.source === 'repository_custom')
+    repositoryVariables.value
+      .filter(
+        (variable) =>
+          variable.kind === 'repository_variable' && variable.editable && variable.configuration
+      )
+      .map((variable) =>
+        toVariableDeclarationRequest({
+          name: variable.name,
+          description: variable.configuration?.description || '',
+          default: variable.configuration?.default,
+          value: variable.configuration?.value,
+          secret: variable.configuration?.secret || false,
+          source: 'repository_custom',
+          editable: true,
+          stage_id: '',
+        })
+      )
   );
-  const repositoryVariableRows = computed(() =>
-    repositoryVariables.value.map((variable) => ({
-      ...variable,
-      editable: variable.source === 'repository_custom',
-    }))
-  );
+  const repositoryVariableRows = computed(() => repositoryVariables.value);
 
   function normalizeValue(value: unknown) {
     return value == null ? '' : String(value);
@@ -625,17 +636,16 @@
     isAddVariableDialogOpen.value = true;
   }
 
-  function openEditVariableDialog(variable: VariableDeclarationResp) {
-    const saved = repositoryCustomVariables.value.find((item) => item.name === variable.name);
-    if (!saved) {
+  function openEditVariableDialog(variable: VariableResp) {
+    if (variable.kind !== 'repository_variable' || !variable.configuration) {
       return;
     }
-    editingVariableName.value = saved.name;
+    editingVariableName.value = variable.name;
     Object.assign(variableForm, {
-      name: saved.name,
-      value: normalizeValue(effectiveVariableValue(variable)),
-      description: saved.description ?? '',
-      secret: saved.secret,
+      name: variable.name,
+      value: normalizeValue(effectiveVariableValue(variable.configuration)),
+      description: variable.configuration.description,
+      secret: variable.configuration.secret,
     });
     Object.assign(variableErrors, { name: '' });
     editVariableSubmitError.value = '';
@@ -721,7 +731,7 @@
     }
   }
 
-  async function deleteVariable(variable: VariableDeclarationResp) {
+  async function deleteVariable(variable: VariableResp) {
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
       toast.error('请先选择项目');

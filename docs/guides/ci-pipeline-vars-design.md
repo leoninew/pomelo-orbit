@@ -1,5 +1,5 @@
 # CI Pipeline 变量设计
-最后修改时间: 2026-09-20 12:00:00
+最后修改时间: 2026-09-20 20:35:12
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -11,9 +11,9 @@ Template Pipeline 的变量声明会在实例化时深复制到 Application Pipe
 |---|---|---|
 | `pipeline_custom` | 已持久化在当前 Application Pipeline 的变量 | 新增、编辑、删除 |
 | `pipeline_stage` | 从阶段脚本和制品 `reference`、`name`、`command` 提取的非内置 Liquid 变量 | 覆盖为同名 Pipeline 配置 |
-| `pipeline` | `repository_ref`、`repository_code`、`repository_url`、`runtime_datetime` | 只读 |
+| `pipeline` | 详情中展示的 `repository_ref`、`repository_code`、`repository_url`、`runtime_datetime` 内置上下文 | 只读；`repository_ref` 仅可在 Trigger 前临时填写 |
 
-Repository 配置不显示也不能在 Pipeline 中覆盖。删除一个覆盖阶段变量的 `pipeline_custom` 配置后，该变量恢复为 `pipeline_stage`，继续使用阶段中声明的 Liquid `default`（若有）。变量名必须是非内置 Liquid 标识符；Pipeline 配置的唯一键是 `(name, stage_id)`，其中空 `stage_id` 表示全局配置。变量表按 Stage 来源展示独立条目；没有同 Stage 覆盖时，阶段条目会显示同名全局 Pipeline 配置的 `value`/`default`，阶段默认值仍是派生展示数据。Stage 覆盖通过同一条目的 `stage_id` 提交。
+Repository 自定义变量不显示也不能在 Pipeline 中覆盖；Repository 内置上下文以只读条目展示。删除一个覆盖阶段变量的 `pipeline_custom` 配置后，该变量恢复为 `pipeline_stage`，继续使用阶段中声明的 Liquid `default`（若有）。变量名必须是非内置 Liquid 标识符；Pipeline 配置的唯一键是 `(name, stage_id)`，其中空 `stage_id` 表示全局配置。变量表按 Stage 来源展示独立条目；没有同 Stage 覆盖时，阶段条目会显示同名全局 Pipeline 配置的 `value`/`default`，阶段默认值仍是派生展示数据。Stage 覆盖通过同一条目的 `stage_id` 提交。
 
 Repository 变量只在 Repository 管理，不出现在 Application Pipeline 的管理列表，也保持更高优先级。`runtime` 和 `system` 上下文由服务端生成，不可在 Pipeline 管理。
 
@@ -49,11 +49,11 @@ image = {{ image_repository }}:{{ runtime_datetime }}
 
 | 变量名 | 运行时来源 |
 |---|---|
-| `repository_code` / `repository_url` | Application Pipeline 绑定 Repository；`system`，由服务端注入 |
-| `repository_ref` | 绑定 Repository 的 `default_branch`；`runtime`，由服务端注入 |
+| `repository_code` / `repository_url` | Application Pipeline 绑定的当前 Repository；创建 Run 时以 `system` 根值注入 |
+| `repository_ref` | 默认取绑定 Repository 当前的 `default_branch`；可在 Trigger 前作为本次 Run 的 `runtime` 覆盖提交 |
 | `runtime_datetime` | 本次 Run 创建时生成的 UTC 时间戳；`system`，由服务端注入 |
 
-来源 Template 只保存在 Pipeline/Snapshot 的追溯信息中；它不是运行期输入。
+Application Pipeline 固定 Repository 身份；Repository 的地址、编码、默认分支和自定义变量在每次创建 Run 时读取当前值。解析后的有效值写入 `PipelineRun.variables_snapshot`，后续修改 Repository 不影响已经创建的 Run。来源 Template 只保存在 Pipeline/Snapshot 的追溯信息中；它不是运行期输入。
 
 ## 运行时合并
 
@@ -66,9 +66,9 @@ Repository 自定义变量的全局 value/default
   -> 当前 Stage 表达式的 Liquid default
 ```
 
-Repository 值进入全局运行时变量；Pipeline 值根据是否带 `stage_id` 进入当前 Stage 或全局运行时变量；不同 Stage 的 Liquid default 不会被压缩为一个全局值。系统上下文不参与覆盖链。完成来源优先级选择后，变量 `value` 仅在其可见作用域内展开一次依赖图；阶段字段仍由完整 Liquid 渲染器处理。手动 Trigger 不再接受变量表单，`POST /api/pipeline/{pipeline_id}/trigger` 使用空请求体；服务端以当前 Repository、当前 Application Pipeline 配置和冻结阶段定义解析最终变量。仅使用阶段 default 的变量无需补齐 Pipeline 配置；某个表达式使用 `{{ NAME }}` 且没有更高优先级值时，Trigger 返回包含变量名和 Stage 的 validation error。
+Repository 值进入全局运行时变量；Pipeline 值根据是否带 `stage_id` 进入当前 Stage 或全局运行时变量；不同 Stage 的 Liquid default 不会被压缩为一个全局值。系统上下文不参与覆盖链。完成来源优先级选择后，变量 `value` 仅在其可见作用域内展开一次依赖图；阶段字段仍由完整 Liquid 渲染器处理。
 
-应用流水线运行没有变量预览 API、运行弹窗、配置表单或配置列表。
+手动 Trigger 打开分支或标签弹窗，并向 `POST /api/pipeline/{pipeline_id}/trigger` 提交可选的 `repository_ref`。空值时使用绑定 Repository 当前的默认分支；填写的值只影响本次 Run。应用流水线详情提供变量配置和阶段变量覆盖，但没有任意变量的运行前表单或变量预览 API。仅使用阶段 default 的变量无需补齐 Pipeline 配置；某个表达式使用 `{{ NAME }}` 且没有更高优先级值时，Trigger 返回包含变量名和 Stage 的 validation error。
 
 ## Snapshot 与历史
 

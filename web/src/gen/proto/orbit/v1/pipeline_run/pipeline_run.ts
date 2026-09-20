@@ -5,7 +5,7 @@
 // source: orbit/v1/pipeline_run/pipeline_run.proto
 
 /* eslint-disable */
-import type { VariableDeclarationResp } from "../common/common";
+import type { VariableResp } from "../common/common";
 import type { ArtifactResp } from "./artifact";
 import type { PipelineStageRunResp } from "./pipeline_stage_run";
 
@@ -41,7 +41,7 @@ export interface PipelineRunResp {
   pipeline_version: number;
   trigger: string;
   repository_ref: string;
-  variables_snapshot: VariableDeclarationResp[];
+  variables: VariableResp[];
   status: string;
   retry_of?: string | undefined;
   started_at?: string | undefined;

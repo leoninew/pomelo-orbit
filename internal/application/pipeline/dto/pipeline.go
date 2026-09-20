@@ -1,6 +1,9 @@
 package dto
 
-import "github.com/leoninew/pomelo-orbit/internal/model"
+import (
+	"github.com/leoninew/pomelo-orbit/internal/application/variableview"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+)
 
 type ArtifactConfig struct {
 	Name          string
@@ -118,13 +121,13 @@ type PipelineStageTemplateApplyUpdateInput struct {
 }
 
 type PipelineDetail struct {
-	Pipeline             model.Pipeline
-	StageNodes           []PipelineStageNodeDetail
-	VariableDeclarations []map[string]any
+	Pipeline   model.Pipeline
+	StageNodes []PipelineStageNodeDetail
+	Variables  []variableview.View
 }
 
 type PipelineSnapshotDetail struct {
-	Snapshot          model.PipelineSnapshot
-	StagesSnapshot    []model.StageDefinition
-	VariablesSnapshot []model.VariableDeclaration
+	Snapshot       model.PipelineSnapshot
+	StagesSnapshot []model.StageDefinition
+	Variables      []variableview.View
 }

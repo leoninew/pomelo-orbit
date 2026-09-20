@@ -23,27 +23,27 @@ const (
 )
 
 type PipelineResp struct {
-	state                 protoimpl.MessageState            `protogen:"open.v1"`
-	Id                    string                            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId             *string                           `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
-	Kind                  string                            `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
-	SourcePipelineId      *string                           `protobuf:"bytes,4,opt,name=source_pipeline_id,json=sourcePipelineId,proto3,oneof" json:"source_pipeline_id,omitempty"`
-	SourceTemplateName    *string                           `protobuf:"bytes,5,opt,name=source_template_name,json=sourceTemplateName,proto3,oneof" json:"source_template_name,omitempty"`
-	SourceTemplateVersion *int32                            `protobuf:"varint,6,opt,name=source_template_version,json=sourceTemplateVersion,proto3,oneof" json:"source_template_version,omitempty"`
-	ApplicationId         *string                           `protobuf:"bytes,7,opt,name=application_id,json=applicationId,proto3,oneof" json:"application_id,omitempty"`
-	ApplicationName       *string                           `protobuf:"bytes,8,opt,name=application_name,json=applicationName,proto3,oneof" json:"application_name,omitempty"`
-	RepositoryId          *string                           `protobuf:"bytes,9,opt,name=repository_id,json=repositoryId,proto3,oneof" json:"repository_id,omitempty"`
-	RepositoryName        *string                           `protobuf:"bytes,10,opt,name=repository_name,json=repositoryName,proto3,oneof" json:"repository_name,omitempty"`
-	VersionForkStrategy   *string                           `protobuf:"bytes,11,opt,name=version_fork_strategy,json=versionForkStrategy,proto3,oneof" json:"version_fork_strategy,omitempty"`
-	FixedVersionId        *string                           `protobuf:"bytes,12,opt,name=fixed_version_id,json=fixedVersionId,proto3,oneof" json:"fixed_version_id,omitempty"`
-	FixedVersionLabel     *string                           `protobuf:"bytes,13,opt,name=fixed_version_label,json=fixedVersionLabel,proto3,oneof" json:"fixed_version_label,omitempty"`
-	Name                  string                            `protobuf:"bytes,14,opt,name=name,proto3" json:"name,omitempty"`
-	Description           string                            `protobuf:"bytes,15,opt,name=description,proto3" json:"description,omitempty"`
-	StageNodes            []*PipelineStageNodeResp          `protobuf:"bytes,16,rep,name=stage_nodes,json=stageNodes,proto3" json:"stage_nodes,omitempty"`
-	VariableDeclarations  []*common.VariableDeclarationResp `protobuf:"bytes,17,rep,name=variable_declarations,json=variableDeclarations,proto3" json:"variable_declarations,omitempty"`
-	Version               int32                             `protobuf:"varint,18,opt,name=version,proto3" json:"version,omitempty"`
-	CreatedAt             string                            `protobuf:"bytes,19,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt             string                            `protobuf:"bytes,20,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	state                 protoimpl.MessageState   `protogen:"open.v1"`
+	Id                    string                   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId             *string                  `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
+	Kind                  string                   `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	SourcePipelineId      *string                  `protobuf:"bytes,4,opt,name=source_pipeline_id,json=sourcePipelineId,proto3,oneof" json:"source_pipeline_id,omitempty"`
+	SourceTemplateName    *string                  `protobuf:"bytes,5,opt,name=source_template_name,json=sourceTemplateName,proto3,oneof" json:"source_template_name,omitempty"`
+	SourceTemplateVersion *int32                   `protobuf:"varint,6,opt,name=source_template_version,json=sourceTemplateVersion,proto3,oneof" json:"source_template_version,omitempty"`
+	ApplicationId         *string                  `protobuf:"bytes,7,opt,name=application_id,json=applicationId,proto3,oneof" json:"application_id,omitempty"`
+	ApplicationName       *string                  `protobuf:"bytes,8,opt,name=application_name,json=applicationName,proto3,oneof" json:"application_name,omitempty"`
+	RepositoryId          *string                  `protobuf:"bytes,9,opt,name=repository_id,json=repositoryId,proto3,oneof" json:"repository_id,omitempty"`
+	RepositoryName        *string                  `protobuf:"bytes,10,opt,name=repository_name,json=repositoryName,proto3,oneof" json:"repository_name,omitempty"`
+	VersionForkStrategy   *string                  `protobuf:"bytes,11,opt,name=version_fork_strategy,json=versionForkStrategy,proto3,oneof" json:"version_fork_strategy,omitempty"`
+	FixedVersionId        *string                  `protobuf:"bytes,12,opt,name=fixed_version_id,json=fixedVersionId,proto3,oneof" json:"fixed_version_id,omitempty"`
+	FixedVersionLabel     *string                  `protobuf:"bytes,13,opt,name=fixed_version_label,json=fixedVersionLabel,proto3,oneof" json:"fixed_version_label,omitempty"`
+	Name                  string                   `protobuf:"bytes,14,opt,name=name,proto3" json:"name,omitempty"`
+	Description           string                   `protobuf:"bytes,15,opt,name=description,proto3" json:"description,omitempty"`
+	StageNodes            []*PipelineStageNodeResp `protobuf:"bytes,16,rep,name=stage_nodes,json=stageNodes,proto3" json:"stage_nodes,omitempty"`
+	Variables             []*common.VariableResp   `protobuf:"bytes,17,rep,name=variables,proto3" json:"variables,omitempty"`
+	Version               int32                    `protobuf:"varint,18,opt,name=version,proto3" json:"version,omitempty"`
+	CreatedAt             string                   `protobuf:"bytes,19,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt             string                   `protobuf:"bytes,20,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -190,9 +190,9 @@ func (x *PipelineResp) GetStageNodes() []*PipelineStageNodeResp {
 	return nil
 }
 
-func (x *PipelineResp) GetVariableDeclarations() []*common.VariableDeclarationResp {
+func (x *PipelineResp) GetVariables() []*common.VariableResp {
 	if x != nil {
-		return x.VariableDeclarations
+		return x.Variables
 	}
 	return nil
 }
@@ -580,7 +580,7 @@ var File_orbit_v1_pipeline_pipeline_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_pipeline_pipeline_proto_rawDesc = "" +
 	"\n" +
-	" orbit/v1/pipeline/pipeline.proto\x12\x11orbit.v1.pipeline\x1a\x1corbit/v1/common/common.proto\x1a&orbit/v1/pipeline/pipeline_stage.proto\"\xf6\b\n" +
+	" orbit/v1/pipeline/pipeline.proto\x12\x11orbit.v1.pipeline\x1a\x1corbit/v1/common/common.proto\x1a&orbit/v1/pipeline/pipeline_stage.proto\"\xd4\b\n" +
 	"\fPipelineResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
@@ -601,8 +601,8 @@ const file_orbit_v1_pipeline_pipeline_proto_rawDesc = "" +
 	"\x04name\x18\x0e \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x0f \x01(\tR\vdescription\x12I\n" +
 	"\vstage_nodes\x18\x10 \x03(\v2(.orbit.v1.pipeline.PipelineStageNodeRespR\n" +
-	"stageNodes\x12]\n" +
-	"\x15variable_declarations\x18\x11 \x03(\v2(.orbit.v1.common.VariableDeclarationRespR\x14variableDeclarations\x12\x18\n" +
+	"stageNodes\x12;\n" +
+	"\tvariables\x18\x11 \x03(\v2\x1d.orbit.v1.common.VariableRespR\tvariables\x12\x18\n" +
 	"\aversion\x18\x12 \x01(\x05R\aversion\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x13 \x01(\tR\tcreatedAt\x12\x1d\n" +
@@ -676,13 +676,13 @@ var file_orbit_v1_pipeline_pipeline_proto_goTypes = []any{
 	(*PipelineArtifactBindingReq)(nil),        // 4: orbit.v1.pipeline.PipelineArtifactBindingReq
 	(*PipelinePaginatedResp)(nil),             // 5: orbit.v1.pipeline.PipelinePaginatedResp
 	(*PipelineStageNodeResp)(nil),             // 6: orbit.v1.pipeline.PipelineStageNodeResp
-	(*common.VariableDeclarationResp)(nil),    // 7: orbit.v1.common.VariableDeclarationResp
+	(*common.VariableResp)(nil),               // 7: orbit.v1.common.VariableResp
 	(*common.VariableDeclarationReq)(nil),     // 8: orbit.v1.common.VariableDeclarationReq
 	(*common.VariableDeclarationListReq)(nil), // 9: orbit.v1.common.VariableDeclarationListReq
 }
 var file_orbit_v1_pipeline_pipeline_proto_depIdxs = []int32{
 	6, // 0: orbit.v1.pipeline.PipelineResp.stage_nodes:type_name -> orbit.v1.pipeline.PipelineStageNodeResp
-	7, // 1: orbit.v1.pipeline.PipelineResp.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationResp
+	7, // 1: orbit.v1.pipeline.PipelineResp.variables:type_name -> orbit.v1.common.VariableResp
 	8, // 2: orbit.v1.pipeline.PipelineCreateReq.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationReq
 	9, // 3: orbit.v1.pipeline.PipelineUpdateReq.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationListReq
 	4, // 4: orbit.v1.pipeline.PipelineInstantiateReq.artifact_bindings:type_name -> orbit.v1.pipeline.PipelineArtifactBindingReq

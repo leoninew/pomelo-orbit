@@ -13,23 +13,40 @@ message StringListResp {
   repeated string items = 1;
 }
 
-message StageVariableDefaultResp {
-  string stage_id = 1;
-  string stage_name = 2;
-  google.protobuf.Value default = 3;
+message VariableConfigurationResp {
+  string description = 1;
+  google.protobuf.Value default = 2;
+  google.protobuf.Value value = 3;
+  bool secret = 4;
+  bool editable = 5;
 }
 
-message VariableDeclarationResp {
+message VariableStageBindingResp {
+  string stage_id = 1;
+  string stage_name = 2;
+}
+
+message VariableReferenceResp {
+  string stage_id = 1;
+  string stage_name = 2;
+  string field = 3;
+  string artifact_name = 4;
+  optional int32 artifact_index = 5;
+  google.protobuf.Value default = 6;
+  bool has_default = 7;
+}
+
+message VariableResp {
   string name = 1;
-  string description = 2;
-  google.protobuf.Value default = 3;
-  google.protobuf.Value value = 4;
-  bool secret = 5;
-  string source = 6;
-  bool editable = 7;
-  repeated StageVariableDefaultResp stage_defaults = 8;
-  string stage_id = 9;
-  string stage_name = 10;
+  string kind = 2;
+  string scope = 3;
+  optional VariableStageBindingResp stage_binding = 4;
+  repeated VariableReferenceResp references = 5;
+  optional VariableConfigurationResp configuration = 6;
+  optional VariableConfigurationResp global_configuration = 7;
+  optional VariableConfigurationResp stage_override = 8;
+  string value_source = 9;
+  bool editable = 10;
 }
 
 message VariableDeclarationReq {
